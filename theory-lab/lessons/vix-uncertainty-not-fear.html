@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 <style>
@@ -396,6 +397,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Turn a VIX reading into 1σ moves: divide by \(\sqrt{12}\) for a month, \(\sqrt{52}\) for a week, \(\sqrt{252}\) for a day, then apply the percentage to the index level.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>VIX 16, index at 4,500. Month: \(16/\sqrt{12} = 4.62\%\), about ±208 points. Week: \(16/\sqrt{52} = 2.22\%\), about ±100 points. Day: \(16/\sqrt{252} = 1.008\%\), so about ± <span class="tl-blank" data-answer="45.4" data-tol="0.5" data-unit="points"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>VIX 30, index at 4,000. Month: \(30/\sqrt{12} = 8.66\%\), about ±346 points. Week: <span class="tl-blank" data-answer="4.16" data-tol="0.01" data-unit="%"></span>, about ± <span class="tl-blank" data-answer="166.4" data-tol="1" data-unit="points"></span>. Day: about ± <span class="tl-blank" data-answer="75.6" data-tol="1" data-unit="points"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>VIX 45, index at 18,000. Find the 1σ month in percent <span class="tl-blank" data-answer="12.99" data-tol="0.01" data-unit="%"></span> and in points <span class="tl-blank" data-answer="2338" data-tol="2" data-unit="points"></span>, the 1σ day in percent <span class="tl-blank" data-answer="2.835" data-tol="0.01" data-unit="%"></span>, and the 2σ month in points <span class="tl-blank" data-answer="4677" data-tol="4" data-unit="points"></span>. None of these numbers says which way.</p>
+    </div>
+  </div>
+
   <!-- WB:vix:START -->
   <div class="wb" id="wb-vix" data-title="The VIX as a band around price, drawn step by step">
     <script type="application/json">{"w":600,"h":630,"intro":"The VIX turned into what it really is: a band around price that says how far the S&P 500 might move — and nothing about which way. Press play, or step through.","steps":[{"cap":"The VIX is built from a whole strip of out-of-the-money S&P 500 options. Puts below the forward pay off on a big fall; calls above it pay off on a big rise. Both go in.","do":[{"icon":"puts","name":"umbrella","x":40,"y":8,"s":0.7,"tone":"red","label":"OTM puts\npay on a big fall","lsize":16},{"icon":"calls","name":"rocket","x":490,"y":8,"s":0.7,"tone":"green","label":"OTM calls\npay on a big rise","lsize":16}]},{"cap":"Their prices are weighted and summed into the market's expected variance for the next 30 days. Square root, times 100: that's the VIX. Say it reads 20.","do":[{"box":"vix","x":210,"y":18,"w":180,"h":80,"text":"VIX","tone":"purple","sub":"20","size":24},{"icon":"c1","name":"cash","x":70,"y":22,"s":0.4,"tone":"red","sym":"$"},{"icon":"c2","name":"cash","x":494,"y":22,"s":0.4,"tone":"green","sym":"$"},{"arrow":["puts","vix"],"tone":"red","id":"ap"},{"arrow":["calls","vix"],"tone":"green","id":"ac"},{"move":"c1","x":222,"y":36,"ms":1100},{"move":"c2","x":338,"y":36,"ms":1100},{"hide":"c1"},{"hide":"c2"}]},{"cap":"Now put it on a chart. The S&P 500 is at 5,000 today; the future is blank.","do":[{"chart":"sp","x":10,"y":150,"w":580,"h":420,"title":"S&P 500 and its expected 1σ band","xd":[-10,22.5],"yd":[4250,5750],"yt":[[4500,"4,500"],[5000,"5,000"],[5500,"5,500"]],"xt":[[-8,"past"],[0,"today"],[4.846153846153846,"1 wk"],[21,"1 mo"]],"pl":56,"pt":38},{"series":"past","chart":"sp","pts":[[-10,4930],[-8,4962],[-6,4948],[-4,4986],[-2,4972],[0,5000]],"tone":"blue","ms":900},{"dot":"now","chart":"sp","at":[0,5000],"text":"5,000","tone":"blue","dx":-8,"dy":-18,"anchor":"end"}]},{"cap":"The VIX is an annual figure. For one month, divide by √12: 20 ÷ √12 ≈ 5.77%. On 5,000 that is about ±289 points — one standard deviation either way.","do":[{"note":"conv","x":300,"y":126,"text":"20 ÷ √12 ≈ 5.77%  →  ±289 points","size":18,"anchor":"middle","tone":"purple"},{"gap":"b20","chart":"sp","top":[[0,5000.0],[0.25,5031.5],[0.6,5048.8],[1,5063.0],[2,5089.1],[3,5109.1],[4.846153846153846,5138.7],[7,5166.7],[9.5,5194.2],[12,5218.2],[15,5244.0],[18,5267.3],[21,5288.7]],"bot":[[0,5000.0],[0.25,4968.5],[0.6,4951.2],[1,4937.0],[2,4910.9],[3,4890.9],[4.846153846153846,4861.3],[7,4833.3],[9.5,4805.8],[12,4781.8],[15,4756.0],[18,4732.7],[21,4711.3]],"tone":"purple","op":0.2},{"series":"u20","chart":"sp","pts":[[0,5000.0],[0.25,5031.5],[0.6,5048.8],[1,5063.0],[2,5089.1],[3,5109.1],[4.846153846153846,5138.7],[7,5166.7],[9.5,5194.2],[12,5218.2],[15,5244.0],[18,5267.3],[21,5288.7]],"tone":"purple","ms":1200},{"series":"d20","chart":"sp","pts":[[0,5000.0],[0.25,4968.5],[0.6,4951.2],[1,4937.0],[2,4910.9],[3,4890.9],[4.846153846153846,4861.3],[7,4833.3],[9.5,4805.8],[12,4781.8],[15,4756.0],[18,4732.7],[21,4711.3]],"tone":"purple","ms":1200},{"dot":"m1","chart":"sp","at":[21,5288.675134594813],"text":"+289","tone":"purple","dx":-10,"dy":-16,"anchor":"end"},{"dot":"m2","chart":"sp","at":[21,4711.324865405187],"text":"−289","tone":"purple","dx":-10,"dy":16,"anchor":"end"}]},{"cap":"Shorter horizons use the same square-root-of-time rule. One week: 20 ÷ √52 ≈ 2.77%, about ±139 points. One day: 20 ÷ √252 ≈ 1.26%, about ±63 — the trader's \"divide by 16\".","do":[{"dot":"w1","chart":"sp","at":[4.846153846153846,5138.675049056307],"text":"±139","tone":"purple","dx":0,"dy":-18},{"dot":"d1","chart":"sp","at":[1,5062.994078834871],"text":"±63","tone":"purple","dx":-2,"dy":-18}]},{"cap":"Look at the middle. The band is centred on today's 5,000. Nothing in it leans up or down.","do":[{"series":"mid","chart":"sp","pts":[[0,5000],[21,5000]],"tone":"chalk","dash":true,"ms":700},{"note":"midl","chart":"sp","at":[12,5000],"text":"centre: no direction","tone":"chalk","size":17,"anchor":"middle","dx":0,"dy":-16}]},{"cap":"If moves were normal, roughly two months in three would land inside ±289 — and about one in twenty outside twice that, ±577 (±11.5%).","do":[{"gap":"b2","chart":"sp","top":[[0,5000.0],[0.25,5063.0],[0.6,5097.6],[1,5126.0],[2,5178.2],[3,5218.2],[4.846153846153846,5277.4],[7,5333.3],[9.5,5388.3],[12,5436.4],[15,5488.0],[18,5534.5],[21,5577.4]],"bot":[[0,5000.0],[0.25,4937.0],[0.6,4902.4],[1,4874.0],[2,4821.8],[3,4781.8],[4.846153846153846,4722.6],[7,4666.7],[9.5,4611.7],[12,4563.6],[15,4512.0],[18,4465.5],[21,4422.6]],"tone":"purple","op":0.08},{"series":"u2","chart":"sp","pts":[[0,5000.0],[0.25,5063.0],[0.6,5097.6],[1,5126.0],[2,5178.2],[3,5218.2],[4.846153846153846,5277.4],[7,5333.3],[9.5,5388.3],[12,5436.4],[15,5488.0],[18,5534.5],[21,5577.4]],"tone":"purple","dash":true,"ms":700},{"series":"l2","chart":"sp","pts":[[0,5000.0],[0.25,4937.0],[0.6,4902.4],[1,4874.0],[2,4821.8],[3,4781.8],[4.846153846153846,4722.6],[7,4666.7],[9.5,4611.7],[12,4563.6],[15,4512.0],[18,4465.5],[21,4422.6]],"tone":"purple","dash":true,"ms":700},{"dot":"m3","chart":"sp","at":[21,5577.350269189626],"text":"2σ +577","tone":"purple","dx":-10,"dy":-16,"anchor":"end"}]},{"cap":"Now double the VIX to 40. Every number doubles: ±11.5% a month, about ±577 points; ±2.5% a day. The new one-sigma band is as wide as the old two-sigma one.","do":[{"count":"vix","from":20,"to":40,"dp":0,"ms":1200},{"hide":"conv"},{"note":"conv2","x":300,"y":126,"text":"40 ÷ √12 ≈ 11.5%  →  ±577 points","size":18,"anchor":"middle","tone":"red"},{"hide":"b2"},{"hide":"u2"},{"hide":"l2"},{"hide":"m3"},{"dim":"b20"},{"dim":"u20"},{"dim":"d20"},{"hide":"m1"},{"hide":"m2"},{"hide":"w1"},{"hide":"d1"},{"gap":"b40","chart":"sp","top":[[0,5000.0],[0.25,5063.0],[0.6,5097.6],[1,5126.0],[2,5178.2],[3,5218.2],[4.846153846153846,5277.4],[7,5333.3],[9.5,5388.3],[12,5436.4],[15,5488.0],[18,5534.5],[21,5577.4]],"bot":[[0,5000.0],[0.25,4937.0],[0.6,4902.4],[1,4874.0],[2,4821.8],[3,4781.8],[4.846153846153846,4722.6],[7,4666.7],[9.5,4611.7],[12,4563.6],[15,4512.0],[18,4465.5],[21,4422.6]],"tone":"red","op":0.16},{"series":"u40","chart":"sp","pts":[[0,5000.0],[0.25,5063.0],[0.6,5097.6],[1,5126.0],[2,5178.2],[3,5218.2],[4.846153846153846,5277.4],[7,5333.3],[9.5,5388.3],[12,5436.4],[15,5488.0],[18,5534.5],[21,5577.4]],"tone":"red","ms":1200},{"series":"d40","chart":"sp","pts":[[0,5000.0],[0.25,4937.0],[0.6,4902.4],[1,4874.0],[2,4821.8],[3,4781.8],[4.846153846153846,4722.6],[7,4666.7],[9.5,4611.7],[12,4563.6],[15,4512.0],[18,4465.5],[21,4422.6]],"tone":"red","ms":1200},{"dot":"m4","chart":"sp","at":[21,5577.350269189626],"text":"+577","tone":"red","dx":-10,"dy":-16,"anchor":"end"},{"dot":"m5","chart":"sp","at":[21,4422.649730810374],"text":"−577","tone":"red","dx":-10,"dy":16,"anchor":"end"}]},{"cap":"And the centre? Still 5,000. The market is paying for twice the size of move. It has said nothing new about direction.","do":[{"pulse":"mid"},{"pulse":"now"}]},{"cap":"So why does it usually jump when stocks fall? Because people pay up for crash insurance: S&P puts are almost always priced at higher implied vol than equally distant calls. But calls are in the sum too — a rush into upside can lift the VIX in a rally.","do":[{"pulse":"puts"},{"pulse":"calls"}]},{"cap":"One caution: the band is a guide, not a cap. About one month in three should land outside ±1σ even on a bell curve, real returns have fatter tails, and the VIX carries an insurance premium.","do":[{"note":"tail","chart":"sp","at":[-5,5560],"text":"about 1 month in 3\nlands outside ±1σ","tone":"amber","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"The VIX is a forecast of wind speed, not wind direction: it prices how big the next month's moves may be. Size, never sign.","do":[{"note":"end","x":300,"y":604,"text":"The VIX prices the SIZE of the band — never which way","size":21,"anchor":"middle","tone":"green"}]}]}</script>
@@ -510,21 +528,21 @@
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
+  <div class="tl-verdict validated" data-evidence="mv-vixterm-range" data-evidence-date="2026-09-23">
     <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>An inverted VIX curve → a wider month, reproduced independently</strong> (<code>mv-vixterm-range</code>). Pre-registered: the range ratio over the next 20 sessions is +0.52 [0.38, 0.88] on SPX500 and +0.44 [0.26, 0.78] on NQ against a matched control, on 14 de-clustered firings (8% of sessions). Holds in both halves of the sample (+0.70 early, +0.35 late), so it is not one episode. <strong>Direction is null: 57% up against an 80%+ control.</strong> It independently reproduces the VIX-inversion result from a different harness — the main reason to believe it.</span>
   </div>
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict validated">
+  <div class="tl-verdict validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
     <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>"Implied far above realised means over-insured, it'll calm down" — the opposite</strong> (<code>iv-over-rv-wider</code>). VIX ÷ 20-session realised SPX vol in the top decile (88 first days, 2010→): NAS100 next-5 range +0.38 ATR [+0.11, +0.62], next-20 +0.56; SPX500 next-20 +0.67 [+0.13, +1.21] (next-5 +0.17, null). Realised catches up to implied. <em>A reason to expect wider indices over the coming weeks, not calmer ones. Range, not direction.</em></span>
   </div>
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict null">
+  <div class="tl-verdict null" data-evidence="fear-gold" data-evidence-date="2026-09-21">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>"Fear buys gold"</strong> (<code>fear-gold</code>). 58 VIX spikes (+5 points in five sessions) 2010-2026. Gold five sessions on +0.42% vs +0.35% ordinary: excess +0.07% [-0.42, +0.30]; higher at five sessions 53% [41-66]. Twenty sessions on +0.01% vs +1.20%: excess -1.19% [-2.30, -0.48]. Spiked then gave back half by day 20: 24% of spikes; the rest never spiked. <em>No fear bid in gold on average, and a month after a fear spike gold has lagged its ordinary drift.</em></span>
   </div>
@@ -542,6 +560,7 @@
       The four verdicts above are entries in <code>js/deskEvidence.js</code>, the ledger the board and briefs read before writing any prose about volatility. The VIX and VIX3M levels and their inversion flag are on the board today. Cboe's SKEW and VVIX series are pulled daily but are <strong>not yet tested</strong> or catalogued — so nothing on this page claims anything about them beyond their definition.
     </p>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../surface-lab.html">Surface Lab</a> draws the S&amp;P 500 vol term structure from 1 day to 6 months each night; an inversion shows up there as the short end rising above the long end.</div>
   <!-- DESK:END -->
 
   <div class="tl-box pitfall">
@@ -567,7 +586,8 @@
       <li data-verdict="ok">Close everything and wait for the VIX to calm down.<div class="tl-drill-why">Safe, and better than flipping. But the VIX gave you a size message, not a reason to abandon your view. Resizing does the same risk job without throwing the position away.</div></li>
       <li data-verdict="bad">Sell volatility. Option prices have doubled, so collect the rich premium.<div class="tl-drill-why">Short-vol products were being forced to buy volatility back into the close, and that forced buying was making the spike bigger. Selling into it, sized for last week's calm, puts you on the side being squeezed.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Overnight, the largest inverse-VIX exchange-traded note lost more than 90% of its indicative value, and its issuer announced it would terminate the note. The forced buying from short-vol products had made the spike bigger. The S&amp;P 500 stayed volatile into the following week, so the VIX was right about size. It gave no signal about where the index would be a few months later.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Overnight, the largest inverse-VIX exchange-traded note lost more than 90% of its indicative value, and its issuer announced it would terminate the note. The forced buying from short-vol products had made the spike bigger. The S&amp;P 500 stayed volatile into the following week, so the VIX was right about size. It gave no signal about where the index would be a few months later.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/VIXCLS" target="_blank" rel="noopener">Cboe VIX daily closes, FRED</a> (17.31 on 2 February, 37.32 on 5 February 2018); <a href="https://fred.stlouisfed.org/series/SP500" target="_blank" rel="noopener">S&amp;P 500 daily closes, FRED</a> (2,762.13 to 2,648.94, −4.1%); Credit Suisse media release on the XIV ETN acceleration event, 6 February 2018.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -577,7 +597,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VIX ÷ √12 is a one-month 1σ move.</strong> VIX 20 ≈ ±5.8% a month; VIX ÷ 16 ≈ the daily move.</span></div>
     <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An inverted VIX curve means a wider coming week and month</strong> — validated twice here, from two harnesses. Range, not direction.</span></div><!-- DESK:END -->
     <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Implied far above realised preceded wider ranges, not calmer ones.</strong> Realised catches up to implied.</span></div><!-- DESK:END -->
-    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Fear buys gold" is null.</strong> After 58 VIX spikes gold showed no excess at five sessions (+0.07% [-0.42, +0.30]) and lagged by 1.19% at twenty.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Fear buys gold" found nothing here.</strong> Do not read a VIX spike as a reason to buy gold.</span></div><!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The bell curve is a guide, not a promise.</strong> Real returns are fat-tailed, the VIX includes an insurance premium, and intraday prints can mislead.</span></div>
   </div>
 
@@ -764,7 +784,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

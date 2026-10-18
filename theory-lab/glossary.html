@@ -6,6 +6,7 @@
 <title>Notation Glossary — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -209,6 +210,30 @@
       <div class="tl-gloss-where">The heart of: <a href="lessons/ou-mean-reversion.html">Ornstein-Uhlenbeck</a>, <a href="lessons/black-scholes.html">Black-Scholes</a>, <a href="lessons/merton-jump-diffusion.html">Merton Jump-Diffusion</a>, <a href="lessons/heston-model.html">Heston</a>, <a href="lessons/ito-lemma.html">Itô's Lemma</a>, <a href="lessons/girsanov-risk-neutral.html">Girsanov's Theorem</a>.</div>
     </div>
 
+    <div class="tl-gloss-card" data-search="R R-multiple expectancy E p* break-even hit rate win rate trade management stop">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(R,\ E,\ p^*\)</div><div class="tl-gloss-name">R-multiple, expectancy, break-even hit rate<span>Results measured in units of risk</span></div></div>
+      <div class="tl-gloss-def">\(R\) is a trade's result divided by what you risked on it (entry to stop): a winner that made twice the risk is \(+2R\), a full stop-out is \(-1R\). Expectancy \(E = p\,\bar W - (1-p)\,\bar L\) is the average result per trade in R, with \(p\) the hit rate and \(\bar W, \bar L\) the average winner and loser. The break-even hit rate \(p^* = \bar L/(\bar W + \bar L)\) is the win rate at which \(E = 0\).</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/trade-management-exits.html">Managing the Trade</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="ATM RR BF risk reversal butterfly 25 delta smile fx options vol quote">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\sigma_{ATM},\ RR_{25},\ BF_{25}\)</div><div class="tl-gloss-name">ATM vol, 25-delta risk reversal and butterfly<span>How FX options are quoted</span></div></div>
+      <div class="tl-gloss-def">FX options trade in volatility, by delta rather than by strike. \(\sigma_{ATM}\) is the at-the-money vol. The 25-delta risk reversal \(RR_{25} = \sigma_{25C} - \sigma_{25P}\) says which side the market pays up for: negative means puts on the base currency are dearer. The butterfly measures how much both wings sit above the middle, roughly \(\tfrac12(\sigma_{25C}+\sigma_{25P}) - \sigma_{ATM}\). The three numbers rebuild the smile; the market's quoted fly uses a slightly different strangle, which the lesson works through.</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/fx-options-quoting-rr-bf.html">FX Options Quoting</a>. Background: <a href="lessons/vega-volatility-surface.html">Vega &amp; the volatility surface</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="event vol sigma_e base vol sigma_b surprise z standardised release payrolls cpi">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\sigma_e,\ \sigma_b,\ z\)</div><div class="tl-gloss-name">Event vol, base vol, standardised surprise<span>Trading scheduled releases</span></div></div>
+      <div class="tl-gloss-def">\(\sigma_e\) is the volatility the options market prices for one event day, backed out from two expiries either side of it; \(\sigma_b\) is the vol of an ordinary day. The ratio \(\sigma_e^2/\sigma_b^2\) says how many ordinary days the event is worth. \(z = (A - E)/\text{sd}\) is the surprise: actual minus expected, in units of how far forecasts usually miss. Price reacts to \(z\), not to the level of the number.</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/event-trading-playbook.html">The Event-Trading Playbook</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="fix fixing WM Reuters WMR 4pm median window T_hold month-end benchmark">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(T_{hold}\)</div><div class="tl-gloss-name">The 4pm fix and the time to move it<span>FX benchmarks</span></div></div>
+      <div class="tl-gloss-def">The WM/Reuters (now WMR) 4pm London fix is the median of trade and quote samples taken over a five-minute window. A median ignores a single wild print, so moving it means holding the price beyond the target for a large share of the window: \(T_{hold}\) is how many seconds that takes. The five-minute window, in place of one minute since 2015, made that much harder.</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/fx-fixings-wm-reuters.html">FX Fixings &amp; the 4pm Fix</a>.</div>
+    </div>
+
   </div>
 
   <!-- ============================================================ -->
@@ -302,5 +327,6 @@
 })();
 </script>
 
+<script src="assets/vark.js?v=2" defer></script>
 </body>
 </html>

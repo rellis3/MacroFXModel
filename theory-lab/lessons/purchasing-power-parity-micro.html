@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Purchasing Power Parity — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the real-exchange-rate chart, and a 6-question self-test?<a href="purchasing-power-parity.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,68 @@
       <p class="sl-lede">Interest rate parity pins the forward FX rate down almost mechanically, enforced by riskless arbitrage that closes gaps in seconds. Purchasing Power Parity is the other half of classical international finance, and it could not behave more differently: it's a real, well-documented anchor for where a currency "should" sit over years — and a famously bad clock for when it actually gets there. Holding both of those facts at once, without collapsing one into the other, is the entire point of this lesson.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How a 20% PPP gap closes over ten years, if it closes at all. Two curves decay from 20% with half-lives of three and five years, so the gap halves to 10% after three to five years. A thin green sliver at the start marks a three-month trade, over which the gap only shrinks from 20% to about 19%. A red dashed line rising from the start shows that the gap can widen first, as the yen did in 2022 to 2024 when USD/JPY went from about 115 to past 160.">
+      <line class="tlp-line" x1="80" y1="30" x2="80" y2="200"/>
+      <line class="tlp-line" x1="80" y1="200" x2="590" y2="200"/>
+      <text class="tlp-text3" x="86" y="20" font-size="12">size of the PPP gap (a currency "20% cheap")</text>
+      <text class="tlp-text3" x="72" y="76" text-anchor="end" font-size="12">20%</text>
+      <text class="tlp-text3" x="72" y="140" text-anchor="end" font-size="12">10%</text>
+      <text class="tlp-text3" x="72" y="204" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="80" y="218" text-anchor="middle" font-size="12">now</text>
+      <text class="tlp-text3" x="230" y="218" text-anchor="middle" font-size="12">3 yrs</text>
+      <text class="tlp-text3" x="330" y="218" text-anchor="middle" font-size="12">5 yrs</text>
+      <text class="tlp-text3" x="580" y="218" text-anchor="end" font-size="12">10 yrs</text>
+      <rect class="tlp-green" x="80" y="30" width="12.5" height="170" opacity=".35"/>
+      <polygon class="tlp-amber" opacity=".22" points="80.0,72.0 92.5,76.4 105.0,80.6 117.5,84.6 130.0,88.6 142.5,92.4 155.0,96.0 167.5,99.6 180.0,103.0 192.5,106.3 205.0,109.5 217.5,112.6 230.0,115.6 242.5,118.4 255.0,121.2 267.5,123.9 280.0,126.5 292.5,129.0 305.0,131.4 317.5,133.7 330.0,136.0 342.5,138.2 355.0,140.3 367.5,142.3 380.0,144.3 392.5,146.2 405.0,148.0 417.5,149.8 430.0,151.5 442.5,153.1 455.0,154.7 467.5,156.3 480.0,157.8 492.5,159.2 505.0,160.6 517.5,161.9 530.0,163.2 542.5,164.5 555.0,165.7 567.5,166.9 580.0,168.0 580.0,187.3 567.5,186.5 555.0,185.7 542.5,184.9 530.0,184.0 517.5,183.0 505.0,182.0 492.5,181.0 480.0,179.8 467.5,178.6 455.0,177.4 442.5,176.0 430.0,174.6 417.5,173.1 405.0,171.5 392.5,169.8 380.0,168.0 367.5,166.1 355.0,164.1 342.5,161.9 330.0,159.7 317.5,157.3 305.0,154.7 292.5,152.1 280.0,149.2 267.5,146.2 255.0,143.0 242.5,139.6 230.0,136.0 217.5,132.2 205.0,128.2 192.5,123.9 180.0,119.4 167.5,114.6 155.0,109.5 142.5,104.1 130.0,98.4 117.5,92.4 105.0,86.0 92.5,79.2 80.0,72.0 "/>
+      <polyline class="tlp-line amber thick" points="80.0,72.0 92.5,79.2 105.0,86.0 117.5,92.4 130.0,98.4 142.5,104.1 155.0,109.5 167.5,114.6 180.0,119.4 192.5,123.9 205.0,128.2 217.5,132.2 230.0,136.0 242.5,139.6 255.0,143.0 267.5,146.2 280.0,149.2 292.5,152.1 305.0,154.7 317.5,157.3 330.0,159.7 342.5,161.9 355.0,164.1 367.5,166.1 380.0,168.0 392.5,169.8 405.0,171.5 417.5,173.1 430.0,174.6 442.5,176.0 455.0,177.4 467.5,178.6 480.0,179.8 492.5,181.0 505.0,182.0 517.5,183.0 530.0,184.0 542.5,184.9 555.0,185.7 567.5,186.5 580.0,187.3"/>
+      <polyline class="tlp-line amber thick" points="80.0,72.0 92.5,76.4 105.0,80.6 117.5,84.6 130.0,88.6 142.5,92.4 155.0,96.0 167.5,99.6 180.0,103.0 192.5,106.3 205.0,109.5 217.5,112.6 230.0,115.6 242.5,118.4 255.0,121.2 267.5,123.9 280.0,126.5 292.5,129.0 305.0,131.4 317.5,133.7 330.0,136.0 342.5,138.2 355.0,140.3 367.5,142.3 380.0,144.3 392.5,146.2 405.0,148.0 417.5,149.8 430.0,151.5 442.5,153.1 455.0,154.7 467.5,156.3 480.0,157.8 492.5,159.2 505.0,160.6 517.5,161.9 530.0,163.2 542.5,164.5 555.0,165.7 567.5,166.9 580.0,168.0"/>
+      <line class="tlp-line dash" x1="80" y1="136" x2="330" y2="136"/>
+      <circle class="tlp-amber" cx="230" cy="136" r="5"/>
+      <circle class="tlp-amber" cx="330" cy="136" r="5"/>
+      <text class="tlp-amber" x="350" y="118" font-size="13" font-weight="700">half-life: 3 to 5 years (Rogoff)</text>
+      <line class="tlp-line red thick dash" x1="80" y1="72" x2="138" y2="38"/>
+      <text class="tlp-red" x="146" y="42" font-size="13" font-weight="700">can widen first: the yen in 2022–24, USD/JPY 115 → 160+</text>
+      <text class="tlp-green" x="98" y="188" font-size="13" font-weight="700">← a 3-month trade: 20% → about 19%</text>
+    </svg>
+    <figcaption>PPP is a real anchor on a very slow clock. With a half-life of three to five years, a 20% gap is still about 19% at the end of a three-month trade, and nothing stops it widening first. Use it for where a currency belongs, not for when it gets there.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">An analyst note says a currency is twenty percent undervalued on purchasing power parity. Should I buy it?</p>
+      <p data-who="Quant">First, what that phrase means. Say an identical coffee costs three dollars in New York and three pounds in London, and a pound buys a dollar fifty. In dollars, the London coffee costs four fifty. Fifty percent more for the same cup.</p>
+      <p data-who="Trader">So someone should ship coffee to London.</p>
+      <p data-who="Quant">Exactly. Buy where it is cheap, sell where it is dear, until the gap closes. That is the law of one price. Purchasing power parity scales it up from one coffee to a whole economy's basket.</p>
+      <p data-who="Trader">Does it actually hold?</p>
+      <p data-who="Quant">The strict version almost never does. Baskets differ between countries, and you cannot ship a haircut or a rent bill across a border. The useful version is about change: the currency with higher inflation should weaken by roughly the inflation gap.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Prices rising eight percent a year at home and two percent abroad. The home currency should fall about six percent a year to keep things level.</p>
+      <p data-who="Trader">And the twenty percent undervalued?</p>
+      <p data-who="Quant">That comes from the real exchange rate, a cheap-o-meter that strips out inflation. If parity held exactly it would never move. In practice it wanders above or below its average for years.</p>
+      <p data-who="Trader">How long does it take to come back?</p>
+      <p data-who="Quant">That is Rogoff's puzzle. The half-life is three to five years. A twenty percent gap takes three to five years just to shrink to ten. Over a three-month trade it barely moves, from twenty to about nineteen.</p>
+      <p data-who="Trader">But it does come back eventually.</p>
+      <p data-who="Quant">On average, and it can widen first. Look at Japan from 2022. US inflation peaked at nine point one percent. Japanese inflation stayed lower, so parity said the yen should gain. Instead dollar-yen went from about one fifteen to near one fifty-two that October, and passed one sixty in 2024.</p>
+      <p data-who="Trader">What overpowered it?</p>
+      <p data-who="Quant">The rate gap. The Fed went from near zero to over five percent. The Bank of Japan kept rates negative until March 2024. Holding dollars paid far more, and capital followed the yield. Tourists poured into a cheap Japan, which is parity's arbitrage really happening, and it was nowhere near enough.</p>
+      <p data-who="Trader">So who should use this at all?</p>
+      <p data-who="Quant">Someone whose horizon matches its clock. A treasurer hedging a five-year liability, or a pension fund setting a long-run hedge ratio.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Purchasing power parity is a real anchor and a terrible clock. Use it for where a currency belongs, never for when it gets there.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">If a coffee costs $3 in New York and £3 in London, something has to give</h2>
       <p class="sl-sub">Same coffee, same beans, same size. GBP/USD = 1.50.</p>
@@ -42,7 +104,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Absolute PPP: the strict, "in theory" version</h2>
       <p class="sl-sub">The exchange rate should exactly equal the ratio of the two countries' price levels.</p>
@@ -59,7 +121,7 @@
       <p class="sl-p">This is the "one price for one basket" idea taken completely literally. It's also, empirically, close to never exactly true.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Why absolute PPP almost never holds exactly</h2>
       <p class="sl-sub">Three well-understood, not-particularly-mysterious reasons.</p>
@@ -71,7 +133,7 @@
       <div class="sl-quote">Absolute PPP is the clean textbook statement, but it's best treated as a limiting case — a useful reference point, not something you'd expect to hold to the decimal in real data.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Relative PPP: the version that's actually useful</h2>
       <p class="sl-sub">Take absolute PPP, convert levels into rates of change.</p>
@@ -83,7 +145,7 @@
       <p class="sl-p">If domestic prices rise 8% a year and foreign prices rise 2%, and the exchange rate doesn't move, domestic goods get steadily, mechanically more expensive relative to foreign goods every year — a widening Law-of-One-Price violation. Relative PPP says the currency should depreciate by roughly the 6-point gap to keep relative competitiveness unchanged. This is weaker than absolute PPP — it says nothing about whether S currently <em>equals</em> P_domestic/P_foreign, only about the direction and rough size of future changes — which is exactly why it survives contact with real data better.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Try it — the relative-PPP-implied exchange rate</h2>
       <p class="sl-sub">Set today's spot rate and each country's inflation rate. Watch the implied path N years out.</p>
@@ -115,7 +177,7 @@
       <p class="sl-p">The domestic currency (the higher-inflation one) is quoted here as foreign-currency-per-domestic-unit, so a rising inflation gap pushes S <em>down</em> over time — the domestic currency buys less foreign currency as its own prices run hotter.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The real exchange rate — a "cheap-o-meter"</h2>
       <p class="sl-sub">If PPP held exactly at every moment, this number would never move.</p>
@@ -139,7 +201,7 @@
       <p class="sl-p">With S quoted as domestic currency per foreign unit (as this formula needs; the Section 5 calculator used the inverse quote), <strong>overvalued</strong> means the real rate is unusually low relative to its own history (domestic goods look expensive to foreigners on a PPP basis); <strong>undervalued</strong> means unusually high, as on the chart. Notice the shape: a handful of long, slow cycles across 24 years — not fast, jittery oscillation.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Short-run clock vs. long-run pull</h2>
       <p class="sl-sub">The exact same PPP relationship, viewed on two different horizons.</p>
@@ -169,7 +231,7 @@
       <p class="sl-p">This is the single hardest thing about PPP to hold in your head at once: "the theory is basically right over the long run" and "the theory is nearly useless for timing a trade" are both true, simultaneously, about the exact same relationship.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The Big Mac Index</h2>
       <p class="sl-sub">The most famous informal illustration of absolute PPP, published by The Economist since 1986.</p>
@@ -185,7 +247,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The PPP puzzle — why it holds so slowly</h2>
       <p class="sl-sub">Kenneth Rogoff's widely-cited 1996 review named this problem outright.</p>
@@ -196,7 +258,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">"This currency looks 20% undervalued" — what does that license you to do?</h2>
       <p class="sl-sub">The same reading, judged against two very different decision horizons.</p>
@@ -229,7 +291,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">2022–24: the cheapest yen in half a century</h2>
       <div class="sl-callout amber">
@@ -250,7 +312,7 @@
     </section>
 
     <!-- WB:ppp-deck:START -->
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">PPP: one coffee, two prices, and a very slow pull</h2>
       <!-- WB:ppp:START -->
@@ -261,7 +323,7 @@
     </section>
     <!-- WB:ppp-deck:END -->
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: far from fair value means it will revert, so trade the gap.<!-- DESK:START --> No PPP model exists here; the same claim has been tested with other fair values.<!-- DESK:END --></p>
@@ -283,7 +345,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -334,7 +396,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2022-01-03">
+    <div class="tl-drill-label">Scenario drill · early January 2022</div>
+    <h3>The yen looks cheap on every PPP measure</h3>
+    <p>You trade on a horizon of a few months. USD/JPY is around 115. The yen looks cheap on every PPP measure, US inflation is running well above Japan's, so relative PPP says the yen should gain. The Fed has not yet started hiking; the Bank of Japan holds its short rate at −0.1% and caps 10-year yields. An analyst note calls the yen "20% undervalued". What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Buy yen with leverage sized for a three-month trade. Cheap plus the inflation gap is a strong case.<div class="tl-drill-why">With a half-life of three to five years, a 20% gap is still about 19% after three months, and it can widen first. PPP gives a direction for the long run and no timing at all.</div></li>
+      <li data-verdict="bad">Buy yen, and add each time it gets cheaper, since the gap has to close.<div class="tl-drill-why">Nothing makes a cheap currency stop getting cheaper. Adding into a widening gap turns a slow anchor into a fast drawdown.</div></li>
+      <li data-verdict="good">Take no position on PPP alone. On a few-month horizon, weigh what moves currencies that fast, here the rate gap that is about to open, and keep PPP as a long-run anchor.<div class="tl-drill-why">PPP's usefulness is horizon-conditional. Over months, capital chasing an interest-rate gap is far larger and faster than goods arbitrage, and a Fed about to hike against a Bank of Japan pinned below zero points the other way.</div></li>
+      <li data-verdict="ok">Buy a small amount of yen as a multi-year position you can hold through a much cheaper yen.<div class="tl-drill-why">Defensible if your horizon really is years and the size survives a large move against you. It is no longer a trade on your few-month book.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The Fed raised its policy rate from near zero in March 2022 to 5.25–5.50% by July 2023, while the Bank of Japan kept its short rate at −0.1% until March 2024. USD/JPY rose to near 152 that October and passed 160 in 2024, the weakest yen against the dollar since the mid-1980s. Japan's Ministry of Finance bought yen in autumn 2022, its first yen-buying intervention since 1998, and again in 2024; that slowed the fall without reversing it. Anyone who bought the yen in 2022 because it was "20% cheap" sat through a much cheaper yen first.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20220316a.htm">Federal Reserve press release, 16 Mar 2022</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20230726a.htm">Federal Reserve press release, 26 Jul 2023</a>; <a href="https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2024/k240319a.pdf">Bank of Japan, Changes in the Monetary Policy Framework, 19 Mar 2024</a>; <a href="https://www.mof.go.jp/english/policy/international_policy/reference/feio/foreign_exchange_intervention_operations.csv">Japan Ministry of Finance, foreign exchange intervention data</a>; <a href="https://fred.stlouisfed.org/series/DEXJPUS">FRED, DEXJPUS</a>; Reuters, 21 Oct 2022 (USD/JPY high of 151.94)</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -412,5 +493,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">MDPs, Value Functions &amp; the Bellman Equation — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a hand-worked value-iteration table, and a 5-question self-test?<a href="mdp-bellman-equation.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,83 @@
       <p class="sl-lede">Every strategy this curriculum has covered so far applies a static rule regardless of what happens next. Reinforcement learning is built for the opposite case: problems where today's action changes tomorrow's situation, so the "right" move can only be judged by its effect on the whole future path. The Markov Decision Process is the formal object underneath every RL method, and the Bellman equation — value now equals immediate reward plus the discounted value of what comes next — is the one recursive trick that makes it solvable at all.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the rewards from holding a long position forever, plus 1 each step, drawn as bars that shrink by a factor of 0.9 each step. The first bar is the reward now; all the later bars together are 0.9 times the same picture, so the value of being long is 1 plus 0.9 times itself, which is 10. Right: the solved values and best moves for the lesson's three states: Flat 7.32, open a position; Long 10, hold; Short 6.49, close.">
+      <text class="tlp-green" x="170" y="18" text-anchor="middle" font-size="14" font-weight="700">V(Long) = 1 + 0.9 × V(Long) = 10</text>
+      <rect class="tlp-green" x="30" y="80.0" width="16" height="120.0" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="51" y="92.0" width="16" height="108.0" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="72" y="102.8" width="16" height="97.2" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="93" y="112.5" width="16" height="87.5" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="114" y="121.3" width="16" height="78.7" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="135" y="129.1" width="16" height="70.9" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="156" y="136.2" width="16" height="63.8" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="177" y="142.6" width="16" height="57.4" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="198" y="148.3" width="16" height="51.7" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="219" y="153.5" width="16" height="46.5" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="240" y="158.2" width="16" height="41.8" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="261" y="162.3" width="16" height="37.7" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="282" y="166.1" width="16" height="33.9" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="303" y="169.5" width="16" height="30.5" rx="2" opacity=".8"/>
+      <line class="tlp-line" x1="24" y1="200" x2="326" y2="200"/>
+      <path class="tlp-line purple" d="M51,88 L51,82 L319,82 L319,88"/>
+      <text class="tlp-green" x="38" y="72" text-anchor="middle" font-size="13" font-weight="700">+1</text>
+      <text class="tlp-purple" x="185" y="72" text-anchor="middle" font-size="13" font-weight="700">0.9 × (the same picture) = 9</text>
+      <text class="tlp-text3" x="38" y="216" text-anchor="middle" font-size="12">now</text>
+      <text class="tlp-text3" x="190" y="216" text-anchor="middle" font-size="12">each later step shrunk by 0.9 →</text>
+      <text class="tlp-text2" x="175" y="236" text-anchor="middle" font-size="12">value now = reward now + discounted value next</text>
+      <line class="tlp-line dash" x1="350" y1="10" x2="350" y2="236"/>
+      <text class="tlp-text3" x="475" y="18" text-anchor="middle" font-size="12">solved: value and best move</text>
+      <circle class="tlp-box blue" cx="400" cy="70" r="28"/>
+      <circle class="tlp-box green" cx="400" cy="136" r="28"/>
+      <circle class="tlp-box red" cx="400" cy="202" r="28"/>
+      <text class="tlp-text" x="400" y="75" text-anchor="middle" font-size="13" font-weight="700">Flat</text>
+      <text class="tlp-text" x="400" y="141" text-anchor="middle" font-size="13" font-weight="700">Long</text>
+      <text class="tlp-text" x="400" y="207" text-anchor="middle" font-size="13" font-weight="700">Short</text>
+      <text class="tlp-blue" x="440" y="66" font-size="14" font-weight="700">7.32</text>
+      <text class="tlp-text2" x="440" y="84" font-size="12">best move: Open</text>
+      <text class="tlp-green" x="440" y="132" font-size="14" font-weight="700">10</text>
+      <text class="tlp-text2" x="440" y="150" font-size="12">best move: Hold</text>
+      <text class="tlp-red" x="440" y="198" font-size="14" font-weight="700">6.49</text>
+      <text class="tlp-text2" x="440" y="216" font-size="12">best move: Close</text>
+    </svg>
+    <figcaption>One idea does all the work: a state's value is the reward you get now plus 0.9 times the value of where you land. Holding long forever is worth 1 + 0.9 + 0.81 + … = 10. Apply the same rule to all three states and the best moves fall out: open from flat, hold a winner, cut a loser.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Most of my rules are static. A threshold, a size, done. When do I need anything fancier?</p>
+      <p data-who="Quant">When today's action changes tomorrow's situation. Hold or close, add or wait. The right move depends on everything that can happen after it.</p>
+      <p data-who="Trader">That sounds impossible to work out.</p>
+      <p data-who="Quant">It would be, without one trick. First, write the problem down. The situations you can be in, the moves available, how likely each move takes you where, and what each step pays. Plus one number for patience, the discount.</p>
+      <p data-who="Trader">Patience?</p>
+      <p data-who="Quant">How much a reward next step is worth today. At zero point nine, a dollar one step away is worth ninety cents now, two steps away eighty one cents, and so on.</p>
+      <p data-who="Trader">And the trick?</p>
+      <p data-who="Quant">The value of a situation is the reward you get now, plus the discounted value of wherever you land. That's the Bellman equation. You never add up the whole future. You only look one step ahead, because the next state's value already contains the rest.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Say being long pays one per step and you hold forever. The value of long is one, plus zero point nine times the value of long. Solve that and you get ten.</p>
+      <p data-who="Trader">And if I'm short and it costs me half a point a step?</p>
+      <p data-who="Quant">In the lesson's toy market, closing costs a tenth and puts you back flat, and flat is worth about seven point three. So closing is worth about six and a half. Holding the short is worth only about five point three. Close it.</p>
+      <p data-who="Trader">So the maths says cut losers.</p>
+      <p data-who="Quant">And hold winners, and don't sit flat forever. Nobody typed those rules in. They come out of the rewards and the discount.</p>
+      <p data-who="Trader">Where does this show up on a real desk?</p>
+      <p data-who="Quant">Every American option. In 1979 Cox, Ross and Rubinstein priced one on a tree by working backwards from expiry. At every node you take the bigger of exercising now or the discounted value of carrying on. That is exactly this equation.</p>
+      <p data-who="Trader">What's the catch?</p>
+      <p data-who="Quant">You need to know the odds and the payoffs in advance, and real markets don't hand you that table. And it assumes today's state tells you everything that matters, which markets with momentum and regimes break.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Value now is reward now plus discounted value next. Get that, and every reinforcement learning method is a way of estimating it.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">When the best move depends on every move after it</h2>
       <p class="sl-sub">Dynamic programming · into finance via Samuelson &amp; Merton (1969–71) and Cox, Ross &amp; Rubinstein (1979)</p>
@@ -39,7 +116,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The five pieces of a Markov Decision Process</h2>
       <p class="sl-sub">Formally, an MDP is the tuple (S, A, P, R, γ). Nothing more is added later — everything in this lesson is built from just these five things.</p>
@@ -53,7 +130,7 @@
       <p class="sl-p">A rule for choosing actions — possibly randomized — is called a <strong>policy</strong>, written π(a|s): the probability of taking action a while in state s. Everything downstream in RL is either evaluating a policy (how good is this way of acting?) or improving one (is there a better way to act?).</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">A tiny 3-state MDP, drawn out</h2>
       <p class="sl-sub">Flat, Long, and Short, with two actions per state. Every number in the rest of this deck is solved from this exact diagram.</p>
@@ -92,7 +169,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">"Markov" means the past stops mattering</h2>
       <p class="sl-sub">The simplifying assumption that makes an MDP tractable at all.</p>
@@ -117,7 +194,7 @@
       <div class="sl-quote">This is the same move as assuming you know your edge exactly in the Kelly derivation, or ignoring fat tails in a normal-distribution primer: build the exact math on a clean idealization first, then reason carefully about where the real world will diverge from it. Real price processes carry momentum and regime memory that a small state (just "current position," say) doesn't capture — the usual fix is enlarging the state to include recent history, at the cost of a much bigger state space.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The discount factor sets how patient the agent is</h2>
       <p class="sl-sub">Drag the slider. Each bar is γ raised to the power of how many steps in the future it is — the weight that reward gets in today's value.</p>
@@ -157,7 +234,7 @@
       <p class="sl-p">A low γ makes an agent <strong>myopic</strong> — only the next reward or two really counts, and the bars collapse to almost nothing after a few steps. A high γ makes it <strong>far-sighted</strong> — rewards many steps away still carry real weight today. γ is doing two jobs at once: economically, a reward tomorrow is worth less than the same reward today (the same logic behind discounting a bond's future coupons); mathematically, it's what keeps an infinite sum of rewards from adding up to infinity.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The value function compresses a whole future into one number</h2>
       <p class="sl-sub">Fix a policy π. V<sup>π</sup>(s) is the expected sum of every future reward, each shrunk by how far away it is.</p>
@@ -169,7 +246,7 @@
       <div class="sl-quote">This single number compresses an entire infinite future into one comparable quantity — exactly the same compression a bond's price performs on a stream of future coupons, or that the Kelly criterion's log-growth objective performs on an entire sequence of compounding bets. Reduce a whole future to one number you can actually maximize, and comparing two situations becomes comparing two numbers.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Where the Bellman equation actually comes from</h2>
       <p class="sl-sub">It isn't a new assumption bolted onto the value function — it falls straight out of splitting an infinite sum. Step through it.</p>
@@ -196,7 +273,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">One Bellman backup, live</h2>
       <p class="sl-sub">V(s) = r + γ · V(s′). Change any field — the defaults match the Long/Hold numbers from the diagram above.</p>
@@ -222,7 +299,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Value iteration: repeat the backup until it stops moving</h2>
       <p class="sl-sub">Start every state's value at zero. Apply the Bellman backup to every state, every sweep, using last sweep's numbers. Step through it on the 3-state MDP (γ=0.9).</p>
@@ -263,7 +340,7 @@
     </section>
 
     <!-- WB:mdp_bellman_equation-deck:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Value iteration on a three-state trading MDP</h2>
       <!-- WB:mdp_bellman_equation:START -->
@@ -274,7 +351,7 @@
     </section>
     <!-- WB:mdp_bellman_equation-deck:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Grading a state versus grading one specific move</h2>
       <p class="sl-sub">Everything so far evaluated a fixed policy. Optimality asks a sharper question: what's the best possible value, over every policy?</p>
@@ -291,7 +368,7 @@
       <div class="sl-quote">Knowing the score for every individual action is more directly useful than knowing only a state's overall score, because it tells you exactly which move to make — not just how happy to be. This particular rewriting, Q* in terms of itself one step later, is the exact identity the next lesson's Q-learning update rule is built from directly.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the MDP framing quietly goes wrong</h2>
       <div class="sl-icard-grid">
@@ -304,7 +381,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Checked against this repo's actual code</h2>
       <p class="sl-sub">The full lesson tags this topic as a pure concept. Here's what verifying that against the live codebase actually found.</p>
@@ -316,7 +393,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -367,7 +444,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative losing short</div>
+    <h3>Your short costs you every step. Hold or close?</h3>
+    <p>You are in the lesson's three-state market with a discount of 0.9. You are short. Each step you hold, the position costs 0.5. Closing costs 0.1 and puts you back flat, and from flat the best you can do (open again and take your chances) is worth 7.32. Holding short for good is worth 6.49 at best. What do you do, and why?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold. Closing locks in a loss, and the position might turn.<div class="tl-drill-why">In this model holding costs 0.5 every step with no chance of turning, and its value is −0.5 + 0.9 × 6.49, about 5.34. Refusing to realize a loss is exactly what the equation prices as the worse choice.</div></li>
+      <li data-verdict="good">Close, because −0.1 + 0.9 × 7.32, about 6.49, beats holding's 5.34.<div class="tl-drill-why">This compares both actions on their full continuation value: the reward now plus the discounted value of where you land. Closing pays a small cost to get back to a state worth more.</div></li>
+      <li data-verdict="ok">Close, because losing 0.1 now beats losing 0.5 now.<div class="tl-drill-why">Right answer, short-sighted reason. That is the zero-discount view. It works here, but it ignores where each action leaves you, and in other cases the one-step view picks the wrong move.</div></li>
+      <li data-verdict="bad">Hold, because flat is worth 7.32 and you will get there eventually anyway.<div class="tl-drill-why">You only get to flat by closing. Holding keeps you short and paying 0.5 a step. The value of flat counts only for the action that actually takes you there.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this shows.</strong> This is an illustrative situation using the lesson's toy MDP, not a real episode. Close is the Bellman answer: 6.49 against 5.34. The point is the method, not the numbers. Judge each action by the reward now plus the discounted value of where it leaves you.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -467,5 +563,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

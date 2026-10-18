@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -51,7 +52,7 @@
       <li>This lesson builds nothing new: every idea here is the Hidden Markov Model lesson's discrete
         regime and the Kalman filter lesson's continuous state, fused — read those two lessons first, not
         as a suggestion but as the actual prerequisite content this one assumes.</li>
-      <li><strong>Real-world episode:</strong> a dynamic-factor Markov-switching model of four monthly US indicators (Chauvet; Chauvet &amp; Piger) called the 2008 recession months before the NBER's December 2008 announcement, and 2020's within weeks. But the neat historical chart is smoothed on revised data, and 2020's collapse was far outside either fitted regime.</li>
+      <li><strong>Real-world episode:</strong> a dynamic-factor Markov-switching model of four monthly US indicators (Chauvet; Chauvet &amp; Piger) first put the 2008 recession above 50% in real time in November 2008, a month before the NBER's December 2008 announcement, and called its end eight months before the NBER did; in 2020 it reached near certainty by May. But the neat historical chart is smoothed on revised data, and 2020's collapse was far outside either fitted regime.</li>
     </ul>
   </div>
 
@@ -94,7 +95,7 @@
       <p data-who="Trader">So the merged answer is about one point two five.</p>
       <p data-who="Quant">Right. And here's the surprise: the merged uncertainty is bigger than either branch's. The two disagreed by point two, and that disagreement becomes extra width. Merging opinions that disagree is never free.</p>
       <p data-who="Trader">Has this worked on real data?</p>
-      <p data-who="Quant">The famous case is US recessions. Chauvet's model runs a hidden business-cycle factor through four monthly indicators, with expansion and recession regimes. With Piger she showed it called turning points ahead of the official committee. The 2008 recession was only announced in December 2008, a year after it started. The model called it months earlier.</p>
+      <p data-who="Quant">The famous case is US recessions. Chauvet's model runs a hidden business-cycle factor through four monthly indicators, with expansion and recession regimes. With Piger she showed it dated turning points accurately in real time, and called the ends of recessions much sooner than the official committee. The 2008 recession was only announced in December 2008, a year after it started. Run live, the model crossed fifty percent a month before that, and a related version of Chauvet's flagged it in August.</p>
       <p data-who="Trader">So I should trade off it.</p>
       <p data-who="Quant">Careful. The neat chart you see online is smoothed on revised data. That's hindsight. Judge it only on what it said in real time. And 2020 was far bigger than any recession it was fitted on.</p>
       <p data-who="Trader">One line?</p>
@@ -424,6 +425,23 @@
     <button type="button" id="rs-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Collapse two branches into one Gaussian, on new numbers. Mean \(= \pi_1 \hat x_1 + \pi_2 \hat x_2\); variance = the weighted average of the branch variances plus the weighted variance of the branch means around the new mean.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Branch 1: mean 1.40, variance 0.006, weight 0.6. Branch 2: mean 1.20, variance 0.012, weight 0.4. Mean \(= 0.6(1.40) + 0.4(1.20) = 1.32\). Average variance \(= 0.6(0.006) + 0.4(0.012) = 0.0084\). Spread of means \(= 0.6(1.32-1.40)^2 + 0.4(1.32-1.20)^2 = 0.0096\). Collapsed variance \(=\) <span class="tl-blank" data-answer="0.0180" data-tol="0.0002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Branch 1: mean 0.90, variance 0.002, weight 0.8. Branch 2: mean 1.10, variance 0.008, weight 0.2. Mean \(=\) <span class="tl-blank" data-answer="0.94" data-tol="0.002"></span>. Average variance \(= 0.0032\). Spread of means \(=\) <span class="tl-blank" data-answer="0.0064" data-tol="0.0002"></span>. Collapsed variance \(=\) <span class="tl-blank" data-answer="0.0096" data-tol="0.0002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Branch 1: mean 2.00, variance 0.010, weight 0.5. Branch 2: mean 1.60, variance 0.020, weight 0.5. Find the mean <span class="tl-blank" data-answer="1.80" data-tol="0.002"></span>, the average variance <span class="tl-blank" data-answer="0.015" data-tol="0.0005"></span>, the spread of means <span class="tl-blank" data-answer="0.040" data-tol="0.001"></span> and the collapsed variance <span class="tl-blank" data-answer="0.055" data-tol="0.001"></span>. A 0.40 disagreement now costs more than both branch variances put together.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A named scenario</div>
@@ -470,8 +488,11 @@
       namely payroll employment, industrial production, real income excluding transfers, and real manufacturing
       and trade sales. The factor's dynamics switch between an expansion regime and a recession regime. With
       Jeremy Piger she tested it in real time ("A Comparison of the Real-Time Performance of Business Cycle
-      Dating Methods", 2008) and found it dated turning points accurately and, on average, well ahead of the NBER's
-      announcements. Their recession probabilities are published monthly on the St. Louis Fed's FRED database.
+      Dating Methods", 2008) and found it identified the NBER's turning points accurately in real time, with no false
+      alarms, and called the ends of recessions much sooner than the NBER did. Run live in 2008, its lead at the start was
+      small: Piger's monthly real-time report first put the recession probability above 50% on 1 November 2008, a month
+      before the NBER, and their stricter rule, three months above 80%, would have declared it only on 1 January 2009. A
+      closely related model that Chauvet posted signalled in August 2008 that a recession had begun in December 2007. Their recession probabilities are published monthly on the St. Louis Fed's FRED database.
     </p>
     <p>
       2020 was the extreme test. Payrolls fell by more than 20 million in April 2020 alone, far outside anything
@@ -497,7 +518,7 @@
     <div class="tl-chain-arrow">→</div>
     <div class="tl-chain-link concept"><b>★ This lesson · hidden regime with switching dynamics</b>Each release fits the recession regime's factor dynamics better, so its filtered probability climbs</div>
     <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link end"><b>Outcome</b>The model's call comes months before the NBER's December 2008 announcement; the clean historical chart is smoothed</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Run live, the probability crosses 50% in November 2008, a month before the NBER's announcement; the clean historical chart is smoothed</div>
   </div>
   <p>
     The link marked ★ is this lesson's concept: a continuous state (the business-cycle factor) whose dynamics are
@@ -529,6 +550,7 @@
     the same: a regime call describes the backdrop; it is not a trade.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../regime.html">Regime</a> shows the desk's growth/inflation labels for each economy and each pair as a regime differential, the labels behind the verdict above.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -601,14 +623,14 @@
   <div class="tl-drill" data-date="2008-12-01">
     <div class="tl-drill-label">Scenario drill · 1 December 2008</div>
     <h3>The committee confirms what the model said months ago</h3>
-    <p>Today the NBER announces that the US recession began in December 2007, nearly a year ago. A dynamic-factor Markov-switching model of four monthly indicators, of the kind Chauvet and Piger tested, had moved into its recession regime months before this. You want a rule for next time: turn defensive when the model's recession probability crosses 50%. To backtest that rule over past cycles, which probability history do you use?</p>
+    <p>Today the NBER announces that the US recession began in December 2007, nearly a year ago. Jeremy Piger's real-time run of a dynamic-factor Markov-switching model of four monthly indicators, the kind he and Chauvet tested, first put the recession probability above 50% in its 1 November 2008 report. You want a rule for next time: turn defensive when the model's recession probability crosses 50%. To backtest that rule over past cycles, which probability history do you use?</p>
     <ol class="tl-drill-options">
       <li data-verdict="bad">The smoothed recession probabilities published on FRED, computed on today's revised data.<div class="tl-drill-why">Smoothed probabilities use data from after each month, and revised data were not available at the time either. The chart lines up with the recessions more neatly than any real-time reading did, so the backtest would flatter the rule.</div></li>
       <li data-verdict="good">Filtered probabilities, recomputed month by month from the data as first released.<div class="tl-drill-why">That is what a live model could actually have said each month. It is how Chauvet and Piger judged real-time performance, and it is the only honest test of a trading rule.</div></li>
       <li data-verdict="bad">The NBER's own recession dates.<div class="tl-drill-why">The dates are fixed long after the fact: this recession's start was announced about a year late, and its June 2009 end only in September 2010. Using them in a backtest is lookahead of a year or more.</div></li>
       <li data-verdict="ok">The smoothed probabilities, but with the signal delayed by a month to allow for lag.<div class="tl-drill-why">It admits the problem but guesses at its size. Smoothing and revisions do not create a fixed one-month lag, so the real-time history is still the right test.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The NBER announced on 1 December 2008 that the recession had begun in December 2007; its end, in June 2009, was announced in September 2010. In their real-time comparison, Chauvet and Piger found the dynamic-factor Markov-switching model dated turning points accurately and, on average, well ahead of the NBER's announcements. In 2020 the model's recession probability went to near certainty as the spring data arrived, and the NBER announced the February peak on 8 June 2020. A regime call describes the backdrop; whether it pays as a trade is a separate test.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The NBER announced on 1 December 2008 that the recession had begun in December 2007; its end, in June 2009, was announced in September 2010. Run live, Piger's filtered probability crossed 50% on 1 November 2008, then fell back to 16% a month later when October's data showed industrial production and income growing again. The authors' rule, three months above 80%, would have declared the recession on 1 January 2009, a month after the NBER, and its end in January 2010, eight months before. The smoothed chart of the same model on today's data looks far cleaner than that. In 2020 the model's recession probability reached near certainty with the data available in May, and the NBER announced the February peak on 8 June 2020. A regime call describes the backdrop; whether it pays as a trade is a separate test.</p><p class="tl-drill-sources">Sources: <a href="https://www.nber.org/news/business-cycle-dating-committee-announcement-december-1-2008">NBER announcement, 1 Dec 2008</a>; <a href="https://www.nber.org/news/business-cycle-dating-committee-announcement-september-20-2010">NBER announcement, 20 Sep 2010</a>; <a href="https://www.nber.org/news/business-cycle-dating-committee-announcement-june-8-2020">NBER announcement, 8 Jun 2020</a>; Chauvet and Piger, Journal of Business &amp; Economic Statistics 26(1), 2008; <a href="https://www.nber.org/papers/w16162">Hamilton, "Calling Recessions in Real Time", NBER Working Paper 16162, 2010</a> (Piger's real-time reports, 2008–10); <a href="https://fred.stlouisfed.org/series/RECPROUSM156N">FRED, RECPROUSM156N</a> and its ALFRED vintage of 1 May 2020</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -619,7 +641,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Kim's filter (1994) collapses \(N^2\) branches back to \(N\) every step</strong> via moment matching — a weighted mean plus a law-of-total-variance-style weighted variance-of-means term — keeping the computation linear in \(T\) instead of exponential.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example's collapsed variance (0.0130) exceeded both input branches' own variances</strong> (0.004, 0.010) — the concrete, quantifiable cost of forcing two disagreeing Gaussians into one.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Kim's filter is an approximation, not an exact answer.</strong> It loses real information whenever regime-conditional branches genuinely disagree — the worse the disagreement, the more it costs.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A regime call describes the backdrop; it is not a trade.</strong> Markov-switching models dated the 2008 and 2020 recessions ahead of the NBER, but only filtered, first-release readings count.<!-- DESK:START --> On this desk's data, diverging growth/inflation regimes did not widen or tilt the pair (regime-divergence-fx, NULL: EUR/USD +0.03pp [−0.48, +0.52]).<!-- DESK:END --></span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A regime call describes the backdrop; it is not a trade.</strong> Markov-switching models called the 2008 and 2020 recessions before the NBER did, the 2008 one by only about a month in real time, and only filtered, first-release readings count.<!-- DESK:START --> On this desk's data, diverging growth/inflation regimes did not widen or tilt the pair (regime-divergence-fx, NULL: EUR/USD +0.03pp [−0.48, +0.52]).<!-- DESK:END --></span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Concept lesson only, and the most parameter-heavy of the three in this category.</strong><!-- DESK:START --> Nothing here is built, tested, or validated in this repo.<!-- DESK:END --> Explaining the fusion is not a claim it produces edge — and its parameter count compounds the overfitting risk already flagged separately in the Hidden Markov Model and Kalman filter lessons.</span></div>
   </div>
 
@@ -800,7 +822,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

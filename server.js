@@ -36647,8 +36647,9 @@ if (HIDE_DESK_EDUCATION) {
     if (isEducationAdmin(req)) return next();
     // Pages that are desk material through and through: the drill (the desk's board
     // history), the capstone workbenches (the desk's live numbers and verdicts) and the
-    // owner's "From Analysis to Action" lessons (lessons/action-*).
-    if (/^\/theory-lab\/(?:market-reading|capstone-vol|capstone-macro|lessons\/action-[^/]+)\.html$/.test(req.path)) {
+    // owner's "From Analysis to Action" lessons (lessons/action-*), and the replay room
+    // (replays the desk's own OANDA candles through /api/ohlc-range, which is main-zone).
+    if (/^\/theory-lab\/(?:market-reading|capstone-vol|capstone-macro|replay|lessons\/action-[^/]+)\.html$/.test(req.path)) {
       return res.status(404).type('html').send('<!doctype html><title>Not Found</title><p>Not found.</p>');
     }
     const file = path.join(__dirname, req.path);
@@ -36660,9 +36661,10 @@ if (HIDE_DESK_EDUCATION) {
   });
   // The folder's README is developer notes about this repo, not a page for readers;
   // /education/ is the owner's raw study notes, backtests and transcripts; paths-admin.js
-  // names the admin-only lessons on the learning paths. All of these
+  // names the admin-only lessons on the learning paths, and practice-admin.js carries their
+  // scenario drills for practice.html. All of these
   // sit in the education zone, so the shared password alone would otherwise open them.
-  app.get(/^\/(?:theory-lab\/.*\.md$|theory-lab\/assets\/paths-admin\.js$|education(?:\/|$))/i, (req, res, next) => {
+  app.get(/^\/(?:theory-lab\/.*\.md$|theory-lab\/assets\/(?:paths|practice)-admin\.js$|education(?:\/|$))/i, (req, res, next) => {
     if (isEducationAdmin(req)) return next();
     res.status(404).type('html').send('<!doctype html><title>Not Found</title><p>Not found.</p>');
   });
@@ -36710,13 +36712,17 @@ if (HIDE_DRILL_PRACTICE) {
 // here, so a re-run study updates every lesson citing it with no lesson edit.
 // Lives under /theory-lab/ (education zone) because js/deskEvidence.js itself is
 // main-zone; only the requested ids and only the public fields go out -- never
-// the ledger's `doc` paths or its prompt-facing `use` directives.
+// the ledger's `doc` paths. Its `use` line (how the desk may use a finding) goes to the
+// education admin only, never to a shared-password reader.
 app.get('/theory-lab/desk-verdicts.json', (req, res) => {
   if (HIDE_DESK_EDUCATION && !isEducationAdmin(req)) return res.status(404).json({ error: 'not found' });
   const ids = String(req.query.ids || '').split(',').filter(id => /^[a-z0-9-]{1,64}$/.test(id)).slice(0, 60);
+  const admin = isEducationAdmin(req);
   const entries = {};
   for (const e of _DESK_EVIDENCE) {
-    if (ids.includes(e.id)) entries[e.id] = { verdict: e.verdict, date: e.date, claim: _lessonSafe(e.claim), result: _lessonSafe(e.result) };
+    if (!ids.includes(e.id)) continue;
+    entries[e.id] = { verdict: e.verdict, date: e.date, claim: _lessonSafe(e.claim), result: _lessonSafe(e.result) };
+    if (admin && e.use) entries[e.id].use = _lessonSafe(e.use);
   }
   res.set('Cache-Control', 'no-cache').json({ entries });
 });

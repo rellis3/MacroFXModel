@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Arbitrage Pricing Theory — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, a live calculator, and a 6-question self-test?<a href="institutional-apt.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,92 @@
       <p class="sl-lede">CAPM derives its one factor from an equation about how every investor in the economy behaves. Fama-French hand-picks specific factors because they empirically work. APT does neither — it needs only one, much weaker assumption, no arbitrage, to force expected returns into an approximately linear function of exposures to some small number of pervasive risk factors, without ever saying which ones, or how many.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 248" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three toy assets priced by the two-factor APT equation. Each bar starts with the 3% risk-free rate, adds its growth-surprise term and then its inflation-surprise term. Asset X: 3 plus 4.5 minus 0.75 equals 6.75%. Asset Y: 3 plus 2.4 plus 0.45 equals 5.85%. Asset Z: 3 plus 6 minus 1.5 equals 7.50%.">
+      <rect class="tlp-box blue" x="110" y="12" width="12" height="12" rx="2"/>
+      <text class="tlp-text2" x="128" y="23" font-size="13">risk-free 3%</text>
+      <rect class="tlp-box green" x="232" y="12" width="12" height="12" rx="2"/>
+      <text class="tlp-text2" x="250" y="23" font-size="13">growth β × 3%</text>
+      <rect class="tlp-box red" x="368" y="12" width="12" height="12" rx="2"/>
+      <text class="tlp-text2" x="386" y="23" font-size="13">inflation β × −1.5%</text>
+
+      <text class="tlp-text" x="20" y="68" font-size="14" font-weight="700">Asset X</text>
+      <text class="tlp-text3" x="20" y="86" font-size="12">betas 1.5, 0.5</text>
+      <rect class="tlp-box blue" x="110" y="52" width="135" height="24" rx="3"/>
+      <rect class="tlp-box green" x="245" y="52" width="202.5" height="24" rx="3"/>
+      <rect class="tlp-box red" x="413.75" y="80" width="33.75" height="12" rx="2"/>
+      <text class="tlp-text" x="177.5" y="69" text-anchor="middle" font-size="13">3</text>
+      <text class="tlp-text" x="346" y="69" text-anchor="middle" font-size="13">+4.5</text>
+      <text class="tlp-red" x="453" y="92" font-size="12" font-weight="700">−0.75</text>
+      <line class="tlp-line purple thick" x1="413.75" y1="46" x2="413.75" y2="98"/>
+      <text class="tlp-purple" x="532" y="70" font-size="15" font-weight="700">6.75%</text>
+
+      <text class="tlp-text" x="20" y="128" font-size="14" font-weight="700">Asset Y</text>
+      <text class="tlp-text3" x="20" y="146" font-size="12">betas 0.8, −0.3</text>
+      <rect class="tlp-box blue" x="110" y="112" width="135" height="24" rx="3"/>
+      <rect class="tlp-box green" x="245" y="112" width="108" height="24" rx="3"/>
+      <rect class="tlp-box amber" x="353" y="140" width="20.25" height="12" rx="2"/>
+      <text class="tlp-text" x="177.5" y="129" text-anchor="middle" font-size="13">3</text>
+      <text class="tlp-text" x="299" y="129" text-anchor="middle" font-size="13">+2.4</text>
+      <text class="tlp-amber" x="381" y="152" font-size="12" font-weight="700">+0.45</text>
+      <line class="tlp-line purple thick" x1="373.25" y1="106" x2="373.25" y2="158"/>
+      <text class="tlp-purple" x="532" y="130" font-size="15" font-weight="700">5.85%</text>
+
+      <text class="tlp-text" x="20" y="188" font-size="14" font-weight="700">Asset Z</text>
+      <text class="tlp-text3" x="20" y="206" font-size="12">betas 2.0, 1.0</text>
+      <rect class="tlp-box blue" x="110" y="172" width="135" height="24" rx="3"/>
+      <rect class="tlp-box green" x="245" y="172" width="270" height="24" rx="3"/>
+      <rect class="tlp-box red" x="447.5" y="200" width="67.5" height="12" rx="2"/>
+      <text class="tlp-text" x="177.5" y="189" text-anchor="middle" font-size="13">3</text>
+      <text class="tlp-text" x="346" y="189" text-anchor="middle" font-size="13">+6.0</text>
+      <text class="tlp-red" x="520" y="212" font-size="12" font-weight="700">−1.5</text>
+      <line class="tlp-line purple thick" x1="447.5" y1="166" x2="447.5" y2="218"/>
+      <text class="tlp-purple" x="532" y="190" font-size="15" font-weight="700">7.50%</text>
+
+      <line class="tlp-line" x1="110" y1="226" x2="515" y2="226"/>
+      <text class="tlp-text3" x="110" y="242" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="245" y="242" text-anchor="middle" font-size="12">3%</text>
+      <text class="tlp-text3" x="380" y="242" text-anchor="middle" font-size="12">6%</text>
+      <text class="tlp-text3" x="515" y="242" text-anchor="middle" font-size="12">9%</text>
+    </svg>
+    <figcaption>Expected return is built from exposures times prices: the risk-free 3%, plus each factor's beta times its premium. The purple tick is where each asset ends up. Same two prices of risk, different exposures, different expected returns. Two assets with identical betas would have to land on the same tick, or someone could arbitrage the gap.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">CAPM gives me one factor, the market. Fama-French gives me three or four. What does arbitrage pricing theory give me?</p>
+      <p data-who="Quant">A rule about shape, not a list of factors. Stephen Ross showed in 1976 that if free lunches get competed away, expected returns must line up, roughly in a straight line, with exposure to a few big shared risks.</p>
+      <p data-who="Trader">Which risks?</p>
+      <p data-who="Quant">That's the twist. The theory doesn't say. It doesn't even say how many. You choose them, and only then does it become a model you can test.</p>
+      <p data-who="Trader">So where does the straight line come from?</p>
+      <p data-who="Quant">Picture two big, well-spread portfolios with exactly the same exposure to every shared risk. One is priced to return eight percent, the other six.</p>
+      <p data-who="Trader">I'd buy the eight and short the six.</p>
+      <p data-who="Quant">Right. It costs nothing, because the legs are equal size. The shared risks cancel, because the exposures match. And the stock-specific noise has already washed out, because both portfolios are spread across many names. You pocket two percent for no money and no risk.</p>
+      <p data-who="Trader">Which can't last.</p>
+      <p data-who="Quant">No. Everyone piles in until the gap closes. So the same exposure has to mean the same expected return. That's the whole pricing equation: the risk-free rate, plus each exposure times the price the market pays for that risk.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Take two factors: growth surprises and inflation surprises. The risk-free rate is three percent. Growth risk pays three percent per unit. Inflation risk pays minus one and a half, because assets that rise with surprise inflation are a hedge, and people accept less for a hedge.</p>
+      <p data-who="Trader">And an asset with a growth beta of one and a half and an inflation beta of a half?</p>
+      <p data-who="Quant">Three, plus four and a half for growth, minus three quarters for the inflation hedge. Six point seven five percent.</p>
+      <p data-who="Trader">You keep saying surprises. Why not just inflation?</p>
+      <p data-who="Quant">Because the expected part is already in the price. Chen, Roll and Ross made that the core of their 1986 version. An inflation print bang on consensus is old news. Only the miss is new risk. It's the same reason a rate hike the market fully expected barely moves a currency.</p>
+      <p data-who="Trader">So what's the catch?</p>
+      <p data-who="Quant">There's no single agreed model. Two researchers can pick different factors and both call it arbitrage pricing theory. And the equation only holds approximately, better as the number of assets grows.</p>
+      <p data-who="Trader">One line to take away?</p>
+      <p data-who="Quant">Same exposure to the same surprises means the same expected return, or someone gets a free lunch; the theory just won't tell you which surprises.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Which macro shocks is this book really exposed to?</h2>
       <p class="sl-sub">Arbitrage Pricing Theory · Ross, 1976 → Roll &amp; Ross's macro-factor models in the 1980s</p>
@@ -39,7 +125,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Three routes to one equation</h2>
       <p class="sl-sub">Same destination — an equation for expected return — three completely different ways to get there. Pick a model.</p>
@@ -63,7 +149,7 @@
       <p class="sl-p">APT only becomes a specific, testable model once you plug in a concrete choice of factors — the market portfolio alone (nearly CAPM again), the Fama-French factors, or — this deck's focus from here on — observable macroeconomic surprises.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Diversification erases the noise</h2>
       <p class="sl-sub">Every asset's return splits into a common-factor part and its own private noise. Average enough assets and the noise disappears.</p>
@@ -75,7 +161,7 @@
       <div class="sl-quote">If you flip one coin, the outcome is genuinely unpredictable. Flip a thousand and look at the average — that average lands remarkably close to 50% almost every time, because each coin's own randomness is a different, unrelated flip. A diversified portfolio does the same thing to a thousand unrelated, asset-specific noise terms.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The no-arbitrage argument, drawn</h2>
       <p class="sl-sub">Same factor exposure, different expected return — that gap cannot survive competitive trading.</p>
@@ -116,7 +202,7 @@
     </section>
 
     <!-- WB:institutional_apt-deck:START -->
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">APT: a free lunch, and why it closes</h2>
       <!-- WB:institutional_apt:START -->
@@ -127,7 +213,7 @@
     </section>
     <!-- WB:institutional_apt-deck:END -->
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">What the argument forces the pricing equation to look like</h2>
       <div class="sl-card">
@@ -146,7 +232,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Chen, Roll &amp; Ross: a macro face on the factors</h2>
       <p class="sl-sub">The 1986 paper that made APT genuinely useful: five observable macro surprise variables as the priced factors.</p>
@@ -159,7 +245,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Why "surprise," never the level</h2>
       <p class="sl-sub">The single most important idea in this whole factor list.</p>
@@ -170,7 +256,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Worked example: pricing three toy assets</h2>
       <p class="sl-sub">Rf = 3%, an IP-surprise factor priced at λ = 3%, an inflation-surprise factor priced at λ = −1.5%. Pick an asset.</p>
@@ -197,7 +283,7 @@
       <p class="sl-p">None of these three numbers is a fudge — each is the linear combination of loadings times prices of risk the pricing equation says it must be.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Try it yourself — the 2-factor pricing equation, live</h2>
       <div class="sl-card">
@@ -224,7 +310,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Watch one price of risk move the expected return</h2>
       <p class="sl-sub">Drag the slider. Everything else stays fixed at Asset X's numbers (Rf = 3%, β₁ = 1.5, β₂ = 0.5, λ₂ = −1.5%) — only λ₁, the IP-surprise premium, moves.</p>
@@ -246,7 +332,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the theory honestly cracks</h2>
       <div class="sl-callout amber">
@@ -259,7 +345,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -310,7 +396,26 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative CPI morning</div>
+    <h3>Inflation is high, and it is exactly what everyone expected</h3>
+    <p>Your book has a large negative exposure to inflation surprises: it loses when inflation comes in above forecast. This morning's inflation print is the highest in years, but it lands exactly on the consensus forecast, and futures had priced that number for weeks. A colleague says the book is "obviously wrong-footed by high inflation" and wants to cut the position before lunch. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Cut it. Inflation this high has to hurt a book with negative inflation exposure.<div class="tl-drill-why">That reads the level, not the surprise. The factor in the model is inflation minus what was expected, and today that is zero. Nothing new arrived for the book's exposure to price, so trading on the headline number pays costs for no change in risk.</div></li>
+      <li data-verdict="good">Leave the position. The surprise was zero, so this print adds no new risk to that exposure. Review the exposure itself if you think the next surprise is more likely to be upside.<div class="tl-drill-why">This is the Chen-Roll-Ross logic. Only the unexpected part carries a premium or moves the price. If you are worried, the honest question is about the odds of a future upside miss, which is a decision about the exposure, not a reaction to today's on-consensus number.</div></li>
+      <li data-verdict="ok">Halve it, to be safe.<div class="tl-drill-why">Cheaper than cutting all of it, but it still answers a headline rather than a surprise. If you wanted less inflation-surprise exposure, that was true yesterday too. Halving now just pays costs for the feeling of doing something.</div></li>
+      <li data-verdict="bad">Double it. High inflation must mean it falls back from here.<div class="tl-drill-why">That is a forecast of the level dressed up as a factor view. APT says nothing about where inflation goes next. It prices exposure to surprises, and doubling the exposure doubles your bet on the next miss, whichever way it goes.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the framework says.</strong> This morning is illustrative, not a specific historical release. The point is the lesson's Section 03: an anticipated number, however extreme, is already in the price, so a factor built from the level would credit or blame the book for news nobody received. Measure the surprise first; only then ask whether the exposure is the one you want.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -422,5 +527,7 @@
 })();
 </script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

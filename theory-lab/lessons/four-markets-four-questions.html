@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 <style>
@@ -24,7 +25,7 @@
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / How Markets Talk to Each Other / Four Markets, Four Questions</div>
   <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
-  <div class="tl-kicker">How Markets Talk to Each Other · Lesson 5 of 5</div>
+  <div class="tl-kicker">How Markets Talk to Each Other · Lesson 5 of 6</div>
   <h1 class="tl-title">Four Markets, Four Questions</h1>
   <p class="tl-dek">Stocks, Treasuries, options and currencies aren't four opinions on the same question — each answers a different one. Ask each market its own question, read the answers side by side, and the interesting days are the ones where they disagree.</p>
   <div class="tl-meta">
@@ -369,6 +370,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The two pieces of arithmetic from the worked example: split a 10-year yield move into its real and breakeven legs with \(\Delta y^{\text{nom}} \approx \Delta y^{\text{real}} + \Delta\text{BEI}\), then turn the VIX into a size with \(\sigma_{\text{1m}} \approx \text{VIX}/\sqrt{12}\) and \(\sigma_{\text{1d}} \approx \text{VIX}/16\). New, made-up days each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>The 10-year yield falls 9bp and breakevens fall 6bp. The real leg is \(-9 - (-6) = -3\)bp. Since \(|{-3}| &lt; |{-6}|\), breakevens did more of the moving: an inflation story, not a growth one. The VIX closes at 24, and \(\sqrt{12} = 3.464\), so the one-month 1σ S&amp;P move is \(24 / 3.464 =\) <span class="tl-blank" data-answer="6.93" data-tol="0.01" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>The 10-year yield rises 15bp and breakevens rise 4bp. The real leg is <span class="tl-blank" data-answer="11" data-tol="0.01" data-unit="bp"></span>, so the move is real-rate driven. The VIX is at 30. The one-month 1σ move is <span class="tl-blank" data-answer="8.66" data-tol="0.01" data-unit="%"></span>, and the one-day 1σ move by the rule of 16 is <span class="tl-blank" data-answer="1.875" data-tol="0.006" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>The 10-year yield falls 20bp, of which the real yield falls 16bp. The VIX is at 40. Find the breakeven leg <span class="tl-blank" data-answer="-4" data-tol="0.01" data-unit="bp"></span>, the one-month 1σ move <span class="tl-blank" data-answer="11.55" data-tol="0.01" data-unit="%"></span> and the one-day 1σ move <span class="tl-blank" data-answer="2.5" data-tol="0.01" data-unit="%"></span>. Then say which leg names the story.</p>
+    </div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>When the markets disagree</h2>
   <p>
@@ -463,28 +481,28 @@
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict null" data-evidence="front-end-shock" data-evidence-date="2026-09-17">
+  <div class="tl-verdict null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>Treasuries → equities, intraday: "confirm the rates pivot, then pre-position"</strong> (<code>rates-pivot-lead</code>). 2,430 confirmed 2-year pivots, 2,010 de-clustered events at 1h: signed Nasdaq return −0.005% vs control [−0.021, +0.012]. Null at 1h, 2h and 4h, in both directions and both halves, and well powered. A confirmed rates low is followed by an up-move 54.1% of the time — and the base rate is 54.1%. Rates and equities move in the same bar, not in sequence.</span>
   </div>
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict null">
+  <div class="tl-verdict null" data-evidence="front-end-shock" data-evidence-date="2026-09-17">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>Treasuries → FX: "a front-end shock means a volatile FX week"</strong> (<code>front-end-shock</code>). Null on EUR/USD, USD/JPY and GBP/USD (~211 shocks each). After a 2Y UP shock EUR/USD and GBP/USD ran <em>calmer</em> (−0.34 and −0.28 ATR, CIs clear of zero); after a 2Y DOWN shock USD/JPY was marginally wider (+0.33).</span>
   </div>
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict validated" data-evidence="breadth-all-down" data-evidence-date="2026-09-18">
+  <div class="tl-verdict validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
     <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>Options, read inside its own market: VIX above VIX3M → a wider week</strong> (<code>vix-inversion</code>). First day of inversion → next-5-session range vs matched controls: SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Range, not direction.</span>
   </div>
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict validated">
+  <div class="tl-verdict validated" data-evidence="breadth-all-down" data-evidence-date="2026-09-18">
     <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>Equities, read inside its own market: every index down → a wider week</strong> (<code>breadth-all-down</code>). All six indices down on one session (n=1,002 since 2008): next-5 range SPX500 +0.31 ATR [+0.17, +0.45], NAS100 +0.26 [+0.15, +0.38]. Two in a row (n=243): +0.55 and +0.35. Direction five sessions later 58–61% up, the ordinary drift. A range fact, not a bounce call.</span>
   </div>
@@ -565,6 +583,7 @@
     </p>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../rates.html">Rates &amp; Policy</a> splits today's 10-year move into its real (TIPS) and breakeven legs, the same split as Section 03; <a href="../../market-view.html">Market View</a> puts the four witnesses on one board.</div><!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -589,7 +608,7 @@
       <li data-verdict="ok">Buy more Treasuries. Yields are higher, so the haven is on sale.<div class="tl-drill-why">It may pay over a long horizon, but it treats this as ordinary risk-off. While dealers cannot absorb the selling, the haven can keep falling. Defensible for a patient holder, not as a hedge this week.</div></li>
       <li data-verdict="bad">The VIX is at a record, so the bottom is in. Buy everything.<div class="tl-drill-why">The VIX answers how big, never which way. A record reading says the coming moves will be huge in either direction. It is not a bottom signal.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The disagreement was the most important reading on the board: a scramble for cash and dollars so severe that even Treasuries were sold to raise it. On 15 March the Federal Reserve had cut rates to near zero, announced large purchases of Treasuries and mortgage securities, and enhanced its dollar swap lines. Within days the swap lines were extended to more central banks, and on 23 March the purchases were made open-ended. The S&amp;P 500's closing low of the crash came on 23 March. The bond market did not predict the bottom. It identified a liquidity problem, which needed a liquidity fix.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The disagreement was the most important reading on the board: a scramble for cash and dollars so severe that even Treasuries were sold to raise it. On 15 March the Federal Reserve had cut rates to near zero, announced large purchases of Treasuries and mortgage securities, and enhanced its dollar swap lines. Within days the swap lines were extended to more central banks, and on 23 March the purchases were made open-ended. The S&amp;P 500's closing low of the crash came on 23 March. The bond market did not predict the bottom. It identified a liquidity problem, which needed a liquidity fix.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200315a.htm">Federal Reserve FOMC statement, 15 Mar 2020</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200315c.htm">Federal Reserve, coordinated swap-line action, 15 Mar 2020</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200319b.htm">Federal Reserve, swap lines with nine more central banks, 19 Mar 2020</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200323b.htm">Federal Reserve, open-ended purchases and new facilities, 23 Mar 2020</a>; <a href="https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv">Cboe VIX daily history</a> (16 Mar 2020 close 82.69); <a href="https://fred.stlouisfed.org/series/SP500">S&amp;P 500 daily closes (FRED, SP500)</a> (closing low 2,237.40 on 23 Mar 2020).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>
@@ -668,7 +687,8 @@
 
   <div class="tl-footer-nav">
     <a href="yield-curve-growth-expectations.html">← What the Yield Curve Says About Growth</a>
-    <a href="../hub.html">Theory Lab hub →</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="event-trading-playbook.html">The Event-Trading Playbook →</a>
   </div>
 </div>
 <script>
@@ -799,7 +819,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

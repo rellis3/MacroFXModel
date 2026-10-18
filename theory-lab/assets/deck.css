@@ -205,3 +205,64 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,
 @media (prefers-reduced-motion: reduce){.sl-fullnote{transition:none}}
 .tl-verdict-scope{margin-top:8px;font-size:12px;line-height:1.5;color:var(--text3);border-top:1px dashed var(--border2);padding-top:6px}
 @media (max-width:600px){.sl-stamp{flex-direction:column;gap:8px}.sl-stamp-tag{align-self:flex-start}}
+
+/* ── Light theme for decks (same switch as the full lessons) ── */
+:root[data-theme="light"]{
+  --bg:#f6f7fb;--panel:#ffffff;--panel2:#eef1f7;--border:#d8deea;--border2:#c4ccdd;
+  --text:#141a2c;--text2:#3d4660;--text3:#68728e;
+  --blue:#2c5bd6;--blue-bg:#e7edfc;--blue-bd:#b6c7f3;
+  --green:#047857;--green-bg:#e4f5ee;--green-bd:#a3d9c1;
+  --red:#b91c1c;--red-bg:#fcebeb;--red-bd:#f1b8b8;
+  --amber:#a15c07;--amber-bg:#fdf3e1;--amber-bd:#eecf95;
+  --purple:#5b3fd0;--purple-bg:#f0ecfd;--purple-bd:#cdc1f5;
+}
+
+/* ── VARK blocks inside a deck (same markup as the full lesson; vark.js drives them) ── */
+.sl-slide .tl-picture{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:12px;padding:12px 14px;margin:8px 0}
+.sl-slide .tl-picture-label,.sl-slide .tl-listen-head,.sl-slide .tl-drill-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+.sl-slide .tl-picture-label{color:var(--blue)}
+.sl-slide .tl-picture svg{width:100%;height:auto;display:block;overflow:visible}
+.sl-slide .tl-picture figcaption{font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5}
+.sl-slide .tlp-blue{fill:var(--blue)}.sl-slide .tlp-green{fill:var(--green)}.sl-slide .tlp-red{fill:var(--red)}.sl-slide .tlp-amber{fill:var(--amber)}.sl-slide .tlp-purple{fill:var(--purple)}
+.sl-slide .tlp-text{fill:var(--text)}.sl-slide .tlp-text2{fill:var(--text2)}.sl-slide .tlp-text3{fill:var(--text3)}
+.sl-slide .tlp-box{fill:var(--panel2);stroke:var(--border2);stroke-width:1.2}
+.sl-slide .tlp-box.blue{fill:var(--blue-bg);stroke:var(--blue-bd)}.sl-slide .tlp-box.green{fill:var(--green-bg);stroke:var(--green-bd)}
+.sl-slide .tlp-box.red{fill:var(--red-bg);stroke:var(--red-bd)}.sl-slide .tlp-box.amber{fill:var(--amber-bg);stroke:var(--amber-bd)}.sl-slide .tlp-box.purple{fill:var(--purple-bg);stroke:var(--purple-bd)}
+.sl-slide .tlp-line{fill:none;stroke:var(--text3);stroke-width:1.6}
+.sl-slide .tlp-line.blue{stroke:var(--blue)}.sl-slide .tlp-line.green{stroke:var(--green)}.sl-slide .tlp-line.red{stroke:var(--red)}.sl-slide .tlp-line.amber{stroke:var(--amber)}.sl-slide .tlp-line.purple{stroke:var(--purple)}
+.sl-slide .tlp-line.thick{stroke-width:2.6}.sl-slide .tlp-line.dash{stroke-dasharray:5,4}.sl-slide .tlp-arrow{fill:var(--text3)}
+.sl-slide .tl-listen{background:var(--panel);border:1px solid var(--green-bd);border-left:3px solid var(--green);border-radius:12px;padding:12px 14px;margin:8px 0}
+.sl-slide .tl-listen-head{color:var(--green)}
+.sl-slide .tl-listen-intro{font-size:13px;color:var(--text2);margin-bottom:8px}
+.sl-slide .tl-listen-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sl-slide .tl-listen-status{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+.sl-slide .tl-listen-script{display:none;margin-top:8px;border-top:1px solid var(--border);padding-top:8px;max-height:40vh;overflow:auto}
+.sl-slide .tl-listen.show .tl-listen-script{display:block}
+.sl-slide .tl-listen-script p{font-size:13.5px;margin-bottom:6px;color:var(--text2)}
+.sl-slide .tl-listen-script p[data-who]::before{content:attr(data-who) ": ";font-weight:700;color:var(--text)}
+.sl-slide .tl-listen-script p.speaking{color:var(--text);background:var(--green-bg);border-radius:6px}
+.sl-slide .tl-btn{background:var(--panel2);border:1px solid var(--border);border-radius:20px;color:var(--text2);font-size:12px;font-weight:600;padding:6px 14px;cursor:pointer;font-family:inherit;text-decoration:none}
+.sl-slide .tl-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.sl-slide .tl-btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.sl-slide .tl-hint{font-size:11px;color:var(--text3);font-style:italic}
+.sl-slide .tl-drill{background:var(--panel);border:1px solid var(--amber-bd);border-left:3px solid var(--amber);border-radius:12px;padding:12px 14px;margin:8px 0}
+.sl-slide .tl-drill-label{color:var(--amber)}
+.sl-slide .tl-drill h3{font-size:15px;margin:2px 0 6px;color:var(--text)}
+.sl-slide .tl-drill p{font-size:13.5px;color:var(--text2)}
+.sl-slide .tl-drill-options{list-style:none;margin:8px 0;padding:0}
+.sl-slide .tl-drill-options>li{border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:6px 0;background:var(--panel2)}
+.sl-slide .tl-drill-options label{display:flex;gap:8px;align-items:flex-start;cursor:pointer;color:var(--text);font-size:13.5px}
+.sl-slide .tl-drill-why{font-size:12.5px;color:var(--text2);margin-top:4px}
+.sl-slide .tl-drill-options>li[data-verdict="good"] .tl-drill-why::before{content:"✓ Best call. ";font-weight:700;color:var(--green)}
+.sl-slide .tl-drill-options>li[data-verdict="ok"] .tl-drill-why::before{content:"~ Defensible. ";font-weight:700;color:var(--amber)}
+.sl-slide .tl-drill-options>li[data-verdict="bad"] .tl-drill-why::before{content:"✗ Costly. ";font-weight:700;color:var(--red)}
+.sl-slide .tl-drill-outcome{background:var(--panel2);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text2);margin-top:6px}
+.sl-slide .tl-drill.js .tl-drill-why,.sl-slide .tl-drill.js .tl-drill-outcome{display:none}
+.sl-slide .tl-drill.js.done .tl-drill-why,.sl-slide .tl-drill.js.done .tl-drill-outcome{display:block}
+.sl-slide .tl-drill-options>li.picked{box-shadow:0 0 0 2px var(--blue)}
+.sl-slide .tl-drill-sources{font-size:11px;color:var(--text3);margin-top:6px}
+.sl-slide .tl-conf{font-size:12px;color:var(--text2)}
+.sl-slide .tl-conf-select{background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:3px 5px}
+body.sl-body .tl-theme-toggle,.tl-theme-toggle{position:fixed;top:10px;right:12px;z-index:50;background:var(--panel2);border:1px solid var(--border2);color:var(--text2);border-radius:20px;font:600 11.5px 'DM Sans',sans-serif;padding:5px 11px;cursor:pointer}
+/* The VARK slides copied in from the full lesson (picture + listen after the title, the drill before the recap) */
+.sl-slide.sl-vark>.tl-picture:first-of-type,.sl-slide.sl-vark>.tl-drill{margin-top:4px}

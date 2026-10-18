@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -448,6 +449,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's update with new counts: a \(\text{Beta}(\alpha,\beta)\) prior plus \(k\) successes in \(n\) tries gives \(\text{Beta}(\alpha + k,\ \beta + n - k)\), with mean \(\alpha'/(\alpha'+\beta')\) and variance \(\alpha'\beta'/((\alpha'+\beta')^2(\alpha'+\beta'+1))\). The spread is the square root of the variance.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Prior \(\text{Beta}(3,3)\). Twenty days, 12 successes, so the posterior is \(\text{Beta}(15,11)\). Mean \(15/26 = 0.577\). Variance \(165/(26^2 \times 27) = 165/18{,}252 = 0.00904\). The spread is <span class="tl-blank" data-answer="0.0951" data-tol="0.0005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Prior \(\text{Beta}(1,4)\). Twenty-five days, 5 successes. The posterior is \(\text{Beta}(6, \beta')\) with \(\beta' =\) <span class="tl-blank" data-answer="24" data-tol="0.01"></span>. Its mean is <span class="tl-blank" data-answer="0.2" data-tol="0.001"></span> and its spread is <span class="tl-blank" data-answer="0.0718" data-tol="0.0005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Prior \(\text{Beta}(4,6)\). Fifty days, 20 successes. Posterior \(\alpha' =\) <span class="tl-blank" data-answer="24" data-tol="0.01"></span>, \(\beta' =\) <span class="tl-blank" data-answer="36" data-tol="0.01"></span>; mean <span class="tl-blank" data-answer="0.4" data-tol="0.001"></span>; spread <span class="tl-blank" data-answer="0.0627" data-tol="0.0005"></span>. The data agreed with the prior's mean of 0.4, so only the spread moved: from 0.148 to 0.063.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -886,7 +904,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

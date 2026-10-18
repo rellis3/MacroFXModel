@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -444,6 +445,7 @@
     size: t = 0.54. Do not carry the tone forward as a lean.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../fomc-sentiment.html">FOMC Sentiment</a> scores each statement hawkish or dovish and charts the score meeting by meeting; read it as this lesson's trajectory, not as a next-day lean.</div><!-- DESK:END -->
 
   <!-- WB:nlp_trading_signals_sentiment:START -->
   <div class="wb" id="wb-nlp_trading_signals_sentiment" data-title="From a Fed sentence to a score, and the tweet that fooled everyone">
@@ -520,7 +522,8 @@
       <li data-verdict="ok">Allocate a small pilot and watch the live results.<div class="tl-drill-why">A small live test limits the damage and does produce genuinely out-of-sample evidence. But it pays to run a test that a fresh historical check could have done first, and a few months of daily direction calls is itself a noisy sample.</div></li>
       <li data-verdict="bad">Build your own version with FinBERT and more mood series, and keep whichever works best.<div class="tl-drill-why">A better text model does not fix the problem. Adding more series and keeping the winner widens the search that produced the original result, making a lucky fit more likely, not less.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The London hedge fund launched in 2011 to trade Twitter sentiment closed within about a year. In 2017 Lachanski and Pav tried to reproduce the original result and could not recover its predictive power. The text-to-number step worked as advertised. The claim that the number predicted the Dow did not survive.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The London hedge fund launched in 2011 to trade Twitter sentiment closed within about a year. In 2017 Lachanski and Pav tried to reproduce the original result and could not recover its predictive power. The text-to-number step worked as advertised. The claim that the number predicted the Dow did not survive.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://doi.org/10.1016/j.jocs.2010.12.007">Bollen, Mao and Zeng, "Twitter mood predicts the stock market", <em>Journal of Computational Science</em> 2(1), 2011</a> (<a href="https://arxiv.org/abs/1010.3003">arXiv preprint</a>: 9,853,498 tweets, test period 1 to 19 December 2008); <a href="https://econjwatch.org/articles/shy-of-the-character-limit-twitter-mood-predicts-the-stock-market-revisited">Lachanski and Pav, "Shy of the Character Limit", <em>Econ Journal Watch</em> 14(3), September 2017</a>; <a href="https://hedgeco.net/news/05/2012/twitter-hedge-fund-shuts-down-after-a-month.html">HedgeCo News on the Derwent Capital Markets fund closing, 29 May 2012</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -531,7 +534,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>BERT (Devlin et al., 2019) reads bidirectionally,</strong> giving the same word different representations depending on its actual sentence — a real advance over Word2Vec's one-fixed-vector-per-word limitation.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>FinBERT (Araci, 2019) is BERT further trained on financial text,</strong> producing a sentiment score directly from raw text — the direct computational analogue of an analyst's hawkish/dovish read.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A sentiment score is noisy and not a calibrated probability.</strong> Sarcasm, negation, and hedged language can all be misread; a single document's score should never be trusted in isolation.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A text score that fits the past is not a signal (Twitter mood, 2011<!-- DESK:START -->; cb-tone-direction, NULL<!-- DESK:END -->).</strong> 87.6% on weeks of test data did not replicate.<!-- DESK:START --> On this desk, a lexicon read of FOMC tone is priced inside 30 minutes (t = 2.04) and says nothing about the next day (sign agreement 46%, t = 0.32).<!-- DESK:END --></span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A text score that fits the past is not a signal (Twitter mood, 2011<!-- DESK:START -->; cb-tone-direction, NULL<!-- DESK:END -->).</strong> 87.6% on weeks of test data did not replicate.<!-- DESK:START --> On this desk, FOMC tone is priced within half an hour, so it gives no lean for the next day.<!-- DESK:END --></span></div>
 <!-- DESK:START -->
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Widely-used in industry ≠ validated in this repo.</strong> This is real, real-world technique — explicitly not a claim that any sentiment pipeline built on it has been tested or shown to add value here.</span></div>
 <!-- DESK:END -->
@@ -649,7 +652,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

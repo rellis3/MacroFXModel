@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <style>
   /* Local: clickable quadrant cells in the slide-3 SVG picker. */
   .ofg-cell{cursor:pointer}
@@ -18,7 +19,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">The Four Option Positions — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the worked example and a 6-question self-test?<a href="options-four-positions.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -31,7 +32,79 @@
       <p class="sl-lede">Two yes/no choices — bought or sold, call or put — give four positions. From those two choices alone you can read off who holds a right, who carries an obligation, the worst case, and the sign of every Greek.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 272" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A two by two grid of profit and loss at expiry for a strike of 100. Columns are call and put, rows are bought and sold. Long call loses at most the 4.23 premium and has no cap on gains. Long put loses at most the 3.73 premium and gains up to 96.27. Short call keeps at most 4.23 and has no cap on losses. Short put keeps at most 3.73 and loses up to 96.27. Long call and short put have positive delta; long put and short call have negative delta. Bought positions are long gamma, short theta, long vega; sold positions are the mirror.">
+      <text class="tlp-text3" x="207" y="24" text-anchor="middle" font-size="13" font-weight="700">CALL · right to buy</text>
+      <text class="tlp-text3" x="469" y="24" text-anchor="middle" font-size="13" font-weight="700">PUT · right to sell</text>
+      <text class="tlp-blue" x="38" y="78" text-anchor="middle" font-size="14" font-weight="700">BOUGHT</text>
+      <text class="tlp-text2" x="38" y="96" text-anchor="middle" font-size="12">a right</text>
+      <text class="tlp-text2" x="38" y="114" text-anchor="middle" font-size="13">Γ+ Θ− ν+</text>
+      <text class="tlp-amber" x="38" y="198" text-anchor="middle" font-size="14" font-weight="700">SOLD</text>
+      <text class="tlp-text2" x="38" y="216" text-anchor="middle" font-size="12">obligation</text>
+      <text class="tlp-text2" x="38" y="234" text-anchor="middle" font-size="13">Γ− Θ+ ν−</text>
+      <rect class="tlp-box blue" x="80" y="34" width="254" height="110" rx="6"/>
+      <line class="tlp-line" x1="92" y1="102" x2="322" y2="102"/>
+      <polyline class="tlp-line green thick" points="92,110.5 207,110.5 322,70.5"/>
+      <text class="tlp-text" x="90" y="53" font-size="14" font-weight="700">Long call · Δ+</text>
+      <text class="tlp-red" x="150" y="128" text-anchor="middle" font-size="13">lose ≤ 4.23</text>
+      <text class="tlp-green" x="290" y="72" text-anchor="end" font-size="13" font-weight="700">gain: no cap ↗</text>
+      <rect class="tlp-box blue" x="342" y="34" width="254" height="110" rx="6"/>
+      <line class="tlp-line" x1="354" y1="102" x2="584" y2="102"/>
+      <polyline class="tlp-line green thick" points="354,69.5 469,109.5 584,109.5"/>
+      <text class="tlp-text" x="352" y="53" font-size="14" font-weight="700">Long put · Δ−</text>
+      <text class="tlp-green" x="360" y="129" font-size="13" font-weight="700">gain ≤ 96.27</text>
+      <text class="tlp-red" x="535" y="128" text-anchor="middle" font-size="13">lose ≤ 3.73</text>
+      <rect class="tlp-box amber" x="80" y="154" width="254" height="110" rx="6"/>
+      <line class="tlp-line" x1="92" y1="222" x2="322" y2="222"/>
+      <polyline class="tlp-line red thick" points="92,213.5 207,213.5 322,253.5"/>
+      <text class="tlp-text" x="90" y="173" font-size="14" font-weight="700">Short call · Δ−</text>
+      <text class="tlp-green" x="150" y="204" text-anchor="middle" font-size="13">keep ≤ 4.23</text>
+      <text class="tlp-red" x="286" y="259" text-anchor="end" font-size="13" font-weight="700">loss: no cap ↘</text>
+      <rect class="tlp-box amber" x="342" y="154" width="254" height="110" rx="6"/>
+      <line class="tlp-line" x1="354" y1="222" x2="584" y2="222"/>
+      <polyline class="tlp-line red thick" points="354,254.5 469,214.5 584,214.5"/>
+      <text class="tlp-text" x="352" y="173" font-size="14" font-weight="700">Short put · Δ+</text>
+      <text class="tlp-red" x="362" y="206" font-size="13" font-weight="700">lose ≤ 96.27</text>
+      <text class="tlp-green" x="545" y="204" text-anchor="middle" font-size="13">keep ≤ 3.73</text>
+    </svg>
+    <figcaption>Strike 100, three months, 20% volatility: the call costs 4.23 and the put 3.73. Read down a column and the same contract changes hands, so the picture flips upside down. Read across a diagonal and the direction matches: long call and short put both gain when the price rises.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Someone on the desk says there are a lot of puts out there. So the market is bearish, right?</p>
+      <p data-who="Quant">Not yet. First question, always: bought or sold? Every option has one buyer and one seller, holding the same piece of paper.</p>
+      <p data-who="Trader">And they want opposite things.</p>
+      <p data-who="Quant">Exactly. The buyer of a put wants the price to fall. The seller of that put wants it to hold or rise. Same contract, opposite views.</p>
+      <p data-who="Trader">So how many positions are there in total?</p>
+      <p data-who="Quant">Four. Two yes or no choices. Did you buy or sell? Is it a call, the right to buy, or a put, the right to sell? Long call, short call, long put, short put.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Take a strike of one hundred, three months out, twenty percent volatility. The call costs about four twenty-three. If you buy it, the worst you can do is lose that four twenty-three. You break even at one hundred and four twenty-three, and above that there is no ceiling.</p>
+      <p data-who="Trader">And the person who sold it to me?</p>
+      <p data-who="Quant">The mirror image. Their best case is keeping the four twenty-three. Their worst case has no limit, because a price can rise forever. The buyer holds a right and can walk away. The seller holds an obligation and cannot.</p>
+      <p data-who="Trader">What about the Greeks? I always mix up the signs.</p>
+      <p data-who="Quant">Here's the shortcut. Gamma, theta and vega depend only on whether you bought or sold. Buyers are long gamma, long vega, and pay time decay. Sellers are the reverse. Only delta, the direction, cares whether it's a call or a put.</p>
+      <p data-who="Trader">And delta is my chance of finishing in the money.</p>
+      <p data-who="Quant">That's the popular shortcut, and it's only close for short, calm options. A one-year at-the-money call at sixty percent volatility has a delta of about point six three. The model's own chance of finishing in the money is about point three nine.</p>
+      <p data-who="Trader">Has the seller's side ever really bitten?</p>
+      <p data-who="Quant">Fifteenth of January, twenty fifteen. The Swiss National Bank had held a floor of one twenty francs per euro for more than three years, and promised to defend it. Selling options that paid on a big franc rise looked like free premium. That morning it dropped the floor without warning. The euro traded well below one franc at the extreme, and prices skipped straight past people's stops.</p>
+      <p data-who="Trader">And the sellers?</p>
+      <p data-who="Quant">Held the obligation. At retail brokers, client losses ran past their account balances. Alpari's UK arm went into insolvency, and FXCM needed a rescue loan of about three hundred million dollars.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Before you read anything into puts or calls, ask bought or sold. A buyer's worst case is the premium. A seller's best case is the premium.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">Four words, four meanings</h2>
       <div class="sl-icard-grid">
@@ -43,7 +116,7 @@
       <div class="sl-quote">A put is bearish only for the person who <strong>bought</strong> it. The person who <strong>sold</strong> it is bullish — holding the identical piece of paper.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Pick a quadrant</h2>
       <p class="sl-sub">K = 100, σ = 20%, r = 2%, 3 months. Premiums from Black-Scholes: call 4.23, put 3.73. Tap a cell.</p>
@@ -84,7 +157,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The reference card</h2>
       <div class="sl-compare">
@@ -111,7 +184,7 @@
     </section>
 
     <!-- WB:positions-deck:START -->
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">The four option positions, drawn as payoffs</h2>
       <!-- WB:positions:START -->
@@ -122,7 +195,7 @@
     </section>
     <!-- WB:positions-deck:END -->
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Why the signs follow from the side</h2>
       <div class="sl-row"><div class="sl-box">C − P</div><div class="sl-arrow">=</div><div class="sl-box amber">S − Ke⁻ʳᵗ</div></div>
@@ -133,7 +206,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Premium = intrinsic + extrinsic</h2>
       <p class="sl-sub">Calls, S = 100, σ = 20%, 3 months.</p>
@@ -145,7 +218,7 @@
       <p class="sl-p"><strong>Intrinsic</strong> is what exercising right now would pay. <strong>Extrinsic</strong> is the price of the chance things improve before expiry. Only extrinsic value decays (that is theta), it is largest at the money, and at expiry it is zero.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Delta is N(d₁) — not the chance of finishing in the money</h2>
       <p class="sl-sub">The model's risk-neutral probability of a call expiring in the money is N(d₂), and d₂ = d₁ − σ√τ. Push vol and time up and watch them separate.</p>
@@ -174,7 +247,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">What "obligation" means on a bad day</h2>
       <div class="sl-chain">
@@ -194,7 +267,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <!-- DESK:START --><h2 class="sl-h2">What the desk has tested</h2><!-- DESK:END -->
       <!-- DESK:START -->
@@ -212,7 +285,7 @@
       <p class="sl-p">"Put open interest is rising" honestly translates to: <em>more insurance changed hands</em>. Who bought, who sold, and why are separate questions.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Pitfalls</h2>
       <div class="sl-icard-grid">
@@ -223,7 +296,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -265,7 +338,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide sl-vark" data-slide="14">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2015-01-14">
+    <div class="tl-drill-label">Scenario drill · 14 January 2015</div>
+    <h3>Selling franc upside under a central-bank floor</h3>
+    <p>Since September 2011 the Swiss National Bank has held a minimum of 1.20 francs per euro and promised to buy foreign currency in unlimited amounts to defend it. EUR/CHF has sat just above that line for more than three years. A colleague wants to sell options that pay out if the franc rises sharply. "The central bank has promised it can't happen," he says, "so all we risk is the premium." How do you size the trade?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Size it by the premium. The worst realistic case is giving the premium back.<div class="tl-drill-why">The premium is the seller's best case, not the worst. A short option that pays out on a franc rise has no cap on the loss. A small premium only means the market thinks the bad case is unlikely, not that it is small.</div></li>
+      <li data-verdict="bad">Sell more. A central-bank promise makes this close to free money.<div class="tl-drill-why">Selling more stacks up obligations against one event. If the promise breaks, every contract pays out at once, and the loss is many times the premium you collected.</div></li>
+      <li data-verdict="ok">Sell a smaller size, with a stop-loss just below the floor.<div class="tl-drill-why">Better than sizing by premium, and a stop works when prices trade smoothly. But a stop assumes the market trades through your level. If the price gaps, it skips the level and the order fills far away, if at all.</div></li>
+      <li data-verdict="good">Size by the loss at a stress price well beyond the floor, assuming no fills on the way there, and only sell what you could survive at that price.<div class="tl-drill-why">This is how sellers size: by the loss at a chosen shock, never by the premium. It treats the floor as a policy that can change, and it assumes a gap rather than a smooth slide.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The next morning, 15 January 2015, the SNB abandoned the floor without warning and cut its deposit rate to −0.75%. Within minutes the franc surged. EUR/CHF traded well below parity at the extreme before settling near it, and prices skipped the levels in between, so stop-loss orders could not be filled where they were set. At retail FX brokers, client losses exceeded account balances. Alpari's UK arm entered insolvency, and FXCM needed a rescue loan of about $300 million from Leucadia.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://www.snb.ch/en/mmr/reference/pre_20150115/source/pre_20150115.en.pdf">Swiss National Bank press release, 15 Jan 2015</a> (floor of 1.20 discontinued; sight-deposit rate to −0.75%); <a href="https://www.bis.org/review/r150116a.htm">Thomas Jordan's remarks on the decision, BIS central bankers' speeches, 15 Jan 2015</a>; Alpari (UK) insolvency announcement, 16 Jan 2015 (reported by Reuters); <a href="https://www.financemagnates.com/forex/brokers/breaking-leucadia-hands-fxcm-300-mln-life-line/">Finance Magnates, "Leucadia hands FXCM $300 mln life-line", 16 Jan 2015</a>.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -375,5 +468,7 @@
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

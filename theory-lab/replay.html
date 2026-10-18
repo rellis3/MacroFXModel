@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replay a Real Day — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="hub.html">Theory Lab</a> · <a href="practice.html">Practice</a> · Replay a real day</div>
+  <div class="tl-hub-hero">
+    <div class="tl-kicker">Desk practice · real candles</div>
+    <h1>Replay a Real Day</h1>
+    <p>Pick a day that broke traders. You get the briefing a trader had that morning and the chart up to that moment. Then the bars arrive one at a time, and you trade it: buy, sell, or stay out, with a stop if you want one. Stops fill at the next bar's price, not at your level, so a gap costs what it really cost. At the end you see what happened, what your plan did, and the lessons behind it.</p>
+  </div>
+  <div class="rp-pick" id="rp-pick"></div>
+  <div id="rp-game" hidden>
+    <div class="tl-box rp-brief" id="rp-brief"></div>
+    <div class="rp-chartwrap"><svg id="rp-chart" class="rp-chart" viewBox="0 0 800 340" preserveAspectRatio="none" role="img" aria-label="Price chart, revealed one bar at a time"></svg></div>
+    <div class="rp-status" id="rp-status"></div>
+    <div class="tl-btnrow rp-controls">
+      <button type="button" class="tl-btn" data-act="buy">Buy</button>
+      <button type="button" class="tl-btn" data-act="sell">Sell</button>
+      <button type="button" class="tl-btn" data-act="flat">Close</button>
+      <label class="tl-hint">Stop <input type="number" step="any" id="rp-stop" class="tl-scratch-input rp-num" placeholder="pips"></label>
+      <span class="rp-sep"></span>
+      <button type="button" class="tl-btn active" data-act="next">Next bar ▶</button>
+      <button type="button" class="tl-btn" data-act="next6">Next 6 ▶▶</button>
+      <button type="button" class="tl-btn" data-act="end">Skip to the end</button>
+    </div>
+    <div id="rp-after" class="tl-box rp-after" hidden></div>
+  </div>
+  <div class="tl-footer-nav"><a href="practice.html">← Practice</a><a href="hub.html">Theory Lab hub →</a></div>
+</div>
+<script src="assets/replay.js"></script>
+<script src="assets/vark.js?v=2" defer></script>
+</body>
+</html>

@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Descriptive Statistics — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 5-question self-test?<a href="primer-stats-normal.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,83 @@
       <p class="sl-lede">Every lesson after this one in this series uses σ, variance, and "standard deviations away from the mean" without re-explaining any of it. Ornstein-Uhlenbeck's stationary variance, GARCH's forecast of σ itself, every Bollinger Band and VaR statement and "is this move unusual" filter — all of it is built from five ideas: mean, variance, standard deviation, z-scores, and the bell curve. This is where they get built, from nothing.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 235" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A bell curve built from the worked example's six daily returns: mean 1.0% and standard deviation about 1.41%. Shaded bands show about 68% of outcomes within one standard deviation (minus 0.4% to plus 2.4%), 95% within two, and 99.7% within three (minus 3.2% to plus 5.2%). The six days sit as dots along the axis, and the best day, plus 3.0%, is marked at a z-score of about 1.41, between the one- and two-sigma marks.">
+      <polygon class="tlp-blue" opacity=".10" points="90.0,190 90.0,188.3 97.0,187.8 104.0,187.0 111.0,186.1 118.0,184.9 125.0,183.4 132.0,181.6 139.0,179.3 146.0,176.7 153.0,173.5 160.0,169.7 167.0,165.3 174.0,160.3 181.0,154.6 188.0,148.3 195.0,141.3 202.0,133.7 209.0,125.6 216.0,117.0 223.0,108.1 230.0,99.0 237.0,90.0 244.0,81.1 251.0,72.6 258.0,64.7 265.0,57.6 272.0,51.5 279.0,46.6 286.0,43.0 293.0,40.7 300.0,40.0 307.0,40.7 314.0,43.0 321.0,46.6 328.0,51.5 335.0,57.6 342.0,64.7 349.0,72.6 356.0,81.1 363.0,90.0 370.0,99.0 377.0,108.1 384.0,117.0 391.0,125.6 398.0,133.7 405.0,141.3 412.0,148.3 419.0,154.6 426.0,160.3 433.0,165.3 440.0,169.7 447.0,173.5 454.0,176.7 461.0,179.3 468.0,181.6 475.0,183.4 482.0,184.9 489.0,186.1 496.0,187.0 503.0,187.8 510.0,188.3 510.0,190"/>
+      <polygon class="tlp-blue" opacity=".14" points="160.0,190 160.0,169.7 167.0,165.3 174.0,160.3 181.0,154.6 188.0,148.3 195.0,141.3 202.0,133.7 209.0,125.6 216.0,117.0 223.0,108.1 230.0,99.0 237.0,90.0 244.0,81.1 251.0,72.6 258.0,64.7 265.0,57.6 272.0,51.5 279.0,46.6 286.0,43.0 293.0,40.7 300.0,40.0 307.0,40.7 314.0,43.0 321.0,46.6 328.0,51.5 335.0,57.6 342.0,64.7 349.0,72.6 356.0,81.1 363.0,90.0 370.0,99.0 377.0,108.1 384.0,117.0 391.0,125.6 398.0,133.7 405.0,141.3 412.0,148.3 419.0,154.6 426.0,160.3 433.0,165.3 440.0,169.7 440.0,190"/>
+      <polygon class="tlp-blue" opacity=".22" points="230.0,190 230.0,99.0 237.0,90.0 244.0,81.1 251.0,72.6 258.0,64.7 265.0,57.6 272.0,51.5 279.0,46.6 286.0,43.0 293.0,40.7 300.0,40.0 307.0,40.7 314.0,43.0 321.0,46.6 328.0,51.5 335.0,57.6 342.0,64.7 349.0,72.6 356.0,81.1 363.0,90.0 370.0,99.0 370.0,190"/>
+      <line class="tlp-line" x1="50" y1="190" x2="550" y2="190"/>
+      <polyline class="tlp-line blue thick" points="62.0,189.5 69.0,189.4 76.0,189.1 83.0,188.8 90.0,188.3 97.0,187.8 104.0,187.0 111.0,186.1 118.0,184.9 125.0,183.4 132.0,181.6 139.0,179.3 146.0,176.7 153.0,173.5 160.0,169.7 167.0,165.3 174.0,160.3 181.0,154.6 188.0,148.3 195.0,141.3 202.0,133.7 209.0,125.6 216.0,117.0 223.0,108.1 230.0,99.0 237.0,90.0 244.0,81.1 251.0,72.6 258.0,64.7 265.0,57.6 272.0,51.5 279.0,46.6 286.0,43.0 293.0,40.7 300.0,40.0 307.0,40.7 314.0,43.0 321.0,46.6 328.0,51.5 335.0,57.6 342.0,64.7 349.0,72.6 356.0,81.1 363.0,90.0 370.0,99.0 377.0,108.1 384.0,117.0 391.0,125.6 398.0,133.7 405.0,141.3 412.0,148.3 419.0,154.6 426.0,160.3 433.0,165.3 440.0,169.7 447.0,173.5 454.0,176.7 461.0,179.3 468.0,181.6 475.0,183.4 482.0,184.9 489.0,186.1 496.0,187.0 503.0,187.8 510.0,188.3 517.0,188.8 524.0,189.1 531.0,189.4 538.0,189.5"/>
+      <line class="tlp-line dash" x1="300" y1="40" x2="300" y2="128"/>
+      <circle class="tlp-purple" cx="201" cy="190" r="4"/>
+      <circle class="tlp-purple" cx="250.5" cy="190" r="4"/>
+      <circle class="tlp-purple" cx="300" cy="190" r="4"/>
+      <circle class="tlp-purple" cx="300" cy="181" r="4"/>
+      <circle class="tlp-purple" cx="349.5" cy="190" r="4"/>
+      <circle class="tlp-green" cx="399" cy="190" r="5"/>
+      <line class="tlp-line green dash" x1="399" y1="134.8" x2="399" y2="185"/>
+      <circle class="tlp-green" cx="399" cy="134.8" r="6"/>
+      <text class="tlp-text" x="300" y="150" text-anchor="middle" font-size="15" font-weight="700">68%</text>
+      <text class="tlp-text2" x="300" y="166" text-anchor="middle" font-size="12">within ±1σ</text>
+      <text class="tlp-text2" x="426" y="182" text-anchor="middle" font-size="12">95%</text>
+      <text class="tlp-text2" x="478" y="170" text-anchor="middle" font-size="12">99.7%</text>
+      <text class="tlp-green" x="412" y="106" font-size="14" font-weight="700">best day +3.0%</text>
+      <text class="tlp-green" x="412" y="123" font-size="13">z ≈ 1.41: not rare</text>
+      <text class="tlp-text" x="20" y="40" font-size="13" font-weight="700">six days: mean 1.0%, σ ≈ 1.41%</text>
+      <text class="tlp-text3" x="20" y="57" font-size="12">dots on the axis = the six days</text>
+      <text class="tlp-text3" x="90" y="207" text-anchor="middle" font-size="12">−3.2%</text>
+      <text class="tlp-text3" x="160" y="207" text-anchor="middle" font-size="12">−1.8%</text>
+      <text class="tlp-text3" x="230" y="207" text-anchor="middle" font-size="12">−0.4%</text>
+      <text class="tlp-text2" x="300" y="207" text-anchor="middle" font-size="12" font-weight="700">1.0%</text>
+      <text class="tlp-text3" x="370" y="207" text-anchor="middle" font-size="12">+2.4%</text>
+      <text class="tlp-text3" x="440" y="207" text-anchor="middle" font-size="12">+3.8%</text>
+      <text class="tlp-text3" x="510" y="207" text-anchor="middle" font-size="12">+5.2%</text>
+      <text class="tlp-text3" x="90" y="224" text-anchor="middle" font-size="12">−3σ</text>
+      <text class="tlp-text3" x="160" y="224" text-anchor="middle" font-size="12">−2σ</text>
+      <text class="tlp-text3" x="230" y="224" text-anchor="middle" font-size="12">−1σ</text>
+      <text class="tlp-text3" x="300" y="224" text-anchor="middle" font-size="12">mean</text>
+      <text class="tlp-text3" x="370" y="224" text-anchor="middle" font-size="12">+1σ</text>
+      <text class="tlp-text3" x="440" y="224" text-anchor="middle" font-size="12">+2σ</text>
+      <text class="tlp-text3" x="510" y="224" text-anchor="middle" font-size="12">+3σ</text>
+    </svg>
+    <figcaption>Two numbers from six days, a mean of 1.0% and σ ≈ 1.41%, are enough to draw the whole bell. About 68% of days should land within one σ, 95% within two and 99.7% within three. The best day, +3.0%, is only 1.41σ out: above average, not a tail event. Real returns have fatter tails than this curve.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Everyone on the desk says "sigma" like I should know exactly what it is. What is it, really?</p>
+      <p data-who="Quant">It answers one question: how far does a typical day stray from the average day? Let's build it from six real-looking days.</p>
+      <p data-who="Trader">Go on.</p>
+      <p data-who="Quant">Say a currency pair moved up one percent, up two, down one, up three, flat, and up one. Add them up and you get six. Divide by six days, and the average day is up one percent.</p>
+      <p data-who="Trader">So now I measure how far each day is from that one percent?</p>
+      <p data-who="Quant">Yes, but there is a trap. If you just add those distances, the ups and downs cancel. They always add to exactly zero, for any data at all.</p>
+      <p data-who="Trader">So that tells me nothing.</p>
+      <p data-who="Quant">Right. The fix is to square each distance first. That makes them all positive, and it makes a big miss count much more than a small one. A miss twice as big counts four times as much. For our six days the squares add up to ten.</p>
+      <p data-who="Trader">Then divide by six?</p>
+      <p data-who="Quant">By five. We worked out the average from these same six days, which uses up one piece of information. So ten divided by five is two. Take the square root to get back to percent, and sigma is about one point four one percent.</p>
+      <p data-who="Trader">And the best day, the three percent day. Was that big?</p>
+      <p data-who="Quant">It was two points above average. Divide by one point four one and it is about one point four sigma out. That number is the z-score. Above average, but nothing special.</p>
+      <p data-who="Trader">How do I know what counts as special?</p>
+      <p data-who="Quant">For a bell-shaped curve, about sixty-eight percent of days land within one sigma of average. About ninety-five percent within two. And ninety-nine point seven percent within three. So beyond three sigma should be roughly one day in three hundred and seventy.</p>
+      <p data-who="Trader">Should be. That sounds like a warning.</p>
+      <p data-who="Quant">It is. Real market returns have fatter tails than the bell. Benoit Mandelbrot showed it with cotton prices in nineteen sixty-three. Then the crash of October nineteen eighty-seven was a move of many sigmas in a single day, something the bell says should basically never happen.</p>
+      <p data-who="Trader">So do I throw the bell away?</p>
+      <p data-who="Quant">No. Keep it as a ruler. A z-score lets you compare a move in any market on the same scale. Just don't read the percentages as a promise about how often the extremes will come.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Sigma is the typical distance from average. Measure every move in sigmas, and expect the far tails to show up more often than the bell admits.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">How big is a normal day?</h2>
       <div class="sl-origin">
@@ -39,7 +116,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">One number can't describe a week</h2>
       <p class="sl-sub">Two very different weeks of daily returns can share the exact same mean.</p>
@@ -72,7 +149,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Why not just average the distance from the mean?</h2>
       <p class="sl-sub">Six daily returns: +1.0, +2.0, −1.0, +3.0, 0.0, +1.0 — mean 1.0%. Their deviations are 0, 1, −2, 2, −1, 0. Try three ways of turning those into one "typical spread" number.</p>
@@ -99,7 +176,7 @@
       <p class="sl-p">A deviation of 1% contributes 1 to the sum of squares; a deviation of 5% contributes 25 — twenty-five times more, not five times more. That "rare-big-moves-count-a-lot" behavior is exactly the property risk measurement wants: one 5% loss can be catastrophic in a way that five separate 1% days aren't.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Population variance vs. sample variance</h2>
       <p class="sl-sub">Two versions of the same formula. Mixing them up is one of the most common statistics mistakes.</p>
@@ -120,7 +197,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Standard deviation: undoing the squaring</h2>
       <p class="sl-sub">Variance is in squared units — "percent squared" isn't a number anyone can picture. Taking the square root undoes the squaring and returns to the original units: s = √s².</p>
@@ -146,7 +223,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The normal distribution: a shape built from two numbers</h2>
       <p class="sl-sub">The bell curve is a specific, symmetric shape defined entirely by its mean μ (where the peak sits) and its standard deviation σ (how wide the bell is).</p>
@@ -174,7 +251,7 @@
       <div class="sl-quote">This shape shows up constantly for a deep reason — the Central Limit Theorem, which (informally) says adding up many small, independent random effects tends to look approximately normal, whatever the individual effects looked like. For this page, treat it simply as the reference shape "typical, well-behaved noise" gets compared against.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The 68/95/99.7 rule</h2>
       <p class="sl-sub">Drag the slider to move a value along the curve, measured in standard deviations from the mean. Watch which band it falls into.</p>
@@ -217,7 +294,7 @@
       <p class="sl-p">In words: about 68% of a normal distribution's values fall within 1 standard deviation of the mean; about 95% within 2; about 99.7% — nearly all of it — within 3. A value with |z| &gt; 2 is already in roughly the rarest 5% of outcomes if the data really is normal, and |z| &gt; 3 is roughly the rarest 0.3%.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Z-scores: the same ruler for any instrument</h2>
       <p class="sl-sub">"A 1.4% move" means nothing in isolation — big or small depends entirely on how volatile the instrument normally is. z = (x − μ) / σ answers the right question instead.</p>
@@ -244,7 +321,7 @@
       <p class="sl-p">Because a z-score is unitless, it lets you compare a currency pair's daily return to a completely different instrument's return, or to its own weekly return, on the exact same scale — precisely why z-scores are the standard tool behind "is this move unusual" gates and filters.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Is today's move normal, or a tail event?</h2>
       <p class="sl-sub">This is exactly the question a z-score answers on a trading desk. Illustrative numbers, not a fitted historical figure.</p>
@@ -272,7 +349,7 @@
     </section>
 
     <!-- WB:normal-deck:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Six days, one bell curve, and the 3σ day</h2>
       <!-- WB:normal:START -->
@@ -283,7 +360,7 @@
     </section>
     <!-- WB:normal-deck:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -299,7 +376,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -350,7 +427,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide sl-vark" data-slide="15">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="1987-10-19">
+    <div class="tl-drill-label">Scenario drill · 19 October 1987</div>
+    <h3>A day your bell curve says cannot happen</h3>
+    <p>It is the close on Monday 19 October 1987. The Dow Jones Industrial Average has just fallen 22.6% in a single day. Suppose your risk model measures the index's daily σ at about 1% and treats returns as normal. On that ruler today is a move of more than 20σ, and the bell says a move beyond even 3σ should come about once in 370 days. What do you conclude?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">A 20σ day is impossible under a normal curve, so the price data must be wrong. Ignore it.<div class="tl-drill-why">The data is right; the curve is the problem. When reality and a model disagree this violently, it is the model's assumption, normal tails, that has failed.</div></li>
+      <li data-verdict="bad">It was a once-in-the-age-of-the-universe event, so it will not happen again. Keep sizing as before.<div class="tl-drill-why">That rarity is only what the normal curve claims. Real returns have fatter tails, so extreme days come far more often than the bell allows. Sizing as if they cannot happen is how books get wiped out.</div></li>
+      <li data-verdict="good">The normal curve understates the tails. Keep z-scores as a ruler, but size and stress-test for moves far beyond 3σ.<div class="tl-drill-why">This is the lesson's own advice. The bell is a good common scale for "how unusual is this move", and a poor promise about how often extremes come. Plan for fat tails on purpose.</div></li>
+      <li data-verdict="ok">Recompute σ over a window that includes the crash, and carry on with the normal model.<div class="tl-drill-why">A fresh σ is sensible, since volatility clearly jumped. But a bigger σ inside a normal curve still has thin tails. It fixes the scale, not the shape.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The Dow's 22.6% fall on 19 October 1987 is still its largest one-day percentage drop. Mandelbrot had shown in 1963 that price changes have far fatter tails than the normal curve allows, and after 1987 that point was impossible to ignore. The bell survived as the baseline for z-scores and value-at-risk; fat-tail corrections start from it. The 1% σ here is an assumption for the drill, not a measured figure.</p>
+    <p class="tl-drill-sources">Sources: Report of the Presidential Task Force on Market Mechanisms (the Brady Report), January 1988 (the Dow fell 508 points, or 22.6%, on 19 October 1987); Benoit Mandelbrot, "The Variation of Certain Speculative Prices", <em>Journal of Business</em> 36(4), 1963.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -521,5 +618,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

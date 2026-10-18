@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 <style>
@@ -551,6 +552,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Put-call parity, \(C-P=S-Ke^{-r\tau}\), and the breakevens that follow from each premium, on three new at-the-money options. Prices to two decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(S=K=50\), \(r=3\%\), \(\tau=0.5\), and the call costs \(C=3.88\). Then \(Ke^{-r\tau}=50e^{-0.015}=49.2556\), so \(S-Ke^{-r\tau}=0.7444\). The put must cost \(P=3.88-0.7444=\) <span class="tl-blank" data-answer="3.14" data-tol="0.01"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(S=K=80\), \(r=4\%\), three months (\(\tau=0.25\)), call \(C=5.17\). Then \(Ke^{-r\tau}=\) <span class="tl-blank" data-answer="79.20" data-tol="0.01"></span>, the put is \(P=\) <span class="tl-blank" data-answer="4.37" data-tol="0.01"></span>, and the long call breaks even at expiry at <span class="tl-blank" data-answer="85.17" data-tol="0.01"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(S=K=120\), \(r=1\%\), \(\sigma=15\%\), one year, call \(C=7.75\). The put: <span class="tl-blank" data-answer="6.56" data-tol="0.01"></span>. The long put's breakeven: <span class="tl-blank" data-answer="113.44" data-tol="0.02"></span>. Then \(d_1=\big(\ln(S/K)+(r+\sigma^2/2)\tau\big)/(\sigma\sqrt\tau)=\) <span class="tl-blank" data-answer="0.1417" data-tol="0.0005"></span>, so the call's delta \(N(d_1)=\) <span class="tl-blank" data-answer="0.5563" data-tol="0.0005"></span>, against an in-the-money probability \(N(d_2)=0.4967\).</p>
+    </div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>When the obligation came due</h2>
   <p>
@@ -653,7 +671,13 @@
   <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
-    <span><strong>Folk claim: a put-heavy market (high put/call ratio) is a bearish market.</strong> The desk's evidence ledger holds no entry scoring the put/call ratio, and the thresholds the desk uses to label it bullish or bearish have no recorded provenance. This lesson's 2×2 is the reason to doubt the claim on its face: open interest cannot tell a bought put from a sold one. Treat the ratio as a description of how much insurance exists, not a forecast.</span>
+    <span><strong>Folk claim: a put-heavy market (high put/call ratio) is a bearish market.</strong> The desk's evidence ledger holds no entry scoring the put/call ratio, and the thresholds the desk uses to label it bullish or bearish have no recorded provenance. This lesson's 2×2 is the reason to doubt the claim on its face: open interest cannot tell a bought put from a sold one. Treat the ratio as a description of how much insurance exists, not a forecast.
+    <div class="tl-howtotest"><strong>How to test it:</strong> take the daily put/call open-interest ratio the OI
+    dashboard stores for each instrument, point-in-time (the morning's published open interest, never that day's close).
+    Apply the <code>pcBias</code> rule exactly as written, BEARISH above its threshold and BULLISH below, and score the
+    next-day and next-five-day returns in the labelled direction. The baseline is the same labels shuffled across dates;
+    the gate, fixed in advance, is a hit rate above the placebo's 95th percentile and a mean return that stays positive
+    after one spread per trade.</div></span>
   </div>
   <!-- DESK:END -->
   <!-- DESK:START -->
@@ -677,6 +701,7 @@
     </p>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../oi-dashboard.html">OI Analytics</a> shows the walls, max pain and put/call ratio from each chain; place every number in the 2×2 before reading it, since open interest cannot see who bought and who sold.</div><!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -699,7 +724,8 @@
       <li data-verdict="ok">Sell a smaller size, with a stop-loss just below the floor.<div class="tl-drill-why">Better than sizing by premium, and a stop works when prices trade smoothly. But a stop assumes the market trades through your level. If the price gaps, it skips the level and the order fills far away, if at all.</div></li>
       <li data-verdict="good">Size by the loss at a stress price well beyond the floor, assuming no fills on the way there, and only sell what you could survive at that price.<div class="tl-drill-why">This is how sellers size: by the loss at a chosen shock, never by the premium. It treats the floor as a policy that can change, and it assumes a gap rather than a smooth slide.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The next morning, 15 January 2015, the SNB abandoned the floor without warning and cut its deposit rate to −0.75%. Within minutes the franc surged. EUR/CHF traded well below parity at the extreme before settling near it, and prices skipped the levels in between, so stop-loss orders could not be filled where they were set. At retail FX brokers, client losses exceeded account balances. Alpari's UK arm entered insolvency, and FXCM needed a rescue loan of about $300 million from Leucadia.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The next morning, 15 January 2015, the SNB abandoned the floor without warning and cut its deposit rate to −0.75%. Within minutes the franc surged. EUR/CHF traded well below parity at the extreme before settling near it, and prices skipped the levels in between, so stop-loss orders could not be filled where they were set. At retail FX brokers, client losses exceeded account balances. Alpari's UK arm entered insolvency, and FXCM needed a rescue loan of about $300 million from Leucadia.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://www.snb.ch/en/mmr/reference/pre_20150115/source/pre_20150115.en.pdf">Swiss National Bank press release, 15 Jan 2015</a> (floor of 1.20 discontinued; sight-deposit rate to −0.75%); <a href="https://www.bis.org/review/r150116a.htm">Thomas Jordan's remarks on the decision, BIS central bankers' speeches, 15 Jan 2015</a>; Alpari (UK) insolvency announcement, 16 Jan 2015 (reported by Reuters); <a href="https://www.financemagnates.com/forex/brokers/breaking-leucadia-hands-fxcm-300-mln-life-line/">Finance Magnates, "Leucadia hands FXCM $300 mln life-line", 16 Jan 2015</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -916,7 +942,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

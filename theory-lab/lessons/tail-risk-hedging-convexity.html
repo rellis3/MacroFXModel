@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -396,6 +397,23 @@
     <button type="button" id="trh-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Compound some calm years and one crash year: cumulative return \(= (1+\text{calm})^{n} \times (1+\text{crash}) - 1\), where each year's return is the index plus the overlay. Give answers in percent to one decimal.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Index +8% in a calm year, −30% in the crash; four calm years. Unhedged: \(1.08^4 \times 0.70 = 0.9523\), so −4.8%. A tail hedge costs −2% a calm year and pays +30% in the crash, so the hedged book makes +6% in a calm year and 0% in the crash. Hedged cumulative: \(1.06^4 \times 1.00 - 1 =\) <span class="tl-blank" data-answer="26.2" data-tol="0.1" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Index +10% calm, −40% crash; three calm years. Hedge costs −1% calm and pays +35% in the crash. Unhedged cumulative: <span class="tl-blank" data-answer="-20.1" data-tol="0.1" data-unit="%"></span>. Hedged crash year: −40% + 35% = −5%. Hedged cumulative: <span class="tl-blank" data-answer="23.0" data-tol="0.1" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Index +12% calm, −35% crash; four calm years. A short-convexity overlay adds +4% in a calm year and −30% in the crash; a tail hedge costs −2% calm and pays +45% in the crash. Short-convexity cumulative: <span class="tl-blank" data-answer="-36.6" data-tol="0.1" data-unit="%"></span>. Tail-hedged cumulative: <span class="tl-blank" data-answer="61.1" data-tol="0.1" data-unit="%"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-solid amber">
     <strong>The honest cost-of-carry tradeoff:</strong> a tail hedge is designed to cost money in calm
     times. If the calm period runs long enough, or the eventual crash is smaller than assumed, the
@@ -493,6 +511,7 @@
     vs +1.20%, excess <strong>-1.19% [-2.30, -0.48]</strong>. No fear bid on average, and a month after a fear spike gold
     has lagged its ordinary drift. Holding gold carries no option-like convexity.</span>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../vix-vol-carry-backtest.html">VIX Vol-Carry Backtester</a> shows a short-volatility carry book's win rate next to its worst single day, the short-convexity profile from this lesson in real numbers.</div>
   <!-- DESK:END -->
 
   <div class="tl-eli5">
@@ -593,7 +612,8 @@
       <li data-verdict="good">Keep the puts at their fixed, budgeted size, and judge them on what they do for the whole portfolio, not on their own track record.<div class="tl-drill-why">The bleed is the premium, by design. The relevant test is the combined book across calm and crash years, and the timing of a crash is never knowable in advance.</div></li>
       <li data-verdict="ok">Keep a hedge, but switch to put spreads to cut the cost.<div class="tl-drill-why">Defensible: a put spread is cheaper. But it caps the payoff once the market falls past the lower strike, so you are selling back some of the convexity you were paying for.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> From a record high on 19 February 2020, the S&amp;P 500 fell about 34% in five weeks, to 23 March. On 16 March the VIX closed at a record 82.69. Far out-of-the-money puts went deep into the money while the implied volatility they were priced on exploded, and their value rose many times over. In the mid-March dash for cash, gold fell sharply alongside stocks for about a week, and even US Treasuries sold off until the Federal Reserve stepped in with very large purchases. Anyone who tried to buy protection after the fall had started paid far more, because implied volatility had already jumped.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> From a record high on 19 February 2020, the S&amp;P 500 fell about 34% in five weeks, to 23 March. On 16 March the VIX closed at a record 82.69. Far out-of-the-money puts went deep into the money while the implied volatility they were priced on exploded, and their value rose many times over. In the mid-March dash for cash, gold fell sharply alongside stocks for about a week, and even US Treasuries sold off until the Federal Reserve stepped in with very large purchases. Anyone who tried to buy protection after the fall had started paid far more, because implied volatility had already jumped.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/SP500" target="_blank" rel="noopener">S&amp;P 500 daily closes, FRED</a> (3,386.15 on 19 February, 2,237.40 on 23 March 2020); <a href="https://fred.stlouisfed.org/series/VIXCLS" target="_blank" rel="noopener">Cboe VIX daily closes, FRED</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200323b.htm" target="_blank" rel="noopener">Federal Reserve press release, 23 March 2020</a>; CNBC, 16 March 2020 (VIX record close).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -605,7 +625,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The cost is real and by design — not a bug to eliminate.</strong> A tail hedge that never costs anything in calm markets isn't providing real protection; the premium bleed is the whole mechanism.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The multi-year compounding illustration is stylized, not empirical.</strong> Whether a specific hedge program's payoff justifies its cost over a specific real history depends entirely on the actual frequency and severity of crashes in that history — an empirical question this lesson does not claim to have answered.</span></div>
     <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Nothing here is built or backtested in this repo.</strong> This lesson explains the mechanism and the honest tradeoff; it is not a validated tail-hedge overlay or a claim that any such overlay has edge.</span></div><!-- DESK:END -->
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Gold is not a substitute for convexity<!-- DESK:START --> (<code>fear-gold</code>, NULL)<!-- DESK:END -->.</strong><!-- DESK:START --> 58 VIX spikes: no fear bid at five sessions (+0.07% [-0.42, +0.30]), and gold lagged by −1.19% at twenty.<!-- DESK:END --> In March 2020 gold and even Treasuries fell for a time in the dash for cash, while long puts paid on both price and volatility.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Gold is not a substitute for convexity<!-- DESK:START --> (<code>fear-gold</code>, NULL)<!-- DESK:END -->.</strong><!-- DESK:START --> The desk's test found no fear bid in gold after VIX spikes.<!-- DESK:END --> In March 2020 gold and even Treasuries fell for a time in the dash for cash, while long puts paid on both price and volatility.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -811,7 +831,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

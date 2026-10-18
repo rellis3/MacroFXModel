@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spot the Error — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="hub.html">Theory Lab</a> · <a href="practice.html">Practice</a> · Spot the error</div>
+  <div class="tl-hub-hero">
+    <div class="tl-kicker">Check the working, not the conclusion</div>
+    <h1>Spot the Error</h1>
+    <p>Every excerpt below was once printed in a Theory Lab lesson, and every one was wrong. Each was caught in October 2026 by redoing the arithmetic, and each lesson now carries the corrected version. Most of them looked fine at a glance: the totals added up, the conclusion was right, the chart had the right shape. That is exactly how a broken model survives into production.</p>
+    <div class="tl-callout"><strong>How to use this page.</strong> Read the excerpt, find what is wrong, and type it in the box before you open the answer. A hint sits under each one if you are stuck. Then grade yourself. Checking a number you were handed, with a pencil and two minutes, is the cheapest risk control there is.</div>
+  </div>
+
+  <h2>1. Three eigenvalues that add up</h2>
+  <div class="tl-box">
+    <p>From <a href="lessons/pca-factors.html">PCA &amp; factor models</a>. The correlation matrix of EURUSD, GBPUSD and AUDJPY is</p>
+    <div class="tl-math">\[ \Sigma = \begin{pmatrix} 1.00 & 0.75 & 0.20 \\ 0.75 & 1.00 & 0.15 \\ 0.20 & 0.15 & 1.00 \end{pmatrix} \]</div>
+    <p>“Its eigenvalues are about 1.85, 0.95 and 0.20. They sum to 3, the number of assets, as they must, so PC1 explains \(1.85/3 \approx 62\%\) of the variance.”</p>
+    <p class="tl-hint">Hint: the sum of the eigenvalues is the trace, so a sum of 3 proves very little. What else must the eigenvalues multiply to?</p>
+  </div>
+  <details class="tl-quiz"><summary>Show the error</summary><div class="tl-answer">
+    <p>The product of the eigenvalues must equal the determinant. \(\det\Sigma = 1(1-0.0225) - 0.75(0.75-0.03) + 0.20(0.1125-0.20) = 0.42\), but \(1.85\times0.95\times0.20 = 0.35\). The true eigenvalues are about <b>1.82, 0.93 and 0.25</b> (product 0.42), so PC1 explains about <b>61%</b>. The trace check passes for almost any wrong answer; the determinant check does not.</p>
+    <p>Desk lesson: one sanity check that any answer of the right size will pass is not a check.</p>
+  </div></details>
+
+  <h2>2. A contagion round that forgot a link</h2>
+  <div class="tl-box">
+    <p>From <a href="lessons/systemic-risk-networks.html">Systemic risk networks</a>. Bank C defaults. Exposures: \(W_{BA}=0.2\), \(W_{BD}=0.1\). After round 1, \(h_A(1)=0.10\), \(h_B(1)=0.40\), \(h_D(1)=0.30\).</p>
+    <p>“Round 2: \(h_B(2) = 0.40 + W_{BA}\times0.10 = 0.40 + 0.02 = 0.42\).”</p>
+    <p class="tl-hint">Hint: list every bank that B lends to and that became newly distressed in round 1.</p>
+  </div>
+  <details class="tl-quiz"><summary>Show the error</summary><div class="tl-answer">
+    <p>B is exposed to D as well, and D took a 0.30 hit in round 1. The missing term is \(W_{BD}\times0.30 = 0.03\), so \(h_B(2) = 0.40 + 0.02 + 0.03 = \mathbf{0.45}\). The lesson's calculator had the same omission, so the two agreed with each other and were both wrong.</p>
+    <p>Desk lesson: when the text and the tool agree, check whether one was copied from the other.</p>
+  </div></details>
+
+  <h2>3. The second-longest edge</h2>
+  <div class="tl-box">
+    <p>From <a href="lessons/correlation-networks-mst.html">Correlation networks &amp; the MST</a>. The minimum spanning tree of five currencies keeps the edges EUR–GBP 0.63, EUR–CHF 0.77, EUR–AUD 1.00 and JPY–AUD 1.10.</p>
+    <p>“JPY joins the tree through AUD, at distance 1.10: the second-longest edge kept in the whole tree.”</p>
+  </div>
+  <details class="tl-quiz"><summary>Show the error</summary><div class="tl-answer">
+    <p>Read the four kept edges: 0.63, 0.77, 1.00, 1.10. JPY–AUD is the <b>longest</b>. It matters for the reading: JPY is the currency most weakly tied to the rest of the basket, which is why it is the diversifier.</p>
+  </div></details>
+
+  <h2>4. A big number, off by a thousand</h2>
+  <div class="tl-box">
+    <p>From <a href="lessons/numerical-integration.html">Numerical integration</a>. A basket option on 7 assets, priced on a grid with 15 points per dimension.</p>
+    <p>“That needs \(15^7\), on the order of 170 billion evaluations, for one price.”</p>
+    <p class="tl-hint">Hint: \(15^2 = 225\) and \(15^3 \approx 3{,}400\).</p>
+  </div>
+  <details class="tl-quiz"><summary>Show the error</summary><div class="tl-answer">
+    <p>\(15^7 = 170{,}859{,}375\): about <b>171 million</b>, not billion. The point survives (grids grow exponentially with dimension, which is why Monte Carlo wins in high dimensions), but an argument that leans on a number a thousand times too big invites the reader to stop trusting the rest.</p>
+    <p>Desk lesson: estimate the order of magnitude before you write the digits. \(15^7 = 15^3\cdot15^3\cdot15 \approx 3{,}400^2\times15 \approx 1.7\times10^8\).</p>
+  </div></details>
+
+  <h2>5. The right answer from slightly wrong steps</h2>
+  <div class="tl-box">
+    <p>From <a href="lessons/newton-raphson-gradient-descent.html">Newton–Raphson &amp; gradient descent</a>. A 3-year bond pays a 5 coupon on 100, annually, and trades at 97.50. Solve for the yield, starting at \(y_0 = 5\%\).</p>
+    <p>“\(P(y_0) = 100\), so \(f(y_0) = 2.50\). The derivative is \(P'(y_0) \approx -272.24\). One step gives \(y_1 = 5.918\%\), where \(P(y_1) \approx 97.5414\) and \(f(y_1) \approx 0.0414\). The yield converges to 5.934%.”</p>
+    <p class="tl-hint">Hint: \(P'(y) = -\sum_t t\,CF_t/(1+y)^{t+1}\). Work out the three terms.</p>
+  </div>
+  <details class="tl-quiz"><summary>Show the error</summary><div class="tl-answer">
+    <p>\(P'(5\%) = -(5/1.05^2 + 2\cdot5/1.05^3 + 3\cdot105/1.05^4) = -(4.535 + 8.638 + 259.150) = \mathbf{-272.32}\), and \(P(5.918\%) = 97.5424\), so \(f(y_1) = \mathbf{0.0424}\). The final 5.934% was right all along, which is why nobody noticed: Newton's method forgives a slightly wrong derivative and still converges.</p>
+    <p>Desk lesson: a correct final answer does not certify the working. If you copy the working into a spreadsheet, the wrong intermediate numbers come with it.</p>
+  </div></details>
+
+  <h2>6. A convergence chart drawn backwards</h2>
+  <div class="tl-box">
+    <p>From <a href="lessons/sde-numerical-schemes.html">SDE numerical schemes</a>. A chart of strong error against step size \(\Delta t\) for Euler–Maruyama and Milstein, with \(\Delta t\) on the x-axis running from small (left) to large (right). Both lines started high on the left and fell to the right.</p>
+    <p class="tl-hint">Hint: what should happen to the error as the step gets smaller?</p>
+  </div>
+  <details class="tl-quiz"><summary>Show the error</summary><div class="tl-answer">
+    <p>The chart was a mirror image. Error shrinks as \(\Delta t\) shrinks (Euler–Maruyama like \(\Delta t^{1/2}\), Milstein like \(\Delta t\)), so with small steps on the left the lines must start <b>low</b> and rise to the right. Drawn the other way, the chart says a finer simulation is less accurate.</p>
+    <p>Desk lesson: before reading a chart's lines, read its axes and say out loud what the extremes should look like.</p>
+  </div></details>
+
+  <h2>7. A leapfrog that only half-kicked</h2>
+  <div class="tl-box">
+    <p>From <a href="lessons/hamiltonian-monte-carlo-nuts.html">Hamiltonian Monte Carlo &amp; NUTS</a>. Leapfrog with step \(\varepsilon = 0.3\): half-kick, drift, then full kicks between drifts, and a final half-kick.</p>
+    <p>“After the first drift, \(\theta_1 = 1.105\) and \(p_{0.15} = 0.35\). The interior kick: \(p_1 = p_{0.15} - \tfrac{\varepsilon}{2}\nabla U(\theta_1) = 0.35 - 0.15(1.105) = 0.1843\).”</p>
+  </div>
+  <details class="tl-quiz"><summary>Show the error</summary><div class="tl-answer">
+    <p>Only the first and last kicks are halves; the ones between drifts are full steps of \(\varepsilon\), because each folds together the closing half of one step and the opening half of the next. So \(p_1 = 0.35 - 0.3(1.105) = \mathbf{0.0185}\). With half-kicks inside, the integrator is no longer symplectic and the energy drifts, which is the whole thing HMC relies on not happening. Carried through, the marble turns round near 1.11 and rolls back to about 1.02, instead of drifting on to 1.16.</p>
+  </div></details>
+
+  <!-- DESK:START -->
+  <h2>8. Two exponents swapped <span class="tl-hint">(desk lesson)</span></h2>
+  <div class="tl-box">
+    <p>From <a href="lessons/institutional-kyle-obizhaeva-invariance.html">Kyle–Obizhaeva market microstructure invariance</a>. Trading activity \(W = P\cdot V\cdot\sigma\).</p>
+    <p>“Typical bet size grows as \(W^{2/3}\), not \(W\): doubling activity scales the bet by only \(2^{2/3}\approx1.59\times\).”</p>
+    <p class="tl-hint">Hint: activity is (number of bets) × (size of each bet). If the bets per day grew as \(W^{2/3}\), what would the size have to grow as?</p>
+  </div>
+  <details class="tl-quiz"><summary>Show the error</summary><div class="tl-answer">
+    <p>The exponents were swapped. Invariance says the <b>number of bets per day</b> grows as \(W^{2/3}\) and the <b>size of each bet</b> in risk units as \(W^{1/3}\); the two multiply back to \(W\). Doubling activity raises bet size by \(2^{1/3}\approx1.26\times\) and the number of bets by about 1.59×. Get it backwards and every impact estimate built on bet size is too large.</p>
+  </div></details>
+
+  <h2>9. Quoting the wrong way round <span class="tl-hint">(desk lesson)</span></h2>
+  <div class="tl-box">
+    <p>From <a href="lessons/institutional-avellaneda-stoikov.html">Avellaneda–Stoikov market making</a>. Mid 100, risk aversion \(\gamma = 0.1\), \(\sigma = 2\), half the session left, and the market maker is long \(q = 5\).</p>
+    <p>“The reservation price is \(r = s + q\gamma\sigma^2(T-t) = 100 + 5(0.1)(4)(0.5) = 101\). Centre the quotes there.”</p>
+    <p class="tl-hint">Hint: you are long and want to get flat. Which side of your quote should come closer to the mid?</p>
+  </div>
+  <details class="tl-quiz"><summary>Show the error</summary><div class="tl-answer">
+    <p>The sign is wrong: \(r = s - q\gamma\sigma^2(T-t) = \mathbf{99}\). Long inventory pulls the centre <b>down</b>, so the offer comes closer to the mid (buyers take the position off you) and the bid moves away (sellers stop making you longer). With the plus sign, a long market maker raises the bid and gets longer still: the position runs away.</p>
+    <p>Desk lesson: for any rule that reacts to your position, ask whether it pushes you back towards flat. If it pushes you further out, the sign is wrong.</p>
+  </div></details>
+  <!-- DESK:END -->
+
+  <div class="tl-callout"><strong>The pattern.</strong> None of these was a conceptual mistake. Every one was a transcription, a dropped term, a sign or a mirrored axis, sitting under a conclusion that read correctly. The habits that catch them are small: check a second invariant, recompute the middle step, estimate the size first, read the axes, ask which way a rule pushes your position.</div>
+
+  <div class="tl-footer-nav"><a href="practice.html">← Practice</a><a href="hub.html">Theory Lab hub →</a></div>
+</div>
+<script src="assets/tts.js?v=6" defer></script>
+<script src="assets/vark.js?v=2" defer></script>
+</body>
+</html>

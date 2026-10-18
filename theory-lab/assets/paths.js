@@ -19,6 +19,13 @@
   var prog = get(K_PROG, {});
   function pct(slug) { var a = prog[slug] || {}, b = prog[slug + '-micro'] || {}; return Math.max(+a.percent || 0, +b.percent || 0); }
   function done(slug) { return pct(slug) >= 90; }
+  // Self-test mastery (vark.js writes theoryLabQuiz): 70%+ of the lesson's questions. lesson-index.js gives the
+  // question count; without it, only the questions graded so far count.
+  function mastered(slug) {
+    var q = get('theoryLabQuiz', {})[slug] || {}, got = 0, n = 0, info = (window.TL_LESSONS || {})[slug];
+    Object.keys(q).forEach(function (i) { if (q[i]) { n++; got += q[i].g; } });
+    return n > 0 && got / ((info && info.q) || n) >= 0.7;
+  }
   function path(id) { for (var i = 0; i < D.paths.length; i++) if (D.paths[i].id === id) return D.paths[i]; return null; }
   // A path's full reading order: the shared core first, then its own stages.
   function stages(p) { return [{ name: 'Core (shared by every path)', lessons: D.core.lessons }].concat(p.stages); }
@@ -82,7 +89,11 @@
     }).join('') + '</div>';
     if (sel) {
       var c = checks(sel), st = stats(sel);
-      h += '<section class="tp-detail"><h2>' + esc(sel.icon + ' ' + sel.name) + '</h2>';
+      var mast = order(sel).filter(mastered).length;
+      h += '<section class="tp-detail"><h2>' + esc(sel.icon + ' ' + sel.name) + '</h2>' +
+        '<div class="tl-btnrow tp-tools"><button type="button" class="tl-btn" data-cards="' + sel.id + '">⬇ Flashcards for this path (Anki)</button>' +
+        '<a class="tl-btn" href="cheatsheet.html?path=' + sel.id + '">🖨 Printable cheat sheet</a>' +
+        '<span class="tl-hint">' + mast + ' of ' + st.total + ' lessons mastered on the self-test</span></div>';
       if (complete(sel)) h += '<div class="tl-solid green"><strong>Path complete.</strong> Every lesson read and the capstone built: ' + esc(sel.deliverable.title) + '.</div>';
       stages(sel).forEach(function (s, k) {
         var ls = s.lessons.filter(function (l) { return D.lessons[l]; });
@@ -91,7 +102,7 @@
           ls.map(function (l) {
             var p = pct(l), m = D.lessons[l];
             return '<li class="' + (p >= 90 ? 'done' : p > 0 ? 'started' : '') + '"><a href="' + base + l + '.html">' + esc(m.t) + '</a><span>' +
-              (p >= 90 ? '✓ done' : p > 0 ? p + '% read' : m.min + ' min') + '</span></li>';
+              (p >= 90 ? '✓ done' : p > 0 ? p + '% read' : m.min + ' min') + (mastered(l) ? ' · ★ mastered' : '') + '</span></li>';
           }).join('') + '</ol></div>';
       });
       h += '<div class="tp-deliv" id="deliverable"><div class="tp-deliv-k">Capstone · your finish line</div><h3>' + esc(sel.deliverable.title) + '</h3><p>' + esc(sel.deliverable.what) + '</p>' +
@@ -109,6 +120,24 @@
     var b = e.target.closest('[data-path]'); if (!b) return;
     set(K_PATH, b.getAttribute('data-path')); render();
     var d = app.querySelector('.tp-detail'); if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  // One Anki file for the whole path: each lesson's self-test and takeaways, fetched from the lesson pages.
+  app.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-cards]'); if (!b || !window.TLVark || !window.fetch) return;
+    var p = path(b.getAttribute('data-cards')), ls = order(p), label = b.textContent, got = 0;
+    b.disabled = true;
+    Promise.all(ls.map(function (l) {
+      return fetch(base + l + '.html', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+        b.textContent = 'Fetching lessons… ' + (++got) + ' / ' + ls.length;
+        if (!t) return [];
+        var d = new DOMParser().parseFromString(t, 'text/html'), h1 = d.querySelector('h1.tl-title');
+        return TLVark.cardsFromDoc(d, h1 ? h1.textContent.trim() : l);
+      }).catch(function () { return []; });
+    })).then(function (all) {
+      var rows = [].concat.apply([], all);
+      TLVark.downloadTSV(rows, 'flashcards-path-' + p.id);
+      b.disabled = false; b.textContent = label + ' · ' + rows.length + ' cards saved';
+    });
   });
   app.addEventListener('change', function (e) {
     var i = e.target.getAttribute('data-check'); if (i == null) return;

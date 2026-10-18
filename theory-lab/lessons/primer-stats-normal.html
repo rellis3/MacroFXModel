@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -759,6 +760,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same chain: mean, deviations, sum of squared deviations, sample variance \(s^2=\sum(x-\bar x)^2/(n-1)\), standard deviation, then a z-score \(z=(x-\bar x)/s\). Returns are in %.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Returns \(2,\ 4,\ 0,\ 3,\ 1\). The mean is 2.0, the deviations are \(0,\ 2,\ -2,\ 1,\ -1\), and the squared deviations add to 10. So \(s^2=10/4=2.5\) and \(s=\sqrt{2.5}=\) <span class="tl-blank" data-answer="1.5811" data-tol="0.001" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Returns \(-2,\ 1,\ 3,\ 0,\ 2,\ 2\). The mean is <span class="tl-blank" data-answer="1" data-tol="0.001" data-unit="%"></span>. The squared deviations add to <span class="tl-blank" data-answer="16" data-tol="0.01"></span>, so \(s^2=\) <span class="tl-blank" data-answer="3.2" data-tol="0.005"></span>, \(s=1.7889\), and the z-score of the worst day (\(-2\)) is <span class="tl-blank" data-answer="-1.677" data-tol="0.003"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Returns \(1,\ -3,\ 2,\ 0,\ 4,\ -1,\ 3,\ 2\). Mean: <span class="tl-blank" data-answer="1" data-tol="0.001" data-unit="%"></span>. Sum of squared deviations: <span class="tl-blank" data-answer="36" data-tol="0.01"></span>. Sample variance: <span class="tl-blank" data-answer="5.1429" data-tol="0.002"></span>. Standard deviation: <span class="tl-blank" data-answer="2.2678" data-tol="0.001" data-unit="%"></span>. The z-score of the \(-3\) day: <span class="tl-blank" data-answer="-1.764" data-tol="0.003"></span></p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -920,7 +938,8 @@
       <li data-verdict="good">The normal curve understates the tails. Keep z-scores as a ruler, but size and stress-test for moves far beyond 3σ.<div class="tl-drill-why">This is the lesson's own advice. The bell is a good common scale for "how unusual is this move", and a poor promise about how often extremes come. Plan for fat tails on purpose.</div></li>
       <li data-verdict="ok">Recompute σ over a window that includes the crash, and carry on with the normal model.<div class="tl-drill-why">A fresh σ is sensible, since volatility clearly jumped. But a bigger σ inside a normal curve still has thin tails. It fixes the scale, not the shape.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The Dow's 22.6% fall on 19 October 1987 is still its largest one-day percentage drop. Mandelbrot had shown in 1963 that price changes have far fatter tails than the normal curve allows, and after 1987 that point was impossible to ignore. The bell survived as the baseline for z-scores and value-at-risk; fat-tail corrections start from it. The 1% σ here is an assumption for the drill, not a measured figure.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The Dow's 22.6% fall on 19 October 1987 is still its largest one-day percentage drop. Mandelbrot had shown in 1963 that price changes have far fatter tails than the normal curve allows, and after 1987 that point was impossible to ignore. The bell survived as the baseline for z-scores and value-at-risk; fat-tail corrections start from it. The 1% σ here is an assumption for the drill, not a measured figure.</p>
+    <p class="tl-drill-sources">Sources: Report of the Presidential Task Force on Market Mechanisms (the Brady Report), January 1988 (the Dow fell 508 points, or 22.6%, on 19 October 1987); Benoit Mandelbrot, "The Variation of Certain Speculative Prices", <em>Journal of Business</em> 36(4), 1963.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -1193,7 +1212,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

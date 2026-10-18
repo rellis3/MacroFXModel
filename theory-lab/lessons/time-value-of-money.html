@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -553,6 +554,23 @@
     <button type="button" id="tvm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Grow three new sums: annual compounding \(FV = PV(1+r)^t\), continuous compounding \(FV = PV\,e^{rt}\), and the gap between them. Dollar answers to the cent, typed without commas.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(PV = \$2{,}000\), \(r = 4\%\), \(t = 3\). Annual: \(2000 \times 1.04^3 = 2000 \times 1.124864 = \$2{,}249.73\). Continuous: \(2000 \times e^{0.12} = 2000 \times 1.127497 = \$2{,}254.99\). The gap from compounding frequency alone is $<span class="tl-blank" data-answer="5.27" data-tol="0.02"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(PV = \$500\), \(r = 8\%\), \(t = 10\). \(1.08^{10} = 2.158925\) and \(e^{0.8} = 2.225541\). Annual FV: $<span class="tl-blank" data-answer="1079.46" data-tol="0.02"></span>. Continuous FV: $<span class="tl-blank" data-answer="1112.77" data-tol="0.02"></span>. Gap: $<span class="tl-blank" data-answer="33.31" data-tol="0.03"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(PV = \$5{,}000\), \(r = 3\%\), \(t = 7\). Find the annual FV $<span class="tl-blank" data-answer="6149.37" data-tol="0.03"></span>, the annual discount factor \(1/(1.03)^7\) <span class="tl-blank" data-answer="0.81309" data-tol="0.00005"></span>, the continuous FV $<span class="tl-blank" data-answer="6168.39" data-tol="0.03"></span>, and the gap $<span class="tl-blank" data-answer="19.02" data-tol="0.03"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -870,6 +888,7 @@
     </div>
     <p class="tl-fits-why"><strong>Why you'd care:</strong> every forward point, bond price and option formula you look at is a present value, and reading one as a forecast is a classic, costly mistake.</p>
   </nav>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../rate-matrix.html">Rate Differential Matrix</a> shows today's short-rate gap for every major pair; put one cell into this lesson's forward formula to see roughly how far the 3-month forward sits from spot.</div><!-- DESK:END -->
 
   <div class="tl-footer-nav">
     <a href="stationarity-acf-pacf.html">← Stationarity, ACF &amp; PACF</a>
@@ -959,7 +978,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

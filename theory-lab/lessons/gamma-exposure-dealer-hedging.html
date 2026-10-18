@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -631,6 +632,23 @@
     <button type="button" id="gex-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's two steps: at-the-money gamma \(\Gamma_{\text{ATM}} \approx 0.3989/(S\sigma\sqrt{T})\) with \(T\) in years (days ÷ 365), then one strike's dealer GEX, \((\text{Call OI} - \text{Put OI}) \times \Gamma \times 100 \times S^2 \times 0.01\). New spot, vol and expiry each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(S = 50\), \(\sigma = 30\%\), 10 days to expiry. \(T = 10/365 = 0.0274\), \(\sqrt{T} = 0.1655\), so \(\sigma\sqrt{T} = 0.30 \times 0.1655 = 0.04966\). The denominator is \(50 \times 0.04966 = 2.483\), and \(\Gamma_{\text{ATM}} = 0.3989/2.483 =\) <span class="tl-blank" data-answer="0.1607" data-tol="0.0003"></span> per $1 move.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(S = 200\), \(\sigma = 15\%\), 5 days to expiry, so \(T = 0.0137\) and \(\sqrt{T} = 0.1170\). Find \(\sigma\sqrt{T}\) <span class="tl-blank" data-answer="0.01756" data-tol="0.0001"></span> and \(\Gamma_{\text{ATM}}\) <span class="tl-blank" data-answer="0.1136" data-tol="0.0004"></span>. The at-the-money strike has net OI of +1,500 (calls minus puts). The factor \(100 \times 200^2 \times 0.01 = 40{,}000\), so its dealer GEX is <span class="tl-blank" data-answer="6.82" data-tol="0.03" data-unit="$M"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(S = 100\), \(\sigma = 25\%\), 2 days to expiry, and the at-the-money strike has net OI of −3,000. Find \(\sigma\sqrt{T}\) <span class="tl-blank" data-answer="0.0185" data-tol="0.0001"></span>, \(\Gamma_{\text{ATM}}\) <span class="tl-blank" data-answer="0.2156" data-tol="0.0005"></span> and the strike's dealer GEX <span class="tl-blank" data-answer="-6.47" data-tol="0.03" data-unit="$M"></span>. Does that strike damp moves or chase them?</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -779,6 +797,7 @@
     rulebook forcing a whole market's worth of same-sign hedging into one window.
   </p>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../oi-dashboard.html">OI Analytics</a> draws the strike ladder this lesson builds by hand: net dealer GEX per strike, split by expiry, with the GEX flip marked. Its own notes say the flip showed no volatility difference on EUR/USD, which matches the ledger entry above.</div><!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -857,7 +876,7 @@
       <li data-verdict="good">Cut the position before the close, because the product is short gamma by its own rule and that buying is known in advance.<div class="tl-drill-why">This is the lesson's sign logic applied to a rulebook. Same-sign hedging into one visible window is the amplifying case, and nothing about it is hidden. Getting out before the forced buying lands takes the loss you can see instead of the one you can't size.</div></li>
       <li data-verdict="ok">Keep it, but buy some VIX calls as a hedge.<div class="tl-drill-why">It caps part of the damage, which is better than doing nothing. But you are buying protection after the VIX has already jumped, and you still hold a product that can lose almost everything in one session.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The S&amp;P 500 fell 4.1% and the VIX closed at 37.32, up about 115% in a day, the biggest one-day percentage jump in its history. VIX futures jumped again after the stock market closed, which is when the products' rebalancing purchases were being made. XIV's indicative value fell by more than 90%, enough to trigger a clause letting Credit Suisse redeem the note, and the bank announced the next day that it would. SVXY also lost most of its value, and ProShares later cut its target to −0.5×.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The S&amp;P 500 fell 4.1% and the VIX closed at 37.32, up about 115% in a day, the biggest one-day percentage jump in its history. VIX futures jumped again after the stock market closed, which is when the products' rebalancing purchases were being made. XIV's indicative value fell by more than 90%, enough to trigger a clause letting Credit Suisse redeem the note, and the bank announced the next day that it would. SVXY also lost most of its value, and ProShares later cut its target to −0.5×, effective at the close on 27 February 2018.</p><p class="tl-drill-sources">Sources: <a href="https://www.bis.org/publ/qtrpdf/r_qt1803t.htm">BIS Quarterly Review, March 2018, “The equity market turbulence of 5 February: the role of exchange-traded volatility products”</a>; Credit Suisse media release, 6 Feb 2018 (XIV acceleration event); <a href="https://www.proshares.com/funds/svxy.html">ProShares SVXY fund page (objective change, 27 Feb 2018)</a>; <a href="https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv">Cboe VIX daily history</a> (17.31 on 2 Feb, 37.32 on 5 Feb 2018); <a href="https://fred.stlouisfed.org/series/SP500">S&amp;P 500 daily closes (FRED, SP500)</a> (−4.1% on 5 Feb 2018).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -1159,7 +1178,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

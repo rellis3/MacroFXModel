@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">PCA &amp; Factor Models — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">19</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, a live loadings example, and a 6-question self-test?<a href="pca-factors.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,108 @@
       <p class="sl-lede">A basket of currency pairs looks like several separate bets. Most days it's really one bet — "risk-on" or "risk-off" — wearing several costumes. Principal Component Analysis (PCA) is the tool that measures exactly how true that is: how many genuinely independent risks a basket actually contains, versus how many instruments it happens to be split across.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: a cloud of daily returns for two currency pairs with correlation 0.75, stretched along the diagonal. A long red arrow along the cloud is PC1, holding 87.5% of the variance; a short amber arrow across it is PC2, holding 12.5%. Right: for the lesson's three-pair basket, bars of each component's share of total variance: PC1 about 61%, PC2 about 31%, PC3 about 8%, from eigenvalues of about 1.82, 0.93 and 0.25 that sum to 3.">
+      <text class="tlp-text3" x="20" y="20" font-size="12">two pairs, correlation 0.75: one dot per day</text>
+      <line class="tlp-line" x1="40" y1="128" x2="270" y2="128"/>
+      <line class="tlp-line" x1="150" y1="34" x2="150" y2="222"/>
+      <circle class="tlp-blue" cx="153.8" cy="92.1" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="112.7" cy="129.7" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="139.6" cy="142.7" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="226.0" cy="66.8" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="148.3" cy="110.0" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="195.1" cy="95.0" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="173.5" cy="136.1" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="135.3" cy="150.6" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="96.7" cy="207.9" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="84.9" cy="183.1" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="143.1" cy="141.6" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="152.8" cy="161.3" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="146.8" cy="124.1" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="180.0" cy="127.9" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="134.0" cy="193.3" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="129.9" cy="201.2" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="93.2" cy="141.4" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="163.1" cy="126.4" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="168.4" cy="100.3" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="191.8" cy="102.7" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="126.3" cy="161.8" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="110.5" cy="158.8" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="118.6" cy="123.3" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="75.2" cy="213.0" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="111.9" cy="212.0" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="226.1" cy="134.7" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="138.7" cy="150.4" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="216.2" cy="130.9" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="192.9" cy="115.2" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="143.8" cy="150.4" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="175.6" cy="138.9" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="146.8" cy="121.0" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="223.6" cy="136.4" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="211.0" cy="57.2" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="130.7" cy="134.4" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="131.4" cy="98.4" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="158.4" cy="127.4" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="140.9" cy="140.1" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="142.9" cy="156.6" r="3" opacity=".55"/>
+      <circle class="tlp-blue" cx="232.3" cy="116.8" r="3" opacity=".55"/>
+      <line class="tlp-line red thick" x1="75.2" y1="202.8" x2="224.8" y2="53.2"/>
+      <polygon class="tlp-red" points="230,48 217,54 224,61"/>
+      <line class="tlp-line amber thick" x1="121.7" y1="99.7" x2="178.3" y2="156.3"/>
+      <polygon class="tlp-amber" points="183,161 171,156 178,149"/>
+      <text class="tlp-red" x="238" y="50" font-size="14" font-weight="700">PC1 87.5%</text>
+      <text class="tlp-amber" x="190" y="176" font-size="14" font-weight="700">PC2 12.5%</text>
+      <text class="tlp-text3" x="330" y="20" font-size="12">three pairs: share of total variance</text>
+      <line class="tlp-line" x1="340" y1="200" x2="590" y2="200"/>
+      <rect class="tlp-box red" x="360" y="52.5" width="54" height="147.5" rx="3"/>
+      <rect class="tlp-box amber" x="444" y="124.7" width="54" height="75.3" rx="3"/>
+      <rect class="tlp-box purple" x="528" y="179.8" width="54" height="20.2" rx="3"/>
+      <text class="tlp-red" x="387" y="44" text-anchor="middle" font-size="15" font-weight="700">61%</text>
+      <text class="tlp-amber" x="471" y="117" text-anchor="middle" font-size="15" font-weight="700">31%</text>
+      <text class="tlp-purple" x="555" y="172" text-anchor="middle" font-size="15" font-weight="700">8%</text>
+      <text class="tlp-text3" x="387" y="216" text-anchor="middle" font-size="12">PC1</text>
+      <text class="tlp-text3" x="471" y="216" text-anchor="middle" font-size="12">PC2</text>
+      <text class="tlp-text3" x="555" y="216" text-anchor="middle" font-size="12">PC3</text>
+      <text class="tlp-text2" x="465" y="238" text-anchor="middle" font-size="12">λ ≈ 1.82, 0.93, 0.25 (sum 3)</text>
+    </svg>
+    <figcaption>PCA finds the direction the data is most spread along, then the next one at right angles, and so on. Each direction's eigenvalue is its share of the total. When one share dominates, your basket of pairs is mostly one bet.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I've got positions in six currency pairs. That's six separate views, so I'm diversified. Right?</p>
+      <p data-who="Quant">Look at a day when the dollar moves. Euro up, sterling up, Aussie up, yen and franc pairs down. Six pairs all telling you the same thing. You may hold one big dollar bet in six costumes.</p>
+      <p data-who="Trader">How do I measure that, rather than eyeball it?</p>
+      <p data-who="Quant">Principal component analysis. Imagine filming a swarm of fireflies. From most angles it's a tangle. From one angle, almost all the motion lines up. PCA finds that angle in your returns.</p>
+      <p data-who="Trader">What does it actually compute?</p>
+      <p data-who="Quant">Start with the grid of correlations between every pair. PCA finds the special directions in that grid, called eigenvectors. Each one comes with a number, its eigenvalue, which says how much of the movement lies along it.</p>
+      <p data-who="Trader">And the first one is the big one.</p>
+      <p data-who="Quant">Yes. The first principal component is the direction with the most variance. The second is the best direction at right angles to it, and so on. Because they're at right angles, they're uncorrelated by construction.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Take euro-dollar, sterling-dollar and Aussie-yen. Euro and sterling are correlated at point seven five. Aussie-yen only about point two with either. The eigenvalues come out around one point eight two, point nine three and a quarter. They add to three. So the first component holds about sixty-one percent of everything that moves.</p>
+      <p data-who="Trader">And which pairs are in it?</p>
+      <p data-who="Quant">That's the loadings. Euro and sterling load heavily. Aussie-yen loads in the same direction, but less. It's partly doing its own thing.</p>
+      <p data-who="Trader">Does that structure stay put?</p>
+      <p data-who="Quant">No, and that's the danger. In March 2020's dash for cash, everyone needed dollars at once. They sold whatever was liquid, even Treasuries and gold, and the dollar rose against almost every currency. A basket with several stories collapsed onto one factor.</p>
+      <p data-who="Trader">Right when I needed the diversification.</p>
+      <p data-who="Quant">Exactly. A PCA fitted on calm months told you that you had several bets. In the crisis you had one. Correlations go towards one in a crash.</p>
+      <p data-who="Trader">So it's a forecast of nothing?</p>
+      <p data-who="Quant">It's a description of the past window. Great for seeing your real concentration. Not a promise about tomorrow, and not a trading signal on its own.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Count your bets by factors, not by positions, and assume a crisis will merge them into one.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">One basket, one bet in disguise</h2>
       <p class="sl-p">Open any multi-pair FX dashboard on a day the market moves and a familiar pattern shows up: EURUSD up, GBPUSD up, AUDUSD up, USDJPY down, USDCHF down — six or seven "different" pairs that all just told you the same thing, dollar weakness or strength, at the same time.</p>
@@ -34,7 +136,7 @@
       <p class="sl-p">The opposite can also be true: most days the basket looks coordinated, and then one pair — with its own domestic story, a central-bank surprise, a commodity shock — decouples and moves on its own reasons. Knowing which situation you're actually in, quantitatively rather than by eyeballing a heatmap, is the entire point of this lesson.</p>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Finding the camera angle that shows the most motion</h2>
       <p class="sl-sub">The plain-English version, before any notation.</p>
@@ -46,7 +148,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Step 1 — how two series really move together</h2>
       <p class="sl-sub">Covariance is a running check: was each series above or below its own normal, on the same day?</p>
@@ -86,7 +188,7 @@
       <p class="sl-p">For a basket of N instruments, computing this pairwise number for every combination and arranging the results in an N×N grid gives the <strong>covariance matrix Σ</strong> — its diagonal holds each instrument's own variance, its off-diagonal entries the pairwise covariances.<!-- DESK:START --> This is the exact same object this project's own correlation heatmap already renders for you.<!-- DESK:END --> PCA is the next step after you have that grid, not a replacement for it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Step 2 — the one piece of linear algebra you need</h2>
       <p class="sl-sub">A matrix like Σ is a machine: feed it a direction, it stretches, squishes, or rotates that direction. Almost every direction comes out pointing somewhere new.</p>
@@ -122,7 +224,7 @@
       <div class="sl-quote">That perpendicularity is what makes eigenvectors useful as "factors": directions at 90° to each other can't share variance by definition. Principal components are uncorrelated because of the geometry, not because you found something in the data.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Watch the cloud rotate into its own axes</h2>
       <p class="sl-sub">Each blue dot is one day's return pair for two instruments. Drag the slider to change how tightly they co-move.</p>
@@ -151,7 +253,7 @@
     </section>
 
     <!-- WB:pca_factors-deck:START -->
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Three FX pairs, one shared driver: PCA drawn step by step</h2>
       <!-- WB:pca_factors:START -->
@@ -162,7 +264,7 @@
     </section>
     <!-- WB:pca_factors-deck:END -->
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Step 3 &amp; 4 — ranking components, then scoring them</h2>
       <p class="sl-p">Sort the N eigenvectors by their eigenvalue, largest to smallest: λ₁ ≥ λ₂ ≥ … ≥ λ_N. The eigenvector with the largest eigenvalue is <strong>PC1</strong> — the single direction along which the basket's daily returns vary the most. PC2 is next-largest, perpendicular to PC1, capturing most of whatever PC1 didn't. And so on, down to PC_N, which by the time you get there is usually mopping up scraps of noise.</p>
@@ -171,7 +273,7 @@
       <div class="sl-quote">If EVR₁ = 0.72, that means 72% of the total variance across every instrument in the basket, every day, is captured by a single direction — PC1. This one number is the headline output of a PCA-on-a-basket exercise: it directly answers "how much of what moves in this basket is really one thing."</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Try it — eigenvalues of a 2×2 covariance matrix, live</h2>
       <p class="sl-sub">For two instruments X and Y, Σ = [[a, b], [b, d]] where a = Var(X), d = Var(Y), b = Cov(X,Y). The eigenvalues have a clean closed form — no matrix library needed.</p>
@@ -194,7 +296,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Worked example — three FX pairs, one shared driver and one holdout</h2>
       <p class="sl-p">EURUSD, GBPUSD, and AUDJPY, with a correlation matrix showing EURUSD/GBPUSD strongly linked (0.75) and AUDJPY only weakly tied to either (0.20, 0.15). Running PCA on this gives eigenvalues summing to 3 (the trace of a 3×3 correlation matrix): λ₁ ≈ 1.82, λ₂ ≈ 0.93, λ₃ ≈ 0.25, so EVR₁ ≈ 61%.</p>
@@ -211,7 +313,7 @@
       <div class="sl-quote">That contrast is the whole diagnostic in miniature: a high loading on PC1 for every instrument, with a high EVR₁, says "this basket is really one trade in several costumes." A pair sitting near-zero on PC1 and picking up its own later component says "this one is actually doing something different."</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <p class="sl-p">Running PCA across the G10 majors very reliably produces a PC1 readable as a broad "dollar factor" or "risk-sentiment factor" — most major pairs load onto it with the same sign relative to USD strength or weakness. On interest-rate curves, an even older, extremely well-documented result: the first three principal components of a yield curve's covariance matrix map almost exactly onto <strong>level</strong> (parallel shifts), <strong>slope</strong> (steepening/flattening), and <strong>curvature</strong> (butterfly) — stable enough that many desks quote curve risk directly in those units rather than tenor-by-tenor exposure.</p>
@@ -232,7 +334,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">What's actually built in this repo, right now</h2>
       <p class="sl-p">This project already computes the <strong>eigenvalues</strong> of a correlation matrix — via a cyclic Jacobi rotation — to build an "effective number of bets" metric used in this project's own diversification research. That part is real and already shipped.</p>
@@ -244,7 +346,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where PCA on a market basket goes wrong</h2>
       <div class="sl-icard-grid">
@@ -256,7 +358,7 @@
       <div class="sl-quote">And the broadest caveat: PCA is not causal. A high loading tells you an instrument co-moves strongly with the dominant statistical direction — it does not tell you why, and any trading rule built on top still needs its own honest out-of-sample validation.</div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">March 2020: correlations went to one</h2>
       <div class="sl-callout amber">
@@ -278,7 +380,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <!-- DESK:START --><h2 class="sl-h2">What this desk found when it tested the claim</h2><!-- DESK:END -->
       <p class="sl-sub">The tempting claim: strip out the dominant factors with PCA, and what's left is a cleaner, diversified bet.</p>
@@ -297,7 +399,7 @@
       <div class="sl-quote"><strong>Where the textbook breaks:</strong> PCA summarises one covariance matrix as if the structure were constant. A calm-window PCA described several factors that vanished in days, and since assets fall together more tightly than they rise together, it overstated how many independent bets you hold in the tail.</div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -348,7 +450,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="17">
+    <section class="sl-slide sl-vark" data-slide="18">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2020-03-16">
+    <div class="tl-drill-label">Scenario drill · 16 March 2020</div>
+    <h3>Six currency pairs, and they are all moving as one</h3>
+    <p>Last night the Federal Reserve cut rates to zero and widened its dollar swap lines. Firms and funds are scrambling for dollars and selling whatever is liquid, even Treasuries and gold. The dollar is rising against almost every currency at once. You hold six FX positions, sized as six separate bets because a PCA fitted on the calm months before showed several distinct factors. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Keep the sizes. The PCA says you hold several independent bets.<div class="tl-drill-why">That PCA describes a market that has just disappeared. It was fitted on calm months, and a calm-period spectrum overstates how many independent bets you hold in the tail, which is now.</div></li>
+      <li data-verdict="bad">Add two more pairs to spread the risk further.<div class="tl-drill-why">In a one-factor market the new pairs load on the same dollar factor. You add size to the one bet you already have too much of.</div></li>
+      <li data-verdict="good">Re-run the PCA on the last few weeks, treat the book as one dollar bet, and cut the gross size to what you would hold in a single position.<div class="tl-drill-why">This is what the lesson's warning means in practice. Count bets by factors, not by positions. With one factor dominating, the honest size is the size of one trade.</div></li>
+      <li data-verdict="ok">Hold for now. The Fed acted last night, so the dollar squeeze should ease.<div class="tl-drill-why">It did ease eventually, but you cannot know when. Holding a book sized for several bets while it behaves as one is a bet on the timing of policy, not risk management.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> That day the VIX closed at a record 82.69. The Fed widened its dollar swap lines again on 19 March and, on 23 March, announced open-ended asset purchases and new credit facilities. The S&amp;P 500 hit its low that day, about 34% below its 19 February peak. The dollar squeeze eased after that, and with it the one-factor market.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200315a.htm">Federal Reserve FOMC statement, 15 Mar 2020</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200319b.htm">Federal Reserve press release on dollar swap lines with nine more central banks, 19 Mar 2020</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200323b.htm">Federal Reserve press release on extensive new measures, 23 Mar 2020</a>; Cboe VIX daily history (record close on 16 Mar 2020); S&amp;P Dow Jones Indices daily closes for the S&amp;P 500 (record on 19 Feb, low on 23 Mar 2020).</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="19">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -524,5 +646,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FX Options Quoting — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Options &amp; Derivatives / FX Options Quoting</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Options &amp; Derivatives · FX options</div>
+  <h1 class="tl-title">FX Options Quoting: Delta, Risk Reversals &amp; Butterflies</h1>
+  <p class="tl-dek">Why an FX options screen shows volatilities instead of prices and deltas instead of strikes, how three numbers per expiry rebuild a whole smile, and how to read a risk reversal as the market paying up for one side.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT · how the market quotes FX options, not a trading signal</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="black-scholes.html">Black-Scholes-Merton</a>, <a href="interest-rate-parity.html">Interest Rate Parity</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="fx-options-quoting-rr-bf-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>FX options trade in <strong>implied volatility</strong>, not money. Both sides agree a vol, then the Garman–Kohlhagen formula (Black-Scholes with two interest rates) turns it into a premium. A vol quote survives a moving spot rate; a price does not.</li>
+      <li>Strikes are named by <strong>delta</strong>. A "25-delta call" is the strike whose delta is 0.25. At the money usually means the <strong>delta-neutral straddle</strong> (DNS) strike, where a call and a put have equal and opposite deltas, not spot or the forward.</li>
+      <li>Each expiry is quoted as three numbers: the ATM vol (level), the 25-delta <strong>risk reversal</strong> (call vol minus put vol: the tilt) and the 25-delta <strong>butterfly</strong> (how far the wings sit above ATM: the curvature). Then \(\sigma_{25C} \approx \sigma_{ATM} + \sigma_{BF} + \tfrac12\sigma_{RR}\) and \(\sigma_{25P} \approx \sigma_{ATM} + \sigma_{BF} - \tfrac12\sigma_{RR}\). The same holds at 10 delta.</li>
+      <li>That formula is exact only for the smile's own strangle. The quoted butterfly is a "market strangle" priced at one vol, and the two drift apart when the risk reversal is large: in a published USD/JPY example (January 2009, RR −5.3) the quoted fly was 0.184 vol but the smile's own was 0.419.</li>
+      <li>Delta itself depends on the pair: spot or forward delta, and premium-included ("premium-adjusted") when the premium is paid in the base currency, as in USD/JPY and EUR/JPY but not EUR/USD or GBP/USD. Use the wrong one and every strike lands in the wrong place.</li>
+      <li><strong>Real-world episode:</strong> before the June 2016 Brexit vote, the GBP/USD one-month 25-delta risk reversal went from about −1.3 on 25 May to −5.4 on 26 May, the day the one-month expiry first covered the vote, and to −7.9 by 10 June. On 24 June sterling fell from 1.4877 to 1.3622 against the dollar, about 8.4%.</li>
+    </ul>
+  </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three quotes rebuild a smile. A flat dashed line at the ATM vol of 10%. A second dashed line at ATM plus butterfly, 10.5%, which lifts both wings. A risk reversal of minus 2 then tilts the wings: the 25-delta put sits 1 vol above that line at 11.5% and the 25-delta call 1 vol below it at 9.5%. A curved smile passes through all three points, higher on the put side.">
+      <line class="tlp-line" x1="70" y1="20" x2="70" y2="200"/>
+      <line class="tlp-line" x1="70" y1="200" x2="560" y2="200"/>
+      <line class="tlp-line blue dash" x1="80" y1="131.4" x2="555" y2="131.4"/>
+      <line class="tlp-line amber dash" x1="80" y1="108.6" x2="555" y2="108.6"/>
+      <polyline class="tlp-line purple thick" points="103.8,35.5 117.0,43.7 130.2,51.6 143.4,59.2 156.6,66.5 169.8,73.5 183.0,80.2 196.2,86.7 209.4,92.8 222.6,98.7 235.8,104.2 249.0,109.5 262.2,114.5 275.4,119.1 288.6,123.5 301.8,127.6 315.0,131.4 328.2,134.9 341.4,138.2 354.6,141.1 367.8,143.7 381.0,146.1 394.2,148.1 407.4,149.9 420.6,151.3 433.8,152.5 447.0,153.4 460.2,154.0 473.4,154.2 486.6,154.2 499.8,154.0 513.0,153.4 526.2,152.5"/>
+      <line class="tlp-line red" x1="150" y1="108.6" x2="150" y2="66"/>
+      <line class="tlp-line green" x1="480" y1="108.6" x2="480" y2="151"/>
+      <circle class="tlp-red" cx="150" cy="62.9" r="6.5"/>
+      <circle class="tlp-blue" cx="315" cy="131.4" r="6"/>
+      <circle class="tlp-green" cx="480" cy="154.3" r="6.5"/>
+      <text class="tlp-red" x="166" y="52" font-size="14" font-weight="700">25Δ put · 11.5%</text>
+      <text class="tlp-green" x="470" y="182" text-anchor="end" font-size="14" font-weight="700">25Δ call · 9.5%</text>
+      <text class="tlp-blue" x="80" y="148" font-size="13" font-weight="700">ATM 10.0%</text>
+      <text class="tlp-amber" x="552" y="102" text-anchor="end" font-size="13" font-weight="700">ATM + BF = 10.5%</text>
+      <text class="tlp-text2" x="142" y="92" text-anchor="end" font-size="12">+1.0</text>
+      <text class="tlp-text2" x="490" y="174" font-size="12">−1.0</text>
+      <text class="tlp-text3" x="150" y="218" text-anchor="middle" font-size="12">25Δ put</text>
+      <text class="tlp-text3" x="315" y="218" text-anchor="middle" font-size="12">ATM</text>
+      <text class="tlp-text3" x="480" y="218" text-anchor="middle" font-size="12">25Δ call</text>
+      <text class="tlp-text3" x="78" y="16" font-size="12">implied vol ↑</text>
+      <text class="tlp-text2" x="315" y="234" text-anchor="middle" font-size="12">RR = −2: split in half, put side +1, call side −1</text>
+    </svg>
+    <figcaption>ATM 10%, butterfly 0.5, risk reversal −2. The butterfly lifts both wings by the same amount; the risk reversal tilts them, half up on one side and half down on the other. Three quotes, three anchor points, one smile.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I asked for a price on a one-month euro dollar option and the broker said twenty-one point six. That isn't a price.</p>
+      <p data-who="Quant">It is, just not in money. FX options are quoted in implied volatility. Both sides agree the vol, then plug it into the currency version of Black-Scholes to get the premium.</p>
+      <p data-who="Trader">Why not just quote the premium?</p>
+      <p data-who="Quant">Because the premium changes every time spot ticks, and the vol barely does. A vol quote stays good while the market moves.</p>
+      <p data-who="Trader">He didn't give me a strike either. He said twenty-five delta.</p>
+      <p data-who="Quant">Same idea. Delta is a strike measured in risk. A twenty-five delta call is out of the money, far enough that it moves about a quarter as much as the currency. Name the strike by its delta and the name still means the same thing tomorrow.</p>
+      <p data-who="Trader">So what is actually on the screen?</p>
+      <p data-who="Quant">Three numbers per expiry. The at-the-money vol is the level. The risk reversal is the twenty-five delta call vol minus the put vol: the tilt. The butterfly is how far the two wings sit above the middle: the curvature.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">At the money ten, risk reversal minus two, butterfly a half. Start at ten. Add the half to both wings, so ten and a half. Then split the risk reversal in two. The put gets one more, the call one less. Put eleven and a half, call nine and a half.</p>
+      <p data-who="Trader">So minus two means the puts are dearer.</p>
+      <p data-who="Quant">Right. The market is paying up for one side. A deep negative risk reversal says people want protection against the base currency falling, and will pay extra for it. It is the price of insurance, not a forecast.</p>
+      <p data-who="Trader">Is that little formula exact?</p>
+      <p data-who="Quant">Only for the smile's own strangle. The butterfly the broker quotes is defined through a strangle priced at a single vol. When the risk reversal is big, the two come apart. In one published dollar yen example from January two thousand and nine, the quoted butterfly was about point one eight, but the smile's own was about point four two.</p>
+      <p data-who="Trader">And delta isn't even one thing, is it?</p>
+      <p data-who="Quant">No. Dollar yen deltas include the premium, because the premium is paid in dollars, the base currency. Euro dollar deltas don't. Read the wrong convention and every strike lands in the wrong place.</p>
+      <p data-who="Trader">Has a risk reversal ever told a real story?</p>
+      <p data-who="Quant">The Brexit vote in June twenty sixteen. The one-month sterling risk reversal was about minus one point three on the twenty-fifth of May. The next day the one-month expiry first stretched past the vote, and it jumped to about minus five point four. By the tenth of June it was near minus eight. After the result, sterling fell more than eight percent in a day.</p>
+      <p data-who="Trader">The one-line version?</p>
+      <p data-who="Quant">Three numbers give you a smile: level, tilt and curvature. Check which delta and which at-the-money before you use them, and read the risk reversal as the price of fear, not a forecast.</p>
+    </div>
+  </section>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Open an FX options broker screen and you will not find a single premium. You will find rows of tenors (overnight,
+    one week, one month, three months, a year) and, for each, a handful of numbers that look like percentages: an
+    at-the-money volatility, a 25-delta risk reversal, a 25-delta butterfly, often the same pair at 10 delta. A
+    client asking for "a one-month 25-delta EUR put" is also not naming a strike. Every one of those numbers is a
+    coordinate in a quoting system that the foreign-exchange options market built so that thousands of quotes can
+    stay valid while spot moves underneath them.
+  </p>
+  <p>
+    If you trade spot or forwards, this screen is still useful to you. The risk reversal is the cleanest public
+    measure of which way the market is scared: how much more it pays for protection against a fall than for upside.
+    The ATM term structure shows when the market expects trouble, tenor by tenor. Strategists quote both every day.
+    But reading them correctly needs the conventions: which delta, which "at the money", which currency the premium
+    is paid in, and what the butterfly quote actually means. Get those wrong and a perfectly good number gives you a
+    wrong strike or a wrong vol.
+  </p>
+  <p>
+    This lesson builds the quoting system from the ground up: why vol, why delta, how ATM is defined, how risk
+    reversals and butterflies rebuild a smile, where the standard shortcut is only approximate, which conventions
+    apply to which pairs, and how to read a risk reversal and a term structure. It ends with a live calculator that
+    turns three quotes into strikes under Garman–Kohlhagen, and the Brexit vote of 2016, when the sterling risk
+    reversal told the story weeks in advance.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Quoting the recipe, not the cake</h3>
+    <p>
+      Bond traders quote yields, not prices, because a yield means the same thing for every bond and changes slowly,
+      while prices jump around and depend on each bond's details. FX options traders do the same thing with
+      volatility. An option's premium depends on spot, two interest rates, the strike and time, all of which move.
+      Implied volatility is the one ingredient that is genuinely up for negotiation. So they agree the vol and let a
+      standard formula bake the premium when the deal is done.
+    </p>
+    <p>
+      Delta does the same job for strikes. "The 1.3677 strike" means something different every time spot moves.
+      "The 25-delta call" always means "the out-of-the-money call whose value moves about a quarter as much as the
+      currency", wherever spot is. So the market quotes a grid of vols against deltas, and anyone can turn it back
+      into strikes and premiums with the same formula.
+    </p>
+    <p style="margin-bottom:0">
+      And the three headline numbers? Think of the smile as a cheap rope held at three points. ATM sets the height
+      of the middle. The butterfly lifts both ends together. The risk reversal tips it, one end up, the other down.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">How three quotes become the two wing vols, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \sigma_{25P} = \color{#fbbf24}{\sigma_{ATM}} \]</div>
+      <p>Start at the middle of the smile. With no skew and no curvature, every strike would trade at the ATM vol.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \sigma_{25P} = \sigma_{ATM} + \color{#fbbf24}{\sigma_{BF}} \]</div>
+      <p>The butterfly lifts both wings by the same amount. It is the average of the two wing vols minus the ATM vol.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \sigma_{25P} = \sigma_{ATM} + \sigma_{BF} \color{#fbbf24}{-\, \tfrac12\,\sigma_{RR}} \]</div>
+      <p>The risk reversal is call vol minus put vol. Split it in half: the put side takes minus half of it, the call side plus half. With \(\sigma_{RR} = -2\), the put gains a full vol.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\sigma_{25C,\,25P} = \sigma_{ATM} + \sigma_{BF} \pm \tfrac12\,\sigma_{RR}} \]</div>
+      <p>Both wings at once. Check it: their difference is \(\sigma_{RR}\), and their average minus ATM is \(\sigma_{BF}\). At ATM 10, BF 0.5, RR −2 this gives 9.5% for the call and 11.5% for the put.</p>
+    </div>
+  </div>
+
+  <p>
+    <strong>Step 1: the premium is a formula of the vol.</strong> A European FX option gives the right to buy (call)
+    or sell (put) one unit of the <em>base</em> currency (the first in the pair, "foreign") for \(K\) units of the
+    <em>terms</em> currency (the second, "domestic") at expiry. Garman and Kohlhagen (1983) showed it is priced
+    exactly like Black-Scholes on a stock that pays a continuous dividend equal to the foreign interest rate:
+  </p>
+  <div class="tl-math">\[ v = \phi\left[S\,e^{-r_f\tau}N(\phi d_+) - K\,e^{-r_d\tau}N(\phi d_-)\right],\qquad d_\pm = \frac{\ln(F/K) \pm \tfrac12\sigma^2\tau}{\sigma\sqrt{\tau}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>v</code><span>premium, in terms currency per 1 unit of base currency</span></div>
+    <div class="tl-eq-chip c2"><code>φ</code><span>+1 for a call on the base currency, −1 for a put</span></div>
+    <div class="tl-eq-chip c3"><code>S, F</code><span>spot, and the forward F = S·e^((r_d − r_f)τ)</span></div>
+    <div class="tl-eq-chip c4"><code>r_d, r_f</code><span>terms (domestic) and base (foreign) interest rates</span></div>
+    <div class="tl-eq-chip c1"><code>σ, τ</code><span>implied vol, and time to expiry in years</span></div>
+  </div>
+  <p>
+    Every input but \(\sigma\) is observable: spot is on the screen, the two deposit rates are on another screen,
+    the strike and expiry are in the contract. The only thing left to negotiate is \(\sigma\), so that is what gets
+    quoted. The forward \(F = S e^{(r_d-r_f)\tau}\) is covered interest parity, the subject of the
+    <a href="interest-rate-parity.html">Interest Rate Parity</a> lesson: the high-yielding currency trades at a
+    forward discount, and the option formula inherits that through \(F\).
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>An option's price is like a cake made from five ingredients. Four of them (the exchange rate, two interest rates and the time left) everyone can see on a screen. Only one, how jumpy people think the exchange rate will be, is a matter of opinion. So traders argue about that one ingredient and let the recipe make the cake.</p>
+  </div>
+
+  <p>
+    <strong>Step 2: delta names the strike.</strong> Delta is how much the option's value moves per unit move in the
+    exchange rate, in units of the base-currency notional. FX uses two versions. <em>Spot delta</em> is the hedge in
+    the spot market; <em>forward delta</em> is the hedge in the forward market:
+  </p>
+  <div class="tl-math">\[ \Delta_S = \phi\,e^{-r_f\tau}N(\phi d_+), \qquad \Delta_F = \phi\,N(\phi d_+) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Δ_S</code><span>spot delta: base-currency units to trade in spot per unit notional</span></div>
+    <div class="tl-eq-chip c2"><code>Δ_F</code><span>forward delta: the same hedge done in the forward</span></div>
+    <div class="tl-eq-chip c3"><code>e^(−r_f τ)</code><span>discounts the base currency you would receive at expiry</span></div>
+  </div>
+  <p>
+    Because \(N\) is invertible, a delta and a vol together pin down exactly one strike. Solve the spot-delta
+    expression for \(d_+\), then for \(K\):
+  </p>
+  <div class="tl-math">\[ K = F\exp\!\left(-\phi\,N^{-1}\!\left(\phi\,e^{r_f\tau}\Delta_S\right)\sigma\sqrt{\tau} + \tfrac12\sigma^2\tau\right) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>N⁻¹</code><span>inverse of the standard normal distribution function</span></div>
+    <div class="tl-eq-chip c2"><code>φ e^(r_f τ) Δ_S</code><span>converts the quoted spot delta back into N(φd₊)</span></div>
+    <div class="tl-eq-chip c4"><code>K</code><span>the strike that has this delta at this vol</span></div>
+  </div>
+  <p>
+    For a forward delta drop the \(e^{r_f\tau}\). Notice that the vol appears in the strike formula. A "25-delta"
+    strike at 22% vol is further from the forward than a 25-delta strike at 10%, because a jumpier currency needs a
+    strike further away before the option moves only a quarter as much. That is why you cannot convert deltas to
+    strikes until you know the vol at that delta, and why the smile is quoted in delta space in the first place.
+  </p>
+  <p>
+    Delta also carries the sign of the side: a 25-delta call has \(\Delta = +0.25\), a 25-delta put has
+    \(\Delta = -0.25\). With forward deltas, a call and a put at the same strike always differ by exactly 1, so a
+    25-delta put is the same strike as a 75-delta call. That symmetry is why smile tables are often drawn on a
+    forward-delta axis.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of saying "the house at number 37", FX traders say "the house a quarter of the way to the edge of town". If the town grows or shrinks overnight, the second description still points to the same kind of house. A 25-delta option is always the one a quarter of the way out, however far that is today.</p>
+  </div>
+
+  <p>
+    <strong>Step 3: what "at the money" means.</strong> Spot? The forward? In FX, for short-dated options, it is
+    usually neither. The default is the <strong>delta-neutral straddle</strong> (DNS): the strike at which a call and
+    a put have equal and opposite deltas, so a straddle (long both) has zero delta and is a pure bet on volatility.
+    Setting \(N(d_+) = \tfrac12\) gives \(d_+ = 0\), so:
+  </p>
+  <div class="tl-math">\[ K_{ATM}^{DNS} = F\,e^{\frac12\sigma_{ATM}^2\tau} \qquad\text{(regular delta)},\qquad K_{ATM}^{DNS} = F\,e^{-\frac12\sigma_{ATM}^2\tau}\qquad\text{(premium-adjusted delta)} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>K_ATM</code><span>the ATM strike under the delta-neutral straddle convention</span></div>
+    <div class="tl-eq-chip c2"><code>e^(±σ²τ/2)</code><span>a small shift off the forward, a few pips at one month</span></div>
+    <div class="tl-eq-chip c3"><code>σ_ATM</code><span>the quoted ATM vol, used to find its own strike</span></div>
+  </div>
+  <p>
+    The shift is tiny at short tenors (at one month and 21.6% vol it moves the EUR/USD ATM strike about 26 pips
+    above a forward of 1.3070) but grows with \(\sigma^2\tau\). Some markets quote ATM at the forward instead
+    (\(K = F\), "ATMF"), which Reiswich and Wystup describe as very common for long maturities and for pairs with a
+    large interest-rate differential, such as many emerging-market pairs.
+  </p>
+
+  <p>
+    <strong>Step 4: the risk reversal and the butterfly.</strong> Fix an expiry. Let \(\sigma_{25C}\) be the vol of
+    the 25-delta call and \(\sigma_{25P}\) the vol of the 25-delta put (delta −0.25). The two non-ATM quotes are:
+  </p>
+  <div class="tl-math">\[ \sigma_{RR} = \sigma_{25C} - \sigma_{25P}, \qquad \sigma_{BF} = \frac{\sigma_{25C} + \sigma_{25P}}{2} - \sigma_{ATM} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ_RR</code><span>risk reversal: call vol minus put vol, the smile's tilt (skew)</span></div>
+    <div class="tl-eq-chip c2"><code>σ_BF</code><span>butterfly (strangle): average wing vol over ATM, the curvature</span></div>
+    <div class="tl-eq-chip c3"><code>σ_25C, σ_25P</code><span>vols of the 25-delta call and the −25-delta put</span></div>
+  </div>
+  <p>
+    Two equations, two unknowns. Add and subtract them and the wing vols fall straight out:
+  </p>
+  <div class="tl-math">\[ \sigma_{25C} = \sigma_{ATM} + \sigma_{BF} + \tfrac12\sigma_{RR}, \qquad \sigma_{25P} = \sigma_{ATM} + \sigma_{BF} - \tfrac12\sigma_{RR} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ_ATM</code><span>the level of the smile</span></div>
+    <div class="tl-eq-chip c2"><code>+ σ_BF</code><span>lifts both wings equally</span></div>
+    <div class="tl-eq-chip c3"><code>± ½σ_RR</code><span>tilts them: call side up by half, put side down by half (or the reverse)</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">σ_ATM</div>
+      <div class="tl-fp-name">The level</div>
+      <div class="tl-fp-desc">How much movement the market expects overall, at the delta-neutral strike</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">σ_RR</div>
+      <div class="tl-fp-name">The tilt</div>
+      <div class="tl-fp-desc">Which side the market pays up for. Negative: base-currency puts are dearer</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">σ_BF</div>
+      <div class="tl-fp-name">The curvature</div>
+      <div class="tl-fp-desc">How much extra both tails cost over the middle: the price of big moves either way</div>
+    </div>
+  </div>
+
+  <p>
+    The same structure repeats at 10 delta: \(\sigma_{10C} = \sigma_{ATM} + \sigma_{10BF} + \tfrac12\sigma_{10RR}\)
+    and \(\sigma_{10P} = \sigma_{ATM} + \sigma_{10BF} - \tfrac12\sigma_{10RR}\). The 10-delta quotes describe the
+    far wings, where crash protection lives, and they are quoted separately because the shape near the middle does
+    not tell you the shape far out. Five quotes per expiry (ATM, two RRs, two flies) give five anchor points.
+  </p>
+  <p>
+    <strong>Sign convention.</strong> A positive risk reversal means calls on the base currency trade at a higher vol
+    than puts. Desks say a risk reversal is "in favour of" a side: "GBP/USD one-month 25-delta at 7.9 GBP puts" is
+    a risk reversal of −7.9. In USD/JPY a negative number means yen calls (dollar puts) are bid.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(S, F\)</td><td>Spot rate and forward rate, in terms currency per unit of base currency (e.g. USD per EUR in EUR/USD).</td></tr>
+      <tr><td>\(K\)</td><td>Strike, in the same units.</td></tr>
+      <tr><td>\(r_d, r_f\)</td><td>Continuously compounded interest rates of the terms (domestic) and base (foreign) currencies.</td></tr>
+      <tr><td>\(\tau\)</td><td>Time to expiry in years (this lesson uses days ÷ 365).</td></tr>
+      <tr><td>\(\sigma\)</td><td>Implied volatility, the number that is quoted.</td></tr>
+      <tr><td>\(\phi\)</td><td>+1 for a call on the base currency, −1 for a put.</td></tr>
+      <tr><td>\(N, N^{-1}\)</td><td>Standard normal distribution function and its inverse.</td></tr>
+      <tr><td>\(\Delta_S, \Delta_F\)</td><td>Spot delta and forward delta.</td></tr>
+      <tr><td>\(\Delta_{S,pa}, \Delta_{F,pa}\)</td><td>Premium-adjusted (premium-included) spot and forward delta.</td></tr>
+      <tr><td>\(\sigma_{ATM}\)</td><td>At-the-money vol, usually at the delta-neutral straddle strike.</td></tr>
+      <tr><td>\(\sigma_{RR}, \sigma_{BF}\)</td><td>25-delta risk reversal and butterfly (also written \(\sigma_{25RR}\), \(\sigma_{25BF}\); the 10-delta versions carry a 10).</td></tr>
+      <tr><td>\(\sigma_{25C}, \sigma_{25P}\)</td><td>Implied vols of the 25-delta call and the −25-delta put.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a seesaw with a spring under each end. The ATM vol is how high the middle sits. The butterfly pushes both springs up the same amount. The risk reversal tips the seesaw, one end up and one end down. Tell me those three numbers and I can tell you where both ends are.</p>
+  </div>
+
+  <p>
+    <strong>Step 5: the honest caveat about the butterfly.</strong> The formula above is exact for the
+    <em>smile strangle</em>, which is what \(\sigma_{BF}\) means in the definition: the average of the smile's two
+    25-delta vols minus ATM. But the butterfly a broker quotes is a <em>market strangle</em> (also called the broker
+    or quoted strangle). It is defined by a trade: take the single vol \(\sigma_{ATM} + \sigma_{BF}^{quoted}\), find
+    the 25-delta call and put strikes <em>at that one vol</em>, and price both options at that one vol. The quote
+    says a correct smile must reprice that strangle to the same total premium, whatever vols it assigns to those two
+    strikes.
+  </p>
+  <p>
+    When the risk reversal is near zero, the two definitions agree, and the shortcut is exact. When the risk reversal
+    is large they drift apart, and a desk solves for the smile numerically (Reiswich and Wystup 2009; Clark 2011).
+    Their published one-month example from 20 January 2009 shows how far apart they can be:
+  </p>
+
+  <div class="tl-solid red">
+    <strong>The trap: the quoted butterfly is not the smile's butterfly when the skew is big.</strong>
+    USD/JPY one month, 20 January 2009: ATM 21.00%, 25-delta RR −5.3, quoted BF 0.184. Plugging the quoted fly
+    into the shortcut gives 18.534% for the 25-delta call and 23.834% for the put. The smile that actually reprices
+    the market strangle has 18.769% and 24.069%: a smile strangle of 0.419, more than double the quoted 0.184, and
+    both wings about 0.24 vol higher. For EUR/USD on the same day (RR only −0.5) the two strangles were 0.7375 and
+    0.7377, effectively identical.
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Three quotes, one smile: tilt and lift it yourself</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An implied volatility smile drawn against forward delta, from the 10-delta put on the left through ATM in the middle to the 10-delta call on the right. A dashed line marks the ATM vol and another marks ATM plus butterfly. Three dots mark the 25-delta put, ATM and 25-delta call. Sliders change the ATM vol, risk reversal and butterfly, and the curve and dots move with them.">
+      <g id="fxq-sm-grid"></g>
+      <line x1="70" y1="30" x2="70" y2="250" style="stroke:var(--border)"/>
+      <line x1="70" y1="250" x2="610" y2="250" style="stroke:var(--border)"/>
+      <line id="fxq-sm-atm" x1="70" y1="140" x2="610" y2="140" style="stroke:var(--blue);stroke-dasharray:5,4"/>
+      <line id="fxq-sm-bf" x1="70" y1="120" x2="610" y2="120" style="stroke:var(--amber);stroke-dasharray:5,4"/>
+      <path id="fxq-sm-curve" d="M70,140 L610,140" style="stroke:var(--purple);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+      <circle id="fxq-sm-p" cx="175" cy="120" r="5" fill="var(--red)"/>
+      <circle id="fxq-sm-a" cx="340" cy="140" r="5" fill="var(--blue)"/>
+      <circle id="fxq-sm-c" cx="505" cy="120" r="5" fill="var(--green)"/>
+      <text id="fxq-sm-pl" x="175" y="108" text-anchor="middle" fill="var(--red)" font-size="12" font-family="'DM Mono',monospace">25Δp</text>
+      <text id="fxq-sm-cl" x="505" y="108" text-anchor="middle" fill="var(--green)" font-size="12" font-family="'DM Mono',monospace">25Δc</text>
+      <text x="610" y="272" text-anchor="end" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">10Δ call</text>
+      <text x="505" y="272" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">25Δ call</text>
+      <text x="340" y="272" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">ATM</text>
+      <text x="175" y="272" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">25Δ put</text>
+      <text x="70" y="272" text-anchor="start" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">10Δ put</text>
+      <text x="340" y="292" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">← lower strikes · forward delta · higher strikes →</text>
+      <text x="22" y="140" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 22 140)">implied vol (%)</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>ATM vol</span><span class="tl-live" id="fxq-sm-atm-val">10.0%</span></div>
+        <input type="range" id="fxq-sm-atm-slider" min="4" max="25" step="0.1" value="10">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>25Δ risk reversal</span><span class="tl-live" id="fxq-sm-rr-val">−2.0</span></div>
+        <input type="range" id="fxq-sm-rr-slider" min="-8" max="8" step="0.1" value="-2">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>25Δ butterfly</span><span class="tl-live" id="fxq-sm-bf-val">0.50</span></div>
+        <input type="range" id="fxq-sm-bf-slider" min="0" max="2" step="0.05" value="0.5">
+      </div>
+    </div>
+    <div class="tl-readout">
+      25Δ put = <b id="fxq-sm-out-p">11.50%</b> · ATM = <b id="fxq-sm-out-a">10.00%</b> · 25Δ call = <b id="fxq-sm-out-c">9.50%</b>
+    </div>
+    <div class="tl-hint">Set the risk reversal to zero: the smile becomes symmetric and both wings sit exactly at ATM + BF. Set the butterfly to zero with a big risk reversal: the wings straddle the ATM line, one above and one below.</div>
+    <div class="tl-chart-caption">
+      The curve is Malz's (1997) parabola in forward delta, \(\sigma(\Delta) = \sigma_{ATM} - 2\sigma_{RR}(\Delta - 0.5) + 16\sigma_{BF}(\Delta - 0.5)^2\),
+      where \(\Delta\) is the call forward delta (a 25-delta put sits at call delta 0.75). It passes exactly through the three
+      quoted points and is a standard way to <strong>picture</strong> them. Out at 10 delta it is only the parabola's guess: real
+      10-delta quotes are separate numbers, and Reiswich and Wystup note the parabola can even turn negative for extreme inputs.
+    </div>
+  </div>
+  <script>
+  (function(){
+    var sA = document.getElementById('fxq-sm-atm-slider');
+    if (!sA) return;
+    var sR = document.getElementById('fxq-sm-rr-slider');
+    var sB = document.getElementById('fxq-sm-bf-slider');
+    var X0 = 70, X1 = 610, Y0 = 250, Y1 = 30;
+    // x axis runs from call forward delta 0.9 (10-delta put) on the left to 0.1 (10-delta call) on the right
+    function xOf(d){ return X0 + (0.9 - d) / 0.8 * (X1 - X0); }
+    function vol(atm, rr, bf, d){ return atm - 2 * rr * (d - 0.5) + 16 * bf * (d - 0.5) * (d - 0.5); }
+    function fmtSigned(v, dp){ return (v < 0 ? '−' : '') + Math.abs(v).toFixed(dp); }
+    function update(){
+      var atm = parseFloat(sA.value), rr = parseFloat(sR.value), bf = parseFloat(sB.value);
+      var pts = [], lo = Infinity, hi = -Infinity, i, d, v;
+      for (i = 0; i <= 40; i++){ d = 0.9 - 0.8 * i / 40; v = vol(atm, rr, bf, d); pts.push([d, v]); if (v < lo) lo = v; if (v > hi) hi = v; }
+      var vP = atm + bf - rr / 2, vC = atm + bf + rr / 2;
+      lo = Math.min(lo, atm, vP, vC); hi = Math.max(hi, atm + bf, vP, vC);
+      var span = hi - lo, step = span > 8 ? 2 : (span > 3 ? 1 : 0.5);
+      var yMin = Math.floor((lo - 0.3) / step) * step, yMax = Math.ceil((hi + 0.3) / step) * step;
+      if (yMax - yMin < 2 * step) yMax = yMin + 2 * step;
+      function yOf(val){ return Y0 - (val - yMin) / (yMax - yMin) * (Y0 - Y1); }
+      var grid = document.getElementById('fxq-sm-grid'), g = '';
+      for (v = yMin; v <= yMax + 1e-9; v += step){
+        var yy = yOf(v).toFixed(1);
+        g += '<line x1="70" y1="' + yy + '" x2="610" y2="' + yy + '" style="stroke:var(--border);stroke-dasharray:2,4"/>';
+        g += '<text x="64" y="' + (yOf(v) + 4).toFixed(1) + '" text-anchor="end" fill="var(--text3)" font-size="11" font-family="\'DM Mono\',monospace">' + (step < 1 ? v.toFixed(1) : v.toFixed(0)) + '</text>';
+      }
+      grid.innerHTML = g;
+      document.getElementById('fxq-sm-curve').setAttribute('d', 'M' + pts.map(function(p){ return xOf(p[0]).toFixed(1) + ',' + yOf(p[1]).toFixed(1); }).join(' L'));
+      var yA = yOf(atm), yB = yOf(atm + bf);
+      var la = document.getElementById('fxq-sm-atm'); la.setAttribute('y1', yA); la.setAttribute('y2', yA);
+      var lb = document.getElementById('fxq-sm-bf'); lb.setAttribute('y1', yB); lb.setAttribute('y2', yB);
+      var cp = document.getElementById('fxq-sm-p'), ca = document.getElementById('fxq-sm-a'), cc = document.getElementById('fxq-sm-c');
+      cp.setAttribute('cx', xOf(0.75)); cp.setAttribute('cy', yOf(vP));
+      ca.setAttribute('cx', xOf(0.5)); ca.setAttribute('cy', yA);
+      cc.setAttribute('cx', xOf(0.25)); cc.setAttribute('cy', yOf(vC));
+      var pl = document.getElementById('fxq-sm-pl'), cl = document.getElementById('fxq-sm-cl');
+      pl.setAttribute('x', xOf(0.75)); pl.setAttribute('y', yOf(vP) - 10);
+      cl.setAttribute('x', xOf(0.25)); cl.setAttribute('y', yOf(vC) - 10);
+      document.getElementById('fxq-sm-atm-val').textContent = atm.toFixed(1) + '%';
+      document.getElementById('fxq-sm-rr-val').textContent = fmtSigned(rr, 1);
+      document.getElementById('fxq-sm-bf-val').textContent = bf.toFixed(2);
+      document.getElementById('fxq-sm-out-p').textContent = vP.toFixed(2) + '%';
+      document.getElementById('fxq-sm-out-a').textContent = atm.toFixed(2) + '%';
+      document.getElementById('fxq-sm-out-c').textContent = vC.toFixed(2) + '%';
+    }
+    [sA, sR, sB].forEach(function(el){ el.addEventListener('input', update); });
+    update();
+  })();
+  </script>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>From five quotes to five vols, then from deltas to strikes</h3>
+    <p>
+      <strong>Part 1, vols (clean illustrative numbers).</strong> Take ATM 10.0%, 25-delta RR −2.0, 25-delta BF 0.50,
+      10-delta RR −3.8, 10-delta BF 1.60.
+    </p>
+    <div class="tl-math">\[ \sigma_{25C} = 10.0 + 0.5 + \tfrac12(-2.0) = 9.5\%, \qquad \sigma_{25P} = 10.0 + 0.5 - \tfrac12(-2.0) = 11.5\% \]</div>
+    <div class="tl-math">\[ \sigma_{10C} = 10.0 + 1.6 + \tfrac12(-3.8) = 9.7\%, \qquad \sigma_{10P} = 10.0 + 1.6 - \tfrac12(-3.8) = 13.5\% \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c2"><code>11.5 − 9.5 = 2.0</code><span>the 25-delta wings differ by the risk reversal</span></div>
+      <div class="tl-eq-chip c3"><code>(11.5 + 9.5)/2 − 10 = 0.5</code><span>their average sits a butterfly above ATM</span></div>
+    </div>
+    <p>
+      Five vols on a delta axis: 13.5, 11.5, 10.0, 9.5, 9.7 from the 10-delta put to the 10-delta call. A smile that
+      is steep on the put side and nearly flat on the call side: the shape of a currency the market fears will fall.
+    </p>
+    <p>
+      <strong>Part 2, strikes (real published quotes).</strong> EUR/USD one month, 20 January 2009, from Reiswich and
+      Wystup: spot 1.3088, USD rate \(r_d = 0.3525\%\), EUR rate \(r_f = 2.0113\%\), 31 days, ATM 21.6215%, RR −0.5,
+      BF 0.7375, regular spot delta. Rounded to two decimals: \(\sigma_{25C} = 21.62 + 0.74 - 0.25 = 22.11\%\) and
+      \(\sigma_{25P} = 21.62 + 0.74 + 0.25 = 22.61\%\). The forward is
+      \(F = 1.3070\), from \(1.3088\,e^{(r_d - r_f)\tau}\) with \(\tau = 31/365\). For the call, \(e^{r_f\tau}\Delta_S =
+      1.0017 \times 0.25 = 0.2504\), so \(d_+ = N^{-1}(0.2504) = -0.6732\), and
+    </p>
+    <div class="tl-math">\[ K_{25C} = 1.3070\,\exp\!\left(0.6732 \times 0.2211\sqrt{31/365} + \tfrac12 (0.2211)^2\, \tfrac{31}{365}\right) = 1.3677 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>0.6732</code><span>how many standard deviations out a 25-delta call sits</span></div>
+      <div class="tl-eq-chip c2"><code>0.2211√(31/365)</code><span>one standard deviation of log-spot to expiry, about 6.4%</span></div>
+      <div class="tl-eq-chip c4"><code>1.3677</code><span>the 25-delta EUR call strike</span></div>
+    </div>
+    <p style="margin-bottom:0">
+      The same steps for the put at 22.61% give \(K_{25P} = 1.2530\), and the ATM DNS strike is
+      \(1.3070\,e^{\frac12(0.2162)^2(31/365)} = 1.3096\). These match the strikes published in the paper (1.3677,
+      1.2530 and 1.3096). The smile is now three points in strike space: 22.61% at 1.2530, 21.62% at 1.3096,
+      22.11% at 1.3677. The calculator below does all of this live, for any pair and convention.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Which delta? Spot, forward and premium-included conventions</h2>
+  <p>
+    So far delta has been the textbook kind: how many units of base currency to trade to hedge. FX adds one more
+    wrinkle. The premium is a sum of money, and in some pairs it is paid in the <em>base</em> currency. Reiswich and
+    Wystup give a clean example. A EUR/USD call on €1,000,000 with spot 1.3900, strike 1.3500 and value 0.1024 USD
+    per EUR costs $102,400, which is €73,669. If its delta is 60%, a dealer who sold it would buy €600,000 to hedge.
+    But if the client paid the premium in euros, the dealer already received €73,669 and needs to buy only €526,331:
+    a <strong>premium-adjusted delta</strong> of 52.63%.
+  </p>
+  <p>
+    In formulas, the premium-adjusted delta is the ordinary delta minus the premium measured in base currency,
+    \(v/S\). For a call and a put this simplifies to:
+  </p>
+  <div class="tl-math">\[ \Delta_{S,pa} = \phi\,e^{-r_f\tau}\,\frac{K}{F}\,N(\phi d_-), \qquad \Delta_{F,pa} = \phi\,\frac{K}{F}\,N(\phi d_-) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>K/F · N(φd₋)</code><span>the delta once the premium you already hold is netted off</span></div>
+    <div class="tl-eq-chip c2"><code>d₋</code><span>uses d₋ (= d₊ − σ√τ) instead of d₊</span></div>
+    <div class="tl-eq-chip c3"><code>pa</code><span>"premium-adjusted", also called premium-included</span></div>
+  </div>
+  <p>
+    Two consequences. First, a premium-adjusted delta is always smaller (for calls) or more negative (for puts) than
+    the regular one, so the "25-delta" strike moves: closer to ATM for calls, further out for puts. Second, the
+    premium-adjusted call delta is not monotonic in the strike. It rises, peaks, then falls, so a given call delta can
+    match two strikes. Desks take the one on the out-of-the-money side of the peak. The ATM delta-neutral strike
+    moves too, to \(F e^{-\frac12\sigma^2\tau}\), just below the forward instead of just above it.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Regular delta (premium in terms currency)</h4>
+      <ul>
+        <li>EUR/USD, GBP/USD, AUD/USD: premium in USD, the terms currency</li>
+        <li>Delta = e^(−r_f τ)N(φd₊) (spot) or N(φd₊) (forward)</li>
+        <li>ATM DNS strike F·e^(+σ²τ/2), just above the forward</li>
+      </ul>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Premium-adjusted delta (premium in base currency)</h4>
+      <ul>
+        <li>USD/JPY, USD/CHF, USD/CAD: premium in USD, the base currency</li>
+        <li>EUR/JPY, EUR/CHF, EUR/GBP, AUD/JPY; USD/BRL, USD/MXN</li>
+        <li>ATM DNS strike F·e^(−σ²τ/2), just below the forward</li>
+      </ul>
+    </div>
+  </div>
+  <p>
+    The rule of thumb behind that table (Reiswich and Wystup, following Clark): the premium is usually paid in the
+    more commonly traded currency of the pair. Almost every USD pair is premium-paid in USD; pairs with EUR but no
+    USD are paid in EUR; JPY is never the premium currency. Whenever that premium currency is the base currency,
+    deltas are premium-adjusted by default. Exceptions exist, so always check the broker's convention.
+  </p>
+  <p>
+    <strong>Spot or forward?</strong> For pairs of OECD currencies (USD, EUR, JPY, GBP, AUD, NZD, CAD, CHF, NOK, SEK,
+    DKK), the default is spot delta out to and including one year and forward delta beyond. For pairs that include
+    an emerging-market currency, forward delta is the default at every tenor. Forward deltas are popular for smile
+    tables because a 25-delta put and a 75-delta call are then exactly the same strike.
+  </p>
+  <p>
+    <strong>How much does it matter?</strong> Take the USD/JPY one-month quote from Section 02 (spot 90.68, 31 days,
+    JPY rate 0.42875%, USD rate 0.3525%). At the smile's 25-delta call vol of 18.77%, the premium-adjusted spot-delta
+    strike is 94.10; read the same vol as a regular spot delta and you get 94.23. For the put at 24.07% it is 86.51
+    against 86.71, and the ATM DNS strike is 90.52 against 90.86. Thirteen to thirty-four yen pips of misplacement,
+    with nothing wrong except the convention.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If someone pays you for a promise using the very thing you might have to hand over later, you already hold some of it. So you need to go and get a bit less. Premium-adjusted delta is just "how much more do I need, now that I have been paid partly in the thing itself?"</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Reading a risk reversal, and the term structure</h2>
+  <p>
+    A risk reversal is a price, and like any price it reflects supply and demand. A deeply negative 25-delta risk
+    reversal means people are paying several vols more for options that pay off if the base currency falls than for
+    options that pay off if it rises by a similar amount in delta terms. Three overlapping reasons, which the number
+    alone cannot separate:
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body"><h4>Crash risk</h4><p>The market thinks a big move one way is more likely, or would be faster and gappier, than the same move the other way. Moves that come with jumps in volatility (a currency dropping in a panic) make those options worth more.</p></div></div>
+    <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body"><h4>Hedging demand and positioning</h4><p>Someone with real exposure is buying protection: importers, investors with unhedged foreign assets, or traders long a carry position who want insurance. Dealers who sell it charge for carrying that risk.</p></div></div>
+    <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body"><h4>Spot–vol correlation</h4><p>If implied vol tends to rise when spot falls, a put gains twice in a sell-off: from spot and from vol. The market prices that in. In equity indices this is persistent; in FX it changes sign with the pair and the regime.</p></div></div>
+  </div>
+  <p>
+    What the risk reversal is <em>not</em> is a forecast of direction. It says the downside is expensive to insure,
+    not that it will happen. Before the 2016 Brexit vote the sterling risk reversal was deeply negative while spot was
+    actually rising (1.4390 on 10 June to 1.4877 by the close on polling day) as polls drifted towards Remain. Both
+    readings were right: the market thought Remain more likely <em>and</em> paid heavily for protection in case it
+    was wrong.
+  </p>
+  <p>
+    Because the risk reversal is quoted in vol, its money value depends on vega. In the EUR/USD example, a one-month
+    25-delta option on €10 million has a vega of about $12,100 per vol point (identical for the call and the put,
+    since both are 25-delta with the same tenor). A risk reversal of −0.5 means the put costs roughly $6,000 more in
+    vol terms than a call of the same delta; a risk reversal of −5 would mean about $60,000.
+  </p>
+
+  <h3>The term structure: one smile per expiry</h3>
+  <p>
+    Every tenor on the screen has its own ATM, risk reversal and butterfly. Read across the ATM column and you get the
+    volatility term structure. In calm markets it usually slopes up (longer tenors a little higher); in a crisis it
+    inverts, with near-dated vol above far-dated, the same pattern described for the VIX in
+    <a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a>. Scheduled events leave fingerprints:
+    an expiry that spans a central-bank meeting, an election or a referendum carries that day's extra variance, and
+    the first tenor to cover the event jumps.
+  </p>
+  <p>
+    Variances add over time, so two adjacent tenors imply the vol <em>between</em> them, the forward vol:
+  </p>
+  <div class="tl-math">\[ \sigma_{1\to 2} = \sqrt{\frac{\sigma_2^2\,T_2 - \sigma_1^2\,T_1}{T_2 - T_1}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ₁, σ₂</code><span>ATM vols for the shorter and longer expiry</span></div>
+    <div class="tl-eq-chip c2"><code>T₁, T₂</code><span>their times to expiry in years</span></div>
+    <div class="tl-eq-chip c3"><code>σ₁→₂</code><span>the implied vol for the stretch between the two expiries</span></div>
+  </div>
+  <p>
+    With one-month vol at 10% and two-month at 12%, treating the months as equal,
+    \(\sigma_{1\to2} = \sqrt{0.0288 - 0.0100} = 13.71\%\): the market is pricing the second
+    month as much rougher than the first. If an election falls in that second month, that is where its premium
+    lives. Risk reversals show the same footprint: the tenor whose expiry first covers an event usually moves most,
+    which is exactly what happened in 2016.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Try it yourself: from three quotes to strikes</h2>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>ATM, risk reversal and butterfly in; vols, strikes and a smile out</h3>
+    <p>
+      Starts on the real EUR/USD one-month quote of 20 January 2009 used in the worked example. Change any input and
+      the calculator rebuilds the wing vols with the standard formula, then converts each delta to a strike under
+      Garman–Kohlhagen for your chosen delta and ATM conventions, and checks the round trip by recomputing each
+      strike's delta. The 10-delta fields are optional: fill both to add the far wings.
+    </p>
+    <div class="tl-predict" data-answer="22.61" data-tol="0.02" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With ATM 21.62%, a 25-delta risk reversal of −0.50 and a butterfly of 0.74, what is the 25-delta put vol? Lock in a guess, then read the "25Δ put" row of the table below.</div>
+      <div class="tl-predict-reveal"><p><strong>22.61%.</strong> \(21.62 + 0.74 - \tfrac12(-0.50) = 21.62 + 0.74 + 0.25 = 22.61\). The call is \(21.62 + 0.74 - 0.25 = 22.11\). Now press the USD/JPY preset: a risk reversal of −5.3 tilts the wings ten times harder, and the note under the table tells you where the shortcut stops being exact.</p></div>
+    </div>
+    <div class="tl-btnrow">
+      <button type="button" class="tl-btn active" id="fxq-pre-eur">EUR/USD 1M · 20 Jan 2009</button>
+      <button type="button" class="tl-btn" id="fxq-pre-jpy">USD/JPY 1M · 20 Jan 2009</button>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control"><div class="tl-control-head"><span>Spot S</span></div><input type="number" id="fxq-S" class="tl-scratch-input" value="1.3088" step="0.0001"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Terms-currency rate r_d (%)</span></div><input type="number" id="fxq-rd" class="tl-scratch-input" value="0.3525" step="0.01"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Base-currency rate r_f (%)</span></div><input type="number" id="fxq-rf" class="tl-scratch-input" value="2.0113" step="0.01"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Days to expiry</span></div><input type="number" id="fxq-days" class="tl-scratch-input" value="31" step="1" min="1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>ATM vol (%)</span></div><input type="number" id="fxq-atm" class="tl-scratch-input" value="21.62" step="0.01"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>25Δ risk reversal</span></div><input type="number" id="fxq-rr25" class="tl-scratch-input" value="-0.50" step="0.05"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>25Δ butterfly</span></div><input type="number" id="fxq-bf25" class="tl-scratch-input" value="0.74" step="0.01"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>10Δ risk reversal (optional)</span></div><input type="number" id="fxq-rr10" class="tl-scratch-input" value="" step="0.05" placeholder="blank"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>10Δ butterfly (optional)</span></div><input type="number" id="fxq-bf10" class="tl-scratch-input" value="" step="0.01" placeholder="blank"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Delta convention</span></div>
+        <select id="fxq-dconv" class="tl-scratch-input">
+          <option value="spot" selected>Spot delta</option>
+          <option value="fwd">Forward delta</option>
+          <option value="spot_pa">Spot delta, premium-adjusted</option>
+          <option value="fwd_pa">Forward delta, premium-adjusted</option>
+        </select></div>
+      <div class="tl-control"><div class="tl-control-head"><span>ATM convention</span></div>
+        <select id="fxq-aconv" class="tl-scratch-input">
+          <option value="dns" selected>Delta-neutral straddle</option>
+          <option value="fwd">At the forward (ATMF)</option>
+        </select></div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">Forward F = <b id="fxq-F">—</b> · ATM strike = <b id="fxq-Katm">—</b></div>
+    <div class="tl-symbols">
+      <table>
+        <thead><tr><td>Point</td><td>Vol</td><td>Strike</td><td>Delta check</td><td>Premium, % of base</td></tr></thead>
+        <tbody id="fxq-tbody"><tr><td>—</td><td></td><td></td><td></td><td></td></tr></tbody>
+      </table>
+    </div>
+    <svg id="fxq-calc-svg" viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The rebuilt smile drawn against strike: implied vol on the vertical axis, strike on the horizontal axis, with a dot for each quoted point from the 10-delta or 25-delta put on the left, through ATM, to the 25-delta or 10-delta call on the right, joined by straight lines. A dashed vertical line marks the forward." style="width:100%;height:auto;display:block;margin-top:12px">
+      <g id="fxq-calc-g"></g>
+    </svg>
+    <div class="tl-readout">Note: <span id="fxq-note">—</span></div>
+    <button type="button" id="fxq-reset" class="tl-scratch-reset-btn">Reset to the EUR/USD worked example</button>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A client wants a one-month 25-delta EUR put on €10 million (illustrative trade on real quotes)</h3>
+    <p>
+      It is 20 January 2009 and the screen shows the EUR/USD quote above: ATM 21.62, 25-delta RR −0.5, BF 0.74. A
+      corporate client asks for a one-month 25-delta EUR put (USD call) on €10 million, premium in USD.
+    </p>
+    <p>
+      <strong>Step 1, convention.</strong> EUR/USD under one year: regular spot delta, ATM delta-neutral, premium in
+      USD. <strong>Step 2, vol.</strong> \(21.62 + 0.74 + 0.25 = 22.61\%\). <strong>Step 3, strike.</strong> At
+      22.61% the −25% spot-delta strike is 1.2530. <strong>Step 4, premium.</strong> Garman–Kohlhagen at 1.2530 and
+      22.61% gives about 0.01331 USD per EUR, so roughly $133,000 on €10 million, about 1.02% of the EUR notional.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>What the risk reversal costs the client.</strong> The option's vega is about $12,100 per vol point, so
+      the skew adds about 0.25 × $12,100 ≈ $3,000 over pricing it at ATM + BF, and the full half-point gap to the
+      equivalent call is worth about $6,000. Small here. With a −5 risk reversal, as USD/JPY had that same day, the
+      put-side premium over the middle of the smile would be ten times larger, and the convention questions of
+      Section 03 would be worth far more than a few pips.
+    </p>
+  </div>
+
+  <!-- WB:fx_options_quoting_rr_bf:START -->
+  <div class="wb" id="wb-fx_options_quoting_rr_bf" data-title="Three quotes, one smile, and the sterling risk reversal of 2016">
+    <script type="application/json">{"w":600,"h":860,"intro":"How an FX options screen turns three numbers into a smile, the smile into strikes, and how one of those numbers told the Brexit story in 2016. Press play, or step through.","steps":[{"cap":"An FX options screen shows no prices. For each expiry it shows three volatilities: the at-the-money vol, the 25-delta risk reversal and the 25-delta butterfly. Here: 10.0, −2.0 and 0.5.","do":[{"box":"atm","x":10,"y":12,"w":180,"h":72,"text":"ATM vol","tone":"blue","sub":"10.0%","size":20},{"box":"rr","x":210,"y":12,"w":180,"h":72,"text":"25Δ risk reversal","tone":"purple","sub":"−2.0","size":18},{"box":"bf","x":410,"y":12,"w":180,"h":72,"text":"25Δ butterfly","tone":"amber","sub":"0.5","size":18}]},{"cap":"Start with the level. With no skew and no curvature, every delta would trade at the ATM vol: a flat line at 10%.","do":[{"chart":"sm","x":10,"y":98,"w":580,"h":280,"title":"Implied vol by delta, one expiry","xd":[0.6,3.4],"yd":[8.5,12.5],"yt":[[9,"9%"],[10,"10%"],[11,"11%"],[12,"12%"]],"xt":[[1,"25Δ put"],[2,"ATM"],[3,"25Δ call"]],"pl":52,"pr":16},{"series":"flat","chart":"sm","pts":[[0.65,10],[3.35,10]],"tone":"blue","dash":true,"ms":700},{"dot":"da","chart":"sm","at":[2,10],"text":"ATM 10.0","tone":"blue","dy":24}]},{"cap":"The butterfly lifts both wings by the same amount: 10 + 0.5 = 10.5% at the 25-delta put and the 25-delta call.","do":[{"series":"bfl","chart":"sm","pts":[[0.65,10.5],[3.35,10.5]],"tone":"amber","dash":true,"ms":700},{"dot":"b1","chart":"sm","at":[1,10.5],"text":"","tone":"amber"},{"dot":"b3","chart":"sm","at":[3,10.5],"text":"","tone":"amber"}]},{"cap":"The risk reversal tilts them. It is call vol minus put vol, so split it in half: the put side gets plus 1, the call side minus 1. Put 11.5%, call 9.5%.","do":[{"dim":"b1"},{"dim":"b3"},{"dot":"p25","chart":"sm","at":[1,11.5],"text":"put 11.5","tone":"red","dx":12,"dy":-6,"anchor":"start"},{"dot":"c25","chart":"sm","at":[3,9.5],"text":"call 9.5","tone":"green","dx":-12,"dy":22,"anchor":"end"}]},{"cap":"Three points, one smile. Malz's parabola in delta passes through all three: steep on the put side, nearly flat on the call side.","do":[{"series":"smile","chart":"sm","pts":[[0.72,12.099],[0.88,11.747],[1.04,11.421],[1.2,11.12],[1.36,10.845],[1.52,10.595],[1.68,10.371],[1.84,10.173],[2.0,10.0],[2.16,9.853],[2.32,9.731],[2.48,9.635],[2.64,9.565],[2.8,9.52],[2.96,9.501],[3.12,9.507],[3.28,9.539]],"tone":"purple","ms":1400},{"note":"f","x":300,"y":398,"text":"σ25 = ATM + BF ± ½·RR","size":20,"anchor":"middle","tone":"purple"}]},{"cap":"Read the tilt. A negative risk reversal means puts on the base currency cost more vol than calls. The market is paying up for protection against a fall: insurance, not a forecast.","do":[{"pulse":"p25"},{"note":"ins","chart":"sm","at":[1.15,12.2],"text":"puts dearer: insurance","tone":"red","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Delta names a strike. With spot, two interest rates and the vol, the Garman–Kohlhagen formula turns each delta back into a strike. EUR/USD one month, 20 January 2009: 22.61% at 25-delta put is the 1.2530 strike, 21.62% ATM is 1.3096, 22.11% at 25-delta call is 1.3677.","do":[{"box":"k1","x":10,"y":414,"w":180,"h":72,"text":"25Δ put 22.61%","tone":"red","sub":"K = 1.2530","size":18},{"box":"k2","x":210,"y":414,"w":180,"h":72,"text":"ATM 21.62%","tone":"blue","sub":"K = 1.3096","size":18},{"box":"k3","x":410,"y":414,"w":180,"h":72,"text":"25Δ call 22.11%","tone":"green","sub":"K = 1.3677","size":18}]},{"cap":"But which delta? USD/JPY premiums are paid in dollars, the base currency, so its deltas are premium-adjusted. The same 18.77% 25-delta call is the 94.10 strike, not the 94.23 a plain spot delta gives.","do":[{"box":"conv","x":10,"y":500,"w":580,"h":62,"text":"USD/JPY 25Δ call at 18.77%: 94.10 premium-adjusted, 94.23 regular","tone":"amber","size":18}]},{"cap":"The real thing. Sterling, 2016: the referendum was set for 23 June. On 25 May the one-month 25-delta risk reversal was about −1.3. On 26 May, −5.4.","do":[{"chart":"bx","x":10,"y":578,"w":340,"h":270,"title":"GBP/USD 1M 25Δ risk reversal","xd":[0.4,3.6],"yd":[-9,0.8],"yt":[[0,"0"],[-4,"−4"],[-8,"−8"]],"xt":[[1,"25 May"],[2,"26 May"],[3,"10 Jun"]],"zero":true,"pl":44,"pr":12},{"bars":"rrb","chart":"bx","data":[[1,-1.3,"−1.3","amber"],[2,-5.4,"−5.4","red"]],"bw":48,"ms":1100}]},{"cap":"Why overnight? A one-month option dealt on 25 May expired just before the result; one dealt on 26 May expired just after it. The tenor that first covers an event is the one that jumps.","do":[{"box":"roll","x":370,"y":578,"w":220,"h":120,"text":"26 May: the 1M\nexpiry first covers\nthe 23 June vote","tone":"purple","size":18}]},{"cap":"By 10 June, with spot near 1.4390, it reached −7.9: about eight vols more for sterling puts than for calls.","do":[{"bars":"rrb3","chart":"bx","data":[[3,-7.9,"−7.9","red"]],"bw":48,"ms":900}]},{"cap":"Spot first rallied to 1.4877 as polls leaned Remain. Then Leave won. On 24 June GBP/USD closed at 1.3622, down about 8.4%. The risk reversal never forecast the vote; it priced how costly the wrong side would be.","do":[{"box":"out","x":370,"y":714,"w":220,"h":132,"text":"GBP/USD, 24 June","tone":"red","sub":"1.4877","size":19},{"count":"out","from":1.4877,"to":1.3622,"dp":4,"ms":1600}]}]}</script>
+  </div>
+  <!-- WB:fx_options_quoting_rr_bf:END -->
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>It actually happened: the sterling risk reversal before Brexit, 2016</h2>
+  <p>
+    The cleanest public example of a risk reversal telling a story in advance is sterling before the referendum on
+    leaving the European Union. Iain Clark and Saeed Amen tracked the GBP/USD smile through the first half of 2016
+    and published the numbers (working paper June 2016; <em>Risks</em>, 2017).
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Each tenor flinched on the day its expiry first covered the vote</h3>
+    <p>
+      On 20 February 2016 the government set the referendum for 23 June. Until then, short-dated GBP/USD 25-delta
+      risk reversals had sat in a band of roughly −0.5 to −1.5: sterling puts a little dearer than calls, as usual for
+      a currency the market saw as vulnerable. From then on, each tenor moved sharply on the day its expiry first
+      reached past 23 June. The two-month risk reversal moved dramatically between 25 and 26 April. The one-month
+      went from −1.3 on 25 May to −5.4 on 26 May: an option dealt on 25 May expired just before the result, one dealt
+      on 26 May just after it.
+    </p>
+    <p>
+      It did not stop there. By 10 June, with spot near 1.4390, the one-month risk reversal had reached −7.9: the
+      market was paying about eight vols more for 25-delta sterling puts than for 25-delta sterling calls. Clark and
+      Amen used the whole smile to back out what the market expected. Their reading on 13 June was that a Leave vote
+      could take GBP/USD into a 1.10 to 1.30 range; their two-scenario model, fitted to data from 24 February to
+      22 June, put the Leave outcome near 1.37.
+    </p>
+    <p style="margin-bottom:0">
+      Meanwhile spot rallied as polls drifted towards Remain, to 1.4877 by the close on polling day. The result came
+      through the night of 23 to 24 June: Leave. GBP/USD closed 24 June at 1.3622, down about 8.4%, after trading
+      briefly around 1.32 to 1.33 overnight, its weakest since 1985. The options market had not predicted the
+      result. It had priced, for weeks and in public, how expensive the wrong side would be.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Date set</b>20 Feb 2016: referendum fixed for 23 June</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · the risk reversal</b>Each tenor jumps when its expiry first covers the vote: 1M −1.3 → −5.4 on 26 May</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Insurance gets dear</b>10 June: 1M 25-delta RR ≈ −7.9 with spot near 1.4390</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Spot disagrees</b>Polls lean Remain; GBP/USD rallies to 1.4877</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>24 June: Leave; GBP/USD to 1.3622, about −8.4% close to close</div>
+  </div>
+  <p>
+    The starred link is this lesson's quote doing its job: not forecasting the vote, but showing in one number how
+    lopsided the risk was, and in which tenor the market expected it.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>Three numbers are not a distribution</h3>
+    <p style="margin-bottom:0">
+      Before Brexit the true distribution was two-humped: one outcome near 1.47, another far below. A smile built from
+      ATM, a risk reversal and a butterfly, interpolated with a smooth curve, cannot show two humps. It can only say
+      "wide, and lopsided". That is why Clark and Amen fitted a mixture of two scenarios instead of a single smile
+      model. The quotes are honest; the shortcut from three quotes to a full distribution is where the information
+      gets lost.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Before a big storm, umbrella shops raise their prices. The price of umbrellas doesn't tell you it will rain, but it tells you lots of people are worried it might. In June 2016 the "umbrella" against the pound falling got very expensive, right on the day the umbrellas started to cover the big vote.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>Dealers and brokers</strong> quote and trade the three building blocks directly. A risk reversal trades as
+    a package (long a 25-delta call, short a 25-delta put, or the reverse), usually delta-hedged, and is quoted as the
+    vol difference. A butterfly trades as a strangle against an ATM straddle. The screen therefore shows real, tradable
+    prices for level, skew and curvature at each tenor, and everything else (a 1.3500 strike, a 17-day expiry) is
+    interpolated from them. Desks fill the smile with a model: Malz's parabola for a quick picture, the
+    <strong>vanna-volga</strong> method of Castagna and Mercurio (2007) which prices off the three liquid points,
+    <a href="sabr-model.html">SABR</a> fitted to the quotes, or Reiswich and Wystup's parabolic method.
+  </p>
+  <p>
+    <strong>Spot traders and strategists</strong> read risk reversals as a gauge of how lopsided the market's fear is.
+    A risk reversal moving towards one side, especially when spot is not moving, says demand for protection is
+    building. Comparing tenors shows when it is expected. Changes matter more than levels: some pairs carry a
+    persistent skew (the yen has long tended to rally in sell-offs, so USD/JPY risk reversals have for long stretches
+    favoured yen calls), and a "normal" level for one pair is extreme for another.
+  </p>
+  <p>
+    <strong>Hedgers</strong> use the same screen to choose instruments. When puts are expensive relative to calls,
+    a forward hedge (which has no vol in it at all) or a structure that sells the expensive side can be cheaper ways
+    to protect, at the cost of giving up some upside. Understanding the quote is what lets a treasurer see that the
+    "cheap" zero-premium collar is in fact selling them a call at a low vol and buying a put at a high one.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where reading an FX vol screen quietly goes wrong</h3>
+    <p>
+      <strong>Using the wrong delta convention.</strong> A USD/JPY 25-delta strike is premium-adjusted; a EUR/USD one is
+      not. One month out, the difference was 13 to 34 yen pips in the example above, and it grows with vol and tenor.
+      Beyond one year, OECD pairs switch from spot to forward delta. Check before converting.
+    </p>
+    <p>
+      <strong>Taking "ATM" to mean spot or the forward.</strong> For most short-dated quotes it is the delta-neutral
+      straddle strike, slightly above the forward with regular deltas and slightly below it with premium-adjusted
+      ones. Some long-dated and emerging-market quotes use the forward instead.
+    </p>
+    <p>
+      <strong>Plugging the quoted butterfly into the shortcut when the skew is large.</strong> With RR −5.3 the USD/JPY
+      wings came out about 0.24 vol too low. Fine for a quick read; not fine for pricing a strangle.
+    </p>
+    <p>
+      <strong>Reading the risk reversal as a forecast.</strong> It is the price of protection. In June 2016 it was
+      deeply negative while spot rose for two weeks. It tells you how expensive being wrong is, not which way the
+      market will go.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>Comparing tenors without checking the calendar.</strong> A one-month risk reversal that jumps overnight with
+      no news may simply have rolled over an event. Look at which expiry first covers the election or meeting before
+      reading the move as new information.
+    </p>
+  </div>
+
+  <div class="tl-drill" data-date="2016-06-10">
+    <div class="tl-drill-label">Scenario drill · 10 June 2016</div>
+    <h3>Sterling insurance has never looked so expensive</h3>
+    <p>You run a US fund holding £50 million of UK assets, currency unhedged. The referendum is on 23 June. GBP/USD is near 1.4390, and the one-month 25-delta risk reversal is about −7.9: sterling puts cost about eight vols more than equivalent calls. A colleague says: "The puts are absurdly rich. Let's sell some and collect the premium." What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Sell 25-delta GBP puts to harvest the rich skew.<div class="tl-drill-why">You already own the downside through the £50 million of assets. Selling puts doubles that bet, and the skew is rich precisely because the market sees a real chance of a large, fast fall. You would be paid well for standing in the road.</div></li>
+      <li data-verdict="good">Hedge some or all of the sterling with forwards, which carry no implied vol, and buy options only for the part where you want to keep the upside.<div class="tl-drill-why">The risk reversal says option protection on this side is expensive, not that you should go unprotected. A forward hedge costs nothing in vol terms; the price is giving up the rally if Remain wins. Using options only where you need the optionality keeps the skew bill small.</div></li>
+      <li data-verdict="ok">Buy 25-delta GBP puts on the whole £50 million.<div class="tl-drill-why">It protects you, and it keeps the upside, but you pay the richest vol on the screen for all of it. Defensible for a fund that cannot give up the upside; expensive for one that can.</div></li>
+      <li data-verdict="bad">Do nothing. A −7.9 risk reversal means the market is too bearish, so sterling should rally.<div class="tl-drill-why">The risk reversal is a price of insurance, not a forecast, and reading it as a contrarian signal is still a forecast. Staying unhedged into a binary event is a directional bet with the fund's whole sterling position.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Sterling first rallied, to 1.4877 by the close on polling day, as polls leaned towards Remain. Then Leave won. On 24 June GBP/USD closed at 1.3622, down about 8.4%, after trading briefly around 1.32 to 1.33, its weakest since 1985. Forward hedges locked in rates above 1.40; puts paid out; anyone who had sold sterling puts on top of a long sterling book lost twice. Figures from Clark and Amen (2017) and contemporary market reports.</p></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>FX options are quoted in vol and delta.</strong> Vol is the only negotiable input to Garman–Kohlhagen, and delta names a strike in a way that survives spot moving. Turn a delta and a vol back into a strike with \(K = F\exp(-\phi N^{-1}(\phi e^{r_f\tau}\Delta_S)\sigma\sqrt\tau + \tfrac12\sigma^2\tau)\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Three quotes per expiry rebuild the smile.</strong> ATM is the level, the risk reversal the tilt, the butterfly the curvature: \(\sigma_{25C,25P} \approx \sigma_{ATM} + \sigma_{BF} \pm \tfrac12\sigma_{RR}\). The 10-delta pair does the same for the far wings.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>ATM usually means the delta-neutral straddle.</strong> \(F e^{+\frac12\sigma^2\tau}\) with regular deltas, \(F e^{-\frac12\sigma^2\tau}\) with premium-adjusted ones; at the forward for many long-dated and emerging-market quotes.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A risk reversal is the market paying up for one side.</strong> It mixes crash risk, hedging demand and spot–vol correlation, and its jumps are timed by which expiry first covers an event, as sterling's one-month did on 26 May 2016.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Check the conventions before you convert.</strong> Premium-adjusted for USD/JPY, EUR/JPY, USD/CHF and EUR/GBP; regular for EUR/USD, GBP/USD, AUD/USD; spot delta to one year then forward for OECD pairs; forward delta throughout for emerging-market pairs.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The shortcut is exact only for the smile strangle.</strong> The quoted butterfly is a market strangle; with a large risk reversal the two differ (USD/JPY, January 2009: 0.184 quoted against 0.419 in the smile).</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A risk reversal is not a forecast.</strong> Sterling's one-month risk reversal was near −7.9 while spot rallied for two weeks; it priced how costly the wrong side would be, not which side would win.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. A one-month quote shows ATM 8.0%, 25-delta risk reversal +1.0, 25-delta butterfly 0.30. What are the 25-delta call and put vols, and which side is the market paying up for?</summary>
+    <div class="tl-answer">
+      \(\sigma_{25C} = 8.0 + 0.30 + 0.5 = 8.8\%\) and \(\sigma_{25P} = 8.0 + 0.30 - 0.5 = 7.8\%\). Their difference is the
+      risk reversal (+1.0) and their average minus ATM is the butterfly (0.30). A positive risk reversal means calls on
+      the base currency are dearer: the market pays up for protection against the base currency <em>rising</em>.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is ATM in FX usually defined as the delta-neutral straddle rather than spot or the forward?</summary>
+    <div class="tl-answer">
+      A straddle struck where the call and put deltas are equal and opposite has zero delta, so buying or selling it
+      is a pure volatility trade with no spot exposure to hedge. That is what an ATM vol quote is meant to price. With
+      regular deltas the strike is \(F e^{\frac12\sigma^2\tau}\), slightly above the forward; with premium-adjusted
+      deltas it is \(F e^{-\frac12\sigma^2\tau}\), slightly below. Some long-dated and emerging-market quotes use the
+      forward itself.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why are USD/JPY deltas premium-adjusted while EUR/USD deltas are not?</summary>
+    <div class="tl-answer">
+      In both pairs the premium is normally paid in USD. In EUR/USD the dollar is the terms currency, so the premium is
+      not part of the hedge quantity, which is measured in euros. In USD/JPY the dollar is the base currency: a dealer
+      who sells a USD call and receives the premium in dollars already holds some of the dollars needed to hedge, so
+      the hedge (and the delta that names the strike) is reduced by the premium. That shifts every 25-delta strike and
+      the ATM strike.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A one-month risk reversal jumps from −1.3 to −5.4 overnight with no news. What is the most likely mechanical reason?</summary>
+    <div class="tl-answer">
+      The one-month expiry has just rolled over a scheduled event. An option dealt the day before expired before the
+      event; one dealt today expires after it, so it now carries the event's risk. This is what happened to GBP/USD
+      between 25 and 26 May 2016, a month before the 23 June referendum. Read moves in a given tenor against the
+      calendar before treating them as new information.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why can \(\sigma_{25C,25P} = \sigma_{ATM} + \sigma_{BF} \pm \tfrac12\sigma_{RR}\) give the wrong wing vols when the risk reversal is large?</summary>
+    <div class="tl-answer">
+      The formula is exact for the smile strangle (the smile's own average 25-delta vol minus ATM). The broker's
+      butterfly is a market strangle: both strikes found and priced at the single vol ATM + BF. A correct smile only has
+      to reprice that strangle's total premium, and when the smile is strongly tilted its 25-delta strikes differ from
+      the market-strangle strikes, so the two strangle numbers diverge. In the USD/JPY example of 20 January 2009
+      (RR −5.3) the quoted 0.184 corresponded to a smile strangle of 0.419, putting both wings about 0.24 vol higher.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. One-month ATM vol is 10% and two-month is 12%. What is the implied vol for the second month alone, and what might explain it?</summary>
+    <div class="tl-answer">
+      Variances add, so \(\sigma_{1\to2} = \sqrt{0.12^2 \times 2 - 0.10^2} = 13.71\%\) (treating the
+      two months as equal length). The market is pricing the second month as much rougher than the first, which is what
+      you would see if a scheduled event (an election, a referendum, a central-bank meeting) falls inside it.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Mark B. Garman and Steven W. Kohlhagen, <em>"Foreign Currency Option Values"</em>, Journal of International Money and Finance, 2(3), 231–237, 1983. The Black-Scholes formula adapted for two interest rates: the pricing engine behind every FX vol quote.</li>
+    <li>Dimitri Reiswich and Uwe Wystup, <em>"FX Volatility Smile Construction"</em>, CPQF Working Paper No. 20, Frankfurt School of Finance &amp; Management, 2009. Delta and ATM conventions by pair, market strangle versus smile strangle, and the EUR/USD and USD/JPY examples used in this lesson.</li>
+    <li>Iain J. Clark, <em>Foreign Exchange Option Pricing: A Practitioner's Guide</em>, Wiley, 2011. The standard reference for FX market conventions, premium currencies and smile construction.</li>
+    <li>Uwe Wystup, <em>FX Options and Structured Products</em>, Wiley, 2006 (2nd edition 2017). Vanilla and exotic FX options, Greeks and quoting conventions from a desk's perspective.</li>
+    <li>Antonio Castagna and Fabio Mercurio, <em>"The Vanna-Volga Method for Implied Volatilities"</em>, Risk, January 2007. How desks build a full smile from the three liquid quotes.</li>
+    <li>Allan M. Malz, <em>"Option-Implied Probability Distributions and Currency Excess Returns"</em>, Federal Reserve Bank of New York Staff Reports, No. 32, 1997. The parabola in delta used in this lesson's chart, and reading risk reversals as market expectations.</li>
+    <li>Iain J. Clark and Saeed Amen, <em>"Implied Distributions from GBPUSD Risk-Reversals and Implication for Brexit Scenarios"</em>, Risks, 5(3), 35, 2017. The source of the 2016 risk-reversal figures and the mixture-model reading of the Leave scenario.</li>
+  </ul>
+  </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> <span>· the formula Garman–Kohlhagen adapts, and what delta is</span></li>
+        <li><a href="interest-rate-parity.html">Interest Rate Parity — Covered vs. Uncovered</a> <span>· where the forward F comes from</span></li>
+        <li><a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> <span>· why vol differs by strike and expiry at all</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="sabr-model.html">The SABR Model</a> <span>· fitting a full smile to ATM, risk reversal and butterfly</span></li>
+        <li><a href="second-order-greeks.html">Second-Order Greeks: Vanna, Charm, Vomma &amp; More</a> <span>· the risks a risk reversal and a butterfly actually carry</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the FX vol screen is the market telling you, in public and every day, which way it is scared and when; these conventions are how you read it.</p>
+  </nav>
+
+  <div class="tl-footer-nav">
+    <a href="merton-jump-diffusion.html">← Merton Jump-Diffusion Model</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="kelly-criterion.html">Kelly Criterion &amp; Position Sizing →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var S_in = document.getElementById('fxq-S');
+  if (!S_in) return;
+  var ids = ['S','rd','rf','days','atm','rr25','bf25','rr10','bf10'];
+  var el = {};
+  ids.forEach(function(k){ el[k] = document.getElementById('fxq-' + k); });
+  var dconv = document.getElementById('fxq-dconv'), aconv = document.getElementById('fxq-aconv');
+  var PRESETS = {
+    eur: { S: 1.3088, rd: 0.3525, rf: 2.0113, days: 31, atm: 21.62, rr25: -0.50, bf25: 0.74, rr10: '', bf10: '', d: 'spot', a: 'dns' },
+    jpy: { S: 90.68, rd: 0.42875, rf: 0.3525, days: 31, atm: 21.00, rr25: -5.30, bf25: 0.184, rr10: '', bf10: '', d: 'spot_pa', a: 'dns' }
+  };
+  var btnEur = document.getElementById('fxq-pre-eur'), btnJpy = document.getElementById('fxq-pre-jpy');
+
+  // Standard normal CDF (Hart / West double-precision algorithm) and its inverse (Acklam, one Halley step).
+  function N(x){
+    var a = Math.abs(x), c;
+    if (a > 37) c = 0;
+    else {
+      var e = Math.exp(-a * a / 2), b;
+      if (a < 7.07106781186547) {
+        b = 3.52624965998911e-2 * a + 0.700383064443688; b = b * a + 6.37396220353165; b = b * a + 33.912866078383;
+        b = b * a + 112.079291497871; b = b * a + 221.213596169931; b = b * a + 220.206867912376; c = e * b;
+        b = 8.83883476483184e-2 * a + 1.75566716318264; b = b * a + 16.064177579207; b = b * a + 86.7807322029461;
+        b = b * a + 296.564248779674; b = b * a + 637.333633378831; b = b * a + 793.826512519948; b = b * a + 440.413735824752;
+        c = c / b;
+      } else {
+        b = a + 0.65; b = a + 4 / b; b = a + 3 / b; b = a + 2 / b; b = a + 1 / b; c = e / b / 2.506628274631;
+      }
+    }
+    return x > 0 ? 1 - c : c;
+  }
+  function n(x){ return Math.exp(-x * x / 2) / 2.506628274631; }
+  function Ninv(p){
+    var A = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+    var B = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01];
+    var C = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+    var D = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
+    var q, r, x;
+    if (p < 0.02425) { q = Math.sqrt(-2 * Math.log(p)); x = (((((C[0]*q+C[1])*q+C[2])*q+C[3])*q+C[4])*q+C[5]) / ((((D[0]*q+D[1])*q+D[2])*q+D[3])*q+1); }
+    else if (p > 1 - 0.02425) { q = Math.sqrt(-2 * Math.log(1 - p)); x = -(((((C[0]*q+C[1])*q+C[2])*q+C[3])*q+C[4])*q+C[5]) / ((((D[0]*q+D[1])*q+D[2])*q+D[3])*q+1); }
+    else { q = p - 0.5; r = q * q; x = (((((A[0]*r+A[1])*r+A[2])*r+A[3])*r+A[4])*r+A[5])*q / (((((B[0]*r+B[1])*r+B[2])*r+B[3])*r+B[4])*r+1); }
+    var e = N(x) - p, u = e * 2.506628274631 * Math.exp(x * x / 2);
+    return x - u / (1 + x * u / 2);
+  }
+
+  // Garman–Kohlhagen price and the four delta conventions. phi = +1 call, -1 put (on the base currency).
+  function dpm(F, K, s, T){ var sd = s * Math.sqrt(T), dp = (Math.log(F / K) + 0.5 * s * s * T) / sd; return [dp, dp - sd]; }
+  function price(S, F, K, s, rd, T, phi){ var d = dpm(F, K, s, T); return phi * Math.exp(-rd * T) * (F * N(phi * d[0]) - K * N(phi * d[1])); }
+  function delta(F, K, s, rf, T, phi, conv){
+    var d = dpm(F, K, s, T), df = Math.exp(-rf * T);
+    if (conv === 'spot') return phi * df * N(phi * d[0]);
+    if (conv === 'fwd') return phi * N(phi * d[0]);
+    if (conv === 'spot_pa') return phi * df * (K / F) * N(phi * d[1]);
+    return phi * (K / F) * N(phi * d[1]);
+  }
+  // Delta -> strike. Spot deltas are first turned into forward-style targets by multiplying by e^(r_f T).
+  function strike(F, D, s, rf, T, phi, conv){
+    var sd = s * Math.sqrt(T), tgt = (conv === 'spot' || conv === 'spot_pa') ? D * Math.exp(rf * T) : D;
+    if (Math.abs(tgt) >= 1 || tgt * phi <= 0) return NaN;
+    var Kreg = F * Math.exp(-phi * Ninv(phi * tgt) * sd + 0.5 * sd * sd);
+    if (conv === 'spot' || conv === 'fwd') return Kreg;
+    var g = function(K){ var d = dpm(F, K, s, T); return phi * (K / F) * N(phi * d[1]) - tgt; };
+    var lo, hi, i, m;
+    if (phi < 0) {
+      // put: |premium-adjusted delta| rises with K, and the strike sits below the regular one
+      lo = F * Math.exp(-12 * sd); hi = Kreg;
+      if (g(lo) * g(hi) > 0) return NaN;
+      for (i = 0; i < 200; i++) { m = 0.5 * (lo + hi); if (g(lo) * g(m) <= 0) hi = m; else lo = m; }
+      return 0.5 * (lo + hi);
+    }
+    // call: delta peaks at Kmin where n(d-)/N(d-) = sd; take the root between Kmin and the regular strike
+    var a = -12, b = 12;
+    for (i = 0; i < 200; i++) { m = 0.5 * (a + b); if (n(m) / Math.max(N(m), 1e-300) - sd > 0) a = m; else b = m; }
+    var dmin = 0.5 * (a + b), Kmin = F * Math.exp(-dmin * sd - 0.5 * sd * sd);
+    lo = Kmin; hi = Kreg;
+    if (g(lo) < 0) return NaN;  // even the maximum premium-adjusted delta is below the target
+    for (i = 0; i < 200; i++) { m = 0.5 * (lo + hi); if (g(m) > 0) lo = m; else hi = m; }
+    return 0.5 * (lo + hi);
+  }
+
+  var tbody = document.getElementById('fxq-tbody'), gEl = document.getElementById('fxq-calc-g');
+  var outF = document.getElementById('fxq-F'), outK = document.getElementById('fxq-Katm'), note = document.getElementById('fxq-note');
+  function num(k){ var v = el[k].value; return v === '' ? NaN : parseFloat(v); }
+  function dpFor(S){ return S >= 20 ? 2 : 4; }
+  function fail(msg){ tbody.innerHTML = '<tr><td>—</td><td></td><td></td><td></td><td></td></tr>'; gEl.innerHTML = ''; outF.textContent = '—'; outK.textContent = '—'; note.textContent = msg; }
+
+  function recompute(){
+    var S = num('S'), rd = num('rd') / 100, rf = num('rf') / 100, days = num('days'), atm = num('atm') / 100;
+    var rr = num('rr25') / 100, bf = num('bf25') / 100, rr10 = num('rr10') / 100, bf10 = num('bf10') / 100;
+    if (!(S > 0) || !isFinite(rd) || !isFinite(rf) || !(days > 0) || !(atm > 0) || !isFinite(rr) || !isFinite(bf)) { fail('Need a positive spot, days and ATM vol, and numbers for both rates, the 25Δ risk reversal and the butterfly.'); return; }
+    var T = days / 365, F = S * Math.exp((rd - rf) * T), conv = dconv.value, pa = conv.indexOf('pa') > 0;
+    var Katm = aconv.value === 'fwd' ? F : F * Math.exp((pa ? -0.5 : 0.5) * atm * atm * T);
+    var pts = [];
+    var use10 = isFinite(rr10) && isFinite(bf10);
+    if (use10) pts.push({ lab: '10Δ put', D: -0.10, phi: -1, s: atm + bf10 - rr10 / 2 });
+    pts.push({ lab: '25Δ put', D: -0.25, phi: -1, s: atm + bf - rr / 2 });
+    pts.push({ lab: 'ATM', D: null, phi: 1, s: atm, K: Katm });
+    pts.push({ lab: '25Δ call', D: 0.25, phi: 1, s: atm + bf + rr / 2 });
+    if (use10) pts.push({ lab: '10Δ call', D: 0.10, phi: 1, s: atm + bf10 + rr10 / 2 });
+    var bad = false;
+    pts.forEach(function(p){
+      if (!(p.s > 0)) { bad = true; return; }
+      if (p.K === undefined) p.K = strike(F, p.D, p.s, rf, T, p.phi, conv);
+      if (!isFinite(p.K)) { bad = true; return; }
+      p.chk = p.D === null ? null : delta(F, p.K, p.s, rf, T, p.phi, conv);
+      p.prem = Math.abs(price(S, F, p.K, p.s, rd, T, p.phi)) / S * 100;
+    });
+    if (bad) { fail('One of the wing vols is zero or negative, or no strike has that delta at that vol. Check the inputs.'); return; }
+    var dp = dpFor(S);
+    outF.textContent = F.toFixed(dp); outK.textContent = Katm.toFixed(dp);
+    tbody.innerHTML = pts.map(function(p){
+      var chk = p.chk === null ? (aconv.value === 'fwd' ? 'at F' : 'straddle Δ = 0') : (p.chk >= 0 ? '+' : '−') + Math.abs(p.chk).toFixed(4);
+      var premTxt = p.D === null ? 'call ' + p.prem.toFixed(3) + '%' : p.prem.toFixed(3) + '%';
+      return '<tr><td>' + p.lab + '</td><td>' + (p.s * 100).toFixed(3) + '%</td><td>' + p.K.toFixed(dp) + '</td><td>' + chk + '</td><td>' + premTxt + '</td></tr>';
+    }).join('');
+
+    // chart: vol against strike
+    var X0 = 70, X1 = 600, Y0 = 220, Y1 = 24;
+    var kLo = Math.min.apply(null, pts.map(function(p){ return p.K; }).concat([F])), kHi = Math.max.apply(null, pts.map(function(p){ return p.K; }).concat([F]));
+    var kPad = (kHi - kLo) * 0.08 || F * 0.01; kLo -= kPad; kHi += kPad;
+    var vLo = Math.min.apply(null, pts.map(function(p){ return p.s * 100; })), vHi = Math.max.apply(null, pts.map(function(p){ return p.s * 100; }));
+    var vs = vHi - vLo, step = vs > 8 ? 2 : (vs > 3 ? 1 : 0.5);
+    var yMin = Math.floor((vLo - 0.25) / step) * step, yMax = Math.ceil((vHi + 0.25) / step) * step;
+    if (yMax - yMin < 2 * step) { yMin -= step; yMax += step; }
+    function xOf(k){ return X0 + (k - kLo) / (kHi - kLo) * (X1 - X0); }
+    function yOf(v){ return Y0 - (v - yMin) / (yMax - yMin) * (Y0 - Y1); }
+    var mono = "font-family=\"'DM Mono',monospace\"", h = '', v;
+    for (v = yMin; v <= yMax + 1e-9; v += step) {
+      h += '<line x1="' + X0 + '" y1="' + yOf(v).toFixed(1) + '" x2="' + X1 + '" y2="' + yOf(v).toFixed(1) + '" style="stroke:var(--border);stroke-dasharray:2,4"/>';
+      h += '<text x="' + (X0 - 6) + '" y="' + (yOf(v) + 4).toFixed(1) + '" text-anchor="end" fill="var(--text3)" font-size="11" ' + mono + '>' + (step < 1 ? v.toFixed(1) : v.toFixed(0)) + '</text>';
+    }
+    h += '<line x1="' + X0 + '" y1="' + Y0 + '" x2="' + X1 + '" y2="' + Y0 + '" style="stroke:var(--border)"/>';
+    h += '<line x1="' + xOf(F).toFixed(1) + '" y1="' + Y1 + '" x2="' + xOf(F).toFixed(1) + '" y2="' + Y0 + '" style="stroke:var(--text3);stroke-dasharray:4,4"/>';
+    h += '<text x="' + xOf(F).toFixed(1) + '" y="' + (Y1 - 8) + '" text-anchor="middle" fill="var(--text3)" font-size="11" ' + mono + '>forward</text>';
+    h += '<polyline points="' + pts.map(function(p){ return xOf(p.K).toFixed(1) + ',' + yOf(p.s * 100).toFixed(1); }).join(' ') + '" style="fill:none;stroke:var(--purple);stroke-width:2;stroke-dasharray:6,4"/>';
+    pts.forEach(function(p, i){
+      var col = p.D === null ? 'var(--blue)' : (p.phi < 0 ? 'var(--red)' : 'var(--green)');
+      var x = xOf(p.K), y = yOf(p.s * 100);
+      h += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="' + col + '"/>';
+      var ly = (i % 2 === 0) ? y - 12 : y + 20;
+      if (ly < Y1 + 4) ly = y + 20; if (ly > Y0 - 4) ly = y - 12;
+      h += '<text x="' + x.toFixed(1) + '" y="' + ly.toFixed(1) + '" text-anchor="middle" fill="' + col + '" font-size="13" ' + mono + '>' + (p.s * 100).toFixed(2) + '</text>';
+      h += '<text x="' + x.toFixed(1) + '" y="' + (Y0 + 17) + '" text-anchor="middle" fill="var(--text3)" font-size="12" ' + mono + '>' + p.K.toFixed(S >= 20 ? 2 : 4) + '</text>';
+    });
+    h += '<text x="' + ((X0 + X1) / 2) + '" y="' + (Y0 + 36) + '" text-anchor="middle" fill="var(--text3)" font-size="13" ' + mono + '>strike · lines join quotes, not a model</text>';
+    gEl.innerHTML = h;
+
+    var msgs = [];
+    if (Math.abs(rr) * 100 >= 2) msgs.push('With a risk reversal this large, a quoted (market-strangle) butterfly can differ from the smile strangle used here by tenths of a vol, so a desk would calibrate. For the USD/JPY 20 Jan 2009 quote the published smile has 18.769% and 24.069% at 25 delta.');
+    if (pa) msgs.push('Premium-adjusted delta: the call strike is the one on the out-of-the-money side of the delta peak, and the ATM straddle strike sits just below the forward.');
+    if (!pa && aconv.value === 'dns') msgs.push('ATM is the delta-neutral straddle, just above the forward with regular deltas.');
+    msgs.push('Rates are continuously compounded and time is days \u00f7 365, with no settlement lags: right for learning, not for booking a trade.');
+    note.textContent = msgs.join(' ');
+  }
+
+  function load(p, btn){
+    ['S','rd','rf','days','atm','rr25','bf25','rr10','bf10'].forEach(function(k){ el[k].value = p[k]; });
+    dconv.value = p.d; aconv.value = p.a;
+    [btnEur, btnJpy].forEach(function(b){ b.classList.toggle('active', b === btn); });
+    recompute();
+  }
+  ids.forEach(function(k){ el[k].addEventListener('input', function(){ [btnEur, btnJpy].forEach(function(b){ b.classList.remove('active'); }); recompute(); }); });
+  [dconv, aconv].forEach(function(s){ s.addEventListener('change', recompute); });
+  btnEur.addEventListener('click', function(){ load(PRESETS.eur, btnEur); });
+  btnJpy.addEventListener('click', function(){ load(PRESETS.jpy, btnJpy); });
+  document.getElementById('fxq-reset').addEventListener('click', function(){ load(PRESETS.eur, btnEur); });
+  recompute();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -393,6 +394,23 @@
     <button type="button" id="cf-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The Cornish-Fisher VaR again, with \(\mu = 0\) and new \(\sigma\), \(S\) and \(K\) each round. Use \(z_{0.05} = -1.645\) and \(z_{0.01} = -2.326\). VaR is \(-z_{CF}\,\sigma\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>95%, \(\sigma = 1.00\%\), \(S = -0.4\), \(K = 2\). Skew term \((1.706025)(-0.4)/6 = -0.11374\). Kurtosis term \((0.48359)(2)/24 = 0.04030\). Second skew term \(-(-0.67782)(0.16)/36 = +0.00301\). So \(z_{CF} = -1.645 - 0.11374 + 0.04030 + 0.00301 = -1.71542\), and the Cornish-Fisher VaR is <span class="tl-blank" data-answer="1.715" data-tol="0.002" data-unit="%"></span>, against 1.645% Gaussian.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>95%, \(\sigma = 0.80\%\), \(S = -0.8\), \(K = 4\). First skew term \((z_\alpha^2-1)S/6\) = <span class="tl-blank" data-answer="-0.2275" data-tol="0.0005"></span>. The kurtosis term is \(+0.08060\) and the second skew term \(+0.01205\). So \(z_{CF}\) = <span class="tl-blank" data-answer="-1.7798" data-tol="0.001"></span>, and the Cornish-Fisher VaR = <span class="tl-blank" data-answer="1.424" data-tol="0.002" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>99%, \(\sigma = 1.50\%\), \(S = -0.3\), \(K = 1\). Gaussian VaR: <span class="tl-blank" data-answer="3.489" data-tol="0.002" data-unit="%"></span>. \(z_{CF}\): <span class="tl-blank" data-answer="-2.7463" data-tol="0.002"></span>. Cornish-Fisher VaR: <span class="tl-blank" data-answer="4.119" data-tol="0.003" data-unit="%"></span>. At 99% the kurtosis term is negative, because \(|z_\alpha|\) is past \(\sqrt{3}\), and it still adds to the VaR.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -440,8 +458,9 @@
       Under the Basel rules, too many exceptions in a year raise the multiplier a bank applies to its VaR when
       it sets market-risk capital. So the models' miss was about to raise capital requirements in the middle of
       the crisis, exactly when banks were being asked to keep markets running. In April 2020 the
-      <strong>European Central Bank</strong> temporarily reduced that multiplier for the banks it supervises,
-      citing the extraordinary market volatility, so that the exceptions would not push capital up mid-crisis.
+      <strong>European Central Bank</strong> temporarily cut the part of that multiplier its supervisors set, for the
+      banks it supervises, citing the extraordinary market volatility, so that the exceptions would not push capital
+      up mid-crisis.
     </p>
     <p style="margin-bottom:0">
       Most banks' regulatory VaR is historical simulation, not a Gaussian formula with a Cornish-Fisher
@@ -485,12 +504,9 @@
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "adjust VaR for skew and kurtosis and the tail number becomes honest."</strong>
-    This desk does not compute a Cornish-Fisher VaR, so there is no record to grade. A fair test would forecast a
-    daily 99% VaR both ways (Gaussian and Cornish-Fisher, same rolling window) on the desk's instruments, out of
-    sample, and count exceptions against the expected 1% with a Kupiec-style test. It would report crisis windows
-    such as March 2020 separately from calm ones, and count how often the fitted \((S, K)\) fell outside the range
-    where the expansion stays monotonic.</span>
+    This desk does not compute a Cornish-Fisher VaR, so there is no record to grade.<div class="tl-howtotest"><strong>How to test it:</strong> On daily returns of the desk's FX pairs and indices, forecast a 99% VaR each day both ways (Gaussian and Cornish-Fisher) from the same rolling 250-day window, out of sample over all available history. Count exceptions against the expected 1% with a Kupiec test; the gate, fixed in advance, is that Cornish-Fisher passes where the Gaussian baseline fails, or has an exception rate closer to 1% on most instruments. Report crisis windows such as March 2020 separately from calm ones, and count how often the fitted \((S, K)\) fell outside the range where the expansion stays monotonic. No trading costs enter, since this grades a risk forecast.</div></span>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../bot-audit.html">Bot Audit</a> shows historical daily VaR 95 and VaR 99 on the live bots' P&amp;L, the same quantiles a Cornish-Fisher correction would adjust.</div>
   <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -576,7 +592,7 @@
       <li data-verdict="good">Report the exceptions honestly, treat the model as broken for this regime, and set risk off a number that already contains a stress period, cutting size to it.<div class="tl-drill-why">The correction can only fix the tail shape its window has seen. Measuring against a window that includes a real crisis, and sizing to that, deals with the actual problem instead of tuning the patch.</div></li>
       <li data-verdict="ok">Shorten the look-back window to a month so the moments catch up faster.<div class="tl-drill-why">It reacts to the new regime, which helps. But a month of data gives noisy skew and kurtosis, and the model will swing back to calm as soon as the window rolls past the crash.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Days of 5% and more, up and down, came one after another. Many bank trading desks that report a 99% daily VaR recorded exceptions far more often than 1 day in 100, clustered in a few weeks. Under the Basel rules, too many exceptions in a year raise the multiplier a bank applies to its VaR when it sets market-risk capital, so capital was about to rise in the middle of the crisis. In April 2020 the European Central Bank temporarily reduced that multiplier for the banks it supervises, citing the extraordinary market volatility.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Days of 5% and more, up and down, came one after another. Many bank trading desks that report a 99% daily VaR recorded exceptions far more often than 1 day in 100, clustered in a few weeks. Under the Basel rules, too many exceptions in a year raise the multiplier a bank applies to its VaR when it sets market-risk capital, so capital was about to rise in the middle of the crisis. In April 2020 the European Central Bank temporarily cut the part of that multiplier its supervisors set, for the banks it supervises, to offset the rise from the exceptions, citing the extraordinary market volatility.</p><p class="tl-drill-sources">Sources: <a href="https://www.bankingsupervision.europa.eu/press/pr/date/2020/html/ssm.pr200416~ecf270bca8.en.html">ECB Banking Supervision press release, 16 Apr 2020</a>; <a href="https://fred.stlouisfed.org/series/SP500">S&amp;P 500 close, 13 and 16 Mar 2020 (FRED: SP500)</a>; <a href="https://fred.stlouisfed.org/series/VIXCLS">Cboe VIX close, 16 Mar 2020 (FRED: VIXCLS)</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -789,7 +805,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Regime-Switching State Space Models — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live worked-example scratchpad, and a 6-question self-test?<a href="regime-switching-state-space.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,60 @@
       <p class="sl-lede">Two earlier lessons each hid one thing: the Hidden Markov Model lesson hid a <em>discrete</em> regime label, and the Kalman filter lesson hid a <em>continuous</em> drifting quantity. Real systems often hide both at once — a market that is either "trending" or "mean-reverting," and, within whichever regime is currently active, a slowly drifting continuous level. This lesson fuses the two, hits the exponential wall that fusing them naively creates, and covers the practical fix — Kim's filter — that keeps the computation tractable.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two regime branches that both end in the calm regime: one that stayed calm, centred at 1.30 with variance 0.004 and weight 0.75, and one that switched from turbulent, centred at 1.10 with variance 0.010 and weight 0.25. Kim's filter merges them into one bell curve centred at 1.25 with variance 0.0130, wider than either branch. Exact filtering with 2 regimes over 30 steps would need over a billion branches.">
+      <line class="tlp-line" x1="60" y1="200" x2="560" y2="200"/>
+      <polyline class="tlp-line amber thick" points="60.0,199.7 66.2,199.6 72.5,199.4 78.8,199.2 85.0,199.0 91.3,198.7 97.5,198.3 103.8,197.9 110.0,197.3 116.2,196.7 122.5,196.0 128.8,195.1 135.0,194.1 141.2,192.9 147.5,191.7 153.8,190.3 160.0,188.8 166.3,187.1 172.5,185.4 178.7,183.7 185.0,181.9 191.2,180.0 197.5,178.3 203.8,176.6 210.0,175.0 216.2,173.6 222.5,172.4 228.8,171.4 235.0,170.7 241.3,170.2 247.5,170.1 253.8,170.2 260.0,170.7 266.3,171.4 272.5,172.4 278.8,173.6 285.0,175.0 291.2,176.6 297.5,178.3 303.7,180.0 310.0,181.9 316.2,183.7 322.5,185.4 328.7,187.1 335.0,188.8 341.2,190.3 347.5,191.7 353.8,192.9 360.0,194.1 366.2,195.1 372.5,196.0 378.8,196.7 385.0,197.3 391.2,197.9 397.5,198.3 403.8,198.7 410.0,199.0 416.3,199.2 422.5,199.4 428.8,199.6 435.0,199.7 441.3,199.8 447.5,199.8 453.8,199.9 460.0,199.9 466.3,199.9 472.5,200.0 478.8,200.0 485.0,200.0 491.3,200.0 497.5,200.0 503.8,200.0 510.0,200.0 516.2,200.0 522.5,200.0 528.8,200.0 535.0,200.0 541.2,200.0 547.5,200.0 553.8,200.0 560.0,200.0"/>
+      <polyline class="tlp-line blue thick" points="60.0,200.0 66.2,200.0 72.5,200.0 78.8,200.0 85.0,200.0 91.3,200.0 97.5,200.0 103.8,200.0 110.0,200.0 116.2,200.0 122.5,200.0 128.8,200.0 135.0,200.0 141.2,200.0 147.5,200.0 153.8,200.0 160.0,200.0 166.3,200.0 172.5,200.0 178.7,200.0 185.0,200.0 191.2,200.0 197.5,200.0 203.8,200.0 210.0,200.0 216.2,199.9 222.5,199.9 228.8,199.8 235.0,199.7 241.3,199.4 247.5,199.0 253.8,198.4 260.0,197.5 266.3,196.2 272.5,194.2 278.8,191.5 285.0,187.8 291.2,182.8 297.5,176.5 303.7,168.7 310.0,159.3 316.2,148.4 322.5,136.2 328.7,123.1 335.0,109.5 341.2,96.2 347.5,83.8 353.8,73.2 360.0,65.0 366.2,59.8 372.5,58.1 378.8,59.8 385.0,65.0 391.2,73.2 397.5,83.8 403.8,96.2 410.0,109.5 416.3,123.1 422.5,136.2 428.8,148.4 435.0,159.3 441.3,168.7 447.5,176.5 453.8,182.8 460.0,187.8 466.3,191.5 472.5,194.2 478.8,196.2 485.0,197.5 491.3,198.4 497.5,199.0 503.8,199.4 510.0,199.7 516.2,199.8 522.5,199.9 528.8,199.9 535.0,200.0 541.2,200.0 547.5,200.0 553.8,200.0 560.0,200.0"/>
+      <polyline class="tlp-line purple thick dash" points="60.0,200.0 66.2,199.9 72.5,199.9 78.8,199.9 85.0,199.8 91.3,199.8 97.5,199.7 103.8,199.6 110.0,199.5 116.2,199.3 122.5,199.1 128.8,198.8 135.0,198.4 141.2,198.0 147.5,197.4 153.8,196.7 160.0,195.9 166.3,194.9 172.5,193.6 178.7,192.2 185.0,190.5 191.2,188.5 197.5,186.3 203.8,183.7 210.0,180.8 216.2,177.5 222.5,173.8 228.8,169.8 235.0,165.5 241.3,160.8 247.5,155.8 253.8,150.6 260.0,145.2 266.3,139.7 272.5,134.1 278.8,128.5 285.0,123.1 291.2,117.9 297.5,113.1 303.7,108.6 310.0,104.7 316.2,101.3 322.5,98.6 328.7,96.6 335.0,95.4 341.2,95.0 347.5,95.4 353.8,96.6 360.0,98.6 366.2,101.3 372.5,104.7 378.8,108.6 385.0,113.1 391.2,117.9 397.5,123.1 403.8,128.5 410.0,134.1 416.3,139.7 422.5,145.2 428.8,150.6 435.0,155.8 441.3,160.8 447.5,165.5 453.8,169.8 460.0,173.8 466.3,177.5 472.5,180.8 478.8,183.7 485.0,186.3 491.3,188.5 497.5,190.5 503.8,192.2 510.0,193.6 516.2,194.9 522.5,195.9 528.8,196.7 535.0,197.4 541.2,198.0 547.5,198.4 553.8,198.8 560.0,199.1"/>
+      <text class="tlp-amber" x="20" y="100" font-size="13" font-weight="700">from turbulent</text>
+      <text class="tlp-amber" x="20" y="116" font-size="12">1.10 · var 0.010</text>
+      <text class="tlp-amber" x="20" y="132" font-size="12">weight 0.25</text>
+      <text class="tlp-blue" x="430" y="58" font-size="13" font-weight="700">stayed calm</text>
+      <text class="tlp-blue" x="430" y="74" font-size="12">1.30 · var 0.004</text>
+      <text class="tlp-blue" x="430" y="90" font-size="12">weight 0.75</text>
+      <text class="tlp-purple" x="430" y="114" font-size="13" font-weight="700">merged: 1.25 · var 0.0130</text>
+      <text class="tlp-purple" x="430" y="130" font-size="12">wider than either branch</text>
+      <text class="tlp-text3" x="60.0" y="216" text-anchor="middle" font-size="12">0.8</text><text class="tlp-text3" x="185.0" y="216" text-anchor="middle" font-size="12">1.0</text><text class="tlp-text3" x="310.0" y="216" text-anchor="middle" font-size="12">1.2</text><text class="tlp-text3" x="435.0" y="216" text-anchor="middle" font-size="12">1.4</text><text class="tlp-text3" x="560.0" y="216" text-anchor="middle" font-size="12">1.6</text>
+      <text class="tlp-text2" x="20" y="240" font-size="13">Exact filtering: 2 regimes over 30 steps means over a billion branches.</text>
+      <text class="tlp-text" x="20" y="257" font-size="13" font-weight="700">Kim's filter merges back to 2 at every step, like this, and pays in width.</text>
+    </svg>
+    <figcaption>Two branches agree we are now calm but disagree on where the state is. Merging them into one bell curve keeps the computation small, and the disagreement shows up as extra width: 0.0130, more than either branch's own variance.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My hedge ratio drifts slowly in calm markets and goes wild in a risk-off unwind. One Kalman filter can't do both, can it?</p>
+      <p data-who="Quant">No. A single filter has one setting for how fast the state moves. Set it for calm days and it lags in a crisis. Set it for a crisis and it twitches every calm day.</p>
+      <p data-who="Trader">So switch the settings by regime.</p>
+      <p data-who="Quant">Exactly. A regime-switching state-space model keeps the Kalman filter's moving state, but which settings are active depends on a hidden regime, calm or turbulent, which follows its own Markov chain, like in the hidden Markov model lesson.</p>
+      <p data-who="Trader">But I can't see the regime.</p>
+      <p data-who="Quant">That's the hard part. To be exact you'd keep a separate filter for every possible history of regimes. With two regimes, that doubles every step. After thirty steps it's over a billion.</p>
+      <p data-who="Trader">Nobody runs a billion filters.</p>
+      <p data-who="Quant">So Kim's filter, from nineteen ninety-four, cheats sensibly. At each step it merges all the branches that agree on today's regime into one bell curve. You only ever carry one per regime.</p>
+      <p data-who="Trader">What does merging cost?</p>
+      <p data-who="Quant">The lesson's example has two branches that both end up calm. One stayed calm and says one point three, fairly sure. One just switched from turbulent and says one point one. The calm branch carries three quarters of the weight.</p>
+      <p data-who="Trader">So the merged answer is about one point two five.</p>
+      <p data-who="Quant">Right. And here's the surprise: the merged uncertainty is bigger than either branch's. The two disagreed by point two, and that disagreement becomes extra width. Merging opinions that disagree is never free.</p>
+      <p data-who="Trader">Has this worked on real data?</p>
+      <p data-who="Quant">The famous case is US recessions. Chauvet's model runs a hidden business-cycle factor through four monthly indicators, with expansion and recession regimes. With Piger she showed it dated turning points accurately in real time, and called the ends of recessions much sooner than the official committee. The 2008 recession was only announced in December 2008, a year after it started. Run live, the model crossed fifty percent a month before that, and a related version of Chauvet's flagged it in August.</p>
+      <p data-who="Trader">So I should trade off it.</p>
+      <p data-who="Quant">Careful. The neat chart you see online is smoothed on revised data. That's hindsight. Judge it only on what it said in real time. And 2020 was far bigger than any recession it was fitted on.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Let a hidden regime pick the filter's settings, merge the branches to stay tractable, and remember a regime call describes the backdrop; it isn't a trade.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">Two guessing games, nested inside each other</h2>
       <p class="sl-sub">This lesson is a direct sequel to <a href="hidden-markov-models-micro.html" style="color:var(--blue);font-weight:600;text-decoration:none">Hidden Markov Models &amp; Regime Detection</a> and <a href="kalman-filter-micro.html" style="color:var(--blue);font-weight:600;text-decoration:none">Kalman Filter &amp; Adaptive Relationships</a> — read both first if you haven't; this one builds nothing new, it fuses what they already built.</p>
@@ -38,7 +92,7 @@
       <div class="sl-quote">Picture the HMM's "which weather regime is it" guessing game and the Kalman filter's "where exactly is the boat" tracking game running <strong>simultaneously</strong>, each sharpening the other. In calm weather you trust the boat to drift slowly and predictably; in a storm you expect it to move erratically. But which regime you believe you're in also depends on how well each regime's implied drift matches the radar pings you've actually been receiving. That circularity is exactly what makes this model powerful — and exactly what makes it hard to compute exactly.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Same recursion, every coefficient now regime-indexed</h2>
       <p class="sl-sub">Reuse both prior lessons' notation directly. Compare this line-by-line with the plain Kalman filter's x_t = x_{t-1} + w_t.</p>
@@ -55,7 +109,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">If the regime were observed, this would be trivial</h2>
       <p class="sl-sub">Step through why it isn't — and what Kim's filter does instead of tracking every branch forever.</p>
@@ -87,7 +141,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Exact filtering branches forever; Kim's filter collapses back every step</h2>
       <p class="sl-sub">N=2 regimes. Left: tracked exactly, the tree keeps doubling. Right: collapsed back to N=2 after every single step.</p>
@@ -154,7 +208,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Stickier regimes let belief lock in; fast-switching ones cap it</h2>
       <p class="sl-sub">Same story as five "turbulent-looking" observations in a row, run through a two-regime Bayes+Markov update. Drag the slider to change how sticky the regimes are (the transition matrix's diagonal).</p>
@@ -185,7 +239,7 @@
       <p class="sl-p">At low stickiness, each step's transition mixing drags belief back toward 50/50 regardless of the evidence, capping how confident the model can ever become. At high stickiness, consecutive evidence compounds almost freely — belief climbs toward certainty. This is the same diagonal-vs-off-diagonal trade-off the HMM lesson introduced, now visibly shaping how fast the fused model's regime belief can move.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">One forward-algorithm step, fused with a Kalman-style likelihood</h2>
       <p class="sl-sub">Given a prior P(turbulent), a transition matrix, and a likelihood ratio from the latest observation, update the regime belief — the same predict-then-update shape as the HMM lesson's forward algorithm.</p>
@@ -211,7 +265,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Collapsing two disagreeing branches costs something real</h2>
       <p class="sl-sub">The worked example from the full lesson: two regime-conditional Kalman estimates that both landed in regime "calm," collapsed into one Gaussian.</p>
@@ -226,7 +280,7 @@
     </section>
 
     <!-- WB:regime_switching_state_space-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Regime switching: branch, merge, and call the recession</h2>
       <!-- WB:regime_switching_state_space:START -->
@@ -237,7 +291,7 @@
     </section>
     <!-- WB:regime_switching_state_space-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">What this is for: a hedge ratio that behaves differently by regime</h2>
       <p class="sl-sub">A carry-trade hedge ratio, plausibly stable in calm periods and erratic during a risk-off unwind.</p>
@@ -265,7 +319,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where the fusion gets over-trusted</h2>
       <div class="sl-icard-grid">
@@ -282,12 +336,12 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">2008 and 2020: the regime call before the official one</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">It actually happened</div>
-        <p>The NBER dates US recessions after waiting for revised data: the one that began in <strong>December 2007</strong> was announced on <strong>December 1, 2008</strong>. Building on Hamilton (1989), Chauvet's <strong>dynamic-factor Markov-switching model</strong> lets a hidden business-cycle factor drive four monthly indicators (payrolls, industrial production, real income, real sales), with its dynamics switching between expansion and recession. Tested in real time by Chauvet and Piger, it dated turning points on average well ahead of the NBER. In 2020, with payrolls down more than 20 million in April alone, the recession probability went to near certainty as soon as the spring data arrived; the NBER announced the February peak on June 8, 2020. Caveat: the chart usually shown is <em>smoothed</em> on revised data.</p>
+        <p>The NBER dates US recessions after waiting for revised data: the one that began in <strong>December 2007</strong> was announced on <strong>December 1, 2008</strong>. Building on Hamilton (1989), Chauvet's <strong>dynamic-factor Markov-switching model</strong> lets a hidden business-cycle factor drive four monthly indicators (payrolls, industrial production, real income, real sales), with its dynamics switching between expansion and recession. Tested in real time by Chauvet and Piger, it identified the NBER's turning points accurately and called the ends of recessions much sooner than the NBER did; run live in 2008, it crossed 50% on 1 November, a month before the NBER's announcement. In 2020, with payrolls down more than 20 million in April alone, the recession probability reached near certainty with the data available in May; the NBER announced the February peak on June 8, 2020. Caveat: the chart usually shown is <em>smoothed</em> on revised data.</p>
       </div>
       <div class="sl-chain">
         <div class="sl-chain-link shock"><b>Credit crisis</b>2007–08 losses spread to all credit</div>
@@ -298,11 +352,11 @@
         <div class="sl-chain-arrow">→</div>
         <div class="sl-chain-link concept"><b>★ This lesson · hidden regime with switching dynamics</b>Recession regime's filtered probability climbs</div>
         <div class="sl-chain-arrow">→</div>
-        <div class="sl-chain-link end"><b>Outcome</b>Called months before the NBER's December 2008 date</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Run live, crossed 50% in November 2008, a month before the NBER's announcement</div>
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <!-- DESK:START -->
@@ -317,7 +371,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -370,7 +424,26 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2008-12-01">
+    <div class="tl-drill-label">Scenario drill · 1 December 2008</div>
+    <h3>The committee confirms what the model said months ago</h3>
+    <p>Today the NBER announces that the US recession began in December 2007, nearly a year ago. Jeremy Piger's real-time run of a dynamic-factor Markov-switching model of four monthly indicators, the kind he and Chauvet tested, first put the recession probability above 50% in its 1 November 2008 report. You want a rule for next time: turn defensive when the model's recession probability crosses 50%. To backtest that rule over past cycles, which probability history do you use?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">The smoothed recession probabilities published on FRED, computed on today's revised data.<div class="tl-drill-why">Smoothed probabilities use data from after each month, and revised data were not available at the time either. The chart lines up with the recessions more neatly than any real-time reading did, so the backtest would flatter the rule.</div></li>
+      <li data-verdict="good">Filtered probabilities, recomputed month by month from the data as first released.<div class="tl-drill-why">That is what a live model could actually have said each month. It is how Chauvet and Piger judged real-time performance, and it is the only honest test of a trading rule.</div></li>
+      <li data-verdict="bad">The NBER's own recession dates.<div class="tl-drill-why">The dates are fixed long after the fact: this recession's start was announced about a year late, and its June 2009 end only in September 2010. Using them in a backtest is lookahead of a year or more.</div></li>
+      <li data-verdict="ok">The smoothed probabilities, but with the signal delayed by a month to allow for lag.<div class="tl-drill-why">It admits the problem but guesses at its size. Smoothing and revisions do not create a fixed one-month lag, so the real-time history is still the right test.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The NBER announced on 1 December 2008 that the recession had begun in December 2007; its end, in June 2009, was announced in September 2010. Run live, Piger's filtered probability crossed 50% on 1 November 2008, then fell back to 16% a month later when October's data showed industrial production and income growing again. The authors' rule, three months above 80%, would have declared the recession on 1 January 2009, a month after the NBER, and its end in January 2010, eight months before. The smoothed chart of the same model on today's data looks far cleaner than that. In 2020 the model's recession probability reached near certainty with the data available in May, and the NBER announced the February peak on 8 June 2020. A regime call describes the backdrop; whether it pays as a trade is a separate test.</p><p class="tl-drill-sources">Sources: <a href="https://www.nber.org/news/business-cycle-dating-committee-announcement-december-1-2008">NBER announcement, 1 Dec 2008</a>; <a href="https://www.nber.org/news/business-cycle-dating-committee-announcement-september-20-2010">NBER announcement, 20 Sep 2010</a>; <a href="https://www.nber.org/news/business-cycle-dating-committee-announcement-june-8-2020">NBER announcement, 8 Jun 2020</a>; Chauvet and Piger, Journal of Business &amp; Economic Statistics 26(1), 2008; <a href="https://www.nber.org/papers/w16162">Hamilton, "Calling Recessions in Real Time", NBER Working Paper 16162, 2010</a> (Piger's real-time reports, 2008–10); <a href="https://fred.stlouisfed.org/series/RECPROUSM156N">FRED, RECPROUSM156N</a> and its ALFRED vintage of 1 May 2020</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -380,7 +453,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The collapse's cost is exactly the law of total variance's second term — new uncertainty manufactured whenever the branches being merged actually disagreed.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Regime stickiness controls how fast belief can move — sticky regimes let evidence compound toward confidence; fast-switching regimes cap belief near a permanent ceiling.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This is the most parameter-heavy tool in its category, its standard estimation method is itself an approximation, and it remains a concept lesson<!-- DESK:START --> — not built or tested anywhere in this repo<!-- DESK:END -->.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Markov-switching models called the 2008 and 2020 recessions ahead of the NBER, but judge them on filtered, first-release readings, not the smoothed chart.<!-- DESK:START --> On this desk's data, diverging regimes did not move the currency pair (regime-divergence-fx, NULL).<!-- DESK:END --></p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Markov-switching models called the 2008 and 2020 recessions before the NBER did, the 2008 one by only about a month in real time, but judge them on filtered, first-release readings, not the smoothed chart.<!-- DESK:START --> On this desk's data, diverging regimes did not move the currency pair (regime-divergence-fx, NULL).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -518,5 +591,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

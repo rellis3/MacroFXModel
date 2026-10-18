@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -451,6 +452,23 @@
     <button type="button" id="repo-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Repo interest again, actual/360: \(\text{Interest} = \text{Cash} \times r \times \text{days}/360\), and the repurchase price is the cash plus that interest. New inputs each round; the last one adds a haircut.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>$20,000,000 overnight at 4.80%. \(20{,}000{,}000 \times 0.0480 \times 1/360 = \$\)<span class="tl-blank" data-answer="2666.67" data-tol="0.01"></span>, so the dealer pays back $20,002,666.67 tomorrow.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>$80,000,000 at 5.05%, agreed on a Friday and repaid on Monday, so 3 days. Interest: \(80{,}000{,}000 \times 0.0505 \times 3/360 = \$\)<span class="tl-blank" data-answer="33666.67" data-tol="0.01"></span>. Repurchase price: \(\$\)<span class="tl-blank" data-answer="80033666.67" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>$30,000,000 market value of Treasuries, a 2% haircut, 4.30%, a 7-day term repo. Cash received: \(\$\)<span class="tl-blank" data-answer="29400000" data-tol="0.5"></span>. Interest: \(\$\)<span class="tl-blank" data-answer="24581.67" data-tol="0.01"></span>. Repurchase price: \(\$\)<span class="tl-blank" data-answer="29424581.67" data-tol="0.01"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-solid blue">
     <strong>The direct tie to <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a>:</strong>
     SOFR — the Secured Overnight Financing Rate, the USD reference rate that replaced LIBOR and now anchors OIS
@@ -611,6 +629,7 @@
     667 of 2,123 sessions (31%). March 2020's stress ran through margins and Treasury prices; a test on the overnight
     rate alone is not built to see that.</span>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../rates.html">Rates &amp; Policy</a> shows SOFR against the IORB floor, the 99th-percentile repo rate and Standing Repo Facility usage, so the mid-month lift from this lesson can be watched live.</div>
   <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -681,7 +700,7 @@
       <li data-verdict="good">Cut the position to a size you can fund under the new margins and haircuts, while the Fed's buying means there is a buyer for the bonds.<div class="tl-drill-why">This sizes leverage to the haircut you face now, not the one you had. Selling into a market with a large buyer costs less than being forced to sell later into one without.</div></li>
       <li data-verdict="ok">Meet the calls by posting other assets you hold as collateral.<div class="tl-drill-why">It buys time, but those assets face bigger haircuts too in a volatility spike, and it ties up the last of your spare collateral. It delays the decision rather than making it.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Funds running the basis trade had to raise cash for higher futures margin, daily variation margin and tighter repo terms on the same days, and the way to raise it was to sell the bonds. Dealers, with balance sheets already full, could not absorb the flow, and Treasury yields rose sharply in mid-March while stocks were falling. From 15 March the Fed bought Treasuries in enormous size, roughly a trillion dollars' worth within about a month, and greatly expanded its repo operations. Economists at the Bank for International Settlements (Schrimpf, Shin and Sushko, 2020) called it a margin spiral.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Funds running the basis trade had to raise cash for higher futures margin, daily variation margin and tighter repo terms on the same days, and the way to raise it was to sell the bonds. Dealers, with balance sheets already full, could not absorb the flow, and Treasury yields rose sharply in mid-March while stocks were falling. From 15 March the Fed bought Treasuries in enormous size: its holdings rose by more than a trillion dollars in about a month, from $2.52 trillion on 11 March to $3.63 trillion on 8 April. It also greatly expanded its repo operations. Economists at the Bank for International Settlements (Schrimpf, Shin and Sushko, 2020) called it a margin spiral.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200315a.htm">Federal Reserve FOMC statement, 15 Mar 2020</a>; <a href="https://www.bis.org/publ/bisbull02.htm">Schrimpf, Shin and Sushko, "Leverage and margin spirals in fixed income markets during the Covid-19 crisis", BIS Bulletin No 2, 2 Apr 2020</a>; <a href="https://fred.stlouisfed.org/series/TREAST">Federal Reserve H.4.1, Treasury securities held outright (FRED: TREAST)</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>
@@ -861,7 +880,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

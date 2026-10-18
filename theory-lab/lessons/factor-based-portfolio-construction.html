@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -468,6 +469,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same 2×2 solve, \(B^\top w = q\), on new loadings: find the weights \(w_1, w_2\) on two currency pairs that deliver a target carry and momentum exposure.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Pair 1 loads \((C_1, M_1) = (1.0, 0.4)\), pair 2 loads \((C_2, M_2) = (-0.6, 0.8)\). Target: carry \(+1.0\), momentum \(0\). The momentum equation \(0.4w_1 + 0.8w_2 = 0\) gives \(w_1 = -2w_2\). Then carry: \(-2w_2 - 0.6w_2 = 1.0\), so \(w_2 = -1/2.6 = -0.385\), and \(w_1\) = <span class="tl-blank" data-answer="0.769" data-tol="0.002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Pair 1 loads \((0.8, 0.3)\), pair 2 loads \((-1.0, 0.5)\). Same target, carry \(+1.0\) and momentum \(0\). Momentum neutral means \(0.3w_1 + 0.5w_2 = 0\), so \(w_1 = -\tfrac{5}{3}w_2\). Solve the carry equation: \(w_2\) = <span class="tl-blank" data-answer="-0.429" data-tol="0.002"></span>, and \(w_1\) = <span class="tl-blank" data-answer="0.714" data-tol="0.002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Pair 1 loads \((1.2, -0.2)\), pair 2 loads \((0.4, 0.9)\). This time the target is half a unit of each: carry \(+0.5\) and momentum \(+0.5\). \(w_1\) = <span class="tl-blank" data-answer="0.216" data-tol="0.002"></span> and \(w_2\) = <span class="tl-blank" data-answer="0.603" data-tol="0.002"></span>. Check them: \(1.2w_1 + 0.4w_2\) and \(-0.2w_1 + 0.9w_2\) should both come back to 0.5.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -614,6 +632,7 @@
     an edge. Value has not been tested here at all.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../fx-factor-v2.html">FX Factor Book v2</a> shows the desk's carry and trend factor baskets against their pre-registered gates, out of sample; it is this lesson's construction run on real loadings.</div><!-- DESK:END -->
 
   <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="trend-following-fx" data-evidence-date="2026-07-20">
@@ -712,14 +731,14 @@
   <div class="tl-drill" data-date="2020-10-30">
     <div class="tl-drill-label">Scenario drill · late October 2020</div>
     <h3>Your value tilt has lost for years. Do you keep it?</h3>
-    <p>You run a multi-factor book with a deliberate value tilt, built exactly the way this lesson builds a target exposure. You have checked the loadings, and the book holds the tilt you solved for. But value has just been through its deepest drawdown on record, 2018 to 2020, and clients are asking why you still hold it. The committee meets today. What do you do with the tilt?</p>
+    <p>You run a multi-factor book with a deliberate value tilt, built exactly the way this lesson builds a target exposure. You have checked the loadings, and the book holds the tilt you solved for. But value has just been through its deepest drawdown on record, which began around 2007 and was at its worst from 2018 to 2020, and clients are asking why you still hold it. The committee meets today. What do you do with the tilt?</p>
     <ol class="tl-drill-options">
       <li data-verdict="bad">Cut the value tilt to zero. Years of losses prove the premium is gone.<div class="tl-drill-why">The construction worked: you held exactly the exposure you asked for, so you earned exactly the factor's return. A long negative run is what a factor with a positive average can do. Cutting near the low turns a drawdown you sat through into a loss you lock in.</div></li>
       <li data-verdict="bad">Swap the tilt for growth, because that is what has been working.<div class="tl-drill-why">This sells the cheap factor after its worst run and buys the expensive side after its best. Nothing in the model says recent factor returns predict the next ones, and you would be paying the crowd that is already selling.</div></li>
       <li data-verdict="good">Keep the tilt, but at a size you could hold through a drawdown this long again, and tell clients that in advance.<div class="tl-drill-why">The model promises the exposure, not the premium over your horizon. The right lever is size: a tilt small enough that years of underperformance do not force you out. That is the only way to still be holding the factor when it turns.</div></li>
       <li data-verdict="ok">Halve the tilt and wait for value to show signs of life.<div class="tl-drill-why">It lowers the pain, and a smaller tilt is easier to defend. But "wait for signs of life" means buying back after the rebound, which is exactly when the premium is paid. Better to choose a size you can hold and then hold it.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 9 November 2020 Pfizer announced its vaccine trial results, and value had one of its sharpest one-day reversals in years. It went on to outperform through 2021 and 2022. Many investors had cut their value tilts near the bottom and missed the turn, and value managers such as AQR had already seen their assets fall substantially through the drawdown.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 9 November 2020 Pfizer announced its vaccine trial results, and value had one of its sharpest one-day reversals in years. It went on to outperform through 2021 and 2022. Many investors had cut their value tilts near the bottom and missed the turn, and value managers such as AQR had already seen their assets fall substantially through the drawdown.</p><p class="tl-drill-sources">Sources: <a href="https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html">Kenneth French Data Library, US HML value factor</a> (+6.7% on 9 Nov 2020, its biggest daily gain since 1933; +22% in 2021, +32% in 2022; peak December 2006, about 58% below it by September 2020); Pfizer and BioNTech press release, 9 Nov 2020; Institutional Investor on AQR's assets, down from a peak of about $226 billion in 2018.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -890,7 +909,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

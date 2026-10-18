@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Complex Numbers — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation of Euler's formula, worked examples, and a 5-question self-test?<a href="foundation-complex-numbers.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,73 @@
       <p class="sl-lede">i = √−1 looks like a made-up trick with no obvious use. It isn't — it's the number system that later lets you transform an option's price into a "characteristic function," and lets a Fourier Transform decompose a signal into oscillations, both using the exact same idea this page introduces: a number that spins instead of just growing.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The complex plane, with the real axis across and the imaginary axis up. The number 3 plus 4i is plotted as a point 3 across and 4 up, joined to the origin by a line of length 5 at an angle of 53.13 degrees. A dashed unit circle around the origin marks e to the i pi, which equals minus 1, on the left, and e to the i pi over 2, which equals i, at the top. Three boxes on the right give the same number two ways, rectangular 3 plus 4i and polar 5 at 53.13 degrees, and Euler's formula, e to the i theta equals cos theta plus i sin theta, a point on the unit circle.">
+      <line class="tlp-line" x1="40" y1="205" x2="300" y2="205"/>
+      <line class="tlp-line" x1="110" y1="20" x2="110" y2="240"/>
+      <text class="tlp-text3" x="300" y="222" text-anchor="end" font-size="12">real →</text>
+      <text class="tlp-text3" x="116" y="28" font-size="12">imaginary ↑</text>
+      <circle class="tlp-line dash" cx="110" cy="205" r="36"/>
+      <line class="tlp-line purple dash" x1="110" y1="205" x2="218" y2="205"/>
+      <line class="tlp-line amber dash" x1="218" y1="205" x2="218" y2="61"/>
+      <line class="tlp-line blue thick" x1="110" y1="205" x2="218" y2="61"/>
+      <path class="tlp-line green" d="M136,205 A26,26 0 0 0 125.6,184.2"/>
+      <text class="tlp-green" x="142" y="198" font-size="12" font-weight="700">53.13°</text>
+      <text class="tlp-purple" x="164" y="222" text-anchor="middle" font-size="13" font-weight="700">3</text>
+      <text class="tlp-amber" x="226" y="137" font-size="13" font-weight="700">4</text>
+      <text class="tlp-blue" x="150" y="122" text-anchor="end" font-size="13" font-weight="700">|z| = 5</text>
+      <circle class="tlp-blue" cx="218" cy="61" r="6"/>
+      <text class="tlp-blue" x="228" y="57" font-size="14" font-weight="700">z = 3 + 4i</text>
+      <circle class="tlp-red" cx="74" cy="205" r="5"/>
+      <text class="tlp-red" x="70" y="226" text-anchor="end" font-size="12" font-weight="700">e<tspan dy="-5" font-size="9">iπ</tspan><tspan dy="5"> = −1</tspan></text>
+      <circle class="tlp-green" cx="110" cy="169" r="5"/>
+      <text class="tlp-green" x="102" y="160" text-anchor="end" font-size="12" font-weight="700">e<tspan dy="-5" font-size="9">iπ/2</tspan><tspan dy="5"> = i</tspan></text>
+      <rect class="tlp-box blue" x="330" y="20" width="260" height="60" rx="8"/>
+      <text class="tlp-blue" x="460" y="45" text-anchor="middle" font-size="14" font-weight="700">Rectangular: 3 + 4i</text>
+      <text class="tlp-text2" x="460" y="66" text-anchor="middle" font-size="12">3 across, 4 up</text>
+      <rect class="tlp-box green" x="330" y="94" width="260" height="60" rx="8"/>
+      <text class="tlp-green" x="460" y="119" text-anchor="middle" font-size="14" font-weight="700">Polar: 5 at 53.13°</text>
+      <text class="tlp-text2" x="460" y="140" text-anchor="middle" font-size="12">the same point: a distance and a direction</text>
+      <rect class="tlp-box purple" x="330" y="168" width="260" height="60" rx="8"/>
+      <text class="tlp-purple" x="460" y="193" text-anchor="middle" font-size="14" font-weight="700">e<tspan dy="-6" font-size="10">iθ</tspan><tspan dy="6"> = cos θ + i sin θ</tspan></text>
+      <text class="tlp-text2" x="460" y="214" text-anchor="middle" font-size="12">Euler: a point on the unit circle</text>
+    </svg>
+    <figcaption>A complex number is just a point: so many steps across and so many up. The same point can be given as a distance and a direction, and Euler's formula says e raised to an imaginary power is a point on the circle.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Imaginary numbers. I switched off at school the moment someone said "the square root of minus one".</p>
+      <p data-who="Quant">Fair enough. Let's start somewhere friendlier. At some point, someone asked what three take away five is, and there was no answer. So people invented negative numbers.</p>
+      <p data-who="Trader">And fractions, for sharing things out that don't divide evenly.</p>
+      <p data-who="Quant">Exactly. Each time a question had no answer, we built a new kind of number that answers it. No ordinary number times itself gives minus one, because every square is zero or positive. So we invent one that does, and call it i.</p>
+      <p data-who="Trader">But where does it live? It's not on the number line.</p>
+      <p data-who="Quant">Right, so give it its own direction. Ordinary numbers run left and right. The i part runs up and down. A complex number is just a point on a flat map: so many steps across, so many steps up.</p>
+      <p data-who="Trader">Give me one.</p>
+      <p data-who="Quant">Three plus four i. Walk three steps east, then four steps north. Or describe the same spot another way: five steps in one straight line, at an angle of about fifty-three degrees.</p>
+      <p data-who="Trader">Five, because three, four, five is the classic right-angled triangle.</p>
+      <p data-who="Quant">That's it. The distance is called the modulus, and the angle is the argument. Two sets of directions to the same spot.</p>
+      <p data-who="Trader">And what's the famous formula everyone puts on posters?</p>
+      <p data-who="Quant">Euler's formula. It says that e raised to an imaginary power is a point on a circle of radius one. Growth and rotation turn out to be built from the same gears. Go halfway round the circle and you land on minus one.</p>
+      <p data-who="Trader">This is lovely, but why would a trader care?</p>
+      <p data-who="Quant">Because of option pricing. In nineteen ninety-three Steven Heston built a model where volatility itself moves. Its usual formula for probabilities couldn't be written down, but a complex-valued version of it could. He worked in complex numbers and got real prices out at the end.</p>
+      <p data-who="Trader">Complex in the middle, real at the end.</p>
+      <p data-who="Quant">Yes. And in nineteen ninety-nine Carr and Madan showed how to price a whole row of strikes in one fast pass the same way. That trick goes back to fifteen seventy-two, when Bombelli used these numbers to solve equations whose answers were perfectly ordinary.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">A complex number is a point: across and up, or a distance and an angle. Don't panic when one appears halfway through a calculation, check that the final answer comes out real.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Complex numbers price options with no formula</h2>
       <div class="sl-origin">
@@ -39,7 +106,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">i isn't on the number line — it's a rule</h2>
       <p class="sl-sub">Every real number, squared, comes out zero or positive. No exceptions. i is what you get when you refuse to accept that as the end of the story.</p>
@@ -55,7 +122,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Two numbers, glued together — kept separate like apples and oranges</h2>
       <p class="sl-sub">A complex number z = a + bi has a real part a and an imaginary part b — both are ordinary real numbers. Step through what happens when you add or multiply two of them.</p>
@@ -82,7 +149,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A picture: the complex plane</h2>
       <p class="sl-sub">Plot z = a + bi as the point (a, b) — real part along the horizontal axis, imaginary part along the vertical. This is the complex plane (or Argand plane).</p>
@@ -107,7 +174,7 @@
       <p class="sl-p">Points like this aren't abstract nonsense with no representation — they plot exactly the way an ordinary ordered pair (x, y) plots on any graph. The "imaginary" axis is just as real a place on the page as the horizontal one.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">How far, and which way: modulus and argument</h2>
       <p class="sl-sub">The same point (a, b) can also be described by its distance from the origin and its angle — that's polar form. Edit a and b and watch both update live.</p>
@@ -142,7 +209,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Euler's formula: e^(iθ) is just a rotation</h2>
       <p class="sl-sub">e^(iθ) = cos θ + i sin θ. Drag the slider — the point always sits exactly on the unit circle, at angle θ.</p>
@@ -169,7 +236,7 @@
     </section>
 
     <!-- WB:foundation_complex_numbers-deck:START -->
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Complex numbers: a point, a turn and a circle</h2>
       <!-- WB:foundation_complex_numbers:START -->
@@ -180,7 +247,7 @@
     </section>
     <!-- WB:foundation_complex_numbers-deck:END -->
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">One angle away from the internet's favorite equation</h2>
       <p class="sl-sub">Set θ = π in Euler's formula. Since cos π = −1 and sin π = 0, the imaginary part vanishes completely.</p>
@@ -193,7 +260,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Where this actually shows up on a desk</h2>
       <p class="sl-sub">In quantitative finance, complex numbers arrive almost entirely through two connected tools — both covered properly later in this curriculum, both unreadable without this page's vocabulary.</p>
@@ -208,7 +275,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Reading the angle: eyeballing it vs. checking the quadrant</h2>
       <p class="sl-sub">tan⁻¹(b/a) alone can't distinguish a first-quadrant point from a third-quadrant one — flipping both signs gives the exact same ratio.</p>
@@ -235,7 +302,7 @@
       <div class="sl-quote">The difference isn't sophistication — a calculator's tan⁻¹ button is correct exactly as far as it goes. The extra step of checking a and b's actual signs (or letting atan2 do it) is what turns a right-looking number into an actually-right angle.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -286,7 +353,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide sl-vark" data-slide="14">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative spreadsheet check</div>
+    <h3>The angle that came out on the wrong side</h3>
+    <p>You need the argument of \(z = -3 - 4i\). A spreadsheet works out the angle as \(\tan^{-1}(b/a)\). Since \(-4/-3 = 4/3\), it reports 53.13°. A colleague wants to use that number. What do you say?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Use 53.13°. The formula came straight from the lesson.<div class="tl-drill-why">The ratio \(-4/-3\) is the same as \(4/3\), so the formula cannot tell \(-3 - 4i\) from \(3 + 4i\). 53.13° points up and to the right, but this number sits down and to the left.</div></li>
+      <li data-verdict="good">Check the signs first. Both parts are negative, so the point is in the third quadrant: 53.13° + 180° = 233.13°. Or use a two-argument arctangent, which handles this itself.<div class="tl-drill-why">This places the point correctly. Check it: \(5\cos 233.13° = -3\) and \(5\sin 233.13° = -4\), the number you started with.</div></li>
+      <li data-verdict="ok">Sketch it on the plane and read off "about 230°".<div class="tl-drill-why">The sketch puts it in the right place, which is the most important check. But a drawing only gives a rough angle. Use it as the check and the two-argument arctangent for the number.</div></li>
+      <li data-verdict="bad">Skip the angle and just use the distance, 5.<div class="tl-drill-why">The distance alone describes a whole circle of points. Without the angle you cannot tell \(-3 - 4i\) from \(3 + 4i\), or from any other point 5 away.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>How it works out.</strong> This is an illustrative check, not a real event. The correct argument is 233.13° (the same direction as −126.87°). This is the quadrant pitfall from this lesson, and it fails silently: no error appears, just a number on the wrong side of the circle. The habit that catches it is the one used throughout: convert back and see whether you get the number you started with.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -425,5 +511,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

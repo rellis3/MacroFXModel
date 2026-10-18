@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Wavelets &amp; Time-Frequency Analysis — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the hand-worked Haar example, and a 5-question self-test?<a href="wavelets-time-frequency.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,75 @@
       <p class="sl-lede">The previous lesson in this series, <em>Fourier Analysis &amp; the Frequency Domain</em>, built a tool that answers "which cycles does this series contain" — but only as one average taken over the entire sample. This lesson picks up exactly where that one left off: swapping the endless sine wave at the heart of Fourier analysis for a small, localized "wavelet" that gets shifted and stretched across the series, trading away some of Fourier's precision to get back something it threw away entirely — a picture of <em>when</em> each frequency actually shows up.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the worked example's eight daily returns, all tiny except one 3.00 percent shock at step 4. An arrow labelled Haar, pair up and halve the differences, points right to the four detail coefficients: 0.100, 0.050, 1.525 and 0.075. The third, 1.525, towers over the rest and points to pair 3, steps 4 and 5, exactly where the shock sits. A note says a wavelet tells you when, not just which frequencies.">
+      <text class="tlp-text3" x="20" y="30" font-size="12">8 daily returns (%)</text>
+      <line class="tlp-line" x1="20" y1="150" x2="270" y2="150"/>
+      <rect class="tlp-box blue" x="30" y="146.7" width="20" height="3.3"/>
+      <rect class="tlp-box blue" x="61" y="150" width="20" height="3.3"/>
+      <rect class="tlp-box blue" x="92" y="148.3" width="20" height="1.7"/>
+      <rect class="tlp-box blue" x="123" y="150" width="20" height="1.7"/>
+      <rect class="tlp-box red" x="154" y="50" width="20" height="100"/>
+      <rect class="tlp-box blue" x="185" y="150" width="20" height="1.7"/>
+      <rect class="tlp-box blue" x="216" y="148.3" width="20" height="1.7"/>
+      <rect class="tlp-box blue" x="247" y="150" width="20" height="3.3"/>
+      <text class="tlp-red" x="164" y="44" text-anchor="middle" font-size="13" font-weight="700">3.00</text>
+      <text class="tlp-text3" x="40" y="172" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-red" x="164" y="172" text-anchor="middle" font-size="12" font-weight="700">4</text>
+      <text class="tlp-text3" x="257" y="172" text-anchor="middle" font-size="12">7</text>
+      <text class="tlp-text3" x="145" y="190" text-anchor="middle" font-size="12">step →</text>
+      <line class="tlp-line purple thick" x1="282" y1="105" x2="338" y2="105"/>
+      <polygon class="tlp-purple" points="350,105 336,98 336,112"/>
+      <text class="tlp-purple" x="314" y="88" text-anchor="middle" font-size="12" font-weight="700">Haar</text>
+      <text class="tlp-purple" x="314" y="128" text-anchor="middle" font-size="11">pair up,</text>
+      <text class="tlp-purple" x="314" y="142" text-anchor="middle" font-size="11">halve the gap</text>
+      <text class="tlp-text3" x="364" y="30" font-size="12">4 detail coefficients</text>
+      <line class="tlp-line" x1="364" y1="150" x2="584" y2="150"/>
+      <rect class="tlp-box blue" x="372" y="143.4" width="34" height="6.6"/>
+      <rect class="tlp-box blue" x="424" y="146.7" width="34" height="3.3"/>
+      <rect class="tlp-box red" x="476" y="50" width="34" height="100"/>
+      <rect class="tlp-box blue" x="528" y="145.1" width="34" height="4.9"/>
+      <text class="tlp-text3" x="389" y="137" text-anchor="middle" font-size="12">0.100</text>
+      <text class="tlp-text3" x="441" y="140" text-anchor="middle" font-size="12">0.050</text>
+      <text class="tlp-red" x="493" y="44" text-anchor="middle" font-size="13" font-weight="700">1.525</text>
+      <text class="tlp-text3" x="545" y="138" text-anchor="middle" font-size="12">0.075</text>
+      <text class="tlp-red" x="493" y="172" text-anchor="middle" font-size="12" font-weight="700">pair 3 = steps 4, 5</text>
+      <text class="tlp-green" x="300" y="222" text-anchor="middle" font-size="14" font-weight="700">a wavelet says when, not just which frequencies</text>
+    </svg>
+    <figcaption>The lesson's worked example. One shock in eight returns gives one detail coefficient more than ten times the others, and it sits at exactly the pair of steps where the shock happened. A periodogram of the same eight numbers would spread that jump across many frequencies and could not say when.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">The Fourier lesson said a periodogram tells me which cycles are in a series. What's missing?</p>
+      <p data-who="Quant">When. A periodogram is one picture for the whole sample. It's like a list of every note in a song, with how loud each one is. Useful, but you can't tell the verse from the chorus.</p>
+      <p data-who="Trader">And wavelets are the sheet music.</p>
+      <p data-who="Quant">Closer to it. Instead of a sine wave that hums forever, you use a short ripple that switches itself off. You slide it along the series to ask, is a pattern like this here? And you stretch or squeeze it to ask about slow patterns and fast ones.</p>
+      <p data-who="Trader">So two knobs.</p>
+      <p data-who="Quant">Yes. Where you are in time, and how stretched the ripple is, which plays the role of frequency. Do every combination and you get a map, time along one side and scale along the other. That map is called a scalogram.</p>
+      <p data-who="Trader">Show me it catching something.</p>
+      <p data-who="Quant">Eight daily returns, all tiny, except one jump of three percent in the middle. Pair the days up. For each pair, take half the difference. Three of the pairs give a tenth or less. The pair with the jump gives one and a half. More than ten times the others, and it sits exactly where the shock was.</p>
+      <p data-who="Trader">And a periodogram of the same eight days?</p>
+      <p data-who="Quant">A sudden jump contains a little of every frequency, so its energy gets smeared across the whole spectrum. It can tell you something happened. It can't tell you when.</p>
+      <p data-who="Trader">Which wavelet should I use?</p>
+      <p data-who="Quant">There's a trade-off you can't escape. Sharp timing costs you frequency precision, and the reverse. The Haar wavelet, a simple up-then-down step, is great at pinning down jumps. The Morlet, a smooth wiggle, is better at telling nearby cycles apart, so it's the usual choice for smoother financial cycles.</p>
+      <p data-who="Trader">Where has this been used in markets?</p>
+      <p data-who="Quant">Economists picked it up in the nineteen-nineties. Ramsey and Lampart in 1998 split money and income relationships by time horizon and found they differ a lot between horizons. Finance followed, measuring how correlations and betas change with the horizon you look at.</p>
+      <p data-who="Trader">Any traps?</p>
+      <p data-who="Quant">Two big ones. Near the start and end of the sample the ripple hangs off the edge of the data, so readings there are unreliable. And a scalogram has so many cells that some will light up by chance. The one-line version: wavelets tell you which cycles and roughly when, but a bright patch is a hint, not a signal.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">The same two markets, related differently at each horizon</h2>
       <p class="sl-sub">Wavelets · Ramsey &amp; Lampart, 1998; Gençay, Selçuk &amp; Whitcher, 2002</p>
@@ -39,7 +108,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">One spectrum, computed once, for the whole series</h2>
       <p class="sl-sub">A periodogram averages frequency content over every time point before it ever reports a number.</p>
@@ -52,7 +121,7 @@
       <div class="sl-quote">This isn't a bug in any particular implementation — it's what "averaging over the whole sample" necessarily means. A trader who mistook "this cycle ran the entire session" for "this cycle appeared only in the last twenty minutes" would be reading the same periodogram two very different, and very consequential, ways.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Same series, two tools that disagree on what it shows</h2>
       <p class="sl-sub">A market that's calm in the first half and choppy in the second. Toggle between how each tool reports it.</p>
@@ -92,7 +161,7 @@
       <p class="sl-p">Nothing about the underlying data changed between these two panels — only the question each tool is built to answer. Fourier asks "which frequencies, averaged over everything." A time-frequency view asks "which frequencies, and roughly when," which is a genuinely different, two-dimensional question.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A wavelet is a wave that turns itself off</h2>
       <div class="sl-icard-grid">
@@ -108,7 +177,7 @@
       <div class="sl-quote">Handed two descriptions of the same song, a Fourier-style one lists every note that appears anywhere and how loud it is on average; a wavelet-style one is closer to sheet music — the same notes, placed in time, showing exactly when each one plays. The tool trades away some of Fourier's very precise frequency resolution to get that timing back — there's no version of this that gives you both for free.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Scale decides what size of pattern a wavelet can catch</h2>
       <p class="sl-sub">Drag the slider. The shape redraws live — watch it stretch and compress.</p>
@@ -127,7 +196,7 @@
       <p class="sl-p">A small scale squeezes the same basic shape into a tight, fast ripple — a good match for a sudden spike or a burst of high-frequency noise. A large scale stretches it into a slow, broad hump — a good match for a gradual trend. Every scale in between checks the series for a pattern of that particular size, at every position b along it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Turning a scale into a period you can actually read</h2>
       <p class="sl-sub">Scale isn't itself a frequency — it's an inverse-ish stand-in for one. Given a wavelet's base frequency, scale converts to an approximate frequency and period.</p>
@@ -152,7 +221,7 @@
       <p class="sl-p">This is deliberately the simplest possible version of the relationship — real wavelet software (Morlet in particular) uses a somewhat more careful formula tying a wavelet's own center frequency to scale — but the shape of the idea is exactly this: <strong>larger scale → lower approximate frequency → longer approximate period</strong>, and vice versa.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The output is a picture, not a spectrum</h2>
       <p class="sl-sub">Time along one axis, scale (inverse frequency) along the other — each cell shows how strongly that size-of-pattern matched the series at that moment.</p>
@@ -179,7 +248,7 @@
     </section>
 
     <!-- WB:wavelets_time_frequency-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Wavelets: which cycles, and when</h2>
       <!-- WB:wavelets_time_frequency:START -->
@@ -190,7 +259,7 @@
     </section>
     <!-- WB:wavelets_time_frequency-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Worked example: pinpointing a single shock exactly</h2>
       <p class="sl-sub">Eight toy daily returns (%), mostly small, with one large shock in the middle: <span style="font-family:'DM Mono',monospace;color:var(--text)">[0.10, −0.10, 0.05, −0.05, 3.00, −0.05, 0.05, −0.10]</span></p>
@@ -208,7 +277,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this actually earns its keep on a desk</h2>
       <p class="sl-sub">A researcher wants to know whether EURUSD's intraday cycle character shortens right after a scheduled ECB announcement, and for how long.</p>
@@ -228,7 +297,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where a scalogram misleads</h2>
       <div class="sl-icard-grid">
@@ -239,7 +308,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -281,7 +350,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide sl-vark" data-slide="15">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative ECB afternoon</div>
+    <h3>A bright band after the press conference</h3>
+    <p>You run a Morlet scalogram of EUR/USD 5-minute returns over one session that included an ECB press conference. It shows a bright band at short scales in the 20 minutes after the press conference starts. It also shows bright patches at long scales at the very start and the very end of the session. What do you conclude?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Both are real. Build a rule that trades the short cycle after ECB press conferences and the long cycle at the open and close.<div class="tl-drill-why">The edge patches sit inside the cone of influence, where the wavelet hangs off the end of the data, so they mostly reflect how the edges were handled. And one day's bright band is an observation, not a tested rule.</div></li>
+      <li data-verdict="good">Distrust the edge patches, then check whether the post-conference band shows up across many ECB days, with a proper significance test rather than brightness by eye.<div class="tl-drill-why">This handles both traps in the lesson. Edge readings get far less weight, and scanning many time-scale cells for a bright spot is a multiple-comparisons problem. A band that recurs across many events, and survives a real test, is worth taking further.</div></li>
+      <li data-verdict="ok">Write up the band as a description of what happened that day, with no trading rule attached.<div class="tl-drill-why">Honest, and the scalogram is good at exactly this kind of description. But a single day says little about whether the pattern repeats, and the edge patches still need flagging in the write-up.</div></li>
+      <li data-verdict="bad">Swap the scalogram for one periodogram of the whole session, since it is the more established tool.<div class="tl-drill-why">That throws away the one thing you wanted to know: when. A periodogram would report a short cycle somewhere in the day, with no way to say whether it was concentrated right after the press conference.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative case built on the lesson's own ECB scenario, not a reported result. A scalogram can show a shortening cycle as a narrow band right at the announcement, which a whole-session periodogram cannot. But readings near the sample edges are contaminated, isolated hot spots need a real significance framework, and turning a pattern into a rule still needs an honest out-of-sample test.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -394,5 +482,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

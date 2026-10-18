@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Calculus for Finance — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, MathJax notation, and a 6-question self-test?<a href="calculus-for-finance.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,64 @@
       <p class="sl-lede">Three lessons already in this Theory Lab quietly lean on calculus without teaching it: Ornstein-Uhlenbeck writes a "rate of change," Black-Scholes builds a whole equation out of how price reacts to the underlying, and Kelly Criterion pulls a σ²/2 correction out of nowhere. This deck builds the three ideas underneath all of that — the derivative, the integral, and the Taylor series — from nothing, so none of it has to be taken on faith later.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 215" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The curve ln of 1 plus x, guessed from what is known at x equals 0. The flat guess is zero, the first-order tangent line is x, which pulls away from the curve as x grows, and the second-order guess x minus x squared over 2 hugs the curve closely near zero. The error is 0.00004 at a step of 0.05 and about 0.007 at a step of 0.30. The same x minus x squared over 2 shape, averaged, gives volatility drag.">
+      <line class="tlp-line" x1="40" y1="134.6" x2="445" y2="134.6"/>
+      <line class="tlp-line" x1="183.2" y1="46" x2="183.2" y2="205"/>
+      <line class="tlp-line amber thick" x1="60" y1="186.9" x2="429.6" y2="30"/>
+      <polyline class="tlp-line blue thick" points="60.0,201.4 75.4,190.9 90.8,181.3 106.2,172.2 121.6,163.8 137.0,155.9 152.4,148.4 167.8,141.3 183.2,134.6 198.6,128.2 214.0,122.1 229.4,116.3 244.8,110.8 260.2,105.4 275.6,100.3 291.0,95.3 306.4,90.6 321.8,86.0 337.2,81.6 352.6,77.3 368.0,73.1 383.4,69.1 398.8,65.2 414.2,61.4 429.6,57.7"/>
+      <polyline class="tlp-line green thick dash" points="60.0,197.4 75.4,188.4 90.8,179.7 106.2,171.4 121.6,163.4 137.0,155.7 152.4,148.3 167.8,141.3 183.2,134.6 198.6,128.2 214.0,122.2 229.4,116.5 244.8,111.1 260.2,106.0 275.6,101.2 291.0,96.8 306.4,92.7 321.8,89.0 337.2,85.5 352.6,82.4 368.0,79.7 383.4,77.2 398.8,75.1 414.2,73.3 429.6,71.8"/>
+      <line class="tlp-line dash" x1="275.6" y1="96" x2="275.6" y2="134.6"/>
+      <circle class="tlp-text3" cx="198.6" cy="134.6" r="3.5"/>
+      <circle class="tlp-text3" cx="275.6" cy="134.6" r="3.5"/>
+      <text class="tlp-text" x="50" y="34" font-size="14" font-weight="700">ln(1 + x), guessed from x = 0</text>
+      <text class="tlp-amber" x="330" y="48" text-anchor="end" font-size="13" font-weight="700">1st order: x</text>
+      <text class="tlp-blue" x="436" y="56" font-size="13" font-weight="700">true ln(1 + x)</text>
+      <text class="tlp-green" x="436" y="78" font-size="13" font-weight="700">2nd: x − x²/2</text>
+      <text class="tlp-text3" x="52" y="127" font-size="12">flat guess: 0</text>
+      <text class="tlp-text3" x="203" y="150" text-anchor="middle" font-size="12">0.05</text>
+      <text class="tlp-text3" x="275.6" y="150" text-anchor="middle" font-size="12">0.30</text>
+      <text class="tlp-text2" x="440" y="170" text-anchor="end" font-size="13">error at h = 0.05: 0.00004</text>
+      <text class="tlp-text2" x="440" y="188" text-anchor="end" font-size="13">error at h = 0.30: 0.007</text>
+      <text class="tlp-purple" x="590" y="112" text-anchor="end" font-size="13" font-weight="700">averaged:</text>
+      <text class="tlp-purple" x="590" y="130" text-anchor="end" font-size="13" font-weight="700">g ≈ μ − σ²/2</text>
+    </svg>
+    <figcaption>A Taylor series guesses a curve from one point: a flat guess, then the tangent line (the derivative), then a bend for curvature (the second derivative). For ln(1 + x) the second-order guess is x − x²/2, almost perfect for small steps and drifting for big ones. Averaged over many periods, the same shape is volatility drag.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I last did calculus at school. Do I really need it to trade?</p>
+      <p data-who="Quant">You use it every day already. Think of a car. The speedometer tells you how fast you are going right now. That is a derivative: a rate of change at one instant.</p>
+      <p data-who="Trader">And the odometer?</p>
+      <p data-who="Quant">The odometer adds up every instant of speed into a total distance. That is an integral. The two are mirror images: one undoes the other.</p>
+      <p data-who="Trader">How do you get "right now" out of a formula, though?</p>
+      <p data-who="Quant">Measure the average speed over a gap, then shrink the gap towards zero. For x squared, the average slope from x to a little further on works out to two x plus the gap. Shrink the gap away and the slope is exactly two x.</p>
+      <p data-who="Trader">And Taylor series?</p>
+      <p data-who="Quant">A way to guess a value nearby from what you know at one point. First guess: nothing changes. Second: keep going at today's slope, the tangent line. Third: add a correction for how the curve bends.</p>
+      <p data-who="Trader">Show me it working.</p>
+      <p data-who="Quant">Take the log of one plus a return. The bent guess is the return minus half its square. For a five percent move the error is about four hundred-thousandths. For a thirty percent move it is about seven thousandths, nearly two hundred times bigger. Great for small steps, worse for big ones.</p>
+      <p data-who="Trader">Where does that show up on a desk?</p>
+      <p data-who="Quant">Average that same shape over many periods and you get volatility drag: compound growth is roughly the average return minus half the variance. At twenty percent volatility, that is about two percent a year.</p>
+      <p data-who="Trader">And options?</p>
+      <p data-who="Quant">Delta is the derivative of the option price with respect to the underlying. A delta of zero point six means a one dollar move in the stock moves the option about sixty cents. Gamma is the bend, the second-order correction. That's why desks watch both.</p>
+      <p data-who="Trader">Who brought this into finance?</p>
+      <p data-who="Quant">Robert Merton, around nineteen sixty-nine to seventy-one, using Itô's calculus for random paths. In nineteen seventy-three it gave Black, Scholes and Merton the option price. The second-order term that survives randomness is exactly where volatility enters.</p>
+      <p data-who="Trader">So the one-liner?</p>
+      <p data-who="Quant">A derivative is speed right now, an integral is distance so far, and a two-term Taylor guess explains delta, gamma and volatility drag, as long as the move is small.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Hedging something that never stops moving</h2>
       <div class="sl-origin">
@@ -39,7 +97,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Average speed vs. the speedometer, right now</h2>
       <p class="sl-sub">Drag the slider. As the second point slides toward the first, the secant line rotates into the tangent line.</p>
@@ -54,17 +112,17 @@
             <circle id="cf-p1" cx="220" cy="0" r="5.5" style="fill:var(--red)"/>
             <circle id="cf-p2" cx="220" cy="0" r="5.5" style="fill:var(--purple)"/>
             <text x="580" y="248" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">x</text>
-            <text id="cf-hlabel" x="330" y="252" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">h = 2.20</text>
+            <text id="cf-hlabel" x="330" y="252" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">h = 22.00</text>
           </svg>
         </div>
-        <div class="sl-sliderhead"><span>Gap size, h</span><span class="sl-live" id="cf-hval">h = 2.20</span></div>
+        <div class="sl-sliderhead"><span>Gap size, h</span><span class="sl-live" id="cf-hval">h = 22.00</span></div>
         <input type="range" class="sl-slider" id="cf-slider" min="2" max="220" step="1" value="220">
         <div class="sl-verdict" id="cf-verdict"><strong>Secant line</strong> — the red and purple points are far apart, so this line's slope is only an <em>average</em> rate of change over the whole gap.</div>
       </div>
       <p class="sl-p">Slide h all the way down and the two points merge into one: the line stops being a secant connecting two points and becomes the <strong>tangent</strong> — the single line that just grazes the curve at that instant. Formally, average rate of change is rise over run, [f(x+h) − f(x)] / h. The derivative is what that ratio approaches as h shrinks all the way to zero: f′(x) = lim(h→0) [f(x+h) − f(x)] / h. A fixed, non-zero h always gives an approximation; only the limit gives the exact instantaneous value.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">One derivative, worked in full: d/dx(x²) = 2x</h2>
       <p class="sl-sub">Every step of the algebra, so nothing is taken on faith.</p>
@@ -97,7 +155,7 @@
       <p class="sl-p">This same limit machinery generalizes into rules you'd otherwise memorize by rote: for f(x) = xⁿ, the derivative is always nxⁿ⁻¹ (here, n=2 gives 2x¹ = 2x). A constant added anywhere contributes nothing, because it cancels in the subtraction step exactly like x² did above. Every "differentiation rule" is this same four-step limit, done once in general instead of by hand each time.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The integral: area you don't have to add up by hand</h2>
       <p class="sl-sub">A different question: not "how fast is f changing," but "how much area sits under the curve?"</p>
@@ -124,7 +182,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The speedometer and the odometer are mirror images</h2>
       <div class="sl-compare">
@@ -145,7 +203,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Taylor series: guessing a function from one point alone</h2>
       <p class="sl-sub">If all you know is a function's value and its rate(s) of change at one point x, how good a guess can you make nearby?</p>
@@ -158,7 +216,7 @@
       <div class="sl-quote">f(x+h) ≈ f(x) + f′(x)h + ½f″(x)h² — each added term is a correction for exactly what the previous term missed. This second-order version is the workhorse used throughout the rest of this curriculum.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Where the σ²/2 shape actually comes from</h2>
       <p class="sl-sub">Expand f(x) = ln(1+x) around x = 0 using the second-order Taylor formula. Three numbers are needed.</p>
@@ -174,7 +232,7 @@
     </section>
 
     <!-- WB:calculus_for_finance-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Slope, area and a Taylor guess, drawn step by step</h2>
       <!-- WB:calculus_for_finance:START -->
@@ -185,7 +243,7 @@
     </section>
     <!-- WB:calculus_for_finance-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Same shape, twice: volatility drag and Kelly</h2>
       <p class="sl-sub">Average the identity ln(1+R) ≈ R − R²/2 across many periods and the σ²/2 term in the Kelly lesson falls out directly.</p>
@@ -215,7 +273,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Derivatives you're already trading with</h2>
       <div class="sl-icard-grid">
@@ -230,7 +288,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -281,7 +339,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide sl-vark" data-slide="14">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative overnight gap</div>
+    <h3>Delta says you lose $6. Do you?</h3>
+    <p>You have sold the lesson's call option: price $4.30, underlying at $100, delta 0.60. For this drill, suppose its gamma is 0.03. Overnight the underlying gaps up $10, to $110. Your quick risk screen uses delta only and says the option gained about \(0.60 \times 10 = \$6.00\), so you lost about $6.00 per option. What do you expect the real loss to be?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">About $6.00. Delta is the derivative, so it gives the answer.<div class="tl-drill-why">Delta is only the first-order term: the tangent line. A $10 gap is not a small step, and the option's price curve bends away from that line.</div></li>
+      <li data-verdict="good">More than $6.00. Add gamma's term, \(\tfrac12\gamma(\Delta S)^2\): half of 0.03 times 100 is $1.50, so about $7.50. Then confirm by repricing.<div class="tl-drill-why">This is the second-order Taylor expansion: \(\Delta C \approx \delta\,\Delta S\) \(+\, \tfrac12\gamma\,(\Delta S)^2\). For a short option, the curvature always works against you, whichever way the big move goes.</div></li>
+      <li data-verdict="bad">Less than $6.00. Big moves are rare, so the estimate is probably too high.<div class="tl-drill-why">Rarity has nothing to do with it once the move has happened. A call's value curves upward, so for a rise it gains more than the tangent line says, not less.</div></li>
+      <li data-verdict="ok">No idea until the option is fully repriced.<div class="tl-drill-why">Full repricing is the most exact answer and worth doing. But the Taylor terms tell you the direction and rough size immediately, which is the point of having them.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What to take from it.</strong> This is an illustrative situation, not a historical event: the price, spot and delta come from the lesson's example, and the gamma of 0.03 is assumed for the drill. With those numbers the delta-gamma estimate is \(6.00 + 1.50 = \$7.50\), a quarter more than delta alone. The bigger the move, the more the second-order term matters.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -427,5 +504,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

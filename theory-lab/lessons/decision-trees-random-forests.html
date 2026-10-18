@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -626,6 +627,23 @@
     <button type="button" id="dt-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The impurity reduction of a split again, on new points. For 0/1 targets, \(I(S) = \bar{y}(1-\bar{y})\), and \(\Delta I = I(S) - \left[\tfrac{|S_L|}{|S|} I(S_L) + \tfrac{|S_R|}{|S|} I(S_R)\right]\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Ten points, \(y = [0,0,0,1,0,1,1,1,1,1]\), split at \(x \le 4\). Parent: six ones, \(\bar{y} = 0.6\), \(I(S) = 0.24\). Left \(\{0,0,0,1\}\): \(I = 0.1875\). Right \(\{0,1,1,1,1,1\}\): \(I = 0.1389\). Weighted children: \(0.4(0.1875) + 0.6(0.1389) = 0.1583\). So \(\Delta I =\) <span class="tl-blank" data-answer="0.0817" data-tol="0.0003"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Six points, \(y = [0,0,1,0,1,1]\), split at \(x \le 3\). Parent \(I(S) = 0.25\). Left \(\{0,0,1\}\): \(I(S_L)\) = <span class="tl-blank" data-answer="0.2222" data-tol="0.0003"></span>. Right \(\{0,1,1\}\): \(I(S_R)\) = <span class="tl-blank" data-answer="0.2222" data-tol="0.0003"></span>. \(\Delta I\) = <span class="tl-blank" data-answer="0.0278" data-tol="0.0003"></span>. Barely any gain: neither child is much purer.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Ten points, \(y = [0,0,0,0,1,0,1,1,1,1]\), split at \(x \le 5\). Parent impurity: <span class="tl-blank" data-answer="0.25" data-tol="0.0005"></span>. Left child impurity (the first five points): <span class="tl-blank" data-answer="0.16" data-tol="0.0005"></span>. \(\Delta I\): <span class="tl-blank" data-answer="0.09" data-tol="0.0005"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">A jagged single-tree fit versus a smoother forest-averaged fit, on the same 8 points</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step chart comparing a single unconstrained decision tree, which forms a jagged staircase touching every one of eight training points exactly including two noisy ones, against a three-tree forest average, which forms a smoother staircase that misses the two noisy points but tracks the true underlying step function more closely.">
@@ -918,7 +936,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   var DEFAULTS = { Ip: 0.25, nL: 3, IL: 0, nR: 5, IR: 0.16 };

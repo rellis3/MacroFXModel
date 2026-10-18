@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -432,6 +433,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same two z-scores on new six-day series: the contaminated one uses the mean and population standard deviation of all six days, the point-in-time one uses only the days up to and including the day being scored.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(x = [2.0,\ 2.4,\ 2.2,\ 2.6,\ 0.4,\ 2.3]\), scoring day 4 (\(x_4 = 2.6\)); day 5 is a one-off drop. Full sample: \(\mu = 1.983\), \(\sigma = 0.731\), so the contaminated \(z_4 = 0.84\). Days 1 to 4 only: \(\mu = 2.300\), \(\sigma = 0.224\). The point-in-time \(z_4 = (2.6 - 2.300)/0.224\) = <span class="tl-blank" data-answer="1.34" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(x = [5.0,\ 6.0,\ 5.5,\ 4.5,\ 9.0,\ 5.0]\), scoring day 4 (\(x_4 = 4.5\)). Full sample: \(\mu = 5.833\), \(\sigma = 1.491\), contaminated \(z_4 = -0.89\). Days 1 to 4 only: \(\mu\) = <span class="tl-blank" data-answer="5.25" data-tol="0.005"></span>, \(\sigma\) = <span class="tl-blank" data-answer="0.559" data-tol="0.002"></span>, and the point-in-time \(z_4\) = <span class="tl-blank" data-answer="-1.34" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(x = [0.8,\ 1.0,\ 0.6,\ 0.9,\ 1.1,\ 3.0]\), scoring day 5 (\(x_5 = 1.1\)); day 6 is the spike. Contaminated \(z_5\): <span class="tl-blank" data-answer="-0.17" data-tol="0.01"></span>. Days 1 to 5 only: \(\mu\) = <span class="tl-blank" data-answer="0.88" data-tol="0.005"></span>, \(\sigma\) = <span class="tl-blank" data-answer="0.172" data-tol="0.002"></span>, point-in-time \(z_5\) = <span class="tl-blank" data-answer="1.28" data-tol="0.01"></span>. Here the future spike does more than mute the reading: it flips its sign.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A real-world trading scenario</div>
@@ -580,6 +598,7 @@
     actually see at the time, the same move that found the five missing rows.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../fill-realism.html">Fill-Realism Ladder</a> re-runs the per-line fade on the same sessions at finer and finer bars, down to 1-minute, to see whether its Sharpe came from information a coarse bar let the engine use.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>How practitioners actually use this</h2>
@@ -669,7 +688,7 @@
       <li data-verdict="good">Rebuild the number yourself from the raw country data, checking which countries and years are in and how each episode is weighted.<div class="tl-drill-why">This is the independent rebuild the lesson argues for. It tests the choices as well as the arithmetic: which rows count, which years are dropped, and how a one-year episode weighs against a nineteen-year one.</div></li>
       <li data-verdict="bad">Search the data for the debt level where growth falls the most, and trade that threshold instead.<div class="tl-drill-why">This replaces one unchecked number with a data-mined one. Scanning for the best threshold is the multiple-testing trap, and it still rests on the same unverified dataset.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In 2013 Thomas Herndon, a graduate student at the University of Massachusetts Amherst, could not reproduce the result for a class assignment and obtained the spreadsheet. With Michael Ash and Robert Pollin he found an average that left out five countries, some excluded years, and equal weighting of episodes of very different length. Corrected, average growth above 90% debt was about 2.2%: slower than at lower debt, but no cliff. Reinhart and Rogoff acknowledged the spreadsheet error and defended their other choices.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In 2013 Thomas Herndon, a graduate student at the University of Massachusetts Amherst, could not reproduce the result for a class assignment and obtained the spreadsheet. With Michael Ash and Robert Pollin he found an average that left out five countries, some excluded years, and equal weighting of episodes of very different length. Corrected, average growth above 90% debt was about 2.2%: slower than at lower debt, but no cliff. Reinhart and Rogoff acknowledged the spreadsheet error and defended their other choices.</p><p class="tl-drill-sources">Sources: <a href="https://doi.org/10.1257/aer.100.2.573">Reinhart and Rogoff, "Growth in a Time of Debt", American Economic Review, May 2010</a>; <a href="https://peri.umass.edu/publication/item/526-does-high-public-debt-consistently-stifle-economic-growth-a-critique-of-reinhart-and-rogoff">Herndon, Ash and Pollin, PERI Working Paper 322, April 2013</a>, later in the <a href="https://doi.org/10.1093/cje/bet075">Cambridge Journal of Economics</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>
@@ -825,7 +844,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Stochastic PDEs — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the Da Prato–Zabczyk citations, and a 6-question self-test?<a href="stochastic-pdes.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,75 @@
       <p class="sl-lede">Every SDE so far in this sequence has moved a single number, or a short finite list of numbers, randomly through time. The Fokker-Planck equation, right before this lesson, showed how the probability density of one of those numbers spreads out deterministically over time. This lesson takes the next step, and it's a genuine jump: what happens when the object evolving randomly stops being a finite list at all, and becomes an entire curve — the whole interest-rate forward curve, at every maturity simultaneously — or an entire probability density that's also being nudged by continuous noisy observations? That object is a stochastic PDE, and this lesson introduces it through two concrete, named examples: the HJM/Musiela forward-curve framework, which connects directly back to the yield-curve-construction and Nelson-Siegel-Svensson lessons earlier in this curriculum, and the Zakai equation from filtering theory.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 222" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The lesson's upward-sloping forward curve, from 3.00% at tenor 0 to 3.80% at 5 years, 4.20% at 10 years and 4.35% at 15 years, with slopes of 0.16, 0.08 and 0.03 percentage points per year of tenor between the points. The whole curve, drawn in purple, is one SPDE. The four blue tenor points are four coupled SDEs. The single green point at tenor 0 is the short rate that a model such as Hull-White tracks on its own.">
+      <line class="tlp-line" x1="60" y1="196" x2="440" y2="196"/>
+      <line class="tlp-line" x1="60" y1="40" x2="60" y2="196"/>
+      <polyline class="tlp-line purple thick" points="60.0,173.3 66.3,169.2 72.7,165.1 79.0,161.1 85.3,157.2 91.7,153.3 98.0,149.5 104.3,145.8 110.7,142.1 117.0,138.6 123.3,135.1 129.7,131.8 136.0,128.5 142.3,125.4 148.7,122.4 155.0,119.4 161.3,116.6 167.7,113.9 174.0,111.4 180.3,109.0 186.7,106.7 193.0,104.5 199.3,102.3 205.7,100.2 212.0,98.1 218.3,96.1 224.7,94.1 231.0,92.2 237.3,90.3 243.7,88.5 250.0,86.7 256.3,85.0 262.7,83.4 269.0,81.9 275.3,80.4 281.7,79.0 288.0,77.7 294.3,76.5 300.7,75.3 307.0,74.3 313.3,73.3 319.7,72.4 326.0,71.5 332.3,70.6 338.7,69.8 345.0,68.9 351.3,68.1 357.7,67.3 364.0,66.5 370.3,65.8 376.7,65.1 383.0,64.4 389.3,63.8 395.7,63.2 402.0,62.7 408.3,62.2 414.7,61.8 421.0,61.5 427.3,61.2 433.7,61.0 440.0,60.8"/>
+      <circle class="tlp-blue" cx="186.7" cy="106.7" r="5.5"/>
+      <circle class="tlp-blue" cx="313.3" cy="73.3" r="5.5"/>
+      <circle class="tlp-blue" cx="440" cy="60.8" r="5.5"/>
+      <circle class="tlp-green" cx="60" cy="173.3" r="7.5"/>
+      <text class="tlp-text" x="72" y="190" font-size="13" font-weight="700">3.00%</text>
+      <text class="tlp-text" x="196" y="125" font-size="13" font-weight="700">3.80%</text>
+      <text class="tlp-text" x="322" y="93" font-size="13" font-weight="700">4.20%</text>
+      <text class="tlp-text" x="440" y="82" text-anchor="end" font-size="13" font-weight="700">4.35%</text>
+      <text class="tlp-text3" x="108" y="114" text-anchor="middle" font-size="12">+0.16 / yr</text>
+      <text class="tlp-text3" x="243" y="70" text-anchor="middle" font-size="12">+0.08 / yr</text>
+      <text class="tlp-text3" x="372" y="47" text-anchor="middle" font-size="12">+0.03 / yr</text>
+      <text class="tlp-text3" x="52" y="177" text-anchor="end" font-size="12">3%</text>
+      <text class="tlp-text3" x="52" y="94" text-anchor="end" font-size="12">4%</text>
+      <text class="tlp-text3" x="60" y="212" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="186.7" y="212" text-anchor="middle" font-size="12">5</text>
+      <text class="tlp-text3" x="313.3" y="212" text-anchor="middle" font-size="12">10</text>
+      <text class="tlp-text3" x="440" y="212" text-anchor="middle" font-size="12">15 yr</text>
+      <text class="tlp-text3" x="250" y="212" text-anchor="middle" font-size="12">tenor x →</text>
+      <line class="tlp-line purple thick" x1="460" y1="55" x2="482" y2="55"/>
+      <text class="tlp-purple" x="488" y="60" font-size="13" font-weight="700">whole curve</text>
+      <text class="tlp-text2" x="488" y="76" font-size="12">one SPDE</text>
+      <circle class="tlp-blue" cx="471" cy="105" r="5.5"/>
+      <text class="tlp-blue" x="488" y="110" font-size="13" font-weight="700">4 tenor points</text>
+      <text class="tlp-text2" x="488" y="126" font-size="12">4 coupled SDEs</text>
+      <circle class="tlp-green" cx="471" cy="155" r="6.5"/>
+      <text class="tlp-green" x="488" y="160" font-size="13" font-weight="700">x = 0 only</text>
+      <text class="tlp-text2" x="488" y="176" font-size="12">e.g. Hull-White</text>
+    </svg>
+    <figcaption>One forward curve, three ways to model it. Track every maturity at once and it is one SPDE. Sample it at four tenors and it becomes four coupled SDEs. Keep only the short end and what is left is a one-number short-rate model.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I trade the curve, not one rate. Why do all the models I see start from a single short rate?</p>
+      <p data-who="Quant">Because one number is easy. But the honest object is the whole forward curve: the rate at every maturity, all moving at once. A model of that whole moving curve is a stochastic partial differential equation.</p>
+      <p data-who="Trader">How is that different from a normal random process?</p>
+      <p data-who="Quant">A normal one is a single buoy bobbing on the water. This is the whole surface of the sea. Picture the curve as a rubber band from today out to thirty years, flexing along its entire length. Nearby points move alike, distant points less so.</p>
+      <p data-who="Trader">And the noise?</p>
+      <p data-who="Quant">That is the strange part. The noise hits every maturity at every instant. In its purest form it is so rough it has no value at any single point. It only makes sense once you average it over a small stretch, a bit like static on a radio.</p>
+      <p data-who="Trader">Where does this show up in finance?</p>
+      <p data-who="Quant">Heath, Jarrow and Morton modelled the whole forward curve in 1992. Musiela rewrote it in time to maturity in 1993, which turns it into one of these equations. And the LIBOR market model from 1997 became a standard for swaptions.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Take the lesson's curve: three percent at the short end, three point eight at five years. That slope is zero point one six percentage points per year of maturity. As time passes, each point slides down that slope. Traders call it rolling down the curve, and it appears in the equation even with no risk and no randomness at all.</p>
+      <p data-who="Trader">So where does Hull-White fit?</p>
+      <p data-who="Quant">Sample the curve at four maturities and the big equation becomes four linked ordinary ones. Keep only the short end and you are left with one equation. That is a Hull-White style short-rate model. It is what remains when you throw the rest of the curve away.</p>
+      <p data-who="Trader">When does throwing it away hurt?</p>
+      <p data-who="Quant">When your trade is about shape. A one-factor model moves every point with the same shock, so a two-year versus ten-year steepener looks almost riskless to it. You need separate level, slope and curvature factors.</p>
+      <p data-who="Trader">Is anyone actually running the full equation?</p>
+      <p data-who="Quant">Rarely. Specialist curve desks and filtering researchers. The Kalman filter and the particle filter both solve a version of one of these equations, without most users ever writing it down.</p>
+      <p data-who="Trader">One line to remember?</p>
+      <p data-who="Quant">The curve is the real object, and a short-rate model is just one point of it, so check whether your risk lives in the part you threw away.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Moving the whole yield curve at once</h2>
       <p class="sl-sub">Heath, Jarrow &amp; Morton · 1992 · Musiela · 1993</p>
@@ -39,7 +108,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">One number, a few numbers, then a whole curve</h2>
       <p class="sl-sub">Everything in this sequence so far has lived in a small, finite space. This lesson is what happens when it stops being finite.</p>
@@ -51,7 +120,7 @@
       <div class="sl-quote">Picture the entire forward interest-rate curve as a long rubber band stretched from "today" out to "30 years from now." A short-rate SDE watches one single point on that band bounce around. An SPDE describes the <strong>entire band</strong> flexing and rippling along its whole length at once — with nearby points on the band moving alike, but not identically.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Finite vector vs. whole curve, side by side</h2>
       <p class="sl-sub">Same randomness, two entirely different kinds of object being moved by it.</p>
@@ -91,7 +160,7 @@
       <div class="sl-note">This is the entire conceptual jump this lesson is built around: finite-dimensional (ℝⁿ) versus infinite-dimensional (a space of functions). Everything below — the noise, the solution formula, the two named examples — is what has to change once the object being moved is a curve instead of a list of numbers.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The noise driving it is stranger than dW_t</h2>
       <p class="sl-sub">The canonical, simplest SPDE — the stochastic heat equation — makes the new difficulty concrete.</p>
@@ -107,7 +176,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The same solution formula, one dimension up</h2>
       <p class="sl-sub">SPDEs aren't solved from scratch — the practical solution concept is a direct echo of a formula already used earlier in this sequence.</p>
@@ -128,7 +197,7 @@
       <div class="sl-quote">Same shape, same idea — "multiply by a growth factor and add up the random pushes along the way" — done for an entire field instead of a single number. <strong>e^(at)</strong> becomes <strong>S(t)</strong>; the ordinary Itô integral becomes a stochastic integral against a Q-Wiener process. Nothing about the logic changes, only the space it happens in.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">HJM/Musiela: one SPDE for the whole forward curve</h2>
       <p class="sl-sub">The most finance-relevant named example — and the direct generalization of the short-rate models earlier in this sequence.</p>
@@ -145,7 +214,7 @@
       <p class="sl-p">The earlier <strong>yield-curve-construction</strong> and <strong>Nelson-Siegel-Svensson</strong> lessons in this curriculum fit a single <em>static snapshot</em> of f(t,·) at one moment — a photograph of the rubber band, not a model of how it moves. HJM/Musiela is what models the motion itself.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Watch the whole curve wiggle</h2>
       <p class="sl-sub">Three snapshots of the same illustrative forward curve, each one randomly perturbed from the last — not three unrelated lines, one evolving object.</p>
@@ -183,7 +252,7 @@
     </section>
 
     <!-- WB:stochastic_pdes-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">SPDEs: the whole curve, and what a short-rate model keeps</h2>
       <!-- WB:stochastic_pdes:START -->
@@ -194,10 +263,10 @@
     </section>
     <!-- WB:stochastic_pdes-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Nudge time forward, watch it wiggle</h2>
-      <p class="sl-sub">Same illustrative curve, now advanced step by step. Each step applies a new seeded random perturbation — front end noisier than the back end — and redraws the whole shape.</p>
+      <p class="sl-sub">A similar illustrative curve, sampled every four years, now advanced step by step. Each step applies a new seeded random perturbation — front end noisier than the back end — and redraws the whole shape.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it</div>
         <div class="sl-svgwrap">
@@ -206,7 +275,7 @@
             <text x="60" y="216" font-size="11" fill="var(--text3)" font-family="'DM Mono',monospace">x=0</text>
             <text x="600" y="216" font-size="11" fill="var(--text3)" font-family="'DM Mono',monospace" text-anchor="end">x=20y</text>
             <line x1="60" y1="30" x2="60" y2="200" style="stroke:var(--border2);stroke-width:1"/>
-            <polyline id="spde-slider-curve" points="60,150 172,110 284,80 396,60 508,42 600,32" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <polyline id="spde-slider-curve" points="60.0,173.8 168.0,137.9 276.0,111.7 384.0,98.7 492.0,87.5 600.0,79.0" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
             <g id="spde-slider-dots"></g>
           </svg>
         </div>
@@ -214,14 +283,14 @@
         <input type="range" class="sl-slider" id="spde-slider" min="0" max="10" step="1" value="0">
         <div class="sl-calc-steps">
           <div>Front end f(t,0): <b id="spde-slider-front">3.00%</b></div>
-          <div>Mid tenor f(t,10): <b id="spde-slider-mid">4.20%</b></div>
+          <div>Mid tenor f(t,12): <b id="spde-slider-mid">4.15%</b></div>
           <div>Long end f(t,20): <b id="spde-slider-long">4.45%</b></div>
         </div>
         <div class="sl-note">The curve is fully recomputed from the fixed seed at every step — scrub backward and forward and you get the exact same shape at the same step every time, the same reproducibility a fixed-seed Monte Carlo run needs.</div>
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The no-arbitrage drift, computed live</h2>
       <p class="sl-sub">Once a volatility structure σ(t,x) is specified, HJM's drift condition α(t,x) = σ(t,x) · ∫₀ˣσ(t,u)du is not optional — it's forced. Try different vol inputs below.</p>
@@ -243,7 +312,7 @@
       <p class="sl-p">0.010 × 0.045 = 0.00045, or <strong>4.5 basis points</strong> of forced drift at that tenor. The modeller never gets to pick α independently — specify σ(t,x) across the whole curve, and the drift at every tenor is already decided.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The Zakai equation: filtering's own SPDE</h2>
       <p class="sl-sub">A second, completely different named SPDE — this one from continuous-time filtering, not term-structure modelling.</p>
@@ -265,7 +334,7 @@
       <div class="sl-quote">Neither the Kalman filter nor the particle filter lesson earlier in this curriculum names the object both are — in different senses — solving. This is it: one linear SPDE governing how confidence about a hidden state evolves, given noisy continuous evidence.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Genuinely advanced<!-- DESK:START --> — and genuinely not what's running in this repo<!-- DESK:END --></h2>
       <p class="sl-sub">Worth being explicit about where this machinery actually gets used, and where it doesn't.</p>
@@ -282,7 +351,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -333,7 +402,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative curve trade</div>
+    <h3>Your risk report says the steepener is almost riskless</h3>
+    <p>You put on a 2s10s steepener: long the 2-year, short the 10-year, sized so a parallel move in rates nets to roughly zero. Your risk system prices everything with a one-factor Hull-White model. The report shows almost no risk on the position. What do you make of it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trust it. The model is calibrated to today's curve, so its risk numbers are right.<div class="tl-drill-why">Fitting today's curve says nothing about how the curve moves. A one-factor model moves every tenor with the same shock, so it cannot see the 2-year and 10-year moving differently, which is the only thing the trade is about.</div></li>
+      <li data-verdict="bad">Raise the volatility in the one-factor model until the risk looks bigger.<div class="tl-drill-why">A bigger single number bolted onto the same model still moves every point in lockstep. The report scales up, but the steepening risk is still invisible.</div></li>
+      <li data-verdict="good">Measure the trade against separate level, slope and curvature factors, imperfectly correlated with each other.<div class="tl-drill-why">Shape risk needs several factors that can move the short and long ends differently. This is the practical, finite-dimensional step towards the whole-curve model, and it shows the exposure the trade was built to take.</div></li>
+      <li data-verdict="ok">Build a full SPDE model of the whole forward curve before trading again.<div class="tl-drill-why">It would capture the shape risk, but full SPDE machinery is rare outside specialist curve desks. A small multi-factor model gets you most of the way for a fraction of the work.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The lesson.</strong> This is an illustrative situation, not a dated event. A one-factor short-rate model is the curve with every tenor but one thrown away. That is fine for books exposed mainly to the level of rates, and blind to trades whose payoff depends on the curve's shape.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -473,5 +561,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

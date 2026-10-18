@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Execution Algorithms — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the four-part dollar-cost worked example, and a 6-question self-test?<a href="execution-algorithms.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,73 @@
       <p class="sl-lede">"Buy 40,000 shares" is a decision, not an order ticket. Dump it all in at once and you push the price against yourself, paying a large, avoidable impact cost. Spread it out, and you're exposed to a new risk — the price simply drifting away while you're still working the order. TWAP, VWAP, and Implementation Shortfall are three named, concrete answers to exactly that pacing problem, plus the honest scorecard for judging, after the fact, whichever one you picked.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the lesson's 40,000-share order sliced two ways across four intraday buckets. TWAP is a flat dashed line at 10,000 shares per bucket. VWAP bars follow the U-shaped volume curve: 14,000 at the open, 6,000 in each midday bucket and 14,000 at the close. Right: an Implementation Shortfall bar for the lesson's 10,000-share example, stacked from $450 of delay, $750 of market impact and $300 of opportunity cost on the unfilled shares, $1,500 in total, or 30 basis points of a $500,000 order.">
+      <text class="tlp-green" x="40" y="18" font-size="13" font-weight="700">VWAP bars follow the volume curve</text>
+      <line class="tlp-line" x1="40" y1="190" x2="356" y2="190"/>
+      <rect class="tlp-green" x="60" y="50" width="40" height="140" opacity=".6"/>
+      <rect class="tlp-green" x="140" y="130" width="40" height="60" opacity=".6"/>
+      <rect class="tlp-green" x="220" y="130" width="40" height="60" opacity=".6"/>
+      <rect class="tlp-green" x="300" y="50" width="40" height="140" opacity=".6"/>
+      <line class="tlp-line blue thick dash" x1="44" y1="90" x2="352" y2="90"/>
+      <text class="tlp-blue" x="200" y="80" text-anchor="middle" font-size="13" font-weight="700">TWAP: flat 10,000</text>
+      <text class="tlp-green" x="80" y="44" text-anchor="middle" font-size="13" font-weight="700">14,000</text>
+      <text class="tlp-green" x="160" y="124" text-anchor="middle" font-size="13" font-weight="700">6,000</text>
+      <text class="tlp-green" x="240" y="124" text-anchor="middle" font-size="13" font-weight="700">6,000</text>
+      <text class="tlp-green" x="320" y="44" text-anchor="middle" font-size="13" font-weight="700">14,000</text>
+      <text class="tlp-text3" x="80" y="208" text-anchor="middle" font-size="12">Open</text>
+      <text class="tlp-text3" x="160" y="208" text-anchor="middle" font-size="12">Midday</text>
+      <text class="tlp-text3" x="240" y="208" text-anchor="middle" font-size="12">Midday</text>
+      <text class="tlp-text3" x="320" y="208" text-anchor="middle" font-size="12">Close</text>
+      <text class="tlp-text3" x="198" y="226" text-anchor="middle" font-size="12">one 40,000-share order, four buckets</text>
+      <line class="tlp-line dash" x1="380" y1="10" x2="380" y2="222"/>
+      <text class="tlp-text2" x="400" y="18" font-size="13" font-weight="700">then score it</text>
+      <text class="tlp-text" x="430" y="33" text-anchor="middle" font-size="15" font-weight="700">$1,500</text>
+      <rect class="tlp-purple" x="410" y="40" width="40" height="30" opacity=".7"/>
+      <rect class="tlp-amber" x="410" y="70" width="40" height="75" opacity=".7"/>
+      <rect class="tlp-blue" x="410" y="145" width="40" height="45" opacity=".7"/>
+      <line class="tlp-line" x1="400" y1="190" x2="460" y2="190"/>
+      <text class="tlp-purple" x="460" y="60" font-size="13" font-weight="700">unfilled $300</text>
+      <text class="tlp-amber" x="460" y="112" font-size="13" font-weight="700">impact $750</text>
+      <text class="tlp-blue" x="460" y="172" font-size="13" font-weight="700">delay $450</text>
+      <text class="tlp-text3" x="400" y="208" font-size="12">= 30 bp of $500,000</text>
+    </svg>
+    <figcaption>Left: the same 40,000 shares sliced two ways. TWAP trades a flat 10,000 in every bucket, while VWAP leans into the busy open and close. Right: Implementation Shortfall scores any schedule after the fact, splitting the lesson's $1,500 cost into three different causes.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My portfolio manager wants forty thousand shares bought today. Why not just send one big order?</p>
+      <p data-who="Quant">Because you'd push the price up against yourself all at once. So you spread it out. The question is how.</p>
+      <p data-who="Trader">Evenly seems fair. Ten thousand shares in each quarter of the day.</p>
+      <p data-who="Quant">That's TWAP, slicing by the clock. Simple, and anyone can check it. The flaw is that the market doesn't trade evenly. Volume is heavy at the open and the close and thin at lunchtime, so your midday slices are a big share of a thin market.</p>
+      <p data-who="Trader">So follow the volume instead.</p>
+      <p data-who="Quant">That's VWAP. If thirty-five percent of a normal day trades in the first bucket, you do thirty-five percent of your order there: fourteen thousand shares. Six thousand in each midday bucket, fourteen thousand at the close. You're never an outsized part of a quiet stretch.</p>
+      <p data-who="Trader">And if today isn't a normal day?</p>
+      <p data-who="Quant">Then you use POV. Forget the schedule and trade a fixed share of whatever volume actually happens, say ten percent. Busy market, you speed up. Quiet market, you slow down. The catch is you don't know when you'll finish.</p>
+      <p data-who="Trader">How do I know afterwards if I did well?</p>
+      <p data-who="Quant">Implementation Shortfall. Say the decision was made at fifty dollars. By the time you started, the price was fifty dollars and five cents. You filled nine thousand shares at about fifty dollars thirteen, and a thousand never filled before the close at fifty dollars thirty.</p>
+      <p data-who="Trader">So what did that cost?</p>
+      <p data-who="Quant">Four hundred and fifty dollars of delay, the drift before you started. Seven hundred and fifty of impact, your own footprint. Three hundred of opportunity cost on the shares you never got. Fifteen hundred dollars in all, thirty basis points, and each piece points at a different fix.</p>
+      <p data-who="Trader">Has a schedule ever gone badly wrong?</p>
+      <p data-who="Quant">The Flash Crash, sixth of May, twenty ten. A fund hedging with seventy-five thousand E-mini futures used a POV rule: nine percent of the last minute's volume, with no limit on price or time.</p>
+      <p data-who="Trader">That sounds patient.</p>
+      <p data-who="Quant">It wasn't. Fast traders passed the contracts back and forth, so volume soared, so the algorithm sold faster. The whole order went in about twenty minutes. A similar sale before had taken more than five hours.</p>
+      <p data-who="Trader">So the volume it was following was partly its own selling.</p>
+      <p data-who="Quant">Exactly. Volume isn't liquidity. Pick the schedule for your urgency and your footprint, give it a price limit, and score it honestly with the shortfall afterwards.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">A decision isn't an order ticket</h2>
       <p class="sl-sub">The previous lesson, Market Impact Models &amp; Almgren-Chriss, proves a large order should be sliced over time. This lesson is what a desk actually types into the order-management system to make that happen.</p>
@@ -39,7 +106,7 @@
       <div class="sl-quote">Three names get typed into an order-management system constantly: TWAP, VWAP, and Implementation Shortfall (often just called "arrival price"). The first two are <strong>schedules</strong> — rules for pacing the same order over time. The third is not a schedule at all — it's the <strong>scorecard</strong> used to judge any of them, including itself, after the fact.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">TWAP — split it evenly, by the clock</h2>
       <p class="sl-sub">Time-Weighted Average Price: divide the order into K equal time intervals and trade an identical fraction in each.</p>
@@ -65,7 +132,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">VWAP — matching the market's own shape</h2>
       <p class="sl-sub">Volume-Weighted Average Price fixes TWAP's blind spot: x_k = X · w_k, where w_k is the historical share of a typical day's volume that trades in interval k, and all the w_k sum to exactly 1 — the whole order.</p>
@@ -104,7 +171,7 @@
       <p class="sl-p">Trading in proportion to w_k means the order participates at roughly the same <em>rate</em> as the rest of the market all day — heavier when the market is naturally heavier, lighter when it's naturally lighter. By the same impact-scales-with-size logic as before, that tends to produce less impact per share than TWAP's flat schedule, because the order is never forced to represent an outsized fraction of a thin period's volume.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Build your own VWAP schedule</h2>
       <p class="sl-sub">Using the same historical weights from the chart — Open 35%, Midday 1 15%, Midday 2 15%, Close 35% — enter a total order size and watch every slice update live.</p>
@@ -127,7 +194,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Same order, three different schedules</h2>
       <p class="sl-sub">40,000 shares, split across the same four buckets three different ways. Tap through.</p>
@@ -196,7 +263,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Implementation Shortfall — the arrival-price scorecard</h2>
       <p class="sl-sub">Perold's framework (1988) is the gap between a "paper" world — the whole order fills instantly, free, at the decision-moment price — and the real world, where execution takes time, moves the price, and sometimes doesn't finish at all.</p>
@@ -219,7 +286,7 @@
     </section>
 
     <!-- WB:execution_algorithms-deck:START -->
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Slice it, score it: TWAP, VWAP, POV and the shortfall</h2>
       <!-- WB:execution_algorithms:START -->
@@ -230,7 +297,7 @@
     </section>
     <!-- WB:execution_algorithms-deck:END -->
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">How aggressive should the front-load be?</h2>
       <p class="sl-sub">Drag the slider. At 0% the schedule is flat — TWAP-like. At 100% it front-loads hard, chasing the arrival price before it can drift.</p>
@@ -262,7 +329,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Which one you pick depends on what you're optimizing</h2>
       <div class="sl-icard-grid">
@@ -290,7 +357,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this reasoning goes wrong — and what actually runs here</h2>
       <div class="sl-icard-grid">
@@ -306,7 +373,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">6 May 2010: nine percent of the volume, at any price</h2>
       <div class="sl-callout amber">
@@ -326,7 +393,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the desk's verdict<!-- DESK:END --></h2>
       <div class="sl-callout purple">
@@ -341,7 +408,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -383,7 +450,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2010-05-06">
+    <div class="tl-drill-label">Scenario drill · 6 May 2010</div>
+    <h3>A $4.1 billion hedge into a falling market</h3>
+    <p>It is the afternoon of 6 May 2010. US markets are already falling on European debt worries. You execute for a large fund complex that has decided to hedge an equity position by selling 75,000 E-mini S&amp;P 500 futures, about \$4.1 billion. How do you work the order?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Send it as one market order and get it done.<div class="tl-drill-why">This is maximum footprint. A \$4.1 billion sale in one go walks straight through the book in a nervous market, and you pay the whole impact cost at once. It is the problem every schedule in this lesson exists to avoid.</div></li>
+      <li data-verdict="bad">POV at 9% of the previous minute's volume, with no price or time limit.<div class="tl-drill-why">It sounds patient, but it is only as patient as the market's volume. If intermediaries start passing your contracts back and forth, the volume you are following is partly your own selling, and the rule speeds up exactly when depth is vanishing.</div></li>
+      <li data-verdict="good">Work it patiently over hours, taking price, time and volume into account: a participation cap and a price limit, with a person watching.<div class="tl-drill-why">On the urgency-versus-impact chart this trade sits in high impact concern, where a patient, footprint-minimizing schedule belongs. The price limit and cap stop the order from feeding on its own volume. The same trader had sold a similar order this way before.</div></li>
+      <li data-verdict="ok">A VWAP schedule over the rest of the day, following the usual volume curve.<div class="tl-drill-why">Patient and footprint-aware, which is the right instinct. But a pre-committed schedule with no price limit still sells into any air pocket, and today's volume is unlikely to look like a normal day's.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> According to the joint SEC/CFTC staff report, the order went to an algorithm set to sell 9% of the previous minute's volume "without regard to price or time." High-frequency traders and other intermediaries bought the first contracts and then traded them among themselves: more than 27,000 contracts in 14 seconds for a net change of about 200. The rising volume made the algorithm sell faster, and the 75,000 contracts went through in about 20 minutes. A similar sale before, worked with a mix of manual and automated execution, had taken more than five hours. E-mini buy-side depth fell to less than 1% of its morning level, the contract fell more than 5% in about four and a half minutes, and an automatic five-second pause let buyers come back.</p><p class="tl-drill-sources">Sources: <a href="https://www.sec.gov/news/studies/2010/marketevents-report.pdf">CFTC and SEC staff report, Findings Regarding the Market Events of May 6, 2010, 30 Sep 2010</a>.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -548,5 +634,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

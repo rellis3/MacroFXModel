@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -447,6 +448,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>One-step VECM forecasts for new pairs, lag terms ignored as above: spread \(Z = Y - \hat\beta X\), then \(\Delta Y = \alpha_Y Z\) and \(\Delta X = \alpha_X Z\). All inputs are illustrative.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(Y = 1.0900\), \(X = 1.2600\), \(\hat\beta = 0.86\), \(\alpha_Y = -0.20\), \(\alpha_X = 0.10\). Spread \(Z = 1.0900 - 0.86 \times 1.2600 = 0.0064\). \(\Delta Y = (-0.20)(0.0064) = -0.00128\). \(\Delta X = (0.10)(0.0064) =\) <span class="tl-blank" data-answer="0.00064" data-tol="0.000005"></span>, so Y does twice the correcting.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(Y = 0.6700\), \(X = 0.6050\), \(\hat\beta = 1.10\), \(\alpha_Y = -0.30\), \(\alpha_X = 0.20\). \(Z =\) <span class="tl-blank" data-answer="0.0045" data-tol="0.000005"></span>. \(\Delta Y =\) <span class="tl-blank" data-answer="-0.00135" data-tol="0.000005"></span>. \(\Delta X =\) <span class="tl-blank" data-answer="0.0009" data-tol="0.000005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(Y = 0.6620\), \(X = 0.6080\), \(\hat\beta = 1.12\), \(\alpha_Y = -0.25\), \(\alpha_X = 0.05\). \(Z =\) <span class="tl-blank" data-answer="-0.01896" data-tol="0.000005"></span>. \(\Delta Y =\) <span class="tl-blank" data-answer="0.00474" data-tol="0.000005"></span>. \(\Delta X =\) <span class="tl-blank" data-answer="-0.000948" data-tol="0.000003"></span>. If both forecasts come true, next period's spread is <span class="tl-blank" data-answer="-0.013158" data-tol="0.00001"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -590,7 +608,8 @@
     system this lesson builds: it models one series' change from an ECT tied
     to a price-implied fair value, not a jointly-estimated pair of \(\alpha_Y\)
     and \(\alpha_X\) coefficients across two genuinely traded series.
-  </p><!-- DESK:END -->
+  </p>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../hedge-signals-v2.html">Hedge Signals v2</a> lists the FX pairs that pass a cointegration test today, with each pair's hedge ratio, half-life and current spread z-score; that spread is this lesson's \(Z_{t-1}\).</div><!-- DESK:END -->
   <div class="tl-icard-grid">
     <div class="tl-icard">
       <div class="tl-icon-badge blue">🔀</div>
@@ -840,7 +859,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   var DEFAULTS = { aY: -0.35, aX: 0.15, Z: 0.0050 };

@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -509,6 +510,23 @@
     <button type="button" id="cop-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Match both copulas to one Kendall's \(\tau\), then read off Clayton's lower-tail dependence: \(\rho = \sin(\pi\tau/2)\), \(\theta = 2\tau/(1-\tau)\), \(\lambda_L = 2^{-1/\theta}\). The Gaussian \(\lambda_L\) is 0 every time.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\tau = 0.30\). Gaussian: \(\rho = \sin(0.15\pi) \approx 0.454\). Clayton: \(\theta = 0.60/0.70 \approx 0.857\), so \(-1/\theta \approx -1.167\) and \(\lambda_L = 2^{-1.167} \approx\) <span class="tl-blank" data-answer="0.4454" data-tol="0.002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\tau = 0.50\). Gaussian: \(\rho = \sin(0.25\pi) \approx 0.707\). Clayton: \(\theta\) = <span class="tl-blank" data-answer="2" data-tol="0.005"></span>, and \(\lambda_L\) = <span class="tl-blank" data-answer="0.7071" data-tol="0.002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\tau = 0.20\). Gaussian \(\rho\) = <span class="tl-blank" data-answer="0.309" data-tol="0.002"></span>. Clayton \(\theta\) = <span class="tl-blank" data-answer="0.5" data-tol="0.005"></span>. Clayton \(\lambda_L\) = <span class="tl-blank" data-answer="0.25" data-tol="0.002"></span>. Even a weak rank correlation leaves a one-in-four crash link under Clayton, and none under the Gaussian.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Same overall correlation, very different crash behavior</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two side-by-side scatter plots. The left panel, labeled Gaussian copula, shows a symmetric elliptical point cloud with roughly equal density in all four corners. The right panel, labeled tail-dependent Clayton copula, shows a very similar overall elliptical cloud shape and correlation, but with a visibly denser cluster of extra points specifically in the bottom-left corner, representing simultaneous crashes, that the Gaussian panel does not have">
@@ -742,12 +760,9 @@
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "this desk's instruments crash together more often than their correlation
-    implies."</strong> No copula has been fitted on this desk's data. A fair test would fit a Gaussian and a
-    tail-dependent copula (Clayton or Student-t) to each pair on a calm window and freeze both. It would then count joint
-    worst-1% days in later windows that include a stress episode such as March 2020, and compare each model's predicted
-    count with a test pre-registered before the count is run. Expect few joint tail days, so the power has to be
-    stated up front.</span>
+    implies."</strong> No copula has been fitted on this desk's data.<div class="tl-howtotest"><strong>How to test it:</strong> On daily returns of the desk's FX pairs and indices, fit a Gaussian and a tail-dependent copula (Clayton or Student-t) to each pair on a calm window such as 2015–2019, and freeze both. Count joint worst-1% days in later windows that include a stress episode such as March 2020, and compare each model's predicted count with the actual one using a binomial test fixed before the count is run. The Gaussian copula is the baseline the tail-dependent one must beat. Expect few joint tail days, so state the power up front; no trading costs enter, since this grades a risk forecast, not a trade.</div></span>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../book-stress.html">Book Stress</a> recomputes the effective number of bets inside each crisis window, which is where tail dependence would show up as diversification that vanishes.</div>
   <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -900,7 +915,7 @@
       <li data-verdict="ok">Raise the copula correlation a little and re-mark the tranche.<div class="tl-drill-why">A step in the right direction, but a Gaussian copula with any correlation below 1 still has zero tail dependence. One flat correlation could not even fit every tranche of a single pool at the same time.</div></li>
       <li data-verdict="bad">Buy more. The spread is thin, but it is close to free money.<div class="tl-drill-why">A thin spread on a slice that loses only in a joint crash is exactly the trade where a thin-tailed model hides the risk. More size means more exposure to the corner you have not measured.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> US house prices fell nationwide, a common shock to every region at once. Mortgage defaults rose together, the lower slices inside CDOs were wiped out together, and losses reached the super-senior slices the models had treated as safe. Rating agencies downgraded top-rated CDO tranches in large numbers through 2007 and 2008. UBS, Merrill Lynch and Citigroup took write-downs running to tens of billions of dollars, much of it on super-senior CDO positions they had kept, and the chief executives of Merrill Lynch and Citigroup left in late 2007.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> US house prices fell nationwide, a common shock to every region at once. Mortgage defaults rose together, the lower slices inside CDOs were wiped out together, and losses reached the super-senior slices the models had treated as safe. Rating agencies downgraded top-rated CDO tranches in large numbers through 2007 and 2008. UBS, Merrill Lynch and Citigroup took write-downs running to tens of billions of dollars, much of it on super-senior CDO positions they had kept, and the chief executives of Merrill Lynch and Citigroup left in late 2007.</p><p class="tl-drill-sources">Sources: <a href="https://www.newyorkfed.org/medialibrary/media/newsevents/news/banking/2008/SSG_Risk_Mgt_doc_final.pdf">Senior Supervisors Group, <em>Observations on Risk Management Practices during the Recent Market Turbulence</em>, 6 Mar 2008</a>; UBS, Shareholder Report on UBS's Write-Downs, 18 Apr 2008; Merrill Lynch press release, 30 Oct 2007; Citigroup press release, 4 Nov 2007.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -1128,7 +1143,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

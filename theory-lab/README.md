@@ -272,9 +272,18 @@ and cleared the repo's real out-of-sample bar.
 theory-lab/
   hub.html            — curriculum map, linked from index.html
   glossary.html       — searchable notation glossary
+  practice.html       — daily mixed scenario drill, calibration chart, self-test mastery
+  errors.html         — spot-the-error exercises from real corrections
+  checklist.html      — pre-trade checklist linked to lessons
+  journal.html        — trade journal tagged by lesson (localStorage, CSV/JSON export)
+  cheatsheet.html     — printable per-path cheat sheet built from the lessons
+  replay.html         — desk only: replay a real day bar by bar (/api/ohlc-range)
+  audio/              — recorded two-voice dialogues (education/tools/build_audio.py)
   assets/theory.css   — shared stylesheet (dark theme, MathJax, interactive-
                          chart, real-world-scenario, and skim-path classes)
-  lessons/*.html      — 122 lesson files (5 Foundation Mathematics + 9
+  lessons/*.html      — 180 full lessons, each with a <slug>-micro.html visual
+                        guide (360 files as of 2026-10-17; the breakdown below
+                        is the original 122-file layout): 5 Foundation Mathematics + 9
                         primers/foundations + 34 numbered theory lessons +
                         5 Fixed Income Mathematics + 5 Numerical Methods
                         (incl. FFT option pricing) + 4 further Market

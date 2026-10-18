@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -560,6 +561,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Solve \(FV = P(1+r)^n\) for the rate again, with new numbers: divide by \(P\), take the \(n\)th root, subtract 1.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(P = \$2{,}000\) grows to \(FV = \$2{,}524.95\) in \(n = 4\) years. The growth factor is \(2524.95/2000 = 1.26248\), and its 4th root is \((1.26248)^{0.25} = 1.0600\). So \(r\) = <span class="tl-blank" data-answer="6.00" data-tol="0.01" data-unit="%"></span> a year.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(P = \$5{,}000\) grows to \(FV = \$6{,}511.30\) in \(n = 6\) years. Growth factor: <span class="tl-blank" data-answer="1.30226" data-tol="0.0001"></span>. Its 6th root: <span class="tl-blank" data-answer="1.045" data-tol="0.0005"></span>. So \(r\) = <span class="tl-blank" data-answer="4.50" data-tol="0.02" data-unit="%"></span> a year.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(P = \$10{,}000\) grows to \(FV = \$17{,}181.86\) in \(n = 8\) years. Growth factor: <span class="tl-blank" data-answer="1.71819" data-tol="0.0001"></span>. Annual rate \(r\): <span class="tl-blank" data-answer="7.00" data-tol="0.02" data-unit="%"></span>. Then check it the way the lesson does: \(10{,}000 \times (1+r)^8\) should give back \$17,181.86.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -915,7 +933,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

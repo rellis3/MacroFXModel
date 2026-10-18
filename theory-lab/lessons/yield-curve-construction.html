@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -442,6 +443,23 @@
     <button type="button" id="ycc-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Bootstrap zero rates from three par bonds with annual coupons, all priced at 100. Solve shortest first: \(100 = \sum_{t<n} c_n/(1+z_t)^t + (100+c_n)/(1+z_n)^n\). Answers in percent to two decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Coupons 2.0%, 2.5%, 3.0%. \(z_1 = 2.00\%\). For the 2-year bond, the year-1 coupon is worth \(2.5/1.02 = 2.451\), leaving \(100 - 2.451 = 97.549\). Then \((1+z_2)^2 = 102.5/97.549 = 1.05075\), so \(z_2 =\) <span class="tl-blank" data-answer="2.506" data-tol="0.01" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Coupons 4.0%, 4.2%, 4.4%. \(z_1 = 4.00\%\). Solve \(z_2\) <span class="tl-blank" data-answer="4.204" data-tol="0.01" data-unit="%"></span>, then \(z_3\) <span class="tl-blank" data-answer="4.412" data-tol="0.01" data-unit="%"></span>, and the 1-year-in-1-year forward \(f_{1,2} = (1+z_2)^2/(1+z_1) - 1\) <span class="tl-blank" data-answer="4.409" data-tol="0.01" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Coupons 1.0%, 1.5%, 2.5%. Find \(z_2\) <span class="tl-blank" data-answer="1.504" data-tol="0.01" data-unit="%"></span>, \(z_3\) <span class="tl-blank" data-answer="2.530" data-tol="0.01" data-unit="%"></span>, \(f_{1,2}\) <span class="tl-blank" data-answer="2.010" data-tol="0.01" data-unit="%"></span> and \(f_{2,3} = (1+z_3)^3/(1+z_2)^2 - 1\) <span class="tl-blank" data-answer="4.613" data-tol="0.015" data-unit="%"></span>. The forward is far above the 3-year par yield because the curve is steep.</p>
+    </div>
+  </div>
+
   <div class="tl-stat-row">
     <div class="tl-stat blue"><div class="tl-stat-num">3.00%</div><div class="tl-stat-label">z₁ (1yr zero)</div><div class="tl-stat-sub">= the 1yr par yield, trivially</div></div>
     <div class="tl-stat green"><div class="tl-stat-num">3.51%</div><div class="tl-stat-label">z₂ (2yr zero)</div><div class="tl-stat-sub">above the 3.50% 2yr par yield</div></div>
@@ -609,6 +627,7 @@
     Recessions are usually preceded by inversions; inversions are followed by recessions 6 times in 10, and
     the equity read never separated from a matched control.
   </p><!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../yield-curve.html">Yield Curve</a> reads the curve shape per currency, and <a href="../../rates.html">Rates &amp; Policy</a> charts the 2s10s and 2s30s slopes; both show the shape this lesson builds, not a trade signal.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -711,7 +730,8 @@
       <li data-verdict="bad">Lever up: buy the cheap off-the-runs and short the on-the-runs. They must converge.<div class="tl-drill-why">They probably will, but convergence needs someone with balance sheet to force it, and that is exactly what has run out. Levered relative-value positions like this were being forced out at the worst prices.</div></li>
       <li data-verdict="ok">Fit one smooth curve through every bond and price everything off it.<div class="tl-drill-why">It gives you a single curve, which is useful for reading the shape. But it hides that some of those bonds can only be sold well below the fitted price right now.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 23 March the Fed dropped its limit and said it would buy Treasuries in the amounts needed. On 1 April it temporarily excluded Treasuries and reserves from banks' supplementary leverage ratio, freeing dealer balance sheet. Market functioning recovered over the following weeks, and near-identical bonds lined up on one curve again. The cost: leveraged relative-value funds were forced out at the worst prices, and the Fed's balance sheet grew by more than a trillion dollars in about a month.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 23 March the Fed dropped its limit and said it would buy Treasuries in the amounts needed. On 1 April it temporarily excluded Treasuries and reserves from banks' supplementary leverage ratio, freeing dealer balance sheet. Market functioning recovered over the following weeks, and near-identical bonds lined up on one curve again. The cost: leveraged relative-value funds were forced out at the worst prices, and the Fed's balance sheet grew by more than a trillion dollars in about a month.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200315a.htm" target="_blank" rel="noopener">FOMC statement, 15 March 2020</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200323b.htm" target="_blank" rel="noopener">Federal Reserve press release, 23 March 2020</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/bcreg20200401a.htm" target="_blank" rel="noopener">Federal Reserve Board press release, 1 April 2020</a>; <a href="https://fred.stlouisfed.org/series/WALCL" target="_blank" rel="noopener">Fed total assets, FRED</a> (4.31 trillion dollars on 11 March, 5.81 trillion on 1 April 2020).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -724,7 +744,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A bond's own YTM is not the right discount rate for someone else's cash flow.</strong> Even a par bond's zero rate came out slightly different from its own coupon/par yield in the worked example (3.51% zero vs. 3.50% par).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A forward rate is a no-arbitrage identity, not a forecast.</strong> It says nothing, on its own, about what the market actually expects to happen to rates — the same covered-vs-uncovered distinction this curriculum's interest rate parity lesson draws for currencies applies here too.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An error at the short end propagates through the whole curve.</strong> Bootstrapping's sequential dependency means a bad short-maturity input corrupts every zero rate solved after it, not just the short end.</span></div>
-    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An inverted curve is not a tradeable signal on this desk's data (curve-inversion, NULL).</strong> 6 of 10 inversions since 1976 were followed by recession within 24 months (95% CI 31%–83%), forward equities never separated from a matched control, and the August 2019 inversion was followed by +48.5% on the Nasdaq-100. And March 2020 showed the bootstrap's own premise, one curve under every bond, can fail when dealer balance sheets fill up.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An inverted curve is not a tradeable signal on this desk's data (curve-inversion).</strong> The recession read is a coin flip and the equity read never separated from a matched control. And March 2020 showed the bootstrap's own premise, one curve under every bond, can fail when dealer balance sheets fill up.</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -970,7 +990,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

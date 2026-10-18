@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <style>
   /* Local to this deck: two-option gamble buttons. */
   .hs-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
@@ -25,7 +26,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Why a Loss Hurts Twice as Much — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Want the full value and weighting functions, the four-round gamble chooser, and a 6-question self-test?<a href="loss-aversion-prospect-theory.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -38,7 +39,67 @@
       <p class="sl-lede">Prospect theory in pictures: why you play safe when you are winning, gamble when you are losing, and how "I'll wait until it gets back to even" brought down a 233-year-old bank.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Prospect theory's S-shaped value curve with the 1992 parameters, alpha and beta 0.88 and lambda 2.25. The curve is kinked at the reference point, your entry price. On the gain side it flattens, and a 500 dollar gain feels like plus 237. On the loss side it drops more than twice as steeply, and a 500 dollar loss feels like minus 534, 2.25 times the gain.">
+      <line class="tlp-line" x1="40" y1="80" x2="520" y2="80"/>
+      <line class="tlp-line" x1="280" y1="12" x2="280" y2="222"/>
+      <line class="tlp-line" x1="400.0" y1="76" x2="400.0" y2="84"/>
+      <line class="tlp-line" x1="160.0" y1="76" x2="160.0" y2="84"/>
+      <polyline class="tlp-line purple thick" points="40.0,217.5 46.0,214.5 52.0,211.4 58.0,208.4 64.0,205.3 70.0,202.3 76.0,199.2 82.0,196.1 88.0,193.0 94.0,189.9 100.0,186.7 106.0,183.6 112.0,180.5 118.0,177.3 124.0,174.1 130.0,170.9 136.0,167.7 142.0,164.5 148.0,161.3 154.0,158.0 160.0,154.7 166.0,151.4 172.0,148.1 178.0,144.8 184.0,141.4 190.0,138.0 196.0,134.6 202.0,131.1 208.0,127.7 214.0,124.1 220.0,120.6 226.0,117.0 232.0,113.4 238.0,109.7 244.0,105.9 250.0,102.1 256.0,98.1 262.0,94.1 268.0,89.8 274.0,85.4 280.0,80.0 286.0,77.6 292.0,75.6 298.0,73.7 304.0,71.9 310.0,70.2 316.0,68.5 322.0,66.8 328.0,65.2 334.0,63.6 340.0,62.0 346.0,60.4 352.0,58.8 358.0,57.3 364.0,55.7 370.0,54.2 376.0,52.7 382.0,51.2 388.0,49.7 394.0,48.3 400.0,46.8 406.0,45.3 412.0,43.9 418.0,42.4 424.0,41.0 430.0,39.6 436.0,38.2 442.0,36.8 448.0,35.4 454.0,34.0 460.0,32.6 466.0,31.2 472.0,29.8 478.0,28.4 484.0,27.0 490.0,25.7 496.0,24.3 502.0,22.9 508.0,21.6 514.0,20.2 520.0,18.9"/>
+      <line class="tlp-line green dash" x1="400.0" y1="80" x2="400.0" y2="46.8"/>
+      <line class="tlp-line red dash" x1="160.0" y1="80" x2="160.0" y2="154.7"/>
+      <circle class="tlp-green" cx="400.0" cy="46.8" r="6"/>
+      <circle class="tlp-red" cx="160.0" cy="154.7" r="6"/>
+      <circle class="tlp-amber" cx="280" cy="80" r="5"/>
+      <text class="tlp-green" x="400.0" y="24" text-anchor="middle" font-size="14" font-weight="700">+$500 feels +237</text>
+      <text class="tlp-red" x="174.0" y="174" font-size="14" font-weight="700">−$500 feels −534</text>
+      <text class="tlp-red" x="174.0" y="192" font-size="13">2.25 times the gain</text>
+      <text class="tlp-text2" x="560" y="122" text-anchor="end" font-size="12">gains: flatter, so you bank them</text>
+      <text class="tlp-text2" x="44" y="48" font-size="12">losses: steeper, and flattening,</text>
+      <text class="tlp-text2" x="44" y="65" font-size="12">so you gamble to avoid them</text>
+      <text class="tlp-amber" x="288" y="100" font-size="12">← the kink: your entry price</text>
+      <text class="tlp-text3" x="40" y="96" font-size="12">−$1,000</text>
+      <text class="tlp-text3" x="520" y="96" text-anchor="end" font-size="12">+$1,000</text>
+      <text class="tlp-text3" x="274" y="20" text-anchor="end" font-size="12">value felt ↑</text>
+    </svg>
+    <figcaption>You feel gains and losses from your entry price, not your account balance. The same $500 hurts more than twice as much as it pleases, and because the loss side flattens out, a gamble to "get back to even" feels better than a certain loss.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I know the rule: cut your losses and let your winners run. I still do the opposite. Why?</p>
+      <p data-who="Quant">Because your brain keeps score from where you started, usually your entry price. And it counts losses about double.</p>
+      <p data-who="Trader">Double? Where does that come from?</p>
+      <p data-who="Quant">Tversky and Kahneman, 1992. Their typical lab subject weighed a loss about two and a quarter times as much as a gain of the same size. Offer most people a coin flip that costs them a hundred dollars on tails, and they want about two hundred on heads before they'll play.</p>
+      <p data-who="Trader">So I'm cautious. That doesn't sound so bad.</p>
+      <p data-who="Quant">The problem is the shape. How good a gain feels flattens out as it grows, so you grab a sure gain. But the loss side flattens too, so a second loss hurts less than the first. That makes you gamble to avoid a sure loss.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Offer someone a sure five hundred dollars, or a coin flip for a thousand. Most take the sure five hundred. Now make it a sure loss of five hundred, or a coin flip to lose a thousand or nothing. Most take the flip. Same sizes, same odds, same averages. Only the sign changed.</p>
+      <p data-who="Trader">And on my screen?</p>
+      <p data-who="Quant">You're down a thousand and price is sitting on your stop. Pull the stop, and tomorrow is a coin flip between getting back to even and losing twenty-two hundred. On average that loses eleven hundred, worse than the stop. But measured from your entry price, the gamble feels less bad. So you move the stop.</p>
+      <p data-who="Trader">How do I stop doing that?</p>
+      <p data-who="Quant">Move the reference point. Ask: would I open this trade, at this size, at today's price? From today, holding is a coin flip to win a thousand or lose twelve hundred. Plainly a bad bet.</p>
+      <p data-who="Trader">Has this ever really blown anyone up?</p>
+      <p data-who="Quant">Nick Leeson at Barings. He hid losses in an error account numbered eight eight eight eight eight, and kept betting bigger to get back to even. Then the Kobe earthquake hit in January 1995, the Nikkei fell, and his positions lost together.</p>
+      <p data-who="Trader">How big did it get?</p>
+      <p data-who="Quant">About eight hundred and twenty-seven million pounds, more than the bank's capital. Barings, founded in 1762, collapsed that February and was sold for one pound.</p>
+      <p data-who="Trader">So I just need more willpower.</p>
+      <p data-who="Quant">No. Knowing about the bias doesn't remove it. Set your exits and your maximum loss while you're flat, and let something other than you, in the moment, enforce them.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">A loss hurts about twice as much as a gain, so decide your exits before the trade, while the curve has no vote.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">You feel changes, not levels</h2>
       <p class="sl-sub">Kahneman and Tversky (1979): people code every outcome as a gain or loss from a <strong>reference point</strong>.</p>
@@ -50,7 +111,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The S-curve: drag λ</h2>
       <p class="sl-sub">v(x) = x<sup>0.88</sup> for gains, −λ(−x)<sup>0.88</sup> for losses. Tversky and Kahneman (1992) estimated λ = 2.25.</p>
@@ -85,7 +146,7 @@
     </section>
 
     <!-- WB:lossav-deck:START -->
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">The loss-aversion curve, drawn step by step</h2>
       <!-- WB:lossav:START -->
@@ -96,7 +157,7 @@
     </section>
     <!-- WB:lossav-deck:END -->
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Catch your own curve: two choices</h2>
       <p class="sl-sub">Answer with your gut. Both options in each pair have the same expected value.</p>
@@ -120,7 +181,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Find your own λ</h2>
       <p class="sl-sub">A coin flip: tails you lose $100. What's the smallest win on heads that makes you <em>happy</em> to play?</p>
@@ -137,7 +198,7 @@
       <p class="sl-p">A robot that only cared about averages would play for anything over $100. Most people want about $200. That gap is <strong>loss aversion</strong>, and it is why "losses hurt twice as much" is the slogan.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Small chances feel bigger than they are</h2>
       <p class="sl-sub">Prospect theory's second ingredient: probabilities get a decision weight w(p), not their true size.</p>
@@ -158,7 +219,7 @@
       <p class="sl-p">That is the lottery ticket and the insurance policy in one curve. On a screen it is the far out-of-the-money option that "could go ten times".</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Down $1,000, stop right there</h2>
       <p class="sl-sub">Let the stop hit (a sure −$1,000), or pull it and hold: 50% back to even, 50% out at −$2,200. Holding averages −$1,100: worse.</p>
@@ -175,7 +236,7 @@
       <div class="sl-quote">Same trade, same odds. Only the reference point moved. "Would I open this trade, at this size, right now?" puts it back at today.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7 · It actually happened</div>
       <h2 class="sl-h2">Barings, 1995: account 88888</h2>
       <div class="sl-callout amber">
@@ -196,7 +257,7 @@
       <p class="sl-p">Thaler and Johnson (1990) named the pull: the <strong>break-even effect</strong>. After a loss, any bet that offers a way back to even looks attractive.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8 · It actually happened</div>
       <h2 class="sl-h2">Not just traders: Boston condos</h2>
       <div class="sl-callout amber">
@@ -209,7 +270,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
 <!-- DESK:START -->
       <h2 class="sl-h2">What this desk has, and hasn't, tested</h2>
@@ -227,7 +288,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10 · Exercise</div>
       <h2 class="sl-h2">Before you touch a stop</h2>
       <p class="sl-sub">Keep this next to the screen. Any "no" and the stop stays.</p>
@@ -240,7 +301,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -284,7 +345,26 @@
 <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide sl-vark" data-slide="15">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="1995-01-17">
+    <div class="tl-drill-label">Scenario drill · 17 January 1995</div>
+    <h3>The earthquake has hit, and the hidden losses just got bigger</h3>
+    <p>You run a futures operation in Singapore, and you also control the back office that records your trades. For a while you have parked losing trades in an error account, and the hidden loss has grown. You are short Nikkei straddles and long Nikkei 225 futures. This morning the Kobe earthquake struck and the Nikkei is falling sharply. Both legs are losing together. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Buy more futures. Supporting the market is the fastest way back to even.<div class="tl-drill-why">This is the convex loss side of the curve choosing for you. A bigger bet offers a chance of getting back to even, and measured from "even" that chance feels better than a certain loss. It is a larger position placed at the moment your judgement is worst.</div></li>
+      <li data-verdict="good">Report the full loss now, and close or hedge the positions, taking the certain loss.<div class="tl-drill-why">Move the reference point to today. From here, the question is whether you would open these positions, at this size, right now. You would not. A certain, visible loss today is smaller than what a hidden, growing one becomes.</div></li>
+      <li data-verdict="ok">Stop adding, keep the positions hidden, and wait for the Nikkei to recover.<div class="tl-drill-why">Not adding is better than adding. But hiding the loss keeps the reference point at "even", the margin calls keep coming, and you are still betting the bank on a rebound you cannot control.</div></li>
+      <li data-verdict="bad">Sell more options to raise premium and cover the margin calls.<div class="tl-drill-why">It turns a hidden loss into a bigger hidden bet. Collecting premium today adds more risk to the same falling market, all to avoid booking a loss.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Nick Leeson bought more Nikkei futures, as if to hold the market up. The exchange's margin calls were met with funds wired from Barings in London, which still believed the business was hedged. In late February 1995 Leeson left Singapore. By 27 February the hidden losses had reached about £827 million, more than the bank's capital, and closing out the positions took the total to about £927 million. Barings, founded in 1762, was placed into administration on 26 February 1995 and sold to ING for £1. The Bank of England's Board of Banking Supervision reported that July and put the failure on the absence of basic controls, starting with one person running both trading and settlement.</p><p class="tl-drill-sources">Sources: <a href="https://www.gov.uk/government/publications/report-into-the-collapse-of-barings-bank">Report of the Board of Banking Supervision inquiry into the circumstances of the collapse of Barings, 18 July 1995</a>; <a href="https://www.rba.gov.au/publications/bulletin/1995/nov/1.html">Reserve Bank of Australia Bulletin, Implications of the Barings Collapse for Bank Supervisors, November 1995</a>; <a href="https://ing.com/news/2025/03/ings-1-deal-30-years-of-uk-growth.html">ING, "ING's £1 deal", 5 March 2025</a>.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -421,5 +501,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

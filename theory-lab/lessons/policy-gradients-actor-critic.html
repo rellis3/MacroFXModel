@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -446,6 +447,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same one-state, two-action update: advantage \(A=R-V(s)\), score \(\mathbb{1}[i=\text{taken}]-\pi(a_i)\), then \(\theta_i\leftarrow\theta_i+\alpha\cdot\text{score}_i\cdot A\). Two actions with logits \(\theta_1,\theta_2\) give \(\pi(a_1)=e^{\theta_1}/(e^{\theta_1}+e^{\theta_2})\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Start at \(\theta_1=\theta_2=0\), \(V(s)=1.5\), the agent samples \(a_1\), return \(R=3.5\), \(\alpha=0.2\). Then \(A=2.0\) and the score for \(\theta_1\) is \(1-0.5=0.5\), so \(\theta_1=0+0.2(0.5)(2.0)=0.2\) and \(\theta_2=-0.2\). The new \(\pi(a_1)=e^{0.2}/(e^{0.2}+e^{-0.2})=\) <span class="tl-blank" data-answer="0.5987" data-tol="0.0005"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Continue from Round 1's policy (\(\theta_1=0.2\), \(\theta_2=-0.2\), \(\pi(a_2)=0.4013\)). This time the agent samples \(a_2\), with \(V(s)=1\), \(R=0.4\), \(\alpha=0.1\). The advantage is <span class="tl-blank" data-answer="-0.6" data-tol="0.005"></span>. The score for \(\theta_2\) is \(1-\pi(a_2)=0.5987\), so \(\theta_2=-0.2+0.1(0.5987)(-0.6)=\) <span class="tl-blank" data-answer="-0.2359" data-tol="0.0005"></span>. The policy now has \(\pi(a_2)=\) <span class="tl-blank" data-answer="0.3842" data-tol="0.0005"></span>, lower than before, as a worse-than-expected sample should leave it.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Start at \(\theta_1=\theta_2=0\), \(V(s)=2\), the agent samples \(a_1\), return \(R=1\), \(\alpha=0.5\). Advantage: <span class="tl-blank" data-answer="-1" data-tol="0.005"></span>. New \(\theta_1\): <span class="tl-blank" data-answer="-0.25" data-tol="0.002"></span>. New \(\pi(a_1)\): <span class="tl-blank" data-answer="0.3775" data-tol="0.0005"></span></p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -844,7 +862,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

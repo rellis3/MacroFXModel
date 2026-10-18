@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 <style>
@@ -589,6 +590,23 @@
     <button type="button" id="bm-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The calculator's arithmetic for the jump part of a Bates return over a horizon \(T\) (in years): jump variance \(\lambda T(\mu_J^2 + \sigma_J^2)\), diffusive variance \(v_0 T\), jump share = jump ÷ (jump + diffusive), skewness \(\lambda T\,E[Y^3]/V^{3/2}\) and excess kurtosis \(\lambda T\,E[Y^4]/V^2\), where \(V\) is total variance, \(E[Y^3] = \mu_J^3 + 3\mu_J\sigma_J^2\) and \(E[Y^4] = \mu_J^4 + 6\mu_J^2\sigma_J^2 + 3\sigma_J^4\). New jump settings each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Diffusive vol 12%, \(\lambda = 2\), \(\mu_J = -2\%\), \(\sigma_J = 5\%\). Per year, jump variance is \(2 \times (0.0004 + 0.0025) = 0.0058\) and diffusive variance is \(0.12^2 = 0.0144\), so total variance is 0.0202. The jump share of variance is \(0.0058/0.0202 =\) <span class="tl-blank" data-answer="28.7" data-tol="0.1" data-unit="%"></span>, the same at every horizon.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Diffusive vol 8%, \(\lambda = 4\), \(\mu_J = -0.5\%\), \(\sigma_J = 3\%\), horizon \(T = 0.25\) (3 months). Per year, jump variance is \(4 \times (0.000025 + 0.0009) = 0.0037\) and diffusive variance is 0.0064. Find the jump share <span class="tl-blank" data-answer="36.6" data-tol="0.1" data-unit="%"></span>, the total variance over the horizon, \(0.25 \times 0.0101\), <span class="tl-blank" data-answer="0.002525" data-tol="0.000005"></span> and the excess kurtosis (here \(\lambda T = 1\) and \(E[Y^4] = 2.566\times10^{-6}\)) <span class="tl-blank" data-answer="0.402" data-tol="0.003"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Diffusive vol 10%, \(\lambda = 5\), \(\mu_J = -1.5\%\), \(\sigma_J = 6\%\), horizon \(T = 1/52\) (1 week). Find the jump share <span class="tl-blank" data-answer="65.7" data-tol="0.1" data-unit="%"></span>, the total vol over the week <span class="tl-blank" data-answer="2.37" data-tol="0.01" data-unit="%"></span>, the skewness <span class="tl-blank" data-answer="-1.200" data-tol="0.003"></span> and the excess kurtosis <span class="tl-blank" data-answer="13.42" data-tol="0.03"></span>.</p>
+    </div>
+  </div>
+
   <!-- WB:institutional_bates_model:START -->
   <div class="wb" id="wb-institutional_bates_model" data-title="Bates: stochastic vol plus jumps, maturity by maturity">
     <script type="application/json">{"w":600,"h":720,"intro":"Two models the lab already covers, stapled together, then the lesson's fixed jump settings run across four maturities. Press play, or step through.","steps":[{"cap":"Heston: the price diffuses smoothly, and its variance is a random process of its own. It mean-reverts and clusters, like weather with its own weather.","do":[{"icon":"wx","name":"thermo","x":66,"y":6,"s":0.8,"tone":"blue","label":"Heston:\nvariance has weather","lsize":17}]},{"cap":"Merton: every so often the price jumps, with no warning. Jumps arrive like a Poisson clock, with random sizes. No memory, though: vol does not stay high afterwards.","do":[{"icon":"jp","name":"bolt","x":460,"y":6,"s":0.8,"tone":"amber","label":"Merton:\nsudden jumps","lsize":17}]},{"cap":"Bates (1996) adds Merton's jump term to Heston's price equation and changes nothing else. Eight parameters: Heston's five plus the jump trio.","do":[{"icon":"bt","name":"scales","x":250,"y":6,"s":0.8,"tone":"purple","label":"Bates","lsize":18},{"arrow":["wx","bt"],"tone":"blue"},{"arrow":["jp","bt"],"tone":"amber"},{"note":"eq","x":300,"y":176,"text":"dS/S = μ dt + √v dW  +  dJ","size":21,"anchor":"middle","tone":"purple"}]},{"cap":"The one new assumption: the jump clock ignores the diffusion. Independent pieces have pricing recipes that multiply, so Bates keeps a closed form and prices with the same FFT as Heston.","do":[{"note":"cf","x":300,"y":214,"text":"φ_Bates = φ_Heston × φ_jump","size":20,"anchor":"middle","tone":"green"}]},{"cap":"Fix the lesson's settings: 9% diffusive vol, 3 jumps a year, average jump −1%, jump spread 4%. Now look at four maturities. Jumps supply 38.6% of the variance at every one of them.","do":[{"chart":"sh","x":10,"y":244,"w":186,"h":250,"title":"Jump share","xd":[0.4,4.6],"yd":[0,50],"yt":[[0,"0"],[20,"20"],[40,"40"]],"xt":[[1,"1w"],[2,"1m"],[3,"3m"],[4,"1y"]],"pl":36,"pr":8},{"bars":"shb","chart":"sh","data":[[1,38.6,"38.6","blue"],[2,38.6,"","blue"],[3,38.6,"","blue"],[4,38.6,"38.6","blue"]],"bw":24,"ms":1000}]},{"cap":"Skewness tells a different story: −0.70 at one week, −0.10 at one year. It fades like one over the square root of maturity.","do":[{"chart":"sk","x":207,"y":244,"w":186,"h":250,"title":"Skewness","xd":[0.4,4.6],"yd":[-0.8,0],"yt":[[-0.6,"−.6"],[-0.3,"−.3"],[0,"0"]],"xt":[[1,"1w"],[2,"1m"],[3,"3m"],[4,"1y"]],"pl":40,"pr":8},{"bars":"skb","chart":"sk","data":[[1,-0.699,"−.70","amber"],[2,-0.336,"","amber"],[3,-0.194,"","amber"],[4,-0.097,"−.10","amber"]],"bw":24,"ms":1000}]},{"cap":"Excess kurtosis collapses fastest: 7.74 at one week, 0.15 at one year. That is 52 times smaller, one for each week in the year: it fades like one over maturity.","do":[{"chart":"ku","x":404,"y":244,"w":186,"h":250,"title":"Excess kurtosis","xd":[0.4,4.6],"yd":[0,9],"yt":[[0,"0"],[4,"4"],[8,"8"]],"xt":[[1,"1w"],[2,"1m"],[3,"3m"],[4,"1y"]],"pl":34,"pr":8},{"bars":"kub","chart":"ku","data":[[1,7.744,"7.74","red"],[2,1.787,"","red"],[3,0.596,"","red"],[4,0.149,"0.15","red"]],"bw":24,"ms":1000}]},{"cap":"Smiles are shaped by skew and fat tails, not raw variance. So the same jumps steepen a one-week smile a lot and barely touch a one-year one. Stochastic vol needs time, so it shapes the long end.","do":[{"box":"own","x":10,"y":514,"w":580,"h":56,"text":"jumps own the short end · stochastic vol owns the long end","tone":"green","size":19},{"pulse":"kub"}]},{"cap":"The cost: eight parameters. A bit less starting variance and a bit more jump frequency can fit today's surface almost equally well. A good fit does not prove the split is right.","do":[{"box":"id","x":10,"y":584,"w":285,"h":72,"text":"8 parameters:\nmany fits look alike","tone":"amber","size":18}]},{"cap":"And the split matters for hedging. Smooth volatility risk can be delta-hedged as it moves. A jump happens in an instant, and no rebalancing gets you through it.","do":[{"box":"hg","x":305,"y":584,"w":285,"h":72,"text":"jump risk: no continuous\nhedge gets through it","tone":"red","size":18},{"pulse":"jp"}]},{"cap":"So: Heston for persistence, jumps for the sudden short-dated wing, and humility about which is which.","do":[{"note":"end","x":300,"y":690,"text":"easy to fit, hard to identify","size":20,"anchor":"middle","tone":"purple"}]}]}</script>
@@ -781,6 +799,8 @@
     <div class="tl-drill-outcome"><p><strong>What the numbers say.</strong> This is an illustrative case based on the lesson's own trading scenario, not a real episode. With the lesson's fixed jump settings, excess kurtosis from jumps is 7.744 at one week against 0.149 at one year, 52 times larger, while jumps keep the same 38.6% share of variance at both. One honest caveat stays: a better joint fit does not prove the split between jump risk and volatility risk is the true one, and the hedge depends on that split.</p></div>
   </div>
 
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../jump-diffusion.html">Jump vs Diffusion</a> shows each pair's realised jump share of the day's variance (RV minus BV): a model-free read of the same split this lesson fits with \(\lambda\), \(\mu_J\) and \(\sigma_J\).</div><!-- DESK:END -->
+
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -942,7 +962,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   var ids = ['sigma', 'lambda', 'muj', 'sigj'];

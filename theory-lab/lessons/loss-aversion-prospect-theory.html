@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 <style>
@@ -426,7 +427,7 @@
     <div class="tl-steps">
       <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
         <h4>Gain frame: sure +$500 or 50% of +$1,000</h4>
-        <p>Both have EV = +$500. Sure: \(500^{0.88} = 237.2\). Gamble: \(0.421 \times 1000^{0.88} = 0.421 \times 436.5 = 183.6\). The sure thing feels better: <strong>risk-averse</strong>.</p>
+        <p>Both have EV = +$500. Sure: \(500^{0.88} = 237.2\). Gamble: \(0.421 \times 1000^{0.88} = 0.421 \times 436.5 = 183.8\). The sure thing feels better: <strong>risk-averse</strong>.</p>
       </div></div>
       <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
         <h4>Loss frame: sure −$500 or 50% of −$1,000</h4>
@@ -436,6 +437,23 @@
         <h4>The flip is the lesson</h4>
         <p>Same sizes, same odds, same expected values. Only the sign changed, and the preferred choice reversed. Kahneman and Tversky called this the <strong>reflection effect</strong>, and their 1979 paper showed it in experiment after experiment: a large majority took the sure gain, and a large majority took the gamble once the same numbers were losses.</p>
       </div></div>
+    </div>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Score choices with the 1992 parameters: \(v(x) = x^{0.88}\) for gains, \(v(x) = -2.25(-x)^{0.88}\) for losses, decision weights \(w_+(0.5) = 0.421\) and \(w_-(0.5) = 0.454\). Round values to one decimal.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Sure $300 or a 50% chance of $600. Gain frame: \(300^{0.88} = 151.3\) against \(0.421 \times 600^{0.88} = 0.421 \times 278.5 = 117.2\), so the sure thing wins. Loss frame: a sure −$300 scores \(-2.25 \times 151.3 = -340.4\), and the 50% chance of −$600 scores \(0.454 \times (-2.25 \times 278.5) =\) <span class="tl-blank" data-answer="-284.5" data-tol="0.3"></span>, so the gamble feels less bad.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Sure −$200 or a 50% chance of −$400. You are given \(200^{0.88} = 105.9\) and \(400^{0.88} = 194.9\). The sure loss scores <span class="tl-blank" data-answer="-238.3" data-tol="0.3"></span>; the gamble scores <span class="tl-blank" data-answer="-199.1" data-tol="0.3"></span>. Same expected value, and again the gamble feels better.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Your trade is down $800 at the stop. Hold instead, and you judge it 50/50 between breakeven and −$1,800. Measured from entry: the stop scores \(v(-800) =\) <span class="tl-blank" data-answer="-807.1" data-tol="0.5"></span>; the hold scores \(0.454 \times v(-1800) =\) <span class="tl-blank" data-answer="-748.0" data-tol="0.5"></span>. The hold's expected value is −$900, worse than the stop's −$800, yet it scores better: the curve is pulling you to move the stop.</p>
     </div>
   </div>
 
@@ -541,8 +559,11 @@
     The desk's ledger tests market claims, not the behaviour of the person trading them, and has no entry that
     measures moved stops or break-even chasing. What the desk does have is the guard: every study's rules, sample and
     kill criterion are written down <em>before</em> the data is seen, and a null is logged as a null. That is the
-    research version of a stop you are not allowed to move. A fair test of the trading claim would compare the same
-    signal with its pre-set exits against the exits actually taken, trade by trade.</span>
+    research version of a stop you are not allowed to move.<div class="tl-howtotest"><strong>How to test it:</strong> take every manual trade in the
+    desk's trade journal that has a planned stop and target logged at entry, and replay each one on M1 FX bars with those
+    pre-set exits. Compare the replayed P&amp;L with the exit actually taken, trade by trade, in units of initial risk (R), with
+    the same spread charged on both. Fixed in advance: the claim passes if actual exits trail the pre-set ones by at least 0.1R
+    a trade with a bootstrap 95% interval below zero; the pre-set exits are the baseline.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -631,7 +652,7 @@
       <li data-verdict="ok">Stop adding, keep the positions hidden, and wait for the Nikkei to recover.<div class="tl-drill-why">Not adding is better than adding. But hiding the loss keeps the reference point at "even", the margin calls keep coming, and you are still betting the bank on a rebound you cannot control.</div></li>
       <li data-verdict="bad">Sell more options to raise premium and cover the margin calls.<div class="tl-drill-why">It turns a hidden loss into a bigger hidden bet. Collecting premium today adds more risk to the same falling market, all to avoid booking a loss.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Nick Leeson bought more Nikkei futures, as if to hold the market up. The exchange's margin calls were met with funds wired from Barings in London, which still believed the business was hedged. In late February 1995 Leeson left Singapore. The losses, roughly £827 million, were more than the bank's capital. Barings, founded in 1762, was placed into administration on 26 February 1995 and sold to ING for £1. The Bank of England's inquiry that July put the failure on the absence of basic controls, starting with one person running both trading and settlement.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Nick Leeson bought more Nikkei futures, as if to hold the market up. The exchange's margin calls were met with funds wired from Barings in London, which still believed the business was hedged. In late February 1995 Leeson left Singapore. By 27 February the hidden losses had reached about £827 million, more than the bank's capital, and closing out the positions took the total to about £927 million. Barings, founded in 1762, was placed into administration on 26 February 1995 and sold to ING for £1. The Bank of England's Board of Banking Supervision reported that July and put the failure on the absence of basic controls, starting with one person running both trading and settlement.</p><p class="tl-drill-sources">Sources: <a href="https://www.gov.uk/government/publications/report-into-the-collapse-of-barings-bank">Report of the Board of Banking Supervision inquiry into the circumstances of the collapse of Barings, 18 July 1995</a>; <a href="https://www.rba.gov.au/publications/bulletin/1995/nov/1.html">Reserve Bank of Australia Bulletin, Implications of the Barings Collapse for Bank Supervisors, November 1995</a>; <a href="https://ing.com/news/2025/03/ings-1-deal-30-years-of-uk-growth.html">ING, "ING's £1 deal", 5 March 2025</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -971,7 +992,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

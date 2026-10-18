@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <style>
   .dd-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
   .dd-table th,.dd-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
@@ -20,7 +21,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Drawdowns and Risk of Ruin — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the exact streak recursion, the maximum-drawdown maths, the ruin-versus-size curve and a 6-question self-test?<a href="drawdowns-risk-of-ruin.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -33,7 +34,82 @@
       <p class="sl-lede">A system with a real edge still loses eight in a row, still sits underwater for months, and still makes you doubt it at exactly the wrong moment. Here is the arithmetic of the bad stretch — so you can tell "normal" from "broken" before you are inside one.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart for one system that wins 55% of trades at even money, simulated over 300 trades at six bet sizes. The chance of the account touching half its starting value is 0% at 1% risk per trade, 0.1% at 2%, 8.6% at 5% (half Kelly), 42% at 10% (full Kelly), 69% at 15% and 84% at 20%. Median ending equity is 1.33, 1.72, 3.08, 4.49, 3.07 and 0.96 times the start: growth peaks at Kelly while the ruin risk keeps climbing.">
+      <rect class="tlp-box green" x="102" y="64" width="236" height="120" rx="6" opacity=".35"/>
+      <rect class="tlp-box red" x="422" y="64" width="156" height="120" rx="6" opacity=".35"/>
+      <text class="tlp-text2" x="100" y="20" font-size="13">Same 55% edge, 300 trades. Only the risk per trade changes.</text>
+      <text class="tlp-red" x="100" y="40" font-size="12">red bars: chance the account touches half its start along the way</text>
+      <line class="tlp-line" x1="100" y1="180" x2="580" y2="180"/>
+      <rect class="tlp-red" x="120" y="179" width="40" height="1"/>
+      <rect class="tlp-red" x="200" y="179" width="40" height="1"/>
+      <rect class="tlp-red" x="280" y="169.25" width="40" height="10.75"/>
+      <rect class="tlp-red" x="360" y="127.38" width="40" height="52.62"/>
+      <rect class="tlp-red" x="440" y="94.12" width="40" height="85.88"/>
+      <rect class="tlp-red" x="520" y="74.88" width="40" height="105.12"/>
+      <text class="tlp-red" x="140" y="172" text-anchor="middle" font-size="13" font-weight="700">0%</text>
+      <text class="tlp-red" x="220" y="172" text-anchor="middle" font-size="13" font-weight="700">0.1%</text>
+      <text class="tlp-red" x="300" y="162" text-anchor="middle" font-size="13" font-weight="700">8.6%</text>
+      <text class="tlp-red" x="380" y="120" text-anchor="middle" font-size="13" font-weight="700">42%</text>
+      <text class="tlp-red" x="460" y="87" text-anchor="middle" font-size="13" font-weight="700">69%</text>
+      <text class="tlp-red" x="540" y="68" text-anchor="middle" font-size="13" font-weight="700">84%</text>
+      <text class="tlp-text3" x="88" y="200" text-anchor="end" font-size="12">risk</text>
+      <text class="tlp-text" x="140" y="200" text-anchor="middle" font-size="13">1%</text>
+      <text class="tlp-text" x="220" y="200" text-anchor="middle" font-size="13">2%</text>
+      <text class="tlp-blue" x="300" y="200" text-anchor="middle" font-size="13" font-weight="700">5%</text>
+      <text class="tlp-purple" x="380" y="200" text-anchor="middle" font-size="13" font-weight="700">10%</text>
+      <text class="tlp-blue" x="300" y="144" text-anchor="middle" font-size="13" font-weight="700">½ Kelly</text>
+      <text class="tlp-purple" x="380" y="102" text-anchor="middle" font-size="13" font-weight="700">Kelly</text>
+      <text class="tlp-text" x="460" y="200" text-anchor="middle" font-size="13">15%</text>
+      <text class="tlp-text" x="540" y="200" text-anchor="middle" font-size="13">20%</text>
+      <text class="tlp-text3" x="88" y="224" text-anchor="end" font-size="12">median end</text>
+      <text class="tlp-green" x="140" y="224" text-anchor="middle" font-size="13">1.33×</text>
+      <text class="tlp-green" x="220" y="224" text-anchor="middle" font-size="13">1.72×</text>
+      <text class="tlp-green" x="300" y="224" text-anchor="middle" font-size="13">3.08×</text>
+      <text class="tlp-green" x="380" y="224" text-anchor="middle" font-size="14" font-weight="700">4.49×</text>
+      <text class="tlp-green" x="460" y="224" text-anchor="middle" font-size="13">3.07×</text>
+      <text class="tlp-red" x="540" y="224" text-anchor="middle" font-size="13" font-weight="700">0.96×</text>
+      <text class="tlp-green" x="110" y="80" font-size="12">comfortable</text>
+      <text class="tlp-red" x="572" y="53" text-anchor="end" font-size="12">more risk, less growth</text>
+    </svg>
+    <figcaption>The win rate never changes, only the bet size. Small bets almost never halve the account. Full Kelly grows fastest in the median but halves the account about four times in ten. Past Kelly you take more danger for less growth.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My system has lost eight trades in a row. I'm starting to think it's broken.</p>
+      <p data-who="Quant">What's its tested win rate?</p>
+      <p data-who="Trader">Fifty-five percent, with wins the same size as losses.</p>
+      <p data-who="Quant">Then here's the number that scares people. The chance that eight losses in a row start on any one trade is about one in six hundred.</p>
+      <p data-who="Trader">That sounds like proof it's broken.</p>
+      <p data-who="Quant">It's the wrong number. You don't take one trade. Over three hundred trades there are three hundred places a run can start. Counted properly, a run of eight shows up somewhere about one time in four. By seven hundred and fifty trades it's more likely than not.</p>
+      <p data-who="Trader">So a run like this is just normal?</p>
+      <p data-who="Quant">It's what a loaded coin looks like up close. Long sequences of a random thing contain long runs. That's all.</p>
+      <p data-who="Trader">It still hurts. I'm down a lot from the peak.</p>
+      <p data-who="Quant">And here's why it hurts more than it looks. Lose twenty percent and you need twenty-five to get back. Lose half and you need to double. The hole is always steeper to climb out of than to fall into.</p>
+      <p data-who="Trader">So how do I stop the holes getting that deep?</p>
+      <p data-who="Quant">Bet size. Take the same fifty-five percent edge over three hundred trades. Risk two percent a trade and almost nobody ever touches half their account. Risk ten percent, which is full Kelly here, and about four traders in ten get cut in half along the way.</p>
+      <p data-who="Trader">But full Kelly grows fastest.</p>
+      <p data-who="Quant">In the median, yes. Past it, you get more danger and less growth. At double Kelly the median trader ends roughly where they started.</p>
+      <p data-who="Trader">How do people actually get this wrong in real life?</p>
+      <p data-who="Quant">They quit at the bottom. Value investing, buying cheap stocks, sat in the deepest drawdown in its recorded history from around two thousand and seven to late twenty twenty. People declared it dead and left. Then from November twenty twenty it rebounded hard. The ones who left took the whole loss and missed the recovery.</p>
+      <p data-who="Trader">So I should always hold on?</p>
+      <p data-who="Quant">No. Some drawdowns are a system with no edge at all. The drawdown can't tell you which. Only a test you wrote down before the bad stretch can.</p>
+      <p data-who="Trader">The one-line version?</p>
+      <p data-who="Quant">Work out how bad a normal stretch gets, size so you can live through it, and decide in advance what would really count as broken.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">Losses are asymmetric</h2>
       <div class="sl-row"><div class="sl-box">gain needed = d / (1 − d)</div></div>
@@ -49,7 +125,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">"1 in 595" is the wrong number</h2>
       <p class="sl-p">At a 55% win rate, the chance a run of 8 losses starts on <em>this</em> trade is 0.45⁸ ≈ 1 in 595. But you don't take one trade — you take hundreds, and every one of them is a possible starting point.</p>
@@ -69,7 +145,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">At 55%, streaks are normal</h2>
       <table class="dd-table">
@@ -81,7 +157,7 @@
       <div class="sl-quote">A run of 6 is more likely than not by 152 trades; a run of 8 by about 750. Real losses also cluster in bad regimes, so real streaks run <strong>longer</strong> than this, not shorter.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The worst hole only gets deeper</h2>
       <p class="sl-sub">Maximum drawdown is a running maximum — it can only stay the same or grow. Same 55% edge, 2% risk per trade, 2,000 simulated traders:</p>
@@ -94,7 +170,7 @@
       <p class="sl-p">The longer you trade, the surer you are to be up — and the deeper the worst hole you'll have sat in. It scales with volatility relative to edge: a backtest's single max drawdown is one draw, and a longer live run usually goes deeper than it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Forty traders, one system</h2>
       <div class="sl-card">
@@ -120,7 +196,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Bet size decides ruin, not win rate</h2>
       <div class="sl-row"><div class="sl-box">edge E = p·b − q · Kelly f* = p − q/b</div></div>
@@ -134,7 +210,7 @@
     </section>
 
     <!-- WB:drawdown-deck:START -->
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">A drawdown and risk of ruin, drawn step by step</h2>
       <!-- WB:drawdown:START -->
@@ -145,7 +221,7 @@
     </section>
     <!-- WB:drawdown-deck:END -->
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">How a good system gets abandoned</h2>
       <div class="sl-chain">
@@ -162,7 +238,7 @@
       <p class="sl-p">Recency, loss aversion and performance-chasing all push the same way. Morningstar's "Mind the Gap" studies keep finding the average investor earns less than the funds they hold — money arrives after good runs and leaves after bad ones.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8 · It actually happened</div>
       <h2 class="sl-h2">Value's lost decade, ~2007–2020</h2>
       <p class="sl-p">Buying cheap stocks over expensive ones is one of the most-studied premiums in finance. Measured by the standard academic value factor, it then suffered the longest, deepest drawdown in its recorded history — sharpest in 2018–2020 as growth and tech kept winning.</p>
@@ -170,7 +246,7 @@
       <div class="sl-callout amber"><div class="sl-callout-label">Not a promise</div><p>This doesn't prove every drawdown recovers. It shows that a long, deep drawdown is exactly what a real premium can look like from the inside.</p></div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9 · It actually happened</div>
       <h2 class="sl-h2">March 2000: Tiger closes near the turn</h2>
       <p class="sl-p">Julian Robertson's Tiger Management, one of the great hedge funds of the 1980s and 90s, refused to chase internet stocks, lagged badly through the late-90s boom, and suffered heavy losses and redemptions.</p>
@@ -181,7 +257,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10 · The desk's verdict</div>
       <h2 class="sl-h2">What was tested here</h2>
       <!-- DESK:END -->
@@ -198,7 +274,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11 · Your exercise</div>
       <h2 class="sl-h2">Write your drawdown rules before you need them</h2>
       <div class="sl-icard-grid">
@@ -209,7 +285,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -247,7 +323,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2020-10-30">
+    <div class="tl-drill-label">Scenario drill · 30 October 2020</div>
+    <h3>Your value strategy is thirteen years under water</h3>
+    <p>You run a systematic value strategy: buy cheap stocks, short expensive ones. The value premium was documented across decades and countries long before you started. But since around 2007 it has been in the longest and deepest drawdown in its recorded history, and the worst leg came in 2018 to 2020 as big growth and technology names kept outrunning everything cheap. Money is leaving value funds, and serious people are asking in print whether value is dead. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Shut it down. Thirteen years is long enough to prove the edge is gone.<div class="tl-drill-why">This is judging a system by its recent results, at what may be its low. A drawdown alone cannot tell a real premium from no edge at all, and closing near the bottom locks in the whole loss.</div></li>
+      <li data-verdict="bad">Move the money into the growth and technology stocks that have been winning.<div class="tl-drill-why">Switching to what just worked is the classic way to buy a strategy's good run just as it may be ending. It also swaps a tested idea for a recent feeling.</div></li>
+      <li data-verdict="good">Test the live record against the rule you wrote before the drawdown. If it has not tripped, keep running it at a size you can sit through.<div class="tl-drill-why">This is the lesson's whole method. The decision rests on evidence stated in advance, not on how the last few years felt. If the size is too big to bear, the fix is a smaller bet, chosen calmly, not an exit at the low.</div></li>
+      <li data-verdict="ok">Keep it, but halve the size until it starts working again.<div class="tl-drill-why">You survive, which matters. But cutting size because of pain, rather than a rule, means you hold less of it during any recovery. Size should be set from the drawdown you can bear before the bad stretch, not during it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In November 2020 the first effective COVID-19 vaccine results were announced, and value staged a sharp rebound that ran through 2021 and 2022. Investors who left near the bottom of the drawdown took the full loss and missed the recovery. That does not prove every drawdown recovers. It shows that a long, deep drawdown is exactly what a real premium can look like from the inside, which is why the decision has to come from a test, not from the drawdown.</p><p class="tl-drill-sources">Sources: <a href="https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html">Kenneth French Data Library, US HML value factor</a> (peak December 2006, about 58% below it by September 2020, the deepest fall in the series since 1926; +22% in 2021 and +32% in 2022); Pfizer and BioNTech press release, 9 Nov 2020.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -397,5 +492,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

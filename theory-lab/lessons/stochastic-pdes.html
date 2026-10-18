@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -670,6 +671,23 @@
     <button type="button" id="spde-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Discretise three new forward curves on the same grid, \(x = 0, 5, 10, 15\) with \(\Delta x = 5\). Each slope is \(\bigl[f(t,x+\Delta x)-f(t,x)\bigr]/\Delta x\), in percentage points per year of tenor.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Curve 2.50%, 3.10%, 3.40%, 3.50%. At \(x=0\): \((3.10-2.50)/5 = 0.12\). At \(x=5\): \((3.40-3.10)/5 = 0.06\). At \(x=10\): \((3.50-3.40)/5 =\) <span class="tl-blank" data-answer="0.02" data-tol="0.002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Curve 4.00%, 4.30%, 4.45%, 4.50%. At \(x=0\): \((4.30-4.00)/5 = 0.06\). At \(x=5\): <span class="tl-blank" data-answer="0.03" data-tol="0.002"></span>. At \(x=10\): <span class="tl-blank" data-answer="0.01" data-tol="0.002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>An inverted curve: 5.00%, 4.60%, 4.40%, 4.30%. Find the slope at \(x=0\) <span class="tl-blank" data-answer="-0.08" data-tol="0.002"></span>, at \(x=5\) <span class="tl-blank" data-answer="-0.04" data-tol="0.002"></span>, and at \(x=10\) <span class="tl-blank" data-answer="-0.02" data-tol="0.002"></span>. The signs tell you the roll-down term now pulls each forward rate down.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -882,6 +900,7 @@
     </div>
     <p class="tl-fits-why"><strong>Why you'd care:</strong> any curve trade lives in the shape of the curve, and a model that tracks one point of it cannot see that risk.</p>
   </nav>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../rates.html">Rates &amp; Policy</a> charts the 2s10s and 2s30s slopes over three years; every time they move without the level, that is a shape move a one-factor short-rate model cannot produce.</div><!-- DESK:END -->
 
   <div class="tl-footer-nav">
     <a href="fokker-planck-equation.html">← The Fokker-Planck Equation</a>
@@ -965,7 +984,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

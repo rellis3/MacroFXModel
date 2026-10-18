@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -522,6 +523,23 @@
       <span id="gm-sim-note" class="tl-scratch-note"></span>
     </div>
     <ol id="gm-sim-log" style="margin-top:10px;font-size:13px;color:var(--text2)"></ol>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Quote like the market maker in the worked example: likelihoods, Bayes' rule for the posterior after a buy (and a sell), then Ask \(= E[V\mid\text{buy}]\) and Bid \(= E[V\mid\text{sell}]\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\delta = 0.5\), \(\mu = 0.2\), \(V_H = 52\), \(V_L = 48\). \(P(\text{buy}\mid V_H) = 0.2 + 0.8\times0.5 = 0.6\) and \(P(\text{buy}\mid V_L) = 0.4\). \(P(V_H\mid\text{buy}) = 0.6\times0.5/0.5 = 0.6\), so Ask \(= 0.6\times52 + 0.4\times48 = 50.40\). By symmetry \(P(V_H\mid\text{sell}) = 0.4\) and Bid \(= 49.60\). The spread is <span class="tl-blank" data-answer="0.80" data-tol="0.005"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\delta = 0.6\) (already leaning high), \(\mu = 0.4\), \(V_H = 110\), \(V_L = 90\). Likelihoods: \(P(\text{buy}\mid V_H) = 0.7\), \(P(\text{buy}\mid V_L) = 0.3\), so \(P(\text{buy}) = 0.54\). \(P(V_H\mid\text{buy}) =\) <span class="tl-blank" data-answer="0.7778" data-tol="0.0006"></span>, so Ask \(=\) <span class="tl-blank" data-answer="105.56" data-tol="0.012"></span>. On the sell side \(P(V_H\mid\text{sell}) = 0.18/0.46 = 0.3913\) and Bid \(= 97.83\), so the spread is <span class="tl-blank" data-answer="7.73" data-tol="0.012"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\delta_0 = 0.5\), \(\mu = 0.5\), \(V_H = 130\), \(V_L = 120\). Opening spread: <span class="tl-blank" data-answer="5" data-tol="0.005"></span>. A buy arrives. New belief \(\delta_1 =\) <span class="tl-blank" data-answer="0.75" data-tol="0.0006"></span>. Requote from \(\delta_1\): Ask \(=\) <span class="tl-blank" data-answer="129" data-tol="0.006"></span>, Bid \(=\) <span class="tl-blank" data-answer="125" data-tol="0.006"></span>. One buy has narrowed the spread from 5 to 4.</p>
+    </div>
   </div>
 
   <div class="tl-chart">
@@ -1045,7 +1063,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

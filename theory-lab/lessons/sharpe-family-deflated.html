@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -583,6 +584,23 @@
     <button type="button" id="sharpe-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The three ratios again on new return streams, annualised with \(\sqrt{252} = 15.87\). Sharpe \(=\) mean ÷ σ, Sortino \(=\) mean ÷ downside deviation, Calmar \(=\) CAGR ÷ max drawdown.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Mean 5bp a day, σ 80bp, downside deviation 55bp. Daily Sharpe \(= 0.0625\), annual \(= 0.99\). Daily Sortino \(= 5/55 = 0.0909\). Annual Sortino \(=\) <span class="tl-blank" data-answer="1.44" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Mean 2bp, σ 40bp, downside deviation 30bp, CAGR 5%, max drawdown 8%. Annual Sharpe \(=\) <span class="tl-blank" data-answer="0.79" data-tol="0.01"></span>. Annual Sortino \(=\) <span class="tl-blank" data-answer="1.06" data-tol="0.01"></span>. Calmar \(=\) <span class="tl-blank" data-answer="0.625" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Mean 6bp, σ 100bp, downside deviation 90bp, CAGR 14%, max drawdown 35%. Annual Sharpe <span class="tl-blank" data-answer="0.95" data-tol="0.01"></span>, annual Sortino <span class="tl-blank" data-answer="1.06" data-tol="0.01"></span>, Calmar <span class="tl-blank" data-answer="0.40" data-tol="0.005"></span>. The Calmar is the weak one because one 35% drawdown dominates it.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Raw reported Sharpe vs. the chance-expected ceiling for a 50-variation search</div>
     <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with two bars on the same Sharpe-ratio axis. The left bar, labeled raw reported Sharpe from the best of 50 trials, reaches 1.80 and is tall. The right bar, labeled expected best-of-fifty Sharpe under zero true skill, reaches 1.50 and is visibly shorter. A bracket between the two bar tops is annotated: gap explained by the number of variations tried, N equals 50.">
@@ -900,7 +918,7 @@
       <li data-verdict="ok">Deflate the Sharpe ratio for how many strategies the fund might have tried, then decide.<div class="tl-drill-why">Sensible habit, wrong problem. The Deflated Sharpe Ratio corrects for the search behind a number, not for tails the sample has not drawn yet. It would still have looked good.</div></li>
       <li data-verdict="bad">Check the Calmar ratio. If the worst drawdown is small, the tail risk must be small.<div class="tl-drill-why">Calmar uses the worst drawdown that happened in the sample. A sample with no stress shows a small worst drawdown. It measures the storms you have had, not the ones you have not.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In August 1998 Russia defaulted on its domestic debt. Investors ran for the safest, most liquid bonds, and the spreads LTCM was betting would narrow widened instead, across many of its trades at once. At that leverage the losses ran into billions within weeks. In September 1998 the Federal Reserve Bank of New York brought the fund's creditor banks together, and they put in about $3.6 billion to take over the portfolio and wind it down. The fund lost roughly $4.6 billion in 1998.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In August 1998 Russia defaulted on its domestic debt. Investors ran for the safest, most liquid bonds, and the spreads LTCM was betting would narrow widened instead, across many of its trades at once. At that leverage the losses ran into billions within weeks. In September 1998 the Federal Reserve Bank of New York brought the fund's creditor banks together, and they put in about $3.6 billion to take over the portfolio and wind it down. Greenspan told Congress the fund had lost half its capital by the end of August, and its 1998 losses are commonly put at about $4.6 billion.</p><p class="tl-drill-sources">Sources: <a href="https://www.cftc.gov/sites/default/files/tm/tmhedgefundreport.htm">President's Working Group on Financial Markets, Hedge Funds, Leverage, and the Lessons of Long-Term Capital Management, April 1999</a> (returns, leverage of more than 25 to 1, the $3.6 billion recapitalisation of 23 Sep 1998, the Russian debt moratorium of 17 Aug 1998); <a href="https://www.federalreserve.gov/boarddocs/testimony/1998/19981001.htm">Greenspan, testimony to the House Banking Committee, 1 Oct 1998</a></p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -1147,7 +1165,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

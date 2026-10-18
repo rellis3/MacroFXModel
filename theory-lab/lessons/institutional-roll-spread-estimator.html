@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -468,6 +469,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Roll's estimator on new data: \(s_{\text{Roll}} = 2\sqrt{-\mathrm{Cov}(\Delta P_t,\Delta P_{t-1})}\), with the covariance taken over the lagged pairs, each series' own mean removed, divided by the number of pairs (as in the worked example).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>A stock's first-order autocovariance of price changes is \(-0.000900\). It is negative, so the root is real: \(\sqrt{0.000900} = 0.0300\). So \(s_{\text{Roll}} = 2 \times 0.0300 =\) <span class="tl-blank" data-answer="0.060" data-tol="0.0005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Another name's autocovariance is \(-0.000196\). \(\sqrt{-\mathrm{Cov}} =\) <span class="tl-blank" data-answer="0.014" data-tol="0.0002"></span>. \(s_{\text{Roll}} =\) <span class="tl-blank" data-answer="0.028" data-tol="0.0004"></span>, so the implied half-spread is <span class="tl-blank" data-answer="0.014" data-tol="0.0002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Seven price changes: 0.04, −0.06, 0.05, −0.03, 0.02, −0.04, 0.06, giving six lagged pairs. Mean of \(\Delta P_t\) (the last six) <span class="tl-blank" data-answer="0" data-tol="0.0002"></span>. Mean of \(\Delta P_{t-1}\) (the first six) <span class="tl-blank" data-answer="-0.00333" data-tol="0.00005"></span>. Covariance <span class="tl-blank" data-answer="-0.001783" data-tol="0.00002"></span>. \(s_{\text{Roll}} =\) <span class="tl-blank" data-answer="0.0845" data-tol="0.0005"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -816,7 +834,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   var input = document.getElementById('roll-scratch-prices');

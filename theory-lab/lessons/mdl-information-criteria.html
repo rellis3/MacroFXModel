@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -414,6 +415,22 @@
     </div>
     <button type="button" id="mdl-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Two-part code length, \(DL = \tfrac{k}{2}\log_2 n + \tfrac{-2\ln\hat L}{2\ln 2}\), for two models on the same data; the shorter code wins. New inputs each round; answers in bits to two decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(n = 250\). Model A: \(k = 3\), \(-2\ln\hat L = 200\). Model B: \(k = 6\), \(-2\ln\hat L = 180\). \(\log_2 250 = 7.966\). A: \(11.95 + 144.27 = 156.22\) bits. B: \(23.90 + 129.84 = 153.74\) bits. Model B's code is shorter by <span class="tl-blank" data-answer="2.48" data-tol="0.02" data-unit="bits"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(n = 50\) (\(\log_2 50 = 5.644\)). Model A: \(k = 1\), \(-2\ln\hat L = 80\). Model B: \(k = 4\), \(-2\ln\hat L = 70\). \(DL(M_A) =\) <span class="tl-blank" data-answer="60.53" data-tol="0.02" data-unit="bits"></span>, \(DL(M_B) =\) <span class="tl-blank" data-answer="61.78" data-tol="0.02" data-unit="bits"></span>. Model A wins by <span class="tl-blank" data-answer="1.25" data-tol="0.02" data-unit="bits"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(n = 500\). Model A: \(k = 2\), \(-2\ln\hat L = 300\). Model B: \(k = 4\), \(-2\ln\hat L = 285\). \(DL(M_A) =\) <span class="tl-blank" data-answer="225.37" data-tol="0.02" data-unit="bits"></span>; \(DL(M_B) =\) <span class="tl-blank" data-answer="223.52" data-tol="0.02" data-unit="bits"></span>; the winner's margin <span class="tl-blank" data-answer="1.85" data-tol="0.02" data-unit="bits"></span>. Which model wins?</p>
+    </div>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">The exact two-part code lengths computed above, drawn to scale</div>
@@ -699,7 +716,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

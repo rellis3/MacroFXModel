@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -551,6 +552,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The observed statistics both tests start from, on new candidate panels (benchmark 0): WRC uses the largest mean \(\bar V = \max_k \bar d_k\); SPA uses the largest studentised mean \(Z = \max_k \bar d_k/(s_k/\sqrt{T})\). The bootstrap p-values come after this step and are not hand-computed.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(T = 25\) periods. A: mean 0.30, \(s\) = 0.60. B: mean 0.20, \(s\) = 0.25. C: mean −0.10, \(s\) = 0.50. With \(\sqrt{25} = 5\): \(t_A = 0.30/0.12 = 2.5\), \(t_B = 0.20/0.05 = 4.0\), \(t_C = -0.10/0.10 = -1.0\). WRC's \(\bar V = 0.30\), from A. SPA's \(Z =\) <span class="tl-blank" data-answer="4.0" data-tol="0.01"></span>, from B: the two tests start from different winners.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(T = 36\) periods. A: mean 0.25, \(s\) = 0.90. B: mean 0.12, \(s\) = 0.30. C: mean 0.05, \(s\) = 0.20, so \(t_C = 1.5\). WRC's \(\bar V = 0.25\). \(t_A =\) <span class="tl-blank" data-answer="1.667" data-tol="0.005"></span>. \(t_B =\) <span class="tl-blank" data-answer="2.40" data-tol="0.005"></span>. SPA's \(Z =\) <span class="tl-blank" data-answer="2.40" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(T = 4\) periods. A returns: 0.5, 0.1, 0.4, 0.2. B returns: 1.0, −0.2, 0.8, 0.2. Use the sample standard deviation (divide by \(T-1\)). \(s_A =\) <span class="tl-blank" data-answer="0.1826" data-tol="0.0006"></span>. \(t_A =\) <span class="tl-blank" data-answer="3.286" data-tol="0.01"></span>. \(t_B =\) <span class="tl-blank" data-answer="1.634" data-tol="0.006"></span>. WRC's \(\bar V =\) <span class="tl-blank" data-answer="0.45" data-tol="0.002"></span>, from B, while SPA's \(Z\) is A's \(t\).</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -799,6 +817,7 @@
       WRC/SPA-style test of a full candidate panel has not been done.
     </p>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../strategy-lab.html">Strategy Lab</a> runs twelve strategies through one harness and deflates the leader's Sharpe for the number of variants tried; that leaderboard is exactly the kind of candidate panel a Reality Check or SPA test would bootstrap.</div>
   <!-- DESK:END -->
 
   <div class="tl-drill">
@@ -983,7 +1002,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   // ---- Genuine, live stationary block bootstrap for the WRC/SPA "try it yourself" widget ----

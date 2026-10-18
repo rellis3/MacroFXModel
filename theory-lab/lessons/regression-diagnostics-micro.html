@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Regression Diagnostics — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 6-question self-test?<a href="regression-diagnostics.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,66 @@
       <p class="sl-lede">A regression's p-value is not a fact about the world — it's a fact about a model of the world, and that model comes with fine print. This guide walks through the three checks that verify the fine print actually holds before you trust the headline number: is the error serially correlated (Durbin-Watson), does its variance change across the sample (Breusch-Pagan), and does it look enough like a bell curve for small-sample inference to be valid (Jarque-Bera).</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three checks on a regression's leftovers: Durbin-Watson asks whether the misses are sticky, Breusch-Pagan whether their spread fans out, Jarque-Bera whether their shape is lopsided or fat-tailed. Below, a residual series in time order runs in long waves above and below zero, the sticky pattern behind a Durbin-Watson of 0.6 and a lag-one autocorrelation near 0.7. At that autocorrelation, 500 daily rows carry only about 88 independent observations' worth of evidence.">
+      <rect class="tlp-box blue" x="10" y="8" width="185" height="34" rx="6"/>
+      <rect class="tlp-box amber" x="207" y="8" width="185" height="34" rx="6"/>
+      <rect class="tlp-box purple" x="404" y="8" width="186" height="34" rx="6"/>
+      <text class="tlp-blue" x="102.5" y="30" text-anchor="middle" font-size="13" font-weight="700">Durbin-Watson: sticky?</text>
+      <text class="tlp-amber" x="299.5" y="30" text-anchor="middle" font-size="13" font-weight="700">Breusch-Pagan: fanning?</text>
+      <text class="tlp-purple" x="497" y="30" text-anchor="middle" font-size="13" font-weight="700">Jarque-Bera: lopsided?</text>
+      <text class="tlp-text3" x="20" y="66" font-size="12">residuals in time order (simulated, 100 days)</text>
+      <line class="tlp-line" x1="20" y1="135" x2="362" y2="135"/>
+      <polyline class="tlp-line red" points="24.0,135.8 27.4,113.4 30.7,127.0 34.1,132.8 37.4,104.1 40.8,110.0 44.2,124.3 47.5,117.8 50.9,124.8 54.2,156.1 57.6,146.1 61.0,156.9 64.3,149.8 67.7,118.5 71.0,95.6 74.4,107.6 77.8,121.7 81.1,133.5 84.5,127.2 87.8,145.5 91.2,144.0 94.6,165.8 97.9,189.9 101.3,171.6 104.6,163.6 108.0,157.9 111.4,158.5 114.7,154.2 118.1,122.9 121.4,108.3 124.8,114.1 128.2,123.3 131.5,108.7 134.9,131.6 138.2,153.0 141.6,155.9 145.0,173.6 148.3,186.7 151.7,153.9 155.0,144.9 158.4,153.9 161.8,157.8 165.1,147.2 168.5,117.2 171.8,146.9 175.2,141.8 178.6,125.5 181.9,116.0 185.3,105.9 188.6,120.4 192.0,115.8 195.4,111.2 198.7,111.7 202.1,137.6 205.4,123.6 208.8,159.0 212.2,169.2 215.5,170.9 218.9,154.4 222.2,186.5 225.6,146.1 229.0,132.1 232.3,132.6 235.7,158.5 239.0,140.4 242.4,133.3 245.8,107.1 249.1,94.4 252.5,92.2 255.8,101.5 259.2,101.3 262.6,136.2 265.9,136.4 269.3,124.5 272.6,163.4 276.0,129.7 279.4,135.7 282.7,138.6 286.1,136.5 289.4,155.4 292.8,158.6 296.2,129.6 299.5,144.3 302.9,154.9 306.2,127.9 309.6,136.7 313.0,150.6 316.3,145.5 319.7,182.6 323.0,180.4 326.4,143.3 329.8,145.0 333.1,142.8 336.5,138.6 339.8,132.3 343.2,147.4 346.6,134.7 349.9,129.1 353.3,132.3 356.6,136.9"/>
+      <text class="tlp-red" x="20" y="222" font-size="13" font-weight="700">long waves: DW = 0.6, so ρ ≈ 0.7</text>
+      <line class="tlp-line dash" x1="382" y1="56" x2="382" y2="226"/>
+      <text class="tlp-text3" x="495" y="66" text-anchor="middle" font-size="12">evidence in 500 days</text>
+      <rect class="tlp-box blue" x="420" y="80" width="60" height="120" rx="3"/>
+      <rect class="tlp-box red" x="510" y="179" width="60" height="21" rx="3"/>
+      <line class="tlp-line" x1="400" y1="200" x2="590" y2="200"/>
+      <text class="tlp-blue" x="450" y="100" text-anchor="middle" font-size="14" font-weight="700">500</text>
+      <text class="tlp-red" x="540" y="171" text-anchor="middle" font-size="14" font-weight="700">≈ 88</text>
+      <text class="tlp-text3" x="450" y="216" text-anchor="middle" font-size="12">rows</text>
+      <text class="tlp-text3" x="540" y="216" text-anchor="middle" font-size="12">independent</text>
+    </svg>
+    <figcaption>All three tests ask whether the leftovers are really noise. When they are sticky, 500 rows carry the evidence of about 88, so a p-value of 0.01 built on 500 is manufactured confidence. The slope can be fine; the certainty is not.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I regressed next-day returns on a yield-spread signal. Two years of daily data, and the p-value is one percent. That is a discovery, right?</p>
+      <p data-who="Quant">Maybe. A regression gives you two different things. One is the slope: how much the return moves when the signal moves. The other is how sure you should be about that slope. They break in different ways.</p>
+      <p data-who="Trader">The slope is the slope.</p>
+      <p data-who="Quant">Right, and it is fairly robust. It comes from minimising squared misses, and it does not care how the misses behave. The confidence number is different. It assumes the leftovers are pure noise.</p>
+      <p data-who="Trader">What does pure noise mean here?</p>
+      <p data-who="Quant">Three things, and there is one test for each. Are the misses sticky, so today's miss predicts tomorrow's? That is Durbin-Watson. Does their size fan out in some part of the data? That is Breusch-Pagan. Is their shape lopsided or fat-tailed? That is Jarque-Bera.</p>
+      <p data-who="Trader">So run all three on my regression.</p>
+      <p data-who="Quant">Say Durbin-Watson comes back at nought point six. Two means no stickiness. Nought point six means today's miss carries about seventy percent into tomorrow.</p>
+      <p data-who="Trader">Why does that hurt the p-value?</p>
+      <p data-who="Quant">Because the formula thinks every day is a fresh, independent piece of evidence. Sticky days mostly repeat each other. With five hundred days and that much stickiness, you have the evidence of about eighty-eight independent days.</p>
+      <p data-who="Trader">Eighty-eight out of five hundred.</p>
+      <p data-who="Quant">And the formula still divides by five hundred. So the standard error is too small, the t-statistic too big, and the p-value too good. Correct it with Newey-West standard errors and that one percent is plausibly back to noise.</p>
+      <p data-who="Trader">So I throw the signal away?</p>
+      <p data-who="Quant">No. The slope can still be a fair read of direction. What was fake was the confidence. You fix the inference, with robust standard errors, not the coefficient.</p>
+      <p data-who="Trader">And when does the shape test matter?</p>
+      <p data-who="Quant">Mostly in small samples. With lots of independent data, averaging smooths odd shapes away. But a trading sample often has far fewer independent rows than it looks, which is exactly when you are tempted to trust it.</p>
+      <p data-who="Trader">And if all three pass?</p>
+      <p data-who="Quant">Then your in-sample p-value is honestly computed. That is all. It still says nothing about whether the relationship holds on data the model has never seen.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Check the leftovers before you believe the p-value, and remember that a sticky series has far fewer independent days than rows.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">A t-statistic of 3 that isn't</h2>
       <p class="sl-sub">White (1980), Hansen &amp; Hodrick (1980), Newey &amp; West (1987).</p>
@@ -39,7 +99,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Two different things live inside one regression</h2>
       <p class="sl-sub">It's easy to conflate them, and the whole lesson hinges on keeping them apart.</p>
@@ -60,7 +120,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Three checks, one underlying question</h2>
       <p class="sl-sub">A regression's residuals — eᵢ = yᵢ − ŷᵢ, the part of Y the fitted line doesn't explain — are supposed to look like structureless noise.</p>
@@ -72,7 +132,7 @@
       <div class="sl-quote">All three are really the same diagnostic act performed on three different axes of the same object — the residual series — because all three are checking the same underlying promise: that what's left over after fitting the line really is noise, and not a second signal the inference machinery is silently mistaking for confidence.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Durbin-Watson: does today's residual predict tomorrow's?</h2>
       <p class="sl-sub">Line the residuals up in time order. Flip between three regimes and watch the shape.</p>
@@ -112,7 +172,7 @@
       <p class="sl-p">If consecutive residuals are independent, the cross term in that numerator averages to roughly zero and DW ≈ 2. Positive autocorrelation shrinks the gap between consecutive residuals, pushing DW toward 0; negative autocorrelation inflates it, pushing DW toward 4. A cleaner approximation makes the whole scale readable at a glance: <strong>DW ≈ 2(1 − ρ̂)</strong>, where ρ̂ is the estimated lag-1 autocorrelation of the residuals.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Why a "sticky" residual inflates significance</h2>
       <p class="sl-sub">The classical standard error assumes n observations means n independent pieces of evidence. Change DW and n below and watch the honest count shrink.</p>
@@ -133,7 +193,7 @@
       <p class="sl-p">At DW = 0.6 and ρ̂ ≈ 0.7, roughly 500 daily observations behave like only about 88 genuinely independent ones. A standard error computed as though it had 500 independent rows behind it is too small for what the data actually supports — which is exactly why a "significant" p-value on sticky residuals deserves a second look before anyone trusts it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Breusch-Pagan: does the typical error size depend on X?</h2>
       <p class="sl-sub">A deliberately simple trick: if the true residual variance depends on X, the squared residuals themselves should show it.</p>
@@ -173,7 +233,7 @@
       <p class="sl-p">A significant Breusch-Pagan result means the single "one standard error fits all observations" number is wrong in the same direction as autocorrelation — it understates the true uncertainty exactly where variance is largest, making the coefficient look more precisely estimated than it should.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Jarque-Bera: does the shape look normal?</h2>
       <p class="sl-sub">Not spread, not stickiness — the overall shape of the residual distribution, combined into one number.</p>
@@ -186,7 +246,7 @@
       <p class="sl-p">The classical t-test is exact when residuals are normal, and otherwise justified only asymptotically — by the Central Limit Theorem, which says the sampling distribution of β̂ approaches normality as sample size grows, regardless of the residuals' own shape. With enough data, non-normal residuals stop mattering much. With a small sample, that averaging hasn't had enough terms to do its smoothing work yet — precisely when a low p-value is most tempting to over-trust and least backed by the assumptions it needs.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">A p-value of 0.01 that isn't what it looks like</h2>
       <p class="sl-sub">A researcher regresses next-day FX returns on a yield-spread signal. Two years of daily data. p = 0.01.</p>
@@ -199,7 +259,7 @@
     </section>
 
     <!-- WB:regression_diagnostics-deck:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">A p-value of 0.01, checked three ways</h2>
       <!-- WB:regression_diagnostics:START -->
@@ -210,7 +270,7 @@
     </section>
     <!-- WB:regression_diagnostics-deck:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where these three get misread</h2>
       <div class="sl-compare">
@@ -236,7 +296,7 @@
       <p class="sl-p">A regression can pass all three diagnostics in-sample and still fail completely out-of-sample — the checks verify the inference procedure was honestly computed, not that the relationship is durable. Both checks matter, and they check different things.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">A pre-trust gate, not a post-mortem</h2>
       <p class="sl-sub">Fit the regression, then before quoting the p-value to anyone — including yourself — run all three checks.</p>
@@ -252,7 +312,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this stands in this repo, right now</h2>
       <p class="sl-sub">The rule this lesson derives isn't hypothetical — it's already written down as house discipline.</p>
@@ -265,7 +325,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -316,7 +376,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research review</div>
+    <h3>A colleague brings you a p-value of 0.01</h3>
+    <p>A colleague regressed next-day FX returns on a yield-spread signal over about 500 trading days. The slope has a p-value of 0.01 and they want to start building a strategy on it. You run the residual checks: Durbin-Watson is 0.6, Breusch-Pagan is unremarkable, and Jarque-Bera shows mild skew. What do you tell them?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Go ahead. Two of the three checks pass, and p = 0.01 clears the bar comfortably.<div class="tl-drill-why">One failure is enough. A Durbin-Watson of 0.6 means \(\hat\rho \approx 0.7\) and only about 88 independent days, so the p-value was computed as if there were 500. The comfortable margin is the part that is fake.</div></li>
+      <li data-verdict="bad">Drop it. The diagnostics failed, so the relationship is spurious.<div class="tl-drill-why">A diagnostic failure says the standard error is wrong, not that the slope is meaningless. Throwing the coefficient away is the opposite mistake to trusting the p-value.</div></li>
+      <li data-verdict="good">Recompute the inference with Newey-West standard errors, report that p-value instead, and if anything survives, test it out of sample before building anything.<div class="tl-drill-why">This fixes the specific failure without discarding the estimate, and it keeps the two questions apart: is the in-sample claim honestly computed, and does the relationship hold on data the model has not seen.</div></li>
+      <li data-verdict="ok">Note the low Durbin-Watson, quote the p-value with a caveat, and move on.<div class="tl-drill-why">Honest, but a caveat does not tell anyone how much the evidence shrinks. The corrected number is a few lines of work and decides whether there is anything here at all.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the numbers say.</strong> This is an illustrative case built on the lesson's own scenario, not a historical episode. With \(\hat\rho \approx 0.7\), 500 days carry the evidence of about 88, and once the standard error is corrected the p-value is nowhere near 0.01. In a simulation of exactly this setup with no real link between signal and returns, the classical test called the slope significant at 5% in about two samples out of five; Newey-West cut that to about one in nine.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -399,5 +478,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

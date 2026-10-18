@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -443,6 +444,22 @@
     </div>
     <button type="button" id="aic-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>AIC \(= 2k + \text{deviance}\) and BIC \(= k\ln(n) + \text{deviance}\), where deviance is \(-2\ln\hat L\). Lower is better. New models each round; give two decimals for BIC.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(n = 200\) (\(\ln 200 = 5.2983\)). Model A: \(k = 2\), deviance 150. Model B: \(k = 4\), deviance 142. AIC: A \(= 154\), B \(= 150\), so AIC prefers B. BIC: A \(= 2(5.2983) + 150 = 160.60\). BIC for B \(= 4(5.2983) + 142 =\) <span class="tl-blank" data-answer="163.19" data-tol="0.02"></span>, so BIC prefers A.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(n = 60\) (\(\ln 60 = 4.0943\)). Model A: \(k = 3\), deviance 120. Model B: \(k = 6\), deviance 110. \(\text{AIC}_A =\) <span class="tl-blank" data-answer="126" data-tol="0.01"></span>, \(\text{AIC}_B =\) <span class="tl-blank" data-answer="122" data-tol="0.01"></span>, \(\text{BIC}_B =\) <span class="tl-blank" data-answer="134.57" data-tol="0.02"></span>. Given \(\text{BIC}_A = 132.28\), which criterion prefers which model?</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(n = 400\). Model A: \(k = 1\), deviance 210. Model B: \(k = 5\), deviance 198. \(\text{AIC}_A =\) <span class="tl-blank" data-answer="212" data-tol="0.01"></span>; \(\text{AIC}_B =\) <span class="tl-blank" data-answer="208" data-tol="0.01"></span>; \(\text{BIC}_A =\) <span class="tl-blank" data-answer="215.99" data-tol="0.02"></span>; \(\text{BIC}_B =\) <span class="tl-blank" data-answer="227.96" data-tol="0.02"></span>. Four extra parameters buy 12 points of fit: enough for AIC, far from enough for BIC.</p>
+    </div>
+  </div>
 
   <div class="tl-solid amber">
     <strong>The takeaway:</strong> the same data, the same two models, and the same 6-point
@@ -781,7 +798,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

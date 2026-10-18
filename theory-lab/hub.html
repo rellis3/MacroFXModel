@@ -6,6 +6,7 @@
 <title>Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="page">
@@ -24,6 +25,9 @@
     <a class="tl-gloss-hero-link" href="paths.html#sync">🔄 Reading on a phone and a laptop? Sync your progress across devices</a>
     <div id="tl-progress-summary" class="tl-progress-summary" hidden></div>
   </div>
+<!-- DESK:START -->
+  <div id="tl-today" class="tl-review tl-today" hidden></div>
+<!-- DESK:END -->
   <div id="tl-review" class="tl-review" hidden></div>
 
 <!-- DESK:START -->
@@ -40,6 +44,11 @@
         <div class="tl-card-toprow"><div class="tl-card-num">Practice 1</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
         <h3>Reading the Tape</h3>
         <p>Seven macro readings, asked over and over from real days: which leg of a yield move did it, which gold is trading, what the bond market concluded about an oil move, which link broke. You commit before the reveal, and the derivation behind each relationship is one click away &mdash; with the chart symbols to go and look at it yourself. Never asks which way price went.</p>
+      </a>
+      <a class="tl-card" href="replay.html" data-slug="replay">
+        <div class="tl-card-toprow"><div class="tl-card-num">Practice 2</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>Replay a Real Day</h3>
+        <p>The desk's own candles from days that broke traders: the SNB floor, the gilt crisis, the August 2024 carry unwind. Bars come in one at a time; you decide before the next one shows.</p>
       </a>
     </div>
   </div>
@@ -88,6 +97,26 @@
         <div class="tl-card-toprow"><div class="tl-card-num">Learning paths</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
         <h3>Learning Paths, Each With a Finish Line</h3>
         <p>Volatility &amp; Options, Macro &amp; FX, System Building, Risk &amp; Portfolio, plus Maths from Scratch, Stochastic Calculus &amp; Pricing, and Quant Methods &amp; Machine Learning. One shared core, then a route through the lessons that matter for your goal, ending in a capstone you build.</p>
+      </a>
+      <a class="tl-card" href="practice.html" data-slug="practice">
+        <div class="tl-card-toprow"><div class="tl-card-num">Practice</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
+        <h3>Ten Minutes a Day: the Mixed Drill</h3>
+        <p>One real, dated market situation a day, drawn from any lesson. Commit to a call and say how sure you are. Over time it charts whether your 80% calls come true 80% of the time, and which lessons you have mastered.</p>
+      </a>
+      <a class="tl-card" href="errors.html" data-slug="errors">
+        <div class="tl-card-toprow"><div class="tl-card-num">Spot the error</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>Spot the Error</h3>
+        <p>Real mistakes this lab once printed: a dropped term, a swapped sign, a chart drawn backwards. Find each one before you read the fix. Checking other people's numbers is a trading skill.</p>
+      </a>
+      <a class="tl-card" href="checklist.html" data-slug="checklist">
+        <div class="tl-card-toprow"><div class="tl-card-num">Before a trade</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
+        <h3>The Pre-Trade Checklist</h3>
+        <p>The questions the lessons say to answer before a position goes on, each with its reason and the lesson behind it. Save it, copy it, print it, or hand it straight to the journal.</p>
+      </a>
+      <a class="tl-card" href="journal.html" data-slug="journal">
+        <div class="tl-card-toprow"><div class="tl-card-num">After a trade</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
+        <h3>Trade Journal, Tagged by Lesson</h3>
+        <p>Log trades in R against the lessons they relied on. See which ideas actually pay, and separate good decisions from lucky ones. CSV export and a backup file.</p>
       </a>
     </div>
   </div>
@@ -159,9 +188,14 @@
         <p>Steep, flat, inverted, bull and bear — and what fifty years of inversions actually delivered.</p>
       </a>
       <a class="tl-card" href="lessons/four-markets-four-questions.html" data-slug="four-markets-four-questions" data-full="lessons/four-markets-four-questions.html" data-micro="lessons/four-markets-four-questions-micro.html">
-        <div class="tl-card-toprow"><div class="tl-card-num">Markets Talk 5 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span><span class="tl-card-wb-badge" title="Has a ▶ Watch it animation">▶</span></div>
+        <div class="tl-card-toprow"><div class="tl-card-num">Markets Talk 5</div><span class="tl-pill blue tl-diff-pill">Intermediate</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span><span class="tl-card-wb-badge" title="Has a ▶ Watch it animation">▶</span></div>
         <h3>Four Markets, Four Questions</h3>
         <p>Ask each market its own question — mood, safety, uncertainty, relative rates — and read the board by where they disagree.</p>
+      </a>
+      <a class="tl-card" href="lessons/event-trading-playbook.html" data-slug="event-trading-playbook" data-full="lessons/event-trading-playbook.html" data-micro="lessons/event-trading-playbook-micro.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Markets Talk 6 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span><span class="tl-card-wb-badge" title="Has a ▶ Watch it animation">▶</span></div>
+        <h3>The Event-Trading Playbook: Payrolls, CPI and Central Banks</h3>
+        <p>Before a release, options already price how far it should move; after it, price moves on the surprise, not the number.</p>
       </a>
     </div>
   </div>
@@ -432,6 +466,11 @@
         <h3>Merton Jump-Diffusion Model</h3>
         <p>Adding sudden gaps to Black-Scholes' smooth diffusion — why NFP/CPI risk produces fat tails<!-- DESK:START -->, and the theory behind this repo's skew/kurtosis metrics<!-- DESK:END -->.</p>
       </a>
+      <a class="tl-card" href="lessons/fx-options-quoting-rr-bf.html" data-slug="fx-options-quoting-rr-bf" data-full="lessons/fx-options-quoting-rr-bf.html" data-micro="lessons/fx-options-quoting-rr-bf-micro.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">FX options</div><span class="tl-pill blue tl-diff-pill">Intermediate</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span><span class="tl-card-wb-badge" title="Has a ▶ Watch it animation">▶</span></div>
+        <h3>FX Options Quoting: Delta, Risk Reversals &amp; Butterflies</h3>
+        <p>Why FX options are quoted in vol and delta, how three numbers (ATM, risk reversal, butterfly) rebuild the smile, and how to read a risk reversal as the market paying up for one side.</p>
+      </a>
     </div>
   </div>
 
@@ -443,6 +482,11 @@
         <div class="tl-card-toprow"><div class="tl-card-num">Lesson 13</div><span class="tl-pill blue tl-diff-pill">Intermediate</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span><span class="tl-card-wb-badge" title="Has a ▶ Watch it animation">▶</span></div>
         <h3>Kelly Criterion &amp; Position Sizing</h3>
         <p>The growth-optimal bet size, derived from expected log-wealth — and why over-betting a real edge can still ruin you.</p>
+      </a>
+      <a class="tl-card" href="lessons/trade-management-exits.html" data-slug="trade-management-exits" data-full="lessons/trade-management-exits.html" data-micro="lessons/trade-management-exits-micro.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">After the entry</div><span class="tl-pill blue tl-diff-pill">Intermediate</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span><span class="tl-card-wb-badge" title="Has a ▶ Watch it animation">▶</span></div>
+        <h3>Managing the Trade: R-Multiples, Stops &amp; Exits</h3>
+        <p>Count every trade in R, put stops where the idea dies, and see why no exit rule can turn noise into an edge, or save you from a gap.</p>
       </a>
       <a class="tl-card" href="lessons/extreme-value-theory.html" data-slug="extreme-value-theory" data-full="lessons/extreme-value-theory.html" data-micro="lessons/extreme-value-theory-micro.html">
         <div class="tl-card-toprow"><div class="tl-card-num">Lesson 14</div><span class="tl-pill blue tl-diff-pill">Intermediate</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span><span class="tl-card-wb-badge" title="Has a ▶ Watch it animation">▶</span></div>
@@ -669,9 +713,14 @@
         <p>Volume-bucketed order imbalance as an early-warning signal — and the real academic debate over whether it actually works.</p>
       </a>
       <a class="tl-card" href="lessons/execution-algorithms.html" data-slug="execution-algorithms" data-full="lessons/execution-algorithms.html" data-micro="lessons/execution-algorithms-micro.html">
-        <div class="tl-card-toprow"><div class="tl-card-num">Market Microstructure 5 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span><span class="tl-card-wb-badge" title="Has a ▶ Watch it animation">▶</span></div>
+        <div class="tl-card-toprow"><div class="tl-card-num">Market Microstructure 5</div><span class="tl-pill blue tl-diff-pill">Intermediate</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span><span class="tl-card-wb-badge" title="Has a ▶ Watch it animation">▶</span></div>
         <h3>Execution Algorithms: TWAP, VWAP, POV, IS</h3>
         <p>TWAP, VWAP, POV, and Implementation Shortfall — how urgency versus impact concern actually picks the algorithm.</p>
+      </a>
+      <a class="tl-card" href="lessons/fx-fixings-wm-reuters.html" data-slug="fx-fixings-wm-reuters" data-full="lessons/fx-fixings-wm-reuters.html" data-micro="lessons/fx-fixings-wm-reuters-micro.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Market Microstructure 6 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span><span class="tl-card-wb-badge" title="Has a ▶ Watch it animation">▶</span></div>
+        <h3>FX Fixings &amp; the WM/Reuters 4pm Fix</h3>
+        <p>The one exchange rate the buy side marks to: how the 4pm London fix is calculated, how banks fill fix orders, why month-end moves it, and the 2014 rigging fines.</p>
       </a>
     </div>
   </div>
@@ -1442,5 +1491,7 @@
 })();
 </script>
 <script src="assets/review.js" defer></script>
+<!-- DESK:START --><script src="assets/today.js" defer></script><!-- DESK:END -->
+<script src="assets/vark.js?v=2" defer></script>
 </body>
 </html>

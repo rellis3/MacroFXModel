@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -506,6 +507,23 @@
     <button type="button" id="hrp-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's recursive bisection: a cluster's variance is its inverse-variance-weighted variance, \(V = 1/\sum_i (1/\sigma_i^2)\); at each fork the left side gets \(\alpha_L = 1 - V_L/(V_L + V_R)\) of the parent's weight and the right side the rest. New baskets each round, volatilities annualised.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Two blocs with cluster variances \(V_L = 0.0030\) and \(V_R = 0.0020\). Their sum is 0.0050, so \(V_L/(V_L + V_R) = 0.6\). The left bloc's share is \(\alpha_L = 1 - 0.6 =\) <span class="tl-blank" data-answer="0.4" data-tol="0.001"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Three pairs: A at 12% and B at 6% form one cluster, C at 8% stands alone. The variances are 0.0144, 0.0036 and 0.0064. Find the {A, B} cluster variance <span class="tl-blank" data-answer="0.00288" data-tol="0.00001"></span> and its share at the root <span class="tl-blank" data-answer="0.690" data-tol="0.002"></span>. Inside the cluster A gets \(1 - 0.0144/0.0180 = 0.2\) of it, so A's final weight is <span class="tl-blank" data-answer="0.138" data-tol="0.002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Four pairs in two blocs: {E at 10%, F at 8%} and {G at 5%, H at 6%}. Find the left bloc's variance \(V_L\) <span class="tl-blank" data-answer="0.00390" data-tol="0.00002"></span>, its root share \(\alpha_L\) <span class="tl-blank" data-answer="0.274" data-tol="0.002"></span>, E's final weight <span class="tl-blank" data-answer="0.107" data-tol="0.002"></span> and G's final weight <span class="tl-blank" data-answer="0.428" data-tol="0.002"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -608,11 +626,7 @@
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "HRP gives a steadier out-of-sample book than inverse-volatility, ERC or minimum
-    variance on this desk's FX universe."</strong> No clustering allocator has been run on this desk's data. A fair test
-    would re-estimate every method on a rolling window with no look-ahead, freeze the linkage method before looking,
-    and compare out-of-sample realised volatility, turnover and worst drawdown, with stress windows such as 2008 and
-    March 2020 reported separately. Realised volatility is the right target: with only a handful of G10 crosses, a
-    Sharpe-ratio comparison would be too noisy to tell these methods apart.</span>
+    variance on this desk's FX universe."</strong> No clustering allocator has been run on this desk's data.<div class="tl-howtotest"><strong>How to test it:</strong> on daily returns for the G10 FX crosses since 2005, re-estimate HRP, inverse-volatility, equal risk contribution and minimum variance each month on a rolling 252-day window with no look-ahead, with the linkage method frozen before looking. Compare out-of-sample realised volatility, turnover and worst drawdown, with stress windows such as 2008 and March 2020 reported separately; realised volatility is the target because, with only a handful of crosses, a Sharpe comparison would be too noisy to separate the methods. Fix the gate in advance: HRP passes only if its realised volatility is below inverse-volatility's (the baseline) in both halves of the sample and in the stress windows, with its net return after spread costs on turnover no worse.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -714,7 +728,7 @@
       <li data-verdict="good">Treat the high-yielders as one bloc, measure that bloc's risk on recent data, and size the whole bloc down to it before worrying about weights inside it.<div class="tl-drill-why">This is the tree's top split done honestly: allocate to the bloc as a single bet, using a variance that reflects today's market, and stop asking a near-singular matrix to tell the five apart.</div></li>
       <li data-verdict="ok">Switch to HRP, using the tree and variances estimated in August.<div class="tl-drill-why">It removes the fragile inversion, a real improvement. But the tree's variances come from calm data, so the high-yield bloc, the one falling, still looks cheaper in risk terms than it is.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Investors facing losses and margin calls unwound carry positions together. The high-yielders fell as one block: AUD/USD dropped by more than a third between its July high and late October, and the yen rose sharply against almost everything. Within each bloc, correlations rose toward one, so the covariance rows of the high-yielders became close to duplicates. "Diversified" carry baskets lost as one bet, just as an inverse-covariance allocator became least reliable.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Investors facing losses and margin calls unwound carry positions together. The high-yielders fell as one block: AUD/USD dropped by more than a third between its July high and late October, and the yen rose sharply against almost everything. Within each bloc, correlations rose toward one, so the covariance rows of the high-yielders became close to duplicates. "Diversified" carry baskets lost as one bet, just as an inverse-covariance allocator became least reliable.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/DEXUSAL">Federal Reserve H.10 AUD/USD noon rates (FRED, DEXUSAL)</a> (0.9797 on 15 Jul 2008, 0.6073 on 27 Oct 2008, a 38% fall); <a href="https://fred.stlouisfed.org/series/DEXJPUS">USD/JPY noon rates (FRED, DEXJPUS)</a> (107.51 on 12 Sep, 92.64 on 24 Oct 2008); <a href="https://www.belfercenter.org/publication/unwinding-carry-trade-has-finally-hit-currencies">Jeffrey Frankel, “The unwinding of the carry trade has finally hit currencies”, 29 Oct 2008</a>; Lehman Brothers Holdings Chapter 11 filing, 15 Sep 2008.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -798,6 +812,7 @@
     </div>
     <p class="tl-fits-why"><strong>Why you'd care:</strong> a basket of pairs that share one driver is one bet, and this shows how to size it as one without trusting a fragile optimizer.</p>
   </nav>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../correlations.html">Correlation Lab</a> shows the live pair-correlation matrix with its risk clusters, the groups of pairs that are "essentially the same trade" and the first thing HRP's tree would find.</div><!-- DESK:END -->
 
   <div class="tl-footer-nav">
     <a href="risk-parity-erc.html">← Risk Parity &amp; Equal Risk Contribution</a>
@@ -909,7 +924,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

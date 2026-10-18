@@ -54,7 +54,9 @@ reference pair.**
   scenario, purple = maths or example.
 - **Teach it four ways (VARK).** Every lesson carries a summary picture, a two-voice spoken version, an equation
   build-up, a predict-first task, a dated scenario drill and a "Where this fits" box (style guide §5.20), plus a
-  whiteboard. Drills use only documented facts; when no real episode fits, label the drill illustrative.
+  whiteboard. Drills use only documented facts, with a `.tl-drill-sources` line; when no real episode fits, label the
+  drill illustrative. Add a faded worked example (§5.23). Confidence, self-test grading, flashcards, light mode and
+  print come from `vark.js` for free (§5.22). After any new drill, run `node js/buildPracticeIndex.mjs` (CI checks it).
 - **Never copy or add CSS files.** A page-local `<style>` is only for bespoke tool widgets (`tp-*` prefix, the
   `action-*` pattern).
 

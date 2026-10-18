@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 <style>
@@ -28,7 +29,7 @@
   <h1 class="tl-title">Factor VaR, Marginal VaR &amp; Component VaR</h1>
   <p class="tl-dek">Portfolio VaR answers exactly one question — how much could we lose? It says nothing about which position, or which underlying risk factor, is actually driving that number. Marginal, Component, and Factor VaR are the machinery that answers the second question, and — unlike a vague sensitivity — Component VaR answers it additively: every position's slice, summed, equals the whole.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — no marginal-VaR, component-VaR, factor-VaR, risk-attribution, or risk-decomposition logic of any kind exists anywhere in this repo, verified by grepping every <code>.js</code>/<code>.py</code> file (case-insensitive) for "marginal.VaR", "component.VaR", "factor.VaR", "risk.attribution", and "risk.decomposition" — zero hits, not even an incidental one. The sibling <code>institutional-covar.html</code> lesson (lesson 1 of this category) had not yet been built as of this writing, so this lesson assumes nothing about its specific content beyond its evident CoVaR / systemic-co-movement topic.<!-- DESK:END --></span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — no marginal-VaR, component-VaR, factor-VaR, risk-attribution, or risk-decomposition logic of any kind exists anywhere in this repo, verified by grepping every <code>.js</code>/<code>.py</code> file (case-insensitive) for "marginal.VaR", "component.VaR", "factor.VaR", "risk.attribution", and "risk.decomposition" — zero hits, not even an incidental one. The sibling <code>institutional-covar.html</code> lesson (lesson 1 of this category) had not yet been built as of this writing, so this lesson assumes nothing about its specific content beyond its evident CoVaR / systemic-co-movement topic. That grep did not cover inline page scripts: the Combined Book Explorer page splits book variance by sleeve the same way (linked under Where this fits).<!-- DESK:END --></span>
     <span>~19 min read</span>
     <span>Prereqs: <a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> — this lesson reuses its exact VaR/CVaR notation and definitions rather than re-deriving them</span>
   </div>
@@ -662,6 +663,23 @@
     <button type="button" id="fv-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same steps on a two-position book: \(\Sigma\mathbf{w}\), then \(\sigma_p\), \(\text{VaR}_p = z_p\sigma_p\), Marginal VaR \(= z_p(\Sigma\mathbf{w})_i/\sigma_p\), and Component VaR \(= w_i \times\) Marginal VaR. Dollar answers to the cent are not needed; the nearest dollar is fine for components.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>A: \(+\$200{,}000\), vol 1%. B: \(+\$100{,}000\), vol 2.5%. \(\rho_{AB} = 0.4\), 95% (\(z = 1.645\)). \(\Sigma_{AA} = 0.0001\), \(\Sigma_{BB} = 0.000625\), \(\Sigma_{AB} = 0.0001\). \((\Sigma\mathbf{w})_A = 20 + 10 = 30\), \((\Sigma\mathbf{w})_B = 20 + 62.5 = 82.5\). \(\mathbf{w}^\top\Sigma\mathbf{w} = 14{,}250{,}000\), so \(\sigma_p = \$3{,}774.92\) and \(\text{VaR}_p = \$6{,}209.74\). Component VaR of A is \(200{,}000 \times 1.645 \times 30 / 3{,}774.92 = \$2{,}614.63\). Component VaR of B is $<span class="tl-blank" data-answer="3595.11" data-tol="0.6"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>A: \(+\$50{,}000\), vol 3%. B: \(-\$80{,}000\) (short), vol 1.5%. \(\rho_{AB} = 0.6\), 95%. \((\Sigma\mathbf{w})_A = 45 - 21.6 = 23.4\) and \((\Sigma\mathbf{w})_B = 13.5 - 18 = -4.5\). \(\sigma_p =\) $<span class="tl-blank" data-answer="1236.93" data-tol="0.06"></span>, \(\text{VaR}_p =\) $<span class="tl-blank" data-answer="2034.75" data-tol="0.1"></span>, and Component VaR of A \(=\) $<span class="tl-blank" data-answer="1555.99" data-tol="0.6"></span>. (The short B still adds about \$479 of risk, because it is positively correlated with A.)</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>A: \(+\$120{,}000\), vol 1.2%. B: \(+\$60{,}000\), vol 2%. \(\rho_{AB} = -0.3\), 99% (\(z = 2.326\)). \(\sigma_p =\) $<span class="tl-blank" data-answer="1573.79" data-tol="0.06"></span>, \(\text{VaR}_p =\) $<span class="tl-blank" data-answer="3660.62" data-tol="0.12"></span>, Component VaR of A \(=\) $<span class="tl-blank" data-answer="2298.53" data-tol="0.6"></span>, Component VaR of B \(=\) $<span class="tl-blank" data-answer="1362.09" data-tol="0.6"></span>. Check that the two components add up to \(\text{VaR}_p\).</p>
+    </div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>How practitioners actually use this</h2>
   <div class="tl-icard-grid">
@@ -908,6 +926,7 @@
     </div>
     <p class="tl-fits-why"><strong>Why you'd care:</strong> when risk is too high, this tells you which position or theme to cut, instead of cutting everything.</p>
   </nav>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../diversification.html">Combined Book Explorer</a> has a "Risk Attribution" card that splits the combined book's variance into each sleeve's share, \(\mathrm{Cov}(w_i r_i, r_p)/\sigma_p^2\). That is the Euler split behind Component VaR, without the \(z_p\) multiplier.</div><!-- DESK:END -->
 
   <div class="tl-footer-nav">
     <a href="institutional-hill-estimator.html">← Hill Estimator &amp; Tail-Index Estimation</a>
@@ -940,7 +959,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   var ids = ['wA','wB','wC','volA','volB','volC','rAB','rAC','rBC'];

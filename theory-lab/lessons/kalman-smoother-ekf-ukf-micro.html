@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">The Kalman Smoother &amp; EKF/UKF — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the RTS-smoother chart, and the 6-question self-test?<a href="kalman-smoother-ekf-ukf.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,68 @@
       <p class="sl-lede">The plain Kalman filter runs one way only — forward, using data up through right now, never anything after it. Two upgrades sit on top of that same machinery. The first, a smoother, waits until an entire dataset exists and then sharpens every past estimate using data the live filter never had. The second and third, the Extended and Unscented Kalman filters, handle a state-space model that isn't linear — one by drawing a tangent line at every step, the other by sampling the true curve directly and skipping the tangent line altogether.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two panels. Left, the smoother: on Day 1 the live filtered estimate is 1.321 with a wide error bar; after Day 2's data a backward pass revises it to 1.312 with a narrower bar, while Day 2 stays at 1.311. Right, the nonlinear filters: the curve h of x equals x squared, a straight tangent line touching it at 1.30, which is the extended Kalman filter's approximation, and three points sitting on the true curve at 1.127, 1.30 and 1.473, which are the unscented filter's sigma points. The EKF update lands at 1.3178 and the UKF at 1.3148.">
+      <text class="tlp-text" x="20" y="22" font-size="14" font-weight="700">Smoother: hindsight</text>
+      <text class="tlp-text" x="320" y="22" font-size="14" font-weight="700">EKF vs UKF on h(x) = x²</text>
+      <line class="tlp-line" x1="300" y1="10" x2="300" y2="250"/>
+      <line class="tlp-line" x1="40" y1="204" x2="270" y2="204"/>
+      <path class="tlp-line green dash" d="M214,66 Q170,34 128,62"/>
+      <polygon class="tlp-green" points="124,66 133,58 135,66"/>
+      <text class="tlp-green" x="170" y="40" text-anchor="middle" font-size="12" font-weight="700">backward pass</text>
+      <line x1="102" y1="52.7" x2="102" y2="177.9" stroke="var(--blue)" stroke-width="2.4"/><line x1="96" y1="52.7" x2="108" y2="52.7" stroke="var(--blue)" stroke-width="2.4"/><line x1="96" y1="177.9" x2="108" y2="177.9" stroke="var(--blue)" stroke-width="2.4"/><circle class="tlp-blue" cx="102" cy="115.3" r="5.5"/><line x1="118" y1="74.1" x2="118" y2="169.1" stroke="var(--green)" stroke-width="2.4"/><line x1="112" y1="74.1" x2="124" y2="74.1" stroke="var(--green)" stroke-width="2.4"/><line x1="112" y1="169.1" x2="124" y2="169.1" stroke="var(--green)" stroke-width="2.4"/><circle class="tlp-green" cx="118" cy="121.6" r="5.5"/><line x1="220" y1="74.3" x2="220" y2="170.3" stroke="var(--green)" stroke-width="2.4"/><line x1="214" y1="74.3" x2="226" y2="74.3" stroke="var(--green)" stroke-width="2.4"/><line x1="214" y1="170.3" x2="226" y2="170.3" stroke="var(--green)" stroke-width="2.4"/><circle class="tlp-green" cx="220" cy="122.3" r="5.5"/>
+      <text class="tlp-blue" x="94" y="119" text-anchor="end" font-size="13" font-weight="700">1.321</text>
+      <text class="tlp-green" x="128" y="140" font-size="13" font-weight="700">1.312</text>
+      <text class="tlp-green" x="230" y="127" font-size="13" font-weight="700">1.311</text>
+      <text class="tlp-text3" x="110" y="220" text-anchor="middle" font-size="12">Day 1</text>
+      <text class="tlp-text3" x="220" y="220" text-anchor="middle" font-size="12">Day 2</text>
+      <text class="tlp-blue" x="20" y="240" font-size="13">filtered: live, data to date</text>
+      <text class="tlp-green" x="20" y="256" font-size="13">smoothed: uses later data too</text>
+      <polyline class="tlp-line thick" points="330.0,205.0 339.6,201.9 349.2,198.5 358.8,194.9 368.5,191.0 378.1,186.9 387.7,182.5 397.3,177.9 406.9,173.0 416.5,167.9 426.2,162.5 435.8,156.9 445.4,151.0 455.0,144.9 464.6,138.5 474.2,131.9 483.8,125.0 493.5,117.9 503.1,110.5 512.7,102.9 522.3,95.0 531.9,86.9 541.5,78.5 551.1,69.9 560.8,61.0 570.4,51.9 580.0,42.5"/>
+      <polyline class="tlp-line red dash" points="349.2,216.5 580.0,60.5"/>
+      <circle class="tlp-purple" cx="431.3" cy="159.5" r="6"/><circle class="tlp-purple" cx="464.6" cy="138.5" r="6"/><circle class="tlp-purple" cx="497.9" cy="114.5" r="6"/>
+      <text class="tlp-text2" x="452.6" y="130.5" text-anchor="end" font-size="12">x̂ = 1.30</text>
+      <text class="tlp-red" x="320" y="240" font-size="13">EKF: one tangent line → 1.3178</text>
+      <text class="tlp-purple" x="320" y="256" font-size="13">UKF: 3 points on the curve → 1.3148</text>
+    </svg>
+    <figcaption>Left: with the whole dataset in hand, a backward pass revises Day 1 and narrows its error bar, but only after Day 2 exists. Right: for a curved observation, the EKF trusts a tangent line while the UKF walks a few points along the real curve.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">The Kalman filter left two loose ends. What are they?</p>
+      <p data-who="Quant">First, it only looks backward. Its estimate for today uses data up to today. Second, it only works when everything is a straight line.</p>
+      <p data-who="Trader">Start with the first. Why is looking backward a problem?</p>
+      <p data-who="Quant">For trading live, it isn't. You don't have tomorrow's data. But for a research note on last year, the whole year is already on disk. Day forty is better known once you also know days forty-one onwards.</p>
+      <p data-who="Trader">So you go back and revise.</p>
+      <p data-who="Quant">That's the smoother. Run the filter forward, then one pass backward, pulling every estimate toward what the later data showed. In the lesson, the live estimate for day one was one point three two one. Day two came in lower, and the smoothed day one drops to about one point three one two.</p>
+      <p data-who="Trader">And it's more certain?</p>
+      <p data-who="Quant">Yes. The uncertainty falls from about point zero zero eight to about point zero zero four six, because more data bears on it. But here's the trap: nobody trading live on day one could have known that number.</p>
+      <p data-who="Trader">So a backtest built on smoothed values is cheating.</p>
+      <p data-who="Quant">It's using the future without saying so. Smoothed paths are for post-mortems and research, never for a live signal.</p>
+      <p data-who="Trader">Now the second loose end. Curves.</p>
+      <p data-who="Quant">Say an observed price is a curved function of a hidden factor, like an option price and volatility. The extended Kalman filter lays a straight ruler against the curve at your current best guess, and runs the usual equations on that ruler.</p>
+      <p data-who="Trader">And when the curve bends away from the ruler?</p>
+      <p data-who="Quant">Then it can drift and, worse, report too little uncertainty. The unscented filter sends out three scouts instead: one at your guess and one either side. Each walks the real curve, and you average where they land. No ruler, no derivative.</p>
+      <p data-who="Trader">How different are the answers?</p>
+      <p data-who="Quant">On the lesson's mild example, about three thousandths apart. The gap grows as the curve bends harder or your uncertainty gets wider.</p>
+      <p data-who="Trader">Where has this been used?</p>
+      <p data-who="Quant">The extended filter flew in the Apollo guidance computer. In markets, these filters are how term-structure and volatility models get fitted to prices that are curved in their hidden factors.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Smooth with hindsight for research, filter without it for trading, and when prices curve in the hidden state, prefer scouts on the real curve to a ruler.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">When prices are curved functions of a hidden state</h2>
       <p class="sl-sub">Extended &amp; unscented filters, RTS smoother · rates and volatility models, 1990s–2000s</p>
@@ -39,7 +101,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The filter's blind spot: it can't look ahead</h2>
       <p class="sl-sub">Nothing is wrong with the plain Kalman filter — it's doing exactly what a live system should. But "live" has a cost.</p>
@@ -52,7 +114,7 @@
       <div class="sl-quote">Picture a boat's position, tracked once per radar ping, live, through the night. The crew's 2am estimate could only use pings received by 2am — that's the filter. But a logbook written the next morning has the whole night's pings sitting in front of it. If the 2am position looks inconsistent with where the boat clearly had to be by 4am, the 2am entry deserves revising — using data the crew never had, in hindsight.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The smoother's fix: run the filter forward, then walk it back</h2>
       <p class="sl-sub">The RTS (Rauch–Tung–Striebel) smoother adds one backward pass after the forward filter has already finished.</p>
@@ -73,7 +135,7 @@
       <p class="sl-p">The recursion starts from a simple boundary condition: the very last time step has no future left to fold in, so its smoothed estimate is identical to its filtered one — x(T|T). Every step before that pulls partway toward the already-smoothed step just ahead of it, by an amount set by C.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Same eight noisy readings, two different answers</h2>
       <p class="sl-sub">Toggle between the live filter's forward-only estimate and the smoother's whole-dataset estimate, over the same fixed noisy sequence.</p>
@@ -121,7 +183,7 @@
       <p class="sl-p">Both lines are computed from the identical eight-step observation sequence, with the same process and observation noise. Nothing about the data changed between the two tabs — only how much of it each estimate was allowed to use.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">By hand: revising yesterday, using what today revealed</h2>
       <p class="sl-sub">Reusing the plain Kalman filter lesson's own two-day hedge-ratio track, unmodified.</p>
@@ -146,7 +208,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">EKF: draw a tangent line, then run the same linear math</h2>
       <p class="sl-sub">The Extended Kalman Filter keeps the plain filter's entire predict/update skeleton — it only swaps in a local linear stand-in for a nonlinear f or h.</p>
@@ -159,7 +221,7 @@
       <div class="sl-quote">Imagine predicting a hilly trail using only a ruler laid flat against the ground exactly where you're standing. Right at your feet, the ruler matches the trail perfectly. A few steps ahead, the trail curves away from that flat ruler — maybe it climbs a hill the ruler has no idea is coming. The EKF re-lays that ruler fresh at every single step, so it's never wildly wrong for long — but it can still misjudge how steep the trail gets between one step and the next.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">UKF: send scouts down the real curve instead</h2>
       <p class="sl-sub">The Unscented Kalman Filter keeps the same skeleton too — but replaces the tangent-line step entirely.</p>
@@ -172,7 +234,7 @@
       <div class="sl-quote">Instead of trusting one ruler laid down at your feet, send out three actual scouts to walk the real trail — one right where you're standing, one a bit ahead, one a bit behind — and let each report exactly what they found, hills and all, with no ruler involved. Then average their honest reports. It costs more legwork than reading one ruler, but nobody had to pretend the trail was flat anywhere.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Watch the tangent line peel away</h2>
       <p class="sl-sub">The black curve is a nonlinear observation function. The red dashed line is the EKF's one tangent line, fixed at the center estimate. The purple dots are UKF sigma points — they always sit exactly on the true curve, however much it bends.</p>
@@ -199,7 +261,7 @@
     </section>
 
     <!-- WB:kalman_smoother_ekf_ukf-deck:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Hindsight and curves: the smoother, the EKF and the UKF</h2>
       <!-- WB:kalman_smoother_ekf_ukf:START -->
@@ -210,7 +272,7 @@
     </section>
     <!-- WB:kalman_smoother_ekf_ukf-deck:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Try the linearization error yourself</h2>
       <p class="sl-sub">Using h(x) = x² — the same toy nonlinearity as the worked example above. Pick a point x₀ and a nearby offset dx; compare the EKF's linear (Taylor) approximation there against the true function value.</p>
@@ -237,7 +299,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">When to reach for each</h2>
       <div class="sl-icard-grid">
@@ -248,7 +310,7 @@
       <div class="sl-quote">Escalate in that order. Each step up trades more compute for more fidelity to the true, ugly shape of the problem. Reaching for a full particle swarm to solve a mildly curved, single-humped problem is over-engineering; reaching for one tangent line to solve a genuinely multimodal one will just be wrong.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this actually stands</h2>
       <div class="sl-icard-grid">
@@ -264,7 +326,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -315,7 +377,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative backtest review</div>
+    <h3>A hedge-ratio strategy that looks too good</h3>
+    <p>A colleague shows you a pairs strategy that trades a spread built on a Kalman-tracked hedge ratio. The backtest is very smooth, with few losing weeks. Reading the code, you see the hedge ratio for each day comes from an RTS smoother run once over the full five-year sample. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Approve it. The smoother gives the most accurate hedge ratio, so the backtest is the most accurate too.<div class="tl-drill-why">It is the most accurate estimate of the past because it uses data from after each day. No live system could have known those hedge ratios on the day. The backtest is using the future without saying so.</div></li>
+      <li data-verdict="good">Rerun it with the forward-only filtered hedge ratio, the number a live system would have had each day, and judge the strategy on that.<div class="tl-drill-why">The filtered estimate uses only data through each day. That is the honest version of the backtest, and the gap between the two runs measures how much of the result came from hindsight.</div></li>
+      <li data-verdict="bad">Switch the smoother for an unscented filter to make it more accurate.<div class="tl-drill-why">That answers a different question. The UKF handles curved relationships; the problem here is lookahead. A linear hedge ratio needs the plain filter, run forward only.</div></li>
+      <li data-verdict="ok">Keep the smoothed version, but halve the reported returns to be safe.<div class="tl-drill-why">It admits the problem but guesses at its size. The forward-only rerun measures it, and costs little more.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What to take from it.</strong> This is an illustrative situation, not a historical event. It is the lesson's main pitfall: a smoothed state estimate uses observations from after the point being estimated, the same trap as Viterbi-decoded regime labels. Smoothed paths belong in research notes and post-mortems; live signals and honest backtests use the filtered estimate.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -401,6 +482,7 @@
       else if (edgeError < 0.03) label = 'small — the tangent line is still a fine local stand-in';
       else if (edgeError < 0.09) label = 'growing — the tangent line is starting to visibly miss';
       else label = 'large — the tangent line is now a poor stand-in out here';
+      if (k === 0) { readout.textContent = 'At k = 0.00 the true curve IS the tangent line — the EKF has zero linearization error, and the sigma points sit exactly on both lines at once.'; return; }
       readout.textContent = 'Linearization error at the curve’s edge (Δx = 0.4 from center): k × 0.4² ≈ ' + edgeError.toFixed(3) + ' — ' + label + '. The purple sigma points, sitting on the true curve, drift away from the fixed red tangent line by the same growing amount — the UKF sees this drift directly; the EKF has no way to.';
     }
 
@@ -459,5 +541,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

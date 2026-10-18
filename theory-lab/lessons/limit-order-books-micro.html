@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Limit Order Books &amp; Queue Dynamics — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the live VWAP scratchpad, and a 5-question self-test?<a href="limit-order-books.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,77 @@
       <p class="sl-lede">The Market Microstructure lesson treated the spread and price impact as single numbers — one coefficient, one gap. Neither one is the actual object those numbers get read off of: a real limit order book, which is two ladders of resting orders, each level holding a queue, governed by a strict rule about who gets filled first. This deck opens that object up — the ladder, the queue, what a market order does to it, and why the order sitting first in line gets treated completely differently from the one sitting last.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The lesson's order book as two ladders. Asks: 200 at 1.1005, 300 at 1.1006, 500 at 1.1007. Bids: 400 at 1.1004, 250 at 1.1003, 600 at 1.1002. The spread is 1 pip. A 600-unit market buy fills 200 at 1.1005, 300 at 1.1006 and 100 at 1.1007, for an average price of 1.10058, 0.83 pips worse than the best ask, and leaves the best ask at 1.1007, a 3-pip spread. A resting order with 800 ahead of it in the queue is still 500 away from a fill after a 300-unit sell trades.">
+      <text class="tlp-blue" x="20" y="18" font-size="14" font-weight="700">Two ladders of waiting orders</text>
+      <text class="tlp-green" x="70" y="40" text-anchor="middle" font-size="12.5" font-weight="700">bids (buy)</text>
+      <text class="tlp-red" x="225" y="40" text-anchor="middle" font-size="12.5" font-weight="700">asks (sell)</text>
+      <rect class="tlp-box red" x="190" y="48" width="65" height="20" rx="2"/>
+      <rect class="tlp-amber" x="190" y="48" width="13" height="20" rx="2"/>
+      <rect class="tlp-amber" x="190" y="76" width="39" height="20" rx="2"/>
+      <rect class="tlp-amber" x="190" y="104" width="26" height="20" rx="2"/>
+      <text class="tlp-text2" x="150" y="62" text-anchor="middle" font-size="12.5">1.1007</text>
+      <text class="tlp-text2" x="150" y="90" text-anchor="middle" font-size="12.5">1.1006</text>
+      <text class="tlp-text2" x="150" y="118" text-anchor="middle" font-size="12.5">1.1005</text>
+      <text class="tlp-text3" x="261" y="62" font-size="12">500</text>
+      <text class="tlp-text3" x="235" y="90" font-size="12">300</text>
+      <text class="tlp-text3" x="222" y="118" font-size="12">200</text>
+      <text class="tlp-amber" x="150" y="140" text-anchor="middle" font-size="12" font-weight="700">spread 1 pip</text>
+      <rect class="tlp-box green" x="58" y="146" width="52" height="20" rx="2"/>
+      <rect class="tlp-box green" x="77.5" y="174" width="32.5" height="20" rx="2"/>
+      <rect class="tlp-box green" x="32" y="202" width="78" height="20" rx="2"/>
+      <text class="tlp-text2" x="150" y="160" text-anchor="middle" font-size="12.5">1.1004</text>
+      <text class="tlp-text2" x="150" y="188" text-anchor="middle" font-size="12.5">1.1003</text>
+      <text class="tlp-text2" x="150" y="216" text-anchor="middle" font-size="12.5">1.1002</text>
+      <text class="tlp-text3" x="53" y="160" text-anchor="end" font-size="12">400</text>
+      <text class="tlp-text3" x="72" y="188" text-anchor="end" font-size="12">250</text>
+      <text class="tlp-text3" x="27" y="216" text-anchor="end" font-size="12">600</text>
+      <text class="tlp-amber" x="20" y="242" font-size="12.5" font-weight="700">amber: taken by a 600-unit market buy</text>
+      <text class="tlp-purple" x="330" y="18" font-size="14" font-weight="700">What that order paid</text>
+      <text class="tlp-text2" x="330" y="44" font-size="13">200 at 1.1005 · 300 at 1.1006</text>
+      <text class="tlp-text2" x="330" y="62" font-size="13">100 at 1.1007 (400 still resting)</text>
+      <text class="tlp-purple" x="330" y="92" font-size="15" font-weight="700">average price 1.10058</text>
+      <text class="tlp-purple" x="330" y="111" font-size="13">0.83 pips worse than the best ask</text>
+      <text class="tlp-red" x="330" y="138" font-size="13" font-weight="700">best ask now 1.1007: spread 3 pips</text>
+      <line class="tlp-line" x1="330" y1="156" x2="585" y2="156"/>
+      <text class="tlp-blue" x="330" y="180" font-size="14" font-weight="700">Same price, a queue</text>
+      <text class="tlp-text2" x="330" y="200" font-size="13">800 ahead of you, a 300-unit sell trades:</text>
+      <text class="tlp-text2" x="330" y="218" font-size="13">now 500 ahead, and still no fill</text>
+    </svg>
+    <figcaption>A quoted price is only the top of a ladder. An order bigger than the best level walks up it and pays an average of every level it touched, and leaves a wider spread behind. A resting order at a good price still waits behind everyone who joined that price first.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My screen shows one price to buy and one to sell. What's behind them?</p>
+      <p data-who="Quant">Two ladders. On the sell side, orders wait at the best price, then at the next price up, and the next. On the buy side, the same going down. The gap between the best buy and the best sell is the spread. How much is waiting near the top is the depth.</p>
+      <p data-who="Trader">And each rung is one order?</p>
+      <p data-who="Quant">No, each rung is a queue. Lots of orders at one price, served in the order they arrived. Better prices fill first, and at the same price, first come, first served. No cutting in.</p>
+      <p data-who="Trader">So what happens when I send a market order?</p>
+      <p data-who="Quant">It eats the ladder. Take the lesson's book: two hundred units offered at the best price, three hundred one step up, five hundred the step after. Buy six hundred at market, and you take all of the first two rungs and a hundred from the third.</p>
+      <p data-who="Trader">So what do I actually pay?</p>
+      <p data-who="Quant">The average across the rungs, weighted by how much you took at each. It comes to about eight tenths of a pip worse than the price on your screen. And you've left a gap behind you: the best offer is now two steps higher, so the spread has gone from one pip to three.</p>
+      <p data-who="Trader">What if I'm patient and post a limit order instead?</p>
+      <p data-who="Quant">Then you get your price, if you get filled at all, and that depends on your place in the queue. Say two desks post the same size at the same price, thirty seconds apart. The first is at the front. The second has two thousand units ahead of it. Fifteen hundred units trade. The first desk is filled and earns the spread. The second is still five hundred units from its first fill.</p>
+      <p data-who="Trader">Same price, same size, different result.</p>
+      <p data-who="Quant">Exactly. Queue position can matter more than price. And depth can vanish. On the fifteenth of October, 2014, the ten-year Treasury yield fell about sixteen basis points and came straight back within twelve minutes, with no clear news. Volume was heavy, but very little was resting at each price, so every order walked further up the ladder.</p>
+      <p data-who="Trader">So heavy volume doesn't mean a deep book.</p>
+      <p data-who="Quant">Right. Volume is not depth, and the depth you see when you decide may be gone when your order arrives.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">A price is the top of a ladder: size decides how far up it you climb, and arrival time decides when you get served.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">A book is two ladders, not one price</h2>
       <p class="sl-sub">Every quoted price hides a whole ladder of resting orders underneath it.</p>
@@ -39,7 +110,7 @@
       <div class="sl-quote">Kyle's Lambda and the Glosten-Milgrom spread from the prior lesson both describe the market as a single number. This is the mechanical object underneath both of them — and once you can see the ladder itself, price impact stops being an abstract coefficient and becomes something you can compute directly, level by level.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">One small book, used throughout this deck</h2>
       <p class="sl-sub">A hypothetical FX snapshot — three levels on each side.</p>
@@ -57,7 +128,7 @@
       <p class="sl-p">A <strong>tight</strong> spread with <strong>deep</strong> resting size on both sides is what a liquid market looks like — small orders barely move the price. Depth and spread are two different, complementary numbers measuring the same thing: how expensive it is, right now, to trade a given amount immediately.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Price-time priority: the matching rule, in order</h2>
       <p class="sl-sub">When an incoming order needs matching, two rules apply — strictly, in this order.</p>
@@ -71,7 +142,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A market order "walks the book"</h2>
       <p class="sl-sub">Same ask ladder, two order sizes. Compare what happens.</p>
@@ -99,7 +170,7 @@
     </section>
 
     <!-- WB:lob-deck:START -->
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">A market order walks the book</h2>
       <!-- WB:lob:START -->
@@ -110,7 +181,7 @@
     </section>
     <!-- WB:lob-deck:END -->
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">How far into the book does an order sweep?</h2>
       <p class="sl-sub">Drag the slider to change the size of an incoming market buy order. Watch it eat into the ask side.</p>
@@ -146,14 +217,14 @@
         <div class="sl-sliderhead"><span>Market buy order size</span><span class="sl-live" id="sweep-qval">Q = 600 units</span></div>
         <input type="range" class="sl-slider" id="sweep-slider" min="0" max="1400" step="25" value="600">
         <div class="sl-calc-steps">
-          <div>Levels touched: <b id="sweep-levels">2 of 3</b> &emsp; Filled: <b id="sweep-filled">600 / 600</b></div>
+          <div>Levels touched: <b id="sweep-levels">3 of 3</b> &emsp; Filled: <b id="sweep-filled">600 / 600</b></div>
           <div>VWAP ≈ <b id="sweep-vwap">1.10058</b> &emsp; Slippage vs 1.1005: <b id="sweep-pips">0.83</b> pips</div>
         </div>
         <div class="sl-note" id="sweep-note">Amber shading is left-aligned within each bar and shows what fraction of that level's queue the order consumed — not a real price axis.</div>
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Try it — build your own book</h2>
       <p class="sl-sub">Edit any level's resting size, or the order size. VWAP recalculates live, with the same guards as the full lesson's scratchpad.</p>
@@ -183,7 +254,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Queue position: waiting for other people's trades</h2>
       <p class="sl-sub">For a resting order, the number that matters most is how much size sits ahead of you at your exact price — call it A.</p>
@@ -195,7 +266,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Same price, same size, very different economics</h2>
       <p class="sl-sub">A real-world scenario: two market-making desks, one price, thirty seconds apart.</p>
@@ -222,7 +293,7 @@
       <div class="sl-quote">Both desks quoted the identical price, took the identical directional risk, posted the identical size — one made money, the other is still waiting, purely as a function of thirty seconds of queue position. This is not an edge case; it is why sophisticated market-making operations invest heavily in being first to a new price level, not just in picking a good one.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Providing liquidity vs. taking it</h2>
       <p class="sl-sub">Every order on the book is one of exactly two kinds.</p>
@@ -239,7 +310,7 @@
       <p class="sl-p">Most professional execution algorithms are, at their core, a policy for deciding this trade-off order by order — resting part of a large parent order as limit orders near the touch, and only crossing the spread with a market order for the urgent remainder.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How a desk actually uses this, and where it goes wrong</h2>
       <div class="sl-icard-grid">
@@ -260,7 +331,7 @@
 <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">15 October 2014: the Treasury flash rally</h2>
       <div class="sl-callout amber">
@@ -280,7 +351,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what's untested here<!-- DESK:END --></h2>
       <div class="sl-callout purple">
@@ -295,7 +366,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -346,7 +417,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2014-10-15">
+    <div class="tl-drill-label">Scenario drill · 15 October 2014</div>
+    <h3>A client hedge in Treasuries, in the middle of the flash rally</h3>
+    <p>It is about 9:35 am Eastern. Weak US retail sales at 8:30 had already pushed yields lower, and now the 10-year yield is falling fast, with no headline you can find. Volume is very heavy. You have to buy a large block of 10-year notes for a client hedge, and the size showing at the best offer is small. How do you execute?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Send the whole block as one market order. Volume is huge, so the market can obviously absorb it.<div class="tl-drill-why">Volume is not depth. That morning little size rested at any one price, so a big market order would take the touch, find little behind it, and walk level after level, paying the worst prices of a move that had no news behind it.</div></li>
+      <li data-verdict="good">Work the order: rest limit orders near the touch, buy in slices as depth refills, and do not treat the displayed size as guaranteed.<div class="tl-drill-why">You stop paying to walk a thin ladder at its most stretched moment. With no news driving the move, patience costs little, and checking real depth before each slice keeps each fill near the top of the book.</div></li>
+      <li data-verdict="ok">Split the block into a few smaller market orders a minute apart.<div class="tl-drill-why">Better than one block, because the book gets a moment to refill between clips. But each clip is still a market order into thin depth, and the size you saw may be cancelled before your order arrives.</div></li>
+      <li data-verdict="bad">Read the heavy volume as strong buying on news you have not seen, and buy more than the hedge needs.<div class="tl-drill-why">The move had no clear news behind it. Heavy volume from fast traders posting, hitting and replacing small quotes is activity, not information or depth.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Between 9:33 and 9:45 am the 10-year yield fell about 16 basis points and rose straight back, inside a 37-basis-point range for the day. The joint staff report by the Treasury, the Fed, the New York Fed, the SEC and the CFTC found no clear news in that window. It found heavy volume, thin resting size at the best prices, bank dealers pulling back their resting orders, and automated firms trading heavily while showing little size. Anyone who bought at market at the low in yields paid the top of a move that reversed within minutes.</p><p class="tl-drill-sources">Sources: <a href="https://treasurydirect.gov/files/laws-and-regulations/gsa/joint-staff-report-treasury-10-15-2014.pdf">Joint Staff Report: The U.S. Treasury Market on October 15, 2014 (US Treasury, Federal Reserve Board, New York Fed, SEC, CFTC), July 2015</a>; <a href="https://www.newyorkfed.org/newsevents/news/aboutthefed/2015/oa150713.html">New York Fed press release, 13 July 2015</a>.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -515,5 +605,7 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

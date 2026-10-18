@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -339,6 +340,23 @@
     <p>Picture a rubber band tied between "today's variance" and "the long-run average variance" — stretch it far in either direction (a calm spell, a turbulent spell) and it keeps tugging back toward the middle, harder the further it's stretched. That's mean reversion, and it's the exact same rubber-band idea this Theory Lab already uses for mean-reverting spreads, just now tied to volatility instead of price. The one new wrinkle: the band is built so it can never pull variance below zero, since "negative jumpiness" doesn't mean anything.</p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The rubber band in numbers. With the noise switched off, the gap between variance and its long-run level shrinks as \(e^{-\kappa t}\), so the expected variance is \(\theta + (v_0 - \theta)e^{-\kappa t}\) and half the gap closes in \(\ln 2/\kappa\) years (times 365 for days, as in the build-up above, where \(\kappa = 2\) gives about 126 days). Volatility is \(\sqrt{v}\). New parameters each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\kappa = 3\). The half-life is \(\ln 2/3 = 0.2310\) years. In days that is \(0.2310 \times 365 =\) <span class="tl-blank" data-answer="84.3" data-tol="0.1" data-unit="days"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\kappa = 1.5\), long-run variance \(\theta = 0.04\) (20% vol), and a shock has lifted variance to \(v_0 = 0.16\) (40% vol). Find the half-life in years <span class="tl-blank" data-answer="0.4621" data-tol="0.0005"></span> and in days <span class="tl-blank" data-answer="168.7" data-tol="0.2"></span>. After one half-life, half the gap of 0.12 is gone, so expected variance is <span class="tl-blank" data-answer="0.10" data-tol="0.0005"></span>, which is about 31.6% vol.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\kappa = 4\), \(\theta = 0.0225\) (15% vol), \(v_0 = 0.0625\) (25% vol). Find the half-life in days <span class="tl-blank" data-answer="63.2" data-tol="0.2"></span>, the expected variance after \(t = 0.25\) years <span class="tl-blank" data-answer="0.0372" data-tol="0.0002"></span> and the matching vol <span class="tl-blank" data-answer="19.29" data-tol="0.05" data-unit="%"></span>.</p>
+    </div>
+  </div>
+
   <h3>Why the correlation \(\rho\) is the whole story behind the skew</h3>
   <p>
     In equity markets, and in many FX pairs, empirically estimated \(\rho\) is very often
@@ -626,7 +644,7 @@
       <li data-verdict="ok">Keep the flat-σ model, but use the at-the-money vol and ignore the far strikes.<div class="tl-drill-why">It avoids the worst trade, but it misprices every strike away from the money and gives the wrong hedge for downside options, which is where the risk now sits.</div></li>
       <li data-verdict="bad">Buy the at-the-money options instead, since they look cheap next to the puts.<div class="tl-drill-why">"Cheap compared to the puts" is still a flat-σ judgement. Nothing says at-the-money vol is too low; the gap between strikes is the structure, not the error.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The skew did not go away. Before October 1987, implied volatility on index options was fairly flat across strikes; afterwards, out-of-the-money puts stayed richer and the skew became a permanent feature of index options. Heston's 1993 model was one answer: stochastic volatility with a negative price-vol correlation produces that skew from its own dynamics.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The skew did not go away. Before October 1987, implied volatility on index options was fairly flat across strikes; afterwards, out-of-the-money puts stayed richer and the skew became a permanent feature of index options. Heston's 1993 model was one answer: stochastic volatility with a negative price-vol correlation produces that skew from its own dynamics.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreservehistory.org/essays/stock-market-crash-of-1987">Federal Reserve History, “Stock Market Crash of 1987”</a> (the Dow’s 22.6% fall); <a href="https://doi.org/10.1111/j.1540-6261.1994.tb00079.x">Rubinstein, “Implied Binomial Trees”, Journal of Finance, 1994</a> (index-option smile before and after the crash); <a href="https://doi.org/10.1093/rfs/6.2.327">Heston, Review of Financial Studies, 1993</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -763,6 +781,7 @@
     </div>
     <p class="tl-fits-why"><strong>Why you'd care:</strong> the skew you see on every options screen is the market pricing falls and vol spikes together, and this is the model that explains it.</p>
   </nav>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../volatility-intelligence.html">Volatility Intelligence</a> shows each pair's risk reversal (put implied vol minus call implied vol, about 3% out of the money): the skew this lesson's negative \(\rho\) produces, read off today's option chain.</div><!-- DESK:END -->
 
   <div class="tl-footer-nav">
     <a href="girsanov-risk-neutral.html">← Girsanov's Theorem &amp; Risk-Neutral Pricing</a>
@@ -795,7 +814,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

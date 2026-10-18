@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -585,6 +586,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's check of \(\ln(1+h) \approx h - h^2/2\) at new step sizes. Error means true value minus approximation. Give five decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(h = 0.10\). The true value is \(\ln(1.10) = 0.09531\). The approximation is \(0.10 - 0.005 = 0.09500\). The error is <span class="tl-blank" data-answer="0.00031" data-tol="0.000005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(h = 0.20\). The true value \(\ln(1.20)\) is <span class="tl-blank" data-answer="0.18232" data-tol="0.000005"></span>. The approximation \(0.20 - 0.02\) is <span class="tl-blank" data-answer="0.18" data-tol="0.000005"></span>. The error is <span class="tl-blank" data-answer="0.00232" data-tol="0.000005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>A fall this time, \(h = -0.20\). True value <span class="tl-blank" data-answer="-0.22314" data-tol="0.000005"></span>; approximation <span class="tl-blank" data-answer="-0.22" data-tol="0.000005"></span>; error <span class="tl-blank" data-answer="-0.00314" data-tol="0.000005"></span>. The error is bigger than for the same size of rise, and it again makes the loss look smaller than it is.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -1022,7 +1040,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

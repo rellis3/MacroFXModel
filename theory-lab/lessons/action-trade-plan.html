@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 <style>
@@ -442,6 +443,23 @@
     <p style="margin-bottom:0">The calculator above opens with exactly these inputs. Press "Copy plan card" and you have the written plan.</p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's plan card on new trades: buffer \(b \times \text{ATR}\) rounded to whole pips, stop beyond invalidation, stop distance \(D\), \(R = \text{target distance}/D\), \(p^{*} = 1/(1+R)\), and lots \(= \text{risk}/(D \times \$10)\) rounded <em>down</em> to 0.01. All pairs are $10 a pip per lot.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Short GBP/USD at 1.2700. Invalidation 1.2780, ATR 80 pips, buffer 0.25 ATR = 20 pips, so the stop is 1.2800 and \(D = 100\) pips (1.25 ATR). Target 1.2550 is 150 pips away: \(R = 1.5\), \(p^{*} = 40\%\). Risk $400, so the size is <span class="tl-blank" data-answer="0.40" data-tol="0.001" data-unit="lots"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Long AUD/USD at 0.6600. Invalidation 0.6550, ATR 60 pips, buffer 0.2 ATR = 12 pips, so the stop is 0.6538. Stop distance \(D =\) <span class="tl-blank" data-answer="62" data-tol="0.5" data-unit="pips"></span>. Target 0.6720, so \(R =\) <span class="tl-blank" data-answer="1.94" data-tol="0.01"></span>. Risking $300, the size is <span class="tl-blank" data-answer="0.48" data-tol="0.001" data-unit="lots"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Short EUR/USD at 1.1000. Invalidation 1.1040, ATR 70 pips, buffer 0.3 ATR, target 1.0880, risk $750. Stop distance <span class="tl-blank" data-answer="61" data-tol="0.5" data-unit="pips"></span>; \(R =\) <span class="tl-blank" data-answer="1.97" data-tol="0.01"></span>; \(p^{*} =\) <span class="tl-blank" data-answer="33.7" data-tol="0.1" data-unit="%"></span>; size <span class="tl-blank" data-answer="1.22" data-tol="0.001" data-unit="lots"></span>. The stop is 0.87 ATR from entry: outside half an ATR of noise, but only just.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Same view, two stops</div>
@@ -521,7 +539,7 @@
 
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
-    <span><strong>"Writing the plan before the trade improves results."</strong> Not tested here. The desk has no sample of plan-first versus plan-later trades to compare. It does apply the same discipline to its research: every test is pre-registered, with the hypothesis, the measure and the pass bar written down before the data are run. That is the research version of invalidation written before entry: it stops the conclusion from being chosen after the result is known.</span>
+    <span><strong>"Writing the plan before the trade improves results."</strong> Not tested here. The desk has no sample of plan-first versus plan-later trades to compare. It does apply the same discipline to its research: every test is pre-registered, with the hypothesis, the measure and the pass bar written down before the data are run. That is the research version of invalidation written before entry: it stops the conclusion from being chosen after the result is known.<div class="tl-howtotest"><strong>How to test it:</strong> from a fixed start date, alternate the desk's discretionary FX trades week by week between "plan card written and logged before entry" and "levels set after entry", and resolve every trade on daily closes and stops. After at least 100 trades in each arm, compare average R after costs and the share of losses bigger than 1.1R (stops moved or ignored). Fix the gate now: plan-first passes only if it improves average R by at least 0.1R with \(t &gt; 2\), or halves the share of oversized losses. The plan-later arm is the baseline.</div></span>
   </div>
 
   <div class="tl-verdict null" data-evidence="zone-engine" data-evidence-date="2026-09-01">
@@ -533,6 +551,8 @@
     <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>Targets from a measured range, not from hope.</strong> Across eight instruments and ~2,500 London sessions each, once price had reached the median daily band by 10:30 UK, the odds of reaching the 75th-percentile band before the close were well above the ordinary odds for that hour: NAS100 63% vs 23%, SPX500 59% vs 22%, USD/JPY 44% vs 17%, EUR/USD 43% vs 18%, gold 50% vs 21% (2.3–2.7×; n = 260–450 per cell). Once reached, the median band was the day's extreme in only 4–10% of sessions. That is a target guide, never an entry: on a day that's already moving, "aim for the 75th, not the median".</span>
   </div>
+
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../position-sizer.html">Position sizer</a> does step 5 for every pair at once: the stop sits outside the forecast range's noise, and the size is set so a stop-out loses the same money on each trade.</div><!-- DESK:END -->
 
   <div class="tl-solid red">
     <strong>The trap:</strong> a tight stop <em>feels</em> like discipline, and it makes the reward-to-risk
@@ -604,7 +624,7 @@
       <li data-verdict="ok">Skip the trade. A peg can break at any moment.<div class="tl-drill-why">Safe, and sometimes right. But the thesis may be sound. The problem is size, and a small position with a written gap line lets you take the trade without betting the account on the stop.</div></li>
       <li data-verdict="bad">Remove the stop. The central bank has promised unlimited purchases, so it cannot break.<div class="tl-drill-why">This turns an analysis into a belief. A plan with no exit for being wrong has no maximum loss at all.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On the morning of 15 January 2015 the SNB abandoned the floor without warning. The franc jumped in minutes and EUR/CHF briefly traded well below parity. Stops placed just under 1.20 were filled far lower, wherever the next real price was. Losses were many times what plans had allowed, some retail clients ended with negative balances, the UK arm of the broker Alpari went into insolvency, and FXCM needed an emergency rescue loan.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On the morning of 15 January 2015 the SNB abandoned the floor without warning. The franc jumped in minutes and EUR/CHF briefly traded well below parity. Stops placed just under 1.20 were filled far lower, wherever the next real price was. Losses were many times what plans had allowed, some retail clients ended with negative balances, the UK arm of the broker Alpari went into insolvency, and FXCM needed an emergency rescue loan.</p><p class="tl-drill-sources">Sources: <a href="https://www.bis.org/review/r150116a.htm">Thomas Jordan, SNB press conference remarks on discontinuing the minimum exchange rate, 15 January 2015 (BIS reprint)</a>; Finance Magnates, "Leucadia Hands FXCM $300 Mln Life-Line", 16 January 2015.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -831,7 +851,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

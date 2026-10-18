@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -461,6 +462,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The peaks-over-threshold step with numbers in it. Suppose the GPD fit gives a threshold \(u\), scale \(\beta\) and shape \(\xi\) (losses in % of the book). Then \(\widehat{\text{VaR}}_p = u + \frac{\beta}{\xi}\big[\big(\frac{n}{n_u}(1-p)\big)^{-\xi} - 1\big]\) and \(\widehat{\text{CVaR}}_p = \frac{\widehat{\text{VaR}}_p}{1-\xi} + \frac{\beta - \xi u}{1-\xi}\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(n = 500\) days, \(n_u = 50\) exceedances, and the fit gives \(u = 2.0\%\), \(\beta = 0.6\%\), \(\xi = 0.2\). For \(p = 0.995\): \(\frac{n}{n_u}(1-p) = 10 \times 0.005 = 0.05\), and \(0.05^{-0.2} = 1.8206\). So \(\widehat{\text{VaR}}_{0.995} = 2.0 + \frac{0.6}{0.2}(1.8206 - 1)\) = <span class="tl-blank" data-answer="4.46" data-tol="0.01" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Same fit, now the 1-in-2,000-day level, \(p = 0.9995\). \(\frac{n}{n_u}(1-p)\) = <span class="tl-blank" data-answer="0.005" data-tol="0.00001"></span>, and \(0.005^{-0.2} = 2.8854\). \(\widehat{\text{VaR}}_{0.9995}\) = <span class="tl-blank" data-answer="7.66" data-tol="0.01" data-unit="%"></span>. The average loss on days beyond it, \(\widehat{\text{CVaR}}_{0.9995}\) = <span class="tl-blank" data-answer="9.82" data-tol="0.02" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Four years of data: \(n = 1{,}000\), \(n_u = 80\), and the fit gives \(u = 1.5\%\), \(\beta = 0.5\%\), \(\xi = 0.3\). For \(p = 0.999\): \(\widehat{\text{VaR}}_{0.999}\) = <span class="tl-blank" data-answer="6.04" data-tol="0.01" data-unit="%"></span> and \(\widehat{\text{CVaR}}_{0.999}\) = <span class="tl-blank" data-answer="8.70" data-tol="0.02" data-unit="%"></span>. Both are extrapolations past anything in the sample, so they are only as good as the assumption that the fitted shape holds out there.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Illustrative — normal fit vs. GPD tail fit on a fat-tailed return histogram</div>
     <div class="tl-predict">
@@ -625,7 +643,7 @@
     </p>
     <p style="margin-bottom:0">
       Nor did it arrive alone. The week before had already been heavy: the Dow fell about 4.6% on Friday 16 October. The
-      sessions after swung violently in both directions, including a Dow rise of about 10% on 21 October. The extremes
+      sessions after swung violently in both directions, and the Dow regained 288 points, 57% of the Monday fall, within the next two sessions. The extremes
       came as a cluster around one event, not as independent draws spread through time. The mechanism behind the day
       (portfolio insurers forced by their own hedges to sell futures into the fall, and exchange order handling that
       could not keep up) is told in the <a href="black-scholes.html">Black-Scholes-Merton</a> lesson.
@@ -658,10 +676,7 @@
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Untested here: that a GPD-extrapolated VaR is breached at the rate it advertises.</strong> This is the
-    claim that would make EVT tradable for sizing. A fair test would need decades of daily index data including 1987,
-    2008 and 2020; rolling peaks-over-threshold fits using only data available at the time, with exceedances declustered;
-    then a count of how often next-day losses breached the 99.5% and 99.9% estimates against the advertised 0.5% and
-    0.1%, with a coverage test, and the same count for plain historical VaR as the baseline. The desk has not run it.</span>
+    claim that would make EVT tradable for sizing. The desk has not run it.<div class="tl-howtotest"><strong>How to test it:</strong> take decades of daily S&amp;P 500 and major FX returns, including 1987, 2008 and 2020, and refit a peaks-over-threshold GPD every month using only the data available at the time, with exceedances declustered. Count how often the next day's loss breached the 99.5% and 99.9% estimates against the advertised 0.5% and 0.1%. The claim passes if a Kupiec coverage test does not reject at the 5% level at both levels, fixed in advance, and the GPD must do better on that test than plain historical VaR over the same days, the baseline. No trading costs enter: it is a test of the risk number, not of a trade.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -674,6 +689,7 @@
     15 firings, direction 73% up against a 79% control. Nothing followed beyond the ordinary.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../market-view.html">Market View</a> flags any market making a rare move against its own history; read a flag there as a tail measurement, as this lesson does, not as a forecast.</div><!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -781,7 +797,7 @@
       <li data-verdict="good">Cut leverage until a loss far beyond anything in your sample is survivable, sizing off a heavy-tailed or stress loss rather than the normal VaR.<div class="tl-drill-why">This is what EVT is for: a heavy tail makes a much worse day rare but possible, and sizing has to survive it. Accept that the extrapolated number is an assumption and leave a margin for it.</div></li>
       <li data-verdict="ok">Cut leverage a little, using the worst day in your own sample as the stress loss.<div class="tl-drill-why">Better than trusting the normal, but historical VaR this far out just names your worst observed day. The next extreme need not respect it.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Monday 19 October 1987 the S&amp;P 500 fell about 20% and the Dow 22.6%, nearly doubling the 12–13% falls of the worst 1929 days. Against daily moves of about 1%, that was on the order of twenty standard deviations: impossible under a normal model. The sessions after swung violently both ways, including a Dow rise of about 10% on 21 October. The extremes came as a cluster around one event.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Monday 19 October 1987 the S&amp;P 500 fell about 20% and the Dow 22.6%, nearly doubling the Dow's falls of about 13% and 12% on 28 and 29 October 1929. Against daily moves of about 1%, that was on the order of twenty standard deviations: impossible under a normal model. The sessions after swung violently both ways, and the Dow regained 288 points, 57% of the Monday fall, within the next two sessions. The extremes came as a cluster around one event.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreservehistory.org/essays/stock-market-crash-of-1987">Federal Reserve History, "Stock Market Crash of 1987"</a> (Dow −4.6% on 16 Oct, −22.6% on 19 Oct, 288 points regained over the next two sessions); Report of the Presidential Task Force on Market Mechanisms (Brady Report), January 1988.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -924,7 +940,7 @@
   </nav>
 
   <div class="tl-footer-nav">
-    <a href="kelly-criterion.html">← Kelly Criterion &amp; Position Sizing</a>
+    <a href="trade-management-exits.html">← Managing the Trade: R-Multiples, Stops &amp; Exits</a>
     <a href="../hub.html">Theory Lab hub</a>
     <a href="../hub.html">Back to hub →</a>
   </div>
@@ -954,7 +970,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

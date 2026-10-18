@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Lee-Mykland &amp; Boudt-Croux-Laurent — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-jump-detection-tests.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,70 @@
       <p class="sl-lede">Bipower variation, the previous lesson, told you what SHARE of a day's variance came from jumps — one number, no per-return resolution. This lesson builds the test that flags the exact return, and the correction that keeps it from being fooled by the ordinary rhythm of a trading day.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 252" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top: the typical move size through a ten-bar toy session is U-shaped, 18 basis points at the open and close and 4 at midday, while a plain test uses one flat yardstick of about 10.2. Bottom: the test statistic against the critical value 4.80. For bar 1, a plus 55 basis point open, the plain test gives 5.23 and falsely flags it, while the corrected test gives 2.01 and clears it. For bar 6, a plus 25 basis point midday jump, the plain test gives 1.76 and misses it, while the corrected test gives 5.50 and flags it.">
+      <text class="tlp-text2" x="20" y="18" font-size="13" font-weight="700">Typical move by time of day (bp)</text>
+      <polyline class="tlp-line purple thick" points="60.0,46.0 113.3,58.0 166.7,73.0 220.0,82.0 273.3,88.0 326.7,88.0 380.0,82.0 433.3,73.0 486.7,58.0 540.0,46.0"/>
+      <line class="tlp-line amber dash" x1="60" y1="69.4" x2="540" y2="69.4"/>
+      <text class="tlp-purple" x="60" y="38" font-size="12" font-weight="700">open 18</text>
+      <text class="tlp-purple" x="540" y="38" text-anchor="end" font-size="12" font-weight="700">close 18</text>
+      <text class="tlp-purple" x="300" y="105" text-anchor="middle" font-size="12" font-weight="700">midday 4</text>
+      <text class="tlp-amber" x="300" y="62" text-anchor="middle" font-size="12" font-weight="700">plain test: one flat yardstick ≈ 10.2</text>
+
+      <line class="tlp-line red dash" x1="468" y1="128" x2="468" y2="236"/>
+      <text class="tlp-red" x="468" y="123" text-anchor="middle" font-size="12" font-weight="700">threshold 4.80</text>
+      <text class="tlp-text" x="20" y="134" font-size="13" font-weight="700">Bar 1 · open · +55 bp</text>
+      <text class="tlp-red" x="20" y="151" font-size="12">plain: false flag</text>
+      <rect class="tlp-box red" x="180" y="139" width="313.8" height="15" rx="3"/>
+      <text class="tlp-red" x="500" y="151" font-size="12" font-weight="700">5.23</text>
+      <text class="tlp-green" x="20" y="171" font-size="12">corrected: cleared</text>
+      <rect class="tlp-box green" x="180" y="159" width="120.6" height="15" rx="3"/>
+      <text class="tlp-green" x="306" y="171" font-size="12" font-weight="700">2.01</text>
+      <text class="tlp-text" x="20" y="196" font-size="13" font-weight="700">Bar 6 · midday · +25 bp</text>
+      <text class="tlp-red" x="20" y="213" font-size="12">plain: missed</text>
+      <rect class="tlp-box red" x="180" y="201" width="105.6" height="15" rx="3"/>
+      <text class="tlp-red" x="291" y="213" font-size="12" font-weight="700">1.76</text>
+      <text class="tlp-green" x="20" y="233" font-size="12">corrected: flagged</text>
+      <rect class="tlp-box green" x="180" y="221" width="330" height="15" rx="3"/>
+      <text class="tlp-green" x="516" y="233" font-size="12" font-weight="700">5.50</text>
+      <text class="tlp-text3" x="180" y="250" font-size="12">L = return ÷ local yardstick</text>
+    </svg>
+    <figcaption>Ordinary volatility is U-shaped through the day. Judged against one flat yardstick, a normal busy open looks like a jump and a real midday jump hides. Dividing each return by its own time-of-day's typical size first (the Boudt-Croux-Laurent fix) gets both right.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Bipower variation told me how much of today was jumps. Now I want to know which minute.</p>
+      <p data-who="Quant">That's a different test. Suzanne Lee and Per Mykland built it in 2008. You take each return and divide it by how big returns have typically been just before it.</p>
+      <p data-who="Trader">Including the return itself?</p>
+      <p data-who="Quant">No, and that's the key. If a jump got into its own yardstick, it would make itself look normal. So the yardstick is built only from its neighbours, using the same paired-returns trick as bipower variation.</p>
+      <p data-who="Trader">Then I flag anything past four standard deviations?</p>
+      <p data-who="Quant">Not quite. You're testing every return in the day and asking whether the biggest one stands out. The biggest of many ordinary moves is naturally large. Its behaviour follows extreme-value theory, a Gumbel distribution, not the bell curve. So the bar rises with the number of returns you test.</p>
+      <p data-who="Trader">How high?</p>
+      <p data-who="Quant">At a one percent false-alarm rate, about four point eight for ten returns, and about five point four for a full day of five-minute bars.</p>
+      <p data-who="Trader">Fine. What goes wrong in practice?</p>
+      <p data-who="Quant">The clock. Volatility is U-shaped through the day: busy at the open and the close, quiet at midday. A yardstick that averages the whole day is too small at the open and too big at midday.</p>
+      <p data-who="Trader">So the open gets flagged and midday gets missed.</p>
+      <p data-who="Quant">Exactly. The lesson's toy session shows both. A fifty-five basis point open scores five point two three against the flat yardstick, a false alarm. A real twenty-five point jump at midday scores only one point seven six, missed.</p>
+      <p data-who="Trader">And the fix?</p>
+      <p data-who="Quant">Boudt, Croux and Laurent, 2011. First divide every return by its own time of day's typical size. Then run the same test. Now the open scores about two, cleared, and the midday jump scores five and a half, caught.</p>
+      <p data-who="Trader">So a flag tells me it was news?</p>
+      <p data-who="Quant">It tells you the move was implausibly big for that moment. It can't tell you why. And if you change bar size, you have to recalibrate the window and the threshold.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Judge each return against its own neighbourhood and its own time of day, with a bar that rises with how many returns you test.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Timestamping the jump, not just the day</h2>
       <p class="sl-sub">Jump tests · Barndorff-Nielsen &amp; Shephard, 2006 → Lee &amp; Mykland, 2008</p>
@@ -39,7 +103,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">A daily ratio can't say WHICH return jumped</h2>
       <div class="sl-icard-grid">
@@ -50,7 +114,7 @@
       <div class="sl-quote">Lee &amp; Mykland (2008) built the test. Boudt, Croux &amp; Laurent (2011) fixed the one thing that made it unreliable on real, intraday-seasonal data. Both pieces matter — this deck covers both.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Judge each return against its OWN neighborhood</h2>
       <p class="sl-sub">Build a local volatility estimate from nearby returns — but never from the return being judged.</p>
@@ -67,7 +131,7 @@
       <div class="sl-quote">This is exactly how you'd judge a friend showing up 20 minutes late: alarming for someone who's never more than 2 minutes late, nothing for someone who routinely runs 30 minutes behind. The yardstick has to be LOCAL to mean anything.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Why "past 4 sigma" isn't the real rule</h2>
       <div class="sl-callout amber">
@@ -81,7 +145,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The problem: intraday vol is U-shaped, not flat</h2>
       <p class="sl-sub">Busy at the open and close, quiet mid-session — a structural feature of FX/equity trading, not a quirk of one market. Drag the slider.</p>
@@ -106,7 +170,7 @@
       <div class="sl-quote">A plain test's local-vol window, if wide enough to blend the whole session, never sees this shape. Near the open/close it under-estimates the true local baseline (false positives). At midday it over-estimates it (false negatives, the real jump hides).</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The same open-bar move, judged two ways</h2>
       <p class="sl-sub">Toy 10-bar session. Bar 1 (open) actually moves +55bp — big for an open, not extraordinary. Bar 6 (deep midday) moves +25bp — the session's one genuine jump. Threshold for this 10-bar toy day: 4.80.</p>
@@ -137,7 +201,7 @@
     </section>
 
     <!-- WB:institutional_jump_detection_tests-deck:START -->
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Finding the jump: plain test versus time-of-day fix</h2>
       <!-- WB:institutional_jump_detection_tests:START -->
@@ -148,7 +212,7 @@
     </section>
     <!-- WB:institutional_jump_detection_tests-deck:END -->
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">BCL's fix: deseasonalize, then test</h2>
       <div class="sl-icard-grid">
@@ -159,7 +223,7 @@
       <div class="sl-quote">Grading classroom noise across recess AND nap time with one "typical loudness" number makes recess never look loud and nap time look suspiciously noisy at a single whisper. Grade each period against its OWN typical loudness first — exactly what dividing by a time-of-day factor does here.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Build the Lᵢ statistic yourself</h2>
       <p class="sl-sub">Plain L uses a fixed session-average local vol (10.2bp). BCL's L works out to dividing by the bucket's own typical size directly — 18bp at the open/close, 4bp at midday. Threshold shown: 5.40 (a full 5-min session, α=1%).</p>
@@ -184,7 +248,7 @@
       </div>
     </section>
 
-    <!-- DESK:START --><section class="sl-slide" data-slide="11">
+    <!-- DESK:START --><section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Verified against this repo's actual code</h2>
       <div class="sl-callout green" style="background:var(--green-bg);border-color:var(--green-bd)">
@@ -194,7 +258,7 @@
       <p class="sl-p">It's registered as a Tier-1 brick, consumed by two downstream modules (<code>jump_regime_book.py</code>, <code>jump_exhaustion.py</code>). The honest finding from that work: detected jumps describe volatility REGIME, not direction — near-independent day to day (unlike volatility, which clusters hard), no persistent directional skew, no shift in next-day continuation odds. What they DO carry: a genuine signal that jump-driven volatility decays faster afterward. Measurement only — no trade, no cost, no signal claimed anywhere in that work.</p>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Two limits worth keeping in view</h2>
       <div class="sl-compare">
@@ -219,7 +283,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">The category's arc, complete</h2>
       <div class="sl-icard-grid">
@@ -229,7 +293,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -280,7 +344,26 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative busy open</div>
+    <h3>Your jump detector fires at the open, again</h3>
+    <p>You clean jumps out of your realized-volatility input before forecasting. Your detector runs plain Lee-Mykland on 5-minute bars with a full-session critical value of 5.40 and a yardstick that averages the whole session at about 10.2 bp. This morning it flagged a 60 bp move in the opening bar (L = 5.88), as it does most mornings. The open's typical move is 18 bp. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trust the flag: strip the bar from the volatility input as a jump.<div class="tl-drill-why">The flag comes from the clock, not from a jump. Against the open's own typical 18 bp the move is about 3.3, nowhere near 5.40. Stripping ordinary open bars every morning removes real volatility and biases your forecast low.</div></li>
+      <li data-verdict="good">Add the time-of-day correction: divide each return by its bucket's typical size before testing, then re-run.<div class="tl-drill-why">This is the Boudt-Croux-Laurent fix. The open bar scores 60 ÷ 18 ≈ 3.33 and is cleared, while quiet-period moves get judged against their own small baseline. It fixes the false alarms at the open and the misses at midday at the same time.</div></li>
+      <li data-verdict="ok">Raise the critical value to 6 for the whole day.<div class="tl-drill-why">It stops this one false alarm, but it makes the midday problem worse: a real midday jump already needs about 55 bp to clear the plain test, and now it needs more. You have traded false positives for more false negatives instead of fixing the yardstick.</div></li>
+      <li data-verdict="bad">Switch to 1-minute bars for finer resolution and keep the same settings.<div class="tl-drill-why">The window, the number of tests and the critical value all belong to one bar size. On 1-minute bars microstructure noise adds false jumps, and the old threshold no longer has the false-alarm rate you chose.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the method says.</strong> This morning is illustrative, using the numbers from the lesson's own calculator (60 bp at the open, plain L 5.88 against 5.40, corrected L 3.33). The lesson's point is that a plain test run against the intraday U-shape errs both ways, and the cure is to deseasonalise before testing, not to move the threshold.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -418,5 +501,7 @@
 })();
 </script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

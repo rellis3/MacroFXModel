@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -584,6 +585,23 @@
     <button type="button" id="theta-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Price the theta of three new at-the-money calls with the closed form \(\Theta = -\dfrac{S\varphi(d_1)\sigma}{2\sqrt{\tau}} - rKe^{-r\tau}N(d_2)\), with \(\tau = \text{days}/365\). The first piece is the convexity term, the second the financing term.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(S = K = 50\), \(r = 3\%\), \(\sigma = 25\%\), 45 days. \(\tau = 0.1233\), \(d_1 = 0.0860\), \(d_2 = -0.0018\), \(\varphi(d_1) = 0.3975\), \(N(d_2) = 0.4993\). Convexity term \(50(0.3975)(0.25)/(2\sqrt{0.1233}) = 7.075\); financing term \(0.03(50)e^{-0.03(0.1233)}(0.4993) = 0.746\). So \(\Theta = -7.821\) a year, or <span class="tl-blank" data-answer="-0.0214" data-tol="0.0002"></span> dollars a day.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(S = K = 200\), \(r = 1\%\), \(\sigma = 15\%\), 10 days. \(\tau = 0.0274\), \(d_1 = 0.0234\), \(\varphi(d_1) = 0.3988\), \(N(d_2) = 0.4994\). Convexity term: <span class="tl-blank" data-answer="36.14" data-tol="0.1"></span>. Financing term: <span class="tl-blank" data-answer="0.999" data-tol="0.01"></span>. Theta per day: <span class="tl-blank" data-answer="-0.1018" data-tol="0.0005"></span> dollars.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(S = K = 80\), \(r = 4\%\), \(\sigma = 40\%\), 60 days. Find \(\tau\) <span class="tl-blank" data-answer="0.1644" data-tol="0.0005"></span>, \(d_1\) <span class="tl-blank" data-answer="0.1216" data-tol="0.002"></span>, \(\Theta\) per year <span class="tl-blank" data-answer="-17.17" data-tol="0.05"></span>, and per day <span class="tl-blank" data-answer="-0.0470" data-tol="0.0003"></span> dollars.</p>
+    </div>
+  </div>
+
   <!-- WB:theta:START -->
   <div class="wb" id="wb-theta" data-title="Theta: watch time value melt">
     <script type="application/json">{"w":600,"h":660,"intro":"One at-the-money call, 30 days from expiry, using the lesson's numbers. Watch its time value melt, slowly at first, then fast. Press play, or step through.","steps":[{"cap":"Meet the option: an at-the-money call with spot and strike both at 100, 20% volatility, 2% rates and 30 days left. Being at the money, its whole price, about $2.37, is time value. Picture it as an ice cube.","do":[{"icon":"ice","name":"ice","x":250,"y":6,"s":0.9,"tone":"blue","label":"time value ≈ $2.37","lsize":18}]},{"cap":"You own the cube. The dealer who sold it to you is on the other side. Each day a little of it melts, and that melt is theta: rent you pay for the right to gain from big moves.","do":[{"icon":"you","name":"person","x":40,"y":14,"s":0.7,"tone":"blue","label":"you (long call)","lsize":17},{"icon":"dealer","name":"person","x":490,"y":14,"s":0.7,"tone":"green","label":"seller (short call)","lsize":17},{"icon":"rent","name":"coin","x":120,"y":30,"s":0.38,"tone":"amber","sym":"$"},{"move":"rent","x":440,"y":30,"ms":1500},{"note":"rl","x":300,"y":140,"text":"theta = daily rent →","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"Now let the days pass, spot stuck at 100. From 30 days left down to 7, the option slides from $2.37 to $1.12. At the start it loses about 4 cents a day: theta is −$0.041 per day.","do":[{"hide":"rent"},{"hide":"rl"},{"chart":"val","x":10,"y":150,"w":580,"h":270,"title":"Call value ($) as the days run out","xd":[0,30],"yd":[0,2.75],"yt":[[0,"$0"],[1,"$1"],[2,"$2"]],"xt":[[0,"30 days"],[16,"14"],[23,"7"],[30,"0 left"]],"pl":44,"pr":22},{"series":"v1","chart":"val","pts":[[0,2.368],[3,2.243],[6,2.111],[9,1.971],[12,1.821],[15,1.658],[18,1.479],[21,1.277],[23,1.124]],"tone":"blue","ms":1600},{"dot":"d30","chart":"val","at":[0,2.368],"text":"$2.37 · −$0.041/day","tone":"blue","dx":12,"dy":-14,"anchor":"start"},{"hide":"ice"},{"icon":"ice2","name":"ice","x":262,"y":18,"s":0.66,"tone":"blue","label":"$1.12","lsize":18}]},{"cap":"With 7 days left, theta is −$0.082 per day: roughly twice the 30-day rate, for the same option.","do":[{"dot":"d7","chart":"val","at":[23,1.124],"text":"$1.12 · −$0.082/day","tone":"amber","dx":-12,"dy":22,"anchor":"end"}]},{"cap":"Then the final week. The curve bends sharply down: $1.12 with 7 days left, $0.42 with 1 day left. Nearly half the option's value melts in the last week.","do":[{"series":"v2","chart":"val","pts":[[23,1.124],[24,1.039],[25,0.947],[26,0.846],[27,0.732],[28,0.596],[29,0.42]],"tone":"red","ms":1300},{"hide":"ice2"},{"icon":"ice3","name":"ice","x":274,"y":30,"s":0.42,"tone":"red","label":"$0.42","lsize":18}]},{"cap":"On the last day theta is −$0.21 per day: another 2.6 times jump, and about 5 times the 30-day rate. At expiry, with spot still at 100, the call is worth nothing. The cube is gone.","do":[{"dot":"d1","chart":"val","at":[29,0.42],"text":"$0.42 · −$0.21/day","tone":"red","dx":-14,"dy":12,"anchor":"end"},{"series":"v3","chart":"val","pts":[[29,0.42],[29.4,0.325],[29.7,0.23],[29.9,0.132],[29.97,0.072],[30,0.0]],"tone":"red","ms":600},{"hide":"ice3"},{"note":"pud","x":300,"y":92,"text":"💧 melted","size":20,"anchor":"middle","tone":"red"}]},{"cap":"Side by side: the daily melt at 30, 7 and 1 day to expiry. It doesn't drip steadily like a leaky tap. It speeds up like a countdown timer.","do":[{"chart":"bar","x":10,"y":446,"w":280,"h":200,"title":"Theta, $ lost per day","xd":[0,4],"yd":[0,0.27],"yt":[[0,"0"],[0.1,"0.10"],[0.2,"0.20"]],"xt":[[1,"30d"],[2,"7d"],[3,"1d"]],"pl":46},{"bars":"tb","chart":"bar","data":[[1,0.0408,"0.041","blue"],[2,0.0816,"0.082","amber"],[3,0.2115,"0.212","red"]],"bw":40,"ms":1200}]},{"cap":"Trap: don't multiply today's theta by the days left. 30 days × $0.041 is only $1.22 (the dashed line), yet the option loses its whole $2.37 by expiry. The straight line understates the end and overstates the start.","do":[{"series":"lin","chart":"val","pts":[[0,2.368],[30,1.144]],"tone":"amber","dash":true,"ms":800},{"note":"linl","chart":"val","at":[30,1.146],"text":"30 × $0.041\n= $1.22 only","tone":"amber","size":17,"anchor":"end","dx":-4,"dy":-78}]},{"cap":"Why it speeds up: theta has the same 1/√τ term as gamma. For a hedged option, theta ≈ −½σ²S²Γ. Theta is the rent, gamma is the convexity it buys. Theta pays for gamma.","do":[{"box":"id","x":310,"y":446,"w":280,"h":92,"text":"θ ≈ −½σ²S²Γ\ntheta pays for gamma","tone":"purple","size":20}]},{"cap":"Is the rent fair? It was priced at 20% implied volatility. If the price actually moves more than that, your hedging gains beat the melt and you win. If it stays calmer, you lose, even with no directional view at all.","do":[{"box":"vs","x":310,"y":554,"w":280,"h":92,"text":"realised > 20% → you win\nrealised < 20% → seller wins","tone":"green","size":18},{"pulse":"you"},{"pulse":"dealer"}]},{"cap":"Calendar spread: sell a near-dated option (a fast-melting cube) and buy a later one at the same strike (a slow-melting cube). You pocket the difference in melt speed, as long as the price stays near the strike.","do":[{"hide":"pud"},{"icon":"near","name":"ice","x":196,"y":34,"s":0.48,"tone":"red","label":"SELL near","lsize":17},{"icon":"far","name":"ice","x":318,"y":14,"s":0.7,"tone":"blue","label":"BUY far","lsize":17}]},{"cap":"The catch, for every seller of rent: being long theta means being short gamma. Small steady melt comes in daily; one big move can take it all back and more. Picking up nickels in front of a steamroller.","do":[{"icon":"roller","name":"warn","x":412,"y":44,"s":0.42,"tone":"red"},{"pulse":"dealer"},{"pulse":"near"}]}]}</script>
@@ -773,6 +791,7 @@
     <strong>+0.38 ATR [+0.11, +0.62]</strong>, next-20 +0.56; SPX500 next-20 <strong>+0.67 [+0.13, +1.21]</strong>
     (next-5 +0.17, null). Realised catches up to implied.</span>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../fx-vol-carry-backtest.html">FX/Gold Vol-Carry Backtester</a> sets CME implied vol against the desk's own realised vol, the rent-versus-bill comparison that decides who wins the theta trade.</div>
   <!-- DESK:END -->
 
   <!-- DESK:START -->
@@ -780,9 +799,13 @@
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Does selling rich premium pay after the bills?</strong> The result above measures the <em>range</em>
     that follows, not option P&amp;L, so it does not say the premium was too cheap. It says the moments when theta looks
-    most generous are followed by bigger moves, so the gamma bill is larger exactly then. A fair test of the income claim
-    would need historical option prices with bid/ask, a fixed selling rule, realistic margin, and a sample that includes
-    2018 and 2020.</span>
+    most generous are followed by bigger moves, so the gamma bill is larger exactly then.
+    <div class="tl-howtotest"><strong>How to test it:</strong> each month from 1990 to 2026-08-21, price a 30-day
+    at-the-money SPX straddle at the VIX level with Black-Scholes, sell it, and delta-hedge daily on SPX500 closes, so
+    the sample includes 2008, 2018 and 2020. Charge 1 vol point of bid-ask on the premium and a 15%-of-notional margin
+    that closes the trade if breached. The rule fixed in advance: sell only when VIX over 20-session realised vol is in
+    its top decile; it passes only if its mean P&amp;L per trade beats selling every month, with a block-bootstrap 95%
+    interval above zero, and the worst single trade fits inside the margin.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -860,7 +883,8 @@
       <li data-verdict="good">Cap the risk now: buy back the calls, or buy calls further up to turn them into spreads, so no single jump can exceed what the account can carry.<div class="tl-drill-why">This fixes the real problem, an unlimited short-gamma position with no hedge. Paying up to close or cap it costs some of the premium collected. It keeps a jump from turning months of small gains into a margin call you cannot meet.</div></li>
       <li data-verdict="ok">Delta-hedge by buying some natural gas futures.<div class="tl-drill-why">Better than nothing: it offsets part of the directional loss. But you stay short gamma, and a hedge set this morning is too small after a double-digit jump. Margin calls still arrive before you can rebalance.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 14 November the front-month natural gas contract jumped by double digits in percentage terms in a single session. Calls that had looked close to worthless gained delta and value very quickly. OptionSellers.com's accounts could not meet the margin calls, and the clearing broker liquidated them into the move. Hundreds of client accounts were wiped out, and some ended with negative balances, owing the broker money on top of everything they had deposited.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 14 November the front-month natural gas contract jumped about 18% in a single session, from $4.10 to $4.84 per million Btu. Calls that had looked close to worthless gained delta and value very quickly. OptionSellers.com's accounts could not meet the margin calls, and the clearing broker liquidated them into the move. About 300 client accounts fell below their margin and were liquidated, and some ended with negative balances, owing the broker money on top of everything they had deposited.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://www.eia.gov/dnav/ng/hist/rngc1d.htm" target="_blank" rel="noopener">EIA, NYMEX natural gas futures contract 1, daily settlements</a>; <a href="https://www.sec.gov/Archives/edgar/data/913760/000091376018000151/a8-kiff2018stmtoffincond.htm" target="_blank" rel="noopener">INTL FCStone Form 8-K, 27 November 2018</a> (about 300 Optionsellers.com accounts below maintenance margin in the week ended 16 November).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -873,7 +897,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Short gamma and long theta are the same fact, not two facts.</strong> \(\text{ThetaExp}_k \approx -50\sigma^2\times\text{DealerGEX}_k\) — the sign always flips, so "dealers are net short gamma" (from the previous lesson) forces "dealers are net long theta" by the same PDE, viewed through a different partial derivative.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Theta is not linear — never assume today's decay rate holds for the rest of the month.</strong> The daily rate itself changes sharply as expiry approaches.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Weekend theta handling is a practitioner convention, not a universal rule.</strong> Different desks and platforms smooth it differently — check the specific source rather than assuming.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Rich-looking premium is a warning, not a gift<!-- DESK:START --> (iv-over-rv-wider, validated)<!-- DESK:END -->.</strong><!-- DESK:START --> Top-decile implied-over-realised was followed by wider indices: NAS100 +0.38 ATR next week, SPX500 +0.67 next month.<!-- DESK:END --> November 2018's short natural gas calls show what a jump does to "income": theta is collected in small steps, gamma is paid all at once.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Rich-looking premium is a warning, not a gift<!-- DESK:START --> (iv-over-rv-wider, validated)<!-- DESK:END -->.</strong><!-- DESK:START --> On the desk's data, rich implied vol was followed by wider ranges, not calmer ones.<!-- DESK:END --> November 2018's short natural gas calls show what a jump does to "income": theta is collected in small steps, gamma is paid all at once.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -1194,7 +1218,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

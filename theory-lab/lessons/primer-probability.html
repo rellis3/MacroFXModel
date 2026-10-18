@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -628,6 +629,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same expectation and variance, \(E[X]=\sum x\,p(x)\) and \(Var(X)=E[X^2]-(E[X])^2\), now for fair dice with other numbers of sides, then the variance of an average of \(n\) rolls, \(Var(X)/n\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>A fair 8-sided die. \(E[X]=(1+2+\dots+8)/8=36/8=4.5\) and \(E[X^2]=(1+4+\dots+64)/8=204/8=25.5\). So \(Var(X)=25.5-4.5^2=\) <span class="tl-blank" data-answer="5.25" data-tol="0.005"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>A fair 10-sided die, using \(Var=(N^2-1)/12\). \(E[X]=\) <span class="tl-blank" data-answer="5.5" data-tol="0.005"></span>, \(Var(X)=\) <span class="tl-blank" data-answer="8.25" data-tol="0.005"></span>, and the standard deviation is <span class="tl-blank" data-answer="2.8723" data-tol="0.001"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>A fair 20-sided die, averaged over \(n=25\) independent rolls. \(E\) of the average: <span class="tl-blank" data-answer="10.5" data-tol="0.005"></span>. \(Var(X)=\) <span class="tl-blank" data-answer="33.25" data-tol="0.005"></span>. Variance of the average: <span class="tl-blank" data-answer="1.33" data-tol="0.005"></span>. Its standard deviation: <span class="tl-blank" data-answer="1.1533" data-tol="0.001"></span></p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -801,7 +819,8 @@
       <li data-verdict="good">Big days come in bunches, so the days are not independent. Expect more turbulence and cut size until volatility settles.<div class="tl-drill-why">This is volatility clustering, the exact way the lesson says real returns break independence. A wild day makes another wild day more likely, so the safe reading of a streak is "this may continue", not "this must stop".</div></li>
       <li data-verdict="ok">Re-estimate σ from the last few days and keep the same model.<div class="tl-drill-why">A higher σ is a step in the right direction. But it keeps the assumption that each day is a fresh, independent draw, which is the part that just failed.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In early August 2007, many quantitative equity funds lost heavily over several consecutive days, an episode later called the "quant quake". Goldman Sachs's chief financial officer, David Viniar, told the Financial Times they were seeing "25-standard deviation moves, several days in a row." On independent bell-curve days that is essentially impossible. A run of them is the signature of what this lesson warns about: dependence between days and fatter tails than the normal allows.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In early August 2007, many quantitative equity funds lost heavily over several consecutive days, an episode later called the "quant quake". Goldman Sachs's chief financial officer, David Viniar, told the Financial Times they were seeing "25-standard deviation moves, several days in a row." On independent bell-curve days that is essentially impossible. A run of them is the signature of what this lesson warns about: dependence between days and fatter tails than the normal allows.</p>
+    <p class="tl-drill-sources">Sources: Financial Times, 13 Aug 2007, interview with Goldman Sachs CFO David Viniar (the wording here is taken from secondary reports, not the article itself); <a href="https://www.bis.org/review/r090219d.pdf">Andrew Haldane, "Why banks failed the stress test", Bank of England, Feb 2009 (BIS copy)</a>; <a href="https://web.mit.edu/~alo/www/Papers/august07.html">Khandani and Lo, "What Happened to the Quants in August 2007?", <em>Journal of Investment Management</em> 5 (2007)</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -1007,7 +1026,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

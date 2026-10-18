@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Hurst Exponent &amp; Variance Ratio Test — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the R/S walkthrough, and a 6-question self-test?<a href="hurst-variance-ratio.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,73 @@
       <p class="sl-lede">Almost every trading decision reduces to one binary question: at this level, right now, should the system fade the move or follow it? This lesson is one way to answer that — not by predicting direction, but by measuring how "persistent" the recent path has been, independent of any price model. Two tools do this: the Hurst exponent, and the variance ratio test that a rigor-obsessed pair of economists built to do the same job properly.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Variance of the q-day return against the horizon q, from 1 day to 5 days, starting from a 1-day variance of 0.1289. A grey straight line shows the random-walk case, where 5-day variance is exactly 5 times 0.1289, or 0.64, so the variance ratio is 1 and H is 0.5. A red line ends higher, at 0.95: variance ratio about 1.47, trending, H above 0.5. A blue line ends lower, at 0.45: variance ratio about 0.70, mean-reverting, H below 0.5.">
+      <line class="tlp-line" x1="60" y1="212" x2="384" y2="212"/>
+      <line class="tlp-line" x1="60" y1="24" x2="60" y2="212"/>
+      <line class="tlp-line dash" x1="380" y1="30" x2="380" y2="212"/>
+      <polyline class="tlp-line red thick" points="70,188.8 380,41"/>
+      <polyline class="tlp-line thick" points="70,188.8 380,96"/>
+      <polyline class="tlp-line blue thick" points="70,188.8 380,131"/>
+      <circle class="tlp-text3" cx="147.5" cy="165.6" r="3.5"/>
+      <circle class="tlp-text3" cx="225" cy="142.4" r="3.5"/>
+      <circle class="tlp-text3" cx="302.5" cy="119.2" r="3.5"/>
+      <circle class="tlp-purple" cx="70" cy="188.8" r="6"/>
+      <circle class="tlp-red" cx="380" cy="41" r="6"/>
+      <circle class="tlp-text2" cx="380" cy="96" r="6"/>
+      <circle class="tlp-blue" cx="380" cy="131" r="6"/>
+      <text class="tlp-red" x="394" y="46" font-size="15" font-weight="700">0.95 · VR ≈ 1.47</text>
+      <text class="tlp-text2" x="394" y="63" font-size="13">trending, H &gt; 0.5</text>
+      <text class="tlp-text" x="394" y="101" font-size="15" font-weight="700">0.64 · VR = 1</text>
+      <text class="tlp-text2" x="394" y="118" font-size="13">random walk, H = 0.5</text>
+      <text class="tlp-blue" x="394" y="136" font-size="15" font-weight="700">0.45 · VR ≈ 0.70</text>
+      <text class="tlp-text2" x="394" y="153" font-size="13">mean-reverting, H &lt; 0.5</text>
+      <text class="tlp-purple" x="54" y="193" text-anchor="end" font-size="12">0.1289</text>
+      <text class="tlp-text3" x="66" y="36" font-size="12">q-day variance (%²) ↑</text>
+      <text class="tlp-text3" x="70" y="230" text-anchor="middle" font-size="12">1 day</text>
+      <text class="tlp-text3" x="380" y="230" text-anchor="middle" font-size="12">5 days</text>
+      <text class="tlp-text3" x="225" y="230" text-anchor="middle" font-size="12">horizon q →</text>
+      <text class="tlp-text2" x="394" y="196" font-size="13">random walk: 5 × 0.1289</text>
+      <text class="tlp-text2" x="394" y="213" font-size="13">= 0.6445, the yardstick</text>
+    </svg>
+    <figcaption>Start from the same 1-day variance of 0.1289. If the days are independent, variance adds up in a straight line to 0.6445 at five days. Days that team up land above it (trending), days that cancel land below it (mean-reverting). The variance ratio is the actual figure divided by that yardstick.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Everyone tells me to check whether a market is trending or mean-reverting before I pick a strategy. How do you actually measure that?</p>
+      <p data-who="Quant">Picture three people leaving a bar. One wanders at random. One keeps stumbling the same way. One is on a leash held by a friend at the door. The question is which one you are watching.</p>
+      <p data-who="Trader">And you tell them apart by how far they get?</p>
+      <p data-who="Quant">By how their distance grows with time. The random walker's distance grows with the square root of the number of steps. The stumbler gets further, faster. The one on the leash stays closer. The Hurst exponent puts one number on that. A half means random. Above a half means trending. Below a half means mean-reverting.</p>
+      <p data-who="Trader">Where does the name come from?</p>
+      <p data-who="Quant">Harold Hurst, a British hydrologist. He studied the Nile's flood records to size a reservoir, and found that wet years clustered with wet years. His number came out well above a half. Decades later Mandelbrot took the method into markets.</p>
+      <p data-who="Trader">You said there's a second test, and that it's the better one.</p>
+      <p data-who="Quant">The variance ratio, from Lo and MacKinlay in 1988. If daily moves are independent, the wobble of a five-day return should be exactly five times the wobble of one day. Independent wobbles just add up.</p>
+      <p data-who="Trader">So you compare the real five-day wobble with five times the daily one.</p>
+      <p data-who="Quant">Yes. Say the daily variance is about point one three. Five times that is about point six four. If the real five-day figure comes out at point four five, the ratio is about point seven. The days are cancelling each other out. That is mean reversion.</p>
+      <p data-who="Trader">And if it came out at point nine five?</p>
+      <p data-who="Quant">Then the ratio is about one and a half. The days are teaming up. That is trending. And unlike the Hurst slope, this test comes with a proper standard error, so you can ask whether the gap from one is real or just noise.</p>
+      <p data-who="Trader">Does persistence actually show up in real markets?</p>
+      <p data-who="Quant">It comes and goes. Trend followers bet on it. In 2008 the stock market lost about thirty-seven percent, and broad managed-futures indices finished up by double digits. Much of the 2010s was lean for the same rules. Then in 2022 inflation peaked at nine point one percent, the Fed hiked hard, yields rose and the dollar climbed for most of the year, and trend followers had a very strong year.</p>
+      <p data-who="Trader">So if I get a Hurst reading of point five five on the last few weeks, I follow the trend?</p>
+      <p data-who="Quant">Careful. On short samples the classic method is biased towards finding trends, even in pure noise. A reading from a few dozen bars can flip across a half on noise alone. And neither number tells you direction, only whether recent moves have reinforced or undone each other.</p>
+      <p data-who="Trader">So what is it good for?</p>
+      <p data-who="Quant">As a gate. It tells you which family, fade or follow, has a right to work. And near the middle, it tells you to stand aside.</p>
+      <p data-who="Trader">Give me the one-line version.</p>
+      <p data-who="Quant">Watch how the wobble grows with time: faster than the square root means trending, slower means mean-reverting, and a short window is a noisy hint, not a fact.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">Three drunks leaving the same bar</h2>
       <p class="sl-sub">Same starting point, three different kinds of "randomness." Only one of them is a true coin flip.</p>
@@ -38,7 +105,7 @@
       <div class="sl-quote">Nobody hands you a label saying which drunk you're watching. What you get is a price series and a question: does it have memory that <strong>reinforces</strong> past moves, memory that <strong>undoes</strong> them, or no memory at all? That property is exactly what decides whether a fade strategy or a follow strategy has any right to work right now.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">H — a single number that names the drunk</h2>
       <p class="sl-sub">The Hurst exponent is extracted purely from how a series has wandered historically — no model of "why," just a measurement. Pick a regime.</p>
@@ -74,7 +141,7 @@
       <p class="sl-p">Formally: <strong>H &lt; 0.5</strong> is anti-persistent / mean-reverting, <strong>H = 0.5</strong> is a random walk, <strong>H &gt; 0.5</strong> is persistent / trending. H near 0 is strongly mean-reverting; H near 1 is strongly trending, in the limit a near-straight line.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">How H actually gets measured: rescaled range</h2>
       <p class="sl-sub">Take a chunk of n returns. Walk a dot up or down by each day's deviation from the chunk's own mean, starting at zero.</p>
@@ -110,7 +177,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A hydrologist, then a fractal geometer</h2>
       <div class="sl-compare">
@@ -126,7 +193,7 @@
       <p class="sl-p">This is worth pausing on because H is the same fade/follow question Ornstein-Uhlenbeck mean reversion and trend-day classification ask from other angles — but a <strong>third, model-free lens</strong> on it. It assumes no particular generative process, no OU equation, no drift/diffusion decomposition. It just measures how the empirical range has scaled historically.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The cleaner alternative: variance ratio</h2>
       <p class="sl-sub">R/S has real statistical weaknesses (small-sample bias, ahead). Lo &amp; MacKinlay (1988) formalized a sharper, testable version of the identical question.</p>
@@ -153,7 +220,7 @@
     </section>
 
     <!-- WB:hurst_variance_ratio-deck:START -->
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Three walkers and the variance ratio, drawn step by step</h2>
       <!-- WB:hurst_variance_ratio:START -->
@@ -164,7 +231,7 @@
     </section>
     <!-- WB:hurst_variance_ratio-deck:END -->
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">A tiny variance-ratio calculation by hand</h2>
       <p class="sl-sub">10 daily log returns, in percent: 0.4, −0.2, 0.6, 0.1, −0.5, 0.3, −0.1, 0.5, −0.4, 0.2.</p>
@@ -180,7 +247,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Recompute VR(k), live</h2>
       <p class="sl-sub">Starts on the worked example's exact numbers. Change any field and the ratio — and the verdict — recalculate instantly.</p>
@@ -208,7 +275,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Where this lives in this repo</h2>
       <p class="sl-p">This isn't just theory here. <code>js/rangeBiasCore.js</code> has a <code>featureHurst</code> function that runs live R/S analysis — lags of 2, 4, 8, and 16 bars on the last ~80 daily closes, the identical log-log regression from Section 3 — as one of the entry-bias features scored alongside ADX, swing structure, TWAP slope, and EMA/RSI. Its call is the same regime-gate logic from Section 2: <strong>H &lt; 0.45 confirms a fade</strong>, <strong>H &gt; 0.55 confirms a follow</strong>, and anything in between abstains.</p>
@@ -220,7 +287,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How this actually gets used on a desk</h2>
       <div class="sl-icard-grid">
@@ -235,7 +302,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">Trend following's fat years and lean years</h2>
       <div class="sl-callout amber">
@@ -257,7 +324,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <!-- DESK:START --><h2 class="sl-h2">What this desk found when it tested the claim</h2><!-- DESK:END -->
       <p class="sl-sub">The tempting claim: when the path looks persistent, follow it.</p>
@@ -276,7 +343,7 @@
       <div class="sl-quote"><strong>Where the textbook breaks:</strong> H and VR treat persistence as one fixed property of a series. In markets it is episodic: it switches on when one macro force pushes the same way for months, and off for years. A full-sample H near 0.5 can hide both, and the persistence of move <em>size</em> is far more reliable than that of <em>direction</em>.</div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -318,7 +385,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2022-07-13">
+    <div class="tl-drill-label">Scenario drill · 13 July 2022</div>
+    <h3>Inflation at 9.1%, and your Hurst reading just dipped below a half</h3>
+    <p>US CPI for June has just printed at 9.1% year on year. The Fed raised rates by 75bp a month ago. Bond yields have risen for most of the year and the dollar is strong. You run trend rules that trade on horizons of weeks to months, and they are short bonds and long the dollar. Suppose a Hurst reading on the last 30 daily bars has just slipped from 0.58 to 0.47 (a hypothetical reading for this drill). What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Close the trend book. H is below 0.5, so the market has turned mean-reverting.<div class="tl-drill-why">One reading from 30 bars is squarely in the small-sample zone, where R/S is noisy and biased, and can flip across 0.5 on estimation noise alone. It is weak evidence of a regime change, and the rules trade a longer horizon than the window measures.</div></li>
+      <li data-verdict="good">Keep running the rules at their normal size, and treat the short reading as noise until longer-horizon evidence says otherwise.<div class="tl-drill-why">The gate question is about persistence at the horizon the rules trade. A short-window wobble around 0.5 does not answer it, and neither statistic forecasts direction anyway. Sticking to the process avoids trading on noise.</div></li>
+      <li data-verdict="bad">Double the size. Inflation at 9.1% means the trend has to continue.<div class="tl-drill-why">Neither H nor the variance ratio says which way the next move goes, and a strong macro story is not a measurement. Doubling up on conviction is how a trend book gets caught by the reversal it cannot see coming.</div></li>
+      <li data-verdict="ok">Trim a little, and wait for a variance ratio on a longer window, with its standard error, before deciding more.<div class="tl-drill-why">Asking for a proper test with a standard error is the right instinct. But trimming on one noisy reading still lets noise move your size, which costs you when the persistence is real.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The Fed raised rates by 75bp three more times, on 27 July, 21 September and 2 November. Yields kept rising for most of the year, and by late September the dollar had reached multi-year highs (the Fed's broad trade-weighted index peaked on 26 September). Trend followers, short bonds and long the dollar, had a very strong year. The 30-bar Hurst reading in the setup was hypothetical; the real lesson is that one short-window reading crossing 0.5 is a noisy hint, not a regime change.</p><p class="tl-drill-sources">Sources: <a href="https://www.bls.gov/news.release/archives/cpi_07132022.htm">BLS, Consumer Price Index news release, 13 Jul 2022</a> (9.1% over 12 months); FOMC statements of <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20220727a.htm">27 Jul</a>, <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20220921a.htm">21 Sep</a> and <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20221102a.htm">2 Nov 2022</a> (75bp each); <a href="https://fred.stlouisfed.org/series/DTWEXBGS">Federal Reserve nominal broad dollar index (FRED, DTWEXBGS)</a>.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -405,5 +491,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

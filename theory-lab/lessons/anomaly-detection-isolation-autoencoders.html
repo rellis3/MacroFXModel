@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -405,6 +406,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's score with new forests: \(H(m) \approx \ln m + 0.5772\), \(c(n) = 2H(n-1) - 2(n-1)/n\), and \(s = 2^{-E[h(x)]/c(n)}\). Use natural logs.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>A forest built on \(n = 128\) points. \(H(127) \approx \ln 127 + 0.5772 = 5.421\), so \(c(128) = 10.843 - 1.984 = 8.858\). A point's average path is \(E[h(x)] = 4.0\), so the exponent is \(4.0/8.858 = 0.452\) and the score is \(s =\) <span class="tl-blank" data-answer="0.731" data-tol="0.003"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Now \(n = 512\) and \(E[h(x)] = 6.0\). \(H(511) \approx 6.814\), so \(c(512) =\) <span class="tl-blank" data-answer="11.63" data-tol="0.02"></span>. The exponent is <span class="tl-blank" data-answer="0.516" data-tol="0.003"></span> and the score is <span class="tl-blank" data-answer="0.699" data-tol="0.003"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(n = 64\), \(E[h(x)] = 7.5\). \(H(63) \approx\) <span class="tl-blank" data-answer="4.720" data-tol="0.003"></span>; \(c(64) =\) <span class="tl-blank" data-answer="7.472" data-tol="0.01"></span>; score <span class="tl-blank" data-answer="0.499" data-tol="0.003"></span>. A path about equal to \(c(n)\) gives a score of about 0.5: an ordinary point.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -548,7 +566,7 @@
       <li data-verdict="bad">Buy the move. A score this high means the market is mispriced.<div class="tl-drill-why">Nothing about an anomaly score implies the pattern is profitable or repeatable. It describes rarity relative to history. It is not a forecast of edge.</div></li>
       <li data-verdict="ok">Retrain the detector on today's data so it stops flagging everything.<div class="tl-drill-why">Sensible later, once the new regime is understood. A model trained on the calm, floor-defended regime will keep flagging the new one. But retraining in the middle of the event does not answer today's question: are these ticks real?</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 15 January 2015 the Swiss National Bank announced it was abandoning the 1.20 minimum exchange rate for EUR/CHF. The franc jumped and EUR/CHF traded well below 1.00 within minutes. The ticks were unusual and entirely real. A detector trained on the floor years was right that nothing like it had been seen, and a pipeline that equated "anomalous" with "wrong" would have deleted some of the most important prints of that year.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 15 January 2015 the Swiss National Bank announced it was abandoning the 1.20 minimum exchange rate for EUR/CHF. The franc jumped and EUR/CHF traded well below 1.00 within minutes. The ticks were unusual and entirely real. A detector trained on the floor years was right that nothing like it had been seen, and a pipeline that equated "anomalous" with "wrong" would have deleted some of the most important prints of that year.</p><p class="tl-drill-sources">Sources: <a href="https://www.bis.org/review/r150116a.htm">Thomas Jordan, SNB press conference remarks on discontinuing the minimum exchange rate, 15 January 2015 (BIS reprint)</a>; Swiss National Bank press release, "Swiss National Bank discontinues minimum exchange rate and lowers interest rate to –0.75%", 15 January 2015.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -717,7 +735,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

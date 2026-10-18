@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trade Journal — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="hub.html">Theory Lab</a> · <a href="practice.html">Practice</a> · Trade journal</div>
+  <div class="tl-hub-hero">
+    <div class="tl-kicker">Which ideas actually pay</div>
+    <h1>Trade Journal</h1>
+    <p>Log each trade with the lessons it relied on. Results are in R, the multiple of what you risked, so trades of different sizes compare fairly. After twenty or thirty trades the table at the bottom shows which ideas are earning their keep. The grid next to it separates good decisions from good luck, the habit the <a href="lessons/process-vs-outcome-decision-journals.html">decision-journal lesson</a> is about.</p>
+  </div>
+
+  <h2>Log a trade</h2>
+  <form id="jn-form" class="jn-form" autocomplete="off">
+    <div class="jn-row">
+      <label>Date <input type="date" name="d" class="tl-scratch-input" required></label>
+      <label>Instrument <input type="text" name="inst" class="tl-scratch-input" placeholder="EUR/USD" required></label>
+      <label>Side <select name="dir" class="tl-scratch-input"><option value="1">Long</option><option value="-1">Short</option></select></label>
+      <label>How sure? <select name="conf" class="tl-scratch-input"><option value="">–</option><option>50</option><option>60</option><option selected>70</option><option>80</option><option>90</option></select></label>
+    </div>
+    <div class="jn-row">
+      <label>Entry <input type="number" step="any" name="entry" class="tl-scratch-input"></label>
+      <label>Stop <input type="number" step="any" name="stop" class="tl-scratch-input"></label>
+      <label>Exit <input type="number" step="any" name="exit" class="tl-scratch-input" placeholder="blank if open"></label>
+      <label>Result in R <input type="number" step="any" name="r" class="tl-scratch-input" placeholder="auto"></label>
+    </div>
+    <label class="jn-wide">Lessons this trade relied on
+      <input type="text" id="jn-lesson-in" class="tl-scratch-input" list="jn-lessons" placeholder="Start typing a lesson title, then press Enter">
+      <datalist id="jn-lessons"></datalist>
+      <span id="jn-chips" class="jn-chips"></span></label>
+    <label class="jn-wide">Why this trade (before entry) <textarea name="note" rows="2" class="tl-scratch-input"></textarea></label>
+    <div class="jn-row">
+      <label>Was it a good decision, whatever the result?
+        <select name="proc" class="tl-scratch-input"><option value="">Not reviewed yet</option><option value="good">Good process: followed the plan</option><option value="bad">Poor process: broke a rule</option></select></label>
+      <label class="jn-grow">Review after the exit <input type="text" name="review" class="tl-scratch-input" placeholder="What you would do the same, or differently"></label>
+    </div>
+    <div class="tl-btnrow"><button type="submit" class="tl-btn active" id="jn-save">Save trade</button><button type="button" class="tl-btn" id="jn-cancel" hidden>Cancel edit</button><span class="tl-hint" id="jn-msg"></span></div>
+  </form>
+
+  <h2>Results</h2>
+  <div id="jn-stats"></div>
+  <h2>Trades</h2>
+  <div class="tl-btnrow"><button type="button" class="tl-btn" id="jn-csv">⬇ CSV</button><button type="button" class="tl-btn" id="jn-json">⬇ Backup (JSON)</button><label class="tl-btn">⬆ Restore backup<input type="file" id="jn-import" accept="application/json" hidden></label><span class="tl-hint">Saved in this browser only. Download a backup now and then.</span></div>
+  <div id="jn-list"></div>
+  <div class="tl-footer-nav"><a href="checklist.html">← Pre-trade checklist</a><a href="practice.html">Practice →</a></div>
+</div>
+<script src="assets/lesson-index.js"></script>
+<!-- DESK:START --><script src="assets/practice-admin.js"></script><!-- DESK:END -->
+<script src="assets/journal.js"></script>
+<script src="assets/vark.js?v=2" defer></script>
+</body>
+</html>

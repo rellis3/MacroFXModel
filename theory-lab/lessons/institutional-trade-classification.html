@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -568,6 +569,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Split new bars with BVC: \(z = \Delta P/\sigma_{\Delta P}\), buy fraction \(\Phi(z)\), \(V_{\text{buy}} = V\cdot\Phi(z)\), the rest sell. Normal CDF values you may need: \(\Phi(1.5) = 0.9332\), \(\Phi(0.75) = 0.7734\), \(\Phi(1.4) = 0.9192\); use \(\Phi(-z) = 1 - \Phi(z)\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\Delta P = +0.00075\), \(\sigma_{\Delta P} = 0.0005\), \(V = 2{,}000\) units. \(z = 0.00075/0.0005 = 1.50\), buy fraction \(\Phi(1.50) = 0.9332\), so \(V_{\text{buy}} = 1{,}866.4\) and \(V_{\text{sell}} =\) <span class="tl-blank" data-answer="133.6" data-tol="0.2" data-unit="units"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\Delta P = -0.00045\), \(\sigma_{\Delta P} = 0.0006\), \(V = 1{,}500\) units. \(z =\) <span class="tl-blank" data-answer="-0.75" data-tol="0.005"></span>. Buy fraction <span class="tl-blank" data-answer="0.2266" data-tol="0.0005"></span>. \(V_{\text{buy}} =\) <span class="tl-blank" data-answer="339.9" data-tol="0.3" data-unit="units"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\Delta P = -0.00084\), \(\sigma_{\Delta P} = 0.0006\), \(V = 800\) units. \(z =\) <span class="tl-blank" data-answer="-1.40" data-tol="0.005"></span>. Buy fraction <span class="tl-blank" data-answer="0.0808" data-tol="0.0005"></span>. \(V_{\text{buy}} =\) <span class="tl-blank" data-answer="64.6" data-tol="0.2" data-unit="units"></span>. \(V_{\text{sell}} =\) <span class="tl-blank" data-answer="735.4" data-tol="0.2" data-unit="units"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -914,7 +932,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   // Standard normal CDF via the Abramowitz & Stegun erf approximation

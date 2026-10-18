@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -381,16 +382,16 @@
       lesson:
     </p>
     <div class="tl-math">
-      \[ d_1 = \frac{\ln(100/105) + (0.02+0.25^2/2)(0.5)}{0.25\sqrt{0.5}} = \frac{-0.04879 + 0.02563}{0.17678} \approx -0.1311 \]
-      \[ d_2 = d_1 - \sigma\sqrt{T} = -0.1311 - 0.17678 \approx -0.3078 \]
+      \[ d_1 = \frac{\ln(100/105) + (0.02+0.25^2/2)(0.5)}{0.25\sqrt{0.5}} = \frac{-0.04879 + 0.02563}{0.17678} \approx -0.1310 \]
+      \[ d_2 = d_1 - \sigma\sqrt{T} = -0.1310 - 0.17678 \approx -0.3078 \]
     </div>
     <div class="tl-eq-break">
-      <div class="tl-eq-chip c1"><code>d&#8321; &asymp; &minus;0.1311</code><span>slightly negative — the call is out of the money</span></div>
+      <div class="tl-eq-chip c1"><code>d&#8321; &asymp; &minus;0.1310</code><span>slightly negative — the call is out of the money</span></div>
       <div class="tl-eq-chip c2"><code>d&#8322; &asymp; &minus;0.3078</code><span>more negative than d&#8321;, as always</span></div>
     </div>
     <p>Next, the standard normal density at \(d_1\):</p>
     <div class="tl-math">
-      \[ \varphi(-0.1311) = \frac{1}{\sqrt{2\pi}}e^{-(-0.1311)^2/2} \approx 0.3989 \times 0.9914 \approx 0.3955 \]
+      \[ \varphi(-0.1310) = \frac{1}{\sqrt{2\pi}}e^{-(-0.1310)^2/2} \approx 0.3989 \times 0.9914 \approx 0.3955 \]
     </div>
     <p>Now assemble Vanna:</p>
     <div class="tl-math">
@@ -457,13 +458,30 @@
       </div>
     </div>
     <div class="tl-readout tl-scratch-readout">
-      d&#8321; = <b id="vanna-scratch-d1">-0.1311</b>&emsp;d&#8322; = <b id="vanna-scratch-d2">-0.3078</b>&emsp;&phi;(d&#8321;) = <b id="vanna-scratch-phi">0.3955</b>
+      d&#8321; = <b id="vanna-scratch-d1">-0.1310</b>&emsp;d&#8322; = <b id="vanna-scratch-d2">-0.3078</b>&emsp;&phi;(d&#8321;) = <b id="vanna-scratch-phi">0.3955</b>
     </div>
     <div class="tl-readout">
       Vanna &asymp; <b id="vanna-scratch-vanna">0.4870</b> per 1.00&sigma; &asymp; <b id="vanna-scratch-vannapt">0.00487</b> per vol point
       <span id="vanna-scratch-note" class="tl-scratch-note"></span>
     </div>
     <button type="button" id="vanna-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Vanna of a call on new inputs, with \(d_1 = [\ln(S/K) + (r + \sigma^2/2)T]/(\sigma\sqrt T)\), \(d_2 = d_1 - \sigma\sqrt T\) and \(\text{Vanna} = -\varphi(d_1)\,d_2/\sigma\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(S = 100\), \(K = 110\), \(r = 1\%\), \(\sigma = 20\%\), \(T = 0.25\). \(\sigma\sqrt T = 0.1\). \(d_1 = (-0.09531 + 0.00750)/0.1 = -0.8781\). \(d_2 = -0.9781\). \(\varphi(d_1) = 0.2713\). Vanna \(=\) <span class="tl-blank" data-answer="1.3269" data-tol="0.001"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(S = 50\), \(K = 48\), \(r = 3\%\), \(\sigma = 30\%\), \(T = 1\). \(\sigma\sqrt T = 0.3\). \(d_1 =\) <span class="tl-blank" data-answer="0.3861" data-tol="0.001"></span>. \(d_2 =\) <span class="tl-blank" data-answer="0.0861" data-tol="0.001"></span>. \(\varphi(d_1) = 0.3703\). Vanna \(=\) <span class="tl-blank" data-answer="-0.1062" data-tol="0.001"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(S = 1.20\), \(K = 1.25\), \(r = 2\%\), \(\sigma = 10\%\), \(T = 0.5\). Find \(d_1\) <span class="tl-blank" data-answer="-0.4005" data-tol="0.001"></span>, \(d_2\) <span class="tl-blank" data-answer="-0.4712" data-tol="0.001"></span>, \(\varphi(d_1)\) <span class="tl-blank" data-answer="0.3682" data-tol="0.001"></span> and Vanna <span class="tl-blank" data-answer="1.7351" data-tol="0.002"></span>. Out of the money, so Vanna is positive again.</p>
+    </div>
   </div>
 
   <div class="tl-box scenario">
@@ -729,10 +747,9 @@
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Vanna and charm flows into options expiry: untested here.</strong> The tempting claim is that dealers'
-    vol- and time-driven re-hedging pushes index prices in a predictable direction in the days around monthly expiry. A
-    fair test would need a daily dealer Vanna and Charm exposure series computed point-in-time from that morning's open
+    vol- and time-driven re-hedging pushes index prices in a predictable direction in the days around monthly expiry. <div class="tl-howtotest"><strong>How to test it:</strong> A fair test would need a daily dealer Vanna and Charm exposure series computed point-in-time from that morning's open
     interest, a pre-registered direction and window (for example, the five sessions into monthly expiry), matched
-    non-expiry weeks with the same volatility as controls, and a held-out period. None of that has been run.</span>
+    non-expiry weeks with the same volatility as controls, and a held-out period. The pass gate is a direction-adjusted return gap whose 95% interval clears zero in both halves of the sample, beating the controls by more than the spread and fees. None of that has been run.</div></span>
   </div>
   <!-- DESK:END -->
 <!-- DESK:START -->  <p>
@@ -819,7 +836,7 @@
       <li data-verdict="ok">Keep the size but put a stop-loss order under the market.<div class="tl-drill-why">A stop is better than nothing, but it assumes there will be a price near your stop. In a gap the order fills wherever the next trade happens, which can be far from where you placed it.</div></li>
       <li data-verdict="bad">Double it, and hedge Vanna and Vomma precisely with other options.<div class="tl-drill-why">Neutralizing the second-order terms helps against moderate joint moves in price and vol. It does nothing once the move is so large that the whole expansion stops describing the book.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> That morning the SNB removed the floor without warning and cut its deposit rate to −0.75%. EUR/CHF traded as low as about 0.85 within minutes, a fall of close to 30%, before recovering part of the way the same day, and many orders were filled far from where they had been placed. Implied volatility jumped from very low levels. FXCM needed a rescue loan of about $300 million from Leucadia, and Alpari's UK arm became insolvent.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> That morning the SNB removed the floor without warning and cut its deposit rate to −0.75%. EUR/CHF traded as low as about 0.85 within minutes (the exact low varied by data feed), a fall of close to 30%, before recovering part of the way the same day, and many orders were filled far from where they had been placed. Implied volatility jumped from very low levels. FXCM needed a rescue loan of about $300 million from Leucadia, and Alpari's UK arm became insolvent.</p><p class="tl-drill-sources">Sources: <a href="https://www.snb.ch/en/mmr/reference/pre_20110906/source/pre_20110906.en.pdf">Swiss National Bank press release, 6 Sep 2011</a> (the 1.20 minimum rate); <a href="https://www.snb.ch/en/mmr/reference/pre_20150115/source/pre_20150115.en.pdf">Swiss National Bank press release, 15 Jan 2015</a> (floor discontinued, rate cut to −0.75%); Reuters, 15 Jan 2015; <a href="https://www.financemagnates.com/forex/brokers/breaking-leucadia-hands-fxcm-300-mln-life-line/">Finance Magnates, 16 Jan 2015</a> (FXCM and Leucadia); Reuters, 16 Jan 2015 (Alpari UK insolvency)</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -999,7 +1016,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

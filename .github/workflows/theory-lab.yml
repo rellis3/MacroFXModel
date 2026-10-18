@@ -40,3 +40,24 @@ jobs:
         run: node js/progressSync.test.mjs
       - name: Shared view (desk material sits inside DESK markers)
         run: node js/deskStrip.test.mjs
+      - name: Lesson audio manifest (files present; stale recordings listed)
+        run: node js/lessonAudio.test.mjs
+      - name: Practice index (drills in practice-data.js match the lessons)
+        run: node js/buildPracticeIndex.mjs --check
+
+  # Every number printed in a lesson's calculator readout must equal what the calculator computes on load.
+  # Runs the pages in Chromium (JavaScript off, then on) and compares the two.
+  readouts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright and Chromium (outside the repo's own dependencies)
+        run: |
+          mkdir -p /tmp/pw && cd /tmp/pw && npm init -y >/dev/null && npm i playwright@1.56.0 >/dev/null
+          npx --prefix /tmp/pw playwright install --with-deps chromium
+      - name: Printed readouts match their calculators
+        run: NODE_PATH=/tmp/pw/node_modules node js/lessonReadouts.e2e.mjs

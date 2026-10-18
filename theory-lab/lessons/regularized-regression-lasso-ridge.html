@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -556,6 +557,23 @@
     <button type="button" id="rr-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Shrink one coefficient both ways, on new numbers, with the same single-coefficient forms: Ridge gives \(\hat\beta_{OLS}/(1+\lambda)\); LASSO gives \(\text{sign}(\hat\beta_{OLS})\max(|\hat\beta_{OLS}| - \lambda,\ 0)\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\hat\beta_{OLS} = 2.5\), \(\lambda = 0.5\). Ridge \(= 2.5/1.5 = 1.667\). LASSO \(= \max(2.5 - 0.5,\ 0) =\) <span class="tl-blank" data-answer="2.0" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\hat\beta_{OLS} = -1.8\), \(\lambda = 0.6\). Ridge \(=\) <span class="tl-blank" data-answer="-1.125" data-tol="0.002"></span>. LASSO \(= -\max(1.8 - 0.6,\ 0) =\) <span class="tl-blank" data-answer="-1.2" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\hat\beta_{OLS} = 0.9\), \(\lambda = 1.2\). Ridge <span class="tl-blank" data-answer="0.409" data-tol="0.002"></span>, LASSO <span class="tl-blank" data-answer="0" data-tol="0.001"></span>. The penalty is bigger than the coefficient, so LASSO deletes it while Ridge keeps almost half of it.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">The same three coefficients as λ increases</div>
     <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two line-chart panels tracking three coefficients as regularization strength lambda increases. Left panel, Ridge: all three coefficients move smoothly toward zero, the offsetting near-duplicate pair fastest and the noise coefficient barely, but none reach it. Right panel, LASSO: the noise coefficient hits exactly zero first, the duplicate coefficient hits exactly zero next, and the real-signal coefficient shrinks but stays clearly nonzero throughout">
@@ -902,7 +920,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   var DEFAULTS = { beta: 3.4, lambda: 1 };

@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -497,6 +498,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>PIN from fitted parameters, three new stocks: informed rate \(\alpha\mu\), uninformed rate \(2\varepsilon\), then \(\text{PIN} = \alpha\mu/(\alpha\mu + 2\varepsilon)\). Ignore \(\delta\); it does not enter.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\hat\alpha = 0.20\), \(\hat\mu = 200\), \(\hat\varepsilon = 120\). Informed rate \(0.20 \times 200 = 40\) trades a day. Uninformed rate \(2 \times 120 = 240\). So PIN \(= 40/280 =\) <span class="tl-blank" data-answer="0.143" data-tol="0.0006"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\hat\alpha = 0.40\), \(\hat\mu = 90\), \(\hat\varepsilon = 60\), \(\hat\delta = 0.7\). Informed rate <span class="tl-blank" data-answer="36" data-tol="0.05"></span> trades a day. Uninformed rate <span class="tl-blank" data-answer="120" data-tol="0.05"></span>. PIN <span class="tl-blank" data-answer="0.231" data-tol="0.0006"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\hat\alpha = 0.30\), \(\hat\mu = 180\), \(\hat\varepsilon = 75\), \(\hat\delta = 0.4\). Informed rate <span class="tl-blank" data-answer="54" data-tol="0.05"></span>. Uninformed rate <span class="tl-blank" data-answer="150" data-tol="0.05"></span>. PIN <span class="tl-blank" data-answer="0.265" data-tol="0.0006"></span>. On a bad-news day, expected sells are <span class="tl-blank" data-answer="255" data-tol="0.5"></span> against expected buys of 75.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">The PIN day-type tree, feeding into the formula</div>
     <svg viewBox="0 0 1080 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tree diagram. A root node, trading day t, branches into two: no event with probability one minus alpha, and information event with probability alpha. The no-event branch leads to a leaf showing uninformed buyers and sellers both arriving at rate epsilon. The information-event branch splits further into bad news with probability delta, leading to a leaf with buys at rate epsilon and sells at rate mu plus epsilon, and good news with probability one minus delta, leading to a leaf with buys at rate mu plus epsilon and sells at rate epsilon. All three leaves converge into a box showing the PIN formula: alpha times mu, divided by alpha times mu plus two epsilon.">
@@ -879,7 +897,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   var DEFAULTS = { alpha: 0.25, mu: 150, eps: 100 };

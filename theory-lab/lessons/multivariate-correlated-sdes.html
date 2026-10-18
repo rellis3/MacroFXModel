@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -520,7 +521,24 @@
       <span id="chol-scratch-note" class="tl-scratch-note"></span>
     </div>
     <button type="button" id="chol-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
-  </div>
+</div>
+<div class="tl-fade">
+<div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+<p>The 2×2 Cholesky mixing step: \(L_{21} = \rho\), \(L_{22} = \sqrt{1-\rho^2}\), and the correlated shock \(dW^2_{\text{corr}} = \rho z_1 + L_{22} z_2\) (the first shock is just \(z_1\)). New inputs each round; three decimals.</p>
+<div class="tl-fade-round">
+<h4>Round 1 · one value left to you</h4>
+<p>\(\rho = 0.5\), \(z_1 = 1.2\), \(z_2 = -0.4\). \(L_{22} = \sqrt{1 - 0.25} = 0.866\). Then \(dW^2_{\text{corr}} = 0.5(1.2) + 0.866(-0.4) = 0.6 - 0.346 =\) <span class="tl-blank" data-answer="0.254" data-tol="0.002"></span></p>
+</div>
+<div class="tl-fade-round">
+<h4>Round 2 · new inputs, more left to you</h4>
+<p>\(\rho = -0.8\), \(z_1 = 0.5\), \(z_2 = 1.5\). \(L_{22} =\) <span class="tl-blank" data-answer="0.6" data-tol="0.002"></span>, and \(dW^2_{\text{corr}} =\) <span class="tl-blank" data-answer="0.5" data-tol="0.002"></span>.</p>
+</div>
+<div class="tl-fade-round">
+<h4>Round 3 · on your own</h4>
+<p>\(\rho = 0.9\), \(z_1 = -1\), \(z_2 = 0.8\). \(L_{21} =\) <span class="tl-blank" data-answer="0.9" data-tol="0.002"></span>; \(L_{22} =\) <span class="tl-blank" data-answer="0.436" data-tol="0.002"></span>; \(dW^2_{\text{corr}} =\) <span class="tl-blank" data-answer="-0.551" data-tol="0.002"></span>. The second shock follows the first closely, as a correlation of 0.9 should.</p>
+</div>
+</div>
+
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -570,11 +588,10 @@
       historical returns, Cholesky-decompose it, and simulate all three pairs'
       shocks from the same mixed, correlated \(dW_{\text{correlated}}\) vector —
       the exact recipe in step 3 above, just with \(n=3\) instead of \(n=2\).
-      The point of the machinery isn't academic elegance; it's the difference
-      between a VaR number that reflects how these three positions actually
-      move together and one that quietly assumes they don't.
-    </p>
-  </div>
+      The point of the machinery isn't academic elegance; it's the difference between a VaR number that reflects how these three positions actually move together and one that quietly assumes they don't.
+</p>
+</div>
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../correlations.html">Correlation Lab</a> shows the live correlation matrix across pairs, the input this lesson's Cholesky step would factor.</div><!-- DESK:END -->
 
   <!-- WB:multivariate_correlated_sdes:START -->
   <div class="wb" id="wb-multivariate_correlated_sdes" data-title="Mixing independent shocks into correlated ones, step by step">
@@ -809,7 +826,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

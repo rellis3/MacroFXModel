@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -414,6 +415,23 @@
     <button type="button" id="wav-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Run a one-level Haar transform on new returns (in percent): for each pair, \(a_i = (x_{2i}+x_{2i+1})/2\) and \(d_i = (x_{2i}-x_{2i+1})/2\). Then find which pair holds the shock.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>x = [0.20, −0.20, 0.10, −0.10, 0.40, −0.40, 0.15, −0.15]. Pair 1: \(d_1 = 0.200\). Pair 2: \(d_2 = 0.100\). Pair 3: \(d_3 =\) <span class="tl-blank" data-answer="0.4" data-tol="0.005"></span>. Pair 4: \(d_4 = 0.150\). No pair stands out: the largest detail is only 2.7 times the smallest, so there is no shock to localise.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>x = [0.08, −0.04, 2.00, −0.20, 0.10, −0.06, 0.04, −0.12]. Pair 1: \(d_1 = 0.060\). Pair 2: \(a_2 =\) <span class="tl-blank" data-answer="0.9" data-tol="0.005"></span> and \(d_2 =\) <span class="tl-blank" data-answer="1.1" data-tol="0.005"></span>. Pair 3: \(d_3 = 0.080\). Pair 4: \(d_4 = 0.080\).</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>x = [0.12, −0.08, 0.05, −0.15, −1.80, 0.20, 0.06, −0.04]. Find \(d_1\) <span class="tl-blank" data-answer="0.1" data-tol="0.005"></span>, \(d_2\) <span class="tl-blank" data-answer="0.1" data-tol="0.005"></span>, \(d_3\) <span class="tl-blank" data-answer="-1" data-tol="0.005"></span>, \(d_4\) <span class="tl-blank" data-answer="0.05" data-tol="0.005"></span>. The shock is in pair <span class="tl-blank" data-answer="3" data-tol="0"></span>, and its detail is 10 times the size of \(d_1\), with a negative sign because the big move was down.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -433,6 +451,8 @@
       scalogram itself only describes what happened, it doesn't license a trade.
     </p>
   </div>
+
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../event-response.html">Event Response</a> shows, per scheduled release, how many times a normal half-hour's range the market typically spikes; that is the "how big, how soon" that a scalogram around the same event would draw as a band.</div><!-- DESK:END -->
 
   <!-- WB:wavelets_time_frequency:START -->
   <div class="wb" id="wb-wavelets_time_frequency" data-title="Wavelets: which cycles, and when">
@@ -694,7 +714,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

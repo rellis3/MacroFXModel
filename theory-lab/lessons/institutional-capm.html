@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -593,6 +594,23 @@
     <button type="button" id="capm-scratch-reset" class="tl-scratch-reset-btn">Reset to Asset A's worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Beta, the CAPM prediction and alpha, as in the worked example, now with four years of returns. Divide by \(n = 4\) for the variance and covariance, as the worked example divides by 5.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Market (%): 10, −2, 6, 2. Asset (%): 13, −5, 9, 3. \(R_f = 1\%\). Market mean 4%, deviations \([6,-6,2,-2]\), variance \(80/4 = 20\). Asset mean 5%, deviations \([8,-10,4,-2]\), covariance \((48+60+8+4)/4 = 30\). So \(\beta = 30/20 = 1.5\) and CAPM predicts \(1 + 1.5\times(4-1) = 5.5\%\). Alpha is <span class="tl-blank" data-answer="-0.5" data-tol="0.05" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Market (%): 12, −4, 8, 0. Asset (%): 7, 1, 6, 2. \(R_f = 2\%\). Market mean 4%, variance 40. Asset mean 4%. Covariance: <span class="tl-blank" data-answer="16" data-tol="0.05"></span>. Beta: <span class="tl-blank" data-answer="0.4" data-tol="0.005"></span>. Alpha: <span class="tl-blank" data-answer="1.2" data-tol="0.05" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Market (%): 5, 15, −5, 9. Asset (%): 4, 20, −10, 10. \(R_f = 3\%\). Beta (two decimals): <span class="tl-blank" data-answer="1.4906" data-tol="0.006"></span>. CAPM prediction: <span class="tl-blank" data-answer="7.4717" data-tol="0.02" data-unit="%"></span>. Alpha: <span class="tl-blank" data-answer="-1.4717" data-tol="0.02" data-unit="%"></span></p>
+    </div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>The empirical failure this whole category exists to address</h2>
   <p>
@@ -754,7 +772,8 @@
     where the line between "this repo's beta" and "CAPM's beta" actually
     sits, rather than assuming either that nothing like this exists here or
     that this already <em>is</em> CAPM.
-  </div><!-- DESK:END -->
+  </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../correlations.html">Correlation Lab</a> has a Factor Betas tab with each pair's rolling betas to the macro proxies, the same \(\mathrm{Cov}/\mathrm{Var}\) slope as this lesson, against several factors instead of one market.</div><!-- DESK:END -->
 
   <div class="tl-drill">
     <div class="tl-drill-label">Scenario drill · an illustrative allocation meeting</div>
@@ -932,7 +951,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   var rf = document.getElementById('capm-scratch-rf');

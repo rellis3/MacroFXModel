@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -357,6 +358,23 @@
     <button type="button" id="tec-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>For the same one-way noisy channel, \(TE_{X\to Y} = 1 - H(\varepsilon)\), with the binary entropy \(H(\varepsilon) = -\varepsilon\log_2\varepsilon - (1-\varepsilon)\log_2(1-\varepsilon)\). Work it out for three new flip probabilities, to four decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\varepsilon = 0.2\). \(-0.2\log_2 0.2 = 0.4644\) and \(-0.8\log_2 0.8 = 0.2575\), so \(H(0.2) = 0.7219\) bits. \(TE_{X\to Y} = 1 - 0.7219 =\) <span class="tl-blank" data-answer="0.2781" data-tol="0.0003" data-unit="bits"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\varepsilon = 0.05\). \(-0.05\log_2 0.05 = 0.2161\). The second term \(-0.95\log_2 0.95\) is <span class="tl-blank" data-answer="0.0703" data-tol="0.0003"></span>, so \(H(0.05) =\) <span class="tl-blank" data-answer="0.2864" data-tol="0.0003" data-unit="bits"></span> and \(TE_{X\to Y} =\) <span class="tl-blank" data-answer="0.7136" data-tol="0.0003" data-unit="bits"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\varepsilon = 0.3\). Find \(H(0.3)\) <span class="tl-blank" data-answer="0.8813" data-tol="0.0003" data-unit="bits"></span>, \(TE_{X\to Y}\) <span class="tl-blank" data-answer="0.1187" data-tol="0.0003" data-unit="bits"></span>, and \(TE_{Y\to X}\) <span class="tl-blank" data-answer="0" data-tol="0" data-unit="bits"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">The worked example's asymmetry, drawn to scale</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart comparing transfer entropy in each direction. TE from X to Y is a tall bar at approximately 0.531 bits. TE from Y to X is a bar at exactly zero bits, drawn as a flat line at the baseline.">
@@ -474,6 +492,7 @@
     this is an illustration of what the tool is for, not a result.<!-- DESK:END -->
     </p>
   </div>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../credit-leadlag.html">Credit → Risk-vol Lead-Lag Study</a> runs the linear version of this question, credit velocity today against forward vol at each lag, scored out of sample; transfer entropy is the nonlinear check you would add on top.</div><!-- DESK:END -->
 
   <div class="tl-box pitfall"><div class="tl-icon-badge red">⚠️</div><div class="tl-box-label">Common pitfalls</div>
     <h3>Where this goes wrong in practice</h3>
@@ -660,7 +679,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

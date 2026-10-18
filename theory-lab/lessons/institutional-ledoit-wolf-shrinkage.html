@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 <style>
@@ -629,6 +630,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Shrink one off-diagonal entry toward the constant-correlation target: sample covariance \(\hat\Sigma_{ij} = \rho_{ij}\sigma_i\sigma_j\), target \(F_{ij} = \bar\rho\,\sigma_i\sigma_j\) with \(\bar\rho\) the average of the three correlations, then \(\Sigma_{ij} = \delta F_{ij} + (1-\delta)\hat\Sigma_{ij}\). New baskets each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\sigma = 1.5,\ 2.5,\ 1.0\); \(\rho_{12}=0.20,\ \rho_{13}=0.50,\ \rho_{23}=0.35\); \(\delta = 0.40\). Sample \(\hat\Sigma_{12} = 0.20(1.5)(2.5) = 0.75\). Average correlation \(\bar\rho = 0.35\), so \(F_{12} = 0.35(1.5)(2.5) = 1.3125\). Shrunk \(\Sigma_{12} = 0.40(1.3125) + 0.60(0.75) =\) <span class="tl-blank" data-answer="0.975" data-tol="0.002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\sigma = 2.0,\ 1.0,\ 4.0\); \(\rho_{12}=0.10,\ \rho_{13}=0.40,\ \rho_{23}=0.70\); \(\delta = 0.25\). Work on \(\Sigma_{23}\). Sample \(\hat\Sigma_{23} = 0.70(1.0)(4.0) = 2.80\). Average correlation \(\bar\rho =\) <span class="tl-blank" data-answer="0.40" data-tol="0.002"></span>. Target \(F_{23} =\) <span class="tl-blank" data-answer="1.60" data-tol="0.005"></span>. Shrunk \(\Sigma_{23} =\) <span class="tl-blank" data-answer="2.50" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\sigma = 3.0,\ 2.0,\ 1.2\); \(\rho_{12}=0.60,\ \rho_{13}=0.15,\ \rho_{23}=0.36\); \(\delta = 0.55\). For \(\Sigma_{12}\): sample \(\hat\Sigma_{12} =\) <span class="tl-blank" data-answer="3.60" data-tol="0.005"></span>, \(\bar\rho =\) <span class="tl-blank" data-answer="0.37" data-tol="0.002"></span>, \(F_{12} =\) <span class="tl-blank" data-answer="2.22" data-tol="0.01"></span>, shrunk \(\Sigma_{12} =\) <span class="tl-blank" data-answer="2.841" data-tol="0.006"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -1000,6 +1018,7 @@
     </div>
     <p class="tl-fits-why"><strong>Why you'd care:</strong> every optimiser, risk-parity weight and covariance-based VaR you run inherits the noise in its covariance matrix, and shrinkage is the cheap, standard fix.</p>
   </nav>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../correlations.html">Correlation Lab</a> shows the rolling sample correlation matrix across the pairs; that raw heatmap is the noisy \(\hat\Sigma\) side of this lesson, before any shrinkage.</div><!-- DESK:END -->
 
   <div class="tl-footer-nav">
     <a href="institutional-breeden-litzenberger-variance-swaps.html">← Breeden-Litzenberger &amp; Variance Swaps</a>
@@ -1032,7 +1051,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   var DASH = '—';

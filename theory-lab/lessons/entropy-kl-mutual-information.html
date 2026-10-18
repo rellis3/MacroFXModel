@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -367,6 +368,23 @@
     probability to something that turns out to be common is punished far more harshly, in bits, than
     the reverse — assigning only moderate probability to something that turns out to be rare.
     </p>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>KL divergence in both directions for new pairs of coins: \(D_{\text{KL}}(P\|Q) = \sum p_i \log_2 (p_i/q_i)\), with \(P\) the true coin and \(Q\) the model.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>The true coin is \(P = (0.8, 0.2)\); the model says fair, \(Q = (0.5, 0.5)\). \(\log_2(0.8/0.5) = 0.6781\) and \(\log_2(0.2/0.5) = -1.3219\), so \(D_{\text{KL}}(P\|Q) = 0.8(0.6781) + 0.2(-1.3219) = 0.5425 - 0.2644\) = <span class="tl-blank" data-answer="0.278" data-tol="0.001" data-unit="bits"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Truth \(P = (0.9, 0.1)\), model \(Q = (0.6, 0.4)\). The logs are \(\log_2 1.5 = 0.585\) and \(\log_2 0.25 = -2\). \(D_{\text{KL}}(P\|Q)\) = <span class="tl-blank" data-answer="0.3265" data-tol="0.0015" data-unit="bits"></span>. Swap the roles: \(D_{\text{KL}}(Q\|P)\) = <span class="tl-blank" data-answer="0.449" data-tol="0.0015" data-unit="bits"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Truth \(P = (0.95, 0.05)\), model \(Q = (0.7, 0.3)\). \(D_{\text{KL}}(P\|Q)\) = <span class="tl-blank" data-answer="0.289" data-tol="0.0015" data-unit="bits"></span>. \(D_{\text{KL}}(Q\|P)\) = <span class="tl-blank" data-answer="0.467" data-tol="0.0015" data-unit="bits"></span>. The second is about <span class="tl-blank" data-answer="1.61" data-tol="0.02"></span> times the first: again the bigger cost falls on the direction where the true coin is the less lopsided one and the model is the overconfident one.</p>
+    </div>
   </div>
 
   <div class="tl-box example">
@@ -783,7 +801,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

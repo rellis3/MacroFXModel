@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">The Research Pipeline — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full worked example, the practitioner section, and a 6-question self-test?<a href="research-pipeline-hypothesis-to-backtest.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,85 @@
       <p class="sl-lede">Every strategy that ever gets traded starts as an idea, and every idea eventually has to survive the same five-stage gauntlet: state why it should work before looking at the data, test the plainest possible version, add complexity deliberately and count every attempt, validate on data it never touched, and only then — skeptically — call it a candidate. This is the first lesson in a brand-new category, and it's the connective tissue between two lessons already in this curriculum: it's the reason the <a href="multiple-testing-micro.html" style="color:var(--blue)">Multiple Testing</a> math matters, and the reason the <a href="walk-forward-purged-cv-micro.html" style="color:var(--blue)">Walk-Forward &amp; Purged Cross-Validation</a> split has to be genuine. Get the order wrong and both of those lessons quietly become the explanation for why a great-looking backtest wasn't.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five boxes in a row, the research pipeline in order, with the lesson's worked example: 1, a mechanism written down first; 2, a zero-parameter rule with Sharpe 0.35; 3, two filters added and counted, Sharpe 0.52 then 0.61 over N equals 3 trials; 4, out of sample with costs, 0.40 on 34 trades; 5, a bar of 0.30 set before the test, so the verdict is a pass. A red dashed loop from the verdict back to the start marks the trap of trying new variants on the same data. Below, large NHLBI clinical trials: 17 of 30 (57%) reported a benefit before outcomes had to be registered in advance, 2 of 25 (8%) after.">
+      <rect class="tlp-box blue" x="10" y="20" width="104" height="56" rx="6"/>
+      <text class="tlp-text" x="62" y="43" text-anchor="middle" font-size="13" font-weight="700">1 · Mechanism</text>
+      <text class="tlp-blue" x="62" y="62" text-anchor="middle" font-size="12" font-weight="700">the why, first</text>
+      <text class="tlp-text3" x="62" y="94" text-anchor="middle" font-size="12">written down</text>
+      <rect class="tlp-box purple" x="128" y="20" width="104" height="56" rx="6"/>
+      <text class="tlp-text" x="180" y="43" text-anchor="middle" font-size="13" font-weight="700">2 · Minimal</text>
+      <text class="tlp-purple" x="180" y="62" text-anchor="middle" font-size="12" font-weight="700">Sharpe 0.35</text>
+      <text class="tlp-text3" x="180" y="94" text-anchor="middle" font-size="12">zero parameters</text>
+      <rect class="tlp-box amber" x="246" y="20" width="104" height="56" rx="6"/>
+      <text class="tlp-text" x="298" y="43" text-anchor="middle" font-size="13" font-weight="700">3 · Add, count</text>
+      <text class="tlp-amber" x="298" y="62" text-anchor="middle" font-size="12" font-weight="700">0.52 → 0.61</text>
+      <text class="tlp-text3" x="298" y="94" text-anchor="middle" font-size="12">N = 3 trials</text>
+      <rect class="tlp-box green" x="364" y="20" width="104" height="56" rx="6"/>
+      <text class="tlp-text" x="416" y="43" text-anchor="middle" font-size="13" font-weight="700">4 · OOS test</text>
+      <text class="tlp-green" x="416" y="62" text-anchor="middle" font-size="12" font-weight="700">0.40 on 34</text>
+      <text class="tlp-text3" x="416" y="94" text-anchor="middle" font-size="12">costs in, purged</text>
+      <rect class="tlp-box blue" x="482" y="20" width="104" height="56" rx="6"/>
+      <text class="tlp-text" x="534" y="43" text-anchor="middle" font-size="13" font-weight="700">5 · Verdict</text>
+      <text class="tlp-blue" x="534" y="62" text-anchor="middle" font-size="12" font-weight="700">bar 0.30: pass</text>
+      <text class="tlp-text3" x="534" y="94" text-anchor="middle" font-size="12">bar set before 4</text>
+      <line class="tlp-line" x1="114" y1="48" x2="124" y2="48"/>
+      <polygon class="tlp-arrow" points="127.0,48.0 120.0,52.0 120.0,44.0"/>
+      <line class="tlp-line" x1="232" y1="48" x2="242" y2="48"/>
+      <polygon class="tlp-arrow" points="245.0,48.0 238.0,52.0 238.0,44.0"/>
+      <line class="tlp-line" x1="350" y1="48" x2="360" y2="48"/>
+      <polygon class="tlp-arrow" points="363.0,48.0 356.0,52.0 356.0,44.0"/>
+      <line class="tlp-line" x1="468" y1="48" x2="478" y2="48"/>
+      <polygon class="tlp-arrow" points="481.0,48.0 474.0,52.0 474.0,44.0"/>
+      <path class="tlp-line red dash" d="M534,104 C534,140 14,140 14,86"/>
+      <polygon class="tlp-red" points="14.0,79.0 19.0,88.0 9.0,88.0"/>
+      <text class="tlp-red" x="298" y="152" text-anchor="middle" font-size="13" font-weight="700">the trap: back to new variants on the same data</text>
+      <text class="tlp-text3" x="10" y="182" font-size="12">Large NHLBI clinical trials reporting a benefit:</text>
+      <text class="tlp-text2" x="150" y="204" text-anchor="end" font-size="13">before registration</text>
+      <rect class="tlp-green" x="160" y="192" width="193.8" height="16" rx="3"/>
+      <text class="tlp-green" x="362" y="205" font-size="13" font-weight="700">17 of 30 · 57%</text>
+      <text class="tlp-text2" x="150" y="228" text-anchor="end" font-size="13">after (from 2000)</text>
+      <rect class="tlp-red" x="160" y="216" width="27.2" height="16" rx="3"/>
+      <text class="tlp-red" x="196" y="229" font-size="13" font-weight="700">2 of 25 · 8%</text>
+    </svg>
+    <figcaption>The order is the safeguard. Write the mechanism and the pass bar down before the data can answer, count every variant you try, and a null result stays visible. When trials had to declare their outcome in advance, reported successes fell from 57% to 8%.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I've got a moving-average crossover with a Sharpe of one point four. Can we trade it?</p>
+      <p data-who="Quant">How did you get there?</p>
+      <p data-who="Trader">The first version was flat. So was the second. Then I added a volatility filter, a day-of-week filter, a stop. By the eighth tweak it looked great.</p>
+      <p data-who="Quant">Then you have tried eight things and reported the best one. Give anyone a big enough bag of keys and one of them will turn the lock. That doesn't mean it was cut for that lock.</p>
+      <p data-who="Trader">So what should I have done?</p>
+      <p data-who="Quant">Five stages, in order. First, the mechanism. Say why the effect should exist before you look at any data. A pattern you noticed on a chart is not a reason.</p>
+      <p data-who="Trader">Give me one that is.</p>
+      <p data-who="Quant">The lesson's example. Money tends to flow towards the currency with the higher policy rate. So the plainest rule is: be long the higher-rate currency whenever the gap is positive. No lookback, no threshold, nothing to tune.</p>
+      <p data-who="Trader">And that's stage two.</p>
+      <p data-who="Quant">Right. Measure it with costs and write the number down. Say it gives a Sharpe of point three five. Modest, but honest, because there was nothing in it to fit to noise.</p>
+      <p data-who="Trader">Then I can start adding filters.</p>
+      <p data-who="Quant">One at a time, and count them. A fifty basis point filter takes it to point five two. A volatility filter takes it to point six one. That's three trials, and every discarded attempt counts too.</p>
+      <p data-who="Trader">Then the out-of-sample test.</p>
+      <p data-who="Quant">But first, stage five: write down what passing means. Say a Sharpe above point three on at least thirty trades. Then run the test on data the tuning never saw, with real costs. It comes back at point four on thirty-four trades. Supported, and nobody moved the goalposts.</p>
+      <p data-who="Trader">Does writing it down first really change anything?</p>
+      <p data-who="Quant">Ask medicine. Large heart and lung trials funded by the American government had to register their main outcome in advance from 2000. Before that, seventeen of thirty reported a benefit. After it, two of twenty-five. Fifty-seven percent fell to eight.</p>
+      <p data-who="Trader">Because they couldn't pick the outcome after seeing the data.</p>
+      <p data-who="Quant">Exactly. And the same goes for you. If you only decide after the test that point two seven is "pretty good for currencies", you've turned a null into a maybe.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">The order is the safeguard: mechanism, plain test, counted tweaks, a bar written first, then the honest out-of-sample number.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">A bag of a thousand keys will always open something</h2>
       <div class="sl-quote">Hand someone a lock and a thousand keys, and tell them to find the one that fits. Try enough keys and, on attempt 640, one turns. Have they learned that key 640 is special — cut for that lock? Not really. Given a large enough bag, <em>something</em> was always going to turn eventually, whether or not any key was ever meant for that lock. A disciplined locksmith works the other way: reason about the lock first, try a specific motivated guess, and if it fails, say so — rather than quietly reaching for key 641, 642, 643… and reporting only the one that clicked.</div>
@@ -39,7 +118,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Five stages, in order</h2>
       <p class="sl-sub">Each stage closes a specific way the earlier ones, done alone, would mislead. Step through them.</p>
@@ -75,7 +154,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">One shortcut undoes all five stages</h2>
       <p class="sl-sub">The dashed red loop is the failure mode: a disappointing verdict quietly sends you back to try a new variant on the same data.</p>
@@ -135,7 +214,7 @@
       <div class="sl-note">The loop isn't wrong because looking for a better idea is wrong — it's wrong because it turns a disciplined pipeline back into an undisclosed search, quietly re-opening the exact problem Stage 1 and Stage 5 exist to close.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A mechanism is falsifiable. A pattern is just a memory.</h2>
       <p class="sl-sub">Stage 1, done right versus done backwards.</p>
@@ -162,7 +241,7 @@
       <div class="sl-quote">Confusing the two is the single most common way a research process turns into curve-fitting without anyone intending it — every individual step afterward can be executed correctly, and the result is still worthless, because the leak happened here, before any test began.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Taste the soup before you add the spices</h2>
       <p class="sl-sub">Stages 2 and 3: measure the plain version, then add complexity as a tracked, deliberate purchase.</p>
@@ -180,7 +259,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">A correct test on the wrong data is still wrong</h2>
       <p class="sl-sub">Stage 4 needs two things at once: real costs, and a split that doesn't quietly leak.</p>
@@ -207,7 +286,7 @@
       <div class="sl-quote">A plain chronological split date is necessary but not sufficient — features and labels built from rolling windows can straddle the boundary and leak test-period information backward into training even when the date itself looks clean. This is the entire subject of <a href="walk-forward-purged-cv-micro.html" style="color:var(--blue)">Walk-Forward &amp; Purged Cross-Validation</a>: read it before trusting any Stage 4 number.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">"Researching until you find something" has a name</h2>
       <p class="sl-sub">Trying variation after variation until one backtests well is functionally the same failure the Multiple Testing lesson's math describes. Drag the slider.</p>
@@ -234,7 +313,7 @@
       <p class="sl-p">This is exactly the <a href="multiple-testing-micro.html" style="color:var(--blue)">Multiple Testing</a> lesson's family-wise error rate, aimed at a research loop instead of a batch of pre-planned tests. Reporting only the variation that happened to clear the bar — without saying how many were tried — is the same failure mode as reporting only the best of 70 pre-sliced tests.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Same arithmetic, your numbers</h2>
       <p class="sl-sub">P(at least one looks good by chance) = 1 − (1 − p)ⁿ. Change either field.</p>
@@ -255,7 +334,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Write the bar down before you see the number</h2>
       <p class="sl-sub">Pre-registration, Stage 5 — testing first and rationalizing after is a genuinely different, less honest practice.</p>
@@ -285,7 +364,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The crossover that "worked" after the eighth tweak</h2>
       <p class="sl-sub">Same effort, run through the pipeline — three of five stages had already broken before any out-of-sample test ran.</p>
@@ -299,7 +378,7 @@
     </section>
 
     <!-- WB:research_pipeline_hypothesis_to_backtest-deck:START -->
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">The five stages, run in order and out of order</h2>
       <!-- WB:research_pipeline_hypothesis_to_backtest:START -->
@@ -310,7 +389,7 @@
     </section>
     <!-- WB:research_pipeline_hypothesis_to_backtest-deck:END -->
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">A prior written down, and beaten</h2>
       <div class="sl-callout amber">
@@ -333,7 +412,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">The verdict, and what Stage 5 doesn't cover</h2>
     <!-- DESK:END -->
@@ -351,7 +430,7 @@
     </section>
       <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -402,7 +481,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research afternoon</div>
+    <h3>The out-of-sample number comes back just under the bar</h3>
+    <p>You followed the pipeline. The mechanism was written down, the zero-parameter baseline recorded, three trials logged, and the bar fixed in advance: an out-of-sample Sharpe above 0.30 on at least 30 trades. The test comes back at 0.27 on 31 trades. A colleague says 0.27 is respectable for currencies, and suggests adding a volatility filter and rerunning on the same holdout. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Call it supported. 0.27 is close enough, and decent for this asset class.<div class="tl-drill-why">The bar was 0.30 and it was written down first. Deciding after the fact that a lower number counts is moving the goalposts to where the ball landed. That is the one thing pre-registration exists to prevent.</div></li>
+      <li data-verdict="bad">Add the volatility filter and rerun on the same holdout until it clears 0.30.<div class="tl-drill-why">The holdout has now been used to choose the rule, so it is no longer out of sample. This is the red loop in the pipeline diagram: a quiet return to Stage 3 using the test data as a second round of tuning.</div></li>
+      <li data-verdict="good">Bank it as not supported, exactly as written. If the filter has its own mechanism, log it as trial 4 and test it on data the holdout never touched.<div class="tl-drill-why">The verdict stays a visible null. A new idea is a new hypothesis, with its trial counted and its own untouched test data, so nothing leaks from this result into the next one.</div></li>
+      <li data-verdict="ok">Bank it as not supported, then drop the project without writing it up.<div class="tl-drill-why">The verdict is honest, but an unrecorded null is a hidden trial. Anyone who later tests a similar idea will undercount how many variations have been tried, and their multiple-testing correction will be too generous.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this teaches.</strong> This drill is illustrative, not a real episode. The discipline is real, though: when large NHLBI clinical trials had to declare their main outcome in advance from 2000, the share reporting a benefit fell from 17 of 30 (57%) to 2 of 25 (8%). Writing the bar down first is what lets a null stay a null.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -525,5 +623,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

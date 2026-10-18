@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Managing the Trade: R-Multiples, Stops &amp; Exits — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
+<link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Managing the Trade — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full maths, a 200-trade Monte Carlo simulator, an MAE study and a 6-question self-test?<a href="trade-management-exits.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Risk &amp; Sizing · Trade management</div>
+      <h1 class="sl-h1">Managing the Trade, or <em>Every Decision After Entry Is an Exit</em></h1>
+      <p class="sl-lede">Entries get the attention, but once you are in, every choice is about leaving: where the stop sits, when to take profit, whether to trail, when to give up. This guide measures all of it in R, shows where stops belong, proves that no exit rule can create an edge from noise, and counts what moved stops and early profits really cost.</p>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A waterfall chart of expectancy per trade in R. The plan, winning 40% of the time at plus 2R and losing 1R otherwise, earns plus 0.20R a trade. Closing half the winners at plus 1R instead of plus 2R costs 0.20R, leaving zero. Letting one loser in five run to minus 3R costs another 0.24R. The same entries, managed badly, earn minus 0.24R a trade.">
+      <line class="tlp-line" x1="40" y1="140" x2="590" y2="140"/>
+      <text class="tlp-text3" x="34" y="144" text-anchor="end" font-size="12">0R</text>
+      <text class="tlp-text2" x="85" y="18" text-anchor="middle" font-size="12" font-weight="700">your plan</text>
+      <text class="tlp-text3" x="85" y="33" text-anchor="middle" font-size="12">40% × +2R</text>
+      <text class="tlp-text3" x="85" y="48" text-anchor="middle" font-size="12">60% × −1R</text>
+      <text class="tlp-text2" x="225" y="18" text-anchor="middle" font-size="12" font-weight="700">cut winners</text>
+      <text class="tlp-text3" x="225" y="33" text-anchor="middle" font-size="12">half closed</text>
+      <text class="tlp-text3" x="225" y="48" text-anchor="middle" font-size="12">at +1R, not +2R</text>
+      <text class="tlp-text2" x="365" y="18" text-anchor="middle" font-size="12" font-weight="700">move stops</text>
+      <text class="tlp-text3" x="365" y="33" text-anchor="middle" font-size="12">1 loser in 5</text>
+      <text class="tlp-text3" x="365" y="48" text-anchor="middle" font-size="12">runs to −3R</text>
+      <text class="tlp-text2" x="505" y="18" text-anchor="middle" font-size="12" font-weight="700">what you get</text>
+      <text class="tlp-text3" x="505" y="33" text-anchor="middle" font-size="12">same entries,</text>
+      <text class="tlp-text3" x="505" y="48" text-anchor="middle" font-size="12">same market</text>
+      <rect class="tlp-box green" x="40" y="70" width="90" height="70" rx="4"/>
+      <text class="tlp-green" x="85" y="110" text-anchor="middle" font-size="15" font-weight="700">+0.20R</text>
+      <line class="tlp-line dash" x1="130" y1="70" x2="180" y2="70"/>
+      <rect class="tlp-box red" x="180" y="70" width="90" height="70" rx="4"/>
+      <text class="tlp-red" x="225" y="110" text-anchor="middle" font-size="15" font-weight="700">−0.20R</text>
+      <rect class="tlp-box red" x="320" y="140" width="90" height="84" rx="4"/>
+      <text class="tlp-red" x="365" y="187" text-anchor="middle" font-size="15" font-weight="700">−0.24R</text>
+      <line class="tlp-line dash" x1="410" y1="224" x2="460" y2="224"/>
+      <rect class="tlp-box red" x="460" y="140" width="90" height="84" rx="4"/>
+      <text class="tlp-red" x="505" y="187" text-anchor="middle" font-size="15" font-weight="700">−0.24R</text>
+      <text class="tlp-text3" x="300" y="244" text-anchor="middle" font-size="12">expectancy per trade, in R (1R = the loss you planned at entry)</text>
+    </svg>
+    <figcaption>The entries never change. Only the exits do. Two habits that feel prudent in the moment, banking a winner early and giving a loser "a bit more room", turn a +0.20R plan into a −0.24R one.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I spend hours on entries. Once I'm in, I just sort of manage it by feel.</p>
+      <p data-who="Quant">Then most of your results are being decided by feel. Every choice after the entry is an exit choice: where the stop goes, whether to take profit, whether to trail, when to give up.</p>
+      <p data-who="Trader">So how do I even compare trades? One was fifty pips, one was two hundred.</p>
+      <p data-who="Quant">Measure them in R. One R is the loss you planned when you placed the stop. A trade that makes twice its planned risk is plus two R. A stopped-out trade is minus one R. Now every trade speaks the same language.</p>
+      <p data-who="Trader">And then?</p>
+      <p data-who="Quant">Then expectancy is simple. Say you win forty percent of the time, winners make two R, losers lose one R. Forty percent of two is zero point eight. Sixty percent of one is zero point six. You make a fifth of an R per trade, on average.</p>
+      <p data-who="Trader">Only forty percent winners, and it still makes money.</p>
+      <p data-who="Quant">Yes, because the winners are bigger. Now the bad news. Close half your winners early at one R, and let one loser in five run to minus three because you moved the stop. Same entries. You now lose about a quarter of an R per trade.</p>
+      <p data-who="Trader">Ouch. So where should the stop go?</p>
+      <p data-who="Quant">Where the reason for the trade is wrong. Not where it starts to hurt. And outside ordinary noise. If a day's typical move is fifty pips, a twenty pip stop gets touched by pure noise most days, about seven times in ten on a random walk.</p>
+      <p data-who="Trader">What about targets versus letting winners run? Everyone argues about that.</p>
+      <p data-who="Quant">Here's the uncomfortable part. If prices were pure noise, no exit rule would help. A two R target before a one R stop gets hit one time in three, and that works out to exactly zero. Exits only shape the outcomes. The edge has to come from the idea.</p>
+      <p data-who="Trader">And partial exits? Taking half off feels safer.</p>
+      <p data-who="Quant">It is smoother. You win more often and the swings are smaller. But the expectancy is just the average of the two halves. Scaling out can't beat the better half.</p>
+      <p data-who="Trader">And the stop always protects me?</p>
+      <p data-who="Quant">A stop is an order, not a guarantee. In January twenty fifteen the Swiss central bank dropped its floor under the franc without warning. The euro fell from one twenty to below ninety centimes in minutes. Stops just under one twenty filled far lower. A fifty pip stop filled a thousand pips away is a twenty one R loss.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Count in R, put the stop where the idea dies, size for the gap, and never move a stop further away.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Five exit tools, one question</h2>
+      <p class="sl-sub">Each tool answers "when do I leave?" differently. None of them answers "is there an edge?"</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🛑</div><div><h4>Stop</h4><p>Where the reason for the trade is wrong. It defines 1R, your unit of risk.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Target</h4><p>A fixed profit level. High hit rate, capped winners.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🪢</div><div><h4>Trailing stop</h4><p>Follows the best price at a set distance. Lets winners run, but always hands back that distance from the peak.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱</div><div><h4>Time stop</h4><p>Leave after N days if nothing has happened. Ends exposure once the reason has expired.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂️</div><div><h4>Partial exit</h4><p>Take some off early, let the rest run. A blend of two exits: smoother, never better than the better half.</p></div></div>
+      </div>
+      <div class="sl-quote">The entry decides whether you have an edge. The exits decide how that edge is paid out, and how much of it leaks away.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Count in R, judge by expectancy</h2>
+      <p class="sl-sub">1R is the loss you planned at entry. Every result becomes a multiple of it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Follow it through</div>
+        <div class="sl-tabs" id="tmd-tabs">
+          <button class="sl-tab active" data-panel="tmd-t1">Measure in R</button>
+          <button class="sl-tab" data-panel="tmd-t2">Expectancy</button>
+          <button class="sl-tab" data-panel="tmd-t3">Break-even</button>
+        </div>
+        <div class="sl-panel active" id="tmd-t1">
+          <div class="sl-row"><div class="sl-box">R = (exit − entry) / (entry − stop)</div></div>
+          <div class="sl-verdict">Long at 1.0850, stop 1.0775: 1R = 75 pips. Exit at 1.1000 is +150 pips = <strong>+2R</strong>. Stopped out is −1R. A gap fill at 1.0700 is −2R. R divides out size and instrument, so every trade in the journal speaks the same language.</div>
+        </div>
+        <div class="sl-panel" id="tmd-t2">
+          <div class="sl-row"><div class="sl-box">E = p·W̄ − (1 − p)·L̄ − c</div></div>
+          <div class="sl-verdict">Win 40% of the time at +2R, lose 1R otherwise: E = 0.8 − 0.6 = <strong>+0.20R a trade</strong>. A 70% hit rate with +0.4R winners has E = 0.28 − 0.30 = −0.02R. Hit rate is what feels good; expectancy is what pays.</div>
+        </div>
+        <div class="sl-panel" id="tmd-t3">
+          <div class="sl-row"><div class="sl-box green">p* = (L̄ + c) / (W̄ + L̄)</div></div>
+          <div class="sl-verdict">With +2R winners and −1R losers, p* = 1/3: win more than one trade in three and you make money. Add 2 pips of cost on a 75-pip stop (0.027R) and p* rises to 34.2%.</div>
+        </div>
+      </div>
+      <p class="sl-p">One trade's result swings far more than its average: for the 40% / +2R system the swing per trade is 1.47R against an average of 0.20R. You need about (2 × 1.47 / 0.20)² ≈ 216 trades to see that edge two standard errors clear of zero.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Expectancy calculator</h2>
+      <p class="sl-sub">Starts on 40% wins, +2R winners, −1R losers. Then try an average loser of 1.4R: what moving the stop on 1 loser in 5 does.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Win rate p (%)</label><input type="number" class="sl-input" id="tmd-p" value="40" step="1" min="0" max="100"></div>
+          <div class="sl-calc-field"><label>Average winner (R)</label><input type="number" class="sl-input" id="tmd-w" value="2" step="0.1" min="0"></div>
+          <div class="sl-calc-field"><label>Average loser (R)</label><input type="number" class="sl-input" id="tmd-l" value="1" step="0.1" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Expectancy per trade</div>
+            <div class="sl-calc-result-val" id="tmd-e">+0.200R</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Break-even win rate: <b id="tmd-be">33.3%</b></div>
+          <div>Swing per trade: <b id="tmd-sd">1.47R</b></div>
+          <div>Trades to see the edge two standard errors clear of zero: <b id="tmd-n">216</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="tmd-reset">Reset to 40%, 2R, 1R</button>
+        <div class="sl-note" id="tmd-warn"></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">A stop is an invalidation point, not a pain threshold</h2>
+      <p class="sl-sub">Put it where the idea is wrong, beyond ordinary noise. How often does noise alone touch a stop? Drag to find out.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Probability that a driftless random walk touches a stop, against the stop distance in daily standard deviations from 0 to 3, for 1 day and for 5 days. Both curves fall as the stop widens; the 5-day curve is higher. A marker shows the chosen distance.">
+            <line x1="60" y1="20" x2="60" y2="220" style="stroke:var(--border2)"/>
+            <line x1="60" y1="220" x2="600" y2="220" style="stroke:var(--border2)"/>
+            <text x="54" y="24" text-anchor="end" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">100%</text>
+            <text x="54" y="224" text-anchor="end" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">0%</text>
+            <text x="240" y="238" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">1σ</text>
+            <text x="420" y="238" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">2σ</text>
+            <text x="600" y="238" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">3σ</text>
+            <text x="330" y="256" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">stop distance, in daily σ</text>
+            <path id="tmd-c5" d="M60,220" style="fill:none;stroke:var(--amber);stroke-width:2.5"/>
+            <path id="tmd-c1" d="M60,220" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <text x="455" y="150" style="fill:var(--amber);font-size:12px;font-family:'DM Mono',monospace">within 5 days</text>
+            <text x="455" y="205" style="fill:var(--blue);font-size:12px;font-family:'DM Mono',monospace">within 1 day</text>
+            <line id="tmd-nl" x1="132" y1="20" x2="132" y2="220" style="stroke:var(--text3);stroke-dasharray:4,3"/>
+            <circle id="tmd-d1" cx="132" cy="80" r="5" style="fill:var(--blue)"/>
+            <circle id="tmd-d5" cx="132" cy="50" r="5" style="fill:var(--amber)"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Stop distance (daily σ)</span><span class="sl-live" id="tmd-nv">0.40σ</span></div>
+        <input type="range" class="sl-slider" id="tmd-ns" min="0.1" max="3" step="0.05" value="0.4">
+        <div class="sl-verdict" id="tmd-nverdict">Touched within 1 day 68.9% of the time, within 5 days 85.8%.</div>
+      </div>
+      <p class="sl-p">With a daily σ of 50 pips, a "safe" 20-pip stop is 0.4σ: noise touches it within a day about 69% of the time. A 75-pip stop (1.5σ) is touched within a day 13% of the time. Scale stops with volatility (a multiple of σ or ATR, where ATR ≈ 1.6σ on a random walk) and the stop keeps its meaning in calm and busy markets. Fear belongs in the position size, never in the stop.</p>
+    </section>
+
+    <!-- WB:trade_management_exits-deck:START -->
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Managing one trade: stops, exits and gaps, in R</h2>
+      <!-- WB:trade_management_exits:START -->
+      <div class="wb" data-title="Managing one trade: stops, exits and gaps, in R">
+        <script type="application/json">{"w":600,"h":790,"intro":"One EUR/USD trade, drawn in R: where the stop goes, how noise tests it, and what three different exit rules make of the same price path. Press play, or step through.","steps":[{"cap":"You are long EUR/USD at 1.0850. A typical day moves about 50 pips: that is one daily standard deviation, σ. The analysis says the idea is wrong below about 1.0790.","do":[{"icon":"you","name":"person","x":14,"y":8,"s":0.6,"tone":"blue","label":"you","lsize":17},{"note":"n1","x":360,"y":34,"text":"long EUR/USD at 1.0850","size":20,"anchor":"middle","tone":"blue"},{"note":"n2","x":360,"y":70,"text":"a day's σ ≈ 50 pips","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"The stop goes just beyond the invalidation level: 1.0775, 75 pips away, or 1.5σ. That distance is 1R, the loss you plan for. The target, 1.1000, is 150 pips away: +2R.","do":[{"chart":"px","x":10,"y":108,"w":580,"h":330,"title":"The trade, measured in R","xd":[0,10],"yd":[-1.45,3.3],"yt":[[-1,"stop −1R"],[0,"entry"],[1,"+1R"],[2,"target +2R"],[3,"+3R"]],"xt":[[0,"0"],[5,"day 5"],[10,"10"]],"pl":112,"pr":14},{"series":"entry","chart":"px","pts":[[0,0],[10,0]],"tone":null,"dash":true,"ms":400},{"series":"stop","chart":"px","pts":[[0,-1],[10,-1]],"tone":"red","ms":500},{"series":"tgt","chart":"px","pts":[[0,2],[10,2]],"tone":"green","dash":true,"ms":500}]},{"cap":"Shade one day of noise, ±1σ, around entry. A \"safe\" 20-pip stop sits deep inside it: a random walk touches it within a day 69% of the time. The 75-pip stop is touched within a day only 13% of the time.","do":[{"gap":"noise","chart":"px","top":[[0,0.6666666666666666],[10,0.6666666666666666]],"bot":[[0,-0.6666666666666666],[10,-0.6666666666666666]],"tone":"blue","op":0.16},{"series":"pain","chart":"px","pts":[[0,-0.26666666666666666],[10,-0.26666666666666666]],"tone":"red","dash":true,"ms":400,"label":"20-pip stop","lat":[10,-0.26666666666666666],"ldx":-4,"ldy":14,"lanchor":"end","lsize":16}]},{"cap":"One illustrative path. On day one it dips 0.79R, about 59 pips, against you: its maximum adverse excursion. The 20-pip stop is hit within half a day. The 75-pip stop is never touched.","do":[{"series":"path","chart":"px","pts":[[0.0,0.0],[0.25,-0.1],[0.5,-0.39],[0.75,-0.79],[1.0,-0.23],[1.25,0.14],[1.5,0.27],[1.75,0.37],[2.0,0.35],[2.25,0.7],[2.5,0.75],[2.75,0.34],[3.0,0.69],[3.25,0.58],[3.5,1.08],[3.75,1.14],[4.0,0.77],[4.25,1.22],[4.5,1.52],[4.75,1.59],[5.0,1.6],[5.25,1.31],[5.5,1.5],[5.75,1.8],[6.0,1.54],[6.25,1.42],[6.5,1.31],[6.75,2.24],[7.0,2.26],[7.25,2.3],[7.5,2.41],[7.75,2.5],[8.0,2.78],[8.25,1.85],[8.5,1.51],[8.75,1.82],[9.0,2.35],[9.25,2.21],[9.5,2.26],[9.75,2.92],[10.0,3.01]],"tone":"purple","ms":2200},{"dot":"mae","chart":"px","at":[0.75,-0.79],"text":"MAE −0.8R","tone":"red","dx":8,"dy":26,"anchor":"start"},{"dot":"painhit","chart":"px","at":[0.5,-0.39],"text":"","tone":"red"}]},{"cap":"Exit rule one, a fixed target. On day 6.75 the price reaches 1.1000. Bank +2R, 150 pips.","do":[{"dim":"noise"},{"dim":"pain"},{"dot":"tgthit","chart":"px","at":[6.75,2.0],"text":"+2R","tone":"green","dx":-10,"dy":-16,"anchor":"end"}]},{"cap":"Exit rule two, a trailing stop 1R behind the best price. The best price reaches +2.8R on day 8, a pullback hits the trail at +1.8R on day 8.5. A trail always hands back its distance from the peak.","do":[{"series":"trail","chart":"px","pts":[[0.0,-1.0],[0.25,-1.0],[0.5,-1.0],[0.75,-1.0],[1.0,-1.0],[1.25,-1.0],[1.5,-0.86],[1.75,-0.73],[2.0,-0.63],[2.25,-0.63],[2.5,-0.3],[2.75,-0.25],[3.0,-0.25],[3.25,-0.25],[3.5,-0.25],[3.75,0.08],[4.0,0.14],[4.25,0.14],[4.5,0.22],[4.75,0.52],[5.0,0.59],[5.25,0.6],[5.5,0.6],[5.75,0.6],[6.0,0.8],[6.25,0.8],[6.5,0.8],[6.75,0.8],[7.0,1.24],[7.25,1.26],[7.5,1.3],[7.75,1.41],[8.0,1.5],[8.25,1.78],[8.5,1.78]],"tone":"amber","ms":1600,"width":2.6},{"dot":"trexit","chart":"px","at":[8.5,1.78],"text":"+1.8R","tone":"amber","dx":0,"dy":22}]},{"cap":"Exit rule three, let it run to a 10-day time stop: +3.0R. On this path letting it run won. On a path that peaked and fell back, the target would have won. One path cannot choose a rule; only many trades can.","do":[{"dot":"end","chart":"px","at":[10,3.01],"text":"+3.0R","tone":"purple","dx":-8,"dy":-16,"anchor":"end"}]},{"cap":"And if prices were pure noise, no rule would win. A +2R target is reached before a −1R stop one time in three: one third of 2 minus two thirds of 1 is zero. Exits reshape outcomes. The edge has to come from the idea.","do":[{"box":"noedge","x":10,"y":450,"w":285,"h":92,"text":"pure noise: +2R before −1R\nonly 1 time in 3\n⅓ × 2 − ⅔ × 1 = 0","tone":"amber","size":17}]},{"cap":"A partial exit: half off at +1R on day 3.5, the rest at the target. On this path that makes +1.5R. Scaling out wins more often and swings less, but its expectancy is just the average of its two halves.","do":[{"dot":"half","chart":"px","at":[3.5,1.0],"text":"½ off","tone":"blue","dx":-8,"dy":-16,"anchor":"end"},{"box":"part","x":305,"y":450,"w":285,"h":92,"text":"half at +1R, half at +2R\n= +1.5R on this path\nsame E, smoother ride","tone":"blue","size":17}]},{"cap":"Every rule so far assumed the stop fills at its level. On 15 January 2015 the Swiss National Bank scrapped its 1.20 floor and EUR/CHF fell below 0.90 within minutes. A 50-pip stop that fills at 1.10 is a 21R loss.","do":[{"box":"snb","x":10,"y":556,"w":285,"h":112,"text":"SNB, 15 Jan 2015:\nEUR/CHF 1.20 → below 0.90\n50-pip stop filled at 1.10\n= −21R","tone":"red","size":17}]},{"cap":"Then the leaks. Close half your winners at +1R instead of +2R, and the plan's +0.20R a trade falls to zero. Let 1 loser in 5 run to −3R as well, and it falls to −0.24R. Same entries, same market.","do":[{"chart":"leak","x":305,"y":556,"w":285,"h":226,"title":"E per trade (R)","xd":[0.4,3.6],"yd":[-0.42,0.32],"yt":[[0.2,"+0.2"],[0,"0"],[-0.2,"−0.2"]],"xt":[[1,"plan"],[2,"+ cut"],[3,"+ stops"]],"zero":true,"pl":52,"pr":10,"pb":30},{"bars":"lk","chart":"leak","data":[[1,0.2,"+0.20","green"],[2,0.0,"0.00","amber"],[3,-0.24,"−0.24","red"]],"bw":34,"ms":1200}]},{"cap":"The whole lesson in four moves: count every trade in R, put the stop where the idea dies, size for the gap, and never move a stop further away.","do":[{"note":"s1","x":152,"y":700,"text":"count in R","size":19,"anchor":"middle","tone":"green"},{"note":"s2","x":152,"y":730,"text":"stop = where the idea dies","size":18,"anchor":"middle","tone":"green"},{"note":"s3","x":152,"y":760,"text":"size for the gap","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:trade_management_exits:END -->
+    </section>
+    <!-- WB:trade_management_exits-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Exits reshape outcomes; they do not create edge</h2>
+      <p class="sl-sub">On a random walk, a target b above entry is hit before a stop a below it with probability a / (a + b).</p>
+      <div class="sl-row"><div class="sl-box">+2R target, −1R stop: P = 1/3</div><div class="sl-arrow">→</div><div class="sl-box amber">E = ⅓×2 − ⅔×1 = 0</div></div>
+      <div class="sl-row"><div class="sl-box">+0.5R target, −1R stop: P = 2/3</div><div class="sl-arrow">→</div><div class="sl-box amber">E = ⅔×0.5 − ⅓×1 = 0</div></div>
+      <p class="sl-p">The hit rate moved from 33% to 67%. The expectancy did not move at all. The general rule is Wald's identity: expected profit per trade = drift × average holding time. No drift, no profit, whatever the exit.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">When exits cannot help</span>
+          <ul>
+            <li>Prices are pure noise after your entry</li>
+            <li>Every rule then earns zero before costs, and less after</li>
+            <li>Under a random walk a stop-loss rule always lowers expected return (Kaminski and Lo, 2014)</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">When exits matter</span>
+          <ul>
+            <li>The edge fades: a time stop ends exposure when it is gone</li>
+            <li>Adverse moves mean "probably wrong": a stop cuts wrong ideas early</li>
+            <li>Moves persist: letting winners run pays; ranges reward taking profit</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Targets, trailing stops and time stops: what each one costs</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Fixed target</h4><p>Caps every winner. Pays when prices tend to stall or reverse after your entry; leaves money behind in trends.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🪢</div><div><h4>Trailing stop</h4><p>Exits a set distance below the best price, so it always gives that distance back. Too tight and noise ends trades before a trend can form; too wide and each good trade returns a lot at the end. On a random walk the best price before a pullback of d averages exactly d above entry, so the trail earns zero.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱</div><div><h4>Time stop</h4><p>Once an edge's window has passed, each extra day adds variance and no expected profit. A time stop also frees the risk budget for the next idea.</p></div></div>
+      </div>
+      <div class="sl-quote">Which exit wins is an empirical question about your entries and your market, not a matter of taste. Test it on hundreds of trades, with costs.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Partial exits: smoother, never better</h2>
+      <p class="sl-sub">Expectancy is linear in size, so a blend's expectancy is the weighted average of its parts. Three plans on a random walk, −1R stop:</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Same entries, three exit plans</div>
+        <div class="sl-calc-steps">
+          <div>All out at +2R: hit rate <b>33%</b> · expectancy <b>0</b> · swing <b>1.41R</b></div>
+          <div>Half at +1R, half at +3R: hit rate <b>25%</b>, plus 25% scratched at 0 · expectancy <b>0</b> · swing <b>1.22R</b></div>
+          <div>Half at +1R, then stop to break-even, half at +3R: hit rate <b>50%</b> · expectancy <b>0</b> · swing <b>1.12R</b></div>
+        </div>
+      </div>
+      <p class="sl-p">Scaling out wins more often and swings less, at exactly the same expectancy here. With a real edge it trades some expectancy for smoothness: worth it only if smoothness keeps you on the plan. Scaling in is the mirror image: after adding, recompute the whole position's risk; it is often more than 1R.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">MAE and MFE: set stops from evidence</h2>
+      <p class="sl-sub">Record how far each trade went against you (MAE) and for you (MFE). Then ask how many eventual winners a stop would have killed.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Back-to-back histograms of maximum adverse excursion for simulated trades: eventual winners in green above the axis, bunched near zero; eventual losers in red below, spread wide. A vertical stop line moves with the slider.">
+            <line x1="60" y1="120" x2="600" y2="120" style="stroke:var(--border2)"/>
+            <g id="tmd-mbars"></g>
+            <line id="tmd-ml" x1="240" y1="14" x2="240" y2="226" style="stroke:var(--purple);stroke-width:2;stroke-dasharray:5,3"/>
+            <text x="594" y="26" text-anchor="end" style="fill:var(--green);font-size:12px;font-family:'DM Mono',monospace">winners ↑</text>
+            <text x="66" y="222" style="fill:var(--red);font-size:12px;font-family:'DM Mono',monospace">losers ↓</text>
+            <text x="60" y="242" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">0</text>
+            <text x="240" y="242" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">1σ</text>
+            <text x="420" y="242" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">2σ</text>
+            <text x="590" y="242" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">3σ+</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Stop distance (daily σ)</span><span class="sl-live" id="tmd-mv">1.0σ</span></div>
+        <input type="range" class="sl-slider" id="tmd-ms" min="0.1" max="2.9" step="0.1" value="1.0">
+        <div class="sl-verdict" id="tmd-mverdict">Kills 22.9% of eventual winners; cuts 88.9% of eventual losers.</div>
+        <div class="sl-note">Simulated, illustrative: 20,000 trades, ideas right 55% of the time (drift ±0.3σ a day), held 3 days, no stop. Use your own closed trades, and choose the stop on one sample, check it on another.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">200 trades, seeded: expectancy versus luck</h2>
+      <p class="sl-sub">Each trade wins W̄ with probability p, otherwise loses 1R, or −3R if it "blows through" (a moved stop or a gap). Same seed, same trades.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cumulative result in R over 200 simulated trades for the chosen seed, in purple, with the expected path as a dashed green line and zero as a dotted line.">
+            <line x1="40" y1="16" x2="40" y2="196" style="stroke:var(--border2)"/>
+            <line id="tmd-z" x1="40" y1="106" x2="620" y2="106" style="stroke:var(--text3);stroke-dasharray:2,3"/>
+            <path id="tmd-se" d="M40,106" style="fill:none;stroke:var(--green);stroke-width:2;stroke-dasharray:6,4"/>
+            <path id="tmd-sp" d="M40,106" style="fill:none;stroke:var(--purple);stroke-width:2.6"/>
+            <text id="tmd-shi" x="34" y="20" text-anchor="end" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">+50R</text>
+            <text id="tmd-slo" x="34" y="200" text-anchor="end" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">−10R</text>
+            <text x="330" y="214" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">trade 0 → 200</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Win rate p</span><span class="sl-live" id="tmd-spv">40%</span></div>
+        <input type="range" class="sl-slider" id="tmd-sps" min="20" max="80" step="1" value="40">
+        <div class="sl-sliderhead"><span>Average winner</span><span class="sl-live" id="tmd-swv">2.0R</span></div>
+        <input type="range" class="sl-slider" id="tmd-sws" min="0.5" max="5" step="0.1" value="2">
+        <div class="sl-sliderhead"><span>Losers that blow through (−3R)</span><span class="sl-live" id="tmd-sgv">0%</span></div>
+        <input type="range" class="sl-slider" id="tmd-sgs" min="0" max="30" step="1" value="0">
+        <div class="sl-verdict" id="tmd-sverdict">Seed 42: E this run +0.245R (theory +0.200R), hit rate 41.5%, worst drawdown 10.0R.</div>
+        <button type="button" class="sl-reset-btn" id="tmd-sseed">New seed</button>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 10 · It actually happened</div>
+      <h2 class="sl-h2">15 January 2015: the stop that was not an exit</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>From September 2011 the Swiss National Bank held a minimum of 1.20 francs per euro, promising unlimited purchases. Traders bought EUR/CHF near 1.20 with stops just below. On the morning of 15 January 2015 the SNB scrapped the floor without warning and cut its deposit rate to −0.75%. EUR/CHF fell below 0.90 within minutes, with almost no trading in between. Stops filled far below their levels; some clients ended owing their brokers money, FXCM needed a $300 million rescue loan, and Alpari UK went into insolvency.</p>
+      </div>
+      <div class="sl-row"><div class="sl-box">Long 1.2050, stop 1.2000: 1R = 50 pips</div><div class="sl-arrow">→</div><div class="sl-box amber">filled at 1.1000 (illustrative): −21R</div></div>
+      <div class="sl-chain">
+        <div class="sl-chain-link"><b>The floor</b>2011: EUR/CHF minimum 1.20</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · the stop</b>Stops just below 1.20, sized as if 1R were the worst case</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link shock"><b>Shock</b>Floor scrapped; below 0.90 in minutes</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Losses of many R; negative balances</div>
+      </div>
+      <p class="sl-p">The invalidation level was right. The assumption that the stop would fill near it was wrong. A stop is an order, not a guarantee: size for the gap.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">The two leaks: cut winners, moved stops</h2>
+      <p class="sl-sub">Same entries, same market. Only the management changes.</p>
+      <div class="sl-row"><div class="sl-box green">Plan: 40% × 2R − 60% × 1R = +0.20R</div></div>
+      <div class="sl-row"><div class="sl-box amber">Close half the winners at +1R: W̄ = 1.5 → 0.00R</div></div>
+      <div class="sl-row"><div class="sl-box amber">Also let 1 loser in 5 run to −3R: L̄ = 1.4 → −0.24R</div></div>
+      <p class="sl-p">Both habits are the disposition effect acted out inside a single trade: selling winners too early and riding losers too long (Shefrin and Statman, 1985; Odean, 1998). The cure is mechanical: write the stop and the exit rule before entry, and let stops move only in the direction that reduces risk.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>The stop, target and trailing results all assume prices move continuously, so a stop fills at its level. Real prices jump at weekends, announcements and policy changes. And MAE studies overfit easily: choose exits on one sample, test them on another, include costs, and judge them on hundreds of trades, not twenty.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>You win 40% of trades at +2R and lose 1R on the rest. What is the expectancy per trade?</h4>
+        <button class="sl-quiz-opt" data-correct="true">+0.20R</button>
+        <button class="sl-quiz-opt">−0.20R, because you lose more often than you win</button>
+        <button class="sl-quiz-opt">+0.80R</button>
+        <div class="sl-quiz-explain">E = 0.40 × 2 − 0.60 × 1 = 0.80 − 0.60 = +0.20R. Losing more often is fine when the winners are bigger: break-even is a 33% hit rate.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Where should a stop go?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Just beyond the price where the trade's reason is wrong, outside ordinary noise</button>
+        <button class="sl-quiz-opt">At the most pips you can bear to lose</button>
+        <button class="sl-quiz-opt">As close to entry as possible, to keep risk small</button>
+        <div class="sl-quiz-explain">A stop is an invalidation point, not a pain threshold. The money at risk is controlled by position size. A stop inside the noise (say 0.4σ) is touched by noise alone within a day about 69% of the time.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>On a pure random walk, you switch from a +2R target to a +0.5R target, keeping a −1R stop. What happens?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The hit rate rises from 33% to 67%; expectancy stays at zero</button>
+        <button class="sl-quiz-opt">Expectancy rises, because you win twice as often</button>
+        <button class="sl-quiz-opt">Expectancy falls, because winners are smaller</button>
+        <div class="sl-quiz-explain">P(target first) = a/(a+b). Both plans have E = 0: exits reshape outcomes but cannot create edge from noise. Expected profit = drift × holding time.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does taking half off at +1R do to a trade plan?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Smooths results; its expectancy is the average of the two halves, never better than the better one</button>
+        <button class="sl-quiz-opt">Raises expectancy, because profit is locked in</button>
+        <button class="sl-quiz-opt">Nothing at all</button>
+        <div class="sl-quiz-explain">Expectancy is linear in size. Partials change the shape (more small wins, smaller swings), not the average beyond the better part.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Long EUR/CHF at 1.2050, stop 1.2000, on 15 January 2015. The stop fills at 1.1000. What is the result in R?</h4>
+        <button class="sl-quiz-opt" data-correct="true">−21R</button>
+        <button class="sl-quiz-opt">−1R, because that is what the stop was for</button>
+        <button class="sl-quiz-opt">−2R</button>
+        <div class="sl-quiz-explain">(1.1000 − 1.2050) / (1.2050 − 1.2000) = −1,050 / 50 = −21R. A stop fills at the next available price. Only the size, chosen with the gap in mind, could have limited this.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2016-06-23">
+    <div class="tl-drill-label">Scenario drill · 23 June 2016</div>
+    <h3>Referendum night, and your trade is in profit</h3>
+    <p>The UK votes on leaving the European Union today, and polls close at 10pm. Earlier in the week you bought GBP/USD at 1.4700 (an illustrative position) with a stop at 1.4550, 150 pips, so 1R = 150 pips. Late in the evening sterling trades around 1.50 as markets lean towards Remain: you are up about 2R. Results will arrive overnight, in thin markets. What do you do with the position before the results?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Move the stop up to entry at 1.4700. Now the trade can't lose.<div class="tl-drill-why">A break-even stop is an order, not a floor. If the result shocks the market, price can fall far through 1.4700 before a fill. The stop changes the hit rate on a normal night; it does not cap the loss on an abnormal one.</div></li>
+      <li data-verdict="bad">Add to the position. The polls point to Remain, and adding to winners is how trends pay.<div class="tl-drill-why">Scaling in only pays when moves persist. A binary event is not a trend: adding raises the size just before the largest gap risk of the year, and the combined position's real risk is now several times 1R.</div></li>
+      <li data-verdict="good">Close the trade, or cut it to a size whose loss you could accept if the price gapped many hundreds of pips.<div class="tl-drill-why">The trade was not built to hold a binary vote result. An event rule, like a time stop, ends exposure the plan never priced. If you keep any, size it for the gap line, not for the stop.</div></li>
+      <li data-verdict="ok">Keep the trade but buy a short-dated sterling put as protection.<div class="tl-drill-why">Defensible: an option caps the loss whatever the gap. But protection is expensive the night everyone wants it, and it does not answer whether the trade belongs in the book at all.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Sterling traded around 1.50 against the dollar shortly after the polls closed. As results came in overnight showing a vote to leave, it fell to about 1.32 on 24 June, its lowest level since 1985, a fall of more than 10% within hours. A long from 1.4700 faced a move of roughly 1,500 pips, about 10R on a 150-pip stop; how much of that a stop saved depended on where it filled in a fast, thin market.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Count every trade in R. Expectancy E = p·W̄ − (1 − p)·L̄ − c, not the hit rate, decides whether a plan pays: 40% at +2R earns +0.20R a trade.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Stops go where the idea is wrong, beyond the noise, scaled by volatility. Fear belongs in the size, never in the stop.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Exits reshape outcomes; they do not create edge. On noise every rule earns zero before costs (profit = drift × time held).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Partials and break-even stops smooth the ride but never beat the better part. Set stops and targets from your own MAE and MFE, tested out of sample.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Cutting winners and moving stops take the same entries from +0.20R to −0.24R. A stop is an order, not a guarantee: SNB, 15 January 2015, a 50-pip stop filled at 1.10 is −21R.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read a trade journal in R and compute its expectancy, break-even win rate and how many trades it needs. Place a stop at invalidation and check how often noise alone would hit it. See through any exit rule that claims to turn a coin flip into an edge, and price the two habits that quietly drain most traders' results.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Drawdowns, Risk of Ruin, and Why Good Systems Get Abandoned</h3>
+        <p>A stream of R results with a real edge still produces long losing runs and deep drawdowns. This is the lesson on how deep, how long, and why traders quit at the bottom.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="drawdowns-risk-of-ruin-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="trade-management-exits.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function Phi(x){ var t = 1 / (1 + 0.3275911 * Math.abs(x) / Math.SQRT2), z = Math.abs(x) / Math.SQRT2;
+    var y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z);
+    return x >= 0 ? 0.5 * (1 + y) : 0.5 * (1 - y); }
+
+  // Expectancy calculator
+  (function(){
+    var p = document.getElementById('tmd-p');
+    if (!p) return;
+    var w = document.getElementById('tmd-w'), l = document.getElementById('tmd-l');
+    function out(id, s){ document.getElementById(id).textContent = s; }
+    function recompute(){
+      var pp = parseFloat(p.value) / 100, W = parseFloat(w.value), L = parseFloat(l.value);
+      if (![pp, W, L].every(isFinite) || pp < 0 || pp > 1 || W <= 0 || L < 0){ ['tmd-e','tmd-be','tmd-sd','tmd-n'].forEach(function(id){ out(id, '—'); }); out('tmd-warn', 'Need a win rate between 0% and 100%, a positive average winner and a non-negative average loser.'); return; }
+      var E = pp * W - (1 - pp) * L, sd = Math.sqrt(Math.max(pp * W * W + (1 - pp) * L * L - E * E, 0));
+      out('tmd-e', (E >= 0 ? '+' : '−') + Math.abs(E).toFixed(3) + 'R');
+      out('tmd-be', (100 * L / (W + L)).toFixed(1) + '%');
+      out('tmd-sd', sd.toFixed(2) + 'R');
+      out('tmd-n', E > 0 ? String(Math.ceil(Math.pow(2 * sd / E, 2) - 1e-9)) : 'never (no edge)');
+      out('tmd-warn', E <= 0 ? 'No edge: at this hit rate, these winners and losers lose money.' : '');
+    }
+    [p, w, l].forEach(function(el){ el.addEventListener('input', recompute); });
+    document.getElementById('tmd-reset').addEventListener('click', function(){ p.value = 40; w.value = 2; l.value = 1; recompute(); });
+    recompute();
+  })();
+
+  // Noise-touch chart
+  (function(){
+    var s = document.getElementById('tmd-ns');
+    if (!s) return;
+    var X0 = 60, X1 = 600, Y0 = 220, Y1 = 20, DM = 3;
+    function xAt(d){ return X0 + (X1 - X0) * d / DM; }
+    function yAt(q){ return Y0 - (Y0 - Y1) * q; }
+    function hit(d, T){ return 2 * Phi(-d / Math.sqrt(T)); }
+    function curve(T){ var a = []; for (var i = 0; i <= 90; i++){ var d = DM * i / 90; a.push(xAt(d).toFixed(1) + ',' + yAt(hit(d, T)).toFixed(1)); } return 'M' + a.join(' L'); }
+    document.getElementById('tmd-c1').setAttribute('d', curve(1));
+    document.getElementById('tmd-c5').setAttribute('d', curve(5));
+    function update(){
+      var d = parseFloat(s.value), x = xAt(d), p1 = hit(d, 1), p5 = hit(d, 5);
+      document.getElementById('tmd-nv').textContent = d.toFixed(2) + 'σ';
+      var ln = document.getElementById('tmd-nl'); ln.setAttribute('x1', x); ln.setAttribute('x2', x);
+      var a = document.getElementById('tmd-d1'); a.setAttribute('cx', x); a.setAttribute('cy', yAt(p1));
+      var b = document.getElementById('tmd-d5'); b.setAttribute('cx', x); b.setAttribute('cy', yAt(p5));
+      document.getElementById('tmd-nverdict').textContent = 'Touched within 1 day ' + (100 * p1).toFixed(1) + '% of the time, within 5 days ' + (100 * p5).toFixed(1) + '%.' + (d < 0.75 ? ' Inside the noise: you will be stopped out of good ideas.' : (d >= 1.25 ? ' Outside ordinary noise: a hit now says something.' : ''));
+    }
+    s.addEventListener('input', update); update();
+  })();
+
+  // MAE study (same simulated histograms as the full lesson: numpy seed 2015)
+  (function(){
+    var s = document.getElementById('tmd-ms');
+    if (!s) return;
+    var W = [1113,1008,991,911,856,793,741,636,576,486,452,355,312,261,220,180,165,105,84,67,60,42,34,26,16,15,7,4,2,7];
+    var L = [1,10,20,46,73,107,139,172,206,276,273,304,340,367,331,406,407,379,398,343,353,349,315,280,297,287,252,257,251,2236];
+    var NW = 10525, NL = 9475, X0 = 60, X1 = 600, Y0 = 120, H = 96, CAP = 0.12, ns = 'http://www.w3.org/2000/svg', bw = (X1 - X0) / 30;
+    var g = document.getElementById('tmd-mbars');
+    for (var j = 0; j < 30; j++){
+      var hw = H * (W[j] / NW) / CAP, hl = H * Math.min(L[j] / NL, CAP) / CAP;
+      var r1 = document.createElementNS(ns, 'rect'); r1.setAttribute('x', (X0 + j * bw + 1).toFixed(1)); r1.setAttribute('width', (bw - 2).toFixed(1)); r1.setAttribute('y', (Y0 - hw).toFixed(1)); r1.setAttribute('height', hw.toFixed(1)); r1.setAttribute('style', 'fill:var(--green);opacity:.75'); g.appendChild(r1);
+      var r2 = document.createElementNS(ns, 'rect'); r2.setAttribute('x', (X0 + j * bw + 1).toFixed(1)); r2.setAttribute('width', (bw - 2).toFixed(1)); r2.setAttribute('y', Y0); r2.setAttribute('height', hl.toFixed(1)); r2.setAttribute('style', 'fill:var(--red);opacity:.65'); g.appendChild(r2);
+    }
+    function update(){
+      var d = parseFloat(s.value), k = Math.round(d * 10), sw = 0, sl = 0;
+      for (var i = k; i < 30; i++){ sw += W[i]; sl += L[i]; }
+      var x = X0 + (X1 - X0) * d / 3, ln = document.getElementById('tmd-ml'); ln.setAttribute('x1', x); ln.setAttribute('x2', x);
+      document.getElementById('tmd-mv').textContent = d.toFixed(1) + 'σ';
+      document.getElementById('tmd-mverdict').textContent = 'Kills ' + (100 * sw / NW).toFixed(1) + '% of eventual winners; cuts ' + (100 * sl / NL).toFixed(1) + '% of eventual losers.';
+    }
+    s.addEventListener('input', update); update();
+  })();
+
+  // Seeded 200-trade simulator (win rate & payoff mode of the full lesson's engine)
+  (function(){
+    var ps = document.getElementById('tmd-sps');
+    if (!ps) return;
+    var ws = document.getElementById('tmd-sws'), gs = document.getElementById('tmd-sgs'), seed = 42, N = 200;
+    function rng32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+    function update(){
+      var p = +ps.value / 100, W = +ws.value, gg = +gs.value / 100, r = rng32(seed);
+      var cum = 0, pk = 0, dd = 0, wins = 0, path = [0];
+      for (var i = 0; i < N; i++){ var x = (r() < p) ? W : ((r() < gg) ? -3 : -1); if (x > 0) wins++; cum += x; path.push(cum); if (cum > pk) pk = cum; if (pk - cum > dd) dd = pk - cum; }
+      var Et = p * W - (1 - p) * (1 + 2 * gg), lo = Math.min(0, Et * N), hi = Math.max(0, Et * N);
+      path.forEach(function(v){ lo = Math.min(lo, v); hi = Math.max(hi, v); });
+      var pad = Math.max(hi - lo, 10) * 0.06; lo -= pad; hi += pad;
+      function xa(i){ return 40 + 580 * i / N; } function ya(v){ return 196 - 180 * (v - lo) / (hi - lo); }
+      var d = 'M' + xa(0) + ',' + ya(0).toFixed(1); for (var j = 2; j <= N; j += 2) d += ' L' + xa(j).toFixed(1) + ',' + ya(path[j]).toFixed(1);
+      document.getElementById('tmd-sp').setAttribute('d', d);
+      document.getElementById('tmd-se').setAttribute('d', 'M40,' + ya(0).toFixed(1) + ' L620,' + ya(Et * N).toFixed(1));
+      var z = document.getElementById('tmd-z'); z.setAttribute('y1', ya(0).toFixed(1)); z.setAttribute('y2', ya(0).toFixed(1));
+      function lab(v){ return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(0) + 'R'; }
+      document.getElementById('tmd-shi').textContent = lab(hi); document.getElementById('tmd-slo').textContent = lab(lo);
+      document.getElementById('tmd-spv').textContent = ps.value + '%';
+      document.getElementById('tmd-swv').textContent = W.toFixed(1) + 'R';
+      document.getElementById('tmd-sgv').textContent = gs.value + '%';
+      function f(v){ return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(3) + 'R'; }
+      document.getElementById('tmd-sverdict').textContent = 'Seed ' + seed + ': E this run ' + f(cum / N) + ' (theory ' + f(Et) + '), hit rate ' + (100 * wins / N).toFixed(1) + '%, worst drawdown ' + dd.toFixed(1) + 'R.';
+    }
+    [ps, ws, gs].forEach(function(el){ el.addEventListener('input', update); });
+    document.getElementById('tmd-sseed').addEventListener('click', function(){ seed++; update(); });
+    update();
+  })();
+})();
+</script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+</body></html>

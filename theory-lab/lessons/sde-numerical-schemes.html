@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -438,6 +439,23 @@
     <button type="button" id="sdenum-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>One Euler-Maruyama step on new inputs: \(X_{n+1} = X_n + \mu X_n \Delta t + \sigma X_n \Delta W_n\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(X_n = 50\), \(\mu = 0.05\), \(\sigma = 0.20\), \(\Delta t = 0.5\), \(\Delta W_n = 0.4\). Drift term \(= 0.05 \times 50 \times 0.5 = 1.25\). Diffusion term \(= 0.20 \times 50 \times 0.4 = 4.00\). \(X_{n+1} =\) <span class="tl-blank" data-answer="55.25" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(X_n = 80\), \(\mu = 0.08\), \(\sigma = 0.25\), \(\Delta t = 0.25\), \(\Delta W_n = -0.3\). Drift term <span class="tl-blank" data-answer="1.6" data-tol="0.005"></span>. Diffusion term <span class="tl-blank" data-answer="-6" data-tol="0.005"></span>. \(X_{n+1} =\) <span class="tl-blank" data-answer="75.6" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(X_n = 120\), \(\mu = 0.06\), \(\sigma = 0.40\), \(\Delta t = 0.1\), \(\Delta W_n = 0.15\). Drift term <span class="tl-blank" data-answer="0.72" data-tol="0.005"></span>, diffusion term <span class="tl-blank" data-answer="7.2" data-tol="0.005"></span>, \(X_{n+1}\) <span class="tl-blank" data-answer="127.92" data-tol="0.005"></span>. The shock is ten times the drift on a short step.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">The same GBM realization: Euler-Maruyama's 4 discrete steps vs. the true continuous path</div>
     <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart showing one simulated GBM path, drawn as a continuous jagged curve, alongside the Euler-Maruyama approximation of the same underlying randomness, drawn as five points connected by four straight line segments. The straight-line approximation follows the general direction of the true path but visibly cuts through its zig-zag detail.">
@@ -771,7 +789,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

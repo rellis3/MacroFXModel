@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 <style>
@@ -404,6 +405,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Score a small record the way the worked example did: the Brier score \(\text{BS} = \frac{1}{N}\sum (f_i - o_i)^2\), the base-rate benchmark \(\bar o(1-\bar o)\), and the skill \(\text{BSS} = 1 - \text{BS}/(\bar o(1-\bar o))\). Each record has 20 calls. Give BS to three decimals and skill in %.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Ten calls at 70%, six came true: \(6 \times 0.09 + 4 \times 0.49 = 2.50\). Ten calls at 60%, five came true: \(5 \times 0.16 + 5 \times 0.36 = 2.60\). So \(\text{BS} = 5.10/20 = 0.255\). The base rate is \(11/20 = 0.55\), so the benchmark is \(0.55 \times 0.45 = 0.2475\). Skill is \(1 - 0.255/0.2475 =\) <span class="tl-blank" data-answer="-3.03" data-tol="0.06" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Eight calls at 80%, six came true. Twelve calls at 60%, eight came true. The 80% bucket adds \(6 \times 0.04 + 2 \times 0.64 =\) <span class="tl-blank" data-answer="1.52" data-tol="0.005"></span> and the 60% bucket adds \(2.72\). So \(\text{BS} =\) <span class="tl-blank" data-answer="0.212" data-tol="0.0005"></span>. The base rate is \(14/20 = 0.70\) and the benchmark \(0.21\), so skill is <span class="tl-blank" data-answer="-0.95" data-tol="0.06" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Fifteen calls at 70%, eleven came true. Five calls at 90%, three came true. Brier score <span class="tl-blank" data-answer="0.23" data-tol="0.0005"></span>; base rate <span class="tl-blank" data-answer="0.70" data-tol="0.005"></span>; benchmark <span class="tl-blank" data-answer="0.21" data-tol="0.0005"></span>; skill <span class="tl-blank" data-answer="-9.52" data-tol="0.06" data-unit="%"></span>. The 70% calls were close to honest (73% came true). Five 90% calls that came true only three times cost most of the score.</p>
+    </div>
+  </div>
+
   <div class="tl-chart interactive" id="cb-tool">
     <div class="tl-chart-label">Calibration scorer — enter your own calls</div>
     <p class="tl-hint" style="font-style:normal;font-size:12px;margin:0 0 4px">Phrase every call as the side you think likelier, round its probability to the nearest 10%, and log the outcome with ✓ or ✗ — or type the totals. It starts with the worked example; press Clear to use your own. Your tally is kept in this browser only.</p>
@@ -522,7 +540,7 @@
 
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
-    <span><strong>"The confidence on our calls matches our hit rate."</strong> Not tested here. The desk's ledger records whether a <em>signal</em> had an edge; it does not yet hold a Brier score or reliability diagram for the probabilities written on calls. The two results below are the reason to start one.</span>
+    <span><strong>"The confidence on our calls matches our hit rate."</strong> Not tested here. The desk's ledger records whether a <em>signal</em> had an edge; it does not yet hold a Brier score or reliability diagram for the probabilities written on calls. The two results below are the reason to start one.<div class="tl-howtotest"><strong>How to test it:</strong> from a fixed start date, write a probability and a deadline on every FX, gold and index call before the trade, and resolve each one on the daily close. After 100 resolved calls, compute the Brier score, the skill against quoting the record's own base rate on every call, and the pooled \(z\) for the 70–90% calls. Fix the gate now: confidence earns extra size only if skill is above zero and the high-confidence calls have \(|z| < 2\). It scores probabilities, not P&amp;L, so costs do not enter.</div></span>
   </div>
 
   <div class="tl-verdict null" data-evidence="conviction-vote" data-evidence-date="2026-07-25">
@@ -579,6 +597,7 @@
       not yet been applied to the probabilities written on the desk's own calls.
     </p>
   </div>
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../forecast-coverage.html">Forecast interval coverage</a> runs this lesson's check on the range bands: does a band that promises 75% of days hold 75%, with the miss sized in binomial standard errors.</div><!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -861,7 +880,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Feature Engineering, Leakage &amp; Reproducibility — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">19</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the worked z-score example, and a 6-question self-test?<a href="feature-engineering-leakage-reproducibility.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,77 @@
       <p class="sl-lede">The previous lesson in this pair, <em>The Research Pipeline: Hypothesis to Honest Backtest</em>, covered how to structure the process around a strategy idea — split the data honestly, cost it realistically, don't peek at the test set. This lesson goes one level deeper, into the features that pipeline actually feeds the model: the three specific, easy-to-miss ways a feature can quietly know things it shouldn't, and the discipline that keeps a result re-derivable months later instead of a one-time accident nobody can explain.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Six daily readings of a spread: 1.0, 1.2, 0.9, 1.4, 3.8 and 1.1, with a one-off spike to 3.8 on day 5. The z-score for day 3 is built two ways. Using the full sample, mean 1.57, including the future spike, it is minus 0.66. Using only days 1 to 3, mean 1.03, which is all that was known on day 3, it is minus 1.07. The future spike made today look less unusual than it really was.">
+      <rect class="tlp-box green" x="40" y="32" width="180" height="173" rx="4" opacity=".45"/>
+      <rect class="tlp-box red" x="220" y="32" width="175" height="173" rx="4" opacity=".45"/>
+      <text class="tlp-green" x="130" y="24" text-anchor="middle" font-size="13" font-weight="700">known on day 3</text>
+      <text class="tlp-red" x="308" y="24" text-anchor="middle" font-size="13" font-weight="700">not happened yet</text>
+      <line class="tlp-line" x1="40" y1="205" x2="395" y2="205"/>
+      <line class="tlp-line red dash" x1="40" y1="152" x2="395" y2="152"/>
+      <text class="tlp-red" x="228" y="144" font-size="12">full-sample mean 1.57</text>
+      <line class="tlp-line green dash" x1="40" y1="176" x2="220" y2="176"/>
+      <text class="tlp-green" x="46" y="200" font-size="12">mean of days 1–3: 1.03</text>
+      <circle class="tlp-blue" cx="70" cy="177.5" r="5"/>
+      <circle class="tlp-blue" cx="130" cy="168.5" r="5"/>
+      <circle class="tlp-purple" cx="190" cy="182" r="7"/>
+      <circle class="tlp-blue" cx="250" cy="159.5" r="5"/>
+      <circle class="tlp-red" cx="310" cy="51.5" r="6"/>
+      <circle class="tlp-blue" cx="370" cy="173" r="5"/>
+      <text class="tlp-red" x="322" y="56" font-size="13" font-weight="700">3.8 spike</text>
+      <text class="tlp-text3" x="70" y="222" text-anchor="middle" font-size="12">day 1</text>
+      <text class="tlp-text3" x="130" y="222" text-anchor="middle" font-size="12">2</text>
+      <text class="tlp-purple" x="190" y="222" text-anchor="middle" font-size="12" font-weight="700">3 (today)</text>
+      <text class="tlp-text3" x="250" y="222" text-anchor="middle" font-size="12">4</text>
+      <text class="tlp-text3" x="310" y="222" text-anchor="middle" font-size="12">5</text>
+      <text class="tlp-text3" x="370" y="222" text-anchor="middle" font-size="12">6</text>
+      <rect class="tlp-box red" x="408" y="34" width="182" height="78" rx="6"/>
+      <text class="tlp-text" x="499" y="56" text-anchor="middle" font-size="13" font-weight="700">full-sample z, day 3</text>
+      <text class="tlp-red" x="499" y="82" text-anchor="middle" font-size="20" font-weight="700">−0.66</text>
+      <text class="tlp-text2" x="499" y="102" text-anchor="middle" font-size="12">muted by a future spike</text>
+      <rect class="tlp-box green" x="408" y="126" width="182" height="78" rx="6"/>
+      <text class="tlp-text" x="499" y="148" text-anchor="middle" font-size="13" font-weight="700">point-in-time z, day 3</text>
+      <text class="tlp-green" x="499" y="174" text-anchor="middle" font-size="20" font-weight="700">−1.07</text>
+      <text class="tlp-text2" x="499" y="194" text-anchor="middle" font-size="12">days 1–3 only</text>
+    </svg>
+    <figcaption>The same reading on the same day gets two different z-scores. The full-sample version quietly uses a spike that had not happened yet, so day 3 looks ordinary. Built only from what was known on day 3, it is clearly unusual.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My new model looks brilliant in the backtest. The out-of-sample split is clean. What else could be wrong?</p>
+      <p data-who="Quant">The features. Every input has to be something you could actually have computed on the day it's dated, from what was known that day. Not a minute later.</p>
+      <p data-who="Trader">Obviously. I don't use tomorrow's prices.</p>
+      <p data-who="Quant">Most leaks are quieter than that. Take inflation. The March number is labelled March, but it's published weeks later, in April. Join it to the end of March and every March row in your data can see a number nobody had yet.</p>
+      <p data-who="Trader">Fine, that's a dating mistake. What else?</p>
+      <p data-who="Quant">Normalizing. Say you z-score a spread, to ask how unusual today's reading is. Six days of readings: one, one point two, point nine, one point four, then a news spike to three point eight, then one point one.</p>
+      <p data-who="Trader">And I want the score for day three.</p>
+      <p data-who="Quant">If you use the mean and spread of all six days, day three scores about minus point six six. Fairly ordinary. But that calculation includes the spike on day five, which hadn't happened yet. It widens everything.</p>
+      <p data-who="Trader">And using only what I knew on day three?</p>
+      <p data-who="Quant">Minus one point oh seven. Clearly unusual. Same reading, same day, a different signal, because the first version borrowed from the future.</p>
+      <p data-who="Trader">Any other traps?</p>
+      <p data-who="Quant">Two big ones. Target leakage: using today's close to predict whether today closes up. That's restating the answer. And survivorship: building your currency universe from today's vendor list, which quietly drops the pegs that blew up. Those are exactly the cases your strategy most needed to face.</p>
+      <p data-who="Trader">And reproducibility? I save my code.</p>
+      <p data-who="Quant">Code alone isn't enough. Pin the data, the code and the settings together, and keep the data as it stood at the time, because macro numbers get revised. But here's the twist. Reproducible isn't the same as right.</p>
+      <p data-who="Trader">Meaning?</p>
+      <p data-who="Quant">In 2010, Reinhart and Rogoff found that countries with debt above ninety percent of output averaged about minus point one percent growth. It was cited everywhere in the austerity debate. In 2013 a graduate student, Thomas Herndon, couldn't reproduce it and asked for their spreadsheet. An average had left out five countries, some years were excluded, and episodes were weighted oddly. Corrected, growth came out at about two point two percent.</p>
+      <p data-who="Trader">And their spreadsheet gave minus point one every time they ran it.</p>
+      <p data-who="Quant">Exactly. Perfectly reproducible, and still wrong. Only an independent rebuild caught it.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Build every feature as if it had to run live that morning, and hand the whole pipeline to someone who can disagree with it.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">A feature is anything a model is handed as an input</h2>
       <p class="sl-sub">Not raw data itself — a deliberately computed quantity built from raw data, meant to help a model predict something it hasn't seen yet.</p>
@@ -39,7 +110,7 @@
       <div class="sl-quote">The previous lesson's leaks live at the <strong>validation</strong> stage — a train/test split that lets the future touch the past. This lesson's leaks live one stage earlier, inside a single feature's own construction, before any split even exists. A perfect split downstream cannot fix a feature that was already contaminated on the way in.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Data leakage, in one sentence</h2>
       <p class="sl-sub">A feature accidentally contains information that would not really have been available at the moment a live prediction had to be made.</p>
@@ -56,7 +127,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Three specific ways it sneaks in</h2>
       <p class="sl-sub">Same underlying mistake — using data from the wrong time — wearing three different disguises.</p>
@@ -83,7 +154,7 @@
       <p class="sl-p">All three collapse to the same test: <strong>could this exact number have existed, in real time, at the moment the feature is dated to?</strong> If the honest answer is "not really," it's a leak — regardless of which column it's stored in or how reasonable the code looks.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Watch look-ahead bias happen, visually</h2>
       <p class="sl-sub">A prediction has to be made at a specific moment. A leaky feature reaches backward across that moment to grab information from after it.</p>
@@ -116,7 +187,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Rolling-window stats vs. whole-dataset stats, diverging live</h2>
       <p class="sl-sub">24 daily spread readings, with a one-off spike near the end. Drag the slider to move "today" forward and watch the two normalizing means pull apart — and back together.</p>
@@ -142,7 +213,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Which data range is actually legitimate?</h2>
       <p class="sl-sub">Given a rolling window size and where "today" sits in the dataset, compute the honest, causal range — and how many future rows a leaky whole-dataset calculation would improperly pull in.</p>
@@ -168,7 +239,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Target leakage: the feature that already knows the answer</h2>
       <p class="sl-sub">The subtlest of the three, because the feature and the label can sit in different columns and still be two names for the same already-happened event.</p>
@@ -195,7 +266,7 @@
       <div class="sl-quote">The practical test isn't which column the number sits in — it's whether the feature could have been meaningfully known <strong>before</strong> the outcome was substantially determined. "They happen together" is the tell. A quiz question that quietly hands you the final score as one of its inputs is still just asking "did the team that scored more points win."</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Two more slow leaks, worth knowing even if they're not the headline three</h2>
       <div class="sl-icard-grid">
@@ -206,7 +277,7 @@
     </section>
 
     <!-- WB:feature_engineering_leakage_reproducibility-deck:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Building a feature from only what was known, step by step</h2>
       <!-- WB:feature_engineering_leakage_reproducibility:START -->
@@ -217,7 +288,7 @@
     </section>
     <!-- WB:feature_engineering_leakage_reproducibility-deck:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Reproducibility is a separate, equally practical problem</h2>
       <p class="sl-sub">Proving a result wasn't leaked is the job of everything above. Proving it can be rebuilt months later, and get the same answer, is a different job entirely.</p>
@@ -238,7 +309,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Does this repo actually practice any of this?</h2>
       <p class="sl-sub">Checked against the actual source code, not just assumed from the surrounding discipline.</p>
@@ -253,7 +324,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">The checklist that catches most of this</h2>
       <div class="sl-icard-grid">
@@ -264,7 +335,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">2010–2013: the spreadsheet behind the 90% threshold</h2>
       <div class="sl-callout amber">
@@ -284,7 +355,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <!-- DESK:START --><h2 class="sl-h2">What this desk found, and where the textbook breaks</h2><!-- DESK:END -->
       <!-- DESK:START -->
@@ -299,7 +370,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -350,7 +421,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="17">
+    <section class="sl-slide sl-vark" data-slide="18">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2013-01">
+    <div class="tl-drill-label">Scenario drill · early 2013</div>
+    <h3>A famous threshold, and a trade built on it</h3>
+    <p>Since 2010, Reinhart and Rogoff's finding has been cited everywhere: advanced economies with public debt above 90% of GDP averaged about −0.1% a year growth. Your team wants to build a macro trade around countries crossing that line. The paper is by two highly respected economists in a top journal. What do you do before putting risk on it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Use the number as it stands. The authors and the journal are about as credible as it gets.<div class="tl-drill-why">Credibility is not a substitute for a rebuild. Nobody outside the authors had re-run the number from the raw data, and that is the only check that catches a mistake baked into the procedure.</div></li>
+      <li data-verdict="ok">Ask for the authors' spreadsheet, rerun it, and confirm you get −0.1%.<div class="tl-drill-why">Better than nothing, and it does catch drift. But their spreadsheet gave −0.1% every time it was run. Reproducing a result with the same file confirms the file, not the answer.</div></li>
+      <li data-verdict="good">Rebuild the number yourself from the raw country data, checking which countries and years are in and how each episode is weighted.<div class="tl-drill-why">This is the independent rebuild the lesson argues for. It tests the choices as well as the arithmetic: which rows count, which years are dropped, and how a one-year episode weighs against a nineteen-year one.</div></li>
+      <li data-verdict="bad">Search the data for the debt level where growth falls the most, and trade that threshold instead.<div class="tl-drill-why">This replaces one unchecked number with a data-mined one. Scanning for the best threshold is the multiple-testing trap, and it still rests on the same unverified dataset.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In 2013 Thomas Herndon, a graduate student at the University of Massachusetts Amherst, could not reproduce the result for a class assignment and obtained the spreadsheet. With Michael Ash and Robert Pollin he found an average that left out five countries, some excluded years, and equal weighting of episodes of very different length. Corrected, average growth above 90% debt was about 2.2%: slower than at lower debt, but no cliff. Reinhart and Rogoff acknowledged the spreadsheet error and defended their other choices.</p><p class="tl-drill-sources">Sources: <a href="https://doi.org/10.1257/aer.100.2.573">Reinhart and Rogoff, "Growth in a Time of Debt", American Economic Review, May 2010</a>; <a href="https://peri.umass.edu/publication/item/526-does-high-public-debt-consistently-stifle-economic-growth-a-critique-of-reinhart-and-rogoff">Herndon, Ash and Pollin, PERI Working Paper 322, April 2013</a>, later in the <a href="https://doi.org/10.1093/cje/bet075">Cambridge Journal of Economics</a>.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="19">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -516,5 +606,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

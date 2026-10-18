@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -525,6 +526,23 @@
     repricing that catches a market still trading the old rulebook off guard.
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The scenarios' one sum, \(\text{surprise} = \text{actual} - \text{priced}\), in basis points. Positive means hawkish (tighter than the market expected), negative means dovish. A cut is a negative number.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>The market has priced a 50bp hike. The committee delivers 25bp. Surprise \(= 25 - 50 =\) <span class="tl-blank" data-answer="-25" data-tol="0" data-unit="bp"></span>. Despite the hike, the currency should weaken: the decision was dovish against the price.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>The market has priced a 25bp cut. The committee holds. Surprise \(= 0 - (-25) =\) <span class="tl-blank" data-answer="25" data-tol="0" data-unit="bp"></span>. Next meeting the market has priced a 10bp hike and the committee hikes 35bp: surprise <span class="tl-blank" data-answer="25" data-tol="0" data-unit="bp"></span>. If instead it had cut 15bp, the surprise would be <span class="tl-blank" data-answer="-25" data-tol="0" data-unit="bp"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Priced: a 60bp hike. Delivered: 75bp. Surprise <span class="tl-blank" data-answer="15" data-tol="0" data-unit="bp"></span>. Another meeting, priced: a 40bp cut. Delivered: a 15bp cut. Surprise <span class="tl-blank" data-answer="25" data-tol="0" data-unit="bp"></span>. A third, priced: a hold. Delivered: a 50bp cut. Surprise <span class="tl-blank" data-answer="-50" data-tol="0" data-unit="bp"></span>. The decision's direction (a cut) and the surprise's direction can point opposite ways.</p>
+    </div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>It actually happened: words without action, and action against the words</h2>
   <p>
@@ -643,6 +661,8 @@
     +0.07, intervals across zero.</span>
   </div>
   <!-- DESK:END -->
+
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../fed-path.html">Fed path odds</a> turns fed funds futures into per-meeting odds: the "priced" half of surprise = actual − priced, for the next FOMC decision.</div><!-- DESK:END -->
 
   <!-- DESK:START -->
   <p>
@@ -769,7 +789,7 @@
       <li data-verdict="bad">Add to the short. "Within its mandate" means the ECB cannot really follow through.<div class="tl-drill-why">You are betting against a central bank's stated willingness to act, on a legal reading, at the moment the market is repricing its credibility. That is the hard way to be right.</div></li>
       <li data-verdict="ok">Halve the short and wait for the details of an actual programme.<div class="tl-drill-why">Sensible risk control, but it treats the promise as noise until action arrives. The lesson's point is that a credible promise moves prices on its own.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In September 2012 the ECB announced Outright Monetary Transactions, a programme to buy the bonds of countries that requested support under conditions. Spanish and Italian yields fell a long way over the following months. OMT has never been used: the market repriced on a credible promise, and the action was never needed.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In September 2012 the ECB announced Outright Monetary Transactions, a programme to buy the bonds of countries that requested support under conditions. Spanish and Italian yields fell a long way over the following months. OMT has never been used: the market repriced on a credible promise, and the action was never needed.</p><p class="tl-drill-sources">Sources: <a href="https://www.ecb.europa.eu/press/key/date/2012/html/sp120726.en.html">Mario Draghi, speech at the Global Investment Conference, London, 26 July 2012 (ECB)</a>; <a href="https://www.ecb.europa.eu/press/pr/date/2012/html/pr120906_1.en.html">ECB press release announcing Outright Monetary Transactions, 6 September 2012</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -919,7 +939,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

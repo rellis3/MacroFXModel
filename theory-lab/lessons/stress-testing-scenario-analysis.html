@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -18,7 +19,7 @@
   <h1 class="tl-title">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</h1>
   <p class="tl-dek">Asking "what happens if X" only gets you scenarios you thought to ask about — asking "what would have to happen for me to lose $Y" can surface the concentration risk you didn't know to look for.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explains a risk-management framework<!-- DESK:START -->; no stress-testing pipeline is built in this repo<!-- DESK:END --></span>
+    <span class="tl-status concept">CONCEPT — explains a risk-management framework<!-- DESK:START -->; this repo has a crisis-replay page but no reverse stress test<!-- DESK:END --></span>
     <span>~14 min read</span>
     <span>Prereqs: <a href="coherent-risk-measures.html">Coherent Risk Measures</a> and <a href="extreme-value-theory.html">Extreme Value Theory</a> help but aren't required</span>
   </div>
@@ -368,6 +369,23 @@
     <button type="button" id="stress-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Two strategies driven by one risk-off factor \(s\): \(\text{Loss}(s) = (N_A\beta_A + N_B\beta_B)\,s\). Find the loss per unit of shock, then solve backward for the shock \(s^{*}\) that reaches the loss threshold \(Y^{*}\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(N_A = \$8\text{M}\), \(\beta_A = 20\%\); \(N_B = \$2\text{M}\), \(\beta_B = 10\%\); \(Y^{*} = \$4\text{M}\). Loss per unit is \(\$8\text{M}\times0.20 + \$2\text{M}\times0.10 = \$1.6\text{M} + \$0.2\text{M} = \$1.8\text{M}\). So \(s^{*} = 4/1.8 =\) <span class="tl-blank" data-answer="2.222" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(N_A = \$5\text{M}\), \(\beta_A = 25\%\); \(N_B = \$5\text{M}\), \(\beta_B = 10\%\); \(Y^{*} = \$3\text{M}\). Strategy A loses \(\$1.25\text{M}\) per unit and Strategy B <span class="tl-blank" data-answer="0.5" data-tol="0.005" data-unit="$M"></span>. Loss per unit is <span class="tl-blank" data-answer="1.75" data-tol="0.005" data-unit="$M"></span>, so \(s^{*} =\) <span class="tl-blank" data-answer="1.714" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>A $15M book: \(N_A = \$12\text{M}\), \(\beta_A = 12\%\); \(N_B = \$3\text{M}\), \(\beta_B = 40\%\); \(Y^{*} = \$6\text{M}\). Find the loss per unit of shock <span class="tl-blank" data-answer="2.64" data-tol="0.005" data-unit="$M"></span>, that loss as a share of the book <span class="tl-blank" data-answer="17.6" data-tol="0.05" data-unit="%"></span>, and \(s^{*}\) <span class="tl-blank" data-answer="2.273" data-tol="0.01"></span>. The small leg carries almost half the risk.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Forward stress testing vs. reverse stress testing on the same loss function</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart with shock size on the x axis in units of an ordinary bad quarter, from zero to three, and portfolio loss in millions of dollars on the y axis, from zero to seven point five. A straight rising line shows loss equals two point four million dollars times the shock size. A blue dot marks the historical scenario at a shock of one, corresponding to a loss of two point four million dollars. A shaded band around a shock of one shows the range explored by a hypothetical Monte Carlo stress. Dashed lines mark a five million dollar unacceptable loss threshold intersecting the line at a shock of about two point zero eight, the result of solving backward in a reverse stress test.">
@@ -504,6 +522,7 @@
     larger than the unconditional median on all three. Use replay to size a loss if a shock recurs, never as a
     lean on what comes next.</span>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../book-stress.html">Book Stress</a> replays declared crisis windows and counts the effective number of bets inside each one; it is the forward replay from this lesson, and the place to see sleeves that look separate in calm markets fall into one bet in a crisis.</div>
   <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -587,7 +606,8 @@
       <li data-verdict="good">Run the reverse test now: what further yield rise uses up what is left of the buffer, counting everyone else forced to sell at once? Then raise collateral from other assets and cut leverage to survive that answer, not the historical one.<div class="tl-drill-why">The forward test is about to fail. Solving backward for the shock that breaks you, including the forced-selling loop that steepens the loss, tells you how close the edge really is and how much cash and de-leveraging you need.</div></li>
       <li data-verdict="bad">Re-run the historical replay with the worst week on record and report that the book survives it.<div class="tl-drill-why">The record is being beaten as you watch. Replaying it again only measures a storm you already know is too small.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The collateral calls came in. To meet them, funds and schemes sold gilts into a market with few buyers, which pushed yields up again and set off the next round of calls. The Bank of England said afterwards that the move went beyond what LDI funds had been prepared for. On 28 September it stepped in with temporary purchases of long-dated gilts, to protect financial stability rather than as monetary policy, and ended them on 14 October. Within weeks the Chancellor had been replaced and the Prime Minister had resigned. UK authorities then set a higher minimum level of resilience for LDI funds.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The collateral calls came in. To meet them, funds and schemes sold gilts into a market with few buyers, which pushed yields up again and set off the next round of calls. The Bank of England said afterwards that the move went beyond what LDI funds had been prepared for. On 28 September it stepped in with temporary purchases of long-dated gilts, to protect financial stability rather than as monetary policy, and ended them on 14 October. Within weeks the Chancellor had been replaced and the Prime Minister had resigned. UK authorities then set a higher minimum level of resilience for LDI funds.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://www.bankofengland.co.uk/news/2022/september/bank-of-england-announces-gilt-market-operation" target="_blank" rel="noopener">Bank of England press release, 28 September 2022</a>; <a href="https://www.bankofengland.co.uk/financial-policy-summary-and-record/2023/bank-staff-paper-ldi-minimum-resilience" target="_blank" rel="noopener">Bank of England staff paper, LDI minimum resilience, March 2023</a>; Reuters, 14 October 2022 (Chancellor replaced) and 20 October 2022 (Prime Minister resigns).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -599,7 +619,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Historical scenarios are anchored to the past, honestly.</strong> The next crisis rarely repeats the last one's exact shape — surviving a replayed 2008 is not evidence of surviving whatever comes next.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Monte Carlo stress is only as good as its assumptions.</strong> An understated stress correlation or shock size produces a reassuring number for the wrong reason.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A buffer sized to history fails on the move history hasn't produced, and forced selling makes the shock feed on itself.</strong> UK LDI, September 2022.<!-- DESK:START --> Reading history forward does not help either: analogue weeks were right 75% of the time on the S&amp;P against an unconditional 76% (<code>analogue-weeks</code>, NULL).<!-- DESK:END --></span></div>
-    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Nothing here is built or run in this repo.</strong> This lesson explains the three techniques conceptually; it is not a claim that any stress-testing pipeline exists or has been validated on this project's actual portfolios.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Only the replay is built in this repo.</strong> The Book Stress page replays crisis windows; no hypothetical or reverse stress test exists here, and none has been validated on this project's actual portfolios.</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -793,7 +813,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

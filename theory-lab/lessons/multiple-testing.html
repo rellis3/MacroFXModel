@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -461,6 +462,22 @@
     </div>
     <button type="button" id="mt-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>With \(m\) tests of pure noise at level \(\alpha\): family-wise error rate \(\text{FWER} = 1 - (1-\alpha)^m\), expected false positives \(m\alpha\), Bonferroni bar \(\alpha/m\), and the Benjamini-Hochberg bar for the test ranked \(k\), \((k/m)\,q\). New numbers each round; use decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(m = 20\), \(\alpha = 0.05\). \((0.95)^{20} = 0.3585\), so \(\text{FWER} = 1 - 0.3585 = 0.6415\). Expected false positives \(= 20 \times 0.05 = 1\). The Bonferroni bar is \(0.05/20 =\) <span class="tl-blank" data-answer="0.0025" data-tol="0.00005"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(m = 40\), \(\alpha = 0.01\). \((0.99)^{40} = 0.6690\). \(\text{FWER} =\) <span class="tl-blank" data-answer="0.331" data-tol="0.001"></span>; expected false positives <span class="tl-blank" data-answer="0.4" data-tol="0.005"></span>; Bonferroni bar <span class="tl-blank" data-answer="0.00025" data-tol="0.000005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(m = 120\), \(\alpha = 0.05\), target FDR \(q = 0.10\). \(\text{FWER} =\) <span class="tl-blank" data-answer="0.9979" data-tol="0.0005"></span>; expected false positives <span class="tl-blank" data-answer="6" data-tol="0.01"></span>; Bonferroni bar <span class="tl-blank" data-answer="0.000417" data-tol="0.000002"></span>; Benjamini-Hochberg bar for the test ranked 6th <span class="tl-blank" data-answer="0.005" data-tol="0.00005"></span>. Which bar is easier to clear at rank 6?</p>
+    </div>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">70 tests on pure noise — schematic p-value histogram</div>
@@ -508,7 +525,7 @@
     FWER = 1 &minus; (1&minus;0.05)<sup>m</sup> = <b id="mt-fwer-val">97.2%</b> &mdash; expected false positives &approx; <b id="mt-expected-val">3.5</b>
     </div>
     <div class="tl-legend">
-      <span><i style="background:var(--red)"></i>p &lt; 0.05 (~<span id="mt-legend-count">3-4</span> of <span id="mt-legend-m">70</span>, by chance)</span>
+      <span><i style="background:var(--red)"></i>p &lt; 0.05 (~<span id="mt-legend-count">4</span> of <span id="mt-legend-m">70</span>, by chance)</span>
       <span><i style="background:var(--blue)"></i>p &#8805; 0.05</span>
     </div>
     <div class="tl-chart-caption">
@@ -677,8 +694,9 @@
     2h and 4h, in both directions and both halves, and well powered: the interval is about ±0.12 ATR, inside the desk's own
     0.15 execution gate. A confirmed rates low is followed by an up-move 54.1% of the time, and the base rate is 54.1%. In
     the ledger's words: "54% looked like an edge and was exactly nothing."</span>
-  </div>
-  <!-- DESK:END -->
+</div>
+<!-- DESK:END -->
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../evidence.html">Evidence Book</a> lists every relationship the desk has tested with its verdict, nulls included, so the count of looks behind any one result is on the record.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -919,7 +937,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

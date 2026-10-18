@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <style>
   .vs-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
   .vs-table th,.vs-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
@@ -23,7 +24,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">From a Volatility Forecast to a Position Size — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Want the multi-day GARCH maths, the full instrument-aware sizer with a lots-versus-volatility chart, and a 6-question self-test?<a href="action-vol-to-size.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -36,7 +37,67 @@
       <p class="sl-lede">GARCH says tomorrow's EUR/USD volatility is 0.40%. So what? Here's how that number becomes pips, a stop and a lot size, by two standard routes, and where both go wrong.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lots against forecast daily volatility for a EUR/USD trade with a stop at two standard deviations and $500 at risk. The curve falls as one over volatility: at 0.40% the stop is 87 pips and the size 0.57 lots; at 0.80% the stop is 174 pips and the size 0.28 lots, the same $500 at risk. A dashed red curve shows double scaling, where the risk budget is also cut, falling as one over volatility squared to about 0.14 lots. At the calm left end the size is largest, which is why it needs a cap.">
+      <line class="tlp-line" x1="70" y1="200" x2="565" y2="200"/>
+      <line class="tlp-line" x1="70" y1="30" x2="70" y2="200"/>
+      <text class="tlp-text3" x="62" y="204" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="62" y="133" text-anchor="end" font-size="12">0.5</text>
+      <text class="tlp-text3" x="62" y="62" text-anchor="end" font-size="12">1.0</text>
+      <text class="tlp-text3" x="62" y="22" text-anchor="end" font-size="12">lots</text>
+      <text class="tlp-text3" x="70" y="216" text-anchor="middle" font-size="12">0.2%</text>
+      <text class="tlp-text3" x="168" y="216" text-anchor="middle" font-size="12">0.4%</text>
+      <text class="tlp-text3" x="266" y="216" text-anchor="middle" font-size="12">0.6%</text>
+      <text class="tlp-text3" x="364" y="216" text-anchor="middle" font-size="12">0.8%</text>
+      <text class="tlp-text3" x="462" y="216" text-anchor="middle" font-size="12">1.0%</text>
+      <text class="tlp-text3" x="560" y="216" text-anchor="middle" font-size="12">1.2%</text>
+      <text class="tlp-text3" x="318" y="236" text-anchor="middle" font-size="12">forecast daily volatility, EUR/USD (stop = 2σ, $500 at risk)</text>
+      <polyline class="tlp-line red dash" points="109.2,35.2 128.8,73.8 148.4,100.3 168.0,119.2 187.6,133.3 207.2,143.9 226.8,152.2 246.4,158.8 266.0,164.1 285.6,168.5 305.2,172.1 324.8,175.1 344.4,177.6 364.0,179.8 383.6,181.7 403.2,183.3 422.8,184.7 442.4,186.0 462.0,187.1 481.6,188.1 501.2,188.9 520.8,189.7 540.4,190.4 560.0,191.0"/>
+      <polyline class="tlp-line blue thick" points="70.0,36.8 89.6,64.0 109.2,83.4 128.8,98.0 148.4,109.3 168.0,118.4 187.6,125.8 207.2,132.0 226.8,137.2 246.4,141.7 266.0,145.6 285.6,149.0 305.2,152.0 324.8,154.7 344.4,157.0 364.0,159.2 383.6,161.1 403.2,162.9 422.8,164.5 442.4,166.0 462.0,167.4 481.6,168.6 501.2,169.8 520.8,170.9 540.4,171.9 560.0,172.8"/>
+      <circle class="tlp-green" cx="168" cy="119.25" r="6"/>
+      <circle class="tlp-green" cx="364" cy="160.3" r="6"/>
+      <text class="tlp-green" x="182" y="106" font-size="13" font-weight="700">0.40%: 87-pip stop, 0.57 lots</text>
+      <text class="tlp-green" x="376" y="146" font-size="13" font-weight="700">0.80%: 174 pips, 0.28 lots</text>
+      <text class="tlp-text2" x="376" y="90" font-size="13">same $500 at risk both times</text>
+      <text class="tlp-red" x="136" y="60" font-size="12">risk budget cut too: size ∝ 1/σ², ≈ 0.14 lots</text>
+      <text class="tlp-amber" x="80" y="22" font-size="12" font-weight="700">calm forecast = biggest size → cap it</text>
+    </svg>
+    <figcaption>Divide by the forecast and a bad day costs what you planned: double the volatility, halve the lots, same dollars at risk. Scale twice and the size falls with the square instead. And because a calm forecast gives the biggest position, every rule needs a leverage cap.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My volatility model says EUR/USD will move forty basis points tomorrow. What do I actually do with that?</p>
+      <p data-who="Quant">Turn it into pips first. Forty hundredths of a percent of ten eight fifty is about forty-three pips. That's one standard deviation of tomorrow's move.</p>
+      <p data-who="Trader">How do I know I've got the units right?</p>
+      <p data-who="Quant">Check it against the average daily range. For a random walk the typical high-to-low is about one point six times the standard deviation. Here that's sixty-nine pips. If the pair's average range is around sixty-five, you're in the right place.</p>
+      <p data-who="Trader">Then what?</p>
+      <p data-who="Quant">Route one: put the stop at two standard deviations, about eighty-seven pips. Decide the money first, say five hundred dollars. Five hundred over eighty-seven pips at ten dollars a pip is point five seven lots.</p>
+      <p data-who="Trader">And if volatility doubles overnight?</p>
+      <p data-who="Quant">The stop doubles to a hundred and seventy-four pips and the size halves to point two eight lots. Same five hundred dollars at risk. That's the whole idea: when the floor shakes harder, carry fewer glasses.</p>
+      <p data-who="Trader">What if there's no natural stop? A carry position I hold for weeks?</p>
+      <p data-who="Quant">Route two: volatility targeting. Pick how much you want the position to swing in a year, say five percent of the account. Daily vol of forty basis points is about six point three five percent a year, so you hold about seventy-nine thousand dollars of notional on a hundred thousand account.</p>
+      <p data-who="Trader">Can I use both, to be extra careful?</p>
+      <p data-who="Quant">That's the trap. A stop that widens with volatility, plus a risk budget you also cut, shrinks size with the square. Volatility doubles and the position quarters. Pick one route.</p>
+      <p data-who="Trader">Anything else that goes wrong?</p>
+      <p data-who="Quant">Calm. The lower the forecast, the bigger the position. Twenty seventeen was one of the calmest years on record. On the fifth of February twenty eighteen the VIX more than doubled in a day, and the biggest inverse-VIX note lost almost all its value. Positions sized from a quiet past were at their largest when the shock arrived.</p>
+      <p data-who="Trader">So how do I protect against that?</p>
+      <p data-who="Quant">Cap the leverage, put a floor under the forecast, and check it against implied volatility, which looks forward when trailing data looks back.</p>
+      <p data-who="Trader">The one-line version?</p>
+      <p data-who="Quant">Divide by the volatility forecast so a bad day costs what you planned, use one route not two, and never let a calm number size you without a cap.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">From the Turtles' N to volatility targets</h2>
       <p class="sl-sub">Turtle rules (1983); RiskMetrics (J.P. Morgan, 1994); GARCH (1986) and HAR (2009) as forecasts; volatility-targeted funds</p>
@@ -49,7 +110,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Units first: percent → pips</h2>
       <div class="sl-row"><div class="sl-box">σ pips = σ% ÷ 100 × price ÷ pip size</div></div>
@@ -65,7 +126,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Longer trades: add variances, let shocks fade</h2>
       <p class="sl-p">GARCH pulls the forecast back toward its long-run level at the rate φ = α + β. Over h days, sum each day's variance.</p>
@@ -78,7 +139,7 @@
       <div class="sl-quote">A one-day σ for a three-week trade puts the stop inside the noise of the holding period. Match the forecast to how long you'll hold.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Two routes to a size</h2>
       <div class="sl-compare">
@@ -88,7 +149,7 @@
       <div class="sl-callout amber"><div class="sl-callout-label">Use one, not both</div><p>A k·σ stop plus a risk budget that also shrinks with volatility gives size ∝ 1/σ². Volatility doubles and the position quarters.</p></div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The sizer</h2>
       <div class="sl-card">
@@ -113,7 +174,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6 · Worked example</div>
       <h2 class="sl-h2">HAR forecast → 0.57 lots</h2>
       <div class="vs-steps">
@@ -126,7 +187,7 @@
     </section>
 
     <!-- WB:action_vol_to_size-deck:START -->
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">From a volatility forecast to a position size, drawn step by step</h2>
       <!-- WB:action_vol_to_size:START -->
@@ -137,14 +198,14 @@
     </section>
     <!-- WB:action_vol_to_size-deck:END -->
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Where Kelly fits</h2>
       <div class="sl-row"><div class="sl-box">Kelly leverage f* = μ / σ² → position vol f*·σ = μ/σ = Sharpe</div></div>
       <p class="sl-p"><strong>Full Kelly is a volatility target equal to your Sharpe ratio.</strong> An honest Sharpe of 0.5 means 50% volatility at full Kelly, 25% at half. A 5–10% target is a small fraction, on purpose: Sharpe estimates run high, and past Kelly, risk rises while growth falls. More in <a href="kelly-criterion-micro.html">the Kelly guide</a>.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8 · It actually happened</div>
       <h2 class="sl-h2">5 February 2018: "Volmageddon"</h2>
       <p class="sl-p">2017 was one of the calmest years on record for US stocks. Inverse-VIX products had grown large, and positions were sized from a long run of quiet trailing volatility.</p>
@@ -154,7 +215,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The chain</h2>
       <div class="sl-chain">
@@ -170,7 +231,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10 · The desk's verdict</div>
       <h2 class="sl-h2">What was tested here</h2>
       <div class="sl-stamp validated" data-evidence="tape-speed-persistence" data-evidence-date="2026-09-12"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>Pace persists.</strong> A slow 15 minutes is followed by a slow hour, a fast one by a fast hour: monotonic in 68 of 68 cells across 17 pairs. That's why a volatility forecast is worth sizing on. Not a direction.</span></div>
@@ -178,7 +239,7 @@
       <div class="sl-stamp untested"><span class="sl-stamp-tag">Not tested here</span><span><strong>"Volatility targeting adds return."</strong> Not tested here. Published evidence is mixed: gains in Moreira &amp; Muir (2017), harder to capture out of sample in later work. The risk-control case stands either way.</span></div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11 · Template</div>
       <h2 class="sl-h2">Before you size</h2>
       <div class="sl-icard-grid">
@@ -191,7 +252,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -229,7 +290,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2018-01-26">
+    <div class="tl-drill-label">Scenario drill · late January 2018</div>
+    <h3>Your volatility-targeted sleeve keeps getting bigger</h3>
+    <p>You run a stock-index sleeve at a 10% volatility target, sized from trailing realised volatility. 2017 was one of the calmest years for US stocks on record, and the VIX spent much of it at historically low levels. Your trailing forecast has fallen so far that the rule now asks for about 2× leverage, the most the sleeve has ever held. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Follow the rule to 2×. The forecast says risk is low, so the position is only taking its normal 10% risk.<div class="tl-drill-why">The forecast only knows the past. A position sized from trailing calm is largest exactly when a shock would hurt most, and the forecast learns about the shock only after it arrives.</div></li>
+      <li data-verdict="good">Apply a leverage cap and a floor under the forecast, and check it against implied volatility before letting the calm number set the size.<div class="tl-drill-why">These are the three fixes the lesson names. The cap limits the damage if calm ends suddenly, the floor stops the forecast assuming volatility will stay unusually low, and implied volatility looks forward where trailing realised looks back.</div></li>
+      <li data-verdict="ok">Drop volatility sizing and hold a fixed notional instead.<div class="tl-drill-why">It avoids the calm-market trap, but throws away the useful part: when volatility does jump, a fixed position takes far more risk than planned. Volatility sizing is right; it just needs a cap and a floor.</div></li>
+      <li data-verdict="bad">Also cut the risk budget whenever volatility rises, to be extra safe.<div class="tl-drill-why">That is double scaling: size then falls with the square of volatility. It does nothing about the real problem, which is the oversized position while volatility is still low.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In late January and early February 2018 stocks fell. On Monday 5 February the VIX more than doubled in a single session, its largest one-day percentage rise on record. Credit Suisse's XIV, the biggest inverse-VIX note, lost almost all its value, and Credit Suisse moved to terminate it. Many post-mortems also pointed to selling by strategies that size by recent volatility, which had to cut exposure after the jump; how much each group contributed is still debated.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/VIXCLS">Cboe VIX daily close via FRED (17.31 on 2 February, 37.32 on 5 February 2018, a 116% rise; 2017's average close was 11.1)</a>; Credit Suisse media release, "Credit Suisse AG Announces Event Acceleration of its XIV ETNs", 6 February 2018.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -309,5 +389,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

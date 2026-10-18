@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -492,7 +493,7 @@
           <div class="tl-compare">
             <div class="tl-compare-card amber">
               <h4>Duration only: $914.61</h4>
-              <p>Off by about \$1.14 (understates the true price) — the straight-line tangent estimate misses the curvature entirely.</p>
+              <p>Off by about \$1.15 (understates the true price) — the straight-line tangent estimate misses the curvature entirely.</p>
             </div>
             <div class="tl-compare-card purple">
               <h4>Duration + convexity: $915.78</h4>
@@ -501,6 +502,23 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Steps 3 to 6 again on new bonds: turn Macaulay duration into modified duration, \(D_{mod} = D_{Mac}/(1+y)\), then estimate the new price with \(\Delta P/P \approx -D_{mod}\,\Delta y + \tfrac12 C\,(\Delta y)^2\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>A bond priced at \$980 has \(D_{Mac} = 6.0\) years at \(y = 4\%\) and convexity \(C = 45\). Yields rise 100bp. \(D_{mod} = 6.0/1.04 = 5.769\). The linear term is \(-5.769 \times 0.01 = -5.769\%\); the convexity term is \(\tfrac12 \times 45 \times 0.01^2 = +0.225\%\); together \(-5.544\%\). The new price is about \$<span class="tl-blank" data-answer="925.67" data-tol="0.1"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>A longer bond priced at \$1,050 has \(D_{Mac} = 8.5\) years at \(y = 6\%\) and \(C = 90\). Yields rise 200bp. \(D_{mod}\) = <span class="tl-blank" data-answer="8.019" data-tol="0.005"></span> years. The linear term is \(-16.04\%\) and the convexity term \(\tfrac12 \times 90 \times 0.02^2 = +1.80\%\), so \(\Delta P/P\) = <span class="tl-blank" data-answer="-14.24" data-tol="0.02" data-unit="%"></span> and the new price is about \$<span class="tl-blank" data-answer="900.50" data-tol="0.3"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>A short bond priced at \$1,000 has \(D_{Mac} = 3.0\) years at \(y = 3\%\) and \(C = 11\). This time yields <em>fall</em> 150bp, so \(\Delta y = -0.015\). \(D_{mod}\) = <span class="tl-blank" data-answer="2.913" data-tol="0.005"></span> years. \(\Delta P/P\) = <span class="tl-blank" data-answer="4.49" data-tol="0.02" data-unit="%"></span>. New price: \$<span class="tl-blank" data-answer="1044.93" data-tol="0.3"></span>. Notice the convexity term adds to the gain when yields fall, just as it softened the loss when they rose.</p>
     </div>
   </div>
 
@@ -680,12 +698,10 @@
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Untested here: "a duration-matched book is protected from a rate shock."</strong> No entry in
-    this desk's ledger measures bond-portfolio P&amp;L, so nothing here confirms or refutes it. A fair test would
-    need daily prices for a bond book and its hedge across many large-move days, scoring the realised P&amp;L
-    against both the duration-only and the duration-plus-convexity prediction. It would also need the part SVB
-    adds: a liability side whose behaviour under stress is measured, not assumed.</span>
+    this desk's ledger measures bond-portfolio P&amp;L, so nothing here confirms or refutes it.<div class="tl-howtotest"><strong>How to test it:</strong> price a 10-year Treasury bullet and a duration-matched 2-year/30-year barbell every day from FRED constant-maturity yields, 1990 to 2025, and record the hedged book's daily P&amp;L, charging 0.5bp a leg each time the hedge is reset. On the 5% of days with the largest 10-year moves, the claim holds only if the hedged P&amp;L stays within 0.10% of notional on at least 95% of them, a gate fixed in advance, and the baseline is the unhedged bullet's P&amp;L on the same days. Score the duration-only and duration-plus-convexity predictions against the realised P&amp;L too. The part SVB adds, a liability side whose behaviour under stress is measured rather than assumed, cannot be tested with market data alone.</div></span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../rates.html">Rates &amp; Policy</a> charts the 2-, 10- and 30-year yields over three years; multiply a move there by a bond's modified duration to see roughly what it did to the price.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -788,7 +804,7 @@
       <li data-verdict="good">Cut the book's duration or hedge it now, sized in DV01, and stress-test what happens if a large share of deposits leaves at once.<div class="tl-drill-why">This treats both sides. The hedge limits how far the assets fall; the stress test asks whether you could be forced to sell them. Duration measures the loss; the liability side decides whether it becomes real.</div></li>
       <li data-verdict="ok">Hedge the DV01 you measure today, and leave it there.<div class="tl-drill-why">Better than nothing, but the mortgage bonds have negative convexity. As rates rise, prepayments slow and their duration lengthens, so a hedge sized on today's DV01 covers less and less of the risk.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> This is Silicon Valley Bank's position. The Fed took its target range from near zero to 4.50–4.75% by February 2023. By the end of 2022 SVB's held-to-maturity securities were about $15 billion below book value, against about $16 billion of shareholders' equity. On 8 March 2023 it said it had sold about $21 billion of securities at a loss of about $1.8 billion and would raise capital. On 9 March depositors withdrew about $42 billion in a single day, and on 10 March regulators closed the bank.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> This is Silicon Valley Bank's position. The Fed took its target range from near zero to 4.50–4.75% by February 2023. By the end of 2022 SVB's held-to-maturity securities were about $15 billion below book value, against about $16 billion of shareholders' equity. On 8 March 2023 it said it had sold about $21 billion of securities at a loss of about $1.8 billion and would raise capital. On 9 March depositors withdrew about $42 billion in a single day, and on 10 March regulators closed the bank.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20220316a.htm">Federal Reserve FOMC statement, 16 Mar 2022</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20230201a.htm">FOMC statement, 1 Feb 2023</a>; <a href="https://www.federalreserve.gov/publications/files/svb-review-20230428.pdf">Federal Reserve, Review of the Supervision and Regulation of Silicon Valley Bank, 28 Apr 2023</a>; <a href="https://dfpi.ca.gov/wp-content/uploads/sites/337/2023/03/DFPI-Orders-Silicon-Valley-Bank-03102023.pdf">California DFPI order taking possession of SVB, 10 Mar 2023</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -797,7 +813,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Macaulay duration is a payment-weighted average time.</strong> Each cash flow's weight is its share of the bond's present value — a genuine weighted average, in years.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Modified duration IS the first-order Taylor term of price w.r.t. yield.</strong> \(D_{mod}=D_{Mac}/(1+y)\) and \(\Delta P/P \approx -D_{mod}\Delta y\) — nothing more exotic than a tangent-line approximation.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Convexity is the second-order term, and it's always positive for a plain bond.</strong> The true price-yield curve always sits on or above its own tangent line — duration alone always underestimates price, in either direction of yield move.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Duration + convexity beats duration alone, by a lot, for a real-sized shock.</strong> The worked example's 100bp move: duration-only missed by \$1.14; adding convexity closed the gap to \$0.03.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Duration + convexity beats duration alone, by a lot, for a real-sized shock.</strong> The worked example's 100bp move: duration-only missed by \$1.15; adding convexity closed the gap to \$0.03.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>DV01/PVBP is duration in dollars-per-basis-point.</strong> Same information, denominated the way trading desks actually size hedges.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Both measures assume a parallel yield-curve shift.</strong> Real curve moves are rarely perfectly parallel — a duration-neutral book can still lose money on a steepening or flattening.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Convexity can be negative for callable/mortgage instruments.</strong> An embedded prepayment or call option changes the bond's cash-flow schedule as yields move, which can flip the "always positive" result this lesson derives for a plain bond.</span></div>
@@ -1114,7 +1130,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

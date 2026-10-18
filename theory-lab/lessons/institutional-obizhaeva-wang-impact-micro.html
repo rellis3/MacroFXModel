@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <style>
   /* Scoped to this lesson only — mirrors the full lesson's own local
      tl-table-wrap/tl-tbl pattern, just re-skinned for the dark deck theme
@@ -26,7 +27,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Obizhaeva-Wang Transient Price Impact — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-obizhaeva-wang-impact.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -39,7 +40,69 @@
       <p class="sl-lede">Kyle's impact never fades because it's information. Almgren-Chriss's temporary impact snaps back the instant you stop trading, with no memory of a moment ago. Obizhaeva-Wang sits in between: a limit-order-book reservoir that heals at a finite <strong>resilience rate ρ</strong> — and that one assumption alone turns the optimal way to trade a large order from a smooth curve into something lumpier at both ends.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the price-impact state for the worked example's even split, five trades of 20 units at times 0, 0.25, 0.5, 0.75 and 1 with resilience 2 and impact coefficient 0.01. Each trade jumps the impact up by 0.2, it decays between trades with a half-life of about 0.35, and because it never fully heals, the leftover builds to about 0.47. Right: total cost of three schedules: one block 50.00, even split 26.45, front-and-back loaded 25.92.">
+      <text class="tlp-text3" x="60" y="24" font-size="12">impact D(t): 5 trades of 20 units</text>
+      <text class="tlp-purple" x="70" y="52" font-size="12" font-weight="700">each trade jumps it +0.2</text>
+      <text class="tlp-text2" x="70" y="70" font-size="12">then it heals: half-life ≈ 0.35</text>
+      <line class="tlp-line" x1="60" y1="40" x2="60" y2="190"/>
+      <line class="tlp-line" x1="60" y1="190" x2="362" y2="190"/>
+      <polyline class="tlp-line purple thick" points="60.0,190.0 60.0,142.0 67.5,144.9 75.0,147.6 82.5,150.2 90.0,152.6 97.5,154.9 105.0,157.0 112.5,159.0 120.0,160.9 120.0,112.9 127.5,117.6 135.0,121.9 142.5,126.1 150.0,129.9 157.5,133.6 165.0,137.0 172.5,140.2 180.0,143.2 180.0,95.2 187.5,101.0 195.0,106.4 202.5,111.4 210.0,116.2 217.5,120.7 225.0,124.9 232.5,128.8 240.0,132.5 240.0,84.5 247.5,90.9 255.0,96.9 262.5,102.6 270.0,107.9 277.5,112.8 285.0,117.5 292.5,121.9 300.0,126.0 300.0,78.0 307.5,84.8 315.0,91.2 322.5,97.2 330.0,102.8 337.5,108.1 345.0,113.0 352.5,117.7 360.0,122.1"/>
+      <text class="tlp-text3" x="60" y="206" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="180" y="206" text-anchor="middle" font-size="12">0.5</text>
+      <text class="tlp-text3" x="300" y="206" text-anchor="middle" font-size="12">1</text>
+      <text class="tlp-text3" x="362" y="206" text-anchor="end" font-size="12">time →</text>
+      <text class="tlp-text2" x="210" y="230" text-anchor="middle" font-size="12">the next trade pays whatever has not healed yet</text>
+      <text class="tlp-text2" x="490" y="24" text-anchor="middle" font-size="13" font-weight="700">total cost, 100 units</text>
+      <text class="tlp-text2" x="400" y="56" font-size="12">one block</text>
+      <rect class="tlp-box red" x="400" y="62" width="180" height="22" rx="4"/>
+      <text class="tlp-red" x="574" y="78" text-anchor="end" font-size="13" font-weight="700">50.00</text>
+      <text class="tlp-text2" x="400" y="108" font-size="12">even split</text>
+      <rect class="tlp-box blue" x="400" y="114" width="95.2" height="22" rx="4"/>
+      <text class="tlp-blue" x="503" y="130" font-size="13" font-weight="700">26.45</text>
+      <text class="tlp-text2" x="400" y="160" font-size="12">front + back loaded</text>
+      <rect class="tlp-box green" x="400" y="166" width="93.3" height="22" rx="4"/>
+      <text class="tlp-green" x="501" y="182" font-size="13" font-weight="700">25.92</text>
+      <text class="tlp-green" x="490" y="214" text-anchor="middle" font-size="12" font-weight="700">ends are cheaper, but only ≈ 2%</text>
+    </svg>
+    <figcaption>Impact jumps at each trade and heals between them, but not all the way. A trade in the middle pushes into your own leftover footprint, so the start and the end are the cheap places to trade bigger. In the toy example that saves about 2% over an even split, while one big block costs nearly twice as much.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">When I sell in slices, the second slice always seems to fill worse than the first. Why?</p>
+      <p data-who="Quant">Because the book has not healed yet. Your first slice ate the resting bids near the mid. Those bids come back, but not instantly. Your second slice is pushing into your own footprint.</p>
+      <p data-who="Trader">That's the Obizhaeva and Wang idea?</p>
+      <p data-who="Quant">Yes. A working paper in 2005, published in 2013. They treat the book as a reservoir that refills at a steady rate. They call that rate resilience.</p>
+      <p data-who="Trader">How is that different from the usual impact models?</p>
+      <p data-who="Quant">Kyle's impact is permanent: the market learns something and never goes back. Almgren and Chriss's temporary impact vanishes the moment you slow down. This one sits in between. It has a real half-life.</p>
+      <p data-who="Trader">So two rules?</p>
+      <p data-who="Quant">Two rules. Each trade pushes the price away by an amount proportional to its size. Between trades, that push shrinks steadily back towards zero. Each new trade pays whatever push is left over, plus half of its own.</p>
+      <p data-who="Trader">Put numbers on it.</p>
+      <p data-who="Quant">The lesson sells a hundred units in five trades. Sell it all at once and the cost is fifty. Split it evenly, twenty each, and the cost falls to about twenty-six and a half. The book gets time to heal between slices.</p>
+      <p data-who="Trader">Can I do better than even?</p>
+      <p data-who="Quant">A little. Trade forty at the start, forty at the end, and a sliver in between, and it costs about twenty-five point nine. Roughly two percent cheaper.</p>
+      <p data-who="Trader">Why are the ends special?</p>
+      <p data-who="Quant">At the start the book is fully rested, so there is nothing of yours to fight. At the end, whatever you leave behind never comes back to hurt you, because there is no later trade. In the middle you pay both ways.</p>
+      <p data-who="Trader">So push the ends as hard as I can?</p>
+      <p data-who="Quant">No. Two blocks of fifty and nothing in between costs about twenty-eight point four, worse than the even split. Big blocks pay more for their own push. The real answer is a balance the paper solves exactly.</p>
+      <p data-who="Trader">What's the catch in practice?</p>
+      <p data-who="Quant">The resilience rate is hard to measure, and it probably moves. Books are likely thinner around the open, the close and data releases, and slower to heal in stressed markets. Get it wrong and the shape of your schedule is wrong.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Impact heals at a finite speed, so space your slices to let it heal, and trade bigger where your footprint cannot hurt you: the start and the end.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Impact that fades, but not instantly</h2>
       <p class="sl-sub">Transient impact · Obizhaeva &amp; Wang, working paper 2005, published 2013 → execution scheduling</p>
@@ -52,7 +115,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Three impact models, one axis: does it decay, and how?</h2>
       <p class="sl-sub">A memory-foam pillow springs back instantly. Wet sand takes real time to smooth back out.</p>
@@ -64,7 +127,7 @@
       <div class="sl-quote">Footprints in wet sand, not a memory-foam pillow. The print doesn't vanish the instant your foot lifts — water has to seep back in, which takes real, measurable time. Step in the same spot again too soon and you sink in deeper.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Two rules are the entire engine</h2>
       <p class="sl-sub">A decay between trades, a jump at each trade — nothing else drives D_t.</p>
@@ -91,7 +154,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Watch the sawtooth — drag resilience ρ</h2>
       <p class="sl-sub">Five unit-sized trades land at evenly spaced instants; the curve is the exact decay-plus-jump process from Section 3.</p>
@@ -112,7 +175,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Why the boundaries beat the interior</h2>
       <p class="sl-sub">Almgren-Chriss's optimal path is always smooth. Once impact has real memory, that logic breaks — specifically at the two ends.</p>
@@ -137,7 +200,7 @@
       <div class="sl-quote">That asymmetry is the entire intuitive content of the famous result: the cost-minimizing schedule places discrete block trades at t=0 and t=T, with a lighter, smoother rate filling in the interior. It is <strong>not</strong> an argument for pushing those blocks to their logical extreme — the next slide shows exactly why not.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The worked example: three schedules, one toy ρ</h2>
       <p class="sl-sub">Q = 100 units, 5 evenly-spaced trades over T = 1, ρ = 2, κ = 0.01. Cost of each trade: q_i · D_{t_i−} + ½κ·q_i².</p>
@@ -155,7 +218,7 @@
     </section>
 
     <!-- WB:institutional_obizhaeva_wang_impact-deck:START -->
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Transient impact: slicing into a book that heals</h2>
       <!-- WB:institutional_obizhaeva_wang_impact:START -->
@@ -166,7 +229,7 @@
     </section>
     <!-- WB:institutional_obizhaeva_wang_impact-deck:END -->
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Compare even-split vs. front-and-back, live</h2>
       <p class="sl-sub">Front-and-back puts 40% of Q at the first and last of N evenly-spaced trades, spreading 20% evenly across the middle. Same cost formula as Section 3 and the full lesson's own calculator.</p>
@@ -188,7 +251,7 @@
       </div>
     </section>
 
-    <!-- DESK:START --><section class="sl-slide" data-slide="10">
+    <!-- DESK:START --><section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">What's actually in this repo</h2>
       <div class="sl-icard-grid">
@@ -199,7 +262,7 @@
       <div class="sl-quote">Very few desks solve a full Obizhaeva-Wang-style optimization by hand — but the resilience framing informally justifies why real execution algorithms sometimes "wait out" thin depth, or avoid clustering large child orders too close together in time.</div>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this model is a stylized approximation</h2>
       <div class="sl-icard-grid">
@@ -209,7 +272,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -260,7 +323,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide sl-vark" data-slide="14">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative execution hour</div>
+    <h3>Laying out a large sell order over the next hour</h3>
+    <p>You must sell a large EUR/USD order within the hour, in five child orders at evenly spaced times. Your estimate is that the book heals at a finite, moderate rate: as in the lesson's toy example, about 40% of one child order's push has healed by the time the next one goes. Using the lesson's toy costs as a guide (one block 50.00, even split 26.45), how do you lay out the five child orders?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Sell it all in the first child order and be done.<div class="tl-drill-why">One block pays the full self-impact of the whole size at once, with no time for the book to heal: 50.00 in the toy example, almost twice the even split.</div></li>
+      <li data-verdict="good">Make the first and last child orders larger and trade lighter in between.<div class="tl-drill-why">At the start the book is fully rested, and whatever the last order leaves behind never hurts a later trade. The middle orders push into your own leftover impact, so they should be smaller. In the toy example, 40 / 6.67 / 6.67 / 6.67 / 40 costs 25.92, the cheapest of the schedules shown.</div></li>
+      <li data-verdict="bad">Two half-size blocks, at the start and the end, with nothing in between.<div class="tl-drill-why">Pushing the idea to its extreme backfires. Each block pays so much self-impact that it swamps the healing saved: 28.38 in the toy example, worse than an even split.</div></li>
+      <li data-verdict="ok">Five equal child orders.<div class="tl-drill-why">Close to the best: 26.45 against 25.92 in the toy example, about 2% more. A sensible default when you do not trust your estimate of how fast the book heals.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The point.</strong> This is an illustrative situation using the lesson's toy numbers, not a real order or a real calibration. With finite resilience the cheap places to trade bigger are the two ends. The saving over an even split is modest, and it depends on a healing rate that is hard to estimate and moves through the day, so the even split remains a respectable fallback.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -460,5 +542,7 @@
 })();
 </script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

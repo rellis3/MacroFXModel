@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <style>
   /* Local to this deck: compact calibration rows. */
   .oc-row{display:grid;grid-template-columns:1fr 90px 90px 26px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
@@ -26,7 +27,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Overconfidence &amp; Overtrading — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full math, both real stories, a self-audit and a 6-question self-test?<a href="overconfidence-overtrading.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -39,7 +40,72 @@
       <p class="sl-lede">Most traders think their next trade is better than average. Tens of thousands of real brokerage accounts show what that belief costs. The bill doesn't come from one big mistake. It comes from turnover, a small fee paid every time you act.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: 100 invested for 20 years at 10 percent a year grows to 673 before costs, but only to 425 after a 2.5 percent yearly drag from 250 percent turnover at a 1 percent round-trip cost, so about 43 percent of the gain goes to costs. Right: in Barber and Odean's study of 66,465 households from 1991 to 1996, the market returned 17.9 percent a year while the fifth of households that traded most earned 11.4 percent net.">
+      <path class="tlp-red" d="M50.0,174.9 L64.0,172.3 L78.0,169.6 L92.0,166.5 L106.0,163.2 L120.0,159.5 L134.0,155.5 L148.0,151.0 L162.0,146.1 L176.0,140.7 L190.0,134.8 L204.0,128.3 L218.0,121.1 L232.0,113.2 L246.0,104.5 L260.0,95.0 L274.0,84.5 L288.0,72.9 L302.0,60.2 L316.0,46.2 L330.0,30.9 L330.0,93.2 L316.0,100.6 L302.0,107.6 L288.0,114.0 L274.0,120.0 L260.0,125.6 L246.0,130.8 L232.0,135.6 L218.0,140.1 L204.0,144.3 L190.0,148.2 L176.0,151.8 L162.0,155.2 L148.0,158.3 L134.0,161.2 L120.0,163.9 L106.0,166.4 L92.0,168.8 L78.0,170.9 L64.0,173.0 L50.0,174.9 Z" opacity=".18"/>
+      <line class="tlp-line" x1="50" y1="200" x2="330" y2="200"/>
+      <line class="tlp-line" x1="50" y1="24" x2="50" y2="200"/>
+      <polyline class="tlp-line green thick" points="50.0,174.9 64.0,172.3 78.0,169.6 92.0,166.5 106.0,163.2 120.0,159.5 134.0,155.5 148.0,151.0 162.0,146.1 176.0,140.7 190.0,134.8 204.0,128.3 218.0,121.1 232.0,113.2 246.0,104.5 260.0,95.0 274.0,84.5 288.0,72.9 302.0,60.2 316.0,46.2 330.0,30.9"/>
+      <polyline class="tlp-line red thick" points="50.0,174.9 64.0,173.0 78.0,170.9 92.0,168.8 106.0,166.4 120.0,163.9 134.0,161.2 148.0,158.3 162.0,155.2 176.0,151.8 190.0,148.2 204.0,144.3 218.0,140.1 232.0,135.6 246.0,130.8 260.0,125.6 274.0,120.0 288.0,114.0 302.0,107.6 316.0,100.6 330.0,93.2"/>
+      <text class="tlp-green" x="336" y="35.9" font-size="14" font-weight="700">673</text>
+      <text class="tlp-red" x="336" y="98.2" font-size="14" font-weight="700">425</text>
+      <text class="tlp-text2" x="60" y="40" font-size="12.5">250% turnover × 1% a round trip</text>
+      <text class="tlp-text2" x="60" y="58" font-size="12.5">= 2.5% drag every year</text>
+      <text class="tlp-red" x="60" y="78" font-size="13" font-weight="700">→ 43% of the 20-year gain lost</text>
+      <text class="tlp-green" x="200" y="120.3" text-anchor="end" font-size="12">before costs, 10%</text>
+      <text class="tlp-red" x="214" y="164.3" font-size="12">after costs, 7.5%</text>
+      <text class="tlp-text3" x="44" y="178.9" text-anchor="end" font-size="12">100</text>
+      <text class="tlp-text3" x="50" y="216" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="330" y="216" text-anchor="middle" font-size="12">20 years</text>
+      <text class="tlp-text2" x="388" y="20" font-size="12">66,465 households, 1991–96</text>
+      <text class="tlp-text2" x="388" y="36" font-size="12">net return a year</text>
+      <line class="tlp-line" x1="390" y1="200" x2="590" y2="200"/>
+      <rect class="tlp-box blue" x="405" y="76.0" width="70" height="124.0" rx="4"/>
+      <rect class="tlp-box red" x="505" y="121.0" width="70" height="79.0" rx="4"/>
+      <text class="tlp-blue" x="440" y="68.0" text-anchor="middle" font-size="15" font-weight="700">17.9%</text>
+      <text class="tlp-red" x="540" y="113.0" text-anchor="middle" font-size="15" font-weight="700">11.4%</text>
+      <text class="tlp-text" x="440" y="216" text-anchor="middle" font-size="12">market</text>
+      <text class="tlp-text" x="540" y="216" text-anchor="middle" font-size="12">most active</text>
+      <text class="tlp-text" x="540" y="231" text-anchor="middle" font-size="12">fifth</text>
+    </svg>
+    <figcaption>Overconfidence rarely shows up as one big mistake. It shows up as turnover: a small fee on every trade, compounding into a large hole. The households that traded most trailed the market by 6.5 points a year.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My last few trades won. I'm good at this. Why shouldn't I trade more?</p>
+      <p data-who="Quant">Because feeling sure and being right are different things, and the gap between them can be measured.</p>
+      <p data-who="Trader">Measured how?</p>
+      <p data-who="Quant">Ask people for ranges they are ninety percent sure contain the answer. If they're honest, nine ranges in ten catch the truth. In study after study it's far fewer, often closer to half. Finance chiefs asked for eighty percent ranges on the next year's stock market caught the real return only thirty-six percent of the time.</p>
+      <p data-who="Trader">So the ranges are too narrow. Where does the money go?</p>
+      <p data-who="Quant">Into trading. If every idea feels above average, you act on more of them. And every round trip pays a spread and a commission, win or lose.</p>
+      <p data-who="Trader">How much can that cost?</p>
+      <p data-who="Quant">Barber and Odean followed sixty-six thousand households at a US discount broker, from 1991 to 1996. The fifth that traded most earned eleven point four percent a year after costs. The market returned seventeen point nine.</p>
+      <p data-who="Trader">Were their picks just bad?</p>
+      <p data-who="Quant">Before costs, they were roughly as good as everyone else's. The gap was mostly costs, paid over and over. Their paper was called Trading Is Hazardous to Your Wealth.</p>
+      <p data-who="Trader">Give me the arithmetic.</p>
+      <p data-who="Quant">Turnover times the cost of a round trip. Replace your whole book two and a half times a year at one percent a round trip, and you lose two and a half points a year.</p>
+      <p data-who="Trader">That doesn't sound like much.</p>
+      <p data-who="Quant">It compounds. At ten percent a year, a hundred grows to about six hundred and seventy-three in twenty years. After the drag, about four hundred and twenty-five. That's forty-three percent of the profit gone, because the money paid in costs never gets to grow.</p>
+      <p data-who="Trader">Why do people trade more after a good run?</p>
+      <p data-who="Quant">Wins feel like skill and losses feel like bad luck, so a streak raises confidence. Investors who moved to online trading in the nineties had been beating the market before they switched. Afterwards they traded more, and fell behind it.</p>
+      <p data-who="Trader">So what do I actually do?</p>
+      <p data-who="Quant">Write your ranges down and score them. Work out the cost against the move before the idea. And set a budget for how many round trips you get each month.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Feeling sure is free, but every trade has a fee. Only act when your edge clearly beats it, and keep score of whether it does.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · The measurement</div>
       <h2 class="sl-h2">Your 90% ranges are probably 60% ranges</h2>
       <p class="sl-sub">Calibration: if you say "90% sure", you should be right about 90% of the time.</p>
@@ -56,7 +122,7 @@
       <div class="sl-quote">US finance chiefs gave <strong>80%</strong> ranges for the next year's stock-market return. The actual return landed inside them only <strong>36%</strong> of the time (Ben-David, Graham &amp; Harvey, 2013).</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2 · Try it</div>
       <h2 class="sl-h2">Give six 90% ranges, then score yourself</h2>
       <p class="sl-sub">No searching. Wide is allowed if that's how unsure you honestly are. Your answers stay on this device.</p>
@@ -72,7 +138,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3 · The evidence</div>
       <h2 class="sl-h2">"Trading Is Hazardous to Your Wealth"</h2>
       <p class="sl-sub">Barber &amp; Odean (2000): 66,465 households at a US discount broker, 1991–96, every trade on record.</p>
@@ -88,7 +154,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4 · The arithmetic</div>
       <h2 class="sl-h2">Drag = turnover × round-trip cost — drag the sliders</h2>
       <p class="sl-sub">Gross return held fixed; the extra trades are assumed to add no skill, which is the honest default.</p>
@@ -116,7 +182,7 @@
     </section>
 
     <!-- WB:overtrade-deck:START -->
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">How trading more eats returns, drawn step by step</h2>
       <!-- WB:overtrade:START -->
@@ -127,7 +193,7 @@
     </section>
     <!-- WB:overtrade-deck:END -->
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 5 · What feeds it</div>
       <h2 class="sl-h2">Two quieter biases</h2>
       <div class="sl-icard-grid">
@@ -137,7 +203,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6 · It actually happened</div>
       <h2 class="sl-h2">The 1990s move online: doing well, then trading more</h2>
       <div class="sl-callout amber">
@@ -147,7 +213,7 @@
       <p class="sl-p">Day trading is the extreme case. In Taiwan, where every trade by every investor is recorded, Barber, Lee, Liu &amp; Odean (2014) found <strong>fewer than 1%</strong> of day traders could be shown to profit reliably, year after year, net of fees.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7 · The chain</div>
       <h2 class="sl-h2">How a winning run becomes a cost bill</h2>
       <div class="sl-chain">
@@ -165,7 +231,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8 · What this desk found</div>
       <h2 class="sl-h2">Costs are a wall; confidence is not an edge</h2>
       <p class="sl-sub">The folk claim: "if I'm confident, acting on it more often makes money."</p>
@@ -192,7 +258,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9 · Do this now</div>
       <h2 class="sl-h2">Five questions before your next trade</h2>
       <p class="sl-sub">Two or more "yes" answers mean the trade is coming from the feeling, not the evidence.</p>
@@ -205,7 +271,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -247,7 +313,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide sl-vark" data-slide="14">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative winning streak</div>
+    <h3>Three wins in a row. Time to speed up?</h3>
+    <p>You trade a currency pair off the daily chart. It moves about 80 pips on a typical day and costs 1.2 pips a round trip, so costs are 1.5% of the daily range. Your last three trades won and you feel in the zone. A friend says to move to the 5-minute chart, where you would target 8-pip moves, "to get more opportunities". What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Move to the 5-minute chart and trade more. You are hot.<div class="tl-drill-why">The same 1.2 pips is now 15% of each 8-pip move, ten times the share. Three wins is a tiny sample, and crediting it to skill is exactly the self-attribution that turns a streak into turnover.</div></li>
+      <li data-verdict="good">Stay on the timeframe your plan was written for, keep your round-trip budget, and log a range for each trade so the streak can be scored.<div class="tl-drill-why">This puts a rule between the feeling and the order ticket. Cost stays at 1.5% of the move, and after enough logged trades you will know whether your confidence is calibrated or just recent.</div></li>
+      <li data-verdict="ok">Stay on the daily chart but double the size while you are on a streak.<div class="tl-drill-why">It avoids the cost trap, which is better than speeding up. But sizing up on confidence that has never been scored adds risk without adding edge. Betting as if your edge were bigger than it is can turn a winning edge into a losing one.</div></li>
+      <li data-verdict="bad">Take every signal on both charts, so you never miss a move.<div class="tl-drill-why">This adds the worst of both: more round trips, and many of them at a cost of 15% of the move. Turnover rises with no evidence that the extra trades beat their own fee.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What tends to happen.</strong> This streak is illustrative, not a real trader. The pattern it describes is documented: investors who switched to online trading in the 1990s had been beating the market before they switched, then traded more actively and fell behind the market (Barber and Odean, 2002). In Taiwan's complete trading records, fewer than 1% of day traders could be shown to profit reliably, year after year, net of fees.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -383,5 +468,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

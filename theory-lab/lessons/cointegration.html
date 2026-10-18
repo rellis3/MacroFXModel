@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -603,6 +604,23 @@
     <button type="button" id="coint-scratch-reset" class="tl-scratch-reset-btn">Reset to illustrative numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Step 2's spread and its z-score again, on new illustrative inputs: \(\hat\epsilon_t = Y_t - \hat\beta X_t\), then \(z = \hat\epsilon_t / \sigma_\epsilon\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>AUD/USD \(Y_t = 0.6420\), NZD/USD \(X_t = 0.5900\), \(\hat\beta = 1.08\), \(\sigma_\epsilon = 0.0060\). The hedge leg is \(1.08 \times 0.5900 = 0.6372\), so the spread is \(0.6420 - 0.6372 = 0.0048\), and \(z = 0.0048 / 0.0060 =\) <span class="tl-blank" data-answer="0.8" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(Y_t = 0.7010\), \(X_t = 0.6150\), \(\hat\beta = 1.12\), \(\sigma_\epsilon = 0.0070\). The hedge leg \(\hat\beta X_t\) = <span class="tl-blank" data-answer="0.6888" data-tol="0.00005"></span>, the spread = <span class="tl-blank" data-answer="0.0122" data-tol="0.00005"></span>, and \(z\) = <span class="tl-blank" data-answer="1.7429" data-tol="0.006"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(Y_t = 0.6300\), \(X_t = 0.6080\), \(\hat\beta = 1.05\), \(\sigma_\epsilon = 0.0050\). Spread: <span class="tl-blank" data-answer="-0.0084" data-tol="0.00005"></span>. \(z\): <span class="tl-blank" data-answer="-1.68" data-tol="0.005"></span>. A negative \(z\) means \(Y\) is cheap against the hedge leg, and the fade would be long \(Y\), short \(\hat\beta\) of \(X\), if Step 2 found a leash.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Two non-stationary series, one stationary combination</div>
     <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top panel: two price series, Series A and Series B, both drifting upward over time with random-walk-like noise. Bottom panel: the residual spread between them, Series A minus beta times Series B, which wanders but keeps reverting toward a horizontal dashed mean line instead of drifting away like the two series above it.">
@@ -722,7 +740,7 @@
     <p style="margin-bottom:0">
       On 23 September 1998 the Federal Reserve Bank of New York brought LTCM's main creditors together, and a
       consortium of 14 banks and brokers put in about $3.6 billion to take over the portfolio and unwind it in
-      an orderly way rather than have it dumped on the market at once. The fund was wound down by early 2000.
+      an orderly way rather than have it dumped on the market at once. The portfolio was unwound over the following year or so.
       Many of the spreads did narrow again later, but by then LTCM no longer held them.
     </p>
   </div>
@@ -783,6 +801,7 @@
     economic anchor that pulls the spread back.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../hedge-signals-v2.html">Hedge Signals v2</a> picks pairs by an Engle-Granger test and trades the residual z-score with a half-life stop; its per-pair table shows which pairs pass and what the trades did.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -927,7 +946,7 @@
       <li data-verdict="good">Cut the book to a size you could carry if the spread stretched as far again, and take the loss now.<div class="tl-drill-why">This sizes for the stretch you have just learned is possible, not for the old sample. It locks in a painful loss, but it keeps you alive to collect the convergence if and when it comes.</div></li>
       <li data-verdict="ok">Halve the positions and wait for calmer markets.<div class="tl-drill-why">A real step in the right direction. But half of 25 to 1 is still heavily levered against a spread that has already broken its historical range, and the forced selling around you can push it further.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Long-Term Capital Management kept most of its positions. Other arbitrage desks holding similar trades cut them, which widened the spreads further. LTCM lost about $4.6 billion in less than four months. On 23 September 1998 the Federal Reserve Bank of New York brought its main creditors together, and 14 banks and brokers put in about $3.6 billion to take over the portfolio and unwind it. The fund was wound down by early 2000. Many of the spreads did narrow again later, but by then LTCM no longer held them.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Long-Term Capital Management kept most of its positions. Other arbitrage desks holding similar trades cut them, which widened the spreads further. LTCM lost about $4.6 billion in less than four months. On 23 September 1998 the Federal Reserve Bank of New York brought its main creditors together, and 14 banks and brokers put in about $3.6 billion to take over the portfolio and unwind it. The portfolio was unwound over the following year or so. Many of the spreads did narrow again later, but by then LTCM no longer held them.</p><p class="tl-drill-sources">Sources: <a href="https://www.cftc.gov/sites/default/files/tm/tmhedgefundreport.htm">President's Working Group on Financial Markets, <em>Hedge Funds, Leverage, and the Lessons of Long-Term Capital Management</em>, April 1999</a>; <a href="https://www.federalreserve.gov/boarddocs/testimony/1998/19981001.htm">Alan Greenspan, testimony to the House Committee on Banking and Financial Services, 1 Oct 1998</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -1158,7 +1177,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

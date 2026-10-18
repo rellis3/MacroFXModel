@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -570,6 +571,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Put numbers into the density the equation carries forward. In \(y = \ln x\) the GBM density is a Gaussian with drift \(a = \mu - \sigma^2/2\), centre \(m(t) = \ln x_0 + a t\) and standard deviation \(\sigma\sqrt{t}\). Its median price is \(e^{m(t)}\), and one standard deviation either side is \(e^{m(t) \pm \sigma\sqrt t}\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>EUR/USD at \(x_0 = 1.10\), \(\mu = 2\%\), \(\sigma = 8\%\), six months ahead (\(t = 0.5\)). \(a = 0.02 - \tfrac12(0.08)^2 = 0.0168\), so \(m(0.5) = \ln 1.10 + 0.0168 \times 0.5 = 0.0953 + 0.0084 = 0.1037\). The median price in six months is \(e^{0.1037}\) = <span class="tl-blank" data-answer="1.1093" data-tol="0.0005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>USD/JPY at \(x_0 = 150\), no drift (\(\mu = 0\)), \(\sigma = 10\%\), one year ahead. The log drift is \(a\) = <span class="tl-blank" data-answer="-0.005" data-tol="0.0001"></span>, and \(\sigma\sqrt t = 0.10\). The median price is <span class="tl-blank" data-answer="149.25" data-tol="0.05"></span>, below today's price even with zero drift, and one standard deviation above it is <span class="tl-blank" data-answer="164.95" data-tol="0.1"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>A stock at \(x_0 = 100\), \(\mu = 6\%\), \(\sigma = 30\%\), two years ahead. Log drift \(a\): <span class="tl-blank" data-answer="0.015" data-tol="0.0001"></span>. Standard deviation of \(\ln X_2\): <span class="tl-blank" data-answer="0.424" data-tol="0.001"></span>. Median price: <span class="tl-blank" data-answer="103.05" data-tol="0.05"></span>. One standard deviation below it: <span class="tl-blank" data-answer="67.42" data-tol="0.1"></span>. High volatility drags the median well below the 112.75 that the 6% drift alone would give.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -791,6 +809,7 @@
     </div>
     <p class="tl-fits-why"><strong>Why you'd care:</strong> any time you ask what the distribution of a price looks like at a future date, you are asking a forward question, and the wrong solver will answer a different one without complaint.</p>
   </nav>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../expected-moves.html">Expected Moves</a> draws each pair's expected-move cone forward from now. That is a forward question, "given where I start, where might I end up", the kind this lesson's equation answers.</div><!-- DESK:END -->
 
   <div class="tl-footer-nav">
     <a href="short-rate-models-vasicek-cir-hull-white.html">← Short-Rate Models: Vasicek, CIR &amp; Hull-White</a>
@@ -822,7 +841,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

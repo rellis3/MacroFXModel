@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -512,7 +513,7 @@
         <div class="tl-hint">Starting at x₀ = 0, six steps of xₙ₊₁ = xₙ − α·2(xₙ−3). Drag right: watch it overshoot, then oscillate, then diverge — all real arithmetic on f(x) = (x−3)².</div>
       </div>
     </div>
-    <div class="tl-readout" id="gd-readout">x₆ ≈ 2.92, f(x₆) ≈ 0.0059 — converging monotonically</div>
+    <div class="tl-readout" id="gd-readout">x₆ ≈ 2.9877, f(x₆) ≈ 0.0002 — converging monotonically</div>
     <div class="tl-chart-caption">Each amber dot is one iterate x₀…x₆, plotted on the true curve f(x)=(x−3)². At α=0.30 the steps shrink steadily toward the minimum; at α=0.50 the very next step lands exactly on it (Newton's method for this quadratic); past α=0.50 the steps start flipping sides, and past α=1.00 they grow without bound.</div>
   </div>
 
@@ -588,6 +589,23 @@
       That's the real, quantitative version of "gradient descent is cheaper
       per step, Newton-type methods converge faster per step."
     </p>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>One Newton-Raphson step on a bond's yield, as in Part 1: \(y_1=y_0-f(y_0)/P'(y_0)\) with \(f(y)=P(y)-P_{mkt}\). Face value 100, annual coupons, and each start \(y_0\) is the coupon rate, so \(P(y_0)=100\) exactly. The slope is \(P'(y)=-\sum_t t\,CF_t/(1+y)^{t+1}\). Give yields in %.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>A 2-year, 4-coupon bond priced at 98.00. At \(y_0=4\%\): \(f(y_0)=100-98=2.00\). The slope is \(P'(y_0)=-\big(1\times4/1.04^2+2\times104/1.04^3\big)=-(3.6982+184.9113)=-188.6095\). So \(y_1=0.04+2.00/188.6095=\) <span class="tl-blank" data-answer="5.0604" data-tol="0.001" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>A 3-year, 6-coupon bond priced at 101.00, so it trades above par and the yield must fall below 6%. At \(y_0=6\%\): \(f(y_0)=\) <span class="tl-blank" data-answer="-1.00" data-tol="0.005"></span>. The slope is \(P'(y_0)=-\big(6/1.06^2+2\times6/1.06^3+3\times106/1.06^4\big)=\) <span class="tl-blank" data-answer="-267.30" data-tol="0.02"></span>, so \(y_1=\) <span class="tl-blank" data-answer="5.6259" data-tol="0.001" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>A 2-year, 3-coupon bond priced at 97.00, starting from \(y_0=3\%\). Find \(f(y_0)=\) <span class="tl-blank" data-answer="3.00" data-tol="0.005"></span>, \(P'(y_0)=\) <span class="tl-blank" data-answer="-191.35" data-tol="0.02"></span>, and \(y_1=\) <span class="tl-blank" data-answer="4.5678" data-tol="0.001" data-unit="%"></span>. (The true yield is 4.6044%; a second step would close the gap.)</p>
+    </div>
   </div>
 
   <div class="tl-box example">
@@ -1059,7 +1077,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

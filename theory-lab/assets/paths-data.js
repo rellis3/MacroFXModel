@@ -36,6 +36,7 @@ window.TL_PATHS = {
      "lessons": [
       "theta-decay",
       "vega-volatility-surface",
+      "fx-options-quoting-rr-bf",
       "second-order-greeks",
       "gamma-exposure-dealer-hedging",
       "open-interest-walls-max-pain"
@@ -130,6 +131,7 @@ window.TL_PATHS = {
      "name": "Central banks and plumbing",
      "lessons": [
       "central-bank-policy",
+      "event-trading-playbook",
       "taylor-rule",
       "fed-corridor-iorb-srf-discount-window",
       "qe-qt-balance-sheet",
@@ -141,6 +143,8 @@ window.TL_PATHS = {
      "name": "Currencies",
      "lessons": [
       "interest-rate-parity",
+      "fx-options-quoting-rr-bf",
+      "fx-fixings-wm-reuters",
       "purchasing-power-parity",
       "cointegration"
      ]
@@ -233,8 +237,10 @@ window.TL_PATHS = {
      "lessons": [
       "market-microstructure",
       "execution-algorithms",
+      "fx-fixings-wm-reuters",
       "market-impact-almgren-chriss",
       "kelly-criterion",
+      "trade-management-exits",
       "coherent-risk-measures",
       "limit-order-books",
       "vpin-order-flow-toxicity"
@@ -1292,6 +1298,26 @@ window.TL_PATHS = {
   "wavelets-time-frequency": {
    "t": "Wavelets & Time-Frequency Analysis",
    "min": 15,
+   "micro": true
+  },
+  "fx-fixings-wm-reuters": {
+   "t": "FX Fixings & the WM/Reuters 4pm Fix",
+   "min": 18,
+   "micro": true
+  },
+  "fx-options-quoting-rr-bf": {
+   "t": "FX Options Quoting: Delta, Risk Reversals & Butterflies",
+   "min": 18,
+   "micro": true
+  },
+  "trade-management-exits": {
+   "t": "Managing the Trade: R-Multiples, Stops & Exits",
+   "min": 19,
+   "micro": true
+  },
+  "event-trading-playbook": {
+   "t": "The Event-Trading Playbook: Payrolls, CPI and Central Banks",
+   "min": 18,
    "micro": true
   }
  }

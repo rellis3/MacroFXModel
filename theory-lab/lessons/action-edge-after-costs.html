@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 <style>
@@ -464,6 +465,23 @@
     advance and confirmed on data it was not chosen on.
   </p>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The cost check from the worked example on three new strategies: the round trip \(c = s + 2\ell + m + f\), the edge-to-cost ratio \(\rho = \mu/c\), the standard error \(\sigma/\sqrt{n}\), and the t-statistics before and after cost. All figures in pips.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>A GBP/USD intraday rule: \(\mu = 2.0\), \(\sigma = 20\), \(n = 1{,}600\) trades. Spread 0.8, slippage 0.3 each side, commission 0.5, no financing, so \(c = 0.8 + 0.6 + 0.5 = 1.9\) and the net edge is 0.1 a trade. The standard error is \(20/\sqrt{1600} = 0.5\), so the gross \(t = 4.0\) and the net \(t =\) <span class="tl-blank" data-answer="0.2" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>A USD/JPY swing rule held overnight: \(\mu = 6\), \(\sigma = 40\), \(n = 900\). Spread 1.0, slippage 0.5 each side, commission 0.5, financing 0.5 a trade. The round trip costs <span class="tl-blank" data-answer="3.0" data-tol="0.05" data-unit="pips"></span>, so \(\rho =\) <span class="tl-blank" data-answer="2.0" data-tol="0.02"></span>. The standard error is \(40/30 = 1.333\), so the net \(t =\) <span class="tl-blank" data-answer="2.25" data-tol="0.02"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>A EUR/GBP fade: \(\mu = 1.5\), \(\sigma = 10\), \(n = 2{,}500\). Spread 0.6, slippage 0.25 each side, commission 0.4, no financing. Cost \(c =\) <span class="tl-blank" data-answer="1.5" data-tol="0.02" data-unit="pips"></span>; \(\rho =\) <span class="tl-blank" data-answer="1.0" data-tol="0.02"></span>; gross \(t =\) <span class="tl-blank" data-answer="7.5" data-tol="0.05"></span>; net \(t =\) <span class="tl-blank" data-answer="0" data-tol="0.02"></span>. The most significant result of the three keeps nothing at all.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Template — copy this</div>
@@ -574,6 +592,8 @@
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>The double-cost stress in practice.</strong> A daily volatility-band fade on 25 FX pairs and gold, pre-registered with costs on: the vol-targeted book (485 trades) made a Sharpe of 0.14 ± 0.30, below a random-entry control's 95th percentile of 0.40, and 0.05 at 2× cost. Whatever was there was not distinguishable from random entries before costs were doubled, and almost nothing was left after.</span>
   </div>
+
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../backtest.html">Backtest engine</a> takes spread, slippage and commission as inputs and reports the break-even cost after each run, the \(c^{*}\) of this lesson.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>How practitioners actually use this</h2>
@@ -859,7 +879,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

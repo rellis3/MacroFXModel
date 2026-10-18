@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -526,6 +527,22 @@
     </div>
     <button type="button" id="lq-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Solve a two-strategy LP by vertex enumeration: find the corners of the feasible region (two caps and one shared margin line, with \(x, y \ge 0\)), evaluate \(Z\) at each, and keep the largest. New problem each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Maximize \(Z = 4x + 3y\) with \(x \le 5\), \(y \le 4\), \(x + y \le 7\). Corners: \((0,0)\), \((5,0)\), \((5,2)\), \((3,4)\), \((0,4)\). \(Z\) values: 0, 20, then \(Z(3,4) = 24\), \(Z(0,4) = 12\). The last corner gives \(Z(5,2) =\) <span class="tl-blank" data-answer="26" data-tol="0.01"></span>, which is the maximum.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Maximize \(Z = 2x + 6y\) with \(x \le 6\), \(y \le 3\), \(2x + 3y \le 15\). The margin line meets \(x = 6\) at \(y =\) <span class="tl-blank" data-answer="1" data-tol="0.01"></span>, and meets \(y = 3\) at \(x =\) <span class="tl-blank" data-answer="3" data-tol="0.01"></span>. Checking all five corners, the maximum is \(Z =\) <span class="tl-blank" data-answer="24" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Maximize \(Z = 5x + 4y\) with \(x \le 3\), \(y \le 5\), \(x + 2y \le 11\). Corner on \(x = 3\): \(y =\) <span class="tl-blank" data-answer="4" data-tol="0.01"></span>. Corner on \(y = 5\): \(x =\) <span class="tl-blank" data-answer="1" data-tol="0.01"></span>. Best \(Z =\) <span class="tl-blank" data-answer="31" data-tol="0.01"></span>, at a corner where Strategy A's cap and the margin line both bind.</p>
+    </div>
+  </div>
 
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
@@ -945,7 +962,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

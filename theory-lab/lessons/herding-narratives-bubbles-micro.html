@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Herding, Narratives &amp; Bubbles — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full cascade derivation, both stories, a narrative self-audit and a 6-question self-test?<a href="herding-narratives-bubbles.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,99 @@
       <p class="sl-lede">Following the crowd is often perfectly rational for each person. That's exactly why a whole market can end up confidently wrong. Add a good story and some leverage, and you get a bubble, along with the misery of being right too early.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: an illustrative crowd of ten people deciding one at a time whether to buy an asset that is really Good. The first two get wrong private signals and pass; after that everyone passes too, so 6 of the next eight ignore a Good signal of their own. Right: with signals right 70 percent of the time, a copying crowd locks onto the wrong answer about 15.5 percent of the time, against 3.3 percent for twenty people voting on their own signals.">
+      <text class="tlp-text2" x="16" y="22" font-size="13" font-weight="700">A copying crowd (illustrative). The asset is Good.</text>
+      <text class="tlp-text3" x="16" y="42" font-size="12">ring = what each person did · dot = their own signal</text>
+      <circle class="tlp-red" cx="30" cy="78" r="12" opacity=".45"/>
+      <circle class="tlp-red" cx="30" cy="78" r="5"/>
+      <text class="tlp-text3" x="30" y="108" text-anchor="middle" font-size="11">1</text>
+      <circle class="tlp-red" cx="60" cy="78" r="12" opacity=".45"/>
+      <circle class="tlp-red" cx="60" cy="78" r="5"/>
+      <text class="tlp-text3" x="60" y="108" text-anchor="middle" font-size="11">2</text>
+      <circle class="tlp-red" cx="90" cy="78" r="12" opacity=".45"/>
+      <circle class="tlp-green" cx="90" cy="78" r="5"/>
+      <circle class="tlp-line amber dash" cx="90" cy="78" r="14.5"/>
+      <text class="tlp-text3" x="90" y="108" text-anchor="middle" font-size="11">3</text>
+      <circle class="tlp-red" cx="120" cy="78" r="12" opacity=".45"/>
+      <circle class="tlp-green" cx="120" cy="78" r="5"/>
+      <circle class="tlp-line amber dash" cx="120" cy="78" r="14.5"/>
+      <text class="tlp-text3" x="120" y="108" text-anchor="middle" font-size="11">4</text>
+      <circle class="tlp-red" cx="150" cy="78" r="12" opacity=".45"/>
+      <circle class="tlp-red" cx="150" cy="78" r="5"/>
+      <text class="tlp-text3" x="150" y="108" text-anchor="middle" font-size="11">5</text>
+      <circle class="tlp-red" cx="180" cy="78" r="12" opacity=".45"/>
+      <circle class="tlp-green" cx="180" cy="78" r="5"/>
+      <circle class="tlp-line amber dash" cx="180" cy="78" r="14.5"/>
+      <text class="tlp-text3" x="180" y="108" text-anchor="middle" font-size="11">6</text>
+      <circle class="tlp-red" cx="210" cy="78" r="12" opacity=".45"/>
+      <circle class="tlp-green" cx="210" cy="78" r="5"/>
+      <circle class="tlp-line amber dash" cx="210" cy="78" r="14.5"/>
+      <text class="tlp-text3" x="210" y="108" text-anchor="middle" font-size="11">7</text>
+      <circle class="tlp-red" cx="240" cy="78" r="12" opacity=".45"/>
+      <circle class="tlp-green" cx="240" cy="78" r="5"/>
+      <circle class="tlp-line amber dash" cx="240" cy="78" r="14.5"/>
+      <text class="tlp-text3" x="240" y="108" text-anchor="middle" font-size="11">8</text>
+      <circle class="tlp-red" cx="270" cy="78" r="12" opacity=".45"/>
+      <circle class="tlp-red" cx="270" cy="78" r="5"/>
+      <text class="tlp-text3" x="270" y="108" text-anchor="middle" font-size="11">9</text>
+      <circle class="tlp-red" cx="300" cy="78" r="12" opacity=".45"/>
+      <circle class="tlp-green" cx="300" cy="78" r="5"/>
+      <circle class="tlp-line amber dash" cx="300" cy="78" r="14.5"/>
+      <text class="tlp-text3" x="300" y="108" text-anchor="middle" font-size="11">10</text>
+      <path class="tlp-line red" d="M18,128 L72,128"/>
+      <text class="tlp-red" x="16" y="146" font-size="12.5" font-weight="700">1 and 2: two wrong signals</text>
+      <text class="tlp-amber" x="16" y="168" font-size="12.5" font-weight="700">3 to 10 copy: 6 Good signals ignored</text>
+      <text class="tlp-text2" x="16" y="196" font-size="12.5">The crowd ends up holding the information</text>
+      <text class="tlp-text2" x="16" y="214" font-size="12.5">of about two people, not ten or twenty.</text>
+      <text class="tlp-text2" x="372" y="22" font-size="13" font-weight="700">How often the group is wrong</text>
+      <text class="tlp-text3" x="372" y="40" font-size="12">signals right 70% of the time</text>
+      <line class="tlp-line" x1="372" y1="196" x2="590" y2="196"/>
+      <rect class="tlp-box red" x="390" y="76.0" width="74" height="120.0" rx="4"/>
+      <rect class="tlp-box green" x="500" y="170.5" width="74" height="25.5" rx="4"/>
+      <text class="tlp-red" x="427" y="68.0" text-anchor="middle" font-size="15" font-weight="700">15.5%</text>
+      <text class="tlp-green" x="537" y="162.5" text-anchor="middle" font-size="15" font-weight="700">3.3%</text>
+      <text class="tlp-text" x="427" y="212" text-anchor="middle" font-size="12">copying crowd</text>
+      <text class="tlp-text" x="537" y="212" text-anchor="middle" font-size="12">20 own votes</text>
+    </svg>
+    <figcaption>Once the first two choices line up, it is rational for everyone after them to copy, so their own information is never counted. That makes the group about five times more likely to settle on the wrong answer than if each person had voted alone.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">When everyone piles into a trade, isn't that a sign they know something?</p>
+      <p data-who="Quant">Sometimes. That's what makes herding so tricky. Copying the crowd is often perfectly rational for each person, and the whole crowd can still end up confidently wrong.</p>
+      <p data-who="Trader">How can everyone be rational and the crowd be wrong?</p>
+      <p data-who="Quant">Picture two restaurants side by side. Your guidebook mildly prefers the empty one, but the other has three tables of diners. You figure they know something, and you go in. The next couple's guidebook also prefers the empty one, but now there are four tables. In they go.</p>
+      <p data-who="Trader">And after that, nobody's own guidebook matters.</p>
+      <p data-who="Quant">Exactly. Once the first two or three choices line up, everyone after them copies, whatever they privately believe. Their choices tell the street nothing new. Economists call it an information cascade.</p>
+      <p data-who="Trader">How often does it go wrong?</p>
+      <p data-who="Quant">Say each person's private hunch is right seventy percent of the time. A copying crowd locks onto the wrong answer about fifteen percent of the time, usually settled by the first three or four people. The same twenty people voting on their own hunches would be wrong only about three percent of the time.</p>
+      <p data-who="Trader">So copying makes the group about five times more likely to be wrong.</p>
+      <p data-who="Quant">Right. The crowd ends up holding the information of about two people instead of twenty.</p>
+      <p data-who="Trader">Where do bubbles come in?</p>
+      <p data-who="Quant">Add a story and some leverage. A good story spreads from person to person, and a rising price is the most convincing evidence a story can have. Borrowing forces buying on the way up, and forces selling on the way down.</p>
+      <p data-who="Trader">Give me the classic case.</p>
+      <p data-who="Quant">In December 1996 the Fed chairman asked how we would know when irrational exuberance had pushed prices too high. The Nasdaq then nearly quadrupled. It peaked in March 2000 at just over five thousand, and by October 2002 it had fallen about seventy-eight percent.</p>
+      <p data-who="Trader">So the sceptics made a fortune.</p>
+      <p data-who="Quant">Many didn't last long enough. Julian Robertson's Tiger Management refused to buy the tech story. After heavy losses and client withdrawals, he announced at the end of March 2000 that he was closing the funds, within weeks of the top. Right on value, beaten by timing.</p>
+      <p data-who="Trader">So what do I do with this?</p>
+      <p data-who="Quant">Write down your own signal before you look at the crowd. Ask what you know that the last buyer didn't. And if you fade a crowd, size so the move against you can double without forcing you out.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">A crowd is only as smart as the few people it is copying. Count your own evidence first, and size to survive being early.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · The idea</div>
       <h2 class="sl-h2">Two restaurants, one busy, one empty</h2>
       <p class="sl-sub">The example Banerjee (1992) used in his herding paper.</p>
@@ -43,7 +136,7 @@
       <div class="sl-quote">A busy restaurant can be full of people who each privately thought the other one was better. The first two or three diners decided for everyone, and they may just have been unlucky.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2 · The rule</div>
       <h2 class="sl-h2">When copying becomes the rational choice</h2>
       <p class="sl-sub">Private signal right with probability p. d = net Good-minus-Bad signals the crowd's actions have revealed. s = your own signal (±1).</p>
@@ -55,7 +148,7 @@
       <p class="sl-p">Nobody behaved irrationally. Every person used Bayes' rule correctly, and the group still stopped learning.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3 · Try it</div>
       <h2 class="sl-h2">Watch 20 people cascade</h2>
       <p class="sl-sub">Truth: Good. Outer colour = what they did. Inner dot = what their own signal said. Dashed ring = in a cascade.</p>
@@ -77,7 +170,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4 · The cost</div>
       <h2 class="sl-h2">Copying throws away the crowd's information</h2>
       <p class="sl-sub">Before a cascade, d is a random walk stopped at ±2. Gambler's ruin gives the answer directly.</p>
@@ -95,7 +188,7 @@
       <p class="sl-p">Rational copying made the group about five times more likely to be wrong. It ends up holding the information of about two people instead of twenty.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5 · Stories and stages</div>
       <h2 class="sl-h2">Narratives carry the cascade; leverage powers it</h2>
       <div class="sl-icard-grid">
@@ -107,7 +200,7 @@
       <p class="sl-p">Minsky's stages, as Kindleberger set them out in <em>Manias, Panics, and Crashes</em> (1978).</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6 · It actually happened</div>
       <h2 class="sl-h2">1996–2002: right on value, wrong on time</h2>
       <div class="sl-callout amber">
@@ -118,7 +211,7 @@
     </section>
 
     <!-- WB:herding-deck:START -->
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">A cascade and a bubble, drawn step by step</h2>
       <!-- WB:herding:START -->
@@ -129,7 +222,7 @@
     </section>
     <!-- WB:herding-deck:END -->
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7 · It actually happened</div>
       <h2 class="sl-h2">January 2021: GameStop and a narrative with a villain</h2>
       <div class="sl-callout amber">
@@ -150,7 +243,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8 · What this desk found</div>
       <h2 class="sl-h2">Crowding warnings don't time the turn</h2>
       <p class="sl-sub">The folk claim: "you can see the herd crowding in, and that tells you a break is coming."</p>
@@ -177,7 +270,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9 · Do this now</div>
       <h2 class="sl-h2">The narrative check, before you join or fight a crowd</h2>
       <div class="sl-recap">
@@ -189,7 +282,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -233,7 +326,26 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide sl-vark" data-slide="14">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="1996-12-05">
+    <div class="tl-drill-label">Scenario drill · 5 December 1996</div>
+    <h3>The Fed chairman has just said "irrational exuberance"</h3>
+    <p>Tonight Alan Greenspan asked in a speech how we would know when "irrational exuberance" had unduly escalated asset values. You run a value-minded fund, and you already think technology stocks are priced far ahead of their earnings. Your clients judge you on recent results. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Short the Nasdaq heavily now. Even the Fed chairman agrees with you.<div class="tl-drill-why">Being right about value says nothing about when. A heavy short has to survive the crowd pushing prices further from value first, through margin calls and client withdrawals. A speech is one piece of public news, and this one moved markets for about a day.</div></li>
+      <li data-verdict="good">Write down your valuation case and what would have to be true to justify the price. Keep any fade small enough that the move against you can double without forcing you out, and measure how concentrated your own exposure is.<div class="tl-drill-why">This uses your own information without betting the fund on the timing. Most famous "right but early" losses were sizing failures, not analysis failures. Sizing to survive keeps you in the game until the evidence turns.</div></li>
+      <li data-verdict="ok">Stay out of tech entirely and stick to your value book.<div class="tl-drill-why">It avoids both the short squeeze and the crash, which is sound. But years of lagging a booming index carry their own risk when clients judge you on recent results, and that risk can close a fund before the analysis is proved right.</div></li>
+      <li data-verdict="bad">Buy the tech leaders on margin. The crowd cannot all be wrong.<div class="tl-drill-why">This joins a cascade with borrowed money. You add no information of your own, and the leverage that forces buying on the way up forces selling on the way down.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Markets wobbled for a day, and the Nasdaq Composite then nearly quadrupled over the next three-plus years. Julian Robertson's Tiger Management, a value investor that would not buy the technology story, suffered heavy losses and client withdrawals, and at the end of March 2000 Robertson announced he was closing the funds. The Nasdaq had closed at its peak, 5,048.62, on 10 March 2000. By 9 October 2002 it closed at 1,114.11, a fall of about 78%, and it did not close above its 2000 peak again until 2015. The analysis was right; the timing was what cost him.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/boarddocs/speeches/1996/19961205.htm">Alan Greenspan, “The Challenge of Central Banking in a Democratic Society”, Federal Reserve, 5 Dec 1996</a>; <a href="https://hedgefundalpha.com/investor-letters/archives-julian-robertson-closing-letter-investors/">Julian Robertson, letter to Tiger Management limited partners, 30 Mar 2000</a>; <a href="https://fred.stlouisfed.org/series/NASDAQCOM">Nasdaq Composite daily closes (FRED, NASDAQCOM)</a> (1,300.12 on 5 Dec 1996; 5,048.62 on 10 Mar 2000; 1,114.11 on 9 Oct 2002; first close above the peak on 23 Apr 2015).</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -336,5 +448,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

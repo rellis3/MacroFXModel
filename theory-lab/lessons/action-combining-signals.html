@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 <style>
@@ -121,7 +122,7 @@
       <p data-who="Trader">That feels like a cop-out.</p>
       <p data-who="Quant">It's an output. Write the rule before you look: no trade if the combined reading is weak, or the expected move doesn't clear twice the cost. A desk that always has a view isn't measuring.</p>
       <p data-who="Trader">Has counting the same idea twice ever really hurt anyone?</p>
-      <p data-who="Quant">August two thousand seven. Many quant equity funds, each sure its blend of signals was its own, lost heavily within a few days while the market barely moved. Andrew Lo and Amir Khandani found their positions overlapped far more than anyone knew. Many signals had become one crowded trade.</p>
+      <p data-who="Quant">August two thousand seven. Many quant equity funds, each sure its blend of signals was its own, lost heavily within a few days while the broad market moved relatively little. Andrew Lo and Amir Khandani found their positions overlapped far more than anyone knew. Many signals had become one crowded trade.</p>
       <p data-who="Trader">The one-line version?</p>
       <p data-who="Quant">Count families, not indicators, trust each record only as much as its length deserves, and treat no view as a real answer.</p>
     </div>
@@ -454,6 +455,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's route with new screens: shrink each IC by \(B = \tau^2/(\tau^2 + 1/n)\) with \(\tau = 0.05\) (\(\tau^2 = 0.0025\)); give each member of a correlated family the weight \(\text{IC}^{\text{shrunk}}/(1 + (N-1)\rho)\); give a signal in its own family its shrunk IC; then \(F = \sum w_i s_i\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Two trend signals at \(\rho = 0.6\), each with a measured IC of 0.05 on 400 observations, scores +1.0 and +1.4. One carry signal, IC 0.06 on 100 observations, score −0.8. Trend: \(B = 0.5\), shrunk IC 0.025, weight \(0.025/1.6 = 0.015625\) each. Carry: \(B = 0.0025/0.0125 = 0.2\), shrunk IC 0.012. So \(F = 0.015625 \times 2.4 + 0.012 \times (-0.8) =\) <span class="tl-blank" data-answer="0.0279" data-tol="0.0002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Three trend signals at \(\rho = 0.7\), each IC 0.03 on 400 observations, scores +0.8, +1.2 and +1.0. A rates signal, IC 0.06 on 1,600 observations, score +0.5. Each trend signal's weight is <span class="tl-blank" data-answer="0.00625" data-tol="0.00005"></span>. The rates signal keeps \(B = 0.8\), so its shrunk IC is <span class="tl-blank" data-answer="0.048" data-tol="0.0005"></span>. Combined, \(F =\) <span class="tl-blank" data-answer="0.04275" data-tol="0.0003"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Two trend signals at \(\rho = 0.9\), each IC 0.04 on 400 observations, both scoring +1.5. A positioning signal with IC 0.10 on only 25 observations, score −2.0. Positioning's \(B =\) <span class="tl-blank" data-answer="0.0588" data-tol="0.001"></span>; each trend weight <span class="tl-blank" data-answer="0.010526" data-tol="0.0001"></span>; \(F =\) <span class="tl-blank" data-answer="0.019814" data-tol="0.0003"></span>. The loudest number on the screen, an IC of 0.10, ends up with about a twentieth of its face value because it rests on 25 observations.</p>
+    </div>
+  </div>
+
   <div class="tl-chart interactive" id="cs-tool">
     <div class="tl-chart-label">Signal combiner — enter your own screen</div>
     <p class="tl-hint" style="font-style:normal;font-size:12px;margin:0 0 4px">Rename the signals, put them in families (signals in the same family are treated as near-copies), and set each one's score today, its measured IC and how many observations that IC rests on. Set n to 0 for an indicator with no record.</p>
@@ -655,6 +673,7 @@
       the worked example's numbers are illustrative, not desk measurements.
     </p>
   </div>
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../multi-spread-sleeve.html">Multi-spread sleeve</a> runs the check this lesson asks for before two signals are combined: trade overlap and return correlation between the 2-year and 10-year legs, then the combined book's Sharpe ratio.</div><!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -670,14 +689,14 @@
   <div class="tl-drill" data-date="2007-08-06">
     <div class="tl-drill-label">Scenario drill · week of 6 August 2007</div>
     <h3>Your "diversified" quant book is losing fast</h3>
-    <p>You run a market-neutral equity book built from many signals: value, momentum, earnings quality and more. You sized it for many separate sources of return, so you run it with leverage. This week it is losing unusually fast, while the stock market as a whole is moving comparatively little. What do you do?</p>
+    <p>You run a market-neutral equity book built from many signals: value, momentum, earnings quality and more. You sized it for many separate sources of return, so you run it with leverage. This week it is losing unusually fast, while the stock market as a whole has moved comparatively little. What do you do?</p>
     <ol class="tl-drill-options">
       <li data-verdict="bad">Add to it. With so many independent signals, losses this fast must be noise.<div class="tl-drill-why">This counts the signals instead of measuring them. If the losses are coming all at once across "different" signals, that is evidence they are not independent right now. Adding doubles down on one crowded position.</div></li>
       <li data-verdict="good">Measure how correlated your positions are right now, not in calm times. Treat the book as the number of bets it really is, and cut risk to fit.<div class="tl-drill-why">This is the effective-number idea applied to positions. Correlations measured in calm periods can understate how much a set of different-looking bets is one bet. Sizing to the honest count keeps you in the game whatever happens next.</div></li>
       <li data-verdict="ok">Hold and wait. Each signal still has a long record.<div class="tl-drill-why">The records may be real, but they do not tell you the book is diversified this week. Holding leveraged risk that is really one position is a bet on surviving the path, not a decision about it.</div></li>
       <li data-verdict="bad">Switch off the signals that are losing most and keep the rest.<div class="tl-drill-why">If the losses come from a shared crowded position, the signals you keep are likely in the same trade. Cutting by recent pain rather than by measured overlap leaves the real exposure in place.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In the week beginning 6 August 2007 a number of large quantitative equity funds suffered unusually large losses within a few days, while the market moved comparatively little. Amir Khandani and Andrew Lo later explained that many funds had arrived at similar portfolios from similar signals. When one or more large portfolios were unwound quickly, the selling pushed prices against everyone holding the same positions, forcing further selling. A sharp partial rebound followed within days. The diversification had been counted, not measured.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In the week beginning 6 August 2007 a number of large quantitative equity funds suffered unusually large losses within a few days. On 7 and 8 August they were hit hard while equity and bond markets moved relatively little; only on 9 August did the S&amp;P 500 fall, by nearly 3%. Amir Khandani and Andrew Lo later explained that many funds had arrived at similar portfolios from similar signals. When one or more large portfolios were unwound quickly, the selling pushed prices against everyone holding the same positions, forcing further selling. A sharp partial rebound followed on Friday 10 August. The diversification had been counted, not measured.</p><p class="tl-drill-sources">Sources: <a href="https://www.newyorkfed.org/medialibrary/media/research/conference/2007/liquidity/Khandani_Lo.pdf">Khandani and Lo, "What Happened to the Quants in August 2007?", 2007 (Federal Reserve Bank of New York conference copy)</a>; <a href="https://www.nber.org/papers/w14465">Khandani and Lo, NBER Working Paper 14465, November 2008</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -957,7 +976,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

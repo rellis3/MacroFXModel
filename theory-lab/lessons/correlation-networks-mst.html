@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -422,6 +423,23 @@
     <button type="button" id="cnm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Mantegna's distance \(d_{ij}=\sqrt{2(1-\rho_{ij})}\) again on new correlations, then a small tree by Kruskal's algorithm: take the shortest edge, skip any edge that would close a loop, stop at \(n-1\) edges.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\rho = 0.65\). Then \(1-\rho = 0.35\), \(2(1-\rho) = 0.70\), and \(d = \sqrt{0.70} =\) <span class="tl-blank" data-answer="0.8367" data-tol="0.001"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>A weak link, \(\rho = 0.15\): \(d\) = <span class="tl-blank" data-answer="1.3038" data-tol="0.001"></span>. A negative one, \(\rho = -0.20\): \(2(1-\rho)\) = <span class="tl-blank" data-answer="2.4" data-tol="0.001"></span>, so \(d\) = <span class="tl-blank" data-answer="1.5492" data-tol="0.001"></span>. Negative correlation puts a pair further apart than no correlation at all (\(\sqrt{2} \approx 1.414\)).</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Four instruments with \(\rho_{AB} = 0.75\), \(\rho_{AC} = 0.55\), \(\rho_{BC} = 0.60\), \(\rho_{CD} = 0.30\), \(\rho_{AD} = 0.10\), \(\rho_{BD} = 0.20\). \(d_{BC}\) = <span class="tl-blank" data-answer="0.8944" data-tol="0.001"></span>. \(d_{CD}\) = <span class="tl-blank" data-answer="1.1832" data-tol="0.001"></span>. Kruskal's tree takes A–B, B–C and C–D (A–C would close a loop), so its total weight is <span class="tl-blank" data-answer="2.7847" data-tol="0.002"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">The full distance graph (faint) with its 4-edge minimum spanning tree (bold green) highlighted</div>
     <svg viewBox="0 0 640 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five nodes — EUR, GBP, CHF, JPY, AUD — with all ten pairwise distance edges drawn faintly, and the four minimum spanning tree edges (EUR-GBP, EUR-CHF, EUR-AUD, JPY-AUD) highlighted in bold green with their distances labeled, showing EUR as a structural hub and JPY attached only through AUD">
@@ -575,6 +593,7 @@
     NQ +0.07 [-0.03, +0.17]</strong>. Null at five sessions and null on the tail.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../correlations.html">Correlation Lab</a> shows the live price-return correlation matrix, rolling pair correlations and how they shift between regimes; those are the numbers this lesson turns into distances.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this — and where it comes from</h2>
@@ -671,7 +690,7 @@
       <li data-verdict="ok">Rebuild the tree on the full past year so the estimate is more stable.<div class="tl-drill-why">A longer window is steadier, but it is steadier because it is mostly calm data. It will under-report how far correlations have converged this week. Better than nothing, but it answers the wrong question.</div></li>
       <li data-verdict="bad">Add Treasuries and gold as hedges, since they sit far from currencies and stocks in a calm tree.<div class="tl-drill-why">These are exactly the assets being sold for cash this week. Long Treasury yields were rising while equities fell, and gold was falling with stocks. A hedge chosen from a calm-window distance can fail together with the risk it hedges.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The dash for cash ran on through mid March. The S&amp;P 500 bottomed on 23 March, about a third below its February peak, the same day the Fed made its asset purchases open-ended, after large Treasury buying and wider dollar swap lines. Only after that did the old relationships start to come back. A book sized on its calm-window tree was far less diversified than it looked.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The dash for cash ran on through mid March. The S&amp;P 500 bottomed on 23 March, about a third below its February peak, the same day the Fed made its asset purchases open-ended, after large Treasury buying and wider dollar swap lines. Only after that did the old relationships start to come back. A book sized on its calm-window tree was far less diversified than it looked.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200315a.htm">Federal Reserve FOMC statement, 15 Mar 2020</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200323b.htm">Federal Reserve press release on open-ended purchases, 23 Mar 2020</a>; <a href="https://fred.stlouisfed.org/series/SP500">S&amp;P 500 close, 19 Feb and 23 Mar 2020 (FRED: SP500)</a>; <a href="https://fred.stlouisfed.org/series/VIXCLS">Cboe VIX close, 16 Mar 2020 (FRED: VIXCLS)</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -868,7 +887,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

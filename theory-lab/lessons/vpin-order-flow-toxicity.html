@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -570,6 +571,23 @@
     <button type="button" id="vpin-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Compute VPIN for new windows: \(V_\text{buy} = V\cdot Z\), \(V_\text{sell} = V - V_\text{buy}\), \(\text{OI}_\tau = |V_\text{buy} - V_\text{sell}|\), then \(\text{VPIN} = \sum \text{OI}_\tau / (n\cdot V)\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(V = 2{,}000\), \(n = 4\), \(Z\) values 0.6915, 0.1587, 0.9332, 0.5000. Buy volumes 1,383.0, 317.4, 1,866.4, 1,000.0. Imbalances 766.0, 1,365.2, 1,732.8, 0.0, summing to 3,864.0. So \(\text{VPIN} = 3{,}864.0 / 8{,}000 =\) <span class="tl-blank" data-answer="0.483" data-tol="0.001"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(V = 1{,}000\), \(n = 5\), \(Z\) values 0.9772, 0.8413, 0.6915, 0.3085, 0.0228. Imbalances 954.4, 682.6, 383.0, then bucket 4 <span class="tl-blank" data-answer="383" data-tol="0.1"></span> and bucket 5 <span class="tl-blank" data-answer="954.4" data-tol="0.1"></span>. VPIN is <span class="tl-blank" data-answer="0.671" data-tol="0.001"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(V = 500\), \(n = 4\), \(Z\) values 0.8413, 0.8413, 0.0668, 0.5000. Find bucket 3's imbalance <span class="tl-blank" data-answer="433.2" data-tol="0.1"></span>, the sum of imbalances <span class="tl-blank" data-answer="1115.8" data-tol="0.2"></span>, and VPIN <span class="tl-blank" data-answer="0.558" data-tol="0.001"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -700,11 +718,14 @@
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Untested here: "a high VPIN reading warns of a rougher tape ahead."</strong> This desk has no trade-level
-    futures tape and has never computed VPIN. A fair test would fix the bucket size \(V\), the window \(n\) and a
-    threshold in advance, and compute VPIN on many years of E-mini trades. It would take the first crossing of the
-    threshold as the event and compare the following hour's range against control periods matched on the volatility
-    just before, because VPIN mechanically rises with volatility. It would report the false-alarm rate next to the hit
-    rate, and require the effect to hold in both halves of the sample.</span>
+    futures tape and has never computed VPIN.
+    <div class="tl-howtotest"><strong>How to test it:</strong> on the desk's M1 bars for NAS100 and EUR/USD, 2015 to
+    2026-08-21, use tick volume as volume and fix in advance a bucket of one-fiftieth of average daily volume, a window of
+    \(n = 50\), and a threshold at the trailing year's 90th percentile of VPIN. Take the first crossing in each session as
+    the event and compare the next hour's range, in ATR, against control hours matched on time of day and the prior
+    hour's realised vol, because VPIN rises mechanically with volatility. It passes only if a session-block bootstrap
+    95% interval is above zero in both halves of the sample and it adds to the prior-hour vol alone; report the
+    false-alarm rate next to the hit rate.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -794,7 +815,8 @@
       <li data-verdict="good">Widen your spread and cut your quoted size, reading the monitor as a description of the flow now, not a forecast.<div class="tl-drill-why">This is the Glosten-Milgrom response the lesson describes: protect yourself against one-sided flow while it is there, and stay in the market. It does not need VPIN to predict anything, only to describe what is hitting you.</div></li>
       <li data-verdict="ok">Pull all your quotes and step away until it calms down.<div class="tl-drill-why">It protects your book, and liquidity providers did pull back that day. But when everyone does it, nobody is left to absorb the selling, and that is how depth vanishes. Defensible for one firm, but not the measured response.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The SEC/CFTC staff report found that the big seller was a fund complex hedging an equity position, not trading on information. It sold 75,000 E-mini contracts, about $4.1 billion, through an algorithm set to sell a fixed share of the previous minute's volume, with no limit on price or time. Intermediaries passed contracts back and forth, more than 27,000 in 14 seconds for a net change of about 200. Buy-side depth in the E-mini fell to less than 1% of its morning level, and index futures fell roughly 5–9% in minutes before largely recovering the same session. The flow was toxic, but nobody in it knew anything.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The SEC/CFTC staff report found that the big seller was a fund complex hedging an equity position, not trading on information. It sold 75,000 E-mini contracts, about $4.1 billion, through an algorithm set to sell a fixed share of the previous minute's volume, with no limit on price or time. Intermediaries passed contracts back and forth, more than 27,000 in 14 seconds for a net change of about 200. Buy-side depth in the E-mini fell to less than 1% of its morning level, and the E-mini fell more than 5% in about four and a half minutes before largely recovering the same session. The flow was toxic, but nobody in it knew anything.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://www.sec.gov/news/studies/2010/marketevents-report.pdf" target="_blank" rel="noopener">SEC/CFTC staff report, "Findings Regarding the Market Events of May 6, 2010", 30 September 2010</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -1002,7 +1024,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -579,6 +580,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same Nelson-Siegel yield, \(y(\tau)=\beta_0+\beta_1 L+\beta_2(L-e^{-x})\) with \(x=\tau/\lambda\) and \(L=(1-e^{-x})/x\), on three new parameter sets. Give yields in %, to four decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\beta_0=5.0\), \(\beta_1=-1.5\), \(\beta_2=2.0\), \(\lambda=1.5\), \(\tau=3\). Then \(x=3/1.5=2.0\) and \(e^{-2.0}\approx0.1353\), so \(L=(1-0.1353)/2.0=0.4323\). The slope term is \(-1.5\times0.4323=-0.6485\) and the curvature term is \(2.0\times(0.4323-0.1353)=0.5940\). So \(y(3)=\) <span class="tl-blank" data-answer="4.9455" data-tol="0.0006" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\beta_0=4.0\), \(\beta_1=+1.0\) (an inverted curve), \(\beta_2=-1.0\), \(\lambda=2.5\), \(\tau=10\). Then \(x=4.0\) and \(e^{-4.0}\approx0.0183\). Loading \(L=\) <span class="tl-blank" data-answer="0.2454" data-tol="0.0002"></span>, curvature term \(\beta_2(L-e^{-x})=\) <span class="tl-blank" data-answer="-0.2271" data-tol="0.0003"></span>, so \(y(10)=\) <span class="tl-blank" data-answer="4.0183" data-tol="0.0006" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\beta_0=3.5\), \(\beta_1=-2.5\), \(\beta_2=1.5\), \(\lambda=1.0\), \(\tau=3\). Find \(e^{-x}=\) <span class="tl-blank" data-answer="0.0498" data-tol="0.0002"></span>, \(L=\) <span class="tl-blank" data-answer="0.3167" data-tol="0.0002"></span>, and \(y(3)=\) <span class="tl-blank" data-answer="3.1086" data-tol="0.0006" data-unit="%"></span></p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -732,10 +750,13 @@
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Untested here: "the fitted factors can be forecast well enough to trade the curve."</strong>
     This is the Diebold-Li claim, and the one this lesson makes most tempting. No entry in this desk's ledger
-    tests it. A fair test would refit Nelson-Siegel (fixed \(\lambda\)) to daily Treasury yields, forecast each
-    \(\beta\) one and twelve months ahead with the simple models Diebold and Li used, and score the out-of-sample
-    yield errors against a no-change forecast, with 2022 inside the test window and the cost of the curve
-    trade included.</span>
+    tests it.
+    <div class="tl-howtotest"><strong>How to test it:</strong> refit Nelson-Siegel (fixed \(\lambda\)) to daily
+    Treasury constant-maturity yields from FRED, 1990 to date, and forecast each \(\beta\) one and twelve months
+    ahead with the AR(1) models Diebold and Li used, re-estimated on an expanding window only. Score the
+    out-of-sample yield errors at 2, 5 and 10 years against a no-change forecast, with 2022 inside the test window.
+    The gate, fixed in advance: the factor forecast must beat no-change at twelve months on a Diebold-Mariano test
+    (p &lt; 0.05), and a 2s10s curve trade on its signal must stay positive after about 1bp a leg in costs.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -755,6 +776,7 @@
     steepening episodes did worse (−1.1% at +12m, n=6). The fitted \(\beta_1\) itself has not been tested.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../yield-curve.html">Yield Curve</a> shows each currency's 10-year minus short-rate slope and flags inversions; that sign is the spread-form cousin of this lesson's \(\beta_1\).</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -852,14 +874,15 @@
   <div class="tl-drill" data-date="2022-12-14">
     <div class="tl-drill-label">Scenario drill · 14 December 2022</div>
     <h3>Your factor model says the curve must re-steepen</h3>
-    <p>You forecast the US Treasury curve by fitting Nelson-Siegel each day and forecasting the three betas with simple time-series models, all estimated on the 2010s. Today the Fed raised rates again, to 4.25–4.50%, after four 75bp increases in a row. The 2-year yield is about 4.4%, up from about 0.7% in January; the 10-year is under 4%. Since July the 2-year has stayed above the 10-year, so your fitted slope \(\beta_1\) is positive. Your model, which learned a \(\beta_1\) that was almost always negative, forecasts a fast return to a normal upward curve. What do you do?</p>
+    <p>You forecast the US Treasury curve by fitting Nelson-Siegel each day and forecasting the three betas with simple time-series models, all estimated on the 2010s. Today the Fed raised rates again, to 4.25–4.50%, after four 75bp increases in a row. The 2-year yield is about 4.2%, up from about 0.7% at the start of the year; the 10-year is about 3.5%. Since early July the 2-year has stayed above the 10-year, so your fitted slope \(\beta_1\) is positive. Your model, which learned a \(\beta_1\) that was almost always negative, forecasts a fast return to a normal upward curve. What do you do?</p>
     <ol class="tl-drill-options">
       <li data-verdict="bad">Trust the forecast and put on a large steepener. The slope has to revert to its long-run average.<div class="tl-drill-why">The "long-run average" is the 2010s, when the short end sat near zero for years. The model's persistence and mean are estimates from a regime that has just ended, so its confidence is borrowed from the wrong decade.</div></li>
       <li data-verdict="good">Treat it as a regime change: keep fitting the curve daily to describe it, but stop trusting forecasts estimated only on the old regime, and size any curve trade small.<div class="tl-drill-why">Nelson-Siegel still describes each day's curve well. What broke is the assumption that the factors behave as they did in the 2010s. Separating the description, which still works, from the forecast, which does not, is the honest response.</div></li>
       <li data-verdict="ok">Add more terms until the fit hits every bond, then trade any bond that sits off the curve.<div class="tl-drill-why">A second hump may genuinely be needed soon, so Svensson is reasonable. But piling on terms to chase every wiggle loses the stability that was the point, and a bond's residual against a fitted curve is fitting noise, not an edge.</div></li>
       <li data-verdict="bad">Drop the model entirely and connect the bonds with a bootstrap instead.<div class="tl-drill-why">The fitting was never the problem. A bootstrap gives you an exact but kink-prone curve, and it says nothing more about where the curve goes next.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The curve did not snap back. The inversion deepened, and at its deepest, in 2023, the 10-year yield was roughly a full percentage point below the 2-year. Treasury bills yielded more than 2-year notes, which yielded more than 10-year bonds, yet by late 2023 the 30-year yielded more than the 10-year again: a hump and a dip that needs Svensson's second term. For holders of long bonds, 2022 was one of the worst calendar years on record for US Treasury returns.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The curve did not snap back. The inversion deepened, and at its deepest, in 2023, the 10-year yield was roughly a full percentage point below the 2-year. Treasury bills yielded more than 2-year notes, which yielded more than 10-year bonds, yet by late 2023 the 30-year yielded more than the 10-year again: a hump and a dip that needs Svensson's second term. For holders of long bonds, 2022 was the worst calendar year on record for the Bloomberg US Treasury index, down about 12.5%.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20221214a.htm">Federal Reserve press release, 14 Dec 2022</a>; <a href="https://fred.stlouisfed.org/series/T10Y2Y">FRED, 10-year minus 2-year Treasury spread (T10Y2Y)</a>, with DGS2, DGS10, DGS30 and DGS3MO for the levels; Fortune (Bloomberg data), "The U.S. Treasury market just suffered its worst-ever annual loss in 2022", 31 Dec 2022.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -1190,7 +1213,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

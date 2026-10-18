@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -618,6 +619,23 @@
     <button type="button" id="vega-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Compute vega \(\nu = S\varphi(d_1)\sqrt{T}\) for three new options, with \(T = \text{days}/365\), \(d_1 = \dfrac{\ln(S/K) + (r + \sigma^2/2)T}{\sigma\sqrt{T}}\) and \(\varphi(x) = e^{-x^2/2}/\sqrt{2\pi}\). Vega per vol point is \(\nu/100\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(S = K = 50\), \(r = 1\%\), \(\sigma = 30\%\), 60 days. \(T = 0.1644\), \(\sqrt{T} = 0.4054\), \(d_1 = 0.0743\), \(\varphi(d_1) = 0.3978\). So \(\nu = 50 \times 0.3978 \times 0.4054 =\) <span class="tl-blank" data-answer="8.065" data-tol="0.01"></span> per 1.00σ.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(S = K = 200\), \(r = 3\%\), \(\sigma = 15\%\), 180 days. \(T = 0.4932\), \(\sqrt{T} = 0.7022\). Find \(d_1\) <span class="tl-blank" data-answer="0.1931" data-tol="0.001"></span>, \(\varphi(d_1) = 0.3916\), then \(\nu\) <span class="tl-blank" data-answer="55.00" data-tol="0.05"></span> per 1.00σ, or <span class="tl-blank" data-answer="0.550" data-tol="0.001"></span> per vol point.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>An out-of-the-money option: \(S = 100\), \(K = 120\), \(r = 2\%\), \(\sigma = 25\%\), 90 days. Find \(T\) <span class="tl-blank" data-answer="0.2466" data-tol="0.0005"></span>, \(d_1\) <span class="tl-blank" data-answer="-1.3669" data-tol="0.002"></span>, \(\nu\) per 1.00σ <span class="tl-blank" data-answer="7.78" data-tol="0.03"></span>, and per vol point <span class="tl-blank" data-answer="0.0778" data-tol="0.0003"></span>. Compare the at-the-money 90-day vega of 19.71 in the worked example.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -837,6 +855,7 @@
     14 de-clustered firings, holding in both halves (+0.70 early, +0.35 late). <strong>Direction is null</strong>: 57%
     up against an 80%+ control.</span>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../surface-lab.html">Surface Lab</a> has a vol term structure view of S&amp;P 500 options from 1 day to 6 months, rebuilt nightly; it is this lesson's expiry axis, and the place to see an inversion as it happens.</div>
   <!-- DESK:END -->
 <!-- DESK:START -->  <p>
     So the term-structure axis carries real information here, about <em>size</em>. It says nothing about which way.
@@ -929,7 +948,8 @@
       <li data-verdict="ok">Keep the program, but tell the traders to sell futures faster at the open.<div class="tl-drill-why">It addresses the lag, which is the right worry. But you would be racing every other insurer to sell the same futures into a falling market, which is how the futures came to trade at a deep discount.</div></li>
       <li data-verdict="bad">Switch the program off and buy more stocks: the fall is a bargain.<div class="tl-drill-why">That turns a partly hedged book into an unhedged, larger one on the eve of a crash. Whatever the long-run value, you have removed the protection the fund was paying for.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 19 October 1987 the Dow fell 22.6% and the S&amp;P 500 about 20% in a single session, still the largest one-day percentage falls in their history. Index futures traded at a deep discount to the stocks underneath them, and the Brady Commission found portfolio insurers' futures selling was a large part of the selling pressure that week (how much it caused the fall is still debated). The replication fell behind and the insurance failed when it was needed, while holders of actual puts gained from the fall and from the jump in implied volatility. Out-of-the-money index puts have carried an implied-vol premium ever since.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 19 October 1987 the Dow fell 22.6% and the S&amp;P 500 about 20% in a single session, still the largest one-day percentage falls in their history. Index futures traded at a deep discount to the stocks underneath them, and the Brady Commission found portfolio insurers' futures selling was a large part of the selling pressure that week (how much it caused the fall is still debated). The replication fell behind and the insurance failed when it was needed, while holders of actual puts gained from the fall and from the jump in implied volatility. Out-of-the-money index puts have carried an implied-vol premium ever since.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://www.federalreservehistory.org/essays/stock-market-crash-of-1987" target="_blank" rel="noopener">Federal Reserve History, "Stock Market Crash of 1987"</a>; Report of the Presidential Task Force on Market Mechanisms (the Brady Commission), January 1988; Rubinstein, "Implied Binomial Trees", Journal of Finance, 1994.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -941,7 +961,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Vega cannot be hedged with the underlying — ever.</strong> The underlying has exactly zero vega; only other options can offset a vega-exposed book, structurally unlike delta.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Dollar vega exposure at a strike, \(\nu_k\times\text{OI}_k\times100\), concentrates the same way GEX does.</strong> Heavy open interest near the money dominates a book's vega risk, but the fix is other options, not the underlying.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Implied vol is a price, not a forecast guarantee — and the dealer's assumed sign is still an assumption.</strong> A rich event-vol premium can be over- or under-priced either way, and every GEX-style figure here inherits the same unverifiable long/short assumption flagged in the Gamma Exposure lesson.</span></div>
-    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An inverted term structure is a validated range signal here, never a direction (vix-inversion, mv-vixterm-range).</strong> First day of inversion: SPX500 +0.76 ATR over the next week; +0.52 over the next month, direction null. October 1987 shows why the strike axis exists at all: a put replicated with futures has no vega, and it failed on a gap.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An inverted term structure is a validated range signal here, never a direction (vix-inversion, mv-vixterm-range).</strong> It tells you the next week and month run wider, not which way. October 1987 shows why the strike axis exists at all: a put replicated with futures has no vega, and it failed on a gap.</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -1168,7 +1188,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

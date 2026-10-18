@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 <style>
@@ -472,6 +473,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>New books. Queue imbalance \(QI = (Q_b - Q_a)/(Q_b + Q_a)\), microprice \(P_{\text{micro}} = M + \tfrac{S}{2}\,QI\), and one update's \(OFI = e^b - e^a\) using the three cases above. Give prices to six decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Bid 1.25000 with 700 resting, ask 1.25010 with 300. Midpoint \(M = 1.250050\), half-spread \(0.00005\), and \(QI = (700-300)/1000 = 0.4\). So the microprice is \(1.250050 + 0.00005 \times 0.4 =\) <span class="tl-blank" data-answer="1.250070" data-tol="0.0000005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Before: bid 1.30020 / 500, ask 1.30030 / 500. After: bid 1.30020 / 350, ask 1.30030 / 650. Neither price moved, so \(e^b = 350 - 500 = -150\) and \(e^a = 650 - 500 = 150\). \(OFI =\) <span class="tl-blank" data-answer="-300" data-tol="0.5"></span>. After the update \(QI =\) <span class="tl-blank" data-answer="-0.3" data-tol="0.002"></span> and the microprice is <span class="tl-blank" data-answer="1.300235" data-tol="0.0000005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Before: bid 0.65000 / 200, ask 0.65010 / 800. After: bid 0.64990 / 400, ask 0.65000 / 600 (both prices ticked down). \(e^b =\) <span class="tl-blank" data-answer="-200" data-tol="0.5"></span>. \(e^a =\) <span class="tl-blank" data-answer="600" data-tol="0.5"></span>. \(OFI =\) <span class="tl-blank" data-answer="-800" data-tol="0.5"></span>. Microprice after the update <span class="tl-blank" data-answer="0.649940" data-tol="0.0000005"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -874,7 +892,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   var pbInput = document.getElementById('ofi-scratch-pb');

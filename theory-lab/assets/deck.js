@@ -96,6 +96,8 @@
     go(1);
   });
   document.addEventListener('keydown', function(e){
+    // arrows inside a slider, a drill's radio buttons or a text box belong to that control
+    if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
     if (e.key === 'ArrowRight') go(1);
     if (e.key === 'ArrowLeft') go(-1);
   });

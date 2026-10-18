@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -526,6 +527,23 @@
     <button type="button" id="lstm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>One step of the same scalar cell on new inputs. The three gates share one weight, so \(f = i = o = \sigma(w_g x_t)\); the candidate is \(\tilde C_t = \tanh(w_C x_t)\); then \(C_t = f\,C_{t-1} + i\,\tilde C_t\) and \(h_t = o\tanh(C_t)\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(C_{t-1} = 0.5\), \(x_t = 0.5\), \(w_g = 2\), \(w_C = 1\). Gates \(= \sigma(1) = 0.731\). Candidate \(= \tanh(0.5) = 0.462\). \(C_t = 0.731(0.5) + 0.731(0.462) = 0.703\). \(h_t = 0.731\tanh(0.703) =\) <span class="tl-blank" data-answer="0.443" data-tol="0.002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(C_{t-1} = 0.3\), \(x_t = 1.5\), \(w_g = 1\), \(w_C = 1\). Gates \(= \sigma(1.5) = 0.818\). Candidate \(=\) <span class="tl-blank" data-answer="0.905" data-tol="0.002"></span>. \(C_t =\) <span class="tl-blank" data-answer="0.985" data-tol="0.003"></span>. \(h_t =\) <span class="tl-blank" data-answer="0.618" data-tol="0.003"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(C_{t-1} = 1.0\), \(x_t = -0.5\), \(w_g = 2\), \(w_C = 2\). Gates <span class="tl-blank" data-answer="0.269" data-tol="0.002"></span>, candidate <span class="tl-blank" data-answer="-0.762" data-tol="0.002"></span>, \(C_t\) <span class="tl-blank" data-answer="0.064" data-tol="0.003"></span>, \(h_t\) <span class="tl-blank" data-answer="0.017" data-tol="0.002"></span>. A negative input shuts the gates and most of the stored 1.0 is gone.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -844,7 +862,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Avellaneda-Stoikov Inventory-Aware Market Making — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-avellaneda-stoikov.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,63 @@
       <p class="sl-lede">A market maker earns the spread by quoting both sides — but every fill leaves behind a position, and a position is a risk the market maker didn't necessarily choose. This deck walks through the first widely-used closed-form answer to what a market maker holding inventory should actually do about it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The worked example on a price line. A symmetric quoter centred on the mid of 100.00 shows bid 99.25 and ask 100.75. A market maker long 5 units centres the same-width window on the reservation price of 99.00 instead, showing bid 98.25 and ask 99.75. The shift of 1.00 is 5 times 0.1 times 4 times 0.5. The spread width, 1.4908, is the same in both rows.">
+      <text class="tlp-text2" x="300" y="24" text-anchor="middle" font-size="13" font-weight="700">same width (1.4908), moved from the mid onto r</text>
+      <text class="tlp-text2" x="60" y="82" font-size="13">symmetric quotes</text>
+      <rect class="tlp-box blue" x="271.7" y="62" width="232.9" height="30" rx="5"/>
+      <text class="tlp-blue" x="277.7" y="82" font-size="13" font-weight="700">99.25</text>
+      <text class="tlp-blue" x="498.6" y="82" text-anchor="end" font-size="13" font-weight="700">100.75</text>
+      <rect class="tlp-box green" x="115.4" y="128" width="232.9" height="30" rx="5"/>
+      <text class="tlp-green" x="121.4" y="148" font-size="13" font-weight="700">98.25</text>
+      <text class="tlp-green" x="342.3" y="148" text-anchor="end" font-size="13" font-weight="700">99.75</text>
+      <text class="tlp-text2" x="440" y="148" font-size="13">long 5 units</text>
+      <line class="tlp-line dash" x1="388.1" y1="50" x2="388.1" y2="172"/>
+      <line class="tlp-line purple dash" x1="231.9" y1="50" x2="231.9" y2="172"/>
+      <text class="tlp-text3" x="388.1" y="188" text-anchor="middle" font-size="12">mid 100.00</text>
+      <text class="tlp-purple" x="231.9" y="188" text-anchor="middle" font-size="12" font-weight="700">r = 99.00</text>
+      <line class="tlp-line purple thick" x1="382.1" y1="204" x2="241.9" y2="204"/>
+      <polygon class="tlp-purple" points="231.9,204 243.9,198 243.9,210"/>
+      <text class="tlp-purple" x="310.0" y="228" text-anchor="middle" font-size="12" font-weight="700">shift = 5 × 0.1 × 4 × 0.5 = 1.00</text>
+    </svg>
+    <figcaption>Holding inventory moves where you quote, not how wide. Long 5 units, the market maker centres the same window a full point lower: the ask moves closer to the mid so the position sells down, and the bid moves away so it stops growing.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I make markets. I quote a bid and an offer the same distance either side of the mid. What's wrong with that?</p>
+      <p data-who="Quant">Nothing, until the flow is one-sided. If sellers keep hitting your bid, you keep getting longer, and nothing in a symmetric quote slows that down. The position can run away from you.</p>
+      <p data-who="Trader">So what did Avellaneda and Stoikov add?</p>
+      <p data-who="Quant">In 2008 they worked out where a risk-averse market maker should centre their quotes. Not on the mid. On a reservation price: the mid, shifted against whatever you are holding.</p>
+      <p data-who="Trader">Shifted by how much?</p>
+      <p data-who="Quant">By your inventory, times your risk aversion, times the variance, times the time left in the session. Hold more, fear risk more, face a jumpier market, or have longer to go, and the shift gets bigger.</p>
+      <p data-who="Trader">Numbers.</p>
+      <p data-who="Quant">The lesson's market maker is long five units. Risk aversion zero point one, volatility two, so variance four, and half the session left. Five times zero point one times four times a half is one. The mid is a hundred, so the reservation price is ninety-nine.</p>
+      <p data-who="Trader">And the quotes?</p>
+      <p data-who="Quant">The total spread is about one point four nine. Half of it either side of ninety-nine gives a bid near ninety-eight point two five and an offer near ninety-nine point seven five. A symmetric quoter would sit a full point higher on both sides.</p>
+      <p data-who="Trader">So I'm cheaper on both sides.</p>
+      <p data-who="Quant">Exactly. Your offer is now closer to the mid, so buyers take your inventory off you. Your bid is further away, so sellers are less likely to make you longer. It always pushes you back towards flat.</p>
+      <p data-who="Trader">Does the spread get wider when I'm long?</p>
+      <p data-who="Quant">No, and that surprises people. The width has no inventory in it at all. One part pays for holding risk over the time left. The other part, about one point two nine here, comes from how fast fills dry up as you quote further out. Inventory only moves the window.</p>
+      <p data-who="Trader">What happens near the close?</p>
+      <p data-who="Quant">The time left shrinks to nothing, so the shift shrinks to nothing too, and you quote around the mid again. The model is built for a market maker who wants to end the session flat. A desk that never closes its book is not that.</p>
+      <p data-who="Trader">What doesn't it cover?</p>
+      <p data-who="Quant">Adverse selection. If the sellers hitting your bid know something, being long is worse than just risky. That is the Glosten and Milgrom problem, and real desks add a charge for it on top.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Quote around the price you would be happy to trade at given what you hold, not around the mid, and let the skew walk you back to flat.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Quoting both sides without getting stuck with the position</h2>
       <p class="sl-sub">Avellaneda–Stoikov model · Avellaneda &amp; Stoikov, 2008 → electronic market-making desks</p>
@@ -39,7 +96,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Symmetric quoting has no brake pedal</h2>
       <p class="sl-sub">Post a fixed bid and ask around the mid, forever, and nothing stops inventory from running away.</p>
@@ -64,7 +121,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The reservation price is NOT the mid-price</h2>
       <div class="sl-card">
@@ -85,7 +142,7 @@
     </section>
 
     <!-- WB:institutional_avellaneda_stoikov-deck:START -->
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Inventory skew: quoting around the reservation price</h2>
       <!-- WB:institutional_avellaneda_stoikov:START -->
@@ -96,7 +153,7 @@
     </section>
     <!-- WB:institutional_avellaneda_stoikov-deck:END -->
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Drag inventory, watch both quotes skew — live</h2>
       <p class="sl-sub">Fixed γ=0.1, σ=2, T−t=0.5, k=1.5, mid s=100. Only inventory q moves.</p>
@@ -127,7 +184,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The total spread — two different questions, added together</h2>
       <div class="sl-compare">
@@ -154,7 +211,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Inventory skew, end to end</h2>
       <div class="sl-card">
@@ -173,7 +230,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The horizon T: quotes "want" to end flat</h2>
       <p class="sl-sub">As (T−t)→0, r converges back to the mid — but the spread does NOT converge to zero.</p>
@@ -185,7 +242,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Compute r, the spread, and both quotes — any inputs</h2>
       <p class="sl-sub">Change any input, live. Starts on the worked-example numbers.</p>
@@ -215,7 +272,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">One risk, priced honestly — not the only risk</h2>
       <div class="sl-icard-grid">
@@ -227,7 +284,7 @@
       <div class="sl-quote">This model is excellent at "how much do I already have, and how should that change my price?" It has nothing to say about "is the person trading with me right now secretly better informed than I am?" — that's a different lesson's entire job.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this quietly stops matching reality</h2>
       <div class="sl-icard-grid">
@@ -238,7 +295,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -298,7 +355,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide sl-vark" data-slide="15">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative afternoon on the desk</div>
+    <h3>Hit on the bid all afternoon, now long</h3>
+    <p>You have been quoting a currency pair symmetrically around the mid. For the last hour a steady wave of sellers has been hitting your bid, and you are now long 5 units, the lesson's worked example: mid 100.00, risk aversion 0.1, volatility 2, half the session left. Your quotes are still 99.25 bid and 100.75 offer. What do you change?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing. The spread is fair, and the flow will even out.<div class="tl-drill-why">Symmetric quotes have no brake. If the selling continues, every fill adds to the position, and nothing in the quote discourages it.</div></li>
+      <li data-verdict="good">Re-centre both quotes on the reservation price, 99.00: bid about 98.25, offer about 99.75.<div class="tl-drill-why">This is the model's answer. The offer moves closer to the mid, so buyers take inventory off you; the bid moves away, so you stop adding. The width stays 1.4908, and the skew fades as you get back to flat.</div></li>
+      <li data-verdict="bad">Widen both quotes symmetrically around the mid until the flow stops.<div class="tl-drill-why">Wider quotes around the mid make it harder to sell as well as to buy, so the position just sits there. In this model inventory moves the centre of the window, never its width.</div></li>
+      <li data-verdict="ok">Pull the bid entirely and keep the offer where it is.<div class="tl-drill-why">It stops the position growing, like a hard position cap, but it is blunt: you stop earning on one side, and you do nothing to make the offer more attractive. The reservation price does the same job continuously.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The point.</strong> This is an illustrative situation built on the lesson's worked example, not a real trading day. Skewing both quotes against your inventory is the model's whole mechanism. One caveat it does not cover: if that one-sided flow was informed, being long is worse than just risky, and the spread also needs an adverse-selection charge on top.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -432,5 +508,7 @@
 })();
 </script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

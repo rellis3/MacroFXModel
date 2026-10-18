@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -325,7 +326,7 @@
     </svg>
     <div class="tl-controls">
       <div class="tl-control">
-        <div class="tl-control-head"><span>Smoothness penalty λ</span><span class="tl-live" id="hp-lambda-val">λ = 1600</span></div>
+        <div class="tl-control-head"><span>Smoothness penalty λ</span><span class="tl-live" id="hp-lambda-val">λ = 1,585 (near the λ≈1600 quarterly convention)</span></div>
         <input type="range" id="hp-lambda-slider" min="0" max="500" step="1" value="320">
         <div class="tl-hint">Drag toward the left for λ → 0 (trend hugs the noisy data exactly) or toward the right for λ → ∞ (trend collapses toward a straight line). The slider is centered near λ ≈ 1600, the standard quarterly convention.</div>
       </div>
@@ -396,6 +397,23 @@
       <span id="tcf-scratch-note" class="tl-scratch-note"></span>
     </div>
     <button type="button" id="tcf-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Rescale \(\lambda\) with the Ravn-Uhlig rule: \(\lambda_{\text{target}} = \lambda_{\text{base}} \times \text{ratio}^4\), where the ratio is target periods a year over base periods a year.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Quarterly \(\lambda = 1600\) (4 a year) to bimonthly data (6 a year). Ratio \(6/4 = 1.5\), and \(1.5^4 = 5.0625\). So \(\lambda_{\text{bimonthly}} = 1600 \times 5.0625 =\) <span class="tl-blank" data-answer="8100" data-tol="1"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Some desks start from a monthly \(\lambda = 14{,}400\) (12 a year). Rescale it to quarterly data (4 a year). The ratio is \(4/12 = 1/3\). Ratio\(^4\) is <span class="tl-blank" data-answer="0.012346" data-tol="0.0001"></span>, so \(\lambda_{\text{quarterly}} =\) <span class="tl-blank" data-answer="177.8" data-tol="0.5"></span>, far below the 1600 convention.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>An annual \(\lambda = 100\) (1 a year). Find the ratio to quarterly <span class="tl-blank" data-answer="4" data-tol="0.01"></span>, \(\lambda_{\text{quarterly}}\) <span class="tl-blank" data-answer="25600" data-tol="1"></span>, and \(\lambda_{\text{monthly}}\) <span class="tl-blank" data-answer="2073600" data-tol="1"></span>.</p>
+    </div>
   </div>
 
   <div class="tl-box scenario">
@@ -516,11 +534,14 @@
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "the output gap (or any trend/cycle reading) tells you where rates or currencies
-    go next."</strong> This desk has no real-time gap series and no test of one. A fair test would rebuild the gap
-    as it would have looked each quarter, from the data vintages available at the time (a one-sided filter, or
-    Hamilton's regression), never the revised history. It would then score the real-time gap's sign against what
-    followed in 2-year yields and the currency, against a no-change benchmark, and report how often the real-time sign
-    was later revised away.</span>
+    go next."</strong> This desk has no real-time gap series and no test of one.
+    <div class="tl-howtotest"><strong>How to test it:</strong> rebuild the US gap each quarter from 1976 to 2026-08-21
+    using only the real GDP vintage published that quarter (ALFRED), with a one-sided HP filter (\(\lambda = 1600\))
+    and Hamilton's regression, never the revised history. Score the sign of the real-time gap against the next
+    quarter's change in the 2-year Treasury yield and in the trade-weighted dollar. Fixed in advance: it must beat a
+    no-change call and last quarter's own yield change by at least 5 points of hit rate, with a bootstrap p-value below
+    0.05, after 0.5bp of cost on a 2-year futures trade; report too how often the real-time sign was later revised
+    away.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -578,7 +599,8 @@
       <li data-verdict="ok">Switch to a band-pass filter that keeps only 6 to 32 quarter cycles.<div class="tl-drill-why">A fair instinct, since it states the cycle band openly, but a finite band-pass filter such as Baxter-King loses its last K observations, so it gives no reading at all for the newest quarters. It does not answer the question you were asked.</div></li>
       <li data-verdict="bad">Raise the smoothing so the trend is less influenced by the latest wobbles.<div class="tl-drill-why">More smoothing pushes the trend closer to a straight line drawn through the fast-growth past, so it sits even higher at the newest quarter and the gap looks even more negative. It makes this particular error worse.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Policy that believed in large slack stayed looser than an accurate gap would have called for, and inflation rose through the decade, into double digits by its end. Athanasios Orphanides (American Economic Review, 2001) rebuilt the real-time data and found the gaps policymakers had were far more negative than today's estimates for the same quarters: much of the slack had never existed. With Simon van Norden (2002) he showed that across many detrending methods, the HP filter included, revisions were about as large as the gap itself, driven mainly by the end of the sample, not by revised GDP.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Policy that believed in large slack stayed looser than an accurate gap would have called for, and inflation rose through the decade, into double digits by its end. Athanasios Orphanides (American Economic Review, 2001) rebuilt the real-time data and found the gaps policymakers had were far more negative than today's estimates for the same quarters: much of the slack had never existed. With Simon van Norden (2002) he showed that across many detrending methods, the HP filter included, revisions were about as large as the gap itself, driven mainly by the end of the sample, not by revised GDP.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://doi.org/10.1257/aer.91.4.964" target="_blank" rel="noopener">Orphanides, "Monetary Policy Rules Based on Real-Time Data", American Economic Review 91(4), 2001</a>; <a href="https://doi.org/10.1162/003465302760556422" target="_blank" rel="noopener">Orphanides and van Norden, "The Unreliability of Output-Gap Estimates in Real Time", Review of Economics and Statistics 84(4), 2002</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -881,7 +903,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

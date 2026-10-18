@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Efficient Market Hypothesis — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full martingale derivation, a live significance calculator, and a 6-question self-test?<a href="emh.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,69 @@
       <p class="sl-lede">Prices already reflect what's knowable — so before you believe you've found an edge, the first question is why the market left it there. Every later lesson in this curriculum describes a way to extract a pattern from price data. This lesson is the thing all of them are arguing against<!-- DESK:START -->, and the posture this entire repo's backtest discipline is built on<!-- DESK:END -->.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top: a number line for the lag-1 autocorrelation of 500 daily returns, with a shaded noise band from about minus 0.09 to plus 0.09, two standard errors either side of zero. An estimate of 0.03 sits inside the band and is labelled noise; an estimate of 0.15 sits outside, about 3.4 standard errors, labelled a signal but not yet an edge. Bottom: three bars for 97 published stock-return predictors. Taking returns in the original sample as 100%, they were about 74% in the gap before publication and about 42% after publication.">
+      <text class="tlp-text" x="20" y="20" font-size="14" font-weight="700">Does yesterday's return predict today's? 500 daily returns</text>
+      <rect class="tlp-box blue" x="183.7" y="48" width="232.6" height="40" rx="5"/>
+      <line class="tlp-line" x1="40" y1="68" x2="560" y2="68"/>
+      <line class="tlp-line" x1="300" y1="62" x2="300" y2="74"/>
+      <text class="tlp-text3" x="170" y="104" text-anchor="middle" font-size="12">−0.1</text>
+      <text class="tlp-text3" x="300" y="104" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="430" y="104" text-anchor="middle" font-size="12">0.1</text>
+      <text class="tlp-blue" x="190" y="42" font-size="13" font-weight="700">noise band: ±2 SE ≈ ±0.09</text>
+      <circle class="tlp-blue" cx="339" cy="68" r="6"/>
+      <text class="tlp-text2" x="339" y="104" text-anchor="middle" font-size="12" font-weight="700">0.03</text>
+      <circle class="tlp-amber" cx="495" cy="68" r="7"/>
+      <text class="tlp-amber" x="495" y="42" text-anchor="middle" font-size="13" font-weight="700">0.15 · 3.4 SE</text>
+      <text class="tlp-amber" x="495" y="121" text-anchor="middle" font-size="12">signal, not yet an edge</text>
+      <text class="tlp-text" x="20" y="140" font-size="14" font-weight="700">97 published predictors, returns vs. the original sample</text>
+      <text class="tlp-text2" x="238" y="168" text-anchor="end" font-size="13">original sample</text>
+      <rect class="tlp-blue" x="250" y="155" width="300" height="18" rx="3"/>
+      <text class="tlp-text2" x="238" y="196" text-anchor="end" font-size="13">before publication</text>
+      <rect class="tlp-amber" x="250" y="183" width="222" height="18" rx="3"/>
+      <text class="tlp-amber" x="480" y="196" font-size="13" font-weight="700">≈ 74%</text>
+      <text class="tlp-text2" x="238" y="224" text-anchor="end" font-size="13">after publication</text>
+      <rect class="tlp-red" x="250" y="211" width="126" height="18" rx="3"/>
+      <text class="tlp-red" x="384" y="224" font-size="13" font-weight="700">≈ 42%</text>
+    </svg>
+    <figcaption>Efficiency is the null: a small autocorrelation is just noise, and a large one is only where research starts. When an edge is published, investors trade it and most of it goes. McLean and Pontiff found returns about 58% lower after publication.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">There's an old joke. An economist walks past a twenty-dollar bill on the pavement and says it can't be real, or someone would have picked it up.</p>
+      <p data-who="Quant">That joke is the efficient market hypothesis. And on a pavement as crowded as a market, it is mostly right. A free edge in plain sight gets traded until it is gone.</p>
+      <p data-who="Trader">So prices are always right?</p>
+      <p data-who="Quant">No. The claim is narrower. Prices already reflect what is cheap and available to know, so you cannot use that information to predict the next surprise. Your best guess for tomorrow's price is today's price.</p>
+      <p data-who="Trader">How would I test that?</p>
+      <p data-who="Quant">Ask whether yesterday's return helps predict today's. Take five hundred daily returns. If there is no real link, the correlation you measure still wobbles by about point zero four five, just from noise. That is one over the square root of five hundred.</p>
+      <p data-who="Trader">And if I measure point zero three?</p>
+      <p data-who="Quant">Less than one standard error. Routine noise. Building a strategy on it would be a mistake.</p>
+      <p data-who="Trader">What about point one five?</p>
+      <p data-who="Quant">That is more than three standard errors. A real statistical signal in that sample. But it is the start of a research question, not an edge. You still don't know if it holds out of sample, if it survives costs, or why it would exist at all.</p>
+      <p data-who="Trader">Why the last one?</p>
+      <p data-who="Quant">Because of the joint-hypothesis problem. To call a return abnormal you need a model of normal. If you find excess returns, either the market is inefficient or your model missed a risk you are being paid to carry. No test separates the two.</p>
+      <p data-who="Trader">Does anyone actually watch edges disappear?</p>
+      <p data-who="Quant">Yes. David McLean and Jeffrey Pontiff followed ninety-seven published stock-return predictors. Returns were about twenty-six percent lower in the gap before publication, and about fifty-eight percent lower after it, as investors read the papers and traded them.</p>
+      <p data-who="Trader">So the bill gets picked up once someone prints the map.</p>
+      <p data-who="Quant">Exactly. And what was left sat in stocks that are expensive to trade. The bill lingers where bending down costs money.</p>
+      <p data-who="Trader">So I can never make money?</p>
+      <p data-who="Quant">You can. Efficiency forbids a free lunch, not getting paid for risk others won't carry, like carry or illiquidity. The question for any edge is who is paying you, and why.</p>
+      <p data-who="Trader">One-line version?</p>
+      <p data-who="Quant">Treat the market as efficient until you can show, out of sample and after costs, why the twenty-dollar bill is still there.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">The $20 bill on a crowded sidewalk</h2>
       <p class="sl-sub">EMH isn't something you "believe in" — it's the default assumption every trading idea has to argue its way past.</p>
@@ -42,7 +105,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">What "efficient" actually predicts: a random walk</h2>
       <p class="sl-sub">Five simulated paths, same starting price, same process, no shared destination.</p>
@@ -68,7 +131,7 @@
       <div class="sl-quote">This is like a coin that's landed heads ten times in a row: the honest guess for the next flip is still 50/50, because the coin has no memory — even though the running tally keeps climbing. A market being "efficient" means prices have no memory in exactly that sense.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Three nested claims, three different strategies ruled out</h2>
       <p class="sl-sub">Fama's 1970 taxonomy splits EMH by what information is assumed already priced in. Each form is a stronger claim than the last.</p>
@@ -116,7 +179,7 @@
       <p class="sl-p">Think of it as three levels of a game being "unbeatable." Weak form says you can't win using only the scoreboard from past games. Semi-strong says you can't win even reading every public report on the players. Strong form says you couldn't win even with secret information nobody else has — which is basically nobody's serious claim.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">You can never test EMH alone — the joint-hypothesis problem</h2>
       <p class="sl-sub">The single most important epistemic point in this lesson.</p>
@@ -138,7 +201,7 @@
       <p class="sl-p">This is exactly why professional researchers are reluctant to declare "EMH is false" from a single anomaly<!-- DESK:START --> — and exactly why one profitable-looking backtest in this repo can never single-handedly prove an edge is real<!-- DESK:END -->.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Is 0.03 a signal, or routine noise?</h2>
       <p class="sl-sub">A worked autocorrelation check — the same question every backtest secretly asks.</p>
@@ -168,7 +231,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The multiple-testing trap: how many "edges" would appear by luck alone?</h2>
       <p class="sl-sub">Test enough random strategies against a significance threshold, and some will clear it by pure chance — not skill. How many, exactly?</p>
@@ -194,7 +257,7 @@
       <p class="sl-p">This is why a "found in a backtest" result gets far more skepticism the more variations were tried to find it. A single pre-registered test clearing α = 0.05 is meaningful; the best of 100 tried variations clearing it is close to guaranteed, regardless of whether any of them has real skill.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Anomalies exist — and mostly get traded away</h2>
       <p class="sl-sub">Evidence for and against strict efficiency, in the same breath.</p>
@@ -207,7 +270,7 @@
       <div class="sl-quote">A weak-form violation — predicting the future from past prices alone — is a much narrower, more surprising claim than a semi-strong violation, which just means some public information takes time to fully price in. Confusing the two overstates how strong a given piece of evidence actually is.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Why an inefficiency survives at all</h2>
       <p class="sl-sub">If profit-seeking arbitrageurs are everywhere, a durable inefficiency needs a reason it isn't instantly picked up.</p>
@@ -224,7 +287,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">This lesson, turned into this repo's engineering rules</h2>
@@ -239,7 +302,7 @@
       <!-- DESK:START --><div class="sl-quote">The question this repo trains you to ask about your own backtest results: "if the equity curve goes up, what would have to be true about market structure for this to be real, and is there evidence for that beyond the curve itself — or did I just find noise, or a joint-hypothesis artifact?"</div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Common ways people misread EMH</h2>
       <div class="sl-compare">
@@ -265,7 +328,7 @@
       <p class="sl-p">Getting paid extra to drive a truck full of fireworks isn't "beating the system" — it's fair payment for taking on real danger other drivers won't. A lot of trading profit works the same way: compensation for holding a risk most other capital doesn't want, not a secret trick that breaks efficiency.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">Published, then priced</h2>
       <div class="sl-callout amber">
@@ -286,7 +349,7 @@
     </section>
 
     <!-- WB:emh-deck:START -->
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">The $20 bill: testing for, and losing, an edge</h2>
       <!-- WB:emh:START -->
@@ -297,7 +360,7 @@
     </section>
     <!-- WB:emh-deck:END -->
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">"It's priced in"<!-- DESK:START -->: what this desk found<!-- DESK:END --></h2>
       <!-- DESK:START --><p class="sl-sub">The trader's everyday version of efficiency, tested as a forecast of direction and of size.</p><!-- DESK:END -->
@@ -319,7 +382,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -370,7 +433,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research meeting</div>
+    <h3>A strong anomaly, freshly published</h3>
+    <p>A journal has just published a stock-return predictor with an impressive record over decades of data in the original study. A colleague wants to start trading it next week, sized on the paper's historical returns. What do you recommend?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trade it at full size. Decades of significant returns cannot be luck.<div class="tl-drill-why">The in-sample record is the most optimistic number you will ever see. Part of it is the luck of the original search, and once a predictor is published investors trade it. Sizing on the paper's returns oversizes the trade.</div></li>
+      <li data-verdict="good">Assume much of the edge has gone, test it on data from after the study's sample, with costs, and ask what friction would let it survive.<div class="tl-drill-why">This is the evidence and the logic of the lesson together. Returns on published predictors fell by about 58% on average after publication, and an edge needs a reason it is not arbitraged away. If it survives that test, size it on the out-of-sample result.</div></li>
+      <li data-verdict="ok">Trade it only in illiquid, hard-to-arbitrage stocks, where the effect held up better.<div class="tl-drill-why">That matches McLean and Pontiff: predictor returns were higher where arbitrage is costly. But the same costs that protect the effect also eat into your returns, so it needs a cost-inclusive test before any money goes in.</div></li>
+      <li data-verdict="bad">Ignore it. Efficient markets mean no strategy can ever make money.<div class="tl-drill-why">That misreads the hypothesis. It forbids a riskless free lunch, not every profit. On average published predictors lost a large share of their returns, not all of them, and a priced risk can still pay.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the research shows.</strong> This is an illustrative situation, not a dated event. The evidence behind the answer is real: McLean and Pontiff (<em>Journal of Finance</em>, 2016) followed 97 published predictors and found returns about 26% lower in the gap between the end of the study's sample and publication, and about 58% lower after publication. The decline was larger for the predictors with the biggest in-sample returns, and returns held up better where arbitrage is expensive.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -450,5 +532,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

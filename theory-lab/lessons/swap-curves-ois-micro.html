@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Swap Curves &amp; OIS Discounting — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, a live swap-valuation calculator, and a 5-question self-test?<a href="swap-curves-ois.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,73 @@
       <p class="sl-lede">A government bond's yield carries the idiosyncratic scars of whoever happens to be issuing and repo-ing that specific bond. A swap has none of that baggage — it's a pure, unbundled bet on interest rates, which is exactly why swap curves, and increasingly OIS curves, quietly replaced government bond curves as the market's working definition of "risk-free," and why the 2008 crisis forced the industry to split one curve into two.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: you pay a fixed 3.2% to a dealer, who pays you a floating rate, on $10 million notional that never changes hands. Cash flows are discounted at the OIS rate, the rate earned on collateral, not LIBOR, which carried bank credit risk that reached about 364 basis points in October 2008. Right: on a flat 3% OIS curve over two years, the floating leg is worth $574,041 and the fixed leg at 3.2% is worth $612,310, so the swap is worth minus $38,269 to you. At the 3.00% par rate the two legs would be equal.">
+      <rect class="tlp-box amber" x="30" y="30" width="240" height="44" rx="8"/>
+      <rect class="tlp-box blue" x="30" y="130" width="240" height="44" rx="8"/>
+      <text class="tlp-text" x="150" y="57" text-anchor="middle" font-size="14" font-weight="700">You: pay fixed</text>
+      <text class="tlp-text" x="150" y="157" text-anchor="middle" font-size="14" font-weight="700">Dealer: pays floating</text>
+      <line class="tlp-line amber thick" x1="110" y1="76" x2="110" y2="118"/>
+      <polygon class="tlp-amber" points="103,116 117,116 110,127"/>
+      <line class="tlp-line blue thick" x1="190" y1="128" x2="190" y2="88"/>
+      <polygon class="tlp-blue" points="183,89 197,89 190,78"/>
+      <text class="tlp-amber" x="102" y="106" text-anchor="end" font-size="13" font-weight="700">3.2% fixed</text>
+      <text class="tlp-blue" x="198" y="106" font-size="13" font-weight="700">floating</text>
+      <text class="tlp-text2" x="30" y="196" font-size="12">$10m notional: never changes hands</text>
+      <text class="tlp-green" x="30" y="214" font-size="12" font-weight="700">discount at OIS, the collateral rate</text>
+      <text class="tlp-red" x="30" y="232" font-size="12" font-weight="700">not LIBOR: bank risk, ~364bp in Oct 2008</text>
+      <text class="tlp-text3" x="330" y="22" font-size="12">value of each leg, 2 years, flat 3% OIS</text>
+      <line class="tlp-line" x1="330" y1="190" x2="570" y2="190"/>
+      <rect class="tlp-box blue" x="350" y="97.7" width="60" height="92.3"/>
+      <rect class="tlp-box amber" x="440" y="50" width="60" height="140"/>
+      <line class="tlp-line red dash" x1="410" y1="97.7" x2="515" y2="97.7"/>
+      <line class="tlp-line red" x1="515" y1="50" x2="515" y2="97.7"/>
+      <line class="tlp-line red" x1="509" y1="50" x2="521" y2="50"/>
+      <text class="tlp-blue" x="380" y="90" text-anchor="middle" font-size="13" font-weight="700">$574,041</text>
+      <text class="tlp-amber" x="470" y="43" text-anchor="middle" font-size="13" font-weight="700">$612,310</text>
+      <text class="tlp-red" x="578" y="120" text-anchor="end" font-size="13" font-weight="700">−$38,269</text>
+      <text class="tlp-red" x="578" y="136" text-anchor="end" font-size="12">to you</text>
+      <text class="tlp-text3" x="380" y="206" text-anchor="middle" font-size="12">floating leg</text>
+      <text class="tlp-text3" x="470" y="206" text-anchor="middle" font-size="12">fixed at 3.2%</text>
+      <text class="tlp-text2" x="330" y="224" font-size="12">at the 3.00% par rate the legs match</text>
+      <text class="tlp-text3" x="330" y="240" font-size="11">bars start at $500,000</text>
+    </svg>
+    <figcaption>A swap trades fixed for floating on money that never moves. Its fair fixed rate, the par rate, is the one that makes both legs worth the same today. Lock in more than that and your side is worth less than zero. Since 2008, the discounting is done at OIS, not LIBOR.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">What actually changes hands in an interest rate swap?</p>
+      <p data-who="Quant">Only the difference. You agree to pay a fixed rate on, say, ten million dollars. The other side pays you a floating rate on the same ten million. The ten million itself never moves.</p>
+      <p data-who="Trader">So what is the right fixed rate?</p>
+      <p data-who="Quant">The one that makes the deal worth nothing to either side on day one. That is the par swap rate, and it is what the market quotes.</p>
+      <p data-who="Trader">How do you value the floating side if you don't know the future rates?</p>
+      <p data-who="Quant">There is a neat trick. A floating-rate note is worth par on its own curve. A swap's floating leg is that note without the final repayment. So its value is just the notional times one minus the last discount factor.</p>
+      <p data-who="Trader">Numbers, please.</p>
+      <p data-who="Quant">A flat three percent curve, two years, ten million. The floating leg is worth about five hundred and seventy-four thousand dollars. The par rate comes out at exactly three percent.</p>
+      <p data-who="Trader">And if I locked in three point two?</p>
+      <p data-who="Quant">Your fixed payments are worth about six hundred and twelve thousand today. You are paying twenty basis points over fair, so the swap is worth minus thirty-eight thousand two hundred and sixty-nine dollars to you.</p>
+      <p data-who="Trader">Which curve gives the discount factors?</p>
+      <p data-who="Quant">That is the real story. For decades it was LIBOR, the rate banks said they could borrow at unsecured. But that carries bank credit risk. Collateralised trades really earn the overnight rate on the cash posted, so they should be discounted at OIS.</p>
+      <p data-who="Trader">Did the difference ever matter?</p>
+      <p data-who="Quant">Hugely. The gap between LIBOR and OIS was normally under ten basis points. After Lehman failed it reached roughly three hundred and sixty-four in October two thousand and eight. Desks split their curves: OIS to discount, a separate curve to forecast what the floating leg pays.</p>
+      <p data-who="Trader">And LIBOR itself?</p>
+      <p data-who="Quant">It was a survey, not a traded price. Some banks submitted low rates to look healthy, and traders had asked for fixes that suited their positions. Barclays paid about four hundred and fifty million dollars in June twenty twelve, and UBS about one point five billion that December. The transaction-based rate SOFR replaced it, and the main US dollar LIBOR panel ended on the thirtieth of June twenty twenty-three.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">A swap's fair fixed rate makes both legs equal, and you discount at the rate your collateral actually earns, not at a survey of what banks say they pay.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">A swap trades fixed for floating, nothing else</h2>
       <p class="sl-sub">Two parties agree to exchange interest-rate cashflows on a notional amount. The notional itself never moves.</p>
@@ -59,7 +126,7 @@
       <p class="sl-p">Nobody's actual loan changes hands, and nobody has to buy or sell a bond. A company that borrowed floating and wants payment certainty can pay fixed on a swap instead of refinancing its real loan; a company that borrowed fixed and thinks rates are falling can pay floating instead. It's a pure side bet on the path of interest rates, stripped of every complication a real bond carries.</p>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Why each side is willing to do this</h2>
       <div class="sl-compare">
@@ -75,7 +142,7 @@
       <div class="sl-quote">Because the notional is never at risk — only the net cashflow difference — a swap can grow to an enormous notional size without carrying anywhere near the counterparty risk of holding a bond of the same face amount. That's part of why the swap market is one of the largest derivatives markets in the world.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Try it — net cashflow for one period</h2>
       <p class="sl-sub">Notional, the fixed rate agreed, and the floating rate that actually reset. The net difference is what changes hands.</p>
@@ -102,7 +169,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The swap rate is a par rate — bootstrapped like a bond curve</h2>
       <p class="sl-sub">The quoted swap rate at each maturity is the fixed rate K that makes that swap worth exactly zero today. Build a curve out of those rates the same way a bond curve gets built out of bond prices.</p>
@@ -115,7 +182,7 @@
       <div class="sl-quote">This is the same bootstrapping idea from <strong>Fixed Income 3</strong> (bootstrapping a bond curve) and <strong>Fixed Income 4</strong> (fitting Nelson-Siegel/Svensson to it) — just applied to swap rates instead of bond prices as the raw input.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Why swap curves replaced government bond curves</h2>
       <p class="sl-sub">A government bond's yield is never purely about the time value of money — a swap curve strips that noise out.</p>
@@ -153,7 +220,7 @@
       <p class="sl-p">A swap has nothing to issue, own, borrow, or repo — so the swap rate is a cleaner, more direct read on "what the market thinks rates will average out to" than any single bond's yield. That's why trading desks gradually adopted the swap curve, rather than the government bond curve, as their working definition of the risk-free discounting curve.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Drag the floating rate — watch who owes whom flip</h2>
       <p class="sl-sub">Fixed rate K = 3.00%, notional N = $10,000,000, held constant. Only the floating rate observation moves.</p>
@@ -180,7 +247,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Why OIS, not LIBOR: the discounting revolution</h2>
       <p class="sl-sub">A curve's job when discounting isn't complete unless it reflects the actual cost of the collateral changing hands.</p>
@@ -210,7 +277,7 @@
     </section>
 
     <!-- WB:swap_curves_ois-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">A swap, its fair rate, and the curve that changed</h2>
       <!-- WB:swap_curves_ois:START -->
@@ -221,7 +288,7 @@
     </section>
     <!-- WB:swap_curves_ois-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Two discounting worlds, side by side</h2>
       <p class="sl-sub">The same swap, priced under the conventions that governed it before 2008 versus the conventions that govern it today.</p>
@@ -243,7 +310,7 @@
       <p class="sl-p">That split is what the industry calls the <strong>multi-curve framework</strong>. It only exists because the single-curve shortcut broke: once collateralized trades were discounted at OIS specifically, discounting and forecasting stopped being the same job answered by the same number.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The LIBOR-to-SOFR transition</h2>
       <p class="sl-sub">Two separate problems converged on LIBOR — a discounting flaw, and a benchmark that could be gamed.</p>
@@ -256,7 +323,7 @@
       <div class="sl-quote">For a rates desk, this meant years of running two curve worlds in parallel — legacy LIBOR trades on the old curve until they matured or converted, new trades on SOFR — on top of the OIS-vs-forecast-curve split already covered.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">LIBOR: the rate that was an estimate</h2>
       <div class="sl-callout amber">
@@ -276,7 +343,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11<!-- DESK:START --> · Tested here<!-- DESK:END --></div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the verdict<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: the funding spread is a real-time stress gauge. Its SOFR-era form: SOFR above the Fed's floor, or the SRF being drawn.</p>
@@ -289,7 +356,7 @@
       <div class="sl-quote">The single-curve shortcut assumes the floating index is a near risk-free <strong>market price</strong>. LIBOR was a credit-risky survey. SOFR fixes both, but has its own failure mode, plumbing: 5.25% on 17 September 2019.<!-- DESK:START --> And the desk's sample has no 2008-style banking crisis in it.<!-- DESK:END --></div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -340,7 +407,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2008-09-15">
+    <div class="tl-drill-label">Scenario drill · 15 September 2008</div>
+    <h3>Lehman has failed, and LIBOR no longer looks risk-free</h3>
+    <p>You run a large book of collateralised interest rate swaps: cash is posted daily against every mark. Like the rest of the market, you value them on one LIBOR curve that both discounts the cash flows and forecasts the floating legs, which pay LIBOR. The LIBOR-OIS spread, normally a few basis points, has been widening since August 2007 and is now jumping again. Today Lehman Brothers filed for bankruptcy. How should you value the book?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Keep one LIBOR curve for everything. It is the market standard.<div class="tl-drill-why">LIBOR now carries a large and growing premium for bank credit risk. Your trades are collateralised, so they carry almost none of it. Discounting at LIBOR bakes a credit premium into "risk-free" values, and it gets bigger every day of the crisis.</div></li>
+      <li data-verdict="good">Discount at OIS, the rate your posted cash actually earns, and keep a separate LIBOR curve only to forecast what the floating legs pay.<div class="tl-drill-why">This is the multi-curve split. Each curve does the job it is right for: OIS brings cash flows to today, and the LIBOR forward curve says what the floating leg will pay, because that is still the index in the contract.</div></li>
+      <li data-verdict="ok">Switch everything to OIS, including the floating-leg forecasts.<div class="tl-drill-why">Right about discounting, wrong about forecasting. The floating legs still pay LIBOR, which is now far above OIS, so forecasting them off OIS understates what you will receive or pay.</div></li>
+      <li data-verdict="bad">Read each morning's LIBOR fixing as a clean market price of bank risk and trade the spread off it.<div class="tl-drill-why">LIBOR is a survey of what panel banks say they could borrow at, with few real trades behind it right now, and a bank that answers high signals weakness. The fixing may be flattering the real stress.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The 3-month USD LIBOR-OIS spread peaked at roughly 364bp in October 2008. The industry moved collateralised derivatives to OIS discounting, with LIBOR kept only as the index the floating leg paid. Investigations later found that during the crisis some banks had submitted artificially low rates, and that traders had long asked for favourable fixes. Barclays agreed to pay about $450 million in June 2012 and UBS about $1.5 billion in December 2012. The transaction-based SOFR replaced LIBOR, and the main USD LIBOR panel ended on 30 June 2023.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/pubs/bulletin/2009/articles/bankprofit/dlink/fig02.htm" target="_blank" rel="noopener">Federal Reserve Bulletin, 2009, LIBOR-OIS spread chart</a>; Federal Reserve Bank of St. Louis, Monetary Trends, November 2008; CFTC press release, 27 June 2012 (Barclays); US Department of Justice press release, 19 December 2012 (UBS); FCA announcement on LIBOR cessation, 5 March 2021.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -487,5 +574,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

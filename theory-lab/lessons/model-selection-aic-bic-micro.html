@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Model Selection: AIC &amp; BIC — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, both formal proofs, and a 6-question self-test?<a href="model-selection-aic-bic.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,76 @@
       <p class="sl-lede">Give a model one more free parameter and its in-sample fit can only improve, or at worst stay exactly the same — never get worse. That single mechanical fact is the entire root of overfitting: judge candidate models by raw fit alone, and the most complicated one in your set wins every time, whether or not its extra parameters describe anything real. AIC and BIC are the two standard tools for penalizing complexity honestly, and — as you'll see in a worked example — they don't always agree on the answer.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: Model B's three extra parameters bought 6 points of better fit. AIC charges 3 times 2, which is 6 points, so the two models tie at 104. BIC at n equals 100 charges 3 times 4.6, which is 13.8 points, so it prefers the simpler Model A, 109.2 to 117.0. Right: the price per extra parameter against sample size. AIC's price is flat at 2. BIC's price is the log of n, equal to AIC's at n of about 7.4, 4.6 at n equals 100, and still rising.">
+      <text class="tlp-text" x="24" y="24" font-size="14" font-weight="700">Model B's 3 extra parameters (n = 100)</text>
+      <text class="tlp-green" x="30" y="52" font-size="13" font-weight="700">fit they bought: 6 points</text>
+      <rect class="tlp-green" x="30" y="58" width="90" height="20" rx="3"/>
+      <text class="tlp-blue" x="30" y="106" font-size="13" font-weight="700">AIC price: 3 × 2 = 6 → a tie</text>
+      <rect class="tlp-blue" x="30" y="112" width="90" height="20" rx="3"/>
+      <text class="tlp-red" x="30" y="160" font-size="13" font-weight="700">BIC price: 3 × 4.6 = 13.8 → A wins</text>
+      <rect class="tlp-red" x="30" y="166" width="207" height="20" rx="3"/>
+      <line class="tlp-line dash" x1="120" y1="163" x2="120" y2="189"/>
+      <text class="tlp-text2" x="24" y="218" font-size="12.5">AIC: 104 vs 104 · BIC: 109.2 vs 117.0</text>
+      <line class="tlp-line" x1="315" y1="14" x2="315" y2="226"/>
+      <text class="tlp-text" x="335" y="24" font-size="14" font-weight="700">Price per extra parameter</text>
+      <line class="tlp-line" x1="370" y1="56" x2="370" y2="200"/>
+      <line class="tlp-line" x1="370" y1="200" x2="580" y2="200"/>
+      <text class="tlp-text3" x="362" y="204" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="362" y="157" text-anchor="end" font-size="12">2</text>
+      <text class="tlp-text3" x="362" y="111" text-anchor="end" font-size="12">4</text>
+      <text class="tlp-text3" x="362" y="64" text-anchor="end" font-size="12">6</text>
+      <text class="tlp-text3" x="370" y="216" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="475" y="216" text-anchor="middle" font-size="12">100</text>
+      <text class="tlp-text3" x="580" y="216" text-anchor="middle" font-size="12">200</text>
+      <text class="tlp-text3" x="475" y="232" text-anchor="middle" font-size="12">sample size n →</text>
+      <line class="tlp-line blue thick" x1="370" y1="153.3" x2="580" y2="153.3"/>
+      <polyline class="tlp-line red thick" points="371.1,200.0 371.6,190.5 372.1,183.8 373.1,174.4 374.2,167.7 375.2,162.4 376.3,158.2 377.8,153.3 379.4,148.7 381.6,144.0 384.7,138.4 388.9,132.6 394.1,126.8 401.5,120.6 412.0,113.9 422.5,108.7 438.2,102.6 454.0,97.8 475.0,92.5 496.0,88.3 517.0,84.7 538.0,81.6 559.0,78.8 580.0,76.4"/>
+      <text class="tlp-blue" x="578" y="145" text-anchor="end" font-size="13" font-weight="700">AIC: 2, always</text>
+      <text class="tlp-red" x="545" y="66" text-anchor="middle" font-size="13" font-weight="700">BIC: ln n</text>
+      <circle class="tlp-red" cx="475" cy="92.5" r="5"/>
+      <text class="tlp-red" x="466" y="80" text-anchor="end" font-size="12.5">4.6 at n = 100</text>
+      <circle class="tlp-amber" cx="377.8" cy="153.3" r="4.5"/>
+      <text class="tlp-amber" x="386" y="180" font-size="12.5">equal at n ≈ 7.4</text>
+    </svg>
+    <figcaption>The same 6 points of better fit, priced two ways. AIC charges exactly 6, so the models tie. BIC charges 13.8 at this sample size, so it backs the simpler model. Past about 8 observations BIC is always the stricter judge, and it gets stricter as data grows.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I've got two models for a spread. One uses one lag, the other uses five. The five-lag one fits better. Easy choice?</p>
+      <p data-who="Quant">It always fits better. The bigger model contains the smaller one. It can set the extra coefficients to zero and match it, then nudge them to chase noise. So a better in-sample fit tells you almost nothing.</p>
+      <p data-who="Trader">Then how do I choose?</p>
+      <p data-who="Quant">You charge rent for every parameter. A model has to buy more fit than it pays in rent. That's what AIC and BIC do: a misfit score plus a penalty, and lower is better.</p>
+      <p data-who="Trader">What's the rent?</p>
+      <p data-who="Quant">AIC charges a flat two points per parameter. BIC charges the natural log of your sample size. With a hundred observations, that's about four point six.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">A hundred days of data. Model A has two parameters and a misfit score, called the deviance, of one hundred. Model B has five parameters and a deviance of ninety-four. So three extra parameters bought six points of fit.</p>
+      <p data-who="Trader">And the rent on those three?</p>
+      <p data-who="Quant">Under AIC, three times two is six. Exactly what they bought. Both models score one hundred and four. A dead heat.</p>
+      <p data-who="Trader">And under BIC?</p>
+      <p data-who="Quant">Three times four point six is about thirteen point eight. More than double what they bought. BIC scores Model A at about one hundred and nine, Model B at about one hundred and seventeen. A clear win for the simpler model.</p>
+      <p data-who="Trader">So which judge do I trust?</p>
+      <p data-who="Quant">They answer different questions. AIC asks which model will forecast best on new data. It behaves like leave-one-out cross-validation. BIC asks which model is most likely the true one, and it gets pickier as you collect more data. With more than about eight observations, BIC is always the stricter judge.</p>
+      <p data-who="Trader">Any traps?</p>
+      <p data-who="Quant">Two big ones. Only compare models fitted on exactly the same data. A five-lag model uses its first five days as inputs, so refit both on the same trimmed window. And a low score only means best of the bunch. The best of five bad models is still a bad model.</p>
+      <p data-who="Trader">So for my spread?</p>
+      <p data-who="Quant">Neither judge thinks lags two to five earn their keep. They were probably fitting noise in that hundred-day window. Take the one-lag model, then test it out of sample before you risk money on it.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">More knobs always improve the fit, so make every knob pay rent, and let an out-of-sample test have the final word.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">How many lags before you're fitting noise?</h2>
       <p class="sl-sub">Akaike (1973–74) and Schwarz (1978) — standard for lag selection by the 1980s.</p>
@@ -39,7 +109,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Why a bigger model can never lose, in-sample</h2>
       <p class="sl-sub">Drag the slider to add lag terms to an AR spread model. Watch the in-sample fit — it only ever goes one direction.</p>
@@ -63,7 +133,7 @@
       <p class="sl-p">This isn't a quirk of this particular example — it's a mechanical guarantee. If Model B contains Model A as a special case (say, B is A plus three extra lag terms), B's best-fit search happens over a strictly larger space that includes everything A could reach. So B can always tie A, and generically beats it slightly by nudging the extra parameters away from zero to chase whatever pattern — real or noise — happens to sit in this one sample.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Connect-the-dots with enough dots</h2>
       <div class="sl-icard-grid">
@@ -79,7 +149,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The fix: fit minus a complexity penalty</h2>
       <p class="sl-sub">Start from the deviance — the "badness of fit" both criteria then tax.</p>
@@ -96,7 +166,7 @@
       <p class="sl-p">Both criteria answer the same reframed question: not "does adding this parameter help the fit?" (the answer is always "yes, weakly") but "does it help by <em>more</em> than the going rate for a free parameter?" That's what turns "always improves" into a real, decidable choice between models of different sizes. Lower is better for both scores below.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">AIC — priced for out-of-sample prediction</h2>
       <div class="sl-card">
@@ -111,7 +181,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">BIC — priced for finding the true model</h2>
       <div class="sl-card">
@@ -123,7 +193,7 @@
       <div class="sl-quote">Think of AIC and BIC as two judges scoring the same complexity, with BIC charging a steeper "cover charge" per extra parameter once you have more than about 8 data points — and that charge keeps climbing the more data you collect. Same underlying idea, fit minus a penalty, just a different price tag.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Why they disagree: the price tag per parameter</h2>
       <p class="sl-sub">AIC charges 2 per parameter, flat. BIC charges ln(n) per parameter — and ln(n) crosses 2 fast.</p>
@@ -151,7 +221,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">A genuine tie on AIC, a clear call on BIC</h2>
       <p class="sl-sub">Two models, n = 100 observations. Edit any field — both scores, and the winner, recompute live.</p>
@@ -179,7 +249,7 @@
     </section>
 
     <!-- WB:model_selection_aic_bic-deck:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">AIC and BIC: making every parameter pay rent</h2>
       <!-- WB:model_selection_aic_bic:START -->
@@ -190,7 +260,7 @@
     </section>
     <!-- WB:model_selection_aic_bic-deck:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How practitioners actually read the gap</h2>
       <p class="sl-sub">Don't just crown the single winner — look at Δ, the gap to the best score in the set.</p>
@@ -206,7 +276,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Choosing a mean-reversion spread's lag length</h2>
       <p class="sl-sub">A researcher is deciding how many lags to use in an AR model of a demeaned FX spread believed to revert toward zero.</p>
@@ -230,7 +300,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -281,7 +351,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide sl-vark" data-slide="15">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative lag-length choice</div>
+    <h3>Five lags fit better. Do you trade them?</h3>
+    <p>You model a demeaned FX cross spread that you believe reverts to zero. On the same 100 days you fit a one-lag model (2 parameters, deviance 100) and a five-lag model (5 parameters, deviance 94). AIC scores both at 104. BIC scores them 109.2 and 117.0. A colleague wants to trade the five-lag model because it "explains the data better". What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trade the five-lag model. Its in-sample fit is better.<div class="tl-drill-why">It had to be better. A model that nests another can never fit worse in sample. The extra lags bought 6 points of fit, no more than AIC's price for them and well under BIC's.</div></li>
+      <li data-verdict="good">Take the one-lag model, make sure both were fitted on the same trimmed window, then test it out of sample before risking capital.<div class="tl-drill-why">Neither criterion finds that lags 2 to 5 earn their keep. Aligning the sample removes the unequal-n trap, since the five-lag model uses its first five days as inputs. The out-of-sample test is the real verdict.</div></li>
+      <li data-verdict="ok">Call it a tie, since AIC cannot separate them, and pick either one.<div class="tl-drill-why">A fair reading of AIC alone. But BIC's 7.8-point gap is a clear preference, and in a tie the simpler model is the safer bet. It also skips the out-of-sample check.</div></li>
+      <li data-verdict="bad">Keep adding lags until the fit stops improving, then trade that.<div class="tl-drill-why">The fit never stops improving: each extra lag can only match or beat the last model in sample. This rule always ends at the biggest model you are willing to build.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the numbers say.</strong> This is an illustrative case built on the lesson's worked example, not a historical event. The four extra lags were most likely fitting noise in that 100-day window. The one-lag model is the one more likely to keep the same coefficients on data it has not seen, and it still has to pass a genuine out-of-sample test before it earns any trust.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -400,5 +489,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

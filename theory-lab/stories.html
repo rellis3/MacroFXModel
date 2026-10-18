@@ -6,6 +6,7 @@
 <title>Stories — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <style>
   /* Episode-first index. Generated from the lessons' own story boxes, so every link
      lands on the section that tells that episode. */
@@ -37,7 +38,7 @@
     <div class="tl-kicker">Start from what happened</div>
     <h1>Stories</h1>
     <p>Every idea in this lab was learned the hard way by somebody. This page starts from the events instead of the equations: a crash, a squeeze, a bank run, a model that broke. Each one links straight to the lessons that tell it, and each lesson tells it from its own angle: the same March 2020 is a lesson in forced selling, in volatility clustering, in correlation, and in what the Fed does when it decides to.</p>
-    <!-- DESK:START --><p class="st-stats">38 episodes · 101 lesson sections · 79 lessons</p><!-- DESK:END -->
+    <!-- DESK:START --><p class="st-stats">40 episodes · 105 lesson sections · 83 lessons</p><!-- DESK:END -->
   </div>
   <div class="st-bar" role="group" aria-label="Filter by theme"><button type="button" class="st-chip on" data-theme="all">All</button><button type="button" class="st-chip" data-theme="crash">Crashes &amp; squeezes</button><button type="button" class="st-chip" data-theme="plumbing">Plumbing &amp; funding</button><button type="button" class="st-chip" data-theme="cb">Central banks &amp; rates</button><button type="button" class="st-chip" data-theme="models">Models that broke</button><button type="button" class="st-chip" data-theme="research">Research honesty</button><button type="button" class="st-chip" data-theme="human">The human side</button></div>
   <div class="st-timeline">
@@ -217,15 +218,33 @@
     <div class="st-told">Told in 1 lesson</div>
     <ul class="st-lessons"><li><a href="lessons/short-rate-models-vasicek-cir-hull-white.html#story-1">Short-Rate Models: Vasicek, CIR &amp; Hull-White</a><span class="st-angle">CIR vs Vasicek, decided by reality</span></li></ul>
   </article>
-  <article class="st-card" id="snb" data-theme="cb">
+  <article class="st-card" id="fx-fix" data-theme="human">
+    <div class="st-when">2013–2015<span class="st-theme">The human side</span></div>
+    <h2 class="st-title">Rigging the 4pm fix</h2>
+    <p class="st-what">Traders at several large banks shared client orders in chat rooms and timed their trading into the one-minute window that set the WM/Reuters 4pm benchmark, the rate the world's funds mark their currency holdings to. On 12 November 2014 regulators in the UK, the US and Switzerland fined six banks about $4.3 billion between them; the fixing window was widened to five minutes in 2015.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Benchmark</b>A one-minute median</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Traders</b>Pool orders, time the window</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Fix</b>Moved for a few seconds</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Regulators</b>$4.3bn of fines, a wider window</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/fx-fixings-wm-reuters.html#story-1">FX Fixings &amp; the WM/Reuters 4pm Fix</a><span class="st-angle">why a median takes time to move</span></li></ul>
+  </article>
+
+<article class="st-card" id="snb" data-theme="cb">
     <div class="st-when">15 January 2015<span class="st-theme">Central banks &amp; rates</span></div>
     <h2 class="st-title">The Swiss franc floor goes</h2>
     <p class="st-what">For three years the SNB had promised to stop EUR/CHF falling below 1.20, and had recently reaffirmed it. Then, without warning, it removed the floor. The franc jumped by more than 25% at the extreme within minutes; stop orders filled far below their levels, and brokers and option sellers took losses that no model of continuous prices allowed.</p>
     <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>The SNB removes the floor</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Price</b>Gaps, no trades in between</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Option sellers and brokers</b>Margin calls that cannot be met</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Insolvencies and rescues</div></div>
-    <div class="st-told">Told in 4 lessons</div>
-    <ul class="st-lessons"><li><a href="lessons/merton-jump-diffusion.html#story-1">The Merton Jump-Diffusion Model</a><span class="st-angle">a jump, not a diffusion</span></li><li><a href="lessons/options-four-positions.html#story-1">The Four Option Positions</a><span class="st-angle">what &quot;obligation&quot; means for an option seller</span></li><li><a href="lessons/second-order-greeks.html#story-1">Second-Order Greeks: Vanna, Charm, Vomma &amp; More</a><span class="st-angle">when the second-order terms stop being small</span></li><li><a href="lessons/central-bank-policy.html#story-2">Central Bank Policy</a><span class="st-angle">action against the words</span></li></ul>
+    <div class="st-told">Told in 5 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/merton-jump-diffusion.html#story-1">The Merton Jump-Diffusion Model</a><span class="st-angle">a jump, not a diffusion</span></li><li><a href="lessons/options-four-positions.html#story-1">The Four Option Positions</a><span class="st-angle">what &quot;obligation&quot; means for an option seller</span></li><li><a href="lessons/second-order-greeks.html#story-1">Second-Order Greeks: Vanna, Charm, Vomma &amp; More</a><span class="st-angle">when the second-order terms stop being small</span></li><li><a href="lessons/central-bank-policy.html#story-2">Central Bank Policy</a><span class="st-angle">action against the words</span></li><li><a href="lessons/trade-management-exits.html#story-1">Managing the Trade: R-Multiples, Stops &amp; Exits</a><span class="st-angle">a stop is an order, not a guarantee</span></li></ul>
   </article>
-  <article class="st-card" id="superbowl" data-theme="human">
+  <article class="st-card" id="brexit" data-theme="crash">
+    <div class="st-when">February–June 2016<span class="st-theme">Crashes &amp; squeezes</span></div>
+    <h2 class="st-title">Brexit, priced in the risk reversal first</h2>
+    <p class="st-what">Once the referendum date was set, each GBP/USD option tenor started pricing a sterling fall on the day its expiry first covered the vote, while spot drifted higher on polls that leaned to Remain. On the night of 23 June sterling fell more than 10% within hours, to its lowest since 1985. The options market had been saying how lopsided the risk was for months.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Date set</b>The vote enters each expiry</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Options</b>Puts bid, risk reversals plunge</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Spot</b>Calm, leaning Remain</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Result</b>Sterling −10% overnight</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/fx-options-quoting-rr-bf.html#story-1">FX Options Quoting: Delta, Risk Reversals &amp; Butterflies</a><span class="st-angle">each tenor flinched on cue</span></li></ul>
+  </article>
+
+<article class="st-card" id="superbowl" data-theme="human">
     <div class="st-when">1 February 2015<span class="st-theme">The human side</span></div>
     <h2 class="st-title">&quot;The worst call in Super Bowl history&quot;</h2>
     <p class="st-what">With seconds left and the ball a yard from the end zone, Seattle threw a pass instead of running. It was intercepted and they lost. The call was universally condemned, but a decent case can be made that it was reasonable and simply turned out badly: the classic example of judging a decision by its result.</p>
@@ -294,8 +313,8 @@
     <h2 class="st-title">Transitory, then the fastest hikes in four decades</h2>
     <p class="st-what">Inflation was called transitory while policy stayed near zero, far below what a standard Taylor rule prescribed. Then the Fed hiked at the fastest pace in four decades. Stocks and bonds fell together, the curve inverted for the longest stretch in decades, and the yen slid to multi-decade lows.</p>
     <div class="tl-chain"><div class="tl-chain-link"><b>Inflation</b>Runs hot</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Fed</b>Late, then fast</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Bonds and stocks</b>Fall together</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A long inversion, a weak yen, no recession (yet)</div></div>
-    <div class="st-told">Told in 9 lessons</div>
-    <ul class="st-lessons"><li><a href="lessons/taylor-rule.html#story-1">The Taylor Rule</a><span class="st-angle">the Taylor gap</span></li><li><a href="lessons/hidden-markov-models.html#story-1">Hidden Markov Models &amp; Regime Detection</a><span class="st-angle">a regime the training window never saw</span></li><li><a href="lessons/nelson-siegel-svensson.html#story-1">Curve Fitting: Nelson-Siegel &amp; Svensson</a><span class="st-angle">the factors move</span></li><li><a href="lessons/yield-curve-growth-expectations.html#story-2">What the Yield Curve Says About Growth</a><span class="st-angle">the textbook signal that waited</span></li><li><a href="lessons/purchasing-power-parity.html#story-1">Purchasing Power Parity</a><span class="st-angle">PPP vs the rate gap</span></li><li><a href="lessons/hurst-variance-ratio.html#story-1">The Hurst Exponent &amp; Variance Ratio Test</a><span class="st-angle">trend followers&#x27; good year</span></li><li><a href="lessons/duration-convexity.html#story-1">Duration &amp; Convexity</a><span class="st-angle">the bonds bought before it</span></li><li><a href="lessons/qe-qt-balance-sheet.html#story-5">QE and QT: What the Fed&#x27;s Balance Sheet Actually Does</a><span class="st-angle">quantitative tightening</span></li><li><a href="lessons/bond-pricing-ytm.html#story-1">Bond Pricing &amp; Yield to Maturity</a><span class="st-angle">the cash flows didn&#x27;t change; the discount rate did</span></li></ul>
+    <div class="st-told">Told in 10 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/taylor-rule.html#story-1">The Taylor Rule</a><span class="st-angle">the Taylor gap</span></li><li><a href="lessons/hidden-markov-models.html#story-1">Hidden Markov Models &amp; Regime Detection</a><span class="st-angle">a regime the training window never saw</span></li><li><a href="lessons/nelson-siegel-svensson.html#story-1">Curve Fitting: Nelson-Siegel &amp; Svensson</a><span class="st-angle">the factors move</span></li><li><a href="lessons/yield-curve-growth-expectations.html#story-2">What the Yield Curve Says About Growth</a><span class="st-angle">the textbook signal that waited</span></li><li><a href="lessons/purchasing-power-parity.html#story-1">Purchasing Power Parity</a><span class="st-angle">PPP vs the rate gap</span></li><li><a href="lessons/hurst-variance-ratio.html#story-1">The Hurst Exponent &amp; Variance Ratio Test</a><span class="st-angle">trend followers&#x27; good year</span></li><li><a href="lessons/duration-convexity.html#story-1">Duration &amp; Convexity</a><span class="st-angle">the bonds bought before it</span></li><li><a href="lessons/qe-qt-balance-sheet.html#story-5">QE and QT: What the Fed&#x27;s Balance Sheet Actually Does</a><span class="st-angle">quantitative tightening</span></li><li><a href="lessons/bond-pricing-ytm.html#story-1">Bond Pricing &amp; Yield to Maturity</a><span class="st-angle">the cash flows didn&#x27;t change; the discount rate did</span></li><li><a href="lessons/event-trading-playbook.html#story-1">The Event-Trading Playbook</a><span class="st-angle">the October 2022 CPI surprise</span></li></ul>
   </article>
   <article class="st-card" id="ldi" data-theme="plumbing">
     <div class="st-when">September–October 2022<span class="st-theme">Plumbing &amp; funding</span></div>
@@ -361,5 +380,6 @@
   })});
 })();
 </script>
+<script src="assets/vark.js?v=2" defer></script>
 </body>
 </html>

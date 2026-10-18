@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">The VIX Is an Uncertainty Index — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full formula, the worked example and a 6-question self-test?<a href="vix-uncertainty-not-fear.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,69 @@
       <p class="sl-lede">The VIX is a price for the <strong>size</strong> of the next month's moves — built from puts <em>and</em> calls. It usually jumps when stocks fall, so people call it the fear gauge. But on its own it says nothing about which way the market goes next. Learn to read it as a size and turn it into points.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 248" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two bell curves of the S&amp;P 500's one-month move, both centred on zero. At VIX 20 the one-standard-deviation band is about plus or minus 5.8 percent, roughly 289 points on an index at 5,000. At VIX 40 the bell is twice as wide, about plus or minus 11.5 percent or 577 points, and its centre has not moved.">
+      <line class="tlp-line" x1="40" y1="196" x2="560" y2="196"/>
+      <line class="tlp-line dash" x1="300" y1="48" x2="300" y2="196"/>
+      <polyline class="tlp-line red thick" points="48.0,187.9 53.2,187.2 58.5,186.4 63.8,185.5 69.0,184.6 74.2,183.6 79.5,182.6 84.8,181.5 90.0,180.4 95.2,179.2 100.5,177.9 105.8,176.6 111.0,175.2 116.2,173.8 121.5,172.3 126.8,170.8 132.0,169.2 137.2,167.6 142.5,165.9 147.8,164.2 153.0,162.4 158.2,160.7 163.5,158.9 168.8,157.0 174.0,155.2 179.2,153.4 184.5,151.5 189.8,149.7 195.0,147.9 200.2,146.1 205.5,144.3 210.8,142.6 216.0,140.9 221.2,139.3 226.5,137.7 231.8,136.3 237.0,134.8 242.2,133.5 247.5,132.3 252.8,131.1 258.0,130.1 263.2,129.1 268.5,128.3 273.8,127.6 279.0,127.0 284.2,126.6 289.5,126.3 294.8,126.1 300.0,126.0 305.2,126.1 310.5,126.3 315.8,126.6 321.0,127.0 326.2,127.6 331.5,128.3 336.8,129.1 342.0,130.1 347.2,131.1 352.5,132.3 357.8,133.5 363.0,134.8 368.2,136.3 373.5,137.7 378.8,139.3 384.0,140.9 389.2,142.6 394.5,144.3 399.8,146.1 405.0,147.9 410.2,149.7 415.5,151.5 420.8,153.4 426.0,155.2 431.2,157.0 436.5,158.9 441.8,160.7 447.0,162.4 452.2,164.2 457.5,165.9 462.8,167.6 468.0,169.2 473.2,170.8 478.5,172.3 483.8,173.8 489.0,175.2 494.2,176.6 499.5,177.9 504.8,179.2 510.0,180.4 515.2,181.5 520.5,182.6 525.8,183.6 531.0,184.6 536.2,185.5 541.5,186.4 546.8,187.2 552.0,187.9"/>
+      <polyline class="tlp-line blue thick" points="48.0,196.0 53.2,196.0 58.5,195.9 63.8,195.9 69.0,195.9 74.2,195.9 79.5,195.8 84.8,195.7 90.0,195.7 95.2,195.5 100.5,195.4 105.8,195.2 111.0,194.9 116.2,194.6 121.5,194.2 126.8,193.6 132.0,193.0 137.2,192.2 142.5,191.2 147.8,190.0 153.0,188.6 158.2,186.9 163.5,184.9 168.8,182.6 174.0,179.9 179.2,176.7 184.5,173.2 189.8,169.2 195.0,164.8 200.2,159.8 205.5,154.5 210.8,148.6 216.0,142.4 221.2,135.8 226.5,128.9 231.8,121.7 237.0,114.4 242.2,107.1 247.5,99.8 252.8,92.7 258.0,85.9 263.2,79.5 268.5,73.7 273.8,68.5 279.0,64.2 284.2,60.6 289.5,58.1 294.8,56.5 300.0,56.0 305.2,56.5 310.5,58.1 315.8,60.6 321.0,64.2 326.2,68.5 331.5,73.7 336.8,79.5 342.0,85.9 347.2,92.7 352.5,99.8 357.8,107.1 363.0,114.4 368.2,121.7 373.5,128.9 378.8,135.8 384.0,142.4 389.2,148.6 394.5,154.5 399.8,159.8 405.0,164.8 410.2,169.2 415.5,173.2 420.8,176.7 426.0,179.9 431.2,182.6 436.5,184.9 441.8,186.9 447.0,188.6 452.2,190.0 457.5,191.2 462.8,192.2 468.0,193.0 473.2,193.6 478.5,194.2 483.8,194.6 489.0,194.9 494.2,195.2 499.5,195.4 504.8,195.5 510.0,195.7 515.2,195.7 520.5,195.8 525.8,195.9 531.0,195.9 536.2,195.9 541.5,195.9 546.8,196.0 552.0,196.0"/>
+      <line class="tlp-line blue dash" x1="239.4" y1="111.1" x2="239.4" y2="202"/>
+      <line class="tlp-line blue dash" x1="360.6" y1="111.1" x2="360.6" y2="202"/>
+      <line class="tlp-line red dash" x1="178.8" y1="153.5" x2="178.8" y2="202"/>
+      <line class="tlp-line red dash" x1="421.2" y1="153.5" x2="421.2" y2="202"/>
+      <text class="tlp-text3" x="40" y="22" font-size="12">VIX ÷ √12 = a one-month, one-sigma move</text>
+      <text class="tlp-text2" x="308" y="42" font-size="13">centre: 0%, no lean up or down</text>
+      <text class="tlp-blue" x="372" y="88" font-size="14" font-weight="700">VIX 20: ±5.8% a month</text>
+      <text class="tlp-text2" x="372" y="105" font-size="12">about ±289 points on 5,000</text>
+      <text class="tlp-red" x="168" y="116" text-anchor="end" font-size="14" font-weight="700">VIX 40: ±11.5% a month</text>
+      <text class="tlp-text2" x="168" y="133" text-anchor="end" font-size="12">about ±577 points on 5,000</text>
+      <text class="tlp-red" x="178.8" y="214" text-anchor="middle" font-size="12">−11.5%</text>
+      <text class="tlp-blue" x="239.4" y="214" text-anchor="middle" font-size="12">−5.8%</text>
+      <text class="tlp-text3" x="300" y="214" text-anchor="middle" font-size="12">0%</text>
+      <text class="tlp-blue" x="360.6" y="214" text-anchor="middle" font-size="12">+5.8%</text>
+      <text class="tlp-red" x="421.2" y="214" text-anchor="middle" font-size="12">+11.5%</text>
+      <text class="tlp-text3" x="40" y="238" font-size="12">← down moves</text>
+      <text class="tlp-text3" x="300" y="238" text-anchor="middle" font-size="12">S&amp;P 500 move over the next month</text>
+      <text class="tlp-text3" x="560" y="238" text-anchor="end" font-size="12">up moves →</text>
+    </svg>
+    <figcaption>Doubling the VIX from 20 to 40 doubles the width of the bell and leaves its centre exactly where it was. The VIX prices how far the market may move, not which way.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Every headline calls the VIX the fear gauge. When it jumps, should I be selling?</p>
+      <p data-who="Quant">Not on that alone. The nickname comes from an old academic paper, and it stuck because the VIX often jumps on days stocks fall. But the number itself is a price for movement. It is not a forecast of direction.</p>
+      <p data-who="Trader">A price for what, exactly?</p>
+      <p data-who="Quant">For the size of the next thirty days of moves in the S and P 500. It is built from a whole strip of out of the money options. Puts below the market, calls above it. Both sides go into the sum.</p>
+      <p data-who="Trader">So a rush into calls can lift it too?</p>
+      <p data-who="Quant">Yes. A frenzy in upside calls, or real two-sided worry before a big event, lifts it just as surely as a rush into puts. If stocks and the VIX both rise on the same day, that is your tell.</p>
+      <p data-who="Trader">Then why does it nearly always spike on down days?</p>
+      <p data-who="Quant">Because people pay far more to insure against a crash than against a melt-up. Puts are usually priced richer than calls the same distance away. So downside demand drives it, even though it measures both sides.</p>
+      <p data-who="Trader">Fine. How do I turn the number into something I can use?</p>
+      <p data-who="Quant">Divide by the square root of twelve for a month. A VIX of twenty means about five point eight percent, one standard deviation, either way. With the index at five thousand, that is roughly two hundred and ninety points.</p>
+      <p data-who="Trader">And for one day?</p>
+      <p data-who="Quant">Divide by sixteen. Twenty becomes about one and a quarter percent a day.</p>
+      <p data-who="Trader">What if it doubles to forty?</p>
+      <p data-who="Quant">Every number doubles. About eleven and a half percent a month, two and a half percent a day. And the middle of the bell has not moved at all. The market is paying for twice the size of move. It has said nothing new about which way.</p>
+      <p data-who="Trader">Give me a day when that mattered.</p>
+      <p data-who="Quant">Monday the fifth of February 2018. The S and P fell about four percent, and the VIX closed above thirty-seven, up from about seventeen on the Friday. Products that had sold volatility were forced to buy it back into the close, and the biggest inverse VIX note lost more than ninety percent overnight.</p>
+      <p data-who="Trader">And did the VIX call the direction after that?</p>
+      <p data-who="Quant">No. The next few weeks were wilder, just as it said. Where the index would be a few months later, it never said a word.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">The VIX tells you how hard the wind will blow, not which way. Use it to size your positions and your stops, never to pick a side.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">What the VIX actually measures</h2>
       <div class="sl-compare">
@@ -42,7 +105,7 @@
       <div class="sl-quote">Think of it as a forecast of <strong>wind speed</strong>, not wind direction. A storm warning tells you to tie things down; it doesn't tell you which way the gusts will blow.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">How it's built: a strip of puts <em>and</em> calls</h2>
       <p class="sl-sub">Not one option — a whole strip of out-of-the-money S&amp;P options at the two expiries around 30 days.</p>
@@ -51,7 +114,7 @@
       <div class="sl-note">The 1/K² weighting gives low-strike puts more say per dollar, and puts are usually pricier than calls (skew). That's why downside demand usually <em>drives</em> the VIX even though it <em>measures</em> both sides.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Turn the VIX into an expected move — try it</h2>
       <p class="sl-sub">σ for a horizon = VIX/100 × √h. Month: ÷√12. Week: ÷√52. Day: ÷√252 ≈ ÷16.</p>
@@ -79,7 +142,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Worked example: VIX 20, index at 5,000</h2>
       <div class="sl-calc-steps" style="font-size:14px">
@@ -95,7 +158,7 @@
     </section>
 
     <!-- WB:vix-deck:START -->
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">The VIX as a band around price, drawn step by step</h2>
       <!-- WB:vix:START -->
@@ -106,7 +169,7 @@
     </section>
     <!-- WB:vix-deck:END -->
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">It can rise in a rally</h2>
       <p class="sl-p">Calls are in the strip. A rush into upside calls — a squeeze, a speculative frenzy, two-sided uncertainty before a big event — lifts implied variance just as a rush into puts does.</p>
@@ -123,7 +186,7 @@
       <div class="sl-quote">The "fear" lives in the <strong>skew</strong> — how much more puts cost than calls — not in the VIX level itself.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The term structure: VIX vs VIX3M</h2>
       <div class="sl-compare">
@@ -150,7 +213,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Implied vs realised: "over-insured" doesn't mean calm</h2>
       <p class="sl-p"><strong>Implied</strong> = what the market pays for (the VIX). <strong>Realised</strong> = what the index actually did. Implied usually sits above realised — the insurance premium. The folk claim: when implied is <em>far</em> above realised, everyone's over-hedged and things will calm down.</p>
@@ -162,7 +225,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The chain: who is forced to do what</h2>
       <div class="sl-chain">
@@ -179,7 +242,7 @@
       <p class="sl-p">Every link says <em>how big</em>. None says <em>which way</em>.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9 · It actually happened</div>
       <h2 class="sl-h2">5 Feb 2018 "Volmageddon" and 5 Aug 2024</h2>
       <div class="sl-card">
@@ -199,7 +262,7 @@
       </div>
     </section>
 
-<!-- DESK:START -->    <section class="sl-slide" data-slide="12">
+<!-- DESK:START -->    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The one "fear" test — and it failed</h2>
       <p class="sl-sub">If the VIX were a fear signal with a direction, the classic fear trade — buy gold — should pay after a spike.</p><!-- DESK:END -->
@@ -212,7 +275,7 @@
 <!-- DESK:START -->      <div class="sl-quote">Three validated VIX findings, all about <strong>range</strong>. One directional "fear" claim, <strong>null</strong>. Vol tells you about size, never sign.</div>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -254,7 +317,27 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide sl-vark" data-slide="15">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2018-02-05">
+    <div class="tl-drill-label">Scenario drill · 5 February 2018</div>
+    <h3>The VIX has doubled in a day. Which way do you lean?</h3>
+    <p>It is the close on Monday 5 February 2018. The S&amp;P 500 fell about 4% today, and the VIX closed at 37.32, up from 17.31 on Friday. You hold a long S&amp;P 500 position sized for the calm market of last week. A colleague says the fear gauge is screaming and you should flip short. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Flip short. A VIX that doubles in a day is signalling more downside.<div class="tl-drill-why">The VIX is built from puts and calls, and its bell stays centred on zero. It says the next month's moves will be bigger, not which way they will go. Flipping on it reads a direction into a number that has none.</div></li>
+      <li data-verdict="good">Keep the direction call separate and resize for the new range. 37.32 ÷ 16 is about 2.3% a day, against about 1.1% at 17.31, so cut the position by roughly half and widen the stop to match.<div class="tl-drill-why">This is what the VIX is for. The expected daily move more than doubled, so the same position now carries more than twice the risk. Cutting size keeps your risk steady, and your view on direction stays your own call.</div></li>
+      <li data-verdict="ok">Close everything and wait for the VIX to calm down.<div class="tl-drill-why">Safe, and better than flipping. But the VIX gave you a size message, not a reason to abandon your view. Resizing does the same risk job without throwing the position away.</div></li>
+      <li data-verdict="bad">Sell volatility. Option prices have doubled, so collect the rich premium.<div class="tl-drill-why">Short-vol products were being forced to buy volatility back into the close, and that forced buying was making the spike bigger. Selling into it, sized for last week's calm, puts you on the side being squeezed.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Overnight, the largest inverse-VIX exchange-traded note lost more than 90% of its indicative value, and its issuer announced it would terminate the note. The forced buying from short-vol products had made the spike bigger. The S&amp;P 500 stayed volatile into the following week, so the VIX was right about size. It gave no signal about where the index would be a few months later.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/VIXCLS" target="_blank" rel="noopener">Cboe VIX daily closes, FRED</a> (17.31 on 2 February, 37.32 on 5 February 2018); <a href="https://fred.stlouisfed.org/series/SP500" target="_blank" rel="noopener">S&amp;P 500 daily closes, FRED</a> (2,762.13 to 2,648.94, −4.1%); Credit Suisse media release on the XIV ETN acceleration event, 6 February 2018.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -322,5 +405,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Kalman Filter &amp; Adaptive Relationships — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the Bayesian-updating link, and a 6-question self-test?<a href="kalman-filter.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,79 @@
       <p class="sl-lede">Run OLS over the last 60 days and you get one number for how much asset A moves with asset B — treated as fixed until tomorrow's regression, on a new window, quietly gives you a different one. The Kalman filter replaces that constant with a running belief: a best estimate, plus how sure you are of it, updated one new observation at a time. Same recursion NASA used to land on the moon, repurposed for a hedge ratio that drifts instead of jumps.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: one Kalman update on a number line for a hedge ratio. The prediction is 1.20, the new reading is 1.35, and the gain of 0.804 moves the estimate 80% of the way, to 1.321. On day 2 a reading of 1.30 with a gain of 0.471 moves it to 1.311. Right: the gain for days 1 to 10 as bars, falling from 0.804 to 0.471 and then settling near a steady state of about 0.26 that depends only on the ratio of Q to R.">
+      <text class="tlp-text3" x="20" y="24" font-size="12">one update: blend by the gain</text>
+      <line class="tlp-line" x1="40" y1="120" x2="285" y2="120"/>
+      <path class="tlp-line green thick" d="M90,110 Q146,70 200,110"/>
+      <polygon class="tlp-green" points="203,113 192,110 199,101"/>
+      <circle class="tlp-blue" cx="88" cy="120" r="7"/>
+      <circle class="tlp-text3" cx="232" cy="120" r="7"/>
+      <circle class="tlp-green" cx="204" cy="120" r="7"/>
+      <text class="tlp-green" x="146" y="62" text-anchor="middle" font-size="14" font-weight="700">gain 0.804: 80% of the way</text>
+      <text class="tlp-text2" x="250" y="100" text-anchor="middle" font-size="13">reading 1.35</text>
+      <text class="tlp-blue" x="88" y="146" text-anchor="middle" font-size="13">prediction 1.20</text>
+      <text class="tlp-green" x="210" y="146" text-anchor="middle" font-size="13" font-weight="700">estimate 1.321</text>
+      <text class="tlp-text2" x="20" y="186" font-size="13">Day 2: reading 1.30, gain 0.471 → 1.311</text>
+      <text class="tlp-text3" x="20" y="210" font-size="12">Q = 0.0009 (drift) · R = 0.0100 (noise)</text>
+      <text class="tlp-text3" x="350" y="24" font-size="12">the gain, day by day</text>
+      <line class="tlp-line" x1="345" y1="200" x2="585" y2="200"/>
+      <rect class="tlp-box purple" x="354" y="55.4" width="16" height="144.6" rx="2"/>
+      <rect class="tlp-box purple" x="377" y="115.1" width="16" height="84.9" rx="2"/>
+      <rect class="tlp-box purple" x="400" y="135.2" width="16" height="64.8" rx="2"/>
+      <rect class="tlp-box purple" x="423" y="144.2" width="16" height="55.8" rx="2"/>
+      <rect class="tlp-box purple" x="446" y="148.6" width="16" height="51.4" rx="2"/>
+      <rect class="tlp-box purple" x="469" y="150.8" width="16" height="49.2" rx="2"/>
+      <rect class="tlp-box purple" x="492" y="152.0" width="16" height="48.0" rx="2"/>
+      <rect class="tlp-box purple" x="515" y="152.7" width="16" height="47.3" rx="2"/>
+      <rect class="tlp-box purple" x="538" y="153.1" width="16" height="46.9" rx="2"/>
+      <rect class="tlp-box purple" x="561" y="153.3" width="16" height="46.7" rx="2"/>
+      <line class="tlp-line amber dash" x1="345" y1="153.5" x2="585" y2="153.5"/>
+      <text class="tlp-purple" x="374" y="48" font-size="14" font-weight="700">0.804</text>
+      <text class="tlp-purple" x="398" y="108" font-size="14" font-weight="700">0.471</text>
+      <text class="tlp-amber" x="470" y="138" text-anchor="middle" font-size="13">steady ≈ 0.26</text>
+      <text class="tlp-text3" x="362" y="216" text-anchor="middle" font-size="12">day 1</text>
+      <text class="tlp-text3" x="569" y="216" text-anchor="middle" font-size="12">day 10</text>
+      <text class="tlp-text2" x="465" y="236" text-anchor="middle" font-size="12">set only by Q ÷ R: no window chosen</text>
+    </svg>
+    <figcaption>Each new reading pulls the estimate part of the way towards it, by the gain. Early on the filter is unsure, so the gain is big. As its uncertainty shrinks the gain falls on its own, and settles at a level set only by how much the truth drifts against how noisy each reading is.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I hedge one asset with another. I get my hedge ratio from a sixty-day regression. What's wrong with that?</p>
+      <p data-who="Quant">Two things. Day sixty-one counts for nothing, and yesterday counts the same as two months ago. So your ratio can jump just because an old, boring day fell out of the window. And the true ratio itself drifts over time.</p>
+      <p data-who="Trader">So what does the Kalman filter do instead?</p>
+      <p data-who="Quant">Picture tracking a boat at night with a noisy radar ping once a minute. Before the ping, you guess the boat is about where it was, but you're a bit less sure, because time has passed. That's the predict step.</p>
+      <p data-who="Trader">And when the ping arrives?</p>
+      <p data-who="Quant">You don't jump to the ping, because radar is noisy. You don't ignore it either. You move part of the way towards it. That fraction is the Kalman gain. That's the update step.</p>
+      <p data-who="Trader">How big a fraction?</p>
+      <p data-who="Quant">It depends on two uncertainties: how unsure your prediction is, and how noisy the reading is. Unsure prediction and a clean reading, move a lot. Confident prediction and a noisy reading, barely move.</p>
+      <p data-who="Trader">Give me the numbers.</p>
+      <p data-who="Quant">Start with a hedge ratio of one point two, and wide uncertainty. Day one's reading is one point three five. The gain works out at about point eight, so the estimate moves eighty percent of the way, to about one point three two.</p>
+      <p data-who="Trader">And day two?</p>
+      <p data-who="Quant">The reading is one point three. But now the filter is more confident, so the gain drops to about point four seven, with no setting changed. The estimate barely moves, to about one point three one. Keep going and the gain settles at a steady level, set only by how much the truth drifts against how noisy the readings are.</p>
+      <p data-who="Trader">So nobody picks a window.</p>
+      <p data-who="Quant">Right. The effective memory falls out of those two noise settings. And the update is exactly Bayes' rule: the prediction is the prior, the reading is the evidence, the new estimate is the posterior.</p>
+      <p data-who="Trader">Where did this come from?</p>
+      <p data-who="Quant">Rudolf Kálmán published it in 1960, and it guided the Apollo spacecraft by fusing noisy sensor readings. Pairs traders later used it to track hedge ratios that drift.</p>
+      <p data-who="Trader">What's the trap?</p>
+      <p data-who="Quant">The two noise settings are still choices. If you tune them until the backtest looks great, you've just hidden the window-length overfit inside a fancier model.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Predict, then move part of the way towards each new reading, by a gain the maths works out for you, and don't tune the noise settings on your backtest.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">A hedge ratio that won't sit still</h2>
       <p class="sl-sub">Kalman filter · state-space econometrics in the 1980s → rates and stat-arb desks</p>
@@ -39,7 +112,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Why a "fixed" relationship is quietly wrong</h2>
       <p class="sl-sub">A rolling-window regression has a built-in artifact that has nothing to do with the market.</p>
@@ -52,7 +125,7 @@
       <div class="sl-quote">The Kalman filter reframes the problem entirely: stop assuming the ratio is a constant to be estimated, and instead treat it as a hidden, slowly-drifting quantity you can never observe directly — updated by every new noisy reading, with no window to choose and nothing to re-fit from scratch.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Track a belief, not just a number</h2>
       <p class="sl-sub">A GPS for a quantity you can't see directly.</p>
@@ -67,7 +140,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Predict: carry the estimate forward, admit it's gone stale</h2>
       <p class="sl-sub">Before looking at today's data at all, project yesterday's belief forward.</p>
@@ -83,7 +156,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Update: blend the prediction with what you just saw</h2>
       <p class="sl-sub">The new observation arrives. First measure the surprise.</p>
@@ -95,7 +168,7 @@
       <p class="sl-p">Notice what's doing the work: the update never throws away the prediction and never ignores the new reading either. It pulls the estimate <em>part of the way</em> from where it was toward what the new data implies — and exactly how far that pull goes is the single most important number in the whole method.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The Kalman gain: how much to trust the new reading</h2>
       <p class="sl-sub">Kₜ = Pₜ|ₜ₋₁ / (Pₜ|ₜ₋₁ + R) — a ratio between 0 and 1. Pick a regime.</p>
@@ -125,7 +198,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Worked example: tracking a hedge ratio through two days</h2>
       <p class="sl-sub">Start: x̂ = 1.20, P = 0.0400, Q = 0.0009, R = 0.0100, H = 1.</p>
@@ -148,7 +221,7 @@
     </section>
 
     <!-- WB:kalman-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">The Kalman filter: blend the guess and the reading</h2>
       <!-- WB:kalman:START -->
@@ -159,7 +232,7 @@
     </section>
     <!-- WB:kalman-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Run the gain yourself</h2>
       <p class="sl-sub">Kₜ = prior variance ÷ (prior variance + measurement variance). Change any field — starts on Day 1 above.</p>
@@ -181,7 +254,7 @@
       <p class="sl-p">Push R up and watch the gain fall toward zero — a shakier sensor gets discounted. Push P up (a less confident prior) and watch the gain climb toward one. This is the entire method, in one formula and four numbers.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The trade-off, live: smooth vs. reactive</h2>
       <p class="sl-sub">Grey dots are noisy daily observations of a hedge ratio. Drag the slider to shift how much the filtered line trusts each new one.</p>
@@ -230,7 +303,7 @@
       <p class="sl-p">Watch the shaded band as you drag: it narrows toward the low end (a confident, well-averaged estimate) and widens toward the high end (a jagged line that's really just re-drawing the noise). This is the same trade-off Q and R control directly in the real filter — a modeling choice, not something the data decides for you.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The trading case: drift smoothly, don't refit and jump</h2>
       <p class="sl-sub">Same underlying data, two ways of tracking the relationship between two correlated instruments.</p>
@@ -257,7 +330,7 @@
       <div class="sl-quote">This is the standard alternative to rolling-window OLS in statistical arbitrage and pairs trading: track the hedge ratio between two cointegrated instruments with a Kalman filter instead of a rolling regression, so it reacts smoothly to genuine drift instead of exhibiting the equal-weight-in, zero-weight-out discontinuity a fixed window always has. The same idea extends to a time-varying market beta or factor loading — any coefficient conventionally estimated by static OLS.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this is used, and where "adaptive" stops meaning "principled"</h2>
       <div class="sl-icard-grid">
@@ -272,7 +345,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -323,7 +396,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative Monday</div>
+    <h3>One reading way off your hedge ratio</h3>
+    <p>You track a hedge ratio with the lesson's filter: \(Q = 0.0009\), \(R = 0.0100\), started at 1.20. After the two worked-example days your estimate is 1.311, with uncertainty about 0.0047. This morning's reading comes in at 1.60, far above anything you have seen. What do you do with the hedge?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Move the hedge straight to 1.60. The latest data is the best data.<div class="tl-drill-why">That is a gain of 1, trusting one noisy reading completely. With \(R = 0.0100\) a single reading has a standard deviation of 0.10, so one print is weak evidence on its own.</div></li>
+      <li data-verdict="good">Run the update as specified and use its estimate, about 1.415, then watch the next few readings.<div class="tl-drill-why">The prediction's uncertainty is \(0.0047 + 0.0009 = 0.0056\), so the gain is \(0.0056 / 0.0156 \approx 0.36\), and the estimate moves about a third of the way: \(1.311 + 0.36 \times 0.289 \approx 1.415\). If the drift is real, the next readings will keep pulling it up.</div></li>
+      <li data-verdict="bad">Raise \(Q\) until the filter would have caught this jump, then re-run the backtest.<div class="tl-drill-why">That is tuning the noise settings on the result you want. It relocates the window-length overfit into \(Q\) and \(R\), and a large \(Q\) makes the filter chase every noisy print from now on.</div></li>
+      <li data-verdict="ok">Ignore the reading as an outlier and keep 1.311.<div class="tl-drill-why">Cautious, and right if it was a bad print. But if the relationship really has moved, you have thrown away the only new information you have. The filter's partial step already guards against a fluke.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happens.</strong> This is an illustrative situation, not a historical episode. The point is the arithmetic: with the lesson's settings the filter moves about a third of the way, to roughly 1.415. One wild reading cannot drag it all the way, and several readings in a row can move it steadily. That balance is set by \(Q\) and \(R\), chosen in advance, not by the outcome.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -465,5 +557,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

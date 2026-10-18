@@ -11,7 +11,11 @@ actually happened (story, chain, desk verdict) → How practitioners use it → 
 Key Takeaways → Self-test → Further reading → Where this fits (`.tl-fits`) → footer nav.
 
 The VARK blocks and their exact markup and writing rules: style guide §5.20, worked in full in `kelly-criterion.html`.
-Load `../assets/vark.js?v=1` (defer) right after `../assets/tts.js?v=6`. Every lesson also gets a whiteboard.
+Load `../assets/vark.js?v=2` (defer) right after `../assets/tts.js?v=6`, in the lesson and its deck, and put the
+one-line theme script (`theoryLabTheme`) right after the stylesheet link, as every page does. Every lesson also gets a
+whiteboard, a faded worked example (§5.23), sources on a dated drill, and how-to-test notes on untested verdicts
+(§5.24). The deck carries the picture, listen block and drill as `sl-vark` slides (copy them from the lesson).
+Static readout numbers must be what the calculator computes (§5.25, `node js/lessonReadouts.e2e.mjs <slug>`).
 
 Number the sections with `tl-section-mark` ("Section 01", "Section 02", …).
 

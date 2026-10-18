@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -393,6 +394,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same count: naive backpropagation stores every state, \(N\times d\) numbers, and doubling the path to \(2N\) steps doubles it. New grids and new state sizes each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(N=500\) steps, a \(d=40\)-point curve. Stored states: \(N\times d=500\times40=20{,}000\) numbers. Double the path to \(N=1{,}000\) and the store becomes <span class="tl-blank" data-answer="40000" data-tol="0.5" data-unit="numbers"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>One year of daily steps, \(N=250\), and a \(d=120\)-point surface. Stored states \(N\times d=\) <span class="tl-blank" data-answer="30000" data-tol="0.5" data-unit="numbers"></span>; at \(2N\) steps, <span class="tl-blank" data-answer="60000" data-tol="0.5" data-unit="numbers"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>An intraday grid, \(N=5{,}000\), on a \(d=300\)-point surface. Stored states: <span class="tl-blank" data-answer="1500000" data-tol="0.5" data-unit="numbers"></span>. At \(2N\): <span class="tl-blank" data-answer="3000000" data-tol="0.5" data-unit="numbers"></span>. How many times the worked example's 50,000 is the first figure? <span class="tl-blank" data-answer="30" data-tol="0.01" data-unit="×"></span></p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -669,7 +687,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

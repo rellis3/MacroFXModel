@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Multiple Testing &amp; the Look-Elsewhere Effect — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the Benjamini-Hochberg self-test, and the "explain like I'm 5" mode?<a href="multiple-testing.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,133 @@
       <p class="sl-lede">Slice your FX data by pair, by regime, by session, by holding period, by day-of-week, and you're not running one test anymore — you're running dozens. Each one still has only a 5% chance of a false alarm. But the chance that at least one of them fires by pure luck compounds fast, and by the time you've checked seventy slices, finding a "significant" one is no longer a discovery. It's close to guaranteed, whether or not anything real is there.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: a grid of 70 dots, one per test run on pure noise, with 4 of them red because they passed p below 0.05 by luck; 70 times 0.05 is 3.5 expected. Right: a curve of the chance of at least one false positive against the number of tests, 1 minus 0.95 to the power m. It is 5% for 1 test, about 64% for 20 tests and 97.2% for 70 tests, flattening towards 100%.">
+      <text class="tlp-text" x="36" y="30" font-size="14" font-weight="700">70 tests on pure noise</text>
+[16, 30, 47, 69]
+      <circle class="tlp-blue" cx="36" cy="58" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="56" cy="58" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="76" cy="58" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="96" cy="58" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="116" cy="58" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="136" cy="58" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="156" cy="58" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="176" cy="58" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="196" cy="58" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="216" cy="58" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="36" cy="78" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="56" cy="78" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="76" cy="78" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="96" cy="78" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="116" cy="78" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="136" cy="78" r="5" opacity=".45"/>
+      <circle class="tlp-red" cx="156" cy="78" r="6"/>
+      <circle class="tlp-blue" cx="176" cy="78" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="196" cy="78" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="216" cy="78" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="36" cy="98" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="56" cy="98" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="76" cy="98" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="96" cy="98" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="116" cy="98" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="136" cy="98" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="156" cy="98" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="176" cy="98" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="196" cy="98" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="216" cy="98" r="5" opacity=".45"/>
+      <circle class="tlp-red" cx="36" cy="118" r="6"/>
+      <circle class="tlp-blue" cx="56" cy="118" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="76" cy="118" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="96" cy="118" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="116" cy="118" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="136" cy="118" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="156" cy="118" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="176" cy="118" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="196" cy="118" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="216" cy="118" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="36" cy="138" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="56" cy="138" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="76" cy="138" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="96" cy="138" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="116" cy="138" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="136" cy="138" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="156" cy="138" r="5" opacity=".45"/>
+      <circle class="tlp-red" cx="176" cy="138" r="6"/>
+      <circle class="tlp-blue" cx="196" cy="138" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="216" cy="138" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="36" cy="158" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="56" cy="158" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="76" cy="158" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="96" cy="158" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="116" cy="158" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="136" cy="158" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="156" cy="158" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="176" cy="158" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="196" cy="158" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="216" cy="158" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="36" cy="178" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="56" cy="178" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="76" cy="178" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="96" cy="178" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="116" cy="178" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="136" cy="178" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="156" cy="178" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="176" cy="178" r="5" opacity=".45"/>
+      <circle class="tlp-blue" cx="196" cy="178" r="5" opacity=".45"/>
+      <circle class="tlp-red" cx="216" cy="178" r="6"/>
+      <text class="tlp-red" x="36" y="204" font-size="13" font-weight="700">4 "significant" by luck</text>
+      <text class="tlp-text3" x="36" y="220" font-size="12">expected: 70 × 0.05 = 3.5</text>
+      <text class="tlp-text" x="290" y="30" font-size="14" font-weight="700">chance of at least one false positive</text>
+      <line class="tlp-line" x1="290" y1="200" x2="575" y2="200"/>
+      <line class="tlp-line" x1="290" y1="200" x2="290" y2="46"/>
+      <line class="tlp-line dash" x1="290" y1="50" x2="575" y2="50"/>
+      <polyline class="tlp-line purple thick" points="290.0,200.0 295.6,185.4 301.2,172.2 306.8,160.3 312.4,149.5 318.0,139.8 323.6,131.1 329.2,123.2 334.8,116.0 340.4,109.6 346.0,103.8 351.6,98.5 357.2,93.8 362.8,89.5 368.4,85.7 374.0,82.2 379.6,79.1 385.2,76.2 390.8,73.7 396.4,71.4 402.0,69.3 407.6,67.4 413.2,65.7 418.8,64.2 424.4,62.8 430.0,61.5 435.6,60.4 441.2,59.4 446.8,58.5 452.4,57.7 458.0,56.9 463.6,56.2 469.2,55.6 474.8,55.1 480.4,54.6 486.0,54.1 491.6,53.7 497.2,53.4 502.8,53.0 508.4,52.7 514.0,52.5 519.6,52.2 525.2,52.0 530.8,51.8 536.4,51.6 542.0,51.5 547.6,51.3 553.2,51.2 558.8,51.1 564.4,51.0 570.0,50.9"/>
+      <circle class="tlp-blue" cx="292.8" cy="192.5" r="5"/>
+      <circle class="tlp-amber" cx="346" cy="103.8" r="5"/>
+      <circle class="tlp-red" cx="486" cy="54.1" r="6"/>
+      <text class="tlp-blue" x="302" y="186" font-size="13" font-weight="700">1 test: 5%</text>
+      <text class="tlp-amber" x="356" y="118" font-size="13" font-weight="700">20 tests: 64%</text>
+      <text class="tlp-red" x="486" y="80" text-anchor="middle" font-size="13" font-weight="700">70 tests: 97.2%</text>
+      <text class="tlp-text3" x="284" y="54" text-anchor="end" font-size="12">100%</text>
+      <text class="tlp-text3" x="284" y="204" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="575" y="218" text-anchor="end" font-size="12">number of tests, m →</text>
+    </svg>
+    <figcaption>Each test on its own keeps its 5% false-alarm rate. Run enough of them and at least one false alarm becomes close to certain, so a handful of "winners" among 70 slices is what noise looks like.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I backtested my idea across seventy slices: pairs, regimes, holding periods. Three of them came back significant. That's a result, isn't it?</p>
+      <p data-who="Quant">Let's check what noise alone would give you. Each test has a five percent chance of a false alarm, even when nothing is there. That is what a five percent threshold means.</p>
+      <p data-who="Trader">Five percent sounds small.</p>
+      <p data-who="Quant">For one test it is. Run seventy and the chance that every single one stays quiet is point nine five multiplied by itself seventy times. That is under three percent.</p>
+      <p data-who="Trader">So the chance of at least one false alarm is…</p>
+      <p data-who="Quant">About ninety-seven percent. And the expected number of false alarms is seventy times five percent: three and a half. Your three winners are almost exactly what pure noise would hand you.</p>
+      <p data-who="Trader">That's depressing. What do I do about it?</p>
+      <p data-who="Quant">Two standard fixes. The strict one, Bonferroni, divides the threshold by the number of tests. Seventy tests means each one needs a p-value below about seven hundredths of a percent.</p>
+      <p data-who="Trader">That's brutal.</p>
+      <p data-who="Quant">It is, especially in FX, where many slices move together off the same dollar factor. The gentler fix, Benjamini and Hochberg's, controls the share of your discoveries that are false instead. The best-ranked result still faces a strict bar, but the bar relaxes as you go down the ranking.</p>
+      <p data-who="Trader">Has this burned anyone outside a backtest?</p>
+      <p data-who="Quant">A whole field. By 2016 Campbell Harvey, Yan Liu and Heqing Zhu had counted three hundred and sixteen published stock-return factors, all tested on largely the same history. The failed tests sat in drawers, so nobody could count them.</p>
+      <p data-who="Trader">And their answer?</p>
+      <p data-who="Quant">Raise the bar. They argued a new factor should clear a t-statistic of about three, not the usual two. Particle physicists did the same before announcing the Higgs boson in 2012: they corrected for every place they had looked.</p>
+      <p data-who="Trader">So being the best of seventy means nothing?</p>
+      <p data-who="Quant">On its own, almost nothing. The best of many noise draws is expected to look good. Log every test, decide what counts as a discovery before you look, and confirm it out of sample.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">A result is only as strong as the number of places you looked for it allows.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">One test's promise is narrower than it sounds</h2>
       <p class="sl-sub">A single, well-designed hypothesis test at α = 0.05 is a reasonable, disciplined thing to run. The question is what that 5% actually covers.</p>
@@ -42,7 +169,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">What "at least one false alarm" does as tests pile up</h2>
       <p class="sl-sub">Step through the derivation — three moves, no calculus required.</p>
@@ -69,7 +196,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Drag it up. Watch "almost certain" arrive fast.</h2>
       <p class="sl-sub">Fixed at α = 0.05 per test. The curve is 1 − (1 − 0.05)^N — the chance at least one of N tests is a false alarm.</p>
@@ -95,7 +222,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Seventy slices isn't a hypothetical<!-- DESK:START --> — it's how this repo's backtests are built<!-- DESK:END --></h2>
       <p class="sl-sub">7 pairs × 5 regimes × 2 holding periods is 70 tests before anyone runs a single day-of-week or session cut.</p>
@@ -111,7 +238,7 @@
       <p class="sl-p">A <strong>97.2% chance</strong> at least one of the 70 slices "clears" the 5% bar from noise alone. The expected count is 70 × 0.05 = <strong>3.5</strong> false positives. So "3 out of 70 slices look significant" isn't a finding — it's almost exactly what you'd see with zero edge anywhere in the data.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The blunt fix: shrink the bar per test</h2>
       <p class="sl-sub">Bonferroni holds the family-wise rate at α by dividing the threshold by how many tests you ran.</p>
@@ -123,7 +250,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">A more forgiving bar: control the rate, not the ban</h2>
       <p class="sl-sub">The False Discovery Rate (Benjamini-Hochberg) accepts a known, bounded fraction of false "winners" instead of trying to ban them outright.</p>
@@ -153,7 +280,7 @@
     </section>
 
     <!-- WB:multitest-deck:START -->
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Seventy rolls of the dice: why some backtests win by luck</h2>
       <!-- WB:multitest:START -->
@@ -164,7 +291,7 @@
     </section>
     <!-- WB:multitest-deck:END -->
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Same arithmetic, your numbers</h2>
       <p class="sl-sub">Starts on the worked example — N = 70, α = 0.05. Change either field.</p>
@@ -186,7 +313,7 @@
     </section>
 
 <!-- DESK:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">This is why the repo has a house rule about it</h2>
       <div class="sl-quote">"Finding a few 'winners' among 70 slices is what noise does." That line, already written into this repo's own project memory, isn't a cautious-sounding guess — it's a direct restatement of the FWER math: at m = 70, roughly 3.5 false positives are <em>expected</em> from pure noise. A survivor has to clear that bar and hold up out-of-sample before it counts as anything.</div>
@@ -199,7 +326,7 @@
     </section>
 <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How practitioners actually handle this</h2>
       <div class="sl-icard-grid">
@@ -214,7 +341,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">The factor zoo: hundreds of discoveries, one shared dataset</h2>
       <div class="sl-callout amber">
@@ -235,7 +362,7 @@
       <p class="sl-p">Nobody had to cheat. Each test could be run correctly. The error was in m, which no single paper could report because no single paper knew it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
 <!-- DESK:START -->
       <h2 class="sl-h2">This desk's own version: 54.1% against 54.1%</h2>
@@ -256,7 +383,7 @@
 <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -307,7 +434,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research review</div>
+    <h3>Four winners out of seventy slices</h3>
+    <p>You tested an FX idea across 70 slices: 7 pairs × 5 regimes × 2 holding periods. Four slices came back below \(p = 0.05\), with p-values of 0.003, 0.012, 0.031 and 0.044. A colleague wants to start trading the four winners. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trade all four. Each one passed the standard 5% test.<div class="tl-drill-why">Seventy tests of pure noise produce 3.5 false positives on average, and at least one with 97.2% probability. Four winners is about what nothing at all looks like.</div></li>
+      <li data-verdict="good">Correct for the 70 looks first. None of the four survives Bonferroni (0.000714) or Benjamini-Hochberg at 10% (the best needs 0.00143), so treat it as no finding and look for fresh out-of-sample data.<div class="tl-drill-why">This is the arithmetic of the lesson. The staircase thresholds for ranks 1 to 4 are 0.00143, 0.00286, 0.00429 and 0.00571, and every p-value misses its step. Only data the search never touched can show a real effect.</div></li>
+      <li data-verdict="ok">Drop three and paper-trade only the best slice, the one at p = 0.003.<div class="tl-drill-why">Paper trading is out-of-sample evidence, which is the right instinct. But being first of 70 is no evidence on its own: the best of many noise draws is expected to look good, and 0.003 does not clear the corrected bar.</div></li>
+      <li data-verdict="bad">Add more slices, by session and day of week, until one winner is clearly significant.<div class="tl-drill-why">Every new slice is another lottery ticket. Searching until something clears the bar guarantees a winner and makes the correction even harsher, because \(m\) keeps growing.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the evidence says.</strong> This is an illustrative situation with made-up p-values, not a dated event. The same error at the scale of a profession is real: Harvey, Liu and Zhu (<em>Review of Financial Studies</em>, 2016) counted 316 published return factors tested on largely the same data, and argued a new factor should clear a t-statistic of about 3.0 rather than 2, because the failed tests were never counted.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -429,5 +575,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

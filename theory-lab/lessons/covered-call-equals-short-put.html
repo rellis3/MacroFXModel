@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -347,6 +348,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Parity again on new options: the covered-call outlay \(S - C\) equals the cash-plus-short-put outlay \(Ke^{-rT} - P\), and at expiry both hold \(\min(S_T, K)\). The option prices given are Black-Scholes values, rounded to the cent.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(S = 50\), \(K = 52\), \(r = 5\%\), \(T = 0.5\)y, \(\sigma = 25\%\): call $3.20, put $3.92. Covered call: \(50 - 3.20 = 46.80\). Cash plus short put: \(Ke^{-rT} = 52\,e^{-0.025} \approx 50.72\) in bills, less the $3.92 put, gives <span class="tl-blank" data-answer="46.80" data-tol="0.01" data-unit="$"></span>. Same number, as parity promised.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(S = 200\), \(K = 210\), \(r = 3\%\), \(T = 0.25\)y, \(\sigma = 30\%\): call $8.45, put $16.88. Covered-call outlay \(S - C\) = <span class="tl-blank" data-answer="191.55" data-tol="0.01" data-unit="$"></span>. Cash to park, \(Ke^{-rT}\) = <span class="tl-blank" data-answer="208.43" data-tol="0.01" data-unit="$"></span>. Best-case profit at any price above $210: <span class="tl-blank" data-answer="18.45" data-tol="0.01" data-unit="$"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>An at-the-money month: \(S = K = 80\), \(r = 4\%\), \(T = 1/12\)y, call $1.98. Covered-call outlay: <span class="tl-blank" data-answer="78.02" data-tol="0.01" data-unit="$"></span>. The put that parity implies, \(P = C - S + Ke^{-rT}\): <span class="tl-blank" data-answer="1.71" data-tol="0.01" data-unit="$"></span>. Profit if the stock ends the month at $70: <span class="tl-blank" data-answer="-8.02" data-tol="0.01" data-unit="$"></span>, against −$10 for the stock alone.</p>
+    </div>
+  </div>
+
   <div class="tl-compare">
     <div class="tl-compare-card amber">
       <h4>What you give up</h4>
@@ -493,7 +511,7 @@
   <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
-    <span><strong>Covered calls themselves:</strong> the desk's evidence ledger holds no entry on overwriting flow, and nothing in the live code models it. Whether call overwriting measurably damps the index is not tested here.</span>
+    <span><strong>Covered calls themselves:</strong> the desk's evidence ledger holds no entry on overwriting flow, and nothing in the live code models it. Whether call overwriting measurably damps the index is not tested here.<div class="tl-howtotest"><strong>How to test it:</strong> The big Nasdaq-100 covered-call funds write new at-the-money calls on each monthly expiry. On daily NQ data from 2015, compare the realised range of the sessions in the week after each monthly write with matched non-expiry weeks, scored against the same same-trailing-vol Brownian baseline the gex-range test uses. The claim passes only if the post-write weeks are quieter at p &lt; 0.05 on a one-sided test fixed in advance, and the gap grows with the funds' combined assets from 2021 on. It is a range fact, so no trading costs enter unless it is later turned into a trade.</div></span>
   </div>
   <!-- DESK:END -->
   <!-- DESK:START -->
@@ -508,6 +526,7 @@
     <span><strong>Pinning to max pain (oi-max-pain):</strong> "price pins to options max pain into expiry" was tested on 2026-09-10 and came back null; the publish-lag timing risk, DTE, gamma, sign convention and spot basis were all checked. The honest weakness: the entry records <strong>no sample size and no interval</strong>, which makes it the weakest null in the ledger. Read it as "not shown", not "proven false". Max pain is a level to know about, not a magnet.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../oi-dashboard.html">OI Analytics</a> shows put/call open interest, max pain and the GEX flip; read its call-heavy days with this lesson in mind, since open interest never records who opened the contract.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -588,7 +607,7 @@
       <li data-verdict="bad">Buy both funds, to diversify between the call side and the put side.<div class="tl-drill-why">Two doors into the same room. Holding both doubles one exposure; it does not spread it.</div></li>
       <li data-verdict="good">Explain the trade: they keep almost the whole downside and sell every up-month above the strike. Only switch if they accept lagging badly in a strong rally.<div class="tl-drill-why">This is what the payoff says. An at-the-money call written each month hands over everything above that month's starting level. In a year that goes up most months, the fund keeps the premium and gives away the trend.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In 2023 the Nasdaq-100 rose more than 50%. Covered-call funds on the same index captured only part of that and trailed it by a wide margin. Both years are the payoff diagram played out month by month: cushioned on the way down, capped on the way up.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In 2023 the Nasdaq-100 rose more than 50%. Covered-call funds on the same index captured only part of that and trailed it by a wide margin. Both years are the payoff diagram played out month by month: cushioned on the way down, capped on the way up.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/NASDAQ100">Nasdaq-100 index closes, 31 Dec 2021, 30 Dec 2022 and 29 Dec 2023 (FRED: NASDAQ100)</a>: −33.0% in 2022, +53.8% in 2023, price only.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -775,7 +794,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

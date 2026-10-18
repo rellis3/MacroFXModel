@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Time Value of Money — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the Fisher equation, and a 6-question self-test?<a href="time-value-of-money.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,72 @@
       <p class="sl-lede">Every discount factor, every present-value calculation, and the mysterious r sitting inside Black-Scholes's Ke^(−rT) term all trace back to one centuries-old idea: money has a price, and moving it across time changes its value in a way you can compute exactly. This is where that idea gets built from nothing — compounding forward, discounting backward, and the two places a risk-free rate quietly reappears everywhere else in this curriculum.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 264" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Six bars show $1,000 growing at 6% a year: $1,060 after one year, $1,123.60 after two, $1,191.02, $1,262.48, and $1,338.23 after five years. An arrow above runs forward, labelled compound forward, times 1.06 every year. An arrow below runs back from year five to today, labelled discount back, times 0.747, the five-year discount factor.">
+      <line class="tlp-line" x1="40" y1="200" x2="570" y2="200"/>
+      <rect class="tlp-blue" x="51" y="100.0" width="48" height="100.0" rx="3"/>
+      <text class="tlp-text" x="75" y="92.0" text-anchor="middle" font-size="13" font-weight="700">$1,000</text>
+      <text class="tlp-text3" x="75" y="216" text-anchor="middle" font-size="12">today</text>
+      <rect class="tlp-purple" x="141" y="94.0" width="48" height="106.0" rx="3" opacity=".55"/>
+      <text class="tlp-text2" x="165" y="86.0" text-anchor="middle" font-size="13">$1,060</text>
+      <text class="tlp-text3" x="165" y="216" text-anchor="middle" font-size="12">1 yr</text>
+      <rect class="tlp-purple" x="231" y="87.6" width="48" height="112.4" rx="3" opacity=".55"/>
+      <text class="tlp-text2" x="255" y="79.6" text-anchor="middle" font-size="13">$1,123.60</text>
+      <text class="tlp-text3" x="255" y="216" text-anchor="middle" font-size="12">2 yrs</text>
+      <rect class="tlp-purple" x="321" y="80.9" width="48" height="119.1" rx="3" opacity=".55"/>
+      <text class="tlp-text2" x="345" y="72.9" text-anchor="middle" font-size="13">$1,191.02</text>
+      <text class="tlp-text3" x="345" y="216" text-anchor="middle" font-size="12">3 yrs</text>
+      <rect class="tlp-purple" x="411" y="73.8" width="48" height="126.2" rx="3" opacity=".55"/>
+      <text class="tlp-text2" x="435" y="65.8" text-anchor="middle" font-size="13">$1,262.48</text>
+      <text class="tlp-text3" x="435" y="216" text-anchor="middle" font-size="12">4 yrs</text>
+      <rect class="tlp-green" x="501" y="66.2" width="48" height="133.8" rx="3"/>
+      <text class="tlp-text" x="525" y="58.2" text-anchor="middle" font-size="13" font-weight="700">$1,338.23</text>
+      <text class="tlp-text3" x="525" y="216" text-anchor="middle" font-size="12">5 yrs</text>
+      <line class="tlp-line green thick" x1="75" y1="40" x2="515" y2="40"/>
+      <polygon class="tlp-green" points="525,40 513,34 513,46"/>
+      <text class="tlp-green" x="300" y="30" text-anchor="middle" font-size="14" font-weight="700">compound forward: × 1.06 every year</text>
+      <line class="tlp-line blue thick" x1="85" y1="234" x2="525" y2="234"/>
+      <polygon class="tlp-blue" points="75,234 87,228 87,240"/>
+      <text class="tlp-blue" x="300" y="256" text-anchor="middle" font-size="14" font-weight="700">discount back: × 0.747, the 5-year discount factor</text>
+    </svg>
+    <figcaption>Each year's gain is bigger than the last, because interest earns interest: $60, then $63.60, then $67.42. Run the same arithmetic backwards and $1,338.23 in five years is worth exactly $1,000 today.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">A dollar today is worth more than a dollar next year. That always sounded like a proverb to me.</p>
+      <p data-who="Quant">It is arithmetic. Put a hundred dollars in a bank at five percent and in a year it is a hundred and five. Someone who waited a year for their hundred is five dollars behind you.</p>
+      <p data-who="Trader">So waiting costs me the interest I could have earned.</p>
+      <p data-who="Quant">Exactly. And interest earns interest. Take a thousand dollars at six percent. After one year you have one thousand and sixty. In year two you earn six percent on the whole one thousand and sixty, not just the original thousand.</p>
+      <p data-who="Trader">Where does that get to after five years?</p>
+      <p data-who="Quant">One thousand three hundred and thirty-eight dollars and twenty-three cents. That is future value: today's amount, grown by one plus the rate, once for every year.</p>
+      <p data-who="Trader">And present value is the reverse?</p>
+      <p data-who="Quant">The same sum run backwards. That one thousand three hundred and thirty-eight, five years out at six percent, is worth exactly one thousand today. The number you multiply by is the discount factor, here about point seven five. When rates are positive it is always between zero and one.</p>
+      <p data-who="Trader">Option formulas are full of e to the minus something. Where does that come in?</p>
+      <p data-who="Quant">Compound more and more often and you hit a limit. Same thousand, same six percent, compounded continuously: one thousand three hundred and forty-nine dollars and eighty-six cents. Eleven dollars sixty-three more, from compounding frequency alone.</p>
+      <p data-who="Trader">And that limit is where the e comes from.</p>
+      <p data-who="Quant">Yes. And here is the neat part. A continuously compounded rate is exactly a log return per unit of time. The same object you met in the returns primer, not just something that looks like it.</p>
+      <p data-who="Trader">Where does this hit FX?</p>
+      <p data-who="Quant">Forwards. Say dollar-yen spot is one hundred and fifty, dollars earn five percent and yen earn almost nothing. The fair three-month forward is about one hundred and forty-eight point one nine. Below spot.</p>
+      <p data-who="Trader">So the market expects the dollar to fall?</p>
+      <p data-who="Quant">No, and that is the trap. If the forward sat at one fifty, you could borrow yen, buy dollars, earn five percent, and lock in the sale back. Free money. The forward has to sit lower to close that gap. It is arithmetic, not a forecast.</p>
+      <p data-who="Trader">Does anyone still care about this in practice?</p>
+      <p data-who="Quant">Every bond, swap and forward price is a present value. The live argument is which curve to discount with. After 2008, dealers and clearing houses moved from discounting on LIBOR to overnight index rates.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Never compare money on two different dates until you have moved both to the same date with a discount factor.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Comparing cash that arrives on different dates</h2>
       <div class="sl-origin">
@@ -39,7 +105,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">A dollar today can go to work. A dollar next year can't — yet</h2>
       <p class="sl-sub">Someone offers you $100 now, or a guaranteed $100 exactly one year from today. Take the $100 now.</p>
@@ -52,7 +118,7 @@
       <div class="sl-quote">This isn't a saying — it's an arithmetic fact with a precise formula. That formula is where the risk-free rate in Black-Scholes comes from, and it's the entire foundation forward FX rates are built on.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Future value: interest earning interest</h2>
       <p class="sl-sub">Watch what happens to a balance of PV over two periods at rate r.</p>
@@ -78,7 +144,7 @@
       <p class="sl-p">$1,000 growing at a fixed 6% a year doesn't just add $60 every year — it curves upward, because each year's interest is bigger than the last. That curve, not a straight line, is the visual signature of compounding.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Present value: running the same formula backward</h2>
       <p class="sl-sub">Divide both sides of FV = PV(1+r)ᵗ by (1+r)ᵗ and PV falls out — discounting is nothing new.</p>
@@ -105,7 +171,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Compounding more often, at the same stated rate</h2>
       <p class="sl-sub">$1,000 at a nominal 6% for one year. Nothing forces interest to compound only once a year — flip through frequencies.</p>
@@ -143,7 +209,7 @@
     </section>
 
     <!-- WB:tvm-deck:START -->
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">A coin today vs the same coin later</h2>
       <!-- WB:tvm:START -->
@@ -154,7 +220,7 @@
     </section>
     <!-- WB:tvm-deck:END -->
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">A continuously-compounded rate is a log return in disguise</h2>
       <p class="sl-sub">Take logs of both sides of FV = PV·e^(rt).</p>
@@ -167,7 +233,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Discounting a future cash flow, live</h2>
       <p class="sl-sub">PV = FV × e^(−rt). Change any input — this is the exact machinery hiding inside Ke^(−rT).</p>
@@ -192,7 +258,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Where r comes from inside Black-Scholes</h2>
       <p class="sl-sub">The Black-Scholes formula contains a term Ke^(−rT). This lesson is the entire reason it's there.</p>
@@ -209,7 +275,7 @@
       <div class="sl-quote">None of this requires forecasting where markets are going. Like the rest of risk-neutral pricing, discounting is a mechanical, no-forecast operation on a known future amount and a quoted rate. r shows up in Black-Scholes because you cannot price a future payoff correctly without first moving it to today's terms — not because the model has an opinion about direction.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where r comes from inside an FX forward</h2>
       <p class="sl-sub">Two currencies, two interest rates — the forward rate has to reflect the gap, or a riskless trade prints free money.</p>
@@ -236,7 +302,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Not a forecast — and not optional either</h2>
       <div class="sl-icard-grid">
@@ -251,7 +317,7 @@
       <p class="sl-p">Small rate gaps compound into large gaps over long horizons: at 3 years, 3% and 10% discount curves are still fairly close (0.914 vs. 0.741); by 20 years they've diverged to 0.549 vs. 0.135 — a 4x gap that started as 7 percentage points. Long-dated cash flows — a 30-year bond, a pension liability, a long-dated FX forward — are far more sensitive to the discount rate than short-dated ones, purely because (1+r)ᵗ is exponential in t.</p>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -302,7 +368,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide sl-vark" data-slide="15">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative morning</div>
+    <h3>"The forward says the dollar will fall"</h3>
+    <p>USD/JPY spot is 150.00. Three-month dollar deposits pay 5% a year and yen deposits 0.1%. The 3-month forward is quoted at 148.19, about 1.81 yen below spot. A colleague says the market is pricing the dollar to fall about 1.2% over three months, and proposes selling dollars forward as a "market-implied" directional trade. What is your read?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Agree. The forward is the market's best forecast of where spot will be in three months.<div class="tl-drill-why">The forward contains no forecast at all. It is spot adjusted for the interest gap between the two currencies. Selling dollars forward here is a bet on direction dressed up as a reading of the market.</div></li>
+      <li data-verdict="good">The 1.81-yen discount is just the rate gap: 150 × 1.00025 ÷ 1.0125 ≈ 148.19. Any view on direction has to come from somewhere else.<div class="tl-drill-why">This is the lesson's no-arbitrage forward to the yen. The higher-rate currency has to trade forward at a discount, or borrowing yen to buy dollars and selling them forward would be free money. The discount tells you about interest rates, not about the future.</div></li>
+      <li data-verdict="ok">Check it with the rule of thumb, −150 × 0.049 × 0.25 ≈ −1.84 yen, see that it roughly matches, and call the forecast fair.<div class="tl-drill-why">The check is the right instinct and the arithmetic is close. The conclusion is backwards: matching the rate gap is exactly what shows the discount is mechanical rather than a forecast.</div></li>
+      <li data-verdict="bad">Do the opposite and buy dollars forward at 148.19, since that locks in dollars 1.81 yen cheaper than spot.<div class="tl-drill-why">There is no bargain. Buying dollars at spot and holding them earns 5% instead of 0.1% on yen, and that extra interest is worth the same 1.81 yen. At the fair forward the two routes are worth the same.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson shows.</strong> This is an illustrative situation built on the lesson's USD/JPY numbers, not a dated event. If the forward were quoted at 150.00, borrowing 150 yen, buying $1, earning 5% for three months and selling the $1.0125 forward would leave 1.8375 yen of riskless profit. At 148.19 that profit is zero. A forward discount is a present-value adjustment, not a prediction; whether the dollar actually falls is a separate question, taken up in the Interest Rate Parity lesson.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -412,5 +497,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

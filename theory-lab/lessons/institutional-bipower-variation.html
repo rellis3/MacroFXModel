@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -510,6 +511,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Split a short session into realized variance, bipower variation and the jump part, as in the worked example. To keep the numbers readable, work in bp² (1 bp² is \(10^{-8}\) in decimal units) and round to one decimal place.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Returns in bp: +2, −1, +30, −2, +1, −1. Squares add to \(RV = 4+1+900+4+1+1 = 911\) bp². Adjacent products add to \(2\cdot1 + 1\cdot30 + 30\cdot2 + 2\cdot1 + 1\cdot1 = 95\), so \(BV = \frac{\pi}{2}\times 95 = 149.2\) bp². The jump part is \(J = \max(RV-BV,0) =\) <span class="tl-blank" data-answer="761.8" data-tol="0.2" data-unit="bp²"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Returns in bp: +1.5, −1, +20, +1, −1.5. \(RV = 406.5\) bp². The adjacent products add to <span class="tl-blank" data-answer="43" data-tol="0.05"></span>, so \(BV =\) <span class="tl-blank" data-answer="67.5" data-tol="0.1" data-unit="bp²"></span> and \(J =\) <span class="tl-blank" data-answer="339.0" data-tol="0.2" data-unit="bp²"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Returns in bp: −2, +1, −1, +25, −1, +2. \(RV =\) <span class="tl-blank" data-answer="636" data-tol="0.5" data-unit="bp²"></span>, \(BV =\) <span class="tl-blank" data-answer="86.4" data-tol="0.1" data-unit="bp²"></span>, \(J =\) <span class="tl-blank" data-answer="549.6" data-tol="0.2" data-unit="bp²"></span>, and the jump fraction \(J/RV =\) <span class="tl-blank" data-answer="86.4" data-tol="0.1" data-unit="%"></span></p>
+    </div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>A related fix for a different problem: realized kernels</h2>
   <p>
@@ -634,6 +652,7 @@
     anything about. Per this repo's own pre-registered stop rule, none of
     this was wired into the live forecaster.
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../jump-diffusion.html">Jump vs Diffusion</a> shows today's session-so-far jump share, \(\max(RV-BV,0)/RV\) on 5-minute returns, against each pair's own yardstick.</div>
 <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -870,7 +889,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   var PI_OVER_2 = Math.PI / 2;

@@ -7,13 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
 <body>
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Sharpe, Sortino &amp; the Deflated Sharpe Ratio — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">19</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the extreme-value-theory proof, and every worked example?<a href="sharpe-family-deflated.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +27,76 @@
       <p class="sl-lede">Sharpe, Sortino and Calmar are three honest ways to divide return by risk — built from the same mean-and-standard-deviation arithmetic every earlier lesson in this series already covers. But all three share one blind spot: a reported ratio looks identical whether it's the only strategy you ever tested, or the single lucky survivor of fifty variations you quietly discarded. The Deflated Sharpe Ratio is the formal fix for that blind spot, and it's the direct Sharpe-ratio cousin of the Multiple Testing lesson already in this curriculum.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: one strategy scored three ways. Sharpe 1.06 divides by all the wobble, Sortino 1.41 divides by downside wobble only, Calmar 0.79 divides by the worst drawdown. Right: the Sharpe ratio luck alone is expected to hand you as the best of N zero-skill variations, with a spread of 0.66 across them. The curve rises with N. At N equals 50 luck gives about 1.50, so a reported 1.80 clears it by only 0.30, a deflated Sharpe ratio of about 0.82. By about N equals 180, luck alone reaches 1.80.">
+      <text class="tlp-text" x="14" y="24" font-size="14" font-weight="700">One strategy, three ratios</text>
+      <text class="tlp-blue" x="24" y="52" font-size="13" font-weight="700">Sharpe 1.06 · ÷ all the wobble</text>
+      <rect class="tlp-blue" x="24" y="58" width="112" height="18" rx="3"/>
+      <text class="tlp-green" x="24" y="104" font-size="13" font-weight="700">Sortino 1.41 · ÷ downside wobble</text>
+      <rect class="tlp-green" x="24" y="110" width="150" height="18" rx="3"/>
+      <text class="tlp-amber" x="24" y="156" font-size="13" font-weight="700">Calmar 0.79 · ÷ worst drawdown</text>
+      <rect class="tlp-amber" x="24" y="162" width="84" height="18" rx="3"/>
+      <text class="tlp-text3" x="14" y="212" font-size="12">4bp a day mean, 60bp daily σ,</text>
+      <text class="tlp-text3" x="14" y="228" font-size="12">9.5% CAGR, 12% max drawdown</text>
+      <line class="tlp-line" x1="292" y1="12" x2="292" y2="236"/>
+      <text class="tlp-text" x="306" y="24" font-size="14" font-weight="700">Luck's best of N tries, zero skill</text>
+      <line class="tlp-line" x1="340" y1="55" x2="340" y2="205"/>
+      <line class="tlp-line" x1="340" y1="205" x2="582" y2="205"/>
+      <text class="tlp-text3" x="332" y="209" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="332" y="134" text-anchor="end" font-size="12">1</text>
+      <text class="tlp-text3" x="332" y="59" text-anchor="end" font-size="12">2</text>
+      <text class="tlp-text3" x="340" y="221" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="460" y="221" text-anchor="middle" font-size="12">100</text>
+      <text class="tlp-text3" x="580" y="221" text-anchor="middle" font-size="12">200</text>
+      <text class="tlp-text3" x="460" y="238" text-anchor="middle" font-size="12">variations tried, N →</text>
+      <line class="tlp-line blue thick dash" x1="340" y1="70" x2="580" y2="70"/>
+      <text class="tlp-blue" x="346" y="64" font-size="13" font-weight="700">your 1.80</text>
+      <polyline class="tlp-line red thick" points="342.4,179.3 343.6,162.8 344.8,152.9 346.0,146.0 347.2,140.6 349.6,132.8 352.0,127.1 355.6,120.7 359.2,115.9 364.0,110.9 370.0,106.1 376.0,102.4 388.0,96.6 400.0,92.3 412.0,88.9 430.0,84.8 448.0,81.6 472.0,78.1 496.0,75.2 520.0,72.8 550.0,70.3 580.0,68.1"/>
+      <line class="tlp-line green thick" x1="400" y1="71" x2="400" y2="91"/>
+      <circle class="tlp-red" cx="400" cy="92.3" r="5"/>
+      <circle class="tlp-amber" cx="554.8" cy="70" r="5"/>
+      <text class="tlp-amber" x="346" y="45" font-size="12.5" font-weight="700">luck reaches 1.80 at N ≈ 180</text>
+      <text class="tlp-red" x="410" y="120" font-size="13" font-weight="700">N = 50: luck alone ≈ 1.50</text>
+      <text class="tlp-green" x="410" y="138" font-size="13" font-weight="700">gap 0.30 → DSR ≈ 0.82</text>
+    </svg>
+    <figcaption>Left: Sharpe, Sortino and Calmar answer different questions about the same returns. Right: a reported Sharpe has to beat what luck hands the best of all the versions you tried, not zero. After 50 tries a 1.80 clears that bar by only 0.30.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="5">
+    <div class="tl-listen-head">🎧 Listen · the five-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My backtest shows a Sharpe ratio of one point eight. That's good, right?</p>
+      <p data-who="Quant">Before I answer, two questions. Which ratio, and how many versions did you try before this one?</p>
+      <p data-who="Trader">Start with the first.</p>
+      <p data-who="Quant">Sharpe is your average excess return divided by how much the returns wobble, up and down alike. Sortino counts only the downside wobble, so big winning days don't count against you. Calmar divides your yearly growth by the single worst drawdown.</p>
+      <p data-who="Trader">Why three?</p>
+      <p data-who="Quant">They answer different questions. Take one strategy: four basis points a day on average, sixty basis points of daily wobble. Sharpe comes out about one point oh six a year. If the losing days are small and orderly, Sortino is higher, about one point four. If it once fell twelve percent while growing nine and a half percent a year, Calmar is under one: point seven nine.</p>
+      <p data-who="Trader">And how do you get from a daily number to a yearly one?</p>
+      <p data-who="Quant">Multiply the daily Sharpe by the square root of the number of trading days, not the number itself. Over independent days the variance adds up, so the wobble only grows with the square root.</p>
+      <p data-who="Trader">Fine. Second question. I tried fifty versions: different lookbacks, thresholds and exits.</p>
+      <p data-who="Quant">Then your one point eight is the best of fifty. Suppose none of them had any edge at all. With the spread you saw across those fifty results, luck alone would be expected to hand you a best Sharpe of about one point five.</p>
+      <p data-who="Trader">So I only beat luck by point three.</p>
+      <p data-who="Quant">Exactly. The Deflated Sharpe Ratio turns that gap into a probability, allowing for the length of your record and its fat tails. Over ten years of daily data it comes out at about eighty-two percent that the true Sharpe is above zero.</p>
+      <p data-who="Trader">Compared with what?</p>
+      <p data-who="Quant">Compared with effectively one hundred percent if you pretend this was your only try. Same backtest. The whole difference is the search.</p>
+      <p data-who="Trader">What if I'd tried two hundred versions?</p>
+      <p data-who="Quant">Then luck alone would be expected to beat one point eight, and your result would mean nothing. That's why the count has to be honest, including the versions you tried by feel and threw away.</p>
+      <p data-who="Trader">So a high deflated Sharpe settles it?</p>
+      <p data-who="Quant">No. It corrects for the search, not for a sample with no storm in it. Long-Term Capital Management made roughly forty percent a year in 1995 and 1996, with low volatility. Every ratio looked excellent. Then Russia defaulted in August 1998, the spreads they bet would narrow widened together, and the fund lost about four point six billion dollars that year.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Name the ratio that answers your question, count every version you tried, and remember no ratio can see a storm the sample never had.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">Reward divided by risk — but which risk?</h2>
       <p class="sl-sub">Sharpe, Sortino and Calmar all answer "how much return per unit of risk." They disagree on what counts as risk.</p>
@@ -38,7 +108,7 @@
       <div class="sl-quote">None of the three is "the" right metric. The honest move is naming which question is being asked before quoting a number<!-- DESK:START --> — the same "name the benchmark before claiming improvement" discipline this repo already asks for everywhere else<!-- DESK:END -->.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The Sharpe ratio, piece by piece</h2>
       <p class="sl-sub">For per-period returns with risk-free rate r_f, the excess return is X = R − r_f. Step through where the annualized number comes from.</p>
@@ -65,7 +135,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Where Sharpe quietly breaks</h2>
       <div class="sl-icard-grid">
@@ -79,7 +149,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Sortino: only counting the drops that hurt</h2>
       <p class="sl-sub">Downside deviation is a standard deviation computed only over periods that fell below a minimum acceptable return (MAR, zero here).</p>
@@ -105,7 +175,7 @@
       <p class="sl-p">Same underlying daily numbers as before (mean 4bp, std 60bp), but suppose the losing days were small and orderly, giving a downside deviation of 45bp — smaller than the full 60bp because most of the total wobble actually comes from the size of the wins. Sortino_annual = (0.0004 / 0.0045) × √252 ≈ <strong>1.41</strong>, noticeably above the Sharpe of 1.06 for the exact same strategy.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Calmar: the single worst stretch, not the average day</h2>
       <div class="sl-row"><div class="sl-box">CAGR</div><div class="sl-arrow">÷</div><div class="sl-box">|MaxDD|</div><div class="sl-arrow">=</div><div class="sl-box green">Calmar</div></div>
@@ -117,7 +187,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Try it — recompute all three, live</h2>
       <p class="sl-sub">Starts on the worked-example numbers above. Change any field — annualized by k = 252 trading days/year throughout.</p>
@@ -140,7 +210,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The best of 50 random strategies looks great by pure luck</h2>
       <div class="sl-quote">A Sharpe of 1.8 looks identical whether it's the only thing you ever tried, or the single winner you kept after testing 50 variations and discarding the other 49. Those are not the same claim.</div>
@@ -152,7 +222,7 @@
       <p class="sl-p">This is the exact same shape of problem the Multiple Testing lesson covers for p-values across 70 pair/regime slices — more trials means more chances for one to look significant, or for one Sharpe to look inflated, purely from noise in a finite sample, with zero real edge required anywhere in the search.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Drag it up. Watch the "luck ceiling" climb with N.</h2>
       <p class="sl-sub">Fixed dispersion across trials (σ_SR = 0.66, this deck's worked-example value). The curve is the expected best-of-N Sharpe under zero true skill anywhere.</p>
@@ -179,7 +249,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The Deflated Sharpe Ratio: benchmark against chance, not zero</h2>
       <p class="sl-sub">Two steps: first build SR₀, the chance-expected ceiling; then ask how far above it the reported Sharpe sits.</p>
@@ -216,7 +286,7 @@
     </section>
 
     <!-- WB:sharpe_family_deflated-deck:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">The Deflated Sharpe Ratio: beat luck, not zero</h2>
       <!-- WB:sharpe_family_deflated:START -->
@@ -227,7 +297,7 @@
     </section>
     <!-- WB:sharpe_family_deflated-deck:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Try it — 50 variations, one reported Sharpe of 1.8</h2>
       <p class="sl-sub">Starts on this deck's real-world scenario: 50 trials, moderately fat-tailed and left-skewed returns, ten years of daily returns. Sharpes are entered annualized; the calculator divides by √252 to put them in the same per-day units as T, as the DSR formula requires.</p>
@@ -251,7 +321,7 @@
       </div>
     </section>
 
-<!-- DESK:START -->    <section class="sl-slide" data-slide="13">
+<!-- DESK:START -->    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">This repo's own discipline — and a claim worth double-checking</h2>
       <p class="sl-p">This repo's own validation rule already covers half of this problem: a strategy only "wins" if it beats the incumbent on out-of-sample Sharpe with a non-trivial trade count. The full lesson this deck summarizes states that nothing yet tracks how many variations produced a reported Sharpe, and that a Deflated Sharpe Ratio "isn't built" in this project's own metrics stack.</p>
@@ -262,7 +332,7 @@
       <p class="sl-p">What's still true from the lesson: undercounting N remains the real risk. That same 2026-08-29 note flags that the vote rule's original search was larger and partly unlogged — 104 trials is only the grid that could be reconstructed, not necessarily the full search that ever ran. DSR being built and wired in doesn't mean every reported Sharpe in this repo has actually been run through it yet.</p>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">LTCM: a beautiful ratio on a sample with no storm</h2>
       <div class="sl-callout amber">
@@ -282,7 +352,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <!-- DESK:START --><h2 class="sl-h2">This desk's Sharpe of 18.4</h2>
       <p class="sl-sub">Fibonacci-level system backtest: 10,190 trades, Sharpe <strong>18.4</strong>, <strong>85.7%</strong> wins at one-to-one. The paper bot on the same game: <strong>39.6%</strong> of 101 trades, −$13,696 (paper) in 90 days. The arithmetic was right; the fills were not.</p><!-- DESK:END -->
@@ -298,7 +368,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -349,7 +419,26 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="17">
+    <section class="sl-slide sl-vark" data-slide="18">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="1998">
+    <div class="tl-drill-label">Scenario drill · early 1998</div>
+    <h3>The smoothest record you have ever seen</h3>
+    <p>You allocate to hedge funds. Long-Term Capital Management, run by John Meriwether with Myron Scholes and Robert Merton among its partners, returned roughly 40% a year after fees in 1995 and 1996, with low reported volatility. Its Sharpe, Sortino and Calmar ratios all look excellent. Its trades are convergence bets on small spreads between nearly identical bonds, run at a balance sheet of the order of 25 times capital. How do you read those ratios?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Allocate more. Three excellent ratios, all agreeing, is as strong as evidence gets.<div class="tl-drill-why">All three were measured on the same calm sample. A short-liquidity book looks smooth until a flight to quality, and 1995 to 1997 contained none. Agreement between ratios is not independent evidence.</div></li>
+      <li data-verdict="good">Treat the ratios as untested: ask what a flight to safety would do to the spreads at 25 times leverage, and size for that.<div class="tl-drill-why">Every ratio assumes the sample is a fair draw of the risks to come. This one had no storm in it. Asking what the payoff does in the missing storm is the only way to see the risk the ratios cannot.</div></li>
+      <li data-verdict="ok">Deflate the Sharpe ratio for how many strategies the fund might have tried, then decide.<div class="tl-drill-why">Sensible habit, wrong problem. The Deflated Sharpe Ratio corrects for the search behind a number, not for tails the sample has not drawn yet. It would still have looked good.</div></li>
+      <li data-verdict="bad">Check the Calmar ratio. If the worst drawdown is small, the tail risk must be small.<div class="tl-drill-why">Calmar uses the worst drawdown that happened in the sample. A sample with no stress shows a small worst drawdown. It measures the storms you have had, not the ones you have not.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In August 1998 Russia defaulted on its domestic debt. Investors ran for the safest, most liquid bonds, and the spreads LTCM was betting would narrow widened instead, across many of its trades at once. At that leverage the losses ran into billions within weeks. In September 1998 the Federal Reserve Bank of New York brought the fund's creditor banks together, and they put in about $3.6 billion to take over the portfolio and wind it down. Greenspan told Congress the fund had lost half its capital by the end of August, and its 1998 losses are commonly put at about $4.6 billion.</p><p class="tl-drill-sources">Sources: <a href="https://www.cftc.gov/sites/default/files/tm/tmhedgefundreport.htm">President's Working Group on Financial Markets, Hedge Funds, Leverage, and the Lessons of Long-Term Capital Management, April 1999</a> (returns, leverage of more than 25 to 1, the $3.6 billion recapitalisation of 23 Sep 1998, the Russian debt moratorium of 17 Aug 1998); <a href="https://www.federalreserve.gov/boarddocs/testimony/1998/19981001.htm">Greenspan, testimony to the House Banking Committee, 1 Oct 1998</a></p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="19">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -550,5 +639,7 @@
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 </body>
 </html>

@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 <style>
@@ -497,6 +498,23 @@
     <button type="button" id="cv-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Read CoVaR off a fitted 5%-quantile line at i's median and at i's VaR, then take the difference, as in the worked example. All values in percent.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Line: \(q_{0.05}(X_j \mid X_i = x) = -0.6 + 0.5x\). Median of i is \(0.1\%\), its VaR is \(-2.5\%\). At the median: \(-0.6 + 0.5\times0.1 = -0.55\%\). In distress: \(-0.6 + 0.5\times(-2.5) = -1.85\%\). So \(\Delta\text{CoVaR} =\) <span class="tl-blank" data-answer="-1.3" data-tol="0.005" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Line: \(-0.3 + 1.2x\). Median of i \(0.2\%\), VaR \(-2.0\%\). At the median CoVaR is \(-0.06\%\). In distress it is <span class="tl-blank" data-answer="-2.7" data-tol="0.005" data-unit="%"></span>, so \(\Delta\text{CoVaR} =\) <span class="tl-blank" data-answer="-2.64" data-tol="0.005" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Line: \(-1.0 + 0.65x\). Median of i \(-0.1\%\), VaR \(-3.4\%\). CoVaR at the median: <span class="tl-blank" data-answer="-1.065" data-tol="0.005" data-unit="%"></span>. CoVaR in distress: <span class="tl-blank" data-answer="-3.21" data-tol="0.005" data-unit="%"></span>. \(\Delta\text{CoVaR}\): <span class="tl-blank" data-answer="-2.145" data-tol="0.006" data-unit="%"></span></p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">j's returns vs. i's returns — the fitted 5%-quantile line, and CoVaR read off at i's median vs. distress state</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of ten toy data points with i's return on the horizontal axis and j's return on the vertical axis, sloping upward together. A fitted quantile regression line runs beneath almost all of the points, touching only the single lowest one. Two markers sit on this line: a blue marker where i is at its median return of zero, and a red marker where i is at its distress level of minus three percent, noticeably lower on the line. A bracket between the two markers' heights is labeled with the gap between them, delta CoVaR.">
@@ -890,6 +908,7 @@
     </div>
     <p class="tl-fits-why"><strong>Why you'd care:</strong> positions that look equally risky alone can behave very differently when a funding market or counterparty is in trouble, and CoVaR is how you see which one.</p>
   </nav>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../book-stress.html">Book Stress</a> recomputes how many independent bets the book holds inside declared crisis windows against the calm baseline. It is not CoVaR, but it asks the same question: how much worse things get together once something else is in trouble.</div><!-- DESK:END -->
 
   <div class="tl-footer-nav">
     <a href="institutional-avellaneda-stoikov.html">← Avellaneda-Stoikov Inventory-Aware Market Making</a>
@@ -922,7 +941,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
   var ids = ['alpha', 'beta', 'median', 'distress'];

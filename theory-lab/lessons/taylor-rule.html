@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -352,6 +353,23 @@
     <button type="button" id="tr-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Apply \(i = r^{*} + \pi + a(\pi-\pi^{*}) + b(y-y^{*})\) to three new economies. All answers in percent.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(r^{*} = 1\%\), \(\pi = 4\%\), \(\pi^{*} = 2\%\), output gap \(-1\%\), \(a = b = 0.5\). Inflation gap \(4 - 2 = 2\)pp, so the inflation dial adds \(0.5 \times 2 = 1\); the output dial adds \(0.5 \times (-1) = -0.5\). So \(i = 1 + 4 + 1 - 0.5 =\) <span class="tl-blank" data-answer="5.5" data-tol="0.05" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(r^{*} = 0.5\%\), \(\pi = 2.5\%\), \(\pi^{*} = 2\%\), output gap \(+2\%\), \(a = b = 0.5\). The neutral nominal rate \(r^{*} + \pi^{*}\) is <span class="tl-blank" data-answer="2.5" data-tol="0.05" data-unit="%"></span>. The inflation dial adds 0.25 and the output dial adds <span class="tl-blank" data-answer="1" data-tol="0.05"></span>, so \(i =\) <span class="tl-blank" data-answer="4.25" data-tol="0.05" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(r^{*} = 1.5\%\), \(\pi = 6\%\), \(\pi^{*} = 2\%\), output gap \(-2\%\), with \(a = 0.5\) but a stronger output response \(b = 1.0\). The actual policy rate is 1%. Find the prescribed rate \(i\) <span class="tl-blank" data-answer="7.5" data-tol="0.05" data-unit="%"></span> and the Taylor gap \(i - i_{\text{actual}}\) <span class="tl-blank" data-answer="6.5" data-tol="0.05" data-unit="pp"></span>.</p>
+    </div>
+  </div>
+
   <h3>The number that moves markets isn't \(i\) — it's \(i_{\text{implied}} - i_{\text{actual}}\)</h3>
   <div class="tl-solid blue">
     <strong>The key insight:</strong> no desk trades the Taylor Rule's level in
@@ -666,11 +684,15 @@
   <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
-    <span><strong>The Taylor gap as an FX signal has not been tested here.</strong> A fair test would need
-    real-time data vintages (what the committee actually knew on the day, per the Orphanides critique above), a rule
-    specification fixed before looking, the gap computed for both economies in a pair, a horizon of months rather
-    than days, and a comparison against the plain 2-year spread to see whether the rule adds anything. 2021–22 is a
-    single episode and proves nothing on its own.</span>
+    <span><strong>The Taylor gap as an FX signal has not been tested here.</strong> 2021–22 is a single episode and
+    proves nothing on its own.
+    <div class="tl-howtotest"><strong>How to test it:</strong> build the gap monthly for the US and the euro area from
+    first-print data vintages (FRED/ALFRED core inflation and unemployment, ECB and Eurostat equivalents), 1999 to
+    2026-08-21, with the rule fixed before looking: \(r^{*} = 0.5\%\), \(a = b = 0.5\). Each month, hold EUR/USD for three
+    months in the direction of the gap difference, and score the out-of-sample Sharpe after a 1-pip spread and the
+    carry. It passes only if it beats the same trade signalled by the plain 2-year yield spread, with a block-bootstrap
+    95% interval for the Sharpe difference above zero; otherwise the rule adds nothing the spread did not already
+    have.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -682,6 +704,7 @@
     reprices" to "lean long the currency", is the step this null covers. Rates and FX move together; one does not
     lead the other on this desk's data.</span>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../fed-path.html">Fed path odds</a> shows the policy rate the futures market expects, meeting by meeting; set it beside this lesson's rule-implied rate to see how much of the gap the market already prices.</div>
   <!-- DESK:END -->
 
   <div class="tl-eli5">
@@ -699,7 +722,8 @@
       <li data-verdict="bad">Follow the Fed. It says inflation is fading, and it knows more than a formula.<div class="tl-drill-why">The committee was reacting to its forecast that inflation would fade. The rule reacts to today's numbers, and today's numbers already said policy was far behind the curve.</div></li>
       <li data-verdict="ok">Lean hawkish with a small position, and drop it if nothing happens by the next meeting.<div class="tl-drill-why">Right direction, wrong clock. A gap like this can take months to close, so a few-week deadline likely gets you out before the move.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The Fed raised rates on 16 March 2022, by a quarter point. US CPI inflation peaked at 9.1% in June 2022, and that month the FOMC raised by 75 basis points, the largest single move since 1994; three more 75s followed. By July 2023 the target range was 5.25–5.50%. EUR/USD fell below parity in July 2022 for the first time in about twenty years, and the dollar index reached a twenty-year high that September.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The Fed raised rates on 16 March 2022, by a quarter point. US CPI inflation peaked at 9.1% in June 2022, and that month the FOMC raised by 75 basis points, the largest single move since 1994; three more 75s followed. By July 2023 the target range was 5.25–5.50%. EUR/USD fell below parity in July 2022 for the first time in about twenty years, and the dollar index reached a twenty-year high that September.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20220615a.htm" target="_blank" rel="noopener">FOMC statement, 15 June 2022</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20230726a.htm" target="_blank" rel="noopener">FOMC statement, 26 July 2023</a>; <a href="https://www.bls.gov/news.release/archives/cpi_07132022.htm" target="_blank" rel="noopener">BLS CPI release, 13 July 2022</a>; FOMC statement, 16 March 2022; Reuters, 30 November 2021 (Powell's Senate testimony).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -712,7 +736,7 @@
     <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo has no Taylor-Rule calculator built yet.</strong> This lesson is the theory behind the existing yield-spread notes — a natural, currently-missing companion piece, not a shipped tool.</span></div><!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(r^{*}\) and the output gap are estimates, not observed facts.</strong> Different proxies can shift the implied rate by a full percentage point or more from the same CPI print.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A wide gap is not a dated forecast.</strong> The Fed itself publishes several competing reference rules — real deviations from any one of them can persist for years before correcting.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>2021–22: the gap was right about direction and silent on timing.</strong> It sat open for about a year before the first hike.<!-- DESK:START --> The Taylor gap as an FX signal is untested here, and the yield-move-to-FX-direction step is tested NULL (yields-to-fx-direction): the coupling is real only in the same bar.<!-- DESK:END --></span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>2021–22: the gap was right about direction and silent on timing.</strong> It sat open for about a year before the first hike.<!-- DESK:START --> The Taylor gap as an FX signal is untested here, and the desk found no forward link from a yield move to FX direction.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -883,7 +907,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -441,6 +442,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The Stage 4 and 5 arithmetic on new numbers. The in-sample to out-of-sample haircut is \(1 - SR_{OOS}/SR_{IS}\). The margin over the pre-registered bar is \(SR_{OOS}\) minus the bar. Bar: out-of-sample Sharpe above 0.30 on at least 30 trades.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>In-sample Sharpe 0.80, out-of-sample 0.52 on 36 trades. Haircut \(= 1 - 0.52/0.80 = 35\%\). Margin over the bar \(= 0.52 - 0.30 =\) <span class="tl-blank" data-answer="0.22" data-tol="0.005"></span>. Supported.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>In-sample 0.70, out-of-sample 0.25 on 33 trades. Haircut \(=\) <span class="tl-blank" data-answer="64.3" data-tol="0.2" data-unit="%"></span>. Margin \(=\) <span class="tl-blank" data-answer="-0.05" data-tol="0.005"></span>. Below the bar, so the verdict is not supported, whatever the in-sample number said.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>In-sample 0.55, out-of-sample 0.33 on 31 trades. Haircut <span class="tl-blank" data-answer="40" data-tol="0.2" data-unit="%"></span> and margin <span class="tl-blank" data-answer="0.03" data-tol="0.005"></span>. It clears the bar that was written first, so it counts as supported, with very little room to spare.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A real-world trading scenario</div>
@@ -572,6 +590,7 @@
     (31%).</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../evidence.html">Evidence Book</a> lists every claim the desk has written down in advance and tested, with the verdict banked whichever way it came out.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -823,7 +842,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

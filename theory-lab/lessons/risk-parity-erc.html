@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -561,6 +562,23 @@
     <button type="button" id="rp-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Equal-risk weights and portfolio volatility for new assets, with one shared correlation \(\rho\). Weights \(\propto 1/\sigma_i\); each asset then supplies a third of total risk.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Bonds 4%, equities 10%, commodities 20%, \(\rho = 0.30\). Inverse volatilities: 25, 10, 5, summing to 40. Weights \(= (62.5\%,\ 25\%,\ 12.5\%)\). Portfolio volatility \(\sigma_p =\) <span class="tl-blank" data-answer="5.48" data-tol="0.01" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Bonds 8%, equities 12%, commodities 24%, \(\rho = 0.50\). Inverse volatilities \(= 12.5,\ 8.33,\ 4.17\), summing to <span class="tl-blank" data-answer="25" data-tol="0.01"></span>. Equities get <span class="tl-blank" data-answer="33.3" data-tol="0.1" data-unit="%"></span> of the money. \(\sigma_p =\) <span class="tl-blank" data-answer="9.80" data-tol="0.01" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Bonds 6%, equities 9%, commodities 18%, \(\rho = 0.20\). Find the bond weight <span class="tl-blank" data-answer="50" data-tol="0.1" data-unit="%"></span>, the equal-risk \(\sigma_p\) <span class="tl-blank" data-answer="6.15" data-tol="0.01" data-unit="%"></span> and each asset's risk contribution <span class="tl-blank" data-answer="2.05" data-tol="0.01" data-unit="%"></span>. An equal-dollar split of the same assets runs at 7.96%.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -781,7 +799,7 @@
       <li data-verdict="good">Re-estimate risk on recent data and bring volatility back toward target in planned steps, starting with the levered bond sleeve, accepting the cost.<div class="tl-drill-why">The rule exists to keep risk at its target, and the current risk says cut. Doing it in planned steps, knowing that every fund running similar rules is selling the same assets, limits how much your own selling costs you.</div></li>
       <li data-verdict="ok">Cut everything back to target at today's close, in one go.<div class="tl-drill-why">Right direction, wrong execution. Selling everything at once, alongside every other fund on the same rule, means paying the worst prices: the de-levering is itself a market event.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The S&amp;P 500 fell about a third from its February peak to its low on 23 March. Market strategists at the time widely described risk-parity and vol-targeting funds as forced sellers of equities and bonds into the fall. The selling was mechanical and came after the losses rather than before, and it left the funds with less exposure when markets rebounded from late March, after the Federal Reserve announced open-ended purchases on 23 March. Cutting cost money in hindsight; holding a book far over its risk target with no plan would have risked much worse had the fall continued.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The S&amp;P 500 fell about a third from its February peak to its low on 23 March. Some market strategists at the time described risk-parity and vol-targeting funds as forced sellers of equities and bonds into the fall; others argued their role was overstated. The selling was mechanical and came after the losses rather than before, and it left the funds with less exposure when markets rebounded from late March, after the Federal Reserve announced open-ended purchases on 23 March. Cutting cost money in hindsight; holding a book far over its risk target with no plan would have risked much worse had the fall continued.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/VIXCLS">FRED, VIXCLS</a> (closing high 82.69, 16 Mar 2020); <a href="https://fred.stlouisfed.org/series/SP500">FRED, SP500</a> (3,386 on 19 Feb 2020, 2,237 on 23 Mar 2020); <a href="https://fred.stlouisfed.org/series/DGS10">FRED, DGS10</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200323b.htm">Federal Reserve press release, 23 Mar 2020</a>; Bloomberg, March 2020, and Neuberger Berman, "Risk Parity and the Fallacy of the Single Cause" (the two sides on forced selling)</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -979,7 +997,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
-<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

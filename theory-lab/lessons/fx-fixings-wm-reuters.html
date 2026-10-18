@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FX Fixings &amp; the WM/Reuters 4pm Fix — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Market Microstructure / FX Fixings &amp; the 4pm Fix</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Market Microstructure · Lesson 6 of 6</div>
+  <h1 class="tl-title">FX Fixings &amp; the WM/Reuters 4pm Fix</h1>
+  <p class="tl-dek">One exchange rate, stamped at 4pm in London, that trillions of dollars of funds and indices are valued at. How it is calculated, how banks fill the orders that target it, why month-end moves it, and how it was rigged until 2013.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — how the benchmark works, not a trading signal</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="execution-algorithms.html">Execution Algorithms</a>, <a href="market-microstructure.html">Market Microstructure</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="fx-fixings-wm-reuters-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A <strong>fix</strong> is one published exchange rate for one moment of the day. The one that matters most is the WM/Reuters 4pm London closing rate (renamed WM/Refinitiv, and since late 2023 just "WMR", run by an LSEG company). Index providers, fund valuations and custodians use it, so big orders are timed to it.</li>
+      <li>Since 15 February 2015 the 4pm rate is the <strong>median</strong> of one-second snapshots of trades and best quotes over a five-minute window, 15:57:30 to 16:02:30 London time. Before that the window was one minute, 15:59:30 to 16:00:30.</li>
+      <li>A median is hard to push. To drag it beyond where the market would have printed anyway, you have to hold the price there for close to half the window: about 30 seconds before 2015, about 150 seconds now.</li>
+      <li>Banks take <strong>fixing orders</strong>: a promise to deal at a rate nobody knows yet. They net buyers against sellers and trade the rest around the window. That promise, and the private knowledge of the flow that comes with it, is where the conflict of interest lives.</li>
+      <li><strong>Month-end and quarter-end:</strong> hedged international funds top up their currency hedges at the fix. The rule of thumb: the currency of the stock market that rose most gets sold. On the lesson's illustrative numbers, US stocks up 4% against foreign stocks up 1% means about $20bn of net dollar selling.</li>
+      <li><strong>Real-world episode:</strong> on 12 November 2014 UK, US and Swiss regulators fined six banks about $4.3bn combined for FX failings, including attempts to manipulate the 4pm fix through chat rooms. In May 2015 four banks pleaded guilty in the US. The window was widened, and the FX Global Code (2017) now spells out what a bank filling a fixing order may and may not do.</li>
+    </ul>
+  </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A stylised line of trading activity from 15:50 to 16:10 London time. Activity is flat, rises slightly from 15:55, jumps when the five-minute fix window opens at 15:57:30, stays high, tails off near 16:02:30 and drops straight back to normal after it. The five-minute window is shaded; the old one-minute window from 15:59:30 to 16:00:30 is marked with dashed lines. A label says the fix is the median of 301 one-second samples in the window, and that funds, indices and custodians value at that number.">
+      <rect class="tlp-box blue" x="251.2" y="40" width="127.5" height="150" rx="4" opacity=".35"/>
+      <line class="tlp-line amber dash" x1="302.2" y1="40" x2="302.2" y2="162"/>
+      <line class="tlp-line amber dash" x1="327.8" y1="40" x2="327.8" y2="162"/>
+      <line class="tlp-line" x1="60" y1="190" x2="570" y2="190"/>
+      <polyline class="tlp-line blue thick" points="60.0,147.6 187.5,147.6 191.8,147.5 196.0,147.2 200.2,146.7 204.5,146.1 208.8,145.2 213.0,144.2 217.2,143.0 221.5,141.5 225.8,139.9 230.0,138.1 234.2,136.2 238.5,134.0 242.8,131.6 247.0,129.1 251.2,50.0 255.5,54.2 259.8,58.5 264.0,62.7 353.2,62.7 357.5,70.5 361.8,78.3 366.0,86.1 370.2,93.8 374.5,101.6 378.8,109.4 383.0,142.3 387.2,143.3 391.5,144.4 395.8,145.5 400.0,146.5 404.2,147.6 570.0,147.6"/>
+      <text class="tlp-blue" x="315" y="30" text-anchor="middle" font-size="14" font-weight="700">5-min window since Feb 2015</text>
+      <text class="tlp-text2" x="315" y="210" text-anchor="middle" font-size="13">fix = median of 301 one-second samples</text>
+      <text class="tlp-amber" x="315" y="180" text-anchor="middle" font-size="12" font-weight="700">1 min before 2015</text>
+      <text class="tlp-text3" x="60" y="232" font-size="12">15:50</text>
+      <text class="tlp-text3" x="251" y="232" text-anchor="middle" font-size="12">15:57:30</text>
+      <text class="tlp-text3" x="379" y="232" text-anchor="middle" font-size="12">16:02:30</text>
+      <text class="tlp-text3" x="570" y="232" text-anchor="end" font-size="12">16:10</text>
+      <text class="tlp-text3" x="66" y="136" font-size="12">normal trading</text>
+      <text class="tlp-green" x="570" y="122" text-anchor="end" font-size="13" font-weight="700">→ index values,</text>
+      <text class="tlp-green" x="570" y="138" text-anchor="end" font-size="13" font-weight="700">fund NAVs, custody FX</text>
+      <text class="tlp-red" x="66" y="60" font-size="13" font-weight="700">month-end:</text>
+      <text class="tlp-red" x="66" y="76" font-size="13" font-weight="700">the spike is taller</text>
+    </svg>
+    <figcaption>Stylised, not data: the shape follows the administrator's and the FSB's descriptions. Trading crowds into the window because thousands of funds are valued at its median, and the median is what a bank filling a fixing order is trying to match.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Every month-end someone tells me to watch the four o'clock fix. What actually is it?</p>
+      <p data-who="Quant">It's one exchange rate, published for four in the afternoon London time. Index providers value their indices at it. Fund administrators strike prices at it. Custodians convert at it. So a lot of money wants to trade at exactly that rate.</p>
+      <p data-who="Trader">How do they work out one number for the whole market?</p>
+      <p data-who="Quant">Every second for five minutes, from two and a half minutes before four to two and a half minutes after, they take a snapshot of trades and best prices on the main platforms. Then they take the median. Since February twenty fifteen it's been five minutes. Before that it was one.</p>
+      <p data-who="Trader">Why the median and not the average?</p>
+      <p data-who="Quant">Because one huge trade can drag an average, but it barely moves a median. To shift a median you have to keep the price where you want it for close to half the window. With one minute, that was about thirty seconds of pushing. With five minutes, it's about two and a half minutes. Much harder, much more expensive.</p>
+      <p data-who="Trader">And the banks?</p>
+      <p data-who="Quant">A fund says, buy me five hundred million euros at the fix. The bank promises a rate it doesn't know yet. If another client is selling two hundred million, the bank nets them and only has to buy three hundred million in the market. On three hundred million euros, every pip is thirty thousand dollars.</p>
+      <p data-who="Trader">So where's the temptation?</p>
+      <p data-who="Quant">The bank knows the flow before anyone else. If it buys early, cheap, and its own buying lifts the fix, it sells to the client at a higher rate and keeps the gap. Two pips on that order is sixty thousand dollars, paid by the client.</p>
+      <p data-who="Trader">And that's what the scandal was.</p>
+      <p data-who="Quant">Partly. Regulators found traders at different banks in chat groups, sharing what their clients were doing and trying to move the fixes together. On the twelfth of November twenty fourteen, British, American and Swiss regulators fined six banks about four point three billion dollars in total. The next May, four banks pleaded guilty in the United States.</p>
+      <p data-who="Trader">What about month-end?</p>
+      <p data-who="Quant">Funds that own foreign stocks and hedge the currency have to top up the hedge when the stocks rise. Say foreign investors hold six hundred billion dollars of hedged American shares and the market is up four percent. They sell twenty four billion more dollars. If Americans hold four hundred billion of hedged foreign shares that rose one percent, they buy four billion back. Net, about twenty billion dollars to sell.</p>
+      <p data-who="Trader">So I just sell dollars into every month-end?</p>
+      <p data-who="Quant">No. Everyone runs the same sum, so some of it is traded before the fix and priced in. The size estimate is rough. And research finds the dollar tends to firm into the big fixes and give it back afterwards, by a couple of basis points on a normal day. Use the sign as a warning, not a free trade.</p>
+      <p data-who="Trader">The one-line version?</p>
+      <p data-who="Quant">The fix is a five-minute median that the whole buy side marks to. Know when it is, expect a crowd and a jump, and never trade on what you know about someone else's order.</p>
+    </div>
+  </section>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Foreign exchange has no closing auction and no single exchange. It trades around the clock, across dozens of
+    platforms and thousands of bilateral relationships, so "the price of the euro" at any moment depends on who you
+    ask. That is fine for a trader, who only needs a price to trade at. It is a real problem for anyone who has to
+    <em>value</em> something: an index made of shares in twenty currencies, a fund that strikes its net asset value
+    once a day, a custodian converting dividends, an auditor checking a balance sheet. They all need one agreed number,
+    at one agreed time, that nobody can argue about later.
+  </p>
+  <p>
+    A <strong>fixing</strong>, or <strong>fix</strong>, is that number. The administrator publishes it for a stated
+    moment, from a published method. WM/Reuters started publishing its rates in 1994, for exactly this reason: before
+    there was an agreed close, different funds were using different rates and their reported returns could not be
+    compared. The 4pm London closing rate became the standard. The administrator says major index providers,
+    including MSCI, FTSE Russell and S&amp;P, use its rates.
+  </p>
+  <p>
+    For a trader the consequence is simple. If thousands of funds are valued at the 4pm rate, then thousands of funds
+    want to <em>trade</em> at the 4pm rate, because trading at the rate you are valued at is the only way to have no
+    tracking error. So the minutes around 4pm London are when a large share of the day's benchmark-linked flow goes
+    through, all at once, and at month-end and quarter-end there is much more of it. You need to know when that happens,
+    what it does to price and liquidity, and where the legal line runs for anyone handling those orders.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📈</div>
+      <h4>Index providers</h4>
+      <p>An index of shares in many currencies needs one FX rate per currency per day to be converted into one base currency. A published fix gives every user the same number.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧺</div>
+      <h4>Passive funds and ETFs</h4>
+      <p>A fund tracking that index is valued at the same rate. Trading its FX at the fix removes tracking error from currency, which is why the FSB found passive funds the most likely to use it.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🏦</div>
+      <h4>Custodians and fund administrators</h4>
+      <p>They convert income, subscriptions and redemptions, and strike net asset values. An independent rate is easy to verify for clients and auditors.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔁</div>
+      <h4>Asset managers and corporates</h4>
+      <p>Mandate transfers between managers, hedge roll-overs and month-end rebalancing are often done at the fix. The FSB noted that transfers between managers are among the largest fix trades of all.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A class photo, taken at four o'clock</h3>
+    <p>
+      Think of the fix as a class photo. The market never stands still, but at 4pm London the photographer takes one
+      picture, and that picture goes in every yearbook: every index, every fund report, every custody statement. So
+      everyone who will be judged by the photo wants to be standing in it. That is why trading crowds into the few
+      minutes around 4pm.
+    </p>
+    <p>
+      Two problems follow. First, a crowd that all wants to buy at once moves the price, so the photo shows the crowd
+      as much as the market. Second, the people organising the crowd, the banks taking the orders, know where everyone
+      is going to stand before the photo is taken. Until 2013 some of them used that knowledge, and the rules changed:
+      the shutter now stays open for five minutes instead of one, and the photo is the <em>middle</em> of all the frames,
+      so a few people jumping in front of the lens no longer changes the picture much.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">How long you must hold the price to move a median fix, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ F = \operatorname{median}\{\color{#fbbf24}{x_1, x_2, \dots, x_N}\} \]</div>
+      <p>The fix is the median of one sample per second across the window. Since 2015 the window is five minutes, so \(N = 301\) samples; before 2015 it was one minute, \(N = 61\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{k} + (N-k)\,q \;\ge\; \tfrac{N}{2} \]</div>
+      <p>To drag the median up to a target, at least half the samples must sit at or above it. You control \(k\) of them by holding the price there; of the other \(N-k\), a share \(q\) would have landed there anyway.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ q = \color{#fbbf24}{1 - \Phi\!\left(\tfrac{\Delta}{\sigma_w}\right)} \]</div>
+      <p>If clean prices in the window scatter around the true level with spread \(\sigma_w\), the chance that one lands at least \(\Delta\) above it is one minus the normal curve's area up to \(\Delta/\sigma_w\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{T_{\text{hold}} = N\,\frac{\tfrac12 - q}{1-q}} \]</div>
+      <p>Solve for \(k\): the seconds you must hold the price at the target. Push one spread's worth (\(\Delta = \sigma_w\)) and this is about 41% of the window: 25 seconds of a 61-second window, 122 seconds of a 301-second one. Push far past the natural range and it tends to half the window.</p>
+    </div>
+  </div>
+
+  <p>
+    <strong>What the administrator actually does.</strong> For the liquid "trade currencies" (about two dozen,
+    including all of the G10), WMR takes a snapshot every second during the window from the main electronic trading
+    platforms, such as LSEG's Matching and EBS. It prefers executed trades and falls back to the best bid and offer
+    when trades are too thin. It takes the <strong>median</strong> of those samples. For the much larger set of
+    less-traded currencies it samples quotes less often, every 15 seconds, over its own window. The FSB's 2014 report
+    describes the quote-based version as the average of the median bid and the median offer:
+  </p>
+  <div class="tl-math">\[ F = \frac{\operatorname{median}(\text{bid}_s) + \operatorname{median}(\text{offer}_s)}{2} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>F</code><span>the published fix (mid rate)</span></div>
+    <div class="tl-eq-chip c2"><code>bidₛ, offerₛ</code><span>the best bid and offer captured in snapshot s</span></div>
+    <div class="tl-eq-chip c3"><code>median</code><span>the middle value once all snapshots are sorted</span></div>
+  </div>
+  <p>
+    The window is centred on the hour. From 15 February 2015 it runs from 15:57:30 to 16:02:30, two and a half
+    minutes either side of 4pm London time. Before that it ran from 15:59:30 to 16:00:30. Note that it is London
+    clock time: 4pm in London is 11am in New York for almost all of the year, except for a few weeks around March and the
+    end of October, when the two countries change their clocks on different dates.
+  </p>
+
+  <p>
+    <strong>Why a median, not an average.</strong> Suppose a trader slams in one trade far away from the market. An
+    average moves by the size of that outlier divided by the number of samples:
+  </p>
+  <div class="tl-math">\[ \Delta\bar{x} = \frac{x_{\text{out}} - \bar{x}}{N} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Δx̄</code><span>how far the average moves</span></div>
+    <div class="tl-eq-chip c2"><code>x_out</code><span>the price of the one off-market trade</span></div>
+    <div class="tl-eq-chip c4"><code>N</code><span>the number of samples in the window</span></div>
+  </div>
+  <p>
+    So a far enough outlier can move an average as much as you like. A median ignores how far the outlier is. It only
+    cares how many samples sit above and below the middle. One wild print shifts the median by at most one place in the
+    sorted list. The FSB put it plainly: to be certain of influencing the median, extra trades "would have to be such as
+    to hold the whole market close to the desired outcome throughout a large part of the fixing window."
+  </p>
+
+  <p>
+    <strong>Making "a large part of the window" exact.</strong> Call the level the market would have fixed at without
+    you \(m\), and your target \(m + \Delta\). The median is at or above the target when at least half of the \(N\)
+    samples are. You hold the price at the target for \(k\) seconds. The other \(N-k\) seconds are ordinary market
+    prices, and a share \(q\) of them happen to land at or above the target anyway. So you need
+  </p>
+  <div class="tl-math">\[ k + (N-k)\,q \;\ge\; \frac{N}{2} \quad\Longrightarrow\quad \frac{k}{N} \;\ge\; \frac{\tfrac12 - q}{1-q} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>k</code><span>seconds you hold the price at the target</span></div>
+    <div class="tl-eq-chip c2"><code>q</code><span>share of ordinary samples that land at or above the target anyway</span></div>
+    <div class="tl-eq-chip c3"><code>N/2</code><span>half the samples: what the median needs</span></div>
+  </div>
+  <p>
+    In a simple model where ordinary prices in the window scatter normally around \(m\) with spread \(\sigma_w\), the
+    share above the target is \(q = 1 - \Phi(\Delta/\sigma_w)\), where \(\Phi\) is the area under the standard normal
+    curve. Put the two together:
+  </p>
+  <div class="tl-math">\[ T_{\text{hold}} = N\,\frac{\tfrac12 - q}{1-q}, \qquad q = 1-\Phi\!\left(\frac{\Delta}{\sigma_w}\right) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>T_hold</code><span>seconds of the window you must control</span></div>
+    <div class="tl-eq-chip c2"><code>Δ</code><span>how far above the clean fix you want it, in pips</span></div>
+    <div class="tl-eq-chip c3"><code>σ_w</code><span>how widely ordinary prices scatter in the window, in pips</span></div>
+    <div class="tl-eq-chip c4"><code>Φ</code><span>standard normal cumulative probability</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">N</div>
+      <div class="tl-fp-name">The window</div>
+      <div class="tl-fp-desc">Samples in the window. The 2015 reform multiplied it by about five, from 61 to 301.</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">(½ − q)/(1 − q)</div>
+      <div class="tl-fp-name">The share you must own</div>
+      <div class="tl-fp-desc">Zero for no push; about 41% for a one-spread push; close to 50% for a push far outside the natural range.</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">T<sub>hold</sub></div>
+      <div class="tl-fp-name">The cost of pushing</div>
+      <div class="tl-fp-desc">Seconds you must hold the price against everyone else. More seconds means more money spent and a longer, more visible footprint.</div>
+    </div>
+  </div>
+
+  <p>
+    Two facts fall out. First, \(T_{\text{hold}}\) is proportional to \(N\): at the same push, the five-minute window
+    makes a would-be manipulator hold the price about five times as long. Second, as the target moves far outside the
+    normal scatter, \(q \to 0\) and \(T_{\text{hold}} \to N/2\). The limit was about 30 seconds of pushing before
+    2015 and about 150 seconds after. The model is deliberately simple: it ignores that holding a price also drags the
+    seconds after it, and that real samples are not independent. But it captures why the reform made the fix harder to
+    move, and why collusion was so valuable before it: pooling several banks' orders made it far easier to dominate
+    half a one-minute window.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(F\)</td><td>The published fix: the median of the samples in the window (for quote currencies, the average of the median bid and median offer).</td></tr>
+      <tr><td>\(x_s\)</td><td>The sample taken in second \(s\) of the window: a trade price, or the best bid and offer if trades are thin.</td></tr>
+      <tr><td>\(N\)</td><td>Number of samples. 301 for the five-minute window (since 15 February 2015), 61 for the old one-minute window.</td></tr>
+      <tr><td>\(m\)</td><td>The level the fix would have printed at without any push.</td></tr>
+      <tr><td>\(\Delta\)</td><td>How far above (or below) \(m\) someone wants the fix, in pips.</td></tr>
+      <tr><td>\(\sigma_w\)</td><td>How widely ordinary prices scatter inside the window, in pips. A rough number, not a published one.</td></tr>
+      <tr><td>\(q\)</td><td>Share of ordinary samples that land at or beyond the target anyway.</td></tr>
+      <tr><td>\(k,\ T_{\text{hold}}\)</td><td>Seconds of the window someone must hold the price at the target to move the median there.</td></tr>
+      <tr><td>\(A,\ B\)</td><td>Month-end model: hedged US equities held by foreign investors (\(A\)), and hedged foreign equities held by US investors (\(B\)), in dollars.</td></tr>
+      <tr><td>\(r_{US},\ r_F\)</td><td>Month-to-date return on US equities, and on foreign equities in their own currency.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Line up 301 kids by height and pick the one in the middle. If one giant joins the line, the middle kid barely changes. To change who is in the middle, you need to swap in about 150 tall kids. The old line only had 61 kids, so about 30 swaps did it. That is why making the window five times longer made the fix much harder to cheat.</p>
+  </div>
+
+  <h3>Month-end: where the predictable flow comes from</h3>
+  <p>
+    Most days the orders at the fix roughly cancel. The FSB found that the net imbalance at the fix has no obvious
+    day-to-day direction, with one exception: it tends to be larger at month-ends and quarter-ends. The reason is
+    <strong>hedge rebalancing</strong>. Many international equity funds own foreign shares but hedge away the
+    currency, usually with forwards that they adjust once a month, at the month-end fix.
+  </p>
+  <p>
+    Take a European fund holding US shares with the dollar hedged. Over the month, US shares rise 4%. The fund now owns
+    4% more dollars' worth of stock than its hedge covers, so at month-end it sells that extra 4% of dollars forward.
+    Now take a US fund holding hedged European shares that rose 1% in euros. It sells 1% more euros, which means it
+    <em>buys</em> dollars. Net those two across the market:
+  </p>
+  <div class="tl-math">\[ \text{Flow}_{USD} = B\,r_F - A\,r_{US} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Flow_USD</code><span>net dollar buying (+) or selling (−) from hedge top-ups</span></div>
+    <div class="tl-eq-chip c2"><code>A·r_US</code><span>dollars foreign investors must sell after US stocks rise</span></div>
+    <div class="tl-eq-chip c3"><code>B·r_F</code><span>dollars US investors must buy after foreign stocks rise</span></div>
+  </div>
+  <p>
+    The trader's rule of thumb follows directly: <strong>at month-end, the currency of the stock market that went up
+    the most tends to be sold.</strong> If US stocks beat the rest of the world, expect dollar selling into the fix; if
+    the rest of the world beat the US, expect dollar buying. Funds that rebalance unhedged index weights push the same way:
+    after US stocks outperform they sell US shares and buy foreign ones, which also means selling dollars. Melvin and
+    Prins (2015) tested exactly this channel and found that equity gains over the month predict that market's currency
+    weakening before the month-end 4pm fix. Bank research desks publish month-end estimates built on the same idea.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You promised to keep an umbrella exactly as big as your sandcastle. Your sandcastle grew, so at the end of the month you have to buy a bigger umbrella. Every fund with a bigger sandcastle buys umbrellas on the same afternoon, and umbrellas get pricier for a few minutes.</p>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">How long must you hold the price to move a median fix?</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of the seconds someone must hold the price at a target to move a median fix there, against how far the target is from the clean fix in pips. Two curves: the one-minute window used before 2015 levels off near 30 seconds, and the five-minute window used since 2015 levels off near 150 seconds. Dashed lines mark half of each window.">
+      <line x1="70" y1="30" x2="70" y2="250" style="stroke:var(--border)"/>
+      <line x1="70" y1="250" x2="610" y2="250" style="stroke:var(--border)"/>
+      <line id="fxf-h-cap5" x1="70" y1="0" x2="610" y2="0" style="stroke:var(--blue);stroke-dasharray:4,4;opacity:.6"/>
+      <line id="fxf-h-cap1" x1="70" y1="0" x2="610" y2="0" style="stroke:var(--amber);stroke-dasharray:4,4;opacity:.6"/>
+      <text id="fxf-h-cap5-lbl" x="606" y="0" text-anchor="end" fill="var(--blue)" font-size="10.5" font-family="'DM Mono',monospace">half of 5 min = 150 s</text>
+      <text id="fxf-h-cap1-lbl" x="606" y="0" text-anchor="end" fill="var(--amber)" font-size="10.5" font-family="'DM Mono',monospace">half of 1 min = 30 s</text>
+      <g id="fxf-h-yticks"></g>
+      <g id="fxf-h-xticks"></g>
+      <path id="fxf-h-curve5" d="" style="stroke:var(--blue);stroke-width:2.5;fill:none"/>
+      <path id="fxf-h-curve1" d="" style="stroke:var(--amber);stroke-width:2.5;fill:none"/>
+      <line id="fxf-h-mark" x1="0" y1="30" x2="0" y2="250" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <circle id="fxf-h-dot5" cx="0" cy="0" r="4.5" fill="var(--blue)"/>
+      <circle id="fxf-h-dot1" cx="0" cy="0" r="4.5" fill="var(--amber)"/>
+      <text x="340" y="290" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">target push Δ above the clean fix (pips)</text>
+      <text x="22" y="140" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 22 140)">seconds to hold</text>
+    </svg>
+    <div class="tl-legend"><span><i style="background:var(--blue)"></i>5-minute window (since Feb 2015)</span><span><i style="background:var(--amber)"></i>1-minute window (before 2015)</span></div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Target push Δ (pips)</span><span class="tl-live" id="fxf-h-d-val">2.0</span></div>
+        <input type="range" id="fxf-h-d" min="0" max="6" step="0.25" value="2">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Scatter of prices in the window σ<sub>w</sub> (pips)</span><span class="tl-live" id="fxf-h-s-val">2.0</span></div>
+        <input type="range" id="fxf-h-s" min="0.5" max="4" step="0.1" value="2">
+      </div>
+    </div>
+    <div class="tl-readout">Share of the window you must own: <b id="fxf-h-share">40.6%</b> · 1-minute window: <b id="fxf-h-t1">24.7 s</b> of 61 · 5-minute window: <b id="fxf-h-t5">122.1 s</b> of 301</div>
+    <div class="tl-hint">Push Δ far beyond σ<sub>w</sub> and both curves flatten at half their window. Shrink σ<sub>w</sub> (a calm, tight market) and even a small push needs nearly half the window.</div>
+    <div class="tl-chart-caption">
+      Computed from \(T_{\text{hold}} = N(\tfrac12 - q)/(1-q)\) with \(q = 1-\Phi(\Delta/\sigma_w)\). At every push the
+      five-minute window demands about five times as many seconds of control as the old one-minute window. That is the
+      whole point of the 2015 change: it did not make manipulation impossible, it made it slower, costlier and easier to see.
+    </div>
+  </div>
+  <script>
+  (function(){
+    var dEl = document.getElementById('fxf-h-d');
+    if (!dEl) return;
+    var sEl = document.getElementById('fxf-h-s');
+    var X0 = 70, X1 = 610, Y0 = 250, Y1 = 30, DMAX = 6, TMAX = 160;
+    function xOf(d){ return X0 + (d / DMAX) * (X1 - X0); }
+    function yOf(t){ return Y0 - (t / TMAX) * (Y0 - Y1); }
+    // Standard normal CDF via Abramowitz-Stegun 7.1.26 erf approximation.
+    function erf(x){
+      var s = x < 0 ? -1 : 1; x = Math.abs(x);
+      var t = 1 / (1 + 0.3275911 * x);
+      var y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+      return s * y;
+    }
+    function Phi(z){ return 0.5 * (1 + erf(z / Math.SQRT2)); }
+    function share(d, s){ var q = 1 - Phi(d / s); return (0.5 - q) / (1 - q); }
+    var NS = 'http://www.w3.org/2000/svg';
+    function txt(g, x, y, s, anchor){
+      var t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', x); t.setAttribute('y', y); t.setAttribute('text-anchor', anchor);
+      t.setAttribute('fill', 'var(--text3)'); t.setAttribute('font-size', '10.5'); t.setAttribute('font-family', "'DM Mono',monospace");
+      t.textContent = s; g.appendChild(t);
+    }
+    var yt = document.getElementById('fxf-h-yticks'), xt = document.getElementById('fxf-h-xticks');
+    [0, 30, 60, 90, 120, 150].forEach(function(v){ txt(yt, 64, yOf(v) + 4, String(v), 'end'); });
+    [0, 1, 2, 3, 4, 5, 6].forEach(function(v){ txt(xt, xOf(v), 266, String(v), 'middle'); });
+    function setLine(id, t){
+      var l = document.getElementById(id), lb = document.getElementById(id + '-lbl'), y = yOf(t);
+      l.setAttribute('y1', y); l.setAttribute('y2', y); lb.setAttribute('y', y - 5);
+    }
+    setLine('fxf-h-cap5', 150.5); setLine('fxf-h-cap1', 30.5);
+    function update(){
+      var d = parseFloat(dEl.value), s = parseFloat(sEl.value);
+      document.getElementById('fxf-h-d-val').textContent = d.toFixed(2);
+      document.getElementById('fxf-h-s-val').textContent = s.toFixed(1);
+      var p5 = [], p1 = [];
+      for (var i = 0; i <= 60; i++){
+        var dd = DMAX * i / 60, f = share(dd, s);
+        p5.push(xOf(dd).toFixed(1) + ',' + yOf(301 * f).toFixed(1));
+        p1.push(xOf(dd).toFixed(1) + ',' + yOf(61 * f).toFixed(1));
+      }
+      document.getElementById('fxf-h-curve5').setAttribute('d', 'M' + p5.join(' L'));
+      document.getElementById('fxf-h-curve1').setAttribute('d', 'M' + p1.join(' L'));
+      var f = share(d, s), x = xOf(d);
+      var m = document.getElementById('fxf-h-mark'); m.setAttribute('x1', x); m.setAttribute('x2', x);
+      var d5 = document.getElementById('fxf-h-dot5'), d1 = document.getElementById('fxf-h-dot1');
+      d5.setAttribute('cx', x); d5.setAttribute('cy', yOf(301 * f));
+      d1.setAttribute('cx', x); d1.setAttribute('cy', yOf(61 * f));
+      document.getElementById('fxf-h-share').textContent = (f * 100).toFixed(1) + '%';
+      document.getElementById('fxf-h-t1').textContent = (61 * f).toFixed(1) + ' s';
+      document.getElementById('fxf-h-t5').textContent = (301 * f).toFixed(1) + ' s';
+    }
+    dEl.addEventListener('input', update); sEl.addEventListener('input', update);
+    update();
+  })();
+  </script>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Filling a fixing order, honestly and otherwise (illustrative numbers)</h3>
+    <p>
+      An index fund needs to buy €500m against dollars at today's 4pm fix. Another client of the same bank needs to
+      sell €200m at the fix. The bank accepts both orders: it promises to deal with each client at the fix rate, plus
+      an agreed, disclosed fee. The bank does not know that rate yet.
+    </p>
+    <p>
+      <strong>Step 1, net.</strong> The two orders partly cancel. The bank can cross €200m of the fund's purchase
+      against the seller internally, at the fix, so only the residual has to go to the market:
+    </p>
+    <div class="tl-math">\[ \text{€500m} - \text{€200m} = \text{€300m to buy} \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>€500m</code><span>client buy order at the fix</span></div>
+      <div class="tl-eq-chip c2"><code>€200m</code><span>client sell order at the fix, crossed internally</span></div>
+      <div class="tl-eq-chip c3"><code>€300m</code><span>the residual the bank must buy in the market</span></div>
+    </div>
+    <p>
+      <strong>Step 2, size the risk.</strong> In EUR/USD a pip is 0.0001 dollars per euro, so on €300m every pip of
+      difference between the bank's buying price and the fix is
+    </p>
+    <div class="tl-math">\[ 300{,}000{,}000 \times 0.0001 = \$30{,}000 \text{ per pip} \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>0.0001</code><span>one pip in EUR/USD</span></div>
+      <div class="tl-eq-chip c4"><code>$30,000</code><span>the bank's profit or loss per pip of mismatch</span></div>
+    </div>
+    <p>
+      <strong>Step 3a, the honest fill.</strong> The bank buys the €300m spread through the window, because buying
+      evenly while the median is being measured is the closest it can get to paying the median. Say it averages
+      1.10012 and the fix prints 1.10010. It sold to the client at 1.10010 but paid 1.10012: a 0.2-pip shortfall, or
+      \(0.00002 \times 300{,}000{,}000 = \$6{,}000\), which the agreed fee is meant to cover. The bank was paid for
+      carrying risk, not for moving the price.
+    </p>
+    <p>
+      <strong>Step 3b, the conflicted fill.</strong> Instead the bank buys the whole €300m between 15:50 and 15:57,
+      before the window, averaging 1.09990. Its own buying lifts the market, and the fix prints 1.10010. It still
+      sells to the client at the fix, so it keeps
+    </p>
+    <div class="tl-math">\[ (1.10010 - 1.09990) \times 300{,}000{,}000 = \$60{,}000 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>1.09990</code><span>bank's average buying price, before the window</span></div>
+      <div class="tl-eq-chip c2"><code>1.10010</code><span>the fix the client is charged</span></div>
+      <div class="tl-eq-chip c4"><code>$60,000</code><span>the bank's gain: 2 pips paid by its own client</span></div>
+    </div>
+    <p style="margin-bottom:0">
+      The two pips the client overpaid exist partly <em>because</em> the bank bought first. That is the conflict at the
+      heart of fixing orders, and why the FX Global Code's examples of unacceptable practice include buying more than the
+      client's interest just before the window "with the intent of inflating or deflating the price against the Client."
+      Trading before the window is not banned in itself: the same principle allows working an order before, during or
+      after the window "so long as not to intentionally negatively impact the market price and outcome to the Client."
+      The line is intent, and what the bank does with what it knows.
+    </p>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>The trap: "my order, my information".</strong> A client's fixing order is the client's information, not the
+    bank's trading signal. Sharing it with traders at other banks, trading extra size in front of it, or timing your own
+    book around it are exactly the behaviours regulators fined in 2014 and 2015. The FSB's recommendations say market-makers
+    should not share information about their positions or flows with each other beyond what a transaction needs.
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Activity and volatility around the 4pm fix (stylised)</div>
+    <svg viewBox="0 0 640 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two stacked stylised panels from 15:50 to 16:10 London time. Top: bars of trading activity per 15 seconds, flat early, rising from 15:55, jumping when the fix window opens and dropping straight back after it closes. Bottom: a volatility line that rises inside the window and peaks early in it. Buttons switch between the five-minute window and the old one-minute window, and between an ordinary day, a month-end and a quarter-end.">
+      <rect id="fxf-p-band" x="0" y="26" width="0" height="290" style="fill:var(--blue);opacity:.10"/>
+      <line x1="60" y1="210" x2="610" y2="210" style="stroke:var(--border)"/>
+      <line x1="60" y1="310" x2="610" y2="310" style="stroke:var(--border)"/>
+      <g id="fxf-p-bars"></g>
+      <path id="fxf-p-vol" d="" style="stroke:var(--amber);stroke-width:2.2;fill:none"/>
+      <line id="fxf-p-vbase" x1="60" y1="0" x2="610" y2="0" style="stroke:var(--text3);stroke-dasharray:2,4;opacity:.7"/>
+      <text x="64" y="40" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">trading activity per 15 s</text>
+      <text id="fxf-p-peak" x="606" y="40" text-anchor="end" fill="var(--blue)" font-size="10.5" font-family="'DM Mono',monospace">peak</text>
+      <text x="64" y="232" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">price volatility</text>
+      <text x="60" y="328" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">15:50</text>
+      <text x="335" y="328" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">16:00</text>
+      <text x="610" y="328" text-anchor="end" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">16:10</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Fix window</span></div>
+        <div class="tl-btnrow" id="fxf-p-win">
+          <button type="button" class="tl-btn active" data-h="150">5 min (since Feb 2015)</button>
+          <button type="button" class="tl-btn" data-h="30">1 min (before 2015)</button>
+        </div>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Day</span></div>
+        <div class="tl-btnrow" id="fxf-p-day">
+          <button type="button" class="tl-btn active" data-m="1">Ordinary day</button>
+          <button type="button" class="tl-btn" data-m="1.9">Month-end</button>
+          <button type="button" class="tl-btn" data-m="2.4">Quarter-end</button>
+        </div>
+      </div>
+    </div>
+    <div class="tl-readout">Share of the 20 minutes' activity inside the window: <b id="fxf-p-share">48.5%</b> · peak: <b id="fxf-p-max">3.2×</b> a normal 15 seconds</div>
+    <div class="tl-hint">Switch to the one-minute window: the same fix-related volume squeezed into a fifth of the time makes a far taller, narrower spike. Then try quarter-end.</div>
+    <div class="tl-chart-caption">
+      Stylised, not measured: the heights are made up so the shapes can be compared. The shapes follow what the FSB
+      (2014) and the administrator (WMR market analysis, 2020–21 data) describe: activity rises gently from about 15:55,
+      jumps as the window opens at 15:57:30, stays high, tails off in the last 30 to 60 seconds and falls straight back
+      after; volatility rises slightly and peaks in the first 30 seconds; month-ends are consistently busier; and spreads
+      tighten inside the window rather than widen. One real number for scale: in WMR's analysis of EUR/USD from Q1 2020 to
+      Q1 2021, the average absolute move from the 3pm to the 4pm rate was 0.1209%, against 0.0810% from 4pm to 5pm.
+    </div>
+  </div>
+  <script>
+  (function(){
+    var win = document.getElementById('fxf-p-win');
+    if (!win) return;
+    var day = document.getElementById('fxf-p-day');
+    var H = 150, M = 1;
+    var X0 = 60, X1 = 610, T0 = -600, T1 = 600;
+    var AB = 210, AT = 50, VB = 300, VT = 238;
+    function xOf(t){ return X0 + (t - T0) / (T1 - T0) * (X1 - X0); }
+    function shape(u, old){
+      if (old) return 1 - 0.45 * u;
+      var s = 1;
+      if (u < 0.1) s = 1.15 - 1.5 * u;
+      if (u > 0.8) s = 1 - (u - 0.8) / 0.2 * 0.55;
+      return s;
+    }
+    // Same total fix-related volume in both windows: the 1-minute excess is ~5x taller per second.
+    function act(t, h, m){
+      var old = h === 30, E5 = 2 * m, E = old ? E5 * 5 * (0.952 / 0.775) : E5;
+      if (t >= -h && t <= h) return 1 + E * shape((t + h) / (2 * h), old);
+      var r0 = h + (old ? 30 : 150);
+      if (t >= -r0 && t < -h){ var x = (t + r0) / (r0 - h); return 1 + 0.5 * Math.sqrt(m) * x * x; }
+      if (t > h && t <= h + 60) return 1 + 0.15 * (1 - (t - h) / 60);
+      return 1;
+    }
+    function vol(t, h, m){
+      var old = h === 30, k = Math.sqrt(m);
+      if (t >= -h && t <= h){
+        if (old) return 1 + 0.8 * k;
+        return (t < -h + 30) ? 1 + 0.5 * k : 1 + 0.2 * k;
+      }
+      if (t > h && t <= h + 60) return 1.05;
+      return 1;
+    }
+    var NS = 'http://www.w3.org/2000/svg';
+    function draw(){
+      var bars = document.getElementById('fxf-p-bars');
+      while (bars.firstChild) bars.removeChild(bars.firstChild);
+      var buckets = [], tot = 0, inWin = 0, mx = 0, t;
+      for (t = T0; t < T1; t += 15){
+        var s = 0;
+        for (var j = 0; j < 15; j++){
+          var a = act(t + j, H, M); s += a; tot += a;
+          if (t + j >= -H && t + j <= H) inWin += a;
+        }
+        buckets.push([t, s / 15]); if (s / 15 > mx) mx = s / 15;
+      }
+      var top = Math.max(mx, 3.5), bw = (X1 - X0) / buckets.length;
+      buckets.forEach(function(b){
+        var r = document.createElementNS(NS, 'rect'), hgt = (b[1] / top) * (AB - AT);
+        var inside = b[0] + 15 > -H && b[0] < H;
+        r.setAttribute('x', (xOf(b[0]) + 0.6).toFixed(1)); r.setAttribute('width', (bw - 1.2).toFixed(1));
+        r.setAttribute('y', (AB - hgt).toFixed(1)); r.setAttribute('height', hgt.toFixed(1));
+        r.setAttribute('fill', inside ? 'var(--blue)' : 'var(--text3)'); r.setAttribute('opacity', inside ? '0.85' : '0.45');
+        bars.appendChild(r);
+      });
+      var vmax = 1 + 0.8 * Math.sqrt(2.4), pts = [];
+      for (t = T0; t <= T1; t += 5){
+        var v = vol(t, H, M), y = VB - (v - 1) / (vmax - 1) * (VB - VT) * 0.92 - 8;
+        pts.push(xOf(t).toFixed(1) + ',' + y.toFixed(1));
+      }
+      document.getElementById('fxf-p-vol').setAttribute('d', 'M' + pts.join(' L'));
+      var vb = document.getElementById('fxf-p-vbase'); vb.setAttribute('y1', VB - 8); vb.setAttribute('y2', VB - 8);
+      var band = document.getElementById('fxf-p-band');
+      band.setAttribute('x', xOf(-H).toFixed(1)); band.setAttribute('width', (xOf(H) - xOf(-H)).toFixed(1));
+      document.getElementById('fxf-p-share').textContent = (inWin / tot * 100).toFixed(1) + '%';
+      document.getElementById('fxf-p-max').textContent = mx.toFixed(1) + '×';
+      document.getElementById('fxf-p-peak').textContent = 'peak ≈ ' + mx.toFixed(1) + '× normal';
+    }
+    function wire(row, key){
+      row.addEventListener('click', function(e){
+        var b = e.target.closest('button'); if (!b) return;
+        Array.prototype.forEach.call(row.querySelectorAll('button'), function(x){ x.classList.toggle('active', x === b); });
+        if (key === 'h') H = parseInt(b.getAttribute('data-h'), 10); else M = parseFloat(b.getAttribute('data-m'));
+        draw();
+      });
+    }
+    wire(win, 'h'); wire(day, 'm');
+    draw();
+  })();
+  </script>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A month-end estimate, start to finish (illustrative numbers)</h3>
+    <p>
+      It is the last business day of the month. Month to date, US equities are up 4% and foreign equities are up 1% in
+      their own currencies. Suppose foreign investors hold \(A = \$600\)bn of US equities with the dollar hedged, and US
+      investors hold \(B = \$400\)bn of foreign equities with the currency hedged. These holdings are made up for the
+      example; the real ones are not published in this form.
+    </p>
+    <div class="tl-math">\[ A\,r_{US} = 600 \times 0.04 = \$24\text{bn of dollars to sell} \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>A = $600bn</code><span>hedged US equities owned abroad</span></div>
+      <div class="tl-eq-chip c2"><code>r_US = 4%</code><span>US equity return this month</span></div>
+    </div>
+    <div class="tl-math">\[ B\,r_F = 400 \times 0.01 = \$4\text{bn of dollars to buy} \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>B = $400bn</code><span>hedged foreign equities owned by US investors</span></div>
+      <div class="tl-eq-chip c3"><code>r_F = 1%</code><span>foreign equity return in local currency</span></div>
+    </div>
+    <div class="tl-math">\[ \text{Flow}_{USD} = 4 - 24 = -\$20\text{bn} \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c4"><code>−$20bn</code><span>net dollar selling from hedge top-ups</span></div>
+    </div>
+    <p style="margin-bottom:0">
+      If about half of that is executed at the fix itself (the rest spread over the preceding days or done some other
+      way), the fix sees roughly $10bn of net dollar selling. Read the answer as a <strong>direction and an order of
+      magnitude</strong>: the dollar is more likely to be offered than bid into 4pm. The size depends on holdings,
+      hedge ratios and timing that nobody outside the funds knows precisely.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Month-end hedge-rebalancing estimator</h3>
+    <p>
+      Starts on the worked example's numbers. Enter the hedged holdings, the month-to-date equity returns and the share
+      you think goes through the fix. The calculator does the arithmetic above and tells you which way the dollar flow
+      points. All inputs are your assumptions; none of them is published data.
+    </p>
+    <div class="tl-predict" data-answer="10" data-tol="1" data-unit="bn">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Keep \(A = \$600\)bn and \(B = \$400\)bn, but swap the returns: US equities up 1% and foreign equities up 4%. How many billion dollars is the net flow, and which way does it point? Lock in a number, then type 1 and 4 into the two return fields below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About $10bn of net dollar buying.</strong> Foreign hedgers now sell only \(600 \times 1\% = \$6\)bn, while US hedgers buy \(400 \times 4\% = \$16\)bn, so the flow is \(16 - 6 = +\$10\)bn. The sign flipped because the market that rose most flipped. Now set both returns to 3% and see why a bigger holding on one side still decides the direction.</p></div>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>A: hedged US equities held abroad ($bn)</span></div>
+        <input type="number" id="fxf-me-a" class="tl-scratch-input" value="600" step="50" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>US equity return this month (%)</span></div>
+        <input type="number" id="fxf-me-rus" class="tl-scratch-input" value="4" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>B: hedged foreign equities held by US investors ($bn)</span></div>
+        <input type="number" id="fxf-me-b" class="tl-scratch-input" value="400" step="50" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Foreign equity return, local currency (%)</span></div>
+        <input type="number" id="fxf-me-rf" class="tl-scratch-input" value="1" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Share executed at the 4pm fix (%)</span></div>
+        <input type="number" id="fxf-me-share" class="tl-scratch-input" value="50" step="5" min="0" max="100">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Foreign hedgers sell <b id="fxf-me-sell">$24.0bn</b> · US hedgers buy <b id="fxf-me-buy">$4.0bn</b>
+    </div>
+    <div class="tl-readout">
+      Net dollar flow: <b id="fxf-me-net">−$20.0bn (selling)</b> · through the fix: <b id="fxf-me-fix">−$10.0bn</b>
+      <span id="fxf-me-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="fxf-me-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario (illustrative)</div>
+    <h3>Long USD/JPY into a quarter-end, with US stocks well ahead</h3>
+    <p>
+      It is the last business day of a quarter. US equities have rallied hard over the quarter while Japanese and
+      European equities are flat. You are long USD/JPY from a macro view, with a stop 25 pips below the market, and it is
+      15:40 in London. The month-end arithmetic points one way: hedgers abroad must sell dollars to top up their hedges,
+      and some of it will hit the 4pm fix. The window will be busy, spreads tight, and the price can jump in the first
+      30 seconds.
+    </p>
+    <p>
+      Three sensible moves. <strong>One:</strong> decide before 15:57:30 whether you want to carry the position through
+      the window at all; a stop sitting a few pips away is a stop placed in the busiest five minutes of the day.
+      <strong>Two:</strong> if you hold, widen the stop to something the fix can plausibly print through, or cut size
+      so the wider stop costs the same. <strong>Three:</strong> do not chase the move after 16:02:30. The forced flow is
+      finished once the window closes, and research on the major fixes finds the dollar's pre-fix move tends to reverse
+      afterwards rather than continue.
+    </p>
+    <p style="margin-bottom:0">
+      What you should not do: try to "front-run the fix" with size you would not otherwise trade. The expected edge is a
+      few basis points on a normal day, the estimate of the flow is rough, everyone else has the same estimate, and
+      part of the flow trades in the days before.
+    </p>
+  </div>
+
+  <!-- WB:fx_fixings_wm_reuters:START -->
+  <div class="wb" id="wb-fx_fixings_wm_reuters" data-title="Filling a fixing order, and why the fix became five minutes">
+    <script type="application/json">{"w":600,"h":800,"intro":"One fixing order, filled two ways; the five-minute median; the fines of 12 November 2014; and the month-end sign rule. The lesson's own numbers, step by step.","steps":[{"cap":"An index fund must buy €500 million against dollars at today's 4pm fix, because its index converts at that rate. It gives the order to a bank. The bank promises the fix rate, which nobody knows yet.","do":[{"icon":"fund","name":"crowd","x":20,"y":10,"s":0.7,"tone":"blue","label":"index fund","lsize":17},{"icon":"bank","name":"bank","x":490,"y":40,"s":0.75,"tone":"purple","label":"bank","sym":"$","lsize":17},{"chip":"buy","x":230,"y":50,"text":"buy €500m at the fix","tone":"green"},{"move":"buy","x":370,"y":50,"ms":1100}]},{"cap":"Another client sells €200 million at the same fix. The bank crosses the two internally, so only €300 million has to be bought in the market. On €300 million, every pip is $30,000.","do":[{"icon":"seller","name":"person","x":25,"y":140,"s":0.6,"tone":"amber","label":"other client","lsize":17},{"chip":"sell","x":230,"y":175,"text":"sell €200m at the fix","tone":"amber"},{"move":"sell","x":370,"y":175,"ms":1100},{"box":"net","x":150,"y":240,"w":430,"h":92,"text":"net: €500m − €200m = €300m to buy\n1 pip on €300m = $30,000","tone":"purple","size":19}]},{"cap":"From 15:57:30 to 16:02:30 the administrator snaps a price every second: 301 samples. The fix is their median, half the samples above and half below. Here it prints 1.10010. The path is illustrative.","do":[{"chart":"px","x":10,"y":352,"w":580,"h":300,"title":"EUR/USD samples (illustrative)","xd":[-420,150],"yd":[-2.6,3.4],"yt":[[-1,"1.09990"],[1,"1.10010"]],"xt":[[-420,"15:53"],[-150,"15:57:30"],[0,"16:00"],[150,"16:02:30"]],"pl":82,"pr":40},{"series":"pre","chart":"px","pts":[[-420,-1.42],[-415,-1.54],[-410,-1.18],[-405,-1.58],[-400,-1.25],[-395,-1.35],[-390,-1.55],[-385,-1.22],[-380,-1.53],[-375,-1.24],[-370,-1.47],[-365,-1.44],[-360,-1.18],[-355,-0.88],[-350,-1.34],[-345,-1.25],[-340,-0.94],[-335,-0.69],[-330,-0.92],[-325,-1.02],[-320,-0.58],[-315,-1.2],[-310,-0.6],[-305,-0.96],[-300,-1.03],[-295,-1.01],[-290,-0.84],[-285,-0.45],[-280,-0.86],[-275,-0.54],[-270,-0.46],[-265,-0.61],[-260,-0.44],[-255,-0.74],[-250,-0.7],[-245,-0.56],[-240,-0.18],[-235,-0.31],[-230,-0.35],[-225,-0.11],[-220,-0.16],[-215,-0.22],[-210,0.18],[-205,0.16],[-200,-0.11],[-195,0.17],[-190,0.19],[-185,0.48],[-180,0.43],[-175,0.18],[-170,0.72],[-165,0.17],[-160,0.43],[-155,0.72],[-150,0.38]],"tone":null,"ms":1000},{"series":"win","chart":"px","pts":[[-150,0.38],[-145,0.65],[-140,-0.02],[-135,0.75],[-130,1.34],[-125,1.32],[-120,1.86],[-115,1.14],[-110,1.43],[-105,1.41],[-100,1.38],[-95,1.13],[-90,1.69],[-85,2.18],[-80,1.61],[-75,1.64],[-70,0.56],[-65,1.13],[-60,1.34],[-55,2.08],[-50,2.18],[-45,1.26],[-40,0.94],[-35,1.28],[-30,0.3],[-25,0.55],[-20,0.16],[-15,-0.15],[-10,-0.42],[-5,0.71],[0,0.18],[5,0.1],[10,0.31],[15,1.29],[20,0.41],[25,0.59],[30,0.87],[35,1.62],[40,1.92],[45,2.17],[50,1.25],[55,0.99],[60,0.74],[65,1.56],[70,2.13],[75,1.0],[80,0.42],[85,0.2],[90,0.09],[95,0.48],[100,0.88],[105,0.51],[110,-0.16],[115,0.22],[120,0.34],[125,0.76],[130,1.69],[135,1.73],[140,1.43],[145,1.45],[150,1.57]],"tone":"blue","ms":1400},{"series":"fix","chart":"px","pts":[[-150,1.0],[150,1.0]],"tone":"green","dash":true,"ms":600,"label":"fix = median","lat":[-150,1.0],"ldx":58,"ldy":-62,"lanchor":"start"}]},{"cap":"The honest fill: the bank buys the €300 million spread evenly through the window, the closest it can get to paying the median. It averages 1.10012 against a 1.10010 fix: 0.2 pips, or $6,000, which the agreed fee is there to cover.","do":[{"note":"honest","x":300,"y":680,"text":"in the window: avg 1.10012 vs fix 1.10010 → −$6,000","size":18,"anchor":"middle","tone":"green"}]},{"cap":"The conflicted fill: the bank buys all €300 million before the window, averaging 1.09990, and its own buying lifts the price into 4pm. The client still pays the 1.10010 fix, so the bank keeps 2 pips: $60,000 of its client's money.","do":[{"series":"ramp","chart":"px","pts":[[-400,-1.0],[-160,-1.0]],"tone":"red","dash":true,"ms":700,"label":"bank buys early, avg 1.09990","lat":[-400,-1.0],"ldx":0,"ldy":34,"lanchor":"start"},{"note":"early","x":300,"y":728,"text":"before the window: avg 1.09990 vs fix 1.10010 → +$60,000","size":18,"anchor":"middle","tone":"red"}]},{"cap":"Now pool orders across banks. Regulators found traders in chat groups with names like \"the players\" and \"the A-team\" sharing client orders. Before 2015 the median used 61 one-second samples: control about half of them, roughly 30 seconds, and the fix is yours.","do":[{"hide":"fund"},{"hide":"seller"},{"hide":"bank"},{"hide":"buy"},{"hide":"sell"},{"hide":"net"},{"hide":"px"},{"hide":"pre"},{"hide":"win"},{"hide":"fix"},{"hide":"honest"},{"hide":"early"},{"hide":"ramp"},{"hide":"rdot"},{"icon":"b1","name":"bank","x":20,"y":10,"s":0.7,"tone":"red","label":"bank A","sym":"$","lsize":17},{"icon":"b2","name":"bank","x":265,"y":10,"s":0.7,"tone":"red","label":"bank B","sym":"$","lsize":17},{"icon":"b3","name":"bank","x":510,"y":10,"s":0.7,"tone":"red","label":"bank C","sym":"$","lsize":17},{"arrow":["b1","b2"],"label":"client flow","tone":"red","bend":-30,"dash":true},{"arrow":["b2","b3"],"label":"client flow","tone":"red","bend":-30,"dash":true},{"box":"pool","x":60,"y":128,"w":480,"h":72,"text":"pooled orders vs a 61-second median","tone":"red","size":20}]},{"cap":"12 November 2014. The FCA fines five banks £1.11 billion, the CFTC fines them $1.475 billion, the OCC fines three US banks $950 million, and FINMA orders UBS to pay 134 million Swiss francs. About $4.3 billion, six banks, one day.","do":[{"chart":"fines","x":10,"y":222,"w":580,"h":262,"title":"12 Nov 2014 fines, $bn (FCA and FINMA converted)","xd":[0.4,4.6],"yd":[0,2.1],"yt":[[0,"0"],[1,"1"],[2,"2"]],"xt":[[1,"FCA"],[2,"CFTC"],[3,"OCC"],[4,"FINMA"]],"pl":46},{"bars":"fb","chart":"fines","data":[[1,1.77,"1.77","blue"],[2,1.475,"1.475","purple"],[3,0.95,"0.95","amber"],[4,0.14,"0.14","green"]],"bw":60,"ms":1200},{"note":"tot","x":400,"y":268,"text":"total ≈ $4.3bn","size":20,"anchor":"middle","tone":"red"}]},{"cap":"From 15 February 2015 the window is five minutes: 301 samples. To push the fix one \"scatter\" above where the market would print, you must hold the price there for about 25 seconds of the old window, but about 122 seconds of the new one.","do":[{"chart":"hold","x":10,"y":500,"w":280,"h":250,"title":"Seconds to hold, Δ = σ","xd":[0.4,2.6],"yd":[0,160],"yt":[[0,"0"],[60,"60"],[120,"120"]],"xt":[[1,"1 min"],[2,"5 min"]],"pl":50},{"bars":"hb","chart":"hold","data":[[1,24.7,"25 s","amber"],[2,122.1,"122 s","blue"]],"bw":56,"ms":1000}]},{"cap":"Month-end. US stocks are up 4% and foreign stocks 1%. Foreign holders of $600 billion of hedged US shares top up their hedges by selling $24 billion; US holders of $400 billion of hedged foreign shares buy $4 billion. Net: about $20 billion of dollar selling (illustrative holdings).","do":[{"chart":"me","x":310,"y":500,"w":280,"h":250,"title":"Month-end USD flow, $bn","xd":[0.4,3.6],"yd":[-34,9],"yt":[[0,"0"],[-20,"−20"]],"xt":[[1,"abroad"],[2,"US"],[3,"net"]],"zero":true,"pl":50},{"bars":"mb","chart":"me","data":[[1,-24,"−24","red"],[2,4,"+4","green"],[3,-20,"−20","red"]],"bw":40,"ms":1100}]},{"cap":"So: the fix is a five-minute median that the whole buy side marks to. Expect a crowd at 4pm, a bigger one at month-end, and sell pressure on the currency whose stock market rose most. And never trade on someone else's order.","do":[{"note":"end1","x":300,"y":768,"text":"median of 301 seconds · month-end sign rule\nclient flow is never your signal","size":17,"anchor":"middle","tone":"amber"}]}]}</script>
+  </div>
+  <!-- WB:fx_fixings_wm_reuters:END -->
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: the FX fixing scandal, 2013–2015</h2>
+  <p>
+    Every piece of this lesson's mechanics shows up in the scandal: the one-minute window, the netting of fixing
+    orders, the private knowledge of client flow, and the median that a group could dominate when it pooled its orders.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Chat rooms, a one-minute window, and $4.3 billion in one day</h3>
+    <p>
+      In June 2013 Bloomberg News reported, citing dealers with knowledge of the practice, that traders at some of the
+      biggest banks had been pushing through trades before and during the 60-second window to move the WM/Reuters
+      rates, and colluding with counterparts to improve their odds. Regulators in the UK, the US, Switzerland and
+      elsewhere opened investigations. The Financial Stability Board set up a group to review the benchmarks, and its
+      final report on 30 September 2014 recommended widening the window, transparent pricing of fixing orders, separate
+      handling of them inside banks, and no sharing of positions or flows between market-makers.
+    </p>
+    <p>
+      On 12 November 2014 the regulators acted together. The UK's Financial Conduct Authority fined Citibank, HSBC,
+      JPMorgan Chase, RBS and UBS a combined £1,114,918,000 for failings in G10 spot FX between January 2008 and October
+      2013. It found that traders formed tight groups with names such as "the players", "the 3 musketeers" and "the
+      A-team", shared confidential information about client orders, and used it to try to manipulate the 4pm WM/Reuters
+      and the 1:15pm (London time) ECB fixes and to trigger clients' stop-loss orders. The US Commodity Futures Trading
+      Commission fined the same five banks $1.475bn (Citibank and JPMorgan $310m each, RBS and UBS $290m each, HSBC
+      $275m). The US Office of the Comptroller of the Currency fined Bank of America $250m, Citibank $350m and JPMorgan
+      $350m. Switzerland's FINMA ordered UBS to pay CHF 134m. Six banks, about $4.3bn in one day.
+    </p>
+    <p>
+      Barclays had pulled out of that settlement. On 20 May 2015 Citicorp, JPMorgan, Barclays and RBS agreed to plead
+      guilty in the US to conspiring to manipulate the price of dollars and euros, with criminal fines of $925m, $550m,
+      $650m and $395m. The Justice Department said euro-dollar traders who called themselves "The Cartel" had coordinated
+      trading around the ECB and WM/Reuters fixes and agreed to hold back bids or offers so as not to move the rate
+      against each other's positions. The same day the Federal Reserve fined six banks more than $1.8bn. In between, on
+      15 February 2015, the 4pm window was widened from one minute to five.
+    </p>
+    <p style="margin-bottom:0">
+      Individual prosecutions went less well for the authorities. Three of the traders in that chat room were charged in
+      the US in January 2017 and acquitted by a jury in Manhattan on 26 October 2018. The lasting changes were to the
+      market's plumbing: the five-minute median, separate fix desks, transparent fees, and the FX Global Code, first
+      published in May 2017, whose Principle 10 sets out what a bank handling a fixing order may and may not do.
+    </p>
+  </div>
+
+  <div class="tl-stat-row">
+    <div class="tl-stat blue"><div class="tl-stat-num">£1.11bn</div><div class="tl-stat-label">FCA, five banks</div><div class="tl-stat-sub">12 Nov 2014</div></div>
+    <div class="tl-stat purple"><div class="tl-stat-num">$1.475bn</div><div class="tl-stat-label">CFTC, five banks</div><div class="tl-stat-sub">12 Nov 2014</div></div>
+    <div class="tl-stat amber"><div class="tl-stat-num">$950m</div><div class="tl-stat-label">OCC, three US banks</div><div class="tl-stat-sub">12 Nov 2014</div></div>
+    <div class="tl-stat green"><div class="tl-stat-num">CHF 134m</div><div class="tl-stat-label">FINMA, UBS</div><div class="tl-stat-sub">12 Nov 2014</div></div>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Order flow</b>Clients leave large orders to trade at the 4pm fix</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson: a 1-minute median</b>Pool orders across banks and you can dominate half of a 61-second window</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Chat rooms</b>Traders share client flow and coordinate around the ECB and 4pm fixes</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>June 2013</b>Bloomberg reports it; regulators investigate; FSB reviews the benchmarks</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>~$4.3bn fines on 12 Nov 2014; guilty pleas in May 2015; 5-minute window from 15 Feb 2015</div>
+  </div>
+  <p>
+    The starred link is the mechanism from Section 02. A median over 61 seconds is hard for one bank with one order to
+    move, but a group that nets its orders together and agrees not to trade against each other can control enough of
+    the window.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>A median protects against one big trader, not against a coordinated crowd</h3>
+    <p style="margin-bottom:0">
+      The median argument in Section 02 assumes the "ordinary" samples are independent of whoever is pushing. Collusion
+      breaks exactly that assumption: if several banks trade the same way, or hold back the other way, the ordinary
+      samples stop being ordinary and \(q\) rises in the pusher's favour. A wider window raises the cost, but the deeper
+      fix was behavioural: separate desks, recorded procedures, no sharing of client flow, and transparent fees so banks
+      are paid for risk rather than for where the fix prints. The DOJ's description of "The Cartel" holding back bids and
+      offers is the median's weak spot in plain sight.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Some kids who were in charge of lining everyone up for the class photo whispered to each other about where people were going to stand, then shuffled the line so the photo came out the way that helped them. When the teachers found out, the schools had to pay huge fines, and now the photo takes five minutes and nobody in charge of the line is allowed to whisper.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>The other fixes on the clock.</strong> The 4pm London rate is the biggest, but not the only one, and
+    research finds the same pattern around all the major ones.
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🇬🇧</div>
+      <h4>WMR 4pm London</h4>
+      <p>The closing spot rate for 150+ currencies, from a five-minute median. WMR also publishes intraday rates through the day (half-hourly for the main currencies), a 2pm CET fix and a 12 noon New York fix.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🇪🇺</div>
+      <h4>ECB reference rates</h4>
+      <p>Set by a daily concertation between central banks, now normally around 14:10 CET (it was 14:15 CET at the time of the scandal) and, since 1 July 2016, published at around 16:00 CET. The ECB says they are for information only and strongly discourages using them for transactions.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🇯🇵</div>
+      <h4>Tokyo 9:55 fix</h4>
+      <p>Each Japanese bank sets its own rate for customers from market prices at about 9:55am Tokyo time. Payment days ending in 5 or 0 ("gotobi") and month-ends bring heavier importer dollar demand, and the dollar tends to firm into 9:55.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔄</div>
+      <h4>The round-the-clock pattern</h4>
+      <p>Krohn, Mueller and Whelan (2024) find the dollar tends to rise into the Tokyo, ECB and London fixes and fall back afterwards: roughly 2.5 basis points each way per day across nine major currencies, 1999 to 2019.</p>
+    </div>
+  </div>
+  <p>
+    <strong>How banks fill fixing orders today.</strong> The FSB declined to ban trading at a yet-to-be-determined
+    price, because clients need it. Instead the sell side now typically does four things. It prices the service openly,
+    with a disclosed fee or spread rather than an "at mid, free" promise that pushed dealers to earn their money from the
+    price. It runs fixing orders through separate, documented processes, often on a dedicated desk or algorithm. It nets
+    client interest internally and executes only the residual. And it works that residual through the calculation
+    window, sometimes starting earlier, in a way it can show was meant to track the fix rather than move it. The FSB
+    also encouraged industry netting facilities, where orders to trade at the fix are matched against each other
+    before anything reaches the market.
+  </p>
+  <p>
+    <strong>How the buy side uses it.</strong> The FSB found a clear split. Passive funds and ETFs favour the fix
+    because it removes currency tracking error. Many active managers deliberately avoid it, noting that the most liquid
+    moment of the day is not the same as the best price, and execute through the day with algorithms instead. Asset
+    managers are expected to do due diligence on which rate and execution method actually serves their clients.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card green">
+      <h4>What a trader should do around a fix</h4>
+      <ul>
+        <li>Keep a fix calendar: 4pm London daily, month-end and quarter-end above all, the ECB rate at 14:10 CET, Tokyo 9:55 (busiest on 5th and 10th days).</li>
+        <li>Estimate the month-end sign from relative equity performance, and treat the size as rough.</li>
+        <li>Decide about stops and size before 15:57:30, not during the window.</li>
+        <li>If you must execute size, choose consciously between the fix (liquid, tight spreads, everyone's price) and an algorithm over a longer period.</li>
+        <li>If you handle client fixing orders, follow your written procedure and the FX Global Code's Principle 10.</li>
+      </ul>
+    </div>
+    <div class="tl-compare-card red">
+      <h4>What a trader should not do</h4>
+      <ul>
+        <li>Share, ask for or act on another party's fixing orders, positions or flows.</li>
+        <li>Trade extra size into the window, or just before it, intending to move the print.</li>
+        <li>Treat the pre-fix drift as a free trade: it is a few basis points against your costs, and it reverses.</li>
+        <li>Leave a tight stop sitting in the window on a big month-end and call the fill bad luck.</li>
+        <li>Assume the month-end estimate is all still to come: part of it trades in the days before.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where traders get the fix wrong</h3>
+    <p>
+      <strong>Confusing the fix with the close.</strong> FX has no official close; "the 4pm fix" and "the New York 5pm
+      roll" are different things. Many charting platforms draw daily bars at New York 5pm, so a daily candle and a
+      fund's valuation rate are not the same price, and month-end performance figures in different reports can disagree
+      for that reason alone.
+    </p>
+    <p>
+      <strong>Forgetting the clock changes.</strong> The window is 4pm London local time. During the few weeks a year
+      when the UK and US change clocks on different dates, it is not at 11am New York.
+    </p>
+    <p>
+      <strong>Treating the month-end model as a forecast of size.</strong> The arithmetic gives a sign and an order of
+      magnitude. Hedge ratios, the share executed at the fix, pre-positioning and other flows (index changes, corporate
+      payments, mandate transfers) all move the real number, and the market prices in some of the estimate before 4pm.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>Reading every spike as manipulation.</strong> Price moves in the window are mostly the net balance of
+      genuine supply and demand finally meeting. The FSB noted this explicitly. A big print at a quarter-end fix is
+      usually just a big imbalance.
+    </p>
+  </div>
+
+  <div class="tl-drill" data-date="2014-11-12">
+    <div class="tl-drill-label">Scenario drill · 12 November 2014</div>
+    <h3>A chat message the day the fines landed</h3>
+    <p>You run the G10 spot desk at a bank. For tomorrow's 4pm fix you hold a client order to buy €400m and another client's order to sell €150m, both at the fix plus an agreed fee. A trader you have known for years at another bank messages you in a chat group: "Big euro buyer at the fix tomorrow? Me too. Pass yours to me and I'll make sure it goes our way." What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Tell him your net and agree to pool the orders so one of you dominates the window.<div class="tl-drill-why">This is the conduct regulators fined: sharing client order information between banks and coordinating to move a fix. With a median, pooling orders is exactly what makes a push possible. It is also how the US criminal case against four banks was built.</div></li>
+      <li data-verdict="bad">Say nothing, but buy an extra €250m of your own just before the window, then sell it back during the window.<div class="tl-drill-why">Trading more than the client's interest just before the window to inflate the price against the client is a listed unacceptable practice. Doing it alone instead of with a friend does not change what it is.</div></li>
+      <li data-verdict="good">Decline to discuss client business, cross the €150m internally and work the €250m residual through the window under your documented procedure.<div class="tl-drill-why">This is what the FSB's September 2014 recommendations ask for, and what the FX Global Code later wrote down: no sharing of flows, netting client interest, executing the net amount in a way meant to track the fix, paid by a transparent fee.</div></li>
+      <li data-verdict="ok">Stop accepting fixing orders at all.<div class="tl-drill-why">You can't misuse what you don't hold, so it is safe. But clients still need the service, and the FSB chose not to ban fix trading for that reason. Handling the orders properly serves them better than refusing them.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> That day the FCA fined Citibank, HSBC, JPMorgan Chase, RBS and UBS a combined £1.11bn, after finding that traders in groups with names like "the players" and "the A-team" had shared client order information and tried to manipulate the 4pm WM/Reuters and ECB fixes. The CFTC fined the same five banks $1.475bn, the OCC fined Bank of America, Citibank and JPMorgan $950m, and FINMA ordered UBS to pay CHF 134m: about $4.3bn in total. On 20 May 2015 Citicorp, JPMorgan, Barclays and RBS agreed to plead guilty in the US over a euro-dollar chat room whose members called themselves "The Cartel", and the Federal Reserve fined six banks more than $1.8bn.</p></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A fix is one agreed rate for one moment.</strong> The WM/Reuters (now WMR) 4pm London closing rate is the one indices, fund valuations and custodians use, so a large share of benchmark-linked FX is timed to it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Since 15 February 2015 it is a five-minute median</strong>, 15:57:30 to 16:02:30 London time, of one-second snapshots of trades and best quotes. Before that the window was one minute.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Moving a median means owning about half the window.</strong> \(T_{\text{hold}} = N(\tfrac12-q)/(1-q)\): roughly 30 seconds of pushing at most before 2015, roughly 150 seconds now. Wider windows make manipulation slower, costlier and more visible.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fixing orders are a promise at an unknown price.</strong> Banks net client interest and trade the residual around the window; on €300m, every pip of mismatch is $30,000, which is why pricing and process must be transparent.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Month-end sign rule:</strong> hedge top-ups sell the currency of the stock market that rose most. \(\text{Flow}_{USD} = B\,r_F - A\,r_{US}\) gives the direction and a rough size.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Know it, don't worship it.</strong> The pre-fix drift is a few basis points and tends to reverse; flow estimates are rough and partly priced in. Use the fix calendar to manage stops and execution, not as a stand-alone signal.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Client flow is never your signal.</strong> Sharing fixing orders and coordinating around the fix cost six banks about $4.3bn on 12 November 2014, led to guilty pleas in May 2015, and is now spelled out as unacceptable in the FX Global Code.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why do index funds want to trade FX at the 4pm London fix even if it is not the cheapest moment of the day?</summary>
+    <div class="tl-answer">
+      Because the index, and therefore the fund's benchmark, converts foreign holdings at that same rate. Trading at the
+      rate you are measured against removes currency tracking error: whatever the rate is, the fund and its index use the
+      same one. The FSB found passive funds and ETFs were the most likely users of the fix for exactly this reason, while
+      many active managers avoid it and trade through the day instead.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Since February 2015, what window and statistic define the WMR 4pm rate for a major currency pair, and what was it before?</summary>
+    <div class="tl-answer">
+      A median of one-second snapshots (executed trades, with best bid and offer as a fallback) over five minutes,
+      from 15:57:30 to 16:02:30 London time: 301 samples. Before 15 February 2015 it was one minute, 15:59:30 to
+      16:00:30: 61 samples. The FSB's September 2014 report recommended the wider window.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Using the hold-time formula, roughly how many seconds must someone hold EUR/USD one "scatter" (Δ = σ_w) above the clean level to move the median there, in the old and new windows?</summary>
+    <div class="tl-answer">
+      With \(\Delta = \sigma_w\), \(q = 1 - \Phi(1) \approx 0.1587\), so the share needed is
+      \((0.5 - 0.1587)/(1 - 0.1587) \approx 0.406\). That is about \(0.406 \times 61 \approx 25\) seconds in the
+      one-minute window and \(0.406 \times 301 \approx 122\) seconds in the five-minute window. For pushes far outside
+      the natural scatter the answer approaches half the window: 30 and 150 seconds.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A bank holds client fixing orders to buy €500m and sell €200m of EUR/USD. What does it need to trade, and what is a pip worth on that amount?</summary>
+    <div class="tl-answer">
+      It can cross €200m internally at the fix and only needs to buy the residual €300m in the market. A pip is 0.0001
+      dollars per euro, so on €300m it is \(300{,}000{,}000 \times 0.0001 = \$30{,}000\). That is the bank's profit or
+      loss for every pip between its average buying price and the fix, which is why the risk has to be priced openly
+      and the execution designed to track, not move, the fix.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. At month-end, US stocks are up 4% and foreign stocks up 1%. Which way should hedge rebalancing push the dollar at the fix, and why?</summary>
+    <div class="tl-answer">
+      Towards dollar selling. Foreign investors holding hedged US shares now own more dollars' worth of stock than their
+      hedges cover, so they sell more dollars forward. US investors holding hedged foreign shares top up by selling a
+      smaller amount of foreign currency, which means buying dollars. With \(A = 600\), \(B = 400\) (in $bn):
+      \(400 \times 1\% - 600 \times 4\% = 4 - 24 = -\$20\)bn. The currency of the market that rose most gets sold.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. What did the 12 November 2014 enforcement actions find, who imposed them, and roughly how much did they total?</summary>
+    <div class="tl-answer">
+      The FCA (£1.11bn on Citibank, HSBC, JPMorgan Chase, RBS and UBS), the CFTC ($1.475bn on the same five), the OCC
+      ($950m on Bank of America, Citibank and JPMorgan) and FINMA (CHF 134m from UBS): about $4.3bn across six banks.
+      Regulators found traders had shared confidential client order information in chat groups and attempted to
+      manipulate FX benchmarks including the 4pm WM/Reuters fix. Criminal guilty pleas by Citicorp, JPMorgan, Barclays
+      and RBS followed on 20 May 2015.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Financial Stability Board, <em>Foreign Exchange Benchmarks: Final Report</em>, 30 September 2014 — the review behind the five-minute window, with a clear description of the old WM/Reuters method, how the market uses the fix, trading patterns around it, and the fifteen recommendations.</li>
+    <li>Global Foreign Exchange Committee, <em>FX Global Code</em>, first published May 2017, updated December 2024 — Principle 10 lists acceptable and unacceptable practices for handling fixing orders.</li>
+    <li>LSEG / FTSE Russell, <em>WMR FX Benchmarks</em> methodology, fact sheet and "WMR Spot Rates – Market Analysis" — the administrator's own description of the window, sources and the activity, spread and volatility patterns around 4pm.</li>
+    <li>Financial Conduct Authority, "FCA fines five banks £1.1 billion for FX failings and announces industry-wide remediation programme", press release and final notices, 12 November 2014; CFTC Release 7056-14 and OCC News Release 2014-157, same day.</li>
+    <li>US Department of Justice, "Five Major Banks Agree to Parent-Level Guilty Pleas", 20 May 2015; Federal Reserve Board enforcement press release, same day.</li>
+    <li>Michael Melvin and John Prins, "Equity hedging and exchange rates at the London 4 p.m. fix", <em>Journal of Financial Markets</em> 22 (2015), 50–72 — the month-end hedge-rebalancing channel, tested.</li>
+    <li>Ingomar Krohn, Philippe Mueller and Paul Whelan, "Foreign Exchange Fixings and Returns Around the Clock", <em>Journal of Finance</em> 79(1) (2024), 541–578 — the dollar's rise into the Tokyo, ECB and London fixes and its reversal afterwards.</li>
+    <li>Martin D. D. Evans, "Forex trading and the WMR Fix", <em>Journal of Banking &amp; Finance</em> 87 (2018), 233–247 — a model of dealer trading at the fix, with evidence of high volatility and reversals around it across 21 currencies.</li>
+    <li>P. S. Michelberger and J. H. Witte, "Foreign exchange market microstructure and the WM/Reuters 4pm fix", <em>Journal of Finance and Data Science</em> 2(1) (2016), 26–41 — volatility and extreme moves around the fix, and the old and new window definitions.</li>
+    <li>Takatoshi Ito and Masahiro Yamada, "Puzzles in the Forex Tokyo 'Fixing': Order Imbalances and Biased Pricing by Banks", Columbia CJEB Working Paper 352, 2016 — how the 9:55 Tokyo fix works and the effect of 5th and 10th payment days.</li>
+  </ul>
+  </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a> <span>· why a crowd of orders moves the price</span></li>
+        <li><a href="execution-algorithms.html">Execution Algorithms: TWAP, VWAP, POV, IS</a> <span>· the alternatives to trading at the fix</span></li>
+        <li><a href="interest-rate-parity.html">Interest Rate Parity — Covered vs. Uncovered</a> <span>· the forwards that currency hedges are built from</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> <span>· another mechanical flow you can estimate in advance</span></li>
+        <li><a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a> <span>· working a big order without moving the price</span></li>
+        <!-- DESK:START --><li><a href="institutional-order-flow-imbalance.html">Order Flow Imbalance &amp; the Microprice</a> <span>· reading the imbalance tick by tick</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the busiest five minutes of the FX day are scheduled in advance, and knowing who trades in them, and what they may not do, protects your stops, your fills and your career.</p>
+  </nav>
+
+  <div class="tl-footer-nav">
+    <a href="execution-algorithms.html">← Execution Algorithms: TWAP, VWAP, POV, IS</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var aEl = document.getElementById('fxf-me-a');
+  if (!aEl) return;
+  var rusEl = document.getElementById('fxf-me-rus');
+  var bEl = document.getElementById('fxf-me-b');
+  var rfEl = document.getElementById('fxf-me-rf');
+  var shEl = document.getElementById('fxf-me-share');
+  var note = document.getElementById('fxf-me-note');
+  var DEFAULTS = { a: 600, rus: 4, b: 400, rf: 1, share: 50 };
+  function money(v){ return (v < 0 ? '−' : '') + '$' + Math.abs(v).toFixed(1) + 'bn'; }
+  function recompute(){
+    var A = parseFloat(aEl.value), rUS = parseFloat(rusEl.value) / 100;
+    var B = parseFloat(bEl.value), rF = parseFloat(rfEl.value) / 100, sh = parseFloat(shEl.value) / 100;
+    var ids = ['fxf-me-sell', 'fxf-me-buy', 'fxf-me-net', 'fxf-me-fix'];
+    if (![A, rUS, B, rF, sh].every(isFinite) || A < 0 || B < 0 || sh < 0 || sh > 1) {
+      ids.forEach(function(id){ document.getElementById(id).textContent = '—'; });
+      note.textContent = '(holdings must be ≥ 0 and the share between 0% and 100%)';
+      return;
+    }
+    // Foreign hedgers of US equity sell A·r_US dollars; US hedgers of foreign equity buy B·r_F dollars.
+    var sell = A * rUS, buy = B * rF, net = buy - sell, atFix = net * sh;
+    document.getElementById('fxf-me-sell').textContent = money(sell);
+    document.getElementById('fxf-me-buy').textContent = money(buy);
+    var dir = Math.abs(net) < 0.05 ? ' (roughly flat)' : (net < 0 ? ' (selling)' : ' (buying)');
+    document.getElementById('fxf-me-net').textContent = money(net) + dir;
+    document.getElementById('fxf-me-fix').textContent = money(atFix);
+    var msgs = [];
+    if (sell < 0 || buy < 0) msgs.push('a falling market reverses that side: hedgers buy back some of their hedge');
+    note.textContent = msgs.length ? '(' + msgs.join('; ') + ')' : '';
+  }
+  [aEl, rusEl, bEl, rfEl, shEl].forEach(function(el){ el.addEventListener('input', recompute); });
+  document.getElementById('fxf-me-reset').addEventListener('click', function(){
+    aEl.value = DEFAULTS.a; rusEl.value = DEFAULTS.rus; bEl.value = DEFAULTS.b; rfEl.value = DEFAULTS.rf; shEl.value = DEFAULTS.share;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>
