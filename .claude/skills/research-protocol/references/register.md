@@ -18,7 +18,8 @@ from it.
 - **Updated** is the date of the last status change (YYYY-MM-DD). The status script flags active rows older than 14
   days.
 - **Ledger** holds the Evidence Book id(s), comma-separated, once banked; otherwise `—`.
-- **Next** is the next concrete step, or the blocker ("needs owner: …").
+- **Next** is the next concrete step, or the blocker ("needs owner: …"). It's a hint from whoever wrote the row, not
+  a decision: when you pick a row up, check it against the prereg (e.g. split the verdict per scored question).
 
 Keep the cells free of `|` characters.
 
