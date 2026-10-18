@@ -29,12 +29,13 @@ before doing anything. "Re-running a banked null in new clothes is not allowed" 
 | Step | What you do | Commit |
 |---|---|---|
 | 1. **Claim** | Add a row to `plans/RESEARCH_REGISTER.md`: status `CLAIMED`, your branch, today's date, the question, next step | commit + push straight away; this is how other sessions see you |
-| 2. **Register** | Write `forge/<STEM>_PREREG.md` from `MD files/PREREG_TEMPLATE.md` plus the header block in `references/prereg.md`. Register row → `REGISTERED` | **the prereg alone**, pushed **before** any script touches outcome data |
+| 2. **Register** | Write `forge/<STEM>_PREREG.md` from `MD files/PREREG_TEMPLATE.md` plus the header block in `references/prereg.md`. Register row → `REGISTERED` | **the prereg and its register row, nothing else**, pushed **before** any script computes a setup outcome (control-sample SDs for the power table are allowed, as the template says) |
 | 3. **Build & run** | Scripts in `scripts/<slug>/`, outputs in `analysis/output/<slug>/`. One seed for the whole study, from the prereg. Row → `RUNNING` | scripts may be committed as you go |
 | 4. **Results** | `analysis/output/<slug>/RESULTS.md` + `results.json` (`references/results-and-banking.md`). Verdict is one of the four words. Row → `RESULTS` | results in their own commit, never the prereg's |
 | 5. **Bank** | Ledger entry in `js/deskEvidence.js` (`doc` = the prereg path), a `POWER` row, then `node scripts/build_trial_ledger.mjs`, a one-liner in any domain register, then row → `BANKED` with the ledger id | **same PR as the results**; run `node js/deskEvidence.test.mjs` first |
 | 6. **Surface** | Open the PR (draft is fine) so the work is reviewable, and say in it which register row it closes | — |
 
+Work on the session's own branch; one study (or one family) per PR keeps review and banking clean.
 Step 1 takes one minute, and it's the step that fixes visibility. A study with no register row is invisible until
 somebody merges it, and that can be never.
 

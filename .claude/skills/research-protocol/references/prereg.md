@@ -17,7 +17,7 @@ changes) are all required. The older 13-section COG layout in `cog-knowledge` is
 | ID / ledger id | `<slug>` (one id per scored question; list them if more than one) |
 | Branch | `<branch>` |
 | Register row | `plans/RESEARCH_REGISTER.md` → `<slug>` |
-| Data | instruments, bar type, window `<from> → <to>` (respect the lockbox: nothing after 2026-08-21 on layers 3/5/6) |
+| Data | instruments, bar type, window `<from> → <to>`. End at 2026-08-21 unless the study is about something the lockbox doesn't cover and you say why (the lockbox formally guards layers 3/5/6; cutting every study there is the simple rule) |
 | Seed | `<YYYYMMDD>` (one for every script in this study) |
 | Uncertainty | <bootstrap type, block, B> (defaults in `stats-defaults.md`) |
 | Scripts / outputs | `scripts/<slug>/` → `analysis/output/<slug>/` |
