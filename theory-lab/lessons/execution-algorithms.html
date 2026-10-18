@@ -585,6 +585,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Part 2's Implementation Shortfall on new buy orders: delay \(= (P_\text{start} - P_\text{decision}) \times\) filled shares, impact \(= (\bar P_\text{exec} - P_\text{start}) \times\) filled shares, opportunity \(= (P_\text{cancel} - P_\text{decision}) \times\) unfilled shares.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Buy 20,000 shares, decided at \$40.00. Trading starts at \$40.04. Fills: 12,000 at \$40.08 and 6,000 at \$40.14, so \(\bar P_\text{exec} = \$40.10\) on 18,000 shares; 2,000 go unfilled and close at \$40.25. Delay \(= 0.04 \times 18{,}000 = \$720\). Impact \(= 0.06 \times 18{,}000 = \$1{,}080\). Opportunity \(= 0.25 \times 2{,}000 = \$500\). Total shortfall: \$<span class="tl-blank" data-answer="2300" data-tol="0.5"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Buy 5,000 shares, decided at \$100.00. Trading starts at \$100.10. Fills: 3,000 at \$100.20 and 1,500 at \$100.30, so \(\bar P_\text{exec} = \$100.2333\) on 4,500 shares; 500 go unfilled and close at \$100.50. Delay \(= 0.10 \times 4{,}500 = \$450\). Impact: \$<span class="tl-blank" data-answer="600" data-tol="0.5"></span>. Opportunity: \$<span class="tl-blank" data-answer="250" data-tol="0.5"></span>. Total: \$<span class="tl-blank" data-answer="1300" data-tol="1"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Buy 8,000 shares, decided at \$25.00. Trading starts at \$25.02. Fills: 5,000 at \$25.05 and 2,000 at \$25.10; 1,000 go unfilled and close at \$25.20. Delay: \$<span class="tl-blank" data-answer="140" data-tol="0.5"></span>. Impact: \$<span class="tl-blank" data-answer="310" data-tol="0.5"></span>. Opportunity: \$<span class="tl-blank" data-answer="200" data-tol="0.5"></span>. Total as a share of the \$200,000 decision notional: <span class="tl-blank" data-answer="32.5" data-tol="0.1" data-unit="bp"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -737,6 +754,7 @@
     across strategies. Check spread/ATR before any new intraday idea. Above 0.15, no execution schedule will save it.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../today.html">Daily Trading Brief</a> shows the live dealing spread on each setup, as a share of the expected day range and of the distance to the nearest level, and flags setups past the 0.15 cost gate in the box above.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -835,7 +853,7 @@
       <li data-verdict="good">Work it patiently over hours, taking price, time and volume into account: a participation cap and a price limit, with a person watching.<div class="tl-drill-why">On the urgency-versus-impact chart this trade sits in high impact concern, where a patient, footprint-minimizing schedule belongs. The price limit and cap stop the order from feeding on its own volume. The same trader had sold a similar order this way before.</div></li>
       <li data-verdict="ok">A VWAP schedule over the rest of the day, following the usual volume curve.<div class="tl-drill-why">Patient and footprint-aware, which is the right instinct. But a pre-committed schedule with no price limit still sells into any air pocket, and today's volume is unlikely to look like a normal day's.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> According to the joint SEC/CFTC staff report, the order went to an algorithm set to sell 9% of the previous minute's volume "without regard to price or time." High-frequency traders and other intermediaries bought the first contracts and then traded them among themselves: more than 27,000 contracts in 14 seconds for a net change of about 200. The rising volume made the algorithm sell faster, and the 75,000 contracts went through in about 20 minutes. A similar sale before, worked with a mix of manual and automated execution, had taken more than five hours. E-mini buy-side depth fell to less than 1% of its morning level, the contract fell more than 5% in about four and a half minutes, and an automatic five-second pause let buyers come back.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> According to the joint SEC/CFTC staff report, the order went to an algorithm set to sell 9% of the previous minute's volume "without regard to price or time." High-frequency traders and other intermediaries bought the first contracts and then traded them among themselves: more than 27,000 contracts in 14 seconds for a net change of about 200. The rising volume made the algorithm sell faster, and the 75,000 contracts went through in about 20 minutes. A similar sale before, worked with a mix of manual and automated execution, had taken more than five hours. E-mini buy-side depth fell to less than 1% of its morning level, the contract fell more than 5% in about four and a half minutes, and an automatic five-second pause let buyers come back.</p><p class="tl-drill-sources">Sources: <a href="https://www.sec.gov/news/studies/2010/marketevents-report.pdf">CFTC and SEC staff report, Findings Regarding the Market Events of May 6, 2010, 30 Sep 2010</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

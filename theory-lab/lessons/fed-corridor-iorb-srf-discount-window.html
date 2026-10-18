@@ -464,6 +464,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same dollar arithmetic on new nights: amount \(\times\) rate gap \(\times\) nights \(/360\), the actual/360 convention used in US repo.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>A dealer needs \$2 billion overnight. Private repo is quoted at 4.58% and the SRF lends at 4.50%, a gap of 8bp. Borrowing from the SRF saves \(2{,}000{,}000{,}000 \times 0.0008 \times \tfrac{1}{360}\) = \$<span class="tl-blank" data-answer="4444.44" data-tol="0.01"></span> for the night.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>SOFR is 4.47% and IORB is 4.40%. A bank has \$750 million of spare reserves. The gap is <span class="tl-blank" data-answer="7" data-tol="0" data-unit="bp"></span>. Lending in repo instead of leaving the cash at the Fed earns \$<span class="tl-blank" data-answer="1458.33" data-tol="0.01"></span> extra per night, before balance-sheet cost, and \$<span class="tl-blank" data-answer="4375" data-tol="0.01"></span> over a three-night weekend.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Over a three-night holiday weekend, private repo is 4.65% and the SRF rate is 4.50%. A dealer needs \$1.5 billion. Gap: <span class="tl-blank" data-answer="15" data-tol="0" data-unit="bp"></span>. Saving per night: \$<span class="tl-blank" data-answer="6250" data-tol="0.01"></span>. Saving over the weekend: \$<span class="tl-blank" data-answer="18750" data-tol="0.01"></span>. Nothing about the dealer's health is in that number; it is only the price gap.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -642,6 +659,7 @@
     </p>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../rates.html">Rates &amp; Policy</a> shows today's SOFR and its 99th percentile against the IORB floor, with SRF, discount-window and reverse-repo balances; read them wall by wall, as this lesson does.</div><!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -666,7 +684,7 @@
       <li data-verdict="good">Read it as a calendar drain landing on a thin system with no ceiling. Treat it as a plumbing problem for the Fed to fix, and watch whether the Fed steps in and whether rates stay high after the tax date.<div class="tl-drill-why">This names both the cause (tax date plus settlement) and the missing piece (no standing ceiling). The things worth watching are the Fed's response and persistence beyond the calendar, not the headline.</div></li>
       <li data-verdict="bad">Read the jump in the overnight rate as a sign the Fed is about to tighten policy.<div class="tl-drill-why">The Fed did not change its target range. The rate moved because cash was briefly in the wrong place, in the Treasury's account rather than the repo market. That is the corridor failing to hold, not a policy signal.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> SOFR printed 5.25% on 17 September against the 2.00–2.25% range, and the effective fed funds rate briefly moved above the top of its range. The New York Fed restarted overnight repo operations that same day, the first in about a decade, and kept offering them in the weeks that followed. In October the Fed began buying Treasury bills to rebuild reserves. The lasting fix came in July 2021, when the Standing Repo Facility made the ceiling permanent.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> SOFR printed 5.25% on 17 September against the 2.00–2.25% range, and the effective fed funds rate briefly moved above the top of its range. The New York Fed restarted overnight repo operations that same day, the first in about a decade, and kept offering them in the weeks that followed. In October the Fed began buying Treasury bills to rebuild reserves. The lasting fix came in July 2021, when the Standing Repo Facility made the ceiling permanent.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/econres/notes/feds-notes/what-happened-in-money-markets-in-september-2019-20200227.html">Federal Reserve, FEDS Notes, "What Happened in Money Markets in September 2019?", 27 Feb 2020</a>; <a href="https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?startDate=2019-09-13&amp;endDate=2019-09-19">New York Fed SOFR data</a> (5.25% on 17 Sep 2019); <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20191011a.htm">Federal Reserve statement on Treasury bill purchases, 11 Oct 2019</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20210728b.htm">FOMC announcement of the standing repo facilities, 28 Jul 2021</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>

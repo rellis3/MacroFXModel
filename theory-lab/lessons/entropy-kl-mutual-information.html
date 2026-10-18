@@ -370,6 +370,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>KL divergence in both directions for new pairs of coins: \(D_{\text{KL}}(P\|Q) = \sum p_i \log_2 (p_i/q_i)\), with \(P\) the true coin and \(Q\) the model.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>The true coin is \(P = (0.8, 0.2)\); the model says fair, \(Q = (0.5, 0.5)\). \(\log_2(0.8/0.5) = 0.6781\) and \(\log_2(0.2/0.5) = -1.3219\), so \(D_{\text{KL}}(P\|Q) = 0.8(0.6781) + 0.2(-1.3219) = 0.5425 - 0.2644\) = <span class="tl-blank" data-answer="0.278" data-tol="0.001" data-unit="bits"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Truth \(P = (0.9, 0.1)\), model \(Q = (0.6, 0.4)\). The logs are \(\log_2 1.5 = 0.585\) and \(\log_2 0.25 = -2\). \(D_{\text{KL}}(P\|Q)\) = <span class="tl-blank" data-answer="0.3265" data-tol="0.0015" data-unit="bits"></span>. Swap the roles: \(D_{\text{KL}}(Q\|P)\) = <span class="tl-blank" data-answer="0.449" data-tol="0.0015" data-unit="bits"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Truth \(P = (0.95, 0.05)\), model \(Q = (0.7, 0.3)\). \(D_{\text{KL}}(P\|Q)\) = <span class="tl-blank" data-answer="0.289" data-tol="0.0015" data-unit="bits"></span>. \(D_{\text{KL}}(Q\|P)\) = <span class="tl-blank" data-answer="0.467" data-tol="0.0015" data-unit="bits"></span>. The second is about <span class="tl-blank" data-answer="1.61" data-tol="0.02"></span> times the first: again the bigger cost falls on the direction where the true coin is the less lopsided one and the model is the overconfident one.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>

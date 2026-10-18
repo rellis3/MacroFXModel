@@ -537,6 +537,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Step 2 again on new inputs: for \(V(S,t) = S e^{-\delta t}\), \(\partial V/\partial S = e^{-\delta t}\) and \(\partial V/\partial t = -\delta S e^{-\delta t}\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(S = \$80\), \(\delta = 0.05\), \(t = 2\) years. \(\partial V/\partial S = e^{-0.10} = 0.9048\). Then \(\partial V/\partial t = -0.05 \times 80 \times 0.9048\) = <span class="tl-blank" data-answer="-3.619" data-tol="0.002"></span> per year.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(S = \$250\), \(\delta = 0.025\), \(t = 3\) years. The value is \(V = 250\,e^{-0.075} = \$231.94\). \(\partial V/\partial S\) = <span class="tl-blank" data-answer="0.9277" data-tol="0.0002"></span> and \(\partial V/\partial t\) = <span class="tl-blank" data-answer="-5.798" data-tol="0.003"></span> per year.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(S = \$60\), \(\delta = 0.01\), \(t = 5\) years. \(\partial V/\partial S\) = <span class="tl-blank" data-answer="0.9512" data-tol="0.0002"></span>. \(\partial V/\partial t\) = <span class="tl-blank" data-answer="-0.5707" data-tol="0.0005"></span>. Now move both at once, \(S\) up \$2 and \(t\) up half a year, and add the two contributions: \(\Delta V \approx\) <span class="tl-blank" data-answer="1.617" data-tol="0.002"></span>. (Repricing exactly gives \$1.608; the small gap is mostly the cross term, the way the \(S\) slope itself changes as \(t\) moves.)</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>

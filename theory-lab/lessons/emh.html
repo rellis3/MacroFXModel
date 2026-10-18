@@ -453,6 +453,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same noise check on new samples: the standard error of a lag-1 autocorrelation is about \(1/\sqrt{n}\), and the estimate counts as a signal only if it sits more than about two standard errors from zero.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>A year of daily returns, \(n = 250\), gives \(\hat\rho_1 = 0.10\). The standard error is \(1/\sqrt{250} = 0.0632\), so the estimate is \(0.10/0.0632\) = <span class="tl-blank" data-answer="1.58" data-tol="0.01"></span> standard errors from zero. Under two: noise, even though 0.10 looks large.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Four years of data, \(n = 1{,}000\), gives \(\hat\rho_1 = 0.08\). Standard error: <span class="tl-blank" data-answer="0.0316" data-tol="0.0002"></span>. Number of standard errors: <span class="tl-blank" data-answer="2.53" data-tol="0.02"></span>. A smaller estimate than round 1, but more data makes it a signal in this sample.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Ten years, \(n = 2{,}500\), gives \(\hat\rho_1 = 0.035\). Standard error: <span class="tl-blank" data-answer="0.0200" data-tol="0.0002"></span>. Standard errors from zero: <span class="tl-blank" data-answer="1.75" data-tol="0.02"></span>. The smallest \(\hat\rho_1\) that would clear two standard errors here: <span class="tl-blank" data-answer="0.040" data-tol="0.0005"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -537,14 +554,9 @@
     <div class="tl-story-label">It actually happened here</div>
     <h3>This desk: "it's priced in", tested two ways</h3>
     <p>
-      Traders use "priced in" as a forecast. The desk tested both forecasts it usually carries. <strong>The size
-      version:</strong> on 85 FOMC decision days since 2016, does a decision the front end has already repriced move markets
-      less on the day? Decision-day range came out at about 1.3 ATR on EUR/USD, USD/JPY, gold and the S&amp;P 500 whether
-      the 2-year had moved less than 5bp over the prior 20 sessions or more than 16bp. <strong>The direction version:</strong>
-      does what yields did <em>into</em> a release change what the outcome does to price? A nearest-neighbour model built on
-      the pre-event state of the curve (2-, 10- and 30-year yields, real yields, breakevens and slope) scored a
-      <strong>49.3%</strong> hit rate. The placebo, the same model with the pre-event state shuffled, scored
-      <strong>51.5%</strong>.
+      Traders use "priced in" as a forecast, so the desk tested both versions it usually carries: does a decision the
+      front end has already repriced move markets less on the day, and does the run-up into a release say which way the
+      outcome pushes? Neither held up; the two boxes further down give the numbers.
     </p>
     <p style="margin-bottom:0">
       Read through this lesson, the direction result is the semi-strong form passing a test. The run-up into a release is
@@ -589,6 +601,7 @@
     across zero.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../event-response.html">Event Response</a> shows which releases the market actually reacts to and what followed each print; it is the semi-strong form at work, news moving prices on the day.</div><!-- DESK:END -->
 
   <!-- WB:emh:START -->
   <div class="wb" id="wb-emh" data-title="The $20 bill: testing for, and losing, an edge">

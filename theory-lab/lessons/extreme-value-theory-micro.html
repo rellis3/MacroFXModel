@@ -192,7 +192,7 @@
         </div>
         <div class="sl-sliderhead"><span>Shape parameter ξ</span><span class="sl-live" id="evt-xi-val">ξ = 0.25</span></div>
         <input type="range" class="sl-slider" id="evt-xi-slider" min="-0.4" max="0.7" step="0.05" value="0.25">
-        <div class="sl-note" id="evt-xi-desc">heavy, Pareto-type tail — decays slowly, no finite variance once ξ ≥ 0.5</div>
+        <div class="sl-note" id="evt-xi-desc">heavy, Pareto-type tail — decays slowly, no finite variance once ξ ≥ 0.5, no finite mean once ξ ≥ 1</div>
       </div>
     </section>
 
@@ -400,7 +400,7 @@
       <li data-verdict="good">Cut leverage until a loss far beyond anything in your sample is survivable, sizing off a heavy-tailed or stress loss rather than the normal VaR.<div class="tl-drill-why">This is what EVT is for: a heavy tail makes a much worse day rare but possible, and sizing has to survive it. Accept that the extrapolated number is an assumption and leave a margin for it.</div></li>
       <li data-verdict="ok">Cut leverage a little, using the worst day in your own sample as the stress loss.<div class="tl-drill-why">Better than trusting the normal, but historical VaR this far out just names your worst observed day. The next extreme need not respect it.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Monday 19 October 1987 the S&amp;P 500 fell about 20% and the Dow 22.6%, nearly doubling the 12–13% falls of the worst 1929 days. Against daily moves of about 1%, that was on the order of twenty standard deviations: impossible under a normal model. The sessions after swung violently both ways, including a Dow rise of about 10% on 21 October. The extremes came as a cluster around one event.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Monday 19 October 1987 the S&amp;P 500 fell about 20% and the Dow 22.6%, nearly doubling the 12–13% falls of the worst 1929 days. Against daily moves of about 1%, that was on the order of twenty standard deviations: impossible under a normal model. The sessions after swung violently both ways, and the Dow regained 288 points, 57% of the Monday fall, within the next two sessions. The extremes came as a cluster around one event.</p></div>
   </div>
 
     </section>

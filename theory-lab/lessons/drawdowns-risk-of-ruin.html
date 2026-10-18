@@ -586,6 +586,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The streak arithmetic from step 2: a run of \(n\) losses at risk \(r\) per trade leaves \((1-r)^n\) of the peak, a drawdown \(d = 1-(1-r)^n\), and a climb back of \(g = d/(1-d)\). New streaks and new sizes each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>You risk 1.5% a trade and lose 7 in a row. What is left is \(0.985^7 = 0.8996\) of the peak, so the drawdown is \(d = 10.04\%\). The gain needed to get back is \(0.1004/0.8996\) = <span class="tl-blank" data-answer="11.16" data-tol="0.05" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>You risk 3% a trade and lose 6 in a row. What is left is \(0.97^6\) = <span class="tl-blank" data-answer="0.8330" data-tol="0.0005"></span> of the peak. The drawdown is <span class="tl-blank" data-answer="16.70" data-tol="0.06" data-unit="%"></span>, and the gain needed to recover is <span class="tl-blank" data-answer="20.05" data-tol="0.1" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>You risk 2.5% a trade and lose 10 in a row. Fraction of the peak left: <span class="tl-blank" data-answer="0.7763" data-tol="0.0005"></span>. Drawdown: <span class="tl-blank" data-answer="22.37" data-tol="0.06" data-unit="%"></span>. Gain needed to recover: <span class="tl-blank" data-answer="28.81" data-tol="0.1" data-unit="%"></span>. Compare it with round 1: a bigger size and a longer streak more than double the climb back.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Your exercise</div>
@@ -619,7 +636,7 @@
   <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
-    <span><strong>"A deep drawdown means the edge is gone."</strong> Not tested here, and not testable from a drawdown alone: the simulator shows that a system with no edge and a system with a real one produce drawdowns that look the same for hundreds of trades. What can be tested is the live record against the tested record — win rate and expectancy with an interval — and that is the rule the exercise above asks you to write.</span>
+    <span><strong>"A deep drawdown means the edge is gone."</strong> Not tested here, and not testable from a drawdown alone: the simulator shows that a system with no edge and a system with a real one produce drawdowns that look the same for hundreds of trades. What can be tested is the live record against the tested record — win rate and expectancy with an interval — and that is the rule the exercise above asks you to write.<div class="tl-howtotest"><strong>How to test it:</strong> take the out-of-sample trade lists of the desk's strategies with daily FX and rates data, 2015 to 2025, net of costs. Each time a strategy's drawdown passes the 90th percentile of its own simulated maximum drawdown, record the mean R of its next 50 trades. The claim passes only if that mean is lower than the mean R of 50 trades started on random dates, with a block-bootstrap p-value below 0.05 fixed in advance; otherwise a deep drawdown carries no information about what comes next.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -683,6 +700,7 @@
     </p>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../bot-audit.html">Bot Audit</a> shows each live bot's drawdown from peak and its drawdown episodes, deepest first; hold them against the streak and drawdown envelope this lesson's exercise produces.</div><!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -705,7 +723,7 @@
       <li data-verdict="good">Test the live record against the rule you wrote before the drawdown. If it has not tripped, keep running it at a size you can sit through.<div class="tl-drill-why">This is the lesson's whole method. The decision rests on evidence stated in advance, not on how the last few years felt. If the size is too big to bear, the fix is a smaller bet, chosen calmly, not an exit at the low.</div></li>
       <li data-verdict="ok">Keep it, but halve the size until it starts working again.<div class="tl-drill-why">You survive, which matters. But cutting size because of pain, rather than a rule, means you hold less of it during any recovery. Size should be set from the drawdown you can bear before the bad stretch, not during it.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In November 2020 the first effective COVID-19 vaccine results were announced, and value staged a sharp rebound that ran through 2021 and 2022. Investors who left near the bottom of the drawdown took the full loss and missed the recovery. That does not prove every drawdown recovers. It shows that a long, deep drawdown is exactly what a real premium can look like from the inside, which is why the decision has to come from a test, not from the drawdown.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In November 2020 the first effective COVID-19 vaccine results were announced, and value staged a sharp rebound that ran through 2021 and 2022. Investors who left near the bottom of the drawdown took the full loss and missed the recovery. That does not prove every drawdown recovers. It shows that a long, deep drawdown is exactly what a real premium can look like from the inside, which is why the decision has to come from a test, not from the drawdown.</p><p class="tl-drill-sources">Sources: <a href="https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html">Kenneth French Data Library, US HML value factor</a> (peak December 2006, about 58% below it by September 2020, the deepest fall in the series since 1926; +22% in 2021 and +32% in 2022); Pfizer and BioNTech press release, 9 Nov 2020.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>

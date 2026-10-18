@@ -517,6 +517,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's count on new calibration jobs. The direct route needs one integration per strike, per expiry, per parameter set; Carr-Madan needs one FFT call per expiry, per parameter set, whatever the number of strikes.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>150 strikes at one expiry, 800 parameter sets. Direct: \(150 \times 800 = 120{,}000\) integrations. FFT: 800 calls. The reduction in pricing calls is <span class="tl-blank" data-answer="150" data-tol="0" data-unit="×"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>A whole surface: 300 strikes at each of 6 expiries, 400 parameter sets. Direct integrations: <span class="tl-blank" data-answer="720000" data-tol="0"></span>. FFT calls: <span class="tl-blank" data-answer="2400" data-tol="0"></span>. The reduction is still the number of strikes per expiry, <span class="tl-blank" data-answer="300" data-tol="0" data-unit="×"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>250 strikes at each of 4 expiries, 1,200 parameter sets. Direct integrations: <span class="tl-blank" data-answer="1200000" data-tol="0"></span>. FFT calls: <span class="tl-blank" data-answer="4800" data-tol="0"></span>. Then the grid each call returns: with \(N = 4{,}096\) points and spacing \(\eta = 0.25\), the log-strike spacing from \(N\eta\lambda = 2\pi\) is \(\lambda\) = <span class="tl-blank" data-answer="0.00614" data-tol="0.00002"></span>: each call returns 4,096 prices about 0.6% apart in strike, and you keep the ones you need.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>

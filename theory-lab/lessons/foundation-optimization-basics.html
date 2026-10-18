@@ -502,6 +502,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Steps 2 and 3 on new pairs of assets: the return target fixes \(w_1 = (\text{target} - \mu_2)/(\mu_1 - \mu_2)\), then \(\sigma_p^2 = w_1^2\sigma_1^2 + w_2^2\sigma_2^2 + 2w_1w_2\rho\sigma_1\sigma_2\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\mu_1 = 10\%\), \(\sigma_1 = 25\%\); \(\mu_2 = 5\%\), \(\sigma_2 = 12\%\); \(\rho = 0.2\); target 7%. \(w_1 = (7-5)/(10-5) = 0.4\), \(w_2 = 0.6\). \(\sigma_p^2 = 0.16(0.0625) + 0.36(0.0144) + 2(0.4)(0.6)(0.2)(0.25)(0.12) = 0.01 + 0.005184 + 0.00288 = 0.018064\). So \(\sigma_p\) = <span class="tl-blank" data-answer="13.44" data-tol="0.01" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\mu_1 = 9\%\), \(\sigma_1 = 18\%\); \(\mu_2 = 3\%\), \(\sigma_2 = 8\%\); a small negative correlation, \(\rho = -0.1\); target 6%. \(w_1\) = <span class="tl-blank" data-answer="0.5" data-tol="0.001"></span>. The variance is \(\sigma_p^2\) = <span class="tl-blank" data-answer="0.00898" data-tol="0.00001"></span>, so \(\sigma_p\) = <span class="tl-blank" data-answer="9.48" data-tol="0.01" data-unit="%"></span>: below the 13% average of the two volatilities, because the correlation is negative.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\mu_1 = 12\%\), \(\sigma_1 = 30\%\); \(\mu_2 = 6\%\), \(\sigma_2 = 15\%\); \(\rho = 0.5\); target 10%. \(w_1\) = <span class="tl-blank" data-answer="0.667" data-tol="0.001"></span>. \(\sigma_p^2\) = <span class="tl-blank" data-answer="0.0525" data-tol="0.0001"></span>. \(\sigma_p\) = <span class="tl-blank" data-answer="22.91" data-tol="0.02" data-unit="%"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
