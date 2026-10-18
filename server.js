@@ -4498,7 +4498,7 @@ const _CC_ASSETS = {
   GOLD: ['XAU_USD', 'Gold'], NAS100: ['NAS100_USD', 'Indices'], SPX500: ['SPX500_USD', 'Indices'], US30: ['US30_USD', 'Indices'], US2000: ['US2000_USD', 'Indices'], DE30: ['DE30_EUR', 'Indices'], UK100: ['UK100_GBP', 'Indices'],
 };
 const _CC_TF = { '5m': 'M5', '15m': 'M15', '1h': 'H1', '4h': 'H4' };
-const _CC_LEGS = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7'];
+const _ccLegNames = () => _cogJson(path.join(_CC_DIR, 'legs_meta.json')).map(l => l.name);      // every US / euro rates contract the builder found (scripts/rates_line/build_leg_bars.py)
 let _ccLive = { at: 0, v: null };
 async function _ccLivePush() {
   if (Date.now() - _ccLive.at > 20_000) {
@@ -4545,12 +4545,12 @@ app.get('/api/cog-chart/candles', async (req, res) => {
 app.get('/api/cog-chart/leg', async (req, res) => {
   try {
     const name = String(req.query.name || '');
-    if (!_CC_LEGS.includes(name)) return res.status(400).json({ ok: false, error: 'unknown leg' });
+    if (!_ccLegNames().includes(name)) return res.status(400).json({ ok: false, error: 'unknown contract' });
     const base = _cogJson(path.join(_CC_DIR, `leg_${name}.json`)), live = await _ccLivePush(), add = live?.legs?.[name]?.m5;
     let m5 = base.m5, m15 = base.m15, liveAsOf = null;
     if (add?.t?.length) { m5 = _ccMerge(m5, add); m15 = _ccMerge(m15, _ccAgg15(add)); liveAsOf = live.asOf ?? null; }
     res.set('Cache-Control', 'no-store');
-    res.json({ ok: true, name, label: base.label, group: base.group, period: base.period, source: base.source, convention: base.convention, staticAsOf: base.asOf, liveAsOf, m5, m15 });
+    res.json({ ok: true, name, label: base.label, group: base.group, side: base.side, kind: base.kind, period: base.period, source: base.source, convention: base.convention, first: base.first, staticAsOf: base.asOf, liveAsOf, m5, m15 });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

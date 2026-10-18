@@ -29,8 +29,15 @@ sys.path.insert(0, str(ROOT / 'scripts' / 'rates_line'))
 import build_leg_bars as B
 BASE = 'https://macrofxmodel-production.up.railway.app'
 KV_KEY = 'cog_legs_live_v1'
-IB_SPEC = {'SR3U6': ('SOFR3', 'CME', 'USD', '202609'), 'SR3Z6': ('SOFR3', 'CME', 'USD', '202612'), 'SR3H7': ('SOFR3', 'CME', 'USD', '202703'),
-           'IH7': ('I', 'ICEEU', 'EUR', '202703'), 'IZ6': ('I', 'ICEEU', 'EUR', '202612'), 'ER3Z6': ('ER3', 'ICEEU', 'EUR', '202612'), 'ER3H7': ('ER3', 'ICEEU', 'EUR', '202703')}
+IB_SPEC = {   # name: (IBKR symbol, exchange, currency, contract-month parameter). CORE = the seven legs the C.OG work uses; --all adds every other live US / euro rates contract.
+    'SR3U6': ('SOFR3', 'CME', 'USD', '202609'), 'SR3Z6': ('SOFR3', 'CME', 'USD', '202612'), 'SR3H7': ('SOFR3', 'CME', 'USD', '202703'),
+    'IH7': ('I', 'ICEEU', 'EUR', '202703'), 'IZ6': ('I', 'ICEEU', 'EUR', '202612'), 'ER3Z6': ('ER3', 'ICEEU', 'EUR', '202612'), 'ER3H7': ('ER3', 'ICEEU', 'EUR', '202703'),
+    'SR3M7': ('SOFR3', 'CME', 'USD', '202706'), 'SR3U7': ('SOFR3', 'CME', 'USD', '202709'), 'IM7': ('I', 'ICEEU', 'EUR', '202706'), 'IU7': ('I', 'ICEEU', 'EUR', '202709'),
+    'ER3U6': ('ER3', 'ICEEU', 'EUR', '202609'), 'ER3M7': ('ER3', 'ICEEU', 'EUR', '202706'), 'ER3U7': ('ER3', 'ICEEU', 'EUR', '202709'),
+    'ZQV6': ('ZQ', 'CBOT', 'USD', '202610'), 'ZQX6': ('ZQ', 'CBOT', 'USD', '202611'), 'ZQZ6': ('ZQ', 'CBOT', 'USD', '202612'), 'ZQF7': ('ZQ', 'CBOT', 'USD', '202701'), 'ZQH7': ('ZQ', 'CBOT', 'USD', '202703'),
+    'ZTZ6': ('ZT', 'CBOT', 'USD', '202612'), 'FGBS2612': ('FGBS', 'EUREX', 'EUR', '202612'),
+}
+CORE = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
 last = [0.0]
 
 
@@ -60,13 +67,17 @@ if __name__ == '__main__':
     ap.add_argument('--push-days', type=int, default=3)
     ap.add_argument('--commit', action='store_true')
     ap.add_argument('--no-pull', action='store_true')
+    ap.add_argument('--all', action='store_true', help='pull every contract in IB_SPEC, not only the seven core legs (about 4 minutes per week of history)')
     a = ap.parse_args()
     now = datetime.now(timezone.utc)
+    names = list(IB_SPEC) if a.all else CORE
+    found = B.discover()
+    stem = lambda n: found[n]['stem'] if n in found else f'{IB_SPEC[n][1]}_{n}'
     if not a.no_pull:
         from ib_insync import IB, Future, util
         newest = None
-        for n in IB_SPEC:
-            p = SRC / f'{B.LEGS[n]["file"]}.parquet'
+        for n in names:
+            p = SRC / f'{stem(n)}.parquet'
             if p.exists():
                 x = pd.to_datetime(pd.read_parquet(p, columns=['time']).time, utc=True).max()
                 newest = x if newest is None or x < newest else newest
@@ -78,8 +89,9 @@ if __name__ == '__main__':
             print(f'Could not connect to TWS / IB Gateway on port 7497 ({type(e).__name__}). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.')
             sys.exit(2)
         sat = (now + timedelta(days=(5 - now.weekday()) % 7)).replace(hour=0, minute=0, second=0, microsecond=0)
-        print(f'pulling the last {days} day(s) for {list(IB_SPEC)}')
-        for name, (sym, exch, ccy, month) in IB_SPEC.items():
+        print(f'pulling the last {days} day(s) for {names}')
+        for name in names:
+            sym, exch, ccy, month = IB_SPEC[name]
             det = ib.reqContractDetails(Future(symbol=sym, exchange=exch, currency=ccy, lastTradeDateOrContractMonth=month))
             if not det:
                 print(f'{name}: contract not found (expired or not listed)')
@@ -102,14 +114,14 @@ if __name__ == '__main__':
                 if bars:
                     df = util.df(bars)
                     df.insert(0, 'time', pd.to_datetime(df.pop('date'), utc=True).dt.strftime('%Y-%m-%dT%H:%M:%SZ'))
-                    merge(SRC / f'{B.LEGS[name]["file"]}.parquet', df)
+                    merge(SRC / f'{stem(name)}.parquet', df)
                     got += len(df)
             print(f'{name}: +{got:,} bars merged')
         ib.disconnect()
     subprocess.run([sys.executable, str(ROOT / 'scripts' / 'rates_line' / 'build_leg_bars.py')], check=True)
     if a.push:
         payload = {'asOf': now.isoformat(), 'legs': {}}
-        for name in IB_SPEC:
+        for name in names:
             j = json.loads((OUT / f'leg_{name}.json').read_text(encoding='utf-8'))
             m = j['m5']
             cut = int(now.timestamp()) - a.push_days * 86400

@@ -78,8 +78,8 @@
 <script type="module">
 import { DEFAULTS, TF_SEC, barsFromColumns, legOnChart, carryForward, legRaw, spreadRaw, mapSeries, shiftPoints } from './js/cogChartMath.js';
 
-const LEGS = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7'];
-const LEG_NAME = { SR3U6: 'SOFR Sep26 (SR3U6)', SR3Z6: 'SOFR Dec26 (SR3Z6)', SR3H7: 'SOFR Mar27 (SR3H7)', IH7: 'Euribor Mar27 (IH7, = I2! in the video week)', IZ6: 'Euribor Dec26 (IZ6)', ER3Z6: 'ESTR 3M Dec26 (ER3Z6)', ER3H7: 'ESTR 3M Mar27 (ER3H7)' };
+let LEGMETA = [];      // every contract the server holds: { name, label, group, side, kind ('rate' | 'price'), period, first, asOf }
+const LEGKIND = n => LEGMETA.find(l => l.name === n)?.kind ?? 'rate';
 const COLORS = ['#4f7df0', '#f97316', '#10b981', '#a371f7', '#d29922', '#f85149', '#22d3ee'];
 const KEY = 'cogChartState_v1';
 const $ = id => document.getElementById(id);
@@ -211,7 +211,12 @@ function status() {
 
 // ---------------------------------------------------------------- cards (controls)
 const SRC = ['close', 'open', 'high', 'low', 'hl2', 'ohlc4'];
-const legOpts = sel => LEGS.map(n => `<option value="${n}" ${n === sel ? 'selected' : ''}>${esc(LEG_NAME[n])}</option>`).join('');
+const mon = iso => (iso || '').slice(0, 7);
+const legOpts = sel => {
+  const groups = {};
+  LEGMETA.forEach(l => (groups[`${l.side === 'US' ? 'US' : 'Euro'} / ${l.group}`] ||= []).push(l));
+  return Object.entries(groups).sort().map(([g, ls]) => `<optgroup label="${esc(g)}">${ls.map(l => `<option value="${l.name}" ${l.name === sel ? 'selected' : ''}>${esc(l.label)}  [${mon(l.first)} to ${mon(l.asOf)}]</option>`).join('')}</optgroup>`).join('');
+};
 function cardHtml(d) {
   const legsHtml = d.kind === 'spread'
     ? `<div class="grid2"><label>EUR leg<select data-k="eur">${legOpts(d.eur)}</select></label><label>USD leg<select data-k="usd">${legOpts(d.usd)}</select></label></div>`
@@ -222,7 +227,7 @@ function cardHtml(d) {
     <div class="top"><input type="color" data-k="color" value="${d.color}"><b>${esc(d.label)}</b>
       <label class="sm"><input type="checkbox" data-k="visible" ${d.visible ? 'checked' : ''}> show</label>
       <button class="btn" data-act="active" title="Make this the line that [ and ] step">select</button><button class="btn" data-act="del">&times;</button></div>
-    <div class="sm">${d.kind === 'spread' ? 'Spread = EUR leg - USD leg (the indicator\'s logic)' : 'Single leg'}</div>
+    <div class="sm">${d.kind === 'spread' ? 'Spread = EUR leg - USD leg (the indicator logic)' : 'Single leg'}${[d.eur, d.usd, d.leg].some(n => n && LEGKIND(n) === 'price') ? ' - includes a bond future: it is a PRICE, rate conversion is off' : ''}</div>
     ${legsHtml}
     <div class="grid2" style="margin-top:4px">
       <label>Data timeframe<select data-k="dataTf">${['chart', '5m', '15m', '1h', '4h'].map(x => `<option ${x === d.dataTf ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
@@ -268,7 +273,7 @@ $('cards').addEventListener('change', async e => {
   const id = +el.closest('.card').dataset.id, d = state.series.find(x => x.id === id);
   d[k] = el.type === 'checkbox' ? el.checked : el.type === 'number' ? (k === 'smooth' ? Math.max(1, +el.value | 0) : (k === 'shift' || k === 'fitLen' ? (+el.value | 0) : +el.value)) : el.value;
   if (k === 'mapMode' || k === 'color' || k === 'visible') { /* series scale changes need a rebuild */ }
-  if (['eur', 'usd', 'leg'].includes(k)) { d.label = d.kind === 'spread' ? `${d.usd === 'SR3U6' && d.eur === 'IH7' ? 'C.OG line' : 'Spread'} (${d.usd} - ${d.eur})` : d.leg; await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); }
+  if (['eur', 'usd', 'leg'].includes(k)) { if ([d.eur, d.usd, d.leg].some(n => n && LEGKIND(n) === 'price')) d.asRate = false; d.label = d.kind === 'spread' ? `${d.usd === 'SR3U6' && d.eur === 'IH7' ? 'C.OG line' : 'Spread'} (${d.usd} - ${d.eur})` : d.leg; await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); }
   state.active = id; if (k === 'mapMode') rebuildLines(); renderCardsSoon(); redraw(); save();
 });
 function addSeries(kind) {
@@ -306,6 +311,7 @@ $('live').onchange = e => { state.live = e.target.checked; save(); };
 // ---------------------------------------------------------------- boot and live polling
 async function boot() {
   const meta = await jget('/api/cog-chart/meta');
+  LEGMETA = meta.legs;
   const groups = {}; meta.assets.forEach(a => (groups[a.group] ||= []).push(a));
   $('asset').innerHTML = Object.entries(groups).map(([g, a]) => `<optgroup label="${esc(g)}">${a.map(x => `<option value="${x.key}" ${x.key === state.asset ? 'selected' : ''}>${x.key}</option>`).join('')}</optgroup>`).join('');
   $('bars').value = String(state.bars); $('live').checked = !!state.live; drawTfs();
