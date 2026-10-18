@@ -320,7 +320,7 @@
         </div>
         <div class="sl-sliderhead"><span>Regularization strength</span><span class="sl-live" id="rl-lambda-val">λ = 1.00</span></div>
         <input type="range" class="sl-slider" id="rl-lambda-slider" min="0" max="4" step="0.05" value="1">
-        <div class="sl-note" id="rl-note">At λ = 1.00: LASSO has already deleted β₃ (the noise column, zero since λ ≥ 0.4) exactly. β₂ (the near-duplicate) is still shrinking and will hit zero at λ = 1.3. β₁ (the real signal) won't hit zero until λ = 3.4.</div>
+        <div class="sl-note" id="rl-note">At λ = 1.00: LASSO has zeroed β₃ exactly. β₂ (the near-duplicate) is next, at λ = 1.30.</div>
       </div>
       <p class="sl-p">Drag past λ = 1.3 and watch LASSO's β₂ bar flatten to the red "= 0" marker. Drag past λ = 3.4 and even β₁ — the real signal — finally gets zeroed too, a reminder that a large enough λ will eventually delete everything, useful or not. Ridge's three bars only ever approach the baseline; they never touch it, no matter how far the slider goes.</p>
     </section>

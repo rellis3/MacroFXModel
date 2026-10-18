@@ -470,6 +470,23 @@
     <button type="button" id="ql-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>One TD update on new numbers. Target \(= r + \gamma \max_{a'}Q(s',a')\), TD error \(= \text{target} - Q(s,a)\), and the new value is \(Q(s,a) + \alpha \times \text{error}\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Current \(Q = 2\), reward \(r = 0.5\), \(\gamma = 0.8\), \(\alpha = 0.25\), best next value 3. Target \(= 0.5 + 0.8 \times 3 = 2.9\). TD error \(= 2.9 - 2 = 0.9\). New \(Q = 2 + 0.25 \times 0.9 =\) <span class="tl-blank" data-answer="2.225" data-tol="0.001"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Current \(Q = 4\), reward \(r = -0.2\), \(\gamma = 0.95\), \(\alpha = 0.1\), best next value 6. Target \(= -0.2 + 0.95 \times 6 = 5.5\). TD error \(=\) <span class="tl-blank" data-answer="1.5" data-tol="0.005"></span>. New \(Q =\) <span class="tl-blank" data-answer="4.15" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Current \(Q = 1.2\), reward \(r = 1\), \(\gamma = 0.9\), \(\alpha = 0.3\), best next value 1.5. Target <span class="tl-blank" data-answer="2.35" data-tol="0.005"></span>, TD error <span class="tl-blank" data-answer="1.15" data-tol="0.005"></span>, new \(Q\) <span class="tl-blank" data-answer="1.545" data-tol="0.002"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Q(Long, Hold) climbing toward Q* = 10 under repeated sampling</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart showing Q of Long, Hold rising from zero and approaching, but not exactly reaching, the dashed asymptote at 10 over 40 simulated updates, following the recursion Q sub k plus one equals point nine five times Q sub k plus point five. Two labeled points mark the first two hand-computed updates from the worked example, at 0.5 and 0.975.">

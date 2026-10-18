@@ -468,6 +468,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Read the same two fitted quantile lines at new values of \(x\): \(\hat q_{0.1}(x) = 2.062 + 1.194x\) and \(\hat q_{0.9}(x) = 2.395 + 1.658x\). The 80% band's width is the gap between them.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>At \(x = 4\): \(\hat q_{0.1} = 2.062 + 1.194 \times 4 = 6.838\) and \(\hat q_{0.9} = 2.395 + 1.658 \times 4 = 9.027\). Width \(=\) <span class="tl-blank" data-answer="2.189" data-tol="0.002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>At \(x = 7\): \(\hat q_{0.1} =\) <span class="tl-blank" data-answer="10.420" data-tol="0.002"></span>, \(\hat q_{0.9} =\) <span class="tl-blank" data-answer="14.001" data-tol="0.002"></span>, width <span class="tl-blank" data-answer="3.581" data-tol="0.003"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>At \(x = 2.5\): \(\hat q_{0.1}\) <span class="tl-blank" data-answer="5.047" data-tol="0.002"></span>, \(\hat q_{0.9}\) <span class="tl-blank" data-answer="6.540" data-tol="0.002"></span>, width <span class="tl-blank" data-answer="1.493" data-tol="0.003"></span>. The band widens by \(1.658 - 1.194 = 0.464\) for every unit of \(x\), which is the heteroskedasticity the OLS line cannot show.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -604,6 +621,7 @@
     statement, never a direction.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../forecast-coverage.html">Forecast interval coverage</a> checks whether the desk's 50% and 75% range lines really hold 50% and 75% of days, the same coverage test any fitted quantile has to pass.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -685,7 +703,7 @@
       <li data-verdict="ok">A fixed downside buffer taken from the long-run spread of past growth outcomes.<div class="tl-drill-why">Better than the mean alone, but it is a static adjustment: the same buffer every year, blind to the fact that today's conditions have just made the bad tail much fatter.</div></li>
       <li data-verdict="bad">Wait for the economists to cut the central forecast properly before changing anything.<div class="tl-drill-why">Central forecasts tend to be cut in steps as data arrive. By the time the mean has caught up, the bad outcome may already be under way.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Central forecasts were cut, but in steps, and the recession that followed was far deeper than the central path had suggested. The fourth quarter of 2008 was the US economy's worst quarter in decades. Almost a decade later, "Vulnerable Growth" (Adrian, Boyarchenko and Giannone, 2019) fitted quantile regressions of future US growth on financial conditions and found exactly this pattern: as conditions tightened, the lower quantiles fell sharply while the median barely moved. The IMF built its Growth-at-Risk framework on the idea. Later out-of-sample studies found the tail signal weaker, and mostly at short horizons.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Central forecasts were cut, but in steps, and the recession that followed was far deeper than the central path had suggested. US output fell at an annualised rate of about 8.5% in the fourth quarter of 2008, the worst quarter since 1958. Almost a decade later, "Vulnerable Growth" (Adrian, Boyarchenko and Giannone, 2019) fitted quantile regressions of future US growth on financial conditions and found exactly this pattern: as conditions tightened, the lower quantiles fell sharply while the median barely moved. The IMF built its Growth-at-Risk framework on the idea. Later out-of-sample work, such as Plagborg-Møller, Reichlin, Ricco and Hasenzagl (2020), found financial variables add little to forecasts of growth risk beyond the very near term.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/A191RL1Q225SBEA">FRED, real GDP growth (A191RL1Q225SBEA)</a>; Reuters, 15 Sep 2008 (Lehman Brothers' bankruptcy filing); Adrian, Boyarchenko and Giannone, "Vulnerable Growth", <a href="https://doi.org/10.1257/aer.20161923">American Economic Review 109(4), 2019</a>; IMF, Global Financial Stability Report, October 2017; <a href="https://www.brookings.edu/articles/when-is-growth-at-risk">Plagborg-Møller et al., "When Is Growth at Risk?", Brookings Papers on Economic Activity, 2020</a></p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

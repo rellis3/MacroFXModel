@@ -446,6 +446,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The noise band for a new basket. \(q = N/T\), then \(\lambda_{\min} = (1-\sqrt q)^2\) and \(\lambda_{\max} = (1+\sqrt q)^2\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>20 pairs and 400 days. \(q = 20/400 = 0.05\), \(\sqrt q = 0.2236\), \(\lambda_{\min} = (1 - 0.2236)^2 = 0.6028\), and \(\lambda_{\max} = (1 + 0.2236)^2 =\) <span class="tl-blank" data-answer="1.497" data-tol="0.002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>12 pairs and five years of monthly returns, so \(T = 60\). \(q = 12/60 = 0.2\), \(\sqrt q =\) <span class="tl-blank" data-answer="0.4472" data-tol="0.0005"></span>, \(\lambda_{\min} =\) <span class="tl-blank" data-answer="0.306" data-tol="0.002"></span>, \(\lambda_{\max} =\) <span class="tl-blank" data-answer="2.094" data-tol="0.002"></span>. Short monthly samples make a wide band.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>45 pairs and 500 days. Find \(q\) <span class="tl-blank" data-answer="0.09" data-tol="0.0005"></span>, \(\lambda_{\min}\) <span class="tl-blank" data-answer="0.49" data-tol="0.002"></span> and \(\lambda_{\max}\) <span class="tl-blank" data-answer="1.69" data-tol="0.002"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Eigenvalue histogram against the Marchenko-Pastur noise band</div>
     <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Histogram of correlation-matrix eigenvalues, most bars clustered inside a shaded Marchenko-Pastur noise band roughly between 0.43 and 1.81, with one isolated red bar far to the right near eigenvalue 8.2 labeled genuine factor">
@@ -810,6 +827,8 @@
     </div>
     <p class="tl-fits-why"><strong>Why you'd care:</strong> before you hedge, size or report a "factor", this tells you whether your data can even see it.</p>
   </nav>
+
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../book-stress.html">Book stress</a> turns the correlation matrix's eigenvalues into an effective number of bets, calm against crisis; it does not yet check those eigenvalues against the noise band from this lesson.</div><!-- DESK:END -->
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
