@@ -1123,7 +1123,7 @@ export default {
             // hold-score calibration — both must outlive the 48h market-data TTL.
             'oi_bot_state', 'oi_hold_calibration',
             'oi_ripple_log', 'oi_vol_bot_config', 'oi_vol_bot_credentials', 'oi_vol_bot_zones', 'oi_vol_bot_trade_log', 'oi_vol_bot_state',
-            'oi_conf_bot_config', 'oi_conf_bot_credentials', 'oi_conf_bot_zones', 'oi_conf_bot_trade_log', 'oi_conf_bot_state',   // OI-Conf bot (status not durable, like OI-Vol)   // OI-Vol bot (status deliberately NOT here — rewritten every ~30s)
+            'oi_conf_bot_config', 'oi_conf_bot_credentials', 'oi_conf_bot_trade_log', 'oi_conf_bot_state',   // OI-Conf bot (status not durable, like OI-Vol)   // OI-Vol bot (status deliberately NOT here — rewritten every ~30s)
             // Per-pair stale-capture streak (js/oiRawArchive.js oiFreshnessStreak) — a
             // 48h TTL here would reset the streak right as a real stale run was about
             // to cross tolerance, silently delaying the alert it exists to give.

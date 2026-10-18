@@ -20063,6 +20063,7 @@ svcInterval('oiBot', _refreshOIVolBotZones, 10 * 60_000);
 // `oi_ripple_log` — one row per date, last refresh of the day wins — so the ripple-vs-short-book comparison accumulates forward on OUR capture
 // (which, unlike the archive, has weeklies/dailies). Judgeable at >=400 dates per oi_research_book/RIPPLE_BOOK_PREREG.md.
 const _OI_RIPPLE_LOG_CAP = 600;
+let _oiRippleLastPut = 0;
 async function _refreshOIRippleShadow() {
   // The shadow is always the OTHER book from the one OI-Vol is trading, so the log keeps three distinct arms: OI bot (day book), OI-Vol (whatever
   // bookMode it is set to), shadow (the opposite: 'near' when OI-Vol trades the ripple, 'gamma' otherwise).
@@ -20071,15 +20072,22 @@ async function _refreshOIRippleShadow() {
   const shadowMode = volMode === 'gamma' ? 'near' : 'gamma';
   const n = await _refreshOIBotZones({ outKey: 'oi_ripple_shadow_zones', strategy: 'oi-ripple-shadow', cfgKey: 'oi_vol_bot_config', variant: 'vol', cfgPatch: { bookMode: shadowMode } });
   try {
-    const [oiP, volP, rpP, logRaw] = await Promise.all([J('oi_bot_zones'), J('oi_vol_bot_zones'), J('oi_ripple_shadow_zones'), J('oi_ripple_log')]);
+    const [oiP, volP, rpP] = await Promise.all([J('oi_bot_zones'), J('oi_vol_bot_zones'), J('oi_ripple_shadow_zones')]);
+    // The log is MERGED into what is stored, so the read must be STRICT: kv.get() turns a failed Cloudflare read into "nothing there", and writing a
+    // one-row log over a 3-month history is exactly how it was lost (2026-10-18: only today's row survived). On any read failure, skip this round.
+    let logRaw = null;
+    try { const r = await kv.getStrict('oi_ripple_log'); if (r) { const j = JSON.parse(r); logRaw = j.data ?? j; } }
+    catch (e) { console.warn('[oi-ripple] log read failed, not writing this round:', e.message); return n; }
     const date = new Date().toISOString().slice(0, 10);
     const slim = P => Object.fromEntries(Object.entries(P?.instruments || {}).map(([k, v]) => [k,
       { spot: v.spot ?? null, regime: v.regime ?? null, dte: v.dte ?? null, zones: (v.zones || []).map(z => [z.mode, z.side, +(+z.level).toPrecision(8), z.entry != null ? +(+z.entry).toPrecision(8) : null]) }]));
     const log = logRaw && typeof logRaw === 'object' ? logRaw : { rows: {} };
+    const isNew = !log.rows[date];
     log.rows[date] = { at: new Date().toISOString(), volMode, shadowMode, oi: slim(oiP), vol: slim(volP), ripple: slim(rpP) };
     const dates = Object.keys(log.rows).sort();
     for (const d of dates.slice(0, Math.max(0, dates.length - _OI_RIPPLE_LOG_CAP))) delete log.rows[d];
-    await kv.put('oi_ripple_log', JSON.stringify({ data: log, timestamp: Date.now() }));
+    // Durable key (Cloudflare KV, ~1,000 writes/day on the free plan): persist hourly, and at once when a new date is added — not every 10 minutes.
+    if (isNew || Date.now() - _oiRippleLastPut > 55 * 60_000) { await kv.put('oi_ripple_log', JSON.stringify({ data: log, timestamp: Date.now() })); _oiRippleLastPut = Date.now(); }
   } catch (e) { console.warn('[oi-ripple] log failed:', e.message); }
   return n;
 }
