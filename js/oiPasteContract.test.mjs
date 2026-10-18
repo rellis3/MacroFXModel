@@ -355,10 +355,14 @@ console.log('[soft near-money window — scaled by the reference move]');
 
   // A wider reference move (higher vol / longer DTE) must admit more distant walls —
   // the whole point of scaling rather than hard-coding a percentage.
+  // A wall 17.7% out (4800 vs spot 4079): outside the default window, inside a wide one. (The original 5370 fixture sits 31% out, which the
+  // source-level 25% artefact guard — js/oiConfluence.js, 2026-10-16 — now drops regardless of the window, so it cannot show the widening.)
+  const farInst = { ...inst, callWalls: [...inst.callWalls, { strike: 4800, oi: 8000, tier: 'strong' }] };
   ok('a wider reference move reaches further out', (() => {
-    const wide = oiStoreToLevels({ ...inst, refMove: { move: 600, source: 'flat-vol' } });
-    return at(wide, 'call_wall').includes(5370);
-  })());
+    const wide = oiStoreToLevels({ ...farInst, refMove: { move: 600, source: 'flat-vol' } });
+    return at(wide, 'call_wall').includes(4800) && !at(oiStoreToLevels(farInst), 'call_wall').includes(4800);
+  })(), at(oiStoreToLevels({ ...farInst, refMove: { move: 600, source: 'flat-vol' } }), 'call_wall').join(' '));
+  ok('…but never past the 25%-from-spot artefact guard, however wide the window', !at(oiStoreToLevels({ ...farInst, refMove: { move: 2000, source: 'flat-vol' } }), 'call_wall').includes(5370));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
