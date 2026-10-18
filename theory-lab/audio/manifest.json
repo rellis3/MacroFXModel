@@ -2682,5 +2682,65 @@
 "Quant": "bf_emma",
 "Trader": "bm_george"
 }
+},
+"institutional-kyle-obizhaeva-invariance": {
+"hash": "8ee06d6c",
+"seconds": 174.3,
+"starts": [
+0.0,
+9.65,
+17.96,
+19.91,
+34.53,
+36.35,
+47.24,
+48.89,
+70.64,
+74.34,
+94.79,
+99.02,
+107.67,
+109.66,
+120.12,
+121.88,
+131.83,
+134.61,
+148.08,
+150.46,
+166.68,
+168.03
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
+},
+"institutional-ledoit-wolf-shrinkage": {
+"hash": "fb28d748",
+"seconds": 146.1,
+"starts": [
+0.0,
+10.87,
+22.48,
+27.57,
+44.47,
+46.19,
+59.83,
+61.91,
+73.88,
+75.45,
+95.68,
+97.91,
+111.23,
+113.07,
+118.93,
+121.6,
+135.93,
+137.28
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
 }
 }
