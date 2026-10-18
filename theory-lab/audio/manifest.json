@@ -1316,5 +1316,95 @@
 "Quant": "bf_emma",
 "Trader": "bm_george"
 }
+},
+"factor-based-portfolio-construction": {
+"hash": "65c5e7ad",
+"seconds": 155.5,
+"starts": [
+0.0,
+9.03,
+17.47,
+19.8,
+35.41,
+38.78,
+47.35,
+52.56,
+59.35,
+63.44,
+73.49,
+76.19,
+94.03,
+96.92,
+107.81,
+110.06,
+129.48,
+131.22,
+146.27,
+148.54
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
+},
+"feature-engineering-leakage-reproducibility": {
+"hash": "5de16c38",
+"seconds": 152.1,
+"starts": [
+0.0,
+6.66,
+15.1,
+18.35,
+30.93,
+34.16,
+46.39,
+48.89,
+61.47,
+64.78,
+72.83,
+74.55,
+91.99,
+95.28,
+107.53,
+108.72,
+133.88,
+138.6,
+144.11,
+145.47
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
+},
+"fed-corridor-iorb-srf-discount-window": {
+"hash": "c2813b43",
+"seconds": 155.5,
+"starts": [
+0.0,
+9.72,
+14.89,
+17.41,
+26.47,
+29.95,
+43.68,
+45.2,
+58.18,
+61.18,
+78.34,
+80.95,
+95.61,
+99.12,
+115.58,
+117.38,
+132.04,
+134.1,
+148.1,
+150.37
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
 }
 }
