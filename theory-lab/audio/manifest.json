@@ -4640,5 +4640,63 @@
 "Quant": "bf_emma",
 "Trader": "bm_george"
 }
+},
+"sharpe-family-deflated": {
+"hash": "e8e13da7",
+"seconds": 156.0,
+"starts": [
+0.0,
+5.11,
+10.79,
+12.61,
+26.94,
+28.37,
+48.65,
+52.28,
+63.05,
+69.3,
+81.13,
+84.02,
+97.47,
+99.25,
+106.94,
+109.7,
+120.03,
+122.84,
+146.76,
+148.11
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
+},
+"short-rate-models-vasicek-cir-hull-white": {
+"hash": "d9dcedde",
+"seconds": 150.1,
+"starts": [
+0.0,
+6.9,
+16.4,
+18.42,
+32.18,
+34.18,
+45.58,
+47.48,
+59.5,
+61.45,
+83.33,
+84.83,
+101.44,
+104.58,
+127.78,
+129.0,
+140.92,
+143.02
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
 }
 }
