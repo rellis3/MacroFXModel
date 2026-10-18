@@ -910,5 +910,35 @@
 "Quant": "bf_emma",
 "Trader": "bm_george"
 }
+},
+"data-architecture-storage-versioning": {
+"hash": "eb4e6b5a",
+"seconds": 125.3,
+"starts": [
+0.0,
+4.49,
+12.8,
+16.82,
+25.89,
+27.12,
+39.18,
+41.11,
+50.46,
+52.28,
+66.56,
+70.07,
+78.48,
+81.65,
+89.98,
+92.18,
+104.31,
+105.64,
+114.78,
+117.05
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
 }
 }
