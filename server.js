@@ -4484,6 +4484,76 @@ app.get('/api/cog-line/history', (_req, res) => {
   try { res.set('Cache-Control', 'public, max-age=3600'); res.json(_cogJson(_COG_HIST_PATH)); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── Chart page (cog-chart.html): live candles for any asset + the individual futures legs ─────────────────────────────
+// Candles come straight from OANDA (including the forming bar). The legs are the IBKR 1-minute midpoints of each futures contract as compact 5-minute / 15-minute OHLC
+// (analysis/output/cog_chart/leg_<NAME>.json, built by scripts/rates_line/build_leg_bars.py) with the newest bars laid over them from KV cog_legs_live_v1 when the laptop has pushed
+// (scripts/rates_line/refresh_leg_bars.py). Bars are drawn at BAR-OPEN time. Everything the page does to the numbers (rate, spread, invert, scale, shift) is done in the browser.
+const _CC_DIR = path.join(__dirname, 'analysis', 'output', 'cog_chart');
+const _CC_ASSETS = {
+  EURUSD: ['EUR_USD', 'FX majors'], GBPUSD: ['GBP_USD', 'FX majors'], USDJPY: ['USD_JPY', 'FX majors'], USDCHF: ['USD_CHF', 'FX majors'], USDCAD: ['USD_CAD', 'FX majors'], AUDUSD: ['AUD_USD', 'FX majors'], NZDUSD: ['NZD_USD', 'FX majors'],
+  EURGBP: ['EUR_GBP', 'FX crosses'], EURJPY: ['EUR_JPY', 'FX crosses'], EURCHF: ['EUR_CHF', 'FX crosses'], EURAUD: ['EUR_AUD', 'FX crosses'], EURCAD: ['EUR_CAD', 'FX crosses'], EURNZD: ['EUR_NZD', 'FX crosses'],
+  GBPJPY: ['GBP_JPY', 'FX crosses'], GBPCHF: ['GBP_CHF', 'FX crosses'], GBPAUD: ['GBP_AUD', 'FX crosses'], GBPCAD: ['GBP_CAD', 'FX crosses'], GBPNZD: ['GBP_NZD', 'FX crosses'], AUDJPY: ['AUD_JPY', 'FX crosses'],
+  AUDCAD: ['AUD_CAD', 'FX crosses'], AUDCHF: ['AUD_CHF', 'FX crosses'], AUDNZD: ['AUD_NZD', 'FX crosses'], CADJPY: ['CAD_JPY', 'FX crosses'], CADCHF: ['CAD_CHF', 'FX crosses'], CHFJPY: ['CHF_JPY', 'FX crosses'],
+  NZDJPY: ['NZD_JPY', 'FX crosses'], NZDCAD: ['NZD_CAD', 'FX crosses'],
+  GOLD: ['XAU_USD', 'Gold'], NAS100: ['NAS100_USD', 'Indices'], SPX500: ['SPX500_USD', 'Indices'], US30: ['US30_USD', 'Indices'], US2000: ['US2000_USD', 'Indices'], DE30: ['DE30_EUR', 'Indices'], UK100: ['UK100_GBP', 'Indices'],
+};
+const _CC_TF = { '5m': 'M5', '15m': 'M15', '1h': 'H1', '4h': 'H4' };
+const _CC_LEGS = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7'];
+let _ccLive = { at: 0, v: null };
+async function _ccLivePush() {
+  if (Date.now() - _ccLive.at > 20_000) {
+    try { const raw = await kv.get('cog_legs_live_v1'); const p = raw ? JSON.parse(raw) : null; _ccLive = { v: p?.data ?? p ?? null, at: Date.now() }; }
+    catch { _ccLive = { ..._ccLive, at: Date.now() }; }
+  }
+  return _ccLive.v;
+}
+function _ccMerge(base, add) {
+  const m = new Map(base.t.map((t, i) => [t, [base.o[i], base.h[i], base.l[i], base.c[i]]]));
+  add.t.forEach((t, i) => m.set(t, [add.o[i], add.h[i], add.l[i], add.c[i]]));
+  const ts = [...m.keys()].sort((a, b) => a - b);
+  return { t: ts, o: ts.map(t => m.get(t)[0]), h: ts.map(t => m.get(t)[1]), l: ts.map(t => m.get(t)[2]), c: ts.map(t => m.get(t)[3]) };
+}
+function _ccAgg15(m5) {
+  const g = new Map();
+  m5.t.forEach((t, i) => {
+    if (m5.c[i] == null) return;
+    const k = Math.floor(t / 900) * 900, a = g.get(k);
+    if (!a) g.set(k, [m5.o[i], m5.h[i], m5.l[i], m5.c[i]]); else { a[1] = Math.max(a[1], m5.h[i]); a[2] = Math.min(a[2], m5.l[i]); a[3] = m5.c[i]; }
+  });
+  const ts = [...g.keys()].sort((a, b) => a - b);
+  return { t: ts, o: ts.map(t => g.get(t)[0]), h: ts.map(t => g.get(t)[1]), l: ts.map(t => g.get(t)[2]), c: ts.map(t => g.get(t)[3]) };
+}
+app.get('/api/cog-chart/meta', (_req, res) => {
+  try {
+    const legs = _cogJson(path.join(_CC_DIR, 'legs_meta.json'));
+    res.json({ ok: true, assets: Object.entries(_CC_ASSETS).map(([key, [oanda, group]]) => ({ key, oanda, group })), timeframes: Object.keys(_CC_TF), legs });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+const _ccCandleCache = new Map();
+app.get('/api/cog-chart/candles', async (req, res) => {
+  try {
+    const asset = String(req.query.asset || 'NAS100'), tf = String(req.query.tf || '15m'), spec = _CC_ASSETS[asset], gran = _CC_TF[tf];
+    if (!spec || !gran) return res.status(400).json({ ok: false, error: 'unknown asset or timeframe' });
+    if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+    const count = Math.min(Math.max(parseInt(req.query.count, 10) || 1500, 50), 5000), key = `${asset}|${tf}|${count}`, hit = _ccCandleCache.get(key);
+    if (hit && Date.now() - hit.at < 10_000) return res.json(hit.v);
+    const bars = await fetchIntraday(spec[0], gran, { count, incomplete: true });
+    const v = { ok: true, asset, instrument: spec[0], tf, asOf: new Date().toISOString(), candles: bars.map(b => ({ t: b.time, o: b.open, h: b.high, l: b.low, c: b.close })) };
+    _ccCandleCache.set(key, { at: Date.now(), v }); res.json(v);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/cog-chart/leg', async (req, res) => {
+  try {
+    const name = String(req.query.name || '');
+    if (!_CC_LEGS.includes(name)) return res.status(400).json({ ok: false, error: 'unknown leg' });
+    const base = _cogJson(path.join(_CC_DIR, `leg_${name}.json`)), live = await _ccLivePush(), add = live?.legs?.[name]?.m5;
+    let m5 = base.m5, m15 = base.m15, liveAsOf = null;
+    if (add?.t?.length) { m5 = _ccMerge(m5, add); m15 = _ccMerge(m15, _ccAgg15(add)); liveAsOf = live.asOf ?? null; }
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true, name, label: base.label, group: base.group, period: base.period, source: base.source, convention: base.convention, staticAsOf: base.asOf, liveAsOf, m5, m15 });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.post('/api/rates-regime/tick', async (req, res) => {
   try { res.json({ ok: true, ...(await _ratesRegimeTick({ silent: req.query.silent === '1' })) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }

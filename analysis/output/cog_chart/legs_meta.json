@@ -1,0 +1,65 @@
+[
+ {
+  "name": "SR3U6",
+  "label": "SOFR Sep26 (CME SR3U6)",
+  "group": "SOFR",
+  "period": "16 Sep 2026 - 16 Dec 2026",
+  "asOf": "2026-10-09 20:59:00+00:00",
+  "m5": 6072,
+  "m15": 11712
+ },
+ {
+  "name": "SR3Z6",
+  "label": "SOFR Dec26 (CME SR3Z6)",
+  "group": "SOFR",
+  "period": "16 Dec 2026 - 17 Mar 2027",
+  "asOf": "2026-10-09 20:59:00+00:00",
+  "m5": 6072,
+  "m15": 11712
+ },
+ {
+  "name": "SR3H7",
+  "label": "SOFR Mar27 (CME SR3H7)",
+  "group": "SOFR",
+  "period": "17 Mar 2027 - 16 Jun 2027",
+  "asOf": "2026-10-09 20:59:00+00:00",
+  "m5": 6072,
+  "m15": 11712
+ },
+ {
+  "name": "IH7",
+  "label": "Euribor Mar27 (ICE IH7 = what I2! showed in the video week)",
+  "group": "Euribor",
+  "period": "17 Mar 2027 - 17 Jun 2027",
+  "asOf": "2026-10-09 19:59:00+00:00",
+  "m5": 5280,
+  "m15": 10320
+ },
+ {
+  "name": "IZ6",
+  "label": "Euribor Dec26 (ICE IZ6)",
+  "group": "Euribor",
+  "period": "16 Dec 2026 - 17 Mar 2027",
+  "asOf": "2026-10-09 19:59:00+00:00",
+  "m5": 5280,
+  "m15": 10320
+ },
+ {
+  "name": "ER3Z6",
+  "label": "ESTR 3M Dec26 (ICE ER3Z6)",
+  "group": "ESTR",
+  "period": "16 Dec 2026 - 17 Mar 2027",
+  "asOf": "2026-10-09 19:59:00+00:00",
+  "m5": 5280,
+  "m15": 10320
+ },
+ {
+  "name": "ER3H7",
+  "label": "ESTR 3M Mar27 (ICE ER3H7)",
+  "group": "ESTR",
+  "period": "17 Mar 2027 - 16 Jun 2027",
+  "asOf": "2026-10-09 19:59:00+00:00",
+  "m5": 5280,
+  "m15": 10320
+ }
+]

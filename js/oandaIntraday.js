@@ -28,7 +28,7 @@ export function clampToNow(toDate) {
 
 // Fetch intraday candles (epoch-second times) for one OANDA instrument.
 // Throws on a non-OK response with OANDA's errorMessage included.
-export async function fetchIntradayOnce(oanda, gran, { from, to, count } = {}) {
+export async function fetchIntradayOnce(oanda, gran, { from, to, count, incomplete = false } = {}) {
   const base = oandaBase();
   let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=${gran}&price=M`;
   if (from) url += `&from=${encodeURIComponent(from)}`;
@@ -45,16 +45,16 @@ export async function fetchIntradayOnce(oanda, gran, { from, to, count } = {}) {
   }
   const data = await r.json();
   return (data.candles ?? [])
-    .filter(c => c.complete !== false && c.mid)
+    .filter(c => (incomplete || c.complete !== false) && c.mid)
     .map(c => ({ time: Math.floor(new Date(c.time).getTime() / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c, volume: +(c.volume ?? 0) || 0 }));
 }
 
 // Fetch intraday candles (epoch-second times), PAGINATED past OANDA's 5000-
 // candle/request cap: walks the [from, to] window forward in time chunks so a
 // multi-month M15/M5 history stitches into one ascending, de-duplicated series.
-export async function fetchIntraday(oanda, gran, { from, to, count } = {}) {
+export async function fetchIntraday(oanda, gran, { from, to, count, incomplete = false } = {}) {
   const toMs = to ? new Date(clampToNow(to)).getTime() : Date.now();
-  if (!from) return fetchIntradayOnce(oanda, gran, { count });   // count-only (no range)
+  if (!from) return fetchIntradayOnce(oanda, gran, { count, incomplete });   // count-only (no range); incomplete = also return the still-forming candle (live chart)
   // OANDA rejects a from+to request spanning >5000 candles ("Maximum value for
   // 'count' exceeded") — it does NOT return the first 5000. So page with
   // from+count (5000 forward from the cursor), advancing until we pass `to`.

@@ -64,6 +64,7 @@ function isAllowedKVKey(key) {
     'oi_ripple_log', 'oi_vol_bot_config', 'oi_vol_bot_credentials', 'oi_vol_bot_status', 'oi_vol_bot_zones', 'oi_vol_bot_trade_log', 'oi_vol_bot_state',
     'oi_conf_bot_config', 'oi_conf_bot_credentials', 'oi_conf_bot_status', 'oi_conf_bot_zones', 'oi_conf_bot_trade_log', 'oi_conf_bot_state',
     'zq_path_v1',
+    'cog_legs_live_v1',
     'cog_line_live_v1',
     'mpt_store_v1',
     'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_status',
@@ -1064,6 +1065,7 @@ export default {
             // A 48h TTL would silently empty the feed between runs.
             'zq_path_v1',
             // cog_line_live_v1: the laptop's pushed IBKR bars for the Rates-page C.OG line; a 48h TTL would drop them between pushes.
+            'cog_legs_live_v1',
             'cog_line_live_v1',
             // macro_scorecard_history_v1 is the only time series of the scorecard's
             // composite — one row per day, accumulated, not re-derivable. Missing it

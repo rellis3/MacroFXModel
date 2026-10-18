@@ -48,6 +48,7 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    surprise_index, events_*  re-fetched from Finnhub on next page load
 const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
+  'cog_legs_live_v1',       // chart page legs: the laptop's latest IBKR 5-minute bars per futures contract, pushed by scripts/rates_line/refresh_leg_bars.py
   'cog_line_live_v1',       // C.OG rate-spread line: the laptop's latest IBKR bars, pushed by scripts/rates_line/refresh_cog_line.py (IBKR cannot be reached
                              // from Railway). Merged over analysis/output/cog_line/cog_line_15m.json by /api/cog-line. Must also be in _worker.js isAllowedKVKey + PERMANENT_KEYS.
   'zq_path_v1',            // fed funds futures rungs, pushed nightly from the owner's TWS. Durable because

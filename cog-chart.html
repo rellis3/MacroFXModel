@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rate legs vs price</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--red:#f85149}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2)}
+  .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.bad{color:var(--red);border-color:var(--red)} .chip.ok{color:var(--bull);border-color:var(--bull)}
+  .btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .btn:hover{color:var(--text);border-color:#4d5560} .btn.on{background:#22304d;color:#fff;border-color:var(--blue)}
+  .main{display:grid;grid-template-columns:360px 1fr;gap:12px;padding:12px 14px;align-items:start}
+  @media (max-width:980px){.main{grid-template-columns:1fr}}
+  .panel{display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 70px);overflow:auto;padding-right:2px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .box h2{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:7px}
+  .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}
+  .row label{font-size:11.5px;color:var(--text2);display:flex;align-items:center;gap:4px}
+  select,input[type=number]{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:12px;font-family:inherit}
+  input[type=number]{width:74px} input[type=color]{width:26px;height:22px;border:0;background:none;padding:0}
+  .card{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 9px;margin-top:8px}
+  .card.active{border-color:var(--blue)}
+  .card .top{display:flex;align-items:center;gap:6px}
+  .card .top b{font-size:12px;flex:1} .card .sm{font-size:10.5px;color:var(--text3)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px}
+  .chartcol{display:flex;flex-direction:column;gap:8px;min-width:0}
+  #chart{height:calc(100vh - 210px);min-height:420px;background:var(--card);border:1px solid var(--border);border-radius:10px}
+  #readout{font:12px ui-monospace,Consolas,monospace;color:var(--text2);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;min-height:44px;font-variant-numeric:tabular-nums;white-space:pre-wrap}
+  #readout b{color:var(--text)}
+  .note{font-size:11.5px;color:var(--text3);line-height:1.6;max-width:100ch}
+  .note b{color:var(--text2)}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <a href="today.html">&larr; Today</a>
+  <h1>Rate legs vs price</h1>
+  <span class="chip" id="chipCandles">candles: loading</span>
+  <span class="chip" id="chipLegs">legs: loading</span>
+  <span class="spacer"></span>
+  <button class="btn" id="btnShare" title="Copy a link that restores this exact setup">Copy link</button>
+  <button class="btn" id="btnReset">Reset to C.OG default</button>
+</div>
+<div class="main">
+  <div class="panel">
+    <div class="box">
+      <h2>Price</h2>
+      <div class="row"><select id="asset"></select>
+        <span id="tfs"></span></div>
+      <div class="row"><label>Bars <select id="bars"><option>300</option><option>600</option><option selected>1500</option><option>3000</option></select></label>
+        <label><input type="checkbox" id="live" checked> live (every 15 s)</label></div>
+    </div>
+    <div class="box">
+      <h2>Lines on the chart</h2>
+      <div class="row">
+        <button class="btn" id="addSpread">+ Spread (two legs)</button>
+        <button class="btn" id="addLeg">+ Single leg</button>
+      </div>
+      <div class="row" id="presets"></div>
+      <div id="cards"></div>
+      <div class="note" style="margin-top:8px">Step the active line with <b>[</b> and <b>]</b>. The shift only moves what is DRAWN: it is never used in any number.</div>
+    </div>
+  </div>
+  <div class="chartcol">
+    <div id="chart"></div>
+    <div id="readout">Move the cursor over the chart.</div>
+    <div class="note" id="notes"></div>
+  </div>
+</div>
+<script type="module">
+import { DEFAULTS, TF_SEC, barsFromColumns, legOnChart, carryForward, legRaw, spreadRaw, mapSeries, shiftPoints } from './js/cogChartMath.js';
+
+const LEGS = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7'];
+const LEG_NAME = { SR3U6: 'SOFR Sep26 (SR3U6)', SR3Z6: 'SOFR Dec26 (SR3Z6)', SR3H7: 'SOFR Mar27 (SR3H7)', IH7: 'Euribor Mar27 (IH7, = I2! in the video week)', IZ6: 'Euribor Dec26 (IZ6)', ER3Z6: 'ESTR 3M Dec26 (ER3Z6)', ER3H7: 'ESTR 3M Mar27 (ER3H7)' };
+const COLORS = ['#4f7df0', '#f97316', '#10b981', '#a371f7', '#d29922', '#f85149', '#22d3ee'];
+const KEY = 'cogChartState_v1';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ---------------------------------------------------------------- state
+// Default = what C.OG said he used: the raw indicator, no smoothing or adjustment, on its own chart. Here the line is drawn in its own units on a separate left axis (Mapping "axis");
+// choose Mapping "overlay on price" to draw it on the candle scale the way the Pine overlay does.
+const cogDefault = (id = 1) => ({ id, kind: 'spread', eur: DEFAULTS.eur, usd: DEFAULTS.usd, leg: 'SR3U6', dataTf: 'chart', src: 'close', asRate: true, invert: true, inBps: true, smooth: 1, carry: true,
+  mapMode: 'axis', scale: 0.1, offset: 1.445, fitLen: 250, shift: 0, color: COLORS[0], visible: true, label: 'C.OG line (SOFR Sep26 - Euribor Mar27)' });
+let state = { asset: 'NAS100', tf: '15m', bars: 1500, live: true, active: 1, nextId: 2, series: [cogDefault(1)] };
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
+function load() {
+  try {
+    const h = location.hash.startsWith('#s=') ? decodeURIComponent(escape(atob(location.hash.slice(3)))) : null;
+    const raw = h || localStorage.getItem(KEY);
+    if (raw) { const s = JSON.parse(raw); if (s && Array.isArray(s.series)) state = { ...state, ...s }; }
+  } catch {}
+}
+load();
+
+// ---------------------------------------------------------------- data
+const legCache = {};      // name -> { m5:[bars], m15:[bars], staticAsOf, liveAsOf, raw }
+let candles = [];         // [{t,o,h,l,c}]
+let candleAsOf = null;
+async function jget(url) { const r = await fetch(url); if (!r.ok) throw new Error(url + ' HTTP ' + r.status); return r.json(); }
+async function ensureLeg(name, since = null) {
+  const have = legCache[name];
+  const j = await jget(`/api/cog-chart/leg?name=${name}`);
+  legCache[name] = { m5: barsFromColumns(j.m5), m15: barsFromColumns(j.m15), staticAsOf: j.staticAsOf, liveAsOf: j.liveAsOf, label: j.label, period: j.period };
+  void have; void since;
+}
+async function loadCandles() {
+  const j = await jget(`/api/cog-chart/candles?asset=${state.asset}&tf=${state.tf}&count=${state.bars}`);
+  candles = j.candles; candleAsOf = j.asOf;
+}
+
+// ---------------------------------------------------------------- series computation
+function neededLegs() { const s = new Set(); state.series.forEach(d => { if (d.kind === 'spread') { s.add(d.eur); s.add(d.usd); } else s.add(d.leg); }); return [...s]; }
+function legPrices(name, d, times, step) {
+  const L = legCache[name]; if (!L) return times.map(() => null);
+  const dataStep = d.dataTf === 'chart' ? step : TF_SEC[d.dataTf];
+  const useM5 = dataStep <= 300 && step <= 900;
+  const bars = useM5 ? L.m5 : L.m15;
+  const px = legOnChart(bars, times, step, d.src, dataStep, useM5 ? 300 : 900);
+  return d.carry ? carryForward(px) : px;
+}
+function compute(d) {
+  const times = candles.map(c => c.t), step = TF_SEC[state.tf];
+  const hi = candles.map(c => c.h), lo = candles.map(c => c.l);
+  let raw;
+  if (d.kind === 'spread') raw = spreadRaw(legPrices(d.eur, d, times, step), legPrices(d.usd, d, times, step), d);
+  else raw = legRaw(legPrices(d.leg, d, times, step), d);
+  const mapped = mapSeries(raw, { ...d, mapMode: d.mapMode === 'auto' ? 'auto' : 'manual' }, hi, lo);
+  const prices = {};
+  (d.kind === 'spread' ? [d.eur, d.usd] : [d.leg]).forEach(n => { prices[n] = legPrices(n, d, times, step); });
+  return { times, raw, mapped, prices, pts: shiftPoints(times, mapped, d.shift | 0, step) };
+}
+
+// ---------------------------------------------------------------- chart
+const chart = LightweightCharts.createChart($('chart'), {
+  layout: { background: { color: '#161b22' }, textColor: '#9da7b3', fontSize: 11 },
+  grid: { vertLines: { color: '#1f2630' }, horzLines: { color: '#1f2630' } },
+  rightPriceScale: { borderColor: '#30363d' }, leftPriceScale: { visible: true, borderColor: '#30363d' },
+  timeScale: { borderColor: '#30363d', timeVisible: true, secondsVisible: false, rightOffset: 4 }, crosshair: { mode: 0 }, localization: { timeFormatter: t => new Date(t * 1000).toISOString().slice(5, 16).replace('T', ' ') + ' UTC' },
+});
+const candleSeries = chart.addCandlestickSeries({ upColor: '#10b981', downColor: '#f97316', borderVisible: false, wickUpColor: '#10b981', wickDownColor: '#f97316', priceScaleId: 'right' });
+let lineSeries = {};    // id -> { ls, calc }
+new ResizeObserver(() => chart.applyOptions({ width: $('chart').clientWidth, height: $('chart').clientHeight })).observe($('chart'));
+
+function rebuildLines() {
+  Object.values(lineSeries).forEach(o => chart.removeSeries(o.ls));
+  lineSeries = {};
+  state.series.forEach(d => {
+    const ls = chart.addLineSeries({ color: d.color, lineWidth: 2, priceScaleId: d.mapMode === 'axis' ? 'left' : 'right', priceLineVisible: false, lastValueVisible: true, title: d.label.slice(0, 14), visible: d.visible });
+    lineSeries[d.id] = { ls, calc: null };
+  });
+}
+function redraw(fit = false) {
+  TIMES = candles.map(c => c.t);
+  candleSeries.setData(candles.map(c => ({ time: c.t, open: c.o, high: c.h, low: c.l, close: c.c })));
+  let maxShift = 0;
+  state.series.forEach(d => {
+    const o = lineSeries[d.id]; if (!o) return;
+    o.calc = compute(d); o.ls.setData(o.calc.pts); o.ls.applyOptions({ color: d.color, visible: d.visible });
+    maxShift = Math.max(maxShift, d.shift | 0);
+  });
+  chart.timeScale().applyOptions({ rightOffset: Math.max(4, maxShift + 4) });
+  if (fit) chart.timeScale().fitContent();
+  status();
+}
+
+// ---------------------------------------------------------------- readout and status
+function nearest(times, t) { let lo = 0, hi = times.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (times[m] < t) lo = m + 1; else hi = m; } return lo; }
+function legLine(name, i, o) {
+  const px = o.calc.prices[name]?.[i];
+  return px == null ? `${name}: n/a` : `${name}: price ${px.toFixed(4)}  rate ${(100 - px).toFixed(4)}%`;
+}
+let TIMES = [];
+chart.subscribeCrosshairMove(p => {
+  if (!p.time || !candles.length) { $('readout').textContent = 'Move the cursor over the chart.'; return; }
+  const i = nearest(TIMES, p.time), c = candles[i];
+  let s = `<b>${new Date(c.t * 1000).toISOString().slice(0, 16).replace('T', ' ')} UTC</b>   ${state.asset} ${state.tf}  O ${c.o}  H ${c.h}  L ${c.l}  C ${c.c}\n`;
+  state.series.forEach(d => {
+    const o = lineSeries[d.id]; if (!o || !o.calc) return;
+    const raw = o.calc.raw[i], mp = o.calc.mapped[i];
+    const unit = d.inBps ? 'bp' : (d.asRate ? '%' : 'price');
+    s += `<b style="color:${d.color}">${esc(d.label)}</b>  raw ${raw == null ? 'n/a' : raw.toFixed(d.inBps ? 2 : 4)} ${unit}   drawn ${mp == null ? 'n/a' : mp.toFixed(4)}${d.shift ? `   (drawn ${d.shift > 0 ? '+' : ''}${d.shift} bars)` : ''}\n`;
+    s += '   ' + (d.kind === 'spread' ? [d.eur, d.usd] : [d.leg]).map(n => legLine(n, i, o)).join('   |   ') + '\n';
+  });
+  $('readout').innerHTML = s.trimEnd();
+});
+function ageTxt(iso) { if (!iso) return 'n/a'; const m = (Date.now() - Date.parse(iso)) / 60000; return m < 90 ? `${Math.round(m)} min ago` : m < 2880 ? `${(m / 60).toFixed(1)} h ago` : `${(m / 1440).toFixed(1)} days ago`; }
+function status() {
+  const lastC = candles.length ? candles[candles.length - 1].t * 1000 : null;
+  const chipC = $('chipCandles'); chipC.textContent = `candles: ${lastC ? ageTxt(new Date(lastC).toISOString()) : 'none'}`; chipC.className = 'chip ' + (lastC && Date.now() - lastC < 36e5 ? 'ok' : 'warn');
+  const names = neededLegs().filter(n => legCache[n]);
+  let newest = null, live = null;
+  names.forEach(n => { const a = legCache[n].staticAsOf, l = legCache[n].liveAsOf; newest = !newest || a > newest ? a : newest; live = l || live; });
+  const last = names.map(n => { const b = legCache[n].m5; return b.length ? b[b.length - 1].t * 1000 : 0; });
+  const old = last.length ? Math.min(...last) : 0, chipL = $('chipLegs');
+  chipL.textContent = names.length ? `legs: last bar ${ageTxt(new Date(old).toISOString())}${live ? ' (live push)' : ' (history file)'}` : 'legs: none selected';
+  chipL.className = 'chip ' + (!names.length ? '' : (Date.now() - old < 6 * 36e5 ? 'ok' : Date.now() - old < 3 * 864e5 ? 'warn' : 'bad'));
+  $('notes').innerHTML = `<b>How to read it.</b> Legs are the IBKR 1-minute <b>midpoints</b> of each futures contract, drawn at bar-open time like TradingView, so a line can differ a little from a TradingView trade-price chart. ` +
+    `Candles are OANDA, live. Times are UTC. The legs only move when the laptop pushes (run <b>scripts/rates_line/run_cog_line.bat</b> or <b>refresh_leg_bars.py --push</b> on a schedule); a red chip means they are stale. ` +
+    `Default = C.OG's raw line: (SOFR Sep26 rate - Euribor Mar27 rate) in bp, x 0.1 + 1.445, no smoothing, no shift. ` +
+    `<b>raw</b> in the readout is the number any statistic would use; <b>drawn</b> adds scale / offset / auto-fit, and the shift only moves where it is drawn.`;
+}
+
+// ---------------------------------------------------------------- cards (controls)
+const SRC = ['close', 'open', 'high', 'low', 'hl2', 'ohlc4'];
+const legOpts = sel => LEGS.map(n => `<option value="${n}" ${n === sel ? 'selected' : ''}>${esc(LEG_NAME[n])}</option>`).join('');
+function cardHtml(d) {
+  const legsHtml = d.kind === 'spread'
+    ? `<div class="grid2"><label>EUR leg<select data-k="eur">${legOpts(d.eur)}</select></label><label>USD leg<select data-k="usd">${legOpts(d.usd)}</select></label></div>`
+    : `<label>Leg<select data-k="leg">${legOpts(d.leg)}</select></label>`;
+  const chk = (k, t) => `<label><input type="checkbox" data-k="${k}" ${d[k] ? 'checked' : ''}> ${t}</label>`;
+  const num = (k, t, step) => `<label>${t}<input type="number" data-k="${k}" step="${step}" value="${d[k]}"></label>`;
+  return `<div class="card ${d.id === state.active ? 'active' : ''}" data-id="${d.id}">
+    <div class="top"><input type="color" data-k="color" value="${d.color}"><b>${esc(d.label)}</b>
+      <label class="sm"><input type="checkbox" data-k="visible" ${d.visible ? 'checked' : ''}> show</label>
+      <button class="btn" data-act="active" title="Make this the line that [ and ] step">select</button><button class="btn" data-act="del">&times;</button></div>
+    <div class="sm">${d.kind === 'spread' ? 'Spread = EUR leg - USD leg (the indicator\'s logic)' : 'Single leg'}</div>
+    ${legsHtml}
+    <div class="grid2" style="margin-top:4px">
+      <label>Data timeframe<select data-k="dataTf">${['chart', '5m', '15m', '1h', '4h'].map(x => `<option ${x === d.dataTf ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+      <label>Price source<select data-k="src">${SRC.map(x => `<option ${x === d.src ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+    </div>
+    <div class="row">${chk('asRate', 'price &rarr; rate (100 - price)')}${chk('invert', 'invert sign')}${chk('inBps', 'in bp')}${chk('carry', 'carry last print over gaps')}</div>
+    <div class="row">${num('smooth', 'EMA length (1 = off)', 1)}</div>
+    <div class="row"><label>Mapping<select data-k="mapMode"><option value="axis" ${d.mapMode === 'axis' ? 'selected' : ''}>own axis (left), raw x scale + offset</option><option value="manual" ${d.mapMode === 'manual' ? 'selected' : ''}>overlay on price (x scale + offset)</option><option value="auto" ${d.mapMode === 'auto' ? 'selected' : ''}>overlay on price (auto-fit)</option></select></label></div>
+    <div class="row">${num('scale', 'scale', 0.01)}${num('offset', 'offset', 0.001)}${num('fitLen', 'auto-fit bars', 10)}</div>
+    <div class="row"><button class="btn" data-act="fit" title="Sets scale and offset so the line spans the candle range of the last auto-fit bars, and overlays it on the price scale">Fit scale + offset to the price range</button></div>
+    <div class="row"><b style="font-size:11px">Shift</b>
+      <button class="btn" data-act="shift" data-by="-1">&#9664; -1 bar</button><button class="btn" data-act="shift" data-by="1">+1 bar &#9654;</button>
+      ${num('shift', 'bars', 1)}<button class="btn" data-act="shift0">0</button><span class="sm" data-role="shiftTxt"></span></div>
+  </div>`;
+}
+function shiftTxt(d) { const s = (d.shift | 0) * TF_SEC[state.tf] / 3600; return `${d.shift > 0 ? '+' : ''}${d.shift | 0} bars = ${s >= 0 ? '+' : ''}${s.toFixed(2)} h (drawn only)`; }
+let _rcTimer = null;
+function renderCardsSoon() { clearTimeout(_rcTimer); _rcTimer = setTimeout(renderCards, 0); }      // never replace the controls from inside their own change/blur event
+function renderCards() {
+  $('cards').innerHTML = state.series.map(cardHtml).join('');
+  state.series.forEach(d => { const el = document.querySelector(`.card[data-id="${d.id}"] [data-role=shiftTxt]`); if (el) el.textContent = shiftTxt(d); });
+}
+$('cards').addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const id = +b.closest('.card').dataset.id, d = state.series.find(x => x.id === id);
+  const act = b.dataset.act;
+  if (act === 'active') { state.active = id; renderCards(); }
+  else if (act === 'del') { state.series = state.series.filter(x => x.id !== id); if (state.active === id) state.active = state.series[0]?.id ?? 0; rebuildLines(); renderCards(); redraw(); }
+  else if (act === 'shift') { d.shift = (d.shift | 0) + +b.dataset.by; state.active = id; renderCards(); redraw(); }
+  else if (act === 'shift0') { d.shift = 0; renderCards(); redraw(); }
+  else if (act === 'fit') {
+    const o = lineSeries[id];
+    if (o && o.calc) {
+      const raw = o.calc.raw.filter(v => v != null).slice(-d.fitLen), px = candles.slice(-d.fitLen);
+      const rLo = Math.min(...raw), rHi = Math.max(...raw), pLo = Math.min(...px.map(c => c.l)), pHi = Math.max(...px.map(c => c.h));
+      if (rHi > rLo) { d.scale = +((pHi - pLo) / (rHi - rLo)).toFixed(6); d.offset = +(pLo - rLo * d.scale).toFixed(4); d.mapMode = 'manual'; rebuildLines(); renderCards(); redraw(); }
+    }
+  }
+  save();
+});
+$('cards').addEventListener('change', async e => {
+  const el = e.target, k = el.dataset.k; if (!k) return;
+  const id = +el.closest('.card').dataset.id, d = state.series.find(x => x.id === id);
+  d[k] = el.type === 'checkbox' ? el.checked : el.type === 'number' ? (k === 'smooth' ? Math.max(1, +el.value | 0) : (k === 'shift' || k === 'fitLen' ? (+el.value | 0) : +el.value)) : el.value;
+  if (k === 'mapMode' || k === 'color' || k === 'visible') { /* series scale changes need a rebuild */ }
+  if (['eur', 'usd', 'leg'].includes(k)) { d.label = d.kind === 'spread' ? `${d.usd === 'SR3U6' && d.eur === 'IH7' ? 'C.OG line' : 'Spread'} (${d.usd} - ${d.eur})` : d.leg; await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); }
+  state.active = id; if (k === 'mapMode') rebuildLines(); renderCardsSoon(); redraw(); save();
+});
+function addSeries(kind) {
+  const d = { ...cogDefault(state.nextId++), kind, color: COLORS[(state.nextId) % COLORS.length], label: kind === 'spread' ? 'Spread' : 'Leg' };
+  if (kind === 'leg') { d.leg = 'SR3U6'; d.label = 'SR3U6'; d.invert = false; d.inBps = false; d.mapMode = 'axis'; d.scale = 1; d.offset = 0; }
+  else d.label = 'Spread (SR3U6 - IH7)';
+  state.series.push(d); state.active = d.id; return d;
+}
+$('addSpread').onclick = async () => { addSeries('spread'); await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); rebuildLines(); renderCards(); redraw(); save(); };
+$('addLeg').onclick = async () => { addSeries('leg'); await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); rebuildLines(); renderCards(); redraw(); save(); };
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input,select,textarea')) return;
+  if (e.key !== '[' && e.key !== ']') return;
+  const d = state.series.find(x => x.id === state.active); if (!d) return;
+  d.shift = (d.shift | 0) + (e.key === ']' ? 1 : -1); renderCardsSoon(); redraw(); save();
+});
+
+// ---------------------------------------------------------------- presets, price controls
+const PRESETS = {
+  'C.OG default': () => ({ series: [cogDefault(1)], nextId: 2, active: 1 }),
+  'Both legs, own axes': () => { const a = { ...cogDefault(1), kind: 'leg', leg: 'SR3U6', invert: false, inBps: false, scale: 1, offset: 0, label: 'SR3U6', color: COLORS[0] }; const b = { ...a, id: 2, leg: 'IH7', label: 'IH7', color: COLORS[1] }; return { series: [a, b], nextId: 3, active: 1 }; },
+  'C.OG line over price': () => { const d = cogDefault(1); d.mapMode = 'auto'; return { series: [d], nextId: 2, active: 1 }; },
+  'SOFR Dec26 - ESTR Dec26': () => { const d = { ...cogDefault(1), eur: 'ER3Z6', usd: 'SR3Z6', label: 'Spread (SR3Z6 - ER3Z6)' }; return { series: [d], nextId: 2, active: 1 }; },
+};
+$('presets').innerHTML = Object.keys(PRESETS).map(k => `<button class="btn" data-p="${esc(k)}">${esc(k)}</button>`).join('');
+$('presets').addEventListener('click', async e => { const k = e.target.dataset.p; if (!k) return; Object.assign(state, PRESETS[k]()); await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); rebuildLines(); renderCards(); redraw(true); save(); });
+$('btnReset').onclick = async () => { Object.assign(state, PRESETS['C.OG default'](), { asset: 'NAS100', tf: '15m', bars: 1500 }); await boot(); };
+$('btnShare').onclick = async () => { const u = location.origin + location.pathname + '#s=' + btoa(unescape(encodeURIComponent(JSON.stringify(state)))); try { await navigator.clipboard.writeText(u); $('btnShare').textContent = 'Copied ✓'; } catch { prompt('Copy this link', u); } setTimeout(() => { $('btnShare').textContent = 'Copy link'; }, 2000); };
+function drawTfs() { $('tfs').innerHTML = ['5m', '15m', '1h', '4h'].map(t => `<button class="btn ${t === state.tf ? 'on' : ''}" data-tf="${t}">${t}</button>`).join(' '); }
+$('tfs').addEventListener('click', async e => { const t = e.target.dataset.tf; if (!t) return; state.tf = t; drawTfs(); await loadCandles(); renderCards(); redraw(true); save(); });
+$('asset').onchange = async e => { state.asset = e.target.value; await loadCandles(); redraw(true); save(); };
+$('bars').onchange = async e => { state.bars = +e.target.value; await loadCandles(); redraw(true); save(); };
+$('live').onchange = e => { state.live = e.target.checked; save(); };
+
+// ---------------------------------------------------------------- boot and live polling
+async function boot() {
+  const meta = await jget('/api/cog-chart/meta');
+  const groups = {}; meta.assets.forEach(a => (groups[a.group] ||= []).push(a));
+  $('asset').innerHTML = Object.entries(groups).map(([g, a]) => `<optgroup label="${esc(g)}">${a.map(x => `<option value="${x.key}" ${x.key === state.asset ? 'selected' : ''}>${x.key}</option>`).join('')}</optgroup>`).join('');
+  $('bars').value = String(state.bars); $('live').checked = !!state.live; drawTfs();
+  await Promise.all([loadCandles(), ...neededLegs().map(n => ensureLeg(n))]);
+  rebuildLines(); renderCards(); redraw(true); save();
+}
+let busy = false;
+setInterval(async () => {
+  if (!state.live || busy || document.hidden) return; busy = true;
+  try {
+    const before = candles.length ? candles[candles.length - 1] : null;
+    await loadCandles();
+    const after = candles[candles.length - 1];
+    if (!before || before.t !== after.t || before.c !== after.c) redraw();
+    status();
+  } catch {} finally { busy = false; }
+}, 15000);
+setInterval(async () => { if (!state.live || document.hidden) return; try { await Promise.all(neededLegs().map(n => ensureLeg(n))); redraw(); } catch {} }, 120000);
+boot().catch(e => { $('readout').textContent = 'Could not load: ' + e.message; });
+</script>
+</body>
+</html>
