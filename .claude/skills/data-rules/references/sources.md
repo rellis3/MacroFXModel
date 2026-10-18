@@ -53,6 +53,7 @@ the user if it doesn't rather than silently switching source.
   event names** ("Nonfarm Payrolls", not "Payroll Jobs Growth") and keyword-assigned impact (`impact_src=keyword`).
   Load both with `load_calendar()` from that script; never match a literal event name across the 2026-07-02 seam.
   The old file has ~46k exact duplicate rows (faults-log #11).
+  Nasdaq reuses one name for some MoM/YoY pairs (two "CPI" rows at the same minute): tell them apart by value scale.
 - After coverage ends, tags are unknown. Exclude them (`forge/vol.py` `tag_column(covered=...)`) and pass `end=` to
   `load_daily`.
 
