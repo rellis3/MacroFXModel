@@ -709,16 +709,24 @@ export async function put(key, value, opts = {}) {
 }
 
 // List key names matching a prefix. Returns array of key name strings.
-// CF backend: uses the KV list API (one request, up to 1000 keys).
+// CF backend: the KV list API, 1000 keys a page, following the cursor to the end (the per-day archives —
+// oi_raw_*, cboe_raw_* at four keys a day — pass 1000 within a year, and a single page silently truncated them).
 // File backend: filters the in-memory store.
 export async function keys(prefix = '') {
   if (USE_CF) {
     try {
-      const url = `${CF_BASE}/keys?prefix=${encodeURIComponent(prefix)}&limit=1000`;
-      const r   = await fetch(url, { headers: CF_HEADERS });
-      if (!r.ok) throw new Error(`CF KV LIST ${prefix}: ${r.status}`);
-      const json = await r.json();
-      return (json.result ?? []).map(k => k.name);
+      const names = [];
+      let cursor = '';
+      for (let page = 0; page < 50; page++) {
+        const url = `${CF_BASE}/keys?prefix=${encodeURIComponent(prefix)}&limit=1000${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+        const r   = await fetch(url, { headers: CF_HEADERS });
+        if (!r.ok) throw new Error(`CF KV LIST ${prefix}: ${r.status}`);
+        const json = await r.json();
+        for (const k of json.result ?? []) names.push(k.name);
+        cursor = json.result_info?.cursor || '';
+        if (!cursor) break;
+      }
+      return names;
     } catch (e) {
       console.error(`[KV] CF keys failed (${prefix}):`, e.message);
       return [];
