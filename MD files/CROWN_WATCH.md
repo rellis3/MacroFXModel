@@ -107,6 +107,11 @@ explicitly declined).
   is three years; SOX/SMH vs QQQ is the long-history proxy. Low prior. Source: 2026-10-16
   (3) entry, step 5.
 
+- **Implied correlation on the Dispersion tile** — Crown (2026-10-18 re-send of the D2
+  clip): Cboe `COR1M`/`COR3M` (2006→) and `VIXEQ` (2014→) are free on the same path as
+  DSPX and are not in the catalogue. A display line, not a test: COR1M sits at the 4th
+  percentile of twenty years as this is written. Source: 2026-10-18 entry, step 5.
+
 None of these are pre-registered — each still needs the `MARKET_SENSE_TESTS.md`
 pre-registration step (state the pass/null bar first) before it's run, per the
 standing discipline. Listed here so "cheap, low-prior, not run" doesn't have to
@@ -1370,3 +1375,100 @@ and the clip only does the first.
   RSP/SPY move — is the one this desk finds to be a range event, not a direction call. The
   value in the thread is the inventory of what to watch; the verdicts on what it predicts
   live here.
+
+
+---
+
+## 2026-10-18 — "Calm is not the same thing as safe" (1999, VIXEQ − VIX, and the normalizing dispersion spread) — RE-SEND of the D2 source clip
+
+> *"In 1999... the options market started to split: volatility on single names like Cisco
+> got really expensive, but index volatility stayed really cheap... dispersion rose, so
+> stocks traded on their own stories, and correlation fell... there really was no 'the
+> market'. Pull up VIX EQ minus VIX... swap fibre for GPUs and Cisco for Micron. The same
+> split is happening. Single-name vol has been rich, index vol cheap, correlation at the
+> lows, but over the past month this signature has started to reset, and the AI leaders
+> have fallen 30%. So this volatility spread is normalizing while rates stay high and capex
+> keeps rising... This is what a market looks like when the main theme starts to lose
+> control... calm is not the same thing as safe."*
+
+**This transcript is the clip that `DISPERSION.md` D2 was pre-registered from on
+2026-09-27** — the same sentences are quoted there verbatim ("over the past month, this
+signature has started to reset... normalizing... when the main theme starts to lose
+control"). It never got its own entry in this log because it went straight to the
+pre-registration and the harness; this entry is that record, written at the re-send so
+the duplicate is visible at the entry rather than discovered by re-running the audit.
+Nothing below is new work on the claim. The claim was tested three weeks ago.
+
+**1. The claim, stated plainly.** Three parts, one of them the operative one:
+- **(a) The structure.** Single-name implied vol rich, index implied vol cheap, implied
+  correlation low — a crowded market whose index looks calm. Measurable (Cboe DSPX, or
+  VIXEQ − VIX, or COR1M). Not in dispute.
+- **(b) THE CLAIM.** When that spread starts to *normalize* — dispersion high but now
+  falling — the dominant theme is losing control and the break is beginning. A forward
+  claim about range (wilder) and direction (down).
+- **(c) The analogy.** 1999 → 2000, Cisco → Micron, fibre → GPUs, 6.5% Fed funds → high
+  rates now, debt-funded capex both times. One episode. Not testable as a rate.
+
+**2. What's already on this desk — the claim was pre-registered and run.**
+- **`dispersion-reset` (D2, 2026-09-27) — VALIDATED, and the sign is the reverse of the
+  claim.** Written prior: the falling arm would look like the rising arm. It did not. The
+  gate (do the arms separate?) passed 4 of 4, so the direction of travel in dispersion
+  *does* carry information — but **crowded-and-falling precedes a CALMER week**
+  (−0.122 [−0.190, −0.005] SPX500, −0.083 [−0.151, −0.008] NQ) and nothing at a month,
+  while **crowded-and-still-rising is the wide arm** (+0.31 [+0.09, +0.58] over the
+  falling arm at 20 sessions on SPX500, +0.26 [+0.09, +0.43] on NQ). The ledger's `use`
+  line already says it: *"Never write that a normalizing dispersion spread means a break is
+  starting: tested here and falsified in sign."*
+- **Direction — NULL in both arms** (+0.006 / −0.005 at 20 sessions, every interval across
+  zero). The clip's whole point is a crash. Ninth volatility study in a row real on range,
+  null on direction.
+- **`dispersion-crowded-week` (D1) — NULL at a week**, the "mini flash crashes" version
+  from his earlier clip; the secondary 20-session window on the rising arm is real and
+  survives a below-median-VIX cut, and D2 supplied the mirror it lacked.
+- **Caveats carried, not dropped**: the falling arm is n=26 against a floor of 25, and the
+  rising arm's month effect lives mostly in the late half of a 2014→ sample. Neither is a
+  trigger.
+
+**3. Trading or macro-understanding.** (b) is a trading claim and it is answered. (a) is a
+structural read the desk already carries as the Dispersion tile on `market-view.html`.
+(c) is a story; the pre-registration said so in advance ("n=1 and untestable") and
+nothing has changed.
+
+**4. The configuration (step 4b — coherence only, no score).** Checked on Cboe's own
+series, which turn out to be free: `VIXEQ_History.csv` (3,101 rows from 2014-06), and
+`COR1M` / `COR3M` (from 2006-01). The clip's screen series and the desk's DSPX are the same
+object in two forms.
+- *"Single-name vol rich, index vol cheap."* VIXEQ 41.7 against VIX 20.0 on 10-16, spread
+  **21.7 — the 94th percentile of its whole history**, 77th of three years. True.
+- *"Correlation at the lows."* COR1M **10.1 — the 4th percentile of twenty years**; COR3M
+  14.0, the 5th. True, and strongly.
+- *"The AI leaders have fallen 30%."* Micron, his Cisco, is **−27.6% from its June high**;
+  Broadcom −31.7%; SMH −19.3%; Nvidia −10.5%. True for the names he would pick.
+- *"Over the past month this signature has started to reset."* **Not now.** DSPX is 36.6
+  and **+3.4 over 20 sessions**; the VIXEQ − VIX spread is +0.15 over 20 sessions and was
+  +5.5 on 10-09. The spread did reset once, from a 34.1 high on 07-09 to a −8.4 twenty-
+  session change by 08-20 — which is probably the month the clip was filmed in, and the
+  2026-09-26 check in `DISPERSION.md` found the same thing (rising, not resetting). As of
+  today the live arm is the **rising** one — D1's wide arm, not D2's quiet one.
+- *"When you look at the VIX it seems cool and calm."* VIX 20.0, the 82nd percentile of the
+  past year, up from 14.8 twenty sessions ago. Calm was true in September; today it is not.
+
+**5. Verdict and action.**
+- **Nothing to run.** The claim was pre-registered with a stated prior, tested, and came
+  back falsified in sign. Re-running because the clip was shared again is the "test it
+  until it passes" failure.
+- **The honest version of his warning is already on the desk, and it is the opposite
+  arm.** "Calm is not the same thing as safe" has a measured form here: a crowded market
+  that is **still getting more crowded** runs a wider month (D1 secondary window, mirror
+  passed), independent of the VIX level. A crowded market that is **normalizing** runs a
+  quieter week. His signal is the quiet one. Today's configuration — spread at the 94th
+  percentile and rising — is the wide one, which is a range read, never a direction.
+- **Display nugget, and a real one.** Implied correlation at the **4th percentile of
+  twenty years** is a descriptive fact the desk does not show. DSPX is in the catalogue
+  and on the Dispersion tile; COR1M / COR3M and VIXEQ are not pulled at all, and they are
+  the same free Cboe path. A one-line "implied correlation (1m)" with its percentile beside
+  the Dispersion tile would say what "no *the market*" means in a number. Proposed, not
+  built — a catalogue addition, confirm scope first.
+- **On the analogy.** 1999 is one episode. The desk can say what crowded-and-rising did
+  across 68 setups since 2014 and what crowded-and-falling did across 31. It cannot say
+  what one capex cycle does, and neither can the clip.
