@@ -862,6 +862,20 @@ export const DESK_EVIDENCE = [
     use: 'The one set of daily lines for the Daily Plan. Other line exports go to an archive menu. Forward scorecard = its second, independent test.',
   },
   {
+    id: 'one-range-forecast', domain: 'volatility', verdict: 'null', date: '2026-10-18', doc: 'forge/ONE_RANGE_FORECAST_PREREG.md',
+    instruments: ['NQ', 'SPX500', 'US30', 'US2000'],
+    claim: 'The validated US market-state range flags (VIX inverted, VIX9D front dear/calm, all six indices down, NQ down-week) and the NQ gamma sign still improve the daily range forecast on top of the chosen persistence + implied-vol lines',
+    result: 'Walk-forward 2020-2026, same yardstick as forecast-pick. Flags: 0.9926 [0.9874, 0.9978] of the chosen lines, below the registered 0.99 bar (3 of 4 better, US2000 worse). NQ gamma sign: 1.0019 [0.9972, 1.0075]. Persistence + IV already carries most of what the flags measured.',
+    use: 'One daily range forecast = the chosen lines alone. Global Read reads them and stacks no multipliers; the flags and the gamma sign are shown as context only.',
+  },
+  {
+    id: 'zero-gamma-distance', domain: 'volatility', verdict: 'underpowered', date: '2026-10-18', doc: 'oi_research_book/ZERO_GAMMA_DISTANCE_PREREG.md',
+    instruments: ['NQ'],
+    claim: 'NQ next-day range is larger when price sits close to the textbook zero gamma (whole book re-priced at hypothetical prices), beyond the gamma sign',
+    result: '779 days 2020-2026: near minus far +0.023 DR (p 0.69), robustness cells disagree in sign; placebo and positive-control gates both failed (s.e. ~0.06), so effects up to ~0.15 cannot be ruled out.',
+    use: 'Nothing built. The dealer hedging map shows zero gamma as mechanics. Rerun as a new pre-registration after ~400 days of our own capture (weeklies, per-expiry).',
+  },
+  {
     id: 'meta-label-yield-spread', domain: 'volatility', verdict: 'null', date: '2026-10-06', doc: 'forge/META_LABEL_YS_PREREG.md',
     claim: 'The volatility system state at entry (regime, recent range vs forecast, today range, recent jumps, plus the primary z) tells when the yield-spread book is right, so meta-sizing beats flat (Lesson 03 meta-labelling)',
     result: 'FAIL, wrong way round. 221 walk-forward test trades 2019-2026: per-trade Sharpe 0.100 meta vs 0.165 flat, difference -0.065 [-0.117, +0.006]. Top predicted tercile won 52.8% (mean +0.02%) vs bottom 62.2% (+0.38%). The model learned high-vol entries win; the test years said the opposite. 2020 flat -31.7%, meta -49.3%.',
