@@ -146,3 +146,27 @@ the chosen window", rather than a fixed 12 or 75 ticks.
 - **Not yet built:** a stop-distance sweep that finds the noise threshold per look-back
   window and compares expectancy across windows. It would be a natural reusable brick:
   trade log with the MAE path in, noise threshold and results by look-back out.
+
+## 2. Dealer-hedging chart preview: ES strike map (#Vip-Discussion, 2026-10-18)
+
+**Observed (screenshots, 15:41–15:44 UK).** C.OG posted a chart of ES Dec-26 (ESZ2026) options: open interest per
+strike (puts yellow left, calls blue right), two fans of per-strike curves labelled "PUTS IV LESS ATM −2 pt … +4 pt" and
+"CALLS IV LESS ATM +4 pt", a white line on the left, and these levels: spot 7,811.54, major wall 7,800, max pain (Oct 12)
+7,750, total gamma flip level ~7,745, zero gamma ~7,725.22, flip (zero crossing) ~7,859.12. Then four price charts with
+7,800 and 7,725 marked (a bounce near 7,725 on the 15th, a stall and chop at 7,800 overnight, then a break down
+through 7,725 to ~7,680) and two example trades: long 7,725 → 7,800 (stop 7,712.50); short 7,800 → 7,615
+(stop 7,820.25).
+
+> This is an insight into dynamic hedging requirements, conditional feedback loops and market flows
+> And a lot more factors at play that I'll be showing very soon
+> ( this can be used on a day to day basis and will be extremely beneficial for system developments)
+> Don't worry if this makes no sense just yet as I'll be explaining it all in significant detail within the content
+
+**Not stated by C.OG (open):** whether the curves are delta or gamma, which expiries feed it, the IV source, and how
+"flip (zero crossing)", "total gamma flip" and "zero gamma" differ.
+
+**Inference (ours).** The fans look like each strike's exposure re-priced at hypothetical spots under IV shifts; the white
+line looks like an aggregate hedging requirement against price. The circles were drawn after the move, and the same level
+read as support (bounce) and as acceleration (break), so the screenshots cannot test anything. Prior verdicts that apply:
+gamma-sign → next-day range is REAL on NQ; walls/flips as levels are NULL (wall placebo, G3, ripple walls). Rebuilt as
+the "Dealer hedging map" (05c) on `oi-dashboard-v2.html` (engine `js/hedgingScenario.js`), 2026-10-18.

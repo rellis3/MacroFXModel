@@ -35,11 +35,11 @@
 //
 // THIS IS A CONTEXT COMPOSITE, NOT A NEW BACKTESTED SIGNAL — same posture as
 // `pairCompositeEngine.js`. It reports what already-built reads agree or
-// disagree on; agreement is arithmetic, not a validated probability. The one
-// exception is the yield-spread leg, tagged VALIDATED below — and even that
-// carries the caveat that only USDJPY's sign has been confirmed live
-// (`js/yieldSpreadEngine.js`'s own header note); every other pair's z uses
-// the engine's automatic FRED-based orientation, unconfirmed live.
+// disagree on; agreement is arithmetic, not a validated probability. The
+// yield-spread leg was tagged VALIDATED until 2026-10-17, when the evidence
+// book deflated it (point-in-time rerun: OOS Sharpe 0.09, p 0.91; the banked
+// PF 2.2 needed a +2-day lag on a series FRED publishes ~32 days late). It is
+// CONTEXT now, like every other leg, and earns no confidence bonus.
 //
 // DELIBERATELY NOT INCLUDED: central-bank tone/hawkish-score momentum. This
 // repo already pre-registered and ran exactly that test — does ΔhawkishScore
@@ -142,9 +142,9 @@ function yieldSpreadDriver(yieldSpread) {
   const stretch = Math.abs(yieldSpread.z) >= 2 ? 'stretched far from' : Math.abs(yieldSpread.z) >= 1 ? 'stretched from' : 'sitting close to';
   return {
     name: 'yieldSpread', label: 'Yield-spread z-score',
-    status: 'VALIDATED', score: dirScore,
-    detail: `z=${round1(yieldSpread.z)} (US-vs-local short-rate spread, 90d rolling). The one component here with a real OOS result — PF 2.19, Sharpe ~1.14, positive every year 2022-2026 (YIELD_SPREAD_STRATEGY.md). Direction is engine-auto-oriented; only confirmed live for USDJPY.`,
-    teach: `The US-vs-local short-rate spread is ${stretch} its own 90-day average (z=${round1(yieldSpread.z)}). Spreads like this tend to pull the exchange rate back toward fair value over the coming weeks, not days — the further it's stretched, the stronger that pull usually gets, and it tends to fade as the spread normalizes. This is the one leg here with real historical evidence behind it: it made money every year tested since 2022.`,
+    status: 'CONTEXT', score: dirScore,
+    detail: `z=${round1(yieldSpread.z)} (US-vs-local short-rate spread, 90d rolling). Was the one validated leg; deflated 2026-10-17: on point-in-time data the sleeve's OOS Sharpe is 0.09 (p 0.91) and 2023-2025 lost (YIELD_SPREAD_STRATEGY.md, evidence book). Context only.`,
+    teach: `The US-vs-local short-rate spread is ${stretch} its own 90-day average (z=${round1(yieldSpread.z)}). The idea is that spreads like this pull the exchange rate back toward fair value over weeks. It looked strong in the original backtest, but that result relied on data that was not yet published at the time; re-run honestly it shows no edge, so treat it as background, not a signal.`,
   };
 }
 
@@ -393,7 +393,7 @@ export function computeOutlook(inputs = {}, horizonKey = 'weekly') {
   const windowMs = horizon.windowDays * 24 * 3600e3;
   const eventRisk = eventRiskFor(inputs.events, windowMs);
 
-  // Confidence: leg-agreement fraction (30-70pt) + validated-leg bonus (+15) +
+  // Confidence: leg-agreement fraction (30-70pt) +
   // vol-regime stability adj (±5) − event-risk penalty (up to −20, a
   // high-impact release inside the window can overturn the read before it
   // plays out). Arithmetic, not a calibrated probability — same honesty
@@ -402,7 +402,6 @@ export function computeOutlook(inputs = {}, horizonKey = 'weekly') {
   if (bias) {
     const agreeFrac = directional.length ? agree / directional.length : 0;
     let conf = 30 + agreeFrac * 40;
-    if (y) conf += 15;
     if (v?.confidenceAdj) conf += v.confidenceAdj * 100;
     conf -= Math.min(20, eventRisk.highCount * 10);
     confidence = Math.round(clip(conf, 5, 95));
@@ -430,7 +429,7 @@ export function computeOutlook(inputs = {}, horizonKey = 'weekly') {
     horizonKey, horizonLabel: horizon.label, bias, biasScore, confidence,
     noRead, noReadWhy,
     agree, total: directional.length, drivers, eventRisk,
-    disclaimer: 'CONTEXT composite, not a validated predictive signal — see MD files/CLAUDE.md. The yield-spread leg (when present) is the one component with a real OOS result behind it.',
+    disclaimer: 'CONTEXT composite, not a validated predictive signal — see MD files/CLAUDE.md. No leg currently has a surviving out-of-sample result (the yield-spread leg was deflated 2026-10-17).',
   };
 }
 

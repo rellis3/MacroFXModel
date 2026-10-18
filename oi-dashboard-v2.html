@@ -118,6 +118,25 @@ svg text{font-family:var(--mono)}
     <svg id="ripple" width="100%" viewBox="0 0 1000 640"></svg>
   </div>
 
+  <div class="card" id="hsCard">
+    <h2><em>05c</em> Dealer hedging map — who has to trade, and how much
+      <span class="tgl"><span class="pill on" data-hsrc="cme">CME futures options</span><span class="pill" data-hsrc="cboe">Cboe index options</span></span>
+      <span class="tgl" style="margin-left:6px"><span class="pill on" data-hexp="3">≤3 DTE</span><span class="pill" data-hexp="30">≤30 DTE</span><span class="pill" data-hexp="400">whole book</span></span></h2>
+    <div class="sub"><b>The C.OG chart, rebuilt.</b> Price runs up the side; all three panels share it. <b>Left:</b> open interest at each strike, <span style="color:#c07f22">puts</span> left, <span style="color:#2f8fcc">calls</span> right. <b>Middle:</b> the whole book's dealer gamma <i>if price were at that level</i>, once per implied-vol shift. Right of the centre line, dealers lean against moves (damping); left of it they chase (amplifying). Where a curve crosses the centre is <b>zero gamma</b> for that vol. <b>Right:</b> the hedging requirement: futures dealers must <b>buy (right) or sell (left)</b> to stay flat if price travels from spot to that level. A steep line means a lot of forced flow per point.</div>
+    <div class="stats" id="hsStats" style="margin-bottom:8px"></div>
+    <svg id="hsChart" width="100%" viewBox="0 0 1000 620" style="max-width:1150px;display:block"></svg>
+    <div class="legend" id="hsLegend"></div>
+    <div class="row" style="margin-top:12px">
+      <div><div class="sub" style="margin:0 0 6px;color:var(--tx2)"><b>What the book says right now</b></div><ul id="hsRead" style="margin:0;padding-left:18px;color:var(--tx2);font-size:13px;line-height:1.6"></ul></div>
+      <div><div class="sub" style="margin:0 0 6px;color:var(--tx2)"><b>How much to trust it</b></div><ul style="margin:0;padding-left:18px;color:var(--tx3);font-size:12.5px;line-height:1.6">
+        <li><b style="color:rgb(70,184,122)">Tested, real (NQ):</b> the gamma sign predicts next-day <i>range</i>: long gamma = quieter days (oi_research_book/GEX_RANGE_BROWNIAN_RESULTS.md). Not tested on ES yet.</li>
+        <li><b style="color:rgb(232,97,95)">Tested, null:</b> walls and flips as support/resistance or magnets reacted like any other strike (wall placebo, G3, ripple walls). The levels here are where hedging changes, not where price must turn.</li>
+        <li><b>Untested:</b> direction from the zero-gamma level, vanna and charm flows. Read them as mechanics, not signals.</li>
+        <li><b>Assumed:</b> dealers long calls / short puts (flip it and every sign flips), and dealers hold the other side of ALL open interest, so the sizes are upper bounds; IV shifts are parallel and per contract. CME uses one vol per expiry (no skew), so vanna there is illustrative; the Cboe source re-prices on each contract's own IV.</li>
+      </ul></div>
+    </div>
+  </div>
+
   <h2 class="sech"><em>06</em> The brief — six questions, in order <span>how far can price go · which levels will be reached · where hedging calms or amplifies · is the market calmer or more nervous · is positioning building · what changed overnight</span></h2>
   <div id="brief"></div>
 
@@ -147,6 +166,7 @@ svg text{font-family:var(--mono)}
 <script type="module">
 import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol, parseOIMatrix, oiRippleBook } from './js/oi.js';
 import { bsGamma } from './js/gammaGreeks.js';
+import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';
 
 const $ = s => document.querySelector(s);
 const NAMES = {'XAU/USD':'GOLD','NAS100_USD':'NQ','SPX500_USD':'SPX','US2000_USD':'RUT','US30_USD':'US30','EUR/USD':'EURUSD','GBP/USD':'GBPUSD','USD/JPY':'USDJPY','AUD/USD':'AUDUSD','USD/CAD':'USDCAD','USD/CHF':'USDCHF'};
@@ -674,6 +694,133 @@ function drawHeat(){
   svg.querySelectorAll('rect[data-t]').forEach(c => { c.onmousemove = ev => showTip(ev, c.dataset.t); c.onmouseleave = hideTip; });
 }
 
+// ── 05c Dealer hedging map: js/hedgingScenario.js re-prices the whole book at every price on the grid,
+// once per IV shift. CME = the stored QuikStrike book (one vol per expiry from the term structure);
+// Cboe = SPX/NDX index options, each contract on its own IV (shifted onto the CFD by cfdOffset).
+const HS = { src: 'cme', maxDte: 3, cache: {} };
+const FUT = { 'NAS100_USD': 'NQ', 'SPX500_USD': 'ES', 'US2000_USD': 'RTY', 'US30_USD': 'YM', 'XAU/USD': 'GC' };
+const HS_FAN = { '-2': '#9fd6f5', '0': '#5cc8ff', '2': '#3a8fc2', '4': '#2a6890' };   // one hue, light = lower IV
+const HS_CALL = '#2f8fcc', HS_PUT = '#c07f22';
+function hsCmeBook(sym, e){
+  if (!e?.rawOI || INVERTED.has(sym)) return null;
+  let legs = oiMatrixExpiryLegs(e.rawOI, { basis: Number.isFinite(e.basis) ? e.basis : 0, minOI: e.minOI ?? 1 });
+  if (!legs?.length) return null;
+  if (e.cpSwapped) legs = legs.map(l => ({ ...l, calls: l.puts, puts: l.calls }));
+  const pts = (e.ivTermStructure?.points || []).filter(p => p && p.iv > 0 && Number.isFinite(p.dte));
+  const flat = oiFlatVol(sym);
+  const sig = d => pts.length && Number.isFinite(d) ? pts.slice().sort((a, b) => Math.abs(a.dte - d) - Math.abs(b.dte - d))[0].iv / 100 : flat;
+  const out = [];
+  for (const l of legs) {
+    const d = Number.isFinite(l.dte) ? l.dte : 14;
+    if (d > HS.maxDte) continue;
+    const T = Math.max(0.25, d) / 365, iv = sig(d);
+    l.strikes.forEach((K, i) => { if (l.calls[i] > 0) out.push({ K, T, cp: 'C', oi: l.calls[i], iv }); if (l.puts[i] > 0) out.push({ K, T, cp: 'P', oi: l.puts[i], iv }); });
+  }
+  return { contracts: out, spot: e.spot, shift: 0, optMult: 1, futMult: 1, ivNote: pts.length ? 'one IV per expiry (term structure), no skew' : `flat ${(flat * 100).toFixed(0)}% vol (no IV stored)` };
+}
+async function hsCboeBook(sym){
+  const key = `${sym}|${HS.maxDte}`;
+  const hit = HS.cache[key];
+  if (!hit || Date.now() - hit.at > 300000) {
+    const r = await fetch(`/api/cboe-contracts?pair=${encodeURIComponent(sym)}&maxDte=${HS.maxDte}&window=0.08`);
+    const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Cboe unavailable');
+    HS.cache[key] = { at: Date.now(), j };
+  }
+  const j = HS.cache[key].j;
+  const contracts = j.rows.map(([K, T, cp, oi, iv]) => ({ K, T, cp, oi, iv }));
+  return { contracts, spot: j.spot, shift: Number.isFinite(j.cfdOffset) ? j.cfdOffset : 0, optMult: j.optMult, futMult: oiContractSize(sym),
+    ivNote: `each contract on its own Cboe IV (${j.index}, ${contracts.length} contracts)${Number.isFinite(j.cfdOffset) ? '' : ' · CFD offset unknown: cash-index prices'}`, index: j.index };
+}
+async function drawHedging(){
+  const svg = $('#hsChart'), D = CUR;
+  const fail = m => { svg.innerHTML = `<text x="500" y="300" text-anchor="middle" fill="#6b7585" font-size="14">${esc(m)}</text>`; $('#hsStats').innerHTML = ''; $('#hsRead').innerHTML = ''; $('#hsLegend').innerHTML = ''; };
+  if (!D) return fail('No OI record for this instrument.');
+  if (HS.src === 'cboe' && !['SPX500_USD', 'NAS100_USD'].includes(SYM)) return fail('Cboe index options exist for SPX and NQ (NDX) only. Switch to CME.');
+  let B;
+  try { B = HS.src === 'cboe' ? await hsCboeBook(SYM) : hsCmeBook(SYM, D.e); } catch (err) { return fail('Cboe chain unavailable: ' + err.message); }
+  if (!B || !B.contracts.length) return fail(INVERTED.has(SYM) ? 'Inverted FX quotes are not mapped in this view yet.' : 'No contracts in this expiry window (try a wider one).');
+  const S = B.spot, refSpot = D.spot ?? D.e?.spot ?? S, half = Math.min(0.06, Math.max(0.012, 3 * (D.rm || refSpot * 0.01) / refSpot));
+  const sc = hedgingScenario(B.contracts, { spot: S, lo: S * (1 - half), hi: S * (1 + half), n: 121, shifts: [-2, 0, 2, 4], optMult: B.optMult, futMult: B.futMult });
+  if (!sc) return fail('Not enough priced contracts to build the map.');
+  const sh = v => v + B.shift, fut = FUT[SYM] || 'futures', unit = fut + ' contracts';
+  const W = 1000, H = 620, T0 = 30, B0 = 590, lo = sh(sc.grid[0]), hi = sh(sc.grid[sc.grid.length - 1]);
+  const y = P => B0 - (P - lo) / (hi - lo) * (B0 - T0);
+  const colA = [64, 280], colB = [305, 565], colC = [590, 818];
+  const mid = c => (c[0] + c[1]) / 2;
+  const base = sc.curves.find(c => c.dv === 0);
+  const maxOI = Math.max(1, ...sc.strikes.map(s => Math.max(s.calls, s.puts)));
+  const maxG = Math.max(1e-9, ...sc.curves.flatMap(c => c.gamma.map(Math.abs)));
+  const maxH = Math.max(1e-9, ...sc.curves.flatMap(c => c.hedge.map(Math.abs)));
+  const ks = sc.strikes.map(s => s.K), step = ks.length > 1 ? Math.min(...ks.slice(1).map((k, i) => k - ks[i]).filter(v => v > 0)) : (hi - lo) / 40;
+  const bh = Math.max(1.5, Math.min(12, Math.abs(y(lo + step) - y(lo)) * 0.72));
+  let h = '';
+  // price grid + axis labels
+  for (let i = 0; i <= 8; i++) { const P = lo + (hi - lo) * i / 8, yy = y(P);
+    h += `<line x1="${colA[0]}" x2="${colC[1]}" y1="${yy}" y2="${yy}" stroke="rgba(255,255,255,.045)"/><text x="${colA[0] - 6}" y="${yy + 4}" text-anchor="end" fill="#6b7585" font-size="11">${px(P)}</text>`; }
+  for (const [c, t] of [[colA, 'OI by strike'], [colB, 'dealer gamma if price were here'], [colC, 'futures dealers must buy / sell']]) {
+    h += `<line x1="${mid(c)}" x2="${mid(c)}" y1="${T0}" y2="${B0}" stroke="#2a323d"/><text x="${mid(c)}" y="${T0 - 12}" text-anchor="middle" fill="#a8b1bd" font-size="11.5">${t}</text>`; }
+  h += `<text x="${colB[0]}" y="${B0 + 18}" fill="#6b7585" font-size="10.5">◀ chases moves</text><text x="${colB[1]}" y="${B0 + 18}" text-anchor="end" fill="#6b7585" font-size="10.5">damps moves ▶</text>`;
+  h += `<text x="${colC[0]}" y="${B0 + 18}" fill="#6b7585" font-size="10.5">◀ sell</text><text x="${colC[1]}" y="${B0 + 18}" text-anchor="end" fill="#6b7585" font-size="10.5">buy ▶</text>`;
+  // OI bars
+  const wA = (colA[1] - colA[0]) / 2 - 4;
+  for (const s of sc.strikes) { const yy = y(sh(s.K)) - bh / 2;
+    if (s.puts > 0) { const w = s.puts / maxOI * wA; h += `<rect x="${mid(colA) - 1 - w}" y="${yy}" width="${w}" height="${bh}" rx="${Math.min(2, bh / 2)}" fill="${HS_PUT}"/>`; }
+    if (s.calls > 0) { const w = s.calls / maxOI * wA; h += `<rect x="${mid(colA) + 1}" y="${yy}" width="${w}" height="${bh}" rx="${Math.min(2, bh / 2)}" fill="${HS_CALL}"/>`; } }
+  // gamma fan + hedge lines
+  const path = (vals, c, m) => sc.grid.map((P, i) => `${i ? 'L' : 'M'}${(mid(c) + vals[i] / m * ((c[1] - c[0]) / 2 - 6)).toFixed(1)},${y(sh(P)).toFixed(1)}`).join('');
+  for (const c of sc.curves) { const col = HS_FAN[String(c.dv)] || '#5cc8ff', w = c.dv === 0 ? 2.4 : 1.3;
+    h += `<path d="${path(c.gamma, colB, maxG)}" fill="none" stroke="${col}" stroke-width="${w}" opacity="${c.dv === 0 ? 1 : .8}"/>`;
+  }
+  // direct labels at the top end, where the fan is widest; stacked so they never collide
+  sc.curves.map(c => ({ c, x: mid(colB) + c.gamma[c.gamma.length - 1] / maxG * ((colB[1] - colB[0]) / 2 - 6) })).sort((a, b) => a.x - b.x)
+    .forEach(({ c, x }, k) => { h += `<text x="${Math.min(colB[1] - 4, x + 4)}" y="${T0 + 10 + k * 11}" fill="#a8b1bd" font-size="10" text-anchor="${x > colB[1] - 40 ? 'end' : 'start'}">IV ${c.dv > 0 ? '+' : ''}${c.dv}</text>`; });
+  for (const c of sc.curves.filter(c => c.dv !== 0)) h += `<path d="${path(c.hedge, colC, maxH)}" fill="none" stroke="#eef1f5" stroke-width="1" opacity=".28" stroke-dasharray="3 3"/>`;
+  h += `<path d="${path(base.hedge, colC, maxH)}" fill="none" stroke="#eef1f5" stroke-width="2"/>`;
+  // levels across all three panels
+  const lv = [];
+  lv.push([sh(S), 'spot', '#eef1f5', '', px(sh(S))]);
+  for (const z of sc.zeroGamma.slice(0, 2)) lv.push([sh(z.price), 'zero gamma', '#f0b04a', '6 4', px(sh(z.price))]);
+  if (sc.levels.majorWall != null) lv.push([sh(sc.levels.majorWall), 'major wall', '#6fb6ff', '4 3', px(sh(sc.levels.majorWall))]);
+  if (sc.levels.putWall != null && sc.levels.putWall !== sc.levels.majorWall) lv.push([sh(sc.levels.putWall), 'put wall', HS_PUT, '4 3', px(sh(sc.levels.putWall))]);
+  if (sc.levels.callWall != null && sc.levels.callWall !== sc.levels.majorWall) lv.push([sh(sc.levels.callWall), 'call wall', HS_CALL, '4 3', px(sh(sc.levels.callWall))]);
+  if (sc.levels.maxPain != null && sh(sc.levels.maxPain) >= lo && sh(sc.levels.maxPain) <= hi) lv.push([sh(sc.levels.maxPain), 'max pain', '#8a93a0', '1 3', px(sh(sc.levels.maxPain))]);
+  const placed = [];
+  for (const [P, name, col, dash, lab] of lv) { if (P < lo || P > hi) continue; const yy = y(P);
+    h += `<line x1="${colA[0]}" x2="${colC[1]}" y1="${yy}" y2="${yy}" stroke="${col}" stroke-width="${name === 'spot' ? 1.4 : 1.1}" ${dash ? `stroke-dasharray="${dash}"` : ''} opacity=".9"/>`;
+    let ty = yy + 4; while (placed.some(p => Math.abs(p - ty) < 12)) ty += 12; placed.push(ty);
+    h += `<text x="${colC[1] + 8}" y="${ty}" fill="${col}" font-size="11">${name} ${lab}</text>`; }
+  h += `<rect id="hsHit" x="${colA[0]}" y="${T0}" width="${colC[1] - colA[0]}" height="${B0 - T0}" fill="transparent"/><line id="hsX" x1="${colA[0]}" x2="${colC[1]}" y1="0" y2="0" stroke="#eef1f5" stroke-opacity=".35" visibility="hidden"/>`;
+  svg.innerHTML = h;
+  const hit = svg.querySelector('#hsHit'), xl = svg.querySelector('#hsX');
+  hit.onmousemove = ev => { const r = svg.getBoundingClientRect(), vy = (ev.clientY - r.top) / r.height * H;
+    const P = lo + (B0 - vy) / (B0 - T0) * (hi - lo), i = Math.max(0, Math.min(sc.grid.length - 1, Math.round((P - lo) / (hi - lo) * (sc.grid.length - 1))));
+    xl.setAttribute('y1', vy); xl.setAttribute('y2', vy); xl.setAttribute('visibility', 'visible');
+    const k = sc.strikes.reduce((b, s) => Math.abs(sh(s.K) - P) < Math.abs(sh(b.K) - P) ? s : b, sc.strikes[0]);
+    const n0 = v => Math.round(v).toLocaleString('en-GB');
+    showTip(ev, `<b>${px(P)}</b> · ${((P / sh(S) - 1) * 100).toFixed(2)}% from spot<br>nearest strike ${px(sh(k.K))}: calls ${n0(k.calls)} · puts ${n0(k.puts)}<br>`
+      + sc.curves.map(c => `gamma (${c.dv > 0 ? '+' : ''}${c.dv} vol): <b>${n0(c.gamma[i])}</b> per 1%`).join('<br>')
+      + `<br>to stay flat if price goes here: dealers <b>${base.hedge[i] >= 0 ? 'BUY' : 'SELL'} ${n0(Math.abs(base.hedge[i]))}</b> ${esc(unit)}`); };
+  hit.onmouseleave = () => { hideTip(); xl.setAttribute('visibility', 'hidden'); };
+  // stats + reading
+  const a = sc.atSpot, z = sc.zeroGamma[0], n0 = v => Math.round(Math.abs(v)).toLocaleString('en-GB');
+  const items = [
+    ['Dealer gamma at spot', `<span style="color:${a.regime === 'long' ? `rgb(${LONG})` : `rgb(${SHORT})`}">${a.regime === 'long' ? 'LONG' : 'SHORT'}</span>`, a.regime === 'long' ? 'hedging damps moves' : 'hedging chases moves'],
+    ['Zero gamma', z ? px(sh(z.price)) : 'none in view', z ? `${z.distPct >= 0 ? '+' : ''}${z.distPct.toFixed(2)}% from spot` : ''],
+    ['If price +1%', `${a.hedgeUp1pct >= 0 ? 'BUY' : 'SELL'} ${n0(a.hedgeUp1pct)}`, unit],
+    ['If price −1%', `${a.hedgeDown1pct >= 0 ? 'BUY' : 'SELL'} ${n0(a.hedgeDown1pct)}`, unit],
+    ['If IV −2 pts', Number.isFinite(a.vanna[-2]) ? `${a.vanna[-2] >= 0 ? 'BUY' : 'SELL'} ${n0(a.vanna[-2])}` : '—', 'vanna, price still'],
+    ['One day passes', `${a.charm >= 0 ? 'BUY' : 'SELL'} ${n0(a.charm)}`, 'charm, price and IV still'],
+  ];
+  $('#hsStats').innerHTML = items.map(([k, v, n]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n || '&nbsp;'}</div></div>`).join('');
+  $('#hsRead').innerHTML = hedgingRead({ ...sc, zeroGamma: sc.zeroGamma.map(q => ({ ...q, price: sh(q.price) })),
+    curves: sc.curves.map(c => ({ ...c, zeroGamma: c.zeroGamma.map(q => ({ ...q, price: sh(q.price) })) })) }, { fmt: px, unit }).map(t => `<li>${esc(t)}</li>`).join('');
+  $('#hsLegend').innerHTML = `<span><i style="background:${HS_PUT}"></i>put OI</span><span><i style="background:${HS_CALL}"></i>call OI</span>`
+    + sc.curves.map(c => `<span><i style="background:${HS_FAN[String(c.dv)]}"></i>gamma at IV ${c.dv > 0 ? '+' : ''}${c.dv} pts</span>`).join('')
+    + `<span><i style="background:#eef1f5"></i>hedge to stay flat (dashed: other IVs)</span><span>${esc(B.ivNote)} · ${sc.n.toLocaleString('en-GB')} contracts · OI in ${esc(fut)}-contract equivalents</span>`;
+}
+document.querySelectorAll('[data-hsrc]').forEach(b => b.onclick = () => { HS.src = b.dataset.hsrc; document.querySelectorAll('[data-hsrc]').forEach(x => x.classList.toggle('on', x === b)); drawHedging(); });
+document.querySelectorAll('[data-hexp]').forEach(b => b.onclick = () => { HS.maxDte = +b.dataset.hexp; document.querySelectorAll('[data-hexp]').forEach(x => x.classList.toggle('on', x === b)); drawHedging(); });
+
 function stats(){
   const D = CUR; if (!D) { $('#stats').innerHTML = ''; return; }
   const e = D.e, g = D.dEx ? D.dEx.exposures.gex : e.exposures?.gex;
@@ -699,6 +846,7 @@ function rail(){
 
 async function refresh(){
   CUR = derive(SYM); rail();
+  drawHedging();     // async and self-contained: first, so a failure in another panel cannot skip it
   stats(); drawBars(); drawRipple(); drawHeat(); drawAhead();
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads

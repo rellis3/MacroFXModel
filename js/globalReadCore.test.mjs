@@ -119,7 +119,7 @@ t('record: row → realised from the daily-read score → R1/R2/D1 summary', () 
   assert.match(scoreRecord(rows.slice(0, 5)).verdict, /too early: 5 of 30/);
 });
 
-t('input assembly survives every route missing, and reads a firing tested input', () => {
+t('input assembly survives every route missing; a firing deflated input (2Y sleeve, null since 2026-10-17) moves nothing', () => {
   const empty = buildGlobalRead(assembleGlobalReadInput({}, { now: Date.parse('2026-10-13T08:00:00Z') }));
   assert.equal(Object.keys(empty.cards).length, 10); assert.equal(empty.conviction.direction, 0);
   const D = {
@@ -127,8 +127,8 @@ t('input assembly survives every route missing, and reads a firing tested input'
     'daily-read': { days: { '2026-10-13': { setup: { at: '2026-10-12T22:09:00Z', rows: [{ sym: 'USDJPY', ratio: 0.88, edges: [1.044, 1.182], lines: { hl_p50: 0.59, hl_p75: 0.79 }, tag: 'exhaust' }] } } } },
   };
   const r = buildGlobalRead(assembleGlobalReadInput(D, { now: Date.parse('2026-10-13T08:00:00Z') }));
-  assert.ok(r.cards.USDJPY.direction.pUp > 0.55); assert.match(r.cards.USDJPY.plan.direction, /UP/); assert.equal(r.cards.USDJPY.plan.stance, 'TAKE PROFIT AT LINES');
-  assert.ok(r.currencies.JPY.pStronger < 0.45);
+  assert.equal(r.cards.USDJPY.direction.pUp, 0.5); assert.match(r.cards.USDJPY.plan.direction, /No tested direction/); assert.equal(r.cards.USDJPY.plan.stance, 'TAKE PROFIT AT LINES');
+  assert.equal(r.currencies.JPY.pStronger, 0.5);
 });
 
 

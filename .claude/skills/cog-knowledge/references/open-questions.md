@@ -38,3 +38,5 @@ Fix these only when asked, or when touching the file anyway, and then remove the
 
 **2026-10-18 (questions drafted for C.OG, not yet answered):** how exactly is "confirmation" defined in his code (the 45-minute wait, a threshold?); which price field, timestamps, contracts and roll handling does his script use for the exported line, and which Nasdaq series; has he measured how often the pattern occurs over the whole history; his pair compares SOFR Sep-Dec 2026 with Euribor Mar-Jun 2027 (no overlapping reference period): deliberate?; what he plans with PCA, residuals and the variance-versus-correlation split.
 
+
+**2026-10-18 (his ES dealer-hedging chart, `education/cog-snippets.md` §2; not yet asked):** are the per-strike fans delta or gamma; which expiries; IV source ("IV less ATM" = sticky-strike shift?); the difference between "flip (zero crossing)", "total gamma flip" and "zero gamma"; what the white line is; does he assume dealers long calls / short puts.
