@@ -1200,5 +1200,33 @@
 "Quant": "bf_emma",
 "Trader": "bm_george"
 }
+},
+"entropy-kl-mutual-information": {
+"hash": "380990c3",
+"seconds": 149.6,
+"starts": [
+0.0,
+8.5,
+16.0,
+18.44,
+33.31,
+36.12,
+51.0,
+53.03,
+66.18,
+69.3,
+79.06,
+82.36,
+101.03,
+102.98,
+117.03,
+120.3,
+133.51,
+138.47
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
 }
 }
