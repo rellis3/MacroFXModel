@@ -45,21 +45,31 @@ function dec(x) { const s = String(x); return s.includes('e') ? 6 : (s.split('.'
 
 const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
 const off = await browser.newContext({ javaScriptEnabled: false });
-const on = await browser.newContext();
-await on.route(/mathjax|googleapis|gstatic|jsdelivr/, r => r.abort());
+// JavaScript-on contexts: Math.random is replaced by a seeded generator, a different seed in each. A readout that
+// differs between seeds is random (a simulated scatter, a Monte Carlo): it has no fixed worked number to compare, so
+// it is skipped. A page that happens to print the same digits on two unseeded runs can no longer slip through by chance.
+const seeded = seed => `(() => { let a = ${seed} >>> 0; Math.random = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })();`;
+const ons = [];
+for (const seed of [1, 2, 3]) {
+  const c = await browser.newContext(); await c.addInitScript(seeded(seed));
+  await c.route(/mathjax|googleapis|gstatic|jsdelivr/, r => r.abort()); ons.push(c);
+}
+const on = ons[0];
 let failures = 0, checked = 0;
 async function read(ctx, url) {
   const p = await ctx.newPage(); await p.goto(url, { waitUntil: 'load' });
-  if (ctx === on) await p.waitForTimeout(200);
+  if (ctx !== off) await p.waitForTimeout(200);
   const r = await p.evaluate(grab, SEL); await p.close(); return new Map(r);
 }
 for (const f of pages) {
   const url = base + f;
-  const [stat, live1, live2] = [await read(off, url), await read(on, url), await read(on, url)];
+  const stat = await read(off, url), lives = [];
+  for (const c of ons) lives.push(await read(c, url));
+  const live1 = lives[0];
   for (const [id, s] of stat) {
     const a = nums(s); if (!a.length || /^[—–-]+$/.test(s)) continue;
     const b = live1.get(id); if (b == null) continue;
-    if (b !== live2.get(id)) continue;          // non-deterministic on load: not a fixed worked number
+    if (lives.some(l => l.get(id) !== b)) continue;   // differs with the random seed: not a fixed worked number
     const bn = nums(b); if (!bn.length) continue;
     checked++;
     if (!close(a, bn)) { failures++; console.log(`  ✗ ${f} #${id}: page says "${s}" but the calculator shows "${b}"`); }

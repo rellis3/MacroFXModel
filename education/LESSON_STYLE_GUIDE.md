@@ -732,7 +732,7 @@ example. Each `.tl-blank` becomes an input with Check / Show buttons:
 
 ### 5.25 Readouts must match their calculators
 
-`node js/lessonReadouts.e2e.mjs [slug…]` (CI job `readouts`) loads each page with JavaScript off and on
+`node js/lessonReadouts.e2e.mjs [slug…]` (CI job `readouts`) loads each page with JavaScript off and on (Math.random seeded three ways, so random simulations are skipped)
 and fails when a number written in a readout, chart, box or slide differs from what the page's own
 script computes on load. Write static readouts by running the calculator, not by hand.
 
