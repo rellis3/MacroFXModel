@@ -48,6 +48,14 @@ Nothing here is a trading signal. The chain is stamped `~ context` on the
 page for a reason: it explains, it does not predict — see `macroChain.js`'s
 own header and the "How we talk about results" section of `CLAUDE.md`.
 
+**Forward monitoring (owner, 2026-10-18).** A tested claim does not end at its verdict:
+its setup goes on the **Setup Watch** register (`js/claimWatch.js`, `claim-watch.html`,
+`MD files/CLAIM_WATCH.md`) with the rule exactly as pre-registered, so the desk-watch tick
+says once when the setup is approaching or live — verdict and "what to look for" attached —
+and scores each fire forward on the outcome the study used. Step 5 therefore has a sixth
+option: *put on the watch*. Only tested claims with a frozen rule qualify; a prognosis with
+no rule cannot be watched and is not.
+
 ---
 
 ## Open candidates — noted, not run (check here first)

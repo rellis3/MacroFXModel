@@ -35,7 +35,8 @@ console.log('[evaluateTriggers]');
   ok('VIX inversion carries expectations only for instruments with bars (SPX500, NQ), over 5 sessions', by['vix-inversion'].expect.map(e => e.inst).sort().join() === 'NQ,SPX500' && by['vix-inversion'].expect.every(e => e.window === 5 && e.after > e.base));
   ok('expectText reads in units, either direction', /SPX500 ~\d+pts vs ~\d+pts on an ordinary week/.test(expectText(by['vix-inversion'].expect)) && /either direction/.test(expectText(by['vix-inversion'].expect)));
   ok('atr14 needs 15 bars with highs and lows', atr14(bars(Array(15).fill(1), 0.1)) > 0 && atr14(days(Array(15).fill(1))) === null && atr14(bars(Array(10).fill(1))) === null);
-  ok('every trigger has a kind, label and detail; nothing mentions direction', t.every(x => ['tested', 'described'].includes(x.kind) && x.label && x.detail) && t.every(x => !/goes (up|down)|will rise|will fall/i.test(x.detail)));
+  ok('every trigger has a kind, label and detail; nothing mentions direction', t.every(x => ['tested', 'described', 'claim'].includes(x.kind) && x.label && x.detail) && t.every(x => !/goes (up|down)|will rise|will fall/i.test(x.detail)));
+  ok('no drill bundle → no claim triggers (missing input disables, never clears)', !t.some(x => x.kind === 'claim'));
   ok('missing inputs disable triggers rather than throwing', evaluateTriggers({}).length === 2 && evaluateTriggers({}).every(x => !x.firing));
 }
 
@@ -48,6 +49,27 @@ console.log('[vwap-stretch band tiers]');
   const tfx = evaluateTriggers({ now: NOW, vwapStretch: { GBPUSD: { z: 2.1, side: 'up', band: 2, session: 'Asia', price: 1.27, vwap: 1.26 } } });
   const gbp = tfx.find(x => x.id === 'vwap-stretch-gbpusd');
   ok('an FX major cites the (stronger, replicated) FX base rate, not gold’s numbers', gbp.firing && /46-48%/.test(gbp.detail) && /stronger than gold/.test(gbp.detail));
+}
+
+console.log('[claim triggers via the drill bundle]');
+{
+  const N = 900, END = Date.parse('2026-10-16');
+  const dates = Array.from({ length: N }, (_, i) => new Date(END - (N - 1 - i) * 864e5).toISOString().slice(0, 10));
+  const vix = Array.from({ length: N }, (_, i) => 16 + 0.8 * Math.sin(i / 7)); vix[N - 1] = vix[N - 6] + 6;   // a +6 spike
+  const t = evaluateTriggers({ now: NOW, drill: { dates, series: { vix } } });
+  const fear = t.find(x => x.id === 'claim-fear-spike');
+  ok('a drill bundle with only VIX yields exactly the fear-spike claim, firing, kind claim, with lookFor', t.filter(x => x.kind === 'claim').length === 1 && fear?.firing && fear.kind === 'claim' && /fear-gold/.test(fear.evidenceId) && fear.lookFor);
+  const vix2 = vix.slice(); vix2[N - 1] = vix2[N - 6] + 4;
+  const t2 = evaluateTriggers({ now: NOW, drill: { dates, series: { vix: vix2 } } });
+  const near = t2.find(x => x.id === 'claim-fear-spike');
+  ok('+4 in five is approaching, not firing', near && !near.firing && near.stage === 'approaching');
+  const d = diffStates([{ id: 'claim-fear-spike', firing: false, stage: 'idle' }], t2);
+  ok('idle → approaching is reported once as approaching', d.approaching.map(x => x.id).join() === 'claim-fear-spike' && !d.started.length);
+  ok('approaching → approaching is silent', diffStates(t2, t2).approaching.length === 0);
+  const msg = formatTelegram(diffStates(t2, t), new Date('2026-10-18T09:05:00Z'));
+  ok('a claim start is tagged ◌, carries the verdict and an eye line, and the legend explains it', /◌ <b>Setup watch · Fear spike/.test(msg) && /This desk: TESTED NULL/.test(msg) && /👁/.test(msg) && /educator’s setup/.test(msg));
+  const msg2 = formatTelegram(d, new Date('2026-10-18T09:05:00Z'));
+  ok('an approaching claim is tagged ⏳ and is its own message', /⏳ <b>Setup watch · Fear spike.*approaching<\/b>/.test(msg2));
 }
 
 console.log('[diffStates + formatTelegram]');
