@@ -77,3 +77,7 @@ every strike. G2 itself was measured on this same aggregate. A per-expiry rebuil
 
 Script `oi_research_book/scripts/26_zero_gamma_distance.py`; output `oi_research_book/ZERO_GAMMA_DISTANCE_RESULTS.md`
 and `data/results/zero_gamma_distance.json`.
+
+**Clarification 2026-10-18, before the run:** the surface's strikes are in CME futures terms while `spot` in the daily
+master is the CFD close (basis ~0.1–0.5%). Re-pricing and distance therefore use the front futures price `F_front`
+(`iv_daily_nas100_usd.parquet`) as "spot", so Z and spot are in the same terms. Everything else unchanged.
