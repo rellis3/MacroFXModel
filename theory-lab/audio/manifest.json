@@ -2476,5 +2476,63 @@
 "Quant": "bf_emma",
 "Trader": "bm_george"
 }
+},
+"institutional-garman-klass-yang-zhang": {
+"hash": "80fc1324",
+"seconds": 133.3,
+"starts": [
+0.0,
+8.39,
+16.83,
+19.38,
+30.39,
+32.41,
+44.02,
+45.76,
+56.35,
+57.64,
+66.07,
+68.55,
+84.16,
+86.7,
+103.42,
+106.82,
+115.53,
+118.38,
+127.0,
+128.36
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
+},
+"institutional-glosten-milgrom": {
+"hash": "3e5161aa",
+"seconds": 137.3,
+"starts": [
+0.0,
+7.13,
+16.1,
+17.78,
+34.85,
+37.36,
+51.44,
+53.67,
+67.16,
+70.73,
+83.14,
+85.24,
+101.5,
+104.37,
+119.23,
+122.24,
+131.55,
+132.9
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
 }
 }
