@@ -522,6 +522,23 @@
     <p style="margin-bottom:0">The decision follows from the numbers. EV is positive on an honest estimate, so the trade is worth taking. The margin is inside the noise, so it gets a smaller size than a well-established setup (the <a href="action-vol-to-size.html">sizing lesson</a> turns that into lots), and it goes in the journal so the 30 cases become 31.</p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's chain on new trades: \(b = T/S\), cost \(c\) in R, base rate \(p_0 = S/(S+T)\), the count shrunk toward it, \(\hat p = (k + m\,p_0)/(n + m)\), then \(E = \hat p\,b - (1-\hat p) - c\) and \(p^{*} = (1+c)/(1+b)\). Give probabilities in %, \(E\) in R.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>GBP/USD: stop 30 pips, target 60, cost 1.2 pips. So \(b = 2\), \(c = 0.04\)R, \(p_0 = 30/90 = 33.3\%\). History: 9 of 20 hit the target first. With \(m = 20\), \(\hat p = (9 + 6.67)/40 = 39.2\%\), and \(p^{*} = 1.04/3 = 34.7\%\). Expected value: \(E = 0.392 \times 2 - 0.608 - 0.04 =\) <span class="tl-blank" data-answer="0.135" data-tol="0.003" data-unit="R"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>USD/JPY: stop 50 pips, target 75, cost 2 pips, so \(b = 1.5\), \(c = 0.04\)R and \(p_0 = 40\%\). History: 14 of 25. With \(m = 25\), \(\hat p =\) <span class="tl-blank" data-answer="48" data-tol="0.1" data-unit="%"></span>. Then \(E =\) <span class="tl-blank" data-answer="0.16" data-tol="0.003" data-unit="R"></span> and the break-even rate is \(p^{*} =\) <span class="tl-blank" data-answer="41.6" data-tol="0.1" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>EUR/USD: stop 20 pips, target 20, cost 1.0 pip. History: 33 of 60; shrink with \(m = 30\). Cost \(c =\) <span class="tl-blank" data-answer="0.05" data-tol="0.001" data-unit="R"></span>; \(\hat p =\) <span class="tl-blank" data-answer="53.33" data-tol="0.1" data-unit="%"></span>; \(E =\) <span class="tl-blank" data-answer="0.0167" data-tol="0.002" data-unit="R"></span>; \(p^{*} =\) <span class="tl-blank" data-answer="52.5" data-tol="0.1" data-unit="%"></span>. A 55% raw count on a 1:1 trade clears break-even by under a point once it is shrunk and costed.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Template · copy this</div>
@@ -611,8 +628,10 @@ decision: no trade / small / normal     review after __ more cases</div>
 
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
-    <span><strong>"A wider target makes the trade better."</strong> Not tested on the desk's data. The maths in section 2 says that with no edge, a wider target lowers the hit rate exactly in step and EV stays at \(-c\). Whether a particular setup's hit rate holds up as the target widens is an empirical question for that setup, and it has to be measured, not assumed.</span>
+    <span><strong>"A wider target makes the trade better."</strong> Not tested on the desk's data. The maths in section 2 says that with no edge, a wider target lowers the hit rate exactly in step and EV stays at \(-c\). Whether a particular setup's hit rate holds up as the target widens is an empirical question for that setup, and it has to be measured, not assumed.<div class="tl-howtotest"><strong>How to test it:</strong> take one setup's logged entries (the yield-spread sleeve's, 2015–2025) and replay each on M1 data with the stop fixed and targets of 1R, 1.5R, 2R and 3R, scoring whichever barrier is touched first. Record \(E\) in R after costs for each target. Fix the gate in advance: a wider target counts as better only if its \(E\) beats the 1R target's by at least 0.05R with \(t &gt; 2\). The baseline is the same grid on random entries on the same days, where \(E\) should sit near \(-c\) at every target.</div></span>
   </div>
+
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../sltp-distribution.html">SL/TP distribution mapper</a> runs mechanical entries through a grid of stops and R-multiple targets on M1 data; the average R sits near zero at every combination, which is section 4 of this lesson measured.</div><!-- DESK:END -->
 
   <div class="tl-solid red">
     <strong>The trap:</strong> quoting a win rate without a payoff, or a payoff without a win rate. "Right 70% of the time" and "3-to-1 reward-to-risk" both sound like an edge, and each on its own can be exactly zero. The only statement that means something is the win rate <em>relative to the break-even rate for that payoff, after costs</em>.
@@ -664,7 +683,7 @@ decision: no trade / small / normal     review after __ more cases</div>
       <li data-verdict="ok">Keep the position as it is. It has worked, so there is no reason to change.<div class="tl-drill-why">Better than doubling, but it still judges the trade by its recent results. The question is whether the position survives the rare loss, and you have not asked it.</div></li>
       <li data-verdict="bad">Judge it by its smooth equity curve: low volatility means low risk.<div class="tl-drill-why">A smooth curve is what many small wins look like. It tells you the win rate, not the tail. The risk sits in the one outcome the curve has not shown you.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 5 February 2018 U.S. stocks fell sharply and the VIX more than doubled in a single session. The best-known short-volatility note, Credit Suisse's XIV, lost more than 90% of its value in a day, and Credit Suisse announced it would terminate it. Several other short-volatility funds took heavy losses in the same days. The win rate had been real; the payoff on the losing side was the number nobody had measured well.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 5 February 2018 U.S. stocks fell sharply and the VIX more than doubled in a single session. The best-known short-volatility note, Credit Suisse's XIV, lost more than 90% of its value in a day, and Credit Suisse announced it would terminate it. Several other short-volatility funds took heavy losses in the same days. The win rate had been real; the payoff on the losing side was the number nobody had measured well.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/VIXCLS">Cboe VIX daily close via FRED (17.31 on 2 February, 37.32 on 5 February 2018)</a>; Credit Suisse media release, "Credit Suisse AG Announces Event Acceleration of its XIV ETNs", 6 February 2018.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>

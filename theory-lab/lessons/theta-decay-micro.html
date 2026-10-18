@@ -27,7 +27,6 @@
       <p class="sl-lede">Theta isn't a separate fact bolted onto an option after the fact — it falls straight out of the same Black-Scholes PDE that already gives delta and gamma. Rearrange that one equation and "options lose value over time" turns into a precise number, and "theta pays for gamma" stops being a slogan and becomes an identity: Θ ≈ −½σ²S²Γ.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -398,7 +397,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -413,7 +411,8 @@
       <li data-verdict="good">Cap the risk now: buy back the calls, or buy calls further up to turn them into spreads, so no single jump can exceed what the account can carry.<div class="tl-drill-why">This fixes the real problem, an unlimited short-gamma position with no hedge. Paying up to close or cap it costs some of the premium collected. It keeps a jump from turning months of small gains into a margin call you cannot meet.</div></li>
       <li data-verdict="ok">Delta-hedge by buying some natural gas futures.<div class="tl-drill-why">Better than nothing: it offsets part of the directional loss. But you stay short gamma, and a hedge set this morning is too small after a double-digit jump. Margin calls still arrive before you can rebalance.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 14 November the front-month natural gas contract jumped by double digits in percentage terms in a single session. Calls that had looked close to worthless gained delta and value very quickly. OptionSellers.com's accounts could not meet the margin calls, and the clearing broker liquidated them into the move. Hundreds of client accounts were wiped out, and some ended with negative balances, owing the broker money on top of everything they had deposited.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 14 November the front-month natural gas contract jumped about 18% in a single session, from $4.10 to $4.84 per million Btu. Calls that had looked close to worthless gained delta and value very quickly. OptionSellers.com's accounts could not meet the margin calls, and the clearing broker liquidated them into the move. About 300 client accounts fell below their margin and were liquidated, and some ended with negative balances, owing the broker money on top of everything they had deposited.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://www.eia.gov/dnav/ng/hist/rngc1d.htm" target="_blank" rel="noopener">EIA, NYMEX natural gas futures contract 1, daily settlements</a>; <a href="https://www.sec.gov/Archives/edgar/data/913760/000091376018000151/a8-kiff2018stmtoffincond.htm" target="_blank" rel="noopener">INTL FCStone Form 8-K, 27 November 2018</a> (about 300 Optionsellers.com accounts below maintenance margin in the week ended 16 November).</p></div>
   </div>
 
     </section>

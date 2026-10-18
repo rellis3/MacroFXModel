@@ -27,7 +27,6 @@
       <p class="sl-lede">Heston gave volatility an honest, mean-reverting random life — and paid for it with a Fourier inversion every time it needs recalibrating. SABR asks a narrower question: what's the simplest stochastic-volatility model whose implied-vol smile can be written down almost in closed form? Four parameters and one algebraic formula, fit fast enough to run continuously against a live, moving market — that single fact is the entire reason SABR, not the arguably richer Heston model, is what an FX or rates options desk actually recalibrates all day.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -396,7 +395,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="16">
 
       <div class="sl-kicker">Your call</div>
@@ -411,7 +409,7 @@
       <li data-verdict="good">Move to a model that allows negative forwards: a shifted SABR, or the normal \(\beta = 0\) convention, and refit.<div class="tl-drill-why">A shift adds a constant so the shifted forward stays positive, and \(\beta = 0\) treats volatility as an absolute size of move that works at any rate level. Either keeps SABR's fast, closed-form fit while respecting what rates can now do.</div></li>
       <li data-verdict="ok">Keep SABR but free up \(\beta\) and refit it every day alongside \(\rho\).<div class="tl-drill-why">It feels flexible, but \(\beta\) and \(\rho\) are close to redundant on skew, so a free fit is poorly identified, and it still does nothing about a negative forward.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Euro rates did go negative in the mid-2010s, and desks moved to a shifted SABR. In parts of the rates market the normal \(\beta = 0\) convention became standard, because a fractional power of a negative forward has no meaning. The same year, Hagan and co-authors published "Arbitrage-Free SABR" to fix the formula's other weak spot, the far wings.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The ECB cut its deposit rate to −0.10% on 5 June 2014, effective 11 June, and euro rates did go negative in the mid-2010s. Desks moved to shifted SABR, and in parts of the rates market the normal \(\beta = 0\) convention became standard, because a fractional power of a negative forward has no meaning. Earlier the same year, Hagan and co-authors published "Arbitrage-Free SABR" to fix the formula's other weak spot, the far wings.</p><p class="tl-drill-sources">Sources: <a href="https://www.ecb.europa.eu/press/pr/date/2014/html/pr140605.en.html">ECB press release, 5 Jun 2014</a>; Hagan, Kumar, Lesniewski and Woodward, "Arbitrage-Free SABR", Wilmott, January 2014</p></div>
   </div>
 
     </section>

@@ -27,7 +27,6 @@
       <p class="sl-lede">The Q-learning &amp; temporal-difference lesson learned one number for every state-action pair in a table small enough to fit on a page. The policy gradients &amp; actor-critic lesson sidestepped that table entirely by optimizing a policy directly. This lesson closes the loop: what to do when you want to keep Q-learning's exact update rule, but the table it needs has become impossible to write down — replace it with a neural network, then add the two specific tricks that stop that replacement from destabilizing the very learning process it's supposed to rescue.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -443,7 +442,6 @@
         <div class="sl-quiz-explain">DQN computes max Q(s′,a′;θ⁻) at every target, exactly like tabular Q-learning — that's what makes it value-based. That max is a simple lookup over a handful of discrete outputs, but becomes awkward for a continuous action space, which is exactly why the policy gradients / actor-critic lesson exists.</div>
       </div>
     </section>
-
 
     <section class="sl-slide sl-vark" data-slide="16">
 

@@ -27,7 +27,6 @@
       <p class="sl-lede">The direction of tomorrow's move is close to unpredictable. The <em>size</em> of tomorrow's move is not — big days follow big days, calm follows calm, and that regularity is stable enough to build a one-day-ahead forecast on. GARCH is the model that turns "volatility has memory" into a number<!-- DESK:START -->, and it's one of the sigma estimators this project actually runs<!-- DESK:END -->.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -306,11 +305,11 @@
           <div class="sl-calc-op">=</div>
           <div class="sl-calc-result">
             <div class="sl-calc-result-label">Today's forecast σₜ² → σₜ</div>
-            <div class="sl-calc-result-val" id="gc-result">0.0960%² → 0.98%</div>
+            <div class="sl-calc-result-val" id="gc-result">0.9600%² → 0.98%</div>
           </div>
         </div>
         <div class="sl-calc-steps">
-          <div>Persistence α+β = <b id="gc-persist">0.98</b></div>
+          <div>Persistence α+β = <b id="gc-persist">0.9800</b></div>
           <div>Long-run σ̄ ≈ <b id="gc-sigmabar">0.71</b>% · half-life ≈ <b id="gc-halflife">34.3</b> days</div>
         </div>
         <button type="button" class="sl-reset-btn" id="gc-reset">Reset to worked-example numbers</button>
@@ -436,7 +435,6 @@
       <!-- DESK:END -->
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -451,7 +449,7 @@
       <li data-verdict="bad">Keep the size and go long. After a 9.5% fall, a bounce is due.<div class="tl-drill-why">GARCH says nothing about direction. A bounce and a further fall are both big days, and big days are exactly what the model expects next. Betting on the sign with full size leaves you exposed to either.</div></li>
       <li data-verdict="ok">A 20-day average of squared returns, which has risen with the last two days.<div class="tl-drill-why">Better than the calm number, and it does see the shock. But it gives the two huge days only one twentieth of the weight each, so it under-reacts now, and it will drop off a cliff three weeks later when they leave the window.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The next day the S&amp;P 500 rose 9.3%. On 16 March it fell about 12%, the circuit breaker tripped again, and the VIX closed at 82.69, a record. The breaker was triggered once more on 18 March, and the index rose more than 9% on 24 March. Big days kept coming in both directions, so the up days raised the forecast as much as the down days. Volatility stayed raised for months after the worst had passed.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The next day the S&amp;P 500 rose 9.3%. On 16 March it fell about 12%, the circuit breaker tripped again, and the VIX closed at 82.69, a record. The breaker was triggered once more on 18 March, and the index rose more than 9% on 24 March. Big days kept coming in both directions, so the up days raised the forecast as much as the down days. Volatility stayed raised for months after the worst had passed.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/SP500">S&amp;P 500 daily closes (FRED, SP500)</a> (−7.6% on 9 Mar, −9.5% on 12 Mar, +9.3% on 13 Mar, −12.0% on 16 Mar, +9.4% on 24 Mar 2020; record close 19 Feb 2020); <a href="https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv">Cboe VIX daily history</a> (14.38 on 19 Feb, 82.69 on 16 Mar 2020); Market-Wide Circuit Breaker Working Group, report to the SEC, 2021 (the four halts of 9, 12, 16 and 18 March 2020).</p></div>
   </div>
 
     </section>

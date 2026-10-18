@@ -295,6 +295,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Score a sale day with \(\text{PGR} = RG/(RG+PG)\) and \(\text{PLR} = RL/(RL+PL)\), then price the tax at 20%. New positions each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Five winners were available and two were sold: \(\text{PGR} = 2/5 = 0.40\). Four losers were available and one was sold: \(\text{PLR} = 1/4 = 0.25\). The disposition gap \(\text{PGR} - \text{PLR} =\) <span class="tl-blank" data-answer="0.15" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>A sale day with \(RG = 3\), \(PG = 7\), \(RL = 1\), \(PL = 9\). \(\text{PGR}\) = <span class="tl-blank" data-answer="0.3" data-tol="0.005"></span>. \(\text{PLR}\) = <span class="tl-blank" data-answer="0.1" data-tol="0.005"></span>. A winner was <span class="tl-blank" data-answer="3" data-tol="0.05"></span> times as likely to be sold as a loser.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>A sale day with \(RG = 4\), \(PG = 6\), \(RL = 2\), \(PL = 8\). \(\text{PGR}\): <span class="tl-blank" data-answer="0.4" data-tol="0.005"></span>. \(\text{PLR}\): <span class="tl-blank" data-answer="0.2" data-tol="0.005"></span>. The two winners sold realised gains of $2,500 and $1,300. The tax bill at 20% is <span class="tl-blank" data-answer="760" data-tol="0.5" data-unit="$"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>When you sell something for more than you paid, the tax collector takes a slice. When you sell for less, the tax collector gives you a little credit. So if you have to sell something anyway, selling the loser is usually cheaper, even though it feels worse.</p>
@@ -376,9 +393,7 @@
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>"Cut your losers and let your winners run" beats the reverse.</strong> Not tested here. The desk's
     ledger holds tests of market claims, not of how its own trades are closed, so there is no PGR/PLR or
-    holding-time comparison on record. The evidence above is from investors' accounts in published studies. A desk test
-    would need its closed-trade log with the open positions at each exit, and a pre-registered threshold for what gap
-    counts as a finding.</span>
+    holding-time comparison on record. The evidence above is from investors' accounts in published studies.<div class="tl-howtotest"><strong>How to test it:</strong> Use the desk's closed-trade log with the open positions at each exit, over every live and paper trade to date. On each day with an exit, score PGR and PLR against each position's entry price, and compare the median holding time of winners with that of losers. The gate, fixed in advance, is a PGR − PLR gap above 0.05 with a bootstrap interval over sale days that excludes zero. The baseline is a shuffle that reassigns the winner and loser labels across positions on the same days, and the cost is measured by recomputing net P&amp;L with every exit made at a fixed rule instead.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -433,6 +448,7 @@
     </p>
   </div>
 
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../bot-audit.html">Bot Audit</a> shows each live bot's closed-trade record (median hold, best and worst trade, how far winners and losers ran); the trade log behind it is the raw material for the audit in this section.</div><!-- DESK:END -->
   <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🧩</div>

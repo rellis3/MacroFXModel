@@ -27,7 +27,6 @@
       <p class="sl-lede">Some equations simply don't rearrange — a bond's price doesn't invert into its yield, an option's price doesn't invert into its volatility. Newton-Raphson and gradient descent are the two foundational tricks that answer these questions anyway: not by solving in one clean algebraic move, but by taking a reasonable guess and repeatedly correcting it until the correction becomes too small to matter.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -284,7 +283,7 @@
         </div>
         <div class="sl-sliderhead"><span>Learning rate α</span><span class="sl-live" id="gd2-alpha-val">α = 0.30</span></div>
         <input type="range" class="sl-slider" id="gd2-alpha-slider" min="5" max="115" step="1" value="30">
-        <div class="sl-verdict" id="gd2-readout" style="margin-top:12px">x₆ ≈ 2.9203, f(x₆) ≈ 0.0064 — converging monotonically</div>
+        <div class="sl-verdict" id="gd2-readout" style="margin-top:12px">x₆ ≈ 2.9877, f(x₆) ≈ 0.0002 — converging monotonically</div>
         <div class="sl-note">Each amber dot is one iterate; the last one turns green. At α = 0.30 the steps shrink steadily. At α = 0.50 the very next step lands exactly on the minimum — no overshoot at all. Past α = 0.50 the steps start flipping sides of the minimum; past α = 1.00 they grow without bound.</div>
       </div>
     </section>
@@ -383,7 +382,6 @@
         <div class="sl-quiz-explain">A zero gradient marks a stationary point — a local minimum, a local maximum, or a saddle. Whether a local minimum is automatically the global one depends on convexity, the subject of the next lesson in this category.</div>
       </div>
     </section>
-
 
     <section class="sl-slide sl-vark" data-slide="17">
 

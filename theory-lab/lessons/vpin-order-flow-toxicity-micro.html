@@ -27,7 +27,6 @@
       <p class="sl-lede">A market maker doesn't need one catastrophic trade to get hurt — a long enough run of quietly one-sided, informed flow does the same damage, one small fill at a time. VPIN is an attempt to catch that pattern live: bucket the tape by traded <em>volume</em> instead of by the clock, guess how one-sided each bucket's flow was, and average the result into a single number. It is also one of market microstructure's most publicly argued metrics — famous for a warning it allegedly gave before the 2010 Flash Crash, and just as famous for the researchers who later picked that claim apart.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -480,7 +479,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="16">
 
       <div class="sl-kicker">Your call</div>
@@ -495,7 +493,8 @@
       <li data-verdict="good">Widen your spread and cut your quoted size, reading the monitor as a description of the flow now, not a forecast.<div class="tl-drill-why">This is the Glosten-Milgrom response the lesson describes: protect yourself against one-sided flow while it is there, and stay in the market. It does not need VPIN to predict anything, only to describe what is hitting you.</div></li>
       <li data-verdict="ok">Pull all your quotes and step away until it calms down.<div class="tl-drill-why">It protects your book, and liquidity providers did pull back that day. But when everyone does it, nobody is left to absorb the selling, and that is how depth vanishes. Defensible for one firm, but not the measured response.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The SEC/CFTC staff report found that the big seller was a fund complex hedging an equity position, not trading on information. It sold 75,000 E-mini contracts, about $4.1 billion, through an algorithm set to sell a fixed share of the previous minute's volume, with no limit on price or time. Intermediaries passed contracts back and forth, more than 27,000 in 14 seconds for a net change of about 200. Buy-side depth in the E-mini fell to less than 1% of its morning level, and index futures fell roughly 5–9% in minutes before largely recovering the same session. The flow was toxic, but nobody in it knew anything.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The SEC/CFTC staff report found that the big seller was a fund complex hedging an equity position, not trading on information. It sold 75,000 E-mini contracts, about $4.1 billion, through an algorithm set to sell a fixed share of the previous minute's volume, with no limit on price or time. Intermediaries passed contracts back and forth, more than 27,000 in 14 seconds for a net change of about 200. Buy-side depth in the E-mini fell to less than 1% of its morning level, and the E-mini fell more than 5% in about four and a half minutes before largely recovering the same session. The flow was toxic, but nobody in it knew anything.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://www.sec.gov/news/studies/2010/marketevents-report.pdf" target="_blank" rel="noopener">SEC/CFTC staff report, "Findings Regarding the Market Events of May 6, 2010", 30 September 2010</a>.</p></div>
   </div>
 
     </section>

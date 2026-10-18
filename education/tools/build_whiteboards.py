@@ -24,12 +24,27 @@ def block(name, title, cfg, indent='  ', anchor=''):
             f'{indent}  <script type="application/json">{js}</script>\n{indent}</div>\n{indent}<!-- WB:{name}:END -->\n')
 
 
+SLIDE = r'<section class="sl-slide((?: [\w-]+)*)" data-slide="(\d+)"'
+
+
 def renumber(s):
     n = [0]
     def bump(m):
         n[0] += 1
-        return m.group(1) + str(n[0]) + m.group(2)
-    return re.sub(r'(<section class="sl-slide(?: active)?" data-slide=")\d+(")', bump, s), n[0]
+        return f'<section class="sl-slide{m.group(1)}" data-slide="{n[0]}"'
+    return re.sub(SLIDE, bump, s), n[0]
+
+
+def nth_lesson_slide(s, k):
+    # deck_after counts the slides the deck had before its picture/listen and drill slides (class sl-vark) were added
+    seen = 0
+    for m in re.finditer(SLIDE, s):
+        if 'sl-vark' in m.group(1).split():
+            continue
+        seen += 1
+        if seen == k:
+            return m
+    return None
 
 
 def ensure_assets(s, css_before):
@@ -52,7 +67,7 @@ def build(B):
         p = L + B['lesson'] + '-micro.html'; s = open(p).read()
         s = re.sub(rf'    <!-- WB:{name}-deck:START -->[\s\S]*?<!-- WB:{name}-deck:END -->\n\n', '', s)
         s, _ = renumber(s)
-        m = re.search(rf'<section class="sl-slide(?: active)?" data-slide="{B["deck_after"] + 1}">', s)
+        m = nth_lesson_slide(s, B["deck_after"] + 1)
         assert m, (name, 'no slide after', B['deck_after'])
         at = s.rfind('\n', 0, m.start()) + 1
         slide = (f'    <!-- WB:{name}-deck:START -->\n    <section class="sl-slide" data-slide="0">\n'
@@ -60,6 +75,7 @@ def build(B):
                  + block(name, title, cfg, indent='      ')
                  + f'    </section>\n    <!-- WB:{name}-deck:END -->\n\n')
         s, total = renumber(s[:at] + slide + s[at:])
+        s = re.sub(r'(<span id="sl-total">)\d+(</span>)', lambda m: m.group(1) + str(total) + m.group(2), s)
         open(p, 'w').write(ensure_assets(s, '<link rel="stylesheet" href="../assets/deck.css'))
         msg += f' + slide {B["deck_after"] + 1} of {total} in the visual guide'
     print(msg)

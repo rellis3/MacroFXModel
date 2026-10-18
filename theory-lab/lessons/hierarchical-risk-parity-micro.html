@@ -27,7 +27,6 @@
       <p class="sl-lede">Both Markowitz optimization and the plain Equal Risk Contribution approach from the previous lesson lean on the full covariance matrix, and in most implementations that means inverting it. Inversion is a numerically dangerous operation once assets get highly correlated — small estimation noise gets amplified into wild, unstable weights. Hierarchical Risk Parity's answer is almost mischievously simple: cluster the assets by similarity first, using the same correlation-distance idea the correlation-networks/MST lesson introduced, then allocate capital by splitting the risk budget down the resulting tree — never touching a full-matrix inversion at any step.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -280,7 +279,7 @@
         <div class="sl-calc-row">
           <div class="sl-calc-field"><label>Cluster 1 variance (V₁)</label><input type="number" class="sl-input" id="hrp-calc-v1" value="0.00276" step="0.0001" min="0"></div>
           <div class="sl-calc-op">vs.</div>
-          <div class="sl-calc-field"><label>Cluster 2 variance (V₂)</label><input type="number" class="sl-input" id="hrp-calc-v2" value="0.00208" step="0.0001" min="0"></div>
+          <div class="sl-calc-field"><label>Cluster 2 variance (V₂)</label><input type="number" class="sl-input" id="hrp-calc-v2" value="0.002075" step="0.0001" min="0"></div>
           <div class="sl-calc-op">=</div>
           <div class="sl-calc-result">
             <div class="sl-calc-result-label">α₁ (weight to cluster 1)</div>
@@ -294,7 +293,7 @@
         <button type="button" class="sl-reset-btn" id="hrp-calc-reset">Reset to worked-example root split</button>
         <div class="sl-note">Guards: blank, non-numeric, negative, or both-zero variances show "—" rather than NaN or Infinity — a divide-by-zero here means the split is genuinely undefined, not a silent wrong answer.</div>
       </div>
-      <p class="sl-p">This is Stage 3's formula applied to just one branch. Set both to the worked example's root-level bloc variances (V₁=0.00276 for the risk-on bloc, V₂=0.00208 for the safe-haven bloc) and it reproduces the 42.9% / 57.1% root split from the dendrogram slide — the lower-variance safe-haven bloc gets the larger share, exactly as the formula's construction guarantees.</p>
+      <p class="sl-p">This is Stage 3's formula applied to just one branch. Set both to the worked example's root-level bloc variances (V₁=0.00276 for the risk-on bloc, V₂=0.002075 for the safe-haven bloc; the lesson rounds these to 0.00276 and 0.00208) and it reproduces the 42.9% / 57.1% root split from the dendrogram slide — the lower-variance safe-haven bloc gets the larger share, exactly as the formula's construction guarantees.</p>
     </section>
 
     <section class="sl-slide" data-slide="10">
@@ -452,7 +451,7 @@
       <li data-verdict="good">Treat the high-yielders as one bloc, measure that bloc's risk on recent data, and size the whole bloc down to it before worrying about weights inside it.<div class="tl-drill-why">This is the tree's top split done honestly: allocate to the bloc as a single bet, using a variance that reflects today's market, and stop asking a near-singular matrix to tell the five apart.</div></li>
       <li data-verdict="ok">Switch to HRP, using the tree and variances estimated in August.<div class="tl-drill-why">It removes the fragile inversion, a real improvement. But the tree's variances come from calm data, so the high-yield bloc, the one falling, still looks cheaper in risk terms than it is.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Investors facing losses and margin calls unwound carry positions together. The high-yielders fell as one block: AUD/USD dropped by more than a third between its July high and late October, and the yen rose sharply against almost everything. Within each bloc, correlations rose toward one, so the covariance rows of the high-yielders became close to duplicates. "Diversified" carry baskets lost as one bet, just as an inverse-covariance allocator became least reliable.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Investors facing losses and margin calls unwound carry positions together. The high-yielders fell as one block: AUD/USD dropped by more than a third between its July high and late October, and the yen rose sharply against almost everything. Within each bloc, correlations rose toward one, so the covariance rows of the high-yielders became close to duplicates. "Diversified" carry baskets lost as one bet, just as an inverse-covariance allocator became least reliable.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/DEXUSAL">Federal Reserve H.10 AUD/USD noon rates (FRED, DEXUSAL)</a> (0.9797 on 15 Jul 2008, 0.6073 on 27 Oct 2008, a 38% fall); <a href="https://fred.stlouisfed.org/series/DEXJPUS">USD/JPY noon rates (FRED, DEXJPUS)</a> (107.51 on 12 Sep, 92.64 on 24 Oct 2008); <a href="https://www.belfercenter.org/publication/unwinding-carry-trade-has-finally-hit-currencies">Jeffrey Frankel, “The unwinding of the carry trade has finally hit currencies”, 29 Oct 2008</a>; Lehman Brothers Holdings Chapter 11 filing, 15 Sep 2008.</p></div>
   </div>
 
     </section>
@@ -591,7 +590,7 @@
     var alpha1El = document.getElementById('hrp-calc-alpha1');
     var alpha2El = document.getElementById('hrp-calc-alpha2');
     var resetBtn = document.getElementById('hrp-calc-reset');
-    var DEFAULTS = { v1: 0.00276, v2: 0.00208 };
+    var DEFAULTS = { v1: 0.00276, v2: 0.002075 };
 
     function recompute(){
       var a = parseFloat(v1.value), b = parseFloat(v2.value);

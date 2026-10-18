@@ -522,6 +522,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same explained variance ratio, \(\text{EVR}_k=\lambda_k/\sum_j\lambda_j\), on three new baskets. For a correlation matrix the eigenvalues add up to the number of instruments. Give ratios in %.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Four pairs, eigenvalues \(2.6,\ 0.8,\ 0.4,\ 0.2\). The trace is \(2.6+0.8+0.4+0.2=4.0\). So \(\text{EVR}_1=2.6/4.0=\) <span class="tl-blank" data-answer="65" data-tol="0.1" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Five pairs, eigenvalues \(3.1,\ 0.9,\ 0.5,\ 0.3,\ 0.2\). Trace: <span class="tl-blank" data-answer="5" data-tol="0.001"></span>. \(\text{EVR}_1=\) <span class="tl-blank" data-answer="62" data-tol="0.1" data-unit="%"></span>, and the first two components together explain <span class="tl-blank" data-answer="80" data-tol="0.1" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Six pairs in a sell-off, eigenvalues \(4.5,\ 0.6,\ 0.4,\ 0.25,\ 0.15,\ 0.1\). Trace: <span class="tl-blank" data-answer="6" data-tol="0.001"></span>. \(\text{EVR}_1=\) <span class="tl-blank" data-answer="75" data-tol="0.1" data-unit="%"></span>. The first two together: <span class="tl-blank" data-answer="85" data-tol="0.1" data-unit="%"></span>. The fewest components that explain at least 90%: <span class="tl-blank" data-answer="3" data-tol="0.01"></span></p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -814,6 +831,7 @@
     five sessions later is 58–61% up, the ordinary drift. A range fact, not a bounce call.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../diversification.html">Combined Book Explorer</a> shows the effective number of bets built from these eigenvalues, and <a href="../../book-stress.html">Book Stress</a> shows it inside declared crisis windows, where the March 2020 collapse onto one factor should show up.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -929,7 +947,8 @@
       <li data-verdict="good">Re-run the PCA on the last few weeks, treat the book as one dollar bet, and cut the gross size to what you would hold in a single position.<div class="tl-drill-why">This is what the lesson's warning means in practice. Count bets by factors, not by positions. With one factor dominating, the honest size is the size of one trade.</div></li>
       <li data-verdict="ok">Hold for now. The Fed acted last night, so the dollar squeeze should ease.<div class="tl-drill-why">It did ease eventually, but you cannot know when. Holding a book sized for several bets while it behaves as one is a bet on the timing of policy, not risk management.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> That day the VIX closed at a record 82.69. The Fed widened its dollar swap lines again on 19 March and, on 23 March, announced open-ended asset purchases and new credit facilities. The S&amp;P 500 hit its low that day, about 34% below its 19 February peak. The dollar squeeze eased after that, and with it the one-factor market.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> That day the VIX closed at a record 82.69. The Fed widened its dollar swap lines again on 19 March and, on 23 March, announced open-ended asset purchases and new credit facilities. The S&amp;P 500 hit its low that day, about 34% below its 19 February peak. The dollar squeeze eased after that, and with it the one-factor market.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200315a.htm">Federal Reserve FOMC statement, 15 Mar 2020</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200319b.htm">Federal Reserve press release on dollar swap lines with nine more central banks, 19 Mar 2020</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200323b.htm">Federal Reserve press release on extensive new measures, 23 Mar 2020</a>; Cboe VIX daily history (record close on 16 Mar 2020); S&amp;P Dow Jones Indices daily closes for the S&amp;P 500 (record on 19 Feb, low on 23 Mar 2020).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

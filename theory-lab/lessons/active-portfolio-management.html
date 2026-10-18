@@ -88,7 +88,7 @@
       <p data-who="Trader">And nothing in the arithmetic warns you.</p>
       <p data-who="Quant">Nothing. You have to check how correlated the calls are. Breadth means independent bets, not trade tickets.</p>
       <p data-who="Trader">Has that ever gone wrong at scale?</p>
-      <p data-who="Quant">August 2007, the quant quake. Quant equity funds held thousands of longs and shorts each, a small edge on every name. But many ranked stocks on similar ideas, so their books overlapped. In the week of the sixth of August, a large unwind, probably one fund raising cash, pushed against all of them at once. Goldman's Global Equity Opportunities fund was reported to have lost more than thirty percent in about a week.</p>
+      <p data-who="Quant">August 2007, the quant quake. Quant equity funds held thousands of longs and shorts each, a small edge on every name. But many ranked stocks on similar ideas, so their books overlapped. In the week of the sixth of August, a large unwind, probably one fund raising cash, pushed against all of them at once. Goldman's Global Equity Opportunities fund was reported to have lost roughly thirty percent in early August.</p>
       <p data-who="Trader">Thousands of bets, all losing together.</p>
       <p data-who="Quant">Which independent bets never do. Effective breadth fell towards one. Prices snapped back on Friday the tenth, after many funds had already cut.</p>
       <p data-who="Trader">And when I'm judging a fund I pay fees to?</p>
@@ -476,6 +476,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Part 1's arithmetic with new managers: breadth \(BR = N \times \text{re-ranks a year}\), then \(IR \approx IC \times \sqrt{BR}\), and back to return with \(\alpha = IR \times \omega\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(IC = 0.06\). Twelve pairs, re-ranked every month, so \(BR = 12 \times 12 = 144\) and \(\sqrt{BR} = 12\). The law predicts \(IR \approx\) <span class="tl-blank" data-answer="0.72" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(IC = 0.04\), 25 names re-ranked four times a year. Breadth is <span class="tl-blank" data-answer="100" data-tol="0.5"></span>, so \(IR \approx\) <span class="tl-blank" data-answer="0.40" data-tol="0.005"></span>. At a tracking error of \(\omega = 4\%\), that is an expected excess return of <span class="tl-blank" data-answer="1.6" data-tol="0.02" data-unit="%"></span> a year.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(IC = 0.08\). Nine pairs re-ranked six times a year, but the nine rankings are really three independent views. Nominal breadth <span class="tl-blank" data-answer="54" data-tol="0.5"></span>; nominal \(IR\) <span class="tl-blank" data-answer="0.588" data-tol="0.005"></span>; true breadth <span class="tl-blank" data-answer="18" data-tol="0.5"></span>; true \(IR\) <span class="tl-blank" data-answer="0.339" data-tol="0.005"></span>. Cutting breadth by a factor of three cuts the ratio by \(\sqrt{3} \approx 1.73\).</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -573,7 +590,7 @@
       short-term reversal. So their books overlapped. In the week of 6 August 2007, with subprime losses spreading
       through credit markets, many of them suffered sudden, severe losses over a few days, losses that had little to do
       with the direction of the broad market. Goldman Sachs's Global Equity Opportunities fund was reported to have lost
-      more than 30% in about a week, and Goldman and outside investors put roughly $3 billion into it in mid-August.
+      roughly 30% in early August, and on 13 August Goldman and outside investors put $3 billion into it.
       Goldman's finance chief described the moves as 25-standard-deviation events, several days in a row.
     </p>
     <p>
@@ -636,6 +653,7 @@
     little breadth, a genuinely good \(IC\) cannot be told apart from zero in any realistic history.</span>
   </div>
   <!-- DESK:END -->
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../rank-ic.html">Rank-IC diagnostic</a> measures the \(IC\) of the desk's own scores against forward outcomes, in and out of sample: the first input to \(IR \approx IC\sqrt{BR}\).</div><!-- DESK:END -->
 
   <!-- WB:active_portfolio_management:START -->
   <div class="wb" id="wb-active_portfolio_management" data-title="Skill, breadth and the August 2007 quant quake, step by step">
@@ -739,7 +757,7 @@
       <li data-verdict="good">Re-measure the book's risk as if it were one crowded bet, and cut gross in steps to a size you could survive if it lost again tomorrow.<div class="tl-drill-why">This is the lesson read honestly: effective breadth has collapsed towards one, so size it like one bet. Cutting in steps keeps you alive without dumping everything at the bottom, and leaves you holding part of the book if prices recover.</div></li>
       <li data-verdict="ok">Hold the full size and wait for it to pass.<div class="tl-drill-why">The positions may well recover, but you are holding one bet sized as if it were thousands. If the unwind runs another week, your limits force you out at even worse prices.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Many quant funds hit their limits and cut the same positions, deepening the move. Goldman Sachs's Global Equity Opportunities fund was reported to have lost more than 30% in about a week, and Goldman and outside investors put roughly $3 billion into it in mid-August. Prices rebounded sharply on Friday 10 August, after many funds had already cut. Khandani and Lo's best-documented account traces it to the hypothesised fast unwind of one large quant book.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Many quant funds hit their limits and cut the same positions, deepening the move. Goldman Sachs's Global Equity Opportunities fund was reported to have lost roughly 30% in early August, and on 13 August Goldman and outside investors put $3 billion into it. Prices rebounded sharply on Friday 10 August, after many funds had already cut. Khandani and Lo's best-documented account traces it to the hypothesised fast unwind of one large quant book.</p><p class="tl-drill-sources">Sources: <a href="https://www.sec.gov/Archives/edgar/data/0000886982/000089534507000454/ex99.htm">Goldman Sachs press release on the $3 billion GEO investment, 13 August 2007 (SEC Form 8-K exhibit)</a>; <a href="https://www.newyorkfed.org/medialibrary/media/research/conference/2007/liquidity/Khandani_Lo.pdf">Khandani and Lo, "What Happened to the Quants in August 2007?", 2007</a>; Bloomberg, reported fund losses, August 2007.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

@@ -530,8 +530,8 @@
             Ask \(= r + 0.7454 = 99.00 + 0.7454 \approx \mathbf{99.7454}\).
             Compare this to what a naive symmetric quoter, ignoring
             inventory entirely, would have posted around the plain mid:
-            bid \(99.00-0.7454\approx98.2546\)... using \(s=100\) instead of
-            \(r=99\) gives bid \(\approx99.2546\), ask \(\approx100.7454\) —
+            bid \(100.00-0.7454\approx99.2546\) and ask \(\approx100.7454\), centred on
+            \(s=100\) instead of \(r=99\) —
             a full point higher on both sides. The inventory-aware quotes
             sit a full point cheaper across the board, exactly enough to
             make selling more attractive and buying more relatively less
@@ -610,6 +610,23 @@
       <tbody id="as-sweep-body">
       </tbody>
     </table></div>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's quote: inventory shift \(q\gamma\sigma^2(T-t)\), reservation price \(r = s - \text{shift}\), total spread \(\gamma\sigma^2(T-t) + \tfrac{2}{\gamma}\ln(1+\gamma/k)\), then bid and ask at \(r \mp \text{spread}/2\). New market makers each round, in generic price units. A short position (\(q &lt; 0\)) moves \(r\) above the mid.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(s = 50\), \(q = -4\), \(\gamma = 0.2\), \(\sigma = 1\), \(T-t = 1\), \(k = 2\). The shift is \(-4 \times 0.2 \times 1 \times 1 = -0.8\), so \(r = 50.8\). The inventory-risk term is \(0.2\), the profit term is \(\tfrac{2}{0.2}\ln(1.1) = 0.9531\), and the spread is \(1.1531\). The bid is \(50.8 - 0.5766 =\) <span class="tl-blank" data-answer="50.2234" data-tol="0.0005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(s = 100\), \(q = 3\), \(\gamma = 0.05\), \(\sigma = 2\), \(T-t = 0.25\), \(k = 1\). Find the shift <span class="tl-blank" data-answer="0.15" data-tol="0.001"></span> and the reservation price <span class="tl-blank" data-answer="99.85" data-tol="0.001"></span>. The inventory-risk term is \(0.05\) and the profit term is \(\tfrac{2}{0.05}\ln(1.05) = 1.9516\). Find the total spread <span class="tl-blank" data-answer="2.0016" data-tol="0.0005"></span> and the bid <span class="tl-blank" data-answer="98.8492" data-tol="0.001"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(s = 200\), \(q = -6\), \(\gamma = 0.1\), \(\sigma = 1.5\), \(T-t = 0.4\), \(k = 2.5\). Find the shift <span class="tl-blank" data-answer="-0.54" data-tol="0.001"></span>, the reservation price <span class="tl-blank" data-answer="200.54" data-tol="0.001"></span>, the total spread <span class="tl-blank" data-answer="0.8744" data-tol="0.0005"></span>, the bid <span class="tl-blank" data-answer="200.1028" data-tol="0.001"></span> and the ask <span class="tl-blank" data-answer="200.9772" data-tol="0.001"></span>.</p>
+    </div>
   </div>
 
   <div class="tl-chart">

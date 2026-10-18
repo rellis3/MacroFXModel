@@ -270,6 +270,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>One backward RTS step on a two-day track: \(C_1 = P_{1\mid 1}/P_{2\mid 1}\), \(\hat{x}_{1\mid 2} = \hat{x}_{1\mid 1} + C_1(\hat{x}_{2\mid 2} - \hat{x}_{2\mid 1})\), \(P_{1\mid 2} = P_{1\mid 1} + C_1^2(P_{2\mid 2} - P_{2\mid 1})\). The model is a random walk, so \(\hat{x}_{2\mid 1} = \hat{x}_{1\mid 1}\) and \(P_{2\mid 1} = P_{1\mid 1} + Q\). New numbers each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Filtered Day 1: \(\hat{x}_{1\mid 1} = 0.85\), \(P_{1\mid 1} = 0.0060\); \(Q = 0.0010\), so \(P_{2\mid 1} = 0.0070\). Day 2 (the last day): \(\hat{x}_{2\mid 2} = 0.80\), \(P_{2\mid 2} = 0.0040\). Then \(C_1 = 0.0060/0.0070 = 0.857\) and \(\hat{x}_{1\mid 2} = 0.85 + 0.857 \times (0.80 - 0.85) = 0.807\). The smoothed uncertainty \(P_{1\mid 2} = 0.0060 + 0.857^2 \times (0.0040 - 0.0070) =\) <span class="tl-blank" data-answer="0.0038" data-tol="0.00005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\hat{x}_{1\mid 1} = 1.50\), \(P_{1\mid 1} = 0.0100\), \(Q = 0.0020\), so \(P_{2\mid 1} = 0.0120\). Day 2: \(\hat{x}_{2\mid 2} = 1.56\), \(P_{2\mid 2} = 0.0055\). \(C_1 =\) <span class="tl-blank" data-answer="0.8333" data-tol="0.002"></span>; \(\hat{x}_{1\mid 2} =\) <span class="tl-blank" data-answer="1.55" data-tol="0.0005"></span>; \(P_{1\mid 2} =\) <span class="tl-blank" data-answer="0.00549" data-tol="0.00005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\hat{x}_{1\mid 1} = 2.10\), \(P_{1\mid 1} = 0.0030\), \(Q = 0.0010\); Day 2: \(\hat{x}_{2\mid 2} = 2.04\), \(P_{2\mid 2} = 0.0021\). \(P_{2\mid 1} =\) <span class="tl-blank" data-answer="0.004" data-tol="0.00005"></span>; \(C_1 =\) <span class="tl-blank" data-answer="0.75" data-tol="0.002"></span>; \(\hat{x}_{1\mid 2} =\) <span class="tl-blank" data-answer="2.055" data-tol="0.0005"></span>; \(P_{1\mid 2} =\) <span class="tl-blank" data-answer="0.00193" data-tol="0.00003"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Filtered (forward-only) vs. smoothed (whole-dataset) estimates over an 8-step track</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A line chart with grey dots for eight noisy observations, a blue dashed line for the forward-only filtered estimate, and a green solid line with a shaded band for the smoothed estimate that uses the entire sequence. The smoothed line sits inside the filtered line's swings and its shaded uncertainty band is narrower.">
@@ -282,13 +299,13 @@
     </svg>
     <div class="tl-controls">
       <div class="tl-control">
-        <div class="tl-control-head"><span>Process variance Q</span><span class="tl-live" id="ks-q-val">Q = 0.0090</span></div>
+        <div class="tl-control-head"><span>Process variance Q</span><span class="tl-live" id="ks-q-val">Q = 0.0085</span></div>
         <input type="range" id="ks-q-slider" min="1" max="100" step="1" value="40">
         <div class="tl-hint">A larger Q means the filtered estimate trusts each new observation more (bigger swings) — and gives the backward smoother more room to pull each past point toward the fuller picture.</div>
       </div>
     </div>
     <div class="tl-readout">
-      Average gap between filtered and smoothed estimates: <b id="ks-gap-val">0.006</b>
+      Average gap between filtered and smoothed estimates: <b id="ks-gap-val">0.0141</b>
     </div>
     <div class="tl-legend">
       <span><i style="background:var(--text3);opacity:.6"></i>Observations</span>

@@ -27,7 +27,6 @@
       <p class="sl-lede">The plain Kalman filter runs one way only — forward, using data up through right now, never anything after it. Two upgrades sit on top of that same machinery. The first, a smoother, waits until an entire dataset exists and then sharpens every past estimate using data the live filter never had. The second and third, the Extended and Unscented Kalman filters, handle a state-space model that isn't linear — one by drawing a tangent line at every step, the other by sampling the true curve directly and skipping the tangent line altogether.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -378,7 +377,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="16">
 
       <div class="sl-kicker">Your call</div>
@@ -484,6 +482,7 @@
       else if (edgeError < 0.03) label = 'small — the tangent line is still a fine local stand-in';
       else if (edgeError < 0.09) label = 'growing — the tangent line is starting to visibly miss';
       else label = 'large — the tangent line is now a poor stand-in out here';
+      if (k === 0) { readout.textContent = 'At k = 0.00 the true curve IS the tangent line — the EKF has zero linearization error, and the sigma points sit exactly on both lines at once.'; return; }
       readout.textContent = 'Linearization error at the curve’s edge (Δx = 0.4 from center): k × 0.4² ≈ ' + edgeError.toFixed(3) + ' — ' + label + '. The purple sigma points, sitting on the true curve, drift away from the fixed red tangent line by the same growing amount — the UKF sees this drift directly; the EKF has no way to.';
     }
 

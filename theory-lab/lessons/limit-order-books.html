@@ -576,6 +576,23 @@
     <button type="button" id="lob-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Walk a market buy order up a three-level ask ladder: fill each level in turn, then take the volume-weighted average price (VWAP) and its cost in pips over the best ask (1 pip = 0.0001). New ladders each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Asks: 150 at 1.2500, 250 at 1.2501, 400 at 1.2502. Market buy for 500. Fills: 150, 250, then 100 from level 3. VWAP \(= (150 \times 1.2500 + 250 \times 1.2501 + 100 \times 1.2502)/500 = 625.045/500 = 1.25009\). Cost over the best ask: <span class="tl-blank" data-answer="0.9" data-tol="0.02" data-unit="pips"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Asks: 100 at 0.6800, 200 at 0.6801, 300 at 0.6802. Market buy for 450. Levels 1 and 2 fill completely (300 units), so level 3 fills <span class="tl-blank" data-answer="150" data-tol="0.5"></span> units. VWAP \(=\) <span class="tl-blank" data-answer="0.68011" data-tol="0.000006"></span>, which is <span class="tl-blank" data-answer="1.11" data-tol="0.02" data-unit="pips"></span> over the best ask.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Asks: 80 at 1.1005, 120 at 1.1006, 400 at 1.1007. Market buy for 400. Level 3 fill: <span class="tl-blank" data-answer="200" data-tol="0.5"></span> units; VWAP <span class="tl-blank" data-answer="1.10063" data-tol="0.000006"></span>; cost <span class="tl-blank" data-answer="1.3" data-tol="0.02" data-unit="pips"></span>. Same prices as the worked example, a smaller order, and still a worse fill: thin depth at the touch matters more than order size.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -675,10 +692,11 @@
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Untested here: "the depth you see is the depth you'll get," and its cousin, "book imbalance tells you
     where price goes next."</strong> This desk works from mid-price candles with no order-book depth, so neither claim has
-    been tested. A fair test would need full depth-of-book data (every add, cancel and trade) for a liquid futures
-    contract. It would compare the displayed size at the touch just before each market order with the size actually
-    filled there, by volatility regime and against matched calm periods. It would also count how often a book imbalance
-    reading is followed by a move its way, measured against the base rate. All of that would be fixed in advance.</span>
+    been tested. The direct test needs full depth-of-book data (every add, cancel and trade), which this desk does not have.<div class="tl-howtotest"><strong>How to test it:</strong> a daily proxy can be run now. For the G10 USD pairs, 2010 to 2025, estimate the
+    bid-ask spread each day from daily highs and lows (the Corwin-Schultz estimator) and compare days in the top decile of
+    20-day realised volatility with calm days in the same months. Fixed in advance: "depth leaves under stress" passes only
+    if the stressed-day spread is at least 1.5 times the calm-day spread, with a block-bootstrap 95% interval above 1, against
+    a baseline of no difference; nothing is traded, so no costs apply. The imbalance claim needs tick data and stays untested.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -778,7 +796,7 @@
       <li data-verdict="ok">Split the block into a few smaller market orders a minute apart.<div class="tl-drill-why">Better than one block, because the book gets a moment to refill between clips. But each clip is still a market order into thin depth, and the size you saw may be cancelled before your order arrives.</div></li>
       <li data-verdict="bad">Read the heavy volume as strong buying on news you have not seen, and buy more than the hedge needs.<div class="tl-drill-why">The move had no clear news behind it. Heavy volume from fast traders posting, hitting and replacing small quotes is activity, not information or depth.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Between 9:33 and 9:45 am the 10-year yield fell about 16 basis points and rose straight back, inside a 37-basis-point range for the day. The joint staff report by the Treasury, the Fed, the New York Fed, the SEC and the CFTC found no clear news in that window. It found heavy volume, thin resting size at the best prices, bank dealers pulling back their resting orders, and automated firms trading heavily while showing little size. Anyone who bought at market at the low in yields paid the top of a move that reversed within minutes.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Between 9:33 and 9:45 am the 10-year yield fell about 16 basis points and rose straight back, inside a 37-basis-point range for the day. The joint staff report by the Treasury, the Fed, the New York Fed, the SEC and the CFTC found no clear news in that window. It found heavy volume, thin resting size at the best prices, bank dealers pulling back their resting orders, and automated firms trading heavily while showing little size. Anyone who bought at market at the low in yields paid the top of a move that reversed within minutes.</p><p class="tl-drill-sources">Sources: <a href="https://treasurydirect.gov/files/laws-and-regulations/gsa/joint-staff-report-treasury-10-15-2014.pdf">Joint Staff Report: The U.S. Treasury Market on October 15, 2014 (US Treasury, Federal Reserve Board, New York Fed, SEC, CFTC), July 2015</a>; <a href="https://www.newyorkfed.org/newsevents/news/aboutthefed/2015/oa150713.html">New York Fed press release, 13 July 2015</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

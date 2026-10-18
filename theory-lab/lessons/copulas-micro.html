@@ -27,7 +27,6 @@
       <p class="sl-lede">Two currency pairs can carry the exact same correlation number in a calm year and in a crisis year. Correlation looked fine right up until everything crashed together — and a single correlation coefficient has no way to warn you it's coming. Copulas are the tool built specifically to separate each series' own distribution from how the two of them move together, and to expose the part correlation can't see: whether they tend to crash together far more often than that one number would ever suggest.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -201,7 +200,7 @@
           <div>Gaussian: ρ = sin(πτ/2) = <b id="cop-rho">0.588</b> → λ_L = <b id="cop-lamG">0.000</b></div>
           <div>Clayton: θ = 2τ / (1−τ) = <b id="cop-theta">1.333</b> → λ_L = 2^(−1/θ) = <b id="cop-lamC">0.595</b></div>
         </div>
-        <div class="sl-note" id="cop-note">Same τ = 0.40 for both — asymptotically 0% versus roughly 60% joint-crash probability, from a headline number that looks identical either way.</div>
+        <div class="sl-note" id="cop-note">Same τ = 0.40 for both — asymptotically 0% versus roughly 59% joint-crash probability, from a headline number that looks identical either way.</div>
         <button type="button" class="sl-reset-btn" id="cop-reset">Reset to worked-example τ = 0.40</button>
       </div>
       <p class="sl-p">Put in plain terms: two dependence structures tuned to have the <em>identical</em> overall rank-correlation strength produce wildly different answers to "if X is in its worst 1% of outcomes, how likely is Y also in its worst 1%?" A risk model built on the Gaussian assumption would report these two series as reasonably, stably diversified in the tail. A risk model built on Clayton would report them as behaving almost as a single position exactly when things are going badly.</p>
@@ -360,7 +359,6 @@
       <!-- DESK:END -->
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="16">
 
       <div class="sl-kicker">Your call</div>
@@ -375,7 +373,7 @@
       <li data-verdict="ok">Raise the copula correlation a little and re-mark the tranche.<div class="tl-drill-why">A step in the right direction, but a Gaussian copula with any correlation below 1 still has zero tail dependence. One flat correlation could not even fit every tranche of a single pool at the same time.</div></li>
       <li data-verdict="bad">Buy more. The spread is thin, but it is close to free money.<div class="tl-drill-why">A thin spread on a slice that loses only in a joint crash is exactly the trade where a thin-tailed model hides the risk. More size means more exposure to the corner you have not measured.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> US house prices fell nationwide, a common shock to every region at once. Mortgage defaults rose together, the lower slices inside CDOs were wiped out together, and losses reached the super-senior slices the models had treated as safe. Rating agencies downgraded top-rated CDO tranches in large numbers through 2007 and 2008. UBS, Merrill Lynch and Citigroup took write-downs running to tens of billions of dollars, much of it on super-senior CDO positions they had kept, and the chief executives of Merrill Lynch and Citigroup left in late 2007.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> US house prices fell nationwide, a common shock to every region at once. Mortgage defaults rose together, the lower slices inside CDOs were wiped out together, and losses reached the super-senior slices the models had treated as safe. Rating agencies downgraded top-rated CDO tranches in large numbers through 2007 and 2008. UBS, Merrill Lynch and Citigroup took write-downs running to tens of billions of dollars, much of it on super-senior CDO positions they had kept, and the chief executives of Merrill Lynch and Citigroup left in late 2007.</p><p class="tl-drill-sources">Sources: <a href="https://www.newyorkfed.org/medialibrary/media/newsevents/news/banking/2008/SSG_Risk_Mgt_doc_final.pdf">Senior Supervisors Group, <em>Observations on Risk Management Practices during the Recent Market Turbulence</em>, 6 Mar 2008</a>; UBS, Shareholder Report on UBS's Write-Downs, 18 Apr 2008; Merrill Lynch press release, 30 Oct 2007; Citigroup press release, 4 Nov 2007.</p></div>
   </div>
 
     </section>

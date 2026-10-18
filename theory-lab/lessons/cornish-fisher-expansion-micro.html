@@ -27,7 +27,6 @@
       <p class="sl-lede">The previous deep dive defined VaR as a quantile of the loss distribution and showed why coherent risk measures matter — but said nothing about how VaR actually gets computed day to day. The most common answer assumes returns are normally distributed, which real returns almost never are. This lesson covers the standard fix — an adjustment to the one number the Gaussian formula gets wrong — and the well-documented way that fix can itself misbehave.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -257,17 +256,17 @@
         <div class="sl-svgwrap">
           <svg viewBox="0 0 320 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two bars comparing the Cornish-Fisher-adjusted 95 percent and 99 percent VaR for the current skewness. The 99 percent bar should always be taller than the 95 percent bar; at extreme skewness it becomes shorter instead, and both bars turn red to flag the breakdown.">
             <line x1="20" y1="180" x2="300" y2="180" style="stroke:var(--border2);stroke-width:1"/>
-            <rect id="sk-bar95" x="75" y="140" width="50" height="40" rx="4" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+            <rect id="sk-bar95" x="75" y="95.4" width="50" height="84.6" rx="4" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
             <text x="100" y="196" text-anchor="middle" style="font:11px 'DM Mono',monospace;fill:var(--text2)">95% VaR</text>
-            <text id="sk-val95" x="100" y="130" text-anchor="middle" style="font:600 12px 'DM Mono',monospace;fill:var(--blue)">2.12%</text>
-            <rect id="sk-bar99" x="195" y="100" width="50" height="80" rx="4" style="fill:var(--green-bg);stroke:var(--green);stroke-width:1.5"/>
+            <text id="sk-val95" x="100" y="85.4" text-anchor="middle" style="font:600 12px 'DM Mono',monospace;fill:var(--blue)">2.11%</text>
+            <rect id="sk-bar99" x="195" y="44" width="50" height="136" rx="4" style="fill:var(--green-bg);stroke:var(--green);stroke-width:1.5"/>
             <text x="220" y="196" text-anchor="middle" style="font:11px 'DM Mono',monospace;fill:var(--text2)">99% VaR</text>
-            <text id="sk-val99" x="220" y="90" text-anchor="middle" style="font:600 12px 'DM Mono',monospace;fill:var(--green)">3.40%</text>
+            <text id="sk-val99" x="220" y="34" text-anchor="middle" style="font:600 12px 'DM Mono',monospace;fill:var(--green)">3.40%</text>
           </svg>
         </div>
         <div class="sl-sliderhead"><span>Skewness S</span><span class="sl-live" id="sk-sval">S = −0.50</span></div>
         <input type="range" class="sl-slider" id="sk-slider" min="-3.5" max="0" step="0.1" value="-0.5">
-        <div class="sl-verdict" id="sk-verdict" style="margin-top:12px">A 99%-confidence VaR should never be smaller than a 95%-confidence one on the same distribution — a higher confidence level always means further into the tail.</div>
+        <div class="sl-verdict" id="sk-verdict" style="margin-top:12px">Still valid: 99% VaR (3.40%) stays larger than 95% VaR (2.11%), as any real quantile function requires.</div>
       </div>
       <p class="sl-p">Past roughly S ≈ −2.4 at this kurtosis, z_CF stops increasing monotonically with confidence — the "99% VaR" the formula reports actually falls <em>below</em> the "95% VaR" it reported a moment ago. That is not a rounding quirk; it's the polynomial correction overshooting itself.</p>
     </section>
@@ -413,7 +412,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -428,7 +426,7 @@
       <li data-verdict="good">Report the exceptions honestly, treat the model as broken for this regime, and set risk off a number that already contains a stress period, cutting size to it.<div class="tl-drill-why">The correction can only fix the tail shape its window has seen. Measuring against a window that includes a real crisis, and sizing to that, deals with the actual problem instead of tuning the patch.</div></li>
       <li data-verdict="ok">Shorten the look-back window to a month so the moments catch up faster.<div class="tl-drill-why">It reacts to the new regime, which helps. But a month of data gives noisy skew and kurtosis, and the model will swing back to calm as soon as the window rolls past the crash.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Days of 5% and more, up and down, came one after another. Many bank trading desks that report a 99% daily VaR recorded exceptions far more often than 1 day in 100, clustered in a few weeks. Under the Basel rules, too many exceptions in a year raise the multiplier a bank applies to its VaR when it sets market-risk capital, so capital was about to rise in the middle of the crisis. In April 2020 the European Central Bank temporarily reduced that multiplier for the banks it supervises, citing the extraordinary market volatility.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Days of 5% and more, up and down, came one after another. Many bank trading desks that report a 99% daily VaR recorded exceptions far more often than 1 day in 100, clustered in a few weeks. Under the Basel rules, too many exceptions in a year raise the multiplier a bank applies to its VaR when it sets market-risk capital, so capital was about to rise in the middle of the crisis. In April 2020 the European Central Bank temporarily cut the part of that multiplier its supervisors set, for the banks it supervises, to offset the rise from the exceptions, citing the extraordinary market volatility.</p><p class="tl-drill-sources">Sources: <a href="https://www.bankingsupervision.europa.eu/press/pr/date/2020/html/ssm.pr200416~ecf270bca8.en.html">ECB Banking Supervision press release, 16 Apr 2020</a>; <a href="https://fred.stlouisfed.org/series/SP500">S&amp;P 500 close, 13 and 16 Mar 2020 (FRED: SP500)</a>; <a href="https://fred.stlouisfed.org/series/VIXCLS">Cboe VIX close, 16 Mar 2020 (FRED: VIXCLS)</a>.</p></div>
   </div>
 
     </section>

@@ -27,7 +27,6 @@
       <p class="sl-lede">The two lessons before this one build a full model of every regime and every transition between them. This one asks a much narrower, more operational question: has something changed recently, and roughly when — answered live, as new data arrives, without ever modeling the full regime structure. Two classical tools answer it: CUSUM, a running tally that trips an alarm once evidence crosses a line, and Bayesian Online Changepoint Detection (BOCPD), which keeps a full probability distribution over how long it's been since the last change instead of a single yes/no.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -460,7 +459,6 @@
       <!-- DESK:END -->
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -475,7 +473,7 @@
       <li data-verdict="ok">Lower the threshold right now so the detector fires today.<div class="tl-drill-why">You are right that the alarm is late, but this is your judgement wearing the detector's clothes. A threshold picked after seeing today's move will also fire on every ordinary bad day later, so the alarm stops meaning anything.</div></li>
       <li data-verdict="bad">Fit an offline change-point model to the year so far and act on where it puts the break.<div class="tl-drill-why">An offline fit decides where the break was by using data from after it. Today there is almost no post-break data, so it cannot see the break yet. Weeks later it will place it neatly at 20 to 24 February: that is hindsight, not a signal you could have traded.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> By 27 February the S&amp;P 500 was more than 10% below its record, the fastest correction from an all-time high on record, in six trading days. On 16 March it fell about 12% in one session and the VIX closed above 82, a record. By 23 March the index was roughly a third below its February high. An offline fit later put the break at 20 to 24 February. An online detector quiet enough for 2019 could only flag it after several large days had piled up, so its alarm mostly confirmed what the P&amp;L already showed.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> By 27 February the S&amp;P 500 was more than 10% below its record, the fastest correction from an all-time high on record, in six trading days. On 16 March it fell about 12% in one session and the VIX closed above 82, a record. By 23 March the index was roughly a third below its February high. An offline fit later put the break at 20 to 24 February. An online detector quiet enough for 2019 could only flag it after several large days had piled up, so its alarm mostly confirmed what the P&amp;L already showed.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/SP500">S&amp;P 500 daily close via FRED (record 3,386.15 on 19 February 2020; 2,978.76 on 27 February, 12.0% below it; 2,386.13 on 16 March, down 12.0% on the day; 2,237.40 on 23 March, 33.9% below the record)</a>; <a href="https://fred.stlouisfed.org/series/VIXCLS">Cboe VIX daily close via FRED (82.69 on 16 March 2020)</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200323a.htm">Federal Reserve FOMC statement, 23 March 2020</a>.</p></div>
   </div>
 
     </section>

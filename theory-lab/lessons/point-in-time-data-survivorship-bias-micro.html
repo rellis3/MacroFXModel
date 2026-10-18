@@ -27,7 +27,6 @@
       <p class="sl-lede">Two data problems that both make a backtest look better than the live strategy it's supposed to represent: using a number as of a date before it was actually knowable (because the "real" number arrived later, revised), and evaluating a universe that quietly excludes everything that failed along the way. Neither shows up as an error — both just make the past look calmer and the winners look more common than they really were.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -432,7 +431,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -447,7 +445,8 @@
       <li data-verdict="good">Rebuild the history from first-release vintages, each tagged with the date it was published, and test on those.<div class="tl-drill-why">This is what a live system could have known on each day. Public archives that keep every vintage, such as the St. Louis Fed's ALFRED, exist for exactly this reason. Store the revisions as new dated records, never as overwrites.</div></li>
       <li data-verdict="bad">Freeze the table as it stands today so nothing changes again.<div class="tl-drill-why">Freezing keeps every revision that was already folded in place before today. You still cannot tell which numbers were first prints. What you need is the publication date on every value, not a frozen copy.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 21 August 2024 the Bureau of Labor Statistics published a preliminary benchmark revision cutting payroll growth for the year to March 2024 by about 818,000 jobs. Any backtest run afterwards on a current-value table would quietly trade on weaker numbers that nobody had seen when those reports came out. The prices moved on the first prints, months earlier. Only a vintage-aware history can tell the two apart.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 21 August 2024 the Bureau of Labor Statistics published a preliminary benchmark revision cutting payroll growth for the year to March 2024 by about 818,000 jobs. Any backtest run afterwards on a current-value table would quietly trade on weaker numbers that nobody had seen when those reports came out. The prices moved on the first prints, months earlier. Only a vintage-aware history can tell the two apart. The final benchmark, published in February 2025, came in smaller, at about −589,000 for March 2024, which is itself a reminder that the history keeps moving.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://www.bls.gov/ces/notices/2024/2024-preliminary-benchmark-revision.htm">Bureau of Labor Statistics, 2024 preliminary benchmark revision notice, 21 Aug 2024</a> (−818,000, −0.5% of total nonfarm employment, for March 2024); <a href="https://www.bls.gov/ces/publications/benchmark/ces-benchmark-revision-2024.pdf">BLS, CES benchmark revision 2024</a> (final revision); <a href="https://alfred.stlouisfed.org/">ALFRED, Federal Reserve Bank of St. Louis</a>, for data vintages.</p></div>
   </div>
 
     </section>

@@ -418,6 +418,23 @@
     <button type="button" id="four-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's shortcut for a pure wave \(x_t = A\cos(2\pi k_0 t/N)\): the transform is \(X(k_0) = NA/2\) (and the same at the mirror bin \(N-k_0\)), the periodogram is \(I(k_0) = X(k_0)^2/N\), and the period is \(N/k_0\). New series each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(N = 12\), \(k_0 = 3\), \(A = 1\). The transform is \(X(3) = 12 \times 1/2 = 6\), mirrored at bin \(12 - 3 = 9\). The periodogram spike is \(I(3) = 6^2/12 = 3\). The cycle repeats every <span class="tl-blank" data-answer="4" data-tol="0.01" data-unit="steps"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(N = 20\), \(k_0 = 4\), \(A = 0.5\). The transform is \(X(4) =\) <span class="tl-blank" data-answer="5" data-tol="0.01"></span>, and the mirror spike sits at bin <span class="tl-blank" data-answer="16" data-tol="0.01"></span>. The periodogram spike is \(I(4) =\) <span class="tl-blank" data-answer="1.25" data-tol="0.005"></span>, and the period is \(20/4 = 5\) steps.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(N = 24\), \(k_0 = 2\), \(A = 3\). Find \(X(k_0)\) <span class="tl-blank" data-answer="36" data-tol="0.01"></span>, the periodogram spike \(I(k_0)\) <span class="tl-blank" data-answer="54" data-tol="0.01"></span>, the mirror bin <span class="tl-blank" data-answer="22" data-tol="0.01"></span> and the period <span class="tl-blank" data-answer="12" data-tol="0.01" data-unit="steps"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>

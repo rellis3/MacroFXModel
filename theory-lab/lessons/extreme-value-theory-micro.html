@@ -27,7 +27,6 @@
       <p class="sl-lede">Markets crash harder — and more often — than a normal distribution predicts. Your worst historical day is not your worst possible day, and the plain historical way of estimating VaR and CVaR quietly runs out of road exactly where it matters most: the 1-in-500-day event, the 1-in-2,000-day event, the day a leveraged strategy actually blows up. Extreme Value Theory doesn't try to model the whole distribution of returns — it asks a narrower question: once you're already looking at an extreme observation, what shape does the tail beyond it take, and can that shape say something honest about outcomes you haven't seen yet?</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -385,7 +384,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -400,7 +398,7 @@
       <li data-verdict="good">Cut leverage until a loss far beyond anything in your sample is survivable, sizing off a heavy-tailed or stress loss rather than the normal VaR.<div class="tl-drill-why">This is what EVT is for: a heavy tail makes a much worse day rare but possible, and sizing has to survive it. Accept that the extrapolated number is an assumption and leave a margin for it.</div></li>
       <li data-verdict="ok">Cut leverage a little, using the worst day in your own sample as the stress loss.<div class="tl-drill-why">Better than trusting the normal, but historical VaR this far out just names your worst observed day. The next extreme need not respect it.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Monday 19 October 1987 the S&amp;P 500 fell about 20% and the Dow 22.6%, nearly doubling the 12–13% falls of the worst 1929 days. Against daily moves of about 1%, that was on the order of twenty standard deviations: impossible under a normal model. The sessions after swung violently both ways, and the Dow regained 288 points, 57% of the Monday fall, within the next two sessions. The extremes came as a cluster around one event.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Monday 19 October 1987 the S&amp;P 500 fell about 20% and the Dow 22.6%, nearly doubling the Dow's falls of about 13% and 12% on 28 and 29 October 1929. Against daily moves of about 1%, that was on the order of twenty standard deviations: impossible under a normal model. The sessions after swung violently both ways, and the Dow regained 288 points, 57% of the Monday fall, within the next two sessions. The extremes came as a cluster around one event.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreservehistory.org/essays/stock-market-crash-of-1987">Federal Reserve History, "Stock Market Crash of 1987"</a> (Dow −4.6% on 16 Oct, −22.6% on 19 Oct, 288 points regained over the next two sessions); Report of the Presidential Task Force on Market Mechanisms (Brady Report), January 1988.</p></div>
   </div>
 
     </section>

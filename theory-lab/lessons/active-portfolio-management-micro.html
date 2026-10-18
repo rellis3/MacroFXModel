@@ -27,7 +27,6 @@
       <p class="sl-lede"><a href="alpha-beta-separation-micro.html" style="color:var(--blue)">Alpha vs. Beta Separation</a> showed how to split a return stream into a market bet and a residual. <a href="factor-based-portfolio-construction.html" style="color:var(--blue)">Factor-Based Portfolio Construction</a> then showed how to build that residual out of deliberate, engineered tilts instead of accidental exposures. This closing lesson in Advanced Portfolio Construction asks the question sitting underneath both: how good is that residual, really — and is there even a way for the "average active dollar" to win at all? Four ideas do the work: the Information Ratio (a Sharpe ratio for active bets), the Fundamental Law connecting raw forecasting skill to breadth, Active Share as a second axis alongside tracking error, and the zero-sum accounting identity that bounds the entire active-management industry.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -78,7 +77,7 @@
       <p data-who="Trader">And nothing in the arithmetic warns you.</p>
       <p data-who="Quant">Nothing. You have to check how correlated the calls are. Breadth means independent bets, not trade tickets.</p>
       <p data-who="Trader">Has that ever gone wrong at scale?</p>
-      <p data-who="Quant">August 2007, the quant quake. Quant equity funds held thousands of longs and shorts each, a small edge on every name. But many ranked stocks on similar ideas, so their books overlapped. In the week of the sixth of August, a large unwind, probably one fund raising cash, pushed against all of them at once. Goldman's Global Equity Opportunities fund was reported to have lost more than thirty percent in about a week.</p>
+      <p data-who="Quant">August 2007, the quant quake. Quant equity funds held thousands of longs and shorts each, a small edge on every name. But many ranked stocks on similar ideas, so their books overlapped. In the week of the sixth of August, a large unwind, probably one fund raising cash, pushed against all of them at once. Goldman's Global Equity Opportunities fund was reported to have lost roughly thirty percent in early August.</p>
       <p data-who="Trader">Thousands of bets, all losing together.</p>
       <p data-who="Quant">Which independent bets never do. Effective breadth fell towards one. Prices snapped back on Friday the tenth, after many funds had already cut.</p>
       <p data-who="Trader">And when I'm judging a fund I pay fees to?</p>
@@ -221,7 +220,7 @@
         </div>
         <div class="sl-sliderhead"><span>Breadth — independent bets per year</span><span class="sl-live" id="br-bval">BR = 80</span></div>
         <input type="range" class="sl-slider" id="br-slider" min="1" max="300" step="1" value="80">
-        <div class="sl-note" id="br-readout">At BR = 80 independent bets with IC = 0.05, the Fundamental Law predicts IR ≈ <strong>0.45</strong>. Going from 80 to 300 bets (nearly 4×) only lifts IR to about 0.87 — less than 2×. That flattening is the square root, doing exactly what it does.</div>
+        <div class="sl-note" id="br-readout">At BR = 80 independent bets with IC = 0.05, the Fundamental Law predicts IR ≈ <strong>0.45</strong>. Going from 80 to 300 bets (3.75× as many) only lifts IR to about 0.87, 1.94× as high. That flattening is the square root, doing exactly what it does.</div>
       </div>
     </section>
 
@@ -417,7 +416,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -432,7 +430,7 @@
       <li data-verdict="good">Re-measure the book's risk as if it were one crowded bet, and cut gross in steps to a size you could survive if it lost again tomorrow.<div class="tl-drill-why">This is the lesson read honestly: effective breadth has collapsed towards one, so size it like one bet. Cutting in steps keeps you alive without dumping everything at the bottom, and leaves you holding part of the book if prices recover.</div></li>
       <li data-verdict="ok">Hold the full size and wait for it to pass.<div class="tl-drill-why">The positions may well recover, but you are holding one bet sized as if it were thousands. If the unwind runs another week, your limits force you out at even worse prices.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Many quant funds hit their limits and cut the same positions, deepening the move. Goldman Sachs's Global Equity Opportunities fund was reported to have lost more than 30% in about a week, and Goldman and outside investors put roughly $3 billion into it in mid-August. Prices rebounded sharply on Friday 10 August, after many funds had already cut. Khandani and Lo's best-documented account traces it to the hypothesised fast unwind of one large quant book.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Many quant funds hit their limits and cut the same positions, deepening the move. Goldman Sachs's Global Equity Opportunities fund was reported to have lost roughly 30% in early August, and on 13 August Goldman and outside investors put $3 billion into it. Prices rebounded sharply on Friday 10 August, after many funds had already cut. Khandani and Lo's best-documented account traces it to the hypothesised fast unwind of one large quant book.</p><p class="tl-drill-sources">Sources: <a href="https://www.sec.gov/Archives/edgar/data/0000886982/000089534507000454/ex99.htm">Goldman Sachs press release on the $3 billion GEO investment, 13 August 2007 (SEC Form 8-K exhibit)</a>; <a href="https://www.newyorkfed.org/medialibrary/media/research/conference/2007/liquidity/Khandani_Lo.pdf">Khandani and Lo, "What Happened to the Quants in August 2007?", 2007</a>; Bloomberg, reported fund losses, August 2007.</p></div>
   </div>
 
     </section>
@@ -509,7 +507,11 @@
       dot.setAttribute('cx', xFor(n));
       dot.setAttribute('cy', yFor(ir));
       var ir300 = fundamentalLaw(IC, BR_MAX);
-      readout.innerHTML = 'At BR = ' + n + ' independent bets with IC = 0.05, the Fundamental Law predicts IR &asymp; <strong>' + ir.toFixed(2) + '</strong>. Going all the way to BR = 300 (IR &asymp; ' + ir300.toFixed(2) + ') only gets there by the square root, not by scaling with breadth directly.';
+      function times(x){ return x.toFixed(x >= 10 ? 0 : 2) + '&times;'; }
+      var tail = n < BR_MAX
+        ? 'Going from ' + n + ' to 300 bets (' + times(BR_MAX / n) + ' as many) only lifts IR to about ' + ir300.toFixed(2) + ', ' + times(ir300 / ir) + ' as high. That flattening is the square root, doing exactly what it does.'
+        : 'That is the top of the slider: 300 bets give only &radic;300 &asymp; 17.3 times the IR of a single bet.';
+      readout.innerHTML = 'At BR = ' + n + ' independent bets with IC = 0.05, the Fundamental Law predicts IR &asymp; <strong>' + ir.toFixed(2) + '</strong>. ' + tail;
     }
     slider.addEventListener('input', update);
     update();

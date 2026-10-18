@@ -27,7 +27,6 @@
       <p class="sl-lede">Bootstrapping strips an exact zero rate out of every bond you feed it — and knows nothing at all about the maturities in between. Nelson-Siegel and Svensson throw that exactness away on purpose: pick a smooth mathematical shape flexible enough to describe how real yield curves actually look, and fit a handful of parameters to it instead. Four numbers (or six) replace a jagged connect-the-dots line with one curve that a central bank can publish, extrapolate, and forecast — every single trading day.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -282,7 +281,7 @@
         <input type="range" class="sl-slider" id="ns2-b2-slider" min="-6" max="6" step="0.1" value="1.0">
         <div class="sl-sliderhead" style="margin-top:12px"><span>λ — decay</span><span class="sl-live" id="ns2-lam-val">λ = 2.0</span></div>
         <input type="range" class="sl-slider" id="ns2-lam-slider" min="0.3" max="8" step="0.1" value="2.0">
-        <div class="sl-note" id="ns2-readout">1Y — · 2Y — · 5Y — · 10Y — · 30Y —</div>
+        <div class="sl-note" id="ns2-readout">1Y 3.11% · 2Y 3.50% · 5Y 4.05% · 10Y 4.29% · 30Y 4.43%</div>
       </div>
     </section>
 
@@ -480,7 +479,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="18">
 
       <div class="sl-kicker">Your call</div>
@@ -488,14 +486,15 @@
       <div class="tl-drill" data-date="2022-12-14">
     <div class="tl-drill-label">Scenario drill · 14 December 2022</div>
     <h3>Your factor model says the curve must re-steepen</h3>
-    <p>You forecast the US Treasury curve by fitting Nelson-Siegel each day and forecasting the three betas with simple time-series models, all estimated on the 2010s. Today the Fed raised rates again, to 4.25–4.50%, after four 75bp increases in a row. The 2-year yield is about 4.4%, up from about 0.7% in January; the 10-year is under 4%. Since July the 2-year has stayed above the 10-year, so your fitted slope \(\beta_1\) is positive. Your model, which learned a \(\beta_1\) that was almost always negative, forecasts a fast return to a normal upward curve. What do you do?</p>
+    <p>You forecast the US Treasury curve by fitting Nelson-Siegel each day and forecasting the three betas with simple time-series models, all estimated on the 2010s. Today the Fed raised rates again, to 4.25–4.50%, after four 75bp increases in a row. The 2-year yield is about 4.2%, up from about 0.7% at the start of the year; the 10-year is about 3.5%. Since early July the 2-year has stayed above the 10-year, so your fitted slope \(\beta_1\) is positive. Your model, which learned a \(\beta_1\) that was almost always negative, forecasts a fast return to a normal upward curve. What do you do?</p>
     <ol class="tl-drill-options">
       <li data-verdict="bad">Trust the forecast and put on a large steepener. The slope has to revert to its long-run average.<div class="tl-drill-why">The "long-run average" is the 2010s, when the short end sat near zero for years. The model's persistence and mean are estimates from a regime that has just ended, so its confidence is borrowed from the wrong decade.</div></li>
       <li data-verdict="good">Treat it as a regime change: keep fitting the curve daily to describe it, but stop trusting forecasts estimated only on the old regime, and size any curve trade small.<div class="tl-drill-why">Nelson-Siegel still describes each day's curve well. What broke is the assumption that the factors behave as they did in the 2010s. Separating the description, which still works, from the forecast, which does not, is the honest response.</div></li>
       <li data-verdict="ok">Add more terms until the fit hits every bond, then trade any bond that sits off the curve.<div class="tl-drill-why">A second hump may genuinely be needed soon, so Svensson is reasonable. But piling on terms to chase every wiggle loses the stability that was the point, and a bond's residual against a fitted curve is fitting noise, not an edge.</div></li>
       <li data-verdict="bad">Drop the model entirely and connect the bonds with a bootstrap instead.<div class="tl-drill-why">The fitting was never the problem. A bootstrap gives you an exact but kink-prone curve, and it says nothing more about where the curve goes next.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The curve did not snap back. The inversion deepened, and at its deepest, in 2023, the 10-year yield was roughly a full percentage point below the 2-year. Treasury bills yielded more than 2-year notes, which yielded more than 10-year bonds, yet by late 2023 the 30-year yielded more than the 10-year again: a hump and a dip that needs Svensson's second term. For holders of long bonds, 2022 was one of the worst calendar years on record for US Treasury returns.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The curve did not snap back. The inversion deepened, and at its deepest, in 2023, the 10-year yield was roughly a full percentage point below the 2-year. Treasury bills yielded more than 2-year notes, which yielded more than 10-year bonds, yet by late 2023 the 30-year yielded more than the 10-year again: a hump and a dip that needs Svensson's second term. For holders of long bonds, 2022 was the worst calendar year on record for the Bloomberg US Treasury index, down about 12.5%.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20221214a.htm">Federal Reserve press release, 14 Dec 2022</a>; <a href="https://fred.stlouisfed.org/series/T10Y2Y">FRED, 10-year minus 2-year Treasury spread (T10Y2Y)</a>, with DGS2, DGS10, DGS30 and DGS3MO for the levels; Fortune (Bloomberg data), "The U.S. Treasury market just suffered its worst-ever annual loss in 2022", 31 Dec 2022.</p></div>
   </div>
 
     </section>

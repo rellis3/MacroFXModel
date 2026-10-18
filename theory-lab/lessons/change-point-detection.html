@@ -399,6 +399,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's recursion \(S_t = \max(0,\ S_{t-1} + x_t - \mu_0 - k)\) on new series. An alarm is the first \(t\) with \(S_t > h\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\mu_0 = 0\), \(k = 0.5\), \(h = 3.0\), and \(x = \{0.3,\ -0.4,\ 0.2,\ 2.6,\ 2.1,\ 3.0\}\). The steps \(x_t - 0.5\) are \(-0.2,\ -0.9,\ -0.3,\ 2.1,\ 1.6,\ 2.5\). So \(S_1\) to \(S_3\) are all 0, \(S_4 = 2.1\), \(S_5 = 3.7\), and \(S_6 =\) <span class="tl-blank" data-answer="6.2" data-tol="0.05"></span>. The alarm fires at \(t =\) 5.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\mu_0 = 0\), \(k = 0.5\), \(h = 3.5\), and \(x = \{0.1,\ 0.6,\ -0.3,\ 1.9,\ 2.4,\ 1.7,\ 2.2\}\). The statistic runs \(S_1 = 0\), \(S_2 = 0.1\), \(S_3 = 0\), then \(S_4 =\) <span class="tl-blank" data-answer="1.4" data-tol="0.05"></span> and \(S_5 =\) <span class="tl-blank" data-answer="3.3" data-tol="0.05"></span>. \(S_6 = 4.5\) is the first value above \(h\), so the alarm fires at \(t =\) <span class="tl-blank" data-answer="6" data-tol="0"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\mu_0 = 1\), \(k = 0.5\), \(h = 2.5\), and \(x = \{0.8,\ 1.3,\ 1.1,\ 3.2,\ 2.9,\ 3.4\}\). Find \(S_1\) to \(S_6\). \(S_3 =\) <span class="tl-blank" data-answer="0" data-tol="0"></span>; \(S_4 =\) <span class="tl-blank" data-answer="1.7" data-tol="0.05"></span>; \(S_5 =\) <span class="tl-blank" data-answer="3.1" data-tol="0.05"></span>; \(S_6 =\) <span class="tl-blank" data-answer="5.0" data-tol="0.05"></span>. The shift began at \(t = 4\) and the alarm fired one step later, the same one-step lag as the worked example.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -542,13 +559,10 @@
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "a change-point alarm gives you time to act on a new regime."</strong> There is no
     CUSUM on this desk. One of its systems does use a BOCPD change probability as an exit rule, but the desk's
-    evidence ledger holds no test of what followed those alarms, so there is no result to cite. A fair test would run the
-    detector strictly online on daily returns (and on realised volatility) across many years and instruments, with
-    \(k\), \(h\) or \(H\) fixed in advance. It would score each alarm by what happened <em>after</em> it fired,
-    against matched non-alarm days, and count false alarms alongside the hits. Grading it on where an offline fit
-    puts the break would only measure hindsight.</span>
+    evidence ledger holds no test of what followed those alarms, so there is no result to cite. <div class="tl-howtotest"><strong>How to test it:</strong> run a one-sided CUSUM strictly online on daily returns and on 20-day realised volatility for the G10 pairs, gold and the S&amp;P 500 from 2005, with \(\mu_0\), \(k\) and \(h\) estimated only from a trailing five-year window and then fixed. For each alarm, record the average return and the realised range over the next 20 sessions and compare them with matched non-alarm days. Fix the gate in advance: the alarm counts as useful only if the next-20-session range is at least 0.3 ATR wider than on matched days, with fewer than one false alarm per year, and the baseline is a rule that flags any day with realised volatility above its 90th percentile. Grading it on where an offline fit puts the break would only measure hindsight.</div></span>
   </div>
   <!-- DESK:END -->
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../regime-viewer.html">Regime viewer</a> plots the regime bot's BOCPD change probability beside price for each pair, so you can see how late or early it moves against the break you can only see afterwards.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -631,7 +645,7 @@
       <li data-verdict="ok">Lower the threshold right now so the detector fires today.<div class="tl-drill-why">You are right that the alarm is late, but this is your judgement wearing the detector's clothes. A threshold picked after seeing today's move will also fire on every ordinary bad day later, so the alarm stops meaning anything.</div></li>
       <li data-verdict="bad">Fit an offline change-point model to the year so far and act on where it puts the break.<div class="tl-drill-why">An offline fit decides where the break was by using data from after it. Today there is almost no post-break data, so it cannot see the break yet. Weeks later it will place it neatly at 20 to 24 February: that is hindsight, not a signal you could have traded.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> By 27 February the S&amp;P 500 was more than 10% below its record, the fastest correction from an all-time high on record, in six trading days. On 16 March it fell about 12% in one session and the VIX closed above 82, a record. By 23 March the index was roughly a third below its February high. An offline fit later put the break at 20 to 24 February. An online detector quiet enough for 2019 could only flag it after several large days had piled up, so its alarm mostly confirmed what the P&amp;L already showed.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> By 27 February the S&amp;P 500 was more than 10% below its record, the fastest correction from an all-time high on record, in six trading days. On 16 March it fell about 12% in one session and the VIX closed above 82, a record. By 23 March the index was roughly a third below its February high. An offline fit later put the break at 20 to 24 February. An online detector quiet enough for 2019 could only flag it after several large days had piled up, so its alarm mostly confirmed what the P&amp;L already showed.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/SP500">S&amp;P 500 daily close via FRED (record 3,386.15 on 19 February 2020; 2,978.76 on 27 February, 12.0% below it; 2,386.13 on 16 March, down 12.0% on the day; 2,237.40 on 23 March, 33.9% below the record)</a>; <a href="https://fred.stlouisfed.org/series/VIXCLS">Cboe VIX daily close via FRED (82.69 on 16 March 2020)</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200323a.htm">Federal Reserve FOMC statement, 23 March 2020</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

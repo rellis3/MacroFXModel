@@ -27,7 +27,6 @@
       <p class="sl-lede">The previous lesson in this pair, <em>The Research Pipeline: Hypothesis to Honest Backtest</em>, covered how to structure the process around a strategy idea — split the data honestly, cost it realistically, don't peek at the test set. This lesson goes one level deeper, into the features that pipeline actually feeds the model: the three specific, easy-to-miss ways a feature can quietly know things it shouldn't, and the discipline that keeps a result re-derivable months later instead of a one-time accident nobody can explain.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -422,7 +421,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="18">
 
       <div class="sl-kicker">Your call</div>
@@ -437,7 +435,7 @@
       <li data-verdict="good">Rebuild the number yourself from the raw country data, checking which countries and years are in and how each episode is weighted.<div class="tl-drill-why">This is the independent rebuild the lesson argues for. It tests the choices as well as the arithmetic: which rows count, which years are dropped, and how a one-year episode weighs against a nineteen-year one.</div></li>
       <li data-verdict="bad">Search the data for the debt level where growth falls the most, and trade that threshold instead.<div class="tl-drill-why">This replaces one unchecked number with a data-mined one. Scanning for the best threshold is the multiple-testing trap, and it still rests on the same unverified dataset.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In 2013 Thomas Herndon, a graduate student at the University of Massachusetts Amherst, could not reproduce the result for a class assignment and obtained the spreadsheet. With Michael Ash and Robert Pollin he found an average that left out five countries, some excluded years, and equal weighting of episodes of very different length. Corrected, average growth above 90% debt was about 2.2%: slower than at lower debt, but no cliff. Reinhart and Rogoff acknowledged the spreadsheet error and defended their other choices.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In 2013 Thomas Herndon, a graduate student at the University of Massachusetts Amherst, could not reproduce the result for a class assignment and obtained the spreadsheet. With Michael Ash and Robert Pollin he found an average that left out five countries, some excluded years, and equal weighting of episodes of very different length. Corrected, average growth above 90% debt was about 2.2%: slower than at lower debt, but no cliff. Reinhart and Rogoff acknowledged the spreadsheet error and defended their other choices.</p><p class="tl-drill-sources">Sources: <a href="https://doi.org/10.1257/aer.100.2.573">Reinhart and Rogoff, "Growth in a Time of Debt", American Economic Review, May 2010</a>; <a href="https://peri.umass.edu/publication/item/526-does-high-public-debt-consistently-stifle-economic-growth-a-critique-of-reinhart-and-rogoff">Herndon, Ash and Pollin, PERI Working Paper 322, April 2013</a>, later in the <a href="https://doi.org/10.1093/cje/bet075">Cambridge Journal of Economics</a>.</p></div>
   </div>
 
     </section>

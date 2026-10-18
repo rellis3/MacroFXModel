@@ -27,7 +27,6 @@
       <p class="sl-lede">Markowitz's textbook portfolio formula is pure linear algebra — invert a matrix, done. The instant you add a rule a real portfolio actually needs — no shorting, a position cap, a sector limit — that guarantee vanishes, because you no longer know in advance which rule will end up binding. Linear and quadratic programming are the two well-studied problem families that pick up exactly where the matrix formula gives out, and this deck is the geometry of why.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -258,7 +257,7 @@
           <div>Clip to [0%, cap]: Asset 1 → <b id="qp-calc-step1">50.00%</b>, Asset 2 → <b id="qp-calc-step2">35.00%</b></div>
           <div>Renormalize to sum to 100%: Asset 1 → <b id="qp-calc-step3">58.82%</b>, Asset 2 → <b id="qp-calc-step4">41.18%</b></div>
         </div>
-        <div class="sl-note" id="qp-calc-note">Renormalizing pushed Asset 1 back above the 50% cap — the naive clip-and-renormalize fix doesn't actually satisfy the constraint. This is exactly why real portfolio construction hands the problem to a QP solver instead of a spreadsheet trick.</div>
+        <div class="sl-note" id="qp-calc-note">Renormalizing pushed Asset 1 back above the 50% cap — the naive clip-and-renormalize fix doesn’t actually satisfy the constraint. This is exactly why real portfolio construction hands the problem to a QP solver instead of a spreadsheet trick.</div>
         <button type="button" class="sl-reset-btn" id="qp-calc-reset">Reset to worked-example numbers</button>
       </div>
       <p class="sl-p">A real QP solver doesn't clip after the fact — it searches only among points that satisfy every constraint simultaneously from the start (an active-set method repeatedly guesses which constraints bind, solves the resulting equality system, and checks the guess was self-consistent). The heuristic above is a useful gut-check, not a substitute.</p>
@@ -402,7 +401,6 @@
         <div class="sl-quiz-explain">KKT conditions confirm the math was solved correctly for the given inputs. They say nothing about whether a position cap, margin limit, or return target was the right one for that day — a separate, non-mathematical check.</div>
       </div>
     </section>
-
 
     <section class="sl-slide sl-vark" data-slide="16">
 
@@ -564,7 +562,7 @@
       step4.textContent = pct(w2f);
 
       if (w1f > cap + EPS || w2f > cap + EPS) {
-        note.textContent = 'Renormalizing pushed a weight back above the ' + cap.toFixed(0) + '% cap — the naive clip-and-renormalize fix doesn’t actually satisfy the constraint. This is exactly why real portfolio construction hands the problem to a QP solver instead of a spreadsheet trick.';
+        note.textContent = 'Renormalizing pushed ' + (w1f > cap + EPS ? 'Asset 1' : 'Asset 2') + ' back above the ' + cap.toFixed(0) + '% cap — the naive clip-and-renormalize fix doesn’t actually satisfy the constraint. This is exactly why real portfolio construction hands the problem to a QP solver instead of a spreadsheet trick.';
       } else {
         note.textContent = 'Both weights respect the ' + cap.toFixed(0) + '% cap after renormalizing — not guaranteed in general, just true for these particular numbers.';
       }

@@ -470,6 +470,31 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>A new, smaller chain. Same rules: CallPain adds call OI × (S − strike) for strikes below S, PutPain adds put OI × (strike − S) for strikes above S, and max pain is the S with the lowest total.</p>
+    <div class="tl-math">
+      <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Strike   Call OI   Put OI
+95       300       700
+100      900       3,600
+105      1,500     1,200
+110      4,800     1,000
+115      600       400</pre>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>At \(S=105\): \(\text{CallPain}=300(10)+900(5)=7{,}500\) and \(\text{PutPain}=1000(5)+400(10)=9{,}000\). So \(\text{TotalPain}(105)=\) <span class="tl-blank" data-answer="16500" data-tol="0.5"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>At \(S=110\): calls at 95, 100 and 105 are in the money, and only the 115 put is. \(\text{CallPain}(110)=\) <span class="tl-blank" data-answer="21000" data-tol="0.5"></span>, \(\text{PutPain}(110)=\) <span class="tl-blank" data-answer="2000" data-tol="0.5"></span>, \(\text{TotalPain}(110)=\) <span class="tl-blank" data-answer="23000" data-tol="0.5"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>The call wall's ratio to its larger neighbour: <span class="tl-blank" data-answer="3.2" data-tol="0.05" data-unit="×"></span>. \(\text{TotalPain}(100)=\) <span class="tl-blank" data-answer="23500" data-tol="0.5"></span>. Given \(\text{TotalPain}(95)=53{,}000\) and \(\text{TotalPain}(115)=58{,}500\), the max-pain strike is <span class="tl-blank" data-answer="105" data-tol="0.5"></span></p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -577,8 +602,8 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     <p style="margin-bottom:0">
       What drove it is <strong>genuinely contested</strong>. The SEC staff report on the episode (October 2021)
       attributed the rise mainly to a broad wave of buying, and found that short sellers buying to cover were only a
-      small part of it. How much of that buying was dealers hedging the calls they had written, the "gamma squeeze" of
-      the popular account, has never been measured in public with any precision. The call walls are a plausible
+      small part of it. It also found no evidence of the "gamma squeeze" of the popular account: on its data, customers' options
+      buying was mostly in puts, and market makers were buying calls rather than writing them. The call walls are a plausible
       accelerant. They are not a proven engine. And whatever the max-pain strike was on each of those expiries, it
       described who would lose least, nothing more: nobody was enforcing it.
     </p>
@@ -616,14 +641,19 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     convention and spot basis were all verified. Max pain is a level to know about, not a magnet.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../oi-dashboard.html">OI Analytics</a> shows the live call walls, put walls and max pain from each chain; read them as this morning's snapshot of positions, as this lesson does, not as targets.</div><!-- DESK:END -->
 
   <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Walls as range fences: not yet tested here (queued).</strong> The tempting read is that price stays
-    between the put wall and the call wall while both stand. A fair test would compute the walls point-in-time from that
-    morning's open interest, count how often the session stays inside them, and compare that with randomly placed bands
-    of the same width under matched volatility, with the rule fixed before looking.</span>
+    between the put wall and the call wall while both stand. 
+    <div class="tl-howtotest"><strong>How to test it:</strong> compute the put and call walls point-in-time from each
+    morning's published open interest (index and FX futures options, every expiry week with a full chain), and count how
+    often the session's high and low stay inside them. Compare that hit rate with bands of the same width placed at random
+    around the open, matched on that day's implied volatility, so the walls must beat a vol-only band. The gate, fixed
+    before looking: walls must contain the session at least 5 points more often than the matched bands, with a
+    bootstrap 95% interval that excludes zero, and a fade-at-the-wall rule must stay positive after spread and slippage.</div></span>
   </div>
   <!-- DESK:END -->
   <!-- DESK:START -->
@@ -718,9 +748,10 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
       <li data-verdict="bad">Short the shares and wait for the price to drift down to max pain into Friday.<div class="tl-drill-why">Max pain only describes where writers would lose least, and tests of it as a magnet have not supported the pull. Here the chain is also rebuilt higher every day, and with short interest above the float you would be joining the most crowded side of the trade.</div></li>
       <li data-verdict="bad">Write calls at the next big strike up, because a call wall is resistance.<div class="tl-drill-why">A call wall leans against a rally only when dealers are long those calls. Here customers bought them, so the writers who hedge are short them and must buy shares as price climbs toward the strike. Each strike was being overrun and rebuilt higher within days.</div></li>
       <li data-verdict="good">Treat the chain as a snapshot that may be stale by the afternoon: stand aside, or keep any position small with risk you can define in advance.<div class="tl-drill-why">This is the lesson's own warning at its most extreme. Walls and max pain describe where positions sat this morning. When open interest is rebuilt daily and trading conditions can change overnight, neither one gives you a level you can lean on.</div></li>
-      <li data-verdict="ok">Buy the shares to ride the squeeze, with a stop below.<div class="tl-drill-why">The wall-break momentum read is a real one, and the call walls are a plausible accelerant. But how much of the buying was hedging has never been measured, and in a market this violent a stop can fill far from where you set it. Defensible only at a small size.</div></li>
+      <li data-verdict="ok">Buy the shares to ride the squeeze, with a stop below.<div class="tl-drill-why">The wall-break momentum read is a real one, and the call walls are a plausible accelerant. But the SEC staff later found no evidence that dealer hedging drove the rise, and in a market this violent a stop can fill far from where you set it. Defensible only at a small size.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 28 January GameStop hit an intraday high of \$483. That day Robinhood and several other brokers restricted customers to selling the stock, not buying it; Robinhood said its clearing-house deposit requirement had jumped. The price fell sharply from its high. The SEC staff report in October 2021 attributed the rise mainly to a broad wave of buying, with short covering only a small part, and how much came from dealers hedging the calls they had written has never been measured in public. Nobody was enforcing any max-pain level.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 28 January GameStop hit an intraday high of \$483. That day Robinhood and several other brokers restricted customers to selling the stock, not buying it; Robinhood said its clearing-house deposit requirement had jumped. The price fell sharply from its high. The SEC staff report in October 2021 attributed the rise mainly to a broad wave of buying, with short covering only a small part, and found no evidence of a gamma squeeze: market makers were, on its data, buying calls rather than writing them. Nobody was enforcing any max-pain level.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://www.sec.gov/files/staff-report-equity-options-market-struction-conditions-early-2021.pdf">SEC staff report on equity and options market structure conditions in early 2021, 14 Oct 2021</a> (intraday high of $483.00 on 28 January; short interest above 100% of float; short covering a small fraction of buying; no evidence of a gamma squeeze); Benzinga, "GameStop Short Seller Melvin Gets $2.75B Funding From Citadel, Point72", 25 Jan 2021; CNBC, "Robinhood says restrictions on GameStop due to tenfold increase in deposit requirements", 30 Jan 2021.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

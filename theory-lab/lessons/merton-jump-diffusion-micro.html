@@ -27,7 +27,6 @@
       <p class="sl-lede">Black-Scholes assumes an underlying's path is continuous — it can wiggle wildly, but it can never skip a level. Real FX doesn't obey that around a scheduled release: NFP, CPI, and central bank surprises make price gap, not drift, through dozens of pips in a heartbeat. Robert Merton's 1976 fix bolts a random-jump process onto ordinary diffusion so a model can finally admit that gap exists — and, along the way, explains a shape in real option prices that pure Black-Scholes never could.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -373,7 +372,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="16">
 
       <div class="sl-kicker">Your call</div>
@@ -381,14 +379,14 @@
       <div class="tl-drill" data-date="2015-01-14">
     <div class="tl-drill-label">Scenario drill · 14 January 2015</div>
     <h3>A floor that has held for three years</h3>
-    <p>You are long EUR/CHF on leverage, with a stop-loss a few pips under the Swiss National Bank's 1.20 floor. The floor has held since September 2011, and SNB officials have publicly reaffirmed it. Realised volatility is the lowest you have ever seen on the pair, so your risk model says the position is small. How do you size it going into tomorrow?</p>
+    <p>You are long EUR/CHF on leverage, with a stop-loss a few pips under the Swiss National Bank's 1.20 floor. The floor has held since September 2011, and the SNB has said it will enforce it with the utmost determination. Realised volatility is the lowest you have ever seen on the pair, so your risk model says the position is small. How do you size it going into tomorrow?</p>
     <ol class="tl-drill-options">
       <li data-verdict="bad">Keep the size. The stop caps the loss at a few pips.<div class="tl-drill-why">A stop is an order, not a guaranteed price. It assumes the path is continuous and will trade through your level. In a jump there is no price in between, so the stop fills wherever liquidity comes back.</div></li>
       <li data-verdict="bad">Add size. Volatility is so low that a volatility-targeted book says you can run more.<div class="tl-drill-why">The calm is the floor holding σ down. Nearly all the risk sits in the jump terms, λ and μ_J, which a volatility estimate from the floor years cannot see. Scaling up on low σ scales you into the jump.</div></li>
       <li data-verdict="good">Size the position for a gap far through the floor, as if the stop will not fill, and only hold what you could lose that way.<div class="tl-drill-why">On a floored rate the loss to plan for is the jump, and everyone can name its direction. Sizing for the gap, not the stop distance, is the only version of this trade that survives the day the floor goes.</div></li>
       <li data-verdict="ok">Halve the size and keep the stop.<div class="tl-drill-why">Halving does halve the damage, so it is defensible. But the size is still set by the stop distance, which assumes a continuous path. Half of a loss many times your plan is still many times your plan.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On the morning of 15 January 2015 the SNB discontinued the floor without warning and cut its deposit rate to −0.75%. Within minutes EUR/CHF fell from 1.20 to below 0.90, with very little trading on the way down, before ending the day near parity. Stops just under 1.20 were filled far below. Many retail clients lost more than their account balance; FXCM needed an emergency $300 million loan, and Alpari UK went into insolvency.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On the morning of 15 January 2015 the SNB discontinued the floor without warning and cut its deposit rate to −0.75%. Within minutes EUR/CHF fell from 1.20 to below 0.90, with very little trading on the way down, before ending the day near parity. Stops just under 1.20 were filled far below. Many retail clients lost more than their account balance; FXCM needed an emergency $300 million loan from Leucadia, and Alpari UK went into special administration on 19 January.</p><p class="tl-drill-sources">Sources: <a href="https://www.snb.ch/en/publications/communication/press-releases/2015/pre_20150115">Swiss National Bank press release, 15 January 2015</a>; <a href="https://www.snb.ch/en/the-snb/organisation/history/geld-und-waehrungspolitische-chronik">SNB chronicle of monetary events (6 September 2011, 18 December 2014, 15 January 2015)</a>; Bloomberg, "Leverage Cripples a Currency Broker", 22 January 2015; Finance Magnates, 16 January 2015 (FXCM and Leucadia).</p></div>
   </div>
 
     </section>
@@ -414,7 +412,7 @@
         <h3>Kelly Criterion &amp; Position Sizing</h3>
         <p>How much of your account should actually be on a single trade — and why the mathematically "optimal" answer is usually far more aggressive than what any sane desk would run.</p>
         <div class="sl-teaser-btns">
-          <a class="sl-btn" href="kelly-criterion-micro.html">Next lesson →</a>
+          <a class="sl-btn" href="fx-options-quoting-rr-bf-micro.html">Next lesson →</a>
           <a class="sl-btn ghost" href="merton-jump-diffusion.html">Read the full lesson →</a>
           <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
         </div>

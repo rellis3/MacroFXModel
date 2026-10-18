@@ -599,6 +599,23 @@
     <button type="button" id="km-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The k-means assign and update steps again, on new points. Use squared distance, \(\|x-\mu\|^2 = (x_1-\mu_1)^2 + (x_2-\mu_2)^2\), exactly as in the worked example.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Point \(P=(3,2)\), centroids \(\mu_1=(2,1)\) and \(\mu_2=(5,5)\). To \(\mu_1\): \((3-2)^2+(2-1)^2 = 1+1 = 2\). To \(\mu_2\): \((3-5)^2+(2-5)^2 = 4+9 =\) <span class="tl-blank" data-answer="13" data-tol="0.01"></span>. So \(P\) is assigned to cluster 1.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Cluster 1 now holds \((2,1)\), \((3,2)\) and \((1,4)\). Update its centroid to the mean of its members: \(x\) = <span class="tl-blank" data-answer="2" data-tol="0.01"></span>, \(y\) = <span class="tl-blank" data-answer="2.3333" data-tol="0.01"></span>. The squared distance from \((1,4)\) to this new centroid is <span class="tl-blank" data-answer="3.7778" data-tol="0.02"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Point \(Q=(6,4)\), centroids \(\mu_1=(2,\ 2.5)\) and \(\mu_2=(7,7)\). Squared distance to \(\mu_1\): <span class="tl-blank" data-answer="18.25" data-tol="0.01"></span>. Squared distance to \(\mu_2\): <span class="tl-blank" data-answer="10" data-tol="0.01"></span>. Cluster \(Q\) is assigned to (1 or 2): <span class="tl-blank" data-answer="2" data-tol="0"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Hierarchical clustering applied outside portfolio construction — grouping sectors by behavioral similarity</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A dendrogram of five equity sectors clustered by behavioral similarity: Tech and Financials merge first at a low distance, Energy and Utilities merge separately, Healthcare joins the Tech-Financials group, and finally the two blocs merge at the root at the highest distance. No portfolio weights are computed anywhere in this diagram">
@@ -921,6 +938,7 @@
     </div>
     <p class="tl-fits-why"><strong>Why you'd care:</strong> diversification depends on how assets actually move together, and sector labels can be wrong about that.</p>
   </nav>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../correlations.html">Correlation Lab</a> shows the live price-return correlation matrix and its risk clusters; ask whether the groups it shows would survive the checks in this lesson.</div><!-- DESK:END -->
 
   <div class="tl-footer-nav">
     <a href="regularized-regression-lasso-ridge.html">← Regularized Regression: LASSO &amp; Ridge</a>

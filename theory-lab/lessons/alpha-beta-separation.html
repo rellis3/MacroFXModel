@@ -312,6 +312,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's decomposition with new strategies: the beta slice \(\beta(R_m - r_f)\), the reconstructed return \(r_f + \beta(R_m - r_f) + \alpha\), the residual \(\varepsilon = R_p - \text{reconstructed}\), and the short notional \(\beta \times\) position that hedges beta to zero. All returns in % for the year.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>A strategy made 14% in a year the market made 10%, cash 3%. Regression: \(\hat\beta = 0.8\), \(\hat\alpha = 3\%\). The beta slice is \(0.8 \times 7\% = 5.6\%\), and the reconstructed return is \(3 + 5.6 + 3 = 11.6\%\). The residual for the year is <span class="tl-blank" data-answer="2.4" data-tol="0.05" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>A strategy made 9% in a year the market <em>lost</em> 5%, cash 2%, with \(\hat\beta = 1.5\) and \(\hat\alpha = 1\%\). The beta slice is <span class="tl-blank" data-answer="-10.5" data-tol="0.05" data-unit="%"></span>, the reconstructed return <span class="tl-blank" data-answer="-7.5" data-tol="0.05" data-unit="%"></span>, and the residual <span class="tl-blank" data-answer="16.5" data-tol="0.05" data-unit="%"></span>. A 1.5-beta book that rose in a falling market got there on the residual, not on its 1% alpha.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>A strategy made 25% in a year the market made 20%, cash 5%, with \(\hat\beta = 1.4\) and \(\hat\alpha = 0\). Beta slice <span class="tl-blank" data-answer="21" data-tol="0.05" data-unit="%"></span>; reconstructed return <span class="tl-blank" data-answer="26" data-tol="0.05" data-unit="%"></span>; residual <span class="tl-blank" data-answer="-1" data-tol="0.05" data-unit="%"></span>; short notional to hedge <span class="tl-blank" data-answer="1.4" data-tol="0.01" data-unit="× position"></span>. Five points ahead of the market, and none of it was skill.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -461,6 +478,7 @@
     also zeroes net USD is run.</span>
   </div>
   <!-- DESK:END -->
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../correlations.html">Correlation Lab</a> has a Factor Betas tab with each pair's beta to the dollar index, VIX and rates: the exposures to strip out before calling what is left alpha.</div><!-- DESK:END -->
 
   <!-- WB:alpha_beta_separation:START -->
   <div class="wb" id="wb-alpha_beta_separation" data-title="Alpha vs beta: take the return apart">
@@ -522,7 +540,7 @@
       <li data-verdict="good">Treat the two legs as one exposure: cut the futures overlay to a size your truly liquid assets can fund, and meet calls from cash and liquid holdings now.<div class="tl-drill-why">The residual turned out to carry credit and liquidity risk that the one-factor regression never measured. Sizing the overlay to the cash you can actually raise stops the programme from becoming a forced seller.</div></li>
       <li data-verdict="ok">Close the whole futures position at once to stop the margin calls.<div class="tl-drill-why">It ends the cash drain, but it locks in the beta loss and leaves the plan with the wrong equity exposure. A controlled cut to a fundable size does the same job with less damage.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In 2008 the S&amp;P 500 fell by more than a third. Portable alpha programmes lost on the futures beta leg and on the "alpha" leg at the same time: hedge fund indices had one of their worst years on record, and enhanced-cash portfolios holding structured credit lost money too. Some plans had to sell other assets at bad prices to meet collateral calls, and after 2008 many institutions scaled back or wound down these programmes.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In 2008 the S&amp;P 500 fell by more than a third. Portable alpha programmes lost on the futures beta leg and on the "alpha" leg at the same time: the HFRI Fund Weighted Composite hedge fund index had its worst year since it began in 1990, and enhanced-cash portfolios holding structured credit lost money too. Some plans had to sell other assets at bad prices to meet collateral calls, and after 2008 many institutions scaled back or wound down these programmes.</p><p class="tl-drill-sources">Sources: <a href="https://publishedresearch.cambridgeassociates.com/wp-content/uploads/2014/10/Is-the-Hedge-Fund-Business-Model-Broken-Jan-2009.pdf">Cambridge Associates, "Is the Hedge Fund Business Model Broken?", January 2009 (HFRI returns through November 2008)</a>; S&amp;P Dow Jones Indices, S&amp;P 500 calendar-year return for 2008 (about −38% on price).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

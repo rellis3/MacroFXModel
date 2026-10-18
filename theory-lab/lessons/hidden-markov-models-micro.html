@@ -27,7 +27,6 @@
       <p class="sl-lede">A market never announces whether it's trending or chopping — it only leaves behind a return, a candle, a volatility print. A Hidden Markov Model treats the regime itself as a variable you can't observe directly, infers it from what you actually see, and hands back a probability instead of a hard-coded flag. That last part is the whole point: it's a statistically principled replacement for a hand-set threshold rule, not just a fancier name for one.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -456,7 +455,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -471,7 +469,7 @@
       <li data-verdict="good">Treat the label as unreliable for this joint move, and judge the hedge from outside the model: both legs are falling, so the bonds are not protecting you.<div class="tl-drill-why">This is the honest response. The model can only pick among states it has seen, and this is not one of them. A judgement call from outside the model is what the situation needs.</div></li>
       <li data-verdict="ok">Refit the model on a much longer history, reaching back before 2000, when the stock-bond correlation was often positive.<div class="tl-drill-why">A real fix in principle: a longer history can contain the missing state. But it is a research project, not today's risk decision, and meanwhile the hedge is still not working.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The Fed kept raising rates in 75bp steps. Over the calendar year the S&amp;P 500 lost about 18% including dividends, and the broad US investment-grade bond index lost about 13%, its worst year on record. Balanced portfolios lost on both legs. A model whose states were learned on 2000–2021 had no state for that year.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The Fed raised rates by 75bp at each of its next three meetings and by 50bp in December, ending the year at 4.25–4.5%. Over the calendar year the S&amp;P 500 lost about 18% including dividends, and the broad US investment-grade bond index lost about 13%, its worst year on record. Balanced portfolios lost on both legs. A model whose states were learned on 2000–2021 had no state for that year.</p><p class="tl-drill-sources">Sources: <a href="https://www.bls.gov/news.release/archives/cpi_07132022.htm">BLS, Consumer Price Index news release, 13 Jul 2022</a> (9.1% over 12 months); <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20220615a.htm">FOMC statement, 15 Jun 2022</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20221214a.htm">FOMC statement, 14 Dec 2022</a>; S&amp;P Dow Jones Indices and Bloomberg index returns for 2022 (S&amp;P 500 total return about −18.1%, US Aggregate about −13.0%).</p></div>
   </div>
 
     </section>

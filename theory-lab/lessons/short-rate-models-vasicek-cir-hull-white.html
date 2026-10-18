@@ -430,6 +430,23 @@
     <button type="button" id="feller-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Check the Feller condition \(2ab \ge \sigma^2\) for three new sets of CIR parameters. The ratio \(2ab/\sigma^2\) tells you by how much it holds: above 1 it holds, below 1 it fails.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(a = 0.30\), \(b = 0.02\), \(\sigma = 0.08\). Then \(2ab = 2(0.30)(0.02) = 0.012\) and \(\sigma^2 = (0.08)^2 = 0.0064\). The ratio \(2ab/\sigma^2\) is <span class="tl-blank" data-answer="1.875" data-tol="0.01"></span>, so the condition holds.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(a = 0.15\), \(b = 0.03\), \(\sigma = 0.10\). Then \(2ab =\) <span class="tl-blank" data-answer="0.009" data-tol="0.0001"></span>, \(\sigma^2 =\) <span class="tl-blank" data-answer="0.01" data-tol="0.0001"></span>, and the ratio is <span class="tl-blank" data-answer="0.9" data-tol="0.01"></span>. Below 1, so this CIR rate can touch zero.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(a = 0.50\), \(b = 0.04\), \(\sigma = 0.12\). Find \(2ab\) <span class="tl-blank" data-answer="0.04" data-tol="0.0005"></span>, \(\sigma^2\) <span class="tl-blank" data-answer="0.0144" data-tol="0.0001"></span>, the ratio <span class="tl-blank" data-answer="2.778" data-tol="0.01"></span>, and the largest \(\sigma\) that still passes, \(\sqrt{2ab}\) <span class="tl-blank" data-answer="0.2" data-tol="0.001"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -525,11 +542,16 @@
     <span><strong>Untested here: "the short rate mean-reverts to \(b\), so fade it when it is far away."</strong>
     It is the claim Vasicek invites, and no entry in this desk's ledger tests it. The desk's mean-reversion
     results are about a yield spread between countries and about FX crosses, which are different objects and are
-    not borrowed here. A fair test would estimate \(a\) and \(b\) on rolling windows of a short rate, forecast it
-    twelve months ahead, and score the forecasts out of sample against a no-change forecast and against the
-    forward curve, across regimes including 2014–2022. Policy rates move in a handful of long regimes, so the
-    effective sample is a few cycles: expect the test to be underpowered before running it.</span>
+    not borrowed here.
+    <div class="tl-howtotest"><strong>How to test it:</strong> take daily 3-month bill and overnight rates from FRED
+    (US) and the ECB (euro area), 1999 to 2026-08-21. Each month, estimate \(a\) and \(b\) on the trailing ten years
+    only, forecast the rate twelve months ahead, and score the root mean squared error out of sample. It passes only
+    if it beats both a no-change forecast and the forward curve's own forecast by at least 10%, in each currency and
+    across the 2014–2022 regime; a fade trade on the signal is then charged a 1 bp bid-ask on entry and exit. Policy
+    rates move in a handful of long regimes, so the effective sample is a few cycles: expect the test to be
+    underpowered before running it.</div></span>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../fed-path.html">Fed path odds</a> shows the policy path the futures market prices today; a Hull-White model fitted to today's curve centres its paths on the forward rates behind those odds, then adds noise around them.</div>
   <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -605,7 +627,8 @@
       <li data-verdict="good">Move to models that allow negative rates: quote volatility in normal, basis-point terms and use a Gaussian model such as Hull-White fitted to today's curve, while remembering it puts no floor anywhere.<div class="tl-drill-why">This matches the regime you are in and prices the negative strike. The caveat matters too: a Gaussian model gives real probability to −3%, which the data never showed.</div></li>
       <li data-verdict="ok">Patch the lognormal model with a fixed shift, so it allows rates down to minus the shift.<div class="tl-drill-why">Defensible, and the market did exactly this. But the shift is a number someone picks, not one estimated from data, and if rates fall past it the model breaks again.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The ECB took its deposit rate in steps to −0.50% by September 2019. Switzerland and Sweden went negative in 2015 and the Bank of Japan in 2016. The market moved to normal-volatility quoting and to shifted models. Rates found a soft floor, with the deepest major policy rates around −0.75%, and stayed there for years. Then the ECB raised its deposit rate to zero in July 2022 and to 4.00% by September 2023.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The ECB took its deposit rate in steps to −0.50% by September 2019. Switzerland and Sweden went negative in 2015 and the Bank of Japan in 2016. The market moved to normal-volatility quoting and to shifted models. Rates found a soft floor, with the deepest major policy rates around −0.75%, and stayed there for years. Then the ECB raised its deposit rate to zero in July 2022 and to 4.00% by September 2023.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://www.ecb.europa.eu/press/pr/date/2014/html/pr140605_3.en.html" target="_blank" rel="noopener">ECB press release, 5 June 2014</a>; <a href="https://www.ecb.europa.eu/stats/policy_and_exchange_rates/key_ecb_interest_rates/html/index.en.html" target="_blank" rel="noopener">ECB key interest rates, history</a>; Swiss National Bank press release, 15 January 2015 (sight deposit rate −0.75%).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

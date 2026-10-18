@@ -451,7 +451,7 @@
         <div class="tl-hint">Each trapezoid's area is (φ(zᵢ)+φ(zᵢ₊₁))/2 × h, computed from the real standard normal PDF. Watch the estimate close in on the true value as n grows.</div>
       </div>
     </div>
-    <div class="tl-readout" id="ni-readout">Trapezoidal estimate (n=4): 0.33934 — True Φ(1)−Φ(0): 0.34134 — error: −0.00200</div>
+    <div class="tl-readout" id="ni-readout">Trapezoidal estimate (n=4): 0.34008 — True Φ(1)−Φ(0): 0.34134 — error: -0.00126</div>
     <div class="tl-chart-caption">The shaded trapezoids are the actual composite trapezoidal-rule panels for the given n, computed from φ(z)=e^(−z²/2)/√(2π). Because the curve is only mildly concave over [0,1], even a handful of strips gets within a fraction of a percent of the true area.</div>
   </div>
 
@@ -511,6 +511,23 @@
           </p>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same composite trapezoidal rule on the normal curve, \(\tfrac{h}{2}\big[\varphi(z_0)+2\varphi(z_1)+\dots+2\varphi(z_{n-1})+\varphi(z_n)\big]\), over new intervals. Work to five decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\int_0^2\varphi(z)\,dz\) with \(n=4\), so \(h=0.5\). The grid values are \(\varphi(0)=0.39894\), \(\varphi(0.5)=0.35207\), \(\varphi(1)=0.24197\), \(\varphi(1.5)=0.12952\), \(\varphi(2)=0.05399\). The bracket is \(0.39894+2(0.35207+0.24197+0.12952)+0.05399=1.90005\). Times \(h/2=0.25\), the estimate is <span class="tl-blank" data-answer="0.47501" data-tol="0.00002"></span> (the true value is 0.47725).</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\int_1^2\varphi(z)\,dz\) with \(n=2\), so \(h=0.5\), using \(\varphi(1)=0.24197\), \(\varphi(1.5)=0.12952\), \(\varphi(2)=0.05399\). The bracket is <span class="tl-blank" data-answer="0.55500" data-tol="0.00002"></span>, the estimate is <span class="tl-blank" data-answer="0.13875" data-tol="0.00002"></span>, and against the true 0.13591 the error is <span class="tl-blank" data-answer="0.00284" data-tol="0.00002"></span>. Note the sign: out in the tail the curve bends upward, so the straight tops sit above it.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\int_0^{0.8}\varphi(z)\,dz\) with \(n=2\). Find \(h=\) <span class="tl-blank" data-answer="0.4" data-tol="0.0001"></span>, \(\varphi(0.4)=\) <span class="tl-blank" data-answer="0.36827" data-tol="0.00002"></span>, \(\varphi(0.8)=\) <span class="tl-blank" data-answer="0.28969" data-tol="0.00002"></span>, and the estimate <span class="tl-blank" data-answer="0.28503" data-tol="0.00003"></span>. The true value is 0.28814.</p>
     </div>
   </div>
 

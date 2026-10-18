@@ -27,7 +27,6 @@
       <p class="sl-lede">Every risk limit, capital charge, and "how much could we lose" conversation reduces to one number pulled from a loss distribution. Value-at-Risk, the industry's default answer, sometimes fails a test that sounds like it should be automatic: combine two positions, and the risk number should never get worse than the sum of the parts. It can. Conditional VaR — the tail average, not just the cutoff — is the fix, and the four axioms that expose the difference are the entire subject of this deck.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -473,7 +472,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="19">
 
       <div class="sl-kicker">Your call</div>
@@ -488,7 +486,7 @@
       <li data-verdict="good">Treat the halving as a red flag. Run the old and new models side by side, get the new one checked, and keep the old limit binding, cutting positions if needed, until the gap is explained.<div class="tl-drill-why">The risk measure is one quantile from one model, so the whole gap between "over" and "inside" the limit is one modelling choice. Until you know why the number halved, the honest assumption is that the risk did not.</div></li>
       <li data-verdict="ok">Keep the new model, but ask the office to trim positions a little anyway, to be safe.<div class="tl-drill-why">Better than nothing, but it skips the real question: is the new number right? A token cut leaves an unknown, possibly large, risk on the book.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> This was JPMorgan's Chief Investment Office, and the book later known as the London Whale. The positions stayed on. The bank's own task force later found the new model ran on spreadsheets filled in by copying and pasting, and that one formula divided by a sum where it should have divided by an average, which muted the volatility it measured. In May 2012 the bank disclosed the losses and went back to its old model, under which first-quarter VaR came out at roughly double the reported figure. Losses for the year passed $6 billion, a US Senate subcommittee investigated, and regulators in the US and the UK fined the bank.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> This was JPMorgan's Chief Investment Office, and the book later known as the London Whale. The positions stayed on. The bank's own task force later found the new model ran on spreadsheets filled in by copying and pasting, and that one formula divided by a sum where it should have divided by an average, which muted the volatility it measured. In May 2012 the bank disclosed the losses and went back to its old model, under which first-quarter VaR came out at roughly double the reported figure. Losses for the year passed $6 billion, a US Senate subcommittee investigated, and regulators in the US and the UK fined the bank.</p><p class="tl-drill-sources">Sources: <a href="https://www.hsgac.senate.gov/wp-content/uploads/imo/media/doc/031314%20-%20PSI%20JPMorgan%20Whale%20Trades%20Hearing%20and%20Report.pdf">US Senate Permanent Subcommittee on Investigations, press release on the Whale Trades report, 14 Mar 2013</a>; Report of JPMorgan Chase &amp; Co. Management Task Force Regarding 2012 CIO Losses, 16 Jan 2013; JPMorgan Chase first-quarter 2012 Form 10-Q, 10 May 2012.</p></div>
   </div>
 
     </section>

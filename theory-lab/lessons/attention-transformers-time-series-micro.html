@@ -27,7 +27,6 @@
       <p class="sl-lede">The previous lesson's gated recurrent networks — LSTM and GRU — solved <em>most</em> of the vanishing-gradient problem, but they never solved a second, structural limitation: every hidden state still has to be computed one step after the last, in order, with the entire relevant history squeezed into one fixed-size vector along the way. This lesson introduces the mechanism that removes that constraint entirely — attention — and the architecture built around it, the Transformer, plus a named variant purpose-built for forecasting: the Temporal Fusion Transformer.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -420,7 +419,6 @@
         <div class="sl-quiz-explain">The TFT (Lim et al., 2021) combines attention with recurrent layers and purpose-built variable-selection gating for interpretable, multi-horizon, distributional forecasts. Reducing the O(n²) cost is Informer's contribution (Zhou et al., 2021), a different named variant.</div>
       </div>
     </section>
-
 
     <section class="sl-slide sl-vark" data-slide="16">
 

@@ -454,6 +454,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's four steps with new numbers: divide the raw scores \(q \cdot k_i\) by \(\sqrt{d_k}\), exponentiate, divide by the sum to get the weights, then take the weighted sum of the values. Give weights to three decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Raw scores \([2,\ 0,\ 1]\) with \(d_k = 4\), so \(\sqrt{d_k} = 2\) and the scaled scores are \([1,\ 0,\ 0.5]\). Exponentiate: \(2.718,\ 1,\ 1.649\), sum \(5.367\), weights \([0.507,\ 0.186,\ 0.307]\). Values \(v_1 = [1,0]\), \(v_2 = [0,1]\), \(v_3 = [1,1]\). The output's first component is \(0.507 + 0.307 =\) <span class="tl-blank" data-answer="0.814" data-tol="0.003"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Raw scores \([0,\ 2,\ 2]\) with \(d_k = 1\), and the worked example's values \(v_1 = [2,0]\), \(v_2 = [0,2]\), \(v_3 = [1,1]\). Exponentiate: \(1,\ 7.389,\ 7.389\). Position 1's weight is <span class="tl-blank" data-answer="0.063" data-tol="0.002"></span> and position 2's is <span class="tl-blank" data-answer="0.468" data-tol="0.002"></span>. The output's second component is <span class="tl-blank" data-answer="1.405" data-tol="0.004"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Raw scores \([3,\ 1,\ 0]\) with \(d_k = 9\); values \(v_1 = [1,0]\), \(v_2 = [0,1]\), \(v_3 = [1,1]\). Weights: <span class="tl-blank" data-answer="0.531" data-tol="0.002"></span>, <span class="tl-blank" data-answer="0.273" data-tol="0.002"></span>, <span class="tl-blank" data-answer="0.196" data-tol="0.002"></span>; output first component <span class="tl-blank" data-answer="0.727" data-tol="0.003"></span>. Dividing by \(\sqrt{9} = 3\) shrinks a 3-to-0 gap in raw score to a weight ratio under 3 to 1.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>

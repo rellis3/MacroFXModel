@@ -516,7 +516,7 @@
       between them. Solving for the maximum-return-per-unit-of-variance
       portfolio (the tangency portfolio, the standard mean-variance target)
       with these exact inputs might come back with something intuitively
-      sensible — say, roughly 65% in the safe pair and 35% in the risky one.
+      sensible — roughly 62% in the safe pair and 38% in the risky one.
     </p>
     <p>
       Now nudge only the risky pair's expected return from 4% to 4.5% — a
@@ -600,6 +600,22 @@
     </div>
     <button type="button" id="mbl-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The two-asset tangency weights in closed form. With excess returns \(e_i = \mu_i - 2\%\), work in percent: \(a = e_1\sigma_2^2 - e_2\rho\sigma_1\sigma_2\) and \(b = e_2\sigma_1^2 - e_1\rho\sigma_1\sigma_2\). The risky weight is \(b/(a+b)\). New inputs each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\mu_1 = 4\%\), \(\mu_2 = 6\%\), \(\sigma_1 = 10\%\), \(\sigma_2 = 20\%\), \(\rho = 0.2\). So \(e_1 = 2\), \(e_2 = 4\), \(a = 2 \times 400 - 4 \times 0.2 \times 200 = 640\) and \(b = 4 \times 100 - 2 \times 0.2 \times 200 = 320\). Risky weight: <span class="tl-blank" data-answer="33.33" data-tol="0.05" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\mu_1 = 3.5\%\), \(\mu_2 = 5.5\%\), \(\sigma_1 = 6\%\), \(\sigma_2 = 12\%\), \(\rho = 0.4\). Then \(e_1 = 1.5\) and \(e_2 = 3.5\). \(a =\) <span class="tl-blank" data-answer="115.2" data-tol="0.05"></span>, \(b =\) <span class="tl-blank" data-answer="82.8" data-tol="0.05"></span>, risky weight <span class="tl-blank" data-answer="41.82" data-tol="0.05" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\mu_1 = 2.5\%\), \(\mu_2 = 3.5\%\), \(\sigma_1 = 5\%\), \(\sigma_2 = 10\%\), and a negative correlation, \(\rho = -0.2\). \(a =\) <span class="tl-blank" data-answer="65" data-tol="0.05"></span>; \(b =\) <span class="tl-blank" data-answer="42.5" data-tol="0.05"></span>; risky weight <span class="tl-blank" data-answer="39.53" data-tol="0.05" data-unit="%"></span>. Now add half a point to \(\mu_2\) in your head and notice how far the answer would move.</p>
+    </div>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">The efficient frontier — raw Markowitz vs. Black-Litterman-blended</div>
@@ -612,17 +628,17 @@
       <!-- inefficient lower branch (dashed, muted) -->
       <path id="mvo-lower-path" d="M 130,200 Q 130,260 380,278" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4 4;opacity:.6"/>
       <!-- raw Markowitz frontier (upper / efficient branch) -->
-      <path id="mvo-blue-path" d="M 130,200 Q 130,90 520,55" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+      <path id="mvo-blue-path" d="M 130,200 Q 130,90 514.0,62.0" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
       <!-- Black-Litterman-blended frontier -->
-      <path id="mvo-green-path" d="M 150,195 Q 150,140 430,110" style="fill:none;stroke:var(--green);stroke-width:2.5"/>
+      <path id="mvo-green-path" d="M 150,195 Q 150,140 414.4,116.0" style="fill:none;stroke:var(--green);stroke-width:2.5"/>
 
       <circle id="mvo-minvar-point" cx="130" cy="200" r="6" style="fill:var(--red);stroke:var(--bg);stroke-width:2"/>
       <text x="112" y="222" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:11px;font-weight:600" text-anchor="end">min-variance</text>
 
-      <circle id="mvo-blue-end" cx="520" cy="55" r="4" style="fill:var(--blue)"/>
-      <text id="mvo-blue-label" x="524" y="48" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:12px;font-weight:600">raw Markowitz</text>
-      <circle id="mvo-green-end" cx="430" cy="110" r="4" style="fill:var(--green)"/>
-      <text id="mvo-green-label" x="434" y="103" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:12px;font-weight:600">Black-Litterman</text>
+      <circle id="mvo-blue-end" cx="514.0" cy="62.0" r="4" style="fill:var(--blue)"/>
+      <text id="mvo-blue-label" x="518.0" y="55.0" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:12px;font-weight:600">raw Markowitz</text>
+      <circle id="mvo-green-end" cx="414.4" cy="116.0" r="4" style="fill:var(--green)"/>
+      <text id="mvo-green-label" x="418.4" y="109.0" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:12px;font-weight:600">Black-Litterman</text>
     </svg>
     <div class="tl-legend">
       <span><i style="background:var(--red)"></i>Minimum-variance portfolio — the frontier's leftmost point</span>
@@ -640,7 +656,7 @@
       </div>
     </div>
     <div class="tl-readout">
-      Farthest reachable point — raw Markowitz: <b id="mvo-blue-readout">E[R] ≈ 11.0%, σ ≈ 17.9%</b> &nbsp;|&nbsp; Black-Litterman-blended: <b id="mvo-green-readout">E[R] ≈ 8.4%, σ ≈ 13.6%</b>
+      Farthest reachable point — raw Markowitz: <b id="mvo-blue-readout">E[R] ≈ 16.3%, σ ≈ 30.3%</b> &nbsp;|&nbsp; Black-Litterman-blended: <b id="mvo-green-readout">E[R] ≈ 12.4%, σ ≈ 23.2%</b>
       <div class="tl-hint">Illustrative schematic, not a fit to real return/risk data — the point is the relative shape and damping, not the exact numbers.</div>
     </div>
     <div class="tl-chart-caption">
@@ -837,12 +853,14 @@
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "a mean-variance or Black-Litterman allocation across this desk's sleeves beats
     equal weights or equal risk out of sample."</strong> No optimiser has been run against those baselines on this
-    desk's data. A fair test would follow DeMiguel, Garlappi and Uppal: estimate on a rolling window with no look-ahead,
-    rebalance on a fixed calendar with costs, and compare out-of-sample Sharpe, turnover and drawdown against \(1/N\)
-    and an equal-risk book. With only a few sleeves and a few years of overlap, the comparison is likely to be too
-    noisy to separate the methods, which should be stated before it is run.</span>
+    desk's data.<div class="tl-howtotest"><strong>How to test it:</strong> follow DeMiguel, Garlappi and Uppal on the desk's daily sleeve returns:
+    estimate means and covariances on a rolling 36-month window with no look-ahead, rebalance monthly with costs charged on
+    turnover, and compare out-of-sample Sharpe, turnover and drawdown against \(1/N\) and an equal-risk book. Fixed in
+    advance: the optimiser passes only if its Sharpe beats both baselines with a Ledoit-Wolf test p-value below 0.05. With only
+    a few sleeves and a few years of overlap the comparison may be too noisy to separate the methods; say so before it is run.</div></span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../diversification.html">Combined Book Explorer</a> weights the desk's strategy sleeves by Equal Weight, Risk Parity or Max Sharpe; switch between them and watch how much the max-Sharpe weights move.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -967,7 +985,7 @@
       <li data-verdict="good">Start from the returns implied by the market's own holdings, and move away from them only where you hold a specific view, by as much as your confidence justifies.<div class="tl-drill-why">This is Black and Litterman's fix. The prior is sensible and stable, each view is a precision-weighted nudge, and a modest view gives a modest tilt rather than a corner.</div></li>
       <li data-verdict="bad">Spend another month refining every market's forecast to two decimal places, then rerun.<div class="tl-drill-why">Extra decimals are not extra accuracy. The optimizer's sensitivity to expected returns is the problem; more precise-looking guesses make it no less sensitive.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> This is the documented pattern rather than one dated day. Managers who fed real forecasts into an optimizer kept getting extreme, unstable weights; Michaud named it error maximization in 1989. Fischer Black and Robert Litterman, working with Goldman Sachs clients who managed global bond and currency portfolios, published their fix as a Goldman paper in 1990 and in the <em>Financial Analysts Journal</em> in 1992. Later, DeMiguel, Garlappi and Uppal (2009) found none of fourteen optimization-based models consistently beat equal weights out of sample.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> This is the documented pattern rather than one dated day. Managers who fed real forecasts into an optimizer kept getting extreme, unstable weights; Michaud named it error maximization in 1989. Fischer Black and Robert Litterman, working with Goldman Sachs clients who managed global bond and currency portfolios, published their fix as a Goldman paper in 1990 and in the <em>Financial Analysts Journal</em> in 1992. Later, DeMiguel, Garlappi and Uppal (2009) found none of fourteen optimization-based models consistently beat equal weights out of sample.</p><p class="tl-drill-sources">Sources: <a href="https://doi.org/10.2469/faj.v45.n1.31">Michaud, "The Markowitz Optimization Enigma: Is 'Optimized' Optimal?", Financial Analysts Journal, 1989</a>; <a href="https://doi.org/10.2469/faj.v48.n5.28">Black and Litterman, "Global Portfolio Optimization", Financial Analysts Journal, 1992</a>; <a href="https://doi.org/10.1093/rfs/hhm075">DeMiguel, Garlappi and Uppal, "Optimal Versus Naive Diversification", Review of Financial Studies, 2009</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

@@ -554,6 +554,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same two clocks on new tick counts. A one-minute clock always gives the 5-minute burst 5 of 60 bars, 8.3%. A volume clock sized for 60 bars an hour needs \(\text{ticks per bar} = \text{total ticks}/60\), and the burst closes \(\text{burst ticks}/\text{ticks per bar}\) bars.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Lull 300 ticks, burst 3,000 ticks, rest 700 ticks: total 4,000. The burst holds \(3{,}000/4{,}000 = 75\%\) of the hour. Ticks per bar \(= 4{,}000/60 \approx 66.67\). The burst closes \(3{,}000/66.67 =\) <span class="tl-blank" data-answer="45" data-tol="0.05"></span> volume bars.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Lull 150 ticks, burst 5,000 ticks, rest 850 ticks. The burst's share of the hour's ticks is <span class="tl-blank" data-answer="83.33" data-tol="0.05" data-unit="%"></span>. With 60 volume bars an hour, ticks per bar = <span class="tl-blank" data-answer="100" data-tol="0.05"></span>, so the burst closes <span class="tl-blank" data-answer="50" data-tol="0.05"></span> bars.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Lull 600 ticks, burst 2,000 ticks, rest 1,400 ticks, and a volume clock sized for 80 bars an hour. Burst share of ticks: <span class="tl-blank" data-answer="50" data-tol="0.05" data-unit="%"></span>. Ticks per bar: <span class="tl-blank" data-answer="50" data-tol="0.05"></span>. Volume bars in the burst: <span class="tl-blank" data-answer="40" data-tol="0.05"></span>. A one-minute clock would give the same 5 minutes 5 of 60 bars.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A real-world trading scenario</div>
@@ -642,10 +659,7 @@
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: that the historical bars this desk backtests on match what its live feed showed at
-    the time.</strong> The ledger has no entry on data-pipeline parity. A fair test would record the live feed's bars as
-    they form, fetch the same window from the historical source days later, and count the bars whose open, high, low or
-    close differ, with the size of each difference, before trusting any short-horizon backtest built on the
-    historical copy.</span>
+    the time.</strong> The ledger has no entry on data-pipeline parity.<div class="tl-howtotest"><strong>How to test it:</strong> For four to eight weeks, store the live feed's M1 bars for the desk's FX pairs as they form. Days later, fetch the same windows from the historical source and count the bars whose open, high, low or close differ, with the size of each difference in pips. The gate, fixed in advance, is that fewer than 1% of bars differ by more than half a pip, and that rerunning one short-horizon backtest on each copy moves its headline metric by less than its own confidence interval. The baseline is the historical copy itself, and no trading costs enter, since this checks the data and not a trade.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -685,7 +699,7 @@
       <li data-verdict="good">Keep the raw capture, apply the venues' cancellations as a separate, dated cleaning step, build bars from the corrected tape, and record which version the backtest used.<div class="tl-drill-why">Capture first, correct in a logged step. You can serve either version, explain the difference, and the backtest no longer books fills at prices that were cancelled.</div></li>
       <li data-verdict="ok">Swap in a vendor's already-corrected tape and discard the raw one.<div class="tl-drill-why">The bars will be closer to tradeable, but you lose the record of what a live system would have seen that afternoon, and you can't audit how the correction was made.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> According to the joint SEC–CFTC staff report, a large fund's algorithm sold 75,000 E-mini S&amp;P 500 contracts, about $4.1 billion, into a thinning market. The Dow fell close to 1,000 points, about 9%, then recovered most of it in roughly half an hour. After the close the exchanges and FINRA cancelled over 20,000 trades in more than 300 securities that were more than 60% from each stock's 2:40 p.m. price. Single-stock circuit breakers and a ban on stub quotes followed later that year.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> According to the joint SEC–CFTC staff report, a large fund's algorithm sold 75,000 E-mini S&amp;P 500 contracts, about $4.1 billion, into a thinning market. The Dow fell close to 1,000 points, about 9%, then recovered most of it in roughly half an hour. After the close the exchanges and FINRA cancelled over 20,000 trades in more than 300 securities that were more than 60% from each stock's 2:40 p.m. price. Single-stock circuit breakers and a ban on stub quotes followed later that year.</p><p class="tl-drill-sources">Sources: <a href="https://www.sec.gov/news/studies/2010/marketevents-report.pdf">CFTC and SEC staff, <em>Findings Regarding the Market Events of May 6, 2010</em>, 30 Sep 2010</a>; SEC and FINRA notices on the clearly erroneous trade cancellations, May 2010.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

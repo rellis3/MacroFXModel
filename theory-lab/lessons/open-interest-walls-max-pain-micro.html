@@ -27,7 +27,6 @@
       <p class="sl-lede">The previous lesson derived <em>why</em> dealer hedging creates real, mechanical pressure around concentrated open interest. This one applies that mechanism to an actual options chain — turning a table of strikes and open-interest numbers into three tradable landmarks: where the walls sit, where max pain sits, and what happens once a wall breaks instead of holding.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -335,7 +334,7 @@
           <div>PutPain(S) = <b id="mp-pp">$204,000</b></div>
           <div>TotalPain(S) = <b id="mp-tp">$204,000</b></div>
         </div>
-        <div class="sl-verdict" id="mp-note" style="margin-top:10px">$129,500 higher than the minimum.</div>
+        <div class="sl-verdict" id="mp-note" style="margin-top:10px">$129,500 higher than the minimum (at S = 250).</div>
       </div>
     </section>
 
@@ -493,7 +492,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="16">
 
       <div class="sl-kicker">Your call</div>
@@ -506,9 +504,10 @@
       <li data-verdict="bad">Short the shares and wait for the price to drift down to max pain into Friday.<div class="tl-drill-why">Max pain only describes where writers would lose least, and tests of it as a magnet have not supported the pull. Here the chain is also rebuilt higher every day, and with short interest above the float you would be joining the most crowded side of the trade.</div></li>
       <li data-verdict="bad">Write calls at the next big strike up, because a call wall is resistance.<div class="tl-drill-why">A call wall leans against a rally only when dealers are long those calls. Here customers bought them, so the writers who hedge are short them and must buy shares as price climbs toward the strike. Each strike was being overrun and rebuilt higher within days.</div></li>
       <li data-verdict="good">Treat the chain as a snapshot that may be stale by the afternoon: stand aside, or keep any position small with risk you can define in advance.<div class="tl-drill-why">This is the lesson's own warning at its most extreme. Walls and max pain describe where positions sat this morning. When open interest is rebuilt daily and trading conditions can change overnight, neither one gives you a level you can lean on.</div></li>
-      <li data-verdict="ok">Buy the shares to ride the squeeze, with a stop below.<div class="tl-drill-why">The wall-break momentum read is a real one, and the call walls are a plausible accelerant. But how much of the buying was hedging has never been measured, and in a market this violent a stop can fill far from where you set it. Defensible only at a small size.</div></li>
+      <li data-verdict="ok">Buy the shares to ride the squeeze, with a stop below.<div class="tl-drill-why">The wall-break momentum read is a real one, and the call walls are a plausible accelerant. But the SEC staff later found no evidence that dealer hedging drove the rise, and in a market this violent a stop can fill far from where you set it. Defensible only at a small size.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 28 January GameStop hit an intraday high of \$483. That day Robinhood and several other brokers restricted customers to selling the stock, not buying it; Robinhood said its clearing-house deposit requirement had jumped. The price fell sharply from its high. The SEC staff report in October 2021 attributed the rise mainly to a broad wave of buying, with short covering only a small part, and how much came from dealers hedging the calls they had written has never been measured in public. Nobody was enforcing any max-pain level.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 28 January GameStop hit an intraday high of \$483. That day Robinhood and several other brokers restricted customers to selling the stock, not buying it; Robinhood said its clearing-house deposit requirement had jumped. The price fell sharply from its high. The SEC staff report in October 2021 attributed the rise mainly to a broad wave of buying, with short covering only a small part, and found no evidence of a gamma squeeze: market makers were, on its data, buying calls rather than writing them. Nobody was enforcing any max-pain level.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://www.sec.gov/files/staff-report-equity-options-market-struction-conditions-early-2021.pdf">SEC staff report on equity and options market structure conditions in early 2021, 14 Oct 2021</a> (intraday high of $483.00 on 28 January; short interest above 100% of float; short covering a small fraction of buying; no evidence of a gamma squeeze); Benzinga, "GameStop Short Seller Melvin Gets $2.75B Funding From Citadel, Point72", 25 Jan 2021; CNBC, "Robinhood says restrictions on GameStop due to tenfold increase in deposit requirements", 30 Jan 2021.</p></div>
   </div>
 
     </section>

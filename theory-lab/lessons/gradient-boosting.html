@@ -508,6 +508,23 @@
     <button type="button" id="gb-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>One boosting round with squared-error loss, as in the worked example: start at the mean \(F_0 = \bar y\), take residuals \(y - F_0\), fit a depth-1 tree (each leaf is the mean residual on its side of the split), then update \(F_1 = F_0 + \nu\,h_1(x)\). Five new points at \(x = 1,\ldots,5\) each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(y = [2, 6, 7, 11, 14]\), \(\nu = 0.5\). The mean is \(F_0 = 40/5 = 8\), so the residuals are \([-6, -2, -1, +3, +6]\). The best split is \(x \le 3\): left leaf \(= (-6-2-1)/3 = -3\), right leaf \(= (3+6)/2 = 4.5\). The left side updates to \(8 + 0.5(-3) = 6.5\). The right side updates to \(F_1(x>3) = 8 + 0.5(4.5) =\) <span class="tl-blank" data-answer="10.25" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(y = [10, 12, 15, 16, 22]\), \(\nu = 0.3\). Find the starting prediction \(F_0\) <span class="tl-blank" data-answer="15" data-tol="0.005"></span>. With these residuals the best split is \(x \le 4\), and the right leaf (only \(x = 5\)) is \(+7\). Find the left leaf <span class="tl-blank" data-answer="-1.75" data-tol="0.005"></span> and the updated left prediction \(F_1(x \le 4)\) <span class="tl-blank" data-answer="14.475" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(y = [1, 3, 4, 9, 13]\), \(\nu = 0.2\), and the best split is \(x \le 3\). Find \(F_0\) <span class="tl-blank" data-answer="6" data-tol="0.005"></span>, the left leaf <span class="tl-blank" data-answer="-3.333" data-tol="0.002"></span>, \(F_1(x \le 3)\) <span class="tl-blank" data-answer="5.333" data-tol="0.002"></span> and \(F_1(x &gt; 3)\) <span class="tl-blank" data-answer="7" data-tol="0.005"></span>. How much did the small \(\nu\) hold the update back?</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Total leftover error shrinking across boosting rounds</div>
     <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart showing the sum of absolute residuals dropping from 14.0 before boosting, to 7.3 after round 1, computed exactly from the worked example, with a dashed illustrative continuation showing further rounds continuing to shrink the remaining error toward zero.">

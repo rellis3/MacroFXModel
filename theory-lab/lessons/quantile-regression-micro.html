@@ -33,7 +33,6 @@
       <p class="sl-lede">Ordinary least squares answers one specific question — "what's the average outcome given these conditions?" — no matter what question you actually asked it. A risk manager rarely wants the average; they want to know how bad the 5th-percentile outcome could get given today's conditions, which is a question about one tail of a distribution, not its center. This guide walks through why that mismatch matters, and how swapping squared-error loss for an asymmetric "pinball loss" lets a regression target a specific quantile directly — closing the loop with the Regression Diagnostics lesson's OLS mechanics and the Cornish-Fisher lesson's static distributional adjustment.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -470,7 +469,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -485,7 +483,7 @@
       <li data-verdict="ok">A fixed downside buffer taken from the long-run spread of past growth outcomes.<div class="tl-drill-why">Better than the mean alone, but it is a static adjustment: the same buffer every year, blind to the fact that today's conditions have just made the bad tail much fatter.</div></li>
       <li data-verdict="bad">Wait for the economists to cut the central forecast properly before changing anything.<div class="tl-drill-why">Central forecasts tend to be cut in steps as data arrive. By the time the mean has caught up, the bad outcome may already be under way.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Central forecasts were cut, but in steps, and the recession that followed was far deeper than the central path had suggested. The fourth quarter of 2008 was the US economy's worst quarter in decades. Almost a decade later, "Vulnerable Growth" (Adrian, Boyarchenko and Giannone, 2019) fitted quantile regressions of future US growth on financial conditions and found exactly this pattern: as conditions tightened, the lower quantiles fell sharply while the median barely moved. The IMF built its Growth-at-Risk framework on the idea. Later out-of-sample studies found the tail signal weaker, and mostly at short horizons.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Central forecasts were cut, but in steps, and the recession that followed was far deeper than the central path had suggested. US output fell at an annualised rate of about 8.5% in the fourth quarter of 2008, the worst quarter since 1958. Almost a decade later, "Vulnerable Growth" (Adrian, Boyarchenko and Giannone, 2019) fitted quantile regressions of future US growth on financial conditions and found exactly this pattern: as conditions tightened, the lower quantiles fell sharply while the median barely moved. The IMF built its Growth-at-Risk framework on the idea. Later out-of-sample work, such as Plagborg-Møller, Reichlin, Ricco and Hasenzagl (2020), found financial variables add little to forecasts of growth risk beyond the very near term.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/A191RL1Q225SBEA">FRED, real GDP growth (A191RL1Q225SBEA)</a>; Reuters, 15 Sep 2008 (Lehman Brothers' bankruptcy filing); Adrian, Boyarchenko and Giannone, "Vulnerable Growth", <a href="https://doi.org/10.1257/aer.20161923">American Economic Review 109(4), 2019</a>; IMF, Global Financial Stability Report, October 2017; <a href="https://www.brookings.edu/articles/when-is-growth-at-risk">Plagborg-Møller et al., "When Is Growth at Risk?", Brookings Papers on Economic Activity, 2020</a></p></div>
   </div>
 
     </section>

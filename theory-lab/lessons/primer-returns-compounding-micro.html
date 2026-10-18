@@ -27,7 +27,6 @@
       <p class="sl-lede">There are two mathematically distinct ways to measure "how much did the price move" — the simple percentage return everyone computes first, and the log return every stochastic model in this series is secretly built on. They agree for small moves and diverge for large ones, and that gap is the reason a volatile strategy compounds slower than its own average return suggests, the reason option pricing assumes prices are lognormal<!-- DESK:START -->, and the reason this repo scales its volatility bands by the square root of the horizon rather than the horizon itself<!-- DESK:END -->.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -420,7 +419,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -435,7 +433,8 @@
       <li data-verdict="ok">Keep the size, but plan to cut if the VIX rises sharply over several days.<div class="tl-drill-why">A sensible instinct, but it assumes the damage arrives slowly. A daily-reset product can lose almost everything in one session, before any multi-day plan kicks in.</div></li>
       <li data-verdict="bad">Add to it. Volatility drag is a slow, long-run cost, and you only plan to hold for a few weeks.<div class="tl-drill-why">Drag is the slow part of the risk. The fast part is a single jump day far outside the small-move zone, where the drag formula stops applying and the exact product, with its −100% floor, takes over.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> That afternoon the VIX index more than doubled in a single session, its largest one-day percentage rise on record. Credit Suisse's XIV note, built to return the inverse of a VIX-futures index each day, lost more than 90% of its value in one evening. That triggered a clause letting the issuer redeem it, and it was wound up. A similar ProShares fund survived but later cut its target from −1× to −0.5× the daily index.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> That afternoon the VIX index more than doubled in a single session, its largest one-day percentage rise on record. Credit Suisse's XIV note, built to return the inverse of a VIX-futures index each day, lost more than 90% of its value in one evening. That triggered a clause letting the issuer redeem it, and it was wound up. A similar ProShares fund survived but later cut its target from −1× to −0.5× the daily index.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://credit-suisse.com/articles/media-releases/2018/02/en/credit-suisse-announces-event-acceleration-xiv-etn.html">Credit Suisse, "Credit Suisse AG Announces Event Acceleration of its XIV ETNs", 6 Feb 2018</a>; <a href="https://www.etf.com/sections/news/inverse-vix-etn-shuts-down">ETF.com, "Inverse VIX ETN Shuts Down", Feb 2018</a> (VIX up 115.6% in a day; XIV down about 96%); ProShares notice of the SVXY objective change from −1× to −0.5×, effective at the close on 27 Feb 2018.</p></div>
   </div>
 
     </section>

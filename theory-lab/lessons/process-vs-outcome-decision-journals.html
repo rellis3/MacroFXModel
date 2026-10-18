@@ -456,10 +456,8 @@
     </p>
     <p>
       The written expectation was clear: this would be "Real, and the strongest cell here", with a
-      wider S&amp;P 500 range expected the following week. The result came back the other way. Over
-      21 episodes, the S&amp;P 500's next-five-session range was <em>narrower</em> than matched
-      controls, and the facility turned out to be drawn on nearly a third of all sessions — routine,
-      not a stress signal.
+      wider S&amp;P 500 range expected the following week. The result came back the other way: calmer, not wider
+      (the verdict box in Section 05 has the numbers).
     </p>
     <p style="margin-bottom:0">
       Without the written prior, it would have been easy to say afterwards that the facility being
@@ -498,6 +496,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same two scores: the Brier score, \(\text{BS}=\frac1n\sum(p-o)^2\) with \(o=1\) for a hit and \(0\) for a miss, and the Bayes odds that you are the good process, \((p_g/p_b)^{\text{wins}}\big((1-p_g)/(1-p_b)\big)^{\text{losses}}\) from 1:1.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Twelve trades, eight wins and four losses, a 55% process against a 45% one. Each win multiplies the odds by \(0.55/0.45=1.2222\) and each loss by \(0.8182\), so the net is \(1.2222^{4}=2.2315\) to 1. The probability you are the good process is \(2.2315/3.2315=\) <span class="tl-blank" data-answer="69.05" data-tol="0.1" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Ten journal entries, each written at 80% confidence; seven came true and three did not. A hit costs \((0.8-1)^2=0.04\) and a miss \((0.8-0)^2=\) <span class="tl-blank" data-answer="0.64" data-tol="0.005"></span>. So \(\text{BS}=(7\times0.04+3\times0.64)/10=\) <span class="tl-blank" data-answer="0.22" data-tol="0.002"></span>, and the realised hit rate is 70% against the stated 80%.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Twenty entries at 60% confidence, thirteen hits. Brier score: <span class="tl-blank" data-answer="0.23" data-tol="0.002"></span>. Separately, if those were twenty trades with 13 wins, a 60% process against a 40% one has odds \(1.5^{\,13-7}=\) <span class="tl-blank" data-answer="11.39" data-tol="0.02"></span> to 1, so the probability you are the good process is <span class="tl-blank" data-answer="91.93" data-tol="0.1" data-unit="%"></span></p>
+    </div>
+  </div>
+
   <!-- DESK:START -->
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>What this desk found when it tested the claims</h2>
@@ -524,10 +539,18 @@
   </div>
   <!-- DESK:END -->
 
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../evidence.html">Evidence Book</a> lists every claim the desk has tested, nulls included, each with the verdict and the numbers; it is the pre-registered, publish-either-way habit of this lesson, applied to the desk's own ideas.</div><!-- DESK:END -->
   <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
-    <span><strong>"Keeping a decision journal makes you a better trader."</strong> Not tested here, and the outside evidence is mostly indirect: forecasting research shows that scoring and precise probabilities help forecasters, but there is little rigorous evidence on journals and trading P&amp;L specifically. The case for a journal in this lesson rests on what it prevents — hindsight and resulting — not on a measured return.</span>
+    <span><strong>"Keeping a decision journal makes you a better trader."</strong> Not tested here, and the outside evidence is mostly indirect: forecasting research shows that scoring and precise probabilities help forecasters, but there is little rigorous evidence on journals and trading P&amp;L specifically. The case for a journal in this lesson rests on what it prevents — hindsight and resulting — not on a measured return.
+    <div class="tl-howtotest"><strong>How to test it:</strong> take one trader's logged discretionary calls with a stated
+    confidence, split into a stretch before the journal habit and an equal-length stretch after it, on the same
+    instruments and the same sizing rule. The metrics are the Brier score of the stated confidence and net expectancy per
+    trade in units of the day's ATR after costs. The gate, fixed in advance: Brier improves by at least 0.02 with a
+    bootstrap 95% interval that excludes zero, and expectancy does not fall; a random split of the same trades is the
+    placebo. A single trader's log is small, so state the minimum number of entries needed first, and call the result
+    underpowered if it falls short.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -599,7 +622,8 @@
       <li data-verdict="ok">Refuse to judge it at all. It was all luck either way.<div class="tl-drill-why">Better than resulting, but process over outcome is not "nothing can be judged". The decision can be graded on its reasoning, and over many such calls results do test whether the reasoning is good.</div></li>
       <li data-verdict="bad">Say you would have run the ball, as anyone could see.<div class="tl-drill-why">That is hindsight bias talking. Knowing the ending makes it feel predictable, and you do not notice the shift. Unless you wrote it down before the snap, you cannot know what you would have called.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Russell Wilson's pass was intercepted by Malcolm Butler and New England won. The call was widely panned the next day. Annie Duke opens <em>Thinking in Bets</em> with this play. Her argument is not that the call was certainly right, but that the verdict was pure resulting: interceptions from that position are rare, an incomplete pass stops the clock, and a reasonable case exists that passing gave Seattle more total chances to score.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Russell Wilson's pass was intercepted by Malcolm Butler and New England won. The call was widely panned the next day. Annie Duke opens <em>Thinking in Bets</em> with this play. Her argument is not that the call was certainly right, but that the verdict was pure resulting: interceptions from that position are rare, an incomplete pass stops the clock, and a reasonable case exists that passing gave Seattle more total chances to score.</p>
+    <p class="tl-drill-sources">Sources: NFL.com game report and play-by-play for Super Bowl XLIX, 1 Feb 2015 (Seattle trailed 28–24, second-and-goal from the New England 1 with about 26 seconds left; Wilson's pass was intercepted by Malcolm Butler); NPR, "Watch the interception that won the Super Bowl", 2 Feb 2015; Annie Duke, <em>Thinking in Bets</em> (Portfolio, 2018), chapter 1.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>

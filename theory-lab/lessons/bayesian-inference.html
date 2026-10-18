@@ -438,6 +438,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's two steps with new classifiers: \(P(E) = P(E\mid H)P(H) + P(E\mid\lnot H)P(\lnot H)\), then \(P(H\mid E) = P(E\mid H)P(H)/P(E)\). The Bayes factor is \(P(E\mid H)/P(E\mid\lnot H)\). Give probabilities as decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Trend days are 30% of days. The flag fires on 70% of trend days and on 20% of other days. True positives \(0.70 \times 0.30 = 0.21\); false positives \(0.20 \times 0.70 = 0.14\); so \(P(E) = 0.35\). When the flag fires, the chance it is a trend day is \(0.21/0.35 =\) <span class="tl-blank" data-answer="0.60" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>A rarer event: 10% of days. The flag fires on 90% of them and on 15% of other days. \(P(E) =\) <span class="tl-blank" data-answer="0.225" data-tol="0.001"></span>, so the posterior is <span class="tl-blank" data-answer="0.40" data-tol="0.005"></span>. The Bayes factor is <span class="tl-blank" data-answer="6" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>5% of days; the flag fires on 95% of them and on 10% of other days. True positives <span class="tl-blank" data-answer="0.0475" data-tol="0.0005"></span>; \(P(E) =\) <span class="tl-blank" data-answer="0.1425" data-tol="0.0005"></span>; posterior <span class="tl-blank" data-answer="0.333" data-tol="0.003"></span>; Bayes factor <span class="tl-blank" data-answer="9.5" data-tol="0.01"></span>. The strongest evidence of the three still leaves a flagged day twice as likely <em>not</em> to be the event, because the event is so rare.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>

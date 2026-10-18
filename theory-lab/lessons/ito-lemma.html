@@ -673,6 +673,23 @@
     <button type="button" id="ito-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Rebuild \(d_2 = \big[\ln(S_0/K) + (r - \sigma^2/2)T\big] / (\sigma\sqrt{T})\) and \(d_1 = d_2 + \sigma\sqrt{T}\) from the Itô correction, with new inputs each round. Give answers to four decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(S_0 = 105\), \(K = 100\), \(r = 0.03\), \(\sigma = 0.25\), \(T = 1\). The correction is \(0.25^2/2 = 0.03125\), so the drift is \(0.03 - 0.03125 = -0.00125\). \(\ln(105/100) = 0.04879\), so the numerator is \(0.04754\) and \(d_2 = 0.04754/0.25 = 0.1902\). Then \(d_1 =\) <span class="tl-blank" data-answer="0.4402" data-tol="0.0005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(S_0 = K = 100\), \(r = 0.01\), \(\sigma = 0.15\), half a year (\(T = 0.5\)). The correction \(\sigma^2/2 =\) <span class="tl-blank" data-answer="0.01125" data-tol="0.0001"></span>. The drift over the half year is \((0.01 - 0.01125) \times 0.5 = -0.000625\) and \(\sigma\sqrt{T} = 0.10607\), so \(d_2 =\) <span class="tl-blank" data-answer="-0.0059" data-tol="0.0002"></span> and \(d_1 =\) <span class="tl-blank" data-answer="0.1002" data-tol="0.0005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(S_0 = 95\), \(K = 100\), \(r = 0.04\), \(\sigma = 0.30\), \(T = 2\). Correction \(\sigma^2/2 =\) <span class="tl-blank" data-answer="0.045" data-tol="0.0005"></span>; \(d_2 =\) <span class="tl-blank" data-answer="-0.1445" data-tol="0.002"></span>; \(d_1 =\) <span class="tl-blank" data-answer="0.2798" data-tol="0.002"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>

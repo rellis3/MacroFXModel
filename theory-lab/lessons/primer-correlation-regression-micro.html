@@ -27,7 +27,6 @@
       <p class="sl-lede">Every later lesson that asks "do these two things move together" or "what's the best straight line through this data" is quietly leaning on two tools: correlation and ordinary least squares regression. Cointegration's first step is a regression. The Kalman Filter tracks a hedge ratio that <em>is</em> a regression slope, just one allowed to drift. PCA decomposes a correlation matrix built from exactly the formulas below. This guide builds both tools from nothing — and spends just as much time on how convincingly they lie.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -463,7 +462,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="15">
 
       <div class="sl-kicker">Your call</div>
@@ -478,7 +476,8 @@
       <li data-verdict="ok">Re-fit the slope over a longer window that includes the years before the floor.<div class="tl-drill-why">Mixing regimes gives a different, less flattering slope, which is a useful warning. But it is still a summary of the past. It does not tell you what happens on the day the floor goes.</div></li>
       <li data-verdict="bad">Increase the position. The hedge removes almost all the risk.<div class="tl-drill-why">A hedge is only as good as the relationship behind it. Leaning harder on a relationship that a single policy decision could end is exactly backwards.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Thursday 15 January 2015 the Swiss National Bank scrapped the 1.20 floor without warning. Within minutes the franc surged against both the euro and the dollar, and EUR/CHF traded far below 1.10 that day. The lockstep the regression had measured for three years broke in a morning. A slope fitted over a window describes that window; it is not a law.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Thursday 15 January 2015 the Swiss National Bank scrapped the 1.20 floor without warning. Within minutes the franc surged against both the euro and the dollar, and EUR/CHF traded far below 1.10 that day. The lockstep the regression had measured for three years broke in a morning. A slope fitted over a window describes that window; it is not a law.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://www.snb.ch/en/mmr/reference/pre_20150115/source/pre_20150115.en.pdf">Swiss National Bank press release, 15 Jan 2015</a>; <a href="https://www.snb.ch/en/mmr/reference/pre_20110906/source/pre_20110906.en.pdf">Swiss National Bank press release setting the 1.20 minimum, 6 Sep 2011</a>; JPMorgan Chase Institute, "Timing central bank announcements" (EUR/CHF from 1.201 to 0.895 in about 24 minutes).</p></div>
   </div>
 
     </section>

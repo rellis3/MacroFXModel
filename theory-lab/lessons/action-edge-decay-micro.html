@@ -43,7 +43,6 @@
       <p class="sl-lede">Every edge has losing stretches, and some edges really do die. Tell the two apart with rules set in advance — streak odds, a record test, a CUSUM alarm, and an honest count of how many trades it takes.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -96,7 +95,7 @@
       <p data-who="Trader">Like a smoke alarm.</p>
       <p data-who="Quant">Exactly like one. Set it low and toast sets it off. Set it high and the real fire takes longer to catch. You can't have fast and quiet together, so you pick the trade-off before you start.</p>
       <p data-who="Trader">Has this gone wrong for real money?</p>
-      <p data-who="Quant">August two thousand and seven. Many quant equity funds took sudden, heavy losses in the same few days while the market barely moved. Much of it reversed soon after, but some funds had already cut near the worst point. And underneath, the same kind of strategy had been earning less for years as more money chased it.</p>
+      <p data-who="Quant">August two thousand and seven. Many quant equity funds took sudden, heavy losses in the same few days while the broad market moved relatively little. Much of it reversed soon after, but some funds had already cut near the worst point. And underneath, the same kind of strategy had been earning less for years as more money chased it.</p>
       <p data-who="Trader">So a sharp shock that wasn't decay, and a slow decay nobody saw.</p>
       <p data-who="Quant">Both in one episode. A rule that only watched the last week would have read them exactly backwards.</p>
       <p data-who="Trader">The one-line version?</p>
@@ -148,7 +147,7 @@
         <input type="range" class="sl-slider" id="rc-p" min="40" max="75" step="1" value="55">
         <div class="sl-sliderhead" style="margin-top:8px"><span>Live trades n</span><span class="sl-live" id="rc-n-val">180</span></div>
         <input type="range" class="sl-slider" id="rc-n" min="20" max="1000" step="10" value="180">
-        <div class="sl-sliderhead" style="margin-top:8px"><span>Live wins W</span><span class="sl-live" id="rc-w-val">88</span></div>
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Live wins W</span><span class="sl-live" id="rc-w-val">88 (49%)</span></div>
         <input type="range" class="sl-slider" id="rc-w" min="0" max="180" step="1" value="88">
         <div class="sl-calc-row" style="margin-top:10px">
           <div class="sl-calc-result"><div class="sl-calc-result-label">z vs tested</div><div class="sl-calc-result-val" id="rc-z">−1.65</div></div>
@@ -332,14 +331,13 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="16">
 
       <div class="sl-kicker">Your call</div>
 
       <div class="tl-drill" data-date="2007-08-06">
     <div class="tl-drill-label">Scenario drill · the week of 6 August 2007</div>
-    <h3>Your quant strategy has its worst few days ever, and the market barely moved</h3>
+    <h3>Your quant strategy has its worst few days ever, and the market has moved relatively little</h3>
     <p>You run a quantitative long/short equity strategy with a long tested record. In the space of a few days this week it has suffered sudden, severe losses, far outside anything in its history. The broad stock market has hardly moved. Other quant funds, running different models, are reporting the same thing. What do you do?</p>
     <ol class="tl-drill-options">
       <li data-verdict="bad">The edge is dead. Liquidate everything today.<div class="tl-drill-why">A few days of losses is the most vivid part of the record and the least informative about the edge. When many funds hold the same positions, selling into the unwind means selling near the worst prices.</div></li>
@@ -347,7 +345,7 @@
       <li data-verdict="ok">Hold full size. It is only noise and it will come back.<div class="tl-drill-why">It might come back, but holding full size through a crowded unwind assumes you will survive the path, and nothing guarantees it. It also skips the slower question of whether the edge has been shrinking.</div></li>
       <li data-verdict="bad">Re-fit the model on this week's data so it stops losing.<div class="tl-drill-why">That is in-sample optimisation on the worst sample you have. It fits the shock, not the edge, and resets nothing.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In the second week of August 2007, many quant long/short equity funds took sudden, severe losses in the same few days while the broad market barely moved. Much of the loss reversed shortly afterwards, but some funds had already cut positions near the worst point. Khandani and Lo later explained the losses as a crowded unwind: many funds held similar positions, and the rapid selling of one or more large portfolios pushed prices against all of them. They also found a slower decay: their stand-in strategy's returns had been falling for years as more capital chased similar trades. The week was a shock, not the decay; the decay was the quiet trend underneath.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In the second week of August 2007, many quant long/short equity funds took sudden, severe losses in the same few days. They were hit hardest on 7 and 8 August, while equity and bond markets moved relatively little, and the losses continued on the 9th when the S&amp;P 500 fell nearly 3%. Much of the loss reversed on Friday 10 August, but some funds had already cut positions near the worst point. Khandani and Lo later explained the losses as a crowded unwind: many funds held similar positions, and the rapid selling of one or more large portfolios pushed prices against all of them. They also found a slower decay: their stand-in strategy's returns had been falling for years as more capital chased similar trades. The week was a shock, not the decay; the decay was the quiet trend underneath.</p><p class="tl-drill-sources">Sources: <a href="https://www.newyorkfed.org/medialibrary/media/research/conference/2007/liquidity/Khandani_Lo.pdf">Khandani and Lo, "What Happened to the Quants in August 2007?", 2007 (Federal Reserve Bank of New York conference copy)</a>; <a href="https://www.nber.org/papers/w14465">Khandani and Lo, NBER Working Paper 14465, November 2008</a>.</p></div>
   </div>
 
     </section>

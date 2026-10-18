@@ -27,7 +27,6 @@
       <p class="sl-lede">Every "is the economy overheating" judgment rests on one deceptively simple move: splitting an observed series into a slow-moving trend and a faster cycle riding on top of it. The Hodrick-Prescott filter has been the default tool for that split for decades — and it carries a well-documented, load-bearing flaw that hits hardest exactly where policymakers and traders need it least. Two frequency-domain alternatives, Butterworth and Baxter-King, exist specifically because of it.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -154,7 +153,7 @@
             <text x="46" y="48" font-size="10" fill="var(--amber)">— HP-filtered trend τ (recomputed live)</text>
           </svg>
         </div>
-        <div class="sl-sliderhead"><span>Smoothness penalty λ</span><span class="sl-live" id="hp2-lambda-val">λ = 1600</span></div>
+        <div class="sl-sliderhead"><span>Smoothness penalty λ</span><span class="sl-live" id="hp2-lambda-val">λ = 1,585 (near the λ≈1600 quarterly convention)</span></div>
         <input type="range" class="sl-slider" id="hp2-lambda-slider" min="0" max="500" step="1" value="320">
         <div class="sl-note">Left = λ→0, trend hugs the data exactly. Right = λ→∞, trend collapses toward a straight line. The shaded region on the right is flagged as unreliable regardless of λ — see the next slide for why.</div>
       </div>
@@ -446,7 +445,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="18">
 
       <div class="sl-kicker">Your call</div>
@@ -461,7 +459,8 @@
       <li data-verdict="ok">Switch to a band-pass filter that keeps only 6 to 32 quarter cycles.<div class="tl-drill-why">A fair instinct, since it states the cycle band openly, but a finite band-pass filter such as Baxter-King loses its last K observations, so it gives no reading at all for the newest quarters. It does not answer the question you were asked.</div></li>
       <li data-verdict="bad">Raise the smoothing so the trend is less influenced by the latest wobbles.<div class="tl-drill-why">More smoothing pushes the trend closer to a straight line drawn through the fast-growth past, so it sits even higher at the newest quarter and the gap looks even more negative. It makes this particular error worse.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Policy that believed in large slack stayed looser than an accurate gap would have called for, and inflation rose through the decade, into double digits by its end. Athanasios Orphanides (American Economic Review, 2001) rebuilt the real-time data and found the gaps policymakers had were far more negative than today's estimates for the same quarters: much of the slack had never existed. With Simon van Norden (2002) he showed that across many detrending methods, the HP filter included, revisions were about as large as the gap itself, driven mainly by the end of the sample, not by revised GDP.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Policy that believed in large slack stayed looser than an accurate gap would have called for, and inflation rose through the decade, into double digits by its end. Athanasios Orphanides (American Economic Review, 2001) rebuilt the real-time data and found the gaps policymakers had were far more negative than today's estimates for the same quarters: much of the slack had never existed. With Simon van Norden (2002) he showed that across many detrending methods, the HP filter included, revisions were about as large as the gap itself, driven mainly by the end of the sample, not by revised GDP.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://doi.org/10.1257/aer.91.4.964" target="_blank" rel="noopener">Orphanides, "Monetary Policy Rules Based on Real-Time Data", American Economic Review 91(4), 2001</a>; <a href="https://doi.org/10.1162/003465302760556422" target="_blank" rel="noopener">Orphanides and van Norden, "The Unreliability of Output-Gap Estimates in Real Time", Review of Economics and Statistics 84(4), 2002</a>.</p></div>
   </div>
 
     </section>

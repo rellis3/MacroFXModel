@@ -409,6 +409,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The rolling-MAD flag again on new ticks: \(z_i = |x_i - m_i| / \text{MAD}_i\), using only the ticks before \(i\), flagged when \(z_i &gt; 10\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Prior ticks \([1.10, 1.12, 1.11, 1.13, 1.11]\): median \(1.11\), absolute deviations \([0.01, 0.01, 0, 0.02, 0]\), so MAD \(= 0.01\). The new tick is \(1.25\), which is \(0.14\) from the median, so \(z =\) <span class="tl-blank" data-answer="14" data-tol="0.05"></span> MADs. That is above 10, so it is flagged.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Prior ticks \([0.85, 0.87, 0.86, 0.84]\), new tick \(0.92\). The median is <span class="tl-blank" data-answer="0.855" data-tol="0.0005"></span>, the MAD is <span class="tl-blank" data-answer="0.01" data-tol="0.0005"></span>, and \(z\) = <span class="tl-blank" data-answer="6.5" data-tol="0.05"></span> MADs. Is it flagged at a threshold of 10? Not quite. A tick can be unusual without crossing the line.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Prior ticks \([152.30, 152.34, 152.28, 152.36, 152.31]\), new tick \(151.80\). Median: <span class="tl-blank" data-answer="152.31" data-tol="0.005"></span>. MAD: <span class="tl-blank" data-answer="0.03" data-tol="0.0005"></span>. \(z\): <span class="tl-blank" data-answer="17" data-tol="0.1"></span> MADs. Flagged. Whether it is deleted is a separate decision.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A real-world trading scenario</div>
@@ -510,10 +527,7 @@
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: that this desk's cleaning choices leave its results unchanged.</strong> The desk's
-    ledger has no entry on data cleaning. A fair test would re-run each validated study with the outlier filter on and
-    off, and with forward-fill against flag-and-exclude for gaps, then report whether any verdict moves; and check every
-    print the filter removes against the venue's record of cancelled trades, so that only prints the venue itself
-    voided are dropped.</span>
+    ledger has no entry on data cleaning.<div class="tl-howtotest"><strong>How to test it:</strong> Take each validated study that runs on daily or M1 FX, rates or index data over its full tested period, and re-run it with the outlier filter on and off, and with forward-fill against flag-and-exclude for gaps. Record each study's headline metric and verdict both ways; the gate, fixed in advance, is that no verdict flips and no headline metric moves by more than its own confidence interval. The baseline is the study as published with its current cleaning. Check every print the filter removes against the venue's record of cancelled trades, so that only prints the venue itself voided are dropped. Costs are the study's own.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -577,7 +591,7 @@
       <li data-verdict="ok">Exclude the whole session from the research sample.<div class="tl-drill-why">Honest, because it invents nothing. But it removes a real extreme event from the history your models learn from, and a strategy's behaviour on days like this is exactly what you need to see.</div></li>
       <li data-verdict="bad">Interpolate between yesterday's close and tomorrow's open across the session.<div class="tl-drill-why">It invents a smooth path through a session that was anything but, and it uses tomorrow's open, a value no live system would have had yet.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> A Mizuho Securities trader had meant to sell 1 share at ¥610,000. A flaw in the exchange's system stopped the cancellation going through, and the order kept filling. The trades stood; shares that did not exist were settled in cash. Mizuho's loss was roughly ¥40 billion, the exchange's president resigned within weeks, and in 2009 a Tokyo court ordered the exchange to pay Mizuho about ¥10.7 billion for the failed cancellation.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> A Mizuho Securities trader had meant to sell 1 share at ¥610,000. A flaw in the exchange's system stopped the cancellation going through, and the order kept filling. The trades stood; shares that did not exist were settled in cash. Mizuho's loss was roughly ¥40 billion, the exchange's president resigned within weeks, and in 2009 a Tokyo court ordered the exchange to pay Mizuho about ¥10.7 billion for the failed cancellation.</p><p class="tl-drill-sources">Sources: Reuters, "Tokyo Stock Exchange president and executives to resign", 20 Dec 2005; NBC News (Associated Press), "President, execs at Tokyo bourse resign", Dec 2005; Reuters and Bloomberg reports of the Tokyo District Court ruling in Mizuho Securities v. Tokyo Stock Exchange, 24 Jun 2009 (the court put about 70% of the blame on the exchange).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>

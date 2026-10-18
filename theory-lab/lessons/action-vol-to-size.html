@@ -447,6 +447,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Route A from the worked example with new forecasts: \(\hat\sigma = \sqrt{\text{variance}}\) in %, into pips at today's price, a stop at \(2\hat\sigma\) rounded to whole pips, and lots \(= \text{risk}/(D \times \$10)\) rounded <em>down</em> to 0.01. Round 3 adds Route B's annual volatility, \(\hat\sigma\sqrt{252}\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>GBP/USD at 1.2700; the HAR forecast of tomorrow's variance is 0.25 (%²). So \(\hat\sigma = 0.50\%\), and \(0.0050 \times 1.2700 = 0.00635\), or 63.5 pips. The stop at \(2\hat\sigma\) is 127 pips. Risking $600, the size is <span class="tl-blank" data-answer="0.47" data-tol="0.001" data-unit="lots"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>AUD/USD at 0.6500, forecast variance 0.36 (%²), so \(\hat\sigma = 0.60\%\). In pips that is <span class="tl-blank" data-answer="39" data-tol="0.1" data-unit="pips"></span>. The \(2\hat\sigma\) stop is <span class="tl-blank" data-answer="78" data-tol="0.5" data-unit="pips"></span>, and risking $400 the size is <span class="tl-blank" data-answer="0.51" data-tol="0.001" data-unit="lots"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>EUR/USD at 1.1000, forecast variance 0.09 (%²), risk $500. One \(\hat\sigma\) in pips <span class="tl-blank" data-answer="33" data-tol="0.1" data-unit="pips"></span>; stop <span class="tl-blank" data-answer="66" data-tol="0.5" data-unit="pips"></span>; size <span class="tl-blank" data-answer="0.75" data-tol="0.001" data-unit="lots"></span>; annual volatility for Route B <span class="tl-blank" data-answer="4.76" data-tol="0.02" data-unit="%"></span>. A calmer forecast gives a bigger position for the same $500, which is why Route B needs its leverage cap.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -527,8 +544,10 @@
 
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
-    <span><strong>"Volatility targeting improves risk-adjusted returns."</strong> Not tested here. The desk sizes by volatility for risk control, but hasn't tested whether scaling by a forecast <em>adds return</em> on its own instruments. The published evidence is mixed: Moreira and Muir (2017) found gains for several equity factors, and later work, such as Cederburg and co-authors (2020), found many of those gains hard to capture out of sample. The risk-control case (steadier dollar swings, smaller worst days) doesn't depend on that answer.</span>
+    <span><strong>"Volatility targeting improves risk-adjusted returns."</strong> Not tested here. The desk sizes by volatility for risk control, but hasn't tested whether scaling by a forecast <em>adds return</em> on its own instruments. The published evidence is mixed: Moreira and Muir (2017) found gains for several equity factors, and later work, such as Cederburg and co-authors (2020), found many of those gains hard to capture out of sample. The risk-control case (steadier dollar swings, smaller worst days) doesn't depend on that answer.<div class="tl-howtotest"><strong>How to test it:</strong> take the desk's G10 FX trend and carry baskets on daily data, 2005–2025, and run each two ways: a constant notional, and a notional scaled each day to a 10% target by a HAR forecast built only from data before that day, with a 2× leverage cap. Scale the constant book to the same full-sample volatility, charge the spread on every rebalance, and compare Sharpe ratios and worst months. Fix the gate in advance: volatility targeting passes only if its Sharpe beats the constant book's by at least 0.1 in both halves of the sample after costs.</div></span>
   </div>
+
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../position-sizer.html">Position sizer</a> turns the live volatility forecast into sizes that risk the same money on each pair, with a cap on the book's total heat: Route A, run across the book.</div><!-- DESK:END -->
 
   <div class="tl-solid red">
     <strong>The trap:</strong> the lower the forecast, the bigger the position, with no limit unless you
@@ -599,7 +618,7 @@
       <li data-verdict="ok">Drop volatility sizing and hold a fixed notional instead.<div class="tl-drill-why">It avoids the calm-market trap, but throws away the useful part: when volatility does jump, a fixed position takes far more risk than planned. Volatility sizing is right; it just needs a cap and a floor.</div></li>
       <li data-verdict="bad">Also cut the risk budget whenever volatility rises, to be extra safe.<div class="tl-drill-why">That is double scaling: size then falls with the square of volatility. It does nothing about the real problem, which is the oversized position while volatility is still low.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In late January and early February 2018 stocks fell. On Monday 5 February the VIX more than doubled in a single session, its largest one-day percentage rise on record. Credit Suisse's XIV, the biggest inverse-VIX note, lost almost all its value, and Credit Suisse moved to terminate it. Many post-mortems also pointed to selling by strategies that size by recent volatility, which had to cut exposure after the jump; how much each group contributed is still debated.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In late January and early February 2018 stocks fell. On Monday 5 February the VIX more than doubled in a single session, its largest one-day percentage rise on record. Credit Suisse's XIV, the biggest inverse-VIX note, lost almost all its value, and Credit Suisse moved to terminate it. Many post-mortems also pointed to selling by strategies that size by recent volatility, which had to cut exposure after the jump; how much each group contributed is still debated.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/VIXCLS">Cboe VIX daily close via FRED (17.31 on 2 February, 37.32 on 5 February 2018, a 116% rise; 2017's average close was 11.1)</a>; Credit Suisse media release, "Credit Suisse AG Announces Event Acceleration of its XIV ETNs", 6 February 2018.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

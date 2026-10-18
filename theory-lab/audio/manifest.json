@@ -826,5 +826,61 @@
 "Quant": "bf_emma",
 "Trader": "bm_george"
 }
+},
+"corporate-actions-series-continuity": {
+"hash": "ecdcdcc8",
+"seconds": 143.3,
+"starts": [
+0.0,
+6.28,
+19.35,
+23.17,
+35.85,
+37.4,
+53.98,
+55.68,
+75.16,
+76.88,
+91.82,
+95.69,
+106.96,
+109.57,
+125.2,
+128.94,
+133.56,
+135.66
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
+},
+"correlation-networks-mst": {
+"hash": "02a2e47a",
+"seconds": 126.7,
+"starts": [
+0.0,
+6.11,
+13.41,
+16.9,
+31.07,
+32.68,
+46.47,
+50.19,
+59.63,
+61.28,
+72.98,
+74.83,
+85.48,
+88.58,
+104.83,
+106.84,
+117.45,
+119.72
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
 }
 }

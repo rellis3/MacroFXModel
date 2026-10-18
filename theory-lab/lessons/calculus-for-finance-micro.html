@@ -27,7 +27,6 @@
       <p class="sl-lede">Three lessons already in this Theory Lab quietly lean on calculus without teaching it: Ornstein-Uhlenbeck writes a "rate of change," Black-Scholes builds a whole equation out of how price reacts to the underlying, and Kelly Criterion pulls a σ²/2 correction out of nowhere. This deck builds the three ideas underneath all of that — the derivative, the integral, and the Taylor series — from nothing, so none of it has to be taken on faith later.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -113,10 +112,10 @@
             <circle id="cf-p1" cx="220" cy="0" r="5.5" style="fill:var(--red)"/>
             <circle id="cf-p2" cx="220" cy="0" r="5.5" style="fill:var(--purple)"/>
             <text x="580" y="248" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">x</text>
-            <text id="cf-hlabel" x="330" y="252" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">h = 2.20</text>
+            <text id="cf-hlabel" x="330" y="252" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">h = 22.00</text>
           </svg>
         </div>
-        <div class="sl-sliderhead"><span>Gap size, h</span><span class="sl-live" id="cf-hval">h = 2.20</span></div>
+        <div class="sl-sliderhead"><span>Gap size, h</span><span class="sl-live" id="cf-hval">h = 22.00</span></div>
         <input type="range" class="sl-slider" id="cf-slider" min="2" max="220" step="1" value="220">
         <div class="sl-verdict" id="cf-verdict"><strong>Secant line</strong> — the red and purple points are far apart, so this line's slope is only an <em>average</em> rate of change over the whole gap.</div>
       </div>
@@ -339,7 +338,6 @@
         <div class="sl-quiz-explain">ΔC ≈ δΔS ignores curvature. Adding ½γ(ΔS)² — the second-order Taylor term — captures the part of the move delta alone misses.</div>
       </div>
     </section>
-
 
     <section class="sl-slide sl-vark" data-slide="14">
 

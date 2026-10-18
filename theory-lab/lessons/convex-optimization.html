@@ -45,7 +45,7 @@
 
   <figure class="tl-picture">
     <div class="tl-picture-label">The whole idea in one picture</div>
-    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two curves side by side. Left, a convex bowl, f of x equals 0.15 x squared, with a straight chord drawn from x equals 1 to x equals 8. Halfway along, the curve sits at 3.04, below the chord at 4.87, and the bowl has a single bottom, so any local minimum is the global one. Right, a non-convex egg carton with two dips: a solver can stop in the shallower dip and never find the deeper one.">
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two curves side by side. Left, a convex bowl, f of x equals 0.15 x squared, with a straight chord drawn from x equals 1 to x equals 8. Halfway along, the curve sits at 3.04, below the chord at 4.88, and the bowl has a single bottom, so any local minimum is the global one. Right, a non-convex egg carton with two dips: a solver can stop in the shallower dip and never find the deeper one.">
       <line class="tlp-line" x1="30" y1="195" x2="285" y2="195"/>
       <line class="tlp-line" x1="340" y1="195" x2="585" y2="195"/>
       <text class="tlp-blue" x="30" y="22" font-size="14" font-weight="700">Convex: one bowl</text>
@@ -57,7 +57,7 @@
       <circle class="tlp-purple" cx="252.2" cy="79.2" r="4"/>
       <circle class="tlp-purple" cx="155" cy="133.8" r="5.5"/>
       <circle class="tlp-blue" cx="155" cy="155" r="5.5"/>
-      <text class="tlp-purple" x="147" y="122" text-anchor="end" font-size="13" font-weight="700">chord 4.87</text>
+      <text class="tlp-purple" x="147" y="122" text-anchor="end" font-size="13" font-weight="700">chord 4.88</text>
       <text class="tlp-blue" x="164" y="176" font-size="13" font-weight="700">curve 3.04</text>
       <circle class="tlp-green" cx="30" cy="190" r="6.5"/>
       <text class="tlp-green" x="30" y="214" font-size="13" font-weight="700">one bottom: local = global</text>
@@ -208,7 +208,7 @@
       <p>The right side is the height of the straight chord joining \((x, f(x))\) and \((y, f(y))\) at the same spot. Convex means the curve never rises above its chord. That is the whole definition.</p>
     </div>
     <div class="tl-eqbuild-step">
-      <div class="tl-math">\[ f(4.5) = \color{#fbbf24}{3.04} \;\le\; 0.5(0.15) + 0.5(9.6) \approx \color{#fbbf24}{4.87} \]</div>
+      <div class="tl-math">\[ f(4.5) = \color{#fbbf24}{3.04} \;\le\; 0.5(0.15) + 0.5(9.6) \approx \color{#fbbf24}{4.88} \]</div>
       <p>Check it on the chart's curve \(f(x) = 0.15x^2\), with \(x = 1\), \(y = 8\) and \(\theta = 0.5\). The curve sits well under the chord.</p>
     </div>
     <div class="tl-eqbuild-step">
@@ -518,7 +518,7 @@
         <div class="tl-hint">f(x) = 0.15x² on x, y = 1, 8. Blue dot is the curve's real value at P = θ·1 + (1−θ)·8; purple dot is the chord's value at the same point. Drag θ across its full range — the blue dot never rises above the purple one.</div>
       </div>
     </div>
-    <div class="tl-readout" id="cvx-readout">P = 4.50 — curve f(P) ≈ 3.04, chord value ≈ 4.87 — curve ≤ chord ✓</div>
+    <div class="tl-readout" id="cvx-readout">P = 4.50 — curve f(P) ≈ 3.04, chord value ≈ 4.88 — curve ≤ chord ✓</div>
     <div class="tl-chart-caption">Every convex function satisfies f(θx+(1−θ)y) ≤ θf(x)+(1−θ)f(y) for every θ∈[0,1] — the graph never bulges above the straight chord joining any two of its own points. This is the literal, numerical definition of convexity, not just an illustration of it.</div>
   </div>
 
@@ -672,6 +672,23 @@
       <span id="cvx-scratch-note" class="tl-scratch-note"></span>
     </div>
     <button type="button" id="cvx-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Part 1's check again, on new 2-asset inputs: build \(\Sigma\) from the vols and correlation, take the determinant, then the two eigenvalues from \(\lambda = \tfrac{1}{2}\big(\text{tr} \pm \sqrt{\text{tr}^2 - 4\det}\big)\), where tr is \(\Sigma_{11}+\Sigma_{22}\). Both positive means positive definite.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\sigma_1 = 15\%\), \(\sigma_2 = 25\%\), \(\rho = 0.4\). So \(\Sigma_{11} = 0.0225\), \(\Sigma_{22} = 0.0625\), \(\Sigma_{12} = 0.4 \times 0.15 \times 0.25 = 0.015\). \(\det = 0.0225 \times 0.0625 - 0.015^2 = 0.00118125\), tr \(= 0.085\). Then \(\lambda = \tfrac{1}{2}(0.085 \pm \sqrt{0.007225 - 0.004725}) = \tfrac{1}{2}(0.085 \pm 0.05)\), so \(\lambda_1 = 0.0675\) and \(\lambda_2 =\) <span class="tl-blank" data-answer="0.0175" data-tol="0.00005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\sigma_1 = 10\%\), \(\sigma_2 = 40\%\), \(\rho = -0.5\). \(\Sigma_{11} = 0.01\), \(\Sigma_{22} = 0.16\), \(\Sigma_{12}\) = <span class="tl-blank" data-answer="-0.02" data-tol="0.00005"></span>. \(\det(\Sigma)\) = <span class="tl-blank" data-answer="0.0012" data-tol="0.000005"></span>. With tr \(= 0.17\), the smaller eigenvalue \(\lambda_2\) = <span class="tl-blank" data-answer="0.007379" data-tol="0.0001"></span>. A negative correlation does not threaten positive-definiteness; only \(|\rho| \to 1\) does.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\sigma_1 = 30\%\), \(\sigma_2 = 20\%\), \(\rho = 0.9\). \(\det(\Sigma)\) = <span class="tl-blank" data-answer="0.000684" data-tol="0.000002"></span>. \(\lambda_1\) = <span class="tl-blank" data-answer="0.124506" data-tol="0.0001"></span>. \(\lambda_2\) = <span class="tl-blank" data-answer="0.005494" data-tol="0.0001"></span>. Still positive definite, but the small \(\lambda_2\) says the bowl is nearly flat in one direction.</p>
+    </div>
   </div>
 
   <div class="tl-box scenario">

@@ -486,6 +486,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>One hot print priced through the chain again, on new yield moves. Real yield \(=\) nominal \(-\) breakeven. A bond's price change is about \(-\text{duration} \times \Delta y\). The equity multiple is \(P/E = 1/(k-g)\), with \(k = 8\% + \) the real-yield rise and \(g = 3\%\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>The 2-year rises 20bp, the 10-year 11bp, and the 10-year breakeven 4bp. The front end moved nearly twice as much, a bear flattening. The 10-year real yield rose \(11 - 4 =\) <span class="tl-blank" data-answer="7" data-tol="0.05" data-unit="bp"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>The 2-year rises 12bp, the 10-year 6bp, and the breakeven 2bp. The 10-year real yield rise is <span class="tl-blank" data-answer="4" data-tol="0.05" data-unit="bp"></span>. With duration 1.9, the 2-year price change is <span class="tl-blank" data-answer="-0.228" data-tol="0.002" data-unit="%"></span>. With duration 8, the 10-year price change is <span class="tl-blank" data-answer="-0.48" data-tol="0.002" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>The 2-year rises 25bp, the 10-year 18bp, and the breakeven 6bp. The 10-year real yield rise: <span class="tl-blank" data-answer="12" data-tol="0.05" data-unit="bp"></span>. The 10-year price change (duration 8): <span class="tl-blank" data-answer="-1.44" data-tol="0.005" data-unit="%"></span>. The P/E with \(k\) raised by that real-yield rise and \(g = 3\%\): <span class="tl-blank" data-answer="19.53" data-tol="0.01"></span>, down about 2.3% from 20.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -523,14 +540,14 @@
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict null" data-evidence="fear-gold" data-evidence-date="2026-09-21">
+  <div class="tl-verdict null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>"Rates turn first, then equities follow" (<code>rates-pivot-lead</code>, 2026-09-25).</strong> Null on every cell: 2,430 confirmed 2-year pivots, 2,010 de-clustered events at 1h, signed Nasdaq return −0.005% vs control [−0.021, +0.012]; null at 1h, 2h and 4h. A confirmed rates low was followed by an up-move 54.1% of the time — and the base rate is 54.1%. Rates and equities move in the <em>same</em> bar (+0.23 correlation at 15 minutes), not in sequence.</span>
   </div>
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict null" data-evidence="oil-to-breakevens" data-evidence-date="2026-09-17">
+  <div class="tl-verdict null" data-evidence="fear-gold" data-evidence-date="2026-09-21">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>"Fear buys gold" (<code>fear-gold</code>, 2026-09-21).</strong> 58 VIX spikes 2010–2026. Gold five sessions on: +0.42% vs +0.35% ordinary, excess +0.07% [−0.42, +0.30]. Twenty sessions on: +0.01% vs +1.20%, excess −1.19% [−2.30, −0.48]. No fear bid on average, and a month later gold had <em>lagged</em>. If gold is up in a fear week, look for the rates or dollar leg instead.</span>
   </div>
@@ -544,7 +561,7 @@
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict null">
+  <div class="tl-verdict null" data-evidence="oil-to-breakevens" data-evidence-date="2026-09-17">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>"Oil takes time to reach inflation expectations" (<code>oil-to-breakevens</code>, 2026-09-17).</strong> No lag: a 20-day oil move of ±10% is followed by no excess breakeven change at 5, 10 or 20 sessions. Oil and breakevens move in the same window or not at all — this <em>sharpens</em> the oil→breakeven domino rather than killing it, but there is no delay to trade.</span>
   </div>
@@ -593,6 +610,7 @@
     </div>
   </div>
 
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../today.html">Daily Trading Brief</a> carries the chain board, so you can read each morning's move link by link as this lesson does.</div><!-- DESK:END -->
   <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🧩</div>
@@ -628,7 +646,7 @@
       <li data-verdict="ok">Stay out of sterling and wait for the next scheduled policy meeting to make things clearer.<div class="tl-drill-why">Staying out avoids the wrong trade, but it misses what the broken link is already saying. It also ignores the second risk: leveraged holders of gilts may be forced to sell, and that does not wait for a meeting.</div></li>
       <li data-verdict="good">Read the broken link as a credibility shock, do not buy the yield, and look for who is forced to sell gilts as yields rise.<div class="tl-drill-why">This is the diagnostic use of the chain. A yield rise driven by doubt is a risk premium. And when collateral calls force sellers into the market, a chain can turn into a loop that only a buyer with no balance-sheet limit can stop.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Many UK pension schemes used liability-driven investment funds that hedged with leveraged gilt and swap positions. As yields jumped, they faced urgent collateral calls and sold gilts to raise cash, pushing yields up further. On 28 September the Bank of England announced temporary purchases of long-dated gilts on financial-stability grounds, explicitly to stop the spiral rather than to ease policy. The purchases ended on 14 October. The Chancellor was replaced that day, and the Prime Minister resigned on 20 October.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Many UK pension schemes used liability-driven investment funds that hedged with leveraged gilt and swap positions. As yields jumped, they faced urgent collateral calls and sold gilts to raise cash, pushing yields up further. On 28 September the Bank of England announced temporary purchases of long-dated gilts on financial-stability grounds, explicitly to stop the spiral rather than to ease policy. The purchases ended on 14 October. The Chancellor was replaced that day, and the Prime Minister resigned on 20 October.</p><p class="tl-drill-sources">Sources: <a href="https://www.bankofengland.co.uk/news/2022/september/bank-of-england-announces-gilt-market-operation">Bank of England, "Bank of England announces gilt market operation", 28 Sep 2022</a>; Bank of England Financial Policy Committee record, 5 Oct 2022 and Financial Stability Report, Dec 2022 (on the LDI collateral spiral); Reuters and BBC reports of sterling's record low against the dollar, 26 Sep 2022; UK government announcements of the Chancellor's replacement (14 Oct 2022) and the Prime Minister's resignation (20 Oct 2022).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

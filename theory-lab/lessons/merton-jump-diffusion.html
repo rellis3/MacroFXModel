@@ -538,8 +538,8 @@
       the Swiss National Bank (SNB) set a <strong>minimum exchange rate of 1.20 francs per euro</strong> and said it
       would buy foreign currency in unlimited quantities to defend it. The floor held for more than three years.
       EUR/CHF sat just above 1.20, its day-to-day volatility shrank to almost nothing, and many traders came to treat
-      the floor as close to a guarantee, running leveraged long EUR/CHF positions with stop-losses just under 1.20. SNB officials had publicly reaffirmed the floor shortly
-      before it went.
+      the floor as close to a guarantee, running leveraged long EUR/CHF positions with stop-losses just under 1.20. The SNB had said from the start that it would enforce the
+      floor with the utmost determination.
     </p>
     <p>
       On the morning of Thursday <strong>15 January 2015</strong>, the SNB announced it was discontinuing the floor,
@@ -595,6 +595,7 @@
     happened, not to call the next one. A floor like 1.20 tells you a jump is <em>possible</em>; nothing here dates it.</span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../jump-diffusion.html">Jump vs Diffusion</a> splits today's session-so-far move into its jump and diffusion parts, the decomposition this lesson's jump term describes.</div><!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -732,14 +733,14 @@
   <div class="tl-drill" data-date="2015-01-14">
     <div class="tl-drill-label">Scenario drill · 14 January 2015</div>
     <h3>A floor that has held for three years</h3>
-    <p>You are long EUR/CHF on leverage, with a stop-loss a few pips under the Swiss National Bank's 1.20 floor. The floor has held since September 2011, and SNB officials have publicly reaffirmed it. Realised volatility is the lowest you have ever seen on the pair, so your risk model says the position is small. How do you size it going into tomorrow?</p>
+    <p>You are long EUR/CHF on leverage, with a stop-loss a few pips under the Swiss National Bank's 1.20 floor. The floor has held since September 2011, and the SNB has said it will enforce it with the utmost determination. Realised volatility is the lowest you have ever seen on the pair, so your risk model says the position is small. How do you size it going into tomorrow?</p>
     <ol class="tl-drill-options">
       <li data-verdict="bad">Keep the size. The stop caps the loss at a few pips.<div class="tl-drill-why">A stop is an order, not a guaranteed price. It assumes the path is continuous and will trade through your level. In a jump there is no price in between, so the stop fills wherever liquidity comes back.</div></li>
       <li data-verdict="bad">Add size. Volatility is so low that a volatility-targeted book says you can run more.<div class="tl-drill-why">The calm is the floor holding σ down. Nearly all the risk sits in the jump terms, λ and μ_J, which a volatility estimate from the floor years cannot see. Scaling up on low σ scales you into the jump.</div></li>
       <li data-verdict="good">Size the position for a gap far through the floor, as if the stop will not fill, and only hold what you could lose that way.<div class="tl-drill-why">On a floored rate the loss to plan for is the jump, and everyone can name its direction. Sizing for the gap, not the stop distance, is the only version of this trade that survives the day the floor goes.</div></li>
       <li data-verdict="ok">Halve the size and keep the stop.<div class="tl-drill-why">Halving does halve the damage, so it is defensible. But the size is still set by the stop distance, which assumes a continuous path. Half of a loss many times your plan is still many times your plan.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On the morning of 15 January 2015 the SNB discontinued the floor without warning and cut its deposit rate to −0.75%. Within minutes EUR/CHF fell from 1.20 to below 0.90, with very little trading on the way down, before ending the day near parity. Stops just under 1.20 were filled far below. Many retail clients lost more than their account balance; FXCM needed an emergency $300 million loan, and Alpari UK went into insolvency.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On the morning of 15 January 2015 the SNB discontinued the floor without warning and cut its deposit rate to −0.75%. Within minutes EUR/CHF fell from 1.20 to below 0.90, with very little trading on the way down, before ending the day near parity. Stops just under 1.20 were filled far below. Many retail clients lost more than their account balance; FXCM needed an emergency $300 million loan from Leucadia, and Alpari UK went into special administration on 19 January.</p><p class="tl-drill-sources">Sources: <a href="https://www.snb.ch/en/publications/communication/press-releases/2015/pre_20150115">Swiss National Bank press release, 15 January 2015</a>; <a href="https://www.snb.ch/en/the-snb/organisation/history/geld-und-waehrungspolitische-chronik">SNB chronicle of monetary events (6 September 2011, 18 December 2014, 15 January 2015)</a>; Bloomberg, "Leverage Cripples a Currency Broker", 22 January 2015; Finance Magnates, 16 January 2015 (FXCM and Leucadia).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -895,7 +896,7 @@
   <div class="tl-footer-nav">
     <a href="black-scholes.html">← Black-Scholes-Merton Option Pricing</a>
     <a href="../hub.html">Theory Lab hub</a>
-    <a href="kelly-criterion.html">Kelly Criterion &amp; Position Sizing →</a>
+    <a href="fx-options-quoting-rr-bf.html">FX Options Quoting: Delta, Risk Reversals &amp; Butterflies →</a>
   </div>
 </div>
 

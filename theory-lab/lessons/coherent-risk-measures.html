@@ -415,6 +415,23 @@
     <button type="button" id="crm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The two-bond test again, with new inputs each round. Two independent bonds, each lost in full on default. VaR is the smallest loss \(\ell\) with \(P(L&gt;\ell) \le 1-p\); CVaR is the average of the worst \(1-p\) of outcomes.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Default probability 3%, face value $200, \(p = 0.95\). Alone, each bond defaults with 3% \(\le\) 5%, so \(\text{VaR}_{0.95}(L_A) = \text{VaR}_{0.95}(L_B) = \$0\). Together: no default \(0.97^2 = 94.09\%\), one default \(2 \times 0.03 \times 0.97 = 5.82\%\), both \(0.03^2 = 0.09\%\). At \(\ell = 0\): \(P(L&gt;0) = 5.91\% &gt; 5\%\), which fails. At \(\ell = 200\): \(P(L&gt;200) = 0.09\% \le 5\%\). So \(\text{VaR}_{0.95}(L_A+L_B) = \$\)<span class="tl-blank" data-answer="200" data-tol="0.5"></span>, against a sum of $0.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Default probability 4.5%, face value $100, \(p = 0.95\). For one bond the worst 5% is the 4.5% default plus 0.5% of "no default", so \(\text{CVaR}_{0.95}(L_A) = (0.045 \times 100 + 0.005 \times 0)/0.05 = \$\)<span class="tl-blank" data-answer="90" data-tol="0.05"></span>. The chance both default is <span class="tl-blank" data-answer="0.2025" data-tol="0.0005" data-unit="%"></span>. The worst 5% of the pair is that both-default slice ($200) plus the rest of the 5% from "one default" ($100), so \(\text{CVaR}_{0.95}(L_A+L_B) = \$\)<span class="tl-blank" data-answer="104.05" data-tol="0.05"></span>, well under the $180 sum.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Default probability 2%, face value $100, confidence \(p = 0.97\) (a 3% tail). \(\text{VaR}_{0.97}(L_A+L_B) = \$\)<span class="tl-blank" data-answer="100" data-tol="0.5"></span>. \(\text{CVaR}_{0.97}(L_A) = \$\)<span class="tl-blank" data-answer="66.67" data-tol="0.01"></span>. \(\text{CVaR}_{0.97}(L_A+L_B) = \$\)<span class="tl-blank" data-answer="101.33" data-tol="0.01"></span>. Check: VaR breaks sub-additivity again, and CVaR does not.</p>
+    </div>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">VaR vs. CVaR: individual sum vs. combined portfolio, from the worked example above</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart showing VaR of the summed individual bonds at zero dollars, VaR of the combined portfolio at one hundred dollars (a violation of sub-additivity), CVaR of the summed individual bonds at one hundred sixty dollars and of the combined portfolio at one hundred three dollars twenty (coherent)">
@@ -545,11 +562,9 @@
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "size and limit on Expected Shortfall rather than VaR, and the tail is under
     control."</strong> This desk has no record of limits or sizing set on either measure, so there is no
-    realised P&amp;L to grade them against. A fair test would forecast daily \(\text{VaR}_{0.95}\) and
-    \(\text{ES}_{0.975}\) for the desk's own strategy P&amp;L, out of sample. It would count VaR exceedances
-    against the expected 5% (a Kupiec-style test) and backtest ES with a test built for it. It would also
-    re-run the same count after any change to the model, because a model change is where 2012 went wrong.</span>
+    realised P&amp;L to grade them against.<div class="tl-howtotest"><strong>How to test it:</strong> On the desk's daily strategy P&amp;L (or, failing that, an equal-weight G10 FX basket over all daily history), fit each model on a rolling 500-day window and forecast next-day \(\text{VaR}_{0.95}\) and \(\text{ES}_{0.975}\) out of sample. Count VaR exceedances against the expected 5% with a Kupiec test, and backtest ES with a test built for it (Acerbi and Székely's); the gate, fixed in advance, is no rejection at the 5% level on either. The baseline is plain historical simulation on the same window, and the same counts are re-run after any change to the model, because a model change is where 2012 went wrong. No trading costs enter, since this grades a forecast, not a trade.</div></span>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../bot-audit.html">Bot Audit</a> shows daily VaR 95, VaR 99 and CVaR 95 on the live bots' P&amp;L; the gap between the VaR and CVaR tiles is the tail this lesson is about.</div>
   <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -634,7 +649,7 @@
       <li data-verdict="good">Treat the halving as a red flag. Run the old and new models side by side, get the new one checked, and keep the old limit binding, cutting positions if needed, until the gap is explained.<div class="tl-drill-why">The risk measure is one quantile from one model, so the whole gap between "over" and "inside" the limit is one modelling choice. Until you know why the number halved, the honest assumption is that the risk did not.</div></li>
       <li data-verdict="ok">Keep the new model, but ask the office to trim positions a little anyway, to be safe.<div class="tl-drill-why">Better than nothing, but it skips the real question: is the new number right? A token cut leaves an unknown, possibly large, risk on the book.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> This was JPMorgan's Chief Investment Office, and the book later known as the London Whale. The positions stayed on. The bank's own task force later found the new model ran on spreadsheets filled in by copying and pasting, and that one formula divided by a sum where it should have divided by an average, which muted the volatility it measured. In May 2012 the bank disclosed the losses and went back to its old model, under which first-quarter VaR came out at roughly double the reported figure. Losses for the year passed $6 billion, a US Senate subcommittee investigated, and regulators in the US and the UK fined the bank.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> This was JPMorgan's Chief Investment Office, and the book later known as the London Whale. The positions stayed on. The bank's own task force later found the new model ran on spreadsheets filled in by copying and pasting, and that one formula divided by a sum where it should have divided by an average, which muted the volatility it measured. In May 2012 the bank disclosed the losses and went back to its old model, under which first-quarter VaR came out at roughly double the reported figure. Losses for the year passed $6 billion, a US Senate subcommittee investigated, and regulators in the US and the UK fined the bank.</p><p class="tl-drill-sources">Sources: <a href="https://www.hsgac.senate.gov/wp-content/uploads/imo/media/doc/031314%20-%20PSI%20JPMorgan%20Whale%20Trades%20Hearing%20and%20Report.pdf">US Senate Permanent Subcommittee on Investigations, press release on the Whale Trades report, 14 Mar 2013</a>; Report of JPMorgan Chase &amp; Co. Management Task Force Regarding 2012 CIO Losses, 16 Jan 2013; JPMorgan Chase first-quarter 2012 Form 10-Q, 10 May 2012.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

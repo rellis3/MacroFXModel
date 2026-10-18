@@ -437,6 +437,23 @@
     <button type="button" id="srn-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Run the first two rounds of the cascade after Bank C's shock, with new exposures to C. The cross-exposures stay at the worked example's values: \(W_{AB}=0.3\), \(W_{BA}=0.2\), \(W_{BD}=0.1\), \(W_{DA}=0.1\). Round 1: \(h_i(1) = W_{iC}\,h_C(0)\). Round 2: \(h_A(2) = h_A(1) + W_{AB}h_B(1)\), \(h_B(2) = h_B(1) + W_{BA}h_A(1) + W_{BD}h_D(1)\), \(h_D(2) = h_D(1) + W_{DA}h_A(1)\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>C fails, \(h_C(0) = 1\); \(W_{AC} = 0.2\), \(W_{BC} = 0.3\), \(W_{DC} = 0.1\). After round 1: \(h_A = 0.20\), \(h_B = 0.30\), \(h_D = 0.10\). After round 2: \(h_A = 0.20 + 0.3\times0.30 = 0.29\); \(h_B = 0.30 + 0.2\times0.20 + 0.1\times0.10 = 0.35\); \(h_D = 0.10 + 0.1\times0.20 =\) <span class="tl-blank" data-answer="0.12" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>C fails, \(h_C(0) = 1\); \(W_{AC} = 0.05\), \(W_{BC} = 0.5\), \(W_{DC} = 0.4\). After round 1: \(h_A = 0.05\), \(h_B = 0.50\), \(h_D = 0.40\). After round 2: \(h_A =\) <span class="tl-blank" data-answer="0.2" data-tol="0.005"></span>, \(h_B =\) <span class="tl-blank" data-answer="0.55" data-tol="0.005"></span>, \(h_D =\) <span class="tl-blank" data-answer="0.405" data-tol="0.005"></span>. A barely lent to C, yet its distress quadruples.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>C only half fails, \(h_C(0) = 0.5\), with the worked example's exposures \(W_{AC} = 0.1\), \(W_{BC} = 0.4\), \(W_{DC} = 0.3\). After round 1, find \(h_B\) <span class="tl-blank" data-answer="0.2" data-tol="0.005"></span>. After round 2, find \(h_A\) <span class="tl-blank" data-answer="0.11" data-tol="0.005"></span>, \(h_B\) <span class="tl-blank" data-answer="0.225" data-tol="0.005"></span> and \(h_D\) <span class="tl-blank" data-answer="0.155" data-tol="0.005"></span>. Every number is half the worked example's, because this simple rule is linear until a bank hits the cap of 1.</p>
+    </div>
+  </div>
+
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>You might expect one bank failing to just spread its own trouble around, like slicing a pie into smaller pieces for everyone else — the total pain staying the same size, just shared out. But the worked example shows the total pain (1.04) actually ends up bigger than the original failure (1.00). Each round of wobbling adds a little extra damage on top, rather than simply redistributing what was already there — that "extra on top" is exactly what makes network contagion dangerous.</p>
@@ -581,9 +598,13 @@
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "stress at a highly connected institution warns that markets will run wider
     next."</strong> This desk has no exposure-network data, and the bilateral data that DebtRank needs is held by
-    regulators. A fair test would pre-register a public proxy for distress at the most connected banks, such as a jump
-    in their CDS spreads, and measure the next week's index and FX range against a volatility-matched control. Even
-    then it would test the proxy, not the network.</span>
+    regulators.
+    <div class="tl-howtotest"><strong>How to test it:</strong> use a public proxy for distress at the most connected
+    banks: a day when a large-bank equity index falls at least 3 standard deviations (trailing 252-day σ) more than the
+    S&amp;P 500, 2000 to 2026-08-21. Measure the next five sessions' range on SPX500 and EUR/USD in units of trailing
+    ATR, against control days matched on prior volatility. Fixed in advance: at least 20 episodes, and a session-block
+    bootstrap 95% interval for the difference that excludes zero on both instruments; as a straddle trade it must also
+    clear a 2-vol-point bid-ask. Even a pass would test the proxy, not the network.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -674,7 +695,8 @@
       <li data-verdict="ok">Buy credit protection on AIG itself to cover the counterparty risk.<div class="tl-drill-why">It addresses the right risk, but the seller of that protection is another node in the same web, and buying it on the day of a downgrade is expensive. It moves the exposure rather than removing it.</div></li>
       <li data-verdict="bad">Only count AIG's direct losses. It is a huge insurer with plenty of capital, so it will absorb them.<div class="tl-drill-why">That is the "too big to fail" view, and it misses the point of the lesson. What mattered was not AIG's own loss but the distress its failure would induce across everyone connected to it.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 16 September 2008 the Federal Reserve Bank of New York agreed to lend AIG up to $85 billion, and the US government took a stake of about four-fifths of the company. Support later grew well beyond that first loan. When the CDOs were bought out of the swaps that November, the bank counterparties received the full value of the protection they had bought. Their hedges held because of the rescue, not because of AIG.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 16 September 2008 the Federal Reserve Bank of New York agreed to lend AIG up to $85 billion, and the US government took a stake of about four-fifths of the company. Support later grew well beyond that first loan. When the CDOs were bought out of the swaps that November, the bank counterparties received the full value of the protection they had bought. Their hedges held because of the rescue, not because of AIG.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/other20080916a.htm" target="_blank" rel="noopener">Federal Reserve press release, 16 September 2008</a>; SIGTARP, "Factors Affecting Efforts to Limit Payments to AIG Counterparties", 17 November 2009; Reuters, 15–16 September 2008 (AIG downgrades).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

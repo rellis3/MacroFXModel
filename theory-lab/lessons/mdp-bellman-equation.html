@@ -581,6 +581,22 @@
     </div>
     <button type="button" id="mdp-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same three-state book (Flat, Long, Short) with new numbers. Flat can Stay (reward 0) or Open (pay the cost, then Long or Short with probability 0.5 each). Long can Hold (its reward) or Close (pay the cost, back to Flat). Short can Hold (its negative reward) or Close. Each sweep: \(V_{k+1}(s) = \max_a \sum_{s'} P(s'|s,a)[R + \gamma V_k(s')]\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Same rewards as the worked example (Hold Long +1, Hold Short −0.5, cost −0.1) but \(\gamma = 0.8\). Sweep 1 gives \(V_1\) = (Flat 0, Long 1, Short −0.1). Sweep 2: Long \(= 1 + 0.8(1) = 1.8\); Short \(= \max(-0.5 + 0.8(-0.1), -0.1) = -0.1\). Flat's Open branch is \(0.5(-0.1 + 0.8 \times 1) + 0.5(-0.1 + 0.8 \times (-0.1))\), so \(V_2(\text{Flat}) =\) <span class="tl-blank" data-answer="0.26" data-tol="0.002"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\gamma = 0.9\), Hold Long +2, Hold Short −1, cost −0.2. Sweep 1 gives (Flat 0, Long 2, Short −0.2). Sweep 2: \(V_2(\text{Long}) =\) <span class="tl-blank" data-answer="3.8" data-tol="0.002"></span> and \(V_2(\text{Flat}) =\) <span class="tl-blank" data-answer="0.61" data-tol="0.002"></span>. Once the policy settles (Open, Hold Long, Close Short), Long's value solves \(V = 2 + 0.9V\): \(V^*(\text{Long}) =\) <span class="tl-blank" data-answer="20" data-tol="0.01"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\gamma = 0.95\), Hold Long +0.5, Hold Short −0.3, cost −0.05, with the settled policy Open, Hold Long, Close Short. Solve the three equations exactly: \(V^*(\text{Long}) =\) <span class="tl-blank" data-answer="10" data-tol="0.01"></span>; \(V^*(\text{Flat}) =\) <span class="tl-blank" data-answer="8.522" data-tol="0.005"></span>; \(V^*(\text{Short}) =\) <span class="tl-blank" data-answer="8.046" data-tol="0.005"></span>. (Hint: \(y = -0.05 + 0.95x\) and \(x = -0.05 + 0.475(10 + y)\).)</p>
+    </div>
+  </div>
 
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>

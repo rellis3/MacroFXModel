@@ -27,7 +27,6 @@
       <p class="sl-lede">A plain recurrent network reads a sequence one step at a time, carrying a hidden state forward as a running summary of everything relevant it has seen — in principle, arbitrarily far back. In practice, training that network multiplies the same gradient signal by itself at every single step, and it vanishes long before "arbitrarily far back" becomes real. LSTM and GRU cells exist to fix exactly that, with an explicit, gated pathway that lets information — and gradient — survive the trip.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -419,7 +418,6 @@
         <div class="sl-quiz-explain">Attention supersedes gated RNNs specifically for long-sequence problems, because it lets every output position look directly at every input position. That doesn't erase the LSTM's genuine strengths for shorter sequences, streaming or online settings, and lower-compute environments — "superseded for long sequences" and "obsolete everywhere" are different claims.</div>
       </div>
     </section>
-
 
     <section class="sl-slide sl-vark" data-slide="16">
 

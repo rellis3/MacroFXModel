@@ -594,6 +594,23 @@
     <button type="button" id="kf-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>One predict/update step, \(H_t = 1\): \(P_{t\mid t-1} = P + Q\), gain \(K = P_{t\mid t-1}/(P_{t\mid t-1} + R)\), estimate \(\hat{x} + K(y - \hat{x})\), uncertainty \((1 - K)P_{t\mid t-1}\). New inputs each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Prior \(\hat{x} = 0.90\), \(P = 0.0250\), \(Q = 0.0025\), \(R = 0.0200\), reading \(y = 1.00\). Predict: \(P_{t\mid t-1} = 0.0275\). Gain: \(0.0275/0.0475 = 0.579\). Estimate: \(0.90 + 0.579 \times 0.10 = 0.958\). Posterior uncertainty \((1 - 0.579) \times 0.0275 =\) <span class="tl-blank" data-answer="0.01158" data-tol="0.0001"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Prior \(\hat{x} = 2.00\), \(P = 0.0100\), \(Q = 0.0010\), \(R = 0.0050\), reading \(y = 1.88\). Predict: \(P_{t\mid t-1} = 0.0110\). Gain \(K =\) <span class="tl-blank" data-answer="0.6875" data-tol="0.002"></span>; new estimate <span class="tl-blank" data-answer="1.9175" data-tol="0.001"></span>; posterior uncertainty <span class="tl-blank" data-answer="0.00344" data-tol="0.00005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Prior \(\hat{x} = 0.50\), \(P = 0.0040\), \(Q = 0.0005\), \(R = 0.0090\), reading \(y = 0.62\). \(P_{t\mid t-1} =\) <span class="tl-blank" data-answer="0.0045" data-tol="0.00005"></span>; \(K =\) <span class="tl-blank" data-answer="0.3333" data-tol="0.002"></span>; estimate <span class="tl-blank" data-answer="0.54" data-tol="0.0005"></span>; uncertainty <span class="tl-blank" data-answer="0.003" data-tol="0.00005"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Kalman-filtered hedge ratio vs. noisy daily observations</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of noisy hedge-ratio observations over time, with a smooth Kalman-filtered estimate line threading through them and a shaded uncertainty band that starts wide on the left and narrows toward the right as more observations accumulate">
@@ -916,6 +933,7 @@
     </div>
     <p class="tl-fits-why"><strong>Why you'd care:</strong> any hedge ratio or beta you trade with drifts, and this tracks it smoothly with an honest error bar instead of a jumpy fixed window.</p>
   </nav>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../mve.html">Market Valuation Engine</a> can fuse its fair-value estimates with a Kalman state-space filter (pick "Kalman SSM"): the same predict/update step, run on fair value rather than a hedge ratio.</div><!-- DESK:END -->
 
   <div class="tl-footer-nav">
     <a href="hidden-markov-models.html">← Hidden Markov Models &amp; Regime Detection</a>

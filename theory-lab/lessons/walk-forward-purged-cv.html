@@ -540,6 +540,23 @@
     <button type="button" id="wf-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Count the rows a purge and embargo scheme removes. Backward purge: the last \(H\) training rows before \(T\). Forward purge: the first \(w-1\) rows after the test window. Training resumes on day \(T + h + (w-1) + e\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(w = 10\), \(H = 3\), \(T = 1000\), \(h = 50\), \(e = 5\). Backward purge: days 997&ndash;999, 3 rows. Forward purge: days 1050&ndash;1058, 9 rows. Embargo: days 1059&ndash;1063. Training resumes on day <span class="tl-blank" data-answer="1064" data-tol="0"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(w = 30\), \(H = 10\), \(T = 800\), \(h = 200\), \(e = 20\). The backward purge removes <span class="tl-blank" data-answer="10" data-tol="0"></span> rows starting at day 790. The forward purge removes <span class="tl-blank" data-answer="29" data-tol="0"></span> rows. Training resumes on day <span class="tl-blank" data-answer="1049" data-tol="0"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(w = 40\), \(H = 8\), \(T = 600\), \(h = 150\), \(e = 15\). First backward-purged day <span class="tl-blank" data-answer="592" data-tol="0"></span>; last forward-purged day <span class="tl-blank" data-answer="788" data-tol="0"></span>; training resumes on day <span class="tl-blank" data-answer="804" data-tol="0"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A real-world trading scenario</div>
@@ -647,6 +664,7 @@
     "wins" scored before entry. Before believing a curve, audit what fraction of candidates each filter silently dropped and
     what the engine could see at decision time.</span>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../honest-forecast-harness.html">Honest Forecast Harness</a> runs a true in-sample / out-of-sample split with costs and tells you to ignore out-of-sample results on fewer than 30 trades; it is the single-split version of the discipline in this lesson.</div>
   <!-- DESK:END -->
 
   <!-- WB:walk_forward_purged_cv:START -->

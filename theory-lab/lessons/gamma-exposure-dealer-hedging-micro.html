@@ -27,7 +27,6 @@
       <p class="sl-lede">Every option a dealer sells to the public leaves the dealer needing to rehedge continuously as price moves — and gamma is exactly the rate at which that rehedging has to happen. Sum it across an entire strike ladder and it turns into dealer gamma exposure (GEX): a real, formula-derived read on how much forced buying or selling a given move will trigger, which direction that flow pushes the market, and the price level — the gamma-flip — where the pressure can flip from calming things down to speeding them up.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -289,7 +288,7 @@
       </div>
       <div class="sl-calc-steps">
         <div>T = <b id="gcurve-t-val">0.0822</b>y</div>
-        <div>Peak Γ at K = $100 ≈ <b id="gcurve-g-val">0.0696</b> per $1 move</div>
+        <div>Peak Γ at K = $100 ≈ <b id="gcurve-g-val">0.0695</b> per $1 move</div>
       </div>
       <p class="sl-p">This is why the final trading day before expiry behaves so differently from the two weeks before it: Γ ∝ 1/√T, so shrinking T matters disproportionately more once T is already small. It's also why a large near-dated ATM strike can move a book's total GEX more than a much larger but far-dated or far-OTM strike — gamma, not size alone, decides how much a strike's OI matters.</p>
     </section>
@@ -436,7 +435,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -451,7 +449,7 @@
       <li data-verdict="good">Cut the position before the close, because the product is short gamma by its own rule and that buying is known in advance.<div class="tl-drill-why">This is the lesson's sign logic applied to a rulebook. Same-sign hedging into one visible window is the amplifying case, and nothing about it is hidden. Getting out before the forced buying lands takes the loss you can see instead of the one you can't size.</div></li>
       <li data-verdict="ok">Keep it, but buy some VIX calls as a hedge.<div class="tl-drill-why">It caps part of the damage, which is better than doing nothing. But you are buying protection after the VIX has already jumped, and you still hold a product that can lose almost everything in one session.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The S&amp;P 500 fell 4.1% and the VIX closed at 37.32, up about 115% in a day, the biggest one-day percentage jump in its history. VIX futures jumped again after the stock market closed, which is when the products' rebalancing purchases were being made. XIV's indicative value fell by more than 90%, enough to trigger a clause letting Credit Suisse redeem the note, and the bank announced the next day that it would. SVXY also lost most of its value, and ProShares later cut its target to −0.5×.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The S&amp;P 500 fell 4.1% and the VIX closed at 37.32, up about 115% in a day, the biggest one-day percentage jump in its history. VIX futures jumped again after the stock market closed, which is when the products' rebalancing purchases were being made. XIV's indicative value fell by more than 90%, enough to trigger a clause letting Credit Suisse redeem the note, and the bank announced the next day that it would. SVXY also lost most of its value, and ProShares later cut its target to −0.5×, effective at the close on 27 February 2018.</p><p class="tl-drill-sources">Sources: <a href="https://www.bis.org/publ/qtrpdf/r_qt1803t.htm">BIS Quarterly Review, March 2018, “The equity market turbulence of 5 February: the role of exchange-traded volatility products”</a>; Credit Suisse media release, 6 Feb 2018 (XIV acceleration event); <a href="https://www.proshares.com/funds/svxy.html">ProShares SVXY fund page (objective change, 27 Feb 2018)</a>; <a href="https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv">Cboe VIX daily history</a> (17.31 on 2 Feb, 37.32 on 5 Feb 2018); <a href="https://fred.stlouisfed.org/series/SP500">S&amp;P 500 daily closes (FRED, SP500)</a> (−4.1% on 5 Feb 2018).</p></div>
   </div>
 
     </section>

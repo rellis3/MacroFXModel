@@ -32,7 +32,6 @@
       <p class="sl-lede">Heston's stochastic variance can shape a smile reasonably well — until you get to short-dated options, where real markets show a skew far steeper than smooth diffusion alone can build in time. Bates (1996) staples a Merton-style jump term straight onto Heston's own price process. No new machinery here: two models this Theory Lab already covers in full, combined into one.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -239,7 +238,7 @@
         <input type="range" class="sl-slider" id="bm-lambda-slider" min="0" max="8" step="0.5" value="3">
         <div class="sl-sliderhead"><span>Jump size (combined |μ_J| and σ_J effect)</span><span class="sl-live" id="bm-size-val">size = 4.0</span></div>
         <input type="range" class="sl-slider" id="bm-size-slider" min="0" max="8" step="0.5" value="4">
-        <div class="sl-note" id="bm-chart-note">Set both sliders to 0 and watch the purple and green curves collapse onto the blue one — no jumps means Bates IS Heston.</div>
+        <div class="sl-note" id="bm-chart-note">Because cumulants add, Bates’ wing curvature (95) is always exactly Heston’s (25) plus the jump’s (70).</div>
       </div>
     </section>
 
@@ -395,7 +394,6 @@
         <div class="sl-quiz-explain">A real market-incompleteness subtlety: jump risk generally can't be replicated by dynamic trading in the underlying alone, so it typically carries its own priced risk premium instead.</div>
       </div>
     </section>
-
 
     <section class="sl-slide sl-vark" data-slide="15">
 
@@ -555,11 +553,15 @@
 
     // Slider position 0..1000 maps log-linearly from 1 day to 400 days.
     var MIN_DAYS = 1, MAX_DAYS = 400;
+    var ONE_WEEK = 365 / 52; // the lesson's 1-week horizon is T = 1/52 year
+    var DEFAULT_POS = null; // slider position that stands for exactly 1 week
     function sliderToDays(pos){
+      if (pos === DEFAULT_POS) return ONE_WEEK;
       var frac = pos / 1000;
       return Math.exp(Math.log(MIN_DAYS) + frac * (Math.log(MAX_DAYS) - Math.log(MIN_DAYS)));
     }
     function daysLabel(days){
+      if (days === ONE_WEEK) return '1 week';
       if (days < 1.5) return Math.round(days) + ' day';
       if (days < 20) return days.toFixed(1) + ' days';
       if (days < 65) return (days/7).toFixed(1) + ' weeks';
@@ -568,6 +570,7 @@
     }
     // Default slider position 0 = 7 days (1 week), matching the worked example.
     tSlider.value = 1000 * (Math.log(7) - Math.log(MIN_DAYS)) / (Math.log(MAX_DAYS) - Math.log(MIN_DAYS));
+    DEFAULT_POS = parseFloat(tSlider.value);
 
     function recompute(){
       var sigma = parseFloat(inputs.sigma.value) / 100;
@@ -603,6 +606,7 @@
     resetBtn.addEventListener('click', function(){
       ids.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
       tSlider.value = 1000 * (Math.log(7) - Math.log(MIN_DAYS)) / (Math.log(MAX_DAYS) - Math.log(MIN_DAYS));
+      DEFAULT_POS = parseFloat(tSlider.value);
       recompute();
     });
     recompute();

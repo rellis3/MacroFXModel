@@ -27,7 +27,6 @@
       <p class="sl-lede">This closes out the category. Lessons 1–4 built a pipeline — ingest raw ticks, clean them, adjust for corporate actions, serve them point-in-time — and each one produces a value that has to live somewhere and be trusted later. This lesson is that layer underneath: how the data gets stored, why two "identical" pipelines quietly drift apart, and why a live strategy's performance can degrade for two completely different reasons that look, on the equity curve, exactly the same.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -397,7 +396,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="16">
 
       <div class="sl-kicker">Your call</div>
@@ -412,7 +410,7 @@
       <li data-verdict="bad">Open on schedule, and if anything misbehaves, roll every server back to the previous version.<div class="tl-drill-why">A rollback of code alone is only safe if the meaning of every flag rolls back with it. Here the old code would read the new flag as "run the retired function", so a rollback spreads the fault instead of removing it.</div></li>
       <li data-verdict="ok">Open on schedule but with tight order-rate and position limits on the router.<div class="tl-drill-why">Limits shrink the damage, which is worth a lot. But you would still be trading on a version mismatch you were warned about, and hoping the limits catch whatever it does.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Knight Capital opened on schedule. The new code had reached seven of eight servers; on the eighth, the reused flag still started the old Power Peg function, which could no longer track fills and kept sending orders. The error emails were not acted on. Staff then removed the new code from the seven good servers, which made all eight behave like the stale one. In about 45 minutes the router produced more than 4 million executions in 154 stocks. The loss was about $440 million by the firm's own estimate; the SEC's 2013 order put it at more than $460 million and fined Knight $12 million. Knight needed emergency outside capital within days and was later acquired.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Knight Capital opened on schedule. The new code had reached seven of eight servers; on the eighth, the reused flag still started the old Power Peg function, which could no longer track fills and kept sending orders. The error emails were not acted on. Staff then removed the new code from the seven good servers, which made all eight behave like the stale one. In about 45 minutes the router produced more than 4 million executions in 154 stocks. The loss was about $440 million by the firm's own estimate; the SEC's 2013 order put it at more than $460 million and fined Knight $12 million. Knight needed emergency outside capital within days and was later acquired.</p><p class="tl-drill-sources">Sources: <a href="https://www.sec.gov/files/litigation/admin/2013/34-70694.pdf">SEC order against Knight Capital Americas LLC, Release No. 34-70694, 16 Oct 2013</a>; <a href="https://www.sec.gov/news/press-release/2013-222">SEC press release 2013-222, 16 Oct 2013</a>; Knight Capital Group press release on the trading loss, 2 Aug 2012.</p></div>
   </div>
 
     </section>

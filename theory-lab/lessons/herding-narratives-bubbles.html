@@ -334,6 +334,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The cascade arithmetic from the worked example: the odds after \(d\) revealed signals and your own \(s\) are \((p/q)^{d+s}\), the crowd locks onto the wrong answer with probability \(q^2/(p^2+q^2)\), and on average the outcome is settled by \(2/(p^2+q^2)\) people. New signal accuracies each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(p = 0.8\), so \(q = 0.2\). Then \(q^2 = 0.04\), \(p^2 = 0.64\) and \(p^2 + q^2 = 0.68\). The chance of a wrong cascade is \(0.04/0.68 =\) <span class="tl-blank" data-answer="5.88" data-tol="0.01" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(p = 0.65\), so \(q = 0.35\), \(q^2 = 0.1225\) and \(p^2 = 0.4225\). Find \(p^2 + q^2\) <span class="tl-blank" data-answer="0.545" data-tol="0.001"></span>, the wrong-cascade chance <span class="tl-blank" data-answer="22.48" data-tol="0.02" data-unit="%"></span> and the expected number of people before the cascade starts <span class="tl-blank" data-answer="3.67" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(p = 0.75\). The first two people both passed (\(d = -2\)) and your own signal says Good (\(s = +1\)). Find your odds of Good <span class="tl-blank" data-answer="0.333" data-tol="0.002"></span>, the wrong-cascade chance <span class="tl-blank" data-answer="10" data-tol="0.02" data-unit="%"></span> and the expected number of people before a cascade <span class="tl-blank" data-answer="3.2" data-tol="0.01"></span>. Do you buy or pass?</p>
+    </div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>From cascades to bubbles: stories, stages and leverage</h2>
 
@@ -517,7 +534,7 @@
     <span><strong>Can a bubble's top be timed?</strong> Nothing here tests it, and the honest base rate from history
     is discouraging. Tiger closed within weeks of the 2000 top after years of being right on valuation, and the
     desk's own crowding measures don't time the turn. What the evidence supports is positioning (know how
-    concentrated your exposure is), not timing.</span>
+    concentrated your exposure is), not timing.<div class="tl-howtotest"><strong>How to test it:</strong> on daily closes for the six equity indices and the FX majors since 2000, flag a "run-up" when the 12-month return is in the top 5% of that series' own history, keeping one event per 60 sessions. Measure the next 60 sessions' return and worst drawdown after each flag against controls drawn from the same years, and against the unconditional 60-session drift. Fix the gate in advance: the forward return must be negative, with a 95% interval clear of zero, in both halves of the sample and after a two-basis-point cost for the short; anything less is a null.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -577,6 +594,7 @@
     </p>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../market-view.html">Market View</a> plots single-stock dispersion against the VIX in its market-structure tile, the crowded-market shape tested above; read it as a description of how crowded the tape is, not as a timing alarm.</div><!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -602,7 +620,7 @@
       <li data-verdict="ok">Stay out of tech entirely and stick to your value book.<div class="tl-drill-why">It avoids both the short squeeze and the crash, which is sound. But years of lagging a booming index carry their own risk when clients judge you on recent results, and that risk can close a fund before the analysis is proved right.</div></li>
       <li data-verdict="bad">Buy the tech leaders on margin. The crowd cannot all be wrong.<div class="tl-drill-why">This joins a cascade with borrowed money. You add no information of your own, and the leverage that forces buying on the way up forces selling on the way down.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Markets wobbled for a day, and the Nasdaq Composite then nearly quadrupled over the next three-plus years. Julian Robertson's Tiger Management, a value investor that would not buy the technology story, suffered heavy losses and client withdrawals, and at the end of March 2000 Robertson announced he was closing the funds. The Nasdaq had closed at its peak, 5,048.62, on 10 March 2000. By 9 October 2002 it closed at 1,114.11, a fall of about 78%, and it did not close above its 2000 peak again until 2015. The analysis was right; the timing was what cost him.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Markets wobbled for a day, and the Nasdaq Composite then nearly quadrupled over the next three-plus years. Julian Robertson's Tiger Management, a value investor that would not buy the technology story, suffered heavy losses and client withdrawals, and at the end of March 2000 Robertson announced he was closing the funds. The Nasdaq had closed at its peak, 5,048.62, on 10 March 2000. By 9 October 2002 it closed at 1,114.11, a fall of about 78%, and it did not close above its 2000 peak again until 2015. The analysis was right; the timing was what cost him.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/boarddocs/speeches/1996/19961205.htm">Alan Greenspan, “The Challenge of Central Banking in a Democratic Society”, Federal Reserve, 5 Dec 1996</a>; <a href="https://hedgefundalpha.com/investor-letters/archives-julian-robertson-closing-letter-investors/">Julian Robertson, letter to Tiger Management limited partners, 30 Mar 2000</a>; <a href="https://fred.stlouisfed.org/series/NASDAQCOM">Nasdaq Composite daily closes (FRED, NASDAQCOM)</a> (1,300.12 on 5 Dec 1996; 5,048.62 on 10 Mar 2000; 1,114.11 on 9 Oct 2002; first close above the peak on 23 Apr 2015).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

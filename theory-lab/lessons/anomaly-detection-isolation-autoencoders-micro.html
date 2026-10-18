@@ -27,7 +27,6 @@
       <p class="sl-lede">The earlier lesson on data cleaning caught bad ticks with a rolling median/MAD threshold — a fast, honest, deliberately univariate rule that watches one series at a time. This lesson generalizes that idea: Isolation Forest and autoencoders let a model learn "this doesn't look like the rest" across many variables at once, catching the anomalies that only show up in a <em>combination</em> of features, none of which looks unusual on its own.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -442,7 +441,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="15">
 
       <div class="sl-kicker">Your call</div>
@@ -457,7 +455,7 @@
       <li data-verdict="bad">Buy the move. A score this high means the market is mispriced.<div class="tl-drill-why">Nothing about an anomaly score implies the pattern is profitable or repeatable. It describes rarity relative to history. It is not a forecast of edge.</div></li>
       <li data-verdict="ok">Retrain the detector on today's data so it stops flagging everything.<div class="tl-drill-why">Sensible later, once the new regime is understood. A model trained on the calm, floor-defended regime will keep flagging the new one. But retraining in the middle of the event does not answer today's question: are these ticks real?</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 15 January 2015 the Swiss National Bank announced it was abandoning the 1.20 minimum exchange rate for EUR/CHF. The franc jumped and EUR/CHF traded well below 1.00 within minutes. The ticks were unusual and entirely real. A detector trained on the floor years was right that nothing like it had been seen, and a pipeline that equated "anomalous" with "wrong" would have deleted some of the most important prints of that year.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 15 January 2015 the Swiss National Bank announced it was abandoning the 1.20 minimum exchange rate for EUR/CHF. The franc jumped and EUR/CHF traded well below 1.00 within minutes. The ticks were unusual and entirely real. A detector trained on the floor years was right that nothing like it had been seen, and a pipeline that equated "anomalous" with "wrong" would have deleted some of the most important prints of that year.</p><p class="tl-drill-sources">Sources: <a href="https://www.bis.org/review/r150116a.htm">Thomas Jordan, SNB press conference remarks on discontinuing the minimum exchange rate, 15 January 2015 (BIS reprint)</a>; Swiss National Bank press release, "Swiss National Bank discontinues minimum exchange rate and lowers interest rate to –0.75%", 15 January 2015.</p></div>
   </div>
 
     </section>
@@ -554,7 +552,8 @@
     var DEFAULTS = { x1: 2.10, xh1: 2.05, x2: 1.40, xh2: 1.35, x3: 0.90, xh3: 2.80 };
     var fields = [x1, xh1, x2, xh2, x3, xh3];
 
-    function fmt(n){ return n.toFixed(3); }
+    // Round away binary noise first: (1.40 - 1.35)^2 is 0.0024999..., which toFixed(3) would show as 0.002.
+    function fmt(n){ return (Math.round(n * 1e9) / 1e9).toFixed(3); }
 
     function recompute(){
       var v = fields.map(function(el){ return parseFloat(el.value); });

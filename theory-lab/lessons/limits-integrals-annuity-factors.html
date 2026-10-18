@@ -663,6 +663,23 @@
     <button type="button" id="lim-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The annuity factor \(A(n,y) = \big[1 - (1+y)^{-n}\big]/y\), its modified duration \(D_{mod} = 1/y - n/\big((1+y)[(1+y)^n - 1]\big)\), and \(D_{Mac} = D_{mod}(1+y)\), for $1 a year. New inputs each round; give four decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(n = 3\), \(y = 0.05\). \((1.05)^{-3} = 0.86384\), so \(A = 0.13616/0.05 = 2.7232\). \((1.05)^3 - 1 = 0.157625\), so \(D_{mod} = 20 - 3/(1.05 \times 0.157625) = 20 - 18.1262 = 1.8738\) years. Then \(D_{Mac} =\) <span class="tl-blank" data-answer="1.9675" data-tol="0.0005" data-unit="years"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(n = 10\), \(y = 0.03\). The last discount factor is \((1.03)^{-10} = 0.74409\). \(A =\) <span class="tl-blank" data-answer="8.5302" data-tol="0.0005"></span>. With \((1.03)^{10} - 1 = 0.34392\), \(D_{mod} =\) <span class="tl-blank" data-answer="5.1034" data-tol="0.001" data-unit="years"></span> and \(D_{Mac} =\) <span class="tl-blank" data-answer="5.2565" data-tol="0.001" data-unit="years"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(n = 7\), \(y = 0.06\). \(A =\) <span class="tl-blank" data-answer="5.5824" data-tol="0.0005"></span>; \(D_{mod} =\) <span class="tl-blank" data-answer="3.5543" data-tol="0.001" data-unit="years"></span>; \(D_{Mac} =\) <span class="tl-blank" data-answer="3.7676" data-tol="0.001" data-unit="years"></span>. Check: the Macaulay duration sits well inside the 7-year life, as it must for a level stream.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>

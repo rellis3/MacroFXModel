@@ -27,7 +27,6 @@
       <p class="sl-lede">The <a href="entropy-kl-mutual-information.html" style="color:var(--blue);font-weight:600;text-decoration:none">previous lesson</a> built mutual information as a nonlinear generalization of correlation. The <a href="arima-var-micro.html" style="color:var(--blue);font-weight:600;text-decoration:none">ARIMA &amp; VAR guide</a>'s Granger causality section then asked a directional question with that same linear toolkit: does X's past significantly improve a linear forecast of Y? Transfer entropy asks the identical question — model-free, with mutual information standing in for a regression's R² — and comes bundled with the same hard warning either way: a directional signal is not proof of causation.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -295,7 +294,7 @@
         </svg></div>
         <div class="sl-sliderhead"><span>Confounder strength (how hard Z drives both X and Y)</span><span class="sl-live" id="conf-sval">Z strength = 40%</span></div>
         <input type="range" class="sl-slider" id="conf-slider" min="0" max="95" step="5" value="40">
-        <div class="sl-verdict" style="margin-top:12px">Illustrative apparent TE(X→Y)-style reading: <b id="conf-te">0.047</b> bits — computed only from Z's shared pull on both series, using the same Gaussian mutual-information formula that makes transfer entropy exactly equal Granger causality in the linear case.</div>
+        <div class="sl-verdict" style="margin-top:12px">Illustrative apparent TE(X→Y)-style reading: <b id="conf-te">0.019</b> bits — computed only from Z's shared pull on both series, using the same Gaussian mutual-information formula that makes transfer entropy exactly equal Granger causality in the linear case.</div>
         <div class="sl-note">This is a simplified, illustrative stand-in for a full transfer-entropy calculation, not the exact worked-example formula from the slide above — its only job is to show the reading rise as Z's strength rises, while the real causal coefficient between X and Y never leaves zero.</div>
       </div>
     </section>
@@ -402,7 +401,6 @@
         <div class="sl-quiz-explain">A linear regression estimates a handful of coefficients. Transfer entropy needs the joint distribution's full shape across every relevant lag — a much larger, harder estimation problem that grows fast as the lag length grows.</div>
       </div>
     </section>
-
 
     <section class="sl-slide sl-vark" data-slide="15">
 

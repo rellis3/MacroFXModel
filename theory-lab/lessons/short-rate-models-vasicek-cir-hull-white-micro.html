@@ -27,7 +27,6 @@
       <p class="sl-lede">Vasicek, CIR, and Hull-White are the standard textbook progression of one-factor interest-rate models — and each one is a direct, named application of the SDE machinery this sequence just built. Vasicek is literally <code>ou-mean-reversion.html</code>'s Ornstein-Uhlenbeck process, renamed and pointed at the short rate. CIR is where that earlier sequence's Lipschitz warning stops being abstract. Hull-White is the practical fix that lets a model actually agree with the yield curve built in <code>bond-pricing-ytm.html</code> and <code>yield-curve-construction.html</code>. Three models, each solving the last one's problem.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -386,7 +385,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -401,7 +399,8 @@
       <li data-verdict="good">Move to models that allow negative rates: quote volatility in normal, basis-point terms and use a Gaussian model such as Hull-White fitted to today's curve, while remembering it puts no floor anywhere.<div class="tl-drill-why">This matches the regime you are in and prices the negative strike. The caveat matters too: a Gaussian model gives real probability to −3%, which the data never showed.</div></li>
       <li data-verdict="ok">Patch the lognormal model with a fixed shift, so it allows rates down to minus the shift.<div class="tl-drill-why">Defensible, and the market did exactly this. But the shift is a number someone picks, not one estimated from data, and if rates fall past it the model breaks again.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The ECB took its deposit rate in steps to −0.50% by September 2019. Switzerland and Sweden went negative in 2015 and the Bank of Japan in 2016. The market moved to normal-volatility quoting and to shifted models. Rates found a soft floor, with the deepest major policy rates around −0.75%, and stayed there for years. Then the ECB raised its deposit rate to zero in July 2022 and to 4.00% by September 2023.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The ECB took its deposit rate in steps to −0.50% by September 2019. Switzerland and Sweden went negative in 2015 and the Bank of Japan in 2016. The market moved to normal-volatility quoting and to shifted models. Rates found a soft floor, with the deepest major policy rates around −0.75%, and stayed there for years. Then the ECB raised its deposit rate to zero in July 2022 and to 4.00% by September 2023.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://www.ecb.europa.eu/press/pr/date/2014/html/pr140605_3.en.html" target="_blank" rel="noopener">ECB press release, 5 June 2014</a>; <a href="https://www.ecb.europa.eu/stats/policy_and_exchange_rates/key_ecb_interest_rates/html/index.en.html" target="_blank" rel="noopener">ECB key interest rates, history</a>; Swiss National Bank press release, 15 January 2015 (sight deposit rate −0.75%).</p></div>
   </div>
 
     </section>

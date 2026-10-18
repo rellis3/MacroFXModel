@@ -448,6 +448,7 @@
     rather than a slope against another price series, but the underlying
     least-squares arithmetic is identical.<!-- DESK:END -->
   </p>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../correlations.html">Correlation Lab</a> shows the pairwise correlation matrix, rolling pair correlations and factor betas, so you can watch a correlation move from one window to the next.</div><!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -597,6 +598,23 @@
     linear relationship with \(x\); the remaining 0.3% is noise the line
     doesn't capture.
     </p>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same chain as the worked example, on new data: covariance (divide by \(n\)), \(\hat\beta=\mathrm{Cov}(x,y)/\mathrm{Var}(x)\), \(\hat\alpha=\bar y-\hat\beta\bar x\), then \(r=\mathrm{Cov}(x,y)/(\sigma_x\sigma_y)\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(x=[1,2,3,4]\), \(y=[3.2,4.9,7.1,8.8]\). Means: \(\bar x=2.5\), \(\bar y=6.0\). Deviations: \(x\): \([-1.5,-0.5,0.5,1.5]\), \(y\): \([-2.8,-1.1,1.1,2.8]\). The products add to 9.5, so \(\mathrm{Cov}=2.375\). \(\mathrm{Var}(x)=1.25\), so \(\hat\beta=\) <span class="tl-blank" data-answer="1.9" data-tol="0.005"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(x=[0,1,2,3,4]\), \(y=[1.0,2.8,3.1,5.2,5.9]\). \(\bar x=2.0\), \(\bar y=3.6\). The y-deviations are \([-2.6,-0.8,-0.5,1.6,2.3]\), so the products with the x-deviations \([-2,-1,0,1,2]\) add to 12.2 and \(\mathrm{Cov}=\) <span class="tl-blank" data-answer="2.44" data-tol="0.005"></span>. With \(\mathrm{Var}(x)=2\), \(\hat\beta=\) <span class="tl-blank" data-answer="1.22" data-tol="0.005"></span> and \(\hat\alpha=\) <span class="tl-blank" data-answer="1.16" data-tol="0.005"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(x=[2,3,4,5,6]\), \(y=[9.0,7.5,7.8,5.1,4.6]\): a falling relationship. \(\mathrm{Cov}(x,y)=\) <span class="tl-blank" data-answer="-2.24" data-tol="0.005"></span>, \(\hat\beta=\) <span class="tl-blank" data-answer="-1.12" data-tol="0.005"></span>, \(\hat\alpha=\) <span class="tl-blank" data-answer="11.28" data-tol="0.01"></span>, and \(r=\) <span class="tl-blank" data-answer="-0.9446" data-tol="0.0005"></span> (use \(\mathrm{Var}(y)=2.812\)).</p>
+    </div>
   </div>
 
   <div class="tl-box example">
@@ -809,7 +827,8 @@
       <li data-verdict="ok">Re-fit the slope over a longer window that includes the years before the floor.<div class="tl-drill-why">Mixing regimes gives a different, less flattering slope, which is a useful warning. But it is still a summary of the past. It does not tell you what happens on the day the floor goes.</div></li>
       <li data-verdict="bad">Increase the position. The hedge removes almost all the risk.<div class="tl-drill-why">A hedge is only as good as the relationship behind it. Leaning harder on a relationship that a single policy decision could end is exactly backwards.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Thursday 15 January 2015 the Swiss National Bank scrapped the 1.20 floor without warning. Within minutes the franc surged against both the euro and the dollar, and EUR/CHF traded far below 1.10 that day. The lockstep the regression had measured for three years broke in a morning. A slope fitted over a window describes that window; it is not a law.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Thursday 15 January 2015 the Swiss National Bank scrapped the 1.20 floor without warning. Within minutes the franc surged against both the euro and the dollar, and EUR/CHF traded far below 1.10 that day. The lockstep the regression had measured for three years broke in a morning. A slope fitted over a window describes that window; it is not a law.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://www.snb.ch/en/mmr/reference/pre_20150115/source/pre_20150115.en.pdf">Swiss National Bank press release, 15 Jan 2015</a>; <a href="https://www.snb.ch/en/mmr/reference/pre_20110906/source/pre_20110906.en.pdf">Swiss National Bank press release setting the 1.20 minimum, 6 Sep 2011</a>; JPMorgan Chase Institute, "Timing central bank announcements" (EUR/CHF from 1.201 to 0.895 in about 24 minutes).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>

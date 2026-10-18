@@ -489,6 +489,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+<div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+<p>Merton's fraction of wealth in the risky asset, \(f^* = \mu/(\gamma\sigma^2)\), where \(\mu\) is the excess return and \(\gamma\) the risk aversion. Full (log-utility) Kelly is the \(\gamma = 1\) case. Give fractions as decimals (0.625, not 62.5%). New inputs each round.</p>
+<div class="tl-fade-round">
+<h4>Round 1 · one value left to you</h4>
+<p>\(\mu = 0.05\), \(\sigma = 0.20\), so \(\sigma^2 = 0.04\). Full Kelly is \(0.05/0.04 = 1.25\), which is 125% of wealth, so some leverage. An investor with \(\gamma = 2\) holds \(f^* =\) <span class="tl-blank" data-answer="0.625" data-tol="0.002"></span> of wealth.</p>
+</div>
+<div class="tl-fade-round">
+<h4>Round 2 · new inputs, more left to you</h4>
+<p>\(\mu = 0.08\), \(\sigma = 0.30\), \(\gamma = 3\). \(\sigma^2 =\) <span class="tl-blank" data-answer="0.09" data-tol="0.0005"></span>; full Kelly \(=\) <span class="tl-blank" data-answer="0.8889" data-tol="0.002"></span>; \(f^* =\) <span class="tl-blank" data-answer="0.2963" data-tol="0.002"></span>, exactly one third of Kelly.</p>
+</div>
+<div class="tl-fade-round">
+<h4>Round 3 · on your own</h4>
+<p>\(\mu = 0.03\), \(\sigma = 0.12\), \(\gamma = 1.5\). \(\sigma^2 =\) <span class="tl-blank" data-answer="0.0144" data-tol="0.00005"></span>; full Kelly \(=\) <span class="tl-blank" data-answer="2.0833" data-tol="0.003"></span>; \(f^* =\) <span class="tl-blank" data-answer="1.3889" data-tol="0.003"></span>. Is that more or less than 100% of wealth? What does that say about borrowing?</p>
+</div>
+</div>
+
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Optimal allocation f* vs. risk-aversion parameter γ, at fixed μ, σ</div>
     <div class="tl-predict" data-answer="25" data-tol="2" data-unit="%">
@@ -660,12 +677,15 @@
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "sizing a validated sleeve at its Merton fraction, or a fraction \(1/\gamma\) of it,
     gives the best growth for the drawdown on this desk's data."</strong> No sizing rule has been scored against
-    alternatives here. A fair test would estimate \(\mu\) and \(\sigma\) walk-forward with no look-ahead, size at
-    \(\gamma = 1, 2, 4\) and at a fixed-risk baseline, charge realistic costs including the rebalancing trades, and
-    compare realised growth and worst drawdown. With the few dozen to hundred trades a slow macro sleeve produces, the
-    \(\mu\) estimate will be noisy, which is itself an argument for \(\gamma\) well above 1.</span>
+    alternatives here.<div class="tl-howtotest"><strong>How to test it:</strong> take one validated daily FX sleeve and estimate \(\mu\) and
+\(\sigma\) walk-forward from the prior 252 days only, with no look-ahead. Size it at \(\gamma = 1, 2\) and \(4\) and at a fixed-risk
+baseline, charge spread and financing on the rebalancing trades, and compare realised log growth and worst drawdown.
+Fixed in advance: a Merton size passes only if it beats the fixed-risk baseline on growth per unit of drawdown with a bootstrap
+95% interval above zero. With the few dozen to hundred trades a slow macro sleeve produces, the \(\mu\) estimate will be
+noisy, which is itself an argument for \(\gamma\) well above 1.</div></span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../position-sizer.html">Position sizer</a> sizes each trade to risk a fixed % of equity off the vol forecast, a fixed-risk rule to hold against the Merton fraction in the test above.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -767,7 +787,7 @@
       <li data-verdict="good">Bring the leverage down now, in sizes the market can absorb, and take the loss while you still choose the timing.<div class="tl-drill-why">Above a fraction of 1, the constant-fraction rule sells into losses, and the sale scales with the fraction minus 1. Cutting the fraction early shrinks every future forced sale. It costs money today, but it keeps you in charge of the trades instead of your lenders.</div></li>
       <li data-verdict="ok">Follow the rule to the letter: after each 1% fall, sell a quarter of the book at whatever bid is there.<div class="tl-drill-why">It is what the model prescribes, but the model assumes you trade instantly and for free at the quoted price. When the market knows what you hold, a sale that big moves prices against you and deepens the next mark.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Long-Term Capital Management, where Merton himself was a partner, could not rebalance at quoted prices. Its spreads widened together, lenders demanded more collateral, and because the market knew roughly what it held, every sale moved prices against it. By late September it had lost about $4.6 billion. On 23 September 1998 the New York Fed brought together fourteen banks and brokers, who put in about $3.6 billion to take over the portfolio and wind it down. Many of the trades converged later, after the fund could no longer hold them.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Long-Term Capital Management, where Merton himself was a partner, could not rebalance at quoted prices. Its spreads widened together, lenders demanded more collateral, and because the market knew roughly what it held, every sale moved prices against it. By late September it had lost about $4.6 billion. On 23 September 1998 the New York Fed brought together fourteen banks and brokers, who put in about $3.6 billion to take over the portfolio and wind it down. Many of the trades converged later, after the fund could no longer hold them.</p><p class="tl-drill-sources">Sources: <a href="https://www.cftc.gov/sites/default/files/tm/tmhedgefundreport.htm">President's Working Group on Financial Markets, Hedge Funds, Leverage, and the Lessons of Long-Term Capital Management, April 1999</a> (capital of $4.8 billion at the start of 1998, more than $125 billion of assets on 31 August, fourteen firms in the consortium of 23 September); <a href="https://www.federalreserve.gov/boarddocs/testimony/1998/19981001.htm">Alan Greenspan, testimony to the House Banking Committee, 1 October 1998</a>. The $4.6 billion loss is the commonly reported total and is not stated in either document.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

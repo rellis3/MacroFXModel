@@ -525,6 +525,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The same gap between the arithmetic average and what your money did. Ending wealth is the product of the gross returns \(1+R_t\), and the geometric mean is \(g=\big(\prod(1+R_t)\big)^{1/n}-1\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>$100 earns \(+30\%\), then \(-30\%\). The arithmetic average is 0%. After period 1 you hold $130. After period 2 you hold \(130\times0.70=\) <span class="tl-blank" data-answer="91" data-tol="0.05" data-unit="$"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Three periods: \(+20\%,\ -10\%,\ +5\%\). The arithmetic average is \((20-10+5)/3=5\%\). Ending value of $100: <span class="tl-blank" data-answer="113.4" data-tol="0.05" data-unit="$"></span>. The geometric mean \(1.134^{1/3}-1=\) <span class="tl-blank" data-answer="4.281" data-tol="0.01" data-unit="%"></span> per period, below the arithmetic average.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>An index rises 6% one day and falls 6% the next. Index wealth: <span class="tl-blank" data-answer="0.9964" data-tol="0.0002"></span>. A 2× daily fund: \((1+2R_1)(1+2R_2)=\) <span class="tl-blank" data-answer="0.9856" data-tol="0.0002"></span>. A −1× inverse fund: <span class="tl-blank" data-answer="0.9964" data-tol="0.0002"></span>. On this path the 2× fund lost <span class="tl-blank" data-answer="1.44" data-tol="0.02" data-unit="%"></span> of its value although the index lost only 0.36%.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -642,11 +659,16 @@
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: that selling volatility, or holding an inverse-volatility product, earns a
-    dependable carry.</strong> This desk has no ledger entry on short-volatility returns. A fair test would report the
-    compounded (geometric) return rather than the average daily return, on a sample that includes jump sessions such
-    as 5 February 2018 and March 2020, with each product's daily reset and early-redemption terms applied.</span>
+    dependable carry.</strong> This desk has no ledger entry on short-volatility returns. 
+    <div class="tl-howtotest"><strong>How to test it:</strong> take daily returns on a short-volatility product or a
+    synthetic one built from front-month VIX futures (2009 to date), so the sample includes 5 February 2018 and March
+    2020. Report the compounded (geometric) return, the maximum drawdown and the worst single day, with the daily reset
+    and early-redemption terms applied and a borrow and roll cost charged. The baseline is cash plus a buy-and-hold index
+    position at equal drawdown; the gate, fixed in advance: a positive geometric return after costs and a drawdown inside a
+    limit set before the run, with the average daily return not used as the test.</div></span>
   </div>
   <!-- DESK:END -->
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../vix-vol-carry-backtest.html">VIX Vol-Carry Backtester</a> runs a short-volatility strategy against named historical tail-risk windows, which is the compounded-return view this lesson asks for.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -775,7 +797,8 @@
       <li data-verdict="ok">Keep the size, but plan to cut if the VIX rises sharply over several days.<div class="tl-drill-why">A sensible instinct, but it assumes the damage arrives slowly. A daily-reset product can lose almost everything in one session, before any multi-day plan kicks in.</div></li>
       <li data-verdict="bad">Add to it. Volatility drag is a slow, long-run cost, and you only plan to hold for a few weeks.<div class="tl-drill-why">Drag is the slow part of the risk. The fast part is a single jump day far outside the small-move zone, where the drag formula stops applying and the exact product, with its −100% floor, takes over.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> That afternoon the VIX index more than doubled in a single session, its largest one-day percentage rise on record. Credit Suisse's XIV note, built to return the inverse of a VIX-futures index each day, lost more than 90% of its value in one evening. That triggered a clause letting the issuer redeem it, and it was wound up. A similar ProShares fund survived but later cut its target from −1× to −0.5× the daily index.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> That afternoon the VIX index more than doubled in a single session, its largest one-day percentage rise on record. Credit Suisse's XIV note, built to return the inverse of a VIX-futures index each day, lost more than 90% of its value in one evening. That triggered a clause letting the issuer redeem it, and it was wound up. A similar ProShares fund survived but later cut its target from −1× to −0.5× the daily index.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://credit-suisse.com/articles/media-releases/2018/02/en/credit-suisse-announces-event-acceleration-xiv-etn.html">Credit Suisse, "Credit Suisse AG Announces Event Acceleration of its XIV ETNs", 6 Feb 2018</a>; <a href="https://www.etf.com/sections/news/inverse-vix-etn-shuts-down">ETF.com, "Inverse VIX ETN Shuts Down", Feb 2018</a> (VIX up 115.6% in a day; XIV down about 96%); ProShares notice of the SVXY objective change from −1× to −0.5×, effective at the close on 27 Feb 2018.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

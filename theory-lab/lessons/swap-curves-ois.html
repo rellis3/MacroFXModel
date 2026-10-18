@@ -589,6 +589,23 @@
     <button type="button" id="sc-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Value three new annual-pay swaps off a flat OIS curve, to the fixed-rate payer: discount factors, annuity, floating leg \(N(1-DF(n))\), fixed leg \(K N \sum DF\), then \(V_{\text{payer}} = PV_{\text{float}} - PV_{\text{fixed}}\). Type dollar amounts without commas.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Flat 4%, 2 years, \(N = \$5{,}000{,}000\), \(K = 3.8\%\). \(DF(1) = 0.961538\), \(DF(2) = 0.924556\), annuity \(1.886095\). \(PV_{\text{float}} = 5{,}000{,}000 \times (1-0.924556) = \$377{,}219\). \(PV_{\text{fixed}} = 0.038 \times 5{,}000{,}000 \times 1.886095 = \$358{,}358\). So \(V_{\text{payer}} =\) $<span class="tl-blank" data-answer="18861" data-tol="3"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Flat 5%, 2 years, \(N = \$20{,}000{,}000\), \(K = 4.5\%\). \(DF(1) = 0.952381\), \(DF(2) = 0.907029\). The annuity is <span class="tl-blank" data-answer="1.85941" data-tol="0.0001"></span>, \(PV_{\text{float}} =\) $<span class="tl-blank" data-answer="1859410" data-tol="5"></span>, \(PV_{\text{fixed}} = \$1{,}673{,}469\), and \(V_{\text{payer}} =\) $<span class="tl-blank" data-answer="185941" data-tol="10"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Flat 2%, 3 years, \(N = \$10{,}000{,}000\), \(K = 2.5\%\). Find the annuity <span class="tl-blank" data-answer="2.883883" data-tol="0.0002"></span>, \(PV_{\text{float}}\) $<span class="tl-blank" data-answer="576777" data-tol="5"></span>, \(PV_{\text{fixed}}\) $<span class="tl-blank" data-answer="720971" data-tol="10"></span>, and \(V_{\text{payer}}\) $<span class="tl-blank" data-answer="-144194" data-tol="15"></span>. Paying 50bp over par for three years costs about 1.44% of notional.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -714,6 +731,7 @@
     <strong>−0.561 ATR [−0.984, −0.181]</strong> versus control, and the SRF is drawn on <strong>667 of 2,123
     sessions (31%)</strong>.</span>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../rates.html">Rates &amp; Policy</a> shows SOFR against the Fed's floor (IORB), the 99th-percentile repo trade and the repo backstop in use, the SOFR-era gauge this verdict tested.</div>
   <!-- DESK:END -->
 <!-- DESK:START -->  <p>
     What this does not test: a credit spread like LIBOR-OIS, which measured whether banks trusted each other.
@@ -809,7 +827,8 @@
       <li data-verdict="ok">Switch everything to OIS, including the floating-leg forecasts.<div class="tl-drill-why">Right about discounting, wrong about forecasting. The floating legs still pay LIBOR, which is now far above OIS, so forecasting them off OIS understates what you will receive or pay.</div></li>
       <li data-verdict="bad">Read each morning's LIBOR fixing as a clean market price of bank risk and trade the spread off it.<div class="tl-drill-why">LIBOR is a survey of what panel banks say they could borrow at, with few real trades behind it right now, and a bank that answers high signals weakness. The fixing may be flattering the real stress.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The 3-month USD LIBOR-OIS spread peaked at roughly 364bp in October 2008. The industry moved collateralised derivatives to OIS discounting, with LIBOR kept only as the index the floating leg paid. Investigations later found that during the crisis some banks had submitted artificially low rates, and that traders had long asked for favourable fixes. Barclays agreed to pay about $450 million in June 2012 and UBS about $1.5 billion in December 2012. The transaction-based SOFR replaced LIBOR, and the main USD LIBOR panel ended on 30 June 2023.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The 3-month USD LIBOR-OIS spread peaked at roughly 364bp in October 2008. The industry moved collateralised derivatives to OIS discounting, with LIBOR kept only as the index the floating leg paid. Investigations later found that during the crisis some banks had submitted artificially low rates, and that traders had long asked for favourable fixes. Barclays agreed to pay about $450 million in June 2012 and UBS about $1.5 billion in December 2012. The transaction-based SOFR replaced LIBOR, and the main USD LIBOR panel ended on 30 June 2023.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/pubs/bulletin/2009/articles/bankprofit/dlink/fig02.htm" target="_blank" rel="noopener">Federal Reserve Bulletin, 2009, LIBOR-OIS spread chart</a>; Federal Reserve Bank of St. Louis, Monetary Trends, November 2008; CFTC press release, 27 June 2012 (Barclays); US Department of Justice press release, 19 December 2012 (UBS); FCA announcement on LIBOR cessation, 5 March 2021.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -821,7 +840,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The multi-curve framework splits discounting from forecasting</strong> — one curve (OIS) discounts, a separate curve (formerly LIBOR, today e.g. EURIBOR) forecasts floating resets; pre-2008 these were, in effect, one curve, and for a SOFR swap under SOFR collateral they are one again.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"Risk-free" is a practical approximation, not a literal one.</strong> Swap and OIS curves still carry their own collateral-currency and cross-currency basis effects.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The worked example is a deliberate simplification.</strong> A flat curve, single currency, and single CSA/collateral type — real desks maintain separate discount and forecast curves per collateral currency, not one flat number.</span></div>
-    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The SOFR-era stress gauge is null on this desk (funding-stress, NULL).</strong> SOFR above the floor is mostly mid-month tax and settlement dates (12 of 15 episodes), and a drawn SRF preceded a calmer tape (−0.561 ATR). LIBOR itself was a survey that was lowballed in the crisis, which is why it was replaced; a 2008-style credit spread is not what was tested.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The SOFR-era stress gauge found nothing on this desk (funding-stress).</strong> Treat SOFR over the floor as calendar plumbing, not a trading signal; a 2008-style bank credit spread like LIBOR-OIS is not what was tested.</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

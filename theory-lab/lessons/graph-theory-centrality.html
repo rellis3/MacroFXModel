@@ -651,6 +651,23 @@
     <button type="button" id="gt-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Degree and betweenness on new small networks, as in the worked example: count a node's links (normalised by \(n-1\)), count the shortest paths between other pairs that pass through it, then normalise by \((n-1)(n-2)/2\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Five currencies in a line: A–B–C–D–E. The middle node C sits on the shortest path for the pairs (A,D), (A,E), (B,D) and (B,E): a raw betweenness of 4. With \(n = 5\) the denominator is \((5-1)(5-2)/2 = 6\). C's normalised betweenness is \(4/6 =\) <span class="tl-blank" data-answer="0.667" data-tol="0.002"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Two triangles, A–B–C and D–E–F, joined by a single link C–D. Every route from A or B to the other triangle passes through C. Find C's raw betweenness <span class="tl-blank" data-answer="6" data-tol="0.01"></span>, the denominator for \(n = 6\) <span class="tl-blank" data-answer="10" data-tol="0.01"></span> and C's normalised betweenness <span class="tl-blank" data-answer="0.6" data-tol="0.002"></span>. C's degree is 3, so its normalised degree is \(3/5 = 0.6\).</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>A hub H linked to A, B, C and D, with a tail D–E–F hanging off D (\(n = 7\)). Find H's raw betweenness <span class="tl-blank" data-answer="12" data-tol="0.01"></span>, H's normalised betweenness <span class="tl-blank" data-answer="0.8" data-tol="0.002"></span>, D's normalised betweenness (D sits on 8 paths) <span class="tl-blank" data-answer="0.533" data-tol="0.002"></span> and H's normalised degree <span class="tl-blank" data-answer="0.667" data-tol="0.002"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A named scenario</div>

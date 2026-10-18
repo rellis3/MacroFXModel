@@ -494,6 +494,23 @@ goes to: EV card / journal      score it on: ____</div>
     <p style="margin-bottom:0">Fed into the <a href="action-expected-value.html">EV card</a>, 62% is a modest edge on a five-day hold, and its size has to be weighed against costs and the width of that band. The surprise itself, the thing the story leaned on, added nothing.</p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The worked example's route: shrink the narrow class toward the broad rate, \(\hat p = (k + m\,p_0)/(n + m)\), turn \(\hat p\) into odds, multiply by the evidence's likelihood ratio, and turn the odds back into a probability. New inputs each round. Give probabilities in %, odds as decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>The narrow class went up 21 times in 35. The broad rate is \(p_0 = 40\%\), worth \(m = 15\) cases. So \(\hat p = (21 + 15 \times 0.40)/(35 + 15) = 27/50 = 54.0\%\). As odds that is \(0.54/0.46 = 1.174\). Today's evidence has \(\text{LR} = 1.5\), so the posterior odds are \(1.174 \times 1.5 = 1.761\), and the probability is \(1.761/2.761 =\) <span class="tl-blank" data-answer="63.8" data-tol="0.15" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>12 up in 40, broad rate \(p_0 = 25\%\) worth \(m = 20\) cases, evidence with \(\text{LR} = 2\). The shrunk estimate is \(\hat p = 17/60 =\) <span class="tl-blank" data-answer="28.33" data-tol="0.06" data-unit="%"></span>. Its odds are \(0.395\), so the posterior odds are <span class="tl-blank" data-answer="0.7907" data-tol="0.006"></span>, and the probability is <span class="tl-blank" data-answer="44.16" data-tol="0.15" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>30 up in 50, broad rate \(p_0 = 50\%\) worth \(m = 25\) cases, and evidence that points the other way, \(\text{LR} = 0.8\). Shrunk \(\hat p =\) <span class="tl-blank" data-answer="56.67" data-tol="0.06" data-unit="%"></span>; prior odds <span class="tl-blank" data-answer="1.3077" data-tol="0.006"></span>; posterior odds <span class="tl-blank" data-answer="1.0462" data-tol="0.006"></span>; probability <span class="tl-blank" data-answer="51.13" data-tol="0.15" data-unit="%"></span>. A 60% raw count ends near a coin once it is shrunk and the evidence is weighed.</p>
+    </div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>It actually happened: the outside view, ignored</h2>
 
@@ -575,6 +592,8 @@ goes to: EV card / journal      score it on: ____</div>
     <span class="tl-verdict-tag">Desk data: base rate</span>
     <span><strong>Choosing the right comparison class.</strong> The story: after a Fed decision, the first move is later unwound. Compared with non-FOMC days that had a day-0 move of the same size, the share giving back at least half within 20 sessions was the same (2-year 38% vs 39%, 10-year 50% vs 45%, dollar 48% vs 40%, S&amp;P 500 45% vs 51%). A decision-day move has about even odds of being half-undone within a month, the same as any big day. The reference class that mattered was "big days", not "Fed days".</span>
   </div>
+
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../evidence.html">Evidence Book</a> lists every tested claim with its verdict; filter it to "base rate" to see the frequencies this lesson says to write down first.</div><!-- DESK:END -->
 
   <div class="tl-solid red">
     <strong>The trap:</strong> quoting a hit rate on its own. "Followed by a rally 54% of the time", "preceded every recession", "worked 8 of the last 10": each is one half of a likelihood ratio, or a rate with no base to compare against. The desk's rule is that no hit rate gets quoted without its base rate beside it.

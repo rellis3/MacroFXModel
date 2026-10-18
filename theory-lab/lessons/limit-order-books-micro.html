@@ -27,7 +27,6 @@
       <p class="sl-lede">The Market Microstructure lesson treated the spread and price impact as single numbers — one coefficient, one gap. Neither one is the actual object those numbers get read off of: a real limit order book, which is two ladders of resting orders, each level holding a queue, governed by a strict rule about who gets filled first. This deck opens that object up — the ladder, the queue, what a market order does to it, and why the order sitting first in line gets treated completely differently from the one sitting last.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -218,7 +217,7 @@
         <div class="sl-sliderhead"><span>Market buy order size</span><span class="sl-live" id="sweep-qval">Q = 600 units</span></div>
         <input type="range" class="sl-slider" id="sweep-slider" min="0" max="1400" step="25" value="600">
         <div class="sl-calc-steps">
-          <div>Levels touched: <b id="sweep-levels">2 of 3</b> &emsp; Filled: <b id="sweep-filled">600 / 600</b></div>
+          <div>Levels touched: <b id="sweep-levels">3 of 3</b> &emsp; Filled: <b id="sweep-filled">600 / 600</b></div>
           <div>VWAP ≈ <b id="sweep-vwap">1.10058</b> &emsp; Slippage vs 1.1005: <b id="sweep-pips">0.83</b> pips</div>
         </div>
         <div class="sl-note" id="sweep-note">Amber shading is left-aligned within each bar and shows what fraction of that level's queue the order consumed — not a real price axis.</div>
@@ -418,7 +417,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -433,7 +431,7 @@
       <li data-verdict="ok">Split the block into a few smaller market orders a minute apart.<div class="tl-drill-why">Better than one block, because the book gets a moment to refill between clips. But each clip is still a market order into thin depth, and the size you saw may be cancelled before your order arrives.</div></li>
       <li data-verdict="bad">Read the heavy volume as strong buying on news you have not seen, and buy more than the hedge needs.<div class="tl-drill-why">The move had no clear news behind it. Heavy volume from fast traders posting, hitting and replacing small quotes is activity, not information or depth.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Between 9:33 and 9:45 am the 10-year yield fell about 16 basis points and rose straight back, inside a 37-basis-point range for the day. The joint staff report by the Treasury, the Fed, the New York Fed, the SEC and the CFTC found no clear news in that window. It found heavy volume, thin resting size at the best prices, bank dealers pulling back their resting orders, and automated firms trading heavily while showing little size. Anyone who bought at market at the low in yields paid the top of a move that reversed within minutes.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Between 9:33 and 9:45 am the 10-year yield fell about 16 basis points and rose straight back, inside a 37-basis-point range for the day. The joint staff report by the Treasury, the Fed, the New York Fed, the SEC and the CFTC found no clear news in that window. It found heavy volume, thin resting size at the best prices, bank dealers pulling back their resting orders, and automated firms trading heavily while showing little size. Anyone who bought at market at the low in yields paid the top of a move that reversed within minutes.</p><p class="tl-drill-sources">Sources: <a href="https://treasurydirect.gov/files/laws-and-regulations/gsa/joint-staff-report-treasury-10-15-2014.pdf">Joint Staff Report: The U.S. Treasury Market on October 15, 2014 (US Treasury, Federal Reserve Board, New York Fed, SEC, CFTC), July 2015</a>; <a href="https://www.newyorkfed.org/newsevents/news/aboutthefed/2015/oa150713.html">New York Fed press release, 13 July 2015</a>.</p></div>
   </div>
 
     </section>

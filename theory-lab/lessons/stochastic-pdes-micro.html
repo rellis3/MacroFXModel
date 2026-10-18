@@ -27,7 +27,6 @@
       <p class="sl-lede">Every SDE so far in this sequence has moved a single number, or a short finite list of numbers, randomly through time. The Fokker-Planck equation, right before this lesson, showed how the probability density of one of those numbers spreads out deterministically over time. This lesson takes the next step, and it's a genuine jump: what happens when the object evolving randomly stops being a finite list at all, and becomes an entire curve — the whole interest-rate forward curve, at every maturity simultaneously — or an entire probability density that's also being nudged by continuous noisy observations? That object is a stochastic PDE, and this lesson introduces it through two concrete, named examples: the HJM/Musiela forward-curve framework, which connects directly back to the yield-curve-construction and Nelson-Siegel-Svensson lessons earlier in this curriculum, and the Zakai equation from filtering theory.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -267,7 +266,7 @@
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Nudge time forward, watch it wiggle</h2>
-      <p class="sl-sub">Same illustrative curve, now advanced step by step. Each step applies a new seeded random perturbation — front end noisier than the back end — and redraws the whole shape.</p>
+      <p class="sl-sub">A similar illustrative curve, sampled every four years, now advanced step by step. Each step applies a new seeded random perturbation — front end noisier than the back end — and redraws the whole shape.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it</div>
         <div class="sl-svgwrap">
@@ -276,7 +275,7 @@
             <text x="60" y="216" font-size="11" fill="var(--text3)" font-family="'DM Mono',monospace">x=0</text>
             <text x="600" y="216" font-size="11" fill="var(--text3)" font-family="'DM Mono',monospace" text-anchor="end">x=20y</text>
             <line x1="60" y1="30" x2="60" y2="200" style="stroke:var(--border2);stroke-width:1"/>
-            <polyline id="spde-slider-curve" points="60,150 172,110 284,80 396,60 508,42 600,32" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <polyline id="spde-slider-curve" points="60.0,173.8 168.0,137.9 276.0,111.7 384.0,98.7 492.0,87.5 600.0,79.0" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
             <g id="spde-slider-dots"></g>
           </svg>
         </div>
@@ -284,7 +283,7 @@
         <input type="range" class="sl-slider" id="spde-slider" min="0" max="10" step="1" value="0">
         <div class="sl-calc-steps">
           <div>Front end f(t,0): <b id="spde-slider-front">3.00%</b></div>
-          <div>Mid tenor f(t,10): <b id="spde-slider-mid">4.20%</b></div>
+          <div>Mid tenor f(t,12): <b id="spde-slider-mid">4.15%</b></div>
           <div>Long end f(t,20): <b id="spde-slider-long">4.45%</b></div>
         </div>
         <div class="sl-note">The curve is fully recomputed from the fixed seed at every step — scrub backward and forward and you get the exact same shape at the same step every time, the same reproducibility a fixed-seed Monte Carlo run needs.</div>
@@ -402,7 +401,6 @@
         <div class="sl-quiz-explain">When dynamics are linear and noise Gaussian, the Zakai solution stays Gaussian, collapsing to a mean and covariance — the Kalman filter's update equations. The particle filter, by contrast, is the Monte Carlo approximation used outside that special case.</div>
       </div>
     </section>
-
 
     <section class="sl-slide sl-vark" data-slide="16">
 

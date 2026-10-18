@@ -490,6 +490,22 @@
     </div>
     <button type="button" id="mh-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>One random-walk Metropolis step on the same target, \(f(\theta) = \exp(-\theta^4/4 + \theta^2/2)\): propose \(\theta' = \theta + \Delta\), set \(\alpha = \min\big(1, f(\theta')/f(\theta)\big)\), accept if \(u &lt; \alpha\). Type the new state as a number (the old \(\theta\) if the move is rejected). Four decimals for \(f\) and \(\alpha\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\theta = 1.2\), \(\Delta = -0.5\), \(u = 0.40\). \(\theta' = 0.7\). \(f(1.2) = \exp(-0.5184 + 0.72) = 1.2234\) and \(f(0.7) = 1.2032\), so \(\alpha = 1.2032/1.2234 = 0.9835\). Since \(u = 0.40 &lt; \alpha\), the new state is \(\theta =\) <span class="tl-blank" data-answer="0.7" data-tol="0.001"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\theta = -1.0\) (on the left mode), \(\Delta = +0.6\), \(u = 0.90\). You are given \(f(-1.0) = \exp(0.25) = 1.2840\). Then \(f(-0.4) =\) <span class="tl-blank" data-answer="1.0764" data-tol="0.0005"></span>, \(\alpha =\) <span class="tl-blank" data-answer="0.8383" data-tol="0.0005"></span>, and the new state is <span class="tl-blank" data-answer="-1" data-tol="0.001"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\theta = 0.5\), \(\Delta = +1.0\), \(u = 0.62\). \(f(\theta) =\) <span class="tl-blank" data-answer="1.1156" data-tol="0.0005"></span>; \(f(\theta') =\) <span class="tl-blank" data-answer="0.8688" data-tol="0.0005"></span>; \(\alpha =\) <span class="tl-blank" data-answer="0.7788" data-tol="0.0005"></span>; new state <span class="tl-blank" data-answer="1.5" data-tol="0.001"></span>.</p>
+    </div>
+  </div>
 
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>

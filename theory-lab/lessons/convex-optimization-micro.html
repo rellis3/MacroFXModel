@@ -27,14 +27,13 @@
       <p class="sl-lede">Gradient descent and Newton's method are both very good at finding a point where the slope goes flat — but a flat slope only tells you the search has stopped, not that it stopped somewhere good. Convexity is the one shape-property of a problem that closes that gap completely: on a convex problem, the point where the search stops is provably the best point there is, anywhere. This is why Markowitz portfolio construction is reliably solvable, and exactly what breaks the moment a realistic trading rule gets added.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
 
       <figure class="tl-picture">
     <div class="tl-picture-label">The whole idea in one picture</div>
-    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two curves side by side. Left, a convex bowl, f of x equals 0.15 x squared, with a straight chord drawn from x equals 1 to x equals 8. Halfway along, the curve sits at 3.04, below the chord at 4.87, and the bowl has a single bottom, so any local minimum is the global one. Right, a non-convex egg carton with two dips: a solver can stop in the shallower dip and never find the deeper one.">
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two curves side by side. Left, a convex bowl, f of x equals 0.15 x squared, with a straight chord drawn from x equals 1 to x equals 8. Halfway along, the curve sits at 3.04, below the chord at 4.88, and the bowl has a single bottom, so any local minimum is the global one. Right, a non-convex egg carton with two dips: a solver can stop in the shallower dip and never find the deeper one.">
       <line class="tlp-line" x1="30" y1="195" x2="285" y2="195"/>
       <line class="tlp-line" x1="340" y1="195" x2="585" y2="195"/>
       <text class="tlp-blue" x="30" y="22" font-size="14" font-weight="700">Convex: one bowl</text>
@@ -46,7 +45,7 @@
       <circle class="tlp-purple" cx="252.2" cy="79.2" r="4"/>
       <circle class="tlp-purple" cx="155" cy="133.8" r="5.5"/>
       <circle class="tlp-blue" cx="155" cy="155" r="5.5"/>
-      <text class="tlp-purple" x="147" y="122" text-anchor="end" font-size="13" font-weight="700">chord 4.87</text>
+      <text class="tlp-purple" x="147" y="122" text-anchor="end" font-size="13" font-weight="700">chord 4.88</text>
       <text class="tlp-blue" x="164" y="176" font-size="13" font-weight="700">curve 3.04</text>
       <circle class="tlp-green" cx="30" cy="190" r="6.5"/>
       <text class="tlp-green" x="30" y="214" font-size="13" font-weight="700">one bottom: local = global</text>
@@ -363,7 +362,6 @@
         <div class="sl-quiz-explain">The objective stays convex — it's the feasible set that breaks: "at most 10 nonzero weights" is a union of separate flat pieces, not one convex region, and the problem becomes combinatorially hard rather than a smooth convex QP.</div>
       </div>
     </section>
-
 
     <section class="sl-slide sl-vark" data-slide="15">
 

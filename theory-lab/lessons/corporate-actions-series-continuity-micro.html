@@ -27,7 +27,6 @@
       <p class="sl-lede">A stock split, a dividend, or — closest to home for an FX/macro/futures desk — a futures contract roll all put a fake, non-tradeable jump into a raw price series, without a single bad tick anywhere in it. The standard fix removes that jump. This lesson is about the part almost nobody mentions until it bites them: the fix that saves your return calculation can quietly break every other calculation built on the actual, historically-quoted price level.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -371,7 +370,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="16">
 
       <div class="sl-kicker">Your call</div>
@@ -386,7 +384,7 @@
       <li data-verdict="good">Use a back-adjusted (Panama) series for this backtest, measure P&amp;L in dollars on the contract held, and record the roll rule alongside the results.<div class="tl-drill-why">For futures, dollar P&amp;L on the contract actually held is the honest unit, and it is exactly what the Panama series preserves. Writing down the roll rule lets anyone see which version of the day the backtest used.</div></li>
       <li data-verdict="ok">Switch to a vendor series that rolls a few days early, so it never shows a negative price.<div class="tl-drill-why">Fine if your strategy really rolls early, and many funds did. But it hides an event that hit anyone who held the front month into expiry, so know which rule you are using and why.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Lockdowns had cut oil demand and storage at Cushing, Oklahoma, the delivery point, was filling. The May contract's −$37.63 was the first negative settlement in its history, while June stayed positive. A retail oil product sold by Bank of China left its customers with heavy losses; the largest US oil ETF had already moved into later months. Depending on its roll rule, a continuous series shows that day as −$37.63, about $20, or sign-flipped.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Lockdowns had cut oil demand and storage at Cushing, Oklahoma, the delivery point, was filling. The May contract's −$37.63 was the first negative settlement in its history, while June stayed positive. A retail oil product sold by Bank of China left its customers with heavy losses; the largest US oil ETF had already moved into later months. Depending on its roll rule, a continuous series shows that day as −$37.63, about $20, or sign-flipped.</p><p class="tl-drill-sources">Sources: <a href="https://www.cftc.gov/PressRoom/PressReleases/8315-20">CFTC press release on its interim staff report on the 20 April 2020 WTI price moves, 23 Nov 2020</a>; Caixin, on the regulator's fine of Bank of China over its crude oil product, 5 Dec 2020.</p></div>
   </div>
 
     </section>

@@ -27,7 +27,6 @@
       <p class="sl-lede">Black-Scholes prices every option off one fixed volatility, forever. Real options markets don't cooperate — the same underlying, same expiry, prices meaningfully differently across strikes, a shape called the volatility smile (or skew). Heston's 1993 fix is to stop treating volatility as a constant at all: make it a second, mean-reverting stochastic process in its own right, correlated with the asset it belongs to. That one structural change is what lets a model generate a smile organically — at the cost of a formula that needs a numerical Fourier step instead of simple algebra, and five parameters to calibrate instead of one.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -272,7 +271,7 @@
           <div class="sl-calc-op">→</div>
           <div class="sl-calc-result">
             <div class="sl-calc-result-label">Half-life of a shock</div>
-            <div class="sl-calc-result-val" id="hl-result">126.5 days</div>
+            <div class="sl-calc-result-val" id="hl-result">126.5 days (0.35 yr)</div>
           </div>
         </div>
         <div class="sl-calc-steps">
@@ -394,7 +393,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="15">
 
       <div class="sl-kicker">Your call</div>
@@ -409,7 +407,7 @@
       <li data-verdict="ok">Keep the flat-σ model, but use the at-the-money vol and ignore the far strikes.<div class="tl-drill-why">It avoids the worst trade, but it misprices every strike away from the money and gives the wrong hedge for downside options, which is where the risk now sits.</div></li>
       <li data-verdict="bad">Buy the at-the-money options instead, since they look cheap next to the puts.<div class="tl-drill-why">"Cheap compared to the puts" is still a flat-σ judgement. Nothing says at-the-money vol is too low; the gap between strikes is the structure, not the error.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The skew did not go away. Before October 1987, implied volatility on index options was fairly flat across strikes; afterwards, out-of-the-money puts stayed richer and the skew became a permanent feature of index options. Heston's 1993 model was one answer: stochastic volatility with a negative price-vol correlation produces that skew from its own dynamics.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The skew did not go away. Before October 1987, implied volatility on index options was fairly flat across strikes; afterwards, out-of-the-money puts stayed richer and the skew became a permanent feature of index options. Heston's 1993 model was one answer: stochastic volatility with a negative price-vol correlation produces that skew from its own dynamics.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreservehistory.org/essays/stock-market-crash-of-1987">Federal Reserve History, “Stock Market Crash of 1987”</a> (the Dow’s 22.6% fall); <a href="https://doi.org/10.1111/j.1540-6261.1994.tb00079.x">Rubinstein, “Implied Binomial Trees”, Journal of Finance, 1994</a> (index-option smile before and after the crash); <a href="https://doi.org/10.1093/rfs/6.2.327">Heston, Review of Financial Studies, 1993</a>.</p></div>
   </div>
 
     </section>

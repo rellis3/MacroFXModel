@@ -27,7 +27,6 @@
       <p class="sl-lede">Two portfolios can post the same expected return, and the same VaR and CVaR over most historical windows, and still behave completely differently the one time it counts — because none of those numbers describe the <em>shape</em> of the payoff as the move that's already happening gets bigger. That shape is convexity: whether a portfolio's pain accelerates, decelerates, or stays proportional as the market keeps moving. This deep dive is about that shape, what it costs to bend it in your favor on purpose, and why doing so is harder to sustain than the math alone suggests.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -410,7 +409,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -425,7 +423,8 @@
       <li data-verdict="good">Keep the puts at their fixed, budgeted size, and judge them on what they do for the whole portfolio, not on their own track record.<div class="tl-drill-why">The bleed is the premium, by design. The relevant test is the combined book across calm and crash years, and the timing of a crash is never knowable in advance.</div></li>
       <li data-verdict="ok">Keep a hedge, but switch to put spreads to cut the cost.<div class="tl-drill-why">Defensible: a put spread is cheaper. But it caps the payoff once the market falls past the lower strike, so you are selling back some of the convexity you were paying for.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> From a record high on 19 February 2020, the S&amp;P 500 fell about 34% in five weeks, to 23 March. On 16 March the VIX closed at a record 82.69. Far out-of-the-money puts went deep into the money while the implied volatility they were priced on exploded, and their value rose many times over. In the mid-March dash for cash, gold fell sharply alongside stocks for about a week, and even US Treasuries sold off until the Federal Reserve stepped in with very large purchases. Anyone who tried to buy protection after the fall had started paid far more, because implied volatility had already jumped.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> From a record high on 19 February 2020, the S&amp;P 500 fell about 34% in five weeks, to 23 March. On 16 March the VIX closed at a record 82.69. Far out-of-the-money puts went deep into the money while the implied volatility they were priced on exploded, and their value rose many times over. In the mid-March dash for cash, gold fell sharply alongside stocks for about a week, and even US Treasuries sold off until the Federal Reserve stepped in with very large purchases. Anyone who tried to buy protection after the fall had started paid far more, because implied volatility had already jumped.</p>
+      <p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/SP500" target="_blank" rel="noopener">S&amp;P 500 daily closes, FRED</a> (3,386.15 on 19 February, 2,237.40 on 23 March 2020); <a href="https://fred.stlouisfed.org/series/VIXCLS" target="_blank" rel="noopener">Cboe VIX daily closes, FRED</a>; <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200323b.htm" target="_blank" rel="noopener">Federal Reserve press release, 23 March 2020</a>; CNBC, 16 March 2020 (VIX record close).</p></div>
   </div>
 
     </section>

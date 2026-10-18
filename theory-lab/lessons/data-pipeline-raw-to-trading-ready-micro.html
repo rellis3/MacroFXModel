@@ -27,7 +27,6 @@
       <p class="sl-lede">A raw vendor feed and a backtest-ready dataset are not the same object. Between them sits a chain of stages — capture, validation, cleaning, normalization, bar construction, storage — and one particular choice buried inside that chain, how raw ticks get grouped into the bars a strategy actually sees, quietly decides whether the returns a model consumes behave anything like the well-mixed, independent draws most statistics secretly assumes.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -620,7 +619,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -635,7 +633,7 @@
       <li data-verdict="good">Keep the raw capture, apply the venues' cancellations as a separate, dated cleaning step, build bars from the corrected tape, and record which version the backtest used.<div class="tl-drill-why">Capture first, correct in a logged step. You can serve either version, explain the difference, and the backtest no longer books fills at prices that were cancelled.</div></li>
       <li data-verdict="ok">Swap in a vendor's already-corrected tape and discard the raw one.<div class="tl-drill-why">The bars will be closer to tradeable, but you lose the record of what a live system would have seen that afternoon, and you can't audit how the correction was made.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> According to the joint SEC–CFTC staff report, a large fund's algorithm sold 75,000 E-mini S&amp;P 500 contracts, about $4.1 billion, into a thinning market. The Dow fell close to 1,000 points, about 9%, then recovered most of it in roughly half an hour. After the close the exchanges and FINRA cancelled over 20,000 trades in more than 300 securities that were more than 60% from each stock's 2:40 p.m. price. Single-stock circuit breakers and a ban on stub quotes followed later that year.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> According to the joint SEC–CFTC staff report, a large fund's algorithm sold 75,000 E-mini S&amp;P 500 contracts, about $4.1 billion, into a thinning market. The Dow fell close to 1,000 points, about 9%, then recovered most of it in roughly half an hour. After the close the exchanges and FINRA cancelled over 20,000 trades in more than 300 securities that were more than 60% from each stock's 2:40 p.m. price. Single-stock circuit breakers and a ban on stub quotes followed later that year.</p><p class="tl-drill-sources">Sources: <a href="https://www.sec.gov/news/studies/2010/marketevents-report.pdf">CFTC and SEC staff, <em>Findings Regarding the Market Events of May 6, 2010</em>, 30 Sep 2010</a>; SEC and FINRA notices on the clearly erroneous trade cancellations, May 2010.</p></div>
   </div>
 
     </section>

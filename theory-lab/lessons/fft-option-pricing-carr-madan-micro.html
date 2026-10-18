@@ -27,7 +27,6 @@
       <p class="sl-lede">Heston-style models hand you a closed-form characteristic function but no closed-form price — pricing one strike means numerically integrating that function, which is fine once. It stops being fine the moment a calibration routine needs to reprice a whole observed strike curve, at every candidate parameter set, hundreds or thousands of times before it converges. Carr &amp; Madan's 1999 insight reframes the entire strike curve as one Fourier transform, so a single Fast Fourier Transform call — not one integration per strike — produces the whole thing at once.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -419,7 +418,6 @@
         <div class="sl-quiz-explain">The entire construction is built on having φ_T in closed form. Without one, the fallback is Monte Carlo simulation or a PDE solve — the same tools the Numerical Integration lesson names for genuinely hard pricing problems.</div>
       </div>
     </section>
-
 
     <section class="sl-slide sl-vark" data-slide="16">
 

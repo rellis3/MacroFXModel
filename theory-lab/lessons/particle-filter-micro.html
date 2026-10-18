@@ -27,7 +27,6 @@
       <p class="sl-lede">The Kalman filter lesson tracked a hidden hedge ratio with two running numbers — a best estimate and a variance — and that trick worked only because of a convenient coincidence: linear dynamics plus Gaussian noise happen to keep the posterior belief exactly Gaussian, forever. Break either assumption — a genuinely nonlinear system, or noise with a fat tail — and that coincidence disappears. This lesson is the direct sequel: it replaces the single confident estimate with a weighted swarm of thousands of simulated guesses, called a particle filter, that can track a belief no clean formula could ever capture.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -415,7 +414,6 @@
       </div>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="17">
 
       <div class="sl-kicker">Your call</div>
@@ -430,7 +428,8 @@
       <li data-verdict="bad">A Kalman filter with its process noise raised permanently to the size of today's move.<div class="tl-drill-why">That handles today, then overreacts to ordinary noise on every quiet day afterwards. One bell curve cannot be both small and large; that is the lesson's point.</div></li>
       <li data-verdict="ok">Keep the calm-period Kalman filter, but reset it by hand to the new price.<div class="tl-drill-why">It works once, if someone is watching. It is a manual override, not a model, and it gives no help the next time a jump arrives unannounced.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 15 January 2015 the Swiss National Bank discontinued the minimum exchange rate of 1.20 francs per euro, which it had set in September 2011, and cut its deposit rate to −0.75%. EUR/CHF fell from about 1.20 to below parity within minutes. A process that sat almost still for years moved in a single discontinuous step: the "mostly small, occasionally huge" shock shape that a single Gaussian cannot hold and a particle filter can.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 15 January 2015 the Swiss National Bank discontinued the minimum exchange rate of 1.20 francs per euro, which it had set in September 2011, and cut its deposit rate to −0.75%. EUR/CHF fell from about 1.20 to below parity within minutes. A process that sat almost still for years moved in a single discontinuous step: the "mostly small, occasionally huge" shock shape that a single Gaussian cannot hold and a particle filter can.</p>
+    <p class="tl-drill-sources">Sources: <a href="https://www.snb.ch/en/mmr/reference/pre_20150115/source/pre_20150115.en.pdf">Swiss National Bank press release, 15 Jan 2015</a>; <a href="https://www.snb.ch/en/mmr/reference/pre_20110906/source/pre_20110906.en.pdf">Swiss National Bank press release setting the 1.20 minimum, 6 Sep 2011</a>; JPMorgan Chase Institute, "Timing central bank announcements" (EUR/CHF from 1.201 to 0.895 in about 24 minutes).</p></div>
   </div>
 
     </section>

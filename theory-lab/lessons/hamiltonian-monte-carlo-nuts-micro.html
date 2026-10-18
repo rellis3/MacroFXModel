@@ -27,7 +27,6 @@
       <p class="sl-lede">Plain Metropolis-Hastings explores a posterior by jittering blindly and hoping the jitter lands somewhere plausible — a strategy that gets slower, fast, as the number of parameters grows. Hamiltonian Monte Carlo replaces the blind jitter with physics: treat the negative log-posterior as a landscape, give the current position a random push, and let a simulated trajectory slide across that landscape using the landscape's own slope. NUTS then removes the one dial that made HMC itself hard to drive — how far to let that trajectory run — which is why it quietly became the default sampler inside tools like Stan and PyMC.</p>
     </section>
 
-
     <section class="sl-slide sl-vark" data-slide="2">
 
       <div class="sl-kicker">The whole idea</div>
@@ -369,7 +368,6 @@
         <div class="sl-quiz-explain">NUTS extends the trajectory outward, doubling its length, and stops the instant the path's momentum starts pointing back toward its own starting point — a "U-turn" — rather than requiring a fixed number of steps chosen in advance.</div>
       </div>
     </section>
-
 
     <section class="sl-slide sl-vark" data-slide="16">
 

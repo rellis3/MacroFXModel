@@ -467,13 +467,30 @@
       </div>
     </div>
     <div class="tl-readout tl-scratch-readout">
-      &alpha;+&beta; = <b id="garch-scratch-persist">0.98</b>&emsp;half-life &asymp; <b id="garch-scratch-halflife">34.3</b> days&emsp;long-run &sigma;&#772; &asymp; <b id="garch-scratch-sigmabar">0.71</b>%
+      &alpha;+&beta; = <b id="garch-scratch-persist">0.9800</b>&emsp;half-life &asymp; <b id="garch-scratch-halflife">34.3</b> days&emsp;long-run &sigma;&#772; &asymp; <b id="garch-scratch-sigmabar">0.71</b>%
       <span id="garch-scratch-note" class="tl-scratch-note"></span>
     </div>
     <div class="tl-readout">
-      &sigma;<sub>t</sub>&sup2; = &omega; + &alpha;&epsilon;<sub>t-1</sub>&sup2; + &beta;&sigma;<sub>t-1</sub>&sup2; &asymp; <b id="garch-scratch-sigmat2">0.96</b>%&sup2; &rArr; &sigma;<sub>t</sub> &asymp; <b id="garch-scratch-sigmat">0.98</b>%
+      &sigma;<sub>t</sub>&sup2; = &omega; + &alpha;&epsilon;<sub>t-1</sub>&sup2; + &beta;&sigma;<sub>t-1</sub>&sup2; &asymp; <b id="garch-scratch-sigmat2">0.9600</b>%&sup2; &rArr; &sigma;<sub>t</sub> &asymp; <b id="garch-scratch-sigmat">0.9798</b>%
     </div>
     <button type="button" id="garch-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The GARCH(1,1) recursion from the worked example, in %² as in the calculator above: \(\sigma_t^2 = \omega + \alpha\epsilon_{t-1}^2 + \beta\sigma_{t-1}^2\), the long-run level \(\bar\sigma = \sqrt{\omega/(1-\alpha-\beta)}\), and the half-life \(\ln 0.5/\ln(\alpha+\beta)\). New parameters and a new shock each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\omega = 0.02\), \(\alpha = 0.10\), \(\beta = 0.85\), yesterday's variance \(\sigma_{t-1}^2 = 0.40\)%², yesterday's shock 2%. The reaction term is \(0.10 \times 2^2 = 0.40\), the inertia term \(0.85 \times 0.40 = 0.34\), so \(\sigma_t^2 = 0.02 + 0.40 + 0.34 = 0.76\)%². Tomorrow's forecast is \(\sigma_t = \sqrt{0.76} =\) <span class="tl-blank" data-answer="0.872" data-tol="0.001" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\omega = 0.015\), \(\alpha = 0.05\), \(\beta = 0.93\), \(\sigma_{t-1}^2 = 0.75\)%², and yesterday's shock was −3%. The inertia term is \(0.93 \times 0.75 = 0.6975\). Find the reaction term <span class="tl-blank" data-answer="0.45" data-tol="0.001"></span>, today's variance <span class="tl-blank" data-answer="1.1625" data-tol="0.001" data-unit="%²"></span> and today's \(\sigma_t\) <span class="tl-blank" data-answer="1.078" data-tol="0.002" data-unit="%"></span>. The persistence is 0.98, the same as the worked example.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\omega = 0.03\), \(\alpha = 0.07\), \(\beta = 0.88\), \(\sigma_{t-1}^2 = 0.60\)%², shock 1.5%. Find today's \(\sigma_t\) <span class="tl-blank" data-answer="0.846" data-tol="0.002" data-unit="%"></span>, the long-run \(\bar\sigma\) <span class="tl-blank" data-answer="0.775" data-tol="0.002" data-unit="%"></span> and the half-life <span class="tl-blank" data-answer="13.5" data-tol="0.1" data-unit="days"></span>.</p>
+    </div>
   </div>
 
   <div class="tl-chart">
@@ -809,6 +826,7 @@
     Close rather than just the close-to-close return) that use more of the day's actual information.<!-- DESK:START --> This repo
     already runs one such range-based alternative side by side with GARCH — see below.<!-- DESK:END -->
   </p>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../vol-horse-race.html">Vol Horse Race</a> scores GARCH (the index σ) against HV, Yang-Zhang and HAR-RV, instrument by instrument, out of sample; check which one actually wins before you trust this lesson's recursion on a new market.</div><!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -857,7 +875,7 @@
       <li data-verdict="bad">Keep the size and go long. After a 9.5% fall, a bounce is due.<div class="tl-drill-why">GARCH says nothing about direction. A bounce and a further fall are both big days, and big days are exactly what the model expects next. Betting on the sign with full size leaves you exposed to either.</div></li>
       <li data-verdict="ok">A 20-day average of squared returns, which has risen with the last two days.<div class="tl-drill-why">Better than the calm number, and it does see the shock. But it gives the two huge days only one twentieth of the weight each, so it under-reacts now, and it will drop off a cliff three weeks later when they leave the window.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The next day the S&amp;P 500 rose 9.3%. On 16 March it fell about 12%, the circuit breaker tripped again, and the VIX closed at 82.69, a record. The breaker was triggered once more on 18 March, and the index rose more than 9% on 24 March. Big days kept coming in both directions, so the up days raised the forecast as much as the down days. Volatility stayed raised for months after the worst had passed.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The next day the S&amp;P 500 rose 9.3%. On 16 March it fell about 12%, the circuit breaker tripped again, and the VIX closed at 82.69, a record. The breaker was triggered once more on 18 March, and the index rose more than 9% on 24 March. Big days kept coming in both directions, so the up days raised the forecast as much as the down days. Volatility stayed raised for months after the worst had passed.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/SP500">S&amp;P 500 daily closes (FRED, SP500)</a> (−7.6% on 9 Mar, −9.5% on 12 Mar, +9.3% on 13 Mar, −12.0% on 16 Mar, +9.4% on 24 Mar 2020; record close 19 Feb 2020); <a href="https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv">Cboe VIX daily history</a> (14.38 on 19 Feb, 82.69 on 16 Mar 2020); Market-Wide Circuit Breaker Working Group, report to the SEC, 2021 (the four halts of 9, 12, 16 and 18 March 2020).</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

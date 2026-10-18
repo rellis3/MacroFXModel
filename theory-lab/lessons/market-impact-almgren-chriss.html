@@ -615,6 +615,22 @@
     </div>
     <button type="button" id="ac-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Back out \(\kappa = \sqrt{\lambda\sigma^2/\eta}\), then the share of the order still unsold at time \(t\), \(x(t)/X = \sinh(\kappa(1-t))/\sinh(\kappa)\), over a one-day horizon. New inputs each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\lambda = 8\), \(\sigma^2 = 0.0004\), \(\eta = 0.0008\), checked at half day, \(t = 0.5\). \(\kappa = \sqrt{8 \times 0.0004/0.0008} = \sqrt{4} = 2\). \(\sinh(1) = 1.1752\) and \(\sinh(2) = 3.6269\), so the share still unsold is <span class="tl-blank" data-answer="32.4" data-tol="0.1" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\lambda = 50\), \(\sigma^2 = 0.0009\), \(\eta = 0.0025\), checked a quarter of the way through, \(t = 0.25\). \(\kappa =\) <span class="tl-blank" data-answer="4.243" data-tol="0.005"></span>. You are given \(\sinh(0.75\kappa) = 12.026\) and \(\sinh(\kappa) = 34.789\). Still unsold: <span class="tl-blank" data-answer="34.6" data-tol="0.1" data-unit="%"></span>, so <span class="tl-blank" data-answer="65.4" data-tol="0.1" data-unit="%"></span> is already sold, against 25% for a straight-line schedule.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\lambda = 20\), \(\sigma^2 = 0.0005\), \(\eta = 0.0004\), at \(t = 0.4\). \(\kappa =\) <span class="tl-blank" data-answer="5" data-tol="0.005"></span>; share still unsold <span class="tl-blank" data-answer="13.5" data-tol="0.1" data-unit="%"></span>. A straight line would still hold 60%.</p>
+    </div>
+  </div>
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">The Almgren-Chriss optimal execution trajectory — drag the urgency parameter κ</div>
@@ -695,8 +711,8 @@
     </p>
     <p>
       That left each prime broker holding a large block of the same few stocks, with a client that could no longer
-      pay. On Thursday 25 March the banks discussed winding the positions down together, in an orderly way, and did
-      not agree. On Friday 26 March some of them, Goldman Sachs and Morgan Stanley among them, sold billions of dollars
+      pay. On the evening of Thursday 25 March Archegos asked its prime brokers to agree a standstill, so it could wind
+      the positions down itself, and they did not agree. On Friday 26 March some of them, Goldman Sachs among them, sold billions of dollars
       of stock in large blocks, at steep discounts, before the market had absorbed what was happening. The banks that
       moved first and hardest got the best prices. Goldman, Deutsche Bank and Wells Fargo later reported no material
       loss. The slower banks sold into prices already pushed down by everyone else's blocks.
@@ -742,11 +758,12 @@
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Untested here: "trading slower lowers your total execution cost."</strong> This is the trade-off the whole
     model rests on. This desk sends single small orders at a flat modeled cost and has never sliced an order or
-    measured impact, so it has no evidence either way. A fair test would need execution records for sliced parent
-    orders (arrival price, every child fill, market volume over the window). It would compare implementation
-    shortfall across schedule speeds while holding order size relative to volume and the volatility regime fixed, and
-    it would flag days when other large sellers were active in the same name. All of that would be set before looking
-    at results.</span>
+    measured impact, so it has no evidence either way.<div class="tl-howtotest"><strong>How to test it:</strong> run it forward on the desk's own
+    FX orders for six months: assign each order at random to a single fill or to equal slices over 30 minutes, and record
+    the fills. Measure implementation shortfall against the arrival mid from M1 bars, in pips, with spread paid counted in.
+    Fixed in advance: slicing passes only if its mean shortfall beats the single fill by at least 0.1 pip with a 95% interval
+    that excludes zero; the single fill is the baseline. At this desk's small sizes the expected result is no gain, because
+    there is little impact to save and slicing adds timing risk.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -840,14 +857,14 @@
   <div class="tl-drill" data-date="2021-03-26">
     <div class="tl-drill-label">Scenario drill · 26 March 2021</div>
     <h3>You hold the same blocks as every other prime broker</h3>
-    <p>You run equity financing at a prime broker. Your client, Archegos, built huge positions in a handful of stocks through total return swaps, and you hold the shares as your hedge. ViacomCBS sold new shares, its stock fell sharply, and Archegos cannot meet its margin calls. Yesterday the banks discussed an orderly joint wind-down and did not agree. Several other banks hold large blocks of the same stocks. It is Friday morning. How do you sell?</p>
+    <p>You run equity financing at a prime broker. Your client, Archegos, built huge positions in a handful of stocks through total return swaps, and you hold the shares as your hedge. ViacomCBS sold new shares, its stock fell sharply, and Archegos cannot meet its margin calls. Last night Archegos asked its prime brokers to agree a standstill while it wound the positions down, and they did not agree. Several other banks hold large blocks of the same stocks. It is Friday morning. How do you sell?</p>
     <ol class="tl-drill-options">
       <li data-verdict="bad">Follow a patient, low-urgency schedule over the coming weeks to keep your impact cost down.<div class="tl-drill-why">That is the right answer for a lone seller facing random volatility. Here the risk of waiting is not random: every block another bank sells pushes down the price of what you still hold. The patient schedule sells into everyone else's impact.</div></li>
       <li data-verdict="good">Sell early and in size, in large blocks, accepting a steep discount now.<div class="tl-drill-why">With rival forced sellers, the first to sell gets the best prices still on offer. You pay a known, large impact cost to avoid a larger, predictable loss from selling after the others.</div></li>
       <li data-verdict="ok">Run a strongly front-loaded schedule through the day, finishing by the close.<div class="tl-drill-why">The right instinct: high urgency, done fast. But spread over a whole day, much of it can still land after rivals' blocks have hit the price. Better than a slow schedule, worse than moving first.</div></li>
       <li data-verdict="bad">Hold off and keep pushing for an orderly joint wind-down with the other banks.<div class="tl-drill-why">Talks had already failed, and nothing stops a rival from selling while you negotiate. Waiting leaves your whole position exposed to their selling.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Friday 26 March some banks, Goldman Sachs and Morgan Stanley among them, sold billions of dollars of stock in large blocks at steep discounts, before the market had absorbed what was happening. Goldman, Deutsche Bank and Wells Fargo later reported no material loss. The slower banks sold into prices already pushed down by everyone else's blocks: Credit Suisse lost about $5.5 billion and Nomura about $2.9 billion.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Friday 26 March some banks, Goldman Sachs among them, sold billions of dollars of stock in large blocks at steep discounts, before the market had absorbed what was happening. Goldman, Deutsche Bank and Wells Fargo later reported immaterial losses. Credit Suisse sold just over $3 billion that day, partly through algorithms kept to 2 to 3% of daily volume, and joined a managed liquidation with UBS and Nomura that ran into April. The slower banks sold into prices already pushed down by everyone else's blocks: Credit Suisse lost about $5.5 billion and Nomura about $2.9 billion.</p><p class="tl-drill-sources">Sources: Credit Suisse Group Special Committee, Report on Archegos Capital Management, 29 July 2021 (<a href="https://www.paulweiss.com/insights/client-news/credit-suisse-publishes-independent-review-of-archegos-losses">Paul, Weiss summary</a>); Bloomberg, "Nomura Sticks to Global Goals After $2.9 Billion Archegos Hit", 27 April 2021.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

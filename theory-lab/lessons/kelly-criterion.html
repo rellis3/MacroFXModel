@@ -40,7 +40,7 @@
       <li>Compounding costs you: the geometric growth rate is approximately \(g \approx \mu - \sigma^2/2\) (volatility drag), which is why a bumpy return stream compounds slower than a steady one with the same average return.</li>
       <li>Overbetting isn't just riskier, it's provably worse — growth rises up to \(f^*\), then falls, hitting zero exactly at \(2f^*\) and going negative beyond it, even though every individual bet still has positive expected value.</li>
       <li>Worked example in this lesson: \(p=0.55\) gives full Kelly \(f^*=10\%\) of bankroll; half-Kelly (5%) captures ~75% of full Kelly's growth rate while cutting typical drawdown by roughly half or more.</li>
-      <li><strong>Real-world episode:</strong> LTCM in 1998 sized tiny convergence edges against variance measured in calm years, at roughly 25 to 1. When Russia defaulted, the spreads widened together, margin calls forced selling, and about $4.6 billion was gone within weeks. On illustrative numbers, tripling σ cuts \(f^*\) ninefold and turns the same leverage's growth negative.<!-- DESK:START --> Kelly sizing itself is untested on this desk.<!-- DESK:END --></li>
+      <li><strong>Real-world episode:</strong> LTCM in 1998 sized tiny convergence edges against variance measured in calm years, at roughly 25 to 1. When Russia defaulted, the spreads widened together, margin calls forced selling, and it lost $1.8 billion of its $4.8 billion capital in August alone. On illustrative numbers, tripling σ cuts \(f^*\) ninefold and turns the same leverage's growth negative.<!-- DESK:START --> Kelly sizing itself is untested on this desk.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -602,6 +602,23 @@
     <button type="button" id="kelly-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Full Kelly \(f^* = (bp - q)/b\), the scaled stake \(f_c = c \times f^*\), and the share of full-Kelly growth that stake keeps, \(2c - c^2\). New inputs each round. Give fractions as decimals (0.10, not 10%).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Win probability \(p = 0.58\), even money (\(b = 1\)), and you bet \(c = 0.4\) of Kelly. Full Kelly is \(f^* = 2(0.58) - 1 = 0.16\). The stake is \(f_c = 0.4 \times 0.16 = 0.064\). The growth kept is \(2(0.4) - 0.4^2 =\) <span class="tl-blank" data-answer="0.64" data-tol="0.005"></span> of the full-Kelly rate.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Now \(p = 0.60\), net odds \(b = 1.5\) (win 1.5 for every 1 staked), and quarter-Kelly, \(c = 0.25\). So \(q = 0.40\) and \(f^* = 0.60 - 0.40/1.5 =\) <span class="tl-blank" data-answer="0.3333" data-tol="0.002"></span>. The stake is \(f_c =\) <span class="tl-blank" data-answer="0.0833" data-tol="0.001"></span>, and it keeps <span class="tl-blank" data-answer="0.4375" data-tol="0.002"></span> of full-Kelly growth.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(p = 0.53\), even money, \(c = 0.3\). Full Kelly \(f^* =\) <span class="tl-blank" data-answer="0.06" data-tol="0.0005"></span>; stake \(f_c =\) <span class="tl-blank" data-answer="0.018" data-tol="0.0005"></span>; growth kept <span class="tl-blank" data-answer="0.51" data-tol="0.005"></span>. A 3-point edge earns a 1.8% stake: small edges mean small bets.</p>
+    </div>
+  </div>
+
   <div class="tl-chart interactive">
     <div class="tl-chart-label">The growth-rate curve: why past f*, more size is less growth</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of geometric growth rate g(f) against bet fraction f. The curve starts at zero, rises to a peak at f-star (full Kelly), then falls back through zero at 2f-star and continues into negative territory beyond that. A marked point on the rising part of the curve, below and left of the peak, shows half-Kelly still solidly positive.">
@@ -824,11 +841,14 @@
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Kelly sizing has not been tested on this desk.</strong> No strategy here has an out-of-sample edge
-    measured precisely enough to feed the formula. A fair test would estimate \(\mu\) and \(\sigma^2\) walk-forward
-    using only data before each period, size at several fractions \(c\cdot f^*\), and compare realised growth and
-    maximum drawdown, after costs, against fixed-fraction and volatility-targeted sizing on the same signal.</span>
+    measured precisely enough to feed the formula.<div class="tl-howtotest"><strong>How to test it:</strong> take one signal with a
+    long daily FX history (the carry basket, 2005 onwards) and estimate \(\mu\) and \(\sigma^2\) walk-forward from data before
+    each month only. Size it at \(c = 0.25, 0.5\) and \(1\) times \(f^*\), and record realised log growth and maximum drawdown
+    after spread and financing costs. Fix the gate in advance: half-Kelly passes only if it beats volatility-targeted sizing at
+    the same average risk on growth per unit of drawdown; full Kelly is expected to fail it.</div></span>
   </div>
   <!-- DESK:END -->
+<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../position-sizer.html">Position sizer</a> sizes each trade to risk a fixed % of equity off the vol forecast; that fixed % is the \(c \times f^*\) this lesson says should sit well under full Kelly.</div><!-- DESK:END -->
 <!-- DESK:START -->
   <p>
     For a sense of how wide the error bars on an edge are here: the desk's carry-basket test
@@ -947,7 +967,7 @@
       <li data-verdict="good">Re-estimate volatility from recent data and cut the book towards the new Kelly size, taking the loss now.<div class="tl-drill-why">This is what the formula says. With the new variance, the right size is a small fraction of what you hold. Cutting locks in a painful loss, but it keeps you alive to keep compounding, which is the whole point of Kelly.</div></li>
       <li data-verdict="ok">Halve the book and wait for calmer markets.<div class="tl-drill-why">A real step in the right direction, but half of nine times Kelly is still about four and a half times Kelly: growth is still negative. Halving feels decisive; the arithmetic says it is not enough.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Long-Term Capital Management held its positions and looked for fresh capital. Its losses ran to about $4.6 billion within weeks. On 23 September 1998, a group of banks convened by the Federal Reserve Bank of New York put in about $3.6 billion to take the fund over and unwind it. Many of the trades did converge later, too late for a book that could not survive the path.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Long-Term Capital Management held its positions and looked for fresh capital. It lost $1.8 billion in August alone, which left its capital at $2.3 billion against $4.8 billion at the start of the year, and the losses continued into September. On 23 September 1998, fourteen banks and brokers convened by the Federal Reserve Bank of New York put in about $3.6 billion to take the fund over and unwind it. Many of the trades did converge later, too late for a book that could not survive the path.</p><p class="tl-drill-sources">Sources: <a href="https://www.cftc.gov/sites/default/files/tm/tmhedgefundreport.htm">President's Working Group on Financial Markets, Hedge Funds, Leverage, and the Lessons of Long-Term Capital Management, April 1999</a>; <a href="https://www.federalreserve.gov/boarddocs/testimony/1998/19981001.htm">Alan Greenspan, testimony to the House Banking Committee, 1 October 1998</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -1085,9 +1105,9 @@
   </nav>
 
   <div class="tl-footer-nav">
-    <a href="merton-jump-diffusion.html">← Merton Jump-Diffusion Model</a>
+    <a href="fx-options-quoting-rr-bf.html">← FX Options Quoting</a>
     <a href="../hub.html">Theory Lab hub</a>
-    <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk →</a>
+    <a href="trade-management-exits.html">Managing the Trade: R-Multiples, Stops &amp; Exits →</a>
   </div>
 </div>
 <script>
