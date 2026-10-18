@@ -1640,5 +1640,61 @@
 "Quant": "bf_emma",
 "Trader": "bm_george"
 }
+},
+"fourier-analysis-frequency-domain": {
+"hash": "54923f53",
+"seconds": 133.5,
+"starts": [
+0.0,
+7.73,
+22.44,
+24.2,
+38.61,
+40.62,
+53.36,
+55.4,
+69.0,
+73.06,
+87.19,
+89.38,
+98.73,
+100.72,
+119.05,
+121.35
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
+},
+"fractional-brownian-motion": {
+"hash": "3e1f4878",
+"seconds": 155.4,
+"starts": [
+0.0,
+8.97,
+16.04,
+19.5,
+32.74,
+34.65,
+42.14,
+46.4,
+61.38,
+63.14,
+77.61,
+80.31,
+91.88,
+95.11,
+117.16,
+119.36,
+132.28,
+133.67,
+146.82,
+148.18
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
 }
 }
