@@ -14,6 +14,7 @@ full result; check it before quoting numbers.
 | **G3**: OI wall magnet direction | **NULL** | 48.8% OOS on 615 days, IC +0.061 (p 0.34), placebo 49.9% | `oi_research_book/G3_AND_EVENTDAY_RESULTS.md` |
 | **G1**: net-liquidity tide (2026-09-25) | **NULL** | 448 episodes; OOS hit 51.9/49.5/51.5% at 1/5/20d; 20d IC +0.194 IS → −0.026 OOS (sign flip, QE-era artifact); both buckets positive fwd returns; credit veto adds nothing; FLOW IS-trap 54.2% → 50.5% | `cog-replication/G1_RESULTS.md`, `g1_results.json` |
 | Overall | **no validated directional layer**; stop calling it a replication | — | `cog-replication/DECISIONS.md` 2026-09-25 |
+| Distance to textbook zero gamma (re-priced book) vs NQ next-day range, beyond the G2 sign (2026-10-18) | **NULL, underpowered** | ΔDR +0.023 (p 0.69), robustness signs disagree; placebo and positive-control gates failed (s.e. ~0.06), so ±0.15 not ruled out; long-gamma days within 0.5σ of Z ranged ~Brownian (1.04, n 21) — hypothesis only | `oi_research_book/ZERO_GAMMA_DISTANCE_RESULTS.md` |
 
 ## His forecast lines
 

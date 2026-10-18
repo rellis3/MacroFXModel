@@ -1,0 +1,149 @@
+{
+ "prereg": "oi_research_book/ZERO_GAMMA_DISTANCE_PREREG.md",
+ "window": [
+  "2020-09-08",
+  "2026-08-21"
+ ],
+ "g2_build_counts": {
+  "raw_rows": 793,
+  "dropped": 0,
+  "used": 793
+ },
+ "primary": {
+  "k": 1.0,
+  "n": 779,
+  "n_near": 127,
+  "deltaDR": 0.0231,
+  "p": 0.6906,
+  "se": 0.0598
+ },
+ "halves": [
+  {
+   "k": 1.0,
+   "n": 389,
+   "n_near": 76,
+   "deltaDR": 0.0892,
+   "p": 0.3242,
+   "se": 0.0915
+  },
+  {
+   "k": 1.0,
+   "n": 390,
+   "n_near": 51,
+   "deltaDR": -0.0697,
+   "p": 0.282,
+   "se": 0.0661
+  }
+ ],
+ "robustness": {
+  "k0.5": {
+   "k": 0.5,
+   "n": 779,
+   "n_near": 55,
+   "deltaDR": 0.1108,
+   "p": 0.2142,
+   "se": 0.0902
+  },
+  "k2.0": {
+   "k": 2.0,
+   "n": 779,
+   "n_near": 253,
+   "deltaDR": -0.0268,
+   "p": 0.6014,
+   "se": 0.0516
+  },
+  "T30_iv30": {
+   "k": 1.0,
+   "n": 779,
+   "n_near": 117,
+   "deltaDR": -0.0035,
+   "p": 0.9597,
+   "se": 0.0696
+  },
+  "all_expiry": {
+   "k": 1.0,
+   "n": 1498,
+   "n_near": 239,
+   "deltaDR": -0.0443,
+   "p": 0.2988,
+   "se": 0.0431
+  }
+ },
+ "harness": {
+  "placebo": {
+   "deltaDR": -0.0613,
+   "p": 0.264,
+   "pass": false
+  },
+  "positive_control": {
+   "deltaDR": 0.0571,
+   "p": 0.2,
+   "pass": false
+  },
+  "z_found_share": 0.954,
+  "repriced_sign_vs_G2_sign_agreement": 0.939
+ },
+ "verdict": "NULL",
+ "descriptive_DR_by_distance_and_sign": [
+  {
+   "dist": "(-0.001, 0.5]",
+   "is_short": false,
+   "mean": 1.035,
+   "count": 21
+  },
+  {
+   "dist": "(-0.001, 0.5]",
+   "is_short": true,
+   "mean": 1.075,
+   "count": 34
+  },
+  {
+   "dist": "(0.5, 1.0]",
+   "is_short": false,
+   "mean": 0.765,
+   "count": 39
+  },
+  {
+   "dist": "(0.5, 1.0]",
+   "is_short": true,
+   "mean": 1.022,
+   "count": 33
+  },
+  {
+   "dist": "(1.0, 2.0]",
+   "is_short": false,
+   "mean": 0.777,
+   "count": 89
+  },
+  {
+   "dist": "(1.0, 2.0]",
+   "is_short": true,
+   "mean": 0.997,
+   "count": 37
+  },
+  {
+   "dist": "(2.0, 4.0]",
+   "is_short": false,
+   "mean": 0.789,
+   "count": 182
+  },
+  {
+   "dist": "(2.0, 4.0]",
+   "is_short": true,
+   "mean": 0.994,
+   "count": 74
+  },
+  {
+   "dist": "(4.0, inf]",
+   "is_short": false,
+   "mean": 0.918,
+   "count": 207
+  },
+  {
+   "dist": "(4.0, inf]",
+   "is_short": true,
+   "mean": 1.054,
+   "count": 63
+  }
+ ]
+}
