@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decision Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+#lApp { padding: 0 24px 48px; width: 100%; box-sizing: border-box; max-width: 1400px; margin: 0 auto; }
+.l-h { display: flex; align-items: center; gap: 14px; padding: 16px 0 10px; border-bottom: 1.5px solid var(--border); flex-wrap: wrap; }
+.l-title { font-size: 17px; font-weight: 700; color: var(--text); } .l-sub { font-size: 10.5px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.l-btn { background: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 3px 11px; cursor: pointer; font-size: 11px; color: var(--text2); text-decoration: none; font-family: 'DM Sans', sans-serif; }
+.l-btn:hover { border-color: var(--blue); color: var(--blue); }
+.note { margin: 10px 0; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--s1); font-size: 11.5px; color: var(--text2); line-height: 1.55; }
+.note b { color: var(--text); } .warn { border-color: color-mix(in srgb, var(--amber, #e0a32e) 60%, transparent); }
+.ctl { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; padding: 8px 0; }
+.ctl label { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+select { background: var(--s1); color: var(--text); border: 1.5px solid var(--border); border-radius: 8px; padding: 4px 7px; font-size: 12px; font-family: 'DM Sans', sans-serif; }
+.grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 12px; margin-top: 12px; }
+@media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } #lApp { padding: 0 12px 48px; } }
+.card { background: var(--s1); border: 1.5px solid var(--border); border-radius: 14px; padding: 12px 14px; min-width: 0; }
+.card h3 { margin: 0 0 8px; font-size: 13px; color: var(--text); font-weight: 700; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 8px; }
+.stat { border: 1px solid var(--border); border-radius: 10px; padding: 7px 9px; } .stat .k { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; }
+.stat .v { font-size: 15px; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; }
+.pos { color: var(--green) !important; } .neg { color: var(--red) !important; } .muted { color: var(--text3); }
+table.t { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+table.t th, table.t td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: right; font-family: 'DM Mono', monospace; color: var(--text2); white-space: nowrap; }
+table.t th { color: var(--text3); font-weight: 500; font-size: 10.5px; } table.t td:first-child, table.t th:first-child { text-align: left; }
+td.wrap { white-space: normal; text-align: left !important; font-family: 'DM Sans', sans-serif; }
+.beyond { font-weight: 700; } .pill { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px; font-family: 'DM Mono', monospace; border: 1px solid var(--border); }
+#eq { width: 100%; height: 280px; }
+.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; }
+.filters label { font-size: 11px; color: var(--text2); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+</style>
+</head>
+<body class="dark">
+<div id="lApp">
+  <div class="l-h">
+    <div><div class="l-title">Decision Lab</div>
+      <div class="l-sub">try ways to keep the greens and cut the reds · rule A trades from the locked backtest · exploratory</div></div>
+    <div style="margin-left:auto;display:flex;gap:8px"><a class="l-btn" href="forecast-line-backtest.html">Forecast Line Backtest (locked record) ↗</a></div>
+  </div>
+  <div class="note warn"><b>What this page is.</b> A workbench beside the locked lessons record (<span class="muted">tag lesson-track-L05</span>), which it reads but never changes.
+    It takes every rule A trade (the rich-day break on the chosen v3 lines, 11 instruments, 2020-08 → 2026-08, checked on 1-minute bars) and adds what was <b>knowable at the entry minute</b>
+    from the feature store: interest rates, the 10-year yield gap, COT positioning, VIX and its term structure, US data surprises, IV÷RV, time and day.
+    <br><b>Nothing here is evidence yet.</b> Every split and filter you try is another look at the same 2,057 trades, and some will look good by luck. The counter below keeps score of how many
+    you have tried. The page opens on 2020–23 so the later years stay unseen while you look for ideas; look at 2024–26 only to check an idea you have already written down. Ideas worth keeping go into one registered test (draft: <span class="muted">forge/DECISION_LAB_FILTERS_PREREG.md</span>), found on 2020–23 and checked on 2024–26, before they count.</div>
+  <div class="ctl">
+    <label>Stop behind the line<select id="cStop"></select></label>
+    <label>Target<select id="cTgt"></select></label>
+    <label>Costs<select id="cCost"><option value="2">2× spread table</option><option value="1">1×</option><option value="0">none</option></select></label>
+    <label>Instruments<select id="cInst"><option value="all">all 11</option></select></label>
+    <label>Years<select id="cYrs"><option value="disc" selected>2020–2023 (find ideas here)</option><option value="conf">2024–2026 (check them here, once)</option><option value="all">2020-08 → 2026-08</option></select></label>
+  </div>
+  <div class="grid">
+    <div class="card"><h3>Before and after your filters</h3><div id="eq"></div><div class="stats" id="stats"></div></div>
+    <div class="card"><h3>Filters <span class="muted">— pick conditions, see what they keep</span></h3><div class="filters" id="filters"></div>
+      <div class="note" id="tries" style="margin-top:10px"></div></div>
+  </div>
+  <div class="card" style="margin-top:12px"><h3>Green vs red: what was different at entry <span class="muted">— each input split into thirds of its range across all trades</span></h3>
+    <table class="t" id="anat"></table>
+    <div class="note" style="margin:8px 0 0">The chance band is the spread of the "top third minus bottom third" gap when the trade results are shuffled 300 times: a gap outside it is unusual by chance alone, but with nine inputs on the table about one in twenty will land outside by luck. "+" on a signed input means it was on the trade's side (e.g. carry earned by the trade, rates moving its way,
+      funds already positioned its way).</div></div>
+</div>
+<script type="module">
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 2) => v == null || !Number.isFinite(v) ? '—' : v.toFixed(d);
+const sgn = v => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+const TGT_LABEL = { '1': '1R', '2': '2R', '5': '5R', '10': '10R', 'L': 'next line' };
+const INPUTS = [
+  ['ivrv', 'IV ÷ RV', 'how rich implied vol was vs the last 20 days (the rule needs ≥ its threshold)'],
+  ['carry_3m', 'Carry (3-month rates)', '3-month rate of the currency bought minus sold; + = the trade earns carry (FX, gold)'],
+  ['rates_20d', 'Rates moving its way (20 days)', 'change in the 10-year yield gap over 20 days, on the trade\'s side (gold/indices: minus US 10y)'],
+  ['cot_crowd', 'Funds already positioned its way', 'leveraged-fund net position z-score (156 weeks), + = crowded in the trade\'s direction (FX only)'],
+  ['vix', 'VIX level', 'VIX close before entry'],
+  ['vix_term', 'VIX ÷ VIX3M', 'above 1 = stressed (inverted) volatility term structure'],
+  ['usd_surpr_5d', 'US surprises, 5 days', 'sum of US data-surprise z-scores in the 5 days before entry, signed to the trade\'s USD exposure'],
+  ['hour', 'Entry hour (London)', 'rule A enters 00:00–10:00'],
+  ['reg', 'σ vs its usual level', 'the forecast\'s regime input (log); + = busier than usual'],
+];
+let R = null, chart = null, tries = new Set();
+async function loadData() {
+  const r = await fetch('./backtest-data/decision-lab/rule_a.json.gz'); const buf = new Uint8Array(await r.arrayBuffer());
+  const gz = buf[0] === 0x1f && buf[1] === 0x8b;
+  return gz ? await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).json() : JSON.parse(new TextDecoder().decode(buf));
+}
+const val = (t, k) => k === 'reg' ? t.reg : t.f[k];
+function trades() {
+  const s = +$('cStop').value, tg = $('cTgt').value, mult = +$('cCost').value, inst = $('cInst').value, yrs = $('cYrs').value, out = [];
+  for (const t of R.trades) {
+    if (inst !== 'all' && t.inst !== inst) continue;
+    const y = +t.d.slice(0, 4); if (yrs === 'disc' && y > 2023) continue; if (yrs === 'conf' && y < 2024) continue;
+    const m = R.instruments[t.inst], j = m.stops.indexOf(s) * m.targets.length + m.targets.indexOf(tg), g = t.g[j]; if (!g) continue;
+    const unit = t.o * t.sig / 100, stop = t.L - t.side * s * unit, risk = Math.abs(t.ep - stop);
+    out.push({ ...t, net: g[0] / 1000 - (risk > 0 ? mult * m.spread / risk : 0) });
+  }
+  return out;
+}
+const weekKey = d => { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - (t.getUTCDay() + 6) % 7); return t.toISOString().slice(0, 10); };
+function stats(T, span) {
+  if (!T.length) return null;
+  const n = T.length, mean = T.reduce((a, x) => a + x.net, 0) / n;
+  const wk = {}; for (const x of T) wk[weekKey(x.d)] = (wk[weekKey(x.d)] ?? 0) + x.net;
+  const w = span.map(k => wk[k] ?? 0), wm = w.reduce((a, b) => a + b, 0) / w.length, sd = Math.sqrt(w.reduce((a, b) => a + (b - wm) ** 2, 0) / (w.length - 1));
+  const Sw = sd > 0 ? wm / sd : 0, S = Sw * Math.sqrt(52), se = Math.sqrt((1 + Sw * Sw / 2) / w.length) * Math.sqrt(52);
+  let eq = 0, pk = 0, dd = 0; for (const x of T) { eq += x.net; pk = Math.max(pk, eq); dd = Math.min(dd, eq - pk); }
+  return { n, mean, win: T.filter(x => x.net > 0).length / n, total: eq, S, se, dd };
+}
+function weeksOf(T) { if (!T.length) return []; const a = Date.parse(weekKey(T[0].d) + 'T12:00:00Z'), b = Date.parse(T.at(-1).d + 'T12:00:00Z'), o = []; for (let t = a; t <= b; t += 6048e5) o.push(new Date(t).toISOString().slice(0, 10)); return o; }
+// thirds of each input over ALL trades (fixed cut points, so filters mean the same thing whatever else is selected)
+const CUTS = {};
+function cuts() { for (const [k] of INPUTS) { const v = R.trades.map(t => val(t, k)).filter(x => x != null).sort((a, b) => a - b); CUTS[k] = [v[Math.floor(v.length / 3)], v[Math.floor(2 * v.length / 3)]]; } }
+const third = (t, k) => { const v = val(t, k); if (v == null) return null; return v < CUTS[k][0] ? 0 : v < CUTS[k][1] ? 1 : 2; };
+function renderFilters() {
+  const opt = (k) => `<select data-k="${k}"><option value="any">any</option><option value="0">low third</option><option value="1">middle third</option><option value="2">high third</option><option value="!0">not low</option><option value="!2">not high</option><option value="pos">above 0</option><option value="neg">below 0</option></select>`;
+  $('filters').innerHTML = INPUTS.map(([k, lab, why]) => `<label title="${why}">${lab}${opt(k)}</label>`).join('') +
+    `<label>Line broken<select data-k="line"><option value="any">any</option><option value="p50">p50 only</option><option value="p75">p75 only</option></select></label>
+     <label>Direction<select data-k="side"><option value="any">any</option><option value="1">long only</option><option value="-1">short only</option></select></label>
+     <label>Release day<select data-k="ev"><option value="any">any</option><option value="tag">tagged release days</option><option value="none">no release tag</option></select></label>`;
+  for (const s of $('filters').querySelectorAll('select')) s.onchange = render;
+}
+function filterSpec() { return [...$('filters').querySelectorAll('select')].map(s => [s.dataset.k, s.value]).filter(([, v]) => v !== 'any'); }
+function pass(t, spec) {
+  for (const [k, v] of spec) {
+    if (k === 'line') { if (!t.line.endsWith(v)) return false; continue; }
+    if (k === 'side') { if (String(t.side) !== v) return false; continue; }
+    if (k === 'ev') { const tag = t.ev && t.ev !== 'none' && t.ev !== 'unknown'; if ((v === 'tag') !== tag) return false; continue; }
+    const x = val(t, k); if (x == null) return false;
+    if (v === 'pos') { if (!(x > 0)) return false; continue; } if (v === 'neg') { if (!(x < 0)) return false; continue; }
+    const th = third(t, k); if (v.startsWith('!')) { if (th === +v.slice(1)) return false; } else if (th !== +v) return false;
+  }
+  return true;
+}
+const expMax = n => { if (n <= 1) return 0; const inv = p => { const a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239], b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572], c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783], d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
+  if (p > 0.97575) { const q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+  const q = p - 0.5, r = q * q; return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1); };
+  return 0.4228 * inv(1 - 1 / n) + 0.5772 * inv(1 - 1 / (n * Math.E)); };
+function render() {
+  const T = trades(), spec = filterSpec(), K = T.filter(t => pass(t, spec)), span = weeksOf(T);
+  if (spec.length) tries.add(JSON.stringify(spec) + $('cYrs').value);
+  const a = stats(T, span), b = stats(K, span);
+  const card = (k, va, vb, c) => `<div class="stat"><div class="k">${k}</div><div class="v ${c ?? ''}">${va} <span class="muted" style="font-size:11px">→</span> ${vb}</div></div>`;
+  $('stats').innerHTML = !a ? '<div class="muted">No trades.</div>' : [
+    card('Trades', a.n, b ? b.n : 0), card('Net R / trade', fmt(a.mean, 3), b ? fmt(b.mean, 3) : '—', b ? sgn(b.mean - a.mean) : ''),
+    card('Win rate', fmt(a.win * 100, 1) + '%', b ? fmt(b.win * 100, 1) + '%' : '—'), card('Total net R', fmt(a.total, 0), b ? fmt(b.total, 0) : '—'),
+    card('Sharpe ± SE', `${fmt(a.S, 2)}±${fmt(a.se, 2)}`, b ? `${fmt(b.S, 2)}±${fmt(b.se, 2)}` : '—', b ? sgn(b.S - a.S) : ''), card('Worst drawdown R', fmt(a.dd, 0), b ? fmt(b.dd, 0) : '—'),
+  ].join('');
+  if (!chart) chart = LightweightCharts.createChart($('eq'), { layout: { background: { color: 'transparent' }, textColor: '#94a3b8' }, grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(148,163,184,.12)' } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } });
+  for (const s of chart._s ?? []) chart.removeSeries(s); chart._s = [];
+  const line = (X, color) => { const by = {}; for (const x of X) by[x.d] = (by[x.d] ?? 0) + x.net; let e = 0; const s = chart.addLineSeries({ color, lineWidth: 2 }); s.setData(Object.keys(by).sort().map(d => ({ time: d, value: +(e += by[d]).toFixed(3) }))); chart._s.push(s); };
+  line(T, '#64748b'); if (spec.length) line(K, '#10b981'); chart.timeScale().fitContent();
+  const n = tries.size, allow = expMax(Math.max(1, n)), z = b && b.se > 0 ? b.S / b.se : null;
+  $('tries').innerHTML = spec.length ? `<b>${n} filter combination${n === 1 ? '' : 's'} tried</b> this visit. The best of ${n} independent tries looks about <b>${fmt(allow, 2)} standard errors</b> good by luck (an upper allowance: tries overlap). This filter: ${z == null ? '—' : fmt(z, 2)} SE, after the allowance <b class="${z != null && z - allow > 0 ? 'pos' : 'neg'}">${z == null ? '—' : fmt(z - allow, 2)}</b>.
+     Check it on the other years with the Years selector: an idea found on 2020–23 that also holds on 2024–26 is the one worth registering.`
+    : 'Grey line: all rule A trades. Pick conditions to see what they keep (green line).';
+  renderAnatomy(T);
+}
+function renderAnatomy(T) {
+  const rng = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+  const rows = [];
+  for (const [k, lab, why] of INPUTS) {
+    const g = [[], [], []]; for (const t of T) { const th = third(t, k); if (th != null) g[th].push(t); }
+    const m = a => a.length ? a.reduce((s, x) => s + x.net, 0) / a.length : null, w = a => a.length ? a.filter(x => x.net > 0).length / a.length : null;
+    const gap = (m(g[2]) ?? 0) - (m(g[0]) ?? 0);
+    // chance band: shuffle results across the trades that have this input
+    const pool = [...g[0], ...g[1], ...g[2]], nets = pool.map(x => x.net), n0 = g[0].length, n2 = g[2].length, sims = [];
+    for (let r = 0; r < 300; r++) { for (let i = nets.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [nets[i], nets[j]] = [nets[j], nets[i]]; }
+      let s0 = 0, s2 = 0; for (let i = 0; i < n0; i++) s0 += nets[i]; for (let i = 0; i < n2; i++) s2 += nets[nets.length - 1 - i]; sims.push(s2 / Math.max(1, n2) - s0 / Math.max(1, n0)); }
+    sims.sort((a, b) => a - b); const lo = sims[7], hi = sims[292], beyond = gap < lo || gap > hi;
+    rows.push(`<tr><td title="${why}">${lab}<div class="muted" style="font-size:10px;font-family:'DM Sans'">cuts ${fmt(CUTS[k][0], 2)} / ${fmt(CUTS[k][1], 2)}</div></td>` +
+      g.map(a => `<td>${a.length}</td><td>${fmt((w(a) ?? NaN) * 100, 0)}%</td><td class="${sgn(m(a))}">${fmt(m(a), 3)}</td>`).join('') +
+      `<td class="${sgn(gap)} ${beyond ? 'beyond' : ''}">${fmt(gap, 3)}</td><td class="muted">${fmt(lo, 3)} … ${fmt(hi, 3)}</td><td>${beyond ? '<span class="pill">outside</span>' : ''}</td></tr>`);
+  }
+  $('anat').innerHTML = `<tr><th>Input</th><th colspan="3">Low third: trades · win · net R</th><th colspan="3">Middle third</th><th colspan="3">High third</th><th>High − low</th><th>Chance band (95%)</th><th></th></tr>` + rows.join('');
+}
+async function init() {
+  R = await loadData(); cuts();
+  const m = Object.values(R.instruments)[0];
+  $('cStop').innerHTML = m.stops.map(s => `<option value="${s}" ${s === 0.2 ? 'selected' : ''}>${s}σ${[0.1, 0.2].includes(s) ? ' (registered)' : ''}</option>`).join('');
+  $('cTgt').innerHTML = m.targets.map(t => `<option value="${t}" ${t === '5' ? 'selected' : ''}>${TGT_LABEL[t]}${['5', '10'].includes(t) ? ' (registered)' : ''}</option>`).join('');
+  $('cInst').innerHTML += Object.keys(R.instruments).sort().map(s => `<option>${s}</option>`).join('');
+  renderFilters();
+  for (const id of ['cStop', 'cTgt', 'cCost', 'cInst', 'cYrs']) $(id).onchange = render;
+  render();
+}
+init().catch(e => { $('stats').textContent = 'Error: ' + e.message; });
+</script>
+</body>
+</html>
