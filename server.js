@@ -16031,7 +16031,11 @@ const _cboeDspx = () => _cboeCsv('DSPX');
 // VOLI 403s, and PUT/BXM/CLLZ are covered-call STRATEGY indices (a portfolio's
 // return, not a risk gauge) so they do not belong on a board that ranks moves
 // against their own history.
-const _CBOE_EXTRA = { ovx: 'OVX', gvz: 'GVZ', vix9d: 'VIX9D', vix3m: 'VIX3M', vix6m: 'VIX6M', vvix: 'VVIX', skew: 'SKEW', vxn: 'VXN', rvx: 'RVX' };
+const _CBOE_EXTRA = { ovx: 'OVX', gvz: 'GVZ', vix9d: 'VIX9D', vix3m: 'VIX3M', vix6m: 'VIX6M', vvix: 'VVIX', skew: 'SKEW', vxn: 'VXN', rvx: 'RVX',
+  // Implied correlation and single-name vol (2026-10-19, from the Crown "calm is not safe" clip): COR1M/COR3M are
+  // 5-column OHLC files (CLOSE taken by header, 2006->), VIXEQ is the 2-column kind (2014->). COR1M is the same
+  // object as DSPX read from the other side -- low implied correlation = "there is no 'the market'".
+  cor1m: 'COR1M', cor3m: 'COR3M', vixeq: 'VIXEQ' };
 
 // ── Sectors and breadth (2026-09-23) ────────────────────────────────────────
 // The scan had no equities beyond two index futures, so it could never show the
@@ -16051,6 +16055,8 @@ const _YAHOO_EQ = {
   xlf: 'XLF', xlk: 'XLK', xle: 'XLE', xlv: 'XLV', xli: 'XLI', xlp: 'XLP',
   xlu: 'XLU', xly: 'XLY', xlb: 'XLB', xlc: 'XLC', xlre: 'XLRE',
   smh: 'SMH', rsp: 'RSP', spy: 'SPY',
+  // ICE BofA MOVE (bond vol), 2026-10-19: the one series the 2026-10-02 clip audit found missing. Same Yahoo path.
+  move: '^MOVE',
 };
 // Single names (2026-09-23). "Sectors" is not the same as "stocks": a rates move
 // that hits Financials is one fact, and the same move sparing the two names that

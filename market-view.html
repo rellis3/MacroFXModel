@@ -1288,7 +1288,7 @@ function chartFor(f) {
       note: 'the bottom of the credit stack against the top — a gap says the stress is not systemic' });
   if (f.kind === 'dispersion' && BUNDLE.series.dspx && BUNDLE.series.vix)
     return dualLine(tail('dspx'), tail('vix'), { labelA: 'Dispersion', labelB: 'VIX',
-      note: 'dispersion climbing while the VIX sits still is the crowded-market shape' });
+      note: 'dispersion climbing while the VIX sits still is the crowded-market shape; the implied-correlation tile (COR1M) is the same read from the other side — low correlation, no "the market"' });
   if (f.kind === 'extreme' && f.key) {
     const spec = BOARD.find(b => b.key === f.key);
     const row = SCORED.find(r => r.key === f.key);
@@ -1534,7 +1534,7 @@ function renderVol() {
   const by = k => SCORED.find(r => r.key === k);
   const curve = ['vix9d', 'vix', 'vix3m', 'vix6m'].map(k => by(k)).filter(Boolean);
   const term = by('vixterm');
-  const others = ['vvix', 'skew', 'dspx', 'ovx', 'gvz'].map(k => by(k)).filter(Boolean);
+  const others = ['vvix', 'move', 'skew', 'dspx', 'cor1m', 'vixeq', 'ovx', 'gvz'].map(k => by(k)).filter(Boolean);
   if (!curve.length) { $('volBoard').innerHTML = '<span class="muted">The volatility feeds have not loaded.</span>'; return; }
   const inv = term?.last != null && term.last < 0;
   $('volBoard').innerHTML =

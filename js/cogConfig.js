@@ -201,16 +201,21 @@ export const COG_THRESHOLD1_SCORE = {
 
 // ── Gate 2 — Risk / Volatility Engine ───────────────────────────────────
 // Inputs never touch Nasdaq price — vol/correlation/credit measures only.
-// `ticker`/`fredSeriesId` resolve through cogDataSources.js. MOVE has no
-// reliable free daily ticker; it's listed so its absence is visible and
-// auditable — the gate abstains on it via the weight-present coverage
-// policy rather than faking a value (same disclosure standard as the
-// sibling NLC system's TICK/ADD/TRIN abstention).
+// `ticker`/`fredSeriesId` resolve through cogDataSources.js. MOVE was listed
+// as flaggedMissing ("no reliable free daily feed") and the gate abstained on
+// it via the weight-present coverage policy from the day this file was
+// written until 2026-10-19, when the owner switched it on: Yahoo serves
+// ^MOVE (ICE BofA MOVE) as a daily close from 2002-11 on the same chart
+// endpoint every other ticker here uses (checked 2026-10-02 and 2026-10-19,
+// 5,918 closes, current). The 0.6-weight movePercentile component therefore
+// contributes from that date; every G2 score computed before it was built
+// without bond vol, and a backtest re-run on the real dataset will differ
+// from earlier runs for that reason alone. MD files/CLIP_WATCH.md 2026-10-02.
 export const COG_RISK_INPUTS = {
   vix:   { ticker: '^VIX' },
   vix3m: { ticker: '^VIX3M' },
   vvix:  { ticker: '^VVIX' },
-  move:  { ticker: '^MOVE', flaggedMissing: true, note: 'No reliable free daily MOVE index feed — abstains via coverage policy until a paid feed is wired in (Phase 2 gap, disclosed not faked).' },
+  move:  { ticker: '^MOVE', note: 'ICE BofA MOVE via Yahoo (daily close, 2002-11→). Wired 2026-10-19 by owner decision; abstained (flaggedMissing) before that — see the header note.' },
   qqq:   { ticker: 'QQQ' },
   spy:   { ticker: 'SPY' },
   dxy:   { ticker: 'DX-Y.NYB', fallbackTicker: 'UUP' },

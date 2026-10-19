@@ -70,6 +70,9 @@ names: **2,478 daily observations, 2016-10-03 to 2026-10-02**, range 36.6 to 182
 - **Nothing to pre-register from the clip as spoken.** The mechanism is structural, not a
   forecast, and the desk's own house style for that is the chain: describe it, stamp it
   context, never alert on it.
+- *Decided 2026-10-19 (owner: "go for it"): `^MOVE` is wired — into the drill bundle (`move`, a Market View tile
+  beside VVIX) and into the V1 COG risk gate (`cogConfig.js` `move`, no longer `flaggedMissing`), so the 0.6-weight
+  `movePercentile` component contributes from that date. The bond-vol → range pre-registration below is still open.*
 - **The feed is a decision, not a chore, and it is the owner's.** Supplying `^MOVE` would
   activate a **dormant 0.6-weight factor inside a live risk gate**. That changes gate
   behaviour, which is the same shape as the gold-pip re-tune: correcting the input and

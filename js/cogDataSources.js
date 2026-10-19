@@ -80,7 +80,7 @@ export async function fetchInputRaw(input) {
 // Fetches one input and never throws — a single dead ticker/series degrades
 // that input to all-NaN (the gate just abstains on it via its own
 // weight-present coverage policy) rather than failing the whole dataset.
-// `flaggedMissing` inputs (MOVE) are never even attempted — same disclosed,
+// `flaggedMissing` inputs (none since 2026-10-19; MOVE was one) are never even attempted — same disclosed,
 // not-faked gap as Phase 1.
 async function fetchInputOrAbstain(input) {
   if (input.flaggedMissing) return [];
