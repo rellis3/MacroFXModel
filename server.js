@@ -24435,9 +24435,9 @@ app.get('/api/oi-profile/export', async (req, res) => {
     });
     if (!blocks.length) return res.status(404).type('text/plain').send('No profile could be built (no book on the record).');
     const body = blocks.join('\n');
-    // ?chunks=1 — Pine strings are capped at 4,096 characters, so the paste is cut into parts of <3,900 characters (on line boundaries), one per input box in the indicator
+    // ?chunks=1 — Pine strings are capped at 4,096 characters, so the paste is cut into parts of <=4,000 characters (on line boundaries), one per input box in the indicator
     if (String(req.query.chunks || '') === '1') {
-      const parts = chunkText(body, 3900);
+      const parts = chunkText(body, 4000);
       return res.type('text/plain').send(parts.map((p, i) => `=====PART ${i + 1}/${parts.length}=====\n${p}`).join('\n'));
     }
     res.type('text/plain').send(body);

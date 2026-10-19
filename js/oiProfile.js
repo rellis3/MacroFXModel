@@ -147,7 +147,7 @@ export function shiftProfilePrices(p, fn, label = 'futures') {
 /** Pipe-delimited block for the Pine indicator. One instrument per block; first line after the title names it.
  *  Pine strings cannot exceed 4,096 characters (a longer paste raises "String is too long"), so the block is COMPACT: bar series are integers scaled to ±1000,
  *  rows under 2% of the peak are dropped, gamma carries only the net, and the helix is downsampled. Pine's str.tonumber may not read exponent notation and may
- *  drop empty fields, so: plain numbers only, '-' for a missing value. Use chunkText() to split a result into <4,000-character parts, one per Pine input box. */
+ *  drop empty fields, so: plain numbers only, '-' for a missing value. Use chunkText() to split a result into <=4,000-character parts, one per Pine input box. */
 export function buildProfileText(p, { name, generated = '', digits = 2 } = {}) {
   if (!p) return '';
   const f = v => (Number.isFinite(v) ? (+v).toFixed(digits) : '-');
@@ -174,7 +174,7 @@ export function buildProfileText(p, { name, generated = '', digits = 2 } = {}) {
 }
 
 /** Split a paste into parts of at most `max` characters, on line boundaries (Pine's per-input string limit is 4,096). Returns the parts, in order. */
-export function chunkText(text, max = 3900) {
+export function chunkText(text, max = 4000) {
   const NL = String.fromCharCode(10), parts = []; let cur = '';
   for (const line of String(text || '').split(NL)) {
     if (cur && cur.length + line.length + 1 > max) { parts.push(cur); cur = ''; }
