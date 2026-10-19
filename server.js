@@ -18975,8 +18975,16 @@ setTimeout(_rlAccumulateTradeLog, 30_000);                        // and shortly
 // (in _CF_EXACT so it survives redeploys), carrying the MFE/MAE the broker now
 // reconstructs. Same shape the offline give-back tool (--bot oi) reads.
 async function _oiAccumulateTradeLog() {
+  await _oiAccumulateTradeLogFor('oi_bot');
+  // The two experiments need a forward record too: until 2026-10-19 only the OI Gamma bot had this rollup, so OI-Vol / OI-Conf closed trades vanished with
+  // the executor's daily list and the 'forward test' kept nothing. Same code, own status/log keys.
+  await _oiAccumulateTradeLogFor('oi_vol_bot');
+  await _oiAccumulateTradeLogFor('oi_conf_bot');
+}
+async function _oiAccumulateTradeLogFor(prefix) {
+  const _logKey = prefix + '_trade_log';
   try {
-    const raw = await kv.get('oi_bot_status').catch(() => null);
+    const raw = await kv.get(prefix + '_status').catch(() => null);
     if (!raw) return;
     const status = JSON.parse(raw).data ?? JSON.parse(raw);
     const closed = status?.today_closed_trades || [];
@@ -18987,7 +18995,7 @@ async function _oiAccumulateTradeLog() {
     // hiccup — see kv.js's getStrict doc (oi_history was wiped this way 2026-08-26;
     // oi_bot_trade_log confirmed hit the same thing 2026-09-28, twenties of
     // fade/react-qualifying rows -> 0, discovered via the hold-calibration banner).
-    const logRaw = await kv.getStrict('oi_bot_trade_log');
+    const logRaw = await kv.getStrict(_logKey);
     const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
     const seen = new Set(log.map(t => t.position_id ?? t.ticket));
     // Zone features the bot stamped at entry (hold score + components, mode, regime,
@@ -19024,9 +19032,9 @@ async function _oiAccumulateTradeLog() {
     }
     if (!added) return;
     if (log.length > 5000) log.splice(0, log.length - 5000);      // cap
-    await kv.put('oi_bot_trade_log', JSON.stringify({ data: log, timestamp: Date.now() }));
-    console.log(`[oi-bot] trade log +${added} (${log.length} total)`);
-  } catch (e) { console.error('[oi-bot] trade-log accumulate failed:', e.message); }
+    await kv.put(_logKey, JSON.stringify({ data: log, timestamp: Date.now() }));
+    console.log(`[${prefix}] trade log +${added} (${log.length} total)`);
+  } catch (e) { console.error(`[${prefix}] trade-log accumulate failed:`, e.message); }
 }
 svcInterval('tradeLogs', _oiAccumulateTradeLog, 10 * 60_000);                  // every 10 min
 setTimeout(_oiAccumulateTradeLog, 35_000);                        // and shortly after boot
@@ -22139,6 +22147,48 @@ app.post('/api/oi-ripple/refresh', async (_req, res) => {
   try { res.json({ ok: true, instruments: await _refreshOIRippleShadow() }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // ── OI-Conf bot: plan, refresh, audit ────────────────────────────────────────────────────────────────────────────────────────────
+// ── The three OI bots at a glance: executor health, config sanity, plan, and the forward trade record ─────────────────────────────────────
+// GET /api/oi-bots/review — read-only. One block per bot (OI Gamma, OI-Vol, OI-Conf): is the executor reporting, live vs paper, risk settings, open positions,
+// zones per instrument, and the trade log summarised (n, win rate, net P&L, average R, by mode and instrument, last trades).
+app.get('/api/oi-bots/review', async (_req, res) => {
+  try {
+    const BOTS = [{ id: 'oi', label: 'OI Gamma', pre: 'oi_bot' }, { id: 'vol', label: 'OI-Vol', pre: 'oi_vol_bot' }, { id: 'conf', label: 'OI-Conf', pre: 'oi_conf_bot' }];
+    const now = Date.now(), out = {};
+    const stat = rows => {
+      const pr = rows.filter(t => Number.isFinite(t.profit)), rr = rows.filter(t => Number.isFinite(t.r));
+      const win = pr.filter(t => t.profit > 0).length;
+      return { n: pr.length, wins: win, winRate: pr.length ? +(win / pr.length).toFixed(3) : null, net: +pr.reduce((a, t) => a + t.profit, 0).toFixed(2),
+        avgR: rr.length ? +(rr.reduce((a, t) => a + t.r, 0) / rr.length).toFixed(3) : null, nR: rr.length };
+    };
+    const group = (rows, f) => Object.fromEntries(Object.entries(rows.reduce((o, t) => { const k = f(t) ?? '?'; (o[k] ||= []).push(t); return o; }, {})).map(([k, v]) => [k, stat(v)]));
+    for (const b of BOTS) {
+      const [stRaw, plan, cfg, logRaw] = await Promise.all([kv.get(b.pre + '_status').catch(() => null), _kvJson(b.pre + '_zones'), _kvJson(b.pre + '_config'), kv.get(b.pre + '_trade_log').catch(() => null)]);
+      const stj = stRaw ? JSON.parse(stRaw) : null, st = stj ? (stj.data ?? stj) : null;
+      const stAge = stj?.timestamp ? Math.round((now - stj.timestamp) / 60000) : null;
+      const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+      const rows = Array.isArray(log) ? log : [];
+      const day = t => t.date || String(t.time_close || '').slice(0, 10);
+      const last7 = rows.filter(t => (now - Date.parse(day(t) + 'T12:00:00Z')) < 7 * 86400e3);
+      out[b.id] = {
+        label: b.label,
+        executor: st ? { reporting: true, statusAgeMin: stAge, mode: st.mode ?? null, running: st.running ?? null, killSwitch: st.kill_switch ?? null, balance: st.balance ?? null,
+          planLoaded: st.generatedAt ?? null, instruments: (st.universe && Object.keys(st.universe).length) || (st.lines || []).length } : { reporting: false },
+        config: cfg ? { paper_mode: cfg.paper_mode, kill_switch: cfg.kill_switch, risk_pct: cfg.risk_pct, max_lot: cfg.max_lot, max_open: cfg.max_open, max_open_risk_pct: cfg.max_open_risk_pct,
+          tg_enabled: cfg.tg_enabled, plan_secs: cfg.plan_secs, bookMode: cfg.bookMode ?? null, tolSigma: cfg.tolSigma ?? null, style: cfg.style ?? null } : null,
+        plan: plan ? { generatedAt: plan.generatedAt, ageMin: Math.round((now - Date.parse(plan.generatedAt)) / 60000),
+          zones: Object.fromEntries(Object.entries(plan.instruments || {}).map(([k, v]) => [k, v.zoneCount ?? (v.zones || []).length])),
+          diag: Object.fromEntries(Object.entries(plan.instruments || {}).filter(([, v]) => v.diag).map(([k, v]) => [k, String(v.diag).slice(0, 90)])) } : null,
+        openPositions: (st?.mt5_positions || []).map(p => ({ symbol: p.symbol, dir: p.direction, lots: p.lots, open: p.open_price, sl: p.sl, tp: p.tp, profit: p.profit, comment: p.comment })),
+        todayClosed: (st?.today_closed_trades || []).length,
+        record: { all: stat(rows), last7d: stat(last7), byMode: group(rows, t => t.features?.mode ?? (String(t.comment || '').match(/\[(\w+?)_/) || [])[1]), byInstrument: group(rows, t => t.key),
+          firstDate: rows.length ? day(rows[0]) : null, lastDate: rows.length ? day(rows[rows.length - 1]) : null,
+          recent: rows.slice(-8).map(t => ({ date: day(t), key: t.key, dir: t.direction, profit: t.profit, r: t.r ?? null, reason: t.reason ?? null, zone: t.zone_id ?? null })) },
+      };
+    }
+    res.json({ ok: true, generatedAt: new Date().toISOString(), bots: out });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/oi-conf-bot/zones', async (_req, res) => {
   try { const raw = await kv.get('oi_conf_bot_zones').catch(() => null);
     res.json({ ok: true, ...(raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : { instruments: {} }) });
