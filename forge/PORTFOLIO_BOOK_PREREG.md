@@ -115,4 +115,19 @@ and the DSR shown is recomputed with that N. A tuned weight set is never the sco
 
 ## Amendments
 
+### A1 — 2026-10-19 — PRE-RESULTS
+S1g and S3g are evaluated **daily** (rebalanceDays 1), not weekly. VIX inversions last a median of one session
+(`vix-inversion`), so a weekly check would almost never act. S1 and S3 (ungated) stay weekly. The extra daily turnover is
+charged by the harness. No outcome had been computed.
+
+### A2 — 2026-10-19 — PRE-RESULTS
+S5's unit is a variance notional set to **1% of capital per vol point of vega**: N_var = 0.01 / (2 · VIX_{t−1}).
+Daily P&L as a fraction of capital is N_var × pnl_t × (252/21) × 10⁴. This constant only matters through the 3× sleeve
+cap; the sleeve is vol-scaled to 10% like every other one. VIX_{t−1} is known at the decision close. No outcome had been
+computed.
+
+### A3 — 2026-10-19 — PRE-RESULTS
+Trade attribution follows the harness's episode rule. A trade opened from flat also carries its entry day's cost (day e).
+At a flip, that day belongs to the trade being closed. No outcome had been computed.
+
 ## RESULTS
