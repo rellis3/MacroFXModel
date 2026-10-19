@@ -27,6 +27,7 @@ script (§4) until someone claims, banks or parks each one.
 | ripple-book | Does the all-expiry OI book read NQ range better than the day book, and do its walls hold? | RESULTS | main | 2026-10-18 | `oi_research_book/RIPPLE_BOOK_PREREG.md` | `oi_research_book/RIPPLE_BOOK_RESULTS.md` | — | bank per scored question: main test UNDERPOWERED (written as UNJUDGEABLE; 94 days vs 400 gate), wall test checked separately |
 | gex-ladder-confluence | Do GEX walls that coincide with ladder lines react differently? | RESULTS | main | 2026-10-18 | `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md` | `oi_research_book/GEX_LADDER_CONFLUENCE_RESULTS.md` | — | bank as UNDERPOWERED (308 < 400 registered minimum) |
 | futures-cost-rescore | Do line-touch results survive futures costs? | RESULTS | main | 2026-10-18 | `forge/FUTURES_COST_RESCORE_PREREG.md` | in the prereg (Results record 2026-10-11) | — | bank |
+| portfolio-book | Does a fixed-weight book of the standard sleeves (beta, trend, carry, FOMC drift, vol-premium proxy) earn a deflated positive Sharpe after costs? | REGISTERED | main | 2026-10-19 | `forge/PORTFOLIO_BOOK_PREREG.md` | — | — | run `scripts/portfolio-book/run.mjs`; page `portfolio-book.html` |
 
 ## Done
 
