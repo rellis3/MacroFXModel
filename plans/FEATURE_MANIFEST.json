@@ -1185,6 +1185,69 @@
       "firstAsof": "2013-06-03T23:59:59Z",
       "lastAsof": "2026-10-15T23:59:59Z",
       "builtAt": "2026-10-17T08:21:55Z"
+    },
+    {
+      "id": "credit_hy_oas",
+      "kind": "series",
+      "label": "US high-yield OAS (ICE BofA)",
+      "source": "fred",
+      "sourceRef": "BAMLH0A0HYM2",
+      "cadence": "daily",
+      "asofRule": "close+1h",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_daily",
+      "unit": "pct",
+      "note": "FRED serves only ~3 years (licensing cap, from 2023-10). Registered 2026-10-19 for CREDIT_LEADS_EQUITIES_PREREG.",
+      "status": "built",
+      "rows": 786,
+      "firstAsof": "2023-10-17T22:00:00Z",
+      "lastAsof": "2026-10-15T22:00:00Z",
+      "builtAt": "2026-10-19T09:03:46Z"
+    },
+    {
+      "id": "credit_baa10y",
+      "kind": "series",
+      "label": "Moody's Baa minus 10y Treasury",
+      "source": "fred",
+      "sourceRef": "BAA10Y",
+      "cadence": "daily",
+      "asofRule": "close+1h",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_daily",
+      "unit": "pct",
+      "note": "Yield-minus-Treasury, not OAS; the long-history credit leg js/creditStressEngine.js uses.",
+      "status": "built",
+      "rows": 6694,
+      "firstAsof": "2000-01-03T22:00:00Z",
+      "lastAsof": "2026-10-15T22:00:00Z",
+      "builtAt": "2026-10-19T09:03:47Z"
+    },
+    {
+      "id": "credit_aaa10y",
+      "kind": "series",
+      "label": "Moody's Aaa minus 10y Treasury",
+      "source": "fred",
+      "sourceRef": "AAA10Y",
+      "cadence": "daily",
+      "asofRule": "close+1h",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_daily",
+      "unit": "pct",
+      "note": "Quality-spread partner of BAA10Y; Baa minus Aaa is the credit-quality spread.",
+      "status": "built",
+      "rows": 6694,
+      "firstAsof": "2000-01-03T22:00:00Z",
+      "lastAsof": "2026-10-15T22:00:00Z",
+      "builtAt": "2026-10-19T09:03:48Z"
     }
   ]
 }
