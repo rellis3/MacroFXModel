@@ -39,10 +39,9 @@ fault: record it there, then fix the code.
 8. **Check the data first.** Run `node scripts/data_integrity.mjs` (→ `analysis/output/data_integrity/REPORT.md`) and
    say what's stale. The local M1 cache ends ~2026-08-21 and may not be present in a cloud session (see
    `references/sources.md`).
-9. **Scale the ceremony to the question.** A quick exploratory look needs items 1–6 and a plain "exploratory, not
-   pre-registered" label on the answer. Anything that might change a live system or be banked as a verdict needs a
-   prereg, the integrity check and a ledger entry (`references/lookahead-and-oos.md`). Item 2 applies whenever σ
-   is involved.
+9. **Follow the `research-protocol` skill for the study itself**: register row first (even for a quick exploratory
+   look), then prereg, layout, seed, verdict words and banking. An exploratory answer needs items 1–6 here and the
+   label "exploratory, not pre-registered". Item 2 applies whenever σ is involved.
 10. **On a null result, assume code failure first:** audit alignment, lookahead, indexing, types and NaN before calling
    it null. **On a strong result, check concentration** before believing it.
 

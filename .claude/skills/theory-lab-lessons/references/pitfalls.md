@@ -22,7 +22,7 @@ Add a line whenever a new one bites.
 10. **`id="page"`** must wrap the full lesson. Keep the `?v=` suffixes.
 11. **CSS.** Never add a CSS file or copy `theory.css`/`deck.css`. Use a local `<style>` only for bespoke widgets.
 12. **cog lessons** live two levels deep: asset paths are `../../theory-lab/assets/…`. Copy a sibling to get them right.
-13. **Stale docs.** `theory-lab/README.md` counts were stale (122 vs 176). Count the files instead of trusting the README.
+13. **Counts drift.** Count the lesson files (`ls theory-lab/lessons`) rather than trusting a number in a README or this skill.
 14. **The checker's class check only sees `tl-*`/`sl-*` names.** Modifier classes such as `context` or `untested` on
     `.sl-stamp` aren't validated, so compare them against `deck.css` by eye.
 15. **Existing decks aren't perfect references.** `kelly-criterion-micro.html`'s `#sl-total` is off by one (deck.js

@@ -1,13 +1,15 @@
 # <TEST-ID> — <the claim, as a question>
 
-> **Template.** Copy to `MD files/<NAME>_PREREG.md`, fill every section, commit it,
-> *then* write the harness. Sections marked **(required)** cannot be left blank or "TBD":
+> **Template.** Copy to `forge/<NAME>_PREREG.md` (`MD files/` only for studies run through
+> `analysis/study.mjs`), fill every section, commit it, *then* write the harness. The full
+> workflow (register row, header block, layout, banking) is the `research-protocol` skill:
+> `.claude/skills/research-protocol/SKILL.md`. Sections marked **(required)** cannot be left blank or "TBD":
 > a pre-registration missing its power or multiplicity section is not a
 > pre-registration. The two sections new in this version — **§5 Power** and
 > **§6 Multiplicity** — are explained at the bottom, with the numbers behind them.
 > Helpers: `js/preregStats.js` (tested: `node js/preregStats.test.mjs`).
 
-**Pre-registered <YYYY-MM-DD>, before the harness was written or run.**
+**Pre-registered <YYYY-MM-DD>, before any outcome was computed.**
 
 ## 1. The claim (required)
 
@@ -96,9 +98,10 @@ from a pass, and say it is out of scope.
 
 ## RESULTS — run <YYYY-MM-DD>
 
-*Appended below this line. Nothing above it changes after the run. If a data problem
-forces an amendment, add it as a dated **Recorded amendment** block above, stating that
-no results were seen, per house precedent.*
+*Appended below this line, or written to `analysis/output/<slug>/RESULTS.md`. Nothing above
+it changes after the run. Amendments go in an `## Amendments` section above this one, each
+dated and tagged `PRE-RESULTS` or `POST-HOC (results seen)`; a post-hoc amendment can only
+demote or describe.*
 
 ---
 

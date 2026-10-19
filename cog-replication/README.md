@@ -3,6 +3,15 @@
 > **New session: read this file, then `DECISIONS.md`. Do not re-derive anything
 > below. Do not start a parallel QMR effort.**
 
+> **Status (2026-10-18): the sections below are the July–August plan and are out
+> of date. `DECISIONS.md` is authoritative.** All three gates have since been tested
+> (2026-09-24/25): G1 tide and G3 magnet are null as direction, and G2 (GEX) is real
+> for NQ *range* only. The shadow has no validated directional layer and is no
+> longer described as a replication. The shadow emitter is built
+> (`engine/cogShadow.js`, served by `server.js`). A 1,521-day OI archive exists
+> (`OI Data/NAS100_USD.csv`). There is no `data/` folder here. For the full
+> verdict ledger, see `.claude/skills/cog-knowledge/references/verdicts.md`.
+
 ## The goal
 
 Build a system that trades like COG's and reaches his results level. COG is the
