@@ -862,6 +862,13 @@ export const DESK_EVIDENCE = [
     use: 'The one set of daily lines for the Daily Plan. Other line exports go to an archive menu. Forward scorecard = its second, independent test.',
   },
   {
+    id: 'gamma-regime-trades', domain: 'positioning', verdict: 'null', date: '2026-10-19', doc: 'forge/GAMMA_REGIME_TRADES_PREREG.md',
+    instruments: ['NQ'],
+    claim: 'The NQ dealer-gamma regime says when to fade and when to follow: fade the p75 line on long-gamma days, follow it on short-gamma days; and follow a break through the textbook zero gamma into short gamma (the dynamic-hedging playbook, and the shape of C.OG\'s 2026-10-16 ES example)',
+    result: '813 sessions with a fresh regime 2020-2026, 353 trades: regime interaction +0.06 R [-0.30, +0.44]; switch strategy -0.03 R per trade after costs; every arm negative. Zero-gamma break: -0.01 R (n 61) vs placebo levels +0.01. The book is CME NQ monthly/quarterly only (~5% of Nasdaq dealer gamma).',
+    use: 'No trade rule from the gamma regime on the CME book. The hedging map stays context. Rerun on the Cboe index + ETF capture (from 2026-10-19) after ~400 days.',
+  },
+  {
     id: 'opex-cycle-range', domain: 'volatility', verdict: 'underpowered', date: '2026-10-19', doc: 'forge/OPEX_CYCLE_RANGE_PREREG.md',
     instruments: ['NQ', 'SPX500', 'US30', 'US2000'],
     claim: 'US index ranges run tighter into monthly options expiry and wider in the week after (dealer gamma concentrated in expiring contracts, then gone)',

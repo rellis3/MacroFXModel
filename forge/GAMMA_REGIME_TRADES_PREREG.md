@@ -65,3 +65,31 @@ enter in the direction of the cross; stop 0.25 σ back on the other side of Z; t
   Cboe index + ETF book (the CME book here is ~5% of Nasdaq dealer gamma), which our capture builds from 2026-10-19.
 
 Script `scripts/forecast_history/gamma_regime_trades.py`; output `analysis/output/gamma_regime_trades/`.
+
+## Variant log
+
+| # | Variant | Why | Run? |
+|---|---|---|---|
+| 0 | as above | registered | run 2026-10-19: A NULL (I +0.092 [−0.18, +0.37]), B NULL (+0.03 R, n 109) |
+| 1 | regime and Z must be dated within 4 days of the D−2 cutoff | **audit after variant 0's results**: the ≤45-DTE surface exists only ~132 days a year, and the as-of join carried a regime forward up to 53 days on about half the sessions. A data bug, not a new spec; reported beside variant 0, both kept | yes |
+
+## Results (2026-10-19). Both tests NULL in both variants.
+
+Full tables: `analysis/output/gamma_regime_trades/RESULTS.md` (variant 1) and `RESULTS_v0_stale_regime.md` (variant 0).
+
+| | variant 0 (regime carried forward) | variant 1 (fresh regime only) |
+|---|---|---|
+| sessions / trades A | 1,483 / 647 | 813 / 353 |
+| A: regime interaction I (R) | +0.092 [−0.184, +0.373] | +0.060 [−0.301, +0.439] |
+| A: switch strategy, mean R per trade | −0.013 [−0.079, +0.055] | −0.027 [−0.114, +0.064] |
+| A: fade / follow on long-gamma days | −0.041 / −0.021 | −0.028 / −0.066 |
+| A: fade / follow on short-gamma days | −0.082 / +0.030 | −0.048 / −0.025 |
+| A: placebo regime I | +0.208 | +0.017 |
+| B: zero-gamma break, mean R (n) | +0.031 (109) | −0.014 (61) |
+| B: placebo levels Z ± 1σ | −0.028 | +0.005 |
+
+Every arm loses after costs. The regime tilts the right way in both halves (variant 1: +0.07 / +0.14) but the
+interval is ±0.35 R wide: no evidence, and effects up to about ±0.3 R per trade cannot be ruled out. Checks: the
+CFD open matches the ladder's open exactly; futures − CFD basis median 34 pts (the ripple study found 33.5).
+The book used is CME NQ's ≤45-DTE surface: monthly/quarterly expiries only, ~5% of Nasdaq dealer gamma. A rerun on
+the Cboe index + ETF capture is the next fair test, after ~400 days.

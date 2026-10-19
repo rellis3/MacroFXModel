@@ -10,14 +10,14 @@ Generated 2026-10-19.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **135** |
+| claims tested (validated + null + underpowered) | **136** |
 | validated | 32 |
-| null | 99 |
+| null | 100 |
 | underpowered | 4 |
 | context (base rates, descriptions: not counted as tests) | 32 |
-| pre-registrations with no banked verdict (below) | 38 |
+| pre-registrations with no banked verdict (below) | 39 |
 
-**What the count says (Lesson 02 §05).** If none of the 135 claims were real, tests at the usual 5% size would still pass
+**What the count says (Lesson 02 §05).** If none of the 136 claims were real, tests at the usual 5% size would still pass
 about **6.8** of them by luck. 32 passed, so most passes are unlikely to be luck alone, but
 **roughly 7 of the 32 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
@@ -192,6 +192,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-18 | us-leg-same-day-link | macro | context | analysis/output/cog_video_0918/CROSS_ASSET_STAGE1.md |
 | 2026-10-18 | zero-gamma-distance | volatility | underpowered | oi_research_book/ZERO_GAMMA_DISTANCE_PREREG.md |
 | 2026-10-19 | credit-leads-equities | macro | null | forge/CREDIT_LEADS_EQUITIES_PREREG.md |
+| 2026-10-19 | gamma-regime-trades | positioning | null | forge/GAMMA_REGIME_TRADES_PREREG.md |
 | 2026-10-19 | opex-cycle-range | volatility | underpowered | forge/OPEX_CYCLE_RANGE_PREREG.md |
 | 2026-10-19 | vol-crush-drift | events | null | forge/VOL_CRUSH_DRIFT_PREREG.md |
 
@@ -210,6 +211,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/COG_MEETING_PATH_PREREG.md`: COG-MEETING-PATH: does the near-term priced Fed path (30-day fed funds strip) give notice of Nasdaq moves?
 - `forge/COG_SEQUENCE_EVENTS_PREREG.md`: COG-SEQUENCE-EVENTS: an interpretable test of the sequence "direction change, then confirmation / confluence, 
 - `forge/COG_SHAPE_AGNOSTIC_PREREG.md`: COG-SHAPE-AGNOSTIC: does ANY repeatable shape in the SOFR-Euribor line (turn, confirmation, second move, diver
+- `forge/COG_THEORIES_PREREG.md`: COG-THEORIES: three testable theories behind the message to C.OG (time of day, carried-forward legs, selection
 - `forge/COG_TURN_EVENTS_PREREG.md`: COG-TURN-EVENTS: do SOFR-Euribor turning points carry information about Nasdaq's next turn, breakout or move?
 - `forge/CONFIDENCE_PREREG.md`: Layer 6 — CONFIDENCE (meta-labelling): can today's conditions sharpen layer 5's probabilities?
 - `forge/DE2Y_NQ_15M_LEAD_PREREG.md`: DE2Y-NQ-15M-LEAD: does a German 2-year yield move lead Nasdaq by one 15-minute bar? (one confirmation test)

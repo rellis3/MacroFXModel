@@ -61,5 +61,6 @@ from getting lost between sessions.
 |---|---|---|---|
 | Opex cycle: wider range the week after monthly expiry than the week into it (US4) | **INCONCLUSIVE** (right way on all 4 and both halves, interval includes 0) | +0.055 log [−0.014, +0.124] | `forge/OPEX_CYCLE_RANGE_PREREG.md` |
 | Vol-crush drift: next session after a Fed/CPI VIX collapse | **NULL** (the rally is same-day: SPX +0.94%, NQ +1.30%) | +0.03% [−0.23, +0.28] | `forge/VOL_CRUSH_DRIFT_PREREG.md` |
+| Gamma-regime trades (fade p75 on long gamma, follow on short; follow a zero-gamma break), NQ | **NULL** (every arm negative after costs; CME book only) | interaction +0.06 R [−0.30, +0.44] | `forge/GAMMA_REGIME_TRADES_PREREG.md` |
 | Hedging size vs normal volume (does the gamma sign matter more when forced flow is big) | needs QQQ/SPY capture (~400 days) | — | not yet registered |
 | Side finding to register: second half of the month quieter than the first vs the ladder (non-event days) | hypothesis | PRE/OPEX/POST −0.03…−0.08 vs OTHER | opex results |
