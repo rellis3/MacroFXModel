@@ -12,7 +12,7 @@ from getting lost between sessions.
 
 | Feed | Where it lands | Since | Becomes testable | Status |
 |---|---|---|---|---|
-| Cboe full chains, SPX/NDX/RUT/DJX, every contract once a day after the close | KV `cboe_raw_<SYM>_<date>`, `/api/cboe-raw` (key listing pages past 1,000 since 2026-10-18) | 2026-10-19 (first weekday close after deploy) | ~400 trading days for a range/regime test → about mid-2028 | **Live after merge + deploy** |
+| Cboe full chains, 18 index/ETF chains (SPX, NDX, RUT, DJX, XSP, VIX, SPY, QQQ, IWM, DIA, GLD, SLV, USO, TLT, HYG, FXE, FXY, UUP), every contract once a day after the close | R2 `cboe_raw/<SYM>/<date>.json`, `/api/cboe-raw` (~11 MB/day; KV only as no-R2 fallback) | 2026-10-19 | ~400 trading days for a range/regime test → about mid-2028 | **Live** (moved to R2 + ETFs 2026-10-19: QQQ ≈ 3× NDX, ≈ 17× CME NQ dealer gamma) |
 | CME options (QuikStrike nightly, incl. ES/NQ weeklies and dailies) | KV `oi_raw_<date>` | ~2026-08 | ~400 days → about autumn 2027 | Running (laptop scrape; KV only, no second copy) |
 | Economic calendar, all countries, actual/consensus/previous | `calendar_events_nasdaq.csv` (+ `load_calendar()`) | backfilled from 2026-07-03 | now | **Done**; refresh Sun + Wed via `.github/workflows/calendar-refresh.yml` after merge |
 | CME CVOL | `js/data/cmeCvolEod.json` | static, ends 2026-08-21 | — | **Blocked**: cmegroup.com refuses scripts (403); history is paid (DataMine). Free route = add to the laptop job, see §3 |
@@ -54,3 +54,12 @@ from getting lost between sessions.
 - 2026-10-18: Calendar continuation kept as a separate source-tagged file; the 46k duplicate rows in
   `calendar_events.csv` are dropped by the loader, not deleted from the file (faults-log #11).
 - 2026-10-18: Databento stays pay-per-use; no pull without a cost quote first.
+
+## 6. Mechanism tests (2026-10-19, our reasoning, not C.OG's rules)
+
+| Test | Verdict | Key number | Source |
+|---|---|---|---|
+| Opex cycle: wider range the week after monthly expiry than the week into it (US4) | **INCONCLUSIVE** (right way on all 4 and both halves, interval includes 0) | +0.055 log [−0.014, +0.124] | `forge/OPEX_CYCLE_RANGE_PREREG.md` |
+| Vol-crush drift: next session after a Fed/CPI VIX collapse | **NULL** (the rally is same-day: SPX +0.94%, NQ +1.30%) | +0.03% [−0.23, +0.28] | `forge/VOL_CRUSH_DRIFT_PREREG.md` |
+| Hedging size vs normal volume (does the gamma sign matter more when forced flow is big) | needs QQQ/SPY capture (~400 days) | — | not yet registered |
+| Side finding to register: second half of the month quieter than the first vs the ladder (non-event days) | hypothesis | PRE/OPEX/POST −0.03…−0.08 vs OTHER | opex results |

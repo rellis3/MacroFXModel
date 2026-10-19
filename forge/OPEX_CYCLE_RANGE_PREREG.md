@@ -64,3 +64,18 @@ Also reported, not part of the verdict: β_PRE, β_OPEX, β_POST separately; the
 - Otherwise → recorded; the map shows the phase only as untested mechanics, or not at all if NULL.
 
 Script `scripts/forecast_history/opex_cycle.py`; output `analysis/output/opex_cycle/RESULTS.md`, `results.json`.
+
+---
+
+## Results (run 2026-10-19 after the commit of this file, 86b105f2)
+
+Full table: `analysis/output/opex_cycle/RESULTS.md`. 6,241 non-event US-index sessions, 124 expiry cycles.
+
+**Verdict: INCONCLUSIVE.** Δ (POST − PRE) = **+0.055** [−0.014, +0.124]: the size bar (0.05) is met, the direction
+holds on all four indices (NQ +0.062, SPX500 +0.056, DOW +0.029, US2000 +0.073) and in both halves (+0.056 /
++0.055), FX placebo +0.019 (below half), date-shift placebo +0.029 (under 0.03) — but the interval includes 0.
+About 5% more range after expiry than into it, consistent with the mechanism, not yet distinguishable from noise.
+
+**Not pre-registered, flagged for its own test:** PRE, OPEX and POST all sit ~0.03–0.08 *below* OTHER, and the
++14-day placebo window sits *above* it: on non-event days the second half of the month ran quieter than the first
+half relative to the ladder. A month-position effect, possibly linked to how early-month releases are handled.

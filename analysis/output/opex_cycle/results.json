@@ -1,0 +1,212 @@
+{
+ "prereg": "forge/OPEX_CYCLE_RANGE_PREREG.md",
+ "window": [
+  "2016-03-29",
+  "2026-08-20"
+ ],
+ "primary": {
+  "n": 6241,
+  "n_by_phase": {
+   "OTHER": 2997,
+   "POST": 1755,
+   "PRE": 1137,
+   "OPEX": 352
+  },
+  "beta": {
+   "PRE": -0.0824,
+   "OPEX": -0.0784,
+   "POST": -0.0273
+  },
+  "delta": 0.0552,
+  "delta_ci": [
+   -0.0144,
+   0.1244
+  ],
+  "cycles": 124
+ },
+ "per_instrument": {
+  "NQ": {
+   "n": 1560,
+   "n_by_phase": {
+    "OTHER": 750,
+    "POST": 438,
+    "PRE": 284,
+    "OPEX": 88
+   },
+   "beta": {
+    "PRE": -0.0546,
+    "OPEX": -0.0829,
+    "POST": 0.0077
+   },
+   "delta": 0.0623
+  },
+  "SPX500": {
+   "n": 1562,
+   "n_by_phase": {
+    "OTHER": 749,
+    "POST": 440,
+    "PRE": 285,
+    "OPEX": 88
+   },
+   "beta": {
+    "PRE": -0.0772,
+    "OPEX": -0.0625,
+    "POST": -0.021
+   },
+   "delta": 0.0561
+  },
+  "DOW": {
+   "n": 1564,
+   "n_by_phase": {
+    "OTHER": 751,
+    "POST": 440,
+    "PRE": 285,
+    "OPEX": 88
+   },
+   "beta": {
+    "PRE": -0.0878,
+    "OPEX": -0.0416,
+    "POST": -0.0583
+   },
+   "delta": 0.0294
+  },
+  "US2000": {
+   "n": 1555,
+   "n_by_phase": {
+    "OTHER": 747,
+    "POST": 437,
+    "PRE": 283,
+    "OPEX": 88
+   },
+   "beta": {
+    "PRE": -0.1104,
+    "OPEX": -0.1265,
+    "POST": -0.0374
+   },
+   "delta": 0.073
+  }
+ },
+ "halves": {
+  "<=2020": {
+   "n": 3553,
+   "n_by_phase": {
+    "OTHER": 1741,
+    "POST": 943,
+    "PRE": 677,
+    "OPEX": 192
+   },
+   "beta": {
+    "PRE": -0.111,
+    "OPEX": -0.1973,
+    "POST": -0.0552
+   },
+   "delta": 0.0558,
+   "delta_ci": [
+    -0.0396,
+    0.1572
+   ],
+   "cycles": 58
+  },
+  ">=2021": {
+   "n": 2688,
+   "n_by_phase": {
+    "OTHER": 1256,
+    "POST": 812,
+    "PRE": 460,
+    "OPEX": 160
+   },
+   "beta": {
+    "PRE": -0.0431,
+    "OPEX": 0.069,
+    "POST": 0.0115
+   },
+   "delta": 0.0546,
+   "delta_ci": [
+    -0.0375,
+    0.1388
+   ],
+   "cycles": 67
+  }
+ },
+ "placebo_fx": {
+  "n": 9031,
+  "n_by_phase": {
+   "OTHER": 4370,
+   "POST": 2555,
+   "PRE": 1605,
+   "OPEX": 501
+  },
+  "beta": {
+   "PRE": -0.0244,
+   "OPEX": 0.0072,
+   "POST": -0.0049
+  },
+  "delta": 0.0195,
+  "delta_ci": [
+   -0.0185,
+   0.0559
+  ],
+  "cycles": 124
+ },
+ "placebo_shift14": {
+  "n": 6241,
+  "n_by_phase": {
+   "OTHER": 3456,
+   "POST": 1429,
+   "PRE": 1280,
+   "OPEX": 76
+  },
+  "beta": {
+   "PRE": 0.0399,
+   "OPEX": 0.0293,
+   "POST": 0.069
+  },
+  "delta": 0.0291,
+  "delta_ci": [
+   -0.0424,
+   0.1032
+  ],
+  "cycles": 124
+ },
+ "all_sessions": {
+  "n": 10397,
+  "n_by_phase": {
+   "OTHER": 5429,
+   "POST": 2471,
+   "PRE": 1997,
+   "OPEX": 500
+  },
+  "beta": {
+   "PRE": -0.063,
+   "OPEX": -0.0898,
+   "POST": -0.0321
+  },
+  "delta": 0.031,
+  "delta_ci": [
+   -0.0327,
+   0.0909
+  ],
+  "cycles": 125
+ },
+ "quarterly_only": {
+  "n": 4037,
+  "n_by_phase": {
+   "OTHER": 2997,
+   "POST": 576,
+   "PRE": 344,
+   "OPEX": 120
+  },
+  "beta": {
+   "PRE": -0.0806,
+   "OPEX": -0.0393,
+   "POST": -0.0407
+  },
+  "delta": 0.0399,
+  "delta_ci": [
+   -0.0947,
+   0.1711
+  ],
+  "cycles": 124
+ },
+ "verdict": "INCONCLUSIVE"
+}

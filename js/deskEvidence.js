@@ -862,6 +862,20 @@ export const DESK_EVIDENCE = [
     use: 'The one set of daily lines for the Daily Plan. Other line exports go to an archive menu. Forward scorecard = its second, independent test.',
   },
   {
+    id: 'opex-cycle-range', domain: 'volatility', verdict: 'underpowered', date: '2026-10-19', doc: 'forge/OPEX_CYCLE_RANGE_PREREG.md',
+    instruments: ['NQ', 'SPX500', 'US30', 'US2000'],
+    claim: 'US index ranges run tighter into monthly options expiry and wider in the week after (dealer gamma concentrated in expiring contracts, then gone)',
+    result: '6,241 non-event sessions 2016-2026, 124 cycles: week-after minus week-before +0.055 log [-0.014, +0.124]; positive on all four indices and in both halves; FX placebo +0.019, shifted-date placebo +0.029. Right direction and size, interval includes 0.',
+    use: 'Context only: expect a little more range after expiry than into it. Not in the forecast. Side note to test separately: the second half of the month ran quieter than the first relative to the ladder.',
+  },
+  {
+    id: 'vol-crush-drift', domain: 'events', verdict: 'null', date: '2026-10-19', doc: 'forge/VOL_CRUSH_DRIFT_PREREG.md',
+    instruments: ['SPX500', 'NQ'],
+    claim: 'After a Fed or CPI day on which VIX falls 5%+, US indices keep drifting up the next session (dealer vanna buy-back)',
+    result: '63 event crushes 2016-2026: next session +0.03% vs other VIX crushes [-0.23, +0.28]; halves disagree; 3 sessions negative. The rally itself is same-day (SPX +0.94%, NQ +1.30% on the crush day).',
+    use: 'The vol-crush rally happens on the release day and is done by the close: do not buy the next morning on it.',
+  },
+  {
     id: 'one-range-forecast', domain: 'volatility', verdict: 'null', date: '2026-10-18', doc: 'forge/ONE_RANGE_FORECAST_PREREG.md',
     instruments: ['NQ', 'SPX500', 'US30', 'US2000'],
     claim: 'The validated US market-state range flags (VIX inverted, VIX9D front dear/calm, all six indices down, NQ down-week) and the NQ gamma sign still improve the daily range forecast on top of the chosen persistence + implied-vol lines',

@@ -59,3 +59,18 @@ Reported, not in the verdict: 3-session D; EC − EN; FOMC and CPI separately; n
 
 Script `scripts/forecast_history/vol_crush_drift.py`; output `analysis/output/vol_crush_drift/RESULTS.md`,
 `results.json`.
+
+---
+
+## Results (run 2026-10-19 after the commit of this file, 86b105f2)
+
+Full table: `analysis/output/vol_crush_drift/RESULTS.md`. 195 Fed/CPI days, 63 with a ≥ 5% VIX fall (EC), 452
+non-event VIX crushes (NC).
+
+**Verdict: NULL.** D = **+0.028%** [−0.226, +0.275] next session (SPX500 +0.041, NQ +0.015); halves disagree
+(−0.104 / +0.112); 3-session D negative (−0.21 / −0.23). The next session after an event-day vol crush is no
+better than after any other vol crush and below the all-days mean.
+
+**Alignment audit (null ⇒ check the code first):** on the crush day itself SPX500 averaged **+0.94%** and NQ
+**+1.30%** (same-day VIX/index correlation −0.73), so dates and signs are right. The vanna rally is real and it
+happens **on the day**; by the close it is spent. Nothing to trade the next morning.
