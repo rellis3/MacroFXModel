@@ -175,10 +175,14 @@ svg text{font-family:var(--mono)}
 import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol, parseOIMatrix, oiRippleBook } from './js/oi.js';
 import { bsGamma } from './js/gammaGreeks.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';
+import { cmeBookContracts } from './js/hedgingBooks.js';
 
 const $ = s => document.querySelector(s);
-const NAMES = {'XAU/USD':'GOLD','NAS100_USD':'NQ','SPX500_USD':'SPX','US2000_USD':'RUT','US30_USD':'US30','EUR/USD':'EURUSD','GBP/USD':'GBPUSD','USD/JPY':'USDJPY','AUD/USD':'AUDUSD','USD/CAD':'USDCAD','USD/CHF':'USDCHF'};
-const OANDA = {'XAU/USD':'XAU_USD','NAS100_USD':'NAS100_USD','SPX500_USD':'SPX500_USD','US2000_USD':'US2000_USD','US30_USD':'US30_USD','EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF'};
+const NAMES = {'XAU/USD':'GOLD','NAS100_USD':'NQ','SPX500_USD':'SPX','US2000_USD':'RUT','US30_USD':'US30','EUR/USD':'EURUSD','GBP/USD':'GBPUSD','USD/JPY':'USDJPY','AUD/USD':'AUDUSD','USD/CAD':'USDCAD','USD/CHF':'USDCHF',
+  'XAG/USD':'SILVER','XCU/USD':'COPPER','XPT/USD':'PLATINUM','XPD/USD':'PALLADIUM','WTICO_USD':'WTI','BCO_USD':'BRENT','NATGAS_USD':'NATGAS','SOYBN_USD':'SOYBEAN','CORN_USD':'CORN','WHEAT_USD':'WHEAT'};
+const OANDA = {'XAU/USD':'XAU_USD','NAS100_USD':'NAS100_USD','SPX500_USD':'SPX500_USD','US2000_USD':'US2000_USD','US30_USD':'US30_USD','EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF',
+  'XAG/USD':'XAG_USD','XCU/USD':'XCU_USD','XPT/USD':'XPT_USD','XPD/USD':'XPD_USD','WTICO_USD':'WTICO_USD','BCO_USD':'BCO_USD','NATGAS_USD':'NATGAS_USD','SOYBN_USD':'SOYBN_USD','CORN_USD':'CORN_USD','WHEAT_USD':'WHEAT_USD'};
+const CMDTY = new Set(['XAG/USD','XCU/USD','XPT/USD','XPD/USD','WTICO_USD','BCO_USD','NATGAS_USD','SOYBN_USD','CORN_USD','WHEAT_USD']);
 const INVERTED = new Set(['USD/JPY','USD/CAD','USD/CHF']);
 const LONG='70,184,122', SHORT='232,97,95';
 let STORE = {}, SYM = 'NAS100_USD', NEAR = true, CUR = null;
@@ -706,25 +710,14 @@ function drawHeat(){
 // once per IV shift. CME = the stored QuikStrike book (one vol per expiry from the term structure);
 // Cboe = SPX/NDX index options, each contract on its own IV (shifted onto the CFD by cfdOffset).
 const HS = { src: 'cme', maxDte: 3, cache: {} };
-const FUT = { 'NAS100_USD': 'NQ', 'SPX500_USD': 'ES', 'US2000_USD': 'RTY', 'US30_USD': 'YM', 'XAU/USD': 'GC' };
+const FUT = { 'NAS100_USD': 'NQ', 'SPX500_USD': 'ES', 'US2000_USD': 'RTY', 'US30_USD': 'YM', 'XAU/USD': 'GC',
+  'EUR/USD': '6E', 'GBP/USD': '6B', 'AUD/USD': '6A', 'USD/JPY': '6J', 'USD/CAD': '6C', 'USD/CHF': '6S',
+  'XAG/USD': 'SI', 'XCU/USD': 'HG', 'XPT/USD': 'PL', 'XPD/USD': 'PA', 'WTICO_USD': 'CL', 'BCO_USD': 'BZ', 'NATGAS_USD': 'NG', 'SOYBN_USD': 'ZS', 'CORN_USD': 'ZC', 'WHEAT_USD': 'ZW' };
 const HS_FAN = { '-2': '#9fd6f5', '0': '#5cc8ff', '2': '#3a8fc2', '4': '#2a6890' };   // one hue, light = lower IV
 const HS_CALL = '#2f8fcc', HS_PUT = '#c07f22';
 function hsCmeBook(sym, e){
-  if (!e?.rawOI || INVERTED.has(sym)) return null;
-  let legs = oiMatrixExpiryLegs(e.rawOI, { basis: Number.isFinite(e.basis) ? e.basis : 0, minOI: e.minOI ?? 1 });
-  if (!legs?.length) return null;
-  if (e.cpSwapped) legs = legs.map(l => ({ ...l, calls: l.puts, puts: l.calls }));
-  const pts = (e.ivTermStructure?.points || []).filter(p => p && p.iv > 0 && Number.isFinite(p.dte));
-  const flat = oiFlatVol(sym);
-  const sig = d => pts.length && Number.isFinite(d) ? pts.slice().sort((a, b) => Math.abs(a.dte - d) - Math.abs(b.dte - d))[0].iv / 100 : flat;
-  const out = [];
-  for (const l of legs) {
-    const d = Number.isFinite(l.dte) ? l.dte : 14;
-    if (d > HS.maxDte) continue;
-    const T = Math.max(0.25, d) / 365, iv = sig(d);
-    l.strikes.forEach((K, i) => { if (l.calls[i] > 0) out.push({ K, T, cp: 'C', oi: l.calls[i], iv }); if (l.puts[i] > 0) out.push({ K, T, cp: 'P', oi: l.puts[i], iv }); });
-  }
-  return { contracts: out, spot: e.spot, shift: 0, optMult: 1, futMult: 1, ivNote: pts.length ? 'one IV per expiry (term structure), no skew' : `flat ${(flat * 100).toFixed(0)}% vol (no IV stored)` };
+  const b = cmeBookContracts(sym, e, { maxDte: HS.maxDte });
+  return b ? { ...b, shift: 0, optMult: 1, futMult: 1, ivNote: b.ivNote + (CMDTY.has(sym) ? ' · commodity: untested, context only' : '') } : null;
 }
 async function hsCboeBook(sym, withEtf = false){
   const key = `${sym}|${HS.maxDte}|${withEtf ? 'etf' : ''}`;
@@ -746,7 +739,7 @@ async function drawHedging(){
   if (HS.src !== 'cme' && !['SPX500_USD', 'NAS100_USD', 'US2000_USD'].includes(SYM)) return fail('Cboe books here cover SPX, NQ (NDX) and RUT. Switch to CME.');
   let B;
   try { B = HS.src === 'cme' ? hsCmeBook(SYM, D.e) : await hsCboeBook(SYM, HS.src === 'cboeetf'); } catch (err) { return fail('Cboe chain unavailable: ' + err.message); }
-  if (!B || !B.contracts.length) return fail(INVERTED.has(SYM) ? 'Inverted FX quotes are not mapped in this view yet.' : 'No contracts in this expiry window (try a wider one).');
+  if (!B || !B.contracts.length) return fail('No contracts in this expiry window (try a wider one).');
   const S = B.spot, refSpot = D.spot ?? D.e?.spot ?? S, half = Math.min(0.06, Math.max(0.012, 3 * (D.rm || refSpot * 0.01) / refSpot));
   const sc = hedgingScenario(B.contracts, { spot: S, lo: S * (1 - half), hi: S * (1 + half), n: 121, shifts: [-2, 0, 2, 4], optMult: B.optMult, futMult: B.futMult });
   if (!sc) return fail('Not enough priced contracts to build the map.');
@@ -833,7 +826,7 @@ document.querySelectorAll('[data-hexp]').forEach(b => b.onclick = () => { HS.max
 function planHtml(x){
   if (!x) return '';
   if (!x.plan) return `<div class="sub" style="margin:8px 0 0">Today's plan: not available (${esc(x.error || 'no plan')}).</div>`;
-  const p = x.plan, f = v => Number(v).toLocaleString('en-GB', { maximumFractionDigits: v >= 1000 ? 1 : 2 });
+  const p = x.plan, f = v => Number(v).toLocaleString('en-GB', { maximumFractionDigits: v < 10 ? 5 : v < 1000 ? 3 : 1 });
   const head = p.mode === 'follow'
     ? `<b>Today's plan: FOLLOW breaks</b> (hedging speeds moves at the open)`
     : `<b>Today's plan: FADE the edges</b> (hedging calms moves at the open)`;
@@ -864,16 +857,23 @@ async function drawPlain(){
     const plans = Object.fromEntries((P?.markets ?? []).map(x => [x.pair, x]));
     const asOf = j.markets.find(m => m.asOf)?.asOf;
     $('#plainAsOf').textContent = asOf ? `· options book as of ${new Date(asOf).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}` : '';
-    body.innerHTML = j.markets.map(m => {
+    const groupHead = (t, sub) => `<div style="grid-column:1/-1;margin:6px 0 -4px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx2)">${t} <span style="text-transform:none;letter-spacing:0;color:var(--tx3)">${sub}</span></div>`;
+    const ordered = [...j.markets.filter(m => m.book !== 'cme'), ...j.markets.filter(m => m.book === 'cme')];
+    let shownCme = false;
+    body.innerHTML = groupHead('Indices &amp; gold', '· full Cboe book (index options + ETF)') + ordered.map(m => {
+      const head = (m.book === 'cme' && !shownCme) ? (shownCme = true, groupHead('FX &amp; Dow', '· CME listed options only: a rough read, most FX hedging is over the counter')) : '';
+      return head + cardHtml(m);
+    }).join('') + `<div class="sub" style="grid-column:1/-1;margin:0">${esc(j.markets.find(m => m.lines)?.lines.at(-1) || '')}</div>`;
+    function cardHtml(m) {
       if (m.error) return `<div class="mini"><div class="k">${esc(m.name)}</div><div class="n">unavailable: ${esc(m.error)}</div></div>`;
       const calm = m.state === 'calms', col = calm ? `rgb(${LONG})` : `rgb(${SHORT})`;
       const badge = `<span style="color:${col};font-weight:600">${calm ? '● Hedging CALMS moves' : '● Hedging SPEEDS UP moves'}</span>`;
-      const sw = m.switchPoint != null ? `switch point ${m.switchPoint.toLocaleString('en-GB')} (${m.switchDistPct >= 0 ? '+' : ''}${m.switchDistPct}% from now)` : 'no switch point within ±5%';
+      const sw = m.switchPoint != null ? `switch point ${m.switchPoint.toLocaleString('en-GB', { maximumFractionDigits: 5 })} (${m.switchDistPct >= 0 ? '+' : ''}${m.switchDistPct}% from now)` : 'no switch point within ±5%';
       return `<div style="border:1px solid var(--line);border-left:3px solid ${col};border-radius:10px;padding:10px 14px">
         <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:14px">${esc(m.name)}</b>${badge}</div>
         <div class="sub" style="margin:2px 0 6px">now ${Number(m.cfdNow).toLocaleString('en-GB')} · ${esc(sw)} · ${esc(m.sources.join(' + '))}</div>
         <ul style="margin:0;padding-left:18px;color:var(--tx2);font-size:12.5px;line-height:1.55">${m.lines.slice(0, -1).map(l => `<li>${esc(l)}</li>`).join('')}</ul>${planHtml(plans[m.pair])}</div>`;
-    }).join('') + `<div class="sub" style="grid-column:1/-1;margin:0">${esc(j.markets.find(m => m.lines)?.lines.at(-1) || '')}</div>`;
+    }
   } catch (err) { body.innerHTML = `<div class="sub">Could not load the summary: ${esc(err.message)}</div>`; return; }
   try {
     const f = await (await fetch('/api/hedging-forward')).json();
@@ -908,7 +908,7 @@ function rail(){
 async function refresh(){
   CUR = derive(SYM); rail();
   drawHedging();     // async and self-contained: first, so a failure in another panel cannot skip it
-  stats(); drawBars(); drawRipple(); drawHeat(); drawAhead();
+  for (const f of [stats, drawBars, drawRipple, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
   drawBrief();
@@ -928,6 +928,7 @@ document.querySelectorAll('[data-tf]').forEach(b => b.onclick = () => { TF = b.d
   drawPlain();
   try {
     const r = await fetch('/api/oi-store'); const j = await r.json(); STORE = j.data ?? j;
+    try { const c = await (await fetch('/api/kv/get?key=oi_store_cmdty')).json(); const cd = c.data?.data ?? c.data ?? {}; for (const [k, v] of Object.entries(cd)) if (!STORE[k] && v && typeof v === 'object') STORE[k] = v; } catch (_) { /* commodities optional */ }
     if (!STORE[SYM]) SYM = Object.keys(NAMES).find(k => STORE[k]) || SYM;
     await refresh();
   } catch (err) { document.querySelector('.wrap').insertAdjacentHTML('beforeend', `<div class="err">Could not load the OI store: ${esc(err.message)}</div>`); }

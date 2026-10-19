@@ -87,3 +87,11 @@ London, one trade a day) and paper-scores it each night in R after 0.01% cost. T
 live on the OI page because the owner wants to watch the plan as it trades. It is descriptive and is NOT part of
 the H1/H2 verdict; H1/H2 remain counts-only until the judge date. Prior: the same playbook on the CME book was
 `gamma-regime-trades` (null, −0.03 R). No outcome had been computed.
+
+### A3 — 2026-10-19 — PRE-RESULTS
+From the 2026-10-20 session the record also logs EUR/USD, GBP/USD, AUD/USD, USD/JPY, USD/CAD, USD/CHF and the Dow
+(US30), built from the **CME listed book** (oi_store via `js/hedgingBooks.js`; inverted futures mapped to pair terms;
+markets with fewer than 20 contracts within 5% of price are skipped and counted). They are a **separate secondary
+family**, judged with the same H1/H2 rules but never pooled with the primary indices: most FX hedging is over the
+counter and absent from this book, and the CME gamma-range effect tested weak on FX (`gex-fx-crossmatch`, +0.04,
+n.s.). The primary verdict (NQ, SPX500, US2000) is unchanged. No outcome had been computed.

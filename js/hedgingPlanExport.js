@@ -20,7 +20,10 @@
  */
 import { scorePlan, PLAN_WINDOW } from './hedgingPlan.js';
 
-export const HEDGE_BLOCK = { NAS100_USD: 'NQ', SPX500_USD: 'SPX500', US2000_USD: 'US2000', XAU_USD: 'GOLD', US30_USD: 'US30' };
+export const HEDGE_BLOCK = { NAS100_USD: 'NQ', SPX500_USD: 'SPX500', US2000_USD: 'US2000', XAU_USD: 'GOLD', US30_USD: 'US30',
+  EUR_USD: 'EURUSD', GBP_USD: 'GBPUSD', AUD_USD: 'AUDUSD', USD_JPY: 'USDJPY', USD_CAD: 'USDCAD', USD_CHF: 'USDCHF' };
+// FX block names are six letters: JPY pairs print 3 decimals, other FX 5, everything else 2.
+const digitsOf = name => (/^[A-Z]{6}$/.test(name) ? (name.endsWith('JPY') ? 3 : 5) : 2);
 const num = (v, d = 2) => (Number.isFinite(Number(v)) && v !== null ? Number(v).toFixed(d) : '-');
 
 /** Live state of each order from the session's bars so far ({t,o,h,l,c,lmin}); nowLmin = London minutes now. */
@@ -51,13 +54,14 @@ export function buildHedgePlanText(planResp, states = {}, { generated = null } =
     out.push('', name);
     const p = m.plan;
     if (!p) { out.push(`· no plan today (${String(m.error || 'unavailable').replace(/\s+/g, ' ').slice(0, 60)})`); continue; }
+    const d = digitsOf(name);
     const sw = p.notes.find(n => /sits inside today/.test(n))?.match(/\(([\d.]+)\)/)?.[1];
     const changed = p.notes.some(n => /state has changed/.test(n));
-    out.push(`· open ${num(m.open)} · ${p.mode === 'follow' ? 'FOLLOW breaks (hedging speeds moves)' : 'FADE the edges (hedging calms moves)'}`
-      + `${sw ? ` · switch ${num(sw)} inside the lines` : ''}${changed ? ' · STATE CHANGED since the open' : ''} · backtest -0.03R`);
+    out.push(`· open ${num(m.open, d)} · ${p.mode === 'follow' ? 'FOLLOW breaks (hedging speeds moves)' : 'FADE the edges (hedging calms moves)'}`
+      + `${sw ? ` · switch ${num(sw, d)} inside the lines` : ''}${changed ? ' · STATE CHANGED since the open' : ''}${d > 2 ? ' · CME listed book only' : ''} · backtest -0.03R`);
     for (const o of p.orders) {
       const state = states[m.pair]?.[o.trigger] ?? 'armed';
-      out.push(`TZ ${o.side.toUpperCase()} ${p.mode} ${num(o.entry)} ${num(o.entry)} ${num(o.stop)} ${num(o.target)} - ${state} ${o.rr ? o.rr.toFixed(1) : '-'}`);
+      out.push(`TZ ${o.side.toUpperCase()} ${p.mode} ${num(o.entry, d)} ${num(o.entry, d)} ${num(o.stop, d)} ${num(o.target, d)} - ${state} ${o.rr ? o.rr.toFixed(1) : '-'}`);
     }
   }
   return out.join('\n');

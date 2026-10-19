@@ -304,6 +304,7 @@ import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, li
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
 import { buildHedgePlanText as _hpText, orderStates as _hpStates } from './js/hedgingPlanExport.js';   // hedge plan → pine/OI Bot Trades.pine
+import { cmeBookContracts as _cmeBook, priceDigits as _priceDigits } from './js/hedgingBooks.js';   // CME listed book → hedging contracts (FX, US30)
 import compression from 'compression';
 import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
 import { spreadProfileInit, spreadProfileSample, spreadProfileFlush, spreadProfileReport, MOTIF_UNIVERSE as _SPREAD_UNIVERSE } from './js/spreadProfile.js';
@@ -23023,6 +23024,18 @@ const _HS_MARKETS = [
   { pair: 'US2000_USD', name: 'Russell 2000', idx: '_RUT', etf: 'IWM', unit: 'RTY futures', futMult: 50 },
   { pair: 'XAU_USD', name: 'Gold', idx: null, etf: 'GLD', unit: 'gold futures', futMult: 100 },
 ];
+// FX majors and the Dow from the CME listed book (oi_store, nightly QuikStrike): ~5% of index dealer gamma for NQ, and
+// for FX most hedging is over the counter; the gamma-range effect tested weak on FX (GEX_FX_CROSSMATCH, +0.04, n.s.).
+const _HS_CME = [
+  { key: 'EUR/USD', pair: 'EUR_USD', name: 'EUR/USD', unit: '6E futures' },
+  { key: 'GBP/USD', pair: 'GBP_USD', name: 'GBP/USD', unit: '6B futures' },
+  { key: 'AUD/USD', pair: 'AUD_USD', name: 'AUD/USD', unit: '6A futures' },
+  { key: 'USD/JPY', pair: 'USD_JPY', name: 'USD/JPY', unit: '6J futures' },
+  { key: 'USD/CAD', pair: 'USD_CAD', name: 'USD/CAD', unit: '6C futures' },
+  { key: 'USD/CHF', pair: 'USD_CHF', name: 'USD/CHF', unit: '6S futures' },
+  { key: 'US30_USD', pair: 'US30_USD', name: 'Dow (US30)', unit: 'YM futures' },
+];
+const _HS_CME_NOTE = 'Built from CME listed options only: for currencies most dealer hedging is over the counter and not in this book, and in our tests the range effect on FX was weak (+0.04, not significant). Treat it as a rough read.';
 let _hsSummary = { at: 0, v: null };
 async function _oandaM1(pair, query) {
   if (!process.env.OANDA_KEY) return [];
@@ -23072,6 +23085,34 @@ async function _buildHedgingSummary() {
         lines: hedgingRead(sc, { fmt, unit: m.unit, now, name: m.name }) });
     } catch (e) { out.push({ pair: m.pair, name: m.name, error: e.message }); }
   }
+  let store = {};
+  try { const raw = await kv.get('oi_store'); if (raw) { const j = JSON.parse(raw); store = j.data ?? j; } } catch { store = {}; }
+  for (const m of _HS_CME) {
+    try {
+      const e = store[m.key];
+      const b = e ? _cmeBook(m.key, e) : null;
+      if (!b || !(b.spot > 0)) { out.push({ pair: m.pair, name: m.name, book: 'cme', error: 'no CME book stored' }); continue; }
+      const S = b.spot;
+      const near = b.contracts.filter(c => Math.abs(c.K / S - 1) <= 0.05).length;
+      if (near < 20) { out.push({ pair: m.pair, name: m.name, book: 'cme', error: `CME book too thin (${near} contracts within 5% of price)` }); continue; }
+      const sc = hedgingScenario(b.contracts, { spot: S, lo: S * 0.95, hi: S * 1.05, n: 161, shifts: [-2, 0], optMult: 1, futMult: 1 });
+      if (!sc) { out.push({ pair: m.pair, name: m.name, book: 'cme', error: 'book too thin' }); continue; }
+      const nowBars = await _oandaM1(m.pair, 'count=2');
+      const now = nowBars.length ? nowBars.at(-1).c : S;
+      const dp = _priceDigits(m.key, S), fmt = v => (Number.isFinite(v) ? v.toFixed(dp) : '—');
+      const z = sc.zeroGamma[0];
+      const calmAbove = z ? z.dir === 'short->long' : sc.atSpot.regime === 'long';
+      const calmNow = z ? (now >= z.price) === calmAbove : sc.atSpot.regime === 'long';
+      const lines = hedgingRead(sc, { fmt, unit: m.unit, now, name: m.name });
+      lines.splice(lines.length - 1, 0, _HS_CME_NOTE);
+      out.push({ pair: m.pair, name: m.name, book: 'cme', sources: ['CME listed'], asOf: e.basisAtMs ?? null,
+        cfdAtQuote: +S.toFixed(dp), cfdNow: now, contracts: sc.n, state: calmNow ? 'calms' : 'speeds',
+        switchPoint: z ? +z.price.toFixed(dp) : null, switchDir: z?.dir ?? null, regimeAtQuote: sc.atSpot.regime,
+        switchDistPct: z ? +((z.price / now - 1) * 100).toFixed(2) : null,
+        flowUp1pct: Math.round(sc.atSpot.hedgeUp1pct), flowDown1pct: Math.round(sc.atSpot.hedgeDown1pct), unit: m.unit,
+        walls: { put: sc.levels.putWall, call: sc.levels.callWall, biggest: sc.levels.majorWall }, lines });
+    } catch (e) { out.push({ pair: m.pair, name: m.name, book: 'cme', error: e.message }); }
+  }
   return { at: Date.now(), markets: out };
 }
 app.get('/api/hedging-summary', async (req, res) => {
@@ -23090,7 +23131,8 @@ app.get('/api/hedging-summary', async (req, res) => {
 // first = revert). One write-once R2 object per session: forward/hedging_state/<date>.json. No verdict before the
 // judge date (>= 250 sessions per market); /api/hedging-forward shows counts only.
 const _HF_PREFIX = 'forward/hedging_state/';
-const _HF_LADDER = { NAS100_USD: 'NQ', SPX500_USD: 'SPX500', US2000_USD: 'US2000', XAU_USD: 'GOLD' };
+const _HF_LADDER = { NAS100_USD: 'NQ', SPX500_USD: 'SPX500', US2000_USD: 'US2000', XAU_USD: 'GOLD',
+  EUR_USD: 'EURUSD', GBP_USD: 'GBPUSD', AUD_USD: 'AUDUSD', USD_JPY: 'USDJPY', USD_CAD: 'USDCAD', USD_CHF: 'USDCHF', US30_USD: 'US30' };
 const _hfLondon = d => Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour12: false,
   year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit' }).formatToParts(d).map(p => [p.type, p.value]));
 const _hfDone = new Map();   // date -> 'morning' | 'scored'

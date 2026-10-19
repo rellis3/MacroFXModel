@@ -50,7 +50,8 @@ export function buildPlan(m, lines, open) {
   if (follow && up > 0 && dn / up >= 1.5) notes.push(`Falls get ${(dn / up).toFixed(1)}x more dealer push than rises: the sell stop is the side the hedging favours.`);
   if (follow && dn > 0 && up / dn >= 1.5) notes.push(`Rises get ${(up / dn).toFixed(1)}x more dealer push than falls: the buy stop is the side the hedging favours.`);
   if (Number.isFinite(m.switchPoint) && m.switchPoint > D.p75 && m.switchPoint < U.p75) {
-    notes.push(`The switch point (${m.switchPoint.toFixed(2)}) sits inside today's p75 lines: if price crosses it, the hedging state flips and this plan is the wrong one for the rest of the day.`);
+    const dp = m.switchPoint < 10 ? 5 : m.switchPoint < 1000 ? 3 : 2;
+    notes.push(`The switch point (${m.switchPoint.toFixed(dp)}) sits inside today's p75 lines: if price crosses it, the hedging state flips and this plan is the wrong one for the rest of the day.`);
   }
   notes.push('First touch only, one trade a day (whichever side triggers first), entries 08:00-20:00 London, flat by 22:00.');
   return { mode: follow ? 'follow' : 'fade', open, lines: { U, D }, orders, notes, evidence: PLAN_EVIDENCE.text };
