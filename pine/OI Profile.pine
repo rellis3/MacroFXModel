@@ -104,12 +104,38 @@ f_chartKey() =>
         k := "NQ"
     else if str.contains(t, "XAU") or str.contains(t, "GOLD") or str.startswith(t, "GC")
         k := "GOLD"
+    else if str.contains(t, "XAG") or str.contains(t, "SILVER") or str.startswith(t, "SI1")
+        k := "SILVER"
+    else if str.contains(t, "XCU") or str.contains(t, "COPPER") or str.startswith(t, "HG")
+        k := "COPPER"
+    else if str.contains(t, "XPT") or str.contains(t, "PLATINUM") or str.startswith(t, "PL1")
+        k := "PLATINUM"
+    else if str.contains(t, "XPD") or str.contains(t, "PALLADIUM") or str.startswith(t, "PA1")
+        k := "PALLADIUM"
+    else if str.contains(t, "BRENT") or str.contains(t, "UKOIL") or str.startswith(t, "BZ")
+        k := "BRENT"
+    else if str.contains(t, "WTI") or str.contains(t, "USOIL") or str.startswith(t, "CL1")
+        k := "WTI"
+    else if str.contains(t, "NATGAS") or str.contains(t, "NGAS") or str.startswith(t, "NG1")
+        k := "NATGAS"
     else if str.contains(t, "SPX") or str.contains(t, "US500") or str.startswith(t, "ES") or str.contains(t, "SP500")
         k := "SPX500"
     else if str.contains(t, "US30") or str.contains(t, "DJI") or str.startswith(t, "YM") or str.contains(t, "DOW")
         k := "US30"
     else if str.contains(t, "US2000") or str.contains(t, "RTY") or str.contains(t, "RUT")
         k := "US2000"
+    else if str.startswith(t, "6E")
+        k := "EURUSD"
+    else if str.startswith(t, "6B")
+        k := "GBPUSD"
+    else if str.startswith(t, "6J")
+        k := "USDJPY"
+    else if str.startswith(t, "6A")
+        k := "AUDUSD"
+    else if str.startswith(t, "6C")
+        k := "USDCAD"
+    else if str.startswith(t, "6S")
+        k := "USDCHF"
     k
 
 if barstate.isfirst
@@ -129,93 +155,102 @@ if barstate.isfirst
         parseNote := "Paste the OI Profile export into the indicator settings (1 · Data)."
     else
         string want = str.upper(overrideKey) != "" ? str.upper(overrideKey) : f_chartKey()
-        int pick = 0
+        int pick = -1
         for b = 0 to nb - 1
             if array.get(bName, b) == want
                 pick := b
-        int s0 = array.get(bStart, pick) + 1
-        int s1 = pick + 1 < nb ? array.get(bStart, pick + 1) : n
-        mName := array.get(bName, pick)
-        if array.get(bName, pick) != want
-            parseNote := "No block named " + want + " — showing " + mName + "."
-        // header line (Generated: …) is above the first name line
-        for i = 0 to n - 1
-            string ln2 = str.trim(array.get(lines, i))
-            if str.startswith(ln2, "Generated:")
-                mGen := str.trim(str.replace(ln2, "Generated:", ""))
-        // pass 2 — parse the chosen block
-        if s1 > s0
-            for i = s0 to s1 - 1
-                string ln3 = str.trim(array.get(lines, i))
-                if str.length(ln3) > 2
-                    array<string> p = str.split(ln3, "|")
-                    string tag = array.get(p, 0)
-                    if tag == "M"
-                        int np = array.size(p)
-                        for j = 1 to np - 2 by 2
-                            string key = array.get(p, j)
-                            string val = array.get(p, j + 1)
-                            if key == "spot"
-                                mSpot := str.tonumber(val)
-                            else if key == "regime"
-                                mRegime := val
-                            else if key == "netgex"
-                                mNet := str.tonumber(val)
-                            else if key == "book"
-                                mBook := val
-                            else if key == "bookpct"
-                                mBookPct := str.tonumber(val)
-                            else if key == "zg"
-                                mZg := str.tonumber(val)
-                            else if key == "flip"
-                                mFlip := str.tonumber(val)
-                            else if key == "em_hi"
-                                mEmHi := str.tonumber(val)
-                            else if key == "em_lo"
-                                mEmLo := str.tonumber(val)
-                            else if key == "empct"
-                                mEmPct := str.tonumber(val)
-                            else if key == "iv"
-                                mIv := str.tonumber(val)
-                            else if key == "rr"
-                                mRr := str.tonumber(val)
-                            else if key == "refmove"
-                                mRef := str.tonumber(val)
-                            else if key == "binw"
-                                mBinw := str.tonumber(val)
-                    else if tag == "H0"
-                        mUp1 := f_num(p, 2)
-                        mDn1 := f_num(p, 4)
-                    else if tag == "L"
-                        array.push(lvType, f_str(p, 1))
-                        array.push(lvPrice, f_num(p, 2))
-                        array.push(lvLabel, f_str(p, 3))
-                        array.push(lvStr, f_num(p, 4))
-                        array.push(lvTouch, f_num(p, 5))
-                        array.push(lvEta, f_num(p, 6))
-                        array.push(lvExp, f_str(p, 7))
-                    else if tag == "G"
-                        array.push(gP, f_num(p, 1))
-                        array.push(gN, f_num(p, 2))
-                    else if tag == "V"
-                        array.push(vP, f_num(p, 1))
-                        array.push(vV, f_num(p, 2))
-                    else if tag == "O"
-                        array.push(oP, f_num(p, 1))
-                        array.push(oV, f_num(p, 2))
-                    else if tag == "S"
-                        array.push(sP, f_num(p, 1))
-                        array.push(sI, f_num(p, 2))
-                    else if tag == "X"
-                        array.push(xP, f_num(p, 1))
-                        array.push(xG0, f_num(p, 2))
-                        array.push(xG1, f_num(p, 3))
-                        array.push(xG2, f_num(p, 4))
-                        array.push(xG3, f_num(p, 5))
-                        array.push(xH, f_num(p, 6))
-        parsed := array.size(lvPrice) > 0 or array.size(gP) > 0
+        // never draw ANOTHER instrument's levels on this chart: with a single pasted block use it (note the name), with several require a match
+        if pick < 0 and nb == 1
+            pick := 0
+        if pick < 0
+            string have = ""
+            for b = 0 to nb - 1
+                have += (b > 0 ? ", " : "") + array.get(bName, b)
+            parseNote := "No block for " + want + " in this paste (have: " + have + "). Set 'Instrument' in settings or paste that instrument."
+        else
+            if array.get(bName, pick) != want
+                parseNote := "Pasted block is " + array.get(bName, pick) + " but the chart looks like " + want + " — showing it anyway."
+            int s0 = array.get(bStart, pick) + 1
+            int s1 = pick + 1 < nb ? array.get(bStart, pick + 1) : n
+            mName := array.get(bName, pick)
+            // header line (Generated: …) is above the first name line
+            for i = 0 to n - 1
+                string ln2 = str.trim(array.get(lines, i))
+                if str.startswith(ln2, "Generated:")
+                    mGen := str.trim(str.replace(ln2, "Generated:", ""))
+            // pass 2 — parse the chosen block
+            if s1 > s0
+                for i = s0 to s1 - 1
+                    string ln3 = str.trim(array.get(lines, i))
+                    if str.length(ln3) > 2
+                        array<string> p = str.split(ln3, "|")
+                        string tag = array.get(p, 0)
+                        if tag == "M"
+                            int np = array.size(p)
+                            for j = 1 to np - 2 by 2
+                                string key = array.get(p, j)
+                                string val = array.get(p, j + 1)
+                                if key == "spot"
+                                    mSpot := str.tonumber(val)
+                                else if key == "regime"
+                                    mRegime := val
+                                else if key == "netgex"
+                                    mNet := str.tonumber(val)
+                                else if key == "book"
+                                    mBook := val
+                                else if key == "bookpct"
+                                    mBookPct := str.tonumber(val)
+                                else if key == "zg"
+                                    mZg := str.tonumber(val)
+                                else if key == "flip"
+                                    mFlip := str.tonumber(val)
+                                else if key == "em_hi"
+                                    mEmHi := str.tonumber(val)
+                                else if key == "em_lo"
+                                    mEmLo := str.tonumber(val)
+                                else if key == "empct"
+                                    mEmPct := str.tonumber(val)
+                                else if key == "iv"
+                                    mIv := str.tonumber(val)
+                                else if key == "rr"
+                                    mRr := str.tonumber(val)
+                                else if key == "refmove"
+                                    mRef := str.tonumber(val)
+                                else if key == "binw"
+                                    mBinw := str.tonumber(val)
+                        else if tag == "H0"
+                            mUp1 := f_num(p, 2)
+                            mDn1 := f_num(p, 4)
+                        else if tag == "L"
+                            array.push(lvType, f_str(p, 1))
+                            array.push(lvPrice, f_num(p, 2))
+                            array.push(lvLabel, f_str(p, 3))
+                            array.push(lvStr, f_num(p, 4))
+                            array.push(lvTouch, f_num(p, 5))
+                            array.push(lvEta, f_num(p, 6))
+                            array.push(lvExp, f_str(p, 7))
+                        else if tag == "G"
+                            array.push(gP, f_num(p, 1))
+                            array.push(gN, f_num(p, 2))
+                        else if tag == "V"
+                            array.push(vP, f_num(p, 1))
+                            array.push(vV, f_num(p, 2))
+                        else if tag == "O"
+                            array.push(oP, f_num(p, 1))
+                            array.push(oV, f_num(p, 2))
+                        else if tag == "S"
+                            array.push(sP, f_num(p, 1))
+                            array.push(sI, f_num(p, 2))
+                        else if tag == "X"
+                            array.push(xP, f_num(p, 1))
+                            array.push(xG0, f_num(p, 2))
+                            array.push(xG1, f_num(p, 3))
+                            array.push(xG2, f_num(p, 4))
+                            array.push(xG3, f_num(p, 5))
+                            array.push(xH, f_num(p, 6))
+            parsed := array.size(lvPrice) > 0 or array.size(gP) > 0
 
-tblPosition = tblPos == "top right" ? position.top_right : tblPos == "bottom left" ? position.bottom_left : tblPos == "bottom right" ? position.bottom_right : position.top_left
+    tblPosition = tblPos == "top right" ? position.top_right : tblPos == "bottom left" ? position.bottom_left : tblPos == "bottom right" ? position.bottom_right : position.top_left
 
 // ── Helpers ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 f_lvCol(string t) =>

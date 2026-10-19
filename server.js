@@ -24393,7 +24393,8 @@ app.get('/api/oi-profile/export', async (req, res) => {
     if (!storeKeys.length) return res.status(404).type('text/plain').send(`No OI record for ${want.join(', ')}.`);
     const wantReach = String(req.query.reach || '') !== '0' && !!process.env.OANDA_KEY;
     const oneDay = 24 * 3600e3;
-    const blocks = [];
+    // phase 1 — build every profile (cheap, CPU only)
+    const items = [];
     for (const sk of storeKeys) {
       const inst = store[sk]; if (!inst?.spot) continue;
       inst.pair = inst.pair || sk;
@@ -24404,24 +24405,27 @@ app.get('/api/oi-profile/export', async (req, res) => {
         const bk = _cmeBook(sk, inst, { maxDte: 3 });
         if (bk) { const half = Math.min(0.06, Math.max(0.012, 3 * rm / inst.spot)); hedge = hedgingScenario(bk.contracts, { spot: bk.spot, lo: bk.spot * (1 - half), hi: bk.spot * (1 + half), n: 81, shifts: [-2, 0, 2, 4], optMult: 1, futMult: 1 }); }
       } catch { hedge = null; }
-      let prof = buildOiProfile(inst, { sym: sk, hedge });
-      if (!prof) continue;
-      // calibrated P(touch) + median ETA per level (the same engine as the other exports); absent where no price feed / bars
-      if (wantReach) {
-        try {
-          const osym = _OI_REACH_OA[sk];
-          const bars = osym ? await _oiM5Bars(osym) : null;
-          if (bars) {
-            const ctx = _fpBuildCtx(bars, {});
-            const rows = _oiWallReach(ctx, bars.length, prof.levels.map(l => ({ price: l.price, type: l.type })), 48, { nPaths: 300, instrument: sk });
-            const byP = new Map(rows.map(r => [r.price.toFixed(6), r]));
-            prof = buildOiProfile(inst, { sym: sk, hedge, reach: pr => { const r = byP.get(pr.toFixed(6)); return r && Number.isFinite(r.calibrated) ? { p: r.calibrated, eta: Number.isFinite(r.medBarsToTouch) ? r.medBarsToTouch * 5 : null } : null; } });
-          }
-        } catch (e) { console.warn('[oi-profile] reach failed for', sk, e.message); }
-      }
-      const fk = (() => { try { return _forecastKeyForPair(sk); } catch { return null; } })();
-      blocks.push(buildProfileText(prof, { name: fk || String(sk).toUpperCase().replace(/[^A-Z0-9]/g, ''), generated: new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC · saved ' + (inst.savedAt || '?'), digits: _priceDigits(sk, inst.spot) }));
+      const prof = buildOiProfile(inst, { sym: sk, hedge });
+      if (prof) items.push({ sk, inst, hedge, prof });
     }
+    // phase 2 — calibrated P(touch) + median ETA per level, all instruments in parallel within a time budget (same engine as the other exports);
+    // an instrument without a price feed / bars, or one that is too slow, simply goes out without touch odds
+    if (wantReach) {
+      const addReach = async (it) => {
+        const osym = _OI_REACH_OA[it.sk];
+        const bars = osym ? await _oiM5Bars(osym) : null;
+        if (!bars) return;
+        const ctx = _fpBuildCtx(bars, {});
+        const rows = _oiWallReach(ctx, bars.length, it.prof.levels.map(l => ({ price: l.price, type: l.type })), 48, { nPaths: 300, instrument: it.sk });
+        const byP = new Map(rows.map(r => [r.price.toFixed(6), r]));
+        it.prof = buildOiProfile(it.inst, { sym: it.sk, hedge: it.hedge, reach: pr => { const r = byP.get(pr.toFixed(6)); return r && Number.isFinite(r.calibrated) ? { p: r.calibrated, eta: Number.isFinite(r.medBarsToTouch) ? r.medBarsToTouch * 5 : null } : null; } });
+      };
+      await Promise.race([Promise.all(items.map(it => addReach(it).catch(e => console.warn('[oi-profile] reach failed for', it.sk, e.message)))), new Promise(r => setTimeout(r, 40_000))]);
+    }
+    const blocks = items.map(({ sk, inst, prof }) => {
+      const fk = (() => { try { return _forecastKeyForPair(sk); } catch { return null; } })();
+      return buildProfileText(prof, { name: fk || String(sk).toUpperCase().replace(/[^A-Z0-9]/g, ''), generated: new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC · saved ' + (inst.savedAt || '?'), digits: _priceDigits(sk, inst.spot) });
+    });
     if (!blocks.length) return res.status(404).type('text/plain').send('No profile could be built (no book on the record).');
     res.type('text/plain').send(blocks.join('\n'));
   } catch (e) { res.status(500).type('text/plain').send(`OI profile error: ${e.message}`); }
