@@ -829,12 +829,27 @@ document.querySelectorAll('[data-hsrc]').forEach(b => b.onclick = () => { HS.src
 document.querySelectorAll('[data-hexp]').forEach(b => b.onclick = () => { HS.maxDte = +b.dataset.hexp; document.querySelectorAll('[data-hexp]').forEach(x => x.classList.toggle('on', x === b)); drawHedging(); });
 
 // ── 00 plain-English summary of every market (/api/hedging-summary) ───────────────────────────
+function planHtml(x){
+  if (!x) return '';
+  if (!x.plan) return `<div class="sub" style="margin:8px 0 0">Today's plan: not available (${esc(x.error || 'no plan')}).</div>`;
+  const p = x.plan, f = v => Number(v).toLocaleString('en-GB', { maximumFractionDigits: v >= 1000 ? 1 : 2 });
+  const head = p.mode === 'follow'
+    ? `<b>Today's plan: FOLLOW breaks</b> (hedging speeds moves at the open)`
+    : `<b>Today's plan: FADE the edges</b> (hedging calms moves at the open)`;
+  const rows = p.orders.map(o => `<tr><td style="color:${o.side === 'buy' ? `rgb(${LONG})` : `rgb(${SHORT})`};font-weight:600">${o.side.toUpperCase()} ${o.type}</td><td>${f(o.entry)}</td><td>${f(o.stop)}</td><td>${f(o.target)}</td><td>${f(o.riskPts)}</td><td>${o.rr ? o.rr.toFixed(2) : '—'}</td></tr>`).join('');
+  return `<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px">
+    <div style="font-size:12.5px">${head}</div>
+    <table class="zt" style="margin-top:4px"><tr><th>order</th><th>entry</th><th>stop</th><th>target</th><th>risk (pts)</th><th>reward : risk</th></tr>${rows}</table>
+    <ul style="margin:4px 0 0;padding-left:18px;color:var(--tx3);font-size:11.5px;line-height:1.5">${p.notes.map(n => `<li>${esc(n)}</li>`).join('')}<li>${esc(p.evidence)}</li></ul></div>`;
+}
+
 async function drawPlain(){
   const body = $('#plainBody');
   body.innerHTML = '<div class="sub">Loading last night\'s options books…</div>';
   try {
-    const j = await (await fetch('/api/hedging-summary')).json();
+    const [j, P] = await Promise.all([fetch('/api/hedging-summary').then(r => r.json()), fetch('/api/hedging-plan').then(r => r.json()).catch(() => null)]);
     if (!j.ok) throw new Error(j.error || 'unavailable');
+    const plans = Object.fromEntries((P?.markets ?? []).map(x => [x.pair, x]));
     const asOf = j.markets.find(m => m.asOf)?.asOf;
     $('#plainAsOf').textContent = asOf ? `· options book as of ${new Date(asOf).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}` : '';
     body.innerHTML = j.markets.map(m => {
@@ -845,12 +860,13 @@ async function drawPlain(){
       return `<div style="border:1px solid var(--line);border-left:3px solid ${col};border-radius:10px;padding:10px 14px">
         <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:14px">${esc(m.name)}</b>${badge}</div>
         <div class="sub" style="margin:2px 0 6px">now ${Number(m.cfdNow).toLocaleString('en-GB')} · ${esc(sw)} · ${esc(m.sources.join(' + '))}</div>
-        <ul style="margin:0;padding-left:18px;color:var(--tx2);font-size:12.5px;line-height:1.55">${m.lines.slice(0, -1).map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
+        <ul style="margin:0;padding-left:18px;color:var(--tx2);font-size:12.5px;line-height:1.55">${m.lines.slice(0, -1).map(l => `<li>${esc(l)}</li>`).join('')}</ul>${planHtml(plans[m.pair])}</div>`;
     }).join('') + `<div class="sub" style="grid-column:1/-1;margin:0">${esc(j.markets.find(m => m.lines)?.lines.at(-1) || '')}</div>`;
   } catch (err) { body.innerHTML = `<div class="sub">Could not load the summary: ${esc(err.message)}</div>`; return; }
   try {
     const f = await (await fetch('/api/hedging-forward')).json();
-    if (f.ok) body.insertAdjacentHTML('beforeend', `<div class="sub" style="grid-column:1/-1;margin:0"><b>Forward record:</b> ${f.sessions} session${f.sessions === 1 ? '' : 's'} logged${f.first ? ` since ${esc(f.first)}` : ''}. Each morning's state is saved, then scored against the day's range and how breaks behaved. No verdict until about 250 sessions per market (~Oct 2027): forge/HEDGING_STATE_FORWARD_PREREG.md.</div>`);
+    const pp = Object.entries(f.paper || {}).map(([k, v]) => `${esc(k)} ${v.trades} trade${v.trades === 1 ? '' : 's'}, ${v.sumR >= 0 ? '+' : ''}${v.sumR} R (avg ${v.meanR >= 0 ? '+' : ''}${v.meanR}, ${Math.round(100 * v.wins / v.trades)}% winners)`).join(' · ');
+    if (f.ok) body.insertAdjacentHTML('beforeend', `<div class="sub" style="grid-column:1/-1;margin:0"><b>Paper record of the daily plan:</b> ${pp || 'no trades scored yet (each session is scored after 22:15 London)'}.<br><b>Forward record:</b> ${f.sessions} session${f.sessions === 1 ? '' : 's'} logged${f.first ? ` since ${esc(f.first)}` : ''}. The range and break questions get a verdict at about 250 sessions per market (~Oct 2027): forge/HEDGING_STATE_FORWARD_PREREG.md.</div>`);
   } catch (_) { /* the record line is optional */ }
 }
 

@@ -79,3 +79,11 @@ descriptive only).
 The record starts with the 2026-10-19 session, not 2026-10-20: the job deployed mid-session and took that day's
 snapshot at 13:39 London. The primary label uses the 00:00 open and the prior-close Cboe book, so it is unaffected;
 that day's `stateAt0700` field was really taken at 13:39 (descriptive only). No outcome had been computed.
+
+### A2 — 2026-10-19 — PRE-RESULTS
+Each morning the job also stores a trade plan (`js/hedgingPlan.js`: follow breaks of the chosen p75 lines when the
+state at the open is `speeds`, fade them when `calms`; stops at p50/p90, targets at p90/p50, entries 08:00–20:00
+London, one trade a day) and paper-scores it each night in R after 0.01% cost. The running paper record is shown
+live on the OI page because the owner wants to watch the plan as it trades. It is descriptive and is NOT part of
+the H1/H2 verdict; H1/H2 remain counts-only until the judge date. Prior: the same playbook on the CME book was
+`gamma-regime-trades` (null, −0.03 R). No outcome had been computed.

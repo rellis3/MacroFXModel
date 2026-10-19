@@ -301,6 +301,7 @@ import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
+import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
 import compression from 'compression';
 import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
 import { spreadProfileInit, spreadProfileSample, spreadProfileFlush, spreadProfileReport, MOTIF_UNIVERSE as _SPREAD_UNIVERSE } from './js/spreadProfile.js';
@@ -23117,6 +23118,8 @@ async function _hedgingForwardTick() {
         switchPoint: m.switchPoint ?? null, switchDir: m.switchDir ?? null, regimeAtQuote: m.regimeAtQuote ?? null,
         flowUp1pct: m.flowUp1pct ?? null, flowDown1pct: m.flowDown1pct ?? null, quoteAsOf: m.asOf ?? null,
         lines: L ? { form: L.form ?? null, hl: L.hl ?? null, oh: L.oh ?? null, ol: L.ol ?? null } : null, outcome: null });
+      const last = markets.at(-1);
+      last.plan = _hpBuild({ ...m, state: last.state }, last.lines, last.open);
     }
     rec = { v: 1, prereg: 'forge/HEDGING_STATE_FORWARD_PREREG.md', date, snapshotAt: new Date().toISOString(), markets, scoredAt: null };
     await _r2PutJSON(key, rec);
@@ -23143,6 +23146,9 @@ async function _hedgingForwardTick() {
     }
     const hlPct = (hi - lo) / o * 100;
     m.outcome = { high: hi, low: lo, hlPct: +hlPct.toFixed(4), y: +Math.log(hlPct / m.lines.hl.p50).toFixed(4), breakSide: side, break: brk, bars: bars.length };
+    const plan = m.plan ?? _hpBuild(m, m.lines, m.open);
+    const mid0 = _hfLondonMidnightMs(date);
+    m.paper = plan ? _hpScore(plan, bars.map(x => ({ ...x, h: x.h ?? Math.max(x.o, x.c), l: x.l ?? Math.min(x.o, x.c), lmin: Math.round((x.t - mid0) / 60_000) }))) : { triggered: false, reason: 'no plan' };
   }
   rec.scoredAt = new Date().toISOString();
   await _r2PutJSON(key, rec);
@@ -23155,16 +23161,46 @@ app.get('/api/hedging-forward', async (req, res) => {
     const keys = (await _r2ListKeys(_HF_PREFIX)).filter(k => /\d{4}-\d{2}-\d{2}\.json$/.test(k)).sort();
     const date = String(req.query.date || '');
     if (date) { const rec = await _r2GetJSON(`${_HF_PREFIX}${date}.json`); return rec ? res.json({ ok: true, ...rec }) : res.status(404).json({ ok: false, error: 'no record' }); }
-    const counts = {};
+    const counts = {}, paper = {};
     for (const k of keys.slice(-400)) {
       const rec = await _r2GetJSON(k);
       for (const m of rec?.markets ?? []) {
         const c = counts[m.name] ??= { logged: 0, scored: 0, speeds: 0, calms: 0 };
         c.logged++; if (m.outcome && !m.outcome.skipped) c.scored++; if (m.state) c[m.state]++;
+        if (m.paper?.triggered && Number.isFinite(m.paper.R)) { const p = paper[m.name] ??= { trades: 0, wins: 0, sumR: 0, last: [] }; p.trades++; if (m.paper.R > 0) p.wins++; p.sumR += m.paper.R; p.last.push({ date: rec.date, mode: m.plan?.mode ?? null, side: m.paper.side, how: m.paper.how, R: m.paper.R }); }
       }
     }
+    for (const p of Object.values(paper)) { p.sumR = +p.sumR.toFixed(3); p.meanR = +(p.sumR / p.trades).toFixed(3); p.last = p.last.slice(-10); }
     res.json({ ok: true, prereg: 'forge/HEDGING_STATE_FORWARD_PREREG.md', sessions: keys.length, first: keys[0]?.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? null,
-      judgeAt: '>= 250 scored sessions per primary market, >= 60 in each state', counts, note: 'counts only: no outcome statistics before the judge date' });
+      judgeAt: '>= 250 scored sessions per primary market, >= 60 in each state', counts, paper, evidence: _HP_EVIDENCE.text,
+      note: 'H1/H2 (range, breaks): counts only until the judge date. Paper record of the daily plan: live, descriptive (amendment A2).' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// GET /api/hedging-plan -> today's plan per market: the hedging state at the London open, the chosen lines, and the
+// orders js/hedgingPlan.js derives (follow breaks when hedging speeds moves, fade the edges when it calms them).
+let _hpCache = { at: 0, date: null, v: null };
+app.get('/api/hedging-plan', async (req, res) => {
+  try {
+    const p = _hfLondon(new Date()), date = `${p.year}-${p.month}-${p.day}`;
+    if (!_hpCache.v || _hpCache.date !== date || Date.now() - _hpCache.at > 10 * 60_000 || req.query.fresh === '1') {
+      const sum = (_hsSummary.v && Date.now() - _hsSummary.at < 20 * 60_000) ? _hsSummary.v : await _buildHedgingSummary();
+      _hsSummary = { at: Date.now(), v: sum };
+      let lad = {};
+      try { const r = await fetch(`http://127.0.0.1:${PORT}/api/vol-forecast/persist-ladder/json`, { signal: AbortSignal.timeout(60_000) }); if (r.ok) lad = (await r.json()).instruments ?? {}; } catch { /* no lines -> no plan */ }
+      const markets = [];
+      for (const m of sum.markets) {
+        const L = lad[_HF_LADDER[m.pair]] ?? null;
+        const first = m.error ? null : (await _hfSessionBars(m.pair, date, 2))[0] ?? null;
+        const open = first && first.t < _hfLondonMidnightMs(date) + 15 * 60_000 ? first.o : null;
+        const state = _hfState(open, m);
+        const lines = L ? { hl: L.hl, oh: L.oh, ol: L.ol } : null;
+        markets.push({ pair: m.pair, name: m.name, open, stateAtOpen: state, stateNow: m.state ?? null, cfdNow: m.cfdNow ?? null,
+          plan: _hpBuild({ ...m, state }, lines, open), error: m.error ?? (!L ? 'no daily lines' : !open ? 'no 00:00 bar yet' : null) });
+      }
+      _hpCache = { at: Date.now(), date, v: { date, markets, evidence: _HP_EVIDENCE } };
+    }
+    res.json({ ok: true, ..._hpCache.v });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
