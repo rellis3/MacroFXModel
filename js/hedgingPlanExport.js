@@ -51,9 +51,10 @@ export function buildHedgePlanText(planResp, states = {}, { generated = null } =
     out.push('', name);
     const p = m.plan;
     if (!p) { out.push(`· no plan today (${String(m.error || 'unavailable').replace(/\s+/g, ' ').slice(0, 60)})`); continue; }
-    const sw = p.notes.find(n => /switch point/.test(n))?.match(/\(([\d.]+)\)/)?.[1];
+    const sw = p.notes.find(n => /sits inside today/.test(n))?.match(/\(([\d.]+)\)/)?.[1];
+    const changed = p.notes.some(n => /state has changed/.test(n));
     out.push(`· open ${num(m.open)} · ${p.mode === 'follow' ? 'FOLLOW breaks (hedging speeds moves)' : 'FADE the edges (hedging calms moves)'}`
-      + `${sw ? ` · switch ${num(sw)} inside the lines` : ''} · backtest -0.03R`);
+      + `${sw ? ` · switch ${num(sw)} inside the lines` : ''}${changed ? ' · STATE CHANGED since the open' : ''} · backtest -0.03R`);
     for (const o of p.orders) {
       const state = states[m.pair]?.[o.trigger] ?? 'armed';
       out.push(`TZ ${o.side.toUpperCase()} ${p.mode} ${num(o.entry)} ${num(o.entry)} ${num(o.stop)} ${num(o.target)} - ${state} ${o.rr ? o.rr.toFixed(1) : '-'}`);

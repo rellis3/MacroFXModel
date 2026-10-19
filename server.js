@@ -23188,8 +23188,21 @@ async function _hedgingPlanPayload(fresh = false) {
       _hsSummary = { at: Date.now(), v: sum };
       let lad = {};
       try { const r = await fetch(`http://127.0.0.1:${PORT}/api/vol-forecast/persist-ladder/json`, { signal: AbortSignal.timeout(60_000) }); if (r.ok) lad = (await r.json()).instruments ?? {}; } catch { /* no lines -> no plan */ }
+      // The day's plan is FROZEN at the morning snapshot (the forward record the paper score uses): the Cboe quotes
+      // go live at the US open and move the switch point, which must not rewrite a plan mid-day. Before the snapshot
+      // exists (00:00-07:00 London) the plan is built live.
+      let frozen = null;
+      try { frozen = _r2Ok() ? await _r2GetJSON(`${_HF_PREFIX}${date}.json`) : null; } catch { frozen = null; }
       const markets = [];
       for (const m of sum.markets) {
+        const fz = frozen?.markets?.find(x => x.pair === m.pair);
+        if (fz && Number.isFinite(fz.open) && fz.lines && fz.state) {
+          const plan = fz.plan ?? _hpBuild(fz, fz.lines, fz.open);
+          if (plan && m.state && m.state !== fz.state) plan.notes = [`Since the morning snapshot the hedging state has changed: it now ${m.state === 'speeds' ? 'SPEEDS UP' : 'CALMS'} moves (switch point now ${Number.isFinite(m.switchPoint) ? m.switchPoint.toFixed(2) : 'outside ±5%'}). The plan stays as set this morning.`, ...plan.notes];
+          markets.push({ pair: m.pair, name: m.name, open: fz.open, stateAtOpen: fz.state, stateNow: m.state ?? null, cfdNow: m.cfdNow ?? null,
+            frozenAt: frozen.snapshotAt, plan, error: plan ? null : 'no plan' });
+          continue;
+        }
         const L = lad[_HF_LADDER[m.pair]] ?? null;
         const first = m.error ? null : (await _hfSessionBars(m.pair, date, 2))[0] ?? null;
         const open = first && first.t < _hfLondonMidnightMs(date) + 15 * 60_000 ? first.o : null;
