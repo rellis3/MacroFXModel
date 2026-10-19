@@ -1,4 +1,4 @@
-//@version=5
+//@version=6
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 // OI PROFILE — the options book as a picture: reaction levels + zones on the chart, and a five-column profile in the empty space RIGHT of the last bar
 //   GEX PROFILE  per-strike dealer gamma of the STRONGEST-DTE book (green = long gamma/pins, red = short gamma/amplifies)
@@ -17,7 +17,7 @@ indicator("OI Profile", shorttitle="OI Profile", overlay=true, max_boxes_count=5
 
 // ── Inputs ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 G1 = "1 · Data"
-paste1 = input.text_area("", "Paste — part 1", group=G1, tooltip="Pine strings are limited to 4,096 characters, so the export comes in parts of up to 4,000 characters. One instrument is usually one part. Paste part 1 here, part 2 in the next box, and so on (the OI Lab export window shows each part with its own Copy button).")
+paste1 = input.text_area("", "Paste — part 1", group=G1, tooltip="Paste the whole export here (Pine v6 allows strings up to 40,960 characters — one instrument is ~4,000, all instruments ~36,000). The extra boxes below are only needed if you ever paste more than that.")
 paste2 = input.text_area("", "Paste — part 2", group=G1)
 paste3 = input.text_area("", "Paste — part 3", group=G1)
 paste4 = input.text_area("", "Paste — part 4", group=G1)

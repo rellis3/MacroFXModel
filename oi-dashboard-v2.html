@@ -933,14 +933,14 @@ function showExport(text){
   box.querySelectorAll('button[data-part]').forEach(b => b.onclick = () => { try { navigator.clipboard.writeText(parts[+b.dataset.part]); b.textContent = 'Copied ✓'; setTimeout(() => b.textContent = 'Copy part ' + (+b.dataset.part + 1), 1500); } catch (_) { b.parentElement.nextElementSibling.select(); } });
 }
 async function loadProfile(){ const ta = $('#tiersTxt'); ta.value = 'fetching… (price feed + P(touch), ~5–15 s)';
-  try { const r = await fetch('/api/oi-profile/export?chunks=1&pair=' + encodeURIComponent(SYM) + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
+  try { const r = await fetch('/api/oi-profile/export?pair=' + encodeURIComponent(SYM) + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 let EXPORT_KIND = 'tiers';
 async function loadLevels(){ const ta = $('#tiersTxt'); $('#tiersParts').style.display = 'none'; ta.style.display = ''; ta.value = 'fetching… (price feed + P(touch), ~10–20 s)';
   try { const r = await fetch('/api/vol-forecast/zones?reach=1' + ($('#tiersToday').checked ? '&mode=today' : '') + ($('#tiersFut').checked ? '&terms=futures' : '') + ($('#tiersLean').checked ? '&lean=1' : ''), { cache: 'no-store' }); ta.value = await r.text(); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 async function loadProfileAll(){ const ta = $('#tiersTxt'); ta.value = 'building every instrument…';
-  try { const r = await fetch('/api/oi-profile/export?chunks=1&pair=all&reach=0' + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
+  try { const r = await fetch('/api/oi-profile/export?pair=all&reach=0' + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 $('#tiersBtn').onclick = () => { EXPORT_KIND = 'tiers'; $('#exportTitle').textContent = 'OI tiers export'; $('#tiersModal').style.display = 'block'; loadTiers(); };
 $('#lvlBtn').onclick = () => { EXPORT_KIND = 'levels'; $('#exportTitle').textContent = 'Levels export — the Confluence Zones indicator paste (C+Z + OI lines, every instrument)'; $('#tiersModal').style.display = 'block'; loadLevels(); };
