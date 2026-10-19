@@ -8240,6 +8240,14 @@ unit sentinel in each direction).
 
 ### 1bk. Setup Watch — the educator-claim register as desk-watch triggers (2026-10-18)
 
+*2026-10-19: generalised. The register now carries `source: 'desk'` rows for the ledger's own
+findings — seven new gauged detectors (implied-over-realised, dear vol front, breadth
+wipe-out, crack blow-out, 10-year big day, S&P NR7, headline SOFR) and six GAUGE rows that
+sit on triggers deskWatch already has (`watchId`) and emit progress only, never a second
+alert. `evaluateGauges(inputs)` is the new export; `evaluateClaims` takes the full desk-watch
+input set. The Evidence Book renders the blocks (`evidence.html?filter=watched`);
+`claim-watch.html` is a redirect. Rules per row: `MD files/CLAIM_WATCH.md`.*
+
 Built because every Crown clip in `CROWN_WATCH.md` ended at a verdict and nothing watched the
 setup live. Rides the existing desk-watch tick, transition rule, Telegram, `desk_watch_v1`
 store and fire log — a third trigger `kind` (`claim`), not a second pipeline. Pure,

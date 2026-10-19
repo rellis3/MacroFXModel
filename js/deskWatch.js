@@ -32,12 +32,14 @@
  *   vwapStretch { GOLD:{z,side,band,session,price,vwap}, EURUSD, GBPUSD, USDJPY }
  *             live session-VWAP-stretch reading (js/vwapStretchCore.js); an
  *             instrument missing/null silently disables that one trigger
- *   drill     the drill bundle (/api/drill-series: { dates, series }) — feeds the claim register
- *   crack     /api/crack `series` ([{date, value, wti}]) — feeds the crack-disagreement claim
+ *   drill     the drill bundle (/api/drill-series: { dates, series }) — feeds the watch register
+ *   crack     /api/crack `series` ([{date, value, wti}]) — feeds the crack rows of the register
+ *   funding   headline SOFR − Fed floor series ([{date, value}], percent) — feeds the repo row
  *   now       epoch ms
  */
 
-import { evaluateClaims } from './claimWatch.js';
+import { evaluateClaims, evaluateGauges } from './claimWatch.js';
+export { evaluateGauges };   // gauges on this file's own triggers (progress + look-for), read by the server tick
 
 const _last = a => Array.isArray(a) && a.length ? a[a.length - 1] : null;
 const _nth = (a, k) => Array.isArray(a) && a.length > k ? a[a.length - 1 - k] : null;
@@ -103,7 +105,7 @@ import { eventImpact } from './eventImpactMap.js';
  * `detail` is the plain-words message body used when the trigger starts firing.
  */
 export function evaluateTriggers(inp = {}) {
-  const { fred = {}, hist = {}, series = {}, chain = [], stockBond = null, events = [], fomcDates = [], vwapStretch = {}, drill = null, crack = null, now = Date.now() } = inp;
+  const { fred = {}, hist = {}, series = {}, chain = [], stockBond = null, events = [], fomcDates = [], vwapStretch = {}, drill = null, crack = null, funding = null, now = Date.now() } = inp;
   const out = [];
   const push = t => out.push({ firing: false, instruments: [], evidenceId: null, ...t });
   const atrBy = atrTable(series);
@@ -230,10 +232,11 @@ export function evaluateTriggers(inp = {}) {
         ? `${label} is ${s.z >= 0 ? '+' : ''}${s.z.toFixed(1)}σ from today's session VWAP (${s.session} session) — a ${s.band}σ+ stretch, σ frozen at session open from the trailing 20 sessions. Tested here (GOLD_VWAP_FIXED_SIGMA_FINDINGS.md §7): ${rate}. Stretches made during NY tend to stick; Asia/London stretches snap back more. Context, not a signal — no VWAP-anchored entry built on this book has ever passed after costs (CROWN_WATCH.md, 2026-09-19).`
         : `${label} is back inside 2σ of session VWAP.` });
   }
-  // ── claim: the Crown register (js/claimWatch.js) ───────────────────────────
-  // Only when the drill bundle / crack series are supplied: a missing input disables the
-  // claim triggers rather than clearing them, same as every other input here.
-  if (drill || crack) for (const t of evaluateClaims({ bundle: drill, crack })) out.push({ since: null, ...t });
+  // ── the watch register (js/claimWatch.js): Crown setups + the desk's own gauged findings ──
+  // Each detector row reads the inputs it needs and is absent when they are missing: a missing
+  // input disables a register trigger rather than clearing it, same as every other input here.
+  // Gauge rows (progress on triggers this file already emits) are NOT triggers — see evaluateGauges.
+  for (const t of evaluateClaims({ bundle: drill, crack, series, fred, hist, stockBond, funding })) out.push({ since: null, ...t });
   return out;
 }
 // Cross-instrument-replicated in the same study (§7c); FX pairs read stronger

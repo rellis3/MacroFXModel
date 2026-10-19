@@ -36,7 +36,7 @@ console.log('[evaluateTriggers]');
   ok('expectText reads in units, either direction', /SPX500 ~\d+pts vs ~\d+pts on an ordinary week/.test(expectText(by['vix-inversion'].expect)) && /either direction/.test(expectText(by['vix-inversion'].expect)));
   ok('atr14 needs 15 bars with highs and lows', atr14(bars(Array(15).fill(1), 0.1)) > 0 && atr14(days(Array(15).fill(1))) === null && atr14(bars(Array(10).fill(1))) === null);
   ok('every trigger has a kind, label and detail; nothing mentions direction', t.every(x => ['tested', 'described', 'claim'].includes(x.kind) && x.label && x.detail) && t.every(x => !/goes (up|down)|will rise|will fall/i.test(x.detail)));
-  ok('no drill bundle → no claim triggers (missing input disables, never clears)', !t.some(x => x.kind === 'claim'));
+  ok('no drill bundle → no bundle-fed register triggers, and nothing from the register fires on this quiet tape', !t.some(x => /^claim-/.test(x.id)) && !t.some(x => /^(watch|claim)-/.test(x.id) && x.firing));
   ok('missing inputs disable triggers rather than throwing', evaluateTriggers({}).length === 2 && evaluateTriggers({}).every(x => !x.firing));
 }
 

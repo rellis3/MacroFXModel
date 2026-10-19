@@ -1,8 +1,70 @@
-# Setup Watch — forward monitoring of the educator claims this desk has tested
+# Setup Watch — the watch register: every tested finding with a rule on the tick, gauged
 
 *Built 2026-10-18 at the owner's request: "a system monitoring the market and alerting me to
-possible setups coming and what I need to look for as I learn." Design note for
-`js/claimWatch.js`, `claim-watch.html` and the `/api/claim-watch` route.*
+possible setups coming and what I need to look for as I learn." Generalised 2026-10-19
+("combine into a lot of testable items"): the register now holds the desk's own ledger
+findings beside the Crown setups, and it renders INSIDE the Evidence Book
+(`evidence.html?filter=watched`) rather than on a page of its own. Design note for
+`js/claimWatch.js`, the Evidence Book's watch blocks, and the `/api/desk-watch` payload.*
+
+## 2026-10-19 — one page, one register
+
+`claim-watch.html` is now a redirect. Two pages for one event (a fire showed on the Setup
+Watch card with the study's metric and on the Evidence Book card with the generic range)
+was the drift the repo keeps warning about. The Evidence Book is the register of everything
+tested; a gauge, a stage and look-for text are properties any finding with a frozen rule
+can carry. So:
+
+- `CLAIMS` rows carry `source: 'Crown' | 'desk'`. Crown rows are unchanged in substance.
+- **Detector rows** (no `watchId`) emit a trigger. `kind` follows the verdict: validated →
+  `tested` (✓ in Telegram), null/context → `claim` (◌).
+- **Gauge rows** (`watchId`) sit on a trigger `js/deskWatch.js` already emits (VIX inversion,
+  Nasdaq down-week, 2-year shock, 2s10s, stocks-and-bonds, oil-without-breakevens). They emit
+  a GAUGE only — progress, stage, look-for — never a second trigger, so nothing alerts twice.
+  Their `approaching` is the one thing the binary trigger could not say, and it is the only
+  transition they send.
+- The Evidence Book shows each watched finding's block(s): stage pill, gauge bar, today's
+  reading, the claim (quoted for Crown rows), what to look for, the rule as tested, and a
+  **setup record** scored on the study's own metric. A null or base-rate finding going live
+  is labelled **"setup live — tested null"**, never "firing", because the configuration
+  occurring is not the claim confirming.
+- Filters: `?filter=watched` (every finding with a register row, live first), `?filter=approaching`.
+
+### Desk rows added (rules copied from the studies; knowable-at-the-time substitutions stated)
+
+| id | ledger | kind | rule on the tick | gauge |
+|---|---|---|---|---|
+| `watch-iv-over-rv` | `iv-over-rv-wider` ✓ | detector | VIX ÷ 20-session realised SPX vol ≥ trailing-504 90th pct (M9 used full sample) | rank 70th→0, 90th→1 |
+| `watch-vol-front-dear` | `vol-curve-front` ✓ | detector | VIX9D ÷ VIX ≥ 0.9669 (pre-registered cut-off) | ratio 0.80→0, 0.9669→1 |
+| `watch-breadth-all-down` | `breadth-all-down` ✓ | detector | six indices all down on the latest common date | count/6 (5 of 6 = approaching) |
+| `watch-crack-blowout` | `crack-blowout-range` ∅ | detector | 20-session crack Δ ≥ +2z of the 260-session feed (study: 10y) | z/2 |
+| `watch-yield-move` | `yield-move-fx-range` ∅ | detector | \|ΔDGS10\| ≥ trailing-504 90th pct | \|Δ\|/thr |
+| `watch-nr7-spx` | `narrow-day-expansion` ∅ | detector | SPX500 bar strictly narrowest of seven (OANDA bars) | wider-of-6 / 6 |
+| `watch-repo-headline` | `repo-stress-range` ~ | detector | headline SOFR − IORB ≥ 10bp (P1 used the 99th pct; no free feed) | bp/10 |
+| `gauge-vix-inversion` | `vix-inversion` ✓ | gauge on `vix-inversion` | VIX ≥ VIX3M | ratio 0.80→0, 1.0→1 |
+| `gauge-nq-down-week` | `nq-down-week` ✓ | gauge on `nq-down-week` | NAS100 5s ≤ −1% | −wk/1 |
+| `gauge-front-end-shock` | `front-end-shock` ∅ | gauge on `front-end-shock` | \|Δ2Y 5s\| ≥ 14bp | \|Δ\|/14 |
+| `gauge-curve-2s10s` | `curve-inversion` ∅ | gauge on `curve-2s10s` | 10y−2y < 0 | 1 − spread/50bp |
+| `gauge-stock-bond` | `stock-bond-flip` ~ | gauge on `stock-bond-together` | 20d SPY/TLT corr ≥ 0.3 | corr/0.3 |
+| `gauge-oil-without-bei` | `oil-to-breakevens` ∅ | gauge on `oil-without-breakevens` | \|oil 20s\| ≥ 10% with \|Δbei 14s\| < 5bp | \|oil\|/10, halved if bei moving |
+
+Not on it, and why: intraday findings (M15), anything needing a store the tick does not
+read (OI/gamma, COT, event surprises beyond the existing `event-range`), calendar notes
+(`month-end-rebalance`, `monday-gap-fill` needs the open), and every row with no rule.
+Candidates for later rows, all tested here and all cheap: `mv-vixterm-range` (duplicates the
+inversion), `crack-disagreement` for USD/CAD range, `gex-range` if the OI store joins the tick.
+
+### Server
+
+`_watchInputs` passes the drill bundle, the crack series and the headline SOFR−floor series.
+The tick evaluates gauges beside states, stores both in `desk_watch_v1`, logs `approaching`
+events for both (never scored), and sends gauge approaching with the rest. `/api/desk-watch`
+returns `gauges`; `/api/claim-watch` stays as a compatibility cut (register rows' states and
+gauges, and the register log).
+
+---
+
+## The original design (2026-10-18), still accurate for the Crown rows
 
 ## The problem it answers
 
@@ -113,7 +175,8 @@ are on the register: they are the ones most worth seeing arrive.
 ## Files
 
 `js/claimWatch.js` (brick; `js/claimWatch.test.mjs`) · `js/deskWatch.js` (kind `claim`,
-`approaching`, Telegram tags; tests extended) · `server.js` (`_watchInputs` → `drill`,
-`crack`; `_deskWatchTick` → approaching log + `scoreClaimFires`; `/api/claim-watch`) ·
-`claim-watch.html` · registered in `js/siteApiMap.js` (Learn), `js/commandHub.js` (Learn ▾),
-`SITE_MAP.md`.
+`approaching`, Telegram tags, `evaluateGauges` re-export; tests extended) · `server.js`
+(`_watchInputs` → `drill`, `crack`, `funding`; `_deskWatchTick` → gauges, approaching log +
+`scoreClaimFires`; `/api/desk-watch` gauges, `/api/claim-watch`) · `evidence.html` (watch
+blocks, filters) · `claim-watch.html` (redirect) · Learn menu / Site Map / `SITE_MAP.md`
+point at `evidence.html?filter=watched`.

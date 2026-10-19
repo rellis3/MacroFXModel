@@ -37,6 +37,24 @@
   .rec{margin-top:6px;font-size:11.5px;color:var(--text2);line-height:1.6}
   .rec table{border-collapse:collapse;margin-top:4px;font-size:11px} .rec td{padding:1px 8px 1px 0;color:var(--text2)} .rec td:first-child{color:var(--text3)}
   .glyph{font-style:normal;font-weight:800;font-size:11px}
+  .watch{margin-top:8px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card2)}
+  .watch+.watch{margin-top:6px}
+  .watch .wtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}
+  .watch .wlbl{font-weight:700;color:var(--text)} .watch .wsrc{font-size:10.5px;color:var(--text3)}
+  .st{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;padding:2px 7px;border-radius:4px;background:var(--bg);color:var(--text3)}
+  .st.live{background:var(--bull-bg);color:var(--bull)} .st.approaching{background:var(--amber-bg);color:var(--amber)} .st.unmeasured{outline:1px dashed var(--text3)}
+  .st.live.null,.st.live.context{background:var(--amber-bg);color:var(--amber)}
+  .gauge{margin:6px 0 4px;display:flex;align-items:center;gap:10px}
+  .bar{flex:1;height:7px;border-radius:999px;background:var(--bg);position:relative;overflow:hidden}
+  .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--text3)}
+  .bar.live i{background:var(--bull)} .bar.approaching i{background:var(--amber)}
+  .bar b{position:absolute;top:-2px;bottom:-2px;left:75%;width:1px;background:var(--text3);opacity:.7}
+  .gauge span{font-size:11px;color:var(--text2);white-space:nowrap} .gauge span b{color:var(--text)}
+  .wread{font-size:12px;color:var(--text2);line-height:1.55}
+  .wlook{font-size:12px;line-height:1.55;margin-top:5px;padding:5px 9px;border-left:3px solid var(--bull);background:var(--bg);border-radius:4px;color:var(--text2)} .wlook b{color:var(--text)}
+  .wrule{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5}
+  .wrec{margin-top:5px;font-size:11.5px;color:var(--text2);line-height:1.6}
+  .wrec table{border-collapse:collapse;margin-top:3px;font-size:11px;width:100%} .wrec th{text-align:left;color:var(--text3);font-weight:600;padding:1px 8px 1px 0} .wrec td{padding:2px 8px 2px 0;border-top:1px solid var(--border);vertical-align:top} .wrec td b{color:var(--text)}
   .note{color:var(--text3);font-size:11px;line-height:1.55;margin-top:14px}
   @media (max-width:560px){.wrap{padding:12px}}
 </style>
@@ -51,7 +69,9 @@
   <button class="hbtn" data-f="null" onclick="setFilter('null')">∅ null</button>
   <button class="hbtn" data-f="context" onclick="setFilter('context')">~ base rate</button>
   <button class="hbtn" data-f="underpowered" onclick="setFilter('underpowered')">◌ underpowered</button>
-  <button class="hbtn" data-f="firing" onclick="setFilter('firing')">firing now</button>
+  <button class="hbtn" data-f="firing" onclick="setFilter('firing')">● firing now</button>
+  <button class="hbtn" data-f="approaching" onclick="setFilter('approaching')">⏳ approaching</button>
+  <button class="hbtn" data-f="watched" onclick="setFilter('watched')">👁 watched</button>
   <span class="stamp">·</span>
   <button class="hbtn" data-d="all" onclick="setDomain('all')">all domains</button>
   <button class="hbtn" data-d="macro" onclick="setDomain('macro')">macro</button>
@@ -66,44 +86,77 @@
   <div class="intro">Every line here was written down as a claim, <b>pre-registered</b>, then run against this desk's own data with paired controls — the same method whether the idea came from an educator, a newsletter, or the page itself. A <b>✓ validated</b> finding is about <b>range</b>, never direction. A <b>∅ null</b> is a relationship that was tested and did nothing — the brief is told to say so when it touches one. A <b>~ base rate</b> is a description with its odds. A <b>◌ underpowered</b> test could only have found an effect far larger than a realistic one: it rules out a big effect and says nothing about a small one. Each finding accumulates a <b>forward record</b> from the Desk Watch: every time it fired, and what the next five sessions actually did.</div>
   <div class="tally" id="tally"></div>
   <div id="cards"><div class="note">Loading…</div></div>
+  <div class="note"><b>👁 Watched</b> findings carry a gauge: how far today's reading is along the way to the setup the study tested (past the mark it is <b>approaching</b>, at the line it is <b>live</b>), the rule exactly as pre-registered, what to look for, and a setup record scored on the study's own outcome. The register (<code>js/claimWatch.js</code>) holds Crown setups and the desk's own findings in one format. A null finding going live is its <i>setup</i> occurring, never the claim confirming. Design: <code>MD files/CLAIM_WATCH.md</code>.</div>
   <div class="note">Method, numbers and write-ups: <code>MD files/MARKET_SENSE_TESTS.md</code>, <code>GROWTH_VS_YIELDS_TEST.md</code>, <code>SQUEEZE_VOL_TEST.md</code>, <code>APPROACH_SPEED_CONTROL_TEST.md</code>. The ledger itself is <code>js/deskEvidence.js</code>; the watch is <code>js/deskWatch.js</code>. Nothing enters this book by reputation.</div>
 </div>
 <script type="module">
   import { DESK_EVIDENCE } from './js/deskEvidence.js';
+  import { CLAIMS as REGISTER, APPROACH_AT } from './js/claimWatch.js';   // the watch register: gauged setups (Crown + desk) keyed by evidenceId
   const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const GL = { validated: '✓', null: '∅', context: '~', underpowered: '◌' };
   const WORD = { validated: 'validated', null: 'tested null', context: 'base rate', underpowered: 'underpowered' };
-  let watch = null, filter = 'all', domain = 'all';
+  let watch = null, filter = new URLSearchParams(location.search).get('filter') ?? 'all', domain = new URLSearchParams(location.search).get('domain') ?? 'all';
+  const rowsFor = id => REGISTER.filter(r => r.evidenceId === id);
+  const day = iso => String(iso ?? '').slice(0, 10);
+  const num = (v, dp = 2) => v == null || !Number.isFinite(+v) ? '?' : `${+v > 0 ? '+' : ''}${(+v).toFixed(dp)}`;
+  // the live reading for a register row: a detector row is a trigger in `states`; a gauge row is in `gauges`
+  const readingFor = row => (row.watchId ? (watch?.gauges ?? []) : (watch?.states ?? [])).find(t => t.id === row.id) ?? null;
+  const stageFor = (row, e) => { const r = readingFor(row); if (!r) return 'unmeasured'; const firing = row.watchId ? ((watch?.states ?? []).find(t => t.id === row.watchId)?.firing ?? r.firing) : r.firing; return firing ? 'live' : (r.stage ?? 'idle'); };
+  const outcomeCell = (row, f, h) => { const o = f.outcomes?.[h]; if (o == null) { const el = Math.round((Date.now() - Date.parse(f.at)) / 864e5); return `<span style="color:var(--text3)">${el < h * 1.6 ? 'open' : 'unscored'}</span>`; } return typeof o === 'object' ? Object.entries(o).map(([k, v]) => `${k} <b>${(+v).toFixed(2)}×</b>`).join(' · ') : `<b>${num(o)}${row.outcome?.unit === '%' ? '%' : ''}</b>`; };
+  function watchBlock(row, e) {
+    const r = readingFor(row), st = stageFor(row, e), v = r?.value ?? {}, prog = Math.max(0, Math.min(1, +(v.progress ?? 0)));
+    const stWord = st === 'live' ? (e.verdict === 'validated' ? '● live' : `● setup live — ${WORD[e.verdict]}`) : st === 'approaching' ? '⏳ approaching' : st === 'idle' ? 'idle' : 'unmeasured this pass';
+    const reading = r ? r.detail.split(/ (?=(?:Crown’s claim|The claim|This desk):)/)[0].replace(/ The setup is LIVE\.| Approaching —[^.]*\./g, '') : 'Input missing on the last pass — unmeasured, not clear.';
+    const fires = (watch?.log ?? []).filter(f => f.claimId === row.id && f.event === 'started'), near = (watch?.log ?? []).filter(f => f.claimId === row.id && f.event === 'approaching');
+    const H = row.outcome?.horizons ?? [];
+    const rec = row.outcome ? (fires.length
+      ? `<div class="wrec"><b>Setup record</b> — <table><tr><th>fired</th><th>reading</th>${H.map(h => `<th>after ${h}s</th>`).join('')}</tr>${fires.slice(0, 8).map(f => `<tr><td>${day(f.at)}</td><td>${num(f.value?.reading)}</td>${H.map(h => `<td>${outcomeCell(row, f, h)}</td>`).join('')}</tr>`).join('')}</table><div style="margin-top:3px"><b>Read against:</b> ${H.map(h => `${h}s — ${esc(row.outcome.base[h])}`).join(' · ')}. ${esc(row.outcome.read)}</div></div>`
+      : `<div class="wrec"><b>Setup record</b> — nothing fired since this row was written${near.length ? `; approached ${near.length}× without firing (last ${day(near[0].at)})` : ''}. Read against: ${H.map(h => `${h}s — ${esc(row.outcome.base[h])}`).join(' · ')}.</div>`) : '';
+    return `<div class="watch" id="w-${esc(row.id)}">
+      <div class="wtop"><span class="st ${st} ${e.verdict}">${stWord}</span><span class="wlbl">${esc(row.label)}</span><span class="wsrc">${esc(row.source)}${row.source_doc ? ` · ${esc(row.source_doc)}` : ''}${r?.since ? ` · since ${ago(r.since)} ago` : ''}${v.asOf ? ` · data to ${esc(v.asOf)}` : ''}</span></div>
+      <div class="gauge"><div class="bar ${st}"><i style="width:${Math.round(prog * 100)}%"></i><b title="approaching from ${Math.round(APPROACH_AT * 100)}%"></b></div><span>${Math.round(prog * 100)}% of the way${v.threshold != null ? ` · <b>${num(v.reading)}</b> vs <b>${num(v.threshold)}</b>` : ''}</span></div>
+      <div class="wread">${esc(reading)}</div>
+      ${row.source === 'Crown' ? `<div class="wread" style="font-style:italic;margin-top:3px">“${esc(row.claim.replace(/^“|”$/g, ''))}”</div>` : ''}
+      <div class="wlook"><b>What to look for:</b> ${esc(row.lookFor)}</div>
+      <div class="wrule"><b>Rule, as tested:</b> ${esc(row.rule)}</div>${rec}</div>`;
+  }
   window.setDomain = d => { domain = d; document.querySelectorAll('.hbtn[data-d]').forEach(b => b.classList.toggle('on', b.dataset.d === d)); render(); };
   window.setFilter = f => { filter = f; document.querySelectorAll('.hbtn[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === f)); render(); };
   const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `${m}m` : m < 48 * 60 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
   function render() {
     const states = watch?.states ?? [], log = watch?.log ?? [];
     const firingFor = id => states.filter(t => t.firing && t.evidenceId === id);
-    const logFor = id => log.filter(f => f.evidenceId === id && f.event === 'started');
-    const list = DESK_EVIDENCE.filter(e => (domain === 'all' || e.domain === domain) && (filter === 'all' ? true : filter === 'firing' ? firingFor(e.id).length : e.verdict === filter));
+    const logFor = id => log.filter(f => f.evidenceId === id && f.event === 'started' && !f.claimId);   // register fires render in their own setup record
+    const approachingFor = e => rowsFor(e.id).some(row => stageFor(row, e) === 'approaching');
+    const list = DESK_EVIDENCE.filter(e => (domain === 'all' || e.domain === domain) && (filter === 'all' ? true : filter === 'firing' ? firingFor(e.id).length : filter === 'approaching' ? approachingFor(e) : filter === 'watched' ? rowsFor(e.id).length : e.verdict === filter))
+      .sort((a, b) => filter === 'watched' || filter === 'approaching' ? (['live', 'approaching', 'idle', 'unmeasured'].indexOf(rowsFor(a.id).map(r => stageFor(r, a)).sort()[0] ?? 'unmeasured') - ['live', 'approaching', 'idle', 'unmeasured'].indexOf(rowsFor(b.id).map(r => stageFor(r, b)).sort()[0] ?? 'unmeasured')) : 0);
     const n = v => DESK_EVIDENCE.filter(e => e.verdict === v).length;
     const nd = d => DESK_EVIDENCE.filter(e => e.domain === d).length;
-    document.getElementById('tally').innerHTML = `<span><b>${DESK_EVIDENCE.length}</b> tested</span><span>macro <b>${nd('macro')}</b> · events <b>${nd('events')}</b> · price <b>${nd('price')}</b> · vol <b>${nd('volatility')}</b> · positioning <b>${nd('positioning')}</b> · execution <b>${nd('execution')}</b></span><span>✓ <b>${n('validated')}</b> validated</span><span>∅ <b>${n('null')}</b> null</span><span>~ <b>${n('context')}</b> base rates</span><span>◌ <b>${n('underpowered')}</b> underpowered</span><span>firing now <b>${states.filter(t => t.firing && t.evidenceId).length}</b></span>`;
+    document.getElementById('tally').innerHTML = `<span><b>${DESK_EVIDENCE.length}</b> tested</span><span>macro <b>${nd('macro')}</b> · events <b>${nd('events')}</b> · price <b>${nd('price')}</b> · vol <b>${nd('volatility')}</b> · positioning <b>${nd('positioning')}</b> · execution <b>${nd('execution')}</b></span><span>✓ <b>${n('validated')}</b> validated</span><span>∅ <b>${n('null')}</b> null</span><span>~ <b>${n('context')}</b> base rates</span><span>◌ <b>${n('underpowered')}</b> underpowered</span><span>firing now <b>${states.filter(t => t.firing && t.evidenceId).length}</b></span><span>👁 watched <b>${new Set(REGISTER.map(r => r.evidenceId)).size}</b> findings · ${REGISTER.length} gauges</span><span>⏳ approaching <b>${DESK_EVIDENCE.filter(approachingFor).length}</b></span>`;
     document.getElementById('cards').innerHTML = list.map(e => {
       const fire = firingFor(e.id), rec = logFor(e.id);
+      const rows = rowsFor(e.id);
+      // a null or base-rate finding "firing" is its SETUP occurring, not the finding confirming — say so
       const live = fire.length
-        ? `<div class="live on">▲ <b>Firing now</b> — ${fire.map(t => `${esc(t.label)} since ${ago(t.since)}${t.instruments?.length ? ` (${t.instruments.join(', ')})` : ''}`).join('; ')}</div>`
-        : (states.some(t => t.evidenceId === e.id) ? `<div class="live off">Watched — not firing now.</div>` : `<div class="live off">Not wired to the watch (no live trigger for this one).</div>`);
+        ? `<div class="live on">▲ <b>${e.verdict === 'validated' ? 'Firing now' : `Setup live — ${WORD[e.verdict]}`}</b> — ${fire.map(t => `${esc(t.label)} since ${ago(t.since)}${t.instruments?.length ? ` (${t.instruments.join(', ')})` : ''}`).join('; ')}${e.verdict !== 'validated' ? ' · the configuration is occurring; what this desk found when it tested it is above' : ''}</div>`
+        : (states.some(t => t.evidenceId === e.id) || rows.length ? `<div class="live off">Watched — not firing now.</div>` : `<div class="live off">Not wired to the watch (no live trigger for this one).</div>`);
+      const watchHtml = rows.map(row => watchBlock(row, e)).join('');
       const scored = rec.filter(f => f.after5);
       const record = rec.length
         ? `<div class="rec"><b>Forward record</b> — fired ${rec.length}× since ${new Date(rec.at(-1).at).toLocaleDateString('en-GB')}${scored.length ? `; ${scored.length} scored so far: mean next-5-session range ${(scored.flatMap(f => f.after5.map(a => a.range5)).reduce((s, x) => s + x, 0) / scored.flatMap(f => f.after5).length).toFixed(2)} ATR (unconditional ≈ 2.3)` : ''}.<table>${rec.slice(0, 8).map(f => `<tr><td>${new Date(f.at).toLocaleDateString('en-GB')}</td><td>${esc(f.label)}</td><td>${f.after5 ? f.after5.map(a => `${a.inst} ${a.range5}`).join(' · ') : 'awaiting 5 sessions'}</td></tr>`).join('')}</table></div>`
-        : `<div class="rec"><b>Forward record</b> — nothing fired since this was written down${e.verdict === 'validated' ? '; the first fire will appear here with its next-5-session range' : ''}.</div>`;
+        : rows.length ? '' : `<div class="rec"><b>Forward record</b> — nothing fired since this was written down${e.verdict === 'validated' ? '; the first fire will appear here with its next-5-session range' : ''}.</div>`;   // a watched finding's record is its setup record above
       return `<div class="card ${e.verdict}" id="ev-${esc(e.id)}">
         <div class="top"><span class="v ${e.verdict}">${GL[e.verdict]} ${WORD[e.verdict]}</span><span class="claim">${esc(e.claim)}</span></div>
         <div class="meta"><b>${esc(e.domain)}</b> · ${e.date} · ${esc(e.doc)}${e.instruments ? ` · ${e.instruments.join(', ')}` : ''}</div>
         <div class="r">${esc(e.result)}</div>
         <div class="use"><b>How to use it:</b> ${esc(e.use)}</div>
-        ${live}${record}
+        ${live}${watchHtml}${record}
       </div>`;
     }).join('') || '<div class="note">Nothing matches this filter.</div>';
     document.getElementById('stamp').textContent = watch?.updatedAt ? `watch updated ${ago(watch.updatedAt)} ago · ${DESK_EVIDENCE.length} relationships` : `${DESK_EVIDENCE.length} relationships`;
   }
+  document.querySelectorAll('.hbtn[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === filter));
+  document.querySelectorAll('.hbtn[data-d]').forEach(b => b.classList.toggle('on', b.dataset.d === domain));
   render();
   // opened from a chain or market-view card: jump to that entry and mark it
   if (location.hash.startsWith('#ev-')) { const el = document.getElementById(location.hash.slice(1)); if (el) { el.scrollIntoView({ block: 'center' }); el.style.outline = '2px solid var(--amber, #d9a21b)'; } }

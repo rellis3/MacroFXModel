@@ -192,7 +192,8 @@ import { plannedInWindow } from './js/endOfDay.js';
 import { buildGlobalRead as _buildGlobalRead, recordRow as _grRecordRow, snapshotRow as _grSnapshotRow, attachRealised as _grAttachRealised, scoreRecord as _grScoreRecord } from './js/globalReadCore.js';
 import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_ENDPOINTS } from './js/globalReadInputs.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
-import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './js/claimWatch.js';   // the Crown setup register — rides the desk-watch tick, log and Telegram
+import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './js/claimWatch.js';   // the watch register (Crown setups + desk findings) — rides the desk-watch tick, log and Telegram
+import { evaluateGauges as _evaluateGauges } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
 import { sliceDays as _cogSlice, toBars as _cogBars, exportText as _cogExport, mergeSeries as _cogMerge } from './js/cogLine.js';
 import { cogLineRead as _cogRead } from './js/cogLineRead.js';   // live trend read for the C.OG line card (js/cogLineRead.js)   // C.OG rate-spread line: analysis/output/cog_line/cog_line_15m.json
@@ -4134,7 +4135,7 @@ const _WATCH_SERIES = { nq: 'NAS100_USD', oil: 'WTICO_USD', gold: 'XAU_USD', spx
 const _WATCH_INSTR_SYM = { SPX500: 'spx', NQ: 'nq', GOLD: 'gold', USDJPY: 'usdjpy', EURUSD: 'eurusd', GBPUSD: 'gbpusd', AUDUSD: 'audusd', USDCAD: 'usdcad' };
 let _watchRunning = false, _watchLast = { at: 0, states: null, error: null };
 async function _loadWatchStore() {
-  try { const raw = await kv.getStrict(_WATCH_KV); if (!raw) return { states: [], log: [] }; const p = JSON.parse(raw); return { states: Array.isArray(p?.states) ? p.states : [], log: Array.isArray(p?.log) ? p.log : [] }; }
+  try { const raw = await kv.getStrict(_WATCH_KV); if (!raw) return { states: [], log: [] }; const p = JSON.parse(raw); return { states: Array.isArray(p?.states) ? p.states : [], gauges: Array.isArray(p?.gauges) ? p.gauges : [], log: Array.isArray(p?.log) ? p.log : [] }; }
   catch (e) { console.warn('[desk-watch] store unreadable, not touching it:', e.message); return null; }
 }
 // ── VWAP stretch (js/vwapStretchCore.js) — context for desk watch, not a
@@ -4196,12 +4197,14 @@ async function _watchInputs() {
   for (const node of ['oil', 'gold', 'copper', 'audusd', 'usdcad', 'usdjpy', 'btc', 'nq', 'spx']) vals[node] = series[node] ? _chainNodeDelta(series[node], _CHAIN_NODES[node]) : null;
   // The four nodes the page builds itself and this used to leave null, so six chain links could never fire here:
   // funding (SOFR − the Fed floor), the crack spread, and the gilt/Bund/JGB − UST 10Y gaps. Same maths as today.html.
+  let fundingSeries = null;
   try {
     const fh = {}; await Promise.all(['sofr', 'iorb', 'ioer'].map(async k => { try { const raw = await kv.get(`fredhistory_series_${k}`); if (raw) fh[k] = JSON.parse(raw); } catch { /* skip */ } }));
     if (fh.sofr?.length && (fh.iorb?.length || fh.ioer?.length)) {
       const fl = new Map([...(fh.ioer ?? []).map(p => [p.date, p.value]), ...(fh.iorb ?? []).map(p => [p.date, p.value])]);
       let lastFloor = null; const spread = fh.sofr.map(p => { if (fl.has(p.date)) lastFloor = fl.get(p.date); return lastFloor == null ? null : { date: p.date, value: p.value - lastFloor }; }).filter(Boolean);
       vals.funding = spread.length ? _chainNodeDelta(spread, _CHAIN_NODES.funding) : null;
+      fundingSeries = spread;   // the register's repo row reads the headline spread itself
     }
   } catch { vals.funding = null; }
   const _local = async p => { try { const r = await fetch(`http://127.0.0.1:${PORT}/api/${p}`, { signal: AbortSignal.timeout(30_000) }); return r.ok ? await r.json() : null; } catch { return null; } };
@@ -4228,7 +4231,7 @@ async function _watchInputs() {
   // built it yet, build it once here rather than leave the claim triggers dark all day.
   let drill = _drillBundle.data;
   if (!drill) { try { await _refreshDrillBundle(); drill = _drillBundle.data; } catch (e) { console.warn(`[desk-watch] drill bundle: ${e.message}`); } }
-  return { fred, hist, series, chain, stockBond, events, fomcDates, vwapStretch, drill, crack: crackSeries, now: Date.now() };
+  return { fred, hist, series, chain, stockBond, events, fomcDates, vwapStretch, drill, crack: crackSeries, funding: fundingSeries, now: Date.now() };
 }
 // Score fires that are five sessions old: the realised range over the five
 // sessions after the fire, in ATR14 at the fire, on the trigger's instruments.
@@ -4268,8 +4271,13 @@ async function _deskWatchTick(opts = {}) {
       } }
     const nowIso = new Date().toISOString();
     for (const t of states) { const p = prevById.get(t.id); t.since = t.firing ? (p?.firing && p.since ? p.since : nowIso) : null; }
-    const { started, stopped, approaching } = _diffStates(store.states, states);
-    for (const t of started) store.log.unshift({ id: t.id, kind: t.kind, label: t.label, at: nowIso, event: 'started', detail: t.detail, evidenceId: t.evidenceId ?? null, instruments: t.instruments ?? [], value: t.value ?? null, ...(t.kind === 'claim' ? { claimId: t.claimId, stage: t.stage } : {}) });
+    // gauges: progress/stage on triggers this tick already carries (js/claimWatch.js GAUGE rows).
+    // Stored beside the states for the Evidence Book; their only transition is 'approaching'.
+    const gauges = _evaluateGauges(inputs);
+    const gaugeApproaching = _diffStates(store.gauges ?? [], gauges).approaching;
+    const { started, stopped, approaching: claimApproaching } = _diffStates(store.states, states);
+    const approaching = [...claimApproaching, ...gaugeApproaching];
+    for (const t of started) store.log.unshift({ id: t.id, kind: t.kind, label: t.label, at: nowIso, event: 'started', detail: t.detail, evidenceId: t.evidenceId ?? null, instruments: t.instruments ?? [], value: t.value ?? null, ...(t.claimId ? { claimId: t.claimId, stage: t.stage, source: t.source } : {}) });
     // a claim setup most of the way to its threshold: logged so the Setup Watch page can show
     // "approached on ..., never fired" -- never scored (only 'started' fires carry an outcome)
     for (const t of approaching) store.log.unshift({ id: t.id, kind: t.kind, label: t.label, at: nowIso, event: 'approaching', detail: t.detail, evidenceId: t.evidenceId ?? null, instruments: [], value: t.value ?? null, claimId: t.claimId, stage: t.stage });
@@ -4286,7 +4294,7 @@ async function _deskWatchTick(opts = {}) {
       const msg = _formatWatchTelegram({ started, stopped, approaching });
       if (msg && state.tg?.token && state.tg?.chatId) sent = await sendTelegram(state.tg.token, state.tg.chatId, msg);
     }
-    await kv.put(_WATCH_KV, JSON.stringify({ states, log: store.log, updatedAt: nowIso }));
+    await kv.put(_WATCH_KV, JSON.stringify({ states, gauges, log: store.log, updatedAt: nowIso }));
     _watchLast = { at: Date.now(), states, started: started.map(t => t.id), stopped: stopped.map(t => t.id), approaching: approaching.map(t => t.id), sent, firstPass, error: null };
     if (started.length || stopped.length || approaching.length) console.log(`[desk-watch] started ${started.map(t => t.id).join(',') || '-'} · approaching ${approaching.map(t => t.id).join(',') || '-'} · cleared ${stopped.map(t => t.id).join(',') || '-'} · telegram ${sent ? 'sent' : firstPass ? 'skipped (first pass)' : 'not sent'}`);
     return _watchLast;
@@ -4301,8 +4309,8 @@ async function _deskWatchTick(opts = {}) {
 app.get('/api/claim-watch', async (_req, res) => {
   try {
     const store = await _loadWatchStore();
-    const states = (store?.states ?? []).filter(t => t.kind === 'claim');
-    const log = (store?.log ?? []).filter(f => f.kind === 'claim');
+    const states = [...(store?.states ?? []).filter(t => t.claimId), ...(store?.gauges ?? [])];
+    const log = (store?.log ?? []).filter(f => f.claimId);
     res.json({ ok: true, claims: _WATCH_CLAIMS.map(({ id, evidenceId, group, label, source, claim, verdict, rule, lookFor, instruments, outcome }) => ({ id, evidenceId, group, label, source, claim, verdict, rule, lookFor, instruments, outcome })),
       states, log, updatedAt: store?.updatedAt ?? null, lastTick: _watchLast.at ? new Date(_watchLast.at).toISOString() : null, error: _watchLast.error ?? null,
       drill: _drillBundle.data ? { to: _drillBundle.data.to, at: new Date(_drillBundle.at).toISOString() } : null });
@@ -4311,7 +4319,7 @@ app.get('/api/claim-watch', async (_req, res) => {
 app.get('/api/desk-watch', async (_req, res) => {
   try {
     const store = await _loadWatchStore();
-    res.json({ ok: true, states: store?.states ?? [], log: (store?.log ?? []).slice(0, 60), updatedAt: store?.updatedAt ?? null, lastTick: _watchLast.at ? new Date(_watchLast.at).toISOString() : null, error: _watchLast.error ?? null });
+    res.json({ ok: true, states: store?.states ?? [], gauges: store?.gauges ?? [], log: (store?.log ?? []).slice(0, 120), updatedAt: store?.updatedAt ?? null, lastTick: _watchLast.at ? new Date(_watchLast.at).toISOString() : null, error: _watchLast.error ?? null });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/desk-watch/tick', async (req, res) => {

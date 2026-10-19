@@ -179,7 +179,7 @@ export const SERVICES = [
     feeds: '/api/daily-snapshot -> the day-history strip. Reads KV that other jobs already wrote; it adds no upstream fetches of its own, so off just freezes the history at the last row written.' },
   { id: 'deskWatch', where: 'server', label: 'Desk watch trigger evaluation',
     cadence: 'every 15 min', cost: 'low', lean: false, on: true,
-    feeds: '/api/desk-watch → today.html + evidence.html early-warning panel, and the desk_watch_v1 firing log; /api/claim-watch → claim-watch.html (the Crown setup register rides this tick, js/claimWatch.js)' },
+    feeds: '/api/desk-watch → today.html + evidence.html early-warning panel, and the desk_watch_v1 firing log; gauges + register fires → evidence.html?filter=watched (js/claimWatch.js: Crown setups and the desk’s own gauged findings ride this tick)' },
   { id: 'globalRead', where: 'server', label: 'Global Read: the evidence-weighted synthesis of every engine on today.html',
     cadence: 'every 15 min (plus once 2 min after boot); reads ~28 of this server\'s own routes, no upstream fetches', cost: 'low', lean: false, on: true,
     feeds: '/api/global-read -> today.html Global Read panel, currency drawer and pair cards; /api/global-read/record -> the pre-registered forward record (global_read_v1, one row per London session). Off = the panel shows its last read and the record pauses.' },

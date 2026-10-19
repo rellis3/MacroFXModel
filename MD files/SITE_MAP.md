@@ -237,7 +237,7 @@ Pages with a later date have genuinely been worked on since.
 | Page                  | Intended purpose                                             | Status       | Last modified | Notes                     |
 | --------------------- | ------------------------------------------------------------ | ------------ | ------------- | ------------------------- |
 | `repo-brick-map.html` | Map Theory Lab lesson concepts to real internal repo modules | 📚 Reference | ≤2026-08-09   | Internal — dashboard only |
-| `claim-watch.html` | Setup Watch — the Crown register’s tested setups watched live (approaching/live, verdict, what to look for, forward record); `/api/claim-watch` off the desk-watch store | 🟢 Live | 2026-10-18 | Learn menu · Site Map Learn group |
+| `claim-watch.html` | Redirect → `evidence.html?filter=watched` (2026-10-19). Setup Watch was folded into the Evidence Book: every watched finding — Crown setups and the desk’s own rules — carries its gauge there | 🗄 Superseded | 2026-10-19 | Learn menu → Evidence Book filter |
 
 ## WIP
 
