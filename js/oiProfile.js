@@ -138,8 +138,7 @@ export function buildProfileText(p, { name, generated = '', digits = 2 } = {}) {
   const plain = (v, d = 2) => (Number.isFinite(v) ? (+v).toFixed(d) : '-');
   const mxAbs = arr => Math.max(1e-300, ...arr.map(v => Math.abs(v)));
   const sc = (v, m) => (m > 0 && Number.isFinite(v) ? (v / m * 1000).toFixed(1) : '0.0');
-  const out = ['──── OI PROFILE ' + '─'.repeat(30), `Generated: ${generated}`,
-    'Reading: a picture of the options book (strongest-DTE book), not a signal. GEX sign as a range read is real on NQ; walls/flips reacted like any neighbouring strike in our tests.', '', name || p.sym];
+  const out = ['──── OI PROFILE ' + '─'.repeat(30), `Generated: ${generated}`, '', name || p.sym];
   out.push(`M|spot|${f(p.spot)}|regime|${p.regime}|netgex|${Number.isFinite(p.netGex) ? Math.round(p.netGex / 1000) : '-'}|book|${p.book.label.replace(/\s+/g, '')}|bookpct|${p.book.share}|zg|${f(p.zeroGamma)}|flip|${f(p.flip)}`
     + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 3)}|iv|${plain(p.iv.atm, 2)}|rr|${plain(p.iv.rr, 2)}|refmove|${f(p.refMove)}|binw|${plain(p.binWidth, 3)}`);
   if (p.hedgeRead) out.push(`H0|up1|${Math.round(p.hedgeRead.up1)}|dn1|${Math.round(p.hedgeRead.dn1)}`);

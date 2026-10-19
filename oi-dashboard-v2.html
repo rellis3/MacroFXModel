@@ -166,6 +166,7 @@ svg text{font-family:var(--mono)}
     <div style="display:flex;gap:10px;align-items:center"><b id="exportTitle">OI tiers export</b>
       <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersToday" checked style="margin-right:6px">today only</label>
       <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersFut" style="margin-right:6px">futures terms</label>
+      <label class="pill" style="cursor:pointer" title="Only what the indicator reads (drops the explanatory TIERS sentences and legends)"><input type="checkbox" id="tiersLean" style="margin-right:6px">lean</label>
       <button class="btn" id="tiersGo">Refresh</button><button class="btn" id="tiersCopy">Copy</button><span style="flex:1"></span><button class="btn" id="tiersClose">Close</button></div>
     <div class="legend" style="margin:0">Separate from the normal export: paste this <b>instead of</b> its OI section. Tier = distance from spot (nearer is reached first); "confluence" lists sources in the same zone and is descriptive only.</div>
     <textarea id="tiersTxt" readonly style="flex:1;background:#05070a;color:var(--tx);border:1px solid var(--line2);border-radius:6px;padding:14px;font:13px/1.55 var(--mono)"></textarea>
@@ -916,7 +917,7 @@ async function refresh(){
   drawBrief();
 }
 async function loadTiers(){ const ta = $('#tiersTxt'); ta.value = 'fetching… (OANDA M5 + P(touch), ~10–20 s)';
-  try { const r = await fetch('/api/oi-tiers/export?' + ($('#tiersToday').checked ? 'mode=today' : 'mode=full') + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); ta.value = await r.text(); }
+  try { const r = await fetch('/api/oi-tiers/export?' + ($('#tiersToday').checked ? 'mode=today' : 'mode=full') + ($('#tiersFut').checked ? '&terms=futures' : '') + ($('#tiersLean').checked ? '&lean=1' : ''), { cache: 'no-store' }); ta.value = await r.text(); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 async function loadProfile(){ const ta = $('#tiersTxt'); ta.value = 'fetching… (price feed + P(touch), ~5–15 s)';
   try { const r = await fetch('/api/oi-profile/export?pair=' + encodeURIComponent(SYM), { cache: 'no-store' }); ta.value = await r.text(); }

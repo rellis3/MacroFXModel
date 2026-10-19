@@ -236,7 +236,7 @@ import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluence
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
 import { levelExpectation } from './js/levelExpectation.js';   // per-level Reject/Break/Magnet reading
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
-import { buildOILevelText } from './js/oiLevelExport.js';
+import { buildOILevelText, leanOIText } from './js/oiLevelExport.js';
 import { wallStrengthTier as _oiWallTier } from './js/oiConfluence.js';
 import { ladderLegs as _tierLadderLegs, czLegs as _tierCzLegs } from './js/oiTiers.js';
 import { OI_CONF_DEFAULTS, volLines as _confVolLines, oiLevelList as _confOiLevels, findCoincidences as _confFind, buildConfZones as _confZones, confTolerance as _confTol } from './js/oiConf.js';
@@ -24492,6 +24492,7 @@ app.get('/api/oi-tiers/export', async (req, res) => {
     }
     let text = buildOILevelText(store, { generated: forecastState.latest.session_date, cot: await _cotForExport(), reachByPair: Object.keys(reachByPair).length ? reachByPair : null, terms, bandByPair, mode, tiers: true, ladderByPair });
     text = text.replace('──── OI WALLS & MAX PAIN ', '──── OI WALLS & MAX PAIN · TIERS ');
+    if (String(req.query.lean || '') === '1') text = leanOIText(text);
     res.type('text/plain').send(text);
   } catch (e) { res.status(500).type('text/plain').send(`OI tiers error: ${e.message}`); }
 });
@@ -24595,7 +24596,8 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
         const vol = fk && forecastState.latest?.instruments?.[fk]?.vol_annual;
         bandByPair[p] = _oiDayBand(Number.isFinite(vol) ? vol : null, p, { k: bandK });
       }
-      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms, allExpiry, bandByPair, mode });
+      let oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms, allExpiry, bandByPair, mode });
+      if (String(req.query.lean || '') === '1') oiText = leanOIText(oiText);   // only what the indicator reads (js/oiLevelExport.js leanOIText)
       if (oiText && !oiText.includes('no OI data')) text += '\n\n' + oiText;
     } catch { /* OI is a bonus section — never fail the zones export over it */ }
     res.type('text/plain').send(text);

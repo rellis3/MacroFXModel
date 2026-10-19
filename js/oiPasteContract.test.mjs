@@ -21,7 +21,7 @@ import { dirname, join } from 'path';
 import { parseOIMatrix, oiParseTable, oiCalcMaxPain, pickPrimaryExpiry, resolveSmileExpiry,
   parseIVSettlement, oiMatrixTermStructure } from './oi.js';
 import { oiStoreToLevels } from './oiConfluence.js';
-import { buildOILevelText } from './oiLevelExport.js';
+import { buildOILevelText, leanOIText } from './oiLevelExport.js';
 import { buildOIZones } from './oiZones.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -424,6 +424,17 @@ console.log('[downstream wiring — export, indicator, bot]');
     ok('tiers: human TIERS block present, not an OI line', tt.split(NL).some(l => l.startsWith('· TIERS')) && !tt.split(NL).some(l => l.startsWith('OI ') && l.includes('TIERS')));
     ok('tiers: off by default (plain export has no Tier text)', !/Tier \d/.test(plain));
     console.log(tt.split(NL).filter(l => l.startsWith('·') && /TIERS|Tier/.test(l)).join(NL));
+  }
+  // LEAN: only what the indicator reads; the OI level lines themselves are untouched
+  {
+    const NL = String.fromCharCode(10);
+    const full = buildOILevelText({ 'XAU/USD': inst }, { generated: 'test' }), lean = leanOIText(full);
+    const oiOnly = t => t.split(NL).filter(l => l.startsWith('OI '));
+    ok('lean: the OI level lines are byte-identical', JSON.stringify(oiOnly(full)) === JSON.stringify(oiOnly(lean)));
+    ok('lean: smaller than the full block', lean.length < full.length, `${full.length} -> ${lean.length}`);
+    ok('lean: every remaining line is something the indicator reads', lean.split(NL).every(l => l.trim() === '' || l.startsWith('OI ') || /OI WALLS/.test(l) || /^Generated:/.test(l) || /^[A-Z0-9]{2,12}$/.test(l.trim()) || /gex-bands/.test(l) || /^· regime (BREAKOUT|PIN|NEUTRAL)/.test(l)), lean.split(NL).find(l => l.trim() !== '' && !l.startsWith('OI ') && !/OI WALLS|^Generated:|gex-bands|^· regime/.test(l) && !/^[A-Z0-9]{2,12}$/.test(l.trim())));
+    ok('lean: no explanatory legend left', !/What to expect|Types:|MODE:|hNN on a wall|per-expiry/.test(lean));
+    ok('lean: one regime line per instrument and the title survives', (lean.match(/^· regime /gm) || []).length <= 1 && /OI WALLS/.test(lean));
   }
   ok('C+Z export carries gex_flip to the indicator', /^OI .* : gex_flip(\s|$)/m.test(txt), '');
   {

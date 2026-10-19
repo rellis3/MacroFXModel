@@ -511,3 +511,34 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
   if (!emitted) lines.push('(no OI data — paste an option chain on the dashboard OI analyser first)', '');
   return lines.join('\n');
 }
+
+/**
+ * LEAN: strip every line the TradingView indicator does not read from an OI export block, keeping exactly what pine/Confluence Zones Indicator.pine parses:
+ *   • the section title (it switches on "OI WALLS") and a Generated line (skipped by the parser, kept so a paste is dated)
+ *   • each instrument's symbol header
+ *   • ONE compact regime line (the parser sets the regime word from any line containing REGIME + BREAKOUT/PIN; the long "saved …" line is cut to the regime
+ *     plus the STALE-basis warning, and the full-book line — which would also set the regime, and can disagree — is dropped)
+ *   • the "gex-bands" line, and every `OI price : type …` level line (with its note/heat/P(touch)/hold segments untouched)
+ * Dropped: the legend/"what to expect"/MODE lines, COT, flip, ripple, per-expiry table, charm/vanna, exp-move prose, risk reversal, "in play", tier sentences.
+ * Pure text → text; the set of `OI ` lines is byte-identical before and after.
+ */
+export function leanOIText(text) {
+  const NL = String.fromCharCode(10);
+  const out = [];
+  const isHeader = l => /^[A-Z0-9]{2,12}$/.test(l.trim());
+  let regimeDone = false;
+  for (const raw of String(text || '').split(NL)) {
+    const l = raw.replace(/\s+$/, '');
+    if (l.startsWith('OI ')) { out.push(l); continue; }
+    if (/OI WALLS/i.test(l) || /^Generated:/.test(l)) { out.push(l); continue; }
+    if (isHeader(l)) { regimeDone = false; out.push(l); continue; }
+    if (/gex-bands/i.test(l)) { out.push(l); continue; }
+    if (!regimeDone && /regime (BREAKOUT|PIN|NEUTRAL)/i.test(l) && !/full-book/i.test(l)) {
+      const m = /regime (BREAKOUT|PIN|NEUTRAL)/i.exec(l);
+      out.push(`· regime ${m[1].toUpperCase()}${/STALE/.test(l) ? ' · STALE basis — re-basis before trading these' : ''}`);
+      regimeDone = true; continue;
+    }
+    if (l.trim() === '' && out.length && out[out.length - 1] !== '') out.push('');     // keep one blank line between blocks (the parser closes a block on a blank line)
+  }
+  return out.join(NL);
+}
