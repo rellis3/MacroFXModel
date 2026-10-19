@@ -20148,7 +20148,8 @@ async function _refreshOIConfBotZones() {
         const slim = c => ({ oi: c.oi.type, oiPrice: c.oi.price, vol: c.vol.name, volKind: c.vol.kind, volPrice: c.vol.price, delta: +c.delta.toFixed(6) });
         instruments[key] = {
           spot: inst.spot, regime: inst.regime ?? null, dte: inst.dte ?? null, maxPain: inst.maxPain ?? null, zones, zoneCount: zones.length, stale: null, diag: zones.length ? null : `no OI level within ${+tol.toPrecision(4)} of a forecast line`,
-          oiSavedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null, refMove: inst.refMove ?? null, droppedZones: dropped,
+          oiSavedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null, refMove: +sigmaPrice.toPrecision(6), refMoveSource: 'forecast-day-sigma',   // a NUMBER (price units): the executor does float(refMove) for its fast-approach gate; the OI bot's plan ships the same shape
+          droppedZones: dropped,
           confluence: { open: st.open, sigmaPrice: +sigmaPrice.toPrecision(6), tol: +tol.toPrecision(6), tolSigma: cfg.tolPips > 0 ? null : cfg.tolSigma, dynamicAtHour: rf?.h ?? null, dynamicCell: rf?.cell ?? null,
             nOi: oi.length, volLines: vol.map(v => ({ name: v.name, kind: v.kind, price: +v.price.toPrecision(8) })), oiLevels: oi.map(o => ({ type: o.type, price: +o.price.toPrecision(8) })),
             hits: hits.map(slim), near: near.map(slim), tooFar: built.tooFar, tooClose: built.tooClose },

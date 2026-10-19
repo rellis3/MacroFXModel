@@ -1022,6 +1022,8 @@ def run(base_url: str, force_live: bool) -> None:
                 # to consume it — fades get trimmed below; breaks are left alone.
                 fast_approach = False
                 ref_move = (_plan_instruments(plan).get(instr) or {}).get("refMove")
+                if isinstance(ref_move, dict):       # tolerate the {move, source} shape (the stored OI record uses it); the plan ships a number
+                    ref_move = ref_move.get("move")
                 a_win = float(cfg.get("approach_window_secs", 120) or 0)
                 if ref_move and a_win > 0:
                     then_px = None
