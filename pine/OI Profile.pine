@@ -253,10 +253,10 @@ if barstate.isfirst
     tblPosition = tblPos == "top right" ? position.top_right : tblPos == "bottom left" ? position.bottom_left : tblPos == "bottom right" ? position.bottom_right : position.top_left
 
 // ── Helpers ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-f_lvCol(string t) =>
+f_lvCol(t) =>
     t == "call_wall" ? cCall : t == "put_wall" ? cPut : t == "zero_gamma" or t == "gex_flip" ? cZero : t == "max_pain" ? cPain : t == "vanna_flip" ? cVanna : t == "charm_flip" ? cCharm : t == "oi_volume" ? cVol : t == "gamma_peak" ? cPeak : cEM
 
-f_lvStyle(string t) =>
+f_lvStyle(t) =>
     t == "max_pain" ? line.style_dashed : t == "zero_gamma" or t == "gex_flip" or t == "vanna_flip" or t == "charm_flip" ? line.style_dotted : t == "exp_hi" or t == "exp_lo" ? line.style_dashed : line.style_solid
 
 f_lblSize() =>
