@@ -23013,7 +23013,7 @@ async function _oandaM1(pair, query) {
   const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(pair)}/candles?granularity=M1&price=M&${query}`,
     { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(8_000) });
   if (!r.ok) return [];
-  return ((await r.json()).candles || []).filter(c => c.mid).map(c => ({ t: new Date(c.time).getTime(), o: +c.mid.o, c: +c.mid.c }));
+  return ((await r.json()).candles || []).filter(c => c.mid).map(c => ({ t: new Date(c.time).getTime(), o: +c.mid.o, h: +c.mid.h, l: +c.mid.l, c: +c.mid.c }));
 }
 async function _cfdAtCash(pair, asOfMs) {
   // Outside the cash session Cboe's price is the 16:00 New York close: compare the CFD at that close.
@@ -23050,7 +23050,7 @@ async function _buildHedgingSummary() {
       const calmNow = z ? (now >= z.price) === calmAbove : sc.atSpot.regime === 'long';
       out.push({ pair: m.pair, name: m.name, sources: [m.idx?.replace(/^_/, ''), m.etf].filter(Boolean), asOf: base.asOfMs,
         cfdAtQuote: +S.toFixed(2), cfdNow: now, contracts: sc.n, state: calmNow ? 'calms' : 'speeds',
-        switchPoint: z ? +z.price.toFixed(2) : null, switchDistPct: z ? +((z.price / now - 1) * 100).toFixed(2) : null,
+        switchPoint: z ? +z.price.toFixed(2) : null, switchDir: z?.dir ?? null, regimeAtQuote: sc.atSpot.regime, switchDistPct: z ? +((z.price / now - 1) * 100).toFixed(2) : null,
         flowUp1pct: Math.round(sc.atSpot.hedgeUp1pct), flowDown1pct: Math.round(sc.atSpot.hedgeDown1pct), unit: m.unit,
         walls: { put: sc.levels.putWall, call: sc.levels.callWall, biggest: sc.levels.majorWall },
         lines: hedgingRead(sc, { fmt, unit: m.unit, now, name: m.name }) });
@@ -23064,6 +23064,107 @@ app.get('/api/hedging-summary', async (req, res) => {
       _hsSummary = { at: Date.now(), v: await _buildHedgingSummary() };
     }
     res.json({ ok: true, ..._hsSummary.v });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Forward record of the dealer-hedging state (forge/HEDGING_STATE_FORWARD_PREREG.md) ─────────────
+// Weekdays: at the first tick >= 07:00 London, snapshot /api/hedging-summary + the chosen daily lines and label each
+// market's state at the London OPEN (00:00 bar, so the morning's moves never leak into the label). At >= 22:15
+// London, score the session: range vs the chosen hl p50, and what the first p75 break did (p90 first = follow, p50
+// first = revert). One write-once R2 object per session: forward/hedging_state/<date>.json. No verdict before the
+// judge date (>= 250 sessions per market); /api/hedging-forward shows counts only.
+const _HF_PREFIX = 'forward/hedging_state/';
+const _HF_LADDER = { NAS100_USD: 'NQ', SPX500_USD: 'SPX500', US2000_USD: 'US2000', XAU_USD: 'GOLD' };
+const _hfLondon = d => Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour12: false,
+  year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit' }).formatToParts(d).map(p => [p.type, p.value]));
+const _hfDone = new Map();   // date -> 'morning' | 'scored'
+function _hfLondonMidnightMs(date) {
+  // 00:00 Europe/London on `date`, as epoch ms (BST-aware: try UTC 23:00 the day before and 00:00 that day)
+  const base = Date.parse(`${date}T00:00:00Z`);
+  for (const ms of [base - 3600_000, base]) { const p = _hfLondon(new Date(ms)); if (`${p.year}-${p.month}-${p.day}` === date && p.hour === '00' && p.minute === '00') return ms; }
+  return base;
+}
+async function _hfSessionBars(pair, date, count) {
+  return _oandaM1(pair, `count=${count}&from=${encodeURIComponent(new Date(_hfLondonMidnightMs(date)).toISOString())}`);
+}
+function _hfState(open, m) {
+  if (!Number.isFinite(open) || !m) return null;
+  if (Number.isFinite(m.switchPoint) && m.switchDir) {
+    const calmAbove = m.switchDir === 'short->long';
+    return (open >= m.switchPoint) === calmAbove ? 'calms' : 'speeds';
+  }
+  return m.regimeAtQuote === 'long' ? 'calms' : m.regimeAtQuote === 'short' ? 'speeds' : null;
+}
+async function _hedgingForwardTick() {
+  if (!_r2Ok()) return;
+  const p = _hfLondon(new Date());
+  if (p.weekday === 'Sat' || p.weekday === 'Sun') return;
+  const date = `${p.year}-${p.month}-${p.day}`, mins = (+p.hour % 24) * 60 + (+p.minute);
+  const key = `${_HF_PREFIX}${date}.json`;
+  if (_hfDone.get(date) === 'scored' || mins < 7 * 60) return;
+  let rec = await _r2GetJSON(key);
+  if (!rec) {
+    const sum = await _buildHedgingSummary();
+    _hsSummary = { at: Date.now(), v: sum };
+    let lad = {};
+    try { const r = await fetch(`http://127.0.0.1:${PORT}/api/vol-forecast/persist-ladder/json`, { signal: AbortSignal.timeout(60_000) }); if (r.ok) lad = (await r.json()).instruments ?? {}; } catch { /* lines missing -> range unscored */ }
+    const markets = [];
+    for (const m of sum.markets) {
+      const L = lad[_HF_LADDER[m.pair]] ?? null;
+      const first = (await _hfSessionBars(m.pair, date, 2))[0] ?? null;
+      const open = first && first.t < _hfLondonMidnightMs(date) + 15 * 60_000 ? first.o : null;   // must be the 00:00 bar (± 15 min)
+      markets.push({ pair: m.pair, name: m.name, error: m.error ?? null, open, state: _hfState(open, m), stateAt0700: m.state ?? null,
+        switchPoint: m.switchPoint ?? null, switchDir: m.switchDir ?? null, regimeAtQuote: m.regimeAtQuote ?? null,
+        flowUp1pct: m.flowUp1pct ?? null, flowDown1pct: m.flowDown1pct ?? null, quoteAsOf: m.asOf ?? null,
+        lines: L ? { form: L.form ?? null, hl: L.hl ?? null, oh: L.oh ?? null, ol: L.ol ?? null } : null, outcome: null });
+    }
+    rec = { v: 1, prereg: 'forge/HEDGING_STATE_FORWARD_PREREG.md', date, snapshotAt: new Date().toISOString(), markets, scoredAt: null };
+    await _r2PutJSON(key, rec);
+    _hfDone.set(date, 'morning');
+  }
+  if (rec.scoredAt || mins < 22 * 60 + 15) return;
+  for (const m of rec.markets) {
+    if (!Number.isFinite(m.open) || !m.lines?.hl?.p50) { m.outcome = { skipped: !Number.isFinite(m.open) ? 'no 00:00 bar' : 'no lines' }; continue; }
+    const bars = (await _hfSessionBars(m.pair, date, 1320)).filter(b => b.t < _hfLondonMidnightMs(date) + 22 * 3600_000);
+    if (bars.length < 60) { m.outcome = { skipped: `only ${bars.length} bars` }; continue; }
+    // OANDA mid candles: reuse o/c and the bar extremes when present
+    let hi = -Infinity, lo = Infinity;
+    for (const b of bars) { hi = Math.max(hi, b.h ?? Math.max(b.o, b.c)); lo = Math.min(lo, b.l ?? Math.min(b.o, b.c)); }
+    const o = m.open, pct = x => o * x / 100;
+    const U = { p50: o + pct(m.lines.oh.p50), p75: o + pct(m.lines.oh.p75), p90: o + pct(m.lines.oh.p90) };
+    const D = { p50: o - pct(m.lines.ol.p50), p75: o - pct(m.lines.ol.p75), p90: o - pct(m.lines.ol.p90) };
+    let brk = 'no touch', side = null;
+    for (let i = 0; i < bars.length; i++) {
+      const b = bars[i], bh = b.h ?? Math.max(b.o, b.c), bl = b.l ?? Math.min(b.o, b.c);
+      if (!side) { if (bh >= U.p75) side = 'up'; else if (bl <= D.p75) side = 'down'; if (!side) continue; brk = 'neither'; }
+      const far = side === 'up' ? bh >= U.p90 : bl <= D.p90, back = side === 'up' ? bl <= U.p50 : bh >= D.p50;
+      if (back) { brk = 'revert'; break; }
+      if (far) { brk = 'follow'; break; }
+    }
+    const hlPct = (hi - lo) / o * 100;
+    m.outcome = { high: hi, low: lo, hlPct: +hlPct.toFixed(4), y: +Math.log(hlPct / m.lines.hl.p50).toFixed(4), breakSide: side, break: brk, bars: bars.length };
+  }
+  rec.scoredAt = new Date().toISOString();
+  await _r2PutJSON(key, rec);
+  _hfDone.set(date, 'scored');
+}
+svcInterval('hedgingForward', () => _hedgingForwardTick().catch(e => console.error('[hedging-forward]', e.message)), 10 * 60_000);
+
+app.get('/api/hedging-forward', async (req, res) => {
+  try {
+    const keys = (await _r2ListKeys(_HF_PREFIX)).filter(k => /\d{4}-\d{2}-\d{2}\.json$/.test(k)).sort();
+    const date = String(req.query.date || '');
+    if (date) { const rec = await _r2GetJSON(`${_HF_PREFIX}${date}.json`); return rec ? res.json({ ok: true, ...rec }) : res.status(404).json({ ok: false, error: 'no record' }); }
+    const counts = {};
+    for (const k of keys.slice(-400)) {
+      const rec = await _r2GetJSON(k);
+      for (const m of rec?.markets ?? []) {
+        const c = counts[m.name] ??= { logged: 0, scored: 0, speeds: 0, calms: 0 };
+        c.logged++; if (m.outcome && !m.outcome.skipped) c.scored++; if (m.state) c[m.state]++;
+      }
+    }
+    res.json({ ok: true, prereg: 'forge/HEDGING_STATE_FORWARD_PREREG.md', sessions: keys.length, first: keys[0]?.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? null,
+      judgeAt: '>= 250 scored sessions per primary market, >= 60 in each state', counts, note: 'counts only: no outcome statistics before the judge date' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

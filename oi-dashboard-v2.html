@@ -847,7 +847,11 @@ async function drawPlain(){
         <div class="sub" style="margin:2px 0 6px">now ${Number(m.cfdNow).toLocaleString('en-GB')} · ${esc(sw)} · ${esc(m.sources.join(' + '))}</div>
         <ul style="margin:0;padding-left:18px;color:var(--tx2);font-size:12.5px;line-height:1.55">${m.lines.slice(0, -1).map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
     }).join('') + `<div class="sub" style="grid-column:1/-1;margin:0">${esc(j.markets.find(m => m.lines)?.lines.at(-1) || '')}</div>`;
-  } catch (err) { body.innerHTML = `<div class="sub">Could not load the summary: ${esc(err.message)}</div>`; }
+  } catch (err) { body.innerHTML = `<div class="sub">Could not load the summary: ${esc(err.message)}</div>`; return; }
+  try {
+    const f = await (await fetch('/api/hedging-forward')).json();
+    if (f.ok) body.insertAdjacentHTML('beforeend', `<div class="sub" style="grid-column:1/-1;margin:0"><b>Forward record:</b> ${f.sessions} session${f.sessions === 1 ? '' : 's'} logged${f.first ? ` since ${esc(f.first)}` : ''}. Each morning's state is saved, then scored against the day's range and how breaks behaved. No verdict until about 250 sessions per market (~Oct 2027): forge/HEDGING_STATE_FORWARD_PREREG.md.</div>`);
+  } catch (_) { /* the record line is optional */ }
 }
 
 function stats(){
