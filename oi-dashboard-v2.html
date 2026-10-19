@@ -77,6 +77,7 @@ svg text{font-family:var(--mono)}
     <div class="tgl" id="nearTgl" title="Which expiries feed the terrain and curves">
       <span class="pill on" id="mNear">Near expiries (≤3 DTE)</span><span class="pill" id="mAll">Whole book</span>
     </div>
+    <button class="btn" id="profBtn" title="The paste for the OI Profile TradingView indicator (pine/OI Profile.pine) for the instrument on screen: reaction levels, GEX/vanna/volume profile, IV smile, gamma helix.">Profile export</button>
     <button class="btn" id="tiersBtn" title="OI levels + forecast ladder + IV-adjusted ladder + Confluence Zones grouped into distance-ranked tiers. A SEPARATE export: paste it instead of the OI section of the normal export.">Tiers export</button>
     <a class="btn" href="oi-dashboard.html">Classic dashboard</a>
   </header>
@@ -161,7 +162,7 @@ svg text{font-family:var(--mono)}
 <div id="tip"></div>
 <div id="tiersModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:20;padding:4vh 4vw">
   <div class="card" style="height:100%;display:flex;flex-direction:column;gap:10px;margin:0">
-    <div style="display:flex;gap:10px;align-items:center"><b>OI tiers export</b>
+    <div style="display:flex;gap:10px;align-items:center"><b id="exportTitle">OI tiers export</b>
       <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersToday" checked style="margin-right:6px">today only</label>
       <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersFut" style="margin-right:6px">futures terms</label>
       <button class="btn" id="tiersGo">Refresh</button><button class="btn" id="tiersCopy">Copy</button><span style="flex:1"></span><button class="btn" id="tiersClose">Close</button></div>
@@ -916,8 +917,13 @@ async function refresh(){
 async function loadTiers(){ const ta = $('#tiersTxt'); ta.value = 'fetching… (OANDA M5 + P(touch), ~10–20 s)';
   try { const r = await fetch('/api/oi-tiers/export?' + ($('#tiersToday').checked ? 'mode=today' : 'mode=full') + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); ta.value = await r.text(); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
-$('#tiersBtn').onclick = () => { $('#tiersModal').style.display = 'block'; loadTiers(); };
-$('#tiersGo').onclick = loadTiers; $('#tiersClose').onclick = () => { $('#tiersModal').style.display = 'none'; };
+async function loadProfile(){ const ta = $('#tiersTxt'); ta.value = 'fetching… (price feed + P(touch), ~5–15 s)';
+  try { const r = await fetch('/api/oi-profile/export?pair=' + encodeURIComponent(SYM), { cache: 'no-store' }); ta.value = await r.text(); }
+  catch (e) { ta.value = 'Export failed: ' + e.message; } }
+let EXPORT_KIND = 'tiers';
+$('#tiersBtn').onclick = () => { EXPORT_KIND = 'tiers'; $('#exportTitle').textContent = 'OI tiers export'; $('#tiersModal').style.display = 'block'; loadTiers(); };
+$('#profBtn').onclick = () => { EXPORT_KIND = 'profile'; $('#exportTitle').textContent = 'OI Profile paste — ' + (NAMES[SYM] || SYM) + ' (into pine/OI Profile.pine › 1 · Data)'; $('#tiersModal').style.display = 'block'; loadProfile(); };
+$('#tiersGo').onclick = () => (EXPORT_KIND === 'profile' ? loadProfile() : loadTiers()); $('#tiersClose').onclick = () => { $('#tiersModal').style.display = 'none'; };
 $('#tiersCopy').onclick = () => { try { navigator.clipboard.writeText($('#tiersTxt').value); $('#tiersCopy').textContent = 'Copied ✓'; setTimeout(() => $('#tiersCopy').textContent = 'Copy', 1500); } catch (_) { $('#tiersTxt').select(); } };
 $('#mNear').onclick = () => { NEAR = true; $('#mNear').classList.add('on'); $('#mAll').classList.remove('on'); refresh(); };
 $('#mAll').onclick = () => { NEAR = false; $('#mAll').classList.add('on'); $('#mNear').classList.remove('on'); refresh(); };
