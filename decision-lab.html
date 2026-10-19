@@ -43,6 +43,10 @@ td.wrap { white-space: normal; text-align: left !important; font-family: 'DM San
       <div class="l-sub">can other information make rule A's trades better? · what we found, then the workbench behind it</div></div>
     <div style="margin-left:auto;display:flex;gap:8px"><a class="l-btn" href="forecast-line-backtest.html">Forecast Line Backtest (locked record) ↗</a></div>
   </div>
+  <div class="card" style="margin-top:12px;border-color:color-mix(in srgb,var(--green) 45%,var(--border))"><h3>Today's decision <span class="muted" id="tdSub"></span></h3>
+    <div class="note" id="tdNote" style="margin-top:0"></div>
+    <table class="t" id="tdTab"><tr><td class="muted">loading today's flags and lines…</td></tr></table>
+  </div>
   <div class="card" style="margin-top:12px"><h3>What we found <span class="muted">— rule A (rich-day break), registered setting 0.2σ stop / 5R, 2,057 trades on 11 instruments, after costs</span></h3>
     <div class="note" id="bottom" style="margin-top:0"></div>
     <table class="t" id="ftab"></table>
@@ -221,8 +225,66 @@ function drawSized() {
   fchart.timeScale().fitContent();
   $('fnote').innerHTML = `Grey: rule A at flat size. Green: 1.5× size when the filter agrees, 0.5× when it does not (1× where the input is missing), so the same trades are taken and only their size changes, as Lesson 03 suggests for a second layer. Both periods have been looked at, so this chart shows what the filter <i>would</i> have done, not evidence that it works; that comes from the forward record.`;
 }
+// ── Today's decision: rule A as an actionable plan for today, on the chosen v3 lines (the version backtested here).
+const RULE_A = { eurusd: ['EURUSD', 'EUR/USD'], gbpusd: ['GBPUSD', 'GBP/USD'], audusd: ['AUDUSD', 'AUD/USD'], usdcad: ['USDCAD', 'USD/CAD'], usdchf: ['USDCHF', 'USD/CHF'],
+  usdjpy: ['USDJPY', 'USD/JPY'], gold: ['GOLD', 'XAU/USD'], nq: ['NQ', 'NAS100_USD'], spx: ['SPX500', 'SPX500_USD'], dow: ['US30', 'US30_USD'], us2000: ['US2000', 'US2000_USD'] };
+const IDX = new Set(['NQ', 'SPX500', 'US30', 'US2000']);
+const dpOf = n => /JPY/.test(n) ? 3 : n === 'GOLD' ? 2 : IDX.has(n) ? 1 : 5;
+const partsOf = d => Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d).map(x => [x.type, x.value]));
+const londonAt = d => { const p = partsOf(d); return { date: `${p.year}-${p.month}-${p.day}`, min: (+p.hour % 24) * 60 + +p.minute }; };
+const hm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+async function renderToday() {
+  const now = londonAt(new Date());
+  let pr = null, lad = null;
+  try { pr = await (await fetch('/api/paper-record')).json(); } catch { /* shown below */ }
+  try { lad = await (await fetch('/api/vol-forecast/persist-ladder/json')).json(); } catch { /* shown below */ }
+  const day = pr?.days?.[now.date], flags = day?.flags;
+  $('tdSub').textContent = `— ${now.date}, ${hm(now.min)} London · rule A (rich-day break) on the chosen v3 lines`;
+  const fwd = Object.values(pr?.days ?? {}).reduce((n, d) => n + (d.trades?.length ?? 0), 0);
+  const cuts = CUTS.ivrv;
+  $('tdNote').innerHTML = `<b>How to read it.</b> Rule A only trades on a <b>rich day</b> (implied vol ÷ 20-day realised vol at or above the threshold, set before the day opens).
+    On a rich day each of the four lines is a level to watch from 00:00 to 10:00 London: if a 1-minute candle <b>closes beyond the trigger</b>, enter at the next minute in that direction,
+    stop 0.2σ behind the line, target 5R from entry; anything still open is closed at 22:00. Size: <b>1R per trade (flat)</b>. One trade per line per day.
+    <br><span class="muted">Evidence: backtest +0.16R per trade after costs (2,057 trades, 6 of 7 years positive; 1.75 standard errors on this registered setting: suggestive, not proven). Most trades lose 1R; the profit comes from fewer, larger winners.
+    Forward record so far: ${fwd} paper trades since 2026-10-02 (paper-record.html, on the older v4 lines). The IV÷RV band lead (${fmt(cuts[0], 2)}–${fmt(cuts[1], 2)}) is shown for information only until it passes its forward test; it does not change the size.
+    Status below is read from 5-minute bars, so it approximates the 1-minute rule.</span>`;
+  if (!flags) { $('tdTab').innerHTML = `<tr><td class="wrap">No plan for ${now.date}: ${day?.skipped ?? 'the rich-day flags for today are not set yet (they are set before 00:00 London on weekdays; weekends have no session).'}</td></tr>`; return; }
+  const rows = [];
+  for (const [key, [name, osym]] of Object.entries(RULE_A)) {
+    const f = flags[key], L = lad?.instruments?.[name], P = dpOf(name);
+    if (!f || f.rich == null) { rows.push(`<tr><td>${name}</td><td class="muted">—</td><td colspan="6" class="wrap muted">no flag today${f?.why ? ': ' + f.why : ''}</td></tr>`); continue; }
+    if (!f.rich) { rows.push(`<tr><td>${name}</td><td><span class="pill">no trade</span></td><td colspan="6" class="wrap muted">not a rich day: IV÷RV ${fmt(f.ratio, 2)} is below ${f.threshold}</td></tr>`); continue; }
+    if (!L) { rows.push(`<tr><td>${name}</td><td><span class="pill pos">rich</span></td><td colspan="6" class="wrap muted">chosen lines not available for this instrument</td></tr>`); continue; }
+    let bars = [];
+    try { const j = await (await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(osym)}&incomplete=1`)).json();
+      bars = (j.values ?? []).map(b => ({ t: b.t, o: +b.open, h: +b.high, l: +b.low, c: +b.close, ...londonAt(new Date(b.t * 1000)) }))
+        .filter(b => b.date === now.date && b.min < 22 * 60).sort((a, b) => a.t - b.t); } catch { /* no bars */ }
+    if (!bars.length) { rows.push(`<tr><td>${name}</td><td><span class="pill pos">rich</span></td><td colspan="6" class="wrap muted">waiting for today's first bar (London open)</td></tr>`); continue; }
+    const O = bars[0].o, unit = O * L.sigma_used_pct / 100, last = bars.at(-1).c;
+    const band = f.ratio >= cuts[0] && f.ratio < cuts[1] ? 'inside the lead band' : 'outside the lead band';
+    const lines = [['O→H p50', O * (1 + L.oh.p50 / 100), 1], ['O→H p75', O * (1 + L.oh.p75 / 100), 1], ['O→L p50', O * (1 - L.ol.p50 / 100), -1], ['O→L p75', O * (1 - L.ol.p75 / 100), -1]];
+    lines.forEach(([lab, line, side], i) => {
+      const trig = line + side * 0.05 * unit, stop = line - side * 0.2 * unit;
+      const hit = bars.find(b => b.min < 600 && (side > 0 ? b.c >= trig : b.c <= trig));
+      let status;
+      if (hit) {
+        const ep = hit.c, risk = Math.abs(ep - stop), tgt = ep + side * 5 * risk, after = bars.filter(b => b.t > hit.t);
+        const sHit = after.find(b => side > 0 ? b.l <= stop : b.h >= stop), tHit = after.find(b => side > 0 ? b.h >= tgt : b.l <= tgt);
+        const r = side * (last - ep) / risk;
+        status = sHit && (!tHit || sHit.t <= tHit.t) ? `<span class="neg">stopped ${hm(sHit.min)} (−1R)</span>`
+          : tHit ? `<span class="pos">target hit ${hm(tHit.min)} (+5R)</span>`
+          : `<span class="${r >= 0 ? 'pos' : 'neg'}">in the trade since about ${hm(hit.min)}: ${r >= 0 ? '+' : ''}${fmt(r, 2)}R now · target ${fmt(tgt, P)}</span>`;
+      } else status = now.min >= 600 ? '<span class="muted">not triggered; the window closed at 10:00</span>' : `<span>watching until 10:00 · price ${fmt(last, P)}</span>`;
+      rows.push(`<tr>${i === 0 ? `<td rowspan="4">${name}<div class="muted" style="font-size:10px">IV÷RV ${fmt(f.ratio, 2)} · ${band}</div></td><td rowspan="4"><span class="pill pos">TRADE</span></td>` : ''}
+        <td>${side > 0 ? 'BUY' : 'SELL'} ${lab}</td><td>${side > 0 ? 'close above' : 'close below'} ${fmt(trig, P)}</td><td>stop ${fmt(stop, P)}</td><td>5R from entry</td><td>1R</td><td class="wrap">${status}</td></tr>`);
+    });
+  }
+  $('tdTab').innerHTML = `<tr><th>Instrument</th><th>Today</th><th>Setup</th><th>Trigger (00:00–10:00)</th><th>Stop</th><th>Target</th><th>Size</th><th>Status</th></tr>` + rows.join('');
+}
 async function init() {
   R = await loadData(); cuts();
+  renderToday().catch(e => { $('tdTab').innerHTML = `<tr><td class="muted">Today's plan unavailable: ${e.message}</td></tr>`; });
+  setInterval(() => renderToday().catch(() => {}), 120000);
   try { F = await (await fetch('./backtest-data/decision-lab/findings.json')).json(); renderFindings(); } catch (e) { $('bottom').textContent = 'Findings not available: ' + e.message; }
   const m = Object.values(R.instruments)[0];
   $('cStop').innerHTML = m.stops.map(s => `<option value="${s}" ${s === 0.2 ? 'selected' : ''}>${s}σ${[0.1, 0.2].includes(s) ? ' (registered)' : ''}</option>`).join('');
