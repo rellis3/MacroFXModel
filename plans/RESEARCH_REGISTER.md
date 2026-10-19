@@ -29,6 +29,7 @@ script (§4) until someone claims, banks or parks each one.
 | futures-cost-rescore | Do line-touch results survive futures costs? | RESULTS | main | 2026-10-18 | `forge/FUTURES_COST_RESCORE_PREREG.md` | in the prereg (Results record 2026-10-11) | — | bank |
 | harness-weekend-rows | Do the harness results with pre-2014 FX windows change once the store's weekend rows are dropped? | RE-RUN | main | 2026-10-19 | (original preregs) | — | ys-long-confirm, cot-positioning-factor | fix `px_d1_*` weekend rows in build_features.py (DATA_SPEC §5 #9), then re-run `analysis/harness/repro_ys.mjs SAMPLE=long` and `repro_cot.mjs`; expected scale-only changes (COT OOS starts 2018, unaffected) |
 | ai-crack-metals | After the AI trade cracks (SMH/SPY 20-session change in its rolling bottom decile), do gold and silver outperform their ordinary 20-session drift? | REGISTERED | main | 2026-10-19 | `forge/AI_CRACK_METALS_PREREG.md` | — | — | build `scripts/ai-crack-metals/run.mjs` on Yahoo GLD/SLV/SMH/SPY 2006-04-28→2026-08-21, seed 20261019; expectation null on both scored cells |
+| range-ladder-placebo | Do the Asia/Monday range-ladder lines (the range-line book's levels) revert or continue differently from the same ladder shifted to the wrong price? | REGISTERED | main | 2026-10-19 | `forge/RANGE_LADDER_PLACEBO_PREREG.md` | — | — | run `scripts/range-ladder-placebo/run.mjs` |
 
 ## Done
 
