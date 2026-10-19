@@ -26,5 +26,7 @@ ok('chart tag is short', zoneTag(near.below[0]) === 'T1v shallow');
 ok('degenerate input gives empty tiers', buildTiers({ spot: 0, sigma: 1 }).below.length === 0 && buildTiers({ spot, sigma: 0 }).above.length === 0);
 const chain = buildTiers({ spot, sigma, levels: [4130, 4135, 4140, 4145, 4150].map(price => ({ price, type: 'put_wall' })), legs: [] });
 ok('a chain of levels 5 apart is not merged into one wide zone (span cap 0.3σ)', chain.below.every(z => z.hi - z.lo <= 0.3 * sigma + 1e-9) && chain.below.length > 1, chain.below.map(z => z.hi - z.lo).join(','));
+const wide = buildTiers({ spot, sigma, levels: [{ price: spot - 300, type: 'put_wall' }, { price: spot - 10, type: 'put_wall' }, { price: spot + 400, type: 'call_wall' }], legs: [] });
+ok('zones further than 2.5 day-σ are not tiers (a 300-pt-away wall is 6σ here)', wide.below.length === 1 && wide.above.length === 0, `${wide.below.length}/${wide.above.length}`);
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

@@ -24398,15 +24398,19 @@ app.get('/api/oi-profile/export', async (req, res) => {
     for (const sk of storeKeys) {
       const inst = store[sk]; if (!inst?.spot) continue;
       inst.pair = inst.pair || sk;
-      const rm = inst.refMove?.move > 0 ? inst.refMove.move : inst.spot * 0.01;
-      // hedging-map curves (CME book re-priced at every price × IV shift) — the "helix" and the zero-gamma level
+      // ONE DAY's move = the forecast σ in price units. inst.refMove is the implied move to the PRIMARY expiry (gold: ±5% to a 41-day expiry) so it is only a fallback.
+      const _fk = (() => { try { return _forecastKeyForPair(sk); } catch { return null; } })();
+      const _sg = _fk ? forecastState.latest?.instruments?.[_fk]?.ladder?.sigma_daily_pct : null;
+      const dayMove = _sg > 0 ? inst.spot * _sg / 100 : null;
+      const rm = dayMove ?? (inst.refMove?.move > 0 ? inst.refMove.move : inst.spot * 0.01);
+      // hedging-map curves (CME book re-priced at every price × IV shift) — the "helix" and the zero-gamma level, over the same ±2.6σ-of-a-day window
       let hedge = null;
       try {
         const bk = _cmeBook(sk, inst, { maxDte: 3 });
-        if (bk) { const half = Math.min(0.06, Math.max(0.012, 3 * rm / inst.spot)); hedge = hedgingScenario(bk.contracts, { spot: bk.spot, lo: bk.spot * (1 - half), hi: bk.spot * (1 + half), n: 81, shifts: [-2, 0, 2, 4], optMult: 1, futMult: 1 }); }
+        if (bk) { const half = Math.min(0.06, Math.max(0.008, 2.6 * rm / inst.spot)); hedge = hedgingScenario(bk.contracts, { spot: bk.spot, lo: bk.spot * (1 - half), hi: bk.spot * (1 + half), n: 81, shifts: [-2, 0, 2, 4], optMult: 1, futMult: 1 }); }
       } catch { hedge = null; }
-      const prof = buildOiProfile(inst, { sym: sk, hedge });
-      if (prof) items.push({ sk, inst, hedge, prof });
+      const prof = buildOiProfile(inst, { sym: sk, hedge, dayMove });
+      if (prof) items.push({ sk, inst, hedge, prof, dayMove });
     }
     // phase 2 — calibrated P(touch) + median ETA per level, all instruments in parallel within a time budget (same engine as the other exports);
     // an instrument without a price feed / bars, or one that is too slow, simply goes out without touch odds
@@ -24418,7 +24422,7 @@ app.get('/api/oi-profile/export', async (req, res) => {
         const ctx = _fpBuildCtx(bars, {});
         const rows = _oiWallReach(ctx, bars.length, it.prof.levels.map(l => ({ price: l.price, type: l.type })), 48, { nPaths: 300, instrument: it.sk });
         const byP = new Map(rows.map(r => [r.price.toFixed(6), r]));
-        it.prof = buildOiProfile(it.inst, { sym: it.sk, hedge: it.hedge, reach: pr => { const r = byP.get(pr.toFixed(6)); return r && Number.isFinite(r.calibrated) ? { p: r.calibrated, eta: Number.isFinite(r.medBarsToTouch) ? r.medBarsToTouch * 5 : null } : null; } });
+        it.prof = buildOiProfile(it.inst, { sym: it.sk, hedge: it.hedge, dayMove: it.dayMove, reach: pr => { const r = byP.get(pr.toFixed(6)); return r && Number.isFinite(r.calibrated) ? { p: r.calibrated, eta: Number.isFinite(r.medBarsToTouch) ? r.medBarsToTouch * 5 : null } : null; } });
       };
       await Promise.race([Promise.all(items.map(it => addReach(it).catch(e => console.warn('[oi-profile] reach failed for', it.sk, e.message)))), new Promise(r => setTimeout(r, 40_000))]);
     }

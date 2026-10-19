@@ -45,9 +45,9 @@ export function czLegs(zones) {
 
 const character = d => (d < 0.5 ? 'shallow' : d < 1 ? 'mid' : d < 1.6 ? 'deep' : 'tail');
 
-// opts: spot, sigma (price points of one day's σ), levels (OI levels [{price,type,tier?,dte?}]), legs (ladderLegs), radius (σ fraction, default .15), maxSpan (widest zone, σ, default .3), maxTiers (per side, default 4)
+// opts: spot, sigma (price points of one day's σ), levels (OI levels [{price,type,tier?,dte?}]), legs (ladderLegs), radius (σ fraction, default .15), maxSpan (widest zone, σ, default .3), maxTiers (per side, default 4), maxSigma (drop zones further than this many day-σ from spot, default 2.5)
 // Returns { below:[zone], above:[zone] } nearest first; zone = { n, side, lo, hi, mid, dist, character, members:[{price,type,kind,label,ref}] }.
-export function buildTiers({ spot, sigma, levels = [], legs = [], radius = 0.15, maxSpan = 0.3, maxTiers = 4 } = {}) {
+export function buildTiers({ spot, sigma, levels = [], legs = [], radius = 0.15, maxSpan = 0.3, maxTiers = 4, maxSigma = 2.5 } = {}) {
   if (!(spot > 0) || !(sigma > 0)) return { below: [], above: [] };
   const members = [
     ...levels.filter(l => Number.isFinite(l?.price) && TIER_OI_TYPES.has(l.type)).map(l => ({ price: l.price, type: l.type, kind: 'oi', label: SRC_LABEL[l.type], ref: l })),
@@ -62,7 +62,9 @@ export function buildTiers({ spot, sigma, levels = [], legs = [], radius = 0.15,
       if (z) { z.members.push(m); z.lo = Math.min(z.lo, m.price); z.hi = Math.max(z.hi, m.price); }
       else zones.push({ lo: m.price, hi: m.price, members: [m] });
     }
-    return zones.slice(0, maxTiers).map((z, i) => {
+    // a day's plausible move is ~1.5-2σ (the p90 one-sided range is ~1.6σ), so a zone beyond maxSigma is not a level for TODAY — drop it before numbering
+    const inReach = zones.filter(z => Math.abs((z.lo + z.hi) / 2 - spot) / sigma <= maxSigma);
+    return inReach.slice(0, maxTiers).map((z, i) => {
       const mid = (z.lo + z.hi) / 2, dist = Math.abs(mid - spot) / sigma;
       return { n: i + 1, side, lo: z.lo, hi: z.hi, mid, dist, character: character(dist), members: z.members };
     });

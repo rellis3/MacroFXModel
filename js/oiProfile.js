@@ -35,8 +35,10 @@ export function buildOiProfile(inst, opts = {}) {
   const book = opts.legs ? { legs: opts.legs, spot: inst?.spot, mult: opts.mult ?? 1, flat: opts.flat ?? 0.2 } : oiBookLegs(inst);
   if (!book || !(book.spot > 0) || !book.legs?.length) return null;
   const { legs, spot, mult, flat } = book;
-  const rm = (inst?.refMove?.move > 0 ? inst.refMove.move : null) ?? spot * 0.01;
-  const windowRm = opts.windowRm ?? 3.2, nBins = opts.bins ?? 70;
+  // ONE DAY's move: the forecast σ in price units (the caller passes opts.dayMove). inst.refMove is the implied move to the PRIMARY expiry — for gold that is ±5% to a
+  // 41-day expiry, 4× a day — so it is only a fallback. The window is ±windowRm × this: ~1.5× the p90 one-sided range, so a big day is still on the page.
+  const rm = (opts.dayMove > 0 ? opts.dayMove : null) ?? (inst?.refMove?.move > 0 ? inst.refMove.move : null) ?? spot * 0.01;
+  const windowRm = opts.windowRm ?? 2.5, nBins = opts.bins ?? 60;
   const winFrac = Math.min(0.15, windowRm * rm / spot);
 
   // ── 1. which DTE bucket carries the gamma near spot? ──────────────────────────────────────────────────────────────
@@ -79,8 +81,9 @@ export function buildOiProfile(inst, opts = {}) {
   add('vanna_flip', gk.vannaFlip, 0.45); add('charm_flip', gk.charmFlip, 0.4);
   const vmags = (inst?.volumeMagnets || []).slice(0, 6).filter(v => Number.isFinite(v.strike)); const vmx = Math.max(...vmags.map(v => v.volume || 0), 1);
   vmags.slice(0, 2).forEach(v => add('oi_volume', v.strike, (v.volume || 0) / vmx));
-  const em = inst?.expectedMove;
-  if (em) { add('exp_hi', em.upper, 0.3); add('exp_lo', em.lower, 0.3); }
+  const emRaw = inst?.expectedMove, em = emRaw;
+  const emDay = (emRaw && Number.isFinite(emRaw.dte) && emRaw.dte <= 2) ? { upper: emRaw.upper, lower: emRaw.lower } : (opts.dayMove > 0 ? { upper: spot + opts.dayMove, lower: spot - opts.dayMove } : null);
+  if (emDay) { add('exp_hi', emDay.upper, 0.3); add('exp_lo', emDay.lower, 0.3); }
   for (const l of levels) {
     l.label = LABEL[l.type] + (l.rank ? ` ${l.rank}` : '');
     const ex = EXPECT_TYPE[l.type] ? levelExpectation({ type: EXPECT_TYPE[l.type], price: l.price }, { spot, gexFlips: inst?.gexFlips, gammaFlip: inst?.gammaFlip, refMove: rm }) : null;
@@ -123,7 +126,8 @@ export function buildOiProfile(inst, opts = {}) {
     sym: opts.sym ?? inst?.pair ?? null, spot, refMove: rm, regime, netGex: netSum,
     book: { id: strong.id, label: strong.label, share: Math.round(strong.abs / total * 100), buckets: bucketStat.map(b => ({ id: b.id, label: b.label, share: Math.round(b.abs / total * 100) })) },
     zeroGamma: zg?.price ?? null, flip: inst?.gexFlip ?? null,
-    em: em ? { hi: em.upper, lo: em.lower, pct: em.pct, dte: em.dte } : null,
+    em: (em && Number.isFinite(em.dte) && em.dte <= 2) ? { hi: em.upper, lo: em.lower, pct: em.pct, dte: em.dte, source: 'options' }
+      : (opts.dayMove > 0 ? { hi: spot + opts.dayMove, lo: spot - opts.dayMove, pct: +(opts.dayMove / spot * 100).toFixed(3), dte: 1, source: 'forecast' } : null),
     iv: { atm: inst?.ivDynamics?.atmIV ?? null, rr: inst?.riskReversal?.rr ?? null, tilt: inst?.riskReversal?.tilt ?? null },
     levels, gex, vanna, volume, smile, helix, binWidth: bw,
     hedgeRead: opts.hedge?.atSpot ? { up1: opts.hedge.atSpot.hedgeUp1pct, dn1: opts.hedge.atSpot.hedgeDown1pct } : null,
