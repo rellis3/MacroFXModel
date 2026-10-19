@@ -1,0 +1,441 @@
+//@version=5
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+// OI PROFILE — the options book as a picture: reaction levels + zones on the chart, and a five-column profile in the empty space RIGHT of the last bar
+//   GEX PROFILE  per-strike dealer gamma of the STRONGEST-DTE book (green = long gamma/pins, red = short gamma/amplifies)
+//   VANNA        per-strike vanna (cyan +, magenta −)           VOLUME   today's traded options volume by strike
+//   IV SMILE     implied vol by strike — the stored points only, nothing invented for the wings
+//   GAMMA HELIX  the dealer-hedging map twisted into two strands: blue = dealer gamma if price were here (IV −2/0/+2/+4 points), white = the
+//                futures dealers must buy/sell to stay flat (mirrored). Where the strands cross is zero gamma.
+//
+// DATA: paste the export from  <dashboard>/api/oi-profile/export?pair=nq   (or the "Profile export" button on the OI Lab page) into the box below. One paste per
+// day is plenty — the levels are daily. Several instruments can be pasted together; the block matching the chart's symbol is used.
+// TIP: drag the chart left (or scroll the time axis) so the empty space on the right is on screen — that is where the profile is drawn.
+//
+// STATUS: a picture of the book, NOT a signal. The gamma SIGN as a range read is real on NQ; walls/flips reacted like any neighbouring strike in our placebo tests.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+indicator("OI Profile", shorttitle="OI Profile", overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_polylines_count=100)
+
+// ── Inputs ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+G1 = "1 · Data"
+pasteTxt = input.text_area("", "Paste the OI Profile export", group=G1, tooltip="Paste the whole block(s) from /api/oi-profile/export. Lines start with M| L| G| V| O| S| X|.")
+overrideKey = input.string("", "Instrument (blank = detect from chart)", group=G1, tooltip="NQ, GOLD, SPX500, US30, US2000, EURUSD … must match the name line of the pasted block.")
+G2 = "2 · Show"
+showLevels = input.bool(true, "Reaction levels", group=G2)
+showZones  = input.bool(true, "Reaction zones (soft bands)", group=G2)
+showEM     = input.bool(true, "Expected-move box", group=G2)
+showTable  = input.bool(true, "Summary table", group=G2)
+showGex    = input.bool(true, "GEX profile", group=G2)
+showVanna  = input.bool(true, "Vanna", group=G2)
+showVol    = input.bool(true, "Volume", group=G2)
+showSmile  = input.bool(true, "IV smile", group=G2)
+showHelix  = input.bool(true, "Gamma helix", group=G2)
+G3 = "3 · Layout"
+gapBars   = input.int(6, "Gap right of the last bar (bars)", minval=1, maxval=80, group=G3)
+colW      = input.int(14, "Column width (bars)", minval=6, maxval=40, group=G3, tooltip="Wider = finer bars (bar lengths are whole bars).")
+colGap    = input.int(5, "Gap between columns (bars)", minval=1, maxval=30, group=G3)
+zoneFrac  = input.float(0.05, "Zone half-height (× expected-move scale)", minval=0.005, maxval=0.5, step=0.005, group=G3)
+lblSizeIn = input.string("small", "Label size", options=["tiny", "small", "normal"], group=G3)
+tblPos    = input.string("top left", "Table position", options=["top left", "top right", "bottom left", "bottom right"], group=G3)
+G4 = "4 · Colours"
+cCall  = input.color(#ff5b6e, "Call wall / short gamma", group=G4)
+cPut   = input.color(#2dd4a0, "Put wall / long gamma", group=G4)
+cZero  = input.color(#a78bfa, "Zero gamma / GEX flip", group=G4)
+cPain  = input.color(#e6c84a, "Max pain", group=G4)
+cVanna = input.color(#ff7ad9, "Vanna flip", group=G4)
+cCharm = input.color(#ff9f43, "Charm flip", group=G4)
+cVol   = input.color(#4aa8ff, "Volume", group=G4)
+cEM    = input.color(#f0b04a, "Expected move", group=G4)
+cSmile = input.color(#ffd166, "IV smile", group=G4)
+cPeak  = input.color(#e2e8f0, "Gamma peak", group=G4)
+
+// ── Parsed data (filled once, on the first bar) ───────────────────────────────────────────────────────────────────────────────
+var string mName = ""
+var string mGen = ""
+var string mRegime = ""
+var string mBook = ""
+var float mSpot = na
+var float mNet = na
+var float mBookPct = na
+var float mZg = na
+var float mFlip = na
+var float mEmHi = na
+var float mEmLo = na
+var float mEmPct = na
+var float mIv = na
+var float mRr = na
+var float mRef = na
+var float mBinw = na
+var float mUp1 = na
+var float mDn1 = na
+var array<string> lvType = array.new_string()
+var array<string> lvLabel = array.new_string()
+var array<string> lvExp = array.new_string()
+var array<float> lvPrice = array.new_float()
+var array<float> lvStr = array.new_float()
+var array<float> lvTouch = array.new_float()
+var array<float> lvEta = array.new_float()
+var array<float> gP = array.new_float()
+var array<float> gN = array.new_float()
+var array<float> vP = array.new_float()
+var array<float> vV = array.new_float()
+var array<float> oP = array.new_float()
+var array<float> oV = array.new_float()
+var array<float> sP = array.new_float()
+var array<float> sI = array.new_float()
+var array<float> xP = array.new_float()
+var array<float> xG0 = array.new_float()
+var array<float> xG1 = array.new_float()
+var array<float> xG2 = array.new_float()
+var array<float> xG3 = array.new_float()
+var array<float> xH = array.new_float()
+var bool parsed = false
+var string parseNote = ""
+
+f_num(array<string> a, int i) =>
+    i < array.size(a) ? str.tonumber(str.trim(array.get(a, i))) : na
+
+f_str(array<string> a, int i) =>
+    i < array.size(a) ? str.trim(array.get(a, i)) : ""
+
+f_chartKey() =>
+    string t = str.upper(syminfo.ticker)
+    string k = t
+    if str.contains(t, "NQ") or str.contains(t, "NAS100") or str.contains(t, "USTEC") or str.contains(t, "NDX")
+        k := "NQ"
+    else if str.contains(t, "XAU") or str.contains(t, "GOLD") or str.startswith(t, "GC")
+        k := "GOLD"
+    else if str.contains(t, "SPX") or str.contains(t, "US500") or str.startswith(t, "ES") or str.contains(t, "SP500")
+        k := "SPX500"
+    else if str.contains(t, "US30") or str.contains(t, "DJI") or str.startswith(t, "YM") or str.contains(t, "DOW")
+        k := "US30"
+    else if str.contains(t, "US2000") or str.contains(t, "RTY") or str.contains(t, "RUT")
+        k := "US2000"
+    k
+
+if barstate.isfirst
+    array<string> lines = str.split(pasteTxt, "\n")
+    int n = array.size(lines)
+    // pass 1 — find instrument blocks: a short line with no '|' that is not a title/note line
+    array<string> bName = array.new_string()
+    array<int> bStart = array.new_int()
+    if n > 0
+        for i = 0 to n - 1
+            string ln = str.trim(array.get(lines, i))
+            if str.length(ln) >= 2 and str.length(ln) <= 14 and not str.contains(ln, "|") and not str.startswith(ln, "─") and not str.startswith(ln, "Generated") and not str.startswith(ln, "Reading")
+                array.push(bName, str.upper(ln))
+                array.push(bStart, i)
+    int nb = array.size(bName)
+    if nb == 0
+        parseNote := "Paste the OI Profile export into the indicator settings (1 · Data)."
+    else
+        string want = str.upper(overrideKey) != "" ? str.upper(overrideKey) : f_chartKey()
+        int pick = 0
+        for b = 0 to nb - 1
+            if array.get(bName, b) == want
+                pick := b
+        int s0 = array.get(bStart, pick) + 1
+        int s1 = pick + 1 < nb ? array.get(bStart, pick + 1) : n
+        mName := array.get(bName, pick)
+        if array.get(bName, pick) != want
+            parseNote := "No block named " + want + " — showing " + mName + "."
+        // header line (Generated: …) is above the first name line
+        for i = 0 to n - 1
+            string ln2 = str.trim(array.get(lines, i))
+            if str.startswith(ln2, "Generated:")
+                mGen := str.trim(str.replace(ln2, "Generated:", ""))
+        // pass 2 — parse the chosen block
+        if s1 > s0
+            for i = s0 to s1 - 1
+                string ln3 = str.trim(array.get(lines, i))
+                if str.length(ln3) > 2
+                    array<string> p = str.split(ln3, "|")
+                    string tag = array.get(p, 0)
+                    if tag == "M"
+                        int np = array.size(p)
+                        for j = 1 to np - 2 by 2
+                            string key = array.get(p, j)
+                            string val = array.get(p, j + 1)
+                            if key == "spot"
+                                mSpot := str.tonumber(val)
+                            else if key == "regime"
+                                mRegime := val
+                            else if key == "netgex"
+                                mNet := str.tonumber(val)
+                            else if key == "book"
+                                mBook := val
+                            else if key == "bookpct"
+                                mBookPct := str.tonumber(val)
+                            else if key == "zg"
+                                mZg := str.tonumber(val)
+                            else if key == "flip"
+                                mFlip := str.tonumber(val)
+                            else if key == "em_hi"
+                                mEmHi := str.tonumber(val)
+                            else if key == "em_lo"
+                                mEmLo := str.tonumber(val)
+                            else if key == "empct"
+                                mEmPct := str.tonumber(val)
+                            else if key == "iv"
+                                mIv := str.tonumber(val)
+                            else if key == "rr"
+                                mRr := str.tonumber(val)
+                            else if key == "refmove"
+                                mRef := str.tonumber(val)
+                            else if key == "binw"
+                                mBinw := str.tonumber(val)
+                    else if tag == "H0"
+                        mUp1 := f_num(p, 2)
+                        mDn1 := f_num(p, 4)
+                    else if tag == "L"
+                        array.push(lvType, f_str(p, 1))
+                        array.push(lvPrice, f_num(p, 2))
+                        array.push(lvLabel, f_str(p, 3))
+                        array.push(lvStr, f_num(p, 4))
+                        array.push(lvTouch, f_num(p, 5))
+                        array.push(lvEta, f_num(p, 6))
+                        array.push(lvExp, f_str(p, 7))
+                    else if tag == "G"
+                        array.push(gP, f_num(p, 1))
+                        array.push(gN, f_num(p, 2))
+                    else if tag == "V"
+                        array.push(vP, f_num(p, 1))
+                        array.push(vV, f_num(p, 2))
+                    else if tag == "O"
+                        array.push(oP, f_num(p, 1))
+                        array.push(oV, f_num(p, 2))
+                    else if tag == "S"
+                        array.push(sP, f_num(p, 1))
+                        array.push(sI, f_num(p, 2))
+                    else if tag == "X"
+                        array.push(xP, f_num(p, 1))
+                        array.push(xG0, f_num(p, 2))
+                        array.push(xG1, f_num(p, 3))
+                        array.push(xG2, f_num(p, 4))
+                        array.push(xG3, f_num(p, 5))
+                        array.push(xH, f_num(p, 6))
+        parsed := array.size(lvPrice) > 0 or array.size(gP) > 0
+
+tblPosition = tblPos == "top right" ? position.top_right : tblPos == "bottom left" ? position.bottom_left : tblPos == "bottom right" ? position.bottom_right : position.top_left
+
+// ── Helpers ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+f_lvCol(string t) =>
+    t == "call_wall" ? cCall : t == "put_wall" ? cPut : t == "zero_gamma" or t == "gex_flip" ? cZero : t == "max_pain" ? cPain : t == "vanna_flip" ? cVanna : t == "charm_flip" ? cCharm : t == "oi_volume" ? cVol : t == "gamma_peak" ? cPeak : cEM
+
+f_lvStyle(string t) =>
+    t == "max_pain" ? line.style_dashed : t == "zero_gamma" or t == "gex_flip" or t == "vanna_flip" or t == "charm_flip" ? line.style_dotted : t == "exp_hi" or t == "exp_lo" ? line.style_dashed : line.style_solid
+
+f_lblSize() =>
+    lblSizeIn == "tiny" ? size.tiny : lblSizeIn == "normal" ? size.normal : size.small
+
+
+f_arrMax(array<float> a) =>
+    float m = na
+    if array.size(a) > 0
+        m := array.max(a)
+    m
+
+f_arrMin(array<float> a) =>
+    float m = na
+    if array.size(a) > 0
+        m := array.min(a)
+    m
+
+f_absMax(array<float> a) =>
+    float m = 0.0
+    if array.size(a) > 0
+        for i = 0 to array.size(a) - 1
+            float v = array.get(a, i)
+            if not na(v)
+                m := math.max(m, math.abs(v))
+    m
+
+// ── Drawing (last bar only; everything is deleted and redrawn) ──────────────────────────────────────────────────────────────
+var array<box> dBox = array.new<box>()
+var array<line> dLine = array.new<line>()
+var array<label> dLbl = array.new<label>()
+var array<polyline> dPoly = array.new<polyline>()
+var table tbl = na
+
+if barstate.islast
+    // clear the previous frame
+    if array.size(dBox) > 0
+        for i = 0 to array.size(dBox) - 1
+            box.delete(array.get(dBox, i))
+        array.clear(dBox)
+    if array.size(dLine) > 0
+        for i = 0 to array.size(dLine) - 1
+            line.delete(array.get(dLine, i))
+        array.clear(dLine)
+    if array.size(dLbl) > 0
+        for i = 0 to array.size(dLbl) - 1
+            label.delete(array.get(dLbl, i))
+        array.clear(dLbl)
+    if array.size(dPoly) > 0
+        for i = 0 to array.size(dPoly) - 1
+            polyline.delete(array.get(dPoly, i))
+        array.clear(dPoly)
+    table.delete(tbl)
+
+    if not parsed
+        tbl := table.new(tblPosition, 1, 1, bgcolor=color.new(#0d1117, 8), frame_color=color.new(#2a3340, 0), frame_width=1)
+        table.cell(tbl, 0, 0, parseNote != "" ? parseNote : "OI Profile: no data parsed.", text_color=color.new(#f0b04a, 0), text_size=size.small, text_halign=text.align_left)
+    else
+        int bi = bar_index
+        int hw = int(math.round(colW / 2.0))
+        int xL = bi + gapBars                       // where the profile panel starts
+        int c0 = xL + hw                             // GEX centre
+        int c1 = c0 + colW + colGap                  // vanna centre
+        int c2 = c1 + colW + colGap                  // volume centre
+        int s3 = c2 + hw + colGap                    // smile left edge
+        int c4 = s3 + colW + colGap + hw             // helix centre
+        int xEnd = c4 + hw
+        float ref = na(mRef) ? math.max(syminfo.mintick * 50, (nz(f_arrMax(gP), close) - nz(f_arrMin(gP), close)) / 6.4) : mRef
+        float pTop = nz(f_arrMax(xP), nz(f_arrMax(gP), close + 2 * ref))
+        float pBot = nz(f_arrMin(xP), nz(f_arrMin(gP), close - 2 * ref))
+        if array.size(lvPrice) > 0
+            pTop := math.max(pTop, f_arrMax(lvPrice))
+            pBot := math.min(pBot, f_arrMin(lvPrice))
+        float halfBin = na(mBinw) ? ref / 40.0 : mBinw / 2.0
+
+        // ── expected-move box ──
+        if showEM and not na(mEmHi) and not na(mEmLo)
+            array.push(dBox, box.new(left=bi - 80, top=mEmHi, right=xL - 1, bottom=mEmLo, border_color=color.new(cEM, 55), border_style=line.style_dashed, border_width=1, bgcolor=color.new(cEM, 93)))
+            array.push(dLbl, label.new(x=xL - 1, y=mEmHi, text="EXPECTED MOVE  ±" + str.tostring((mEmHi - mEmLo) / 2, format.mintick) + (na(mEmPct) ? "" : "  (" + str.tostring(mEmPct, "#.##") + "%)"), xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_down, textcolor=cEM, size=size.tiny, text_halign=text.align_right))
+
+        // ── levels: zone band, line, label chip (labels de-overlapped in price) ──
+        int nL = array.size(lvPrice)
+        float lastY = na
+        if nL > 0
+            float gap = ref * 0.075
+            for i = 0 to nL - 1
+                string t = array.get(lvType, i)
+                float p = array.get(lvPrice, i)
+                color col = f_lvCol(t)
+                float strn = nz(array.get(lvStr, i), 0.5)
+                bool isEdge = t == "exp_hi" or t == "exp_lo"
+                if showZones and not isEdge and t != "charm_flip"
+                    float zh = ref * zoneFrac * (0.6 + 0.8 * strn)
+                    array.push(dBox, box.new(left=bi - 40, top=p + zh, right=xL - 1, bottom=p - zh, border_color=color(na), bgcolor=color.new(col, 90)))
+                if showLevels
+                    int wdt = isEdge ? 1 : (1 + int(math.round(strn * 2)))
+                    array.push(dLine, line.new(x1=bi - 120, y1=p, x2=xL, y2=p, xloc=xloc.bar_index, color=color.new(col, 8), style=f_lvStyle(t), width=wdt))
+                    float ly = na(lastY) ? p : math.min(p, lastY - gap)
+                    lastY := ly
+                    float tp = array.get(lvTouch, i)
+                    float et = array.get(lvEta, i)
+                    string txt = array.get(lvLabel, i) + "  " + str.tostring(p, format.mintick) + (array.get(lvExp, i) != "" ? "  ·  " + array.get(lvExp, i) : "") + (na(tp) ? "" : "  ·  " + str.tostring(tp, "#") + "%" + (na(et) ? "" : "~" + str.tostring(et, "#") + "m"))
+                    array.push(dLbl, label.new(x=xL, y=ly, text=txt, xloc=xloc.bar_index, yloc=yloc.price, color=color.new(#0d1117, 12), style=label.style_label_left, textcolor=col, size=f_lblSize()))
+
+        // ── column titles + spines ──
+        float yT = pTop + ref * 0.12
+        if showGex
+            array.push(dLbl, label.new(x=c0, y=yT, text="GEX PROFILE", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
+            array.push(dLine, line.new(x1=c0, y1=pBot, x2=c0, y2=pTop, xloc=xloc.bar_index, color=color.new(#2a3340, 0), width=1))
+        if showVanna
+            array.push(dLbl, label.new(x=c1, y=yT, text="VANNA", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
+            array.push(dLine, line.new(x1=c1, y1=pBot, x2=c1, y2=pTop, xloc=xloc.bar_index, color=color.new(#2a3340, 0), width=1))
+        if showVol
+            array.push(dLbl, label.new(x=c2, y=yT, text="VOLUME", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
+            array.push(dLine, line.new(x1=c2 - hw, y1=pBot, x2=c2 - hw, y2=pTop, xloc=xloc.bar_index, color=color.new(#2a3340, 0), width=1))
+        if showSmile
+            array.push(dLbl, label.new(x=s3 + hw, y=yT, text="IV SMILE", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
+        if showHelix
+            array.push(dLbl, label.new(x=c4, y=yT, text="GAMMA HELIX", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
+            array.push(dLine, line.new(x1=c4, y1=pBot, x2=c4, y2=pTop, xloc=xloc.bar_index, color=color.new(#2a3340, 0), width=1, style=line.style_dotted))
+
+        // ── GEX profile bars (sqrt scale so small strikes still read) ──
+        if showGex and array.size(gP) > 0
+            float gmax = f_absMax(gN)
+            if gmax > 0
+                for i = 0 to array.size(gP) - 1
+                    float v = array.get(gN, i)
+                    float r = math.sqrt(math.abs(v) / gmax)
+                    int len = int(math.round(r * hw))
+                    if len >= 1
+                        float py = array.get(gP, i)
+                        color bc = v > 0 ? cPut : cCall
+                        array.push(dBox, box.new(left=v > 0 ? c0 : c0 - len, top=py + halfBin * 0.8, right=v > 0 ? c0 + len : c0, bottom=py - halfBin * 0.8, border_color=color(na), bgcolor=color.new(bc, 55 - int(r * 40))))
+
+        // ── vanna bars ──
+        if showVanna and array.size(vP) > 0
+            float vmax = f_absMax(vV)
+            if vmax > 0
+                for i = 0 to array.size(vP) - 1
+                    float v = array.get(vV, i)
+                    int len = int(math.round(math.abs(v) / vmax * hw))
+                    if len >= 1
+                        float py = array.get(vP, i)
+                        array.push(dBox, box.new(left=v > 0 ? c1 : c1 - len, top=py + halfBin * 0.5, right=v > 0 ? c1 + len : c1, bottom=py - halfBin * 0.5, border_color=color(na), bgcolor=color.new(v > 0 ? #38bdf8 : cVanna, 25)))
+
+        // ── volume bars ──
+        if showVol and array.size(oP) > 0
+            float omax = f_absMax(oV)
+            if omax > 0
+                for i = 0 to array.size(oP) - 1
+                    float v = array.get(oV, i)
+                    int len = int(math.round(v / omax * colW))
+                    if len >= 1
+                        float py = array.get(oP, i)
+                        array.push(dBox, box.new(left=c2 - hw, top=py + halfBin * 0.5, right=c2 - hw + len, bottom=py - halfBin * 0.5, border_color=color(na), bgcolor=color.new(cVol, 30)))
+
+        // ── IV smile (stored points only) ──
+        if showSmile and array.size(sP) > 1
+            float imin = array.min(sI)
+            float imax = array.max(sI)
+            float irng = math.max(imax - imin, 0.01)
+            array<chart.point> pts = array.new<chart.point>()
+            for i = 0 to array.size(sP) - 1
+                int sx = s3 + int(math.round((array.get(sI, i) - imin) / irng * colW))
+                array.push(pts, chart.point.from_index(sx, array.get(sP, i)))
+            array.push(dPoly, polyline.new(pts, curved=true, closed=false, xloc=xloc.bar_index, line_color=cSmile, line_width=2))
+            array.push(dLbl, label.new(x=s3 + hw, y=pBot - ref * 0.1, text="ATM IV " + (na(mIv) ? "" : str.tostring(mIv, "#.#") + "%") + (na(mRr) ? "" : "  RR " + str.tostring(mRr, "#.#")), xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_up, textcolor=cSmile, size=size.tiny))
+
+        // ── gamma helix: gamma strands (IV shifts) + mirrored hedge strand, rungs between, marker at zero gamma ──
+        if showHelix and array.size(xP) > 1
+            float gm = math.max(f_absMax(xG0), math.max(f_absMax(xG1), math.max(f_absMax(xG2), f_absMax(xG3))))
+            float hm = f_absMax(xH)
+            if gm > 0 and hm > 0
+                array<chart.point> a0 = array.new<chart.point>()
+                array<chart.point> a1 = array.new<chart.point>()
+                array<chart.point> a2 = array.new<chart.point>()
+                array<chart.point> a3 = array.new<chart.point>()
+                array<chart.point> ah = array.new<chart.point>()
+                int m = array.size(xP)
+                for i = 0 to m - 1
+                    float py = array.get(xP, i)
+                    array.push(a0, chart.point.from_index(c4 + int(math.round(array.get(xG0, i) / gm * hw)), py))
+                    array.push(a1, chart.point.from_index(c4 + int(math.round(array.get(xG1, i) / gm * hw)), py))
+                    array.push(a2, chart.point.from_index(c4 + int(math.round(array.get(xG2, i) / gm * hw)), py))
+                    array.push(a3, chart.point.from_index(c4 + int(math.round(array.get(xG3, i) / gm * hw)), py))
+                    int xh = c4 - int(math.round(array.get(xH, i) / hm * hw))
+                    array.push(ah, chart.point.from_index(xh, py))
+                    if i % 2 == 0
+                        array.push(dLine, line.new(x1=c4 + int(math.round(array.get(xG1, i) / gm * hw)), y1=py, x2=xh, y2=py, xloc=xloc.bar_index, color=color.new(cZero, 70), width=1))
+                array.push(dPoly, polyline.new(a0, curved=true, closed=false, xloc=xloc.bar_index, line_color=color.new(#9fd6f5, 30), line_width=1))
+                array.push(dPoly, polyline.new(a2, curved=true, closed=false, xloc=xloc.bar_index, line_color=color.new(#3a8fc2, 25), line_width=1))
+                array.push(dPoly, polyline.new(a3, curved=true, closed=false, xloc=xloc.bar_index, line_color=color.new(#2a6890, 20), line_width=1))
+                array.push(dPoly, polyline.new(a1, curved=true, closed=false, xloc=xloc.bar_index, line_color=#5cc8ff, line_width=3))
+                array.push(dPoly, polyline.new(ah, curved=true, closed=false, xloc=xloc.bar_index, line_color=color.new(#f1f5f9, 0), line_width=3))
+                if not na(mZg)
+                    array.push(dLbl, label.new(x=c4, y=mZg, text="ZERO GAMMA", xloc=xloc.bar_index, yloc=yloc.price, color=cZero, style=label.style_circle, textcolor=color.new(color.white, 0), size=size.tiny))
+
+        // ── summary table ──
+        if showTable
+            tbl := table.new(tblPosition, 2, 8, bgcolor=color.new(#0d1117, 6), frame_color=color.new(#2a3340, 0), frame_width=1, border_width=0)
+            color rc = mRegime == "BREAKOUT" ? cCall : cPut
+            table.cell(tbl, 0, 0, "OI PROFILE · " + mName, text_color=color.new(#e6e9ef, 0), text_size=size.small, text_halign=text.align_left)
+            table.cell(tbl, 1, 0, mGen == "" ? "" : str.substring(mGen, 0, math.min(16, str.length(mGen))), text_color=color.new(#8b95a3, 0), text_size=size.tiny, text_halign=text.align_right)
+            table.cell(tbl, 0, 1, "REGIME", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.cell(tbl, 1, 1, mRegime == "BREAKOUT" ? "BREAKOUT · short gamma" : "PIN · long gamma", text_color=rc, text_size=size.small, text_halign=text.align_right)
+            table.cell(tbl, 0, 2, "STRONGEST DTE", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.cell(tbl, 1, 2, mBook + (na(mBookPct) ? "" : "  " + str.tostring(mBookPct, "#") + "% of gamma"), text_color=cPain, text_size=size.small, text_halign=text.align_right)
+            table.cell(tbl, 0, 3, "ZERO GAMMA", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.cell(tbl, 1, 3, na(mZg) ? "—" : str.tostring(mZg, format.mintick) + "  (" + (mZg >= close ? "+" : "") + str.tostring(mZg - close, format.mintick) + ")", text_color=cZero, text_size=size.small, text_halign=text.align_right)
+            table.cell(tbl, 0, 4, "EXP MOVE", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.cell(tbl, 1, 4, na(mEmHi) ? "—" : "±" + str.tostring((mEmHi - mEmLo) / 2, format.mintick) + (na(mEmPct) ? "" : "  (" + str.tostring(mEmPct, "#.##") + "%)"), text_color=cEM, text_size=size.small, text_halign=text.align_right)
+            table.cell(tbl, 0, 5, "ATM IV · RR", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.cell(tbl, 1, 5, (na(mIv) ? "—" : str.tostring(mIv, "#.#") + "%") + (na(mRr) ? "" : "  ·  " + str.tostring(mRr, "#.#")), text_color=cSmile, text_size=size.small, text_halign=text.align_right)
+            table.cell(tbl, 0, 6, "HEDGE ±1%", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.cell(tbl, 1, 6, na(mUp1) ? "—" : "↑ " + str.tostring(mUp1, "#") + " · ↓ " + str.tostring(mDn1, "#") + " contracts", text_color=color.new(#cbd5e1, 0), text_size=size.small, text_halign=text.align_right)
+            table.cell(tbl, 0, 7, "a picture of the book — not a signal", text_color=color.new(#5b6678, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.merge_cells(tbl, 0, 7, 1, 7)

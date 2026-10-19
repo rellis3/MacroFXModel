@@ -45,6 +45,9 @@ ok('title and instrument header lines', rows[0].startsWith('──── OI PROF
 ok('M line carries spot, regime, zero gamma', /^M\|spot\|100\.00\|regime\|BREAKOUT/.test(rows.find(r => r.startsWith('M|'))) && /zg\|101\.70/.test(rows.find(r => r.startsWith('M|'))));
 ok('level lines have 8 pipe fields', rows.filter(r => r.startsWith('L|')).every(r => r.split('|').length === 8));
 ok('every data line is pipe-delimited with a known tag', rows.filter(r => /^[A-Z]\d?\|/.test(r)).every(r => 'MHLGVOSX'.includes(r[0])));
+ok('no exponent notation anywhere (Pine tonumber-safe)', !rows.some(r => /\d[eE][+-]?\d/.test(r) && /^[MHLGVOSX]\d?\|/.test(r)));
+ok('no empty fields between pipes (Pine split-safe)', rows.filter(r => /^[MHLGVOSX]\d?\|/.test(r)).every(r => !/\|\|/.test(r) && !/\|$/.test(r)), rows.find(r => /^[MHLGVOSX]\d?\|/.test(r) && (/\|\|/.test(r) || /\|$/.test(r))));
+ok('bar series are scaled to ±1000', Math.max(...rows.filter(r => r.startsWith('G|')).map(r => Math.abs(+r.split('|')[2]))) <= 1000.05);
 ok('evidence status is stated in the header', /not a signal/.test(rows[2]));
 ok('degenerate input is null', buildOiProfile({ spot: 0 }, { legs: [] }) === null && buildProfileText(null) === '');
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
