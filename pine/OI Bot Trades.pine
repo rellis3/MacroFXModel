@@ -23,6 +23,10 @@ indicator("OI Bot Trades", overlay=true, max_boxes_count=500, max_lines_count=50
 //      open   — the bot holds a position on it now (orange outline)
 //      done   — traded today and closed (dimmed)
 //      primed — skipped: price was already past it when the plan loaded (dimmed)
+//    HEDGE PLAN (OI Lab v2, section 00, or /api/hedging-plan/export): today's dealer-hedging plan per market
+//    (FOLLOW breaks of the p75 lines when hedging speeds moves, FADE them when it calms moves). Paste it with or
+//    instead of the bot blocks; its zones get a 'HEDGE' prefix and their own show/hide switch. One trade a day:
+//    once one side triggers, the other reads 'done'.
 // 4. MAX-PAIN zones ("@mkt") are not limit levels: they fire at the live price
 //    while price is still stretched away from the pin, and the bot re-anchors the
 //    stop at that price. The box shows the plan's numbers from when it was built.
@@ -65,6 +69,7 @@ maxDistPct    = input.float(3.0, "Only draw zones within this % of price", minva
 showDone      = input.bool(true, "Show done / skipped zones (dimmed)", group="Layout")
 showOiBot     = input.bool(true, "Show OI bot zones",     group="Layout")
 showVolBot    = input.bool(true, "Show OI-Vol bot zones", group="Layout")
+showHedge     = input.bool(true, "Show hedge plan zones", group="Layout")
 showBackLine  = input.bool(true, "Carry the entry level back over the chart", group="Layout")
 backBars      = input.int(80,   "…bars back",                    minval=5, maxval=2000, group="Layout")
 showTable     = input.bool(true, "Show summary table",           group="Layout")
@@ -150,7 +155,7 @@ if barstate.islast
                 generated := raw
                 continue
             if str.startswith(raw, "─")
-                curBot := str.contains(up, "OI-VOL") ? "V" : "O"
+                curBot := str.contains(up, "OI-VOL") ? "V" : str.contains(up, "HEDGE") ? "H" : "O"
                 continue
             isZone = str.startswith(up, "TZ ")
             isHdr  = str.startswith(raw, "·")
@@ -178,9 +183,10 @@ if barstate.islast
             rr    = array.get(p, 9)
             ptTok = array.size(p) > 10 ? array.get(p, 10) : ""
             isVol = curBot == "V"
+            isHedge = curBot == "H"
             if na(entry) or na(sl)
                 continue
-            if (isVol and not showVolBot) or (not isVol and not showOiBot)
+            if (isVol and not showVolBot) or (isHedge and not showHedge) or (curBot == "O" and not showOiBot)
                 continue
             dim = state == "done" or state == "primed"
             if state == "armed" or state == "open"
@@ -229,7 +235,7 @@ if barstate.islast
             // Label beyond the target end of the box (above a buy, below a sell).
             yEnd = isBuy ? math.max(entry, sl, na(tp) ? entry : tp) : math.min(entry, sl, na(tp) ? entry : tp)
             reachTxt = str.startswith(ptTok, "pt:") ? " · reach " + str.substring(ptTok, 3) + "%" : ""
-            txt  = (isVol ? "VOL " : "") + side + " " + mode + (mode == "maxpain" ? " @mkt" : "") +
+            txt  = (isVol ? "VOL " : isHedge ? "HEDGE " : "") + side + " " + mode + (mode == "maxpain" ? " @mkt" : "") +
                  "\nE " + f_px(entry) + "\nSL " + f_px(sl) + "\nTP " + f_px(tp) +
                  (na(tp2) ? "" : " / " + f_px(tp2)) + "\n" + rr + "R · " + state + reachTxt
             array.push(tzLabels, label.new(x1 + math.floor(boxBars / 2), yEnd, txt, xloc=xloc.bar_index,

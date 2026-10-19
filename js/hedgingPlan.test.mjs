@@ -40,4 +40,25 @@ t('scoring: touch before 08:00 = no trade; no touch = no trade; fade sell stoppe
 
 t('bad input -> null', () => { assert.equal(buildPlan(null, lines, 100), null); assert.equal(buildPlan({ state: 'calms' }, {}, 100), null); });
 
-console.log(`hedgingPlan: ${n} tests passed`);
+
+// ── export block (pine/OI Bot Trades.pine format) ──
+const { buildHedgePlanText, orderStates } = await import('./hedgingPlanExport.js');
+t('export: OI Bot Trades block format, one block per market, 10+ tokens per zone line', () => {
+  const plan = buildPlan({ state: 'speeds', switchPoint: 100.2 }, lines, 100);
+  const txt = buildHedgePlanText({ markets: [{ pair: 'NAS100_USD', open: 100, plan }, { pair: 'XAU_USD', plan: null, error: 'no daily lines' }] }, {}, { generated: Date.parse('2026-10-19T13:40:00Z') });
+  const rows = txt.split('\n');
+  assert.match(rows[0], /^──── HEDGE PLAN/); assert.match(rows[1], /^Generated: 2026-10-19 13:40 UTC/);
+  assert.ok(rows.includes('NQ') && rows.includes('GOLD'));
+  const z = rows.filter(r => r.startsWith('TZ '));
+  assert.equal(z.length, 2);
+  for (const r of z) { const p = r.split(' '); assert.ok(p.length >= 10); assert.ok(Number.isFinite(+p[4]) && Number.isFinite(+p[5])); assert.equal(p[7], '-'); assert.equal(p[8], 'armed'); }
+  assert.match(txt, /switch 100\.20 inside the lines/);
+});
+t('export: live states (armed / open / done / primed)', () => {
+  const plan = buildPlan({ state: 'speeds' }, lines, 100);
+  assert.deepEqual(orderStates(plan, [bar(300, 100, 101.2, 100, 101)], 400), { up: 'primed', down: 'primed' });
+  assert.deepEqual(orderStates(plan, [bar(600, 100.9, 101.05, 100.9, 101)], 610), { up: 'open', down: 'done' });
+  assert.deepEqual(orderStates(plan, [bar(600, 100.9, 101.05, 100.9, 101), bar(601, 101, 101.6, 101, 101.5)], 700), { up: 'done', down: 'done' });
+  assert.deepEqual(orderStates(plan, [bar(600, 100, 100.2, 99.9, 100)], 610), { up: 'armed', down: 'armed' });
+});
+console.log(`hedgingPlan + export: ${n} tests passed`);

@@ -85,7 +85,8 @@ svg text{font-family:var(--mono)}
   <div id="labView">
 
   <div class="card" id="plainCard">
-    <h2><em>00</em> This morning, in plain English <span id="plainAsOf" style="font-size:11px;letter-spacing:.04em;text-transform:none;color:var(--tx3)"></span></h2>
+    <h2><em>00</em> This morning, in plain English <span id="plainAsOf" style="font-size:11px;letter-spacing:.04em;text-transform:none;color:var(--tx3)"></span>
+      <span class="tgl"><button class="btn" id="hedgeTvBtn" title="Copies today's hedge plan as a block for the 'OI Bot Trades' TradingView indicator (pine/OI Bot Trades.pine). Paste it with or instead of the OI bot block; each chart draws its own market.">⬇ TradingView (hedge plan)</button><a class="btn" href="/api/hedging-plan/export" target="_blank" title="The same block as plain text">text</a></span></h2>
     <div class="sub">What last night's options books force the big dealers to do as price moves, for each market, against the price now. Built from the whole Cboe book (index options plus the index ETF; gold from GLD). <b>It tells you how the day may behave, not which way it goes</b>: used as a fade/follow entry rule it lost money in our backtest.</div>
     <div id="plainBody" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px"></div>
   </div>
@@ -842,6 +843,17 @@ function planHtml(x){
     <table class="zt" style="margin-top:4px"><tr><th>order</th><th>entry</th><th>stop</th><th>target</th><th>risk (pts)</th><th>reward : risk</th></tr>${rows}</table>
     <ul style="margin:4px 0 0;padding-left:18px;color:var(--tx3);font-size:11.5px;line-height:1.5">${p.notes.map(n => `<li>${esc(n)}</li>`).join('')}<li>${esc(p.evidence)}</li></ul></div>`;
 }
+
+$('#hedgeTvBtn').onclick = async () => {
+  const b = $('#hedgeTvBtn'), was = b.textContent;
+  try {
+    b.textContent = 'fetching…';
+    const t = await (await fetch('/api/hedging-plan/export', { cache: 'no-store' })).text();
+    await navigator.clipboard.writeText(t);
+    b.textContent = 'Copied ✓ — paste into OI Bot Trades';
+  } catch (e) { b.textContent = 'Copy failed: open "text"'; }
+  setTimeout(() => { b.textContent = was; }, 2500);
+};
 
 async function drawPlain(){
   const body = $('#plainBody');

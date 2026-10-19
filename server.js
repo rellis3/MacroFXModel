@@ -302,6 +302,7 @@ import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
+import { buildHedgePlanText as _hpText, orderStates as _hpStates } from './js/hedgingPlanExport.js';   // hedge plan → pine/OI Bot Trades.pine
 import compression from 'compression';
 import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
 import { spreadProfileInit, spreadProfileSample, spreadProfileFlush, spreadProfileReport, MOTIF_UNIVERSE as _SPREAD_UNIVERSE } from './js/spreadProfile.js';
@@ -23180,10 +23181,9 @@ app.get('/api/hedging-forward', async (req, res) => {
 // GET /api/hedging-plan -> today's plan per market: the hedging state at the London open, the chosen lines, and the
 // orders js/hedgingPlan.js derives (follow breaks when hedging speeds moves, fade the edges when it calms them).
 let _hpCache = { at: 0, date: null, v: null };
-app.get('/api/hedging-plan', async (req, res) => {
-  try {
+async function _hedgingPlanPayload(fresh = false) {
     const p = _hfLondon(new Date()), date = `${p.year}-${p.month}-${p.day}`;
-    if (!_hpCache.v || _hpCache.date !== date || Date.now() - _hpCache.at > 10 * 60_000 || req.query.fresh === '1') {
+    if (!_hpCache.v || _hpCache.date !== date || Date.now() - _hpCache.at > 10 * 60_000 || fresh) {
       const sum = (_hsSummary.v && Date.now() - _hsSummary.at < 20 * 60_000) ? _hsSummary.v : await _buildHedgingSummary();
       _hsSummary = { at: Date.now(), v: sum };
       let lad = {};
@@ -23200,8 +23200,30 @@ app.get('/api/hedging-plan', async (req, res) => {
       }
       _hpCache = { at: Date.now(), date, v: { date, markets, evidence: _HP_EVIDENCE } };
     }
-    res.json({ ok: true, ..._hpCache.v });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    return _hpCache.v;
+}
+app.get('/api/hedging-plan', async (req, res) => {
+  try { res.json({ ok: true, ...(await _hedgingPlanPayload(req.query.fresh === '1')) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/hedging-plan/export -> today's plan as the text block pine/OI Bot Trades.pine draws (paste below or instead
+// of the OI bot block). Each order carries its live state from today's bars: armed / open / done / primed.
+app.get('/api/hedging-plan/export', async (req, res) => {
+  try {
+    const v = await _hedgingPlanPayload(req.query.fresh === '1');
+    const lp = _hfLondon(new Date()), nowL = (+lp.hour % 24) * 60 + (+lp.minute);
+    const states = {};
+    for (const m of v.markets) {
+      if (!m.plan) continue;
+      try {
+        const mid0 = _hfLondonMidnightMs(v.date);
+        const bars = (await _hfSessionBars(m.pair, v.date, 1320)).filter(b => b.t < Math.min(Date.now() - 60_000, mid0 + 22 * 3600_000))
+          .map(b => ({ ...b, lmin: Math.round((b.t - mid0) / 60_000) }));
+        states[m.pair] = _hpStates(m.plan, bars, nowL);
+      } catch { /* no bars -> armed */ }
+    }
+    res.type('text/plain').send(_hpText(v, states));
+  } catch (e) { res.status(500).type('text/plain').send(`Export failed: ${e.message}`); }
 });
 
 app.get('/api/cboe-snapshots', async (req, res) => {
