@@ -96,4 +96,17 @@ candidate for a confirmation prereg on forward data, not a trading rule. Anythin
 
 ## Amendments
 
+### A1 — 2026-10-19 — PRE-RESULTS
+
+While wiring the script, a check of which bars land in each session showed that `bucketM1IntoSessions(packed, 0)`
+labels every UTC day with the **next** date (`getUTCHours() >= 0` is always true). Grouping is still by UTC day, so
+the Asia ladder is unaffected, but `runRangeLineAnalyser`'s Monday range is then built from the session labelled
+Monday, which holds **Sunday evening's stub** (EURUSD 2026-08-03 label: 174 bars, 2026-08-02 21:04 → 23:59 UTC), and the
+real Monday is labelled Tuesday. Testing that would test a Sunday-evening ladder under the Monday name.
+
+Change: session keys are re-labelled to their true UTC date (label − 1 day) before anything else, so the Monday ladder
+comes from the real Monday, and Saturday/Sunday sessions (the weekend stub) are excluded as in `plans/DATA_SPEC.md`.
+Nothing else changes. No outcome had been computed: the only data read so far was bar counts and the session check
+above. The book's own handling is recorded as a fault (`plans/DATA_SPEC.md` §5) for whoever owns the book.
+
 ## RESULTS
