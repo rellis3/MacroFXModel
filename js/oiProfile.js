@@ -134,6 +134,16 @@ export function buildOiProfile(inst, opts = {}) {
   };
 }
 
+/** Re-express every PRICE in the profile through `fn` (e.g. spot CFD terms → futures terms for an NQ1!/GC1! chart). Distances (refMove, binWidth) and the gamma/vanna/volume
+ *  magnitudes are untouched; P(touch) was computed on the spot-terms levels first, so it is not recomputed. */
+export function shiftProfilePrices(p, fn, label = 'futures') {
+  if (!p) return p;
+  const f = v => (Number.isFinite(v) ? fn(v) : v);
+  const mapRows = rows => (rows || []).map(r => ({ ...r, price: f(r.price) }));
+  return { ...p, terms: label, spot: f(p.spot), zeroGamma: f(p.zeroGamma), flip: f(p.flip), em: p.em ? { ...p.em, hi: f(p.em.hi), lo: f(p.em.lo) } : null,
+    levels: mapRows(p.levels), gex: mapRows(p.gex), vanna: mapRows(p.vanna), volume: mapRows(p.volume), smile: mapRows(p.smile), helix: p.helix ? mapRows(p.helix) : null };
+}
+
 /** Pipe-delimited block for the Pine indicator. One instrument per block; first line after the title names it.
  *  Pine's str.tonumber may not read exponent notation and may drop empty fields, so: plain decimals only, '-' for a missing value, and every bar series is scaled to ±1000. */
 export function buildProfileText(p, { name, generated = '', digits = 2 } = {}) {
@@ -144,7 +154,7 @@ export function buildProfileText(p, { name, generated = '', digits = 2 } = {}) {
   const sc = (v, m) => (m > 0 && Number.isFinite(v) ? (v / m * 1000).toFixed(1) : '0.0');
   const out = ['──── OI PROFILE ' + '─'.repeat(30), `Generated: ${generated}`, '', name || p.sym];
   out.push(`M|spot|${f(p.spot)}|regime|${p.regime}|netgex|${Number.isFinite(p.netGex) ? Math.round(p.netGex / 1000) : '-'}|book|${p.book.label.replace(/\s+/g, '')}|bookpct|${p.book.share}|zg|${f(p.zeroGamma)}|flip|${f(p.flip)}`
-    + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 3)}|iv|${plain(p.iv.atm, 2)}|rr|${plain(p.iv.rr, 2)}|refmove|${f(p.refMove)}|binw|${plain(p.binWidth, 3)}`);
+    + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 3)}|iv|${plain(p.iv.atm, 2)}|rr|${plain(p.iv.rr, 2)}|refmove|${f(p.refMove)}|binw|${plain(p.binWidth, 3)}|terms|${p.terms || 'spot'}`);
   if (p.hedgeRead) out.push(`H0|up1|${Math.round(p.hedgeRead.up1)}|dn1|${Math.round(p.hedgeRead.dn1)}`);
   for (const l of p.levels) out.push(`L|${l.type}|${f(l.price)}|${l.label}|${(+l.strength).toFixed(2)}|${l.touchPct ?? '-'}|${l.etaMin ?? '-'}|${l.expect || '-'}`);
   const gm = mxAbs(p.gex.flatMap(r => [r.net, r.call, r.put]));

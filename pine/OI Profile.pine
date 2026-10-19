@@ -63,6 +63,7 @@ var string mName = ""
 var string mGen = ""
 var string mRegime = ""
 var string mBook = ""
+var string mTerms = "spot"
 var float mSpot = na
 var float mNet = na
 var float mBookPct = na
@@ -248,6 +249,8 @@ if barstate.isfirst
                                     mRef := str.tonumber(val)
                                 else if key == "binw"
                                     mBinw := str.tonumber(val)
+                                else if key == "terms"
+                                    mTerms := val
                         else if tag == "H0"
                             mUp1 := f_num(p, 2)
                             mDn1 := f_num(p, 4)
@@ -491,7 +494,7 @@ if barstate.islast
         if showTable
             tbl := table.new(tblPosition, 2, 8, bgcolor=color.new(#0d1117, 6), frame_color=color.new(#2a3340, 0), frame_width=1, border_width=0)
             color rc = mRegime == "BREAKOUT" ? cCall : cPut
-            table.cell(tbl, 0, 0, "OI PROFILE · " + mName, text_color=color.new(#e6e9ef, 0), text_size=size.small, text_halign=text.align_left)
+            table.cell(tbl, 0, 0, "OI PROFILE · " + mName + (mTerms == "futures" ? " · futures prices" : " · spot/CFD prices"), text_color=color.new(#e6e9ef, 0), text_size=size.small, text_halign=text.align_left)
             table.cell(tbl, 1, 0, mGen == "" ? "" : str.substring(mGen, 0, math.min(16, str.length(mGen))), text_color=color.new(#8b95a3, 0), text_size=size.tiny, text_halign=text.align_right)
             table.cell(tbl, 0, 1, "REGIME", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
             table.cell(tbl, 1, 1, mRegime == "BREAKOUT" ? "BREAKOUT · short gamma" : "PIN · long gamma", text_color=rc, text_size=size.small, text_halign=text.align_right)

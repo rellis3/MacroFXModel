@@ -241,7 +241,7 @@ import { wallStrengthTier as _oiWallTier } from './js/oiConfluence.js';
 import { ladderLegs as _tierLadderLegs, czLegs as _tierCzLegs } from './js/oiTiers.js';
 import { OI_CONF_DEFAULTS, volLines as _confVolLines, oiLevelList as _confOiLevels, findCoincidences as _confFind, buildConfZones as _confZones, confTolerance as _confTol } from './js/oiConf.js';
 import { sessionState as _irSessionState, reforecast as _irReforecast, morningLevels as _irMorning } from './js/intradayRange.js';
-import { oiGexLadder as _oiGexLadder, computeExpiryLevels as _oiComputeExpiry, oiMatrixExpiryLegs as _oiMatrixLegs, oiFlatVol as _oiFlatVol } from './js/oi.js';
+import { oiGexLadder as _oiGexLadder, computeExpiryLevels as _oiComputeExpiry, oiMatrixExpiryLegs as _oiMatrixLegs, oiFlatVol as _oiFlatVol, oiFuturesTermsPrice as _oiFutPx } from './js/oi.js';
 import { buildTradesText as _oiTradesText } from './js/oiTradesExport.js';   // OI bot zones → TradingView block (pine/OI Bot Trades.pine)
 import { emptyBook as _oiShadowEmptyBook, syncPlan as _oiShadowSyncPlan, stepBar as _oiShadowStepBar, summarize as _oiShadowSummarize } from './js/oiShadowExec.js';   // CME-vs-Cboe OI plan paper-trader (forward test, no orders)
 import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst, cfdCashOffset as _cfdCashOffset, cboeShift as _cboeShift, cashRefTime as _cashRefTime } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
@@ -305,7 +305,7 @@ import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dea
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
 import { buildHedgePlanText as _hpText, orderStates as _hpStates } from './js/hedgingPlanExport.js';   // hedge plan → pine/OI Bot Trades.pine
 import { cmeBookContracts as _cmeBook, priceDigits as _priceDigits } from './js/hedgingBooks.js';
-import { buildOiProfile, buildProfileText } from './js/oiProfile.js';   // OI Profile indicator export   // CME listed book → hedging contracts (FX, US30)
+import { buildOiProfile, buildProfileText, shiftProfilePrices } from './js/oiProfile.js';   // OI Profile indicator export   // CME listed book → hedging contracts (FX, US30)
 import compression from 'compression';
 import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
 import { spreadProfileInit, spreadProfileSample, spreadProfileFlush, spreadProfileReport, MOTIF_UNIVERSE as _SPREAD_UNIVERSE } from './js/spreadProfile.js';
@@ -24426,7 +24426,10 @@ app.get('/api/oi-profile/export', async (req, res) => {
       };
       await Promise.race([Promise.all(items.map(it => addReach(it).catch(e => console.warn('[oi-profile] reach failed for', it.sk, e.message)))), new Promise(r => setTimeout(r, 40_000))]);
     }
-    const blocks = items.map(({ sk, inst, prof }) => {
+    // ?terms=futures — for a chart on the FUTURES contract (NQ1!, GC1!, ES1!, 6E1!…): every price gets the stored basis added back (same converter as the levels export)
+    const futTerms = String(req.query.terms || '') === 'futures';
+    const blocks = items.map(({ sk, inst, prof: p0 }) => {
+      const prof = futTerms ? shiftProfilePrices(p0, v => _oiFutPx(v, inst)) : p0;
       const fk = (() => { try { return _forecastKeyForPair(sk); } catch { return null; } })();
       return buildProfileText(prof, { name: fk || String(sk).toUpperCase().replace(/[^A-Z0-9]/g, ''), generated: new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC · saved ' + (inst.savedAt || '?'), digits: _priceDigits(sk, inst.spot) });
     });

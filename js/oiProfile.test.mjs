@@ -1,6 +1,6 @@
 // OI PROFILE — strongest-DTE book, reaction levels, bars, smile (real points only), text format.
 //   node js/oiProfile.test.mjs
-import { buildOiProfile, buildProfileText } from './oiProfile.js';
+import { buildOiProfile, buildProfileText, shiftProfilePrices } from './oiProfile.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
@@ -50,5 +50,8 @@ ok('no empty fields between pipes (Pine split-safe)', rows.filter(r => /^[MHLGVO
 ok('bar series are scaled to ±1000', Math.max(...rows.filter(r => r.startsWith('G|')).map(r => Math.abs(+r.split('|')[2]))) <= 1000.05);
 ok('no prose lines in the paste (only title, Generated, name and data lines)', rows.filter(r => r && !/^[MHLGVOSX]\d?\|/.test(r)).length === 3, rows.filter(r => r && !/^[MHLGVOSX]\d?\|/.test(r)).join(' / '));
 ok('degenerate input is null', buildOiProfile({ spot: 0 }, { legs: [] }) === null && buildProfileText(null) === '');
+const fut = shiftProfilePrices(p, v => v + 170);
+ok('futures terms: every price shifts by the basis, magnitudes and distances do not', fut.spot === p.spot + 170 && fut.levels.every((l, i) => l.price === p.levels[i].price + 170 && l.strength === p.levels[i].strength) && fut.gex[0].net === p.gex[0].net && fut.refMove === p.refMove && fut.binWidth === p.binWidth && fut.zeroGamma === p.zeroGamma + 170);
+ok('futures terms are stamped on the M line (the indicator shows it)', /\|terms\|futures/.test(buildProfileText(fut, { name: 'NQ', generated: 't' })) && /\|terms\|spot/.test(buildProfileText(p, { name: 'NQ', generated: 't' })));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
