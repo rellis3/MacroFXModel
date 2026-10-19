@@ -199,12 +199,21 @@ export function storyDirection(signals) {
 // ── 5. Range: joint multiplier on the fitted ladder, and P(H-L > p75) ───────
 // row: one daily-read row { sym, ratio (IV/σ), edges ([lo,hi] tercile cuts), lines:{hl_p50,hl_p75} }
 // flags: { vixInv, frontDear, frontCalm, allDown, nqDownWeek, gexShortNq }
+// When the row carries the CHOSEN lines (persistence + implied vol, the Daily Plan's forecast), nothing is
+// multiplied on top: IV÷σ is already inside them, and forge/ONE_RANGE_FORECAST_PREREG.md (run 2026-10-18) found the
+// VIX-curve / breadth / NQ-week flags (SIX ÷ SI 0.9926, bar 0.99) and the NQ gamma sign (1.0019) add nothing beyond
+// them. The flags are still reported, as context with no multiplier. Plain lines (fallback) keep the old adjustments.
 export function rangeView(row, flags = {}) {
   const cls = classOf(row.sym), C = RANGE_COEF[cls];
-  const drivers = []; let m = 1;
-  const add = (id, mult, why) => { if (mult && Math.abs(mult - 1) > 0.001) { m *= mult; drivers.push({ id, mult: r3(mult), why }); } };
+  const chosen = row.lines?.source === 'chosen';
+  const drivers = [], context = []; let m = 1;
+  const add = (id, mult, why) => {
+    if (!mult || Math.abs(mult - 1) <= 0.001) return;
+    if (chosen) { context.push({ id, mult: 1, why: `${why} — already in / no gain over the chosen lines` }); return; }
+    m *= mult; drivers.push({ id, mult: r3(mult), why });
+  };
   const flag = (id, key, on, why) => { if (on == null) return; const [mu, freq] = C[key]; add(id, Math.pow(mu, (on ? 1 : 0) - freq), `${why}: ${on ? 'yes' : 'no'}`); };
-  if (Number.isFinite(row.ratio) && row.ratio > 0) {
+  if (!chosen && Number.isFinite(row.ratio) && row.ratio > 0) {
     const centre = Array.isArray(row.edges) && row.edges.length === 2 ? Math.sqrt(row.edges[0] * row.edges[1]) : 1;
     add('iv-sigma', Math.pow(row.ratio / centre, C.iv_exp), `IV÷σ ${r2(row.ratio)} vs its usual ${r2(centre)}`);
   }
@@ -221,7 +230,7 @@ export function rangeView(row, flags = {}) {
     const sd = Math.log(p75 / p50) / 0.6745;   // the ladder's own log-dispersion
     pAbove75 = 1 - normCdf(0.6745 - Math.log(m) / sd);
   }
-  return { sym: row.sym, cls, mult: r3(m), hlP50: p50 ?? null, hlP75: p75 ?? null, expectedHl: p50 ? r3(p50 * m) : null, pAbove75: r3(pAbove75), drivers };
+  return { sym: row.sym, cls, lines: chosen ? 'chosen' : 'plain', mult: r3(m), hlP50: p50 ?? null, hlP75: p75 ?? null, expectedHl: p50 ? r3(p50 * m) : null, pAbove75: r3(pAbove75), drivers, context };
 }
 
 // Behaviour from the range view (and the validated intraday rules, as text).

@@ -1,7 +1,7 @@
 # Forecaster System — blueprint (built from the lessons, layer by layer)
 
-Source: `education/forecaster-portfolio-case-study/` (cog, "Case Study: The Forecaster Portfolio", 3 of 17 lessons
-transcribed as of 2026-10-05). **This file is updated every time a new lesson is added**: read the lesson, note what it
+Source: `education/forecaster-portfolio-case-study/` (cog, "Case Study: The Forecaster Portfolio", 5 of 17 lessons
+transcribed as of 2026-10-18; 04–05 in PR #1543). **This file is updated every time a new lesson is added**: read the lesson, note what it
 adds or changes per layer, then build.
 
 ## Purpose: what we are building, why, and to what end
@@ -20,7 +20,7 @@ adds or changes per layer, then build.
   changes until the owner chooses.
 - **How we work:** in lesson order. Each lesson section is mapped to a layer, built individually, validated
   (pre-registered, intervals, variant log), noted in the tracker below, then brought together. Each new lesson
-  (3 of 17 so far) is read and folded in before building on it.
+  (5 of 17 so far) is read and folded in before building on it.
 - **Not the goal:** a quick profit test, a revived Atlas, or a year of paper trading.
 
 Rules for every layer (from the lessons):
@@ -97,6 +97,8 @@ Conditioning variables: rung reached, London hour, regime (live σ ÷ HAR σ), e
 | 01 One path among many | Sampling distributions, bootstrap of paths, regime dependence, horizon aggregation |
 | 02 Research has no timetable | Search breadth enters significance; log every variant |
 | 03 A system built in layers | Separate forecasting from decision; volatility is the forecastable object (GARCH clustering, persistence/half-life); jumps (Merton) matter for single-step loss; meta-labelling; validate layer by layer |
+| 04 Why the logic stays private (2026-10-18) | Economics of an edge, not a forecasting method. An edge's value is roughly its return × its half-life, so decay must be watched; square-root impact sets capacity and optimal size (a third of the gross edge kept; capacity falls with turnover²); correlated trials are worth far fewer independent ones (N/(1+(N−1)ρ) by variance, best-of-N scaled by √(1−ρ)); small capital can use edges too small for institutions; evidence without the recipe: Sharpe SE √((1+S²/2)/T), independent tests compound (Bayes), commit the specification before the results. Touches: validation/process (multiple testing, forward evidence), layer 7 (costs and capacity) |
+| 05 Data: why futures (2026-10-18) | Layer 1. Never edit raw data: returns within a contract, rolls as explicit trades (difference adjustment distorts % returns, worst in the oldest data); futures return = collateral + spot + roll yield; survivorship and look-ahead (information set, publication lag, revisions); resolution sharpens risk estimates but never the mean (SE of the mean = σ/√T whatever the sampling); microstructure noise inflates realised vol at fine sampling (signature plot); a record holds few regimes (T/τ); one bad print of kσ adds ~k²/n to variance and ~k⁴/n to excess kurtosis; screens flag but never alter; hash the dataset into the research record. Touches: layers 1, 3 (σ inputs), validation |
 
 ## Series map (from Lesson 01 §05: which future lesson covers which check)
 
@@ -128,6 +130,19 @@ Lessons 11–16 are the validation module. When each lesson lands, its check rep
 | L03 §01 | Meta-labelling | 6 | 3a (morning trust) FAIL then nothing left after the forecast fix; 3b stopped (direction from the forecast conflicts with L03 §02). **Re-aimed:** primary = yield-spread book, meta-label = forecast state → size | plans/LESSON_TARGET_REBUILD_PLAN.md step C |
 | L03 §02 | Vol clustering, persistence, half-life | 3 | HAR-800 preferred, weekly reverting, IV-adjusted, Live Range. Step 1 shows the daily export over-reacts to regime (busy too wide, quiet too tight) | daily persistence fix, scored on the Step 1 yardstick |
 | L03 §03 | Jumps, excess kurtosis | 3, 7 | **done** (forge/JUMPS_PREREG.md): 6.6% of variance, 78% unscheduled, p90 event term FAIL; stop gap-risk table | use in layer 7 stops |
+| L04 §01 | Edge decay, value ∝ half-life, Little's law | process | **in the backtest 2026-10-19**: decay panel on forecast-line-backtest.html (rolling 52-week net R per trade; trend with yearly-block interval; implied half-life when the trend is significant). Rule A: no decay detectable (EURUSD −0.03 R/yr [−0.22, +0.17]) | add the same read to the forward scorecard |
+| L04 §02 | Square-root impact, capacity, turnover | 7 | at our size impact is negligible; the binding cost is the spread (feasibility gate, line-touch and futures-cost tests) | nothing to build unless size grows |
+| L04 §03 | Correlated trials: effective independence | validation | **in the backtest 2026-10-19**: allowance √(1−ρ) × E[best of N] for the 60 rule × stop × target settings, per instrument and pooled (scripts/backtest/summarise_line_backtest.py): ρ 0.13, ≈ 6.8 effective tries, allowance 2.16 SE. Rule A pooled z 2.13 → 0 after the 60-setting allowance; on its 4 registered settings (ρ 0.86, allowance 0.39 SE) z 1.75 (0.2σ/5R) | carry into the validation card |
+| L04 §04 | Small capital's territory | 7 | consistent with the evidence (small intraday edges exist gross), but spread, not institutional size, is what removes them | — |
+| L04 §05–§06 | Evidence without the recipe: Sharpe SE, Bayes compounding, commitment | validation | **in the backtest**: Sharpe ± SE on every setting; independent-evidence list for rule A with the lesson's Bayes arithmetic (one independent pass so far) | paper record and holdout add passes 2–3 |
+| L05 §01 | Construction: rolls, return index, adjustment | 1 | OANDA CFD data has no contract rolls; NT8 futures stitcher writes unadjusted + ratio series and rolls.csv | check every NT8 study uses within-contract or ratio returns and never ranges across a stitched roll |
+| L05 §02 | Futures returns: carry, basis, roll yield | 1, yield book | carry enters the yield-spread book, not the range forecast | — |
+| L05 §03 | Survivorship and look-ahead | 1, validation | look-ahead: several fixes logged, ALFRED vintages, feature-store as-of rules; survivorship: instrument list fixed, but bot and strategy reviews look only at what is still running | survivorship note in bot reviews |
+| L05 §04 | Resolution: noise and the signature plot | 1, 3 | **done 2026-10-18** (forge/signature_plot.py, analysis/output/signature_plot/RESULTS.md): 1-min returns overstate vol by +7.4% crosses, +4% majors/gold, +1% indices; 15-min within ~1%. Daily σ forecast unaffected; the vol-time profile (IEP / Level Scenarios) over-weights quiet hours slightly (max 0.9pp share), absorbed by the calibrated reach model | use 5–15-min returns for any realised-variance estimate on FX/gold; rebuild the profile from 15-min if the reach model is refitted |
+| L05 §05 | Macro in the data; few regimes per record | validation | **in the backtest**: high-volatility spells counted per period (EURUSD 2020-26: 5 spells, avg 77 sessions) | — |
+| L05 §06 | Data quality: bad prints, immutable store, hashes | 1 | **in the backtest 2026-10-19**: flag-only spike screen per instrument (EURUSD: 361 flagged minutes, mostly release times; 0 rule-A entries near a flag) and sha256 of the price file, the line file and the build script in each data file and on the page. Not yet in prereg results records generally | add the fingerprint to the prereg results template |
+
+**Forecast Line Backtest (2026-10-18):** `forecast-line-backtest.html` + `scripts/backtest/build_line_backtest.py`: the chosen lines point-in-time for every day 2020-08 → 2026-08 (34 instruments), rule trades checked on 1-minute bars after costs, equity, by-year, line calibration, day browser with each layer's output. The place each new lesson's check is added. First read (exploratory, not a new registration): rule A, the registered rich-day break adapted to the chosen lines, 0.2σ stop / 5R: +0.27R gross, +0.16R net over 2,057 trades on 11 instruments, 6 of 7 years positive; fade/continue references B/C gross ≈ 0, net negative.
 
 Side study handed off 2026-10-06: Live Range moving lines across history + jump-through risk (plans/LIVE_RANGE_HISTORY_BRIEF.md).
 Parallel work: layers 1, 4 and 5 (DATA_SPEC, PATH MAP, remaining travel) are being built in another session; check

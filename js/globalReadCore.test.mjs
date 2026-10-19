@@ -188,4 +188,23 @@ t('audit 2026-10-16: an inactive tested input is a nominal story read; GEX is ce
   assert.notEqual(behaviourOf(sh).label, 'expansion');
 });
 
+
+t('one forecast (2026-10-18): chosen lines get no multipliers; flags stay as context; assembly prefers them', () => {
+  const flags = { vixInv: true, frontDear: true, allDown: true, nqDownWeek: true, gexShortNq: true };
+  const plain = rangeView({ sym: 'NQ', ratio: 1.6, edges: [1, 1.2], lines: { hl_p50: 1.33, hl_p75: 1.79, source: 'plain' } }, flags);
+  assert.ok(plain.mult > 1.1 && plain.drivers.length >= 3 && plain.lines === 'plain');
+  const ch = rangeView({ sym: 'NQ', ratio: 1.6, edges: [1, 1.2], lines: { hl_p50: 1.5, hl_p75: 2.0, source: 'chosen' } }, flags);
+  assert.equal(ch.mult, 1); assert.equal(ch.drivers.length, 0); assert.equal(ch.expectedHl, 1.5); assert.equal(ch.lines, 'chosen');
+  assert.ok(ch.context.length >= 4 && ch.context.every(c => c.mult === 1));
+  const D = {
+    'daily-read': { days: { '2026-10-19': { setup: { rows: [{ sym: 'NQ', ratio: 1.1, lines: { hl_p50: 1.0, hl_p75: 1.3 } }, { sym: 'EURUSD', ratio: 1.0, lines: { hl_p50: 0.5, hl_p75: 0.7 } }] } } } },
+    'vol-forecast': { instruments: { NQ: { ladder_flat: { hl_p50: 1.33, hl_p75: 1.79 } }, EURUSD: { ladder_flat: { hl_p50: 0.55, hl_p75: 0.72 } } } },
+    'vol-forecast/persist-ladder/json': { instruments: { NQ: { form: 'persist+iv', hl: { p50: 1.5, p75: 2.0, p90: 2.6 }, oc: { p50: 0.7 } } } },
+  };
+  const inp = assembleGlobalReadInput(D, { now: Date.parse('2026-10-19T08:00:00Z') });
+  const nq = inp.rows.find(r => r.sym === 'NQ'), eu = inp.rows.find(r => r.sym === 'EURUSD');
+  assert.equal(nq.lines.source, 'chosen'); assert.equal(nq.lines.hl_p50, 1.5); assert.equal(nq.lines.oc_p50, 0.7);
+  assert.equal(eu.lines.source, 'plain'); assert.equal(eu.lines.hl_p50, 0.55);
+});
+
 console.log(`globalReadCore: ${n} tests passed`);

@@ -299,7 +299,8 @@ import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
 import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.js';
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
-import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok } from './js/r2Store.js';
+import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
+import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import compression from 'compression';
 import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
 import { spreadProfileInit, spreadProfileSample, spreadProfileFlush, spreadProfileReport, MOTIF_UNIVERSE as _SPREAD_UNIVERSE } from './js/spreadProfile.js';
@@ -18975,8 +18976,16 @@ setTimeout(_rlAccumulateTradeLog, 30_000);                        // and shortly
 // (in _CF_EXACT so it survives redeploys), carrying the MFE/MAE the broker now
 // reconstructs. Same shape the offline give-back tool (--bot oi) reads.
 async function _oiAccumulateTradeLog() {
+  await _oiAccumulateTradeLogFor('oi_bot');
+  // The two experiments need a forward record too: until 2026-10-19 only the OI Gamma bot had this rollup, so OI-Vol / OI-Conf closed trades vanished with
+  // the executor's daily list and the 'forward test' kept nothing. Same code, own status/log keys.
+  await _oiAccumulateTradeLogFor('oi_vol_bot');
+  await _oiAccumulateTradeLogFor('oi_conf_bot');
+}
+async function _oiAccumulateTradeLogFor(prefix) {
+  const _logKey = prefix + '_trade_log';
   try {
-    const raw = await kv.get('oi_bot_status').catch(() => null);
+    const raw = await kv.get(prefix + '_status').catch(() => null);
     if (!raw) return;
     const status = JSON.parse(raw).data ?? JSON.parse(raw);
     const closed = status?.today_closed_trades || [];
@@ -18987,7 +18996,7 @@ async function _oiAccumulateTradeLog() {
     // hiccup — see kv.js's getStrict doc (oi_history was wiped this way 2026-08-26;
     // oi_bot_trade_log confirmed hit the same thing 2026-09-28, twenties of
     // fade/react-qualifying rows -> 0, discovered via the hold-calibration banner).
-    const logRaw = await kv.getStrict('oi_bot_trade_log');
+    const logRaw = await kv.getStrict(_logKey);
     const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
     const seen = new Set(log.map(t => t.position_id ?? t.ticket));
     // Zone features the bot stamped at entry (hold score + components, mode, regime,
@@ -19024,9 +19033,9 @@ async function _oiAccumulateTradeLog() {
     }
     if (!added) return;
     if (log.length > 5000) log.splice(0, log.length - 5000);      // cap
-    await kv.put('oi_bot_trade_log', JSON.stringify({ data: log, timestamp: Date.now() }));
-    console.log(`[oi-bot] trade log +${added} (${log.length} total)`);
-  } catch (e) { console.error('[oi-bot] trade-log accumulate failed:', e.message); }
+    await kv.put(_logKey, JSON.stringify({ data: log, timestamp: Date.now() }));
+    console.log(`[${prefix}] trade log +${added} (${log.length} total)`);
+  } catch (e) { console.error(`[${prefix}] trade-log accumulate failed:`, e.message); }
 }
 svcInterval('tradeLogs', _oiAccumulateTradeLog, 10 * 60_000);                  // every 10 min
 setTimeout(_oiAccumulateTradeLog, 35_000);                        // and shortly after boot
@@ -20140,7 +20149,8 @@ async function _refreshOIConfBotZones() {
         const slim = c => ({ oi: c.oi.type, oiPrice: c.oi.price, vol: c.vol.name, volKind: c.vol.kind, volPrice: c.vol.price, delta: +c.delta.toFixed(6) });
         instruments[key] = {
           spot: inst.spot, regime: inst.regime ?? null, dte: inst.dte ?? null, maxPain: inst.maxPain ?? null, zones, zoneCount: zones.length, stale: null, diag: zones.length ? null : `no OI level within ${+tol.toPrecision(4)} of a forecast line`,
-          oiSavedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null, refMove: inst.refMove ?? null, droppedZones: dropped,
+          oiSavedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null, refMove: +sigmaPrice.toPrecision(6), refMoveSource: 'forecast-day-sigma',   // a NUMBER (price units): the executor does float(refMove) for its fast-approach gate; the OI bot's plan ships the same shape
+          droppedZones: dropped,
           confluence: { open: st.open, sigmaPrice: +sigmaPrice.toPrecision(6), tol: +tol.toPrecision(6), tolSigma: cfg.tolPips > 0 ? null : cfg.tolSigma, dynamicAtHour: rf?.h ?? null, dynamicCell: rf?.cell ?? null,
             nOi: oi.length, volLines: vol.map(v => ({ name: v.name, kind: v.kind, price: +v.price.toPrecision(8) })), oiLevels: oi.map(o => ({ type: o.type, price: +o.price.toPrecision(8) })),
             hits: hits.map(slim), near: near.map(slim), tooFar: built.tooFar, tooClose: built.tooClose },
@@ -22139,6 +22149,48 @@ app.post('/api/oi-ripple/refresh', async (_req, res) => {
   try { res.json({ ok: true, instruments: await _refreshOIRippleShadow() }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // ── OI-Conf bot: plan, refresh, audit ────────────────────────────────────────────────────────────────────────────────────────────
+// ── The three OI bots at a glance: executor health, config sanity, plan, and the forward trade record ─────────────────────────────────────
+// GET /api/oi-bots/review — read-only. One block per bot (OI Gamma, OI-Vol, OI-Conf): is the executor reporting, live vs paper, risk settings, open positions,
+// zones per instrument, and the trade log summarised (n, win rate, net P&L, average R, by mode and instrument, last trades).
+app.get('/api/oi-bots/review', async (_req, res) => {
+  try {
+    const BOTS = [{ id: 'oi', label: 'OI Gamma', pre: 'oi_bot' }, { id: 'vol', label: 'OI-Vol', pre: 'oi_vol_bot' }, { id: 'conf', label: 'OI-Conf', pre: 'oi_conf_bot' }];
+    const now = Date.now(), out = {};
+    const stat = rows => {
+      const pr = rows.filter(t => Number.isFinite(t.profit)), rr = rows.filter(t => Number.isFinite(t.r));
+      const win = pr.filter(t => t.profit > 0).length;
+      return { n: pr.length, wins: win, winRate: pr.length ? +(win / pr.length).toFixed(3) : null, net: +pr.reduce((a, t) => a + t.profit, 0).toFixed(2),
+        avgR: rr.length ? +(rr.reduce((a, t) => a + t.r, 0) / rr.length).toFixed(3) : null, nR: rr.length };
+    };
+    const group = (rows, f) => Object.fromEntries(Object.entries(rows.reduce((o, t) => { const k = f(t) ?? '?'; (o[k] ||= []).push(t); return o; }, {})).map(([k, v]) => [k, stat(v)]));
+    for (const b of BOTS) {
+      const [stRaw, plan, cfg, logRaw] = await Promise.all([kv.get(b.pre + '_status').catch(() => null), _kvJson(b.pre + '_zones'), _kvJson(b.pre + '_config'), kv.get(b.pre + '_trade_log').catch(() => null)]);
+      const stj = stRaw ? JSON.parse(stRaw) : null, st = stj ? (stj.data ?? stj) : null;
+      const stAge = stj?.timestamp ? Math.round((now - stj.timestamp) / 60000) : null;
+      const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+      const rows = Array.isArray(log) ? log : [];
+      const day = t => t.date || String(t.time_close || '').slice(0, 10);
+      const last7 = rows.filter(t => (now - Date.parse(day(t) + 'T12:00:00Z')) < 7 * 86400e3);
+      out[b.id] = {
+        label: b.label,
+        executor: st ? { reporting: true, statusAgeMin: stAge, mode: st.mode ?? null, running: st.running ?? null, killSwitch: st.kill_switch ?? null, balance: st.balance ?? null,
+          planLoaded: st.generatedAt ?? null, instruments: (st.universe && Object.keys(st.universe).length) || (st.lines || []).length } : { reporting: false },
+        config: cfg ? { paper_mode: cfg.paper_mode, kill_switch: cfg.kill_switch, risk_pct: cfg.risk_pct, max_lot: cfg.max_lot, max_open: cfg.max_open, max_open_risk_pct: cfg.max_open_risk_pct,
+          tg_enabled: cfg.tg_enabled, plan_secs: cfg.plan_secs, bookMode: cfg.bookMode ?? null, tolSigma: cfg.tolSigma ?? null, style: cfg.style ?? null } : null,
+        plan: plan ? { generatedAt: plan.generatedAt, ageMin: Math.round((now - Date.parse(plan.generatedAt)) / 60000),
+          zones: Object.fromEntries(Object.entries(plan.instruments || {}).map(([k, v]) => [k, v.zoneCount ?? (v.zones || []).length])),
+          diag: Object.fromEntries(Object.entries(plan.instruments || {}).filter(([, v]) => v.diag).map(([k, v]) => [k, String(v.diag).slice(0, 90)])) } : null,
+        openPositions: (st?.mt5_positions || []).map(p => ({ symbol: p.symbol, dir: p.direction, lots: p.lots, open: p.open_price, sl: p.sl, tp: p.tp, profit: p.profit, comment: p.comment })),
+        todayClosed: (st?.today_closed_trades || []).length,
+        record: { all: stat(rows), last7d: stat(last7), byMode: group(rows, t => t.features?.mode ?? (String(t.comment || '').match(/\[(\w+?)_/) || [])[1]), byInstrument: group(rows, t => t.key),
+          firstDate: rows.length ? day(rows[0]) : null, lastDate: rows.length ? day(rows[rows.length - 1]) : null,
+          recent: rows.slice(-8).map(t => ({ date: day(t), key: t.key, dir: t.direction, profit: t.profit, r: t.r ?? null, reason: t.reason ?? null, zone: t.zone_id ?? null })) },
+      };
+    }
+    res.json({ ok: true, generatedAt: new Date().toISOString(), bots: out });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/oi-conf-bot/zones', async (_req, res) => {
   try { const raw = await kv.get('oi_conf_bot_zones').catch(() => null);
     res.json({ ok: true, ...(raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : { instruments: {} }) });
@@ -22799,67 +22851,88 @@ async function _cboeSnapshotTick() {
 }
 svcInterval('cboeSnapshot', () => _cboeSnapshotTick().catch(e => console.error('[cboe-snapshot]', e.message)), 30 * 60_000);
 
-// Full-chain archive: once per US trading day, after the close, EVERY contract of each Cboe
-// index chain (strike/expiry in the OCC symbol, bid/ask, IV, OI, volume, greeks, theo, last)
-// goes to its own permanent key `cboe_raw_<SYM>_<YYYY-MM-DD>`. cboe_snap_v1 above keeps only
-// summary levels; this is the history a dealer-positioning test needs and no free source
-// sells back later. Stored as gzip+base64 column arrays (SPX ≈ 1.2 MB, NDX ≈ 0.6 MB a day).
-// The date is the chain's own last_trade_time date (ET), so a weekend or holiday fetch
-// returns the last session and finds its key already written. open_interest in this feed
-// is the start-of-day (prior-close OCC) figure; prices/IV/greeks are at the delayed close.
+// Full-chain archive: once per US trading day, after the close, EVERY contract of every chain in
+// _CBOE_RAW_SYMS (strike/expiry in the OCC symbol, bid/ask, IV, OI, volume, greeks, theo, last).
+// cboe_snap_v1 above keeps only summary levels; this is the history a dealer-positioning test needs
+// and no free source sells back later. The index books alone are a small slice of the hedging:
+// on 2026-10-16 QQQ carried ~3x NDX's and ~17x CME NQ's net dealer gamma, so the ETF chains are kept too.
+// Storage: R2 `cboe_raw/<SYM>/<YYYY-MM-DD>.json` (~11 MB a day for all 18, ~3 GB a year: R2's 10 GB free
+// tier, not KV's 1 GB). Without R2 credentials it falls back to KV `cboe_raw_<SYM>_<date>` for the four
+// indices only. Rows are gzip+base64 JSON column arrays. The date is the chain's own last_trade_time date
+// (ET), so a weekend or holiday fetch finds its day already written. open_interest is the start-of-day
+// (prior-close OCC) figure; prices/IV/greeks are at the 15-min-delayed close.
+const _CBOE_RAW_SYMS = ['_SPX', '_NDX', '_RUT', '_DJX', '_XSP', '_VIX',            // indices
+  'SPY', 'QQQ', 'IWM', 'DIA',                                                       // index ETFs (the bulk of equity dealer gamma)
+  'GLD', 'SLV', 'USO', 'TLT', 'HYG', 'FXE', 'FXY', 'UUP'];                         // gold/silver/oil/rates/credit/FX proxies
 const _CBOE_RAW_FIELDS = ['option', 'bid', 'ask', 'iv', 'open_interest', 'volume', 'delta', 'gamma', 'vega', 'theta',
   'rho', 'theo', 'last_trade_price', 'last_trade_time', 'open', 'high', 'low', 'prev_day_close'];
-const _cboeRawDone = new Set();
+const _CBOE_RAW_R2 = 'cboe_raw/';
+const _CBOE_RAW_KEY_RE = /^cboe_raw\/([A-Z]+)\/(\d{4}-\d{2}-\d{2})\.json$/;
+const _cboeRawDone = new Set();       // 'SYM/day' already stored
+let _cboeRawListed = 0;               // when the R2 listing last seeded _cboeRawDone
 const _nyParts = d => Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false,
   weekday: 'short', hour: '2-digit', minute: '2-digit' }).formatToParts(d).map(p => [p.type, p.value]));
+async function _cboeRawSeed() {
+  if (!_r2Ok() || Date.now() - _cboeRawListed < 12 * 3600_000) return;
+  for (const k of await _r2ListKeys(_CBOE_RAW_R2)) { const m = k.match(_CBOE_RAW_KEY_RE); if (m) _cboeRawDone.add(`${m[1]}/${m[2]}`); }
+  _cboeRawListed = Date.now();
+}
 async function _cboeRawArchiveTick({ force = false } = {}) {
   const ny = _nyParts(new Date());
   const mins = (+ny.hour % 24) * 60 + (+ny.minute);
   if (!force && (ny.weekday === 'Sat' || ny.weekday === 'Sun' || mins < 16 * 60 + 25)) return { skipped: 'before close' };
+  const useR2 = _r2Ok();
+  try { await _cboeRawSeed(); } catch (e) { console.error('[cboe-raw] R2 list', e.message); }
+  const zlib = await import('node:zlib');
   const out = {};
-  for (const pair of Object.keys(_CBOE_PAIRS)) {
-    const sym = _CBOE_PAIRS[pair].sym;
+  for (const raw of _CBOE_RAW_SYMS) {
+    const sym = raw.replace(/^_/, '');
+    if (!useR2 && !['SPX', 'NDX', 'RUT', 'DJX'].includes(sym)) continue;      // KV fallback: indices only (1 GB limit)
     try {
-      const r = await fetch(_cboeUrl(sym), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
-        redirect: 'follow', signal: AbortSignal.timeout(45_000) });
+      const r = await fetch(_cboeUrl(raw), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
+        redirect: 'follow', signal: AbortSignal.timeout(60_000) });
       if (!r.ok) throw new Error(`Cboe ${r.status}`);
       const j = await r.json();
       const d = j?.data;
       if (!Array.isArray(d?.options) || !d.options.length) throw new Error('empty chain');
       const day = String(d.last_trade_time || '').slice(0, 10);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error('no last_trade_time');
-      const key = `cboe_raw_${sym.replace(/^_/, '')}_${day}`;
-      if (_cboeRawDone.has(key)) { out[sym] = { key, status: 'done' }; continue; }
-      if (await kv.get(key)) { _cboeRawDone.add(key); out[sym] = { key, status: 'exists' }; continue; }
+      const id = `${sym}/${day}`;
+      if (_cboeRawDone.has(id)) { out[sym] = { day, status: 'done' }; continue; }
+      if (!useR2 && await kv.get(`cboe_raw_${sym}_${day}`)) { _cboeRawDone.add(id); out[sym] = { day, status: 'exists' }; continue; }
       const rows = d.options.map(o => _CBOE_RAW_FIELDS.map(f => o[f] ?? null));
       const { options, ...underlying } = d;
-      const gz = (await import('node:zlib')).gzipSync(Buffer.from(JSON.stringify(rows)), { level: 9 }).toString('base64');
-      await kv.put(key, JSON.stringify({ data: { v: 1, sym, day, cboeTimestamp: j.timestamp ?? null, fetchedAt: Date.now(),
-        underlying, fields: _CBOE_RAW_FIELDS, n: rows.length, enc: 'gzip+base64:json-rows', rows: gz }, timestamp: Date.now() }));
-      _cboeRawDone.add(key);
-      out[sym] = { key, status: 'written', n: rows.length, bytes: gz.length };
+      const gz = zlib.gzipSync(Buffer.from(JSON.stringify(rows)), { level: 9 }).toString('base64');
+      const rec = { v: 1, sym, day, cboeTimestamp: j.timestamp ?? null, fetchedAt: Date.now(),
+        underlying, fields: _CBOE_RAW_FIELDS, n: rows.length, enc: 'gzip+base64:json-rows', rows: gz };
+      if (useR2) await _r2PutJSON(`${_CBOE_RAW_R2}${sym}/${day}.json`, rec);
+      else await kv.put(`cboe_raw_${sym}_${day}`, JSON.stringify({ data: rec, timestamp: Date.now() }));
+      _cboeRawDone.add(id);
+      out[sym] = { day, status: 'written', store: useR2 ? 'r2' : 'kv', n: rows.length, bytes: gz.length };
     } catch (e) { out[sym] = { status: 'error', error: e.message }; console.error('[cboe-raw]', sym, e.message); }
   }
   return out;
 }
 svcInterval('cboeRawArchive', () => _cboeRawArchiveTick().catch(e => console.error('[cboe-raw]', e.message)), 30 * 60_000);
 
-// GET /api/cboe-raw                      -> archived days per index
+// GET /api/cboe-raw                         -> archived days per symbol (R2 + any KV days)
 // GET /api/cboe-raw?sym=SPX&date=YYYY-MM-DD -> that day's full chain, decoded ({fields, rows})
-// POST /api/cboe-raw/capture             -> run the archive now (ignores the after-close gate)
+// POST /api/cboe-raw/capture                -> run the archive now (ignores the after-close gate)
 app.get('/api/cboe-raw', async (req, res) => {
   try {
     const sym = String(req.query.sym || '').toUpperCase().replace(/^_/, '');
     const date = String(req.query.date || '');
     if (!sym || !date) {
-      const keys = (await kv.keys('cboe_raw_')).filter(k => /^cboe_raw_[A-Z]+_\d{4}-\d{2}-\d{2}$/.test(k)).sort();
       const by = {};
-      for (const k of keys) { const [, , s, d] = k.split('_'); (by[s] = by[s] || []).push(d); }
-      return res.json({ ok: true, days: by });
+      const add = (s, d) => { by[s] = by[s] || []; if (!by[s].includes(d)) by[s].push(d); };
+      if (_r2Ok()) for (const k of await _r2ListKeys(_CBOE_RAW_R2)) { const m = k.match(_CBOE_RAW_KEY_RE); if (m) add(m[1], m[2]); }
+      for (const k of await kv.keys('cboe_raw_')) { const m = k.match(/^cboe_raw_([A-Z]+)_(\d{4}-\d{2}-\d{2})$/); if (m) add(m[1], m[2]); }
+      for (const s of Object.keys(by)) by[s].sort();
+      return res.json({ ok: true, store: _r2Ok() ? 'r2' : 'kv', symbols: _CBOE_RAW_SYMS.map(s => s.replace(/^_/, '')), days: by });
     }
-    const raw = await kv.get(`cboe_raw_${sym}_${date}`);
-    if (!raw) return res.status(404).json({ ok: false, error: `no archive for ${sym} ${date}` });
-    const rec = JSON.parse(raw).data;
+    let rec = _r2Ok() ? await _r2GetJSON(`${_CBOE_RAW_R2}${sym}/${date}.json`) : null;
+    if (!rec) { const raw = await kv.get(`cboe_raw_${sym}_${date}`); rec = raw ? JSON.parse(raw).data : null; }
+    if (!rec) return res.status(404).json({ ok: false, error: `no archive for ${sym} ${date}` });
     const rows = JSON.parse((await import('node:zlib')).gunzipSync(Buffer.from(rec.rows, 'base64')).toString());
     res.json({ ok: true, ...rec, rows });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -22874,30 +22947,124 @@ app.post('/api/cboe-raw/capture', async (req, res) => {
 // scenario engine can re-price the book on the real smile. Cash-index prices; cfdOffset
 // (CFD − cash, null when unknown) is returned for the page to shift levels onto the CFD.
 const _cboeBookCache = new Map();   // sym -> { at, j }
+// The index's own ETF (same underlying, ~1/10-1/41 the price): with &etf=1 its contracts join the book,
+// strikes scaled by index ÷ ETF spot and OI by ETF ÷ index spot, so every contract keeps its dollar delta
+// and dollar gamma. On 2026-10-16 QQQ held ~3x NDX's net dealer gamma, so NQ without it is a small slice.
+const _CBOE_ETF = { SPX500_USD: 'SPY', NAS100_USD: 'QQQ', US2000_USD: 'IWM' };
+async function _cboeBookFor(sym) {
+  let hit = _cboeBookCache.get(sym);
+  if (!hit || Date.now() - hit.at > _CBOE_TTL_MS) {
+    const r = await fetch(_cboeUrl(sym), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
+      redirect: 'follow', signal: AbortSignal.timeout(30_000) });
+    if (!r.ok) throw new Error(`Cboe ${sym} ${r.status}`);
+    hit = { at: Date.now(), j: _parseCboeChain(await r.json()) };
+    if (!hit.j) throw new Error(`Cboe ${sym} chain empty or unparseable`);
+    _cboeBookCache.set(sym, hit);
+  }
+  return hit;
+}
 app.get('/api/cboe-contracts', async (req, res) => {
   const pair = String(req.query.pair || '');
   const cfg = _CBOE_PAIRS[pair];
   if (!cfg || cfg.scale !== 1) return res.status(400).json({ ok: false, error: `no per-contract Cboe book for ${pair}`, pairs: Object.keys(_CBOE_PAIRS).filter(p => _CBOE_PAIRS[p].scale === 1) });
   const window = Math.min(0.25, Math.max(0.01, +req.query.window || 0.08));
   const maxDte = Math.min(400, Math.max(0, +req.query.maxDte || 45));
+  const etfSym = req.query.etf === '1' ? _CBOE_ETF[pair] : null;
   try {
-    let hit = _cboeBookCache.get(cfg.sym);
-    if (!hit || Date.now() - hit.at > _CBOE_TTL_MS) {
-      const r = await fetch(_cboeUrl(cfg.sym), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
-        redirect: 'follow', signal: AbortSignal.timeout(30_000) });
-      if (!r.ok) throw new Error(`Cboe ${r.status}`);
-      hit = { at: Date.now(), j: _parseCboeChain(await r.json()) };
-      if (!hit.j) throw new Error('Cboe chain empty or unparseable');
-      _cboeBookCache.set(cfg.sym, hit);
-    }
+    const hit = await _cboeBookFor(cfg.sym);
     const { spot, asOfMs, contracts } = hit.j;
     const lo = spot * (1 - window), hi = spot * (1 + window);
-    const rows = contracts.filter(c => c.oi > 0 && c.iv > 0 && c.K >= lo && c.K <= hi && c.dte <= maxDte)
-      .map(c => [c.K, +c.T.toFixed(6), c.cp, c.oi, +c.iv.toFixed(4), c.dte]);
+    const keep = (c, k) => c.oi > 0 && c.iv > 0 && k >= lo && k <= hi && c.dte <= maxDte;
+    const rows = contracts.filter(c => keep(c, c.K)).map(c => [c.K, +c.T.toFixed(6), c.cp, c.oi, +c.iv.toFixed(4), c.dte, cfg.label]);
+    let etf = null;
+    if (etfSym) {
+      try {
+        const e = (await _cboeBookFor(etfSym)).j;
+        const ratio = spot / e.spot;                         // index points per ETF dollar
+        let n = 0;
+        for (const c of e.contracts) {
+          const K = c.K * ratio;
+          if (!keep(c, K)) continue;
+          rows.push([+K.toFixed(2), +c.T.toFixed(6), c.cp, +(c.oi / ratio).toFixed(3), +c.iv.toFixed(4), c.dte, etfSym]);
+          n++;
+        }
+        etf = { sym: etfSym, spot: e.spot, ratio: +ratio.toFixed(4), contracts: n, asOfMs: e.asOfMs };
+      } catch (err) { etf = { sym: etfSym, error: err.message }; }
+    }
     const cfdOffset = await _cboeCfdOffset(pair, asOfMs, spot);
-    res.json({ ok: true, pair, index: cfg.label, fut: cfg.fut, optMult: 100, spot, asOfMs, cfdOffset,
-      fields: ['K', 'T', 'cp', 'oi', 'iv', 'dte'], rows, fetchedAt: hit.at });
+    res.json({ ok: true, pair, index: cfg.label, fut: cfg.fut, optMult: 100, spot, asOfMs, cfdOffset, etf,
+      fields: ['K', 'T', 'cp', 'oi', 'iv', 'dte', 'src'], rows, fetchedAt: hit.at });
   } catch (e) { res.status(502).json({ ok: false, pair, error: e.message }); }
+});
+
+// ── Dealer hedging, plain English, every market at once (oi-dashboard-v2.html "This morning") ──────────
+// The whole Cboe book per market (index + its ETF; gold from GLD), re-priced by js/hedgingScenario.js, levels
+// moved onto the CFD by the ratio CFD ÷ underlying at Cboe's quote time, then read out by hedgingRead against
+// the CFD price now. Cached 20 min. Context only: the regime as an entry rule tested null (GAMMA_REGIME_TRADES).
+const _HS_MARKETS = [
+  { pair: 'NAS100_USD', name: 'Nasdaq 100', idx: '_NDX', etf: 'QQQ', unit: 'NQ futures', futMult: 20 },
+  { pair: 'SPX500_USD', name: 'S&P 500', idx: '_SPX', etf: 'SPY', unit: 'ES futures', futMult: 50 },
+  { pair: 'US2000_USD', name: 'Russell 2000', idx: '_RUT', etf: 'IWM', unit: 'RTY futures', futMult: 50 },
+  { pair: 'XAU_USD', name: 'Gold', idx: null, etf: 'GLD', unit: 'gold futures', futMult: 100 },
+];
+let _hsSummary = { at: 0, v: null };
+async function _oandaM1(pair, query) {
+  if (!process.env.OANDA_KEY) return [];
+  const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(pair)}/candles?granularity=M1&price=M&${query}`,
+    { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(8_000) });
+  if (!r.ok) return [];
+  return ((await r.json()).candles || []).filter(c => c.mid).map(c => ({ t: new Date(c.time).getTime(), o: +c.mid.o, c: +c.mid.c }));
+}
+async function _cfdAtCash(pair, asOfMs) {
+  // Outside the cash session Cboe's price is the 16:00 New York close: compare the CFD at that close.
+  const ref = _cashRefTime(asOfMs) === asOfMs ? asOfMs : _cashRefTime(asOfMs) - 1000;
+  const from = new Date(Math.floor(ref / 60e3) * 60e3 - 60e3).toISOString();
+  const bars = await _oandaM1(pair, `count=3&from=${encodeURIComponent(from)}`);
+  const b = bars.find(x => ref >= x.t && ref < x.t + 60e3);
+  return b ? b.o + (b.c - b.o) * Math.min(1, Math.max(0, (ref - b.t) / 60e3)) : null;
+}
+async function _buildHedgingSummary() {
+  const out = [];
+  for (const m of _HS_MARKETS) {
+    try {
+      const I = m.idx ? (await _cboeBookFor(m.idx)).j : null;
+      const E = (await _cboeBookFor(m.etf)).j;
+      const base = I || E;                                     // the price everything is quoted against
+      const cfdThen = await _cfdAtCash(m.pair, base.asOfMs);
+      const nowBars = await _oandaM1(m.pair, 'count=2');
+      const cfdNow = nowBars.length ? nowBars.at(-1).c : null;
+      const toCfd = Number.isFinite(cfdThen) && cfdThen > 0 ? cfdThen / base.spot : null;
+      if (!toCfd) { out.push({ pair: m.pair, name: m.name, error: 'no CFD price at the Cboe quote time' }); continue; }
+      const S = base.spot * toCfd, lo = S * 0.9, hi = S * 1.1;
+      const book = [];
+      const add = (chain, ratio) => { for (const c of chain.contracts) { const K = c.K * ratio;
+        if (c.oi > 0 && c.iv > 0 && c.dte <= 45 && K >= lo && K <= hi) book.push({ K, T: c.T, cp: c.cp, oi: c.oi / ratio, iv: c.iv }); } };
+      if (I) add(I, toCfd);
+      add(E, S / E.spot);
+      const sc = hedgingScenario(book, { spot: S, lo: S * 0.95, hi: S * 1.05, n: 161, shifts: [-2, 0], optMult: 100, futMult: m.futMult });
+      if (!sc) { out.push({ pair: m.pair, name: m.name, error: 'book too thin' }); continue; }
+      const dp = S >= 1000 ? 0 : 2, fmt = v => (Number.isFinite(v) ? v.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp }) : '—');
+      const now = Number.isFinite(cfdNow) ? cfdNow : S;
+      const z = sc.zeroGamma[0];
+      const calmAbove = z ? z.dir === 'short->long' : sc.atSpot.regime === 'long';
+      const calmNow = z ? (now >= z.price) === calmAbove : sc.atSpot.regime === 'long';
+      out.push({ pair: m.pair, name: m.name, sources: [m.idx?.replace(/^_/, ''), m.etf].filter(Boolean), asOf: base.asOfMs,
+        cfdAtQuote: +S.toFixed(2), cfdNow: now, contracts: sc.n, state: calmNow ? 'calms' : 'speeds',
+        switchPoint: z ? +z.price.toFixed(2) : null, switchDistPct: z ? +((z.price / now - 1) * 100).toFixed(2) : null,
+        flowUp1pct: Math.round(sc.atSpot.hedgeUp1pct), flowDown1pct: Math.round(sc.atSpot.hedgeDown1pct), unit: m.unit,
+        walls: { put: sc.levels.putWall, call: sc.levels.callWall, biggest: sc.levels.majorWall },
+        lines: hedgingRead(sc, { fmt, unit: m.unit, now, name: m.name }) });
+    } catch (e) { out.push({ pair: m.pair, name: m.name, error: e.message }); }
+  }
+  return { at: Date.now(), markets: out };
+}
+app.get('/api/hedging-summary', async (req, res) => {
+  try {
+    if (!_hsSummary.v || Date.now() - _hsSummary.at > 20 * 60_000 || req.query.fresh === '1') {
+      _hsSummary = { at: Date.now(), v: await _buildHedgingSummary() };
+    }
+    res.json({ ok: true, ..._hsSummary.v });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get('/api/cboe-snapshots', async (req, res) => {

@@ -1,0 +1,82 @@
+{
+ "prereg": "forge/GAMMA_REGIME_TRADES_PREREG.md",
+ "sessions": 813,
+ "open_alignment_max_abs_diff": 0.0,
+ "share_long_gamma": 0.678,
+ "A": {
+  "I": 0.0599,
+  "SW": -0.0272,
+  "FADE": -0.0358,
+  "FOLLOW": -0.0502,
+  "fade_long": -0.0284,
+  "fade_short": -0.0477,
+  "follow_long": -0.0657,
+  "follow_short": -0.0251,
+  "n_trades": 353,
+  "n_long": 218,
+  "n_short": 135,
+  "I_ci": [
+   -0.3013,
+   0.4388
+  ],
+  "SW_ci": [
+   -0.1142,
+   0.0644
+  ],
+  "SW_minus_FADE_ci": [
+   -0.095,
+   0.1178
+  ],
+  "SW_minus_FOLLOW_ci": [
+   -0.1031,
+   0.1515
+  ]
+ },
+ "A_halves": {
+  "<=2022": {
+   "I": 0.0728,
+   "SW": -0.0397,
+   "FADE": -0.0006,
+   "FOLLOW": -0.1053,
+   "fade_long": 0.0095,
+   "fade_short": -0.009,
+   "follow_long": -0.135,
+   "follow_short": -0.0807,
+   "n_trades": 141,
+   "n_long": 64,
+   "n_short": 77
+  },
+  ">=2023": {
+   "I": 0.1405,
+   "SW": -0.0188,
+   "FADE": -0.0592,
+   "FOLLOW": -0.0135,
+   "fade_long": -0.0442,
+   "fade_short": -0.0991,
+   "follow_long": -0.0369,
+   "follow_short": 0.0486,
+   "n_trades": 212,
+   "n_long": 154,
+   "n_short": 58
+  }
+ },
+ "A_placebo_shift125_I": 0.0165,
+ "A_verdict": "NULL",
+ "B_basis_median": 34.44,
+ "B": {
+  "n": 61,
+  "mean_R": -0.014,
+  "ci": [
+   -0.4415,
+   0.4666
+  ],
+  "win_rate": 0.262,
+  "placebo_n": 152,
+  "placebo_mean_R": 0.0049,
+  "real_minus_placebo_ci": [
+   -0.5348,
+   0.5303
+  ]
+ },
+ "B_verdict": "NULL"
+}

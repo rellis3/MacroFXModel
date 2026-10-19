@@ -125,7 +125,9 @@ function legPrices(name, d, times, step) {
   const useM5 = dataStep <= 300 && step <= 900;
   const bars = useM5 ? L.m5 : L.m15;
   const px = legOnChart(bars, times, step, d.src, dataStep, useM5 ? 300 : 900);
-  return d.carry ? carryForward(px) : px;
+  const out = d.carry ? carryForward(px) : px;
+  const lastT = bars.length ? bars[bars.length - 1].t + dataStep : Infinity;      // the leg's data ends here: carrying the last print beyond it would draw a flat line that looks like data
+  return out.map((v, i) => (times[i] >= lastT ? null : v));
 }
 function compute(d) {
   const times = candles.map(c => c.t), step = TF_SEC[state.tf];
@@ -158,6 +160,8 @@ function rebuildLines() {
     lineSeries[d.id] = { ls, calc: null };
   });
 }
+// A dragged or pinched axis stops auto-scaling, and a changed option (invert flips the sign, scale/offset move the line) can then put the line off-screen: re-enable it when an option changes.
+function rescale() { ['left', 'right'].forEach(id => chart.priceScale(id).applyOptions({ autoScale: true })); }
 function redraw(fit = false) {
   TIMES = candles.map(c => c.t);
   candleSeries.setData(candles.map(c => ({ time: c.t, open: c.o, high: c.h, low: c.l, close: c.c })));
@@ -263,7 +267,7 @@ $('cards').addEventListener('click', async e => {
     if (o && o.calc) {
       const raw = o.calc.raw.filter(v => v != null).slice(-d.fitLen), px = candles.slice(-d.fitLen);
       const rLo = Math.min(...raw), rHi = Math.max(...raw), pLo = Math.min(...px.map(c => c.l)), pHi = Math.max(...px.map(c => c.h));
-      if (rHi > rLo) { d.scale = +((pHi - pLo) / (rHi - rLo)).toFixed(6); d.offset = +(pLo - rLo * d.scale).toFixed(4); d.mapMode = 'manual'; rebuildLines(); renderCards(); redraw(); }
+      if (rHi > rLo) { d.scale = +((pHi - pLo) / (rHi - rLo)).toFixed(6); d.offset = +(pLo - rLo * d.scale).toFixed(4); d.mapMode = 'manual'; rebuildLines(); renderCards(); redraw(); rescale(); }
     }
   }
   save();
@@ -274,7 +278,7 @@ $('cards').addEventListener('change', async e => {
   d[k] = el.type === 'checkbox' ? el.checked : el.type === 'number' ? (k === 'smooth' ? Math.max(1, +el.value | 0) : (k === 'shift' || k === 'fitLen' ? (+el.value | 0) : +el.value)) : el.value;
   if (k === 'mapMode' || k === 'color' || k === 'visible') { /* series scale changes need a rebuild */ }
   if (['eur', 'usd', 'leg'].includes(k)) { if ([d.eur, d.usd, d.leg].some(n => n && LEGKIND(n) === 'price')) d.asRate = false; d.label = d.kind === 'spread' ? `${d.usd === 'SR3U6' && d.eur === 'IH7' ? 'C.OG line' : 'Spread'} (${d.usd} - ${d.eur})` : d.leg; await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); }
-  state.active = id; if (k === 'mapMode') rebuildLines(); renderCardsSoon(); redraw(); save();
+  state.active = id; if (k === 'mapMode') rebuildLines(); renderCardsSoon(); redraw(); rescale(); save();
 });
 function addSeries(kind) {
   const d = { ...cogDefault(state.nextId++), kind, color: COLORS[(state.nextId) % COLORS.length], label: kind === 'spread' ? 'Spread' : 'Leg' };

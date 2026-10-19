@@ -862,6 +862,41 @@ export const DESK_EVIDENCE = [
     use: 'The one set of daily lines for the Daily Plan. Other line exports go to an archive menu. Forward scorecard = its second, independent test.',
   },
   {
+    id: 'gamma-regime-trades', domain: 'positioning', verdict: 'null', date: '2026-10-19', doc: 'forge/GAMMA_REGIME_TRADES_PREREG.md',
+    instruments: ['NQ'],
+    claim: 'The NQ dealer-gamma regime says when to fade and when to follow: fade the p75 line on long-gamma days, follow it on short-gamma days; and follow a break through the textbook zero gamma into short gamma (the dynamic-hedging playbook, and the shape of C.OG\'s 2026-10-16 ES example)',
+    result: '813 sessions with a fresh regime 2020-2026, 353 trades: regime interaction +0.06 R [-0.30, +0.44]; switch strategy -0.03 R per trade after costs; every arm negative. Zero-gamma break: -0.01 R (n 61) vs placebo levels +0.01. The book is CME NQ monthly/quarterly only (~5% of Nasdaq dealer gamma).',
+    use: 'No trade rule from the gamma regime on the CME book. The hedging map stays context. Rerun on the Cboe index + ETF capture (from 2026-10-19) after ~400 days.',
+  },
+  {
+    id: 'opex-cycle-range', domain: 'volatility', verdict: 'underpowered', date: '2026-10-19', doc: 'forge/OPEX_CYCLE_RANGE_PREREG.md',
+    instruments: ['NQ', 'SPX500', 'US30', 'US2000'],
+    claim: 'US index ranges run tighter into monthly options expiry and wider in the week after (dealer gamma concentrated in expiring contracts, then gone)',
+    result: '6,241 non-event sessions 2016-2026, 124 cycles: week-after minus week-before +0.055 log [-0.014, +0.124]; positive on all four indices and in both halves; FX placebo +0.019, shifted-date placebo +0.029. Right direction and size, interval includes 0.',
+    use: 'Context only: expect a little more range after expiry than into it. Not in the forecast. Side note to test separately: the second half of the month ran quieter than the first relative to the ladder.',
+  },
+  {
+    id: 'vol-crush-drift', domain: 'events', verdict: 'null', date: '2026-10-19', doc: 'forge/VOL_CRUSH_DRIFT_PREREG.md',
+    instruments: ['SPX500', 'NQ'],
+    claim: 'After a Fed or CPI day on which VIX falls 5%+, US indices keep drifting up the next session (dealer vanna buy-back)',
+    result: '63 event crushes 2016-2026: next session +0.03% vs other VIX crushes [-0.23, +0.28]; halves disagree; 3 sessions negative. The rally itself is same-day (SPX +0.94%, NQ +1.30% on the crush day).',
+    use: 'The vol-crush rally happens on the release day and is done by the close: do not buy the next morning on it.',
+  },
+  {
+    id: 'one-range-forecast', domain: 'volatility', verdict: 'null', date: '2026-10-18', doc: 'forge/ONE_RANGE_FORECAST_PREREG.md',
+    instruments: ['NQ', 'SPX500', 'US30', 'US2000'],
+    claim: 'The validated US market-state range flags (VIX inverted, VIX9D front dear/calm, all six indices down, NQ down-week) and the NQ gamma sign still improve the daily range forecast on top of the chosen persistence + implied-vol lines',
+    result: 'Walk-forward 2020-2026, same yardstick as forecast-pick. Flags: 0.9926 [0.9874, 0.9978] of the chosen lines, below the registered 0.99 bar (3 of 4 better, US2000 worse). NQ gamma sign: 1.0019 [0.9972, 1.0075]. Persistence + IV already carries most of what the flags measured.',
+    use: 'One daily range forecast = the chosen lines alone. Global Read reads them and stacks no multipliers; the flags and the gamma sign are shown as context only.',
+  },
+  {
+    id: 'zero-gamma-distance', domain: 'volatility', verdict: 'underpowered', date: '2026-10-18', doc: 'oi_research_book/ZERO_GAMMA_DISTANCE_PREREG.md',
+    instruments: ['NQ'],
+    claim: 'NQ next-day range is larger when price sits close to the textbook zero gamma (whole book re-priced at hypothetical prices), beyond the gamma sign',
+    result: '779 days 2020-2026: near minus far +0.023 DR (p 0.69), robustness cells disagree in sign; placebo and positive-control gates both failed (s.e. ~0.06), so effects up to ~0.15 cannot be ruled out.',
+    use: 'Nothing built. The dealer hedging map shows zero gamma as mechanics. Rerun as a new pre-registration after ~400 days of our own capture (weeklies, per-expiry).',
+  },
+  {
     id: 'meta-label-yield-spread', domain: 'volatility', verdict: 'null', date: '2026-10-06', doc: 'forge/META_LABEL_YS_PREREG.md',
     claim: 'The volatility system state at entry (regime, recent range vs forecast, today range, recent jumps, plus the primary z) tells when the yield-spread book is right, so meta-sizing beats flat (Lesson 03 meta-labelling)',
     result: 'FAIL, wrong way round. 221 walk-forward test trades 2019-2026: per-trade Sharpe 0.100 meta vs 0.165 flat, difference -0.065 [-0.117, +0.006]. Top predicted tercile won 52.8% (mean +0.02%) vs bottom 62.2% (+0.38%). The model learned high-vol entries win; the test years said the opposite. 2020 flat -31.7%, meta -49.3%.',
@@ -1060,6 +1095,12 @@ export const DESK_EVIDENCE = [
     use: 'None of these adds a forward read; leave the line and the strip as context.',
     instruments: ['NQ'],
   },
+  {
+    id: 'credit-leads-equities', domain: 'macro', verdict: 'null', date: '2026-10-19', doc: 'forge/CREDIT_LEADS_EQUITIES_PREREG.md',
+    claim: 'Credit moves before equities: a widening in US credit spreads is followed, at 1-20 sessions, by lower equity index returns or by more volatility than persistence predicts (the plumbing order: credit is the pipes, equities the tap)',
+    result: 'Harness run on point-in-time features, NAS100 + SPX500 pooled and date-clustered, OOS 2016-2026 (5,549-5,587 rows per cell). Twelve scored cells (Moody’s Baa-Aaa quality spread and Baa-over-Treasury, 20-session z, horizons 1/5/20, direction and vol-beyond-persistence targets): every interval across zero, |IC| <= 0.07, BH-FDR 10% rejects none; the 60-session-lagged placebo looks the same. Descriptive only (FRED serves three years): the ICE HY OAS leg shows widening -> next-week realised vol above persistence, IC +0.26 [+0.10, +0.39], p 0.002, both halves positive, placebo flat (+0.15 at 1 session, +0.20 at 20); its direction cells are +0.06 to +0.13 with intervals across zero.',
+    use: 'Credit and equities agree in the same window (the chain’s hy->nq and hy->spx links); on 22 years of Moody’s spreads credit does NOT lead equities at 1-20 sessions, in direction or in vol. Never write that credit "moves first". The one thing worth more data is HY OAS -> next-week vol on three years, which needs a longer high-yield series (HYG/JNK from 2007) before it is anything.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1132,6 +1173,7 @@ const POWER = {
   'cog-matched-pairs':         { n: '4 pairs + 3 legs, 33 p-values, about 190 days per half', note: 'family-wise BH 10%; ESTR pairs only 95 in-sample days' },
   'cog-turn-sequence-model':   { n: '3,152 line turns; 36 specs; 79 model features; about 190 days per half', note: 'selection-aware placebo; walk-forward by quarter' },
   'cog-rate-futures-other-tests': { n: '48 + 6 + 32 cells over 604 days', note: 'Asian-session leg cells untestable as registered; 5- and 20-day option windows under-powered' },
+  'credit-leads-equities':   { n: '5,549-5,587 OOS rows per cell, 2 indices, 12 cells', note: '0/12 past BH-FDR 10%, every interval across zero; HY OAS vol lead +0.26 p 0.002 is on three years, descriptive' },
   'cot-positioning-factor':  { n: '3,576 OOS rows, 8 instruments', note: 'pooled rank-IC -0.0317, p=0.0936 vs a p<0.05 bar; AUD leg +0.004; both known flaws flatter the signal' },
   // Verified by reading the entry on 2026-10-03.
   'gex-range':               { n: '793 NQ days',               note: 'p 0.0008, +0.315 vol-matched, 4/4 specs, 6/6 years, event-day confound closed' },

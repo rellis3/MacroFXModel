@@ -16,7 +16,8 @@ import { effectiveIc, freshness, REG } from './globalReadCore.js';
 export const GLOBAL_READ_ENDPOINTS = ['data-health', 'daily-read', 'desk-watch', 'today-reads', 'macro-changes', 'vol-forecast', 'hmm/regimes',
   'yield-spread/plan', 'macro-regime-fx', 'macro-scorecard', 'trend-basket', 'cot-extremes', 'cot', 'oi-today', 'oi-levels',
   'credit-stress', 'liquidity-gate/live', 'regime', 'ledger', 'range-calls', 'release-calls', 'chain-read', 'morning-brief',
-  'econ-surprise', 'fomc/latest', 'hmm5m-v2', 'vol-forecast/session', 'daily-snapshot?days=2', 'real-yield', 'yield-curve'];
+  'econ-surprise', 'fomc/latest', 'hmm5m-v2', 'vol-forecast/session', 'daily-snapshot?days=2', 'real-yield', 'yield-curve',
+  'vol-forecast/persist-ladder/json'];
 
 export const GR_PAIRS = { EURUSD: ['EUR', 'USD'], GBPUSD: ['GBP', 'USD'], USDJPY: ['USD', 'JPY'], AUDUSD: ['AUD', 'USD'], NZDUSD: ['NZD', 'USD'], USDCAD: ['USD', 'CAD'], USDCHF: ['USD', 'CHF'] };
 export const GR_CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
@@ -36,8 +37,20 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
   const drDay = dr?.days ? dr.days[Object.keys(dr.days).sort().at(-1)] : null;
   // The setup is frozen at ~22:55 the evening before; the vol forecast re-fits its ladder in the morning (NQ hl_p50
   // 1.33 vs 1.46 on 2026-10-16), and the Day Read's 'used' and range map use the current one. Same lines everywhere.
+  // ONE forecast (forge/ONE_RANGE_FORECAST_PREREG.md, 2026-10-18): the chosen lines the Daily Plan shows (persistence
+  // + implied vol where IV exists, persistence elsewhere); the plain fitted ladder only when those are missing.
   const vfNow = D['vol-forecast']?.instruments ?? {};
-  const rows = (drDay?.setup?.rows ?? []).map(r => { const lf = vfNow[r.sym]?.ladder_flat; return lf?.hl_p50 > 0 && lf?.hl_p75 > 0 ? { ...r, lines: { ...r.lines, ...lf } } : r; });
+  const chosenNow = D['vol-forecast/persist-ladder/json']?.instruments ?? {};
+  const rows = (drDay?.setup?.rows ?? []).map(r => {
+    const c = chosenNow[r.sym];
+    if (c?.hl?.p50 > 0 && c?.hl?.p75 > 0) {
+      const flat = {};
+      for (const q of ['hl', 'oc', 'oh', 'ol']) for (const k of ['p50', 'p75', 'p90']) if (c[q]?.[k] > 0) flat[`${q}_${k}`] = c[q][k];
+      return { ...r, lines: { ...r.lines, ...flat, source: 'chosen', form: c.form ?? null } };
+    }
+    const lf = vfNow[r.sym]?.ladder_flat;
+    return lf?.hl_p50 > 0 && lf?.hl_p75 > 0 ? { ...r, lines: { ...r.lines, ...lf, source: 'plain' } } : r;
+  });
   const tags = Object.fromEntries(rows.map(r => [r.sym, r.tag]));
 
   // ── range flags ───────────────────────────────────────────────────────────

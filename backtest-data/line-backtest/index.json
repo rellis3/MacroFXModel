@@ -1,0 +1,312 @@
+{
+ "built": "2026-10-19",
+ "lines_sha256": "9eacecdb7eac4ccd05bdde90a17ec10a0b7b9db355661dada00a26574abec4bf",
+ "instruments": [
+  {
+   "inst": "AUDCAD",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 739,
+    "C": 1535
+   }
+  },
+  {
+   "inst": "AUDCHF",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 730,
+    "C": 1514
+   }
+  },
+  {
+   "inst": "AUDJPY",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 753,
+    "C": 1533
+   }
+  },
+  {
+   "inst": "AUDNZD",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 739,
+    "C": 1536
+   }
+  },
+  {
+   "inst": "AUDUSD",
+   "days": 1555,
+   "trades": {
+    "A": 284,
+    "B": 767,
+    "C": 1529
+   }
+  },
+  {
+   "inst": "CADCHF",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 720,
+    "C": 1525
+   }
+  },
+  {
+   "inst": "CADJPY",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 746,
+    "C": 1484
+   }
+  },
+  {
+   "inst": "CHFJPY",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 792,
+    "C": 1510
+   }
+  },
+  {
+   "inst": "DE30",
+   "days": 1529,
+   "trades": {
+    "A": 0,
+    "B": 686,
+    "C": 1432
+   }
+  },
+  {
+   "inst": "EURAUD",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 716,
+    "C": 1470
+   }
+  },
+  {
+   "inst": "EURCAD",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 736,
+    "C": 1510
+   }
+  },
+  {
+   "inst": "EURCHF",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 753,
+    "C": 1530
+   }
+  },
+  {
+   "inst": "EURGBP",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 740,
+    "C": 1513
+   }
+  },
+  {
+   "inst": "EURJPY",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 737,
+    "C": 1500
+   }
+  },
+  {
+   "inst": "EURNZD",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 716,
+    "C": 1490
+   }
+  },
+  {
+   "inst": "EURUSD",
+   "days": 1555,
+   "trades": {
+    "A": 189,
+    "B": 773,
+    "C": 1507
+   }
+  },
+  {
+   "inst": "GBPAUD",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 803,
+    "C": 1562
+   }
+  },
+  {
+   "inst": "GBPCAD",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 873,
+    "C": 1644
+   }
+  },
+  {
+   "inst": "GBPCHF",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 727,
+    "C": 1540
+   }
+  },
+  {
+   "inst": "GBPJPY",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 739,
+    "C": 1519
+   }
+  },
+  {
+   "inst": "GBPNZD",
+   "days": 1554,
+   "trades": {
+    "A": 0,
+    "B": 745,
+    "C": 1545
+   }
+  },
+  {
+   "inst": "GBPUSD",
+   "days": 1555,
+   "trades": {
+    "A": 223,
+    "B": 794,
+    "C": 1552
+   }
+  },
+  {
+   "inst": "GOLD",
+   "days": 1498,
+   "trades": {
+    "A": 326,
+    "B": 710,
+    "C": 1476
+   }
+  },
+  {
+   "inst": "NQ",
+   "days": 1493,
+   "trades": {
+    "A": 54,
+    "B": 788,
+    "C": 1476
+   }
+  },
+  {
+   "inst": "NZDCAD",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 751,
+    "C": 1536
+   }
+  },
+  {
+   "inst": "NZDJPY",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 718,
+    "C": 1512
+   }
+  },
+  {
+   "inst": "NZDUSD",
+   "days": 1555,
+   "trades": {
+    "A": 0,
+    "B": 742,
+    "C": 1517
+   }
+  },
+  {
+   "inst": "SPX500",
+   "days": 1493,
+   "trades": {
+    "A": 138,
+    "B": 783,
+    "C": 1531
+   }
+  },
+  {
+   "inst": "UK100",
+   "days": 1502,
+   "trades": {
+    "A": 0,
+    "B": 613,
+    "C": 1384
+   }
+  },
+  {
+   "inst": "US2000",
+   "days": 1493,
+   "trades": {
+    "A": 10,
+    "B": 797,
+    "C": 1581
+   }
+  },
+  {
+   "inst": "US30",
+   "days": 1493,
+   "trades": {
+    "A": 126,
+    "B": 746,
+    "C": 1516
+   }
+  },
+  {
+   "inst": "USDCAD",
+   "days": 1555,
+   "trades": {
+    "A": 154,
+    "B": 752,
+    "C": 1522
+   }
+  },
+  {
+   "inst": "USDCHF",
+   "days": 1555,
+   "trades": {
+    "A": 153,
+    "B": 796,
+    "C": 1533
+   }
+  },
+  {
+   "inst": "USDJPY",
+   "days": 1555,
+   "trades": {
+    "A": 400,
+    "B": 756,
+    "C": 1513
+   }
+  }
+ ]
+}

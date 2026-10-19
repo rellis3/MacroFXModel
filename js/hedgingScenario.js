@@ -135,25 +135,44 @@ export function hedgingScenario(contracts, { spot, lo, hi, n = 121, shifts = [-2
   };
 }
 
-/** Plain-English reading of a scenario, for the panel. Numbers in, sentences out; no claims beyond them. */
-export function hedgingRead(sc, { fmt = v => v.toFixed(1), unit = 'contracts' } = {}) {
+/**
+ * Plain-English reading of a scenario (no "gamma", "vanna", "charm" words). Numbers in, sentences out; nothing
+ * claimed beyond what was tested: the regime describes how the day may behave, not which way it goes.
+ * opts: fmt (price formatter), unit (what a hedge is counted in), now (current price, same terms as sc), name.
+ */
+export function hedgingRead(sc, { fmt = v => v.toFixed(1), unit = 'contracts', now = null, name = 'Price' } = {}) {
   if (!sc) return [];
   const a = sc.atSpot, k = v => `${Math.abs(Math.round(v)).toLocaleString('en-GB')} ${unit}`;
   const z = sc.zeroGamma[0];
   const out = [];
-  out.push(a.regime === 'long'
-    ? `Dealers are LONG gamma at spot: a 1% rise makes them sell about ${k(a.hedgeUp1pct)}, a 1% fall makes them buy about ${k(a.hedgeDown1pct)}. Their hedging leans against moves (the damping loop).`
-    : `Dealers are SHORT gamma at spot: a 1% rise makes them BUY about ${k(a.hedgeUp1pct)}, a 1% fall makes them SELL about ${k(a.hedgeDown1pct)}. Their hedging chases moves (the amplifying loop).`);
-  if (z) out.push(`Zero gamma sits at ${fmt(z.price)} (${z.distPct >= 0 ? '+' : ''}${z.distPct.toFixed(2)}% from spot). ${z.dir === 'long->short'
-    ? 'Below it hedging damps; above it hedging chases, so a break higher can feed itself.'
-    : 'Above it hedging damps; below it hedging chases, so a break lower can feed itself.'}`);
-  else out.push('No zero-gamma crossing inside the window: the whole window is one regime.');
-  const zs = sc.curves.filter(c => c.dv !== 0 && c.zeroGamma[0]).map(c => `${c.dv > 0 ? '+' : ''}${c.dv} vol → ${fmt(c.zeroGamma[0].price)}`);
-  const hiIv = sc.curves.filter(c => c.dv > 0 && c.zeroGamma[0]).pop();
-  const moves = z && hiIv ? (Math.abs(hiIv.zeroGamma[0].distPct) < Math.abs(z.distPct) ? 'toward' : 'away from') : null;
-  if (zs.length) out.push(`Zero gamma moves with implied vol: ${zs.join(', ')}.${moves ? ` Higher IV moves it ${moves} spot here.` : ''}`);
+  const calmAbove = z ? z.dir === 'short->long' : a.regime === 'long';
+  const px = Number.isFinite(now) ? now : sc.spot;
+  const calmNow = z ? (px >= z.price) === calmAbove : a.regime === 'long';
+  if (z) {
+    const d = (z.price / px - 1) * 100;
+    out.push(`Switch point ${fmt(z.price)}. ${calmAbove ? 'Above' : 'Below'} it, dealers' hedging calms moves down (they sell rises and buy dips). `
+      + `${calmAbove ? 'Below' : 'Above'} it, their hedging speeds moves up (they sell into falls and buy into rises). `
+      + `${name} is ${fmt(px)}, ${Math.abs(d).toFixed(2)}% ${d > 0 ? 'below' : 'above'} it, so right now hedging ${calmNow ? 'CALMS' : 'SPEEDS UP'} moves.`);
+  } else {
+    out.push(`No switch point within view: across this whole range dealers' hedging ${calmNow ? 'calms moves down' : 'speeds moves up'}.`);
+  }
+  const up = a.hedgeUp1pct, dn = a.hedgeDown1pct;
+  const upTxt = up >= 0 ? `buy about ${k(up)} (pushing it higher)` : `sell about ${k(up)} (leaning against it)`;
+  const dnTxt = dn <= 0 ? `sell about ${k(dn)} (pushing it lower)` : `buy about ${k(dn)} (leaning against it)`;
+  let tilt = '';
+  if (up >= 0 && dn <= 0 && Math.min(Math.abs(up), Math.abs(dn)) > 0) {
+    const r = Math.abs(dn) / Math.abs(up);
+    tilt = r >= 1.3 ? ` A fall gets about ${r.toFixed(1)}× more push than a rise.` : r <= 1 / 1.3 ? ` A rise gets about ${(1 / r).toFixed(1)}× more push than a fall.` : ' The push is about even both ways.';
+  }
+  out.push(`${tilt ? tilt.trim() + ' ' : ''}If it rises 1%, dealers must ${upTxt}; if it falls 1%, they must ${dnTxt}. (Model upper limits: real sizes are smaller, the comparison is what counts.)`);
+  const ref = Math.max(Math.abs(up), Math.abs(dn), 1);
+  const rel = x => { const r = Math.abs(x) / ref; return r < 0.25 ? 'small next to' : r < 0.75 ? 'about half of' : r < 1.5 ? 'about the same as' : `about ${r.toFixed(1)}× bigger than`; };
   const v = a.vanna[-2];
-  if (Number.isFinite(v)) out.push(`Vanna: if IV falls 2 points with price unchanged, dealers ${v >= 0 ? 'buy' : 'sell'} about ${k(v)} (the "vol crush" flow).`);
-  if (Number.isFinite(a.charm)) out.push(`Charm: one day passing, price and IV unchanged, makes dealers ${a.charm >= 0 ? 'buy' : 'sell'} about ${k(a.charm)} (largest into an expiry).`);
+  if (Number.isFinite(v) && Math.abs(v) >= 1) out.push(`If fear eases (implied volatility down 2 points) with price unchanged, dealers ${v >= 0 ? 'buy' : 'sell'}: ${rel(v)} the hedging from a 1% move. In our tests that flow moves price on the same day, not the next.`);
+  if (Number.isFinite(a.charm) && Math.abs(a.charm) >= 1) out.push(`Just from options moving a day closer to expiry, dealers ${a.charm >= 0 ? 'buy' : 'sell'}: ${rel(a.charm)} the hedging from a 1% move.${Math.abs(a.charm) >= 0.75 * ref ? ' That is large, meaning a lot expires soon: expect this picture to change after the expiry.' : ''}`);
+  out.push(calmNow
+    ? 'What it means: expect a quieter, choppier day. Taking profit at the Daily Plan lines makes sense; breakouts are more likely to fail.'
+    : 'What it means: expect normal-to-wide moves. Do not fade a break early and give stops room; a move can feed on itself.');
+  out.push('Context, not an entry signal: used as a fade/follow rule it lost money in our backtest (NQ 2020-2026). Sizes are upper limits (they assume dealers hold every contract).');
   return out;
 }

@@ -84,6 +84,12 @@ svg text{font-family:var(--mono)}
   <div class="stats" id="stats"></div>
   <div id="labView">
 
+  <div class="card" id="plainCard">
+    <h2><em>00</em> This morning, in plain English <span id="plainAsOf" style="font-size:11px;letter-spacing:.04em;text-transform:none;color:var(--tx3)"></span></h2>
+    <div class="sub">What last night's options books force the big dealers to do as price moves, for each market, against the price now. Built from the whole Cboe book (index options plus the index ETF; gold from GLD). <b>It tells you how the day may behave, not which way it goes</b>: used as a fade/follow entry rule it lost money in our backtest.</div>
+    <div id="plainBody" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px"></div>
+  </div>
+
   <div class="card">
     <h2><em>01</em> Live gamma terrain
       <span class="tgl"><span class="pill" data-tf="M5">5m</span><span class="pill on" data-tf="M15">15m</span><span class="pill" data-tf="H1">1h</span></span></h2>
@@ -120,7 +126,7 @@ svg text{font-family:var(--mono)}
 
   <div class="card" id="hsCard">
     <h2><em>05c</em> Dealer hedging map — who has to trade, and how much
-      <span class="tgl"><span class="pill on" data-hsrc="cme">CME futures options</span><span class="pill" data-hsrc="cboe">Cboe index options</span></span>
+      <span class="tgl"><span class="pill on" data-hsrc="cme">CME futures options</span><span class="pill" data-hsrc="cboe">Cboe index options</span><span class="pill" data-hsrc="cboeetf" title="Index options plus the index ETF (QQQ for NQ, SPY for SPX, IWM for RUT), scaled to index points. On 2026-10-16 QQQ held about 3x the dealer gamma of NDX and 17x CME NQ.">Cboe index + ETF</span></span>
       <span class="tgl" style="margin-left:6px"><span class="pill on" data-hexp="3">≤3 DTE</span><span class="pill" data-hexp="30">≤30 DTE</span><span class="pill" data-hexp="400">whole book</span></span></h2>
     <div class="sub"><b>The C.OG chart, rebuilt.</b> Price runs up the side; all three panels share it. <b>Left:</b> open interest at each strike, <span style="color:#c07f22">puts</span> left, <span style="color:#2f8fcc">calls</span> right. <b>Middle:</b> the whole book's dealer gamma <i>if price were at that level</i>, once per implied-vol shift. Right of the centre line, dealers lean against moves (damping); left of it they chase (amplifying). Where a curve crosses the centre is <b>zero gamma</b> for that vol. <b>Right:</b> the hedging requirement: futures dealers must <b>buy (right) or sell (left)</b> to stay flat if price travels from spot to that level. A steep line means a lot of forced flow per point.</div>
     <div class="stats" id="hsStats" style="margin-bottom:8px"></div>
@@ -131,7 +137,8 @@ svg text{font-family:var(--mono)}
       <div><div class="sub" style="margin:0 0 6px;color:var(--tx2)"><b>How much to trust it</b></div><ul style="margin:0;padding-left:18px;color:var(--tx3);font-size:12.5px;line-height:1.6">
         <li><b style="color:rgb(70,184,122)">Tested, real (NQ):</b> the gamma sign predicts next-day <i>range</i>: long gamma = quieter days (oi_research_book/GEX_RANGE_BROWNIAN_RESULTS.md). Not tested on ES yet.</li>
         <li><b style="color:rgb(232,97,95)">Tested, null:</b> walls and flips as support/resistance or magnets reacted like any other strike (wall placebo, G3, ripple walls). The levels here are where hedging changes, not where price must turn.</li>
-        <li><b>Untested:</b> direction from the zero-gamma level, vanna and charm flows. Read them as mechanics, not signals.</li>
+        <li><b>Tested, no evidence yet (NQ, 2026-10-18):</b> being <i>close</i> to zero gamma did not change next-day range beyond the gamma sign, but the sample was too small to rule out a modest effect (oi_research_book/ZERO_GAMMA_DISTANCE_RESULTS.md).</li>
+        <li><b>Tested, no follow-through (2016-2026):</b> after a Fed/CPI day where VIX collapsed, SPX/NQ rallied about 1% <i>on the day</i> but the next session averaged nothing extra (forge/VOL_CRUSH_DRIFT_PREREG.md). Vanna moves price the same day; do not chase it next morning.</li><li><b>Leaning, not proven:</b> US index ranges ran ~5% wider in the week after monthly expiry than in the week into it, on all four indices, but the interval still includes zero (forge/OPEX_CYCLE_RANGE_PREREG.md).</li><li><b>Tested, null (NQ 2020-2026, CME book):</b> fading the p75 line on long-gamma days and following it on short-gamma days lost after costs, and so did following a break through zero gamma (forge/GAMMA_REGIME_TRADES_PREREG.md). The regime is context, not an entry rule, until it is retested on the index + ETF book.</li><li><b>Untested:</b> charm flows. Read them as mechanics, not signals.</li>
         <li><b>Assumed:</b> dealers long calls / short puts (flip it and every sign flips), and dealers hold the other side of ALL open interest, so the sizes are upper bounds; IV shifts are parallel and per contract. CME uses one vol per expiry (no skew), so vanna there is illustrative; the Cboe source re-prices on each contract's own IV.</li>
       </ul></div>
     </div>
@@ -718,26 +725,26 @@ function hsCmeBook(sym, e){
   }
   return { contracts: out, spot: e.spot, shift: 0, optMult: 1, futMult: 1, ivNote: pts.length ? 'one IV per expiry (term structure), no skew' : `flat ${(flat * 100).toFixed(0)}% vol (no IV stored)` };
 }
-async function hsCboeBook(sym){
-  const key = `${sym}|${HS.maxDte}`;
+async function hsCboeBook(sym, withEtf = false){
+  const key = `${sym}|${HS.maxDte}|${withEtf ? 'etf' : ''}`;
   const hit = HS.cache[key];
   if (!hit || Date.now() - hit.at > 300000) {
-    const r = await fetch(`/api/cboe-contracts?pair=${encodeURIComponent(sym)}&maxDte=${HS.maxDte}&window=0.08`);
+    const r = await fetch(`/api/cboe-contracts?pair=${encodeURIComponent(sym)}&maxDte=${HS.maxDte}&window=0.08${withEtf ? '&etf=1' : ''}`);
     const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Cboe unavailable');
     HS.cache[key] = { at: Date.now(), j };
   }
   const j = HS.cache[key].j;
   const contracts = j.rows.map(([K, T, cp, oi, iv]) => ({ K, T, cp, oi, iv }));
   return { contracts, spot: j.spot, shift: Number.isFinite(j.cfdOffset) ? j.cfdOffset : 0, optMult: j.optMult, futMult: oiContractSize(sym),
-    ivNote: `each contract on its own Cboe IV (${j.index}, ${contracts.length} contracts)${Number.isFinite(j.cfdOffset) ? '' : ' · CFD offset unknown: cash-index prices'}`, index: j.index };
+    ivNote: `each contract on its own Cboe IV (${j.index}${j.etf?.sym ? (j.etf.error ? ` · ${j.etf.sym} unavailable: ${j.etf.error}` : ` + ${j.etf.sym} ×${j.etf.ratio}, ${j.etf.contracts} of them`) : ''}, ${contracts.length} contracts)${Number.isFinite(j.cfdOffset) ? '' : ' · CFD offset unknown: cash-index prices'}`, index: j.index };
 }
 async function drawHedging(){
   const svg = $('#hsChart'), D = CUR;
   const fail = m => { svg.innerHTML = `<text x="500" y="300" text-anchor="middle" fill="#6b7585" font-size="14">${esc(m)}</text>`; $('#hsStats').innerHTML = ''; $('#hsRead').innerHTML = ''; $('#hsLegend').innerHTML = ''; };
   if (!D) return fail('No OI record for this instrument.');
-  if (HS.src === 'cboe' && !['SPX500_USD', 'NAS100_USD'].includes(SYM)) return fail('Cboe index options exist for SPX and NQ (NDX) only. Switch to CME.');
+  if (HS.src !== 'cme' && !['SPX500_USD', 'NAS100_USD', 'US2000_USD'].includes(SYM)) return fail('Cboe books here cover SPX, NQ (NDX) and RUT. Switch to CME.');
   let B;
-  try { B = HS.src === 'cboe' ? await hsCboeBook(SYM) : hsCmeBook(SYM, D.e); } catch (err) { return fail('Cboe chain unavailable: ' + err.message); }
+  try { B = HS.src === 'cme' ? hsCmeBook(SYM, D.e) : await hsCboeBook(SYM, HS.src === 'cboeetf'); } catch (err) { return fail('Cboe chain unavailable: ' + err.message); }
   if (!B || !B.contracts.length) return fail(INVERTED.has(SYM) ? 'Inverted FX quotes are not mapped in this view yet.' : 'No contracts in this expiry window (try a wider one).');
   const S = B.spot, refSpot = D.spot ?? D.e?.spot ?? S, half = Math.min(0.06, Math.max(0.012, 3 * (D.rm || refSpot * 0.01) / refSpot));
   const sc = hedgingScenario(B.contracts, { spot: S, lo: S * (1 - half), hi: S * (1 + half), n: 121, shifts: [-2, 0, 2, 4], optMult: B.optMult, futMult: B.futMult });
@@ -813,13 +820,35 @@ async function drawHedging(){
   ];
   $('#hsStats').innerHTML = items.map(([k, v, n]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n || '&nbsp;'}</div></div>`).join('');
   $('#hsRead').innerHTML = hedgingRead({ ...sc, zeroGamma: sc.zeroGamma.map(q => ({ ...q, price: sh(q.price) })),
-    curves: sc.curves.map(c => ({ ...c, zeroGamma: c.zeroGamma.map(q => ({ ...q, price: sh(q.price) })) })) }, { fmt: px, unit }).map(t => `<li>${esc(t)}</li>`).join('');
+    curves: sc.curves.map(c => ({ ...c, zeroGamma: c.zeroGamma.map(q => ({ ...q, price: sh(q.price) })) })) }, { fmt: px, unit, name: NAMES[SYM] || SYM }).map(t => `<li>${esc(t)}</li>`).join('');
   $('#hsLegend').innerHTML = `<span><i style="background:${HS_PUT}"></i>put OI</span><span><i style="background:${HS_CALL}"></i>call OI</span>`
     + sc.curves.map(c => `<span><i style="background:${HS_FAN[String(c.dv)]}"></i>gamma at IV ${c.dv > 0 ? '+' : ''}${c.dv} pts</span>`).join('')
     + `<span><i style="background:#eef1f5"></i>hedge to stay flat (dashed: other IVs)</span><span>${esc(B.ivNote)} · ${sc.n.toLocaleString('en-GB')} contracts · OI in ${esc(fut)}-contract equivalents</span>`;
 }
 document.querySelectorAll('[data-hsrc]').forEach(b => b.onclick = () => { HS.src = b.dataset.hsrc; document.querySelectorAll('[data-hsrc]').forEach(x => x.classList.toggle('on', x === b)); drawHedging(); });
 document.querySelectorAll('[data-hexp]').forEach(b => b.onclick = () => { HS.maxDte = +b.dataset.hexp; document.querySelectorAll('[data-hexp]').forEach(x => x.classList.toggle('on', x === b)); drawHedging(); });
+
+// ── 00 plain-English summary of every market (/api/hedging-summary) ───────────────────────────
+async function drawPlain(){
+  const body = $('#plainBody');
+  body.innerHTML = '<div class="sub">Loading last night\'s options books…</div>';
+  try {
+    const j = await (await fetch('/api/hedging-summary')).json();
+    if (!j.ok) throw new Error(j.error || 'unavailable');
+    const asOf = j.markets.find(m => m.asOf)?.asOf;
+    $('#plainAsOf').textContent = asOf ? `· options book as of ${new Date(asOf).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}` : '';
+    body.innerHTML = j.markets.map(m => {
+      if (m.error) return `<div class="mini"><div class="k">${esc(m.name)}</div><div class="n">unavailable: ${esc(m.error)}</div></div>`;
+      const calm = m.state === 'calms', col = calm ? `rgb(${LONG})` : `rgb(${SHORT})`;
+      const badge = `<span style="color:${col};font-weight:600">${calm ? '● Hedging CALMS moves' : '● Hedging SPEEDS UP moves'}</span>`;
+      const sw = m.switchPoint != null ? `switch point ${m.switchPoint.toLocaleString('en-GB')} (${m.switchDistPct >= 0 ? '+' : ''}${m.switchDistPct}% from now)` : 'no switch point within ±5%';
+      return `<div style="border:1px solid var(--line);border-left:3px solid ${col};border-radius:10px;padding:10px 14px">
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:14px">${esc(m.name)}</b>${badge}</div>
+        <div class="sub" style="margin:2px 0 6px">now ${Number(m.cfdNow).toLocaleString('en-GB')} · ${esc(sw)} · ${esc(m.sources.join(' + '))}</div>
+        <ul style="margin:0;padding-left:18px;color:var(--tx2);font-size:12.5px;line-height:1.55">${m.lines.slice(0, -1).map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
+    }).join('') + `<div class="sub" style="grid-column:1/-1;margin:0">${esc(j.markets.find(m => m.lines)?.lines.at(-1) || '')}</div>`;
+  } catch (err) { body.innerHTML = `<div class="sub">Could not load the summary: ${esc(err.message)}</div>`; }
+}
 
 function stats(){
   const D = CUR; if (!D) { $('#stats').innerHTML = ''; return; }
@@ -864,6 +893,7 @@ document.querySelectorAll('[data-ah]').forEach(b => b.onclick = () => { AH = +b.
 document.querySelectorAll('[data-tf]').forEach(b => b.onclick = () => { TF = b.dataset.tf; document.querySelectorAll('[data-tf]').forEach(x => x.classList.toggle('on', x === b)); drawTerrain(); });
 
 (async () => {
+  drawPlain();
   try {
     const r = await fetch('/api/oi-store'); const j = await r.json(); STORE = j.data ?? j;
     if (!STORE[SYM]) SYM = Object.keys(NAMES).find(k => STORE[k]) || SYM;

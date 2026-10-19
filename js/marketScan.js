@@ -135,7 +135,7 @@ export const LINKS = [
     normally: 'Small caps carry floating-rate debt and borrow domestically, so the 2-year is their actual cost of funding. They feel the Fed before anyone else does.',
     apart: 'The market is pricing something for small caps — tax, tariffs, domestic demand — that outweighs their funding cost. This is the link to watch when the front end moves and the big indices shrug.' },
   { id: 'hy-spx', a: 'hy', b: 'spx', expect: -1,
-    normally: 'Lenders price the odds of not being repaid, which is a harder and earlier question than what a share is worth. Credit usually moves first.',
+    normally: 'Lenders price the odds of not being repaid, which is a harder question than what a share is worth. The textbook says credit moves first; tested here 2026-10-19 on 22 years of Moody’s spreads, it does not lead equities at 1–20 sessions — the two agree in the same window.',
     apart: 'One of the two is wrong and this desk cannot tell you which. Credit widening that equity ignores is the configuration worth being sceptical about; the reverse is usually an equity-specific event.' },
   { id: 'ccc-hy', a: 'ccc', b: 'hy', expect: +1,
     normally: 'The bottom of the credit stack moves with the rest of it, only more so. CCC is high-yield with the volume turned up.',

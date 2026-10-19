@@ -5,6 +5,7 @@ bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesso
 its successes cannot correct for how hard it searched.*
 
 Generated 2026-10-18.
+Generated 2026-10-19.
 
 ## The count
 
@@ -19,6 +20,15 @@ Generated 2026-10-18.
 
 **What the count says (Lesson 02 §05).** If none of the 130 claims were real, tests at the usual 5% size would still pass
 about **6.5** of them by luck. 32 passed, so most passes are unlikely to be luck alone, but
+| claims tested (validated + null + underpowered) | **136** |
+| validated | 32 |
+| null | 100 |
+| underpowered | 4 |
+| context (base rates, descriptions: not counted as tests) | 32 |
+| pre-registrations with no banked verdict (below) | 39 |
+
+**What the count says (Lesson 02 §05).** If none of the 136 claims were real, tests at the usual 5% size would still pass
+about **6.8** of them by luck. 32 passed, so most passes are unlikely to be luck alone, but
 **roughly 7 of the 32 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -189,6 +199,15 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-18 | rates-follow-through-regimes | macro | context | analysis/output/dynlead/EPISODES_RESULTS.md |
 | 2026-10-18 | rates-spread-asset-lead | macro | null | analysis/output/dynlead/DYNAMIC_LEAD_RESULTS.md |
 | 2026-10-18 | us-leg-same-day-link | macro | context | analysis/output/cog_video_0918/CROSS_ASSET_STAGE1.md |
+| 2026-10-18 | one-range-forecast | volatility | null | forge/ONE_RANGE_FORECAST_PREREG.md |
+| 2026-10-18 | rates-follow-through-regimes | macro | context | analysis/output/dynlead/EPISODES_RESULTS.md |
+| 2026-10-18 | rates-spread-asset-lead | macro | null | analysis/output/dynlead/DYNAMIC_LEAD_RESULTS.md |
+| 2026-10-18 | us-leg-same-day-link | macro | context | analysis/output/cog_video_0918/CROSS_ASSET_STAGE1.md |
+| 2026-10-18 | zero-gamma-distance | volatility | underpowered | oi_research_book/ZERO_GAMMA_DISTANCE_PREREG.md |
+| 2026-10-19 | credit-leads-equities | macro | null | forge/CREDIT_LEADS_EQUITIES_PREREG.md |
+| 2026-10-19 | gamma-regime-trades | positioning | null | forge/GAMMA_REGIME_TRADES_PREREG.md |
+| 2026-10-19 | opex-cycle-range | volatility | underpowered | forge/OPEX_CYCLE_RANGE_PREREG.md |
+| 2026-10-19 | vol-crush-drift | events | null | forge/VOL_CRUSH_DRIFT_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -208,6 +227,11 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/COG_TURN_EVENTS_PREREG.md`: COG-TURN-EVENTS: do SOFR-Euribor turning points carry information about Nasdaq's next turn, breakout or move?
 - `forge/CONFIDENCE_PREREG.md`: Layer 6 — CONFIDENCE (meta-labelling): can today's conditions sharpen layer 5's probabilities?
 - `forge/DE2Y_NQ_15M_LEAD_PREREG.md`: DE2Y-NQ-15M-LEAD: does a German 2-year yield move lead Nasdaq by one 15-minute bar? (one confirmation test)
+- `forge/COG_THEORIES_PREREG.md`: COG-THEORIES: three testable theories behind the message to C.OG (time of day, carried-forward legs, selection
+- `forge/COG_TURN_EVENTS_PREREG.md`: COG-TURN-EVENTS: do SOFR-Euribor turning points carry information about Nasdaq's next turn, breakout or move?
+- `forge/CONFIDENCE_PREREG.md`: Layer 6 — CONFIDENCE (meta-labelling): can today's conditions sharpen layer 5's probabilities?
+- `forge/DE2Y_NQ_15M_LEAD_PREREG.md`: DE2Y-NQ-15M-LEAD: does a German 2-year yield move lead Nasdaq by one 15-minute bar? (one confirmation test)
+- `forge/DECISION_LAB_FILTERS_PREREG.md`: Decision Lab: filters on rule A (DRAFT, not registered; needs the owner's approval before any test runs)
 - `forge/DISTRIBUTION_FORECAST_PREREG.md`: Conditional distribution forecast for today's range, and for each remaining hour
 - `forge/FED_PATH_LEAD_PREREG.md`: FED-PATH-LEAD: does the Fed-path slope lead EURUSD / AUD / silver / DAX? (one confirmation test)
 - `forge/FUTURES_COST_RESCORE_PREREG.md`: Futures-cost re-score of the line-touch fade (registered 2026-10-11, before the re-score is computed)
