@@ -304,7 +304,8 @@ import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, li
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
 import { buildHedgePlanText as _hpText, orderStates as _hpStates } from './js/hedgingPlanExport.js';   // hedge plan → pine/OI Bot Trades.pine
-import { cmeBookContracts as _cmeBook, priceDigits as _priceDigits } from './js/hedgingBooks.js';   // CME listed book → hedging contracts (FX, US30)
+import { cmeBookContracts as _cmeBook, priceDigits as _priceDigits } from './js/hedgingBooks.js';
+import { buildOiProfile, buildProfileText } from './js/oiProfile.js';   // OI Profile indicator export   // CME listed book → hedging contracts (FX, US30)
 import compression from 'compression';
 import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
 import { spreadProfileInit, spreadProfileSample, spreadProfileFlush, spreadProfileReport, MOTIF_UNIVERSE as _SPREAD_UNIVERSE } from './js/spreadProfile.js';
@@ -24372,6 +24373,60 @@ app.get('/api/vol-forecast/export', (_req, res) => {
 // Clusters Fibonacci retracements (3/5/10-day swings), previous daily opens/H/L,
 // weekly pivots, vol forecast absolute levels, and round numbers. Returns zones
 // with 2+ distinct level types. Format: CZ {price} : {count} {type1},{type2},...
+// ── OI PROFILE export (the paste for pine/OI Profile.pine) — one block per instrument ─────────────────────────────────────────────────
+// GET /api/oi-profile/export?pair=nq            one instrument (plan key like nq/gold/eurusd, or the OI store key like NAS100_USD)
+// GET /api/oi-profile/export?pair=nq,gold,spx   several blocks one after the other (the indicator picks the one matching its chart)
+// GET /api/oi-profile/export?pair=all           every instrument in the store (large — prefer one or a few)
+// Built by js/oiProfile.js: the strongest-DTE book's walls / gamma / vanna, volume, the IV smile (real strikes only), the hedging-map curves, and P(touch)/ETA per level
+// (the same calibrated reachability as the other exports). Read-only; nothing here trades.
+app.get('/api/oi-profile/export', async (req, res) => {
+  try {
+    const raw = await kv.get('oi_store').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    const rawC = await kv.get('oi_store_cmdty').catch(() => null);
+    const cm = rawC ? (JSON.parse(rawC).data ?? JSON.parse(rawC)) : {};
+    for (const [k, v] of Object.entries(cm || {})) if (!(k in store)) store[k] = v;
+    const want = String(req.query.pair || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!want.length) return res.status(400).type('text/plain').send('Give ?pair=nq (or gold, spx, eurusd … a comma list, or all).');
+    const keyOf = p => { try { return resolveKey(p); } catch { return String(p).toLowerCase().replace(/[/_]/g, ''); } };
+    const storeKeys = want[0].toLowerCase() === 'all' ? Object.keys(store) : want.map(w => Object.keys(store).find(k => k === w || keyOf(k) === keyOf(w))).filter(Boolean);
+    if (!storeKeys.length) return res.status(404).type('text/plain').send(`No OI record for ${want.join(', ')}.`);
+    const wantReach = String(req.query.reach || '') !== '0' && !!process.env.OANDA_KEY;
+    const oneDay = 24 * 3600e3;
+    const blocks = [];
+    for (const sk of storeKeys) {
+      const inst = store[sk]; if (!inst?.spot) continue;
+      inst.pair = inst.pair || sk;
+      const rm = inst.refMove?.move > 0 ? inst.refMove.move : inst.spot * 0.01;
+      // hedging-map curves (CME book re-priced at every price × IV shift) — the "helix" and the zero-gamma level
+      let hedge = null;
+      try {
+        const bk = _cmeBook(sk, inst, { maxDte: 3 });
+        if (bk) { const half = Math.min(0.06, Math.max(0.012, 3 * rm / inst.spot)); hedge = hedgingScenario(bk.contracts, { spot: bk.spot, lo: bk.spot * (1 - half), hi: bk.spot * (1 + half), n: 81, shifts: [-2, 0, 2, 4], optMult: 1, futMult: 1 }); }
+      } catch { hedge = null; }
+      let prof = buildOiProfile(inst, { sym: sk, hedge });
+      if (!prof) continue;
+      // calibrated P(touch) + median ETA per level (the same engine as the other exports); absent where no price feed / bars
+      if (wantReach) {
+        try {
+          const osym = _OI_REACH_OA[sk];
+          const bars = osym ? await _oiM5Bars(osym) : null;
+          if (bars) {
+            const ctx = _fpBuildCtx(bars, {});
+            const rows = _oiWallReach(ctx, bars.length, prof.levels.map(l => ({ price: l.price, type: l.type })), 48, { nPaths: 300, instrument: sk });
+            const byP = new Map(rows.map(r => [r.price.toFixed(6), r]));
+            prof = buildOiProfile(inst, { sym: sk, hedge, reach: pr => { const r = byP.get(pr.toFixed(6)); return r && Number.isFinite(r.calibrated) ? { p: r.calibrated, eta: Number.isFinite(r.medBarsToTouch) ? r.medBarsToTouch * 5 : null } : null; } });
+          }
+        } catch (e) { console.warn('[oi-profile] reach failed for', sk, e.message); }
+      }
+      const fk = (() => { try { return _forecastKeyForPair(sk); } catch { return null; } })();
+      blocks.push(buildProfileText(prof, { name: fk || String(sk).toUpperCase().replace(/[^A-Z0-9]/g, ''), generated: new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC · saved ' + (inst.savedAt || '?'), digits: _priceDigits(sk, inst.spot) }));
+    }
+    if (!blocks.length) return res.status(404).type('text/plain').send('No profile could be built (no book on the record).');
+    res.type('text/plain').send(blocks.join('\n'));
+  } catch (e) { res.status(500).type('text/plain').send(`OI profile error: ${e.message}`); }
+});
+
 // ── OI TIERS export (SEPARATE from /api/vol-forecast/zones — nothing there changes) ───────────────────────────────────────────────
 // OI levels + the forecast ladder + the IV-adjusted ladder + the Confluence Zones clusters (Fib / S/R / pivots / POC / VWAP / prior opens / round),
 // grouped into zones either side of spot and ranked by DISTANCE (js/oiTiers.js). Same OI line format the indicator already parses; tier text rides
