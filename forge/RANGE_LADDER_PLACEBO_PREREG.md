@@ -110,3 +110,5 @@ Nothing else changes. No outcome had been computed: the only data read so far wa
 above. The book's own handling is recorded as a fault (`plans/DATA_SPEC.md` §5) for whoever owns the book.
 
 ## RESULTS
+
+Run 2026-10-19 → `analysis/output/range-ladder-placebo/RESULTS.md`. **UNDERPOWERED (no verdict by the registered rule)**: control C1 failed (−0.09 pp, CI [−0.16, −0.02]). Descriptive: real lines revert +0.91 pp more than shifted ladders [+0.82, +1.01], under the 2-pp bar; the difference sits at the Asia range edges (A_1 +3.07, A_0 +2.83).

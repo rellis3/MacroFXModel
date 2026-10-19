@@ -904,6 +904,14 @@ export const DESK_EVIDENCE = [
     use: 'Nothing built. The dealer hedging map shows zero gamma as mechanics. Rerun as a new pre-registration after ~400 days of our own capture (weeklies, per-expiry).',
   },
   {
+    id: 'range-ladder-placebo', domain: 'price', verdict: 'underpowered', date: '2026-10-19', doc: 'forge/RANGE_LADDER_PLACEBO_PREREG.md',
+    also: ['analysis/output/range-ladder-placebo/RESULTS.md'],
+    instruments: ['GOLD', 'AUDJPY', 'AUDUSD', 'NZDJPY', 'NZDUSD', 'USDJPY', 'CADJPY', 'EURJPY', 'GBPJPY', 'EURAUD', 'EURUSD', 'GBPUSD', 'USDCHF', 'USDCAD', 'NQ', 'SPX500', 'DE30', 'US30', 'US2000'],
+    claim: 'At the Asia/Monday range-ladder lines the range-line book trades, the race next-line-in vs next-line-out resolves differently from the same ladder shifted to the wrong price',
+    result: '2,745 sessions 2016-2026, 19 instruments, 515k real touches vs 2.07M placebo: real lines revert +0.91 pp more [+0.82, +1.01], under the 2-pp bar; only A_1 passes its line gate (+3.07 pp). The registered placebo-vs-placebo control failed (-0.09 pp [-0.16, -0.02]), so by the prereg there is no verdict.',
+    use: 'The ladder lines are places, not signals: the race at a line is close to a coin flip at real and shifted ladders alike, with at most a ~3-point reversion tilt at the Asia range edges. Nothing here supports a per-line edge in the range-line book; reopen only as a confirmation prereg on the edge lines with forward sessions.',
+  },
+  {
     id: 'meta-label-yield-spread', domain: 'volatility', verdict: 'null', date: '2026-10-06', doc: 'forge/META_LABEL_YS_PREREG.md',
     claim: 'The volatility system state at entry (regime, recent range vs forecast, today range, recent jumps, plus the primary z) tells when the yield-spread book is right, so meta-sizing beats flat (Lesson 03 meta-labelling)',
     result: 'FAIL, wrong way round. 221 walk-forward test trades 2019-2026: per-trade Sharpe 0.100 meta vs 0.165 flat, difference -0.065 [-0.117, +0.006]. Top predicted tercile won 52.8% (mean +0.02%) vs bottom 62.2% (+0.38%). The model learned high-vol entries win; the test years said the opposite. 2020 flat -31.7%, meta -49.3%.',
@@ -1185,6 +1193,7 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
   'ai-crack-metals':         { n: '61 de-clustered semis cracks 2006-2026 vs ~4,900 control sessions', note: 'MDE 1.8% vs a 2.0% pass bar; interval [-0.83, +1.89] excludes the bar -- a real null' },
   'ai-crack-metals-silver':  { n: '61 de-clustered semis cracks 2006-2026 vs ~4,900 control sessions', note: 'MDE 3.4% vs a 3.5% pass bar; interval [-4.05, +0.16] excludes the bar' },
   'portfolio-book':          { n: '4,645 weekdays 2008-2026, 5 sleeves, 28 legs, 2,911 trades', note: 'Sharpe SE 0.235, MDE 0.66; P1 1.06-1.11 clears it; DSR 0.49 fails on a trial-variance design error (mirror counted)' },
