@@ -29,7 +29,9 @@ us30Chart  = input.string("US30USD",   "US30 chart ticker",   group=GM)
 us2kChart  = input.string("US2000USD", "US2000 chart ticker", group=GM)
 G2 = "2 · Show"
 showLevels = input.bool(true, "Reaction levels", group=G2)
-showZones  = input.bool(true, "Reaction zones (soft bands)", group=G2)
+showZones  = input.bool(false, "Reaction zones (soft bands behind levels)", group=G2)
+showMinor  = input.bool(false, "Minor levels (vanna, charm, volume, gamma peak)", group=G2)
+maxLevels  = input.int(7, "Max levels shown", minval=1, maxval=20, group=G2, tooltip="Keeps the most important levels: walls, zero gamma, GEX flip, max pain, the day's expected-move edges. Raise it to see more.")
 showEM     = input.bool(true, "Expected-move box", group=G2)
 showTable  = input.bool(true, "Summary table", group=G2)
 showGex    = input.bool(true, "GEX profile", group=G2)
@@ -43,6 +45,8 @@ colW      = input.int(14, "Column width (bars)", minval=6, maxval=40, group=G3, 
 colGap    = input.int(5, "Gap between columns (bars)", minval=1, maxval=30, group=G3)
 zoneFrac  = input.float(0.05, "Zone half-height (× expected-move scale)", minval=0.005, maxval=0.5, step=0.005, group=G3)
 lblSizeIn = input.string("small", "Label size", options=["tiny", "small", "normal"], group=G3)
+labelSide = input.string("right", "Level labels on the", options=["right", "left"], group=G3, tooltip="Right: next to the profile columns. Left: at the start of the lines.")
+tblSize   = input.string("tiny", "Table text size", options=["tiny", "small"], group=G3)
 tblPos    = input.string("bottom left", "Table position", options=["top left", "top right", "bottom left", "bottom right"], group=G3)
 G4 = "4 · Colours"
 cCall  = input.color(#ff5b6e, "Call wall / short gamma", group=G4)
@@ -64,6 +68,7 @@ var string mGen = ""
 var string mRegime = ""
 var string mBook = ""
 var string mTerms = "spot"
+var string mSaved = ""
 var float mSpot = na
 var float mNet = na
 var float mBookPct = na
@@ -251,6 +256,8 @@ if barstate.isfirst
                                     mBinw := str.tonumber(val)
                                 else if key == "terms"
                                     mTerms := val
+                                else if key == "saved"
+                                    mSaved := val
                         else if tag == "H0"
                             mUp1 := f_num(p, 2)
                             mDn1 := f_num(p, 4)
@@ -283,6 +290,8 @@ if barstate.isfirst
                             array.push(xH, f_num(p, 6))
             parsed := array.size(lvPrice) > 0 or array.size(gP) > 0
 
+
+tblTextSize = tblSize == "small" ? size.small : size.tiny
 
 // ── Helpers ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 f_lvCol(t) =>
@@ -373,29 +382,50 @@ if barstate.islast
             array.push(dBox, box.new(left=bi - 80, top=mEmHi, right=xL - 1, bottom=mEmLo, border_color=color.new(cEM, 55), border_style=line.style_dashed, border_width=1, bgcolor=color.new(cEM, 93)))
             array.push(dLbl, label.new(x=xL - 1, y=mEmHi, text="EXPECTED MOVE  ±" + str.tostring((mEmHi - mEmLo) / 2, format.mintick) + (na(mEmPct) ? "" : "  (" + str.tostring(mEmPct, "#.##") + "%)"), xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_down, textcolor=cEM, size=size.tiny, textalign=text.align_right))
 
-        // ── levels: zone band, line, label chip (labels de-overlapped in price) ──
+        // ── levels: keep the most important N, then (optional band), line, label chip (de-overlapped in price) ──
         int nL = array.size(lvPrice)
         float lastY = na
+        bool labLeft = labelSide == "left"
+        int labX = labLeft ? bi - 118 : xL
         if nL > 0
-            float gap = ref * 0.075
+            // importance: walls / zero gamma / GEX flip / max pain / the day's edges first; vanna, charm, volume, gamma peak only when ticked
+            array<float> score = array.new_float()
             for i = 0 to nL - 1
-                string t = array.get(lvType, i)
-                float p = array.get(lvPrice, i)
-                color col = f_lvCol(t)
-                float strn = nz(array.get(lvStr, i), 0.5)
-                bool isEdge = t == "exp_hi" or t == "exp_lo"
-                if showZones and not isEdge and t != "charm_flip"
-                    float zh = ref * zoneFrac * (0.6 + 0.8 * strn)
-                    array.push(dBox, box.new(left=bi - 40, top=p + zh, right=xL - 1, bottom=p - zh, border_color=color(na), bgcolor=color.new(col, 90)))
-                if showLevels
-                    int wdt = isEdge ? 1 : (1 + int(math.round(strn * 2)))
-                    array.push(dLine, line.new(x1=bi - 120, y1=p, x2=xL, y2=p, xloc=xloc.bar_index, color=color.new(col, 8), style=f_lvStyle(t), width=wdt))
-                    float ly = na(lastY) ? p : math.min(p, lastY - gap)
-                    lastY := ly
-                    float tp = array.get(lvTouch, i)
-                    float et = array.get(lvEta, i)
-                    string txt = array.get(lvLabel, i) + "  " + str.tostring(p, format.mintick) + (array.get(lvExp, i) != "" ? "  ·  " + array.get(lvExp, i) : "") + (na(tp) ? "" : "  ·  " + str.tostring(tp, "#") + "%" + (na(et) ? "" : "~" + str.tostring(et, "#") + "m"))
-                    array.push(dLbl, label.new(x=xL, y=ly, text=txt, xloc=xloc.bar_index, yloc=yloc.price, color=color.new(#0d1117, 12), style=label.style_label_left, textcolor=col, size=f_lblSize()))
+                string t0 = array.get(lvType, i)
+                float s0 = nz(array.get(lvStr, i), 0.5)
+                bool isMinor = t0 == "vanna_flip" or t0 == "charm_flip" or t0 == "oi_volume" or t0 == "gamma_peak"
+                float sc = t0 == "zero_gamma" ? 95.0 : (t0 == "call_wall" or t0 == "put_wall") ? 80.0 + 20.0 * s0 : t0 == "gex_flip" ? 85.0 : t0 == "max_pain" ? 82.0 : (t0 == "exp_hi" or t0 == "exp_lo") ? 70.0 : 30.0 + 20.0 * s0
+                array.push(score, (isMinor and not showMinor) ? -1.0 : sc)
+            array<bool> sel = array.new_bool(nL, false)
+            for k = 1 to maxLevels
+                int bestI = -1
+                float bestS = -0.5
+                for i = 0 to nL - 1
+                    if not array.get(sel, i) and array.get(score, i) > bestS
+                        bestS := array.get(score, i)
+                        bestI := i
+                if bestI >= 0
+                    array.set(sel, bestI, true)
+            float gap = ref * 0.11
+            for i = 0 to nL - 1
+                if array.get(sel, i)
+                    string t = array.get(lvType, i)
+                    float p = array.get(lvPrice, i)
+                    color col = f_lvCol(t)
+                    float strn = nz(array.get(lvStr, i), 0.5)
+                    bool isEdge = t == "exp_hi" or t == "exp_lo"
+                    if showZones and not isEdge
+                        float zh = ref * zoneFrac * (0.6 + 0.8 * strn)
+                        array.push(dBox, box.new(left=bi - 40, top=p + zh, right=xL - 1, bottom=p - zh, border_color=color(na), bgcolor=color.new(col, 92)))
+                    if showLevels
+                        int wdt = isEdge ? 1 : (1 + int(math.round(strn * 2)))
+                        array.push(dLine, line.new(x1=bi - 120, y1=p, x2=xL, y2=p, xloc=xloc.bar_index, color=color.new(col, 25), style=f_lvStyle(t), width=wdt))
+                        float ly = na(lastY) ? p : math.min(p, lastY - gap)
+                        lastY := ly
+                        float tp = array.get(lvTouch, i)
+                        float et = array.get(lvEta, i)
+                        string txt = array.get(lvLabel, i) + "  " + str.tostring(p, format.mintick) + (array.get(lvExp, i) != "" ? "  ·  " + array.get(lvExp, i) : "") + (na(tp) ? "" : "  ·  " + str.tostring(tp, "#") + "%" + (na(et) ? "" : "~" + str.tostring(et, "#") + "m"))
+                        array.push(dLbl, label.new(x=labX, y=ly, text=txt, xloc=xloc.bar_index, yloc=yloc.price, color=color.new(#0d1117, 12), style=(labLeft ? label.style_label_right : label.style_label_left), textcolor=col, size=f_lblSize()))
 
         // ── column titles + spines ──
         float yT = pTop + ref * 0.12
@@ -492,21 +522,32 @@ if barstate.islast
 
         // ── summary table ──
         if showTable
-            tbl := table.new(tblPosition, 2, 8, bgcolor=color.new(#0d1117, 6), frame_color=color.new(#2a3340, 0), frame_width=1, border_width=0)
+            tbl := table.new(tblPosition, 2, 10, bgcolor=color.new(#0d1117, 6), frame_color=color.new(#2a3340, 0), frame_width=1, border_width=0)
             color rc = mRegime == "BREAKOUT" ? cCall : cPut
-            table.cell(tbl, 0, 0, "OI PROFILE · " + mName + (mTerms == "futures" ? " · futures prices" : " · spot/CFD prices"), text_color=color.new(#e6e9ef, 0), text_size=size.small, text_halign=text.align_left)
+            table.cell(tbl, 0, 0, "OI PROFILE · " + mName + (mTerms == "futures" ? " · futures prices" : " · spot/CFD prices"), text_color=color.new(#e6e9ef, 0), text_size=tblTextSize, text_halign=text.align_left)
             table.cell(tbl, 1, 0, mGen == "" ? "" : str.substring(mGen, 0, math.min(16, str.length(mGen))), text_color=color.new(#8b95a3, 0), text_size=size.tiny, text_halign=text.align_right)
             table.cell(tbl, 0, 1, "REGIME", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
-            table.cell(tbl, 1, 1, mRegime == "BREAKOUT" ? "BREAKOUT · short gamma" : "PIN · long gamma", text_color=rc, text_size=size.small, text_halign=text.align_right)
+            table.cell(tbl, 1, 1, mRegime == "BREAKOUT" ? "BREAKOUT · short gamma" : "PIN · long gamma", text_color=rc, text_size=tblTextSize, text_halign=text.align_right)
             table.cell(tbl, 0, 2, "STRONGEST DTE", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
-            table.cell(tbl, 1, 2, mBook + (na(mBookPct) ? "" : "  " + str.tostring(mBookPct, "#") + "% of gamma"), text_color=cPain, text_size=size.small, text_halign=text.align_right)
+            table.cell(tbl, 1, 2, mBook + (na(mBookPct) ? "" : "  " + str.tostring(mBookPct, "#") + "% of gamma"), text_color=cPain, text_size=tblTextSize, text_halign=text.align_right)
             table.cell(tbl, 0, 3, "ZERO GAMMA", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
-            table.cell(tbl, 1, 3, na(mZg) ? "—" : str.tostring(mZg, format.mintick) + "  (" + (mZg >= close ? "+" : "") + str.tostring(mZg - close, format.mintick) + ")", text_color=cZero, text_size=size.small, text_halign=text.align_right)
+            table.cell(tbl, 1, 3, na(mZg) ? "—" : str.tostring(mZg, format.mintick) + "  (" + (mZg >= close ? "+" : "") + str.tostring(mZg - close, format.mintick) + ")", text_color=cZero, text_size=tblTextSize, text_halign=text.align_right)
             table.cell(tbl, 0, 4, "EXP MOVE", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
-            table.cell(tbl, 1, 4, na(mEmHi) ? "—" : "±" + str.tostring((mEmHi - mEmLo) / 2, format.mintick) + (na(mEmPct) ? "" : "  (" + str.tostring(mEmPct, "#.##") + "%)"), text_color=cEM, text_size=size.small, text_halign=text.align_right)
+            table.cell(tbl, 1, 4, na(mEmHi) ? "—" : "±" + str.tostring((mEmHi - mEmLo) / 2, format.mintick) + (na(mEmPct) ? "" : "  (" + str.tostring(mEmPct, "#.##") + "%)"), text_color=cEM, text_size=tblTextSize, text_halign=text.align_right)
             table.cell(tbl, 0, 5, "ATM IV · RR", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
-            table.cell(tbl, 1, 5, (na(mIv) ? "—" : str.tostring(mIv, "#.#") + "%") + (na(mRr) ? "" : "  ·  " + str.tostring(mRr, "#.#")), text_color=cSmile, text_size=size.small, text_halign=text.align_right)
+            table.cell(tbl, 1, 5, (na(mIv) ? "—" : str.tostring(mIv, "#.#") + "%") + (na(mRr) ? "" : "  ·  " + str.tostring(mRr, "#.#")), text_color=cSmile, text_size=tblTextSize, text_halign=text.align_right)
             table.cell(tbl, 0, 6, "HEDGE ±1%", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
-            table.cell(tbl, 1, 6, na(mUp1) ? "—" : "↑ " + str.tostring(mUp1, "#") + " · ↓ " + str.tostring(mDn1, "#") + " contracts", text_color=color.new(#cbd5e1, 0), text_size=size.small, text_halign=text.align_right)
-            table.cell(tbl, 0, 7, "a picture of the book — not a signal", text_color=color.new(#5b6678, 0), text_size=size.tiny, text_halign=text.align_left)
-            table.merge_cells(tbl, 0, 7, 1, 7)
+            table.cell(tbl, 1, 6, na(mUp1) ? "—" : "↑ " + str.tostring(mUp1, "#") + " · ↓ " + str.tostring(mDn1, "#") + " contracts", text_color=color.new(#cbd5e1, 0), text_size=tblTextSize, text_halign=text.align_right)
+            // freshness: how old this paste is, and how long the gamma it describes lasts (the strongest-DTE book decides)
+            float ageH = na
+            string ageSrc = str.length(mSaved) >= 16 ? mSaved : mGen
+            if str.length(ageSrc) >= 16
+                ageH := (timenow - timestamp("UTC", int(str.tonumber(str.substring(ageSrc, 0, 4))), int(str.tonumber(str.substring(ageSrc, 5, 7))), int(str.tonumber(str.substring(ageSrc, 8, 10))), int(str.tonumber(str.substring(ageSrc, 11, 13))), int(str.tonumber(str.substring(ageSrc, 14, 16))), 0)) / 3600000.0
+            color ageCol = na(ageH) ? color.new(#7d8896, 0) : ageH <= 12 ? cPut : ageH <= 30 ? cEM : cCall
+            string shelf = str.startswith(mBook, "0") ? "most of this gamma expires within a day" : str.startswith(mBook, "2") ? "lasts a few days (2–7 DTE book)" : "lasts a week or more; re-paste daily"
+            table.cell(tbl, 0, 7, "OI DATA AGE", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.cell(tbl, 1, 7, na(ageH) ? "—" : str.tostring(ageH, "#.#") + " h ago" + (ageH > 30 ? " — re-paste" : ""), text_color=ageCol, text_size=tblTextSize, text_halign=text.align_right)
+            table.cell(tbl, 0, 8, "SHELF LIFE", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.cell(tbl, 1, 8, shelf, text_color=color.new(#cbd5e1, 0), text_size=tblTextSize, text_halign=text.align_right)
+            table.cell(tbl, 0, 9, "a picture of the book — not a signal", text_color=color.new(#5b6678, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.merge_cells(tbl, 0, 9, 1, 9)

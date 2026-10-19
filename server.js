@@ -24431,7 +24431,7 @@ app.get('/api/oi-profile/export', async (req, res) => {
     const blocks = items.map(({ sk, inst, prof: p0 }) => {
       const prof = futTerms ? shiftProfilePrices(p0, v => _oiFutPx(v, inst)) : p0;
       const fk = (() => { try { return _forecastKeyForPair(sk); } catch { return null; } })();
-      return buildProfileText(prof, { name: fk || String(sk).toUpperCase().replace(/[^A-Z0-9]/g, ''), generated: new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC · saved ' + (inst.savedAt || '?'), digits: _priceDigits(sk, inst.spot) });
+      return buildProfileText(prof, { name: fk || String(sk).toUpperCase().replace(/[^A-Z0-9]/g, ''), generated: new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC · saved ' + (inst.savedAt || '?'), digits: _priceDigits(sk, inst.spot), savedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null });
     });
     if (!blocks.length) return res.status(404).type('text/plain').send('No profile could be built (no book on the record).');
     // Pine v6 caps a string at 40,960 characters. Instruments go in store order (FX, gold, indices, then commodities), so if the whole book ever outgrows the cap it is the

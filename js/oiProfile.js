@@ -148,7 +148,7 @@ export function shiftProfilePrices(p, fn, label = 'futures') {
  *  Pine strings cannot exceed 4,096 characters (a longer paste raises "String is too long"), so the block is COMPACT: bar series are integers scaled to ±1000,
  *  rows under 2% of the peak are dropped, gamma carries only the net, and the helix is downsampled. Pine's str.tonumber may not read exponent notation and may
  *  drop empty fields, so: plain numbers only, '-' for a missing value. Use chunkText() to split a result into <=4,000-character parts, one per Pine input box. */
-export function buildProfileText(p, { name, generated = '', digits = 2 } = {}) {
+export function buildProfileText(p, { name, generated = '', digits = 2, savedAtMs = null } = {}) {
   if (!p) return '';
   const f = v => (Number.isFinite(v) ? (+v).toFixed(digits) : '-');
   const plain = (v, d = 2) => (Number.isFinite(v) ? (+v).toFixed(d) : '-');
@@ -157,7 +157,7 @@ export function buildProfileText(p, { name, generated = '', digits = 2 } = {}) {
   const keep = (rows, val, m) => rows.filter(r => Math.abs(val(r)) / m >= 0.02);
   const out = ['──── OI PROFILE ' + '─'.repeat(30), `Generated: ${generated}`, '', name || p.sym];
   out.push(`M|spot|${f(p.spot)}|regime|${p.regime}|netgex|${Number.isFinite(p.netGex) ? Math.round(p.netGex / 1000) : '-'}|book|${p.book.label.replace(/\s+/g, '')}|bookpct|${p.book.share}|zg|${f(p.zeroGamma)}|flip|${f(p.flip)}`
-    + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 2)}|iv|${plain(p.iv.atm, 1)}|rr|${plain(p.iv.rr, 1)}|refmove|${f(p.refMove)}|binw|${plain(p.binWidth, 2)}|terms|${p.terms || 'spot'}`);
+    + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 2)}|iv|${plain(p.iv.atm, 1)}|rr|${plain(p.iv.rr, 1)}|refmove|${f(p.refMove)}|binw|${plain(p.binWidth, 2)}|terms|${p.terms || 'spot'}` + (Number.isFinite(savedAtMs) ? `|saved|${new Date(savedAtMs).toISOString().slice(0, 16).replace('T', ' ')}` : ''));
   if (p.hedgeRead) out.push(`H0|up1|${Math.round(p.hedgeRead.up1)}|dn1|${Math.round(p.hedgeRead.dn1)}`);
   for (const l of p.levels) out.push(`L|${l.type}|${f(l.price)}|${l.label}|${(+l.strength).toFixed(1)}|${l.touchPct ?? '-'}|${l.etaMin ?? '-'}|${l.expect || '-'}`);
   const gm = mxAbs(p.gex.map(r => r.net)); for (const r of keep(p.gex, r => r.net, gm)) out.push(`G|${f(r.price)}|${sc(r.net, gm)}`);
