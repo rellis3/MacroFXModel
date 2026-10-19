@@ -305,7 +305,7 @@ import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dea
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
 import { buildHedgePlanText as _hpText, orderStates as _hpStates } from './js/hedgingPlanExport.js';   // hedge plan → pine/OI Bot Trades.pine
 import { cmeBookContracts as _cmeBook, priceDigits as _priceDigits } from './js/hedgingBooks.js';
-import { buildOiProfile, buildProfileText, shiftProfilePrices } from './js/oiProfile.js';   // OI Profile indicator export   // CME listed book → hedging contracts (FX, US30)
+import { buildOiProfile, buildProfileText, shiftProfilePrices, chunkText } from './js/oiProfile.js';   // OI Profile indicator export   // CME listed book → hedging contracts (FX, US30)
 import compression from 'compression';
 import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
 import { spreadProfileInit, spreadProfileSample, spreadProfileFlush, spreadProfileReport, MOTIF_UNIVERSE as _SPREAD_UNIVERSE } from './js/spreadProfile.js';
@@ -24434,7 +24434,13 @@ app.get('/api/oi-profile/export', async (req, res) => {
       return buildProfileText(prof, { name: fk || String(sk).toUpperCase().replace(/[^A-Z0-9]/g, ''), generated: new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC · saved ' + (inst.savedAt || '?'), digits: _priceDigits(sk, inst.spot) });
     });
     if (!blocks.length) return res.status(404).type('text/plain').send('No profile could be built (no book on the record).');
-    res.type('text/plain').send(blocks.join('\n'));
+    const body = blocks.join('\n');
+    // ?chunks=1 — Pine strings are capped at 4,096 characters, so the paste is cut into parts of <3,900 characters (on line boundaries), one per input box in the indicator
+    if (String(req.query.chunks || '') === '1') {
+      const parts = chunkText(body, 3900);
+      return res.type('text/plain').send(parts.map((p, i) => `=====PART ${i + 1}/${parts.length}=====\n${p}`).join('\n'));
+    }
+    res.type('text/plain').send(body);
   } catch (e) { res.status(500).type('text/plain').send(`OI profile error: ${e.message}`); }
 });
 

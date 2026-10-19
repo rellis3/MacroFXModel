@@ -114,7 +114,7 @@ export function buildOiProfile(inst, opts = {}) {
   // ── 5. helix: the hedging map's curves, downsampled ──────────────────────────────────────────────────────────────
   let helix = null;
   if (opts.hedge?.grid?.length) {
-    const g = opts.hedge.grid, step = Math.max(1, Math.round(g.length / 45));
+    const g = opts.hedge.grid, step = Math.max(1, Math.round(g.length / 27));
     const cv = dv => opts.hedge.curves.find(c => c.dv === dv)?.gamma;
     const hed = opts.hedge.curves.find(c => c.dv === 0)?.hedge;
     helix = []; for (let i = 0; i < g.length; i += step) helix.push({ price: g[i], g: [-2, 0, 2, 4].map(dv => cv(dv)?.[i] ?? 0), hedge: hed?.[i] ?? 0 });
@@ -145,27 +145,41 @@ export function shiftProfilePrices(p, fn, label = 'futures') {
 }
 
 /** Pipe-delimited block for the Pine indicator. One instrument per block; first line after the title names it.
- *  Pine's str.tonumber may not read exponent notation and may drop empty fields, so: plain decimals only, '-' for a missing value, and every bar series is scaled to ±1000. */
+ *  Pine strings cannot exceed 4,096 characters (a longer paste raises "String is too long"), so the block is COMPACT: bar series are integers scaled to ±1000,
+ *  rows under 2% of the peak are dropped, gamma carries only the net, and the helix is downsampled. Pine's str.tonumber may not read exponent notation and may
+ *  drop empty fields, so: plain numbers only, '-' for a missing value. Use chunkText() to split a result into <4,000-character parts, one per Pine input box. */
 export function buildProfileText(p, { name, generated = '', digits = 2 } = {}) {
   if (!p) return '';
   const f = v => (Number.isFinite(v) ? (+v).toFixed(digits) : '-');
   const plain = (v, d = 2) => (Number.isFinite(v) ? (+v).toFixed(d) : '-');
   const mxAbs = arr => Math.max(1e-300, ...arr.map(v => Math.abs(v)));
-  const sc = (v, m) => (m > 0 && Number.isFinite(v) ? (v / m * 1000).toFixed(1) : '0.0');
+  const sc = (v, m) => (m > 0 && Number.isFinite(v) ? String(Math.round(v / m * 1000)) : '0');
+  const keep = (rows, val, m) => rows.filter(r => Math.abs(val(r)) / m >= 0.02);
   const out = ['──── OI PROFILE ' + '─'.repeat(30), `Generated: ${generated}`, '', name || p.sym];
   out.push(`M|spot|${f(p.spot)}|regime|${p.regime}|netgex|${Number.isFinite(p.netGex) ? Math.round(p.netGex / 1000) : '-'}|book|${p.book.label.replace(/\s+/g, '')}|bookpct|${p.book.share}|zg|${f(p.zeroGamma)}|flip|${f(p.flip)}`
-    + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 3)}|iv|${plain(p.iv.atm, 2)}|rr|${plain(p.iv.rr, 2)}|refmove|${f(p.refMove)}|binw|${plain(p.binWidth, 3)}|terms|${p.terms || 'spot'}`);
+    + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 2)}|iv|${plain(p.iv.atm, 1)}|rr|${plain(p.iv.rr, 1)}|refmove|${f(p.refMove)}|binw|${plain(p.binWidth, 2)}|terms|${p.terms || 'spot'}`);
   if (p.hedgeRead) out.push(`H0|up1|${Math.round(p.hedgeRead.up1)}|dn1|${Math.round(p.hedgeRead.dn1)}`);
-  for (const l of p.levels) out.push(`L|${l.type}|${f(l.price)}|${l.label}|${(+l.strength).toFixed(2)}|${l.touchPct ?? '-'}|${l.etaMin ?? '-'}|${l.expect || '-'}`);
-  const gm = mxAbs(p.gex.flatMap(r => [r.net, r.call, r.put]));
-  for (const r of p.gex) out.push(`G|${f(r.price)}|${sc(r.net, gm)}|${sc(r.call, gm)}|${sc(r.put, gm)}`);
-  const vm = mxAbs(p.vanna.map(r => r.v)); for (const r of p.vanna) out.push(`V|${f(r.price)}|${sc(r.v, vm)}`);
-  const om = mxAbs(p.volume.map(r => r.v)); for (const r of p.volume) out.push(`O|${f(r.price)}|${sc(r.v, om)}`);
-  for (const r of p.smile) out.push(`S|${f(r.price)}|${(+r.iv).toFixed(2)}`);
+  for (const l of p.levels) out.push(`L|${l.type}|${f(l.price)}|${l.label}|${(+l.strength).toFixed(1)}|${l.touchPct ?? '-'}|${l.etaMin ?? '-'}|${l.expect || '-'}`);
+  const gm = mxAbs(p.gex.map(r => r.net)); for (const r of keep(p.gex, r => r.net, gm)) out.push(`G|${f(r.price)}|${sc(r.net, gm)}`);
+  const vm = mxAbs(p.vanna.map(r => r.v)); for (const r of keep(p.vanna, r => r.v, vm)) out.push(`V|${f(r.price)}|${sc(r.v, vm)}`);
+  const om = mxAbs(p.volume.map(r => r.v)); for (const r of keep(p.volume, r => r.v, om)) out.push(`O|${f(r.price)}|${sc(r.v, om)}`);
+  const sm = p.smile.length > 24 ? p.smile.filter((_, i) => i % Math.ceil(p.smile.length / 24) === 0 || i === p.smile.length - 1) : p.smile;   // ≤24 points: a smooth curve needs no more
+  for (const r of sm) out.push(`S|${f(r.price)}|${(+r.iv).toFixed(1)}`);
   if (p.helix) {
     const xm = mxAbs(p.helix.flatMap(r => r.g)), hm = mxAbs(p.helix.map(r => r.hedge));
     for (const r of p.helix) out.push(`X|${f(r.price)}|${r.g.map(v => sc(v, xm)).join('|')}|${sc(r.hedge, hm)}`);
   }
   out.push('');
   return out.join(String.fromCharCode(10));
+}
+
+/** Split a paste into parts of at most `max` characters, on line boundaries (Pine's per-input string limit is 4,096). Returns the parts, in order. */
+export function chunkText(text, max = 3900) {
+  const NL = String.fromCharCode(10), parts = []; let cur = '';
+  for (const line of String(text || '').split(NL)) {
+    if (cur && cur.length + line.length + 1 > max) { parts.push(cur); cur = ''; }
+    cur += (cur ? NL : '') + line;
+  }
+  if (cur) parts.push(cur);
+  return parts;
 }

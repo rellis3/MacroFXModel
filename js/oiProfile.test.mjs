@@ -1,6 +1,6 @@
 // OI PROFILE — strongest-DTE book, reaction levels, bars, smile (real points only), text format.
 //   node js/oiProfile.test.mjs
-import { buildOiProfile, buildProfileText, shiftProfilePrices } from './oiProfile.js';
+import { buildOiProfile, buildProfileText, shiftProfilePrices, chunkText } from './oiProfile.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
@@ -53,5 +53,10 @@ ok('degenerate input is null', buildOiProfile({ spot: 0 }, { legs: [] }) === nul
 const fut = shiftProfilePrices(p, v => v + 170);
 ok('futures terms: every price shifts by the basis, magnitudes and distances do not', fut.spot === p.spot + 170 && fut.levels.every((l, i) => l.price === p.levels[i].price + 170 && l.strength === p.levels[i].strength) && fut.gex[0].net === p.gex[0].net && fut.refMove === p.refMove && fut.binWidth === p.binWidth && fut.zeroGamma === p.zeroGamma + 170);
 ok('futures terms are stamped on the M line (the indicator shows it)', /\|terms\|futures/.test(buildProfileText(fut, { name: 'NQ', generated: 't' })) && /\|terms\|spot/.test(buildProfileText(p, { name: 'NQ', generated: 't' })));
+const big = Array.from({ length: 900 }, (_, i) => `G|${29000 + i}.5|${i}`).join(String.fromCharCode(10));
+const parts = chunkText(big, 3900);
+ok('chunkText: every part fits the 4,096-character Pine string limit', parts.length > 1 && parts.every(x => x.length <= 3900));
+ok('chunkText: parts rejoin to the original, split only on line boundaries', parts.join(String.fromCharCode(10)) === big);
+ok('integers only in the bar series (compact)', rows.filter(r => /^[GVO]\|/.test(r)).every(r => /^[GVO]\|[\d.]+\|-?\d+$/.test(r)), rows.find(r => /^[GVO]\|/.test(r) && !/^[GVO]\|[\d.]+\|-?\d+$/.test(r)));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

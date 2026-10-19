@@ -170,6 +170,7 @@ svg text{font-family:var(--mono)}
       <label class="pill" style="cursor:pointer" title="Only what the indicator reads (drops the explanatory TIERS sentences and legends)"><input type="checkbox" id="tiersLean" checked style="margin-right:6px">lean</label>
       <button class="btn" id="tiersGo">Refresh</button><button class="btn" id="tiersCopy">Copy</button><span style="flex:1"></span><button class="btn" id="tiersClose">Close</button></div>
     <div class="legend" style="margin:0">Separate from the normal export: paste this <b>instead of</b> its OI section. Tier = distance from spot (nearer is reached first); "confluence" lists sources in the same zone and is descriptive only.</div>
+    <div id="tiersParts" style="display:none;flex:1;overflow:auto"></div>
     <textarea id="tiersTxt" readonly style="flex:1;background:#05070a;color:var(--tx);border:1px solid var(--line2);border-radius:6px;padding:14px;font:13px/1.55 var(--mono)"></textarea>
   </div>
 </div>
@@ -917,18 +918,29 @@ async function refresh(){
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
   drawBrief();
 }
-async function loadTiers(){ const ta = $('#tiersTxt'); ta.value = 'fetching… (OANDA M5 + P(touch), ~10–20 s)';
+async function loadTiers(){ const ta = $('#tiersTxt'); $('#tiersParts').style.display = 'none'; ta.style.display = ''; ta.value = 'fetching… (OANDA M5 + P(touch), ~10–20 s)';
   try { const r = await fetch('/api/oi-tiers/export?' + ($('#tiersToday').checked ? 'mode=today' : 'mode=full') + ($('#tiersFut').checked ? '&terms=futures' : '') + ($('#tiersLean').checked ? '&lean=1' : ''), { cache: 'no-store' }); ta.value = await r.text(); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
+// Profile exports come as numbered parts (Pine strings are capped at 4,096 characters): one box + Copy button per part
+function showExport(text){
+  const box = $('#tiersParts'), ta = $('#tiersTxt');
+  const marker = /^=====PART \d+\/\d+=====$/gm;
+  if (!marker.test(String(text))) { box.style.display = 'none'; ta.style.display = ''; ta.value = text; return; }
+  const parts = String(text).split(/^=====PART \d+\/\d+=====$/m).slice(1).map(p => p.replace(/^\n/, '').replace(/\n$/, ''));
+  ta.style.display = 'none'; box.style.display = 'block';
+  box.innerHTML = '<div class="legend" style="margin:0 0 8px">Paste part 1 into the indicator box "Paste — part 1", part 2 into the next, and so on (' + parts.length + ' part' + (parts.length > 1 ? 's' : '') + ').</div>' +
+    parts.map((p, i) => `<div style="margin-bottom:10px"><div style="display:flex;gap:10px;align-items:center;margin-bottom:4px"><b>Part ${i + 1} of ${parts.length}</b><span style="color:var(--tx3);font-size:12px">${p.length} characters</span><button class="btn" data-part="${i}">Copy part ${i + 1}</button></div><textarea readonly rows="5" style="width:100%;background:#05070a;color:var(--tx);border:1px solid var(--line2);border-radius:6px;padding:10px;font:12px/1.4 var(--mono)">${esc(p)}</textarea></div>`).join('');
+  box.querySelectorAll('button[data-part]').forEach(b => b.onclick = () => { try { navigator.clipboard.writeText(parts[+b.dataset.part]); b.textContent = 'Copied ✓'; setTimeout(() => b.textContent = 'Copy part ' + (+b.dataset.part + 1), 1500); } catch (_) { b.parentElement.nextElementSibling.select(); } });
+}
 async function loadProfile(){ const ta = $('#tiersTxt'); ta.value = 'fetching… (price feed + P(touch), ~5–15 s)';
-  try { const r = await fetch('/api/oi-profile/export?pair=' + encodeURIComponent(SYM) + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); ta.value = await r.text(); }
+  try { const r = await fetch('/api/oi-profile/export?chunks=1&pair=' + encodeURIComponent(SYM) + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 let EXPORT_KIND = 'tiers';
-async function loadLevels(){ const ta = $('#tiersTxt'); ta.value = 'fetching… (price feed + P(touch), ~10–20 s)';
+async function loadLevels(){ const ta = $('#tiersTxt'); $('#tiersParts').style.display = 'none'; ta.style.display = ''; ta.value = 'fetching… (price feed + P(touch), ~10–20 s)';
   try { const r = await fetch('/api/vol-forecast/zones?reach=1' + ($('#tiersToday').checked ? '&mode=today' : '') + ($('#tiersFut').checked ? '&terms=futures' : '') + ($('#tiersLean').checked ? '&lean=1' : ''), { cache: 'no-store' }); ta.value = await r.text(); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 async function loadProfileAll(){ const ta = $('#tiersTxt'); ta.value = 'building every instrument…';
-  try { const r = await fetch('/api/oi-profile/export?pair=all&reach=0' + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); ta.value = await r.text(); }
+  try { const r = await fetch('/api/oi-profile/export?chunks=1&pair=all&reach=0' + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 $('#tiersBtn').onclick = () => { EXPORT_KIND = 'tiers'; $('#exportTitle').textContent = 'OI tiers export'; $('#tiersModal').style.display = 'block'; loadTiers(); };
 $('#lvlBtn').onclick = () => { EXPORT_KIND = 'levels'; $('#exportTitle').textContent = 'Levels export — the Confluence Zones indicator paste (C+Z + OI lines, every instrument)'; $('#tiersModal').style.display = 'block'; loadLevels(); };
