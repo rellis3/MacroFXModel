@@ -77,6 +77,7 @@ svg text{font-family:var(--mono)}
     <div class="tgl" id="nearTgl" title="Which expiries feed the terrain and curves">
       <span class="pill on" id="mNear">Near expiries (≤3 DTE)</span><span class="pill" id="mAll">Whole book</span>
     </div>
+    <button class="btn" id="lvlBtn" title="The normal levels paste for the Confluence Zones indicator (C+Z + OI lines) — same as the OI Analytics export button. Tick lean to drop the text the indicator does not read.">Levels export</button>
     <button class="btn" id="profBtn" title="The paste for the OI Profile TradingView indicator (pine/OI Profile.pine) for the instrument on screen: reaction levels, GEX/vanna/volume profile, IV smile, gamma helix.">Profile export</button>
     <button class="btn" id="profAllBtn" title="Every instrument in one paste (about 75 KB): the indicator picks the block that matches the chart, like the Confluence Zones indicator. Without P(touch) so it is fast; use the single-instrument button for touch odds.">Profile · all</button>
     <button class="btn" id="tiersBtn" title="OI levels + forecast ladder + IV-adjusted ladder + Confluence Zones grouped into distance-ranked tiers. A SEPARATE export: paste it instead of the OI section of the normal export.">Tiers export</button>
@@ -166,7 +167,7 @@ svg text{font-family:var(--mono)}
     <div style="display:flex;gap:10px;align-items:center"><b id="exportTitle">OI tiers export</b>
       <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersToday" checked style="margin-right:6px">today only</label>
       <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersFut" style="margin-right:6px">futures terms</label>
-      <label class="pill" style="cursor:pointer" title="Only what the indicator reads (drops the explanatory TIERS sentences and legends)"><input type="checkbox" id="tiersLean" style="margin-right:6px">lean</label>
+      <label class="pill" style="cursor:pointer" title="Only what the indicator reads (drops the explanatory TIERS sentences and legends)"><input type="checkbox" id="tiersLean" checked style="margin-right:6px">lean</label>
       <button class="btn" id="tiersGo">Refresh</button><button class="btn" id="tiersCopy">Copy</button><span style="flex:1"></span><button class="btn" id="tiersClose">Close</button></div>
     <div class="legend" style="margin:0">Separate from the normal export: paste this <b>instead of</b> its OI section. Tier = distance from spot (nearer is reached first); "confluence" lists sources in the same zone and is descriptive only.</div>
     <textarea id="tiersTxt" readonly style="flex:1;background:#05070a;color:var(--tx);border:1px solid var(--line2);border-radius:6px;padding:14px;font:13px/1.55 var(--mono)"></textarea>
@@ -923,13 +924,17 @@ async function loadProfile(){ const ta = $('#tiersTxt'); ta.value = 'fetching…
   try { const r = await fetch('/api/oi-profile/export?pair=' + encodeURIComponent(SYM), { cache: 'no-store' }); ta.value = await r.text(); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 let EXPORT_KIND = 'tiers';
+async function loadLevels(){ const ta = $('#tiersTxt'); ta.value = 'fetching… (price feed + P(touch), ~10–20 s)';
+  try { const r = await fetch('/api/vol-forecast/zones?reach=1' + ($('#tiersToday').checked ? '&mode=today' : '') + ($('#tiersFut').checked ? '&terms=futures' : '') + ($('#tiersLean').checked ? '&lean=1' : ''), { cache: 'no-store' }); ta.value = await r.text(); }
+  catch (e) { ta.value = 'Export failed: ' + e.message; } }
 async function loadProfileAll(){ const ta = $('#tiersTxt'); ta.value = 'building every instrument…';
   try { const r = await fetch('/api/oi-profile/export?pair=all&reach=0', { cache: 'no-store' }); ta.value = await r.text(); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 $('#tiersBtn').onclick = () => { EXPORT_KIND = 'tiers'; $('#exportTitle').textContent = 'OI tiers export'; $('#tiersModal').style.display = 'block'; loadTiers(); };
+$('#lvlBtn').onclick = () => { EXPORT_KIND = 'levels'; $('#exportTitle').textContent = 'Levels export — the Confluence Zones indicator paste (C+Z + OI lines, every instrument)'; $('#tiersModal').style.display = 'block'; loadLevels(); };
 $('#profAllBtn').onclick = () => { EXPORT_KIND = 'profileAll'; $('#exportTitle').textContent = 'OI Profile paste — ALL instruments (the indicator picks the one matching the chart)'; $('#tiersModal').style.display = 'block'; loadProfileAll(); };
 $('#profBtn').onclick = () => { EXPORT_KIND = 'profile'; $('#exportTitle').textContent = 'OI Profile paste — ' + (NAMES[SYM] || SYM) + ' (into pine/OI Profile.pine › 1 · Data)'; $('#tiersModal').style.display = 'block'; loadProfile(); };
-$('#tiersGo').onclick = () => (EXPORT_KIND === 'profileAll' ? loadProfileAll() : EXPORT_KIND === 'profile' ? loadProfile() : loadTiers()); $('#tiersClose').onclick = () => { $('#tiersModal').style.display = 'none'; };
+$('#tiersGo').onclick = () => (EXPORT_KIND === 'levels' ? loadLevels() : EXPORT_KIND === 'profileAll' ? loadProfileAll() : EXPORT_KIND === 'profile' ? loadProfile() : loadTiers()); $('#tiersClose').onclick = () => { $('#tiersModal').style.display = 'none'; };
 $('#tiersCopy').onclick = () => { try { navigator.clipboard.writeText($('#tiersTxt').value); $('#tiersCopy').textContent = 'Copied ✓'; setTimeout(() => $('#tiersCopy').textContent = 'Copy', 1500); } catch (_) { $('#tiersTxt').select(); } };
 $('#mNear').onclick = () => { NEAR = true; $('#mNear').classList.add('on'); $('#mAll').classList.remove('on'); refresh(); };
 $('#mAll').onclick = () => { NEAR = false; $('#mAll').classList.add('on'); $('#mNear').classList.remove('on'); refresh(); };
