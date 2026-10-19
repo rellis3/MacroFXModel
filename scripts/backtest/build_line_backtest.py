@@ -28,6 +28,7 @@ Output: backtest-data/line-backtest/<SYM>.json.gz (served statically; the page g
 from __future__ import annotations
 
 import gzip
+import hashlib
 import json
 import sys
 from multiprocessing import Pool
@@ -36,7 +37,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from forge.iep_build import JOBS, cls_of, sessions
+from forge.iep_build import JOBS, M1, cls_of, sessions
 
 OUT = Path("backtest-data/line-backtest")
 P1 = Path("analysis/output/vf3_stage_b/part1_lines.parquet")
@@ -98,6 +99,34 @@ def grid(side, line_px, entry_i, entry_px, unit, next_px, h, l, c, m_of):
     return [out.get(f"{s}|{t}") for s in STOPS for t in TARGETS] if out else None
 
 
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as fh_:
+        for chunk in iter(lambda: fh_.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def spikes(m, c, k=10.0):
+    """Lesson 05 §06 screen (flag, never alter): a 1-minute move larger than k robust standard deviations of that
+    day's 1-minute returns that is at least half reversed within the next 3 minutes. Catches bad prints and also some
+    genuine news spikes, so it is a list to look at, not a filter."""
+    r = np.diff(np.log(c))
+    if len(r) < 30:
+        return []
+    s = 1.4826 * np.median(np.abs(r))
+    if not (s > 0):
+        s = 1.25 * np.mean(np.abs(r))
+    if not (s > 0):
+        return []
+    out = []
+    for i in np.flatnonzero(np.abs(r) > k * s):
+        nxt = r[i + 1:i + 4].sum()
+        if nxt * np.sign(r[i]) < 0 and abs(nxt) >= 0.5 * abs(r[i]):
+            out.append((int(m[i + 1]), round(float(abs(r[i]) / s), 1)))
+    return out
+
+
 def build(sym):
     name = {"US30": "DOW"}.get(sym, sym)
     P = pd.read_parquet(P1, columns=None)
@@ -107,7 +136,7 @@ def build(sym):
     fh = pd.read_csv(FH / f"{name}.csv", usecols=["date", "jump_share", "gap", "event"]).set_index("date")
     rows = {r.date: r for r in P.itertuples()}
     cls = cls_of(sym)
-    days, tr = [], {"A": [], "B": [], "C": []}
+    days, tr, flags = [], {"A": [], "B": [], "C": []}, {}
     closes = []                                      # London closes (for 20-day realised vol, strictly before the day)
     for d, m, o, h, l, c, *_ in sessions(sym):
         e = np.searchsorted(m, END)
@@ -140,6 +169,9 @@ def build(sym):
         ratio = float(iv / rv) if (pd.notna(iv) and rv) else None
         rich = (ratio >= RICH[sym]) if (ratio is not None and sym in RICH) else None
         f = fh.loc[d] if d in fh.index else None
+        sp_ = spikes(m, c)
+        if sp_:
+            flags[d] = sp_
         days.append({"d": d, "o": round(O, 6), "h": round(float(h.max()), 6), "l": round(float(l.min()), 6), "c": round(float(c[-1]), 6),
                      "th": int(m[np.argmax(h)]), "tl": int(m[np.argmin(l)]), "sig": round(float(sig), 4), "arm": arm,
                      "L": {k: round(v, 6) for k, v in L.items()}, "hl": {k: round(v, 6) for k, v in hlw.items()}, "ft": ft,
@@ -185,15 +217,25 @@ def build(sym):
     if not days:
         return sym, 0
     sp, assumed = spread_for(sym, days[-1]["o"])
+    near = {k: sum(1 for x in v if any(abs(fm - x["em"]) <= 5 for fm, _ in flags.get(x["d"], []))) for k, v in tr.items()}
+    screen = {"rule": "1-minute move > 10 robust sd of the day's 1-minute returns, at least half reversed within 3 minutes (flag only, data unaltered)",
+              "days_flagged": len(flags), "flags": sum(len(v) for v in flags.values()),
+              "trade_entries_within_5min": near, "list": [[d, mm, z] for d, v in sorted(flags.items()) for mm, z in v][:300]}
+    m1_path = M1 / f"{JOBS[sym]}_m1.parquet"
+    data = {"m1_file": str(m1_path.relative_to(M1.parents[2])).replace("\\", "/"), "m1_sha256": sha256(m1_path),
+            "lines_file": str(P1).replace("\\", "/"), "lines_sha256": LINES_SHA, "script_sha256": sha256(Path(__file__))}
     rec = {"inst": sym, "cls": cls, "source": "VF3 Stage B point-in-time chosen forecast + research M1",
            "from": days[0]["d"], "to": days[-1]["d"], "spread": sp, "spread_assumed": assumed,
            "rich_threshold": RICH.get(sym), "stops": STOPS, "targets": TARGETS,
-           "grid_note": "g = one [R x 1000, exit London minute] per stop x target (stops outer), null where not valid; gross of costs", "days": days, "trades": tr}
+           "grid_note": "g = one [R x 1000, exit London minute] per stop x target (stops outer), null where not valid; gross of costs",
+           "screen": screen, "data": data, "days": days, "trades": tr}
     OUT.mkdir(parents=True, exist_ok=True)
     with gzip.open(OUT / f"{sym}.json.gz", "wt", encoding="utf-8", compresslevel=9) as fh_:
         fh_.write(json.dumps(rec, separators=(",", ":")))
     return sym, len(days), {k: len(v) for k, v in tr.items()}
 
+
+LINES_SHA = sha256(P1)
 
 if __name__ == "__main__":
     syms = sys.argv[1:] or [s for s in JOBS]
@@ -203,4 +245,4 @@ if __name__ == "__main__":
             print(r, flush=True)
             res.append(r)
     idx = sorted([{"inst": r[0], "days": r[1], "trades": r[2] if len(r) > 2 else {}} for r in res if r[1]], key=lambda x: x["inst"])
-    (OUT / "index.json").write_text(json.dumps({"built": "2026-10-18", "instruments": idx}, indent=1))
+    (OUT / "index.json").write_text(json.dumps({"built": "2026-10-19", "lines_sha256": LINES_SHA, "instruments": idx}, indent=1))
