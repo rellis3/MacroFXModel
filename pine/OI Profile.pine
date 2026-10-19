@@ -18,7 +18,15 @@ indicator("OI Profile", shorttitle="OI Profile", overlay=true, max_boxes_count=5
 // ── Inputs ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 G1 = "1 · Data"
 pasteTxt = input.text_area("", "Paste the OI Profile export", group=G1, tooltip="Paste the whole block(s) from /api/oi-profile/export. Lines start with M| L| G| V| O| S| X|.")
-overrideKey = input.string("", "Instrument (blank = detect from chart)", group=G1, tooltip="NQ, GOLD, SPX500, US30, US2000, EURUSD … must match the name line of the pasted block.")
+overrideKey = input.string("", "Force instrument (blank = auto)", group=G1, tooltip="Normally leave blank: the chart is matched with the Symbol Mapping boxes below (same as the Volatility Overlay and Confluence Zones indicators). Only to force a block name such as NQ or GOLD.")
+GM = "1b · Symbol Mapping (match your chart symbols)"
+goldChart  = input.string("XAUUSD",    "Gold chart ticker",   group=GM)
+nqChart    = input.string("NAS100USD", "NQ chart ticker",     group=GM)
+spxChart   = input.string("SPX500USD", "SPX500 chart ticker", group=GM)
+de30Chart  = input.string("GER40",     "DE30 chart ticker",   group=GM)
+uk100Chart = input.string("UK100GBP",  "UK100 chart ticker",  group=GM)
+us30Chart  = input.string("US30USD",   "US30 chart ticker",   group=GM)
+us2kChart  = input.string("US2000USD", "US2000 chart ticker", group=GM)
 G2 = "2 · Show"
 showLevels = input.bool(true, "Reaction levels", group=G2)
 showZones  = input.bool(true, "Reaction zones (soft bands)", group=G2)
@@ -35,7 +43,7 @@ colW      = input.int(14, "Column width (bars)", minval=6, maxval=40, group=G3, 
 colGap    = input.int(5, "Gap between columns (bars)", minval=1, maxval=30, group=G3)
 zoneFrac  = input.float(0.05, "Zone half-height (× expected-move scale)", minval=0.005, maxval=0.5, step=0.005, group=G3)
 lblSizeIn = input.string("small", "Label size", options=["tiny", "small", "normal"], group=G3)
-tblPos    = input.string("top left", "Table position", options=["top left", "top right", "bottom left", "bottom right"], group=G3)
+tblPos    = input.string("bottom left", "Table position", options=["top left", "top right", "bottom left", "bottom right"], group=G3)
 G4 = "4 · Colours"
 cCall  = input.color(#ff5b6e, "Call wall / short gamma", group=G4)
 cPut   = input.color(#2dd4a0, "Put wall / long gamma", group=G4)
@@ -99,46 +107,66 @@ f_num(a, i) =>
 f_str(a, i) =>
     i < array.size(a) ? str.trim(array.get(a, i)) : ""
 
-f_chartKey() =>
-    string t = str.upper(syminfo.ticker)
-    string k = t
-    if str.contains(t, "NQ") or str.contains(t, "NAS100") or str.contains(t, "USTEC") or str.contains(t, "NDX")
-        k := "NQ"
-    else if str.contains(t, "XAU") or str.contains(t, "GOLD") or str.startswith(t, "GC")
-        k := "GOLD"
-    else if str.contains(t, "XAG") or str.contains(t, "SILVER") or str.startswith(t, "SI1")
-        k := "SILVER"
-    else if str.contains(t, "XCU") or str.contains(t, "COPPER") or str.startswith(t, "HG")
-        k := "COPPER"
-    else if str.contains(t, "XPT") or str.contains(t, "PLATINUM") or str.startswith(t, "PL1")
-        k := "PLATINUM"
-    else if str.contains(t, "XPD") or str.contains(t, "PALLADIUM") or str.startswith(t, "PA1")
-        k := "PALLADIUM"
-    else if str.contains(t, "BRENT") or str.contains(t, "UKOIL") or str.startswith(t, "BZ")
-        k := "BRENT"
-    else if str.contains(t, "WTI") or str.contains(t, "USOIL") or str.startswith(t, "CL1")
-        k := "WTI"
-    else if str.contains(t, "NATGAS") or str.contains(t, "NGAS") or str.startswith(t, "NG1")
-        k := "NATGAS"
-    else if str.contains(t, "SPX") or str.contains(t, "US500") or str.startswith(t, "ES") or str.contains(t, "SP500")
-        k := "SPX500"
-    else if str.contains(t, "US30") or str.contains(t, "DJI") or str.startswith(t, "YM") or str.contains(t, "DOW")
-        k := "US30"
-    else if str.contains(t, "US2000") or str.contains(t, "RTY") or str.contains(t, "RUT")
-        k := "US2000"
-    else if str.startswith(t, "6E")
-        k := "EURUSD"
-    else if str.startswith(t, "6B")
-        k := "GBPUSD"
-    else if str.startswith(t, "6J")
-        k := "USDJPY"
-    else if str.startswith(t, "6A")
-        k := "AUDUSD"
-    else if str.startswith(t, "6C")
-        k := "USDCAD"
-    else if str.startswith(t, "6S")
-        k := "USDCHF"
-    k
+// Same chart-symbol normaliser as pine/Confluence Zones Indicator.pine and the Volatility Overlay (gold/index/commodity/futures aliases; FX pairs pass through)
+f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT) =>
+    r = t
+    tU = str.upper(t)
+    if tU == str.upper(goldT) or tU == "XAUUSD" or tU == "GOLD"
+        r := "GOLD"
+    // BARE, NO-CURRENCY-SUFFIX forms added below (NAS100/SPX500/DE30/UK100/US30/US2000,
+    // plus NQ's US100). Gold and every FX pair never needed this: the pair name itself
+    // already carries both currencies (EURUSD, XAUUSD), so nothing was missing there.
+    // Indices are the one class where a lot of non-OANDA CFD feeds (ICMarkets,
+    // Pepperstone, and others) list the ticker with NO trailing currency code at all —
+    // every hardcoded fallback here previously required one (NAS100USD, SPX500USD,
+    // GER40/GER30, UK100GBP, US30USD, US2000USD), so a chart on any of those bare
+    // tickers fell through to the unmatched `r = t` passthrough at the end of this
+    // function, never equalled any of "GOLD"/"NQ"/"SPX500"/etc., and every symbol-block
+    // match against the pasted text (`inSymBlock := str.contains(rowUp, symUp)`) failed
+    // silently for every single index while gold/FX kept working — exactly the reported
+    // symptom (2026-09-18).
+    else if tU == str.upper(nqT) or tU == "NQ1!" or tU == "NQ" or tU == "NASDAQ100" or tU == "NAS100USD" or tU == "NAS100" or tU == "US100"
+        r := "NQ"
+    else if tU == str.upper(spxT) or tU == "SPX500USD" or tU == "SPX500" or tU == "US500" or tU == "SP1!"
+        r := "SPX500"
+    else if tU == str.upper(de30T) or tU == "GER40" or tU == "GER30" or tU == "DE30EUR" or tU == "DE30USD" or tU == "DE30" or tU == "DE40" or tU == "FDAX1!"
+        r := "DE30"
+    else if tU == str.upper(uk100T) or tU == "UK100GBP" or tU == "UK100" or tU == "Z1!" or tU == "FTSE100" or tU == "FTSE"
+        r := "UK100"
+    else if tU == str.upper(us30T) or tU == "US30USD" or tU == "US30" or tU == "DJIA" or tU == "DJI30" or tU == "YM1!"
+        r := "US30"
+    else if tU == str.upper(us2kT) or tU == "US2000USD" or tU == "US2000" or tU == "RTY1!" or tU == "RUT"
+        r := "US2000"
+    // BTC feeds vary by exchange — normalise the common tickers to the export's BTCUSD
+    else if tU == "BTCUSDT" or tU == "XBTUSD" or tU == "BTCUSD.P" or tU == "BTCUSDT.P" or tU == "BTC1!"
+        r := "BTCUSD"
+    // 2026-10-02 — commodities. The export names them the way it names gold (SILVER, WTI,
+    // CORN …, matching cog_volatility_v3_sessions.pine). The OANDA CFD ticker and the
+    // continuous CME future both map here. A CME chart (SI1!, ZC1!) needs the export's
+    // ?terms=futures levels — the same rule as NQ1! — and grains then come in cents.
+    else if tU == "XAGUSD" or tU == "SILVER" or tU == "SI1!"
+        r := "SILVER"
+    else if tU == "XCUUSD" or tU == "COPPER" or tU == "HG1!"
+        r := "COPPER"
+    else if tU == "XPTUSD" or tU == "PLATINUM" or tU == "PL1!"
+        r := "PLATINUM"
+    else if tU == "XPDUSD" or tU == "PALLADIUM" or tU == "PA1!"
+        r := "PALLADIUM"
+    else if tU == "WTICOUSD" or tU == "USOIL" or tU == "WTI" or tU == "CL1!"
+        r := "WTI"
+    else if tU == "BCOUSD" or tU == "UKOIL" or tU == "BRENT" or tU == "BRN1!" or tU == "BZ1!"
+        r := "BRENT"
+    else if tU == "NATGASUSD" or tU == "NATGAS" or tU == "NG1!"
+        r := "NATGAS"
+    else if tU == "SOYBNUSD" or tU == "SOYBEAN" or tU == "ZS1!"
+        r := "SOYBEAN"
+    else if tU == "CORNUSD" or tU == "CORN" or tU == "ZC1!"
+        r := "CORN"
+    else if tU == "WHEATUSD" or tU == "WHEAT" or tU == "ZW1!"
+        r := "WHEAT"
+    else if tU == "SUGARUSD" or tU == "SUGAR" or tU == "SB1!"   // vol zones only (ICE — no OI)
+        r := "SUGAR"
+    r
 
 if barstate.isfirst
     array<string> lines = str.split(pasteTxt, "\n")
@@ -156,7 +184,7 @@ if barstate.isfirst
     if nb == 0
         parseNote := "Paste the OI Profile export into the indicator settings (1 · Data)."
     else
-        string want = str.upper(overrideKey) != "" ? str.upper(overrideKey) : f_chartKey()
+        string want = str.upper(overrideKey) != "" ? str.upper(overrideKey) : str.upper(f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart))
         int pick = -1
         for b = 0 to nb - 1
             if array.get(bName, b) == want
@@ -312,9 +340,13 @@ if barstate.islast
         array.clear(dPoly)
     table.delete(tbl)
 
-    if not parsed
-        tbl := table.new(tblPosition, 1, 1, bgcolor=color.new(#0d1117, 8), frame_color=color.new(#2a3340, 0), frame_width=1)
-        table.cell(tbl, 0, 0, parseNote != "" ? parseNote : "OI Profile: no data parsed.", text_color=color.new(#f0b04a, 0), text_size=size.small, text_halign=text.align_left)
+    // a block whose spot is nowhere near this chart's price (NQ pasted on a gold chart) would draw far off-screen and look like "nothing"; say so instead
+    bool spotOk = na(mSpot) or close <= 0 or math.abs(mSpot / close - 1) <= 0.25
+    string msg = not parsed ? (parseNote != "" ? parseNote : "OI Profile: no data parsed — paste the export in settings (1 · Data).") : (spotOk ? "" : "Pasted " + mName + " block (spot " + str.tostring(mSpot, format.mintick) + ") does not match this chart (price " + str.tostring(close, format.mintick) + "). Check the chart symbol and the Symbol Mapping boxes, or paste that instrument.")
+    if not parsed or not spotOk
+        tbl := table.new(tblPosition, 1, 1, bgcolor=color.new(#0d1117, 8), frame_color=color.new(#f0b04a, 0), frame_width=1)
+        table.cell(tbl, 0, 0, msg, text_color=color.new(#f0b04a, 0), text_size=size.normal, text_halign=text.align_left)
+        array.push(dLbl, label.new(x=bar_index, y=close, text="OI PROFILE: " + msg, xloc=xloc.bar_index, yloc=yloc.price, color=color.new(#0d1117, 5), style=label.style_label_left, textcolor=color.new(#f0b04a, 0), size=size.small))
     else
         int bi = bar_index
         int hw = int(math.round(colW / 2.0))
