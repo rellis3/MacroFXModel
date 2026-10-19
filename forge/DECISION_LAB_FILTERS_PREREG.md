@@ -12,6 +12,10 @@
 - What was seen: the COT input ("funds already positioned the trade's way", z-score over 156 weeks) split +0.34R (top third) vs +0.02R (bottom third) per trade, outside its shuffle band. The other eight were inside their bands.
 - With nine inputs, about one is expected outside by chance. This is a lead, not a result.
 
+## Prior art (found 2026-10-19 on the unmerged branch fade-continue-book)
+- forge/BREAK_IVRV_PREREG.md: rule A's own test. Edge about one spread wide; best 1% of trades = 64% of the total; 2016–19 negative.
+- forge/IVRV_COT_PREREG.md part C: at the lines, moves heading the speculators' crowded way continue 2.7pp less (both halves). This is the opposite sign to H1's lead here, so H1 must be judged two-sided.
+
 ## Hypotheses (at most five, each with its reason written before any test)
 1. **Positioning agreement (H1).** Rule A trades where leveraged funds are already net positioned the trade's way (COT z > 0) earn more than those against.
    - **Reason:** a break that agrees with how fast money is positioned has a buyer behind it. Seen once on the full period (above).

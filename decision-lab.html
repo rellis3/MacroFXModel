@@ -40,9 +40,17 @@ td.wrap { white-space: normal; text-align: left !important; font-family: 'DM San
 <div id="lApp">
   <div class="l-h">
     <div><div class="l-title">Decision Lab</div>
-      <div class="l-sub">try ways to keep the greens and cut the reds · rule A trades from the locked backtest · exploratory</div></div>
+      <div class="l-sub">can other information make rule A's trades better? · what we found, then the workbench behind it</div></div>
     <div style="margin-left:auto;display:flex;gap:8px"><a class="l-btn" href="forecast-line-backtest.html">Forecast Line Backtest (locked record) ↗</a></div>
   </div>
+  <div class="card" style="margin-top:12px"><h3>What we found <span class="muted">— rule A (rich-day break), registered setting 0.2σ stop / 5R, 2,057 trades on 11 instruments, after costs</span></h3>
+    <div class="note" id="bottom" style="margin-top:0"></div>
+    <table class="t" id="ftab"></table>
+    <div class="ctl" style="margin-top:8px"><label>Show the effect of sizing by<select id="cHyp"></select></label></div>
+    <div id="feq" style="width:100%;height:240px"></div>
+    <div class="note" id="fnote" style="margin-bottom:0"></div>
+  </div>
+  <details style="margin-top:14px"><summary style="cursor:pointer;font-size:12.5px;color:var(--text2);font-weight:600">Workbench: check it yourself or try other ideas (exploratory)</summary>
   <div class="note warn"><b>What this page is.</b> A workbench beside the locked lessons record (<span class="muted">tag lesson-track-L05</span>), which it reads but never changes.
     It takes every rule A trade (the rich-day break on the chosen v3 lines, 11 instruments, 2020-08 → 2026-08, checked on 1-minute bars) and adds what was <b>knowable at the entry minute</b>
     from the feature store: interest rates, the 10-year yield gap, COT positioning, VIX and its term structure, US data surprises, IV÷RV, time and day.
@@ -64,6 +72,7 @@ td.wrap { white-space: normal; text-align: left !important; font-family: 'DM San
     <table class="t" id="anat"></table>
     <div class="note" style="margin:8px 0 0">The chance band is the spread of the "top third minus bottom third" gap when the trade results are shuffled 300 times: a gap outside it is unusual by chance alone, but with nine inputs on the table about one in twenty will land outside by luck. "+" on a signed input means it was on the trade's side (e.g. carry earned by the trade, rates moving its way,
       funds already positioned its way).</div></div>
+</details>
 </div>
 <script type="module">
 const $ = id => document.getElementById(id);
@@ -176,8 +185,45 @@ function renderAnatomy(T) {
   }
   $('anat').innerHTML = `<tr><th>Input</th><th colspan="3">Low third: trades · win · net R</th><th colspan="3">Middle third</th><th colspan="3">High third</th><th>High − low</th><th>Chance band (95%)</th><th></th></tr>` + rows.join('');
 }
+let F = null, fchart = null;
+const COND = {
+  'H1': t => t.f.cot_crowd == null ? null : t.f.cot_crowd > 0,
+  'H2': t => t.f.rates_20d == null ? null : t.f.rates_20d > 0,
+  'H3': t => t.f.ivrv == null ? null : (t.f.ivrv >= CUTS.ivrv[0] && t.f.ivrv < CUTS.ivrv[1]),
+  'H4': t => t.f.vix_term == null ? null : t.f.vix_term > 1,
+  'H5': t => t.f.usd_surpr_5d == null ? null : t.f.usd_surpr_5d > 0,
+};
+const VCLS = { 'lead': 'pos', 'lead (thin)': 'pos', 'weak lead': '', 'drop': 'neg' };
+function renderFindings() {
+  $('bottom').innerHTML = `<b>Bottom line.</b> ${F.bottom_line}` + (F.prior_art ? `<br><br><b>What earlier research already says.</b><ul style="margin:4px 0 0 18px;padding:0">${F.prior_art.map(x => `<li>${x}</li>`).join('')}</ul>` : '');
+  const rows = Object.entries(F.hyp).map(([k, v]) => { const a = v['2020-23'], b = v['2024-26'];
+    return `<tr><td class="wrap" style="min-width:220px"><b>${k.slice(3)}</b></td>
+      <td>${a.net_agree >= 0 ? '+' : ''}${fmt(a.net_agree, 2)} vs ${fmt(a.net_other, 2)}</td><td class="${sgn(a.diff)}">${a.diff >= 0 ? '+' : ''}${fmt(a.diff, 2)}</td>
+      <td>${b.net_agree >= 0 ? '+' : ''}${fmt(b.net_agree, 2)} vs ${fmt(b.net_other, 2)}</td><td class="${sgn(b.diff)}">${b.diff >= 0 ? '+' : ''}${fmt(b.diff, 2)}</td>
+      <td>${a.instruments_same_sign} · ${b.instruments_same_sign}</td>
+      <td>${v.size_rule.flat_sharpe} → <b class="${sgn(v.size_rule.sized_sharpe - v.size_rule.flat_sharpe)}">${v.size_rule.sized_sharpe}</b></td>
+      <td>${v.size_rule.flat_maxdd_R} → <b class="${sgn(v.size_rule.sized_maxdd_R - v.size_rule.flat_maxdd_R)}">${v.size_rule.sized_maxdd_R}</b></td>
+      <td><span class="pill ${VCLS[v.verdict] ?? ''}">${v.verdict}</span></td></tr>
+      <tr><td colspan="9" class="wrap muted" style="padding-bottom:8px">${v.read}</td></tr>`; }).join('');
+  $('ftab').innerHTML = `<tr><th>Filter</th><th>2020–23: net R when it agrees vs not</th><th>gap</th><th>2024–26</th><th>gap</th><th>instruments agreeing</th><th>Sharpe, flat → sized</th><th>worst drawdown R</th><th>verdict</th></tr>` + rows;
+  $('cHyp').innerHTML = Object.keys(F.hyp).map(k => `<option value="${k.slice(0, 2)}" ${k.startsWith('H3') ? 'selected' : ''}>${k.slice(3)}</option>`).join('');
+  $('cHyp').onchange = drawSized; drawSized();
+}
+function drawSized() {
+  const h = $('cHyp').value, c = COND[h];
+  const T = R.trades.map(t => { const m = R.instruments[t.inst], j = m.stops.indexOf(0.2) * m.targets.length + m.targets.indexOf('5'), g = t.g[j]; if (!g) return null;
+    const unit = t.o * t.sig / 100, risk = Math.abs(t.ep - (t.L - t.side * 0.2 * unit)); const net = g[0] / 1000 - (risk > 0 ? 2 * m.spread / risk : 0);
+    const a = c(t); return { d: t.d, net, sized: net * (a == null ? 1 : a ? 1.5 : 0.5) }; }).filter(Boolean);
+  if (!fchart) fchart = LightweightCharts.createChart($('feq'), { layout: { background: { color: 'transparent' }, textColor: '#94a3b8' }, grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(148,163,184,.12)' } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } });
+  for (const s of fchart._s ?? []) fchart.removeSeries(s); fchart._s = [];
+  for (const [key, color] of [['net', '#64748b'], ['sized', '#10b981']]) { const by = {}; for (const x of T) by[x.d] = (by[x.d] ?? 0) + x[key]; let e = 0;
+    const s = fchart.addLineSeries({ color, lineWidth: 2 }); s.setData(Object.keys(by).sort().map(d => ({ time: d, value: +(e += by[d]).toFixed(2) }))); fchart._s.push(s); }
+  fchart.timeScale().fitContent();
+  $('fnote').innerHTML = `Grey: rule A at flat size. Green: 1.5× size when the filter agrees, 0.5× when it does not (1× where the input is missing), so the same trades are taken and only their size changes, as Lesson 03 suggests for a second layer. Both periods have been looked at, so this chart shows what the filter <i>would</i> have done, not evidence that it works; that comes from the forward record.`;
+}
 async function init() {
   R = await loadData(); cuts();
+  try { F = await (await fetch('./backtest-data/decision-lab/findings.json')).json(); renderFindings(); } catch (e) { $('bottom').textContent = 'Findings not available: ' + e.message; }
   const m = Object.values(R.instruments)[0];
   $('cStop').innerHTML = m.stops.map(s => `<option value="${s}" ${s === 0.2 ? 'selected' : ''}>${s}σ${[0.1, 0.2].includes(s) ? ' (registered)' : ''}</option>`).join('');
   $('cTgt').innerHTML = m.targets.map(t => `<option value="${t}" ${t === '5' ? 'selected' : ''}>${TGT_LABEL[t]}${['5', '10'].includes(t) ? ' (registered)' : ''}</option>`).join('');

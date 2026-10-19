@@ -1,0 +1,263 @@
+{
+ "setting": "rule A, stop 0.2 sigma, target 5R, 2x spread table",
+ "trades": 2057,
+ "base_net_R": 0.1617,
+ "hyp": {
+  "H1 funds positioned the trade's way": {
+   "coverage": 1403,
+   "2020-23": {
+    "n_agree": 397,
+    "n_other": 395,
+    "net_agree": 0.276,
+    "net_other": 0.196,
+    "diff": 0.08,
+    "ci95": [
+     -0.288,
+     0.442
+    ],
+    "instruments_same_sign": "3/6"
+   },
+   "2024-26": {
+    "n_agree": 322,
+    "n_other": 289,
+    "net_agree": 0.281,
+    "net_other": 0.007,
+    "diff": 0.273,
+    "ci95": [
+     -0.141,
+     0.668
+    ],
+    "instruments_same_sign": "5/6"
+   },
+   "all": {
+    "n_agree": 719,
+    "n_other": 684,
+    "net_agree": 0.278,
+    "net_other": 0.116,
+    "diff": 0.162,
+    "ci95": [
+     -0.103,
+     0.43
+    ],
+    "instruments_same_sign": "5/6"
+   },
+   "size_rule": {
+    "flat_total_R": 332.7,
+    "sized_total_R": 392.9,
+    "flat_sharpe": 0.96,
+    "sized_sharpe": 1.03,
+    "flat_maxdd_R": -98.1,
+    "sized_maxdd_R": -109.6
+   },
+   "verdict": "weak lead",
+   "read": "Same direction in both periods (+0.08R, +0.27R) but not on most instruments (3/6, 5/6)."
+  },
+  "H2 rates moving the trade's way (20d)": {
+   "coverage": 2057,
+   "2020-23": {
+    "n_agree": 603,
+    "n_other": 561,
+    "net_agree": 0.235,
+    "net_other": 0.104,
+    "diff": 0.13,
+    "ci95": [
+     -0.196,
+     0.478
+    ],
+    "instruments_same_sign": "6/10"
+   },
+   "2024-26": {
+    "n_agree": 448,
+    "n_other": 445,
+    "net_agree": 0.057,
+    "net_other": 0.24,
+    "diff": -0.183,
+    "ci95": [
+     -0.525,
+     0.179
+    ],
+    "instruments_same_sign": "7/10"
+   },
+   "all": {
+    "n_agree": 1051,
+    "n_other": 1006,
+    "net_agree": 0.159,
+    "net_other": 0.165,
+    "diff": -0.006,
+    "ci95": [
+     -0.245,
+     0.238
+    ],
+    "instruments_same_sign": "5/10"
+   },
+   "size_rule": {
+    "flat_total_R": 332.7,
+    "sized_total_R": 333.5,
+    "flat_sharpe": 0.96,
+    "sized_sharpe": 0.85,
+    "flat_maxdd_R": -98.1,
+    "sized_maxdd_R": -116.3
+   },
+   "verdict": "drop",
+   "read": "Flips sign between the periods (+0.13R then -0.18R): no stable effect."
+  },
+  "H3 IV/RV in its middle third": {
+   "coverage": 2057,
+   "2020-23": {
+    "n_agree": 395,
+    "n_other": 769,
+    "net_agree": 0.307,
+    "net_other": 0.103,
+    "diff": 0.204,
+    "ci95": [
+     -0.125,
+     0.542
+    ],
+    "instruments_same_sign": "5/7"
+   },
+   "2024-26": {
+    "n_agree": 292,
+    "n_other": 601,
+    "net_agree": 0.265,
+    "net_other": 0.092,
+    "diff": 0.174,
+    "ci95": [
+     -0.192,
+     0.56
+    ],
+    "instruments_same_sign": "5/7"
+   },
+   "all": {
+    "n_agree": 687,
+    "n_other": 1370,
+    "net_agree": 0.289,
+    "net_other": 0.098,
+    "diff": 0.191,
+    "ci95": [
+     -0.058,
+     0.442
+    ],
+    "instruments_same_sign": "6/7"
+   },
+   "size_rule": {
+    "flat_total_R": 332.7,
+    "sized_total_R": 365.0,
+    "flat_sharpe": 0.96,
+    "sized_sharpe": 1.12,
+    "flat_maxdd_R": -98.1,
+    "sized_maxdd_R": -64.2
+   },
+   "verdict": "lead",
+   "read": "Same direction in both periods (+0.20R, +0.17R per trade) and on most instruments (5/7, 5/7). Sizing by it: Sharpe 0.96 \u2192 1.12, worst drawdown -98.1R \u2192 -64.2R."
+  },
+  "H4 VIX term structure inverted (stress)": {
+   "coverage": 2057,
+   "2020-23": {
+    "n_agree": 113,
+    "n_other": 1051,
+    "net_agree": 0.499,
+    "net_other": 0.137,
+    "diff": 0.362,
+    "ci95": [
+     -0.498,
+     0.83
+    ],
+    "instruments_same_sign": "4/7"
+   },
+   "2024-26": {
+    "n_agree": 129,
+    "n_other": 764,
+    "net_agree": 0.567,
+    "net_other": 0.078,
+    "diff": 0.489,
+    "ci95": [
+     -0.519,
+     1.486
+    ],
+    "instruments_same_sign": "4/6"
+   },
+   "all": {
+    "n_agree": 242,
+    "n_other": 1815,
+    "net_agree": 0.535,
+    "net_other": 0.112,
+    "diff": 0.423,
+    "ci95": [
+     -0.228,
+     1.035
+    ],
+    "instruments_same_sign": "6/9"
+   },
+   "size_rule": {
+    "flat_total_R": 332.7,
+    "sized_total_R": 295.8,
+    "flat_sharpe": 0.96,
+    "sized_sharpe": 0.89,
+    "flat_maxdd_R": -98.1,
+    "sized_maxdd_R": -55.7
+   },
+   "verdict": "weak lead",
+   "read": "Same direction in both periods (+0.36R, +0.49R) but not on most instruments (4/7, 4/6)."
+  },
+  "H5 US surprises on the trade's side": {
+   "coverage": 2057,
+   "2020-23": {
+    "n_agree": 564,
+    "n_other": 600,
+    "net_agree": 0.095,
+    "net_other": 0.244,
+    "diff": -0.15,
+    "ci95": [
+     -0.529,
+     0.226
+    ],
+    "instruments_same_sign": "5/10"
+   },
+   "2024-26": {
+    "n_agree": 187,
+    "n_other": 706,
+    "net_agree": 0.405,
+    "net_other": 0.081,
+    "diff": 0.324,
+    "ci95": [
+     -0.407,
+     1.112
+    ],
+    "instruments_same_sign": "6/8"
+   },
+   "all": {
+    "n_agree": 751,
+    "n_other": 1306,
+    "net_agree": 0.172,
+    "net_other": 0.156,
+    "diff": 0.016,
+    "ci95": [
+     -0.301,
+     0.364
+    ],
+    "instruments_same_sign": "6/10"
+   },
+   "size_rule": {
+    "flat_total_R": 332.7,
+    "sized_total_R": 295.5,
+    "flat_sharpe": 0.96,
+    "sized_sharpe": 0.79,
+    "flat_maxdd_R": -98.1,
+    "sized_maxdd_R": -89.9
+   },
+   "verdict": "drop",
+   "read": "Flips sign between the periods (-0.15R then +0.32R): no stable effect."
+  }
+ },
+ "bottom_line": "No filter is proven: every interval crosses zero, and both periods have now been looked at. One filter is consistent: IV\u00f7RV in its middle band (better in both periods, on 5 of 7 instruments; sizing by it lifts the Sharpe from 0.96 to 1.12 and cuts the worst drawdown from 98R to 64R). Two are weak leads: VIX stress (a large effect but only ~240 trades and 4 of 7 instruments) and funds already positioned the trade's way (weak in 2020\u201323). Rates and US surprises flip sign and are dropped. Next: register the three survivors and score them on data nobody has seen (the forward paper record and the sealed holdout). Until one passes, rule A stays at flat size.",
+ "concentration": {
+  "top1pct_share_of_total": 0.3,
+  "mean_without_top1pct": 0.114,
+  "median_trade": -1.07
+ },
+ "prior_art": [
+  "Rule A's own registered test (forge/BREAK_IVRV_PREREG.md, branch fade-continue-book, never merged): passed 5 of 5 checks on the v4 lines, +0.118R per trade at one spread; but the edge was about one spread wide (+0.005R at two spreads on FX/gold), the best 1% of trades carried 64% of the total, and 2016\u201319 was negative. On the chosen lines here: top 1% carry 30% of the total, +0.114R per trade without them, median trade -1.07R.",
+  "IV \u00f7 RV: in that test the top third (\u2265 1.27) made money and the middle and bottom thirds lost. The 'middle band' here is inside rule A's already-rich days (about 1.28\u20131.51), so the reading is: rich, but not extremely rich.",
+  "COT (forge/IVRV_COT_PREREG.md, same branch): at the forecast lines, moves heading the way speculators are crowded continued 2.7 points LESS (both halves). That points the opposite way to the weak lead here (breaks with funds positioned their way did better). The two measures differ (crowded = 156-week percentile \u2265 80 at line passes, vs z-score > 0 on rule A breaks), but the conflict stands until a registered test settles it."
+ ]
+}
