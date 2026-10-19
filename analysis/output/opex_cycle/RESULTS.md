@@ -2,7 +2,7 @@
 
 Pre-registration: `forge/OPEX_CYCLE_RANGE_PREREG.md`. Window 2016-03-29 → 2026-08-20; y = log(realised HL ÷ live p50), instrument × weekday and × year effects removed; 95% cluster bootstrap over 124 expiry cycles.
 
-**Verdict: INCONCLUSIVE.**
+**Verdict: UNDERPOWERED** (the registered rule reads INCONCLUSIVE: size bar met, interval spans 0).
 
 | sample | rows | PRE | OPEX | POST | Δ = POST − PRE [95%] |
 |---|---|---|---|---|---|

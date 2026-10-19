@@ -15,7 +15,7 @@ Generated 2026-10-19.
 | null | 100 |
 | underpowered | 4 |
 | context (base rates, descriptions: not counted as tests) | 32 |
-| pre-registrations with no banked verdict (below) | 39 |
+| pre-registrations with no banked verdict (below) | 40 |
 
 **What the count says (Lesson 02 §05).** If none of the 136 claims were real, tests at the usual 5% size would still pass
 about **6.8** of them by luck. 32 passed, so most passes are unlikely to be luck alone, but
@@ -222,6 +222,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/FUTURES_VOL_PREREG.md`: Futures volatility forecast — does intraday futures data beat the incumbent HAR? (shadow study)
 - `forge/FX_FACTOR_STACK_PREREG.md`: Cross-sectional FX factor stack at one to three months
 - `forge/HARNESS_REGISTRY_PREREG.md`: Unified study harness, and deflating the registry it will re-score
+- `forge/HEDGING_STATE_FORWARD_PREREG.md`: hedging-state-forward — On the full Cboe book, does the dealer-hedging state at the open tell us how the day b
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
 - `forge/LEVEL_P2_PREREG.md`: Level engine, Phase 2: reach, which-first, time-to-reach (registered 2026-10-10, before any Phase 2 outcome is
