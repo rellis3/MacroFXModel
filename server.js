@@ -24434,7 +24434,13 @@ app.get('/api/oi-profile/export', async (req, res) => {
       return buildProfileText(prof, { name: fk || String(sk).toUpperCase().replace(/[^A-Z0-9]/g, ''), generated: new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC · saved ' + (inst.savedAt || '?'), digits: _priceDigits(sk, inst.spot) });
     });
     if (!blocks.length) return res.status(404).type('text/plain').send('No profile could be built (no book on the record).');
-    const body = blocks.join('\n');
+    // Pine v6 caps a string at 40,960 characters. Instruments go in store order (FX, gold, indices, then commodities), so if the whole book ever outgrows the cap it is the
+    // commodity blocks at the END that are left out, and a line says which (the indicator ignores it).
+    const CAP = Math.min(40000, Math.max(4000, parseInt(req.query.max, 10) || 40000));
+    const kept = []; let used = 0; const omitted = [];
+    items.forEach((it, i) => { const b = blocks[i]; if (used + b.length + 1 <= CAP) { kept.push(b); used += b.length + 1; } else omitted.push(String(it.sk)); });
+    if (omitted.length) kept.push(`Omitted (size cap ${CAP}): ${omitted.join(', ')} - request them with ?pair=name`);
+    const body = kept.join('\n');
     // ?chunks=1 — Pine strings are capped at 4,096 characters, so the paste is cut into parts of <=4,000 characters (on line boundaries), one per input box in the indicator
     if (String(req.query.chunks || '') === '1') {
       const parts = chunkText(body, 4000);

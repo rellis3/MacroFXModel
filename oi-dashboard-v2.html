@@ -79,7 +79,7 @@ svg text{font-family:var(--mono)}
     </div>
     <button class="btn" id="lvlBtn" title="The normal levels paste for the Confluence Zones indicator (C+Z + OI lines) — same as the OI Analytics export button. Tick lean to drop the text the indicator does not read.">Levels export</button>
     <button class="btn" id="profBtn" title="The paste for the OI Profile TradingView indicator (pine/OI Profile.pine) for the instrument on screen: reaction levels, GEX/vanna/volume profile, IV smile, gamma helix.">Profile export</button>
-    <button class="btn" id="profAllBtn" title="Every instrument in one paste (about 75 KB): the indicator picks the block that matches the chart, like the Confluence Zones indicator. Without P(touch) so it is fast; use the single-instrument button for touch odds.">Profile · all</button>
+    <button class="btn" id="profAllBtn" title="Every instrument in one paste (about 36K characters, under Pine v6's 40,960 limit), with P(touch) on each level: the indicator picks the block that matches the chart, like the Confluence Zones indicator. Takes 10-20 s.">Profile · all</button>
     <button class="btn" id="tiersBtn" title="OI levels + forecast ladder + IV-adjusted ladder + Confluence Zones grouped into distance-ranked tiers. A SEPARATE export: paste it instead of the OI section of the normal export.">Tiers export</button>
     <a class="btn" href="oi-dashboard.html">Classic dashboard</a>
   </header>
@@ -940,7 +940,7 @@ async function loadLevels(){ const ta = $('#tiersTxt'); $('#tiersParts').style.d
   try { const r = await fetch('/api/vol-forecast/zones?reach=1' + ($('#tiersToday').checked ? '&mode=today' : '') + ($('#tiersFut').checked ? '&terms=futures' : '') + ($('#tiersLean').checked ? '&lean=1' : ''), { cache: 'no-store' }); ta.value = await r.text(); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 async function loadProfileAll(){ const ta = $('#tiersTxt'); ta.value = 'building every instrument…';
-  try { const r = await fetch('/api/oi-profile/export?pair=all&reach=0' + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
+  try { const r = await fetch('/api/oi-profile/export?pair=all' + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 $('#tiersBtn').onclick = () => { EXPORT_KIND = 'tiers'; $('#exportTitle').textContent = 'OI tiers export'; $('#tiersModal').style.display = 'block'; loadTiers(); };
 $('#lvlBtn').onclick = () => { EXPORT_KIND = 'levels'; $('#exportTitle').textContent = 'Levels export — the Confluence Zones indicator paste (C+Z + OI lines, every instrument)'; $('#tiersModal').style.display = 'block'; loadLevels(); };

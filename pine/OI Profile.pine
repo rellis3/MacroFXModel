@@ -188,7 +188,7 @@ if barstate.isfirst
     if n > 0
         for i = 0 to n - 1
             string ln = str.trim(array.get(lines, i))
-            if str.length(ln) >= 2 and str.length(ln) <= 14 and not str.contains(ln, "|") and not str.startswith(ln, "─") and not str.startswith(ln, "Generated") and not str.startswith(ln, "Reading")
+            if str.length(ln) >= 2 and str.length(ln) <= 14 and not str.contains(ln, "|") and not str.startswith(ln, "─") and not str.startswith(ln, "Generated") and not str.startswith(ln, "Reading") and not str.startswith(ln, "Omitted")
                 array.push(bName, str.upper(ln))
                 array.push(bStart, i)
     int nb = array.size(bName)
