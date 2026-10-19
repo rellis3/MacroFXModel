@@ -91,10 +91,10 @@ var array<float> xH = array.new_float()
 var bool parsed = false
 var string parseNote = ""
 
-f_num(array<string> a, int i) =>
+f_num(a, i) =>
     i < array.size(a) ? str.tonumber(str.trim(array.get(a, i))) : na
 
-f_str(array<string> a, int i) =>
+f_str(a, i) =>
     i < array.size(a) ? str.trim(array.get(a, i)) : ""
 
 f_chartKey() =>
@@ -263,19 +263,19 @@ f_lblSize() =>
     lblSizeIn == "tiny" ? size.tiny : lblSizeIn == "normal" ? size.normal : size.small
 
 
-f_arrMax(array<float> a) =>
+f_arrMax(a) =>
     float m = na
     if array.size(a) > 0
         m := array.max(a)
     m
 
-f_arrMin(array<float> a) =>
+f_arrMin(a) =>
     float m = na
     if array.size(a) > 0
         m := array.min(a)
     m
 
-f_absMax(array<float> a) =>
+f_absMax(a) =>
     float m = 0.0
     if array.size(a) > 0
         for i = 0 to array.size(a) - 1
@@ -335,7 +335,7 @@ if barstate.islast
         // ── expected-move box ──
         if showEM and not na(mEmHi) and not na(mEmLo)
             array.push(dBox, box.new(left=bi - 80, top=mEmHi, right=xL - 1, bottom=mEmLo, border_color=color.new(cEM, 55), border_style=line.style_dashed, border_width=1, bgcolor=color.new(cEM, 93)))
-            array.push(dLbl, label.new(x=xL - 1, y=mEmHi, text="EXPECTED MOVE  ±" + str.tostring((mEmHi - mEmLo) / 2, format.mintick) + (na(mEmPct) ? "" : "  (" + str.tostring(mEmPct, "#.##") + "%)"), xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_down, textcolor=cEM, size=size.tiny, text_halign=text.align_right))
+            array.push(dLbl, label.new(x=xL - 1, y=mEmHi, text="EXPECTED MOVE  ±" + str.tostring((mEmHi - mEmLo) / 2, format.mintick) + (na(mEmPct) ? "" : "  (" + str.tostring(mEmPct, "#.##") + "%)"), xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_down, textcolor=cEM, size=size.tiny, textalign=text.align_right))
 
         // ── levels: zone band, line, label chip (labels de-overlapped in price) ──
         int nL = array.size(lvPrice)
