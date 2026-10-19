@@ -13,6 +13,8 @@ import json
 import sys
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")       # Windows consoles cannot print "→" / "÷" (crashed the 2026-10-18 run)
 sys.argv.append("--livetype")                   # forecast_pick variant 1: live-type implied vol
 sys.path.insert(0, str(Path(__file__).parent))
 import numpy as np  # noqa: E402
