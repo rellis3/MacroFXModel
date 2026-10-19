@@ -14,6 +14,7 @@ from getting lost between sessions.
 |---|---|---|---|---|
 | Cboe full chains, 18 index/ETF chains (SPX, NDX, RUT, DJX, XSP, VIX, SPY, QQQ, IWM, DIA, GLD, SLV, USO, TLT, HYG, FXE, FXY, UUP), every contract once a day after the close | R2 `cboe_raw/<SYM>/<date>.json`, `/api/cboe-raw` (~11 MB/day; KV only as no-R2 fallback) | 2026-10-19 | ~400 trading days for a range/regime test → about mid-2028 | **Live** (moved to R2 + ETFs 2026-10-19: QQQ ≈ 3× NDX, ≈ 17× CME NQ dealer gamma) |
 | CME options (QuikStrike nightly, incl. ES/NQ weeklies and dailies) | KV `oi_raw_<date>` | ~2026-08 | ~400 days → about autumn 2027 | Running (laptop scrape; KV only, no second copy) |
+| Dealer-hedging state forward record (NQ, SPX, RUT, gold; state at the open, scored on range and breaks) | R2 `forward/hedging_state/<date>.json`, `/api/hedging-forward` | 2026-10-19 | ≥ 250 sessions per market (~2027-10), `forge/HEDGING_STATE_FORWARD_PREREG.md` | **Live** |
 | Economic calendar, all countries, actual/consensus/previous | `calendar_events_nasdaq.csv` (+ `load_calendar()`) | backfilled from 2026-07-03 | now | **Done**; refresh Sun + Wed via `.github/workflows/calendar-refresh.yml` after merge |
 | CME CVOL | `js/data/cmeCvolEod.json` | static, ends 2026-08-21 | — | **Blocked**: cmegroup.com refuses scripts (403); history is paid (DataMine). Free route = add to the laptop job, see §3 |
 | OANDA order/position books | — | — | — | **Dead source** (OANDA stopped them) |

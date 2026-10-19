@@ -75,4 +75,7 @@ descriptive only).
 
 ## Amendments
 
-(none)
+### A1 — 2026-10-19 — PRE-RESULTS
+The record starts with the 2026-10-19 session, not 2026-10-20: the job deployed mid-session and took that day's
+snapshot at 13:39 London. The primary label uses the 00:00 open and the prior-close Cboe book, so it is unaffected;
+that day's `stateAt0700` field was really taken at 13:39 (descriptive only). No outcome had been computed.
