@@ -1,0 +1,312 @@
+{
+ "id": "portfolio-book-S2",
+ "ranAt": "2026-10-19T13:43:02.341Z",
+ "doc": "forge/PORTFOLIO_BOOK_PREREG.md",
+ "claim": "Trend (21/63/126/252)",
+ "domain": "portfolio",
+ "spec": {
+  "universe": [
+   "eurusd",
+   "gbpusd",
+   "audusd",
+   "nzdusd",
+   "usdcad",
+   "usdchf",
+   "usdjpy",
+   "xauusd",
+   "nas100",
+   "spx500"
+  ],
+  "horizonDays": 5,
+  "rebalance": "weekly (last trading day)",
+  "sample": {
+   "from": "2008-01-02",
+   "to": "2026-08-21",
+   "isEnd": "2018-01-01"
+  },
+  "primary": "pnl",
+  "tuned": false,
+  "cells": [
+   "S2"
+  ],
+  "entryHourUtc": 22
+ },
+ "fixed": {
+  "volTarget": 0.1,
+  "volSpan": 60,
+  "maxLeverage": 3,
+  "entryHourUtc": 22,
+  "closeAsofHour": "22:00:00Z",
+  "nBoot": 1000,
+  "seed": 2654435769,
+  "fdrQ": 0.1,
+  "pboSplits": 16,
+  "minIsYears": 2,
+  "warmupDays": 400,
+  "meanBlockDays": 5,
+  "meanBlockSteps": 1
+ },
+ "costs": {
+  "rule": "half of the measured 22:00 UTC spread per unit turnover (spread_profile feature); indices charged the worst measured FX pair",
+  "entryHourUtc": 22,
+  "measured": {
+   "eurusd": {
+    "spreadPriceUnits": 0.000086,
+    "pips": 0.86
+   },
+   "gbpusd": {
+    "spreadPriceUnits": 0.000156,
+    "pips": 1.56
+   },
+   "audusd": {
+    "spreadPriceUnits": 0.000149,
+    "pips": 1.49
+   },
+   "nzdusd": {
+    "spreadPriceUnits": 0.000156,
+    "pips": 1.56
+   },
+   "usdcad": {
+    "spreadPriceUnits": 0.000211,
+    "pips": 2.11
+   },
+   "usdchf": {
+    "spreadPriceUnits": 0.000178,
+    "pips": 1.78
+   },
+   "usdjpy": {
+    "spreadPriceUnits": 0.0187,
+    "pips": 1.87
+   },
+   "xauusd": {
+    "spreadPriceUnits": 0.62,
+    "pips": 0.62
+   }
+  },
+  "unmeasured": [
+   "nas100",
+   "spx500"
+  ],
+  "worstFx": {
+   "inst": "nzdusd",
+   "roundTripBp": 2.68
+  }
+ },
+ "walkForward": {
+  "applied": false,
+  "reason": "no fitted parameters (spec.fit absent)"
+ },
+ "dependence": {
+  "ok": true,
+  "n": 10,
+  "rows": 4852,
+  "pc1Share": 0.455,
+  "effN": 3.67,
+  "eigenvalues": [
+   4.545,
+   2.206,
+   0.755,
+   0.618,
+   0.56,
+   0.486,
+   0.358,
+   0.258,
+   0.148,
+   0.066
+  ]
+ },
+ "fdr": {
+  "q": 0.1,
+  "m": 1,
+  "rejected": 0,
+  "threshold": 0
+ },
+ "pbo": {
+  "ok": false,
+  "reason": "study declares no tuned parameter"
+ },
+ "cells": [
+  {
+   "key": "S2",
+   "params": {},
+   "ic": {
+    "oos": {
+     "ok": true,
+     "n": 4500,
+     "nClusters": 498,
+     "meanBlock": 1,
+     "nBoot": 1000,
+     "obs": 0.0144,
+     "se": 0.02503,
+     "ci95": [
+      -0.0355,
+      0.06409
+     ],
+     "pValue": 0.5614,
+     "method": "moving-block bootstrap of date clusters; percentile interval; two-sided p vs 0"
+    },
+    "brickRowBlocks": {
+     "ic": 0.0144,
+     "pValue": 0.3686,
+     "meanBlockRows": 5
+    },
+    "is": 0.0198,
+    "oosHalves": {
+     "firstHalf": 0.0006,
+     "secondHalf": 0.0255,
+     "splitAt": "2021-12-23"
+    },
+    "nRowsOos": 4500,
+    "nDatesOos": 498
+   },
+   "pnl": {
+    "sharpeOos": 0.074,
+    "sharpeIs": 0.29,
+    "sharpeAll": 0.198,
+    "sharpeGrossOos": 0.112,
+    "meanDailyOos": 0.00001,
+    "meanDailyOosCi95": [
+     -0.00009,
+     0.00012
+    ],
+    "pValueOos": 0.8152,
+    "tradesOos": 562,
+    "winOos": 0.297,
+    "pfOos": 1.062,
+    "meanTradeOosPct": 0.0464,
+    "maxDrawdownOosPct": 9.91,
+    "perYearOosPct": {
+     "2018": 1.06,
+     "2019": -3.817,
+     "2020": 2.273,
+     "2021": -1.671,
+     "2022": 4.622,
+     "2023": 0.688,
+     "2024": 1.903,
+     "2025": 0.256,
+     "2026": -2.484
+    },
+    "yearsPositiveOos": "6/9",
+    "costDragAnnBp": 12.54,
+    "carryAnnBp": 2.09,
+    "turnoverPerYear": 13.42,
+    "skewOos": -0.313,
+    "kurtOos": 6.609,
+    "nDaysOos": 2283,
+    "decisions": 9730,
+    "nullSignals": 0
+   },
+   "legs": {
+    "eurusd": {
+     "trades": 113,
+     "tradesOos": 47,
+     "winOos": 0.319,
+     "pfOos": 0.759,
+     "sharpeOos": -0.115,
+     "meanTradeOosPct": -0.2122,
+     "icOos": -0.017
+    },
+    "gbpusd": {
+     "trades": 122,
+     "tradesOos": 59,
+     "winOos": 0.237,
+     "pfOos": 0.744,
+     "sharpeOos": -0.119,
+     "meanTradeOosPct": -0.1841,
+     "icOos": -0.0218
+    },
+    "audusd": {
+     "trades": 145,
+     "tradesOos": 69,
+     "winOos": 0.319,
+     "pfOos": 0.987,
+     "sharpeOos": -0.019,
+     "meanTradeOosPct": -0.0083,
+     "icOos": -0.033
+    },
+    "nzdusd": {
+     "trades": 159,
+     "tradesOos": 82,
+     "winOos": 0.232,
+     "pfOos": 0.516,
+     "sharpeOos": -0.487,
+     "meanTradeOosPct": -0.3673,
+     "icOos": -0.0884
+    },
+    "usdcad": {
+     "trades": 162,
+     "tradesOos": 81,
+     "winOos": 0.272,
+     "pfOos": 0.543,
+     "sharpeOos": -0.453,
+     "meanTradeOosPct": -0.3578,
+     "icOos": -0.0921
+    },
+    "usdchf": {
+     "trades": 147,
+     "tradesOos": 66,
+     "winOos": 0.273,
+     "pfOos": 0.394,
+     "sharpeOos": -0.519,
+     "meanTradeOosPct": -0.5432,
+     "icOos": -0.061
+    },
+    "usdjpy": {
+     "trades": 136,
+     "tradesOos": 51,
+     "winOos": 0.333,
+     "pfOos": 1.426,
+     "sharpeOos": 0.216,
+     "meanTradeOosPct": 0.3226,
+     "icOos": -0.0024
+    },
+    "xauusd": {
+     "trades": 110,
+     "tradesOos": 40,
+     "winOos": 0.35,
+     "pfOos": 3.075,
+     "sharpeOos": 0.793,
+     "meanTradeOosPct": 1.4976,
+     "icOos": 0.062
+    },
+    "nas100": {
+     "trades": 82,
+     "tradesOos": 29,
+     "winOos": 0.448,
+     "pfOos": 3.778,
+     "sharpeOos": 0.55,
+     "meanTradeOosPct": 1.4249,
+     "icOos": -0.0066
+    },
+    "spx500": {
+     "trades": 86,
+     "tradesOos": 38,
+     "winOos": 0.342,
+     "pfOos": 2.03,
+     "sharpeOos": 0.303,
+     "meanTradeOosPct": 0.6514,
+     "icOos": -0.0566
+    }
+   },
+   "primary": {
+    "kind": "pnl",
+    "pValue": 0.8152,
+    "passesFdr": false
+   },
+   "dsr": {
+    "dsr": 0.383,
+    "sr0": 0.01088,
+    "z": -0.298,
+    "nTrials": 2,
+    "varTrialSr": 0.0004380248702728585
+   }
+  }
+ ],
+ "notes": [
+  "xauusd: carry leg missing (,rate3m_usd) — carry set to 0",
+  "nas100: no rate legs (not a six-letter FX pair) — carry 0",
+  "spx500: no rate legs (not a six-letter FX pair) — carry 0",
+  "nas100: spread UNMEASURED at 22:00 UTC — charged the worst measured FX pair (nzdusd, 2.68 bp of price per round trip)",
+  "spx500: spread UNMEASURED at 22:00 UTC — charged the worst measured FX pair (nzdusd, 2.68 bp of price per round trip)"
+ ]
+}

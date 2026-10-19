@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Book</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+#pApp { padding: 0 24px 48px; width: 100%; box-sizing: border-box; max-width: 1400px; margin: 0 auto; }
+.l-h { display: flex; align-items: center; gap: 14px; padding: 16px 0 10px; border-bottom: 1.5px solid var(--border); flex-wrap: wrap; }
+.l-title { font-size: 17px; font-weight: 700; color: var(--text); } .l-sub { font-size: 10.5px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.l-btn { background: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 4px 12px; cursor: pointer; font-size: 11px; color: var(--text2); text-decoration: none; font-family: 'DM Sans', sans-serif; }
+.l-btn:hover, .l-btn.on { border-color: var(--blue); color: var(--blue); }
+.l-btn.go { border-color: var(--green); color: var(--green); font-weight: 600; }
+.note { margin: 10px 0; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--s1); font-size: 11.5px; color: var(--text2); line-height: 1.55; }
+.note b { color: var(--text); } .warn { border-color: var(--amber-bd); background: var(--amber-bg); }
+.grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 12px; margin-top: 12px; }
+@media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } #pApp { padding: 0 16px 48px; } }
+.card { background: var(--s1); border: 1.5px solid var(--border); border-radius: 14px; padding: 12px 14px; min-width: 0; margin-top: 12px; }
+.grid > .card { margin-top: 0; }
+.card h3 { margin: 0 0 8px; font-size: 13px; color: var(--text); font-weight: 700; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
+.stat { border: 1px solid var(--border); border-radius: 10px; padding: 7px 9px; } .stat .k { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .04em; }
+.stat .v { font-size: 15px; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; } .stat .s { font-size: 10px; color: var(--text3); }
+.pos { color: var(--green) !important; } .neg { color: var(--red) !important; } .muted { color: var(--text3); }
+.tw { overflow-x: auto; }
+table.t { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+table.t th, table.t td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: right; font-family: 'DM Mono', monospace; color: var(--text2); white-space: nowrap; }
+table.t th { color: var(--text3); font-weight: 500; font-size: 10.5px; } table.t td:first-child, table.t th:first-child { text-align: left; }
+td.wrap { white-space: normal !important; text-align: left !important; font-family: 'DM Sans', sans-serif; }
+.chk { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; font-size: 12px; color: var(--text2); border-bottom: 1px dashed var(--border); }
+.chk:last-child { border-bottom: 0; } .chk .ic { font-family: 'DM Mono', monospace; font-weight: 700; width: 18px; flex: none; }
+.chk .val { margin-left: auto; font-family: 'DM Mono', monospace; color: var(--text); }
+.verdict { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; font-family: 'DM Mono', monospace; border: 1.5px solid; }
+.wrow { display: grid; grid-template-columns: 190px 1fr 46px; gap: 10px; align-items: center; padding: 4px 0; font-size: 12px; color: var(--text2); }
+@media (max-width: 560px) { .wrow { grid-template-columns: 1fr 1fr 40px; } }
+.wrow input[type=range] { width: 100%; accent-color: var(--blue); }
+.wrow .wv { font-family: 'DM Mono', monospace; text-align: right; color: var(--text); }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.btns { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+#eq { width: 100%; height: 300px; } #dd { width: 100%; height: 110px; margin-top: 4px; }
+.cell-c { font-weight: 600; }
+select { background: var(--s1); color: var(--text); border: 1.5px solid var(--border); border-radius: 8px; padding: 4px 7px; font-size: 12px; font-family: 'DM Sans', sans-serif; }
+</style>
+</head>
+<body class="dark">
+<div id="pApp">
+  <div class="l-h">
+    <div><div class="l-title">Portfolio Book</div>
+      <div class="l-sub">five standard sleeves · every number from the harness rules · 2008-01 → 2026-08-21 (holdout after that is not shown)</div></div>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+      <a class="l-btn" href="forge/PORTFOLIO_BOOK_PREREG.md" target="_blank">Prereg ↗</a>
+      <a class="l-btn" href="evidence.html" target="_blank">Evidence Book ↗</a>
+    </div>
+  </div>
+
+  <div class="card" id="verdictCard"><h3>Verdict on the registered book (P1, equal risk) <span id="vPill"></span></h3>
+    <div id="vText" class="note" style="margin-top:0">loading…</div>
+    <div class="grid" style="margin-top:4px">
+      <div><div class="muted" style="font-size:10.5px;font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:4px">The registered gate (P1)</div><div id="gateList"></div></div>
+      <div><div class="muted" style="font-size:10.5px;font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:4px">The standard backtest: built in, cannot be switched off</div><div id="stdList"></div></div>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:12px">
+    <div class="card"><h3>Equity <span class="muted" id="eqSub"></span></h3>
+      <div class="btns" id="eqToggles"></div>
+      <div id="eq"></div><div id="dd"></div>
+      <div class="note" style="margin-bottom:0">Log scale, starting at 1. The book is scaled to 10% annual vol by its own lagged 60-day EWMA, and so is each sleeve on its own. The drawdown strip is the book.</div>
+    </div>
+    <div class="card"><h3>Weights <span class="muted">— risk weights, renormalised over the sleeves live that day</span></h3>
+      <div class="btns">
+        <button class="l-btn on" data-preset="P1">P1 equal risk (scored)</button>
+        <button class="l-btn" data-preset="P2">P2 proposal</button>
+        <button class="l-btn" data-preset="TRADE">CFD-tradeable only (no proxy)</button>
+      </div>
+      <div id="wRows"></div>
+      <div class="note warn" id="trialNote" style="margin-bottom:0"></div>
+    </div>
+  </div>
+
+  <div class="card"><h3>The standard backtest for these weights <span class="muted" id="statSub"></span></h3>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="grid" style="margin-top:12px">
+    <div class="card"><h3>Year by year <span class="muted">— book, % return</span></h3><div class="tw"><table class="t" id="years"></table></div></div>
+    <div class="card"><h3>Stress windows <span class="muted">— book, % return over the window</span></h3><div class="tw"><table class="t" id="crises"></table></div>
+      <h3 style="margin-top:12px">Sleeve correlation <span class="muted">— daily, days both are live</span></h3><div class="tw"><table class="t" id="corr"></table></div></div>
+  </div>
+
+  <div class="card"><h3>Sleeves <span class="muted">— each alone, scaled to 10% (the registered cells; fixed, these do not move with the weights)</span></h3>
+    <div class="tw"><table class="t" id="sleeves"></table></div>
+    <div class="note" id="sleeveNote" style="margin-bottom:0"></div>
+  </div>
+
+  <div class="card"><h3>Trades <span class="muted" id="trSub"></span></h3>
+    <div class="btns" style="align-items:center">
+      <button class="l-btn go" id="dlCsv">⬇ Export trades (your import template)</button>
+      <a class="l-btn" href="analysis/output/portfolio-book/trades_P1.csv" download>P1 file as scored</a>
+      <a class="l-btn" href="analysis/output/portfolio-book/trades_P2.csv" download>P2 file as scored</a>
+      <label style="margin-left:auto;font-size:11px;color:var(--text3)">Sleeve <select id="trFilter"><option value="">all</option></select></label>
+    </div>
+    <div class="tw"><table class="t" id="trades"></table></div>
+    <div class="note" id="trNote" style="margin-bottom:0"></div>
+  </div>
+
+  <div class="card"><h3>What this does not tell you</h3>
+    <div class="note" style="margin:0" id="caveats"></div>
+  </div>
+</div>
+
+<script type="module">
+import { BOOK, buildBook, scoreStream, gate, sleeveCorrelation, bookTrades, toCsv, TEMPLATE_HEADER, P1_WEIGHTS, P2_WEIGHTS } from './js/portfolioBook.js';
+
+const $ = id => document.getElementById(id);
+const COLORS = { S1g: '#4f7df0', S2: '#10b981', S3g: '#fbbf24', S4: '#c084fc', S5g: '#f87171', book: '#e8eaf2' };
+const PRESETS = { P1: { ...P1_WEIGHTS }, P2: { ...P2_WEIGHTS }, TRADE: { S1g: 1, S2: 1, S3g: 1, S4: 1, S5g: 0 } };
+const CRISES = [['GFC', '2008-09-01', '2009-03-31'], ['Euro crisis', '2011-07-01', '2011-10-31'], ['China deval', '2015-08-10', '2015-09-30'], ['Volmageddon', '2018-01-26', '2018-02-28'], ['Q4 2018', '2018-10-01', '2018-12-31'], ['COVID', '2020-02-19', '2020-04-30'], ['Rates 2022', '2022-01-01', '2022-12-31'], ['Yen carry unwind', '2024-07-15', '2024-08-15'], ['Tariffs 2025', '2025-03-15', '2025-04-30']];
+const fmt = (v, d = 2) => (v == null || !Number.isFinite(v) ? '—' : v.toFixed(d));
+const sgn = v => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
+let DATA, weights = { ...P1_WEIGHTS }, trials = new Set(), current = null, chart, ddChart, series = {}, visible = new Set(['book']);
+
+const res = await fetch('analysis/output/portfolio-book/book.json', { cache: 'no-cache' });
+DATA = await res.json();
+const RES = await fetch('analysis/output/portfolio-book/results.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null);
+const REG = await fetch('analysis/output/portfolio-book/registered/results.json', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+const AUD = await fetch('analysis/output/portfolio-book/audit.json', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+trials.add(JSON.stringify(P1_WEIGHTS));
+
+// ── verdict card (from the scored run, never from the sliders) ──
+function renderVerdict() {
+  const P1 = DATA.cellScores.P1, g = gate(P1);
+  const R0 = REG?.cells?.P1, dsrNoMirror = AUD?.dsr?.excludingMirror;
+  const pill = $('vPill');
+  pill.innerHTML = `<span class="verdict" style="color:var(--amber);border-color:var(--amber-bd)">NOT VALIDATED · CONTEXT</span>`;
+  $('vText').innerHTML = `The equal-risk book made <b>${fmt(P1.cagrPct, 1)}% a year at ${fmt(P1.volPct, 1)}% vol</b>, with net Sharpe <b>${fmt(P1.sharpe)}</b> (t ${fmt(P1.tStat, 1)}), a worst drawdown of <b>${fmt(P1.maxDdPct, 1)}%</b>, and was positive in ${P1.yearsPositive} years.
+    It passed the bootstrap test and both halves, but <b>failed the registered deflated-Sharpe bar (${fmt(P1.dsr, 2)} vs 0.95)</b>.
+    That failure comes from a design error in the prereg (mine): the sign-flipped mirror was counted as one of the 11 trials, which inflates the spread of trial Sharpes the deflation is measured against.
+    ${dsrNoMirror != null ? `With the mirror left out the DSR is ${fmt(dsrNoMirror, 3)}, but` : 'A reading without the mirror is'} a post-hoc reading and cannot promote the result. So this is banked as <b>context</b>, and the next step is a forward test under a corrected rule, not live money.
+    <br><span class="muted">Numbers on this page drop the store's 2002–2013 weekend rows (a data fault found in this run, DATA_SPEC §5 #9).${R0 ? ` The registered run, with those rows counted as trading days: Sharpe ${fmt(R0.sharpe)}, CAGR ${fmt(R0.cagrPct, 1)}%, DSR ${fmt(R0.dsr, 3)}.` : ''} The fault made the registered numbers lower, not higher.</span>`;
+  $('gateList').innerHTML = g.checks.map(c => `<div class="chk"><span class="ic ${c.pass ? 'pos' : 'neg'}">${c.pass ? '✓' : '✗'}</span><span>${c.label}</span><span class="val">${c.value}</span></div>`).join('')
+    + `<div class="chk"><span class="ic ${P1.tStat >= 3 ? 'pos' : 'neg'}">${P1.tStat >= 3 ? '✓' : '✗'}</span><span>Live-promotion bar t ≥ 3 (Harvey–Liu–Zhu)</span><span class="val">${fmt(P1.tStat, 2)}</span></div>`
+    + `<div class="chk"><span class="ic ${DATA.cellScores.mirror.sharpe < 0 ? 'pos' : 'neg'}">${DATA.cellScores.mirror.sharpe < 0 ? '✓' : '✗'}</span><span>Mirror (every sleeve flipped) is negative</span><span class="val">${fmt(DATA.cellScores.mirror.sharpe)}</span></div>`;
+  const std = [
+    ['Costs on', 'half the measured 22:00 UTC spread per unit of turnover (spread_profile); indices charged the worst FX pair'],
+    ['Carry / financing', 'rate3m legs on FX, accrued daily; gold and indices 0'],
+    ['Vol target', '10% per leg (60-day EWMA, cap 3×), then per sleeve, then per book, each lagged a day'],
+    ['No lookahead', 'every input read through the point-in-time feature store (asof ≤ decision close)'],
+    ['Lockbox', 'scored to 2026-08-21; the holdout after it is neither scored nor shown'],
+    ['Uncertainty', 'date-block bootstrap, block 5 days, 1,000 draws, fixed seed'],
+    ['Deflation', 'deflated Sharpe, N = 11 registered trials + every weight set you try here'],
+    ['Stability', 'IS/OOS split 2018-01-01, halves split 2017-05-01, years positive, worst month'],
+    ['No fitting', 'no parameter is fitted; every rule is fixed in the prereg'],
+  ];
+  $('stdList').innerHTML = std.map(([k, v]) => `<div class="chk"><span class="ic pos">✓</span><span><b style="color:var(--text)">${k}</b> · ${v}</span></div>`).join('');
+}
+
+// ── weights ──
+function renderWeights() {
+  $('wRows').innerHTML = DATA.sleeves.map(s => `<div class="wrow"><span><span class="dot" style="background:${COLORS[s.id]}"></span>${s.name}</span>
+    <input type="range" min="0" max="1" step="0.05" value="${weights[s.id] ?? 0}" data-id="${s.id}"><span class="wv" id="wv_${s.id}">${fmt(weights[s.id] ?? 0)}</span></div>`).join('');
+  document.querySelectorAll('#wRows input').forEach(el => el.addEventListener('input', e => {
+    weights[e.target.dataset.id] = Number(e.target.value); $('wv_' + e.target.dataset.id).textContent = fmt(weights[e.target.dataset.id]);
+    document.querySelectorAll('[data-preset]').forEach(b => b.classList.remove('on'));
+    schedule();
+  }));
+}
+document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+  weights = { ...PRESETS[b.dataset.preset] };
+  document.querySelectorAll('[data-preset]').forEach(x => x.classList.toggle('on', x === b));
+  renderWeights(); recompute();
+}));
+let timer = null;
+const schedule = () => { clearTimeout(timer); timer = setTimeout(recompute, 220); };
+
+// ── charts ──
+function initCharts() {
+  const css = getComputedStyle(document.body);
+  const opts = { layout: { background: { color: 'transparent' }, textColor: css.getPropertyValue('--text3').trim() || '#5a6380', fontFamily: 'DM Mono' }, grid: { vertLines: { visible: false }, horzLines: { color: css.getPropertyValue('--border').trim() || '#2a2f45' } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false, minBarSpacing: 0.01 }, crosshair: { mode: 0 } };
+  chart = LightweightCharts.createChart($('eq'), { ...opts, rightPriceScale: { borderVisible: false, mode: 1 } });
+  ddChart = LightweightCharts.createChart($('dd'), { ...opts, timeScale: { visible: false, minBarSpacing: 0.01 } });
+  series.dd = ddChart.addAreaSeries({ lineColor: '#f87171', topColor: 'rgba(248,113,113,.05)', bottomColor: 'rgba(248,113,113,.35)', lineWidth: 1, priceFormat: { type: 'percent' } });
+  for (const id of ['book', ...DATA.sleeves.map(s => s.id)]) series[id] = chart.addLineSeries({ color: COLORS[id], lineWidth: id === 'book' ? 2.5 : 1.2, priceLineVisible: false, lastValueVisible: false, visible: visible.has(id) });
+  chart.timeScale().subscribeVisibleLogicalRangeChange(r => r && ddChart.timeScale().setVisibleLogicalRange(r));
+  $('eqToggles').innerHTML = ['book', ...DATA.sleeves.map(s => s.id)].map(id => `<button class="l-btn ${visible.has(id) ? 'on' : ''}" data-ser="${id}"><span class="dot" style="background:${COLORS[id]}"></span>${id === 'book' ? 'Book' : DATA.names[id]}</button>`).join('');
+  document.querySelectorAll('[data-ser]').forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.ser; visible.has(id) ? visible.delete(id) : visible.add(id);
+    b.classList.toggle('on', visible.has(id)); series[id].applyOptions({ visible: visible.has(id) });
+  }));
+  new ResizeObserver(() => { chart.applyOptions({ width: $('eq').clientWidth }); ddChart.applyOptions({ width: $('dd').clientWidth }); }).observe($('eq'));
+}
+const curve = (dates, rets, s0) => { let e = 1; const out = []; for (let i = s0; i < rets.length; i++) { e *= 1 + rets[i]; out.push({ time: dates[i], value: e }); } return out; };
+
+// ── recompute everything for the current weights ──
+function recompute() {
+  const key = JSON.stringify(Object.fromEntries(DATA.sleeves.map(s => [s.id, +(weights[s.id] ?? 0).toFixed(2)])));
+  trials.add(key);
+  const nTrials = BOOK.registeredTrials + trials.size - 1;
+  const book = buildBook(DATA, weights);
+  const s0 = book.rets.findIndex(r => r !== 0);
+  if (s0 < 0) { $('stats').innerHTML = '<span class="muted">every weight is zero</span>'; return; }
+  const sc = scoreStream(DATA.dates, book.rets, { nTrials, varTrialSr: DATA.varTrialSr, startIdx: s0 });
+  current = { book, sc };
+  $('trialNote').innerHTML = `<b>Every weight set you try is a trial.</b> ${trials.size - 1} tried beyond the registered P1 this visit, so the deflated Sharpe below uses N = ${nTrials}. Picking the best-looking weights here is fitting: the scored result is P1, and these numbers are exploratory.`;
+  $('statSub').textContent = `${sc.from} → ${sc.to} · ${sc.years} years · N = ${nTrials}`;
+  const tile = (k, v, cls = '', s = '') => `<div class="stat"><div class="k">${k}</div><div class="v ${cls}">${v}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+  $('stats').innerHTML = [
+    tile('Net Sharpe', fmt(sc.sharpe), sgn(sc.sharpe), `t ${fmt(sc.tStat, 1)}`),
+    tile('CAGR', fmt(sc.cagrPct, 1) + '%', sgn(sc.cagrPct), `vol ${fmt(sc.volPct, 1)}%`),
+    tile('Max drawdown', '−' + fmt(sc.maxDdPct, 1) + '%', 'neg', `${sc.longestDdDays} days longest`),
+    tile('Calmar', fmt(sc.calmar)), tile('Sortino', fmt(sc.sortino)),
+    tile('Sharpe IS / OOS', `${fmt(sc.sharpeIs)} / ${fmt(sc.sharpeOos)}`, '', 'split 2018-01-01'),
+    tile('Halves', sc.sharpeHalves.map(v => fmt(v)).join(' / '), sc.sharpeHalves.every(v => v > 0) ? 'pos' : 'neg', 'split 2017-05-01'),
+    tile('Bootstrap p', fmt(sc.pValue, 3), sc.pValue < 0.05 ? 'pos' : 'neg', 'mean daily return ≠ 0'),
+    tile('Deflated Sharpe', fmt(sc.dsr, 3), sc.dsr >= 0.95 ? 'pos' : 'neg', `N = ${nTrials} · bar 0.95`),
+    tile('Worst month', fmt(sc.worstMonthPct, 1) + '%', 'neg', `best ${fmt(sc.bestMonthPct, 1)}%`),
+    tile('Months positive', fmt(sc.monthsPositive * 100, 0) + '%', '', `days ${fmt(sc.hitDays * 100, 0)}%`),
+    tile('Years positive', sc.yearsPositive), tile('Skew / kurt', `${fmt(sc.skew)} / ${fmt(sc.kurt, 1)}`, sc.skew < -1 ? 'neg' : '', 'left tail if skew < 0'),
+  ].join('');
+  // charts
+  series.book.setData(curve(DATA.dates, book.rets, s0));
+  book.sleeves.forEach(s => { const i0 = s.scaled.findIndex(r => r !== 0); series[s.id].setData(i0 >= 0 ? curve(DATA.dates, s.scaled, i0) : []); });
+  let e = 1, pk = 1; series.dd.setData(DATA.dates.slice(s0).map((d, i) => { e *= 1 + book.rets[s0 + i]; pk = Math.max(pk, e); return { time: d, value: (e / pk - 1) * 100 }; }));
+  chart.timeScale().fitContent(); ddChart.timeScale().fitContent();
+  $('eqSub').textContent = `— book ${fmt(sc.cagrPct, 1)}% a year, worst −${fmt(sc.maxDdPct, 1)}%`;
+  // years
+  const ys = Object.entries(sc.perYearPct);
+  $('years').innerHTML = `<tr><th>Year</th>${ys.map(([y]) => `<th>${y.slice(2)}</th>`).join('')}</tr><tr><td>%</td>${ys.map(([, v]) => `<td class="${sgn(v)}">${fmt(v, 1)}</td>`).join('')}</tr>`;
+  // crises
+  $('crises').innerHTML = '<tr><th>Window</th><th>From</th><th>To</th><th>Book %</th></tr>' + CRISES.map(([n, a, z]) => {
+    let eq = 1; DATA.dates.forEach((d, i) => { if (d >= a && d <= z) eq *= 1 + book.rets[i]; });
+    const v = (eq - 1) * 100; return `<tr><td>${n}</td><td>${a}</td><td>${z}</td><td class="${sgn(v)}">${fmt(v, 1)}</td></tr>`;
+  }).join('');
+  // correlation
+  const c = sleeveCorrelation(book);
+  $('corr').innerHTML = `<tr><th></th>${c.ids.map(i => `<th>${i}</th>`).join('')}</tr>` + c.ids.map(a => `<tr><td><span class="dot" style="background:${COLORS[a]}"></span>${a}</td>${c.ids.map(b => { const v = c.matrix[a][b]; return `<td style="${a !== b && Math.abs(v) >= 0.3 ? 'color:var(--amber);font-weight:600' : ''}">${a === b ? '·' : fmt(v)}</td>`; }).join('')}</tr>`).join('');
+  renderTrades();
+}
+
+// ── sleeve table (registered cells, static) ──
+function renderSleeves() {
+  const order = ['S1', 'S1g', 'S2', 'S3', 'S3g', 'S4', 'S5', 'S5g', 'P1', 'P2', 'mirror'];
+  const H = RES?.harness ?? {};
+  $('sleeves').innerHTML = '<tr><th>Cell</th><th>In book</th><th>From</th><th>Sharpe</th><th>IS</th><th>OOS</th><th>Halves</th><th>CAGR</th><th>Max DD</th><th>Skew</th><th>p</th><th>t</th><th>Cost bp/yr</th><th>Carry bp/yr</th></tr>'
+    + order.map(id => { const s = DATA.cellScores[id]; if (!s) return ''; const h = H[id] ?? {}; const inBook = DATA.sleeves.some(x => x.id === id);
+      return `<tr><td class="cell-c">${COLORS[id] ? `<span class="dot" style="background:${COLORS[id]}"></span>` : ''}${id} <span class="muted">${DATA.names[id] ?? (id === 'mirror' ? 'P1, every sleeve flipped' : id === 'P1' ? 'book, equal risk (scored)' : 'book, proposal weights')}</span></td>
+        <td>${inBook ? '✓' : ''}</td><td>${s.from}</td><td class="${sgn(s.sharpe)}">${fmt(s.sharpe)}</td><td>${fmt(s.sharpeIs)}</td><td>${fmt(s.sharpeOos)}</td><td>${s.sharpeHalves.map(v => fmt(v)).join(' / ')}</td>
+        <td class="${sgn(s.cagrPct)}">${fmt(s.cagrPct, 1)}%</td><td>−${fmt(s.maxDdPct, 1)}%</td><td class="${s.skew < -1 ? 'neg' : ''}">${fmt(s.skew)}</td><td>${fmt(s.pValue, 3)}</td><td>${fmt(s.tStat, 1)}</td>
+        <td>${h.costDragAnnBp != null ? fmt(h.costDragAnnBp, 1) : (id.startsWith('S5') ? 'haircut' : '—')}</td><td>${h.carryAnnBp != null ? fmt(h.carryAnnBp, 0) : '—'}</td></tr>`; }).join('');
+  $('sleeveNote').innerHTML = `<b>How to read it.</b> S1 core beta = long NAS100, SPX500 and gold, vol-targeted. S2 trend = sign of 21/63/126/252-day returns on all 10 markets, weekly. S3 carry = long the higher 3-month rate, 7 USD majors (only knowable from 2013, when the point-in-time rate vintages begin). S4 = long USD for 5 sessions after each FOMC decision (from 2016). S5 = a short 1-month SPX variance <i>proxy</i> built from VIX², not options P&L.
+    The "g" versions go flat when VIX is above VIX3M (S5g also after a 20% VIX spike, until 5 calm days have passed). Every number is net of costs. A Sharpe above 0.66 is what this 18-year sample can tell apart from zero (prereg §5), so single sleeves below that are not evidence either way.`;
+}
+
+// ── trades in the owner's template ──
+function renderTrades() {
+  if (!current) return;
+  const all = bookTrades(DATA, current.book);
+  current.trades = all;
+  const f = $('trFilter').value;
+  const rows = f ? all.filter(r => r.sleeve === f) : all;
+  const tot = rows.reduce((a, r) => a + r['Return %'], 0), wins = rows.filter(r => r['Return %'] > 0).length;
+  $('trSub').textContent = `— ${rows.length.toLocaleString()} trades for these weights · win ${fmt(wins / Math.max(1, rows.length) * 100, 0)}% · sum ${fmt(tot, 1)}% of book`;
+  const show = rows.slice(-60).reverse();
+  $('trades').innerHTML = `<tr>${TEMPLATE_HEADER.slice(0, 12).map(h => `<th>${h}</th>`).join('')}</tr>` + show.map(r => `<tr>${TEMPLATE_HEADER.slice(0, 12).map(h => { const v = r[h]; return `<td class="${h === 'Return %' ? sgn(v) : ''}">${v ?? ''}</td>`; }).join('')}</tr>`).join('');
+  const bookSum = current.book.rets.reduce((a, b) => a + b, 0) * 100, trSum = all.reduce((a, r) => a + r['Return %'], 0);
+  $('trNote').innerHTML = `Showing the newest 60. The export has all ${rows.length.toLocaleString()} in your template's 13 columns. <b>Return %</b> = that trade's contribution to the book (close to close, after costs). <b>Risk %</b> = the position's 1-day 1σ contribution at entry; there is no stop in a vol-targeted book, so this is its daily risk, not a stop distance. <b>MAE/MFE</b> = the worst and best running contribution on daily closes (no intraday path). Fills are at the 22:00 UTC decision close. A trade still open at 2026-08-21 is marked there and tagged <i>open-at-window-end</i>.
+    The trades add up to ${fmt(trSum, 1)}% against ${fmt(bookSum, 1)}% for the book's daily returns (${fmt(trSum / bookSum * 100, 1)}%). The gap is cost on flip days and one leg's holidays.`;
+}
+$('trFilter').innerHTML += DATA.sleeves.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+$('trFilter').addEventListener('change', renderTrades);
+$('dlCsv').addEventListener('click', () => {
+  if (!current?.trades) return;
+  const f = $('trFilter').value; const rows = f ? current.trades.filter(r => r.sleeve === f) : current.trades;
+  const tag = Object.entries(weights).filter(([, v]) => v > 0).map(([k, v]) => `${k}-${Math.round(v * 100)}`).join('_');
+  const blob = new Blob([toCsv(rows)], { type: 'text/csv' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `portfolio-book-trades_${tag}${f ? '_' + f : ''}.csv` });
+  document.body.appendChild(a); a.click(); a.remove();
+});
+
+$('caveats').innerHTML = `<b>The vol premium sleeve is a proxy.</b> It prices a short SPX variance swap at VIX². You cannot place that on an MT5 CFD account; the real trade is SPX/ES options or VIX futures, which have wider costs and gap risk inside a day that a close-to-close proxy misses. Use the "CFD-tradeable only" preset to see the book without it.<br>
+<b>2008–2026 was kind to two of these sleeves.</b> Core beta and short vol both bet on no crash, and they correlate 0.45 here. The VIX gate and vol targeting kept the stress windows small, but a 1987-style one-day gap would land on both at once.<br>
+<b>Not everything was blind.</b> Every sleeve has prior art on this data (trend, carry and FOMC drift were tested before), which is why the bar is a deflated Sharpe. The FOMC sleeve lost money in the first half. Carry has no history before 2013 (the point-in-time rate vintages start then).<br>
+<b>Not in it:</b> intraday systems (Fib Atlas, rich-IV breaks), bonds, energy, the DAX, broker swap markups, and the cost of the book's own rescaling.<br>
+<b>Next:</b> a confirm prereg with the corrected trial rule, then a forward record on demo. That is the only out-of-sample test left.`;
+
+renderVerdict(); renderWeights(); renderSleeves(); initCharts(); recompute();
+</script>
+</body>
+</html>

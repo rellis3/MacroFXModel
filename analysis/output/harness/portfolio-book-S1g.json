@@ -1,0 +1,207 @@
+{
+ "id": "portfolio-book-S1g",
+ "ranAt": "2026-10-19T13:42:25.056Z",
+ "doc": "forge/PORTFOLIO_BOOK_PREREG.md",
+ "claim": "Core beta (VIX-gated)",
+ "domain": "portfolio",
+ "spec": {
+  "universe": [
+   "nas100",
+   "spx500",
+   "xauusd"
+  ],
+  "horizonDays": 1,
+  "rebalance": "1d",
+  "sample": {
+   "from": "2008-01-02",
+   "to": "2026-08-21",
+   "isEnd": "2018-01-01"
+  },
+  "primary": "pnl",
+  "tuned": false,
+  "cells": [
+   "S1g"
+  ],
+  "entryHourUtc": 22
+ },
+ "fixed": {
+  "volTarget": 0.1,
+  "volSpan": 60,
+  "maxLeverage": 3,
+  "entryHourUtc": 22,
+  "closeAsofHour": "22:00:00Z",
+  "nBoot": 1000,
+  "seed": 2654435769,
+  "fdrQ": 0.1,
+  "pboSplits": 16,
+  "minIsYears": 2,
+  "warmupDays": 400,
+  "meanBlockDays": 5,
+  "meanBlockSteps": 5
+ },
+ "costs": {
+  "rule": "half of the measured 22:00 UTC spread per unit turnover (spread_profile feature); indices charged the worst measured FX pair",
+  "entryHourUtc": 22,
+  "measured": {
+   "xauusd": {
+    "spreadPriceUnits": 0.62,
+    "pips": 0.62
+   }
+  },
+  "unmeasured": [
+   "nas100",
+   "spx500"
+  ],
+  "worstFx": {
+   "inst": "xauusd",
+   "roundTripBp": 1.41
+  }
+ },
+ "walkForward": {
+  "applied": false,
+  "reason": "no fitted parameters (spec.fit absent)"
+ },
+ "dependence": {
+  "ok": true,
+  "n": 3,
+  "rows": 4852,
+  "pc1Share": 0.644,
+  "effN": 1.9,
+  "eigenvalues": [
+   1.931,
+   0.996,
+   0.073
+  ]
+ },
+ "fdr": {
+  "q": 0.1,
+  "m": 1,
+  "rejected": 1,
+  "threshold": 0.004
+ },
+ "pbo": {
+  "ok": false,
+  "reason": "study declares no tuned parameter"
+ },
+ "cells": [
+  {
+   "key": "S1g",
+   "params": {},
+   "ic": {
+    "oos": {
+     "ok": true,
+     "n": 6711,
+     "nClusters": 2250,
+     "meanBlock": 5,
+     "nBoot": 1000,
+     "obs": -0.02384,
+     "se": 0.01806,
+     "ci95": [
+      -0.05839,
+      0.01242
+     ],
+     "pValue": 0.1738,
+     "method": "moving-block bootstrap of date clusters; percentile interval; two-sided p vs 0"
+    },
+    "brickRowBlocks": {
+     "ic": -0.0238,
+     "pValue": 0.1169,
+     "meanBlockRows": 5
+    },
+    "is": -0.0024,
+    "oosHalves": {
+     "firstHalf": -0.0226,
+     "secondHalf": -0.0265,
+     "splitAt": "2022-04-14"
+    },
+    "nRowsOos": 6711,
+    "nDatesOos": 2250
+   },
+   "pnl": {
+    "sharpeOos": 1.007,
+    "sharpeIs": 0.713,
+    "sharpeAll": 0.848,
+    "sharpeGrossOos": 1.024,
+    "meanDailyOos": 0.00029,
+    "meanDailyOosCi95": [
+     0.0001,
+     0.00047
+    ],
+    "pValueOos": 0.004,
+    "tradesOos": 168,
+    "winOos": 0.488,
+    "pfOos": 2.294,
+    "meanTradeOosPct": 1.0852,
+    "maxDrawdownOosPct": 15.28,
+    "perYearOosPct": {
+     "2018": -4.266,
+     "2019": 11.651,
+     "2020": 13.151,
+     "2021": 8.137,
+     "2022": -10.529,
+     "2023": 15.25,
+     "2024": 15.051,
+     "2025": 13.191,
+     "2026": 3.424
+    },
+    "yearsPositiveOos": "7/9",
+    "costDragAnnBp": 12.97,
+    "carryAnnBp": 0,
+    "turnoverPerYear": 10.05,
+    "skewOos": -0.619,
+    "kurtOos": 6.062,
+    "nDaysOos": 2251,
+    "decisions": 14867,
+    "nullSignals": 0
+   },
+   "legs": {
+    "nas100": {
+     "trades": 133,
+     "tradesOos": 56,
+     "winOos": 0.411,
+     "pfOos": 2.021,
+     "sharpeOos": 0.66,
+     "meanTradeOosPct": 0.8943,
+     "icOos": -0.0441
+    },
+    "spx500": {
+     "trades": 133,
+     "tradesOos": 56,
+     "winOos": 0.357,
+     "pfOos": 1.913,
+     "sharpeOos": 0.593,
+     "meanTradeOosPct": 0.7825,
+     "icOos": -0.0345
+    },
+    "xauusd": {
+     "trades": 133,
+     "tradesOos": 56,
+     "winOos": 0.696,
+     "pfOos": 3.019,
+     "sharpeOos": 1.043,
+     "meanTradeOosPct": 1.579,
+     "icOos": 0.0079
+    }
+   },
+   "primary": {
+    "kind": "pnl",
+    "pValue": 0.004,
+    "passesFdr": true
+   },
+   "dsr": {
+    "dsr": 0.9925,
+    "sr0": 0.01097,
+    "z": 2.434,
+    "nTrials": 2,
+    "varTrialSr": 0.0004451401997170279
+   }
+  }
+ ],
+ "notes": [
+  "nas100: no rate legs (not a six-letter FX pair) — carry 0",
+  "spx500: no rate legs (not a six-letter FX pair) — carry 0",
+  "xauusd: carry leg missing (,rate3m_usd) — carry set to 0",
+  "nas100: spread UNMEASURED at 22:00 UTC — charged the worst measured FX pair (xauusd, 1.41 bp of price per round trip)",
+  "spx500: spread UNMEASURED at 22:00 UTC — charged the worst measured FX pair (xauusd, 1.41 bp of price per round trip)"
+ ]
+}

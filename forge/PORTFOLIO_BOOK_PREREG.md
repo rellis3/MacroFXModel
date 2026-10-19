@@ -130,4 +130,19 @@ computed.
 Trade attribution follows the harness's episode rule. A trade opened from flat also carries its entry day's cost (day e).
 At a flip, that day belongs to the trade being closed. No outcome had been computed.
 
-## RESULTS
+### A4 — 2026-10-19 — POST-HOC (results seen)
+Data fault found while reading the scored output: feature-store `px_d1_*` FX/gold carry Saturday/Sunday rows 2002–2013
+(DATA_SPEC §5 #9). The registered scorer counted them as trading days (understating Sharpe and CAGR). The run now folds
+each weekend row into the next weekday by default; `FOLD=0` reproduces the registered run in
+`analysis/output/portfolio-book/registered/`. Description only, and the verdict is unchanged.
+
+### A5 — 2026-10-19 — POST-HOC (results seen)
+Design error, recorded and not corrected: the DSR's trial variance included the mirror, which is a sign flip and not an
+alternative anyone would choose, so the spread of trial Sharpes roughly doubles. Readings without it (DSR 0.958 / 0.998)
+are descriptive. The fix belongs in a new prereg (`portfolio-book-confirm`).
+
+## RESULTS — run 2026-10-19
+
+**CONTEXT, registered gate not met.** P1: net Sharpe 1.06 (t 4.87), 11.7% a year at 11.1% vol, max DD 17.5%, p 0.002,
+halves 0.91 / 1.22, **DSR 0.49 < 0.95**. Weekend-folded (A4): 1.11, DSR 0.50. Full write-up:
+`analysis/output/portfolio-book/RESULTS.md`.

@@ -14,7 +14,7 @@ Generated 2026-10-19.
 | validated | 32 |
 | null | 100 |
 | underpowered | 4 |
-| context (base rates, descriptions: not counted as tests) | 32 |
+| context (base rates, descriptions: not counted as tests) | 33 |
 | pre-registrations with no banked verdict (below) | 40 |
 
 **What the count says (Lesson 02 §05).** If none of the 136 claims were real, tests at the usual 5% size would still pass
@@ -194,6 +194,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-19 | credit-leads-equities | macro | null | forge/CREDIT_LEADS_EQUITIES_PREREG.md |
 | 2026-10-19 | gamma-regime-trades | positioning | null | forge/GAMMA_REGIME_TRADES_PREREG.md |
 | 2026-10-19 | opex-cycle-range | volatility | underpowered | forge/OPEX_CYCLE_RANGE_PREREG.md |
+| 2026-10-19 | portfolio-book | price | context | forge/PORTFOLIO_BOOK_PREREG.md |
 | 2026-10-19 | vol-crush-drift | events | null | forge/VOL_CRUSH_DRIFT_PREREG.md |
 
 ## Pre-registered, but no banked verdict

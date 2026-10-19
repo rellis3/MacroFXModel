@@ -869,6 +869,13 @@ export const DESK_EVIDENCE = [
     use: 'No trade rule from the gamma regime on the CME book. The hedging map stays context. Rerun on the Cboe index + ETF capture (from 2026-10-19) after ~400 days.',
   },
   {
+    id: 'portfolio-book', domain: 'price', verdict: 'context', date: '2026-10-19', doc: 'forge/PORTFOLIO_BOOK_PREREG.md',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500'],
+    claim: 'A fixed equal-risk book of the standard sleeves (VIX-gated core beta, multi-asset trend, VIX-gated carry, post-FOMC USD hold, VIX-gated short-variance proxy) earns a deflated positive Sharpe after costs',
+    result: 'Harness run 2008-02 to 2026-08-21: net Sharpe 1.06 (t 4.87), 11.7% a year at 11.1% vol, max drawdown 17.5%, bootstrap p 0.002, halves 0.91 / 1.22, 17 of 19 years positive; weekend rows folded (DATA_SPEC #9) 1.11. Gate NOT met: deflated Sharpe 0.49 vs 0.95, because the registered trial variance included the sign-flipped mirror (a prereg design error; 0.96 without it, post-hoc). Leave-one-sleeve-out 0.94-1.15; best 3 years removed 0.77; CFD-tradeable sleeves only (no vol proxy) 0.89 (0.94 folded; first half 0.34). Sleeves alone: core beta 0.92, trend 0.26, carry 0.13 (2013+), FOMC 0.95 (first half negative), vol proxy 0.89 (skew -9).',
+    use: 'Describe the book, do not cite it as validated. The vol-premium sleeve is a VIX-squared proxy, not options P&L. Core beta and short vol both lose in a crash (corr 0.45). Next: portfolio-book-confirm with the corrected trial rule on a forward demo record.',
+  },
+  {
     id: 'opex-cycle-range', domain: 'volatility', verdict: 'underpowered', date: '2026-10-19', doc: 'forge/OPEX_CYCLE_RANGE_PREREG.md',
     instruments: ['NQ', 'SPX500', 'US30', 'US2000'],
     claim: 'US index ranges run tighter into monthly options expiry and wider in the week after (dealer gamma concentrated in expiring contracts, then gone)',
@@ -1166,6 +1173,7 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'portfolio-book':          { n: '4,645 weekdays 2008-2026, 5 sleeves, 28 legs, 2,911 trades', note: 'Sharpe SE 0.235, MDE 0.66; P1 1.06-1.11 clears it; DSR 0.49 fails on a trial-variance design error (mirror counted)' },
   'us-leg-same-day-link':      { n: '3 periods of 160-250 days x 34 assets', note: 'descriptive same-hour correlations; sign stable for USDJPY, EURUSD, gold, unstable for equities' },
   'rates-spread-asset-lead':   { n: '28,560 + 9,384 + 4,896 + 608 + 896 cells, 34 assets', note: 'zero survivors, shifted-spread placebo equal; minimum detectable effect printed per family' },
   'rates-follow-through-regimes': { n: '69,726 daily episodes 2016-2026', note: 'descriptive by year; effect only in 2016 and 2020 and not recognisable in advance' },

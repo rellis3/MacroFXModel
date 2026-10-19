@@ -129,7 +129,7 @@ function episodes(pos, netRet) {
  *   doc, claim, domain, instrumentsLabel
  * }
  */
-export async function runStudy(spec, { store = null, write = true, log = () => {} } = {}) {
+export async function runStudy(spec, { store = null, write = true, log = () => {}, keepPaths = false } = {}) {
   validateSpec(spec);
   store = store ?? await openStore();
   const cells = (spec.cells && spec.cells.length ? spec.cells : [{ key: 'base' }]).map((c, i) => ({ key: c.key ?? `cell${i + 1}`, ...c }));
@@ -172,6 +172,7 @@ export async function runStudy(spec, { store = null, write = true, log = () => {
 
   // ── run every cell ──
   const cellResults = [];
+  const cellPaths = {};            // keepPaths: per cell, per instrument { dates, pos, net } (returned, never written)
   const cellDailyPortfolio = [];   // for PBO: aligned portfolio daily returns per cell
   const allDates = [...new Set(Object.values(px).flatMap(p => p.dates))].sort().filter(d => d >= spec.sample.from && d <= spec.sample.to);
   const dateIdx = new Map(allDates.map((d, i) => [d, i]));
@@ -241,6 +242,7 @@ export async function runStudy(spec, { store = null, write = true, log = () => {
         meanTradeOosPct: oosEps.length ? +(mean(oosEps.map(e => e.ret)) * 100).toFixed(4) : null,
         icOos: (() => { const r = icRows.filter(r => r.inst === inst && r.oos); return r.length >= 30 ? +spearman(r.map(r => r.x), r.map(r => r.y)).toFixed(4) : null; })(),
       };
+      if (keepPaths) (cellPaths[cell.key] ??= {})[inst] = { dates: P.dates, pos, net, gross, vol: P.vol };
       legStats[inst]._episodes = eps.map(e => ({ entry: P.dates[e.entryIdx], exit: P.dates[e.exitIdx], dir: e.dir, ret: e.ret }));
     }
 
@@ -332,6 +334,7 @@ export async function runStudy(spec, { store = null, write = true, log = () => {
     await mkdir(OUTPUT_DIR, { recursive: true });
     await writeFile(path.join(OUTPUT_DIR, `${spec.id}.json`), JSON.stringify(result, null, 1));
   }
+  if (keepPaths) Object.defineProperty(result, 'paths', { value: cellPaths, enumerable: false });
   return result;
 }
 
