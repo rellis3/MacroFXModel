@@ -1108,6 +1108,18 @@ export const DESK_EVIDENCE = [
     result: 'Harness run on point-in-time features, NAS100 + SPX500 pooled and date-clustered, OOS 2016-2026 (5,549-5,587 rows per cell). Twelve scored cells (Moody’s Baa-Aaa quality spread and Baa-over-Treasury, 20-session z, horizons 1/5/20, direction and vol-beyond-persistence targets): every interval across zero, |IC| <= 0.07, BH-FDR 10% rejects none; the 60-session-lagged placebo looks the same. Descriptive only (FRED serves three years): the ICE HY OAS leg shows widening -> next-week realised vol above persistence, IC +0.26 [+0.10, +0.39], p 0.002, both halves positive, placebo flat (+0.15 at 1 session, +0.20 at 20); its direction cells are +0.06 to +0.13 with intervals across zero.',
     use: 'Credit and equities agree in the same window (the chain’s hy->nq and hy->spx links); on 22 years of Moody’s spreads credit does NOT lead equities at 1-20 sessions, in direction or in vol. Never write that credit "moves first". The one thing worth more data is HY OAS -> next-week vol on three years, which needs a longer high-yield series (HYG/JNK from 2007) before it is anything.',
   },
+  {
+    id: 'ai-crack-metals', domain: 'macro', verdict: 'null', date: '2026-10-19', doc: 'forge/AI_CRACK_METALS_PREREG.md', also: ['analysis/output/ai-crack-metals/RESULTS.md'],
+    claim: 'Crown, 2026-10-16: "you need the AI trade to crack for metals to continue to go up" -- when semis fall hard against the index (SMH/SPY 20-session change in its rolling bottom decile), gold outperforms its ordinary 20-session drift',
+    result: 'NULL, pre-registered as null (12d42ab2, before the harness). 61 crack setups 2006-04 to 2026-08 (lockbox cut), 20-session de-clustering, seed 20261019, B=2000. GLD 20 sessions after a crack +1.32% vs +0.87% unconditional: excess +0.45 [-0.83, +1.89], n=60; the interval excludes the 2.0% pass bar (MDE 1.8), so the design could have found the claimed effect. Both halves +0.46 / +0.41, both spanning zero. Mirror (AI trade ripping, n=70) -0.68 [-1.69, +0.29]. Descriptive, not scored: over 60 sessions gold LAGGED after an AI rip, -3.48 [-5.93, -1.10] -- one of eight unscored intervals, the converse of the claim, a candidate for its own prereg and nothing more.',
+    use: 'Do not write that money leaving the AI trade bids gold: on 61 semis cracks over twenty years gold did what it does on any other month. Gold\'s drivers stay where which-gold found them -- real yields and the dollar -- and a semis crack reaches gold only through that leg, if at all. Never a direction call on metals from an equity rotation.',
+  },
+  {
+    id: 'ai-crack-metals-silver', domain: 'macro', verdict: 'null', date: '2026-10-19', doc: 'forge/AI_CRACK_METALS_PREREG.md', also: ['analysis/output/ai-crack-metals/RESULTS.md'],
+    claim: 'The silver half of the same claim: after the AI trade cracks, silver -- "somewhere in between" monetary and industrial in the clip\'s own taxonomy -- outperforms its ordinary 20-session drift',
+    result: 'NULL, pre-registered as "null, leaning negative". Same 61 setups. SLV 20 sessions after a crack -0.13% vs +1.79% unconditional: excess -1.93 [-4.05, +0.16], n=60; the interval excludes the 3.5% pass bar (MDE 3.4). The lean is the registered one: negative in both halves (-2.17 / -1.81), neither clearing zero. Mirror -0.65 [-2.79, +1.61].',
+    use: 'Do not write that silver benefits from an AI-trade crack; if anything the industrial leg argues the other way and the data leans that way without clearing. A growth scare is not a metals bid.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1173,6 +1185,8 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'ai-crack-metals':         { n: '61 de-clustered semis cracks 2006-2026 vs ~4,900 control sessions', note: 'MDE 1.8% vs a 2.0% pass bar; interval [-0.83, +1.89] excludes the bar -- a real null' },
+  'ai-crack-metals-silver':  { n: '61 de-clustered semis cracks 2006-2026 vs ~4,900 control sessions', note: 'MDE 3.4% vs a 3.5% pass bar; interval [-4.05, +0.16] excludes the bar' },
   'portfolio-book':          { n: '4,645 weekdays 2008-2026, 5 sleeves, 28 legs, 2,911 trades', note: 'Sharpe SE 0.235, MDE 0.66; P1 1.06-1.11 clears it; DSR 0.49 fails on a trial-variance design error (mirror counted)' },
   'us-leg-same-day-link':      { n: '3 periods of 160-250 days x 34 assets', note: 'descriptive same-hour correlations; sign stable for USDJPY, EURUSD, gold, unstable for equities' },
   'rates-spread-asset-lead':   { n: '28,560 + 9,384 + 4,896 + 608 + 896 cells, 34 assets', note: 'zero survivors, shifted-spread placebo equal; minimum detectable effect printed per family' },

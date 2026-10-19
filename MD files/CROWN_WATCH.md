@@ -97,11 +97,9 @@ explicitly declined).
   this is a different cut than S8, not a repeat of it. Source: 2026-09-21
   entry, step 5.
 
-- **AI-crack → metals rotation** — Crown (2026-10-16, clip 1): "you need the AI trade to
-  crack for metals to continue to go up." A relative drawdown in SMH against SPY as a
-  predictor of gold/silver excess return over the following weeks. Not on the desk in any
-  form; `which-gold` found gold's drivers in real yields and the dollar and "no single
-  gold" nearly half the time. Prior unstated — not run. Source: 2026-10-16 entry, step 5.
+- ~~**AI-crack → metals rotation**~~ — **RUN 2026-10-19, NULL** (`ai-crack-metals`, `ai-crack-metals-silver`;
+  `forge/AI_CRACK_METALS_PREREG.md`). 61 semis cracks 2006–2026: gold +0.45 [−0.83, +1.89] over its ordinary
+  20-session drift, silver −1.93 [−4.05, +0.16]; both intervals exclude the pass bars. Struck.
 - **Energy equities against the barrel** — Crown (2026-10-16, clip 1): XLE rich against
   WTI and distillate is "toxic waste". A 20-session XLE−WTI divergence as a predictor of
   crude or XLE forward return/range. Data in hand (XLE six years in the drill bundle, WTI
@@ -1188,7 +1186,8 @@ nothing below is a score.
 **5. Verdict and action.**
 - **Nothing to build from the clip as spoken.** The one direction call (a) is a nulled
   hypothesis restated; the trade-result talk is not evidence of anything.
-- **Two candidates logged, neither pre-registered**: the AI-crack→metals lead (b) and the
+- **Two candidates logged** (b resolved 2026-10-19: pre-registered and run NULL on 61 setups, see the
+  index above and `forge/AI_CRACK_METALS_PREREG.md`): the AI-crack→metals lead (b) and the
   energy-equity-vs-barrel divergence (c). Both have data in hand. (b) is the one worth a
   prior of "unknown" rather than "null-shaped": nothing adjacent has been run.
 - **The display nugget is the speed of the broadening.** The board shows the 20-session

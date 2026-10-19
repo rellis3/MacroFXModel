@@ -1,0 +1,254 @@
+{
+ "id": "ai-crack-metals",
+ "verdict": "null",
+ "ranAt": "2026-10-19T14:20:32.367Z",
+ "seed": 20261019,
+ "B": 2000,
+ "prereg": "forge/AI_CRACK_METALS_PREREG.md",
+ "preregCommit": "12d42ab2",
+ "branch": "main",
+ "spine": {
+  "from": "2006-04-28",
+  "to": "2026-08-21",
+  "n": 5111
+ },
+ "setups": {
+  "crack": 61,
+  "rip": 70
+ },
+ "cells": [
+  {
+   "name": "GLD-20",
+   "metal": "GLD",
+   "horizon": 20,
+   "scored": true,
+   "main": {
+    "n": 60,
+    "nCtl": 2952,
+    "ev": 1.322,
+    "ctl": 0.873,
+    "diff": 0.449,
+    "lo": -0.831,
+    "hi": 1.888,
+    "clearsZero": false
+   },
+   "mirror": {
+    "n": 70,
+    "nCtl": 2952,
+    "ev": 0.189,
+    "ctl": 0.873,
+    "diff": -0.684,
+    "lo": -1.687,
+    "hi": 0.29,
+    "clearsZero": false
+   },
+   "halves": [
+    {
+     "n": 29,
+     "nCtl": 1539,
+     "ev": 1.102,
+     "ctl": 0.646,
+     "diff": 0.455,
+     "lo": -1.426,
+     "hi": 2.35,
+     "clearsZero": false
+    },
+    {
+     "n": 31,
+     "nCtl": 1413,
+     "ev": 1.529,
+     "ctl": 1.12,
+     "diff": 0.408,
+     "lo": -0.926,
+     "hi": 1.731,
+     "clearsZero": false
+    }
+   ],
+   "gate": {
+    "clearsZero": false,
+    "halvesPos": true,
+    "mirrorOk": true,
+    "pass": false
+   },
+   "passBar": 2,
+   "p": 0.5174284064027816,
+   "verdict": "null"
+  },
+  {
+   "name": "SLV-20",
+   "metal": "SLV",
+   "horizon": 20,
+   "scored": true,
+   "main": {
+    "n": 60,
+    "nCtl": 2952,
+    "ev": -0.134,
+    "ctl": 1.795,
+    "diff": -1.928,
+    "lo": -4.046,
+    "hi": 0.159,
+    "clearsZero": false
+   },
+   "mirror": {
+    "n": 70,
+    "nCtl": 2952,
+    "ev": 1.148,
+    "ctl": 1.795,
+    "diff": -0.647,
+    "lo": -2.787,
+    "hi": 1.61,
+    "clearsZero": false
+   },
+   "halves": [
+    {
+     "n": 29,
+     "nCtl": 1539,
+     "ev": -1.054,
+     "ctl": 1.113,
+     "diff": -2.166,
+     "lo": -5.55,
+     "hi": 1.124,
+     "clearsZero": false
+    },
+    {
+     "n": 31,
+     "nCtl": 1413,
+     "ev": 0.726,
+     "ctl": 2.537,
+     "diff": -1.811,
+     "lo": -4.556,
+     "hi": 0.607,
+     "clearsZero": false
+    }
+   ],
+   "gate": {
+    "clearsZero": false,
+    "halvesPos": false,
+    "mirrorOk": true,
+    "pass": false
+   },
+   "passBar": 3.5,
+   "p": 0.07228885989115019,
+   "verdict": "null"
+  }
+ ],
+ "descriptive": {
+  "GLD-60": {
+   "name": "GLD-60",
+   "metal": "GLD",
+   "horizon": 60,
+   "scored": false,
+   "main": {
+    "n": 59,
+    "nCtl": 1360,
+    "ev": 4.13,
+    "ctl": 3.943,
+    "diff": 0.187,
+    "lo": -3.14,
+    "hi": 4.018,
+    "clearsZero": false
+   },
+   "mirror": {
+    "n": 69,
+    "nCtl": 1360,
+    "ev": 0.46,
+    "ctl": 3.943,
+    "diff": -3.483,
+    "lo": -5.934,
+    "hi": -1.097,
+    "clearsZero": false
+   },
+   "halves": [
+    {
+     "n": 29,
+     "nCtl": 848,
+     "ev": 3.987,
+     "ctl": 3.302,
+     "diff": 0.685,
+     "lo": -4.086,
+     "hi": 5.398,
+     "clearsZero": false
+    },
+    {
+     "n": 30,
+     "nCtl": 512,
+     "ev": 4.268,
+     "ctl": 5.003,
+     "diff": -0.736,
+     "lo": -5.436,
+     "hi": 3.722,
+     "clearsZero": false
+    }
+   ]
+  },
+  "SLV-60": {
+   "name": "SLV-60",
+   "metal": "SLV",
+   "horizon": 60,
+   "scored": false,
+   "main": {
+    "n": 59,
+    "nCtl": 1360,
+    "ev": 3.279,
+    "ctl": 5.581,
+    "diff": -2.303,
+    "lo": -7.834,
+    "hi": 3.05,
+    "clearsZero": false
+   },
+   "mirror": {
+    "n": 69,
+    "nCtl": 1360,
+    "ev": 2.092,
+    "ctl": 5.581,
+    "diff": -3.489,
+    "lo": -9.022,
+    "hi": 1.387,
+    "clearsZero": false
+   },
+   "halves": [
+    {
+     "n": 29,
+     "nCtl": 848,
+     "ev": 2.861,
+     "ctl": 3.371,
+     "diff": -0.51,
+     "lo": -7.409,
+     "hi": 6.897,
+     "clearsZero": false
+    },
+    {
+     "n": 30,
+     "nCtl": 512,
+     "ev": 3.682,
+     "ctl": 9.243,
+     "diff": -5.56,
+     "lo": -15.588,
+     "hi": 4.107,
+     "clearsZero": false
+    }
+   ]
+  }
+ },
+ "byYear": {
+  "2008": 4,
+  "2009": 1,
+  "2010": 3,
+  "2011": 6,
+  "2012": 6,
+  "2013": 1,
+  "2014": 1,
+  "2015": 5,
+  "2016": 3,
+  "2017": 2,
+  "2018": 4,
+  "2019": 1,
+  "2020": 2,
+  "2021": 5,
+  "2022": 6,
+  "2023": 1,
+  "2024": 5,
+  "2025": 3,
+  "2026": 2
+ }
+}

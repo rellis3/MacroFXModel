@@ -10,15 +10,15 @@ Generated 2026-10-19.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **136** |
+| claims tested (validated + null + underpowered) | **138** |
 | validated | 32 |
-| null | 100 |
+| null | 102 |
 | underpowered | 4 |
 | context (base rates, descriptions: not counted as tests) | 33 |
 | pre-registrations with no banked verdict (below) | 40 |
 
-**What the count says (Lesson 02 §05).** If none of the 136 claims were real, tests at the usual 5% size would still pass
-about **6.8** of them by luck. 32 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 138 claims were real, tests at the usual 5% size would still pass
+about **6.9** of them by luck. 32 passed, so most passes are unlikely to be luck alone, but
 **roughly 7 of the 32 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -191,6 +191,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-18 | rates-spread-asset-lead | macro | null | analysis/output/dynlead/DYNAMIC_LEAD_RESULTS.md |
 | 2026-10-18 | us-leg-same-day-link | macro | context | analysis/output/cog_video_0918/CROSS_ASSET_STAGE1.md |
 | 2026-10-18 | zero-gamma-distance | volatility | underpowered | oi_research_book/ZERO_GAMMA_DISTANCE_PREREG.md |
+| 2026-10-19 | ai-crack-metals | macro | null | forge/AI_CRACK_METALS_PREREG.md |
+| 2026-10-19 | ai-crack-metals-silver | macro | null | forge/AI_CRACK_METALS_PREREG.md |
 | 2026-10-19 | credit-leads-equities | macro | null | forge/CREDIT_LEADS_EQUITIES_PREREG.md |
 | 2026-10-19 | gamma-regime-trades | positioning | null | forge/GAMMA_REGIME_TRADES_PREREG.md |
 | 2026-10-19 | opex-cycle-range | volatility | underpowered | forge/OPEX_CYCLE_RANGE_PREREG.md |
