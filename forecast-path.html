@@ -370,10 +370,12 @@ const ENGINES = {
     horizons: [['5', '5 days'], ['10', '10 days'], ['20', '20 days']],
     defaultH: '10',
     warmup: PATH_DEFAULTS.warmup,
-    build: (bars, ac) => buildForecastContext(bars, { assetClass: ac, bandsFn: activeBandsFn() }),
+    // Gold σ on the production estimator (YZ30, volForecast.js since 2026-06-30), not
+    // volSigmaSeries' HV20, so the D1 cone matches the Vol Forecast v3 ladder. Bands unchanged.
+    build: (bars, ac) => buildForecastContext(bars, { assetClass: ac, sigmaClass: ac === 'commodity' ? 'fx' : ac, bandsFn: activeBandsFn() }),
     cone: coneFromContext,
     paths: samplePaths,
-    tally: (bars, H, ac) => calibrationTally(bars, { horizonDays: H, assetClass: ac, bandsFn: activeBandsFn() }),
+    tally: (bars, H, ac) => calibrationTally(bars, { horizonDays: H, assetClass: ac, sigmaClass: ac === 'commodity' ? 'fx' : ac, bandsFn: activeBandsFn() }),
     anchorT: c => c.anchorDate,
     stepT: s => s.date,
     fmtBar: b => b.time,

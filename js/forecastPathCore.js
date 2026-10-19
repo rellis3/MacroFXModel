@@ -36,6 +36,10 @@ import { momentumSignal } from './trendFollowEngine.js';
 export const PATH_DEFAULTS = {
   horizonDays: 10,     // steps ahead to draw / grade
   assetClass: 'fx',
+  sigmaClass: null,    // asset class whose σ ESTIMATOR to use (default = assetClass).
+                       // Bands/corrections still follow assetClass. Lets a caller match
+                       // production's per-class estimator where forecastCore's differs
+                       // (gold: production YZ30 since 2026-06-30, volSigmaSeries HV20).
   driftLambda: 0.97,   // EWMA decay for the drift estimate (~33-day half-life)
   driftCapSigma: 0.5,  // |drift per day| capped at this × daily σ
   driftSource: 'ewma', // which drift bends the cone center + is graded for
@@ -69,7 +73,7 @@ export function buildForecastContext(bars, opts = {}) {
   const n = bars.length;
   const closes = bars.map(b => b.close);
 
-  const sigma = volSigmaSeries(bars, o.assetClass);
+  const sigma = volSigmaSeries(bars, o.sigmaClass ?? o.assetClass);
 
   // EWMA drift of daily log-returns. ew[j] summarises returns up to j; the
   // return ending at bar j is r[j] = ln(c[j]/c[j-1]), so drift usable at i is
@@ -115,7 +119,7 @@ export function coneFromContext(ctx, i, horizonDays, { sigmaOverride = null } = 
   // instead of the realized/GARCH σ — the market's forward view. NB implied carries a
   // variance-risk-premium (usually > realized) so it's a risk-neutral scenario, not a
   // realized-outcome forecast — label it as such at the call site. Default = realized.
-  const sig = (sigmaOverride > 0) ? sigmaOverride : (i < n ? sigma[i] : nextSigma(bars, opts.assetClass));
+  const sig = (sigmaOverride > 0) ? sigmaOverride : (i < n ? sigma[i] : nextSigma(bars, opts.sigmaClass ?? opts.assetClass));
   if (!(sig > 0)) return null;
   const mu = _driftMu(ctx, i, sig);
 
