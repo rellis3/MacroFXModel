@@ -1074,6 +1074,12 @@ export const DESK_EVIDENCE = [
     use: 'None of these adds a forward read; leave the line and the strip as context.',
     instruments: ['NQ'],
   },
+  {
+    id: 'credit-leads-equities', domain: 'macro', verdict: 'null', date: '2026-10-19', doc: 'forge/CREDIT_LEADS_EQUITIES_PREREG.md',
+    claim: 'Credit moves before equities: a widening in US credit spreads is followed, at 1-20 sessions, by lower equity index returns or by more volatility than persistence predicts (the plumbing order: credit is the pipes, equities the tap)',
+    result: 'Harness run on point-in-time features, NAS100 + SPX500 pooled and date-clustered, OOS 2016-2026 (5,549-5,587 rows per cell). Twelve scored cells (Moody’s Baa-Aaa quality spread and Baa-over-Treasury, 20-session z, horizons 1/5/20, direction and vol-beyond-persistence targets): every interval across zero, |IC| <= 0.07, BH-FDR 10% rejects none; the 60-session-lagged placebo looks the same. Descriptive only (FRED serves three years): the ICE HY OAS leg shows widening -> next-week realised vol above persistence, IC +0.26 [+0.10, +0.39], p 0.002, both halves positive, placebo flat (+0.15 at 1 session, +0.20 at 20); its direction cells are +0.06 to +0.13 with intervals across zero.',
+    use: 'Credit and equities agree in the same window (the chain’s hy->nq and hy->spx links); on 22 years of Moody’s spreads credit does NOT lead equities at 1-20 sessions, in direction or in vol. Never write that credit "moves first". The one thing worth more data is HY OAS -> next-week vol on three years, which needs a longer high-yield series (HYG/JNK from 2007) before it is anything.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1146,6 +1152,7 @@ const POWER = {
   'cog-matched-pairs':         { n: '4 pairs + 3 legs, 33 p-values, about 190 days per half', note: 'family-wise BH 10%; ESTR pairs only 95 in-sample days' },
   'cog-turn-sequence-model':   { n: '3,152 line turns; 36 specs; 79 model features; about 190 days per half', note: 'selection-aware placebo; walk-forward by quarter' },
   'cog-rate-futures-other-tests': { n: '48 + 6 + 32 cells over 604 days', note: 'Asian-session leg cells untestable as registered; 5- and 20-day option windows under-powered' },
+  'credit-leads-equities':   { n: '5,549-5,587 OOS rows per cell, 2 indices, 12 cells', note: '0/12 past BH-FDR 10%, every interval across zero; HY OAS vol lead +0.26 p 0.002 is on three years, descriptive' },
   'cot-positioning-factor':  { n: '3,576 OOS rows, 8 instruments', note: 'pooled rank-IC -0.0317, p=0.0936 vs a p<0.05 bar; AUD leg +0.004; both known flaws flatter the signal' },
   // Verified by reading the entry on 2026-10-03.
   'gex-range':               { n: '793 NQ days',               note: 'p 0.0008, +0.315 vol-matched, 4/4 specs, 6/6 years, event-day confound closed' },

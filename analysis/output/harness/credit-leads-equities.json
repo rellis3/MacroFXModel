@@ -1,0 +1,841 @@
+{
+ "id": "credit-leads-equities",
+ "ranAt": "2026-10-19T09:19:06.095Z",
+ "verdict": "null",
+ "fdr": {
+  "q": 0.1,
+  "m": 12,
+  "rejected": 0,
+  "threshold": 0
+ },
+ "cells": [
+  {
+   "key": "baa-aaa-h1-dir",
+   "spread": "baa-aaa",
+   "h": 1,
+   "placebo": false,
+   "target": "dir",
+   "scored": true,
+   "expectSign": 1,
+   "ic": 0.01681,
+   "ci95": [
+    -0.01854,
+    0.05362
+   ],
+   "p": 0.4036,
+   "halves": [
+    0.0229,
+    0.0116
+   ],
+   "n": 5587,
+   "nDates": 2795,
+   "pnlSharpeOos": -13.446,
+   "dependence": 0.96,
+   "passesFdr": false,
+   "placeboPasses": false,
+   "pass": false
+  },
+  {
+   "key": "baa-aaa-h1-vol",
+   "spread": "baa-aaa",
+   "h": 1,
+   "placebo": false,
+   "target": "vol",
+   "scored": true,
+   "expectSign": 1,
+   "ic": -0.00126,
+   "ci95": [
+    -0.03794,
+    0.03456
+   ],
+   "p": 0.9271,
+   "halves": [
+    -0.0008,
+    0
+   ],
+   "n": 5587,
+   "nDates": 2795,
+   "passesFdr": false,
+   "placeboPasses": false,
+   "pass": false
+  },
+  {
+   "key": "baa-aaa-h1-placebo-dir",
+   "spread": "baa-aaa",
+   "h": 1,
+   "placebo": true,
+   "target": "dir",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.00992,
+   "ci95": [
+    -0.02159,
+    0.04682
+   ],
+   "p": 0.6174,
+   "halves": [
+    -0.0128,
+    0.0324
+   ],
+   "n": 5587,
+   "nDates": 2795,
+   "pnlSharpeOos": -13.753,
+   "dependence": 0.96
+  },
+  {
+   "key": "baa-aaa-h1-placebo-vol",
+   "spread": "baa-aaa",
+   "h": 1,
+   "placebo": true,
+   "target": "vol",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.01126,
+   "ci95": [
+    -0.02444,
+    0.04823
+   ],
+   "p": 0.5674,
+   "halves": [
+    -0.001,
+    0.0239
+   ],
+   "n": 5587,
+   "nDates": 2795
+  },
+  {
+   "key": "baa-aaa-h5-dir",
+   "spread": "baa-aaa",
+   "h": 5,
+   "placebo": false,
+   "target": "dir",
+   "scored": true,
+   "expectSign": 1,
+   "ic": -0.00573,
+   "ci95": [
+    -0.07465,
+    0.05566
+   ],
+   "p": 0.8232,
+   "halves": [
+    0.0127,
+    -0.0228
+   ],
+   "n": 5579,
+   "nDates": 2791,
+   "pnlSharpeOos": -13.446,
+   "dependence": 0.96,
+   "passesFdr": false,
+   "placeboPasses": false,
+   "pass": false
+  },
+  {
+   "key": "baa-aaa-h5-vol",
+   "spread": "baa-aaa",
+   "h": 5,
+   "placebo": false,
+   "target": "vol",
+   "scored": true,
+   "expectSign": 1,
+   "ic": -0.03041,
+   "ci95": [
+    -0.09437,
+    0.03636
+   ],
+   "p": 0.3876,
+   "halves": [
+    -0.0237,
+    -0.0302
+   ],
+   "n": 5579,
+   "nDates": 2791,
+   "passesFdr": false,
+   "placeboPasses": false,
+   "pass": false
+  },
+  {
+   "key": "baa-aaa-h5-placebo-dir",
+   "spread": "baa-aaa",
+   "h": 5,
+   "placebo": true,
+   "target": "dir",
+   "scored": false,
+   "expectSign": 1,
+   "ic": -0.00422,
+   "ci95": [
+    -0.06664,
+    0.05721
+   ],
+   "p": 0.8951,
+   "halves": [
+    -0.0317,
+    0.0216
+   ],
+   "n": 5579,
+   "nDates": 2791,
+   "pnlSharpeOos": -13.753,
+   "dependence": 0.96
+  },
+  {
+   "key": "baa-aaa-h5-placebo-vol",
+   "spread": "baa-aaa",
+   "h": 5,
+   "placebo": true,
+   "target": "vol",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.05269,
+   "ci95": [
+    -0.01669,
+    0.12287
+   ],
+   "p": 0.1518,
+   "halves": [
+    0.0839,
+    0.0155
+   ],
+   "n": 5579,
+   "nDates": 2791
+  },
+  {
+   "key": "baa-aaa-h20-dir",
+   "spread": "baa-aaa",
+   "h": 20,
+   "placebo": false,
+   "target": "dir",
+   "scored": true,
+   "expectSign": 1,
+   "ic": -0.05323,
+   "ci95": [
+    -0.16437,
+    0.06309
+   ],
+   "p": 0.3616,
+   "halves": [
+    -0.0228,
+    -0.082
+   ],
+   "n": 5549,
+   "nDates": 2776,
+   "pnlSharpeOos": -13.446,
+   "dependence": 0.96,
+   "passesFdr": false,
+   "placeboPasses": false,
+   "pass": false
+  },
+  {
+   "key": "baa-aaa-h20-vol",
+   "spread": "baa-aaa",
+   "h": 20,
+   "placebo": false,
+   "target": "vol",
+   "scored": true,
+   "expectSign": 1,
+   "ic": -0.06677,
+   "ci95": [
+    -0.18071,
+    0.04726
+   ],
+   "p": 0.2537,
+   "halves": [
+    -0.0087,
+    -0.1284
+   ],
+   "n": 5549,
+   "nDates": 2776,
+   "passesFdr": false,
+   "placeboPasses": false,
+   "pass": false
+  },
+  {
+   "key": "baa-aaa-h20-placebo-dir",
+   "spread": "baa-aaa",
+   "h": 20,
+   "placebo": true,
+   "target": "dir",
+   "scored": false,
+   "expectSign": 1,
+   "ic": -0.00821,
+   "ci95": [
+    -0.1146,
+    0.10114
+   ],
+   "p": 0.8571,
+   "halves": [
+    0.0147,
+    -0.0301
+   ],
+   "n": 5549,
+   "nDates": 2776,
+   "pnlSharpeOos": -13.753,
+   "dependence": 0.96
+  },
+  {
+   "key": "baa-aaa-h20-placebo-vol",
+   "spread": "baa-aaa",
+   "h": 20,
+   "placebo": true,
+   "target": "vol",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.05723,
+   "ci95": [
+    -0.04759,
+    0.16712
+   ],
+   "p": 0.2877,
+   "halves": [
+    0.1222,
+    -0.0189
+   ],
+   "n": 5549,
+   "nDates": 2776
+  },
+  {
+   "key": "baa10y-h1-dir",
+   "spread": "baa10y",
+   "h": 1,
+   "placebo": false,
+   "target": "dir",
+   "scored": true,
+   "expectSign": 1,
+   "ic": -0.00527,
+   "ci95": [
+    -0.04123,
+    0.03218
+   ],
+   "p": 0.7453,
+   "halves": [
+    0.0037,
+    -0.0159
+   ],
+   "n": 5587,
+   "nDates": 2795,
+   "pnlSharpeOos": -14.251,
+   "dependence": 0.96,
+   "passesFdr": false,
+   "placeboPasses": false,
+   "pass": false
+  },
+  {
+   "key": "baa10y-h1-vol",
+   "spread": "baa10y",
+   "h": 1,
+   "placebo": false,
+   "target": "vol",
+   "scored": true,
+   "expectSign": 1,
+   "ic": 0.03729,
+   "ci95": [
+    -0.00487,
+    0.07723
+   ],
+   "p": 0.0839,
+   "halves": [
+    0.0542,
+    0.0208
+   ],
+   "n": 5587,
+   "nDates": 2795,
+   "passesFdr": false,
+   "placeboPasses": false,
+   "pass": false
+  },
+  {
+   "key": "baa10y-h1-placebo-dir",
+   "spread": "baa10y",
+   "h": 1,
+   "placebo": true,
+   "target": "dir",
+   "scored": false,
+   "expectSign": 1,
+   "ic": -0.02529,
+   "ci95": [
+    -0.0571,
+    0.00946
+   ],
+   "p": 0.1399,
+   "halves": [
+    -0.0379,
+    -0.0122
+   ],
+   "n": 5587,
+   "nDates": 2795,
+   "pnlSharpeOos": -14.488,
+   "dependence": 0.96
+  },
+  {
+   "key": "baa10y-h1-placebo-vol",
+   "spread": "baa10y",
+   "h": 1,
+   "placebo": true,
+   "target": "vol",
+   "scored": false,
+   "expectSign": 1,
+   "ic": -0.01248,
+   "ci95": [
+    -0.04915,
+    0.02721
+   ],
+   "p": 0.5335,
+   "halves": [
+    -0.0188,
+    -0.0055
+   ],
+   "n": 5587,
+   "nDates": 2795
+  },
+  {
+   "key": "baa10y-h5-dir",
+   "spread": "baa10y",
+   "h": 5,
+   "placebo": false,
+   "target": "dir",
+   "scored": true,
+   "expectSign": 1,
+   "ic": -0.01693,
+   "ci95": [
+    -0.0798,
+    0.05165
+   ],
+   "p": 0.6414,
+   "halves": [
+    0.0012,
+    -0.0356
+   ],
+   "n": 5579,
+   "nDates": 2791,
+   "pnlSharpeOos": -14.251,
+   "dependence": 0.96,
+   "passesFdr": false,
+   "placeboPasses": false,
+   "pass": false
+  },
+  {
+   "key": "baa10y-h5-vol",
+   "spread": "baa10y",
+   "h": 5,
+   "placebo": false,
+   "target": "vol",
+   "scored": true,
+   "expectSign": 1,
+   "ic": 0.02456,
+   "ci95": [
+    -0.04247,
+    0.09402
+   ],
+   "p": 0.4695,
+   "halves": [
+    0.05,
+    0.0009
+   ],
+   "n": 5579,
+   "nDates": 2791,
+   "passesFdr": false,
+   "placeboPasses": false,
+   "pass": false
+  },
+  {
+   "key": "baa10y-h5-placebo-dir",
+   "spread": "baa10y",
+   "h": 5,
+   "placebo": true,
+   "target": "dir",
+   "scored": false,
+   "expectSign": 1,
+   "ic": -0.06628,
+   "ci95": [
+    -0.1283,
+    -0.00151
+   ],
+   "p": 0.046,
+   "halves": [
+    -0.0647,
+    -0.067
+   ],
+   "n": 5579,
+   "nDates": 2791,
+   "pnlSharpeOos": -14.488,
+   "dependence": 0.96
+  },
+  {
+   "key": "baa10y-h5-placebo-vol",
+   "spread": "baa10y",
+   "h": 5,
+   "placebo": true,
+   "target": "vol",
+   "scored": false,
+   "expectSign": 1,
+   "ic": -0.02824,
+   "ci95": [
+    -0.0914,
+    0.04386
+   ],
+   "p": 0.4236,
+   "halves": [
+    -0.0286,
+    -0.0306
+   ],
+   "n": 5579,
+   "nDates": 2791
+  },
+  {
+   "key": "baa10y-h20-dir",
+   "spread": "baa10y",
+   "h": 20,
+   "placebo": false,
+   "target": "dir",
+   "scored": true,
+   "expectSign": 1,
+   "ic": -0.0287,
+   "ci95": [
+    -0.15135,
+    0.08366
+   ],
+   "p": 0.6174,
+   "halves": [
+    0.0038,
+    -0.0611
+   ],
+   "n": 5549,
+   "nDates": 2776,
+   "pnlSharpeOos": -14.251,
+   "dependence": 0.96,
+   "passesFdr": false,
+   "placeboPasses": false,
+   "pass": false
+  },
+  {
+   "key": "baa10y-h20-vol",
+   "spread": "baa10y",
+   "h": 20,
+   "placebo": false,
+   "target": "vol",
+   "scored": true,
+   "expectSign": 1,
+   "ic": -0.07288,
+   "ci95": [
+    -0.18854,
+    0.03914
+   ],
+   "p": 0.2418,
+   "halves": [
+    -0.0766,
+    -0.069
+   ],
+   "n": 5549,
+   "nDates": 2776,
+   "passesFdr": false,
+   "placeboPasses": false,
+   "pass": false
+  },
+  {
+   "key": "baa10y-h20-placebo-dir",
+   "spread": "baa10y",
+   "h": 20,
+   "placebo": true,
+   "target": "dir",
+   "scored": false,
+   "expectSign": 1,
+   "ic": -0.04588,
+   "ci95": [
+    -0.17131,
+    0.07602
+   ],
+   "p": 0.4456,
+   "halves": [
+    -0.0239,
+    -0.0693
+   ],
+   "n": 5549,
+   "nDates": 2776,
+   "pnlSharpeOos": -14.488,
+   "dependence": 0.96
+  },
+  {
+   "key": "baa10y-h20-placebo-vol",
+   "spread": "baa10y",
+   "h": 20,
+   "placebo": true,
+   "target": "vol",
+   "scored": false,
+   "expectSign": 1,
+   "ic": -0.04191,
+   "ci95": [
+    -0.14574,
+    0.0744
+   ],
+   "p": 0.4176,
+   "halves": [
+    -0.0443,
+    -0.0408
+   ],
+   "n": 5549,
+   "nDates": 2776
+  },
+  {
+   "key": "hy-oas-h1-dir",
+   "spread": "hy-oas",
+   "h": 1,
+   "placebo": false,
+   "target": "dir",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.06318,
+   "ci95": [
+    -0.02191,
+    0.14304
+   ],
+   "p": 0.1618,
+   "halves": [
+    0.0504,
+    0.0513
+   ],
+   "n": 1018,
+   "nDates": 509,
+   "pnlSharpeOos": -11.709,
+   "dependence": 0.975
+  },
+  {
+   "key": "hy-oas-h1-vol",
+   "spread": "hy-oas",
+   "h": 1,
+   "placebo": false,
+   "target": "vol",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.14945,
+   "ci95": [
+    0.07142,
+    0.23268
+   ],
+   "p": 0.002,
+   "halves": [
+    0.1897,
+    0.1098
+   ],
+   "n": 1018,
+   "nDates": 509
+  },
+  {
+   "key": "hy-oas-h1-placebo-dir",
+   "spread": "hy-oas",
+   "h": 1,
+   "placebo": true,
+   "target": "dir",
+   "scored": false,
+   "expectSign": 1,
+   "ic": -0.01963,
+   "ci95": [
+    -0.10112,
+    0.06487
+   ],
+   "p": 0.6893,
+   "halves": [
+    -0.0065,
+    -0.0406
+   ],
+   "n": 900,
+   "nDates": 450,
+   "pnlSharpeOos": -10.499,
+   "dependence": 0.975
+  },
+  {
+   "key": "hy-oas-h1-placebo-vol",
+   "spread": "hy-oas",
+   "h": 1,
+   "placebo": true,
+   "target": "vol",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.03478,
+   "ci95": [
+    -0.06852,
+    0.13401
+   ],
+   "p": 0.4755,
+   "halves": [
+    0.0233,
+    0.0471
+   ],
+   "n": 900,
+   "nDates": 450
+  },
+  {
+   "key": "hy-oas-h5-dir",
+   "spread": "hy-oas",
+   "h": 5,
+   "placebo": false,
+   "target": "dir",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.12651,
+   "ci95": [
+    -0.04057,
+    0.27197
+   ],
+   "p": 0.1239,
+   "halves": [
+    0.1063,
+    0.1025
+   ],
+   "n": 1010,
+   "nDates": 505,
+   "pnlSharpeOos": -11.709,
+   "dependence": 0.975
+  },
+  {
+   "key": "hy-oas-h5-vol",
+   "spread": "hy-oas",
+   "h": 5,
+   "placebo": false,
+   "target": "vol",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.25532,
+   "ci95": [
+    0.10423,
+    0.39211
+   ],
+   "p": 0.002,
+   "halves": [
+    0.3521,
+    0.1314
+   ],
+   "n": 1010,
+   "nDates": 505
+  },
+  {
+   "key": "hy-oas-h5-placebo-dir",
+   "spread": "hy-oas",
+   "h": 5,
+   "placebo": true,
+   "target": "dir",
+   "scored": false,
+   "expectSign": 1,
+   "ic": -0.02686,
+   "ci95": [
+    -0.17458,
+    0.12809
+   ],
+   "p": 0.7273,
+   "halves": [
+    0.0038,
+    -0.0544
+   ],
+   "n": 892,
+   "nDates": 446,
+   "pnlSharpeOos": -10.499,
+   "dependence": 0.975
+  },
+  {
+   "key": "hy-oas-h5-placebo-vol",
+   "spread": "hy-oas",
+   "h": 5,
+   "placebo": true,
+   "target": "vol",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.01815,
+   "ci95": [
+    -0.16839,
+    0.19942
+   ],
+   "p": 0.8731,
+   "halves": [
+    -0.0175,
+    0.0553
+   ],
+   "n": 892,
+   "nDates": 446
+  },
+  {
+   "key": "hy-oas-h20-dir",
+   "spread": "hy-oas",
+   "h": 20,
+   "placebo": false,
+   "target": "dir",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.13415,
+   "ci95": [
+    -0.09159,
+    0.32192
+   ],
+   "p": 0.2897,
+   "halves": [
+    0.084,
+    0.0947
+   ],
+   "n": 980,
+   "nDates": 490,
+   "pnlSharpeOos": -11.709,
+   "dependence": 0.975
+  },
+  {
+   "key": "hy-oas-h20-vol",
+   "spread": "hy-oas",
+   "h": 20,
+   "placebo": false,
+   "target": "vol",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.20011,
+   "ci95": [
+    -0.02215,
+    0.41053
+   ],
+   "p": 0.0919,
+   "halves": [
+    0.3165,
+    0.0271
+   ],
+   "n": 980,
+   "nDates": 490
+  },
+  {
+   "key": "hy-oas-h20-placebo-dir",
+   "spread": "hy-oas",
+   "h": 20,
+   "placebo": true,
+   "target": "dir",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.0409,
+   "ci95": [
+    -0.2229,
+    0.30482
+   ],
+   "p": 0.7692,
+   "halves": [
+    -0.1112,
+    0.2291
+   ],
+   "n": 862,
+   "nDates": 431,
+   "pnlSharpeOos": -10.499,
+   "dependence": 0.975
+  },
+  {
+   "key": "hy-oas-h20-placebo-vol",
+   "spread": "hy-oas",
+   "h": 20,
+   "placebo": true,
+   "target": "vol",
+   "scored": false,
+   "expectSign": 1,
+   "ic": 0.07741,
+   "ci95": [
+    -0.16607,
+    0.35405
+   ],
+   "p": 0.5594,
+   "halves": [
+    0.0339,
+    0.1903
+   ],
+   "n": 862,
+   "nDates": 431
+  }
+ ]
+}

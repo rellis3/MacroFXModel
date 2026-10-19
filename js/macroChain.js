@@ -246,14 +246,14 @@ export const CHAIN_LINKS = [
   // equities the tap. Lenders price the odds of not being repaid before shareholders price
   // growth, so credit should move FIRST. The chain scores the same 20-session window, so
   // these two arrows show agreement, not order. The ORDER is untested on this desk and is
-  // pre-registered in forge/CREDIT_LEADS_EQUITIES_PREREG.md; the holds text says so until it runs.
+  // tested 2026-10-19 (forge/CREDIT_LEADS_EQUITIES_PREREG.md): null, 0 of 12 cells. The holds text says so.
   {
     id: 'hy-nq',
     short: 'credit → growth stocks',
     punch: { holds: 'Credit and growth stocks agree: the pipes and the tap moving together.', up: 'Credit widening, Nasdaq up anyway → equities ignoring the lenders. Historically the lenders win.', down: 'Credit tightening, Nasdaq down → an equity-specific story, not a credit one.' },
     from: 'hy', to: 'nq', sign: -1,
     textbook: 'Wider credit spreads, lower growth stocks: the pumps slow before the tap does',
-    holds: 'Credit spreads and the Nasdaq moved the textbook way round in the same window. Whether credit moved FIRST is not something this window can say — the lead is pre-registered (forge/CREDIT_LEADS_EQUITIES_PREREG.md) and not yet run.',
+    holds: 'Credit spreads and the Nasdaq moved the textbook way round in the same window. Whether credit moved FIRST is not something this window can say, and the test says it does not: on 22 years of Moody’s spreads, credit does not lead the Nasdaq at 1–20 sessions in direction or in vol (tested 2026-10-19, forge/CREDIT_LEADS_EQUITIES_PREREG.md, 0 of 12 cells). Read it as agreement.',
     broken: {
       up:   'Credit widened but the Nasdaq rose. Lenders want more for the risk and shareholders do not care — the configuration the plumbing read says to be sceptical of, because the lenders are usually right.',
       down: 'Credit tightened but the Nasdaq fell. Credit is calm, so this is an equity story — earnings, a few names, positioning — not a funding or solvency story.',
@@ -265,7 +265,7 @@ export const CHAIN_LINKS = [
     punch: { holds: 'Credit and the broad index agree.', up: 'Credit widening, S&P up → the broad market ignoring its lenders.', down: 'Credit tightening, S&P down → not a credit story.' },
     from: 'hy', to: 'spx', sign: -1,
     textbook: 'Wider credit spreads, lower broad equities',
-    holds: 'Credit spreads and the S&P 500 moved the textbook way round in the same window. Same caveat as credit → growth stocks: agreement, not order; the lead is pre-registered and not yet run.',
+    holds: 'Credit spreads and the S&P 500 moved the textbook way round in the same window. Same as credit → growth stocks: agreement, not order — tested 2026-10-19, credit does not lead at 1–20 sessions.',
     broken: {
       up:   'Credit widened but the S&P rose. The whole index, not just growth, is ignoring the lenders — rarer than the Nasdaq version and worth more attention.',
       down: 'Credit tightened but the S&P fell. An equity-specific move with credit calm.',
