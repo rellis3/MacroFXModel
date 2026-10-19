@@ -17,12 +17,7 @@ indicator("OI Profile", shorttitle="OI Profile", overlay=true, max_boxes_count=5
 
 // ── Inputs ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 G1 = "1 · Data"
-paste1 = input.text_area("", "Paste — part 1", group=G1, tooltip="Paste the whole export here (Pine v6 allows strings up to 40,960 characters — one instrument is ~4,000, all instruments ~36,000). The extra boxes below are only needed if you ever paste more than that.")
-paste2 = input.text_area("", "Paste — part 2", group=G1)
-paste3 = input.text_area("", "Paste — part 3", group=G1)
-paste4 = input.text_area("", "Paste — part 4", group=G1)
-paste5 = input.text_area("", "Paste — part 5", group=G1)
-paste6 = input.text_area("", "Paste — part 6", group=G1)
+pasteTxt = input.text_area("", "Paste the OI Profile export", group=G1, tooltip="Paste the whole export here: one instrument (~4,000 characters) or every instrument (~36,000). Pine v6 allows strings up to 40,960 characters.")
 overrideKey = input.string("", "Force instrument (blank = auto)", group=G1, tooltip="Normally leave blank: the chart is matched with the Symbol Mapping boxes below (same as the Volatility Overlay and Confluence Zones indicators). Only to force a block name such as NQ or GOLD.")
 GM = "1b · Symbol Mapping (match your chart symbols)"
 goldChart  = input.string("XAUUSD",    "Gold chart ticker",   group=GM)
@@ -175,12 +170,7 @@ f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT) =>
     r
 
 if barstate.isfirst
-    array<string> lines = str.split(paste1, "\n")
-    array.concat(lines, str.split(paste2, "\n"))
-    array.concat(lines, str.split(paste3, "\n"))
-    array.concat(lines, str.split(paste4, "\n"))
-    array.concat(lines, str.split(paste5, "\n"))
-    array.concat(lines, str.split(paste6, "\n"))
+    array<string> lines = str.split(pasteTxt, "\n")
     int n = array.size(lines)
     // pass 1 — find instrument blocks: a short line with no '|' that is not a title/note line
     array<string> bName = array.new_string()
@@ -193,7 +183,7 @@ if barstate.isfirst
                 array.push(bStart, i)
     int nb = array.size(bName)
     if nb == 0
-        parseNote := "Paste the OI Profile export into the indicator settings (1 · Data) — each part in its own box."
+        parseNote := "Paste the OI Profile export into the indicator settings (1 · Data)."
     else
         string want = str.upper(overrideKey) != "" ? str.upper(overrideKey) : str.upper(f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart))
         int pick = -1
