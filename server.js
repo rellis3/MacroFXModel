@@ -300,6 +300,7 @@ import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
+import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import compression from 'compression';
 import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
 import { spreadProfileInit, spreadProfileSample, spreadProfileFlush, spreadProfileReport, MOTIF_UNIVERSE as _SPREAD_UNIVERSE } from './js/spreadProfile.js';
@@ -22994,6 +22995,76 @@ app.get('/api/cboe-contracts', async (req, res) => {
     res.json({ ok: true, pair, index: cfg.label, fut: cfg.fut, optMult: 100, spot, asOfMs, cfdOffset, etf,
       fields: ['K', 'T', 'cp', 'oi', 'iv', 'dte', 'src'], rows, fetchedAt: hit.at });
   } catch (e) { res.status(502).json({ ok: false, pair, error: e.message }); }
+});
+
+// ── Dealer hedging, plain English, every market at once (oi-dashboard-v2.html "This morning") ──────────
+// The whole Cboe book per market (index + its ETF; gold from GLD), re-priced by js/hedgingScenario.js, levels
+// moved onto the CFD by the ratio CFD ÷ underlying at Cboe's quote time, then read out by hedgingRead against
+// the CFD price now. Cached 20 min. Context only: the regime as an entry rule tested null (GAMMA_REGIME_TRADES).
+const _HS_MARKETS = [
+  { pair: 'NAS100_USD', name: 'Nasdaq 100', idx: '_NDX', etf: 'QQQ', unit: 'NQ futures', futMult: 20 },
+  { pair: 'SPX500_USD', name: 'S&P 500', idx: '_SPX', etf: 'SPY', unit: 'ES futures', futMult: 50 },
+  { pair: 'US2000_USD', name: 'Russell 2000', idx: '_RUT', etf: 'IWM', unit: 'RTY futures', futMult: 50 },
+  { pair: 'XAU_USD', name: 'Gold', idx: null, etf: 'GLD', unit: 'gold futures', futMult: 100 },
+];
+let _hsSummary = { at: 0, v: null };
+async function _oandaM1(pair, query) {
+  if (!process.env.OANDA_KEY) return [];
+  const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(pair)}/candles?granularity=M1&price=M&${query}`,
+    { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(8_000) });
+  if (!r.ok) return [];
+  return ((await r.json()).candles || []).filter(c => c.mid).map(c => ({ t: new Date(c.time).getTime(), o: +c.mid.o, c: +c.mid.c }));
+}
+async function _cfdAtCash(pair, asOfMs) {
+  // Outside the cash session Cboe's price is the 16:00 New York close: compare the CFD at that close.
+  const ref = _cashRefTime(asOfMs) === asOfMs ? asOfMs : _cashRefTime(asOfMs) - 1000;
+  const from = new Date(Math.floor(ref / 60e3) * 60e3 - 60e3).toISOString();
+  const bars = await _oandaM1(pair, `count=3&from=${encodeURIComponent(from)}`);
+  const b = bars.find(x => ref >= x.t && ref < x.t + 60e3);
+  return b ? b.o + (b.c - b.o) * Math.min(1, Math.max(0, (ref - b.t) / 60e3)) : null;
+}
+async function _buildHedgingSummary() {
+  const out = [];
+  for (const m of _HS_MARKETS) {
+    try {
+      const I = m.idx ? (await _cboeBookFor(m.idx)).j : null;
+      const E = (await _cboeBookFor(m.etf)).j;
+      const base = I || E;                                     // the price everything is quoted against
+      const cfdThen = await _cfdAtCash(m.pair, base.asOfMs);
+      const nowBars = await _oandaM1(m.pair, 'count=2');
+      const cfdNow = nowBars.length ? nowBars.at(-1).c : null;
+      const toCfd = Number.isFinite(cfdThen) && cfdThen > 0 ? cfdThen / base.spot : null;
+      if (!toCfd) { out.push({ pair: m.pair, name: m.name, error: 'no CFD price at the Cboe quote time' }); continue; }
+      const S = base.spot * toCfd, lo = S * 0.9, hi = S * 1.1;
+      const book = [];
+      const add = (chain, ratio) => { for (const c of chain.contracts) { const K = c.K * ratio;
+        if (c.oi > 0 && c.iv > 0 && c.dte <= 45 && K >= lo && K <= hi) book.push({ K, T: c.T, cp: c.cp, oi: c.oi / ratio, iv: c.iv }); } };
+      if (I) add(I, toCfd);
+      add(E, S / E.spot);
+      const sc = hedgingScenario(book, { spot: S, lo: S * 0.95, hi: S * 1.05, n: 161, shifts: [-2, 0], optMult: 100, futMult: m.futMult });
+      if (!sc) { out.push({ pair: m.pair, name: m.name, error: 'book too thin' }); continue; }
+      const dp = S >= 1000 ? 0 : 2, fmt = v => (Number.isFinite(v) ? v.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp }) : '—');
+      const now = Number.isFinite(cfdNow) ? cfdNow : S;
+      const z = sc.zeroGamma[0];
+      const calmAbove = z ? z.dir === 'short->long' : sc.atSpot.regime === 'long';
+      const calmNow = z ? (now >= z.price) === calmAbove : sc.atSpot.regime === 'long';
+      out.push({ pair: m.pair, name: m.name, sources: [m.idx?.replace(/^_/, ''), m.etf].filter(Boolean), asOf: base.asOfMs,
+        cfdAtQuote: +S.toFixed(2), cfdNow: now, contracts: sc.n, state: calmNow ? 'calms' : 'speeds',
+        switchPoint: z ? +z.price.toFixed(2) : null, switchDistPct: z ? +((z.price / now - 1) * 100).toFixed(2) : null,
+        flowUp1pct: Math.round(sc.atSpot.hedgeUp1pct), flowDown1pct: Math.round(sc.atSpot.hedgeDown1pct), unit: m.unit,
+        walls: { put: sc.levels.putWall, call: sc.levels.callWall, biggest: sc.levels.majorWall },
+        lines: hedgingRead(sc, { fmt, unit: m.unit, now, name: m.name }) });
+    } catch (e) { out.push({ pair: m.pair, name: m.name, error: e.message }); }
+  }
+  return { at: Date.now(), markets: out };
+}
+app.get('/api/hedging-summary', async (req, res) => {
+  try {
+    if (!_hsSummary.v || Date.now() - _hsSummary.at > 20 * 60_000 || req.query.fresh === '1') {
+      _hsSummary = { at: Date.now(), v: await _buildHedgingSummary() };
+    }
+    res.json({ ok: true, ..._hsSummary.v });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get('/api/cboe-snapshots', async (req, res) => {
