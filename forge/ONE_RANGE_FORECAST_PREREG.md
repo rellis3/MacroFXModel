@@ -101,4 +101,31 @@ session has none of them).
 
 | # | Variant | Why | Run? |
 |---|---|---|---|
-| 0 | as above | registered | not yet |
+| 0 | as above | registered | **run 2026-10-18 on the laptop: Q1 FAIL, Q2 FAIL → SI/S** |
+
+---
+
+## Results (2026-10-18, run on the owner's laptop after this file was merged in PR #1542)
+
+The run finished all folds, then crashed printing "→" to a Windows console; rerun with `PYTHONIOENCODING=utf-8`
+(computation unchanged; the script now sets UTF-8 itself). Raw output committed from the laptop:
+`analysis/output/one_forecast/RESULTS.md` and `results.json` (0500c0d5). By instrument, Q1: DOW 0.993, NQ 0.989,
+SPX500 0.984, US2000 1.005; diagnostic SIX ÷ SI-US 0.9910 [0.9855, 0.9963] (so the small gain is the flags, not the
+fitting pool — still under the bar).
+
+| test | rows | ratio [95%] | verdict |
+|---|---|---|---|
+| Q1 SIX ÷ SI, US4 | 5,972 | 0.9926 [0.9874, 0.9978] | **FAIL**: interval below 1 but the gain (0.7%) misses the registered 0.99 bar; DOW, NQ, SPX500 slightly better, US2000 slightly worse |
+| Q2 NQ + gamma ÷ NQ base | 994 | 1.0019 [0.9972, 1.0075] | **FAIL**: interval includes 1 |
+| descriptive: gamma at D−1 lag | 994 | 1.0036 [0.9985, 1.0094] | no better |
+
+Flag signs agreed with the ledger in every fold on US4; on NQ-only fits VIX-inverted and all-down agreed in 1 of 4.
+Gamma covered 1,483 of 2,481 NQ rows.
+
+**Decision applied (as fixed above):** the single forecast is SI / S. Global Read now reads the chosen lines
+(`/api/vol-forecast/persist-ladder/json`) and multiplies nothing on top of them; the flags and the NQ gamma sign are
+shown as context with no multiplier (`js/globalReadCore.js` `rangeView`, 2026-10-18). Plain lines remain only as a
+fallback when the chosen ones are missing, with the old adjustments. The bot is unchanged (out of scope).
+
+Reading: the flags carry a small real signal (interval below 1) that persistence + IV mostly already holds. Below the
+bar we set for adding three live dependencies, so it is not shipped; it is not evidence the flags are useless.

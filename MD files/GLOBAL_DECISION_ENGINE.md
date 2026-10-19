@@ -405,3 +405,8 @@ combined-range.
   job and the record ship with it.)*
 - Align the live yield-spread entry to the validated 2.75, or pre-register 2.0 as a
   separate test?
+
+**2026-10-18 — methodology change to the range arm (forward record split here).** From the 2026-10-19 read, the
+range view uses the chosen lines (persistence + implied vol, the Daily Plan's) instead of the plain ladder, and no
+longer multiplies IV÷σ, the VIX-curve / breadth / NQ-week flags or the NQ gamma sign on top: they did not add beyond
+those lines (`forge/ONE_RANGE_FORECAST_PREREG.md` results). Score R1/R2 separately before and after this date.
