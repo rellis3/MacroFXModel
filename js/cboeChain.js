@@ -43,7 +43,7 @@ const DAY_MS = 864e5, YEAR_MS = 365 * DAY_MS;
 // Weekly/PM roots settle at the 16:00 ET close; the plain roots' standard monthlies are
 // AM-settled at the 09:30 open. UTC hours below assume US daylight time (EDT); in winter
 // they run an hour early, which only matters for the last hour of a 0-DTE contract.
-const PM_ROOTS = new Set(['SPXW', 'NDXP', 'RUTW', 'DJXW', 'XSP']);
+const PM_ROOTS = new Set(['SPXW', 'NDXP', 'RUTW', 'DJXW', 'XSP', 'SPY', 'QQQ', 'IWM', 'DIA']);   // ETF options settle at the 16:00 close too
 const r5 = v => (Number.isFinite(v) ? +v.toPrecision(5) : 0);
 
 // Cboe's timestamp ("2026-10-09 17:12:52") is UTC (checked against the fetch clock:

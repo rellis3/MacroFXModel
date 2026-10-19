@@ -36,9 +36,12 @@ the user if it doesn't rather than silently switching source.
 - CBOE: `analysis/surfaces/cboe/` (GVZ `DATE,GVZ`; VIX, VIX1D, VIX3M, VIX6M, VIX9D, VXN `DATE,OPEN,HIGH,LOW,CLOSE`).
   Dates are **MM/DD/YYYY**. Ended 10/02/2026 at last check.
 - Live: QuikStrike capture. GVZ is also fetched from FRED in the HAR-IV shadow.
-- **Cboe full chains (2026-10-19 →)**: KV `cboe_raw_<SPX|NDX|RUT|DJX>_<YYYY-MM-DD>`, every contract once a day after the
-  close (server.js `_cboeRawArchiveTick`, flag `cboeRawArchive`). Read via `/api/cboe-raw?sym=SPX&date=`. `open_interest`
-  is the start-of-day (prior-close) figure; prices/IV/greeks are the 15-min-delayed close. No history before the first capture.
+- **Cboe full chains (2026-10-19 →)**: R2 `cboe_raw/<SYM>/<YYYY-MM-DD>.json`, every contract once a day after the close
+  (server.js `_cboeRawArchiveTick`, flag `cboeRawArchive`) for SPX, NDX, RUT, DJX, XSP, VIX, SPY, QQQ, IWM, DIA, GLD, SLV,
+  USO, TLT, HYG, FXE, FXY, UUP (~11 MB/day). KV `cboe_raw_<SYM>_<date>` only as the no-R2 fallback (indices). Read via
+  `/api/cboe-raw?sym=QQQ&date=`. `open_interest` is the start-of-day (prior-close) figure; prices/IV/greeks are the
+  15-min-delayed close. No history before the first capture. ETF options dominate equity dealer gamma (QQQ ≈ 3× NDX,
+  ≈ 17× CME NQ on 2026-10-16): a CME-only or index-only gamma read is a small slice.
 
 ## Economic calendar
 
