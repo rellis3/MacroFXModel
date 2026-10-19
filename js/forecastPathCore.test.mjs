@@ -563,3 +563,19 @@ const m15 = syntheticM15(55);   // ~5280 bars
 }
 
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);
+
+// sigmaClass (2026-10-19): gold's D1 cone can use the production YZ30 estimator
+// while keeping commodity bands. Default (no sigmaClass) is unchanged.
+{
+  const { buildForecastContext: bfc } = await import('./forecastPathCore.js');
+  const { volSigmaSeries: vss } = await import('./forecastCore.js');
+  let px = 2000; const bs = [];
+  for (let i = 0; i < 400; i++) { const o = px; px *= Math.exp(0.01 * Math.sin(i * 1.7) + 0.004 * Math.cos(i * 0.31));
+    bs.push({ time: `2025-01-${String(1 + (i % 28)).padStart(2, '0')}`, open: o, high: Math.max(o, px) * 1.003, low: Math.min(o, px) * 0.997, close: px }); }
+  const dflt = bfc(bs, { assetClass: 'commodity' }).sigma, yz = bfc(bs, { assetClass: 'commodity', sigmaClass: 'fx' }).sigma;
+  const hv = vss(bs, 'commodity'), fx = vss(bs, 'fx');
+  const same = (a, b) => a.every((v, i) => v === b[i]);
+  console.log((same(dflt, hv) ? '✓' : '✗') + ' sigmaClass default keeps volSigmaSeries(commodity)');
+  console.log((same(yz, fx) && !same(yz, hv) ? '✓' : '✗') + " sigmaClass 'fx' gives the YZ30 series");
+  if (!same(dflt, hv) || !same(yz, fx) || same(yz, hv)) process.exitCode = 1;
+}
