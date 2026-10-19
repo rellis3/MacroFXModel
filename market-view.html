@@ -770,6 +770,7 @@
 <script type="module">
 import { BOARD, WINDOWS, THRESHOLDS, scanBoard, scanLinks, glance, findings, fmtChange, fmtLevel, boardFreshness } from './js/marketScan.js';
 import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
+import { DESK_EVIDENCE, citable } from './js/deskEvidence.js';   // the wiring card quotes the ledger's verdict on a link, with its numbers
 import { readBook, bookFindings, fmtBookPx, fmtBookPct } from './js/oiBoard.js';
 import { marketState, sectorBoard, impactRows, confirmations, FEEDS } from './js/marketState.js';
 import { annotate, watchKeys, surpriseWords } from './js/calendarFeed.js';
@@ -1662,6 +1663,7 @@ function mapLinkCard(id) {
     <div class="sect">${esc(L.normally)}</div>
     <div class="sect">${linkVerdictHtml(L)}</div>
     ${apart ? `<div class="sect"><b>So what do you go and look at?</b> ${esc(L.apart)}</div>` : ''}
+    ${(L.evidence ?? []).map(id => { const e = DESK_EVIDENCE.find(x => x.id === id); if (!e) return ''; const c = citable(e); return `<div class="sect"><b>Tested:</b> <a href="evidence.html#ev-${esc(id)}" target="_blank"><b>${esc(c.tag)}</b></a> — ${esc(e.result.length > 260 ? e.result.slice(0, 257) + '…' : e.result)}</div>`; }).join('')}
     <div class="sect muted" style="font-size:11px">${apart ? 'This does not say which of the two is wrong, and it does not say the gap closes — tested here (S5), neither leg is reliably the one that corrects. ' : ''}Twenty-session windows overlap, so read the percentage rather than treating it as a one-in-forty event.</div>
     <div class="sect"><b>Either end</b><div class="chips">
       <span class="chip" onclick="mapPick('node','${esc(L.a)}')">${esc(SHORT[L.a] ?? L.labelA)}</span>

@@ -252,6 +252,7 @@ export const CHAIN_LINKS = [
     short: 'credit → growth stocks',
     punch: { holds: 'Credit and growth stocks agree: the pipes and the tap moving together.', up: 'Credit widening, Nasdaq up anyway → equities ignoring the lenders. Historically the lenders win.', down: 'Credit tightening, Nasdaq down → an equity-specific story, not a credit one.' },
     from: 'hy', to: 'nq', sign: -1,
+    evidence: ['credit-leads-equities'],
     textbook: 'Wider credit spreads, lower growth stocks: the pumps slow before the tap does',
     holds: 'Credit spreads and the Nasdaq moved the textbook way round in the same window. Whether credit moved FIRST is not something this window can say, and the test says it does not: on 22 years of Moody’s spreads, credit does not lead the Nasdaq at 1–20 sessions in direction or in vol (tested 2026-10-19, forge/CREDIT_LEADS_EQUITIES_PREREG.md, 0 of 12 cells). Read it as agreement.',
     broken: {
@@ -264,6 +265,7 @@ export const CHAIN_LINKS = [
     short: 'credit → broad stocks',
     punch: { holds: 'Credit and the broad index agree.', up: 'Credit widening, S&P up → the broad market ignoring its lenders.', down: 'Credit tightening, S&P down → not a credit story.' },
     from: 'hy', to: 'spx', sign: -1,
+    evidence: ['credit-leads-equities', 'mv-creditstack-range'],
     textbook: 'Wider credit spreads, lower broad equities',
     holds: 'Credit spreads and the S&P 500 moved the textbook way round in the same window. Same as credit → growth stocks: agreement, not order — tested 2026-10-19, credit does not lead at 1–20 sessions.',
     broken: {
@@ -410,7 +412,7 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
     // verdict, but the reader should see the gap rather than assume one date.
     const ta = Date.parse(a?.asOf ?? ''), tb = Date.parse(b?.asOf ?? '');
     const dateGapDays = (Number.isFinite(ta) && Number.isFinite(tb)) ? Math.round(Math.abs(ta - tb) / 864e5) : null;
-    return { id: l.id, short: l.short ?? l.id, textbook: l.textbook, sign: l.sign, a, b, expected, verdict, read, punch, dateGapDays };
+    return { id: l.id, short: l.short ?? l.id, textbook: l.textbook, sign: l.sign, evidence: l.evidence ?? [], a, b, expected, verdict, read, punch, dateGapDays };
   });
 }
 

@@ -134,7 +134,7 @@ export const LINKS = [
   { id: 'us2y-r2k', a: 'us2y', b: 'r2k', expect: -1,
     normally: 'Small caps carry floating-rate debt and borrow domestically, so the 2-year is their actual cost of funding. They feel the Fed before anyone else does.',
     apart: 'The market is pricing something for small caps — tax, tariffs, domestic demand — that outweighs their funding cost. This is the link to watch when the front end moves and the big indices shrug.' },
-  { id: 'hy-spx', a: 'hy', b: 'spx', expect: -1,
+  { id: 'hy-spx', a: 'hy', b: 'spx', expect: -1, evidence: ['credit-leads-equities', 'mv-creditstack-range'],
     normally: 'Lenders price the odds of not being repaid, which is a harder question than what a share is worth. The textbook says credit moves first; tested here 2026-10-19 on 22 years of Moody’s spreads, it does not lead equities at 1–20 sessions — the two agree in the same window.',
     apart: 'One of the two is wrong and this desk cannot tell you which. Credit widening that equity ignores is the configuration worth being sceptical about; the reverse is usually an equity-specific event.' },
   { id: 'ccc-hy', a: 'ccc', b: 'hy', expect: +1,
@@ -364,7 +364,7 @@ export function scoreLink(bundle, link, i = (bundle?.dates?.length ?? 1) - 1, WI
   const now = resid[resid.length - 1];
   const sorted = fitResid.map(Math.abs).sort((x, y) => x - y);
   return {
-    id: link.id, a: link.a, b: link.b, expect: link.expect, normally: link.normally, apart: link.apart,
+    id: link.id, a: link.a, b: link.b, expect: link.expect, normally: link.normally, apart: link.apart, evidence: link.evidence ?? [],
     labelA: sa.label, labelB: sb.label,
     corr: beta, agrees: Math.sign(beta) === Math.sign(link.expect), weak: Math.abs(beta) < WEAK_CORR,
     resid: now, z: now / sdr,

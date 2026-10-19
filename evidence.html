@@ -94,7 +94,7 @@
       const record = rec.length
         ? `<div class="rec"><b>Forward record</b> — fired ${rec.length}× since ${new Date(rec.at(-1).at).toLocaleDateString('en-GB')}${scored.length ? `; ${scored.length} scored so far: mean next-5-session range ${(scored.flatMap(f => f.after5.map(a => a.range5)).reduce((s, x) => s + x, 0) / scored.flatMap(f => f.after5).length).toFixed(2)} ATR (unconditional ≈ 2.3)` : ''}.<table>${rec.slice(0, 8).map(f => `<tr><td>${new Date(f.at).toLocaleDateString('en-GB')}</td><td>${esc(f.label)}</td><td>${f.after5 ? f.after5.map(a => `${a.inst} ${a.range5}`).join(' · ') : 'awaiting 5 sessions'}</td></tr>`).join('')}</table></div>`
         : `<div class="rec"><b>Forward record</b> — nothing fired since this was written down${e.verdict === 'validated' ? '; the first fire will appear here with its next-5-session range' : ''}.</div>`;
-      return `<div class="card ${e.verdict}">
+      return `<div class="card ${e.verdict}" id="ev-${esc(e.id)}">
         <div class="top"><span class="v ${e.verdict}">${GL[e.verdict]} ${WORD[e.verdict]}</span><span class="claim">${esc(e.claim)}</span></div>
         <div class="meta"><b>${esc(e.domain)}</b> · ${e.date} · ${esc(e.doc)}${e.instruments ? ` · ${e.instruments.join(', ')}` : ''}</div>
         <div class="r">${esc(e.result)}</div>
@@ -105,6 +105,8 @@
     document.getElementById('stamp').textContent = watch?.updatedAt ? `watch updated ${ago(watch.updatedAt)} ago · ${DESK_EVIDENCE.length} relationships` : `${DESK_EVIDENCE.length} relationships`;
   }
   render();
+  // opened from a chain or market-view card: jump to that entry and mark it
+  if (location.hash.startsWith('#ev-')) { const el = document.getElementById(location.hash.slice(1)); if (el) { el.scrollIntoView({ block: 'center' }); el.style.outline = '2px solid var(--amber, #d9a21b)'; } }
   fetch('/api/desk-watch').then(r => r.json()).then(j => { if (j?.ok) { watch = j; render(); } }).catch(() => {});
 </script>
 </body>

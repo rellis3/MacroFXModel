@@ -4125,6 +4125,7 @@ function chainGraphHtml(links) {
       <b>${esc0(A.label)} → ${esc0(Bn.label)}</b> · <span class="chain-v ${vcls[l.verdict] === 'none' ? 'quiet' : vcls[l.verdict]}">${vword[l.verdict]}</span><br>
       <b>The textbook:</b> ${esc0(l.textbook)}. They should move ${way}.<br>
       <b>Why:</b> ${esc0(A.what)} <span class="muted">→</span> ${esc0(Bn.what)}<br>
+      ${(l.evidence ?? []).map(id => { const E = window.deskEvidenceBrick; const e = E?.DESK_EVIDENCE?.find(x => x.id === id); if (!e) return ''; const c = E.citable(e); return `<div style="margin-top:5px;font-size:11px"><b>Tested:</b> <a href="evidence.html#ev-${esc0(id)}" target="_blank"><b>${esc0(c.tag)}</b></a> — ${esc0(e.result.length > 260 ? e.result.slice(0, 257) + '…' : e.result)}</div>`; }).join('')}
       <div style="margin-top:5px">${status}</div>
       <div class="muted" style="font-size:10.5px;margin-top:5px">Everything here is written into the chain, no model call. The paid "explain" sits on the rows below, if you want the longer version.</div></div>`;
   })() : '';
