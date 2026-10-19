@@ -48,6 +48,8 @@ cEM    = input.color(#f0b04a, "Expected move", group=G4)
 cSmile = input.color(#ffd166, "IV smile", group=G4)
 cPeak  = input.color(#e2e8f0, "Gamma peak", group=G4)
 
+tblPosition = tblPos == "top right" ? position.top_right : tblPos == "bottom left" ? position.bottom_left : tblPos == "bottom right" ? position.bottom_right : position.top_left
+
 // ── Parsed data (filled once, on the first bar) ───────────────────────────────────────────────────────────────────────────────
 var string mName = ""
 var string mGen = ""
@@ -250,7 +252,6 @@ if barstate.isfirst
                             array.push(xH, f_num(p, 6))
             parsed := array.size(lvPrice) > 0 or array.size(gP) > 0
 
-    tblPosition = tblPos == "top right" ? position.top_right : tblPos == "bottom left" ? position.bottom_left : tblPos == "bottom right" ? position.bottom_right : position.top_left
 
 // ── Helpers ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 f_lvCol(t) =>
