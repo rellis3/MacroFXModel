@@ -36514,7 +36514,7 @@ function _tdeShadowRecord(records) {
 // Background accumulator — score every OPEN position across the bots and book the
 // reading once, independent of anyone viewing the Positions tab. Mirrors
 // _rlAccumulateTradeLog's cadence. Railway only (snapshots need OANDA).
-const _TDE_SHADOW_STATUS_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status'];
+const _TDE_SHADOW_STATUS_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'oi_vol_bot_status', 'oi_conf_bot_status'];
 async function _tdeAccumulateShadowBook() {
   try {
     const open = [];

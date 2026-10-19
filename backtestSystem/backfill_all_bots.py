@@ -94,6 +94,8 @@ BOTS = [
     {'name': 'backtest',       'magic': 20260099, 'bot_key': 'backtestsystem_status',   'creds_key': 'backtestsystem_credentials'},
     {'name': 'range_line',     'magic': 20260131, 'bot_key': 'range_line_bot_status',   'creds_key': 'range_line_bot_credentials'},
     {'name': 'oi',             'magic': 20260714, 'bot_key': 'oi_bot_status',           'creds_key': 'oi_bot_credentials'},
+    {'name': 'oi_vol',         'magic': 20261015, 'bot_key': 'oi_vol_bot_status',       'creds_key': 'oi_vol_bot_credentials'},   # added 2026-10-19: was missing, so its history never reached Trade History
+    {'name': 'oi_conf',        'magic': 20261016, 'bot_key': 'oi_conf_bot_status',      'creds_key': 'oi_conf_bot_credentials'},
 ]
 
 
