@@ -1,0 +1,19 @@
+audcad  fx    sessions 2745  edge real 6282  placebo 49873  67s
+audchf  fx    sessions 2745  edge real 6252  placebo 49582  88s
+audnzd  fx    sessions 2745  edge real 5967  placebo 47328  90s
+cadchf  fx    sessions 2745  edge real 6992  placebo 55153  61s
+chfjpy  fx    sessions 2745  edge real 6413  placebo 50892  83s
+eurcad  fx    sessions 2745  edge real 6985  placebo 55467  93s
+eurchf  fx    sessions 2745  edge real 6899  placebo 54577  60s
+eurgbp  fx    sessions 2745  edge real 6969  placebo 55521  40s
+eurnzd  fx    sessions 2745  edge real 6215  placebo 49228  36s
+gbpaud  fx    sessions 2745  edge real 6342  placebo 50552  29s
+gbpcad  fx    sessions 2745  edge real 7047  placebo 56053  28s
+gbpchf  fx    sessions 2745  edge real 6944  placebo 55288  30s
+gbpnzd  fx    sessions 2745  edge real 6388  placebo 50753  30s
+nzdcad  fx    sessions 2745  edge real 6349  placebo 50527  29s
+uk100   index sessions 2667  edge real 6368  placebo 50516  23s
+
+verdict: VALIDATED
+E Δ +2.92pp CI [+2.68, +3.19] p 0 MDE 0.366 halves +2.70 / +3.12  revert 45.31% vs 42.38%
+C1 +0.01 clean

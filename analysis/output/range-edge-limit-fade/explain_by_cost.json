@@ -1,0 +1,38 @@
+{
+ "note": "POST-HOC descriptive, not a test",
+ "seed": 20261020,
+ "rows": [
+  {
+   "bucket": "≤ 0.10 (placed by the rule)",
+   "sessions": 20641,
+   "realTouches": 28248,
+   "realRevertPct": 50.07,
+   "placeboRevertPct": 46.37,
+   "deltaPP": 3.7
+  },
+  {
+   "bucket": "0.10–0.20",
+   "sessions": 31112,
+   "realTouches": 46488,
+   "realRevertPct": 50.34,
+   "placeboRevertPct": 47.26,
+   "deltaPP": 3.08
+  },
+  {
+   "bucket": "0.20–0.40",
+   "sessions": 26021,
+   "realTouches": 42076,
+   "realRevertPct": 51.02,
+   "placeboRevertPct": 48.32,
+   "deltaPP": 2.71
+  },
+  {
+   "bucket": "> 0.40",
+   "sessions": 7990,
+   "realTouches": 13822,
+   "realRevertPct": 53.73,
+   "placeboRevertPct": 50.84,
+   "deltaPP": 2.89
+  }
+ ]
+}

@@ -140,4 +140,4 @@ Asia body range is often too narrow for the spread.
 
 ## RESULTS
 
-(not yet run)
+Run 2026-10-20 → `analysis/output/range-edge-limit-fade/RESULTS.md`. **NULL**: T1 −0.109R [−0.124, −0.093], T2 −0.119R [−0.139, −0.099] net per trade on 24,006 trades; every gate condition fails; real edges −0.019R worse than shifted ladders.

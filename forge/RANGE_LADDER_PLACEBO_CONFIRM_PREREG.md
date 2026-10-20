@@ -116,4 +116,4 @@ Anything that sizes or gates a live position needs |t| ≥ 3.
 
 ## RESULTS
 
-(not yet run)
+Run 2026-10-20 → `analysis/output/range-ladder-placebo-confirm/RESULTS.md`. **VALIDATED**: pooled edges +2.92 pp [+2.68, +3.19], halves +2.70 / +3.12, all four lines pass under Holm, 15/15 instruments, C1 clean (+0.01 pp). Descriptive: the effect is relative (Asia edges revert ~51.7% vs ~48.3% placebo), a coin flip before costs.

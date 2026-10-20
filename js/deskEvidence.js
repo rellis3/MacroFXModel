@@ -912,6 +912,22 @@ export const DESK_EVIDENCE = [
     use: 'The ladder lines are places, not signals: the race at a line is close to a coin flip at real and shifted ladders alike, with at most a ~3-point reversion tilt at the Asia range edges. Nothing here supports a per-line edge in the range-line book; reopen only as a confirmation prereg on the edge lines with forward sessions.',
   },
   {
+    id: 'range-ladder-placebo-confirm', domain: 'price', verdict: 'validated', date: '2026-10-20', doc: 'forge/RANGE_LADDER_PLACEBO_CONFIRM_PREREG.md',
+    also: ['analysis/output/range-ladder-placebo-confirm/RESULTS.md'],
+    instruments: ['AUDCAD', 'AUDCHF', 'AUDNZD', 'CADCHF', 'CHFJPY', 'EURCAD', 'EURCHF', 'EURGBP', 'EURNZD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPNZD', 'NZDCAD', 'UK100'],
+    claim: 'On instruments the first placebo test never loaded, the four range-edge lines (Asia and Monday low/high) see the race next-line-in vs next-line-out revert more often than the same ladder shifted to the wrong price',
+    result: '15 instruments, 2,745 sessions 2016-2026, 98k edge touches vs 8 placebo ladders: pooled +2.92 pp [+2.68, +3.19], MDE 0.37 vs a 1.0 pp bar, halves +2.70 / +3.12; each line passes under Holm (A_0 +3.61, A_1 +3.22, M_0 +1.76, M_1 +2.17); placebo control +0.01 pp, clean; 15/15 instruments and every year positive. Extension lines +0.26 pp.',
+    use: 'The range edges are a real location; the rest of the ladder is not. The effect is relative: Asia-edge races revert ~51.7% vs ~48.3% at a shifted ladder, a coin flip before costs, so it is context (the usual push-through is cancelled at the edges), not a fade signal (see range-edge-limit-fade).',
+  },
+  {
+    id: 'range-edge-limit-fade', domain: 'execution', verdict: 'null', date: '2026-10-20', doc: 'forge/RANGE_EDGE_LIMIT_FADE_PREREG.md',
+    also: ['analysis/output/range-edge-limit-fade/RESULTS.md'],
+    instruments: ['GOLD', 'AUDJPY', 'AUDUSD', 'NZDJPY', 'NZDUSD', 'USDJPY', 'CADJPY', 'EURJPY', 'GBPJPY', 'EURAUD', 'EURUSD', 'GBPUSD', 'USDCHF', 'USDCAD', 'NQ', 'SPX500', 'DE30', 'US30', 'US2000', 'AUDCAD', 'AUDCHF', 'AUDNZD', 'CADCHF', 'CHFJPY', 'EURCAD', 'EURCHF', 'EURGBP', 'EURNZD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPNZD', 'NZDCAD', 'UK100'],
+    claim: 'A resting limit order at the Asia range edge (sell A_1, buy A_0), filled only when the far side of the quote trades through it and exited on real bid/ask M1, has positive net expectancy per trade',
+    result: '24,006 trades 2016-11 to 2026-08, 34 instruments, OANDA bid/ask M1: T1 (target range mid, 1:1) -0.109R [-0.124, -0.093], T2 (target opposite edge, 2:1) -0.119R [-0.139, -0.099]; negative in both halves, in seen and unseen instruments, every year and 32/34 instruments; stress fill -0.169R; real minus shifted-ladder placebo -0.019R [-0.033, -0.003]. T1 wins 44.4%, mean spread 0.066R. Fill rate 98.5% of touches.',
+    use: 'Fading the Asia range edges does not pay at either exit, with a resting order, on real bid/ask: the Asia ladder is closed as a stand-alone fade and no more exit variants are run on it. The bid/ask fill simulator (scripts/range-edge-limit-fade/run.mjs) is the reusable part.',
+  },
+  {
     id: 'meta-label-yield-spread', domain: 'volatility', verdict: 'null', date: '2026-10-06', doc: 'forge/META_LABEL_YS_PREREG.md',
     claim: 'The volatility system state at entry (regime, recent range vs forecast, today range, recent jumps, plus the primary z) tells when the yield-spread book is right, so meta-sizing beats flat (Lesson 03 meta-labelling)',
     result: 'FAIL, wrong way round. 221 walk-forward test trades 2019-2026: per-trade Sharpe 0.100 meta vs 0.165 flat, difference -0.065 [-0.117, +0.006]. Top predicted tercile won 52.8% (mean +0.02%) vs bottom 62.2% (+0.38%). The model learned high-vol entries win; the test years said the opposite. 2020 flat -31.7%, meta -49.3%.',
@@ -1194,6 +1210,8 @@ export function evidenceFor(instrument) {
 // until someone does. That default is the safe direction.
 const POWER = {
   'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
+  'range-ladder-placebo-confirm': { n: '2,745 session dates (21-session block bootstrap), 15 instruments', note: 'pooled MDE 0.37 pp vs a 1.0 pp bar; per-line MDE 0.69-0.89 pp' },
+  'range-edge-limit-fade':   { n: '2,456 session dates (21-session block bootstrap), 34 instruments, 24,006 trades', note: 'MDE 0.023R (T1) / 0.029R (T2) vs the +0.05R null line; both CIs below zero' },
   'ai-crack-metals':         { n: '61 de-clustered semis cracks 2006-2026 vs ~4,900 control sessions', note: 'MDE 1.8% vs a 2.0% pass bar; interval [-0.83, +1.89] excludes the bar -- a real null' },
   'ai-crack-metals-silver':  { n: '61 de-clustered semis cracks 2006-2026 vs ~4,900 control sessions', note: 'MDE 3.4% vs a 3.5% pass bar; interval [-4.05, +0.16] excludes the bar' },
   'portfolio-book':          { n: '4,645 weekdays 2008-2026, 5 sleeves, 28 legs, 2,911 trades', note: 'Sharpe SE 0.235, MDE 0.66; P1 1.06-1.11 clears it; DSR 0.49 fails on a trial-variance design error (mirror counted)' },

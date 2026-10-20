@@ -1,0 +1,324 @@
+{
+ "id": "range-ladder-placebo-confirm",
+ "prereg": "forge/RANGE_LADDER_PLACEBO_CONFIRM_PREREG.md",
+ "seed": 20261020,
+ "nBoot": 2000,
+ "block": 21,
+ "window": [
+  "2016-02-01",
+  "2026-08-20"
+ ],
+ "sessions": 2745,
+ "K": 8,
+ "shiftU": [
+  0.1,
+  0.4
+ ],
+ "verdict": "validated",
+ "H1_E": {
+  "realTouches": 98412,
+  "placTouches": 781310,
+  "revertPct": {
+   "real": 45.31,
+   "plac": 42.38,
+   "realClose": 7.29,
+   "placClose": 7.02
+  },
+  "delta": 2.924,
+  "se": 0.131,
+  "ci": [
+   2.677,
+   3.194
+  ],
+  "p": 0,
+  "mde": 0.366,
+  "h1": 2.702,
+  "h2": 3.12,
+  "pass": true
+ },
+ "H2_lines": [
+  {
+   "cell": "A_0",
+   "realTouches": 31309,
+   "placTouches": 247904,
+   "revertPct": {
+    "real": 51.91,
+    "plac": 48.3,
+    "realClose": 2.9,
+    "placClose": 2.75
+   },
+   "delta": 3.61,
+   "se": 0.254,
+   "ci": [
+    3.119,
+    4.126
+   ],
+   "p": 0,
+   "mde": 0.712,
+   "h1": 3.323,
+   "h2": 3.866,
+   "holmP": 0,
+   "pass": true
+  },
+  {
+   "cell": "A_1",
+   "realTouches": 31454,
+   "placTouches": 248849,
+   "revertPct": {
+    "real": 51.59,
+    "plac": 48.37,
+    "realClose": 2.86,
+    "placClose": 2.91
+   },
+   "delta": 3.224,
+   "se": 0.247,
+   "ci": [
+    2.753,
+    3.738
+   ],
+   "p": 0,
+   "mde": 0.691,
+   "h1": 2.984,
+   "h2": 3.436,
+   "holmP": 0,
+   "pass": true
+  },
+  {
+   "cell": "M_0",
+   "realTouches": 17453,
+   "placTouches": 139585,
+   "revertPct": {
+    "real": 33.89,
+    "plac": 32.13,
+    "realClose": 14.9,
+    "placClose": 14.41
+   },
+   "delta": 1.761,
+   "se": 0.319,
+   "ci": [
+    1.14,
+    2.371
+   ],
+   "p": 0,
+   "mde": 0.894,
+   "h1": 1.017,
+   "h2": 2.421,
+   "holmP": 0,
+   "pass": true
+  },
+  {
+   "cell": "M_1",
+   "realTouches": 18196,
+   "placTouches": 144972,
+   "revertPct": {
+    "real": 34.01,
+    "plac": 31.85,
+    "realClose": 15.17,
+    "placClose": 14.26
+   },
+   "delta": 2.168,
+   "se": 0.304,
+   "ci": [
+    1.589,
+    2.769
+   ],
+   "p": 0,
+   "mde": 0.852,
+   "h1": 2.59,
+   "h2": 1.799,
+   "holmP": 0,
+   "pass": true
+  }
+ ],
+ "C1": {
+  "delta": 0.011,
+  "se": 0.028,
+  "ci": [
+   -0.045,
+   0.065
+  ],
+  "p": 0.737,
+  "mde": 0.08,
+  "clean": true
+ },
+ "C2_extension": {
+  "realTouches": 183318,
+  "placTouches": 1490845,
+  "revertPct": {
+   "real": 53.18,
+   "plac": 52.92,
+   "realClose": 5.38,
+   "placClose": 5.42
+  },
+  "delta": 0.258,
+  "se": 0.069,
+  "ci": [
+   0.117,
+   0.389
+  ],
+  "p": 0,
+  "mde": 0.193,
+  "h1": 0.243,
+  "h2": 0.271
+ },
+ "allLines": {
+  "realTouches": 402052,
+  "placTouches": 3236668,
+  "revertPct": {
+   "real": 47.27,
+   "plac": 46.35,
+   "realClose": 6.08,
+   "placClose": 6.03
+  },
+  "delta": 0.914,
+  "se": 0.051,
+  "ci": [
+   0.816,
+   1.017
+  ],
+  "p": 0,
+  "mde": 0.142,
+  "h1": 0.892,
+  "h2": 0.934
+ },
+ "byYear": {
+  "2016": 1.98,
+  "2017": 2.28,
+  "2018": 3.16,
+  "2019": 2.73,
+  "2020": 3.31,
+  "2021": 2.88,
+  "2022": 2.47,
+  "2023": 3.58,
+  "2024": 3.39,
+  "2025": 3.19,
+  "2026": 3.28
+ },
+ "perInst": {
+  "audcad": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 6282,
+   "edgePlac": 49873,
+   "edgeRealRevertPct": 46.07,
+   "edgeDeltaPP": 3.29
+  },
+  "audchf": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 6252,
+   "edgePlac": 49582,
+   "edgeRealRevertPct": 43.68,
+   "edgeDeltaPP": 3
+  },
+  "audnzd": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 5967,
+   "edgePlac": 47328,
+   "edgeRealRevertPct": 44.95,
+   "edgeDeltaPP": 3.42
+  },
+  "cadchf": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 6992,
+   "edgePlac": 55153,
+   "edgeRealRevertPct": 46.52,
+   "edgeDeltaPP": 3.52
+  },
+  "chfjpy": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 6413,
+   "edgePlac": 50892,
+   "edgeRealRevertPct": 44.27,
+   "edgeDeltaPP": 2.19
+  },
+  "eurcad": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 6985,
+   "edgePlac": 55467,
+   "edgeRealRevertPct": 45.64,
+   "edgeDeltaPP": 2.8
+  },
+  "eurchf": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 6899,
+   "edgePlac": 54577,
+   "edgeRealRevertPct": 48.04,
+   "edgeDeltaPP": 4.09
+  },
+  "eurgbp": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 6969,
+   "edgePlac": 55521,
+   "edgeRealRevertPct": 46.12,
+   "edgeDeltaPP": 2.72
+  },
+  "eurnzd": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 6215,
+   "edgePlac": 49228,
+   "edgeRealRevertPct": 42.96,
+   "edgeDeltaPP": 2.89
+  },
+  "gbpaud": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 6342,
+   "edgePlac": 50552,
+   "edgeRealRevertPct": 44.06,
+   "edgeDeltaPP": 2.54
+  },
+  "gbpcad": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 7047,
+   "edgePlac": 56053,
+   "edgeRealRevertPct": 46.23,
+   "edgeDeltaPP": 3.47
+  },
+  "gbpchf": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 6944,
+   "edgePlac": 55288,
+   "edgeRealRevertPct": 45.52,
+   "edgeDeltaPP": 2.29
+  },
+  "gbpnzd": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 6388,
+   "edgePlac": 50753,
+   "edgeRealRevertPct": 45.32,
+   "edgeDeltaPP": 2.63
+  },
+  "nzdcad": {
+   "cls": "fx",
+   "sessions": 2745,
+   "edgeReal": 6349,
+   "edgePlac": 50527,
+   "edgeRealRevertPct": 43.3,
+   "edgeDeltaPP": 1.92
+  },
+  "uk100": {
+   "cls": "index",
+   "sessions": 2667,
+   "edgeReal": 6368,
+   "edgePlac": 50516,
+   "edgeRealRevertPct": 46.23,
+   "edgeDeltaPP": 2.98
+  }
+ },
+ "instrumentsPositive": "15/15",
+ "ranAt": "2026-10-20T15:23:29.951Z",
+ "preregCommit": "7097eaf5",
+ "branch": "main",
+ "B": 2000
+}

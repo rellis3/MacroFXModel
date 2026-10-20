@@ -1,0 +1,38 @@
+gold    S sessions 2515 trades 1532  T1 -0.1459  T2 -0.1737  spreadR 0.0693  3s
+audjpy  S sessions 2528 trades 1250  T1 -0.1502  T2 -0.1452  spreadR 0.073  4s
+audusd  S sessions 2528 trades 1138  T1 -0.1269  T2 -0.1402  spreadR 0.0768  3s
+nzdjpy  S sessions 2527 trades 538  T1 -0.1335  T2 -0.1489  spreadR 0.0775  2s
+nzdusd  S sessions 2527 trades 535  T1 -0.1255  T2 -0.1511  spreadR 0.0816  2s
+usdjpy  S sessions 2528 trades 1504  T1 -0.1363  T2 -0.17  spreadR 0.0683  2s
+cadjpy  S sessions 2527 trades 503  T1 -0.1549  T2 -0.1611  spreadR 0.0779  2s
+eurjpy  S sessions 2527 trades 1081  T1 -0.1341  T2 -0.1558  spreadR 0.0733  3s
+gbpjpy  S sessions 2527 trades 664  T1 -0.1423  T2 -0.1482  spreadR 0.076  2s
+euraud  S sessions 2527 trades 943  T1 -0.0669  T2 -0.0833  spreadR 0.075  2s
+eurusd  S sessions 2528 trades 527  T1 -0.1034  T2 -0.0728  spreadR 0.0789  2s
+gbpusd  S sessions 2528 trades 404  T1 -0.0833  T2 -0.1947  spreadR 0.0813  2s
+usdchf  S sessions 2528 trades 140  T1 -0.1639  T2 -0.1877  spreadR 0.0843  2s
+usdcad  S sessions 2528 trades 300  T1 -0.084  T2 -0.0633  spreadR 0.0793  1s
+nq      S sessions 2518 trades 2046  T1 -0.1017  T2 -0.0528  spreadR 0.0525  2s
+spx     S sessions 2518 trades 2007  T1 -0.0859  T2 -0.0914  spreadR 0.0564  1s
+dax     S sessions 2474 trades 1807  T1 -0.1049  T2 -0.1634  spreadR 0.0495  2s
+dow     S sessions 2518 trades 2578  T1 -0.0822  T2 -0.095  spreadR 0.0542  2s
+us2000  S sessions 2518 trades 1423  T1 -0.0863  T2 -0.051  spreadR 0.0649  1s
+audcad  U sessions 2528 trades 301  T1 -0.1332  T2 -0.1735  spreadR 0.0805  2s
+audchf  U sessions 2527 trades 346  T1 -0.1009  T2 -0.0972  spreadR 0.0733  2s
+audnzd  U sessions 2527 trades 100  T1 -0.0273  T2 -0.0082  spreadR 0.08  2s
+cadchf  U sessions 2527 trades 45  T1 -0.1556  T2 -0.3046  spreadR 0.0762  2s
+chfjpy  U sessions 2527 trades 335  T1 -0.1371  T2 -0.1778  spreadR 0.0817  2s
+eurcad  U sessions 2527 trades 153  T1 0.0286  T2 0.0107  spreadR 0.0801  2s
+eurchf  U sessions 2528 trades 33  T1 -0.076  T2 -0.0826  spreadR 0.0855  2s
+eurgbp  U sessions 2527 trades 24  T1 0.1021  T2 0.2376  spreadR 0.0767  2s
+eurnzd  U sessions 2527 trades 285  T1 -0.1447  T2 -0.1439  spreadR 0.0779  2s
+gbpaud  U sessions 2528 trades 622  T1 -0.0507  T2 -0.085  spreadR 0.0759  2s
+gbpcad  U sessions 2528 trades 55  T1 -0.1232  T2 -0.0467  spreadR 0.0921  2s
+gbpchf  U sessions 2528 trades 54  T1 -0.2251  T2 -0.2873  spreadR 0.0868  2s
+gbpnzd  U sessions 2528 trades 140  T1 -0.0981  T2 -0.1122  spreadR 0.0778  2s
+nzdcad  U sessions 2527 trades 115  T1 -0.1022  T2 -0.1558  spreadR 0.0764  2s
+uk100   U sessions 2461 trades 478  T1 -0.1184  T2 -0.0951  spreadR 0.0509  2s
+
+verdict: NULL
+T1 -0.109 [-0.124, -0.093]  T2 -0.119 [-0.139, -0.099]
+placebo T1 -0.090 T2 -0.093  stress T1 -0.169
