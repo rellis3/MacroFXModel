@@ -21,3 +21,17 @@ Source: `scripts/decision_lab/rule_a_excursions.py --block disc` → `excursions
 - **No change to the stop** (0.2σ; the 0.1σ stop already tested worse).
 
 **The 2024-26 read** checks only the shape (small targets lose, far targets plus holding pay); it does not pick a new exit. The 10:00 entry cut-off is not examined here: later entries would be new trades, so that is a separate test.
+
+## The 2024-26 check (read once, 2026-10-20)
+`excursions_conf.json`: 893 trades. **The shape holds:**
+
+| Exit | Net R per trade |
+|---|---|
+| 0.5–1.5R | −0.04 to −0.10 |
+| 2R | ≈ 0 |
+| 4–15R, held to 18:00–22:00 | +0.12 to +0.20 |
+| The kept rule, 5R / 22:00 | **+0.148** |
+| Exiting at 12:00 | ≈ 0 to −0.03 (worst row in both blocks) |
+
+- **Further targets** (8–12R) were slightly better than 5R in both blocks: +0.02 to +0.05R. That is a candidate for its own registered forward test, not a change now.
+- **Decision unchanged:** 5R, out at 22:00.
