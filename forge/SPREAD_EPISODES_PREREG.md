@@ -241,7 +241,26 @@ fail. Promotion to anything live needs |t| ≥ 3 on Final, and nothing here size
 
 ## Amendments
 
-(none)
+### A1 — 2026-10-20 — POST-HOC (results seen: a 2-draw smoke run showed the E1 numbers)
+
+**The problem.** The shifted-spread placebo is the wrong null for E1 on its own. With a *constant* link, a session's
+correlation is still higher on sessions where the spread itself moves a lot, and spread volatility clusters. So daily
+coupling can "persist" with no change in the link at all.
+
+**The added null (constant-β).** Within each period:
+
+- fit β = Σ dx·dp / Σ dx²;
+- form residuals ε = dp − β·dx;
+- build a synthetic price change β·dx + ε, with ε rolled by a random whole number of sessions (≥ 20 in Case 1) or
+  rows (≥ 60 in Case 2);
+- run 200 draws.
+
+This keeps the spread's own volatility clustering and the residual's, and removes any time variation in the link.
+
+**The rule.** Q1 now needs E1 OD and AC1 above the p95 of **both** nulls (shifted spread **and** constant-β), in
+Discover and Validate. This can only demote. Nothing else in the design changed: the grid, the gates and the primary
+cells are as registered. The smoke run's grid output (0 Discover-BH cells in both cases) was seen, and nothing in the
+grid or gates was altered after it.
 
 ## RESULTS
 
