@@ -36,9 +36,9 @@ export function buildOiProfile(inst, opts = {}) {
   if (!book || !(book.spot > 0) || !book.legs?.length) return null;
   const { legs, spot, mult, flat } = book;
   // ONE DAY's move: the forecast σ in price units (the caller passes opts.dayMove). inst.refMove is the implied move to the PRIMARY expiry — for gold that is ±5% to a
-  // 41-day expiry, 4× a day — so it is only a fallback. The window is ±windowRm × this: ~1.5× the p90 one-sided range, so a big day is still on the page.
+  // 41-day expiry, 4× a day — so it is only a fallback. The window is ±windowRm × this (default 3σ): well past the p90 one-sided range (~1.7σ) and the live projected p75 extreme (~2.2σ), so a big day is still on the page.
   const rm = (opts.dayMove > 0 ? opts.dayMove : null) ?? (inst?.refMove?.move > 0 ? inst.refMove.move : null) ?? spot * 0.01;
-  const windowRm = opts.windowRm ?? 2.5, nBins = opts.bins ?? 60;
+  const windowRm = opts.windowRm ?? 3.0, nBins = opts.bins ?? Math.round(24 * windowRm);   // ±3σ of a day: past the p90 one-sided range (~1.7σ) and the live projected p75 high (~2.2σ); 24 bins per σ keeps ~28-point bins on NQ
   const winFrac = Math.min(0.15, windowRm * rm / spot);
 
   // ── 1. which DTE bucket carries the gamma near spot? ──────────────────────────────────────────────────────────────
