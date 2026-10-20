@@ -116,6 +116,14 @@ svg text{font-family:var(--mono)}
     <div class="card"><h2><em>04</em> When the gamma expires</h2><div id="timebar"></div></div>
   </div>
 
+  <div class="card" id="cogCard" style="padding:14px 14px 10px">
+    <h2><em>T</em> The terrain: positioning, smiles and levels on one price axis
+      <span class="tgl" id="cogExp" style="margin-left:auto"><span class="pill on" data-cexp="3">≤3 DTE</span><span class="pill" data-cexp="30">≤30 DTE</span><span class="pill" data-cexp="400">whole book</span></span></h2>
+    <div class="sub">Centre: open interest by strike, <span style="color:#6fb6ff">calls</span> right, <span style="color:#f0b04a">puts</span> left. Outer panels: one line per expiry. On SPX, NDX and RUT they are the <b>IV smile</b> (each strike's implied vol minus the at-the-money vol, −2 to +4 vol points; every line meets at spot). On other instruments, where CME gives one vol per expiry, they show each expiry's <b>gamma by strike</b> instead. Bright lines are the nearest expiries. Hover a row for numbers. A picture of positioning, not a signal.</div>
+    <canvas id="cogCv" style="width:100%;height:880px;display:block;border-radius:8px;background:#090e13"></canvas>
+    <div class="legend" id="cogLeg" style="margin-top:8px"></div>
+  </div>
+
   <div class="card">
     <h2><em>05</em> Gamma by price level</h2>
     <div class="sub"><b>The simple version.</b> One row per price band, highest price at the top. The <b>wide faint bar</b> is the whole book's gamma in that band: <span style="color:rgb(70,184,122)">right/green</span> = dealers lean against moves there (price tends to stall), <span style="color:rgb(232,97,95)">left/red</span> = dealers push with the move (price tends to speed up). The <b>slim bright bar</b> is the part of that gamma that expires within 3 days. A long bar with a long bright centre = a big zone that is about to matter. Hover a row for numbers.</div>
@@ -714,7 +722,7 @@ async function gkLoadSmile(sym){
   GK.smile[sym] = { loading: true, at: Date.now() };
   try { const r = await fetch(`/api/cboe-contracts?pair=${encodeURIComponent(sym)}&maxDte=45&window=0.08`); const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Cboe unavailable'); GK.smile[sym] = { at: Date.now(), j }; }
   catch (e) { GK.smile[sym] = { at: Date.now(), err: e.message }; }
-  if (SYM === sym && CUR) drawGreeks();
+  if (SYM === sym && CUR) { drawGreeks(); try { drawCog(); } catch (_) {} }
 }
 // per-expiry smile: out-of-the-money IV at each strike, minus the interpolated at-the-money IV, in vol points; strikes moved onto the CFD
 function gkSmiles(j){
@@ -798,6 +806,124 @@ function drawGreeks(){
 }
 $('#gkExp').querySelectorAll('[data-gexp]').forEach(el => el.onclick = () => { GK.maxDte = +el.dataset.gexp; $('#gkExp').querySelectorAll('[data-gexp]').forEach(x => x.classList.toggle('on', x === el)); drawGreeks(); });
 gkPills();
+
+// ── T: the terrain — OI bars, per-expiry fans and labelled levels on one canvas ─────────────────────────────────────────────
+const COGX = { maxDte: 3 };
+function cogSmiles(j){
+  const groups = new Map();
+  for (const [K, T, cp, oi, iv, dte] of j.rows) { if (!(iv > 0)) continue; const k = dte + '|' + T; (groups.get(k) || groups.set(k, { dte, rows: [] }).get(k)).rows.push({ K, cp, iv }); }
+  const sp = j.spot, shift = Number.isFinite(j.cfdOffset) ? j.cfdOffset : 0, out = [];
+  for (const g of groups.values()) {
+    const byK = new Map();
+    for (const { K, cp, iv } of g.rows) { const o = byK.get(K) || {}; o[cp] = iv; byK.set(K, o); }
+    const ser = [...byK.entries()].map(([K, o]) => ({ K, iv: K < sp ? (o.P ?? o.C) : (o.C ?? o.P) })).filter(x => x.iv > 0).sort((a, b) => a.K - b.K);
+    if (ser.length < 6) continue;
+    const j2 = ser.findIndex(x => x.K >= sp); if (j2 <= 0) continue;
+    const a = ser[j2 - 1], c = ser[j2], atm = a.iv + (c.iv - a.iv) * (sp - a.K) / ((c.K - a.K) || 1);
+    const side = cp => [...byK.entries()].filter(([, o]) => o[cp] > 0).sort((x, y) => x[0] - y[0]).map(([K, o]) => ({ p: K + shift, dv: (o[cp] - atm) * 100 }));
+    out.push({ dte: g.dte, atm, pinch: sp + shift, put: side('P'), call: side('C') });
+  }
+  return out.sort((x, y) => x.dte - y.dte).slice(0, 12);
+}
+function cogColor(i, n){ return i < 4 ? { c: `hsl(${72 + i * 28} 80% 62%)`, w: 1.9 - i * 0.2, a: 0.95 } : { c: `hsl(${34 - Math.min(14, (i - 4) * 2)} 78% 56%)`, w: 1, a: 0.42 }; }
+function drawCog(){
+  const cv = $('#cogCv'), D = CUR; if (!cv) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1), cssW = cv.clientWidth || 1000, cssH = cv.clientHeight || 880;
+  cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, cssW, cssH);
+  const note = m => { g.fillStyle = '#6b7585'; g.font = '14px ui-monospace,Consolas,monospace'; g.textAlign = 'center'; g.fillText(m, cssW / 2, cssH / 2); $('#cogLeg').innerHTML = ''; };
+  if (!D) return note('No data for this instrument.');
+  let b = null; try { b = oiBookLegs(D.e); } catch (_) {}
+  if (!b) return note('No per-expiry book stored for this instrument.');
+  const spot = D.spot, rm = D.rm, hw = Math.min(0.028 * spot, Math.max(0.01 * spot, 1.4 * rm)), lo = spot - hw, hi = spot + hw;   // about the day's plausible range plus a buffer, as the indicator does
+  const mono = '11px ui-monospace,"IBM Plex Mono",Consolas,monospace';
+  const PL = 78, PR = 14, PT = 34, PB = 38, pw = cssW - PL - PR, ph = cssH - PT - PB;
+  const yOf = p => PT + (hi - p) / (hi - lo) * ph;
+  const legs = b.legs.filter(l => !Number.isFinite(l.dte) || l.dte <= COGX.maxDte);
+  // OI by strike
+  const oi = new Map();
+  for (const l of legs) for (let i = 0; i < l.strikes.length; i++) { const K = l.strikes[i]; if (K < lo || K > hi) continue; const o = oi.get(K) || { c: 0, p: 0 }; o.c += l.calls[i] || 0; o.p += l.puts[i] || 0; oi.set(K, o); }
+  const ks = [...oi.keys()].sort((x, y) => x - y);
+  if (ks.length < 2) return note('No strikes near price in this expiry set.');
+  const steps = ks.slice(1).map((k, i) => k - ks[i]).sort((x, y) => x - y), step = steps[Math.floor(steps.length / 2)] || (hi - lo) / 40;
+  const barH = Math.max(2.5, Math.min(14, step / (hi - lo) * ph * 0.78));
+  const vals = [...oi.values()].flatMap(o => [o.c, o.p]).filter(v => v > 0).sort((x, y) => x - y);
+  const oiMax = Math.max(1, vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.97))] || 1);
+  // panels: left fan | OI | right fan
+  const wl = pw * 0.31, wc = pw * 0.38, xl0 = PL, xc0 = PL + wl, xc1 = xc0 + wc, xr0 = xc1, xr1 = PL + pw, cx = xc0 + wc / 2;
+  // grid + price labels
+  g.font = mono; g.textBaseline = 'middle';
+  const stepP = (() => { const raw = (hi - lo) / 22, pw10 = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / pw10; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * pw10; })();
+  for (let v = Math.ceil(lo / stepP) * stepP; v <= hi; v += stepP) { const y = yOf(v); g.strokeStyle = 'rgba(255,255,255,.035)'; g.lineWidth = 1; g.beginPath(); g.moveTo(PL, y); g.lineTo(PL + pw, y); g.stroke();
+    g.fillStyle = '#7f8a98'; g.textAlign = 'right'; g.fillText(px(v), PL - 10, y); }
+  [xc0, xc1].forEach(x => { g.strokeStyle = 'rgba(255,255,255,.07)'; g.beginPath(); g.moveTo(x, PT); g.lineTo(x, PT + ph); g.stroke(); });
+  // max pain highlight band
+  const mp = D.mp; if (Number.isFinite(mp) && mp > lo && mp < hi) { g.fillStyle = 'rgba(255,255,255,.055)'; g.fillRect(PL, yOf(mp) - barH * 0.8, pw, barH * 1.6); }
+  // fans
+  const useSmile = GK_SMILE_SYMS.includes(SYM);
+  let smiles = null, legTxt = '';
+  if (useSmile) { const sm = GK.smile[SYM]; if (!sm || sm.loading) gkLoadSmile(SYM); else if (!sm.err) smiles = cogSmiles(sm.j); }
+  const clipY = (x0, x1) => { g.save(); g.beginPath(); g.rect(x0, PT, x1 - x0, ph); g.clip(); };
+  const DMIN = -2, DMAX = 4;
+  if (smiles && smiles.length) {
+    const draw = (x0, x1, key) => { clipY(x0, x1);
+      smiles.forEach((c, i) => { const st = cogColor(i, smiles.length);
+        const pts = c[key].filter(q => q.p >= lo - step && q.p <= hi + step);
+        const trace = sel => { g.beginPath(); let first = true, prev = false; pts.forEach(q => { const on = sel(q); const x = x0 + Math.max(0, Math.min(1, (q.dv - DMIN) / (DMAX - DMIN))) * (x1 - x0), y = yOf(q.p);
+            if (!on) { prev = false; return; } if (first || !prev) g.moveTo(x, y); else g.lineTo(x, y); first = false; prev = true; }); g.stroke(); };
+        // puts are out of the money below the pinch, calls above it; the in-the-money half is noisy, so it is drawn faint
+        const otm = key === 'put' ? (q => q.p <= c.pinch) : (q => q.p >= c.pinch);
+        g.strokeStyle = st.c; g.lineWidth = st.w;
+        g.globalAlpha = st.a * 0.22; trace(() => true);
+        g.globalAlpha = st.a; trace(otm); });
+      g.restore(); g.globalAlpha = 1; };
+    draw(xl0, xc0, 'put'); draw(xr0, xr1, 'call');
+    legTxt = smiles.map((c, i) => `<span style="color:${cogColor(i).c}">■</span> ${c.dte} DTE`).join('  ');
+  } else if (!useSmile) {
+    // gamma by strike, one line per expiry: puts left, calls right
+    const rowsE = legs.slice().sort((a, c) => (a.dte ?? 1e9) - (c.dte ?? 1e9)).slice(0, 12).map(l => {
+      const T = Math.max(Number.isFinite(l.dte) ? l.dte : 14, 0.25) / 365, s = l.sigma > 0 ? l.sigma : b.flat, pts = [];
+      for (let i = 0; i < l.strikes.length; i++) { const K = l.strikes[i]; if (K < lo - step || K > hi + step) continue; const gm = bsGamma(spot, K, T, s) || 0; pts.push({ p: K, c: (l.calls[i] || 0) * gm * b.mult * spot, pu: (l.puts[i] || 0) * gm * b.mult * spot }); }
+      return { dte: l.dte, pts }; });
+    const mag = rowsE.flatMap(r => r.pts.flatMap(q => [q.c, q.pu])).filter(v => v > 0).sort((x, y) => x - y), mx = mag.length ? mag[Math.min(mag.length - 1, Math.floor(mag.length * 0.98))] : 1;
+    const draw = (x0, x1, key, toLeft) => { clipY(x0, x1); rowsE.forEach((r, i) => { const st = cogColor(i); g.strokeStyle = st.c; g.globalAlpha = st.a; g.lineWidth = st.w; g.beginPath(); let first = true;
+        r.pts.forEach(q => { const f = Math.min(1, q[key] / mx), x = toLeft ? x1 - f * (x1 - x0) : x0 + f * (x1 - x0), y = yOf(q.p); if (first) { g.moveTo(x, y); first = false; } else g.lineTo(x, y); }); g.stroke(); }); g.restore(); g.globalAlpha = 1; };
+    draw(xl0, xc0, 'pu', true); draw(xr0, xr1, 'c', false);
+    legTxt = rowsE.map((r, i) => `<span style="color:${cogColor(i).c}">■</span> ${r.dte != null ? r.dte : '?'} DTE`).join('  ');
+  } else {
+    g.fillStyle = '#6b7585'; g.textAlign = 'center'; g.fillText(GK.smile[SYM]?.err ? 'Cboe smiles unavailable' : 'loading smiles…', (xl0 + xc0) / 2, PT + 30); g.fillText(GK.smile[SYM]?.err ? '' : 'loading smiles…', (xr0 + xr1) / 2, PT + 30);
+  }
+  // OI bars with a light-to-saturated gradient and a fine stripe texture
+  const half = wc / 2 - 6;
+  const gradC = g.createLinearGradient(cx, 0, cx + half, 0); gradC.addColorStop(0, '#dcecff'); gradC.addColorStop(0.45, '#8fb8f5'); gradC.addColorStop(1, '#3b6fd0');
+  const gradP = g.createLinearGradient(cx, 0, cx - half, 0); gradP.addColorStop(0, '#ffe29a'); gradP.addColorStop(0.45, '#f0b04a'); gradP.addColorStop(1, '#a8701c');
+  ks.forEach(K => { const o = oi.get(K), y = yOf(K) - barH / 2;
+    if (o.c > 0) { const w = Math.min(1, o.c / oiMax) * half; g.fillStyle = gradC; g.fillRect(cx, y, w, barH); g.fillStyle = 'rgba(0,0,0,.14)'; for (let x = cx + 2; x < cx + w; x += 4) g.fillRect(x, y, 1, barH); if (o.c > oiMax) { g.fillStyle = '#fff'; g.fillRect(cx + half - 3, y, 3, barH); } }
+    if (o.p > 0) { const w = Math.min(1, o.p / oiMax) * half; g.fillStyle = gradP; g.fillRect(cx - w, y, w, barH); g.fillStyle = 'rgba(0,0,0,.14)'; for (let x = cx - 2; x > cx - w; x -= 4) g.fillRect(x, y, 1, barH); if (o.p > oiMax) { g.fillStyle = '#fff'; g.fillRect(cx - half, y, 3, barH); } } });
+  g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx, PT); g.lineTo(cx, PT + ph); g.stroke();
+  // levels, labelled at the right end like a desk chart
+  let bigK = null, bigV = 0; for (const [K, o] of oi) { if (o.c + o.p > bigV) { bigV = o.c + o.p; bigK = K; } }
+  const lv = [[spot, '#ffffff', 'SPOT PRICE', 'solid'], [D.flip, '#f0b04a', 'GEX FLIP (ZERO CROSSING)', 'dot'], [bigK, '#7fb0ff', 'MAJOR WALL', 'dash'], [D.mp, '#c9cdd2', 'MAX PAIN', 'dot'], [D.cw, '#ee6d66', 'CALL WALL', 'dash'], [D.pw, '#3fc583', 'PUT WALL', 'dash']]
+    .filter(l => Number.isFinite(l[0]) && l[0] > lo && l[0] < hi).sort((x, y) => yOf(x[0]) - yOf(y[0]));
+  let lastY = -99;
+  lv.forEach(([p, col, name, style]) => { const y = yOf(p); g.strokeStyle = col; g.lineWidth = style === 'solid' ? 1.5 : 1.1; g.setLineDash(style === 'dash' ? [7, 5] : style === 'dot' ? [2, 4] : []); g.globalAlpha = .9;
+    g.beginPath(); g.moveTo(PL, y); g.lineTo(PL + pw, y); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+    const ly = Math.max(y - 8, lastY + 13); lastY = ly; g.textAlign = 'right'; g.font = mono; g.lineJoin = 'round'; g.lineWidth = 4; g.strokeStyle = '#090e13'; g.strokeText(`${name}: ${px(p)}`, PL + pw - 6, ly); g.fillStyle = col; g.fillText(`${name}: ${px(p)}`, PL + pw - 6, ly); });
+  // headers + axes
+  g.font = '10.5px ui-monospace,Consolas,monospace'; g.fillStyle = '#8a95a3'; g.textBaseline = 'alphabetic';
+  g.textAlign = 'left'; g.fillText(useSmile ? 'PUTS IV LESS ATM  −2 pt' : 'PUT GAMMA BY EXPIRY  (more →)', xl0 + 4, 16); g.textAlign = 'right'; g.fillText(useSmile ? '+4 pt' : '', xc0 - 4, 16);
+  g.textAlign = 'left'; g.fillText(useSmile ? '−2 pt' : '', xr0 + 4, 16); g.textAlign = 'right'; g.fillText(useSmile ? 'CALLS IV LESS ATM  +4 pt' : 'CALL GAMMA BY EXPIRY  (more →)', xr1 - 4, 16);
+  g.textAlign = 'center';
+  [-1, -0.5, 0, 0.5, 1].forEach(f => { const x = cx + f * half, v = Math.abs(f) * oiMax; g.fillText(f === 0 ? '0' : (fmtBig(v)), x, cssH - PB + 18); });
+  g.fillText('OI (contracts)  ·  puts ←   → calls', cx, cssH - 6);
+  $('#cogLeg').innerHTML = (legTxt ? `Expiries, nearest first: ${legTxt}` : '') + (useSmile ? '<br>Smiles are live from Cboe (15 minutes delayed) and pinch at that moment\'s spot; the levels and open interest are from the last saved OI snapshot, so the pinch and the spot line can sit a little apart.' : '');
+  // hover
+  cv.onmousemove = ev => { const r = cv.getBoundingClientRect(), y = ev.clientY - r.top, price = hi - (y - PT) / ph * (hi - lo); let best = null, bd = 1e18; for (const K of ks) { const d = Math.abs(K - price); if (d < bd) { bd = d; best = K; } }
+    if (best == null || bd > step) return hideTip(); const o = oi.get(best); showTip(ev, `<b>${px(best)}</b><br>calls ${fmtBig(o.c)} · puts ${fmtBig(o.p)}<br><span style="color:#8a95a3">${COGX.maxDte >= 400 ? 'whole book' : 'expiries within ' + COGX.maxDte + ' days'}</span>`); };
+  cv.onmouseleave = hideTip;
+}
+$('#cogExp').querySelectorAll('[data-cexp]').forEach(el => el.onclick = () => { COGX.maxDte = +el.dataset.cexp; $('#cogExp').querySelectorAll('[data-cexp]').forEach(x => x.classList.toggle('on', x === el)); drawCog(); });
+let _cogRz = null; addEventListener('resize', () => { clearTimeout(_cogRz); _cogRz = setTimeout(() => { try { drawCog(); } catch (_) {} }, 150); });
 
 // ── 04 heat ─────────────────────────────────────────────────────────────────────────────
 function drawHeat(){
@@ -1030,7 +1156,7 @@ function rail(){
 async function refresh(){
   CUR = derive(SYM); rail();
   drawHedging();     // async and self-contained: first, so a failure in another panel cannot skip it
-  for (const f of [stats, drawBars, drawRipple, drawGreeks, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
+  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
   drawBrief();
