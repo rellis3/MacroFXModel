@@ -128,7 +128,8 @@ def _fred_vintages(series_id, key, obs_start="2000-01-01", yearly=False):
     """Every ALFRED vintage. Monthly series fit one call (≈310 vintage dates < the 2,000 cap);
     daily series need one real-time year per call, as scripts/fetch_fred_vintages.py does."""
     out = []
-    windows = [(f"{y}-01-01", f"{y}-12-31") for y in range(2000, datetime.now(timezone.utc).year + 1)] if yearly else [("2000-01-01", "9999-12-31")]
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    windows = [(f"{y}-01-01", min(f"{y}-12-31", today)) for y in range(2000, datetime.now(timezone.utc).year + 1)] if yearly else [("2000-01-01", "9999-12-31")]
     for rs, re_ in windows:
         u = ("https://api.stlouisfed.org/fred/series/observations?series_id=%s&realtime_start=%s&realtime_end=%s"
              "&observation_start=%s&file_type=json&limit=100000&api_key=%s") % (series_id, rs, re_, obs_start, key)
@@ -138,6 +139,8 @@ def _fred_vintages(series_id, key, obs_start="2000-01-01", yearly=False):
             body = ex.read().decode(errors="replace").replace(key, "<key>")[:160]
             if ex.code == 400 and "exceeds" in body.lower() and not yearly:
                 return _fred_vintages(series_id, key, obs_start, yearly=True)
+            if ex.code == 400 and yearly and "does not exist in alfred" in body.lower():
+                continue   # ALFRED vintage history starts later than 2000 for this series; skip the empty years
             raise RuntimeError(f"FRED {series_id} {rs}: HTTP {ex.code} {body}")
         time.sleep(0.15)
     return out
@@ -145,7 +148,7 @@ def _fred_vintages(series_id, key, obs_start="2000-01-01", yearly=False):
 def build_fred_vintage(e):
     key = fred_key()
     sid = e["sourceRef"]
-    obs = _fred_vintages(sid, key, yearly=(e.get("cadence") == "daily"))
+    obs = _fred_vintages(sid, key, yearly=(e.get("cadence") == "daily" or bool(e.get("yearly"))))  # yearly: one real-time year per call, for weekly series whose revisions pass the 100k row cap
     rows = []
     for o in obs:
         if o.get("value") in (None, ".", ""):
@@ -279,7 +282,93 @@ def build_spread_profile_api(e):
             rows.append({"pair": p.get("pair") or pair.lower(), "hour": int(h), "mean": s.get("mean"), "sd": s.get("sd"), "max": s.get("max"), "n": s.get("n"), "asof": asof})
     return write_table(e["id"], pd.DataFrame(rows))
 
+# ── funding & leverage archive (2026-10-21; plans/FUNDING_ARCHIVE.md) ─────────────────────────
+def _lag_days(e):
+    m = re.match(r"fixed_lag:(\d+)", e["asofRule"])
+    if not m:
+        raise RuntimeError(f"{e['id']}: builder needs a fixed_lag:N asofRule, got {e['asofRule']}")
+    return int(m.group(1))
+
+def build_fred_daily_lag(e):
+    """Daily FRED series PUBLISHED AFTER the date they describe (SOFR, EFFR, OBFR and volumes print the next
+    business morning), so close+1h would be early. asof = date + N days 00:00 UTC (fixed_lag:N)."""
+    key, sid, lag = fred_key(), e["sourceRef"], _lag_days(e)
+    u = ("https://api.stlouisfed.org/fred/series/observations?series_id=%s&observation_start=2000-01-01"
+         "&file_type=json&limit=100000&api_key=%s") % (sid, key)
+    try:
+        obs = get_json(u)["observations"]
+    except urllib.error.HTTPError as ex:
+        raise RuntimeError(f"FRED {sid}: HTTP {ex.code} {ex.read().decode(errors='replace').replace(key, '<key>')[:160]}")
+    rows = [{"date": o["date"], "asof": asof_fixed_lag(o["date"], lag), "value": float(o["value"]), "vintage": None, "source": f"fred:{sid}"}
+            for o in obs if o.get("value") not in (None, ".", "")]
+    return write_series(e["id"], rows)
+
+def build_yahoo_daily(e):
+    """Yahoo daily close for series FRED does not carry (MOVE). Stamped close+1h like the other daily closes."""
+    sym = e["sourceRef"]
+    u = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(sym)}?interval=1d&period1=946684800&period2=1790000000"
+    j = get_json(u, {"User-Agent": "Mozilla/5.0"})["chart"]["result"][0]
+    closes = j["indicators"]["quote"][0]["close"]
+    rows = []
+    for t, c in zip(j["timestamp"], closes):
+        if c is None:
+            continue
+        # Yahoo stamps the session's local open; the US session date is the New York calendar day
+        day = (datetime.fromtimestamp(t, timezone.utc) - timedelta(hours=4)).strftime("%Y-%m-%d")
+        rows.append({"date": day, "asof": asof_close_plus_1h(day), "value": float(c), "vintage": None, "source": f"yahoo:{sym}"})
+    return write_series(e["id"], rows)
+
+def build_cftc_tff_notional(e):
+    """Leveraged-fund NET position across the Treasury futures curve, in $bn of face value (contracts x face).
+    `legs`: [{"names": [current, *older], "face": 100000}, ...]. Negative = net short (the basis-trade side).
+    A week counts only when every leg reported, so a missing contract never looks like a smaller position."""
+    by_leg = []
+    for leg in e["legs"]:
+        got = {}
+        for name in leg["names"]:
+            u = ("https://publicreporting.cftc.gov/resource/gpe5-46if.json?market_and_exchange_names=%s&$limit=5000&$order=report_date_as_yyyy_mm_dd%%20ASC"
+                 % urllib.parse.quote(name))
+            for r in get_json(u):
+                d = str(r.get("report_date_as_yyyy_mm_dd", ""))[:10]
+                if d:
+                    got[d] = (float(r.get("lev_money_positions_long") or 0) - float(r.get("lev_money_positions_short") or 0)) * leg["face"] / 1e9
+            time.sleep(0.2)
+        by_leg.append(got)
+    dates = sorted(set.intersection(*[set(g) for g in by_leg]))
+    rows = [{"date": d, "asof": asof_report_plus_3d(d), "value": sum(g[d] for g in by_leg), "vintage": None, "source": "cftc:tff"} for d in dates]
+    return write_series(e["id"], rows)
+
+def build_bis_lbs_growth(e):
+    """4-quarter FX-adjusted growth (%) of a BIS LBS cross-border claims series (js/bankCredit.js definition).
+    sourceRef = the SDMX key with measure 'S+F'. `minus`: a second counterparty to subtract (yen lent outside
+    Japan = all countries minus Japan). date = quarter end; asof = quarter end + N days (fixed_lag:N; 182 is
+    the conservative two-quarter rule of forge/BANK_CREDIT_DOLLAR_PREREG.md). Latest vintage only: revises."""
+    lag = _lag_days(e)
+    txt = get_text(f"https://stats.bis.org/api/v2/data/dataflow/BIS/WS_LBS_D_PUB/1.0/{e['sourceRef']}?format=csv")
+    df = pd.read_csv(io.StringIO(txt))
+    df["q"] = pd.PeriodIndex(df.TIME_PERIOD.str.replace("-", ""), freq="Q")
+    def ser(m, cp=None):
+        x = df[df.L_MEASURE == m]
+        if cp:
+            x = x[x.L_CP_COUNTRY == cp]
+        return x.groupby("q").OBS_VALUE.sum().astype(float).sort_index()
+    if e.get("minus"):
+        main_cp, sub = e["mainCp"], e["minus"]
+        s, f = ser("S", main_cp) - ser("S", sub), ser("F", main_cp) - ser("F", sub)
+    else:
+        s, f = ser("S"), ser("F")
+    idx = pd.period_range(s.dropna().index.min(), s.dropna().index.max(), freq="Q")
+    s, f = s.reindex(idx), f.reindex(idx)
+    g = (f.rolling(4).sum() / s.shift(4) * 100)[s.shift(4) > 0].dropna()
+    rows = []
+    for q, v in g.items():
+        qe = q.end_time.strftime("%Y-%m-%d")
+        rows.append({"date": qe, "asof": asof_fixed_lag(qe, lag), "value": float(v), "vintage": None, "source": "bis:lbs"})
+    return write_series(e["id"], rows)
+
 BUILDERS = {
+    "fred_daily_lag": build_fred_daily_lag, "yahoo_daily": build_yahoo_daily, "cftc_tff_notional": build_cftc_tff_notional,
+    "bis_lbs_growth": build_bis_lbs_growth,
     "oanda_d1": build_oanda_d1, "fred_vintage": build_fred_vintage, "fred_daily": build_fred_daily,
     "boe_iadb": build_boe_iadb, "cftc_tff": build_cftc_tff, "surprises_api": build_surprises_api,
     "calendar_api": build_calendar_api, "cache_hl_london": build_cache_hl_london, "spread_profile_api": build_spread_profile_api,

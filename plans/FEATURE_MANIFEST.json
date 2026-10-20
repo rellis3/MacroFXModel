@@ -1248,6 +1248,619 @@
       "firstAsof": "2000-01-03T22:00:00Z",
       "lastAsof": "2026-10-15T22:00:00Z",
       "builtAt": "2026-10-19T09:03:48Z"
+    },
+    {
+      "id": "fed_assets",
+      "kind": "series",
+      "label": "Fed total assets (H.4.1, Wednesday)",
+      "source": "fred",
+      "sourceRef": "WALCL",
+      "cadence": "weekly",
+      "asofRule": "vintage",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_vintage",
+      "unit": "USD mn",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 1783,
+      "firstAsof": "2011-07-07T23:59:59Z",
+      "lastAsof": "2026-10-15T23:59:59Z",
+      "builtAt": "2026-10-20T23:23:28Z"
+    },
+    {
+      "id": "fed_tga",
+      "kind": "series",
+      "label": "Treasury General Account (H.4.1, Wednesday)",
+      "source": "fred",
+      "sourceRef": "WTREGEN",
+      "cadence": "weekly",
+      "asofRule": "vintage",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_vintage",
+      "unit": "USD mn",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 2593,
+      "firstAsof": "2008-12-18T23:59:59Z",
+      "lastAsof": "2026-10-15T23:59:59Z",
+      "builtAt": "2026-10-20T23:22:23Z"
+    },
+    {
+      "id": "fed_reserves",
+      "kind": "series",
+      "label": "Reserve balances (H.4.1, Wednesday)",
+      "source": "fred",
+      "sourceRef": "WRESBAL",
+      "cadence": "weekly",
+      "asofRule": "vintage",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_vintage",
+      "unit": "USD bn",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 4958,
+      "firstAsof": "2004-09-02T23:59:59Z",
+      "lastAsof": "2026-10-15T23:59:59Z",
+      "builtAt": "2026-10-20T23:22:24Z"
+    },
+    {
+      "id": "fed_swaplines",
+      "kind": "series",
+      "label": "Central bank liquidity swaps drawn (H.4.1, Wednesday): foreign dollar shortage",
+      "source": "fred",
+      "sourceRef": "SWPT",
+      "cadence": "weekly",
+      "asofRule": "vintage",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_vintage",
+      "unit": "USD mn",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 1244,
+      "firstAsof": "2010-02-04T23:59:59Z",
+      "lastAsof": "2026-10-15T23:59:59Z",
+      "builtAt": "2026-10-20T23:22:25Z"
+    },
+    {
+      "id": "fed_foreign_repo",
+      "kind": "series",
+      "label": "Foreign official reverse-repo pool (H.4.1)",
+      "source": "fred",
+      "sourceRef": "WLRRAFOIAL",
+      "cadence": "weekly",
+      "asofRule": "vintage",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_vintage",
+      "unit": "USD mn",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 1244,
+      "firstAsof": "2011-07-07T23:59:59Z",
+      "lastAsof": "2026-10-15T23:59:59Z",
+      "builtAt": "2026-10-20T23:22:25Z"
+    },
+    {
+      "id": "fed_custody_ust",
+      "kind": "series",
+      "label": "Foreign official custody holdings of Treasuries (H.4.1): reserve-manager selling",
+      "source": "fred",
+      "sourceRef": "WMTSECL1",
+      "cadence": "weekly",
+      "asofRule": "vintage",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_vintage",
+      "unit": "USD mn",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 1244,
+      "firstAsof": "2013-01-10T23:59:59Z",
+      "lastAsof": "2026-10-15T23:59:59Z",
+      "builtAt": "2026-10-20T23:22:26Z"
+    },
+    {
+      "id": "h8_bank_credit",
+      "kind": "series",
+      "label": "Bank credit, all commercial banks (H.8, SA)",
+      "source": "fred",
+      "sourceRef": "TOTBKCR",
+      "cadence": "weekly",
+      "asofRule": "vintage",
+      "revises": true,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_vintage",
+      "unit": "USD bn",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 120914,
+      "firstAsof": "2000-01-14T23:59:59Z",
+      "lastAsof": "2026-10-16T23:59:59Z",
+      "builtAt": "2026-10-20T23:25:05Z",
+      "yearly": true
+    },
+    {
+      "id": "h8_foreign_bank_credit",
+      "kind": "series",
+      "label": "Bank credit, foreign-related institutions in the US (H.8, SA)",
+      "source": "fred",
+      "sourceRef": "BC0FRIW027SBOG",
+      "cadence": "weekly",
+      "asofRule": "vintage",
+      "revises": true,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_vintage",
+      "unit": "USD bn",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 73679,
+      "firstAsof": "2012-08-17T23:59:59Z",
+      "lastAsof": "2026-10-16T23:59:59Z",
+      "builtAt": "2026-10-20T23:25:34Z",
+      "yearly": true
+    },
+    {
+      "id": "h8_net_due_foreign",
+      "kind": "series",
+      "label": "Net due to related foreign offices, foreign-related institutions (H.8, SA): dollars moved between US branches and head offices",
+      "source": "fred",
+      "sourceRef": "NDFFRIW027SBOG",
+      "cadence": "weekly",
+      "asofRule": "vintage",
+      "revises": true,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_vintage",
+      "unit": "USD bn",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 67405,
+      "firstAsof": "2012-08-17T23:59:59Z",
+      "lastAsof": "2026-10-16T23:59:59Z",
+      "builtAt": "2026-10-20T23:25:55Z",
+      "yearly": true
+    },
+    {
+      "id": "cp_outstanding",
+      "kind": "series",
+      "label": "Commercial paper outstanding (weekly)",
+      "source": "fred",
+      "sourceRef": "COMPOUT",
+      "cadence": "weekly",
+      "asofRule": "fixed_lag:2",
+      "revises": true,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_daily_lag",
+      "unit": "USD bn",
+      "group": "funding_archive",
+      "builtAt": "2026-10-20T23:23:48Z",
+      "note": "ALFRED vintages for COMPOUT pre-date their observation dates (555 rows), so a fixed 2-day publication lag is used instead.",
+      "status": "built",
+      "rows": 1346,
+      "firstAsof": "2001-01-05T00:00:00Z",
+      "lastAsof": "2026-10-16T00:00:00Z"
+    },
+    {
+      "id": "sofr",
+      "kind": "series",
+      "label": "SOFR",
+      "source": "fred",
+      "sourceRef": "SOFR",
+      "cadence": "daily",
+      "asofRule": "fixed_lag:2",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_daily_lag",
+      "unit": "%",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 2134,
+      "firstAsof": "2018-04-05T00:00:00Z",
+      "lastAsof": "2026-10-21T00:00:00Z",
+      "builtAt": "2026-10-20T23:22:44Z"
+    },
+    {
+      "id": "sofr_volume",
+      "kind": "series",
+      "label": "SOFR volume",
+      "source": "fred",
+      "sourceRef": "SOFRVOL",
+      "cadence": "daily",
+      "asofRule": "fixed_lag:2",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_daily_lag",
+      "unit": "USD bn",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 2134,
+      "firstAsof": "2018-04-05T00:00:00Z",
+      "lastAsof": "2026-10-21T00:00:00Z",
+      "builtAt": "2026-10-20T23:22:45Z"
+    },
+    {
+      "id": "effr",
+      "kind": "series",
+      "label": "Effective fed funds rate",
+      "source": "fred",
+      "sourceRef": "EFFR",
+      "cadence": "daily",
+      "asofRule": "fixed_lag:2",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_daily_lag",
+      "unit": "%",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 6602,
+      "firstAsof": "2000-07-05T00:00:00Z",
+      "lastAsof": "2026-10-21T00:00:00Z",
+      "builtAt": "2026-10-20T23:22:46Z"
+    },
+    {
+      "id": "obfr",
+      "kind": "series",
+      "label": "Overnight bank funding rate",
+      "source": "fred",
+      "sourceRef": "OBFR",
+      "cadence": "daily",
+      "asofRule": "fixed_lag:2",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_daily_lag",
+      "unit": "%",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 2672,
+      "firstAsof": "2016-03-03T00:00:00Z",
+      "lastAsof": "2026-10-21T00:00:00Z",
+      "builtAt": "2026-10-20T23:22:47Z"
+    },
+    {
+      "id": "iorb",
+      "kind": "series",
+      "label": "Interest on reserve balances",
+      "source": "fred",
+      "sourceRef": "IORB",
+      "cadence": "daily",
+      "asofRule": "fixed_lag:1",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_daily_lag",
+      "unit": "%",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 1911,
+      "firstAsof": "2021-07-30T00:00:00Z",
+      "lastAsof": "2026-10-22T00:00:00Z",
+      "builtAt": "2026-10-20T23:22:48Z"
+    },
+    {
+      "id": "rrp_on",
+      "kind": "series",
+      "label": "Fed overnight reverse repo take-up",
+      "source": "fred",
+      "sourceRef": "RRPONTSYD",
+      "cadence": "daily",
+      "asofRule": "fixed_lag:1",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_daily_lag",
+      "unit": "USD bn",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 3350,
+      "firstAsof": "2003-02-08T00:00:00Z",
+      "lastAsof": "2026-10-21T00:00:00Z",
+      "builtAt": "2026-10-20T23:22:49Z"
+    },
+    {
+      "id": "cp_fin_3m",
+      "kind": "series",
+      "label": "90-day AA financial commercial paper rate",
+      "source": "fred",
+      "sourceRef": "DCPF3M",
+      "cadence": "daily",
+      "asofRule": "fixed_lag:2",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_daily_lag",
+      "unit": "%",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 6002,
+      "firstAsof": "2000-01-05T00:00:00Z",
+      "lastAsof": "2026-10-18T00:00:00Z",
+      "builtAt": "2026-10-20T23:22:50Z"
+    },
+    {
+      "id": "move_index",
+      "kind": "series",
+      "label": "ICE BofA MOVE index (Treasury implied vol)",
+      "source": "yahoo",
+      "sourceRef": "^MOVE",
+      "cadence": "daily",
+      "asofRule": "close+1h",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "yahoo_daily",
+      "unit": "index",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 5899,
+      "firstAsof": "2002-11-12T22:00:00Z",
+      "lastAsof": "2026-09-21T22:00:00Z",
+      "builtAt": "2026-10-20T23:22:51Z",
+      "trap": "Yahoo ^MOVE stopped updating 2026-09-21 (last bar); check freshness before using recent rows."
+    },
+    {
+      "id": "tff_lev_share_ust2y",
+      "kind": "series",
+      "label": "Leveraged-fund net / OI, 2Y Treasury futures (TFF)",
+      "source": "cftc",
+      "sourceRef": "UST 2Y NOTE - CHICAGO BOARD OF TRADE",
+      "cadence": "weekly",
+      "asofRule": "report+3d",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "cftc_tff",
+      "unit": "share",
+      "group": "funding_archive",
+      "altRefs": [
+        "2-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE"
+      ],
+      "status": "built",
+      "rows": 1062,
+      "firstAsof": "2006-06-16T20:30:00Z",
+      "lastAsof": "2026-10-16T20:30:00Z",
+      "builtAt": "2026-10-20T23:23:52Z"
+    },
+    {
+      "id": "tff_lev_share_ust5y",
+      "kind": "series",
+      "label": "Leveraged-fund net / OI, 5Y Treasury futures (TFF)",
+      "source": "cftc",
+      "sourceRef": "UST 5Y NOTE - CHICAGO BOARD OF TRADE",
+      "cadence": "weekly",
+      "asofRule": "report+3d",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "cftc_tff",
+      "unit": "share",
+      "group": "funding_archive",
+      "altRefs": [
+        "5-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE"
+      ],
+      "status": "built",
+      "rows": 1062,
+      "firstAsof": "2006-06-16T20:30:00Z",
+      "lastAsof": "2026-10-16T20:30:00Z",
+      "builtAt": "2026-10-20T23:23:56Z"
+    },
+    {
+      "id": "tff_lev_share_ust10y",
+      "kind": "series",
+      "label": "Leveraged-fund net / OI, 10Y Treasury futures (TFF)",
+      "source": "cftc",
+      "sourceRef": "UST 10Y NOTE - CHICAGO BOARD OF TRADE",
+      "cadence": "weekly",
+      "asofRule": "report+3d",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "cftc_tff",
+      "unit": "share",
+      "group": "funding_archive",
+      "altRefs": [
+        "10-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE"
+      ],
+      "status": "built",
+      "rows": 1062,
+      "firstAsof": "2006-06-16T20:30:00Z",
+      "lastAsof": "2026-10-16T20:30:00Z",
+      "builtAt": "2026-10-20T23:24:00Z"
+    },
+    {
+      "id": "tff_lev_ust_notional",
+      "kind": "series",
+      "label": "Leveraged-fund net Treasury futures, 2Y+5Y+10Y+bond, $bn face (TFF): basis-trade size",
+      "source": "cftc",
+      "sourceRef": "2Y,5Y,10Y,bond",
+      "cadence": "weekly",
+      "asofRule": "report+3d",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "cftc_tff_notional",
+      "unit": "USD bn",
+      "group": "funding_archive",
+      "legs": [
+        {
+          "names": [
+            "UST 2Y NOTE - CHICAGO BOARD OF TRADE",
+            "2-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE"
+          ],
+          "face": 200000
+        },
+        {
+          "names": [
+            "UST 5Y NOTE - CHICAGO BOARD OF TRADE",
+            "5-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE"
+          ],
+          "face": 100000
+        },
+        {
+          "names": [
+            "UST 10Y NOTE - CHICAGO BOARD OF TRADE",
+            "10-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE"
+          ],
+          "face": 100000
+        },
+        {
+          "names": [
+            "UST BOND - CHICAGO BOARD OF TRADE",
+            "U.S. TREASURY BONDS - CHICAGO BOARD OF TRADE"
+          ],
+          "face": 100000
+        }
+      ],
+      "status": "built",
+      "rows": 1062,
+      "firstAsof": "2006-06-16T20:30:00Z",
+      "lastAsof": "2026-10-16T20:30:00Z",
+      "builtAt": "2026-10-20T23:24:24Z"
+    },
+    {
+      "id": "bis_usd_xb_g",
+      "kind": "series",
+      "label": "BIS cross-border USD bank credit, 4Q FX-adjusted growth",
+      "source": "bis",
+      "sourceRef": "Q.S+F.C.A.USD.A.5J.A.5A.A.5J.N",
+      "cadence": "quarterly",
+      "asofRule": "fixed_lag:182",
+      "revises": true,
+      "countries": [
+        "GLOBAL"
+      ],
+      "builder": "bis_lbs_growth",
+      "unit": "% y/y",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 190,
+      "firstAsof": "1979-07-01T00:00:00Z",
+      "lastAsof": "2026-09-29T00:00:00Z",
+      "builtAt": "2026-10-20T23:24:25Z"
+    },
+    {
+      "id": "bis_all_xb_g",
+      "kind": "series",
+      "label": "BIS cross-border bank credit, all currencies, 4Q FX-adjusted growth",
+      "source": "bis",
+      "sourceRef": "Q.S+F.C.A.TO1.A.5J.A.5A.A.5J.N",
+      "cadence": "quarterly",
+      "asofRule": "fixed_lag:182",
+      "revises": true,
+      "countries": [
+        "GLOBAL"
+      ],
+      "builder": "bis_lbs_growth",
+      "unit": "% y/y",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 190,
+      "firstAsof": "1979-07-01T00:00:00Z",
+      "lastAsof": "2026-09-29T00:00:00Z",
+      "builtAt": "2026-10-20T23:24:25Z"
+    },
+    {
+      "id": "bis_nbfi_g",
+      "kind": "series",
+      "label": "BIS cross-border credit to non-bank financials, 4Q growth",
+      "source": "bis",
+      "sourceRef": "Q.S+F.C.A.TO1.A.5J.A.5A.F.5J.N",
+      "cadence": "quarterly",
+      "asofRule": "fixed_lag:182",
+      "revises": true,
+      "countries": [
+        "GLOBAL"
+      ],
+      "builder": "bis_lbs_growth",
+      "unit": "% y/y",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 46,
+      "firstAsof": "2015-07-01T00:00:00Z",
+      "lastAsof": "2026-09-29T00:00:00Z",
+      "builtAt": "2026-10-20T23:24:25Z"
+    },
+    {
+      "id": "bis_cayman_usd_g",
+      "kind": "series",
+      "label": "BIS cross-border USD claims on Cayman, 4Q growth",
+      "source": "bis",
+      "sourceRef": "Q.S+F.C.A.USD.A.5J.A.5A.A.KY.N",
+      "cadence": "quarterly",
+      "asofRule": "fixed_lag:182",
+      "revises": true,
+      "countries": [
+        "KY"
+      ],
+      "builder": "bis_lbs_growth",
+      "unit": "% y/y",
+      "group": "funding_archive",
+      "status": "built",
+      "rows": 190,
+      "firstAsof": "1979-07-01T00:00:00Z",
+      "lastAsof": "2026-09-29T00:00:00Z",
+      "builtAt": "2026-10-20T23:24:25Z"
+    },
+    {
+      "id": "bis_yen_offshore_g",
+      "kind": "series",
+      "label": "BIS yen lent outside Japan, 4Q growth",
+      "source": "bis",
+      "sourceRef": "Q.S+F.C.A.JPY.A.5J.A.5A.A.5J+JP.N",
+      "cadence": "quarterly",
+      "asofRule": "fixed_lag:182",
+      "revises": true,
+      "countries": [
+        "JP"
+      ],
+      "builder": "bis_lbs_growth",
+      "unit": "% y/y",
+      "group": "funding_archive",
+      "mainCp": "5J",
+      "minus": "JP",
+      "status": "built",
+      "rows": 190,
+      "firstAsof": "1979-07-01T00:00:00Z",
+      "lastAsof": "2026-09-29T00:00:00Z",
+      "builtAt": "2026-10-20T23:24:26Z"
     }
   ]
 }
