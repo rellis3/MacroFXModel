@@ -46,9 +46,13 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    ai_cron_cooldowns  acceptable to lose on redeploy (first alert re-fires once)
 //    ohlc_*, ohlc5m_*, ohlc30m_*, quote_*, compass_*, fredhistory_*  ephemeral caches
 //    surprise_index, events_*  re-fetched from Finnhub on next page load
+// ADDING A KEY HERE? Also (1) _worker.js PERMANENT_KEYS, and (2) describe it in js/storeRegistry.js (record / log /
+// state / config / secret, with a cadence). js/storeRegistry.test.mjs fails the build if (2) is missed, which is
+// how the 🗄 Data Map learns when each store was last written.
 const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
-  'cog_legs_live_v1',       // chart page legs: the laptop's latest IBKR 5-minute bars per futures contract, pushed by scripts/rates_line/refresh_leg_bars.py
+  'kv_write_times_v1',      // the write-time ledger the Data Map reads (js/storeRegistry.js); see _noteWrite above. Also in _worker.js PERMANENT_KEYS.
+  'cog_legs_live_v1',      // chart page legs: the laptop's latest IBKR 5-minute bars per futures contract, pushed by scripts/rates_line/refresh_leg_bars.py
   'cog_line_live_v1',       // C.OG rate-spread line: the laptop's latest IBKR bars, pushed by scripts/rates_line/refresh_cog_line.py (IBKR cannot be reached
                              // from Railway). Merged over analysis/output/cog_line/cog_line_15m.json by /api/cog-line. Must also be in _worker.js isAllowedKVKey + PERMANENT_KEYS.
   'zq_path_v1',            // fed funds futures rungs, pushed nightly from the owner's TWS. Durable because
@@ -698,9 +702,42 @@ export async function getStrict(key) {
   return store[key] ?? null;
 }
 
+// ── Write-time ledger ─────────────────────────────────────────────────────────
+// WHY: the health monitor judged records by run counts and by a stamp INSIDE each value, and a job whose tick
+// swallowed its own error kept both looking healthy while it wrote nothing (the paper record, 12-16 Oct 2026).
+// The one signal that cannot lie is the time a durable key was last WRITTEN. Every successful durable put is
+// noted in memory (free) and flushed as ONE small key at most every 30 minutes (~48 CF writes a day), so the
+// Data Map (js/storeRegistry.js) reads one tiny value instead of ~95 multi-megabyte stores.
+const WT_KEY = 'kv_write_times_v1';
+const WT_FLUSH_MS = 30 * 60_000;
+let _wt = {}, _wtLoaded = false, _wtDirty = false, _wtTimer = null;
+function _noteWrite(key) {
+  if (key === WT_KEY || key.startsWith('kv_probe_')) return;
+  _wt[key] = Date.now(); _wtDirty = true;
+  if (!_wtTimer) { _wtTimer = setTimeout(() => { _wtTimer = null; flushWriteTimes().catch(() => {}); }, WT_FLUSH_MS); _wtTimer.unref?.(); }
+}
+export async function writeTimes() {
+  if (!_wtLoaded) {
+    _wtLoaded = true;
+    try { const raw = await get(WT_KEY); const stored = raw ? JSON.parse(raw) : {}; _wt = { ...stored, ..._wt }; }
+    catch { _wtLoaded = false; }   // unreadable: try again next call, never overwrite blind
+  }
+  return { ..._wt };
+}
+/** Fold times in from elsewhere (the one-off seed from stamps inside the values). Existing, newer times win. */
+export function seedWriteTimes(times = {}) {
+  for (const [k, ms] of Object.entries(times)) if (Number.isFinite(ms) && !(_wt[k] >= ms)) { _wt[k] = ms; _wtDirty = true; }
+}
+export async function flushWriteTimes() {
+  if (!_wtDirty || !USE_CF) return;
+  await writeTimes();                  // merge what is stored first, so a restart never drops older keys
+  _wtDirty = false;
+  try { await cfPut(WT_KEY, JSON.stringify(_wt)); } catch (e) { _wtDirty = true; console.error('[KV] write-time flush failed:', e.message); }
+}
+
 export async function put(key, value, opts = {}) {
   if (USE_CF && isCfKey(key)) {
-    try   { await cfPut(key, value, opts); return; }
+    try   { await cfPut(key, value, opts); _noteWrite(key); return; }
     catch (e) { console.error(`[KV] CF put failed (${key}):`, e.message); }
   }
   store[key] = value;

@@ -561,7 +561,8 @@ for (const [sig, code] of [['SIGTERM', 143], ['SIGINT', 130]]) {
     _svcShuttingDown = true;
     console.log(`[service-stats] ${sig} — flushing before exit`);
     const bail = setTimeout(() => process.exit(code), 4_000);
-    svcStatsFlush(sig).finally(() => { clearTimeout(bail); process.exit(code); });
+    // also the KV write-time ledger the Data Map reads: with redeploys every few minutes its 30-min timer never fires
+    Promise.allSettled([svcStatsFlush(sig), kv.flushWriteTimes()]).finally(() => { clearTimeout(bail); process.exit(code); });
   });
 }
 
@@ -15283,6 +15284,7 @@ app.get('/api/fed-path', async (_req, res) => {
 // staleness here has never been a missing flag -- /api/cvol knew EVZ was 570 days dead and
 // the brief narrated it anyway -- it is a flag nobody was looking at. One place to look.
 let _dataHealthCache = { at: 0, data: null };
+let _storeSeedDone = false;
 const _BOOTED_AT = Date.now();
 async function _buildDataHealth() {
   const srcs = [];
@@ -15406,11 +15408,27 @@ async function _buildDataHealth() {
   // KV-backed feeds: the stamp the writing job left inside the value (js/dataCatalogueCore
   // stampOf). A shape it does not recognise stays `unknown` with no refresh interval, which
   // the map shows as "not tracked" -- never a guessed age.
+  // Stores described in js/storeRegistry.js are judged by the time they were last WRITTEN (kv.js write-time ledger),
+  // not by a stamp inside the value: a job that swallows its own error leaves old stamps looking fine and writes
+  // nothing. Keys the ledger has not seen yet are seeded ONCE from the stamp inside their value (one read each),
+  // after which nothing large is read for health again.
+  const wt = await kv.writeTimes();
+  if (!_storeSeedDone) {
+    _storeSeedDone = true;
+    const seed = {};
+    for (const f of _DATA_FEEDS) {
+      if (!f.id.startsWith('store:') || wt[f.kvStamp.key]) continue;
+      try { const raw = await kv.get(f.kvStamp.key); const st = raw ? _dcStampOf(typeof raw === 'string' ? JSON.parse(raw) : raw) : null; if (st && Number.isFinite(Date.parse(st))) seed[f.kvStamp.key] = Date.parse(st); } catch { /* unseeded: shows 'not seen' */ }
+    }
+    kv.seedWriteTimes(seed); Object.assign(wt, seed);
+    kv.flushWriteTimes().catch(() => {});
+  }
   for (const f of _DATA_FEEDS) {
     if (!f.kvStamp) continue;
     const { key, cadenceDays = 1, market = true } = f.kvStamp;
     let last = null;
-    try { const raw = await kv.get(key); if (raw) last = _dcStampOf(typeof raw === 'string' ? JSON.parse(raw) : raw); } catch {}
+    if (f.id.startsWith('store:')) last = wt[key] ? new Date(wt[key]).toISOString() : null;
+    else try { const raw = await kv.get(key); if (raw) last = _dcStampOf(typeof raw === 'string' ? JSON.parse(raw) : raw); } catch {}
     srcs.push({ id: `kv:${key}`, label: `${f.name} (KV ${key})`, last, cadenceDays, market });
   }
 

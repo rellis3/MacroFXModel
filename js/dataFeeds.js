@@ -32,6 +32,7 @@
 //   kind        'file' for a committed file / offline export (no schedule to check)
 //
 // Pure data. No fetch, no DOM.
+import { storeFeeds } from './storeRegistry.js';
 
 export const FEED_CATEGORIES = [
   { id: 'prices',      label: 'Market prices',          colour: '#10b981', blurb: 'the tape everything else is measured against' },
@@ -41,6 +42,7 @@ export const FEED_CATEGORIES = [
   { id: 'positioning', label: 'Positioning & sentiment', colour: '#f59e0b', blurb: 'who is long, what central banks said' },
   { id: 'crossasset',  label: 'Cross-asset',            colour: '#f472b6', blurb: 'equities, credit, commodities, correlations' },
   { id: 'desk',        label: 'Desk outputs',           colour: '#94a3b8', blurb: 'the desk’s own written reads and bot logs' },
+  { id: 'records',     label: 'Records & stores',       colour: '#22d3ee', blurb: 'every permanent KV store: when it was last written (the paper record died for 4 days unnoticed)' },
   { id: 'files',       label: 'Files & research pulls', colour: '#64748b', blurb: 'static exports, backfills, on-demand research fetches' },
 ];
 
@@ -56,7 +58,7 @@ export const IGNORE_HOSTS = [
   'drive.usercontent.google.com', 'google.com', 'googleapis.com',   // one-off M1 archive download in a backtest engine
 ];
 
-export const FEEDS = [
+const HAND_FEEDS = [
   // ── Market prices ────────────────────────────────────────────────────────
   { id: 'oanda_candles', name: 'OANDA candles & quotes', provider: 'OANDA v3', category: 'prices',
     purpose: 'The price tape: every forecast band, range-used gauge, level and backtest is computed on these bars.',
@@ -330,3 +332,7 @@ export const FEEDS = [
     endpoints: ['/api/global-liquidity/backtest/run', '/api/liquidity-analysis/net-liquidity-nq/run', '/api/liquidity-gate/live', '/api/liquidity-gate/backtest', '/api/macro-equity-backtest/run', '/api/fx-carry', '/api/multi-factor/run', '/api/credit-leadlag/run', '/api/diversification/data', '/api/nasdaq-macro-lead/summary'],
     series: ['netLiquidity', 'liquidityGate', 'yieldSpread', 'carry', 'creditStress'] },
 ];
+
+// Every permanent store (js/storeRegistry.js) that has no hand-written feed above: one generated row each, so the
+// Data Map lists them all and the build fails (js/storeRegistry.test.mjs) if a new one is not described.
+export const FEEDS = [...HAND_FEEDS, ...storeFeeds(new Set(HAND_FEEDS.map(f => f.kvStamp?.key).filter(Boolean)))];
