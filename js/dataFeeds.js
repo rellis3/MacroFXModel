@@ -197,6 +197,11 @@ const HAND_FEEDS = [
     details: 'data_gpr_daily_recent.xls (needs the optional xlsx package).',
     refresh: 'Release poller, due after 8 days. KV persists.', store: 'KV gpr_v1',
     endpoints: ['/api/gpr'], kvStamp: { key: 'gpr_v1', cadenceDays: 8, market: false }, hosts: ['matteoiacoviello.com'] },
+  { id: 'bank_credit', name: 'Cross-border bank credit (BIS)', provider: 'BIS Locational Banking Statistics', category: 'macro',
+    purpose: 'The bank-lending leg of the money chain: cross-border credit growth by currency, non-bank borrowers, Cayman USD, yen lent outside Japan. Regime context only (bank-credit-dollar-*).',
+    details: '4 keyless SDMX CSV requests (js/bankCredit.js). Quarterly, ~4 months after quarter end; back quarters revise.',
+    refresh: 'Server job bankCredit every 12 h; the date each quarter is first seen is kept (point-in-time).', store: 'KV bank_credit_v1',
+    endpoints: ['/api/bank-credit'], hosts: ['stats.bis.org'] },
 
   // ── Volatility & options ─────────────────────────────────────────────────
   { id: 'cme_oi_iv', name: 'CME settles capture (OI + IV term structure)', provider: 'CME QuikStrike', category: 'vol',

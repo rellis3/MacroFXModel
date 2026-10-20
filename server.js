@@ -15524,6 +15524,9 @@ async function _buildDataHealth() {
   } catch { push('drill', 'Drill bundle (71 series)', null, 1, { refreshEveryH: 24 }); }
 
   push('crack', 'Crude & crack (FRED)', _crack.data?.last?.date ?? null, 1, { refreshEveryH: 6 });
+  // bank credit: judged on the DATA date (quarter end), quarterly with a ~4-month publication lag, so ~7 months is normal
+  try { const q = _bcLast.snap?.latest; const qe = q ? `${q.slice(0, 4)}-${['03-31', '06-30', '09-30', '12-31'][+q.slice(6) - 1]}` : null; push('bankCredit', 'Bank credit (BIS LBS)', qe, 230, { market: false, refreshEveryH: 12 }); }
+  catch { push('bankCredit', 'Bank credit (BIS LBS)', null, 230, { market: false, refreshEveryH: 12 }); }
   try { const k = _rates.series ? Object.keys(_rates.series)[0] : null; push('rates', 'Rates complex (FRED)', k ? lastOf(_rates.series[k]) : null, 1, { refreshEveryH: 6 }); } catch { push('rates', 'Rates complex (FRED)', null, 1, { refreshEveryH: 6 }); }
   try { const k = _chapters.data?.series ? Object.keys(_chapters.data.series)[0] : null; push('chapters', 'Chapter series (FRED)', k ? lastOf(_chapters.data.series[k]) : null, 1, { refreshEveryH: 24 }); } catch { push('chapters', 'Chapter series (FRED)', null, 1, { refreshEveryH: 24 }); }
   push('nowcast', 'Nowcasts (Cleveland/GDPNow)', _nowcast.at || null, 7, { market: false, refreshEveryH: 24 });
