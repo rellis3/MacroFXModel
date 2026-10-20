@@ -84,7 +84,7 @@ def case1_flat(shift=0, cache={}):
     F['dx'], F['dp'] = dx, dp
     F['slot'] = sl
     g = pd.DataFrame({'d': di, 'xy': dx * dp, 'xx': dx * dx, 'yy': dp * dp}).dropna().groupby('d').sum()
-    g = g.reindex(np.arange(len(days)))
+    g = g.reindex(np.unique(di))      # session index (A2: windows count sessions, not calendar days)
     def rc(w):
         r = g.rolling(w, min_periods=max(3, w // 2)).sum()
         return (r['xy'] / np.sqrt(r['xx'] * r['yy'])).shift(1)
@@ -93,9 +93,9 @@ def case1_flat(shift=0, cache={}):
     F['strong_thr'] = sc.abs().expanding(min_periods=10).median().shift(1).reindex(di).to_numpy()
     cpa = cp * np.sign(sc)
     F['coup_tile'] = np.ceil(cpa.rolling(120, min_periods=40).rank(pct=True) * 3).reindex(di).to_numpy()
-    dm = pd.Series(x).groupby(di).mean().reindex(np.arange(len(days)))
+    dm = pd.Series(x).groupby(di).mean()
     F['tmean'] = dm.rolling(20, min_periods=10).mean().shift(1).reindex(di).to_numpy()
-    s16 = pd.Series(F['sig'][16]).groupby(di).first().reindex(np.arange(len(days)))
+    s16 = pd.Series(F['sig'][16]).groupby(di).first()
     F['vol_tile'] = np.ceil(s16.rolling(120, min_periods=40).rank(pct=True) * 3).reindex(di).to_numpy()
     # release tag: Major USD/EUR event in (T - 1h, T + 4h]
     Ti = F['T']; mj = CAL['major']
@@ -452,15 +452,16 @@ def run_case(case):
     R['selection'] = dict(real_sign_p=real_sel, placebo_mean=float(np.mean(sel_counts)), placebo_p95=float(np.percentile(sel_counts, 95)), placebo_counts=[int(c) for c in sel_counts])
     finals = []
     prim = dict(series=prim_se, k=0.75, sign='adaptive', conf='C0', type='all', h=ph)
-    cand = [prim] + ([dict(zip(keycols, (r[c] for c in keycols))) for _, r in surv[surv.val_pass].iterrows()] if len(surv) else [])
+    prim_m = dict(prim, mirror=True)
+    cand = [prim, prim_m] + ([dict(zip(keycols, (r[c] for c in keycols))) for _, r in surv[surv.val_pass].iterrows()] if len(surv) else [])
     for cd in cand:
         kk = tuple(cd[c] for c in keycols)
         f = fin.loc[kk]; v = val.loc[kk]; dd = cells.set_index(keycols + ['period']).loc[kk + ('discover',)]
-        sgn = 1.0 if cd is prim else float(np.sign(dd['mean']))
+        sgn = 1.0 if cd is prim else (-1.0 if cd is prim_m else float(np.sign(dd['mean'])))
         f_ok = bool(np.sign(f['mean']) == sgn and p1(sgn * f['t']) < 0.05 and abs(f['mean']) >= 0.10)
         a_ok = bool(np.isfinite(f['diff_t']) and sgn * f['diff_t'] > 1.96)
         b_ok = bool((f['mean'] > f['plc_p95']) if sgn > 0 else (f['mean'] < f['plc_p05']))
-        finals.append(dict(cd, is_primary=cd is prim, sign_expected=sgn, **{f'{per}_{m}': float(cells.set_index(keycols + ['period']).loc[kk + (per,)][m]) for per in PERIODS for m in ('mean', 't', 'n', 'p_follow', 'p_revert', 'ctrl_mean', 'diff', 'diff_t', 'plc_p05', 'plc_p95')},
+        finals.append(dict(cd, is_primary=(cd is prim or cd is prim_m), sign_expected=sgn, **{f'{per}_{m}': float(cells.set_index(keycols + ['period']).loc[kk + (per,)][m]) for per in PERIODS for m in ('mean', 't', 'n', 'p_follow', 'p_revert', 'ctrl_mean', 'diff', 'diff_t', 'plc_p05', 'plc_p95')},
                            final_pass=f_ok, ctrl_a_pass=a_ok, placebo_pass=b_ok))
     R['finals'] = finals
     R['survivors'] = surv.to_dict('records') if len(surv) else []

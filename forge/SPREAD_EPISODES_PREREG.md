@@ -262,6 +262,18 @@ Discover and Validate. This can only demote. Nothing else in the design changed:
 cells are as registered. The smoke run's grid output (0 Discover-BH cells in both cases) was seen, and nothing in the
 grid or gates was altered after it.
 
+### A2 — 2026-10-20 — POST-HOC (smoke run seen; implementation fix to match the registered text)
+
+**The bug.** In the Case 1 code, the trailing windows for the adaptive sign (20), the coupling (5), the spread mean
+(20) and the volatility-tercile rank (120) were counted in **calendar days**, weekends included. The text above says
+**sessions**. That made the windows about 30% shorter than registered. It is not lookahead: every window still ended
+at the previous day.
+
+**The fix.** All four windows now count sessions, as registered. The registered rule that the primary mirror (mean
+y < 0, i.e. revert) is scored and reported is now implemented as a separate row in `finals`. The 2-draw smoke run used
+the calendar-day windows, and its grid output was seen (0 Discover-BH cells in both cases). Case 2 was row-based
+throughout and is unaffected. No threshold, cell, gate or period changed.
+
 ## RESULTS
 
 See `analysis/output/spread-episodes/RESULTS.md`.
