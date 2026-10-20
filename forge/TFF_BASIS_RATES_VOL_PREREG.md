@@ -69,3 +69,8 @@ It runs anyway. This is the best data that exists for the question, and it is st
 
 - **VALIDATED** → ledger entry (research-only). The Desk Watch `basis-trade-record` trigger cites it with its effect size, and the stop-risk and vol pages can show "basis trade large: Treasury vol historically above persistence". A forward record from funding_read_v1. No sizing until |t| ≥ 3.
 - **NULL / UNDERPOWERED** → ledger entry. The trigger and funding block keep their description wording.
+
+## Amendments
+
+### A1 — 2026-10-21 — POST-HOC (results seen)
+Describe only. The signal needs 170 weekly TFF rows (156-week window + 13-week change) and TFF starts 2006-06, so the first usable week is 2009-09-11, not 2007-06: 881 weeks instead of about 990, MDE about 0.21 instead of 0.19. Nothing else changed.

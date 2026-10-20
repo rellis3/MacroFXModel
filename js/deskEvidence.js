@@ -1230,6 +1230,30 @@ export const DESK_EVIDENCE = [
     use: 'Do not say "rates are pricing risk equities are not, so expect Nasdaq vol" - untestable on 10 years of daily data and pointing the other way. The mirror is a candidate only.',
     instruments: ['NQ'],
   },
+  {
+    id: 'fx-dollar-funding-exposure-hit', domain: 'macro', verdict: 'null', date: '2026-10-21', doc: 'forge/FX_DOLLAR_FUNDING_EXPOSURE_PREREG.md', also: ['analysis/output/fx-dollar-funding-exposure/RESULTS.md'],
+    claim: 'In risk-off weeks (top 20% of weekly VIX rises), currencies whose countries borrow a larger share of their cross-border bank debt in US dollars (BIS LBS, known two quarters later) fall harder against USD than in other weeks (dollar-funding / original-sin channel)',
+    result: '20 currencies (euro area as one), 1,177 weeks 2004-2026, 236 risk-off weeks, week-block bootstrap (seed 20261021): IC difference -0.005 [-0.053, +0.045], inside the label placebo [-0.046, +0.048], halves -0.014 / +0.007, six currencies flip it. Interval inside the 0.10 bar. Descriptive: in broad dollar-up weeks high-USD-share currencies did BETTER (+0.20) because the share mostly tags managed low-vol Asian currencies.',
+    use: 'The USD share of foreign borrowing does not rank which currencies get hit in risk-off. Never shown as a risk-off ranking. A retest needs exposure scaled by GDP/reserves and a control for each currency\'s own dollar beta.',
+  },
+  {
+    id: 'fx-dollar-funding-exposure-follow', domain: 'macro', verdict: 'null', date: '2026-10-21', doc: 'forge/FX_DOLLAR_FUNDING_EXPOSURE_PREREG.md', also: ['analysis/output/fx-dollar-funding-exposure/RESULTS.md'],
+    claim: 'After a risk-off week, currencies with a higher USD share of cross-border borrowing keep underperforming against USD the following week',
+    result: '4,673 currency-weeks after 236 risk-off weeks: IC -0.002 [-0.038, +0.040], inside the label placebo [-0.044, +0.034]; halves -0.001 / -0.004. Interval inside the 0.10 bar.',
+    use: 'No follow-through to trade after a risk-off week on funding composition.',
+  },
+  {
+    id: 'tff-basis-rates-vol-level', domain: 'volatility', verdict: 'underpowered', date: '2026-10-21', doc: 'forge/TFF_BASIS_RATES_VOL_PREREG.md', also: ['analysis/output/tff-basis-rates-vol/RESULTS.md'],
+    claim: 'When leveraged funds\' net Treasury futures short (CFTC TFF 2Y+5Y+10Y+bond, the basis trade) is large versus its trailing 3 years, the next 20 trading days of 10-year Treasury vol run above what the previous 20 days predict',
+    result: '881 Fridays 2009-09 to 2026-07, point-in-time from the feature store, week-block bootstrap (seed 20261021): partial r -0.037 [-0.145, +0.073], wrong sign, inside the shift placebo [-0.158, +0.198]. 2020 +0.48 but 2025 -0.24. MDE about 0.21 vs a 0.10 bar.',
+    use: 'The basis-trade size is shown as a description of leverage. It is not a Treasury-vol forecast.',
+  },
+  {
+    id: 'tff-basis-rates-vol-build', domain: 'volatility', verdict: 'underpowered', date: '2026-10-21', doc: 'forge/TFF_BASIS_RATES_VOL_PREREG.md', also: ['analysis/output/tff-basis-rates-vol/RESULTS.md'],
+    claim: 'When leveraged funds\' net Treasury futures short has been growing over 13 weeks, the next 20 trading days of 10-year Treasury vol run above persistence',
+    result: '881 Fridays: partial r +0.062 [-0.050, +0.180], halves +0.012 / +0.092, inside the shift placebo [-0.142, +0.134], Holm p 0.58. Largest 5-day move +0.06, MOVE +0.08 (descriptive). MDE about 0.21.',
+    use: 'Same as tff-basis-rates-vol-level: description only. With nbfi-rates-vol this closes position-based leverage as a rates-vol predictor at these horizons.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1338,6 +1362,10 @@ const POWER = {
   'nbfi-rates-vol':            { n: '188 quarters 1979-2026', note: 'MDE r about 0.20 vs 0.15 bar; CI [-0.00, +0.26]' },
   'yen-funding-squeeze-usdjpy': { n: '118 quarters', note: 'MDE r 0.28 vs 0.15 bar' },
   'yen-funding-squeeze-audjpy': { n: '89 quarters', note: 'MDE r 0.33 vs 0.15 bar' },
+  'fx-dollar-funding-exposure-hit':    { n: '236 risk-off weeks of 1,177, 20 currencies (week clusters)', note: 'CI [-0.053, +0.045] inside the 0.10 bar' },
+  'fx-dollar-funding-exposure-follow': { n: '236 post-risk-off weeks, 4,673 currency-weeks', note: 'CI [-0.038, +0.040] inside the 0.10 bar' },
+  'tff-basis-rates-vol-level':         { n: '881 weeks, ~220 independent 4-week windows', note: 'MDE r about 0.21 vs 0.10 bar' },
+  'tff-basis-rates-vol-build':         { n: '881 weeks, ~220 independent 4-week windows', note: 'MDE r about 0.21 vs 0.10 bar' },
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
 };
