@@ -42,6 +42,7 @@ export const STORES = {
   econ_surprise_v1: R('Economic surprise store', 1),
   cog_legs_live_v1: R('COG rate-legs live', 1),
   cog_line_live_v1: R('COG line live', 1),
+  spread_episodes_v1: L('Spread-turn episodes forward record', 5),
   zq_path_v1: R('Fed-funds path (ZQ)', 1),
   mpt_store_v1: R('MPT store', 3, { market: false }),
   spread_profile_v1: R('Spread profile', 3, { market: false }),

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spread-turn episodes</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--amber:#d29922;--red:#f85149;
+        --s1:#3987e5;--s2:#d95926;--s3:#199e70;--band:rgba(157,167,179,.22);--grid:#21262d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--s1);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2)}
+  .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.bad{color:var(--red);border-color:var(--red)} .chip.ok{color:var(--s3);border-color:var(--s3)}
+  .btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .btn:hover{color:var(--text);border-color:#4d5560} .btn.on{background:#22304d;color:#fff;border-color:var(--s1)}
+  .wrap{max-width:1500px;margin:0 auto;padding:12px 16px 40px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .box h3{font-size:13px;margin:10px 0 6px}
+  .verdicts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:900px){.verdicts,.live{grid-template-columns:1fr !important}}
+  .verdict p{margin:4px 0;color:var(--text2)} .verdict p b{color:var(--text)}
+  .vw{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:5px;border:1px solid var(--border);margin-right:6px}
+  .live{display:grid;grid-template-columns:1fr 330px;gap:12px;align-items:start}
+  .charts{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .cpane{background:var(--card);border:1px solid var(--border);border-radius:8px;min-width:0}
+  .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12px} .kv span:nth-child(odd){color:var(--text3)} .kv b{font-variant-numeric:tabular-nums}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
+  th,td{padding:3px 6px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap} th{color:var(--text3);font-weight:600;position:sticky;top:0;background:var(--card)}
+  td:first-child,th:first-child{text-align:left}
+  .tscroll{overflow:auto;max-height:420px} .xscroll{overflow-x:auto;max-width:100%}
+  html,body{overflow-x:hidden}
+  .pos{color:var(--s3)} .neg{color:var(--s2)} .mut{color:var(--text3)}
+  .note{font-size:11.5px;color:var(--text3);line-height:1.6;max-width:120ch} .note b{color:var(--text2)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text2);margin:4px 0}
+  .legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+  .legend i.band{height:10px;background:var(--band)} .legend i.dot{width:8px;height:8px;border-radius:50%}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media (max-width:1000px){.grid2{grid-template-columns:1fr}}
+  svg text{font:10.5px -apple-system,'Segoe UI',Roboto,sans-serif;fill:var(--text3)}
+  .tip{position:fixed;pointer-events:none;background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:11.5px;color:var(--text);z-index:100;display:none;white-space:nowrap}
+  .tabs{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <a href="today.html">&larr; Today</a>
+  <h1>Spread-turn episodes</h1>
+  <span class="chip" id="chip1">Case 1: loading</span>
+  <span class="chip" id="chip2">Case 2: loading</span>
+  <span class="spacer"></span>
+  <a class="btn" href="cog-chart.html" target="_blank">Rate legs chart</a>
+</div>
+<div class="wrap">
+
+  <div class="box">
+    <h2>What was tested</h2>
+    <p class="note">Two separate studies, pre-registered (<b>forge/SPREAD_EPISODES_PREREG.md</b>) before any outcome was computed. <b>Case 1:</b> SOFR Sep26 rate − Euribor Mar27 rate (bp, 15-min) against NAS100. <b>Case 2:</b> the average of the US 2Y and 10Y yields (daily) against EURUSD. A spread <b>turn</b> is the bar of its running extreme; it is <b>confirmed</b> when the spread has moved back by k × its trailing volatility. Everything is measured from the confirmation, using only data available at that time. "Follow" means price moved the way the trailing same-bar link says it should (≥ 0.5σ), "revert" the opposite way (≤ −0.5σ). Split: discover → validate → final period, opened once. Controls: matched random bars, the same spread shifted by random days, and a price-only model.</p>
+  </div>
+
+  <div class="verdicts" id="verdicts"></div>
+
+  <div class="box">
+    <h2>Live monitor</h2>
+    <div class="tabs" id="liveTabs">
+      <button class="btn on" data-case="case1">Case 1 · SOFR−Euribor vs NAS100 (15m)</button>
+      <button class="btn" data-case="case2">Case 2 · US 2Y/10Y vs EURUSD (daily)</button>
+      <span class="spacer"></span>
+      <label class="note">Range <select id="days"></select></label>
+      <button class="btn" id="btnHist" title="Load the research window (2024-04 → 2026-08 for Case 1, 1999 → 2026-08 for Case 2) with every scored turn">Research history</button>
+    </div>
+    <div class="live">
+      <div class="charts">
+        <div class="cpane" id="cPrice" style="height:330px"></div>
+        <div class="cpane" id="cSpread" style="height:230px"></div>
+        <div class="legend"><span><i class="dot" style="background:var(--s3)"></i>price followed (primary horizon)</span><span><i class="dot" style="background:var(--s2)"></i>price reverted</span><span><i class="dot" style="background:var(--text3)"></i>nothing</span><span><i class="dot" style="background:var(--s1)"></i>pending</span><span>○ turn · ▲▼ confirmation (marker on the spread; the same time on price)</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="box" style="background:var(--card2)"><h2>Right now</h2><div class="kv" id="nowKv"></div></div>
+        <div class="box" style="background:var(--card2)"><h2>Last alert</h2><div class="note" id="lastAlert">—</div></div>
+      </div>
+    </div>
+    <h3>Confirmed turns in view <span class="note" id="evNote"></span></h3>
+    <div class="tscroll" style="max-height:300px"><table id="evTable"></table></div>
+    <h3>Forward record (every confirmed turn since 2026-10-20)</h3>
+    <div class="note" id="fwdNote"></div>
+    <div class="tscroll" style="max-height:260px"><table id="fwdTable"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>Results</h2>
+    <div class="tabs" id="resTabs">
+      <button class="btn on" data-case="case1">Case 1 · SOFR−Euribor vs NAS100</button>
+      <button class="btn" data-case="case2">Case 2 · US 2Y/10Y vs EURUSD</button>
+      <span class="spacer"></span>
+      <label class="note">Period <select id="per"><option value="discover">discover</option><option value="validate">validate</option><option value="final" selected>final</option></select></label>
+    </div>
+    <div id="res"></div>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmt = (v, d = 2) => v == null || !isFinite(v) ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(d);
+const pc = v => v == null || !isFinite(v) ? '—' : (100 * v).toFixed(0) + '%';
+const num = (v, d = 0) => v == null || !isFinite(v) ? '—' : Number(v).toFixed(d);
+const cls = (v, t) => t != null && Math.abs(t) >= 1.96 ? (v > 0 ? 'pos' : 'neg') : 'mut';
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const tip = $('#tip');
+function showTip(e, html) { tip.innerHTML = html; tip.style.display = 'block'; const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + 'px'; tip.style.top = (e.clientY + 14) + 'px'; }
+function hideTip() { tip.style.display = 'none'; }
+
+const CASES = {
+  case1: { label: 'SOFR Sep26 − Euribor Mar27 vs NAS100', H: ['1h', '4h', '8h', '24h'], primH: '4h', unit: 'bp', hmaxLabel: 'bars of 15 min', days: [[5, '5 days'], [20, '20 days'], [60, '60 days'], [190, '190 days']], defDays: 20 },
+  case2: { label: 'US (2Y+10Y)/2 vs EURUSD', H: ['1d', '3d', '5d', '10d', '20d'], primH: '5d', unit: '%', hmaxLabel: 'days', days: [[250, '1 year'], [750, '3 years'], [2000, '8 years']], defDays: 750 },
+};
+let RES = null, LIVE = {}, curLive = 'case1', curRes = 'case1', histMode = false, HIST = {};
+
+// ───────────────────────── verdicts ─────────────────────────
+function renderVerdicts() {
+  const S = RES?.summary;
+  $('#verdicts').innerHTML = ['case1', 'case2'].map(c => {
+    const s = S?.[c];
+    if (!s) return `<div class="box verdict"><h2>${CASES[c].label}</h2><p class="note">Results not loaded yet.</p></div>`;
+    return `<div class="box verdict"><h2>${CASES[c].label}</h2>
+      <p><span class="vw">${s.verdict}</span><b>${s.headline}</b></p>
+      <p><b>Episodes real?</b> ${s.episodes_real}</p>
+      <p><b>Recognisable as they start?</b> ${s.recognisable}</p>
+      <p><b>Price follows a confirmed turn?</b> ${s.follows}</p>
+      <p><b>Out of sample:</b> ${s.oos}</p>
+      <p><b>Flagged as exploratory:</b> ${s.exploratory}</p>
+      <p class="note">${s.data_needed}</p></div>`;
+  }).join('');
+}
+
+// ───────────────────────── live charts ─────────────────────────
+const LW = LightweightCharts;
+const chartOpts = (h, showTime) => ({ height: h, layout: { background: { color: css('--card') }, textColor: css('--text3'), fontSize: 11 }, grid: { vertLines: { color: css('--grid') }, horzLines: { color: css('--grid') } },
+  rightPriceScale: { borderColor: css('--border') }, timeScale: { borderColor: css('--border'), timeVisible: showTime, secondsVisible: false }, crosshair: { mode: LW.CrosshairMode.Normal }, autoSize: true });
+const cP = LW.createChart($('#cPrice'), chartOpts(330, true)), cS = LW.createChart($('#cSpread'), chartOpts(230, true));
+const sP = cP.addLineSeries({ color: css('--text2'), lineWidth: 2, priceLineVisible: false, title: 'price' });
+const sS = cS.addLineSeries({ color: css('--s1'), lineWidth: 2, priceLineVisible: false, title: 'spread' });
+const sConf = cS.addLineSeries({ color: css('--amber'), lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false, title: 'confirms next turn' });
+let syncing = false;
+function sync(a, b) { a.timeScale().subscribeVisibleLogicalRangeChange(r => { if (syncing || !r) return; syncing = true; b.timeScale().setVisibleLogicalRange(r); syncing = false; }); }
+sync(cP, cS); sync(cS, cP);
+function outcomeColor(ev, primH) { const o = ev.outcome?.[primH] ?? (ev.y?.[primH] == null ? null : ev.y[primH] >= 0.5 ? 'follow' : ev.y[primH] <= -0.5 ? 'revert' : 'nothing'); return o === 'follow' ? css('--s3') : o === 'revert' ? css('--s2') : o === 'nothing' ? css('--text3') : css('--s1'); }
+function drawLive(c, data, events) {
+  const cfg = CASES[c];
+  const t = data.t, P = t.map((tt, i) => ({ time: tt, value: data.p[i] })), X = t.map((tt, i) => ({ time: tt, value: data.x[i] }));
+  sP.setData(P); sS.setData(X);
+  sS.applyOptions({ title: c === 'case1' ? 'SOFR − Euribor (bp)' : '(2Y+10Y)/2 (%)' }); sP.applyOptions({ title: c === 'case1' ? 'NAS100' : 'EURUSD' });
+  const tset = new Set(t);
+  const mk = [], mkP = [];
+  for (const ev of events) {
+    const col = outcomeColor(ev, cfg.primH);
+    const turnT = ev.turnT ?? ev.turn, confT = ev.confT ?? ev.conf;
+    if (tset.has(turnT)) mk.push({ time: turnT, position: ev.dir > 0 ? 'belowBar' : 'aboveBar', shape: 'circle', color: col, size: 0.6 });
+    if (tset.has(confT)) { mk.push({ time: confT, position: ev.dir > 0 ? 'belowBar' : 'aboveBar', shape: ev.dir > 0 ? 'arrowUp' : 'arrowDown', color: col, size: 1 });
+      if (ev.e) mkP.push({ time: confT, position: ev.e > 0 ? 'belowBar' : 'aboveBar', shape: ev.e > 0 ? 'arrowUp' : 'arrowDown', color: col, size: 0.8 }); }
+  }
+  mk.sort((a, b) => a.time - b.time); mkP.sort((a, b) => a.time - b.time);
+  sS.setMarkers(mk); sP.setMarkers(mkP);
+  const pend = !histMode && LIVE[c]?.now?.pending;
+  sConf.setData(pend && t.length ? [{ time: t[Math.max(0, t.length - 40)], value: pend.confirmAt }, { time: t[t.length - 1], value: pend.confirmAt }] : []);
+  cP.timeScale().fitContent(); cS.timeScale().fitContent();
+}
+function renderNow(c) {
+  const L = LIVE[c]; const n = L?.now;
+  if (!n) { $('#nowKv').innerHTML = `<span>status</span><b>${L?.error ?? 'loading'}</b>`; return; }
+  const p = n.pending, cfg = CASES[c];
+  const rows = [
+    ['as of', new Date(L.asOfT * 1000).toISOString().slice(0, c === 'case1' ? 16 : 10).replace('T', ' ') + ' UTC' + (L.stale ? ' ⚠ stale' : '')],
+    ['spread / price', `${n.spread} ${cfg.unit} · ${n.price}`],
+    ['current leg', p ? (p.legDir > 0 ? '▲ up' : '▼ down') + ` since ${new Date(p.extremeT * 1000).toISOString().slice(0, 16).replace('T', ' ')}` : '—'],
+    ['next turn confirms at', p ? `${p.confirmAt} ${cfg.unit} (threshold ${p.threshold}, ${(100 * p.retraced).toFixed(0)}% of the way)` : '—'],
+    ['link (trailing)', n.link20 == null ? '—' : `${fmt(n.link20, 2)} → expected: spread ▲ = price ${n.linkSign > 0 ? '▲' : n.linkSign < 0 ? '▼' : '?'}`],
+    ['link strong?', n.strong ? 'yes (C2)' : 'no'],
+    ['coupling tercile', n.coupTile ? `${n.coupTile} / 3` : '—'],
+    [c === 'case1' ? 'today’s same-bar corr' : 'last 60 days corr', n.today?.corr == null ? '—' : fmt(n.today.corr, 2) + (n.today.bars ? ` (${n.today.bars} bars)` : '')],
+  ];
+  if (L.legsAsOf) rows.push(['legs pushed', Object.entries(L.legsAsOf).map(([k, v]) => `${k} ${String(v ?? '—').slice(5, 16)}`).join(' · ')]);
+  $('#nowKv').innerHTML = rows.map(([a, b]) => `<span>${a}</span><b>${b}</b>`).join('');
+}
+function evRow(ev, cfg) {
+  const tt = ev.confT ?? ev.conf, y = ev.y || {};
+  const tags = ev.tags || [];
+  return `<tr><td>${new Date(tt * 1000).toISOString().slice(0, 16).replace('T', ' ')}</td><td>${ev.dir > 0 ? '▲' : '▼'}</td><td>${ev.e > 0 ? 'price ▲' : ev.e < 0 ? 'price ▼' : '—'}</td>
+    <td>${(ev.C1 ?? tags.includes('C1')) ? '✓' : ''}</td><td>${(ev.C2 ?? tags.includes('C2')) ? '✓' : ''}</td><td>${ev.coupTile ?? ''}</td><td>${ev.full ? 'FULL' : ''}</td>
+    <td class="mut">${tags.filter(x => !['C1', 'C2', 'up', 'down'].includes(x)).join(', ')}</td>
+    ${cfg.H.map(h => `<td class="${y[h] == null ? 'mut' : y[h] >= 0.5 ? 'pos' : y[h] <= -0.5 ? 'neg' : 'mut'}">${y[h] == null ? 'pending' : fmt(y[h])}</td>`).join('')}</tr>`;
+}
+const evHead = cfg => `<tr><th>confirmed (UTC)</th><th>spread</th><th>expected</th><th title="price already moved the expected way between turn and confirmation">C1</th><th title="trailing link stronger than its median">C2</th><th title="trailing coupling tercile">coup</th><th title="C1 + C2 + top coupling tercile">seq</th><th>tags</th>${cfg.H.map(h => `<th>${h} (σ)</th>`).join('')}</tr>`;
+function renderEvents(c, events) {
+  const cfg = CASES[c], ev = [...events].reverse().slice(0, 300);
+  $('#evTable').innerHTML = evHead(cfg) + ev.map(e => evRow(e, cfg)).join('');
+  $('#evNote').textContent = `(${events.length} in view; outcome = price move signed by the expected direction, in trailing σ)`;
+}
+function renderForward(rec) {
+  const c = curLive, cfg = CASES[c], r = rec?.[c] ?? [];
+  const done = r.filter(e => e.y?.[cfg.primH] != null), f = done.filter(e => e.y[cfg.primH] >= 0.5).length, v = done.filter(e => e.y[cfg.primH] <= -0.5).length;
+  const m = done.length ? done.reduce((s, e) => s + e.y[cfg.primH], 0) / done.length : null;
+  $('#fwdNote').innerHTML = `${r.length} turns recorded; ${done.length} scored at ${cfg.primH}: follow ${f}, revert ${v}, mean ${fmt(m)}σ. Judge at ≥ ${c === 'case1' ? 300 : 100} scored turns (registered).`;
+  $('#fwdTable').innerHTML = evHead(cfg) + [...r].reverse().map(e => evRow(e, cfg)).join('');
+}
+async function loadLive(c) {
+  try {
+    const days = $('#days').value || CASES[c].defDays;
+    const j = await (await fetch(`/api/spread-episodes/live?case=${c}&days=${days}`)).json();
+    if (!j.ok) throw new Error(j.error);
+    LIVE[c] = j; const chip = $(c === 'case1' ? '#chip1' : '#chip2');
+    chip.textContent = `${c === 'case1' ? 'Case 1' : 'Case 2'}: ${j.stale ? 'stale' : 'live'} · ${new Date(j.asOfT * 1000).toISOString().slice(0, c === 'case1' ? 16 : 10).replace('T', ' ')}`;
+    chip.className = 'chip ' + (j.stale ? 'warn' : 'ok');
+    if (c === curLive && !histMode) { drawLive(c, j.series, j.events); renderNow(c); renderEvents(c, j.events); }
+  } catch (e) { LIVE[c] = { error: e.message }; const chip = $(c === 'case1' ? '#chip1' : '#chip2'); chip.textContent = `${c === 'case1' ? 'Case 1' : 'Case 2'}: ${e.message}`; chip.className = 'chip bad'; if (c === curLive) renderNow(c); }
+}
+async function loadRecord() {
+  try { const j = await (await fetch('/api/spread-episodes')).json(); window.REC = j.record; renderForward(j.record); $('#lastAlert').textContent = j.lastAlert ? `${j.lastAlert.at.slice(0, 16).replace('T', ' ')} — ${j.lastAlert.text}` : 'none yet'; }
+  catch (e) { $('#fwdNote').textContent = e.message; }
+}
+async function toggleHist() {
+  histMode = !histMode; $('#btnHist').classList.toggle('on', histMode);
+  const c = curLive;
+  if (histMode) {
+    if (!HIST[c]) { $('#btnHist').textContent = 'Loading…'; HIST[c] = await (await fetch(`/api/spread-episodes/history?case=${c}`)).json(); $('#btnHist').textContent = 'Research history'; }
+    const H = HIST[c]; drawLive(c, H.series, H.events); renderEvents(c, H.events);
+  } else if (LIVE[c]?.series) { drawLive(c, LIVE[c].series, LIVE[c].events); renderEvents(c, LIVE[c].events); }
+}
+function setLiveCase(c) {
+  curLive = c; histMode = false; $('#btnHist').classList.remove('on');
+  document.querySelectorAll('#liveTabs [data-case]').forEach(b => b.classList.toggle('on', b.dataset.case === c));
+  $('#days').innerHTML = CASES[c].days.map(([v, l]) => `<option value="${v}" ${v === CASES[c].defDays ? 'selected' : ''}>${l}</option>`).join('');
+  cP.applyOptions({ timeScale: { timeVisible: c === 'case1' } }); cS.applyOptions({ timeScale: { timeVisible: c === 'case1' } });
+  loadLive(c); if (window.REC) renderForward(window.REC);
+}
+
+// ───────────────────────── results ─────────────────────────
+function svgLine(el, { xs, series, band, xLabel, yLabel, points }) {
+  const W = el.clientWidth || 600, Hh = 240, m = { l: 44, r: 90, t: 10, b: 30 };
+  const all = [...series.flatMap(s => s.v), ...(band ? band.lo.concat(band.hi) : []), ...(points ? points.flatMap(p => p.v.map(q => q.y)) : []), 0].filter(v => v != null && isFinite(v));
+  let lo = Math.min(...all), hi = Math.max(...all); const pad = (hi - lo) * 0.1 || 0.05; lo -= pad; hi += pad;
+  const X = i => m.l + (W - m.l - m.r) * (xs[i] - xs[0]) / (xs[xs.length - 1] - xs[0] || 1), Y = v => m.t + (Hh - m.t - m.b) * (hi - v) / (hi - lo);
+  const XV = x => m.l + (W - m.l - m.r) * (x - xs[0]) / (xs[xs.length - 1] - xs[0] || 1);
+  const ticks = []; const step = Math.pow(10, Math.floor(Math.log10((hi - lo) / 4))); const st = [1, 2, 5].map(k => k * step).find(s => (hi - lo) / s <= 6) || step * 10;
+  for (let v = Math.ceil(lo / st) * st; v <= hi; v += st) ticks.push(v);
+  const path = v => v.map((y, i) => y == null || !isFinite(y) ? null : `${X(i).toFixed(1)},${Y(y).toFixed(1)}`).filter(Boolean).join(' L');
+  let s = `<svg width="${W}" height="${Hh}">`;
+  ticks.forEach(v => { s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="${css('--grid')}"/><text x="${m.l - 6}" y="${Y(v) + 3}" text-anchor="end">${v.toFixed(2)}</text>`; });
+  s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(0)}" y2="${Y(0)}" stroke="${css('--text3')}" stroke-width="1"/>`;
+  const every = Math.ceil(xs.length / 8), xt = xs.filter((_, i) => (i % every === 0 && xs.length - 1 - i >= every / 2) || i === xs.length - 1);
+  xt.forEach(x => { s += `<text x="${XV(x)}" y="${Hh - 12}" text-anchor="middle">${x}</text>`; });
+  s += `<text x="${(W - m.r + m.l) / 2}" y="${Hh - 1}" text-anchor="middle">${xLabel}</text><text x="10" y="${m.t + 8}">${yLabel}</text>`;
+  if (band) { const up = band.hi.map((v, i) => `${X(i)},${Y(v)}`).join(' L'), dn = band.lo.map((v, i) => `${X(i)},${Y(v)}`).reverse().join(' L'); s += `<path d="M${up} L${dn} Z" fill="${css('--band')}"/>`; }
+  series.forEach(se => { s += `<path d="M${path(se.v)}" fill="none" stroke="${se.color}" stroke-width="2" ${se.dash ? 'stroke-dasharray="4 3"' : ''}/>`;
+    const li = se.v.length - 1; if (se.v[li] != null) s += `<text x="${X(li) + 6}" y="${Y(se.v[li]) + 3}" style="fill:${css('--text2')}">${se.name}</text>`; });
+  (points || []).forEach(p => p.v.forEach(q => { s += `<circle cx="${XV(q.x)}" cy="${Y(q.y)}" r="4.5" fill="${p.color}" stroke="${css('--card')}" stroke-width="2"/>`; }));
+  s += `<line id="xh" x1="0" x2="0" y1="${m.t}" y2="${Hh - m.b}" stroke="${css('--text3')}" stroke-dasharray="2 2" style="display:none"/><rect x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${Hh - m.t - m.b}" fill="transparent" class="hit"/></svg>`;
+  el.innerHTML = s;
+  const hit = el.querySelector('.hit'), xh = el.querySelector('#xh');
+  hit.addEventListener('mousemove', e => { const r = hit.getBoundingClientRect(), f = (e.clientX - r.left) / r.width, i = Math.round(f * (xs.length - 1));
+    xh.setAttribute('x1', X(i)); xh.setAttribute('x2', X(i)); xh.style.display = '';
+    showTip(e, `<b>${xLabel} ${xs[i]}</b><br>` + series.map(se => `${se.name}: ${fmt(se.v[i], 3)}`).join('<br>') + (band ? `<br>shifted-spread 90% band: ${fmt(band.lo[i], 3)} … ${fmt(band.hi[i], 3)}` : '')); });
+  hit.addEventListener('mouseleave', () => { xh.style.display = 'none'; hideTip(); });
+}
+function svgBars(el, rows, label) {
+  const W = el.clientWidth || 600, Hh = 200, m = { l: 44, r: 10, t: 10, b: 34 }, vals = rows.map(r => r.mean ?? 0);
+  let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); const pad = (hi - lo) * 0.15 || 0.05; lo -= pad; hi += pad;
+  const bw = (W - m.l - m.r) / rows.length, Y = v => m.t + (Hh - m.t - m.b) * (hi - v) / (hi - lo);
+  let s = `<svg width="${W}" height="${Hh}"><line x1="${m.l}" x2="${W - m.r}" y1="${Y(0)}" y2="${Y(0)}" stroke="${css('--text3')}"/>`;
+  [lo, 0, hi].forEach(v => { s += `<text x="${m.l - 6}" y="${Y(v) + 3}" text-anchor="end">${v.toFixed(2)}</text>`; });
+  rows.forEach((r, i) => { const x = m.l + i * bw + 1, y0 = Y(0), y1 = Y(r.mean ?? 0), h = Math.abs(y1 - y0);
+    s += `<rect x="${x}" y="${Math.min(y0, y1)}" width="${Math.max(2, bw - 2)}" height="${Math.max(1, h)}" rx="2" fill="${css('--s1')}" data-i="${i}"/>`;
+    if (rows.length <= 30) s += `<text x="${x + bw / 2}" y="${Hh - 18}" text-anchor="middle">${r.key}</text>`; });
+  s += `<text x="${m.l}" y="${Hh - 2}">${label}</text></svg>`;
+  el.innerHTML = s;
+  el.querySelectorAll('rect[data-i]').forEach(b => { b.addEventListener('mousemove', e => { const r = rows[+b.dataset.i]; showTip(e, `<b>${r.key}</b><br>mean ${fmt(r.mean, 3)}σ (t ${fmt(r.t, 1)})<br>follow ${pc(r.p_follow)} · n ${r.n}`); }); b.addEventListener('mouseleave', hideTip); });
+}
+function renderResults() {
+  const c = curRes, R = RES?.[c], cfg = CASES[c], per = $('#per').value;
+  if (!R) { $('#res').innerHTML = '<p class="note">Results not available yet.</p>'; return; }
+  const E = R.E1, CB = R.E1_constbeta || {}, E2 = R.E2;
+  const P = ['discover', 'validate', 'final'];
+  const fin = R.finals || [], prim = fin.find(f => f.is_primary && !f.mirror), mir = fin.find(f => f.mirror);
+  let h = '';
+  h += `<h3>1 · Do episodes exist? Coupling of the two series, session by session${c === 'case2' ? ' (month by month)' : ''}</h3>
+  <p class="note">Each ${c === 'case1' ? 'session' : 'month'}: the correlation of ${c === 'case1' ? '15-min' : 'daily'} changes. <b>Overdispersion</b> = how much more those correlations vary than sampling alone would give (1 = constant link). <b>Persistence</b> = correlation of one ${c === 'case1' ? 'session' : 'month'}'s coupling with the next (can you see it coming?). Two nulls: the spread shifted by random days (no link at all), and a constant link with the spread's real volatility clustering kept (Amendment A1) — the fair test of "the link switches on and off".</p>
+  <table><tr><th>period</th><th>n</th><th>mean corr</th><th>overdispersion</th><th>shifted p95</th><th>constant-link p95</th><th>persistence</th><th>shifted p95</th><th>constant-link p95</th><th>follow clustering (AC1 of outcomes)</th><th>shifted p95</th></tr>
+  ${P.map(p => `<tr><td>${p}</td><td>${E[p].n}</td><td>${fmt(E[p].mean_r, 3)}</td><td>${num(E[p].OD.real, 2)}</td><td class="mut">${num(E[p].OD.plc_p95, 2)}</td><td class="mut">${num(CB[p]?.OD?.null_p95, 2)}</td>
+    <td class="${E[p].AC1.real > (CB[p]?.AC1?.null_p95 ?? 9) && E[p].AC1.real > E[p].AC1.plc_p95 ? 'pos' : ''}">${fmt(E[p].AC1.real, 3)}</td><td class="mut">${fmt(E[p].AC1.plc_p95, 3)}</td><td class="mut">${fmt(CB[p]?.AC1?.null_p95, 3)}</td><td>${fmt(E2[p].AC1.real, 3)}</td><td class="mut">${fmt(E2[p].AC1.plc_p95, 3)}</td></tr>`).join('')}</table>`;
+  h += `<h3>2 · Turn → confirmation → does price follow? Real vs controls (${per})</h3>
+  <div class="legend"><span><i style="background:var(--s1)"></i>confirmed spread turns (primary spec)</span><span><i class="band"></i>shifted-spread placebo, 5–95%</span><span><i style="background:var(--s2)"></i>price-only: price's own confirmed turns</span><span><i class="dot" style="background:var(--s3)"></i>matched random bars (control a)</span></div>
+  <div id="prof"></div>
+  <p class="note">Mean outcome after confirmation, signed by the expected direction, in units of trailing σ scaled by √horizon. A real effect would sit above the grey band. Primary cell (${cfg.primH}): ${P.map(p => `${p} ${fmt(prim?.[p + '_mean'], 3)}σ (t ${fmt(prim?.[p + '_t'], 1)}, n ${num(prim?.[p + '_n'])})`).join(' · ')}. Final-period test: ${prim?.final_pass ? 'PASS' : 'fail'}; mirror (price reverts): ${mir?.final_pass ? 'PASS' : 'fail'}.</p>`;
+  h += `<h3>3 · By episode type and horizon (${per}, k 0.75, adaptive sign, confirmation only)</h3><div class="tscroll"><table><tr><th>type</th><th>h</th><th>n</th><th>follow</th><th>revert</th><th>nothing</th><th>mean σ</th><th>t</th><th>control (a)</th><th>diff t</th><th>placebo 5–95%</th></tr>
+  ${(R.type_table || []).filter(r => r.period === per).map(r => `<tr><td>${r.type}</td><td>${r.h}</td><td>${r.n}</td><td>${pc(r.p_follow)}</td><td>${pc(r.p_revert)}</td><td>${pc(r.p_nothing)}</td><td class="${cls(r.mean, r.t)}">${fmt(r.mean, 3)}</td><td>${fmt(r.t, 1)}</td><td class="mut">${fmt(r.ctrl_mean, 3)}</td><td>${fmt(r.diff_t, 1)}</td><td class="mut">${fmt(r.plc_p05, 2)} … ${fmt(r.plc_p95, 2)}</td></tr>`).join('')}</table></div>`;
+  h += `<div class="grid2"><div><h3>4 · The sequence: what confirms the turn (${per})</h3><table><tr><th>confirmation</th>${cfg.H.map(x => `<th>${x}</th>`).join('')}</tr>
+  ${['C0', 'C1', 'C2'].map(cf => `<tr><td>${{ C0: 'C0 zig-zag only', C1: 'C1 + price already moving', C2: 'C2 + strong link' }[cf]}</td>${cfg.H.map(x => { const r = (R.conf_table || []).find(q => q.conf === cf && q.h === x && q.period === per); return `<td class="${cls(r?.mean, r?.t)}" title="n ${r?.n}, follow ${pc(r?.p_follow)}, revert ${pc(r?.p_revert)}">${fmt(r?.mean, 3)} <span class="mut">(${fmt(r?.t, 1)})</span></td>`; }).join('')}</tr>`).join('')}</table>
+  <h3>Threshold k (${per})</h3><table><tr><th>k</th>${cfg.H.map(x => `<th>${x}</th>`).join('')}</tr>
+  ${[0.5, 0.75, 1, 1.5].map(k => `<tr><td>${k}</td>${cfg.H.map(x => { const r = (R.k_table || []).find(q => q.k === k && q.h === x && q.period === per); return `<td class="${cls(r?.mean, r?.t)}" title="n ${r?.n}">${fmt(r?.mean, 3)} <span class="mut">(${fmt(r?.t, 1)})</span></td>`; }).join('')}</tr>`).join('')}</table>
+  ${R.series_table ? `<h3>Yield series (${per})</h3><table><tr><th>series</th>${cfg.H.map(x => `<th>${x}</th>`).join('')}</tr>${['AVG', 'DGS2', 'DGS10', 'SLOPE'].map(se => `<tr><td>${se}</td>${cfg.H.map(x => { const r = R.series_table.find(q => q.series === se && q.h === x && q.period === per); return `<td class="${cls(r?.mean, r?.t)}" title="n ${r?.n}">${fmt(r?.mean, 3)} <span class="mut">(${fmt(r?.t, 1)})</span></td>`; }).join('')}</tr>`).join('')}</table>` : ''}
+  </div><div><h3>5 · How long does it take? First to ±1σ (${per})</h3><table><tr><th></th><th>n</th><th>follow first</th><th>revert first</th><th>median ${cfg.hmaxLabel}</th></tr>
+  ${['spread', 'price_only'].map(k => { const r = R.race?.[per]?.[k]; return `<tr><td>${k === 'spread' ? 'after a spread turn' : 'after price’s own turn'}</td><td>${r?.n}</td><td>${pc(r?.p_follow_first)}</td><td>${pc(r?.p_revert_first)}</td><td>${num(r?.median_bars)}</td></tr>`; }).join('')}</table>
+  <h3>6 · Improvement over the price-only model (control c)</h3><table><tr><th>h</th><th>period</th><th>IC price-only</th><th>IC + spread</th><th>gain</th><th>95% interval</th></tr>
+  ${Object.entries(R.price_only_c2 || {}).flatMap(([hh, v]) => ['validate', 'final'].filter(p => v[p]).map(p => `<tr><td>${hh}</td><td>${p}</td><td>${fmt(v[p].ic_price, 3)}</td><td>${fmt(v[p].ic_with_spread, 3)}</td><td class="${v[p].d_ic_lo > 0 ? 'pos' : v[p].d_ic_hi < 0 ? 'neg' : 'mut'}">${fmt(v[p].d_ic, 3)}</td><td class="mut">${fmt(v[p].d_ic_lo, 3)} … ${fmt(v[p].d_ic_hi, 3)}</td></tr>`)).join('')}</table>
+  <h3>Search size and selection</h3><p class="note">${R.n_cells} grid cells per period. Discover cells passing BH (q 0.10): <b>${R.disc_bh}</b>. Cells passing Discover-BH and Validate: real <b>${R.selection.real_sign_p}</b> vs shifted-spread placebo mean ${num(R.selection.placebo_mean, 2)} (p95 ${num(R.selection.placebo_p95, 1)}), ${R.nplacebo} draws.</p></div></div>`;
+  h += `<h3>7 · When does it work? Conditions (primary spec, every horizon; BH within the conditions family)</h3><div class="tscroll"><table><tr><th>condition</th><th>h</th><th>discover</th><th>validate</th><th>final</th><th>Discover BH</th><th>Validate pass</th></tr>
+  ${(() => { const rows = R.conditions.rows, keys = [...new Set(rows.map(r => r.cond + '|' + r.h))]; return keys.map(k => { const [cd, hh] = k.split('|'), g = p => rows.find(r => r.cond === cd && r.h === hh && r.period === p); const d = g('discover');
+    return `<tr><td>${cd}</td><td>${hh}</td>${P.map(p => { const r = g(p); return `<td class="${cls(r?.mean, r?.t)}" title="n ${r?.n}">${fmt(r?.mean, 3)} <span class="mut">(${fmt(r?.t, 1)}, ${r?.n})</span></td>`; }).join('')}<td>${d?.bh ? '✓' : ''}</td><td>${d?.val_pass ? '✓' : ''}</td></tr>`; }).join(''); })()}</table></div>
+  <h3>8 · By year and half-year (primary cell, ${cfg.primH})</h3><div id="byyear"></div><div id="byhalf"></div>`;
+  $('#res').innerHTML = h;
+  $('#res').querySelectorAll('table').forEach(t => { if (!t.parentElement.classList.contains('tscroll')) { const w = document.createElement('div'); w.className = 'xscroll'; t.replaceWith(w); w.appendChild(t); } });
+  const pr = R.profile[per], xs = pr.real.map((_, i) => i + 1);
+  const hv = c === 'case1' ? { '1h': 4, '4h': 16, '8h': 32, '24h': 96 } : { '1d': 1, '3d': 3, '5d': 5, '10d': 10, '20d': 20 };
+  const refH = c === 'case1' ? 16 : 5;
+  const ctrlPts = Object.entries(hv).map(([hh, v]) => { const r = (R.type_table || []).find(q => q.type === 'all' && q.h === hh && q.period === per); return r && r.ctrl_mean != null ? { x: v, y: r.ctrl_mean * Math.sqrt(1) } : null; }).filter(Boolean);
+  svgLine($('#prof'), { xs, xLabel: c === 'case1' ? 'bars after confirmation (15 min)' : 'days after entry', yLabel: 'σ', band: { lo: pr.placebo_p05, hi: pr.placebo_p95 },
+    series: [{ name: 'spread turns', v: pr.real, color: css('--s1') }, { name: 'price-only', v: pr.price_only, color: css('--s2'), dash: true }, { name: 'placebo mean', v: pr.placebo_mean, color: css('--text3'), dash: true }],
+    points: [{ color: css('--s3'), v: ctrlPts }] });
+  svgBars($('#byyear'), R.by_year.filter(r => r.kind === 'year'), 'mean outcome by year (σ)');
+  svgBars($('#byhalf'), R.by_year.filter(r => r.kind === 'half'), 'by half-year (σ)');
+}
+function setResCase(c) { curRes = c; document.querySelectorAll('#resTabs [data-case]').forEach(b => b.classList.toggle('on', b.dataset.case === c)); renderResults(); }
+
+document.querySelectorAll('#liveTabs [data-case]').forEach(b => b.onclick = () => setLiveCase(b.dataset.case));
+document.querySelectorAll('#resTabs [data-case]').forEach(b => b.onclick = () => setResCase(b.dataset.case));
+$('#per').onchange = renderResults; $('#days').onchange = () => { histMode = false; $('#btnHist').classList.remove('on'); loadLive(curLive); };
+$('#btnHist').onclick = toggleHist;
+addEventListener('resize', () => renderResults());
+(async () => {
+  setLiveCase('case1'); loadLive('case2'); loadRecord();
+  try { RES = await (await fetch('/api/spread-episodes/results')).json(); } catch { RES = null; }
+  renderVerdicts(); renderResults();
+  setInterval(() => { if (!histMode) loadLive(curLive); loadRecord(); }, 5 * 60_000);
+})();
+</script>
+</body>
+</html>

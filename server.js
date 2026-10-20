@@ -195,6 +195,7 @@ import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, forma
 import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './js/claimWatch.js';   // the watch register (Crown setups + desk findings) — rides the desk-watch tick, log and Telegram
 import { evaluateGauges as _evaluateGauges } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
+import { buildCase1 as _seBuild1, buildCase2 as _seBuild2, analyse as _seAnalyse, alertText as _seAlertText } from './js/spreadEpisodes.js';
 import { sliceDays as _cogSlice, toBars as _cogBars, exportText as _cogExport, mergeSeries as _cogMerge } from './js/cogLine.js';
 import { cogLineRead as _cogRead } from './js/cogLineRead.js';   // live trend read for the C.OG line card (js/cogLineRead.js)   // C.OG rate-spread line: analysis/output/cog_line/cog_line_15m.json
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
@@ -2062,6 +2063,7 @@ const TG_SENDERS = {
   surprise:          'Forecast-path surprise pings',
   hedgeSignals:      'Hedge pair signals',
   ratesRegime:       'Rates vs Nasdaq regime change / rate shock (context, not a signal)',
+  spreadEpisodes:    'Spread-turn episodes: confirmed turn (Case 1 full sequence / Case 2 every turn), context only',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
   // one is NOT enforced by server.js's tgOn(), since the bot that actually
@@ -4593,6 +4595,143 @@ app.get('/api/cog-chart/leg', async (req, res) => {
     res.json({ ok: true, name, label: base.label, group: base.group, side: base.side, kind: base.kind, period: base.period, source: base.source, convention: base.convention, first: base.first, staticAsOf: base.asOf, liveAsOf, m5, m15 });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+
+// ── Spread episodes (js/spreadEpisodes.js; forge/SPREAD_EPISODES_PREREG.md, results analysis/output/spread-episodes/) ──
+// The tested zig-zag rules run live: Case 1 = SOFR Sep26 - Euribor Mar27 (the cog-chart legs, laptop-pushed) vs NAS100 M15;
+// Case 2 = (US 2Y + 10Y)/2 (FRED, via the rates cache) vs EURUSD daily. Every confirmed turn from 2026-10-20 goes into the
+// forward record (KV spread_episodes_v1) with its tags, and its outcome is filled in as each horizon passes. Telegram
+// (tgMaster.spreadEpisodes): Case 1 only on a FULL sequence (price already started + strong link + top coupling tercile),
+// Case 2 on every confirmed turn. Context only: no forward edge passed the registered test.
+const _SE_KV = 'spread_episodes_v1', _SE_DIR = path.join(__dirname, 'analysis', 'output', 'spread-episodes'), _SE_FWD_START = Date.parse('2026-10-20T00:00:00Z') / 1000;
+let _seNas = [], _seFx = { at: 0, bars: [] }, _seRunning = false, _seLast = { at: 0, error: null, F: {}, A: {} }, _seLastWrite = 0;
+async function _seLeg15(name) {
+  const base = _cogJson(path.join(_CC_DIR, `leg_${name}.json`)), live = await _ccLivePush(), add = live?.legs?.[name]?.m5;
+  const m15 = add?.t?.length ? _ccMerge(base.m15, _ccAgg15(add)) : base.m15, now = Date.now() / 1000;
+  return { bars: m15.t.map((t, i) => ({ t, c: m15.c[i] })).filter(b => b.c != null && b.t + 900 <= now), asOf: add?.t?.length ? (live.asOf ?? null) : base.asOf };
+}
+async function _seNasBars() {
+  const from = _seNas.length ? new Date((_seNas[_seNas.length - 1].time - 86400) * 1000).toISOString().slice(0, 10) : new Date(Date.now() - 190 * 86400e3).toISOString().slice(0, 10);
+  const add = await fetchIntraday('NAS100_USD', 'M15', { from }), m = new Map(_seNas.map(b => [b.time, b]));
+  for (const b of add) m.set(b.time, b);
+  const cut = Date.now() / 1000 - 200 * 86400;
+  _seNas = [...m.values()].filter(b => b.time >= cut).sort((a, b) => a.time - b.time);
+  return _seNas;
+}
+async function _seFxDaily() {
+  if (Date.now() - _seFx.at < 6 * 3600_000 && _seFx.bars.length) return _seFx.bars;
+  const d = await fetchIntraday('EUR_USD', 'D', { count: 1500 });     // 17:00 New York daily candles; date = the day the candle closes
+  _seFx = { at: Date.now(), bars: d.map(b => ({ date: new Date((b.time + 86400) * 1000).toISOString().slice(0, 10), close: b.close })) };
+  return _seFx.bars;
+}
+function _seResults() {
+  const r = {};
+  for (const c of ['case1', 'case2']) { try { r[c] = _cogJson(path.join(_SE_DIR, `results_${c}.json`)); } catch { r[c] = null; } }
+  try { r.summary = _cogJson(path.join(_SE_DIR, 'summary.json')); } catch { r.summary = null; }
+  return r;
+}
+function _seHist(caseKey, ev) {
+  const R = _seResults()[caseKey]; if (!R) return null;
+  const h = caseKey === 'case1' ? '4h' : '5d';
+  const row = (R.conf_table || []).find(x => x.conf === (ev.C1 ? 'C1' : 'C0') && x.h === h && x.period === 'final');
+  return row && row.n ? { pFollow: row.p_follow, pRevert: row.p_revert, mean: row.mean, n: row.n, label: `${ev.C1 ? 'C1 turns' : 'all turns'}, ${h}, 2026 test period` } : null;
+}
+async function _seTick(opts = {}) {
+  if (_seRunning) return _seLast;
+  _seRunning = true;
+  const errors = {};
+  try {
+    if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set');
+    try {
+      const [s, e, nas] = await Promise.all([_seLeg15('SR3U6'), _seLeg15('IH7'), _seNasBars()]);
+      const F = _seBuild1({ sofr: s.bars, eur: e.bars, nas: nas.map(b => ({ t: b.time, c: b.close })) });
+      if (F.n < 3000) throw new Error(`only ${F.n} aligned 15-min bars`);
+      _seLast.F.case1 = F; _seLast.A.case1 = { ..._seAnalyse(F), legsAsOf: { SR3U6: s.asOf, IH7: e.asOf }, stale: Date.now() / 1000 - F.T[F.n - 1] > 3 * 3600 };
+    } catch (e) { errors.case1 = e.message; }
+    try {
+      if (Date.now() - _rates.at > 6 * 3600_000 || !_rates.series) await _refreshRates();
+      const S = _rates.series; if (!S?.us2y?.length) throw new Error('FRED 2Y/10Y not loaded');
+      const F = _seBuild2({ y2: S.us2y, y10: S.us10y, fx: await _seFxDaily() });
+      if (F.n < 600) throw new Error(`only ${F.n} aligned daily rows`);
+      _seLast.F.case2 = F; _seLast.A.case2 = _seAnalyse(F);
+    } catch (e) { errors.case2 = e.message; }
+    // forward record
+    let prev = null;
+    try { const raw = await kv.getStrict(_SE_KV); prev = raw ? JSON.parse(raw) : null; }
+    catch (e) { console.warn('[spread-episodes] store unreadable, not overwriting:', e.message); throw e; }
+    const rec = prev?.record ?? { case1: [], case2: [] }, fresh = [];
+    let filled = false;
+    for (const c of ['case1', 'case2']) {
+      const A = _seLast.A[c]; if (!A) continue;
+      const have = new Map(rec[c].map(r => [r.confT, r]));
+      for (const ev of A.events) {
+        if (ev.confT < _SE_FWD_START) continue;
+        const r = have.get(ev.confT);
+        if (!r) { const n = { ...ev, recordedAt: new Date().toISOString() }; rec[c].push(n); fresh.push([c, n]); }
+        else for (const h of Object.keys(ev.y)) if (r.y[h] == null && ev.y[h] != null) { r.y[h] = ev.y[h]; r.outcome[h] = ev.outcome[h]; filled = true; }
+      }
+      rec[c] = rec[c].slice(-3000);
+    }
+    let sent = 0, lastAlert = prev?.lastAlert ?? null;
+    if (prev && !opts.silent) for (const [c, ev] of fresh) {
+      if (c === 'case1' && !ev.full) continue;
+      const txt = _seAlertText(c === 'case1' ? 'SOFR Sep26 − Euribor Mar27 vs NAS100' : 'US 2Y/10Y vs EURUSD', ev, _seHist(c, ev), c === 'case1' ? 'bp' : '%');
+      lastAlert = { at: new Date().toISOString(), case: c, text: txt, sent: false };
+      if (tgOn('spreadEpisodes') && state.tg?.token && state.tg?.chatId) { lastAlert.sent = await sendTelegram(state.tg.token, state.tg.chatId, txt); sent++; }
+    }
+    // write on a new event, or at most every 6 h for outcome fills (CF KV write budget)
+    if (!prev || fresh.length || (filled && Date.now() - _seLastWrite > 6 * 3600_000)) {
+      await kv.put(_SE_KV, JSON.stringify({ record: rec, updatedAt: new Date().toISOString(), lastAlert, forwardStart: '2026-10-20' }));
+      _seLastWrite = Date.now();
+    }
+    _seLast = { ..._seLast, at: Date.now(), error: Object.keys(errors).length ? errors : null, fresh: fresh.length, sent };
+    return _seLast;
+  } catch (e) {
+    _seLast = { ..._seLast, at: Date.now(), error: { all: e.message } };
+    console.error('[spread-episodes]', e.message);
+    return _seLast;
+  } finally { _seRunning = false; }
+}
+const _seSlimRead = A => A ? { ...A, events: A.events.slice(-60) } : null;
+app.get('/api/spread-episodes', async (_req, res) => {
+  try {
+    if (!_seLast.at) await _seTick({ silent: true });
+    let rec = null; try { const raw = await kv.get(_SE_KV); rec = raw ? JSON.parse(raw) : null; } catch { /* record optional here */ }
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: !!(_seLast.A.case1 || _seLast.A.case2), lastTick: _seLast.at ? new Date(_seLast.at).toISOString() : null, error: _seLast.error,
+               case1: _seSlimRead(_seLast.A.case1), case2: _seSlimRead(_seLast.A.case2), record: rec?.record ?? { case1: [], case2: [] }, lastAlert: rec?.lastAlert ?? null, forwardStart: '2026-10-20' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// chart feed: the live window's series (spread + price) and its events
+app.get('/api/spread-episodes/live', async (req, res) => {
+  try {
+    const c = req.query.case === 'case2' ? 'case2' : 'case1';
+    if (!_seLast.at) await _seTick({ silent: true });
+    const F = _seLast.F[c], A = _seLast.A[c];
+    if (!F || !A) return res.status(503).json({ ok: false, error: _seLast.error?.[c] ?? _seLast.error?.all ?? 'not built yet' });
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || (c === 'case1' ? 20 : 750), 2), c === 'case1' ? 190 : 4000);
+    const t0 = F.T[F.n - 1] - days * 86400, i0 = Math.max(0, F.T.findIndex(t => t >= t0));
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true, case: c, now: A.now, asOfT: A.asOfT, legsAsOf: A.legsAsOf ?? null, stale: A.stale ?? false,
+               series: { t: F.T.slice(i0), x: F.x.slice(i0).map(v => +v.toFixed(3)), p: F.p.slice(i0).map(v => +Math.exp(v).toFixed(c === 'case2' ? 5 : 1)) },
+               events: A.events.filter(e => e.confT >= F.T[i0]) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/spread-episodes/results', (_req, res) => {
+  try { res.set('Cache-Control', 'public, max-age=900'); res.json({ ok: true, ..._seResults() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/spread-episodes/history', (req, res) => {
+  try {
+    const c = req.query.case === 'case2' ? 'case2' : 'case1';
+    res.set('Cache-Control', 'public, max-age=86400'); res.type('application/json').send(fs.readFileSync(path.join(_SE_DIR, `chart_${c}.json`), 'utf8'));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/spread-episodes/tick', async (req, res) => {
+  try { const r = await _seTick({ silent: req.query.silent === '1' }); res.json({ ok: true, at: r.at, error: r.error, fresh: r.fresh ?? 0, sent: r.sent ?? 0 }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('spreadEpisodes', () => _seTick().catch(e => console.error('[spread-episodes]', e.message)), 15 * 60_000);
+svcTimeout('spreadEpisodes', () => _seTick({ silent: true }).catch(e => console.error('[spread-episodes]', e.message)), 4 * 60_000);
 
 app.post('/api/rates-regime/tick', async (req, res) => {
   try { res.json({ ok: true, ...(await _ratesRegimeTick({ silent: req.query.silent === '1' })) }); }

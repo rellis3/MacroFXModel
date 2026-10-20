@@ -66,6 +66,7 @@ function isAllowedKVKey(key) {
     'zq_path_v1',
     'cog_legs_live_v1',
     'cog_line_live_v1',
+    'spread_episodes_v1',
     'mpt_store_v1',
     'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_status',
     'volatility_bot_v2_plan', 'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log', 'volatility_bot_v2_drift_history',
@@ -1067,6 +1068,8 @@ export default {
             // cog_line_live_v1: the laptop's pushed IBKR bars for the Rates-page C.OG line; a 48h TTL would drop them between pushes.
             'cog_legs_live_v1',
             'cog_line_live_v1',
+            // spread_episodes_v1: the spread-turn episodes forward record (written by Railway; a 48h TTL would reset it).
+            'spread_episodes_v1',
             // macro_scorecard_history_v1 is the only time series of the scorecard's
             // composite — one row per day, accumulated, not re-derivable. Missing it
             // here means a silent 48h TTL and the record resets every two days.
