@@ -1,0 +1,123 @@
+{
+ "seed": 20261021,
+ "n_shift": 400,
+ "cells": {
+  "h1_explore": {
+   "n_sessions": 1032,
+   "state_days": 54,
+   "cheap_days": 330,
+   "state_share": 0.052,
+   "c1_placebo_mean": -0.0246,
+   "c1_se": 0.0498,
+   "c1_mde": 0.1393,
+   "c2_placebo_mean": -0.0306,
+   "c2_se": 0.1125,
+   "c2_mde": 0.3151,
+   "outcome_sd_log": 1.289
+  },
+  "h1_confirm": {
+   "n_sessions": 1448,
+   "state_days": 157,
+   "cheap_days": 700,
+   "state_share": 0.108,
+   "c1_placebo_mean": -0.0048,
+   "c1_se": 0.0842,
+   "c1_mde": 0.2357,
+   "c2_placebo_mean": -0.0086,
+   "c2_se": 0.1685,
+   "c2_mde": 0.4718,
+   "outcome_sd_log": 1.053
+  },
+  "h1_pooled": {
+   "n_sessions": 2480,
+   "state_days": 211,
+   "cheap_days": 1030,
+   "state_share": 0.085,
+   "c1_placebo_mean": -0.0018,
+   "c1_se": 0.0377,
+   "c1_mde": 0.1054,
+   "c2_placebo_mean": 0.0016,
+   "c2_se": 0.1062,
+   "c2_mde": 0.2972,
+   "outcome_sd_log": 1.173
+  },
+  "h5_explore": {
+   "n_sessions": 1012,
+   "state_days": 54,
+   "cheap_days": 326,
+   "state_share": 0.053,
+   "c1_placebo_mean": -0.034,
+   "c1_se": 0.1012,
+   "c1_mde": 0.2834,
+   "c2_placebo_mean": -0.0302,
+   "c2_se": 0.1476,
+   "c2_mde": 0.4132,
+   "outcome_sd_log": 1.046
+  },
+  "h5_confirm": {
+   "n_sessions": 1412,
+   "state_days": 149,
+   "cheap_days": 676,
+   "state_share": 0.106,
+   "c1_placebo_mean": -0.0022,
+   "c1_se": 0.1286,
+   "c1_mde": 0.36,
+   "c2_placebo_mean": 0.0051,
+   "c2_se": 0.1625,
+   "c2_mde": 0.4549,
+   "outcome_sd_log": 0.796
+  },
+  "h5_pooled": {
+   "n_sessions": 2424,
+   "state_days": 203,
+   "cheap_days": 1002,
+   "state_share": 0.084,
+   "c1_placebo_mean": -0.0038,
+   "c1_se": 0.0651,
+   "c1_mde": 0.1822,
+   "c2_placebo_mean": -0.0037,
+   "c2_se": 0.1027,
+   "c2_mde": 0.2874,
+   "outcome_sd_log": 0.931
+  },
+  "h21_explore": {
+   "n_sessions": 954,
+   "state_days": 54,
+   "cheap_days": 307,
+   "state_share": 0.057,
+   "c1_placebo_mean": -0.0398,
+   "c1_se": 0.1351,
+   "c1_mde": 0.3783,
+   "c2_placebo_mean": -0.0852,
+   "c2_se": 0.2506,
+   "c2_mde": 0.7018,
+   "outcome_sd_log": 0.877
+  },
+  "h21_confirm": {
+   "n_sessions": 1268,
+   "state_days": 118,
+   "cheap_days": 601,
+   "state_share": 0.093,
+   "c1_placebo_mean": -0.0158,
+   "c1_se": 0.0968,
+   "c1_mde": 0.2709,
+   "c2_placebo_mean": 0.0055,
+   "c2_se": 0.1144,
+   "c2_mde": 0.3204,
+   "outcome_sd_log": 0.695
+  },
+  "h21_pooled": {
+   "n_sessions": 2222,
+   "state_days": 172,
+   "cheap_days": 908,
+   "state_share": 0.077,
+   "c1_placebo_mean": -0.0051,
+   "c1_se": 0.0961,
+   "c1_mde": 0.2692,
+   "c2_placebo_mean": 0.0081,
+   "c2_se": 0.1241,
+   "c2_mde": 0.3475,
+   "outcome_sd_log": 0.81
+  }
+ }
+}
