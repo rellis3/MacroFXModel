@@ -39,6 +39,7 @@ export const SOURCES = {
   boe:   { label: 'Bank of England IADB', keyed: false, note: 'Free CSV download (js/boeSeries.js, js/intlYields.js). Bank Rate IUDBEDR and the gilt curve; daily, published same day.' },
   yahoo: { label: 'Yahoo Finance', keyed: false, note: 'Sector ETFs and single names. Proven keyless; no history guarantee.' },
   cme:   { label: 'CME settlements / QuikStrike', keyed: false, note: 'Scraped nightly into OI Data/. The option book and six years of recoverable implied vol.' },
+  bis:   { label: 'BIS SDMX API (stats.bis.org)', keyed: false, note: 'Free, no key. Locational Banking Statistics quarterly, ~4 months after quarter end; latest vintage only, so back quarters revise (js/bankCredit.js).' },
   ibkr:  { label: 'Interactive Brokers (local TWS)', keyed: true, note: 'Needs TWS/Gateway open on the owner’s machine (scratchpad/ibkr_stir_pull.py); cannot run from Railway or a cloud session. ~6 months of 15-min history per request.' },
 };
 
@@ -210,6 +211,10 @@ export const CATALOGUE = [
   { id: 'cboe:COR3M', source: 'cboe', group: 'vol', label: 'Implied correlation, 3 months', why: 'The three-month leg of the same measure, so the term structure of implied correlation can be read beside the VIX curve. 2006→.', readBy: ['drill'], evidence: [] },
   { id: 'cboe:VIXEQ', source: 'cboe', group: 'vol', label: 'Single-name implied vol (VIXEQ)', why: 'The weighted average implied vol of the S&P constituents; VIXEQ − VIX is the spread the clip puts on the screen. 2014→, same CSV family as DSPX.', readBy: ['drill', 'marketView'], evidence: [], trap: 'VIXEQ − VIX and DSPX are two formulas on the same inputs; corr ≈ 1. One is enough for a test.' },
   { id: 'yahoo:^MOVE', source: 'yahoo', group: 'vol', label: 'ICE BofA MOVE (bond vol)', why: 'The VIX of the Treasury market — the one series the 2026-10-02 clip audit found the desk deciding it needed (a 0.6-weight factor in the COG risk gate abstaining for want of it) and not pulling. Daily close 2002-11→ on the keyless Yahoo chart path. Wired 2026-10-19 by owner decision into the drill bundle and the COG risk gate.', readBy: ['drill', 'marketView', 'cogRiskGate'], evidence: [], trap: 'Yahoo quotes the index close only; intraday “Treasury vol through the roof” claims cannot be checked against it.' },
+  { id: 'bis:LBS_USD_XB', source: 'bis', group: 'liquidity', label: 'Cross-border USD bank credit, 4Q FX-adjusted growth (BIS LBS)', why: 'The bank-lending leg of the money chain: how fast banks are lending dollars across borders (Bruno-Shin risk-taking channel). Added 2026-10-20 from the BIS file C.OG shared.', readBy: ['bankCredit', 'today'], evidence: ['bank-credit-dollar-dxy', 'bank-credit-dollar-nasdaq'],
+    trap: 'Arrives ~4 months after the quarter and back quarters are revised; only the latest vintage is served, so history carries revision lookahead. bank_credit_v1 records the date each quarter was first seen. Use FX-adjusted flows (measure F), never stock changes: a moving dollar fakes euro/yen growth.' },
+  { id: 'bis:LBS_NBFI', source: 'bis', group: 'liquidity', label: 'Cross-border credit to non-bank financials + Cayman USD (BIS LBS)', why: 'Who is borrowing: hedge funds, money funds and fund vehicles (the Treasury basis / repo footprint). Sector split only from 2014.', readBy: ['bankCredit'], evidence: [] },
+  { id: 'bis:LBS_JPY_XJP', source: 'bis', group: 'liquidity', label: 'Yen lent to borrowers outside Japan (BIS LBS)', why: 'The yen carry-funding footprint by borrower country: where an unwind like August 2024 would bite.', readBy: ['bankCredit'], evidence: [] },
 ];
 
 export const byId = id => CATALOGUE.find(c => c.id === id) ?? null;
