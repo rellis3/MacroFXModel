@@ -15,7 +15,7 @@ Generated 2026-10-20.
 | null | 105 |
 | underpowered | 5 |
 | context (base rates, descriptions: not counted as tests) | 33 |
-| pre-registrations with no banked verdict (below) | 41 |
+| pre-registrations with no banked verdict (below) | 42 |
 
 **What the count says (Lesson 02 §05).** If none of the 143 claims were real, tests at the usual 5% size would still pass
 about **7.2** of them by luck. 33 passed, so most passes are unlikely to be luck alone, but
@@ -248,4 +248,5 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VF3_STAGE_C_PREREG.md`: Vol Forecast V3, Stage C: registered experiments (2026-10-10, before any Stage C outcome is computed)
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
+- `oi_research_book/GEX_RANGE_ES_PREREG.md`: gex-range-es — does the NQ gamma-range effect (G2) replicate on ES, once the timing and the bars are honest?
 - `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot

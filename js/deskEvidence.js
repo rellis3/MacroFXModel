@@ -870,7 +870,6 @@ export const DESK_EVIDENCE = [
   },
   {
     id: 'gamma-regime-trades-fx', domain: 'positioning', verdict: 'null', date: '2026-10-20', doc: 'forge/GAMMA_REGIME_TRADES_FX_PREREG.md',
-    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD'],
     claim: 'The OI page\'s daily hedge plan (fade the first p75 touch on long-gamma days, follow it on short-gamma days) makes money on EUR/USD, GBP/USD and AUD/USD',
     result: '1,963 trades on 4,632 sessions 2020-2026, CME FX book with a daily regime: -0.081 R per trade after costs [-0.124, -0.039], negative on all three pairs and both halves; no better than always fading or always following; regime interaction -0.02 [-0.17, +0.14]; shifted-regime mirror -0.06.',
     use: 'No FX system from the gamma regime. The page keeps the FX plan as context only, labelled with this result.',
