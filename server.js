@@ -5465,6 +5465,9 @@ async function _buildMorningBrief() {
     }
   } catch { /* omitted from prompt when unavailable */ }
 
+  // BANK CREDIT — the quarterly bank-lending leg (js/bankCredit.js). Context wording only (bank-credit-dollar-*).
+  let bankCreditBriefLine = '';
+  try { const r = await _bcRead(); if (r?.snap) bankCreditBriefLine = _bcLine(r.snap); } catch { /* omit when the feed is down */ }
   // PRECEDENT — the one global read that says what FOLLOWED conditions like today's
   // rather than describing them. Read straight from the cached study; if it has not
   // been built yet the brief simply omits it rather than guessing.
@@ -5688,6 +5691,7 @@ async function _buildMorningBrief() {
     corrLine || null,
     regimeLine || null,
     fedPathLine || null,
+    bankCreditBriefLine || null,
     riskLine || null,
     ivLine || null,
   ].filter(Boolean).join('\n');

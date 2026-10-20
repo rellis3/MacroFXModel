@@ -2118,6 +2118,7 @@ let hedgeAlerts = null;  // /api/hedge-alerts — last rolling corr + betas (dol
 let ism = null;          // /api/ism — growth-surprise proxy per currency (js/ismEngine.js: real composite for USD only; the other 7 are an OECD business-confidence proxy, explicitly NOT official PMI — see that file's header)
 let calAhead = null;     // /api/calendar-ahead — Nasdaq forward lists past ForexFactory's this-week file (week-ahead panel)
 let gpr = null;          // /api/gpr — Geopolitical Risk Index (Caldara & Iacoviello), global/currency-agnostic backdrop read; the one series here NOT on FRED (js/gprEngine.js)
+let bankCredit = null;   // /api/bank-credit — BIS cross-border bank credit regime (js/bankCredit.js); quarterly, context only (bank-credit-dollar-*)
 let macroMoved = null;   // /api/macro-changes — per-series 1d/5d/20d change rows (what moved)
 let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite (zoom 0)
 let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percentiles
@@ -2612,6 +2613,7 @@ async function loadGate() {
   setInterval(() => loadNewsOutcomes().catch(() => {}), 10 * 60_000);
   jget('/api/calendar-ahead').then(r => { if (r?.ok) { calAhead = r.rows ?? []; render(); } }).catch(() => {});   // week ahead past FF's week
   jget('/api/gpr').then(r => { gpr = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { gpr = { down: true, error: e.message }; render(); });   // geopolitical risk line; a dead feed says so
+  jget('/api/bank-credit').then(r => { bankCredit = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { bankCredit = { down: true, error: e.message }; render(); });   // BIS bank-credit regime line (quarterly)
   jget('/api/econ-surprise').then(r => { if (r?.ok) { econSurprise = r; render(); } }).catch(() => {});   // actual-vs-consensus surprise per currency
   jget('/api/macro-regime-fx').then(r => { if (r?.ok) { regimeFx = r; render(); } }).catch(() => {});   // regime-conditional FX base rates
   renderGate(); renderRiskFlags(); renderMacroMoved(); renderNewsPlay(); renderSummary(); render();
@@ -5322,6 +5324,18 @@ function secBody(id, bodyHtml) {
   return `<div class="sec-body${closed ? ' sec-hidden' : ''}" data-sec="${id}">${bodyHtml}</div>`;
 }
 
+/* Bank-lending leg of the money chain (BIS LBS, quarterly, ~4 months late). Context only:
+   bank-credit-dollar-dxy is UNDERPOWERED and -nasdaq CONTEXT, so this never reads as a call. */
+function bankCreditLine() {
+  if (!bankCredit) return '';
+  if (bankCredit.down) return `<div class="riskverdict muted" style="margin-top:3px">Bank credit (BIS): unavailable · ${esc0(bankCredit.error ?? '')}</div>`;
+  const h = bankCredit.headline ?? {}, sg = v => v == null ? '–' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+  const cls = { contracting: 'off', slow: '', normal: 'on', fast: 'mix' }[h.regime] ?? '';
+  const tip = 'Cross-border bank lending, FX-adjusted growth over four quarters (BIS Locational Banking Statistics). Quarterly and about four months late, so it sets the backdrop (how much leverage is building and where) and cannot time anything. Tested: no forward edge on the dollar (underpowered); fast growth came before the 2000 and 2008 Nasdaq busts but not in the 2020s (context).';
+  return `<div class="riskverdict help" style="margin-top:3px" title="${esc0(tip)}">Bank credit <span class="muted">(${esc0(bankCredit.latest ?? '')})</span>: USD lending <b class="tone ${cls}">${sg(h.usdG)}</b> y/y, <b>${esc0(h.regime ?? '')}</b>`
+    + ` <span class="muted">· non-banks ${sg(h.nbfiG)} · Cayman $ ${sg(h.caymanUsdG)} · yen ex-Japan ${sg(h.yenOffshoreG)} · <a href="bank-credit.html" target="_blank">detail</a></span></div>`;
+}
+
 function renderMarketRead() {
   const el = $('mread');
   if (!brief?.instruments) { el.style.display = 'none'; return; }
@@ -5530,6 +5544,7 @@ function renderMarketRead() {
         ${seasonalityLine()}
         ${correlationRegimeLine()}
         ${coherenceLine()}
+        ${bankCreditLine()}
         ${risk.gpr ? `<div class="riskverdict" style="margin-top:3px" title="Caldara &amp; Iacoviello's Geopolitical Risk Index (Federal Reserve Board) — counts geopolitical-tension language across 10 major newspapers. The source republishes this file weekly (Mondays), not daily, so freshness is checked against that cadence, not a daily one. Shown as a 30-day smoothed level, z-scored against its own trailing 2-year history. Genuinely global and currency-agnostic — not derived from anything else on this page. Context, not a backtested rule.">Geopolitical risk: ${risk.gpr.stale ? `<b class="tone off" style="font-weight:800">⚠ stale</b><span class="muted"> · last update ${risk.gpr.asOfDate} (${risk.gpr.daysStale}d ago) — the weekly pull may have failed, check /api/gpr/refresh-status</span>` : `<b class="tone ${risk.gpr.z > 0.75 ? 'off' : risk.gpr.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.gpr.z > 0.75 ? 'elevated' : risk.gpr.z < -0.5 ? 'subdued' : 'normal'}</b><span class="muted"> · z ${risk.gpr.z >= 0 ? '+' : ''}${risk.gpr.z} · ${risk.gpr.trend}${risk.gpr.asOfDate ? ` · as of ${risk.gpr.asOfDate}` : ''}</span>`}</div>` : ''}
       </div>
     </div>
