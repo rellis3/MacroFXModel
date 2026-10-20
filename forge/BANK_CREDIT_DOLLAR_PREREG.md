@@ -82,3 +82,11 @@ A quarterly r of 0.15 (R² ≈ 2%) would already be useful as a sizing tilt, and
 - **VALIDATED** → ledger entry (research-only). The bank-credit page shows the signal with its test result, and the forward record starts with the next BIS release. Nothing sizes on it until the forward record and |t| ≥ 3 agree.
 - **NULL** → ledger entry. The bank-credit page and today.html describe the BIS data as **context only** ("credit regime"). They never present it as a forecast of the dollar or Nasdaq.
 - **UNDERPOWERED** → ledger entry. Same display rule as NULL. The history cannot get longer, so the only way to test further is the forward record, which runs from the next BIS release.
+
+## Amendments
+
+### A1 — 2026-10-20 — POST-HOC (results seen)
+**Sample.** Yahoo's monthly history for `DX-Y.NYB` and `^IXIC` starts in 1985, so the scored sample ran 1985-Q2 → 2026-Q2 (n = 165) instead of 1980-Q3 (n ≈ 184). The MDE rises from 0.23 to 0.24. Nothing else changed.
+
+### A2 — 2026-10-20 — POST-HOC (results seen): the nasdaq cell is demoted from VALIDATED to CONTEXT
+The nasdaq cell met the gate as written (two-sided: Holm CI excludes 0, same sign in both halves, outside the placebo). r = −0.16 [−0.28, −0.06]. The sign is the **opposite** of hypothesis (b), which expected r > 0. The registered concentration controls (`stats-defaults.md`) then showed it rests on the two credit-boom busts. Without 1998–2002 and 2007–2009, r = −0.07. By decade it runs −0.21, −0.18, −0.11, −0.04, then +0.12 in the 2020s, and +0.09 over the last ten years. t ≈ 2.9, which is under the |t| ≥ 3 promotion bar. The cell is demoted to CONTEXT: it describes the history (high dollar-credit growth came before both big Nasdaq busts) and is not a forecast. A post-hoc amendment may demote, so this is allowed.

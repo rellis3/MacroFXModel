@@ -10,14 +10,14 @@ Generated 2026-10-20.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **145** |
+| claims tested (validated + null + underpowered) | **146** |
 | validated | 33 |
 | null | 107 |
-| underpowered | 5 |
-| context (base rates, descriptions: not counted as tests) | 33 |
-| pre-registrations with no banked verdict (below) | 41 |
+| underpowered | 6 |
+| context (base rates, descriptions: not counted as tests) | 34 |
+| pre-registrations with no banked verdict (below) | 42 |
 
-**What the count says (Lesson 02 §05).** If none of the 145 claims were real, tests at the usual 5% size would still pass
+**What the count says (Lesson 02 §05).** If none of the 146 claims were real, tests at the usual 5% size would still pass
 about **7.3** of them by luck. 33 passed, so most passes are unlikely to be luck alone, but
 **roughly 7 of the 33 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
@@ -199,6 +199,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-19 | portfolio-book | price | context | forge/PORTFOLIO_BOOK_PREREG.md |
 | 2026-10-19 | range-ladder-placebo | price | underpowered | forge/RANGE_LADDER_PLACEBO_PREREG.md |
 | 2026-10-19 | vol-crush-drift | events | null | forge/VOL_CRUSH_DRIFT_PREREG.md |
+| 2026-10-20 | bank-credit-dollar-dxy | macro | underpowered | forge/BANK_CREDIT_DOLLAR_PREREG.md |
+| 2026-10-20 | bank-credit-dollar-nasdaq | macro | context | forge/BANK_CREDIT_DOLLAR_PREREG.md |
 | 2026-10-20 | gamma-regime-trades-fx | positioning | null | forge/GAMMA_REGIME_TRADES_FX_PREREG.md |
 | 2026-10-20 | range-edge-limit-fade | execution | null | forge/RANGE_EDGE_LIMIT_FADE_PREREG.md |
 | 2026-10-20 | range-ladder-placebo-confirm | price | validated | forge/RANGE_LADDER_PLACEBO_CONFIRM_PREREG.md |
@@ -250,4 +252,5 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
 - `oi_research_book/GEX_RANGE_ES_PREREG.md`: gex-range-es — does the NQ gamma-range effect (G2) replicate on ES, once the timing and the bars are honest?
+- `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
 - `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot

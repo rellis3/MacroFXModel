@@ -1169,6 +1169,20 @@ export const DESK_EVIDENCE = [
     result: 'NULL, pre-registered as "null, leaning negative". Same 61 setups. SLV 20 sessions after a crack -0.13% vs +1.79% unconditional: excess -1.93 [-4.05, +0.16], n=60; the interval excludes the 3.5% pass bar (MDE 3.4). The lean is the registered one: negative in both halves (-2.17 / -1.81), neither clearing zero. Mirror -0.65 [-2.79, +1.61].',
     use: 'Do not write that silver benefits from an AI-trade crack; if anything the industrial leg argues the other way and the data leans that way without clearing. A growth scare is not a metals bid.',
   },
+  {
+    id: 'bank-credit-dollar-dxy', domain: 'macro', verdict: 'underpowered', date: '2026-10-20', doc: 'forge/BANK_CREDIT_DOLLAR_PREREG.md', also: ['analysis/output/bank-credit-dollar/RESULTS.md'],
+    claim: 'Bruno-Shin risk-taking channel, desk version: faster growth in cross-border US-dollar bank credit (BIS LBS, FX-adjusted, known two quarters after the quarter) is followed by a weaker dollar index the next quarter',
+    result: '165 quarters 1985-Q2 to 2026-Q2, moving-block bootstrap (block 4, B 2000, seed 20261020): r -0.10 [-0.24, +0.02], Holm p 0.11, inside the circular-shift placebo band [-0.16, +0.16]; halves -0.09 / -0.02. MDE 0.24 vs a useful bar of 0.15, so the design could not have found a small effect. Latest-vintage BIS data (revision lookahead).',
+    use: 'BIS cross-border credit growth is shown as a credit regime only; never as a dollar forecast. Reopen only with point-in-time BIS vintages or a cross-country panel.',
+    instruments: ['DXY'],
+  },
+  {
+    id: 'bank-credit-dollar-nasdaq', domain: 'macro', verdict: 'context', date: '2026-10-20', doc: 'forge/BANK_CREDIT_DOLLAR_PREREG.md', also: ['analysis/output/bank-credit-dollar/RESULTS.md'],
+    claim: 'Faster growth in cross-border US-dollar bank credit (BIS LBS, known two quarters after the quarter) is followed by a higher Nasdaq Composite return the next quarter',
+    result: '165 quarters 1985-Q2 to 2026-Q2: r -0.16 [-0.28, -0.06], Holm p 0.008, both halves negative (-0.12 / -0.25), outside placebo [-0.12, +0.17]: the two-sided gate held but with the OPPOSITE sign to the claim. Demoted to context post-hoc (A2): without 1998-2002 and 2007-2009 r is -0.07; by decade -0.21/-0.18/-0.11/-0.04/+0.12 (2020s); last 10 years +0.09; t about 2.9. Top credit-growth tercile (>7.6% a year) averaged -0.5% next quarter vs +4.6% in the bottom tercile.',
+    use: 'High dollar-credit growth was the backdrop to both big Nasdaq busts in the sample (2000, 2008); in the 2020s it was not followed by weak returns. Pages may show the credit regime and that history; they may not call it a forecast or size on it.',
+    instruments: ['NQ'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1270,6 +1284,8 @@ const POWER = {
   'month-end-rebalance':     { n: '229 months 2007-2026',      note: 'quintiles with CIs' },
   'zone-engine':             { n: '83k trades (M30)',          note: 'negative in both halves; H4 a coin flip' },
   'funding-stress':          { n: '21 episodes (S2)',          note: 'S1 left 15 episodes and was declared UNTESTABLE against a pre-registered floor of 20' },
+  'bank-credit-dollar-dxy':    { n: '165 quarters 1985-2026', note: 'MDE r 0.24 vs useful bar 0.15; CI [-0.24, +0.02]' },
+  'bank-credit-dollar-nasdaq': { n: '165 quarters 1985-2026', note: 'gate met two-sided, opposite sign; rests on 2000 and 2008 busts (ex-crises r -0.07)' },
 };
 
 const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };
