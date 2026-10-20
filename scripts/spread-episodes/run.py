@@ -70,7 +70,8 @@ def case1_flat(shift=0, cache={}):
     n = len(x)
     T = (days[di] + pd.to_timedelta((sl + 1) * 15, 'min'))
     dstr = days[di].strftime('%Y-%m-%d').to_numpy()
-    F = dict(case='case1', x=x, p=p, n=n, day=di, hour=(sl * 15) // 60, T=T.asi8 if hasattr(T, 'asi8') else T.view('int64'),
+    F = dict(case='case1', x=x, p=p, n=n, day=di, hour=(sl * 15) // 60, T=T.as_unit('ns').asi8,   # A3: pandas 3 builds this index in microseconds; force ns
+            
              per=period_of(dstr, P1), H={'1h': 4, '4h': 16, '8h': 32, '24h': 96}, hmax=96, off=0, Lp=92, Lx=460, prim_h='4h', ref_h=16)
     F['dates'] = dstr
     wk = ((days[di] - pd.Timestamp('2024-01-01')).days // 7).to_numpy()
@@ -606,7 +607,7 @@ def _race_sum(r, t):
 
 
 def export_chart(case, F, ev, _):
-    T = F['T'] // 10**9 if case == 'case1' else pd.to_datetime(pd.Series(F['dates'])).astype('int64').to_numpy() // 10**9
+    T = F['T'] // 10**9 if case == 'case1' else pd.to_datetime(pd.Series(F['dates'])).astype('datetime64[s]').astype('int64').to_numpy()
     ser = dict(t=[int(v) for v in T], x=[round(float(v), 3) for v in F['x']], p=[round(float(np.exp(v)), 5 if case == 'case2' else 1) for v in F['p']])
     evs = []
     for j in range(len(ev['co'])):

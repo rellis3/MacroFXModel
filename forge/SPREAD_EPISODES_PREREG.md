@@ -274,6 +274,16 @@ y < 0, i.e. revert) is scored and reported is now implemented as a separate row 
 the calendar-day windows, and its grid output was seen (0 Discover-BH cells in both cases). Case 2 was row-based
 throughout and is unaffected. No threshold, cell, gate or period changed.
 
+### A3 — 2026-10-20 — POST-HOC (smoke run seen; implementation fix)
+
+**The bug.** pandas 3 builds the Case 1 bar-time index in microseconds. The release tag compared those times with the
+calendar in nanoseconds, so every Case 1 bar was tagged "unknown" and both `release=` condition levels were empty.
+The same unit problem broke the timestamps in the chart exports for both cases. Nothing else reads those timestamps.
+
+**The fix.** Times are forced to nanoseconds, and the exports are written in epoch seconds. After the fix, 16.5% of
+Case 1 bars are near a release and 5.9% are unknown (after the calendar ends on 2026-07-02). No cell, gate or
+threshold changed.
+
 ## RESULTS
 
 See `analysis/output/spread-episodes/RESULTS.md`.
