@@ -6,7 +6,7 @@ asyncio.set_event_loop(asyncio.new_event_loop())
 import pandas as pd
 from ib_insync import IB, Future, util
 OUT = Path(__file__).resolve().parents[1] / "analysis" / "output" / "stir_1m"
-ib = IB(); ib.connect("127.0.0.1", 7497, clientId=14, timeout=20, readonly=True); last = [0.0]
+ib = IB(); ib.connect("127.0.0.1", int(__import__('os').environ.get('IB_PORT', 4002)), clientId=14, timeout=20, readonly=True); last = [0.0]
 for month in ("202610", "202611"):
     det = ib.reqContractDetails(Future(symbol="I", exchange="ICEEU", currency="EUR", lastTradeDateOrContractMonth=month))
     c = det[0].contract; c.lastTradeDateOrContractMonth = c.lastTradeDateOrContractMonth.split(" ")[0]; parts = []

@@ -21,7 +21,7 @@ for i in range(2, len(months)):
     lo, hi = max(exp[prev2], START), min(exp[prev1], END)
     if lo < hi: jobs.append((me, lo - timedelta(days=7), min(hi + timedelta(days=7), END)))
 print("jobs:", [(f"{m[0]}-{m[1]:02d}", str(a), str(b)) for m, a, b in jobs])
-ib = IB(); ib.connect("127.0.0.1", 7497, clientId=15, timeout=20, readonly=True); last = [0.0]
+ib = IB(); ib.connect("127.0.0.1", int(__import__('os').environ.get('IB_PORT', 4002)), clientId=15, timeout=20, readonly=True); last = [0.0]
 for (y, m), a, b in jobs:
     det = ib.reqContractDetails(Future(symbol="I", exchange="ICEEU", currency="EUR", lastTradeDateOrContractMonth=f"{y}{m:02d}", includeExpired=True))
     if not det: print(f"{y}-{m:02d}: not found"); continue

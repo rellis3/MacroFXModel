@@ -1,7 +1,7 @@
 """Bond futures 1-min MIDPOINT for the C.OG line identification (analysis/output/cog_video_0918/RECONSTRUCTION.md):
 Bund (GBL), Bobl (GBM), Buxl (GBX) Dec26 @EUREX; ZN, ZF, ZB, UB Dec26 @CBOT. Two 1-week requests each ending Sat 00:00 UTC
 19 Sep and 26 Sep 2026 (covers 7-25 Sep). Writes analysis/output/stir_1m_bonds/<EXCH>_<local>.parquet.
-    python scratchpad/ibkr_bond_pull.py      (TWS open, port 7497)"""
+    python scratchpad/ibkr_bond_pull.py      (IB Gateway open, port 4002)"""
 import asyncio, sys, time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,7 +11,7 @@ from ib_insync import IB, Future, util
 OUT = Path(__file__).resolve().parents[1] / "analysis" / "output" / "stir_1m_bonds"; OUT.mkdir(parents=True, exist_ok=True)
 SPECS = [("GBL", "EUREX", "EUR"), ("GBM", "EUREX", "EUR"), ("GBX", "EUREX", "EUR"), ("ZN", "CBOT", "USD"), ("ZF", "CBOT", "USD"), ("ZB", "CBOT", "USD"), ("UB", "CBOT", "USD")]
 ENDS = [datetime(2026, 9, 19, tzinfo=timezone.utc), datetime(2026, 9, 26, tzinfo=timezone.utc)]
-ib = IB(); ib.connect("127.0.0.1", 7497, clientId=12, timeout=20, readonly=True)
+ib = IB(); ib.connect("127.0.0.1", int(__import__('os').environ.get('IB_PORT', 4002)), clientId=12, timeout=20, readonly=True)
 last = [0.0]
 def pace():
     w = 10.5 - (time.time() - last[0]);

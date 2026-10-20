@@ -4,7 +4,7 @@ from pathlib import Path
 from ib_insync import IB, Future
 ROOT = Path(__file__).resolve().parents[1]
 SPECS = [('SOFR3','CME','USD','202609'),('SOFR3','CME','USD','202612'),('SOFR3','CME','USD','202703'),('I','ICEEU','EUR','202703'),('I','ICEEU','EUR','202612'),('ER3','ICEEU','EUR','202612'),('ER3','ICEEU','EUR','202703')]
-ib = IB(); ib.connect('127.0.0.1', 7497, clientId=91, timeout=30, readonly=True); out = []
+ib = IB(); ib.connect('127.0.0.1', int(__import__('os').environ.get('IB_PORT', 4002)), clientId=91, timeout=30, readonly=True); out = []
 for sym, exch, ccy, month in SPECS:
     det = ib.reqContractDetails(Future(symbol=sym, exchange=exch, currency=ccy, lastTradeDateOrContractMonth=month))
     for d in det[:1]:

@@ -45,7 +45,8 @@ ARCHIVE = ROOT / "analysis" / "output" / "stir"
 BASE = "https://macrofxmodel-production.up.railway.app"
 KV_KEY = "zq_path_v1"
 
-HOST, PORT, CLIENT_ID = "127.0.0.1", 7497, 17   # 17: must not clash with the archive pull's 7
+import os
+HOST, PORT, CLIENT_ID = "127.0.0.1", int(os.environ.get("IB_PORT", 4002)), 17   # 4002 = IB Gateway paper (env IB_PORT overrides); client 17 must not clash with the archive pull's 7
 N_MONTHS = 12
 DURATION = "2 D"          # enough to survive a weekend and still be seconds
 BAR_SIZE = "15 mins"

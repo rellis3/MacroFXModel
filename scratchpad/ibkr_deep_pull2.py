@@ -15,7 +15,7 @@ def conn():
     for _ in range(60):
         if ib.isConnected(): return
         cid[0] += 1
-        try: ib.connect('127.0.0.1', 7497, clientId=cid[0], timeout=20, readonly=True); return
+        try: ib.connect('127.0.0.1', int(__import__('os').environ.get('IB_PORT', 4002)), clientId=cid[0], timeout=20, readonly=True); return
         except Exception: time.sleep(30)
     raise SystemExit('TWS not reachable for 30 minutes; run again when it is open')
 def pace():

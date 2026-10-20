@@ -9,7 +9,7 @@ from ib_insync import IB, Future, util
 ROOT = Path(__file__).resolve().parents[1] / "analysis" / "output" / "stir_1m_sweep"
 for k in ("mid", "trd"): (ROOT / k).mkdir(parents=True, exist_ok=True)
 SPECS = [("SOFR3", "CME", "USD", m) for m in ("202607", "202608", "202610", "202611")] + [("I", "ICEEU", "EUR", m) for m in ("202701", "202702")]
-ib = IB(); ib.connect("127.0.0.1", 7497, clientId=17, timeout=20, readonly=True); last = [0.0]
+ib = IB(); ib.connect("127.0.0.1", int(__import__('os').environ.get('IB_PORT', 4002)), clientId=17, timeout=20, readonly=True); last = [0.0]
 for sym, exch, ccy, month in SPECS:
     det = ib.reqContractDetails(Future(symbol=sym, exchange=exch, currency=ccy, lastTradeDateOrContractMonth=month))
     if not det: print(sym, month, "not found", flush=True); continue

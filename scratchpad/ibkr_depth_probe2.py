@@ -5,7 +5,7 @@ from ib_insync import IB, Future
 ib = IB(); cid = [23]
 def conn():
     if not ib.isConnected():
-        cid[0] += 1; ib.connect("127.0.0.1", 7497, clientId=cid[0], timeout=20, readonly=True)
+        cid[0] += 1; ib.connect("127.0.0.1", int(__import__('os').environ.get('IB_PORT', 4002)), clientId=cid[0], timeout=20, readonly=True)
 conn(); last = [0.0]
 U = lambda y, m, d: datetime(y, m, d, tzinfo=timezone.utc)
 def get(sym, exch, ccy, month):

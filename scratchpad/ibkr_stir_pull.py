@@ -43,7 +43,7 @@ ARCHIVE = Path(__file__).resolve().parents[1] / "analysis" / "output" / "stir"
 ARCHIVE.mkdir(parents=True, exist_ok=True)
 
 HOST = "127.0.0.1"
-PORT = 7497          # TWS paper default -- change to 7496 (TWS live) / 4002 (Gateway paper) / 4001 (Gateway live)
+PORT = int(__import__('os').environ.get('IB_PORT', 4002))   # Gateway paper default (env IB_PORT); TWS paper 7497 -- change to 7496 (TWS live) / 4002 (Gateway paper) / 4001 (Gateway live)
 CLIENT_ID = 7
 
 BAR_SIZE = "15 mins"

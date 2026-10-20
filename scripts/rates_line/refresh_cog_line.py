@@ -1,4 +1,4 @@
-"""Refresh the C.OG line from IBKR (laptop: TWS / IB Gateway open and logged in, API on port 7497, paper account is fine), rebuild
+"""Refresh the C.OG line from IBKR (laptop: IB Gateway open and logged in, API on port 4002 (paper; override with env IB_PORT)), rebuild
 analysis/output/cog_line/cog_line_15m.json and PUSH the latest bars to the server (KV cog_line_live_v1) so /api/cog-line and the Rates page are current without a redeploy.
 
     python scripts/rates_line/refresh_cog_line.py [--days auto|N] [--push] [--commit]
@@ -14,7 +14,9 @@ If TWS shows the paper-trading disclaimer, accept it first (the API refuses conn
 import argparse, asyncio, json, math, subprocess, sys, time, urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import os
 asyncio.set_event_loop(asyncio.new_event_loop())
+IB_PORT = int(os.environ.get('IB_PORT', 4002))   # IB Gateway paper (4002). TWS paper is 7497; set IB_PORT to override
 import pandas as pd
 from ib_insync import IB, Future, util
 ROOT = Path(__file__).resolve().parents[2]; SRC = ROOT / 'analysis' / 'output' / 'stir_1m'; SERIES = ROOT / 'analysis' / 'output' / 'cog_line' / 'cog_line_15m.json'
@@ -50,9 +52,9 @@ if __name__ == '__main__':
         nb = newest_bar(need); days = 3 if nb is None else min(25, max(3, math.ceil((pd.Timestamp(now) - nb).total_seconds() / 86400) + 1))
     else: days = int(a.days)
     ib = IB()
-    try: ib.connect('127.0.0.1', 7497, clientId=19, timeout=20, readonly=True)
+    try: ib.connect('127.0.0.1', IB_PORT, clientId=19, timeout=20, readonly=True)
     except Exception as e:
-        print(f'Could not connect to TWS / IB Gateway on port 7497 ({type(e).__name__}). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.'); sys.exit(2)
+        print(f'Could not connect to IB Gateway on port {IB_PORT} ({type(e).__name__}). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.'); sys.exit(2)
     sat = (now + timedelta(days=(5 - now.weekday()) % 7)).replace(hour=0, minute=0, second=0, microsecond=0)
     print(f'pulling the last {days} day(s) for {need}')
     for name in need:

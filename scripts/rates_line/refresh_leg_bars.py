@@ -1,5 +1,5 @@
 """Refresh the individual futures legs for the chart page (cog-chart.html) from IBKR and PUSH the recent bars to the server (KV cog_legs_live_v1), so the page's legs are current
-without a redeploy. Laptop: TWS / IB Gateway open and logged in, API on port 7497 (paper is fine).
+without a redeploy. Laptop: IB Gateway open and logged in, API on port 4002 (paper; override with env IB_PORT).
 
     python scripts/rates_line/refresh_leg_bars.py [--days auto|N] [--push] [--commit] [--no-pull]
 
@@ -19,7 +19,9 @@ import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import os
 asyncio.set_event_loop(asyncio.new_event_loop())
+IB_PORT = int(os.environ.get('IB_PORT', 4002))   # IB Gateway paper (4002). TWS paper is 7497; set IB_PORT to override
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -84,9 +86,9 @@ if __name__ == '__main__':
         days = 3 if (a.days == 'auto' and newest is None) else (min(25, max(3, math.ceil((pd.Timestamp(now) - newest).total_seconds() / 86400) + 1)) if a.days == 'auto' else int(a.days))
         ib = IB()
         try:
-            ib.connect('127.0.0.1', 7497, clientId=21, timeout=20, readonly=True)
+            ib.connect('127.0.0.1', IB_PORT, clientId=21, timeout=20, readonly=True)
         except Exception as e:
-            print(f'Could not connect to TWS / IB Gateway on port 7497 ({type(e).__name__}). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.')
+            print(f'Could not connect to IB Gateway on port {IB_PORT} ({type(e).__name__}). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.')
             sys.exit(2)
         sat = (now + timedelta(days=(5 - now.weekday()) % 7)).replace(hour=0, minute=0, second=0, microsecond=0)
         print(f'pulling the last {days} day(s) for {names}')

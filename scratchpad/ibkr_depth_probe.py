@@ -3,7 +3,7 @@ import asyncio, time
 from datetime import datetime, timezone
 asyncio.set_event_loop(asyncio.new_event_loop())
 from ib_insync import IB, Future
-ib = IB(); ib.connect("127.0.0.1", 7497, clientId=21, timeout=20, readonly=True); last = [0.0]
+ib = IB(); ib.connect("127.0.0.1", int(__import__('os').environ.get('IB_PORT', 4002)), clientId=21, timeout=20, readonly=True); last = [0.0]
 def probe(label, sym, exch, ccy, month, exp, end, dur, bar, what="MIDPOINT"):
     det = ib.reqContractDetails(Future(symbol=sym, exchange=exch, currency=ccy, lastTradeDateOrContractMonth=month, includeExpired=exp))
     if not det: print(f"{label}: contract not found"); return

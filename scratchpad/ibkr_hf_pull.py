@@ -8,7 +8,7 @@
   3. m1      : 1-min MIDPOINT bars for SR3Z6, SR3H7, IZ6, ER3U6 and the NQ futures front (M6 / U6 / Z6), last ~26 weeks,
                in 1-week requests, paced under IBKR's 60-requests-per-10-minutes limit. Resumable: finished chunks are kept.
 
-    python scratchpad/ibkr_hf_pull.py clean mid15 m1      (TWS / IB Gateway open, API on port 7497)
+    python scratchpad/ibkr_hf_pull.py clean mid15 m1      (IB Gateway open, API on port 4002)
 """
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[1] / "analysis" / "output"
 STIR, MID, M1 = ROOT / "stir", ROOT / "stir_mid15", ROOT / "stir_1m"
 for p in (MID, M1, STIR / "_superseded"):
     p.mkdir(parents=True, exist_ok=True)
-HOST, PORT, CID = "127.0.0.1", 7497, 11
+HOST, PORT, CID = "127.0.0.1", int(__import__("os").environ.get("IB_PORT", 4002)), 11
 NOW = datetime.now(timezone.utc)
 OLD_END = datetime(2026, 4, 12, tzinfo=timezone.utc)
 
