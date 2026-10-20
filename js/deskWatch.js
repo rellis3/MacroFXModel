@@ -212,8 +212,8 @@ export function evaluateTriggers(inp = {}) {
     const yh = (bankCredit.history?.yenOffshore ?? []).filter(x => x.period >= '2000-Q1').map(x => x.g).filter(Number.isFinite);
     if (yh.length >= 40 && Number.isFinite(h.yenOffshoreG)) {
       const p80 = [...yh].sort((a, b) => a - b)[Math.floor(0.8 * (yh.length - 1))], hot = h.yenOffshoreG >= p80;
-      push({ id: 'yen-funding-build', kind: 'described', evidenceId: null, label: 'Yen lent outside Japan in its top fifth (BIS)', firing: hot, value: { g: h.yenOffshoreG, p80: +p80.toFixed(1), q },
-        detail: hot ? `BIS ${q}: yen lent to borrowers outside Japan ${sg(h.yenOffshoreG)} y/y, at or above its 80th percentile since 2000 (${sg(p80)}). Yen-funded carry is building; an unwind like August 2024 would have more to unwind. Untested (prereg pending), context only.`
+      push({ id: 'yen-funding-build', kind: 'described', evidenceId: 'yen-funding-squeeze-usdjpy', label: 'Yen lent outside Japan in its top fifth (BIS)', firing: hot, value: { g: h.yenOffshoreG, p80: +p80.toFixed(1), q },
+        detail: hot ? `BIS ${q}: yen lent to borrowers outside Japan ${sg(h.yenOffshoreG)} y/y, at or above its 80th percentile since 2000 (${sg(p80)}). Yen-funded carry is building; an unwind like August 2024 would have more to unwind. Tested: no forward link to squeeze size found (yen-funding-squeeze, underpowered); context only.`
           : `BIS ${q}: yen lent outside Japan ${sg(h.yenOffshoreG)} y/y, below its 80th percentile (${sg(p80)}).` });
     }
   }

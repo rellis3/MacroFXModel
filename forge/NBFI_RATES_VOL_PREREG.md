@@ -58,3 +58,8 @@ n ≈ 150, design effect about 1 (non-overlapping outcomes). MDE (80% power, α 
 
 - **VALIDATED** → ledger entry (research-only). The Cayman tile on bank-credit.html shows "historically more rates vol next quarter", and the stop-risk and vol pages can cite it as context. A forward record starts. No sizing until |t| ≥ 3.
 - **NULL / UNDERPOWERED** → ledger entry. The Cayman line stays as a description of leverage only.
+
+## Amendments
+
+### A1 — 2026-10-20 — POST-HOC (results seen)
+Describe only. BIS Cayman USD data begin earlier than expected, so the registered rule (first data quarter + 7) gave 188 outcome quarters from 1979-Q3 instead of about 150; MDE about 0.20 instead of 0.23. Nothing else changed.

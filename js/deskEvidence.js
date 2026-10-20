@@ -1180,8 +1180,41 @@ export const DESK_EVIDENCE = [
     id: 'bank-credit-dollar-nasdaq', domain: 'macro', verdict: 'context', date: '2026-10-20', doc: 'forge/BANK_CREDIT_DOLLAR_PREREG.md', also: ['analysis/output/bank-credit-dollar/RESULTS.md'],
     claim: 'Faster growth in cross-border US-dollar bank credit (BIS LBS, known two quarters after the quarter) is followed by a higher Nasdaq Composite return the next quarter',
     result: '165 quarters 1985-Q2 to 2026-Q2: r -0.16 [-0.28, -0.06], Holm p 0.008, both halves negative (-0.12 / -0.25), outside placebo [-0.12, +0.17]: the two-sided gate held but with the OPPOSITE sign to the claim. Demoted to context post-hoc (A2): without 1998-2002 and 2007-2009 r is -0.07; by decade -0.21/-0.18/-0.11/-0.04/+0.12 (2020s); last 10 years +0.09; t about 2.9. Top credit-growth tercile (>7.6% a year) averaged -0.5% next quarter vs +4.6% in the bottom tercile.',
-    use: 'High dollar-credit growth was the backdrop to both big Nasdaq busts in the sample (2000, 2008); in the 2020s it was not followed by weak returns. Pages may show the credit regime and that history; they may not call it a forecast or size on it.',
+    use: 'High dollar-credit growth was the backdrop to both big Nasdaq busts in the sample (2000, 2008); in the 2020s it was not followed by weak returns. Pages may show the credit regime and that history; they may not call it a forecast or size on it. The cross-country retest (bank-credit-panel-equity) found no quarterly relative effect.',
     instruments: ['NQ'],
+  },
+  {
+    id: 'bank-credit-panel-equity', domain: 'macro', verdict: 'underpowered', date: '2026-10-20', doc: 'forge/BANK_CREDIT_PANEL_PREREG.md', also: ['analysis/output/bank-credit-panel/RESULTS.md'],
+    claim: 'Across countries, faster cross-border bank borrowing (BIS LBS, known two quarters after the quarter) is followed by weaker next-quarter equity returns relative to other countries (credit-boom literature; the cross-country retest of bank-credit-dollar-nasdaq)',
+    result: '28 countries, 3,648 country-quarters 1988-Q1 to 2026-Q2, quarter-demeaned IC, quarter-block bootstrap (seed 20261020): IC -0.028 [-0.089, +0.027], Holm p 0.68, halves -0.052 / +0.017, inside the label-shuffle placebo [-0.037, +0.036]; no country flips it. MDE 0.08 vs a 0.05 useful bar. Descriptive: within-country time series -0.059 (23/28 negative) but that keeps the global cycle in.',
+    use: 'No cross-country ranking on any page. Bank credit stays a regime description. Reopen only at a 2-3 year horizon with its own prereg.',
+    instruments: ['SPX500', 'NQ', 'DE30', 'UK100'],
+  },
+  {
+    id: 'bank-credit-panel-fx', domain: 'macro', verdict: 'null', date: '2026-10-20', doc: 'forge/BANK_CREDIT_PANEL_PREREG.md', also: ['analysis/output/bank-credit-panel/RESULTS.md'],
+    claim: 'Across currencies, faster cross-border bank borrowing by a country (BIS LBS, known two quarters later) is followed by its currency underperforming against USD the next quarter, relative to other currencies',
+    result: '20 currency blocs (euro area as one), 1,773 currency-quarters 2004-Q1 to 2026-Q2: IC +0.008 [-0.029, +0.044], inside the label-shuffle placebo [-0.031, +0.031]; the interval sits inside the 0.05 useful bar, so a useful effect is ruled out. Lags 1-6 all between -0.004 and +0.013.',
+    use: 'A country borrowing faster across borders says nothing about its currency next quarter. Never shown as an FX tilt.',
+  },
+  {
+    id: 'nbfi-rates-vol', domain: 'volatility', verdict: 'underpowered', date: '2026-10-20', doc: 'forge/NBFI_RATES_VOL_PREREG.md', also: ['analysis/output/nbfi-rates-vol/RESULTS.md'],
+    claim: 'Faster cross-border USD borrowing by Cayman fund vehicles (the basis-trade / repo leverage footprint, BIS LBS, known two quarters later) is followed by more 10-year Treasury realised vol next quarter than vol persistence predicts',
+    result: '188 quarters 1979-Q3 to 2026-Q2: partial r +0.13 [-0.00, +0.26], just outside the circular-shift placebo [-0.15, +0.12], but the halves disagree (+0.10 to 2007, -0.01 from 2008). Positive at every lag 1-6 (+0.08 to +0.20); 5Y +0.12, largest 5-day move +0.13, MOVE (2003+) +0.04. MDE about 0.20.',
+    use: 'The Cayman line is a leverage description, not a rates-vol forecast. The consistent sign makes it the best candidate for a direct weekly test (CFTC TFF leveraged-fund Treasury shorts) under its own prereg.',
+  },
+  {
+    id: 'yen-funding-squeeze-usdjpy', domain: 'volatility', verdict: 'underpowered', date: '2026-10-20', doc: 'forge/YEN_FUNDING_SQUEEZE_PREREG.md', also: ['analysis/output/yen-funding-squeeze/RESULTS.md'],
+    claim: 'Faster growth in yen lent to borrowers outside Japan (the carry-funding footprint, BIS LBS, known two quarters later) is followed by a bigger USDJPY yen squeeze next quarter than realised vol predicts',
+    result: '118 quarters 1997-Q1 to 2026-Q2: partial r -0.06 [-0.25, +0.10], inside the placebo, halves -0.03 / +0.02, lags 1-6 between -0.06 and +0.07. MDE 0.28 vs a 0.15 bar.',
+    use: 'The yen-funding trigger and JPY note stay context. BIS bank lending misses carry run through forwards and swaps; a direct test would use CFTC JPY leveraged-fund positions.',
+    instruments: ['USDJPY'],
+  },
+  {
+    id: 'yen-funding-squeeze-audjpy', domain: 'volatility', verdict: 'underpowered', date: '2026-10-20', doc: 'forge/YEN_FUNDING_SQUEEZE_PREREG.md', also: ['analysis/output/yen-funding-squeeze/RESULTS.md'],
+    claim: 'Faster growth in yen lent outside Japan (BIS LBS, known two quarters later) is followed by a bigger AUDJPY yen squeeze next quarter than realised vol predicts',
+    result: '89 quarters 2004-Q2 to 2026-Q2: partial r +0.04 [-0.29, +0.32], inside the placebo, halves +0.08 / -0.04. MDE 0.33 vs a 0.15 bar.',
+    use: 'Same as yen-funding-squeeze-usdjpy: context only.',
+    instruments: ['AUDJPY'],
   },
 ];
 
@@ -1286,6 +1319,11 @@ const POWER = {
   'funding-stress':          { n: '21 episodes (S2)',          note: 'S1 left 15 episodes and was declared UNTESTABLE against a pre-registered floor of 20' },
   'bank-credit-dollar-dxy':    { n: '165 quarters 1985-2026', note: 'MDE r 0.24 vs useful bar 0.15; CI [-0.24, +0.02]' },
   'bank-credit-dollar-nasdaq': { n: '165 quarters 1985-2026', note: 'gate met two-sided, opposite sign; rests on 2000 and 2008 busts (ex-crises r -0.07)' },
+  'bank-credit-panel-equity':  { n: '154 quarter clusters, 3,648 country-quarters, 28 countries', note: 'MDE IC 0.08 vs useful bar 0.05; CI [-0.089, +0.027]' },
+  'bank-credit-panel-fx':      { n: '90 quarter clusters, 1,773 currency-quarters', note: 'CI [-0.029, +0.044] inside the 0.05 bar' },
+  'nbfi-rates-vol':            { n: '188 quarters 1979-2026', note: 'MDE r about 0.20 vs 0.15 bar; CI [-0.00, +0.26]' },
+  'yen-funding-squeeze-usdjpy': { n: '118 quarters', note: 'MDE r 0.28 vs 0.15 bar' },
+  'yen-funding-squeeze-audjpy': { n: '89 quarters', note: 'MDE r 0.33 vs 0.15 bar' },
 };
 
 const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };

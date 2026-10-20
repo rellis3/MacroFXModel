@@ -77,3 +77,8 @@ An IC of 0.05 on a quarterly cross-sectional tilt would be useful. These designs
 - **VALIDATED** → ledger entry (research-only). bank-credit.html adds a country ranking shown as "historically weaker next quarter", with its IC and CI. A forward record starts. No sizing.
 - **NULL** → ledger entry. The Nasdaq context entry is updated to say the cross-country retest found nothing, and pages keep the regime wording only.
 - **UNDERPOWERED** → ledger entry. The same display rule as NULL. More power would need a longer horizon (2–3 years, the literature's), which needs its own prereg.
+
+## Amendments
+
+### A1 — 2026-10-20 — POST-HOC (results seen)
+Describe only. Equity outcomes start 1988-Q1 (first quarter with at least 8 countries), not 1987-Q1. FX outcomes start 2004-Q1 (Yahoo FX history), not 2004-Q2. The euro area entered the FX cell through the BIS `5C` borrower aggregate, as registered. Nothing else changed.
