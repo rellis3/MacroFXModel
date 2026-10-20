@@ -127,7 +127,16 @@ No other stop, target, time window, spread filter, entry offset or line is run: 
 
 ## Amendments
 
-(none)
+### A1 — 2026-10-20 — PRE-RESULTS (pooled cells); written after a mechanics check
+
+Clarification, not a change of design. "Session start + 6 h" is the session's **first bar** + 6 h, as in
+`runRangeLineAnalyser` and `range-ladder-placebo` (the ladder those tests scored). For FX, gold and US indices that is
+06:00 UTC; for dax (first bar 06:00 UTC) and uk100 it is later. Orders are live from `validFrom` to 20:00 UTC.
+Written after a mechanics run on eurusd, gold and nq (checking fill/exit bounds: stops −1R, gaps to −1.10R, T1 +1R,
+T2 +2R), whose per-instrument numbers were seen; the clarification follows the book's code and does not depend on
+them. No pooled or gated cell had been computed. Seen in that check and reported here so it is not a surprise later:
+the registered spread filter (≤ 0.10 × R at placement) excludes most EURUSD sessions (1,830 of 2,528), because the
+Asia body range is often too narrow for the spread.
 
 ## RESULTS
 
