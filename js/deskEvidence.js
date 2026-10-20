@@ -1216,6 +1216,20 @@ export const DESK_EVIDENCE = [
     use: 'Same as yen-funding-squeeze-usdjpy: context only.',
     instruments: ['AUDJPY'],
   },
+  {
+    id: 'rates-vol-gap-move', domain: 'volatility', verdict: 'null', date: '2026-10-21', doc: 'forge/RATES_VOL_GAP_PREREG.md', also: ['analysis/output/rates-vol-gap/RESULTS.md'],
+    claim: 'Rates implied vol (MOVE, as a percentile of its year) tells us something about next-session Nasdaq realised vol that Nasdaq implied vol (VXN and its percentile), recent realised vol and the FOMC/CPI/NFP calendar do not (C.OG Cross-Asset Volatility lesson: rates options pricing risk that NQ options ignore)',
+    result: '2,480 NY-close sessions 2016-2026: partial corr +0.057 [+0.007, +0.108], above the shift placebo (95th pct +0.053), but Explore +0.136 / Confirm -0.012 and Holm p 0.028 > 0.025, so the gate failed. Without 2020: -0.005 [-0.058, +0.047]. Five years positive, five negative. NQ settlement iv30 as baseline: +0.032 [-0.053, +0.099]. Next 5 / 21 sessions +0.054 / +0.012, CIs across zero.',
+    use: 'MOVE is context next to Nasdaq, not a lead on Nasdaq vol: a day ahead, equity implied vol and the calendar already hold what rates implied vol knows (March 2020 aside). The today.html "rate vol high, equity vol calm" divergence and the risk gate movePercentile weight have no forward support from this test.',
+    instruments: ['NQ'],
+  },
+  {
+    id: 'rates-vol-gap-state', domain: 'volatility', verdict: 'underpowered', date: '2026-10-21', doc: 'forge/RATES_VOL_GAP_PREREG.md', also: ['analysis/output/rates-vol-gap/RESULTS.md'],
+    claim: 'When rates vol is rich (MOVE >= 70th pct of its year) while equity vol is cheap (VXN <= 40th pct), the next week of Nasdaq runs busier than baseline, against other equity-cheap days (the lesson setup: "SR3 is right, NQ is asleep")',
+    result: '203 state days vs 799 equity-cheap days: -0.070 log [-0.197, +0.069], wrong sign; halves +0.18 / -0.16. MDE 0.29 log vs a 0.15 bar, underpowered by design. Descriptive mirror (post-hoc look, not scored): equity rich & MOVE cheap ran -0.27 log [-0.39, -0.13] below baseline over the next 5 sessions (241 vs 576 days) - an equity-vol spike that rates vol does not confirm tended to over-price the next week; needs its own prereg.',
+    use: 'Do not say "rates are pricing risk equities are not, so expect Nasdaq vol" - untestable on 10 years of daily data and pointing the other way. The mirror is a candidate only.',
+    instruments: ['NQ'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1324,6 +1338,8 @@ const POWER = {
   'nbfi-rates-vol':            { n: '188 quarters 1979-2026', note: 'MDE r about 0.20 vs 0.15 bar; CI [-0.00, +0.26]' },
   'yen-funding-squeeze-usdjpy': { n: '118 quarters', note: 'MDE r 0.28 vs 0.15 bar' },
   'yen-funding-squeeze-audjpy': { n: '89 quarters', note: 'MDE r 0.33 vs 0.15 bar' },
+  'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
+  'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
 };
 
 const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };

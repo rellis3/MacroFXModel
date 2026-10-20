@@ -127,8 +127,17 @@ lacks, at an effect of about 0.10.
 
 ## Amendments
 
-(none yet)
+### A1 — 2026-10-21 — POST-HOC (results seen)
+The §4 verdict rules left one case undefined: a pooled CI that excludes 0 while another part of the gate fails. That
+is what happened (pooled CI [+0.007, +0.108]; Confirm half −0.012; Holm p 0.028 > 0.025). The protocol's translation
+table decides it: a failed gate on a cell registered as POWERED (§5, MDE 0.105 at the 0.10 bar) is banked `null`.
+This only fixes the word for a failed gate; it promotes nothing.
 
 ## RESULTS
 
-(not run)
+Run 2026-10-21, seed 20261021, B = 2000. Full write-up: `analysis/output/rates-vol-gap/RESULTS.md`.
+
+- **C1 `rates-vol-gap-move`: NULL.** Pooled partial corr +0.057 [+0.007, +0.108], above the placebo 95th
+  percentile (+0.053), but Explore +0.136 / Confirm −0.012, and Holm fails. Without 2020: −0.005 [−0.058, +0.047].
+  The pooled positive is the March 2020 episode.
+- **C2 `rates-vol-gap-state`: UNDERPOWERED.** −0.070 log [−0.197, +0.069]; halves +0.18 / −0.16.

@@ -10,15 +10,15 @@ Generated 2026-10-20.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **151** |
+| claims tested (validated + null + underpowered) | **153** |
 | validated | 33 |
-| null | 108 |
-| underpowered | 10 |
+| null | 109 |
+| underpowered | 11 |
 | context (base rates, descriptions: not counted as tests) | 34 |
 | pre-registrations with no banked verdict (below) | 42 |
 
-**What the count says (Lesson 02 §05).** If none of the 151 claims were real, tests at the usual 5% size would still pass
-about **7.6** of them by luck. 33 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 153 claims were real, tests at the usual 5% size would still pass
+about **7.7** of them by luck. 33 passed, so most passes are unlikely to be luck alone, but
 **roughly 8 of the 33 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -212,6 +212,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-20 | spread-episodes-nq | macro | null | forge/SPREAD_EPISODES_PREREG.md |
 | 2026-10-20 | yen-funding-squeeze-audjpy | volatility | underpowered | forge/YEN_FUNDING_SQUEEZE_PREREG.md |
 | 2026-10-20 | yen-funding-squeeze-usdjpy | volatility | underpowered | forge/YEN_FUNDING_SQUEEZE_PREREG.md |
+| 2026-10-21 | rates-vol-gap-move | volatility | null | forge/RATES_VOL_GAP_PREREG.md |
+| 2026-10-21 | rates-vol-gap-state | volatility | underpowered | forge/RATES_VOL_GAP_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
