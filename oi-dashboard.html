@@ -1149,7 +1149,13 @@ function ladderSvg(e,big){
       ...(g.c!=null&&!same(g.c,e.callWall)?[[g.c,'var(--call)','GEX CALL WALL',false]]:[]),
       ...(g.p!=null&&!same(g.p,e.putWall)?[[g.p,'var(--put)','GEX PUT WALL',false]]:[])]; })():[]),
     [spot,'var(--tx)','SPOT',false]]
-    .map(([px,col,txt,dash])=>({px,col,txt,dash,y:yAt(px)})).filter(l=>l.y!=null).sort((a,b)=>a.y-b.y);
+    .map(([px,col,txt,dash])=>{ let y=yAt(px), off='';
+      // A level outside the strike rows being drawn used to vanish (the row window is capped to the ~56 strikes nearest price,
+      // and which levels fall outside it changes with the DTE view). Pin it to the edge instead, marked as off-chart.
+      if(y==null && Number.isFinite(px) && px>0 && win.length){
+        if(px>win[0].strike){ y=TOP+rowH/2; off=' ▲ off chart'; }
+        else if(px<win[win.length-1].strike){ y=H-rowH/2; off=' ▼ off chart'; } }
+      return {px,col,txt:txt+off,dash,y}; }).filter(l=>l.y!=null).sort((a,b)=>a.y-b.y);
   let lastY=-1e9;
   lines.forEach(l=>{ l.ly=Math.max(l.y-4,lastY+13); lastY=l.ly;
  s+=`<line x1="${ph?X0:Math.max(0,X0-90)}" y1="${l.y}" x2="${X1}" y2="${l.y}" stroke="${l.col}" stroke-width="${l.dash?1.2:1.6}"${l.dash?' stroke-dasharray="6 4"':''}/>`; });
