@@ -148,6 +148,19 @@ svg text{font-family:var(--mono)}
     </div>
   </div>
 
+  <div class="card" id="gkCard">
+    <h2><em>05d</em> Greek context: turn each layer on or off
+      <span class="tgl" id="gkExp" style="margin-left:auto"><span class="pill on" data-gexp="3">≤3 DTE</span><span class="pill" data-gexp="30">≤30 DTE</span><span class="pill" data-gexp="400">whole book</span></span></h2>
+    <div class="sub"><b>Context for the levels, not new levels.</b> Pick any greeks; each gets a column on the same price axis, with the spot line and the book's walls, flip and max pain across all of them. <span style="color:#7ad3a0">●</span> moves price (dealers hedge it with the underlying) · <span style="color:#f0b04a">●</span> profit-and-loss exposure (hedged with options) · <span style="color:#8892a0">●</span> higher-order refinement. Bars show shape: each column is scaled to its own largest bars, blue to the right and amber to the left (gamma uses the platform's green and red).</div>
+    <div class="tgl" id="gkPills" style="flex-wrap:wrap;margin:0 0 10px"></div>
+    <svg id="gkChart" width="100%" viewBox="0 0 1000 600"></svg>
+    <div class="row" style="margin-top:12px">
+      <div><div class="sub" style="margin:0 0 6px;color:var(--tx2)"><b>What the book says</b></div><ul id="gkRead" style="margin:0;padding-left:18px;color:var(--tx2);font-size:13px;line-height:1.6"></ul></div>
+      <div><div class="sub" style="margin:0 0 6px;color:var(--tx2)"><b>What the ticked layers mean</b></div><ul id="gkWhat" style="margin:0;padding-left:18px;color:var(--tx3);font-size:12.5px;line-height:1.6"></ul>
+        <div class="legend" style="margin-top:8px">Only delta, gamma, vanna and charm make dealers trade the underlying. None of these layers has passed a placebo test as a price level (oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md, registered, not run). CME books use one vol per expiry and assume dealers are long calls and short puts, so the higher-order layers are estimates and every sign flips if that assumption is wrong.</div></div>
+    </div>
+  </div>
+
   <h2 class="sech"><em>06</em> The brief — six questions, in order <span>how far can price go · which levels will be reached · where hedging calms or amplifies · is the market calmer or more nervous · is positioning building · what changed overnight</span></h2>
   <div id="brief"></div>
 
@@ -177,7 +190,8 @@ svg text{font-family:var(--mono)}
 
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script type="module">
-import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol, parseOIMatrix, oiRippleBook } from './js/oi.js';
+import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol, parseOIMatrix, oiRippleBook, oiBookLegs } from './js/oi.js';
+import { greekLayers, GREEKS } from './js/greekLayers.js';
 import { bsGamma } from './js/gammaGreeks.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';
 import { cmeBookContracts } from './js/hedgingBooks.js';
@@ -682,6 +696,66 @@ function drawRipple(){
 }
 const RIPPLE_LBL = { d0_1: '0–1 DTE', d2_7: '2–7 DTE', d8_45: '8–45 DTE', d46p: '46+ DTE', unk: 'unknown DTE' };
 
+// ── 05d greek context: every greek as a per-strike column on one shared price axis, each layer switchable ──────────────
+const GK_KIND_COL = { flow: '#7ad3a0', pnl: '#f0b04a', refine: '#8892a0', raw: '#6fb6ff' };
+const GK = { on: (() => { try { const a = JSON.parse(localStorage.getItem('oiv2.greeks') || 'null'); if (Array.isArray(a)) return new Set(a); } catch (_) {} return new Set(['gex', 'vanna', 'charm']); })(), maxDte: 3 };
+const gkSave = () => { try { localStorage.setItem('oiv2.greeks', JSON.stringify([...GK.on])); } catch (_) {} };
+const fmtBig = v => { const a = Math.abs(v), sg = v < 0 ? '−' : ''; return a >= 1e9 ? sg + (a / 1e9).toFixed(2) + 'B' : a >= 1e6 ? sg + (a / 1e6).toFixed(2) + 'M' : a >= 1e3 ? sg + (a / 1e3).toFixed(1) + 'K' : sg + a.toFixed(a < 10 ? 2 : 0); };
+function gkPills(){
+  $('#gkPills').innerHTML = GREEKS.map(g => `<span class="pill${GK.on.has(g.key) ? ' on' : ''}" data-gk="${g.key}" title="${esc(g.name + ': ' + g.text)}"><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${GK_KIND_COL[g.kind]};margin-right:6px"></i>${g.label}</span>`).join('');
+  $('#gkPills').querySelectorAll('.pill').forEach(el => el.onclick = () => { const k = el.dataset.gk; GK.on.has(k) ? GK.on.delete(k) : GK.on.add(k); gkSave(); gkPills(); drawGreeks(); });
+}
+function drawGreeks(){
+  const D = CUR, svg = $('#gkChart'), read = $('#gkRead'), what = $('#gkWhat');
+  const msg = m => { svg.setAttribute('viewBox', '0 0 1000 60'); svg.innerHTML = `<text x="500" y="34" text-anchor="middle" fill="#a8b1bd" font-size="13">${m}</text>`; read.innerHTML = ''; what.innerHTML = ''; };
+  if (!D) return msg('No data for this instrument.');
+  let b = null; try { b = oiBookLegs(D.e); } catch (_) {}
+  if (!b) return msg('No per-expiry book stored for this instrument.');
+  const act = GREEKS.filter(g => GK.on.has(g.key));
+  if (!act.length) return msg('Tick at least one layer above.');
+  const lo = D.spot - 2.2 * D.rm, hi = D.spot + 2.2 * D.rm;
+  const G = greekLayers(b.legs, b.spot, { mult: b.mult, maxDte: GK.maxDte, lo, hi, flatSigma: b.flat });
+  if (!G || !G.rows.length) return msg('No strikes near price in this expiry set.');
+  const NB = 36, bw = (hi - lo) / NB, bands = Array.from({ length: NB }, () => ({}));
+  G.rows.forEach(r => { const i = Math.min(NB - 1, Math.max(0, Math.floor((r.strike - lo) / bw))); for (const g of act) bands[i][g.key] = (bands[i][g.key] || 0) + (r[g.key] || 0); });
+  const W = 1000, L = 84, Rm = 120, T = 40, rowH = 15, H = T + NB * rowH + 14, cw = (W - L - Rm) / act.length;
+  const yOf = p => T + (hi - p) / (hi - lo) * (NB * rowH);
+  let h = '';
+  act.forEach((g, ci) => {
+    const x0 = L + ci * cw, cx = x0 + cw / 2, half = cw / 2 - 10;
+    const scale = pctl(bands.map(bd => Math.abs(bd[g.key] || 0)), 0.95) || 1;
+    h += `<text x="${cx}" y="16" text-anchor="middle" fill="${GK_KIND_COL[g.kind]}" font-size="12" font-weight="700">${g.label}</text><text x="${cx}" y="30" text-anchor="middle" fill="#7f8a98" font-size="10.5">${g.name}</text>`;
+    h += `<line x1="${cx}" x2="${cx}" y1="${T}" y2="${T + NB * rowH}" stroke="rgba(255,255,255,.12)"/>`;
+    for (let r = 0; r < NB; r++) {
+      const bi = NB - 1 - r, v = bands[bi][g.key] || 0; if (!v) continue;
+      const w = Math.min(1, Math.abs(v) / scale) * half, y = T + r * rowH + 2;
+      const col = g.key === 'gex' ? (v >= 0 ? '#46b87a' : '#e8615f') : (v >= 0 ? '#6fb6ff' : '#f0b04a');
+      h += `<rect x="${v >= 0 ? cx : cx - w}" y="${y}" width="${w}" height="${rowH - 4}" fill="${col}" opacity=".85" data-t="${esc(`<b>${g.label}</b> ${px(lo + bi * bw)} – ${px(lo + (bi + 1) * bw)}<br>${fmtBig(v)}`)}"/>`;
+    }
+  });
+  const refs = [[D.spot, '#ffffff', 'spot', 0], [D.flip, '#a487f0', 'GEX flip', 4], [D.mp, '#d9c04a', 'max pain', 4], [D.cw, '#e8615f', 'call wall', 4], [D.pw, '#46b87a', 'put wall', 4]];
+  refs.filter(r => Number.isFinite(r[0]) && r[0] > lo && r[0] < hi).forEach(([p, c, name, dash]) => {
+    const y = yOf(p);
+    h += `<line x1="${L - 6}" x2="${W - Rm + 6}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="${dash ? 1 : 1.6}" ${dash ? 'stroke-dasharray="5 4"' : ''} opacity=".8"/><text x="${W - Rm + 10}" y="${y + 4}" fill="${c}" font-size="11">${name} ${px(p)}</text>`;
+  });
+  for (let r = 0; r < NB; r += 3) { const bi = NB - 1 - r; h += `<text x="${L - 10}" y="${T + r * rowH + rowH * .68}" text-anchor="end" fill="#a8b1bd" font-size="11">${px(lo + (bi + 0.5) * bw)}</text>`; }
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = h;
+  svg.querySelectorAll('[data-t]').forEach(el => { el.onmousemove = ev => showTip(ev, el.dataset.t); el.onmouseleave = hideTip; });
+
+  // readouts
+  const v = G.vega, top = v.byExpiry.slice().sort((a, c) => c.share - a.share)[0];
+  const set = GK.maxDte >= 400 ? 'the whole book' : `expiries within ${GK.maxDte} days`;
+  const lines = [];
+  lines.push(`Net vega across ${set}: <b>${v.net >= 0 ? 'long' : 'short'}</b> (${fmtBig(v.net)} per vol point). On the usual assumption, dealers ${v.net >= 0 ? 'gain when implied vol rises' : 'lose when implied vol rises, so a vol spike hurts them'}.`);
+  if (top) lines.push(`${(top.share * 100).toFixed(0)}% of the vega sits in the <b>${top.code || (top.dte != null ? top.dte + ' DTE' : 'unknown')}</b> expiry${top.dte != null ? ` (${top.dte} days)` : ''}. Vol-driven flows (vanna, vega) matter most around that expiry and any event inside it.`);
+  if (v.peakStrike != null) lines.push(`Most vol-sensitive strike: <b>${px(v.peakStrike)}</b> (${((v.peakStrike / D.spot - 1) * 100).toFixed(2)}% from spot).`);
+  lines.push(`Positioning tests so far: gamma sign predicted next-day range; walls, flips and max pain did not beat placebo levels.`);
+  read.innerHTML = lines.map(x => `<li>${x}</li>`).join('');
+  what.innerHTML = act.map(g => `<li><b style="color:${GK_KIND_COL[g.kind]}">${g.label}</b> ${esc(g.text)}</li>`).join('');
+}
+$('#gkExp').querySelectorAll('[data-gexp]').forEach(el => el.onclick = () => { GK.maxDte = +el.dataset.gexp; $('#gkExp').querySelectorAll('[data-gexp]').forEach(x => x.classList.toggle('on', x === el)); drawGreeks(); });
+gkPills();
+
 // ── 04 heat ─────────────────────────────────────────────────────────────────────────────
 function drawHeat(){
   const D = CUR, svg = $('#heat'); if (!D || !D.L) { svg.innerHTML = ''; return; }
@@ -913,7 +987,7 @@ function rail(){
 async function refresh(){
   CUR = derive(SYM); rail();
   drawHedging();     // async and self-contained: first, so a failure in another panel cannot skip it
-  for (const f of [stats, drawBars, drawRipple, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
+  for (const f of [stats, drawBars, drawRipple, drawGreeks, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
   drawBrief();
