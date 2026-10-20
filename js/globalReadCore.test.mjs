@@ -70,6 +70,13 @@ t('state axes and label: real-rate dollar, calm vol, credit leaking', () => {
   assert.match(environmentLabel(ax), /real-rate dollar regime.*compressed volatility.*credit widening under a calm tape/);
   // CSI is + = stress (creditStressCore cuts exposure at z >= 1): a calm CSI must pull the credit axis DOWN
   assert.ok(stateAxes({ csi: -1.2 }).credit.score < 0 && stateAxes({ csi: 1.2 }).credit.score > 0);
+  // BIS bank credit is context: shown on the credit axis, never in its score or agreement
+  const bcObs = { csi: 0.8, hy20dBp: 20, bankCredit: { latest: '2026-Q1', usdG: 12.2, regime: 'fast', nbfiG: 16, caymanUsdG: 20.1 } };
+  const withBc = stateAxes(bcObs).credit, without = stateAxes({ csi: 0.8, hy20dBp: 20 }).credit;
+  assert.equal(withBc.score, without.score);
+  assert.equal(withBc.agree, without.agree);
+  assert.match(withBc.context[0].text, /\+12\.2% y\/y \(fast, 2026-Q1\)/);
+  assert.equal(stateAxes({ bankCredit: bcObs.bankCredit }).credit, undefined);   // no axis is invented for a context line
 });
 
 t('buildGlobalRead ranks by clarity and reports separate range / direction conviction', () => {

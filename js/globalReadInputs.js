@@ -17,7 +17,7 @@ export const GLOBAL_READ_ENDPOINTS = ['data-health', 'daily-read', 'desk-watch',
   'yield-spread/plan', 'macro-regime-fx', 'macro-scorecard', 'trend-basket', 'cot-extremes', 'cot', 'oi-today', 'oi-levels',
   'credit-stress', 'liquidity-gate/live', 'regime', 'ledger', 'range-calls', 'release-calls', 'chain-read', 'morning-brief',
   'econ-surprise', 'fomc/latest', 'hmm5m-v2', 'vol-forecast/session', 'daily-snapshot?days=2', 'real-yield', 'yield-curve',
-  'vol-forecast/persist-ladder/json'];
+  'vol-forecast/persist-ladder/json', 'bank-credit'];
 
 export const GR_PAIRS = { EURUSD: ['EUR', 'USD'], GBPUSD: ['GBP', 'USD'], USDJPY: ['USD', 'JPY'], AUDUSD: ['AUD', 'USD'], NZDUSD: ['NZD', 'USD'], USDCAD: ['USD', 'CAD'], USDCHF: ['USD', 'CHF'] };
 export const GR_CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
@@ -77,6 +77,7 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
   const IDX = ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'];
   const vix = st('vix-inversion')?.value;
   const mrfx = D['macro-regime-fx'];
+  const bc = D['bank-credit']?.headline ?? null;
   const obs = {
     crossAssetRiskOnShare: sides.length ? sides.filter(s => s === 'risk-on').length / sides.length : null,
     vix: vix?.vix ?? null, vix3m: vix?.vix3m ?? null,
@@ -92,6 +93,9 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     frontState: g.volTerm?.frontState ?? null,
     csi: D['credit-stress']?.current?.csi ?? null,
     liquidityBlocked: D['liquidity-gate/live']?.instruments ? Object.values(D['liquidity-gate/live'].instruments).some(x => x.composite === 'BLOCKED') : null,
+    // BIS cross-border bank credit (quarterly, ~4 months late): shown on the credit axis as CONTEXT, never scored
+    // (bank-credit-dollar-dxy underpowered, -nasdaq context; js/bankCredit.js)
+    bankCredit: bc ? { latest: D['bank-credit'].latest, usdG: bc.usdG, regime: bc.regime, nbfiG: bc.nbfiG, caymanUsdG: bc.caymanUsdG } : null,
   };
 
   // ── direction inputs per pair: every family read, weight from evidence ────
@@ -201,6 +205,11 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
       realYield: ry[c]?.latestReal ?? null, curveSlope: yc[c]?.latestSlope ?? null,
       // oriented: + = the short-rate spread favours THIS currency (the raw z is the pair's, US minus foreign)
       spreadZ: y ? +(y.z * (y.inverted ? -1 : 1) * (GR_PAIRS[pairKey][0] === c ? 1 : -1)).toFixed(2) : null, trend: trend[c] ?? null,
+      // BIS bank-credit context (display only): offshore dollars for USD, yen lent outside Japan for JPY
+      bankCredit: !bc ? null : c === 'USD' ? { latest: D['bank-credit'].latest, offshoreBn: bc.usdOffshoreBn, g: bc.usdG }
+        : c === 'JPY' ? { latest: D['bank-credit'].latest, offshoreBn: bc.yenOffshoreBn, g: bc.yenOffshoreG,
+            fastest: (D['bank-credit'].jpyBorrowers ?? []).filter(x => x.code !== 'JP' && x.stockBn >= 15 && x.g != null).sort((a, b) => b.g - a.g).slice(0, 3).map(x => `${x.name} ${x.g > 0 ? '+' : ''}${x.g.toFixed(0)}%`) }
+        : null,
     };
   }
 

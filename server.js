@@ -4238,7 +4238,8 @@ async function _watchInputs() {
   // built it yet, build it once here rather than leave the claim triggers dark all day.
   let drill = _drillBundle.data;
   if (!drill) { try { await _refreshDrillBundle(); drill = _drillBundle.data; } catch (e) { console.warn(`[desk-watch] drill bundle: ${e.message}`); } }
-  return { fred, hist, series, chain, stockBond, events, fomcDates, vwapStretch, drill, crack: crackSeries, funding: fundingSeries, now: Date.now() };
+  let bankCredit = null; try { bankCredit = (await _bcRead())?.snap ?? null; } catch { /* quarterly context; optional */ }
+  return { fred, hist, series, chain, stockBond, events, fomcDates, vwapStretch, drill, crack: crackSeries, funding: fundingSeries, bankCredit, now: Date.now() };
 }
 // Score fires that are five sessions old: the realised range over the five
 // sessions after the fire, in ATR14 at the fire, on the trigger's instruments.

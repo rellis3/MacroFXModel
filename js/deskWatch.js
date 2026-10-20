@@ -105,7 +105,7 @@ import { eventImpact } from './eventImpactMap.js';
  * `detail` is the plain-words message body used when the trigger starts firing.
  */
 export function evaluateTriggers(inp = {}) {
-  const { fred = {}, hist = {}, series = {}, chain = [], stockBond = null, events = [], fomcDates = [], vwapStretch = {}, drill = null, crack = null, funding = null, now = Date.now() } = inp;
+  const { fred = {}, hist = {}, series = {}, chain = [], stockBond = null, events = [], fomcDates = [], vwapStretch = {}, drill = null, crack = null, funding = null, bankCredit = null, now = Date.now() } = inp;
   const out = [];
   const push = t => out.push({ firing: false, instruments: [], evidenceId: null, ...t });
   const atrBy = atrTable(series);
@@ -193,6 +193,29 @@ export function evaluateTriggers(inp = {}) {
   {
     const v = fred.vix?.value; if (v != null) push({ id: 'vix-20', kind: 'described', label: 'VIX above 20', firing: v >= 20, value: { vix: v }, detail: v >= 20 ? `VIX ${v.toFixed(1)}: the fear gauge is above 20 — the page's "jittery" line.` : `VIX ${v.toFixed(1)}: back under 20.` });
     const hy = fred.hy?.value; if (hy != null) push({ id: 'hy-400', kind: 'described', label: 'HY spreads above 4%', firing: hy >= 4, value: { hy }, detail: hy >= 4 ? `High-yield spreads ${hy.toFixed(2)}%: above the 4% line the page's credit gate treats as stress.` : `High-yield spreads ${hy.toFixed(2)}%: back under 4%.` });
+  }
+  // ── described: BIS bank-credit regime (quarterly, ~4 months late; js/bankCredit.js) ──
+  // Context only: bank-credit-dollar-dxy UNDERPOWERED, -nasdaq CONTEXT. No instruments, so the
+  // five-session range scorer leaves these alone (a quarterly regime is not a 5-day event).
+  if (bankCredit?.headline) {
+    const h = bankCredit.headline, q = bankCredit.latest, sg = v => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+    if (Number.isFinite(h.usdG)) {
+      const fast = h.regime === 'fast', down = h.regime === 'contracting';
+      push({ id: 'bank-credit-fast', kind: 'described', evidenceId: 'bank-credit-dollar-nasdaq', label: 'Cross-border dollar credit growing fast (BIS)', firing: fast, value: { usdG: h.usdG, q },
+        detail: fast ? `BIS ${q}: cross-border USD bank lending ${sg(h.usdG)} y/y, above the 7.6% top-tercile line (non-banks ${sg(h.nbfiG ?? NaN)}, Cayman $ ${sg(h.caymanUsdG ?? NaN)}). Leverage is building. History: this band preceded the 2000 and 2008 Nasdaq busts but not the 2020s, so it is a backdrop for how hard a shock can hit, not a call.`
+          : `BIS ${q}: cross-border USD lending growth back to ${sg(h.usdG)} y/y (${h.regime}).` });
+      push({ id: 'bank-credit-contracting', kind: 'described', evidenceId: 'bank-credit-dollar-dxy', label: 'Cross-border dollar credit contracting (BIS)', firing: down, value: { usdG: h.usdG, q },
+        detail: down ? `BIS ${q}: cross-border USD bank lending is SHRINKING (${sg(h.usdG)} y/y). Dollar funding is being withdrawn from the rest of the world; historically a stress backdrop. Context, not a call.`
+          : `BIS ${q}: cross-border USD lending growing again (${sg(h.usdG)} y/y).` });
+    }
+    // yen lent outside Japan: fires in the top fifth of its own history since 2000 (the carry-funding build-up)
+    const yh = (bankCredit.history?.yenOffshore ?? []).filter(x => x.period >= '2000-Q1').map(x => x.g).filter(Number.isFinite);
+    if (yh.length >= 40 && Number.isFinite(h.yenOffshoreG)) {
+      const p80 = [...yh].sort((a, b) => a - b)[Math.floor(0.8 * (yh.length - 1))], hot = h.yenOffshoreG >= p80;
+      push({ id: 'yen-funding-build', kind: 'described', evidenceId: null, label: 'Yen lent outside Japan in its top fifth (BIS)', firing: hot, value: { g: h.yenOffshoreG, p80: +p80.toFixed(1), q },
+        detail: hot ? `BIS ${q}: yen lent to borrowers outside Japan ${sg(h.yenOffshoreG)} y/y, at or above its 80th percentile since 2000 (${sg(p80)}). Yen-funded carry is building; an unwind like August 2024 would have more to unwind. Untested (prereg pending), context only.`
+          : `BIS ${q}: yen lent outside Japan ${sg(h.yenOffshoreG)} y/y, below its 80th percentile (${sg(p80)}).` });
+    }
   }
   // ── described: chain links broken (one trigger per broken link) ────────────
   for (const l of chain) {

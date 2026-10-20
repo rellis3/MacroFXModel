@@ -279,6 +279,12 @@ export function stateAxes(o = {}) {
     const agree = xs.filter(x => Math.sign(x.v) === sgn && Math.abs(x.v) > 0.1).length;
     out[k] = { score: r2(mean), agree: `${agree}/${xs.length}`, inputs: xs.map(x => ({ ...x, v: r2(x.v) })) };
   }
+  // Context lines: shown with an axis, never in its score or agreement (no forward evidence).
+  const bc = o.bankCredit;
+  if (bc && out.credit && Number.isFinite(bc.usdG)) {
+    const sg = v => (Number.isFinite(v) ? `${v > 0 ? '+' : ''}${v.toFixed(1)}%` : 'n/a');
+    out.credit.context = [{ id: 'bank credit (BIS)', text: `cross-border USD lending ${sg(bc.usdG)} y/y (${bc.regime}, ${bc.latest}); non-banks ${sg(bc.nbfiG)}, Cayman $ ${sg(bc.caymanUsdG)}` }];
+  }
   return out;
 }
 
@@ -397,6 +403,12 @@ export function currencyTier(currencies = {}, cards = {}) {
     if (info.vr4h != null) notes.push(info.vr4h < 0.85 ? `intraday moves give back (VR4h ${info.vr4h})` : info.vr4h > 1.1 ? `intraday moves persist (VR4h ${info.vr4h})` : `intraday persistence normal (VR4h ${info.vr4h})`);
     if (info.surprise?.stale) notes.push('surprise index stale');
     if (info.macroStale?.length) notes.push(`scorecard has stale dims (${info.macroStale.join(', ')})`);
+    const bcx = info.bankCredit;
+    if (bcx && Number.isFinite(bcx.g)) {
+      const amt = Number.isFinite(bcx.offshoreBn) ? `$${(bcx.offshoreBn / 1000).toFixed(1)}tn` : '?';
+      if (c === 'USD') notes.push(`offshore dollar credit ${amt}, ${bcx.g > 0 ? '+' : ''}${bcx.g.toFixed(1)}% y/y (BIS ${bcx.latest}, context)`);
+      if (c === 'JPY') notes.push(`yen lent outside Japan ${amt}, ${bcx.g > 0 ? '+' : ''}${bcx.g.toFixed(1)}% y/y${bcx.fastest?.length ? `; fastest: ${bcx.fastest.join(', ')}` : ''} (BIS ${bcx.latest}, carry-funding context)`);
+    }
     out[c] = {
       ccy: c, pairs: legs.map(k => k.sym), rangePressure: ps.length ? r3(ps.reduce((a, b) => a + b, 0) / ps.length) : null,
       pStronger: r3(pStrong), directionView: Math.abs(pStrong - 0.5) < 0.04 ? 'no tested view' : `${pStrong > 0.5 ? 'stronger' : 'weaker'} ${Math.round(Math.max(pStrong, 1 - pStrong) * 100)}%`,

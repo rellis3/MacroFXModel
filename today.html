@@ -7017,7 +7017,7 @@ function renderGlobalRead() {
   const axes = Object.entries(g.axes ?? {}).map(([k, a]) => {
     const [name, pos, neg] = _GR_AXES[k] ?? [k, '+', '−'];
     const word = Math.abs(a.score) < 0.15 ? 'neutral' : a.score > 0 ? pos : neg;
-    return `<tr><td><b>${name}</b></td><td class="gr-num">${a.score > 0 ? '+' : ''}${a.score} · ${word}</td><td class="gr-num">${a.agree}</td><td class="muted">${esc0(a.inputs.map(i => i.text).join(' · '))}</td></tr>`;
+    return `<tr><td><b>${name}</b></td><td class="gr-num">${a.score > 0 ? '+' : ''}${a.score} · ${word}</td><td class="gr-num">${a.agree}</td><td class="muted">${esc0(a.inputs.map(i => i.text).join(' · '))}${a.context?.length ? `<br><i>context, not scored: ${esc0(a.context.map(i => i.text).join(' · '))}</i>` : ''}</td></tr>`;
   }).join('');
   const scen = (g.scenarios ?? []).map(s => `<li><b>${esc0(s.name)}</b> — ${s.p != null ? `<b>${_grPct(s.p)}</b>` : 'probability not measured'} <span class="muted">(${esc0(s.pWhy)})</span><br>${esc0(s.text)}</li>`).join('');
   const ccys = Object.values(g.currencies ?? {}).map(x => `<tr class="click" onclick="openCcyDrawer('${x.ccy}')"><td><b>${x.ccy}</b></td><td class="gr-num">${_grPct(x.rangePressure)}</td><td>${esc0(x.directionView)}</td><td class="muted">${esc0(x.notes.join(' · '))}</td></tr>`).join('');
