@@ -878,6 +878,10 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
         <input type="checkbox" id="vfAutoRefresh" checked onchange="toggleAutoRefresh(this.checked)">
         Auto-refresh
       </label>
+      <label class="v2-auto-toggle" title="Rule A (the rich-day break, decision-lab.html): on rich days only, draws the BUY-above / SELL-below triggers and their stops on the daily charts until 10:00 London, then any triggered trade's entry, stop and 5R target. Off = the chart is unchanged.">
+        <input type="checkbox" id="vfRuleA" onchange="toggleRuleA(this.checked)">
+        Trade lines
+      </label>
       <button class="dark-btn" id="vfRefreshBtn" onclick="triggerRefresh()">↻ Refresh</button>
       <div class="live-pill" id="vfLivePill"><div class="live-dot"></div>Live</div>
     </div>
@@ -4391,6 +4395,63 @@ function loadIvAdj() {
 }
 
 // Persistence-adjusted daily ladders (/api/vol-forecast/persist-ladder/json — the shadow export's numbers).
+// ── Trade lines (rule A, the rich-day break; evidence and the full plan on decision-lab.html). Display only: nothing
+// here changes a forecast line. Rich-day flags come from the paper record job (set before the day opens); the lines are
+// the chosen forecast (persistence + IV), as in the backtest (forecast-line-backtest.html).
+const _RULE_A_KEY = { EURUSD: 'eurusd', GBPUSD: 'gbpusd', AUDUSD: 'audusd', USDCAD: 'usdcad', USDCHF: 'usdchf', USDJPY: 'usdjpy',
+  GOLD: 'gold', NQ: 'nq', SPX500: 'spx', US30: 'dow', US2000: 'us2000' };
+let _ruleAOn = (() => { try { return localStorage.getItem('vf_rule_a') === '1'; } catch { return false; } })();
+let _ruleAFlags = null, _ruleAAt = 0;
+const _ldnFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+const _ldnParts = d => Object.fromEntries(_ldnFmt.formatToParts(d).map(x => [x.type, x.value]));
+const _ldn = d => { const p = _ldnParts(d); return { date: `${p.year}-${p.month}-${p.day}`, min: (+p.hour % 24) * 60 + +p.minute }; };
+function loadRuleAFlags() {
+  if (_ruleAFlags && Date.now() - _ruleAAt < 10 * 60_000) return Promise.resolve(_ruleAFlags);
+  return fetch('/api/paper-record').then(r => r.json()).then(j => { _ruleAFlags = j?.days?.[_ldn(new Date()).date]?.flags ?? {}; _ruleAAt = Date.now(); return _ruleAFlags; })
+    .catch(() => (_ruleAFlags = {}));
+}
+function toggleRuleA(on) {
+  _ruleAOn = !!on;
+  try { localStorage.setItem('vf_rule_a', on ? '1' : '0'); } catch (_) {}
+  if (on) Promise.all([loadRuleAFlags(), loadPersist()]).then(_redrawCogCharts); else _redrawCogCharts();
+}
+document.addEventListener('DOMContentLoaded', () => { const cb = document.getElementById('vfRuleA'); if (cb) cb.checked = _ruleAOn; if (_ruleAOn) Promise.all([loadRuleAFlags(), loadPersist()]).then(_redrawCogCharts); });
+// Draws the trade lines on one daily chart; returns a one-line note for under the chart ('' when nothing applies).
+function _drawRuleA(name, series, anchorOpen, bars, LS) {
+  const key = _RULE_A_KEY[name];
+  if (!key || !_ruleAFlags) return '';
+  const f = _ruleAFlags[key];
+  const note = t => `<div class="v2-lvl-row" style="grid-column:1/-1;opacity:.9"><span class="v2-lvl-name">Trade lines · ${t}</span></div>`;
+  if (!f || f.rich == null) return note('no rich-day flag today');
+  if (!f.rich) return note(`no trade today (IV÷RV ${(+f.ratio).toFixed(2)} below ${f.threshold})`);
+  const L = _persist?.instruments?.[name];
+  if (!L || !(anchorOpen > 0) || !(L.sigma_used_pct > 0)) return note('rich day, but the chosen lines are not loaded');
+  const dp = _priceFmt(name).precision, unit = anchorOpen * L.sigma_used_pct / 100, now = _ldn(new Date());
+  const today = (bars || []).slice(-300).map(b => ({ ...b, ...(_ldn(new Date(b.time * 1000))) })).filter(b => b.date === now.date);   // a London day is at most 288 five-minute bars
+  const last = today.length ? today[today.length - 1].close : null;
+  const out = [];
+  for (const [lab, pct, side] of [['p50', L.oh?.p50, 1], ['p75', L.oh?.p75, 1], ['p50', L.ol?.p50, -1], ['p75', L.ol?.p75, -1]]) {
+    if (!(pct > 0)) continue;
+    const line = anchorOpen * (1 + side * pct / 100), trig = line + side * 0.05 * unit, stop = line - side * 0.2 * unit;
+    const hit = today.find(b => b.min < 600 && (side > 0 ? b.close >= trig : b.close <= trig));
+    const word = side > 0 ? 'BUY' : 'SELL';
+    if (hit) {
+      const ep = hit.close, risk = Math.abs(ep - stop), tgt = ep + side * 5 * risk;
+      series.createPriceLine({ price: ep, color: side > 0 ? '#10b981' : '#f97316', lineWidth: 2, lineStyle: LS.Solid, title: `${word} ${lab} entry`, axisLabelVisible: true });
+      series.createPriceLine({ price: stop, color: '#ef4444', lineWidth: 1, lineStyle: LS.Dotted, title: 'stop', axisLabelVisible: true });
+      series.createPriceLine({ price: tgt, color: '#10b981', lineWidth: 1, lineStyle: LS.Dotted, title: '5R', axisLabelVisible: false });
+      const r = last != null ? side * (last - ep) / risk : null;
+      out.push(`${word} ${lab} triggered ~${String(Math.floor(hit.min / 60)).padStart(2, '0')}:${String(hit.min % 60).padStart(2, '0')} @ ${ep.toFixed(dp)}${r != null ? ` (${r >= 0 ? '+' : ''}${r.toFixed(2)}R)` : ''}`);
+    } else if (now.min < 600) {
+      series.createPriceLine({ price: trig, color: side > 0 ? '#10b981' : '#f97316', lineWidth: 1, lineStyle: LS.Dashed, title: `${word} ${side > 0 ? '>' : '<'} (${lab})`, axisLabelVisible: true });
+      series.createPriceLine({ price: stop, color: 'rgba(239,68,68,.55)', lineWidth: 1, lineStyle: LS.Dotted, title: '', axisLabelVisible: false });
+      out.push(`${word} ${side > 0 ? 'above' : 'below'} ${trig.toFixed(dp)} (stop ${stop.toFixed(dp)})`);
+    }
+  }
+  const head = `rich day (IV÷RV ${(+f.ratio).toFixed(2)})`;
+  if (!out.length) return note(`${head}: no trigger before 10:00, window closed`);
+  return note(`${head}: ${out.join(' · ')}${now.min < 600 ? ' · window open until 10:00' : ''} · 1R each, 5R target`);
+}
 let _persist = null, _persistAt = 0, _persistPromise = null;
 function loadPersist() {
   if (_persist && Date.now() - _persistAt < 30 * 60_000) return Promise.resolve(_persist);
@@ -4891,6 +4952,9 @@ async function loadM5Chart(name, f) {
         // get the same legend row + pin toggle + hit chip as the forecast lines.)
       }
 
+      // Trade lines (config tick box): daily views only
+      const _ruleANote = (_ruleAOn && !weekly && !monthly) ? _drawRuleA(name, series, anchorOpen, hitsData, LS) : '';
+
       // Current price line — solid, coloured by direction vs open
       if (lastClose && anchorOpen) {
         const isUp = lastClose >= anchorOpen;
@@ -4929,6 +4993,7 @@ async function loadM5Chart(name, f) {
 
       // Forecast-level legend strip below the chart (replaces crammed axis labels)
       _renderLevelLegend(name, anchorOpen, lineDefs);
+      if (_ruleANote) document.getElementById(`m5legend-${name}`)?.insertAdjacentHTML('beforeend', _ruleANote);
 
       // Store period bars + mode in chartMeta so _rescanHits stays correct live.
       // dayOpen keeps its name for toggleLevelLabel compatibility (== anchor open).
