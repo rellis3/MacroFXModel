@@ -869,6 +869,13 @@ export const DESK_EVIDENCE = [
     use: 'The one set of daily lines for the Daily Plan. Other line exports go to an archive menu. Forward scorecard = its second, independent test.',
   },
   {
+    id: 'gamma-regime-trades-fx', domain: 'positioning', verdict: 'null', date: '2026-10-20', doc: 'forge/GAMMA_REGIME_TRADES_FX_PREREG.md',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD'],
+    claim: 'The OI page\'s daily hedge plan (fade the first p75 touch on long-gamma days, follow it on short-gamma days) makes money on EUR/USD, GBP/USD and AUD/USD',
+    result: '1,963 trades on 4,632 sessions 2020-2026, CME FX book with a daily regime: -0.081 R per trade after costs [-0.124, -0.039], negative on all three pairs and both halves; no better than always fading or always following; regime interaction -0.02 [-0.17, +0.14]; shifted-regime mirror -0.06.',
+    use: 'No FX system from the gamma regime. The page keeps the FX plan as context only, labelled with this result.',
+  },
+  {
     id: 'gamma-regime-trades', domain: 'positioning', verdict: 'null', date: '2026-10-19', doc: 'forge/GAMMA_REGIME_TRADES_PREREG.md',
     instruments: ['NQ'],
     claim: 'The NQ dealer-gamma regime says when to fade and when to follow: fade the p75 line on long-gamma days, follow it on short-gamma days; and follow a break through the textbook zero gamma into short gamma (the dynamic-hedging playbook, and the shape of C.OG\'s 2026-10-16 ES example)',
@@ -1216,6 +1223,7 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'gamma-regime-trades-fx':  { n: '1,963 trades on 4,632 sessions, EUR/GBP/AUD 2020-09 to 2026-08 (10-session block bootstrap over dates)', note: 'half-width 0.04R; interval [-0.12, -0.04] is wholly below zero -- a real null, not a power problem' },
   'rule-a-late-entry':       { n: '823 trades, 11 instruments, 2020-08 to 2026-08 (4-week block bootstrap)', note: 'MDE about 0.16R; interval [-0.26, +0.06] excludes it -- a real null' },
   'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
   'range-ladder-placebo-confirm': { n: '2,745 session dates (21-session block bootstrap), 15 instruments', note: 'pooled MDE 0.37 pp vs a 1.0 pp bar; per-line MDE 0.69-0.89 pp' },

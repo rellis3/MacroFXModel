@@ -66,3 +66,14 @@ Inverted pairs, gold, commodities, the Cboe book, the zero-gamma break (Test B),
 ## Amendments
 
 (none)
+
+## RESULTS (2026-10-20, run after the prereg commit b799835a)
+
+**Verdict: NULL.** Full table: `analysis/output/gamma-regime-trades-fx/RESULTS.md`.
+
+- 1,963 trades on 4,632 sessions (5 per pair dropped for no fresh regime); CFD open matches the ladder open exactly.
+- The plan: **−0.081 R per trade** [−0.124, −0.039] after costs; EUR/USD −0.062, GBP/USD −0.080, AUD/USD −0.107;
+  halves −0.036 / −0.113. Always-fade −0.038, always-follow −0.105; the regime does not separate them
+  (interaction −0.016 [−0.172, +0.141]); the shifted-regime mirror scores −0.060, about the same as the real label.
+- The interval is wholly below zero and ±0.04 R wide: a real null, not a power problem.
+- One cell is positive (EUR/USD fade on long-gamma days, +0.066); it is one of 12 and is not a finding.

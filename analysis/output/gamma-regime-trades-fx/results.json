@@ -1,0 +1,127 @@
+{
+ "prereg": "forge/GAMMA_REGIME_TRADES_FX_PREREG.md",
+ "seed": 20261020,
+ "pairs": {
+  "EURUSD": {
+   "sessions": 1544,
+   "dropped_no_fresh_regime": 5,
+   "open_alignment_max_abs": 0.0,
+   "I": 0.2939,
+   "SW": -0.0619,
+   "FADE": -0.0271,
+   "FOLLOW": -0.153,
+   "fade_long": 0.0657,
+   "fade_short": -0.0608,
+   "follow_long": -0.2757,
+   "follow_short": -0.1084,
+   "n_trades": 701,
+   "n_long": 187,
+   "n_short": 514
+  },
+  "GBPUSD": {
+   "sessions": 1544,
+   "dropped_no_fresh_regime": 5,
+   "open_alignment_max_abs": 0.0,
+   "I": -0.0747,
+   "SW": -0.0802,
+   "FADE": -0.0655,
+   "FOLLOW": -0.06,
+   "fade_long": -0.086,
+   "fade_short": -0.0517,
+   "follow_long": -0.0359,
+   "follow_short": -0.0763,
+   "n_trades": 690,
+   "n_long": 278,
+   "n_short": 412
+  },
+  "AUDUSD": {
+   "sessions": 1544,
+   "dropped_no_fresh_regime": 5,
+   "open_alignment_max_abs": 0.0,
+   "I": -0.2316,
+   "SW": -0.1068,
+   "FADE": -0.0168,
+   "FOLLOW": -0.1016,
+   "fade_long": -0.0653,
+   "fade_short": 0.0549,
+   "follow_long": -0.0565,
+   "follow_short": -0.168,
+   "n_trades": 572,
+   "n_long": 341,
+   "n_short": 231
+  }
+ },
+ "pooled": {
+  "I": -0.0161,
+  "SW": -0.0814,
+  "FADE": -0.0376,
+  "FOLLOW": -0.1053,
+  "fade_long": -0.042,
+  "fade_short": -0.0345,
+  "follow_long": -0.1003,
+  "follow_short": -0.1088,
+  "n_trades": 1963,
+  "n_long": 806,
+  "n_short": 1157
+ },
+ "pooled_ci": {
+  "SW": [
+   -0.1244,
+   -0.0392
+  ],
+  "SW-FADE": [
+   -0.1114,
+   0.0194
+  ],
+  "SW-FOLLOW": [
+   -0.0213,
+   0.0718
+  ],
+  "I": [
+   -0.172,
+   0.1413
+  ]
+ },
+ "halves": {
+  "<=2022": {
+   "I": 0.0585,
+   "SW": -0.0358,
+   "FADE": -0.0736,
+   "FOLLOW": -0.034,
+   "fade_long": -0.0536,
+   "fade_short": -0.0868,
+   "follow_long": -0.0493,
+   "follow_short": -0.024,
+   "n_trades": 806,
+   "n_long": 321,
+   "n_short": 485
+  },
+  ">=2023": {
+   "I": -0.0737,
+   "SW": -0.1132,
+   "FADE": -0.0125,
+   "FOLLOW": -0.155,
+   "fade_long": -0.0344,
+   "fade_short": 0.0033,
+   "follow_long": -0.134,
+   "follow_short": -0.1701,
+   "n_trades": 1157,
+   "n_long": 485,
+   "n_short": 672
+  }
+ },
+ "placebo_shift125": {
+  "I": 0.07,
+  "SW": -0.0602,
+  "FADE": -0.0376,
+  "FOLLOW": -0.1053,
+  "fade_long": -0.0175,
+  "fade_short": -0.0519,
+  "follow_long": -0.1261,
+  "follow_short": -0.0906,
+  "n_trades": 1963,
+  "n_long": 815,
+  "n_short": 1148
+ },
+ "verdict": "NULL"
+}

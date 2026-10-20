@@ -18,7 +18,8 @@
 export const PLAN_EVIDENCE = {
   doc: 'forge/GAMMA_REGIME_TRADES_PREREG.md',
   fade_long_gamma_R: -0.028, follow_short_gamma_R: -0.025, n: 353,
-  text: 'Backtest (NQ 2020-2026, CME book only): fade on calm days -0.03 R per trade, follow on fast days -0.03 R, after costs. Not a proven edge; the paper record below is its live test on the full book.',
+  fx_R: -0.081, fx_n: 1963,
+  text: 'Backtests of these exact rules after costs: NQ 2020-2026 (CME book) -0.03 R per trade; EUR/USD, GBP/USD, AUD/USD 2020-2026 -0.08 R per trade (losing on all three). Not an edge on the CME books; the paper record is its live test on the full Cboe book (indices and gold).',
 };
 export const PLAN_COST = 0.0001;                    // round trip, fraction of price (as the backtest)
 export const PLAN_WINDOW = [8 * 60, 20 * 60];       // entries, London minutes
