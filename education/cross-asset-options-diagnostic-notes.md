@@ -5,6 +5,8 @@
 > Data: CME Group QuikStrike / QuikVol, end-of-day settlements, 21 Apr 2026,
 > 30-day lookbacks.
 >
+> **Verbatim copy:** the full text of the lesson page (read from the decrypted page 2026-10-20) and its 13 chart images are in `cross-asset-volatility-analysis/` (`PAGE_TEXT.md`, `figures/`). These notes are the summary; that folder is the source check. Checked 2026-10-20: every figure and data point on the page is in these notes except TN's back contract, OTNZ6 (December, 213 DTE), whose price-vol is about 7.2 against about 5.5 at the front OTNM6 (31 DTE), smooth and monotonic.
+>
 > **Purpose of this file:** raw lecture notes. Record what the lesson teaches —
 > the framework, the definitions, the specific readings, and the author's own
 > synthesis — so future-me can revise it, be examined on it, and pull research
