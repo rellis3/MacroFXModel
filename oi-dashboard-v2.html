@@ -697,13 +697,40 @@ function drawRipple(){
 const RIPPLE_LBL = { d0_1: '0–1 DTE', d2_7: '2–7 DTE', d8_45: '8–45 DTE', d46p: '46+ DTE', unk: 'unknown DTE' };
 
 // ── 05d greek context: every greek as a per-strike column on one shared price axis, each layer switchable ──────────────
+const GK_EXTRA = [{ key: 'smile', label: 'SMILE', name: 'IV less ATM', kind: 'pnl', text: 'Each line is one expiry: how much more (or less) implied vol a strike carries than the at-the-money strike. All lines meet at spot. A steeper curve on the put side is a steeper skew, which is what drives vanna. Cboe index options only (SPX, NDX, RUT); CME books have one vol per expiry, so no real smile.' }];
+const ALLG = [...GREEKS, ...GK_EXTRA];
+const GK_SMILE_SYMS = ['SPX500_USD', 'NAS100_USD', 'US2000_USD'];
 const GK_KIND_COL = { flow: '#7ad3a0', pnl: '#f0b04a', refine: '#8892a0', raw: '#6fb6ff' };
-const GK = { on: (() => { try { const a = JSON.parse(localStorage.getItem('oiv2.greeks') || 'null'); if (Array.isArray(a)) return new Set(a); } catch (_) {} return new Set(['gex', 'vanna', 'charm']); })(), maxDte: 3 };
+const GK = { smile: {}, on: (() => { try { const a = JSON.parse(localStorage.getItem('oiv2.greeks') || 'null'); if (Array.isArray(a)) return new Set(a); } catch (_) {} return new Set(['gex', 'vanna', 'charm']); })(), maxDte: 3 };
 const gkSave = () => { try { localStorage.setItem('oiv2.greeks', JSON.stringify([...GK.on])); } catch (_) {} };
 const fmtBig = v => { const a = Math.abs(v), sg = v < 0 ? '−' : ''; return a >= 1e9 ? sg + (a / 1e9).toFixed(2) + 'B' : a >= 1e6 ? sg + (a / 1e6).toFixed(2) + 'M' : a >= 1e3 ? sg + (a / 1e3).toFixed(1) + 'K' : sg + a.toFixed(a < 10 ? 2 : 0); };
 function gkPills(){
-  $('#gkPills').innerHTML = GREEKS.map(g => `<span class="pill${GK.on.has(g.key) ? ' on' : ''}" data-gk="${g.key}" title="${esc(g.name + ': ' + g.text)}"><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${GK_KIND_COL[g.kind]};margin-right:6px"></i>${g.label}</span>`).join('');
+  $('#gkPills').innerHTML = ALLG.map(g => `<span class="pill${GK.on.has(g.key) ? ' on' : ''}" data-gk="${g.key}" title="${esc(g.name + ': ' + g.text)}"><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${GK_KIND_COL[g.kind]};margin-right:6px"></i>${g.label}</span>`).join('');
   $('#gkPills').querySelectorAll('.pill').forEach(el => el.onclick = () => { const k = el.dataset.gk; GK.on.has(k) ? GK.on.delete(k) : GK.on.add(k); gkSave(); gkPills(); drawGreeks(); });
+}
+async function gkLoadSmile(sym){
+  const hit = GK.smile[sym];
+  if (hit && (hit.loading || (Date.now() - hit.at < 300000))) return;
+  GK.smile[sym] = { loading: true, at: Date.now() };
+  try { const r = await fetch(`/api/cboe-contracts?pair=${encodeURIComponent(sym)}&maxDte=45&window=0.08`); const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Cboe unavailable'); GK.smile[sym] = { at: Date.now(), j }; }
+  catch (e) { GK.smile[sym] = { at: Date.now(), err: e.message }; }
+  if (SYM === sym && CUR) drawGreeks();
+}
+// per-expiry smile: out-of-the-money IV at each strike, minus the interpolated at-the-money IV, in vol points; strikes moved onto the CFD
+function gkSmiles(j){
+  const groups = new Map();
+  for (const [K, T, cp, oi, iv, dte] of j.rows) { if (!(iv > 0)) continue; const k = dte + '|' + T; (groups.get(k) || groups.set(k, { dte, T, pts: new Map() }).get(k)).pts.set(K + cp, { K, cp, iv }); }
+  const sp = j.spot, shift = Number.isFinite(j.cfdOffset) ? j.cfdOffset : 0, out = [];
+  for (const g of groups.values()) {
+    const byK = new Map();
+    for (const { K, cp, iv } of g.pts.values()) { const o = byK.get(K) || {}; o[cp] = iv; byK.set(K, o); }
+    const ser = [...byK.entries()].map(([K, o]) => ({ K, iv: K < sp ? (o.P ?? o.C) : (o.C ?? o.P) })).filter(x => x.iv > 0).sort((a, b) => a.K - b.K);
+    if (ser.length < 6) continue;
+    const j2 = ser.findIndex(x => x.K >= sp); if (j2 <= 0) continue;
+    const a = ser[j2 - 1], c = ser[j2], atm = a.iv + (c.iv - a.iv) * (sp - a.K) / ((c.K - a.K) || 1);
+    out.push({ dte: g.dte, atm, pts: ser.map(x => ({ p: x.K + shift, dv: (x.iv - atm) * 100 })) });
+  }
+  return out.sort((x, y) => x.dte - y.dte).slice(0, 10);
 }
 function drawGreeks(){
   const D = CUR, svg = $('#gkChart'), read = $('#gkRead'), what = $('#gkWhat');
@@ -711,7 +738,7 @@ function drawGreeks(){
   if (!D) return msg('No data for this instrument.');
   let b = null; try { b = oiBookLegs(D.e); } catch (_) {}
   if (!b) return msg('No per-expiry book stored for this instrument.');
-  const act = GREEKS.filter(g => GK.on.has(g.key));
+  const act = ALLG.filter(g => GK.on.has(g.key));
   if (!act.length) return msg('Tick at least one layer above.');
   const lo = D.spot - 2.2 * D.rm, hi = D.spot + 2.2 * D.rm;
   const G = greekLayers(b.legs, b.spot, { mult: b.mult, maxDte: GK.maxDte, lo, hi, flatSigma: b.flat });
@@ -723,6 +750,21 @@ function drawGreeks(){
   let h = '';
   act.forEach((g, ci) => {
     const x0 = L + ci * cw, cx = x0 + cw / 2, half = cw / 2 - 10;
+    if (g.key === 'smile') {
+      h += `<text x="${cx}" y="16" text-anchor="middle" fill="${GK_KIND_COL[g.kind]}" font-size="12" font-weight="700">${g.label}</text><text x="${cx}" y="30" text-anchor="middle" fill="#7f8a98" font-size="10.5">${g.name}</text><line x1="${cx}" x2="${cx}" y1="${T}" y2="${T + NB * rowH}" stroke="rgba(255,255,255,.12)"/>`;
+      const sm = GK.smile[SYM];
+      if (!GK_SMILE_SYMS.includes(SYM)) h += `<text x="${cx}" y="${T + 40}" text-anchor="middle" fill="#6b7585" font-size="11">Cboe smiles cover</text><text x="${cx}" y="${T + 54}" text-anchor="middle" fill="#6b7585" font-size="11">SPX, NDX and RUT</text>`;
+      else if (!sm || sm.loading) { gkLoadSmile(SYM); h += `<text x="${cx}" y="${T + 40}" text-anchor="middle" fill="#6b7585" font-size="11">loading…</text>`; }
+      else if (sm.err) h += `<text x="${cx}" y="${T + 40}" text-anchor="middle" fill="#6b7585" font-size="11">${esc(sm.err.slice(0, 22))}</text>`;
+      else {
+        const curves = gkSmiles(sm.j), mags = curves.flatMap(c => c.pts.filter(q => q.p > lo && q.p < hi).map(q => Math.abs(q.dv))), sc = (pctl(mags, 0.9) || 1) * 1.15;
+        curves.forEach((c, i) => { const col = `hsl(${50 + (curves.length > 1 ? i / (curves.length - 1) : 0) * 130} 78% 60%)`; c._col = col;
+          const d = c.pts.filter(q => q.p >= lo && q.p <= hi).map((q, n) => (n ? 'L' : 'M') + (cx + Math.max(-1, Math.min(1, q.dv / sc)) * half).toFixed(1) + ' ' + yOf(q.p).toFixed(1)).join(' ');
+          if (d) h += `<path d="${d}" fill="none" stroke="${col}" stroke-width="1.4" opacity=".85"/>`; });
+        GK._smileLeg = curves.map(c => `<span style="color:${c._col}">■</span> ${c.dte} DTE (ATM ${(c.atm * 100).toFixed(1)}%)`).join('  ');
+      }
+      return;
+    }
     const scale = pctl(bands.map(bd => Math.abs(bd[g.key] || 0)), 0.95) || 1;
     h += `<text x="${cx}" y="16" text-anchor="middle" fill="${GK_KIND_COL[g.kind]}" font-size="12" font-weight="700">${g.label}</text><text x="${cx}" y="30" text-anchor="middle" fill="#7f8a98" font-size="10.5">${g.name}</text>`;
     h += `<line x1="${cx}" x2="${cx}" y1="${T}" y2="${T + NB * rowH}" stroke="rgba(255,255,255,.12)"/>`;
@@ -749,6 +791,7 @@ function drawGreeks(){
   lines.push(`Net vega across ${set}: <b>${v.net >= 0 ? 'long' : 'short'}</b> (${fmtBig(v.net)} per vol point). On the usual assumption, dealers ${v.net >= 0 ? 'gain when implied vol rises' : 'lose when implied vol rises, so a vol spike hurts them'}.`);
   if (top) lines.push(`${(top.share * 100).toFixed(0)}% of the vega sits in the <b>${top.code || (top.dte != null ? top.dte + ' DTE' : 'unknown')}</b> expiry${top.dte != null ? ` (${top.dte} days)` : ''}. Vol-driven flows (vanna, vega) matter most around that expiry and any event inside it.`);
   if (v.peakStrike != null) lines.push(`Most vol-sensitive strike: <b>${px(v.peakStrike)}</b> (${((v.peakStrike / D.spot - 1) * 100).toFixed(2)}% from spot).`);
+  if (GK.on.has('smile') && GK._smileLeg) lines.push(`Smile curves, nearest expiry first: ${GK._smileLeg}`);
   lines.push(`Positioning tests so far: gamma sign predicted next-day range; walls, flips and max pain did not beat placebo levels.`);
   read.innerHTML = lines.map(x => `<li>${x}</li>`).join('');
   what.innerHTML = act.map(g => `<li><b style="color:${GK_KIND_COL[g.kind]}">${g.label}</b> ${esc(g.text)}</li>`).join('');
