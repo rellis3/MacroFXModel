@@ -31,6 +31,7 @@ G2 = "2 · Show"
 showLevels = input.bool(true, "Reaction levels", group=G2)
 showZones  = input.bool(false, "Reaction zones (soft bands behind levels)", group=G2)
 showMinor  = input.bool(false, "Minor levels (vanna, charm, volume, gamma peak)", group=G2)
+showEM     = input.bool(false, "Expected move edges (options-implied range, not a level)", group=G2, tooltip="The ±1σ range implied by option prices. A ruler, not a reaction level, so it never takes one of the Max levels slots.")
 maxLevels  = input.int(7, "Max levels shown", minval=1, maxval=20, group=G2, tooltip="Keeps the most important levels: walls, zero gamma, GEX flip, max pain, the day's expected-move edges. Raise it to see more.")
 showEM     = input.bool(true, "Expected-move box", group=G2)
 showTable  = input.bool(true, "Summary table", group=G2)
@@ -395,7 +396,8 @@ if barstate.islast
                 float s0 = nz(array.get(lvStr, i), 0.5)
                 bool isMinor = t0 == "vanna_flip" or t0 == "charm_flip" or t0 == "oi_volume" or t0 == "gamma_peak"
                 float sc = t0 == "zero_gamma" ? 95.0 : (t0 == "call_wall" or t0 == "put_wall") ? 80.0 + 20.0 * s0 : t0 == "gex_flip" ? 85.0 : t0 == "max_pain" ? 82.0 : (t0 == "exp_hi" or t0 == "exp_lo") ? 70.0 : 30.0 + 20.0 * s0
-                array.push(score, (isMinor and not showMinor) ? -1.0 : sc)
+                bool isEm = t0 == "exp_hi" or t0 == "exp_lo"
+                array.push(score, ((isMinor and not showMinor) or isEm) ? -1.0 : sc)
             array<bool> sel = array.new_bool(nL, false)
             for k = 1 to maxLevels
                 int bestI = -1
@@ -406,6 +408,11 @@ if barstate.islast
                         bestI := i
                 if bestI >= 0
                     array.set(sel, bestI, true)
+            if showEM
+                for i = 0 to nL - 1
+                    string te = array.get(lvType, i)
+                    if te == "exp_hi" or te == "exp_lo"
+                        array.set(sel, i, true)
             float gap = ref * 0.11
             for i = 0 to nL - 1
                 if array.get(sel, i)
