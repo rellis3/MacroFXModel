@@ -38,6 +38,8 @@ from getting lost between sessions.
 - **Databento ES quote (free):** on the laptop, `python oi_recon/databento_oi_pull.py --cost-only --only SPX500_USD`.
   It only asks for a price (`metadata.get_cost`); nothing is charged. Weeklies need their own asset codes added
   before any real pull. Decide after seeing the number.
+  **Quoted 2026-10-20** (monthly/quarterly series, definition + statistics): ES 6 yr ~$32.03 ($9.19 + $22.84),
+  ES 10 yr ~$48.46, NQ 6 yr ~$22.28 for comparison. Owner to decide; check remaining credit on the account first.
 - **CVOL:** either accept the IV term structure the QuikStrike job already stores daily as the substitute, or add a
   CVOL page capture to the laptop job.
 - **Questions for C.OG** about his hedging chart (delta or gamma fans, which expiries, IV source, the three "flip" levels).
@@ -55,6 +57,7 @@ from getting lost between sessions.
 - 2026-10-18: Calendar continuation kept as a separate source-tagged file; the 46k duplicate rows in
   `calendar_events.csv` are dropped by the loader, not deleted from the file (faults-log #11).
 - 2026-10-18: Databento stays pay-per-use; no pull without a cost quote first.
+- 2026-10-20: ES OI quote run (free): ~$32 for 6 years like-for-like with the NQ data. Pull not started.
 
 ## 6. Mechanism tests (2026-10-19, our reasoning, not C.OG's rules)
 
