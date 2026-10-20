@@ -1,0 +1,22 @@
+{
+ "case1": {
+  "verdict": "NULL",
+  "headline": "Episodes of tight co-movement are real, but they can't be recognised as they start, and price does not follow a confirmed spread turn.",
+  "episodes_real": "Partly. The session-to-session swing in how tightly the spread and NAS100 move together is far larger than chance or a constant link allows (overdispersion 3.5–4.2, beats both nulls in all three periods). But whether one coupled session is followed by another is mostly explained by rate-volatility clustering, and that persistence failed the registered bar in the validation period.",
+  "recognisable": "No. Turns taken when recent coupling was in its top tercile, or when the trailing link was strong, did no better than all turns (+0.04σ, t 0.6; +0.00σ, t 0.1 in validation).",
+  "follows": "No. After a confirmed turn, price moved the expected way by −0.01 / +0.05 / +0.01σ over 4 h in the three periods (t −0.5 / +1.7 / +0.3; 2,991 turns). It followed about 28% of the time and reverted about 26%. That's the same as matched random bars, the shifted-spread placebo, and price's own turns. 0 of 864 variants passed discovery.",
+  "oos": "Only the same-bar link survives (+0.14 / +0.05 / +0.23). The spread adds nothing to a price-only model (IC gain within ±0.003 at every horizon).",
+  "exploratory": "In 2026 only, turns where price had followed the previous spread leg went on to follow at 1 h (+0.12σ, t 2.8) and 24 h (+0.08σ, t 3.3), and so did turns in the top coupling tercile. This is absent in 2024–25, when the link was ~5× weaker.",
+  "data_needed": "Data needed: the live forward record (from 2026-10-20), judged at ≥ 300 scored turns on 'prior leg aligned' at 1 h and 24 h while the trailing link is above its median."
+ },
+ "case2": {
+  "verdict": "NULL",
+  "headline": "Same shape at a slower pace: the yield link varies month to month, but turns can't be read in advance, and a 0.10σ follow is (narrowly) ruled out. The opposite, a revert, is too small a sample to judge.",
+  "episodes_real": "Partly. The month-to-month swing in the yield–EURUSD link beats both nulls (overdispersion 1.9–2.8). Its persistence from one month to the next misses the constant-link null in validation (0.237 vs 0.242) and in the final period.",
+  "recognisable": "No. Top coupling tercile +0.00σ and strong link −0.01σ vs all turns in validation.",
+  "follows": "No, and the sign leans the wrong way. After a confirmed turn in (2Y+10Y)/2, EURUSD over 5 days moved −0.04 / −0.11 / −0.06σ against the expected direction (t −0.9 / −2.1 / −0.7; 808 turns since 1999). The final-period interval [−0.21, +0.10] just excludes a 0.10σ follow; a 0.10σ revert is not excluded. 0 of 4,320 variants passed discovery.",
+  "oos": "Only the same-day link survives (−0.09 / −0.14 / −0.25: yields up, EURUSD down). A 1-day IC gain over price-only appears in 2020–26 only (+0.05 [+0.00, +0.10]).",
+  "exploratory": "EURUSD tends to revert after a confirmed yield turn, most of all when an FOMC, NFP or CPI falls in the next 5 days (−0.10 / −0.24 / −0.10σ, same sign in all three periods).",
+  "data_needed": "Data needed: intraday yields (ZN/ZT futures 1-min or OANDA bond CFDs) to time turns against releases, and the same rule on other USD pairs as one date-clustered family. Daily data alone would need ~25 more years."
+ }
+}

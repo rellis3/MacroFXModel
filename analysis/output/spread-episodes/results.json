@@ -1,0 +1,49 @@
+{
+ "id": "spread-episodes",
+ "verdicts": {
+  "spread-episodes-nq": "null",
+  "spread-episodes-eurusd": "null"
+ },
+ "ranAt": "2026-10-20T20:30:00Z",
+ "seed": 20261020,
+ "B": 2000,
+ "nPlacebo": 200,
+ "prereg": "forge/SPREAD_EPISODES_PREREG.md",
+ "preregCommit": "00d2e680",
+ "branch": "main",
+ "cells": [
+  {
+   "name": "case1 primary k0.75 adaptive C0 all 4h, final",
+   "n": 809,
+   "est": 0.0077,
+   "lo": -0.0366,
+   "hi": 0.052,
+   "mde": 0.056,
+   "passBar": 0.1,
+   "verdict": "null"
+  },
+  {
+   "name": "case2 primary AVG k0.75 adaptive C0 all 5d, final",
+   "n": 198,
+   "est": -0.0581,
+   "lo": -0.2128,
+   "hi": 0.0965,
+   "mde": 0.196,
+   "passBar": 0.1,
+   "verdict": "null (follow excluded at +0.10; revert side underpowered)"
+  }
+ ],
+ "grid": {
+  "case1": {
+   "cells": 864,
+   "discBH": 0,
+   "selection": 0
+  },
+  "case2": {
+   "cells": 4320,
+   "discBH": 0,
+   "selection": 0
+  }
+ },
+ "variantsTotal": 5298
+}

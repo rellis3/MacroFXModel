@@ -10,15 +10,15 @@ Generated 2026-10-20.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **143** |
+| claims tested (validated + null + underpowered) | **145** |
 | validated | 33 |
-| null | 105 |
+| null | 107 |
 | underpowered | 5 |
 | context (base rates, descriptions: not counted as tests) | 33 |
-| pre-registrations with no banked verdict (below) | 42 |
+| pre-registrations with no banked verdict (below) | 41 |
 
-**What the count says (Lesson 02 §05).** If none of the 143 claims were real, tests at the usual 5% size would still pass
-about **7.2** of them by luck. 33 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 145 claims were real, tests at the usual 5% size would still pass
+about **7.3** of them by luck. 33 passed, so most passes are unlikely to be luck alone, but
 **roughly 7 of the 33 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -203,6 +203,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-20 | range-edge-limit-fade | execution | null | forge/RANGE_EDGE_LIMIT_FADE_PREREG.md |
 | 2026-10-20 | range-ladder-placebo-confirm | price | validated | forge/RANGE_LADDER_PLACEBO_CONFIRM_PREREG.md |
 | 2026-10-20 | rule-a-late-entry | price | null | forge/RULE_A_LATE_ENTRY_PREREG.md |
+| 2026-10-20 | spread-episodes-eurusd | macro | null | forge/SPREAD_EPISODES_PREREG.md |
+| 2026-10-20 | spread-episodes-nq | macro | null | forge/SPREAD_EPISODES_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -241,7 +243,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/LINE_TOUCH_WIDE_SCAN_PREREG.md`: Pre-registration: wide scan of candle shape / position / time / regime at the forecast lines
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
 - `forge/SIGNAL_JOURNAL_PREREG.md`: Signal Journal — live alerts with stated odds, tracked forward (Lesson 01 card 10, Lesson 16)
-- `forge/SPREAD_EPISODES_PREREG.md`: spread-episodes — Do spread-turn episodes exist beyond chance, can they be recognised as they start, and does 
 - `forge/STABILITY_AND_HOLDOUT_PREREG.md`: STEP D — Parameter stability + the sealed holdout (Lesson 01 cards 07 and 03)
 - `forge/STOP_RISK_PREREG.md`: Layer 7 — STOP RISK MAP: how often does a stop fill worse than its price, and by how much?
 - `forge/VF3_SHADOW_P1_PREREG.md`: VF3 shadow S1: time-aware intraday probabilities, prospective evaluation (registered 2026-10-10)
