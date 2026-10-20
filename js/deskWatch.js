@@ -105,7 +105,7 @@ import { eventImpact } from './eventImpactMap.js';
  * `detail` is the plain-words message body used when the trigger starts firing.
  */
 export function evaluateTriggers(inp = {}) {
-  const { fred = {}, hist = {}, series = {}, chain = [], stockBond = null, events = [], fomcDates = [], vwapStretch = {}, drill = null, crack = null, funding = null, bankCredit = null, now = Date.now() } = inp;
+  const { fred = {}, hist = {}, series = {}, chain = [], stockBond = null, events = [], fomcDates = [], vwapStretch = {}, drill = null, crack = null, funding = null, bankCredit = null, fundingRead = null, now = Date.now() } = inp;
   const out = [];
   const push = t => out.push({ firing: false, instruments: [], evidenceId: null, ...t });
   const atrBy = atrTable(series);
@@ -216,6 +216,19 @@ export function evaluateTriggers(inp = {}) {
         detail: hot ? `BIS ${q}: yen lent to borrowers outside Japan ${sg(h.yenOffshoreG)} y/y, at or above its 80th percentile since 2000 (${sg(p80)}). Yen-funded carry is building; an unwind like August 2024 would have more to unwind. Tested: no forward link to squeeze size found (yen-funding-squeeze, underpowered); context only.`
           : `BIS ${q}: yen lent outside Japan ${sg(h.yenOffshoreG)} y/y, below its 80th percentile (${sg(p80)}).` });
     }
+  }
+  // ── described: funding & leverage read (js/fundingRead.js) -- untested as forecasts; context only ──
+  if (fundingRead?.items?.length) {
+    const it = id => fundingRead.items.find(i => i.id === id);
+    const sw = it('swaplines');
+    if (sw) push({ id: 'swap-lines-draw', kind: 'described', label: 'Fed swap lines drawn (offshore dollar shortage)', firing: sw.state === 'stress', value: { bn: +sw.stat.value.toFixed(2), date: sw.stat.date },
+      detail: sw.state === 'stress' ? `Fed central-bank swap lines: ${sw.text}. Foreign central banks are borrowing dollars to lend on to their banks; in 2008, 2011 and 2020 this marked a global dollar squeeze. Context, untested as a forecast.` : `Fed swap lines back to $${sw.stat.value.toFixed(1)}bn: no offshore dollar shortage showing.` });
+    const bt = it('basisTrade');
+    if (bt) push({ id: 'basis-trade-record', kind: 'described', label: 'Leveraged funds record-short Treasury futures (basis trade)', firing: bt.state === 'record short', value: { bn: +bt.stat.value.toFixed(0), pct: bt.stat.pctile, date: bt.stat.date },
+      detail: bt.state === 'record short' ? `CFTC: leveraged funds ${bt.text}. The basis trade is at a record; its unwinds spiked Treasury vol in March 2020 and April 2025. Size-of-move context, not a direction (nbfi-rates-vol was underpowered).` : `CFTC: leveraged-fund Treasury short back below its top-5% range (${bt.text}).` });
+    const cu = it('custodyUst');
+    if (cu) push({ id: 'foreign-ust-selling', kind: 'described', label: 'Foreign central banks selling Treasuries (H.4.1 custody)', firing: cu.state === 'selling', value: { change4w: cu.stat.change != null ? +cu.stat.change.toFixed(0) : null, date: cu.stat.date },
+      detail: cu.state === 'selling' ? `Foreign-official Treasury holdings at the Fed: ${cu.text}. Usually a central bank defending its currency or raising dollars; watch USDJPY / Asian FX and long-end yields. Context, untested.` : `Foreign-official Treasury holdings steady again (${cu.text}).` });
   }
   // ── described: chain links broken (one trigger per broken link) ────────────
   for (const l of chain) {

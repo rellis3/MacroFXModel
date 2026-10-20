@@ -202,6 +202,11 @@ const HAND_FEEDS = [
     details: '4 keyless SDMX CSV requests (js/bankCredit.js). Quarterly, ~4 months after quarter end; back quarters revise.',
     refresh: 'Server job bankCredit every 12 h; the date each quarter is first seen is kept (point-in-time).', store: 'KV bank_credit_v1',
     endpoints: ['/api/bank-credit'], hosts: ['stats.bis.org'] },
+  { id: 'funding_read', name: 'Funding & leverage read', provider: 'FRED (H.4.1, H.8, NY Fed rates) + CFTC TFF', category: 'macro',
+    purpose: 'Daily read of dollar shortage (swap lines), repo plumbing (SOFR−IORB, volume, RRP, reserves), basis-trade size (leveraged-fund Treasury futures) and offshore dollars. Context only.',
+    details: '8 FRED series via the keyed API and the TFF report for 2Y/5Y/10Y/bond futures (js/fundingRead.js).',
+    refresh: 'Server job fundingRead every 6 h; one row per day kept in KV.', store: 'KV funding_read_v1',
+    endpoints: ['/api/funding-read'], hosts: ['api.stlouisfed.org', 'publicreporting.cftc.gov'] },
 
   // ── Volatility & options ─────────────────────────────────────────────────
   { id: 'cme_oi_iv', name: 'CME settles capture (OI + IV term structure)', provider: 'CME QuikStrike', category: 'vol',

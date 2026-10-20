@@ -57,6 +57,8 @@ const _CF_EXACT = new Set([
                              // from Railway). Merged over analysis/output/cog_line/cog_line_15m.json by /api/cog-line. Must also be in _worker.js isAllowedKVKey + PERMANENT_KEYS.
   'bank_credit_v1',         // BIS bank-credit snapshot + the date each quarter was FIRST seen (point-in-time release record;
                              // not re-derivable). Must also be in _worker.js PERMANENT_KEYS.
+  'funding_read_v1',       // funding & leverage read: one row per day of states/values (js/fundingRead.js); the forward record of an
+                             // untested read, not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
   'spread_episodes_v1',     // spread-turn episodes forward record (forge/SPREAD_EPISODES_PREREG.md): every confirmed turn since
                              // 2026-10-20 and its outcome; not re-derivable once the live window moves on. Must also be in _worker.js PERMANENT_KEYS.
   'zq_path_v1',            // fed funds futures rungs, pushed nightly from the owner's TWS. Durable because

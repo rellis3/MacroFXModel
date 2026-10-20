@@ -197,6 +197,7 @@ import { evaluateGauges as _evaluateGauges } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
 import { buildCase1 as _seBuild1, buildCase2 as _seBuild2, analyse as _seAnalyse, alertText as _seAlertText } from './js/spreadEpisodes.js';
 import { fetchBankCreditRows as _bcFetch, buildBankCredit as _bcBuild, bankCreditLine as _bcLine } from './js/bankCredit.js';
+import { fetchFundingSeries as _frFetchSeries, fetchUstLeverage as _frFetchUst, buildFundingRead as _frBuild, fundingLine as _frLine } from './js/fundingRead.js';
 import { sliceDays as _cogSlice, toBars as _cogBars, exportText as _cogExport, mergeSeries as _cogMerge } from './js/cogLine.js';
 import { cogLineRead as _cogRead } from './js/cogLineRead.js';   // live trend read for the C.OG line card (js/cogLineRead.js)   // C.OG rate-spread line: analysis/output/cog_line/cog_line_15m.json
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
@@ -4239,7 +4240,8 @@ async function _watchInputs() {
   let drill = _drillBundle.data;
   if (!drill) { try { await _refreshDrillBundle(); drill = _drillBundle.data; } catch (e) { console.warn(`[desk-watch] drill bundle: ${e.message}`); } }
   let bankCredit = null; try { bankCredit = (await _bcRead())?.snap ?? null; } catch { /* quarterly context; optional */ }
-  return { fred, hist, series, chain, stockBond, events, fomcDates, vwapStretch, drill, crack: crackSeries, funding: fundingSeries, bankCredit, now: Date.now() };
+  let fundingRead = null; try { fundingRead = (await _frRead())?.read ?? null; } catch { /* context; optional */ }
+  return { fred, hist, series, chain, stockBond, events, fomcDates, vwapStretch, drill, crack: crackSeries, funding: fundingSeries, bankCredit, fundingRead, now: Date.now() };
 }
 // Score fires that are five sessions old: the realised range over the five
 // sessions after the fire, in ATR14 at the fire, on the trigger's instruments.
@@ -4800,6 +4802,54 @@ app.post('/api/bank-credit/tick', async (req, res) => {
 });
 svcInterval('bankCredit', () => _bcTick().catch(e => console.error('[bank-credit]', e.message)), 12 * 3600_000);
 svcTimeout('bankCredit', () => _bcTick({ silent: true }).catch(e => console.error('[bank-credit]', e.message)), 3 * 60_000);
+
+// ── Funding & leverage read (js/fundingRead.js; live side of the feature-store funding archive) ──
+// Fed swap lines, SOFR−IORB, SOFR volume, ON RRP, reserves (FRED), CFTC leveraged-fund net Treasury futures
+// (basis-trade size), foreign banks' net due to head offices (H.8), foreign-official Treasury custody (H.4.1).
+// Every 6 h; one durable row per day in funding_read_v1 so the read itself builds a forward record.
+// Context only: none of these is tested as a forecast (funding-stress is NULL).
+const _FR_KV = 'funding_read_v1';
+let _frLast = { at: 0, error: null, read: null, spark: null }, _frRunning = false;
+async function _frTick() {
+  if (_frRunning) return _frLast;
+  _frRunning = true;
+  try {
+    const key = process.env.FRED_KEY;
+    if (!key) throw new Error('FRED_KEY not set');
+    const { series, errors } = await _frFetchSeries((id, from) => fetchFredObservations(id, from, key));
+    try { series.ustLev = await _frFetchUst(); } catch (e) { errors.ustLev = e.message; }
+    const read = _frBuild(series);
+    const spark = Object.fromEntries(Object.entries(series).map(([k, pts]) => [k, (pts ?? []).slice(-160)]));
+    let prev = null;
+    try { const raw = await kv.get(_FR_KV); prev = raw ? JSON.parse(raw) : null; }
+    catch (e) { console.warn('[funding-read] store unreadable, not overwriting:', e.message); throw e; }
+    const day = new Date().toISOString().slice(0, 10);
+    const days = (prev?.days ?? []).filter(r => r.day !== day);
+    days.push({ day, flags: read.flags, values: Object.fromEntries(read.items.map(i => [i.id, { v: +i.stat.value.toFixed(3), date: i.stat.date, state: i.state, pct: i.stat.pctile }])) });
+    if (!prev || prev.days?.at(-1)?.day !== day) await kv.put(_FR_KV, JSON.stringify({ days: days.slice(-1000), updatedAt: new Date().toISOString() }));
+    _frLast = { at: Date.now(), error: Object.keys(errors).length ? errors : null, read, spark, days: days.slice(-120) };
+    return _frLast;
+  } catch (e) {
+    _frLast = { ..._frLast, at: Date.now(), error: { all: e.message } };
+    console.error('[funding-read]', e.message);
+    return _frLast;
+  } finally { _frRunning = false; }
+}
+async function _frRead() { return _frLast.read ? _frLast : _frTick(); }
+app.get('/api/funding-read', async (req, res) => {
+  try {
+    const r = await _frRead();
+    if (!r.read) return res.status(503).json({ ok: false, error: r.error ?? 'funding read not built yet' });
+    res.set('Cache-Control', 'public, max-age=900');
+    res.json({ ok: true, ...r.read, line: _frLine(r.read), spark: req.query.spark === '0' ? undefined : r.spark, days: r.days ?? [], error: r.error ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/funding-read/tick', async (_req, res) => {
+  try { const r = await _frTick(); res.json({ ok: !r.error?.all, flags: r.read?.flags ?? [], error: r.error }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('fundingRead', () => _frTick().catch(e => console.error('[funding-read]', e.message)), 6 * 3600_000);
+svcTimeout('fundingRead', () => _frTick().catch(e => console.error('[funding-read]', e.message)), 150_000);
 
 app.post('/api/rates-regime/tick', async (req, res) => {
   try { res.json({ ok: true, ...(await _ratesRegimeTick({ silent: req.query.silent === '1' })) }); }
@@ -5469,6 +5519,8 @@ async function _buildMorningBrief() {
   // BANK CREDIT — the quarterly bank-lending leg (js/bankCredit.js). Context wording only (bank-credit-dollar-*).
   let bankCreditBriefLine = '';
   try { const r = await _bcRead(); if (r?.snap) bankCreditBriefLine = _bcLine(r.snap); } catch { /* omit when the feed is down */ }
+  let fundingBriefLine = '';
+  try { const r = await _frRead(); if (r?.read) fundingBriefLine = _frLine(r.read); } catch { /* omit when the feed is down */ }
   // PRECEDENT — the one global read that says what FOLLOWED conditions like today's
   // rather than describing them. Read straight from the cached study; if it has not
   // been built yet the brief simply omits it rather than guessing.
@@ -5693,6 +5745,7 @@ async function _buildMorningBrief() {
     regimeLine || null,
     fedPathLine || null,
     bankCreditBriefLine || null,
+    fundingBriefLine || null,
     riskLine || null,
     ivLine || null,
   ].filter(Boolean).join('\n');
@@ -15529,6 +15582,9 @@ async function _buildDataHealth() {
   } catch { push('drill', 'Drill bundle (71 series)', null, 1, { refreshEveryH: 24 }); }
 
   push('crack', 'Crude & crack (FRED)', _crack.data?.last?.date ?? null, 1, { refreshEveryH: 6 });
+  // funding read: weekly H.4.1/H.8/CFTC legs, so the oldest leg can be ~10 days old on a normal day
+  try { const ds = (_frLast.read?.items ?? []).map(i => i.stat.date).sort(); push('fundingRead', 'Funding & leverage read (FRED + CFTC)', ds[0] ?? null, 12, { market: false, refreshEveryH: 6 }); }
+  catch { push('fundingRead', 'Funding & leverage read (FRED + CFTC)', null, 12, { market: false, refreshEveryH: 6 }); }
   // bank credit: judged on the DATA date (quarter end), quarterly with a ~4-month publication lag, so ~7 months is normal
   try { const q = _bcLast.snap?.latest; const qe = q ? `${q.slice(0, 4)}-${['03-31', '06-30', '09-30', '12-31'][+q.slice(6) - 1]}` : null; push('bankCredit', 'Bank credit (BIS LBS)', qe, 230, { market: false, refreshEveryH: 12 }); }
   catch { push('bankCredit', 'Bank credit (BIS LBS)', null, 230, { market: false, refreshEveryH: 12 }); }

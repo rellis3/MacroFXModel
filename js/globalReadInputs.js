@@ -17,7 +17,7 @@ export const GLOBAL_READ_ENDPOINTS = ['data-health', 'daily-read', 'desk-watch',
   'yield-spread/plan', 'macro-regime-fx', 'macro-scorecard', 'trend-basket', 'cot-extremes', 'cot', 'oi-today', 'oi-levels',
   'credit-stress', 'liquidity-gate/live', 'regime', 'ledger', 'range-calls', 'release-calls', 'chain-read', 'morning-brief',
   'econ-surprise', 'fomc/latest', 'hmm5m-v2', 'vol-forecast/session', 'daily-snapshot?days=2', 'real-yield', 'yield-curve',
-  'vol-forecast/persist-ladder/json', 'bank-credit'];
+  'vol-forecast/persist-ladder/json', 'bank-credit', 'funding-read?spark=0'];
 
 export const GR_PAIRS = { EURUSD: ['EUR', 'USD'], GBPUSD: ['GBP', 'USD'], USDJPY: ['USD', 'JPY'], AUDUSD: ['AUD', 'USD'], NZDUSD: ['NZD', 'USD'], USDCAD: ['USD', 'CAD'], USDCHF: ['USD', 'CHF'] };
 export const GR_CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
@@ -96,6 +96,8 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     // BIS cross-border bank credit (quarterly, ~4 months late): shown on the credit axis as CONTEXT, never scored
     // (bank-credit-dollar-dxy underpowered, -nasdaq context; js/bankCredit.js)
     bankCredit: bc ? { latest: D['bank-credit'].latest, usdG: bc.usdG, regime: bc.regime, nbfiG: bc.nbfiG, caymanUsdG: bc.caymanUsdG } : null,
+    // the daily funding & leverage read (js/fundingRead.js): context on the credit axis, never scored
+    fundingLine: D['funding-read?spark=0']?.line ?? null,
   };
 
   // ── direction inputs per pair: every family read, weight from evidence ────

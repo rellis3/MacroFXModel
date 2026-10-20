@@ -39,6 +39,7 @@ export const SOURCES = {
   boe:   { label: 'Bank of England IADB', keyed: false, note: 'Free CSV download (js/boeSeries.js, js/intlYields.js). Bank Rate IUDBEDR and the gilt curve; daily, published same day.' },
   yahoo: { label: 'Yahoo Finance', keyed: false, note: 'Sector ETFs and single names. Proven keyless; no history guarantee.' },
   cme:   { label: 'CME settlements / QuikStrike', keyed: false, note: 'Scraped nightly into OI Data/. The option book and six years of recoverable implied vol.' },
+  cftc:  { label: 'CFTC public reporting (Socrata)', keyed: false, note: 'Weekly COT/TFF. Tuesday positions published Friday 15:30 ET; contracts get renamed (Treasuries in 2022), so feeds stitch old and new names.' },
   bis:   { label: 'BIS SDMX API (stats.bis.org)', keyed: false, note: 'Free, no key. Locational Banking Statistics quarterly, ~4 months after quarter end; latest vintage only, so back quarters revise (js/bankCredit.js).' },
   ibkr:  { label: 'Interactive Brokers (local TWS)', keyed: true, note: 'Needs TWS/Gateway open on the owner’s machine (scratchpad/ibkr_stir_pull.py); cannot run from Railway or a cloud session. ~6 months of 15-min history per request.' },
 };
@@ -215,6 +216,11 @@ export const CATALOGUE = [
     trap: 'Arrives ~4 months after the quarter and back quarters are revised; only the latest vintage is served, so history carries revision lookahead. bank_credit_v1 records the date each quarter was first seen. Use FX-adjusted flows (measure F), never stock changes: a moving dollar fakes euro/yen growth.' },
   { id: 'bis:LBS_NBFI', source: 'bis', group: 'liquidity', label: 'Cross-border credit to non-bank financials + Cayman USD (BIS LBS)', why: 'Who is borrowing: hedge funds, money funds and fund vehicles (the Treasury basis / repo footprint). Sector split only from 2014.', readBy: ['bankCredit'], evidence: [] },
   { id: 'bis:LBS_JPY_XJP', source: 'bis', group: 'liquidity', label: 'Yen lent to borrowers outside Japan (BIS LBS)', why: 'The yen carry-funding footprint by borrower country: where an unwind like August 2024 would bite.', readBy: ['bankCredit'], evidence: [] },
+  { id: 'SWPT', source: 'fred', group: 'liquidity', label: 'Fed central-bank liquidity swaps drawn (H.4.1 weekly)', why: 'The direct weekly read of an offshore dollar shortage: foreign central banks borrowing dollars from the Fed (2008, 2011, 2020). Added 2026-10-21 with the funding archive.', readBy: ['fundingRead', 'deskWatch'], evidence: [] },
+  { id: 'SOFRVOL', source: 'fred', group: 'liquidity', label: 'SOFR volume (repo market size)', why: 'How much leverage is financed overnight in Treasury repo.', readBy: ['fundingRead'], evidence: [] },
+  { id: 'NDFFRIW027SBOG', source: 'fred', group: 'liquidity', label: 'Foreign-related banks: net due to related foreign offices (H.8 weekly)', why: 'Dollars moving between foreign banks’ US branches and their head offices: a weekly read of offshore dollar flows.', readBy: ['fundingRead'], evidence: [], trap: 'H.8 revises every week and the seasonally adjusted series moves on re-estimation; ALFRED vintages only start in 2012.' },
+  { id: 'WMTSECL1', source: 'fred', group: 'liquidity', label: 'Foreign-official Treasury custody holdings at the Fed (H.4.1 weekly)', why: 'Reserve managers selling Treasuries, usually to defend a currency or raise dollars.', readBy: ['fundingRead', 'deskWatch'], evidence: [] },
+  { id: 'cftc:TFF_UST_LEV', source: 'cftc', group: 'liquidity', label: 'Leveraged-fund net Treasury futures, 2Y+5Y+10Y+bond, $bn face (TFF)', why: 'The size of the Treasury cash-futures basis trade; its unwinds spiked Treasury vol in 2020 and 2025.', readBy: ['fundingRead', 'deskWatch'], evidence: ['nbfi-rates-vol'], trap: 'Face value, not duration-weighted; a week counts only when all four contracts reported. Contract names changed in 2022.' },
 ];
 
 export const byId = id => CATALOGUE.find(c => c.id === id) ?? null;

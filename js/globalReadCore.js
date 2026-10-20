@@ -285,6 +285,7 @@ export function stateAxes(o = {}) {
     const sg = v => (Number.isFinite(v) ? `${v > 0 ? '+' : ''}${v.toFixed(1)}%` : 'n/a');
     out.credit.context = [{ id: 'bank credit (BIS)', text: `cross-border USD lending ${sg(bc.usdG)} y/y (${bc.regime}, ${bc.latest}); non-banks ${sg(bc.nbfiG)}, Cayman $ ${sg(bc.caymanUsdG)}` }];
   }
+  if (o.fundingLine && out.credit) (out.credit.context ??= []).push({ id: 'funding & leverage', text: o.fundingLine.replace(/^Funding & leverage: /, '').replace(/ Context, untested as a forecast\.$/, '') });
   return out;
 }
 

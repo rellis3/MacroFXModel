@@ -46,6 +46,14 @@
   .link .c{font-size:11px;color:var(--text3)}
   .link.here{border-color:var(--s1)}
   .bar{display:inline-block;height:7px;border-radius:0 3px 3px 0;background:var(--s1);vertical-align:middle;margin-left:6px;opacity:.85}
+  .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+  .fcard{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;min-width:0}
+  .fcard.flag{border-color:var(--amber)}
+  .fcard .k{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3)}
+  .fcard .n{font-weight:600;font-size:12.5px}
+  .fcard .t{font-size:11.5px;color:var(--text2)}
+  .st{font-size:10.5px;font-weight:700;padding:0 6px;border-radius:999px;border:1px solid var(--border);color:var(--text2);margin-left:6px}
+  .st.bad{color:var(--red);border-color:var(--red)} .st.warn{color:var(--amber);border-color:var(--amber)} .st.ok{color:var(--s3);border-color:var(--s3)}
   .ev{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:5px;border:1px solid var(--border);margin-right:6px}
 </style>
 </head>
@@ -77,6 +85,12 @@
       <a class="link" href="spread-episodes.html"><span class="k">5b · Episodes</span><span class="n">Spread turns vs NAS100</span><span class="c">forward record</span></a>
     </div>
     <p class="note" style="margin-top:8px">Each link moves on its own clock. Steps 1, 2 and 5 are intraday; steps 3 and 4 change once a quarter and arrive months late. So this page tells you <b>how much leverage is in the system and who holds it</b>, which is the backdrop for how hard a rates shock can hit. It cannot time the shock.</p>
+  </div>
+
+  <div class="box" id="funding">
+    <h2>Funding &amp; leverage, daily / weekly (context, untested as forecasts)</h2>
+    <div class="fgrid" id="fgrid"><p class="note">loading…</p></div>
+    <p class="note" style="margin-top:8px">Each series is placed against its own history (percentile since its start). Weekly legs: Fed H.4.1 (swap lines, reserves, foreign official Treasuries), H.8 (foreign banks), CFTC TFF (leveraged funds). Daily: SOFR, IORB, SOFR volume, overnight reverse repo. The same series sit in the research feature store (<code>funding_archive</code>) point-in-time, so any of these can be tested properly.</p>
   </div>
 
   <div class="grid2">
@@ -145,6 +159,25 @@ function lineChart(host,series,{bands}={}){
 function table(id,head,rows){document.getElementById(id).innerHTML=`<thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')||`<tr><td colspan="${head.length}" class="mut">no data</td></tr>`}</tbody>`}
 const crow=(r,hl=[])=>`<tr class="${hl.includes(r.code)?'hl':''}"><td>${r.name}</td><td>${fmt(r.stockBn)}</td><td>${r.flow4qBn==null?'–':(r.flow4qBn>0?'+':'')+fmt(r.flow4qBn)}</td><td>${sg(r.g)}</td><td>${sg(r.gPrev)}</td></tr>`;
 const CH=['Borrower','Stock $bn','4Q flow $bn','Growth','Prev Q'];
+
+const FCLS={stress:'bad',tight:'bad','record short':'bad',selling:'warn','buffer gone':'warn',record:'warn','large short':'warn',watch:'warn',low:'warn',quiet:'ok',flush:'ok'};
+const SPARK_KEY={swaplines:'swaplines',sofrIorb:null,sofrVol:'sofrVol',rrp:'rrp',reserves:'reserves',basisTrade:'ustLev',netDueForeign:'netDueForeign',custodyUst:'custodyUst'};
+function spark(pts){
+  if(!pts||pts.length<3)return'';
+  const W=240,H=34,v=pts.map(p=>p.value),lo=Math.min(...v),hi=Math.max(...v),r=hi-lo||1;
+  const d=pts.map((p,i)=>`${i?'L':'M'}${(i/(pts.length-1)*W).toFixed(1)},${(H-2-(p.value-lo)/r*(H-4)).toFixed(1)}`).join('');
+  const y=H-2-(v.at(-1)-lo)/r*(H-4);
+  return `<svg viewBox="0 0 ${W} ${H}" style="height:34px"><path d="${d}" fill="none" stroke="var(--s1)" stroke-width="1.5"/><circle cx="${W}" cy="${y}" r="2.5" fill="var(--s1)"/></svg>`;
+}
+fetch('/api/funding-read').then(r=>r.json()).then(f=>{
+  if(!f.ok)throw new Error(f.error||'not available');
+  const flagged=new Set(f.flags||[]);
+  const sp=f.spark||{};
+  if(sp.sofr&&sp.iorb){const m=new Map(sp.iorb.map(p=>[p.date,p.value]));sp.sofrIorb=sp.sofr.filter(p=>m.has(p.date)).map(p=>({date:p.date,value:(p.value-m.get(p.date))*100}));SPARK_KEY.sofrIorb='sofrIorb';}
+  document.getElementById('fgrid').innerHTML=[...f.items].sort((a,b)=>flagged.has(b.id)-flagged.has(a.id)).map(i=>`<div class="fcard${flagged.has(i.id)?' flag':''}">
+    <span class="k">${i.group}</span><span class="n">${i.label}<span class="st ${FCLS[i.state]||''}">${i.state||''}</span></span>
+    ${spark(sp[SPARK_KEY[i.id]])}<span class="t">${i.text||''}</span><span class="k" style="text-transform:none;letter-spacing:0">as of ${i.stat.date} · history since ${i.stat.since}</span></div>`).join('');
+}).catch(e=>{document.getElementById('fgrid').innerHTML=`<p class="note">Funding read unavailable: ${e.message}</p>`;});
 
 fetch('/api/bank-credit').then(r=>r.json()).then(d=>{
   if(!d.ok)throw new Error(d.error||'not available');
