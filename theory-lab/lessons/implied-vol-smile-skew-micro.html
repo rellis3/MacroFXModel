@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The IV Smile &amp; Skew — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
+<link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">The IV Smile &amp; Skew — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the maths written out, the symbols table and a 5-question self-test?<a href="implied-vol-smile-skew.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">The Greeks 6 · Reading the Fan</div>
+      <h1 class="sl-h1">The IV Smile &amp; Skew, <em>and What It Does to Price</em></h1>
+      <p class="sl-lede">Implied volatility is not one number per expiry. Every strike carries its own, and plotted against strike the numbers form a curve. Its height says what a move costs, its tilt says which direction costs more, and, through vanna, a falling market that lifts vol can change how dealers hedge. This guide shows how to read the curve on the OI Lab chart, what it implies for price, and where the evidence stops.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">The whole idea</div>
+      <h2 class="sl-h2">One curve: lowest at the money, higher in the wings</h2>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A smile curve of implied volatility against strike. The put wing on the left is higher than the call wing on the right, and the at-the-money point is the lowest.">
+          <line x1="50" y1="240" x2="610" y2="240" style="stroke:var(--text3);stroke-width:1.5"/>
+          <line x1="50" y1="20" x2="50" y2="240" style="stroke:var(--text3);stroke-width:1.5"/>
+          <line x1="330" y1="190" x2="330" y2="240" style="stroke:var(--text3);stroke-width:1.5;stroke-dasharray:3,4"/>
+          <path d="M70 40 C 170 170, 270 190, 330 190 S 480 150, 590 100" style="fill:none;stroke:var(--blue);stroke-width:3.5"/>
+          <circle cx="330" cy="190" r="7" style="fill:var(--amber);stroke:var(--bg);stroke-width:1.5"/>
+          <text x="120" y="60" font-size="12.5" font-weight="700" style="fill:var(--amber)">put wing: protection costs more</text>
+          <text x="400" y="88" font-size="12.5" font-weight="700" style="fill:var(--blue)">call wing: costs less</text>
+          <text x="330" y="262" text-anchor="middle" font-size="12" style="fill:var(--text2)">at the money: lowest vol</text>
+          <text x="22" y="140" font-size="12" style="fill:var(--text3)" transform="rotate(-90 22 140)">implied vol</text>
+          <text x="560" y="262" font-size="12" style="fill:var(--text3)">strike →</text>
+        </svg>
+      </div>
+      <p class="sl-p">Same expiry, same underlying, a different price of volatility at every strike. The tilt toward the left is the skew. On equity indices the downside wing sits higher, because buyers pay up for crash protection.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">What the chart is actually drawing</h2>
+      <p class="sl-sub">On the OI Lab terrain card each outer line is one expiry: a strike's implied vol minus the at-the-money vol, in vol points.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">0</div><div><h4>The pinch</h4><p>At the money, the extra vol is zero by definition, so every line crosses there. The pinch is the at-the-money strike.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↔</div><div><h4>Sideways distance</h4><p>How far a line sits from the pinch is how many vol points that strike costs more than the at-the-money strike.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">≋</div><div><h4>One line per expiry</h4><p>Near expiries (bright) bend hardest in the wings; far ones are flatter.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>The in-the-money half is faint</h4><p>It is noisy and mostly echoes the other side. Read the bright out-of-the-money half.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Skew in two numbers</h2>
+      <p class="sl-sub">Practitioners summarise the curve rather than eyeballing it. Measured at the same distance x on each side:</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag red">Risk reversal — the tilt</span>
+          <p>RR(x) = IV(call at +x) − IV(put at −x). On equity indices it is <strong>negative</strong>: the downside wing is richer. The more negative, the steeper the skew.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Butterfly — the curvature</span>
+          <p>BF(x) = ½[IV(+x) + IV(−x)] − IV(ATM). How much both wings sit above the middle, whichever way they tilt. A large butterfly means the market is paying for tails on both sides.</p>
+        </div>
+      </div>
+      <div class="sl-row" style="margin-top:16px"><div class="sl-box">RR → which side</div><div class="sl-arrow">+</div><div class="sl-box amber">BF → how much tail</div></div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where these come from</div>
+        <p>FX desks quote risk reversals and butterflies directly, at the 25-delta strike. The Theory Lab's <a href="fx-options-quoting-rr-bf-micro.html">FX options quoting</a> guide builds them from scratch.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Build a smile, then move the market</h2>
+      <p class="sl-sub">IV(x) = σ + a·x + b·x², with x the percent distance from spot. Set the skew and the curvature, then move price and watch the at-the-money vol.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A live smile curve with the points at minus 3 percent and plus 3 percent marked, and the new at-the-money point after a spot move">
+            <line x1="50" y1="230" x2="610" y2="230" style="stroke:var(--text3);stroke-width:1.5"/>
+            <line x1="330" y1="20" x2="330" y2="230" style="stroke:var(--text3);stroke-width:1.2;stroke-dasharray:3,4"/>
+            <text x="330" y="250" text-anchor="middle" font-size="11.5" style="fill:var(--text3)">spot</text>
+            <text x="64" y="250" font-size="11.5" style="fill:var(--text3)">−8%</text>
+            <text x="590" y="250" font-size="11.5" style="fill:var(--text3)">+8%</text>
+            <polyline id="sm-curve" points="" style="fill:none;stroke:var(--blue);stroke-width:3"/>
+            <circle id="sm-dn" cx="0" cy="0" r="6" style="fill:var(--amber);stroke:var(--bg);stroke-width:1.5"/>
+            <circle id="sm-up" cx="0" cy="0" r="6" style="fill:var(--green);stroke:var(--bg);stroke-width:1.5"/>
+            <circle id="sm-new" cx="0" cy="0" r="7" style="fill:var(--purple);stroke:var(--bg);stroke-width:1.5"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Skew a (vol points per 1%)</span><span class="sl-live" id="sm-a-val">−0.50</span></div>
+        <input type="range" class="sl-slider" id="sm-a" min="-1.2" max="0.2" step="0.05" value="-0.5">
+        <div class="sl-sliderhead"><span>Curvature b</span><span class="sl-live" id="sm-b-val">0.05</span></div>
+        <input type="range" class="sl-slider" id="sm-b" min="0" max="0.2" step="0.01" value="0.05">
+        <div class="sl-sliderhead"><span>Spot move</span><span class="sl-live" id="sm-m-val">−3%</span></div>
+        <input type="range" class="sl-slider" id="sm-m" min="-6" max="6" step="0.5" value="-3">
+        <div class="sl-note">At-the-money vol is held at 20%. The smile is assumed to stay fixed against strikes (a “sticky strike” assumption), so a fall in spot moves the new at-the-money point up the put wing.</div>
+      </div>
+      <div class="sl-calc-steps">
+        <div>Put at −3%: <b id="sm-iv-dn">21.95</b>% · call at +3%: <b id="sm-iv-up">18.95</b>%</div>
+        <div>RR(3%) = <b id="sm-rr">−3.00</b> · BF(3%) = <b id="sm-bf">0.45</b> · ATM vol after the move: <b id="sm-atm">21.95</b>%</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Why a falling market lifts vol, and what that does to hedging</h2>
+      <p class="sl-sub">The skew turns a spot move into a vol move. Vanna turns a vol move into hedging flow.</p>
+      <div class="sl-chain">
+        <div class="sl-chain-link"><b>Spot falls</b><br>the old at-the-money strike is now out of the money</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>New at-the-money vol is higher</b><br>the smile stays put, spot slides up the put wing</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Option deltas change</b><br>vanna: delta changes when vol changes</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Dealers re-hedge</b><br>direction depends on who is short what</div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The last link is an assumption</div>
+        <p>Which way the extra hedging pushes price depends on whether dealers are net long or short those options. Open interest does not tell you. The OI Lab uses the standard convention (dealers long calls, short puts), and every sign flips if that is wrong.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 5 · worked read</div>
+      <h2 class="sl-h2">SPX on 20 October 2026: the downside costs far more</h2>
+      <p class="sl-sub">Read off the OI Lab terrain card (values approximate).</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Puts, below the pinch</span>
+          <p>The nearest expiry reaches <strong>+4 vol points at about 7620</strong>, roughly <strong>1.3% below</strong> the pinch (7722).</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Calls, above the pinch</span>
+          <p>The same expiry only reaches <strong>+4 near 7950</strong>, roughly <strong>3% above</strong> it. The upside is far cheaper.</p>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The read</div>
+        <p>Strong put skew: the market is paying much more for protection against a drop than for an equal rally. The put wall (7665.7) and major wall (7615.7) sit in that expensive zone, which is where a fall would reprice options fastest. This describes how options are priced. It does not say a fall is likely.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">How it trades</h2>
+      <p class="sl-sub">Traders do not trade “the smile” directly. They trade pieces of it.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">RR</div><div><h4>Risk reversal</h4><p>Buy one wing, sell the other (a long call against a short put, for example). Pays when the skew moves your way. Often used to express a view on where the premium sits.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🛡</div><div><h4>Hedging cost</h4><p>Steep put skew means protection is expensive. Collars and put spreads exist to cut that cost by selling the other wing.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📅</div><div><h4>Calendars</h4><p>Near expiries bend harder than far ones. Calendar spreads trade that difference around an event.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Relative value</h4><p>Desks compare today’s skew with its own history. A steep skew against its usual range is read as unusual fear, not as a direction.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">What it does to price: the mechanism and the evidence</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">The textbook mechanism</span>
+          <p>Skew makes vol rise as price falls. That feeds vanna, which can change dealer hedging. Protection demand also shows up as extra put buying near the money in a selloff. These are real forces, but how big they are against everything else in the market is an empirical question.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">What our own tests found</span>
+          <p>Implied vol forecasts <strong>range</strong> better than realised vol (7 of 7). The gamma sign predicts next-day range on NQ. Walls, flips and max pain did not beat placebo levels, and no positioning signal predicted direction.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Not tested yet</div>
+        <p>Whether skew steepness predicts the day’s range or its down-versus-up asymmetry. It is registered as a candidate, not a result. Use the smile as context for how much a move costs, not as a signal for which way price goes.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Four ways to misread the fan</h2>
+      <div class="sl-callout amber"><div class="sl-callout-label">The pinch and your spot can differ</div><p>The smile is live from Cboe, 15 minutes delayed. Levels and open interest come from the last saved snapshot, so the pinch and the spot line can sit slightly apart.</p></div>
+      <div class="sl-callout amber"><div class="sl-callout-label">Jagged wings are thin strikes</div><p>Far-out strikes trade rarely, so their implied vol jumps around. Do not read shape into kinks.</p></div>
+      <div class="sl-callout amber"><div class="sl-callout-label">Only SPX, NDX and RUT have a smile here</div><p>Gold, FX and commodities come from CME, which gives one vol per expiry. The fan there shows gamma ridges, and vanna is only an estimate.</p></div>
+      <div class="sl-callout amber"><div class="sl-callout-label">Skew is a price, not a forecast</div><p>A steep put wing says protection is expensive. It does not say the protection will pay.</p></div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why do all the lines on the fan meet at one point?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The plot shows implied vol minus the at-the-money vol, so that strike is zero for every expiry</button>
+        <button class="sl-quiz-opt">Every expiry has the same implied vol at that strike</button>
+        <button class="sl-quiz-opt">The chart forces them to meet at the largest open interest</button>
+        <div class="sl-quiz-explain">The vertical axis is the extra vol over the at-the-money strike. At the money that difference is zero by construction, for every expiry, so every line crosses there.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>With IV(x) = 20 − 0.5x + 0.05x² (x in percent), what happens to the at-the-money vol if spot falls 3% and the smile stays fixed against strikes?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It rises to about 21.95%</button>
+        <button class="sl-quiz-opt">It stays at 20%</button>
+        <button class="sl-quiz-opt">It falls to about 18.95%</button>
+        <div class="sl-quiz-explain">The new at-the-money point sits where the old curve read x = −3: 20 + 1.5 + 0.45 = 21.95. That is the spot-vol link: a fall in price lifts the vol at the money.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A steep put skew on SPX tells you…</h4>
+        <button class="sl-quiz-opt" data-correct="true">Downside protection is expensive relative to upside, not that price will fall</button>
+        <button class="sl-quiz-opt">The market is about to fall</button>
+        <button class="sl-quiz-opt">Dealers are certainly short gamma</button>
+        <div class="sl-quiz-explain">Skew is a price of protection. It reflects demand and risk appetite. Our tests found no positioning signal that predicts direction, and the dealer sign behind any hedging story is an assumption.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Implied vol is a curve across strikes: lowest at the money, higher in the wings. The fan draws one curve per expiry as extra vol over the at-the-money strike.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Risk reversal measures the tilt, and the butterfly measures the curvature. Equity indices carry a negative risk reversal because protection is bought.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>With the smile fixed against strikes, a fall in spot moves the at-the-money point up the put wing, so at-the-money vol rises.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Vanna turns that vol change into hedging flow, but its direction rests on an assumption about who is short what.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Evidence so far: implied vol forecasts range, and the gamma sign relates to range. Skew predicting range or direction has not been tested.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Read the bright out-of-the-money half, expect noise in thin wings, and remember that only SPX, NDX and RUT have a real smile on the lab.</p></div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Live smile: IV(x) = sigma + a*x + b*x^2, x in percent from spot, sigma fixed at 20.
+  var A = document.getElementById('sm-a');
+  if (!A) return;
+  var B = document.getElementById('sm-b'), M = document.getElementById('sm-m');
+  var curve = document.getElementById('sm-curve'), dn = document.getElementById('sm-dn'), up = document.getElementById('sm-up'), nw = document.getElementById('sm-new');
+  var SIGMA = 20, XL = 50, XR = 610, YB = 230, YT = 20, VMIN = 12, VMAX = 36;
+  function iv(x, a, b){ return SIGMA + a * x + b * x * x; }
+  function X(x){ return XL + (x + 8) / 16 * (XR - XL); }
+  function Y(v){ return YB - (Math.max(VMIN, Math.min(VMAX, v)) - VMIN) / (VMAX - VMIN) * (YB - YT); }
+  function f(v, d){ return (v < 0 ? '−' : '') + Math.abs(v).toFixed(d); }
+  function update(){
+    var a = parseFloat(A.value), b = parseFloat(B.value), m = parseFloat(M.value);
+    var pts = [];
+    for (var x = -8; x <= 8.001; x += 0.5) pts.push(X(x).toFixed(1) + ',' + Y(iv(x, a, b)).toFixed(1));
+    curve.setAttribute('points', pts.join(' '));
+    var ivDn = iv(-3, a, b), ivUp = iv(3, a, b), atmNew = iv(m, a, b);
+    dn.setAttribute('cx', X(-3)); dn.setAttribute('cy', Y(ivDn));
+    up.setAttribute('cx', X(3)); up.setAttribute('cy', Y(ivUp));
+    nw.setAttribute('cx', X(m)); nw.setAttribute('cy', Y(atmNew));
+    document.getElementById('sm-a-val').textContent = f(a, 2);
+    document.getElementById('sm-b-val').textContent = b.toFixed(2);
+    document.getElementById('sm-m-val').textContent = (m > 0 ? '+' : m < 0 ? '−' : '') + Math.abs(m).toFixed(1).replace('.0', '') + '%';
+    document.getElementById('sm-iv-dn').textContent = ivDn.toFixed(2);
+    document.getElementById('sm-iv-up').textContent = ivUp.toFixed(2);
+    document.getElementById('sm-rr').textContent = f(ivUp - ivDn, 2);
+    document.getElementById('sm-bf').textContent = f((ivUp + ivDn) / 2 - SIGMA, 2);
+    document.getElementById('sm-atm').textContent = atmNew.toFixed(2);
+  }
+  [A, B, M].forEach(function(el){ el.addEventListener('input', update); });
+  update();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+</body>
+</html>

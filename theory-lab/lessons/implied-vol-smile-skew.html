@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The IV Smile &amp; Skew — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / The Greeks / The IV Smile &amp; Skew</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">The Greeks · Lesson 6 of 6</div>
+  <h1 class="tl-title">The IV Smile &amp; Skew</h1>
+  <p class="tl-dek">Implied volatility is a curve across strikes, not one number. Its height says what a move costs, its tilt says which direction costs more, and a falling market that lifts vol can change how dealers hedge.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — drawn live on the OI Lab; its effect on price is untested here<!-- DESK:END --></span>
+    <span>~14 min read</span>
+    <span>Prereqs: Vega &amp; the Volatility Surface, Second-Order Greeks</span>
+  </div>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="implied-vol-smile-skew-micro.html">Visual Guide</a> — twelve short slides with a live smile you can bend.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Every strike has its own implied volatility. Plot it against strike and you get the <strong>smile</strong>: lowest near the money, higher in the wings.</li>
+      <li>The <strong>skew</strong> is its tilt. Equity indices have a higher downside wing, because buyers pay up for crash protection.</li>
+      <li>Two numbers summarise it: the risk reversal \(RR(x)=IV(+x)-IV(-x)\) for the tilt, and the butterfly \(BF(x)=\tfrac12[IV(+x)+IV(-x)]-IV_{ATM}\) for the curvature.</li>
+      <li>If the smile stays fixed against strikes, a fall in spot slides the at-the-money point up the put wing, so <strong>at-the-money vol rises as price falls</strong>. Skew is what turns a spot move into a vol move.</li>
+      <li>Vanna turns a vol move into hedging flow. Which way that flow pushes price depends on who is short which options, and open interest does not tell you.</li>
+      <li><strong>Evidence:</strong> implied vol forecasts range, and the gamma sign relates to next-day range. Whether skew predicts range or direction has not been tested here.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="vega-volatility-surface.html">volatility surface lesson</a> introduced implied vol as a two-axis surface, strike by expiry. The <a href="second-order-greeks.html">second-order Greeks lesson</a> showed that vanna is the link between a vol move and a delta move. This lesson joins them: the skew is the reason a spot move comes with a vol move, so vanna matters in the first place. It is also the picture you meet most often on a desk, and the one most easily over-read.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The price of insurance depends on the claim</h3>
+    <p>
+      Think of each option as an insurance policy on a different outcome. A policy against a small move near today's price is cheap per unit of cover. A policy against a big drop costs more per unit, because people want it most when markets fall, and the people selling it need to be paid for that. The smile is just the price of insurance plotted against how far away the claim is.
+    </p>
+    <p>
+      Equity indices lean to the downside because investors hold stocks and want protection against a fall far more than they want protection against a rally. So the left side of the curve sits higher. When price actually drops, you are standing closer to that expensive left side, and the market's at-the-money vol is read from there.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The maths, step by step</h2>
+  <p>Write the smile around today's spot as a simple curve in \(x\), the percent distance of a strike from spot:</p>
+  <p>\[ IV(x) \;=\; \sigma_{ATM} + a\,x + b\,x^{2} \]</p>
+  <p>Here \(a\) is the <strong>skew slope</strong> in vol points per 1% and \(b\) the <strong>curvature</strong>. For an equity index \(a\) is negative: higher strikes (positive \(x\)) are cheaper than lower ones.</p>
+  <p>The two summary numbers fall straight out of it, measured at distance \(x\) on both sides:</p>
+  <p>\[ RR(x) = IV(+x) - IV(-x) = 2a\,x, \qquad BF(x) = \tfrac12\big[IV(+x)+IV(-x)\big]-\sigma_{ATM} = b\,x^{2} \]</p>
+  <p>Now let spot move by \(m\) percent while the smile stays fixed against strikes (<em>sticky strike</em>). The new at-the-money strike was at \(x=m\) on the old curve, so</p>
+  <p>\[ \sigma_{ATM}^{new} = IV(m) = \sigma_{ATM} + a\,m + b\,m^{2} \]</p>
+  <p>With \(a<0\), a fall (\(m<0\)) raises at-the-money vol by about \(|a|\,|m|\). That is the spot-vol link in one line. The opposite assumption, <em>sticky delta</em>, keeps the smile attached to spot, so the at-the-money vol would not move. Real markets sit between the two, which is why this is a mechanism and not a forecast.</p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(x\)</td><td>Percent distance of a strike from spot (negative = below spot).</td></tr>
+    <tr><td>\(IV(x)\)</td><td>Implied volatility at that strike.</td></tr>
+    <tr><td>\(\sigma_{ATM}\)</td><td>At-the-money implied vol: the level of the curve at \(x=0\).</td></tr>
+    <tr><td>\(a\)</td><td>Skew slope, vol points per 1% of moneyness. Negative on equity indices.</td></tr>
+    <tr><td>\(b\)</td><td>Curvature: how much both wings sit above the middle.</td></tr>
+    <tr><td>\(RR\)</td><td>Risk reversal: call vol minus put vol at equal distance. Measures the tilt.</td></tr>
+    <tr><td>\(BF\)</td><td>Butterfly: average wing vol minus at-the-money vol. Measures the tails.</td></tr>
+    <tr><td>\(m\)</td><td>Percent move in spot.</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A smile with put skew: IV(x) = 20 − 0.5x + 0.05x²</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Implied volatility against percent distance from spot. The curve is lowest near the money and higher on the left. The points at minus 3 percent and plus 3 percent read 21.95 and 18.95.">
+      <line x1="50" y1="230" x2="610" y2="230" style="stroke:var(--text3);stroke-width:1.5"/>
+      <line x1="330" y1="20" x2="330" y2="230" style="stroke:var(--text3);stroke-width:1.2;stroke-dasharray:3,4"/>
+      <polyline points="50.0,34.0 67.5,45.2 85.0,55.9 102.5,66.2 120.0,76.0 137.5,85.4 155.0,94.4 172.5,102.9 190.0,111.0 207.5,118.7 225.0,125.9 242.5,132.7 260.0,139.0 277.5,144.9 295.0,150.4 312.5,155.4 330.0,160.0 347.5,164.2 365.0,167.9 382.5,171.2 400.0,174.0 417.5,176.4 435.0,178.4 452.5,179.9 470.0,181.0 487.5,181.7 505.0,181.9 522.5,181.7 540.0,181.0 557.5,179.9 575.0,178.4 592.5,176.4 610.0,174.0" style="fill:none;stroke:var(--blue);stroke-width:3"/>
+      <circle cx="225" cy="126" r="6" style="fill:var(--amber)"/>
+      <circle cx="435" cy="178" r="6" style="fill:var(--green)"/>
+      <circle cx="330" cy="160" r="6" style="fill:var(--purple)"/>
+      <text x="219" y="114" text-anchor="end" font-size="12" font-weight="700" style="fill:var(--amber)">−3%: 21.95</text>
+      <text x="445" y="182" font-size="12" font-weight="700" style="fill:var(--green)">+3%: 18.95</text>
+      <text x="330" y="184" text-anchor="middle" font-size="11.5" style="fill:var(--text2)">ATM 20.00</text>
+      <text x="330" y="250" text-anchor="middle" font-size="11.5" style="fill:var(--text3)">spot</text>
+      <text x="60" y="250" font-size="11.5" style="fill:var(--text3)">−8%</text>
+      <text x="580" y="250" font-size="11.5" style="fill:var(--text3)">+8%</text>
+    </svg>
+    <div class="tl-chart-caption">The left wing sits higher than the right, so the risk reversal is negative. A fall of 3% in spot, with the smile fixed in strikes, lifts the at-the-money vol from 20 to about 21.95.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Skew, butterfly and the spot-vol link with real numbers</h3>
+    <p>Take \(\sigma_{ATM}=20\), \(a=-0.5\), \(b=0.05\), and ask for the numbers at \(x=3\%\).</p>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">\(IV(-3)=20+1.5+0.45=21.95\) and \(IV(+3)=20-1.5+0.45=18.95\).</div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">\(RR(3)=18.95-21.95=-3.00\): the put wing is three vol points richer than the call wing.</div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">\(BF(3)=\tfrac12(21.95+18.95)-20=0.45\): the average wing is about half a point above the middle.</div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">Spot falls 3% and the smile stays fixed in strikes: \(\sigma_{ATM}^{new}=IV(-3)=21.95\). At-the-money vol rises about 1.95 points.</div></div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Reading SPX on 20 October 2026</h3>
+    <p>
+      On the lab's terrain card the nearest SPX expiry reached +4 vol points about 1.3% below the pinch (near 7620) and about 3% above it (near 7950). Roughly: the downside wing climbs more than twice as steeply as the upside. That is strong put skew. The put wall (7665.7) and the major wall (7615.7) both sit in the expensive zone, so a move down into them would reprice those options fastest.
+    </p>
+    <p>
+      What a trader takes from it: the market is paying a premium for downside protection, so collars and put spreads cost more to hold. What the trader does not take from it: a forecast that price will fall. Skew is the price of protection, and the price can be high for a long time.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Desks do not trade "the smile" as a single object. They trade <strong>risk reversals</strong> (one wing against the other, to take a view on where the premium sits), <strong>collars and put spreads</strong> (selling the other wing to cut the cost of protection), and <strong>calendars</strong> (near expiries bend harder than far ones, so the difference can be traded around an event). In FX the risk reversal and butterfly at the 25-delta strike are the quoted prices themselves; the <a href="fx-options-quoting-rr-bf.html">FX options quoting lesson</a> builds them.
+  </p>
+  <p>
+    Relative value is the other everyday use: compare today's skew with its own history. A skew far steeper than usual is read as unusual fear, a flatter one as complacency. That is a statement about pricing, and the step from there to a forecast of price is exactly the step this repo has not validated.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧱</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>Drawn live, with the effect on price still open</h3>
+    <p>
+      The OI Lab's terrain card draws this fan for SPX, NDX and RUT from Cboe's per-contract implied vols (<code>js/cboeChain.js</code>), and the Greek context card has a SMILE layer on the same price axis. CME books (gold, FX, commodities) give one vol per expiry, so there is no smile to draw there.
+    </p>
+    <p>
+      What has been tested: implied vol forecasts the day's range better than realised vol (7 of 7 instruments), and the gamma sign predicts next-day range on NQ. Walls, flips and max pain did not beat placebo levels, and no positioning signal predicted direction. <strong>Not tested:</strong> whether skew steepness predicts the day's range or its down-versus-up asymmetry. Read the smile as context for how much a move costs.
+    </p>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the smile gets misread</h3>
+    <p><strong>Skew is a price, not a forecast.</strong> A steep put wing says protection is expensive. It does not say the protection will pay.</p>
+    <p><strong>Sticky strike is an assumption.</strong> The vol-rises-as-price-falls result holds only to the extent the smile stays fixed against strikes. In a market that re-centres the smile on spot, at-the-money vol barely moves.</p>
+    <p><strong>The dealer sign is unobserved.</strong> Any story that ends in "so dealers must buy" rests on assuming who is long and short. Open interest does not say.</p>
+    <p><strong>Thin wings are noisy.</strong> Far-out strikes trade rarely and their implied vols jump around. The in-the-money half of each curve mostly echoes the other side. Read the out-of-the-money half and ignore kinks.</p>
+    <p><strong>A delayed snapshot against a saved one.</strong> On the lab the smile is live (15 minutes delayed) while levels and open interest come from the last saved snapshot, so the pinch and the spot line can differ.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The smile is the price of protection by strike.</strong> Lowest near the money, higher in the wings, and on equity indices higher on the downside.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two numbers describe it.</strong> The risk reversal measures the tilt and the butterfly measures the tails.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Skew links price to vol.</strong> With the smile fixed in strikes, a drop lifts at-the-money vol by about \(|a|\,|m|\).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Vanna's direction rests on an assumption.</strong> Who is short which options is not in the open interest.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Evidence stops at range.</strong> Implied vol and the gamma sign relate to range. Skew and direction are untested or failed.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why do all lines on the OI Lab fan meet at one point?</summary>
+    <div class="tl-answer">The plot shows each strike's implied vol minus the at-the-money vol. At the money that difference is zero by construction, for every expiry, so every line crosses there. It is not a coincidence in the data.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. With \(IV(x)=20-0.5x+0.05x^2\), what is the 3% risk reversal and what does its sign say?</summary>
+    <div class="tl-answer">\(RR(3)=IV(3)-IV(-3)=18.95-21.95=-3.00\). Negative: the put wing is three vol points richer than the call wing, the usual equity-index tilt.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Spot falls 4% with the smile fixed in strikes, using the same curve. Where does at-the-money vol land?</summary>
+    <div class="tl-answer">\(IV(-4)=20+2.0+0.8=22.8\). At-the-money vol rises by about 2.8 points. The tilt contributes 2.0 and the curvature 0.8.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Would at-the-money vol rise under "sticky delta"?</summary>
+    <div class="tl-answer">No. Sticky delta keeps the smile attached to spot, so the at-the-money point stays at the bottom of the curve and its vol does not move. Real markets sit between sticky strike and sticky delta.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A trader says "put skew is steep, so SPX is going down." What is wrong with that?</summary>
+    <div class="tl-answer">Skew is the price of protection, set by demand and risk appetite. It can stay steep for months while price rises. In this repo's own tests no positioning signal predicted direction, and the dealer sign that any hedging story relies on is unobserved.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+    <summary>Further reading</summary>
+    <p>Gatheral, J. (2006), <em>The Volatility Surface: A Practitioner's Guide</em>, Wiley. Derman, E. (1999), "Regimes of volatility", <em>Risk</em>. Both treat sticky-strike versus sticky-delta and the spot-vol link in depth.</p>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="second-order-greeks.html">← Second-Order Greeks</a>
+  </div>
+</div>
+
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
+</body>
+</html>
