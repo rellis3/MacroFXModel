@@ -704,6 +704,13 @@ export const DESK_EVIDENCE = [
     use: 'Do not build a fade / continue chooser from these confluences on either line: the lift they give is about what chance gives and none survives spread. The moving line does not unlock them. Use the full-day map for expectations (how far, how long, how often the extreme is in) and the existing finding that the clock and the price pullback from the extreme carry the information. Phase 2 (FVG, Fibonacci, round numbers) not run.',
   },
   {
+    id: 'rule-a-late-entry', domain: 'price', verdict: 'null', date: '2026-10-20', doc: 'forge/RULE_A_LATE_ENTRY_PREREG.md', also: ['analysis/output/rule-a-late-entry/RESULTS.md'],
+    claim: 'Rule A (the rich-day break on the chosen v3 lines) also pays after costs when the break first happens between 10:00 and 13:00 London, on a line not broken before 10:00',
+    result: 'Null, pre-registered. 823 rich-day late breaks on 11 instruments, 2020-08 to 2026-08, stop 0.2 sigma, target 5R, out at 22:00, 2x spread: net -0.100R per trade [-0.260, +0.063], 2020-23 -0.101, 2024-26 -0.098, 5 of 11 instruments positive. The interval excludes the +0.16R the design could detect. Mirror: late breaks on non-rich days -0.185R [-0.292, -0.093]. Rule A in its own 00:00-10:00 window: +0.162R (forecast-line-backtest.html).',
+    use: 'Rule A entries stop at 10:00 London; do not extend the window. Consistent with the exits study: the edge needs a far target and time for the day to travel. The positive index readings in this window (NQ, SPX500, US30) are post-hoc and need their own prereg before anything is said about them.',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
     id: 'vol-asia-fib-confluence', domain: 'price', verdict: 'null', date: '2026-10-13', doc: 'forge/VOL_ASIA_FIB_CONFLUENCE_PREREG.md',
     claim: 'A daily vol line (O-H / O-L p50, p75, p90) that falls within a few pips of an Asia-range fib extension rung (the -2, 3 ... multiples of the 00:00-06:00 body range) gets a stronger reaction (fade or continue) than the same line without it',
     result: 'Null, pre-registered. 125k first touches (06:00-22:00) of point-in-time vol lines, 34 instruments, 2016-2026. Confluence within 0.05 sigma happens on 54% of lines (a randomly shifted Asia grid: 49%) because the grid is dense. Fade-before-through at 0.25 sigma: discovery (<2022) 49.5% confluent vs 49.9% other, holdout (2022-26) 50.3% vs 50.3%, diff +0.05pp [-0.8, +1.0], inside the placebo band; 19/34 instruments same sign. All 9 tolerance x barrier cells within +-1pp. Fade trade 1R: net -0.13R holdout (continue -0.12R). Gold\'s apparent 3-4pp extra continuation in both blocks was then checked (Addendum A): not beyond its own placebo in the holdout (13th pct) and a same-size both-block pattern appears on some instrument 60% of the time by chance -- closed.',
@@ -1209,6 +1216,7 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'rule-a-late-entry':       { n: '823 trades, 11 instruments, 2020-08 to 2026-08 (4-week block bootstrap)', note: 'MDE about 0.16R; interval [-0.26, +0.06] excludes it -- a real null' },
   'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
   'range-ladder-placebo-confirm': { n: '2,745 session dates (21-session block bootstrap), 15 instruments', note: 'pooled MDE 0.37 pp vs a 1.0 pp bar; per-line MDE 0.69-0.89 pp' },
   'range-edge-limit-fade':   { n: '2,456 session dates (21-session block bootstrap), 34 instruments, 24,006 trades', note: 'MDE 0.023R (T1) / 0.029R (T2) vs the +0.05R null line; both CIs below zero' },

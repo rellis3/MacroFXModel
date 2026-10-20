@@ -1,0 +1,219 @@
+{
+ "seed": 20261020,
+ "prereg": "forge/RULE_A_LATE_ENTRY_PREREG.md",
+ "window": "10:00-13:00 London, line unbroken before 10:00",
+ "primary": {
+  "n": 823,
+  "net_R": -0.0995,
+  "ci95": [
+   -0.2601,
+   0.0627
+  ],
+  "half_2020_23": -0.1008,
+  "half_2024_26": -0.0977,
+  "instruments_positive": "5/11",
+  "by_instrument": {
+   "AUDUSD": 0.129,
+   "EURUSD": -0.211,
+   "GBPUSD": -0.218,
+   "GOLD": -0.322,
+   "NQ": 0.27,
+   "SPX500": 0.208,
+   "US2000": -0.413,
+   "US30": 0.174,
+   "USDCAD": 0.049,
+   "USDCHF": -0.381,
+   "USDJPY": -0.102
+  },
+  "by_hour": {
+   "10": {
+    "count": 255,
+    "mean": -0.068
+   },
+   "11": {
+    "count": 258,
+    "mean": -0.278
+   },
+   "12": {
+    "count": 310,
+    "mean": 0.023
+   }
+  }
+ },
+ "mirror_non_rich": {
+  "n": 1938,
+  "net_R": -0.185,
+  "ci95": [
+   -0.2916,
+   -0.0933
+  ],
+  "half_2020_23": -0.1985,
+  "half_2024_26": -0.1634,
+  "instruments_positive": "1/11",
+  "by_instrument": {
+   "AUDUSD": -0.328,
+   "EURUSD": -0.152,
+   "GBPUSD": -0.224,
+   "GOLD": -0.002,
+   "NQ": -0.194,
+   "SPX500": -0.299,
+   "US2000": -0.192,
+   "US30": 0.016,
+   "USDCAD": -0.079,
+   "USDCHF": -0.267,
+   "USDJPY": -0.098
+  },
+  "by_hour": {
+   "10": {
+    "count": 599,
+    "mean": -0.237
+   },
+   "11": {
+    "count": 582,
+    "mean": -0.163
+   },
+   "12": {
+    "count": 757,
+    "mean": -0.161
+   }
+  }
+ },
+ "other_registered_cells_rich": {
+  "0.1|5": {
+   "n": 823,
+   "net_R": -0.2418,
+   "ci95": [
+    -0.405,
+    -0.0918
+   ],
+   "half_2020_23": -0.291,
+   "half_2024_26": -0.1726,
+   "instruments_positive": "3/11",
+   "by_instrument": {
+    "AUDUSD": -0.159,
+    "EURUSD": -0.218,
+    "GBPUSD": -0.355,
+    "GOLD": -0.419,
+    "NQ": 0.308,
+    "SPX500": -0.169,
+    "US2000": 0.09,
+    "US30": 0.317,
+    "USDCAD": -0.118,
+    "USDCHF": -0.784,
+    "USDJPY": -0.311
+   },
+   "by_hour": {
+    "10": {
+     "count": 255,
+     "mean": -0.259
+    },
+    "11": {
+     "count": 258,
+     "mean": -0.361
+    },
+    "12": {
+     "count": 310,
+     "mean": -0.128
+    }
+   }
+  },
+  "0.1|10": {
+   "n": 823,
+   "net_R": -0.1854,
+   "ci95": [
+    -0.396,
+    0.015
+   ],
+   "half_2020_23": -0.16,
+   "half_2024_26": -0.221,
+   "instruments_positive": "3/11",
+   "by_instrument": {
+    "AUDUSD": 0.152,
+    "EURUSD": -0.136,
+    "GBPUSD": -0.325,
+    "GOLD": -0.382,
+    "NQ": 0.599,
+    "SPX500": -0.272,
+    "US2000": -0.17,
+    "US30": 0.526,
+    "USDCAD": -0.311,
+    "USDCHF": -0.793,
+    "USDJPY": -0.258
+   },
+   "by_hour": {
+    "10": {
+     "count": 255,
+     "mean": -0.164
+    },
+    "11": {
+     "count": 258,
+     "mean": -0.417
+    },
+    "12": {
+     "count": 310,
+     "mean": -0.01
+    }
+   }
+  },
+  "0.2|10": {
+   "n": 823,
+   "net_R": -0.0721,
+   "ci95": [
+    -0.2635,
+    0.1229
+   ],
+   "half_2020_23": -0.1138,
+   "half_2024_26": -0.0134,
+   "instruments_positive": "5/11",
+   "by_instrument": {
+    "AUDUSD": 0.229,
+    "EURUSD": -0.143,
+    "GBPUSD": -0.23,
+    "GOLD": -0.236,
+    "NQ": 0.298,
+    "SPX500": 0.126,
+    "US2000": -0.413,
+    "US30": 0.262,
+    "USDCAD": 0.017,
+    "USDCHF": -0.324,
+    "USDJPY": -0.15
+   },
+   "by_hour": {
+    "10": {
+     "count": 255,
+     "mean": -0.118
+    },
+    "11": {
+     "count": 258,
+     "mean": -0.186
+    },
+    "12": {
+     "count": 310,
+     "mean": 0.06
+    }
+   }
+  }
+ },
+ "gate": {
+  "mean_and_lower_bound_gt_0": false,
+  "both_halves_gt_0": false,
+  "six_of_eleven_instruments": false
+ },
+ "verdict": "null",
+ "id": "rule-a-late-entry",
+ "ranAt": "2026-10-20T13:00:00Z",
+ "B": 2000,
+ "preregCommit": "0f56f25c",
+ "branch": "main",
+ "cells": [
+  {
+   "name": "rich days, 10:00-13:00, 0.2 sigma / 5R",
+   "n": 823,
+   "est": -0.0995,
+   "lo": -0.2601,
+   "hi": 0.0627,
+   "mde": 0.16,
+   "verdict": "null"
+  }
+ ]
+}
