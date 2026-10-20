@@ -196,6 +196,7 @@ import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './
 import { evaluateGauges as _evaluateGauges } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
 import { buildCase1 as _seBuild1, buildCase2 as _seBuild2, analyse as _seAnalyse, alertText as _seAlertText } from './js/spreadEpisodes.js';
+import { fetchBankCreditRows as _bcFetch, buildBankCredit as _bcBuild, bankCreditLine as _bcLine } from './js/bankCredit.js';
 import { sliceDays as _cogSlice, toBars as _cogBars, exportText as _cogExport, mergeSeries as _cogMerge } from './js/cogLine.js';
 import { cogLineRead as _cogRead } from './js/cogLineRead.js';   // live trend read for the C.OG line card (js/cogLineRead.js)   // C.OG rate-spread line: analysis/output/cog_line/cog_line_15m.json
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
@@ -2064,6 +2065,7 @@ const TG_SENDERS = {
   hedgeSignals:      'Hedge pair signals',
   ratesRegime:       'Rates vs Nasdaq regime change / rate shock (context, not a signal)',
   spreadEpisodes:    'Spread-turn episodes: confirmed turn (Case 1 full sequence / Case 2 every turn), context only',
+  bankCredit:        'BIS cross-border bank credit: new quarter released (regime context, not a signal)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
   // one is NOT enforced by server.js's tgOn(), since the bot that actually
@@ -4732,6 +4734,71 @@ app.post('/api/spread-episodes/tick', async (req, res) => {
 });
 svcInterval('spreadEpisodes', () => _seTick().catch(e => console.error('[spread-episodes]', e.message)), 15 * 60_000);
 svcTimeout('spreadEpisodes', () => _seTick({ silent: true }).catch(e => console.error('[spread-episodes]', e.message)), 4 * 60_000);
+
+// ── Bank credit (js/bankCredit.js; BIS Locational Banking Statistics, evidence bank-credit-dollar-*) ──
+// The bank-lending leg of the money chain: cross-border credit growth by currency, borrower sector (non-bank
+// financials), Cayman USD, yen lent outside Japan, and whose banks fund the world's dollars. Quarterly, ~4 months
+// after quarter end. Checked twice a day; a quarter is stamped with the date this feed FIRST saw it (firstSeen),
+// which is the point-in-time record research needs (not re-derivable later, hence a durable KV key).
+// Context only: bank-credit-dollar-dxy is UNDERPOWERED and -nasdaq CONTEXT, so no forecast wording anywhere.
+const _BC_KV = 'bank_credit_v1';
+let _bcLast = { at: 0, error: null, snap: null }, _bcRunning = false;
+async function _bcTick(opts = {}) {
+  if (_bcRunning) return _bcLast;
+  _bcRunning = true;
+  try {
+    let prev = null;
+    try { const raw = await kv.get(_BC_KV); prev = raw ? JSON.parse(raw) : null; }
+    catch (e) { console.warn('[bank-credit] store unreadable, not overwriting:', e.message); throw e; }
+    const firstSeen = { ...(prev?.firstSeen ?? {}) };
+    const rows = await _bcFetch();
+    let snap = _bcBuild(rows, { firstSeen });
+    const isNew = !firstSeen[snap.latest];
+    if (isNew) {
+      firstSeen[snap.latest] = new Date().toISOString().slice(0, 10);
+      snap = { ...snap, firstSeen: firstSeen[snap.latest] };
+    }
+    const releases = (prev?.releases ?? []).filter(r => r.period !== snap.latest);
+    releases.push({ period: snap.latest, firstSeen: firstSeen[snap.latest], headline: snap.headline });
+    releases.sort((a, b) => (a.period < b.period ? -1 : 1));
+    let lastAlert = prev?.lastAlert ?? null;
+    if (isNew && prev && !opts.silent) {
+      const txt = `🏦 ${_bcLine(snap)}`;
+      lastAlert = { at: new Date().toISOString(), period: snap.latest, text: txt, sent: false };
+      if (tgOn('bankCredit') && state.tg?.token && state.tg?.chatId) lastAlert.sent = await sendTelegram(state.tg.token, state.tg.chatId, txt);
+    }
+    // write on a new quarter, on first run, or once a day (BIS revises back quarters)
+    if (!prev || isNew || Date.now() - Date.parse(prev.updatedAt ?? 0) > 20 * 3600_000) {
+      await kv.put(_BC_KV, JSON.stringify({ snapshot: snap, firstSeen, releases: releases.slice(-80), lastAlert, updatedAt: new Date().toISOString() }));
+    }
+    _bcLast = { at: Date.now(), error: null, snap, releases, lastAlert, isNew };
+    return _bcLast;
+  } catch (e) {
+    _bcLast = { ..._bcLast, at: Date.now(), error: e.message };
+    console.error('[bank-credit]', e.message);
+    return _bcLast;
+  } finally { _bcRunning = false; }
+}
+async function _bcRead() {
+  if (_bcLast.snap) return _bcLast;
+  try { const raw = await kv.get(_BC_KV); const s = raw ? JSON.parse(raw) : null; if (s?.snapshot) return { at: 0, error: _bcLast.error, snap: s.snapshot, releases: s.releases ?? [], lastAlert: s.lastAlert ?? null }; }
+  catch { /* fall through to a live build */ }
+  return _bcTick({ silent: true });
+}
+app.get('/api/bank-credit', async (_req, res) => {
+  try {
+    const r = await _bcRead();
+    if (!r.snap) return res.status(503).json({ ok: false, error: r.error ?? 'bank credit not built yet' });
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ ok: true, ...r.snap, line: _bcLine(r.snap), releases: r.releases ?? [], lastAlert: r.lastAlert ?? null, error: r.error ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/bank-credit/tick', async (req, res) => {
+  try { const r = await _bcTick({ silent: req.query.silent === '1' }); res.json({ ok: !r.error, latest: r.snap?.latest ?? null, isNew: !!r.isNew, error: r.error }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('bankCredit', () => _bcTick().catch(e => console.error('[bank-credit]', e.message)), 12 * 3600_000);
+svcTimeout('bankCredit', () => _bcTick({ silent: true }).catch(e => console.error('[bank-credit]', e.message)), 3 * 60_000);
 
 app.post('/api/rates-regime/tick', async (req, res) => {
   try { res.json({ ok: true, ...(await _ratesRegimeTick({ silent: req.query.silent === '1' })) }); }

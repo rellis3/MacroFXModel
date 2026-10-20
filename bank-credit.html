@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bank Credit (BIS)</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--amber:#d29922;--red:#f85149;
+        --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--grid:#21262d;--hi:#1f2a3a}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--s1);text-decoration:none}
+  html,body{overflow-x:hidden}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2)}
+  .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.bad{color:var(--red);border-color:var(--red)} .chip.ok{color:var(--s3);border-color:var(--s3)}
+  .wrap{max-width:1300px;margin:0 auto;padding:12px 16px 40px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .box h3{font-size:13px;margin:0 0 6px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+  .tile{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+  .tile .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+  .tile .l{font-size:11.5px;color:var(--text2)}
+  .tile .d{font-size:11px;color:var(--text3)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:900px){.grid2{grid-template-columns:1fr}}
+  svg{display:block;width:100%;height:auto}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--text2);margin-bottom:4px}
+  .legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+  .cw{position:relative}
+  .tip{position:absolute;pointer-events:none;background:var(--card2);border:1px solid var(--border);color:var(--text);font-size:11.5px;padding:4px 8px;border-radius:5px;white-space:nowrap;transform:translate(-50%,-110%);font-variant-numeric:tabular-nums}
+  table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+  th,td{padding:4px 8px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap} th{color:var(--text3);font-weight:600;background:var(--card)}
+  td:first-child,th:first-child{text-align:left}
+  tr.hl td{background:var(--hi)}
+  .xscroll{overflow-x:auto;max-width:100%}
+  .pos{color:var(--s3)} .neg{color:var(--s2)} .mut{color:var(--text3)}
+  .note{font-size:11.5px;color:var(--text3);line-height:1.6;max-width:120ch} .note b{color:var(--text2)}
+  .chain{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+  .link{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:3px}
+  .link .k{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3)}
+  .link .n{font-weight:600}
+  .link .c{font-size:11px;color:var(--text3)}
+  .link.here{border-color:var(--s1)}
+  .bar{display:inline-block;height:7px;border-radius:0 3px 3px 0;background:var(--s1);vertical-align:middle;margin-left:6px;opacity:.85}
+  .ev{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:5px;border:1px solid var(--border);margin-right:6px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>🏦 Bank Credit</h1>
+  <span class="chip" id="asof">loading…</span>
+  <span class="chip" id="regime"></span>
+  <span class="spacer"></span>
+  <span class="chip">BIS Locational Banking Statistics · quarterly · ~4-month lag</span>
+  <a class="chip" href="today.html">today</a>
+</div>
+
+<div class="wrap">
+  <div class="box">
+    <h2>Credit regime (context, not a forecast)</h2>
+    <div class="tiles" id="tiles"></div>
+    <p class="note" id="line" style="margin-top:8px"></p>
+  </div>
+
+  <div class="box">
+    <h2>Where this sits in the money chain</h2>
+    <div class="chain">
+      <a class="link" href="rates.html"><span class="k">1 · Price of money</span><span class="n">Policy & front end</span><span class="c">Fed/ECB/BoJ paths, SOFR & ZQ</span></a>
+      <a class="link" href="cog-chart.html"><span class="k">2 · Short-term borrowing</span><span class="n">SOFR SR3 / Euribor legs</span><span class="c">15-min, live</span></a>
+      <a class="link here" href="#"><span class="k">3 · Bank lending</span><span class="n">Cross-border credit</span><span class="c">this page · quarterly</span></a>
+      <a class="link" href="#nbfi"><span class="k">4 · Who borrows</span><span class="n">Non-banks, Cayman, yen carry</span><span class="c">this page · quarterly</span></a>
+      <a class="link" href="rates.html#rr"><span class="k">5 · Risk assets</span><span class="n">Rates vs Nasdaq</span><span class="c">same-bar link, live</span></a>
+      <a class="link" href="spread-episodes.html"><span class="k">5b · Episodes</span><span class="n">Spread turns vs NAS100</span><span class="c">forward record</span></a>
+    </div>
+    <p class="note" style="margin-top:8px">Each link moves on its own clock. Steps 1, 2 and 5 are intraday; steps 3 and 4 change once a quarter and arrive months late. So this page tells you <b>how much leverage is in the system and who holds it</b>, which is the backdrop for how hard a rates shock can hit. It cannot time the shock.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="box">
+      <h3>Cross-border credit growth, % a year (FX-adjusted)</h3>
+      <div class="legend"><span><i style="background:var(--s1)"></i>US dollar</span><span><i style="background:var(--s2)"></i>All currencies</span><span class="mut">dashed: regime bands 2.7% / 7.6%</span></div>
+      <div class="cw" id="c1"></div>
+    </div>
+    <div class="box" id="nbfi">
+      <h3>The leverage legs, % a year</h3>
+      <div class="legend"><span><i style="background:var(--s1)"></i>Non-bank financials</span><span><i style="background:var(--s2)"></i>Cayman (USD)</span><span><i style="background:var(--s3)"></i>Yen to non-Japan borrowers</span></div>
+      <div class="cw" id="c2"></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="box"><h3>By currency</h3><div class="xscroll"><table id="tcur"></table></div></div>
+    <div class="box"><h3>By borrower type</h3><div class="xscroll"><table id="tsec"></table></div></div>
+  </div>
+  <div class="grid2">
+    <div class="box"><h3>Dollar borrowers (cross-border USD claims)</h3><div class="xscroll"><table id="tusd"></table></div></div>
+    <div class="box"><h3>Yen borrowers (carry-funding footprint)</h3><div class="xscroll"><table id="tjpy"></table></div></div>
+  </div>
+  <div class="grid2">
+    <div class="box"><h3>Whose banks lend the world's dollars (by parent nationality)</h3><div class="xscroll"><table id="tpar"></table></div>
+      <p class="note">Covers only the countries that report on a nationality basis, so the rows don't sum to the total.</p></div>
+    <div class="box"><h3>All borrowers, all currencies</h3><div class="xscroll"><table id="tbor"></table></div></div>
+  </div>
+
+  <div class="box">
+    <h2>What the evidence allows</h2>
+    <p class="note"><span class="ev">UNDERPOWERED</span><b>bank-credit-dollar-dxy</b>: dollar-credit growth vs the next quarter's dollar index, r −0.10 [−0.24, +0.02], 165 quarters.</p>
+    <p class="note"><span class="ev">CONTEXT</span><b>bank-credit-dollar-nasdaq</b>: r −0.16 [−0.28, −0.06] against the next Nasdaq quarter, but it rests on the 2000 and 2008 busts. Without them r is −0.07, and in the 2020s it is +0.12. The fast-growth tercile (above 7.6% a year) averaged −0.5% the next quarter, against +4.6% in the slow tercile.</p>
+    <p class="note">So this page shows a <b>regime</b>: how fast leverage is building, and where. It is not a dollar or Nasdaq call, and nothing sizes on it. See <a href="evidence.html">the Evidence Book</a> and <code>forge/BANK_CREDIT_DOLLAR_PREREG.md</code>.</p>
+    <p class="note" id="rel"></p>
+  </div>
+</div>
+
+<script>
+const fmt=(v,d=0)=>v==null||!Number.isFinite(v)?'–':v.toLocaleString('en-GB',{minimumFractionDigits:d,maximumFractionDigits:d});
+const sg=(v,d=1)=>v==null?'<span class="mut">–</span>':`<span class="${v<0?'neg':'pos'}">${v>0?'+':''}${fmt(v,d)}%</span>`;
+const tn=v=>v==null?'–':`$${fmt(v/1000,1)}tn`;
+const REG={contracting:['bad','Contracting'],slow:['','Slow'],normal:['ok','Normal'],fast:['warn','Fast']};
+
+function lineChart(host,series,{bands}={}){
+  const W=640,H=250,m={l:38,r:10,t:10,b:24};
+  const keys=[...new Set(series.flatMap(s=>s.data.map(p=>p.period)))].sort();
+  if(!keys.length){host.innerHTML='<p class="note">no data</p>';return}
+  const all=series.flatMap(s=>s.data.map(p=>p.g)).concat(bands||[]);
+  let lo=Math.min(0,...all),hi=Math.max(...all);const pad=(hi-lo)*.06;lo-=pad;hi+=pad;
+  const X=k=>m.l+keys.indexOf(k)/(Math.max(1,keys.length-1))*(W-m.l-m.r), Y=v=>m.t+(hi-v)/(hi-lo)*(H-m.t-m.b);
+  const step=(hi-lo)>40?10:5;let g='';
+  for(let t=Math.ceil(lo/step)*step;t<=hi;t+=step)g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--grid)" stroke-width="${t===0?1.6:1}"/><text x="${m.l-6}" y="${Y(t)+4}" text-anchor="end" font-size="10" fill="var(--text3)">${t}%</text>`;
+  (bands||[]).forEach(b=>g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(b)}" y2="${Y(b)}" stroke="var(--text3)" stroke-dasharray="4 4" opacity=".6"/>`);
+  const every=keys.length>60?4:2;
+  keys.forEach(k=>{if(k.endsWith('Q1')&&(+k.slice(0,4))%every===0)g+=`<text x="${X(k)}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--text3)">${k.slice(0,4)}</text>`});
+  series.forEach(s=>{if(!s.data.length)return;const d=s.data.map((p,i)=>`${i?'L':'M'}${X(p.period).toFixed(1)},${Y(p.g).toFixed(1)}`).join('');const last=s.data.at(-1);
+    g+=`<path d="${d}" fill="none" stroke="var(${s.c})" stroke-width="2" stroke-linejoin="round"/><circle cx="${X(last.period)}" cy="${Y(last.g)}" r="3.5" fill="var(${s.c})" stroke="var(--card)" stroke-width="2"/>`});
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}<line class="xh" y1="${m.t}" y2="${H-m.b}" stroke="var(--text3)" visibility="hidden"/></svg><div class="tip" hidden></div>`;
+  const svg=host.querySelector('svg'),tip=host.querySelector('.tip'),xh=host.querySelector('.xh'),maps=series.map(s=>Object.fromEntries(s.data.map(p=>[p.period,p.g])));
+  svg.addEventListener('pointermove',e=>{const r=svg.getBoundingClientRect(),sx=(e.clientX-r.left)/r.width*W;let i=Math.round((sx-m.l)/(W-m.l-m.r)*(keys.length-1));i=Math.max(0,Math.min(keys.length-1,i));const k=keys[i];
+    xh.setAttribute('x1',X(k));xh.setAttribute('x2',X(k));xh.setAttribute('visibility','visible');tip.hidden=false;tip.style.left=(X(k)/W*r.width)+'px';tip.style.top='18px';
+    tip.textContent=k+'  '+series.map((s,j)=>`${s.n} ${maps[j][k]!=null?maps[j][k].toFixed(1)+'%':'–'}`).join(' · ')});
+  svg.addEventListener('pointerleave',()=>{tip.hidden=true;xh.setAttribute('visibility','hidden')});
+}
+function table(id,head,rows){document.getElementById(id).innerHTML=`<thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')||`<tr><td colspan="${head.length}" class="mut">no data</td></tr>`}</tbody>`}
+const crow=(r,hl=[])=>`<tr class="${hl.includes(r.code)?'hl':''}"><td>${r.name}</td><td>${fmt(r.stockBn)}</td><td>${r.flow4qBn==null?'–':(r.flow4qBn>0?'+':'')+fmt(r.flow4qBn)}</td><td>${sg(r.g)}</td><td>${sg(r.gPrev)}</td></tr>`;
+const CH=['Borrower','Stock $bn','4Q flow $bn','Growth','Prev Q'];
+
+fetch('/api/bank-credit').then(r=>r.json()).then(d=>{
+  if(!d.ok)throw new Error(d.error||'not available');
+  const h=d.headline,[cls,lab]=REG[h.regime]||['',h.regime];
+  document.getElementById('asof').textContent=`data to ${d.latest}${d.firstSeen?` · first seen ${d.firstSeen}`:''}`;
+  const rg=document.getElementById('regime');rg.textContent=`USD credit: ${lab}`;rg.className='chip '+cls;
+  document.getElementById('line').textContent=d.line;
+  const T=[[tn(h.totalStockBn),'Cross-border claims',`${sg(h.totalG)} y/y · prev ${sg(h.totalGPrev)}`],
+           [sg(h.usdG),'USD credit growth',`${lab} · bands ${h.regimeBands.low}% / ${h.regimeBands.high}%`],
+           [`${fmt(h.usdSharePct,1)}%`,'Dollar share',`offshore USD ${tn(h.usdOffshoreBn)}`],
+           [sg(h.nbfiG),'Non-bank financials',`${tn(h.nbfiStockBn)} outstanding`],
+           [sg(h.caymanUsdG),'Cayman USD borrowing',`${tn(h.caymanUsdBn)} · basis/repo footprint`],
+           [sg(h.yenOffshoreG),'Yen lent outside Japan',`${tn(h.yenOffshoreBn)} · carry funding`]];
+  document.getElementById('tiles').innerHTML=T.map(([v,l,s])=>`<div class="tile"><span class="v">${v}</span><span class="l">${l}</span><span class="d">${s}</span></div>`).join('');
+  lineChart(document.getElementById('c1'),[{n:'USD',c:'--s1',data:d.history.usd},{n:'All',c:'--s2',data:d.history.total}],{bands:[h.regimeBands.low,h.regimeBands.high]});
+  lineChart(document.getElementById('c2'),[{n:'Non-banks',c:'--s1',data:d.history.nbfi},{n:'Cayman USD',c:'--s2',data:d.history.caymanUsd.filter(p=>p.period>='2014-Q1')},{n:'Yen ex-Japan',c:'--s3',data:d.history.yenOffshore.filter(p=>p.period>='2014-Q1')}]);
+  table('tcur',['Currency','Share','Stock $bn','Growth','Prev Q','Q flow $bn'],d.currencies.map(c=>`<tr><td>${c.name}</td><td>${fmt(c.sharePct,1)}%</td><td>${fmt(c.stockBn)}</td><td>${sg(c.g)}</td><td>${sg(c.gPrev)}</td><td>${c.flowQBn==null?'–':(c.flowQBn>0?'+':'')+fmt(c.flowQBn)}</td></tr>`));
+  table('tsec',['Borrower type','Stock $bn','Growth','Prev Q','Year ago'],d.sectors.map(s=>`<tr class="${s.code==='F'?'hl':''}"><td>${s.name}</td><td>${fmt(s.stockBn)}</td><td>${sg(s.g)}</td><td>${sg(s.gPrev)}</td><td>${sg(s.gYearAgo)}</td></tr>`));
+  table('tusd',CH,d.usdBorrowers.map(r=>crow(r,['KY','CN'])));
+  table('tjpy',CH,d.jpyBorrowers.map(r=>crow(r,['GB','SG','CH'])));
+  table('tbor',CH,d.borrowers.map(r=>crow(r,['CN'])));
+  const mx=Math.max(...d.parents.map(p=>p.usdBn));
+  table('tpar',['Parent banks','USD $bn','5 years ago',''],d.parents.map(p=>`<tr class="${p.code==='JP'?'hl':''}"><td>${p.name}</td><td>${fmt(p.usdBn)}</td><td>${fmt(p.usdBn5yAgo)}</td><td style="text-align:left"><span class="bar" style="width:${Math.round(p.usdBn/mx*110)}px"></span></td></tr>`));
+  const rel=(d.releases||[]).filter(r=>r.firstSeen);
+  document.getElementById('rel').innerHTML=rel.length?`<b>Release record</b> (the date this feed first saw each quarter): ${rel.slice(-8).map(r=>`${r.period} → ${r.firstSeen}`).join(' · ')}`:'';
+}).catch(e=>{document.getElementById('asof').textContent='unavailable';document.getElementById('asof').className='chip bad';document.getElementById('line').textContent='Bank credit feed: '+e.message;});
+</script>
+</body>
+</html>
