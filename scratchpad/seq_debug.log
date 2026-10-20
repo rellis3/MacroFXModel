@@ -1,0 +1,18 @@
+events per spec: {'k1=0.25 continue(0.5) W=8': 2731, 'k1=0.25 continue(0.5) W=16': 3302, 'k1=0.25 continue(0.5) W=32': 3730, 'k1=0.25 continue(1.0) W=8': 985, 'k1=0.25 continue(1.0) W=16': 1535, 'k1=0.25 continue(1.0) W=32': 2025} ...
+frozen: ['k1=0.5 continue(0.5) W=16'] FDR cells in-sample: 0 of 572
+plain placebo 0
+selection-aware placebo 0
+flexible model walk-forward ...
+VERDICT: no repeatable sequence
+                        spec  ret_ok  race_ok  beats_plain_placebo95  placebo_mean_ret8 selection_aware_p  incremental_ok  no_release_effect  real_val_oos_effect  passes
+0  k1=0.5 continue(0.5) W=16   False    False                  False           0.018603              None           False           0.004113            -0.004834   False
+(np.float64(0.004005990796549519), np.float64(0.042171887035432), np.float64(-0.03816589623888248), np.float64(-0.08730750105972071), np.float64(0.013377838257424722), 14148) 0.02460440732027 0.0051719430464219895
+                                               model  target     IC_M0     IC_M1   IC_gain     ci_lo     ci_hi
+0                         trees depth 3 (registered)  dir_16 -0.019820  0.040417  0.060238  0.026074  0.091990
+1                         trees depth 3 (registered)   vol_8  0.262322  0.272227  0.009905  0.003721  0.015497
+2                                ridge, all features  dir_16 -0.040092 -0.004604  0.035488  0.012017  0.058094
+3                                ridge, all features   vol_8  0.290147  0.289684 -0.000462 -0.003161  0.002237
+4                       trees depth 2, 30 iterations  dir_16  0.014955  0.041602       NaN       NaN       NaN
+5                       trees depth 2, 30 iterations   vol_8  0.169304  0.214609  0.045305  0.036792  0.054389
+6  trees depth 3, only zig-zag/confluence + momentum  dir_16 -0.019820  0.034813  0.054633  0.028306  0.084155
+7  trees depth 3, only zig-zag/confluence + momentum   vol_8  0.262322  0.272868  0.010546  0.005604  0.016162

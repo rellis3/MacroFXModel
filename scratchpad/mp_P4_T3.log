@@ -1,0 +1,23 @@
+{'A0': 2431, 'A1': 468, 'A3': 714, 'A2': 271, 'A2m': 268, 'A4': 213} line events k=.75; video-week excluded from pooled stats
+placebo 0
+placebo 20
+placebo 40
+placebo 60
+placebo 80
+placebo 100
+placebo 120
+placebo 140
+placebo 160
+placebo 180
+design H 4 rows before dropna 86400 nan per col {'y': 29701, 's': 0, 'r1': 29701, 'r4': 31556, 'r24': 40042, 'rv': 1152, 'pos': 33870, 'zs': 28600, 'day': 0, 'half': 0}
+design H 8 rows before dropna 86400 nan per col {'y': 30338, 's': 0, 'r1': 29701, 'r4': 31556, 'r24': 40042, 'rv': 1152, 'pos': 33870, 'zs': 28600, 'day': 0, 'half': 0}
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_turn_events.py:326: RuntimeWarning: Mean of empty slice
+  if bs: P.append(seg); B.append(np.nanmean(bs, 0))
+VERDICT: insufficient evidence
+  pattern  ret_ok  race_ok  beats_placebo95  s_t_significant  no_release_effect  robust
+0      A1   False    False            False            False           0.022029   False
+1      A2   False    False             True            False           0.009403   False
+2      A3   False    False            False            False          -0.015431   False
+3     A2m   False    False            False            False           0.022034   False
+4      A4   False    False            False            False          -0.015639   False
+no conditional cells

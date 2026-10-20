@@ -1,0 +1,73 @@
+# COG-DYNAMIC-LEAD descriptive dynamics (daily spreads, 28 series x 34 assets)
+
+Registered in forge/COG_DYNAMIC_LEAD_PREREG.md. Window: 2016 to 2026-08-20 (warm-up 2016; Discovery 2017-2020, Validation 2021-2023, out-of-sample 2024-2026-08).
+
+## D1 Lead-lag structure: how many forward (lag 1-20 days) spread-asset correlations are significant, against the shifted-spread placebo
+
+| period   |   forward_cells |   share_nominal_p05 |   placebo_mean_share |   bh5_significant |   placebo_mean_bh5 |   placebo_p95_bh5 |   median_abs_corr |   same_day_median_abs_corr |
+|:---------|----------------:|--------------------:|---------------------:|------------------:|-------------------:|------------------:|------------------:|---------------------------:|
+| DISC     |           19040 |              0.0891 |               0.0493 |                84 |             0.0000 |            0.0000 |            0.0234 |                     0.0950 |
+| VAL      |           19040 |              0.0625 |               0.0515 |                 0 |             0.2500 |            1.0500 |            0.0251 |                     0.0694 |
+| OOS      |           19040 |              0.0762 |               0.0540 |                 0 |             0.7500 |            5.0500 |            0.0283 |                     0.0975 |
+
+`same_day_median_abs_corr` is the median |correlation| at lag 0 (the same-day link); `median_abs_corr` is the median over forward lags 1-20. Placebo draws: 20.
+
+### Is the peak lag repeatable? (pairs whose Discovery peak is strong; chance for the same lag is 5%, for the same sign 50%)
+
+| period   |   discovery_pairs_with_strong_peak |   share_same_peak_lag |   chance_same_lag |   share_same_sign_at_that_lag |   chance_same_sign |   correlation_of_pair_corrs_across_periods |
+|:---------|-----------------------------------:|----------------------:|------------------:|------------------------------:|-------------------:|-------------------------------------------:|
+| VAL      |                                218 |                 0.060 |             0.050 |                         0.702 |              0.500 |                                     -0.010 |
+| OOS      |                                218 |                 0.060 |             0.050 |                         0.569 |              0.500 |                                     -0.011 |
+
+Peak-lag distribution of the strong Discovery pairs (lag in days: count): {1: np.int64(7), 2: np.int64(38), 3: np.int64(20), 4: np.int64(22), 5: np.int64(3), 6: np.int64(7), 7: np.int64(2), 8: np.int64(2), 9: np.int64(84), 10: np.int64(4), 11: np.int64(5), 12: np.int64(3), 13: np.int64(10), 14: np.int64(5), 16: np.int64(1), 17: np.int64(1), 18: np.int64(1), 19: np.int64(3)}
+
+## D2 Regime persistence: does the relationship state known at t (trailing 250 completed pairs) predict the relationship over the next 125 days? Pooled over 28 spreads x 34 assets, non-overlapping dates; placebo = shifted spreads
+
+|       k |       h |   pooled_corr_past_vs_future_state |          n |   placebo_mean |   placebo_p95 |   placebo_sd |
+|--------:|--------:|-----------------------------------:|-----------:|---------------:|--------------:|-------------:|
+|  5.0000 |  1.0000 |                             0.0213 | 17136.0000 |        -0.0050 |        0.0163 |       0.0155 |
+|  5.0000 |  5.0000 |                            -0.0417 | 17136.0000 |         0.0017 |        0.0201 |       0.0144 |
+|  5.0000 | 20.0000 |                            -0.0715 | 17136.0000 |        -0.0003 |        0.0115 |       0.0118 |
+| 20.0000 |  1.0000 |                            -0.0533 | 17136.0000 |        -0.0024 |        0.0132 |       0.0121 |
+| 20.0000 |  5.0000 |                            -0.0673 | 17136.0000 |        -0.0005 |        0.0194 |       0.0152 |
+| 20.0000 | 20.0000 |                             0.0079 | 17136.0000 |        -0.0080 |        0.0111 |       0.0182 |
+
+## D3 Regime shape (k = 5, W = 250, gate = 2 standard errors)
+
+|      h |   share_active_positive |   share_active_negative |   share_off |   mean_active_spell_days |   active_positive_spells |   share_followed_by_negative_within_250d |
+|-------:|------------------------:|------------------------:|------------:|-------------------------:|-------------------------:|-----------------------------------------:|
+|  1.000 |                   0.041 |                   0.040 |       0.919 |                   15.767 |                 5734.000 |                                    0.081 |
+|  2.000 |                   0.033 |                   0.026 |       0.942 |                   19.661 |                 3357.000 |                                    0.080 |
+|  5.000 |                   0.018 |                   0.011 |       0.971 |                   31.332 |                 1030.000 |                                    0.060 |
+| 10.000 |                   0.006 |                   0.003 |       0.991 |                   42.131 |                  282.000 |                                    0.011 |
+| 20.000 |                   0.000 |                   0.000 |       1.000 |                    5.500 |                    1.000 |                                    0.000 |
+
+## D4 Response while active versus off (entries where the spread has moved by at least one standard deviation; signed return = sign(relationship) x sign(spread move) x asset return; k = 5)
+
+|   response_horizon |   active_n |   active_mean_signed_return_bp |   active_share_wrong_sign |   off_mean_signed_return_bp |   off_share_wrong_sign |
+|-------------------:|-----------:|-------------------------------:|--------------------------:|----------------------------:|-----------------------:|
+|              1.000 |  11330.000 |                          1.403 |                     0.482 |                      -0.142 |                  0.501 |
+|              2.000 |  11291.000 |                          0.992 |                     0.473 |                      -0.023 |                  0.498 |
+|              5.000 |  11312.000 |                        -10.032 |                     0.515 |                       1.868 |                  0.495 |
+|             10.000 |  11235.000 |                         -7.263 |                     0.505 |                       0.719 |                  0.497 |
+|             20.000 |  11206.000 |                        -34.356 |                     0.533 |                      -3.069 |                  0.502 |
+
+### Same, by calendar year, gate horizon 5 days (is the delay or the sign consistent?)
+
+|     year |   active_n |   mean_signed_return_bp |   share_wrong_sign |
+|---------:|-----------:|------------------------:|-------------------:|
+| 2017.000 |    350.000 |                 -14.090 |              0.611 |
+| 2018.000 |    632.000 |                 -12.109 |              0.511 |
+| 2019.000 |    519.000 |                   4.227 |              0.478 |
+| 2020.000 |   5080.000 |                 -19.671 |              0.546 |
+| 2021.000 |   1210.000 |                  -4.807 |              0.506 |
+| 2022.000 |   1004.000 |                  -2.469 |              0.490 |
+| 2023.000 |    896.000 |                  16.969 |              0.403 |
+| 2024.000 |    355.000 |                 -30.493 |              0.606 |
+| 2025.000 |    115.000 |                 -59.912 |              0.652 |
+| 2026.000 |   1151.000 |                   6.641 |              0.447 |
+
+## D5 Failure rate
+
+In D4, `active_share_wrong_sign` is the share of gated entries whose subsequent return went against the relationship's sign (50% = no information). D3 `share_followed_by_negative_within_250d` is the share of active-positive spells followed by an active-negative state within 250 days (relationship reversal).
+

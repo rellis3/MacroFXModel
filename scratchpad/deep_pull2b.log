@@ -1,0 +1,61 @@
+SR3H7 -> CME_SR3H7.parquet: 880,170 bars 2024-04-14 -> 2026-10-09
+SR3Z6 -> CME_SR3Z6.parquet: 880,170 bars 2024-04-14 -> 2026-10-09
+IZ6: 2026-04-25 done, 18,000 new bars so far
+IZ6: 2026-02-28 done, 64,800 new bars so far
+IZ6: 2026-01-03 done, 111,075 new bars so far
+IZ6: 2025-11-08 done, 158,550 new bars so far
+IZ6: 2025-09-13 done, 206,550 new bars so far
+IZ6: 2025-07-19 done, 254,550 new bars so far
+IZ6: 2025-05-24 done, 302,550 new bars so far
+IZ6: 2025-03-29 done, 348,150 new bars so far
+IZ6: 2025-02-01 done, 396,150 new bars so far
+IZ6: 2024-12-07 done, 439,500 new bars so far
+IZ6: 2024-10-12 done, 487,500 new bars so far
+IZ6: 2024-08-17 done, 535,500 new bars so far
+IZ6: 2024-06-22 done, 583,500 new bars so far
+IZ6: 2024-04-27 done, 630,300 new bars so far
+IZ6 -> ICEEU_IZ6.parquet: 762,300 bars 2024-04-15 -> 2026-10-09
+ER3Z6: 2026-10-10 done, 6,000 new bars so far
+ER3Z6: 2026-08-15 done, 54,000 new bars so far
+ER3Z6: 2026-06-20 done, 102,000 new bars so far
+ER3Z6: 2026-04-25 done, 150,000 new bars so far
+ER3Z6: 2026-02-28 done, 196,800 new bars so far
+ER3Z6: 2026-01-03 done, 243,075 new bars so far
+ER3Z6: 2025-11-08 done, 290,550 new bars so far
+ER3Z6: 2025-09-13 done, 338,550 new bars so far
+ER3Z6: 2025-07-19 done, 386,550 new bars so far
+ER3Z6: 2025-05-24 done, 434,550 new bars so far
+ER3Z6: 2025-03-29 done, 480,150 new bars so far
+ER3Z6: 2025-02-01 done, 528,150 new bars so far
+ER3Z6: 2024-12-07 done, 571,500 new bars so far
+Error 162, reqId 215: Historical Market Data Service error message:HMDS query returned no data: ER3Z6@ICEEU Midpoint, contract: Contract(secType='FUT', conId=741744424, symbol='ER3', lastTradeDateOrContractMonth='20270316', multiplier='2500', exchange='ICEEU', currency='EUR', localSymbol='ER3Z6', tradingClass='ER3')
+Error 162, reqId 216: Historical Market Data Service error message:HMDS query returned no data: ER3Z6@ICEEU Midpoint, contract: Contract(secType='FUT', conId=741744424, symbol='ER3', lastTradeDateOrContractMonth='20270316', multiplier='2500', exchange='ICEEU', currency='EUR', localSymbol='ER3Z6', tradingClass='ER3')
+Error 162, reqId 217: Historical Market Data Service error message:HMDS query returned no data: ER3Z6@ICEEU Midpoint, contract: Contract(secType='FUT', conId=741744424, symbol='ER3', lastTradeDateOrContractMonth='20270316', multiplier='2500', exchange='ICEEU', currency='EUR', localSymbol='ER3Z6', tradingClass='ER3')
+Error 162, reqId 218: Historical Market Data Service error message:HMDS query returned no data: ER3Z6@ICEEU Midpoint, contract: Contract(secType='FUT', conId=741744424, symbol='ER3', lastTradeDateOrContractMonth='20270316', multiplier='2500', exchange='ICEEU', currency='EUR', localSymbol='ER3Z6', tradingClass='ER3')
+Error 162, reqId 219: Historical Market Data Service error message:HMDS query returned no data: ER3Z6@ICEEU Midpoint, contract: Contract(secType='FUT', conId=741744424, symbol='ER3', lastTradeDateOrContractMonth='20270316', multiplier='2500', exchange='ICEEU', currency='EUR', localSymbol='ER3Z6', tradingClass='ER3')
+Error 162, reqId 220: Historical Market Data Service error message:HMDS query returned no data: ER3Z6@ICEEU Midpoint, contract: Contract(secType='FUT', conId=741744424, symbol='ER3', lastTradeDateOrContractMonth='20270316', multiplier='2500', exchange='ICEEU', currency='EUR', localSymbol='ER3Z6', tradingClass='ER3')
+ER3Z6: 6 empty weeks in a row at 2024-10-05; stopping (listing date reached or no data)
+ER3Z6 -> ICEEU_ER3Z6.parquet: 579,900 bars 2024-11-14 -> 2026-10-09
+ER3H7: 2026-10-10 done, 6,000 new bars so far
+ER3H7: 2026-08-15 done, 54,000 new bars so far
+ER3H7: 2026-06-20 done, 102,000 new bars so far
+ER3H7: 2026-04-25 done, 150,000 new bars so far
+ER3H7: 2026-02-28 done, 196,800 new bars so far
+ER3H7: 2026-01-03 done, 243,075 new bars so far
+ER3H7: 2025-11-08 done, 290,550 new bars so far
+ER3H7: 2025-09-13 done, 338,550 new bars so far
+ER3H7: 2025-07-19 done, 386,550 new bars so far
+ER3H7: 2025-05-24 done, 434,550 new bars so far
+ER3H7: 2025-03-29 done, 480,150 new bars so far
+ER3H7: 2025-02-01 done, 528,150 new bars so far
+ER3H7: 2024-12-07 done, 571,500 new bars so far
+Error 162, reqId 322: Historical Market Data Service error message:HMDS query returned no data: ER3H7@ICEEU Midpoint, contract: Contract(secType='FUT', conId=741744429, symbol='ER3', lastTradeDateOrContractMonth='20270615', multiplier='2500', exchange='ICEEU', currency='EUR', localSymbol='ER3H7', tradingClass='ER3')
+Error 162, reqId 323: Historical Market Data Service error message:HMDS query returned no data: ER3H7@ICEEU Midpoint, contract: Contract(secType='FUT', conId=741744429, symbol='ER3', lastTradeDateOrContractMonth='20270615', multiplier='2500', exchange='ICEEU', currency='EUR', localSymbol='ER3H7', tradingClass='ER3')
+Error 162, reqId 324: Historical Market Data Service error message:HMDS query returned no data: ER3H7@ICEEU Midpoint, contract: Contract(secType='FUT', conId=741744429, symbol='ER3', lastTradeDateOrContractMonth='20270615', multiplier='2500', exchange='ICEEU', currency='EUR', localSymbol='ER3H7', tradingClass='ER3')
+Error 162, reqId 325: Historical Market Data Service error message:HMDS query returned no data: ER3H7@ICEEU Midpoint, contract: Contract(secType='FUT', conId=741744429, symbol='ER3', lastTradeDateOrContractMonth='20270615', multiplier='2500', exchange='ICEEU', currency='EUR', localSymbol='ER3H7', tradingClass='ER3')
+Error 162, reqId 326: Historical Market Data Service error message:HMDS query returned no data: ER3H7@ICEEU Midpoint, contract: Contract(secType='FUT', conId=741744429, symbol='ER3', lastTradeDateOrContractMonth='20270615', multiplier='2500', exchange='ICEEU', currency='EUR', localSymbol='ER3H7', tradingClass='ER3')
+Error 162, reqId 327: Historical Market Data Service error message:HMDS query returned no data: ER3H7@ICEEU Midpoint, contract: Contract(secType='FUT', conId=741744429, symbol='ER3', lastTradeDateOrContractMonth='20270615', multiplier='2500', exchange='ICEEU', currency='EUR', localSymbol='ER3H7', tradingClass='ER3')
+ER3H7: 6 empty weeks in a row at 2024-10-05; stopping (listing date reached or no data)
+ER3H7 -> ICEEU_ER3H7.parquet: 579,838 bars 2024-11-14 -> 2026-10-09
+done
+pull exit 0

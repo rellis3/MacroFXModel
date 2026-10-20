@@ -1,0 +1,30 @@
+features: M0 45 M1 79
+done dir_8
+done dir_16
+done dir_32
+done vol_8
+placebo 0
+placebo 5
+placebo 10
+placebo 15
+placebo 20
+placebo 25
+VERDICT: no shape-agnostic evidence
+   target  both_halves_CI_above_zero beats_placebo95  real_gain_val_oos  placebo_mean  placebo_p95                            economic_gate  economic_ok
+0   dir_8                       True            None           0.046447           NaN          NaN      net lower bound at 1.0 bp: -0.0943%        False
+1  dir_16                      False           False          -0.023533     -0.009778     0.010795      net lower bound at 1.0 bp: -0.2234%        False
+2  dir_32                      False            None          -0.046868           NaN          NaN  net lower bound at 1.0 bp: not computed        False
+3   vol_8                      False           False           0.003973     -0.000170     0.005002            volatility context (no trade)         True
+    target     half  days     IC_M0     IC_M1   IC_gain     ci_lo     ci_hi      AUC_M0    AUC_M1  p_boot
+0    dir_8      VAL   195 -0.050895 -0.011079  0.039816  0.003297  0.075791    0.484078  0.498407  0.0155
+1    dir_8      OOS   164 -0.048865  0.005466  0.054331  0.015904  0.092357    0.495585  0.498469  0.0055
+2    dir_8  VAL+OOS   359 -0.049968 -0.003521  0.046447  0.021522  0.071168     0.49017  0.498296  0.0005
+3   dir_16      VAL   195 -0.050033 -0.061879 -0.011846 -0.055483  0.030245    0.474601  0.492735  0.6940
+4   dir_16      OOS   164 -0.029551 -0.066979 -0.037428 -0.088463  0.012642    0.492334  0.473367  0.9235
+5   dir_16  VAL+OOS   359 -0.040676 -0.064209 -0.023533 -0.059170  0.010218    0.483433  0.484382  0.9165
+6   dir_32      VAL   195 -0.017619 -0.053403 -0.035784 -0.097883  0.023154    0.471747  0.487317  0.8760
+7   dir_32      OOS   164 -0.053153 -0.113200 -0.060047 -0.117508 -0.002539    0.488405  0.460276  0.9795
+8   dir_32  VAL+OOS   359 -0.033852 -0.080720 -0.046868 -0.088202 -0.005288    0.483353  0.477937  0.9845
+9    vol_8      VAL   195  0.163178  0.172103  0.008925 -0.003279  0.020756  (nan, nan)  0.731929  0.0715
+10   vol_8      OOS   164  0.144936  0.143021 -0.001916 -0.009357  0.005529  (nan, nan)  0.714334  0.7000
+11   vol_8  VAL+OOS   359  0.154845  0.158817  0.003973 -0.003093  0.011184  (nan, nan)  0.751048  0.1495

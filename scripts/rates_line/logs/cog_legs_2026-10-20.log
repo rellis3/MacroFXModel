@@ -1,0 +1,102 @@
+================================================== 
+ RUN STARTED 20/10/2026  0:07:03.83 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  0:07:29.78] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  0:37:06.01 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  0:37:41.84] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  1:07:03.03 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  1:07:39.20] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  1:37:03.30 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  1:37:29.53] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  2:07:03.79 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  2:07:34.69] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  2:37:02.56 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  2:37:19.89] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  3:07:02.59 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  3:07:17.65] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  3:37:02.56 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  3:37:21.87] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  4:07:04.89 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  4:07:27.18] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  4:37:02.90 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  4:37:20.82] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  5:07:02.59 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  5:07:16.39] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  5:37:02.62 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  5:37:19.52] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  6:07:02.65 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  6:07:18.93] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  6:37:03.23 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  6:37:37.14] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  7:07:02.70 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  7:07:17.14] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  7:37:02.68 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  7:37:14.99] finished with exit code 2 
+================================================== 
+ RUN STARTED 20/10/2026  8:07:03.09 
+API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+Make sure API port on TWS/IBG is open
+Could not connect to TWS / IB Gateway on port 7497 (ConnectionRefusedError). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.
+[20/10/2026  8:07:32.83] finished with exit code 2 

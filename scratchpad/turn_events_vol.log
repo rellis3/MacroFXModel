@@ -1,0 +1,38 @@
+placebo 0
+placebo 20
+placebo 40
+placebo 60
+placebo 80
+placebo 100
+placebo 120
+placebo 140
+placebo 160
+placebo 180
+# COG-TURN-EVENTS Addendum A results
+
+Registered in forge/COG_TURN_EVENTS_ADDENDUM_A.md after the debug table was seen (main run unread at the time). Line turns k = 0.75, 2 h horizon.
+
+## Verdict: **explained by Nasdaq own recent volatility / news clustering (or not shown)**
+Gates: (1) vol-matched move-share above zero in VAL and OOS: True; (2) survives release exclusion: True; (3) beats placebo 95th (+0.104; placebo mean +0.069, n 200): True; (4) incremental volatility dummy positive |t|>2 VAL and OOS and OOS R2 rises: False. Direction share beyond matched in VAL and OOS: False.
+
+### Move share (favourable + adverse) and direction share (favourable / (favourable + adverse)): event minus volatility-matched controls
+| controls                     | half   |    n |   days |   move_event |   move_diff |   ci_lo |   ci_hi |   p_one_sided |   dir_diff |   dir_ci_lo |   dir_ci_hi |   dir_p |
+|:-----------------------------|:-------|-----:|-------:|-------------:|------------:|--------:|--------:|--------------:|-----------:|------------:|------------:|--------:|
+| vol-matched                  | IS     | 1116 |    233 |        0.398 |       0.094 |   0.060 |   0.128 |         0.000 |      0.021 |      -0.021 |       0.065 |   0.156 |
+| vol-matched                  | VAL    |  904 |    187 |        0.426 |       0.118 |   0.068 |   0.162 |         0.000 |      0.026 |      -0.020 |       0.069 |   0.119 |
+| vol-matched                  | OOS    |  962 |    187 |        0.422 |       0.109 |   0.073 |   0.144 |         0.000 |      0.022 |      -0.021 |       0.067 |   0.141 |
+| vol-matched                  | ALL    | 2982 |    607 |        0.414 |       0.106 |   0.083 |   0.129 |         0.000 |      0.023 |      -0.003 |       0.049 |   0.038 |
+| vol-matched, no release bars | IS     |  948 |    229 |        0.341 |       0.072 |   0.038 |   0.107 |         0.001 |      0.009 |      -0.048 |       0.066 |   0.383 |
+| vol-matched, no release bars | VAL    |  774 |    182 |        0.385 |       0.114 |   0.066 |   0.160 |         0.000 |      0.049 |      -0.008 |       0.110 |   0.051 |
+| vol-matched, no release bars | OOS    |  838 |    187 |        0.368 |       0.090 |   0.051 |   0.128 |         0.000 |     -0.005 |      -0.057 |       0.046 |   0.567 |
+| vol-matched, no release bars | ALL    | 2560 |    598 |        0.363 |       0.091 |   0.067 |   0.114 |         0.000 |      0.017 |      -0.015 |       0.049 |   0.161 |
+
+### Incremental volatility test (log |Nasdaq move| over next 2 h on its own trailing range, trailing move, 20-day RMS, hour dummies, plus the line-turn dummy)
+| half                      |   coef_s |     t |     n |   days |
+|:--------------------------|---------:|------:|------:|-------:|
+| IS                        |    0.086 | 2.777 | 18242 |    239 |
+| VAL                       |    0.106 | 2.741 | 14916 |    194 |
+| OOS                       |    0.046 | 1.383 | 14770 |    195 |
+| OOS R2 without s / with s |    0.122 | 0.121 | 14770 |    195 |
+
+OOS R2 row: coef_s column = without the dummy, t column = with the dummy.

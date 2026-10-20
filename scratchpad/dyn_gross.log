@@ -1,0 +1,5 @@
+GROSS (zero-cost) diagnostic, family M: {'step1': 0, 'step2': 0, 'oos_pass': 0, 'best_oos_sharpe': nan}
+DISC share p<0.05 0.006 (null 0.05) | median Sharpe -0.22 | share Sharpe>0 0.126 | min p 3.81e-03
+VAL share p<0.05 0.011 (null 0.05) | median Sharpe -0.09 | share Sharpe>0 0.169 | min p 2.25e-03
+OOS share p<0.05 0.004 (null 0.05) | median Sharpe -0.22 | share Sharpe>0 0.105 | min p 6.92e-04
+corr(Sharpe DISC,VAL) 0.088  (VAL,OOS) -0.044

@@ -1,0 +1,21 @@
+Hi mate, thanks, that's really kind. I'm free whenever suits you, so name a time and I'll be there. Here's where I am with the US-vs-euro line and Nasdaq, so you can see what I've done without going back through it all.
+
+**What I did**
+- Rebuilt your line from your Pine code and the video: SOFR Sep26 minus Euribor Mar27, in bp, × 0.1 + 1.445, raw. It matches your traced line closely, and your two examples (Fri 18 Sep and Mon 21 Sep) reproduce in my data.
+- I got the indicator running in TradingView, but I didn't like the delay it introduced. So I built a page that shows each SOFR and Euribor leg beside live candles, with the same options on screen (rate, invert, bp, EMA, scale/offset, shift a bar at a time). It defaults to your raw, no-smoothing setup.
+- I then tested the idea against Nasdaq: turns that become confirmed after a wait, then what Nasdaq does next. I also tried the same-period SOFR vs Euribor and SOFR vs ESTR pairs, each leg alone, and the same framing on gold, EURUSD, USDJPY and the other indices, with out-of-sample splits and placebos. I also ran a separate, longer test on daily Treasury, Bund and JGB yield spreads back to 2016.
+
+**What I'm seeing**
+- The line and Nasdaq move together within the hour. The 1-hour link is about +0.15 to +0.2 over the whole period (data from 2024), but it moves a lot: +0.07 in 2024–25, +0.17 in 2025 and +0.31 in 2026. Your pair had the strongest link in 2025 and 2026 of the pairs I tried.
+- Line turns and Nasdaq turns coincide, but I can't find a lead that repeats. Over 15 minutes to 48 hours, Nasdaq's average move after a confirmed turn is about zero. Correlation alone doesn't show the line leads.
+- The daily yield-spread study (a different test, not the futures line) showed the effect you describe, a spread move followed by the asset following, only in 2016 and 2020. In the other years it was zero or reversed. On the futures line itself, which only exists from 2024, I saw a mild effect to end-2025 that faded in 2026.
+
+**My theories, held loosely, and what I'd suggest**
+1. **It may be a curve-shape gauge more than a lead.** The pair compares SOFR for 16 Sep to 16 Dec 2026 with Euribor for 17 Mar to mid-Jun 2027, which don't overlap. That could explain why it tracks Nasdaq in the same hour without leading it. Suggestion: pair SOFR and Euribor over the same reference period and compare.
+2. **Sep26 SOFR is now partly realised.** SR3U6 has been inside its own period since 16 Sep (it expires 15 Dec), so part of its price is fixings already known. That includes your video week. Suggestion: judge it before 16 Sep and after separately.
+3. **Time of day matters.** Each leg's midpoint is unchanged on about 87–89% of minutes overall, 93–96% at 01:00–05:00 UTC and 77–82% at 12:00–16:00 UTC. That may mean sparse repricing, not a bad quote; I can't separate the two from midpoints. Euribor stops printing around 20:00 UTC. Suggestion: weight the 12:00–16:00 UTC window.
+4. **A gap in the euro leg could mimic a lead.** If the indicator carries the last Euribor print forward overnight, the line steps when Euribor reopens. Suggestion: read it only on bars where both legs moved.
+5. **The pattern may be selection.** Two clean examples sit inside a week with a dozen turns, and most of the others showed no clear move. Suggestion: test it on events picked in advance.
+6. **As context, the US leg moves with USDJPY, EURUSD and gold in the same hour.** That is an association (one news release can move both), so I'd treat it as a rates-context read, not an explanation, and log confirmed setups forward to build an untouched sample.
+
+My aim for the call is to start with what the line is meant to measure and why those contracts, and let that point us to the next test. Happy to share the code, the numbers and the page. Thanks again, Rich

@@ -1,0 +1,20 @@
+running cog_matched_pairs_audit.py
+running cog_matched_pairs_t12.py
+eligible (IS, VAL and OOS each >= 60 days): {'P0': True, 'P1': True, 'P2': True, 'P3': True, 'P4': True, 'L-US': True, 'L-EU-Euribor': True, 'L-EU-ESTR': True}
+started mp_P0_T5.log
+started mp_P1_T3.log
+started mp_P1_T4.log
+started mp_P1_T5.log
+started mp_P2_T3.log
+started mp_P2_T4.log
+started mp_P2_T5.log
+started mp_P3_T3.log
+started mp_P3_T4.log
+started mp_P3_T5.log
+started mp_P4_T3.log
+started mp_P4_T4.log
+started mp_P4_T5.log
+started mp_L-US_T5.log
+started mp_L-EU-Euribor_T5.log
+started mp_L-EU-ESTR_T5.log
+all tasks finished in 260 min

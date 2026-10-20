@@ -1,0 +1,21 @@
+Hi mate, thanks, really kind. I'm free whenever suits, name a time. Here's where I am with the US-vs-euro line and Nasdaq.
+
+**What I did**
+- Rebuilt your line from your Pine and the video (SOFR Sep26 minus Euribor Mar27, bp, × 0.1 + 1.445, raw). Your Fri 18 and Mon 21 Sep examples reproduce.
+- The TradingView indicator worked, but I didn't like the delay it introduced, so I built a page with each SOFR/Euribor leg beside live candles and the same options. It defaults to your raw setup.
+- Tested it against Nasdaq: confirmed turns, then what follows. Also same-period SOFR/Euribor/ESTR pairs, each leg alone, gold, EURUSD, USDJPY, indices, and daily Treasury/Bund/JGB spreads back to 2016, with out-of-sample splits and placebos.
+
+**What I'm seeing**
+- Line and Nasdaq move together within the hour: about +0.15 to +0.2 overall (data from 2024), unstable by period: +0.07, +0.17, +0.31 in 2026.
+- Turns coincide, but I can't find a lead that repeats; Nasdaq's average move after a confirmed turn is about zero.
+- Your follow-then-confirm effect appeared in the daily yield-spread study (a different test) only in 2016 and 2020. On the futures line it was mild to end-2025 and faded in 2026.
+
+**Theories, held loosely**
+1. SOFR (16 Sep-16 Dec 2026) and Euribor (17 Mar-mid-Jun 2027) don't overlap, so it may be a curve-shape gauge, not a lead. Same-period pairs are worth trying.
+2. SR3U6 has been inside its own period since 16 Sep, so part of its price is realised fixings. Judge before and after separately.
+3. Each leg's midpoint is unchanged on 87-89% of minutes (93-96% at 01-05 UTC, 77-82% at 12-16 UTC), likely sparse repricing, not bad quotes. Weight 12-16 UTC.
+4. Carrying Euribor forward overnight could make steps that mimic a lead.
+5. Two clean examples sit in a week with a dozen turns. Test events picked in advance.
+6. The US leg moves with USDJPY, EURUSD and gold in the same hour: association, not cause, so a context read to log forward.
+
+My aim for the call is to start with what the line is meant to measure and why those contracts. Happy to share code, numbers and the page. Thanks, Rich

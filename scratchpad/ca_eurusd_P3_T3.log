@@ -1,0 +1,16 @@
+{'A0': 2218, 'A1': 594, 'A3': 630, 'A2': 165, 'A2m': 176, 'A4': 207} line events k=.75; video-week excluded from pooled stats
+placebo 0
+placebo 20
+placebo 40
+placebo 60
+placebo 80
+design H 4 rows before dropna 86400 nan per col {'y': 28363, 's': 0, 'r1': 28363, 'r4': 29894, 'r24': 40043, 'rv': 4512, 'pos': 33820, 'zs': 28811, 'day': 0, 'half': 0}
+design H 8 rows before dropna 86400 nan per col {'y': 28875, 's': 0, 'r1': 28363, 'r4': 29894, 'r24': 40043, 'rv': 4512, 'pos': 33820, 'zs': 28811, 'day': 0, 'half': 0}
+VERDICT: insufficient evidence
+  pattern  ret_ok  race_ok  beats_placebo95  s_t_significant  no_release_effect  robust
+0      A1   False    False            False            False           0.003788   False
+1      A2   False    False            False            False           0.000419   False
+2      A3   False    False            False            False          -0.013126   False
+3     A2m   False    False            False            False           0.002936   False
+4      A4   False    False            False            False          -0.006537   False
+no conditional cells

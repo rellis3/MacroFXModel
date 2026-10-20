@@ -1,0 +1,1397 @@
+================================================== 
+ RUN STARTED 19/10/2026 11:37:08.35 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 10:23 | m5 4925 m15 10160 | 590 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 10:23 | m5 4925 m15 10160 | 588 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 10:23 | m5 4925 m15 10160 | 545 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 10:23 | m5 4925 m15 10160 | 541 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 10:28 | m5 5670 m15 11528 | 617 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 10:27 | m5 5670 m15 11528 | 647 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 10:27 | m5 5670 m15 11528 | 620 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,268 bars merged
+SR3Z6: +6,268 bars merged
+SR3H7: +6,269 bars merged
+IH7: +5,424 bars merged
+IZ6: +5,424 bars merged
+ER3Z6: +5,424 bars merged
+ER3H7: +5,424 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 11:43:20.31] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 12:07:07.07 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 10:53 | m5 4931 m15 10160 | 590 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 10:53 | m5 4931 m15 10160 | 589 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 10:53 | m5 4931 m15 10160 | 545 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 10:53 | m5 4931 m15 10160 | 541 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 10:58 | m5 5676 m15 11528 | 618 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 10:57 | m5 5676 m15 11528 | 648 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 10:58 | m5 5676 m15 11528 | 620 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,298 bars merged
+SR3Z6: +6,299 bars merged
+SR3H7: +6,299 bars merged
+IH7: +5,454 bars merged
+IZ6: +5,454 bars merged
+ER3Z6: +5,454 bars merged
+ER3H7: +5,454 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 12:10:46.55] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 12:37:06.04 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 11:23 | m5 4937 m15 10160 | 590 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 11:23 | m5 4937 m15 10160 | 589 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 11:22 | m5 4937 m15 10160 | 546 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 11:22 | m5 4937 m15 10160 | 541 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 11:27 | m5 5682 m15 11528 | 618 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 11:27 | m5 5682 m15 11528 | 648 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 11:27 | m5 5682 m15 11528 | 620 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,328 bars merged
+SR3Z6: +6,328 bars merged
+SR3H7: +6,328 bars merged
+IH7: +5,483 bars merged
+IZ6: +5,483 bars merged
+ER3Z6: +5,484 bars merged
+ER3H7: +5,484 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 12:40:12.68] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 13:07:03.40 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 11:53 | m5 4943 m15 10160 | 590 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 11:53 | m5 4943 m15 10160 | 589 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 11:52 | m5 4943 m15 10160 | 546 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 11:52 | m5 4943 m15 10160 | 542 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 11:57 | m5 5688 m15 11528 | 618 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 11:57 | m5 5688 m15 11528 | 648 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 11:57 | m5 5688 m15 11528 | 620 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,358 bars merged
+SR3Z6: +6,358 bars merged
+SR3H7: +6,358 bars merged
+IH7: +5,513 bars merged
+IZ6: +5,513 bars merged
+ER3Z6: +5,514 bars merged
+ER3H7: +5,514 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 13:11:19.68] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 13:37:12.06 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 12:23 | m5 4949 m15 10160 | 590 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 12:23 | m5 4949 m15 10160 | 589 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 12:23 | m5 4949 m15 10160 | 546 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 12:23 | m5 4949 m15 10160 | 542 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 12:28 | m5 5694 m15 11528 | 618 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 12:27 | m5 5694 m15 11528 | 648 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 12:27 | m5 5694 m15 11528 | 621 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,388 bars merged
+SR3Z6: +6,388 bars merged
+SR3H7: +6,389 bars merged
+IH7: +5,544 bars merged
+IZ6: +5,544 bars merged
+ER3Z6: +5,544 bars merged
+ER3H7: +5,544 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 13:42:33.21] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 14:07:05.48 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 12:55 | m5 4956 m15 10160 | 591 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 12:55 | m5 4956 m15 10160 | 587 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 12:54 | m5 4955 m15 10160 | 546 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 12:55 | m5 4956 m15 10160 | 542 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 12:59 | m5 5700 m15 11528 | 618 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 12:58 | m5 5700 m15 11528 | 648 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 12:59 | m5 5700 m15 11528 | 621 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 11 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +13,319 bars merged
+SR3Z6: +13,320 bars merged
+SR3H7: +13,320 bars merged
+IH7: +11,575 bars merged
+IZ6: +11,576 bars merged
+ER3Z6: +11,576 bars merged
+ER3H7: +11,576 bars merged
+POST /api/kv/set cog_legs_live_v1 (1766 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 14:17:06.40] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 14:37:06.71 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 13:28 | m5 4962 m15 10160 | 591 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 13:28 | m5 4962 m15 10160 | 590 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 13:27 | m5 4962 m15 10160 | 547 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 13:28 | m5 4962 m15 10160 | 542 KB
+Traceback (most recent call last):
+  File "C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rates_line\build_leg_bars.py", line 107, in <module>
+    (OUT / f'leg_{name}.json').write_text(json.dumps(obj, separators=(',', ':')), encoding='utf-8')
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 22] Invalid argument: 'C:\\Users\\relli\\OneDrive\\Documents\\Programming\\Trading\\v2 trading model\\MacroFXModel\\analysis\\output\\cog_chart\\leg_SR3H7.json'
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,452 bars merged
+SR3Z6: +6,453 bars merged
+SR3H7: +6,453 bars merged
+IH7: +5,608 bars merged
+IZ6: +5,609 bars merged
+ER3Z6: +5,609 bars merged
+ER3H7: +5,609 bars merged
+Traceback (most recent call last):
+  File "C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rates_line\refresh_leg_bars.py", line 121, in <module>
+    subprocess.run([sys.executable, str(ROOT / 'scripts' / 'rates_line' / 'build_leg_bars.py')], check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\python314\Lib\subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['C:\\Users\\relli\\OneDrive\\Documents\\Programming\\Trading\\v2 trading model\\MacroFXModel\\.venv\\Scripts\\python.exe', 'C:\\Users\\relli\\OneDrive\\Documents\\Programming\\Trading\\v2 trading model\\MacroFXModel\\scripts\\rates_line\\build_leg_bars.py']' returned non-zero exit status 1.
+[19/10/2026 14:48:05.21] finished with exit code 1 
+================================================== 
+ RUN STARTED 19/10/2026 15:07:04.88 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 13:53 | m5 4967 m15 10160 | 591 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 13:53 | m5 4967 m15 10160 | 590 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 13:52 | m5 4967 m15 10160 | 547 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 13:52 | m5 4967 m15 10160 | 542 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 13:57 | m5 5712 m15 11528 | 619 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 13:57 | m5 5712 m15 11528 | 649 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 13:57 | m5 5712 m15 11528 | 621 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,478 bars merged
+SR3Z6: +6,478 bars merged
+SR3H7: +6,478 bars merged
+IH7: +5,633 bars merged
+IZ6: +5,633 bars merged
+ER3Z6: +5,634 bars merged
+ER3H7: +5,634 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 15:19:04.06] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 15:37:09.43 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 14:23 | m5 4973 m15 10160 | 591 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 14:23 | m5 4973 m15 10160 | 590 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 14:23 | m5 4973 m15 10160 | 547 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 14:23 | m5 4973 m15 10160 | 543 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 14:28 | m5 5718 m15 11528 | 619 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 14:27 | m5 5718 m15 11528 | 649 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 14:27 | m5 5718 m15 11528 | 622 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,508 bars merged
+SR3Z6: +6,508 bars merged
+SR3H7: +6,509 bars merged
+IH7: +5,664 bars merged
+IZ6: +5,664 bars merged
+ER3Z6: +5,664 bars merged
+ER3H7: +5,664 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 15:41:44.36] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 16:07:29.21 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 14:59 | m5 4980 m15 10160 | 592 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 14:59 | m5 4980 m15 10160 | 591 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 14:59 | m5 4980 m15 10160 | 547 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 14:59 | m5 4980 m15 10160 | 543 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 15:04 | m5 5725 m15 11528 | 619 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 15:03 | m5 5725 m15 11528 | 649 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 15:03 | m5 5725 m15 11528 | 622 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,544 bars merged
+SR3Z6: +6,544 bars merged
+SR3H7: +6,545 bars merged
+IH7: +5,700 bars merged
+IZ6: +5,700 bars merged
+ER3Z6: +5,700 bars merged
+ER3H7: +5,700 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 16:18:27.25] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 16:37:06.25 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 15:23 | m5 4985 m15 10160 | 592 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 15:23 | m5 4985 m15 10160 | 591 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 15:22 | m5 4985 m15 10160 | 547 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 15:22 | m5 4985 m15 10160 | 543 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 15:27 | m5 5730 m15 11528 | 619 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 15:27 | m5 5730 m15 11528 | 650 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 15:27 | m5 5730 m15 11528 | 622 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,568 bars merged
+SR3Z6: +6,568 bars merged
+SR3H7: +6,568 bars merged
+IH7: +5,723 bars merged
+IZ6: +5,723 bars merged
+ER3Z6: +5,724 bars merged
+ER3H7: +5,724 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 16:40:53.22] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 17:07:07.08 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 15:53 | m5 4991 m15 10160 | 592 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 15:53 | m5 4991 m15 10160 | 591 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 15:53 | m5 4991 m15 10160 | 548 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 15:53 | m5 4991 m15 10160 | 543 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 15:57 | m5 5736 m15 11528 | 620 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 15:57 | m5 5736 m15 11528 | 650 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 15:57 | m5 5736 m15 11528 | 622 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,598 bars merged
+SR3Z6: +6,598 bars merged
+SR3H7: +6,598 bars merged
+IH7: +5,754 bars merged
+IZ6: +5,754 bars merged
+ER3Z6: +5,754 bars merged
+ER3H7: +5,754 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 17:11:31.79] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 17:37:04.46 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 16:23 | m5 4997 m15 10160 | 592 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 16:23 | m5 4997 m15 10160 | 591 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 16:22 | m5 4997 m15 10160 | 548 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 16:22 | m5 4997 m15 10160 | 544 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 16:27 | m5 5742 m15 11528 | 620 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 16:27 | m5 5742 m15 11528 | 650 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 16:27 | m5 5742 m15 11528 | 622 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,628 bars merged
+SR3Z6: +6,628 bars merged
+SR3H7: +6,628 bars merged
+IH7: +5,783 bars merged
+IZ6: +5,783 bars merged
+ER3Z6: +5,784 bars merged
+ER3H7: +5,784 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 17:40:53.48] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 18:07:09.33 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 16:53 | m5 5003 m15 10160 | 593 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 16:53 | m5 5003 m15 10160 | 591 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 16:53 | m5 5003 m15 10160 | 548 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 16:53 | m5 5003 m15 10160 | 544 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 16:58 | m5 5748 m15 11528 | 620 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 16:57 | m5 5748 m15 11528 | 650 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 16:57 | m5 5748 m15 11528 | 623 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,658 bars merged
+SR3Z6: +6,658 bars merged
+SR3H7: +6,659 bars merged
+IH7: +5,814 bars merged
+IZ6: +5,814 bars merged
+ER3Z6: +5,814 bars merged
+ER3H7: +5,814 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 18:11:27.32] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 18:37:05.91 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 17:23 | m5 5009 m15 10160 | 593 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 17:23 | m5 5009 m15 10160 | 592 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 17:22 | m5 5009 m15 10160 | 548 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 17:23 | m5 5009 m15 10160 | 544 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 17:27 | m5 5754 m15 11528 | 620 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 17:27 | m5 5754 m15 11528 | 651 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 17:27 | m5 5754 m15 11528 | 623 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,688 bars merged
+SR3Z6: +6,688 bars merged
+SR3H7: +6,688 bars merged
+IH7: +5,843 bars merged
+IZ6: +5,844 bars merged
+ER3Z6: +5,844 bars merged
+ER3H7: +5,844 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 18:40:58.86] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 19:07:03.52 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 17:53 | m5 5015 m15 10160 | 593 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 17:52 | m5 5015 m15 10160 | 592 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 17:52 | m5 5015 m15 10160 | 548 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 17:52 | m5 5015 m15 10160 | 544 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 17:57 | m5 5760 m15 11528 | 621 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 17:57 | m5 5760 m15 11528 | 651 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 17:57 | m5 5760 m15 11528 | 623 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,718 bars merged
+SR3Z6: +6,718 bars merged
+SR3H7: +6,718 bars merged
+IH7: +5,873 bars merged
+IZ6: +5,873 bars merged
+ER3Z6: +5,873 bars merged
+ER3H7: +5,874 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 19:11:17.39] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 19:37:04.99 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 18:23 | m5 5021 m15 10160 | 593 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 18:23 | m5 5021 m15 10160 | 592 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 18:22 | m5 5021 m15 10160 | 549 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 18:22 | m5 5021 m15 10160 | 544 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 18:27 | m5 5766 m15 11528 | 621 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 18:27 | m5 5766 m15 11528 | 651 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 18:27 | m5 5766 m15 11528 | 623 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,748 bars merged
+SR3Z6: +6,748 bars merged
+SR3H7: +6,748 bars merged
+IH7: +5,903 bars merged
+IZ6: +5,903 bars merged
+ER3Z6: +5,904 bars merged
+ER3H7: +5,904 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 19:40:42.69] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 20:07:05.11 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 18:53 | m5 5027 m15 10160 | 594 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 18:53 | m5 5027 m15 10160 | 592 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 18:52 | m5 5027 m15 10160 | 549 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 18:52 | m5 5027 m15 10160 | 545 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 18:57 | m5 5772 m15 11528 | 621 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 18:57 | m5 5772 m15 11528 | 651 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 18:57 | m5 5772 m15 11528 | 623 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,778 bars merged
+SR3Z6: +6,778 bars merged
+SR3H7: +6,778 bars merged
+IH7: +5,933 bars merged
+IZ6: +5,933 bars merged
+ER3Z6: +5,934 bars merged
+ER3H7: +5,934 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 20:11:04.45] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 20:37:05.76 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:23 | m5 5033 m15 10160 | 594 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:23 | m5 5033 m15 10160 | 592 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:23 | m5 5033 m15 10160 | 549 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:23 | m5 5033 m15 10160 | 545 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 19:27 | m5 5778 m15 11528 | 621 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 19:27 | m5 5778 m15 11528 | 652 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 19:27 | m5 5778 m15 11528 | 624 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,808 bars merged
+SR3Z6: +6,808 bars merged
+SR3H7: +6,808 bars merged
+IH7: +5,964 bars merged
+IZ6: +5,964 bars merged
+ER3Z6: +5,964 bars merged
+ER3H7: +5,964 bars merged
+POST /api/kv/set cog_legs_live_v1 (1770 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 20:41:06.96] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 21:07:05.54 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:53 | m5 5039 m15 10160 | 594 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:53 | m5 5039 m15 10160 | 593 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:52 | m5 5039 m15 10160 | 549 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:53 | m5 5039 m15 10160 | 545 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 19:57 | m5 5784 m15 11528 | 621 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 19:57 | m5 5784 m15 11528 | 652 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 19:57 | m5 5784 m15 11528 | 624 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,838 bars merged
+SR3Z6: +6,838 bars merged
+SR3H7: +6,838 bars merged
+IH7: +5,993 bars merged
+IZ6: +5,994 bars merged
+ER3Z6: +5,994 bars merged
+ER3H7: +5,994 bars merged
+POST /api/kv/set cog_legs_live_v1 (1778 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 21:10:57.75] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 21:37:05.45 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 594 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 593 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 549 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 545 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 20:27 | m5 5790 m15 11528 | 622 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 20:27 | m5 5790 m15 11528 | 652 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 20:27 | m5 5790 m15 11528 | 624 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,868 bars merged
+SR3Z6: +6,868 bars merged
+SR3H7: +6,868 bars merged
+IH7: +6,000 bars merged
+IZ6: +6,000 bars merged
+ER3Z6: +6,000 bars merged
+ER3H7: +6,000 bars merged
+POST /api/kv/set cog_legs_live_v1 (1782 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 21:40:58.00] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 22:07:04.86 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 594 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 593 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 549 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 545 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 20:57 | m5 5796 m15 11528 | 622 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 20:57 | m5 5796 m15 11528 | 652 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 20:57 | m5 5796 m15 11528 | 624 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,898 bars merged
+SR3Z6: +6,898 bars merged
+SR3H7: +6,898 bars merged
+IH7: +6,000 bars merged
+IZ6: +6,000 bars merged
+ER3Z6: +6,000 bars merged
+ER3H7: +6,000 bars merged
+POST /api/kv/set cog_legs_live_v1 (1788 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 22:10:58.47] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 22:37:04.91 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 594 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 593 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 549 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 545 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 20:59 | m5 5796 m15 11528 | 622 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 20:59 | m5 5796 m15 11528 | 652 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 20:59 | m5 5796 m15 11528 | 624 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +6,900 bars merged
+SR3Z6: +6,900 bars merged
+SR3H7: +6,900 bars merged
+IH7: +6,000 bars merged
+IZ6: +6,000 bars merged
+ER3Z6: +6,000 bars merged
+ER3H7: +6,000 bars merged
+POST /api/kv/set cog_legs_live_v1 (1788 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 22:40:16.93] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 23:07:06.46 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 594 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 593 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 549 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 545 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 20:59 | m5 5796 m15 11528 | 622 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 20:59 | m5 5796 m15 11528 | 652 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 20:59 | m5 5796 m15 11528 | 624 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +5,520 bars merged
+SR3Z6: +5,520 bars merged
+SR3H7: +5,520 bars merged
+IH7: +6,000 bars merged
+IZ6: +6,000 bars merged
+ER3Z6: +6,000 bars merged
+ER3H7: +6,000 bars merged
+POST /api/kv/set cog_legs_live_v1 (1788 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 23:11:03.00] finished with exit code 0 
+================================================== 
+ RUN STARTED 19/10/2026 23:37:11.49 
+ER3H7: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 594 KB
+ER3M7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 576 KB
+ER3U6: ESTR 3M (ICE ER3) | 2026-04-10 -> 2026-10-19 09:59 | m5 4518 m15 10026 | 565 KB
+ER3U7: ESTR 3M (ICE ER3) | 2026-04-13 -> 2026-10-19 10:00 | m5 4681 m15 10081 | 576 KB
+ER3Z6: ESTR 3M (ICE ER3) | 2024-11-14 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 593 KB
+FGBL2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBM2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 120 KB
+FGBS2609: German bond futures (price, not a rate) | 2026-04-13 -> 2026-09-08 19:59 | m5 5235 m15 8479 | 546 KB
+FGBS2612: German bond futures (price, not a rate) | 2026-04-15 -> 2026-10-09 12:53 | m5 5236 m15 10081 | 611 KB
+FGBX2612: German bond futures (price, not a rate) | 2026-09-14 -> 2026-09-25 20:04 | m5 2380 m15 800 | 119 KB
+IF7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IG7: Euribor 3M (ICE I) | 2026-09-14 -> 2026-09-25 19:59 | m5 2400 m15 800 | 116 KB
+IH7: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 549 KB
+IK6: Euribor 3M (ICE I) | 2026-04-07 -> 2026-04-24 19:59 | m5 3360 m15 1120 | 160 KB
+IM6: Euribor 3M (ICE I) | 2026-04-13 -> 2026-05-29 19:59 | m5 5040 m15 2720 | 282 KB
+IM7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4920 m15 10160 | 541 KB
+IN6: Euribor 3M (ICE I) | 2026-05-18 -> 2026-06-26 19:59 | m5 5280 m15 2400 | 279 KB
+IQ6: Euribor 3M (ICE I) | 2026-06-15 -> 2026-07-24 19:59 | m5 5280 m15 2400 | 272 KB
+IU6: Euribor 3M (ICE I) | 2026-07-13 -> 2026-08-28 19:59 | m5 5280 m15 2800 | 292 KB
+IU7: Euribor 3M (ICE I) | 2026-04-13 -> 2026-10-19 09:59 | m5 4680 m15 10080 | 532 KB
+IV6: Euribor 3M (ICE I) | 2026-08-17 -> 2026-09-25 19:59 | m5 5280 m15 2400 | 274 KB
+IX6: Euribor 3M (ICE I) | 2026-09-14 -> 2026-10-09 19:59 | m5 4800 m15 1600 | 230 KB
+IZ6: Euribor 3M (ICE I) | 2024-04-15 -> 2026-10-19 19:59 | m5 5040 m15 10160 | 545 KB
+SR3H7: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 22:27 | m5 5802 m15 11528 | 622 KB
+SR3M7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 605 KB
+SR3N6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 135 KB
+SR3Q6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2759 m15 920 | 138 KB
+SR3U6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 22:27 | m5 5802 m15 11528 | 653 KB
+SR3U7: SOFR 3M (CME SR3) | 2026-04-12 -> 2026-10-19 10:04 | m5 5389 m15 11436 | 606 KB
+SR3V6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 142 KB
+SR3X6: SOFR 3M (CME SR3) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 133 KB
+SR3Z6: SOFR 3M (CME SR3) | 2024-04-14 -> 2026-10-19 22:27 | m5 5802 m15 11528 | 625 KB
+UBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZBZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 163 KB
+ZFZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 168 KB
+ZNZ6: US Treasury futures (price, not a rate) | 2026-09-13 -> 2026-09-25 20:59 | m5 2760 m15 920 | 166 KB
+ZQF7: Fed funds 30-day (CBOT ZQ) | 2025-04-22 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 607 KB
+ZQH7: Fed funds 30-day (CBOT ZQ) | 2025-02-03 -> 2026-10-19 10:06 | m5 5390 m15 11436 | 604 KB
+ZQV6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 626 KB
+ZQX6: Fed funds 30-day (CBOT ZQ) | 2025-04-21 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 608 KB
+ZQZ6: Fed funds 30-day (CBOT ZQ) | 2024-11-05 -> 2026-10-19 10:05 | m5 5390 m15 11436 | 605 KB
+ZTU6: US Treasury futures (price, not a rate) | 2026-04-12 -> 2026-09-30 20:59 | m5 6024 m15 11068 | 777 KB
+ZTZ6: US Treasury futures (price, not a rate) | 2026-04-13 -> 2026-10-19 10:06 | m5 5290 m15 11384 | 758 KB
+43 contracts
+pulling the last 3 day(s) for ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+SR3U6: +5,548 bars merged
+SR3Z6: +5,548 bars merged
+SR3H7: +5,548 bars merged
+IH7: +6,000 bars merged
+IZ6: +6,000 bars merged
+ER3Z6: +6,000 bars merged
+ER3H7: +6,000 bars merged
+POST /api/kv/set cog_legs_live_v1 (1806 bars) -> HTTP 200 {"ok":true}
+[19/10/2026 23:41:13.08] finished with exit code 0 

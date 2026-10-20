@@ -1,0 +1,36 @@
+features: M0 45 M1 79
+done dir_8
+done dir_16
+done dir_32
+done vol_8
+placebo 0
+placebo 5
+placebo 10
+placebo 15
+placebo 20
+placebo 25
+placebo 30
+placebo 35
+placebo 40
+placebo 45
+placebo 50
+placebo 55
+VERDICT: a repeatable shape exists (see importance table for which)
+   target  both_halves_CI_above_zero beats_placebo95  real_gain_val_oos  placebo_mean  placebo_p95
+0   dir_8                      False            None                NaN           NaN          NaN
+1  dir_16                       True            True           0.060238      0.030158     0.045749
+2  dir_32                      False            None                NaN           NaN          NaN
+3   vol_8                      False           False           0.009905      0.004940     0.011033
+    target     half  days     IC_M0     IC_M1   IC_gain     ci_lo     ci_hi      AUC_M0    AUC_M1
+0    dir_8      VAL   195 -0.018692  0.010459       NaN       NaN       NaN     0.50015  0.499808
+1    dir_8      OOS   195 -0.053350  0.023457  0.076807  0.037475  0.112685    0.475102  0.495756
+2    dir_8  VAL+OOS   390 -0.036021  0.016975       NaN       NaN       NaN    0.488161  0.498493
+3   dir_16      VAL   194 -0.024447  0.024372  0.048819  0.000195  0.096104    0.497893  0.498031
+4   dir_16      OOS   194 -0.015194  0.056463  0.071656  0.025560  0.120007    0.482707  0.494911
+5   dir_16  VAL+OOS   388 -0.019820  0.040417  0.060238  0.026322  0.093970    0.489606  0.496272
+6   dir_32      VAL   194  0.084535  0.052726       NaN       NaN       NaN    0.512497  0.527175
+7   dir_32      OOS   194  0.110609  0.114803  0.004194 -0.047566  0.060371    0.500636  0.520443
+8   dir_32  VAL+OOS   388  0.097605  0.083845       NaN       NaN       NaN    0.506503  0.523997
+9    vol_8      VAL   195  0.297898  0.309504  0.011606  0.003797  0.019764  (nan, nan)  0.890268
+10   vol_8      OOS   195  0.226746  0.234950  0.008203 -0.000759  0.016843  (nan, nan)  0.830695
+11   vol_8  VAL+OOS   390  0.262322  0.272227  0.009905  0.004102  0.015580  (nan, nan)  0.862788

@@ -1,0 +1,127 @@
+# COG-MATCHED-PAIRS results
+
+Registered in forge/COG_MATCHED_PAIRS_PREREG.md and forge/COG_MATCHED_PAIRS_ADDENDUM_A.md (audit: MATCHED_PAIRS_AUDIT.md, published before the tests ran). Same data-quality rules, horizons, controls, splits and gates for every candidate; nothing was changed after results.
+
+## Verdict: **No pair or leg passes the registered gates, the family-wise correction and the consistency rule.**
+
+Eligible candidates (at least 60 in-sample days; registered rule): P0 yes, P1 yes, P2 yes, P3 yes, P4 yes, L-US yes, L-EU-Euribor yes, L-EU-ESTR yes
+
+## Usable samples
+| candidate    |   IS_days |   IS_bars |   IS_min_detectable_corr |   VAL_days |   VAL_bars |   VAL_min_detectable_corr |   OOS_days |   OOS_bars |   OOS_min_detectable_corr | first_usable_day   | underpowered_(IS_days<60)   |
+|:-------------|----------:|----------:|-------------------------:|-----------:|-----------:|--------------------------:|-----------:|-----------:|--------------------------:|:-------------------|:----------------------------|
+| P0           |       247 |     19547 |                   0.1780 |        189 |      14962 |                    0.2040 |        188 |      14968 |                    0.2040 | 2024-04-15         | False                       |
+| P1           |       247 |     19547 |                   0.1780 |        189 |      14962 |                    0.2040 |        189 |      14994 |                    0.2040 | 2024-04-15         | False                       |
+| P2           |       247 |     19547 |                   0.1780 |        190 |      15042 |                    0.2030 |        189 |      14994 |                    0.2040 | 2024-04-15         | False                       |
+| P3           |        95 |      7457 |                   0.2870 |        191 |      15087 |                    0.2030 |        190 |      15074 |                    0.2030 | 2024-11-14         | False                       |
+| P4           |        95 |      7453 |                   0.2870 |        191 |      15087 |                    0.2030 |        190 |      15074 |                    0.2030 | 2024-11-14         | False                       |
+| L-US         |       263 |     22524 |                   0.1730 |        207 |      17526 |                    0.1950 |        202 |      17367 |                    0.1970 | 2024-04-15         | False                       |
+| L-EU-Euribor |       247 |     19547 |                   0.1780 |        191 |      15122 |                    0.2030 |        191 |      15154 |                    0.2030 | 2024-04-15         | False                       |
+| L-EU-ESTR    |        95 |      7457 |                   0.2870 |        192 |      15167 |                    0.2020 |        192 |      15234 |                    0.2020 | 2024-11-14         | False                       |
+
+## Same-hour link and stability against C.OG's pair (T1)
+| candidate    |   IS_days |   IS_corr |   IS_R2 |   IS_stab_neg20d |   VAL_days |   VAL_corr |   VAL_R2 |   VAL_stab_neg20d |   OOS_days |   OOS_corr |   OOS_R2 |   OOS_stab_neg20d |   IS_R2_minus_P0 |   IS_R2_diff_ci_lo |   IS_R2_diff_ci_hi |   IS_p_better_than_P0 |   IS_stab_minus_P0 |   VAL_R2_minus_P0 |   VAL_R2_diff_ci_lo |   VAL_R2_diff_ci_hi |   VAL_p_better_than_P0 |   VAL_stab_minus_P0 |   OOS_R2_minus_P0 |   OOS_R2_diff_ci_lo |   OOS_R2_diff_ci_hi |   OOS_p_better_than_P0 |   OOS_stab_minus_P0 |
+|:-------------|----------:|----------:|--------:|-----------------:|-----------:|-----------:|---------:|------------------:|-----------:|-----------:|---------:|------------------:|-----------------:|-------------------:|-------------------:|----------------------:|-------------------:|------------------:|--------------------:|--------------------:|-----------------------:|--------------------:|------------------:|--------------------:|--------------------:|-----------------------:|--------------------:|
+| P0           |       247 |    0.0685 |  0.0047 |           0.4431 |        189 |     0.1716 |   0.0294 |            0.2713 |        188 |     0.3126 |   0.0977 |            0.0053 |         nan      |           nan      |           nan      |              nan      |           nan      |          nan      |            nan      |            nan      |               nan      |            nan      |          nan      |            nan      |            nan      |               nan      |            nan      |
+| P1           |       247 |    0.0473 |  0.0022 |           0.4959 |        189 |     0.1047 |   0.0110 |            0.3511 |        189 |     0.2015 |   0.0406 |            0.1277 |          -0.0025 |            -0.0067 |             0.0000 |                0.9730 |             0.0528 |           -0.0185 |             -0.0346 |             -0.0016 |                 0.9910 |              0.0798 |           -0.0572 |             -0.0781 |             -0.0370 |                 1.0000 |              0.1176 |
+| P2           |       247 |    0.0601 |  0.0036 |           0.4919 |        190 |     0.1278 |   0.0163 |            0.2857 |        189 |     0.2019 |   0.0408 |            0.2021 |          -0.0011 |            -0.0044 |             0.0015 |                0.7910 |             0.0488 |           -0.0130 |             -0.0242 |              0.0003 |                 0.9720 |              0.0160 |           -0.0572 |             -0.0778 |             -0.0384 |                 1.0000 |              0.1935 |
+| P3           |        95 |    0.0703 |  0.0049 |           0.4787 |        191 |     0.1381 |   0.0191 |            0.2842 |        190 |     0.1990 |   0.0396 |            0.2275 |          -0.0016 |            -0.0067 |             0.0028 |                0.7790 |            -0.0213 |           -0.0102 |             -0.0188 |              0.0002 |                 0.9690 |              0.0160 |           -0.0582 |             -0.0803 |             -0.0392 |                 1.0000 |              0.2193 |
+| P4           |        95 |    0.0650 |  0.0042 |           0.5638 |        191 |     0.1106 |   0.0122 |            0.3579 |        190 |     0.1982 |   0.0393 |            0.0794 |          -0.0023 |            -0.0088 |             0.0027 |                0.7940 |             0.0638 |           -0.0170 |             -0.0299 |             -0.0018 |                 0.9890 |              0.0904 |           -0.0588 |             -0.0823 |             -0.0384 |                 1.0000 |              0.0695 |
+| L-US         |       249 |    0.0994 |  0.0099 |           0.4597 |        194 |     0.2960 |   0.0876 |            0.2435 |        193 |    -0.2204 |   0.0486 |            0.7604 |           0.0077 |            -0.0002 |             0.0258 |                0.0360 |             0.0081 |            0.0580 |              0.0251 |              0.0861 |                 0.0000 |             -0.0213 |           -0.0485 |             -0.0822 |             -0.0127 |                 0.9960 |              0.7487 |
+| L-EU-Euribor |       247 |    0.0775 |  0.0060 |           0.4309 |        191 |     0.2920 |   0.0853 |            0.2526 |        191 |    -0.3668 |   0.1345 |            0.8000 |           0.0013 |            -0.0071 |             0.0133 |                0.4110 |            -0.0122 |            0.0563 |             -0.0027 |              0.1361 |                 0.0440 |             -0.0319 |            0.0380 |              0.0128 |              0.0663 |                 0.0000 |              0.7903 |
+| L-EU-ESTR    |        95 |    0.0967 |  0.0094 |           0.3830 |        192 |     0.2891 |   0.0836 |            0.1990 |        192 |    -0.3677 |   0.1352 |            0.7958 |           0.0029 |            -0.0106 |             0.0208 |                0.3200 |            -0.1170 |            0.0545 |              0.0017 |              0.1184 |                 0.0210 |             -0.0585 |            0.0387 |              0.0119 |              0.0668 |                 0.0020 |              0.7914 |
+
+## Lead grid (T2) summary per candidate
+| candidate    |   cells |   fdr_in_sample |   confirmed |   max_abs_t_in_sample |
+|:-------------|--------:|----------------:|------------:|----------------------:|
+| L-EU-ESTR    |      24 |               0 |           0 |                1.4735 |
+| L-EU-Euribor |      24 |               0 |           0 |                1.2888 |
+| L-US         |      24 |               0 |           0 |                1.7555 |
+| P0           |      24 |               0 |           0 |                2.7486 |
+| P1           |      24 |               0 |           0 |                2.4368 |
+| P2           |      24 |               0 |           0 |                2.1686 |
+| P3           |      24 |               0 |           0 |                2.3090 |
+| P4           |      24 |               0 |           0 |                2.1453 |
+
+### Leg decomposition of every FDR-passing or top-3 in-sample lead cell (spread / US leg / euro leg / common level)
+| candidate    | W   | H   |   t_IS_spread_or_leg | attribution                                    |   t_IS_spread |   in_FDR |   bUS_IS |   tUS_IS |   bEU_IS |   tEU_IS |   wald_p_IS |   bUS_VAL |   tUS_VAL |   bEU_VAL |   tEU_VAL |   wald_p_VAL |   bUS_OOS |   tUS_OOS |   bEU_OOS |   tEU_OOS |   wald_p_OOS |
+|:-------------|:----|:----|---------------------:|:-----------------------------------------------|--------------:|---------:|---------:|---------:|---------:|---------:|------------:|----------:|----------:|----------:|----------:|-------------:|----------:|----------:|----------:|----------:|-------------:|
+| L-EU-ESTR    | 15m | 15m |              -1.4735 | single leg candidate (no decomposition needed) |      nan      | nan      | nan      | nan      | nan      | nan      |    nan      |  nan      |  nan      |  nan      |  nan      |     nan      |  nan      |  nan      |  nan      |  nan      |     nan      |
+| L-EU-ESTR    | 15m | 30m |              -1.1862 | single leg candidate (no decomposition needed) |      nan      | nan      | nan      | nan      | nan      | nan      |    nan      |  nan      |  nan      |  nan      |  nan      |     nan      |  nan      |  nan      |  nan      |  nan      |     nan      |
+| L-EU-ESTR    | 4h  | 15m |              -1.0800 | single leg candidate (no decomposition needed) |      nan      | nan      | nan      | nan      | nan      | nan      |    nan      |  nan      |  nan      |  nan      |  nan      |     nan      |  nan      |  nan      |  nan      |  nan      |     nan      |
+| L-EU-Euribor | 4h  | 24h |              -1.2888 | single leg candidate (no decomposition needed) |      nan      | nan      | nan      | nan      | nan      | nan      |    nan      |  nan      |  nan      |  nan      |  nan      |     nan      |  nan      |  nan      |  nan      |  nan      |     nan      |
+| L-EU-Euribor | 4h  | 8h  |              -1.2116 | single leg candidate (no decomposition needed) |      nan      | nan      | nan      | nan      | nan      | nan      |    nan      |  nan      |  nan      |  nan      |  nan      |     nan      |  nan      |  nan      |  nan      |  nan      |     nan      |
+| L-EU-Euribor | 15m | 15m |              -1.1147 | single leg candidate (no decomposition needed) |      nan      | nan      | nan      | nan      | nan      | nan      |    nan      |  nan      |  nan      |  nan      |  nan      |     nan      |  nan      |  nan      |  nan      |  nan      |     nan      |
+| L-US         | 4h  | 8h  |              -1.7555 | single leg candidate (no decomposition needed) |      nan      | nan      | nan      | nan      | nan      | nan      |    nan      |  nan      |  nan      |  nan      |  nan      |     nan      |  nan      |  nan      |  nan      |  nan      |     nan      |
+| L-US         | 1h  | 8h  |              -1.6744 | single leg candidate (no decomposition needed) |      nan      | nan      | nan      | nan      | nan      | nan      |    nan      |  nan      |  nan      |  nan      |  nan      |     nan      |  nan      |  nan      |  nan      |  nan      |     nan      |
+| L-US         | 15m | 24h |              -1.6202 | single leg candidate (no decomposition needed) |      nan      | nan      | nan      | nan      | nan      | nan      |    nan      |  nan      |  nan      |  nan      |  nan      |     nan      |  nan      |  nan      |  nan      |  nan      |     nan      |
+| P0           | 1h  | 1h  |             nan      | spread effect                                  |       -2.7486 |   0.0000 |  -0.0622 |  -2.5310 |   0.0456 |   2.4760 |      0.4815 |    0.0213 |    0.6619 |    0.0484 |    1.3325 |       0.0006 |    0.0342 |    1.1632 |   -0.0270 |   -1.3054 |       0.7604 |
+| P0           | 1h  | 30m |             nan      | spread effect                                  |       -2.4149 |   0.0000 |  -0.0442 |  -2.2704 |   0.0323 |   1.8923 |      0.5386 |   -0.0158 |   -0.4285 |    0.0423 |    1.2616 |       0.0924 |    0.0376 |    1.5131 |   -0.0279 |   -1.7488 |       0.7110 |
+| P0           | 15m | 2h  |             nan      | spread effect                                  |       -2.0593 |   0.0000 |  -0.0230 |  -1.8177 |   0.0174 |   1.7292 |      0.6746 |    0.0120 |    1.0220 |    0.0179 |    1.0119 |       0.1544 |    0.0121 |    0.7945 |   -0.0058 |   -0.5468 |       0.6165 |
+| P1           | 1h  | 1h  |             nan      | spread effect                                  |       -2.4368 |   0.0000 |  -0.0535 |  -2.2323 |   0.0407 |   2.1160 |      0.5759 |    0.0086 |    0.2611 |    0.0549 |    1.4812 |       0.0021 |    0.0137 |    0.4274 |   -0.0161 |   -0.6593 |       0.9141 |
+| P1           | 1h  | 30m |             nan      | spread effect                                  |       -2.1634 |   0.0000 |  -0.0382 |  -2.0294 |   0.0289 |   1.6584 |      0.6229 |   -0.0291 |   -0.7984 |    0.0496 |    1.4595 |       0.1699 |    0.0268 |    1.0546 |   -0.0237 |   -1.2348 |       0.8984 |
+| P1           | 1h  | 8h  |             nan      | unattributed                                   |       -1.6458 |   0.0000 |  -0.0409 |  -1.8991 |   0.0101 |   0.4858 |      0.1121 |    0.0414 |    1.5801 |   -0.0084 |   -0.3401 |       0.2828 |   -0.0140 |   -0.4713 |    0.0006 |    0.0258 |       0.5773 |
+| P2           | 1h  | 1h  |             nan      | spread effect                                  |       -2.1686 |   0.0000 |  -0.0487 |  -2.0253 |   0.0312 |   1.6758 |      0.4571 |    0.0129 |    0.4023 |    0.0631 |    1.5981 |       0.0006 |    0.0261 |    0.8519 |   -0.0214 |   -0.9185 |       0.8375 |
+| P2           | 1h  | 30m |             nan      | spread effect                                  |       -2.0198 |   0.0000 |  -0.0370 |  -1.9142 |   0.0249 |   1.4759 |      0.5315 |   -0.0281 |   -0.7076 |    0.0597 |    1.5180 |       0.0422 |    0.0331 |    1.2698 |   -0.0239 |   -1.3149 |       0.7273 |
+| P2           | 1h  | 2h  |             nan      | spread effect                                  |       -1.8344 |   0.0000 |  -0.0447 |  -1.6606 |   0.0347 |   1.7423 |      0.6810 |    0.0351 |    1.2700 |    0.0773 |    1.9044 |       0.0083 |    0.0243 |    0.6524 |   -0.0042 |   -0.1603 |       0.4103 |
+| P3           | 15m | 8h  |             nan      | US-leg effect                                  |       -2.3090 |   0.0000 |  -0.0344 |  -2.3060 |   0.0143 |   0.9669 |      0.2849 |    0.0182 |    2.1014 |    0.0077 |    0.5129 |       0.1291 |    0.0050 |    0.3465 |   -0.0065 |   -0.6525 |       0.9089 |
+| P3           | 15m | 24h |             nan      | spread effect                                  |       -1.8499 |   0.0000 |  -0.0268 |  -1.8224 |   0.0166 |   1.1789 |      0.4975 |    0.0185 |    1.5626 |   -0.0166 |   -1.5327 |       0.8720 |   -0.0045 |   -0.4274 |    0.0043 |    0.4390 |       0.9804 |
+| P3           | 1h  | 8h  |             nan      | unattributed                                   |       -1.8162 |   0.0000 |  -0.0637 |  -1.9961 |   0.0275 |   0.8721 |      0.2785 |    0.0533 |    1.8791 |   -0.0143 |   -0.5068 |       0.2156 |    0.0003 |    0.0097 |   -0.0023 |   -0.1113 |       0.9317 |
+| P4           | 15m | 8h  |             nan      | spread effect                                  |       -2.1453 |   0.0000 |  -0.0334 |  -2.0811 |   0.0171 |   1.1139 |      0.3900 |    0.0111 |    1.4285 |    0.0127 |    0.8132 |       0.1605 |   -0.0009 |   -0.0603 |   -0.0055 |   -0.5081 |       0.6289 |
+| P4           | 1h  | 8h  |             nan      | unattributed                                   |       -1.6733 |   0.0000 |  -0.0607 |  -1.7981 |   0.0300 |   0.9094 |      0.3526 |    0.0404 |    1.5152 |   -0.0058 |   -0.2085 |       0.2668 |   -0.0133 |   -0.4467 |    0.0008 |    0.0351 |       0.6052 |
+| P4           | 4h  | 4h  |             nan      | unattributed                                   |       -1.3977 |   0.0000 |  -0.0875 |  -1.5391 |   0.0486 |   0.8657 |      0.3823 |    0.0439 |    0.9285 |   -0.0340 |   -0.8277 |       0.7727 |   -0.0538 |   -0.8729 |    0.0287 |    0.5572 |       0.5440 |
+
+## Family-wise correction (BH-FDR 10% over all candidate x test p-values; P0 is the reference and is not in the family)
+
+| candidate    | test                               |      p |   bh_threshold | passes_correction   | gate   | consistent   | status      |
+|:-------------|:-----------------------------------|-------:|---------------:|:--------------------|:-------|:-------------|:------------|
+| P4           | T5 flexible model (2 h volatility) | 0.0164 |         0.0030 | False               | True   | False        | exploratory |
+| P2           | T5 flexible model (4 h direction)  | 0.0227 |         0.0061 | False               | False  | False        | exploratory |
+| P4           | T5 flexible model (4 h direction)  | 0.0263 |         0.0091 | False               | False  | False        | exploratory |
+| L-US         | T5 flexible model (2 h volatility) | 0.0328 |         0.0121 | False               | False  | False        | exploratory |
+| P3           | T5 flexible model (4 h direction)  | 0.0455 |         0.0152 | False               | False  | False        | exploratory |
+| L-US         | T5 flexible model (4 h direction)  | 0.0513 |         0.0182 | False               | False  | False        | exploratory |
+| P1           | T5 flexible model (4 h direction)  | 0.0732 |         0.0212 | False               | False  | False        | exploratory |
+| P1           | T5 flexible model (2 h volatility) | 0.0820 |         0.0242 | False               | False  | False        | exploratory |
+| P3           | T5 flexible model (2 h volatility) | 0.0984 |         0.0273 | False               | False  | False        | exploratory |
+| L-EU-Euribor | T5 flexible model (2 h volatility) | 0.1148 |         0.0303 | False               | False  | False        | no evidence |
+| P4           | T3 turn events                     | 0.1555 |         0.0333 | False               | False  | False        | no evidence |
+| P2           | T5 flexible model (2 h volatility) | 0.1639 |         0.0364 | False               | False  | False        | no evidence |
+| L-EU-ESTR    | T5 flexible model (2 h volatility) | 0.1639 |         0.0394 | False               | False  | False        | no evidence |
+| P1           | T3 turn events                     | 0.1795 |         0.0424 | False               | False  | False        | no evidence |
+| L-EU-Euribor | T5 flexible model (4 h direction)  | 0.2703 |         0.0455 | False               | False  | False        | no evidence |
+| P2           | T4 interpretable sequence          | 0.3660 |         0.0485 | False               | False  | False        | no evidence |
+| P3           | T3 turn events                     | 0.3730 |         0.0515 | False               | False  | False        | no evidence |
+| P2           | T3 turn events                     | 0.4125 |         0.0545 | False               | False  | False        | no evidence |
+| L-EU-ESTR    | T5 flexible model (4 h direction)  | 0.5814 |         0.0576 | False               | False  | False        | no evidence |
+| P4           | T4 interpretable sequence          | 0.7540 |         0.0606 | False               | False  | False        | no evidence |
+| P1           | T4 interpretable sequence          | 0.8260 |         0.0636 | False               | False  | False        | no evidence |
+| P3           | T4 interpretable sequence          | 0.9350 |         0.0667 | False               | False  | False        | no evidence |
+| L-EU-ESTR    | T2 lead grid                       | 1.0000 |         0.0697 | False               | False  | False        | no evidence |
+| L-EU-Euribor | T2 lead grid                       | 1.0000 |         0.0727 | False               | False  | False        | no evidence |
+| P2           | T1 same-hour link vs P0            | 1.0000 |         0.0758 | False               | False  | False        | no evidence |
+| P3           | T1 same-hour link vs P0            | 1.0000 |         0.0788 | False               | False  | False        | no evidence |
+| P1           | T1 same-hour link vs P0            | 1.0000 |         0.0818 | False               | False  | False        | no evidence |
+| P4           | T1 same-hour link vs P0            | 1.0000 |         0.0848 | False               | False  | False        | no evidence |
+| P1           | T2 lead grid                       | 1.0000 |         0.0879 | False               | False  | False        | no evidence |
+| P2           | T2 lead grid                       | 1.0000 |         0.0909 | False               | False  | False        | no evidence |
+| P3           | T2 lead grid                       | 1.0000 |         0.0939 | False               | False  | False        | no evidence |
+| L-US         | T2 lead grid                       | 1.0000 |         0.0970 | False               | False  | False        | no evidence |
+| P4           | T2 lead grid                       | 1.0000 |         0.1000 | False               | False  | False        | no evidence |
+
+Family size: 33.
+
+## What each test found (with the gate detail, incremental out-of-sample performance versus the Nasdaq-only baseline, and the placebo beside the real number)
+
+- **L-EU-ESTR / T2 lead grid** [no evidence] p = 1.0000: cells 24; in-sample FDR 0; counted as spread effect 0; confirmed 0; attributed to a leg/common level instead: 0
+- **L-EU-ESTR / T5 flexible model (2 h volatility)** [no evidence] p = 0.1639: IC gain VAL+OOS +0.0054 (placebo mean +0.0032, p95 +0.0085); VAL/OOS IC gain +0.004, +0.007; CI above 0 both halves False; beats placebo p95 False; economic: volatility context (no trade)
+- **L-EU-ESTR / T5 flexible model (4 h direction)** [no evidence] p = 0.5814: IC gain VAL+OOS +0.0334 (placebo mean +0.0362, p95 +0.0530); VAL/OOS IC gain +0.013, +0.054; CI above 0 both halves False; beats placebo p95 False; economic: net lower bound at 1.0 bp: -0.0726%
+- **L-EU-Euribor / T2 lead grid** [no evidence] p = 1.0000: cells 24; in-sample FDR 0; counted as spread effect 0; confirmed 0; attributed to a leg/common level instead: 0
+- **L-EU-Euribor / T5 flexible model (2 h volatility)** [no evidence] p = 0.1148: IC gain VAL+OOS +0.0093 (placebo mean +0.0047, p95 +0.0119); VAL/OOS IC gain +0.010, +0.009; CI above 0 both halves True; beats placebo p95 False; economic: volatility context (no trade)
+- **L-EU-Euribor / T5 flexible model (4 h direction)** [no evidence] p = 0.2703: IC gain VAL+OOS +0.0395 (placebo mean +0.0288, p95 +0.0552); VAL/OOS IC gain +0.037, +0.042; CI above 0 both halves False; beats placebo p95 False; economic: net lower bound at 1.0 bp: -0.0818%
+- **L-US / T2 lead grid** [no evidence] p = 1.0000: cells 24; in-sample FDR 0; counted as spread effect 0; confirmed 0; attributed to a leg/common level instead: 0
+- **L-US / T5 flexible model (2 h volatility)** [exploratory] p = 0.0328: IC gain VAL+OOS +0.0029 (placebo mean +0.0004, p95 +0.0020); VAL/OOS IC gain +0.003, +0.003; CI above 0 both halves False; beats placebo p95 True; economic: volatility context (no trade)
+- **L-US / T5 flexible model (4 h direction)** [exploratory] p = 0.0513: IC gain VAL+OOS +0.0607 (placebo mean +0.0335, p95 +0.0572); VAL/OOS IC gain +0.042, +0.079; CI above 0 both halves False; beats placebo p95 True; economic: net lower bound at 1.0 bp: -0.0322%
+- **P1 / T1 same-hour link vs P0** [no evidence] p = 1.0000: R2 diff CI above 0 in VAL and OOS: False; stability better than P0 in both: False
+- **P1 / T2 lead grid** [no evidence] p = 1.0000: cells 24; in-sample FDR 0; counted as spread effect 0; confirmed 0; attributed to a leg/common level instead: 0
+- **P1 / T3 turn events** [no evidence] p = 0.1795: gates robust per pattern: {'A1': False, 'A2': False, 'A3': False, 'A2m': False, 'A4': False}; A0/A1/A2 matched 2h effects {A0: +0.002, A1: +0.052, A2: -0.007}
+CHAIN_DONE

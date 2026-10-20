@@ -1,0 +1,11 @@
+REAL episodes: {'step1': 0, 'step2': 0, 'oos_pass': 0, 'best_oos_mean_bp': nan} specs 608
+PLACEBO          draw   step1  step2  oos_pass  best_oos_mean_bp
+count  200.00  200.00  200.0     200.0               0.0
+mean    99.50    0.01    0.0       0.0               NaN
+std     57.88    0.10    0.0       0.0               NaN
+min      0.00    0.00    0.0       0.0               NaN
+25%     49.75    0.00    0.0       0.0               NaN
+50%     99.50    0.00    0.0       0.0               NaN
+75%    149.25    0.00    0.0       0.0               NaN
+max    199.00    1.00    0.0       0.0               NaN
+EPISODES_DONE

@@ -1,0 +1,21 @@
+events per spec: {'k1=0.25 continue(0.5) W=8': 1983, 'k1=0.25 continue(0.5) W=16': 2460, 'k1=0.25 continue(0.5) W=32': 2772, 'k1=0.25 continue(1.0) W=8': 774, 'k1=0.25 continue(1.0) W=16': 1177, 'k1=0.25 continue(1.0) W=32': 1543} ...
+frozen: ['k1=0.5 continue(0.5) W=16'] FDR cells in-sample: 0 of 540
+plain placebo 0
+plain placebo 20
+plain placebo 40
+plain placebo 60
+plain placebo 80
+flexible model walk-forward ...
+VERDICT: no repeatable sequence (direction / turn / response) | volatility effect not validated {'matched_VAL_and_OOS': False, 'real_val_oos': 0.014022045538477168, 'plain_placebo_mean': 0.13696818222825796, 'plain_placebo_p95': 0.21171796225818798, 'beats_placebo95': False, 'regression_t_VAL': -1.3518434386492701, 'regression_t_OOS': -0.6369502079898066, 'oos_R2_rises': True, 'no_release_effect': -0.0030784463832672568, 'passes': False}
+                        spec  ret_ok  race_ok  beats_plain_placebo95  placebo_mean_ret8 selection_aware_p  incremental_ok  no_release_effect  real_val_oos_effect  passes
+0  k1=0.5 continue(0.5) W=16   False    False                  False           0.000967              None           False           0.014186             0.010401   False
+(np.float64(-0.0012779184727501833), np.float64(-0.012216840974320855), np.float64(0.01093892250157067), np.float64(-0.00457151620547758), np.float64(0.02789650115919103), 12703) -0.014533276192021114 -0.06663395149185614
+                                               model  target     IC_M0     IC_M1   IC_gain     ci_lo     ci_hi
+0                         trees depth 3 (registered)  dir_16 -0.013875 -0.016266 -0.002391 -0.030210  0.023586
+1                         trees depth 3 (registered)   vol_8  0.170675  0.169212 -0.001463 -0.005968  0.003513
+2                                ridge, all features  dir_16 -0.046945 -0.047680 -0.000735 -0.015668  0.014889
+3                                ridge, all features   vol_8  0.204501  0.203828 -0.000672 -0.004167  0.002896
+4                       trees depth 2, 30 iterations  dir_16 -0.073632 -0.094367 -0.020735 -0.043783  0.002807
+5                       trees depth 2, 30 iterations   vol_8  0.079043  0.078588 -0.000455 -0.001737  0.000835
+6  trees depth 3, only zig-zag/confluence + momentum  dir_16 -0.013875 -0.019300 -0.005426 -0.027541  0.016585
+7  trees depth 3, only zig-zag/confluence + momentum   vol_8  0.170675  0.170463 -0.000212 -0.004060  0.003686

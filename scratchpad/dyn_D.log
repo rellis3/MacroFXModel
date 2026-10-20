@@ -1,0 +1,11 @@
+REAL family D: {'step1': 0, 'step2': 0, 'oos_pass': 0, 'best_oos_sharpe': nan} cells 9384
+PLACEBO         draw  step1  step2  oos_pass  best_oos_sharpe
+count  40.00   40.0   40.0      40.0              0.0
+mean   19.50    0.0    0.0       0.0              NaN
+std    11.69    0.0    0.0       0.0              NaN
+min     0.00    0.0    0.0       0.0              NaN
+25%     9.75    0.0    0.0       0.0              NaN
+50%    19.50    0.0    0.0       0.0              NaN
+75%    29.25    0.0    0.0       0.0              NaN
+max    39.00    0.0    0.0       0.0              NaN
+FAMILY_D_DONE

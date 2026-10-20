@@ -1,0 +1,103 @@
+ZQX6: 2026-10-10 done, 6,900 new bars so far
+ZQX6: 2026-08-15 done, 61,860 new bars so far
+ZQX6: 2026-06-20 done, 116,100 new bars so far
+ZQX6: 2026-04-25 done, 171,060 new bars so far
+ZQX6: 2026-02-28 done, 225,915 new bars so far
+ZQX6: 2026-01-03 done, 279,255 new bars so far
+ZQX6: 2025-11-08 done, 332,385 new bars so far
+ZQX6: 2025-09-13 done, 387,585 new bars so far
+ZQX6: 2025-07-19 done, 442,545 new bars so far
+ZQX6: 2025-05-24 done, 496,785 new bars so far
+Error 162, reqId 81: Historical Market Data Service error message:HMDS query returned no data: ZQX6@CBOT Midpoint, contract: Contract(secType='FUT', conId=529748903, symbol='ZQ', lastTradeDateOrContractMonth='20261130', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQX6', tradingClass='ZQ')
+Error 162, reqId 82: Historical Market Data Service error message:HMDS query returned no data: ZQX6@CBOT Midpoint, contract: Contract(secType='FUT', conId=529748903, symbol='ZQ', lastTradeDateOrContractMonth='20261130', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQX6', tradingClass='ZQ')
+Error 162, reqId 83: Historical Market Data Service error message:HMDS query returned no data: ZQX6@CBOT Midpoint, contract: Contract(secType='FUT', conId=529748903, symbol='ZQ', lastTradeDateOrContractMonth='20261130', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQX6', tradingClass='ZQ')
+Error 162, reqId 84: Historical Market Data Service error message:HMDS query returned no data: ZQX6@CBOT Midpoint, contract: Contract(secType='FUT', conId=529748903, symbol='ZQ', lastTradeDateOrContractMonth='20261130', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQX6', tradingClass='ZQ')
+Error 162, reqId 85: Historical Market Data Service error message:HMDS query returned no data: ZQX6@CBOT Midpoint, contract: Contract(secType='FUT', conId=529748903, symbol='ZQ', lastTradeDateOrContractMonth='20261130', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQX6', tradingClass='ZQ')
+Error 162, reqId 86: Historical Market Data Service error message:HMDS query returned no data: ZQX6@CBOT Midpoint, contract: Contract(secType='FUT', conId=529748903, symbol='ZQ', lastTradeDateOrContractMonth='20261130', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQX6', tradingClass='ZQ')
+ZQX6: 6 empty weeks in a row at 2025-03-15; stopping (listing date reached or no data)
+ZQX6 -> CBOT_ZQX6.parquet: 509,437 bars 2025-04-21 -> 2026-10-09
+ZQZ6: 2026-10-10 done, 6,900 new bars so far
+ZQZ6: 2026-08-15 done, 61,860 new bars so far
+ZQZ6: 2026-06-20 done, 116,100 new bars so far
+ZQZ6: 2026-04-25 done, 171,060 new bars so far
+ZQZ6: 2026-02-28 done, 225,915 new bars so far
+ZQZ6: 2026-01-03 done, 279,255 new bars so far
+ZQZ6: 2025-11-08 done, 332,385 new bars so far
+ZQZ6: 2025-09-13 done, 387,585 new bars so far
+ZQZ6: 2025-07-19 done, 442,545 new bars so far
+ZQZ6: 2025-05-24 done, 496,785 new bars so far
+Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfarm.nj; hfarm; jfarm; eufarm; usfuture; cashfarm; usfarm; euhmds; fundfarm; ushmds; secdefil.
+ZQZ6: 2025-03-29 done, 551,985 new bars so far
+ZQZ6: 2025-02-01 done, 606,945 new bars so far
+Error 162, reqId 181: Historical Market Data Service error message:HMDS query returned no data: ZQZ6@CBOT Midpoint, contract: Contract(secType='FUT', conId=535970161, symbol='ZQ', lastTradeDateOrContractMonth='20261231', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQZ6', tradingClass='ZQ')
+Error 162, reqId 182: Historical Market Data Service error message:HMDS query returned no data: ZQZ6@CBOT Midpoint, contract: Contract(secType='FUT', conId=535970161, symbol='ZQ', lastTradeDateOrContractMonth='20261231', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQZ6', tradingClass='ZQ')
+ZQZ6: 2024-12-07 done, 632,446 new bars so far
+Error 162, reqId 188: Historical Market Data Service error message:HMDS query returned no data: ZQZ6@CBOT Midpoint, contract: Contract(secType='FUT', conId=535970161, symbol='ZQ', lastTradeDateOrContractMonth='20261231', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQZ6', tradingClass='ZQ')
+Error 162, reqId 190: Historical Market Data Service error message:HMDS query returned no data: ZQZ6@CBOT Midpoint, contract: Contract(secType='FUT', conId=535970161, symbol='ZQ', lastTradeDateOrContractMonth='20261231', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQZ6', tradingClass='ZQ')
+Error 162, reqId 191: Historical Market Data Service error message:HMDS query returned no data: ZQZ6@CBOT Midpoint, contract: Contract(secType='FUT', conId=535970161, symbol='ZQ', lastTradeDateOrContractMonth='20261231', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQZ6', tradingClass='ZQ')
+Error 162, reqId 192: Historical Market Data Service error message:HMDS query returned no data: ZQZ6@CBOT Midpoint, contract: Contract(secType='FUT', conId=535970161, symbol='ZQ', lastTradeDateOrContractMonth='20261231', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQZ6', tradingClass='ZQ')
+Error 162, reqId 193: Historical Market Data Service error message:HMDS query returned no data: ZQZ6@CBOT Midpoint, contract: Contract(secType='FUT', conId=535970161, symbol='ZQ', lastTradeDateOrContractMonth='20261231', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQZ6', tradingClass='ZQ')
+Error 162, reqId 194: Historical Market Data Service error message:HMDS query returned no data: ZQZ6@CBOT Midpoint, contract: Contract(secType='FUT', conId=535970161, symbol='ZQ', lastTradeDateOrContractMonth='20261231', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQZ6', tradingClass='ZQ')
+Error 162, reqId 195: Historical Market Data Service error message:HMDS query returned no data: ZQZ6@CBOT Midpoint, contract: Contract(secType='FUT', conId=535970161, symbol='ZQ', lastTradeDateOrContractMonth='20261231', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQZ6', tradingClass='ZQ')
+ZQZ6: 6 empty weeks in a row at 2024-09-28; stopping (listing date reached or no data)
+ZQZ6 -> CBOT_ZQZ6.parquet: 635,682 bars 2024-11-05 -> 2026-10-09
+ZQF7: 2026-10-10 done, 6,900 new bars so far
+ZQF7: 2026-08-15 done, 61,860 new bars so far
+ZQF7: 2026-06-20 done, 116,100 new bars so far
+ZQF7: 2026-04-25 done, 171,060 new bars so far
+ZQF7: 2026-02-28 done, 225,915 new bars so far
+ZQF7: 2026-01-03 done, 279,255 new bars so far
+ZQF7: 2025-11-08 done, 332,385 new bars so far
+ZQF7: 2025-09-13 done, 387,585 new bars so far
+ZQF7: 2025-07-19 done, 442,545 new bars so far
+Error 162, reqId 269: Historical Market Data Service error message:HMDS query returned no data: ZQF7@CBOT Midpoint, contract: Contract(secType='FUT', conId=542225066, symbol='ZQ', lastTradeDateOrContractMonth='20270129', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQF7', tradingClass='ZQ')
+Error 162, reqId 272: Historical Market Data Service error message:HMDS query returned no data: ZQF7@CBOT Midpoint, contract: Contract(secType='FUT', conId=542225066, symbol='ZQ', lastTradeDateOrContractMonth='20270129', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQF7', tradingClass='ZQ')
+Error 162, reqId 274: Historical Market Data Service error message:HMDS query returned no data: ZQF7@CBOT Midpoint, contract: Contract(secType='FUT', conId=542225066, symbol='ZQ', lastTradeDateOrContractMonth='20270129', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQF7', tradingClass='ZQ')
+Error 162, reqId 275: Historical Market Data Service error message:HMDS query returned no data: ZQF7@CBOT Midpoint, contract: Contract(secType='FUT', conId=542225066, symbol='ZQ', lastTradeDateOrContractMonth='20270129', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQF7', tradingClass='ZQ')
+Error 162, reqId 276: Historical Market Data Service error message:HMDS query returned no data: ZQF7@CBOT Midpoint, contract: Contract(secType='FUT', conId=542225066, symbol='ZQ', lastTradeDateOrContractMonth='20270129', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQF7', tradingClass='ZQ')
+Error 162, reqId 277: Historical Market Data Service error message:HMDS query returned no data: ZQF7@CBOT Midpoint, contract: Contract(secType='FUT', conId=542225066, symbol='ZQ', lastTradeDateOrContractMonth='20270129', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQF7', tradingClass='ZQ')
+Error 162, reqId 278: Historical Market Data Service error message:HMDS query returned no data: ZQF7@CBOT Midpoint, contract: Contract(secType='FUT', conId=542225066, symbol='ZQ', lastTradeDateOrContractMonth='20270129', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQF7', tradingClass='ZQ')
+Error 162, reqId 279: Historical Market Data Service error message:HMDS query returned no data: ZQF7@CBOT Midpoint, contract: Contract(secType='FUT', conId=542225066, symbol='ZQ', lastTradeDateOrContractMonth='20270129', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQF7', tradingClass='ZQ')
+ZQF7: 6 empty weeks in a row at 2025-03-15; stopping (listing date reached or no data)
+ZQF7 -> CBOT_ZQF7.parquet: 480,535 bars 2025-04-22 -> 2026-10-09
+ZQH7: 2026-10-10 done, 6,900 new bars so far
+ZQH7: 2026-08-15 done, 61,860 new bars so far
+ZQH7: 2026-06-20 done, 116,100 new bars so far
+ZQH7: 2026-04-25 done, 171,060 new bars so far
+ZQH7: 2026-02-28 done, 225,915 new bars so far
+ZQH7: 2026-01-03 done, 279,255 new bars so far
+ZQH7: 2025-11-08 done, 332,385 new bars so far
+ZQH7: 2025-09-13 done, 387,585 new bars so far
+ZQH7: 2025-07-19 done, 442,545 new bars so far
+ZQH7: 2025-05-24 done, 496,785 new bars so far
+Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfarm.nj; hfarm; jfarm; eufarm; usfuture; cashfarm; usfarm; euhmds; fundfarm; ushmds; secdefil.
+ZQH7: 2025-03-29 done, 541,486 new bars so far
+Error 162, reqId 370: Historical Market Data Service error message:HMDS query returned no data: ZQH7@CBOT Midpoint, contract: Contract(secType='FUT', conId=553809378, symbol='ZQ', lastTradeDateOrContractMonth='20270331', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQH7', tradingClass='ZQ')
+Error 162, reqId 371: Historical Market Data Service error message:HMDS query returned no data: ZQH7@CBOT Midpoint, contract: Contract(secType='FUT', conId=553809378, symbol='ZQ', lastTradeDateOrContractMonth='20270331', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQH7', tradingClass='ZQ')
+Error 162, reqId 372: Historical Market Data Service error message:HMDS query returned no data: ZQH7@CBOT Midpoint, contract: Contract(secType='FUT', conId=553809378, symbol='ZQ', lastTradeDateOrContractMonth='20270331', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQH7', tradingClass='ZQ')
+Error 162, reqId 373: Historical Market Data Service error message:HMDS query returned no data: ZQH7@CBOT Midpoint, contract: Contract(secType='FUT', conId=553809378, symbol='ZQ', lastTradeDateOrContractMonth='20270331', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQH7', tradingClass='ZQ')
+Error 162, reqId 374: Historical Market Data Service error message:HMDS query returned no data: ZQH7@CBOT Midpoint, contract: Contract(secType='FUT', conId=553809378, symbol='ZQ', lastTradeDateOrContractMonth='20270331', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQH7', tradingClass='ZQ')
+Error 162, reqId 375: Historical Market Data Service error message:HMDS query returned no data: ZQH7@CBOT Midpoint, contract: Contract(secType='FUT', conId=553809378, symbol='ZQ', lastTradeDateOrContractMonth='20270331', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQH7', tradingClass='ZQ')
+ZQH7: 6 empty weeks in a row at 2024-12-28; stopping (listing date reached or no data)
+ZQH7 -> CBOT_ZQH7.parquet: 583,986 bars 2025-02-03 -> 2026-10-09
+ZQV6: 2026-10-10 done, 6,900 new bars so far
+ZQV6: 2026-08-15 done, 61,860 new bars so far
+ZQV6: 2026-06-20 done, 116,100 new bars so far
+ZQV6: 2026-04-25 done, 171,060 new bars so far
+ZQV6: 2026-02-28 done, 225,915 new bars so far
+ZQV6: 2026-01-03 done, 279,255 new bars so far
+ZQV6: 2025-11-08 done, 332,385 new bars so far
+ZQV6: 2025-09-13 done, 387,585 new bars so far
+ZQV6: 2025-07-19 done, 442,545 new bars so far
+ZQV6: 2025-05-24 done, 496,785 new bars so far
+Error 162, reqId 454: Historical Market Data Service error message:HMDS query returned no data: ZQV6@CBOT Midpoint, contract: Contract(secType='FUT', conId=523805377, symbol='ZQ', lastTradeDateOrContractMonth='20261030', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQV6', tradingClass='ZQ')
+Error 162, reqId 455: Historical Market Data Service error message:HMDS query returned no data: ZQV6@CBOT Midpoint, contract: Contract(secType='FUT', conId=523805377, symbol='ZQ', lastTradeDateOrContractMonth='20261030', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQV6', tradingClass='ZQ')
+Error 162, reqId 456: Historical Market Data Service error message:HMDS query returned no data: ZQV6@CBOT Midpoint, contract: Contract(secType='FUT', conId=523805377, symbol='ZQ', lastTradeDateOrContractMonth='20261030', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQV6', tradingClass='ZQ')
+Error 162, reqId 457: Historical Market Data Service error message:HMDS query returned no data: ZQV6@CBOT Midpoint, contract: Contract(secType='FUT', conId=523805377, symbol='ZQ', lastTradeDateOrContractMonth='20261030', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQV6', tradingClass='ZQ')
+Error 162, reqId 458: Historical Market Data Service error message:HMDS query returned no data: ZQV6@CBOT Midpoint, contract: Contract(secType='FUT', conId=523805377, symbol='ZQ', lastTradeDateOrContractMonth='20261030', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQV6', tradingClass='ZQ')
+Error 162, reqId 459: Historical Market Data Service error message:HMDS query returned no data: ZQV6@CBOT Midpoint, contract: Contract(secType='FUT', conId=523805377, symbol='ZQ', lastTradeDateOrContractMonth='20261030', multiplier='4167', exchange='CBOT', currency='USD', localSymbol='ZQV6', tradingClass='ZQ')
+ZQV6: 6 empty weeks in a row at 2025-03-15; stopping (listing date reached or no data)
+ZQV6 -> CBOT_ZQV6.parquet: 517,044 bars 2025-04-21 -> 2026-10-09
+done
