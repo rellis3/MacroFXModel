@@ -4666,6 +4666,9 @@ ${s.risk || '  not available'}
 EQUITIES (index breadth today)
 ${s.equities || '  not available'}
 
+SETUPS ON THE WATCH REGISTER (educators' and the desk's own tested rules; LIVE = the configuration is occurring now, APPROACHING = most of the way there; the verdict after the dash is what THIS DESK found when it tested the setup -- most are null, so a live setup is a thing to describe, never a signal)
+${s.setups || '  none live or approaching'}
+
 CURRENCY STRENGTH TODAY (measured, cross-sectional fit of every pair's move)
 ${s.ccy || '  not available'}
 
@@ -4699,6 +4702,7 @@ HOW TO WRITE IT (style):
 - Land it on FX: which majors this chain is pushing, and through which leg (rates, oil, risk). Name pairs. No entries, stops, sizes or products, ever. No calls to action.
 - Never name a central-bank official; use the role. Never present positioning (COT, retail book) as a forecast.
 - If the snapshot is thin -- most links quiet, few numbers -- say the chain is quiet today and keep it short. A quiet day is a valid read.
+- SETUPS: if a register setup is LIVE, name it in one clause with its verdict ("the crowded-and-rising dispersion setup is on; tested here: a wider month, no direction"). Never promote a null setup into a story. An APPROACHING setup is at most a half-sentence.
 - EVIDENCE FIRST. Where a TESTED ON THIS DESK line applies to what you are writing, use it and say so in four words ("tested here: null", "measured here: +0.4 ATR"). Never assert a relationship that line marks TESTED NULL as if it held; if you must mention it, say it tested null here. A VALIDATED line is about RANGE -- never turn it into a direction.
 
 Respond with a single valid JSON object, no markdown, no text outside it:
@@ -16172,6 +16176,7 @@ async function _computeWider() {
     breadth: state.breadth ?? null,
     tiles: {
       concentration: pick('eqwt'), smallVsBig: pick('breadth'), dispersion: pick('dspx'),
+      bondVol: pick('move'), impliedCorr: pick('cor1m'),   // 2026-10-20: MOVE and COR1M reach today.html's card and the chain-read snapshot
       vixTerm: pick('vixterm'), spx: pick('spx'), nq: pick('nq'), r2k: pick('r2k'),
     },
     sectors: { leader: secs[0] ?? null, laggard: secs[secs.length - 1] ?? null, up: secs.filter(s => s.change > 0).length, total: secs.length },

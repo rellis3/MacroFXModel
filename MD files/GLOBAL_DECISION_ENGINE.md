@@ -410,3 +410,12 @@ combined-range.
 range view uses the chosen lines (persistence + implied vol, the Daily Plan's) instead of the plain ladder, and no
 longer multiplies IV÷σ, the VIX-curve / breadth / NQ-week flags or the NQ gamma sign on top: they did not add beyond
 those lines (`forge/ONE_RANGE_FORECAST_PREREG.md` results). Score R1/R2 separately before and after this date.
+
+**2026-10-20 — candidate input logged, NOT wired (pre-results amendment to the range arm).** The watch register
+(`js/claimWatch.js`) now carries `watch-iv-over-rv` — `iv-over-rv-wider`, VALIDATED for range (NAS100 next-20 +0.56
+ATR, SPX500 +0.67 [+0.13, +1.21]) — as a live gauged trigger. It is the one validated range input the engine does not
+read. It is **not** added as a flag, because the 2026-10-18 change above removed flag multipliers from the range arm
+altogether (`forge/ONE_RANGE_FORECAST_PREREG.md`: the VIX-curve / breadth / NQ-week flags did not add beyond the
+chosen lines), and a new multiplier would reopen that result. The honest route is the same one the other flags took:
+score it inside the next one-range re-fit as a candidate term, on the forward record from this date, and wire it
+only if it adds there. Until then the Desk watch panel and the chain read carry it as context.

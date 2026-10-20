@@ -1267,7 +1267,10 @@
   @media (max-width:760px){.tl{grid-template-columns:1fr 1fr}.tl-col.now{grid-column:1/3}}
   .dw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;margin-bottom:8px}
   .dw-r{border:1px solid var(--border);border-left:3px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--card2);display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:baseline;cursor:help}
-  .dw-r.tested{border-left-color:var(--bull)} .dw-r.described{border-left-color:var(--amber)}
+  .dw-r.tested{border-left-color:var(--bull)} .dw-r.described{border-left-color:var(--amber)} .dw-r.claim{border-left-color:var(--blue,#4f7df0)}
+  .dw-pill{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;padding:1px 6px;border-radius:4px;background:var(--card);color:var(--text3);margin-left:6px}
+  .dw-pill.null{color:var(--text2)} .dw-pill.validated{color:var(--bull)} .dw-pill.context{color:var(--amber)}
+  .dw-near{font-size:12px;line-height:1.6;color:var(--text2);margin-top:6px} .dw-near b{color:var(--text)}
   .dw-k{font-size:11px} .dw-l{font-size:12.5px;font-weight:700} .dw-since{font-size:10.5px} .dw-ins{grid-column:2/4;font-size:10.5px}
   .dw-d{grid-column:1/4;font-size:11.5px;color:var(--text2);line-height:1.5;margin-top:2px}
   .dw-x{grid-column:1/4;font-size:11.5px;line-height:1.5;margin-top:3px;padding:4px 8px;border-radius:5px;background:var(--bg3)}
@@ -3928,7 +3931,19 @@ function assembleChainSnapshot() {
     risk.credit ? `  Credit: HY ${risk.credit.hyBps}bp, ${risk.credit.widening > 0 ? 'widening' : risk.credit.widening < 0 ? 'tightening' : 'steady'}${risk.credit.d5 != null ? ` (${fmt(risk.credit.d5)}bp/wk)` : ''}` : null,
     risk.liquidity ? `  Central-bank liquidity: ${risk.liquidity.direction === 'LONG' ? 'expanding' : risk.liquidity.direction === 'SHORT' ? 'contracting' : 'mixed'} (${risk.liquidity.agree}/${risk.liquidity.total} banks agree)` : null,
     cr ? `  Cross-asset correlation: ${cr.state} (mean |rho| ${cr.mean.toFixed(2)})` : null,
+    (() => { const t = _wider?.tiles ?? {}; const p = []; if (t.bondVol?.last != null) p.push(`bond vol (MOVE) ${Number(t.bondVol.last).toFixed(0)}, z ${t.bondVol.z >= 0 ? '+' : ''}${t.bondVol.z}`); if (t.impliedCorr?.last != null) p.push(`one-month implied correlation ${Number(t.impliedCorr.last).toFixed(1)}, z ${t.impliedCorr.z >= 0 ? '+' : ''}${t.impliedCorr.z} (low = shares priced to move on their own stories)`); if (t.dispersion?.last != null) p.push(`dispersion ${Number(t.dispersion.last).toFixed(1)}, z ${t.dispersion.z >= 0 ? '+' : ''}${t.dispersion.z}`); return p.length ? `  Vol structure (daily closes): ${p.join('; ')}` : null; })(),
   ].filter(Boolean).join('\n') : null;
+  // the watch register: setups LIVE or APPROACHING right now, each with this desk's verdict -- so the read can say
+  // "this setup is on; tested here: ..." instead of only knowing the verdicts in the abstract
+  const setups = (() => {
+    const w = deskWatch; if (!w?.states) return null;
+    const strip = s => String(s ?? '').replace(/^Setup watch · /, '');
+    const verdict = d => { const m = /This desk: ([^.]*\.)/.exec(d ?? ''); return m ? m[1] : ''; };
+    const live = w.states.filter(t => t.claimId && t.firing).map(t => `  LIVE: ${strip(t.label)} -- ${verdict(t.detail)}`);
+    const near = [...w.states.filter(t => t.claimId && !t.firing && t.stage === 'approaching'), ...((w.gauges ?? []).filter(g => !g.firing && g.stage === 'approaching'))]
+      .map(t => `  APPROACHING (${Math.round((t.value?.progress ?? 0) * 100)}% of the way): ${strip(t.label)} -- ${verdict(t.detail)}`);
+    return [...live, ...near].join('\n') || null;
+  })();
   const equities = risk?.chips?.length ? `  ${risk.up} of ${risk.chips.length} indices bid today: ${risk.chips.map(c => `${c.name} ${c.dir === 'up' ? 'up' : c.dir === 'down' ? 'down' : 'flat'}`).join(', ')} -> ${risk.tone ?? ''}` : null;
   const csr = currencyStrengthMeasured(rs);
   const ccy = csr?.scores?.length ? `  ${csr.scores.map(x => `${x.ccy} ${x.score >= 0 ? '+' : ''}${x.score}`).join(' · ')} (in a typical currency's day range; lead-currency share ${csr.conc ?? '?'}${csr.conc != null && csr.conc < 0.3 ? ' -- no single currency theme today' : ''})` : null;
@@ -3947,7 +3962,7 @@ function assembleChainSnapshot() {
     .map(e => { const h = Math.round((e.ts - now) / 3600_000); return `  ${e.country} ${e.event}${e.estimate != null ? ` (consensus ${e.estimate})` : ''} -- ${h < 0 ? `${-h}h ago` : h === 0 ? 'now' : `in ${h}h`}`; })
     .join('\n') || null;
   const evidence = window.deskEvidenceBrick ? window.deskEvidenceBrick.evidenceForPrompt() : null;
-  return { asOf: new Date().toISOString(), moved: moved || null, chain: chain || null, ratesSplit, policy, assets: assets || null, risk: riskLines, equities, ccy, divergences, caveats, events: evs, evidence };
+  return { asOf: new Date().toISOString(), moved: moved || null, chain: chain || null, ratesSplit, policy, assets: assets || null, risk: riskLines, equities, setups, ccy, divergences, caveats, events: evs, evidence };
 }
 async function peekChainRead() {
   try {
@@ -6930,16 +6945,26 @@ function renderDeskWatch() {
   const w = deskWatch; if (!w?.states?.length) { el.style.display = 'none'; return; }
   const firing = w.states.filter(t => t.firing);
   const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `${m}m` : m < 48 * 60 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
-  const glyph = k => k === 'tested' ? _EV('v', _EV_T.v) : _EV('c', _EV_T.c);
-  const row = t => `<div class="dw-r ${t.kind}" title="${esc0(t.detail)}"><span class="dw-k">${glyph(t.kind)}</span><span class="dw-l">${esc0(t.label)}</span><span class="dw-since muted">since ${t.since ? ago(t.since) : '?'}</span>${t.instruments?.length ? `<span class="dw-ins muted">${t.instruments.map(dispName).join(' · ')}</span>` : ''}<div class="dw-d">${esc0(t.detail.split('\n')[0])}</div>${t.expect?.length ? `<div class="dw-x">${t.expect.map(e => `<b>${dispName(e.inst)}</b> next ${e.window === 1 ? 'session' : `${e.window} sessions`}: ~${e.after}${e.unit} <span class="muted">vs ~${e.base}${e.unit} ordinary · ATR ${e.atr}${e.unit}</span>`).join(' · ')} <span class="muted">— range either way, history not a promise</span></div>` : ''}</div>`;
+  // ◌ a register setup (js/claimWatch.js): an educator's or the desk's own tested rule, LIVE. The verdict is in
+  // the detail ("This desk: TESTED NULL ..."); a null setup firing is the configuration occurring, not the finding
+  // confirming -- so the pill says the verdict word on the row rather than leaving it to the tooltip.
+  const glyph = k => k === 'tested' ? _EV('v', _EV_T.v) : k === 'claim' ? `<i class="ev c" title="a setup from the watch register, tested on this desk — the verdict travels with it">◌</i>` : _EV('c', _EV_T.c);
+  const verdictWord = t => { const m = /This desk: (TESTED NULL|FALSIFIED IN SIGN|VALIDATED|NULL|CONTEXT|UNTESTABLE)/i.exec(t.detail ?? ''); return m ? m[1].toUpperCase() : null; };
+  const pill = t => { if (t.kind !== 'claim') return ''; const w = verdictWord(t); if (!w) return ''; const cls = /VALID/.test(w) ? 'validated' : /CONTEXT|UNTEST/.test(w) ? 'context' : 'null'; return `<span class="dw-pill ${cls}">setup live · ${esc0(w.toLowerCase())}</span>`; };
+  // 'approaching': register rows most of the way to their threshold (states with a stage) and the gauges on
+  // existing triggers -- the one thing the binary watch could not say, shown quietly, never as a row
+  const near = [...w.states.filter(t => !t.firing && t.stage === 'approaching'), ...((w.gauges ?? []).filter(g => !g.firing && g.stage === 'approaching'))]
+    .map(t => `<b>${esc0(String(t.label).replace(/^Setup watch · /, ''))}</b> <span class="muted">${Math.round((t.value?.progress ?? 0) * 100)}%</span>`);
+  const row = t => `<div class="dw-r ${t.kind}" title="${esc0(t.detail)}"><span class="dw-k">${glyph(t.kind)}</span><span class="dw-l">${esc0(String(t.label).replace(/^Setup watch · /, ''))}${pill(t)}</span><span class="dw-since muted">since ${t.since ? ago(t.since) : '?'}</span>${t.instruments?.length ? `<span class="dw-ins muted">${t.instruments.map(dispName).join(' · ')}</span>` : ''}<div class="dw-d">${esc0(t.detail.split('\n')[0])}</div>${t.expect?.length ? `<div class="dw-x">${t.expect.map(e => `<b>${dispName(e.inst)}</b> next ${e.window === 1 ? 'session' : `${e.window} sessions`}: ~${e.after}${e.unit} <span class="muted">vs ~${e.base}${e.unit} ordinary · ATR ${e.atr}${e.unit}</span>`).join(' · ')} <span class="muted">— range either way, history not a promise</span></div>` : ''}</div>`;
   const log = (w.log ?? []).slice(0, 6).map(f => `<div class="dw-log ${f.event}"><span class="muted">${new Date(f.at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span> ${f.event === 'started' ? '▲' : '▽'} ${esc0(f.label)}${f.after5 ? ` <span class="muted">→ next 5 sessions ran ${f.after5.map(a => `${dispName(a.inst)} ${a.range5} ATR`).join(', ')}</span>` : ''}</div>`).join('');
   el.style.display = 'block';
   el.innerHTML = `
     <div class="sec-hd-row"><span class="sec-title">👁 Desk watch — ${firing.length ? `${firing.length} condition${firing.length === 1 ? '' : 's'} firing` : 'nothing firing'} <span style="font-weight:400;letter-spacing:0;text-transform:none">· checked every 15 min, Telegram on change · <a href="evidence.html" target="_blank">the evidence book →</a></span></span>${secChev('deskWatch')}</div>
     ${secBody('deskWatch', `
       ${firing.length ? `<div class="dw-grid">${firing.map(row).join('')}</div>` : '<div class="muted" style="font-size:12px">No tested or described condition is firing. The rows below are the measured chain; the watch speaks when one of them changes state.</div>'}
+      ${near.length ? `<div class="dw-near">⏳ <b>Approaching</b> — ${near.join(' · ')}. <span class="muted">Setups most of the way to their tested threshold; the watch says so once when they cross.</span></div>` : ''}
       ${log ? `<div class="dw-h">Last transitions</div>${log}` : ''}
-      <div class="mread-precise" style="margin-top:8px">✓ a finding from the evidence book: pre-registered, tested on this desk's data, about RANGE and never direction. ~ a described state: what changed, not what follows. Each fire is scored five sessions later with the realised range so the book keeps its own forward record.</div>`)}`;
+      <div class="mread-precise" style="margin-top:8px">✓ a finding from the evidence book: pre-registered, tested on this desk's data, about RANGE and never direction. ~ a described state: what changed, not what follows. ◌ a setup from the watch register — an educator's or the desk's own rule, live now; most are tested null, and the pill says so: the configuration is occurring, the claim is not confirming. Each fire is scored forward so the book keeps its own record. <a href="evidence.html?filter=watched" target="_blank">every watched setup →</a></div>`)}`;
 }
 // ── 🧭 Global Read: every engine on this page, combined by its evidence ──────
 // Server-side synthesis (js/globalReadCore.js via /api/global-read, every 15 min).
@@ -9834,6 +9859,14 @@ function renderWiderMarket() {
     ? `<div class="wm-r"><span class="k">unusual</span>${w.rare.map(r => `<b>${esc0(r.label)}</b> ${num(r.change)} (z ${num(r.z)})`).join(' · ')}</div>`
     : `<div class="wm-r"><span class="k">unusual</span><span class="muted">nothing on the 63-market board is beyond its own normal range. That is the correct read most days, and it is worth saying: a quiet board is when stories get invented.</span></div>`;
 
+  // Bond vol and implied correlation (2026-10-20): the two series the clip audits found the desk not pulling.
+  // Both are context. Implied correlation is dispersion read from the other side (never counted twice).
+  const vs = [
+    t.bondVol ? `bond vol (MOVE) <b>${t.bondVol.last != null ? Number(t.bondVol.last).toFixed(0) : '—'}</b> (z ${num(t.bondVol.z)})${t.bondVol.last >= 140 ? ' — the 2020/2022/2023 stress register' : ''}` : null,
+    t.impliedCorr ? `one-month implied correlation <b>${t.impliedCorr.last != null ? Number(t.impliedCorr.last).toFixed(1) : '—'}</b> (z ${num(t.impliedCorr.z)})${t.impliedCorr.z <= -1.5 ? ' — low: the shares are priced to move on their own stories' : t.impliedCorr.z >= 1.5 ? ' — high: everything is moving together' : ''}` : null,
+    t.dispersion ? `dispersion <b>${t.dispersion.last != null ? Number(t.dispersion.last).toFixed(1) : '—'}</b> (z ${num(t.dispersion.z)})` : null,
+  ].filter(Boolean);
+  const volStruct = vs.length ? `<div class="wm-r"><span class="k">vol structure</span>${vs.join(' · ')}. <span class="muted">Context. Tested here: crowded-and-rising dispersion ran a wider MONTH (range only); the week claim and every direction claim are null.</span></div>` : '';
   const broke = (w.brokenLinks ?? []).length
     ? `<div class="wm-r"><span class="k">apart</span>${w.brokenLinks.map(l => `<b>${esc0(l.labelA)} → ${esc0(l.labelB)}</b>`).join(' · ')} — moving against the textbook. <span class="muted">Tested here: a broken link shows no tendency to resolve either way.</span></div>` : '';
 
@@ -9843,7 +9876,7 @@ function renderWiderMarket() {
   el.style.display = 'block';
   el.innerHTML = `<div class="mread-h">The wider market — equities, sectors, concentration</div>
     <div class="wm-state"><b>${esc0(w.state.name)}</b>${w.state.met ? ` <span class="muted">(${w.state.met.met} of ${w.state.met.total} conditions)</span>` : ''} — ${esc0(w.state.line)}</div>
-    ${sect}${conc}${rare}${broke}
+    ${sect}${conc}${volStruct}${rare}${broke}
     <div class="wm-foot">Daily closes to ${esc0(w.to ?? '—')}${stale} — this is the slow half of the picture and it changes about twice a week, which is why it is a block here rather than a page you have to remember to open.
       <a href="market-view.html" target="_blank">the full 63-market board ↗</a>
       <a href="chapters.html" target="_blank" style="margin-left:10px">the chapters — one complex at a time, with its verdicts ↗</a></div>`;
