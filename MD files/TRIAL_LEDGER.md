@@ -4,20 +4,20 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-10-20.
+Generated 2026-10-21.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **157** |
+| claims tested (validated + null + underpowered) | **158** |
 | validated | 33 |
 | null | 111 |
-| underpowered | 13 |
+| underpowered | 14 |
 | context (base rates, descriptions: not counted as tests) | 34 |
-| pre-registrations with no banked verdict (below) | 42 |
+| pre-registrations with no banked verdict (below) | 41 |
 
-**What the count says (Lesson 02 §05).** If none of the 157 claims were real, tests at the usual 5% size would still pass
+**What the count says (Lesson 02 §05).** If none of the 158 claims were real, tests at the usual 5% size would still pass
 about **7.9** of them by luck. 33 passed, so most passes are unlikely to be luck alone, but
 **roughly 8 of the 33 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
@@ -106,7 +106,6 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-23 | mv-extreme-forward | price | null | MD files/OUTCOME_LOOP.md |
 | 2026-09-23 | mv-vixterm-range | volatility | validated | MD files/OUTCOME_LOOP.md |
 | 2026-09-23 | wall-placebo | positioning | null | oi_research_book/WALL_PLACEBO_PREREG.md |
-| 2026-09-24 | gex-range | positioning | validated | oi_research_book/GEX_RANGE_BROWNIAN_RESULTS.md |
 | 2026-09-25 | dr-copper | macro | null | MD files/DR_COPPER_PREREG.md |
 | 2026-09-25 | driver-roundtrip | price | null | MD files/ROUNDTRIP_PREREG.md |
 | 2026-09-25 | rates-pivot-lead | macro | null | MD files/RATES_PIVOT_LEAD_PREREG.md |
@@ -214,6 +213,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-20 | yen-funding-squeeze-usdjpy | volatility | underpowered | forge/YEN_FUNDING_SQUEEZE_PREREG.md |
 | 2026-10-21 | fx-dollar-funding-exposure-follow | macro | null | forge/FX_DOLLAR_FUNDING_EXPOSURE_PREREG.md |
 | 2026-10-21 | fx-dollar-funding-exposure-hit | macro | null | forge/FX_DOLLAR_FUNDING_EXPOSURE_PREREG.md |
+| 2026-10-21 | gex-range | positioning | underpowered | oi_research_book/GEX_RANGE_BROWNIAN_RESULTS.md |
+| 2026-10-21 | gex-range-es | positioning | validated | oi_research_book/GEX_RANGE_ES_PREREG.md |
 | 2026-10-21 | rates-vol-gap-move | volatility | null | forge/RATES_VOL_GAP_PREREG.md |
 | 2026-10-21 | rates-vol-gap-state | volatility | underpowered | forge/RATES_VOL_GAP_PREREG.md |
 | 2026-10-21 | tff-basis-rates-vol-build | volatility | underpowered | forge/TFF_BASIS_RATES_VOL_PREREG.md |
@@ -262,6 +263,5 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VF3_STAGE_C_PREREG.md`: Vol Forecast V3, Stage C: registered experiments (2026-10-10, before any Stage C outcome is computed)
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
-- `oi_research_book/GEX_RANGE_ES_PREREG.md`: gex-range-es — does the NQ gamma-range effect (G2) replicate on ES, once the timing and the bars are honest?
 - `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
 - `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot

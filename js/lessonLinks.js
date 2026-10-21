@@ -24,8 +24,8 @@ export const LESSON_LINKS = {
   // OI card GEX stat: negative net GEX ("Amplifying") — dealers short gamma.
   gexNegative: {
     href: '/theory-lab/lessons/gamma-exposure-dealer-hedging.html#story-1',
-    label: 'Why short dealer gamma amplifies moves',
-    evidence: 'gex-range',
+    label: 'What dealer gamma does (and does not) say about range',
+    evidence: 'gex-range-es',
   },
   // OI card IV reads: front-expiry IV above back-expiry IV ("IV term … inverted").
   ivTermInverted: {

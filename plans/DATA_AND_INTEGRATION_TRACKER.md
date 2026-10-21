@@ -30,7 +30,7 @@ from getting lost between sessions.
 | 5 | One intraday read: hourly re-forecast, line-touch reach, extreme-in, level reach and time, tape speed, first-hour fraction, plus the two passed-but-unused (fast-start rest-of-day, reversal hour) | Spread over four pages; two survivors used nowhere | existing | Claude | Not started |
 | 6 | Feed the new calendar into the surprise index | "6 of 8 currencies have no recent prints": the new file covers all countries with consensus | `calendar_events_nasdaq.csv` | Claude | Not started |
 | 7 | Second copy of the irreplaceable KV archives (`oi_raw_*`, `cboe_raw_*`) to R2 | KV is the only copy of data that cannot be re-bought | — | Claude | Not started |
-| 8 | ES range test (G2 on ES) | G2 is real on NQ only | ES OI history: Databento (cost-check first, §3) or wait for our own capture | Claude after §3 | Blocked on data/cost decision |
+| 8 | ES range test (G2 on ES) | G2 is real on NQ only | ES OI history: Databento (cost-check first, §3) or wait for our own capture | Claude after §3 | **Done 2026-10-21**: pulled (`OI Data/SPX500_USD.csv`, ~$32) and tested as `gex-range-es`: VALIDATED on ES (vm +0.377), ~half of it recent market falls; NQ re-run banked underpowered (placebo design). `oi_research_book/GEX_RANGE_ES_RESULTS.md` |
 | 9 | Add C.OG's two posted ES trades to `cog-replication/FORWARD_LOG.md`; send him the open questions (`.claude/skills/cog-knowledge/references/open-questions.md`, 2026-10-18 entry) | Score him on calls made in advance, not hindsight circles | — | Claude (log) / **Owner** (ask him) | Not started |
 
 ## 3. Needs the owner (cannot be done from a cloud session)
@@ -58,6 +58,7 @@ from getting lost between sessions.
   `calendar_events.csv` are dropped by the loader, not deleted from the file (faults-log #11).
 - 2026-10-18: Databento stays pay-per-use; no pull without a cost quote first.
 - 2026-10-20: ES OI quote run (free): ~$32 for 6 years like-for-like with the NQ data. Pull not started.
+- 2026-10-21: ES pull done (four attempts, Databento 504s; 2024/2026 fetched in quarters). gex-range-es banked.
 
 ## 6. Mechanism tests (2026-10-19, our reasoning, not C.OG's rules)
 

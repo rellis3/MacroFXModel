@@ -37,7 +37,7 @@
       <li>What you <strong>give up</strong>: everything above the strike. What you <strong>keep</strong>: the whole downside, cushioned only by the premium. "Conservative" means "slightly less bad than owning the stock outright", by the size of the premium.</li>
       <li>The interactive chart overlays the two P&amp;L lines: drag strike and premium and they never separate.</li>
       <li><strong>The open-interest angle:</strong> covered-call overwriting is one of the largest systematic option flows, and it lands in <em>call</em> open interest from a <em>seller</em> with capped upside. Open interest never records who opened a contract, so call-heavy OI is not evidence of bulls, and put-heavy OI is not evidence of bears (a sold put is bullish).</li>
-      <li>The textbook chain says the fund's sold calls leave dealers long gamma near the strike, and that their hedging damps moves.<!-- DESK:START --> The desk tested the gamma part: the <strong>range</strong> half is real on the Nasdaq only; the <strong>direction</strong> half is falsified. Max-pain pinning came back <strong>null</strong>, and the desk keeps no entry on covered calls themselves.<!-- DESK:END --></li>
+      <li>The textbook chain says the fund's sold calls leave dealers long gamma near the strike, and that their hedging damps moves.<!-- DESK:START --> The desk tested the gamma part: the <strong>range</strong> half is real on the Nasdaq and the S&amp;P (about half of it is recent market falls); the <strong>direction</strong> half is falsified. Max-pain pinning came back <strong>null</strong>, and the desk keeps no entry on covered calls themselves.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -462,9 +462,9 @@
     has tested the gamma part of it<!-- DESK:END -->.
   </p>
   <!-- DESK:START -->
-  <div class="tl-verdict validated" data-evidence="gex-range" data-evidence-date="2026-09-24">
+  <div class="tl-verdict validated" data-evidence="gex-range-es" data-evidence-date="2026-10-21">
     <span class="tl-verdict-tag">Desk test: held up (range only)</span>
-    <span><strong>Tested here (gex-range):</strong> the <strong>range</strong> half is real <strong>on the Nasdaq only</strong>. 793 days of NQ: next-day realised range against a same-trailing-vol Brownian baseline is +0.176 higher on short-gamma days (p 0.0008), +0.315 matched on trailing vol; positive in 4 of 4 specifications and 6 of 6 usable years. The reliable state is "long gamma is quiet" (range ratio ~0.85 versus ~1.02 on short-gamma days). It does <strong>not</strong> generalise to FX.</span>
+    <span><strong>Range, on the Nasdaq and the S&amp;P; never direction.</strong> Re-tested 2026-10-21 with open interest counted only once it is published: on 770 sessions each of NQ and ES futures, next-day range against a same-trailing-vol random-walk baseline was <strong>+0.29 (NQ) and +0.38 (ES) higher on short-gamma days</strong>, matched on trailing vol. About half of that is not gamma: short-gamma days follow market falls, and falls widen ranges on their own. With recent returns controlled, <strong>about +0.15 remains</strong> on both. Long gamma is the quiet side (about 0.89&ndash;0.93 of a random walk). It does not carry to FX.</span>
   </div>
   <!-- DESK:END -->
   <!-- DESK:START -->
@@ -564,7 +564,7 @@
       and states that open interest cannot establish direction. The ratio comes
       from pure open interest (no trade side), so overwriting flow is
       indistinguishable from call buying in this data. Gamma verdicts are in
-      <code>js/deskEvidence.js</code> (<code>gex-range</code>,
+      <code>js/deskEvidence.js</code> (<code>gex-range</code>, <code>gex-range-es</code>,
       <code>oi-max-pain</code>).
     </p>
   </div>
@@ -618,7 +618,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Open interest never records who opened the contract.</strong> A sold put is bullish; a sold call against stock is capped. Call-heavy open interest is not a crowd of bulls.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The equivalence is exact only at expiry, same strike, European, no dividends.</strong> Dividends, financing, taxes and early assignment separate them a little in practice.</span></div>
     <!-- DESK:START -->
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">◆</span><span><strong>Gamma's range effect is real on the Nasdaq only.</strong> Long gamma is the quiet state (range ratio ~0.85); it does not carry to FX. Overwriting itself is untested here.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">◆</span><span><strong>Gamma's range effect is real on the Nasdaq and the S&amp;P.</strong> Long gamma is the quiet state (range ratio ~0.85); it does not carry to FX. Overwriting itself is untested here.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Gamma direction is falsified.</strong> Wall-magnet direction scored 48.8% out-of-sample against a 49.9% placebo. Never read a call wall or a gamma sign as a direction.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Max-pain pinning: null.</strong> Tested 2026-09-10, no effect found, though the entry records no sample size, so it is a weak null. Max pain is a level to know, not a magnet.</span></div>
     <!-- DESK:END -->
@@ -674,7 +674,7 @@
       The fund sells calls; a dealer buys them and is long gamma; to stay
       delta-neutral the dealer sells into rallies and buys dips near the
       strike, leaning against moves. Tested on gamma generally (not on
-      overwriting itself): the range half holds on the Nasdaq only, with long
+      overwriting itself): the range half holds on the Nasdaq and the S&amp;P, with long
       gamma the quiet state (range ratio ~0.85), and does not carry to FX.
       The directional half is falsified: wall-magnet direction scored 48.8%
       out-of-sample against a 49.9% placebo. So "quieter" is supported on
