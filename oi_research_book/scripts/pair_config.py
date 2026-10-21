@@ -23,6 +23,8 @@ PAIR_CONFIG = {
     "USD_CHF":    {"label": "USD/CHF",    "contract_mult": 125_000, "inverted": True,  "pip_size": 0.0001, "price_file": "usdchf"},
     "USD_JPY":    {"label": "USD/JPY",    "contract_mult": 125_000, "inverted": True,  "pip_size": 0.01,   "price_file": "usdjpy"},
     "NAS100_USD": {"label": "NAS100_USD", "contract_mult": 20,      "inverted": False, "pip_size": 1.0,    "price_file": "nas100"},
+    # ES options: $50 x index (CME E-mini S&P 500). Added 2026-10-20 for gex-range-es.
+    "SPX500_USD": {"label": "SPX500_USD", "contract_mult": 50,      "inverted": False, "pip_size": 1.0,    "price_file": "spx500"},
 }
 
 

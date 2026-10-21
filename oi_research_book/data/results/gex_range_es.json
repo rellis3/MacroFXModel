@@ -1,0 +1,329 @@
+{
+  "seed": 20261020,
+  "prereg": "oi_research_book/GEX_RANGE_ES_PREREG.md",
+  "window_start": "2020-11-03",
+  "lockbox_end": "2026-08-21",
+  "instruments": {
+    "ES": {
+      "counts": {
+        "near": {
+          "raw_rows": 772,
+          "oi_date_not_a_session": 0,
+          "target_past_end": 2,
+          "dropped_nonfinite": 0,
+          "used": 770
+        },
+        "all": {
+          "raw_rows": 1464,
+          "oi_date_not_a_session": 0,
+          "target_past_end": 2,
+          "dropped_nonfinite": 0,
+          "used": 1462
+        }
+      },
+      "cells": {
+        "near/rv20": {
+          "n": 770,
+          "n_short": 199,
+          "n_long": 571,
+          "dDR_raw": 0.20834,
+          "DR_short": 1.13649,
+          "DR_long": 0.92815,
+          "dDR_vm": 0.37671,
+          "p_vm": 0.0,
+          "se_vm": 0.0711,
+          "ci95_vm": [
+            0.23735,
+            0.51608
+          ],
+          "DR_long_vs1_p": 0.0258,
+          "p_vm_holm": 0.0
+        },
+        "near/atr14": {
+          "n": 770,
+          "n_short": 199,
+          "n_long": 571,
+          "dDR_raw": 0.13709,
+          "DR_short": 1.1261,
+          "DR_long": 0.98901,
+          "dDR_vm": 0.24995
+        },
+        "all/rv20": {
+          "n": 1462,
+          "n_short": 484,
+          "n_long": 978,
+          "dDR_raw": 0.1421,
+          "DR_short": 1.10047,
+          "DR_long": 0.95837,
+          "dDR_vm": 0.34144
+        },
+        "all/atr14": {
+          "n": 1462,
+          "n_short": 484,
+          "n_long": 978,
+          "dDR_raw": 0.10119,
+          "DR_short": 1.09718,
+          "DR_long": 0.99599,
+          "dDR_vm": 0.23518
+        }
+      },
+      "ladder": {
+        "a": {
+          "n": 771,
+          "n_short": 204,
+          "n_long": 567,
+          "dDR_raw": 0.14741,
+          "DR_short": 1.04276,
+          "DR_long": 0.89535,
+          "dDR_vm": 0.31274,
+          "counts": {
+            "raw_rows": 772,
+            "dropped_nonfinite": 1,
+            "used": 771
+          }
+        },
+        "b": {
+          "n": 771,
+          "n_short": 199,
+          "n_long": 572,
+          "dDR_raw": 0.25216,
+          "DR_short": 1.17418,
+          "DR_long": 0.92202,
+          "dDR_vm": 0.43795,
+          "counts": {
+            "raw_rows": 772,
+            "oi_date_not_a_session": 0,
+            "target_past_end": 1,
+            "dropped_nonfinite": 0,
+            "used": 771
+          }
+        },
+        "c": {
+          "n": 770,
+          "n_short": 199,
+          "n_long": 571,
+          "dDR_raw": 0.20834,
+          "DR_short": 1.13649,
+          "DR_long": 0.92815,
+          "dDR_vm": 0.37671,
+          "counts": {
+            "raw_rows": 772,
+            "oi_date_not_a_session": 0,
+            "target_past_end": 2,
+            "dropped_nonfinite": 0,
+            "used": 770
+          }
+        }
+      },
+      "halves": {
+        "first": {
+          "n": 385,
+          "n_short": 133,
+          "n_long": 252,
+          "dDR_raw": 0.1039,
+          "DR_short": 1.08629,
+          "DR_long": 0.98238,
+          "dDR_vm": 0.26976
+        },
+        "second": {
+          "n": 385,
+          "n_short": 66,
+          "n_long": 319,
+          "dDR_raw": 0.35236,
+          "DR_short": 1.23766,
+          "DR_long": 0.88531,
+          "dDR_vm": 0.4295
+        },
+        "split_date": "2023-08-31"
+      },
+      "harness": {
+        "placebo_shift125_dDR_vm": -0.00611,
+        "placebo_pass": true,
+        "placebo_shift125_dDR_raw": -0.04528,
+        "injection_0.15_recovered": 0.15,
+        "injection_pass": true,
+        "descriptive_all_shifts": {
+          "n_shifts": 130,
+          "vm_mean": -0.00896,
+          "vm_sd": 0.07193,
+          "vm_real_pctile": 1.0,
+          "raw_mean": -0.00162,
+          "raw_sd": 0.06888,
+          "raw_real_pctile": 1.0,
+          "vm_minus_placebo_mean": 0.38567,
+          "raw_minus_placebo_mean": 0.20997
+        },
+        "no_lookahead_pass": true
+      },
+      "verdict": "VALIDATED",
+      "gate_parts": {
+        "dDR_vm>=0.05": true,
+        "holm_p<0.05": true,
+        "4/4_signs": true,
+        "harness_believed": true,
+        "powered": true
+      }
+    },
+    "NQ": {
+      "counts": {
+        "near": {
+          "raw_rows": 772,
+          "oi_date_not_a_session": 0,
+          "target_past_end": 2,
+          "dropped_nonfinite": 0,
+          "used": 770
+        },
+        "all": {
+          "raw_rows": 1464,
+          "oi_date_not_a_session": 0,
+          "target_past_end": 2,
+          "dropped_nonfinite": 0,
+          "used": 1462
+        }
+      },
+      "cells": {
+        "near/rv20": {
+          "n": 770,
+          "n_short": 230,
+          "n_long": 540,
+          "dDR_raw": 0.18503,
+          "DR_short": 1.07774,
+          "DR_long": 0.89271,
+          "dDR_vm": 0.28799,
+          "p_vm": 0.0,
+          "se_vm": 0.05705,
+          "ci95_vm": [
+            0.17617,
+            0.3998
+          ],
+          "DR_long_vs1_p": 0.0001,
+          "p_vm_holm": 0.0
+        },
+        "near/atr14": {
+          "n": 770,
+          "n_short": 230,
+          "n_long": 540,
+          "dDR_raw": 0.08955,
+          "DR_short": 1.0693,
+          "DR_long": 0.97976,
+          "dDR_vm": 0.14642
+        },
+        "all/rv20": {
+          "n": 1462,
+          "n_short": 504,
+          "n_long": 958,
+          "dDR_raw": 0.09669,
+          "DR_short": 1.04752,
+          "DR_long": 0.95083,
+          "dDR_vm": 0.21727
+        },
+        "all/atr14": {
+          "n": 1462,
+          "n_short": 504,
+          "n_long": 958,
+          "dDR_raw": 0.0544,
+          "DR_short": 1.05956,
+          "DR_long": 1.00516,
+          "dDR_vm": 0.12933
+        }
+      },
+      "ladder": {
+        "a": {
+          "n": 772,
+          "n_short": 232,
+          "n_long": 540,
+          "dDR_raw": 0.18796,
+          "DR_short": 1.03496,
+          "DR_long": 0.847,
+          "dDR_vm": 0.32089,
+          "counts": {
+            "raw_rows": 783,
+            "dropped_nonfinite": 0,
+            "used": 772
+          }
+        },
+        "b": {
+          "n": 771,
+          "n_short": 230,
+          "n_long": 541,
+          "dDR_raw": 0.21638,
+          "DR_short": 1.11064,
+          "DR_long": 0.89426,
+          "dDR_vm": 0.36054,
+          "counts": {
+            "raw_rows": 772,
+            "oi_date_not_a_session": 0,
+            "target_past_end": 1,
+            "dropped_nonfinite": 0,
+            "used": 771
+          }
+        },
+        "c": {
+          "n": 770,
+          "n_short": 230,
+          "n_long": 540,
+          "dDR_raw": 0.18503,
+          "DR_short": 1.07774,
+          "DR_long": 0.89271,
+          "dDR_vm": 0.28799,
+          "counts": {
+            "raw_rows": 772,
+            "oi_date_not_a_session": 0,
+            "target_past_end": 2,
+            "dropped_nonfinite": 0,
+            "used": 770
+          }
+        }
+      },
+      "halves": {
+        "first": {
+          "n": 385,
+          "n_short": 170,
+          "n_long": 215,
+          "dDR_raw": 0.11678,
+          "DR_short": 1.03312,
+          "DR_long": 0.91634,
+          "dDR_vm": 0.22104
+        },
+        "second": {
+          "n": 385,
+          "n_short": 60,
+          "n_long": 325,
+          "dDR_raw": 0.3271,
+          "DR_short": 1.20418,
+          "DR_long": 0.87708,
+          "dDR_vm": 0.41868
+        },
+        "split_date": "2023-08-31"
+      },
+      "harness": {
+        "placebo_shift125_dDR_vm": 0.12514,
+        "placebo_pass": false,
+        "placebo_shift125_dDR_raw": 0.07119,
+        "injection_0.15_recovered": 0.15,
+        "injection_pass": true,
+        "descriptive_all_shifts": {
+          "n_shifts": 130,
+          "vm_mean": -0.01282,
+          "vm_sd": 0.06177,
+          "vm_real_pctile": 1.0,
+          "raw_mean": -0.0052,
+          "raw_sd": 0.05899,
+          "raw_real_pctile": 1.0,
+          "vm_minus_placebo_mean": 0.3008,
+          "raw_minus_placebo_mean": 0.19023
+        },
+        "no_lookahead_pass": true
+      },
+      "verdict": "UNDERPOWERED",
+      "gate_parts": {
+        "dDR_vm>=0.05": true,
+        "holm_p<0.05": true,
+        "4/4_signs": true,
+        "harness_believed": false,
+        "powered": true
+      }
+    }
+  },
+  "generated": "2026-10-21T00:11:04.991173+00:00"
+}

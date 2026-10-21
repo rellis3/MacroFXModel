@@ -149,7 +149,13 @@ by the rule above, which is the honest label.
 
 ## Amendments
 
-*(none yet)*
+### A1 — 2026-10-21 — POST-HOC (results seen)
+
+The NQ debug run (2026-10-20, after this prereg was pushed) returned the registered +125-row placebo at +0.125 on the
+vol-matched statistic. Added, as descriptive only: the full distribution of label-shift placebos (every shift 60…n−60,
+step 5) for both instruments, and `scripts/27b_gex_range_es_posthoc.py` (concentration, the trailing-return /
+drawdown confound, ES/NQ overlap). Neither changes a verdict; the registered rule stands, so Q2 cannot be VALIDATED.
+The post-hoc confound check demotes nothing formally but is stated next to the Q1 verdict everywhere it is banked.
 
 ---
 
