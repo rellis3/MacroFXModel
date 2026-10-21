@@ -6483,6 +6483,51 @@ function ccyAnalysisHtml(a, at) {
     + (a.brief ? `<div class="story" style="margin-top:9px">${a.brief.split(/\n\n+/).map(x => `<p>${esc0(x)}</p>`).join('')}</div>` : '');
 }
 
+// ── Country card: shown at the top of the currency drawer, above everything that was already there ──
+function countryCardHtml(ccy) {
+  try {
+    const B = window.countryCardBrick; if (!B) return '';
+    const macroRow = macroScorecard?.ranked?.find(x => x.ccy === ccy) ?? null;
+    const csr = currencyStrengthMeasured(allRows());
+    const mRow = csr?.scores?.find(x => x.ccy === ccy) ?? null;
+    const cbKey = CB_HISTORY_KEY[ccy], cbHist = cbKey && cbHistory?.[cbKey];
+    const cbT = (cbHist && window.outlookBrick) ? window.outlookBrick.describeCbTrend(cbHist) : null;
+    const drv = macroScorecard?.driver;
+    const card = B.buildCountryCard({
+      ccy,
+      macro: macroRow ? {
+        composite: macroRow.composite, factorsScored: macroRow.factorsScored, factorsTotal: macroRow.factorsTotal,
+        factors: Object.fromEntries(Object.entries(macroRow.factors ?? {}).map(([k, f]) => [k, { label: f.label, score: f.score, backedBy: f.dims, of: f.of, excludedStale: f.excludedStale }])),
+      } : null,
+      measured: mRow ? { rank: (csr.scores.findIndex(x => x.ccy === ccy) + 1) || null, of: csr.scores.length } : null,
+      boardDriver: drv && drv.spread != null ? { factor: drv.label, spread: drv.spread, thisCcyRank: (drv.ranked || []).findIndex(x => x.ccy === ccy) + 1 || null, of: (drv.ranked || []).length } : null,
+      cb: cbT ? { bank: (cbKey || '').toUpperCase(), trend: cbT.trend, latestScore: cbT.latestScore, deltaVsPrev: cbT.deltaVsPrev } : null,
+      board: (macroScorecard?.ranked ?? []).map(r => ({ ccy: r.ccy, composite: r.composite })),
+      pairs: PAIR_CCY,
+    });
+    const sgn = v => (v >= 0 ? '+' : '') + v.toFixed(2);
+    const drivers = card.drivers.length ? card.drivers.map(d => `
+      <div class="ccy-explain" style="margin:6px 0;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card2)">
+        <b>${esc0(d.label)}</b> <span class="chip ${d.direction === 'strong' ? 'bull' : 'bear'}" style="font-size:9px">${d.direction} ${sgn(d.score)}</span>${d.backing ? ` <span class="muted" style="font-size:10px">${esc0(d.backing)}${d.thin ? ' · thin' : ''}</span>` : ''}
+        <div class="muted" style="font-size:11.5px;line-height:1.5;margin-top:3px">${esc0(d.why)}</div>
+      </div>`).join('') : '<div class="muted">No macro factor has enough fresh data for this currency today.</div>';
+    const exprs = card.expressions.length ? card.expressions.map(e => `
+      <div class="ccy-legrow"><span class="lp">${esc0(e.pair)}</span><span class="lv neu"><span class="muted" style="font-size:11px">${esc0(e.line)}</span></span></div>`).join('') : '';
+    return `<div class="dr-sec" id="countryCard">
+      <h3 class="help" title="Built from the macro scorecard, the board spread, central-bank tone and pair differences this page already measures. It explains why the currency should be bid or offered if the factors are priced; it does not forecast.">
+        ${esc0(card.ccy)} — the reasons <span class="chip ${card.cls}" style="font-size:10px" title="${card.thin ? 'Fewer than three of the six macro factors have data for this currency today, so there is no macro composite to word as strong or weak.' : 'The equal-weight composite of the macro factors that have data, −1 to +1.'}">${esc0(card.word)}${card.composite != null && !card.thin ? ' ' + sgn(card.composite) : ''}</span>
+        <span class="chip ${card.cycle.cls}" style="font-size:9px" title="${esc0(card.cycle.why)}">${card.cycle.bank ? esc0(card.cycle.bank) + ' · ' : ''}${esc0(card.cycle.word)}</span>
+        ${card.coverage ? `<span class="chip neu" style="font-size:9px" title="How many of the six macro factors have fresh data">${esc0(card.coverage)}${card.thinCoverage ? ' · thin' : ''}</span>` : ''}
+        ${card.measured ? `<span class="chip neu" style="font-size:9px" title="Where today's actual move ranks this currency across the board">moved: ${card.measured.rank} of ${card.measured.of}</span>` : ''}
+      </h3>
+      ${drivers}
+      ${card.boardLine ? `<div class="ccy-explain" style="margin-top:8px">${esc0(card.boardLine)}</div>` : ''}
+      ${exprs ? `<div class="dr-sec-sub" style="margin-top:10px"><div class="muted" style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Best expressions — where the textbook leans</div>${exprs}</div>` : ''}
+      <div class="muted" style="font-size:10.5px;margin-top:8px">${esc0(card.foot)}</div>
+    </div>`;
+  } catch (e) { console.error('[country-card]', e); return ''; }
+}
+
 function openCcyDrawer(ccy) {
   openDrawerCcy = ccy;
   const det = currencyDetail(ccy);
@@ -6596,7 +6641,7 @@ function openCcyDrawer(ccy) {
   }
 
   const cachedAi = _ccyAiCache[ccy];
-  $('ccyBody').innerHTML = `${globalReadCcyHtml(ccy)}
+  $('ccyBody').innerHTML = `${countryCardHtml(ccy)}${globalReadCcyHtml(ccy)}
     <div class="dr-sec">
       <h3 class="help" title="A macro read of this CURRENCY on its own terms — not as one leg of a pair. Answers what has actually happened, what the market expects next, and which single instrument expresses a view on it most cleanly. AI OPINION — a reasoned synthesis of the sections below, not a backtested signal.">
         Currency read <span class="chip warn" style="font-size:9px">AI · not backtested</span>
@@ -13951,6 +13996,14 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
   import * as DeskEvidence from './js/deskEvidence.js';
   window.deskEvidenceBrick = DeskEvidence;
   try { window.render?.(); } catch (e) {}
+</script>
+<!-- Country card (js/countryCard.js): one currency, the reasons first — which macro factors carry it,
+     the mechanism, where it ranks on what separates the board, the central bank's tone, best pair
+     expressions. Built only from numbers this page already holds; never states a direction. -->
+<script type="module">
+  import * as CountryCard from './js/countryCard.js';
+  window.countryCardBrick = CountryCard;
+  try { if (typeof openDrawerCcy !== 'undefined' && openDrawerCcy && document.getElementById('drawerCcy')?.classList.contains('open')) openCcyDrawer(openDrawerCcy); } catch (e) {}
 </script>
 <!-- Positioning into the releases (js/positioningIntoEvent.js): the COT book joined to
      the calendar. Pure; both feeds are already fetched by loadGate, so this costs no
