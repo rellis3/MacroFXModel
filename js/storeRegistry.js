@@ -52,6 +52,7 @@ export const STORES = {
   event_vol_impact: R('Event vol impact', 35, { market: false }),
   session_stats: R('Session stats', 2),
   morning_brief_v1: R('Morning brief', 3, { market: false }),
+  morning_brief_intel_v1: R('Market intelligence brief', 3, { market: false }),
   fred_data_v3: R('FRED dashboard snapshot', 1),
   hmm5m_trained_params: R('5-minute HMM trained params', 14, { market: false }),
   hmm5m_macro_context: R('5-minute HMM macro context', 1),

@@ -207,7 +207,7 @@ import { PANEL as _WM_PANEL } from './js/weekMap.js';
 import { buildWeekMap as _buildWeekMap } from './js/weekMapBuild.js';   // every series scored against itself, and the weeks that sat like this
 import { regimeHistory as _regimeHistory, regimeNow as _regimeNow, spells as _regimeSpells, currencyRegime as _currencyRegime, yoy as _yoy } from './js/regimeCore.js';   // the growth x inflation label, monthly, from FRED
 import { groupReleases as _scGroup, measureReaction as _scMeasure, bookFor as _scBook, oandaSym as _scSym, scoreCall as _scScore, summariseCalls as _scSummarise, formatScorecard as _scFormat, COUNTRY_INSTRUMENTS as _SC_INSTRUMENTS } from './js/releaseScorecard.js';   // thirty minutes after a print: what moved, against the book and your own call
-import { CHAIN_NODES as _CHAIN_NODES, nodeDelta as _chainNodeDelta, evaluateChain as _evaluateChain } from './js/macroChain.js';
+import { CHAIN_NODES as _CHAIN_NODES, nodeDelta as _chainNodeDelta, evaluateChain as _evaluateChain, chainForPrompt as _chainForPrompt } from './js/macroChain.js';
 import { allMeetings as _fomcAllMeetings } from './js/fomcHistory.js';
 import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC, seriesDeltas as _seriesDeltas } from './js/macroChange.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
@@ -5373,7 +5373,41 @@ app.get('/api/macro-changes', async (_req, res) => {
 });
 
 let _morningBriefRunning = false;
-async function _buildMorningBrief() {
+
+// ── Cross-asset MARKET INTELLIGENCE brief (mode = 'intel') ───────────────────
+// Same ingredients as the morning column, a different question. The column narrates
+// each dashboard section honestly; this one has to make an ARGUMENT: what is driving
+// markets, how it transmits, what is and is not responding, what would confirm or break
+// the view, and where the desk has no edge. The one ingredient the column never had is
+// the chain's link verdicts — the measured evidence for "transmission" — so this mode
+// adds them. Direction stays fenced off: the ledger says direction claims test null
+// almost every time, so transmission is conditional and the only forward statement the
+// evidence supports is "wider", where a validated range effect applies.
+const _INTEL_BRIEF_KV = 'morning_brief_intel_v1';
+function _intelBriefPrompt(data, chainBlock) {
+  return `You are writing the CROSS-ASSET MARKET INTELLIGENCE BRIEF for an FX/macro trading desk. This is NOT a summary of what the dashboard measured. It is an argument: what is driving markets right now, how that driver transmits across bonds, credit, FX, equities and commodities, which assets are responding and which are not, what would confirm the view and what would break it, and where this desk has no edge.
+
+NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/BoJ head, etc.) anywhere in your output, even if a name appears in the headlines or calendar below — refer to them only by role.
+
+=== THE CHAIN — the textbook links in causal order, each judged on measured 20-day moves at BOTH ends (HOLDING = moved together as the textbook says; BROKEN = both moved, the wrong way round; QUIET = at least one end inside its noise floor, not judged) ===
+${chainBlock}
+
+${data}
+
+HOW TO REASON:
+- THE DRIVER COMES FROM THE CHAIN AND THE MEASURED MOVES, NOT FROM THE HEADLINES. Start from the nodes that moved past their noise floors and the links that are HOLDING; the driver is the upstream node whose move the holding links explain. Headlines may name it; they never establish it. One driver, two at most.
+- A BROKEN link is the story, not an error: say what should have responded and did not, and what that dislocation implies. A QUIET link is "not today", never a weak yes. Never extend the chain past what was measured.
+- TRANSMISSION IS CONDITIONAL, NOT A FORECAST. "If the driver stands, X should fall" is the textbook; whether X IS falling comes from the chain and the snapshot. Never state which way an instrument goes next — this desk has tested direction claims again and again and nearly all were null (the TESTED ON THIS DESK block). Where a validated RANGE effect applies today (a VIX inversion, a release in the surprise table, the front of the vol curve), say the day runs wider: that is the one forward statement the evidence supports.
+- CONFIRM / INVALIDATE MUST BE OBSERVABLE: a number on a named series, a scheduled event with its time, or a chain link flipping. "Watch risk sentiment" is not a check. Three of each, each one something a trader can look at and answer yes or no.
+- CATALYSTS come from the calendar block, ranked by the Event Response Book's measured impact where it is given; say which driver each one tests. If the calendar feed is unavailable, say so and give none.
+- SIZING IS "HOW MUCH, NOT WHICH WAY": the correlation regime, the risk flags and the vol reads decide how much to have on. One paragraph, numbers once.
+- NO EDGE: name the parts of your own view that rest on relationships this desk has tested null or has never tested. Be specific — the tested claim in plain words, and which part of the argument leans on it.
+- Plain English for a sharp non-specialist; gloss a desk term the first time you use it (3–6 words). Say each number once, where it decides something. Be honest about data age: anything the snapshot flags as stale, unavailable or in conflict is said to be so, and nothing is built on it.
+
+Respond with ONLY valid JSON, no markdown:
+{"headline":"one sentence: the driver and what it is doing to markets","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","driver":[{"what":"the driver in one plain sentence","evidence":"the nodes and links that establish it, with their 20-day numbers"}],"transmission":[{"asset":"instrument or node","should":"what the textbook says it does under this driver","is":"what it is actually doing, with the number","state":"RESPONDING|NOT RESPONDING|QUIET"}],"confirm":[{"check":"what to look at","level":"the number or event","when":"today / this week / the print and its time"}],"invalidate":[{"check":"what to look at","level":"the number or event","when":"when"}],"catalysts":[{"when":"time or day","event":"the release or decision","impact":"measured impact from the Event Response Book, or unmeasured","touches":"which driver it tests"}],"sizing":"one paragraph: how much to have on and why","noEdge":["a part of this view that rests on a tested-null or untested relationship, named"]}`;
+}
+async function _buildMorningBrief(mode = 'column') {
   // Was ANT_KEY-only. callModel picks the provider for this task and throws if
   // THAT one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
   if (!_aiAnyKey()) throw new Error('no model provider configured');
@@ -5980,10 +6014,22 @@ STRUCTURE RULES — this is read every morning before the open, so length is a c
 
 Respond with ONLY valid JSON, no markdown:
 {"verdict":["regime in plain words","the one thing that changed","the one thing to watch"],"headline":"one-sentence front-page read, plain-English so-what first","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","theme":"2-3 plain-spoken sentences on what's driving markets today, jargon glossed","dollar":"1-2 sentences on the USD","rates":"1-2 sentences on yields/curve","risk":"1-2 sentences on the risk mood (VIX/credit)","complex":"1-2 sentences: what it means for the FX majors + gold/indices","watch":["1-3 things to watch"],"byAsset":[{"asset":"USD|EUR|JPY|GBP|Gold|Stocks|Oil","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}],"pairsOutlook":[{"pair":"EURUSD|GBPUSD|USDJPY|USDCHF|USDCAD|AUDUSD|NZDUSD|XAUUSD|NAS100|SPX500|WTI","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line citing the data behind it"}],"boardTradeOfDay":{"pair":"one of the eleven instruments above, or null if nothing clears the bar","direction":"LONG|SHORT","confidence":"LOW|MEDIUM|HIGH","rationale":"2-3 sentences citing specific data points, or why nothing clears the bar"},"tldr":"one-line bottom line"}`;
+  // Intelligence mode: keep every data section of the column prompt (from the macro
+  // snapshot to just before the column's own writing instructions), add the chain, and
+  // ask the different question. The column's prompt and KV key are untouched.
+  let finalPrompt = prompt, kvKey = _MORNING_BRIEF_KV;
+  if (mode === 'intel') {
+    let chainBlock = '(chain unavailable)';
+    try { const wi = await _watchInputs(); chainBlock = _chainForPrompt(wi.chain) || chainBlock; } catch (e) { chainBlock = `(chain unavailable: ${e.message})`; }
+    const cut = prompt.indexOf('=== MACRO SNAPSHOT'), cutEnd = prompt.indexOf('READABILITY IS THE #1 GOAL');
+    const data = prompt.slice(cut > 0 ? cut : 0, cutEnd > cut ? cutEnd : undefined);
+    finalPrompt = _intelBriefPrompt(data, chainBlock);
+    kvKey = _INTEL_BRIEF_KV;
+  }
   const antRes = await callModel({ task: 'brief', maxTokens: 16000,
     system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.',
     standing: _evidenceForPrompt(),
-    prompt: prompt });
+    prompt: finalPrompt });
   const antData = antRes;
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
   const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
@@ -5991,21 +6037,21 @@ Respond with ONLY valid JSON, no markdown:
   // non-whitespace character after JSON at position 3840"), which threw the whole
   // brief away. Take the first balanced object; the trailing text is never wanted.
   const analysis = _firstJsonObject(clean);
-  const payload = { analysis, generatedAt: new Date().toISOString(), headlineCount: headlines.length, session: fc?.session_label ?? null };
-  await kv.put(_MORNING_BRIEF_KV, JSON.stringify(payload)).catch(() => {});
+  const payload = { analysis, generatedAt: new Date().toISOString(), headlineCount: headlines.length, session: fc?.session_label ?? null, mode };
+  await kv.put(kvKey, JSON.stringify(payload)).catch(() => {});
   return payload;
 }
-app.get('/api/morning-brief', async (_req, res) => {
+app.get('/api/morning-brief', async (req, res) => {
   try {
-    const raw = await kv.get(_MORNING_BRIEF_KV).catch(() => null);
+    const raw = await kv.get(req.query?.mode === 'intel' ? _INTEL_BRIEF_KV : _MORNING_BRIEF_KV).catch(() => null);
     if (raw) return res.json({ ok: true, ...JSON.parse(raw), cached: true });
     return res.json({ ok: false, error: 'No morning brief yet — click Generate.' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-app.post('/api/morning-brief', async (_req, res) => {
+app.post('/api/morning-brief', async (req, res) => {
   if (_morningBriefRunning) return res.status(409).json({ ok: false, error: 'a morning brief is already generating' });
   _morningBriefRunning = true;
-  try { res.json({ ok: true, ...(await _buildMorningBrief()) }); }
+  try { res.json({ ok: true, ...(await _buildMorningBrief(req.query?.mode === 'intel' ? 'intel' : 'column')) }); }
   catch (e) { res.status(/ANT_KEY/.test(e.message) ? 503 : 500).json({ ok: false, error: e.message }); }
   finally { _morningBriefRunning = false; }
 });

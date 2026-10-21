@@ -309,6 +309,11 @@ const HAND_FEEDS = [
     details: 'Built from most feeds on this map at the configured hour (Brief Config).', refresh: 'Daily at the configured hour. KV persists.',
     store: 'KV morning_brief_v1', endpoints: ['/api/morning-brief'],
     kvStamp: { key: 'morning_brief_v1', cadenceDays: 1, market: false } },
+  { id: 'morning_brief_intel', name: 'Market intelligence brief', provider: 'Desk (LLM-written)', category: 'desk',
+    purpose: 'The cross-asset argument beside the morning column: driver, transmission, confirm / invalidate, catalysts, sizing, no-edge.',
+    details: 'Same ingredients as the morning column plus the chain link verdicts. Click-only.', refresh: 'On demand. KV persists.',
+    store: 'KV morning_brief_intel_v1', endpoints: ['/api/morning-brief'],   // ?mode=intel selects it
+    kvStamp: { key: 'morning_brief_intel_v1', cadenceDays: 1, market: false } },
   { id: 'daily_snapshot', name: 'Daily desk snapshot', provider: 'Desk', category: 'desk',
     purpose: 'One stored record of the desk’s state each day, so later reviews compare against what was known then.',
     details: 'Per-pair state, regime, events.', refresh: 'Hourly (first run 8 min after boot). KV persists.',

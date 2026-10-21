@@ -13693,14 +13693,72 @@ async function loadDrawerLevels(name, sym) {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
 
 // ── Morning Brief — top-down macro front page (its own AI instruction set) ─────
+// Two briefs, one slot. 'column' = the top-down morning column (unchanged); 'intel' = the
+// cross-asset argument (driver → transmission → confirm/invalidate → catalysts → sizing →
+// no-edge). Side by side on purpose: the column stays as it was until the owner picks.
+function briefMode() { try { return localStorage.getItem('mb_mode') === 'intel' ? 'intel' : 'column'; } catch { return 'column'; } }
+window.setBriefMode = m => { try { localStorage.setItem('mb_mode', m); } catch {} loadMorningBrief(); };
+function briefModeToggle() {
+  const m = briefMode();
+  const b = (k, lbl, tip) => `<button class="mb-btn" style="margin-left:${k === 'column' ? 'auto' : '0'};${m === k ? 'background:var(--blue);color:#fff;border-color:var(--blue)' : ''}" onclick="setBriefMode('${k}')" title="${tip}">${lbl}</button>`;
+  return b('column', 'Column', 'The top-down morning column: regime, what changed, watch, the dollar, rates, risk, the FX complex') + b('intel', 'Intelligence', 'The cross-asset argument: what is driving markets, how it transmits, what confirms or breaks it, where the desk has no edge');
+}
 async function loadMorningBrief() {
-  const r = await jget('/api/morning-brief').catch(() => null);
-  renderMorningBrief(r);
+  const m = briefMode();
+  const r = await jget(`/api/morning-brief${m === 'intel' ? '?mode=intel' : ''}`).catch(() => null);
+  if (m === 'intel') renderIntelBrief(r); else renderMorningBrief(r);
+}
+function renderIntelBrief(r) {
+  const el = $('mbrief');
+  const esc = s => (s ?? '').toString().replace(/</g, '&lt;');
+  const gen = `${briefModeToggle()}<button class="mb-btn" id="mbBtn" style="margin-left:0" onclick="generateMorningBrief()">↻ Generate</button>`;
+  if (!r || !r.ok || !r.analysis) {
+    el.innerHTML = `<div class="mb-hd"><span class="mb-eyebrow">🧭 Market Intelligence</span>${gen}${secChev('mbrief')}</div>` +
+      secBody('mbrief', `<div class="mb-theme">No intelligence brief yet — hit <b>Generate</b> for the cross-asset argument: what is driving markets (from the chain's measured links, not the headlines), how it transmits, which assets are and are not responding, what would confirm or break the view, today's catalysts, how much to have on, and where this desk has no edge. One click, one model call.</div>`);
+    el.style.display = 'block'; return;
+  }
+  const a = r.analysis;
+  const genMs = r.generatedAt ? Date.parse(r.generatedAt) : NaN;
+  const ageH = Number.isFinite(genMs) ? (Date.now() - genMs) / 3.6e6 : null;
+  const sameDay = Number.isFinite(genMs) && new Date(genMs).toDateString() === new Date().toDateString();
+  const stale = ageH != null && (!sameDay || ageH >= 6);
+  const ageTxt = ageH == null ? '' : ageH < 1 ? `${Math.round(ageH * 60)}m old` : ageH < 24 ? `${ageH.toFixed(1)}h old` : `${Math.round(ageH / 24)}d old`;
+  const ageChip = ageH == null ? '' : `<span class="chip ${stale ? 'warn' : 'neu'}" style="font-size:9px">${stale ? '⚠ ' : ''}${ageTxt}</span>`;
+  const staleBanner = stale ? `<div class="mb-stale">⚠ Written ${ageTxt}${sameDay ? '' : ', on a previous day'} — every number in it is from then. Hit <b>Generate</b> for a current read.</div>` : '';
+  const regChip = /RISK-ON/i.test(a.regime) ? 'range' : /RISK-OFF/i.test(a.regime) ? 'bear' : 'neu';
+  const stCls = st => /^RESPONDING/i.test(st) ? 'up' : /NOT/i.test(st) ? 'dn' : 'nu';
+  const list = (arr, fn) => (Array.isArray(arr) && arr.length ? arr.map(fn).join('') : '');
+  const checks = (lbl, arr, col) => `<div class="mb-cell"><div class="mb-cl" style="color:${col}">${lbl}</div>${list(arr, c => `<div style="margin:5px 0 0;font-size:11.5px;line-height:1.5"><b>${esc(c.check)}</b> — ${esc(c.level)}<span class="muted"> · ${esc(c.when)}</span></div>`) || '<div class="muted" style="font-size:11px">none given</div>'}</div>`;
+  el.innerHTML =
+    `<div class="mb-hd"><span class="mb-eyebrow">🧭 Market Intelligence</span>${a.regime ? `<span class="chip ${regChip}">${esc(a.regime)}</span>` : ''}${ageChip}<span class="chip warn" style="font-size:9px">AI · an argument from measured links, not a forecast</span>${gen}${secChev('mbrief')}</div>` +
+    secBody('mbrief',
+      staleBanner +
+      (a.headline ? `<div class="mb-head">${esc(a.headline)}</div>` : '') +
+      `<div class="mb-cl" style="margin-bottom:5px">What is driving markets</div>` +
+      `<div class="mb-grid">${list(a.driver, d => `<div class="mb-cell"><div class="mb-cv" style="font-weight:700">${esc(d.what)}</div><div class="muted" style="font-size:11px;margin-top:4px;line-height:1.5">${esc(d.evidence)}</div></div>`) || '<div class="mb-cell muted">no driver named</div>'}</div>` +
+      (a.transmission?.length ? `<div class="mb-cl" style="margin-bottom:5px">Transmission — what should respond, and whether it is</div>
+        <div class="mb-tbl">${a.transmission.map(t => `<div class="mb-tr ${stCls(t.state)}">
+          <span class="mb-tp">${esc(t.asset)}</span>
+          <span class="mb-tl">${esc((t.state ?? '').replace('NOT RESPONDING', 'NOT RESP.'))}</span>
+          <span class="mb-tn"><b>should:</b> ${esc(t.should)} <b>is:</b> ${esc(t.is)}</span>
+        </div>`).join('')}</div>` : '') +
+      `<div class="mb-grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">${checks('What would confirm this', a.confirm, 'var(--bull)')}${checks('What would break it', a.invalidate, 'var(--bear)')}</div>` +
+      (a.catalysts?.length ? `<div class="mb-cl" style="margin-bottom:5px">Catalysts</div>
+        <div class="mb-tbl">${a.catalysts.map(c => `<div class="mb-tr nu">
+          <span class="mb-tp">${esc(c.when)}</span>
+          <span class="mb-tl" title="measured impact, Event Response Book">${esc(c.impact)}</span>
+          <span class="mb-tn"><b>${esc(c.event)}</b> — tests: ${esc(c.touches)}</span>
+        </div>`).join('')}</div>` : '') +
+      (a.sizing ? `<div class="mb-cell" style="margin-bottom:10px"><div class="mb-cl">How much, not which way</div><div class="mb-cv">${esc(a.sizing)}</div></div>` : '') +
+      (a.noEdge?.length ? `<div class="mb-watch"><b>Where this desk has no edge:</b> ${a.noEdge.map(esc).join(' · ')}</div>` : '') +
+      `<div class="mb-foot">${r.generatedAt ? `Generated ${new Date(r.generatedAt).toLocaleString()} · ` : ''}${r.headlineCount != null ? `${r.headlineCount} live headlines · ` : ''}same ingredients as the column plus the chain's link verdicts · direction is never stated; the ledger says it does not survive testing</div>`
+    );
+  el.style.display = 'block';
 }
 function renderMorningBrief(r) {
   const el = $('mbrief');
   const esc = s => (s ?? '').toString().replace(/</g, '&lt;');
-  const gen = `<a class="mb-btn" href="brief-config.html" style="text-decoration:none" title="Turn on auto-generation and pick which pairs auto-analyse each morning">⚙ Auto</a><button class="mb-btn" id="mbBtn" onclick="generateMorningBrief()">↻ Generate</button>`;
+  const gen = `${briefModeToggle()}<a class="mb-btn" href="brief-config.html" style="text-decoration:none;margin-left:0" title="Turn on auto-generation and pick which pairs auto-analyse each morning">⚙ Auto</a><button class="mb-btn" id="mbBtn" style="margin-left:0" onclick="generateMorningBrief()">↻ Generate</button>`;
   if (!r || !r.ok || !r.analysis) {
     el.innerHTML = `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${gen}${secChev('mbrief')}</div>` +
       secBody('mbrief', `<div class="mb-theme">No brief generated yet — hit <b>Generate</b> for today's top-down macro read (the market backdrop → the dollar → the FX complex), grounded in the data + real headlines. Runs on Railway (needs ANT_KEY).</div>`);
@@ -13785,11 +13843,12 @@ function renderMorningBrief(r) {
   el.style.display = 'block';
 }
 async function generateMorningBrief() {
-  const btn = $('mbBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Generating… ~15s'; }
+  const btn = $('mbBtn'); if (btn) { btn.disabled = true; btn.textContent = briefMode() === 'intel' ? 'Generating… ~40s' : 'Generating… ~15s'; }
   try {
-    const r = await fetch('/api/morning-brief', { method: 'POST' }).then(x => x.json());
+    const m = briefMode();
+    const r = await fetch(`/api/morning-brief${m === 'intel' ? '?mode=intel' : ''}`, { method: 'POST' }).then(x => x.json());
     if (!r.ok) throw new Error(r.error || 'failed');
-    renderMorningBrief(r);
+    if (m === 'intel') renderIntelBrief(r); else renderMorningBrief(r);
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = '↻ Generate'; }
     const n = document.createElement('div'); n.className = 'mb-foot'; n.style.color = 'var(--bear)';
