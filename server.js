@@ -4560,11 +4560,11 @@ function _ccMerge(base, add) {
   const ts = [...m.keys()].sort((a, b) => a - b);
   return { t: ts, o: ts.map(t => m.get(t)[0]), h: ts.map(t => m.get(t)[1]), l: ts.map(t => m.get(t)[2]), c: ts.map(t => m.get(t)[3]) };
 }
-function _ccAgg15(m5) {
+function _ccAgg(m5, step) {
   const g = new Map();
   m5.t.forEach((t, i) => {
     if (m5.c[i] == null) return;
-    const k = Math.floor(t / 900) * 900, a = g.get(k);
+    const k = Math.floor(t / step) * step, a = g.get(k);
     if (!a) g.set(k, [m5.o[i], m5.h[i], m5.l[i], m5.c[i]]); else { a[1] = Math.max(a[1], m5.h[i]); a[2] = Math.min(a[2], m5.l[i]); a[3] = m5.c[i]; }
   });
   const ts = [...g.keys()].sort((a, b) => a - b);
@@ -4573,7 +4573,8 @@ function _ccAgg15(m5) {
 app.get('/api/cog-chart/meta', (_req, res) => {
   try {
     const legs = _cogJson(path.join(_CC_DIR, 'legs_meta.json'));
-    res.json({ ok: true, assets: Object.entries(_CC_ASSETS).map(([key, [oanda, group]]) => ({ key, oanda, group })), timeframes: Object.keys(_CC_TF), legs });
+    let archive = []; try { archive = _cogJson(path.join(_CC_DIR, 'archive.json')); } catch {}      // contracts held only in the 15-min TRADES / Schatz archives: listed on the page, not drawable
+    res.json({ ok: true, assets: Object.entries(_CC_ASSETS).map(([key, [oanda, group]]) => ({ key, oanda, group })), timeframes: Object.keys(_CC_TF), legs, archive });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 const _ccCandleCache = new Map();
@@ -4594,10 +4595,10 @@ app.get('/api/cog-chart/leg', async (req, res) => {
     const name = String(req.query.name || '');
     if (!_ccLegNames().includes(name)) return res.status(400).json({ ok: false, error: 'unknown contract' });
     const base = _cogJson(path.join(_CC_DIR, `leg_${name}.json`)), live = await _ccLivePush(), add = live?.legs?.[name]?.m5;
-    let m5 = base.m5, m15 = base.m15, liveAsOf = null;
-    if (add?.t?.length) { m5 = _ccMerge(m5, add); m15 = _ccMerge(m15, _ccAgg15(add)); liveAsOf = live.asOf ?? null; }
+    let m5 = base.m5, m15 = base.m15, h1 = base.h1 ?? null, liveAsOf = null;      // h1 = the whole history on disk (1h / 4h charts); m15 the last 180 days, m5 the last 30
+    if (add?.t?.length) { m5 = _ccMerge(m5, add); m15 = _ccMerge(m15, _ccAgg(add, 900)); if (h1) h1 = _ccMerge(h1, _ccAgg(add, 3600)); liveAsOf = live.asOf ?? null; }
     res.set('Cache-Control', 'no-store');
-    res.json({ ok: true, name, label: base.label, group: base.group, side: base.side, kind: base.kind, period: base.period, source: base.source, convention: base.convention, first: base.first, staticAsOf: base.asOf, liveAsOf, m5, m15 });
+    res.json({ ok: true, name, label: base.label, group: base.group, side: base.side, kind: base.kind, period: base.period, source: base.source, convention: base.convention, first: base.first, staticAsOf: base.asOf, liveAsOf, m5, m15, h1 });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -4611,7 +4612,7 @@ const _SE_KV = 'spread_episodes_v1', _SE_DIR = path.join(__dirname, 'analysis', 
 let _seNas = [], _seFx = { at: 0, bars: [] }, _seRunning = false, _seLast = { at: 0, error: null, F: {}, A: {} }, _seLastWrite = 0;
 async function _seLeg15(name) {
   const base = _cogJson(path.join(_CC_DIR, `leg_${name}.json`)), live = await _ccLivePush(), add = live?.legs?.[name]?.m5;
-  const m15 = add?.t?.length ? _ccMerge(base.m15, _ccAgg15(add)) : base.m15, now = Date.now() / 1000;
+  const m15 = add?.t?.length ? _ccMerge(base.m15, _ccAgg(add, 900)) : base.m15, now = Date.now() / 1000;
   return { bars: m15.t.map((t, i) => ({ t, c: m15.c[i] })).filter(b => b.c != null && b.t + 900 <= now), asOf: add?.t?.length ? (live.asOf ?? null) : base.asOf };
 }
 async function _seNasBars() {
