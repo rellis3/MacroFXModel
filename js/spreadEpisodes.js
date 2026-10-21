@@ -117,12 +117,15 @@ export function buildCase1({ sofr, eur, nas }) {
   const distinct = m => { const g = new Map(); for (const [t, c] of m) { const d = dayOf(t); if (!g.has(d)) g.set(d, new Set()); g.get(d).add(c); } return g; };
   const dS = distinct(S), dE = distinct(E);
   const T = [], x = [], p = [], sess = [], slot = [];
+  // the screen judges completed days only: the session in progress (the last day with a price bar) is never dropped,
+  // or a slow leg (SR3U6 inside its reference quarter) would blank the live morning until its third distinct print
+  const lastDay = nas.length ? dayOf(end(nas[nas.length - 1])) : null;
   for (const b of nas) {
     const te = end(b), d = dayOf(te), wd = new Date((te - 1) * 1000).getUTCDay();
     if (wd === 0 || wd === 6) continue;
     const s = S.get(te), e = E.get(te);
     if (!fin(s) || !fin(e) || !fin(b.c ?? b.close)) continue;
-    if ((dS.get(d)?.size ?? 0) < 3 || (dE.get(d)?.size ?? 0) < 3) continue;
+    if (d !== lastDay && ((dS.get(d)?.size ?? 0) < 3 || (dE.get(d)?.size ?? 0) < 3)) continue;
     T.push(te); x.push(((100 - s) - (100 - e)) * 100); p.push(Math.log(b.c ?? b.close)); sess.push(d);
     slot.push(Math.floor(((te - 1) % 86400) / 900));
   }
