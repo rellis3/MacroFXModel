@@ -34,8 +34,18 @@ the user if it doesn't rather than silently switching source.
   (2020-09 →). Also `gamma_iv_*`, `surface_*`, `wall_summary_*`, `daily_master_*`. Built from R2 `OI Data/*.csv` by
   `oi_research_book/scripts/01_build_daily_dataset.py`.
 - OI archive: `OI Data/NAS100_USD.csv` (1,521 days).
-- CBOE: `analysis/surfaces/cboe/` (GVZ `DATE,GVZ`; VIX, VIX1D, VIX3M, VIX6M, VIX9D, VXN `DATE,OPEN,HIGH,LOW,CLOSE`).
-  Dates are **MM/DD/YYYY**. Ended 10/02/2026 at last check.
+- CBOE: `analysis/surfaces/cboe/`, refreshed by `python scripts/data/fetch_cboe_vol_indices.py` (no key; never shrinks
+  a file). 21 indices since 2026-10-21: VIX term (VIX1D/9D/VIX/3M/6M/1Y), VXN, VXD, RVX, VVIX, SKEW, **VXTLT** (20+y
+  Treasury ETF implied vol, 2004 →: the free rates-vol series next to Yahoo `^MOVE`), GVZ, OVX, VXSLV, VXGDX, VXEEM,
+  VXFXI, VXEWZ, VXAZN, VXAPL. Layout is Cboe raw: 5-col `DATE,OPEN,HIGH,LOW,CLOSE` (use CLOSE) or 2-col `DATE,<SYM>`
+  (GVZ, OVX, VVIX, SKEW, VXTLT). Dates are **MM/DD/YYYY**. EVZ (euro FX vol) is withdrawn (AccessDenied).
+- **Implied-vol term archive** (2026-10-21): `analysis/output/iv_term/iv_term_daily.csv`, rebuilt by
+  `python oi_recon/iv_term_archive.py` from every QuikStrike `*_rawIVTerm.tsv` on the capture laptop (`oi_recon/out/`
+  is gitignored, so this CSV is the durable copy). CME settlement vol per expiry (ATM strike, future, straddle, iv,
+  iv_prior, OI), one row per trade date x product x expiry. FX majors, gold, NQ/ES/YM/RTY from 2026-07-30; commodities
+  from 2026-10-02; rates (SR3/ZN/ZT, `run_secondary.py --rates`) once their pids are learned. `stale=1` = vols
+  identical to the previous trade date. This is our own forward CVOL-style record; CVOL history itself is licensed
+  (DataMine) and cmegroup.com blocks scripts.
 - Live: QuikStrike capture. GVZ is also fetched from FRED in the HAR-IV shadow.
 - **Cboe full chains (2026-10-19 →)**: R2 `cboe_raw/<SYM>/<YYYY-MM-DD>.json`, every contract once a day after the close
   (server.js `_cboeRawArchiveTick`, flag `cboeRawArchive`) for SPX, NDX, RUT, DJX, XSP, VIX, SPY, QQQ, IWM, DIA, GLD, SLV,

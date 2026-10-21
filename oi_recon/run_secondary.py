@@ -26,6 +26,12 @@ and the main run owns it.
 
 No --chain (per-strike smile) by default: phase 2 costs a QuikStrike session mint,
 and the main run is the one that must never be refused one.
+
+--rates (2026-10-21): the same scraper over a THIRD list, quikstrike_ids_rates.json (SOFR and
+Treasury options), into out/<date>/quikstrike_rates/. CAPTURE ONLY: it never runs ingest, because
+js/oi.js has no product spec for rates and nothing reads them from KV. It then rebuilds the IV
+term-structure archive (iv_term_archive.py) over all three sweeps. Learn pids with
+`python run_secondary.py --rates --learn "SR3"`.
 """
 from __future__ import annotations
 
@@ -61,7 +67,14 @@ def main() -> None:
     ap.add_argument('--chain', action='store_true', help='also the per-strike smile (extra session mint)')
     ap.add_argument('--no-write', action='store_true', help='capture only, do not publish')
     ap.add_argument('--skip-sweep', action='store_true', help="re-publish today's capture without pulling again")
+    ap.add_argument('--rates', action='store_true', help='rates list (SOFR/Treasury options), capture only')
     a = ap.parse_args()
+    if a.rates:
+        global IDS_FILE, SUB, JOURNAL, ENV
+        IDS_FILE, SUB = 'quikstrike_ids_rates.json', 'quikstrike_rates'
+        JOURNAL = HERE / 'logs' / 'run_journal_rates.jsonl'
+        ENV = {**os.environ, 'QS_IDS_FILE': IDS_FILE, 'OI_SWEEP_SUB': SUB}
+        a.no_write = True
     # The scheduler redirects stdout to a log file, which Windows opens as cp1252; the
     # sweep's output carries '·' and replacement chars, and printing them crashed the run
     # (2026-10-02, after a good capture) before the journal line was written.
@@ -127,13 +140,19 @@ def main() -> None:
         if irc != 0:
             ok = False
 
+    archive = ''
+    if a.rates:
+        arc, aout = _run([PY, 'iv_term_archive.py'])
+        archive = (aout.strip().splitlines() or ['no output'])[-1] + ('' if arc == 0 else f'  [archive exit {arc}]')
+        print(archive)
     JOURNAL.parent.mkdir(parents=True, exist_ok=True)
     with JOURNAL.open('a', encoding='utf-8') as f:
         f.write(json.dumps({'ts': datetime.now(timezone.utc).isoformat(timespec='seconds'),
                             'day': date.today().isoformat(), 'ok': ok, 'products': ready,
                             'pending': pending, 'capture': capture, 'ingest': ingest,
-                            'dir': f'out/{date.today().isoformat()}/{SUB}'}) + '\n')
-    print(f'\n=== VERDICT ===\n\n  capture   {capture}\n  ingest    {ingest}\n  target    {CMDTY_KEY}\n'
+                            'dir': f'out/{date.today().isoformat()}/{SUB}', 'archive': archive}) + '\n')
+    target = 'none (rates: capture only)' if a.rates else CMDTY_KEY
+    print(f'\n=== VERDICT ===\n\n  capture   {capture}\n  ingest    {ingest}\n  target    {target}\n'
           f'\n  VERDICT   {"OK" if ok else "NOT OK"}')
     sys.exit(0 if ok else (rc or 1))
 
