@@ -1285,6 +1285,20 @@ export const DESK_EVIDENCE = [
     result: '881 Fridays: partial r +0.062 [-0.050, +0.180], halves +0.012 / +0.092, inside the shift placebo [-0.142, +0.134], Holm p 0.58. Largest 5-day move +0.06, MOVE +0.08 (descriptive). MDE about 0.21.',
     use: 'Same as tff-basis-rates-vol-level: description only. With nbfi-rates-vol this closes position-based leverage as a rates-vol predictor at these horizons.',
   },
+  {
+    id: 'net-liquidity-tailwind-spx', domain: 'macro', verdict: 'underpowered', date: '2026-10-21', doc: 'forge/NET_LIQUIDITY_TAILWIND_PREREG.md', also: ['analysis/output/net-liquidity-tailwind/RESULTS.md'],
+    claim: 'C.OG (Education Bank): Net Liquidity = Fed Balance Sheet − TGA − RRP; when it is rising, risk assets have a tailwind -- tested forward: weeks with a rising 4-week change are followed by better SPX500 returns over the next 4 weeks than falling weeks',
+    result: '786 Fridays 2011-07 to 2026-07, first-published ALFRED vintages known by Friday 21:00 UTC, units per js/netLiquidity.js, week-block bootstrap (seed 20261021): rising +1.09 vs falling +0.67, difference +0.42 pp [-0.47, +1.32], inside the shift placebo [-0.82, +0.82]; halves +0.47 / +0.39, lag+1 +0.63. MDE 2.0 pp vs a 1.0 pp bar. Same-window r only 0.09; 13-week difference +1.27 pp (descriptive).',
+    use: 'Net liquidity is context on today.html, never a forecast: the right-signed ~0.4 pp per 4 weeks cannot be told from noise on 15 years. Do not write that rising liquidity means stocks will rise.',
+    instruments: ['SPX500'],
+  },
+  {
+    id: 'net-liquidity-tailwind-nq', domain: 'macro', verdict: 'underpowered', date: '2026-10-21', doc: 'forge/NET_LIQUIDITY_TAILWIND_PREREG.md', also: ['analysis/output/net-liquidity-tailwind/RESULTS.md'],
+    claim: 'C.OG net liquidity rule on NAS100: rising Fed net liquidity (BS − TGA − RRP, 4-week change) is followed by better 4-week returns than falling',
+    result: '786 Fridays 2011-2026: rising +1.47 vs falling +1.08, difference +0.39 pp [-0.61, +1.55], inside the placebo [-1.09, +1.05]; halves +0.46 / +0.37, lag+1 +0.73; 2020 -2.6. MDE 2.4 pp. 13-week +2.0 pp (descriptive).',
+    use: 'Same as net-liquidity-tailwind-spx: context only.',
+    instruments: ['NQ'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1402,6 +1416,8 @@ const POWER = {
   'fx-dollar-funding-exposure-follow': { n: '236 post-risk-off weeks, 4,673 currency-weeks', note: 'CI [-0.038, +0.040] inside the 0.10 bar' },
   'tff-basis-rates-vol-level':         { n: '881 weeks, ~220 independent 4-week windows', note: 'MDE r about 0.21 vs 0.10 bar' },
   'tff-basis-rates-vol-build':         { n: '881 weeks, ~220 independent 4-week windows', note: 'MDE r about 0.21 vs 0.10 bar' },
+  'net-liquidity-tailwind-spx':        { n: '786 weeks, ~200 independent 4-week windows', note: 'MDE 2.0 pp vs 1.0 pp bar; CI [-0.47, +1.32]' },
+  'net-liquidity-tailwind-nq':         { n: '786 weeks, ~200 independent 4-week windows', note: 'MDE 2.4 pp vs 1.0 pp bar; CI [-0.61, +1.55]' },
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
 };
