@@ -4594,11 +4594,13 @@ app.get('/api/cog-chart/leg', async (req, res) => {
   try {
     const name = String(req.query.name || '');
     if (!_ccLegNames().includes(name)) return res.status(400).json({ ok: false, error: 'unknown contract' });
-    const base = _cogJson(path.join(_CC_DIR, `leg_${name}.json`)), live = await _ccLivePush(), add = live?.legs?.[name]?.m5;
+    const base = _cogJson(path.join(_CC_DIR, `leg_${name}.json`)), live = await _ccLivePush();
+    let add = live?.legs?.[base.liveFrom ?? name]?.m5;      // a stitched leg (I2 = rolling 2nd Euribor) takes the live push of the contract it is now, only from its roll on
+    if (add && base.liveSince) { const i0 = add.t.findIndex(t => t >= base.liveSince); add = i0 < 0 ? null : { t: add.t.slice(i0), o: add.o.slice(i0), h: add.h.slice(i0), l: add.l.slice(i0), c: add.c.slice(i0) }; }
     let m5 = base.m5, m15 = base.m15, h1 = base.h1 ?? null, liveAsOf = null;      // h1 = the whole history on disk (1h / 4h charts); m15 the last 180 days, m5 the last 30
     if (add?.t?.length) { m5 = _ccMerge(m5, add); m15 = _ccMerge(m15, _ccAgg(add, 900)); if (h1) h1 = _ccMerge(h1, _ccAgg(add, 3600)); liveAsOf = live.asOf ?? null; }
     res.set('Cache-Control', 'no-store');
-    res.json({ ok: true, name, label: base.label, group: base.group, side: base.side, kind: base.kind, period: base.period, source: base.source, convention: base.convention, first: base.first, staticAsOf: base.asOf, liveAsOf, m5, m15, h1 });
+    res.json({ ok: true, name, label: base.label, group: base.group, side: base.side, kind: base.kind, period: base.period, source: base.source, convention: base.convention, first: base.first, staticAsOf: base.asOf, liveAsOf, segments: base.segments ?? null, m5, m15, h1 });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

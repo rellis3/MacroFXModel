@@ -308,6 +308,7 @@ const PRESETS = {
   'C.OG default': () => ({ series: [cogDefault(1)], nextId: 2, active: 1 }),
   'Both legs, own axes': () => { const a = { ...cogDefault(1), kind: 'leg', leg: 'SR3U6', invert: false, inBps: false, scale: 1, offset: 0, label: 'SR3U6', color: COLORS[0] }; const b = { ...a, id: 2, leg: 'IH7', label: 'IH7', color: COLORS[1] }; return { series: [a, b], nextId: 3, active: 1 }; },
   'C.OG line over price': () => { const d = cogDefault(1); d.mapMode = 'auto'; return { series: [d], nextId: 2, active: 1 }; },
+  'C.OG line, rolling I2!': () => { const d = { ...cogDefault(1), eur: 'I2', label: 'C.OG line (SOFR Sep26 - rolling I2!)' }; return { series: [d], nextId: 2, active: 1 }; },
   'SOFR Dec26 - ESTR Dec26': () => { const d = { ...cogDefault(1), eur: 'ER3Z6', usd: 'SR3Z6', label: 'Spread (SR3Z6 - ER3Z6)' }; return { series: [d], nextId: 2, active: 1 }; },
 };
 $('presets').innerHTML = Object.keys(PRESETS).map(k => `<button class="btn" data-p="${esc(k)}">${esc(k)}</button>`).join('');
@@ -331,6 +332,7 @@ const GUIDE = {
   'German bond futures (price, not a rate)': 'Eurex Schatz (2y), Bobl (5y), Bund (10y), Buxl (30y). PRICES, not rates. The Schatz is the euro 2-year proxy.',
 };
 const NOTE = {
+  I2: 'TradingView\'s ICEEU:I2!: the 2nd quarterly Euribor, rolled when the front expires, not back-adjusted. Use it to match C.OG\'s chart exactly; use the pinned IH7 for long tests (no roll steps).',
   SR3U6: 'C.OG\'s USD leg (the pinned SOFR Sep26). Since 16 Sep 2026 it is inside its own 3-month window: part of its rate is already fixed by published SOFR, so it moves less each day until it expires on 15 Dec 2026.',
   IH7: 'C.OG\'s EUR leg: what TradingView\'s I2! was in the video week (Sep 2026), and I2! since the Sep26 contract expired on 14 Sep 2026.',
   IZ6: 'I1! (front Euribor quarterly) since 14 Sep 2026; it was I2! from mid-Jun to mid-Sep 2026.',
@@ -339,6 +341,13 @@ const NOTE = {
   SR3H7: 'The Mar 2027 to Jun 2027 Fed path. Long history.',
 };
 const ONEOFF = 'one-off pull, 2 weeks';
+// The stitched I2 line: which contract it was when, and from which source. Steps at each roll are real (TradingView does not back-adjust I2! either).
+function i2Txt(l) {
+  if (!l?.segments?.length) return '';
+  const seg = l.segments.map(x => `${x.contract} ${x.start.slice(0, 10)} to ${x.end.slice(0, 10)} (${/TRADES/.test(x.source) ? '15-min trades' : '1-min midpoints'})`).join(', ');
+  const holes = l.segments.slice(1).filter((x, i) => (Date.parse(x.start) - Date.parse(l.segments[i].end)) / 864e5 > 4).length;
+  return `Pieces: ${seg}. It steps at each roll, as TradingView's does.${holes ? ` ${holes} roll week${holes > 1 ? 's have' : ' has'} a 3-day hole (Mon-Wed) in the trade archive; <b>run_deep_history.bat --i2-archive</b> fills them and takes I2! back to mid-2024.` : ''}`;
+}
 const MCODES = 'FGHJKMNQUVXZ';
 function expiry(l) {
   const m = /^(\d\d \w{3} \d{4}) - (\d\d \w{3} \d{4})$/.exec(l.period || '');
@@ -371,7 +380,7 @@ function renderCoverage() {
   let h = `<div class="keybox"><b>C.OG's original line (SOFR Sep26 - Euribor I2!): the data we have</b><br>` +
     `&bull; <b>SOFR Sep26 (SR3U6)</b>: IBKR 1-minute midpoints ${fmtD(u?.first)} to ${fmtD(u?.asOf)}, ${u?.days ?? '?'} trading days (missing weekdays: ${(u?.missingDates || []).join(', ') || 'none'}), about ${u?.barsPerDay ?? '?'} one-minute bars a day. Also 15-minute trade prices ${arch('SR3U6') || 'n/a'}.<br>` +
     `&bull; <b>Euribor Mar27 (IH7)</b>, what I2! showed in the video week: 1-minute midpoints ${fmtD(e?.first)} to ${fmtD(e?.asOf)}, ${e?.days ?? '?'} trading days; the ${e?.missing ?? '?'} missing weekdays are ICE holidays (Christmas, New Year, Easter, 1 May).<br>` +
-    `&bull; <b>A true rolling I2!</b> (always the 2nd quarterly Euribor) can be stitched from <b>mid-Jun 2025</b>: IZ5, IH6, IM6, IU6 from the 15-minute trade archive, then IZ6 and IH7 from the 1-minute midpoints. Before Jun 2025 the contracts that were I2! then (IU5 and earlier) have expired and IBKR no longer serves them, so the pinned SR3U6 - IH7 pair is the long version (back to ${fmtD(u?.first)}).<br>` +
+    `&bull; <b>The rolling I2!</b> is on the chart as <b>I2</b> (preset "C.OG line, rolling I2!"): always the 2nd quarterly Euribor, like TradingView, from <b>${fmtD(by('I2')?.first)}</b>. ${i2Txt(by('I2'))} The pinned SR3U6 - IH7 pair is the longer version (back to ${fmtD(u?.first)}).<br>` +
     `&bull; Nothing before ${fmtD(u?.first)} yet: that is where our pulls stopped, not where IBKR's data ends. <b>scripts/rates_line/run_deep_history.bat</b> (laptop, IB Gateway open) extends every live contract back towards its listing; expired contracts cannot be fetched.<br>` +
     `&bull; <b>The tested study</b> (spread-episodes Case 1) used SR3U6 - IH7 vs NAS100 on 15-min bars, 15 Apr 2024 to 20 Aug 2026 (614 weekdays, 47,166 bars); after 20 Aug is the held-back final test.<br>` +
     `&bull; <b>On this chart</b>: 1h and 4h draw the whole history (pick 4h and 5000 bars and scroll left); 15m draws the last 180 days, 5m the last 30. The OANDA candles set how far back the chart goes (5000 bars at most).</div>`;

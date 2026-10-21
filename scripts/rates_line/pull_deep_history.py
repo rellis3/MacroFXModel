@@ -12,6 +12,12 @@ before the oldest bar on disk. A contract stops at the earliest date IBKR says i
 weeks in a row (before the contract quoted at all). Expired contracts cannot be fetched (IBKR does not serve them), so this only reaches contracts still trading.
 Bars are merged into analysis/output/stir_1m_deep/<EXCH>_<LOCAL>.parquet, the folder build_leg_bars.py already reads; the chart files are rebuilt at the end.
 
+--i2-archive: a separate mode for the rolling I2! line (build_leg_bars.stitch_i2). For every expired Euribor quarterly that was I2! in a window since --until
+(default here 2024-01-01), it requests the 15-minute TRADES for that window plus a week either side (includeExpired; IBKR keeps expired futures about 2 years)
+and merges them into analysis/output/stir/ICEEU_<name>.csv. That fills the Monday-Wednesday holes the first archive pull left in every roll week, and adds the
+older windows (IU5, IM5, IH5, IZ4 ...), so I2! can reach back to mid-2024. Contracts still trading are skipped: their 1-minute midpoints cover them.
+    python scripts/rates_line/pull_deep_history.py --i2-archive [--dry-run]
+
 Resumable: each finished contract is written to analysis/output/stir_1m_deep/_deep_pull_state.json with why it stopped, and is skipped next time (--force re-tries it).
 If TWS drops the script reconnects for up to 30 minutes, then exits; run it again and it carries on from the oldest bar on disk.
 Pacing is 10.5 s per request (IBKR's limit is 60 requests in 10 minutes): about 9 minutes per contract-year. Far-from-expiry years are THIN (few quote changes a day):
@@ -34,6 +40,7 @@ import build_leg_bars as B
 from refresh_leg_bars import IB_SPEC, CORE
 
 DEEP = ROOT / 'analysis' / 'output' / 'stir_1m_deep'
+ARCH = ROOT / 'analysis' / 'output' / 'stir'
 STATE = DEEP / '_deep_pull_state.json'
 IB_PORT = int(os.environ.get('IB_PORT', 4002))
 PACE_S = 10.5
@@ -70,6 +77,28 @@ def week_ends(start_sat, until, max_weeks):
     return out
 
 
+def i2_windows(since, now):
+    """The windows in which each expired Euribor quarterly was I2! (2nd quarterly; front rolls on its last trading day), from `since` up to now."""
+    qs = [(y, m) for y in range(2022, 2029) for m in (3, 6, 9, 12)]
+    exp = [B.euribor_last_trade(y, m) for y, m in qs]
+    out = []
+    for i in range(1, len(qs) - 1):
+        start, end = exp[i - 1], exp[i]
+        y, m = qs[i + 1]
+        if end < since.date() or exp[i + 1] >= now.date():      # before the range, or the contract still trades (its 1-minute midpoints cover it)
+            continue
+        out.append(dict(name=f'I{"HMUZ"[m // 3 - 1]}{y % 10}', month=f'{y}{m:02d}', start=start, end=end))
+    return out
+
+
+def archive_span(name):
+    f = ARCH / f'ICEEU_{name}.csv'
+    if not f.exists():
+        return None
+    t = pd.to_datetime(pd.read_csv(f, usecols=['time']).time, utc=True)
+    return f'{t.min():%Y-%m-%d} to {t.max():%Y-%m-%d}'
+
+
 def quality(path):
     """Per-year trading days and the share of minutes whose midpoint changed (a thin, far-from-expiry year changes in a few % of minutes)."""
     d = pd.read_parquet(path, columns=['time', 'close'])
@@ -85,7 +114,8 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--all', action='store_true', help='every live contract in IB_SPEC, not only the seven core legs')
     ap.add_argument('--names', nargs='+', help='just these contracts (names as on the chart, e.g. SR3U6 IH7 FGBS2612)')
-    ap.add_argument('--until', default='2016-01-01', help='do not go back before this date (default 2016-01-01, older than any listing here)')
+    ap.add_argument('--until', default=None, help='do not go back before this date (default 2016-01-01, older than any listing here; 2024-01-01 with --i2-archive)')
+    ap.add_argument('--i2-archive', action='store_true', help='pull the 15-minute TRADES of the expired Euribor quarterlies for their I2! windows (see above) instead')
     ap.add_argument('--max-weeks', type=int, default=520, help='at most this many weeks per contract on this run (default 520 = 10 years)')
     ap.add_argument('--stop-empty', type=int, default=8, help='stop a contract after this many empty weeks in a row (default 8)')
     ap.add_argument('--force', action='store_true', help='re-try contracts the state file marks as finished')
@@ -98,8 +128,61 @@ if __name__ == '__main__':
     bad = [n for n in names if n not in IB_SPEC]
     if bad:
         sys.exit(f'not in refresh_leg_bars.IB_SPEC: {bad}. Known: {" ".join(IB_SPEC)}')
-    until = pd.Timestamp(a.until, tz='UTC').to_pydatetime()
+    until = pd.Timestamp(a.until or ('2024-01-01' if a.i2_archive else '2016-01-01'), tz='UTC').to_pydatetime()
     now = datetime.now(timezone.utc)
+
+    if a.i2_archive:
+        wins = i2_windows(until, now)
+        print(f'{"contract":<9} {"was I2! from":<13} {"to":<11} {"archive now":<26}')
+        for w in wins:
+            print(f'{w["name"]:<9} {w["start"]:%Y-%m-%d}    {w["end"]:%Y-%m-%d}  {archive_span(w["name"]) or "none"}')
+        print(f'\n{len(wins)} request(s) of 15-minute TRADES, a few minutes in all.')
+        if a.dry_run:
+            sys.exit(0)
+        from ib_insync import IB, Future, util
+        ib = IB()
+        try:
+            ib.connect('127.0.0.1', IB_PORT, clientId=47, timeout=20, readonly=True)
+        except Exception as e:
+            sys.exit(f'Could not connect to IB Gateway on port {IB_PORT} ({type(e).__name__}). Open it, log in, and run again. Nothing was changed.')
+        for w in wins:
+            det = ib.reqContractDetails(Future(symbol='I', exchange='ICEEU', currency='EUR', lastTradeDateOrContractMonth=w['month'], includeExpired=True))
+            if not det:
+                print(f'{w["name"]}: IBKR no longer has this expired contract; skipped', flush=True)
+                continue
+            c = det[0].contract
+            c.lastTradeDateOrContractMonth = c.lastTradeDateOrContractMonth.split(' ')[0]
+            end = datetime.combine(w['end'] + timedelta(days=8), datetime.min.time(), tzinfo=timezone.utc)
+            days = (w['end'] - w['start']).days + 16
+            pace()
+            ib.RequestTimeout = 0
+            try:
+                bars = ib.reqHistoricalData(c, endDateTime=end, durationStr=f'{days} D', barSizeSetting='15 mins', whatToShow='TRADES', useRTH=False, formatDate=2, timeout=600)
+            except Exception as e:
+                print(f'{w["name"]}: request failed ({type(e).__name__} {e})', flush=True)
+                continue
+            if not bars:
+                print(f'{w["name"]}: no bars returned (older than IBKR keeps, or no market-data permission)', flush=True)
+                continue
+            df = util.df(bars)
+            df.insert(0, 'time', pd.to_datetime(df.pop('date'), utc=True).dt.strftime('%Y-%m-%dT%H:%M:%SZ'))
+            path = ARCH / f'ICEEU_{c.localSymbol}.csv'
+            before = 0
+            if path.exists():
+                old = pd.read_csv(path)
+                before = len(old)
+                df = pd.concat([old, df], ignore_index=True).drop_duplicates('time', keep='last')
+            df.sort_values('time').reset_index(drop=True).to_csv(path, index=False)
+            print(f'{w["name"]}: {len(bars):,} bars returned, {len(df) - before:+,} new -> {path.name} now {archive_span(c.localSymbol)}', flush=True)
+        ib.disconnect()
+        if not a.no_build:
+            subprocess.run([sys.executable, str(ROOT / 'scripts' / 'rates_line' / 'build_leg_bars.py')], check=True)
+        if a.commit:
+            subprocess.run(['git', 'add', 'analysis/output/stir', 'analysis/output/cog_chart'], cwd=ROOT, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Euribor archive: I2! windows from IBKR (pull_deep_history.py --i2-archive)'], cwd=ROOT)
+            subprocess.run(['git', 'pull', '--rebase', '--autostash'], cwd=ROOT)
+            subprocess.run(['git', 'push'], cwd=ROOT)
+        sys.exit(0)
     state = json.loads(STATE.read_text()) if STATE.exists() else {}
     found = B.discover()
 

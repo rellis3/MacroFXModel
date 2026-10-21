@@ -11,7 +11,7 @@ def ld(p):
 def r15(p):
     g = ld(p)['close'].resample('15min', label='right', closed='right'); l, n = g.last(), g.count(); l[n < 5] = np.nan; return 100 - l
 sofr, eur = r15('analysis/output/stir_1m_deep/CME_SR3U6.parquet'), r15('analysis/output/stir_1m_deep/ICEEU_IH7.parquet')
-first = max(sofr.first_valid_index(), eur.first_valid_index()); G = pd.date_range(first.floor('D') + pd.Timedelta('15min'), T('2026-10-10'), freq='15min')
+first = max(sofr.first_valid_index(), eur.first_valid_index(), T('2024-04-15')); G = pd.date_range(first.floor('D') + pd.Timedelta('15min'), T('2026-10-10'), freq='15min')
 LINE_ALL = ((sofr.reindex(G) - eur.reindex(G)) * 100)
 # Nasdaq: OANDA CFD cache for the holdout (ends 2026-08-20, never touches the lockbox), CME NQ futures for April-October
 cfd = pd.read_parquet('VolRangeForecaster/data/m1/nq_m1.parquet')['close']; cfd.index = pd.to_datetime(cfd.index, utc=True)

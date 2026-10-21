@@ -1288,5 +1288,92 @@
   "maxGapDays": 3.4,
   "barsPerDay": 1380,
   "bars1m": 180529
+ },
+ {
+  "name": "I2",
+  "label": "Euribor I2! rolling (2nd quarterly, stitched like TradingView)",
+  "group": "Euribor 3M (ICE I)",
+  "side": "EUR",
+  "kind": "rate",
+  "period": "always the 2nd quarterly Euribor contract; rolls when the front one expires",
+  "first": "2025-06-19",
+  "asOf": "2026-10-19 19:45:00+00:00",
+  "m5": 5040,
+  "m15": 10157,
+  "h1": 6627,
+  "m5First": "2026-09-21",
+  "m15First": "2026-04-22",
+  "h1First": "2025-06-19",
+  "folders": [
+   "stitched"
+  ],
+  "stem": "I2",
+  "stitched": true,
+  "segments": [
+   {
+    "contract": "IZ5",
+    "start": "2025-06-19 00:00",
+    "end": "2025-09-12 19:45",
+    "rollAt": "2025-09-15",
+    "source": "IBKR 15-minute TRADES (archive)"
+   },
+   {
+    "contract": "IH6",
+    "start": "2025-09-18 00:15",
+    "end": "2025-12-12 20:45",
+    "rollAt": "2025-12-15",
+    "source": "IBKR 15-minute TRADES (archive)"
+   },
+   {
+    "contract": "IM6",
+    "start": "2025-12-18 01:00",
+    "end": "2026-03-13 20:45",
+    "rollAt": "2026-03-16",
+    "source": "IBKR 15-minute TRADES (archive)"
+   },
+   {
+    "contract": "IU6",
+    "start": "2026-03-19 01:00",
+    "end": "2026-06-12 19:45",
+    "rollAt": "2026-06-15",
+    "source": "IBKR 15-minute TRADES (archive)"
+   },
+   {
+    "contract": "IZ6",
+    "start": "2026-06-15 00:00",
+    "end": "2026-09-11 19:59",
+    "rollAt": "2026-09-14",
+    "source": "IBKR 1-minute MIDPOINT"
+   },
+   {
+    "contract": "IH7",
+    "start": "2026-09-14 00:00",
+    "end": "2026-10-19 19:59",
+    "rollAt": "2026-12-14",
+    "source": "IBKR 1-minute MIDPOINT"
+   }
+  ],
+  "days": 333,
+  "missing": 15,
+  "missingDates": [
+   "2025-09-15",
+   "2025-09-16",
+   "2025-09-17",
+   "2025-12-15",
+   "2025-12-16",
+   "2025-12-17",
+   "2025-12-25",
+   "2025-12-26",
+   "2026-01-01",
+   "2026-03-16",
+   "2026-03-17",
+   "2026-03-18",
+   "2026-04-03",
+   "2026-04-06",
+   "2026-05-01"
+  ],
+  "maxGapDays": 5.2,
+  "barsPerDay": null,
+  "bars1m": null
  }
 ]

@@ -48,7 +48,7 @@ def case1_matrices():
     sofr, ns, sofr1 = m1_to_15(os.path.join(ROOT, 'analysis/output/stir_1m_deep/CME_SR3U6.parquet'), 'time')
     eur, ne, eur1 = m1_to_15(os.path.join(ROOT, 'analysis/output/stir_1m_deep/ICEEU_IH7.parquet'), 'time')
     nas, nn, nas1 = m1_to_15(os.path.join(ROOT, 'VolRangeForecaster/data/m1/nas100_usd_m1.parquet'))
-    t0 = max(sofr.first_valid_index(), eur.first_valid_index()).floor('D')
+    t0 = max(sofr.first_valid_index(), eur.first_valid_index(), pd.Timestamp('2024-04-15', tz='UTC')).floor('D')      # registered window starts 2024-04-15: a deeper pull (pull_deep_history.py) must not move it
     G = pd.date_range(t0 + pd.Timedelta('15min'), END, freq='15min')
     S = sofr.reindex(G); E = eur.reindex(G); N = nas.reindex(G)
     S[ns.reindex(G).fillna(0) < 5] = np.nan; E[ne.reindex(G).fillna(0) < 5] = np.nan; N[nn.reindex(G).fillna(0) < 5] = np.nan
