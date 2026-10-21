@@ -265,6 +265,20 @@
   .chip.range{background:var(--blue-bg);color:var(--blue)}
   .chip.neu{background:var(--neu-bg);color:var(--text2)}
   .chip.warn{background:var(--amber-bg);color:var(--amber)}
+  /* "why" row on a Pairs card (js/pairWhy.js): one line closed, the teaching points open */
+  .whyrow{flex:1;min-width:0}
+  .whyrow summary{cursor:pointer;font-size:11.5px;color:var(--text2);list-style:none;line-height:1.45}
+  .whyrow summary::-webkit-details-marker{display:none}
+  .whyrow summary::after{content:" ▾";color:var(--text3)}
+  .whyrow[open] summary::after{content:" ▴"}
+  .whyrow .why-pt{margin-top:8px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card2)}
+  .whyrow .why-h{font-size:12px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+  .whyrow .why-src{font-size:9px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;border-radius:4px;padding:1px 5px}
+  .whyrow .why-src.m{background:color-mix(in srgb,var(--blue) 18%,transparent);color:var(--blue)}
+  .whyrow .why-src.c{background:color-mix(in srgb,var(--amber) 18%,transparent);color:var(--amber)}
+  .whyrow .why-fig{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;color:var(--text3)}
+  .whyrow .why-b{font-size:11.5px;line-height:1.55;color:var(--text2);margin-top:3px}
+  .whyrow .why-foot{font-size:10.5px;color:var(--text3);margin-top:8px;line-height:1.5}
   .chip.dim{background:var(--neu-bg);color:var(--text3);font-weight:600}
   .pc-bias{font-size:11.5px;color:var(--text2);margin-bottom:8px;min-height:17px}
   .pc-bias b{color:var(--text)}
@@ -8849,7 +8863,30 @@ function eventRangeChip(r) {
   }
   return '';
 }
-function pairChipsHtml(r) { return _globalTier(r) + _dayTier(r) + _leanTier(r) + _clockTier(r); }
+// ── "Why" row (js/pairWhy.js) ────────────────────────────────────────────────
+const _whyOpen = new Set();
+window._whyToggle = (name, open) => { if (open) _whyOpen.add(name); else _whyOpen.delete(name); };
+let _whyLinks = { epoch: -1, val: [] };
+function _whyChainLinks() {
+  if (_whyLinks.epoch !== _rowsEpoch) _whyLinks = { epoch: _rowsEpoch, val: (() => { try { return chainLinks(); } catch { return []; } })() };
+  return _whyLinks.val;
+}
+function _whyTier(r) {
+  try {
+    const B = window.pairWhyBrick; if (!B) return '';
+    const ccys = PAIR_CCY[r.name] ?? null;
+    const csr = ccys ? (currencyStrengthMeasured(allRows())?.scores ?? []) : [];
+    const composites = ccys && macroScorecard?.ranked
+      ? Object.fromEntries(macroScorecard.ranked.map(x => [x.ccy, { composite: x.composite, factorsScored: x.factorsScored, factorsTotal: x.factorsTotal }])) : null;
+    const e = nextPairEvent(r.name);
+    const w = B.buildPairWhy({ name: r.name, ccys, csr, composites, links: _whyChainLinks(), used: r.used, hlMed: r.hlMed,
+      event: e ? { event: e.event, time: e.time ?? null, ms: e.ms, impact: e.impact } : null });
+    if (!w.points.length) return '';
+    const pts = w.points.map(p => `<div class="why-pt"><div class="why-h"><span class="why-src ${p.kind === 'calendar' ? 'c' : 'm'}">${esc0(p.kind)}</span> <b>${esc0(p.title)}</b>${p.figure ? ` <span class="why-fig">${esc0(p.figure)}</span>` : ''}</div><div class="why-b">${esc0(p.body)}</div></div>`).join('');
+    return `<div class="tier"><span class="lbl">why</span><details class="whyrow"${_whyOpen.has(r.name) ? ' open' : ''} ontoggle="_whyToggle('${esc0(r.name)}', this.open)"><summary>${esc0(w.lead)}</summary>${pts}<div class="why-foot">${esc0(w.foot)}</div></details></div>`;
+  } catch (e) { console.error('[why-row]', e); return ''; }
+}
+function pairChipsHtml(r) { return _globalTier(r) + _dayTier(r) + _leanTier(r) + _clockTier(r) + _whyTier(r); }
 
 // ── The ledger: post what the board rendered, once per UTC day ───────────────
 // The direction tag is assembled here from seven sources and exists nowhere else,
@@ -13780,7 +13817,8 @@ function renderIntelBrief(r) {
       staleBanner +
       (a.headline ? `<div class="mb-head">${esc(a.headline)}</div>` : '') +
       `<div class="mb-cl" style="margin-bottom:5px">What is driving markets</div>` +
-      `<div class="mb-grid">${list(a.driver, d => `<div class="mb-cell"><div class="mb-cv" style="font-weight:700">${esc(d.what)}</div><div class="muted" style="font-size:11px;margin-top:4px;line-height:1.5">${esc(d.evidence)}</div></div>`) || '<div class="mb-cell muted">no driver named</div>'}</div>` +
+      `<div class="mb-grid">${list(a.driver, d => `<div class="mb-cell"><div class="mb-cv" style="font-weight:700">${esc(d.what)}</div><div class="muted" style="font-size:11px;margin-top:4px;line-height:1.5">${esc(d.evidence)}</div>${d.explain ? `<div style="font-size:11.5px;margin-top:6px;line-height:1.55"><b>How it works:</b> ${esc(d.explain)}</div>` : ''}</div>`) || '<div class="mb-cell muted">no driver named</div>'}</div>` +
+      (a.lesson?.concept ? `<div class="mb-cell" style="margin-bottom:10px;border-color:var(--blue)"><div class="mb-cl" style="color:var(--blue)">What to learn from today: ${esc(a.lesson.concept)}</div><div class="mb-cv">${esc(a.lesson.today)}</div></div>` : '') +
       (a.transmission?.length ? `<div class="mb-cl" style="margin-bottom:5px">Transmission — what should respond, and whether it is</div>
         <div class="mb-tbl">${a.transmission.map(t => `<div class="mb-tr ${stCls(t.state)}">
           <span class="mb-tp">${esc(t.asset)}</span>
@@ -14004,6 +14042,13 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
   import * as CountryCard from './js/countryCard.js';
   window.countryCardBrick = CountryCard;
   try { if (typeof openDrawerCcy !== 'undefined' && openDrawerCcy && document.getElementById('drawerCcy')?.classList.contains('open')) openCcyDrawer(openDrawerCcy); } catch (e) {}
+</script>
+<!-- "Why" row on a Pairs card (js/pairWhy.js): which currencies are being bought and sold, the chain links the
+     instrument sits on, the macro gap, how much of the day is done, what is scheduled — each with what it means. -->
+<script type="module">
+  import * as PairWhy from './js/pairWhy.js';
+  window.pairWhyBrick = PairWhy;
+  try { window.render?.(); } catch (e) {}
 </script>
 <!-- Positioning into the releases (js/positioningIntoEvent.js): the COT book joined to
      the calendar. Pure; both feeds are already fetched by loadGate, so this costs no
