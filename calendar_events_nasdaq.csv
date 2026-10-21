@@ -4394,113 +4394,116 @@ date,datetime_raw,country,ccy,impact,event,actual,previous,consensus,source,impa
 2026-10-17,2026-10-17 06:45:00,United Kingdom,GBP,Moderate,BoE Gov Bailey Speaks,,,,nasdaq,keyword,released
 2026-10-17,2026-10-17 10:00:00,United States,USD,Standard,IMF Meetings,,,,nasdaq,keyword,released
 2026-10-18,2026-10-18 00:00:00,Australia,AUD,Moderate,RBA Assist Gov Kent Speaks,,,,nasdaq,keyword,released
-2026-10-18,2026-10-18 20:09:00,United Kingdom,GBP,Standard,Rightmove House Price Index,,-1.0,,nasdaq,keyword,scheduled
-2026-10-18,2026-10-18 21:30:00,New Zealand,NZD,Standard,Performance of Services Index,,51.2,,nasdaq,keyword,scheduled
-2026-10-18,2026-10-18 21:45:00,New Zealand,NZD,Standard,Exports,,6.66e+09,,nasdaq,keyword,scheduled
-2026-10-18,2026-10-18 21:45:00,New Zealand,NZD,Standard,Imports,,8e+09,,nasdaq,keyword,scheduled
-2026-10-18,2026-10-18 21:45:00,New Zealand,NZD,Moderate,Trade Balance,,-1.349e+09,-7.75e+08,nasdaq,keyword,scheduled
-2026-10-18,2026-10-18 21:45:00,New Zealand,NZD,Moderate,Trade Balance,,-5.44e+09,,nasdaq,keyword,scheduled
-2026-10-18,2026-10-18 23:01:00,United Kingdom,GBP,Standard,Rightmove House Price Index,,0.7,,nasdaq,keyword,scheduled
-2026-10-18,2026-10-18 23:05:00,Australia,AUD,Moderate,RBA Assist Gov Kent Speaks,,,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19,Hong Kong,HKD,Standard,Hong Kong - Chung Yeung Day,,,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 01:30:00,China,CNY,Standard,House Prices,,-3.0,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 02:00:00,China,CNY,Standard,Chinese GDP YTD,,4.7,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 02:00:00,China,CNY,Moderate,Chinese Industrial Production YTD,,5.3,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 02:00:00,China,CNY,Major,Chinese Retail Sales YTD,,1.13,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 02:00:00,China,CNY,Major,Chinese Unemployment Rate,,5.3,5.3,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 02:00:00,China,CNY,Standard,Fixed Asset Investment,,-7.2,-7.3,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 02:00:00,China,CNY,Major,GDP,,4.3,4.4,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 02:00:00,China,CNY,Major,GDP,,0.9,1.1,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 02:00:00,China,CNY,Moderate,Industrial Production,,5.2,5.4,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 02:00:00,China,CNY,Standard,NBS Press Conference,,,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 02:00:00,China,CNY,Major,Retail Sales,,0.4,0.5,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 04:30:00,Japan,JPY,Standard,Tertiary Industry Activity Index,,0.90,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 06:00:00,Euro Zone,EUR,Moderate,ECB's Elderson Speaks,,,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 09:00:00,China,CNY,Standard,FDI,,-5.30,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 10:00:00,Germany,EUR,Standard,German Buba Monthly Report,,,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 11:00:00,Brazil,BRL,Standard,IGP-10 Inflation Index,,1.5,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 11:00:00,South Africa,ZAR,Moderate,Business Confidence,,125.4,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 11:25:00,Brazil,BRL,Standard,BCB Focus Market Readout,,,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 12:30:00,Canada,CAD,Major,CPI,,-0.1,0.2,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 12:30:00,Canada,CAD,Major,CPI,,3.0,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 12:30:00,Canada,CAD,Standard,Common CPI,,2.6,2.6,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 12:30:00,Canada,CAD,Major,Core CPI,,2.4,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 12:30:00,Canada,CAD,Major,Core CPI,,0.1,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 12:30:00,Canada,CAD,Standard,Median CPI,,2.0,2.0,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 12:30:00,Canada,CAD,Standard,Trimmed CPI,,1.9,1.9,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 13:00:00,France,EUR,Standard,French 12-Month BTF Auction,,3.255,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 13:00:00,France,EUR,Standard,French 3-Month BTF Auction,,2.761,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 13:00:00,France,EUR,Standard,French 6-Month BTF Auction,,2.964,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 14:00:00,United States,USD,Standard,NAHB Housing Market Index,,32,31,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 15:30:00,Canada,CAD,Standard,BoC Business Outlook Survey,,,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 15:30:00,United States,USD,Standard,3-Month Bill Auction,,4.085,,nasdaq,keyword,scheduled
-2026-10-19,2026-10-19 15:30:00,United States,USD,Standard,6-Month Bill Auction,,4.200,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20,India,INR,Standard,India - Dussehra,,,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 01:00:00,China,CNY,Standard,China Loan Prime Rate 5Y,,3.50,3.50,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 01:15:00,China,CNY,Standard,PBoC Loan Prime Rate,,3.00,3.00,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 06:00:00,Germany,EUR,Major,German PPI,,4.6,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 06:00:00,Germany,EUR,Major,German PPI,,1.1,1.5,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 06:00:00,United Kingdom,GBP,Standard,Average Earnings Index +Bonus,,3.9,3.8,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 06:00:00,United Kingdom,GBP,Standard,Average Earnings ex Bonus,,3.5,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 06:00:00,United Kingdom,GBP,Moderate,Claimant Count Change,,27800,19400,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 06:00:00,United Kingdom,GBP,Major,Employment Change 3M/3M,,67000,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 06:00:00,United Kingdom,GBP,Major,Unemployment Rate,,4.9,4.9,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 07:00:00,Switzerland,CHF,Moderate,Trade Balance,,3.786e+09,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 08:00:00,Euro Zone,EUR,Moderate,Current Account,,2.76e+10,2.92e+10,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 08:00:00,Euro Zone,EUR,Moderate,Current Account n.s.a.,,3.65e+10,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 09:00:00,Euro Zone,EUR,Standard,Construction Output,,0.00,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 09:00:00,Euro Zone,EUR,Moderate,ZEW Economic Sentiment,,25.8,23.6,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 09:00:00,Germany,EUR,Moderate,German ZEW Current Conditions,,-47.1,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 09:00:00,Germany,EUR,Moderate,German ZEW Economic Sentiment,,34.7,30.2,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 09:00:00,Spain,EUR,Moderate,Spanish Trade Balance,,-5.22e+09,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 09:30:00,United Kingdom,GBP,Standard,10-Year Treasury Gilt Auction,,5.383,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 10:00:00,Germany,EUR,Standard,German Buba Monthly Report,,,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 12:00:00,New Zealand,NZD,Standard,GlobalDairyTrade Price Index,,1.2,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 12:00:00,New Zealand,NZD,Standard,Milk Auctions,,3928.0,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 12:15:00,United States,USD,Major,ADP Employment Change Weekly,,24800,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 12:30:00,United States,USD,Moderate,Building Permits,,1.403e+06,1.39e+06,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 12:30:00,United States,USD,Moderate,Building Permits,,-2.1,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 12:30:00,United States,USD,Moderate,Housing Starts,,1.275e+06,1.3e+06,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 12:30:00,United States,USD,Moderate,Housing Starts,,-2.6,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 12:55:00,United States,USD,Standard,Redbook,,10.4,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 14:00:00,United States,USD,Standard,Atlanta Fed GDPNow,,,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 14:00:00,United States,USD,Moderate,Pending Home Sales,,0.3,-0.4,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 14:00:00,United States,USD,Moderate,Pending Home Sales Index,,71.2,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 20:30:00,United States,USD,Standard,API Weekly Crude Oil Stock,,-1.112e+07,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 21:00:00,South Korea,KRW,Standard,Manufacturing BSI Index,,72,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 21:00:00,South Korea,KRW,Major,PPI,,0.2,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 21:00:00,South Korea,KRW,Major,PPI,,7.9,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 23:50:00,Japan,JPY,Moderate,Adjusted Trade Balance,,-8.4e+11,-2.1e+11,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 23:50:00,Japan,JPY,Standard,Exports,,19.3,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 23:50:00,Japan,JPY,Standard,Imports,,28.0,,nasdaq,keyword,scheduled
-2026-10-20,2026-10-20 23:50:00,Japan,JPY,Moderate,Trade Balance,,-1.1119e+12,-2.5e+11,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 02:00:00,New Zealand,NZD,Standard,Credit Card Spending,,3.5,,nasdaq,keyword,scheduled
+2026-10-18,2026-10-18 10:00:00,United States,USD,Standard,IMF Meetings,,,,nasdaq,keyword,released
+2026-10-18,2026-10-18 21:30:00,New Zealand,NZD,Standard,Performance of Services Index,50.9,51.0,,nasdaq,keyword,released
+2026-10-18,2026-10-18 21:45:00,New Zealand,NZD,Standard,Exports,6.47e+09,6.48e+09,,nasdaq,keyword,released
+2026-10-18,2026-10-18 21:45:00,New Zealand,NZD,Standard,Imports,8.44e+09,8.02e+09,,nasdaq,keyword,released
+2026-10-18,2026-10-18 21:45:00,New Zealand,NZD,Moderate,Trade Balance,-1.971e+09,-1.536e+09,-7.75e+08,nasdaq,keyword,released
+2026-10-18,2026-10-18 21:45:00,New Zealand,NZD,Moderate,Trade Balance,-6.18e+09,-5.61e+09,,nasdaq,keyword,released
+2026-10-18,2026-10-18 23:01:00,United Kingdom,GBP,Standard,Rightmove House Price Index,1.0,0.7,,nasdaq,keyword,released
+2026-10-18,2026-10-18 23:01:00,United Kingdom,GBP,Standard,Rightmove House Price Index,-0.1,-0.8,,nasdaq,keyword,released
+2026-10-18,2026-10-18 23:05:00,Australia,AUD,Moderate,RBA Assist Gov Kent Speaks,,,,nasdaq,keyword,released
+2026-10-19,2026-10-19,Hong Kong,HKD,Standard,Hong Kong - Chung Yeung Day,,,,nasdaq,keyword,released
+2026-10-19,2026-10-19 01:30:00,China,CNY,Standard,House Prices,-2.8,-3.0,,nasdaq,keyword,released
+2026-10-19,2026-10-19 01:30:00,Euro Zone,EUR,Moderate,ECB's Lane Speaks,,,,nasdaq,keyword,released
+2026-10-19,2026-10-19 02:00:00,China,CNY,Standard,Chinese GDP YTD,4.6,4.7,,nasdaq,keyword,released
+2026-10-19,2026-10-19 02:00:00,China,CNY,Moderate,Chinese Industrial Production YTD,5.3,5.3,,nasdaq,keyword,released
+2026-10-19,2026-10-19 02:00:00,China,CNY,Major,Chinese Retail Sales YTD,1.13,1.13,,nasdaq,keyword,released
+2026-10-19,2026-10-19 02:00:00,China,CNY,Major,Chinese Unemployment Rate,5.2,5.3,5.3,nasdaq,keyword,released
+2026-10-19,2026-10-19 02:00:00,China,CNY,Standard,Fixed Asset Investment,-7.2,-7.2,-7.3,nasdaq,keyword,released
+2026-10-19,2026-10-19 02:00:00,China,CNY,Major,GDP,4.5,4.3,4.4,nasdaq,keyword,released
+2026-10-19,2026-10-19 02:00:00,China,CNY,Major,GDP,1.2,0.9,1.1,nasdaq,keyword,released
+2026-10-19,2026-10-19 02:00:00,China,CNY,Moderate,Industrial Production,5.5,5.2,5.4,nasdaq,keyword,released
+2026-10-19,2026-10-19 02:00:00,China,CNY,Standard,NBS Press Conference,,,,nasdaq,keyword,released
+2026-10-19,2026-10-19 02:00:00,China,CNY,Major,Retail Sales,1.1,0.4,0.5,nasdaq,keyword,released
+2026-10-19,2026-10-19 04:30:00,Japan,JPY,Standard,Tertiary Industry Activity Index,-4.10,0.70,,nasdaq,keyword,released
+2026-10-19,2026-10-19 06:00:00,Euro Zone,EUR,Moderate,ECB's Elderson Speaks,,,,nasdaq,keyword,released
+2026-10-19,2026-10-19 09:30:00,South Africa,ZAR,Moderate,Business Confidence,135.1,125.4,,nasdaq,keyword,released
+2026-10-19,2026-10-19 09:31:00,South Africa,ZAR,Moderate,Business Confidence,134.3,135.1,,nasdaq,keyword,released
+2026-10-19,2026-10-19 10:00:00,Germany,EUR,Standard,German Buba Monthly Report,,,,nasdaq,keyword,released
+2026-10-19,2026-10-19 11:00:00,Brazil,BRL,Standard,IGP-10 Inflation Index,1.8,1.5,1.4,nasdaq,keyword,released
+2026-10-19,2026-10-19 11:25:00,Brazil,BRL,Standard,BCB Focus Market Readout,,,,nasdaq,keyword,released
+2026-10-19,2026-10-19 12:30:00,Canada,CAD,Major,CPI,0.1,-0.1,0.2,nasdaq,keyword,released
+2026-10-19,2026-10-19 12:30:00,Canada,CAD,Major,CPI,3.1,3.0,3.2,nasdaq,keyword,released
+2026-10-19,2026-10-19 12:30:00,Canada,CAD,Standard,Common CPI,2.4,2.6,2.6,nasdaq,keyword,released
+2026-10-19,2026-10-19 12:30:00,Canada,CAD,Major,Core CPI,2.2,2.4,,nasdaq,keyword,released
+2026-10-19,2026-10-19 12:30:00,Canada,CAD,Major,Core CPI,0.0,0.1,,nasdaq,keyword,released
+2026-10-19,2026-10-19 12:30:00,Canada,CAD,Standard,Median CPI,1.9,2.0,2.0,nasdaq,keyword,released
+2026-10-19,2026-10-19 12:30:00,Canada,CAD,Standard,Trimmed CPI,1.8,1.9,1.9,nasdaq,keyword,released
+2026-10-19,2026-10-19 13:00:00,France,EUR,Standard,French 12-Month BTF Auction,3.292,3.255,,nasdaq,keyword,released
+2026-10-19,2026-10-19 13:00:00,France,EUR,Standard,French 3-Month BTF Auction,2.750,2.761,,nasdaq,keyword,released
+2026-10-19,2026-10-19 13:00:00,France,EUR,Standard,French 6-Month BTF Auction,3.045,2.964,,nasdaq,keyword,released
+2026-10-19,2026-10-19 14:00:00,United States,USD,Standard,NAHB Housing Market Index,29,32,31,nasdaq,keyword,released
+2026-10-19,2026-10-19 15:30:00,Canada,CAD,Standard,BoC Business Outlook Survey,,,,nasdaq,keyword,released
+2026-10-19,2026-10-19 15:30:00,United States,USD,Standard,3-Month Bill Auction,4.095,4.085,,nasdaq,keyword,released
+2026-10-19,2026-10-19 15:30:00,United States,USD,Standard,6-Month Bill Auction,4.220,4.200,,nasdaq,keyword,released
+2026-10-20,2026-10-20,India,INR,Standard,India - Dussehra,,,,nasdaq,keyword,released
+2026-10-20,2026-10-20 01:00:00,China,CNY,Standard,China Loan Prime Rate 5Y,3.50,3.50,3.50,nasdaq,keyword,released
+2026-10-20,2026-10-20 01:00:00,China,CNY,Standard,PBoC Loan Prime Rate,3.00,3.00,3.00,nasdaq,keyword,released
+2026-10-20,2026-10-20 06:00:00,Germany,EUR,Major,German PPI,1.9,1.1,1.5,nasdaq,keyword,released
+2026-10-20,2026-10-20 06:00:00,Germany,EUR,Major,German PPI,6.7,4.6,6.3,nasdaq,keyword,released
+2026-10-20,2026-10-20 06:00:00,Switzerland,CHF,Moderate,Trade Balance,1.309e+09,4.185e+09,,nasdaq,keyword,released
+2026-10-20,2026-10-20 06:00:00,United Kingdom,GBP,Standard,Average Earnings Index +Bonus,3.7,3.9,3.8,nasdaq,keyword,released
+2026-10-20,2026-10-20 06:00:00,United Kingdom,GBP,Standard,Average Earnings ex Bonus,3.7,3.6,3.6,nasdaq,keyword,released
+2026-10-20,2026-10-20 06:00:00,United Kingdom,GBP,Moderate,Claimant Count Change,30300,7000,19400,nasdaq,keyword,released
+2026-10-20,2026-10-20 06:00:00,United Kingdom,GBP,Major,Employment Change 3M/3M,102000,67000,20000,nasdaq,keyword,released
+2026-10-20,2026-10-20 06:00:00,United Kingdom,GBP,Major,Unemployment Rate,4.7,4.9,4.9,nasdaq,keyword,released
+2026-10-20,2026-10-20 08:00:00,Euro Zone,EUR,Moderate,Current Account,8.7e+09,2.72e+10,2.92e+10,nasdaq,keyword,released
+2026-10-20,2026-10-20 08:00:00,Euro Zone,EUR,Moderate,Current Account n.s.a.,7.7e+09,3.59e+10,,nasdaq,keyword,released
+2026-10-20,2026-10-20 08:00:00,Spain,EUR,Moderate,Spanish Trade Balance,-5.98e+09,-5.22e+09,,nasdaq,keyword,released
+2026-10-20,2026-10-20 09:00:00,Euro Zone,EUR,Standard,Construction Output,1.85,0.19,,nasdaq,keyword,released
+2026-10-20,2026-10-20 09:00:00,Euro Zone,EUR,Moderate,ZEW Economic Sentiment,18.5,25.8,23.6,nasdaq,keyword,released
+2026-10-20,2026-10-20 09:00:00,Germany,EUR,Moderate,German ZEW Current Conditions,-35.9,-47.1,-45.0,nasdaq,keyword,released
+2026-10-20,2026-10-20 09:00:00,Germany,EUR,Moderate,German ZEW Economic Sentiment,28.1,34.7,30.2,nasdaq,keyword,released
+2026-10-20,2026-10-20 09:00:00,United Kingdom,GBP,Standard,10-Year Treasury Gilt Auction,5.418,5.383,,nasdaq,keyword,released
+2026-10-20,2026-10-20 10:00:00,Germany,EUR,Standard,German Buba Monthly Report,,,,nasdaq,keyword,released
+2026-10-20,2026-10-20 12:15:00,United States,USD,Major,ADP Employment Change Weekly,18500,24800,,nasdaq,keyword,released
+2026-10-20,2026-10-20 12:30:00,United States,USD,Moderate,Building Permits,1.4e+06,1.403e+06,1.39e+06,nasdaq,keyword,released
+2026-10-20,2026-10-20 12:30:00,United States,USD,Moderate,Building Permits,-0.2,-2.1,-1.3,nasdaq,keyword,released
+2026-10-20,2026-10-20 12:30:00,United States,USD,Moderate,Housing Starts,1.221e+06,1.288e+06,1.3e+06,nasdaq,keyword,released
+2026-10-20,2026-10-20 12:30:00,United States,USD,Moderate,Housing Starts,-5.2,-5.9,1.9,nasdaq,keyword,released
+2026-10-20,2026-10-20 12:55:00,United States,USD,Standard,Redbook,9.0,10.4,,nasdaq,keyword,released
+2026-10-20,2026-10-20 14:00:00,United States,USD,Moderate,Pending Home Sales,-7.3,0.3,-0.7,nasdaq,keyword,released
+2026-10-20,2026-10-20 14:00:00,United States,USD,Moderate,Pending Home Sales Index,66.0,71.2,,nasdaq,keyword,released
+2026-10-20,2026-10-20 14:30:00,United States,USD,Standard,Atlanta Fed GDPNow,3.5,3.6,3.6,nasdaq,keyword,released
+2026-10-20,2026-10-20 15:00:00,New Zealand,NZD,Standard,GlobalDairyTrade Price Index,2.5,1.2,,nasdaq,keyword,released
+2026-10-20,2026-10-20 15:00:00,New Zealand,NZD,Standard,Milk Auctions,4021.0,3928.0,,nasdaq,keyword,released
+2026-10-20,2026-10-20 20:30:00,United States,USD,Standard,API Weekly Crude Oil Stock,-4.93e+06,-1.112e+07,-1.3e+06,nasdaq,keyword,released
+2026-10-20,2026-10-20 21:00:00,South Korea,KRW,Major,PPI,0.2,0.1,,nasdaq,keyword,released
+2026-10-20,2026-10-20 21:00:00,South Korea,KRW,Major,PPI,7.7,7.9,,nasdaq,keyword,released
+2026-10-20,2026-10-20 23:50:00,Japan,JPY,Moderate,Adjusted Trade Balance,-7e+11,-8e+11,-2.6e+11,nasdaq,keyword,released
+2026-10-20,2026-10-20 23:50:00,Japan,JPY,Standard,Exports,16.7,19.3,20.1,nasdaq,keyword,released
+2026-10-20,2026-10-20 23:50:00,Japan,JPY,Standard,Imports,18.9,28.0,19.6,nasdaq,keyword,released
+2026-10-20,2026-10-20 23:50:00,Japan,JPY,Moderate,Trade Balance,-5.366e+11,-1.1119e+12,-1.81e+11,nasdaq,keyword,released
+2026-10-21,2026-10-21 02:00:00,New Zealand,NZD,Standard,Credit Card Spending,6.9,3.6,,nasdaq,keyword,released
 2026-10-21,2026-10-21 04:15:00,Euro Zone,EUR,Moderate,ECB's Lane Speaks,,,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,CPI,,3.1,3.4,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,CPI,,0.5,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,"CPI, n.s.a",,143.60,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,Core CPI,,2.6,2.8,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,Core CPI,,0.3,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,Core PPI Output,,0.3,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,Core PPI Output,,2.7,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Standard,Core RPI,,3.3,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Standard,Core RPI,,0.6,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,PPI Input,,0.3,1.3,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,PPI Input,,6.1,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,PPI Output,,0.7,0.7,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,PPI Output,,3.7,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Standard,Public Sector Net Cash Requirement,,1.0005e+10,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Standard,RPI,,0.6,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Standard,RPI,,3.4,3.9,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 07:00:00,Switzerland,CHF,Standard,M3 Money Supply,,1.23816e+15,,nasdaq,keyword,scheduled
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,CPI,3.5,3.1,3.4,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,CPI,0.4,0.5,0.3,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,"CPI, n.s.a",144.10,143.60,,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,Core CPI,2.8,2.6,2.8,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,Core CPI,0.2,0.3,0.2,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,Core PPI Output,0.2,0.2,,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,Core PPI Output,2.9,2.8,,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Standard,Core RPI,0.1,0.6,,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Standard,Core RPI,3.9,3.3,,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,PPI Input,1.5,0.5,1.3,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,PPI Input,8.3,6.7,7.2,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,PPI Output,0.8,0.7,0.7,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Major,PPI Output,4.6,3.8,4.3,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Standard,Public Sector Net Borrowing,2.45e+10,1.83e+10,2.38e+10,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Standard,Public Sector Net Cash Requirement,1.6939e+10,9.87e+09,,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Standard,RPI,0.1,0.6,0.1,nasdaq,keyword,released
+2026-10-21,2026-10-21 06:00:00,United Kingdom,GBP,Standard,RPI,3.9,3.4,3.9,nasdaq,keyword,released
+2026-10-21,2026-10-21 07:00:00,Switzerland,CHF,Standard,M3 Money Supply,1.2389e+12,1.2395e+12,,nasdaq,keyword,released
 2026-10-21,2026-10-21 07:15:00,Germany,EUR,Moderate,German Buba President Nagel Speaks,,,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 08:00:00,South Africa,ZAR,Major,CPI,,0.0,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 08:00:00,South Africa,ZAR,Major,CPI,,4.4,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 08:00:00,South Africa,ZAR,Major,Core CPI,,0.0,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 08:00:00,South Africa,ZAR,Major,Core CPI,,4.1,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 08:30:00,United Kingdom,GBP,Standard,House Price Index,,1.4,1.7,nasdaq,keyword,scheduled
+2026-10-21,2026-10-21 08:00:00,South Africa,ZAR,Major,CPI,0.4,0.0,,nasdaq,keyword,released
+2026-10-21,2026-10-21 08:00:00,South Africa,ZAR,Major,CPI,4.5,4.4,4.7,nasdaq,keyword,released
+2026-10-21,2026-10-21 08:00:00,South Africa,ZAR,Major,Core CPI,0.2,0.0,,nasdaq,keyword,released
+2026-10-21,2026-10-21 08:00:00,South Africa,ZAR,Major,Core CPI,4.0,4.1,,nasdaq,keyword,released
+2026-10-21,2026-10-21 08:30:00,United Kingdom,GBP,Standard,House Price Index,0.9,1.4,1.2,nasdaq,keyword,released
 2026-10-21,2026-10-21 10:00:00,Germany,EUR,Standard,German Buba Monthly Report,,,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 11:00:00,South Africa,ZAR,Major,Retail Sales,,3.4,,nasdaq,keyword,scheduled
+2026-10-21,2026-10-21 11:00:00,China,CNY,Standard,FDI,,-5.30,,nasdaq,keyword,scheduled
+2026-10-21,2026-10-21 11:00:00,South Africa,ZAR,Major,Retail Sales,,3.4,3.0,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 11:00:00,United States,USD,Standard,MBA 30-Year Mortgage Rate,,7.50,,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 11:00:00,United States,USD,Standard,MBA Mortgage Applications,,-2.7,,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 11:00:00,United States,USD,Standard,MBA Purchase Index,,139.3,,nasdaq,keyword,scheduled
@@ -4508,10 +4511,12 @@ date,datetime_raw,country,ccy,impact,event,actual,previous,consensus,source,impa
 2026-10-21,2026-10-21 11:00:00,United States,USD,Standard,Mortgage Refinance Index,,513.5,,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 11:30:00,India,INR,Standard,Infrastructure Output,,4.8,,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 11:30:00,India,INR,Moderate,RBI MPC Meeting Minutes,,,,nasdaq,keyword,scheduled
+2026-10-21,2026-10-21 12:00:00,South Africa,ZAR,Standard,Budget Balance,,-4.80,,nasdaq,keyword,scheduled
+2026-10-21,2026-10-21 12:00:00,South Africa,ZAR,Standard,Budget Balance,,-3.524e+11,,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 13:00:00,United Kingdom,GBP,Moderate,BoE Gov Bailey Speaks,,,,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 13:15:00,Germany,EUR,Moderate,German Buba Mauderer Speaks,,,,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 14:30:00,United States,USD,Standard,Crude Oil Imports,,-596000,,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 14:30:00,United States,USD,Moderate,Crude Oil Inventories,,-8.557e+06,,nasdaq,keyword,scheduled
+2026-10-21,2026-10-21 14:30:00,United States,USD,Moderate,Crude Oil Inventories,,-8.557e+06,-100000,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 14:30:00,United States,USD,Moderate,Cushing Crude Oil Inventories,,1.862e+06,,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 14:30:00,United States,USD,Standard,Distillate Fuel Production,,-101000,,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 14:30:00,United States,USD,Standard,EIA Refinery Crude Runs,,135000,,nasdaq,keyword,scheduled
@@ -4526,7 +4531,7 @@ date,datetime_raw,country,ccy,impact,event,actual,previous,consensus,source,impa
 2026-10-21,2026-10-21 17:00:00,United States,USD,Standard,20-Year Bond Auction,,5.420,,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 17:30:00,Brazil,BRL,Standard,Foreign Exchange Flows,,2.415e+09,,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 21:45:00,New Zealand,NZD,Major,CPI,,1.5,0.8,nasdaq,keyword,scheduled
-2026-10-21,2026-10-21 21:45:00,New Zealand,NZD,Major,CPI,,4.1,,nasdaq,keyword,scheduled
+2026-10-21,2026-10-21 21:45:00,New Zealand,NZD,Major,CPI,,4.1,3.8,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 23:50:00,Japan,JPY,Standard,Foreign Bonds Buying,,-3.397e+11,,nasdaq,keyword,scheduled
 2026-10-21,2026-10-21 23:50:00,Japan,JPY,Standard,Foreign Investments in Japanese Stocks,,3.5215e+12,,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22,France,EUR,Standard,French Car Registration,,-25.6,,nasdaq,keyword,scheduled
@@ -4535,30 +4540,31 @@ date,datetime_raw,country,ccy,impact,event,actual,previous,consensus,source,impa
 2026-10-22,2026-10-22,Germany,EUR,Standard,German Car Registration,,-20.7,,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22,Italy,EUR,Standard,Italian Car Registration,,-43.6,,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22,Italy,EUR,Standard,Italian Car Registration,,3.2,,nasdaq,keyword,scheduled
-2026-10-22,2026-10-22,United Kingdom,GBP,Standard,Car Registration,,13.7,,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22,United Kingdom,GBP,Standard,Car Registration,,-39.8,,nasdaq,keyword,scheduled
+2026-10-22,2026-10-22,United Kingdom,GBP,Standard,Car Registration,,13.7,,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 01:00:00,South Korea,KRW,Standard,Bank of Korea Monetary Policy Board’s Policy Setting Meeting Dates,,,,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 01:00:00,South Korea,KRW,Major,Interest Rate Decision,,3.00,,nasdaq,keyword,scheduled
-2026-10-22,2026-10-22 06:45:00,France,EUR,Standard,French Business Survey,,101,,nasdaq,keyword,scheduled
+2026-10-22,2026-10-22 06:45:00,France,EUR,Standard,French Business Survey,,101,101,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 07:30:00,Switzerland,CHF,Standard,SNB Monetary Policy Assessment,,,,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 08:30:00,Hong Kong,HKD,Major,CPI,,0.10,,nasdaq,keyword,scheduled
-2026-10-22,2026-10-22 08:30:00,Hong Kong,HKD,Major,CPI,,1.70,,nasdaq,keyword,scheduled
+2026-10-22,2026-10-22 08:30:00,Hong Kong,HKD,Major,CPI,,1.70,1.80,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 08:30:00,Hong Kong,HKD,Major,Unemployment Rate,,3.8,,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 10:00:00,United Kingdom,GBP,Standard,CBI Industrial Trends Orders,,-9,-20,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 10:50:00,United Kingdom,GBP,Moderate,BoE Gov Bailey Speaks,,,,nasdaq,keyword,scheduled
+2026-10-22,2026-10-22 11:00:00,China,CNY,Standard,FDI,,-5.30,,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 12:00:00,Brazil,BRL,Standard,BCB National Monetary Council Meeting,,,,nasdaq,keyword,scheduled
-2026-10-22,2026-10-22 12:30:00,Canada,CAD,Major,IPPI,,1.3,0.7,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 12:30:00,Canada,CAD,Major,IPPI,,13.5,,nasdaq,keyword,scheduled
-2026-10-22,2026-10-22 12:30:00,Canada,CAD,Standard,RMPI,,3.1,0.1,nasdaq,keyword,scheduled
+2026-10-22,2026-10-22 12:30:00,Canada,CAD,Major,IPPI,,1.3,0.9,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 12:30:00,Canada,CAD,Standard,RMPI,,22.8,,nasdaq,keyword,scheduled
-2026-10-22,2026-10-22 12:30:00,United States,USD,Moderate,Continuing Jobless Claims,,1.71e+06,,nasdaq,keyword,scheduled
+2026-10-22,2026-10-22 12:30:00,Canada,CAD,Standard,RMPI,,3.1,3.1,nasdaq,keyword,scheduled
+2026-10-22,2026-10-22 12:30:00,United States,USD,Moderate,Continuing Jobless Claims,,1.71e+06,1.72e+06,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 12:30:00,United States,USD,Moderate,Initial Jobless Claims,,199000,200000,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 12:30:00,United States,USD,Moderate,Jobless Claims 4-Week Avg.,,198500,200000,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 13:00:00,Russia,RUB,Standard,Central Bank reserves (USD),,7.235e+11,,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 13:30:00,Canada,CAD,Standard,New Housing Price Index,,-0.1,-0.1,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 14:00:00,Euro Zone,EUR,Moderate,Consumer Confidence,,-16.5,-17.0,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 14:00:00,United States,USD,Standard,US Leading Index,,-0.1,-0.2,nasdaq,keyword,scheduled
-2026-10-22,2026-10-22 14:30:00,United States,USD,Standard,Natural Gas Storage,,6.7e+10,,nasdaq,keyword,scheduled
+2026-10-22,2026-10-22 14:30:00,United States,USD,Standard,Natural Gas Storage,,6.7e+10,8.3e+10,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 15:00:00,United States,USD,Standard,KC Fed Composite Index,,14,,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 15:00:00,United States,USD,Standard,KC Fed Manufacturing Index,,20,,nasdaq,keyword,scheduled
 2026-10-22,2026-10-22 15:30:00,United States,USD,Standard,4-Week Bill Auction,,4.000,,nasdaq,keyword,scheduled
@@ -4600,6 +4606,7 @@ date,datetime_raw,country,ccy,impact,event,actual,previous,consensus,source,impa
 2026-10-23,2026-10-23 08:30:00,United Kingdom,GBP,Moderate,S&P Global Manufacturing PMI,,51.9,51.8,nasdaq,keyword,scheduled
 2026-10-23,2026-10-23 08:30:00,United Kingdom,GBP,Moderate,S&P Global Services PMI,,52.1,51.8,nasdaq,keyword,scheduled
 2026-10-23,2026-10-23 10:30:00,Russia,RUB,Major,Interest Rate Decision,,14.00,,nasdaq,keyword,scheduled
+2026-10-23,2026-10-23 11:30:00,India,INR,Standard,"FX Reserves, USD",,7.2603e+11,,nasdaq,keyword,scheduled
 2026-10-23,2026-10-23 12:00:00,Brazil,BRL,Standard,Mid-Month CPI,,0.70,,nasdaq,keyword,scheduled
 2026-10-23,2026-10-23 12:00:00,Brazil,BRL,Standard,Mid-Month CPI,,4.47,,nasdaq,keyword,scheduled
 2026-10-23,2026-10-23 12:30:00,Canada,CAD,Major,Core Retail Sales,,-0.7,1.1,nasdaq,keyword,scheduled
@@ -4637,3 +4644,109 @@ date,datetime_raw,country,ccy,impact,event,actual,previous,consensus,source,impa
 2026-10-23,2026-10-23 19:30:00,United States,USD,Standard,CFTC Wheat speculative net positions,,-17600,,nasdaq,keyword,scheduled
 2026-10-24,2026-10-24,Russia,RUB,Standard,Russia - Non Trading Day,,,,nasdaq,keyword,scheduled
 2026-10-25,2026-10-25,Russia,RUB,Standard,Russia - Non Trading Day,,,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26,New Zealand,NZD,Standard,New Zealand - Labor Day,,,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 05:00:00,Japan,JPY,Standard,Coincident Indicator,,1.7,-1.9,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 05:00:00,Japan,JPY,Standard,Leading Index,,1.5,0.4,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 05:00:00,Japan,JPY,Standard,Leading Index,,117.7,118.0,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 05:00:00,Singapore,SGD,Moderate,Industrial Production,,15.4,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 05:00:00,Singapore,SGD,Moderate,Industrial Production,,-0.5,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 07:00:00,Spain,EUR,Major,Spanish PPI,,13.2,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 09:00:00,Germany,EUR,Standard,German Business Expectations,,90.4,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 09:00:00,Germany,EUR,Standard,German Current Assessment,,89.5,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 09:00:00,Germany,EUR,Moderate,German Ifo Business Climate Index,,89.9,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 11:00:00,Brazil,BRL,Moderate,FGV Consumer confidence,,84.2,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 11:00:00,United Kingdom,GBP,Standard,CBI Distributive Trades Survey,,-55,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 11:25:00,Brazil,BRL,Standard,BCB Focus Market Readout,,,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 12:30:00,United States,USD,Moderate,Chicago Fed National Activity,,-0.04,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 13:00:00,France,EUR,Standard,French 12-Month BTF Auction,,3.292,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 13:00:00,France,EUR,Standard,French 3-Month BTF Auction,,2.750,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 13:00:00,France,EUR,Standard,French 6-Month BTF Auction,,3.045,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 14:30:00,United States,USD,Standard,Dallas Fed Mfg Business Index,,9.8,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 15:30:00,United States,USD,Standard,3-Month Bill Auction,,4.095,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 15:30:00,United States,USD,Standard,6-Month Bill Auction,,4.220,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 17:00:00,United States,USD,Standard,2-Year Note Auction,,4.787,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 21:00:00,South Korea,KRW,Moderate,Consumer Confidence,,106.6,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 23:00:00,South Korea,KRW,Major,GDP,,0.6,,nasdaq,keyword,scheduled
+2026-10-26,2026-10-26 23:00:00,South Korea,KRW,Major,GDP,,3.7,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 01:30:00,China,CNY,Standard,Chinese Industrial profit YTD,,15.7,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 07:00:00,South Africa,ZAR,Standard,Leading Indicators,,118.20,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 07:00:00,Spain,EUR,Major,Spanish Unemployment Rate,,9.87,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 07:45:00,France,EUR,Moderate,French Consumer Confidence,,86,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 09:00:00,Euro Zone,EUR,Standard,Loans to Non Financial Corporations,,4.2,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 09:00:00,Euro Zone,EUR,Standard,M3 Money Supply,,3.5,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 09:00:00,Euro Zone,EUR,Standard,M3 Money Supply,,1.76465e+13,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 09:00:00,Euro Zone,EUR,Standard,Private Sector Loans,,3.1,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 10:30:00,Germany,EUR,Standard,German 2-Year Schatz Auction,,3.100,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 11:30:00,Brazil,BRL,Moderate,Current Account (USD),,-5.06e+09,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 11:30:00,Brazil,BRL,Standard,Foreign direct investment (USD),,7.4e+09,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 12:00:00,Brazil,BRL,Major,Brazilian PPI,,0.36,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 12:00:00,United States,USD,Moderate,Building Permits,,1.403e+06,1.4e+06,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 12:00:00,United States,USD,Moderate,Building Permits,,-2.1,-0.2,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 12:30:00,Canada,CAD,Standard,Wholesale Sales,,-1.6,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 12:30:00,United States,USD,Moderate,Core Durable Goods Orders,,0.2,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 12:30:00,United States,USD,Moderate,Durable Goods Orders,,-0.1,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 12:30:00,United States,USD,Standard,Durables Excluding Defense,,0.0,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 12:30:00,United States,USD,Standard,Goods Orders Non Defense Ex Air,,1.6,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 13:00:00,United States,USD,Standard,House Price Index,,0.3,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 13:00:00,United States,USD,Standard,House Price Index,,2.6,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 13:00:00,United States,USD,Standard,House Price Index,,443.5,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 13:00:00,United States,USD,Standard,S&P/CS HPI Composite - 20 n.s.a.,,2.5,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 13:00:00,United States,USD,Standard,S&P/CS HPI Composite - 20 n.s.a.,,0.0,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 13:00:00,United States,USD,Standard,S&P/CS HPI Composite - 20 s.a.,,0.3,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 14:00:00,United States,USD,Moderate,CB Consumer Confidence,,81.9,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 14:00:00,United States,USD,Moderate,New Home Sales,,684000,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 14:00:00,United States,USD,Moderate,New Home Sales,,6.4,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 14:00:00,United States,USD,Standard,Richmond Manufacturing Index,,-2,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 14:00:00,United States,USD,Standard,Richmond Manufacturing Shipments,,-5,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 14:00:00,United States,USD,Standard,Richmond Services Index,,0,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 14:30:00,United States,USD,Standard,Dallas Fed Services Revenues,,-0.9,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 14:30:00,United States,USD,Standard,Texas Services Sector Outlook,,-1.8,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 15:30:00,United States,USD,Standard,Atlanta Fed GDPNow,,3.5,3.5,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 17:00:00,United States,USD,Standard,5-Year Note Auction,,5.033,,nasdaq,keyword,scheduled
+2026-10-27,2026-10-27 17:00:00,United States,USD,Standard,M2 Money Supply,,2.334e+13,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 00:30:00,Australia,AUD,Major,CPI,,0.6,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 00:30:00,Australia,AUD,Major,CPI,,3.9,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 00:30:00,Australia,AUD,Major,CPI Index Number,,102.31,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 00:30:00,Australia,AUD,Standard,Monthly CPI Indicator,,4.00,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 00:30:00,Australia,AUD,Standard,Trimmed Mean CPI,,0.8,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 00:30:00,Australia,AUD,Standard,Trimmed Mean CPI,,3.6,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 00:30:00,Australia,AUD,Standard,Weighted mean CPI,,0.7,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 00:30:00,Australia,AUD,Standard,Weighted mean CPI,,3.6,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 01:00:00,New Zealand,NZD,Major,RBNZ Interest Rate Decision,,2.75,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 07:00:00,Germany,EUR,Standard,GfK German Consumer Climate,,-30.6,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 08:30:00,Hong Kong,HKD,Standard,Exports,,53.0,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 08:30:00,Hong Kong,HKD,Standard,Imports,,60.0,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 08:30:00,Hong Kong,HKD,Moderate,Trade Balance,,-7.12e+10,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 09:00:00,Italy,EUR,Standard,Italian Industrial Sales,,1.70,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 09:00:00,Italy,EUR,Standard,Italian Industrial Sales,,4.80,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 09:00:00,Switzerland,CHF,Moderate,ZEW Expectations,,2.6,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 10:00:00,Italy,EUR,Major,Italian PPI,,2.4,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 10:00:00,Italy,EUR,Major,Italian PPI,,10.9,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 10:10:00,Italy,EUR,Standard,Italian 6-Month BOT Auction,,2.873,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 10:30:00,Germany,EUR,Standard,German 10-Year Bund Auction,,3.580,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 10:30:00,India,INR,Moderate,Cumulative Industrial Production,,6.70,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 10:30:00,India,INR,Moderate,Industrial Production,,8.0,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 10:30:00,India,INR,Standard,Manufacturing Output,,9.0,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 11:00:00,France,EUR,Standard,France Jobseekers Total,,3.0817e+06,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 11:30:00,India,INR,Standard,M3 Money Supply,,16.9,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 12:30:00,United States,USD,Moderate,Goods Trade Balance,,-1.326e+11,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 12:30:00,United States,USD,Standard,Retail Inventories Ex Auto,,0.0,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 12:30:00,United States,USD,Standard,Wholesale Inventories,,0.5,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 13:45:00,Canada,CAD,Major,BoC Interest Rate Decision,,2.25,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 13:45:00,Canada,CAD,Standard,BoC Monetary Policy Report,,,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 14:00:00,United States,USD,Standard,Atlanta Fed GDPNow,,,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 14:30:00,Canada,CAD,Standard,BOC Press Conference,,,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 16:00:00,Russia,RUB,Moderate,Business Confidence,,-0.5,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 16:00:00,Russia,RUB,Moderate,Industrial Production,,-0.6,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 16:00:00,Russia,RUB,Major,Retail Sales,,3.3,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 16:00:00,Russia,RUB,Moderate,Russian Real Wage Growth,,3.3,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 16:00:00,Russia,RUB,Major,Unemployment Rate,,2.2,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 18:00:00,United States,USD,Major,Fed Interest Rate Decision,,4.00,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 18:30:00,United States,USD,Major,FOMC Press Conference,,,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 20:08:00,Russia,RUB,Major,GDP Monthly,,0.8,,nasdaq,keyword,scheduled
+2026-10-28,2026-10-28 21:00:00,South Korea,KRW,Standard,Manufacturing BSI Index,,79,,nasdaq,keyword,scheduled
+2026-10-29,2026-10-29 00:00:00,New Zealand,NZD,Moderate,ANZ Business Confidence,,51.9,,nasdaq,keyword,scheduled
+2026-10-29,2026-10-29 00:00:00,New Zealand,NZD,Standard,NBNZ Own Activity,,47.9,,nasdaq,keyword,scheduled
+2026-10-29,2026-10-29 00:30:00,Australia,AUD,Standard,Export Price Index,,1.1,,nasdaq,keyword,scheduled
+2026-10-29,2026-10-29 00:30:00,Australia,AUD,Standard,Import Price Index,,5.7,,nasdaq,keyword,scheduled
+2026-10-29,2026-10-29 03:35:00,Japan,JPY,Standard,2-Year JGB Auction,,1.964,,nasdaq,keyword,scheduled
