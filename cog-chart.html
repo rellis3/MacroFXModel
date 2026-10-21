@@ -43,6 +43,14 @@
   table.cov th{text-align:left;color:var(--text3);font-weight:600;font-size:10.5px;padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap}
   table.cov td{padding:4px 6px;border-bottom:1px solid #222a35;vertical-align:top} table.cov td.n{white-space:nowrap} table.cov .sub{color:var(--text3);font-size:10.5px}
   .tag{font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--border);white-space:nowrap} .tag.long{color:var(--bull);border-color:var(--bull)} .tag.mid{color:var(--amber);border-color:var(--amber)} .tag.short{color:var(--red);border-color:var(--red)}
+  .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;margin-top:6px}
+  .fcard{background:var(--card2);border:1px solid var(--border);border-left:3px solid var(--text3);border-radius:8px;padding:9px 11px;font-size:12px;line-height:1.5}
+  .fcard.works{border-left-color:var(--bull)} .fcard.real-not-tradeable{border-left-color:var(--blue)} .fcard.no-edge{border-left-color:var(--text3)} .fcard.underpowered{border-left-color:var(--amber)}
+  .fcard .q{font-weight:700;color:var(--text);margin:4px 0 3px} .fcard .h{color:var(--text2)} .fcard .t{margin-top:5px;color:var(--text)} .fcard .t b{color:var(--text2);font-weight:600}
+  .fcard .nums{margin-top:5px;font:11px ui-monospace,Consolas,monospace;color:var(--text2)} .fcard .src{margin-top:5px;font-size:10.5px;color:var(--text3);word-break:break-word}
+  .vpill{font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+  .vpill.works{color:var(--bull)} .vpill.real-not-tradeable{color:var(--blue)} .vpill.no-edge{color:var(--text3)} .vpill.underpowered{color:var(--amber)}
+  .fchips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 2px} .fchips .btn{font-size:11.5px}
   .keybox{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-top:8px;font-size:12px;line-height:1.6}
 </style>
 </head>
@@ -80,11 +88,13 @@
     <div id="chart"></div>
     <div id="readout">Move the cursor over the chart.</div>
     <div class="note" id="notes"></div>
+    <details class="box" id="findBox" open><summary>Analysis findings: everything we tested on these rate legs, and what came out</summary><div id="findings">loading</div></details>
     <details class="box" id="covBox" open><summary>Contracts &amp; data: what each one is, what it is good for, how far back it goes</summary><div id="coverage">loading</div></details>
   </div>
 </div>
 <script type="module">
 import { DEFAULTS, TF_SEC, barsFromColumns, legOnChart, carryForward, legRaw, spreadRaw, mapSeries, shiftPoints } from './js/cogChartMath.js';
+import { FINDINGS, BOTTOM_LINE, THEMES, VERDICTS } from './js/cogFindings.js';
 
 let LEGMETA = [], ARCHIVE = [];      // every contract the server holds: { name, label, group, side, kind ('rate' | 'price'), period, first, asOf }
 const LEGKIND = n => LEGMETA.find(l => l.name === n)?.kind ?? 'rate';
@@ -405,6 +415,29 @@ function renderCoverage() {
   }
   $('coverage').innerHTML = h;
 }
+
+// ---------------------------------------------------------------- analysis findings (js/cogFindings.js: one entry per tested question, checked against its results file)
+let findFilter = 'all';
+function renderFindings() {
+  const n = v => FINDINGS.filter(f => f.verdict === v).length;
+  let h = `<div class="keybox"><b>Bottom line</b><br>${BOTTOM_LINE.map(x => `&bull; ${x}`).join('<br>')}</div>`;
+  h += `<div class="fchips"><button class="btn ${findFilter === 'all' ? 'on' : ''}" data-f="all">All ${FINDINGS.length}</button>` +
+    Object.entries(VERDICTS).map(([k, v]) => `<button class="btn ${findFilter === k ? 'on' : ''}" data-f="${k}"><span class="vpill ${k}">${esc(v.label)}</span> ${n(k)}</button>`).join('') + '</div>';
+  h += `<div class="sm" style="color:var(--text3);font-size:11px">${Object.values(VERDICTS).map(v => `<b>${esc(v.label)}</b>: ${esc(v.means)}`).join(' &middot; ')}</div>`;
+  Object.entries(THEMES).forEach(([k, title]) => {
+    const fs = FINDINGS.filter(f => f.theme === k && (findFilter === 'all' || f.verdict === findFilter));
+    if (!fs.length) return;
+    h += `<div class="gtitle">${esc(title)}</div><div class="fgrid">` + fs.map(f => `<div class="fcard ${f.verdict}">` +
+      `<span class="vpill ${f.verdict}">${esc(VERDICTS[f.verdict].label)}</span> <span style="font-size:10.5px;color:var(--text3)">${esc(f.date)}</span>` +
+      `<div class="q">${esc(f.question)}</div><div class="h">${esc(f.headline)}</div>` +
+      `<div class="t"><b>For trading:</b> ${esc(f.forTrading)}</div>` +
+      (f.numbers?.length ? `<div class="nums">${f.numbers.map(esc).join('<br>')}</div>` : '') +
+      `<div class="src">${esc(f.data)} &middot; ${esc(f.source)}</div></div>`).join('') + '</div>';
+  });
+  $('findings').innerHTML = h;
+}
+$('findings').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (!b) return; findFilter = b.dataset.f; renderFindings(); });
+renderFindings();
 
 // ---------------------------------------------------------------- boot and live polling
 async function boot() {
