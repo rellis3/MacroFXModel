@@ -204,6 +204,25 @@ estimate that can be re-estimated. It enters lagged **5 business days**. All sco
 changes of oil are taken on max(price, 1). Every feature is winsorised at its training-window 0.5/99.5 percentiles
 inside each walk-forward fit. Targets are never winsorised.
 
+### A2 — 2026-10-21 — POST-HOC (results seen; demote-only)
+
+**(1) Positive control.** A positive control (`scripts/yield-predictive-ladder/planted.py`) was added after the scored
+run. It plants a synthetic feature with a known forward correlation and re-runs the exact ladder. The ladder detects
+ρ = 0.10 at 1 d (recovered IC ≈ 0.05), misses 0.05, and misses even 0.10 at 5 d. §5 assumed an ideal IC test, so it
+overstated power. Consequences:
+
+- Nasdaq (whose forecasts never left "always long") is **UNDERPOWERED**, not NULL.
+- EURUSD 1 d is UNDERPOWERED.
+- EURUSD 5 d / 20 d stays **NULL**, because the forecasts there carried a rate view whose OOS IC interval lies below 0
+  and excludes the bar.
+
+**(2) EURUSD lag profile.** The EURUSD lag +1 cells are not a lead: the noon DEXUSEU print overlaps the 15:30
+Treasury yields. They are reported as timing overlap.
+
+**(3) Nasdaq US 2y lag-1 partial regression.** This is descriptive only.
+
+None of these promotes anything.
+
 ## RESULTS
 
 See `analysis/output/yield-predictive-ladder/RESULTS.md`.
