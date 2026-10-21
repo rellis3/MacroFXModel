@@ -24733,7 +24733,9 @@ app.get('/api/oi-profile/export', async (req, res) => {
     const want = String(req.query.pair || '').split(',').map(s => s.trim()).filter(Boolean);
     if (!want.length) return res.status(400).type('text/plain').send('Give ?pair=nq (or gold, spx, eurusd … a comma list, or all).');
     const keyOf = p => { try { return resolveKey(p); } catch { return String(p).toLowerCase().replace(/[/_]/g, ''); } };
-    const storeKeys = (want[0].toLowerCase() === 'all' || want[0].toLowerCase() === 'core') ? Object.keys(store) : want.map(w => Object.keys(store).find(k => k === w || keyOf(k) === keyOf(w))).filter(Boolean);
+    // pair=all / core leave out the grain and platinum-group books (corn, soy, wheat, sugar, platinum, palladium): not traded here, and platinum used to push the paste over Pine's string cap. Ask for them by name with ?pair=XPT/USD.
+    const NOT_IN_ALL = /^(CORN|SOYBN|WHEAT|SUGAR|XPT|XPD)/i;
+    const storeKeys = (want[0].toLowerCase() === 'all' || want[0].toLowerCase() === 'core') ? Object.keys(store).filter(k => !NOT_IN_ALL.test(String(k).replace(/[^A-Za-z]/g, ''))) : want.map(w => Object.keys(store).find(k => k === w || keyOf(k) === keyOf(w))).filter(Boolean);
     if (!storeKeys.length) return res.status(404).type('text/plain').send(`No OI record for ${want.join(', ')}.`);
     const wantReach = String(req.query.reach || '') !== '0' && !!process.env.OANDA_KEY;
     const oneDay = 24 * 3600e3;

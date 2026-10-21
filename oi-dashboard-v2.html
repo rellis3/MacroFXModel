@@ -80,7 +80,7 @@ svg text{font-family:var(--mono)}
     <button class="btn" id="lvlBtn" title="The normal levels paste for the Confluence Zones indicator (C+Z + OI lines) — same as the OI Analytics export button. Tick lean to drop the text the indicator does not read.">Levels export</button>
     <button class="btn" id="profBtn" title="The paste for the OI Profile TradingView indicator (pine/OI Profile.pine) for the instrument on screen: reaction levels, GEX/vanna/volume profile, IV smile, gamma helix.">Profile export</button>
     <button class="btn" id="profAllBtn" title="Every FX pair, gold and index in one paste (no commodities, about 28K characters, under Pine v6's 40,960 limit), with P(touch) on each level: the indicator picks the block that matches the chart, like the Confluence Zones indicator. Takes 10-20 s.">Profile · core</button>
-    <button class="btn" id="profEveryBtn" title="Everything: FX, gold, indices AND the commodities (Brent, natgas, WTI, silver, copper, platinum). The price window is a little tighter (±2.4 day-sigmas instead of ±3) so all of it fits under the indicator's 40,960-character limit. Takes 10-20 s.">Profile · all</button>
+    <button class="btn" id="profEveryBtn" title="Everything: FX, gold, indices AND the commodities (Brent, natgas, WTI, silver, copper, platinum). Same wide ±3 day-sigma window as core. Grains, sugar, platinum and palladium are left out; ask for them by name. Takes 10-20 s.">Profile · all</button>
     <button class="btn" id="tiersBtn" title="OI levels + forecast ladder + IV-adjusted ladder + Confluence Zones grouped into distance-ranked tiers. A SEPARATE export: paste it instead of the OI section of the normal export.">Tiers export</button>
     <a class="btn" href="oi-dashboard.html">Classic dashboard</a>
   </header>
@@ -1192,14 +1192,14 @@ async function loadLevels(){ const ta = $('#tiersTxt'); $('#tiersParts').style.d
   try { const r = await fetch('/api/vol-forecast/zones?reach=1' + ($('#tiersToday').checked ? '&mode=today' : '') + ($('#tiersFut').checked ? '&terms=futures' : '') + ($('#tiersLean').checked ? '&lean=1' : ''), { cache: 'no-store' }); ta.value = await r.text(); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 async function loadProfileEvery(){ const ta = $('#tiersTxt'); ta.value = 'building every instrument incl. commodities…';
-  try { const r = await fetch('/api/oi-profile/export?pair=all&window=2.4' + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
+  try { const r = await fetch('/api/oi-profile/export?pair=all' + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 async function loadProfileAll(){ const ta = $('#tiersTxt'); ta.value = 'building every instrument…';
   try { const r = await fetch('/api/oi-profile/export?pair=core' + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 $('#tiersBtn').onclick = () => { EXPORT_KIND = 'tiers'; $('#exportTitle').textContent = 'OI tiers export'; $('#tiersModal').style.display = 'block'; loadTiers(); };
 $('#lvlBtn').onclick = () => { EXPORT_KIND = 'levels'; $('#exportTitle').textContent = 'Levels export — the Confluence Zones indicator paste (C+Z + OI lines, every instrument)'; $('#tiersModal').style.display = 'block'; loadLevels(); };
-$('#profEveryBtn').onclick = () => { EXPORT_KIND = 'profileEvery'; $('#exportTitle').textContent = 'OI Profile paste — every instrument incl. commodities (window ±2.4σ so it fits the 40,960-character limit)'; $('#tiersModal').style.display = 'block'; loadProfileEvery(); };
+$('#profEveryBtn').onclick = () => { EXPORT_KIND = 'profileEvery'; $('#exportTitle').textContent = 'OI Profile paste — every instrument incl. oil, natgas, silver and copper (corn, soy, wheat, platinum left out)'; $('#tiersModal').style.display = 'block'; loadProfileEvery(); };
 $('#profAllBtn').onclick = () => { EXPORT_KIND = 'profileAll'; $('#exportTitle').textContent = 'OI Profile paste — core instruments: FX, gold, indices (the indicator picks the one matching the chart)'; $('#tiersModal').style.display = 'block'; loadProfileAll(); };
 $('#profBtn').onclick = () => { EXPORT_KIND = 'profile'; $('#exportTitle').textContent = 'OI Profile paste — ' + (NAMES[SYM] || SYM) + ' (into pine/OI Profile.pine › 1 · Data)'; $('#tiersModal').style.display = 'block'; loadProfile(); };
 $('#tiersGo').onclick = () => (EXPORT_KIND === 'levels' ? loadLevels() : EXPORT_KIND === 'profileAll' ? loadProfileAll() : EXPORT_KIND === 'profileEvery' ? loadProfileEvery() : EXPORT_KIND === 'profile' ? loadProfile() : loadTiers()); $('#tiersClose').onclick = () => { $('#tiersModal').style.display = 'none'; };
