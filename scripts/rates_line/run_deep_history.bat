@@ -14,6 +14,7 @@ REM  Extra options are passed through, e.g.
 REM    run_deep_history.bat --all                    (every live contract, not just the core 7)
 REM    run_deep_history.bat --until 2022-01-01       (stop at 2022)
 REM    run_deep_history.bat --dry-run                (show the plan only)
+REM    run_deep_history.bat --i2-archive             (rolling I2!: fill the roll-week holes, extend to 2024; a few minutes)
 REM ============================================================================
 setlocal
 cd /d "%~dp0"
