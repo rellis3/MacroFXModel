@@ -189,7 +189,20 @@ Consequences:
 
 ## Amendments
 
-(none)
+### A1 — 2026-10-21 — PRE-RESULTS (no outcome computed)
+
+These are point-in-time availability fixes found while building the panel.
+
+**(1) DTWEXBGS (broad dollar)** is published weekly (H.10, Mondays) for the previous week. It enters lagged **6
+business days**: row d uses the value dated ≤ d−7.
+
+**(2) THREEFYTP10 (Kim–Wright term premium)** posts with a lag of a few business days, and its history is a model
+estimate that can be re-estimated. It enters lagged **5 business days**. All scored models are also reported
+**without TP** as a robustness line. If a cell passes only with TP, it is demoted to descriptive.
+
+**(3) Outliers.** FRED DCOILWTICO has known bad prints (DATA_SPEC fault, incl. the 2020-04-20 negative print). Log
+changes of oil are taken on max(price, 1). Every feature is winsorised at its training-window 0.5/99.5 percentiles
+inside each walk-forward fit. Targets are never winsorised.
 
 ## RESULTS
 
