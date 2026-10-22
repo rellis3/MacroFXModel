@@ -52,8 +52,40 @@ export function eventNote(e, book, instrumentKeys = []) {
 const esc = s => (s ?? '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const sg = (v, d = 2) => (v == null || !Number.isFinite(v) ? '·' : (v >= 0 ? '+' : '') + v.toFixed(d));
 const ord = n => { n = Math.round(n); const m = n % 100; return n + (m >= 11 && m <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] ?? 'th')); };
+/** Cut at the last full sentence that fits, so a long model line never ends mid-thought. */
+const clipS = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); if (s.length <= n) return s; const cut = s.slice(0, n), i = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; ')); return i > n * 0.4 ? cut.slice(0, i + 1) : clip(s, n); };
 const clip = (s, n) => { s = String(s ?? ''); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const ukTime = ms => new Date(ms).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+
+/** Small drawn flags (simplified) so every currency has a flag on any machine. */
+const _fl = (w, h, inner) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20" width="${w}" height="${h}" role="img" style="border-radius:3px;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.18)">${inner}</svg>`;
+export function flagSvg(ccy, w = 36, h = 24) {
+  const R = '#c8102e', B = '#012169', W = '#fff';
+  const star = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${W}"/>`;
+  const F = {
+    USD: `<rect width="30" height="20" fill="${W}"/>${[0, 2, 4, 6, 8, 10, 12].map(i => `<rect y="${(i * 20 / 13).toFixed(2)}" width="30" height="${(20 / 13).toFixed(2)}" fill="${R}"/>`).join('')}<rect width="13" height="10.8" fill="#3c3b6e"/>${[2, 5, 8, 11].flatMap(x => [2, 5, 8].map(y => `<circle cx="${x}" cy="${y}" r=".6" fill="${W}"/>`)).join('')}`,
+    EUR: `<rect width="30" height="20" fill="#003399"/>${Array.from({ length: 12 }, (_, i) => `<circle cx="${15 + 6 * Math.cos(i * Math.PI / 6)}" cy="${10 + 6 * Math.sin(i * Math.PI / 6)}" r="1" fill="#ffcc00"/>`).join('')}`,
+    GBP: `<rect width="30" height="20" fill="${B}"/><path d="M0 0L30 20M30 0L0 20" stroke="${W}" stroke-width="4"/><path d="M0 0L30 20M30 0L0 20" stroke="${R}" stroke-width="1.5"/><path d="M15 0V20M0 10H30" stroke="${W}" stroke-width="6"/><path d="M15 0V20M0 10H30" stroke="${R}" stroke-width="3.4"/>`,
+    JPY: `<rect width="30" height="20" fill="${W}"/><circle cx="15" cy="10" r="5.6" fill="#bc002d"/>`,
+    AUD: `<rect width="30" height="20" fill="#00008b"/><rect width="15" height="10" fill="${B}"/><path d="M0 0L15 10M15 0L0 10" stroke="${W}" stroke-width="2"/><path d="M7.5 0V10M0 5H15" stroke="${W}" stroke-width="3"/><path d="M7.5 0V10M0 5H15" stroke="${R}" stroke-width="1.6"/>${star(7.5, 15, 1.7)}${star(22, 5, 1.2)}${star(25, 9, 1.2)}${star(22, 15, 1.2)}${star(19, 9.5, 1.2)}`,
+    NZD: `<rect width="30" height="20" fill="#00247d"/><rect width="15" height="10" fill="${B}"/><path d="M0 0L15 10M15 0L0 10" stroke="${W}" stroke-width="2"/><path d="M7.5 0V10M0 5H15" stroke="${W}" stroke-width="3"/><path d="M7.5 0V10M0 5H15" stroke="${R}" stroke-width="1.6"/>${[[22, 5], [25, 9], [22, 15], [19, 10]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.3" fill="${R}" stroke="${W}" stroke-width=".5"/>`).join('')}`,
+    CAD: `<rect width="30" height="20" fill="${W}"/><rect width="7.5" height="20" fill="#d52b1e"/><rect x="22.5" width="7.5" height="20" fill="#d52b1e"/><path d="M15 4.5L16.6 8.2L19 7.4L17.6 11.2H12.4L11 7.4L13.4 8.2Z" fill="#d52b1e"/><rect x="14.6" y="11" width=".8" height="3" fill="#d52b1e"/>`,
+    CHF: `<rect width="30" height="20" fill="#d52b1e"/><rect x="13" y="4.5" width="4" height="11" fill="${W}"/><rect x="9.5" y="8" width="11" height="4" fill="${W}"/>`,
+  };
+  return F[ccy] ? _fl(w, h, F[ccy]) : `<span class="ccytag">${esc(ccy)}</span>`;
+}
+/** An icon per market: two flags for an FX pair, bars for an index, a bar of gold, a coin for Bitcoin. */
+export function assetIcon(key, label) {
+  const k = String(key ?? '').toUpperCase(), m = /^([A-Z]{3})\/([A-Z]{3})$/.exec(label ?? '');
+  const tile = inner => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 28" width="40" height="30" aria-hidden="true" style="flex:none"><rect width="36" height="28" rx="7" fill="#eef2fb"/>${inner}</svg>`;
+  if (m) return `<span class="pairflags">${flagSvg(m[1], 28, 19)}${flagSvg(m[2], 28, 19)}</span>`;
+  if (k === 'GOLD' || k === 'XAUUSD') return tile(`<path d="M8 19l3-8h14l3 8z" fill="#e0a800"/><path d="M11 11h14l-1.5 3H12.5z" fill="#ffd34d"/>`);
+  if (k === 'BTCUSD') return tile(`<circle cx="18" cy="14" r="8.5" fill="#f7931a"/><text x="18" y="18.4" text-anchor="middle" font-size="12" font-weight="700" fill="#fff" font-family="Segoe UI,Arial,sans-serif">B</text>`);
+  return tile(`<rect x="8" y="16" width="4" height="6" rx="1" fill="#7a5cff"/><rect x="14" y="12" width="4" height="10" rx="1" fill="#2f6bff"/><rect x="20" y="8" width="4" height="14" rx="1" fill="#2f6bff"/><polyline points="8,13 15,9 21,11 28,5" fill="none" stroke="#0f9f6e" stroke-width="1.8" stroke-linecap="round"/>`);
+}
+const CCY_NAME = { USD: 'US Dollar', EUR: 'Euro', GBP: 'British Pound', JPY: 'Japanese Yen', AUD: 'Australian Dollar', NZD: 'New Zealand Dollar', CAD: 'Canadian Dollar', CHF: 'Swiss Franc' };
+const CCY_BANK = { USD: 'Fed', EUR: 'ECB', GBP: 'Bank of England', JPY: 'Bank of Japan', AUD: 'RBA', NZD: 'RBNZ', CAD: 'Bank of Canada', CHF: 'SNB' };
+
 const COLORS = { ink: '#0b1220', text: '#1b2a41', muted: '#5b6b82', line: '#d8e0ec', paper: '#eef2f8', card: '#ffffff', blue: '#2f6bff', violet: '#7a5cff', green: '#0f9f6e', orange: '#e8710a', amber: '#b7791f' };
 const FLAG = { USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', AUD: '🇦🇺', NZD: '🇳🇿', CAD: '🇨🇦', CHF: '🇨🇭' };
 
@@ -99,6 +131,9 @@ function plumbingSvg(stages) {
 }
 
 const CSS = `
+.ccg2,.pcg{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:10px}.cc2,.pc{border:1px solid ${COLORS.line};border-radius:14px;padding:12px 14px;background:${COLORS.card}}.cc2 .h,.pc .h{display:flex;align-items:center;gap:10px;margin-bottom:8px}.cc2 .t,.pc .t{flex:1;min-width:0}.cc2 .t b,.pc .t b{display:block;font-size:17px;line-height:1.1}.cc2 .t small,.pc .t small{display:block;color:${COLORS.muted};font-size:11.5px;margin-top:2px}.cc2 p,.pc p{margin:6px 0 0;font-size:13.5px;line-height:1.5}.pc .rb{margin:6px 0 3px}.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.chips span{font-size:11.5px;padding:3px 8px;border-radius:999px;background:${COLORS.paper};border:1px solid ${COLORS.line};color:${COLORS.text}}.pairflags{display:flex;flex:none}.pairflags svg+svg{margin-left:-8px}.ccytag{font-weight:700}
+.chain{display:grid;gap:4px;margin-top:6px}.cl{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:${COLORS.paper}}.cl.quiet{opacity:.7}.cl .nd{font-weight:600;font-size:13px}.cl .nd small{display:block;font-weight:400;color:${COLORS.muted};font-size:11.5px}.cl .ar{text-align:center;font-size:15px;line-height:1}.cl .ar em{display:block;font-style:normal;font-size:10.5px;font-weight:600;letter-spacing:.02em;margin-top:2px}.chr{margin:-2px 0 4px 10px}
+.ccg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}.cc{border:1px solid ${COLORS.line};border-radius:12px;padding:9px 11px;background:${COLORS.card}}.cc .h{display:flex;justify-content:space-between;gap:8px;font-size:13px}.cc ul{margin:6px 0 0;padding-left:16px;font-size:12.5px;color:${COLORS.text}}.cc li{margin-bottom:2px}.pairs td{vertical-align:top}.pairs small{display:block;color:${COLORS.muted};font-size:11.5px}
 *{box-sizing:border-box}body{margin:0;background:${COLORS.paper};color:${COLORS.text};font:15px/1.6 "Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
 .wrap{max-width:700px;margin:0 auto;padding:16px 14px 40px}
 a{color:${COLORS.blue}}
@@ -131,7 +166,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{font:700 10px "Segoe
 ul.t{margin:0;padding-left:18px}ul.t li{margin:0 0 7px}
 .foot{margin-top:18px;border:2px solid ${COLORS.ink};border-radius:14px;padding:14px 16px;background:#fff;font-size:12px;line-height:1.55;color:${COLORS.text}}.foot h4{margin:0 0 6px;font:800 13px "Segoe UI",sans-serif;letter-spacing:.06em;color:${COLORS.ink}}.foot p{margin:0 0 7px}.foot .meta{color:${COLORS.muted};font:11px ui-monospace,Menlo,Consolas,monospace;margin-top:10px}
 @media (max-width:560px){.tiles{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.br{grid-template-columns:70px 1fr 104px}.br.p{grid-template-columns:96px 1fr 50px}}
-@media print{body{background:#fff}section,.foot,.mast{break-inside:avoid}.wrap{padding:0}}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:12mm}@media print{body{background:#fff}.foot,.mast,.cc,.card2,.lk,tr,.tile{break-inside:avoid}h2,h3{break-after:avoid}.wrap{padding:0}}
 `;
 
 /**
@@ -146,59 +181,80 @@ export function buildNewsletter(n) {
   const art = `<div class="art">${BANNER_SVG}</div>`;
   const llm = n.llm?.provider ? `${n.llm.label ?? n.llm.provider} (${n.llm.model ?? ''})` : null;
 
-  const mast = `<div class="mast">${art}<div class="scrim"></div><div class="in"><div class="brand">Desk Atlas · Daily</div><div class="date">${esc(n.date)}</div><h1>${esc(headline)}</h1><div class="tags">${pill(regimeWord)}${n.riskFlags ? pill(`${n.riskFlags.active}/${n.riskFlags.total} risk flags`) : ''}${n.generatedAt ? pill('written ' + new Date(n.generatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + ' UK') : ''}</div></div></div>`;
+  const mast = `<div class="mast">${art}<div class="scrim"></div><div class="in"><div class="brand">Desk Atlas · Daily</div><div class="date">${esc(n.date)}</div><h1>${esc(headline)}</h1><div class="tags">${pill(regimeWord)}${n.riskFlags ? pill(`${n.riskFlags.active}/${n.riskFlags.total} stress warnings`) : ''}${n.generatedAt ? pill('written ' + new Date(n.generatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + ' UK') : ''}</div></div></div>`;
 
-  const letterSec = (opening || n.position) ? `<section><div style="font-size:16.5px;line-height:1.65;color:${COLORS.ink}">${opening ? `<p>${esc(opening)}</p>` : ''}</div>${n.position ? `<div class="tense"><div class="b"><b>Behind us</b>${para(n.position.behind)}</div><div class="n"><b>Right now</b>${para(n.position.right)}</div><div class="a"><b>Ahead</b>${para(n.position.ahead)}</div></div>` : ''}${letter.signoff ? `<p class="muted small" style="margin-top:10px">${esc(letter.signoff)}</p>` : ''}</section>` : '';
+  const letterSec = (opening || n.position) ? `<section><div style="font-size:16.5px;line-height:1.65;color:${COLORS.ink}">${opening ? `<p>${esc(opening)}</p>` : ''}</div>${n.position ? `<div class="tense"><div class="b"><b>Yesterday and before</b>${para((n.position.behind ?? []).slice(0, 2))}</div><div class="n"><b>Today</b>${para((n.position.right ?? []).slice(0, 2))}</div><div class="a"><b>Coming up</b>${para((n.position.ahead ?? []).slice(0, 2))}</div></div>` : ''}${letter.signoff ? `<p class="muted small" style="margin-top:10px">${esc(letter.signoff)}</p>` : ''}</section>` : '';
 
-  const tiles = n.tiles?.length ? sec('The numbers', 'Markets at a glance', `<div class="tiles">${n.tiles.map(t => `<div class="tile"><div class="k">${esc(t.name)}</div><div class="v">${esc(t.value)}</div><div class="d ${t.tone ?? ''}">${esc(t.sub)}</div>${sparkSvg(t.spark, t.tone === 'dn' ? COLORS.orange : t.tone === 'up' ? COLORS.green : COLORS.blue)}</div>`).join('')}</div>${n.riskFlags ? `<div class="strip">${dialSvg(n.riskFlags.active, n.riskFlags.total)}<div class="small muted" style="max-width:46ch">${n.riskFlags.active === 0 ? 'No stress flag is on: volatility is not elevated, the VIX curve is not backwardated, credit is not widening fast.' : `${n.riskFlags.active} of ${n.riskFlags.total} stress flags are on.`} A dear VIX front has been measured to widen the next five sessions\' range; it has not been found to predict direction.</div></div>` : ''}`) : '';
+  const tiles = n.tiles?.length ? sec('The numbers', 'Part 1 · The world', `<div class="tiles">${n.tiles.map(t => `<div class="tile"><div class="k">${esc(t.name)}</div><div class="v">${esc(t.value)}</div><div class="d ${t.tone ?? ''}">${esc(t.sub)}</div>${sparkSvg(t.spark, t.tone === 'dn' ? COLORS.orange : t.tone === 'up' ? COLORS.green : COLORS.blue)}</div>`).join('')}</div>${n.riskFlags ? `<div class="strip">${dialSvg(n.riskFlags.active, n.riskFlags.total)}<div class="small muted" style="max-width:46ch">${n.riskFlags.active === 0 ? 'No stress warnings are on: markets are calm and borrowing costs are not jumping.' : `${n.riskFlags.active} of ${n.riskFlags.total} stress warnings are on.`} Stress tends to mean bigger daily swings, not a particular direction.</div></div>` : ''}`) : '';
 
-  const linkStatus = l => (l.verdict === 'holding' ? pill('holding', 'g') : l.verdict === 'broken' ? pill('broken', 'a') : pill('quiet'));
-  const lks = (n.links ?? []).filter(l => l.verdict !== 'unmeasured' && l.verdict !== 'quiet').sort((x, y) => (x.verdict === 'broken' ? 0 : 1) - (y.verdict === 'broken' ? 0 : 1)).slice(0, 6);
-  const drivers = (a.driver ?? []).map(d => `<div class="card2" style="margin-bottom:8px"><b>${esc(d.what)}</b><p class="small muted" style="margin:0 0 4px">${esc(d.evidence)}</p>${d.explain ? `<p class="small" style="margin:0"><b style="display:inline;color:${COLORS.violet}">How it works:</b> ${esc(d.explain)}</p>` : ''}</div>`).join('');
-  const trans = (a.transmission ?? []).length ? `<h3>What should respond, and whether it is</h3><table><tr><th>Market</th><th>Should</th><th>Is</th><th></th></tr>${a.transmission.slice(0, 9).map(t => `<tr><td><b>${esc(t.asset)}</b></td><td class="small">${esc(clip(t.should, 130))}</td><td class="small">${esc(clip(t.is, 150))}</td><td>${/^RESPONDING/i.test(t.state) ? pill('responding', 'g') : /NOT/i.test(t.state) ? pill('not', 'a') : pill('quiet')}</td></tr>`).join('')}</table>` : '';
-  const driving = (drivers || lks.length) ? sec('What is driving markets', 'What is happening', `${drivers}${n.stages ? `<h3>How the money is flowing</h3>${plumbingSvg(n.stages)}` : ''}${lks.length ? `<div class="links">${lks.map(l => `<div class="lk">${linkStatus(l)}<span><b>${esc(l.a.label)} → ${esc(l.b.label)}</b><small>${esc(l.a.text)} · ${esc(l.b.text)}${l.verdict === 'broken' && l.read ? ' — ' + esc(clip(l.read, 170)) : ''}</small></span></div>`).join('')}</div><p class="small muted" style="margin-top:6px">Holding: the textbook mechanism is doing the pricing. Broken: both ends moved, the wrong way round, and the mismatch is the story.</p>` : ''}${trans}`) : '';
+  const drivers = (a.driver ?? []).slice(0, 2).map(d => `<div class="card2" style="margin-bottom:8px"><b>${esc(d.what)}</b><p class="small muted" style="margin:0 0 4px">${esc(d.evidence)}</p>${d.explain ? `<p class="small" style="margin:0">${esc(d.explain)}</p>` : ''}</div>`).join('');
+  // The chain of impact: the textbook links in causal order, each one coloured by whether the market is behaving as the textbook says.
+  const chainRows = (n.links ?? []).filter(l => l.verdict !== 'unmeasured').slice(0, 9);
+  const VCOL = { holding: COLORS.green, broken: COLORS.orange, quiet: COLORS.muted };
+  const chain = chainRows.length ? `<h3>The chain of impact</h3><div class="chain">${chainRows.map(l => { const c = VCOL[l.verdict] ?? COLORS.muted, word = l.verdict === 'holding' ? 'working as expected' : l.verdict === 'broken' ? 'not behaving' : 'too small to judge'; return `<div class="cl ${l.verdict}"><span class="nd">${esc(l.a.label)}<small>${esc(l.a.text)}</small></span><span class="ar" style="color:${c}">&#9654;<em>${word}</em></span><span class="nd">${esc(l.b.label)}<small>${esc(l.b.text)}</small></span></div>${l.verdict === 'broken' && l.read ? `<p class="small muted chr">${esc(clip(l.read, 150))}</p>` : ''}`; }).join('')}</div><p class="small muted">Read it top to bottom: each row is "if this moves, that should follow". Green means the market is doing what the textbook says. Orange means both moved the wrong way round, and the mismatch is the story.</p>` : '';
+  const driving = (drivers || chain || n.stages) ? sec('What is moving markets', 'Part 1 · The world', `${drivers}${n.stages ? `<h3>Where the money is flowing</h3>${plumbingSvg(n.stages)}` : ''}${chain}`) : '';
 
-  const evRows = (n.events ?? []).map(e => { const note = e.note ?? {}; return `<tr><td>${esc(ukTime(e.ms))}</td><td><b>${e.ccy ? (FLAG[e.ccy] ?? '') + ' ' : ''}${esc(e.event)}</b> ${pill(e.impact, e.impact === 'high' ? 'a' : '')}<small>${e.estimate ? 'expected ' + esc(e.estimate) : 'no consensus listed'}${e.prev ? ', previous ' + esc(e.prev) : ''}${note.pairs?.length ? ' · touches ' + esc(note.pairs.slice(0, 4).join(', ')) : ''}</small>${note.measured ? `<small><b style="color:${COLORS.ink}">Measured size effect:</b> ${esc([note.book, note.range].filter(Boolean).join(' · '))}.</small>` : `<small>No measured size effect on record.</small>`}</td></tr>`; }).join('');
-  const ahead = evRows ? sec('The next releases, and what they have been measured to do', 'What is coming', `<table class="ev">${evRows}</table><p class="small muted">All times UK. "Measured size effect" means a study on this desk's own data found a release-day or half-hour move bigger than normal on that pair. "No measured size effect" means none was found, or the release is not covered, so expect nothing special. Which way any surprise moves a market is not predictable, and nothing here says otherwise.</p>`) : '';
+  const evAll = n.events ?? [];
+  const evShow = evAll.filter(e => e.impact === 'high' || e.impact === 'medium').slice(0, 6);
+  const evRows = evShow.map(e => { const note = e.note ?? {}; return `<tr><td>${esc(ukTime(e.ms))}</td><td><b>${e.ccy ? (FLAG[e.ccy] ?? '') + ' ' : ''}${esc(e.event)}</b> ${pill(e.impact === 'high' ? 'big one' : 'medium', e.impact === 'high' ? 'a' : '')}<small>${e.estimate ? 'forecast ' + esc(e.estimate) : 'no forecast listed'}${e.prev ? ', last time ' + esc(e.prev) : ''}</small>${note.measured ? `<small><b style="color:${COLORS.ink}">History:</b> ${esc([note.book, note.range].filter(Boolean).join(' · '))}.</small>` : ''}</td></tr>`; }).join('');
+  const ahead = evRows ? sec('The big releases coming up', 'Part 1 · The world', `<table class="ev">${evRows}</table><p class="small muted">UK time. "History" means we found this release moves that market by more than a normal day. Where it is blank, nothing unusual has been found. Nobody can tell in advance which way a surprise will push the price, so we do not try.</p>`) : '';
 
-  const rg = (n.ranges ?? []).map(r => `<tr><td><b>${esc(r.label)}</b></td><td class="n">${esc(r.price ?? '—')}</td><td class="n">${r.hlMed != null ? r.hlMed.toFixed(2) + '%' : '—'}</td><td style="width:34%">${r.used != null ? `<div class="rb"><i style="width:${Math.min(100, r.used * 100 / 1.5)}%"></i><u></u></div>` : ''}</td><td class="n">${r.used != null ? Math.round(r.used * 100) + '%' : '—'}</td></tr>`).join('');
-  const ranges = rg ? sec('How far each market is expected to travel today', 'Ranges', `<table><tr><th>Market</th><th>Price</th><th>Expected</th><th>Used so far</th><th></th></tr>${rg}</table><p class="small muted">Expected = the median high-to-low for the day from the calibrated forecast; the black tick is 100%. Across years the median day uses about 100% of it, so this is a fair ruler for how stretched the day is, not a forecast of direction.</p>`) : '';
+  // Part 2: each currency, as a card
+  const strMap = Object.fromEntries((n.strengths ?? []).map(s => [s.ccy, s.score]));
+  const cbMap = Object.fromEntries((n.cb ?? []).map(c => [c.ccy ?? c.bank, c])), surMap = Object.fromEntries((n.surprise ?? []).map(x => [x.ccy, x.score])), crMap = Object.fromEntries((n.crowding ?? []).map(c => [c.sym, c]));
+  const nextFor = ccy => evAll.find(e => e.ccy === ccy && (e.impact === 'high' || e.impact === 'medium'));
+  const moveWord = v => (v == null ? '' : Math.abs(v) < 0.1 ? 'flat today' : v > 0 ? 'firmer today' : 'softer today');
+  const CROWD = { 'crowded long': 'traders are heavily long', 'crowded short': 'traders are heavily short', 'smallest long in years': 'hardly anyone is long', 'smallest short in years': 'hardly anyone is short' };
+  const ccyCards = (n.strengths ?? []).map(s0 => {
+    const ccy = s0.ccy, c = cbMap[ccy], su = surMap[ccy], cr = crMap[ccy], ev = nextFor(ccy), bank = CCY_BANK[ccy] ?? c?.bank;
+    const stance = c ? (c.latest >= 0.3 ? 'Hawkish' : c.latest <= -0.3 ? 'Dovish' : 'Neutral') : null, drift = c ? (c.trend === 'more hawkish' ? 'and getting more hawkish' : c.trend === 'more dovish' ? 'and getting more dovish' : 'and steady') : '';
+    const sent = [`The ${esc(CCY_NAME[ccy] ?? ccy)} is ${moveWord(s0.score)} (${sg(s0.score)}% against the others).`, c ? `The ${esc(bank)} sounds ${stance.toLowerCase()} ${drift}: a hawkish bank is one leaning towards higher rates.` : '', su != null && Math.abs(su) >= 0.15 ? `Economic data has been ${su > 0 ? 'beating' : 'missing'} forecasts.` : ''].filter(Boolean).join(' ');
+    const chips = [cr && cr.state !== 'mid-range' ? CROWD[cr.state] : null, ev ? `next: ${ev.event}, ${ukTime(ev.ms)}` : null].filter(Boolean);
+    const drives = (n.ranges ?? []).filter(r => (r.label ?? '').split('/').includes(ccy)).map(r => `${esc(r.label)}${r.used != null ? ' <span class="muted">' + Math.round(r.used * 100) + '%</span>' : ''}`);
+    return `<div class="cc2"><div class="h">${flagSvg(ccy, 40, 27)}<div class="t"><b>${esc(ccy)}</b><small>${esc(CCY_NAME[ccy] ?? ccy)} — ${esc(CCY_BANK[ccy] ?? '')}</small></div>${stance ? `<span class="pill ${stance === 'Hawkish' ? 'a' : ''}">${stance}</span>` : ''}</div><p>${sent}</p>${chips.length ? `<div class="chips">${chips.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}${drives.length ? `<p class="small muted" style="margin:8px 0 0">Pairs it drives (share of a normal day used): ${drives.join(' · ')}</p>` : ''}</div>`;
+  }).join('');
+  const people = ccyCards ? sec('The currencies', 'Part 2 · Country by country', `<div class="ccg2">${ccyCards}</div><p class="small muted">Stance = the tone of the last central-bank meetings, not a forecast of what the bank will do. Heavy positioning shows who gets hurt if they are wrong, not which way price goes.</p>`) : '';
 
-  const cur = n.strengths?.length ? `<h3>Currencies, by their 1-day move against the pairs we hold</h3>${bars(n.strengths.map(s => ({ label: `${FLAG[s.ccy] ?? ''} ${s.ccy}`, v: s.score, text: sg(s.score) + '%' })), { max: 0.6 })}` : '';
-  const crowd = (n.crowding ?? []).filter(c => c.state !== 'mid-range').length ? `<h3>Who is crowded</h3><p class="small">${n.crowding.filter(c => c.state !== 'mid-range').map(c => `<b>${esc(c.sym)}</b> ${esc(c.state)} (${ord(c.pct)} percentile)`).join(' · ')}. Positioning says who has to act if they are wrong; it has not been found to say which way price goes.</p>` : '';
-  const cb = n.cb?.length ? `<h3>Central-bank tone, last meetings</h3><div class="strip" style="margin-top:4px">${n.cb.map(c => `<div class="card2" style="min-width:128px"><b>${esc(c.bank)} <span class="${c.delta > 0.05 ? 'up' : c.delta < -0.05 ? 'dn' : ''}">${sg(c.latest)}</span></b>${sparkSvg(c.scores, COLORS.violet, 100, 26)}<div class="small muted">${esc(c.trend)}</div></div>`).join('')}</div>` : '';
-  const sur = n.surprise?.length ? `<h3>Who has been beating or missing consensus</h3>${bars(n.surprise.map(s => ({ label: s.ccy, v: s.score, text: sg(s.score) })), { max: 0.6 })}` : '';
-  const people = (cur || crowd || cb || sur) ? sec('Currencies, positioning and central banks', 'Who is doing what', `${cur}${sur}${cb}${crowd}`) : '';
+  // Part 3: each market, as a small card
+  const trans = a.transmission ?? [];
+  const pairCards = (n.assets ?? n.ranges ?? []).map(r => {
+    const m = /^([A-Z]{3})\/([A-Z]{3})$/.exec(r.label ?? ''), key = r.key ?? (m ? m[1] + m[2] : ({ Gold: 'GOLD', Bitcoin: 'BTCUSD' })[r.label] ?? null);
+    let story = '';
+    const t = trans.find(x => new RegExp('(^|[^a-z])' + String(r.label).replace(/[^A-Za-z0-9]+/g, '.?') + '([^a-z]|$)', 'i').test(x.asset ?? '') || (key && new RegExp(String(key).replace(/(...)(...)/, '$1.?$2'), 'i').test(x.asset ?? '')));
+    if (r.read) story = r.read;
+    else if (t) story = clipS(t.is, 170);
+    else if (r.why) story = r.why;
+    else if (m && strMap[m[1]] != null && strMap[m[2]] != null) { const d = strMap[m[1]] - strMap[m[2]]; story = Math.abs(d) < 0.15 ? `${m[1]} and ${m[2]} moved about the same today.` : `${d > 0 ? m[1] : m[2]} stronger than ${d > 0 ? m[2] : m[1]} today.`; }
+    const ev = key ? evAll.find(e => (e.impact === 'high' || e.impact === 'medium') && (e.note?.pairs ?? []).includes(key)) : null;
+    const stretch = r.used == null ? '' : r.used >= 1 ? 'already stretched' : r.used >= 0.6 ? 'getting stretched' : r.used < 0.25 ? 'quiet so far' : 'room left';
+    const chips = [r.watch ? 'watch: ' + r.watch : null, ...(r.chips ?? []), ev && !r.watch ? `next: ${ev.event}, ${ukTime(ev.ms)}` : null].filter(Boolean).slice(0, 3);
+    return `<div class="pc"><div class="h">${assetIcon(key, r.label)}<div class="t"><b>${esc(r.label)}</b><small>${esc(r.groupLabel ?? (m ? 'FX' : ''))}${r.price ? ' · ' + esc(r.price) : ''}</small></div></div>${r.used != null ? `<div class="rb"><i style="width:${Math.min(100, r.used * 100 / 1.5)}%"></i><u></u></div><small class="muted">${Math.round(r.used * 100)}% of a normal day's range · ${stretch}</small>` : ''}${story ? `<p>${esc(story)}</p>` : ''}${chips.length ? `<div class="chips">${chips.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}</div>`;
+  }).join('');
+  const ranges = pairCards ? sec('Each market at a glance', 'Part 3 · Pair by pair', `<div class="pcg">${pairCards}</div><p class="small muted">The bar shows how much of a typical day's travel has been used; the black tick is a full normal day. It says how stretched the day is, not which way it goes.</p>`) : '';
 
-  const reg = n.regimeCard && typeof n.regimeCard === 'object' ? n.regimeCard : null;
-  const regBars = reg?.markets?.length ? `<h3>What each market did in this regime, per month since 2007</h3>${bars(reg.markets.filter(m => ['SPX500', 'NQ', 'GOLD', 'DXY', 'WTI', 'US10Y'].includes(m.key)).map(m => ({ label: m.label, v: m.mean, text: `${sg(m.mean)}% · ${m.posShare}% up` })), { max: 3 })}<p class="small muted">${esc(reg.note ?? '')}</p>` : '';
-  const chg = n.changes?.length ? `<h3>What changed</h3><table><tr><th></th><th class="n">1d</th><th class="n">5d</th><th class="n">20d</th></tr>${n.changes.map(r => { const u = r.unit === 'bps' ? 'bp' : '%', f = v => (v == null ? '·' : `<span class="${v > 0 ? 'up' : v < 0 ? 'dn' : ''}">${sg(v, r.unit === 'bps' ? 0 : 1)}${u}</span>`); return `<tr><td>${esc(r.label)}</td><td class="n">${f(r.d1)}</td><td class="n">${f(r.d5)}</td><td class="n">${f(r.d20)}</td></tr>`; }).join('')}</table>` : '';
-  const eod = n.eod?.hook ? `<h3>Yesterday's review</h3><p>${esc(n.eod.hook)}</p>${n.eod.right ? `<p class="small"><b>Held:</b> ${esc(clip(n.eod.right, 300))}</p>` : ''}${n.eod.wrong ? `<p class="small"><b>Missed:</b> ${esc(clip(n.eod.wrong, 300))}</p>` : ''}` : '';
-  const behind = (regBars || chg || eod) ? sec('What history says, and what already happened', 'Behind us', `${reg ? `<p>${esc(reg.label)} regime, month ${reg.months}${reg.previous ? `, after ${reg.previous.months} months of ${esc(reg.previous.regime)}` : ''}. <span class="muted">The textbook says: ${esc(reg.usual)}.</span></p>` : ''}${regBars}${chg}${eod}`) : '';
+  // the rest, kept short
+  const reg = n.regimeCard && typeof n.regimeCard === 'object' ? n.regimeCard : null, fp = n.fedPath;
+  const big = [reg ? `<p><b>Backdrop:</b> ${esc(reg.label)} conditions, month ${reg.months}${reg.previous ? `, after ${reg.previous.months} months of ${esc(reg.previous.regime)}` : ''}. <span class="muted">Textbook: ${esc(reg.usual)}.</span></p>` : '', fp ? `<p><b>The Fed:</b> markets put the odds of a higher rate by ${esc(fp.ref)} at ${fp.hike}%${fp.current ? ` (rates now ${esc(fp.current)})` : ''}.</p>` : '', n.eod?.hook ? `<p><b>Yesterday:</b> ${esc(n.eod.hook)}</p>` : ''].filter(Boolean).join('');
+  const behind = big ? sec('The bigger picture', 'Context', big) : '';
 
-  const fp = n.fedPath, scn = n.scenarios ?? [];
-  const fpHtml = fp ? `<h3>The Fed path</h3><p>${fp.hike}% odds of a higher rate by ${esc(fp.ref)}${fp.current ? ` (now ${esc(fp.current)})` : ''}.</p>${pctBars((fp.dist ?? []).map(d => ({ label: d.band, p: d.p, color: COLORS.amber })))}<p class="small muted">${esc(fp.note ?? '')}</p>` : '';
-  const scHtml = scn.length ? `<h3>Scenario probabilities</h3>${pctBars(scn.map(s => ({ label: clip(s.name, 60), p: s.p })))}<p class="small muted">These answer separate questions, so they do not add up to 100%.</p>` : '';
-  const nc = n.nowcast ? `<h3>Nowcasts</h3><p class="small">GDPNow ${n.nowcast.gdpnow ?? '?'}%; Cleveland CPI nowcast ${n.nowcast.cpi ?? '?'}% a month, core ${n.nowcast.core ?? '?'}%. <span class="muted">${esc(/_TESTS\.md|N1 null/.test(n.nowcast.note ?? '') ? 'Tested on this desk: context, not a lean.' : (n.nowcast.note ?? ''))}</span></p>` : '';
-  const odds = (fpHtml || scHtml || nc) ? sec('The odds and the nowcasts', 'What the numbers say is likely', `${scHtml}${fpHtml}${nc}`) : '';
-
-  const li = arr => (arr ?? []).map(c => `<li>${esc(c.check)} <span class="muted">— ${esc(c.level)} (${esc(c.when)})</span></li>`).join('');
-  const trig = ((a.confirm ?? []).length || (a.invalidate ?? []).length) ? sec('What would confirm the view, and what would break it', 'What to watch', `<div class="two"><div><h3 style="margin-top:0;color:${COLORS.green}">Would confirm</h3><ul class="t">${li(a.confirm)}</ul></div><div><h3 style="margin-top:0;color:${COLORS.orange}">Would break it</h3><ul class="t">${li(a.invalidate)}</ul></div></div>${(a.catalysts ?? []).length ? `<h3>Catalysts</h3><ul class="t">${a.catalysts.map(c => `<li><b>${esc(c.when)}</b> · ${esc(c.event)} <span class="muted">— ${esc(clip(c.impact, 220))}</span></li>`).join('')}</ul>` : ''}`) : '';
-  const sizing = a.sizing ? sec('How much, not which way', 'Sizing', `<p>${esc(a.sizing)}</p>`) : '';
-  const lesson = a.lesson?.concept ? `<div class="lesson" style="margin-top:14px"><b>What to learn from today: ${esc(a.lesson.concept)}</b><p style="margin:6px 0 0">${esc(a.lesson.today)}</p></div>` : '';
-  const noEdge = (a.noEdge ?? []).length ? sec('Where this desk has no edge', 'Honesty box', `<ul class="t small">${a.noEdge.slice(0, 5).map(x => `<li>${esc(clip(x, 330))}</li>`).join('')}</ul>${a.noEdge.length > 5 ? `<p class="small muted">…and ${a.noEdge.length - 5} more in the full brief.</p>` : ''}`) : '';
+  const li = arr => (arr ?? []).slice(0, 3).map(c => `<li>${esc(c.check)} <span class="muted">— ${esc(c.level)}</span></li>`).join('');
+  const trig = ((a.confirm ?? []).length || (a.invalidate ?? []).length) ? sec('What would change the story', 'Watch for', `<div class="two"><div><h3 style="margin-top:0;color:${COLORS.green}">Backs it up</h3><ul class="t">${li(a.confirm)}</ul></div><div><h3 style="margin-top:0;color:${COLORS.orange}">Breaks it</h3><ul class="t">${li(a.invalidate)}</ul></div></div>${a.sizing ? `<p class="small muted" style="margin-top:8px"><b>Sizing:</b> ${esc(clipS(a.sizing, 260))}</p>` : ''}`) : '';
+  const lesson = a.lesson?.concept ? `<div class="lesson" style="margin-top:14px"><b>Today's lesson: ${esc(a.lesson.concept)}</b><p style="margin:6px 0 0">${esc(a.lesson.today)}</p></div>` : '';
+  const noEdge = (a.noEdge ?? []).length ? sec('What we cannot tell you', 'Honesty box', `<ul class="t small">${a.noEdge.slice(0, 3).map(x => `<li>${esc(clipS(x, 230))}</li>`).join('')}</ul>`) : '';
 
   const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}${llm ? ' · narrative written by ' + esc(llm) : ''}</div></div>`;
 
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${letterSec}${tiles}${driving}${ahead}${ranges}${people}${behind}${odds}${trig}${sizing}${lesson}${noEdge}${foot}</div></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${letterSec}${tiles}${driving}${ahead}${people}${ranges}${behind}${trig}${lesson}${noEdge}${foot}</div></body></html>`;
 
   const T = [];
   T.push(`DESK ATLAS · DAILY · ${n.date}`, '', headline, '');
   if (opening) T.push(opening, '');
-  if (n.position) { T.push('BEHIND US', ...(n.position.behind ?? []), '', 'RIGHT NOW', ...(n.position.right ?? []), '', 'AHEAD', ...(n.position.ahead ?? []), ''); }
+  if (n.position) { T.push('YESTERDAY AND BEFORE', ...(n.position.behind ?? []), '', 'TODAY', ...(n.position.right ?? []), '', 'COMING UP', ...(n.position.ahead ?? []), ''); }
   if (n.events?.length) { T.push('NEXT RELEASES (UK time)'); for (const e of n.events) T.push(`- ${ukTime(e.ms)} ${e.ccy ?? ''} ${e.event} (${e.impact})${e.estimate ? ', expected ' + e.estimate : ''}${e.note?.measured ? ' | measured size effect: ' + [e.note.book, e.note.range].filter(Boolean).join(' · ') : ''}`); T.push(''); }
-  if (a.confirm?.length) { T.push('WOULD CONFIRM'); for (const c of a.confirm) T.push(`- ${c.check}: ${c.level} (${c.when})`); T.push(''); }
-  if (a.invalidate?.length) { T.push('WOULD BREAK IT'); for (const c of a.invalidate) T.push(`- ${c.check}: ${c.level} (${c.when})`); T.push(''); }
+  if (n.strengths?.length) { T.push('CURRENCIES (move today)'); for (const c of n.strengths) T.push(`- ${c.ccy}: ${sg(c.score)}% ${moveWord(c.score)}`); T.push(''); }
+  if (n.ranges?.length) { T.push('PAIRS (share of a normal day range used)'); for (const r of n.ranges) T.push(`- ${r.label} ${r.price ?? ''}${r.used != null ? ': ' + Math.round(r.used * 100) + '%' : ''}`); T.push(''); }
+  if (a.confirm?.length) { T.push('BACKS IT UP'); for (const c of a.confirm) T.push(`- ${c.check}: ${c.level} (${c.when})`); T.push(''); }
+  if (a.invalidate?.length) { T.push('BREAKS IT'); for (const c of a.invalidate) T.push(`- ${c.check}: ${c.level} (${c.when})`); T.push(''); }
   if (a.lesson?.concept) T.push(`TODAY'S LESSON: ${a.lesson.concept}`, a.lesson.today, '');
   T.push('---', 'NOT FINANCIAL ADVICE.', ...DISCLAIMER.map(d => d.replace(/^NOT FINANCIAL ADVICE\.\s*/, '')));
   return { subject, preheader, html, text: T.join('\n') };

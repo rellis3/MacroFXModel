@@ -1299,6 +1299,19 @@ export const DESK_EVIDENCE = [
     use: 'Same as net-liquidity-tailwind-spx: context only.',
     instruments: ['NQ'],
   },
+  {
+    id: 'quarter-end-funding-spike', domain: 'macro', verdict: 'underpowered', date: '2026-10-22', doc: 'forge/QUARTER_END_FUNDING_PREREG.md', also: ['analysis/output/quarter-end-funding/RESULTS.md'],
+    claim: 'C.OG: quarter-end balance-sheet shrinking widens funding spreads predictably; desk version: a thinner Fed overnight-RRP buffer, known 5 business days ahead, predicts a bigger quarter-end SOFR spike over its recent norm',
+    result: '33 quarter-ends 2018-06 to 2026-06: Spearman -0.32 [-0.65, +0.07], halves -0.25 / -0.62, just outside the random-date placebo [-0.32, +0.36], Holm p 0.17. RRP near zero meant scarce liquidity in 2018-19/2025 (spikes 13-59bp) but flooded reserves in 2020 (no spikes). Descriptive: thin RRP AND below-median reserves 14.5bp mean (n 14) vs 3.8bp (n 19); quarter-ends average twice month-ends (8.3 vs 4.2bp).',
+    use: 'Quarter-end SOFR spikes are a predictable calendar description, biggest when RRP is thin and reserves tight; not a validated forecast. Forward record: the fit implies about +15bp at 2026-12-31 at todays RRP.',
+  },
+  {
+    id: 'quarter-end-funding-usd', domain: 'macro', verdict: 'underpowered', date: '2026-10-22', doc: 'forge/QUARTER_END_FUNDING_PREREG.md', also: ['analysis/output/quarter-end-funding/RESULTS.md'],
+    claim: 'The dollar firms into quarter-ends (bank balance-sheet window dressing) more than into ordinary month-ends',
+    result: '7-pair USD basket, last 5 trading days, 93 quarter-ends vs 186 other month-ends 2003-2026: -0.07% [-0.30, +0.17], wrong sign; the window 10 days earlier shows the same -0.07%. Descriptive: USD softer into year-end (-0.48% vs other months).',
+    use: 'No quarter-end dollar bid to lean on. Quarter-end stays a calendar note for FX.',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1418,6 +1431,8 @@ const POWER = {
   'tff-basis-rates-vol-build':         { n: '881 weeks, ~220 independent 4-week windows', note: 'MDE r about 0.21 vs 0.10 bar' },
   'net-liquidity-tailwind-spx':        { n: '786 weeks, ~200 independent 4-week windows', note: 'MDE 2.0 pp vs 1.0 pp bar; CI [-0.47, +1.32]' },
   'net-liquidity-tailwind-nq':         { n: '786 weeks, ~200 independent 4-week windows', note: 'MDE 2.4 pp vs 1.0 pp bar; CI [-0.61, +1.55]' },
+  'quarter-end-funding-spike':         { n: '33 quarter-ends 2018-2026', note: 'MDE rho 0.54 vs 0.40 bar; CI [-0.65, +0.07]' },
+  'quarter-end-funding-usd':           { n: '93 quarter-ends vs 186 month-ends', note: 'MDE 0.39% vs 0.25% bar; CI [-0.30, +0.17]' },
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
 };
