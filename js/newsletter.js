@@ -56,6 +56,36 @@ const ord = n => { n = Math.round(n); const m = n % 100; return n + (m >= 11 && 
 const clipS = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); if (s.length <= n) return s; const cut = s.slice(0, n), i = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; ')); return i > n * 0.4 ? cut.slice(0, i + 1) : clip(s, n); };
 const clip = (s, n) => { s = String(s ?? ''); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const ukTime = ms => new Date(ms).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+
+/** Small drawn flags (simplified) so every currency has a flag on any machine. */
+const _fl = (w, h, inner) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20" width="${w}" height="${h}" role="img" style="border-radius:3px;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.18)">${inner}</svg>`;
+export function flagSvg(ccy, w = 36, h = 24) {
+  const R = '#c8102e', B = '#012169', W = '#fff';
+  const star = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${W}"/>`;
+  const F = {
+    USD: `<rect width="30" height="20" fill="${W}"/>${[0, 2, 4, 6, 8, 10, 12].map(i => `<rect y="${(i * 20 / 13).toFixed(2)}" width="30" height="${(20 / 13).toFixed(2)}" fill="${R}"/>`).join('')}<rect width="13" height="10.8" fill="#3c3b6e"/>${[2, 5, 8, 11].flatMap(x => [2, 5, 8].map(y => `<circle cx="${x}" cy="${y}" r=".6" fill="${W}"/>`)).join('')}`,
+    EUR: `<rect width="30" height="20" fill="#003399"/>${Array.from({ length: 12 }, (_, i) => `<circle cx="${15 + 6 * Math.cos(i * Math.PI / 6)}" cy="${10 + 6 * Math.sin(i * Math.PI / 6)}" r="1" fill="#ffcc00"/>`).join('')}`,
+    GBP: `<rect width="30" height="20" fill="${B}"/><path d="M0 0L30 20M30 0L0 20" stroke="${W}" stroke-width="4"/><path d="M0 0L30 20M30 0L0 20" stroke="${R}" stroke-width="1.5"/><path d="M15 0V20M0 10H30" stroke="${W}" stroke-width="6"/><path d="M15 0V20M0 10H30" stroke="${R}" stroke-width="3.4"/>`,
+    JPY: `<rect width="30" height="20" fill="${W}"/><circle cx="15" cy="10" r="5.6" fill="#bc002d"/>`,
+    AUD: `<rect width="30" height="20" fill="#00008b"/><rect width="15" height="10" fill="${B}"/><path d="M0 0L15 10M15 0L0 10" stroke="${W}" stroke-width="2"/><path d="M7.5 0V10M0 5H15" stroke="${W}" stroke-width="3"/><path d="M7.5 0V10M0 5H15" stroke="${R}" stroke-width="1.6"/>${star(7.5, 15, 1.7)}${star(22, 5, 1.2)}${star(25, 9, 1.2)}${star(22, 15, 1.2)}${star(19, 9.5, 1.2)}`,
+    NZD: `<rect width="30" height="20" fill="#00247d"/><rect width="15" height="10" fill="${B}"/><path d="M0 0L15 10M15 0L0 10" stroke="${W}" stroke-width="2"/><path d="M7.5 0V10M0 5H15" stroke="${W}" stroke-width="3"/><path d="M7.5 0V10M0 5H15" stroke="${R}" stroke-width="1.6"/>${[[22, 5], [25, 9], [22, 15], [19, 10]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.3" fill="${R}" stroke="${W}" stroke-width=".5"/>`).join('')}`,
+    CAD: `<rect width="30" height="20" fill="${W}"/><rect width="7.5" height="20" fill="#d52b1e"/><rect x="22.5" width="7.5" height="20" fill="#d52b1e"/><path d="M15 4.5L16.6 8.2L19 7.4L17.6 11.2H12.4L11 7.4L13.4 8.2Z" fill="#d52b1e"/><rect x="14.6" y="11" width=".8" height="3" fill="#d52b1e"/>`,
+    CHF: `<rect width="30" height="20" fill="#d52b1e"/><rect x="13" y="4.5" width="4" height="11" fill="${W}"/><rect x="9.5" y="8" width="11" height="4" fill="${W}"/>`,
+  };
+  return F[ccy] ? _fl(w, h, F[ccy]) : `<span class="ccytag">${esc(ccy)}</span>`;
+}
+/** An icon per market: two flags for an FX pair, bars for an index, a bar of gold, a coin for Bitcoin. */
+export function assetIcon(key, label) {
+  const k = String(key ?? '').toUpperCase(), m = /^([A-Z]{3})\/([A-Z]{3})$/.exec(label ?? '');
+  const tile = inner => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 28" width="40" height="30" aria-hidden="true" style="flex:none"><rect width="36" height="28" rx="7" fill="#eef2fb"/>${inner}</svg>`;
+  if (m) return `<span class="pairflags">${flagSvg(m[1], 28, 19)}${flagSvg(m[2], 28, 19)}</span>`;
+  if (k === 'GOLD' || k === 'XAUUSD') return tile(`<path d="M8 19l3-8h14l3 8z" fill="#e0a800"/><path d="M11 11h14l-1.5 3H12.5z" fill="#ffd34d"/>`);
+  if (k === 'BTCUSD') return tile(`<circle cx="18" cy="14" r="8.5" fill="#f7931a"/><text x="18" y="18.4" text-anchor="middle" font-size="12" font-weight="700" fill="#fff" font-family="Segoe UI,Arial,sans-serif">B</text>`);
+  return tile(`<rect x="8" y="16" width="4" height="6" rx="1" fill="#7a5cff"/><rect x="14" y="12" width="4" height="10" rx="1" fill="#2f6bff"/><rect x="20" y="8" width="4" height="14" rx="1" fill="#2f6bff"/><polyline points="8,13 15,9 21,11 28,5" fill="none" stroke="#0f9f6e" stroke-width="1.8" stroke-linecap="round"/>`);
+}
+const CCY_NAME = { USD: 'US Dollar', EUR: 'Euro', GBP: 'British Pound', JPY: 'Japanese Yen', AUD: 'Australian Dollar', NZD: 'New Zealand Dollar', CAD: 'Canadian Dollar', CHF: 'Swiss Franc' };
+const CCY_BANK = { USD: 'Fed', EUR: 'ECB', GBP: 'Bank of England', JPY: 'Bank of Japan', AUD: 'RBA', NZD: 'RBNZ', CAD: 'Bank of Canada', CHF: 'SNB' };
+
 const COLORS = { ink: '#0b1220', text: '#1b2a41', muted: '#5b6b82', line: '#d8e0ec', paper: '#eef2f8', card: '#ffffff', blue: '#2f6bff', violet: '#7a5cff', green: '#0f9f6e', orange: '#e8710a', amber: '#b7791f' };
 const FLAG = { USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', AUD: '🇦🇺', NZD: '🇳🇿', CAD: '🇨🇦', CHF: '🇨🇭' };
 
@@ -101,6 +131,8 @@ function plumbingSvg(stages) {
 }
 
 const CSS = `
+.ccg2,.pcg{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:10px}.cc2,.pc{border:1px solid ${COLORS.line};border-radius:14px;padding:12px 14px;background:${COLORS.card}}.cc2 .h,.pc .h{display:flex;align-items:center;gap:10px;margin-bottom:8px}.cc2 .t,.pc .t{flex:1;min-width:0}.cc2 .t b,.pc .t b{display:block;font-size:17px;line-height:1.1}.cc2 .t small,.pc .t small{display:block;color:${COLORS.muted};font-size:11.5px;margin-top:2px}.cc2 p,.pc p{margin:6px 0 0;font-size:13.5px;line-height:1.5}.pc .rb{margin:6px 0 3px}.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.chips span{font-size:11.5px;padding:3px 8px;border-radius:999px;background:${COLORS.paper};border:1px solid ${COLORS.line};color:${COLORS.text}}.pairflags{display:flex;flex:none}.pairflags svg+svg{margin-left:-8px}.ccytag{font-weight:700}
+.chain{display:grid;gap:4px;margin-top:6px}.cl{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:${COLORS.paper}}.cl.quiet{opacity:.7}.cl .nd{font-weight:600;font-size:13px}.cl .nd small{display:block;font-weight:400;color:${COLORS.muted};font-size:11.5px}.cl .ar{text-align:center;font-size:15px;line-height:1}.cl .ar em{display:block;font-style:normal;font-size:10.5px;font-weight:600;letter-spacing:.02em;margin-top:2px}.chr{margin:-2px 0 4px 10px}
 .ccg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}.cc{border:1px solid ${COLORS.line};border-radius:12px;padding:9px 11px;background:${COLORS.card}}.cc .h{display:flex;justify-content:space-between;gap:8px;font-size:13px}.cc ul{margin:6px 0 0;padding-left:16px;font-size:12.5px;color:${COLORS.text}}.cc li{margin-bottom:2px}.pairs td{vertical-align:top}.pairs small{display:block;color:${COLORS.muted};font-size:11.5px}
 *{box-sizing:border-box}body{margin:0;background:${COLORS.paper};color:${COLORS.text};font:15px/1.6 "Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
 .wrap{max-width:700px;margin:0 auto;padding:16px 14px 40px}
@@ -155,40 +187,49 @@ export function buildNewsletter(n) {
 
   const tiles = n.tiles?.length ? sec('The numbers', 'Part 1 · The world', `<div class="tiles">${n.tiles.map(t => `<div class="tile"><div class="k">${esc(t.name)}</div><div class="v">${esc(t.value)}</div><div class="d ${t.tone ?? ''}">${esc(t.sub)}</div>${sparkSvg(t.spark, t.tone === 'dn' ? COLORS.orange : t.tone === 'up' ? COLORS.green : COLORS.blue)}</div>`).join('')}</div>${n.riskFlags ? `<div class="strip">${dialSvg(n.riskFlags.active, n.riskFlags.total)}<div class="small muted" style="max-width:46ch">${n.riskFlags.active === 0 ? 'No stress warnings are on: markets are calm and borrowing costs are not jumping.' : `${n.riskFlags.active} of ${n.riskFlags.total} stress warnings are on.`} Stress tends to mean bigger daily swings, not a particular direction.</div></div>` : ''}`) : '';
 
-  const linkStatus = l => (l.verdict === 'holding' ? pill('working as expected', 'g') : l.verdict === 'broken' ? pill('not behaving', 'a') : pill('quiet'));
-  const lks = (n.links ?? []).filter(l => l.verdict !== 'unmeasured' && l.verdict !== 'quiet').sort((x, y) => (x.verdict === 'broken' ? 0 : 1) - (y.verdict === 'broken' ? 0 : 1)).slice(0, 3);
   const drivers = (a.driver ?? []).slice(0, 2).map(d => `<div class="card2" style="margin-bottom:8px"><b>${esc(d.what)}</b><p class="small muted" style="margin:0 0 4px">${esc(d.evidence)}</p>${d.explain ? `<p class="small" style="margin:0">${esc(d.explain)}</p>` : ''}</div>`).join('');
-  const driving = (drivers || lks.length) ? sec('What is moving markets', 'Part 1 · The world', `${drivers}${n.stages ? `<h3>Where the money is flowing</h3>${plumbingSvg(n.stages)}` : ''}${lks.length ? `<div class="links">${lks.map(l => `<div class="lk">${linkStatus(l)}<span><b>${esc(l.a.label)} → ${esc(l.b.label)}</b><small>${esc(l.a.text)} · ${esc(l.b.text)}${l.verdict === 'broken' && l.read ? ' — ' + esc(clip(l.read, 150)) : ''}</small></span></div>`).join('')}</div>` : ''}`) : '';
+  // The chain of impact: the textbook links in causal order, each one coloured by whether the market is behaving as the textbook says.
+  const chainRows = (n.links ?? []).filter(l => l.verdict !== 'unmeasured').slice(0, 9);
+  const VCOL = { holding: COLORS.green, broken: COLORS.orange, quiet: COLORS.muted };
+  const chain = chainRows.length ? `<h3>The chain of impact</h3><div class="chain">${chainRows.map(l => { const c = VCOL[l.verdict] ?? COLORS.muted, word = l.verdict === 'holding' ? 'working as expected' : l.verdict === 'broken' ? 'not behaving' : 'too small to judge'; return `<div class="cl ${l.verdict}"><span class="nd">${esc(l.a.label)}<small>${esc(l.a.text)}</small></span><span class="ar" style="color:${c}">&#9654;<em>${word}</em></span><span class="nd">${esc(l.b.label)}<small>${esc(l.b.text)}</small></span></div>${l.verdict === 'broken' && l.read ? `<p class="small muted chr">${esc(clip(l.read, 150))}</p>` : ''}`; }).join('')}</div><p class="small muted">Read it top to bottom: each row is "if this moves, that should follow". Green means the market is doing what the textbook says. Orange means both moved the wrong way round, and the mismatch is the story.</p>` : '';
+  const driving = (drivers || chain || n.stages) ? sec('What is moving markets', 'Part 1 · The world', `${drivers}${n.stages ? `<h3>Where the money is flowing</h3>${plumbingSvg(n.stages)}` : ''}${chain}`) : '';
 
   const evAll = n.events ?? [];
   const evShow = evAll.filter(e => e.impact === 'high' || e.impact === 'medium').slice(0, 6);
   const evRows = evShow.map(e => { const note = e.note ?? {}; return `<tr><td>${esc(ukTime(e.ms))}</td><td><b>${e.ccy ? (FLAG[e.ccy] ?? '') + ' ' : ''}${esc(e.event)}</b> ${pill(e.impact === 'high' ? 'big one' : 'medium', e.impact === 'high' ? 'a' : '')}<small>${e.estimate ? 'forecast ' + esc(e.estimate) : 'no forecast listed'}${e.prev ? ', last time ' + esc(e.prev) : ''}</small>${note.measured ? `<small><b style="color:${COLORS.ink}">History:</b> ${esc([note.book, note.range].filter(Boolean).join(' · '))}.</small>` : ''}</td></tr>`; }).join('');
   const ahead = evRows ? sec('The big releases coming up', 'Part 1 · The world', `<table class="ev">${evRows}</table><p class="small muted">UK time. "History" means we found this release moves that market by more than a normal day. Where it is blank, nothing unusual has been found. Nobody can tell in advance which way a surprise will push the price, so we do not try.</p>`) : '';
 
-  // Part 2: each currency, in plain words
+  // Part 2: each currency, as a card
   const strMap = Object.fromEntries((n.strengths ?? []).map(s => [s.ccy, s.score]));
   const cbMap = Object.fromEntries((n.cb ?? []).map(c => [c.ccy ?? c.bank, c])), surMap = Object.fromEntries((n.surprise ?? []).map(x => [x.ccy, x.score])), crMap = Object.fromEntries((n.crowding ?? []).map(c => [c.sym, c]));
   const nextFor = ccy => evAll.find(e => e.ccy === ccy && (e.impact === 'high' || e.impact === 'medium'));
   const moveWord = v => (v == null ? '' : Math.abs(v) < 0.1 ? 'flat today' : v > 0 ? 'firmer today' : 'softer today');
-  const ccyCards = (n.strengths ?? []).map(s => {
-    const c = cbMap[s.ccy], su = surMap[s.ccy], cr = crMap[s.ccy], ev = nextFor(s.ccy), L = [];
-    if (c) L.push(`${esc(c.bank)} is ${c.trend === 'more hawkish' ? 'leaning towards higher rates' : c.trend === 'more dovish' ? 'leaning towards lower rates' : 'holding its line'}`);
-    if (su != null && Math.abs(su) >= 0.15) L.push(`economic data ${su > 0 ? 'beating' : 'missing'} forecasts lately`);
-    if (cr && cr.state !== 'mid-range') L.push({ 'crowded long': 'traders are heavily long', 'crowded short': 'traders are heavily short', 'smallest long in years': 'hardly anyone is long', 'smallest short in years': 'hardly anyone is short' }[cr.state] ?? cr.state);
-    if (ev) L.push(`next: ${esc(ev.event)}, ${esc(ukTime(ev.ms))}`);
-    return `<div class="cc"><div class="h"><b>${FLAG[s.ccy] ?? ''} ${esc(s.ccy)}</b><span class="${s.score >= 0.1 ? 'up' : s.score <= -0.1 ? 'dn' : ''}">${sg(s.score)}% · ${moveWord(s.score)}</span></div>${L.length ? `<ul>${L.map(x => `<li>${x}</li>`).join('')}</ul>` : '<p class="small muted" style="margin:6px 0 0">Nothing notable.</p>'}</div>`;
+  const CROWD = { 'crowded long': 'traders are heavily long', 'crowded short': 'traders are heavily short', 'smallest long in years': 'hardly anyone is long', 'smallest short in years': 'hardly anyone is short' };
+  const ccyCards = (n.strengths ?? []).map(s0 => {
+    const ccy = s0.ccy, c = cbMap[ccy], su = surMap[ccy], cr = crMap[ccy], ev = nextFor(ccy), bank = CCY_BANK[ccy] ?? c?.bank;
+    const stance = c ? (c.latest >= 0.3 ? 'Hawkish' : c.latest <= -0.3 ? 'Dovish' : 'Neutral') : null, drift = c ? (c.trend === 'more hawkish' ? 'and getting more hawkish' : c.trend === 'more dovish' ? 'and getting more dovish' : 'and steady') : '';
+    const sent = [`The ${esc(CCY_NAME[ccy] ?? ccy)} is ${moveWord(s0.score)} (${sg(s0.score)}% against the others).`, c ? `The ${esc(bank)} sounds ${stance.toLowerCase()} ${drift}: a hawkish bank is one leaning towards higher rates.` : '', su != null && Math.abs(su) >= 0.15 ? `Economic data has been ${su > 0 ? 'beating' : 'missing'} forecasts.` : ''].filter(Boolean).join(' ');
+    const chips = [cr && cr.state !== 'mid-range' ? CROWD[cr.state] : null, ev ? `next: ${ev.event}, ${ukTime(ev.ms)}` : null].filter(Boolean);
+    const drives = (n.ranges ?? []).filter(r => (r.label ?? '').split('/').includes(ccy)).map(r => `${esc(r.label)}${r.used != null ? ' <span class="muted">' + Math.round(r.used * 100) + '%</span>' : ''}`);
+    return `<div class="cc2"><div class="h">${flagSvg(ccy, 40, 27)}<div class="t"><b>${esc(ccy)}</b><small>${esc(CCY_NAME[ccy] ?? ccy)} — ${esc(CCY_BANK[ccy] ?? '')}</small></div>${stance ? `<span class="pill ${stance === 'Hawkish' ? 'a' : ''}">${stance}</span>` : ''}</div><p>${sent}</p>${chips.length ? `<div class="chips">${chips.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}${drives.length ? `<p class="small muted" style="margin:8px 0 0">Pairs it drives (share of a normal day used): ${drives.join(' · ')}</p>` : ''}</div>`;
   }).join('');
-  const people = ccyCards ? sec('The currencies', 'Part 2 · Country by country', `<div class="ccg">${ccyCards}</div><p class="small muted">Move = the average change against the other currencies we track. "Leaning" is the tone of the last central-bank meetings. Heavy positioning shows who gets hurt if they are wrong, not which way price goes.</p>`) : '';
+  const people = ccyCards ? sec('The currencies', 'Part 2 · Country by country', `<div class="ccg2">${ccyCards}</div><p class="small muted">Stance = the tone of the last central-bank meetings, not a forecast of what the bank will do. Heavy positioning shows who gets hurt if they are wrong, not which way price goes.</p>`) : '';
 
-  // Part 3: each market, one line
-  const pr = (n.ranges ?? []).map(r => {
-    const m = /^([A-Z]{3})\/([A-Z]{3})$/.exec(r.label ?? ''), key = m ? m[1] + m[2] : null; let why = '';
-    if (m && strMap[m[1]] != null && strMap[m[2]] != null) { const d = strMap[m[1]] - strMap[m[2]]; why = Math.abs(d) < 0.15 ? `${m[1]} and ${m[2]} moved about the same` : d > 0 ? `${m[1]} stronger than ${m[2]}` : `${m[2]} stronger than ${m[1]}`; }
+  // Part 3: each market, as a small card
+  const trans = a.transmission ?? [];
+  const pairCards = (n.assets ?? n.ranges ?? []).map(r => {
+    const m = /^([A-Z]{3})\/([A-Z]{3})$/.exec(r.label ?? ''), key = r.key ?? (m ? m[1] + m[2] : ({ Gold: 'GOLD', Bitcoin: 'BTCUSD' })[r.label] ?? null);
+    let story = '';
+    const t = trans.find(x => new RegExp('(^|[^a-z])' + String(r.label).replace(/[^A-Za-z0-9]+/g, '.?') + '([^a-z]|$)', 'i').test(x.asset ?? '') || (key && new RegExp(String(key).replace(/(...)(...)/, '$1.?$2'), 'i').test(x.asset ?? '')));
+    if (t) story = clipS(t.is, 170);
+    else if (r.why) story = r.why;
+    else if (m && strMap[m[1]] != null && strMap[m[2]] != null) { const d = strMap[m[1]] - strMap[m[2]]; story = Math.abs(d) < 0.15 ? `${m[1]} and ${m[2]} moved about the same today.` : `${d > 0 ? m[1] : m[2]} stronger than ${d > 0 ? m[2] : m[1]} today.`; }
     const ev = key ? evAll.find(e => (e.impact === 'high' || e.impact === 'medium') && (e.note?.pairs ?? []).includes(key)) : null;
     const stretch = r.used == null ? '' : r.used >= 1 ? 'already stretched' : r.used >= 0.6 ? 'getting stretched' : r.used < 0.25 ? 'quiet so far' : 'room left';
-    return `<tr><td><b>${esc(r.label)}</b><small>${esc(r.price ?? '')}</small></td><td style="width:30%">${r.used != null ? `<div class="rb"><i style="width:${Math.min(100, r.used * 100 / 1.5)}%"></i><u></u></div><small>${Math.round(r.used * 100)}% of a normal day's range · ${stretch}</small>` : ''}</td><td class="small">${esc(why)}${ev ? `${why ? '<br>' : ''}<span class="muted">Next: ${esc(ev.event)}, ${esc(ukTime(ev.ms))}</span>` : ''}</td></tr>`;
+    const chips = [...(r.chips ?? []), ev ? `next: ${ev.event}, ${ukTime(ev.ms)}` : null].filter(Boolean).slice(0, 3);
+    return `<div class="pc"><div class="h">${assetIcon(key, r.label)}<div class="t"><b>${esc(r.label)}</b><small>${esc(r.groupLabel ?? (m ? 'FX' : ''))}${r.price ? ' · ' + esc(r.price) : ''}</small></div></div>${r.used != null ? `<div class="rb"><i style="width:${Math.min(100, r.used * 100 / 1.5)}%"></i><u></u></div><small class="muted">${Math.round(r.used * 100)}% of a normal day's range · ${stretch}</small>` : ''}${story ? `<p>${esc(story)}</p>` : ''}${chips.length ? `<div class="chips">${chips.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}</div>`;
   }).join('');
-  const ranges = pr ? sec('Each market at a glance', 'Part 3 · Pair by pair', `<table class="pairs">${pr}</table><p class="small muted">The bar shows how much of a typical day's travel has been used; the black tick is a full normal day. It says how stretched the day is, not which way it goes.</p>`) : '';
+  const ranges = pairCards ? sec('Each market at a glance', 'Part 3 · Pair by pair', `<div class="pcg">${pairCards}</div><p class="small muted">The bar shows how much of a typical day's travel has been used; the black tick is a full normal day. It says how stretched the day is, not which way it goes.</p>`) : '';
 
   // the rest, kept short
   const reg = n.regimeCard && typeof n.regimeCard === 'object' ? n.regimeCard : null, fp = n.fedPath;
