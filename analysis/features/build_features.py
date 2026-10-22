@@ -366,7 +366,17 @@ def build_bis_lbs_growth(e):
         rows.append({"date": qe, "asof": asof_fixed_lag(qe, lag), "value": float(v), "vintage": None, "source": "bis:lbs"})
     return write_series(e["id"], rows)
 
+def build_xccy_basis(e):
+    """Cross-currency basis series are produced together by scripts/xccy-basis/build.py (needs the local NT8 contract
+    archive + OANDA M1); this builder runs it if the parquet is missing, then returns that feature's rows."""
+    path = OUT / f"{e['id']}.parquet"
+    if not path.exists():
+        import subprocess
+        subprocess.run([sys.executable, str(ROOT / "scripts" / "xccy-basis" / "build.py")], check=True)
+    return pd.read_parquet(path)
+
 BUILDERS = {
+    "xccy_basis": build_xccy_basis,
     "fred_daily_lag": build_fred_daily_lag, "yahoo_daily": build_yahoo_daily, "cftc_tff_notional": build_cftc_tff_notional,
     "bis_lbs_growth": build_bis_lbs_growth,
     "oanda_d1": build_oanda_d1, "fred_vintage": build_fred_vintage, "fred_daily": build_fred_daily,
