@@ -54,12 +54,16 @@ def main():
             if d in seen:
                 continue
             seen.add(d)
-            L = int(float(r.get(f"{pre}_positions_long_all") or 0))
-            S = int(float(r.get(f"{pre}_positions_short_all") or 0))
+            # TFF names the field without "_all", Disaggregated with it (the worker tries both too)
+            L = int(float(r.get(f"{pre}_positions_long_all") or r.get(f"{pre}_positions_long") or 0))
+            S = int(float(r.get(f"{pre}_positions_short_all") or r.get(f"{pre}_positions_short") or 0))
             oi = int(float(r.get("open_interest_all") or 0))
             net = (S - L) if flip else (L - S)
             rows.append({"sym": sym, "report_date": d, "spec_long": L, "spec_short": S,
                          "spec_net": net, "oi": oi})
+        zero = sum(1 for x in rows if x["sym"] == sym and x["spec_long"] == 0 and x["spec_short"] == 0)
+        if zero:
+            raise SystemExit(f"{sym}: {zero} weeks with no spec position parsed -- field names changed?")
         print(sym, len(seen), min(seen), max(seen))
     with open(out, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))

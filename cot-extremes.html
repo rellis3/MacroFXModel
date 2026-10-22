@@ -288,6 +288,7 @@ svg{display:block;width:100%;height:auto;overflow:visible}
   <div id="zoomBody"></div>
 </div></div>
 
+<script src="js/cotAftermathData.js"></script>
 <script>
 // CFTC Commitments of Traders. Weekly: a TUESDAY snapshot released FRIDAY, so it is always
 // several days old. That is stamped across the top rather than left for the reader to work
@@ -338,6 +339,7 @@ const HELP = {
   read:['This week\u2019s read','Plain-English interpretation of every panel on this page, in one place: a headline saying how stretched the board is overall, then one sub-read per panel so each number is already interpreted before you scroll to it.','Reads the same fields the panels do \u2014 it is not a second opinion or a new calculation. The traffic lights are deliberately NOT directional: green means nothing here argues against your plan, amber means something is changing, red means this contradicts a trade you might be about to take. Direction comes from your own system.'],
   spot:['Spotlight','Every market currently at a 90th/10th-percentile extreme of its own trailing history, most stretched first, so you do not have to scan the full ledger to find them.','A dot marks a market where commercials are independently at their own opposite extreme too \u2014 the Confluence test. Click any card to load that market\u2019s 200-week series at the bottom of the page.'],
   ledger:['Positioning ledger','Every ranked market as a bar running from the 50th percentile out to where it sits in its OWN trailing range, grouped by asset class with each group\u2019s median in the header.','The shaded bands at each end are the 90th/10th thresholds this page treats as extreme. Grouping is the point: a crowded market inside a group that is all leaning the same way is a shared macro theme rather than an independent bet, and a flat board-wide ranking cannot show you that — it is what tells you whether one crowded market is idiosyncratic or part of a board-wide risk-on / risk-off stretch. Replaces the old crowding leaderboard and the separate by-asset-class median table, carrying the contents of both.'],
+  aftm:['Track record','What price actually did after this page flagged a 90th/10th-percentile extreme, every week from 2018 to Aug 2026, measured from the Friday 15:30 ET release. "Kept going" = price moved further the way the crowd is positioned.','Exploratory, not pre-registered: analysis/output/cot-extreme-aftermath/RESULTS.md. Moves are in units of each market\'s own recent daily volatility so a quiet and a wild market can be pooled. A coloured cell means the 95% interval excludes zero; with ~60 cells on this table, several will do that by chance.'],
   oixchk:['COT vs options positioning','Two separate datasets shown side by side for any pair with saved options data: COT\'s weekly futures positioning per currency leg, and the nearest put/call open-interest wall from a manually-pasted CME options chain.','Deliberately not combined into one verdict — futures positioning and dealer options flow are different markets that can agree or disagree. Options data is only as fresh as the last paste on the OI Analytics page, so check the age column.'],
   aianalysis:['AI Analysis','An LLM opinion on the same data — headline, crowded markets grouped into a handful of themes, and trade ideas — generated on demand, not recalculated on every visit.','This is a genuine second opinion, not a restatement like "This week’s read" below. It can be wrong. Treat it the same as any other opinion on the desk: read the reasoning, not just the verdict.'],
 };
@@ -618,6 +620,17 @@ basis: {
   ],
   not: 'Neither ranking is "wrong". % of OI is the default because it answers the question actually being asked; raw is '
      + 'kept so you can check it.',
+},
+
+aftm: {
+  what:'What price did next, historically, each time a market on this page was flagged at a 90th/10th-percentile extreme: an hour, four hours and a day after the Friday release, then one, four and twelve weeks on.',
+  why: 'A crowded reading says who is positioned, not what happens next. The only way to know whether a flag has meant anything is to replay every past flag and look. This is that replay, split by how long the extreme had already lasted and by the week it ended.',
+  how: [
+    '<b>Kept going %</b> is the share of flags after which price moved further the crowd\'s way. 50% is a coin flip. Below 50% means the crowd tended to be wrong from there.',
+    '<b>σ</b> is the average move in units of the market\'s own daily volatility over the period: −0.20σ over four weeks is a real but small drift against the crowd, about a fifth of one normal day.',
+    'Compare every row with the <b>baseline</b> row: just following the 12-week price trend. A COT row only adds something if it differs from that.',
+  ],
+  not: 'Not pre-registered and not a trade rule. ~400 weeks and a few dozen independent episodes per market, overlapping windows, and many cells: treat a coloured cell as a lead to test, not a result. The one registered COT test on this desk (cot-positioning-factor) was null.',
 },
 
 oixchk: {
@@ -1048,6 +1061,48 @@ function extremeStreak(hd, wantLong){
   return streak;
 }
 
+// ── track record: what price did after past extremes (js/cotAftermathData.js, ──
+// generated by scripts/cot-extreme-aftermath/analyse.py). Exploratory, not pre-registered.
+const AFTM = window.COT_AFTERMATH || null;
+const AFTM_H = {'1h':'+1h','4h':'+4h','1d':'+1 day','1w':'1 wk','4w':'4 wks','12w':'12 wks'};
+function aftmCell(v){
+  if (!v) return '<td class="muted">\u2014</td>';
+  const [n, hit, m, lo, hi] = v, sig = lo > 0 || hi < 0;
+  const clr = !sig ? 'var(--tx2)' : m < 0 ? 'var(--short)' : 'var(--long)';
+  return '<td title="n='+n+', mean '+m.toFixed(2)+'\u03c3, 95% CI ['+lo.toFixed(2)+', '+hi.toFixed(2)+']" style="color:'+clr+'">'
+    + (sig ? '<b>' : '') + hit + '%' + (sig ? '</b>' : '') + '<br><span class="muted">' + (m >= 0 ? '+' : '') + m.toFixed(2) + '\u03c3</span></td>';
+}
+function aftermathStage(streak){
+  if (!AFTM || streak == null) return '<span class="muted">\u2014</span>';
+  const k = streak <= 1 ? 's1' : streak <= 4 ? 's2' : streak <= 11 ? 's5' : 's12';
+  const row = AFTM.rows.find(r => r.k === k), v = row && row['4w'];
+  if (!v) return '<span class="muted">\u2014</span>';
+  return '<span title="'+esc(row.label)+': n='+v[0]+', mean '+v[2]+'\u03c3 over 4 weeks">kept going '+v[1]+'% (4 wks)</span>';
+}
+function aftermath(big){
+  if (!AFTM) return '<div class="empty">Track-record data not loaded (js/cotAftermathData.js).</div>';
+  const hs = AFTM.horizons;
+  const head = '<tr><th>When</th>' + hs.map(x => '<th>' + AFTM_H[x] + '</th>').join('') + '<th>n</th></tr>';
+  const main = AFTM.rows.map(r => '<tr' + (r.k === 'base' ? ' class="muted"' : '') + '><td>' + esc(r.label) + '</td>'
+    + hs.map(x => aftmCell(r[x])).join('') + '<td class="muted">' + (r['1w'] ? r['1w'][0] : '\u2014') + '</td></tr>').join('');
+  const pm = Object.entries(AFTM.perMarket).map(([sym, v]) => '<tr class="clk" onclick="pick(\''+esc(sym)+'\')"><td>'
+    + esc(sym === 'USD' ? 'USD index (DXY)' : sym) + '</td>' + ['1w','4w','12w'].map(x => aftmCell(v[x])).join('')
+    + '<td class="muted">' + v.n + '</td></tr>').join('');
+  const e = AFTM.episodes || {}, f = x => x == null ? '\u2014' : (x > 0 ? '+' : '') + x.toFixed(1) + '%';
+  const ep = ['1','2-4','5-11','12+'].filter(k => e[k]).map(k => '<tr><td>' + k + (k === '1' ? ' week' : ' weeks') + '</td><td>' + e[k].n + '</td>'
+    + '<td>' + f(e[k].into12_median) + '</td><td>' + f(e[k].during_median) + ' <span class="muted">(' + Math.round(100 * e[k].during_pos_share) + '% up)</span></td>'
+    + '<td>' + f(e[k].after4w_median) + '</td><td>' + f(e[k].after12w_median) + '</td></tr>').join('');
+  return '<table><thead>' + head + '</thead><tbody>' + main + '</tbody></table>'
+    + '<div class="note">Each cell: <b>% of flags after which price kept going the crowd\'s way</b>, then the average move in units of that market\'s daily volatility. '
+    + 'Measured from the Friday 15:30 ET release (the moment the report was public), ' + AFTM.window[0] + ' to ' + AFTM.window[1] + ' reports, 12 markets pooled. '
+    + '<b style="color:var(--short)">Green</b> = drifted against the crowd, <b style="color:var(--long)">red</b> = kept going with it, bold only where the 95% interval excludes zero. '
+    + 'The +1h / +4h columns show the release itself barely moves anything.</div>'
+    + '<div class="grid" style="margin-top:12px"><div class="c5"><table><thead><tr><th>Per market (any extreme)</th><th>1 wk</th><th>4 wks</th><th>12 wks</th><th>n</th></tr></thead><tbody>' + pm + '</tbody></table></div>'
+    + '<div class="c7"><table><thead><tr><th>Extreme lasted</th><th>runs</th><th>12 wks into it</th><th>while it lasted</th><th>4 wks after</th><th>12 wks after</th></tr></thead><tbody>' + ep + '</tbody></table>'
+    + '<div class="note">One row per completed run, medians, all in the crowd\'s direction (+ = price went the crowd\'s way). Long runs got there <b>with</b> price and usually kept going while they lasted; the giveback came <b>after</b> the extreme ended, not while it held.</div></div></div>'
+    + '<div class="note"><b>' + esc(AFTM.status) + '.</b> Overlapping windows, a few dozen independent episodes per market, ~60 cells: a few will look significant by chance. Read it as base rates, not a signal.</div>';
+}
+
 function persistence(big){
   const extremeList = (DATA.instruments || []).filter(x => { const p = pctOf(x); return p != null && (p >= 90 || p <= 10); });
   if (!extremeList.length) return '<div class="empty">Nothing at a 90th/10th percentile extreme right now.</div>';
@@ -1060,7 +1115,7 @@ function persistence(big){
     return { x, p, wantLong, streak: extremeStreak(hd, wantLong), state: 'ok' };
   }).sort((a,b) => (b.streak ?? -1) - (a.streak ?? -1));
 
-  return '<table><thead><tr><th>Market</th><th>Positioning</th><th>Weeks in this extreme</th></tr></thead><tbody>'
+  return '<table><thead><tr><th>Market</th><th>Positioning</th><th>Weeks in this extreme</th><th>History at this stage</th></tr></thead><tbody>'
     + rows.map(r => {
         const clr = colFor(r.p);
         const wkTxt = r.state === 'loading' ? '<span class="muted">loading…</span>'
@@ -1069,9 +1124,9 @@ function persistence(big){
           : '<b>' + r.streak + '</b>' + (r.streak === 1 ? ' wk (fresh)' : ' wks');
         return '<tr class="clk" onclick="pick(\''+esc(r.x.sym)+'\')"><td>'+esc(dispSym(r.x))+'</td>'
           + '<td style="color:'+clr+'"><b>'+(r.wantLong?'CROWDED LONG':'CROWDED SHORT')+'</b></td>'
-          + '<td>'+wkTxt+'</td></tr>';
+          + '<td>'+wkTxt+'</td><td>'+aftermathStage(r.streak)+'</td></tr>';
       }).join('')
-    + '</tbody></table><div class="note">Both ends are worth noting for different reasons: a long-running extreme means the crowd has had a long time to prove itself right; a freshly-hit one (1 week) means it just arrived and hasn\'t been tested. Rolling calculation — see the panel help for how it\'s done.</div>';
+    + '</tbody></table><div class="note"><b>History at this stage</b> = across every market, 2018\u20132026, how often price kept going the crowd\'s way over the next 4 weeks when an extreme was this many weeks old (see Track record below; exploratory). Both ends are worth noting for different reasons: a long-running extreme means the crowd has had a long time to prove itself right; a freshly-hit one (1 week) means it just arrived and hasn\'t been tested. Rolling calculation — see the panel help for how it\'s done.</div>';
 }
 
 // ── confluence: specs AND commercials independently at opposite extremes, ───
@@ -1847,6 +1902,7 @@ function render(){
     + panel('c12','digest','At a glance \u2014 how many reads agree, per market','digest',digest,true)
     + panel('c7','confl','Confluence (specs vs. commercials, same market)','confl',confluence,true)
     + panel('c5','persist','Extreme persistence','persist',persistence,true)
+    + panel('c12','aftm','Track record \u2014 what price did after past extremes (2018\u20132026)','aftm',aftermath,true)
     + panel('c7','flow','Positioning flow \u2014 week over week','flow',flow,true)
     + panel('c5','evr','Event-risk overlay','evrisk',eventRisk,true)
     + panel('c12','alerts','Reinforcing FX pairs (specs vs. specs, cross-currency)','paira',crowdingCards,true)
