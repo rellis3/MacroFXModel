@@ -73,3 +73,12 @@ Verdict words: VALIDATED if the gate holds; NULL if the CI lies inside (−5%, +
 
 - **VALIDATED** → ledger entry (research-only). A shadow "credit widening: vol above persistence" note sits beside the forecast, never changing it. A forward record starts. Promotion at |t| ≥ 3.
 - **NULL / UNDERPOWERED** → ledger entries. The HY descriptives in `credit-leads-equities` and `funding-forecast-error` are marked as not confirmed on 2007–2020.
+
+## Amendments
+
+### A1 — 2026-10-22 — POST-HOC (results seen): both cells demoted from VALIDATED to CONTEXT
+Both cells met the registered gate: fx +8.2% [+3.1, +14.1], idx +39.8% [+28.5, +53.4], positive in both halves, above the placebo, and positive without 2008-09. Two mechanism checks were then run (`scripts/hy-spread-vol/har_check.py`, describe/demote only):
+1. **HAR baseline** (1-, 5- and 22-day vol) in place of the 20-day mean: fx +7.5%, idx +26.9%. The effect mostly survives a stronger persistence model.
+2. **Leverage effect.** H correlates −0.77 (fx days) and −0.79 (idx days) with the S&P 500's own 20-day log return. After partialling out that return, H's correlation with the HAR residual is **−0.016 (fx) and +0.019 (idx)**. The S&P 20-day return alone has r −0.18 (fx) and −0.22 (idx).
+
+HY underperformance carries no information beyond the equity drawdown it moves with. The validated-looking result is the well-known leverage effect (falling stocks → higher subsequent volatility), not a credit signal. Both cells are demoted to CONTEXT. A post-hoc amendment may demote, so this is allowed. The leverage effect itself, against the shipped forecaster's errors, needs its own prereg.

@@ -1349,6 +1349,19 @@ export const DESK_EVIDENCE = [
     use: 'A known seasonal in funding cost: the year-end turn costs more than other quarter-ends, much less since 2024. Calendar description for the funding page; says nothing about spot direction (quarter-end-funding-usd).',
     instruments: ['EURUSD', 'GBPUSD'],
   },
+  {
+    id: 'hy-spread-vol-fx', domain: 'volatility', verdict: 'context', date: '2026-10-22', doc: 'forge/HY_SPREAD_VOL_PREREG.md', also: ['analysis/output/hy-spread-vol/RESULTS.md'],
+    claim: 'After high-yield credit underperforms Treasuries over 20 sessions (HYG/IEF, spreads widening), the next 5 days of FX volatility run above what recent volatility predicts (the HY lead from credit-leads-equities and funding-forecast-error, scored on 2007-2020)',
+    result: '3,984 days 2007-06 to 2020-07, 7 USD pairs: top-minus-bottom tercile +8.2% [+3.1%, +14.1%], halves +9.8 / +6.0, ex-2008-09 +6.7, above placebo, Holm p 0.002 -- gate met. Demoted A1: H moves with the S&P 20-day return (r -0.77); controlling for it H adds nothing (partial r -0.016); the S&P return alone r -0.18. 2020-2026: -3.4%.',
+    use: 'HY spreads carry no vol information beyond the equity drawdown (leverage effect). Never cite credit spreads as a vol warning; the equity-drawdown version is the open lead.',
+  },
+  {
+    id: 'hy-spread-vol-idx', domain: 'volatility', verdict: 'context', date: '2026-10-22', doc: 'forge/HY_SPREAD_VOL_PREREG.md', also: ['analysis/output/hy-spread-vol/RESULTS.md'],
+    claim: 'After high-yield credit underperforms Treasuries over 20 sessions (HYG/IEF), the next 5 days of NAS100/SPX500 volatility run above what recent volatility predicts',
+    result: '3,451 days 2007-2020: +39.8% [+28.5%, +53.4%], halves +40.3 / +41.6, HAR baseline +26.9% -- gate met. Demoted A1: partial r after the S&P 20-day return +0.019 (H vs S&P 20d r -0.79); the S&P return alone r -0.22. 2020-2026: +6.3%.',
+    use: 'Same as hy-spread-vol-fx: the leverage effect, not credit.',
+    instruments: ['NQ', 'SPX500'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1476,6 +1489,8 @@ const POWER = {
   'basis-stress-usd':                  { n: '1,830 days 2016-2026', note: 'MDE r 0.075; CI [-0.030, +0.071] inside 0.10 bar' },
   'basis-stress-fxvol':                { n: '1,835 days 2016-2026', note: 'MDE r 0.075; CI [-0.036, +0.032] inside 0.10 bar' },
   'basis-yearend-premium':             { n: '10 year-end vs 32 other contracts', note: 'Holm p 0.011; 9/10 year-ends below the ordinary mean' },
+  'hy-spread-vol-fx':                  { n: '3,984 days 2007-2020 (~158 months)', note: 'gate met; demoted: partial r after SPX 20d return -0.016' },
+  'hy-spread-vol-idx':                 { n: '3,451 days 2007-2020 (~158 months)', note: 'gate met; demoted: partial r after SPX 20d return +0.019' },
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
 };

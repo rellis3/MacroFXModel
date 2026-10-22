@@ -14,8 +14,8 @@ Generated 2026-10-22.
 | validated | 34 |
 | null | 114 |
 | underpowered | 24 |
-| context (base rates, descriptions: not counted as tests) | 34 |
-| pre-registrations with no banked verdict (below) | 75 |
+| context (base rates, descriptions: not counted as tests) | 36 |
+| pre-registrations with no banked verdict (below) | 74 |
 
 **What the count says (Lesson 02 §05).** If none of the 172 claims were real, tests at the usual 5% size would still pass
 about **8.6** of them by luck. 34 passed, so most passes are unlikely to be luck alone, but
@@ -231,6 +231,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-22 | funding-forecast-error-cpstress | volatility | underpowered | forge/FUNDING_FORECAST_ERROR_PREREG.md |
 | 2026-10-22 | funding-forecast-error-levbuild | volatility | underpowered | forge/FUNDING_FORECAST_ERROR_PREREG.md |
 | 2026-10-22 | funding-forecast-error-squeeze | volatility | underpowered | forge/FUNDING_FORECAST_ERROR_PREREG.md |
+| 2026-10-22 | hy-spread-vol-fx | volatility | context | forge/HY_SPREAD_VOL_PREREG.md |
+| 2026-10-22 | hy-spread-vol-idx | volatility | context | forge/HY_SPREAD_VOL_PREREG.md |
 | 2026-10-22 | quarter-end-funding-spike | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
 | 2026-10-22 | quarter-end-funding-usd | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
 
@@ -275,7 +277,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/FX_FACTOR_STACK_PREREG.md`: Cross-sectional FX factor stack at one to three months
 - `forge/HARNESS_REGISTRY_PREREG.md`: Unified study harness, and deflating the registry it will re-score
 - `forge/HEDGING_STATE_FORWARD_PREREG.md`: hedging-state-forward — On the full Cboe book, does the dealer-hedging state at the open tell us how the day b
-- `forge/HY_SPREAD_VOL_PREREG.md`: hy-spread-vol — When high-yield credit has been underperforming Treasuries (spreads widening), are the next fi
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
 - `forge/IVRV_COT_PREREG.md`: IV ÷ RV in the book, the rich-IV break rule on the indices, and COT positioning at the lines — pre-registratio
