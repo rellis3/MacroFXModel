@@ -52,6 +52,8 @@ export function eventNote(e, book, instrumentKeys = []) {
 const esc = s => (s ?? '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const sg = (v, d = 2) => (v == null || !Number.isFinite(v) ? '·' : (v >= 0 ? '+' : '') + v.toFixed(d));
 const ord = n => { n = Math.round(n); const m = n % 100; return n + (m >= 11 && m <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] ?? 'th')); };
+/** Cut at the last full sentence that fits, so a long model line never ends mid-thought. */
+const clipS = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); if (s.length <= n) return s; const cut = s.slice(0, n), i = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; ')); return i > n * 0.4 ? cut.slice(0, i + 1) : clip(s, n); };
 const clip = (s, n) => { s = String(s ?? ''); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const ukTime = ms => new Date(ms).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
 const COLORS = { ink: '#0b1220', text: '#1b2a41', muted: '#5b6b82', line: '#d8e0ec', paper: '#eef2f8', card: '#ffffff', blue: '#2f6bff', violet: '#7a5cff', green: '#0f9f6e', orange: '#e8710a', amber: '#b7791f' };
@@ -132,7 +134,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{font:700 10px "Segoe
 ul.t{margin:0;padding-left:18px}ul.t li{margin:0 0 7px}
 .foot{margin-top:18px;border:2px solid ${COLORS.ink};border-radius:14px;padding:14px 16px;background:#fff;font-size:12px;line-height:1.55;color:${COLORS.text}}.foot h4{margin:0 0 6px;font:800 13px "Segoe UI",sans-serif;letter-spacing:.06em;color:${COLORS.ink}}.foot p{margin:0 0 7px}.foot .meta{color:${COLORS.muted};font:11px ui-monospace,Menlo,Consolas,monospace;margin-top:10px}
 @media (max-width:560px){.tiles{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.br{grid-template-columns:70px 1fr 104px}.br.p{grid-template-columns:96px 1fr 50px}}
-@media print{body{background:#fff}section,.foot,.mast{break-inside:avoid}.wrap{padding:0}}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{body{background:#fff}.foot,.mast,.cc,.card2,.lk,tr,.tile{break-inside:avoid}h2,h3{break-after:avoid}.wrap{padding:0}}
 `;
 
 /**
@@ -172,7 +174,7 @@ export function buildNewsletter(n) {
     const c = cbMap[s.ccy], su = surMap[s.ccy], cr = crMap[s.ccy], ev = nextFor(s.ccy), L = [];
     if (c) L.push(`${esc(c.bank)} is ${c.trend === 'more hawkish' ? 'leaning towards higher rates' : c.trend === 'more dovish' ? 'leaning towards lower rates' : 'holding its line'}`);
     if (su != null && Math.abs(su) >= 0.15) L.push(`economic data ${su > 0 ? 'beating' : 'missing'} forecasts lately`);
-    if (cr && cr.state !== 'mid-range') L.push(/long/.test(cr.state) ? 'traders are heavily long' : 'traders are heavily short');
+    if (cr && cr.state !== 'mid-range') L.push({ 'crowded long': 'traders are heavily long', 'crowded short': 'traders are heavily short', 'smallest long in years': 'hardly anyone is long', 'smallest short in years': 'hardly anyone is short' }[cr.state] ?? cr.state);
     if (ev) L.push(`next: ${esc(ev.event)}, ${esc(ukTime(ev.ms))}`);
     return `<div class="cc"><div class="h"><b>${FLAG[s.ccy] ?? ''} ${esc(s.ccy)}</b><span class="${s.score >= 0.1 ? 'up' : s.score <= -0.1 ? 'dn' : ''}">${sg(s.score)}% · ${moveWord(s.score)}</span></div>${L.length ? `<ul>${L.map(x => `<li>${x}</li>`).join('')}</ul>` : '<p class="small muted" style="margin:6px 0 0">Nothing notable.</p>'}</div>`;
   }).join('');
@@ -194,9 +196,9 @@ export function buildNewsletter(n) {
   const behind = big ? sec('The bigger picture', 'Context', big) : '';
 
   const li = arr => (arr ?? []).slice(0, 3).map(c => `<li>${esc(c.check)} <span class="muted">— ${esc(c.level)}</span></li>`).join('');
-  const trig = ((a.confirm ?? []).length || (a.invalidate ?? []).length) ? sec('What would change the story', 'Watch for', `<div class="two"><div><h3 style="margin-top:0;color:${COLORS.green}">Backs it up</h3><ul class="t">${li(a.confirm)}</ul></div><div><h3 style="margin-top:0;color:${COLORS.orange}">Breaks it</h3><ul class="t">${li(a.invalidate)}</ul></div></div>${a.sizing ? `<p class="small muted" style="margin-top:8px"><b>Sizing:</b> ${esc(a.sizing)}</p>` : ''}`) : '';
+  const trig = ((a.confirm ?? []).length || (a.invalidate ?? []).length) ? sec('What would change the story', 'Watch for', `<div class="two"><div><h3 style="margin-top:0;color:${COLORS.green}">Backs it up</h3><ul class="t">${li(a.confirm)}</ul></div><div><h3 style="margin-top:0;color:${COLORS.orange}">Breaks it</h3><ul class="t">${li(a.invalidate)}</ul></div></div>${a.sizing ? `<p class="small muted" style="margin-top:8px"><b>Sizing:</b> ${esc(clipS(a.sizing, 260))}</p>` : ''}`) : '';
   const lesson = a.lesson?.concept ? `<div class="lesson" style="margin-top:14px"><b>Today's lesson: ${esc(a.lesson.concept)}</b><p style="margin:6px 0 0">${esc(a.lesson.today)}</p></div>` : '';
-  const noEdge = (a.noEdge ?? []).length ? sec('What we cannot tell you', 'Honesty box', `<ul class="t small">${a.noEdge.slice(0, 3).map(x => `<li>${esc(clip(x, 220))}</li>`).join('')}</ul>`) : '';
+  const noEdge = (a.noEdge ?? []).length ? sec('What we cannot tell you', 'Honesty box', `<ul class="t small">${a.noEdge.slice(0, 3).map(x => `<li>${esc(clipS(x, 230))}</li>`).join('')}</ul>`) : '';
 
   const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}${llm ? ' · narrative written by ' + esc(llm) : ''}</div></div>`;
 
