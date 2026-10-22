@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Desk Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Desk Atlas (v2 preview) — three lenses on one board: Global, Currency, Pair. Additive: today.html is untouched.
+   Reads the same live endpoints as the rest of the site; every number on the page comes from one of them. */
+:root{
+  --bg:#080c12;--bg2:#0d131c;--card:#121a26;--card2:#182233;--line:#243247;--line2:#1b2638;
+  --text:#e9eff7;--text2:#a5b2c4;--text3:#6b7a8f;
+  --blue:#5b8cff;--bull:#2dd4a0;--bear:#ff8a3d;--amber:#e6b83e;--violet:#a58bff;--glow:rgba(91,140,255,.16);
+  --disp:"Bricolage Grotesque","IBM Plex Sans",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){
+  --bg:#f1f4fa;--bg2:#e7ecf5;--card:#ffffff;--card2:#f1f4fa;--line:#d3dbe8;--line2:#e2e8f2;
+  --text:#0c1522;--text2:#44546a;--text3:#7385a0;
+  --blue:#1f56d6;--bull:#0a8a5c;--bear:#c2410c;--amber:#a8690a;--violet:#6a42d8;--glow:rgba(31,86,214,.10);color-scheme:light}}
+:root[data-theme="light"]{
+  --bg:#f1f4fa;--bg2:#e7ecf5;--card:#ffffff;--card2:#f1f4fa;--line:#d3dbe8;--line2:#e2e8f2;
+  --text:#0c1522;--text2:#44546a;--text3:#7385a0;
+  --blue:#1f56d6;--bull:#0a8a5c;--bear:#c2410c;--amber:#a8690a;--violet:#6a42d8;--glow:rgba(31,86,214,.10);color-scheme:light}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 var(--body);
+  background-image:radial-gradient(circle at 1px 1px,color-mix(in srgb,var(--text3) 22%,transparent) 1px,transparent 0);background-size:22px 22px;background-attachment:fixed}
+svg{display:block}
+.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.mono{font-family:var(--mono)}.disp{font-family:var(--disp)}
+a{color:var(--blue)}
+
+.app{display:grid;grid-template-columns:1fr;min-height:100vh}
+.rail{display:none}
+.main{padding-block:14px 96px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));min-width:0}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:14px}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(3,1fr);background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px max(10px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px))}
+.tab{display:grid;justify-items:center;gap:2px;padding:6px 4px;background:none;border:0;color:var(--text3);font:600 11px var(--body);cursor:pointer;border-radius:10px}
+.tab[aria-selected="true"]{color:var(--blue);background:var(--glow)}
+.tab:focus-visible,.cc:focus-visible,.pipe:focus-visible,.rb:focus-visible,.btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+@media (min-width:980px){
+  .app{grid-template-columns:84px 1fr}
+  .rail{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 8px;border-right:1px solid var(--line);position:sticky;top:0;height:100vh;background:color-mix(in srgb,var(--bg) 90%,transparent)}
+  .rail .logo{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(140deg,var(--blue),var(--violet));color:#fff;margin-bottom:10px;text-decoration:none}
+  .rb{display:grid;justify-items:center;gap:3px;width:68px;padding:9px 4px;border-radius:12px;border:0;background:none;color:var(--text3);font:600 10.5px var(--body);cursor:pointer}
+  .rb[aria-selected="true"]{color:var(--blue);background:var(--glow)}
+  .rb:hover{color:var(--text)}
+  .tabbar{display:none}.main{padding-bottom:40px}
+}
+.top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.top h1{font:700 22px/1.1 var(--disp);margin:0;letter-spacing:-.01em}
+.top .sub{color:var(--text3);font-size:12px;font-family:var(--mono)}
+.badge{display:inline-flex;gap:6px;align-items:center;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:var(--amber);border:1px solid color-mix(in srgb,var(--amber) 40%,transparent);border-radius:999px;padding:3px 10px;text-decoration:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-width:0}
+.card h2{margin:0 0 10px;font:600 12px var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--text3);display:flex;gap:8px;align-items:center}
+.card h2 .i{width:16px;height:16px}
+.pill{display:inline-flex;gap:5px;align-items:center;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;white-space:nowrap;background:color-mix(in srgb,var(--text2) 14%,transparent);color:var(--text2)}
+.pill.bull{background:color-mix(in srgb,var(--bull) 16%,transparent);color:var(--bull)}
+.pill.bear{background:color-mix(in srgb,var(--bear) 16%,transparent);color:var(--bear)}
+.pill.amber{background:color-mix(in srgb,var(--amber) 16%,transparent);color:var(--amber)}
+.pill.blue{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--blue)}
+.pill.violet{background:color-mix(in srgb,var(--violet) 16%,transparent);color:var(--violet)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;align-items:start}
+.up{color:var(--bull)}.dn{color:var(--bear)}
+.note{font-size:11.5px;color:var(--text3);margin:0}
+.learn{margin-top:10px;font-size:12px;color:var(--text2)}
+.learn summary{cursor:pointer;color:var(--violet);font-weight:600;list-style:none;display:inline-flex;gap:6px;align-items:center}
+.learn summary::-webkit-details-marker{display:none}
+.learn p{margin:6px 0 0;line-height:1.55}
+.hero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;border-radius:20px;padding:18px;background:radial-gradient(120% 140% at 100% 0%,var(--glow),transparent 60%),var(--card);border:1px solid var(--line)}
+@media (min-width:760px){.hero.g{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;align-items:center}}
+.hero .kick{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.hero h2{font:700 clamp(20px,3vw,28px)/1.18 var(--disp);letter-spacing:-.015em;margin:0 0 8px;text-wrap:balance;text-transform:none;color:var(--text);display:block}
+.hero p{margin:0;color:var(--text2);max-width:62ch;font-size:13.5px}
+.gauge{display:grid;justify-items:center}
+.gauge .lbl{font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.stages{display:grid;grid-template-columns:1fr;gap:0}
+.stage{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:7px;align-content:start;min-width:0}
+.stage .sh{display:flex;gap:9px;align-items:center}
+.stage .ico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--blue) 14%,transparent);color:var(--blue)}
+.stage .nm{font:600 14px var(--disp)}.stage .metaphor{font-size:11px;color:var(--text3)}
+.nd{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:3px 0;border-top:1px solid var(--line2)}
+.nd span:first-child{color:var(--text2)}
+.flow,.flowv{position:relative;overflow:hidden;background:var(--line);border-radius:8px}
+.flow{height:8px}
+.flow::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 10px,color-mix(in srgb,var(--blue) 70%,transparent) 10px 18px);animation:fl 1.4s linear infinite}
+.flowv{width:8px;height:22px;margin:0 auto}
+.flowv::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(180deg,transparent 0 10px,color-mix(in srgb,var(--blue) 70%,transparent) 10px 18px);animation:flv 1.4s linear infinite}
+@keyframes fl{to{background-position:18px 0}}@keyframes flv{to{background-position:0 18px}}
+.connector{display:none}
+@media (min-width:860px){.stages{grid-template-columns:1fr 26px 1fr 26px 1fr 26px 1fr}.connector{display:grid;align-items:center}.flowv{display:none}}
+.pipes{display:grid;gap:8px;margin-top:12px}
+.pipe{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;text-align:left;width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:9px 12px;color:var(--text);cursor:pointer;font:inherit}
+.pipe[aria-expanded="true"]{border-color:var(--blue)}
+.pipe .st{width:34px;height:34px;border-radius:10px;display:grid;place-items:center}
+.pipe .st.hold{background:color-mix(in srgb,var(--bull) 16%,transparent);color:var(--bull)}
+.pipe .st.brk{background:color-mix(in srgb,var(--amber) 18%,transparent);color:var(--amber)}
+.pipe .st.qt{background:color-mix(in srgb,var(--text3) 18%,transparent);color:var(--text3)}
+.pipe .t1{font-weight:600;font-size:13px}.pipe .t2{font-size:11.5px;color:var(--text3)}
+.pipeinfo{margin:0;padding:10px 12px;border:1px dashed var(--line);border-radius:12px;font-size:12.5px;color:var(--text2);line-height:1.55}
+.pipeinfo b{color:var(--text)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:grid;gap:2px}
+.tile .tn{display:flex;gap:6px;align-items:center;color:var(--text3);font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.tile .tn .i{width:15px;height:15px}
+.tile .tv{font:700 20px var(--disp)}.tile .td{font-family:var(--mono);font-size:11px}
+.strip{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin}
+.cc{flex:0 0 auto;min-width:84px;text-align:center;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:8px 10px;color:var(--text);cursor:pointer;font:inherit}
+.cc[aria-pressed="true"]{border-color:var(--blue);background:var(--glow)}
+.cc .fl{font-size:22px;line-height:1.1}.cc .cd{font:600 12px var(--body)}
+.cc .bar{height:5px;border-radius:3px;background:var(--line2);margin-top:6px;position:relative}
+.cc .bar i{position:absolute;top:0;bottom:0;border-radius:3px}
+.cc .mv{font:11px var(--mono);margin-top:3px}
+.tl{position:relative;height:60px;margin:6px 4px 0}
+.tl .axis{position:absolute;left:0;right:0;top:26px;height:2px;background:var(--line)}
+.tl .seg{position:absolute;top:20px;height:14px;border-radius:7px;opacity:.55}
+.tl .tick{position:absolute;top:40px;font:10px var(--mono);color:var(--text3);transform:translateX(-50%)}
+.tl .now{position:absolute;top:12px;bottom:6px;width:2px;background:var(--amber)}
+.tl .now::before{content:"now";position:absolute;top:-14px;left:-12px;font:600 10px var(--body);color:var(--amber)}
+.hd{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.hd .big{font:700 26px/1 var(--disp)}.hd .fl2{font-size:34px;line-height:1}
+.fac{display:grid;gap:8px}
+.fr{display:grid;grid-template-columns:104px 1fr 44px;gap:8px;align-items:center;font-size:12px}
+.fr .nm{color:var(--text2)}
+.fr .tr{height:8px;border-radius:4px;background:var(--line2);position:relative}
+.fr .tr i{position:absolute;top:0;bottom:0;border-radius:4px}
+.fr .tr u{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--text3);text-decoration:none}
+.fr.na .nm,.fr.na .v{color:var(--text3)}
+.fr.na .tr{background:repeating-linear-gradient(90deg,var(--line2) 0 5px,transparent 5px 9px)}
+.v{font:12px var(--mono);text-align:right}
+.rows{display:grid;gap:0}
+.rw{display:grid;grid-template-columns:1fr auto;gap:10px;padding:8px 0;border-top:1px solid var(--line2);font-size:12.5px;align-items:center}
+.rw:first-child{border-top:0}
+.rw small{display:block;color:var(--text3);font-size:11px}
+.btn{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:10px;padding:6px 11px;font:600 12px var(--body);cursor:pointer}
+.btn:hover{border-color:var(--blue)}.btn[disabled]{opacity:.55;cursor:wait}
+.btn .i{width:15px;height:15px}
+.cot{display:grid;gap:10px}
+.cot .lab{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text2)}
+.pct{height:10px;border-radius:5px;background:linear-gradient(90deg,color-mix(in srgb,var(--bear) 40%,transparent),var(--line2) 50%,color-mix(in srgb,var(--bull) 40%,transparent));position:relative}
+.pct i{position:absolute;top:-4px;width:4px;height:18px;border-radius:2px;background:var(--text)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text3);margin-top:6px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.rng{position:relative;height:16px;border-radius:8px;background:var(--line2);margin:22px 0 28px}
+.rng .f{position:absolute;left:0;top:0;bottom:0;border-radius:8px;background:linear-gradient(90deg,var(--blue),var(--violet))}
+.rng .m{position:absolute;top:-8px;bottom:-8px;width:2px;background:var(--text2)}
+.rng .m span{position:absolute;top:-16px;transform:translateX(-50%);font:10px var(--mono);color:var(--text2);white-space:nowrap}
+.rng .m em{position:absolute;bottom:-18px;transform:translateX(-50%);font:normal 10px var(--body);color:var(--text3);white-space:nowrap}
+.pairhd{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.flagbtn{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);background:var(--card2);border-radius:12px;padding:6px 10px;color:var(--text);font:600 13px var(--body);cursor:pointer}
+.flagbtn:hover{border-color:var(--blue)}
+.whyp{border-top:1px solid var(--line2);padding:9px 0}.whyp:first-child{border-top:0}
+.whyp .wh{font-size:13px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.whyp .src{font-size:9px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;border-radius:4px;padding:1px 5px;background:color-mix(in srgb,var(--blue) 18%,transparent);color:var(--blue)}
+.whyp .src.c{background:color-mix(in srgb,var(--amber) 18%,transparent);color:var(--amber)}
+.whyp .fg{font:10.5px var(--mono);color:var(--text3)}
+.whyp p{margin:3px 0 0;font-size:12.5px;color:var(--text2);line-height:1.55}
+.shelf{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.panel[hidden]{display:none}
+.err{padding:10px 12px;border:1px solid color-mix(in srgb,var(--bear) 45%,transparent);border-radius:12px;color:var(--bear);font-size:12.5px}
+.src-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+@media (prefers-reduced-motion:reduce){.flow::after,.flowv::after{animation:none}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></symbol>
+    <symbol id="i-coins" viewBox="0 0 24 24"><circle cx="9" cy="9" r="6"/><path d="M15.2 6.3A6 6 0 1 1 8.8 17.7M9 6.5v5M7.5 8h3"/></symbol>
+    <symbol id="i-pair" viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></symbol>
+    <symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 9l9-5 9 5M5 9v8M9.5 9v8M14.5 9v8M19 9v8M3 20h18"/></symbol>
+    <symbol id="i-pipe" viewBox="0 0 24 24"><path d="M3 9h6v6H3zM15 9h6v6h-6zM9 12h6M6 9V6M18 15v3"/></symbol>
+    <symbol id="i-valve" viewBox="0 0 24 24"><path d="M3 15h18M7 15V9l5-3 5 3v6M12 6V3M9.5 3h5"/></symbol>
+    <symbol id="i-tap" viewBox="0 0 24 24"><path d="M4 7h9a4 4 0 0 1 4 4v1M4 7V5M10 5H4M17 12v3M15 15h4M17 18v1.5"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+    <symbol id="i-break" viewBox="0 0 24 24"><path d="M9 3L7 9l4-1-2 6M15 21l2-6-4 1 2-6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.8c.7.6 1 1.3 1 2.2h5c0-.9.3-1.6 1-2.2A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 .2 1.2.8 2 1.8 2.4C10.5 8.5 11 5.5 12 3z"/></symbol>
+    <symbol id="i-oil" viewBox="0 0 24 24"><path d="M12 3c3 4 5 6.5 5 9.5a5 5 0 0 1-10 0C7 9.5 9 7 12 3z"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 16l5-5 4 3 7-8"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <nav class="rail" id="rail" aria-label="Lenses"></nav>
+  <main class="main">
+    <div class="wrap">
+      <div class="top">
+        <div><h1 id="ttl">Global</h1><div class="sub" id="sub">loading…</div></div>
+        <a class="badge" href="today.html" title="The classic page is unchanged">v2 preview · classic view →</a>
+      </div>
+      <div id="loaderr"></div>
+
+      <section class="panel" id="v-global" style="display:grid;gap:14px">
+        <div class="hero g" id="hero"></div>
+        <div class="card">
+          <h2><svg class="i"><use href="#i-pipe"/></svg>How the money is flowing</h2>
+          <div class="stages" id="stages"></div>
+          <div class="pipes" id="pipes"></div>
+          <p class="pipeinfo" id="pipeinfo">Tap a link to see what should have responded, and what did.</p>
+          <details class="learn"><summary><svg class="i" style="width:15px;height:15px"><use href="#i-bulb"/></svg>How to read this</summary>
+            <p>Bonds are the reservoir, credit the pipes, FX the valves, equities the tap. Each link is one textbook relationship judged on measured 20-day moves at both ends. Holding: the usual mechanism is doing the pricing. Broken: both ends moved, the wrong way round, and that mismatch is the story. Quiet: at least one end has not moved past its noise floor, so it is not judged.</p></details>
+        </div>
+        <div class="grid2">
+          <div class="card"><h2><svg class="i"><use href="#i-layers"/></svg>Six markets at a glance</h2><div class="tiles" id="tiles"></div></div>
+          <div class="card"><h2><svg class="i"><use href="#i-shield"/></svg>Risk state</h2><div class="rows" id="flags"></div>
+            <div class="shelf"><span class="pill bull">validated: a dear VIX front widens the range</span><span class="pill">direction: tested null</span></div></div>
+        </div>
+        <div class="card">
+          <h2><svg class="i"><use href="#i-coins"/></svg>The eight currencies, by their 1-day move against the pairs we hold</h2>
+          <div class="strip" id="gstrip"></div>
+          <p class="note">Tap a currency for its page.</p>
+        </div>
+        <div class="card">
+          <h2><svg class="i"><use href="#i-cal"/></svg>The day, and the latest prints</h2>
+          <div class="tl" id="tl"></div>
+          <div class="rows" id="cats"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="v-ccy" hidden><div class="strip" id="cstrip"></div><div id="ccybody" style="display:grid;gap:14px"></div></section>
+      <section class="panel" id="v-pair" hidden><div class="strip" id="pstrip"></div><div id="pairbody" style="display:grid;gap:14px"></div></section>
+
+      <div class="card"><h2><svg class="i"><use href="#i-link"/></svg>Where this page's numbers come from</h2>
+        <div class="src-list" id="srcs"></div>
+        <p class="note" style="margin-top:8px">Nothing on this page is invented: every figure is read from one of these live endpoints when it loads. See the <a href="data-map.html">Data Map</a> for what each feed is and how fresh it is.</p></div>
+    </div>
+  </main>
+</div>
+<nav class="tabbar" id="tabbar" aria-label="Lenses"></nav>
+
+<script type="module">
+import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
+import { buildCountryCard } from './js/countryCard.js';
+import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
+
+const $ = id => document.getElementById(id);
+const esc = s => (s ?? '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const ic = (n, c) => `<svg class="i${c ? ' ' + c : ''}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const sg = (v, d = 2) => (v >= 0 ? '+' : '') + v.toFixed(d);
+const J = (u, opt) => fetch(u, opt).then(r => r.json()).catch(() => null);
+
+const FACT = [['rates', 'Rates & policy'], ['inflation', 'Inflation'], ['growth', 'Growth'], ['labour', 'Labour'], ['demand', 'Spending'], ['external', 'Trade']];
+const FLAG = { USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', AUD: '🇦🇺', NZD: '🇳🇿', CAD: '🇨🇦', CHF: '🇨🇭' };
+const NAME = { USD: 'US Dollar', EUR: 'Euro', GBP: 'Pound', JPY: 'Yen', AUD: 'Australian Dollar', NZD: 'New Zealand Dollar', CAD: 'Canadian Dollar', CHF: 'Swiss Franc' };
+const PAIR_CCY = { EURUSD: ['EUR', 'USD'], GBPUSD: ['GBP', 'USD'], USDJPY: ['USD', 'JPY'], AUDUSD: ['AUD', 'USD'], NZDUSD: ['NZD', 'USD'], USDCAD: ['USD', 'CAD'], USDCHF: ['USD', 'CHF'],
+  GBPJPY: ['GBP', 'JPY'], EURGBP: ['EUR', 'GBP'], EURJPY: ['EUR', 'JPY'], EURCHF: ['EUR', 'CHF'], AUDJPY: ['AUD', 'JPY'], CADJPY: ['CAD', 'JPY'] };
+const PAIR_LIST = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'BTCUSD'];
+const PAIR_LABEL = { GOLD: 'Gold', NQ: 'Nasdaq', SPX500: 'S&P 500', BTCUSD: 'Bitcoin' };
+const DRILL_PAIR = { eurusd: ['EUR', 'USD'], gbpusd: ['GBP', 'USD'], audusd: ['AUD', 'USD'], nzdusd: ['NZD', 'USD'], usdjpy: ['USD', 'JPY'], usdcad: ['USD', 'CAD'], usdchf: ['USD', 'CHF'], eurjpy: ['EUR', 'JPY'], audjpy: ['AUD', 'JPY'], eurgbp: ['EUR', 'GBP'] };
+
+const D = { drill: null, msc: null, rf: null, cot: null, brief: null, sess: null, fc: null, cal: null, intel: null };
+const state = { view: 'global', ccy: 'USD', pair: 'EURUSD', pipe: null };
+let derived = null;   // computed once after load
+
+/* ── derived numbers, all from the bundle ── */
+function lastTwo(key) {
+  const a = D.drill?.series?.[key]; if (!a) return null;
+  let i = a.length - 1; while (i >= 0 && a[i] == null) i--;
+  let j = i - 1; while (j >= 0 && a[j] == null) j--;
+  return i < 0 ? null : { last: a[i], prev: j >= 0 ? a[j] : null, i };
+}
+function back(key, n) { const a = D.drill?.series?.[key]; const t = lastTwo(key); if (!a || !t) return null; let k = t.i, c = 0; while (k > 0 && c < n) { k--; if (a[k] != null) c++; } return a[k] ?? null; }
+function spark(key, n = 30) { const a = D.drill?.series?.[key]; if (!a) return []; return a.slice(-n).filter(v => v != null); }
+function chainNow() {
+  const S = D.drill.series, N = D.drill.dates.length - 1;
+  const pts = key => { const a = S[key]; if (!a) return null; const out = []; for (let k = Math.max(0, N - 45); k <= N; k++) if (a[k] != null) out.push({ date: D.drill.dates[k], value: a[k] }); return out.length > 20 ? out : null; };
+  const map = { real: 'tips', dxy: 'dxy', oil: 'oil', gold: 'gold', copper: 'copper', btc: 'btc', nq: 'nq', spx: 'spx', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', bei: 'bei', vix: 'vix', hy: 'hy', audusd: 'audusd', usdcad: 'usdcad', usdjpy: 'usdjpy', eurusd: 'eurusd', gbpusd: 'gbpusd' };
+  const vals = {};
+  for (const [node, key] of Object.entries(map)) { const p = pts(key); vals[node] = p ? nodeDelta(p, CHAIN_NODES[node]) : null; }
+  let links = []; try { links = evaluateChain(vals); } catch { links = []; }
+  return { vals, links };
+}
+function strengths() {
+  const acc = {}; for (const c of Object.keys(FLAG)) acc[c] = [];
+  for (const [k, [b, q]] of Object.entries(DRILL_PAIR)) { const t = lastTwo(k); if (!t || t.prev == null || !t.prev) continue; const chg = (t.last / t.prev - 1) * 100; acc[b].push(chg); acc[q].push(-chg); }
+  return Object.entries(acc).filter(([, v]) => v.length).map(([ccy, v]) => ({ ccy, score: v.reduce((a, b) => a + b, 0) / v.length, n: v.length })).sort((a, b) => b.score - a.score);
+}
+function composites() { return Object.fromEntries((D.msc?.ranked ?? []).map(r => [r.ccy, { composite: r.composite, factorsScored: r.factorsScored, factorsTotal: r.factorsTotal, factors: r.factors }])); }
+function facVec(ccy) { const r = (D.msc?.ranked ?? []).find(x => x.ccy === ccy); return FACT.map(([k]) => (r?.factors?.[k]?.score ?? null)); }
+
+/* ── svg helpers ── */
+const polar = (cx, cy, r, deg) => { const a = (deg - 90) * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
+const arc = (cx, cy, r, a0, a1) => { const p0 = polar(cx, cy, r, a0), p1 = polar(cx, cy, r, a1); return `M${p0[0].toFixed(1)} ${p0[1].toFixed(1)} A${r} ${r} 0 ${(a1 - a0) > 180 ? 1 : 0} 1 ${p1[0].toFixed(1)} ${p1[1].toFixed(1)}`; };
+function dial(active, total) {
+  const cx = 100, cy = 92, r = 74, v = total ? active / total * 100 : 0, np = polar(cx, cy, r - 16, -90 + v * 1.8);
+  return `<svg viewBox="0 0 200 118" width="190" role="img" aria-label="${active} of ${total} risk flags active">
+   <path d="${arc(cx, cy, r, -90, -30)}" stroke="var(--bull)" stroke-width="12" fill="none" stroke-linecap="round" opacity=".85"/>
+   <path d="${arc(cx, cy, r, -26, 26)}" stroke="var(--amber)" stroke-width="12" fill="none" stroke-linecap="round" opacity=".85"/>
+   <path d="${arc(cx, cy, r, 30, 90)}" stroke="var(--bear)" stroke-width="12" fill="none" stroke-linecap="round" opacity=".85"/>
+   <line x1="${cx}" y1="${cy}" x2="${np[0].toFixed(1)}" y2="${np[1].toFixed(1)}" stroke="var(--text)" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="6" fill="var(--text)"/>
+   <text x="${cx}" y="${cy - 24}" text-anchor="middle" font-family="var(--disp)" font-weight="700" font-size="28" fill="var(--text)">${active}/${total}</text></svg><div class="lbl">Risk flags active</div>`;
+}
+function ukNow() { try { const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date()); return +p.find(x => x.type === 'hour').value + +p.find(x => x.type === 'minute').value / 60; } catch { return new Date().getUTCHours(); } }
+function ring() {
+  const cx = 80, cy = 80, h = ukNow(), sess = [['Asia', 23, 8, 'var(--violet)', 66], ['London', 8, 16.5, 'var(--blue)', 56], ['New York', 13.5, 21, 'var(--bull)', 46]];
+  let o = `<svg viewBox="0 0 160 160" width="150" role="img" aria-label="24-hour clock with Asia, London and New York sessions"><circle cx="80" cy="80" r="34" fill="none" stroke="var(--line2)"/>`;
+  sess.forEach(s => { const a0 = s[1] / 24 * 360; let a1 = s[2] / 24 * 360; if (a1 < a0) a1 += 360; o += `<path d="${arc(cx, cy, s[4], a0, a1)}" stroke="${s[3]}" stroke-width="7" fill="none" stroke-linecap="round" opacity=".75"/>`; });
+  [0, 6, 12, 18].forEach(t => { const p = polar(cx, cy, 72, t / 24 * 360); o += `<text x="${p[0].toFixed(1)}" y="${(p[1] + 3).toFixed(1)}" text-anchor="middle" font-size="8" font-family="var(--mono)" fill="var(--text3)">${t < 10 ? '0' : ''}${t}</text>`; });
+  const n = polar(cx, cy, 66, h / 24 * 360), hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+  o += `<circle cx="${n[0].toFixed(1)}" cy="${n[1].toFixed(1)}" r="5" fill="var(--amber)"/><text x="80" y="78" text-anchor="middle" font-family="var(--disp)" font-weight="700" font-size="15" fill="var(--text)">${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</text><text x="80" y="92" text-anchor="middle" font-size="8.5" fill="var(--text3)">UK time</text></svg><div class="lbl">Sessions</div>`;
+  return o;
+}
+function sparkSvg(arr, col) {
+  if (arr.length < 3) return ''; const w = 76, h = 24, mn = Math.min(...arr), mx = Math.max(...arr), d = (mx - mn) || 1;
+  const pts = arr.map((v, i) => `${(i * (w / (arr.length - 1))).toFixed(1)},${(h - 3 - ((v - mn) / d) * (h - 6)).toFixed(1)}`).join(' '), last = pts.split(' ').pop().split(',');
+  return `<svg viewBox="0 0 ${w} ${h}" width="76" height="24" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${last[0]}" cy="${last[1]}" r="2.6" fill="${col}"/></svg>`;
+}
+function radar(series, label) {
+  const cx = 110, cy = 108, R = 78, n = 6; let o = `<svg viewBox="0 0 220 216" width="100%" style="max-width:300px;margin:0 auto" role="img" aria-label="${esc(label)}">`;
+  [0.25, 0.5, 0.75, 1].forEach(k => { const pts = []; for (let i = 0; i < n; i++) { const p = polar(cx, cy, R * k, i * 60); pts.push(p[0].toFixed(1) + ',' + p[1].toFixed(1)); } o += `<polygon points="${pts.join(' ')}" fill="none" stroke="var(--line)" stroke-width="${k === 0.5 ? 1.2 : 0.7}" ${k === 0.5 ? 'stroke-dasharray="3 3"' : ''}/>`; });
+  for (let i = 0; i < n; i++) { const e = polar(cx, cy, R, i * 60), l = polar(cx, cy, R + 17, i * 60); o += `<line x1="${cx}" y1="${cy}" x2="${e[0].toFixed(1)}" y2="${e[1].toFixed(1)}" stroke="var(--line2)"/><text x="${l[0].toFixed(1)}" y="${(l[1] + 3).toFixed(1)}" text-anchor="middle" font-size="9.5" fill="var(--text2)">${FACT[i][1]}</text>`; }
+  series.forEach(s => {
+    const have = [], pts = [];
+    s.v.forEach((v, i) => { const r = v == null ? R * 0.5 : R * (0.5 + 0.5 * Math.max(-1, Math.min(1, v))), p = polar(cx, cy, r, i * 60);
+      if (v == null) o += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="none" stroke="var(--text3)" stroke-dasharray="2 2"/>`; else { have.push(p); pts.push(p[0].toFixed(1) + ',' + p[1].toFixed(1)); } });
+    if (have.length >= 3) o += `<polygon points="${pts.join(' ')}" fill="${s.c}" fill-opacity=".18" stroke="${s.c}" stroke-width="2" stroke-linejoin="round"/>`;
+    have.forEach(p => { o += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.4" fill="${s.c}"/>`; });
+  });
+  return o + '</svg>';
+}
+
+/* ── nav ── */
+const VIEWS = [['global', 'Global', 'globe'], ['ccy', 'Currency', 'coins'], ['pair', 'Pair', 'pair']];
+function navHtml(cls) { return VIEWS.map(v => `<button class="${cls}" role="tab" data-v="${v[0]}" aria-selected="${state.view === v[0]}">${ic(v[2])}<span>${v[1]}</span></button>`).join(''); }
+function drawNav() {
+  $('rail').innerHTML = `<a class="logo" href="today.html" title="Classic page">${ic('globe')}</a>` + navHtml('rb'); $('tabbar').innerHTML = navHtml('tab');
+  document.querySelectorAll('[data-v]').forEach(b => { b.onclick = () => go(b.getAttribute('data-v')); });
+}
+function go(v, opt) {
+  state.view = v; if (opt) Object.assign(state, opt);
+  ['global', 'ccy', 'pair'].forEach(x => { $('v-' + x).hidden = (x !== v); });
+  $('v-global').style.display = v === 'global' ? 'grid' : 'none';
+  $('ttl').textContent = v === 'global' ? 'Global' : v === 'ccy' ? 'Currency' : 'Pair';
+  drawNav(); if (v === 'ccy') drawCcy(); if (v === 'pair') drawPair(); window.scrollTo(0, 0);
+}
+
+/* ── global ── */
+function heroHtml() {
+  const a = D.intel?.ok ? D.intel.analysis : null, rf = D.rf;
+  const kick = (a ? `<span class="pill ${/RISK-ON/i.test(a.regime) ? 'bull' : /RISK-OFF/i.test(a.regime) ? 'bear' : 'amber'}">${esc(a.regime)}</span>` : '') + `<span class="pill violet">${ic('bulb', '').replace('class="i"', 'class="i" style="width:12px;height:12px"')}AI argument from measured links</span>`;
+  let age = '';
+  if (a && D.intel.generatedAt) { const h = (Date.now() - Date.parse(D.intel.generatedAt)) / 3.6e6; age = `<span class="pill ${h >= 6 ? 'amber' : ''}">${h < 1 ? Math.round(h * 60) + 'm old' : h < 24 ? h.toFixed(1) + 'h old' : Math.round(h / 24) + 'd old'}</span>`; }
+  const head = a?.headline ? esc(a.headline) : 'No Intelligence brief yet today';
+  const body = a ? esc((a.driver?.[0]?.what) ?? '') : 'Press Generate for the argument: what is driving markets, how it transmits, what would confirm or break it, and what to learn from it. One model call.';
+  return `<div><div class="kick">${kick}${age}</div><h2>${head}</h2><p>${body}</p>
+     <p style="margin-top:10px"><button class="btn" id="genbtn">${ic('bulb', '')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds</span></p></div>
+     <div class="gauge">${rf ? dial(rf.active ?? 0, rf.total ?? 5) : ''}</div><div class="gauge">${ring()}</div>`;
+}
+function fmtRate(key) { const t = lastTwo(key); if (!t) return null; const d1 = t.prev != null ? (t.last - t.prev) * 100 : null; const b20 = back(key, 20); const d20 = b20 != null ? (t.last - b20) * 100 : null; return { v: t.last, d1, d20 }; }
+function fmtPct(key) { const t = lastTwo(key); if (!t) return null; const d1 = t.prev ? (t.last / t.prev - 1) * 100 : null; const b20 = back(key, 20); const d20 = b20 ? (t.last / b20 - 1) * 100 : null; return { v: t.last, d1, d20 }; }
+function drawGlobal() {
+  $('hero').innerHTML = heroHtml();
+  const gb = $('genbtn'); if (gb) gb.onclick = generateIntel;
+  const { vals, links } = derived.chain;
+  const g = (key, kind) => (kind === 'rate' ? fmtRate(key) : fmtPct(key));
+  const bp = x => (x == null ? '' : `${sg(x, 0)}bp`), pc = x => (x == null ? '' : `${sg(x, 2)}%`);
+  const us2 = g('us2y', 'rate'), us10 = g('us10y', 'rate'), tips = g('tips', 'rate'), hy = g('hy', 'rate'), dx = g('dxy', 'pct'), nq = g('nq', 'pct'), spx = g('spx', 'pct'), vix = g('vix', 'pct'), oil = g('oil', 'pct'), brent = g('brent', 'pct');
+  const row = (n, v, d, c) => `<div class="nd"><span>${n}</span><span class="mono ${c || ''}">${v}${d ? ` <span style="color:var(--text3)">${d}</span>` : ''}</span></div>`;
+  const cls = x => (x == null ? '' : x >= 0 ? 'up' : 'dn');
+  const ST = [
+    { n: 'Bonds', m: 'the reservoir', ic: 'bank', rows: [us2 && row('US 2Y', us2.v.toFixed(2) + '%', bp(us2.d1), cls(us2.d1)), us10 && row('US 10Y', us10.v.toFixed(2) + '%', bp(us10.d1), cls(us10.d1)), tips && row('Real 10Y', tips.v.toFixed(2) + '%', bp(tips.d1), cls(tips.d1))] },
+    { n: 'Credit', m: 'the pipes', ic: 'pipe', rows: [hy && row('HY spread', Math.round(hy.v * 100) + 'bp', bp(hy.d1), cls(hy.d1)), hy && row('20-day', bp(hy.d20), '', cls(hy.d20))] },
+    { n: 'FX', m: 'the valves', ic: 'valve', rows: [dx && row('Dollar (broad)', dx.v.toFixed(1), pc(dx.d1), cls(dx.d1)), dx && row('20-day', pc(dx.d20), '', cls(dx.d20))] },
+    { n: 'Equities', m: 'the tap', ic: 'tap', rows: [nq && row('Nasdaq 20d', pc(nq.d20), '', cls(nq.d20)), spx && row('S&P 500 20d', pc(spx.d20), '', cls(spx.d20)), vix && row('VIX', vix.v.toFixed(1), vix.d1 == null ? '' : sg(vix.d1 * vix.v / 100, 2), cls(vix.d1))] }
+  ];
+  $('stages').innerHTML = ST.map((s, i) => `<div class="stage"><div class="sh"><div class="ico">${ic(s.ic)}</div><div><div class="nm">${s.n}</div><div class="metaphor">${s.m}</div></div></div>${s.rows.filter(Boolean).join('') || '<div class="note">no data</div>'}</div>` + (i < 3 ? '<div class="flowv"></div><div class="connector"><div class="flow"></div></div>' : '')).join('');
+  const meas = links.filter(l => l.verdict !== 'unmeasured'), order = { broken: 0, holding: 1, quiet: 2 };
+  const show = meas.filter(l => l.verdict !== 'quiet').sort((a, b) => order[a.verdict] - order[b.verdict]), quiet = meas.filter(l => l.verdict === 'quiet');
+  const pipeHtml = (l, i) => { const cl = l.verdict === 'holding' ? 'hold' : l.verdict === 'broken' ? 'brk' : 'qt', lab = l.verdict === 'holding' ? 'Holding' : l.verdict === 'broken' ? 'Broken' : 'Quiet', icn = l.verdict === 'holding' ? 'check' : l.verdict === 'broken' ? 'break' : 'pause';
+    return `<button class="pipe" data-i="${i}" aria-expanded="false"><span class="st ${cl}">${ic(icn)}</span><span><span class="t1">${esc(l.a.label)} → ${esc(l.b.label)}</span><br><span class="t2">${esc(l.a.text)} · ${esc(l.b.text)}</span></span><span class="pill ${l.verdict === 'holding' ? 'bull' : l.verdict === 'broken' ? 'amber' : ''}">${lab}</span></button>`; };
+  const all = [...show, ...quiet]; derived.pipeList = all;
+  $('pipes').innerHTML = show.map((l, i) => pipeHtml(l, i)).join('') + (quiet.length ? `<details class="learn"><summary>${ic('pause', '').replace('class="i"', 'class="i" style="width:15px;height:15px"')}${quiet.length} quiet links, not judged today</summary><div class="pipes">${quiet.map((l, i) => pipeHtml(l, show.length + i)).join('')}</div></details>` : '') || '<p class="note">No chain link has both ends measured today.</p>';
+  document.querySelectorAll('.pipe').forEach(b => { b.onclick = () => { const i = +b.getAttribute('data-i'), open = state.pipe === i; state.pipe = open ? null : i;
+    document.querySelectorAll('.pipe').forEach(x => x.setAttribute('aria-expanded', String(!open && x === b)));
+    const l = all[i]; $('pipeinfo').innerHTML = open ? 'Tap a link to see what should have responded, and what did.' : `<b>${esc(l.a.label)} ${esc(l.a.text)} → ${esc(l.b.label)} ${esc(l.b.text)}.</b> The textbook: ${esc((l.textbook ?? '').toLowerCase())}. ${esc(l.read ?? '')}`; }; });
+  const tile = (name, icn, main, sub, subCls, key, col) => `<div class="tile"><div class="tn">${ic(icn)}${name}</div><div class="tv">${main}</div><div class="td ${subCls}">${sub}</div>${sparkSvg(spark(key), col)}</div>`;
+  const C = x => (x == null ? 'var(--text3)' : x >= 0 ? 'var(--bull)' : 'var(--bear)');
+  $('tiles').innerHTML = [
+    us2 && tile('Rates', 'chart', us2.v.toFixed(2) + '%', `2Y ${bp(us2.d1)} · 20d ${bp(us2.d20)}`, cls(us2.d1), 'us2y', C(us2.d1)),
+    hy && tile('Credit', 'pipe', Math.round(hy.v * 100) + 'bp', `HY ${bp(hy.d1)} · 20d ${bp(hy.d20)}`, cls(hy.d1), 'hy', C(hy.d1 == null ? null : -hy.d1)),
+    dx && tile('Dollar', 'coins', dx.v.toFixed(1), `${pc(dx.d1)} · 20d ${pc(dx.d20)}`, cls(dx.d1), 'dxy', C(dx.d1)),
+    nq && tile('Equities', 'pulse', pc(nq.d20), `Nasdaq 20d · S&P ${pc(spx?.d20)}`, cls(nq.d20), 'nq', C(nq.d20)),
+    vix && tile('Volatility', 'flame', vix.v.toFixed(1), `VIX ${pc(vix.d1)} on the day`, cls(vix.d1 == null ? null : -vix.d1), 'vix', C(vix.d1 == null ? null : -vix.d1)),
+    (brent || oil) && tile('Oil', 'oil', '$' + (brent ?? oil).v.toFixed(1), `Brent ${pc((brent ?? oil).d20)} 20d${brent && oil ? ` · WTI $${oil.v.toFixed(1)}` : ''}`, cls((brent ?? oil).d20), brent ? 'brent' : 'oil', C((brent ?? oil).d20))
+  ].filter(Boolean).join('');
+  const fl = D.rf?.flags ?? [];
+  $('flags').innerHTML = fl.map(f => `<div class="rw"><span>${esc(f.label)}${f.detail ? `<small>${esc(f.detail)}</small>` : ''}</span><span class="pill ${f.on ? 'amber' : ''}">${f.on ? 'on' : 'off'}</span></div>`).join('') || '<p class="note">Risk flags unavailable.</p>';
+  $('gstrip').innerHTML = stripHtml('g'); wireStrip('gstrip');
+  // timeline
+  const h = ukNow(); let t = '<div class="axis"></div>';
+  [['Asia', 0, 8, 'var(--violet)'], ['Asia', 23, 24, 'var(--violet)'], ['London', 8, 16.5, 'var(--blue)'], ['New York', 13.5, 21, 'var(--bull)']].forEach(s => { t += `<div class="seg" style="left:${s[1] / 24 * 100}%;width:${(s[2] - s[1]) / 24 * 100}%;background:${s[3]}" title="${s[0]}"></div>`; });
+  [0, 6, 12, 18, 24].forEach(x => { t += `<div class="tick" style="left:${x / 24 * 100}%">${x === 24 ? '00' : String(x).padStart(2, '0')}</div>`; });
+  t += `<div class="now" style="left:${h / 24 * 100}%"></div>`; $('tl').innerHTML = t;
+  const rows = (D.cal?.printed?.rows ?? []).filter(r => r.ms && Date.now() - r.ms < 36 * 3600e3 && Date.now() - r.ms > -3600e3).sort((a, b) => b.ms - a.ms).slice(0, 6);
+  $('cats').innerHTML = rows.length ? rows.map(r => { const sp = r.surprise; const when = new Date(r.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+    return `<div class="rw"><span><b>${when}</b> · ${esc(r.country)} · ${esc(r.event)}<small>actual ${esc(r.actual)} against ${esc(r.consensus)} expected${r.previous != null ? `, was ${esc(r.previous)}` : ''}</small></span>${sp != null ? `<span class="pill ${sp > 0 ? 'bull' : sp < 0 ? 'bear' : ''}">${sp > 0 ? 'above' : sp < 0 ? 'below' : 'in line'}</span>` : ''}</div>`; }).join('')
+    : '<p class="note">No releases printed in the last day, and nothing is listed ahead. Scheduled events appear here when the calendar feed has them.</p>';
+}
+function stripHtml(kind) {
+  return derived.str.map(c => { const w = Math.min(50, Math.abs(c.score) / 0.6 * 50), col = c.score >= 0 ? 'var(--bull)' : 'var(--bear)';
+    return `<button class="cc" data-c="${c.ccy}" aria-pressed="${kind === 'c' && state.ccy === c.ccy}"><div class="fl">${FLAG[c.ccy]}</div><div class="cd">${c.ccy}</div><div class="bar"><i style="${c.score >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${col}"></i></div><div class="mv ${c.score >= 0 ? 'up' : 'dn'}">${sg(c.score)}%</div></button>`; }).join('');
+}
+function wireStrip(id) { document.querySelectorAll('#' + id + ' .cc').forEach(b => { b.onclick = () => go('ccy', { ccy: b.getAttribute('data-c') }); }); }
+async function generateIntel() {
+  const b = $('genbtn'); if (!b) return; b.disabled = true; b.textContent = 'Generating… about 90s';
+  const r = await J('/api/morning-brief?mode=intel', { method: 'POST' });
+  if (r?.ok) { D.intel = r; drawGlobal(); } else { b.disabled = false; b.textContent = 'Generate Intelligence brief'; $('loaderr').innerHTML = `<div class="err">Generate failed: ${esc(r?.error ?? 'no response')}</div>`; }
+}
+
+/* ── currency ── */
+function drawCcy() {
+  $('cstrip').innerHTML = stripHtml('c'); wireStrip('cstrip');
+  const k = state.ccy, comp = composites(), row = comp[k];
+  const card = buildCountryCard({ ccy: k, macro: row ? { composite: row.composite, factorsScored: row.factorsScored, factorsTotal: row.factorsTotal, factors: row.factors && Object.fromEntries(Object.entries(row.factors).map(([kk, f]) => [kk, { label: f.label, score: f.score, backedBy: f.dims, of: f.of }])) } : null,
+    measured: (() => { const i = derived.str.findIndex(x => x.ccy === k); return i >= 0 ? { rank: i + 1, of: derived.str.length } : null; })(),
+    boardDriver: D.msc?.driver && D.msc.driver.ranked ? { factor: D.msc.driver.label, spread: D.msc.driver.spread, thisCcyRank: D.msc.driver.ranked.findIndex(x => x.ccy === k) + 1 || null, of: D.msc.driver.ranked.length } : null,
+    cb: null, board: Object.entries(comp).map(([ccy, v]) => ({ ccy, composite: v.composite })), pairs: PAIR_CCY });
+  const vec = facVec(k), mv = derived.str.find(x => x.ccy === k);
+  const facRows = FACT.map(([key, lab], i) => { const v = vec[i]; if (v == null) return `<div class="fr na"><span class="nm">${lab}</span><span class="tr"></span><span class="v">no data</span></div>`;
+    const col = v >= 0 ? 'var(--bull)' : 'var(--bear)'; return `<div class="fr"><span class="nm">${lab}</span><span class="tr"><u></u><i style="${v >= 0 ? 'left:50%' : 'right:50%'};width:${Math.abs(v) * 50}%;background:${col}"></i></span><span class="v ${v >= 0 ? 'up' : 'dn'}">${sg(v)}</span></div>`; }).join('');
+  const reasons = card.drivers.map(d => `<div class="whyp"><div class="wh"><b>${esc(d.label)}</b> <span class="pill ${d.direction === 'strong' ? 'bull' : 'bear'}">${d.direction} ${sg(d.score)}</span> ${d.backing ? `<span class="fg">${esc(d.backing)}${d.thin ? ' · thin' : ''}</span>` : ''}</div><p>${esc(d.why)}</p></div>`).join('') || '<p class="note">No macro factor has enough fresh data for this currency.</p>';
+  const rel = Object.keys(PAIR_CCY).filter(p => PAIR_CCY[p].includes(k) && D.brief?.instruments?.[p]);
+  const exprs = card.expressions;
+  const cotKey = { EUR: ['EUR/USD', 1], GBP: ['GBP/USD', 1], AUD: ['AUD/USD', 1] }[k], cd = cotKey && D.cot?.data?.[cotKey[0]];
+  const cotHtml = cd ? `<div class="cot">${[['Leveraged funds', cd.levNet, cd.levPct], ['Asset managers', cd.amNet, null]].map(r => r[2] == null ? `<div class="lab"><span>${r[0]}</span><span class="mono">${r[1] >= 0 ? 'net long' : 'net short'} ${Math.abs(r[1]).toLocaleString()} contracts</span></div>` : `<div><div class="lab"><span>${r[0]}</span><span class="mono">${r[1] >= 0 ? 'net long' : 'net short'} ${Math.abs(r[1]).toLocaleString()} · ${Math.round(r[2])}th percentile</span></div><div class="pct"><i style="left:calc(${Math.max(0, Math.min(100, r[2]))}% - 2px)"></i></div></div>`).join('')}</div><p class="note" style="margin-top:8px">Positioning says who has to act if they are wrong. It does not say which way price goes.</p>` : `<p class="note">Positioning for ${k} is shown on its pair page (the report is keyed by pair).</p>`;
+  $('ccybody').innerHTML =
+   `<div class="hero"><div class="hd"><span class="fl2">${FLAG[k]}</span><div><div class="big">${k} <span style="font-weight:500;color:var(--text2);font-size:16px">${NAME[k]}</span></div>
+     <div class="kick" style="margin:6px 0 0"><span class="pill ${card.thin ? '' : card.cls === 'bull' ? 'bull' : card.cls === 'bear' ? 'bear' : 'amber'}">${esc(card.word)}${card.composite != null && !card.thin ? ' ' + sg(card.composite) : ''}</span>${mv ? `<span class="pill">moved ${sg(mv.score)}% today (rank ${derived.str.findIndex(x => x.ccy === k) + 1} of ${derived.str.length})</span>` : ''}${card.coverage ? `<span class="pill">${esc(card.coverage)}${card.thinCoverage ? ' · thin' : ''}</span>` : ''}</div></div></div></div>
+   <div class="two"><div class="card"><h2>${ic('layers')}The six reasons</h2>${radar([{ v: vec, c: 'var(--blue)' }], k + ' macro factors')}<p class="note" style="text-align:center;margin-top:4px">Dashed ring = zero. Hollow dots = no data.</p></div>
+   <div class="card"><h2>${ic('chart')}Why it should be bid or offered</h2><div class="fac">${facRows}</div>
+     <details class="learn"><summary>${ic('bulb', '').replace('class="i"', 'class="i" style="width:15px;height:15px"')}What these mean</summary><p>Each bar is one slice of the economy scored from −1 to +1. A currency is usually preferred when rates, growth and inflation are firm, because money earns more there. This says why one currency should be favoured if the market is pricing these things. It is not a forecast: macro as a signal has tested null on this desk five times.</p></details></div></div>
+   <div class="card"><h2>${ic('bulb')}The reasons, in words</h2>${reasons}${card.boardLine ? `<p class="note" style="margin-top:8px">${esc(card.boardLine)}</p>` : ''}</div>
+   <div class="two"><div class="card"><h2>${ic('shield')}Who holds it</h2>${cotHtml}</div>
+   <div class="card"><h2>${ic('pair')}Pairs this currency drives</h2><div class="rows">${rel.map(p => { const e = exprs.find(x => x.pair === p); return `<div class="rw"><span><b>${PAIR_CCY[p][0]}/${PAIR_CCY[p][1]}</b><small>${e ? esc(e.line) : 'no macro gap to show'}</small></span><button class="btn" data-p="${p}">Open ${ic('pair', '')}</button></div>`; }).join('') || '<p class="note">No tracked pairs.</p>'}</div></div></div>
+   <div class="shelf"><span class="pill">models: macro scorecard · measured 1-day currency moves</span><span class="pill">direction: tested null</span></div>`;
+  document.querySelectorAll('#ccybody [data-p]').forEach(b => { b.onclick = () => go('pair', { pair: b.getAttribute('data-p') }); });
+}
+
+/* ── pair ── */
+function pairData(k) {
+  const bi = D.brief?.instruments?.[k], si = D.sess?.instruments?.[k], fi = D.fc?.instruments?.[k];
+  const hlMed = bi?.levels?.hl_med?.pct ?? fi?.hl_median ?? null, used = (si?.hl != null && hlMed) ? si.hl / hlMed : null;
+  return { price: bi?.current_price ?? null, dp: bi?.dp ?? 4, regime: bi?.regime, used, hlMed, hl75: bi?.levels?.hl_75?.pct ?? fi?.hl_75 ?? null, volPct: bi?.vol_pct ?? fi?.vol_pct ?? null, oc: si?.oc ?? null, stale: bi?.stale };
+}
+function drawPair() {
+  const k = state.pair;
+  $('pstrip').innerHTML = PAIR_LIST.map(p => { const d = pairData(p), cc = PAIR_CCY[p]; return `<button class="cc" data-p="${p}" aria-pressed="${state.pair === p}"><div class="fl">${cc ? FLAG[cc[0]] + FLAG[cc[1]] : p === 'GOLD' ? '🥇' : p === 'BTCUSD' ? '₿' : '📈'}</div><div class="cd">${cc ? cc[0] + '/' + cc[1] : PAIR_LABEL[p] ?? p}</div><div class="mv">${d.used != null ? Math.round(d.used * 100) + '% used' : '—'}</div></button>`; }).join('');
+  document.querySelectorAll('#pstrip .cc').forEach(b => { b.onclick = () => go('pair', { pair: b.getAttribute('data-p') }); });
+  const d = pairData(k), cc = PAIR_CCY[k] ?? null, comp = composites(), { vals, links } = derived.chain, node = NODE_FOR[k] ?? null;
+  const why = buildPairWhy({ name: k, ccys: cc, csr: derived.str, composites: comp, links, used: d.used, hlMed: d.hlMed, event: null });
+  const used = d.used != null ? Math.round(d.used * 100) : null, sc = 100 / 150;
+  const ladder = used != null ? `<div class="rng" role="img" aria-label="${used}% of the expected range used"><div class="f" style="width:${Math.min(100, used * sc)}%"></div><div class="m" style="left:${100 * sc}%"><span>median day</span><em>100%</em></div><div class="m" style="left:${125 * sc}%"><span>wide day</span><em>125%</em></div></div>` : '<p class="note">The live session range is not available right now.</p>';
+  // linked markets: the other end of every chain link that touches this instrument, else the generic three
+  let nodes = [];
+  if (node) links.filter(l => l.verdict !== 'unmeasured' && (l.a.key === node || l.b.key === node)).forEach(l => { const o = l.a.key === node ? l.b : l.a; if (!nodes.some(n => n.name === o.label)) nodes.push({ name: o.label, text: o.text, st: l.verdict === 'holding' ? 'hold' : l.verdict === 'broken' ? 'brk' : 'qt' }); });
+  if (nodes.length < 3) [['dxy', 'Dollar'], ['us2y', 'US 2Y'], ['vix', 'VIX']].forEach(([n, lab]) => { if (nodes.length < 5 && vals[n] && !nodes.some(x => x.name === lab)) nodes.push({ name: lab, text: vals[n].text ?? '', st: 'qt' }); });
+  nodes = nodes.slice(0, 5);
+  const cx = 170, cy = 118; let con = `<svg viewBox="0 0 340 236" width="100%" style="max-width:420px;margin:0 auto" role="img" aria-label="Linked markets">`;
+  const colOf = s => s === 'hold' ? 'var(--bull)' : s === 'brk' ? 'var(--amber)' : 'var(--text3)';
+  nodes.forEach((n, i) => { const p = polar(cx, cy, 92, (360 / nodes.length) * i + (nodes.length % 2 ? 0 : 18)); con += `<line x1="${cx}" y1="${cy}" x2="${p[0].toFixed(1)}" y2="${p[1].toFixed(1)}" stroke="${colOf(n.st)}" stroke-width="${n.st === 'qt' ? 1.2 : 2.6}" ${n.st === 'qt' ? 'stroke-dasharray="3 4"' : ''}/>`; });
+  nodes.forEach((n, i) => { const p = polar(cx, cy, 92, (360 / nodes.length) * i + (nodes.length % 2 ? 0 : 18)); con += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="22" fill="var(--card2)" stroke="${colOf(n.st)}" stroke-width="2"/><text x="${p[0].toFixed(1)}" y="${(p[1] - 1).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="600" fill="var(--text)">${esc(n.name.length > 11 ? n.name.slice(0, 10) + '…' : n.name)}</text><text x="${p[0].toFixed(1)}" y="${(p[1] + 10).toFixed(1)}" text-anchor="middle" font-size="7.5" fill="var(--text3)" font-family="var(--mono)">${esc(String(n.text).slice(0, 9))}</text>`; });
+  const label = cc ? cc[0] + '/' + cc[1] : PAIR_LABEL[k] ?? k;
+  con += `<circle cx="${cx}" cy="${cy}" r="27" fill="var(--blue)"/><text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="${label.length > 7 ? 9.5 : 11}" font-weight="700" fill="#fff" font-family="var(--disp)">${esc(label)}</text></svg>`;
+  const two = cc ? `<div class="card"><h2>${ic('layers')}Two economies, side by side</h2>${radar([{ v: facVec(cc[0]), c: 'var(--blue)' }, { v: facVec(cc[1]), c: 'var(--bear)' }], cc[0] + ' against ' + cc[1])}<div class="legend" style="justify-content:center"><span><i style="background:var(--blue)"></i>${cc[0]}</span><span><i style="background:var(--bear)"></i>${cc[1]}</span></div></div>` : '';
+  const reg = d.regime?.label ? `<span class="pill ${d.regime.label === 'TREND' ? 'violet' : 'blue'}">${esc(d.regime.label)}${d.regime.range_prob ? ' ' + d.regime.range_prob + '%' : ''}</span>` : '';
+  $('pairbody').innerHTML =
+   `<div class="hero"><div class="pairhd">${cc ? `<button class="flagbtn" data-c="${cc[0]}">${FLAG[cc[0]]} ${cc[0]}</button><span style="color:var(--text3)">${ic('pair', '')}</span><button class="flagbtn" data-c="${cc[1]}">${FLAG[cc[1]]} ${cc[1]}</button>` : `<span class="disp" style="font-size:22px;font-weight:700">${esc(label)}</span>`}
+     <span class="disp" style="font-size:28px;font-weight:700;margin-left:6px">${d.price != null ? d.price.toFixed(d.dp ?? 4) : '—'}</span>${used != null ? `<span class="pill blue">${used}% of expected range</span>` : ''}${reg}${d.volPct != null ? `<span class="pill">vol ${d.volPct}th pct</span>` : ''}${d.stale ? '<span class="pill amber">price stale</span>' : ''}</div></div>
+   <div class="two"><div class="card"><h2>${ic('chart')}How much of the day is done</h2>${ladder}<p class="note">Expected range ${d.hlMed != null ? d.hlMed.toFixed(2) + '%' : '—'} (median high-to-low); a wide day ${d.hl75 != null ? d.hl75.toFixed(2) + '%' : '—'}. Calibrated: the median day uses about 100% of it.</p></div>
+   <div class="card"><h2>${ic('link')}Linked markets today</h2>${con}<div class="legend"><span><i style="background:var(--bull)"></i>holding</span><span><i style="background:var(--amber)"></i>broken</span><span><i style="background:var(--text3)"></i>quiet</span></div></div></div>
+   <div class="two">${two}<div class="card"><h2>${ic('bulb')}Why, in plain words</h2>${why.points.map(p => `<div class="whyp"><div class="wh"><span class="src ${p.kind === 'calendar' ? 'c' : ''}">${esc(p.kind)}</span> <b>${esc(p.title)}</b>${p.figure ? ` <span class="fg">${esc(p.figure)}</span>` : ''}</div><p>${esc(p.body)}</p></div>`).join('') || '<p class="note">No measured driver stands out for this instrument today.</p>'}
+     <p class="note" style="margin-top:8px">${esc(why.foot)}</p><div class="shelf"><span class="pill bull">range: validated</span><span class="pill">direction: tested null</span></div></div></div>`;
+  document.querySelectorAll('#pairbody [data-c]').forEach(b => { b.onclick = () => go('ccy', { ccy: b.getAttribute('data-c') }); });
+}
+
+/* ── boot ── */
+const SRC = [['/api/drill-series', 'drill', '75 market series, 5 years'], ['/api/macro-scorecard', 'msc', 'six-factor currency scorecard'], ['/api/risk-flags', 'rf', 'risk flags'], ['/api/cot', 'cot', 'CFTC positioning'],
+  ['/api/daily-brief', 'brief', 'prices, regimes, levels'], ['/api/vol-forecast/session', 'sess', 'live session range'], ['/api/vol-forecast', 'fc', 'calibrated range forecast'], ['/api/calendar-feed', 'cal', 'releases printed'], ['/api/morning-brief?mode=intel', 'intel', 'Intelligence brief']];
+async function main() {
+  drawNav();
+  const res = await Promise.all(SRC.map(s => J(s[0])));
+  SRC.forEach((s, i) => { D[s[1]] = res[i]; });
+  $('srcs').innerHTML = SRC.map((s, i) => `<span class="pill ${res[i]?.ok === false || res[i] == null ? 'amber' : ''}" title="${esc(s[2])}">${res[i] == null || res[i].ok === false ? '✗' : '✓'} ${esc(s[0].replace('/api/', ''))}</span>`).join('');
+  if (!D.drill?.ok) { $('loaderr').innerHTML = '<div class="err">The market bundle did not load (/api/drill-series). The page needs it for the chain and the currency moves. Reload to try again.</div>'; $('sub').textContent = 'data unavailable'; return; }
+  derived = { chain: chainNow(), str: strengths() };
+  $('sub').textContent = `${new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' })} · bundle to ${D.drill.to ?? D.drill.dates.at(-1)}`;
+  drawGlobal();
+}
+window.__atlas = { go, state, D, main };
+main().catch(e => { $('loaderr').innerHTML = `<div class="err">Page error: ${esc(e.message)}</div>`; console.error('[atlas]', e); });
+</script>
+</body>
+</html>
