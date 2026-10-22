@@ -6,7 +6,8 @@ Spec definition matches /api/cot-extremes: Leveraged Funds (TFF) for financials,
 Money (Disaggregated) for metals; JPY/CAD/CHF flipped into pair terms (long JPY futures =
 short USD/JPY). Futures-only datasets, same as the page.
 
-Output: analysis/output/cot-extreme-aftermath/cot_weekly.csv
+Output: analysis/output/cot-extreme-aftermath/cot_weekly.csv (default), or
+  python fetch_cot.py <start YYYY-MM-DD> <out.csv>   (cot-extreme-duration uses 2006 ->)
 """
 import csv, json, os, sys, time, urllib.parse, urllib.request
 
@@ -27,7 +28,7 @@ MARKETS = [
     ("GOLD",   "72hh-3qpy", "088691", False, "m_money"),
     ("SILVER", "72hh-3qpy", "084691", False, "m_money"),
 ]
-START = "2014-01-01T00:00:00.000"
+START = (sys.argv[1] if len(sys.argv) > 1 else "2014-01-01") + "T00:00:00.000"
 
 
 def get(ds, code):
@@ -44,7 +45,7 @@ def get(ds, code):
 
 
 def main():
-    out = os.path.join(os.path.dirname(__file__), "../../analysis/output/cot-extreme-aftermath/cot_weekly.csv")
+    out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(__file__), "../../analysis/output/cot-extreme-aftermath/cot_weekly.csv")
     rows = []
     for sym, ds, code, flip, pre in MARKETS:
         data = get(ds, code)
