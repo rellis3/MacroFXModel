@@ -134,7 +134,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{font:700 10px "Segoe
 ul.t{margin:0;padding-left:18px}ul.t li{margin:0 0 7px}
 .foot{margin-top:18px;border:2px solid ${COLORS.ink};border-radius:14px;padding:14px 16px;background:#fff;font-size:12px;line-height:1.55;color:${COLORS.text}}.foot h4{margin:0 0 6px;font:800 13px "Segoe UI",sans-serif;letter-spacing:.06em;color:${COLORS.ink}}.foot p{margin:0 0 7px}.foot .meta{color:${COLORS.muted};font:11px ui-monospace,Menlo,Consolas,monospace;margin-top:10px}
 @media (max-width:560px){.tiles{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.br{grid-template-columns:70px 1fr 104px}.br.p{grid-template-columns:96px 1fr 50px}}
-*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{body{background:#fff}.foot,.mast,.cc,.card2,.lk,tr,.tile{break-inside:avoid}h2,h3{break-after:avoid}.wrap{padding:0}}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:12mm}@media print{body{background:#fff}.foot,.mast,.cc,.card2,.lk,tr,.tile{break-inside:avoid}h2,h3{break-after:avoid}.wrap{padding:0}}
 `;
 
 /**
