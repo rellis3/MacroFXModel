@@ -504,24 +504,24 @@ function nlNumbers() {
   return { tiles, stages };
 }
 const NL_RANGE_KEYS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'GOLD', 'NQ', 'SPX500', 'US30', 'DE30', 'UK100', 'BTCUSD'];
-function nlInput({ art = null, artBy = null, bookFor = () => null } = {}) {
+function nlInput({ bookFor = () => null } = {}) {
   const regime = P.regimeCard(D.regime), axes = P.axesRows(D.gr), firing = P.deskFiring(D.ds), ahead = P.aheadEvents(D.events, Date.now(), { limit: 12, withinHours: 72 }), fp = P.fedPathCard(D.fp), meeting = P.nextMeeting(D.fcal), nc = P.nowcastCard(D.nc);
   const position = P.positionLines({ regime, axes, firing, events: ahead, fedPath: fp, meeting }), a = D.intel?.analysis ?? null, keys = Object.keys(insts()), { tiles, stages } = nlNumbers();
   return {
     date: new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' }),
     generatedAt: D.intel?.generatedAt ?? null, headline: a?.headline, regimeWord: a?.regime ?? 'MIXED', riskFlags: D.rf ? { active: D.rf.active ?? 0, total: D.rf.total ?? 5 } : null,
-    sparkSeries: spark('nq', 48), brief: a, llm: D.intel?.llm ?? null, tiles, stages, links: derived.chain.links, position,
+    brief: a, llm: D.intel?.llm ?? null, tiles, stages, links: derived.chain.links, position,
     events: ahead.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })),
     ranges: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k); return { label: labelOf(k), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used }; }),
     strengths: derived.str, surprise: P.surpriseBars(D.es), cb: P.cbTone(cbHist()), crowding: P.crowding(D.ce), regimeCard: regime, changes: P.changesRows(D.mc), fedPath: fp, scenarios: P.scenarios(D.gr), nowcast: nc,
-    eod: D.eod?.review ? { hook: D.eod.review.hook, right: D.eod.review.plan?.right, wrong: D.eod.review.plan?.wrong } : null, art, artBy,
+    eod: D.eod?.review ? { hook: D.eod.review.hook, right: D.eod.review.plan?.right, wrong: D.eod.review.plan?.wrong } : null,
   };
 }
 function drawNl() {
   const box = $('nlbox'); if (!box || $('nlBuild')) return;   // built once; a redraw of the page must not wipe a finished issue
   box.innerHTML = `<div class="card"><h2>${ic('cal')}Daily newsletter</h2>
     <p class="note" style="margin-bottom:8px">Builds a shareable issue from everything on this page: the argument, Behind / Now / Ahead, the releases with what they have been measured to do, the ranges, graphics, and a not-financial-advice footer that cannot be removed. If today's brief is missing or older than 8 hours it generates one first.</p>
-    <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0"><label class="note" for="nlArt" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="nlArt"> AI header art (one extra model call)</label><button class="btn" id="nlBuild">${icS('cal')}Build daily newsletter</button><span class="note" id="nlStatus"></span></p><div id="nlOut"></div></div>`;
+    <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0"><button class="btn" id="nlBuild">${icS('cal')}Build daily newsletter</button><span class="note" id="nlStatus"></span></p><div id="nlOut"></div></div>`;
   $('nlBuild').onclick = buildDaily;
 }
 async function buildDaily() {
@@ -529,16 +529,10 @@ async function buildDaily() {
   try {
     const stale = !D.intel?.ok || !D.intel.generatedAt || (Date.now() - Date.parse(D.intel.generatedAt)) > 8 * 3.6e6;
     if (stale) { st.textContent = "Generating today's brief first (about 90 seconds)…"; if (!(await generateIntel())) { st.textContent = 'The brief did not generate. Try again.'; return; } }
-    let art = null, artBy = null;
-    if ($('nlArt')?.checked) {
-      st.textContent = 'Asking the model to draw the header…';
-      const r = await J('/api/newsletter/art', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regime: D.intel.analysis.regime, headline: D.intel.analysis.headline }) });
-      if (r?.ok) { art = r.svg; artBy = r.llm?.label ?? r.llm?.provider ?? 'the model'; } else st.textContent = (r?.error ?? 'no response') + ' Using the data-driven banner.';
-    }
     const { eventImpactFor } = await import('./js/eventImpactMap.js');
-    const out = buildNewsletter(nlInput({ art, artBy, bookFor: e => { try { return eventImpactFor(e.country, e.event); } catch { return null; } } }));
+    const out = buildNewsletter(nlInput({ bookFor: e => { try { return eventImpactFor(e.country, e.event); } catch { return null; } } }));
     showNl(out);
-    if (!art || !$('nlArt')?.checked) st.textContent = `Built: ${out.subject}`;
+    st.textContent = `Built: ${out.subject}`;
   } catch (e) { st.textContent = 'Could not build the newsletter: ' + e.message; console.error('[atlas newsletter]', e); }
   finally { btn.disabled = false; }
 }

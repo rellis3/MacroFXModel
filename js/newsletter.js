@@ -5,8 +5,7 @@
  *
  * The html is ONE self-contained file: inline CSS, inline SVG graphics, no scripts, no external requests, so it can be
  * downloaded, attached, printed to PDF or forwarded and look the same everywhere. The graphics are drawn from the day's own
- * numbers (a data-driven banner, sparklines, the plumbing diagram, range bars, strength bars, probability bars); a model-
- * drawn banner can replace the generated one, but only after passing js/svgArt.js's allowlist.
+ * numbers (sparklines, the plumbing diagram, range bars, strength bars, probability bars) under one fixed, stored banner. No model call draws anything.
  *
  * What it will not do: forecast direction. This desk's own tests say direction claims do not survive, so every
  * "what to expect" line is a size, a schedule, a calibrated probability, or a trigger. The footer says "not financial advice"
@@ -60,15 +59,9 @@ const FLAG = { USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵
 
 const PALETTE = { 'RISK-ON': ['#04231f', '#0f9f6e', '#2f6bff'], 'RISK-OFF': ['#27100a', '#e8710a', '#c2410c'], MIXED: ['#0a1233', '#7a5cff', '#2f6bff'], TRANSITION: ['#101a33', '#b7791f', '#7a5cff'] };
 
-/** The generated banner: layered waves drawn from the day's own series, coloured by the regime the brief called. */
-export function bannerSvg(series, regime = 'MIXED') {
-  const [bg, c1, c2] = PALETTE[String(regime).toUpperCase()] ?? PALETTE.MIXED, W = 680, H = 160;
-  const s = (series ?? []).filter(v => Number.isFinite(v)).slice(-48);
-  const norm = s.length >= 4 ? (() => { const mn = Math.min(...s), mx = Math.max(...s), d = (mx - mn) || 1; return s.map(v => (v - mn) / d); })() : Array.from({ length: 24 }, (_, i) => 0.5 + 0.35 * Math.sin(i / 3));
-  const wave = (shift, amp, off) => norm.map((v, i) => { const x = (i / (norm.length - 1)) * W, y = H * 0.62 - (v - 0.5) * H * amp + shift * Math.sin(i / 2.2 + off); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join(' ');
-  const dots = norm.filter((_, i) => i % 6 === 0).map((v, i) => `<circle cx="${((i * 6) / (norm.length - 1) * W).toFixed(1)}" cy="${(H * 0.62 - (v - 0.5) * H * 0.7).toFixed(1)}" r="2.6" fill="#fff" fill-opacity=".55"/>`).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" aria-hidden="true"><defs><linearGradient id="nb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${bg}"/><stop offset="1" stop-color="${c1}" stop-opacity=".55"/></linearGradient><radialGradient id="ng" cx=".85" cy=".1" r=".7"><stop offset="0" stop-color="${c2}" stop-opacity=".55"/><stop offset="1" stop-color="${c2}" stop-opacity="0"/></radialGradient></defs><rect width="${W}" height="${H}" fill="url(#nb)"/><rect width="${W}" height="${H}" fill="url(#ng)"/>${[0.25, 0.5, 0.75].map(k => `<line x1="0" y1="${H * k}" x2="${W}" y2="${H * k}" stroke="#fff" stroke-opacity=".06"/>`).join('')}<polyline points="${wave(6, 0.9, 0)}" fill="none" stroke="${c2}" stroke-opacity=".55" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${wave(10, 0.7, 1.3)}" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="2" stroke-linejoin="round"/><polyline points="${wave(4, 1.1, 2.6)}" fill="none" stroke="${c1}" stroke-opacity=".9" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>${dots}</svg>`;
-}
+/** The stored banner: drawn once, identical every day. Three tiers of the page as a picture: the globe (global), linked
+ *  country nodes (country), and a small price line (pair). No data, no model call. */
+export const BANNER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 160" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" aria-hidden="true"><defs><linearGradient id="nb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0a1233"/><stop offset="1" stop-color="#14306b"/></linearGradient><radialGradient id="ng" cx=".78" cy=".45" r=".6"><stop offset="0" stop-color="#2f6bff" stop-opacity=".5"/><stop offset="1" stop-color="#2f6bff" stop-opacity="0"/></radialGradient></defs><rect width="680" height="160" fill="url(#nb)"/><rect width="680" height="160" fill="url(#ng)"/><g fill="none" stroke="#fff" stroke-opacity=".07"><line x1="0" y1="40" x2="680" y2="40"/><line x1="0" y1="80" x2="680" y2="80"/><line x1="0" y1="120" x2="680" y2="120"/></g><g fill="none" stroke="#7fb0ff" stroke-opacity=".55" stroke-width="1.4"><circle cx="470" cy="80" r="62"/><ellipse cx="470" cy="80" rx="24" ry="62"/><ellipse cx="470" cy="80" rx="46" ry="62"/><line x1="408" y1="80" x2="532" y2="80"/><path d="M416 52 Q470 64 524 52"/><path d="M416 108 Q470 96 524 108"/></g><g stroke="#9ad0ff" stroke-opacity=".6" stroke-width="1.2" fill="none"><polyline points="440,56 478,70 506,50 520,86 492,108 452,100 440,56"/><line x1="478" y1="70" x2="492" y2="108"/></g><g fill="#fff"><circle cx="440" cy="56" r="3.4"/><circle cx="478" cy="70" r="4.4"/><circle cx="506" cy="50" r="3.4"/><circle cx="520" cy="86" r="3.4"/><circle cx="492" cy="108" r="3.4"/><circle cx="452" cy="100" r="3.4"/></g><g fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="560,118 578,104 594,112 612,86 628,94 646,66 664,72" stroke="#3ddc97" stroke-width="2.6"/><polyline points="560,128 580,120 598,124 616,108 634,112 650,92 664,96" stroke="#fff" stroke-opacity=".3" stroke-width="1.6"/></g><circle cx="664" cy="72" r="4" fill="#3ddc97"/></svg>`;
 export const sparkSvg = (arr, col, w = 92, h = 28) => {
   const a = (arr ?? []).filter(Number.isFinite); if (a.length < 3) return '';
   const mn = Math.min(...a), mx = Math.max(...a), d = (mx - mn) || 1, pts = a.map((v, i) => `${(i * (w - 4) / (a.length - 1) + 2).toFixed(1)},${(h - 4 - ((v - mn) / d) * (h - 8)).toFixed(1)}`);
@@ -150,7 +143,7 @@ export function buildNewsletter(n) {
   const subject = clip(letter.subject || headline, 78), regimeWord = String(n.regimeWord ?? a.regime ?? 'MIXED').toUpperCase();
   const opening = letter.opening || a.driver?.[0]?.explain || a.driver?.[0]?.what || '';
   const preheader = clip(opening || headline, 140);
-  const art = n.art ? `<div class="art">${n.art}</div>` : `<div class="art">${bannerSvg(n.sparkSeries, regimeWord)}</div>`;
+  const art = `<div class="art">${BANNER_SVG}</div>`;
   const llm = n.llm?.provider ? `${n.llm.label ?? n.llm.provider} (${n.llm.model ?? ''})` : null;
 
   const mast = `<div class="mast">${art}<div class="scrim"></div><div class="in"><div class="brand">Desk Atlas · Daily</div><div class="date">${esc(n.date)}</div><h1>${esc(headline)}</h1><div class="tags">${pill(regimeWord)}${n.riskFlags ? pill(`${n.riskFlags.active}/${n.riskFlags.total} risk flags`) : ''}${n.generatedAt ? pill('written ' + new Date(n.generatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + ' UK') : ''}</div></div></div>`;
@@ -195,7 +188,7 @@ export function buildNewsletter(n) {
   const lesson = a.lesson?.concept ? `<div class="lesson" style="margin-top:14px"><b>What to learn from today: ${esc(a.lesson.concept)}</b><p style="margin:6px 0 0">${esc(a.lesson.today)}</p></div>` : '';
   const noEdge = (a.noEdge ?? []).length ? sec('Where this desk has no edge', 'Honesty box', `<ul class="t small">${a.noEdge.slice(0, 5).map(x => `<li>${esc(clip(x, 330))}</li>`).join('')}</ul>${a.noEdge.length > 5 ? `<p class="small muted">…and ${a.noEdge.length - 5} more in the full brief.</p>` : ''}`) : '';
 
-  const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}${llm ? ' · narrative written by ' + esc(llm) : ''}${n.artBy ? ' · header art drawn by ' + esc(n.artBy) : ''}</div></div>`;
+  const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}${llm ? ' · narrative written by ' + esc(llm) : ''}</div></div>`;
 
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${letterSec}${tiles}${driving}${ahead}${ranges}${people}${behind}${odds}${trig}${sizing}${lesson}${noEdge}${foot}</div></body></html>`;
 

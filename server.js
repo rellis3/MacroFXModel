@@ -6051,31 +6051,6 @@ Respond with ONLY valid JSON, no markdown:
   return payload;
 }
 
-// ── Newsletter header art ────────────────────────────────────────────────────
-// A model draws an abstract banner; NOTHING it writes is trusted. js/svgArt.js parses it against a strict allowlist and
-// rebuilds it from the parts that passed, or rejects the whole drawing (the page then uses its data-driven banner).
-// Click-only: one model call per press, never scheduled.
-const _ART_PALETTE = {
-  'RISK-ON': 'deep teal and emerald greens with a bright blue accent',
-  'RISK-OFF': 'dark umber, burnt orange and red with a small cold-blue accent',
-  MIXED: 'deep navy, violet and electric blue with a warm amber accent',
-  TRANSITION: 'dark slate, amber and violet',
-};
-app.post('/api/newsletter/art', express.json({ limit: '16kb' }), async (req, res) => {
-  try {
-    const regime = _ART_PALETTE[String(req.body?.regime ?? '').toUpperCase()] ? String(req.body.regime).toUpperCase() : 'MIXED';
-    const headline = String(req.body?.headline ?? '').slice(0, 300).replace(/[<>"`]/g, ' ');
-    const ai = await callModel({
-      task: 'misc', maxTokens: 3500,
-      system: 'You are an abstract graphic designer. You reply with exactly one SVG element and nothing else: no prose, no code fence.',
-      prompt: `Draw an abstract editorial banner for a daily markets newsletter.\nCanvas: viewBox 0 0 680 160.\nToday's story, for mood only: "${headline}". Market regime: ${regime}.\nPalette: ${_ART_PALETTE[regime]}.\nRules: use ONLY these elements: svg, g, defs, linearGradient, radialGradient, stop, rect, circle, ellipse, line, polyline, polygon, path. No text of any kind, no images, no filters, no CSS, no scripts, no external references, no people, logos, charts or labels. Use gradients, layered translucent shapes, flowing curves and a few small accents that echo the story's movement (for example falling lines against a widening gap, or converging currents). Under 60 elements in total. Keep the left third calmer, because white text will sit over it. Return only the <svg>...</svg>.`,
-    });
-    const { sanitizeSvg } = await import('./js/svgArt.js');
-    const out = sanitizeSvg(_antText(ai));
-    if (!out.ok) return res.json({ ok: false, error: `the drawing was rejected (${out.reason}); the data-driven banner is used instead` });
-    res.json({ ok: true, svg: out.svg, elements: out.elements, llm: { provider: ai.provider ?? null, model: ai.model ?? null, label: ai.label ?? null } });
-  } catch (e) { res.status(/ANT_KEY|key/i.test(e.message) ? 503 : 500).json({ ok: false, error: e.message }); }
-});
 app.get('/api/morning-brief', async (req, res) => {
   try {
     const raw = await kv.get(req.query?.mode === 'intel' ? _INTEL_BRIEF_KV : _MORNING_BRIEF_KV).catch(() => null);

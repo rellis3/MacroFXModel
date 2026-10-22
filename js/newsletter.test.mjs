@@ -1,5 +1,5 @@
 // Tests for js/newsletter.js.   node js/newsletter.test.mjs
-import { buildNewsletter, eventNote, familyOf, bannerSvg, sparkSvg, DISCLAIMER } from './newsletter.js';
+import { buildNewsletter, eventNote, familyOf, BANNER_SVG, sparkSvg, DISCLAIMER } from './newsletter.js';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
 const NOW = Date.parse('2026-10-22T10:00:00Z');
@@ -52,11 +52,8 @@ const own = buildNewsletter({ date: 'd' }).html + eventNote({ event: 'x', ccy: '
 ok('nothing the module itself writes states a direction', !/\bwill (rise|fall|go|move|drop)\b|\bbullish\b|\bbearish\b/i.test(own + full.html.replace(/<style>[\s\S]*?<\/style>/, '')) || true);
 ok('the issue names no price target or recommendation words', !/\b(buy|sell) (now|at|the)\b|price target|we recommend/i.test(full.html));
 
-// ── the art slot ──
-const withArt = buildNewsletter({ date: 'd', art: '<svg id="MODEL_ART"></svg>', artBy: 'DeepSeek' });
-ok('a supplied (already sanitised) banner replaces the generated one and is credited', /MODEL_ART/.test(withArt.html) && !/id="nb"/.test(withArt.html) && /header art drawn by DeepSeek/.test(withArt.html));
-ok('without art the data-driven banner is drawn from the series', /id="nb"/.test(full.html) && /<polyline/.test(bannerSvg([1, 2, 3, 2, 4])) && bannerSvg([]).includes('viewBox="0 0 680 160"'));
-ok('banner colours follow the regime', bannerSvg([1, 2, 3], 'RISK-ON') !== bannerSvg([1, 2, 3], 'RISK-OFF'));
+// ── the stored banner ──
+ok('the banner is one fixed stored drawing, identical in every issue, with no text and no external reference', /id="nb"/.test(full.html) && buildNewsletter({ date: 'a' }).html.includes(BANNER_SVG) && !/<text|href=|<image/.test(BANNER_SVG) && BANNER_SVG.includes('viewBox="0 0 680 160"'));
 ok('sparkline needs three points', sparkSvg([1, 2], '#000') === '' && sparkSvg([1, 2, 3], '#000').includes('polyline'));
 
 // ── event notes ──
