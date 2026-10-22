@@ -535,7 +535,7 @@ function nlInput({ bookFor = () => null } = {}) {
   const position = P.positionLines({ regime, axes, firing, events: ahead, fedPath: fp, meeting }), a = D.intel?.analysis ?? null, keys = Object.keys(insts()), { tiles, stages } = nlNumbers();
   return {
     date: new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' }),
-    generatedAt: D.intel?.generatedAt ?? null, headline: a?.headline, regimeWord: a?.regime ?? 'MIXED', riskFlags: D.rf ? { active: D.rf.active ?? 0, total: D.rf.total ?? 5, flags: (D.rf.flags ?? []).map(f => ({ label: f.label, on: f.on, detail: f.detail })) } : null,
+    generatedAt: D.intel?.generatedAt ?? null, headline: a?.headline, regimeWord: a?.regime ?? 'MIXED', riskFlags: D.rf ? { active: D.rf.active ?? 0, total: D.rf.available ?? D.rf.total ?? 5, flags: (D.rf.flags ?? []).map(f => ({ label: f.label, on: f.on, detail: f.detail })) } : null,
     brief: a, llm: D.intel?.llm ?? null, tiles, stages, links: derived.chain.links, position,
     events: ahead.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })),
     ranges: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k); return { label: labelOf(k), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used }; }),
@@ -622,7 +622,7 @@ function heroHtml() {
   const body = a ? esc(a.driver?.[0]?.explain ?? a.driver?.[0]?.what ?? '') : 'Press Generate for the argument: what is driving markets, how it transmits, what would confirm or break it, and what to learn from it. One model call.';
   return `<div><div class="kick">${kick}${age}${who}</div><h2>${head}</h2><p>${body}</p>
      <p style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="aibox" id="heroai"></span><button class="btn" id="genbtn">${icS('bulb')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds, sends today's Behind / Now / Ahead rows with it</span></p></div>
-     <div class="gauge">${rf ? dial(rf.active ?? 0, rf.total ?? 5) : ''}</div><div class="gauge">${ring()}</div>`;
+     <div class="gauge">${rf ? dial(rf.active ?? 0, rf.available ?? rf.total ?? 5) : ''}</div><div class="gauge">${ring()}</div>`;
 }
 const fmtRate = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev != null ? (t.last - t.prev) * 100 : null, b20 = back(key, 20), d20 = b20 != null ? (t.last - b20) * 100 : null; return { v: t.last, d1, d20 }; };
 const fmtPct = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev ? (t.last / t.prev - 1) * 100 : null, b20 = back(key, 20), d20 = b20 ? (t.last / b20 - 1) * 100 : null; return { v: t.last, d1, d20 }; };
@@ -702,9 +702,16 @@ function drawGlobal() {
 function stripHtml(kind) { return derived.str.map(c => { const w = Math.min(50, Math.abs(c.score) / 0.6 * 50), col = c.score >= 0 ? 'var(--bull)' : 'var(--bear)';
   return `<button class="cc" data-c="${c.ccy}" aria-pressed="${kind === 'c' && state.ccy === c.ccy}"><div class="fl">${FLAG[c.ccy]}</div><div class="cd">${c.ccy}</div><div class="bar"><i style="${c.score >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${col}"></i></div><div class="mv ${c.score >= 0 ? 'up' : 'dn'}">${sg(c.score)}%</div></button>`; }).join(''); }
 const wireStrip = id => document.querySelectorAll('#' + id + ' .cc').forEach(b => { b.onclick = () => go('ccy', { ccy: b.getAttribute('data-c') }); });
-async function generateIntel() {
-  const b = $('genbtn'); if (!b) return; b.disabled = true; b.textContent = 'Generating… about 90s';
-  const r = await J('/api/morning-brief?mode=intel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ context: positionContext() }) });
+let _genP = null;
+function generateIntel() { return (_genP ??= _generateIntel().finally(() => { _genP = null; })); }   // one at a time on this page: a second click or the newsletter button joins the first
+async function _generateIntel() {
+  const b = $('genbtn'); if (!b) return false; b.disabled = true; b.textContent = 'Generating… about 90s';
+  let r = await J('/api/morning-brief?mode=intel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ context: positionContext() }) });
+  if (!r?.ok && /already generating/.test(r?.error ?? '')) {   // the server has one slot: an earlier click, another tab or another device holds it. Wait for that brief instead of failing.
+    b.textContent = 'Another brief is generating, waiting for it…';
+    const t0 = Date.now(), before = D.intel?.generatedAt ?? '';
+    while (Date.now() - t0 < 300000) { await new Promise(x => setTimeout(x, 6000)); const g = await J('/api/morning-brief?mode=intel'); if (g?.ok && g.generatedAt && g.generatedAt !== before) { r = g; break; } }
+  }
   if (r?.ok) { D.intel = r; drawGlobal(); return true; }
   b.disabled = false; b.textContent = 'Generate Intelligence brief'; $('loaderr').innerHTML = `<div class="err">Generate failed: ${esc(r?.error ?? 'no response')}</div>`; return false;
 }

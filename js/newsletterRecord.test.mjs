@@ -1,5 +1,5 @@
 // Tests for js/newsletterRecord.js.   node js/newsletterRecord.test.mjs
-import { snapshotOf, diffSnapshots, scoreIssue, scoreLine, weekRecord } from './newsletterRecord.js';
+import { snapshotOf, diffSnapshots, scoreIssue, scoreLine, weekRecord, readIsSafe } from './newsletterRecord.js';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
 
@@ -25,5 +25,8 @@ ok('too few matched markets means no score rather than a noisy one', scoreIssue(
 ok('the score line says what calibrated looks like and never mentions direction', /median near 1/.test(scoreLine(sc)) && !/bullish|bearish|right|wrong|hit rate/i.test(scoreLine(sc)) && /Not scored yet/.test(scoreLine(null)));
 const wk = weekRecord([{ score: sc }, { score: sc }, { score: null }]);
 ok('a week rolls scored days together and skips unscored ones', wk.days === 2 && wk.n === 6 && wk.pastShare === 67);
+
+ok('a market read that describes and explains is allowed, including a consensus "expected"', readIsSafe('Up 0.10% today. Retail sales are expected to fall 0.1% and the book is the smallest long in years.') && readIsSafe('Used 198% of a normal day, a wide sweep that went nowhere; gamma is negative.'));
+ok('predictions and advice are refused', ['The stale book leans against a euro squeeze. Expect extension not fade.', 'It is likely to rally.', 'Price will rise from here.', 'Bullish setup.', 'Buy the dip.', 'Gold should fall on this.'].every(x => !readIsSafe(x)) && !readIsSafe('') && !readIsSafe(null));
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

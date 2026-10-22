@@ -3599,9 +3599,15 @@ async function callModel({ task = 'misc', system = '', standing = '', prompt = '
     maxTokens, maxOutput: r.maxOutput, cache: cfg.cache, temperature,
   });
   const started = Date.now();
-  const httpRes = await fetch(req.url, {
-    method: 'POST', headers: aiAuthHeaders(req, key), body: JSON.stringify(req.body),
-  });
+  // A provider that never answers must not hold the single brief slot forever (every retry gets a 409 until it ends), so the call is bounded.
+  let httpRes;
+  try {
+    httpRes = await fetch(req.url, { method: 'POST', headers: aiAuthHeaders(req, key), body: JSON.stringify(req.body), signal: AbortSignal.timeout(300_000) });
+  } catch (err) {
+    _recordModelCall({ task, provider: r.provider, model: r.model, ok: false, httpStatus: 0, ms: Date.now() - started });
+    const e = new Error(err?.name === 'TimeoutError' ? `${P.label} did not answer within 5 minutes` : `${P.label} request failed: ${err?.message ?? err}`);
+    e.status = 504; e.provider = r.provider; throw e;
+  }
   if (!httpRes.ok) {
     const body = (await httpRes.text().catch(() => '')).slice(0, 300);
     const e = new Error(`${P.label} ${httpRes.status}${body ? ': ' + body : ''}`);
@@ -5393,7 +5399,7 @@ function _intelBriefPrompt(data, chainBlock, position = '') {
 
 NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/BoJ head, etc.) anywhere in your output, even if a name appears in the headlines or calendar below — refer to them only by role.
 
-If a MARKET FACTS block appears below, write one entry in "markets" for EVERY line in it, using only the facts on that line and the rest of this brief. No direction calls, no price targets: describe what happened, why it fits the driver, and how stretched the day is.
+If a MARKET FACTS block appears below, write one entry in "markets" for EVERY line in it, using only the facts on that line and the rest of this brief. Describe what happened, what in the facts explains it, and how stretched the day is. Do NOT predict or advise: never write expect, likely, should, will, leans, squeeze, extension, fade, target, or any call on where price goes next. \"expected\" is fine only for a published consensus figure.
 
 WRITE FOR A CURIOUS NON-SPECIALIST, NOT A QUANT. Short sentences, plain words, one idea each. Say "borrowing costs" or "bond yields", not "term premium"; "stress warnings", not "risk flags"; "prices usually move together", not "correlation". If you must use a market term, explain it in a few words the first time. Spell out any acronym once. Keep every field tight: the headline under 20 words, each driver explanation at most two sentences.
 
@@ -6050,6 +6056,11 @@ Respond with ONLY valid JSON, no markdown:
   // non-whitespace character after JSON at position 3840"), which threw the whole
   // brief away. Take the first balanced object; the trailing text is never wanted.
   const analysis = _firstJsonObject(clean);
+  if (mode === 'intel' && Array.isArray(analysis?.markets)) {   // the model is told not to predict; this check does not rely on it obeying
+    const { readIsSafe } = await import('./js/newsletterRecord.js'), all = analysis.markets;
+    analysis.markets = all.filter(m => m && typeof m.key === 'string' && readIsSafe(m.read) && (m.watch == null || readIsSafe(String(m.watch))));
+    if (analysis.markets.length < all.length) { analysis.marketsDropped = all.length - analysis.markets.length; console.warn(`[intel brief] dropped ${analysis.marketsDropped} market read(s) that predicted or advised`); }
+  }
   // Which model actually answered (the router can fall back), so a page can say who wrote this and when the provider changed.
   const payload = { analysis, generatedAt: new Date().toISOString(), headlineCount: headlines.length, session: fc?.session_label ?? null, mode, llm: { provider: antData.provider ?? null, model: antData.model ?? null, label: antData.label ?? null } };
   await kv.put(kvKey, JSON.stringify(payload)).catch(() => {});

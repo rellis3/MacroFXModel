@@ -78,3 +78,11 @@ export function weekRecord(issues) {
   const all = sc.flatMap(s => s.rows.map(r => r.ratio)).sort((a, b) => a - b), mid = all.length >> 1;
   return { days: sc.length, n: all.length, median: all.length % 2 ? all[mid] : r2((all[mid - 1] + all[mid]) / 2), pastShare: Math.round(100 * all.filter(x => x > 1).length / all.length), withinShare: Math.round(100 * all.filter(x => x >= 0.5 && x <= 1.5).length / all.length) };
 }
+
+/**
+ * A market read may describe what happened and what it fits. It may not predict or advise: this desk's tests find no direction edge, and
+ * the page says so. The model is told not to, and this is the check that does not rely on it obeying. "expected" (a consensus figure) is
+ * fine; "expect extension", "likely", "should", "leans", "squeeze", "fade", "target" and a will-verb are not.
+ */
+const _PREDICTS = /\b(likely|unlikely|should|leans?\s+(against|towards?|to|on)|squeez\w*|extension|fade[ds]?|price target|bullish|bearish|upside|downside|breakout|buy|sell)\b|\bexpect\s+(?!ed\b)\w+|\bwill\s+(rise|fall|go|move|drop|rally|extend|push|break|reverse|continue)\b/i;
+export const readIsSafe = text => typeof text === 'string' && text.trim().length > 0 && !_PREDICTS.test(text);
