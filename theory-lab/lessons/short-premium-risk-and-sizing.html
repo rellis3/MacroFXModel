@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Short Premium: Risk, Margin &amp; Sizing — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
@@ -70,28 +69,26 @@
 
   <figure class="tl-picture">
     <div class="tl-picture-label">The whole idea in one picture</div>
-    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two panels of bars. Top: one short strangle collects $198 per cycle, but its worst square on the spot-by-volatility grid loses $1,651, about 8.4× the credit. Bottom: on a $100,000 account, sizing by half the account as margin buys 29 strangles and loses 47.9 percent of the account in the worst square, while sizing by a 2 percent worst-case budget buys 1 strangle and loses 1.7 percent.">
-      <text class="tlp-text2" x="10" y="22" font-size="13" font-weight="700">ONE STRANGLE: WHAT YOU COLLECT AGAINST THE WORST SQUARE</text>
-      <text class="tlp-text" x="10" y="52" font-size="13">collect per cycle</text>
-      <rect class="tlp-box green" x="190" y="36" width="38.3" height="24" rx="4"/>
-      <text class="tlp-green" x="236.3" y="53" font-size="14" font-weight="700">+$198</text>
-      <text class="tlp-text" x="10" y="88" font-size="13">worst square</text>
-      <rect class="tlp-box red" x="190" y="72" width="320.0" height="24" rx="4"/>
-      <text class="tlp-red" x="518" y="89" font-size="14" font-weight="700">&#8722;$1,651</text>
-      <text class="tlp-text" x="200" y="89" font-size="12.5" font-weight="700">8.4× the credit</text>
-      <line class="tlp-line" x1="10" y1="118" x2="590" y2="118"/>
-      <text class="tlp-text2" x="10" y="142" font-size="13" font-weight="700">SAME $100,000 ACCOUNT: LOSS IN THE WORST SQUARE</text>
-      <text class="tlp-text" x="10" y="172" font-size="13">sized by margin</text>
-      <text class="tlp-text3" x="10" y="187" font-size="11.5">half the account: 29 strangles</text>
-      <rect class="tlp-box red" x="190" y="158" width="153.2" height="28" rx="4"/>
-      <text class="tlp-red" x="351.2" y="178" font-size="14" font-weight="700">&#8722;47.9% of the account</text>
-      <text class="tlp-text" x="10" y="222" font-size="13">sized by worst case</text>
-      <text class="tlp-text3" x="10" y="237" font-size="11.5">2% budget: 1 strangle</text>
-      <rect class="tlp-box green" x="190" y="208" width="5.3" height="28" rx="2"/>
-      <text class="tlp-green" x="203.3" y="228" font-size="14" font-weight="700">&#8722;1.7%</text>
-      <text class="tlp-text3" x="190" y="254" font-size="11.5">premium per cycle: $5,730 against $198. Survival has a price.</text>
+    <svg viewBox="0 0 600 252" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two panels of bars. Top: one short strangle collects $198 per cycle, but its worst square on the spot-by-volatility grid loses $1,651, about 8.4× the credit. Bottom: on a $100,000 account, sizing by half the account as margin buys 29 strangles and loses 47.9 percent of the account in the worst square, while sizing by a 2 percent worst-case budget buys 1 strangle and loses 1.7 percent.">
+      <text class="tlp-text2" x="10" y="22" font-size="15" font-weight="700">One strangle: credit against the worst square</text>
+      <text class="tlp-text" x="10" y="58" font-size="16">credit per cycle</text>
+      <rect class="tlp-box green" x="172" y="38" width="35.9" height="26" rx="4"/>
+      <text class="tlp-green" x="215.9" y="58" font-size="16" font-weight="700">+$198</text>
+      <text class="tlp-text" x="10" y="94" font-size="16">worst square</text>
+      <rect class="tlp-box red" x="172" y="74" width="300.0" height="26" rx="4"/>
+      <text class="tlp-text" x="182" y="93" font-size="15" font-weight="700">8.4× the credit</text>
+      <text class="tlp-red" x="480" y="94" font-size="16" font-weight="700">&#8722;$1,651</text>
+      <line class="tlp-line" x1="10" y1="116" x2="590" y2="116"/>
+      <text class="tlp-text2" x="10" y="140" font-size="15" font-weight="700">Same $100,000 account: loss in the worst square</text>
+      <text class="tlp-text" x="10" y="176" font-size="16">sized by margin</text>
+      <rect class="tlp-box red" x="172" y="154" width="143.6" height="28" rx="4"/>
+      <text class="tlp-red" x="323.6" y="175" font-size="16" font-weight="700">&#8722;47.9% (29 strangles)</text>
+      <text class="tlp-text" x="10" y="214" font-size="16">by worst case</text>
+      <rect class="tlp-box green" x="172" y="192" width="5.0" height="28" rx="2"/>
+      <text class="tlp-green" x="185.0" y="213" font-size="16" font-weight="700">&#8722;1.7% (1 strangle)</text>
+      <text class="tlp-text3" x="10" y="244" font-size="14">premium per cycle: $5,730 against $198. Survival has a price.</text>
     </svg>
-    <figcaption>Top: bars to one scale. A short strangle earns a little each cycle and its worst square on the grid costs 8.4× that. Bottom: the same account sized two ways. Margin sizing puts almost half the account in the worst square. Worst-case sizing puts under two percent there, and earns a thirtieth of the premium.</figcaption>
+    <figcaption>Top: bars to one scale. A short strangle earns a little each cycle and its worst square on the grid costs 8.4× that. Bottom: the same account sized two ways. Margin sizing puts almost half the account in the worst square. Worst-case sizing puts under two percent there, and earns a twenty-ninth of the premium.</figcaption>
   </figure>
 
   <section class="tl-listen" data-minutes="4">
@@ -599,12 +596,6 @@
     <p>If you put your eggs in ten baskets and the ten baskets are all on the same wobbly table, one shake of the table breaks the lot. Ten baskets only help if they sit on ten different tables.</p>
   </div>
 
-  <!-- WB:short_premium_risk_and_sizing:START -->
-  <div class="wb" id="wb-short_premium_risk_and_sizing" data-title="One strangle, two ways to size it">
-    <script type="application/json">{"w":600,"h":905,"intro":"One short strangle on an index, a $100,000 account, and two ways to decide how many to sell. Press play, or step through.","steps":[{"cap":"You sell a strangle on an index at 100: a 95 put and a 105 call, 45 days out. Buyers pay you $198 per contract in premium. Your account is $100,000.","do":[{"icon":"you","name":"person","x":20,"y":14,"s":0.7,"tone":"blue","label":"you, the\nseller","lsize":17},{"icon":"acct","name":"piggy","x":150,"y":14,"s":0.75,"tone":"blue","label":"account\n$100,000","sym":"$","lsize":17},{"icon":"buyers","name":"crowd","x":310,"y":14,"s":0.7,"label":"option buyers","lsize":17},{"icon":"prem","name":"coin","x":470,"y":22,"s":0.55,"tone":"green","label":"+$198\nper contract","sym":"$","lsize":17}]},{"cap":"Suppose eight cycles in a row expire worthless (illustrative). Each pays $198, and the line climbs to +$1,581. A high win rate and a smooth curve. This is the toll booth.","do":[{"chart":"cum","x":10,"y":138,"w":580,"h":250,"title":"One strangle, cumulative profit ($)","xd":[0,9],"yd":[-400,1900],"yt":[[0,"0"],[1000,"+1,000"],[1800,"+1,800"]],"xt":[[0,"0"],[4,"4"],[8,"8 cycles"]],"zero":true,"pl":62,"pr":40},{"series":"wins","chart":"cum","pts":[[0,0.0],[1,197.6],[2,395.2],[3,592.8],[4,790.4],[5,988.0],[6,1185.6],[7,1383.2],[8,1580.8]],"tone":"green","ms":1700,"label":"+$1,581","lat":[8,1580.8],"ldx":0,"ldy":-16,"lsize":17}]},{"cap":"Then the worst square on the grid: the index up 20% and volatility up 30 points, one day later. That one night costs $1,651, more than eight cycles of income. The line ends below where it started.","do":[{"series":"shock","chart":"cum","pts":[[8,1580.8],[9,-69.7]],"tone":"red","ms":1100,"label":"−$1,651","lat":[9,-69.7],"ldx":-6,"ldy":22,"lanchor":"end","lsize":17},{"dot":"endpt","chart":"cum","at":[9,-69.7],"text":"","tone":"red"}]},{"cap":"Win rate says nothing here. If every loser lost that much, you would need to win 89% of cycles just to break even. The shape of the payoff is what matters.","do":[{"box":"be","x":78,"y":180,"w":320,"h":62,"text":"break-even win rate\n= loss ÷ (loss + credit) = 89.3%","tone":"amber","size":17}]},{"cap":"Where does it hurt? Re-price the strangle on a grid of spot moves and volatility jumps. This is the row with volatility up 20 points, one day later. Both tails lose, and the up-move has no cap.","do":[{"hide":"be"},{"chart":"row","x":10,"y":402,"w":580,"h":228,"title":"Profit or loss per strangle, vol +20 pts ($)","xd":[-0.6,6.6],"yd":[-1750,250],"yt":[[0,"0"],[-1000,"−1,000"]],"xt":[[0,"−20%"],[1,"−10%"],[2,"−5%"],[3,"0"],[4,"+5%"],[5,"+10%"],[6,"+20%"]],"zero":true,"pl":62,"pr":14,"pb":30},{"bars":"lad","chart":"row","data":[[0,-1347,"−1,347"],[1,-675,"−675"],[2,-510,"−510"],[3,-481,"−481"],[4,-584,"−584"],[5,-804,"−804"],[6,-1499,"−1,499"]],"bw":40,"size":15,"ms":1300}]},{"cap":"Now margin. On a common equity-option rule your broker asks for about $1,698 per strangle. That is the collateral it wants today. It is a rule, not your worst case, and it can be raised after a shock.","do":[{"box":"mg","x":10,"y":648,"w":580,"h":76,"text":"broker margin: $1,698 per strangle\na collateral rule, not a bound","tone":"amber","size":19}]},{"cap":"Size by margin and use half the account: $50,000 ÷ $1,698 = 29 strangles. In the worst square each loses $1,651, so the book loses $47,866, nearly half the account.","do":[{"hide":"mg"},{"box":"bm","x":10,"y":648,"w":285,"h":112,"text":"sized by margin\n29 strangles","tone":"red","sub":"−0.0% of account","size":19},{"count":"bm","from":0,"to":47.9,"dp":1,"pre":"−","suf":"% of account","ms":1300}]},{"cap":"Size by the worst case instead. Budget 2% = $2,000. Divide by $1,651 per strangle and round down: one strangle. The worst square costs 1.7% of the account, and you trade next month.","do":[{"box":"bw","x":305,"y":648,"w":285,"h":112,"text":"sized by worst case\n1 strangle","tone":"green","sub":"−0.0% of account","size":19},{"count":"bw","from":0,"to":1.7,"dp":1,"pre":"−","suf":"% of account","ms":1000}]},{"cap":"The price of survival: 29 strangles collect $5,730 a cycle, one collects $198. Nobody advertises that trade-off, but it is the real cost of staying in the game.","do":[{"note":"inc","x":300,"y":790,"text":"premium per cycle: $5,730 against $198","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Defined risk changes the arithmetic. An iron condor has long wings that cap the loss at $353 a contract, so the same $2,000 budget buys 5 of them and collects $736 a cycle.","do":[{"box":"ic","x":10,"y":812,"w":580,"h":78,"text":"iron condor: cap $353, 5 contracts\npremium $736 a cycle, worst case 1.8%","tone":"blue","size":19}]},{"cap":"But defined risk caps the loss per contract, not how many you hold. Size 141 condors by half the account in margin and the same $353 cap still adds up to about half the account.","do":[{"pulse":"bm"},{"pulse":"ic"}]},{"cap":"So: re-price on a grid, take the worst square, divide your loss budget by it, round down. Size so the worst night is a bad week, not the end.","do":[{"pulse":"bw"}]}]}</script>
-  </div>
-  <!-- WB:short_premium_risk_and_sizing:END -->
-
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>It actually happened: the Swiss franc gap, 15 January 2015</h2>
   <p>
@@ -1057,6 +1048,5 @@ var SPM = (function () {
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
-<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
