@@ -1,21 +1,27 @@
 {
   "_note": "RATES nightly pull (run_secondary.py --rates) - SOFR and Treasury options, CAPTURE ONLY, never ingested (js/oi.js has no rates product spec). Written to out/<date>/quikstrike_rates/ and folded into analysis/output/iv_term/iv_term_daily.csv by iv_term_archive.py. Purpose: our own daily rates implied-vol term structure (the CVOL TUVY/TYVY/SRVL lens of C.OG's Cross-Asset Volatility lesson), since CVOL history is licensed and cmegroup.com blocks scripts. pid/pf are filled by `python run_secondary.py --rates --learn \"SR3\"` (pick the product in QuikStrike's picker, close Chrome). `match` is text the tool header must contain or the pull refuses - a guess until the first real capture confirms the heading.",
   "SR3": {
-    "pid": null,
-    "pf": null,
-    "match": "SOFR",
+    "pid": 362,
+    "pf": 3,
+    "match": "3M SOFR (SR3",
     "_what": "3-Month SOFR quarterly options (SR3). Price = 100 - rate; check whether QuikStrike's VOLATILITY column is price vol or bp vol on the first capture."
   },
-  "ZN": {
-    "pid": null,
-    "pf": null,
-    "match": "10-Year",
-    "_what": "10-Year T-Note options (OZN on ZN). The lesson used TN (Ultra 10Y); ZN is the deeper listed market."
-  },
   "ZT": {
-    "pid": null,
-    "pf": null,
-    "match": "2-Year",
-    "_what": "2-Year T-Note options (OZT on ZT): the listed proxy for the 2-year yield CVOL (TUVY) the lesson leads with."
+    "pid": 5,
+    "pf": 3,
+    "match": "2 Yr (TU",
+    "_what": "2-Year T-Note options (TU): the listed proxy for the 2-year yield CVOL (TUVY) the lesson leads with."
+  },
+  "ZN": {
+    "pid": 3,
+    "pf": 3,
+    "match": "10 Yr (TY",
+    "_what": "10-Year T-Note options (TY, the OZN chain)."
+  },
+  "TN": {
+    "pid": 401,
+    "pf": 3,
+    "match": "10 Yr Ultra",
+    "_what": "10-Year Ultra T-Note options (OTN): the exact product in the Cross-Asset Volatility lesson."
   }
 }
