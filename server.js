@@ -6143,6 +6143,7 @@ app.post('/api/newsletter/telegram', express.json({ limit: '4kb' }), async (req,
 
 app.get('/api/morning-brief', async (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store');   // the same brief on every device: never answered from a browser or proxy cache
     const raw = await kv.get(req.query?.mode === 'intel' ? _INTEL_BRIEF_KV : _MORNING_BRIEF_KV).catch(() => null);
     if (raw) return res.json({ ok: true, ...JSON.parse(raw), cached: true });
     return res.json({ ok: false, error: 'No morning brief yet — click Generate.' });

@@ -345,7 +345,7 @@ export function buildNewsletter(n) {
   const lesson = a.lesson?.concept ? `<div class="lesson" style="margin-top:14px"><b>Today's lesson: ${esc(a.lesson.concept)}</b><p style="margin:6px 0 0">${esc(a.lesson.today)}</p></div>` : '';
   const noEdge = sec('What this can and cannot tell you', 'How to read it', `<ul class="t small">${LIMITS.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`);
 
-  const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}${llm ? ' · narrative written by ' + esc(llm) : ''}</div></div>`;
+  const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}</div></div>`;
 
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${glance}${sinceHtml}${letterSec}${tiles}${driving}${ahead}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${lesson}${noEdge}${foot}</div></body></html>`;
 

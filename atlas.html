@@ -427,7 +427,7 @@ function intelBodyHtml() {
   const list = (arr, fn) => (Array.isArray(arr) && arr.length ? arr.map(fn).join('') : '');
   const stPill = st => /^RESPONDING/i.test(st) ? 'bull' : /NOT/i.test(st) ? 'amber' : '';
   const checks = (arr, tone) => list(arr, c => `<div class="rw"><span><b>${esc(c.check)}</b><small>${esc(c.level)} · ${esc(c.when)}</small></span><span class="pill ${tone}">${tone === 'bull' ? 'confirms' : 'breaks it'}</span></div>`) || '<p class="note">none given</p>';
-  return `<div class="card"><h2>${ic('bulb')}The argument <span class="note" style="text-transform:none;letter-spacing:0;margin-left:auto">${D.intel.llm?.provider ? 'written by ' + esc(D.intel.llm.label ?? D.intel.llm.provider) : ''}</span></h2>
+  return `<div class="card"><h2>${ic('bulb')}The argument </h2>
     <h3 style="margin-top:0">What is driving markets</h3>
     <div class="two">${list(a.driver, d => `<div class="card" style="background:var(--card2)"><b>${esc(d.what)}</b><p class="note" style="margin-top:6px">${esc(d.evidence)}</p>${d.explain ? `<p class="tl-line" style="margin-top:8px"><b>How it works:</b> ${esc(d.explain)}</p>` : ''}</div>`)}</div>
     <h3>Transmission: what should respond, and whether it is</h3>
@@ -625,7 +625,7 @@ function heroHtml() {
   if (a && D.intel.generatedAt) { const h = (Date.now() - Date.parse(D.intel.generatedAt)) / 3.6e6; age = `<span class="pill ${h >= 6 ? 'amber' : ''}">${h < 1 ? Math.round(h * 60) + 'm old' : h < 24 ? h.toFixed(1) + 'h old' : Math.round(h / 24) + 'd old'}</span>`; }
   const dev = D.intel?._device ? `<span class="pill amber" title="${esc(D.intel._why ?? '')}">device copy: ${esc(D.intel._why ?? 'this is the last brief this browser saw')}</span>` : '';
   const llm = D.intel?.llm, bm = briefModel();
-  who = llm?.provider ? `<span class="pill">written by ${esc(llm.label ?? llm.provider)} · ${esc(llm.model ?? '')}</span>` : (a ? `<span class="pill" title="This brief was generated before the page recorded the model.">model not recorded</span>` : '') + (bm ? `<span class="pill" title="The model the next Generate will use.">next: ${esc(bm.provider)}</span>` : '');
+  who = '';   // no "written by <model>" or "next: <model>" pills: the AI model selector beside Generate already says what will run, and the issue's footer carries the general AI disclosure.
   const unreachable = D.intel?._unreachable, head = a?.headline ? esc(a.headline) : unreachable ? 'The stored brief could not be loaded' : 'No Intelligence brief is stored';
   const body = a ? esc(a.driver?.[0]?.explain ?? a.driver?.[0]?.what ?? '') : unreachable ? 'The server did not answer after three tries. This is a loading problem, not a missing brief: reload the page, or press Load stored brief. Nothing has been generated or cleared.' : 'Press Generate for the argument: what is driving markets, how it transmits, what would confirm or break it, and what to learn from it. One model call.';
   return `<div><div class="kick">${kick}${age}${who}${dev}</div><h2>${head}</h2><p>${body}</p>
@@ -861,6 +861,12 @@ async function main() {
   D.__extra = true; drawAi(); redraw(); drawSrcs();
 }
 window.__atlas = { go, state, D, main, positionContext, abHtml, intelBodyHtml, nlInput, buildIssue, loadIntel, heroHtml };
+// A brief generated on another device shows up when this tab comes back into view (no reload needed). Never while this page is generating one itself.
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !D.drill || _genP) return;
+  const r = await J('/api/morning-brief?mode=intel');
+  if (r?.ok && r.analysis && Date.parse(r.generatedAt) > Date.parse(D.intel?.generatedAt ?? 0)) { D.intel = r; lsPut(r); drawGlobal(); }
+});
 main().catch(e => { $('loaderr').innerHTML = `<div class="err">Page error: ${esc(e.message)}</div>`; console.error('[atlas]', e); });
 </script>
 </body>
