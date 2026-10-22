@@ -1,0 +1,131 @@
+{
+  "id": "drawdown-forecast-error",
+  "seed": 20261022,
+  "B": 2000,
+  "block": 21,
+  "prereg": "forge/DRAWDOWN_FORECAST_ERROR_PREREG.md",
+  "cells": {
+    "fx": {
+      "n_sessions": 1556,
+      "diff_pct": 5.913158310025479,
+      "ci95_pct": [
+        2.241047972919108,
+        9.310205535593074
+      ],
+      "ci95_log": [
+        0.022163054714961716,
+        0.08901957661588569
+      ],
+      "half1_pct": 4.647975979524999,
+      "half2_pct": 6.931287924979812,
+      "placebo95_pct": [
+        -3.6584786908721356,
+        3.3891955535320983
+      ],
+      "cuts": [
+        -2.969671952117281,
+        -0.07262688868466459
+      ],
+      "x75_top": 0.27167630057803466,
+      "x75_bottom": 0.22450581602797404,
+      "p": 0.0007559847074613137,
+      "p_holm": 0.0007559847074613137,
+      "gate": {
+        "ci_excludes_0_positive_holm": true,
+        "both_halves_positive": true,
+        "above_placebo": true
+      },
+      "verdict": "VALIDATED"
+    },
+    "idx": {
+      "n_sessions": 1547,
+      "diff_pct": 6.604749802679444,
+      "ci95_pct": [
+        2.9285386923804335,
+        10.390150410522892
+      ],
+      "ci95_log": [
+        0.02886476234846445,
+        0.0988507265788155
+      ],
+      "half1_pct": 6.004076743757802,
+      "half2_pct": 7.263616709958987,
+      "placebo95_pct": [
+        -4.0301792087327755,
+        4.086013260126342
+      ],
+      "cuts": [
+        -2.969991844717512,
+        -0.08474556120455934
+      ],
+      "x75_top": 0.2480297157622739,
+      "x75_bottom": 0.21363049095607234,
+      "p": 0.00034050450665100565,
+      "p_holm": 0.0006810090133020113,
+      "gate": {
+        "ci_excludes_0_positive_holm": true,
+        "both_halves_positive": true,
+        "above_placebo": true
+      },
+      "verdict": "VALIDATED"
+    }
+  },
+  "descriptive": {
+    "fx_iv_pct": 5.161171352403637,
+    "fx_iv_instruments": [
+      "AUDUSD",
+      "EURUSD",
+      "GBPUSD",
+      "USDCAD",
+      "USDCHF",
+      "USDJPY"
+    ],
+    "fx_noiv_pct": 6.575096404277558,
+    "fx_noiv_instruments": [
+      "AUDCAD",
+      "AUDCHF",
+      "AUDJPY",
+      "AUDNZD",
+      "AUDUSD",
+      "CADCHF",
+      "CADJPY",
+      "CHFJPY",
+      "EURAUD",
+      "EURCAD",
+      "EURCHF",
+      "EURGBP",
+      "EURJPY",
+      "EURNZD",
+      "EURUSD",
+      "GBPAUD",
+      "GBPCAD",
+      "GBPCHF",
+      "GBPJPY",
+      "GBPNZD",
+      "GBPUSD",
+      "NZDCAD",
+      "NZDJPY",
+      "NZDUSD",
+      "USDCAD",
+      "USDCHF",
+      "USDJPY"
+    ],
+    "fx_D5_pct": 7.798222677417965,
+    "fx_D60_pct": 8.529195276343504,
+    "idx_iv_pct": 6.604749802679444,
+    "idx_iv_instruments": [
+      "DE30",
+      "DOW",
+      "NQ",
+      "SPX500",
+      "UK100",
+      "US2000"
+    ],
+    "idx_D5_pct": 12.702652612592779,
+    "idx_D60_pct": 2.973832863359571,
+    "gold_pct": -1.5204502578745394
+  },
+  "verdict": "validated (fx, idx)",
+  "ranAt": "2026-10-22T18:00:00Z",
+  "branch": "main"
+}

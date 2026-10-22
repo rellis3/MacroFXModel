@@ -1362,6 +1362,20 @@ export const DESK_EVIDENCE = [
     use: 'Same as hy-spread-vol-fx: the leverage effect, not credit.',
     instruments: ['NQ', 'SPX500'],
   },
+  {
+    id: 'drawdown-forecast-error-fx', domain: 'volatility', verdict: 'validated', date: '2026-10-22', doc: 'forge/DRAWDOWN_FORECAST_ERROR_PREREG.md', also: ['analysis/output/drawdown-forecast-error/RESULTS.md'],
+    claim: 'After the S&P 500 has fallen over the previous 20 days (known before the London open), FX moves further than the shipped range forecast (the leverage effect behind hy-spread-vol, scored against the desk forecast)',
+    result: '1,556 London sessions 2020-08 to 2026-08, 29 FX pairs, OOS, date-block bootstrap (seed 20261022): top-minus-bottom tercile realised/forecast +5.9% [+2.2%, +9.3%], halves +4.6 / +6.9, placebo [-3.7, +3.4], Holm p 0.001, |t| about 3.2. The miss sits in the worst fifth (S&P down more than ~2% over 20 days): ranges +6.7% above forecast, 75% line beaten 29.4% vs 25% design; elsewhere the forecast is slightly wide (-1 to -2%).',
+    use: 'After a meaningful 20-day S&P fall, FX range lines run about 7% too narrow. Research-only until the shadow band builds a forward record; never change the shipped lines (side-by-side rule).',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'],
+  },
+  {
+    id: 'drawdown-forecast-error-idx', domain: 'volatility', verdict: 'validated', date: '2026-10-22', doc: 'forge/DRAWDOWN_FORECAST_ERROR_PREREG.md', also: ['analysis/output/drawdown-forecast-error/RESULTS.md'],
+    claim: 'After the S&P 500 has fallen over the previous 20 days, index ranges exceed the shipped (IV-adjusted) range forecast',
+    result: '1,547 sessions, 6 indices: +6.6% [+2.9%, +10.4%], halves +6.0 / +7.3, placebo [-4.0, +4.1], Holm p 0.001, |t| about 3.3. Graded: -3.4% after strong rallies to +2.8% after sharp falls; 5-day fall +12.7% (short-memory).',
+    use: 'Implied vol absorbs part of the leverage effect but not all: index lines run wide after rallies and a little narrow after falls. Research-only until the shadow band forward record.',
+    instruments: ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1491,6 +1505,8 @@ const POWER = {
   'basis-yearend-premium':             { n: '10 year-end vs 32 other contracts', note: 'Holm p 0.011; 9/10 year-ends below the ordinary mean' },
   'hy-spread-vol-fx':                  { n: '3,984 days 2007-2020 (~158 months)', note: 'gate met; demoted: partial r after SPX 20d return -0.016' },
   'hy-spread-vol-idx':                 { n: '3,451 days 2007-2020 (~158 months)', note: 'gate met; demoted: partial r after SPX 20d return +0.019' },
+  'drawdown-forecast-error-fx':        { n: '1,556 sessions x 29 pairs (~73 monthly units)', note: 'MDE about 5%; CI [+2.2%, +9.3%], |t| about 3.2' },
+  'drawdown-forecast-error-idx':       { n: '1,547 sessions x 6 indices (~73 monthly units)', note: 'CI [+2.9%, +10.4%], |t| about 3.3' },
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
 };
