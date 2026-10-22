@@ -86,6 +86,39 @@ export function assetIcon(key, label) {
 const CCY_NAME = { USD: 'US Dollar', EUR: 'Euro', GBP: 'British Pound', JPY: 'Japanese Yen', AUD: 'Australian Dollar', NZD: 'New Zealand Dollar', CAD: 'Canadian Dollar', CHF: 'Swiss Franc' };
 const CCY_BANK = { USD: 'Fed', EUR: 'ECB', GBP: 'Bank of England', JPY: 'Bank of Japan', AUD: 'RBA', NZD: 'RBNZ', CAD: 'Bank of Canada', CHF: 'SNB' };
 
+/** How close each stress warning is to firing. Thresholds are the server's own (server.js computeRiskFlags); a bar at 100% means it fires. */
+const FLAG_T = {
+  vix_level: [25, 'VIX (market fear gauge)', v => v.toFixed(1)],
+  vix_term: [1, 'Near-term fear vs 3-month fear', v => v.toFixed(2)],
+  hy_speed: [25, 'Junk-bond spreads, widening over 5 days', v => `${v >= 0 ? '+' : ''}${Math.round(v)}bp`],
+  jpy_bid: [-1.5, 'Yen strengthening over 5 days', v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`],
+  stock_bond_corr: [0.3, 'Stocks and bonds moving together', v => `${v >= 0 ? '+' : ''}${v.toFixed(2)}`],
+};
+export const flagProximity = flags => (flags ?? []).filter(f => FLAG_T[f.key] && Number.isFinite(f.value)).map(f => {
+  const [t, name, fmt] = FLAG_T[f.key];
+  return { key: f.key, name, valueText: fmt(f.value), thresholdText: fmt(t), share: Math.max(0, Math.min(1, f.value / t)), on: f.on === true };
+});
+const proxHtml = (flags, muted, line) => {
+  const rows = flagProximity(flags), dark = (flags ?? []).filter(f => !FLAG_T[f.key] || !Number.isFinite(f.value));
+  return rows.map(r => `<div class="px"><span class="pl">${esc(r.name)}</span><span class="pb"><i style="width:${Math.round(r.share * 100)}%;background:${r.on ? COLORS.orange : r.share >= 0.7 ? '#d98a00' : COLORS.green}"></i></span><span class="pv">${esc(r.valueText)} <span class="muted">fires at ${esc(r.thresholdText)}</span></span></div>`).join('')
+    + dark.map(f => `<div class="px"><span class="pl">${esc(f.label)}</span><span class="pv muted" style="grid-column:2/4">not measured today</span></div>`).join('');
+};
+/** The 10-year yield as two stacked parts, so "why did yields move" is a picture. All three numbers come from the page's own series. */
+export function yieldStackSvg(y) {
+  if (!y || !Number.isFinite(y.nominal) || !Number.isFinite(y.real) || !Number.isFinite(y.bei)) return '';
+  const W = 640, H = 124, X0 = 12, bw = W - 24, tot = Math.max(0.01, y.real + y.bei), wr = bw * (y.real / tot), wb = bw - wr, by = 44, bh = 34;
+  const lab = (x, w, title, val, d, col) => `<text x="${x + 8}" y="${by + 15}" font-size="12.5" font-weight="700" fill="#fff" font-family="Segoe UI,system-ui,sans-serif">${esc(title)}</text><text x="${x + 8}" y="${by + 29}" font-size="11.5" fill="#fff" fill-opacity=".92" font-family="Consolas,monospace">${val.toFixed(2)}%${Number.isFinite(d) ? '  ' + (d >= 0 ? '+' : '') + Math.round(d) + 'bp over 20 days' : ''}</text>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="The 10-year government bond yield split into a real yield and expected inflation" style="display:block;background:${COLORS.paper};border-radius:12px"><text x="${X0}" y="20" font-size="12.5" font-weight="700" fill="${COLORS.ink}" font-family="Segoe UI,system-ui,sans-serif">10-year US government yield ${y.nominal.toFixed(2)}%${Number.isFinite(y.dNom) ? '  (' + (y.dNom >= 0 ? '+' : '') + Math.round(y.dNom) + 'bp over 20 days)' : ''}</text><rect x="${X0}" y="${by}" width="${wr.toFixed(1)}" height="${bh}" rx="8" fill="${COLORS.blue}"/><rect x="${(X0 + wr).toFixed(1)}" y="${by}" width="${wb.toFixed(1)}" height="${bh}" rx="8" fill="#d98a00"/>${lab(X0, wr, 'Real yield: the return above inflation', y.real, y.dReal)}${lab(X0 + wr, wb, 'Expected inflation', y.bei, y.dBei)}<text x="${X0}" y="${by + bh + 22}" font-size="11" fill="${COLORS.muted}" font-family="Segoe UI,system-ui,sans-serif">Real yield + expected inflation = the nominal yield. The market sets each part separately.</text></svg>`;
+}
+const LIMITS = [
+  'A link between two markets describes the last 20 days. It is not a law, and relationships that held for years can break when the reason behind them changes.',
+  'Economic figures are revised after release, and the first print is often far from the final number. A "beat" or "miss" is measured against an average forecast that can itself be wrong.',
+  'A central bank\'s tone score reads the words of its statement. It is not a prediction of what the bank will do next.',
+  'An expected range is a statistical typical size: by construction about half of days run past it. It says how big a move is normal, not which way price goes or when.',
+  'Positioning data such as the weekly CFTC report is published days late. It shows who is crowded, not when a crowded trade will unwind.',
+  'An explanation of why a market moved is a story fitted after the fact, and several stories usually fit the same move. Treat each as a hypothesis to check.',
+];
+
 const COLORS = { ink: '#0b1220', text: '#1b2a41', muted: '#5b6b82', line: '#d8e0ec', paper: '#eef2f8', card: '#ffffff', blue: '#2f6bff', violet: '#7a5cff', green: '#0f9f6e', orange: '#e8710a', amber: '#b7791f' };
 const FLAG = { USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', AUD: '🇦🇺', NZD: '🇳🇿', CAD: '🇨🇦', CHF: '🇨🇭' };
 
@@ -141,9 +174,9 @@ function dialSvg(active, total) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 84" width="140" height="84" role="img" aria-label="${active} of ${total} risk flags active">${arc(-90, -32, COLORS.green)}${arc(-26, 26, COLORS.amber)}${arc(32, 90, COLORS.orange)}<line x1="${cx}" y1="${cy}" x2="${np[0].toFixed(1)}" y2="${np[1].toFixed(1)}" stroke="${COLORS.ink}" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="5" fill="${COLORS.ink}"/><text x="${cx}" y="${cy - 18}" text-anchor="middle" font-size="18" font-weight="700" fill="${COLORS.ink}" font-family="Segoe UI,system-ui,sans-serif">${active}/${total}</text></svg>`;
 }
 /** Signed horizontal bars as HTML/CSS (robust in print and in any viewer). */
-function bars(rows, { max = 1, fmt = v => sg(v) } = {}) {
+function bars(rows, { max = 1, fmt = v => sg(v), wide = false } = {}) {
   return rows.map(r => { const v = r.v, w = v == null ? 0 : Math.min(50, Math.abs(v) / max * 50), col = v == null ? COLORS.line : v >= 0 ? COLORS.green : COLORS.orange;
-    return `<div class="br"><span class="bl">${esc(r.label)}</span><span class="bt"><i class="mid"></i><i class="fill" style="${v >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${col}"></i></span><span class="bv">${v == null ? 'no data' : esc(r.text ?? fmt(v))}</span></div>`; }).join('');
+    return `<div class="br${wide ? ' w' : ''}"><span class="bl">${esc(r.label)}</span><span class="bt"><i class="mid"></i><i class="fill" style="${v >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${col}"></i></span><span class="bv">${v == null ? 'no data' : esc(r.text ?? fmt(v))}</span></div>`; }).join('');
 }
 const pctBars = rows => rows.map(r => `<div class="br p"><span class="bl">${esc(r.label)}</span><span class="bt"><i class="fill" style="left:0;width:${Math.max(0, Math.min(100, r.p))}%;background:${r.color ?? COLORS.blue}"></i></span><span class="bv">${esc(r.text ?? r.p + '%')}</span></div>`).join('');
 const sec = (title, kicker, body) => (body ? `<section><h2><small>${esc(kicker)}</small>${esc(title)}</h2>${body}</section>` : '');
@@ -165,6 +198,9 @@ function plumbingSvg(stages) {
 }
 
 const CSS = `
+.br.w{grid-template-columns:150px 1fr 170px}.br.w .bv{white-space:nowrap}.rw2{font-size:13px;margin:6px 0;line-height:1.5}
+.pxg{display:grid;gap:7px}.px{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(70px,1fr) auto;gap:8px;align-items:center;font-size:12.5px}.px .pl{font-weight:600}.px .pb{height:8px;border-radius:5px;background:#e6ecf5;position:relative;overflow:hidden}.px .pb i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}.px .pv{font-family:Consolas,monospace;font-size:11.5px;white-space:nowrap}.pc .mv{font-size:12px;color:${COLORS.muted};margin:2px 0 2px}.pc .mv b{font-family:Consolas,monospace}
+.glance{margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}.glance>div{background:${COLORS.card};border:1px solid ${COLORS.line};border-radius:14px;padding:10px 12px}.glance b{display:block;font-size:19px;line-height:1.15;color:${COLORS.ink}}.glance span{display:block;font-size:11.5px;color:${COLORS.muted};margin-top:2px}
 .ckey{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;font-size:11.5px;color:${COLORS.muted}}.ckey i{display:inline-block;width:18px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
 .ccg2,.pcg{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:10px}.cc2,.pc{border:1px solid ${COLORS.line};border-radius:14px;padding:12px 14px;background:${COLORS.card}}.cc2 .h,.pc .h{display:flex;align-items:center;gap:10px;margin-bottom:8px}.cc2 .t,.pc .t{flex:1;min-width:0}.cc2 .t b,.pc .t b{display:block;font-size:17px;line-height:1.1}.cc2 .t small,.pc .t small{display:block;color:${COLORS.muted};font-size:11.5px;margin-top:2px}.cc2 p,.pc p{margin:6px 0 0;font-size:13.5px;line-height:1.5}.pc .rb{margin:6px 0 3px}.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.chips span{font-size:11.5px;padding:3px 8px;border-radius:999px;background:${COLORS.paper};border:1px solid ${COLORS.line};color:${COLORS.text}}.pairflags{display:flex;flex:none}.pairflags svg+svg{margin-left:-8px}.ccytag{font-weight:700}
 .chain{display:grid;gap:4px;margin-top:6px}.cl{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:${COLORS.paper}}.cl.quiet{opacity:.7}.cl .nd{font-weight:600;font-size:13px}.cl .nd small{display:block;font-weight:400;color:${COLORS.muted};font-size:11.5px}.cl .ar{text-align:center;font-size:15px;line-height:1}.cl .ar em{display:block;font-style:normal;font-size:10.5px;font-weight:600;letter-spacing:.02em;margin-top:2px}.chr{margin:-2px 0 4px 10px}
@@ -213,26 +249,81 @@ export function buildNewsletter(n) {
   const subject = clip(letter.subject || headline, 78), regimeWord = String(n.regimeWord ?? a.regime ?? 'MIXED').toUpperCase();
   const opening = letter.opening || a.driver?.[0]?.explain || a.driver?.[0]?.what || '';
   const preheader = clip(opening || headline, 140);
+  const weekly = n.edition === 'weekly';
   const art = `<div class="art">${BANNER_SVG}</div>`;
   const llm = n.llm?.provider ? `${n.llm.label ?? n.llm.provider} (${n.llm.model ?? ''})` : null;
 
-  const mast = `<div class="mast">${art}<div class="scrim"></div><div class="in"><div class="brand">Desk Atlas · Daily</div><div class="date">${esc(n.date)}</div><h1>${esc(headline)}</h1><div class="tags">${pill(regimeWord)}${n.riskFlags ? pill(`${n.riskFlags.active}/${n.riskFlags.total} stress warnings`) : ''}${n.generatedAt ? pill('written ' + new Date(n.generatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + ' UK') : ''}</div></div></div>`;
+  const mast = `<div class="mast">${art}<div class="scrim"></div><div class="in"><div class="brand">Desk Atlas · ${weekly ? 'Weekly' : 'Daily'}</div><div class="date">${esc(n.date)}</div><h1>${esc(headline)}</h1><div class="tags">${pill(regimeWord)}${n.riskFlags ? pill(`${n.riskFlags.active}/${n.riskFlags.total} stress warnings`) : ''}${n.generatedAt ? pill('brief written ' + (new Date(n.generatedAt).toLocaleDateString('en-GB', { timeZone: 'Europe/London' }) === new Date().toLocaleDateString('en-GB', { timeZone: 'Europe/London' }) ? '' : new Date(n.generatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' }) + ' ') + new Date(n.generatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + ' UK') : ''}</div></div></div>`;
 
-  const letterSec = (opening || n.position) ? `<section><div style="font-size:16.5px;line-height:1.65;color:${COLORS.ink}">${opening ? `<p>${esc(opening)}</p>` : ''}</div>${n.position ? `<div class="tense"><div class="b"><b>Yesterday and before</b>${para((n.position.behind ?? []).slice(0, 2))}</div><div class="n"><b>Today</b>${para((n.position.right ?? []).slice(0, 2))}</div><div class="a"><b>Coming up</b>${para((n.position.ahead ?? []).slice(0, 2))}</div></div>` : ''}${letter.signoff ? `<p class="muted small" style="margin-top:10px">${esc(letter.signoff)}</p>` : ''}</section>` : '';
+  const letterSec = (opening || n.position) ? `<section><div style="font-size:16.5px;line-height:1.65;color:${COLORS.ink}">${opening ? `<p>${esc(opening)}</p>` : ''}</div>${n.position ? `<div class="tense"><div class="b"><b>${weekly ? 'Last week and before' : 'Yesterday and before'}</b>${para((n.position.behind ?? []).slice(0, 2))}</div><div class="n"><b>${weekly ? 'Right now' : 'Today'}</b>${para((n.position.right ?? []).slice(0, 2))}</div><div class="a"><b>${weekly ? 'The week ahead' : 'Coming up'}</b>${para((n.position.ahead ?? []).slice(0, 2))}</div></div>` : ''}${letter.signoff ? `<p class="muted small" style="margin-top:10px">${esc(letter.signoff)}</p>` : ''}</section>` : '';
 
-  const tiles = n.tiles?.length ? sec('The numbers', 'Part 1 · The world', `<div class="tiles">${n.tiles.map(t => `<div class="tile"><div class="k">${esc(t.name)}</div><div class="v">${esc(t.value)}</div><div class="d ${t.tone ?? ''}">${esc(t.sub)}</div>${sparkSvg(t.spark, t.tone === 'dn' ? COLORS.orange : t.tone === 'up' ? COLORS.green : COLORS.blue)}</div>`).join('')}</div>${n.riskFlags ? `<div class="strip">${dialSvg(n.riskFlags.active, n.riskFlags.total)}<div class="small" style="flex:1;min-width:230px">${(n.riskFlags.flags ?? []).length ? (n.riskFlags.flags).map(f => `<div style="display:flex;gap:6px;margin-bottom:3px"><span style="color:${f.on === true ? COLORS.orange : f.on === false ? COLORS.green : COLORS.muted};font-weight:700">${f.on === true ? 'ON' : f.on === false ? 'off' : 'n/a'}</span><span><b>${esc(f.label)}</b> <span class="muted">${esc(clipS(f.detail ?? '', 120))}</span></span></div>`).join('') : `${n.riskFlags.active} of ${n.riskFlags.total} stress warnings are on.`}<div class="muted" style="margin-top:4px">Stress warnings have been measured to widen the next few days' ranges. They have not been found to predict direction.</div></div></div>` : ''}`) : '';
+  const tiles = n.tiles?.length ? sec('The numbers', 'Part 1 · The world', `<div class="tiles">${n.tiles.map(t => `<div class="tile"><div class="k">${esc(t.name)}</div><div class="v">${esc(t.value)}</div><div class="d ${t.tone ?? ''}">${esc(t.sub)}</div>${sparkSvg(t.spark, t.tone === 'dn' ? COLORS.orange : t.tone === 'up' ? COLORS.green : COLORS.blue)}</div>`).join('')}</div>${n.riskFlags ? `<div class="strip">${dialSvg(n.riskFlags.active, n.riskFlags.total)}<div class="small" style="flex:1;min-width:250px">${(n.riskFlags.flags ?? []).length ? `<div class="pxg">${proxHtml(n.riskFlags.flags)}</div>` : `${n.riskFlags.active} of ${n.riskFlags.total} stress warnings are on.`}<div class="muted" style="margin-top:6px">Each bar is how close that warning is to firing; a full bar means it is on. Stress tends to mean bigger daily swings, not a particular direction.</div></div></div>` : ''}`) : '';
 
   const drivers = (a.driver ?? []).slice(0, 2).map(d => `<div class="card2" style="margin-bottom:8px"><b>${esc(d.what)}</b><p class="small muted" style="margin:0 0 4px">${esc(d.evidence)}</p>${d.explain ? `<p class="small" style="margin:0">${esc(d.explain)}</p>` : ''}</div>`).join('');
   // The chain of impact, as the picture from today.html, with a one-line verdict and the reason each broken link matters.
   const testable = (n.links ?? []).filter(l => l.verdict === 'holding' || l.verdict === 'broken'), broke = testable.filter(l => l.verdict === 'broken');
   const chainHead = testable.length ? `<p style="margin:0 0 8px;font-weight:600">${broke.length} of ${testable.length} testable link${testable.length === 1 ? '' : 's'} ${broke.length === 1 ? 'is' : 'are'} broken${broke.length ? ': ' + broke.map(l => `${esc(l.a.label)} → ${esc(l.b.label)}`).join(', ') : ''}. ${broke.length ? 'That is where the story is.' : 'The textbook mechanisms are all working today.'}</p>` : '';
   const chain = chainSvg(n.links) ? `<h3>The chain of impact</h3>${chainHead}${chainSvg(n.links)}<p class="small muted" style="margin-top:6px">Each arrow is one textbook link: if this moves, that should follow. Left to right is roughly cause to effect. Judged on the last 20 days at both ends.</p>${broke.map(l => `<p class="small" style="margin:6px 0 0"><b>${esc(l.a.label)} → ${esc(l.b.label)}:</b> ${esc(clipS(l.read ?? l.punch ?? '', 210))}</p>`).join('')}` : '';
-  const driving = (drivers || chain || n.stages) ? sec('What is moving markets', 'Part 1 · The world', `${drivers}${n.stages ? `<h3>Where the money is flowing</h3>${plumbingSvg(n.stages)}` : ''}${chain}`) : '';
+  const ys = n.yieldStack, yStackHtml = yieldStackSvg(ys) ? `<h3>Why the 10-year yield moved: two things stacked</h3>${yieldStackSvg(ys)}${Number.isFinite(ys.dNom) && Math.abs(ys.dNom) >= 1 ? `<p class="small muted" style="margin-top:6px">Of the ${Math.abs(Math.round(ys.dNom))}bp ${ys.dNom < 0 ? 'fall' : 'rise'} over 20 days, ${Math.abs(Math.round(ys.dReal ?? 0))}bp ${(ys.dReal ?? 0) * ys.dNom >= 0 ? 'came from' : 'went the other way in'} the real yield and ${Math.abs(Math.round(ys.dBei ?? 0))}bp ${(ys.dBei ?? 0) * ys.dNom >= 0 ? 'from' : 'went the other way in'} expected inflation.</p>` : ''}` : '';
+  const driving = (drivers || chain || n.stages || yStackHtml) ? sec('What is moving markets', 'Part 1 · The world', `${drivers}${yStackHtml}${n.stages ? `<h3>Where the money is flowing</h3>${plumbingSvg(n.stages)}` : ''}${chain}`) : '';
+
+
+  // The 30-second strip: the three things to know before reading on. Built only from fields already in the issue.
+  const _tl = (n.links ?? []).filter(l => l.verdict === 'holding' || l.verdict === 'broken'), _bk = _tl.filter(l => l.verdict === 'broken').length;
+  const _evTop = (n.events ?? []).find(e => e.impact === 'high') ?? (n.events ?? []).find(e => e.impact === 'medium');
+  const glance = (n.riskFlags || _tl.length || _evTop) ? `<div class="glance">${n.riskFlags ? `<div><b>${n.riskFlags.active}/${n.riskFlags.total}</b><span>stress warnings on</span></div>` : ''}${_tl.length ? `<div><b>${_bk} of ${_tl.length}</b><span>chain links broken</span></div>` : ''}${_evTop ? `<div><b>${esc(ukTime(_evTop.ms))}</b><span>${esc(clip(_evTop.event, 34))}</span></div>` : ''}</div>` : '';
+
+  // What changed since the last issue: the reader's first question every day after the first.
+  const since = n.since;
+  const sinceHtml = since ? sec(since.first ? 'This is the first saved issue' : `What changed since ${esc(since.from ?? 'the last issue')}`, 'Since last time', since.first ? `<p class="small muted">There is nothing to compare against yet. From the next issue this box lists new broken links, stress warnings switching on or off, backdrop changes and central-bank tone moves.</p>` : (since.items ?? []).length ? `<ul class="t">${since.items.slice(0, 8).map(i => `<li>${esc(i.text)}</li>`).join('')}</ul>` : `<p class="small muted">Nothing on the checklist changed: the same broken links, the same stress warnings, the same backdrop.</p>`) : '';
+
+  // How the last issue's one checkable claim, the size of the day, came out.
+  const rec = n.record;
+  const recHtml = rec ? sec(weekly ? "How this week's issues did" : "How the last issue's sizes came out", 'Track record', `<p>${esc(rec.line)}</p>${rec.days?.length ? `<table>${rec.days.map(d => `<tr><td>${esc(d.date)}</td><td class="small">${esc(d.line)}</td></tr>`).join('')}</table>` : ''}<p class="small muted">Each issue prints the expected size of the day for every market. After the day closes, the stored audit says how big it really was. This marks size only. The issue makes no direction call, so there is no direction to mark.</p>`) : '';
+
+  // Weekly: the week's calendar by day, and the expected weekly ranges.
+  const wk = n.week ?? null;
+  const dayLabel = ms => new Date(ms).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Europe/London' });
+  const wkCal = (weekly && wk?.events?.length) ? (() => {
+    const by = new Map(); for (const e of wk.events) { if (e.impact !== 'high' && e.impact !== 'medium') continue; const k = dayLabel(e.ms); (by.get(k) ?? by.set(k, []).get(k)).push(e); }
+    const rows = [...by].map(([d, es]) => `<tr><td style="width:26%"><b>${esc(d)}</b></td><td>${es.slice(0, 7).map(e => `<div class="small" style="margin-bottom:3px">${esc(new Date(e.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }))} ${e.ccy ? (FLAG[e.ccy] ?? '') + ' ' : ''}<b>${esc(e.event)}</b> ${e.impact === 'high' ? pill('big one', 'a') : ''}${e.note?.measured ? ` <span class="muted">${esc([e.note.book, e.note.range].filter(Boolean).join(' · '))}</span>` : ''}</div>`).join('')}${es.length > 7 ? `<div class="small muted">…and ${es.length - 7} more</div>` : ''}</td></tr>`).join('');
+    return sec('The week ahead, day by day', 'Part 1 · The world', `<table>${rows}</table><p class="small muted">UK time, high and medium impact only. A note after a release means this desk measured an unusually big move on that market around it. Which way any surprise pushes a market cannot be forecast, so none is offered.</p>`);
+  })() : '';
+  const wkRanges = (weekly && wk?.ranges?.length) ? sec('How far each market is expected to travel this week', 'Part 3 · Pair by pair', `<table><tr><th>Market</th><th class="n">Typical week</th><th class="n">Big week (1 in 4)</th><th class="n">Typical day</th></tr>${wk.ranges.map(r => `<tr><td><b>${esc(r.label)}</b></td><td class="n">${r.hl5 != null ? r.hl5.toFixed(2) + '%' : '·'}</td><td class="n">${r.hl5_75 != null ? r.hl5_75.toFixed(2) + '%' : '·'}</td><td class="n">${r.hlMed != null ? r.hlMed.toFixed(2) + '%' : '·'}</td></tr>`).join('')}</table><p class="small muted">High to low, as a share of price, from the calibrated forecast. About half of weeks run past the typical figure and about one in four past the big-week figure. It is a ruler for size, not a forecast of direction.</p>`) : '';
 
   const evAll = n.events ?? [];
   const evShow = evAll.filter(e => e.impact === 'high' || e.impact === 'medium').slice(0, 6);
   const evRows = evShow.map(e => { const note = e.note ?? {}; return `<tr><td>${esc(ukTime(e.ms))}</td><td><b>${e.ccy ? (FLAG[e.ccy] ?? '') + ' ' : ''}${esc(e.event)}</b> ${pill(e.impact === 'high' ? 'big one' : 'medium', e.impact === 'high' ? 'a' : '')}<small>${e.estimate ? 'forecast ' + esc(e.estimate) : 'no forecast listed'}${e.prev ? ', last time ' + esc(e.prev) : ''}</small>${note.measured ? `<small><b style="color:${COLORS.ink}">History:</b> ${esc([note.book, note.range].filter(Boolean).join(' · '))}.</small>` : ''}</td></tr>`; }).join('');
-  const ahead = evRows ? sec('The big releases coming up', 'Part 1 · The world', `<table class="ev">${evRows}</table><p class="small muted">UK time. "History" means we found this release moves that market by more than a normal day. Where it is blank, nothing unusual has been found. Nobody can tell in advance which way a surprise will push the price, so we do not try.</p>`) : '';
+  const ahead = weekly ? wkCal : evRows ? sec('The big releases coming up', 'Part 1 · The world', `<table class="ev">${evRows}</table><p class="small muted">UK time. "History" means we found this release moves that market by more than a normal day. Where it is blank, nothing unusual has been found. Nobody can tell in advance which way a surprise will push the price, so we do not try.</p>`) : '';
+
+
+  // ── Beyond the calendar: closures, big-company earnings, Treasury supply, Fed speakers. All are schedules, none is a forecast. ──
+  const ex = n.extras ?? null;
+  const dShort = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const ukClock = ms => new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+  const groupBy = (rows, f) => { const m = new Map(); for (const r of rows) { const k = f(r); (m.get(k) ?? m.set(k, []).get(k)).push(r); } return [...m]; };
+  const xb = [];
+  if (ex) {
+    if (ex.closures?.length) xb.push(`<h3 style="margin-top:0">Markets shut or closing early</h3>${ex.closures.map(c => `<div class="rw2"><b>${esc(dShort(c.date))}</b> ${esc(c.market)}: ${esc(c.name)} <span class="muted">(${esc(c.kind)})</span></div>`).join('')}<p class="small muted">Thin trading and odd price moves around a closure are normal. Japan and other markets are not tracked here.</p>`);
+    if (ex.earnings?.length) xb.push(`<h3${xb.length ? '' : ' style="margin-top:0"'}>Big companies reporting</h3>${groupBy(ex.earnings, r => r.date).map(([d, rs]) => `<div class="rw2"><b>${esc(dShort(d))}</b> ${rs.slice(0, 8).map(r => `${r.tracked ? '<b>' : ''}${esc(r.name)}${r.tracked ? '</b>' : ''} <span class="muted">${esc(r.when)}${r.epsForecast ? ', expected earnings per share ' + esc(r.epsForecast) : ''}</span>`).join('; ')}${rs.length > 8 ? ` <span class="muted">and ${rs.length - 8} more</span>` : ''}</div>`).join('')}<p class="small muted">Companies worth over $150bn, plus the nine that move the Nasdaq (in bold). These are dates. Nobody can say in advance how the market will take the numbers.</p>`);
+    else if (ex.errors?.includes('earnings')) xb.push(`<p class="small muted">Earnings dates were unavailable when this issue was built.</p>`);
+    if (ex.auctions?.length) { const coupons = ex.auctions.filter(a => a.type !== 'Bill'), bills = ex.auctions.filter(a => a.type === 'Bill');
+      xb.push(`<h3${xb.length ? '' : ' style="margin-top:0"'}>The Treasury comes to borrow</h3>${groupBy([...coupons, ...bills.length ? [{ date: bills[0].date, bills }] : []], r => r.date).map(([d, rs]) => `<div class="rw2"><b>${esc(dShort(d))}</b> ${rs.map(r => r.bills ? `Bills ${r.bills.map(b => esc(b.term.replace('-Week', 'wk')) + ' $' + b.amountB + 'bn').join(', ')}` : `${esc(r.term)} ${esc(r.type)}${r.reopening ? ' (reopening)' : ''} $${r.amountB}bn${r.ms ? ' <span class="muted">bids close ' + ukClock(r.ms) + ' UK</span>' : ''}`).join('; ')}</div>`).join('')}<p class="small muted">An auction is how the US government borrows. A bigger sale means more bonds for the market to absorb. The sizes are announced in advance.</p>`); }
+    else if (ex.errors?.includes('auctions')) xb.push(`<p class="small muted">Treasury auction dates were unavailable when this issue was built.</p>`);
+    if (ex.fed?.length) xb.push(`<h3${xb.length ? '' : ' style="margin-top:0"'}>Federal Reserve diary</h3>${ex.fed.map(f => `<div class="rw2"><b>${esc(dShort(f.date))}</b>${f.ms ? ' ' + ukClock(f.ms) + ' UK' : ''} ${esc(f.what)}${f.where ? ` <span class="muted">(${esc(f.where)})</span>` : ''}</div>`).join('')}<p class="small muted">Shown by role. Central banks often avoid speaking in the days before a policy meeting. Other central banks are not covered.</p>`);
+    else if (ex.errors?.includes('fed')) xb.push(`<p class="small muted">The Federal Reserve diary was unavailable when this issue was built.</p>`);
+  }
+  const beyond = xb.length ? sec('Beyond the calendar', 'Part 1 · The world', xb.join('')) : '';
+
+  // ── Stocks under the hood ──
+  const stk = n.stocks, lead = (rows, mx) => bars([...rows].filter(x => x.d20 != null).sort((a, b) => b.d20 - a.d20).map(x => ({ label: x.label, v: x.d20, text: `${sg(x.d20, 1)}% · today ${x.d1 != null ? sg(x.d1, 2) + '%' : '·'}` })), { max: mx, wide: true });
+  const stockHtml = stk?.sectors?.length ? sec('Stocks under the hood', 'Part 1 · The world', `<h3 style="margin-top:0">Which parts of the market are leading (last 20 days)</h3>${lead(stk.sectors, Math.max(3, ...stk.sectors.map(x => Math.abs(x.d20 ?? 0))) * 1.1)}${stk.mega?.length ? `<h3>The big companies that carry the Nasdaq</h3>${lead(stk.mega, Math.max(5, ...stk.mega.map(x => Math.abs(x.d20 ?? 0))) * 1.1)}` : ''}<p class="small muted">The Nasdaq is dominated by a handful of very large technology companies, so their moves explain much of its day. Sector funds show which parts of the economy money is leaning into or leaving. Each bar is the 20-day move, with today's move beside it.</p>`) : '';
+
+  // ── Commodities, volatility and credit ──
+  const cm = n.commodities ?? [], vo = n.volatility ?? [], cr2 = n.creditSpreads ?? [];
+  const volTable = vo.length ? `<h3>Fear gauges</h3><table><tr><th></th><th class="n">Level</th><th class="n">Today</th><th class="n">20 days</th></tr>${vo.map(r => `<tr><td>${esc(r.label)}</td><td class="n">${r.v.toFixed(r.v >= 100 ? 0 : 1)}</td><td class="n ${r.d1 > 0 ? 'dn' : r.d1 < 0 ? 'up' : ''}">${r.d1 != null ? sg(r.d1, 1) : '·'}</td><td class="n ${r.d20 > 0 ? 'dn' : r.d20 < 0 ? 'up' : ''}">${r.d20 != null ? sg(r.d20, 1) : '·'}</td></tr>`).join('')}</table><p class="small muted">Higher means more fear, so a rise is shown in orange. When the 9-day VIX sits above the 3-month VIX, the market is more worried about right now than about the months ahead.</p>` : '';
+  const crTable = cr2.length ? `<h3>Borrowing costs for companies</h3><table><tr><th></th><th class="n">Extra yield over government bonds</th><th class="n">Today</th><th class="n">20 days</th></tr>${cr2.map(r => `<tr><td>${esc(r.label)}</td><td class="n">${Math.round(r.bp)}bp</td><td class="n ${r.d1 > 0 ? 'dn' : r.d1 < 0 ? 'up' : ''}">${r.d1 != null ? sg(r.d1, 0) + 'bp' : '·'}</td><td class="n ${r.d20 > 0 ? 'dn' : r.d20 < 0 ? 'up' : ''}">${r.d20 != null ? sg(r.d20, 0) + 'bp' : '·'}</td></tr>`).join('')}</table><p class="small muted">The extra yield investors demand to lend to companies instead of the government. It widens when lenders get nervous. The riskiest companies (CCC) move the most.</p>` : '';
+  const marketsHtml = (cm.length || vo.length || cr2.length) ? sec('Commodities, fear and credit', 'Part 1 · The world', `${cm.length ? `<h3 style="margin-top:0">Commodities</h3><div class="tiles">${cm.map(t => `<div class="tile"><div class="k">${esc(t.name)}</div><div class="v">${esc(t.value)}</div><div class="d ${t.tone ?? ''}">${esc(t.sub)}</div>${sparkSvg(t.spark, t.tone === 'dn' ? COLORS.orange : t.tone === 'up' ? COLORS.green : COLORS.blue)}</div>`).join('')}</div>` : ''}${volTable}${crTable}`) : '';
 
   // Part 2: each currency, as a card
   const strMap = Object.fromEntries((n.strengths ?? []).map(s => [s.ccy, s.score]));
@@ -253,7 +344,8 @@ export function buildNewsletter(n) {
     const drives = (n.ranges ?? []).filter(r => (r.label ?? '').split('/').includes(ccy)).map(r => `${esc(r.label)}${r.used != null ? ' <span class="muted">' + Math.round(r.used * 100) + '%</span>' : ''}`);
     return `<div class="cc2"><div class="h">${flagSvg(ccy, 40, 27)}<div class="t"><b>${esc(ccy)}</b><small>${esc(CCY_NAME[ccy] ?? ccy)} — ${esc(CCY_BANK[ccy] ?? '')}</small></div>${stance ? `<span class="pill ${/hawk/i.test(stance) ? 'a' : ''}">${esc(stance)}</span>` : ''}</div>${L.map(x => `<p>${esc(x)}</p>`).join('')}${chips.length ? `<div class="chips">${chips.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}${drives.length ? `<p class="small muted" style="margin:8px 0 0">Pairs it drives (share of a normal day used): ${drives.join(' · ')}</p>` : ''}</div>`;
   }).join('');
-  const people = ccyCards ? sec('The currencies', 'Part 2 · Country by country', `<div class="ccg2">${ccyCards}</div><p class="small muted">The pill is the central bank's own tone label from its last statement, scored by language, not a forecast of what it will do. Heavy positioning shows who gets hurt if they are wrong, not which way price goes.</p>`) : '';
+  const league = (n.strengths ?? []).length ? `<h3 style="margin-top:0">Today's currency league table</h3>${bars([...n.strengths].sort((x, y) => y.score - x.score).map(x => ({ label: `${x.ccy}`, v: x.score, text: sg(x.score) + '%' })), { max: Math.max(0.3, ...n.strengths.map(x => Math.abs(x.score)) ) * 1.1 })}<p class="small muted" style="margin:4px 0 12px">Average one-day move against the other currencies we track. Green is stronger, orange is weaker.</p>` : '';
+  const people = ccyCards ? sec('The currencies', 'Part 2 · Country by country', `${league}<div class="ccg2">${ccyCards}</div><p class="small muted">The pill is the central bank's own tone label from its last statement, scored by language, not a forecast of what it will do. Heavy positioning shows who gets hurt if they are wrong, not which way price goes.</p>`) : '';
 
   // Part 3: each market, as a small card
   const trans = a.transmission ?? [];
@@ -265,29 +357,31 @@ export function buildNewsletter(n) {
     else if (t) story = clipS(t.is, 170);
     else if (r.why) story = r.why;
     else if (m && strMap[m[1]] != null && strMap[m[2]] != null) story = `${m[1]} ${sg(strMap[m[1]])}% and ${m[2]} ${sg(strMap[m[2]])}% against the other currencies today.`;
+    if (!story && (r.d1 != null || r.d20 != null)) story = `${r.label} ${r.d1 != null ? 'moved ' + sg(r.d1) + '% today' : ''}${r.d1 != null && r.d20 != null ? ' and ' : ''}${r.d20 != null ? sg(r.d20, 1) + '% over 20 days' : ''}${r.used != null ? ', and has used ' + Math.round(r.used * 100) + '% of a normal day\'s range' : ''}.`;
     const ev = key ? evAll.find(e => (e.impact === 'high' || e.impact === 'medium') && (e.note?.pairs ?? []).includes(key)) : null;
     const stretch = r.used == null ? '' : r.hl75Ratio != null && r.used >= r.hl75Ratio ? 'bigger than about 3 in 4 days' : r.used >= 1 ? 'past a typical day' : 'within a typical day';
     const chips = [r.watch ? 'watch: ' + r.watch : null, ...(r.chips ?? []), ev && !r.watch ? `next: ${ev.event}, ${ukTime(ev.ms)}` : null].filter(Boolean).slice(0, 3);
-    return `<div class="pc"><div class="h">${assetIcon(key, r.label)}<div class="t"><b>${esc(r.label)}</b><small>${esc(r.groupLabel ?? (m ? 'FX' : ''))}${r.price ? ' · ' + esc(r.price) : ''}</small></div></div>${r.used != null ? `<div class="rb"><i style="width:${Math.min(100, r.used * 100 / 1.5)}%"></i><u></u></div><small class="muted">${Math.round(r.used * 100)}% of a normal day's range · ${stretch}</small>` : ''}${story ? `<p>${esc(story)}</p>` : ''}${chips.length ? `<div class="chips">${chips.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}</div>`;
+    return `<div class="pc"><div class="h">${assetIcon(key, r.label)}<div class="t"><b>${esc(r.label)}</b><small>${esc(r.groupLabel ?? (m ? 'FX' : ''))}${r.price ? ' · ' + esc(r.price) : ''}</small></div>${(r.spark ?? []).length > 2 ? sparkSvg(r.spark, (r.d20 ?? 0) >= 0 ? COLORS.green : COLORS.orange, 96, 32) : ''}</div>${r.d1 != null || r.d20 != null ? `<div class="mv">${r.d1 != null ? `Today <b class="${r.d1 >= 0 ? 'up' : 'dn'}">${sg(r.d1)}%</b>` : ''}${r.d1 != null && r.d20 != null ? ' · ' : ''}${r.d20 != null ? `20 days <b class="${r.d20 >= 0 ? 'up' : 'dn'}">${sg(r.d20, 1)}%</b>` : ''}</div>` : ''}${r.used != null ? `<div class="rb"><i style="width:${Math.min(100, r.used * 100 / 1.5)}%"></i><u></u></div><small class="muted">${Math.round(r.used * 100)}% of a normal day's range · ${stretch}</small>` : ''}${story ? `<p>${esc(story)}</p>` : ''}${chips.length ? `<div class="chips">${chips.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}</div>`;
   }).join('');
   const ranges = pairCards ? sec('Each market at a glance', 'Part 3 · Pair by pair', `<div class="pcg">${pairCards}</div><p class="small muted">The bar shows how much of a typical day's travel has been used; the black tick is a full normal day. It says how stretched the day is, not which way it goes.</p>`) : '';
 
   // the rest, kept short
   const reg = n.regimeCard && typeof n.regimeCard === 'object' ? n.regimeCard : null, fp = n.fedPath;
-  const big = [reg ? `<p><b>Backdrop:</b> ${esc(reg.label)} conditions, month ${reg.months}${reg.previous ? `, after ${reg.previous.months} months of ${esc(reg.previous.regime)}` : ''}. <span class="muted">Textbook: ${esc(reg.usual)}.</span></p>` : '', fp ? `<p><b>The Fed:</b> markets put the odds of a higher rate by ${esc(fp.ref)} at ${fp.hike}%${fp.current ? ` (rates now ${esc(fp.current)})` : ''}.</p>` : '', n.eod?.hook ? `<p><b>Yesterday:</b> ${esc(n.eod.hook)}</p>` : ''].filter(Boolean).join('');
+  const big = [reg ? `<p><b>Backdrop:</b> ${esc(reg.label)} conditions, month ${reg.months}${reg.previous ? `, after ${reg.previous.months} months of ${esc(reg.previous.regime)}` : ''}. <span class="muted">Textbook: ${esc(reg.usual)}.</span></p>` : '', fp ? `<p><b>The Fed:</b> markets put the odds of a higher rate by ${esc(fp.ref)} at ${fp.hike}%${fp.current ? ` (rates now ${esc(fp.current)})` : ''}.</p>${(fp.dist ?? []).length ? pctBars(fp.dist.map(d => ({ label: d.band, p: d.p, color: COLORS.amber }))) : ''}` : '', n.eod?.hook ? `<p><b>Yesterday:</b> ${esc(n.eod.hook)}</p>` : ''].filter(Boolean).join('');
   const behind = big ? sec('The bigger picture', 'Context', big) : '';
 
   const li = arr => (arr ?? []).slice(0, 3).map(c => `<li>${esc(c.check)} <span class="muted">— ${esc(c.level)}</span></li>`).join('');
   const trig = ((a.confirm ?? []).length || (a.invalidate ?? []).length) ? sec('What would change the story', 'Watch for', `<div class="two"><div><h3 style="margin-top:0;color:${COLORS.green}">Backs it up</h3><ul class="t">${li(a.confirm)}</ul></div><div><h3 style="margin-top:0;color:${COLORS.orange}">Breaks it</h3><ul class="t">${li(a.invalidate)}</ul></div></div>${a.sizing ? `<p class="small muted" style="margin-top:8px"><b>Sizing:</b> ${esc(clipS(a.sizing, 260))}</p>` : ''}`) : '';
   const lesson = a.lesson?.concept ? `<div class="lesson" style="margin-top:14px"><b>Today's lesson: ${esc(a.lesson.concept)}</b><p style="margin:6px 0 0">${esc(a.lesson.today)}</p></div>` : '';
-  const noEdge = (a.noEdge ?? []).length ? sec('What we cannot tell you', 'Honesty box', `<ul class="t small">${a.noEdge.slice(0, 3).map(x => `<li>${esc(clipS(x, 230))}</li>`).join('')}</ul>`) : '';
+  const noEdge = sec('What this can and cannot tell you', 'How to read it', `<ul class="t small">${LIMITS.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`);
 
-  const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}${llm ? ' · narrative written by ' + esc(llm) : ''}</div></div>`;
+  const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}</div></div>`;
 
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${letterSec}${tiles}${driving}${ahead}${people}${ranges}${behind}${trig}${lesson}${noEdge}${foot}</div></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${glance}${sinceHtml}${letterSec}${tiles}${driving}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${lesson}${noEdge}${foot}</div></body></html>`;
 
   const T = [];
-  T.push(`DESK ATLAS · DAILY · ${n.date}`, '', headline, '');
+  T.push(`DESK ATLAS · ${weekly ? 'WEEKLY' : 'DAILY'} · ${n.date}`, '', headline, '');
+  if (since && !since.first && (since.items ?? []).length) { T.push(`CHANGED SINCE ${since.from ?? 'LAST ISSUE'}`, ...since.items.slice(0, 8).map(i => '- ' + i.text), ''); }
   if (opening) T.push(opening, '');
   if (n.position) { T.push('YESTERDAY AND BEFORE', ...(n.position.behind ?? []), '', 'TODAY', ...(n.position.right ?? []), '', 'COMING UP', ...(n.position.ahead ?? []), ''); }
   if (n.events?.length) { T.push('NEXT RELEASES (UK time)'); for (const e of n.events) T.push(`- ${ukTime(e.ms)} ${e.ccy ?? ''} ${e.event} (${e.impact})${e.estimate ? ', expected ' + e.estimate : ''}${e.note?.measured ? ' | measured size effect: ' + [e.note.book, e.note.range].filter(Boolean).join(' · ') : ''}`); T.push(''); }
@@ -295,6 +389,14 @@ export function buildNewsletter(n) {
   if (n.ranges?.length) { T.push('PAIRS (share of a normal day range used)'); for (const r of n.ranges) T.push(`- ${r.label} ${r.price ?? ''}${r.used != null ? ': ' + Math.round(r.used * 100) + '%' : ''}`); T.push(''); }
   if (a.confirm?.length) { T.push('BACKS IT UP'); for (const c of a.confirm) T.push(`- ${c.check}: ${c.level} (${c.when})`); T.push(''); }
   if (a.invalidate?.length) { T.push('BREAKS IT'); for (const c of a.invalidate) T.push(`- ${c.check}: ${c.level} (${c.when})`); T.push(''); }
+  if (n.extras) { const x = n.extras, L = [];
+    for (const c of x.closures ?? []) L.push(`- ${c.date} ${c.market}: ${c.name} (${c.kind})`);
+    for (const e of (x.earnings ?? []).slice(0, 12)) L.push(`- ${e.date} earnings: ${e.name}, ${e.when}`);
+    for (const a of (x.auctions ?? []).filter(a => a.type !== 'Bill')) L.push(`- ${a.date} Treasury auction: ${a.term} ${a.type} $${a.amountB}bn`);
+    for (const f of x.fed ?? []) L.push(`- ${f.date} Fed: ${f.what}`);
+    if (L.length) T.push('BEYOND THE CALENDAR', ...L, ''); }
+  if (rec) T.push('TRACK RECORD', rec.line, '');
+  T.push('HOW TO READ THIS', ...LIMITS.map(x => '- ' + x), '');
   if (a.lesson?.concept) T.push(`TODAY'S LESSON: ${a.lesson.concept}`, a.lesson.today, '');
   T.push('---', 'NOT FINANCIAL ADVICE.', ...DISCLAIMER.map(d => d.replace(/^NOT FINANCIAL ADVICE\.\s*/, '')));
   return { subject, preheader, html, text: T.join('\n') };

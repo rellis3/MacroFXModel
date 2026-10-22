@@ -288,7 +288,9 @@ import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
 import { buildCountryCard } from './js/countryCard.js';
 import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
 import * as P from './js/atlasPosition.js';
-import { buildNewsletter, eventNote } from './js/newsletter.js';
+import { buildNewsletter, eventNote, flagProximity } from './js/newsletter.js';
+import { snapshotOf, diffSnapshots, scoreLine, weekRecord } from './js/newsletterRecord.js';
+import { closuresBetween } from './js/marketCalendars.js';
 import { DESK_EVIDENCE } from './js/deskEvidence.js';
 
 const $ = id => document.getElementById(id);
@@ -322,7 +324,8 @@ const glyphOf = k => { const c = ccysOf(k); return c ? FLAG[c[0]] + FLAG[c[1]] :
 
 /* ── derived numbers ── */
 function lastTwo(key) { const a = D.drill?.series?.[key]; if (!a) return null; let i = a.length - 1; while (i >= 0 && a[i] == null) i--; let j = i - 1; while (j >= 0 && a[j] == null) j--; return i < 0 ? null : { last: a[i], prev: j >= 0 ? a[j] : null, i }; }
-function back(key, n) { const a = D.drill?.series?.[key]; const t = lastTwo(key); if (!a || !t) return null; let k = t.i, c = 0; while (k > 0 && c < n) { k--; if (a[k] != null) c++; } return a[k] ?? null; }
+// "n days back" is CALENDAR days, the same window the chain uses (CHAIN_WINDOW_DAYS), so the tiles, the cards and the chain can never disagree. It used to count 20 observations (about 4 weeks), which flipped the sign of any move that turned within that month.
+function back(key, days) { const a = D.drill?.series?.[key], t = lastTwo(key); if (!a || !t) return null; const dts = D.drill.dates, cut = Date.parse(dts[t.i]) - days * 864e5; let k = t.i; while (k > 0 && (a[k] == null || Date.parse(dts[k]) > cut)) k--; return a[k] ?? null; }
 function spark(key, n = 30) { const a = D.drill?.series?.[key]; return a ? a.slice(-n).filter(v => v != null) : []; }
 function chainNow() {
   const S = D.drill.series, N = D.drill.dates.length - 1;
@@ -425,7 +428,7 @@ function intelBodyHtml() {
   const list = (arr, fn) => (Array.isArray(arr) && arr.length ? arr.map(fn).join('') : '');
   const stPill = st => /^RESPONDING/i.test(st) ? 'bull' : /NOT/i.test(st) ? 'amber' : '';
   const checks = (arr, tone) => list(arr, c => `<div class="rw"><span><b>${esc(c.check)}</b><small>${esc(c.level)} · ${esc(c.when)}</small></span><span class="pill ${tone}">${tone === 'bull' ? 'confirms' : 'breaks it'}</span></div>`) || '<p class="note">none given</p>';
-  return `<div class="card"><h2>${ic('bulb')}The argument <span class="note" style="text-transform:none;letter-spacing:0;margin-left:auto">${D.intel.llm?.provider ? 'written by ' + esc(D.intel.llm.label ?? D.intel.llm.provider) : ''}</span></h2>
+  return `<div class="card"><h2>${ic('bulb')}The argument </h2>
     <h3 style="margin-top:0">What is driving markets</h3>
     <div class="two">${list(a.driver, d => `<div class="card" style="background:var(--card2)"><b>${esc(d.what)}</b><p class="note" style="margin-top:6px">${esc(d.evidence)}</p>${d.explain ? `<p class="tl-line" style="margin-top:8px"><b>How it works:</b> ${esc(d.explain)}</p>` : ''}</div>`)}</div>
     <h3>Transmission: what should respond, and whether it is</h3>
@@ -534,37 +537,100 @@ function nlInput({ bookFor = () => null } = {}) {
   const position = P.positionLines({ regime, axes, firing, events: ahead, fedPath: fp, meeting }), a = D.intel?.analysis ?? null, keys = Object.keys(insts()), { tiles, stages } = nlNumbers();
   return {
     date: new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' }),
-    generatedAt: D.intel?.generatedAt ?? null, headline: a?.headline, regimeWord: a?.regime ?? 'MIXED', riskFlags: D.rf ? { active: D.rf.active ?? 0, total: D.rf.total ?? 5, flags: (D.rf.flags ?? []).map(f => ({ label: f.label, on: f.on, detail: f.detail })) } : null,
+    generatedAt: D.intel?.generatedAt ?? null, headline: a?.headline, regimeWord: a?.regime ?? 'MIXED', riskFlags: D.rf ? { active: D.rf.active ?? 0, total: D.rf.available ?? D.rf.total ?? 5, flags: (D.rf.flags ?? []).map(f => ({ key: f.key, label: f.label, on: f.on, value: f.value, detail: f.detail })) } : null,
     brief: a, llm: D.intel?.llm ?? null, tiles, stages, links: derived.chain.links, position,
     events: ahead.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })),
     ranges: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k); return { label: labelOf(k), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used }; }),
     assets: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k), reg = P.regimeFor(D.regime, k), gam = P.gammaFor(D.oi, k), fire = P.deskFiring(D.ds, k).filter(f => f.instruments.includes(k)).length, g = { fx: 'FX', index: 'Index', commodity: 'Gold', crypto: 'Bitcoin' }[acOf(k)] ?? '';
-      const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k); return { key: k, label: labelOf(k), groupLabel: g, read: mk?.read ?? null, watch: mk?.watch ?? null, price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
+      const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: mv?.d1 ?? null, d20: mv?.d20 ?? null, read: mk?.read ?? null, watch: mk?.watch ?? null, price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
+    yieldStack: (() => { const y = fmtRate('us10y'), r = fmtRate('tips'), b = fmtRate('bei'); return y && r && b ? { nominal: y.v, real: r.v, bei: b.v, dNom: y.d20, dReal: r.d20, dBei: b.d20 } : null; })(),
+    ...nlStrips(),
     strengths: derived.str, surprise: P.surpriseBars(D.es), cb: P.cbTone(cbHist()), crowding: P.crowding(D.ce), regimeCard: regime, changes: P.changesRows(D.mc), fedPath: fp, scenarios: P.scenarios(D.gr), nowcast: nc,
     eod: D.eod?.review ? { hook: D.eod.review.hook, right: D.eod.review.plan?.right, wrong: D.eod.review.plan?.wrong } : null,
   };
 }
+/* ── the extra strips: sectors, big companies, commodities, fear gauges, credit (all from the 5-year market bundle already loaded) ── */
+const NL_SECTORS = [['xlk', 'Technology'], ['xlc', 'Communication'], ['xly', 'Consumer discretionary'], ['xlf', 'Financials'], ['xli', 'Industrials'], ['xlv', 'Health care'], ['xlp', 'Consumer staples'], ['xle', 'Energy'], ['xlu', 'Utilities'], ['xlb', 'Materials'], ['xlre', 'Real estate'], ['smh', 'Semiconductors']];
+const NL_MEGA = [['nvda', 'Nvidia'], ['aapl', 'Apple'], ['msft', 'Microsoft'], ['amzn', 'Amazon'], ['googl', 'Alphabet (Google)'], ['meta', 'Meta'], ['tsla', 'Tesla'], ['avgo', 'Broadcom']];
+const NL_COMMS = [['brent', 'Brent oil', '$'], ['oil', 'US oil (WTI)', '$'], ['natgas', 'Natural gas', '$'], ['copper', 'Copper', '$'], ['gold', 'Gold', '$'], ['silver', 'Silver', '$']];
+const NL_VOLS = [['vix9d', 'VIX 9-day'], ['vix', 'VIX 1-month'], ['vix3m', 'VIX 3-month'], ['vix6m', 'VIX 6-month'], ['move', 'MOVE (bond-market fear)'], ['ovx', 'Oil volatility'], ['gvz', 'Gold volatility'], ['skew', 'SKEW (cost of crash protection)']];
+const NL_CREDS = [['ig', 'Investment-grade companies'], ['hy', 'High-yield (junk) companies'], ['ccc', 'CCC (riskiest) companies']];
+function nlStrips() {
+  const pct = ([k, label]) => { const m = fmtPct(k); return m ? { label, d1: m.d1, d20: m.d20 } : null; };
+  const lvl = ([k, label]) => { const t = lastTwo(k); if (!t) return null; const b = back(k, 20); return { label, v: t.last, d1: t.prev != null ? t.last - t.prev : null, d20: b != null ? t.last - b : null }; };
+  return {
+    stocks: { sectors: NL_SECTORS.map(pct).filter(Boolean), mega: NL_MEGA.map(pct).filter(Boolean) },
+    commodities: NL_COMMS.map(([k, name, cur]) => { const m = fmtPct(k); if (!m) return null; return { name, value: cur + (m.v >= 100 ? m.v.toFixed(0) : m.v.toFixed(2)), sub: `${m.d1 != null ? sg(m.d1, 2) + '% today · ' : ''}20d ${sg(m.d20, 1)}%`, tone: m.d20 == null ? '' : m.d20 >= 0 ? 'up' : 'dn', spark: spark(k, 30) }; }).filter(Boolean),
+    volatility: NL_VOLS.map(lvl).filter(Boolean),
+    creditSpreads: NL_CREDS.map(([k, label]) => { const f = fmtRate(k); return f ? { label, bp: f.v * 100, d1: f.d1, d20: f.d20 } : null; }).filter(Boolean),
+  };
+}
+async function nlExtras(horizonDays) {
+  const today = ukDate(), to = ukDate(new Date(Date.now() + horizonDays * 864e5)), errors = [];
+  const [ea, ta, fs] = await Promise.all([J('/api/earnings-ahead'), J('/api/treasury-auctions'), J('/api/fed-speakers')]);
+  const within = r => r.date >= today && r.date <= to;
+  if (!ea?.ok) errors.push('earnings'); if (!ta?.ok) errors.push('auctions'); if (!fs?.ok) errors.push('fed');
+  return { closures: closuresBetween(today, to), earnings: (ea?.rows ?? []).filter(within), auctions: (ta?.rows ?? []).filter(within), fed: (fs?.rows ?? []).filter(within), errors };
+}
+const ukDate = (d = new Date()) => d.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+let NL_ARCH = [];
+async function loadArchive() { const r = await J('/api/newsletter/archive'); NL_ARCH = r?.ok ? r.issues : []; return NL_ARCH; }
 function drawNl() {
   const box = $('nlbox'); if (!box || $('nlBuild')) return;   // built once; a redraw of the page must not wipe a finished issue
-  box.innerHTML = `<div class="card"><h2>${ic('cal')}Daily newsletter</h2>
-    <p class="note" style="margin-bottom:8px">Builds a shareable issue from everything on this page: the argument, Behind / Now / Ahead, the releases with what they have been measured to do, the ranges, graphics, and a not-financial-advice footer that cannot be removed. If today's brief is missing or older than 8 hours it generates one first.</p>
-    <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0"><button class="btn" id="nlBuild">${icS('cal')}Build daily newsletter</button><span class="note" id="nlStatus"></span></p><div id="nlOut"></div></div>`;
-  $('nlBuild').onclick = buildDaily;
+  box.innerHTML = `<div class="card"><h2>${ic('cal')}Newsletter</h2>
+    <p class="note" style="margin-bottom:8px"><b>Daily</b> for the day, <b>weekly</b> best generated on Sunday evening for a Monday read (the weekly forecast refreshes after Friday 22:00 UTC and the whole week's releases are known). Each issue opens with a 30-second strip and what changed since the last one, covers the world, each currency and each market, and ends with a not-financial-advice footer that cannot be removed. Every build is saved, and the next issue marks how the previous one's day sizes came out. If today's brief is missing or older than 8 hours it generates one first.</p>
+    <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0"><button class="btn" id="nlBuild">${icS('cal')}Build daily newsletter</button><button class="btn" id="nlBuildW">${icS('cal')}Build weekly newsletter</button><span class="note" id="nlStatus"></span></p><div id="nlOut"></div><h3 style="margin-top:14px">Past issues</h3><div id="nlPast" class="rows"><p class="note">Loading the archive…</p></div></div>`;
+  $('nlBuild').onclick = () => buildIssue('daily'); $('nlBuildW').onclick = () => buildIssue('weekly');
+  drawPast();
 }
-async function buildDaily() {
-  const btn = $('nlBuild'), st = $('nlStatus'); btn.disabled = true;
+async function drawPast() {
+  const el = $('nlPast'); if (!el) return; await loadArchive();
+  el.innerHTML = NL_ARCH.length ? NL_ARCH.slice(0, 14).map(i => `<div class="rw"><span><b>${esc(i.kind === 'weekly' ? 'Weekly' : 'Daily')} · ${esc(i.date)}</b><small>${esc(i.subject)}${i.score ? ' · ' + esc(`median day ${i.score.median}x the expected size, ${i.score.pastShare}% past it`) : i.kind === 'daily' ? ' · not scored yet' : ''}</small></span><span style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn" href="/api/newsletter/issue?id=${encodeURIComponent(i.id)}" target="_blank" rel="noopener">Open</a><button class="btn" data-tg="${esc(i.id)}">Send to Telegram</button></span></div>`).join('') : '<p class="note">Nothing saved yet. Build an issue and it is saved here automatically.</p>';
+  el.querySelectorAll('[data-tg]').forEach(b => { b.onclick = async () => { b.disabled = true; const r = await J('/api/newsletter/telegram', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: b.getAttribute('data-tg') }) }); $('nlStatus').textContent = r?.ok ? 'Sent to Telegram.' : (r?.error ?? 'Could not send.'); b.disabled = false; }; });
+}
+// A newsletter never generates a brief. Only the Generate button does (it costs a model call, and the owner decides when). If the stored brief is old, the issue is built from it and says so.
+function ensureBrief(st) {
+  if (!D.intel?.ok || !D.intel.analysis) { st.textContent = 'There is no Intelligence brief yet. Press Generate Intelligence brief on the Global page first.'; return false; }
+  const hrs = (Date.now() - Date.parse(D.intel.generatedAt)) / 3.6e6;
+  st.textContent = hrs > 8 ? `Using the stored brief, written ${hrs < 48 ? Math.round(hrs) + ' hours' : Math.round(hrs / 24) + ' days'} ago. Press Generate on the Global page for a fresh one.` : '';
+  return true;
+}
+async function buildIssue(kind) {
+  const weekly = kind === 'weekly', btn = $(weekly ? 'nlBuildW' : 'nlBuild'), st = $('nlStatus'); $('nlBuild').disabled = $('nlBuildW').disabled = true;
   try {
-    const stale = !D.intel?.ok || !D.intel.generatedAt || (Date.now() - Date.parse(D.intel.generatedAt)) > 8 * 3.6e6;
-    if (stale) { st.textContent = "Generating today's brief first (about 90 seconds)…"; if (!(await generateIntel())) { st.textContent = 'The brief did not generate. Try again.'; return; } }
+    if (!ensureBrief(st)) return;
+    const arch = await loadArchive(), today = ukDate();
     const { eventImpactFor } = await import('./js/eventImpactMap.js');
-    const out = buildNewsletter(nlInput({ bookFor: e => { try { return eventImpactFor(e.country, e.event); } catch { return null; } } }));
-    showNl(out);
-    st.textContent = `Built: ${out.subject}`;
+    const bookFor = e => { try { return eventImpactFor(e.country, e.event); } catch { return null; } };
+    const base = nlInput({ bookFor });
+    st.textContent = 'Fetching earnings, auctions and the Fed diary…'; base.extras = await nlExtras(weekly ? 8 : 3);
+    if (weekly) {
+      base.edition = 'weekly';
+      const wf = await J('/api/vol-forecast/weekly'), keys = Object.keys(insts());
+      // ForexFactory lists only the current week, so on a Sunday the week ahead comes from the forward list (release type, no vendor rating) merged in without duplicates.
+      const ca = await J('/api/calendar-ahead'), seen = new Set((D.events ?? []).map(e => `${e.country}|${String(e.event).toLowerCase()}|${ukDate(new Date(e.ms))}`));
+      const extra = (ca?.rows ?? []).filter(r => !seen.has(`${r.country}|${String(r.event).toLowerCase()}|${ukDate(new Date(r.ms))}`)).map(r => ({ ms: r.ms, country: r.country, event: r.event, impact: String(r.impact ?? 'high').toLowerCase(), estimate: r.estimate ?? null, prev: r.prev ?? null }));
+      const evs = P.aheadEvents([...(D.events ?? []), ...extra], Date.now(), { limit: 90, withinHours: 8 * 24 });
+      base.week = { events: evs.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })), ranges: NL_RANGE_KEYS.filter(k => wf?.instruments?.[k]).map(k => { const f = wf.instruments[k]; return { label: labelOf(k), hl5: f.hl_5d, hl5_75: f.hl_5d_75, hlMed: pairData(k).hlMed }; }) };
+      const weekAgo = ukDate(new Date(Date.now() - 8 * 864e5)), wkd = arch.filter(i => i.kind === 'daily' && i.score && i.date > weekAgo), wr = weekRecord(wkd);
+      base.record = wr ? { line: `${wr.days} daily issues, ${wr.n} market-days: the median day came out ${wr.median}x the expected size, ${wr.pastShare}% ran past it and ${wr.withinShare}% landed within half to one-and-a-half times. A well-calibrated forecast has the median near 1 and about half past it.`, days: wkd.map(i => ({ date: i.date, line: `median ${i.score.median}x the expected size, ${i.score.pastShare}% past it` })) } : null;
+    } else {
+      const lastScored = arch.find(i => i.kind === 'daily' && i.score && i.date < today);
+      base.record = lastScored ? { line: `Issue of ${lastScored.date}. ${scoreLine(lastScored.score)}` } : null;
+    }
+    const snap = snapshotOf(base, { date: today, kind }), prev = arch.find(i => i.kind === kind && i.date < today);
+    base.since = diffSnapshots(prev?.snapshot ?? null, snap);
+    const out = buildNewsletter(base);
+    showNl(out, kind);
+    st.textContent = `Built: ${out.subject}. Saving…`;
+    const sv = await J('/api/newsletter/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject: out.subject, html: out.html, text: out.text, snapshot: snap }) });
+    st.textContent = sv?.ok ? `Built and saved: ${out.subject}` : `Built, but not saved to the archive (${sv?.error ?? 'no response'}): ${out.subject}`;
+    drawPast();
   } catch (e) { st.textContent = 'Could not build the newsletter: ' + e.message; console.error('[atlas newsletter]', e); }
-  finally { btn.disabled = false; }
+  finally { $('nlBuild').disabled = $('nlBuildW').disabled = false; }
 }
-function showNl(out) {
-  const url = URL.createObjectURL(new Blob([out.html], { type: 'text/html' })), fname = `desk-atlas-daily-${new Date().toISOString().slice(0, 10)}.html`;
+function showNl(out, kind = 'daily') {
+  const url = URL.createObjectURL(new Blob([out.html], { type: 'text/html' })), fname = `desk-atlas-${kind}-${new Date().toISOString().slice(0, 10)}.html`;
   $('nlOut').innerHTML = `<div class="chips" style="margin:12px 0 8px"><button class="btn" id="nlPdf">Save as PDF</button><a class="btn" href="${url}" download="${fname}">Download .html</a><button class="btn" id="nlCopy">Copy plain text</button><a class="btn" href="${url}" target="_blank" rel="noopener">Open full page</a></div><p class="note" style="margin-bottom:8px"><b>Subject:</b> ${esc(out.subject)}</p><iframe id="nlFrame" title="Newsletter preview" sandbox style="width:100%;height:760px;border:1px solid var(--line);border-radius:12px;background:#fff"></iframe><p class="note" style="margin-top:6px">Self-contained: no scripts and no external requests, so it looks the same when attached, forwarded or printed to PDF.</p>`;
   $('nlFrame').srcdoc = out.html;
   $('nlPdf').onclick = () => { const w = window.open(url, '_blank'); if (!w) { $('nlStatus').textContent = 'Pop-up blocked: allow pop-ups, or use Open full page then Ctrl+P.'; return; } w.addEventListener('load', () => setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 400)); $('nlStatus').textContent = 'In the print window choose Save as PDF, and turn on Background graphics if the colours look flat.'; };
@@ -572,18 +638,25 @@ function showNl(out) {
 }
 
 /* ── global ── */
+
+function proxBlock(rf) {
+  const rows = flagProximity(rf.flags);
+  if (!rows.length) return '';
+  return `<div style="margin-top:8px;display:grid;gap:5px;min-width:210px">${rows.map(r => `<div title="${esc(r.name)}: ${esc(r.valueText)}, fires at ${esc(r.thresholdText)}" style="display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:11.5px;color:var(--text2)"><span>${esc(r.name)}</span><span class="mono">${esc(r.valueText)} / ${esc(r.thresholdText)}</span><span style="grid-column:1/3;height:5px;border-radius:3px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${Math.round(r.share * 100)}%;background:${r.on ? 'var(--red, #e8710a)' : r.share >= 0.7 ? '#d98a00' : 'var(--green, #0f9f6e)'}"></i></span></div>`).join('')}<div class="note" style="margin:0">how close each warning is to firing</div></div>`;
+}
 function heroHtml() {
   const a = D.intel?.ok ? D.intel.analysis : null, rf = D.rf;
   const kick = (a ? `<span class="pill ${/RISK-ON/i.test(a.regime) ? 'bull' : /RISK-OFF/i.test(a.regime) ? 'bear' : 'amber'}">${esc(a.regime)}</span>` : '') + `<span class="pill violet">${icS('bulb')}AI argument from measured links</span>`;
   let age = '', who = '';
   if (a && D.intel.generatedAt) { const h = (Date.now() - Date.parse(D.intel.generatedAt)) / 3.6e6; age = `<span class="pill ${h >= 6 ? 'amber' : ''}">${h < 1 ? Math.round(h * 60) + 'm old' : h < 24 ? h.toFixed(1) + 'h old' : Math.round(h / 24) + 'd old'}</span>`; }
+  const dev = D.intel?._device ? `<span class="pill amber" title="${esc(D.intel._why ?? '')}">device copy: ${esc(D.intel._why ?? 'this is the last brief this browser saw')}</span>` : '';
   const llm = D.intel?.llm, bm = briefModel();
-  who = llm?.provider ? `<span class="pill">written by ${esc(llm.label ?? llm.provider)} · ${esc(llm.model ?? '')}</span>` : (a ? `<span class="pill" title="This brief was generated before the page recorded the model.">model not recorded</span>` : '') + (bm ? `<span class="pill" title="The model the next Generate will use.">next: ${esc(bm.provider)}</span>` : '');
-  const head = a?.headline ? esc(a.headline) : 'No Intelligence brief yet today';
-  const body = a ? esc(a.driver?.[0]?.explain ?? a.driver?.[0]?.what ?? '') : 'Press Generate for the argument: what is driving markets, how it transmits, what would confirm or break it, and what to learn from it. One model call.';
-  return `<div><div class="kick">${kick}${age}${who}</div><h2>${head}</h2><p>${body}</p>
-     <p style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="aibox" id="heroai"></span><button class="btn" id="genbtn">${icS('bulb')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds, sends today's Behind / Now / Ahead rows with it</span></p></div>
-     <div class="gauge">${rf ? dial(rf.active ?? 0, rf.total ?? 5) : ''}</div><div class="gauge">${ring()}</div>`;
+  who = '';   // no "written by <model>" or "next: <model>" pills: the AI model selector beside Generate already says what will run, and the issue's footer carries the general AI disclosure.
+  const unreachable = D.intel?._unreachable, head = a?.headline ? esc(a.headline) : unreachable ? 'The stored brief could not be loaded' : 'No Intelligence brief is stored';
+  const body = a ? esc(a.driver?.[0]?.explain ?? a.driver?.[0]?.what ?? '') : unreachable ? 'The server did not answer after three tries. This is a loading problem, not a missing brief: reload the page, or press Load stored brief. Nothing has been generated or cleared.' : 'Press Generate for the argument: what is driving markets, how it transmits, what would confirm or break it, and what to learn from it. One model call.';
+  return `<div><div class="kick">${kick}${age}${who}${dev}</div><h2>${head}</h2><p>${body}</p>
+     <p style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="aibox" id="heroai"></span>${unreachable ? `<button class="btn" id="reloadbtn">Load stored brief</button>` : ''}<button class="btn" id="genbtn">${icS('bulb')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds, sends today's Behind / Now / Ahead rows with it</span></p></div>
+     <div class="gauge">${rf ? dial(rf.active ?? 0, rf.available ?? rf.total ?? 5) : ''}${rf ? proxBlock(rf) : ''}</div><div class="gauge">${ring()}</div>`;
 }
 const fmtRate = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev != null ? (t.last - t.prev) * 100 : null, b20 = back(key, 20), d20 = b20 != null ? (t.last - b20) * 100 : null; return { v: t.last, d1, d20 }; };
 const fmtPct = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev ? (t.last / t.prev - 1) * 100 : null, b20 = back(key, 20), d20 = b20 ? (t.last / b20 - 1) * 100 : null; return { v: t.last, d1, d20 }; };
@@ -620,7 +693,7 @@ function globalPosition() {
 }
 
 function drawGlobal() {
-  $('hero').innerHTML = heroHtml(); const gb = $('genbtn'); if (gb) gb.onclick = generateIntel; $('intelbody').innerHTML = intelBodyHtml(); drawAi(); drawAb(); drawNl();
+  $('hero').innerHTML = heroHtml(); const gb = $('genbtn'); if (gb) gb.onclick = generateIntel; const rb = $('reloadbtn'); if (rb) rb.onclick = async () => { rb.disabled = true; rb.textContent = 'Loading…'; D.intel = await loadIntel(); drawGlobal(); }; $('intelbody').innerHTML = intelBodyHtml(); drawAi(); drawAb(); drawNl();
   $('position').innerHTML = globalPosition();
   const { links } = derived.chain, g = (key, kind) => (kind === 'rate' ? fmtRate(key) : fmtPct(key));
   const bp = x => (x == null ? '' : `${sg(x, 0)}bp`), pc = x => (x == null ? '' : `${sg(x, 2)}%`);
@@ -663,10 +736,17 @@ function drawGlobal() {
 function stripHtml(kind) { return derived.str.map(c => { const w = Math.min(50, Math.abs(c.score) / 0.6 * 50), col = c.score >= 0 ? 'var(--bull)' : 'var(--bear)';
   return `<button class="cc" data-c="${c.ccy}" aria-pressed="${kind === 'c' && state.ccy === c.ccy}"><div class="fl">${FLAG[c.ccy]}</div><div class="cd">${c.ccy}</div><div class="bar"><i style="${c.score >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${col}"></i></div><div class="mv ${c.score >= 0 ? 'up' : 'dn'}">${sg(c.score)}%</div></button>`; }).join(''); }
 const wireStrip = id => document.querySelectorAll('#' + id + ' .cc').forEach(b => { b.onclick = () => go('ccy', { ccy: b.getAttribute('data-c') }); });
-async function generateIntel() {
-  const b = $('genbtn'); if (!b) return; b.disabled = true; b.textContent = 'Generating… about 90s';
-  const r = await J('/api/morning-brief?mode=intel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ context: positionContext() }) });
-  if (r?.ok) { D.intel = r; drawGlobal(); return true; }
+let _genP = null;
+function generateIntel() { return (_genP ??= _generateIntel().finally(() => { _genP = null; })); }   // one at a time on this page: a second click or the newsletter button joins the first
+async function _generateIntel() {
+  const b = $('genbtn'); if (!b) return false; b.disabled = true; b.textContent = 'Generating… about 90s';
+  let r = await J('/api/morning-brief?mode=intel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ context: positionContext() }) });
+  if (!r?.ok && /already generating/.test(r?.error ?? '')) {   // the server has one slot: an earlier click, another tab or another device holds it. Wait for that brief instead of failing.
+    b.textContent = 'Another brief is generating, waiting for it…';
+    const t0 = Date.now(), before = D.intel?.generatedAt ?? '';
+    while (Date.now() - t0 < 300000) { await new Promise(x => setTimeout(x, 6000)); const g = await J('/api/morning-brief?mode=intel'); if (g?.ok && g.generatedAt && g.generatedAt !== before) { r = g; break; } }
+  }
+  if (r?.ok) { D.intel = r; lsPut(r); drawGlobal(); if (r.saved === false) $('loaderr').innerHTML = '<div class="err">The brief was generated but could NOT be saved on the server, so it will be gone when you reload and other devices will not see it. Build the newsletter now to keep it, or press Generate again.</div>'; return true; }
   b.disabled = false; b.textContent = 'Generate Intelligence brief'; $('loaderr').innerHTML = `<div class="err">Generate failed: ${esc(r?.error ?? 'no response')}</div>`; return false;
 }
 
@@ -771,16 +851,34 @@ function drawPair() {
 
 /* ── boot, in two waves: the market bundle first so the page is useful at once, then the analysis feeds ── */
 const CORE = [['/api/drill-series', 'drill', '75 market series, 5 years'], ['/api/macro-scorecard', 'msc', 'six-factor currency scorecard'], ['/api/risk-flags', 'rf', 'risk flags'], ['/api/cot', 'cot', 'CFTC positioning by pair'],
-  ['/api/daily-brief', 'brief', 'prices, regimes, levels for all instruments'], ['/api/vol-forecast/session', 'sess', 'live session range'], ['/api/vol-forecast', 'fc', 'calibrated range forecast'], ['/api/calendar-feed', 'cal', 'releases printed'], ['/api/morning-brief?mode=intel', 'intel', 'Intelligence brief']];
+  ['/api/daily-brief', 'brief', 'prices, regimes, levels for all instruments'], ['/api/vol-forecast/session', 'sess', 'live session range'], ['/api/vol-forecast', 'fc', 'calibrated range forecast'], ['/api/calendar-feed', 'cal', 'releases printed']];
 const EXTRA = [['/api/global-read', 'gr', 'five axes, scenarios, per-instrument plans'], ['/api/regime', 'regime', 'macro regime and what each market did in it'], ['/api/macro-changes', 'mc', 'what changed, 1d / 5d / 20d'], ['/api/econ-surprise', 'es', 'consensus surprises by currency'],
   ['/api/cot-extremes', 'ce', 'crowding across 36 contracts'], ['/api/oi-today', 'oi', 'dealer gamma and option walls'], ['/api/desk-watch', 'ds', 'watched conditions firing'], ['/api/events', 'events', 'the calendar ahead'], ['/api/fed-path', 'fp', 'market-implied Fed path'],
   ['/api/fomc/calendar', 'fcal', 'FOMC meeting dates'], ['/api/nowcast', 'nc', 'GDPNow and Cleveland nowcasts'], ['/api/fomc/history?n=6', 'hUSD', 'FOMC tone history'], ['/api/ecb/history?n=6', 'hEUR', 'ECB tone history'], ['/api/boe/history?n=6', 'hGBP', 'BoE tone history'],
   ['/api/boj/history?n=6', 'hJPY', 'BoJ tone history'], ['/api/eod-review', 'eod', 'yesterday\'s review'], ['/api/chain-read', 'cr', 'the chain read (cached AI)'], ['/api/ai-config', 'ai', 'AI model routing']];
+
+/* ── the stored Intelligence brief: load it reliably, never confuse "could not load" with "none stored" ── */
+const INTEL_LS = 'atlas_intel_v1';
+const lsGet = () => { try { return JSON.parse(localStorage.getItem(INTEL_LS) || 'null'); } catch { return null; } };
+const lsPut = r => { try { localStorage.setItem(INTEL_LS, JSON.stringify(r)); } catch {} };
+async function loadIntel() {
+  let r = null;
+  for (const wait of [0, 1500, 4000]) {   // a restart or a busy moment must not read as "no brief"
+    if (wait) await new Promise(x => setTimeout(x, wait));
+    r = await J('/api/morning-brief?mode=intel');
+    if (r) break;
+  }
+  const local = lsGet();
+  if (r?.ok && r.analysis) { if (!local || Date.parse(r.generatedAt) >= Date.parse(local.generatedAt ?? 0)) { lsPut(r); return r; } return { ...local, _device: true }; }
+  if (local?.ok && local.analysis) return { ...local, _device: true, _why: r ? 'the server has no stored brief' : 'the server could not be reached' };
+  return r ?? { ok: false, _unreachable: true };
+}
 const okOf = r => !(r == null || r.ok === false);
-function drawSrcs() { $('srcs').innerHTML = [...CORE, ...EXTRA].map(s => { const r = D[s[1]]; const pending = D[s[1]] === undefined; return `<span class="pill ${pending ? '' : okOf(r) ? '' : 'amber'}" title="${esc(s[2])}">${pending ? '…' : okOf(r) ? '✓' : '✗'} ${esc(s[0].replace('/api/', ''))}</span>`; }).join(''); }
+function drawSrcs() { $('srcs').innerHTML = [...CORE, ['/api/morning-brief?mode=intel', 'intel', 'stored Intelligence brief'], ...EXTRA].map(s => { const r = D[s[1]]; const pending = D[s[1]] === undefined; return `<span class="pill ${pending ? '' : okOf(r) ? '' : 'amber'}" title="${esc(s[2])}">${pending ? '…' : okOf(r) ? '✓' : '✗'} ${esc(s[0].replace('/api/', ''))}</span>`; }).join(''); }
 async function main() {
   drawNav(); drawSrcs();
-  (await Promise.all(CORE.map(s => J(s[0])))).forEach((r, i) => { D[CORE[i][1]] = r; });
+  const [coreRes, intelRes] = await Promise.all([Promise.all(CORE.map(s => J(s[0]))), loadIntel()]);
+  coreRes.forEach((r, i) => { D[CORE[i][1]] = r; }); D.intel = intelRes;
   if (!D.drill?.ok) { $('loaderr').innerHTML = '<div class="err">The market bundle did not load (/api/drill-series). The page needs it for the chain and the currency moves. Reload to try again.</div>'; $('sub').textContent = 'data unavailable'; drawSrcs(); return; }
   derived = { chain: chainNow(), str: strengths() };
   $('sub').textContent = `${new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' })} · bundle to ${D.drill.to ?? D.drill.dates.at(-1)} · ${Object.keys(insts()).length} instruments`;
@@ -788,7 +886,13 @@ async function main() {
   (await Promise.all(EXTRA.map(s => J(s[0])))).forEach((r, i) => { D[EXTRA[i][1]] = r; });
   D.__extra = true; drawAi(); redraw(); drawSrcs();
 }
-window.__atlas = { go, state, D, main, positionContext, abHtml, intelBodyHtml, nlInput, buildDaily };
+window.__atlas = { go, state, D, main, positionContext, abHtml, intelBodyHtml, nlInput, buildIssue, loadIntel, heroHtml };
+// A brief generated on another device shows up when this tab comes back into view (no reload needed). Never while this page is generating one itself.
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !D.drill || _genP) return;
+  const r = await J('/api/morning-brief?mode=intel');
+  if (r?.ok && r.analysis && Date.parse(r.generatedAt) > Date.parse(D.intel?.generatedAt ?? 0)) { D.intel = r; lsPut(r); drawGlobal(); }
+});
 main().catch(e => { $('loaderr').innerHTML = `<div class="err">Page error: ${esc(e.message)}</div>`; console.error('[atlas]', e); });
 </script>
 </body>

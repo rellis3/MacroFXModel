@@ -11,6 +11,7 @@
 // Optional:         MONITOR_MS  (default 3000), DATA_DIR, PORT
 
 import express              from 'express';
+import zlib from 'node:zlib';
 import path                from 'path';
 import { fileURLToPath }   from 'url';
 import fs                  from 'fs';
@@ -3598,9 +3599,15 @@ async function callModel({ task = 'misc', system = '', standing = '', prompt = '
     maxTokens, maxOutput: r.maxOutput, cache: cfg.cache, temperature,
   });
   const started = Date.now();
-  const httpRes = await fetch(req.url, {
-    method: 'POST', headers: aiAuthHeaders(req, key), body: JSON.stringify(req.body),
-  });
+  // A provider that never answers must not hold the single brief slot forever (every retry gets a 409 until it ends), so the call is bounded.
+  let httpRes;
+  try {
+    httpRes = await fetch(req.url, { method: 'POST', headers: aiAuthHeaders(req, key), body: JSON.stringify(req.body), signal: AbortSignal.timeout(300_000) });
+  } catch (err) {
+    _recordModelCall({ task, provider: r.provider, model: r.model, ok: false, httpStatus: 0, ms: Date.now() - started });
+    const e = new Error(err?.name === 'TimeoutError' ? `${P.label} did not answer within 5 minutes` : `${P.label} request failed: ${err?.message ?? err}`);
+    e.status = 504; e.provider = r.provider; throw e;
+  }
   if (!httpRes.ok) {
     const body = (await httpRes.text().catch(() => '')).slice(0, 300);
     const e = new Error(`${P.label} ${httpRes.status}${body ? ': ' + body : ''}`);
@@ -5392,7 +5399,7 @@ function _intelBriefPrompt(data, chainBlock, position = '') {
 
 NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/BoJ head, etc.) anywhere in your output, even if a name appears in the headlines or calendar below — refer to them only by role.
 
-If a MARKET FACTS block appears below, write one entry in "markets" for EVERY line in it, using only the facts on that line and the rest of this brief. No direction calls, no price targets: describe what happened, why it fits the driver, and how stretched the day is.
+If a MARKET FACTS block appears below, write one entry in "markets" for EVERY line in it, using only the facts on that line and the rest of this brief. Describe what happened, what in the facts explains it, and how stretched the day is. Do NOT predict or advise: never write expect, likely, should, will, leans, squeeze, extension, fade, target, or any call on where price goes next. \"expected\" is fine only for a published consensus figure.
 
 WRITE FOR A CURIOUS NON-SPECIALIST, NOT A QUANT. Short sentences, plain words, one idea each. Say "borrowing costs" or "bond yields", not "term premium"; "stress warnings", not "risk flags"; "prices usually move together", not "correlation". If you must use a market term, explain it in a few words the first time. Spell out any acronym once. Keep every field tight: the headline under 20 words, each driver explanation at most two sentences.
 
@@ -6049,14 +6056,94 @@ Respond with ONLY valid JSON, no markdown:
   // non-whitespace character after JSON at position 3840"), which threw the whole
   // brief away. Take the first balanced object; the trailing text is never wanted.
   const analysis = _firstJsonObject(clean);
+  if (mode === 'intel' && Array.isArray(analysis?.markets)) {   // the model is told not to predict; this check does not rely on it obeying
+    const { readIsSafe } = await import('./js/newsletterRecord.js'), all = analysis.markets;
+    analysis.markets = all.filter(m => m && typeof m.key === 'string' && readIsSafe(m.read) && (m.watch == null || readIsSafe(String(m.watch))));
+    if (analysis.markets.length < all.length) { analysis.marketsDropped = all.length - analysis.markets.length; console.warn(`[intel brief] dropped ${analysis.marketsDropped} market read(s) that predicted or advised`); }
+  }
   // Which model actually answered (the router can fall back), so a page can say who wrote this and when the provider changed.
   const payload = { analysis, generatedAt: new Date().toISOString(), headlineCount: headlines.length, session: fc?.session_label ?? null, mode, llm: { provider: antData.provider ?? null, model: antData.model ?? null, label: antData.label ?? null } };
-  await kv.put(kvKey, JSON.stringify(payload)).catch(() => {});
-  return payload;
+  // Saved, then read back. The old line swallowed a failed write, so a brief could appear once and be gone on the next reload
+  // (or on another device). Now it is written (one retry) and read back, and the answer says whether it really is stored.
+  let saved = false;
+  for (let attempt = 0; attempt < 2 && !saved; attempt++) {
+    try {
+      await kv.put(kvKey, JSON.stringify(payload));
+      const back = await kv.get(kvKey);
+      saved = !!back && JSON.parse(back)?.generatedAt === payload.generatedAt;
+    } catch (e) { console.warn(`[brief] save attempt ${attempt + 1} failed (${kvKey}): ${e.message}`); }
+  }
+  if (!saved) console.error(`[brief] ${kvKey} could NOT be stored; the page was told so`);
+  return { ...payload, saved };
 }
+
+
+// ── Newsletter archive, scoring and delivery ─────────────────────────────────────────────────────────────────────
+// Every built issue is saved (snapshot + plain text + gzipped html) so the next one can say what changed and the week can say
+// how the days came out against the sizes the issues printed. Scoring is a RANGE-CALIBRATION check against the stored session
+// audit (js/newsletterRecord.js); direction is never scored because none is forecast. All click-only: nothing here is scheduled.
+const _NL_KEY = 'newsletter_archive_v1', _NL_KEEP = 40;
+async function _nlLoad() {
+  try { const raw = await kv.get(_NL_KEY); const p = raw ? JSON.parse(raw) : null; return Array.isArray(p?.issues) ? p.issues : []; }
+  catch (e) { console.warn('[newsletter] archive unreadable, not touching it:', e.message); return null; }   // null = leave it for a human, never overwrite
+}
+const _nlPublic = i => ({ id: i.id, kind: i.kind, date: i.date, subject: i.subject, savedAt: i.savedAt, snapshot: i.snapshot, score: i.score || null, scored: i.score !== null });
+app.post('/api/newsletter/archive', express.json({ limit: '3mb' }), async (req, res) => {
+  try {
+    const b = req.body ?? {}, snap = b.snapshot ?? {};
+    if (typeof b.html !== 'string' || b.html.length < 200 || !/^\d{4}-\d{2}-\d{2}$/.test(snap.date ?? '')) return res.status(400).json({ ok: false, error: 'need html and snapshot.date (YYYY-MM-DD)' });
+    const issues = await _nlLoad(); if (issues === null) return res.status(503).json({ ok: false, error: 'the archive could not be read, so nothing was written' });
+    const kind = snap.kind === 'weekly' ? 'weekly' : 'daily', id = `${kind}-${snap.date}`;
+    const rec = { id, kind, date: snap.date, subject: String(b.subject ?? '').slice(0, 200), savedAt: new Date().toISOString(), snapshot: snap, text: String(b.text ?? '').slice(0, 24000), htmlGz: zlib.gzipSync(Buffer.from(b.html, 'utf8')).toString('base64'), score: null };
+    const next = [rec, ...issues.filter(x => x.id !== id)].sort((x, y) => y.date.localeCompare(x.date) || x.kind.localeCompare(y.kind)).slice(0, _NL_KEEP);
+    await kv.put(_NL_KEY, JSON.stringify({ issues: next }));
+    res.json({ ok: true, id, count: next.length });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/newsletter/archive', async (_req, res) => {
+  try {
+    const issues = await _nlLoad(); if (issues === null) return res.status(503).json({ ok: false, error: 'archive unreadable' });
+    const { scoreIssue } = await import('./js/newsletterRecord.js'), today = new Date().toISOString().slice(0, 10);
+    let changed = false;
+    for (const i of issues) {
+      if (i.kind !== 'daily' || i.score || i.score === false || i.date >= today) continue;
+      const raw = await kv.get(`vol_session_${i.date}`).catch(() => null);
+      const sc = raw ? scoreIssue(i.snapshot, JSON.parse(raw)) : null;
+      if (sc) { i.score = sc; changed = true; } else if (Date.parse(today) - Date.parse(i.date) > 5 * 864e5) { i.score = false; changed = true; }   // no audit after 5 days: stop looking
+    }
+    if (changed) await kv.put(_NL_KEY, JSON.stringify({ issues })).catch(() => {});
+    res.json({ ok: true, issues: issues.map(i => ({ ..._nlPublic(i), score: i.score || null, scored: !!i.score })) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/newsletter/issue', async (req, res) => {
+  try {
+    const issues = await _nlLoad(), i = (issues ?? []).find(x => x.id === String(req.query.id ?? ''));
+    if (!i) return res.status(404).type('text/plain').send('no such issue');
+    // The stored page is static html with no scripts; the sandbox header makes sure even a tampered copy could not run any.
+    res.set('Content-Security-Policy', "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:");
+    res.type('text/html').send(zlib.gunzipSync(Buffer.from(i.htmlGz, 'base64')).toString('utf8'));
+  } catch (e) { res.status(500).type('text/plain').send(e.message); }
+});
+// Delivery: sends an ARCHIVED issue (never arbitrary html) to the chat in NEWSLETTER_TG_CHAT_ID using NEWSLETTER_TG_TOKEN.
+// Both are Railway env vars, deliberately separate from the older alert credentials. Click-only; unset means disabled.
+app.post('/api/newsletter/telegram', express.json({ limit: '4kb' }), async (req, res) => {
+  const tok = process.env.NEWSLETTER_TG_TOKEN, chat = process.env.NEWSLETTER_TG_CHAT_ID;
+  if (!tok || !chat) return res.status(503).json({ ok: false, error: 'Telegram delivery is off: set NEWSLETTER_TG_TOKEN and NEWSLETTER_TG_CHAT_ID on Railway.' });
+  try {
+    const issues = await _nlLoad(), i = (issues ?? []).find(x => x.id === String(req.body?.id ?? ''));
+    if (!i) return res.status(404).json({ ok: false, error: 'that issue is not in the archive; build it first' });
+    const html = zlib.gunzipSync(Buffer.from(i.htmlGz, 'base64')), form = new FormData();
+    form.append('chat_id', chat); form.append('caption', `${i.subject}\nNot financial advice. Open the file in a browser; print it to save a PDF.`.slice(0, 1000));
+    form.append('document', new Blob([html], { type: 'text/html' }), `desk-atlas-${i.id}.html`);
+    const r = await fetch(`https://api.telegram.org/bot${tok}/sendDocument`, { method: 'POST', body: form }), j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) return res.status(502).json({ ok: false, error: `Telegram refused it: ${j.description ?? r.status}` });
+    res.json({ ok: true, sent: i.id });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 app.get('/api/morning-brief', async (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store');   // the same brief on every device: never answered from a browser or proxy cache
     const raw = await kv.get(req.query?.mode === 'intel' ? _INTEL_BRIEF_KV : _MORNING_BRIEF_KV).catch(() => null);
     if (raw) return res.json({ ok: true, ...JSON.parse(raw), cached: true });
     return res.json({ ok: false, error: 'No morning brief yet — click Generate.' });
@@ -31056,6 +31143,58 @@ app.get('/api/calendar-ahead', async (_req, res) => {
     res.set('Cache-Control', 'public, max-age=1800');
     res.json({ ok: true, at: new Date(_calAhead.at).toISOString(), rows: _calAhead.rows, note: 'Nasdaq forward lists; impact = release type, not a vendor rating' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+
+// ── The week's schedules that are not data releases: big-company earnings, Treasury auctions, Fed speakers ──────────
+// Free public sources, no key, cached 6h each. Parsers live in js/marketCalendars.js and are tested there. These are SCHEDULES (when
+// something happens), used by the newsletter's "Beyond the calendar" section; nothing here forecasts what an event does to price.
+const _calExtras = { earn: { at: 0, rows: null }, auct: { at: 0, rows: null }, fed: { at: 0, rows: null } };
+const _CAL_TTL = 6 * 3600e3;
+app.get('/api/earnings-ahead', async (_req, res) => {
+  try {
+    const c = _calExtras.earn;
+    if (!c.rows || Date.now() - c.at > _CAL_TTL) {
+      const { parseEarnings } = await import('./js/marketCalendars.js'), H = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, rows = []; let failed = 0;
+      for (let k = 0; k <= 8; k++) {
+        const d = new Date(Date.now() + k * 864e5).toISOString().slice(0, 10);
+        if ([0, 6].includes(new Date(d + 'T00:00:00Z').getUTCDay())) continue;
+        try { const r = await fetch(`https://api.nasdaq.com/api/calendar/earnings?date=${d}`, { headers: H, signal: AbortSignal.timeout(20_000) }); if (r.ok) rows.push(...parseEarnings(await r.json(), d)); else failed++; }
+        catch (e) { failed++; console.warn('[earnings-ahead]', d, e.message); }
+        await new Promise(r => setTimeout(r, 250));
+      }
+      if (rows.length || failed === 0) { c.rows = rows; c.at = Date.now(); } else throw new Error('Nasdaq earnings calendar unavailable');
+    }
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ ok: true, at: new Date(c.at).toISOString(), rows: c.rows, note: 'Companies above $150bn plus the nine the Nasdaq leans on. Source: api.nasdaq.com earnings calendar. A schedule, not a forecast.' });
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+app.get('/api/treasury-auctions', async (_req, res) => {
+  try {
+    const c = _calExtras.auct;
+    if (!c.rows || Date.now() - c.at > _CAL_TTL) {
+      const { parseAuctions } = await import('./js/marketCalendars.js');
+      const r = await fetch('https://www.treasurydirect.gov/TA_WS/securities/upcoming?format=json', { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(20_000) });
+      if (!r.ok) throw new Error(`TreasuryDirect ${r.status}`);
+      c.rows = parseAuctions(await r.json()); c.at = Date.now();
+    }
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ ok: true, at: new Date(c.at).toISOString(), rows: c.rows, note: 'TreasuryDirect upcoming auctions, dated by the competitive bidding close. A schedule, not a forecast.' });
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+app.get('/api/fed-speakers', async (_req, res) => {
+  try {
+    const c = _calExtras.fed;
+    if (!c.rows || Date.now() - c.at > _CAL_TTL) {
+      const { parseFedCalendar } = await import('./js/marketCalendars.js');
+      const r = await fetch('https://www.federalreserve.gov/json/calendar.json', { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(20_000) });
+      if (!r.ok) throw new Error(`federalreserve.gov ${r.status}`);
+      const from = new Date().toISOString().slice(0, 10), to = new Date(Date.now() + 21 * 864e5).toISOString().slice(0, 10);
+      c.rows = parseFedCalendar(await r.text(), from, to); c.at = Date.now();
+    }
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ ok: true, at: new Date(c.at).toISOString(), rows: c.rows, note: 'Federal Reserve public calendar: speeches, testimony, FOMC and Beige Book, shown by role. Other central banks are not covered.' });
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
 });
 
 app.get('/api/calendar-feed', async (_req, res) => {
