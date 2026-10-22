@@ -65,5 +65,15 @@ ok('familyOf', familyOf('GB CPI y/y') === 'cpi' && familyOf('Unemployment Claims
 const gb = eventNote({ event: 'CPI y/y', ccy: 'GBP' }, { instruments: { EURGBP: { spike: 1.52, next: 1.11, n: 102 }, GBPCHF: { spike: 1.2, next: 1, n: 9 } } }, ['GBPUSD', 'EURGBP', 'GOLD']);
 ok('book effect is listed only above 1.5x, pairs are the instruments the currency touches', gb.book && /EUR\/GBP moved 1.52×/.test(gb.book) && !/GBP\/CHF/.test(gb.book) && gb.pairs.join() === 'GBPUSD,EURGBP' && gb.range && /GBP\/USD range \+0.17 on the day/.test(gb.range) && gb.measured === true);
 ok('no family and no book means nothing measured', eventNote({ event: 'CBI Orders', ccy: 'GBP' }, null, ['GBPUSD']).measured === false);
+
+// ── glance, since-last-time, record, weekly ──
+ok('the 30-second strip shows stress warnings, broken links and the next big release', /class="glance"/.test(full.html) && /stress warnings on/.test(full.html) && /chain links broken/.test(full.html));
+const withSince = buildNewsletter({ date: 'd', since: { from: '2026-10-21', first: false, items: [{ kind: 'link-broke', text: 'New broken link: Real yield → Dollar.' }] } });
+ok('changes since the last issue are listed', /What changed since 2026-10-21/.test(withSince.html) && /New broken link: Real yield/.test(withSince.html));
+ok('an empty change list says so, and the first issue explains itself', /Nothing on the checklist changed/.test(buildNewsletter({ date: 'd', since: { from: 'x', first: false, items: [] } }).html) && /first saved issue/.test(buildNewsletter({ date: 'd', since: { first: true, items: [] } }).html));
+const withRec = buildNewsletter({ date: 'd', record: { line: '14 markets: the median day came out 1.02x the expected size.', days: [{ date: '2026-10-21', line: 'median 1.1x' }] } });
+ok('the track record is about size only and says there is no direction to mark', /How the last issue&#39;s sizes came out|How the last issue's sizes came out/.test(withRec.html) && /no direction to mark/.test(withRec.html) && /TRACK RECORD/.test(withRec.text));
+const wkIssue = buildNewsletter({ date: 'Monday 26 October 2026', edition: 'weekly', events: [], week: { events: [{ ms: Date.parse('2026-10-28T18:00:00Z'), ccy: 'USD', event: 'FOMC Rate Decision', impact: 'high' }, { ms: Date.parse('2026-10-27T13:30:00Z'), ccy: 'USD', event: 'Durable Goods', impact: 'medium' }, { ms: Date.parse('2026-10-27T13:30:00Z'), ccy: 'USD', event: 'Minor thing', impact: 'low' }], ranges: [{ label: 'EUR/USD', hl5: 1.1, hl5_75: 1.5, hlMed: 0.5 }] } });
+ok('the weekly edition is labelled, lists the week day by day (high and medium only) and the expected weekly ranges', /Desk Atlas · Weekly/.test(wkIssue.html) && /The week ahead, day by day/.test(wkIssue.html) && /FOMC Rate Decision/.test(wkIssue.html) && !/Minor thing/.test(wkIssue.html) && /Typical week/.test(wkIssue.html) && /WEEKLY/.test(wkIssue.text) && /NOT FINANCIAL ADVICE/.test(wkIssue.html));
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

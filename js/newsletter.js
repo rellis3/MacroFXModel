@@ -165,6 +165,7 @@ function plumbingSvg(stages) {
 }
 
 const CSS = `
+.glance{margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}.glance>div{background:${COLORS.card};border:1px solid ${COLORS.line};border-radius:14px;padding:10px 12px}.glance b{display:block;font-size:19px;line-height:1.15;color:${COLORS.ink}}.glance span{display:block;font-size:11.5px;color:${COLORS.muted};margin-top:2px}
 .ckey{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;font-size:11.5px;color:${COLORS.muted}}.ckey i{display:inline-block;width:18px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
 .ccg2,.pcg{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:10px}.cc2,.pc{border:1px solid ${COLORS.line};border-radius:14px;padding:12px 14px;background:${COLORS.card}}.cc2 .h,.pc .h{display:flex;align-items:center;gap:10px;margin-bottom:8px}.cc2 .t,.pc .t{flex:1;min-width:0}.cc2 .t b,.pc .t b{display:block;font-size:17px;line-height:1.1}.cc2 .t small,.pc .t small{display:block;color:${COLORS.muted};font-size:11.5px;margin-top:2px}.cc2 p,.pc p{margin:6px 0 0;font-size:13.5px;line-height:1.5}.pc .rb{margin:6px 0 3px}.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.chips span{font-size:11.5px;padding:3px 8px;border-radius:999px;background:${COLORS.paper};border:1px solid ${COLORS.line};color:${COLORS.text}}.pairflags{display:flex;flex:none}.pairflags svg+svg{margin-left:-8px}.ccytag{font-weight:700}
 .chain{display:grid;gap:4px;margin-top:6px}.cl{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:${COLORS.paper}}.cl.quiet{opacity:.7}.cl .nd{font-weight:600;font-size:13px}.cl .nd small{display:block;font-weight:400;color:${COLORS.muted};font-size:11.5px}.cl .ar{text-align:center;font-size:15px;line-height:1}.cl .ar em{display:block;font-style:normal;font-size:10.5px;font-weight:600;letter-spacing:.02em;margin-top:2px}.chr{margin:-2px 0 4px 10px}
@@ -213,12 +214,13 @@ export function buildNewsletter(n) {
   const subject = clip(letter.subject || headline, 78), regimeWord = String(n.regimeWord ?? a.regime ?? 'MIXED').toUpperCase();
   const opening = letter.opening || a.driver?.[0]?.explain || a.driver?.[0]?.what || '';
   const preheader = clip(opening || headline, 140);
+  const weekly = n.edition === 'weekly';
   const art = `<div class="art">${BANNER_SVG}</div>`;
   const llm = n.llm?.provider ? `${n.llm.label ?? n.llm.provider} (${n.llm.model ?? ''})` : null;
 
-  const mast = `<div class="mast">${art}<div class="scrim"></div><div class="in"><div class="brand">Desk Atlas · Daily</div><div class="date">${esc(n.date)}</div><h1>${esc(headline)}</h1><div class="tags">${pill(regimeWord)}${n.riskFlags ? pill(`${n.riskFlags.active}/${n.riskFlags.total} stress warnings`) : ''}${n.generatedAt ? pill('written ' + new Date(n.generatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + ' UK') : ''}</div></div></div>`;
+  const mast = `<div class="mast">${art}<div class="scrim"></div><div class="in"><div class="brand">Desk Atlas · ${weekly ? 'Weekly' : 'Daily'}</div><div class="date">${esc(n.date)}</div><h1>${esc(headline)}</h1><div class="tags">${pill(regimeWord)}${n.riskFlags ? pill(`${n.riskFlags.active}/${n.riskFlags.total} stress warnings`) : ''}${n.generatedAt ? pill('written ' + new Date(n.generatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + ' UK') : ''}</div></div></div>`;
 
-  const letterSec = (opening || n.position) ? `<section><div style="font-size:16.5px;line-height:1.65;color:${COLORS.ink}">${opening ? `<p>${esc(opening)}</p>` : ''}</div>${n.position ? `<div class="tense"><div class="b"><b>Yesterday and before</b>${para((n.position.behind ?? []).slice(0, 2))}</div><div class="n"><b>Today</b>${para((n.position.right ?? []).slice(0, 2))}</div><div class="a"><b>Coming up</b>${para((n.position.ahead ?? []).slice(0, 2))}</div></div>` : ''}${letter.signoff ? `<p class="muted small" style="margin-top:10px">${esc(letter.signoff)}</p>` : ''}</section>` : '';
+  const letterSec = (opening || n.position) ? `<section><div style="font-size:16.5px;line-height:1.65;color:${COLORS.ink}">${opening ? `<p>${esc(opening)}</p>` : ''}</div>${n.position ? `<div class="tense"><div class="b"><b>${weekly ? 'Last week and before' : 'Yesterday and before'}</b>${para((n.position.behind ?? []).slice(0, 2))}</div><div class="n"><b>${weekly ? 'Right now' : 'Today'}</b>${para((n.position.right ?? []).slice(0, 2))}</div><div class="a"><b>${weekly ? 'The week ahead' : 'Coming up'}</b>${para((n.position.ahead ?? []).slice(0, 2))}</div></div>` : ''}${letter.signoff ? `<p class="muted small" style="margin-top:10px">${esc(letter.signoff)}</p>` : ''}</section>` : '';
 
   const tiles = n.tiles?.length ? sec('The numbers', 'Part 1 · The world', `<div class="tiles">${n.tiles.map(t => `<div class="tile"><div class="k">${esc(t.name)}</div><div class="v">${esc(t.value)}</div><div class="d ${t.tone ?? ''}">${esc(t.sub)}</div>${sparkSvg(t.spark, t.tone === 'dn' ? COLORS.orange : t.tone === 'up' ? COLORS.green : COLORS.blue)}</div>`).join('')}</div>${n.riskFlags ? `<div class="strip">${dialSvg(n.riskFlags.active, n.riskFlags.total)}<div class="small" style="flex:1;min-width:230px">${(n.riskFlags.flags ?? []).length ? (n.riskFlags.flags).map(f => `<div style="display:flex;gap:6px;margin-bottom:3px"><span style="color:${f.on === true ? COLORS.orange : f.on === false ? COLORS.green : COLORS.muted};font-weight:700">${f.on === true ? 'ON' : f.on === false ? 'off' : 'n/a'}</span><span><b>${esc(f.label)}</b> <span class="muted">${esc(clipS(f.detail ?? '', 120))}</span></span></div>`).join('') : `${n.riskFlags.active} of ${n.riskFlags.total} stress warnings are on.`}<div class="muted" style="margin-top:4px">Stress warnings have been measured to widen the next few days' ranges. They have not been found to predict direction.</div></div></div>` : ''}`) : '';
 
@@ -229,10 +231,34 @@ export function buildNewsletter(n) {
   const chain = chainSvg(n.links) ? `<h3>The chain of impact</h3>${chainHead}${chainSvg(n.links)}<p class="small muted" style="margin-top:6px">Each arrow is one textbook link: if this moves, that should follow. Left to right is roughly cause to effect. Judged on the last 20 days at both ends.</p>${broke.map(l => `<p class="small" style="margin:6px 0 0"><b>${esc(l.a.label)} → ${esc(l.b.label)}:</b> ${esc(clipS(l.read ?? l.punch ?? '', 210))}</p>`).join('')}` : '';
   const driving = (drivers || chain || n.stages) ? sec('What is moving markets', 'Part 1 · The world', `${drivers}${n.stages ? `<h3>Where the money is flowing</h3>${plumbingSvg(n.stages)}` : ''}${chain}`) : '';
 
+
+  // The 30-second strip: the three things to know before reading on. Built only from fields already in the issue.
+  const _tl = (n.links ?? []).filter(l => l.verdict === 'holding' || l.verdict === 'broken'), _bk = _tl.filter(l => l.verdict === 'broken').length;
+  const _evTop = (n.events ?? []).find(e => e.impact === 'high') ?? (n.events ?? []).find(e => e.impact === 'medium');
+  const glance = (n.riskFlags || _tl.length || _evTop) ? `<div class="glance">${n.riskFlags ? `<div><b>${n.riskFlags.active}/${n.riskFlags.total}</b><span>stress warnings on</span></div>` : ''}${_tl.length ? `<div><b>${_bk} of ${_tl.length}</b><span>chain links broken</span></div>` : ''}${_evTop ? `<div><b>${esc(ukTime(_evTop.ms))}</b><span>${esc(clip(_evTop.event, 34))}</span></div>` : ''}</div>` : '';
+
+  // What changed since the last issue: the reader's first question every day after the first.
+  const since = n.since;
+  const sinceHtml = since ? sec(since.first ? 'This is the first saved issue' : `What changed since ${esc(since.from ?? 'the last issue')}`, 'Since last time', since.first ? `<p class="small muted">There is nothing to compare against yet. From the next issue this box lists new broken links, stress warnings switching on or off, backdrop changes and central-bank tone moves.</p>` : (since.items ?? []).length ? `<ul class="t">${since.items.slice(0, 8).map(i => `<li>${esc(i.text)}</li>`).join('')}</ul>` : `<p class="small muted">Nothing on the checklist changed: the same broken links, the same stress warnings, the same backdrop.</p>`) : '';
+
+  // How the last issue's one checkable claim, the size of the day, came out.
+  const rec = n.record;
+  const recHtml = rec ? sec(weekly ? "How this week's issues did" : "How the last issue's sizes came out", 'Track record', `<p>${esc(rec.line)}</p>${rec.days?.length ? `<table>${rec.days.map(d => `<tr><td>${esc(d.date)}</td><td class="small">${esc(d.line)}</td></tr>`).join('')}</table>` : ''}<p class="small muted">Each issue prints the expected size of the day for every market. After the day closes, the stored audit says how big it really was. This marks size only. The issue makes no direction call, so there is no direction to mark.</p>`) : '';
+
+  // Weekly: the week's calendar by day, and the expected weekly ranges.
+  const wk = n.week ?? null;
+  const dayLabel = ms => new Date(ms).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Europe/London' });
+  const wkCal = (weekly && wk?.events?.length) ? (() => {
+    const by = new Map(); for (const e of wk.events) { if (e.impact !== 'high' && e.impact !== 'medium') continue; const k = dayLabel(e.ms); (by.get(k) ?? by.set(k, []).get(k)).push(e); }
+    const rows = [...by].map(([d, es]) => `<tr><td style="width:26%"><b>${esc(d)}</b></td><td>${es.slice(0, 7).map(e => `<div class="small" style="margin-bottom:3px">${esc(new Date(e.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }))} ${e.ccy ? (FLAG[e.ccy] ?? '') + ' ' : ''}<b>${esc(e.event)}</b> ${e.impact === 'high' ? pill('big one', 'a') : ''}${e.note?.measured ? ` <span class="muted">${esc([e.note.book, e.note.range].filter(Boolean).join(' · '))}</span>` : ''}</div>`).join('')}${es.length > 7 ? `<div class="small muted">…and ${es.length - 7} more</div>` : ''}</td></tr>`).join('');
+    return sec('The week ahead, day by day', 'Part 1 · The world', `<table>${rows}</table><p class="small muted">UK time, high and medium impact only. A note after a release means this desk measured an unusually big move on that market around it. Which way any surprise pushes a market cannot be forecast, so none is offered.</p>`);
+  })() : '';
+  const wkRanges = (weekly && wk?.ranges?.length) ? sec('How far each market is expected to travel this week', 'Part 3 · Pair by pair', `<table><tr><th>Market</th><th class="n">Typical week</th><th class="n">Big week (1 in 4)</th><th class="n">Typical day</th></tr>${wk.ranges.map(r => `<tr><td><b>${esc(r.label)}</b></td><td class="n">${r.hl5 != null ? r.hl5.toFixed(2) + '%' : '·'}</td><td class="n">${r.hl5_75 != null ? r.hl5_75.toFixed(2) + '%' : '·'}</td><td class="n">${r.hlMed != null ? r.hlMed.toFixed(2) + '%' : '·'}</td></tr>`).join('')}</table><p class="small muted">High to low, as a share of price, from the calibrated forecast. About half of weeks run past the typical figure and about one in four past the big-week figure. It is a ruler for size, not a forecast of direction.</p>`) : '';
+
   const evAll = n.events ?? [];
   const evShow = evAll.filter(e => e.impact === 'high' || e.impact === 'medium').slice(0, 6);
   const evRows = evShow.map(e => { const note = e.note ?? {}; return `<tr><td>${esc(ukTime(e.ms))}</td><td><b>${e.ccy ? (FLAG[e.ccy] ?? '') + ' ' : ''}${esc(e.event)}</b> ${pill(e.impact === 'high' ? 'big one' : 'medium', e.impact === 'high' ? 'a' : '')}<small>${e.estimate ? 'forecast ' + esc(e.estimate) : 'no forecast listed'}${e.prev ? ', last time ' + esc(e.prev) : ''}</small>${note.measured ? `<small><b style="color:${COLORS.ink}">History:</b> ${esc([note.book, note.range].filter(Boolean).join(' · '))}.</small>` : ''}</td></tr>`; }).join('');
-  const ahead = evRows ? sec('The big releases coming up', 'Part 1 · The world', `<table class="ev">${evRows}</table><p class="small muted">UK time. "History" means we found this release moves that market by more than a normal day. Where it is blank, nothing unusual has been found. Nobody can tell in advance which way a surprise will push the price, so we do not try.</p>`) : '';
+  const ahead = weekly ? wkCal : evRows ? sec('The big releases coming up', 'Part 1 · The world', `<table class="ev">${evRows}</table><p class="small muted">UK time. "History" means we found this release moves that market by more than a normal day. Where it is blank, nothing unusual has been found. Nobody can tell in advance which way a surprise will push the price, so we do not try.</p>`) : '';
 
   // Part 2: each currency, as a card
   const strMap = Object.fromEntries((n.strengths ?? []).map(s => [s.ccy, s.score]));
@@ -284,10 +310,11 @@ export function buildNewsletter(n) {
 
   const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}${llm ? ' · narrative written by ' + esc(llm) : ''}</div></div>`;
 
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${letterSec}${tiles}${driving}${ahead}${people}${ranges}${behind}${trig}${lesson}${noEdge}${foot}</div></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${glance}${sinceHtml}${letterSec}${tiles}${driving}${ahead}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${lesson}${noEdge}${foot}</div></body></html>`;
 
   const T = [];
-  T.push(`DESK ATLAS · DAILY · ${n.date}`, '', headline, '');
+  T.push(`DESK ATLAS · ${weekly ? 'WEEKLY' : 'DAILY'} · ${n.date}`, '', headline, '');
+  if (since && !since.first && (since.items ?? []).length) { T.push(`CHANGED SINCE ${since.from ?? 'LAST ISSUE'}`, ...since.items.slice(0, 8).map(i => '- ' + i.text), ''); }
   if (opening) T.push(opening, '');
   if (n.position) { T.push('YESTERDAY AND BEFORE', ...(n.position.behind ?? []), '', 'TODAY', ...(n.position.right ?? []), '', 'COMING UP', ...(n.position.ahead ?? []), ''); }
   if (n.events?.length) { T.push('NEXT RELEASES (UK time)'); for (const e of n.events) T.push(`- ${ukTime(e.ms)} ${e.ccy ?? ''} ${e.event} (${e.impact})${e.estimate ? ', expected ' + e.estimate : ''}${e.note?.measured ? ' | measured size effect: ' + [e.note.book, e.note.range].filter(Boolean).join(' · ') : ''}`); T.push(''); }
@@ -295,6 +322,7 @@ export function buildNewsletter(n) {
   if (n.ranges?.length) { T.push('PAIRS (share of a normal day range used)'); for (const r of n.ranges) T.push(`- ${r.label} ${r.price ?? ''}${r.used != null ? ': ' + Math.round(r.used * 100) + '%' : ''}`); T.push(''); }
   if (a.confirm?.length) { T.push('BACKS IT UP'); for (const c of a.confirm) T.push(`- ${c.check}: ${c.level} (${c.when})`); T.push(''); }
   if (a.invalidate?.length) { T.push('BREAKS IT'); for (const c of a.invalidate) T.push(`- ${c.check}: ${c.level} (${c.when})`); T.push(''); }
+  if (rec) T.push('TRACK RECORD', rec.line, '');
   if (a.lesson?.concept) T.push(`TODAY'S LESSON: ${a.lesson.concept}`, a.lesson.today, '');
   T.push('---', 'NOT FINANCIAL ADVICE.', ...DISCLAIMER.map(d => d.replace(/^NOT FINANCIAL ADVICE\.\s*/, '')));
   return { subject, preheader, html, text: T.join('\n') };

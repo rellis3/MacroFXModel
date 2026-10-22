@@ -11,6 +11,7 @@
 // Optional:         MONITOR_MS  (default 3000), DATA_DIR, PORT
 
 import express              from 'express';
+import zlib from 'node:zlib';
 import path                from 'path';
 import { fileURLToPath }   from 'url';
 import fs                  from 'fs';
@@ -6054,6 +6055,70 @@ Respond with ONLY valid JSON, no markdown:
   await kv.put(kvKey, JSON.stringify(payload)).catch(() => {});
   return payload;
 }
+
+
+// ── Newsletter archive, scoring and delivery ─────────────────────────────────────────────────────────────────────
+// Every built issue is saved (snapshot + plain text + gzipped html) so the next one can say what changed and the week can say
+// how the days came out against the sizes the issues printed. Scoring is a RANGE-CALIBRATION check against the stored session
+// audit (js/newsletterRecord.js); direction is never scored because none is forecast. All click-only: nothing here is scheduled.
+const _NL_KEY = 'newsletter_archive_v1', _NL_KEEP = 40;
+async function _nlLoad() {
+  try { const raw = await kv.get(_NL_KEY); const p = raw ? JSON.parse(raw) : null; return Array.isArray(p?.issues) ? p.issues : []; }
+  catch (e) { console.warn('[newsletter] archive unreadable, not touching it:', e.message); return null; }   // null = leave it for a human, never overwrite
+}
+const _nlPublic = i => ({ id: i.id, kind: i.kind, date: i.date, subject: i.subject, savedAt: i.savedAt, snapshot: i.snapshot, score: i.score || null, scored: i.score !== null });
+app.post('/api/newsletter/archive', express.json({ limit: '3mb' }), async (req, res) => {
+  try {
+    const b = req.body ?? {}, snap = b.snapshot ?? {};
+    if (typeof b.html !== 'string' || b.html.length < 200 || !/^\d{4}-\d{2}-\d{2}$/.test(snap.date ?? '')) return res.status(400).json({ ok: false, error: 'need html and snapshot.date (YYYY-MM-DD)' });
+    const issues = await _nlLoad(); if (issues === null) return res.status(503).json({ ok: false, error: 'the archive could not be read, so nothing was written' });
+    const kind = snap.kind === 'weekly' ? 'weekly' : 'daily', id = `${kind}-${snap.date}`;
+    const rec = { id, kind, date: snap.date, subject: String(b.subject ?? '').slice(0, 200), savedAt: new Date().toISOString(), snapshot: snap, text: String(b.text ?? '').slice(0, 24000), htmlGz: zlib.gzipSync(Buffer.from(b.html, 'utf8')).toString('base64'), score: null };
+    const next = [rec, ...issues.filter(x => x.id !== id)].sort((x, y) => y.date.localeCompare(x.date) || x.kind.localeCompare(y.kind)).slice(0, _NL_KEEP);
+    await kv.put(_NL_KEY, JSON.stringify({ issues: next }));
+    res.json({ ok: true, id, count: next.length });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/newsletter/archive', async (_req, res) => {
+  try {
+    const issues = await _nlLoad(); if (issues === null) return res.status(503).json({ ok: false, error: 'archive unreadable' });
+    const { scoreIssue } = await import('./js/newsletterRecord.js'), today = new Date().toISOString().slice(0, 10);
+    let changed = false;
+    for (const i of issues) {
+      if (i.kind !== 'daily' || i.score || i.score === false || i.date >= today) continue;
+      const raw = await kv.get(`vol_session_${i.date}`).catch(() => null);
+      const sc = raw ? scoreIssue(i.snapshot, JSON.parse(raw)) : null;
+      if (sc) { i.score = sc; changed = true; } else if (Date.parse(today) - Date.parse(i.date) > 5 * 864e5) { i.score = false; changed = true; }   // no audit after 5 days: stop looking
+    }
+    if (changed) await kv.put(_NL_KEY, JSON.stringify({ issues })).catch(() => {});
+    res.json({ ok: true, issues: issues.map(i => ({ ..._nlPublic(i), score: i.score || null, scored: !!i.score })) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/newsletter/issue', async (req, res) => {
+  try {
+    const issues = await _nlLoad(), i = (issues ?? []).find(x => x.id === String(req.query.id ?? ''));
+    if (!i) return res.status(404).type('text/plain').send('no such issue');
+    // The stored page is static html with no scripts; the sandbox header makes sure even a tampered copy could not run any.
+    res.set('Content-Security-Policy', "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:");
+    res.type('text/html').send(zlib.gunzipSync(Buffer.from(i.htmlGz, 'base64')).toString('utf8'));
+  } catch (e) { res.status(500).type('text/plain').send(e.message); }
+});
+// Delivery: sends an ARCHIVED issue (never arbitrary html) to the chat in NEWSLETTER_TG_CHAT_ID using NEWSLETTER_TG_TOKEN.
+// Both are Railway env vars, deliberately separate from the older alert credentials. Click-only; unset means disabled.
+app.post('/api/newsletter/telegram', express.json({ limit: '4kb' }), async (req, res) => {
+  const tok = process.env.NEWSLETTER_TG_TOKEN, chat = process.env.NEWSLETTER_TG_CHAT_ID;
+  if (!tok || !chat) return res.status(503).json({ ok: false, error: 'Telegram delivery is off: set NEWSLETTER_TG_TOKEN and NEWSLETTER_TG_CHAT_ID on Railway.' });
+  try {
+    const issues = await _nlLoad(), i = (issues ?? []).find(x => x.id === String(req.body?.id ?? ''));
+    if (!i) return res.status(404).json({ ok: false, error: 'that issue is not in the archive; build it first' });
+    const html = zlib.gunzipSync(Buffer.from(i.htmlGz, 'base64')), form = new FormData();
+    form.append('chat_id', chat); form.append('caption', `${i.subject}\nNot financial advice. Open the file in a browser; print it to save a PDF.`.slice(0, 1000));
+    form.append('document', new Blob([html], { type: 'text/html' }), `desk-atlas-${i.id}.html`);
+    const r = await fetch(`https://api.telegram.org/bot${tok}/sendDocument`, { method: 'POST', body: form }), j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) return res.status(502).json({ ok: false, error: `Telegram refused it: ${j.description ?? r.status}` });
+    res.json({ ok: true, sent: i.id });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 app.get('/api/morning-brief', async (req, res) => {
   try {

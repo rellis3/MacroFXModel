@@ -289,6 +289,7 @@ import { buildCountryCard } from './js/countryCard.js';
 import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
 import * as P from './js/atlasPosition.js';
 import { buildNewsletter, eventNote } from './js/newsletter.js';
+import { snapshotOf, diffSnapshots, scoreLine, weekRecord } from './js/newsletterRecord.js';
 import { DESK_EVIDENCE } from './js/deskEvidence.js';
 
 const $ = id => document.getElementById(id);
@@ -544,27 +545,65 @@ function nlInput({ bookFor = () => null } = {}) {
     eod: D.eod?.review ? { hook: D.eod.review.hook, right: D.eod.review.plan?.right, wrong: D.eod.review.plan?.wrong } : null,
   };
 }
+const ukDate = (d = new Date()) => d.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+let NL_ARCH = [];
+async function loadArchive() { const r = await J('/api/newsletter/archive'); NL_ARCH = r?.ok ? r.issues : []; return NL_ARCH; }
 function drawNl() {
   const box = $('nlbox'); if (!box || $('nlBuild')) return;   // built once; a redraw of the page must not wipe a finished issue
-  box.innerHTML = `<div class="card"><h2>${ic('cal')}Daily newsletter</h2>
-    <p class="note" style="margin-bottom:8px">Builds a shareable issue from everything on this page: the argument, Behind / Now / Ahead, the releases with what they have been measured to do, the ranges, graphics, and a not-financial-advice footer that cannot be removed. If today's brief is missing or older than 8 hours it generates one first.</p>
-    <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0"><button class="btn" id="nlBuild">${icS('cal')}Build daily newsletter</button><span class="note" id="nlStatus"></span></p><div id="nlOut"></div></div>`;
-  $('nlBuild').onclick = buildDaily;
+  box.innerHTML = `<div class="card"><h2>${ic('cal')}Newsletter</h2>
+    <p class="note" style="margin-bottom:8px"><b>Daily</b> for the day, <b>weekly</b> best generated on Sunday evening for a Monday read (the weekly forecast refreshes after Friday 22:00 UTC and the whole week's releases are known). Each issue opens with a 30-second strip and what changed since the last one, covers the world, each currency and each market, and ends with a not-financial-advice footer that cannot be removed. Every build is saved, and the next issue marks how the previous one's day sizes came out. If today's brief is missing or older than 8 hours it generates one first.</p>
+    <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0"><button class="btn" id="nlBuild">${icS('cal')}Build daily newsletter</button><button class="btn" id="nlBuildW">${icS('cal')}Build weekly newsletter</button><span class="note" id="nlStatus"></span></p><div id="nlOut"></div><h3 style="margin-top:14px">Past issues</h3><div id="nlPast" class="rows"><p class="note">Loading the archive…</p></div></div>`;
+  $('nlBuild').onclick = () => buildIssue('daily'); $('nlBuildW').onclick = () => buildIssue('weekly');
+  drawPast();
 }
-async function buildDaily() {
-  const btn = $('nlBuild'), st = $('nlStatus'); btn.disabled = true;
+async function drawPast() {
+  const el = $('nlPast'); if (!el) return; await loadArchive();
+  el.innerHTML = NL_ARCH.length ? NL_ARCH.slice(0, 14).map(i => `<div class="rw"><span><b>${esc(i.kind === 'weekly' ? 'Weekly' : 'Daily')} · ${esc(i.date)}</b><small>${esc(i.subject)}${i.score ? ' · ' + esc(`median day ${i.score.median}x the expected size, ${i.score.pastShare}% past it`) : i.kind === 'daily' ? ' · not scored yet' : ''}</small></span><span style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn" href="/api/newsletter/issue?id=${encodeURIComponent(i.id)}" target="_blank" rel="noopener">Open</a><button class="btn" data-tg="${esc(i.id)}">Send to Telegram</button></span></div>`).join('') : '<p class="note">Nothing saved yet. Build an issue and it is saved here automatically.</p>';
+  el.querySelectorAll('[data-tg]').forEach(b => { b.onclick = async () => { b.disabled = true; const r = await J('/api/newsletter/telegram', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: b.getAttribute('data-tg') }) }); $('nlStatus').textContent = r?.ok ? 'Sent to Telegram.' : (r?.error ?? 'Could not send.'); b.disabled = false; }; });
+}
+async function ensureBrief(st) {
+  const stale = !D.intel?.ok || !D.intel.generatedAt || (Date.now() - Date.parse(D.intel.generatedAt)) > 8 * 3.6e6;
+  if (!stale) return true;
+  st.textContent = "Generating today's brief first (about 90 seconds)…";
+  if (await generateIntel()) return true;
+  st.textContent = 'The brief did not generate. Try again.'; return false;
+}
+async function buildIssue(kind) {
+  const weekly = kind === 'weekly', btn = $(weekly ? 'nlBuildW' : 'nlBuild'), st = $('nlStatus'); $('nlBuild').disabled = $('nlBuildW').disabled = true;
   try {
-    const stale = !D.intel?.ok || !D.intel.generatedAt || (Date.now() - Date.parse(D.intel.generatedAt)) > 8 * 3.6e6;
-    if (stale) { st.textContent = "Generating today's brief first (about 90 seconds)…"; if (!(await generateIntel())) { st.textContent = 'The brief did not generate. Try again.'; return; } }
+    if (!(await ensureBrief(st))) return;
+    st.textContent = 'Reading the archive…';
+    const arch = await loadArchive(), today = ukDate();
     const { eventImpactFor } = await import('./js/eventImpactMap.js');
-    const out = buildNewsletter(nlInput({ bookFor: e => { try { return eventImpactFor(e.country, e.event); } catch { return null; } } }));
-    showNl(out);
-    st.textContent = `Built: ${out.subject}`;
+    const bookFor = e => { try { return eventImpactFor(e.country, e.event); } catch { return null; } };
+    const base = nlInput({ bookFor });
+    if (weekly) {
+      base.edition = 'weekly';
+      const wf = await J('/api/vol-forecast/weekly'), keys = Object.keys(insts());
+      // ForexFactory lists only the current week, so on a Sunday the week ahead comes from the forward list (release type, no vendor rating) merged in without duplicates.
+      const ca = await J('/api/calendar-ahead'), seen = new Set((D.events ?? []).map(e => `${e.country}|${String(e.event).toLowerCase()}|${ukDate(new Date(e.ms))}`));
+      const extra = (ca?.rows ?? []).filter(r => !seen.has(`${r.country}|${String(r.event).toLowerCase()}|${ukDate(new Date(r.ms))}`)).map(r => ({ ms: r.ms, country: r.country, event: r.event, impact: String(r.impact ?? 'high').toLowerCase(), estimate: r.estimate ?? null, prev: r.prev ?? null }));
+      const evs = P.aheadEvents([...(D.events ?? []), ...extra], Date.now(), { limit: 90, withinHours: 8 * 24 });
+      base.week = { events: evs.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })), ranges: NL_RANGE_KEYS.filter(k => wf?.instruments?.[k]).map(k => { const f = wf.instruments[k]; return { label: labelOf(k), hl5: f.hl_5d, hl5_75: f.hl_5d_75, hlMed: pairData(k).hlMed }; }) };
+      const weekAgo = ukDate(new Date(Date.now() - 8 * 864e5)), wkd = arch.filter(i => i.kind === 'daily' && i.score && i.date > weekAgo), wr = weekRecord(wkd);
+      base.record = wr ? { line: `${wr.days} daily issues, ${wr.n} market-days: the median day came out ${wr.median}x the expected size, ${wr.pastShare}% ran past it and ${wr.withinShare}% landed within half to one-and-a-half times. A well-calibrated forecast has the median near 1 and about half past it.`, days: wkd.map(i => ({ date: i.date, line: `median ${i.score.median}x the expected size, ${i.score.pastShare}% past it` })) } : null;
+    } else {
+      const lastScored = arch.find(i => i.kind === 'daily' && i.score && i.date < today);
+      base.record = lastScored ? { line: `Issue of ${lastScored.date}. ${scoreLine(lastScored.score)}` } : null;
+    }
+    const snap = snapshotOf(base, { date: today, kind }), prev = arch.find(i => i.kind === kind && i.date < today);
+    base.since = diffSnapshots(prev?.snapshot ?? null, snap);
+    const out = buildNewsletter(base);
+    showNl(out, kind);
+    st.textContent = `Built: ${out.subject}. Saving…`;
+    const sv = await J('/api/newsletter/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject: out.subject, html: out.html, text: out.text, snapshot: snap }) });
+    st.textContent = sv?.ok ? `Built and saved: ${out.subject}` : `Built, but not saved to the archive (${sv?.error ?? 'no response'}): ${out.subject}`;
+    drawPast();
   } catch (e) { st.textContent = 'Could not build the newsletter: ' + e.message; console.error('[atlas newsletter]', e); }
-  finally { btn.disabled = false; }
+  finally { $('nlBuild').disabled = $('nlBuildW').disabled = false; }
 }
-function showNl(out) {
-  const url = URL.createObjectURL(new Blob([out.html], { type: 'text/html' })), fname = `desk-atlas-daily-${new Date().toISOString().slice(0, 10)}.html`;
+function showNl(out, kind = 'daily') {
+  const url = URL.createObjectURL(new Blob([out.html], { type: 'text/html' })), fname = `desk-atlas-${kind}-${new Date().toISOString().slice(0, 10)}.html`;
   $('nlOut').innerHTML = `<div class="chips" style="margin:12px 0 8px"><button class="btn" id="nlPdf">Save as PDF</button><a class="btn" href="${url}" download="${fname}">Download .html</a><button class="btn" id="nlCopy">Copy plain text</button><a class="btn" href="${url}" target="_blank" rel="noopener">Open full page</a></div><p class="note" style="margin-bottom:8px"><b>Subject:</b> ${esc(out.subject)}</p><iframe id="nlFrame" title="Newsletter preview" sandbox style="width:100%;height:760px;border:1px solid var(--line);border-radius:12px;background:#fff"></iframe><p class="note" style="margin-top:6px">Self-contained: no scripts and no external requests, so it looks the same when attached, forwarded or printed to PDF.</p>`;
   $('nlFrame').srcdoc = out.html;
   $('nlPdf').onclick = () => { const w = window.open(url, '_blank'); if (!w) { $('nlStatus').textContent = 'Pop-up blocked: allow pop-ups, or use Open full page then Ctrl+P.'; return; } w.addEventListener('load', () => setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 400)); $('nlStatus').textContent = 'In the print window choose Save as PDF, and turn on Background graphics if the colours look flat.'; };
@@ -788,7 +827,7 @@ async function main() {
   (await Promise.all(EXTRA.map(s => J(s[0])))).forEach((r, i) => { D[EXTRA[i][1]] = r; });
   D.__extra = true; drawAi(); redraw(); drawSrcs();
 }
-window.__atlas = { go, state, D, main, positionContext, abHtml, intelBodyHtml, nlInput, buildDaily };
+window.__atlas = { go, state, D, main, positionContext, abHtml, intelBodyHtml, nlInput, buildIssue };
 main().catch(e => { $('loaderr').innerHTML = `<div class="err">Page error: ${esc(e.message)}</div>`; console.error('[atlas]', e); });
 </script>
 </body>
