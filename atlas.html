@@ -288,7 +288,7 @@ import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
 import { buildCountryCard } from './js/countryCard.js';
 import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
 import * as P from './js/atlasPosition.js';
-import { buildNewsletter, eventNote } from './js/newsletter.js';
+import { buildNewsletter, eventNote, flagProximity } from './js/newsletter.js';
 import { snapshotOf, diffSnapshots, scoreLine, weekRecord } from './js/newsletterRecord.js';
 import { DESK_EVIDENCE } from './js/deskEvidence.js';
 
@@ -323,7 +323,8 @@ const glyphOf = k => { const c = ccysOf(k); return c ? FLAG[c[0]] + FLAG[c[1]] :
 
 /* ── derived numbers ── */
 function lastTwo(key) { const a = D.drill?.series?.[key]; if (!a) return null; let i = a.length - 1; while (i >= 0 && a[i] == null) i--; let j = i - 1; while (j >= 0 && a[j] == null) j--; return i < 0 ? null : { last: a[i], prev: j >= 0 ? a[j] : null, i }; }
-function back(key, n) { const a = D.drill?.series?.[key]; const t = lastTwo(key); if (!a || !t) return null; let k = t.i, c = 0; while (k > 0 && c < n) { k--; if (a[k] != null) c++; } return a[k] ?? null; }
+// "n days back" is CALENDAR days, the same window the chain uses (CHAIN_WINDOW_DAYS), so the tiles, the cards and the chain can never disagree. It used to count 20 observations (about 4 weeks), which flipped the sign of any move that turned within that month.
+function back(key, days) { const a = D.drill?.series?.[key], t = lastTwo(key); if (!a || !t) return null; const dts = D.drill.dates, cut = Date.parse(dts[t.i]) - days * 864e5; let k = t.i; while (k > 0 && (a[k] == null || Date.parse(dts[k]) > cut)) k--; return a[k] ?? null; }
 function spark(key, n = 30) { const a = D.drill?.series?.[key]; return a ? a.slice(-n).filter(v => v != null) : []; }
 function chainNow() {
   const S = D.drill.series, N = D.drill.dates.length - 1;
@@ -535,12 +536,13 @@ function nlInput({ bookFor = () => null } = {}) {
   const position = P.positionLines({ regime, axes, firing, events: ahead, fedPath: fp, meeting }), a = D.intel?.analysis ?? null, keys = Object.keys(insts()), { tiles, stages } = nlNumbers();
   return {
     date: new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' }),
-    generatedAt: D.intel?.generatedAt ?? null, headline: a?.headline, regimeWord: a?.regime ?? 'MIXED', riskFlags: D.rf ? { active: D.rf.active ?? 0, total: D.rf.available ?? D.rf.total ?? 5, flags: (D.rf.flags ?? []).map(f => ({ label: f.label, on: f.on, detail: f.detail })) } : null,
+    generatedAt: D.intel?.generatedAt ?? null, headline: a?.headline, regimeWord: a?.regime ?? 'MIXED', riskFlags: D.rf ? { active: D.rf.active ?? 0, total: D.rf.available ?? D.rf.total ?? 5, flags: (D.rf.flags ?? []).map(f => ({ key: f.key, label: f.label, on: f.on, value: f.value, detail: f.detail })) } : null,
     brief: a, llm: D.intel?.llm ?? null, tiles, stages, links: derived.chain.links, position,
     events: ahead.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })),
     ranges: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k); return { label: labelOf(k), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used }; }),
     assets: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k), reg = P.regimeFor(D.regime, k), gam = P.gammaFor(D.oi, k), fire = P.deskFiring(D.ds, k).filter(f => f.instruments.includes(k)).length, g = { fx: 'FX', index: 'Index', commodity: 'Gold', crypto: 'Bitcoin' }[acOf(k)] ?? '';
-      const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k); return { key: k, label: labelOf(k), groupLabel: g, read: mk?.read ?? null, watch: mk?.watch ?? null, price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
+      const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: mv?.d1 ?? null, d20: mv?.d20 ?? null, read: mk?.read ?? null, watch: mk?.watch ?? null, price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
+    yieldStack: (() => { const y = fmtRate('us10y'), r = fmtRate('tips'), b = fmtRate('bei'); return y && r && b ? { nominal: y.v, real: r.v, bei: b.v, dNom: y.d20, dReal: r.d20, dBei: b.d20 } : null; })(),
     strengths: derived.str, surprise: P.surpriseBars(D.es), cb: P.cbTone(cbHist()), crowding: P.crowding(D.ce), regimeCard: regime, changes: P.changesRows(D.mc), fedPath: fp, scenarios: P.scenarios(D.gr), nowcast: nc,
     eod: D.eod?.review ? { hook: D.eod.review.hook, right: D.eod.review.plan?.right, wrong: D.eod.review.plan?.wrong } : null,
   };
@@ -610,6 +612,12 @@ function showNl(out, kind = 'daily') {
 }
 
 /* ── global ── */
+
+function proxBlock(rf) {
+  const rows = flagProximity(rf.flags);
+  if (!rows.length) return '';
+  return `<div style="margin-top:8px;display:grid;gap:5px;min-width:210px">${rows.map(r => `<div title="${esc(r.name)}: ${esc(r.valueText)}, fires at ${esc(r.thresholdText)}" style="display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:11.5px;color:var(--text2)"><span>${esc(r.name)}</span><span class="mono">${esc(r.valueText)} / ${esc(r.thresholdText)}</span><span style="grid-column:1/3;height:5px;border-radius:3px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${Math.round(r.share * 100)}%;background:${r.on ? 'var(--red, #e8710a)' : r.share >= 0.7 ? '#d98a00' : 'var(--green, #0f9f6e)'}"></i></span></div>`).join('')}<div class="note" style="margin:0">how close each warning is to firing</div></div>`;
+}
 function heroHtml() {
   const a = D.intel?.ok ? D.intel.analysis : null, rf = D.rf;
   const kick = (a ? `<span class="pill ${/RISK-ON/i.test(a.regime) ? 'bull' : /RISK-OFF/i.test(a.regime) ? 'bear' : 'amber'}">${esc(a.regime)}</span>` : '') + `<span class="pill violet">${icS('bulb')}AI argument from measured links</span>`;
@@ -622,7 +630,7 @@ function heroHtml() {
   const body = a ? esc(a.driver?.[0]?.explain ?? a.driver?.[0]?.what ?? '') : unreachable ? 'The server did not answer after three tries. This is a loading problem, not a missing brief: reload the page, or press Load stored brief. Nothing has been generated or cleared.' : 'Press Generate for the argument: what is driving markets, how it transmits, what would confirm or break it, and what to learn from it. One model call.';
   return `<div><div class="kick">${kick}${age}${who}${dev}</div><h2>${head}</h2><p>${body}</p>
      <p style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="aibox" id="heroai"></span>${unreachable ? `<button class="btn" id="reloadbtn">Load stored brief</button>` : ''}<button class="btn" id="genbtn">${icS('bulb')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds, sends today's Behind / Now / Ahead rows with it</span></p></div>
-     <div class="gauge">${rf ? dial(rf.active ?? 0, rf.available ?? rf.total ?? 5) : ''}</div><div class="gauge">${ring()}</div>`;
+     <div class="gauge">${rf ? dial(rf.active ?? 0, rf.available ?? rf.total ?? 5) : ''}${rf ? proxBlock(rf) : ''}</div><div class="gauge">${ring()}</div>`;
 }
 const fmtRate = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev != null ? (t.last - t.prev) * 100 : null, b20 = back(key, 20), d20 = b20 != null ? (t.last - b20) * 100 : null; return { v: t.last, d1, d20 }; };
 const fmtPct = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev ? (t.last / t.prev - 1) * 100 : null, b20 = back(key, 20), d20 = b20 ? (t.last / b20 - 1) * 100 : null; return { v: t.last, d1, d20 }; };
