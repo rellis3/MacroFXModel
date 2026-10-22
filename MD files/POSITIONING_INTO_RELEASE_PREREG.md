@@ -116,3 +116,42 @@ calls it: a read on who has to act if they are wrong.
 
 To be written as `analysis/positioning_into_release_study.mjs`, reporting into
 `js/deskEvidence.js` as `positioning-into-release` with its power recorded in `POWER`.
+
+## Amendments
+
+**2026-10-22 — PRE-RESULTS (no outcome computed; recorded and pushed before the harness ran).**
+Data substitutions forced by what the environment holds, plus the details the frozen text leaves open. No pass bar
+moved; two got stricter.
+
+1. **Prices: OANDA M15 closes, not M1.** The M1 store isn't available in the session that runs this. The committed
+   OANDA M15 close series (`analysis/output/rates_residual/m15/`, 2018-01 →) is used instead. A London day's true
+   range = max(high of the day's 15-min closes, prior London close) − min(low of the closes, prior close). That
+   understates the true intrabar range by the same mechanism on every day, and the ATR it's divided by is built the
+   same way (trailing 20 London days, strictly before the day). London calendar day 00:00–24:00 Europe/London,
+   weekends excluded.
+2. **NZD is dropped.** There's no NZD/USD price in that store, so 6 pairs remain: EURUSD, GBPUSD, AUDUSD, USDJPY,
+   USDCAD, USDCHF. The pair-count bars are kept as **numbers**: R needs ≥ 4 of 6 pairs positive; D needs ≥ 5 of 6
+   on the pooled sign. Both are stricter than 4/7 and 5/7.
+3. **Calendar: ForexFactory history** (`forge/ff_calendar.py` `load_repaired`, `impact == 'high'`), the
+   desk-calendar source the live path reads. It ends **2025-04-07**, so the sample is London days 2018-01-02 →
+   2025-04-07. The lockbox isn't touched. Release currency = FF `Currency`; US releases land on every pair. The day
+   = FF's repaired date.
+4. **Release kind for a (pair, day)** = `newsKind` (`js/positioningIntoEvent.js`, same regex table) of that day's
+   earliest high-impact release for either leg; ties are broken by event name. **Rate-decision exclusion:** the day
+   is dropped if either leg has any FF row (any impact) that `newsKind` classifies as `rate`.
+5. **Positioning:** CFTC TFF futures-only Leveraged Funds, by contract code
+   (`scripts/cot-extreme-aftermath/fetch_cot.py`, 2006 →). Net is put in pair terms (JPY/CAD/CHF flipped) and taken
+   as a share of OI. pct = rank against the prior up-to-155 reports (needs 52), which is the
+   `/api/cot-extremes` / `extremeOf` convention. Crowded and trimmed use `extremeOf(…, 80, 20)` exactly. A report
+   dated Tuesday T is usable for London days ≥ T + 6 (the following Monday).
+6. **Matching:** the trailing 20-day realised-vol decile uses each pair's own full-sample cut points. That's a
+   binning device that only uses data before each day, not an outcome. Effect = mean over crowded days of (crowded
+   value − mean of the same pair × kind × vol-decile non-crowded cell). Crowded days with an empty control cell are
+   dropped and counted. **Halves** = before / after the median crowded event date. **Bootstrap**: ISO weeks
+   resampled with replacement (all pairs in a week together), 2,000 reps, seed **20261014** (the registration date).
+7. **Placebo:** London days with no high-impact release and no rate decision for either leg; crowded vs non-crowded,
+   matched on pair × vol decile. **Mirror:** the trimmed arm on event days against the same matched control. Each
+   is "passing" if it clears the R bar (or the D bar, for D).
+8. **Harness language:** Python (`scripts/positioning-into-release/run.py`), not the `.mjs` the text names, because
+   the price store is parquet. The statistic is a mean difference with a week bootstrap; no repo brick is
+   re-implemented.
