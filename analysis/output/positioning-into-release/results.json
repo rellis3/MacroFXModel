@@ -1,0 +1,576 @@
+{
+ "id": "positioning-into-release",
+ "seed": 20261014,
+ "window": [
+  "2018-01-31",
+  "2025-04-07"
+ ],
+ "pairs": [
+  "EURUSD",
+  "GBPUSD",
+  "AUDUSD",
+  "USDJPY",
+  "USDCAD",
+  "USDCHF"
+ ],
+ "n_days": 11178,
+ "n_event_days": 6048,
+ "n_quiet_days": 4368,
+ "n_rate_days_excluded": 762,
+ "sanity_event_vs_quiet_R": [
+  1.041,
+  0.936
+ ],
+ "crowded_share_of_event_days": 0.356,
+ "kinds": {
+  "generic": 1988,
+  "survey": 1284,
+  "inflation": 1190,
+  "spending": 427,
+  "growth": 376,
+  "jobs": 341,
+  "claims": 268,
+  "output": 91,
+  "unemp": 59,
+  "trade": 24
+ },
+ "main": {
+  "R": {
+   "all": {
+    "effect": -0.0027,
+    "n_test": 2152,
+    "n_matched": 2105,
+    "unmatched": 47,
+    "n_control": 3896,
+    "ci": [
+     -0.0368,
+     0.036
+    ]
+   },
+   "half1": {
+    "effect": -0.0089,
+    "n_test": 1076,
+    "n_matched": 1022,
+    "unmatched": 54,
+    "n_control": 2147
+   },
+   "half2": {
+    "effect": 0.001,
+    "n_test": 1076,
+    "n_matched": 953,
+    "unmatched": 123,
+    "n_control": 1749
+   },
+   "per_pair": {
+    "EURUSD": {
+     "effect": 0.0312,
+     "n_test": 289,
+     "n_matched": 285,
+     "unmatched": 4,
+     "n_control": 701
+    },
+    "GBPUSD": {
+     "effect": 0.0281,
+     "n_test": 402,
+     "n_matched": 392,
+     "unmatched": 10,
+     "n_control": 681
+    },
+    "AUDUSD": {
+     "effect": -0.0421,
+     "n_test": 370,
+     "n_matched": 365,
+     "unmatched": 5,
+     "n_control": 669
+    },
+    "USDJPY": {
+     "effect": 0.0058,
+     "n_test": 296,
+     "n_matched": 291,
+     "unmatched": 5,
+     "n_control": 635
+    },
+    "USDCAD": {
+     "effect": -0.0605,
+     "n_test": 351,
+     "n_matched": 335,
+     "unmatched": 16,
+     "n_control": 710
+    },
+    "USDCHF": {
+     "effect": 0.0191,
+     "n_test": 444,
+     "n_matched": 437,
+     "unmatched": 7,
+     "n_control": 500
+    }
+   },
+   "verdict": {
+    "checks": {
+     "effect >= +0.15 ATR": false,
+     "CI excludes 0": false,
+     "same sign both halves": false,
+     ">= 4 of 6 pairs positive": true
+    },
+    "passes": false
+   }
+  },
+  "D": {
+   "all": {
+    "effect": 0.0638,
+    "n_test": 2152,
+    "n_matched": 2105,
+    "unmatched": 47,
+    "n_control": 3896,
+    "ci": [
+     0.0187,
+     0.111
+    ]
+   },
+   "half1": {
+    "effect": 0.0291,
+    "n_test": 1076,
+    "n_matched": 1022,
+    "unmatched": 54,
+    "n_control": 2147
+   },
+   "half2": {
+    "effect": 0.1288,
+    "n_test": 1076,
+    "n_matched": 953,
+    "unmatched": 123,
+    "n_control": 1749
+   },
+   "per_pair": {
+    "EURUSD": {
+     "effect": 0.0298,
+     "n_test": 289,
+     "n_matched": 285,
+     "unmatched": 4,
+     "n_control": 701
+    },
+    "GBPUSD": {
+     "effect": 0.1104,
+     "n_test": 402,
+     "n_matched": 392,
+     "unmatched": 10,
+     "n_control": 681
+    },
+    "AUDUSD": {
+     "effect": 0.0431,
+     "n_test": 370,
+     "n_matched": 365,
+     "unmatched": 5,
+     "n_control": 669
+    },
+    "USDJPY": {
+     "effect": 0.0119,
+     "n_test": 296,
+     "n_matched": 291,
+     "unmatched": 5,
+     "n_control": 635
+    },
+    "USDCAD": {
+     "effect": 0.0837,
+     "n_test": 351,
+     "n_matched": 335,
+     "unmatched": 16,
+     "n_control": 710
+    },
+    "USDCHF": {
+     "effect": 0.0805,
+     "n_test": 444,
+     "n_matched": 437,
+     "unmatched": 7,
+     "n_control": 500
+    }
+   },
+   "verdict": {
+    "checks": {
+     "CI excludes 0": true,
+     "same sign both halves": true,
+     ">= 5 of 6 pairs on the pooled sign": true
+    },
+    "passes": true
+   }
+  },
+  "n_by_pair": {
+   "AUDUSD": 370,
+   "EURUSD": 289,
+   "GBPUSD": 402,
+   "USDCAD": 351,
+   "USDCHF": 444,
+   "USDJPY": 296
+  },
+  "median_split": "2022-04-12"
+ },
+ "min_events": {
+  "crowded_event_days": 2152,
+  "pairs_with_25+": 6,
+  "passes": true
+ },
+ "placebo": {
+  "R": {
+   "all": {
+    "effect": 0.0088,
+    "n_test": 1607,
+    "n_matched": 1607,
+    "unmatched": 0,
+    "n_control": 2761,
+    "ci": [
+     -0.0271,
+     0.0403
+    ]
+   },
+   "half1": {
+    "effect": -0.0065,
+    "n_test": 805,
+    "n_matched": 805,
+    "unmatched": 0,
+    "n_control": 1460
+   },
+   "half2": {
+    "effect": 0.0189,
+    "n_test": 802,
+    "n_matched": 802,
+    "unmatched": 0,
+    "n_control": 1301
+   },
+   "per_pair": {
+    "EURUSD": {
+     "effect": 0.0461,
+     "n_test": 215,
+     "n_matched": 215,
+     "unmatched": 0,
+     "n_control": 533
+    },
+    "GBPUSD": {
+     "effect": -0.0258,
+     "n_test": 225,
+     "n_matched": 225,
+     "unmatched": 0,
+     "n_control": 428
+    },
+    "AUDUSD": {
+     "effect": 0.0558,
+     "n_test": 281,
+     "n_matched": 281,
+     "unmatched": 0,
+     "n_control": 390
+    },
+    "USDJPY": {
+     "effect": 0.0049,
+     "n_test": 272,
+     "n_matched": 272,
+     "unmatched": 0,
+     "n_control": 534
+    },
+    "USDCAD": {
+     "effect": -0.0113,
+     "n_test": 194,
+     "n_matched": 194,
+     "unmatched": 0,
+     "n_control": 476
+    },
+    "USDCHF": {
+     "effect": -0.0116,
+     "n_test": 420,
+     "n_matched": 420,
+     "unmatched": 0,
+     "n_control": 400
+    }
+   },
+   "verdict": {
+    "checks": {
+     "effect >= +0.15 ATR": false,
+     "CI excludes 0": false,
+     "same sign both halves": false,
+     ">= 4 of 6 pairs positive": false
+    },
+    "passes": false
+   }
+  },
+  "D": {
+   "all": {
+    "effect": -0.0092,
+    "n_test": 1607,
+    "n_matched": 1607,
+    "unmatched": 0,
+    "n_control": 2761,
+    "ci": [
+     -0.0532,
+     0.0318
+    ]
+   },
+   "half1": {
+    "effect": -0.0137,
+    "n_test": 805,
+    "n_matched": 805,
+    "unmatched": 0,
+    "n_control": 1460
+   },
+   "half2": {
+    "effect": -0.0073,
+    "n_test": 802,
+    "n_matched": 802,
+    "unmatched": 0,
+    "n_control": 1301
+   },
+   "per_pair": {
+    "EURUSD": {
+     "effect": -0.0187,
+     "n_test": 215,
+     "n_matched": 215,
+     "unmatched": 0,
+     "n_control": 533
+    },
+    "GBPUSD": {
+     "effect": 0.001,
+     "n_test": 225,
+     "n_matched": 225,
+     "unmatched": 0,
+     "n_control": 428
+    },
+    "AUDUSD": {
+     "effect": -0.0244,
+     "n_test": 281,
+     "n_matched": 281,
+     "unmatched": 0,
+     "n_control": 390
+    },
+    "USDJPY": {
+     "effect": 0.0435,
+     "n_test": 272,
+     "n_matched": 272,
+     "unmatched": 0,
+     "n_control": 534
+    },
+    "USDCAD": {
+     "effect": 0.0251,
+     "n_test": 194,
+     "n_matched": 194,
+     "unmatched": 0,
+     "n_control": 476
+    },
+    "USDCHF": {
+     "effect": -0.0497,
+     "n_test": 420,
+     "n_matched": 420,
+     "unmatched": 0,
+     "n_control": 400
+    }
+   },
+   "verdict": {
+    "checks": {
+     "CI excludes 0": false,
+     "same sign both halves": true,
+     ">= 5 of 6 pairs on the pooled sign": false
+    },
+    "passes": false
+   }
+  },
+  "n_by_pair": {
+   "AUDUSD": 281,
+   "EURUSD": 215,
+   "GBPUSD": 225,
+   "USDCAD": 194,
+   "USDCHF": 420,
+   "USDJPY": 272
+  },
+  "median_split": "2021-06-08"
+ },
+ "mirror": {
+  "R": {
+   "all": {
+    "effect": -0.0198,
+    "n_test": 74,
+    "n_matched": 74,
+    "unmatched": 0,
+    "n_control": 3822,
+    "ci": [
+     -0.1679,
+     0.097
+    ]
+   },
+   "half1": {
+    "effect": 0.0016,
+    "n_test": 37,
+    "n_matched": 37,
+    "unmatched": 0,
+    "n_control": 3618
+   },
+   "half2": {
+    "effect": -0.0003,
+    "n_test": 37,
+    "n_matched": 21,
+    "unmatched": 16,
+    "n_control": 204
+   },
+   "per_pair": {
+    "EURUSD": {
+     "effect": 0.4888,
+     "n_test": 2,
+     "n_matched": 2,
+     "unmatched": 0,
+     "n_control": 699
+    },
+    "GBPUSD": {
+     "effect": 0.0194,
+     "n_test": 13,
+     "n_matched": 13,
+     "unmatched": 0,
+     "n_control": 668
+    },
+    "AUDUSD": {
+     "effect": null
+    },
+    "USDJPY": {
+     "effect": -0.0778,
+     "n_test": 53,
+     "n_matched": 53,
+     "unmatched": 0,
+     "n_control": 582
+    },
+    "USDCAD": {
+     "effect": null
+    },
+    "USDCHF": {
+     "effect": 0.2379,
+     "n_test": 6,
+     "n_matched": 6,
+     "unmatched": 0,
+     "n_control": 494
+    }
+   },
+   "verdict": {
+    "checks": {
+     "effect >= +0.15 ATR": false,
+     "CI excludes 0": false,
+     "same sign both halves": false,
+     ">= 4 of 6 pairs positive": false
+    },
+    "passes": false
+   }
+  },
+  "D": {
+   "all": {
+    "effect": -0.0247,
+    "n_test": 74,
+    "n_matched": 74,
+    "unmatched": 0,
+    "n_control": 3822,
+    "ci": [
+     -0.2893,
+     0.2449
+    ]
+   },
+   "half1": {
+    "effect": 0.0557,
+    "n_test": 37,
+    "n_matched": 37,
+    "unmatched": 0,
+    "n_control": 3618
+   },
+   "half2": {
+    "effect": 0.0535,
+    "n_test": 37,
+    "n_matched": 21,
+    "unmatched": 16,
+    "n_control": 204
+   },
+   "per_pair": {
+    "EURUSD": {
+     "effect": 1.3058,
+     "n_test": 2,
+     "n_matched": 2,
+     "unmatched": 0,
+     "n_control": 699
+    },
+    "GBPUSD": {
+     "effect": 0.0204,
+     "n_test": 13,
+     "n_matched": 13,
+     "unmatched": 0,
+     "n_control": 668
+    },
+    "AUDUSD": {
+     "effect": null
+    },
+    "USDJPY": {
+     "effect": -0.0634,
+     "n_test": 53,
+     "n_matched": 53,
+     "unmatched": 0,
+     "n_control": 582
+    },
+    "USDCAD": {
+     "effect": null
+    },
+    "USDCHF": {
+     "effect": -0.2245,
+     "n_test": 6,
+     "n_matched": 6,
+     "unmatched": 0,
+     "n_control": 494
+    }
+   },
+   "verdict": {
+    "checks": {
+     "CI excludes 0": false,
+     "same sign both halves": false,
+     ">= 5 of 6 pairs on the pooled sign": false
+    },
+    "passes": false
+   }
+  },
+  "n_by_pair": {
+   "EURUSD": 2,
+   "GBPUSD": 13,
+   "USDCHF": 6,
+   "USDJPY": 53
+  },
+  "median_split": "2024-09-08"
+ },
+ "void_checks": {
+  "placebo_R": false,
+  "placebo_D": false,
+  "mirror_R": false,
+  "mirror_D": false
+ },
+ "verdict": {
+  "R": "NULL",
+  "D": "VALIDATED"
+ },
+ "verdict_words": {
+  "R": "null",
+  "D": "validated"
+ },
+ "ranAt": "2026-10-22T16:30:00Z",
+ "B": 2000,
+ "prereg": "MD files/POSITIONING_INTO_RELEASE_PREREG.md",
+ "preregAmendmentCommits": [
+  "61fe417",
+  "3561e68"
+ ],
+ "branch": "ccr-b9c5645b-qc2in4",
+ "cells": [
+  {
+   "name": "R: crowded event-day range vs matched control (ATR)",
+   "n": 2105,
+   "est": -0.0027,
+   "lo": -0.0368,
+   "hi": 0.036,
+   "bar": ">= +0.15 & CI excl 0 & halves & 4/6 pairs",
+   "verdict": "null"
+  },
+  {
+   "name": "D: move against the crowded side vs matched control (ATR)",
+   "n": 2105,
+   "est": 0.0638,
+   "lo": 0.0187,
+   "hi": 0.111,
+   "bar": "CI excl 0 & halves & 5/6 pairs",
+   "verdict": "validated"
+  }
+ ]
+}
