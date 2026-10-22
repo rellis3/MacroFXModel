@@ -1,5 +1,5 @@
 // Tests for js/newsletter.js.   node js/newsletter.test.mjs
-import { buildNewsletter, eventNote, familyOf, BANNER_SVG, sparkSvg, DISCLAIMER } from './newsletter.js';
+import { chainSvg, buildNewsletter, eventNote, familyOf, BANNER_SVG, sparkSvg, DISCLAIMER } from './newsletter.js';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
 const NOW = Date.parse('2026-10-22T10:00:00Z');
@@ -28,7 +28,7 @@ const full = buildNewsletter({
   llm: { provider: 'deepseek', label: 'DeepSeek', model: 'deepseek-chat' },
   tiles: [{ name: 'Rates', value: '4.79%', sub: '2Y +2bp', tone: 'up', spark: [4.6, 4.7, 4.75, 4.79] }, { name: 'Credit', value: '333bp', sub: 'HY +4bp', tone: 'dn', spark: [320, 325, 330, 333] }],
   stages: [{ n: 'Bonds', m: 'the reservoir', rows: [['US 2Y', '4.79%', '+2bp', 'up']] }, { n: 'Credit', m: 'the pipes', rows: [] }, { n: 'FX', m: 'the valves', rows: [] }, { n: 'Equities', m: 'the tap', rows: [] }],
-  links: [{ verdict: 'broken', a: { label: 'Real yield', text: '-16bp' }, b: { label: 'Dollar', text: '+0.9%' }, read: 'flight to quality shape' }, { verdict: 'quiet', a: { label: 'x', text: '' }, b: { label: 'y', text: '' } }, { verdict: 'unmeasured', a: { label: 'p', text: '' }, b: { label: 'q', text: '' } }],
+  links: [{ verdict: 'broken', a: { key: 'real', label: 'Real yield', text: '-16bp' }, b: { key: 'dxy', label: 'Dollar', text: '+0.9%' }, read: 'flight to quality shape' }, { verdict: 'quiet', a: { label: 'x', text: '' }, b: { label: 'y', text: '' } }, { verdict: 'unmeasured', a: { label: 'p', text: '' }, b: { label: 'q', text: '' } }],
   position: { behind: ['The backdrop is reflation.'], right: ['Six conditions firing.'], ahead: ['Claims in 3 hours.'] },
   events: [{ ms: NOW + 3 * 3.6e6, country: 'US', ccy: 'USD', event: 'Unemployment Claims', impact: 'medium', estimate: '200K', prev: '199K', note: eventNote({ event: 'Unemployment Claims', ccy: 'USD' }, null, ['EURUSD', 'USDJPY', 'GOLD']) }, { ms: NOW + 5 * 3.6e6, country: 'GB', ccy: 'GBP', event: 'CBI Industrial Order Expectations', impact: 'low', estimate: '-20', prev: '-9', note: eventNote({ event: 'CBI Industrial Order Expectations', ccy: 'GBP' }, null, ['GBPUSD']) }],
   ranges: [{ label: 'EUR/USD', price: '1.12324', hlMed: 0.57, used: 0.46 }, { label: 'Gold', price: '4127.1', hlMed: 1.42, used: 0.68 }],
@@ -43,7 +43,7 @@ ok('subject comes from the model\'s letter when present and is capped', full.sub
 ok('every part of the daily issue renders: world, currencies, pairs, context, triggers, lesson, honesty box', ['The numbers', 'What is moving markets', 'The big releases coming up', 'The currencies', 'Part 2', 'Each market at a glance', 'Part 3', 'The bigger picture', 'What would change the story', 'lesson', 'What we cannot tell you'].every(x => full.html.includes(x)));
 ok('the three tenses are present', /Yesterday and before<\/b>/.test(full.html) && /Today<\/b>/.test(full.html) && /Coming up<\/b>/.test(full.html));
 ok('graphics are inline SVG: banner, sparklines, dial, plumbing', (full.html.match(/<svg /g) ?? []).length >= 5 && /Bonds, credit, FX and equities as a plumbing system/.test(full.html) && /risk flags active/.test(full.html));
-ok('the chain of impact lists measured links (quiet ones muted) and hides unmeasured ones', /The chain of impact/.test(full.html) && /Real yield<small>/.test(full.html) && /not behaving/.test(full.html) && /too small to judge/.test(full.html) && !/>p<small>/.test(full.html));
+ok('the chain of impact is drawn as the box-and-arrow picture: nodes coloured by verdict, a verdict line, a key, and the reason for each broken link', /The chain of impact/.test(full.html) && /aria-label="The chain of impact/.test(full.html) && /1 of 1 testable link is broken: Real yield → Dollar/.test(full.html) && /1 broken: both moved/.test(full.html) && /<rect x="/.test(full.html));
 ok('every currency gets a card with a drawn flag, a name and its central bank', /class="cc2"/.test(full.html) && /US Dollar — Fed/.test(full.html) && /viewBox="0 0 30 20"/.test(full.html));
 ok('every market gets a card with an icon and a range bar', /class="pc"/.test(full.html) && /class="pairflags"/.test(full.html));
 ok('releases show history only where measured, and the page never claims a direction', /Which way a surprise will push the price|Nobody can tell in advance which way/.test(full.html) && /<b[^>]*>History:<\/b> EUR\/USD range[^<]*\.<\/small>/.test(full.html) || /Nobody can tell in advance/.test(full.html));
