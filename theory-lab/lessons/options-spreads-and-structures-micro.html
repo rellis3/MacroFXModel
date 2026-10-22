@@ -340,7 +340,7 @@
       <h2 class="sl-h2">Barings, 1995: a short straddle with no wings</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">It actually happened</div>
-        <p>As widely reported, on 16 January 1995 a Barings trader sold a short straddle on the Nikkei 225: a bet the market would not move much, with a premium collected and no wings. The Kobe earthquake struck on 17 January and the market fell. Losses reached about £827 million (US$1.4 billion), about twice Barings' available trading capital, and Barings was declared insolvent on 26 February 1995. Hidden positions and weak controls made it far worse; the option structure is only one part of the story.</p>
+        <p>As widely reported, on 16 January 1995 a Barings trader sold a straddle on the Nikkei 225: a bet the market would not move much, with a premium collected and no wings. The Kobe earthquake struck on 17 January and the market fell. Losses reached about £827 million (US$1.4 billion), about twice Barings' available trading capital, and Barings was declared insolvent on 26 February 1995. Hidden positions and weak controls made it far worse; the option structure is only one part of the story.</p>
       </div>
       <div class="sl-chain">
         <div class="sl-chain-link"><b>Short straddle</b>Premium collected</div>
@@ -418,7 +418,7 @@
       <li data-verdict="good">Sell an iron butterfly or iron condor: the same short premium, with a bought option on each side as a wing.<div class="tl-drill-why">You collect less, but the worst case is fixed in advance at the wing width less the credit. A shock costs you that amount and no more. You pay for the protection out of the premium; that is the price of surviving the surprise.</div></li>
       <li data-verdict="ok">Skip the trade: your view of "quiet" is not strong enough to be paid for.<div class="tl-drill-why">Defensible and cheap. If you cannot say what you sold to collect the premium, and what the worst case is in points and in money, standing aside is a position. It earns nothing, but it loses nothing.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> As widely reported, on 16 January 1995 a trader at Barings sold a short straddle on the Nikkei 225. The Kobe earthquake struck early on 17 January and the market fell. The trader added to other positions hoping for a recovery. Losses reached about £827 million (US$1.4 billion) and Barings was declared insolvent on 26 February 1995. The losses were made far larger by hidden positions and failures of control, so this drill is about the option structure only. A wing on each side of that one option position would have capped its loss; it would not have fixed the controls.</p><p class="tl-drill-sources">Sources: Board of Banking Supervision, <em>Report of the Board of Banking Supervision Inquiry into the Circumstances of the Collapse of Barings</em>, HMSO, July 1995; Nick Leeson, <em>Rogue Trader</em>, Little, Brown, 1996. Figures (£827 million, US$1.4 billion, 26 February 1995) are as commonly reported; the exact position size is not stated here.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> As widely reported, on 16 January 1995 a trader at Barings sold a straddle on the Nikkei 225. The Kobe earthquake struck early on 17 January and the market fell. The trader added to other positions hoping for a recovery. Losses reached about £827 million (US$1.4 billion) and Barings was declared insolvent on 26 February 1995. The losses were made far larger by hidden positions and failures of control, so this drill is about the option structure only. A wing on each side of that one option position would have capped its loss; it would not have fixed the controls.</p><p class="tl-drill-sources">Sources: Board of Banking Supervision, <em>Report of the Board of Banking Supervision Inquiry into the Circumstances of the Collapse of Barings</em>, HMSO, July 1995; Nick Leeson, <em>Rogue Trader</em>, Little, Brown, 1996. Figures (£827 million, US$1.4 billion, 26 February 1995) are as commonly reported; the exact position size is not stated here.</p></div>
   </div>
 
     </section>
@@ -697,8 +697,6 @@
     var se = $('os3-spot'); if (se) se.value = S0;
     update();
   });
-  // expose for the page's own tests of the maths
-  window.OS3 = { bs: bs, P: P, update: update };
   loadPreset();
   update();
 })();

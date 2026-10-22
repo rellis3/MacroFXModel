@@ -228,7 +228,7 @@
     <tr><td>Debit vertical (bull call, bear put)</td><td>\(W-D\)</td><td>\(D\)</td><td>long strike \(\pm D\)</td></tr>
     <tr><td>Credit vertical (bull put, bear call)</td><td>\(C\)</td><td>\(W-C\)</td><td>short strike \(\mp C\)</td></tr>
     <tr><td>Long straddle (strike \(K\))</td><td>no limit up</td><td>\(D\)</td><td>\(K\pm D\)</td></tr>
-    <tr><td>Long strangle (strikes \(K_p<K_c\))</td><td>no limit up</td><td>\(D\)</td><td>\(K_p-D\) and \(K_c+D\)</td></tr>
+    <tr><td>Long strangle (strikes \(K_p\lt K_c\))</td><td>no limit up</td><td>\(D\)</td><td>\(K_p-D\) and \(K_c+D\)</td></tr>
     <tr><td>Long butterfly (wings \(W\) either side of \(K\))</td><td>\(W-D\) at \(K\)</td><td>\(D\)</td><td>\(K-W+D\) and \(K+W-D\)</td></tr>
     <tr><td>Short iron condor (both wings \(W\))</td><td>\(C\)</td><td>\(W-C\)</td><td>short put \(-C\), short call \(+C\)</td></tr>
     <tr><td>Collar on shares bought at \(S_0\)</td><td>cap \(-\,S_0-V_0\)</td><td>\(S_0-\) floor \(+V_0\)</td><td>\(S_0+V_0\)</td></tr>
@@ -236,8 +236,8 @@
   </table></div>
   <div class="tl-eq-break">
     <div class="tl-eq-chip c1"><code>W</code><span>width between the strikes of a spread</span></div>
-    <div class="tl-eq-chip c2"><code>D</code><span>net debit paid at the start, \(V_0>0\)</span></div>
-    <div class="tl-eq-chip c3"><code>C</code><span>net credit received, \(C=-V_0>0\)</span></div>
+    <div class="tl-eq-chip c2"><code>D</code><span>net debit paid at the start, \(V_0\gt 0\)</span></div>
+    <div class="tl-eq-chip c3"><code>C</code><span>net credit received, \(C=-V_0\gt 0\)</span></div>
     <div class="tl-eq-chip c4"><code>W−D, W−C</code><span>the "other side" of the trade: the width is the most a vertical can pay out</span></div>
   </div>
 
@@ -323,9 +323,9 @@
   <div class="tl-symbols">
     <table>
       <tr><td>\(S, S_0\)</td><td>Price of the underlying at expiry, and today (100 throughout).</td></tr>
-      <tr><td>\(K, K_1, K_2\)</td><td>Strikes. In a vertical \(K_1<K_2\); \(W=K_2-K_1\) is the width.</td></tr>
+      <tr><td>\(K, K_1, K_2\)</td><td>Strikes. In a vertical \(K_1\lt K_2\); \(W=K_2-K_1\) is the width.</td></tr>
       <tr><td>\(q_i\)</td><td>Signed quantity of leg \(i\): +1 buy one, −1 sell one, −2 sell two.</td></tr>
-      <tr><td>\(P_i,\ V_0\)</td><td>Premium of leg \(i\); net premium of the structure. \(V_0>0\) is a debit, \(V_0<0\) a credit.</td></tr>
+      <tr><td>\(P_i,\ V_0\)</td><td>Premium of leg \(i\); net premium of the structure. \(V_0\gt 0\) is a debit, \(V_0\lt 0\) a credit.</td></tr>
       <tr><td>\(\Pi(S),\ \pi(S)\)</td><td>Payoff of the legs at expiry; profit and loss after the net premium, \(\pi=\Pi-V_0\).</td></tr>
       <tr><td>\(D,\ C\)</td><td>A net debit paid or net credit received (as positive numbers).</td></tr>
       <tr><td>\(T,\ \sigma,\ r\)</td><td>Time to expiry in years, volatility, risk-free rate.</td></tr>
@@ -496,7 +496,7 @@
   <h2>The structures, one by one</h2>
   <p>
     Each card gives the build, the computed extremes at the model inputs, the Greek signature, when it is used, and why it
-    exists. Where a figure needs a share count, it is for 100 shares and per share.
+    exists. All figures are per share of the underlying, at the model inputs above.
   </p>
 
   <div class="os3-card blue">
@@ -736,7 +736,7 @@
     <h3>Selling straddles on the Nikkei, with nothing to stop the loss</h3>
     <p>
       Barings was a London merchant bank. In January 1995 one of its traders in Singapore, Nick Leeson, was running
-      positions on the Nikkei 225 index. On 16 January 1995 he sold a short straddle, selling both a call and a put at the
+      positions on the Nikkei 225 index. On 16 January 1995 he sold a straddle, that is, both a call and a put at the
       same strike: in effect a bet that the Japanese market would not move much. That collects a premium and has no wings. If
       the index finishes near the strike you keep the premium. The further it moves in either direction, the more you lose.
     </p>
@@ -837,13 +837,13 @@
       <strong>Assignment and pin risk.</strong> On American-style options (most equity and ETF options) the short leg of a
       spread can be exercised before expiry, most often when it is deep in the money or just before a dividend. The long leg
       still caps your loss, but you can wake up with shares, a margin change and a leg to close. At expiry, with price close to
-      a short strike, you cannot be sure whether you will be assigned. Cash-settled European index options avoid both.
+      a short strike, you cannot be sure whether you will be assigned. Cash-settled European index options avoid early assignment and delivery.
     </p>
     <p>
       <strong>Reading the expiry diagram as today's value.</strong> The butterfly's 4.03 is for the very last day. Halfway
-      there, with spot at 100, it is worth 0.38. A long straddle that is right about the move can still lose to
-      time and falling vol: marked at the halfway point with spot unchanged it is worth −2.33, and a 5-point
-      rise in vol on day one adds +1.98.
+      there, with spot at 100, it is worth 0.38. A long straddle waiting for its move bleeds to time: marked at
+      the halfway point with spot unchanged it is worth −2.33, while a 5-point rise in vol on day one would
+      be worth +1.98 straight away. Both are position values, not expiry values.
     </p>
     <p style="margin-bottom:0">
       <strong>Trusting flat vol.</strong> Real vol differs by strike. In the collar, the put is usually the dearer leg, which is
@@ -862,7 +862,7 @@
       <li data-verdict="good">Sell an iron butterfly or iron condor: the same short premium, with a bought option on each side as a wing.<div class="tl-drill-why">You collect less, but the worst case is fixed in advance at the wing width less the credit. A shock costs you that amount and no more. You pay for the protection out of the premium; that is the price of surviving the surprise.</div></li>
       <li data-verdict="ok">Skip the trade: your view of "quiet" is not strong enough to be paid for.<div class="tl-drill-why">Defensible and cheap. If you cannot say what you sold to collect the premium, and what the worst case is in points and in money, standing aside is a position. It earns nothing, but it loses nothing.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> As widely reported, on 16 January 1995 a trader at Barings sold a short straddle on the Nikkei 225. The Kobe earthquake struck early on 17 January and the market fell. The trader added to other positions hoping for a recovery. Losses reached about £827 million (US$1.4 billion) and Barings was declared insolvent on 26 February 1995. The losses were made far larger by hidden positions and failures of control, so this drill is about the option structure only. A wing on each side of that one option position would have capped its loss; it would not have fixed the controls.</p><p class="tl-drill-sources">Sources: Board of Banking Supervision, <em>Report of the Board of Banking Supervision Inquiry into the Circumstances of the Collapse of Barings</em>, HMSO, July 1995; Nick Leeson, <em>Rogue Trader</em>, Little, Brown, 1996. Figures (£827 million, US$1.4 billion, 26 February 1995) are as commonly reported; the exact position size is not stated here.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> As widely reported, on 16 January 1995 a trader at Barings sold a straddle on the Nikkei 225. The Kobe earthquake struck early on 17 January and the market fell. The trader added to other positions hoping for a recovery. Losses reached about £827 million (US$1.4 billion) and Barings was declared insolvent on 26 February 1995. The losses were made far larger by hidden positions and failures of control, so this drill is about the option structure only. A wing on each side of that one option position would have capped its loss; it would not have fixed the controls.</p><p class="tl-drill-sources">Sources: Board of Banking Supervision, <em>Report of the Board of Banking Supervision Inquiry into the Circumstances of the Collapse of Barings</em>, HMSO, July 1995; Nick Leeson, <em>Rogue Trader</em>, Little, Brown, 1996. Figures (£827 million, US$1.4 billion, 26 February 1995) are as commonly reported; the exact position size is not stated here.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -1193,8 +1193,6 @@
     var se = $('os3-spot'); if (se) se.value = S0;
     update();
   });
-  // expose for the page's own tests of the maths
-  window.OS3 = { bs: bs, P: P, update: update };
   loadPreset();
   update();
 })();

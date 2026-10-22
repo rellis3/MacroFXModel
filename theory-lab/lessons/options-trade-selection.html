@@ -509,7 +509,7 @@
     </p>
     <div class="tl-predict" data-answer="1.84" data-tol="0.5" data-unit="%">
       <div class="tl-predict-q"><strong>Predict first.</strong> The 28-day at-the-money call costs $2.51. Roughly what percentage of that premium does it lose per day to time decay, with the stock unchanged? Lock in a guess, then read the "Theta, % of premium per day" row for the first column.</div>
-      <div class="tl-predict-reveal"><p><strong>About 1.8% a day.</strong> Theta is $−0.046 a day on a $2.51 premium, \(0.046/2.51 \approx 1.84\%\). The 56-day call loses 0.93%, half as much. The short option is not cheaper to hold, it is more expensive to hold per dollar. Now try changing the horizon to 14 days and see which contracts are still alive.</p></div>
+      <div class="tl-predict-reveal"><p><strong>About 1.8% a day.</strong> Theta is $−0.046 a day on a $2.51 premium, \(0.046/2.51 \approx 1.84\%\). The 56-day call loses 0.93%, half as much. The short option is not cheaper to hold, it is more expensive to hold per dollar. Now set the exit day to 42. The 28-day contracts expire first, so the 28-day at-the-money call's expected P&amp;L falls from $2.07 to $1.05, while the 56-day one only slips from $2.06 to $1.87.</p></div>
     </div>
     <div class="tl-controls">
       <div class="tl-control"><div class="tl-control-head"><span>Spot price</span></div><input type="number" id="ots-c-spot" class="tl-scratch-input" value="100" step="1" min="1"></div>
@@ -610,6 +610,7 @@
     The starred link is this lesson's tool. The expected move is useful for choosing which contract fits a view and for noticing
     when the market is charging a lot. It says nothing about how bad the tail can be.
   </p>
+  <p class="tp-note">Sources for the episode: Netflix, first-quarter 2022 shareholder letter, 19 April 2022 (the subscriber figure); Bloomberg, 20 April 2022, report on the share fall (the 35% fall, the $226.19 close, about $54 billion of market value and the largest fall since October 2004). The guidance of about 2.5 million added subscribers comes from news reports at the time. The roughly 10% options-implied move is from pre-earnings market commentary and is approximate. The strike arithmetic in the last paragraph is illustrative, not a record of anyone's trade.</p>
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>

@@ -108,7 +108,7 @@
       <p data-who="Trader">What about the other three styles?</p>
       <p data-who="Quant">Volatility traders bet on how far the price travels, not which way, and fail when the move is already in the price. Hedgers pay to cap a risk they already hold, so their option usually expires unused. That is the point. Relative-value traders bet that two options are mispriced against each other, and fail when the gap widens before it closes.</p>
       <p data-who="Trader">Has anyone sold insurance at scale and survived?</p>
-      <p data-who="Quant">Berkshire Hathaway sold about thirty-seven billion dollars of long-dated index puts and collected four point nine billion. At the end of two thousand and eight it valued them as a ten billion dollar liability, a five point one billion dollar paper loss. But the contracts could only be settled at the end, and almost none needed collateral, so nobody could force it to sell.</p>
+      <p data-who="Quant">Berkshire Hathaway sold about thirty-seven billion dollars of long-dated index puts and collected four point nine billion. At the end of two thousand and eight it valued them as a ten billion dollar liability, a five point one billion dollar paper loss. But the contracts could only be settled at the end, and only a small share needed collateral, so nobody could force it to sell.</p>
       <p data-who="Trader">So a style can survive, with the right funding.</p>
       <p data-who="Quant">Right. Before you trade any of the five, finish the sentence: I get paid because. Then know exactly how you lose, and whether you can hold through it.</p>
     </div>
@@ -260,7 +260,7 @@
         <div class="sl-callout-label">United States, payment for order flow</div>
         <p><strong>Bryzgalova, Pavlova and Sikorskaya (2023), Journal of Finance.</strong> Retail investors favoured cheaper, weekly options, with an average bid-ask spread of 12.6%, and lost money on average.</p>
       </div>
-      <p class="sl-p">For scale: 12.6% of the $0.64 call is about 8 cents of spread, more than the 10 cents per leg the lab assumes once you cross it both ways. These are averages in particular samples. They do not say every retail trader loses.</p>
+      <p class="sl-p">For scale: 12.6% of the $0.64 call is about 8 cents of spread. A round trip across it costs that whole width, so the lab's 10 cents per leg is realistic for such options. These are averages in particular samples. They do not say every retail trader loses.</p>
     </section>
 
     <section class="sl-slide" data-slide="11">
@@ -268,7 +268,7 @@
       <h2 class="sl-h2">Berkshire Hathaway's index puts, 2008</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">It actually happened</div>
-        <p>By the end of 2008 Berkshire had sold put options on the S&amp;P 500, FTSE 100, Euro Stoxx 50 and Nikkei 225, expiring in 15 and 20 years (first on 9 September 2019, last on 24 January 2028). Maximum payout $37.1 billion; premiums received $4.9 billion. Neither side could settle early, and only a small percentage of its derivative contracts required collateral. At year-end it valued the puts at a $10 billion liability, a reported mark-to-market loss of $5.1 billion with nothing yet paid. Source: Berkshire Hathaway chairman's letter for 2008.</p>
+        <p>By the end of 2008 Berkshire had sold put options on the S&amp;P 500, FTSE 100, Euro Stoxx 50 and Nikkei 225, expiring in 15 and 20 years (first on 9 September 2019, last on 24 January 2028). Maximum payout $37.1 billion; premiums received $4.9 billion. Neither side could settle early, and only a small percentage of its derivative contracts called for collateral. At year-end it valued the puts at a $10 billion liability, a reported mark-to-market loss of $5.1 billion with nothing yet paid. Source: Berkshire Hathaway chairman's letter for 2008.</p>
       </div>
       <div class="sl-chain">
         <div class="sl-chain-link"><b>Premium</b>$4.9bn received up front</div>
@@ -281,7 +281,7 @@
         <div class="sl-chain-arrow">→</div>
         <div class="sl-chain-link end"><b>Outcome</b>$5.1bn paper loss, no forced selling</div>
       </div>
-      <p class="sl-p">Maximum payment is 7.6 times the premium. The structure, not the style, made it survivable. A retail seller faces daily margin and can be closed out at the worst moment.</p>
+      <p class="sl-p">Maximum payment is 7.6 times the premium. The structure, not the style, kept it from being forced out. A retail seller faces daily margin and can be closed out at the worst moment.</p>
     </section>
 
     <section class="sl-slide" data-slide="12">
@@ -345,8 +345,8 @@
 
       <div class="sl-quiz-q" data-q="4">
         <div class="sl-quiz-num">Question 4</div>
-        <h4>What made Berkshire's short index puts survivable?</h4>
-        <button class="sl-quiz-opt" data-correct="true">Fixed final settlement, almost no collateral calls and a 15 to 20 year horizon</button>
+        <h4>What kept Berkshire's short index puts from forcing it out?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Fixed final settlement, little collateral to post and a 15 to 20 year horizon</button>
         <button class="sl-quiz-opt">It chose the right month to sell</button>
         <button class="sl-quiz-opt">Index puts cannot lose money</button>
         <div class="sl-quiz-explain">A $5.1 billion paper loss at the end of 2008 did not force it to sell. A retail seller facing daily margin can be closed out at the worst moment.</div>
@@ -370,7 +370,7 @@
     <p>This is a hypothetical situation, not a real company, with round numbers chosen to keep the arithmetic clear. A stock is at $100 and reports results tomorrow after the close. The nearest at-the-money straddle costs $6.40, so the market is pricing a move of roughly 6% either way. You also expect a big move, perhaps 6%. You have no view on direction, and costs are $0.10 per option leg. What do you do?</p>
     <ol class="tl-drill-options">
       <li data-verdict="bad">Buy the straddle. A big move is coming.<div class="tl-drill-why">The price already contains your forecast. If the move is 6% as priced, the straddle returns about what it cost before costs, and the 20 cents of costs on two legs makes the average result negative. You need the move to be larger than 6.4% plus costs, and you have no reason to think it will be.</div></li>
-      <li data-verdict="bad">Sell the straddle. The price is high, so collect it.<div class="tl-drill-why">A price that matches a fair forecast is not high. If the move is 6% you roughly break even before costs. A single 12% move erases several quiet quarters of credit, and you have no reason to think the move will be smaller than priced.</div></li>
+      <li data-verdict="bad">Sell the straddle. The price is high, so collect it.<div class="tl-drill-why">A price that matches a fair forecast is not high. If the move is 6% you roughly break even before costs. A 15% move would lose about $8.60 against the $6.40 collected, with no cap on how large it can be, and you have no reason to think the move will be smaller than priced.</div></li>
       <li data-verdict="good">Pass, unless you can say why you expect a move bigger or smaller than 6.4%.<div class="tl-drill-why">Edge is your forecast against the price. Where the two agree there is none, and costs make the average trade a loss on either side. A trade is worth considering only when you have a reason for a different number, and then you size it for the case where you are wrong.</div></li>
       <li data-verdict="ok">Buy a small straddle for the fun of it, sized so that losing the premium is trivial.<div class="tl-drill-why">Defensible as a bet you treat as entertainment, with the loss capped at an amount you do not mind. It is not an edge: the expected result is minus the costs. The research on retail option traders found entertainment was a bigger motive than hedging, and it found large average losses.</div></li>
     </ol>
@@ -386,7 +386,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Win rate and payoff shape are one fact: at fair prices p·W = (1 − p)·L. A high win rate means a large average loss.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Edge = V(you) − P − c: your forecast against the price, minus costs. For a volatility view it is vega times the volatility gap.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Retail option traders have lost money on average in two peer-reviewed studies; timing, costs and wide spreads are among the reasons.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>It actually happened, Berkshire 2008: $37.1bn of 15 and 20 year index puts, $4.9bn collected, a $5.1bn paper loss, no forced selling. Funding, not style, decided it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>It actually happened, Berkshire 2008: $37.1bn of 15 and 20 year index puts, $4.9bn collected, a $5.1bn paper loss, no forced selling. Funding, not style, decided whether it could hold on.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Before any trade, finish the sentence "I get paid because…", name how you lose, and check you can hold through it.</p></div>
       </div>
       <div class="sl-callout green">

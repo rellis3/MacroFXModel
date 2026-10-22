@@ -11,10 +11,10 @@
 <style>
 /* Local: scenario-ladder heat table and the small tables in this deck. */
 .sp-scroll{overflow-x:auto;margin:8px 0 4px}
-.sp-grid{width:100%;border-collapse:separate;border-spacing:2px;font-family:'DM Mono',monospace;font-size:11.5px;min-width:420px}
-.sp-grid th{color:var(--text3);font-weight:500;padding:4px 5px;text-align:right;white-space:nowrap}
+.sp-grid{width:100%;border-collapse:separate;border-spacing:2px;font-family:'DM Mono',monospace;font-size:10.5px}
+.sp-grid th{color:var(--text3);font-weight:500;padding:4px 3px;text-align:right;white-space:nowrap}
 .sp-grid thead th:first-child,.sp-grid tbody th{text-align:left}
-.sp-grid td{text-align:right;padding:5px 5px;border-radius:4px;color:var(--text);border:1px solid transparent}
+.sp-grid td{text-align:right;padding:5px 3px;border-radius:4px;color:var(--text);border:1px solid transparent}
 .sp-grid td.g{background:var(--green-bg);color:var(--green)}
 .sp-grid td.a1{background:var(--amber-bg);color:var(--amber)}
 .sp-grid td.a2{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)}
@@ -99,7 +99,9 @@
       <p data-who="Trader">And a book of ten different stocks? That is diversified.</p>
       <p data-who="Quant">On a calm day. In a crash, correlations jump. Ten positions with mild correlation behave like three independent bets. When the correlation goes to eighty percent, they behave like barely more than one.</p>
       <p data-who="Trader">Has any of this really happened?</p>
-      <p data-who="Quant">The fifth of February, twenty eighteen. Through all of the year before, the VIX had closed between nine and sixteen. It closed at seventeen on the Friday and thirty-seven on the Monday, more than double in one day. An inverse VIX note called XIV, which held about one point nine billion dollars, lost about ninety-six percent, and its issuer shut it down.</p>
+      <p data-who="Quant">The fifteenth of January, twenty fifteen. The Swiss central bank had held a floor under the euro against the franc for more than three years. Then it dropped it, with immediate effect. At one point the franc was up about thirty percent against the euro. Stop orders were filled far away from their levels, a London broker went into insolvency, and a big American broker needed a three hundred million dollar rescue.</p>
+      <p data-who="Trader">But that was spot, not options.</p>
+      <p data-who="Quant">Yes, and that is why it matters. Take a put struck four percent below the floor, sold for a thousand francs on a million euros. After the gap it owes a hundred and ten thousand francs. A hundred and ten times the premium. A promise from a central bank is not a cap on your payoff.</p>
       <p data-who="Trader">So the one-line version?</p>
       <p data-who="Quant">Size by what you can lose in the worst square, not by what the broker will lend you. And remember the grid is a floor on the damage, not a ceiling.</p>
     </div>
@@ -289,16 +291,18 @@
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it</div>
         <div class="sl-svgwrap">
-          <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of the effective number of independent bets against the number of positions from 1 to 30, for correlation 0.25, correlation 0.8 and a correlation you choose. A dashed diagonal shows full independence. At correlation 0.8 the curve flattens near 1.2 however many positions you add.">
-            <line x1="60" y1="20" x2="60" y2="210" style="stroke:var(--border2);stroke-width:1"/>
-            <line x1="60" y1="210" x2="600" y2="210" style="stroke:var(--border2);stroke-width:1"/>
-            <path d="M60,210 L600,20" style="stroke:var(--text3);stroke-dasharray:4,4;fill:none"/>
-            <path id="nf-p-calm" d="M60.0,203.7 L78.6,199.9 L97.2,197.3 L115.9,195.5 L134.5,194.2 L153.1,193.1 L171.7,192.3 L190.3,191.6 L209.0,191.0 L227.6,190.5 L246.2,190.1 L264.8,189.7 L283.4,189.4 L302.1,189.1 L320.7,188.9 L339.3,188.7 L357.9,188.5 L376.6,188.3 L395.2,188.1 L413.8,188.0 L432.4,187.8 L451.0,187.7 L469.7,187.6 L488.3,187.5 L506.9,187.4 L525.5,187.3 L544.1,187.2 L562.8,187.1 L581.4,187.0 L600.0,187.0" style="stroke:var(--blue);stroke-width:2.5;fill:none"/>
-            <path id="nf-p-stress" d="M60.0,203.7 L78.6,203.0 L97.2,202.7 L115.9,202.5 L134.5,202.5 L153.1,202.4 L171.7,202.4 L190.3,202.3 L209.0,202.3 L227.6,202.3 L246.2,202.3 L264.8,202.2 L283.4,202.2 L302.1,202.2 L320.7,202.2 L339.3,202.2 L357.9,202.2 L376.6,202.2 L395.2,202.2 L413.8,202.2 L432.4,202.2 L451.0,202.2 L469.7,202.2 L488.3,202.2 L506.9,202.2 L525.5,202.2 L544.1,202.2 L562.8,202.2 L581.4,202.2 L600.0,202.1" style="stroke:var(--red);stroke-width:2.5;fill:none"/>
-            <path id="nf-p-you" d="M60.0,203.7 L78.6,201.6 L97.2,200.5 L115.9,199.9 L134.5,199.4 L153.1,199.1 L171.7,198.9 L190.3,198.7 L209.0,198.6 L227.6,198.5 L246.2,198.4 L264.8,198.3 L283.4,198.2 L302.1,198.2 L320.7,198.1 L339.3,198.1 L357.9,198.0 L376.6,198.0 L395.2,198.0 L413.8,197.9 L432.4,197.9 L451.0,197.9 L469.7,197.9 L488.3,197.8 L506.9,197.8 L525.5,197.8 L544.1,197.8 L562.8,197.8 L581.4,197.8 L600.0,197.7" style="stroke:var(--amber);stroke-width:2.5;fill:none"/>
-            <text x="330" y="232" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">number of positions N (1 to 30)</text>
-            <text x="598" y="183.0" text-anchor="end" style="fill:var(--blue);font-size:10px;font-family:'DM Mono',monospace">ρ 0.25</text>
-            <text x="598" y="198.1" text-anchor="end" style="fill:var(--red);font-size:10px;font-family:'DM Mono',monospace">ρ 0.80</text>
+          <svg viewBox="0 0 480 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of the effective number of independent bets against the number of positions from 1 to 30, for correlation 0.25, correlation 0.8 and a correlation you choose. A dashed line shows full independence up to 10 bets. At correlation 0.8 the curve flattens near 1.2 however many positions you add.">
+            <line x1="52" y1="12" x2="52" y2="212" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="52" y1="212" x2="470" y2="212" style="stroke:var(--border2);stroke-width:1"/>
+            <path d="M52,192.0 L181.7,12" style="stroke:var(--text3);stroke-dasharray:4,4;fill:none"/>
+            <path id="nf-p-calm" d="M52.0,192.0 L66.4,180.0 L80.8,172.0 L95.2,166.3 L109.7,162.0 L124.1,158.7 L138.5,156.0 L152.9,153.8 L167.3,152.0 L181.7,150.5 L196.1,149.1 L210.6,148.0 L225.0,147.0 L239.4,146.1 L253.8,145.3 L268.2,144.6 L282.6,144.0 L297.0,143.4 L311.4,142.9 L325.9,142.4 L340.3,142.0 L354.7,141.6 L369.1,141.2 L383.5,140.9 L397.9,140.6 L412.3,140.3 L426.8,140.0 L441.2,139.7 L455.6,139.5 L470.0,139.3" style="stroke:var(--blue);stroke-width:2.5;fill:none"/>
+            <path id="nf-p-stress" d="M52.0,192.0 L66.4,189.8 L80.8,188.9 L95.2,188.5 L109.7,188.2 L124.1,188.0 L138.5,187.9 L152.9,187.8 L167.3,187.7 L181.7,187.6 L196.1,187.6 L210.6,187.5 L225.0,187.5 L239.4,187.4 L253.8,187.4 L268.2,187.4 L282.6,187.4 L297.0,187.3 L311.4,187.3 L325.9,187.3 L340.3,187.3 L354.7,187.3 L369.1,187.3 L383.5,187.3 L397.9,187.2 L412.3,187.2 L426.8,187.2 L441.2,187.2 L455.6,187.2 L470.0,187.2" style="stroke:var(--red);stroke-width:2.5;fill:none"/>
+            <path id="nf-p-you" d="M52.0,192.0 L66.4,185.3 L80.8,182.0 L95.2,180.0 L109.7,178.7 L124.1,177.7 L138.5,177.0 L152.9,176.4 L167.3,176.0 L181.7,175.6 L196.1,175.3 L210.6,175.1 L225.0,174.9 L239.4,174.7 L253.8,174.5 L268.2,174.4 L282.6,174.2 L297.0,174.1 L311.4,174.0 L325.9,173.9 L340.3,173.8 L354.7,173.7 L369.1,173.7 L383.5,173.6 L397.9,173.5 L412.3,173.5 L426.8,173.4 L441.2,173.4 L455.6,173.3 L470.0,173.3" style="stroke:var(--amber);stroke-width:2.5;fill:none"/>
+            <text x="48" y="22" text-anchor="end" style="fill:var(--text3);font-size:13px;font-family:'DM Mono',monospace">10</text>
+            <text x="48" y="216" text-anchor="end" style="fill:var(--text3);font-size:13px;font-family:'DM Mono',monospace">0</text>
+            <text x="261" y="240" text-anchor="middle" style="fill:var(--text3);font-size:13px;font-family:'DM Mono',monospace">positions N (1 to 30); dashed: independent</text>
+            <text x="466" y="133.3" text-anchor="end" style="fill:var(--blue);font-size:12px;font-family:'DM Mono',monospace">ρ 0.25</text>
+            <text x="466" y="181.2" text-anchor="end" style="fill:var(--red);font-size:12px;font-family:'DM Mono',monospace">ρ 0.80</text>
           </svg>
         </div>
         <div class="sl-sliderhead"><span>Your correlation ρ</span><span class="sl-live" id="nf-rho-val">ρ = 0.50</span></div>
@@ -312,37 +316,35 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9 · It actually happened</div>
-      <h2 class="sl-h2">5 February 2018: a year of calm, one session of 115%</h2>
+      <h2 class="sl-h2">15 January 2015: a promise that capped nothing</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">It actually happened</div>
-        <p>In 2017 the VIX closed between 9.14 and 16.04 on all 251 trading days. On Friday 2 February 2018 it rose 28.5%, from 13.47 to 17.31. On Monday 5 February the S&amp;P 500 fell about 4.1% and the VIX closed at 37.32, up 115.6% on the day and 20.01 points, the largest one-day percentage rise in Cboe's history from 1990. The inverse-VIX note XIV, which held about $1.9 billion, fell about 96%, from a closing indicative value of $108.37 to near $4.22. Credit Suisse announced an acceleration event on 6 February and paid holders about $6 a note. The VIX fell back to 29.98 the next day, but the note was gone.</p>
+        <p>In September 2011 the Swiss National Bank set a minimum of CHF 1.20 per euro and defended it by buying foreign currency. For over three years EUR/CHF could barely trade below it. On 15 January 2015 the bank discontinued the minimum "with immediate effect", stopped the purchases and cut the sight-deposit rate to −0.75%. At one point the franc was up about 30% against the euro, and later EUR/CHF was down about 13%, near 1.04. Stops and other resting orders were often filled far from their levels. Alpari UK, a London retail broker, entered insolvency, Global Brokers NZ could not resume business, and FXCM took a $300 million financing from Leucadia National on 16 January.</p>
       </div>
       <div class="sl-chain">
-        <div class="sl-chain-link"><b>Calm</b>VIX 9.14 to 16.04 all of 2017</div>
+        <div class="sl-chain-link"><b>A floor</b>Held above 1.20 from September 2011</div>
         <div class="sl-chain-arrow">→</div>
-        <div class="sl-chain-link concept"><b>★ This lesson: sizing</b>Allocations set by calm and by margin</div>
+        <div class="sl-chain-link concept"><b>★ This lesson: sizing</b>Notional set by a sample in which the floor held</div>
         <div class="sl-chain-arrow">→</div>
-        <div class="sl-chain-link shock"><b>5 Feb 2018</b>VIX 17.31 → 37.32</div>
+        <div class="sl-chain-link shock"><b>15 Jan 2015</b>Floor dropped, franc up ~30% at one point</div>
         <div class="sl-chain-arrow">→</div>
-        <div class="sl-chain-link end"><b>Outcome</b>XIV −96%, terminated</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Stops skipped; brokers fail or are rescued</div>
       </div>
     </section>
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
-      <h2 class="sl-h2">The same night, in your account</h2>
-      <p class="sl-sub">The note lost 96.1% in a day. Your loss is your allocation times 0.961.</p>
+      <h2 class="sl-h2">The same gap, on a short put</h2>
+      <p class="sl-sub">Spot 1.20. You sell a one-month put struck at 1.15 on EUR 1,000,000 for an illustrative CHF 1,000.</p>
       <table class="sp-table">
-        <tr><th>Share of the account held in XIV</th><th>Loss on the night</th></tr>
-      <tr><td>10%</td><td>9.6% of the account</td></tr>
-      <tr><td>25%</td><td>24.0% of the account</td></tr>
-      <tr><td>50%</td><td>48.1% of the account</td></tr>
-      <tr><td>100%</td><td>96.1% of the account</td></tr>
+        <tr><th>EUR/CHF after the gap</th><th>You owe</th><th>As a multiple of the premium</th></tr>
+        <tr><td>1.04 (about 13% down, later that day)</td><td>CHF 110,000</td><td>110×</td></tr>
+        <tr><td>0.85 (about 30% down, the extreme on some screens)</td><td>CHF 300,000</td><td>300×</td></tr>
       </table>
-      <p class="sl-p">The lesson's strangle, hit by a 5% fall with volatility up 20 points, costs $510 per contract, 2.6 times its credit. The strangle is less violent than a daily-inverse note, but the loss is still a multiple of the carry, and the allocation decides whether you survive it.</p>
+      <p class="sl-p">On a CHF 500,000 account that sold two of these, the payout at 1.04 is CHF 220,000, 44% of the account. At 0.85 it is more than the account. The day's settled fall sits between the ladder's −10% and −20% columns, and the extreme is beyond the grid: make the grid reach farther than your sample.</p>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
-        <p>A scenario grid assumes you can trade at model prices once the shock arrives. On 5 February many sellers had to buy volatility at the same moment, at prices set by their own buying. The real loss, with the exit crowded, is larger than the grid says. So keep the budget small and make the grid reach farther than your sample.</p>
+        <p>A scenario grid assumes you can trade at model prices once the shock arrives, and Black-Scholes assumes the price moves continuously. A gap is a jump, a stop is filled at the next price, and a policy floor is an exposure to a decision, not a cap on the payoff. The real loss is larger than the grid says, so keep the budget small. For a short-volatility note such as XIV, which lost about 96% on 5 February 2018 and was terminated, the loss is the allocation times the move.</p>
       </div>
     </section>
 
@@ -389,11 +391,11 @@
 
       <div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
-        <h4>Someone held 25% of their account in XIV, which lost about 96% on 5 February 2018. About how much of the account did they lose?</h4>
-        <button class="sl-quiz-opt" data-correct="true">About 24%</button>
-        <button class="sl-quiz-opt">About 4%</button>
-        <button class="sl-quiz-opt">About 96%</button>
-        <div class="sl-quiz-explain">0.25 × 0.961 = 0.24. The VIX fell back the next day, but the note had been terminated, so being right about the fade did not help.</div>
+        <h4>EUR/CHF is at 1.20 behind a central-bank floor. You sell a put at 1.15 on EUR 1,000,000 for CHF 1,000, and the floor is dropped with EUR/CHF at 1.04. What do you owe?</h4>
+        <button class="sl-quiz-opt" data-correct="true">CHF 110,000, 110 times the premium</button>
+        <button class="sl-quiz-opt">CHF 1,000, because the central bank promised to defend the floor</button>
+        <button class="sl-quiz-opt">CHF 11,000, because the stop-loss limits it</button>
+        <div class="sl-quiz-explain">1,000,000 × (1.15 − 1.04) = 110,000. A policy floor is an exposure to a decision, not a cap on the payoff, and a stop is filled at the next price after a gap.</div>
       </div>
     </section>
 
@@ -401,17 +403,17 @@
 
       <div class="sl-kicker">Your call</div>
 
-  <div class="tl-drill" data-date="2018-02-02">
-    <div class="tl-drill-label">Scenario drill · Friday 2 February 2018, after the close</div>
-    <h3>The VIX has jumped 28% in a day, after a year of calm</h3>
-    <p>You sell index volatility for a living: short S&amp;P 500 strangles, plus an allocation to an inverse-VIX note. Together they use about half your account as margin, which your broker allows. Through 2017 the VIX never closed above 16.04. Today it closed at 17.31, up from 13.47 yesterday, and US stocks fell. The note's closing indicative value is $108.37. You have the weekend. What do you do with the size?</p>
+  <div class="tl-drill" data-date="2015-01-14">
+    <div class="tl-drill-label">Scenario drill · Wednesday 14 January 2015, evening</div>
+    <h3>A floor has held for three years, and it pays to sell what is under it</h3>
+    <p>EUR/CHF has traded at or above 1.20 since the Swiss National Bank set that minimum in September 2011, and the bank has defended it by buying foreign currency. You run a small FX account. You sell one-month EUR/CHF puts struck below 1.20, which pay little but almost always expire worthless, and you also hold a leveraged long EUR/CHF position. Your broker lets you use most of the account as margin. Tonight a colleague says the floor cannot be broken because the bank has promised to defend it. What do you do with the size?</p>
     <ol class="tl-drill-options">
-      <li data-verdict="bad">Do nothing. Volatility spikes fade, and sellers get paid for waiting.<div class="tl-drill-why">Spikes usually do fade, which is why this feels safe. But the question is whether you survive the path. A book sized at half the account in margin has most of the account in the worst square, and a daily-inverse note loses everything if its index doubles in a day. Being right on the fade does not help if you are out of the game first.</div></li>
-      <li data-verdict="bad">Add to the position. The premium is richer after a jump, so sell more of it.<div class="tl-drill-why">Richer premium is real, but the worst square grows with every contract you add, and volatility has just shown it can move. Adding size into a regime where the grid's top row is the live row is the classic way a profitable seller ends up in the loss column.</div></li>
-      <li data-verdict="good">Re-run the grid with a volatility jump of 20 points and a large spot move. Treat the note as a possible total loss. Cut until the worst square fits a small loss budget.<div class="tl-drill-why">This is the sizing rule. A volatility move of 20 points is exactly what the grid's +20 row tests, and it is one session's move in the VIX from 17 to 37. Divide the budget by the worst-case loss per contract, and count the inverse note at a 100% loss, not at its margin. You give up premium and keep the account.</div></li>
-      <li data-verdict="ok">Keep the size, but buy a few cheap far out-of-the-money options as insurance.<div class="tl-drill-why">A hedge can help, and it is defensible, but it does not answer the sizing question. A small hedge on an oversized book still leaves a large worst square, hedges can be mis-sized or expire early, and paying for them needs the budget too. Cut first, then hedge if the hedge fits.</div></li>
+      <li data-verdict="bad">Hold the size. The central bank has promised to defend the floor, so the downside is limited.<div class="tl-drill-why">A promise is an exposure to a decision, not a cap on the payoff. The floor was a policy, and policies can end. The puts and the long position are both short that decision, and a model with a floor in it will never price a world where the floor is gone.</div></li>
+      <li data-verdict="bad">Sell more puts. They pay so little that you need more of them to make the income worthwhile.<div class="tl-drill-why">Low premium on a large notional is leverage on the one scenario you cannot price. The worst loss grows with every contract, and the premium barely moves. Chasing a premium target by adding size is how a quiet position becomes the largest risk in the account.</div></li>
+      <li data-verdict="good">Put the floor-removed scenario into the grid: a fall of 15% to 30% in minutes, no fills in between. Cut the notional until that loss fits a small budget, and treat the long position as having no stop.<div class="tl-drill-why">This is the sizing rule applied to a can't-happen row. Divide the budget by the loss in the worst cell and round down. You give up income on the quiet days and keep the account on the day the market skips the stop.</div></li>
+      <li data-verdict="ok">Keep the size but place stop-loss orders just below 1.20 on the long position.<div class="tl-drill-why">A stop is an order, not a guarantee. Once triggered it is filled at the next available price, and in a gap that can be far below the stop. It helps in an orderly decline, but it does not answer the sizing question for a jump, and it does nothing for the short puts.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Monday 5 February 2018 the S&amp;P 500 fell about 4.1% and the VIX closed at 37.32, up 115.6% on the day, the largest one-day percentage rise in the Cboe's daily history from 1990. The note, XIV, fell about 96% to an indicative value near $4.22, and Credit Suisse announced on 6 February that an acceleration event had occurred. Its last trading day was 20 February and holders received about $6 per note. The VIX itself fell back to 29.98 on the Tuesday, but the note was gone. This drill is a simplified position built on documented prices, not anyone's actual account.</p><p class="tl-drill-sources">Sources: <a href="https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv">Cboe, VIX index daily history (open, high, low, close)</a>; Credit Suisse press release of 6 February 2018, as quoted in the <a href="https://www.cohenmilstein.com/wp-content/uploads/2023/07/2018-08-20-XIV-Consolidated-Complaint.pdf">consolidated class action complaint, SET Capital LLC v. Credit Suisse Group AG (S.D.N.Y., filed 20 August 2018)</a>, which also gives the $4.22 and $5.99 per-note figures; S&amp;P 500 move from contemporary market reports (Schaeffer's Research and Investing.com, 5 February 2018).</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Thursday 15 January 2015 the SNB discontinued the minimum rate "with immediate effect", stopped its foreign-currency purchases and cut the rate on sight deposits to &minus;0.75%. At one point on the day the franc was up about 30% against the euro, and EUR/CHF was later down about 13%, near 1.04. Alpari UK, a London retail broker, entered insolvency, Global Brokers NZ said it could not resume business, and FXCM took a $300 million financing from Leucadia National on 16 January. This drill is a simplified position built on documented events, not anyone's actual account.</p><p class="tl-drill-sources">Sources: <a href="https://www.bis.org/review/r150116a.htm">Thomas Jordan, "The rationale for discontinuing the minimum exchange rate and lowering interest rates", SNB press conference, 15 January 2015 (BIS central bankers' speeches)</a>; <a href="https://www.foxnews.com/world/swiss-francs-unprecedented-surge-causes-2-brokerage-firms-to-become-insolvent.amp">Fox News report, "Swiss franc's 'unprecedented' surge causes 2 brokerage firms to become insolvent", January 2015</a>; <a href="https://www.financemagnates.com/forex/brokers/breaking-leucadia-hands-fxcm-300-mln-life-line/">Finance Magnates, Leucadia financing of FXCM, 16 January 2015</a>.</p></div>
   </div>
 
     </section>
@@ -425,7 +427,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Margin is a collateral rule that can change. It is not your worst case.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Size by the worst square: contracts = budget ÷ worst-case loss per contract, rounded down. A 2% budget on $100,000 is one strangle or five iron condors.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Greeks are a local map and fail for big moves. Gamma rises about 6.7 times between 45 days and one day, and assignment and gaps skip your stops.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Diversification fades in a crash. On 5 February 2018 the VIX rose 115.6% in one session and XIV lost about 96%. Size so one bad night is survivable.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Diversification fades in a crash, and a promise is not a cap. On 15 January 2015 the franc was up about 30% against the euro at one point and stops skipped. Size so one bad night is survivable.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>
@@ -561,11 +563,11 @@ var SPM = (function () {
 })();
 (function(){
   var rho = document.getElementById('nf-rho'); if (!rho) return;
-  var X0 = 60, X1 = 600, Y0 = 210, Y1 = 20, NMAX = 30;
+  var X0 = 52, X1 = 470, Y0 = 212, Y1 = 12, NMAX = 30, YMAX = 10;
   function path(r){
     var pts = [];
     for (var n = 1; n <= NMAX; n++) {
-      var x = X0 + (n - 1) / (NMAX - 1) * (X1 - X0), y = Y0 - (n / (1 + (n - 1) * r)) / NMAX * (Y0 - Y1);
+      var x = X0 + (n - 1) / (NMAX - 1) * (X1 - X0), y = Y0 - Math.min(n / (1 + (n - 1) * r), YMAX) / YMAX * (Y0 - Y1);
       pts.push(x.toFixed(1) + ',' + y.toFixed(1));
     }
     return 'M' + pts.join(' L');

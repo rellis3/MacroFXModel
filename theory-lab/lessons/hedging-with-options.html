@@ -16,7 +16,8 @@
   .hw-table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px}
   .hw-table th,.hw-table td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;color:var(--text2);white-space:nowrap}
   .hw-table th:first-child,.hw-table td:first-child{text-align:left}
-  .hw-table td.hw-terms,.hw-table td:nth-child(2).hw-terms{white-space:normal}
+  .hw-table td .hw-sub{display:block;color:var(--text3);font-size:10.5px;white-space:normal;margin-top:2px}
+  @media (max-width:600px){.hw-table{font-size:11px}.hw-table th,.hw-table td{padding:6px 5px}}
   .hw-table th{color:var(--text3);font-weight:500}
   .hw-table td b{color:var(--text);font-weight:600}
   .hw-table tr.sel td{background:var(--blue-bg)}
@@ -69,20 +70,20 @@
       <polyline class="tlp-line green thick" points="60.0,151.2 272.5,151.2 400.0,101.7 570.0,101.7"/>
       <text class="tlp-text3" x="52" y="139" text-anchor="end" font-size="12">0</text>
       <text class="tlp-text3" x="66" y="30" font-size="12">profit ↑</text>
-      <text class="tlp-blue" x="66" y="182" font-size="12.5" font-weight="700">put: worst 7.68</text>
-      <text class="tlp-green" x="505" y="120" text-anchor="middle" font-size="12.5" font-weight="700">collar: gains stop</text>
-      <line class="tlp-line dash" x1="322" y1="167" x2="352" y2="167"/>
-      <text class="tlp-text2" x="360" y="171" font-size="12.5">unhedged: −30 to +30</text>
-      <line class="tlp-line blue thick" x1="322" y1="189" x2="352" y2="189"/>
-      <text class="tlp-blue" x="360" y="193" font-size="12.5">put (cost 2.68): worst 7.68</text>
-      <line class="tlp-line green thick" x1="322" y1="211" x2="352" y2="211"/>
-      <text class="tlp-green" x="360" y="215" font-size="12.5">collar (cost ≈ 0): 4.92 to +10.08</text>
-      <text class="tlp-text3" x="60" y="236" text-anchor="middle" font-size="12">70</text>
-      <text class="tlp-text3" x="185" y="236" text-anchor="middle" font-size="12">85</text>
-      <text class="tlp-text3" x="315" y="236" text-anchor="middle" font-size="12">100</text>
-      <text class="tlp-text3" x="443" y="236" text-anchor="middle" font-size="12">115</text>
-      <text class="tlp-text3" x="570" y="236" text-anchor="middle" font-size="12">130</text>
-      <text class="tlp-text3" x="315" y="252" text-anchor="middle" font-size="12">price of the fund at expiry →</text>
+      <text class="tlp-blue" x="66" y="182" font-size="14" font-weight="700">put: worst −7.68</text>
+      <text class="tlp-green" x="498" y="121" text-anchor="middle" font-size="14" font-weight="700">collar: gains stop</text>
+      <line class="tlp-line dash" x1="296" y1="167" x2="324" y2="167"/>
+      <text class="tlp-text2" x="332" y="172" font-size="14">unhedged: −30 to +30</text>
+      <line class="tlp-line blue thick" x1="296" y1="189" x2="324" y2="189"/>
+      <text class="tlp-blue" x="332" y="194" font-size="14">put (cost 2.68): worst −7.68</text>
+      <line class="tlp-line green thick" x1="296" y1="211" x2="324" y2="211"/>
+      <text class="tlp-green" x="332" y="216" font-size="14">collar (cost ≈ 0): −4.92 to +10.08</text>
+      <text class="tlp-text3" x="60" y="236" text-anchor="middle" font-size="13">70</text>
+      <text class="tlp-text3" x="185" y="236" text-anchor="middle" font-size="13">85</text>
+      <text class="tlp-text3" x="315" y="236" text-anchor="middle" font-size="13">100</text>
+      <text class="tlp-text3" x="443" y="236" text-anchor="middle" font-size="13">115</text>
+      <text class="tlp-text3" x="570" y="236" text-anchor="middle" font-size="13">130</text>
+      <text class="tlp-text3" x="315" y="252" text-anchor="middle" font-size="13">price of the fund at expiry →</text>
     </svg>
     <figcaption>Profit and loss at expiry for $100 of an index fund held six months. The put draws a floor under the dashed line and costs 2.68. The collar lowers the floor further and costs about nothing, but its gains stop at +10.08. Every hedge is a trade between the floor, the cap and the price.</figcaption>
   </figure>
@@ -266,8 +267,10 @@
       <line x1="60" y1="30" x2="60" y2="270" style="stroke:var(--border)"/>
       <line x1="60" y1="150" x2="620" y2="150" style="stroke:var(--border)"/>
       <text x="54" y="154" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">0</text>
-      <text x="54" y="84" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">+22</text>
-      <text x="54" y="222" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">−22</text>
+      <text x="54" y="64" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">+30</text>
+      <text x="54" y="109" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">+15</text>
+      <text x="54" y="199" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">−15</text>
+      <text x="54" y="244" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">−30</text>
       <line x1="130" y1="30" x2="130" y2="270" style="stroke:var(--text3);stroke-dasharray:2,4;opacity:.6"/>
       <text x="130" y="22" text-anchor="middle" fill="var(--text2)" font-size="10.5" font-family="'DM Mono',monospace">crash: 70</text>
       <line x1="550" y1="30" x2="550" y2="270" style="stroke:var(--text3);stroke-dasharray:2,4;opacity:.6"/>
@@ -303,7 +306,7 @@
       </div>
     </div>
     <div class="hw-wrap"><table class="hw-table">
-      <tr><th></th><th>Net premium</th><th>If it ends at 70</th><th>If it ends at 130</th><th>Breakeven at</th></tr>
+      <tr><th></th><th>Premium</th><th>At 70</th><th>At 130</th><th>Breakeven</th></tr>
         <tr id="hw-eq-row-un"><td>Unhedged</td><td><b id="hw-eq-un-prem">0.00</b></td><td><b id="hw-eq-un-crash">−30.00</b></td><td><b id="hw-eq-un-rally">+30.00</b></td><td><b id="hw-eq-un-be">100.00</b></td></tr>
         <tr id="hw-eq-row-put" class="sel"><td>Protective put</td><td><b id="hw-eq-put-prem">2.68</b></td><td><b id="hw-eq-put-crash">−7.68</b></td><td><b id="hw-eq-put-rally">+27.32</b></td><td><b id="hw-eq-put-be">102.68</b></td></tr>
         <tr id="hw-eq-row-spr"><td>Put spread</td><td><b id="hw-eq-spr-prem">2.08</b></td><td><b id="hw-eq-spr-crash">−22.08</b></td><td><b id="hw-eq-spr-rally">+27.92</b></td><td><b id="hw-eq-spr-be">102.08</b></td></tr>
@@ -767,8 +770,8 @@ window.hwOpt = (function () {
   </p>
   <p>
     The forward costs nothing upfront and is firm: if the euro falls to 1.00 the importer still pays 1.0881, an opportunity
-    cost of $881,305 against going unhedged. A forward also carries an obligation, so if the rate moves against it the bank can
-    ask for collateral. An option you buy has no such call: your loss is capped at the premium.
+    cost of $881,305 against going unhedged. A forward also carries an obligation, so if the rate moves against it the bank may
+    ask for collateral, depending on the credit terms. An option you buy has no such call: your loss is capped at the premium.
   </p>
 
   <h3>The option and the structures built from it</h3>
@@ -817,8 +820,8 @@ window.hwOpt = (function () {
     <svg id="hw-fx-svg" viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Effective dollars paid per euro against the EURUSD rate at payment, from 1.00 to 1.20. The dashed diagonal is the unhedged importer, who pays whatever the market is. The bold line is the chosen structure: a flat line for the forward, a line capped above the strike for the vanilla call, a band between two strikes for the collar, a capped line with partial participation below for the participating forward, and a capped line that rises again above a second strike for the seagull.">
       <line x1="60" y1="30" x2="60" y2="270" style="stroke:var(--border)"/>
       <line x1="60" y1="270" x2="600" y2="270" style="stroke:var(--border)"/>
-      <line x1="222" y1="30" x2="222" y2="270" style="stroke:var(--text3);stroke-dasharray:2,4;opacity:.6"/>
-      <text x="222" y="22" text-anchor="middle" fill="var(--text2)" font-size="10.5" font-family="'DM Mono',monospace">spot 1.08</text>
+      <line x1="276" y1="30" x2="276" y2="270" style="stroke:var(--text3);stroke-dasharray:2,4;opacity:.6"/>
+      <text x="276" y="22" text-anchor="middle" fill="var(--text2)" font-size="10.5" font-family="'DM Mono',monospace">spot 1.08</text>
       <text x="54" y="274" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">1.00</text>
       <text x="54" y="214" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">1.05</text>
       <text x="54" y="154" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">1.10</text>
@@ -852,15 +855,15 @@ window.hwOpt = (function () {
       Vanilla call premium on €10m: <b id="hw-fx-usd">$187,776</b> · <b id="hw-fx-pct">1.74%</b> of the amount
     </div>
     <div class="hw-wrap"><table class="hw-table">
-      <tr><th></th><th>Terms</th><th>Premium per €</th><th>Rate paid if EURUSD ends 1.00</th><th>Rate paid if it ends 1.20</th></tr>
-        <tr id="hw-fx-row-un"><td>Unhedged</td><td id="hw-fx-un-terms">no hedge</td><td><b id="hw-fx-un-prem">0.0000</b></td><td><b id="hw-fx-un-lo">1.0000</b></td><td><b id="hw-fx-un-hi">1.2000</b></td></tr>
-        <tr id="hw-fx-row-fwd"><td>Forward</td><td id="hw-fx-fwd-terms">buy forward 1.0881</td><td><b id="hw-fx-fwd-prem">0.0000</b></td><td><b id="hw-fx-fwd-lo">1.0881</b></td><td><b id="hw-fx-fwd-hi">1.0881</b></td></tr>
-        <tr id="hw-fx-row-van" class="sel"><td>Vanilla call</td><td id="hw-fx-van-terms">buy call 1.1000</td><td><b id="hw-fx-van-prem">0.0188</b></td><td><b id="hw-fx-van-lo">1.0188</b></td><td><b id="hw-fx-van-hi">1.1188</b></td></tr>
-        <tr id="hw-fx-row-col"><td>Zero-cost collar</td><td id="hw-fx-col-terms">buy call 1.1000, sell put 1.0769</td><td><b id="hw-fx-col-prem">0.0000</b></td><td><b id="hw-fx-col-lo">1.0769</b></td><td><b id="hw-fx-col-hi">1.1000</b></td></tr>
-        <tr id="hw-fx-row-par"><td>Participating forward</td><td id="hw-fx-par-terms">buy call 1.1000; sell put 1.1000 on 61.8%</td><td><b id="hw-fx-par-prem">0.0000</b></td><td><b id="hw-fx-par-lo">1.0618</b></td><td><b id="hw-fx-par-hi">1.1000</b></td></tr>
-        <tr id="hw-fx-row-sea"><td>Seagull</td><td id="hw-fx-sea-terms">buy call 1.1000, sell call 1.1400, sell put 1.0576</td><td><b id="hw-fx-sea-prem">0.0000</b></td><td><b id="hw-fx-sea-lo">1.0576</b></td><td><b id="hw-fx-sea-hi">1.1600</b></td></tr>
+      <tr><th>Structure</th><th>Premium</th><th>Pays at 1.00</th><th>Pays at 1.20</th></tr>
+        <tr id="hw-fx-row-un"><td>Unhedged<span class="hw-sub" id="hw-fx-un-terms">no hedge</span></td><td><b id="hw-fx-un-prem">0.0000</b></td><td><b id="hw-fx-un-lo">1.0000</b></td><td><b id="hw-fx-un-hi">1.2000</b></td></tr>
+        <tr id="hw-fx-row-fwd"><td>Forward<span class="hw-sub" id="hw-fx-fwd-terms">buy forward 1.0881</span></td><td><b id="hw-fx-fwd-prem">0.0000</b></td><td><b id="hw-fx-fwd-lo">1.0881</b></td><td><b id="hw-fx-fwd-hi">1.0881</b></td></tr>
+        <tr id="hw-fx-row-van" class="sel"><td>Vanilla call<span class="hw-sub" id="hw-fx-van-terms">buy call 1.1000</span></td><td><b id="hw-fx-van-prem">0.0188</b></td><td><b id="hw-fx-van-lo">1.0188</b></td><td><b id="hw-fx-van-hi">1.1188</b></td></tr>
+        <tr id="hw-fx-row-col"><td>Zero-cost collar<span class="hw-sub" id="hw-fx-col-terms">buy call 1.1000, sell put 1.0769</span></td><td><b id="hw-fx-col-prem">0.0000</b></td><td><b id="hw-fx-col-lo">1.0769</b></td><td><b id="hw-fx-col-hi">1.1000</b></td></tr>
+        <tr id="hw-fx-row-par"><td>Participating forward<span class="hw-sub" id="hw-fx-par-terms">buy call 1.1000; sell put 1.1000 on 61.8%</span></td><td><b id="hw-fx-par-prem">0.0000</b></td><td><b id="hw-fx-par-lo">1.0618</b></td><td><b id="hw-fx-par-hi">1.1000</b></td></tr>
+        <tr id="hw-fx-row-sea"><td>Seagull<span class="hw-sub" id="hw-fx-sea-terms">buy call 1.1000, sell call 1.1400, sell put 1.0576</span></td><td><b id="hw-fx-sea-prem">0.0000</b></td><td><b id="hw-fx-sea-lo">1.0576</b></td><td><b id="hw-fx-sea-hi">1.1600</b></td></tr>
     </table></div>
-    <div class="tl-hint">S = 1.0800, six months, r_d = 4.5%, r_f = 3.0%, flat volatility. The seagull's second call is always 0.04 above the first. The forward is 1.0881 at any volatility, because it comes from interest rates alone. Raise the strike and the vanilla call gets cheaper but its worst case gets worse; raise the volatility and every option leg gets dearer.</div>
+    <div class="tl-hint">S = 1.0800, six months, r_d = 4.5%, r_f = 3.0%, flat volatility. "Pays" is dollars per euro if EURUSD ends at that rate. The seagull's second call is always 0.04 above the first. The forward is 1.0881 at any volatility, because it comes from interest rates alone. Raise the strike and the vanilla call gets cheaper but its worst case gets worse; raise the volatility and every option leg gets dearer.</div>
     <div class="tl-chart-caption">
       Read each line against the dashed diagonal. Where the line sits below the diagonal, the structure is saving you money
       relative to going unhedged; where it sits above, it is costing you. The forward is a flat line: no surprise in either

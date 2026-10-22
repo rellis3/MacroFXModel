@@ -20,7 +20,7 @@
   <p class="tl-dek">Buying direction, selling premium, trading volatility, hedging and relative value: what each one is really a bet on, how often it wins, and the way it usually goes wrong.</p>
   <div class="tl-meta">
     <span class="tl-status concept">CONCEPT — a map of the styles and their maths, not a recommendation</span>
-    <span>~18 min read</span>
+    <span>~17 min read</span>
     <span>Prereqs: <a href="options-four-positions.html">The Four Option Positions</a></span>
   </div>
 
@@ -41,7 +41,7 @@
       <li>Averaging zero means <strong>edge is the whole game</strong>. Your edge is what the position is worth on your forecast, minus what you pay, minus costs: \(\text{edge} = V_{you} - P - c\). In the style lab, costs of 10 cents a leg make every style average a loss when implied and realised volatility match.</li>
       <li>How each one fails: buyers need size and timing as well as direction, and bleed time value. Sellers hide one large loss behind many small wins. Volatility traders are right and still lose because the move was priced in. Hedgers pay for protection and drop it just before they need it. Relative-value traders watch a spread widen before it closes.</li>
       <li>Evidence: studies of retail option traders in the Netherlands (Bauer, Cosemans and Eichholtz, 2009) and the United States (Bryzgalova, Pavlova and Sikorskaya, 2023) both find that they lose money on average. The first points to timing errors and trading costs. The second reports an average bid-ask spread of 12.6% on the weekly options retail traders prefer.</li>
-      <li><strong>Real-world episode:</strong> by the end of 2008 Berkshire Hathaway had sold $37.1 billion of 15 and 20 year equity index puts and collected $4.9 billion. It marked them at a $10 billion liability, a $5.1 billion paper loss, and survived because the contracts could not be settled early and almost none needed collateral. A retail seller has neither protection.</li>
+      <li><strong>Real-world episode:</strong> by the end of 2008 Berkshire Hathaway had sold $37.1 billion of 15 and 20 year equity index puts and collected $4.9 billion. It marked them at a $10 billion liability, a $5.1 billion paper loss, and was not forced out because the contracts could not be settled early and only a small share needed collateral. A retail seller has neither protection.</li>
     </ul>
   </div>
 
@@ -125,7 +125,7 @@
       <p data-who="Trader">What about the other three styles?</p>
       <p data-who="Quant">Volatility traders bet on how far the price travels, not which way, and fail when the move is already in the price. Hedgers pay to cap a risk they already hold, so their option usually expires unused. That is the point. Relative-value traders bet that two options are mispriced against each other, and fail when the gap widens before it closes.</p>
       <p data-who="Trader">Has anyone sold insurance at scale and survived?</p>
-      <p data-who="Quant">Berkshire Hathaway sold about thirty-seven billion dollars of long-dated index puts and collected four point nine billion. At the end of two thousand and eight it valued them as a ten billion dollar liability, a five point one billion dollar paper loss. But the contracts could only be settled at the end, and almost none needed collateral, so nobody could force it to sell.</p>
+      <p data-who="Quant">Berkshire Hathaway sold about thirty-seven billion dollars of long-dated index puts and collected four point nine billion. At the end of two thousand and eight it valued them as a ten billion dollar liability, a five point one billion dollar paper loss. But the contracts could only be settled at the end, and only a small share needed collateral, so nobody could force it to sell.</p>
       <p data-who="Trader">So a style can survive, with the right funding.</p>
       <p data-who="Quant">Right. Before you trade any of the five, finish the sentence: I get paid because. Then know exactly how you lose, and whether you can hold through it.</p>
     </div>
@@ -582,7 +582,7 @@
     <p>
       Starts on the short put's numbers from the worked example: it wins 83.4% of the time, wins $0.56 on average and loses $2.81 on average, before a 10 cent cost. Edit any field and the average result per trade, the break-even win rate and the payoff ratio recalculate.
     </p>
-    <div class="tl-predict" data-answer="0.05" data-tol="0.02" data-unit="$">
+    <div class="tl-predict" data-answer="0.05" data-tol="0.02">
       <div class="tl-predict-q"><strong>Predict first.</strong> A different seller wins 90% of the time, wins $0.50 on average and loses $4.00 on average. What is the average result per trade before costs, in dollars? Lock in a guess, then type 90, 0.50, 4.00 and 0.10 into the four fields below to check it, and read off the result after costs too.</div>
       <div class="tl-predict-reveal"><p><strong>+$0.05.</strong> \(0.90 \times 0.50 = 0.45\) and \(0.10 \times 4.00 = 0.40\), so the average result before costs is +$0.05. A 10 cent cost then turns it into −$0.05. A 90% win rate looked safe, and it barely pays for a loss eight times the win. Now try cutting the average loss to $3.00 and watch how the break-even win rate moves.</p></div>
     </div>
@@ -693,7 +693,7 @@
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: Berkshire Hathaway's index puts, 2008</h2>
   <p>
-    The trap above says a seller's win rate hides a large tail. The cleanest large-scale example of someone selling that tail, and of why the same style can survive when the funding is different, is in Berkshire Hathaway's 2008 shareholder letter.
+    The trap above says a seller's win rate hides a large tail. A well-documented large-scale example of someone selling that tail, and of why the same style can survive when the funding is different, is in Berkshire Hathaway's 2008 shareholder letter.
   </p>
 
   <div class="tl-story" id="story-1">
@@ -703,10 +703,10 @@
       Berkshire Hathaway sold put options on four stock indices: the S&amp;P 500, the FTSE 100, the Euro Stoxx 50 and the Nikkei 225. In his letter for 2008 Warren Buffett reports contracts that expire after 15 or 20 years, with the first coming due on 9 September 2019 and the last on 24 January 2028. The contracts pay out only if the index is below its starting level on the final day. The total the company could be asked to pay, if every index went to zero, was $37.1 billion. Berkshire had been paid $4.9 billion up front for taking that risk.
     </p>
     <p>
-      The letter says that neither side can settle early: "it's only the price on the final day that counts." It also says that only a small percentage of Berkshire's derivative contracts required it to post collateral when markets moved against it, and that even in the chaotic fourth quarter of 2008 it had to post less than 1% of its securities portfolio. At the end of 2008 Berkshire valued the puts at a $10 billion liability using Black-Scholes, against the $4.9 billion received. That is a reported mark-to-market loss of $5.1 billion, with nothing yet paid. Buffett's own example: if all four indices fell 25% from their starting levels, the company would owe about $9 billion, spread between 2019 and 2028.
+      The letter says that neither side can settle early: "it's only the price on the final day that counts." It also says that only a small percentage of Berkshire's derivative contracts called for posting collateral when markets moved against it, and that even in the chaotic fourth quarter of 2008 it had to post less than 1% of its securities portfolio. At the end of 2008 Berkshire valued the puts at a $10 billion liability using Black-Scholes, against the $4.9 billion received. That is a reported mark-to-market loss of $5.1 billion, with nothing yet paid. Buffett's own example: if all four indices fell 25% from their starting levels, the company would owe about $9 billion, spread between 2019 and 2028. He also argued that Black-Scholes, applied to contracts this long, overstates the liability.
     </p>
     <p style="margin-bottom:0">
-      This is style 2 at industrial scale: take a premium now, carry a large tail payment later. The 2008 marks show what it looks like in a crisis, deeply under water on paper. What made it survivable was not skill in picking the month. It was the structure: a fixed final settlement date, almost no collateral calls, and 15 to 20 years in which to be wrong.
+      This is style 2 at industrial scale: take a premium now, carry a large tail payment later. The 2008 marks show what it looks like in a crisis, deeply under water on paper. What kept it from being forced out was not skill in picking the month. It was the structure: a fixed final settlement date, little collateral to post, and 15 to 20 years in which to be wrong.
     </p>
   </div>
 
@@ -770,7 +770,7 @@
     <div class="tl-icard">
       <div class="tl-icon-badge amber">🏦</div>
       <h4>Dealers and market makers</h4>
-      <p>They quote both sides and earn the spread, then hedge the delta and vega they are left with. Their book is the other side of everyone else's trade, which is why dealer hedging shows up in <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a>. Relative value is a large part of how they manage the book.</p>
+      <p>They quote both sides and earn the spread, then hedge the delta and vega they are left with. Their book is the other side of everyone else's trade, which is why dealer hedging shows up in <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a>. Much of their work is managing the book: hedging delta and vega, and trading the gaps between options.</p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge purple">📈</div>
@@ -789,25 +789,64 @@
     Two peer-reviewed studies are the most cited evidence on how individual traders fare. Neither says that every retail trader loses, or that nobody can make money from options. Both describe averages in particular samples.
   </p>
   <ul>
-    <li><strong>Bauer, Cosemans and Eichholtz (2009)</strong>, <em>Journal of Banking &amp; Finance</em>, studied individual investors' option trading. Most investors lost substantially on their option positions, losses much larger than on their equity trading. The authors attribute this to poor timing, driven by overreaction to past stock returns, with high trading costs adding to it. Gambling and entertainment appeared to matter far more than hedging as a motive, and performance persisted, so past losers tended to keep losing.</li>
+    <li><strong>Bauer, Cosemans and Eichholtz (2009)</strong>, <em>Journal of Banking &amp; Finance</em>, studied individual investors' option trading. Most investors lost substantially on their option positions, losses much larger than on their equity trading. The authors attribute this to poor timing, driven by overreaction to past stock returns, with high trading costs adding to it. Gambling and entertainment appeared to be the most important motives, with hedging only a minor one, and there was strong evidence that performance persisted from one period to the next.</li>
     <li><strong>Bryzgalova, Pavlova and Sikorskaya (2023)</strong>, <em>Journal of Finance</em>, studied retail options trading in the United States after the rise of payment for order flow. Retail investors favoured cheaper, weekly options, with an average bid-ask spread of 12.6%, and lost money on average.</li>
   </ul>
   <p>
-    For scale: a 12.6% spread on the lab's $0.64 call is about 8 cents wide. Crossing it in and out costs far more than the 10 cents per leg the lab assumes, and it is paid on every trade.
+    For scale: a 12.6% spread on the lab's $0.64 call is about 8 cents wide. Buying at the ask and selling at the bid costs that whole width in a round trip, before commission, so the lab's 10 cents per leg is realistic for options like this, not pessimistic. It is paid on every trade, and on a cheap option it is a large share of the price.
   </p>
 
   <h3>Which style fits your edge</h3>
   <p>Start from what you can actually forecast, then pick the style that pays for that forecast and nothing else.</p>
   <div class="tl-symbols">
     <table>
-      <thead><tr><td>Your edge</td><td>What you must be able to say</td><td>Style</td><td>What must also be true</td></tr></thead>
-      <tr><td>Direction</td><td>"I expect a move of this size, in this window, and the option price implies a smaller one."</td><td>Buy direction</td><td>You beat the break-even and the time decay. Size it so losing the whole premium is acceptable.</td></tr>
-      <tr><td>Rich vol</td><td>"Implied volatility is usually above what gets realised here, and I can survive the worst month."</td><td>Sell premium, defined risk first</td><td>The worst case is capped. Size by the worst case, not the margin. Expect rare large losses.</td></tr>
-      <tr><td>Move size</td><td>"I forecast how far this will travel better than the implied number, and I have no view on direction."</td><td>Trade volatility, delta-hedged</td><td>The forecast beats implied out of sample, and execution is tight.</td></tr>
-      <tr><td>Existing risk</td><td>"I already own this exposure and a loss beyond a level would hurt."</td><td>Hedge</td><td>There is a reason and a budget, and the price is fair. Judge it by what it protects, not by the premium lost.</td></tr>
-      <tr><td>Mispricing</td><td>"This option is rich against that one, and here is why."</td><td>Relative value</td><td>Tight spreads on every leg, funding to wait, and a view of fair value.</td></tr>
-      <tr><td>Nothing</td><td>You cannot finish the sentence "I get paid because..."</td><td>None of the five</td><td>Not trading is a position. Without an edge, every style averages minus its costs.</td></tr>
+      <thead><tr><td>Your edge</td><td>Style</td><td>Check first</td></tr></thead>
+      <tr><td>Direction</td><td>Buy direction</td><td>Break-even and time decay</td></tr>
+      <tr><td>Rich vol</td><td>Sell premium</td><td>The worst case, not the margin</td></tr>
+      <tr><td>Move size</td><td>Trade volatility</td><td>Forecast beats implied, out of sample</td></tr>
+      <tr><td>Existing risk</td><td>Hedge</td><td>A reason, a budget, a fair price</td></tr>
+      <tr><td>Mispricing</td><td>Relative value</td><td>Spreads on every leg, funding</td></tr>
+      <tr><td>Nothing</td><td>None of the five</td><td>Average is minus your costs</td></tr>
     </table>
+  </div>
+  <p>The same table in full, with what you must be able to say and what must also be true:</p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🎯</div>
+      <h4>Your edge is direction: Buy direction</h4>
+      <p><strong>You must be able to say:</strong> "I expect a move of this size, in this window, and the option price implies a smaller one."</p>
+      <p><strong>What must also be true:</strong> You beat the break-even and the time decay. Size it so losing the whole premium is acceptable.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧾</div>
+      <h4>Your edge is rich volatility: Sell premium, defined risk first</h4>
+      <p><strong>You must be able to say:</strong> "Implied volatility is usually above what gets realised here, and I can survive the worst month."</p>
+      <p><strong>What must also be true:</strong> The worst case is capped. Size by the worst case, not the margin. Expect rare large losses.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🌊</div>
+      <h4>Your edge is move size: Trade volatility, delta-hedged</h4>
+      <p><strong>You must be able to say:</strong> "I forecast how far this will travel better than the implied number, and I have no view on direction."</p>
+      <p><strong>What must also be true:</strong> The forecast beats implied out of sample, and execution is tight.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🛡️</div>
+      <h4>Your edge is an existing risk: Hedge</h4>
+      <p><strong>You must be able to say:</strong> "I already own this exposure and a loss beyond a level would hurt."</p>
+      <p><strong>What must also be true:</strong> There is a reason and a budget, and the price is fair. Judge it by what it protects, not by the premium lost.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">⚖️</div>
+      <h4>Your edge is a mispricing: Relative value</h4>
+      <p><strong>You must be able to say:</strong> "This option is rich against that one, and here is why."</p>
+      <p><strong>What must also be true:</strong> Tight spreads on every leg, funding to wait, and a view of fair value.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">∅</div>
+      <h4>You have no edge: None of the five</h4>
+      <p><strong>You must be able to say:</strong> You cannot finish the sentence "I get paid because...".</p>
+      <p><strong>What must also be true:</strong> Not trading is a position. Without an edge, every style averages minus its costs.</p>
+    </div>
   </div>
 
   <div class="tl-box pitfall">
@@ -840,7 +879,7 @@
     <p>This is a hypothetical situation, not a real company, with round numbers chosen to keep the arithmetic clear. A stock is at $100 and reports results tomorrow after the close. The nearest at-the-money straddle costs $6.40, so the market is pricing a move of roughly 6% either way. You also expect a big move, perhaps 6%. You have no view on direction, and costs are $0.10 per option leg. What do you do?</p>
     <ol class="tl-drill-options">
       <li data-verdict="bad">Buy the straddle. A big move is coming.<div class="tl-drill-why">The price already contains your forecast. If the move is 6% as priced, the straddle returns about what it cost before costs, and the 20 cents of costs on two legs makes the average result negative. You need the move to be larger than 6.4% plus costs, and you have no reason to think it will be.</div></li>
-      <li data-verdict="bad">Sell the straddle. The price is high, so collect it.<div class="tl-drill-why">A price that matches a fair forecast is not high. If the move is 6% you roughly break even before costs. A single 12% move erases several quiet quarters of credit, and you have no reason to think the move will be smaller than priced.</div></li>
+      <li data-verdict="bad">Sell the straddle. The price is high, so collect it.<div class="tl-drill-why">A price that matches a fair forecast is not high. If the move is 6% you roughly break even before costs. A 15% move would lose about $8.60 against the $6.40 collected, with no cap on how large it can be, and you have no reason to think the move will be smaller than priced.</div></li>
       <li data-verdict="good">Pass, unless you can say why you expect a move bigger or smaller than 6.4%.<div class="tl-drill-why">Edge is your forecast against the price. Where the two agree there is none, and costs make the average trade a loss on either side. A trade is worth considering only when you have a reason for a different number, and then you size it for the case where you are wrong.</div></li>
       <li data-verdict="ok">Buy a small straddle for the fun of it, sized so that losing the premium is trivial.<div class="tl-drill-why">Defensible as a bet you treat as entertainment, with the loss capped at an amount you do not mind. It is not an edge: the expected result is minus the costs. The research on retail option traders found entertainment was a bigger motive than hedging, and it found large average losses.</div></li>
     </ol>
@@ -855,7 +894,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Edge is your forecast against the price, minus costs.</strong> \(\text{edge} = V_{you} - P - c\). If you cannot say where your forecast differs from the price, you have no edge, and every style averages minus its costs.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>For a volatility view, edge is vega times the gap in volatility.</strong> Realised above implied pays long options and costs short ones, whichever style you called it.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A hedge is judged by the floor it buys.</strong> Its option usually expires unused, so win rate is the wrong measure and the price relative to the protection is the right one.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The same style can be safe or fatal depending on funding.</strong> Berkshire's index puts could not be settled early and almost none needed collateral. A retail seller faces daily margin and can be closed out at the worst moment.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The same style can be safe or fatal depending on funding.</strong> Berkshire's index puts could not be settled early and only a small share needed collateral. A retail seller faces daily margin and can be closed out at the worst moment.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Direction alone does not choose the style.</strong> A right view on direction still lost money on the long call when the move was smaller than the break-even. Size, timing and what you want to be paid for decide.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The average retail option trader has lost money.</strong> Two peer-reviewed studies, in the Netherlands and the United States, find large average losses, with timing and costs among the reasons. Treat a high win rate and a tight spread as things to check, not to assume.</span></div>
   </div>
@@ -887,9 +926,9 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q5. What made Berkshire's short index puts survivable, and what does a retail seller lack?</summary>
+    <summary>Q5. What kept Berkshire's short index puts from forcing it out, and what does a retail seller lack?</summary>
     <div class="tl-answer">
-      The contracts expired in 15 and 20 years, neither side could settle early, and only a small percentage of its derivative contracts required collateral. Even with a $5.1 billion paper loss at the end of 2008, nobody could force it to close. A retail seller faces daily margin, can be closed out by the broker as the price falls, and so may turn an unrealised loss into a realised one before expiry.
+      The contracts expired in 15 and 20 years, neither side could settle early, and only a small percentage of its derivative contracts called for collateral. Even with a $5.1 billion paper loss at the end of 2008, nobody could force it to close. A retail seller faces daily margin, can be closed out by the broker as the price falls, and so may turn an unrealised loss into a realised one before expiry.
     </div>
   </details>
   <details class="tl-quiz">
@@ -904,7 +943,7 @@
   <ul class="tl-refs">
     <li>Rob Bauer, Mathijs Cosemans and Piet Eichholtz, <em>"Option trading and individual investor performance"</em>, Journal of Banking &amp; Finance, 33(4), 731-746, 2009 — the study of individual investors' option trading discussed in Section 04.</li>
     <li>Svetlana Bryzgalova, Anna Pavlova and Taisiya Sikorskaya, <em>"Retail Trading in Options and the Rise of the Big Three Wholesalers"</em>, Journal of Finance, 78(6), 3465-3514, 2023 — retail options trading in the United States, with the 12.6% spread figure.</li>
-    <li>Joshua D. Coval and Tyler Shumway, <em>"Expected Option Returns"</em>, Journal of Finance, 56(3), 983-1009, 2001 — average returns of index option positions, and why they differ from what a simple risk model would predict. A first read on why buying options has historically been costly on average.</li>
+    <li>Joshua D. Coval and Tyler Shumway, <em>"Expected Option Returns"</em>, Journal of Finance, 56(3), 983-1009, 2001 — average returns of S&amp;P 500 index option positions, which were lower than a simple risk model would predict. A first read on why buying index options has historically been costly on average.</li>
     <li>Gurdip Bakshi and Nikunj Kapadia, <em>"Delta-Hedged Gains and the Negative Market Volatility Risk Premium"</em>, Review of Financial Studies, 16(2), 527-566, 2003 — evidence that delta-hedged long option positions lost on average, consistent with implied volatility running above realised on average.</li>
     <li>Berkshire Hathaway, <em>Chairman's Letter for 2008</em>, <a href="https://www.berkshirehathaway.com/letters/2008ltr.pdf">berkshirehathaway.com/letters/2008ltr.pdf</a> — the primary source for the index put contracts in Section 03: notional, premiums, the 15 and 20 year terms, the collateral terms and the year-end liability.</li>
     <li>Sheldon Natenberg, <em>Option Volatility and Pricing</em>, 2nd ed., McGraw-Hill, 2014 — the standard practitioner text on volatility trading and trade selection.</li>
