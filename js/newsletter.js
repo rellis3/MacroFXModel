@@ -221,12 +221,13 @@ export function buildNewsletter(n) {
     const m = /^([A-Z]{3})\/([A-Z]{3})$/.exec(r.label ?? ''), key = r.key ?? (m ? m[1] + m[2] : ({ Gold: 'GOLD', Bitcoin: 'BTCUSD' })[r.label] ?? null);
     let story = '';
     const t = trans.find(x => new RegExp('(^|[^a-z])' + String(r.label).replace(/[^A-Za-z0-9]+/g, '.?') + '([^a-z]|$)', 'i').test(x.asset ?? '') || (key && new RegExp(String(key).replace(/(...)(...)/, '$1.?$2'), 'i').test(x.asset ?? '')));
-    if (t) story = clipS(t.is, 170);
+    if (r.read) story = r.read;
+    else if (t) story = clipS(t.is, 170);
     else if (r.why) story = r.why;
     else if (m && strMap[m[1]] != null && strMap[m[2]] != null) { const d = strMap[m[1]] - strMap[m[2]]; story = Math.abs(d) < 0.15 ? `${m[1]} and ${m[2]} moved about the same today.` : `${d > 0 ? m[1] : m[2]} stronger than ${d > 0 ? m[2] : m[1]} today.`; }
     const ev = key ? evAll.find(e => (e.impact === 'high' || e.impact === 'medium') && (e.note?.pairs ?? []).includes(key)) : null;
     const stretch = r.used == null ? '' : r.used >= 1 ? 'already stretched' : r.used >= 0.6 ? 'getting stretched' : r.used < 0.25 ? 'quiet so far' : 'room left';
-    const chips = [...(r.chips ?? []), ev ? `next: ${ev.event}, ${ukTime(ev.ms)}` : null].filter(Boolean).slice(0, 3);
+    const chips = [r.watch ? 'watch: ' + r.watch : null, ...(r.chips ?? []), ev && !r.watch ? `next: ${ev.event}, ${ukTime(ev.ms)}` : null].filter(Boolean).slice(0, 3);
     return `<div class="pc"><div class="h">${assetIcon(key, r.label)}<div class="t"><b>${esc(r.label)}</b><small>${esc(r.groupLabel ?? (m ? 'FX' : ''))}${r.price ? ' · ' + esc(r.price) : ''}</small></div></div>${r.used != null ? `<div class="rb"><i style="width:${Math.min(100, r.used * 100 / 1.5)}%"></i><u></u></div><small class="muted">${Math.round(r.used * 100)}% of a normal day's range · ${stretch}</small>` : ''}${story ? `<p>${esc(story)}</p>` : ''}${chips.length ? `<div class="chips">${chips.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}</div>`;
   }).join('');
   const ranges = pairCards ? sec('Each market at a glance', 'Part 3 · Pair by pair', `<div class="pcg">${pairCards}</div><p class="small muted">The bar shows how much of a typical day's travel has been used; the black tick is a full normal day. It says how stretched the day is, not which way it goes.</p>`) : '';
