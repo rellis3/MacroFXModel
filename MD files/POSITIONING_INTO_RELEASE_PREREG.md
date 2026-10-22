@@ -155,3 +155,16 @@ moved; two got stricter.
 8. **Harness language:** Python (`scripts/positioning-into-release/run.py`), not the `.mjs` the text names, because
    the price store is parquet. The statistic is a mean difference with a week bootstrap; no repo brick is
    re-implemented.
+
+**2026-10-22 — PRE-RESULTS (second; still no outcome computed).** Amendment 4's rate-decision exclusion via
+`newsKind == 'rate'` misses FF's names for three of the decisions: "Federal Funds Rate" and "FOMC Statement" come
+back `generic`, and so do ECB "Main Refinancing Rate" and BoC "Overnight Rate". That would have left FOMC, ECB and
+BoC decision days *in*, against the frozen text. So the exclusion is `newsKind == 'rate'` **or** any of these FF
+decision-day events (any impact) for either leg:
+USD Federal Funds Rate, FOMC Statement, FOMC Press Conference · EUR Main Refinancing Rate, ECB Press Conference ·
+GBP Official Bank Rate, MPC Official Bank Rate Votes, Monetary Policy Summary, MPC Rate Statement ·
+JPY BOJ Policy Rate, Overnight Call Rate, Monetary Policy Statement, BOJ Press Conference ·
+AUD Cash Rate, RBA Rate Statement · CAD Overnight Rate, BOC Rate Statement, BOC Press Conference ·
+CHF SNB Policy Rate, Libor Rate, SNB Monetary Policy Assessment, SNB Press Conference.
+Minutes, monetary-policy reports and hearings are not decisions and stay in. The same names are never used as an
+event day's release kind.
