@@ -1,0 +1,159 @@
+{
+  "id": "funding-forecast-error",
+  "seed": 20261022,
+  "B": 2000,
+  "block": 21,
+  "prereg": "forge/FUNDING_FORECAST_ERROR_PREREG.md",
+  "n_rows": 52486,
+  "n_dates": 1558,
+  "first": "2020-08-20",
+  "last": "2026-08-20",
+  "e_mean": 0.0016600101907998832,
+  "x75_rate": 0.2389589604847007,
+  "cells": {
+    "squeeze": {
+      "diff_log": -0.026102582898273538,
+      "diff_pct": -2.5764855382221286,
+      "ci95_log": [
+        -0.059086451313245046,
+        0.01112045044091791
+      ],
+      "ci95_pct": [
+        -5.737472555838552,
+        1.1182512489217755
+      ],
+      "tercile_cuts": [
+        -9.800000000000058,
+        -6.200000000000028
+      ],
+      "n_top": 522,
+      "n_bottom": 523,
+      "half1_pct": -4.017308917497909,
+      "half2_pct": 5.509227394907512,
+      "placebo95_pct": [
+        -4.502062224396052,
+        4.401681072986574
+      ],
+      "fx_pct": -3.2735332622363056,
+      "indices_pct": -0.8613480275722063,
+      "gold_pct": 6.22597345561231,
+      "x75_top": 0.2409043240753759,
+      "x75_bottom": 0.25752885668727044,
+      "ex_month_end_pct": -3.883949639489437,
+      "p": 0.14499583434699023,
+      "p_holm": 0.42762032539976236,
+      "gate": {
+        "ci_excludes_0_positive_holm": false,
+        "both_halves_positive": false,
+        "above_placebo": false,
+        "fx_and_indices_same_sign": true
+      },
+      "verdict": "UNDERPOWERED"
+    },
+    "cpstress": {
+      "diff_log": 0.025101994019726456,
+      "diff_pct": 2.541970186830267,
+      "ci95_log": [
+        -0.008297125716128706,
+        0.05880598693164993
+      ],
+      "ci95_pct": [
+        -0.8262799570274981,
+        6.056945644394007
+      ],
+      "tercile_cuts": [
+        0.8000000000000185,
+        12.8
+      ],
+      "n_top": 522,
+      "n_bottom": 525,
+      "half1_pct": NaN,
+      "half2_pct": -4.18865026349704,
+      "placebo95_pct": [
+        -4.989132339023716,
+        4.88195086621408
+      ],
+      "fx_pct": 2.8362457749764314,
+      "indices_pct": 2.772216598472377,
+      "gold_pct": -6.016648696649007,
+      "x75_top": 0.2533791530934483,
+      "x75_bottom": 0.23594124504556263,
+      "ex_month_end_pct": 2.257295705018203,
+      "p": 0.14254010846658746,
+      "p_holm": 0.42762032539976236,
+      "gate": {
+        "ci_excludes_0_positive_holm": false,
+        "both_halves_positive": false,
+        "above_placebo": false,
+        "fx_and_indices_same_sign": true
+      },
+      "verdict": "UNDERPOWERED"
+    },
+    "levbuild": {
+      "diff_log": 0.017800347883491493,
+      "diff_pct": 1.7959718287737347,
+      "ci95_log": [
+        -0.015581678103601525,
+        0.04811702920965323
+      ],
+      "ci95_pct": [
+        -1.5460911818084733,
+        4.92934461219694
+      ],
+      "tercile_cuts": [
+        -0.42365319386458056,
+        0.7356310511169248
+      ],
+      "n_top": 520,
+      "n_bottom": 520,
+      "half1_pct": 3.933414706381666,
+      "half2_pct": -0.26057293322616637,
+      "placebo95_pct": [
+        -4.656272094081193,
+        4.6150500510367065
+      ],
+      "fx_pct": 1.2908662132279591,
+      "indices_pct": 3.6565652819212646,
+      "gold_pct": 0.5570766284744177,
+      "x75_top": 0.24147261006826168,
+      "x75_bottom": 0.22968019033498244,
+      "ex_month_end_pct": 1.8302238198444787,
+      "p": 0.2733290618127824,
+      "p_holm": 0.42762032539976236,
+      "gate": {
+        "ci_excludes_0_positive_holm": false,
+        "both_halves_positive": false,
+        "above_placebo": false,
+        "fx_and_indices_same_sign": true
+      },
+      "verdict": "UNDERPOWERED"
+    }
+  },
+  "descriptive": {
+    "rrp_log": 5.209541667947959,
+    "hy_oas_20d": 5.289386746318203,
+    "sofr_vol_20d": -2.509141337774501,
+    "reserves_4w": 1.0129737965443253,
+    "signal_corr": {
+      "squeeze": {
+        "squeeze": 1.0,
+        "cpstress": -0.536,
+        "levbuild": -0.22
+      },
+      "cpstress": {
+        "squeeze": -0.536,
+        "cpstress": 1.0,
+        "levbuild": 0.224
+      },
+      "levbuild": {
+        "squeeze": -0.22,
+        "cpstress": 0.224,
+        "levbuild": 1.0
+      }
+    }
+  },
+  "verdict": "underpowered (squeeze, cpstress, levbuild)",
+  "ranAt": "2026-10-22T12:00:00Z",
+  "preregCommit": "4c02694f",
+  "branch": "main"
+}

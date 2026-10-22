@@ -1861,6 +1861,114 @@
       "firstAsof": "1979-07-01T00:00:00Z",
       "lastAsof": "2026-09-29T00:00:00Z",
       "builtAt": "2026-10-20T23:24:26Z"
+    },
+    {
+      "id": "xccy_basis_eur_live",
+      "kind": "series",
+      "label": "EURUSD cross-currency basis, live (CME futures vs OANDA spot, CIP; overnight legs median-of-5)",
+      "source": "cme-nt8+oanda+fred",
+      "sourceRef": "scripts/xccy-basis/build.py",
+      "cadence": "daily",
+      "asofRule": "measured",
+      "revises": false,
+      "countries": [
+        "EU",
+        "US"
+      ],
+      "builder": "xccy_basis",
+      "unit": "bp",
+      "group": "funding_archive",
+      "note": "asof = trade date 19:15 UTC. LEVEL carries expected policy moves (overnight legs held flat over ~25-95 day tenor); 2020-10-19..22 feed fault removed; policy windows kept (flag in analysis/output/xccy-basis/basis_daily.csv). Negative = dollar premium."
+    },
+    {
+      "id": "xccy_basis_eur_realised",
+      "kind": "series",
+      "label": "EURUSD cross-currency basis, realised (fixings compounded over the contract life)",
+      "source": "cme-nt8+oanda+fred",
+      "sourceRef": "scripts/xccy-basis/build.py",
+      "cadence": "daily",
+      "asofRule": "measured",
+      "revises": false,
+      "countries": [
+        "EU",
+        "US"
+      ],
+      "builder": "xccy_basis",
+      "unit": "bp",
+      "group": "funding_archive",
+      "note": "asof = delivery + 1 day (only known after the contract window ends): research-only level, never a live input."
+    },
+    {
+      "id": "xccy_basis_eur_dchg",
+      "kind": "series",
+      "label": "EURUSD cross-currency basis, daily change at fixed rate legs (same contract)",
+      "source": "cme-nt8+oanda+fred",
+      "sourceRef": "scripts/xccy-basis/build.py",
+      "cadence": "daily",
+      "asofRule": "measured",
+      "revises": false,
+      "countries": [
+        "EU",
+        "US"
+      ],
+      "builder": "xccy_basis",
+      "unit": "bp",
+      "group": "funding_archive",
+      "note": "asof = trade date 19:15 UTC. Today F/S priced with yesterday legs minus yesterday basis: priced policy steps cancel. Tick-limited noise ~2-5bp (min 25 days to delivery). The series for the course rule \"20-30bp in a day\"."
+    },
+    {
+      "id": "xccy_basis_gbp_live",
+      "kind": "series",
+      "label": "GBPUSD cross-currency basis, live (CME futures vs OANDA spot, CIP; overnight legs median-of-5)",
+      "source": "cme-nt8+oanda+fred",
+      "sourceRef": "scripts/xccy-basis/build.py",
+      "cadence": "daily",
+      "asofRule": "measured",
+      "revises": false,
+      "countries": [
+        "GB",
+        "US"
+      ],
+      "builder": "xccy_basis",
+      "unit": "bp",
+      "group": "funding_archive",
+      "note": "asof = trade date 19:15 UTC. LEVEL carries expected policy moves (overnight legs held flat over ~25-95 day tenor); 2020-10-19..22 feed fault removed; policy windows kept (flag in analysis/output/xccy-basis/basis_daily.csv). Negative = dollar premium."
+    },
+    {
+      "id": "xccy_basis_gbp_realised",
+      "kind": "series",
+      "label": "GBPUSD cross-currency basis, realised (fixings compounded over the contract life)",
+      "source": "cme-nt8+oanda+fred",
+      "sourceRef": "scripts/xccy-basis/build.py",
+      "cadence": "daily",
+      "asofRule": "measured",
+      "revises": false,
+      "countries": [
+        "GB",
+        "US"
+      ],
+      "builder": "xccy_basis",
+      "unit": "bp",
+      "group": "funding_archive",
+      "note": "asof = delivery + 1 day (only known after the contract window ends): research-only level, never a live input."
+    },
+    {
+      "id": "xccy_basis_gbp_dchg",
+      "kind": "series",
+      "label": "GBPUSD cross-currency basis, daily change at fixed rate legs (same contract)",
+      "source": "cme-nt8+oanda+fred",
+      "sourceRef": "scripts/xccy-basis/build.py",
+      "cadence": "daily",
+      "asofRule": "measured",
+      "revises": false,
+      "countries": [
+        "GB",
+        "US"
+      ],
+      "builder": "xccy_basis",
+      "unit": "bp",
+      "group": "funding_archive",
+      "note": "asof = trade date 19:15 UTC. Today F/S priced with yesterday legs minus yesterday basis: priced policy steps cancel. Tick-limited noise ~2-5bp (min 25 days to delivery). The series for the course rule \"20-30bp in a day\"."
     }
   ]
 }

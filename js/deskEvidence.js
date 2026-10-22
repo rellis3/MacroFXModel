@@ -1330,6 +1330,24 @@ export const DESK_EVIDENCE = [
     use: 'No quarter-end dollar bid to lean on. Quarter-end stays a calendar note for FX.',
     instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY'],
   },
+  {
+    id: 'funding-forecast-error-squeeze', domain: 'volatility', verdict: 'underpowered', date: '2026-10-22', doc: 'forge/FUNDING_FORECAST_ERROR_PREREG.md', also: ['analysis/output/funding-forecast-error/RESULTS.md'],
+    claim: 'On days when overnight secured credit is dear (SOFR above the Fed floor, 5-print mean known before the open), markets move further than the shipped range forecast',
+    result: '52,486 OOS instrument-sessions, 34 instruments, 1,558 sessions 2020-08 to 2026-08, date-block bootstrap (seed 20261022): top-minus-bottom tercile realised/forecast -2.6% [-5.7%, +1.1%], wrong sign; halves -4.0% / +5.5%; inside the shift placebo [-4.5%, +4.4%]. MDE about 5.4% vs a 3% bar.',
+    use: 'SOFR over the floor does not explain range-forecast misses; never widen bands on it.',
+  },
+  {
+    id: 'funding-forecast-error-cpstress', domain: 'volatility', verdict: 'underpowered', date: '2026-10-22', doc: 'forge/FUNDING_FORECAST_ERROR_PREREG.md', also: ['analysis/output/funding-forecast-error/RESULTS.md'],
+    claim: 'On days when unsecured bank funding is dear (90-day AA financial CP minus SOFR, 5-print mean), markets move further than the shipped range forecast',
+    result: '1,558 sessions: +2.5% [-0.8%, +6.1%], FX +2.8% / indices +2.8%, inside the placebo [-5.0%, +4.9%]. DESIGN FLAW: 3-month CP minus OVERNIGHT SOFR mostly measures expected Fed hikes (no top-tercile day before 2023-08), not bank stress; a matched-tenor gauge (CP 3m minus 3m expected SOFR) needs its own prereg.',
+    use: 'No band adjustment. The tenor-matched CP stress spread is the open lead.',
+  },
+  {
+    id: 'funding-forecast-error-levbuild', domain: 'volatility', verdict: 'underpowered', date: '2026-10-22', doc: 'forge/FUNDING_FORECAST_ERROR_PREREG.md', also: ['analysis/output/funding-forecast-error/RESULTS.md'],
+    claim: 'When leveraged funds’ net Treasury futures short (CFTC TFF) has been building over 13 weeks, markets move further than the shipped range forecast',
+    result: '1,558 sessions: +1.8% [-1.6%, +4.9%], halves +3.9% / -0.3%, FX +1.3% / indices +3.7%, inside the placebo [-4.7%, +4.6%]. Descriptive: HY OAS 20-day widening +5.3% (3 years only), a lead for a longer credit-spread retest.',
+    use: 'Leverage build-up does not explain range-forecast misses at a size this sample can see; no band adjustment.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1453,6 +1471,9 @@ const POWER = {
   'net-liquidity-tailwind-nq':         { n: '786 weeks, ~200 independent 4-week windows', note: 'MDE 2.4 pp vs 1.0 pp bar; CI [-0.61, +1.55]' },
   'quarter-end-funding-spike':         { n: '33 quarter-ends 2018-2026', note: 'MDE rho 0.54 vs 0.40 bar; CI [-0.65, +0.07]' },
   'quarter-end-funding-usd':           { n: '93 quarter-ends vs 186 month-ends', note: 'MDE 0.39% vs 0.25% bar; CI [-0.30, +0.17]' },
+  'funding-forecast-error-squeeze': { n: '1,558 sessions x 34 instruments (~73 monthly units)', note: 'MDE about 5.4% vs 3% bar' },
+  'funding-forecast-error-cpstress': { n: '1,558 sessions x 34 instruments (~73 monthly units)', note: 'MDE about 5.4% vs 3% bar' },
+  'funding-forecast-error-levbuild': { n: '1,558 sessions x 34 instruments (~73 monthly units)', note: 'MDE about 5.4% vs 3% bar' },
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
 };
