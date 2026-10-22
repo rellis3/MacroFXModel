@@ -1330,6 +1330,25 @@ export const DESK_EVIDENCE = [
     result: '1,558 sessions: +1.8% [-1.6%, +4.9%], halves +3.9% / -0.3%, FX +1.3% / indices +3.7%, inside the placebo [-4.7%, +4.6%]. Descriptive: HY OAS 20-day widening +5.3% (3 years only), a lead for a longer credit-spread retest.',
     use: 'Leverage build-up does not explain range-forecast misses at a size this sample can see; no band adjustment.',
   },
+  {
+    id: 'basis-stress-usd', domain: 'macro', verdict: 'null', date: '2026-10-22', doc: 'forge/BASIS_STRESS_RULES_PREREG.md', also: ['analysis/output/basis-stress-rules/RESULTS.md'],
+    claim: 'C.OG: cross-currency basis moving 20-30bps in a day signals funding stress emerging -- tested as: a one-day widening of the EUR/GBP basis (CME futures vs spot, fixed rate legs) is followed by USD strength over the next 5 days',
+    result: '1,830 days 2016-01 to 2026-08, day-block bootstrap (seed 20261022): r +0.018 [-0.030, +0.071], halves +0.014 / +0.021, inside the shift placebo; same-day r only +0.017. Only 5 days met the literal 20bp threshold. Interval inside the 0.10 bar.',
+    use: 'A basis widening day is not an early warning of dollar strength (EUR/GBP, 2016-2026). Show the basis as funding-cost description only. JPY/CHF untested.',
+  },
+  {
+    id: 'basis-stress-fxvol', domain: 'volatility', verdict: 'null', date: '2026-10-22', doc: 'forge/BASIS_STRESS_RULES_PREREG.md', also: ['analysis/output/basis-stress-rules/RESULTS.md'],
+    claim: 'A one-day widening of the EUR/GBP cross-currency basis is followed by FX volatility above what recent volatility predicts over the next 5 days',
+    result: '1,835 days: r -0.003 [-0.036, +0.032], halves -0.001 / -0.006, inside the placebo. Interval inside the 0.10 bar.',
+    use: 'No vol warning from basis moves; do not widen FX ranges on a basis widening.',
+  },
+  {
+    id: 'basis-yearend-premium', domain: 'events', verdict: 'validated', date: '2026-10-22', doc: 'forge/BASIS_STRESS_RULES_PREREG.md', also: ['analysis/output/basis-stress-rules/RESULTS.md'],
+    claim: 'C.OG: the cross-currency basis widens at quarter-end because banks shrink balance sheets for reporting dates -- tested as: dollars borrowed via EUR/GBP across 31 December cost more than across an ordinary quarter-end (futures-implied basis, span minus no-span days per contract, year-end vs other contracts)',
+    result: '10 year-end vs 32 other contracts 2016-2026: year-end premium -14.4bp [-24.2, -4.8], Holm p 0.011, EUR -15.7 / GBP -13.1, 9 of 10 year-ends below the ordinary average. Shrinking: -39/-46bp (2017-18), about -20bp to 2023, -4/-7/-0.5bp (2024-26).',
+    use: 'A known seasonal in funding cost: the year-end turn costs more than other quarter-ends, much less since 2024. Calendar description for the funding page; says nothing about spot direction (quarter-end-funding-usd).',
+    instruments: ['EURUSD', 'GBPUSD'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1454,6 +1473,9 @@ const POWER = {
   'funding-forecast-error-squeeze': { n: '1,558 sessions x 34 instruments (~73 monthly units)', note: 'MDE about 5.4% vs 3% bar' },
   'funding-forecast-error-cpstress': { n: '1,558 sessions x 34 instruments (~73 monthly units)', note: 'MDE about 5.4% vs 3% bar' },
   'funding-forecast-error-levbuild': { n: '1,558 sessions x 34 instruments (~73 monthly units)', note: 'MDE about 5.4% vs 3% bar' },
+  'basis-stress-usd':                  { n: '1,830 days 2016-2026', note: 'MDE r 0.075; CI [-0.030, +0.071] inside 0.10 bar' },
+  'basis-stress-fxvol':                { n: '1,835 days 2016-2026', note: 'MDE r 0.075; CI [-0.036, +0.032] inside 0.10 bar' },
+  'basis-yearend-premium':             { n: '10 year-end vs 32 other contracts', note: 'Holm p 0.011; 9/10 year-ends below the ordinary mean' },
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
 };

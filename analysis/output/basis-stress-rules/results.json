@@ -1,0 +1,331 @@
+{
+  "id": "basis-stress-rules",
+  "seed": 20261022,
+  "B": 2000,
+  "prereg": "forge/BASIS_STRESS_RULES_PREREG.md",
+  "cells": {
+    "usd": {
+      "n": 1830,
+      "first": "2016-01-05",
+      "last": "2026-08-19",
+      "r": 0.01767510913383092,
+      "ci95": [
+        -0.030038617985820665,
+        0.07098423681174672
+      ],
+      "half1": 0.013854273433181564,
+      "half2": 0.0209211262120685,
+      "placebo95": [
+        -0.03536620280610738,
+        0.03270403462463348
+      ],
+      "p": 0.49280830925615116,
+      "p_holm": 0.9856166185123023,
+      "gate": {
+        "ci_excludes_0_positive_holm": false,
+        "both_halves_positive": true,
+        "above_placebo": false
+      },
+      "verdict": "NULL"
+    },
+    "fxvol": {
+      "n": 1835,
+      "first": "2016-01-05",
+      "last": "2026-08-19",
+      "r": -0.0025597001826897663,
+      "ci95": [
+        -0.035647942776752393,
+        0.03151945070876292
+      ],
+      "half1": -0.0006208053631459866,
+      "half2": -0.005746467492852566,
+      "placebo95": [
+        -0.03077638490119751,
+        0.027783644996650474
+      ],
+      "p": 0.8812472200318253,
+      "p_holm": 0.9856166185123023,
+      "gate": {
+        "ci_excludes_0_positive_holm": false,
+        "both_halves_positive": false,
+        "above_placebo": false
+      },
+      "verdict": "NULL"
+    },
+    "yearend": {
+      "n_yearend": 10,
+      "n_other": 32,
+      "premium_bp": -14.405793135063949,
+      "ci95": [
+        -24.15935161745252,
+        -4.768328152536457
+      ],
+      "by_pair": {
+        "eur": -15.664114802386818,
+        "gbp": -13.14747146774107
+      },
+      "mean_D_yearend": -18.184457663694463,
+      "mean_D_other": -3.778664528630514,
+      "p": 0.003588826547851217,
+      "contracts": [
+        {
+          "contract": "2016-06",
+          "month": 6,
+          "D": -1.69
+        },
+        {
+          "contract": "2016-09",
+          "month": 9,
+          "D": 11.02
+        },
+        {
+          "contract": "2016-12",
+          "month": 12,
+          "D": -8.1
+        },
+        {
+          "contract": "2017-03",
+          "month": 3,
+          "D": -39.27
+        },
+        {
+          "contract": "2017-06",
+          "month": 6,
+          "D": -3.69
+        },
+        {
+          "contract": "2017-09",
+          "month": 9,
+          "D": -5.11
+        },
+        {
+          "contract": "2017-12",
+          "month": 12,
+          "D": 1.24
+        },
+        {
+          "contract": "2018-03",
+          "month": 3,
+          "D": -45.83
+        },
+        {
+          "contract": "2018-06",
+          "month": 6,
+          "D": -15.58
+        },
+        {
+          "contract": "2018-09",
+          "month": 9,
+          "D": -6.04
+        },
+        {
+          "contract": "2018-12",
+          "month": 12,
+          "D": -1.96
+        },
+        {
+          "contract": "2019-03",
+          "month": 3,
+          "D": -6.12
+        },
+        {
+          "contract": "2019-06",
+          "month": 6,
+          "D": -0.15
+        },
+        {
+          "contract": "2019-09",
+          "month": 9,
+          "D": 5.98
+        },
+        {
+          "contract": "2019-12",
+          "month": 12,
+          "D": -8.04
+        },
+        {
+          "contract": "2020-03",
+          "month": 3,
+          "D": -19.94
+        },
+        {
+          "contract": "2020-06",
+          "month": 6,
+          "D": -74.32
+        },
+        {
+          "contract": "2020-09",
+          "month": 9,
+          "D": -2.16
+        },
+        {
+          "contract": "2020-12",
+          "month": 12,
+          "D": 1.19
+        },
+        {
+          "contract": "2021-03",
+          "month": 3,
+          "D": -23.31
+        },
+        {
+          "contract": "2021-06",
+          "month": 6,
+          "D": -4.35
+        },
+        {
+          "contract": "2021-09",
+          "month": 9,
+          "D": -0.05
+        },
+        {
+          "contract": "2021-12",
+          "month": 12,
+          "D": -2.74
+        },
+        {
+          "contract": "2022-03",
+          "month": 3,
+          "D": -14.24
+        },
+        {
+          "contract": "2022-06",
+          "month": 6,
+          "D": -3.03
+        },
+        {
+          "contract": "2022-09",
+          "month": 9,
+          "D": -2.29
+        },
+        {
+          "contract": "2022-12",
+          "month": 12,
+          "D": 4.3
+        },
+        {
+          "contract": "2023-03",
+          "month": 3,
+          "D": -21.33
+        },
+        {
+          "contract": "2023-06",
+          "month": 6,
+          "D": -3.3
+        },
+        {
+          "contract": "2023-09",
+          "month": 9,
+          "D": -10.35
+        },
+        {
+          "contract": "2023-12",
+          "month": 12,
+          "D": 1.87
+        },
+        {
+          "contract": "2024-03",
+          "month": 3,
+          "D": -4.01
+        },
+        {
+          "contract": "2024-06",
+          "month": 6,
+          "D": 1.06
+        },
+        {
+          "contract": "2024-09",
+          "month": 9,
+          "D": -2.48
+        },
+        {
+          "contract": "2024-12",
+          "month": 12,
+          "D": 2.0
+        },
+        {
+          "contract": "2025-03",
+          "month": 3,
+          "D": -7.32
+        },
+        {
+          "contract": "2025-06",
+          "month": 6,
+          "D": 8.89
+        },
+        {
+          "contract": "2025-09",
+          "month": 9,
+          "D": -1.1
+        },
+        {
+          "contract": "2025-12",
+          "month": 12,
+          "D": -0.62
+        },
+        {
+          "contract": "2026-03",
+          "month": 3,
+          "D": -0.47
+        },
+        {
+          "contract": "2026-06",
+          "month": 6,
+          "D": 0.29
+        },
+        {
+          "contract": "2026-09",
+          "month": 9,
+          "D": -1.62
+        }
+      ],
+      "p_holm": 0.01076647964355365,
+      "gate": {
+        "ci_excludes_0_negative_holm": true,
+        "negative_in_eur_and_gbp": true
+      },
+      "verdict": "VALIDATED"
+    }
+  },
+  "descriptive": {
+    "literal_20bp_days": {
+      "n": 5,
+      "dates": [
+        "2016-02-03",
+        "2016-11-23",
+        "2017-09-15",
+        "2017-12-15",
+        "2022-06-14"
+      ],
+      "usd5_mean": -0.46041002058166514,
+      "fxvol_mean": 0.04218371687836413,
+      "all_usd5_mean": 0.01436106683824224,
+      "all_fxvol_mean": -0.009284634113069774
+    },
+    "same_day_r": 0.01654216104905667,
+    "usd_1d_r": -0.00930176623393086,
+    "usd_20d_r": 0.03055549126598274,
+    "eur_alone": {
+      "usd_r": 0.005268054241095729,
+      "fxvol_r": -0.001035774112049181
+    },
+    "gbp_alone": {
+      "usd_r": 0.025002298703111336,
+      "fxvol_r": -0.0025652977833501805
+    },
+    "vix_low_basis_widening": {
+      "n": 93,
+      "fxvol_mean": 0.005870648706990014,
+      "usd5_mean": -0.04701278001867701
+    },
+    "generic_span_minus_nospan_bp": -7.208615275074312,
+    "tenor_span_vs_nospan_days": [
+      86.90837033337033,
+      54.33205806026184
+    ]
+  },
+  "verdict": "null (usd, fxvol); validated (yearend)",
+  "ranAt": "2026-10-22T16:00:00Z",
+  "preregCommit": "96aa353d",
+  "branch": "main"
+}

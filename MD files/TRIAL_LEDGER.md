@@ -10,16 +10,16 @@ Generated 2026-10-22.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **169** |
-| validated | 33 |
-| null | 112 |
+| claims tested (validated + null + underpowered) | **172** |
+| validated | 34 |
+| null | 114 |
 | underpowered | 24 |
 | context (base rates, descriptions: not counted as tests) | 34 |
-| pre-registrations with no banked verdict (below) | 74 |
+| pre-registrations with no banked verdict (below) | 75 |
 
-**What the count says (Lesson 02 §05).** If none of the 169 claims were real, tests at the usual 5% size would still pass
-about **8.5** of them by luck. 33 passed, so most passes are unlikely to be luck alone, but
-**roughly 9 of the 33 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 172 claims were real, tests at the usual 5% size would still pass
+about **8.6** of them by luck. 34 passed, so most passes are unlikely to be luck alone, but
+**roughly 9 of the 34 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -225,6 +225,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-21 | tff-basis-rates-vol-level | volatility | underpowered | forge/TFF_BASIS_RATES_VOL_PREREG.md |
 | 2026-10-21 | yield-ladder-eurusd | macro | null | forge/YIELD_PREDICTIVE_LADDER_PREREG.md |
 | 2026-10-21 | yield-ladder-nq | macro | underpowered | forge/YIELD_PREDICTIVE_LADDER_PREREG.md |
+| 2026-10-22 | basis-stress-fxvol | volatility | null | forge/BASIS_STRESS_RULES_PREREG.md |
+| 2026-10-22 | basis-stress-usd | macro | null | forge/BASIS_STRESS_RULES_PREREG.md |
+| 2026-10-22 | basis-yearend-premium | events | validated | forge/BASIS_STRESS_RULES_PREREG.md |
 | 2026-10-22 | funding-forecast-error-cpstress | volatility | underpowered | forge/FUNDING_FORECAST_ERROR_PREREG.md |
 | 2026-10-22 | funding-forecast-error-levbuild | volatility | underpowered | forge/FUNDING_FORECAST_ERROR_PREREG.md |
 | 2026-10-22 | funding-forecast-error-squeeze | volatility | underpowered | forge/FUNDING_FORECAST_ERROR_PREREG.md |
@@ -272,6 +275,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/FX_FACTOR_STACK_PREREG.md`: Cross-sectional FX factor stack at one to three months
 - `forge/HARNESS_REGISTRY_PREREG.md`: Unified study harness, and deflating the registry it will re-score
 - `forge/HEDGING_STATE_FORWARD_PREREG.md`: hedging-state-forward — On the full Cboe book, does the dealer-hedging state at the open tell us how the day b
+- `forge/HY_SPREAD_VOL_PREREG.md`: hy-spread-vol — When high-yield credit has been underperforming Treasuries (spreads widening), are the next fi
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
 - `forge/IVRV_COT_PREREG.md`: IV ÷ RV in the book, the rich-IV break rule on the indices, and COT positioning at the lines — pre-registratio
