@@ -26,6 +26,19 @@
 
 import { seriesDeltas } from './macroChange.js';
 
+/**
+ * WHERE EACH CHIP SITS in the chain graphic (today.html "The chain, today" and the newsletter's chain picture). One layout, read by both.
+ * Found by analysis/chain_layout.mjs (simulated annealing on the scorer in js/chainLayout.js): 0 crossing links and 1 line under an unrelated
+ * chip, against 14 and 16 for the hand-laid layout it replaced (2026-10-23). The top row, the oil -> inflation -> 10Y -> real-yield spine, kept
+ * its place. Add a chip? Re-run the search and keep js/chainLayout.test.mjs green; do not just drop it in a free slot.
+ */
+export const CHAIN_LAYOUT = {   // [column, row] on a 6 x 4 grid; causes sit left of effects where the links allow
+  oil: [0, 0], bei: [1, 0], us10y: [2, 0], real: [3, 0], gold: [4, 0], audusd: [5, 0],
+  usdcad: [0, 1], crack: [1, 1], spx: [2, 1], nq: [3, 1], dxy: [4, 1], copper: [5, 1],
+  gbpusd: [0, 2], us30y: [1, 2], hy: [2, 2], vix: [3, 2], funding: [4, 2], btc: [5, 2],
+  giltgap: [0, 3], us2y: [1, 3], bundgap: [2, 3], eurusd: [3, 3], usdjpy: [4, 3], jgbgap: [5, 3],
+};
+
 export const CHAIN_WINDOW_DAYS = 20;
 
 // unit: how the 20d change is expressed. pct = percent change of a price;

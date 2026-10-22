@@ -30,6 +30,7 @@ export const RANGE_EFFECT = {
   pmi: { USDJPY: '+0.21 on the day (big surprises)' },
   'retail sales': { GBPUSD: '+0.11 on the day', AUDUSD: '+0.12 on the day' },
 };
+import { CHAIN_LAYOUT } from './macroChain.js';
 const FAMILY_RE = [['cpi', /\bcpi\b|consumer price|inflation rate/i], ['employment', /non-farm|nonfarm|payroll|unemployment|jobless|claims|employment change/i], ['gdp', /\bgdp\b/i], ['rate decision', /rate decision|cash rate|official bank rate|federal funds|interest rate|policy rate|refinancing/i], ['pmi', /\bpmi\b|ism /i], ['retail sales', /retail sales/i]];
 export const familyOf = event => FAMILY_RE.find(([, re]) => re.test(event ?? ''))?.[0] ?? null;
 
@@ -131,12 +132,7 @@ export const BANNER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 
 /** The chain of impact as a picture: the same grid and verdicts as the "The chain, today" graphic on today.html, redrawn as plain SVG
  *  (no page styles) so it prints and survives a forward. Green = the textbook link is holding, amber = both ends moved the wrong way
  *  round, grey dashed = an end is inside its noise floor. Boxes are opaque and sit on top of the lines. */
-export const CHAIN_POS = {   // [column, row]; mirrors today.html CHAIN_POS so the map is the same place in both
-  oil: [0, 0], bei: [1, 0], us10y: [2, 0], real: [3, 0], dxy: [4, 0], audusd: [5, 0],
-  usdcad: [0, 1], crack: [1, 1], us30y: [2, 1], funding: [3, 1], gold: [4, 1], usdjpy: [5, 1],
-  vix: [0, 2], hy: [1, 2], spx: [2, 2], nq: [3, 2], copper: [4, 2], btc: [5, 2],
-  giltgap: [0, 3], gbpusd: [1, 3], bundgap: [2, 3], eurusd: [3, 3], jgbgap: [4, 3], us2y: [5, 3],
-};
+export const CHAIN_POS = CHAIN_LAYOUT;   // the same grid today.html draws (js/macroChain.js)
 export function chainSvg(links) {
   const L = (links ?? []).filter(l => l.verdict !== 'unmeasured' && CHAIN_POS[l.a?.key] && CHAIN_POS[l.b?.key]);
   if (!L.length) return '';
