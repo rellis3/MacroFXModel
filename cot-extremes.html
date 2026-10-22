@@ -293,6 +293,9 @@ svg{display:block;width:100%;height:auto;overflow:visible}
 
 <script src="js/cotAftermathData.js"></script>
 <script src="js/cotDurationData.js"></script>
+<script src="js/positioningIntoReleaseData.js"></script>
+<script src="js/cotTrendFilterData.js"></script>
+<script src="js/cotTailData.js"></script>
 <script>
 // CFTC Commitments of Traders. Weekly: a TUESDAY snapshot released FRIDAY, so it is always
 // several days old. That is stamped across the top rather than left for the reader to work
@@ -343,6 +346,7 @@ const HELP = {
   read:['This week\u2019s read','Plain-English interpretation of every panel on this page, in one place: a headline saying how stretched the board is overall, then one sub-read per panel so each number is already interpreted before you scroll to it.','Reads the same fields the panels do \u2014 it is not a second opinion or a new calculation. The traffic lights are deliberately NOT directional: green means nothing here argues against your plan, amber means something is changing, red means this contradicts a trade you might be about to take. Direction comes from your own system.'],
   spot:['Spotlight','Every market currently at a 90th/10th-percentile extreme of its own trailing history, most stretched first, so you do not have to scan the full ledger to find them.','A dot marks a market where commercials are independently at their own opposite extreme too \u2014 the Confluence test. Click any card to load that market\u2019s 200-week series at the bottom of the page.'],
   ledger:['Positioning ledger','Every ranked market as a bar running from the 50th percentile out to where it sits in its OWN trailing range, grouped by asset class with each group\u2019s median in the header.','The shaded bands at each end are the 90th/10th thresholds this page treats as extreme. Grouping is the point: a crowded market inside a group that is all leaning the same way is a shared macro theme rather than an independent bet, and a flat board-wide ranking cannot show you that — it is what tells you whether one crowded market is idiosyncratic or part of a board-wide risk-on / risk-off stretch. Replaces the old crowding leaderboard and the separate by-asset-class median table, carrying the contents of both.'],
+  more:['Three more tests','Release days (a registered test), COT as a filter on the trend system, and whether crowded books get a bumpier ride.','Each card says how much weight it can carry: the release-day result passed a registered test but still needs its held-out confirmation; the other two are exploratory.'],
   dur:['How long it stays stretched','Does positioning that stays stretched for a long time relate to price, and with what lag? Every market and week 2007\u20132026, measured from the Friday release on futures prices.','Exploratory, not pre-registered: analysis/output/cot-extreme-duration/RESULTS.md. The 10Y note is shown separately: leveraged-fund Treasury positioning is mostly the cash-futures basis trade, not a view on direction.'],
   aftm:['Track record','What price actually did after this page flagged a 90th/10th-percentile extreme, every week from 2018 to Aug 2026, measured from the Friday 15:30 ET release. "Kept going" = price moved further the way the crowd is positioned.','Exploratory, not pre-registered: analysis/output/cot-extreme-aftermath/RESULTS.md. Moves are in units of each market\'s own recent daily volatility so a quiet and a wild market can be pooled. A coloured cell means the 95% interval excludes zero; with ~60 cells on this table, several will do that by chance.'],
   oixchk:['COT vs options positioning','Two separate datasets shown side by side for any pair with saved options data: COT\'s weekly futures positioning per currency leg, and the nearest put/call open-interest wall from a manually-pasted CME options chain.','Deliberately not combined into one verdict — futures positioning and dealer options flow are different markets that can agree or disagree. Options data is only as fresh as the last paste on the OI Analytics page, so check the age column.'],
@@ -625,6 +629,16 @@ basis: {
   ],
   not: 'Neither ranking is "wrong". % of OI is the default because it answers the question actually being asked; raw is '
      + 'kept so you can check it.',
+},
+
+more: {
+  what:'Three follow-up questions about what COT positioning does to markets, beyond "does it predict direction" (it does not).',
+  why: 'Positioning that follows price can still matter at specific moments (a release), as a filter on another system, or for how rough the ride is. Each was tested on history.',
+  how: [
+    '<b>Release days</b> was pre-registered on 2026-10-14 with its pass bars fixed, then run. It passed one of its two questions. The registration itself says a pass must be confirmed on held-out years before any page leans on it.',
+    '<b>Trend filter</b> and <b>bumpier ride</b> are exploratory: designed before running, but on data earlier studies here had already looked at.',
+  ],
+  not: 'None of the three is a trade signal. The release-day effect is about 6% of a day\'s range (3\u20134 pips on EURUSD) before costs, and is not yet confirmed out of sample.',
 },
 
 dur: {
@@ -1210,6 +1224,47 @@ function duration(big){
     + '<div class="c5"><div style="overflow-x:auto"><table><thead><tr><th>When positioning weakens</th><th>4 wks</th><th>13 wks</th><th>26 wks</th><th>n</th></tr></thead><tbody>' + wkRows + '</tbody></table></div>'
     + '<div class="note">Positioning falling back from an extreme did <b>not</b> pull price with it: weeks after a 20-point drop from a 90th+ reading look like any other week.</div></div></div>'
     + '<div class="note"><b>' + esc(DUR.status) + '.</b> Weekly CME futures / ICE DXY closes, reports ' + DUR.window[0] + ' to ' + DUR.window[1] + '. The 10Y is split out after the results were seen (its leveraged-fund position is mostly the basis trade). Read as base rates and shapes, not a signal.</div>';
+}
+
+// ── round-2 tests: js/positioningIntoReleaseData.js, js/cotTrendFilterData.js, js/cotTailData.js ──
+function moreTests(big){
+  const PIR = window.POSITIONING_INTO_RELEASE, TF = window.COT_TREND_FILTER, TL = window.COT_TAIL;
+  const sg = (v, d = 2) => v == null ? '\u2014' : (v > 0 ? '+' : '') + v.toFixed(d), ci = c => '<span class="muted">[' + sg(c[0]) + ', ' + sg(c[1]) + ']</span>';
+  const pct = v => (100 * v).toFixed(1) + '%';
+  const card = (title, badge, body, cls) => '<div class="' + cls + '" style="background:var(--bg3);border:1px solid var(--line);border-radius:8px;padding:12px 14px">'
+    + '<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b style="color:var(--tx)">' + title + '</b><span style="font-size:11px;color:var(--acc);text-transform:uppercase;letter-spacing:.06em">' + badge + '</span></div>' + body + '</div>';
+  let c1 = '<div class="empty">Release-day data not loaded.</div>';
+  if (PIR) {
+    const D = PIR.D, R = PIR.R;
+    c1 = '<div style="font-size:26px;font-weight:650;margin:6px 0 2px">' + sg(D.effect) + ' <span style="font-size:13px;font-weight:400;color:var(--tx2)">of a day\'s range, against the crowd</span></div>'
+      + '<div class="muted" style="font-size:12px">95% ' + ci(D.ci) + ' \u00b7 both halves ' + sg(D.halves[0]) + ' / ' + sg(D.halves[1]) + ' \u00b7 ' + D.n.toLocaleString() + ' crowded release days</div>'
+      + '<div style="overflow-x:auto"><table style="margin-top:8px"><thead><tr><th>Pair</th><th>Against the crowd</th></tr></thead><tbody>'
+      + Object.entries(D.perPair).map(([k, v]) => '<tr><td>' + esc(k) + '</td><td>' + sg(v) + '</td></tr>').join('') + '</tbody></table></div>'
+      + '<div class="note">On days with a high-impact release, price drifted slightly against a crowded leveraged-fund book (80th/20th percentile), compared with the same kind of release when not crowded. '
+      + 'Not on quiet days (' + sg(PIR.placeboD.effect) + '). The day was <b>not</b> wider (' + sg(R.effect, 3) + ' ' + ci(R.ci) + '). '
+      + 'Passed as registered (' + esc(PIR.window[0]) + ' to ' + esc(PIR.window[1]) + '), against the expectation; it must be confirmed on 2008\u20132017 before it counts. About 3\u20134 pips on EURUSD.</div>';
+  }
+  let c2 = '<div class="empty">Trend-filter data not loaded.</div>';
+  if (TF) {
+    const A = TF.all.arms, Df = TF.all.diff, lab = { BASE: 'Trend system as is', FILTER_CUT: 'Cut when crowd long-held', FILTER_HALF: 'Halve when crowd long-held', FRESH_ONLY: 'Only fresh crowds' };
+    c2 = '<div style="overflow-x:auto"><table style="margin-top:8px"><thead><tr><th>Arm</th><th>Sharpe ' + esc(TF.IS[0].slice(0, 4)) + '\u2013' + esc(TF.IS[1].slice(0, 4)) + '</th><th>Sharpe ' + esc(TF.OOS[0].slice(0, 4)) + '\u2013' + esc(TF.OOS[1].slice(0, 4)) + '</th></tr></thead><tbody>'
+      + Object.keys(lab).filter(k => A[k]).map(k => '<tr><td>' + lab[k] + '</td><td>' + A[k].IS[0].toFixed(2) + '</td><td>' + A[k].OOS[0].toFixed(2) + (Df[k] ? ' <span class="muted">(' + sg(Df[k].OOS[0]) + ')</span>' : '') + '</td></tr>').join('')
+      + '</tbody></table></div>'
+      + '<div class="note">The desk\'s own trend system (js/trendFollowEngine.js, 12 markets) with positions cut when the crowd on the trend\'s side had been stretched for most of the past six months. '
+      + 'It looked better in-sample and was <b>worse out of sample</b> (' + sg(Df.FILTER_CUT.OOS[0]) + ' Sharpe, ' + ci(Df.FILTER_CUT.OOS.slice(1)) + '). <b>Does not help.</b> '
+      + 'Separately, the trend system itself earned little on these markets after 2016.</div>';
+  }
+  let c3 = '<div class="empty">Tail data not loaded.</div>';
+  if (TL) {
+    const G = TL.groups['ex-10Y'], Y = TL.groups['10Y'], rows = [['neutral', 'Neutral (50\u201370)'], ['stretched', 'Stretched (70\u201390)'], ['extreme', 'Extreme (90+)'], ['long-held', 'Long-held extreme']];
+    c3 = '<div style="overflow-x:auto"><table style="margin-top:8px"><thead><tr><th>Positioning</th><th>2\u03c3 days against</th><th>with</th><th>Next-month vol vs neutral</th></tr></thead><tbody>'
+      + rows.filter(([k]) => G[k]).map(([k, l]) => { const d = G[k].daily, v = G[k].vol; return '<tr><td>' + l + '</td><td>' + pct(d.against) + '</td><td>' + pct(d.with) + '</td><td>' + (k === 'neutral' ? '\u2014' : sg(100 * v.vsNeutral, 1) + '% ' + '<span class="muted">[' + sg(100 * v.vsNeutralCi[0], 1) + ', ' + sg(100 * v.vsNeutralCi[1], 1) + ']</span>') + '</td></tr>'; }).join('')
+      + '<tr><td>10Y leveraged short, extreme</td><td>' + pct(Y.extreme.daily.against) + '</td><td>' + pct(Y.extreme.daily.with) + '</td><td>\u2014</td></tr>'
+      + '</tbody></table></div>'
+      + '<div class="note">Daily moves in the week after a report, all markets except the 10Y. At an extreme, sharp days against the crowd are a little more common than sharp days with it, and the next month\'s volatility runs ~5% above what neutral readings show (FX majors mostly). '
+      + 'Over a month, big moves still go <b>with</b> the crowd more often. Read it as: a bumpier ride, not a reversal. The 10Y leveraged short (the basis trade) takes about twice as many shocks against it.</div>';
+  }
+  return '<div class="grid" style="gap:12px">' + card('Release days', 'registered test', c1, 'c5') + card('COT as a trend filter', 'exploratory', c2, 'c7') + card('A bumpier ride?', 'exploratory', c3, 'c12') + '</div>';
 }
 
 function persistence(big){
@@ -2013,6 +2068,7 @@ function render(){
     + panel('c5','persist','Extreme persistence','persist',persistence,true)
     + panel('c12','aftm','Track record \u2014 what price did after past extremes (2018\u20132026)','aftm',aftermath,true)
     + panel('c12','dur','How long it stays stretched \u2014 and when price turns (2007\u20132026)','dur',duration,true)
+    + panel('c12','more','Three more tests \u2014 release days, trend filter, bumpier ride','more',moreTests,true)
     + panel('c7','flow','Positioning flow \u2014 week over week','flow',flow,true)
     + panel('c5','evr','Event-risk overlay','evrisk',eventRisk,true)
     + panel('c12','alerts','Reinforcing FX pairs (specs vs. specs, cross-currency)','paira',crowdingCards,true)
