@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Desk Atlas (v2 preview) — three lenses on one board: Global, Currency, Pair. Additive: today.html is untouched.
-   Reads the same live endpoints as the rest of the site; every number on the page comes from one of them. */
+/* Desk Atlas (v2 preview). Three lenses on one board (Global, Currency, Pair) and three tenses on every lens
+   (behind us, right now, ahead). Additive: today.html is untouched. Every number is read from a live endpoint. */
 :root{
   --bg:#080c12;--bg2:#0d131c;--card:#121a26;--card2:#182233;--line:#243247;--line2:#1b2638;
   --text:#e9eff7;--text2:#a5b2c4;--text3:#6b7a8f;
@@ -35,15 +35,14 @@ svg{display:block}
 .i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
 .mono{font-family:var(--mono)}.disp{font-family:var(--disp)}
 a{color:var(--blue)}
-
 .app{display:grid;grid-template-columns:1fr;min-height:100vh}
 .rail{display:none}
 .main{padding-block:14px 96px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));min-width:0}
-.wrap{max-width:1180px;margin:0 auto;display:grid;gap:14px}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:14px}
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(3,1fr);background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px max(10px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px))}
 .tab{display:grid;justify-items:center;gap:2px;padding:6px 4px;background:none;border:0;color:var(--text3);font:600 11px var(--body);cursor:pointer;border-radius:10px}
 .tab[aria-selected="true"]{color:var(--blue);background:var(--glow)}
-.tab:focus-visible,.cc:focus-visible,.pipe:focus-visible,.rb:focus-visible,.btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.tab:focus-visible,.cc:focus-visible,.pipe:focus-visible,.rb:focus-visible,.btn:focus-visible,.gchip:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 @media (min-width:980px){
   .app{grid-template-columns:84px 1fr}
   .rail{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 8px;border-right:1px solid var(--line);position:sticky;top:0;height:100vh;background:color-mix(in srgb,var(--bg) 90%,transparent)}
@@ -56,11 +55,15 @@ a{color:var(--blue)}
 .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
 .top h1{font:700 22px/1.1 var(--disp);margin:0;letter-spacing:-.01em}
 .top .sub{color:var(--text3);font-size:12px;font-family:var(--mono)}
+.topr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .badge{display:inline-flex;gap:6px;align-items:center;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:var(--amber);border:1px solid color-mix(in srgb,var(--amber) 40%,transparent);border-radius:999px;padding:3px 10px;text-decoration:none}
+.aibox{display:inline-flex;gap:6px;align-items:center;font-size:11px;color:var(--text3)}
+select{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:5px 8px;font:600 12px var(--body)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-width:0}
 .card h2{margin:0 0 10px;font:600 12px var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--text3);display:flex;gap:8px;align-items:center}
 .card h2 .i{width:16px;height:16px}
-.pill{display:inline-flex;gap:5px;align-items:center;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;white-space:nowrap;background:color-mix(in srgb,var(--text2) 14%,transparent);color:var(--text2)}
+.card h3{margin:14px 0 6px;font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.pill{display:inline-flex;gap:5px;align-items:center;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;white-space:nowrap;background:color-mix(in srgb,var(--text2) 14%,transparent);color:var(--text2);text-decoration:none}
 .pill.bull{background:color-mix(in srgb,var(--bull) 16%,transparent);color:var(--bull)}
 .pill.bear{background:color-mix(in srgb,var(--bear) 16%,transparent);color:var(--bear)}
 .pill.amber{background:color-mix(in srgb,var(--amber) 16%,transparent);color:var(--amber)}
@@ -68,8 +71,13 @@ a{color:var(--blue)}
 .pill.violet{background:color-mix(in srgb,var(--violet) 16%,transparent);color:var(--violet)}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px}
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;align-items:start}
+.cols3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:14px;align-items:start}
 .up{color:var(--bull)}.dn{color:var(--bear)}
 .note{font-size:11.5px;color:var(--text3);margin:0}
+.tl-line{margin:0 0 7px;font-size:13px;line-height:1.55;color:var(--text2)}
+.tl-line:first-of-type{color:var(--text);font-weight:500}
+.tense{border-top:3px solid var(--line)}
+.tense.behind{border-top-color:var(--violet)}.tense.now{border-top-color:var(--blue)}.tense.ahead{border-top-color:var(--amber)}
 .learn{margin-top:10px;font-size:12px;color:var(--text2)}
 .learn summary{cursor:pointer;color:var(--violet);font-weight:600;list-style:none;display:inline-flex;gap:6px;align-items:center}
 .learn summary::-webkit-details-marker{display:none}
@@ -118,6 +126,9 @@ a{color:var(--blue)}
 .cc .bar{height:5px;border-radius:3px;background:var(--line2);margin-top:6px;position:relative}
 .cc .bar i{position:absolute;top:0;bottom:0;border-radius:3px}
 .cc .mv{font:11px var(--mono);margin-top:3px}
+.gchips{display:flex;gap:6px;flex-wrap:wrap}
+.gchip{border:1px solid var(--line);background:var(--card2);color:var(--text2);border-radius:999px;padding:4px 12px;font:600 12px var(--body);cursor:pointer}
+.gchip[aria-pressed="true"]{background:var(--glow);border-color:var(--blue);color:var(--blue)}
 .tl{position:relative;height:60px;margin:6px 4px 0}
 .tl .axis{position:absolute;left:0;right:0;top:26px;height:2px;background:var(--line)}
 .tl .seg{position:absolute;top:20px;height:14px;border-radius:7px;opacity:.55}
@@ -127,18 +138,25 @@ a{color:var(--blue)}
 .hd{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .hd .big{font:700 26px/1 var(--disp)}.hd .fl2{font-size:34px;line-height:1}
 .fac{display:grid;gap:8px}
-.fr{display:grid;grid-template-columns:104px 1fr 44px;gap:8px;align-items:center;font-size:12px}
+.fr{display:grid;grid-template-columns:104px 1fr 78px;gap:8px;align-items:center;font-size:12px}
 .fr .nm{color:var(--text2)}
 .fr .tr{height:8px;border-radius:4px;background:var(--line2);position:relative}
 .fr .tr i{position:absolute;top:0;bottom:0;border-radius:4px}
 .fr .tr u{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--text3);text-decoration:none}
 .fr.na .nm,.fr.na .v{color:var(--text3)}
 .fr.na .tr{background:repeating-linear-gradient(90deg,var(--line2) 0 5px,transparent 5px 9px)}
+.fr.l{grid-template-columns:64px 1fr 96px}
 .v{font:12px var(--mono);text-align:right}
 .rows{display:grid;gap:0}
 .rw{display:grid;grid-template-columns:1fr auto;gap:10px;padding:8px 0;border-top:1px solid var(--line2);font-size:12.5px;align-items:center}
 .rw:first-child{border-top:0}
 .rw small{display:block;color:var(--text3);font-size:11px}
+.chg{display:grid;grid-template-columns:1fr 54px 54px 54px;gap:6px;font-size:12px;padding:4px 0;border-top:1px solid var(--line2)}
+.chg:first-child{border-top:0;color:var(--text3);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase}
+.chg span:not(:first-child){text-align:right;font-family:var(--mono)}
+.cbgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.cbc{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.cbc b{font-size:12px}.cbc .mono{font-size:11px}
 .btn{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:10px;padding:6px 11px;font:600 12px var(--body);cursor:pointer}
 .btn:hover{border-color:var(--blue)}.btn[disabled]{opacity:.55;cursor:wait}
 .btn .i{width:15px;height:15px}
@@ -166,6 +184,16 @@ a{color:var(--blue)}
 .panel[hidden]{display:none}
 .err{padding:10px 12px;border:1px solid color-mix(in srgb,var(--bear) 45%,transparent);border-radius:12px;color:var(--bear);font-size:12.5px}
 .src-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.evrow{display:grid;grid-template-columns:62px 1fr auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line2);font-size:12.5px}
+.evrow:first-child{border-top:0}
+.evrow .tm{font:11px var(--mono);color:var(--text2)}
+.evrow small{display:block;color:var(--text3);font-size:11px}
+.scn{display:grid;gap:4px;margin-bottom:8px}
+.scn .sb{height:8px;border-radius:4px;background:var(--line2);position:relative}
+.scn .sb i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--blue)}
+.scn .sn{display:flex;justify-content:space-between;font-size:12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.hint{font-size:11.5px;color:var(--text3);padding:8px 10px;border:1px dashed var(--line);border-radius:10px}
 @media (prefers-reduced-motion:reduce){.flow::after,.flowv::after{animation:none}}
 </style>
 </head>
@@ -192,6 +220,8 @@ a{color:var(--blue)}
     <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 16l5-5 4 3 7-8"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
     <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 8v4l3 2"/></symbol>
+    <symbol id="i-fwd" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></symbol>
   </defs>
 </svg>
 
@@ -201,12 +231,13 @@ a{color:var(--blue)}
     <div class="wrap">
       <div class="top">
         <div><h1 id="ttl">Global</h1><div class="sub" id="sub">loading…</div></div>
-        <a class="badge" href="today.html" title="The classic page is unchanged">v2 preview · classic view →</a>
+        <div class="topr"><span class="aibox" id="aibox"></span><a class="badge" href="today.html" title="The classic page is unchanged">v2 preview · classic view →</a></div>
       </div>
       <div id="loaderr"></div>
 
       <section class="panel" id="v-global" style="display:grid;gap:14px">
         <div class="hero g" id="hero"></div>
+        <div id="position" style="display:grid;gap:14px"></div>
         <div class="card">
           <h2><svg class="i"><use href="#i-pipe"/></svg>How the money is flowing</h2>
           <div class="stages" id="stages"></div>
@@ -233,11 +264,11 @@ a{color:var(--blue)}
       </section>
 
       <section class="panel" id="v-ccy" hidden><div class="strip" id="cstrip"></div><div id="ccybody" style="display:grid;gap:14px"></div></section>
-      <section class="panel" id="v-pair" hidden><div class="strip" id="pstrip"></div><div id="pairbody" style="display:grid;gap:14px"></div></section>
+      <section class="panel" id="v-pair" hidden><div class="gchips" id="gchips"></div><div class="strip" id="pstrip"></div><div id="pairbody" style="display:grid;gap:14px"></div></section>
 
       <div class="card"><h2><svg class="i"><use href="#i-link"/></svg>Where this page's numbers come from</h2>
         <div class="src-list" id="srcs"></div>
-        <p class="note" style="margin-top:8px">Nothing on this page is invented: every figure is read from one of these live endpoints when it loads. See the <a href="data-map.html">Data Map</a> for what each feed is and how fresh it is.</p></div>
+        <p class="note" style="margin-top:8px">Nothing on this page is invented: every figure is read from one of these live endpoints when it loads. Ledger badges link to the Evidence Book. See the <a href="data-map.html">Data Map</a> for what each feed is and how fresh it is.</p></div>
     </div>
   </main>
 </div>
@@ -247,41 +278,46 @@ a{color:var(--blue)}
 import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
 import { buildCountryCard } from './js/countryCard.js';
 import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
+import * as P from './js/atlasPosition.js';
+import { DESK_EVIDENCE } from './js/deskEvidence.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => (s ?? '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const ic = (n, c) => `<svg class="i${c ? ' ' + c : ''}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const icS = n => `<svg class="i" style="width:15px;height:15px" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const sg = (v, d = 2) => (v >= 0 ? '+' : '') + v.toFixed(d);
 const J = (u, opt) => fetch(u, opt).then(r => r.json()).catch(() => null);
 
 const FACT = [['rates', 'Rates & policy'], ['inflation', 'Inflation'], ['growth', 'Growth'], ['labour', 'Labour'], ['demand', 'Spending'], ['external', 'Trade']];
 const FLAG = { USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', AUD: '🇦🇺', NZD: '🇳🇿', CAD: '🇨🇦', CHF: '🇨🇭' };
 const NAME = { USD: 'US Dollar', EUR: 'Euro', GBP: 'Pound', JPY: 'Yen', AUD: 'Australian Dollar', NZD: 'New Zealand Dollar', CAD: 'Canadian Dollar', CHF: 'Swiss Franc' };
-const PAIR_CCY = { EURUSD: ['EUR', 'USD'], GBPUSD: ['GBP', 'USD'], USDJPY: ['USD', 'JPY'], AUDUSD: ['AUD', 'USD'], NZDUSD: ['NZD', 'USD'], USDCAD: ['USD', 'CAD'], USDCHF: ['USD', 'CHF'],
-  GBPJPY: ['GBP', 'JPY'], EURGBP: ['EUR', 'GBP'], EURJPY: ['EUR', 'JPY'], EURCHF: ['EUR', 'CHF'], AUDJPY: ['AUD', 'JPY'], CADJPY: ['CAD', 'JPY'] };
-const PAIR_LIST = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'BTCUSD'];
-const PAIR_LABEL = { GOLD: 'Gold', NQ: 'Nasdaq', SPX500: 'S&P 500', BTCUSD: 'Bitcoin' };
+const CROWD_WORDS = { 'crowded long': 'crowded long', 'crowded short': 'crowded short', 'smallest long in years': 'at their smallest long in years', 'smallest short in years': 'at their smallest short in years', 'mid-range': 'mid-range' };
+const COT_SYM = { NQ: 'NQ', SPX500: 'ES', US30: 'YM', US2000: 'RTY', GOLD: 'GOLD', BTCUSD: 'BTC' };
+const COUNTRY_OF = Object.fromEntries(Object.entries(P.CCY_OF_COUNTRY).map(([c, k]) => [k, c]));
+const IDX_LABEL = { GOLD: 'Gold', NQ: 'Nasdaq', SPX500: 'S&P 500', DE30: 'DAX', UK100: 'FTSE 100', US30: 'Dow', US2000: 'Russell 2000', BTCUSD: 'Bitcoin' };
+const GROUPS = [['all', 'All'], ['fx', 'FX'], ['index', 'Indices'], ['commodity', 'Gold'], ['crypto', 'Bitcoin']];
 const DRILL_PAIR = { eurusd: ['EUR', 'USD'], gbpusd: ['GBP', 'USD'], audusd: ['AUD', 'USD'], nzdusd: ['NZD', 'USD'], usdjpy: ['USD', 'JPY'], usdcad: ['USD', 'CAD'], usdchf: ['USD', 'CHF'], eurjpy: ['EUR', 'JPY'], audjpy: ['AUD', 'JPY'], eurgbp: ['EUR', 'GBP'] };
 
-const D = { drill: null, msc: null, rf: null, cot: null, brief: null, sess: null, fc: null, cal: null, intel: null };
-const state = { view: 'global', ccy: 'USD', pair: 'EURUSD', pipe: null };
-let derived = null;   // computed once after load
+const D = {};
+const state = { view: 'global', ccy: 'USD', pair: 'EURUSD', pipe: null, group: 'all' };
+let derived = null;
 
-/* ── derived numbers, all from the bundle ── */
-function lastTwo(key) {
-  const a = D.drill?.series?.[key]; if (!a) return null;
-  let i = a.length - 1; while (i >= 0 && a[i] == null) i--;
-  let j = i - 1; while (j >= 0 && a[j] == null) j--;
-  return i < 0 ? null : { last: a[i], prev: j >= 0 ? a[j] : null, i };
-}
+/* ── instruments: the same set today.html carries ── */
+const insts = () => D.brief?.instruments ?? {};
+const acOf = k => insts()[k]?.ac ?? (/^[A-Z]{6}$/.test(k) ? 'fx' : 'index');
+const ccysOf = k => P.ccysOf(k, acOf(k));
+const labelOf = k => { const c = ccysOf(k); return c ? c[0] + '/' + c[1] : IDX_LABEL[k] ?? k; };
+const glyphOf = k => { const c = ccysOf(k); return c ? FLAG[c[0]] + FLAG[c[1]] : k === 'GOLD' ? '🥇' : k === 'BTCUSD' ? '₿' : '📈'; };
+
+/* ── derived numbers ── */
+function lastTwo(key) { const a = D.drill?.series?.[key]; if (!a) return null; let i = a.length - 1; while (i >= 0 && a[i] == null) i--; let j = i - 1; while (j >= 0 && a[j] == null) j--; return i < 0 ? null : { last: a[i], prev: j >= 0 ? a[j] : null, i }; }
 function back(key, n) { const a = D.drill?.series?.[key]; const t = lastTwo(key); if (!a || !t) return null; let k = t.i, c = 0; while (k > 0 && c < n) { k--; if (a[k] != null) c++; } return a[k] ?? null; }
-function spark(key, n = 30) { const a = D.drill?.series?.[key]; if (!a) return []; return a.slice(-n).filter(v => v != null); }
+function spark(key, n = 30) { const a = D.drill?.series?.[key]; return a ? a.slice(-n).filter(v => v != null) : []; }
 function chainNow() {
   const S = D.drill.series, N = D.drill.dates.length - 1;
   const pts = key => { const a = S[key]; if (!a) return null; const out = []; for (let k = Math.max(0, N - 45); k <= N; k++) if (a[k] != null) out.push({ date: D.drill.dates[k], value: a[k] }); return out.length > 20 ? out : null; };
   const map = { real: 'tips', dxy: 'dxy', oil: 'oil', gold: 'gold', copper: 'copper', btc: 'btc', nq: 'nq', spx: 'spx', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', bei: 'bei', vix: 'vix', hy: 'hy', audusd: 'audusd', usdcad: 'usdcad', usdjpy: 'usdjpy', eurusd: 'eurusd', gbpusd: 'gbpusd' };
-  const vals = {};
-  for (const [node, key] of Object.entries(map)) { const p = pts(key); vals[node] = p ? nodeDelta(p, CHAIN_NODES[node]) : null; }
+  const vals = {}; for (const [node, key] of Object.entries(map)) { const p = pts(key); vals[node] = p ? nodeDelta(p, CHAIN_NODES[node]) : null; }
   let links = []; try { links = evaluateChain(vals); } catch { links = []; }
   return { vals, links };
 }
@@ -290,10 +326,12 @@ function strengths() {
   for (const [k, [b, q]] of Object.entries(DRILL_PAIR)) { const t = lastTwo(k); if (!t || t.prev == null || !t.prev) continue; const chg = (t.last / t.prev - 1) * 100; acc[b].push(chg); acc[q].push(-chg); }
   return Object.entries(acc).filter(([, v]) => v.length).map(([ccy, v]) => ({ ccy, score: v.reduce((a, b) => a + b, 0) / v.length, n: v.length })).sort((a, b) => b.score - a.score);
 }
-function composites() { return Object.fromEntries((D.msc?.ranked ?? []).map(r => [r.ccy, { composite: r.composite, factorsScored: r.factorsScored, factorsTotal: r.factorsTotal, factors: r.factors }])); }
-function facVec(ccy) { const r = (D.msc?.ranked ?? []).find(x => x.ccy === ccy); return FACT.map(([k]) => (r?.factors?.[k]?.score ?? null)); }
+const composites = () => Object.fromEntries((D.msc?.ranked ?? []).map(r => [r.ccy, { composite: r.composite, factorsScored: r.factorsScored, factorsTotal: r.factorsTotal, factors: r.factors }]));
+const facVec = ccy => { const r = (D.msc?.ranked ?? []).find(x => x.ccy === ccy); return FACT.map(([k]) => (r?.factors?.[k]?.score ?? null)); };
+const cbHist = () => ({ USD: D.hUSD?.history, EUR: D.hEUR?.history, GBP: D.hGBP?.history, JPY: D.hJPY?.history });
+const loading = () => D.__extra ? '' : '<p class="note">Loading the analysis feeds…</p>';
 
-/* ── svg helpers ── */
+/* ── small renderers ── */
 const polar = (cx, cy, r, deg) => { const a = (deg - 90) * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
 const arc = (cx, cy, r, a0, a1) => { const p0 = polar(cx, cy, r, a0), p1 = polar(cx, cy, r, a1); return `M${p0[0].toFixed(1)} ${p0[1].toFixed(1)} A${r} ${r} 0 ${(a1 - a0) > 180 ? 1 : 0} 1 ${p1[0].toFixed(1)} ${p1[1].toFixed(1)}`; };
 function dial(active, total) {
@@ -315,76 +353,122 @@ function ring() {
   o += `<circle cx="${n[0].toFixed(1)}" cy="${n[1].toFixed(1)}" r="5" fill="var(--amber)"/><text x="80" y="78" text-anchor="middle" font-family="var(--disp)" font-weight="700" font-size="15" fill="var(--text)">${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</text><text x="80" y="92" text-anchor="middle" font-size="8.5" fill="var(--text3)">UK time</text></svg><div class="lbl">Sessions</div>`;
   return o;
 }
-function sparkSvg(arr, col) {
-  if (arr.length < 3) return ''; const w = 76, h = 24, mn = Math.min(...arr), mx = Math.max(...arr), d = (mx - mn) || 1;
+function sparkSvg(arr, col, w = 76, h = 24) {
+  if (arr.length < 3) return ''; const mn = Math.min(...arr), mx = Math.max(...arr), d = (mx - mn) || 1;
   const pts = arr.map((v, i) => `${(i * (w / (arr.length - 1))).toFixed(1)},${(h - 3 - ((v - mn) / d) * (h - 6)).toFixed(1)}`).join(' '), last = pts.split(' ').pop().split(',');
-  return `<svg viewBox="0 0 ${w} ${h}" width="76" height="24" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${last[0]}" cy="${last[1]}" r="2.6" fill="${col}"/></svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${last[0]}" cy="${last[1]}" r="2.6" fill="${col}"/></svg>`;
 }
 function radar(series, label) {
   const cx = 110, cy = 108, R = 78, n = 6; let o = `<svg viewBox="0 0 220 216" width="100%" style="max-width:300px;margin:0 auto" role="img" aria-label="${esc(label)}">`;
   [0.25, 0.5, 0.75, 1].forEach(k => { const pts = []; for (let i = 0; i < n; i++) { const p = polar(cx, cy, R * k, i * 60); pts.push(p[0].toFixed(1) + ',' + p[1].toFixed(1)); } o += `<polygon points="${pts.join(' ')}" fill="none" stroke="var(--line)" stroke-width="${k === 0.5 ? 1.2 : 0.7}" ${k === 0.5 ? 'stroke-dasharray="3 3"' : ''}/>`; });
   for (let i = 0; i < n; i++) { const e = polar(cx, cy, R, i * 60), l = polar(cx, cy, R + 17, i * 60); o += `<line x1="${cx}" y1="${cy}" x2="${e[0].toFixed(1)}" y2="${e[1].toFixed(1)}" stroke="var(--line2)"/><text x="${l[0].toFixed(1)}" y="${(l[1] + 3).toFixed(1)}" text-anchor="middle" font-size="9.5" fill="var(--text2)">${FACT[i][1]}</text>`; }
-  series.forEach(s => {
-    const have = [], pts = [];
+  series.forEach(s => { const have = [], pts = [];
     s.v.forEach((v, i) => { const r = v == null ? R * 0.5 : R * (0.5 + 0.5 * Math.max(-1, Math.min(1, v))), p = polar(cx, cy, r, i * 60);
       if (v == null) o += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="none" stroke="var(--text3)" stroke-dasharray="2 2"/>`; else { have.push(p); pts.push(p[0].toFixed(1) + ',' + p[1].toFixed(1)); } });
     if (have.length >= 3) o += `<polygon points="${pts.join(' ')}" fill="${s.c}" fill-opacity=".18" stroke="${s.c}" stroke-width="2" stroke-linejoin="round"/>`;
-    have.forEach(p => { o += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.4" fill="${s.c}"/>`; });
-  });
+    have.forEach(p => { o += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.4" fill="${s.c}"/>`; }); });
   return o + '</svg>';
 }
+/** A signed horizontal bar row: label, bar scaled to `max`, text on the right. */
+const barRow = (label, v, max, text, cls = '') => v == null ? `<div class="fr na ${cls}"><span class="nm">${esc(label)}</span><span class="tr"></span><span class="v">no data</span></div>`
+  : `<div class="fr ${cls}"><span class="nm">${esc(label)}</span><span class="tr"><u></u><i style="${v >= 0 ? 'left:50%' : 'right:50%'};width:${Math.min(50, Math.abs(v) / max * 50)}%;background:${v >= 0 ? 'var(--bull)' : 'var(--bear)'}"></i></span><span class="v ${v >= 0 ? 'up' : 'dn'}">${esc(text)}</span></div>`;
+const ledgerPill = id => { const e = DESK_EVIDENCE.find(x => x.id === id); if (!e) return ''; const cls = e.verdict === 'validated' ? 'bull' : e.verdict === 'context' ? 'blue' : e.verdict === 'underpowered' ? 'amber' : ''; const w = { validated: 'validated', null: 'tested null', context: 'base rate', underpowered: 'underpowered' }[e.verdict] ?? e.verdict; return `<a class="pill ${cls}" href="evidence.html#ev-${esc(id)}" target="_blank" rel="noopener" title="${esc(e.claim)}">${w}</a>`; };
+const ukTime = ms => new Date(ms).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+const tl = lines => lines.map(l => `<p class="tl-line">${esc(l)}</p>`).join('');
+const tense = (kind, title, icn, body) => `<div class="card tense ${kind}"><h2>${ic(icn)}${title}</h2>${body}</div>`;
 
 /* ── nav ── */
 const VIEWS = [['global', 'Global', 'globe'], ['ccy', 'Currency', 'coins'], ['pair', 'Pair', 'pair']];
-function navHtml(cls) { return VIEWS.map(v => `<button class="${cls}" role="tab" data-v="${v[0]}" aria-selected="${state.view === v[0]}">${ic(v[2])}<span>${v[1]}</span></button>`).join(''); }
-function drawNav() {
-  $('rail').innerHTML = `<a class="logo" href="today.html" title="Classic page">${ic('globe')}</a>` + navHtml('rb'); $('tabbar').innerHTML = navHtml('tab');
-  document.querySelectorAll('[data-v]').forEach(b => { b.onclick = () => go(b.getAttribute('data-v')); });
-}
+const navHtml = cls => VIEWS.map(v => `<button class="${cls}" role="tab" data-v="${v[0]}" aria-selected="${state.view === v[0]}">${ic(v[2])}<span>${v[1]}</span></button>`).join('');
+function drawNav() { $('rail').innerHTML = `<a class="logo" href="today.html" title="Classic page">${ic('globe')}</a>` + navHtml('rb'); $('tabbar').innerHTML = navHtml('tab'); document.querySelectorAll('[data-v]').forEach(b => { b.onclick = () => go(b.getAttribute('data-v')); }); }
 function go(v, opt) {
   state.view = v; if (opt) Object.assign(state, opt);
-  ['global', 'ccy', 'pair'].forEach(x => { $('v-' + x).hidden = (x !== v); });
-  $('v-global').style.display = v === 'global' ? 'grid' : 'none';
+  ['global', 'ccy', 'pair'].forEach(x => { $('v-' + x).hidden = (x !== v); }); $('v-global').style.display = v === 'global' ? 'grid' : 'none';
   $('ttl').textContent = v === 'global' ? 'Global' : v === 'ccy' ? 'Currency' : 'Pair';
   drawNav(); if (v === 'ccy') drawCcy(); if (v === 'pair') drawPair(); window.scrollTo(0, 0);
 }
+const redraw = () => { if (!derived) return; if (state.view === 'global') drawGlobal(); else if (state.view === 'ccy') drawCcy(); else drawPair(); };
+
+/* ── the model picker, same contract as today.html: one provider for every AI job, a server setting ── */
+function drawAi() {
+  const ai = D.ai; if (!ai?.ok) { $('aibox').innerHTML = ''; return; }
+  const providers = ai.providers.filter(p => p.configured), used = [...new Set(ai.tasks.map(t => t.provider))], mixed = used.length > 1;
+  $('aibox').innerHTML = `${icS('bulb')}<label for="aiSel">AI model</label><select id="aiSel" title="Changes the model for EVERY AI job on the site (a server setting). Per-job control is on bot-config.html → AI Models.">${mixed ? '<option value="" selected>Mixed</option>' : ''}${providers.map(p => `<option value="${esc(p.id)}"${!mixed && used[0] === p.id ? ' selected' : ''}>${esc(p.label)}</option>`).join('')}</select>`;
+  const sel = $('aiSel'); if (!sel) return; sel.disabled = providers.length < 2 && !mixed;
+  sel.onchange = async () => { const provider = sel.value; if (!provider) return; sel.disabled = true; const tasks = {}; for (const t of ai.tasks) tasks[t.id] = provider;
+    const r = await J('/api/ai-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tasks }) });
+    if (!r?.ok) $('loaderr').innerHTML = `<div class="err">Could not change the model: ${esc(r?.error ?? 'no response')}</div>`;
+    D.ai = await J('/api/ai-config'); drawAi(); if (state.view === 'global') drawGlobal(); };
+}
+const briefModel = () => D.ai?.tasks?.find(t => t.id === 'brief');
 
 /* ── global ── */
 function heroHtml() {
   const a = D.intel?.ok ? D.intel.analysis : null, rf = D.rf;
-  const kick = (a ? `<span class="pill ${/RISK-ON/i.test(a.regime) ? 'bull' : /RISK-OFF/i.test(a.regime) ? 'bear' : 'amber'}">${esc(a.regime)}</span>` : '') + `<span class="pill violet">${ic('bulb', '').replace('class="i"', 'class="i" style="width:12px;height:12px"')}AI argument from measured links</span>`;
-  let age = '';
+  const kick = (a ? `<span class="pill ${/RISK-ON/i.test(a.regime) ? 'bull' : /RISK-OFF/i.test(a.regime) ? 'bear' : 'amber'}">${esc(a.regime)}</span>` : '') + `<span class="pill violet">${icS('bulb')}AI argument from measured links</span>`;
+  let age = '', who = '';
   if (a && D.intel.generatedAt) { const h = (Date.now() - Date.parse(D.intel.generatedAt)) / 3.6e6; age = `<span class="pill ${h >= 6 ? 'amber' : ''}">${h < 1 ? Math.round(h * 60) + 'm old' : h < 24 ? h.toFixed(1) + 'h old' : Math.round(h / 24) + 'd old'}</span>`; }
+  const llm = D.intel?.llm, bm = briefModel();
+  who = llm?.provider ? `<span class="pill">written by ${esc(llm.label ?? llm.provider)} · ${esc(llm.model ?? '')}</span>` : (a ? `<span class="pill" title="This brief was generated before the page recorded the model.">model not recorded</span>` : '') + (bm ? `<span class="pill" title="The model the next Generate will use.">next: ${esc(bm.provider)}</span>` : '');
   const head = a?.headline ? esc(a.headline) : 'No Intelligence brief yet today';
-  const body = a ? esc((a.driver?.[0]?.what) ?? '') : 'Press Generate for the argument: what is driving markets, how it transmits, what would confirm or break it, and what to learn from it. One model call.';
-  return `<div><div class="kick">${kick}${age}</div><h2>${head}</h2><p>${body}</p>
-     <p style="margin-top:10px"><button class="btn" id="genbtn">${ic('bulb', '')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds</span></p></div>
+  const body = a ? esc(a.driver?.[0]?.explain ?? a.driver?.[0]?.what ?? '') : 'Press Generate for the argument: what is driving markets, how it transmits, what would confirm or break it, and what to learn from it. One model call.';
+  return `<div><div class="kick">${kick}${age}${who}</div><h2>${head}</h2><p>${body}</p>
+     <p style="margin-top:10px"><button class="btn" id="genbtn">${icS('bulb')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds</span></p></div>
      <div class="gauge">${rf ? dial(rf.active ?? 0, rf.total ?? 5) : ''}</div><div class="gauge">${ring()}</div>`;
 }
-function fmtRate(key) { const t = lastTwo(key); if (!t) return null; const d1 = t.prev != null ? (t.last - t.prev) * 100 : null; const b20 = back(key, 20); const d20 = b20 != null ? (t.last - b20) * 100 : null; return { v: t.last, d1, d20 }; }
-function fmtPct(key) { const t = lastTwo(key); if (!t) return null; const d1 = t.prev ? (t.last / t.prev - 1) * 100 : null; const b20 = back(key, 20); const d20 = b20 ? (t.last / b20 - 1) * 100 : null; return { v: t.last, d1, d20 }; }
+const fmtRate = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev != null ? (t.last - t.prev) * 100 : null, b20 = back(key, 20), d20 = b20 != null ? (t.last - b20) * 100 : null; return { v: t.last, d1, d20 }; };
+const fmtPct = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev ? (t.last / t.prev - 1) * 100 : null, b20 = back(key, 20), d20 = b20 ? (t.last / b20 - 1) * 100 : null; return { v: t.last, d1, d20 }; };
+
+function globalPosition() {
+  const regime = P.regimeCard(D.regime), axes = P.axesRows(D.gr), firing = P.deskFiring(D.ds), ahead = P.aheadEvents(D.events), fp = P.fedPathCard(D.fp), meeting = P.nextMeeting(D.fcal), nc = P.nowcastCard(D.nc);
+  const lines = P.positionLines({ regime, axes, firing, events: ahead, fedPath: fp, meeting });
+  // BEHIND
+  const pickKeys = ['SPX500', 'NQ', 'GOLD', 'DXY', 'WTI'], regRows = regime ? pickKeys.map(k => regime.markets.find(m => m.key === k)).filter(Boolean).map(m => barRow(m.label, m.mean, 3, `${sg(m.mean)}% · ${m.posShare}% up`)).join('') : '';
+  const chg = P.changesRows(D.mc), unit = r => (r.unit === 'bps' ? 'bp' : '%'), cell = (v, r) => (v == null ? '·' : `${sg(v, r.unit === 'bps' ? 0 : 1)}${unit(r)}`);
+  const chgHtml = chg.length ? `<div class="chg"><span>What changed</span><span>1d</span><span>5d</span><span>20d</span></div>` + chg.map(r => `<div class="chg"><span>${esc(r.label)}</span><span class="${r.d1 > 0 ? 'up' : r.d1 < 0 ? 'dn' : ''}">${cell(r.d1, r)}</span><span class="${r.d5 > 0 ? 'up' : r.d5 < 0 ? 'dn' : ''}">${cell(r.d5, r)}</span><span class="${r.d20 > 0 ? 'up' : r.d20 < 0 ? 'dn' : ''}">${cell(r.d20, r)}</span></div>`).join('') : '';
+  const cb = P.cbTone(cbHist()), cbHtml = cb.length ? `<div class="cbgrid">${cb.map(c => `<div class="cbc"><b>${esc(c.bank)}</b> <span class="mono ${c.delta > 0.05 ? 'up' : c.delta < -0.05 ? 'dn' : ''}">${sg(c.latest)}</span><div>${sparkSvg(c.scores, 'var(--violet)', 90, 26)}</div><div class="note">${esc(c.trend)} · ${esc(String(c.regime ?? '').toLowerCase())}</div></div>`).join('')}</div>` : '';
+  const sb = P.surpriseBars(D.es), sbHtml = sb.length ? sb.map(s => barRow(s.ccy, s.score, 0.6, `${sg(s.score)} · ${s.nRecent ?? s.n}`, 'l')).join('') : '';
+  const crowd = P.crowding(D.ce).filter(c => c.state !== 'mid-range'), crowdHtml = crowd.length ? `<div class="chips">${crowd.map(c => `<span class="pill ${/crowded/.test(c.state) ? 'amber' : ''}" title="speculative position at the ${c.pct}th percentile of its history">${esc(c.sym)} · ${esc(c.state)}</span>`).join('')}</div>` : '<p class="note">No FX position is at an extreme.</p>';
+  const eod = D.eod?.review?.hook ? `<p class="tl-line" style="margin-top:10px"><b>Yesterday's review:</b> ${esc(D.eod.review.hook)} <span class="note">(${D.eod.stale ? 'stale, ' : ''}${Math.round((D.eod.ageMin ?? 0) / 60)}h old)</span></p>` : '';
+  const behind = tense('behind', 'Behind us: what history and the week say', 'back',
+    tl(lines.behind) + (regRows ? `<h3>What each market did in this regime, per month since 2007</h3><div class="fac">${regRows}</div><p class="note" style="margin-top:6px">${esc(regime.note)}</p>` : '') + `<h3>What changed</h3>${chgHtml || loading()}<h3>Central-bank tone, last 6 meetings</h3>${cbHtml || loading()}<h3>Who has been beating or missing consensus</h3><div class="fac">${sbHtml || loading()}</div><h3>Who is crowded</h3>${D.ce ? crowdHtml : loading()}${eod}<div class="shelf">${ledgerPill('cot-positioning-factor')}</div>`);
+  // NOW
+  const axHtml = axes.map(a => `<details class="learn" style="margin-top:6px"><summary>${esc(a.label)} <span class="mono ${a.score > 0.05 ? 'up' : a.score < -0.05 ? 'dn' : ''}">${sg(a.score)}</span> <span class="note">${esc(a.agree ?? '')} agree</span></summary><p>${a.inputs.map(i => esc(i.text)).join(' · ')}</p></details>`).join('');
+  const gam = P.gammaRows(D.oi), gamHtml = gam.length ? gam.map(g => `<div class="rw"><span><b>${esc(g.pair)}</b><small>${esc(g.where ?? '')}${g.pc != null ? ` · put/call ${g.pc}` : ''}${g.dte != null ? ` · ${g.dte}d` : ''}</small></span><span class="pill ${g.regime === 'PIN' ? 'blue' : 'amber'}" title="PIN: dealers long gamma, moves are damped. BREAKOUT: dealers short gamma, moves are amplified.">${esc(g.regime ?? '?')}</span></div>`).join('') : '';
+  const fireHtml = firing.length ? firing.map(f => `<div class="rw"><span>${esc(f.label)}<small>${esc(f.detail.slice(0, 160))}${f.detail.length > 160 ? '…' : ''}</small></span>${f.evidenceId ? ledgerPill(f.evidenceId) : ''}</div>`).join('') : '<p class="note">Nothing is firing.</p>';
+  const crHook = D.cr?.read?.hook ? `<p class="tl-line" style="margin-top:10px"><b>The chain read (cached AI):</b> ${esc(D.cr.read.hook)} <span class="note">${D.cr.fresh ? '' : `(${Math.round((D.cr.ageMin ?? 0) / 60)}h old)`}</span></p>` : '';
+  const now = tense('now', 'Right now: the state of play', 'pulse',
+    tl(lines.right) + `<h3>The five global axes</h3>${axHtml || loading()}<h3>Desk Watch: conditions firing</h3>${D.ds ? fireHtml : loading()}<h3>Dealer gamma and the walls</h3><div class="rows">${gamHtml || loading()}</div><p class="note" style="margin-top:6px">What the ledger says about dealer gamma and range is in the badges; the walls are locations, not magnets. ${ledgerPill('gex-range')}${ledgerPill('gex-range-es')}</p>${crHook}`);
+  // AHEAD
+  const evHtml = ahead.length ? ahead.map(e => `<div class="evrow"><span class="tm">${esc(ukTime(e.ms))}</span><span>${e.ccy ? FLAG[e.ccy] + ' ' : ''}${esc(e.event)}<small>${e.estimate ? 'expected ' + esc(e.estimate) : 'no consensus listed'}${e.prev ? ', previous ' + esc(e.prev) : ''}</small></span><span class="pill ${e.impact === 'high' ? 'amber' : ''}">${esc(e.impact)}</span></div>`).join('') : '<p class="note">No high or medium impact release is listed in the next three days.</p>';
+  const scn = P.scenarios(D.gr), scnHtml = scn.map(s => `<div class="scn"><div class="sn"><span>${esc(s.name)}</span><b>${s.p}%</b></div><div class="sb"><i style="width:${s.p}%"></i></div></div>`).join('');
+  const fpHtml = fp ? `<p class="tl-line">${fp.hike}% odds of a higher rate by ${esc(fp.ref)}; ${fp.cut}% of a cut. Most likely band: ${esc(fp.mostLikely?.band ?? '?')} (${fp.mostLikely?.p}%).</p>` + fp.dist.map(d => `<div class="scn"><div class="sn"><span class="mono">${esc(d.band)}</span><span>${d.p}%</span></div><div class="sb"><i style="width:${Math.min(100, d.p)}%;background:var(--amber)"></i></div></div>`).join('') + `<p class="note">${esc(fp.note)} Source: ${esc(fp.source)}, ${esc(fp.asOf)}.</p>` : '';
+  const ncHtml = nc ? `<p class="tl-line">GDPNow ${nc.gdpnow ?? '?'}% (Q3). Cleveland nowcast for ${esc(nc.month ?? '')}: CPI ${nc.cpi ?? '?'}% a month, core ${nc.core ?? '?'}%. <span class="note">${esc(nc.note)}</span></p>` : '';
+  const inval = (D.gr?.invalidation ?? []).map(t => `<div class="rw"><span>${esc(t)}</span></div>`).join('');
+  const aheadCard = tense('ahead', 'Ahead: what is already scheduled', 'fwd',
+    tl(lines.ahead) + `<h3>Next releases, high and medium impact</h3>${D.events ? evHtml : loading()}<h3>Scenario probabilities</h3>${scnHtml || loading()}<h3>The Fed path</h3>${D.fp ? fpHtml : loading()}${ncHtml}<h3>What would change this view</h3><div class="rows">${inval || loading()}</div><div class="shelf">${ledgerPill('surprise-size')}<span class="pill">release direction: tested null</span></div>`);
+  return `<div class="cols3">${behind}${now}${aheadCard}</div>`;
+}
+
 function drawGlobal() {
-  $('hero').innerHTML = heroHtml();
-  const gb = $('genbtn'); if (gb) gb.onclick = generateIntel;
-  const { vals, links } = derived.chain;
-  const g = (key, kind) => (kind === 'rate' ? fmtRate(key) : fmtPct(key));
+  $('hero').innerHTML = heroHtml(); const gb = $('genbtn'); if (gb) gb.onclick = generateIntel;
+  $('position').innerHTML = globalPosition();
+  const { links } = derived.chain, g = (key, kind) => (kind === 'rate' ? fmtRate(key) : fmtPct(key));
   const bp = x => (x == null ? '' : `${sg(x, 0)}bp`), pc = x => (x == null ? '' : `${sg(x, 2)}%`);
   const us2 = g('us2y', 'rate'), us10 = g('us10y', 'rate'), tips = g('tips', 'rate'), hy = g('hy', 'rate'), dx = g('dxy', 'pct'), nq = g('nq', 'pct'), spx = g('spx', 'pct'), vix = g('vix', 'pct'), oil = g('oil', 'pct'), brent = g('brent', 'pct');
-  const row = (n, v, d, c) => `<div class="nd"><span>${n}</span><span class="mono ${c || ''}">${v}${d ? ` <span style="color:var(--text3)">${d}</span>` : ''}</span></div>`;
-  const cls = x => (x == null ? '' : x >= 0 ? 'up' : 'dn');
+  const row = (n, v, d, c) => `<div class="nd"><span>${n}</span><span class="mono ${c || ''}">${v}${d ? ` <span style="color:var(--text3)">${d}</span>` : ''}</span></div>`, cls = x => (x == null ? '' : x >= 0 ? 'up' : 'dn');
   const ST = [
     { n: 'Bonds', m: 'the reservoir', ic: 'bank', rows: [us2 && row('US 2Y', us2.v.toFixed(2) + '%', bp(us2.d1), cls(us2.d1)), us10 && row('US 10Y', us10.v.toFixed(2) + '%', bp(us10.d1), cls(us10.d1)), tips && row('Real 10Y', tips.v.toFixed(2) + '%', bp(tips.d1), cls(tips.d1))] },
     { n: 'Credit', m: 'the pipes', ic: 'pipe', rows: [hy && row('HY spread', Math.round(hy.v * 100) + 'bp', bp(hy.d1), cls(hy.d1)), hy && row('20-day', bp(hy.d20), '', cls(hy.d20))] },
     { n: 'FX', m: 'the valves', ic: 'valve', rows: [dx && row('Dollar (broad)', dx.v.toFixed(1), pc(dx.d1), cls(dx.d1)), dx && row('20-day', pc(dx.d20), '', cls(dx.d20))] },
-    { n: 'Equities', m: 'the tap', ic: 'tap', rows: [nq && row('Nasdaq 20d', pc(nq.d20), '', cls(nq.d20)), spx && row('S&P 500 20d', pc(spx.d20), '', cls(spx.d20)), vix && row('VIX', vix.v.toFixed(1), vix.d1 == null ? '' : sg(vix.d1 * vix.v / 100, 2), cls(vix.d1))] }
-  ];
+    { n: 'Equities', m: 'the tap', ic: 'tap', rows: [nq && row('Nasdaq 20d', pc(nq.d20), '', cls(nq.d20)), spx && row('S&P 500 20d', pc(spx.d20), '', cls(spx.d20)), vix && row('VIX', vix.v.toFixed(1), vix.d1 == null ? '' : sg(vix.d1 * vix.v / 100, 2), cls(vix.d1))] }];
   $('stages').innerHTML = ST.map((s, i) => `<div class="stage"><div class="sh"><div class="ico">${ic(s.ic)}</div><div><div class="nm">${s.n}</div><div class="metaphor">${s.m}</div></div></div>${s.rows.filter(Boolean).join('') || '<div class="note">no data</div>'}</div>` + (i < 3 ? '<div class="flowv"></div><div class="connector"><div class="flow"></div></div>' : '')).join('');
   const meas = links.filter(l => l.verdict !== 'unmeasured'), order = { broken: 0, holding: 1, quiet: 2 };
   const show = meas.filter(l => l.verdict !== 'quiet').sort((a, b) => order[a.verdict] - order[b.verdict]), quiet = meas.filter(l => l.verdict === 'quiet');
   const pipeHtml = (l, i) => { const cl = l.verdict === 'holding' ? 'hold' : l.verdict === 'broken' ? 'brk' : 'qt', lab = l.verdict === 'holding' ? 'Holding' : l.verdict === 'broken' ? 'Broken' : 'Quiet', icn = l.verdict === 'holding' ? 'check' : l.verdict === 'broken' ? 'break' : 'pause';
     return `<button class="pipe" data-i="${i}" aria-expanded="false"><span class="st ${cl}">${ic(icn)}</span><span><span class="t1">${esc(l.a.label)} → ${esc(l.b.label)}</span><br><span class="t2">${esc(l.a.text)} · ${esc(l.b.text)}</span></span><span class="pill ${l.verdict === 'holding' ? 'bull' : l.verdict === 'broken' ? 'amber' : ''}">${lab}</span></button>`; };
-  const all = [...show, ...quiet]; derived.pipeList = all;
-  $('pipes').innerHTML = show.map((l, i) => pipeHtml(l, i)).join('') + (quiet.length ? `<details class="learn"><summary>${ic('pause', '').replace('class="i"', 'class="i" style="width:15px;height:15px"')}${quiet.length} quiet links, not judged today</summary><div class="pipes">${quiet.map((l, i) => pipeHtml(l, show.length + i)).join('')}</div></details>` : '') || '<p class="note">No chain link has both ends measured today.</p>';
+  const all = [...show, ...quiet];
+  $('pipes').innerHTML = show.map((l, i) => pipeHtml(l, i)).join('') + (quiet.length ? `<details class="learn"><summary>${icS('pause')}${quiet.length} quiet links, not judged today</summary><div class="pipes">${quiet.map((l, i) => pipeHtml(l, show.length + i)).join('')}</div></details>` : '') || '<p class="note">No chain link has both ends measured today.</p>';
   document.querySelectorAll('.pipe').forEach(b => { b.onclick = () => { const i = +b.getAttribute('data-i'), open = state.pipe === i; state.pipe = open ? null : i;
     document.querySelectorAll('.pipe').forEach(x => x.setAttribute('aria-expanded', String(!open && x === b)));
     const l = all[i]; $('pipeinfo').innerHTML = open ? 'Tap a link to see what should have responded, and what did.' : `<b>${esc(l.a.label)} ${esc(l.a.text)} → ${esc(l.b.label)} ${esc(l.b.text)}.</b> The textbook: ${esc((l.textbook ?? '').toLowerCase())}. ${esc(l.read ?? '')}`; }; });
@@ -396,26 +480,20 @@ function drawGlobal() {
     dx && tile('Dollar', 'coins', dx.v.toFixed(1), `${pc(dx.d1)} · 20d ${pc(dx.d20)}`, cls(dx.d1), 'dxy', C(dx.d1)),
     nq && tile('Equities', 'pulse', pc(nq.d20), `Nasdaq 20d · S&P ${pc(spx?.d20)}`, cls(nq.d20), 'nq', C(nq.d20)),
     vix && tile('Volatility', 'flame', vix.v.toFixed(1), `VIX ${pc(vix.d1)} on the day`, cls(vix.d1 == null ? null : -vix.d1), 'vix', C(vix.d1 == null ? null : -vix.d1)),
-    (brent || oil) && tile('Oil', 'oil', '$' + (brent ?? oil).v.toFixed(1), `Brent ${pc((brent ?? oil).d20)} 20d${brent && oil ? ` · WTI $${oil.v.toFixed(1)}` : ''}`, cls((brent ?? oil).d20), brent ? 'brent' : 'oil', C((brent ?? oil).d20))
-  ].filter(Boolean).join('');
-  const fl = D.rf?.flags ?? [];
-  $('flags').innerHTML = fl.map(f => `<div class="rw"><span>${esc(f.label)}${f.detail ? `<small>${esc(f.detail)}</small>` : ''}</span><span class="pill ${f.on ? 'amber' : ''}">${f.on ? 'on' : 'off'}</span></div>`).join('') || '<p class="note">Risk flags unavailable.</p>';
+    (brent || oil) && tile('Oil', 'oil', '$' + (brent ?? oil).v.toFixed(1), `Brent ${pc((brent ?? oil).d20)} 20d${brent && oil ? ` · WTI $${oil.v.toFixed(1)}` : ''}`, cls((brent ?? oil).d20), brent ? 'brent' : 'oil', C((brent ?? oil).d20))].filter(Boolean).join('');
+  $('flags').innerHTML = (D.rf?.flags ?? []).map(f => `<div class="rw"><span>${esc(f.label)}${f.detail ? `<small>${esc(f.detail)}</small>` : ''}</span><span class="pill ${f.on ? 'amber' : ''}">${f.on ? 'on' : 'off'}</span></div>`).join('') || '<p class="note">Risk flags unavailable.</p>';
   $('gstrip').innerHTML = stripHtml('g'); wireStrip('gstrip');
-  // timeline
   const h = ukNow(); let t = '<div class="axis"></div>';
   [['Asia', 0, 8, 'var(--violet)'], ['Asia', 23, 24, 'var(--violet)'], ['London', 8, 16.5, 'var(--blue)'], ['New York', 13.5, 21, 'var(--bull)']].forEach(s => { t += `<div class="seg" style="left:${s[1] / 24 * 100}%;width:${(s[2] - s[1]) / 24 * 100}%;background:${s[3]}" title="${s[0]}"></div>`; });
   [0, 6, 12, 18, 24].forEach(x => { t += `<div class="tick" style="left:${x / 24 * 100}%">${x === 24 ? '00' : String(x).padStart(2, '0')}</div>`; });
-  t += `<div class="now" style="left:${h / 24 * 100}%"></div>`; $('tl').innerHTML = t;
+  $('tl').innerHTML = t + `<div class="now" style="left:${h / 24 * 100}%"></div>`;
   const rows = (D.cal?.printed?.rows ?? []).filter(r => r.ms && Date.now() - r.ms < 36 * 3600e3 && Date.now() - r.ms > -3600e3).sort((a, b) => b.ms - a.ms).slice(0, 6);
-  $('cats').innerHTML = rows.length ? rows.map(r => { const sp = r.surprise; const when = new Date(r.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
-    return `<div class="rw"><span><b>${when}</b> · ${esc(r.country)} · ${esc(r.event)}<small>actual ${esc(r.actual)} against ${esc(r.consensus)} expected${r.previous != null ? `, was ${esc(r.previous)}` : ''}</small></span>${sp != null ? `<span class="pill ${sp > 0 ? 'bull' : sp < 0 ? 'bear' : ''}">${sp > 0 ? 'above' : sp < 0 ? 'below' : 'in line'}</span>` : ''}</div>`; }).join('')
-    : '<p class="note">No releases printed in the last day, and nothing is listed ahead. Scheduled events appear here when the calendar feed has them.</p>';
+  $('cats').innerHTML = rows.length ? rows.map(r => { const sp = r.surprise, when = new Date(r.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+    return `<div class="rw"><span><b>${when}</b> · ${esc(r.country)} · ${esc(r.event)}<small>actual ${esc(r.actual)} against ${esc(r.consensus)} expected${r.previous != null ? `, was ${esc(r.previous)}` : ''}</small></span>${sp != null ? `<span class="pill ${sp > 0 ? 'bull' : sp < 0 ? 'bear' : ''}">${sp > 0 ? 'above' : sp < 0 ? 'below' : 'in line'}</span>` : ''}</div>`; }).join('') : '<p class="note">No releases printed in the last day.</p>';
 }
-function stripHtml(kind) {
-  return derived.str.map(c => { const w = Math.min(50, Math.abs(c.score) / 0.6 * 50), col = c.score >= 0 ? 'var(--bull)' : 'var(--bear)';
-    return `<button class="cc" data-c="${c.ccy}" aria-pressed="${kind === 'c' && state.ccy === c.ccy}"><div class="fl">${FLAG[c.ccy]}</div><div class="cd">${c.ccy}</div><div class="bar"><i style="${c.score >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${col}"></i></div><div class="mv ${c.score >= 0 ? 'up' : 'dn'}">${sg(c.score)}%</div></button>`; }).join('');
-}
-function wireStrip(id) { document.querySelectorAll('#' + id + ' .cc').forEach(b => { b.onclick = () => go('ccy', { ccy: b.getAttribute('data-c') }); }); }
+function stripHtml(kind) { return derived.str.map(c => { const w = Math.min(50, Math.abs(c.score) / 0.6 * 50), col = c.score >= 0 ? 'var(--bull)' : 'var(--bear)';
+  return `<button class="cc" data-c="${c.ccy}" aria-pressed="${kind === 'c' && state.ccy === c.ccy}"><div class="fl">${FLAG[c.ccy]}</div><div class="cd">${c.ccy}</div><div class="bar"><i style="${c.score >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${col}"></i></div><div class="mv ${c.score >= 0 ? 'up' : 'dn'}">${sg(c.score)}%</div></button>`; }).join(''); }
+const wireStrip = id => document.querySelectorAll('#' + id + ' .cc').forEach(b => { b.onclick = () => go('ccy', { ccy: b.getAttribute('data-c') }); });
 async function generateIntel() {
   const b = $('genbtn'); if (!b) return; b.disabled = true; b.textContent = 'Generating… about 90s';
   const r = await J('/api/morning-brief?mode=intel', { method: 'POST' });
@@ -423,83 +501,122 @@ async function generateIntel() {
 }
 
 /* ── currency ── */
+function ccyPosition(k) {
+  const bank = P.BANK_OF[k], cb = P.cbTone(cbHist()).find(c => c.ccy === k), sb = P.surpriseBars(D.es).find(s => s.ccy === k), crowd = P.crowding(D.ce).find(c => c.sym === k);
+  const country = COUNTRY_OF[k], ahead = P.aheadEvents(D.events, Date.now(), { countries: country ? [country] : null, withinHours: 120 });
+  const behindBody = (cb ? `<h3>${esc(cb.bank)} tone over its last ${cb.scores.length} meetings</h3><div>${sparkSvg(cb.scores, 'var(--violet)', 140, 34)}</div><p class="tl-line">Latest ${sg(cb.latest)} (${esc(String(cb.regime ?? '').toLowerCase())}), ${esc(cb.trend)} against the previous meeting.${cb.headline ? ' ' + esc(cb.headline) : ''}</p><p class="note">Tone momentum against forward price tested null here: context, not a lean. ${ledgerPill('cb-tone-direction')}</p>` : `<p class="note">${k} has no tracked central bank on this desk (FOMC, ECB, BoE and BoJ only).</p>`)
+    + (sb ? `<h3>Beating or missing consensus</h3>${barRow(k, sb.score, 0.6, `${sg(sb.score)} · ${sb.nRecent ?? sb.n} recent`, 'l')}${sb.top.length ? `<div class="rows" style="margin-top:6px">${sb.top.map(t => `<div class="rw"><span>${esc(t.event)}<small>actual ${esc(t.actual)} against ${esc(t.estimate)}</small></span><span class="mono ${t.z > 0 ? 'up' : 'dn'}">z ${sg(t.z, 1)}</span></div>`).join('')}</div>` : ''}<p class="note">A positive score means releases have come in above consensus. The size of a surprise is validated for range; its direction is not. ${ledgerPill('surprise-size')}</p>` : '')
+    + (crowd ? `<h3>Positioning</h3><p class="tl-line">Speculators are <b>${esc(CROWD_WORDS[crowd.state] ?? crowd.state)}</b> (${crowd.pct}th percentile of their history). ${ledgerPill('cot-positioning-factor')}</p>` : '');
+  const nowBody = `<p class="tl-line">Measured today: ${derived.str.find(x => x.ccy === k) ? sg(derived.str.find(x => x.ccy === k).score) + '% on the 1-day pair average' : 'no pair data'}. The macro read (the radar above) is the current state of the six factors.</p>${k === 'USD' ? `<p class="tl-line">Desk-watch conditions firing on the dollar: ${P.deskFiring(D.ds).filter(f => /dollar|USD|Treasur|real yield/i.test(f.label)).map(f => esc(f.label)).join('; ') || 'none'}.</p>` : ''}`;
+  const aheadBody = (ahead.length ? ahead.map(e => `<div class="evrow"><span class="tm">${esc(ukTime(e.ms))}</span><span>${esc(e.event)}<small>${e.estimate ? 'expected ' + esc(e.estimate) : 'no consensus listed'}${e.prev ? ', previous ' + esc(e.prev) : ''}</small></span><span class="pill ${e.impact === 'high' ? 'amber' : ''}">${esc(e.impact)}</span></div>`).join('') : `<p class="note">No high or medium impact ${k} release is listed in the next five days.</p>`)
+    + (k === 'USD' ? (() => { const fp = P.fedPathCard(D.fp), m = P.nextMeeting(D.fcal), nc = P.nowcastCard(D.nc); return `${m ? `<p class="tl-line">Next FOMC: ${esc(m.date)}, ${m.inDays} days away${m.sep ? ' (with projections)' : ''}.</p>` : ''}${fp ? `<p class="tl-line">The Fed path prices ${fp.hike}% odds of a higher rate by ${esc(fp.ref)}.</p>` : ''}${nc ? `<p class="tl-line">GDPNow ${nc.gdpnow ?? '?'}%; Cleveland CPI nowcast ${nc.cpi ?? '?'}% for ${esc(nc.month ?? '')}.</p>` : ''}`; })() : '');
+  return `<div class="cols3">${tense('behind', 'Behind us', 'back', behindBody || loading())}${tense('now', 'Right now', 'pulse', nowBody)}${tense('ahead', 'Ahead', 'fwd', aheadBody || loading())}</div>`;
+}
 function drawCcy() {
   $('cstrip').innerHTML = stripHtml('c'); wireStrip('cstrip');
   const k = state.ccy, comp = composites(), row = comp[k];
   const card = buildCountryCard({ ccy: k, macro: row ? { composite: row.composite, factorsScored: row.factorsScored, factorsTotal: row.factorsTotal, factors: row.factors && Object.fromEntries(Object.entries(row.factors).map(([kk, f]) => [kk, { label: f.label, score: f.score, backedBy: f.dims, of: f.of }])) } : null,
     measured: (() => { const i = derived.str.findIndex(x => x.ccy === k); return i >= 0 ? { rank: i + 1, of: derived.str.length } : null; })(),
     boardDriver: D.msc?.driver && D.msc.driver.ranked ? { factor: D.msc.driver.label, spread: D.msc.driver.spread, thisCcyRank: D.msc.driver.ranked.findIndex(x => x.ccy === k) + 1 || null, of: D.msc.driver.ranked.length } : null,
-    cb: null, board: Object.entries(comp).map(([ccy, v]) => ({ ccy, composite: v.composite })), pairs: PAIR_CCY });
+    cb: null, board: Object.entries(comp).map(([ccy, v]) => ({ ccy, composite: v.composite })), pairs: Object.fromEntries(Object.keys(insts()).filter(n => acOf(n) === 'fx').map(n => [n, [n.slice(0, 3), n.slice(3)]])) });
   const vec = facVec(k), mv = derived.str.find(x => x.ccy === k);
-  const facRows = FACT.map(([key, lab], i) => { const v = vec[i]; if (v == null) return `<div class="fr na"><span class="nm">${lab}</span><span class="tr"></span><span class="v">no data</span></div>`;
-    const col = v >= 0 ? 'var(--bull)' : 'var(--bear)'; return `<div class="fr"><span class="nm">${lab}</span><span class="tr"><u></u><i style="${v >= 0 ? 'left:50%' : 'right:50%'};width:${Math.abs(v) * 50}%;background:${col}"></i></span><span class="v ${v >= 0 ? 'up' : 'dn'}">${sg(v)}</span></div>`; }).join('');
+  const facRows = FACT.map(([key, lab], i) => { const v = vec[i]; return barRow(lab, v, 1, v == null ? '' : sg(v)); }).join('');
   const reasons = card.drivers.map(d => `<div class="whyp"><div class="wh"><b>${esc(d.label)}</b> <span class="pill ${d.direction === 'strong' ? 'bull' : 'bear'}">${d.direction} ${sg(d.score)}</span> ${d.backing ? `<span class="fg">${esc(d.backing)}${d.thin ? ' · thin' : ''}</span>` : ''}</div><p>${esc(d.why)}</p></div>`).join('') || '<p class="note">No macro factor has enough fresh data for this currency.</p>';
-  const rel = Object.keys(PAIR_CCY).filter(p => PAIR_CCY[p].includes(k) && D.brief?.instruments?.[p]);
-  const exprs = card.expressions;
-  const cotKey = { EUR: ['EUR/USD', 1], GBP: ['GBP/USD', 1], AUD: ['AUD/USD', 1] }[k], cd = cotKey && D.cot?.data?.[cotKey[0]];
-  const cotHtml = cd ? `<div class="cot">${[['Leveraged funds', cd.levNet, cd.levPct], ['Asset managers', cd.amNet, null]].map(r => r[2] == null ? `<div class="lab"><span>${r[0]}</span><span class="mono">${r[1] >= 0 ? 'net long' : 'net short'} ${Math.abs(r[1]).toLocaleString()} contracts</span></div>` : `<div><div class="lab"><span>${r[0]}</span><span class="mono">${r[1] >= 0 ? 'net long' : 'net short'} ${Math.abs(r[1]).toLocaleString()} · ${Math.round(r[2])}th percentile</span></div><div class="pct"><i style="left:calc(${Math.max(0, Math.min(100, r[2]))}% - 2px)"></i></div></div>`).join('')}</div><p class="note" style="margin-top:8px">Positioning says who has to act if they are wrong. It does not say which way price goes.</p>` : `<p class="note">Positioning for ${k} is shown on its pair page (the report is keyed by pair).</p>`;
+  const rel = Object.keys(insts()).filter(p => acOf(p) === 'fx' && p.includes(k)), exprs = card.expressions;
+  const cotKey = { EUR: 'EUR/USD', GBP: 'GBP/USD', AUD: 'AUD/USD' }[k], cd = cotKey && D.cot?.data?.[cotKey];
+  const cotHtml = cd ? `<div class="cot">${[['Leveraged funds', cd.levNet, cd.levPct], ['Asset managers', cd.amNet, null]].map(r => r[2] == null ? `<div class="lab"><span>${r[0]}</span><span class="mono">${r[1] >= 0 ? 'net long' : 'net short'} ${Math.abs(r[1]).toLocaleString()} contracts</span></div>` : `<div><div class="lab"><span>${r[0]}</span><span class="mono">${r[1] >= 0 ? 'net long' : 'net short'} ${Math.abs(r[1]).toLocaleString()} · ${Math.round(r[2])}th percentile</span></div><div class="pct"><i style="left:calc(${Math.max(0, Math.min(100, r[2]))}% - 2px)"></i></div></div>`).join('')}</div><p class="note" style="margin-top:8px">Positioning says who has to act if they are wrong. It does not say which way price goes.</p>` : `<p class="note">Positioning for ${k} is on its pair page (the report is keyed by pair).</p>`;
   $('ccybody').innerHTML =
    `<div class="hero"><div class="hd"><span class="fl2">${FLAG[k]}</span><div><div class="big">${k} <span style="font-weight:500;color:var(--text2);font-size:16px">${NAME[k]}</span></div>
      <div class="kick" style="margin:6px 0 0"><span class="pill ${card.thin ? '' : card.cls === 'bull' ? 'bull' : card.cls === 'bear' ? 'bear' : 'amber'}">${esc(card.word)}${card.composite != null && !card.thin ? ' ' + sg(card.composite) : ''}</span>${mv ? `<span class="pill">moved ${sg(mv.score)}% today (rank ${derived.str.findIndex(x => x.ccy === k) + 1} of ${derived.str.length})</span>` : ''}${card.coverage ? `<span class="pill">${esc(card.coverage)}${card.thinCoverage ? ' · thin' : ''}</span>` : ''}</div></div></div></div>
+   ${ccyPosition(k)}
    <div class="two"><div class="card"><h2>${ic('layers')}The six reasons</h2>${radar([{ v: vec, c: 'var(--blue)' }], k + ' macro factors')}<p class="note" style="text-align:center;margin-top:4px">Dashed ring = zero. Hollow dots = no data.</p></div>
    <div class="card"><h2>${ic('chart')}Why it should be bid or offered</h2><div class="fac">${facRows}</div>
-     <details class="learn"><summary>${ic('bulb', '').replace('class="i"', 'class="i" style="width:15px;height:15px"')}What these mean</summary><p>Each bar is one slice of the economy scored from −1 to +1. A currency is usually preferred when rates, growth and inflation are firm, because money earns more there. This says why one currency should be favoured if the market is pricing these things. It is not a forecast: macro as a signal has tested null on this desk five times.</p></details></div></div>
+     <details class="learn"><summary>${icS('bulb')}What these mean</summary><p>Each bar is one slice of the economy scored from −1 to +1. A currency is usually preferred when rates, growth and inflation are firm, because money earns more there. This says why one currency should be favoured if the market is pricing these things. It is not a forecast: macro as a signal has tested null on this desk five times.</p></details></div></div>
    <div class="card"><h2>${ic('bulb')}The reasons, in words</h2>${reasons}${card.boardLine ? `<p class="note" style="margin-top:8px">${esc(card.boardLine)}</p>` : ''}</div>
    <div class="two"><div class="card"><h2>${ic('shield')}Who holds it</h2>${cotHtml}</div>
-   <div class="card"><h2>${ic('pair')}Pairs this currency drives</h2><div class="rows">${rel.map(p => { const e = exprs.find(x => x.pair === p); return `<div class="rw"><span><b>${PAIR_CCY[p][0]}/${PAIR_CCY[p][1]}</b><small>${e ? esc(e.line) : 'no macro gap to show'}</small></span><button class="btn" data-p="${p}">Open ${ic('pair', '')}</button></div>`; }).join('') || '<p class="note">No tracked pairs.</p>'}</div></div></div>
+   <div class="card"><h2>${ic('pair')}Pairs this currency drives</h2><div class="rows">${rel.map(p => { const e = exprs.find(x => x.pair === p); return `<div class="rw"><span><b>${esc(labelOf(p))}</b><small>${e ? esc(e.line) : 'no macro gap to show'}</small></span><button class="btn" data-p="${p}">Open ${ic('pair', '')}</button></div>`; }).join('') || '<p class="note">No tracked pairs.</p>'}</div></div></div>
    <div class="shelf"><span class="pill">models: macro scorecard · measured 1-day currency moves</span><span class="pill">direction: tested null</span></div>`;
   document.querySelectorAll('#ccybody [data-p]').forEach(b => { b.onclick = () => go('pair', { pair: b.getAttribute('data-p') }); });
 }
 
 /* ── pair ── */
 function pairData(k) {
-  const bi = D.brief?.instruments?.[k], si = D.sess?.instruments?.[k], fi = D.fc?.instruments?.[k];
+  const bi = insts()[k], si = D.sess?.instruments?.[k], fi = D.fc?.instruments?.[k];
   const hlMed = bi?.levels?.hl_med?.pct ?? fi?.hl_median ?? null, used = (si?.hl != null && hlMed) ? si.hl / hlMed : null;
-  return { price: bi?.current_price ?? null, dp: bi?.dp ?? 4, regime: bi?.regime, used, hlMed, hl75: bi?.levels?.hl_75?.pct ?? fi?.hl_75 ?? null, volPct: bi?.vol_pct ?? fi?.vol_pct ?? null, oc: si?.oc ?? null, stale: bi?.stale };
+  return { price: bi?.current_price ?? null, dp: bi?.dp ?? 4, regime: bi?.regime, used, hlMed, hl75: bi?.levels?.hl_75?.pct ?? fi?.hl_75 ?? null, volPct: bi?.vol_pct ?? fi?.vol_pct ?? null, stale: bi?.stale };
+}
+function pairPosition(k, cc, d) {
+  const regime = P.regimeFor(D.regime, k), cbs = P.cbTone(cbHist()), sbs = P.surpriseBars(D.es), crowd = P.crowding(D.ce), gam = P.gammaFor(D.oi, k), card = D.gr?.cards?.[k];
+  const ccs = cc ?? [], countries = cc ? cc.map(c => COUNTRY_OF[c]).filter(Boolean) : (P.COUNTRIES_FOR_INDEX[k] ?? ['US']);
+  const ahead = P.aheadEvents(D.events, Date.now(), { countries, withinHours: 48 }), allFiring = P.deskFiring(D.ds, k), firing = allFiring.filter(f => f.instruments.includes(k)), globalFiring = allFiring.length - firing.length;
+  const behindBody = [
+    regime ? `<p class="tl-line">In the ${esc(regime.regime.toLowerCase())} regime since 2007, ${esc(labelOf(k))} has averaged <b>${sg(regime.mean)}%</b> a month, up in ${regime.posShare}% of months (${regime.n} months, typical monthly range ${regime.range}%).</p><p class="note">A base rate for the regime, not a forecast.</p>` : '<p class="note">The regime study does not cover this instrument.</p>',
+    ...(!cc && COT_SYM[k] && crowd.find(x => x.sym === COT_SYM[k]) ? [`<div class="rw"><span><b>Positioning</b><small>speculators ${CROWD_WORDS[crowd.find(x => x.sym === COT_SYM[k]).state]} (${crowd.find(x => x.sym === COT_SYM[k]).pct}th percentile)</small></span>${ledgerPill('cot-positioning-factor')}</div>`] : []),
+    ...ccs.map(c => { const cb = cbs.find(x => x.ccy === c), sb = sbs.find(x => x.ccy === c), cr = crowd.find(x => x.sym === c); const bits = [cb ? `${cb.bank} tone ${sg(cb.latest)} (${cb.trend})` : null, sb ? `data surprises ${sg(sb.score)}` : null, cr ? `speculators ${CROWD_WORDS[cr.state] ?? cr.state}` : null].filter(Boolean); return bits.length ? `<div class="rw"><span><b>${FLAG[c]} ${c}</b><small>${esc(bits.join(' · '))}</small></span></div>` : ''; }),
+  ].join('');
+  const nowBody = [
+    gam ? `<div class="rw"><span><b>Dealer gamma</b><small>${esc(gam.where ?? '')}${gam.toCall != null ? ` · call wall ${sg(gam.toCall)}% away, put wall ${sg(gam.toPut)}% away` : ''}${gam.pc != null ? ` · put/call ${gam.pc}` : ''}</small></span><span class="pill ${gam.regime === 'PIN' ? 'blue' : 'amber'}">${esc(gam.regime ?? '?')}</span></div><p class="note">PIN means dealers are long gamma and damp moves; BREAKOUT means short gamma and amplify them. What the ledger says about it is in the badges; the walls are locations, not magnets. ${ledgerPill('gex-range')}${ledgerPill('gex-range-es')}</p>` : '<p class="note">No option-OI book for this instrument.</p>',
+    card ? `<p class="tl-line"><b>Range behaviour:</b> ${esc(card.behaviour?.label ?? '')}. ${esc(card.behaviour?.why ?? '')}</p><p class="tl-line">${esc(card.plan?.lines ?? '')}</p><p class="note">${esc(card.plan?.direction ?? '')}</p>` : '',
+    firing.length ? `<h3>Desk Watch firing on this instrument</h3>${firing.map(f => `<div class="rw"><span>${esc(f.label)}</span>${f.evidenceId ? ledgerPill(f.evidenceId) : ''}</div>`).join('')}` : '',
+    globalFiring ? `<p class="note" style="margin-top:8px">${globalFiring} market-wide condition${globalFiring > 1 ? 's are' : ' is'} also firing; they are listed on the Global page.</p>` : '',
+  ].join('');
+  const usd = cc?.includes('USD') || ['NQ', 'SPX500', 'US30', 'US2000', 'GOLD'].includes(k), m = usd ? P.nextMeeting(D.fcal) : null, fp = usd ? P.fedPathCard(D.fp) : null;
+  const aheadBody = (ahead.length ? ahead.map(e => `<div class="evrow"><span class="tm">${esc(ukTime(e.ms))}</span><span>${e.ccy ? FLAG[e.ccy] + ' ' : ''}${esc(e.event)}<small>${e.estimate ? 'expected ' + esc(e.estimate) : 'no consensus listed'}${e.prev ? ', previous ' + esc(e.prev) : ''}</small></span><span class="pill ${e.impact === 'high' ? 'amber' : ''}">${esc(e.impact)}</span></div>`).join('') : '<p class="note">No high or medium impact release for this instrument in the next 48 hours.</p>')
+    + (m ? `<p class="tl-line">Next FOMC: ${esc(m.date)}, ${m.inDays} days away.</p>` : '') + (fp ? `<p class="tl-line">The Fed path prices ${fp.hike}% odds of a higher rate by ${esc(fp.ref)}.</p>` : '')
+    + `<p class="note">Scheduled releases are the one cause you can prepare for. The size of a surprise is validated for range; its direction is not. ${ledgerPill('surprise-size')}</p>`;
+  return `<div class="cols3">${tense('behind', 'Behind us', 'back', behindBody || loading())}${tense('now', 'Right now', 'pulse', nowBody || loading())}${tense('ahead', 'Ahead', 'fwd', aheadBody)}</div>`;
 }
 function drawPair() {
-  const k = state.pair;
-  $('pstrip').innerHTML = PAIR_LIST.map(p => { const d = pairData(p), cc = PAIR_CCY[p]; return `<button class="cc" data-p="${p}" aria-pressed="${state.pair === p}"><div class="fl">${cc ? FLAG[cc[0]] + FLAG[cc[1]] : p === 'GOLD' ? '🥇' : p === 'BTCUSD' ? '₿' : '📈'}</div><div class="cd">${cc ? cc[0] + '/' + cc[1] : PAIR_LABEL[p] ?? p}</div><div class="mv">${d.used != null ? Math.round(d.used * 100) + '% used' : '—'}</div></button>`; }).join('');
+  if (!insts()[state.pair]) state.pair = Object.keys(insts())[0] ?? state.pair;
+  $('gchips').innerHTML = GROUPS.map(([g, l]) => `<button class="gchip" data-g="${g}" aria-pressed="${state.group === g}">${l}</button>`).join('');
+  document.querySelectorAll('#gchips .gchip').forEach(b => { b.onclick = () => { state.group = b.getAttribute('data-g'); drawPair(); }; });
+  const keys = Object.keys(insts()).filter(p => state.group === 'all' || acOf(p) === state.group);
+  $('pstrip').innerHTML = keys.map(p => { const d = pairData(p); return `<button class="cc" data-p="${p}" aria-pressed="${state.pair === p}"><div class="fl">${glyphOf(p)}</div><div class="cd">${esc(labelOf(p))}</div><div class="mv">${d.used != null ? Math.round(d.used * 100) + '% used' : '—'}</div></button>`; }).join('');
   document.querySelectorAll('#pstrip .cc').forEach(b => { b.onclick = () => go('pair', { pair: b.getAttribute('data-p') }); });
-  const d = pairData(k), cc = PAIR_CCY[k] ?? null, comp = composites(), { vals, links } = derived.chain, node = NODE_FOR[k] ?? null;
+  const k = state.pair, d = pairData(k), cc = ccysOf(k), comp = composites(), { vals, links } = derived.chain, node = NODE_FOR[k] ?? null;
   const why = buildPairWhy({ name: k, ccys: cc, csr: derived.str, composites: comp, links, used: d.used, hlMed: d.hlMed, event: null });
   const used = d.used != null ? Math.round(d.used * 100) : null, sc = 100 / 150;
   const ladder = used != null ? `<div class="rng" role="img" aria-label="${used}% of the expected range used"><div class="f" style="width:${Math.min(100, used * sc)}%"></div><div class="m" style="left:${100 * sc}%"><span>median day</span><em>100%</em></div><div class="m" style="left:${125 * sc}%"><span>wide day</span><em>125%</em></div></div>` : '<p class="note">The live session range is not available right now.</p>';
-  // linked markets: the other end of every chain link that touches this instrument, else the generic three
   let nodes = [];
   if (node) links.filter(l => l.verdict !== 'unmeasured' && (l.a.key === node || l.b.key === node)).forEach(l => { const o = l.a.key === node ? l.b : l.a; if (!nodes.some(n => n.name === o.label)) nodes.push({ name: o.label, text: o.text, st: l.verdict === 'holding' ? 'hold' : l.verdict === 'broken' ? 'brk' : 'qt' }); });
   if (nodes.length < 3) [['dxy', 'Dollar'], ['us2y', 'US 2Y'], ['vix', 'VIX']].forEach(([n, lab]) => { if (nodes.length < 5 && vals[n] && !nodes.some(x => x.name === lab)) nodes.push({ name: lab, text: vals[n].text ?? '', st: 'qt' }); });
   nodes = nodes.slice(0, 5);
-  const cx = 170, cy = 118; let con = `<svg viewBox="0 0 340 236" width="100%" style="max-width:420px;margin:0 auto" role="img" aria-label="Linked markets">`;
-  const colOf = s => s === 'hold' ? 'var(--bull)' : s === 'brk' ? 'var(--amber)' : 'var(--text3)';
-  nodes.forEach((n, i) => { const p = polar(cx, cy, 92, (360 / nodes.length) * i + (nodes.length % 2 ? 0 : 18)); con += `<line x1="${cx}" y1="${cy}" x2="${p[0].toFixed(1)}" y2="${p[1].toFixed(1)}" stroke="${colOf(n.st)}" stroke-width="${n.st === 'qt' ? 1.2 : 2.6}" ${n.st === 'qt' ? 'stroke-dasharray="3 4"' : ''}/>`; });
-  nodes.forEach((n, i) => { const p = polar(cx, cy, 92, (360 / nodes.length) * i + (nodes.length % 2 ? 0 : 18)); con += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="22" fill="var(--card2)" stroke="${colOf(n.st)}" stroke-width="2"/><text x="${p[0].toFixed(1)}" y="${(p[1] - 1).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="600" fill="var(--text)">${esc(n.name.length > 11 ? n.name.slice(0, 10) + '…' : n.name)}</text><text x="${p[0].toFixed(1)}" y="${(p[1] + 10).toFixed(1)}" text-anchor="middle" font-size="7.5" fill="var(--text3)" font-family="var(--mono)">${esc(String(n.text).slice(0, 9))}</text>`; });
-  const label = cc ? cc[0] + '/' + cc[1] : PAIR_LABEL[k] ?? k;
-  con += `<circle cx="${cx}" cy="${cy}" r="27" fill="var(--blue)"/><text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="${label.length > 7 ? 9.5 : 11}" font-weight="700" fill="#fff" font-family="var(--disp)">${esc(label)}</text></svg>`;
+  const cx = 170, cy = 118, colOf = s => s === 'hold' ? 'var(--bull)' : s === 'brk' ? 'var(--amber)' : 'var(--text3)'; let con = `<svg viewBox="0 0 340 236" width="100%" style="max-width:420px;margin:0 auto" role="img" aria-label="Linked markets">`;
+  const posOf = i => polar(cx, cy, 92, (360 / nodes.length) * i + (nodes.length % 2 ? 0 : 18));
+  nodes.forEach((n, i) => { const p = posOf(i); con += `<line x1="${cx}" y1="${cy}" x2="${p[0].toFixed(1)}" y2="${p[1].toFixed(1)}" stroke="${colOf(n.st)}" stroke-width="${n.st === 'qt' ? 1.2 : 2.6}" ${n.st === 'qt' ? 'stroke-dasharray="3 4"' : ''}/>`; });
+  nodes.forEach((n, i) => { const p = posOf(i); con += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="22" fill="var(--card2)" stroke="${colOf(n.st)}" stroke-width="2"/><text x="${p[0].toFixed(1)}" y="${(p[1] - 1).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="600" fill="var(--text)">${esc(n.name.length > 11 ? n.name.slice(0, 10) + '…' : n.name)}</text><text x="${p[0].toFixed(1)}" y="${(p[1] + 10).toFixed(1)}" text-anchor="middle" font-size="7.5" fill="var(--text3)" font-family="var(--mono)">${esc(String(n.text).slice(0, 9))}</text>`; });
+  const label = labelOf(k); con += `<circle cx="${cx}" cy="${cy}" r="27" fill="var(--blue)"/><text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="${label.length > 7 ? 9.5 : 11}" font-weight="700" fill="#fff" font-family="var(--disp)">${esc(label)}</text></svg>`;
   const two = cc ? `<div class="card"><h2>${ic('layers')}Two economies, side by side</h2>${radar([{ v: facVec(cc[0]), c: 'var(--blue)' }, { v: facVec(cc[1]), c: 'var(--bear)' }], cc[0] + ' against ' + cc[1])}<div class="legend" style="justify-content:center"><span><i style="background:var(--blue)"></i>${cc[0]}</span><span><i style="background:var(--bear)"></i>${cc[1]}</span></div></div>` : '';
   const reg = d.regime?.label ? `<span class="pill ${d.regime.label === 'TREND' ? 'violet' : 'blue'}">${esc(d.regime.label)}${d.regime.range_prob ? ' ' + d.regime.range_prob + '%' : ''}</span>` : '';
   $('pairbody').innerHTML =
    `<div class="hero"><div class="pairhd">${cc ? `<button class="flagbtn" data-c="${cc[0]}">${FLAG[cc[0]]} ${cc[0]}</button><span style="color:var(--text3)">${ic('pair', '')}</span><button class="flagbtn" data-c="${cc[1]}">${FLAG[cc[1]]} ${cc[1]}</button>` : `<span class="disp" style="font-size:22px;font-weight:700">${esc(label)}</span>`}
      <span class="disp" style="font-size:28px;font-weight:700;margin-left:6px">${d.price != null ? d.price.toFixed(d.dp ?? 4) : '—'}</span>${used != null ? `<span class="pill blue">${used}% of expected range</span>` : ''}${reg}${d.volPct != null ? `<span class="pill">vol ${d.volPct}th pct</span>` : ''}${d.stale ? '<span class="pill amber">price stale</span>' : ''}</div></div>
+   ${pairPosition(k, cc, d)}
    <div class="two"><div class="card"><h2>${ic('chart')}How much of the day is done</h2>${ladder}<p class="note">Expected range ${d.hlMed != null ? d.hlMed.toFixed(2) + '%' : '—'} (median high-to-low); a wide day ${d.hl75 != null ? d.hl75.toFixed(2) + '%' : '—'}. Calibrated: the median day uses about 100% of it.</p></div>
    <div class="card"><h2>${ic('link')}Linked markets today</h2>${con}<div class="legend"><span><i style="background:var(--bull)"></i>holding</span><span><i style="background:var(--amber)"></i>broken</span><span><i style="background:var(--text3)"></i>quiet</span></div></div></div>
    <div class="two">${two}<div class="card"><h2>${ic('bulb')}Why, in plain words</h2>${why.points.map(p => `<div class="whyp"><div class="wh"><span class="src ${p.kind === 'calendar' ? 'c' : ''}">${esc(p.kind)}</span> <b>${esc(p.title)}</b>${p.figure ? ` <span class="fg">${esc(p.figure)}</span>` : ''}</div><p>${esc(p.body)}</p></div>`).join('') || '<p class="note">No measured driver stands out for this instrument today.</p>'}
-     <p class="note" style="margin-top:8px">${esc(why.foot)}</p><div class="shelf"><span class="pill bull">range: validated</span><span class="pill">direction: tested null</span></div></div></div>`;
+     <p class="note" style="margin-top:8px">${esc(why.foot)}</p><div class="shelf">${ledgerPill('combined-range')}${ledgerPill('intraday-range')}<span class="pill">direction: tested null</span></div></div></div>`;
   document.querySelectorAll('#pairbody [data-c]').forEach(b => { b.onclick = () => go('ccy', { ccy: b.getAttribute('data-c') }); });
 }
 
-/* ── boot ── */
-const SRC = [['/api/drill-series', 'drill', '75 market series, 5 years'], ['/api/macro-scorecard', 'msc', 'six-factor currency scorecard'], ['/api/risk-flags', 'rf', 'risk flags'], ['/api/cot', 'cot', 'CFTC positioning'],
-  ['/api/daily-brief', 'brief', 'prices, regimes, levels'], ['/api/vol-forecast/session', 'sess', 'live session range'], ['/api/vol-forecast', 'fc', 'calibrated range forecast'], ['/api/calendar-feed', 'cal', 'releases printed'], ['/api/morning-brief?mode=intel', 'intel', 'Intelligence brief']];
+/* ── boot, in two waves: the market bundle first so the page is useful at once, then the analysis feeds ── */
+const CORE = [['/api/drill-series', 'drill', '75 market series, 5 years'], ['/api/macro-scorecard', 'msc', 'six-factor currency scorecard'], ['/api/risk-flags', 'rf', 'risk flags'], ['/api/cot', 'cot', 'CFTC positioning by pair'],
+  ['/api/daily-brief', 'brief', 'prices, regimes, levels for all instruments'], ['/api/vol-forecast/session', 'sess', 'live session range'], ['/api/vol-forecast', 'fc', 'calibrated range forecast'], ['/api/calendar-feed', 'cal', 'releases printed'], ['/api/morning-brief?mode=intel', 'intel', 'Intelligence brief']];
+const EXTRA = [['/api/global-read', 'gr', 'five axes, scenarios, per-instrument plans'], ['/api/regime', 'regime', 'macro regime and what each market did in it'], ['/api/macro-changes', 'mc', 'what changed, 1d / 5d / 20d'], ['/api/econ-surprise', 'es', 'consensus surprises by currency'],
+  ['/api/cot-extremes', 'ce', 'crowding across 36 contracts'], ['/api/oi-today', 'oi', 'dealer gamma and option walls'], ['/api/desk-watch', 'ds', 'watched conditions firing'], ['/api/events', 'events', 'the calendar ahead'], ['/api/fed-path', 'fp', 'market-implied Fed path'],
+  ['/api/fomc/calendar', 'fcal', 'FOMC meeting dates'], ['/api/nowcast', 'nc', 'GDPNow and Cleveland nowcasts'], ['/api/fomc/history?n=6', 'hUSD', 'FOMC tone history'], ['/api/ecb/history?n=6', 'hEUR', 'ECB tone history'], ['/api/boe/history?n=6', 'hGBP', 'BoE tone history'],
+  ['/api/boj/history?n=6', 'hJPY', 'BoJ tone history'], ['/api/eod-review', 'eod', 'yesterday\'s review'], ['/api/chain-read', 'cr', 'the chain read (cached AI)'], ['/api/ai-config', 'ai', 'AI model routing']];
+const okOf = r => !(r == null || r.ok === false);
+function drawSrcs() { $('srcs').innerHTML = [...CORE, ...EXTRA].map(s => { const r = D[s[1]]; const pending = D[s[1]] === undefined; return `<span class="pill ${pending ? '' : okOf(r) ? '' : 'amber'}" title="${esc(s[2])}">${pending ? '…' : okOf(r) ? '✓' : '✗'} ${esc(s[0].replace('/api/', ''))}</span>`; }).join(''); }
 async function main() {
-  drawNav();
-  const res = await Promise.all(SRC.map(s => J(s[0])));
-  SRC.forEach((s, i) => { D[s[1]] = res[i]; });
-  $('srcs').innerHTML = SRC.map((s, i) => `<span class="pill ${res[i]?.ok === false || res[i] == null ? 'amber' : ''}" title="${esc(s[2])}">${res[i] == null || res[i].ok === false ? '✗' : '✓'} ${esc(s[0].replace('/api/', ''))}</span>`).join('');
-  if (!D.drill?.ok) { $('loaderr').innerHTML = '<div class="err">The market bundle did not load (/api/drill-series). The page needs it for the chain and the currency moves. Reload to try again.</div>'; $('sub').textContent = 'data unavailable'; return; }
+  drawNav(); drawSrcs();
+  (await Promise.all(CORE.map(s => J(s[0])))).forEach((r, i) => { D[CORE[i][1]] = r; });
+  if (!D.drill?.ok) { $('loaderr').innerHTML = '<div class="err">The market bundle did not load (/api/drill-series). The page needs it for the chain and the currency moves. Reload to try again.</div>'; $('sub').textContent = 'data unavailable'; drawSrcs(); return; }
   derived = { chain: chainNow(), str: strengths() };
-  $('sub').textContent = `${new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' })} · bundle to ${D.drill.to ?? D.drill.dates.at(-1)}`;
-  drawGlobal();
+  $('sub').textContent = `${new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' })} · bundle to ${D.drill.to ?? D.drill.dates.at(-1)} · ${Object.keys(insts()).length} instruments`;
+  drawGlobal(); drawSrcs();
+  (await Promise.all(EXTRA.map(s => J(s[0])))).forEach((r, i) => { D[EXTRA[i][1]] = r; });
+  D.__extra = true; drawAi(); redraw(); drawSrcs();
 }
 window.__atlas = { go, state, D, main };
 main().catch(e => { $('loaderr').innerHTML = `<div class="err">Page error: ${esc(e.message)}</div>`; console.error('[atlas]', e); });

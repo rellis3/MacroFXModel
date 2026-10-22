@@ -6041,7 +6041,8 @@ Respond with ONLY valid JSON, no markdown:
   // non-whitespace character after JSON at position 3840"), which threw the whole
   // brief away. Take the first balanced object; the trailing text is never wanted.
   const analysis = _firstJsonObject(clean);
-  const payload = { analysis, generatedAt: new Date().toISOString(), headlineCount: headlines.length, session: fc?.session_label ?? null, mode };
+  // Which model actually answered (the router can fall back), so a page can say who wrote this and when the provider changed.
+  const payload = { analysis, generatedAt: new Date().toISOString(), headlineCount: headlines.length, session: fc?.session_label ?? null, mode, llm: { provider: antData.provider ?? null, model: antData.model ?? null, label: antData.label ?? null } };
   await kv.put(kvKey, JSON.stringify(payload)).catch(() => {});
   return payload;
 }
