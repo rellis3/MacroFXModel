@@ -223,4 +223,14 @@ t('printed and scorable are kept apart', () => {
   assert.equal(printed(rows).scored, 0, 'none scorable');
 });
 
+t('parseNasdaq: "&nbsp;" in actual means not released yet, a real figure means released', () => {
+  const rows = [{ gmt: '08:30', country: 'United States', eventName: 'Retail Sales', actual: '&nbsp;', consensus: '0.3%', previous: '0.1%' },
+    { gmt: '08:30', country: 'United States', eventName: 'CPI', actual: '0.4%', consensus: '0.3%', previous: '0.2%' },
+    { gmt: '09:30', country: 'Japan', eventName: 'Trade', actual: ' ', consensus: ' ', previous: '1' }];
+  const out = parseNasdaq({ data: { rows } }, '2026-10-28');
+  assert.equal(out.find(x => x.event === 'Retail Sales').released, false);
+  assert.equal(out.find(x => x.event === 'CPI').released, true);
+  assert.equal(out.find(x => x.event === 'Trade').released, false);
+});
+
 console.log(`calendarFeed: ${n} groups, all passed`);

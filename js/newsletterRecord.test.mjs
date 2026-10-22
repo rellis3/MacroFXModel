@@ -1,5 +1,5 @@
 // Tests for js/newsletterRecord.js.   node js/newsletterRecord.test.mjs
-import { snapshotOf, diffSnapshots, scoreIssue, scoreLine, weekRecord, readIsSafe } from './newsletterRecord.js';
+import { snapshotOf, diffSnapshots, scoreIssue, scoreLine, weekRecord, readIsSafe, plainRead } from './newsletterRecord.js';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
 
@@ -28,5 +28,9 @@ ok('a week rolls scored days together and skips unscored ones', wk.days === 2 &&
 
 ok('a market read that describes and explains is allowed, including a consensus "expected"', readIsSafe('Up 0.10% today. Retail sales are expected to fall 0.1% and the book is the smallest long in years.') && readIsSafe('Used 198% of a normal day, a wide sweep that went nowhere; gamma is negative.'));
 ok('predictions and advice are refused', ['The stale book leans against a euro squeeze. Expect extension not fade.', 'It is likely to rally.', 'Price will rise from here.', 'Bullish setup.', 'Buy the dip.', 'Gold should fall on this.'].every(x => !readIsSafe(x)) && !readIsSafe('') && !readIsSafe(null));
+
+ok('internal jargon is swapped for plain words', plainRead('The macro scorecard has EUR at +0.27, and the yield curve dimension (+0.72) is doing the lifting; the composite is mixed.') === 'The economic score has EUR at +0.27, and the yield curve factor (+0.72) is doing the lifting; the overall score is mixed.');
+ok('a raw field name in a read cannot be fixed, so the read is refused; the known one is swapped', plainRead('The gap is not wide (rateDiff -0.03).') === 'The gap is not wide (interest-rate gap -0.03).' && plainRead('It broke the fooBarBaz threshold.') === null && plainRead(null) === null);
+ok('ordinary prose and tickers pass untouched', plainRead('EUR/USD fell 0.3% and BoE speakers are due; GBP held.') === 'EUR/USD fell 0.3% and BoE speakers are due; GBP held.');
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

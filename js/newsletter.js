@@ -181,7 +181,10 @@ function bars(rows, { max = 1, fmt = v => sg(v), wide = false } = {}) {
 const pctBars = rows => rows.map(r => `<div class="br p"><span class="bl">${esc(r.label)}</span><span class="bt"><i class="fill" style="left:0;width:${Math.max(0, Math.min(100, r.p))}%;background:${r.color ?? COLORS.blue}"></i></span><span class="bv">${esc(r.text ?? r.p + '%')}</span></div>`).join('');
 const sec = (title, kicker, body) => (body ? `<section><h2><small>${esc(kicker)}</small>${esc(title)}</h2>${body}</section>` : '');
 const pill = (t, cls = '') => `<span class="pill ${cls}">${esc(t)}</span>`;
-const para = arr => (arr ?? []).filter(Boolean).map(l => `<p>${esc(l)}</p>`).join('');
+const plainLine = l => String(l)
+  .replace(/(\d+) desk-watch conditions? (?:are|is) firing/i, (_, k) => `${k} watched market condition${k === '1' ? ' is' : 's are'} flashing`).replace(/desk-watch/gi, 'watched')
+  .replace(/The global axes are/i, 'The big-picture signals are').replace(/of its inputs agreeing/i, 'of its parts agreeing');
+const para = arr => (arr ?? []).filter(Boolean).map(l => `<p>${esc(plainLine(l))}</p>`).join('');
 
 /** The plumbing diagram: four stages joined by pipes, drawn as SVG. */
 function plumbingSvg(stages) {
@@ -237,7 +240,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{font:700 10px "Segoe
 ul.t{margin:0;padding-left:18px}ul.t li{margin:0 0 7px}
 .foot{margin-top:18px;border:2px solid ${COLORS.ink};border-radius:14px;padding:14px 16px;background:#fff;font-size:12px;line-height:1.55;color:${COLORS.text}}.foot h4{margin:0 0 6px;font:800 13px "Segoe UI",sans-serif;letter-spacing:.06em;color:${COLORS.ink}}.foot p{margin:0 0 7px}.foot .meta{color:${COLORS.muted};font:11px ui-monospace,Menlo,Consolas,monospace;margin-top:10px}
 @media (max-width:560px){.tiles{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.br{grid-template-columns:70px 1fr 104px}.br.p{grid-template-columns:96px 1fr 50px}}
-*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:12mm}@media print{body{background:#fff}.foot,.mast,.cc,.card2,.lk,tr,.tile{break-inside:avoid}h2,h3{break-after:avoid}.wrap{padding:0}}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:12mm}@media print{body{background:#fff}.foot,.mast,.cc,.cc2,.pc,.px,.rw2,.glance>div,.card2,.lk,tr,.tile,.tense>div{break-inside:avoid}h2,h3{break-after:avoid}.wrap{padding:0}}
 `;
 
 /**
@@ -275,7 +278,7 @@ export function buildNewsletter(n) {
 
   // What changed since the last issue: the reader's first question every day after the first.
   const since = n.since;
-  const sinceHtml = since ? sec(since.first ? 'This is the first saved issue' : `What changed since ${esc(since.from ?? 'the last issue')}`, 'Since last time', since.first ? `<p class="small muted">There is nothing to compare against yet. From the next issue this box lists new broken links, stress warnings switching on or off, backdrop changes and central-bank tone moves.</p>` : (since.items ?? []).length ? `<ul class="t">${since.items.slice(0, 8).map(i => `<li>${esc(i.text)}</li>`).join('')}</ul>` : `<p class="small muted">Nothing on the checklist changed: the same broken links, the same stress warnings, the same backdrop.</p>`) : '';
+  const sinceHtml = since ? sec(since.first ? 'No earlier issue to compare with yet' : `What changed since ${esc(since.from ?? 'the last issue')}`, 'Since last time', since.first ? `<p class="small muted">Changes are measured against the previous day's saved issue, and there isn't one yet. From the next day this box lists new broken links, stress warnings switching on or off, backdrop changes and central-bank tone moves.</p>` : (since.items ?? []).length ? `<ul class="t">${since.items.slice(0, 8).map(i => `<li>${esc(i.text)}</li>`).join('')}</ul>` : `<p class="small muted">Nothing on the checklist changed: the same broken links, the same stress warnings, the same backdrop.</p>`) : '';
 
   // How the last issue's one checkable claim, the size of the day, came out.
   const rec = n.record;
@@ -359,7 +362,7 @@ export function buildNewsletter(n) {
     else if (m && strMap[m[1]] != null && strMap[m[2]] != null) story = `${m[1]} ${sg(strMap[m[1]])}% and ${m[2]} ${sg(strMap[m[2]])}% against the other currencies today.`;
     if (!story && (r.d1 != null || r.d20 != null)) story = `${r.label} ${r.d1 != null ? 'moved ' + sg(r.d1) + '% today' : ''}${r.d1 != null && r.d20 != null ? ' and ' : ''}${r.d20 != null ? sg(r.d20, 1) + '% over 20 days' : ''}${r.used != null ? ', and has used ' + Math.round(r.used * 100) + '% of a normal day\'s range' : ''}.`;
     const ev = key ? evAll.find(e => (e.impact === 'high' || e.impact === 'medium') && (e.note?.pairs ?? []).includes(key)) : null;
-    const stretch = r.used == null ? '' : r.hl75Ratio != null && r.used >= r.hl75Ratio ? 'bigger than about 3 in 4 days' : r.used >= 1 ? 'past a typical day' : 'within a typical day';
+    const stretch = r.used == null ? '' : r.hl75Ratio != null && r.used >= r.hl75Ratio ? 'bigger than about 3 in 4 days' : Math.round(r.used * 100) > 100 ? 'past a typical day' : Math.round(r.used * 100) === 100 ? 'a typical day so far' : 'within a typical day';
     const chips = [r.watch ? 'watch: ' + r.watch : null, ...(r.chips ?? []), ev && !r.watch ? `next: ${ev.event}, ${ukTime(ev.ms)}` : null].filter(Boolean).slice(0, 3);
     return `<div class="pc"><div class="h">${assetIcon(key, r.label)}<div class="t"><b>${esc(r.label)}</b><small>${esc(r.groupLabel ?? (m ? 'FX' : ''))}${r.price ? ' · ' + esc(r.price) : ''}</small></div>${(r.spark ?? []).length > 2 ? sparkSvg(r.spark, (r.d20 ?? 0) >= 0 ? COLORS.green : COLORS.orange, 96, 32) : ''}</div>${r.d1 != null || r.d20 != null ? `<div class="mv">${r.d1 != null ? `Today <b class="${r.d1 >= 0 ? 'up' : 'dn'}">${sg(r.d1)}%</b>` : ''}${r.d1 != null && r.d20 != null ? ' · ' : ''}${r.d20 != null ? `20 days <b class="${r.d20 >= 0 ? 'up' : 'dn'}">${sg(r.d20, 1)}%</b>` : ''}</div>` : ''}${r.used != null ? `<div class="rb"><i style="width:${Math.min(100, r.used * 100 / 1.5)}%"></i><u></u></div><small class="muted">${Math.round(r.used * 100)}% of a normal day's range · ${stretch}</small>` : ''}${story ? `<p>${esc(story)}</p>` : ''}${chips.length ? `<div class="chips">${chips.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}</div>`;
   }).join('');

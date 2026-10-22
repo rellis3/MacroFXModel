@@ -86,3 +86,20 @@ export function weekRecord(issues) {
  */
 const _PREDICTS = /\b(likely|unlikely|should|leans?\s+(against|towards?|to|on)|squeez\w*|extension|fade[ds]?|price target|bullish|bearish|upside|downside|breakout|buy|sell)\b|\bexpect\s+(?!ed\b)\w+|\bwill\s+(rise|fall|go|move|drop|rally|extend|push|break|reverse|continue)\b/i;
 export const readIsSafe = text => typeof text === 'string' && text.trim().length > 0 && !_PREDICTS.test(text);
+
+/**
+ * Market reads are for a reader who is not a quant. The model is told to avoid the desk's internal vocabulary; this is the pass that does
+ * not rely on it obeying. Known jargon is swapped for a plain word. A read that still carries a raw field name (camelCase such as
+ * `rateDiff`) cannot be fixed by substitution, so it is refused and the card falls back to the data-written line.
+ */
+export function plainRead(text) {
+  if (typeof text !== 'string') return null;
+  const t = text
+    .replace(/\bmacro scorecard\b/gi, 'economic score').replace(/\bscorecard\b/gi, 'score')
+    .replace(/\bcomposite\b/gi, 'overall score').replace(/\bdimensions?\b/gi, m => (/s$/i.test(m) ? 'factors' : 'factor'))
+    .replace(/\bturn-of-month\b/gi, 'month-end').replace(/\bversus its own baseline\b/gi, 'against its normal pace')
+    .replace(/\bdesk-?watch\b/gi, 'watched').replace(/\bgamma walls?\b/gi, 'option levels').replace(/\b(?:put|call) walls?\b/gi, 'option level')
+    .replace(/\brateDiff\b/g, 'interest-rate gap')
+    .replace(/\s+/g, ' ').trim();
+  return /\b[a-z]+[A-Z][A-Za-z]+\b/.test(t.replace(/\b(?:iPhone|iPad|eBay)\b/g, '')) ? null : t;
+}

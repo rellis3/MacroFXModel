@@ -288,8 +288,8 @@ import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
 import { buildCountryCard } from './js/countryCard.js';
 import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
 import * as P from './js/atlasPosition.js';
-import { buildNewsletter, eventNote, flagProximity } from './js/newsletter.js';
-import { snapshotOf, diffSnapshots, scoreLine, weekRecord } from './js/newsletterRecord.js';
+import { buildNewsletter, eventNote, flagProximity, familyOf } from './js/newsletter.js';
+import { snapshotOf, diffSnapshots, scoreLine, weekRecord, plainRead } from './js/newsletterRecord.js';
 import { closuresBetween } from './js/marketCalendars.js';
 import { DESK_EVIDENCE } from './js/deskEvidence.js';
 
@@ -542,7 +542,7 @@ function nlInput({ bookFor = () => null } = {}) {
     events: ahead.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })),
     ranges: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k); return { label: labelOf(k), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used }; }),
     assets: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k), reg = P.regimeFor(D.regime, k), gam = P.gammaFor(D.oi, k), fire = P.deskFiring(D.ds, k).filter(f => f.instruments.includes(k)).length, g = { fx: 'FX', index: 'Index', commodity: 'Gold', crypto: 'Bitcoin' }[acOf(k)] ?? '';
-      const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: mv?.d1 ?? null, d20: mv?.d20 ?? null, read: mk?.read ?? null, watch: mk?.watch ?? null, price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
+      const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: mv?.d1 ?? null, d20: mv?.d20 ?? null, read: plainRead(mk?.read), watch: plainRead(mk?.watch), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
     yieldStack: (() => { const y = fmtRate('us10y'), r = fmtRate('tips'), b = fmtRate('bei'); return y && r && b ? { nominal: y.v, real: r.v, bei: b.v, dNom: y.d20, dReal: r.d20, dBei: b.d20 } : null; })(),
     ...nlStrips(),
     strengths: derived.str, surprise: P.surpriseBars(D.es), cb: P.cbTone(cbHist()), crowding: P.crowding(D.ce), regimeCard: regime, changes: P.changesRows(D.mc), fedPath: fp, scenarios: P.scenarios(D.gr), nowcast: nc,
@@ -608,8 +608,11 @@ async function buildIssue(kind) {
       base.edition = 'weekly';
       const wf = await J('/api/vol-forecast/weekly'), keys = Object.keys(insts());
       // ForexFactory lists only the current week, so on a Sunday the week ahead comes from the forward list (release type, no vendor rating) merged in without duplicates.
-      const ca = await J('/api/calendar-ahead'), seen = new Set((D.events ?? []).map(e => `${e.country}|${String(e.event).toLowerCase()}|${ukDate(new Date(e.ms))}`));
-      const extra = (ca?.rows ?? []).filter(r => !seen.has(`${r.country}|${String(r.event).toLowerCase()}|${ukDate(new Date(r.ms))}`)).map(r => ({ ms: r.ms, country: r.country, event: r.event, impact: String(r.impact ?? 'high').toLowerCase(), estimate: r.estimate ?? null, prev: r.prev ?? null }));
+      // The main calendar covers only the current week. The forward list fills the days after it: only rows later than anything the main calendar holds
+      // (so no release is shown twice), and one row per release type per time (Nasdaq lists a release several times: headline, core, manufacturing, services).
+      const ca = await J('/api/calendar-ahead'), ffMax = Math.max(0, ...(D.events ?? []).map(e => e.ms)), seenK = new Set();
+      const extra = (ca?.rows ?? []).filter(r => r.ms > ffMax).filter(r => { const k = `${r.country}|${r.ms}|${familyOf(r.event) ?? String(r.event).toLowerCase()}`; if (seenK.has(k)) return false; seenK.add(k); return true; })
+        .map(r => ({ ms: r.ms, country: r.country, event: r.event, impact: /rate decision|interest rate|cash rate|bank rate|cpi|consumer price|inflation rate|nonfarm|non-farm|payroll|gdp/i.test(r.event) ? 'high' : 'medium', estimate: r.estimate ?? null, prev: r.prev ?? null }));
       const evs = P.aheadEvents([...(D.events ?? []), ...extra], Date.now(), { limit: 90, withinHours: 8 * 24 });
       base.week = { events: evs.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })), ranges: NL_RANGE_KEYS.filter(k => wf?.instruments?.[k]).map(k => { const f = wf.instruments[k]; return { label: labelOf(k), hl5: f.hl_5d, hl5_75: f.hl_5d_75, hlMed: pairData(k).hlMed }; }) };
       const weekAgo = ukDate(new Date(Date.now() - 8 * 864e5)), wkd = arch.filter(i => i.kind === 'daily' && i.score && i.date > weekAgo), wr = weekRecord(wkd);
