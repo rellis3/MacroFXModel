@@ -1969,6 +1969,114 @@
       "unit": "bp",
       "group": "funding_archive",
       "note": "asof = trade date 19:15 UTC. Today F/S priced with yesterday legs minus yesterday basis: priced policy steps cancel. Tick-limited noise ~2-5bp (min 25 days to delivery). The series for the course rule \"20-30bp in a day\"."
+    },
+    {
+      "id": "xccy_basis_jpy_live",
+      "kind": "series",
+      "label": "USDJPY cross-currency basis, live (CME futures vs OANDA spot, CIP; overnight legs median-of-5)",
+      "source": "cme-nt8+oanda+fred",
+      "sourceRef": "scripts/xccy-basis/build.py",
+      "cadence": "daily",
+      "asofRule": "measured",
+      "revises": false,
+      "countries": [
+        "JP",
+        "US"
+      ],
+      "builder": "xccy_basis",
+      "unit": "bp",
+      "group": "funding_archive",
+      "note": "asof = trade date 19:15 UTC. LEVEL carries expected policy moves (overnight legs held flat over ~25-95 day tenor); 2020-10-19..22 feed fault removed; policy windows kept (flag in analysis/output/xccy-basis/basis_daily.csv). Negative = dollar premium. Foreign leg: TONA (BoJ stat-search STRDCLUCON). 6J quotes USD per JPY; OANDA spot inverted. One futures tick is a larger share of the forward points than for EUR, so daily noise is higher."
+    },
+    {
+      "id": "xccy_basis_jpy_realised",
+      "kind": "series",
+      "label": "USDJPY cross-currency basis, realised (fixings compounded over the contract life)",
+      "source": "cme-nt8+oanda+fred",
+      "sourceRef": "scripts/xccy-basis/build.py",
+      "cadence": "daily",
+      "asofRule": "measured",
+      "revises": false,
+      "countries": [
+        "JP",
+        "US"
+      ],
+      "builder": "xccy_basis",
+      "unit": "bp",
+      "group": "funding_archive",
+      "note": "asof = delivery + 1 day (only known after the contract window ends): research-only level, never a live input. Foreign leg: TONA (BoJ stat-search STRDCLUCON). 6J quotes USD per JPY; OANDA spot inverted. One futures tick is a larger share of the forward points than for EUR, so daily noise is higher."
+    },
+    {
+      "id": "xccy_basis_jpy_dchg",
+      "kind": "series",
+      "label": "USDJPY cross-currency basis, daily change at fixed rate legs (same contract)",
+      "source": "cme-nt8+oanda+fred",
+      "sourceRef": "scripts/xccy-basis/build.py",
+      "cadence": "daily",
+      "asofRule": "measured",
+      "revises": false,
+      "countries": [
+        "JP",
+        "US"
+      ],
+      "builder": "xccy_basis",
+      "unit": "bp",
+      "group": "funding_archive",
+      "note": "asof = trade date 19:15 UTC. Today F/S priced with yesterday legs minus yesterday basis: priced policy steps cancel. Tick-limited noise ~2-5bp (min 25 days to delivery). The series for the course rule \"20-30bp in a day\". Foreign leg: TONA (BoJ stat-search STRDCLUCON). 6J quotes USD per JPY; OANDA spot inverted. One futures tick is a larger share of the forward points than for EUR, so daily noise is higher."
+    },
+    {
+      "id": "xccy_basis_chf_live",
+      "kind": "series",
+      "label": "USDCHF cross-currency basis, live (CME futures vs OANDA spot, CIP; overnight legs median-of-5)",
+      "source": "cme-nt8+oanda+fred",
+      "sourceRef": "scripts/xccy-basis/build.py",
+      "cadence": "daily",
+      "asofRule": "measured",
+      "revises": false,
+      "countries": [
+        "CH",
+        "US"
+      ],
+      "builder": "xccy_basis",
+      "unit": "bp",
+      "group": "funding_archive",
+      "note": "asof = trade date 19:15 UTC. LEVEL carries expected policy moves (overnight legs held flat over ~25-95 day tenor); 2020-10-19..22 feed fault removed; policy windows kept (flag in analysis/output/xccy-basis/basis_daily.csv). Negative = dollar premium. Foreign leg: SARON (SNB snbgwdzid). 6S quotes USD per CHF; OANDA spot inverted. One futures tick is a larger share of the forward points than for EUR, so daily noise is higher."
+    },
+    {
+      "id": "xccy_basis_chf_realised",
+      "kind": "series",
+      "label": "USDCHF cross-currency basis, realised (fixings compounded over the contract life)",
+      "source": "cme-nt8+oanda+fred",
+      "sourceRef": "scripts/xccy-basis/build.py",
+      "cadence": "daily",
+      "asofRule": "measured",
+      "revises": false,
+      "countries": [
+        "CH",
+        "US"
+      ],
+      "builder": "xccy_basis",
+      "unit": "bp",
+      "group": "funding_archive",
+      "note": "asof = delivery + 1 day (only known after the contract window ends): research-only level, never a live input. Foreign leg: SARON (SNB snbgwdzid). 6S quotes USD per CHF; OANDA spot inverted. One futures tick is a larger share of the forward points than for EUR, so daily noise is higher."
+    },
+    {
+      "id": "xccy_basis_chf_dchg",
+      "kind": "series",
+      "label": "USDCHF cross-currency basis, daily change at fixed rate legs (same contract)",
+      "source": "cme-nt8+oanda+fred",
+      "sourceRef": "scripts/xccy-basis/build.py",
+      "cadence": "daily",
+      "asofRule": "measured",
+      "revises": false,
+      "countries": [
+        "CH",
+        "US"
+      ],
+      "builder": "xccy_basis",
+      "unit": "bp",
+      "group": "funding_archive",
+      "note": "asof = trade date 19:15 UTC. Today F/S priced with yesterday legs minus yesterday basis: priced policy steps cancel. Tick-limited noise ~2-5bp (min 25 days to delivery). The series for the course rule \"20-30bp in a day\". Foreign leg: SARON (SNB snbgwdzid). 6S quotes USD per CHF; OANDA spot inverted. One futures tick is a larger share of the forward points than for EUR, so daily noise is higher."
     }
   ]
 }

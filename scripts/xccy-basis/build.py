@@ -2,7 +2,7 @@
 
 Phase 1: EURUSD (6E) and GBPUSD (6B), 2015-12 -> 2026-08 (OANDA M1 ends 2026-08-20).
 
-Per trading day d: the 15 minutes 19:00-19:14 UTC where the futures 1-min close (NT8 per-contract files,
+Per trading day d: the minutes 18:30-19:29 UTC with a futures trade where the futures 1-min close (NT8 per-contract files,
 analysis/output/nt8/contracts) and the OANDA spot 1-min close both exist. Contract = the nearest quarterly
 contract with >= MIN_T calendar days from spot value date (d + 2 business days) to delivery (3rd Wednesday).
   EUR (act/360 both legs):  b = [S(1 + r_usd t/360)/F - 1] * 360/t - r_eur
@@ -36,8 +36,15 @@ os.makedirs(RATES, exist_ok=True)
 MIN_T = 25   # forward points are ~10 pips; one 6E/6B tick (half a pip) is ~5bp of basis at 25 days, ~15-25bp at 10
 # feed faults found on inspection 2026-10-22: futures-spot gap swings +-25 pips with flat rates, both 6E and 6B
 DATA_FAULTS = pd.to_datetime(['2020-10-19', '2020-10-20', '2020-10-21', '2020-10-22'])
-MINUTES = [f'19:{m:02d}' for m in range(15)]
-PAIRS = {'eur': dict(root='6E', spot='eurusd', fx_basis=360), 'gbp': dict(root='6B', spot='gbpusd', fx_basis=365)}
+# CHF only, found 2026-10-23: contract 6S_06-22 futures-spot gap jumps 5<->25 pips day to day (intraday-consistent, clocks
+# aligned, rates imply ~15) from 2022-04-20 to 2022-05-31; cause unknown (feed), so the window is excluded for CHF
+PAIR_FAULTS = {'chf': pd.date_range('2022-04-20', '2022-05-31')}
+# 2026-10-23: widened to 18:30-19:29 UTC and futures minutes WITH TRADES only -- thin 6S (and some 6J/6B) minutes carry
+# stale closes while spot moves, which swung CHF forward points 4<->25 pips day to day in May 2022
+MINUTES = [f'18:{m:02d}' for m in range(30, 60)] + [f'19:{m:02d}' for m in range(30)]
+PAIRS = {'eur': dict(root='6E', spot='eurusd', fx_basis=360), 'gbp': dict(root='6B', spot='gbpusd', fx_basis=365),
+         # phase 2 (2026-10-23): 6J/6S quote USD per JPY/CHF, so OANDA USDJPY/USDCHF spot is inverted
+         'jpy': dict(root='6J', spot='usdjpy', fx_basis=365, invert=True), 'chf': dict(root='6S', spot='usdchf', fx_basis=360, invert=True)}
 
 
 # ── rates ──────────────────────────────────────────────────────────────────────────────────────────
@@ -64,7 +71,44 @@ def overnight_legs():
     estr, eonia = fred('ECBESTRVOLWGTTRMDMNRT'), fred('EONIARATE')
     eur = pd.concat([(eonia - 0.085)[eonia.index < estr.index[0]], estr]).sort_index()
     gbp = fred('IUDSOIA')
-    return {'usd': usd, 'eur': eur, 'gbp': gbp}
+    return {'usd': usd, 'eur': eur, 'gbp': gbp, 'jpy': boj_tona(), 'chf': snb_saron()}
+
+
+def _cached_text(name, url):
+    path = os.path.join(RATES, name)
+    if not os.path.exists(path):
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        open(path, 'wb').write(urllib.request.urlopen(req, timeout=90).read())
+    return open(path, encoding='utf-8-sig').read()
+
+
+def boj_tona():
+    """TONA = BoJ uncollateralized overnight call rate, daily average (stat-search API, db FM01, STRDCLUCON)."""
+    txt = _cached_text('BOJ_STRDCLUCON.csv', 'https://www.stat-search.boj.or.jp/api/v1/getDataCode?format=csv&lang=en&db=FM01&code=STRDCLUCON&startDate=201501')
+    out = {}
+    for line in txt.splitlines():
+        parts = line.split(',')
+        if parts and parts[0] == 'STRDCLUCON' and len(parts) >= 2:
+            d, v = parts[-2].strip(), parts[-1].strip()
+            if v not in ('null', '') and re.match(r'^\d{8}$', d):
+                out[pd.Timestamp(d)] = float(v)
+    if not out:
+        raise RuntimeError('BoJ TONA: no observations parsed')
+    return pd.Series(out).sort_index()
+
+
+def snb_saron():
+    """SARON from the SNB data portal (cube snbgwdzid, series SARON)."""
+    txt = _cached_text('SNB_snbgwdzid.csv', 'https://data.snb.ch/api/cube/snbgwdzid/data/csv/en')
+    out = {}
+    for line in txt.splitlines():
+        parts = [x.strip('"') for x in line.split(';')]
+        if len(parts) == 3 and parts[1] == 'SARON' and parts[2] not in ('',):
+            try: out[pd.Timestamp(parts[0])] = float(parts[2])
+            except ValueError: pass
+    if not out:
+        raise RuntimeError('SNB SARON: no observations parsed')
+    return pd.Series(out).sort_index()
 
 
 def latest_before(s, d, k=5):
@@ -114,7 +158,8 @@ def load_contracts(root):
     out = {}
     for p in sorted(glob.glob(os.path.join(ROOT, 'analysis', 'output', 'nt8', 'contracts', root, f'{root}_*.parquet'))):
         mm, yy = re.search(r'_(\d\d)-(\d\d)\.parquet$', p).groups()
-        df = pd.read_parquet(p, columns=['timestamp', 'close'])
+        df = pd.read_parquet(p, columns=['timestamp', 'close', 'volume'])
+        df = df[df.volume > 0]                                   # a print in that minute, not a stale carried close
         df = df.set_index(df.timestamp.dt.tz_convert('UTC').dt.tz_localize(None))['close']
         hm = df.index.strftime('%H:%M')
         df = df[np.isin(hm, MINUTES)]
@@ -130,6 +175,8 @@ def load_spot(sym):
 
 def build_pair(name, cfg, legs):
     contracts, spot = load_contracts(cfg['root']), load_spot(cfg['spot'])
+    if cfg.get('invert'):
+        spot = 1.0 / spot
     fx = legs[name]; usd = legs['usd']
     days = sorted(set(spot.index.normalize()))
     rows = []
@@ -173,7 +220,7 @@ def build_pair(name, cfg, legs):
     df['flag_spike'] = (df.basis_live - trail).abs() > 40
     # The spike flag is informational only: it also fires on genuine squeezes (Mar 2020, year-ends, Sep 2022 gilts),
     # which are what this series is for. Only documented feed faults are excluded (both pairs, impossible F-S gaps).
-    df['flag_fault'] = df.date.isin(DATA_FAULTS)
+    df['flag_fault'] = df.date.isin(DATA_FAULTS) | df.date.isin(PAIR_FAULTS.get(name, []))
     df['basis_live_clean'] = df.basis_live.where(~df.flag_fault)          # level: faults removed; policy windows kept (flagged)
     # daily change at FIXED rate legs: today's F/S priced with yesterday's legs, minus yesterday's basis, same contract.
     # A policy step the futures had already priced cancels; a surprise in the implied differential still shows.
