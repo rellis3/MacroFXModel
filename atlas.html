@@ -245,6 +245,7 @@ select{background:var(--card2);color:var(--text);border:1px solid var(--line);bo
         <div class="hero g" id="hero"></div>
         <div id="intelbody"></div>
         <div id="abbox"></div>
+        <div id="nlbox"></div>
         <div id="position" style="display:grid;gap:14px"></div>
         <div class="card">
           <h2><svg class="i"><use href="#i-pipe"/></svg>How the money is flowing</h2>
@@ -287,6 +288,7 @@ import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
 import { buildCountryCard } from './js/countryCard.js';
 import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
 import * as P from './js/atlasPosition.js';
+import { buildNewsletter, eventNote } from './js/newsletter.js';
 import { DESK_EVIDENCE } from './js/deskEvidence.js';
 
 const $ = id => document.getElementById(id);
@@ -480,6 +482,73 @@ function drawAb() {
   document.querySelectorAll('[data-ab]').forEach(b => { b.onclick = () => runAb(b.getAttribute('data-ab'), b); });
 }
 
+
+/* ── the daily newsletter: built from the same rows, one click ── */
+function nlNumbers() {
+  const us2 = fmtRate('us2y'), us10 = fmtRate('us10y'), tips = fmtRate('tips'), hy = fmtRate('hy'), dx = fmtPct('dxy'), nq = fmtPct('nq'), spx = fmtPct('spx'), vix = fmtPct('vix'), oil = fmtPct('oil'), brent = fmtPct('brent');
+  const bp = x => (x == null ? '' : `${sg(x, 0)}bp`), pc = x => (x == null ? '' : `${sg(x, 2)}%`), tone = x => (x == null ? '' : x >= 0 ? 'up' : 'dn');
+  const tiles = [
+    us2 && { name: 'US 2Y', value: us2.v.toFixed(2) + '%', sub: `${bp(us2.d1)} · 20d ${bp(us2.d20)}`, tone: tone(us2.d1), spark: spark('us2y') },
+    hy && { name: 'High-yield spread', value: Math.round(hy.v * 100) + 'bp', sub: `${bp(hy.d1)} · 20d ${bp(hy.d20)}`, tone: tone(hy.d1 == null ? null : -hy.d1), spark: spark('hy') },
+    dx && { name: 'Dollar (broad)', value: dx.v.toFixed(1), sub: `${pc(dx.d1)} · 20d ${pc(dx.d20)}`, tone: tone(dx.d1), spark: spark('dxy') },
+    nq && { name: 'Nasdaq, 20 days', value: pc(nq.d20), sub: `S&P 500 ${pc(spx?.d20)}`, tone: tone(nq.d20), spark: spark('nq') },
+    vix && { name: 'VIX', value: vix.v.toFixed(1), sub: `${pc(vix.d1)} on the day`, tone: tone(vix.d1 == null ? null : -vix.d1), spark: spark('vix') },
+    (brent || oil) && { name: brent ? 'Brent' : 'Oil (WTI)', value: '$' + (brent ?? oil).v.toFixed(1), sub: `${pc((brent ?? oil).d20)} over 20 days`, tone: tone((brent ?? oil).d20), spark: spark(brent ? 'brent' : 'oil') },
+  ].filter(Boolean);
+  const stages = [
+    { n: 'Bonds', m: 'the reservoir', rows: [us2 && ['US 2Y', us2.v.toFixed(2) + '%', bp(us2.d1), tone(us2.d1)], us10 && ['US 10Y', us10.v.toFixed(2) + '%', bp(us10.d1), tone(us10.d1)], tips && ['Real 10Y', tips.v.toFixed(2) + '%', bp(tips.d1), tone(tips.d1)]].filter(Boolean) },
+    { n: 'Credit', m: 'the pipes', rows: [hy && ['HY spread', Math.round(hy.v * 100) + 'bp', bp(hy.d1), tone(hy.d1)], hy && ['20 days', bp(hy.d20), '', tone(hy.d20)]].filter(Boolean) },
+    { n: 'FX', m: 'the valves', rows: [dx && ['Dollar', dx.v.toFixed(1), pc(dx.d1), tone(dx.d1)], dx && ['20 days', pc(dx.d20), '', tone(dx.d20)]].filter(Boolean) },
+    { n: 'Equities', m: 'the tap', rows: [nq && ['Nasdaq 20d', pc(nq.d20), '', tone(nq.d20)], spx && ['S&P 20d', pc(spx.d20), '', tone(spx.d20)], vix && ['VIX', vix.v.toFixed(1), '', tone(vix.d1 == null ? null : -vix.d1)]].filter(Boolean) },
+  ];
+  return { tiles, stages };
+}
+const NL_RANGE_KEYS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'GOLD', 'NQ', 'SPX500', 'US30', 'DE30', 'UK100', 'BTCUSD'];
+function nlInput({ art = null, artBy = null, bookFor = () => null } = {}) {
+  const regime = P.regimeCard(D.regime), axes = P.axesRows(D.gr), firing = P.deskFiring(D.ds), ahead = P.aheadEvents(D.events, Date.now(), { limit: 12, withinHours: 72 }), fp = P.fedPathCard(D.fp), meeting = P.nextMeeting(D.fcal), nc = P.nowcastCard(D.nc);
+  const position = P.positionLines({ regime, axes, firing, events: ahead, fedPath: fp, meeting }), a = D.intel?.analysis ?? null, keys = Object.keys(insts()), { tiles, stages } = nlNumbers();
+  return {
+    date: new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' }),
+    generatedAt: D.intel?.generatedAt ?? null, headline: a?.headline, regimeWord: a?.regime ?? 'MIXED', riskFlags: D.rf ? { active: D.rf.active ?? 0, total: D.rf.total ?? 5 } : null,
+    sparkSeries: spark('nq', 48), brief: a, llm: D.intel?.llm ?? null, tiles, stages, links: derived.chain.links, position,
+    events: ahead.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })),
+    ranges: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k); return { label: labelOf(k), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used }; }),
+    strengths: derived.str, surprise: P.surpriseBars(D.es), cb: P.cbTone(cbHist()), crowding: P.crowding(D.ce), regimeCard: regime, changes: P.changesRows(D.mc), fedPath: fp, scenarios: P.scenarios(D.gr), nowcast: nc,
+    eod: D.eod?.review ? { hook: D.eod.review.hook, right: D.eod.review.plan?.right, wrong: D.eod.review.plan?.wrong } : null, art, artBy,
+  };
+}
+function drawNl() {
+  const box = $('nlbox'); if (!box || $('nlBuild')) return;   // built once; a redraw of the page must not wipe a finished issue
+  box.innerHTML = `<div class="card"><h2>${ic('cal')}Daily newsletter</h2>
+    <p class="note" style="margin-bottom:8px">Builds a shareable issue from everything on this page: the argument, Behind / Now / Ahead, the releases with what they have been measured to do, the ranges, graphics, and a not-financial-advice footer that cannot be removed. If today's brief is missing or older than 8 hours it generates one first.</p>
+    <p style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0"><label class="note" for="nlArt" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="nlArt"> AI header art (one extra model call)</label><button class="btn" id="nlBuild">${icS('cal')}Build daily newsletter</button><span class="note" id="nlStatus"></span></p><div id="nlOut"></div></div>`;
+  $('nlBuild').onclick = buildDaily;
+}
+async function buildDaily() {
+  const btn = $('nlBuild'), st = $('nlStatus'); btn.disabled = true;
+  try {
+    const stale = !D.intel?.ok || !D.intel.generatedAt || (Date.now() - Date.parse(D.intel.generatedAt)) > 8 * 3.6e6;
+    if (stale) { st.textContent = "Generating today's brief first (about 90 seconds)…"; if (!(await generateIntel())) { st.textContent = 'The brief did not generate. Try again.'; return; } }
+    let art = null, artBy = null;
+    if ($('nlArt')?.checked) {
+      st.textContent = 'Asking the model to draw the header…';
+      const r = await J('/api/newsletter/art', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regime: D.intel.analysis.regime, headline: D.intel.analysis.headline }) });
+      if (r?.ok) { art = r.svg; artBy = r.llm?.label ?? r.llm?.provider ?? 'the model'; } else st.textContent = (r?.error ?? 'no response') + ' Using the data-driven banner.';
+    }
+    const { eventImpactFor } = await import('./js/eventImpactMap.js');
+    const out = buildNewsletter(nlInput({ art, artBy, bookFor: e => { try { return eventImpactFor(e.country, e.event); } catch { return null; } } }));
+    showNl(out);
+    if (!art || !$('nlArt')?.checked) st.textContent = `Built: ${out.subject}`;
+  } catch (e) { st.textContent = 'Could not build the newsletter: ' + e.message; console.error('[atlas newsletter]', e); }
+  finally { btn.disabled = false; }
+}
+function showNl(out) {
+  const url = URL.createObjectURL(new Blob([out.html], { type: 'text/html' })), fname = `desk-atlas-daily-${new Date().toISOString().slice(0, 10)}.html`;
+  $('nlOut').innerHTML = `<div class="chips" style="margin:12px 0 8px"><a class="btn" href="${url}" download="${fname}">Download .html</a><button class="btn" id="nlCopy">Copy plain text</button><a class="btn" href="${url}" target="_blank" rel="noopener">Open full page</a></div><p class="note" style="margin-bottom:8px"><b>Subject:</b> ${esc(out.subject)}</p><iframe id="nlFrame" title="Newsletter preview" sandbox style="width:100%;height:760px;border:1px solid var(--line);border-radius:12px;background:#fff"></iframe><p class="note" style="margin-top:6px">Self-contained: no scripts and no external requests, so it looks the same when attached, forwarded or printed to PDF.</p>`;
+  $('nlFrame').srcdoc = out.html;
+  $('nlCopy').onclick = async () => { try { await navigator.clipboard.writeText(out.text); $('nlStatus').textContent = 'Copied the plain-text version.'; } catch { $('nlStatus').textContent = 'Copy was blocked here; use Download .html.'; } };
+}
+
 /* ── global ── */
 function heroHtml() {
   const a = D.intel?.ok ? D.intel.analysis : null, rf = D.rf;
@@ -529,7 +598,7 @@ function globalPosition() {
 }
 
 function drawGlobal() {
-  $('hero').innerHTML = heroHtml(); const gb = $('genbtn'); if (gb) gb.onclick = generateIntel; $('intelbody').innerHTML = intelBodyHtml(); drawAi(); drawAb();
+  $('hero').innerHTML = heroHtml(); const gb = $('genbtn'); if (gb) gb.onclick = generateIntel; $('intelbody').innerHTML = intelBodyHtml(); drawAi(); drawAb(); drawNl();
   $('position').innerHTML = globalPosition();
   const { links } = derived.chain, g = (key, kind) => (kind === 'rate' ? fmtRate(key) : fmtPct(key));
   const bp = x => (x == null ? '' : `${sg(x, 0)}bp`), pc = x => (x == null ? '' : `${sg(x, 2)}%`);
@@ -575,7 +644,8 @@ const wireStrip = id => document.querySelectorAll('#' + id + ' .cc').forEach(b =
 async function generateIntel() {
   const b = $('genbtn'); if (!b) return; b.disabled = true; b.textContent = 'Generating… about 90s';
   const r = await J('/api/morning-brief?mode=intel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ context: positionContext() }) });
-  if (r?.ok) { D.intel = r; drawGlobal(); } else { b.disabled = false; b.textContent = 'Generate Intelligence brief'; $('loaderr').innerHTML = `<div class="err">Generate failed: ${esc(r?.error ?? 'no response')}</div>`; }
+  if (r?.ok) { D.intel = r; drawGlobal(); return true; }
+  b.disabled = false; b.textContent = 'Generate Intelligence brief'; $('loaderr').innerHTML = `<div class="err">Generate failed: ${esc(r?.error ?? 'no response')}</div>`; return false;
 }
 
 /* ── currency ── */
@@ -696,7 +766,7 @@ async function main() {
   (await Promise.all(EXTRA.map(s => J(s[0])))).forEach((r, i) => { D[EXTRA[i][1]] = r; });
   D.__extra = true; drawAi(); redraw(); drawSrcs();
 }
-window.__atlas = { go, state, D, main, positionContext, abHtml, intelBodyHtml };
+window.__atlas = { go, state, D, main, positionContext, abHtml, intelBodyHtml, nlInput, buildDaily };
 main().catch(e => { $('loaderr').innerHTML = `<div class="err">Page error: ${esc(e.message)}</div>`; console.error('[atlas]', e); });
 </script>
 </body>

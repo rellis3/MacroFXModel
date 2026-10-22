@@ -5413,7 +5413,7 @@ HOW TO REASON:
 - Plain English for a sharp non-specialist; gloss a desk term the first time you use it (3–6 words). Say each number once, where it decides something. Be honest about data age: anything the snapshot flags as stale, unavailable or in conflict is said to be so, and nothing is built on it.
 
 Respond with ONLY valid JSON, no markdown:
-{"headline":"ONE sentence, at most 25 words: the driver and what it is doing to markets","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","driver":[{"what":"the driver in one plain sentence","evidence":"the nodes and links that establish it, with their 20-day numbers","explain":"two or three plain sentences on HOW this driver moves prices: the mechanism, step by step, as if teaching someone who is learning markets"}],"transmission":[{"asset":"instrument or node","should":"what the textbook says it does under this driver","is":"what it is actually doing, with the number","state":"RESPONDING|NOT RESPONDING|QUIET"}],"confirm":[{"check":"what to look at","level":"the number or event","when":"today / this week / the print and its time"}],"invalidate":[{"check":"what to look at","level":"the number or event","when":"when"}],"catalysts":[{"when":"time or day","event":"the release or decision","impact":"measured impact from the Event Response Book, or unmeasured","touches":"which driver it tests"}],"sizing":"one paragraph: how much to have on and why","noEdge":["a part of this view that rests on a tested-null or untested relationship, named"],"lesson":{"concept":"one market concept today illustrates, in a few words","today":"two or three sentences using TODAY's numbers to teach that concept, so the reader learns something they can reuse"}}`;
+{"headline":"ONE sentence, at most 25 words: the driver and what it is doing to markets","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","driver":[{"what":"the driver in one plain sentence","evidence":"the nodes and links that establish it, with their 20-day numbers","explain":"two or three plain sentences on HOW this driver moves prices: the mechanism, step by step, as if teaching someone who is learning markets"}],"transmission":[{"asset":"instrument or node","should":"what the textbook says it does under this driver","is":"what it is actually doing, with the number","state":"RESPONDING|NOT RESPONDING|QUIET"}],"confirm":[{"check":"what to look at","level":"the number or event","when":"today / this week / the print and its time"}],"invalidate":[{"check":"what to look at","level":"the number or event","when":"when"}],"catalysts":[{"when":"time or day","event":"the release or decision","impact":"measured impact from the Event Response Book, or unmeasured","touches":"which driver it tests"}],"sizing":"one paragraph: how much to have on and why","noEdge":["a part of this view that rests on a tested-null or untested relationship, named"],"lesson":{"concept":"one market concept today illustrates, in a few words","today":"two or three sentences using TODAY's numbers to teach that concept, so the reader learns something they can reuse"},"letter":{"subject":"under 70 characters, plain words, no hype, no direction call","opening":"three plain sentences that open a daily newsletter: what is happening and why it matters, for a reader who has not seen the dashboard","signoff":"one sentence pointing at the first scheduled release and what it tests"}}`;
 }
 async function _buildMorningBrief(mode = 'column', context = '') {
   // Was ANT_KEY-only. callModel picks the provider for this task and throws if
@@ -6050,6 +6050,32 @@ Respond with ONLY valid JSON, no markdown:
   await kv.put(kvKey, JSON.stringify(payload)).catch(() => {});
   return payload;
 }
+
+// ── Newsletter header art ────────────────────────────────────────────────────
+// A model draws an abstract banner; NOTHING it writes is trusted. js/svgArt.js parses it against a strict allowlist and
+// rebuilds it from the parts that passed, or rejects the whole drawing (the page then uses its data-driven banner).
+// Click-only: one model call per press, never scheduled.
+const _ART_PALETTE = {
+  'RISK-ON': 'deep teal and emerald greens with a bright blue accent',
+  'RISK-OFF': 'dark umber, burnt orange and red with a small cold-blue accent',
+  MIXED: 'deep navy, violet and electric blue with a warm amber accent',
+  TRANSITION: 'dark slate, amber and violet',
+};
+app.post('/api/newsletter/art', express.json({ limit: '16kb' }), async (req, res) => {
+  try {
+    const regime = _ART_PALETTE[String(req.body?.regime ?? '').toUpperCase()] ? String(req.body.regime).toUpperCase() : 'MIXED';
+    const headline = String(req.body?.headline ?? '').slice(0, 300).replace(/[<>"`]/g, ' ');
+    const ai = await callModel({
+      task: 'misc', maxTokens: 3500,
+      system: 'You are an abstract graphic designer. You reply with exactly one SVG element and nothing else: no prose, no code fence.',
+      prompt: `Draw an abstract editorial banner for a daily markets newsletter.\nCanvas: viewBox 0 0 680 160.\nToday's story, for mood only: "${headline}". Market regime: ${regime}.\nPalette: ${_ART_PALETTE[regime]}.\nRules: use ONLY these elements: svg, g, defs, linearGradient, radialGradient, stop, rect, circle, ellipse, line, polyline, polygon, path. No text of any kind, no images, no filters, no CSS, no scripts, no external references, no people, logos, charts or labels. Use gradients, layered translucent shapes, flowing curves and a few small accents that echo the story's movement (for example falling lines against a widening gap, or converging currents). Under 60 elements in total. Keep the left third calmer, because white text will sit over it. Return only the <svg>...</svg>.`,
+    });
+    const { sanitizeSvg } = await import('./js/svgArt.js');
+    const out = sanitizeSvg(_antText(ai));
+    if (!out.ok) return res.json({ ok: false, error: `the drawing was rejected (${out.reason}); the data-driven banner is used instead` });
+    res.json({ ok: true, svg: out.svg, elements: out.elements, llm: { provider: ai.provider ?? null, model: ai.model ?? null, label: ai.label ?? null } });
+  } catch (e) { res.status(/ANT_KEY|key/i.test(e.message) ? 503 : 500).json({ ok: false, error: e.message }); }
+});
 app.get('/api/morning-brief', async (req, res) => {
   try {
     const raw = await kv.get(req.query?.mode === 'intel' ? _INTEL_BRIEF_KV : _MORNING_BRIEF_KV).catch(() => null);
