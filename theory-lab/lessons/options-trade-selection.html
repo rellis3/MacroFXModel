@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From View to Trade: Choosing the Expiry and Strike — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+/* Local: the candidate-comparison table in the "Try it yourself" box. */
+.tp-wrap{overflow-x:auto;margin:14px 0 6px;border:1px solid var(--border);border-radius:var(--r);background:var(--s1)}
+.tp-tab{width:100%;border-collapse:collapse;font-size:12.5px;min-width:560px}
+.tp-tab th{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--blue);text-align:right;padding:8px 8px;border-bottom:1px solid var(--border2);white-space:nowrap}
+.tp-tab td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:'DM Mono',monospace;color:var(--text)}
+.tp-tab td.tp-rl{text-align:left;font-family:'DM Sans',sans-serif;color:var(--text2);white-space:normal;min-width:150px}
+.tp-tab tr:last-child td{border-bottom:none}
+.tp-tab tbody tr:nth-child(odd){background:var(--s2)}
+.tp-ladder td.tp-hl,.tp-ladder th.tp-hl{color:var(--amber)}
+.tp-note{font-size:11.5px;color:var(--text3);margin-top:6px;line-height:1.5}
+.tp-bar-pos{fill:var(--green)}.tp-bar-neg{fill:var(--red)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Trading Options / From View to Trade</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Trading Options · Lesson 4 of 8</div>
+  <h1 class="tl-title">From View to Trade: Choosing the Expiry and Strike</h1>
+  <p class="tl-dek">Being right about direction is the easy half. An option only pays if you are right about how far, by when, and by more than the market has already charged you for.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a way to choose between contracts, not a signal and not advice</span>
+    <span>~17 min read</span>
+    <span>Prereqs: <a href="options-four-positions.html">The Four Option Positions</a>, <a href="black-scholes.html">Black-Scholes-Merton</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="options-trade-selection-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-solid amber"><strong>Risk:</strong> this is education, not advice and not a recommendation. Every number is illustrative. A bought option can lose its whole premium; a sold option can lose far more than the premium. Options are leveraged, wide-spread and easy to get wrong, so size every trade as if the worst case will happen.</div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A view has four parts: <strong>direction</strong>, <strong>size</strong> of the move, <strong>time window</strong>, and how <strong>confident</strong> you are. An option price already contains the market's own guess at the size and the timing, so direction alone is not an edge.</li>
+      <li>The market's guess is readable. One standard deviation over the life of the option is \(M_1 = S\sigma\sqrt{\tau}\), and the at-the-money straddle costs about \(0.8\,M_1\). On a $100 stock at 22% implied volatility, 28 days gives \(M_1\) = $6.09 and a straddle of $4.86.</li>
+      <li>The test for any strike: the breakeven distance divided by \(M_1\), call it \(R\). An at-the-money option sits near \(R \approx 0.4\) at every expiry. Out-of-the-money strikes need a larger \(R\), so "cheap" options ask for bigger moves: a 5% out-of-the-money 56-day call needs \(R\) = 0.77.</li>
+      <li>Choose the expiry to outlast your window with room to spare, not to match it. A 28-day call loses 1.84% of its value a day to theta; the 56-day call loses 0.93%. If your move arrives late, the shorter option may already be dead.</li>
+      <li>Check the volatility you are paying against what you expect to be realised, and check costs. A 56-day at-the-money call bought at 22% costs 21% more than the same call at your 18% forecast, and a $0.05 spread is 22.6% of a 22-cent option.</li>
+      <li><strong>Real-world episode:</strong> Netflix, 20 April 2022. Its first fall in subscribers in over a decade sent the shares down about 35% in a day, about three and a half times the move that market commentary said the options were pricing. Implied moves are averages, not ceilings.<!-- DESK:START --> Nothing in this lesson has been tested as a trading rule on this desk.<!-- DESK:END --></li>
+    </ul>
+  </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A price chart for a 100-dollar stock over 56 days. A funnel shows the market's typical range at 22% implied volatility, widening to plus or minus 8.6 dollars by day 56. Your target of 104 on day 28 sits well inside the funnel, so the market already expects moves that big. A 28-day option expires on the day your window ends, leaving no cushion. A 56-day at-the-money call, with a breakeven of 103.6 at expiry, is still alive if the move arrives late.">
+      <rect class="tlp-box blue" x="50" y="25" width="520" height="180" rx="6" opacity=".25"/>
+      <polygon class="tlp-box blue" points="50.0,121.9 68.6,110.6 87.1,106.0 105.7,102.4 124.3,99.4 142.9,96.7 161.4,94.3 180.0,92.1 198.6,90.0 217.1,88.1 235.7,86.3 254.3,84.5 272.9,82.9 291.4,81.3 310.0,79.7 328.6,78.3 347.1,76.8 365.7,75.4 384.3,74.1 402.9,72.8 421.4,71.5 440.0,70.3 458.6,69.0 477.1,67.9 495.7,66.7 514.3,65.6 532.9,64.4 551.4,63.3 570.0,62.3 570.0,181.6 551.4,180.5 532.9,179.4 514.3,178.3 495.7,177.2 477.1,176.0 458.6,174.8 440.0,173.6 421.4,172.3 402.9,171.1 384.3,169.8 365.7,168.4 347.1,167.0 328.6,165.6 310.0,164.1 291.4,162.6 272.9,161.0 254.3,159.3 235.7,157.6 217.1,155.7 198.6,153.8 180.0,151.8 161.4,149.5 142.9,147.1 124.3,144.5 105.7,141.5 87.1,137.9 68.6,133.2 50.0,121.9" opacity=".55"/>
+      <polyline class="tlp-line blue" points="50.0,121.9 68.6,110.6 87.1,106.0 105.7,102.4 124.3,99.4 142.9,96.7 161.4,94.3 180.0,92.1 198.6,90.0 217.1,88.1 235.7,86.3 254.3,84.5 272.9,82.9 291.4,81.3 310.0,79.7 328.6,78.3 347.1,76.8 365.7,75.4 384.3,74.1 402.9,72.8 421.4,71.5 440.0,70.3 458.6,69.0 477.1,67.9 495.7,66.7 514.3,65.6 532.9,64.4 551.4,63.3 570.0,62.3"/>
+      <polyline class="tlp-line blue" points="50.0,121.9 68.6,133.2 87.1,137.9 105.7,141.5 124.3,144.5 142.9,147.1 161.4,149.5 180.0,151.8 198.6,153.8 217.1,155.7 235.7,157.6 254.3,159.3 272.9,161.0 291.4,162.6 310.0,164.1 328.6,165.6 347.1,167.0 365.7,168.4 384.3,169.8 402.9,171.1 421.4,172.3 440.0,173.6 458.6,174.8 477.1,176.0 495.7,177.2 514.3,178.3 532.9,179.4 551.4,180.5 570.0,181.6"/>
+      <line class="tlp-line" x1="50" y1="121.9" x2="570" y2="121.9"/>
+      <line class="tlp-line amber dash" x1="50" y1="97.1" x2="570" y2="97.1"/>
+      <line class="tlp-line red dash" x1="310.0" y1="25" x2="310.0" y2="205"/>
+      <line class="tlp-line green dash" x1="570.0" y1="25" x2="570.0" y2="205"/>
+      <circle class="tlp-green" cx="310.0" cy="94.2" r="7"/>
+      <text class="tlp-text3" x="44" y="125.9" text-anchor="end" font-size="12">100</text>
+      <text class="tlp-blue" x="330" y="42" font-size="13" font-weight="700">market's typical range (±1σ, 22% IV)</text>
+      <text class="tlp-green" x="298.0" y="80.2" text-anchor="end" font-size="13" font-weight="700">your target: 104 on day 28</text>
+      <text class="tlp-amber" x="566" y="119.1" text-anchor="end" font-size="13" font-weight="700">breakeven 103.6 (56-day ATM call)</text>
+      <text class="tlp-red" x="304.0" y="196" text-anchor="end" font-size="13" font-weight="700">28-day expiry: no cushion</text>
+      <text class="tlp-green" x="564.0" y="196" text-anchor="end" font-size="13" font-weight="700">56-day: still alive</text>
+      <text class="tlp-text3" x="50" y="224" font-size="12">today</text>
+      <text class="tlp-text3" x="310.0" y="224" text-anchor="middle" font-size="12">day 28: window ends</text>
+      <text class="tlp-text3" x="570" y="224" text-anchor="end" font-size="12">day 56</text>
+    </svg>
+    <figcaption>The funnel is what the options market already expects. Your target sits inside it, so you are not paying for a surprise, you are paying for the centre to sit higher than the market thinks. The expiry has to outlive the window: the 28-day option dies on day 28, the 56-day option is still alive if you are late.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I think this stock rises about four percent over the next four weeks. So I buy a call and wait. Done?</p>
+      <p data-who="Quant">Not yet. A call is not a bet on direction alone. It is a bet on direction, size and timing, and the market has already priced its own guess at all three. What does the market think the stock will do in four weeks?</p>
+      <p data-who="Trader">Go up or down, I suppose.</p>
+      <p data-who="Quant">Wrong question. The right one is how far, in either direction. Take a hundred-dollar stock with twenty-two percent implied volatility. Over twenty-eight days a typical move, one standard deviation, is about six dollars. And the at-the-money straddle, a call plus a put, costs about four dollars eighty-six. That is the market's price for the size of the move.</p>
+      <p data-who="Trader">So my four percent is smaller than the market's typical move?</p>
+      <p data-who="Quant">Yes. The market already expects more wobble than your target. So direction alone is not an edge. Your edge is that you think the centre of the distribution sits higher than the market does, and that gap has to pay for the premium.</p>
+      <p data-who="Trader">And the call itself?</p>
+      <p data-who="Quant">About two fifty at the money, twenty-eight days. Break even is a hundred and two fifty-one at expiry. A handy rule: an at-the-money option costs roughly four tenths of a typical move, whatever the expiry.</p>
+      <p data-who="Trader">Which expiry, then? My view is four weeks.</p>
+      <p data-who="Quant">Not four weeks. If you buy exactly four weeks and the move turns up on day thirty, the option is dead. Let the expiry outlast your window with room to spare. Eight weeks costs about three fifty-nine. It loses a bit under one percent of its value a day to time decay, against nearly two percent a day for the four-week option.</p>
+      <p data-who="Trader">So longer is just better?</p>
+      <p data-who="Quant">Longer is more robust. It costs more cash and has more sensitivity to volatility. If everything happens on schedule the two do about the same. The longer one wins when you are late.</p>
+      <p data-who="Trader">And the strike?</p>
+      <p data-who="Quant">Further out of the money is cheaper but needs a bigger move. Five percent out of the money at eight weeks costs about a dollar sixty-six and needs the stock to rise nearly seven percent by expiry just to break even. Cheap is not the same as good value.</p>
+      <p data-who="Trader">What about volatility itself?</p>
+      <p data-who="Quant">You are paying twenty-two percent. If you think the stock will really move at eighteen, you are paying about a fifth more than the call is worth to you. And watch events. Before earnings, implied volatility is high, then it collapses. In our example a call gains only fourteen percent on a five percent rally, and loses forty percent if the stock just sits there.</p>
+      <p data-who="Trader">Anything else?</p>
+      <p data-who="Quant">Costs. Five cents of spread on a three-fifty option is nothing. Five cents on a twenty-two cent option is nearly a quarter of what you pay. And remember that averages are not ceilings. In April twenty twenty-two Netflix reported its first fall in subscribers in over a decade. Commentary at the time put the options-implied move near ten percent. The shares fell about thirty-five percent in a day.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Before you buy an option, write down direction, size, timing and what you are paying for each. Trade it only if your numbers beat the market's by more than the costs.</p>
+    </div>
+  </section>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Most beginners meet options as a cheaper way to be bullish or bearish. They pick a direction, glance at a few
+    prices, and buy whichever contract looks affordable. Then the stock goes the right way and the position loses
+    money. Nothing was broken: the trade was never a direction bet. It was a bet on direction, size and timing, all
+    at once, bought at a price that already assumed an answer to the last two.
+  </p>
+  <p>
+    The earlier lessons in this group gave you the parts: <a href="options-four-positions.html">the four positions</a>,
+    <a href="black-scholes.html">how a price is built</a>, <a href="theta-decay.html">why time decay accelerates</a>
+    and <a href="vega-volatility-surface.html">why volatility matters</a>. This lesson is the step in between: given a
+    view, how do you choose <em>which</em> contract, and how do you know whether you are being paid for taking it? Later
+    in this series the same machinery is used for spreads, for selling premium and for hedging.
+  </p>
+  <p>
+    A warning that experienced traders repeat for good reason: options punish loose thinking. A stock trade with a
+    sloppy view is wrong by the size of the miss. An option trade with a sloppy view can be wrong when the stock
+    does exactly what you said, because the contract had the wrong expiry, the wrong strike, or was bought when volatility
+    was at its highest. The aim here is to name each of those traps and put a number on it before you trade.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The premium is a bookmaker's quote, so ask what it assumes</h3>
+    <p>
+      Imagine a bookmaker offers odds on "the stock ends the month above 104". The odds were not chosen at random. They
+      encode how far the bookmaker thinks the price will move and how likely each outcome is. You do not win by agreeing
+      with the bookmaker. You win only if your own estimate is better than theirs by more than their margin.
+    </p>
+    <p style="margin-bottom:0">
+      An option works the same way. Its premium is the market's quote for a range of outcomes, scaled by implied volatility
+      and time. Choosing a trade is therefore two steps. First, read what the quote assumes: the typical move, the
+      breakeven, the daily cost of waiting. Second, compare that with your own numbers for direction, size and timing.
+      If your numbers are not different enough to cover the margin, the right trade is no trade.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step: from a view to four numbers</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">How to read a strike against the market's own expected move, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ M_1 = S\,\color{#fbbf24}{\sigma_{imp}}\sqrt{\tau} \]</div>
+      <p>Start with the market's typical move. Implied volatility is quoted per year, so scale it by the square root of the time left, \(\tau\) in years, and by the spot price \(S\) to get dollars. This is one standard deviation, \(M_1\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \mathbb{E}\,|S_\tau - S| \approx \color{#fbbf24}{\sqrt{2/\pi}}\,M_1 \approx 0.8\,M_1 \]</div>
+      <p>The average size of a move, ignoring its sign, is about 80% of one standard deviation. The at-the-money straddle costs about this much, which is why the straddle is the market's quote for "how far, either way".</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ B = K + \color{#fbbf24}{C} \]</div>
+      <p>Now your trade. A long call only breaks even at expiry once spot has risen by the whole premium \(C\) beyond the strike \(K\). The breakeven is \(B\). (For a put it is \(B = K - P\).)</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ m = \color{#fbbf24}{B - S} \]</div>
+      <p>The move you need is the breakeven minus spot. It has two parts, how far the strike is from spot and how much you paid for the right.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ R = \frac{B - S}{S\,\sigma_{imp}\sqrt{\tau}} = \color{#10b981}{\frac{m}{M_1}} \]</div>
+      <p>Divide the move you need by the market's typical move. \(R\) is the breakeven measured in implied moves. About 0.4 means "a normal wobble gets me there". Above 1 means "I need the market to be surprised".</p>
+    </div>
+  </div>
+
+  <p>
+    <strong>1. The market's expected move.</strong> Options are priced from a volatility number and a time. For a stock
+    with spot \(S\), the standard deviation of the price at expiry, if volatility is \(\sigma_{imp}\) per year and \(\tau\)
+    years remain, is approximately:
+  </p>
+  <div class="tl-math">\[ M_1 = S\,\sigma_{imp}\sqrt{\tau} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>M₁</code><span>one standard deviation of the price move at expiry, in price units</span></div>
+    <div class="tl-eq-chip c2"><code>σ_imp</code><span>implied volatility, per year, as a decimal (0.22 = 22%)</span></div>
+    <div class="tl-eq-chip c3"><code>√τ</code><span>square root of the time left in years; four times the time doubles the move</span></div>
+  </div>
+  <p>
+    With \(S = 100\), \(\sigma_{imp} = 22\%\) and 28 days (\(\tau = 28/365\)), \(M_1 = 100 \times 0.22 \times 0.277 =\)
+    <strong>$6.09</strong>, which is 6.1% of spot. Roughly two thirds of outcomes are expected inside that band,
+    and one third outside it. That is the funnel in the picture above.
+  </p>
+  <p>
+    <strong>2. The straddle is the quote for "how far".</strong> A call plus a put at the same strike pays the absolute
+    size of the move. For a normally distributed move the average absolute value is \(\sqrt{2/\pi} \approx 0.80\) standard
+    deviations, so:
+  </p>
+  <div class="tl-math">\[ \text{ATM straddle} \approx \sqrt{\tfrac{2}{\pi}}\,S\,\sigma_{imp}\sqrt{\tau} \approx 0.8\,M_1 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>√(2/π)</code><span>0.798, the average of |z| for a standard normal z</span></div>
+    <div class="tl-eq-chip c2"><code>straddle</code><span>at-the-money call plus put, same strike and expiry</span></div>
+    <div class="tl-eq-chip c4"><code>≈</code><span>very close when interest is zero and the move is small</span></div>
+  </div>
+  <p>
+    Check it with the same inputs: \(0.798 \times 6.09 =\) $4.86, and Black-Scholes with a 2% rate gives
+    $4.86. The match is the reason traders quote "the implied move" straight off the straddle. It is also why
+    half the straddle, about \(0.4\,M_1\), is the price of an at-the-money call or put.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The straddle price is what the market charges for "the stock will move, I do not know which way". If it costs $4.86, the market is saying "we expect it to end up around $4.86 away from where it is now, on average". If your idea is that it only goes up $4, the market has already priced a bigger jump than your idea.</p>
+  </div>
+
+  <p>
+    <strong>3. Breakeven and the selection ratio \(R\).</strong> For a call, premium \(C\) paid, the position is profitable
+    at expiry once \(S_\tau > K + C\). The move needed from today's spot, relative to the market's typical move, is:
+  </p>
+  <div class="tl-math">\[ R = \frac{(K + C) - S}{S\,\sigma_{imp}\sqrt{\tau}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>R</code><span>breakeven distance measured in implied moves (0.4 = ordinary, 1 = needs a surprise)</span></div>
+    <div class="tl-eq-chip c2"><code>K + C</code><span>strike plus premium: where spot must be at expiry for zero profit</span></div>
+    <div class="tl-eq-chip c3"><code>S</code><span>today's spot price</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">m = B − S</div>
+      <div class="tl-fp-name">What you need</div>
+      <div class="tl-fp-desc">The move required to break even at expiry, in price units</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">M₁</div>
+      <div class="tl-fp-name">What the market expects</div>
+      <div class="tl-fp-desc">One standard deviation of the move, from implied volatility and time</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">R = m / M₁</div>
+      <div class="tl-fp-name">The ratio you compare</div>
+      <div class="tl-fp-desc">Lower is easier to reach. Your own expected move should clear it with room to spare</div>
+    </div>
+  </div>
+
+  <p>
+    At the money, \(C \approx 0.4\,M_1\) and the strike equals spot, so \(R \approx 0.4\) <em>whatever the expiry</em>. The
+    56-day call has \(R =\) 0.42 and the 28-day call \(R =\) 0.41. Moving the strike out of the money adds
+    the strike distance to the numerator while the premium shrinks only slowly, so \(R\) rises with distance. That is the whole
+    reason cheap options are not good value by default: you pay less because the market thinks you are less likely to get there.
+  </p>
+
+  <p>
+    <strong>4. The daily cost of waiting.</strong> Theta, the daily decay, is the rent from the
+    <a href="theta-decay.html">Theta Decay</a> lesson. What matters for choosing an expiry is not theta in dollars but theta as a
+    share of what you paid, and what you would lose if you held the position flat while waiting:
+  </p>
+  <div class="tl-math">\[ d = \frac{|\Theta|}{C} \qquad\qquad \text{cost of waiting } h \text{ days} = C(S,\tau) - C(S,\tau - h/365) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>d</code><span>fraction of the premium lost per day to time decay, spot unchanged</span></div>
+    <div class="tl-eq-chip c2"><code>Θ</code><span>theta per day from Black-Scholes, in dollars</span></div>
+    <div class="tl-eq-chip c3"><code>h</code><span>days you expect to wait before your view plays out</span></div>
+  </div>
+  <p>
+    For the at-the-money 28-day call, \(d =\) 1.84% per day. For the 56-day call, \(d =\) 0.93%. If the stock goes nowhere
+    for your 28-day window, the 56-day call still has $2.51 of its original $3.59 premium to sell; you lose $1.08.
+    The 28-day call is worth zero if spot ends at the strike.
+  </p>
+
+  <p>
+    <strong>5. Your own expected value.</strong> The only reason to buy an option is that your numbers differ from the
+    market's. Suppose you think the stock drifts at an annual rate \(\mu\) and will actually move with volatility
+    \(\sigma_r\). Then for an option held to expiry the expected payoff of a call under your view, with
+    \(\ln S_\tau\) normally distributed, is:
+  </p>
+  <div class="tl-math">\[ \mathbb{E}\big[(S_\tau - K)^+\big] = S\,e^{\mu\tau}\,N(d_1^{*}) - K\,N(d_2^{*}),\qquad d_{1}^{*} = \frac{\ln(S/K) + (\mu + \tfrac12\sigma_r^2)\tau}{\sigma_r\sqrt{\tau}},\; d_2^{*} = d_1^{*} - \sigma_r\sqrt{\tau} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ</code><span>your forecast of the stock's annual drift (set by your target price)</span></div>
+    <div class="tl-eq-chip c2"><code>σ_r</code><span>your forecast of realised volatility over the window</span></div>
+    <div class="tl-eq-chip c3"><code>N(·)</code><span>the standard normal cumulative distribution</span></div>
+    <div class="tl-eq-chip c4"><code>d₁*, d₂*</code><span>the Black-Scholes d-terms, but built from your \(\mu\) and \(\sigma_r\) rather than the market's \(r\) and \(\sigma_{imp}\)</span></div>
+  </div>
+  <p>
+    This is Black-Scholes with the market's inputs swapped for yours and no discounting. Your <strong>edge</strong> is that
+    expected payoff minus the premium and the spread. Set your inputs equal to the market's (drift equal to the interest rate,
+    volatility equal to \(\sigma_{imp}\)) and the edge falls to roughly minus the spread: the 56-day at-the-money call has an expected P&amp;L of about
+    minus $0.04 per share. Every dollar of expected profit has to come from a difference between your numbers and the market's,
+    and the calculator below lets you see how large that difference has to be.
+  </p>
+  <p>
+    The calculator uses a slightly fuller version that you can exit early: it values the option on your exit day with
+    Black-Scholes at the same implied volatility, averaging over the same lognormal view. It is a model of a
+    <em>belief</em>, not a forecast.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(S, K\)</td><td>Spot price today, and the strike of the option.</td></tr>
+      <tr><td>\(\tau\)</td><td>Time to expiry in years (days divided by 365).</td></tr>
+      <tr><td>\(\sigma_{imp}\)</td><td>Implied volatility: the annual volatility that makes Black-Scholes match the option's market price.</td></tr>
+      <tr><td>\(\sigma_r\)</td><td>Your forecast of realised volatility over the window you will actually hold the trade.</td></tr>
+      <tr><td>\(M_1\)</td><td>One standard deviation of the move to expiry: \(S\sigma_{imp}\sqrt{\tau}\).</td></tr>
+      <tr><td>\(C, P\)</td><td>Premium of the call, or the put, in the same units as the price.</td></tr>
+      <tr><td>\(B\)</td><td>Breakeven at expiry: \(K + C\) for a long call, \(K - P\) for a long put.</td></tr>
+      <tr><td>\(R\)</td><td>Selection ratio: breakeven distance divided by \(M_1\).</td></tr>
+      <tr><td>\(\Theta\)</td><td>Theta: the daily change in the option value from time passing alone.</td></tr>
+      <tr><td>\(d\)</td><td>Daily decay as a share of premium: \(|\Theta|/C\).</td></tr>
+      <tr><td>\(\mu\)</td><td>Your annual drift forecast, implied by your target price and window.</td></tr>
+      <tr><td>\(h\)</td><td>The number of days between today and the day you expect the view to have played out.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Choosing the expiry, the strike and the price you pay</h2>
+  <p>
+    The five numbers below, taken in order, turn a view into a contract. None is a trading signal. Each is a way to
+    check that the contract fits the view and that you are not overpaying for the privilege.
+  </p>
+
+  <h3>The expiry: outlast your window, do not match it</h3>
+  <p>
+    Your view has a window: "within about four weeks". Dates slip. The catalyst arrives late, or the move
+    starts and then stalls. If the option expires on the day the window ends, any delay turns a correct view into a total
+    loss. An expiry beyond the window, say twice as far out, gives timing error somewhere to go. That
+    is a rule of thumb rather than a law. The right cushion depends on how sure you are of the timing and what the extra time costs.
+  </p>
+  <p>
+    Extra time costs money, but less than it first looks. A longer option costs more in total, yet it loses a smaller
+    <em>share</em> of itself each day, and you only pay for the days you actually hold it. In our example (spot 100,
+    22% implied volatility, at the money) the 28-day call is $2.51 and loses 1.84% a day. The 56-day call is
+    $3.59 and loses 0.93% a day. If you sell on day 28 the longer option has kept most of its time value.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Right direction, wrong expiry: what each option pays when the move arrives</div>
+    <svg viewBox="0 0 640 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of profit and loss per share for at-the-money calls with 7, 14, 28, 56 and 90 days to expiry when the stock jumps by a chosen percentage on a chosen day. Options that expire before the move arrives lose their whole premium. Options that are still alive show a profit, with the longest options keeping the most time value.">
+      <g id="ots-b-g"></g>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Day the move arrives</span><span class="tl-live" id="ots-b-day-val">day 20</span></div>
+        <input type="range" id="ots-b-day" min="1" max="85" step="1" value="20">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Size of the move (stock rises by)</span><span class="tl-live" id="ots-b-mv-val">+5%</span></div>
+        <input type="range" id="ots-b-mv" min="1" max="12" step="1" value="5">
+      </div>
+    </div>
+    <div class="tl-readout">P&amp;L per share, % of premium: 7d <b id="ots-b-7">−1.23 (−100%)</b> · 14d <b id="ots-b-14">−1.76 (−100%)</b> · 28d <b id="ots-b-28">2.63 (105%)</b> · 56d <b id="ots-b-56">2.56 (71%)</b> · 90d <b id="ots-b-90">2.60 (57%)</b></div>
+    <div class="tl-hint">At-the-money calls, strike = spot = 100, implied volatility 22% and a 2% rate, held until the move arrives and sold at the Black-Scholes value (volatility unchanged). An option that has already expired is worth only its intrinsic value at expiry, with the stock still at 100. Drag "day the move arrives" past 28 and watch the 28-day bar fall to minus its premium.</div>
+    <div class="tl-chart-caption">
+      On time, the 28-, 56- and 90-day options earn similar dollars, but the longer ones cost more cash and
+      earn less on each dollar. Late, only the longer ones survive. You are choosing how much to pay for protection against your own timing error.
+    </div>
+  </div>
+
+  <h3>The strike: how far the stock has to go</h3>
+  <p>
+    A strike is a trade between price and distance. A lower strike (for a call) costs more and breaks even sooner. A higher
+    strike costs less and needs more. The table lists six strikes on the same 56-day call, scored with \(R\), the breakeven in
+    implied moves, and with the model's own chance of finishing beyond breakeven.
+  </p>
+
+  <div class="tp-wrap"><table class="tp-tab tp-ladder">
+    <thead><tr><th>Strike</th><th>Delta</th><th>Premium ($)</th><th>Breakeven</th><th>% above spot</th><th>R</th><th>Model chance beyond breakeven</th><th>$0.05 spread, % of premium</th></tr></thead>
+    <tbody>
+      <tr><td class="tp-rl" style="font-family:'DM Mono',monospace">90</td><td>0.90</td><td>10.68</td><td>100.68</td><td>0.7%</td><td>0.08</td><td>46.6%</td><td>0.5%</td></tr>
+      <tr><td class="tp-rl" style="font-family:'DM Mono',monospace">95</td><td>0.75</td><td>6.64</td><td>101.64</td><td>1.6%</td><td>0.19</td><td>42.2%</td><td>0.8%</td></tr>
+      <tr><td class="tp-rl" style="font-family:'DM Mono',monospace">100</td><td>0.53</td><td>3.59</td><td>103.59</td><td>3.6%</td><td>0.42</td><td>33.9%</td><td>1.4%</td></tr>
+      <tr><td class="tp-rl" style="font-family:'DM Mono',monospace">105</td><td>0.31</td><td>1.66</td><td>106.66</td><td>6.7%</td><td>0.77</td><td>22.5%</td><td>3.0%</td></tr>
+      <tr><td class="tp-rl" style="font-family:'DM Mono',monospace">110</td><td>0.15</td><td>0.66</td><td>110.66</td><td>10.7%</td><td>1.24</td><td>11.9%</td><td>7.6%</td></tr>
+      <tr><td class="tp-rl" style="font-family:'DM Mono',monospace">115</td><td>0.06</td><td>0.22</td><td>115.22</td><td>15.2%</td><td>1.77</td><td>4.9%</td><td>22.6%</td></tr>
+    </tbody></table></div>
+  <div class="tp-note">Spot 100, 56 days, implied volatility 22%, interest 2%, no dividends. "Model chance" is the risk-neutral probability from the pricing model (the same \(N(d_2)\) idea as in the <a href="options-four-positions.html">four positions</a> lesson), not a forecast. Delta is only a rough stand-in for it.</div>
+
+  <p>
+    Read down the \(R\) column. The at-the-money call needs 0.42 of a typical move. The 5% out-of-the-money call needs
+    0.77, and the 15% out-of-the-money call needs 1.77, almost two typical moves, for a model chance of about 4.9%. A far strike has
+    a high percentage return if it works and a very low chance of working. It also has the widest spread relative
+    to its price, the last column: a $0.05 spread costs 22.6% of the 115 call's premium before the stock has moved at all.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">One option against the market's funnel: the strike and expiry explorer</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Profit and loss per share of a long call plotted against the stock price on your exit day. A blue curve shows the position repriced on the exit day, a dashed amber line shows profit and loss at expiry, a shaded band shows the market's one standard deviation range, and a green dashed line marks your target price. Move the strike, expiry and implied volatility sliders to see the breakeven and the band change.">
+      <g id="ots-a-g"></g>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Strike</span><span class="tl-live" id="ots-a-k-val">100</span></div>
+        <input type="range" id="ots-a-k" min="85" max="115" step="1" value="100">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Days to expiry</span><span class="tl-live" id="ots-a-d-val">56 days</span></div>
+        <input type="range" id="ots-a-d" min="7" max="120" step="1" value="56">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Implied volatility</span><span class="tl-live" id="ots-a-iv-val">22%</span></div>
+        <input type="range" id="ots-a-iv" min="10" max="70" step="1" value="22">
+      </div>
+    </div>
+    <div class="tl-readout">Premium $<b id="ots-a-prem">3.59</b> · delta <b id="ots-a-delta">0.53</b> · theta $<b id="ots-a-theta">−0.033</b> a day (<b id="ots-a-thp">0.93</b>% of premium)</div>
+    <div class="tl-readout">Breakeven at expiry <b id="ots-a-be">103.59</b> (<b id="ots-a-mv">3.6</b>% above spot, R = <b id="ots-a-R">0.42</b>) · breakeven on your exit day <b id="ots-a-beh">101.86</b></div>
+    <div class="tl-readout">Your view: chance in profit <b id="ots-a-pp">65.5</b>% · expected P&amp;L net of a $0.05 spread $<b id="ots-a-ev">2.06</b> · the same call at 18% volatility would cost $<b id="ots-a-bv">2.96</b></div>
+    <div class="tl-hint">Fixed in this chart: spot 100, interest 2%, your view is that the stock reaches 104 on day 28 with 18% realised volatility. The curve is the position's profit and loss on your exit day (day 28, or expiry if sooner), valued by Black-Scholes at the implied volatility you choose. Blue shading is the market's ±1 standard deviation range over that period.</div>
+    <div class="tl-chart-caption">
+      Slide the strike up and the breakeven moves out of reach of your target while the premium falls: cheap, and right
+      only if the stock overshoots. Slide implied volatility up and every option gets dearer, while your own forecast has not changed, so the expected P&amp;L shrinks.
+    </div>
+  </div>
+
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../expected-moves.html">Expected moves</a> shows the desk's own model-based expected-move cone for each pair; comparing it with the options market's \(\sigma\sqrt{\tau}\) funnel from this lesson is the "your move against the market's move" check.</div><!-- DESK:END -->
+
+  <h3>The volatility you are paying for</h3>
+  <p>
+    Implied volatility is the one input you do not control, and it is not constant. Compare it with what has
+    recently been <em>realised</em> and with what you expect over the window. An option is a bet that realised movement will
+    be large enough to cover the implied level. If you buy at 22% and the stock then moves at 15%, you have paid for
+    movement that did not arrive. For a rough size of the overpayment, use vega:
+  </p>
+  <div class="tl-math">\[ C(\sigma_{imp}) - C(\sigma_{r}) \;\approx\; \nu\,(\sigma_{imp} - \sigma_{r}) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ν</code><span>vega: change in the option price per one unit of volatility (per point, divide by 100)</span></div>
+    <div class="tl-eq-chip c2"><code>σ_imp − σ_r</code><span>the gap between what you pay and what you expect to be delivered</span></div>
+  </div>
+  <p>
+    The 56-day at-the-money call has a vega of $0.156 per volatility point. A four-point gap, 22% against your 18%, is about
+    $0.62 by that rule, and the full repricing gives $3.59 against $2.96: the call costs 21% more than at your volatility.
+    Against the 15% the stock has recently realised, the gap is 44%. On average, implied volatility in
+    index options has tended to sit above the volatility realised afterwards, which is a headwind for buyers. The
+    <em>variance risk premium</em> lesson later in this series covers the evidence and its limits. It is an average, not a
+    prediction for any one trade.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example (illustrative numbers)</div>
+    <h3>Right direction, volatility crushed: an event call</h3>
+    <p>
+      A stock is at $100 the day before it reports earnings. The 30-day at-the-money call costs $5.79 with implied volatility at 50%,
+      because the date of the report is inside the option's life. The company reports, the stock rises 5%, and the uncertainty
+      is resolved, so implied volatility drops to 30%. One day has passed (29 days left).
+    </p>
+    <p>
+      The call is now worth $6.63, a gain of only $0.84 or 14%. Had implied volatility stayed at 50% the same 5% rise would have left it
+      worth $8.70, a gain of $2.90. The $2.07 difference is the <strong>volatility crush</strong>. And if the
+      stock had simply stayed at $100, the same fall in volatility would have taken the call to $3.45, a loss of −40% even though
+      nothing bad happened to the stock. The earnings move was priced in advance, so you only profit from the amount by which it exceeds what the market already charged.
+    </p>
+    <p style="margin-bottom:0">
+      Two lessons. When an event sits inside the option's life, you are buying the event's volatility and will lose it the moment the event passes. And
+      the right comparison for an event is the straddle price against your own estimate of the move.
+    </p>
+  </div>
+
+  <h3>Liquidity and costs</h3>
+  <p>
+    You pay half the bid-ask spread to get in and half to get out. In dollars that is the same on a cheap and a dear
+    option, so as a share of the premium it is brutal on cheap contracts: $0.05 is 1.4% of a $3.59 option and 22.6% of a 22-cent one.
+    Check the quoted spread, the open interest and the day's volume before you look at anything else. As a working rule for
+    this lesson, not a market standard, treat a spread above about 5% of the premium as a cost that needs a reason. Wide spreads also mean the
+    mid-price is a guess, so work a limit order and know your price before you click.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The whole thing end to end</h2>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example (illustrative numbers)</div>
+    <h3>From "I think it goes up about 4%" to one contract</h3>
+    <p>
+      An ETF, call it XYZ, trades at $100. You expect a re-rating on a known event and think it will be near $104 in about four weeks
+      (28 days), with a realised volatility around 18% (the last 20 days realised about 15%, you add a little for the event). The market's
+      options show 22% implied for every expiry. Interest 2%, no dividends, an option is quoted per share, the spread is $0.05, and your risk budget is $500.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body"><h4>Write the view in four parts</h4>
+        <p>Direction up. Size: +4% to $104. Window: 28 days. Confidence: moderate, so assume the timing can slip. No view on anything else.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body"><h4>Read the market's quote</h4>
+        <p>\(M_1 = 100 \times 0.22 \times \sqrt{28/365} =\) $6.09, and the straddle is $4.86. Your +4% is smaller than the market's
+        typical move of 6.1% and about the size of its average move (4.9%). So your edge is that the centre sits
+        higher, not that the stock will move a lot.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body"><h4>Choose the expiry</h4>
+        <p>A 28-day option ends on the day your window ends, so a late move kills it. Choose 56 days. The at-the-money call is $3.59, with delta 0.53,
+        theta $−0.033 a day (0.93% of premium) and vega $0.156 per point.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body"><h4>Choose the strike</h4>
+        <p>The breakeven at expiry is $103.59, 3.6% above spot, \(R =\) 0.42. The 105 strike is cheaper ($1.66) but
+        breaks even at $106.66, above your target. The 95 strike is $6.64 and protects more, but ties up much more money. The at-the-money 100 strike balances them. On your exit day (28) its breakeven spot is only 101.86.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body"><h4>Check what happens if you are right, and if you are flat</h4>
+        <p>If the stock is at 104 on day 28, the call is worth $5.09 and the trade makes $1.50 a share. If nothing happens, you lose $1.08 of the premium by day 28.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">6</div><div class="tl-step-body"><h4>Check volatility and costs</h4>
+        <p>At your 18% volatility the same call is worth $2.96, so you pay 21% for the gap. The $0.05 spread is 1.4% of the premium, acceptable. Under your view the chance of being in profit on day 28 is 65.5% and the expected P&amp;L is $2.06 a share.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">7</div><div class="tl-step-body"><h4>Size it by the worst case</h4>
+        <p>Maximum loss is the whole premium: $3.59 a share, $358.68 for one contract of 100 shares. Against a $500 budget that is one contract, with $141.32 of budget left over.</p></div></div>
+    </div>
+    <p style="margin-bottom:0">
+      Notice what the numbers also say. If you had thought the stock would reach only $101, the same trade has an expected P&amp;L of $0.13
+      a share and a 42.6% chance of profit. A one-point edge barely covers the costs, and you would not do it.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Compare five contracts on your own view</h3>
+    <p>
+      The table prices five contracts from the numbers below. Strikes are set as a percentage of spot. Each contract is held to your exit day or to expiry,
+      whichever comes first. Start with the worked example's numbers, then change one thing at a time and watch which contract's expected P&amp;L falls first.
+    </p>
+    <div class="tl-predict" data-answer="1.84" data-tol="0.5" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The 28-day at-the-money call costs $2.51. Roughly what percentage of that premium does it lose per day to time decay, with the stock unchanged? Lock in a guess, then read the "Theta, % of premium per day" row for the first column.</div>
+      <div class="tl-predict-reveal"><p><strong>About 1.8% a day.</strong> Theta is $−0.046 a day on a $2.51 premium, \(0.046/2.51 \approx 1.84\%\). The 56-day call loses 0.93%, half as much. The short option is not cheaper to hold, it is more expensive to hold per dollar. Now try changing the horizon to 14 days and see which contracts are still alive.</p></div>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control"><div class="tl-control-head"><span>Spot price</span></div><input type="number" id="ots-c-spot" class="tl-scratch-input" value="100" step="1" min="1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Implied volatility (%)</span></div><input type="number" id="ots-c-iv" class="tl-scratch-input" value="22" step="1" min="1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Your target price</span></div><input type="number" id="ots-c-target" class="tl-scratch-input" value="104" step="0.5" min="1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Your volatility forecast (%)</span></div><input type="number" id="ots-c-bvol" class="tl-scratch-input" value="18" step="1" min="1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Exit day (days from now)</span></div><input type="number" id="ots-c-h" class="tl-scratch-input" value="28" step="1" min="1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Bid-ask spread ($ per share)</span></div><input type="number" id="ots-c-spread" class="tl-scratch-input" value="0.05" step="0.01" min="0"></div>
+    </div>
+<div class="tp-wrap"><table class="tp-tab"><thead><tr><th></th><th>28d ATM</th><th>28d 5% OTM</th><th>56d 5% ITM</th><th>56d ATM</th><th>56d 5% OTM</th></tr></thead><tbody><tr><td class="tp-rl">Strike</td><td><b id="ots-t-strike-a">100.00</b></td><td><b id="ots-t-strike-b">105.00</b></td><td><b id="ots-t-strike-c">95.00</b></td><td><b id="ots-t-strike-d">100.00</b></td><td><b id="ots-t-strike-e">105.00</b></td></tr><tr><td class="tp-rl">Premium ($)</td><td><b id="ots-t-prem-a">2.51</b></td><td><b id="ots-t-prem-b">0.78</b></td><td><b id="ots-t-prem-c">6.64</b></td><td><b id="ots-t-prem-d">3.59</b></td><td><b id="ots-t-prem-e">1.66</b></td></tr><tr><td class="tp-rl">Delta</td><td><b id="ots-t-delta-a">0.52</b></td><td><b id="ots-t-delta-b">0.23</b></td><td><b id="ots-t-delta-c">0.75</b></td><td><b id="ots-t-delta-d">0.53</b></td><td><b id="ots-t-delta-e">0.31</b></td></tr><tr><td class="tp-rl">Theta ($ per day)</td><td><b id="ots-t-theta-a">−0.046</b></td><td><b id="ots-t-theta-b">−0.034</b></td><td><b id="ots-t-theta-c">−0.028</b></td><td><b id="ots-t-theta-d">−0.033</b></td><td><b id="ots-t-theta-e">−0.029</b></td></tr><tr><td class="tp-rl">Theta, % of premium per day</td><td><b id="ots-t-thp-a">1.84</b></td><td><b id="ots-t-thp-b">4.36</b></td><td><b id="ots-t-thp-c">0.43</b></td><td><b id="ots-t-thp-d">0.93</b></td><td><b id="ots-t-thp-e">1.74</b></td></tr><tr><td class="tp-rl">Vega ($ per vol point)</td><td><b id="ots-t-vega-a">0.110</b></td><td><b id="ots-t-vega-b">0.084</b></td><td><b id="ots-t-vega-c">0.125</b></td><td><b id="ots-t-vega-d">0.156</b></td><td><b id="ots-t-vega-e">0.139</b></td></tr><tr><td class="tp-rl">Breakeven at expiry, % above spot</td><td><b id="ots-t-mv-a">2.5</b></td><td><b id="ots-t-mv-b">5.8</b></td><td><b id="ots-t-mv-c">1.6</b></td><td><b id="ots-t-mv-d">3.6</b></td><td><b id="ots-t-mv-e">6.7</b></td></tr><tr><td class="tp-rl">Breakeven in implied moves, R</td><td><b id="ots-t-R-a">0.41</b></td><td><b id="ots-t-R-b">0.95</b></td><td><b id="ots-t-R-c">0.19</b></td><td><b id="ots-t-R-d">0.42</b></td><td><b id="ots-t-R-e">0.77</b></td></tr><tr><td class="tp-rl">Chance in profit on your exit day (your view)</td><td><b id="ots-t-pp-a">60.4</b></td><td><b id="ots-t-pp-b">35.7</b></td><td><b id="ots-t-pp-c">71.3</b></td><td><b id="ots-t-pp-d">65.5</b></td><td><b id="ots-t-pp-e">57.4</b></td></tr><tr><td class="tp-rl">Expected P&amp;L, net of spread ($)</td><td><b id="ots-t-ev-a">2.07</b></td><td><b id="ots-t-ev-b">0.78</b></td><td><b id="ots-t-ev-c">2.93</b></td><td><b id="ots-t-ev-d">2.06</b></td><td><b id="ots-t-ev-e">1.17</b></td></tr><tr><td class="tp-rl">Expected P&amp;L as % of premium</td><td><b id="ots-t-evp-a">83%</b></td><td><b id="ots-t-evp-b">100%</b></td><td><b id="ots-t-evp-c">44%</b></td><td><b id="ots-t-evp-d">57%</b></td><td><b id="ots-t-evp-e">70%</b></td></tr></tbody></table></div>
+    <div class="tp-note" id="ots-c-note">Interest 2%, no dividends. Expected P&amp;L averages the option's value on your exit day over a lognormal distribution centred on your target, with your volatility, minus the premium and the spread. "R" is the breakeven distance in implied moves at expiry.</div>
+    <button type="button" id="ots-c-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Read the market's expected move and the breakeven ratio for an at-the-money call: \(M_1 = S\sigma\sqrt{\tau}\), the average move \(\approx 0.8\,M_1\), the breakeven \(B = K + C\), and \(R = (B - S)/M_1\). Use 365 days a year. New inputs each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(S = K = 80\), implied volatility 25%, 30 days, and the call costs \(C = 2.35\). Then \(\tau = 30/365 = 0.0822\) and \(\sqrt{\tau} = 0.2867\), so \(M_1 = 80 \times 0.25 \times 0.2867 = 5.73\). The average move is \(0.8 \times 5.73 = 4.58\) and the breakeven is \(B = 80 + 2.35 = 82.35\). The selection ratio is \(R = 2.35 / 5.73 =\) <span class="tl-blank" data-answer="0.41" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(S = K = 40\), implied volatility 35%, 20 days, and the call costs \(C = 1.33\). Then \(\tau = 20/365 = 0.0548\) and \(\sqrt{\tau} = 0.2341\). So \(M_1 =\) <span class="tl-blank" data-answer="3.28" data-tol="0.02"></span>, the average move \(0.8\,M_1 =\) <span class="tl-blank" data-answer="2.62" data-tol="0.03"></span>, and \(R = C / M_1 =\) <span class="tl-blank" data-answer="0.41" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(S = K = 250\), implied volatility 30%, 45 days, and the call costs \(C = 10.80\). \(M_1 =\) <span class="tl-blank" data-answer="26.33" data-tol="0.15"></span>; breakeven \(B =\) <span class="tl-blank" data-answer="260.8" data-tol="0.05"></span>; \(R =\) <span class="tl-blank" data-answer="0.41" data-tol="0.01"></span>. Every at-the-money option lands near 0.4, whatever the stock and the expiry.</p>
+    </div>
+  </div>
+
+  <!-- WB:options_trade_selection:START -->
+  <div class="wb" id="wb-options_trade_selection" data-title="From view to trade: choosing the contract">
+    <script type="application/json">{"w":600,"h":660,"intro":"One $100 stock, one view, and the questions that turn it into a contract. Spot 100, implied volatility 22%. Press play, or step through.","steps":[{"cap":"Your view, in four parts: direction up; size about +4%, to $104; window 28 days; confidence moderate. The stock is at $100. A view is not yet a trade.","do":[{"icon":"you","name":"person","x":40,"y":14,"s":0.7,"tone":"blue","label":"you","lsize":18},{"note":"view","x":340,"y":60,"text":"up to ~$104\nwithin 28 days","size":22,"anchor":"middle","tone":"blue"}]},{"cap":"First ask what the options market already expects. At 22% implied volatility a typical move grows with the square root of time: a funnel around today's price.","do":[{"chart":"cone","x":10,"y":150,"w":580,"h":272,"title":"Stock price, and the market's typical range","xd":[0,56],"yd":[88,114],"yt":[[90,"90"],[100,"100"],[110,"110"]],"xt":[[0,"today"],[28,"day 28"],[56,"day 56"]],"pl":40,"pr":22},{"series":"up","chart":"cone","pts":[[0,100.0],[4,102.3],[8,103.26],[12,103.99],[16,104.61],[20,105.15],[24,105.64],[28,106.09],[32,106.51],[36,106.91],[40,107.28],[44,107.64],[48,107.98],[52,108.3],[56,108.62]],"tone":"blue","ms":1500},{"series":"lo","chart":"cone","pts":[[0,100.0],[4,97.7],[8,96.74],[12,96.01],[16,95.39],[20,94.85],[24,94.36],[28,93.91],[32,93.49],[36,93.09],[40,92.72],[44,92.36],[48,92.02],[52,91.7],[56,91.38]],"tone":"blue","ms":1500},{"hide":"view"}]},{"cap":"At day 28 one standard deviation is ±$6.09. Your target, $104, is inside the funnel: the market already expects wobbles bigger than your move.","do":[{"dot":"tgt","chart":"cone","at":[28,104],"text":"your target $104","tone":"green","dx":-12,"dy":-14,"anchor":"end"},{"dot":"sd","chart":"cone","at":[28,106.09],"text":"+1σ $106.09","tone":"blue","dx":-10,"dy":-12,"anchor":"end"}]},{"cap":"The market's price for \"how far, either way\" is the at-the-money straddle: about $4.86 for 28 days, roughly 0.8 of a typical move. So direction alone is no edge. Yours is that the centre sits higher.","do":[{"box":"st","x":310,"y":446,"w":280,"h":92,"text":"straddle ≈ $4.86\n≈ 0.8 × $6.09","tone":"purple","size":19}]},{"cap":"Pick an expiry. A 28-day option ends exactly when your window ends. If the move arrives on day 30, a correct view finds a dead option.","do":[{"series":"x28","chart":"cone","pts":[[28,88],[28,114]],"tone":"red","dash":true,"ms":700},{"note":"x28l","chart":"cone","at":[28,90.2],"text":"28-day expiry","tone":"red","size":17,"anchor":"end","dx":-8,"dy":0}]},{"cap":"A 56-day option outlasts the window. It costs more, $3.59 against $2.51, but it still has value if you are late.","do":[{"dot":"e56","chart":"cone","at":[56,100],"text":"56-day expiry","tone":"green","dx":-12,"dy":26,"anchor":"end"}]},{"cap":"The rent per dollar: the 28-day call loses 1.84% of its value a day with the stock unchanged. The 56-day call loses 0.93%. The shortest options are the most expensive to hold.","do":[{"chart":"bar","x":10,"y":446,"w":280,"h":200,"title":"Daily decay, % of premium","xd":[0,5],"yd":[0,8],"yt":[[0,"0"],[4,"4%"],[8,"8%"]],"xt":[[1,"7d"],[2,"28d"],[3,"56d"],[4,"90d"]],"pl":44},{"bars":"tb","chart":"bar","data":[[1,7.25,"7.3","red"],[2,1.84,"1.84","amber"],[3,0.93,"0.93","blue"],[4,0.58,"0.58","blue"]],"bw":40,"ms":1200}]},{"cap":"Pick a strike by its breakeven. The 56-day at-the-money call: strike 100 plus premium $3.59 gives $103.59, a 3.6% rise. That is 0.42 of a typical move (R).","do":[{"series":"be","chart":"cone","pts":[[0,103.59],[56,103.59]],"tone":"amber","dash":true,"ms":900},{"note":"bel","chart":"cone","at":[3,103.59],"text":"breakeven $103.59","tone":"amber","size":17,"anchor":"start","dx":0,"dy":-12}]},{"cap":"Cheaper strikes need more. The 105 call costs $1.66 but breaks even at $106.66, above your $104 target, so it loses even if you are exactly right.","do":[{"series":"be105","chart":"cone","pts":[[0,106.66],[56,106.66]],"tone":"red","dash":true,"ms":900},{"note":"b105l","chart":"cone","at":[53,106.66],"text":"105 call: $106.66","tone":"red","size":17,"anchor":"end","dx":0,"dy":-12}]},{"cap":"Check the volatility you pay. You buy 22%, you expect 18%. The same call would cost $2.96 at your volatility, so you pay about 21% more for the gap.","do":[{"box":"vol","x":310,"y":554,"w":280,"h":92,"text":"pay 22% · expect 18%\n≈ 21% overpay","tone":"amber","size":18}]},{"cap":"Check costs. A $0.05 spread is 1.4% of the $3.59 call but 22.6% of a 22-cent far-out call. Cheap contracts are expensive to cross.","do":[{"hide":"st"},{"hide":"vol"},{"box":"cost","x":310,"y":446,"w":280,"h":92,"text":"$0.05 spread:\n1.4% of $3.59\n22.6% of $0.22","tone":"red","size":18}]},{"cap":"Size by the worst case. The most you can lose is the premium, $358.68 a contract. Against a $500 risk budget that is one contract.","do":[{"box":"size","x":310,"y":554,"w":280,"h":92,"text":"max loss $358.68\nbudget $500 → 1 contract","tone":"green","size":18}]},{"cap":"Trade it only if your numbers beat the market's by more than the costs. Otherwise the right trade is no trade.","do":[{"pulse":"size"},{"pulse":"cost"}]}]}</script>
+  </div>
+  <!-- WB:options_trade_selection:END -->
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario (illustrative numbers)</div>
+    <h3>A currency view: EUR/USD down 100 pips in three weeks</h3>
+    <p>
+      EUR/USD is at 1.0800. You expect it to fall about 100 pips, to 1.0700, over roughly three weeks, on a central bank repricing. One-month
+      at-the-money implied volatility is 7.5%. To keep the arithmetic clean this example uses zero interest on both currencies. FX options
+      conventions (the New York 10:00 cut, premium in pips or per cent) come in the first lesson of this series.
+    </p>
+    <p>
+      The market's typical one-month move is \(M_1 = 1.0800 \times 0.075 \times \sqrt{30/365} = \) 232 pips, and the at-the-money straddle is
+      about 185 pips. Your 100-pip view is well inside that, the same shape as the share example. An at-the-money 30-day put costs about 93 pips and
+      breaks even at 1.0707, so it needs the 93-pip fall you expect, with \(R \approx\) 0.40.
+    </p>
+    <p style="margin-bottom:0">
+      The tempting cheaper trade is a put struck at your target, 1.0700. It costs about 51 pips, breaks even at 1.0649, and needs a 151-pip fall, \(R \approx\) 0.65. If the pair goes
+      exactly to your target at expiry, it pays <strong>nothing</strong> and you lose the whole 51 pips. A strike at the target is the classic error: you can be exactly right and still lose. Put the breakeven inside the move you expect, not the strike.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>It actually happened: Netflix, 20 April 2022</h2>
+  <p>
+    The implied move is the market's average guess for how far a stock will travel. This episode is a reminder that it is a
+    guide to the typical move, not a ceiling on the possible one.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>A report that moved the stock several implied moves in one day</h3>
+    <p>
+      Netflix reported its first-quarter 2022 results after the US close on 19 April 2022. It had guided to adding about
+      2.5 million paying subscribers. It reported a loss of about 200,000, its first fall in subscribers in more than a decade.
+    </p>
+    <p>
+      Pre-earnings market commentary put the move the options market was pricing at roughly 10% either way. That is a single figure from commentary,
+      not an exchange record, so treat it as approximate. On 20 April the shares closed down about 35%, at $226.19, taking
+      roughly $54 billion off the company's market value, according to Bloomberg's report that day, which called it the biggest one-day fall
+      since October 2004. That was about three and a half times the quoted implied move.
+    </p>
+    <p style="margin-bottom:0">
+      Think about what that does to the strike choices from this lesson. A buyer of puts near the pre-report price was paid for a move that was much
+      larger than the average the premium assumed. A trader who sold a put 15% below the pre-report price, outside the roughly 10%
+      "expected move", found it deep in the money: the pre-report price was about $349, so that strike was near $296, against a close of $226. Being outside the expected move
+      did not make the strike safe. Gaps like this are why the later lessons on short premium and sizing exist.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link"><b>Options</b>Commentary: implied move near ±10% for the report</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · M₁ and R</b>The straddle quotes a typical move, not a limit</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link shock"><b>The report</b>19 Apr after the close: subscribers fall by about 200,000</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The next day</b>Shares close about 35% lower, at $226.19</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>About 3.5 times the quoted implied move; "outside the expected move" was not safe</div>
+  </div>
+  <p>
+    The starred link is this lesson's tool. The expected move is useful for choosing which contract fits a view and for noticing
+    when the market is charging a lot. It says nothing about how bad the tail can be.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>One volatility, a normal curve and no gaps</h3>
+    <p style="margin-bottom:0">
+      Everything above prices every strike at one implied volatility and assumes a smooth, roughly normal move. Real markets quote a
+      different implied volatility for each strike (see <a href="implied-vol-smile-skew.html">The IV Smile &amp; Skew</a>), so out-of-the-money
+      options are priced differently from the flat-volatility numbers here. Real moves have fatter tails and gaps, as Netflix showed. Volatility itself moves
+      after you buy, which is why the charts hold it constant only for clarity. And equity options can be exercised early and pay dividends, which this lesson ignores.
+      Treat the numbers as the shape of the trade-offs, not as prices to trade at.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The "expected move" is like a weather forecast that says "about 10 degrees warmer or colder than today". Most days it is right. But some days the weather does something far bigger, and if your plan only worked inside the forecast range, that day ruins it.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Professional option traders rarely say "I'm bullish, I'll buy a call". They say what they think the stock
+    does, how far and by when, and then ask what the market is charging for each piece. They think about
+    exposures in the Greeks, how many dollars per point of volatility or per day of decay, rather than in contracts. They look at implied volatility against
+    its own history and against realised volatility, they check the calendar for events inside the option's life, and they
+    write down the maximum loss before they enter. Where the premium looks too dear for the view, they often change the structure
+    (a spread, covered in the next lesson group) rather than pay full price. None of that makes the trade right, only deliberate.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">✅</div>
+    <div class="tl-box-label">Pre-trade options checklist</div>
+    <h3>Eight questions to answer in writing before you click</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body"><h4>What is the view, in four parts?</h4><p>Direction, size of the move, window, confidence. Also what would prove you wrong and by when.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body"><h4>What is the market's quote?</h4><p>Compute \(M_1\) and the straddle for the expiry you are considering. Is your move bigger, or do you think the centre sits higher? Which?</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body"><h4>Does the expiry outlast the window?</h4><p>Leave room for a late move. Note theta as a share of premium per day, and what holding flat for your window would cost.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body"><h4>Is the breakeven inside the move you expect?</h4><p>Check \(R\) and the breakeven against your target. Never set the strike at the target. Remember delta is an exposure, not a probability.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body"><h4>What volatility are you paying?</h4><p>Implied against recent realised and against your forecast. Is there an event inside the option's life that will take volatility away when it passes?</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">6</div><div class="tl-step-body"><h4>What does it cost to get in and out?</h4><p>Spread as a share of premium, open interest, volume. Use a limit order, and ask whether you could leave if you needed to.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">7</div><div class="tl-step-body"><h4>How big, by worst case?</h4><p>Size so that losing the whole premium (or the full defined risk) is an amount you chose in advance. Never size by margin or by contract count.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">8</div><div class="tl-step-body"><h4>What is the exit plan?</h4><p>A profit target, an exit if the thesis breaks, and a time stop: "if nothing has happened by day X, I close it". Write them before you trade.</p></div></div>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where choosing a contract quietly goes wrong</h3>
+    <p>
+      <strong>Strike at the target.</strong> If the stock goes exactly where you said, the option pays nothing at expiry, and you lose the premium. Your breakeven must sit inside your expected move.
+    </p>
+    <p>
+      <strong>Buying the cheap far-out strike because it is cheap.</strong> The price is low because the chance is low. Check \(R\) and the spread: a 15% out-of-the-money call needs almost two typical moves and gives nearly a quarter of its premium to a $0.05 spread in the example.
+    </p>
+    <p>
+      <strong>Matching the expiry to the window.</strong> A late move turns a correct view into a total loss. Time decay accelerates near expiry, so the short option is the most expensive per dollar to hold.
+    </p>
+    <p>
+      <strong>Paying peak volatility into an event.</strong> The option includes the event, and the event's volatility vanishes when it passes. A right call on an earnings move can still lose money.
+    </p>
+    <p>
+      <strong>Treating delta as a probability.</strong> A 0.30 delta call is not a 30% chance of profit. Breakeven, not the strike, sets that, and the model's own chance is a different number again.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>Sizing by contracts.</strong> One contract of a cheap option and one of an expensive one carry very different risk. Size by the maximum loss you have chosen to accept.
+    </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative day before earnings</div>
+    <h3>You expect good results and the weekly straddle costs $8</h3>
+    <p>This is a made-up situation with invented numbers, to practise the arithmetic. A stock is at $100 and reports after tomorrow's close. You expect good results and a rise of about 4%. The seven-day at-the-money straddle costs $8.00, so the market is pricing an average move of about 8% either way (about 72% annualised volatility). The seven-day call costs $3.99. Your past studies of this stock's earnings moves suggest they average 4 to 5%. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Buy the seven-day at-the-money call. Direction is all that matters.<div class="tl-drill-why">Breakeven is about $104, exactly where you expect the stock to go, so there is no edge before costs. And if the stock does rise 4% while volatility falls to 30% after the report, the call is worth only about $4.34, a gain of $0.35 on $3.99 before the spread. You can be right on direction and make almost nothing.</div></li>
+      <li data-verdict="good">Compare your expected move with the straddle first. The market is charging $8 for a move you expect to be about half that, so pass, or use a smaller defined-risk structure.<div class="tl-drill-why">The straddle is the average absolute move the market is pricing. You expect roughly half of it. Unless you can show the move will exceed the implied one, or that the direction is unusually predictable, you are overpaying for the volatility. "No trade" is a position.</div></li>
+      <li data-verdict="ok">Buy a three-month call instead, to avoid the volatility crush.<div class="tl-drill-why">Longer options carry less event premium, so there is less to crush, and a late reaction is survivable. But you still pay for the same direction view, with more vega and more cash at risk, and a one-day event is a poor reason to own three months of time.</div></li>
+      <li data-verdict="bad">Sell the straddle: your history says the stock moves 4 to 5% and the market prices 8%.<div class="tl-drill-why">Averages favour the seller here, but the loss when it goes wrong is a multiple of the premium collected and on the call side has no limit. One gap of 20 or 30% costs many quiet events' profits. The short-premium lesson later in this series covers exactly this trade, and sizing for it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this shows.</strong> This is an illustrative scenario with invented numbers, not a real episode, so there is no outcome to report and no source to cite. The arithmetic is real: a $100 stock with a $8.00 seven-day straddle implies about 72% annualised volatility. After a report, with volatility at 30% and six days left, the same call would be worth about $4.34 after a 4% rise and about $8.07 after an 8% rise (the size the straddle was pricing). Only a move at least as big as the quoted one pays well, which is why the comparison comes before the trade.</p></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Write the view in four parts: direction, size, window, confidence.</strong> An option price contains the market's own answer to size and timing, so only the gap between your answers and its answers can be an edge.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Read the quote.</strong> The expected move is \(M_1 = S\sigma\sqrt{\tau}\) and the at-the-money straddle costs about \(0.8\,M_1\). Compare your target with both before looking at a single contract.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Score strikes by \(R\).</strong> The breakeven distance divided by \(M_1\) is about 0.4 at the money and climbs as you move out. A cheap strike is cheap because it needs a bigger move.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Let the expiry outlast the window.</strong> Longer options cost more cash but lose a smaller share a day and survive a late move. You pay for the days you hold, not the days you buy.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Check the volatility and the costs.</strong> Buying 22% when you expect 18% costs about 21% more. Events carry volatility that crushes afterwards. A spread that is 20% of the premium is the first thing to fix.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Your numbers are estimates.</strong> The expected value calculator turns beliefs into dollars, but a 4% target, an 18% forecast and a timing guess are all uncertain. A one-point edge barely covers the costs.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Never put the strike at your target, and never treat the expected move as a ceiling.</strong> At the target the option pays nothing, and Netflix moved about 3.5 times the quoted implied move in a day. Size by the worst case.<!-- DESK:START --> Nothing in this lesson has been tested as a trading rule on this desk.<!-- DESK:END --></span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. You are right about direction and the option still loses money. Give three ways that can happen.</summary>
+    <div class="tl-answer">
+      The move was smaller than the breakeven: the strike or premium was too far from the stock, for example a strike at the target.
+      The move arrived after the option expired or after time decay had eaten the premium. Or volatility fell after you bought (a
+      crush after an event), which can cancel the gain from a move that was priced in. Direction is only one of the three things the premium charges you for.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A $50 stock has 30% implied volatility and 36 days to expiry. Estimate the one-standard-deviation move and the at-the-money straddle.</summary>
+    <div class="tl-answer">
+      \(\tau = 36/365 = 0.0986\), \(\sqrt{\tau} = 0.314\). So \(M_1 = 50 \times 0.30 \times 0.314 \approx\) $4.71, and the straddle is about
+      \(0.8 \times 4.71 \approx\) $3.77. The at-the-money call or put is about half of that, roughly $1.93.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is buying a call struck exactly at your price target usually a mistake?</summary>
+    <div class="tl-answer">
+      At expiry the call is worth the amount spot is above the strike. If the stock ends exactly at your target the payoff is zero,
+      and you have paid the premium, so you lose all of it while being exactly right. The breakeven is the strike plus the premium, so the strike must be low enough that the breakeven sits inside the move you expect.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Your view has a 28-day window. Why might a 56-day option be a better choice than a 28-day one, and what does it cost?</summary>
+    <div class="tl-answer">
+      A 28-day option expires on the day your window ends, so any delay can leave it worthless. The 56-day option survives a late move.
+      It costs more cash ($3.59 against $2.51) and has more vega, but it loses a smaller share of itself per day (0.93% against 1.84%). If you sell on day 28 it keeps time
+      value you can recover. If your timing is exactly right the two do about the same, so the extra cost is insurance against timing error.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A stock rises 5% after earnings and your call gains only 14%. What happened?</summary>
+    <div class="tl-answer">
+      Implied volatility fell once the event was over. In the worked example the call bought at 50% implied volatility is repriced at 30% the next day, so most of the gain from the 5% rise is cancelled.
+      Before the event you paid for its volatility. Afterwards that volatility disappears, and what is left is the effect of the move alone.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is a far out-of-the-money call usually not "cheap" even though its price is small?</summary>
+    <div class="tl-answer">
+      Its low price reflects a low chance of finishing beyond the breakeven. In the example the 15% out-of-the-money 56-day call has \(R\) = 1.77, nearly two typical moves, and a model chance of about
+      4.9%. The bid-ask spread is also a large share of a tiny premium (22.6% for a $0.05 spread). Per dollar spent, the odds are poor, and costs take a bigger bite.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Fischer Black and Myron Scholes, <em>"The Pricing of Options and Corporate Liabilities"</em>, Journal of Political Economy 81(3), 1973, and Robert C. Merton, <em>"Theory of Rational Option Pricing"</em>, Bell Journal of Economics and Management Science 4(1), 1973 — the pricing model behind every number on this page.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson (many editions) — the standard textbook for the mechanics, the Greeks and the conventions.</li>
+    <li>Sheldon Natenberg, <em>Option Volatility and Pricing</em>, McGraw-Hill (2nd edition 2014) — the practitioner's guide to reading implied volatility and choosing positions.</li>
+    <li>Euan Sinclair, <em>Volatility Trading</em> (Wiley, 2nd edition 2013) and <em>Positional Option Trading</em> (Wiley, 2020) — a sceptical practitioner's view of edge, costs and sizing in options.</li>
+    <li>Lawrence G. McMillan, <em>Options as a Strategic Investment</em>, New York Institute of Finance (5th edition 2012) — a long catalogue of strategies and when each is used.</li>
+    <li>Joshua D. Coval and Tyler Shumway, <em>"Expected Option Returns"</em>, Journal of Finance 56(3), 2001, and Gurdip Bakshi and Nikunj Kapadia, <em>"Delta-Hedged Gains and the Negative Market Volatility Risk Premium"</em>, Review of Financial Studies 16(2), 2003 — empirical work on what index option buyers have earned on average. Read these before assuming an option bought at random is a fair bet.</li>
+  </ul>
+  </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="options-four-positions.html">The Four Option Positions</a> <span>· what you are buying and who is on the other side</span></li>
+        <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> <span>· where the prices and Greeks come from</span></li>
+        <li><a href="theta-decay.html">Theta Decay</a> <span>· why the daily cost accelerates near expiry</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> <span>· the volatility you are paying for</span></li>
+        <li><a href="implied-vol-smile-skew.html">The IV Smile &amp; Skew</a> <span>· why each strike has its own implied volatility</span></li>
+        <li><a href="fx-options-quoting-rr-bf.html">FX Options Quoting: Delta, Risk Reversals &amp; Butterflies</a> <span>· how the same choices are quoted in currencies</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> choosing the contract is where most option traders lose money before the market has moved at all. This is the checklist that stops it.</p>
+  </nav>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+
+<script>
+window.OTS = (function(){
+  function N(x){
+    var xa=Math.abs(x), c, b, e;
+    if (xa>37) c=0;
+    else {
+      e=Math.exp(-xa*xa/2);
+      if (xa<7.07106781186547){
+        b=0.0352624965998911*xa+0.700383064443688; b=b*xa+6.37396220353165; b=b*xa+33.912866078383;
+        b=b*xa+112.079291497871; b=b*xa+221.213596169931; b=b*xa+220.206867912376; c=e*b;
+        b=0.0883883476483184*xa+1.75566716318264; b=b*xa+16.064177579207; b=b*xa+86.7807322029461;
+        b=b*xa+296.564248779674; b=b*xa+637.333633378831; b=b*xa+793.826512519948; b=b*xa+440.413735824752;
+        c=c/b;
+      } else { b=xa+0.65; b=xa+4/b; b=xa+3/b; b=xa+2/b; b=xa+1/b; c=e/b/2.506628274631; }
+    }
+    return x>0 ? 1-c : c;
+  }
+  function phi(x){ return Math.exp(-x*x/2)/Math.sqrt(2*Math.PI); }
+  var RATE = 0.02;
+  function d1(S,K,t,v){ return (Math.log(S/K)+(RATE+v*v/2)*t)/(v*Math.sqrt(t)); }
+  function call(S,K,t,v){
+    if (t<=0) return Math.max(S-K,0);
+    var a=d1(S,K,t,v); return S*N(a)-K*Math.exp(-RATE*t)*N(a-v*Math.sqrt(t));
+  }
+  function delta(S,K,t,v){ return N(d1(S,K,t,v)); }
+  function vegaPt(S,K,t,v){ return S*phi(d1(S,K,t,v))*Math.sqrt(t)/100; }
+  function thetaDay(S,K,t,v){
+    var a=d1(S,K,t,v);
+    return (-S*phi(a)*v/(2*Math.sqrt(t)) - RATE*K*Math.exp(-RATE*t)*N(a-v*Math.sqrt(t)))/365;
+  }
+  function bisect(f,lo,hi){
+    var flo=f(lo), mid, fmid;
+    for (var i=0;i<100;i++){
+      mid=(lo+hi)/2; fmid=f(mid);
+      if ((fmid>0)===(flo>0)){ lo=mid; flo=fmid; } else { hi=mid; }
+    }
+    return (lo+hi)/2;
+  }
+  // Held to min(H, days): premium, net expected P&L under your lognormal view, chance the position is in profit.
+  function hstats(S,K,days,iv,H,target,bvol,spread){
+    var prem=call(S,K,days/365,iv), hh=Math.min(H,days);
+    var mu=Math.log(target/S)/(H/365), th=hh/365, n=801, sumw=0, ev=0, pp=0, i, z, w, ST, val;
+    var ws=[], vs=[];
+    for (i=0;i<n;i++){
+      z=-6+12*i/(n-1); w=Math.exp(-z*z/2); sumw+=w;
+      ST=S*Math.exp((mu-bvol*bvol/2)*th+bvol*Math.sqrt(th)*z);
+      val=(days<=H)?Math.max(ST-K,0):call(ST,K,(days-hh)/365,iv);
+      ws.push(w); vs.push(val);
+    }
+    for (i=0;i<n;i++){ ev+=ws[i]/sumw*vs[i]; if (vs[i]>prem) pp+=ws[i]/sumw; }
+    return { prem:prem, ev:ev-prem-spread, pp:pp };
+  }
+  function beHorizon(S,K,days,iv,H){
+    var hh=Math.min(H,days), prem=call(S,K,days/365,iv);
+    if (days<=H) return K+prem;
+    return bisect(function(s){ return call(s,K,(days-hh)/365,iv)-prem; }, 0.3*S, 3*S);
+  }
+  function f(x,dp){ return x.toFixed(dp).replace('-','−'); }
+  return { N:N, call:call, delta:delta, vegaPt:vegaPt, thetaDay:thetaDay, hstats:hstats, beHorizon:beHorizon, f:f };
+})();
+</script>
+<script>
+(function(){
+  var O = window.OTS;
+  var dEl = document.getElementById('ots-b-day');
+  if (!dEl || !O) return;
+  var mEl = document.getElementById('ots-b-mv'), g = document.getElementById('ots-b-g');
+  var S = 100, K = 100, IV = 0.22, EXP = [7,14,28,56,90];
+  function update(){
+    var w = +dEl.value, mv = +mEl.value/100;
+    document.getElementById('ots-b-day-val').textContent = 'day ' + w;
+    document.getElementById('ots-b-mv-val').textContent = '+' + Math.round(mv*100) + '%';
+    var res = EXP.map(function(d){
+      var p = O.call(S,K,d/365,IV);
+      var v = d<=w ? Math.max(S-K,0) : O.call(S*(1+mv),K,(d-w)/365,IV);
+      return { d:d, p:p, pnl:v-p };
+    });
+    var maxp = 0, maxg = 0;
+    res.forEach(function(r){ maxp = Math.max(maxp,r.p); maxg = Math.max(maxg,r.pnl); });
+    var ymin = -Math.ceil(maxp), ymax = Math.ceil(maxg)+1;
+    var X0 = 60, X1 = 620, Y0 = 26, Y1 = 214;
+    function ys(v){ return Y1 - (v-ymin)/(ymax-ymin)*(Y1-Y0); }
+    var step = (ymax-ymin) > 12 ? 4 : ((ymax-ymin) > 6 ? 2 : 1);
+    var s = '', v, i;
+    for (v = Math.ceil(ymin/step)*step; v <= ymax; v += step){
+      s += '<line x1="'+X0+'" x2="'+X1+'" y1="'+ys(v)+'" y2="'+ys(v)+'" style="stroke:var(--border);stroke-width:'+(v===0?1.6:0.6)+'"/>';
+      s += '<text x="'+(X0-8)+'" y="'+(ys(v)+4)+'" text-anchor="end" style="fill:var(--text3);font-size:11px;font-family:\'DM Mono\',monospace">'+(v>0?'+':'')+v+'</text>';
+    }
+    var slot = (X1-X0)/res.length, bw = 54;
+    res.forEach(function(r,i){
+      var cx = X0 + slot*(i+0.5), y0 = ys(0), y1 = ys(r.pnl);
+      var top = Math.min(y0,y1), h = Math.abs(y1-y0);
+      s += '<rect x="'+(cx-bw/2)+'" y="'+top+'" width="'+bw+'" height="'+Math.max(h,1)+'" class="'+(r.pnl>=0?'tp-bar-pos':'tp-bar-neg')+'" rx="3" opacity="0.85"/>';
+      var pct = r.pnl/r.p*100, ly = r.pnl>=0 ? top-6 : top+h+14;
+      s += '<text x="'+cx+'" y="'+ly+'" text-anchor="middle" style="fill:var(--text);font-size:12px;font-family:\'DM Mono\',monospace;font-weight:600">'+(r.pnl>=0?'+':'')+O.f(r.pnl,2)+'</text>';
+      s += '<text x="'+cx+'" y="'+(Y1+20)+'" text-anchor="middle" style="fill:var(--text2);font-size:12px;font-family:\'DM Mono\',monospace">'+r.d+'d</text>';
+      s += '<text x="'+cx+'" y="'+(Y1+36)+'" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:\'DM Mono\',monospace">paid '+O.f(r.p,2)+'</text>';
+      s += '<text x="'+cx+'" y="'+(Y1+50)+'" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:\'DM Mono\',monospace">'+(r.d<=w?'expired':'alive')+'</text>';
+      document.getElementById('ots-b-'+r.d).textContent = O.f(r.pnl,2) + ' (' + O.f(pct,0) + '%)';
+    });
+    s += '<text x="'+X0+'" y="14" style="fill:var(--text3);font-size:11px;font-family:\'DM Mono\',monospace">profit or loss per share, $</text>';
+    g.innerHTML = s;
+  }
+  dEl.addEventListener('input', update); mEl.addEventListener('input', update);
+  update();
+})();
+(function(){
+  var O = window.OTS;
+  var kEl = document.getElementById('ots-a-k');
+  if (!kEl || !O) return;
+  var dEl = document.getElementById('ots-a-d'), iEl = document.getElementById('ots-a-iv'), g = document.getElementById('ots-a-g');
+  var S = 100, H = 28, TG = 104, BV = 0.18, SP = 0.05, X0 = 64, X1 = 620, Y0 = 26, Y1 = 262, LO = 80, HI = 120;
+  function xs(s){ return X0 + (s-LO)/(HI-LO)*(X1-X0); }
+  function set(id,t){ document.getElementById(id).textContent = t; }
+  function update(){
+    var K = +kEl.value, D = +dEl.value, iv = +iEl.value/100;
+    set('ots-a-k-val', String(K)); set('ots-a-d-val', D+' days'); set('ots-a-iv-val', Math.round(iv*100)+'%');
+    var hh = Math.min(H,D), prem = O.call(S,K,D/365,iv);
+    var st = O.hstats(S,K,D,iv,H,TG,BV,SP), beh = O.beHorizon(S,K,D,iv,H), be = K+prem;
+    function pnlH(s){ return (D<=H ? Math.max(s-K,0) : O.call(s,K,(D-hh)/365,iv)) - prem; }
+    function pnlE(s){ return Math.max(s-K,0) - prem; }
+    var ymin = -Math.ceil(prem), ymax = Math.ceil(Math.max(pnlH(HI),pnlE(HI),1));
+    function ys(v){ return Y1 - (v-ymin)/(ymax-ymin)*(Y1-Y0); }
+    var rng = ymax-ymin, step = rng>30 ? 10 : (rng>14 ? 5 : (rng>7 ? 2 : 1));
+    var s = '', v, x;
+    var M = S*iv*Math.sqrt(hh/365);
+    s += '<rect x="'+xs(S-M)+'" y="'+Y0+'" width="'+(xs(S+M)-xs(S-M))+'" height="'+(Y1-Y0)+'" style="fill:var(--blue);opacity:0.13"/>';
+    for (v = Math.ceil(ymin/step)*step; v <= ymax; v += step){
+      s += '<line x1="'+X0+'" x2="'+X1+'" y1="'+ys(v)+'" y2="'+ys(v)+'" style="stroke:var(--border);stroke-width:'+(v===0?1.6:0.6)+'"/>';
+      s += '<text x="'+(X0-8)+'" y="'+(ys(v)+4)+'" text-anchor="end" style="fill:var(--text3);font-size:11px;font-family:\'DM Mono\',monospace">'+(v>0?'+':'')+v+'</text>';
+    }
+    for (x = LO; x <= HI; x += 10){
+      s += '<text x="'+xs(x)+'" y="'+(Y1+16)+'" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:\'DM Mono\',monospace">'+x+'</text>';
+    }
+    s += '<text x="'+((X0+X1)/2)+'" y="'+(Y1+32)+'" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:\'DM Mono\',monospace">stock price on your exit day</text>';
+    s += '<line x1="'+xs(S)+'" x2="'+xs(S)+'" y1="'+Y0+'" y2="'+Y1+'" style="stroke:var(--text3);stroke-dasharray:3,3"/>';
+    s += '<text x="'+(xs(S)-5)+'" y="'+(Y0+12)+'" text-anchor="end" style="fill:var(--text2);font-size:11px;font-family:\'DM Mono\',monospace">spot '+S+'</text>';
+    s += '<line x1="'+xs(TG)+'" x2="'+xs(TG)+'" y1="'+Y0+'" y2="'+Y1+'" style="stroke:var(--green);stroke-dasharray:4,3;stroke-width:1.6"/>';
+    s += '<text x="'+(xs(TG)+5)+'" y="'+(Y0+12)+'" style="fill:var(--green);font-size:11px;font-family:\'DM Mono\',monospace">your target '+TG+'</text>';
+    var pe = [], ph = [], sp;
+    for (sp = LO; sp <= HI; sp += 0.5){ ph.push(xs(sp).toFixed(1)+','+ys(pnlH(sp)).toFixed(1)); pe.push(xs(sp).toFixed(1)+','+ys(pnlE(sp)).toFixed(1)); }
+    if (D > H) s += '<polyline points="'+pe.join(' ')+'" style="fill:none;stroke:var(--amber);stroke-width:2;stroke-dasharray:6,4"/>';
+    s += '<polyline points="'+ph.join(' ')+'" style="fill:none;stroke:var(--blue);stroke-width:2.8;stroke-linejoin:round"/>';
+    if (beh>=LO && beh<=HI) s += '<circle cx="'+xs(beh)+'" cy="'+ys(0)+'" r="5" style="fill:var(--blue);stroke:var(--s1);stroke-width:2"/>';
+    if (D > H && be>=LO && be<=HI) s += '<circle cx="'+xs(be)+'" cy="'+ys(0)+'" r="5" style="fill:var(--amber);stroke:var(--s1);stroke-width:2"/>';
+    s += '<text x="'+(X0+6)+'" y="'+(Y1-8)+'" style="fill:var(--blue);font-size:11px;font-family:\'DM Mono\',monospace">blue: P&amp;L on day '+hh+(D<=H?' (expiry)':' (repriced)')+'</text>';
+    if (D > H) s += '<text x="'+(X0+6)+'" y="'+(Y1-22)+'" style="fill:var(--amber);font-size:11px;font-family:\'DM Mono\',monospace">amber dashed: P&amp;L at expiry</text>';
+    g.innerHTML = s;
+    set('ots-a-prem', O.f(prem,2)); set('ots-a-delta', O.f(O.delta(S,K,D/365,iv),2));
+    var th = O.thetaDay(S,K,D/365,iv);
+    set('ots-a-theta', O.f(th,3)); set('ots-a-thp', O.f(-th/prem*100,2));
+    set('ots-a-be', O.f(be,2)); set('ots-a-mv', O.f((be/S-1)*100,1));
+    set('ots-a-R', O.f((be-S)/(S*iv*Math.sqrt(D/365)),2)); set('ots-a-beh', O.f(beh,2));
+    set('ots-a-pp', O.f(st.pp*100,1)); set('ots-a-ev', O.f(st.ev,2)); set('ots-a-bv', O.f(O.call(S,K,D/365,BV),2));
+  }
+  [kEl,dEl,iEl].forEach(function(e){ e.addEventListener('input', update); });
+  update();
+})();
+(function(){
+  var O = window.OTS;
+  var sEl = document.getElementById('ots-c-spot');
+  if (!sEl || !O) return;
+  var ids = ['spot','iv','target','bvol','h','spread'], el = {};
+  ids.forEach(function(k){ el[k] = document.getElementById('ots-c-'+k); });
+  var DEF = { spot:100, iv:22, target:104, bvol:18, h:28, spread:0.05 };
+  var C = [['a',28,1.00],['b',28,1.05],['c',56,0.95],['d',56,1.00],['e',56,1.05]];
+  var note = document.getElementById('ots-c-note'), noteDefault = note.innerHTML;
+  var ROWS = ['strike','prem','delta','theta','thp','vega','mv','R','pp','ev','evp'];
+  function put(row,key,t){ document.getElementById('ots-t-'+row+'-'+key).textContent = t; }
+  function recompute(){
+    var S = parseFloat(el.spot.value), iv = parseFloat(el.iv.value)/100, tg = parseFloat(el.target.value),
+        bv = parseFloat(el.bvol.value)/100, H = parseFloat(el.h.value), sp = parseFloat(el.spread.value);
+    var ok = [S,iv,tg,bv,H,sp].every(isFinite) && S>0 && iv>0 && tg>0 && bv>0 && H>=1 && sp>=0;
+    if (!ok){
+      C.forEach(function(c){ ROWS.forEach(function(r){ put(r,c[0],'—'); }); });
+      note.textContent = 'Need spot, volatilities and target above zero, an exit day of at least 1, and a spread of zero or more.';
+      return;
+    }
+    note.innerHTML = noteDefault;
+    C.forEach(function(c){
+      var days = c[1], K = S*c[2], t = days/365;
+      var st = O.hstats(S,K,days,iv,H,tg,bv,sp), prem = st.prem, be = K+prem, th = O.thetaDay(S,K,t,iv);
+      put('strike',c[0],O.f(K,2)); put('prem',c[0],O.f(prem,2)); put('delta',c[0],O.f(O.delta(S,K,t,iv),2));
+      put('theta',c[0],O.f(th,3)); put('thp',c[0],O.f(-th/prem*100,2)); put('vega',c[0],O.f(O.vegaPt(S,K,t,iv),3));
+      put('mv',c[0],O.f((be/S-1)*100,1)); put('R',c[0],O.f((be-S)/(S*iv*Math.sqrt(t)),2));
+      put('pp',c[0],O.f(st.pp*100,1)); put('ev',c[0],O.f(st.ev,2)); put('evp',c[0],O.f(st.ev/prem*100,0)+'%');
+    });
+  }
+  ids.forEach(function(k){ el[k].addEventListener('input', recompute); });
+  document.getElementById('ots-c-reset').addEventListener('click', function(){
+    ids.forEach(function(k){ el[k].value = DEF[k]; }); recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
+</body>
+</html>

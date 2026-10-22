@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Short Premium: Risk, Margin &amp; Sizing — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+/* Local: scenario-ladder heat table, sizing table, and the correlation chart legend. */
+.sp-scroll{overflow-x:auto;margin:10px 0 6px}
+.sp-grid{width:100%;border-collapse:separate;border-spacing:2px;font-family:'DM Mono',monospace;font-size:12px;min-width:440px}
+.sp-grid th{color:var(--text3);font-weight:500;padding:5px 6px;text-align:right;white-space:nowrap}
+.sp-grid thead th:first-child,.sp-grid tbody th{text-align:left}
+.sp-grid td{text-align:right;padding:6px 6px;border-radius:4px;color:var(--text);border:1px solid transparent}
+.sp-grid td.g{background:var(--green-bg);color:var(--green)}
+.sp-grid td.a1{background:var(--amber-bg);color:var(--amber)}
+.sp-grid td.a2{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)}
+.sp-grid td.r1{background:var(--red-bg);color:var(--red)}
+.sp-grid td.r2{background:var(--red-bg);color:var(--red);border-color:var(--red-bd);font-weight:700}
+.sp-grid td.x{box-shadow:inset 0 0 0 2px var(--text3)}
+.sp-key{font-size:11.5px;color:var(--text3);margin:2px 0 8px}
+.sp-table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0}
+.sp-table th,.sp-table td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;color:var(--text2)}
+.sp-table th:first-child,.sp-table td:first-child{text-align:left}
+.sp-table th{color:var(--text3);font-weight:500;font-size:11.5px}
+.sp-table td b{color:var(--text)}
+.sp-wrap{overflow-x:auto}
+.sp-wrap .sp-table{min-width:520px}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Trading Options / Short Premium Risk &amp; Sizing</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Trading Options · Lesson 7 of 8</div>
+  <h1 class="tl-title">Short Premium: Risk, Margin &amp; Sizing</h1>
+  <p class="tl-dek">Selling options pays small amounts often and loses large amounts rarely. This lesson is about the large amounts: how to measure them before they arrive, and how to size a short-premium book so that one bad night is survivable.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a risk and sizing framework, not a strategy to copy</span>
+    <span>~21 min read</span>
+    <span>Prereqs: <a href="options-four-positions.html">The Four Option Positions</a>, <a href="payoff-shape-vs-greek-signs.html">Same Greeks, Different Risk</a>, <a href="theta-decay.html">Theta Decay</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="short-premium-risk-and-sizing-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-solid amber"><strong>Risk.</strong> Educational, not advice. Options can lose the whole premium you pay, and sold options can lose far more than the premium you collect, in some structures without limit. Every number here is a model output on stated inputs. It is not a forecast and not a recommendation to trade.</div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A short-premium trade has a gain capped at the credit and a loss that can be many times larger. On this lesson's example, one short strangle collects <strong>$198</strong> and its worst square on the scenario grid loses <strong>$1,651</strong>, about <strong>8.4×</strong> the credit.</li>
+      <li><strong>Defined risk</strong> (spreads, condors) caps the loss per contract at width minus credit. <strong>Undefined risk</strong> (a naked put or call, a strangle) does not. Defined risk caps the loss per contract, not the number of contracts you open.</li>
+      <li><strong>Margin is a collateral rule, not your worst case.</strong> Half the account used as margin buys 29 strangles, which lose 47.9% of the account in the worst square. A portfolio-style margin lets the same account hold 220.</li>
+      <li><strong>Size by the worst square, not by margin.</strong> Contracts = risk budget divided by worst-case loss per contract. A 2% budget on a $100,000 account is 1 strangle or 5 iron condors.</li>
+      <li>Greeks are a local map, so use them as warning lights. For a 20% fall with volatility up 20 points the Greek estimate is $2,056 and a full re-pricing says $1,347. Put the limit on the full scenario loss.</li>
+      <li>"Diversified" short-vol books are less diversified in a crash. Ten positions with correlation 0.25 behave like 3.1 independent bets, and at correlation 0.8 like 1.2.</li>
+      <li><strong>Real-world episode:</strong> on 5 February 2018 the VIX rose 115.6% in one session, from 17.31 to 37.32. The inverse-VIX note XIV, which held about $1.9 billion, lost about 96% of its value and was shut down by its issuer.</li>
+    </ul>
+  </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two panels of bars. Top: one short strangle collects $198 per cycle, but its worst square on the spot-by-volatility grid loses $1,651, about 8.4× the credit. Bottom: on a $100,000 account, sizing by half the account as margin buys 29 strangles and loses 47.9 percent of the account in the worst square, while sizing by a 2 percent worst-case budget buys 1 strangle and loses 1.7 percent.">
+      <text class="tlp-text2" x="10" y="22" font-size="13" font-weight="700">ONE STRANGLE: WHAT YOU COLLECT AGAINST THE WORST SQUARE</text>
+      <text class="tlp-text" x="10" y="52" font-size="13">collect per cycle</text>
+      <rect class="tlp-box green" x="190" y="36" width="38.3" height="24" rx="4"/>
+      <text class="tlp-green" x="236.3" y="53" font-size="14" font-weight="700">+$198</text>
+      <text class="tlp-text" x="10" y="88" font-size="13">worst square</text>
+      <rect class="tlp-box red" x="190" y="72" width="320.0" height="24" rx="4"/>
+      <text class="tlp-red" x="518" y="89" font-size="14" font-weight="700">&#8722;$1,651</text>
+      <text class="tlp-text" x="200" y="89" font-size="12.5" font-weight="700">8.4× the credit</text>
+      <line class="tlp-line" x1="10" y1="118" x2="590" y2="118"/>
+      <text class="tlp-text2" x="10" y="142" font-size="13" font-weight="700">SAME $100,000 ACCOUNT: LOSS IN THE WORST SQUARE</text>
+      <text class="tlp-text" x="10" y="172" font-size="13">sized by margin</text>
+      <text class="tlp-text3" x="10" y="187" font-size="11.5">half the account: 29 strangles</text>
+      <rect class="tlp-box red" x="190" y="158" width="153.2" height="28" rx="4"/>
+      <text class="tlp-red" x="351.2" y="178" font-size="14" font-weight="700">&#8722;47.9% of the account</text>
+      <text class="tlp-text" x="10" y="222" font-size="13">sized by worst case</text>
+      <text class="tlp-text3" x="10" y="237" font-size="11.5">2% budget: 1 strangle</text>
+      <rect class="tlp-box green" x="190" y="208" width="5.3" height="28" rx="2"/>
+      <text class="tlp-green" x="203.3" y="228" font-size="14" font-weight="700">&#8722;1.7%</text>
+      <text class="tlp-text3" x="190" y="254" font-size="11.5">premium per cycle: $5,730 against $198. Survival has a price.</text>
+    </svg>
+    <figcaption>Top: bars to one scale. A short strangle earns a little each cycle and its worst square on the grid costs 8.4× that. Bottom: the same account sized two ways. Margin sizing puts almost half the account in the worst square. Worst-case sizing puts under two percent there, and earns a thirtieth of the premium.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I sell index options every month. I collect a credit, it expires worthless, and I do it again. My win rate is over ninety percent. What is the catch?</p>
+      <p data-who="Quant">The catch is in the size of the losses, not how often they come. Take one strangle on an index at one hundred, forty-five days out. You sell a put at ninety-five and a call at one hundred and five, and you collect about two hundred dollars.</p>
+      <p data-who="Trader">And the worst case?</p>
+      <p data-who="Quant">Put the index through a grid. Move it up or down twenty percent, and jump volatility by up to thirty points. The worst square on that grid costs about sixteen hundred and fifty dollars. That is more than eight times the two hundred you collected. One bad night erases about eight cycles of income.</p>
+      <p data-who="Trader">But my broker only asks for about seventeen hundred dollars of margin per strangle. Isn't margin the limit?</p>
+      <p data-who="Quant">Margin is a collateral rule. It says what the broker wants posted today. It is not your worst case, and brokers can raise it in a crisis, which is when you can least afford it. Say you have a hundred thousand dollars and use half of it as margin. That buys twenty-nine strangles. In the worst square they lose almost half the account.</p>
+      <p data-who="Trader">So how many should I sell?</p>
+      <p data-who="Quant">Pick a loss you can survive in the worst square. Say two percent of the account, which is two thousand dollars. Divide by the worst case per contract. Sixteen fifty goes into two thousand once. One strangle.</p>
+      <p data-who="Trader">One! Against twenty-nine?</p>
+      <p data-who="Quant">And it earns about a twenty-ninth of the premium. That is the real price of survival, and nobody advertises it. Defined risk changes the arithmetic. An iron condor has long wings that cap the loss at about three hundred and fifty dollars, so the same budget buys five of them.</p>
+      <p data-who="Trader">So defined risk means safe.</p>
+      <p data-who="Quant">It means each contract has a ceiling. It says nothing about how many contracts you open. A hundred and forty-one condors at half margin lose about half the account just the same. Small loss per contract, huge number of contracts.</p>
+      <p data-who="Trader">What about the Greeks? I thought risk reports use delta, gamma and vega.</p>
+      <p data-who="Quant">They are a local map. A twenty percent fall with volatility up twenty points: the Greek estimate says about two thousand dollars lost on one strangle, and a full re-pricing says about thirteen hundred and fifty. Greeks are good warning lights. Put the limit on the full scenario loss.</p>
+      <p data-who="Trader">And a book of ten different stocks? That is diversified.</p>
+      <p data-who="Quant">On a calm day. In a crash, correlations jump. Ten positions with mild correlation behave like three independent bets. When the correlation goes to eighty percent, they behave like barely more than one.</p>
+      <p data-who="Trader">Has any of this really happened?</p>
+      <p data-who="Quant">The fifth of February, twenty eighteen. Through all of the year before, the VIX had closed between nine and sixteen. It closed at seventeen on the Friday and thirty-seven on the Monday, more than double in one day. An inverse VIX note called XIV, which held about one point nine billion dollars, lost about ninety-six percent, and its issuer shut it down.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Size by what you can lose in the worst square, not by what the broker will lend you. And remember the grid is a floor on the damage, not a ceiling.</p>
+    </div>
+  </section>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Selling an option feels like running a toll booth. You collect the premium now. Most of the time the option expires
+    worthless and you keep all of it. A seller who runs the same trade month after month will see a long run of small wins,
+    a high win rate and a smooth equity curve. That is not an illusion. It is what a short-premium payoff looks like on
+    almost every day.
+  </p>
+  <p>
+    The trouble is the other days. The gain is capped at the credit, and the loss is not. When the loss comes it arrives
+    in one lump, often in one session, and it is measured in multiples of everything you collected. Experienced traders
+    say that the strategies which feel safest are the ones that hurt most. The reason is arithmetic, not bad luck, and it
+    can be computed before you trade.
+  </p>
+  <p>
+    The earlier lessons gave you the pieces. <a href="options-four-positions.html">The Four Option Positions</a> showed what a
+    short option owes. <a href="payoff-shape-vs-greek-signs.html">Same Greeks, Different Risk</a> showed that the Greeks cannot see the tail.
+    <a href="theta-decay.html">Theta Decay</a> showed what the seller is paid for. This lesson puts them together into the question a
+    seller has to answer before every trade: <em>what is the worst thing that can happen, how big is it against my account,
+    and how many contracts does that allow?</em> Later in this series, the variance risk premium lesson asks why sellers are paid at all.
+    This one asks what it costs to collect.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>You are the insurance company, and insurers fail in one bad year</h3>
+    <p>
+      A flood insurer collects small premiums from thousands of households. Year after year it pays out little and shows a
+      profit. Its risk is not in the average year. It is in the year when one storm floods a whole region at once, because
+      then the claims arrive together and are far larger than the premiums of many years. A careful insurer decides how
+      many policies to write by asking what the worst storm costs, not by asking how much cash a regulator lets it hold.
+    </p>
+    <p>
+      A short option is a small insurance policy that you wrote on a price. The premium is the credit. The storm is a big
+      move in the underlying, or a jump in volatility, or both. The skill is the same as the insurer's: price the storm,
+      cap how many policies you write, and never confuse "the broker lets me" with "I can survive it".
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the sizing rule \(n^* = \lfloor B/\ell^* \rfloor\) comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{P\&L per share} = \color{#fbbf24}{c_0 - c_1} \]</div>
+      <p>A short option starts with the credit \(c_0\) you received. To close it you pay the current price \(c_1\). Your profit is the credit minus the buy-back price.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{P\&L} = \color{#fbbf24}{n\,m}\,(c_0 - c_1) \]</div>
+      <p>Scale it up. You sold \(n\) contracts and each controls \(m\) units (100 shares here). Profit and loss both scale with \(n\,m\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ c_1 = c\big(\color{#fbbf24}{S(1+x),\ \sigma+\Delta\sigma,\ \tau-h}\big) \]</div>
+      <p>The buy-back price is the model price in a scenario: spot moved by \(x\), volatility moved by \(\Delta\sigma\), and \(h\) days have passed. This is a full re-pricing, not a Greek approximation.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \ell^* = \color{#fbbf24}{\max_{x,\ \Delta\sigma}}\; m\,\big(c_1 - c_0\big) \]</div>
+      <p>Try every cell of a grid of \(x\) and \(\Delta\sigma\) and keep the worst. \(\ell^*\) is the worst-case loss per contract. For a defined-risk spread it is simply the cap, width minus credit.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ n^* = \Big\lfloor \color{#10b981}{\frac{B}{\ell^*}} \Big\rfloor \]</div>
+      <p>Choose a risk budget \(B\), the most you are willing to lose in the worst square, as a share of equity. Divide by the worst-case loss per contract and round down. That is how many contracts the budget allows.</p>
+    </div>
+  </div>
+
+  <p>
+    <strong>Defined and undefined risk.</strong> Start with what each structure can lose at most. Per share, with credit
+    \(c\) and strikes as shown:
+  </p>
+  <div class="sp-wrap"><table class="sp-table">
+    <tr><th>Structure</th><th>Maximum loss per share</th><th>Capped?</th></tr>
+    <tr><td>Short put, strike \(K\)</td><td>\(K - c\) (the stock goes to zero)</td><td>Yes, but very large</td></tr>
+    <tr><td>Short call, strike \(K\)</td><td>Unlimited: the price has no ceiling</td><td>No</td></tr>
+    <tr><td>Short strangle (put \(K_p\), call \(K_c\))</td><td>Put side \(K_p - c\); call side unlimited</td><td>No</td></tr>
+    <tr><td>Put credit spread, width \(w\)</td><td>\(w - c\)</td><td>Yes</td></tr>
+    <tr><td>Iron condor, widest wing \(w\)</td><td>\(w - c\) (only one wing can finish in the money)</td><td>Yes</td></tr>
+  </table></div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>c</code><span>total credit received per share, net of any long options bought</span></div>
+    <div class="tl-eq-chip c2"><code>w</code><span>distance between the short and long strike of a spread</span></div>
+    <div class="tl-eq-chip c3"><code>w − c</code><span>the cap on a defined-risk structure: what you lose if it finishes beyond the long strike</span></div>
+  </div>
+  <p>
+    On the lesson's inputs the 95/90 put spread collects $0.67 and risks $5.00, so its cap is $4.33 per share, $433 per
+    contract. The iron condor adds a call spread, collects $1.47 and has a cap of $3.53, $353 per contract. The
+    short strangle has no cap, so for it \(\ell^*\) has to come from the grid.
+  </p>
+
+  <p>
+    <strong>The break-even win rate.</strong> If you win the credit \(c\) with probability \(p\) and lose \(L\) otherwise,
+    you break even when \(p\,c = (1-p)\,L\):
+  </p>
+  <div class="tl-math">\[ p_{BE} = \frac{L}{L + c} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>p_BE</code><span>the win rate you need just to break even</span></div>
+    <div class="tl-eq-chip c2"><code>L</code><span>the loss on a losing trade</span></div>
+    <div class="tl-eq-chip c3"><code>c</code><span>the credit won on a winning trade</span></div>
+  </div>
+  <p>
+    If every losing strangle lost the worst-square amount, \(L = $1,651\) and \(c = $198\), so you would need to win
+    89.3% of the time. Most losers are smaller, so this is the harsh end. It still shows why a 90% win rate can sit
+    beside a losing strategy, and why a win rate by itself tells you almost nothing about a short-premium book.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine you win one sweet every day, but once in a long while you have to hand over a whole bag. If the bag holds eight months of sweets, you can win every day for seven months and still be behind. The win rate looks great. The bag is what matters.</p>
+  </div>
+
+  <p>
+    <strong>Margin is a rule, not a bound.</strong> Brokers and clearing houses ask for collateral against short options.
+    The formula depends on the product and the broker. A common US equity-option rule of thumb for a naked short option is
+    20% of the underlying price, less the amount the option is out of the money, plus the premium, with a floor of 10%
+    of the underlying (10% of the strike for a put). Defined-risk spreads usually need collateral equal to the cap.
+    <em>Portfolio-style</em> margin instead revalues the whole book under a small set of spot shocks, with
+    volatility held fixed or moved a little, and asks for the worst loss. Rules differ by broker and exchange, and they can
+    be raised at short notice, usually in a crisis. They are designed to protect the lender over a day or two. They are
+    not designed to keep you in the game.
+  </p>
+
+  <p>
+    <strong>Greeks as a local map.</strong> The Greeks give a quick estimate of a scenario loss, the second-order
+    expansion you met in <a href="payoff-shape-vs-greek-signs.html">Same Greeks, Different Risk</a>:
+  </p>
+  <div class="tl-math">\[ \Delta\text{P\&L} \approx \Delta\,\Delta S + \tfrac{1}{2}\,\Gamma\,\Delta S^{2} + \nu\,\Delta\sigma + \Theta\,h \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Δ ΔS</code><span>delta times the spot move: the straight-line part</span></div>
+    <div class="tl-eq-chip c2"><code>½ Γ ΔS²</code><span>gamma times half the move squared: the curve</span></div>
+    <div class="tl-eq-chip c3"><code>ν Δσ</code><span>vega times the change in volatility</span></div>
+    <div class="tl-eq-chip c4"><code>Θ h</code><span>theta times days elapsed: the seller's income</span></div>
+  </div>
+  <p>
+    For the short strangle at entry, per contract: delta \(-6.53\) shares, gamma \(-8.79\) shares per $1, vega \(-21.67\) per
+    volatility point, theta \(+4.85\) per day. The table compares this estimate with a full re-pricing after one day:
+  </p>
+  <div class="sp-wrap"><table class="sp-table">
+    <tr><th>Scenario (spot, vol)</th><th>Greek estimate</th><th>Full re-pricing</th><th>Estimate ÷ full</th></tr>
+    <tr><td>−5%, +5 pts</td><td>−$181</td><td>−$172</td><td>1.05</td></tr>
+    <tr><td>−10%, +10 pts</td><td>−$586</td><td>−$496</td><td>1.18</td></tr>
+    <tr><td>−20%, +20 pts</td><td>−$2,056</td><td>−$1,347</td><td>1.53</td></tr>
+    <tr><td>+10%, +10 pts</td><td>−$717</td><td>−$603</td><td>1.19</td></tr>
+    <tr><td>+20%, +20 pts</td><td>−$2,317</td><td>−$1,499</td><td>1.55</td></tr>
+  </table></div>
+  <p>
+    The estimate is close for small moves and wrong for large ones: here too gloomy by half at \(-20\%/+20\) points,
+    because gamma and vega fade once an option is deep in the money. In other books the error runs the other way. The
+    safe habit is not to trust a Greek-based loss for a big move at all, but to re-price the position in each scenario.
+    Greek limits are still useful as early warnings. They are not a substitute for the ladder below.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(c_0, c_1\)</td><td>Option price when sold (the credit) and its price in the scenario (the cost to buy it back), per share.</td></tr>
+      <tr><td>\(n\)</td><td>Number of contracts sold.</td></tr>
+      <tr><td>\(m\)</td><td>Contract multiplier. 100 shares per contract here.</td></tr>
+      <tr><td>\(S,\ x\)</td><td>Underlying price, and the scenario move in it as a proportion (\(x=-0.20\) is a 20% fall).</td></tr>
+      <tr><td>\(\sigma,\ \Delta\sigma\)</td><td>Implied volatility, and the scenario jump in it, in volatility points.</td></tr>
+      <tr><td>\(\tau,\ h\)</td><td>Time to expiry, and days elapsed in the scenario.</td></tr>
+      <tr><td>\(\ell^*\)</td><td>Worst-case loss per contract: the worst cell of the grid, or the cap for a defined-risk structure.</td></tr>
+      <tr><td>\(B\)</td><td>Risk budget in dollars: equity times the share of it you will risk in the worst square.</td></tr>
+      <tr><td>\(n^*\)</td><td>Contracts the budget allows, \(\lfloor B/\ell^*\rfloor\).</td></tr>
+      <tr><td>\(\Delta, \Gamma, \nu, \Theta\)</td><td>Delta, gamma, vega and theta of the position.</td></tr>
+      <tr><td>\(N_{\text{eff}},\ \rho\)</td><td>Effective number of independent bets in a book, and the average correlation between positions.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">The scenario ladder: profit or loss for one contract, by how far spot moves and how far volatility jumps</div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Position</span></div>
+        <select id="sp-pos" class="tl-scratch-input" aria-label="Position">
+          <option value="sp">Short put 95</option>
+          <option value="ss" selected>Short strangle 95/105</option>
+          <option value="ps">Put credit spread 95/90</option>
+          <option value="ic">Iron condor 90/95/105/110</option>
+        </select>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time after the shock</span></div>
+        <select id="sp-h" class="tl-scratch-input" aria-label="Time after the shock">
+          <option value="1" selected>Overnight (1 day)</option>
+          <option value="5">One week (5 days)</option>
+        </select>
+      </div>
+    </div>
+    <div class="sp-scroll"><table class="sp-grid" aria-label="Scenario ladder: profit or loss in dollars for one contract"><thead><tr><th>vol ↓ spot →</th><th>−20%</th><th>−10%</th><th>−5%</th><th>0%</th><th>+5%</th><th>+10%</th><th>+20%</th></tr></thead><tbody id="sp-grid-body"><tr><th>−5 pts</th><td id="sp-c-0-0" class="r2">−1,268</td><td id="sp-c-0-1" class="a2">−311</td><td id="sp-c-0-2" class="g">+11</td><td id="sp-c-0-3" class="g">+103</td><td id="sp-c-0-4" class="a1">−44</td><td id="sp-c-0-5" class="a2">−391</td><td id="sp-c-0-6" class="r2">−1,341</td></tr><tr><th>0 pts</th><td id="sp-c-1-0" class="r2">−1,270</td><td id="sp-c-1-1" class="a2">−359</td><td id="sp-c-1-2" class="a1">−74</td><td id="sp-c-1-3" class="g">+5</td><td id="sp-c-1-4" class="a1">−133</td><td id="sp-c-1-5" class="a2">−447</td><td id="sp-c-1-6" class="r2">−1,347</td></tr><tr><th>+10 pts</th><td id="sp-c-2-0" class="r2">−1,290</td><td id="sp-c-2-1" class="a2 x">−496</td><td id="sp-c-2-2" class="a2">−279</td><td id="sp-c-2-3" class="a2">−228</td><td id="sp-c-2-4" class="a2">−344</td><td id="sp-c-2-5" class="r1">−603</td><td id="sp-c-2-6" class="r2">−1,396</td></tr><tr><th>+20 pts</th><td id="sp-c-3-0" class="r2 x">−1,347</td><td id="sp-c-3-1" class="r1">−675</td><td id="sp-c-3-2" class="a2">−510</td><td id="sp-c-3-3" class="a2">−481</td><td id="sp-c-3-4" class="a2">−584</td><td id="sp-c-3-5" class="r1">−804</td><td id="sp-c-3-6" class="r2">−1,499</td></tr><tr><th>+30 pts</th><td id="sp-c-4-0" class="r2">−1,443</td><td id="sp-c-4-1" class="r1">−880</td><td id="sp-c-4-2" class="r1">−754</td><td id="sp-c-4-3" class="r1">−742</td><td id="sp-c-4-4" class="r1">−839</td><td id="sp-c-4-5" class="r1">−1,033</td><td id="sp-c-4-6" class="r2">−1,651</td></tr></tbody></table></div>
+    <div class="sp-key">Dollars per contract. Entry: index 100, 45 days to expiry, implied volatility 20%, rate 3%, no dividends, Black-Scholes prices with no bid-ask. Green is a gain, amber a loss under one credit, red a loss over three. Outlined cells are the crash pairing: spot down, volatility up.</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Profit and loss of the chosen short position against the spot move from minus 25 percent to plus 25 percent. Three curves: at expiry, one day after the shock with volatility unchanged, and one day after with volatility up 20 points. For a short strangle all three curves are a hump with a flat credit-sized top and two falling arms, and the volatility-shocked curve sits far below the others.">
+      <line x1="60" y1="20" x2="60" y2="250" style="stroke:var(--border)"/>
+      <line id="sp-zero" x1="60" y1="42.4" x2="620" y2="42.4" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <path id="sp-c-exp" d="M60.0,227.1 L71.2,216.9 L82.4,206.6 L93.6,196.4 L104.8,186.1 L116.0,175.9 L127.2,165.6 L138.4,155.4 L149.6,145.1 L160.8,134.9 L172.0,124.6 L183.2,114.4 L194.4,104.1 L205.6,93.9 L216.8,83.6 L228.0,73.4 L239.2,63.1 L250.4,52.9 L261.6,42.6 L272.8,32.4 L284.0,22.1 L295.2,22.1 L306.4,22.1 L317.6,22.1 L328.8,22.1 L340.0,22.1 L351.2,22.1 L362.4,22.1 L373.6,22.1 L384.8,22.1 L396.0,22.1 L407.2,32.4 L418.4,42.6 L429.6,52.9 L440.8,63.1 L452.0,73.4 L463.2,83.6 L474.4,93.9 L485.6,104.1 L496.8,114.4 L508.0,124.6 L519.2,134.9 L530.4,145.1 L541.6,155.4 L552.8,165.6 L564.0,175.9 L575.2,186.1 L586.4,196.4 L597.6,206.6 L608.8,216.9 L620.0,227.1" style="stroke:var(--text3);stroke-width:2;fill:none"/>
+      <path id="sp-c-d1" d="M60.0,223.6 L71.2,213.4 L82.4,203.1 L93.6,192.9 L104.8,182.7 L116.0,172.5 L127.2,162.4 L138.4,152.3 L149.6,142.3 L160.8,132.5 L172.0,122.8 L183.2,113.4 L194.4,104.2 L205.6,95.4 L216.8,87.1 L228.0,79.2 L239.2,71.9 L250.4,65.3 L261.6,59.4 L272.8,54.3 L284.0,50.0 L295.2,46.6 L306.4,44.0 L317.6,42.4 L328.8,41.7 L340.0,41.9 L351.2,43.0 L362.4,45.0 L373.6,47.8 L384.8,51.5 L396.0,56.0 L407.2,61.2 L418.4,67.0 L429.6,73.5 L440.8,80.6 L452.0,88.2 L463.2,96.2 L474.4,104.6 L485.6,113.3 L496.8,122.4 L508.0,131.7 L519.2,141.2 L530.4,150.8 L541.6,160.6 L552.8,170.5 L564.0,180.5 L575.2,190.5 L586.4,200.6 L597.6,210.8 L608.8,221.0 L620.0,231.1" style="stroke:var(--blue);stroke-width:2.5;fill:none"/>
+      <path id="sp-c-d1v" d="M60.0,226.3 L71.2,216.8 L82.4,207.4 L93.6,198.2 L104.8,189.2 L116.0,180.5 L127.2,172.0 L138.4,163.8 L149.6,155.9 L160.8,148.3 L172.0,141.1 L183.2,134.3 L194.4,127.9 L205.6,122.0 L216.8,116.5 L228.0,111.6 L239.2,107.1 L250.4,103.2 L261.6,99.8 L272.8,96.9 L284.0,94.6 L295.2,92.9 L306.4,91.7 L317.6,91.2 L328.8,91.1 L340.0,91.6 L351.2,92.7 L362.4,94.3 L373.6,96.5 L384.8,99.1 L396.0,102.3 L407.2,105.9 L418.4,110.0 L429.6,114.5 L440.8,119.5 L452.0,124.8 L463.2,130.6 L474.4,136.7 L485.6,143.1 L496.8,149.9 L508.0,156.9 L519.2,164.3 L530.4,171.9 L541.6,179.7 L552.8,187.8 L564.0,196.1 L575.2,204.5 L586.4,213.2 L597.6,222.0 L608.8,230.9 L620.0,240.0" style="stroke:var(--red);stroke-width:2.5;fill:none"/>
+      <text x="62" y="268" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">−25%</text>
+      <text x="340" y="268" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">spot move</text>
+      <text x="618" y="268" text-anchor="end" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">+25%</text>
+      <text x="64" y="292" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">grey: at expiry</text>
+      <text x="216" y="292" fill="var(--blue)" font-size="11" font-family="'DM Mono',monospace">blue: next day, vol unchanged</text>
+      <text x="438" y="292" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace">red: next day, vol +20 pts</text>
+      <text id="sp-ymax" x="56" y="30" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">$218</text>
+      <text x="56" y="46.4" text-anchor="end" id="sp-y0" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">0</text>
+      <text id="sp-ymin" x="56" y="250" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">−$2,026</text>
+    </svg>
+    <div class="tl-readout">
+      Credit: <b id="sp-credit">$198</b> &middot; Worst case: <b id="sp-worst">−$1,651</b> (<b id="sp-mult">8.4×</b> the credit) &middot; Cap: <b id="sp-cap">none</b> &middot; Win rate needed if every loss were that big: <b id="sp-be">89.3%</b>
+    </div>
+    <div class="tl-hint">Switch to the iron condor and the ladder flattens: the long wings stop the loss. Switch to the short put and the upside column turns green while the downside column turns red. The crash cells (outlined) are where a short-vol book really lives.</div>
+    <div class="tl-chart-caption">
+      The grid is the sizing tool. Each cell is one scenario, re-priced in full. The worst cell sets the loss per
+      contract that goes into \(n^* = \lfloor B/\ell^* \rfloor\). A flat-volatility grid is itself a model: in a real crash the skew steepens,
+      spreads widen and you cannot trade at model prices, so treat the worst cell as a floor on the damage, not a ceiling.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>One $100,000 account, one 2% budget, four different structures</h3>
+    <p>
+      Inputs: index at 100, multiplier 100, 45 days to expiry, implied volatility 20%, rate 3%, no dividends. Strikes:
+      short put 95, strangle 95/105, put spread 95/90, iron condor 90/95/105/110. The risk budget is
+      \(B = 2\% \times \$100{,}000 = \$2{,}000\).
+    </p>
+    <p>
+      <strong>Step 1, the credit.</strong> Black-Scholes gives a 95 put at $0.846 and a 105 call at $1.130, so the strangle
+      collects $1.976 per share, $198 per contract.
+    </p>
+    <p>
+      <strong>Step 2, the worst square.</strong> Re-price the strangle in every cell. The worst is spot up 20% with volatility
+      up 30 points, one day later: the call you sold costs about $17.75 to buy back and the put about $0.73, together $18.48 per share against the $1.976 you collected, a loss of
+      $1,651 per contract. The crash cell, spot down 20% and volatility up 20 points, loses $1,347.
+    </p>
+    <div class="tl-math">\[ n^* = \Big\lfloor \frac{2{,}000}{1{,}651} \Big\rfloor = \lfloor 1.21 \rfloor = 1 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>B = 2,000</code><span>2% of the $100,000 account</span></div>
+      <div class="tl-eq-chip c2"><code>ℓ* = 1,651</code><span>worst grid cell per strangle</span></div>
+      <div class="tl-eq-chip c3"><code>n* = 1</code><span>one strangle fits the budget</span></div>
+    </div>
+    <p>
+      <strong>Step 3, repeat for the other structures.</strong> For the spread and the condor the worst case is the cap, because a
+      long option can never lose more than it cost. Compare sizing by the budget with sizing by half the account as margin:
+    </p>
+    <div class="sp-wrap"><table class="sp-table">
+      <tr><th>Structure</th><th>Credit</th><th>Worst case per contract</th><th>Contracts at 2% budget</th><th>Premium per cycle</th><th>Contracts at 50% margin</th><th>Worst-case loss at 50% margin</th></tr>
+      <tr><td>Short put 95</td><td>$85</td><td>$1,514</td><td><b>1</b></td><td>$85</td><td>31</td><td>$46,942 (46.9%)</td></tr>
+      <tr><td>Short strangle 95/105</td><td>$198</td><td>$1,651</td><td><b>1</b></td><td>$198</td><td>29</td><td>$47,866 (47.9%)</td></tr>
+      <tr><td>Put credit spread 95/90</td><td>$67</td><td>$433</td><td><b>4</b></td><td>$269</td><td>115</td><td>$49,757 (49.8%)</td></tr>
+      <tr><td>Iron condor 90/95/105/110</td><td>$147</td><td>$353</td><td><b>5</b></td><td>$736</td><td>141</td><td>$49,742 (49.7%)</td></tr>
+    </table></div>
+    <p style="margin-bottom:0">
+      Two lessons sit in that table. First, at the same budget the condor collects $736 of premium against the strangle's
+      $198, because the long wings cap the loss and let you hold more contracts. Second, the margin column is a trap in both
+      directions: it is far too many strangles, and for the defined-risk structures it hands you a loss of about half the
+      account, because the cap per contract is small but the number of contracts is huge.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Size a short-premium position two ways, live</h3>
+    <p>
+      Starts on the worked example: a $100,000 account, a short strangle, half the account used as margin, a 2% worst-case
+      budget. Change any field and the contracts, the premium and the worst-case loss under each sizing method recalculate.
+      Margin basis "portfolio-style" shocks spot from −8% to +6% with volatility unchanged, and asks for the worst loss.
+    </p>
+    <div class="tl-predict" data-answer="47.9" data-tol="2" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the default inputs, the margin-sized book holds as many strangles as half the account allows as margin. If the worst square on the grid then happens, what percentage of the account is lost? Lock in a guess, then read the "sized by margin" line below.</div>
+      <div class="tl-predict-reveal"><p><strong>About 47.9%.</strong> Margin is $1,698 per strangle, so half the account buys $50,000 / $1,698 = 29 contracts. Each loses $1,651 in the worst square, so 29 × $1,651 = $47,866. Now switch the margin basis to portfolio-style and watch the contract count and the loss explode, then switch the position to the iron condor and see that a capped loss per contract still adds up to about half the account when you size by margin.</p></div>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Account equity ($)</span></div>
+        <input type="number" id="sz-eq" class="tl-scratch-input" value="100000" step="5000" min="1000">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Margin you would use (% of equity)</span></div>
+        <input type="number" id="sz-use" class="tl-scratch-input" value="50" step="5" min="1" max="100">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Worst-case budget (% of equity)</span></div>
+        <input type="number" id="sz-bud" class="tl-scratch-input" value="2" step="0.5" min="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Position</span></div>
+        <select id="sz-pos" class="tl-scratch-input" aria-label="Position">
+          <option value="sp">Short put 95</option>
+          <option value="ss" selected>Short strangle 95/105</option>
+          <option value="ps">Put credit spread 95/90</option>
+          <option value="ic">Iron condor 90/95/105/110</option>
+        </select>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Margin basis</span></div>
+        <select id="sz-basis" class="tl-scratch-input" aria-label="Margin basis">
+          <option value="rule" selected>Strategy rule (20% rule, spread width)</option>
+          <option value="pm">Portfolio-style (spot −8% to +6%)</option>
+        </select>
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Per contract: credit <b id="sz-credit">$198</b> &middot; margin <b id="sz-margin">$1,698</b> &middot; worst case <b id="sz-worst">$1,651</b>
+    </div>
+    <div class="tl-readout">
+      <strong>Sized by margin:</strong> <b id="sz-nm">29</b> contracts, premium per cycle <b id="sz-incm">$5,730</b>. The worst square loses <b id="sz-lossm">$47,866</b>, which is <b id="sz-lossmp">47.9%</b> of equity.
+    </div>
+    <div class="tl-readout">
+      <strong>Sized by worst case:</strong> <b id="sz-nw">1</b> contracts, premium per cycle <b id="sz-incw">$198</b>. The worst square loses <b id="sz-lossw">$1,651</b>, which is <b id="sz-losswp">1.7%</b> of equity.
+    </div>
+    <div class="tl-hint">The second sizing is smaller and earns less. That is the point: the premium you give up is the price of being able to take the worst square and still trade next month.</div>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Size a defined-risk trade by its worst case: budget \(B\) = equity × budget %, worst-case loss per contract \(\ell^* = (w - c)\times 100\), contracts \(n^* = \lfloor B/\ell^* \rfloor\), and the total loss if the cap is hit, \(n^* \ell^*\). New inputs each round. Give dollar amounts without the dollar sign or commas.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Equity $60,000, budget 2.5%, so \(B = \$1{,}500\). A put credit spread of width $5.00 collects $1.30, so \(\ell^* = (5.00 - 1.30)\times 100 = \$370\). Then \(B/\ell^* = 4.05\) and the number of contracts is \(n^* =\) <span class="tl-blank" data-answer="4" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Equity $80,000, budget 1.5%, so \(B =\) <span class="tl-blank" data-answer="1200" data-tol="1"></span>. An iron condor with widest wing $10.00 collects $2.40, so \(\ell^* =\) <span class="tl-blank" data-answer="760" data-tol="1"></span>. The number of contracts is \(n^* =\) <span class="tl-blank" data-answer="1" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Equity $40,000, budget 2%, a put credit spread of width $2.50 that collects $0.55. Budget \(B =\) <span class="tl-blank" data-answer="800" data-tol="1"></span>; loss per contract \(\ell^* =\) <span class="tl-blank" data-answer="195" data-tol="1"></span>; contracts \(n^* =\) <span class="tl-blank" data-answer="4" data-tol="0.01"></span>; total loss if the cap is hit \(n^*\ell^* =\) <span class="tl-blank" data-answer="780" data-tol="1"></span>. That is 1.95% of equity, just under the budget, because you round the contracts down.</p>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Beyond the grid: four other ways a short position hurts you</h2>
+  <p>
+    The ladder deals with spot and volatility. Short-premium books are also hurt by time, by the rules of exercise, by
+    gaps and by each other. Each of the four below has a number you can compute.
+  </p>
+
+  <p>
+    <strong>1. Gamma gets bigger as expiry nears.</strong> The seller's income, theta, grows near expiry, which is why
+    short-dated selling looks so good. Gamma grows faster. For one at-the-money short straddle at the lesson's volatility
+    of 20%, per contract:
+  </p>
+  <div class="sp-wrap"><table class="sp-table">
+    <tr><th>Days to expiry</th><th>Gamma per share</th><th>Theta earned per day</th><th>Loss from a 1% move</th><th>Loss from a 2% move</th></tr>
+    <tr><td>45</td><td>0.0566</td><td>+$6.21</td><td>$5.66</td><td>$22.64</td></tr>
+    <tr><td>10</td><td>0.1204</td><td>+$13.20</td><td>$12.04</td><td>$48.16</td></tr>
+    <tr><td>1</td><td>0.3811</td><td>+$41.76</td><td>$38.11</td><td>$152.42</td></tr>
+  </table></div>
+  <p>
+    Gamma scales with \(1/(\sigma\sqrt{\tau})\), so from 45 days to one day it rises by \(\sqrt{45} \approx 6.7\) times. The
+    loss from a move grows with the square of the move, so a 2% move costs four times a 1% move. Day to day, theta pays for
+    a move of only about \(\sigma/\sqrt{365} \approx 1.05\%\). Anything bigger than that loses, and the last day is where
+    a large move does the most damage.
+  </p>
+
+  <p>
+    <strong>2. Early assignment.</strong> A listed US equity or ETF option is American: the buyer can exercise at any time,
+    and you, the seller, are assigned at random. Two cases are worth knowing. A call on a stock that is about to pay a
+    dividend, deep in the money with almost no time value left, is often exercised the day before the stock goes
+    ex-dividend, because the holder then gets the dividend. With the stock at 100, a 90 call and 10 days to expiry, Black-Scholes
+    gives a value of $10.08 against intrinsic value of $10.00, so only $0.08 of time value remains. A $1.00 dividend is
+    far bigger than that, so exercising is rational. (Merton showed in 1973 that without a dividend an American call is never worth
+    exercising early.) A deep in-the-money put is the other case: with the stock at 100, a 120 put and 30 days, the European value is
+    $19.72, below the $20.00 you would get by exercising now, because exercising earns the interest on the strike. When
+    the option is worth less than exercise value, early exercise is optimal.
+  </p>
+  <p>
+    Assignment has side effects. You learn of it the next morning. A short put becomes long stock, a short call becomes short
+    stock, and your margin and risk change overnight. In a spread, only the short leg is assigned, so for a moment you hold a naked stock
+    position with a long option you now have to exercise yourself. <em>Pin risk</em> is the expiry version: if the underlying finishes right on
+    your strike you do not know whether you will be assigned, and a weekend can move the price before you find out. Index
+    options such as the S&amp;P 500 (SPX) are European and cash-settled, so early assignment does not arise. Their risks are
+    the expiry settlement price and gaps.
+  </p>
+
+  <p>
+    <strong>3. Gap risk.</strong> A stop-loss and a delta hedge both assume you can trade on the way down. A gap removes the
+    way down. Prices jump on overnight news, on earnings, over weekends and on central bank decisions, and an option
+    seller's loss is worst when the gap is large and volatility jumps with it. The clearest FX case is 15 January 2015,
+    when the Swiss National Bank abandoned its 1.20 minimum for the euro against the franc without warning. EUR/CHF fell
+    from about 1.20 to a low near 0.85 within minutes before recovering to just above parity. That is a fall of more than 25% at the low, in an
+    instrument that had been held above 1.20 since September 2011, and any position sized on the calm sample was sized on the
+    wrong volatility. (Sources: the SNB's announcement of 15 January 2015 and contemporary market reports; the intraday low varied by venue.)
+  </p>
+
+  <p>
+    <strong>4. Correlation: the effective number of bets.</strong> Ten short strangles on ten different underlyings look
+    diversified. They are, on a calm day. In a crash the underlyings fall together and volatility jumps together, so the
+    book behaves like fewer positions. For \(N\) equal positions with average correlation \(\rho\), the number of independent
+    bets giving the same variance is:
+  </p>
+  <div class="tl-math">\[ N_{\text{eff}} = \frac{N}{1 + (N-1)\,\rho} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>N</code><span>number of equal-sized positions</span></div>
+    <div class="tl-eq-chip c2"><code>ρ</code><span>average correlation between them</span></div>
+    <div class="tl-eq-chip c3"><code>N_eff</code><span>how many truly independent bets the book is worth</span></div>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Ten positions, but how many independent bets? Effective number of bets against the number of positions</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of the effective number of independent bets against the number of positions from 1 to 30, for correlation 0.25, correlation 0.8 and a correlation you choose. A dashed diagonal shows full independence. At correlation 0.8 the curve flattens near 1.2 however many positions you add.">
+      <line x1="60" y1="20" x2="60" y2="230" style="stroke:var(--border)"/>
+      <line x1="60" y1="230" x2="600" y2="230" style="stroke:var(--border)"/>
+      <path d="M60,230 L600,20" style="stroke:var(--text3);stroke-dasharray:4,4;fill:none"/>
+      <path id="nf-p-calm" d="M60.0,223.0 L78.6,218.8 L97.2,216.0 L115.9,214.0 L134.5,212.5 L153.1,211.3 L171.7,210.4 L190.3,209.6 L209.0,209.0 L227.6,208.5 L246.2,208.0 L264.8,207.6 L283.4,207.2 L302.1,206.9 L320.7,206.7 L339.3,206.4 L357.9,206.2 L376.6,206.0 L395.2,205.8 L413.8,205.7 L432.4,205.5 L451.0,205.4 L469.7,205.2 L488.3,205.1 L506.9,205.0 L525.5,204.9 L544.1,204.8 L562.8,204.7 L581.4,204.6 L600.0,204.5" style="stroke:var(--blue);stroke-width:2.5;fill:none"/>
+      <path id="nf-p-stress" d="M60.0,223.0 L78.6,222.2 L97.2,221.9 L115.9,221.8 L134.5,221.7 L153.1,221.6 L171.7,221.6 L190.3,221.5 L209.0,221.5 L227.6,221.5 L246.2,221.4 L264.8,221.4 L283.4,221.4 L302.1,221.4 L320.7,221.4 L339.3,221.4 L357.9,221.4 L376.6,221.4 L395.2,221.4 L413.8,221.4 L432.4,221.4 L451.0,221.3 L469.7,221.3 L488.3,221.3 L506.9,221.3 L525.5,221.3 L544.1,221.3 L562.8,221.3 L581.4,221.3 L600.0,221.3" style="stroke:var(--red);stroke-width:2.5;fill:none"/>
+      <path id="nf-p-you" d="M60.0,223.0 L78.6,220.7 L97.2,219.5 L115.9,218.8 L134.5,218.3 L153.1,218.0 L171.7,217.8 L190.3,217.6 L209.0,217.4 L227.6,217.3 L246.2,217.2 L264.8,217.1 L283.4,217.0 L302.1,216.9 L320.7,216.9 L339.3,216.8 L357.9,216.8 L376.6,216.7 L395.2,216.7 L413.8,216.7 L432.4,216.6 L451.0,216.6 L469.7,216.6 L488.3,216.6 L506.9,216.5 L525.5,216.5 L544.1,216.5 L562.8,216.5 L581.4,216.5 L600.0,216.5" style="stroke:var(--amber);stroke-width:2.5;fill:none"/>
+      <line x1="227.6" y1="20" x2="227.6" y2="230" style="stroke:var(--text3);stroke-dasharray:2,3"/>
+      <text x="227.6" y="14" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">N = 10</text>
+      <text x="56" y="34" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">30</text>
+      <text x="56" y="234" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">0</text>
+      <text x="330" y="252" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">number of positions N (1 to 30)</text>
+      <text x="604" y="26" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace" text-anchor="end">dashed: independent</text>
+      <text x="598" y="200.5" fill="var(--blue)" font-size="10" font-family="'DM Mono',monospace" text-anchor="end">ρ 0.25</text>
+      <text x="598" y="217.3" fill="var(--red)" font-size="10" font-family="'DM Mono',monospace" text-anchor="end">ρ 0.80</text>
+    </svg>
+    <div class="tl-controls"><div class="tl-control"><div class="tl-control-head"><span>Your correlation ρ</span><span class="tl-live" id="nf-rho-val">ρ = 0.50</span></div>
+      <input type="range" id="nf-rho" min="0" max="0.95" step="0.05" value="0.5"></div></div>
+    <div class="tl-readout">
+      With 10 positions: <b id="nf-calm">3.08</b> independent bets at ρ = 0.25 (calm) &middot; <b id="nf-stress">1.22</b> at ρ = 0.80 (stress) &middot; <b id="nf-you">1.82</b> at your ρ (amber)
+    </div>
+    <div class="tl-hint">Correlations of 0.25 and 0.80 are illustrative round numbers, not estimates for any market. The shape is the lesson: past a handful of positions, adding more adds almost nothing once correlation is high.</div>
+    <div class="tl-chart-caption">
+      The risk that matters for a short-premium book is the joint loss on the worst day. With correlation near 1 that is simply the sum of the single-position losses.
+    </div>
+  </div>
+  <script>
+  (function(){
+    var rho = document.getElementById('nf-rho'); if (!rho) return;
+    var X0 = 60, X1 = 600, Y0 = 230, Y1 = 20, NMAX = 30;
+    function path(r){
+      var pts = [];
+      for (var n = 1; n <= NMAX; n++) {
+        var x = X0 + (n - 1) / (NMAX - 1) * (X1 - X0), y = Y0 - (n / (1 + (n - 1) * r)) / NMAX * (Y0 - Y1);
+        pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+      }
+      return 'M' + pts.join(' L');
+    }
+    function neff(N, r){ return N / (1 + (N - 1) * r); }
+    function update(){
+      var r = parseFloat(rho.value);
+      document.getElementById('nf-rho-val').textContent = 'ρ = ' + r.toFixed(2);
+      document.getElementById('nf-p-you').setAttribute('d', path(r));
+      document.getElementById('nf-calm').textContent = neff(10, 0.25).toFixed(2);
+      document.getElementById('nf-stress').textContent = neff(10, 0.8).toFixed(2);
+      document.getElementById('nf-you').textContent = neff(10, r).toFixed(2);
+    }
+    rho.addEventListener('input', update); update();
+  })();
+  </script>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario (illustrative)</div>
+    <h3>Ten short puts on ten stocks, "diversified" by sector</h3>
+    <p>
+      A trader sells one 95-strike put, 45 days out, on each of ten stocks from different sectors, each priced like the lesson's
+      index. Each put collects $85, so the book earns about $846 per cycle. Each put on its own has a worst square of $1,514,
+      which looks small against a $100,000 account. The book's risk report, built from average correlations of 0.25,
+      reads like three independent bets.
+    </p>
+    <p style="margin-bottom:0">
+      Then a market-wide shock arrives. The ten stocks fall together and volatility rises in all of them at once. The
+      losses do not diversify, they add: ten puts × $1,514 = $15,143, which is about 17.9 cycles of premium in one night. The trader sized each
+      leg by itself, and the book was sized by nobody. The fix is to run the ladder on the whole book, with all underlyings moved together, and
+      size the book to that one number.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you put your eggs in ten baskets and the ten baskets are all on the same wobbly table, one shake of the table breaks the lot. Ten baskets only help if they sit on ten different tables.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: the VIX spike of 5 February 2018</h2>
+  <p>
+    The cleanest recent picture of short premium meeting its worst square is February 2018. For a year and more the
+    VIX had sat in a range that made selling volatility look like free money. In one session it did what a ladder with a
+    +20-point row says it can do.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>A year of calm, one session of 115%</h3>
+    <p>
+      In 2017 the VIX closed between 9.14 and 16.04 on all 251 trading days, and below 10 on 52 of them. Products that
+      bet on volatility staying low grew rich and large. One of them, Credit Suisse's VelocityShares Daily Inverse VIX
+      Short-Term exchange-traded note, ticker XIV, aimed to return the opposite of the daily return of an index of
+      short-dated VIX futures. It held about $1.9 billion by early 2018.
+    </p>
+    <p>
+      On Friday 2 February 2018 US stocks fell and the VIX rose 28.5%, from 13.47 to 17.31. On Monday 5 February the S&amp;P 500
+      fell about 4.1% and the VIX closed at 37.32, up 115.6% on the day and 20.01 points. That is the largest one-day percentage rise in the
+      Cboe's daily history, which starts in 1990. The VIX itself reached 50.30 intraday the next day, and closed on 6
+      February at 29.98.
+    </p>
+    <p>
+      XIV's closing indicative value on 2 February was $108.3681. Because it gave the inverse of the daily move, a
+      doubling of its index in one day would take it to zero. When the futures index spiked into the close on Monday, XIV's
+      indicative value fell to about $4.22, a fall of 96.1%. Credit Suisse's terms allowed it to call the notes early if the
+      indicative value fell by 80% or more in a day. On 6 February it announced an acceleration event. The last trading day was 20 February, and holders were
+      paid about $6 per note. Credit Suisse said that it hedged the note by trading VIX futures. A later study of XIV and ProShares'
+      SVXY argues that the rebalancing of these products in VIX futures fed a negative feedback loop that pushed futures prices ever higher.
+    </p>
+    <p style="margin-bottom:0">
+      The VIX fell back the next day, but XIV did not come back: it had been terminated. That is the path-dependence
+      from the Kelly lesson in its plainest form. Being right about where the VIX would be a week later did not help a holder who
+      was out of the game by Tuesday.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example (arithmetic from the figures above)</div>
+    <h3>The same night, three ways of being short volatility</h3>
+    <p>
+      The note lost 96.1% in a day: \(4.2217 / 108.3681 - 1 = -0.961\). Its loss as a share of your account is simply your
+      allocation times 0.961:
+    </p>
+    <div class="sp-wrap"><table class="sp-table">
+      <tr><th>Share of the account held in XIV</th><th>Loss on the night</th></tr>
+      <tr><td>10%</td><td>9.6% of the account</td></tr>
+      <tr><td>25%</td><td>24.0% of the account</td></tr>
+      <tr><td>50%</td><td>48.1% of the account</td></tr>
+      <tr><td>100%</td><td>96.1% of the account</td></tr>
+    </table></div>
+    <p>
+      Now take the lesson's strangle. A fall of 5% with volatility up 20 points, roughly the size of 5 February in spot and
+      volatility terms, costs $510 per contract, 2.6 times the credit. The strangle is far less violent than a daily-inverse
+      note, because the note is a straight bet of &minus;1 on the index with no strikes to cushion it. The point is shared: the loss is a multiple of the carry, and it is
+      the allocation that decides whether you survive it.
+    </p>
+    <p style="margin-bottom:0">
+      Size is the only lever the seller controls. Nobody picks the day, but everybody picks the share of the account sitting in
+      the trade when it comes.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link"><b>Calm</b>VIX closes between 9.14 and 16.04 through 2017; short-vol products swell</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson: sizing</b>Allocations set by recent calm and by margin, not by the +20-point row</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link shock"><b>2–5 Feb 2018</b>VIX 13.47 → 17.31 → 37.32; S&amp;P 500 down about 4.1% on the Monday</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Rebalancing</b>Inverse products must buy futures into the close, pushing them higher</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>XIV down 96%, terminated; about $6 per note paid out</div>
+  </div>
+  <p>
+    The starred link is this lesson's rule. Everything after it is the worst square arriving.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>The model grid was a floor, and the exit was crowded</h3>
+    <p style="margin-bottom:0">
+      A scenario ladder assumes you can trade at model prices once the shock arrives. On 5 February many sellers had to
+      buy volatility at the same moment, and the price they bought at was set by their own buying. An options seller faces
+      the same trap with wide bid-ask spreads, assignment and margin calls. The ladder tells you the loss at model prices. The real loss, with the exit crowded, is larger. That is why the
+      budget in \(n^* = \lfloor B/\ell^* \rfloor\) should be small, and why the grid should reach farther than anything in your sample.
+    </p>
+  </div>
+
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../vix-vol-carry-backtest.html">VIX Vol-Carry Backtester</a> shows a "Worst Single Day — the Volmageddon check" tile next to the win rate. Read the two side by side, as this lesson does.</div><!-- DESK:END -->
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A lot of people had bet that a calm sea would stay calm, and many of them had borrowed boats that sink if the waves double. The waves doubled in one afternoon. A few boats went under at once, the rest of the sailors tried to climb into the same lifeboats, and the lifeboats got more expensive while they were being climbed into.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Professional option sellers run the same loop at larger scale. A risk system re-prices the whole book on a grid of
+    spot and volatility shocks, including combinations that look unlikely, and flags the worst cell. The size of the
+    book is set by that cell against a loss limit, not by margin. Greeks sit alongside, as limits that act as early
+    warnings, because they are cheap to compute and easy to watch intraday. A typical limit sheet has four lines:
+  </p>
+  <ul>
+    <li><strong>Scenario loss</strong>: the worst grid cell must be no more than the budget. This is the binding limit.</li>
+    <li><strong>Vega</strong>: a floor on dollars per volatility point, set so that a shock of 20 points costs no more than the budget. For a $2,000 budget that is $100 per point.</li>
+    <li><strong>Gamma</strong>: a cap on the loss from a move of a stated size, such as 5%.</li>
+    <li><strong>Concentration</strong>: a cap per underlying, per expiry and per event, so that one gap cannot take more than its share.</li>
+  </ul>
+  <p>
+    On this lesson's strangle, a vega floor of $100 per point alone would allow 4 contracts ($2,000 / ($21.67 × 20) = 4.61).
+    The full scenario grid allows 1. The Greek limit is useful, but it is about four times too generous.
+    Sellers who rely on Greeks alone are using the weaker of two measures.
+  </p>
+  <p>
+    Risk reports are also only as honest as the people who write them. In a 2022 case about an options fund called
+    Structured Alpha, the SEC alleged that a modelled crash loss of about 42% in a risk report had been altered to about 4%, and said
+    the fund lost over $5 billion when volatility spiked in March 2020. Allianz Global Investors U.S. agreed in May 2022 to plead
+    guilty to one count of securities fraud. Those are allegations and a plea about one case. The general lesson stands:
+    the scenario grid has to be written by the person who bears the loss, and it has to be allowed to show a bad number.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where short-premium sizing quietly goes wrong</h3>
+    <p>
+      <strong>Sizing by margin or buying power.</strong> The broker's number answers "what do I need to hold", not "what can I
+      lose". Using half the account as margin, the strangle book loses about 47.9% in the worst square. The rule can also change after
+      the shock.
+    </p>
+    <p>
+      <strong>Treating defined risk as small risk.</strong> A condor cannot lose more than its cap, but 141 condors at 50% margin
+      can lose about half the account. Defined risk limits the loss per contract. Only your contract count limits the total.
+    </p>
+    <p>
+      <strong>Testing only spot, not volatility.</strong> A grid with spot moves alone misses the largest part of the
+      short-vol loss. The ladder's rows are as important as its columns.
+    </p>
+    <p>
+      <strong>Sizing from calm-sample volatility.</strong> This is the same error as the Kelly lesson's LTCM example. A
+      quiet year says almost nothing about the width of the tail.
+    </p>
+    <p>
+      <strong>Rolling a loser for a credit.</strong> Closing a losing short option and opening a later one for a net credit makes
+      the account feel better and the risk larger. The loss has not gone anywhere, and a bigger position is now tied to the same
+      view. Judge the new position as a fresh trade against the budget.
+    </p>
+    <p>
+      <strong>Mistaking the carry for an edge.</strong> A high win rate and a smooth curve can come from collecting insurance
+      premium at a fair price, with the cost arriving later. Whether sellers are paid more than the risk costs is the
+      question of the variance risk premium, taken up later in this series. Until you have an answer, size as if the premium may only just pay for the tail.
+    </p>
+  </div>
+
+  <div class="tl-drill" data-date="2018-02-02">
+    <div class="tl-drill-label">Scenario drill · Friday 2 February 2018, after the close</div>
+    <h3>The VIX has jumped 28% in a day, after a year of calm</h3>
+    <p>You sell index volatility for a living: short S&amp;P 500 strangles, plus an allocation to an inverse-VIX note. Together they use about half your account as margin, which your broker allows. Through 2017 the VIX never closed above 16.04. Today it closed at 17.31, up from 13.47 yesterday, and US stocks fell. The note's closing indicative value is $108.37. You have the weekend. What do you do with the size?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Do nothing. Volatility spikes fade, and sellers get paid for waiting.<div class="tl-drill-why">Spikes usually do fade, which is why this feels safe. But the question is whether you survive the path. A book sized at half the account in margin has most of the account in the worst square, and a daily-inverse note loses everything if its index doubles in a day. Being right on the fade does not help if you are out of the game first.</div></li>
+      <li data-verdict="bad">Add to the position. The premium is richer after a jump, so sell more of it.<div class="tl-drill-why">Richer premium is real, but the worst square grows with every contract you add, and volatility has just shown it can move. Adding size into a regime where the grid's top row is the live row is the classic way a profitable seller ends up in the loss column.</div></li>
+      <li data-verdict="good">Re-run the grid with a volatility jump of 20 points and a large spot move. Treat the note as a possible total loss. Cut until the worst square fits a small loss budget.<div class="tl-drill-why">This is the sizing rule. A volatility move of 20 points is exactly what the grid's +20 row tests, and it is one session's move in the VIX from 17 to 37. Divide the budget by the worst-case loss per contract, and count the inverse note at a 100% loss, not at its margin. You give up premium and keep the account.</div></li>
+      <li data-verdict="ok">Keep the size, but buy a few cheap far out-of-the-money options as insurance.<div class="tl-drill-why">A hedge can help, and it is defensible, but it does not answer the sizing question. A small hedge on an oversized book still leaves a large worst square, hedges can be mis-sized or expire early, and paying for them needs the budget too. Cut first, then hedge if the hedge fits.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Monday 5 February 2018 the S&amp;P 500 fell about 4.1% and the VIX closed at 37.32, up 115.6% on the day, the largest one-day percentage rise in the Cboe's daily history from 1990. The note, XIV, fell about 96% to an indicative value near $4.22, and Credit Suisse announced on 6 February that an acceleration event had occurred. Its last trading day was 20 February and holders received about $6 per note. The VIX itself fell back to 29.98 on the Tuesday, but the note was gone. This drill is a simplified position built on documented prices, not anyone's actual account.</p><p class="tl-drill-sources">Sources: <a href="https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv">Cboe, VIX index daily history (open, high, low, close)</a>; Credit Suisse press release of 6 February 2018, as quoted in the <a href="https://www.cohenmilstein.com/wp-content/uploads/2023/07/2018-08-20-XIV-Consolidated-Complaint.pdf">consolidated class action complaint, SET Capital LLC v. Credit Suisse Group AG (S.D.N.Y., filed 20 August 2018)</a>, which also gives the $4.22 and $5.99 per-note figures; S&amp;P 500 move from contemporary market reports (Schaeffer's Research and Investing.com, 5 February 2018).</p></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Know the worst square before you trade.</strong> Re-price the position on a grid of spot and volatility shocks and read off the worst cell. The strangle's worst cell is about 8.4× its credit.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Size from the worst case, not from margin.</strong> Contracts = risk budget ÷ worst-case loss per contract, rounded down. At 2% of $100,000 that is one strangle or five iron condors.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Defined risk lets you hold more contracts for the same worst case.</strong> The condor collected $736 per cycle against the strangle's $198 at the same budget.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Put the limit on full scenario loss, and keep Greeks as warning lights.</strong> The Greek estimate was off by about half for a 20% move.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Mind the days around expiry, assignment and gaps.</strong> Gamma rises about 6.7 times between 45 days and one day, early assignment arrives overnight, and gaps skip every stop.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Diversification fades in a crash.</strong> Ten positions at correlation 0.8 are worth about 1.2 independent bets. Run the ladder on the whole book, with everything moved together.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A high win rate is not safety.</strong> On 5 February 2018 the VIX rose 115.6% in one session and XIV lost about 96% after a year in which the VIX never closed above 16.04. Sellers collect for a long time and pay in one night.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. A short strangle collects $198 per contract and loses $1,651 in its worst square. What win rate does it need just to break even if every loss were that large, and why does the answer matter?</summary>
+    <div class="tl-answer">
+      \(p_{BE} = L/(L+c) = 1{,}651/(1{,}651 + 198) \approx 89.3\%\). If every losing cycle lost the worst-square amount,
+      the seller would need to win nearly nine cycles in ten to break even. Most losing cycles are smaller, so the real threshold is
+      lower, but the example shows why a 90% win rate by itself says very little about whether a short-premium strategy makes money.
+      The payoff shape, not the win rate, decides it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Your broker requires $1,698 of margin per strangle and you have $100,000. Why is "use half the account as margin" a poor sizing rule?</summary>
+    <div class="tl-answer">
+      Half the account buys 29 strangles. In the worst grid square each loses $1,651, so the book loses about $47,866, nearly half the account.
+      Margin is a collateral rule set by the broker. It answers "how much must I post today?", not "how much can I lose?", and it can be raised after a shock.
+      Under a portfolio-style margin that shocks spot by only −8% to +6% with volatility fixed, the requirement is about $226, which would allow 220 strangles and a loss several times the account.
+      Sizing from the worst case, a 2% budget gives one strangle.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. An iron condor has a maximum loss of $353 per contract. Does that make a book of 141 condors safe?</summary>
+    <div class="tl-answer">
+      No. Defined risk caps the loss per contract, not the number of contracts. 141 condors × $353 is about $49,742, close to half the account if all of them
+      finish beyond the long strikes. The right sizing divides the risk budget by the cap: 2% of $100,000 is $2,000, so \(\lfloor 2{,}000/353 \rfloor = 5\) condors.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. For a 20% fall with volatility up 20 points, the Greek estimate for the strangle is about $2,056 and a full re-pricing gives $1,347. Which do you use for a limit, and why?</summary>
+    <div class="tl-answer">
+      Use the full re-pricing. The Greeks are a local Taylor expansion around today's price. Gamma and vega change as the option moves in or out of the money,
+      so for large moves the expansion can be wrong by half, as here, or can be wrong in the other direction in other books. A full re-pricing at each grid cell is the better limit measure.
+      Greeks are still a good, cheap early warning during the day.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. You are short a deep in-the-money call on a stock that goes ex-dividend tomorrow. When is early assignment likely?</summary>
+    <div class="tl-answer">
+      When the dividend is larger than the time value left in the call. With the stock at 100, a 90 call and 10 days left, the call has about $0.08 of time value,
+      and a $1.00 dividend is far larger, so a holder gains by exercising the day before ex-dividend and capturing the dividend. Without a dividend, early exercise of an American call is never optimal (Merton, 1973).
+      Index options such as SPX are European, so this does not apply to them.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Between Friday 2 February 2018 and Monday 5 February the VIX went from 17.31 to 37.32 and XIV lost 96%. Someone held 25% of their account in XIV. What did they lose, and what would sizing by the worst square have changed?</summary>
+    <div class="tl-answer">
+      About 24% of the account: \(0.25 \times 0.961 \approx 0.24\). A daily-inverse product loses everything if its index doubles in a day, and this one lost 96%. Sizing by the worst square means entering the +20-point volatility cell
+      into the ladder, treating the note as a possible 100% loss, and limiting the allocation so that 100% of it is within the loss budget. At a 2% budget that is a 2% allocation, not 25%.
+      The VIX falling back the next day would not have helped: the note had been terminated.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson (many editions) — the standard text on the Greeks, scenario analysis and margin for options positions.</li>
+    <li>Nassim Nicholas Taleb, <em>Dynamic Hedging: Managing Vanilla and Exotic Options</em>, Wiley, 1997 — a practitioner's book on the risks of running an options book, including gamma and gap risk.</li>
+    <li>Joshua D. Coval and Tyler Shumway, "Expected Option Returns", <em>Journal of Finance</em> 56(3), 2001, 983–1009 — evidence on the returns to option positions, including short index options.</li>
+    <li>Oleg Bondarenko, "Why Are Put Options So Expensive?", <em>Quarterly Journal of Finance</em> 4(3), 2014 — a study of the returns to selling S&amp;P 500 put options and why they look so high.</li>
+    <li>Robert C. Merton, "Theory of Rational Option Pricing", <em>Bell Journal of Economics and Management Science</em> 4(1), 1973, 141–183 — the result that an American call on a non-dividend-paying stock is not exercised early.</li>
+    <li>Patrick Augustin, Ing-Haw Cheng and Ludovic Van den Bergen, "Volmageddon and the Failure of Short Volatility Products", <em>Financial Analysts Journal</em> 77(3), 2021, 35–51 — an academic account of XIV and SVXY in February 2018.</li>
+    <li>Options Clearing Corporation, <em>Characteristics and Risks of Standardized Options</em> — the risk disclosure document every US options account receives, covering exercise, assignment and margin.</li>
+    <li>FINRA, Rule 4210 (Margin Requirements) — the US rule that governs margin for listed options, including strategy-based and portfolio margin.</li>
+    <li>Cboe Global Markets, VIX index historical data (daily open, high, low and close from 1990) — the series behind the figures in the 2018 episode.</li>
+    <li>U.S. Securities and Exchange Commission, press release 2022-84 on Allianz Global Investors U.S. and the Structured Alpha funds, May 2022 — the allegations about options-fund risk reporting.</li>
+  </ul>
+  </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="options-four-positions.html">The Four Option Positions</a> <span>· what a short option owes</span></li>
+        <li><a href="payoff-shape-vs-greek-signs.html">Same Greeks, Different Risk</a> <span>· why the Greeks cannot see the tail</span></li>
+        <li><a href="theta-decay.html">Theta Decay</a> <span>· what the seller is paid for</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="kelly-criterion.html">The Kelly Criterion &amp; Position Sizing</a> <span>· why size, not edge, ends accounts</span></li>
+        <li><a href="drawdowns-risk-of-ruin.html">Drawdowns, Risk of Ruin, and Why Good Systems Get Abandoned</a> <span>· the ride a sized book puts you on</span></li>
+        <li><a href="tail-risk-hedging-convexity.html">Tail Risk Hedging &amp; Portfolio Convexity</a> <span>· the other side of the short-convexity trade</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every short option is a small policy on a big move. This lesson gives you the grid that prices the big move and the division that turns it into a number of contracts.</p>
+  </nav>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+var SPM = (function () {
+  var S0 = 100, R = 0.03, V0 = 0.20, T0 = 45 / 365, M = 100;
+  var COLS = [-20, -10, -5, 0, 5, 10, 20], ROWS = [-5, 0, 10, 20, 30], SHOCKS = [-8, -6, -4, -2, 0, 2, 4, 6];
+  var POS = {
+    sp: { name: 'Short put 95', legs: [['p', 95, -1]], def: false, width: 0 },
+    ss: { name: 'Short strangle 95/105', legs: [['p', 95, -1], ['c', 105, -1]], def: false, width: 0 },
+    ps: { name: 'Put credit spread 95/90', legs: [['p', 95, -1], ['p', 90, 1]], def: true, width: 5 },
+    ic: { name: 'Iron condor 90/95/105/110', legs: [['p', 95, -1], ['p', 90, 1], ['c', 105, -1], ['c', 110, 1]], def: true, width: 5 }
+  };
+  function ncdf(x) {
+    var ax = Math.abs(x), c, b, e;
+    if (ax > 37) c = 0;
+    else {
+      e = Math.exp(-ax * ax / 2);
+      if (ax < 7.07106781186547) {
+        b = 3.52624965998911E-02 * ax + 0.700383064443688; b = b * ax + 6.37396220353165; b = b * ax + 33.912866078383;
+        b = b * ax + 112.079291497871; b = b * ax + 221.213596169931; b = b * ax + 220.206867912376; c = e * b;
+        b = 8.83883476483184E-02 * ax + 1.75566716318264; b = b * ax + 16.064177579207; b = b * ax + 86.7807322029461;
+        b = b * ax + 296.564248779674; b = b * ax + 637.333633378831; b = b * ax + 793.826512519948; b = b * ax + 440.413735824752;
+        c = c / b;
+      } else { b = ax + 0.65; b = ax + 4 / b; b = ax + 3 / b; b = ax + 2 / b; b = ax + 1 / b; c = e / b / 2.506628274631; }
+    }
+    return x > 0 ? 1 - c : c;
+  }
+  function bs(kind, S, K, v, T) {
+    if (T <= 0) return kind === 'c' ? Math.max(S - K, 0) : Math.max(K - S, 0);
+    var sq = v * Math.sqrt(T), d1 = (Math.log(S / K) + (R + v * v / 2) * T) / sq, d2 = d1 - sq;
+    return kind === 'c' ? S * ncdf(d1) - K * Math.exp(-R * T) * ncdf(d2) : K * Math.exp(-R * T) * ncdf(-d2) - S * ncdf(-d1);
+  }
+  function value(legs, S, v, T) { var t = 0; for (var i = 0; i < legs.length; i++) t += legs[i][2] * bs(legs[i][0], S, legs[i][1], v, T); return t; }
+  function credit(p) { return -value(POS[p].legs, S0, V0, T0) * M; }
+  function pnl(p, dS, dv, h) { return (value(POS[p].legs, S0 * (1 + dS / 100), V0 + dv / 100, T0 - h / 365) - value(POS[p].legs, S0, V0, T0)) * M; }
+  function ladder(p, h) { return ROWS.map(function (r) { return COLS.map(function (c) { return pnl(p, c, r, h); }); }); }
+  function ladderWorst(p, h) { var w = 0; ladder(p, h).forEach(function (r) { r.forEach(function (v) { if (v < w) w = v; }); }); return w; }
+  function maxLoss(p) { return POS[p].def ? (POS[p].width - credit(p) / M) * M : null; }
+  function worstPer(p, h) { return POS[p].def ? maxLoss(p) : -ladderWorst(p, h); }
+  function marginRule(p) {
+    var pp = bs('p', S0, 95, V0, T0), cc = bs('c', S0, 105, V0, T0);
+    var reqP = Math.max(0.2 * S0 - Math.max(S0 - 95, 0), 0.1 * 95) + pp;
+    var reqC = Math.max(0.2 * S0 - Math.max(105 - S0, 0), 0.1 * S0) + cc;
+    if (p === 'sp') return reqP * M;
+    if (p === 'ss') return Math.max(reqP + cc, reqC + pp) * M;
+    return maxLoss(p);
+  }
+  function marginPM(p) { var w = 0; SHOCKS.forEach(function (s) { var v = pnl(p, s, 0, 0); if (v < w) w = v; }); return Math.max(1, -w); }
+  function sizing(p, eq, use, bud, basis) {
+    var m = basis === 'pm' ? marginPM(p) : marginRule(p), w = worstPer(p, 1), cr = credit(p);
+    var nm = Math.floor(eq * use / 100 / m), nw = Math.floor(eq * bud / 100 / w);
+    return { credit: cr, margin: m, nm: nm, worst: w, lossm: nm * w, lossmp: nm * w / eq * 100, incm: nm * cr,
+             nw: nw, lossw: nw * w, losswp: nw * w / eq * 100, incw: nw * cr };
+  }
+  function money(v) { var r = Math.round(v); if (r === 0) return '0'; return (r < 0 ? '−' : '+') + Math.abs(r).toLocaleString('en-US'); }
+  function usd(v) { var r = Math.round(v); return '$' + Math.abs(r).toLocaleString('en-US'); }
+  function tier(v, cr) { if (v >= 0) return 'g'; var l = -v; return l < cr ? 'a1' : l < 3 * cr ? 'a2' : l < 6 * cr ? 'r1' : 'r2'; }
+  function neff(N, rho) { return N / (1 + (N - 1) * rho); }
+  return { S0: S0, R: R, V0: V0, T0: T0, M: M, COLS: COLS, ROWS: ROWS, POS: POS, bs: bs, value: value, credit: credit, pnl: pnl,
+           ladder: ladder, ladderWorst: ladderWorst, maxLoss: maxLoss, worstPer: worstPer, marginRule: marginRule, marginPM: marginPM,
+           sizing: sizing, money: money, usd: usd, tier: tier, neff: neff, ncdf: ncdf };
+})();
+
+</script>
+<script>
+(function(){
+  var posEl = document.getElementById('sp-pos'); if (!posEl) return;
+  var hEl = document.getElementById('sp-h');
+  var XS = [], i; for (i = -25; i <= 25; i++) XS.push(i);
+  var PX0 = 60, PX1 = 620, PY0 = 20, PY1 = 250;
+  function curve(p, v, h){
+    var legs = SPM.POS[p].legs, base = SPM.value(legs, SPM.S0, SPM.V0, SPM.T0);
+    return XS.map(function(x){ return (SPM.value(legs, SPM.S0 * (1 + x / 100), SPM.V0 + v / 100, SPM.T0 - h / 365) - base) * SPM.M; });
+  }
+  function render(){
+    var p = posEl.value, h = parseInt(hEl.value, 10), P = SPM.POS[p];
+    var cr = SPM.credit(p), L = SPM.ladder(p, h), html = '';
+    SPM.ROWS.forEach(function(r, ri){
+      var rl = r < 0 ? '−' + (-r) + ' pts' : (r === 0 ? '0 pts' : '+' + r + ' pts');
+      html += '<tr><th>' + rl + '</th>';
+      SPM.COLS.forEach(function(c, ci){
+        html += '<td id="sp-c-' + ri + '-' + ci + '" class="' + SPM.tier(L[ri][ci], cr) + ((c < 0 && r === -c) ? ' x' : '') + '">' + SPM.money(L[ri][ci]) + '</td>';
+      });
+      html += '</tr>';
+    });
+    document.getElementById('sp-grid-body').innerHTML = html;
+    var cs = [curve(p, 0, 45), curve(p, 0, 1), curve(p, 20, 1)], all = cs[0].concat(cs[1], cs[2]);
+    var ymax = Math.max(0, Math.max.apply(null, all)) * 1.1 + 1, ymin = Math.min(0, Math.min.apply(null, all)) * 1.05 - 1;
+    function X(x){ return PX0 + (x + 25) / 50 * (PX1 - PX0); }
+    function Y(v){ return PY1 - (v - ymin) / (ymax - ymin) * (PY1 - PY0); }
+    function d(vals){ return 'M' + vals.map(function(v, k){ return X(XS[k]).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' L'); }
+    document.getElementById('sp-c-exp').setAttribute('d', d(cs[0]));
+    document.getElementById('sp-c-d1').setAttribute('d', d(cs[1]));
+    document.getElementById('sp-c-d1v').setAttribute('d', d(cs[2]));
+    var z = Y(0).toFixed(1), zl = document.getElementById('sp-zero');
+    zl.setAttribute('y1', z); zl.setAttribute('y2', z);
+    document.getElementById('sp-y0').setAttribute('y', (Y(0) + 4).toFixed(1));
+    document.getElementById('sp-ymax').textContent = SPM.usd(ymax);
+    document.getElementById('sp-ymin').textContent = '−' + SPM.usd(ymin);
+    var w = SPM.worstPer(p, h), cap = SPM.maxLoss(p);
+    document.getElementById('sp-credit').textContent = SPM.usd(cr);
+    document.getElementById('sp-worst').textContent = '−' + SPM.usd(w);
+    document.getElementById('sp-mult').textContent = (w / cr).toFixed(1) + '×';
+    document.getElementById('sp-cap').textContent = P.def ? SPM.usd(cap) + ' per contract' : 'none';
+    document.getElementById('sp-be').textContent = (w / (w + cr) * 100).toFixed(1) + '%';
+  }
+  posEl.addEventListener('change', render); hEl.addEventListener('change', render); render();
+})();
+(function(){
+  var eq = document.getElementById('sz-eq'); if (!eq) return;
+  var use = document.getElementById('sz-use'), bud = document.getElementById('sz-bud'), pos = document.getElementById('sz-pos'), basis = document.getElementById('sz-basis');
+  function set(id, t){ document.getElementById(id).textContent = t; }
+  function run(){
+    var e = parseFloat(eq.value), u = parseFloat(use.value), b = parseFloat(bud.value);
+    var ids = ['credit','margin','worst','nm','incm','lossm','lossmp','nw','incw','lossw','losswp'];
+    if (!isFinite(e) || !isFinite(u) || !isFinite(b) || e <= 0 || u <= 0 || b <= 0) { ids.forEach(function(k){ set('sz-' + k, '—'); }); return; }
+    var s = SPM.sizing(pos.value, e, u, b, basis.value);
+    set('sz-credit', SPM.usd(s.credit)); set('sz-margin', SPM.usd(s.margin)); set('sz-worst', SPM.usd(s.worst));
+    set('sz-nm', String(s.nm)); set('sz-incm', SPM.usd(s.incm)); set('sz-lossm', SPM.usd(s.lossm)); set('sz-lossmp', s.lossmp.toFixed(1) + '%');
+    set('sz-nw', String(s.nw)); set('sz-incw', SPM.usd(s.incw)); set('sz-lossw', SPM.usd(s.lossw)); set('sz-losswp', s.losswp.toFixed(1) + '%');
+  }
+  [eq, use, bud].forEach(function(el){ el.addEventListener('input', run); });
+  [pos, basis].forEach(function(el){ el.addEventListener('change', run); });
+  run();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

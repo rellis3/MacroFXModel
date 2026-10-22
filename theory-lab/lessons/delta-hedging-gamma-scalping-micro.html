@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delta Hedging &amp; Gamma Scalping — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
+<link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Delta Hedging &amp; Gamma Scalping — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, live charts, a calculator and a 6-question self-test?<a href="delta-hedging-gamma-scalping.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 6 · Options in Practice</div>
+      <h1 class="sl-h1">Delta Hedging &amp; Gamma Scalping, or <em>Paid for Movement, Charged Rent</em></h1>
+      <p class="sl-lede">Hedge away the direction of an option and what is left is a bet on how much the stock moves, set against a rent you pay every day. One equation explains it, and the same equation shows what it costs to run.</p>
+      <div class="sl-note">Risk: educational, not advice. A bought option can lose its whole premium, and a sold option can lose far more. A delta hedge swaps one risk for others. All numbers use Black-Scholes with zero rates and are simulated, not a track record.</div>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Daily profit and loss, per share, of a delta-hedged long 21-day at-the-money call on a 100 dollar stock at 20 percent implied volatility, against the size of the day's move. The curve is a U shape. If the stock does not move you lose a rent of about 5.5 cents a day. You break even at a move of 1.26 percent either way. A 2 percent move earns 8.3 cents and a 3 percent move earns 25.6 cents.">
+      <rect class="tlp-box red" x="199" y="175" width="202" height="28" rx="4" opacity=".3"/>
+      <rect class="tlp-box green" x="60" y="47" width="139" height="128" rx="4" opacity=".22"/>
+      <rect class="tlp-box green" x="401" y="47" width="139" height="128" rx="4" opacity=".22"/>
+      <line class="tlp-line" x1="50" y1="175" x2="550" y2="175"/>
+      <line class="tlp-line" x1="300" y1="40" x2="300" y2="210"/>
+      <polyline class="tlp-line purple thick" points="60.0,47.0 68.0,57.2 76.0,67.0 84.0,76.5 92.0,85.7 100.0,94.5 108.0,102.9 116.0,111.1 124.0,118.8 132.0,126.3 140.0,133.3 148.0,140.1 156.0,146.5 164.0,152.5 172.0,158.2 180.0,163.6 188.0,168.6 196.0,173.2 204.0,177.5 212.0,181.5 220.0,185.1 228.0,188.4 236.0,191.4 244.0,193.9 252.0,196.2 260.0,198.1 268.0,199.6 276.0,200.9 284.0,201.7 292.0,202.2 300.0,202.4 308.0,202.2 316.0,201.7 324.0,200.9 332.0,199.6 340.0,198.1 348.0,196.2 356.0,193.9 364.0,191.4 372.0,188.4 380.0,185.1 388.0,181.5 396.0,177.5 404.0,173.2 412.0,168.6 420.0,163.6 428.0,158.2 436.0,152.5 444.0,146.5 452.0,140.1 460.0,133.3 468.0,126.3 476.0,118.8 484.0,111.1 492.0,102.9 500.0,94.5 508.0,85.7 516.0,76.5 524.0,67.0 532.0,57.2 540.0,47.0"/>
+      <circle class="tlp-red" cx="300" cy="202.4" r="6"/>
+      <circle class="tlp-amber" cx="199.2" cy="175" r="6"/>
+      <circle class="tlp-amber" cx="400.8" cy="175" r="6"/>
+      <circle class="tlp-green" cx="460" cy="133.4" r="6"/>
+      <circle class="tlp-green" cx="540" cy="47" r="6"/>
+      <text class="tlp-red" x="300" y="225" text-anchor="middle" font-size="14" font-weight="700">rent: −$0.055 a day if the stock sits still</text>
+      <text class="tlp-amber" x="195" y="193" text-anchor="end" font-size="14" font-weight="700">breakeven −1.26%</text>
+      <text class="tlp-amber" x="405" y="193" font-size="14" font-weight="700">breakeven +1.26%</text>
+      <text class="tlp-green" x="456" y="124" text-anchor="end" font-size="14" font-weight="700">+2%: +$0.083</text>
+      <text class="tlp-green" x="534" y="40" text-anchor="end" font-size="14" font-weight="700">+3%: +$0.256</text>
+      <text class="tlp-text3" x="60" y="240" font-size="12">−3%</text>
+      <text class="tlp-text3" x="300" y="241" text-anchor="middle" font-size="12">the stock's move that day</text>
+      <text class="tlp-text3" x="540" y="240" text-anchor="end" font-size="12">+3%</text>
+      <text class="tlp-text2" x="112" y="70" font-size="13">big days: gamma pays</text>
+    </svg>
+    <figcaption>One delta-hedged call, one day. The loss in the middle is the rent for owning gamma, and it is paid whatever happens. Moves bigger than 1.26% either way earn it back and more, and the gain grows with the square of the move.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="5">
+    <div class="tl-listen-head">🎧 Listen · the five-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Everyone says dealers hedge their options. What does that actually mean?</p>
+      <p data-who="Quant">Say you buy a call that costs two dollars thirty. If the stock rises you make money, about fifty-one cents for every dollar it moves, to start with. That fifty-one cents is the delta.</p>
+      <p data-who="Trader">So I'm betting on direction.</p>
+      <p data-who="Quant">Unless you cancel it. Short fifty-one shares for every hundred the option covers, and a small move in the stock barely changes your total. You have hedged the direction away.</p>
+      <p data-who="Trader">Then what am I left with? Nothing?</p>
+      <p data-who="Quant">Two things that pull against each other. First, the delta changes as the stock moves. Stock up, delta up, your hedge is now too small, so you sell more shares, higher. Stock down, delta down, you buy shares back, lower. Sell high, buy low, mechanically. That is gamma, and it pays you for movement.</p>
+      <p data-who="Trader">And the catch?</p>
+      <p data-who="Quant">Time. The option loses a little value every day. For this one it is about five and a half cents a day if the stock sits still. That is theta, and it is the rent you pay for owning the gamma.</p>
+      <p data-who="Trader">So who wins?</p>
+      <p data-who="Quant">Whoever is right about how far the stock really moves. The option price assumes twenty percent volatility a year. Divide by the square root of the number of trading days in a year, about sixteen, and you get one point two six percent a day. Move more than that on a typical day and the trading gains beat the rent. Move less and you lose.</p>
+      <p data-who="Trader">Everything hangs on that one comparison?</p>
+      <p data-who="Quant">Over a month it works out to roughly the option's vega, about eleven and a half cents per point of volatility, times the gap between realised and implied. Realised at twenty-five against twenty implied is worth about fifty-eight cents on a two-thirty option. At fifteen, you lose about the same.</p>
+      <p data-who="Trader">That sounds attractive.</p>
+      <p data-who="Quant">Here is the honest part. On a single month the spread of outcomes is about forty cents even if realised exactly matches implied. And implied volatility itself moves. If it drops three points while you hold, that costs about thirty-five cents, more than the whole edge you were hoping for.</p>
+      <p data-who="Trader">What about hedging more often, to cut the noise?</p>
+      <p data-who="Quant">The noise falls with the square root of the number of hedges. But every hedge crosses a spread, and the total traded grows with the same square root. There is no free setting.</p>
+      <p data-who="Trader">Has this ever gone badly in public?</p>
+      <p data-who="Quant">The nineteenth of October, 1987. Portfolio insurers copied a put option by selling index futures as the market fell. Those are the same trades as a dealer hedging a put he has sold. Sell when it falls, so they became part of the fall. The Dow dropped twenty-two point six percent, and the official inquiry put the insurers at roughly forty percent of non-market-maker futures sales that day.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Hedging removes direction, not risk. A gamma scalper is long volatility: paid for movement, charged rent every day, and hurt if implied volatility sinks. Know what your rent is before you buy it.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A hedge chooses which risk you keep</h2>
+      <p class="sl-sub">Own a 21-day at-the-money call on a $100 stock at 20% implied volatility: $2.30. Short about 51 shares per 100 (delta 0.51). What is left?</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Δ</div><div><h4>Direction: removed</h4><p>Small moves in the stock no longer change your total. The short shares cancel the call's first-order exposure.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Γ</div><div><h4>Convexity: kept, and it pays</h4><p>Delta changes as the stock moves. You sell shares into rises and buy them back into falls. Every move, up or down, earns something.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Θ</div><div><h4>Time: the rent</h4><p>The option loses value daily, about $0.055 a share here if the stock sits still. It is paid whatever happens.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">ν</div><div><h4>Volatility: still exposed</h4><p>Hedging delta does nothing about implied vol. If it falls, you lose, whatever the stock did.</p></div></div>
+      </div>
+      <div class="sl-quote">The question every hedged long option reduces to: will the stock move more than the option's price assumed?</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The one equation behind it</h2>
+      <p class="sl-sub">Hold one call and short Δ shares. Let a short time dt pass and the stock move by dS.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Follow it through</div>
+        <div class="sl-tabs" id="dk-tabs">
+          <button class="sl-tab active" data-panel="dk-p1">The hedge</button>
+          <button class="sl-tab" data-panel="dk-p2">One step</button>
+          <button class="sl-tab" data-panel="dk-p3">The result</button>
+        </div>
+        <div class="sl-panel active" id="dk-p1">
+          <div class="sl-row"><div class="sl-box">Π = C − Δ·S</div></div>
+          <div class="sl-verdict">Long one call worth C, short Δ shares at price S. Delta is the call's price change per $1 in the stock, so the short shares offset it.</div>
+        </div>
+        <div class="sl-panel" id="dk-p2">
+          <div class="sl-row"><div class="sl-box amber">dΠ = Θ·dt + ½·Γ·dS²</div></div>
+          <div class="sl-verdict">The call's change is Δ·dS + ½Γ·dS² + Θ·dt. Subtract the hedge's Δ·dS and the delta terms cancel. Left: time decay and curvature. The move enters squared, so up and down pay alike.</div>
+        </div>
+        <div class="sl-panel" id="dk-p3">
+          <div class="sl-row"><div class="sl-box green">dΠ = ½·Γ·(dS² − σ²·S²·dt)</div></div>
+          <div class="sl-verdict">Black-Scholes with zero rates gives Θ = −½σ²S²Γ. So you earn half of gamma times the gap between the stock's squared move and the squared move the option priced in. Breakeven: a day's move of σ·√dt.</div>
+        </div>
+      </div>
+      <p class="sl-p">With σ = 20% and dt = 1/252, the breakeven move is 0.20 ÷ √252 = <strong>1.26% a day</strong>. That is the one-day move the option's price implies.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Try it: one day's hedged P&amp;L</h2>
+      <p class="sl-sub">The same 21-day at-the-money call on $100. Drag today's move and the implied volatility you paid.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="U-shaped curve of one-day hedged profit and loss, in dollars per share, against the stock's move that day from minus 4 to plus 4 percent. The curve dips to the daily rent at zero move and crosses zero at the breakeven move on each side. A dot marks the chosen move.">
+            <line x1="60" y1="20" x2="60" y2="240" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="190" x2="600" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+            <line id="dk-bel" x1="245.0" y1="190" x2="245.0" y2="240" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:3,3"/>
+            <line id="dk-ber" x1="415.0" y1="190" x2="415.0" y2="240" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:3,3"/>
+            <path id="dk-curve" d="M60.0,40.7 73.5,56.8 87.0,72.2 100.5,86.7 114.0,100.4 127.5,113.2 141.0,125.2 154.5,136.4 168.0,146.8 181.5,156.3 195.0,165.0 208.5,172.9 222.0,179.9 235.5,186.1 249.0,191.5 262.5,196.1 276.0,199.8 289.5,202.7 303.0,204.8 316.5,206.0 330.0,206.4 343.5,206.0 357.0,204.8 370.5,202.7 384.0,199.8 397.5,196.1 411.0,191.5 424.5,186.1 438.0,179.9 451.5,172.9 465.0,165.0 478.5,156.3 492.0,146.8 505.5,136.4 519.0,125.2 532.5,113.2 546.0,100.4 559.5,86.7 573.0,72.2 586.5,56.8 600.0,40.7" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linecap:round"/>
+            <circle id="dk-dot" cx="465.0" cy="165.0" r="5.5" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+            <text x="64" y="30" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">P&amp;L per share: gamma gain minus rent</text>
+            <text x="330" y="256" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">today's move: −4% … +4%</text>
+            <text x="64" y="186" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">0</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Today's move in the stock</span><span class="sl-live" id="dk-mvval">+2.0%</span></div>
+        <input type="range" class="sl-slider" id="dk-mv" min="-40" max="40" step="1" value="20">
+        <div class="sl-sliderhead"><span>Implied volatility paid</span><span class="sl-live" id="dk-ivval">20%</span></div>
+        <input type="range" class="sl-slider" id="dk-iv" min="10" max="60" step="1" value="20">
+        <div class="sl-calc-steps">
+          <div>Breakeven daily move: <b id="dk-be">1.26%</b></div>
+          <div>Rent on a flat day: <b id="dk-rent">−0.0548</b> per share</div>
+          <div>Today's hedged P&amp;L: <b id="dk-pnl">+0.0833</b> per share</div>
+        </div>
+      </div>
+      <p class="sl-p">Raise the implied volatility and the breakeven widens: the option is dearer, so the stock has to move further to repay it. The curve is a U because gamma pays on the <em>square</em> of the move and the rent is flat.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Worked example: price, Greeks and the day's P&amp;L</h2>
+      <p class="sl-sub">An at-the-money call (strike = stock price), zero rates. Edit any field.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — hedged-call calculator</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Stock price S</label><input type="number" class="sl-input" id="dkc-s" value="100" step="1" min="1"></div>
+          <div class="sl-calc-field"><label>Implied vol (%)</label><input type="number" class="sl-input" id="dkc-iv" value="20" step="1" min="1"></div>
+          <div class="sl-calc-field"><label>Days to expiry</label><input type="number" class="sl-input" id="dkc-days" value="21" step="1" min="1"></div>
+          <div class="sl-calc-field"><label>Today's move (%)</label><input type="number" class="sl-input" id="dkc-mv" value="2" step="0.1"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Hedged P&amp;L today</div>
+            <div class="sl-calc-result-val" id="dkc-approx">+0.0833</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Call price: <b id="dkc-call">2.303</b> · delta <b id="dkc-delta">0.512</b> · gamma <b id="dkc-gamma">0.0691</b></div>
+          <div>Daily theta (rent): <b id="dkc-theta">-0.0548</b> · breakeven move <b id="dkc-be">1.26%</b></div>
+          <div>By full repricing of the option: <b id="dkc-exact">+0.0827</b> per share · vega per point <b id="dkc-vega">0.1151</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="dkc-reset">Reset to S = 100, 20%, 21 days, +2%</button>
+        <div class="sl-note" id="dkc-warn"></div>
+      </div>
+      <p class="sl-p">The identity gives +$0.0833 and full repricing gives +$0.0827: the small gap is the third-order terms the identity drops. On a flat day you lose the rent, $0.0548.</p>
+    </section>
+
+    <!-- WB:delta_hedging_gamma_scalping-deck:START -->
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">A month of delta hedging, step by step</h2>
+      <!-- WB:delta_hedging_gamma_scalping:START -->
+      <div class="wb" data-title="A month of delta hedging, step by step">
+        <script type="application/json">{"w":600,"h":790,"intro":"One long call, hedged with shares once a day, over one simulated month. Watch what the hedge trades, what it earns, and what it cannot protect you from. Press play, or step through.","steps":[{"cap":"You buy a 21-day at-the-money call on a $100 stock, priced at 20% implied volatility. It costs $2.30 a share.","do":[{"icon":"you","name":"person","x":20,"y":20,"s":0.7,"tone":"blue","label":"you","lsize":18},{"box":"call","x":140,"y":28,"w":190,"h":78,"text":"long 1 call","tone":"blue","sub":"$2.30"}]},{"cap":"Its delta is 0.51: it moves like owning 51 shares. So you sell 51 shares against it. Now small price moves barely change your total.","do":[{"box":"sh","x":395,"y":28,"w":190,"h":78,"text":"short 51 shares","tone":"amber"},{"arrow":["call","sh"],"tone":"amber"},{"note":"nd","x":300,"y":142,"text":"net delta ≈ 0","size":20,"anchor":"middle","tone":"green"}]},{"cap":"Now let the stock move. This is one simulated month in which the stock moves at about 25% volatility, above the 20% you paid for.","do":[{"chart":"sp","x":10,"y":168,"w":580,"h":250,"title":"Stock price, one simulated month","xd":[0,21],"yd":[96,110],"yt":[[100,"$100"],[105,"$105"],[110,"$110"]],"xt":[[0,"0"],[10,"day 10"],[21,"day 21"]],"pl":58,"pr":26},{"series":"k","chart":"sp","pts":[[0,100],[21,100]],"tone":null,"dash":true,"ms":300},{"series":"spot","chart":"sp","pts":[[0,100],[1,101.67],[2,100.69],[3,101.14],[4,99.78],[5,97.85],[6,98.48],[7,100.99],[8,102.47],[9,106.91],[10,106.81],[11,107.28],[12,107.78],[13,105.94],[14,107.47],[15,109.48],[16,108.44],[17,109.42],[18,106.81],[19,107.15],[20,107.67],[21,106.84]],"tone":"blue","ms":2200}]},{"cap":"Day 1: the stock rises 1.7%. The option now acts like 63 shares, so you sell 11 more, higher.","do":[{"dot":"d1","chart":"sp","at":[1,101.67],"text":"sell 11","tone":"green","dx":-8,"dy":-18,"anchor":"end"}]},{"cap":"Day 5: it falls 1.9%. Delta drops to 0.34, so you buy 15 shares back, lower. Sell high, buy low: that is gamma paying you.","do":[{"dot":"d5","chart":"sp","at":[5,97.85],"text":"buy back 15","tone":"green","dx":10,"dy":22,"anchor":"start"}]},{"cap":"Day 9: a 4.3% jump. Delta goes from 0.71 to 0.94 and you sell 23 more shares. One big move pays more than all the small ones.","do":[{"dot":"d9","chart":"sp","at":[9,106.91],"text":"sell 23","tone":"green","dx":-10,"dy":-18,"anchor":"end"}]},{"cap":"Add up every hedge trade and the option's change: about +$0.76 a share by day 21, roughly a third of the premium. Most of it came on day 9.","do":[{"chart":"pl","x":10,"y":436,"w":580,"h":226,"title":"Hedged P&L, $ per share, cumulative","xd":[0,21],"yd":[-0.8,1.0],"yt":[[0.5,"+0.5"],[0,"0"],[-0.5,"−0.5"]],"xt":[[0,"0"],[10,"day 10"],[21,"day 21"]],"zero":true,"pl":58,"pr":26},{"series":"g26","chart":"pl","pts":[[0,0],[1,0.041],[2,0.017],[3,-0.034],[4,-0.027],[5,0.06],[6,0.014],[7,0.206],[8,0.232],[9,0.775],[10,0.752],[11,0.736],[12,0.725],[13,0.73],[14,0.745],[15,0.757],[16,0.756],[17,0.756],[18,0.756],[19,0.756],[20,0.756],[21,0.756]],"tone":"green","ms":2200,"label":"+$0.76","lat":[21,0.756],"ldx":-6,"ldy":-16,"lanchor":"end","lsize":16}]},{"cap":"After day 9 the stock sits far above the strike. Delta is near 1 and gamma has gone, so there is nothing left to scalp. The line goes flat.","do":[{"dim":"spot"},{"note":"flat","x":400,"y":560,"text":"gamma gone: flat","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"Same random shocks, but a quiet stock at 12% volatility. The rent is paid every day, and the stock hangs near the strike, so you hold lots of gamma and pay more: about −$0.66.","do":[{"hide":"flat"},{"series":"g12","chart":"pl","pts":[[0,0],[1,-0.035],[2,-0.085],[3,-0.142],[4,-0.187],[5,-0.217],[6,-0.277],[7,-0.287],[8,-0.334],[9,-0.233],[10,-0.291],[11,-0.347],[12,-0.4],[13,-0.444],[14,-0.483],[15,-0.501],[16,-0.544],[17,-0.574],[18,-0.6],[19,-0.641],[20,-0.657],[21,-0.659]],"tone":"red","ms":2200,"label":"−$0.66","lat":[21,-0.659],"ldx":-6,"ldy":22,"lanchor":"end","lsize":16}]},{"cap":"And the hedge cannot protect you from the implied volatility moving. If it falls 3 points while you hold, that is about −$0.35 a share more, whatever the stock did.","do":[{"box":"iv","x":10,"y":676,"w":285,"h":100,"text":"implied vol falls 3 points","tone":"red","sub":"about −$0.35 a share","size":18}]},{"cap":"The rule of the whole game: breakeven is the implied volatility divided by the square root of 252, 1.26% a day at 20%. Move more than that on average and gamma wins. Move less and the rent wins.","do":[{"box":"be","x":305,"y":676,"w":285,"h":100,"text":"breakeven: 1.26% a day","tone":"green","sub":"20% ÷ √252","size":18}]}]}</script>
+      </div>
+      <!-- WB:delta_hedging_gamma_scalping:END -->
+    </section>
+    <!-- WB:delta_hedging_gamma_scalping-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Over a month: profit ≈ vega × (realised − implied)</h2>
+      <p class="sl-sub">For this option vega is $0.115 per volatility point per share. Drag the volatility the stock actually delivers.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-sliderhead"><span>Realised volatility over the month (implied: 20%)</span><span class="sl-live" id="dkr-val">25%</span></div>
+        <input type="range" class="sl-slider" id="dkr-slider" min="5" max="40" step="1" value="25">
+        <div class="sl-verdict">Average hedged P&amp;L, per share: <b id="dkr-pnl">+0.58</b>, which is <b id="dkr-pct">+25%</b> of the $2.30 premium.</div>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Simulated month, hedged daily</span>
+          <ul>
+            <li>Realised 15%: mean −$0.58, std dev $0.37</li>
+            <li>Realised 20%: mean $0.00, std dev $0.42</li>
+            <li>Realised 25%: mean +$0.58, std dev $0.57</li>
+            <li>Realised 30%: mean +$1.16, std dev $0.81</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">What the average hides</span>
+          <ul>
+            <li>At 25% realised, one month's spread is about as large as the average</li>
+            <li>At 20% realised you still see ±$0.42 from hedging noise alone</li>
+            <li>A correct view on volatility can still lose in a given month</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-note">The simulation is 4,000 random months with Black-Scholes dynamics, a one-off run with a standard error of about $0.01 on each mean.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">How often to hedge: noise falls, cost rises</h2>
+      <p class="sl-sub">Same option, realised = implied = 20%. Simulated hedging errors and shares traded, per option share.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">3 hedges in the month</span>
+          <ul>
+            <li>Std dev of P&amp;L: $1.09, 47% of the premium</li>
+            <li>Shares traded: 0.91</li>
+            <li>Cost at 2¢ a share: $0.018</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Daily (21 hedges)</span>
+          <ul>
+            <li>Std dev of P&amp;L: $0.42, 18% of the premium</li>
+            <li>Shares traded: 1.93</li>
+            <li>Cost at 2¢ a share: $0.039</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">8 times a day (168 hedges)</span>
+          <ul>
+            <li>Std dev of P&amp;L: $0.155, 6.7% of the premium</li>
+            <li>Shares traded: 4.63</li>
+            <li>Cost at 2¢ a share: $0.093</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Noise falls like 1/√n and shares traded rise like √n. Std dev × √n stays near 1.9. There is no free setting, so practitioners hedge to a delta band, not "as often as possible".</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">What the identity leaves out</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Implied vol moves</h4><p>The identity holds it fixed. A 3-point fall costs about $0.35 a share on this option, more than a week of gamma gains. Vega is untouched by a delta hedge.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💸</div><div><h4>The option's own spread</h4><p>One volatility point of bid-ask on this contract is $0.115, about 5% of the premium. That usually outweighs the cost of the share hedge.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>The delta is a model output</h4><p>With a smile, the hedge ratio depends on how you assume implied vol moves with the stock. Two models, two hedges, two P&amp;Ls.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🕳</div><div><h4>Gaps and pins</h4><p>Long gamma benefits from a jump. A short-gamma book takes the whole thing. Near expiry at the strike, delta flips fast and the hedge needs constant care.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>The theory assumes constant volatility, continuous trading, no costs and no jumps. The numbers here are the clean case, which real outcomes are measured against, not a forecast of them.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 8 · It actually happened</div>
+      <h2 class="sl-h2">19 October 1987: hedging an option you do not own</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Portfolio insurance copied a put option by trading: hold less stock as prices fall (Rubinstein and Leland, 1981). Many insurers did it in index futures. Those are the same trades as a dealer hedging a put he has sold: sell into weakness. On 19 October 1987 the Dow fell 508 points, 22.6%, and the S&amp;P 500 about 20%. The Brady Commission, as cited in a Federal Reserve staff paper, put portfolio insurers at roughly 40% of non-market-maker futures sales that day. The Chicago Mercantile Exchange's inquiry said insurance "does not by itself explain the magnitude of the crash".</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link"><b>Rule</b>Replicate a put by selling as prices fall</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson</b>Hedging with the move, like a short-gamma hedger</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link shock"><b>Falling market</b>Batched selling in futures</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Dow −22.6% in a day</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The sign of gamma decides who steadies the market</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Long gamma</span>
+          <ul>
+            <li>Price falls: delta falls, you buy shares back</li>
+            <li>Price rises: you sell shares</li>
+            <li>Trades against the move, supplies liquidity</li>
+            <li>Pays theta, wins when the stock moves more than priced</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Short gamma, or copying it</span>
+          <ul>
+            <li>Price falls: you sell more</li>
+            <li>Price rises: you buy more</li>
+            <li>Trades with the move, can add to it</li>
+            <li>Collects theta, loses when the stock moves more than priced</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>The identity assumes you can trade at the price on your screen. A hedge is a rule that trades when price moves, and a rule followed by enough people becomes part of the price.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Implied volatility is 20%. About how big a one-day move does a delta-hedged long call need to break even that day?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About 1.26%</button>
+        <button class="sl-quiz-opt">About 20%</button>
+        <button class="sl-quiz-opt">Any move, as long as it is up</button>
+        <div class="sl-quiz-explain">The breakeven is σ·√dt = 0.20 ÷ √252 ≈ 1.26%. Up and down moves pay alike because gamma acts on the square of the move.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does a delta hedge leave you exposed to?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Gamma, theta and vega</button>
+        <button class="sl-quiz-opt">Nothing: it is fully hedged</button>
+        <button class="sl-quiz-opt">Only the stock's direction</button>
+        <div class="sl-quiz-explain">Delta hedging cancels the first-order effect of the stock's direction. Convexity, time decay and implied volatility all remain.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Realised volatility comes in 5 points above implied on this option. Roughly what is the average hedged P&amp;L over the month?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About +$0.58 a share, with a wide spread around it</button>
+        <button class="sl-quiz-opt">Exactly +$0.58 every month</button>
+        <button class="sl-quiz-opt">About +$5.00 a share</button>
+        <div class="sl-quiz-explain">Vega × the gap: $0.115 × 5 ≈ $0.58. That is an average. In the simulation the standard deviation of one month at this setting is about $0.57.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why not hedge as often as possible?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Noise falls like 1/√n but trading cost rises like √n</button>
+        <button class="sl-quiz-opt">More frequent hedging increases the noise</button>
+        <button class="sl-quiz-opt">It is not allowed by exchanges</button>
+        <div class="sl-quiz-explain">Each re-hedge crosses a spread. Total shares traded grow with the square root of the number of hedges, while hedging error shrinks with it, so practitioners use a delta band.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why did portfolio insurance trade with the market in 1987?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Copying a put means selling as prices fall, like a short-gamma hedger</button>
+        <button class="sl-quiz-opt">It was long gamma and buying dips</button>
+        <button class="sl-quiz-opt">It only traded after the market had closed</button>
+        <div class="sl-quiz-explain">Replicating a put means holding less stock as prices fall. That is the same direction of trade as a dealer hedging a put he sold, so many insurers following the rule added to the selling.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="14">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative week (not a historical episode)</div>
+    <h3>Five quiet days, and the option is bleeding</h3>
+    <p>This is a made-up situation with computed numbers. You bought the lesson's 21-day at-the-money call at 20% implied ($2.30, stock $100) because you expect the stock to move more than 20% a year implies. You hedge once a day. Over the last five days the stock has moved only 0.4% a day, up, down, up, down, up, and is now $100.40. Rent has exceeded gamma gains, you are down about $0.26 a share on the hedged position, and implied volatility has also slipped from 20% to 18%, which costs a further $0.20 or so. Sixteen trading days remain. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Double the position so a single big move would make the money back.<div class="tl-drill-why">Doubling doubles the rent as well as the gamma. The $0.26 already lost is gone whatever you do next, and chasing it turns a small bleed into a bigger bet on the same unproven view.</div></li>
+      <li data-verdict="bad">Stop hedging until the stock moves, to save trading costs.<div class="tl-drill-why">With delta still near 0.5 you are no longer hedged. You are running a directional position you did not mean to hold, and you give up exactly the buy-low, sell-high trades that make the strategy work. The cost saved is a few cents.</div></li>
+      <li data-verdict="good">Keep hedging by your rule, and judge the trade on what you now expect over the remaining 16 days, against 18% implied.<div class="tl-drill-why">The five quiet days are sunk. What matters is whether you still expect realised volatility to exceed what the option now prices. If yes, hold: the rent per day is the same and the price of the view is lower. If your forecast has changed, close it. Either way the decision comes from the forecast, not from the bleed.</div></li>
+      <li data-verdict="ok">Close it now to stop the bleed.<div class="tl-drill-why">Defensible if your forecast of volatility has come down. It is not defensible as a reaction to five quiet days alone: on a one-month trade, five quiet days are well within the normal spread of outcomes, as the simulation showed.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this shows.</strong> This is an illustrative scenario, not a recorded trade. The numbers come from repricing the option each day with the stated moves: five days of ±0.4% cost about $0.26 per share, and the lost two vol points are worth roughly $0.10 a point at 16 days. The point is the discipline. A hedged long-gamma position has a known daily cost and an uncertain payoff, so the useful questions are about the forecast and the size, not about the days already gone.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A delta hedge removes direction, not risk. Gamma, theta and vega remain, and which one hurts depends on whether you bought or sold the option.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>One day's hedged P&amp;L is ½Γ(dS² − σ²S²dt): realised movement against implied movement, scaled by gamma. Breakeven is σ√dt, 1.26% a day at 20%.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Over a month the average is about vega × (realised − implied vol), $0.115 per point here, but a single month's spread is as large as the edge.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Hedging often trades noise (1/√n) for cost (√n). There is no free setting.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The identity ignores implied vol moves (3 points ≈ $0.35 here), the option's spread, model delta and gaps. Those are where hedged books really lose.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>It actually happened, 19 October 1987: portfolio insurers hedged a put they did not own by selling into the fall, roughly 40% of non-market-maker futures sales, in a 22.6% Dow decline. The sign of gamma decides who steadies the market.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read any hedged option position as a bet on realised against implied movement, with a known daily rent. You can compute the breakeven move, estimate the month's average result from vega and the volatility gap, and name the risks the hedge leaves behind before you take the position.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Later in this series</div>
+        <h3>Short premium: risk and sizing</h3>
+        <p>Everything here mirrors for the seller, who collects the rent and loses on large moves. The next lessons look at how short option books blow up, and how to size them by worst case.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="../hub.html">Back to Theory Lab hub</a>
+          <a class="sl-btn ghost" href="delta-hedging-gamma-scalping.html">Read the full lesson →</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+// Delta hedging simulator: pure functions, Black-Scholes with r = 0, q = 0.
+// Shared by the lesson, the deck and the node check (module.exports guarded).
+var DH = (function () {
+  function erf(x) { // Abramowitz-Stegun 7.1.26 is too coarse; use a series/continued fraction mix
+    var s = x < 0 ? -1 : 1; x = Math.abs(x);
+    if (x < 3) { // Taylor series
+      var sum = x, term = x, n = 0;
+      while (Math.abs(term) > 1e-17 && n < 200) { n++; term *= -x * x / n; sum += term / (2 * n + 1); }
+      return s * 2 / Math.sqrt(Math.PI) * sum;
+    }
+    // continued fraction for erfc
+    var t = 0; for (var k = 60; k >= 1; k--) t = k / 2 / (x + t);
+    var erfc = Math.exp(-x * x) / Math.sqrt(Math.PI) / (x + t);
+    return s * (1 - erfc);
+  }
+  function N(x) { return 0.5 * (1 + erf(x / Math.SQRT2)); }
+  function phi(x) { return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI); }
+  function d1(S, K, sig, T) { return (Math.log(S / K) + 0.5 * sig * sig * T) / (sig * Math.sqrt(T)); }
+  function call(S, K, sig, T) {
+    if (T <= 1e-12) return Math.max(S - K, 0);
+    var a = d1(S, K, sig, T), b = a - sig * Math.sqrt(T);
+    return S * N(a) - K * N(b);
+  }
+  function delta(S, K, sig, T) { return T <= 1e-12 ? (S > K ? 1 : 0) : N(d1(S, K, sig, T)); }
+  function gamma(S, K, sig, T) { return T <= 1e-12 ? 0 : phi(d1(S, K, sig, T)) / (S * sig * Math.sqrt(T)); }
+  function vega(S, K, sig, T) { return T <= 1e-12 ? 0 : S * phi(d1(S, K, sig, T)) * Math.sqrt(T); } // per 1.00 of vol
+  // r = 0: theta per year = -0.5 sig^2 S^2 gamma
+  function theta(S, K, sig, T) { return -0.5 * sig * sig * S * S * gamma(S, K, sig, T); }
+  function rng(seed) { // mulberry32
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0; var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function normals(seed, n) { // Box-Muller, n values
+    var u = rng(seed), out = [];
+    while (out.length < n) {
+      var a = u(), b = u(); if (a < 1e-12) a = 1e-12;
+      var r = Math.sqrt(-2 * Math.log(a));
+      out.push(r * Math.cos(2 * Math.PI * b)); if (out.length < n) out.push(r * Math.sin(2 * Math.PI * b));
+    }
+    return out;
+  }
+  // One hedged path. z: normals (one per step). hedgeEvery: rebalance every k steps. Returns series + totals.
+  function hedgedPath(o) {
+    var S0 = o.S0, K = o.K, sigI = o.sigI, sigR = o.sigR, steps = o.steps, dt = o.dt, z = o.z, k = o.hedgeEvery || 1;
+    var S = S0, shares = delta(S, K, sigI, steps * dt), traded = Math.abs(shares);
+    var cum = 0, gainSum = 0, paidSum = 0, sumsq = 0;
+    var spots = [S0], pnl = [0], t = 0;
+    for (var i = 0; i < steps; i++) {
+      var Tl = (steps - i) * dt, Tn = (steps - i - 1) * dt;
+      var Sn = S * Math.exp(-0.5 * sigR * sigR * dt + sigR * Math.sqrt(dt) * z[i]);
+      var G = gamma(S, K, sigI, Tl);
+      gainSum += 0.5 * G * (Sn - S) * (Sn - S);
+      paidSum += 0.5 * sigI * sigI * S * S * G * dt;
+      sumsq += Math.pow(Math.log(Sn / S), 2);
+      cum += (call(Sn, K, sigI, Tn) - call(S, K, sigI, Tl)) - shares * (Sn - S);
+      S = Sn;
+      if ((i + 1) % k === 0 && i + 1 < steps) { var nd = delta(S, K, sigI, Tn); traded += Math.abs(nd - shares); shares = nd; }
+      spots.push(S); pnl.push(cum);
+    }
+    return { spots: spots, pnl: pnl, total: cum, gain: gainSum, paid: paidSum, traded: traded,
+             realised: Math.sqrt(sumsq / (steps * dt)) };
+  }
+
+  // ---- shared views: used by the lesson, the deck and the static-number generator ----
+  var BASE = { S0: 100, K: 100, sigI: 0.2, steps: 21, dt: 1 / 252 };
+  var SEED_A = 10;
+  function sgn(v, dp) { var r = v.toFixed(dp); var z = parseFloat(r) === 0; return (v < 0 && !z ? '−' : (z ? '' : '+')) + Math.abs(v).toFixed(dp); }
+  var zA = null;
+  function chartA(sigR) {
+    if (!zA) zA = normals(SEED_A, BASE.steps);
+    var r = hedgedPath({ S0: BASE.S0, K: BASE.K, sigI: BASE.sigI, sigR: sigR, steps: BASE.steps, dt: BASE.dt, z: zA, hedgeEvery: 1 });
+    var X0 = 60, X1 = 610, n = BASE.steps;
+    var lo = Math.min(BASE.K, Math.min.apply(null, r.spots)) - 1, hi = Math.max(BASE.K, Math.max.apply(null, r.spots)) + 1;
+    var m = Math.max(0.5, Math.max.apply(null, r.pnl.map(Math.abs))) * 1.15;
+    function sx(i) { return X0 + (X1 - X0) * i / n; }
+    function sy(v) { return 135 - 105 * (v - lo) / (hi - lo); }
+    function py(v) { return 245 - 55 * v / m; }
+    var sp = r.spots.map(function (v, i) { return sx(i).toFixed(1) + ',' + sy(v).toFixed(1); }).join(' ');
+    var pp = r.pnl.map(function (v, i) { return sx(i).toFixed(1) + ',' + py(v).toFixed(1); }).join(' ');
+    var premium = call(BASE.S0, BASE.K, BASE.sigI, BASE.steps * BASE.dt);
+    return { spotPts: sp, pnlPts: pp, strikeY: sy(BASE.K).toFixed(1), zeroY: py(0).toFixed(1),
+      endX: sx(n).toFixed(1), endY: py(r.total).toFixed(1), spotHi: hi.toFixed(0), spotLo: lo.toFixed(0), pnlM: m.toFixed(2),
+      real: (r.realised * 100).toFixed(1), gain: r.gain.toFixed(3), paid: r.paid.toFixed(3), net: sgn(r.gain - r.paid, 3),
+      exact: sgn(r.total, 3), contract: sgn(r.total * 100, 0), pct: sgn(r.total / premium * 100, 0),
+      up: r.total >= 0, spotEnd: r.spots[n].toFixed(2) };
+  }
+  // hedge-frequency study: fine grid of 168 steps, hedge every k steps, realised = implied
+  var NB = [1, 3, 7, 21, 42, 84, 168], FINE = 168, MPATHS = 4000, SEED_B = 1000, studyB = null;
+  function study() {
+    if (studyB) return studyB;
+    var sig = BASE.sigI, K = BASE.K, dt = 1 / (252 * 8), T = BASE.steps / 252;
+    var res = NB.map(function () { return { tot: [], trd: [] }; });
+    for (var p = 0; p < MPATHS; p++) {
+      var z = normals(SEED_B + p, FINE), S = BASE.S0, Ss = [S];
+      for (var i = 0; i < FINE; i++) { S = S * Math.exp(-0.5 * sig * sig * dt + sig * Math.sqrt(dt) * z[i]); Ss.push(S); }
+      var C = [], D = [];
+      for (var j = 0; j <= FINE; j++) { var Tl = (FINE - j) * dt; C.push(call(Ss[j], K, sig, Tl)); D.push(delta(Ss[j], K, sig, Tl)); }
+      NB.forEach(function (nh, a) {
+        var k = FINE / nh, sh = D[0], tr = Math.abs(sh), cum = 0;
+        for (var i2 = 0; i2 < FINE; i2++) {
+          cum += (C[i2 + 1] - C[i2]) - sh * (Ss[i2 + 1] - Ss[i2]);
+          if ((i2 + 1) % k === 0 && i2 + 1 < FINE) { tr += Math.abs(D[i2 + 1] - sh); sh = D[i2 + 1]; }
+        }
+        res[a].tot.push(cum); res[a].trd.push(tr);
+      });
+    }
+    var prem = call(BASE.S0, K, sig, T);
+    studyB = { prem: prem, rows: NB.map(function (nh, a) {
+      var t = res[a].tot, m = t.reduce(function (x, y) { return x + y; }, 0) / t.length;
+      var v = t.reduce(function (x, y) { return x + (y - m) * (y - m); }, 0) / (t.length - 1);
+      var tr = res[a].trd.reduce(function (x, y) { return x + y; }, 0) / t.length;
+      return { n: nh, mean: m, sd: Math.sqrt(v), traded: tr };
+    }) };
+    return studyB;
+  }
+
+  var LABELS = { 1: 'once', 3: '3×', 7: '7×', 21: 'daily', 42: '2/day', 84: '4/day', 168: '8/day' };
+  function tableB(costCents) {
+    var st = study();
+    return st.rows.map(function (r) {
+      var cost = r.traded * costCents / 100;
+      return { n: r.n, label: LABELS[r.n], sd: r.sd.toFixed(3), pct: (r.sd / st.prem * 100).toFixed(1) + '%',
+               traded: r.traded.toFixed(2), cost: cost.toFixed(3), costPct: (cost / st.prem * 100).toFixed(1) + '%',
+               mean: sgn(r.mean, 3), sdv: r.sd, costv: cost };
+    });
+  }
+  // one-day calculator: ATM call, r = 0, days = trading days to expiry, mv = signed one-day move in %
+  function calc(S, ivPct, days, mvPct) {
+    var K = S, sig = ivPct / 100, T = days / 252, dt = 1 / 252;
+    var C = call(S, K, sig, T), D = delta(S, K, sig, T), G = gamma(S, K, sig, T), th = theta(S, K, sig, T) * dt;
+    var r = mvPct / 100, S1 = S * (1 + r);
+    var approx = 0.5 * G * S * S * (r * r - sig * sig * dt);
+    var exact = call(S1, K, sig, Math.max(T - dt, 0)) - C - D * (S1 - S);
+    return { call: C.toFixed(3), delta: D.toFixed(3), gamma: G.toFixed(4), theta: th.toFixed(4),
+             be: (sig * Math.sqrt(dt) * 100).toFixed(2) + '%', bePts: (S * sig * Math.sqrt(dt)).toFixed(2),
+             approx: sgn(approx, 4), exact: sgn(exact, 4), vega: (vega(S, K, sig, T) / 100).toFixed(4) };
+  }
+
+  // deck widget: one-day hedged P&L against the day's move, for a 21-day ATM call on 100 at implied ivPct
+  function parab(ivPct, mvPct) {
+    var S = 100, T = 21 / 252, dt = 1 / 252, sig = ivPct / 100, G = gamma(S, S, sig, T);
+    function val(m) { var r = m / 100; return 0.5 * G * S * S * (r * r - sig * sig * dt); }
+    function px(m) { return 330 + m * 67.5; }
+    function py(v) { return Math.max(20, Math.min(240, 190 - v * 300)); }
+    var pts = [];
+    for (var i = 0; i <= 40; i++) { var m = -4 + i * 0.2; pts.push(px(m).toFixed(1) + ',' + py(val(m)).toFixed(1)); }
+    var be = sig * Math.sqrt(dt) * 100;
+    return { pts: pts.join(' '), dotX: px(mvPct).toFixed(1), dotY: py(val(mvPct)).toFixed(1),
+             beL: px(-be).toFixed(1), beR: px(be).toFixed(1), be: be.toFixed(2) + '%',
+             rent: sgn(val(0), 4), pnl: sgn(val(mvPct), 4) };
+  }
+  // deck widget: rule-of-thumb average hedged P&L over the month for a realised vol (percent)
+  function rule(realPct) {
+    var nu = vega(100, 100, 0.2, 21 / 252) / 100, prem = call(100, 100, 0.2, 21 / 252), pnl = nu * (realPct - 20);
+    return { pnl: sgn(pnl, 2), pct: sgn(pnl / prem * 100, 0) + '%' };
+  }
+
+  return { parab: parab, rule: rule, tableB: tableB, calc: calc, BASE: BASE, NB: NB, sgn: sgn, chartA: chartA, study: study, N: N, phi: phi, d1: d1, call: call, delta: delta, gamma: gamma, vega: vega, theta: theta,
+           rng: rng, normals: normals, hedgedPath: hedgedPath };
+})();
+
+
+</script>
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  // one-day P&L curve
+  (function(){
+    var mv = $('dk-mv'); if (!mv) return;
+    var iv = $('dk-iv');
+    function draw(){
+      var m = parseInt(mv.value, 10) / 10, v = parseInt(iv.value, 10);
+      $('dk-mvval').textContent = (m >= 0 ? '+' : '−') + Math.abs(m).toFixed(1) + '%';
+      $('dk-ivval').textContent = v + '%';
+      var p = DH.parab(v, m);
+      $('dk-curve').setAttribute('d', 'M' + p.pts);
+      $('dk-dot').setAttribute('cx', p.dotX); $('dk-dot').setAttribute('cy', p.dotY);
+      ['dk-bel', 'dk-ber'].forEach(function(id, i){ var x = i ? p.beR : p.beL; $(id).setAttribute('x1', x); $(id).setAttribute('x2', x); });
+      $('dk-be').textContent = p.be; $('dk-rent').textContent = p.rent; $('dk-pnl').textContent = p.pnl;
+    }
+    mv.addEventListener('input', draw); iv.addEventListener('input', draw); draw();
+  })();
+  // calculator
+  (function(){
+    var ids = ['dkc-s', 'dkc-iv', 'dkc-days', 'dkc-mv'], els = ids.map($);
+    if (!els[0]) return;
+    var DEF = [100, 20, 21, 2];
+    function recompute(){
+      var v = els.map(function(e){ return parseFloat(e.value); });
+      var warn = $('dkc-warn');
+      if (v.some(function(x){ return !isFinite(x); }) || v[0] <= 0 || v[1] <= 0 || v[2] < 1) {
+        ['dkc-approx','dkc-call','dkc-delta','dkc-gamma','dkc-theta','dkc-be','dkc-exact','dkc-vega'].forEach(function(i){ $(i).textContent = '—'; });
+        warn.textContent = 'Need S > 0, volatility > 0 and at least 1 day to expiry.'; return;
+      }
+      var c = DH.calc(v[0], v[1], v[2], v[3]);
+      $('dkc-approx').textContent = c.approx; $('dkc-call').textContent = c.call; $('dkc-delta').textContent = c.delta;
+      $('dkc-gamma').textContent = c.gamma; $('dkc-theta').textContent = c.theta; $('dkc-be').textContent = c.be;
+      $('dkc-exact').textContent = c.exact; $('dkc-vega').textContent = c.vega;
+      warn.textContent = Math.abs(v[3]) < parseFloat(c.be) ? 'A move inside the breakeven: the rent wins today.' : 'A move outside the breakeven: gamma wins today.';
+    }
+    els.forEach(function(e){ e.addEventListener('input', recompute); });
+    $('dkc-reset').addEventListener('click', function(){ els.forEach(function(e, i){ e.value = DEF[i]; }); recompute(); });
+    recompute();
+  })();
+  // realised vs implied rule
+  (function(){
+    var s = $('dkr-slider'); if (!s) return;
+    function draw(){
+      var v = parseInt(s.value, 10), r = DH.rule(v);
+      $('dkr-val').textContent = v + '%'; $('dkr-pnl').textContent = r.pnl; $('dkr-pct').textContent = r.pct;
+    }
+    s.addEventListener('input', draw); draw();
+  })();
+})();
+</script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+</body>
+</html>
