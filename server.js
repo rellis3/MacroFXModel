@@ -31145,6 +31145,58 @@ app.get('/api/calendar-ahead', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+
+// ── The week's schedules that are not data releases: big-company earnings, Treasury auctions, Fed speakers ──────────
+// Free public sources, no key, cached 6h each. Parsers live in js/marketCalendars.js and are tested there. These are SCHEDULES (when
+// something happens), used by the newsletter's "Beyond the calendar" section; nothing here forecasts what an event does to price.
+const _calExtras = { earn: { at: 0, rows: null }, auct: { at: 0, rows: null }, fed: { at: 0, rows: null } };
+const _CAL_TTL = 6 * 3600e3;
+app.get('/api/earnings-ahead', async (_req, res) => {
+  try {
+    const c = _calExtras.earn;
+    if (!c.rows || Date.now() - c.at > _CAL_TTL) {
+      const { parseEarnings } = await import('./js/marketCalendars.js'), H = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, rows = []; let failed = 0;
+      for (let k = 0; k <= 8; k++) {
+        const d = new Date(Date.now() + k * 864e5).toISOString().slice(0, 10);
+        if ([0, 6].includes(new Date(d + 'T00:00:00Z').getUTCDay())) continue;
+        try { const r = await fetch(`https://api.nasdaq.com/api/calendar/earnings?date=${d}`, { headers: H, signal: AbortSignal.timeout(20_000) }); if (r.ok) rows.push(...parseEarnings(await r.json(), d)); else failed++; }
+        catch (e) { failed++; console.warn('[earnings-ahead]', d, e.message); }
+        await new Promise(r => setTimeout(r, 250));
+      }
+      if (rows.length || failed === 0) { c.rows = rows; c.at = Date.now(); } else throw new Error('Nasdaq earnings calendar unavailable');
+    }
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ ok: true, at: new Date(c.at).toISOString(), rows: c.rows, note: 'Companies above $150bn plus the nine the Nasdaq leans on. Source: api.nasdaq.com earnings calendar. A schedule, not a forecast.' });
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+app.get('/api/treasury-auctions', async (_req, res) => {
+  try {
+    const c = _calExtras.auct;
+    if (!c.rows || Date.now() - c.at > _CAL_TTL) {
+      const { parseAuctions } = await import('./js/marketCalendars.js');
+      const r = await fetch('https://www.treasurydirect.gov/TA_WS/securities/upcoming?format=json', { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(20_000) });
+      if (!r.ok) throw new Error(`TreasuryDirect ${r.status}`);
+      c.rows = parseAuctions(await r.json()); c.at = Date.now();
+    }
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ ok: true, at: new Date(c.at).toISOString(), rows: c.rows, note: 'TreasuryDirect upcoming auctions, dated by the competitive bidding close. A schedule, not a forecast.' });
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+app.get('/api/fed-speakers', async (_req, res) => {
+  try {
+    const c = _calExtras.fed;
+    if (!c.rows || Date.now() - c.at > _CAL_TTL) {
+      const { parseFedCalendar } = await import('./js/marketCalendars.js');
+      const r = await fetch('https://www.federalreserve.gov/json/calendar.json', { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(20_000) });
+      if (!r.ok) throw new Error(`federalreserve.gov ${r.status}`);
+      const from = new Date().toISOString().slice(0, 10), to = new Date(Date.now() + 21 * 864e5).toISOString().slice(0, 10);
+      c.rows = parseFedCalendar(await r.text(), from, to); c.at = Date.now();
+    }
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ ok: true, at: new Date(c.at).toISOString(), rows: c.rows, note: 'Federal Reserve public calendar: speeches, testimony, FOMC and Beige Book, shown by role. Other central banks are not covered.' });
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/calendar-feed', async (_req, res) => {
   try {
     if (Date.now() - _calFeed.at > 30 * 60_000) await _refreshCalFeed();

@@ -174,9 +174,9 @@ function dialSvg(active, total) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 84" width="140" height="84" role="img" aria-label="${active} of ${total} risk flags active">${arc(-90, -32, COLORS.green)}${arc(-26, 26, COLORS.amber)}${arc(32, 90, COLORS.orange)}<line x1="${cx}" y1="${cy}" x2="${np[0].toFixed(1)}" y2="${np[1].toFixed(1)}" stroke="${COLORS.ink}" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="5" fill="${COLORS.ink}"/><text x="${cx}" y="${cy - 18}" text-anchor="middle" font-size="18" font-weight="700" fill="${COLORS.ink}" font-family="Segoe UI,system-ui,sans-serif">${active}/${total}</text></svg>`;
 }
 /** Signed horizontal bars as HTML/CSS (robust in print and in any viewer). */
-function bars(rows, { max = 1, fmt = v => sg(v) } = {}) {
+function bars(rows, { max = 1, fmt = v => sg(v), wide = false } = {}) {
   return rows.map(r => { const v = r.v, w = v == null ? 0 : Math.min(50, Math.abs(v) / max * 50), col = v == null ? COLORS.line : v >= 0 ? COLORS.green : COLORS.orange;
-    return `<div class="br"><span class="bl">${esc(r.label)}</span><span class="bt"><i class="mid"></i><i class="fill" style="${v >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${col}"></i></span><span class="bv">${v == null ? 'no data' : esc(r.text ?? fmt(v))}</span></div>`; }).join('');
+    return `<div class="br${wide ? ' w' : ''}"><span class="bl">${esc(r.label)}</span><span class="bt"><i class="mid"></i><i class="fill" style="${v >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${col}"></i></span><span class="bv">${v == null ? 'no data' : esc(r.text ?? fmt(v))}</span></div>`; }).join('');
 }
 const pctBars = rows => rows.map(r => `<div class="br p"><span class="bl">${esc(r.label)}</span><span class="bt"><i class="fill" style="left:0;width:${Math.max(0, Math.min(100, r.p))}%;background:${r.color ?? COLORS.blue}"></i></span><span class="bv">${esc(r.text ?? r.p + '%')}</span></div>`).join('');
 const sec = (title, kicker, body) => (body ? `<section><h2><small>${esc(kicker)}</small>${esc(title)}</h2>${body}</section>` : '');
@@ -198,6 +198,7 @@ function plumbingSvg(stages) {
 }
 
 const CSS = `
+.br.w{grid-template-columns:150px 1fr 170px}.br.w .bv{white-space:nowrap}.rw2{font-size:13px;margin:6px 0;line-height:1.5}
 .pxg{display:grid;gap:7px}.px{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(70px,1fr) auto;gap:8px;align-items:center;font-size:12.5px}.px .pl{font-weight:600}.px .pb{height:8px;border-radius:5px;background:#e6ecf5;position:relative;overflow:hidden}.px .pb i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}.px .pv{font-family:Consolas,monospace;font-size:11.5px;white-space:nowrap}.pc .mv{font-size:12px;color:${COLORS.muted};margin:2px 0 2px}.pc .mv b{font-family:Consolas,monospace}
 .glance{margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}.glance>div{background:${COLORS.card};border:1px solid ${COLORS.line};border-radius:14px;padding:10px 12px}.glance b{display:block;font-size:19px;line-height:1.15;color:${COLORS.ink}}.glance span{display:block;font-size:11.5px;color:${COLORS.muted};margin-top:2px}
 .ckey{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;font-size:11.5px;color:${COLORS.muted}}.ckey i{display:inline-block;width:18px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
@@ -295,6 +296,35 @@ export function buildNewsletter(n) {
   const evRows = evShow.map(e => { const note = e.note ?? {}; return `<tr><td>${esc(ukTime(e.ms))}</td><td><b>${e.ccy ? (FLAG[e.ccy] ?? '') + ' ' : ''}${esc(e.event)}</b> ${pill(e.impact === 'high' ? 'big one' : 'medium', e.impact === 'high' ? 'a' : '')}<small>${e.estimate ? 'forecast ' + esc(e.estimate) : 'no forecast listed'}${e.prev ? ', last time ' + esc(e.prev) : ''}</small>${note.measured ? `<small><b style="color:${COLORS.ink}">History:</b> ${esc([note.book, note.range].filter(Boolean).join(' · '))}.</small>` : ''}</td></tr>`; }).join('');
   const ahead = weekly ? wkCal : evRows ? sec('The big releases coming up', 'Part 1 · The world', `<table class="ev">${evRows}</table><p class="small muted">UK time. "History" means we found this release moves that market by more than a normal day. Where it is blank, nothing unusual has been found. Nobody can tell in advance which way a surprise will push the price, so we do not try.</p>`) : '';
 
+
+  // ── Beyond the calendar: closures, big-company earnings, Treasury supply, Fed speakers. All are schedules, none is a forecast. ──
+  const ex = n.extras ?? null;
+  const dShort = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const ukClock = ms => new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+  const groupBy = (rows, f) => { const m = new Map(); for (const r of rows) { const k = f(r); (m.get(k) ?? m.set(k, []).get(k)).push(r); } return [...m]; };
+  const xb = [];
+  if (ex) {
+    if (ex.closures?.length) xb.push(`<h3 style="margin-top:0">Markets shut or closing early</h3>${ex.closures.map(c => `<div class="rw2"><b>${esc(dShort(c.date))}</b> ${esc(c.market)}: ${esc(c.name)} <span class="muted">(${esc(c.kind)})</span></div>`).join('')}<p class="small muted">Thin trading and odd price moves around a closure are normal. Japan and other markets are not tracked here.</p>`);
+    if (ex.earnings?.length) xb.push(`<h3${xb.length ? '' : ' style="margin-top:0"'}>Big companies reporting</h3>${groupBy(ex.earnings, r => r.date).map(([d, rs]) => `<div class="rw2"><b>${esc(dShort(d))}</b> ${rs.slice(0, 8).map(r => `${r.tracked ? '<b>' : ''}${esc(r.name)}${r.tracked ? '</b>' : ''} <span class="muted">${esc(r.when)}${r.epsForecast ? ', expected earnings per share ' + esc(r.epsForecast) : ''}</span>`).join('; ')}${rs.length > 8 ? ` <span class="muted">and ${rs.length - 8} more</span>` : ''}</div>`).join('')}<p class="small muted">Companies worth over $150bn, plus the nine that move the Nasdaq (in bold). These are dates. Nobody can say in advance how the market will take the numbers.</p>`);
+    else if (ex.errors?.includes('earnings')) xb.push(`<p class="small muted">Earnings dates were unavailable when this issue was built.</p>`);
+    if (ex.auctions?.length) { const coupons = ex.auctions.filter(a => a.type !== 'Bill'), bills = ex.auctions.filter(a => a.type === 'Bill');
+      xb.push(`<h3${xb.length ? '' : ' style="margin-top:0"'}>The Treasury comes to borrow</h3>${groupBy([...coupons, ...bills.length ? [{ date: bills[0].date, bills }] : []], r => r.date).map(([d, rs]) => `<div class="rw2"><b>${esc(dShort(d))}</b> ${rs.map(r => r.bills ? `Bills ${r.bills.map(b => esc(b.term.replace('-Week', 'wk')) + ' $' + b.amountB + 'bn').join(', ')}` : `${esc(r.term)} ${esc(r.type)}${r.reopening ? ' (reopening)' : ''} $${r.amountB}bn${r.ms ? ' <span class="muted">bids close ' + ukClock(r.ms) + ' UK</span>' : ''}`).join('; ')}</div>`).join('')}<p class="small muted">An auction is how the US government borrows. A bigger sale means more bonds for the market to absorb. The sizes are announced in advance.</p>`); }
+    else if (ex.errors?.includes('auctions')) xb.push(`<p class="small muted">Treasury auction dates were unavailable when this issue was built.</p>`);
+    if (ex.fed?.length) xb.push(`<h3${xb.length ? '' : ' style="margin-top:0"'}>Federal Reserve diary</h3>${ex.fed.map(f => `<div class="rw2"><b>${esc(dShort(f.date))}</b>${f.ms ? ' ' + ukClock(f.ms) + ' UK' : ''} ${esc(f.what)}${f.where ? ` <span class="muted">(${esc(f.where)})</span>` : ''}</div>`).join('')}<p class="small muted">Shown by role. Central banks often avoid speaking in the days before a policy meeting. Other central banks are not covered.</p>`);
+    else if (ex.errors?.includes('fed')) xb.push(`<p class="small muted">The Federal Reserve diary was unavailable when this issue was built.</p>`);
+  }
+  const beyond = xb.length ? sec('Beyond the calendar', 'Part 1 · The world', xb.join('')) : '';
+
+  // ── Stocks under the hood ──
+  const stk = n.stocks, lead = (rows, mx) => bars([...rows].filter(x => x.d20 != null).sort((a, b) => b.d20 - a.d20).map(x => ({ label: x.label, v: x.d20, text: `${sg(x.d20, 1)}% · today ${x.d1 != null ? sg(x.d1, 2) + '%' : '·'}` })), { max: mx, wide: true });
+  const stockHtml = stk?.sectors?.length ? sec('Stocks under the hood', 'Part 1 · The world', `<h3 style="margin-top:0">Which parts of the market are leading (last 20 days)</h3>${lead(stk.sectors, Math.max(3, ...stk.sectors.map(x => Math.abs(x.d20 ?? 0))) * 1.1)}${stk.mega?.length ? `<h3>The big companies that carry the Nasdaq</h3>${lead(stk.mega, Math.max(5, ...stk.mega.map(x => Math.abs(x.d20 ?? 0))) * 1.1)}` : ''}<p class="small muted">The Nasdaq is dominated by a handful of very large technology companies, so their moves explain much of its day. Sector funds show which parts of the economy money is leaning into or leaving. Each bar is the 20-day move, with today's move beside it.</p>`) : '';
+
+  // ── Commodities, volatility and credit ──
+  const cm = n.commodities ?? [], vo = n.volatility ?? [], cr2 = n.creditSpreads ?? [];
+  const volTable = vo.length ? `<h3>Fear gauges</h3><table><tr><th></th><th class="n">Level</th><th class="n">Today</th><th class="n">20 days</th></tr>${vo.map(r => `<tr><td>${esc(r.label)}</td><td class="n">${r.v.toFixed(r.v >= 100 ? 0 : 1)}</td><td class="n ${r.d1 > 0 ? 'dn' : r.d1 < 0 ? 'up' : ''}">${r.d1 != null ? sg(r.d1, 1) : '·'}</td><td class="n ${r.d20 > 0 ? 'dn' : r.d20 < 0 ? 'up' : ''}">${r.d20 != null ? sg(r.d20, 1) : '·'}</td></tr>`).join('')}</table><p class="small muted">Higher means more fear, so a rise is shown in orange. When the 9-day VIX sits above the 3-month VIX, the market is more worried about right now than about the months ahead.</p>` : '';
+  const crTable = cr2.length ? `<h3>Borrowing costs for companies</h3><table><tr><th></th><th class="n">Extra yield over government bonds</th><th class="n">Today</th><th class="n">20 days</th></tr>${cr2.map(r => `<tr><td>${esc(r.label)}</td><td class="n">${Math.round(r.bp)}bp</td><td class="n ${r.d1 > 0 ? 'dn' : r.d1 < 0 ? 'up' : ''}">${r.d1 != null ? sg(r.d1, 0) + 'bp' : '·'}</td><td class="n ${r.d20 > 0 ? 'dn' : r.d20 < 0 ? 'up' : ''}">${r.d20 != null ? sg(r.d20, 0) + 'bp' : '·'}</td></tr>`).join('')}</table><p class="small muted">The extra yield investors demand to lend to companies instead of the government. It widens when lenders get nervous. The riskiest companies (CCC) move the most.</p>` : '';
+  const marketsHtml = (cm.length || vo.length || cr2.length) ? sec('Commodities, fear and credit', 'Part 1 · The world', `${cm.length ? `<h3 style="margin-top:0">Commodities</h3><div class="tiles">${cm.map(t => `<div class="tile"><div class="k">${esc(t.name)}</div><div class="v">${esc(t.value)}</div><div class="d ${t.tone ?? ''}">${esc(t.sub)}</div>${sparkSvg(t.spark, t.tone === 'dn' ? COLORS.orange : t.tone === 'up' ? COLORS.green : COLORS.blue)}</div>`).join('')}</div>` : ''}${volTable}${crTable}`) : '';
+
   // Part 2: each currency, as a card
   const strMap = Object.fromEntries((n.strengths ?? []).map(s => [s.ccy, s.score]));
   const cbMap = Object.fromEntries((n.cb ?? []).map(c => [c.ccy ?? c.bank, c])), surMap = Object.fromEntries((n.surprise ?? []).map(x => [x.ccy, x.score])), crMap = Object.fromEntries((n.crowding ?? []).map(c => [c.sym, c]));
@@ -347,7 +377,7 @@ export function buildNewsletter(n) {
 
   const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}</div></div>`;
 
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${glance}${sinceHtml}${letterSec}${tiles}${driving}${ahead}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${lesson}${noEdge}${foot}</div></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${glance}${sinceHtml}${letterSec}${tiles}${driving}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${lesson}${noEdge}${foot}</div></body></html>`;
 
   const T = [];
   T.push(`DESK ATLAS · ${weekly ? 'WEEKLY' : 'DAILY'} · ${n.date}`, '', headline, '');
@@ -359,6 +389,12 @@ export function buildNewsletter(n) {
   if (n.ranges?.length) { T.push('PAIRS (share of a normal day range used)'); for (const r of n.ranges) T.push(`- ${r.label} ${r.price ?? ''}${r.used != null ? ': ' + Math.round(r.used * 100) + '%' : ''}`); T.push(''); }
   if (a.confirm?.length) { T.push('BACKS IT UP'); for (const c of a.confirm) T.push(`- ${c.check}: ${c.level} (${c.when})`); T.push(''); }
   if (a.invalidate?.length) { T.push('BREAKS IT'); for (const c of a.invalidate) T.push(`- ${c.check}: ${c.level} (${c.when})`); T.push(''); }
+  if (n.extras) { const x = n.extras, L = [];
+    for (const c of x.closures ?? []) L.push(`- ${c.date} ${c.market}: ${c.name} (${c.kind})`);
+    for (const e of (x.earnings ?? []).slice(0, 12)) L.push(`- ${e.date} earnings: ${e.name}, ${e.when}`);
+    for (const a of (x.auctions ?? []).filter(a => a.type !== 'Bill')) L.push(`- ${a.date} Treasury auction: ${a.term} ${a.type} $${a.amountB}bn`);
+    for (const f of x.fed ?? []) L.push(`- ${f.date} Fed: ${f.what}`);
+    if (L.length) T.push('BEYOND THE CALENDAR', ...L, ''); }
   if (rec) T.push('TRACK RECORD', rec.line, '');
   T.push('HOW TO READ THIS', ...LIMITS.map(x => '- ' + x), '');
   if (a.lesson?.concept) T.push(`TODAY'S LESSON: ${a.lesson.concept}`, a.lesson.today, '');

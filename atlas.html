@@ -290,6 +290,7 @@ import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
 import * as P from './js/atlasPosition.js';
 import { buildNewsletter, eventNote, flagProximity } from './js/newsletter.js';
 import { snapshotOf, diffSnapshots, scoreLine, weekRecord } from './js/newsletterRecord.js';
+import { closuresBetween } from './js/marketCalendars.js';
 import { DESK_EVIDENCE } from './js/deskEvidence.js';
 
 const $ = id => document.getElementById(id);
@@ -543,9 +544,33 @@ function nlInput({ bookFor = () => null } = {}) {
     assets: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k), reg = P.regimeFor(D.regime, k), gam = P.gammaFor(D.oi, k), fire = P.deskFiring(D.ds, k).filter(f => f.instruments.includes(k)).length, g = { fx: 'FX', index: 'Index', commodity: 'Gold', crypto: 'Bitcoin' }[acOf(k)] ?? '';
       const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: mv?.d1 ?? null, d20: mv?.d20 ?? null, read: mk?.read ?? null, watch: mk?.watch ?? null, price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
     yieldStack: (() => { const y = fmtRate('us10y'), r = fmtRate('tips'), b = fmtRate('bei'); return y && r && b ? { nominal: y.v, real: r.v, bei: b.v, dNom: y.d20, dReal: r.d20, dBei: b.d20 } : null; })(),
+    ...nlStrips(),
     strengths: derived.str, surprise: P.surpriseBars(D.es), cb: P.cbTone(cbHist()), crowding: P.crowding(D.ce), regimeCard: regime, changes: P.changesRows(D.mc), fedPath: fp, scenarios: P.scenarios(D.gr), nowcast: nc,
     eod: D.eod?.review ? { hook: D.eod.review.hook, right: D.eod.review.plan?.right, wrong: D.eod.review.plan?.wrong } : null,
   };
+}
+/* ── the extra strips: sectors, big companies, commodities, fear gauges, credit (all from the 5-year market bundle already loaded) ── */
+const NL_SECTORS = [['xlk', 'Technology'], ['xlc', 'Communication'], ['xly', 'Consumer discretionary'], ['xlf', 'Financials'], ['xli', 'Industrials'], ['xlv', 'Health care'], ['xlp', 'Consumer staples'], ['xle', 'Energy'], ['xlu', 'Utilities'], ['xlb', 'Materials'], ['xlre', 'Real estate'], ['smh', 'Semiconductors']];
+const NL_MEGA = [['nvda', 'Nvidia'], ['aapl', 'Apple'], ['msft', 'Microsoft'], ['amzn', 'Amazon'], ['googl', 'Alphabet (Google)'], ['meta', 'Meta'], ['tsla', 'Tesla'], ['avgo', 'Broadcom']];
+const NL_COMMS = [['brent', 'Brent oil', '$'], ['oil', 'US oil (WTI)', '$'], ['natgas', 'Natural gas', '$'], ['copper', 'Copper', '$'], ['gold', 'Gold', '$'], ['silver', 'Silver', '$']];
+const NL_VOLS = [['vix9d', 'VIX 9-day'], ['vix', 'VIX 1-month'], ['vix3m', 'VIX 3-month'], ['vix6m', 'VIX 6-month'], ['move', 'MOVE (bond-market fear)'], ['ovx', 'Oil volatility'], ['gvz', 'Gold volatility'], ['skew', 'SKEW (cost of crash protection)']];
+const NL_CREDS = [['ig', 'Investment-grade companies'], ['hy', 'High-yield (junk) companies'], ['ccc', 'CCC (riskiest) companies']];
+function nlStrips() {
+  const pct = ([k, label]) => { const m = fmtPct(k); return m ? { label, d1: m.d1, d20: m.d20 } : null; };
+  const lvl = ([k, label]) => { const t = lastTwo(k); if (!t) return null; const b = back(k, 20); return { label, v: t.last, d1: t.prev != null ? t.last - t.prev : null, d20: b != null ? t.last - b : null }; };
+  return {
+    stocks: { sectors: NL_SECTORS.map(pct).filter(Boolean), mega: NL_MEGA.map(pct).filter(Boolean) },
+    commodities: NL_COMMS.map(([k, name, cur]) => { const m = fmtPct(k); if (!m) return null; return { name, value: cur + (m.v >= 100 ? m.v.toFixed(0) : m.v.toFixed(2)), sub: `${m.d1 != null ? sg(m.d1, 2) + '% today · ' : ''}20d ${sg(m.d20, 1)}%`, tone: m.d20 == null ? '' : m.d20 >= 0 ? 'up' : 'dn', spark: spark(k, 30) }; }).filter(Boolean),
+    volatility: NL_VOLS.map(lvl).filter(Boolean),
+    creditSpreads: NL_CREDS.map(([k, label]) => { const f = fmtRate(k); return f ? { label, bp: f.v * 100, d1: f.d1, d20: f.d20 } : null; }).filter(Boolean),
+  };
+}
+async function nlExtras(horizonDays) {
+  const today = ukDate(), to = ukDate(new Date(Date.now() + horizonDays * 864e5)), errors = [];
+  const [ea, ta, fs] = await Promise.all([J('/api/earnings-ahead'), J('/api/treasury-auctions'), J('/api/fed-speakers')]);
+  const within = r => r.date >= today && r.date <= to;
+  if (!ea?.ok) errors.push('earnings'); if (!ta?.ok) errors.push('auctions'); if (!fs?.ok) errors.push('fed');
+  return { closures: closuresBetween(today, to), earnings: (ea?.rows ?? []).filter(within), auctions: (ta?.rows ?? []).filter(within), fed: (fs?.rows ?? []).filter(within), errors };
 }
 const ukDate = (d = new Date()) => d.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
 let NL_ARCH = [];
@@ -578,6 +603,7 @@ async function buildIssue(kind) {
     const { eventImpactFor } = await import('./js/eventImpactMap.js');
     const bookFor = e => { try { return eventImpactFor(e.country, e.event); } catch { return null; } };
     const base = nlInput({ bookFor });
+    st.textContent = 'Fetching earnings, auctions and the Fed diary…'; base.extras = await nlExtras(weekly ? 8 : 3);
     if (weekly) {
       base.edition = 'weekly';
       const wf = await J('/api/vol-forecast/weekly'), keys = Object.keys(insts());
