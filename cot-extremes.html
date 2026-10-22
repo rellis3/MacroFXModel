@@ -60,6 +60,9 @@ a{color:var(--acc)}
 .p .body.flush{padding:6px 0 2px}
 .c12{grid-column:span 12}.c7{grid-column:span 7}.c5{grid-column:span 5}
 @media(max-width:1250px){.c7,.c5{grid-column:span 12}}
+.c3d{grid-column:span 3}
+@media(max-width:1250px){.c3d{grid-column:span 6}}
+@media(max-width:700px){.c3d{grid-column:span 12}}
 
 table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:14px}
 th{text-align:right;padding:9px 12px;color:var(--tx2);font-weight:600;font-size:11.5px;
@@ -289,6 +292,7 @@ svg{display:block;width:100%;height:auto;overflow:visible}
 </div></div>
 
 <script src="js/cotAftermathData.js"></script>
+<script src="js/cotDurationData.js"></script>
 <script>
 // CFTC Commitments of Traders. Weekly: a TUESDAY snapshot released FRIDAY, so it is always
 // several days old. That is stamped across the top rather than left for the reader to work
@@ -339,6 +343,7 @@ const HELP = {
   read:['This week\u2019s read','Plain-English interpretation of every panel on this page, in one place: a headline saying how stretched the board is overall, then one sub-read per panel so each number is already interpreted before you scroll to it.','Reads the same fields the panels do \u2014 it is not a second opinion or a new calculation. The traffic lights are deliberately NOT directional: green means nothing here argues against your plan, amber means something is changing, red means this contradicts a trade you might be about to take. Direction comes from your own system.'],
   spot:['Spotlight','Every market currently at a 90th/10th-percentile extreme of its own trailing history, most stretched first, so you do not have to scan the full ledger to find them.','A dot marks a market where commercials are independently at their own opposite extreme too \u2014 the Confluence test. Click any card to load that market\u2019s 200-week series at the bottom of the page.'],
   ledger:['Positioning ledger','Every ranked market as a bar running from the 50th percentile out to where it sits in its OWN trailing range, grouped by asset class with each group\u2019s median in the header.','The shaded bands at each end are the 90th/10th thresholds this page treats as extreme. Grouping is the point: a crowded market inside a group that is all leaning the same way is a shared macro theme rather than an independent bet, and a flat board-wide ranking cannot show you that — it is what tells you whether one crowded market is idiosyncratic or part of a board-wide risk-on / risk-off stretch. Replaces the old crowding leaderboard and the separate by-asset-class median table, carrying the contents of both.'],
+  dur:['How long it stays stretched','Does positioning that stays stretched for a long time relate to price, and with what lag? Every market and week 2007\u20132026, measured from the Friday release on futures prices.','Exploratory, not pre-registered: analysis/output/cot-extreme-duration/RESULTS.md. The 10Y note is shown separately: leveraged-fund Treasury positioning is mostly the cash-futures basis trade, not a view on direction.'],
   aftm:['Track record','What price actually did after this page flagged a 90th/10th-percentile extreme, every week from 2018 to Aug 2026, measured from the Friday 15:30 ET release. "Kept going" = price moved further the way the crowd is positioned.','Exploratory, not pre-registered: analysis/output/cot-extreme-aftermath/RESULTS.md. Moves are in units of each market\'s own recent daily volatility so a quiet and a wild market can be pooled. A coloured cell means the 95% interval excludes zero; with ~60 cells on this table, several will do that by chance.'],
   oixchk:['COT vs options positioning','Two separate datasets shown side by side for any pair with saved options data: COT\'s weekly futures positioning per currency leg, and the nearest put/call open-interest wall from a manually-pasted CME options chain.','Deliberately not combined into one verdict — futures positioning and dealer options flow are different markets that can agree or disagree. Options data is only as fresh as the last paste on the OI Analytics page, so check the age column.'],
   aianalysis:['AI Analysis','An LLM opinion on the same data — headline, crowded markets grouped into a handful of themes, and trade ideas — generated on demand, not recalculated on every visit.','This is a genuine second opinion, not a restatement like "This week’s read" below. It can be wrong. Treat it the same as any other opinion on the desk: read the reasoning, not just the verdict.'],
@@ -620,6 +625,16 @@ basis: {
   ],
   not: 'Neither ranking is "wrong". % of OI is the default because it answers the question actually being asked; raw is '
      + 'kept so you can check it.',
+},
+
+dur: {
+  what:'The long view of the question "does being overbought or oversold for a long time matter?": how price behaved before, during and after positioning stayed stretched, and how far positioning lags or leads price.',
+  why: 'A crowded reading can last months. This shows whether a long-lasting one is different from a fresh one, how long it took price to turn, and whether price followed when positioning started to weaken.',
+  how: [
+    'The <b>path chart</b> lines up every flagged week at 0 and averages what price did around it, in the crowd\'s direction. One unit = one typical week\'s move for that market. Rising after 0 = the trend kept going; falling = it gave back.',
+    'The <b>lead/lag chart</b> asks: positioning today is most like price how many weeks ago (left side) or ahead (right side)? A bump on the left and nothing on the right means positioning follows price.',
+  ],
+  not: 'Not a timing tool. The lag numbers are medians with wide spreads (a quarter of long runs peaked within 9 weeks, a quarter after 34). Exploratory, many views of the same data.',
 },
 
 aftm: {
@@ -1101,6 +1116,100 @@ function aftermath(big){
     + '<div class="c7"><table><thead><tr><th>Extreme lasted</th><th>runs</th><th>12 wks into it</th><th>while it lasted</th><th>4 wks after</th><th>12 wks after</th></tr></thead><tbody>' + ep + '</tbody></table>'
     + '<div class="note">One row per completed run, medians, all in the crowd\'s direction (+ = price went the crowd\'s way). Long runs got there <b>with</b> price and usually kept going while they lasted; the giveback came <b>after</b> the extreme ended, not while it held.</div></div></div>'
     + '<div class="note"><b>' + esc(AFTM.status) + '.</b> Overlapping windows, a few dozen independent episodes per market, ~60 cells: a few will look significant by chance. Read it as base rates, not a signal.</div>';
+}
+
+// ── duration and lag: js/cotDurationData.js (scripts/cot-extreme-duration/analyse.py). Exploratory. ──
+const DUR = window.COT_DURATION || null;
+const CH = {};   // chart registry for the hover layer
+const SER = { fresh:'#4596cc', long:'#bf8526' };   // validated pair (dataviz validator, dark surface)
+function lineChart(id, cfg){
+  // cfg: {xs, series:[{key,label,color,ys,lo?,hi?}], xLabel, yLabel, zeroX?, fmt, notes:{left,right}}
+  const W = 760, H = 280, L = 52, R = 16, T = 16, B = 40;
+  const all = cfg.series.flatMap(s => [...s.ys, ...(s.lo||[]), ...(s.hi||[])]).filter(Number.isFinite);
+  let lo = Math.min(0, ...all), hi = Math.max(0, ...all); const pad = (hi - lo) * .08; lo -= pad; hi += pad;
+  const x0 = cfg.xs[0], x1 = cfg.xs[cfg.xs.length-1];
+  const X = v => L + (v - x0) / (x1 - x0) * (W - L - R), Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  const step = (hi - lo) > 3 ? 1 : (hi - lo) > 1.2 ? .5 : (hi - lo) > .4 ? .1 : .05;
+  let g = '';
+  for (let v = Math.ceil(lo/step)*step; v <= hi; v += step) {
+    const vv = Math.round(v*100)/100;
+    g += '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(vv)+'" y2="'+Y(vv)+'" stroke="var(--line)" stroke-width="1"/>'
+       + '<text x="'+(L-6)+'" y="'+(Y(vv)+4)+'" text-anchor="end" fill="var(--tx3)" font-size="11">'+cfg.fmt(vv)+'</text>';
+  }
+  for (const v of cfg.xTicks) g += '<text x="'+X(v)+'" y="'+(H-B+16)+'" text-anchor="middle" fill="var(--tx3)" font-size="11">'+(v>0?'+':'')+v+'</text>';
+  g += '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(0)+'" y2="'+Y(0)+'" stroke="var(--line2)" stroke-width="1"/>';
+  g += '<line x1="'+X(0)+'" x2="'+X(0)+'" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--tx3)" stroke-dasharray="3 3" stroke-width="1"/>';
+  g += '<text x="'+(X(0)+5)+'" y="'+(T+11)+'" fill="var(--tx2)" font-size="11">'+esc(cfg.zeroLabel)+'</text>';
+  if (cfg.notes) g += '<text x="'+(L+6)+'" y="'+(H-B-8)+'" fill="var(--tx3)" font-size="11">'+esc(cfg.notes.left)+'</text>'
+     + '<text x="'+(W-R-6)+'" y="'+(H-B-8)+'" text-anchor="end" fill="var(--tx3)" font-size="11">'+esc(cfg.notes.right)+'</text>';
+  g += '<text x="'+((L+W-R)/2)+'" y="'+(H-6)+'" text-anchor="middle" fill="var(--tx3)" font-size="11">'+esc(cfg.xLabel)+'</text>';
+  for (const s of cfg.series) {
+    if (s.lo && s.hi) {
+      const up = cfg.xs.map((x,i) => X(x)+','+Y(s.hi[i])).join(' '), dn = cfg.xs.map((x,i) => X(x)+','+Y(s.lo[i])).reverse().join(' ');
+      g += '<polygon points="'+up+' '+dn+'" fill="'+s.color+'" opacity=".16"/>';
+    }
+    g += '<polyline points="'+cfg.xs.map((x,i) => X(x)+','+Y(s.ys[i])).join(' ')+'" fill="none" stroke="'+s.color+'" stroke-width="2" stroke-linejoin="round"/>';
+    const k = cfg.xs.length - 1;   // direct label at the right end
+    if (cfg.series.length > 1) g += '<text x="'+(X(cfg.xs[k])-4)+'" y="'+(Y(s.ys[k])+(s.ys[k] >= 0 ? -8 : 15))+'" text-anchor="end" fill="var(--tx2)" font-size="11">'+esc(s.short||s.label)+'</text>';
+  }
+  g += '<line class="xh" x1="0" x2="0" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--tx2)" stroke-width="1" visibility="hidden"/>';
+  CH[id] = { cfg, X, Y, W, L, R, x0, x1 };
+  const legend = cfg.series.length > 1 ? '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--tx2);margin:2px 0 6px">'
+    + cfg.series.map(s => '<span><i style="display:inline-block;width:14px;height:2px;background:'+s.color+';vertical-align:middle;margin-right:6px"></i>'+esc(s.label)+'</span>').join('') + '</div>' : '';
+  return legend + '<div class="chartwrap" style="position:relative"><svg data-ch="'+id+'" viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block" '
+    + 'onmousemove="chHover(event)" onmouseleave="chLeave(event)">'+g+'<rect x="'+L+'" y="'+T+'" width="'+(W-L-R)+'" height="'+(H-T-B)+'" fill="transparent"/></svg>'
+    + '<div class="chtip" style="position:absolute;pointer-events:none;display:none;background:var(--bg3);border:1px solid var(--line2);border-radius:6px;padding:6px 9px;font-size:12px;color:var(--tx);white-space:nowrap"></div></div>';
+}
+function chHover(ev){
+  const svg = ev.currentTarget, c = CH[svg.dataset.ch]; if (!c) return;
+  const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * c.W;
+  const xs = c.cfg.xs; let i = Math.round((px - c.L) / (c.W - c.L - c.R) * (xs.length - 1)); i = Math.max(0, Math.min(xs.length - 1, i));
+  const xh = svg.querySelector('.xh'); xh.setAttribute('x1', c.X(xs[i])); xh.setAttribute('x2', c.X(xs[i])); xh.setAttribute('visibility', 'visible');
+  const tip = svg.parentNode.querySelector('.chtip');
+  tip.innerHTML = '<b>' + c.cfg.tipX(xs[i]) + '</b>' + c.cfg.series.map(s => '<div><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+s.color+';margin-right:6px"></i>'
+    + esc(s.short||s.label) + ': <b>' + c.cfg.fmt(s.ys[i]) + '</b>' + (s.lo ? ' <span class="muted">[' + c.cfg.fmt(s.lo[i]) + ', ' + c.cfg.fmt(s.hi[i]) + ']</span>' : '') + '</div>').join('');
+  tip.style.display = 'block';
+  const left = (c.X(xs[i]) / c.W) * r.width; tip.style.left = Math.min(left + 12, r.width - tip.offsetWidth - 4) + 'px'; tip.style.top = '8px';
+}
+function chLeave(ev){ const svg = ev.currentTarget; svg.querySelector('.xh').setAttribute('visibility','hidden'); svg.parentNode.querySelector('.chtip').style.display = 'none'; }
+function duration(big){
+  if (!DUR) return '<div class="empty">Duration data not loaded (js/cotDurationData.js).</div>';
+  const sg = v => (v > 0 ? '+' : '') + v.toFixed(2), f1 = v => (v > 0 ? '+' : '') + v.toFixed(1);
+  const P = DUR.path, fr = P['recently arrived'], lg = P['stretched for a long time'];
+  const w = (o, k) => { const v = o.win[k]; return f1(v[0]) + ' <span class="muted">[' + f1(v[1]) + ', ' + f1(v[2]) + ']</span>'; };
+  const lead = DUR.lead, li = lead.avg.indexOf(Math.max(...lead.avg.slice(0, 52))), el = DUR.episodeLags['long (12+ wks)'];
+  const after = lead.avg.slice(53), maxAfter = Math.max(...after.map(Math.abs));
+  const cards = '<div class="grid" style="gap:12px;margin-bottom:12px">'
+    + [['Positioning follows price', 'COT matches price from <b>' + (-lead.lags[li]) + ' weeks earlier</b> best (correlation ' + lead.avg[li].toFixed(2) + '). With anything after the report: never above ' + maxAfter.toFixed(2) + '.'],
+       ['Fresh extremes: the trend kept going', 'When the extreme had just arrived, price went on ' + f1(fr.win['0..26'][0]) + ' typical weeks further the crowd\'s way over the next 6 months.'],
+       ['Long-held extremes: the trend had run out', 'Stretched for most of the prior 6 months: ' + f1(lg.win['0..26'][0]) + ' over the next 6 months (no edge either way). It had already run ' + f1(lg.win['-26..0'][0]) + ' getting there.'],
+       ['When long runs turned', 'Runs of 12+ weeks: price peaked a median <b>' + el.price_peak_after_onset_median + ' weeks</b> after the flag (half between ' + el.iqr[0] + ' and ' + el.iqr[1] + '), about when the extreme ended. Positioning had peaked ~' + el.price_peak_vs_positioning_peak_median + ' weeks earlier.']]
+      .map(([t, b]) => '<div class="c3d" style="background:var(--bg3);border:1px solid var(--line);border-radius:8px;padding:10px 12px"><div style="font-size:12px;color:var(--acc);text-transform:uppercase;letter-spacing:.06em">' + t + '</div><div style="font-size:13px;color:var(--tx2);margin-top:4px">' + b + '</div></div>').join('')
+    + '</div>';
+  const chart1 = lineChart('durPath', {
+    xs: DUR.lags, xTicks: [-26, -13, 0, 13, 26, 39, 52], zeroLabel: 'flagged', xLabel: 'weeks from the flagged report',
+    fmt: sg, tipX: x => (x === 0 ? 'flag week' : (x > 0 ? '+' : '') + x + ' wks'),
+    notes: { left: 'how price got there', right: 'what happened next' },
+    series: [ { key:'fresh', label:'Extreme had just arrived (n=' + fr.n + ' weeks)', short:'just arrived', color: SER.fresh, ys: fr.cum },
+              { key:'long', label:'Stretched for most of the prior 6 months (n=' + lg.n + ')', short:'stretched a long time', color: SER.long, ys: lg.cum } ] });
+  const chart2 = lineChart('durLead', {
+    xs: lead.lags, xTicks: [-52, -26, -13, 0, 13, 26, 52], zeroLabel: 'report', xLabel: 'weeks: price 4-week move this far before (\u2212) or after (+) the report',
+    fmt: v => v.toFixed(2), tipX: x => (x < 0 ? 'price ' + (-x) + ' wks before' : x > 0 ? 'price ' + x + ' wks after' : 'same week'),
+    notes: { left: 'price leads positioning', right: 'positioning leads price' },
+    series: [ { key:'lead', label:'Correlation of positioning with price', color: SER.fresh, ys: lead.avg, lo: lead.lo, hi: lead.hi } ] });
+  const D = DUR.dose, cellD = v => v ? '<td>' + v[1] + '% <span class="muted">' + sg(v[2]) + '</span></td>' : '<td class="muted">\u2014</td>';
+  const doseRows = ['ex-10Y', 'FX only', '10Y only'].flatMap(g => Object.entries(D[g]).map(([b, v], k) =>
+    '<tr><td>' + (k === 0 ? '<b>' + esc(g === 'ex-10Y' ? 'All markets except 10Y' : g === 'FX only' ? 'FX + DXY' : '10Y note (basis trade)') + '</b>' : '') + '</td><td>' + esc(b) + '</td>' + ['13w','26w','52w'].map(h => cellD(v && v[h])).join('') + '<td class="muted">' + (v ? v['13w'][0] : '') + '</td></tr>')).join('');
+  const W = DUR.weaken, wkRows = ['90+ / building', '90+ / steady', '70-90 / building', '70-90 / steady', '70-90 / paring', 'rolling over (was 90+ within 8 wks, now 20+ pts lower)', 'all weeks (crowd = side of 50)']
+    .map(k => W[k] ? '<tr><td>' + esc(k.replace('(crowd = side of 50)', '(baseline)')) + '</td>' + ['4w','13w','26w'].map(h => cellD(W[k][h])).join('') + '<td class="muted">' + W[k]['4w'][0] + '</td></tr>' : '').join('');
+  return cards
+    + '<div class="grid" style="gap:16px"><div class="c7"><div style="font-size:13px;color:var(--tx);margin-bottom:2px"><b>Average price path around a flagged extreme</b> <span class="muted">(crowd\'s direction, in typical-week moves; all markets except the 10Y)</span></div>' + chart1 + '</div>'
+    + '<div class="c5"><div style="font-size:13px;color:var(--tx);margin-bottom:2px"><b>Does positioning lead or follow price?</b> <span class="muted">(avg across 12 markets, 95% band)</span></div>' + chart2 + '</div></div>'
+    + '<div class="grid" style="gap:16px;margin-top:12px"><div class="c7"><div style="overflow-x:auto"><table><thead><tr><th colspan="2">Time spent stretched (80th+) over the past year</th><th>13 wks</th><th>26 wks</th><th>52 wks</th><th>n</th></tr></thead><tbody>' + doseRows + '</tbody></table></div>'
+    + '<div class="note">% of weeks after which price kept going the crowd\'s way, then the average move (\u03c3 \u00d7 \u221aweeks). Outside the 10Y, more time stretched makes little difference. The 10Y\'s long-held leveraged-fund short is the one strong case, and it reflects the basis trade, not a view on bonds.</div></div>'
+    + '<div class="c5"><div style="overflow-x:auto"><table><thead><tr><th>When positioning weakens</th><th>4 wks</th><th>13 wks</th><th>26 wks</th><th>n</th></tr></thead><tbody>' + wkRows + '</tbody></table></div>'
+    + '<div class="note">Positioning falling back from an extreme did <b>not</b> pull price with it: weeks after a 20-point drop from a 90th+ reading look like any other week.</div></div></div>'
+    + '<div class="note"><b>' + esc(DUR.status) + '.</b> Weekly CME futures / ICE DXY closes, reports ' + DUR.window[0] + ' to ' + DUR.window[1] + '. The 10Y is split out after the results were seen (its leveraged-fund position is mostly the basis trade). Read as base rates and shapes, not a signal.</div>';
 }
 
 function persistence(big){
@@ -1903,6 +2012,7 @@ function render(){
     + panel('c7','confl','Confluence (specs vs. commercials, same market)','confl',confluence,true)
     + panel('c5','persist','Extreme persistence','persist',persistence,true)
     + panel('c12','aftm','Track record \u2014 what price did after past extremes (2018\u20132026)','aftm',aftermath,true)
+    + panel('c12','dur','How long it stays stretched \u2014 and when price turns (2007\u20132026)','dur',duration,true)
     + panel('c7','flow','Positioning flow \u2014 week over week','flow',flow,true)
     + panel('c5','evr','Event-risk overlay','evrisk',eventRisk,true)
     + panel('c12','alerts','Reinforcing FX pairs (specs vs. specs, cross-currency)','paira',crowdingCards,true)
