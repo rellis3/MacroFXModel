@@ -5392,6 +5392,8 @@ function _intelBriefPrompt(data, chainBlock, position = '') {
 
 NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/BoJ head, etc.) anywhere in your output, even if a name appears in the headlines or calendar below — refer to them only by role.
 
+WRITE FOR A CURIOUS NON-SPECIALIST, NOT A QUANT. Short sentences, plain words, one idea each. Say "borrowing costs" or "bond yields", not "term premium"; "stress warnings", not "risk flags"; "prices usually move together", not "correlation". If you must use a market term, explain it in a few words the first time. Spell out any acronym once. Keep every field tight: the headline under 20 words, each driver explanation at most two sentences.
+
 === THE CHAIN — the textbook links in causal order, each judged on measured 20-day moves at BOTH ends (HOLDING = moved together as the textbook says; BROKEN = both moved, the wrong way round; QUIET = at least one end inside its noise floor, not judged) ===
 ${chainBlock}
 

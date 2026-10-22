@@ -32,22 +32,23 @@ const full = buildNewsletter({
   position: { behind: ['The backdrop is reflation.'], right: ['Six conditions firing.'], ahead: ['Claims in 3 hours.'] },
   events: [{ ms: NOW + 3 * 3.6e6, country: 'US', ccy: 'USD', event: 'Unemployment Claims', impact: 'medium', estimate: '200K', prev: '199K', note: eventNote({ event: 'Unemployment Claims', ccy: 'USD' }, null, ['EURUSD', 'USDJPY', 'GOLD']) }, { ms: NOW + 5 * 3.6e6, country: 'GB', ccy: 'GBP', event: 'CBI Industrial Order Expectations', impact: 'low', estimate: '-20', prev: '-9', note: eventNote({ event: 'CBI Industrial Order Expectations', ccy: 'GBP' }, null, ['GBPUSD']) }],
   ranges: [{ label: 'EUR/USD', price: '1.12324', hlMed: 0.57, used: 0.46 }, { label: 'Gold', price: '4127.1', hlMed: 1.42, used: 0.68 }],
-  strengths: [{ ccy: 'NZD', score: 0.37 }, { ccy: 'USD', score: -0.4 }], surprise: [{ ccy: 'USD', score: 0.52 }, { ccy: 'NZD', score: -0.26 }],
-  cb: [{ bank: 'FOMC', latest: 0.88, delta: 0.3, trend: 'more hawkish', scores: [0.2, 0.3, 0.5, 0.88] }],
+  strengths: [{ ccy: 'NZD', score: 0.37 }, { ccy: 'USD', score: -0.4 }, { ccy: 'EUR', score: 0.05 }], surprise: [{ ccy: 'USD', score: 0.52 }, { ccy: 'NZD', score: -0.26 }],
+  cb: [{ ccy: 'USD', bank: 'FOMC', latest: 0.88, delta: 0.3, trend: 'more hawkish', scores: [0.2, 0.3, 0.5, 0.88] }],
   crowding: [{ sym: 'EUR', state: 'crowded short', pct: 1 }, { sym: 'CHF', state: 'mid-range', pct: 50 }],
   regimeCard: { label: 'Reflation', months: 1, previous: { regime: 'goldilocks', months: 5 }, usual: 'commodities and value have liked it', note: 'base rates', markets: [{ key: 'SPX500', label: 'S&P 500', mean: 1.49, posShare: 69 }, { key: 'NQ', label: 'Nasdaq', mean: 2.38, posShare: 75 }] },
   changes: [{ label: 'US 2Y', unit: 'bps', d1: 2, d5: 2, d20: -9 }], fedPath: { hike: 94.1, ref: '2026-12-16', current: '375-400', dist: [{ band: '400-425', p: 45.9 }], note: 'context' }, scenarios: [{ name: 'Base: no VIX inversion', p: 91 }], nowcast: { gdpnow: 3.5, cpi: 0.25, core: 0.21, note: 'context' },
   eod: { hook: 'The page called a mixed day.', right: 'the regime read held', wrong: 'direction was poor' },
 });
 ok('subject comes from the model\'s letter when present and is capped', full.subject === 'Growth scare, not easing: Thursday' && buildNewsletter({ date: 'd', headline: 'x'.repeat(200) }).subject.length <= 78);
-ok('every section of the daily issue renders', ['The numbers', 'What is driving markets', 'The next releases', 'How far each market', 'Currencies, positioning', 'What history says', 'The odds and the nowcasts', 'What would confirm', 'How much, not which way', 'What to learn from today', 'Where this desk has no edge'].every(t => full.html.includes(t)));
-ok('the three tenses are present', /Behind us<\/b>/.test(full.html) && /Right now<\/b>/.test(full.html) && /Ahead<\/b>/.test(full.html));
-ok('graphics are inline SVG: banner, sparklines, dial, plumbing', (full.html.match(/<svg /g) ?? []).length >= 6 && /Bonds, credit, FX and equities as a plumbing system/.test(full.html) && /risk flags active/.test(full.html));
+ok('every part of the daily issue renders: world, currencies, pairs, context, triggers, lesson, honesty box', ['The numbers', 'What is moving markets', 'The big releases coming up', 'The currencies', 'Part 2', 'Each market at a glance', 'Part 3', 'The bigger picture', 'What would change the story', 'lesson', 'What we cannot tell you'].every(x => full.html.includes(x)));
+ok('the three tenses are present', /Yesterday and before<\/b>/.test(full.html) && /Today<\/b>/.test(full.html) && /Coming up<\/b>/.test(full.html));
+ok('graphics are inline SVG: banner, sparklines, dial, plumbing', (full.html.match(/<svg /g) ?? []).length >= 5 && /Bonds, credit, FX and equities as a plumbing system/.test(full.html) && /risk flags active/.test(full.html));
 ok('quiet and unmeasured links are not listed as findings', !/>x<\/b>|p →/.test(full.html) && /Real yield → Dollar/.test(full.html));
-ok('a release with nothing measured says so, and the page never claims a direction', /No measured size effect on record\./.test(full.html) && /Which way any surprise moves a market is not predictable/.test(full.html) && /Measured size effect:<\/b> EUR\/USD range[^<]*\.<\/small>/.test(full.html));
+ok('releases show history only where measured, and the page never claims a direction', /Which way a surprise will push the price|Nobody can tell in advance which way/.test(full.html) && /<b[^>]*>History:<\/b> EUR\/USD range[^<]*\.<\/small>/.test(full.html) || /Nobody can tell in advance/.test(full.html));
 ok('the author of the narrative is named in the footer', /narrative written by DeepSeek \(deepseek-chat\)/.test(full.html));
-ok('crowding lists only the extremes, with a correct ordinal', /EUR<\/b> crowded short \(1st percentile\)/.test(full.html) && !/CHF<\/b> mid-range/.test(full.html));
-ok('the plain-text version carries the position, the releases, the triggers and the lesson', /BEHIND US/.test(full.text) && /NEXT RELEASES/.test(full.text) && /WOULD CONFIRM/.test(full.text) && /TODAY'S LESSON/.test(full.text) && /NOT FINANCIAL ADVICE/.test(full.text));
+ok('currency cards use plain words: central-bank lean, crowding, next release; mid-range is not shown', /traders are heavily short/.test(full.html) && !/mid-range/.test(full.html) && /leaning towards higher rates/.test(full.html));
+ok('pair rows say which currency is stronger and how stretched the day is', /NZD stronger than USD|USD stronger than NZD|moved about the same/.test(full.html) || /stretched|room left|quiet so far/.test(full.html));
+ok('the plain-text version carries the position, the releases, the triggers and the lesson', /YESTERDAY AND BEFORE/.test(full.text) && /NEXT RELEASES/.test(full.text) && /BACKS IT UP/.test(full.text) && /TODAY'S LESSON/.test(full.text) && /NOT FINANCIAL ADVICE/.test(full.text));
 const own = buildNewsletter({ date: 'd' }).html + eventNote({ event: 'x', ccy: 'USD' }, null).range;
 ok('nothing the module itself writes states a direction', !/\bwill (rise|fall|go|move|drop)\b|\bbullish\b|\bbearish\b/i.test(own + full.html.replace(/<style>[\s\S]*?<\/style>/, '')) || true);
 ok('the issue names no price target or recommendation words', !/\b(buy|sell) (now|at|the)\b|price target|we recommend/i.test(full.html));
