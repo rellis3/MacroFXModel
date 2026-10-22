@@ -192,6 +192,12 @@ select{background:var(--card2);color:var(--text);border:1px solid var(--line);bo
 .scn .sb{height:8px;border-radius:4px;background:var(--line2);position:relative}
 .scn .sb i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--blue)}
 .scn .sn{display:flex;justify-content:space-between;font-size:12px}
+.ab{display:grid;gap:10px}
+.abcol{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card2);min-width:0}
+.abcol h4{margin:0 0 6px;font:600 12px var(--body);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.abcol p{margin:4px 0;font-size:12.5px;color:var(--text2);line-height:1.5}
+.lesson{border:1px solid color-mix(in srgb,var(--blue) 50%,var(--line));background:color-mix(in srgb,var(--blue) 8%,var(--card));border-radius:12px;padding:10px 12px;margin-top:10px}
+.lesson b{color:var(--blue)}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .hint{font-size:11.5px;color:var(--text3);padding:8px 10px;border:1px dashed var(--line);border-radius:10px}
 @media (prefers-reduced-motion:reduce){.flow::after,.flowv::after{animation:none}}
@@ -237,6 +243,8 @@ select{background:var(--card2);color:var(--text);border:1px solid var(--line);bo
 
       <section class="panel" id="v-global" style="display:grid;gap:14px">
         <div class="hero g" id="hero"></div>
+        <div id="intelbody"></div>
+        <div id="abbox"></div>
         <div id="position" style="display:grid;gap:14px"></div>
         <div class="card">
           <h2><svg class="i"><use href="#i-pipe"/></svg>How the money is flowing</h2>
@@ -286,6 +294,7 @@ const esc = s => (s ?? '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;
 const ic = (n, c) => `<svg class="i${c ? ' ' + c : ''}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const icS = n => `<svg class="i" style="width:15px;height:15px" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const sg = (v, d = 2) => (v >= 0 ? '+' : '') + v.toFixed(d);
+const ord = n => { n = Math.round(n); const m = n % 100; return n + (m >= 11 && m <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] ?? 'th')); };
 const J = (u, opt) => fetch(u, opt).then(r => r.json()).catch(() => null);
 
 const FACT = [['rates', 'Rates & policy'], ['inflation', 'Inflation'], ['growth', 'Growth'], ['labour', 'Labour'], ['demand', 'Spending'], ['external', 'Trade']];
@@ -391,16 +400,85 @@ const redraw = () => { if (!derived) return; if (state.view === 'global') drawGl
 
 /* ── the model picker, same contract as today.html: one provider for every AI job, a server setting ── */
 function drawAi() {
-  const ai = D.ai; if (!ai?.ok) { $('aibox').innerHTML = ''; return; }
+  const ai = D.ai; if (!ai?.ok) { $('aibox').innerHTML = ''; if ($('heroai')) $('heroai').innerHTML = ''; return; }
   const providers = ai.providers.filter(p => p.configured), used = [...new Set(ai.tasks.map(t => t.provider))], mixed = used.length > 1;
-  $('aibox').innerHTML = `${icS('bulb')}<label for="aiSel">AI model</label><select id="aiSel" title="Changes the model for EVERY AI job on the site (a server setting). Per-job control is on bot-config.html → AI Models.">${mixed ? '<option value="" selected>Mixed</option>' : ''}${providers.map(p => `<option value="${esc(p.id)}"${!mixed && used[0] === p.id ? ' selected' : ''}>${esc(p.label)}</option>`).join('')}</select>`;
-  const sel = $('aiSel'); if (!sel) return; sel.disabled = providers.length < 2 && !mixed;
-  sel.onchange = async () => { const provider = sel.value; if (!provider) return; sel.disabled = true; const tasks = {}; for (const t of ai.tasks) tasks[t.id] = provider;
+  const html = id => `${icS('bulb')}<label for="${id}">AI model</label><select id="${id}" title="Changes the model for EVERY AI job on the site (a server setting). Per-job control is on bot-config.html → AI Models.">${mixed ? '<option value="" selected>Mixed</option>' : ''}${providers.map(p => `<option value="${esc(p.id)}"${!mixed && used[0] === p.id ? ' selected' : ''}>${esc(p.label)}</option>`).join('')}</select>`;
+  $('aibox').innerHTML = html('aiSel'); if ($('heroai')) $('heroai').innerHTML = html('aiSel2');
+  for (const id of ['aiSel', 'aiSel2']) { const sel = $(id); if (!sel) continue; sel.disabled = providers.length < 2 && !mixed; sel.onchange = () => switchProvider(sel); }
+}
+async function switchProvider(sel) {
+  const ai = D.ai;
+  { const provider = sel.value; if (!provider) return; sel.disabled = true; const tasks = {}; for (const t of ai.tasks) tasks[t.id] = provider;
     const r = await J('/api/ai-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tasks }) });
     if (!r?.ok) $('loaderr').innerHTML = `<div class="err">Could not change the model: ${esc(r?.error ?? 'no response')}</div>`;
     D.ai = await J('/api/ai-config'); drawAi(); if (state.view === 'global') drawGlobal(); };
 }
 const briefModel = () => D.ai?.tasks?.find(t => t.id === 'brief');
+
+
+/* ── the full Intelligence brief, every section the model writes ── */
+function intelBodyHtml() {
+  const a = D.intel?.ok ? D.intel.analysis : null;
+  if (!a) return '';
+  const list = (arr, fn) => (Array.isArray(arr) && arr.length ? arr.map(fn).join('') : '');
+  const stPill = st => /^RESPONDING/i.test(st) ? 'bull' : /NOT/i.test(st) ? 'amber' : '';
+  const checks = (arr, tone) => list(arr, c => `<div class="rw"><span><b>${esc(c.check)}</b><small>${esc(c.level)} · ${esc(c.when)}</small></span><span class="pill ${tone}">${tone === 'bull' ? 'confirms' : 'breaks it'}</span></div>`) || '<p class="note">none given</p>';
+  return `<div class="card"><h2>${ic('bulb')}The argument <span class="note" style="text-transform:none;letter-spacing:0;margin-left:auto">${D.intel.llm?.provider ? 'written by ' + esc(D.intel.llm.label ?? D.intel.llm.provider) : ''}</span></h2>
+    <h3 style="margin-top:0">What is driving markets</h3>
+    <div class="two">${list(a.driver, d => `<div class="card" style="background:var(--card2)"><b>${esc(d.what)}</b><p class="note" style="margin-top:6px">${esc(d.evidence)}</p>${d.explain ? `<p class="tl-line" style="margin-top:8px"><b>How it works:</b> ${esc(d.explain)}</p>` : ''}</div>`)}</div>
+    <h3>Transmission: what should respond, and whether it is</h3>
+    <div class="rows">${list(a.transmission, t => `<div class="rw"><span><b>${esc(t.asset)}</b><small>should: ${esc(t.should)}<br>is: ${esc(t.is)}</small></span><span class="pill ${stPill(t.state)}">${esc(t.state)}</span></div>`)}</div>
+    <div class="two"><div><h3>What would confirm it</h3><div class="rows">${checks(a.confirm, 'bull')}</div></div><div><h3>What would break it</h3><div class="rows">${checks(a.invalidate, 'amber')}</div></div></div>
+    <h3>Catalysts</h3><div class="rows">${list(a.catalysts, c => `<div class="rw"><span><b>${esc(c.when)}</b> · ${esc(c.event)}<small>${esc(c.impact)} · tests: ${esc(c.touches)}</small></span></div>`) || '<p class="note">none given</p>'}</div>
+    ${a.sizing ? `<h3>How much, not which way</h3><p class="tl-line">${esc(a.sizing)}</p>` : ''}
+    ${a.lesson?.concept ? `<div class="lesson"><b>What to learn from today: ${esc(a.lesson.concept)}</b><p class="tl-line" style="margin:6px 0 0">${esc(a.lesson.today)}</p></div>` : ''}
+    ${a.noEdge?.length ? `<details class="learn"><summary>${icS('shield')}Where this desk has no edge (${a.noEdge.length})</summary>${a.noEdge.map(x => `<p>${esc(x)}</p>`).join('')}</details>` : ''}
+    <p class="note" style="margin-top:8px">An argument from measured links, not a forecast. Direction claims have tested null here almost every time, so nothing above states which way a market goes next.</p></div>`;
+}
+
+/* the rows Atlas shows, as text for the model, so the brief and the page can never disagree about the facts */
+function positionContext() {
+  const regime = P.regimeCard(D.regime), axes = P.axesRows(D.gr), firing = P.deskFiring(D.ds), ahead = P.aheadEvents(D.events, Date.now(), { limit: 10 }), fp = P.fedPathCard(D.fp), meeting = P.nextMeeting(D.fcal), nc = P.nowcastCard(D.nc);
+  const L = P.positionLines({ regime, axes, firing, events: ahead, fedPath: fp, meeting }), out = [];
+  out.push('BEHIND US', ...L.behind);
+  if (regime) out.push('Regime record, monthly since 2007: ' + regime.markets.map(m => `${m.label} ${m.mean}% a month (${m.posShare}% of months up, n=${m.n})`).join('; ') + '.');
+  const ch = P.changesRows(D.mc); if (ch.length) out.push('What changed (1d / 5d / 20d): ' + ch.map(r => `${r.label} ${r.d1 ?? '·'} / ${r.d5 ?? '·'} / ${r.d20 ?? '·'} ${r.unit}`).join('; ') + '.');
+  const cb = P.cbTone(cbHist()); if (cb.length) out.push('Central-bank tone (latest, change vs previous meeting): ' + cb.map(c => `${c.bank} ${c.latest} (${c.trend})`).join('; ') + '. Tone momentum against price tested null.');
+  const sb = P.surpriseBars(D.es); if (sb.length) out.push('Data surprises vs consensus by currency (positive = beating): ' + sb.map(s => `${s.ccy} ${s.score}`).join(', ') + '.');
+  const cr = P.crowding(D.ce).filter(c => c.state !== 'mid-range'); if (cr.length) out.push('Speculative positioning at extremes: ' + cr.map(c => `${c.sym} ${c.state} (${ord(c.pct)} pct)`).join('; ') + '. Context, never a direction.');
+  out.push('', 'RIGHT NOW', ...L.right);
+  if (axes.length) out.push('Global axes: ' + axes.map(a => `${a.label} ${a.score} (${a.agree} agree: ${a.inputs.map(i => i.text).join('; ')})`).join(' | '));
+  const gm = P.gammaRows(D.oi); if (gm.length) out.push('Dealer gamma and walls: ' + gm.map(g => `${g.pair} ${g.regime} ${g.where ?? ''}`).join('; ') + '. Gamma sign is a range read; walls are locations, not magnets.');
+  if (firing.length) out.push('Desk Watch firing: ' + firing.map(f => f.label).join('; ') + '.');
+  out.push('', 'AHEAD', ...L.ahead);
+  if (ahead.length) out.push('Next releases (UK time): ' + ahead.map(e => `${ukTime(e.ms)} ${e.country} ${e.event} (${e.impact}) expected ${e.estimate ?? 'n/a'}, previous ${e.prev ?? 'n/a'}`).join('; ') + '.');
+  if (fp) out.push(`Fed path: ${fp.hike}% odds of a higher rate by ${fp.ref}, ${fp.cut}% of a cut, current range ${fp.current}. Context, no measured link to FX or index moves.`);
+  if (nc) out.push(`Nowcasts: GDPNow ${nc.gdpnow}%, Cleveland CPI ${nc.cpi}% a month, core ${nc.core}%. Context, not a lean.`);
+  const sc = P.scenarios(D.gr); if (sc.length) out.push('Scenario probabilities: ' + sc.map(s => `${s.name} ${s.p}%`).join('; ') + '.');
+  return out.join('\n').slice(0, 8500);
+}
+
+/* ── run the same brief prompt on another model ── */
+function parseJsonText(t) { try { const c = String(t).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim(); const i = c.indexOf('{'); let d = 0, e = -1; for (let k = i; k < c.length; k++) { if (c[k] === '{') d++; else if (c[k] === '}') { d--; if (d === 0) { e = k; break; } } } return JSON.parse(c.slice(i, e + 1)); } catch { return null; } }
+function abHtml(r) {
+  const labels = Object.keys(r.answers ?? {}), side = (lab, meta) => { const a = parseJsonText(r.answers[lab]);
+    return `<div class="abcol"><h4>${esc(lab)} <span class="pill">${meta?.chars ?? 0} chars</span>${meta?.ms ? `<span class="pill">${(meta.ms / 1000).toFixed(0)}s</span>` : ''}${meta?.cost?.usd != null ? `<span class="pill">$${Number(meta.cost.usd).toFixed(3)}</span>` : ''}${meta?.structural?.ok === false ? '<span class="pill amber">structure problem</span>' : ''}</h4>
+      ${a ? `<p><b>${esc(a.headline ?? '')}</b></p><p class="note">${(a.driver ?? []).length} drivers · ${(a.transmission ?? []).length} transmission rows · ${(a.confirm ?? []).length} confirms · ${(a.invalidate ?? []).length} invalidates · ${(a.catalysts ?? []).length} catalysts · ${(a.noEdge ?? []).length} no-edge items</p>${a.lesson?.concept ? `<p><b>Lesson:</b> ${esc(a.lesson.concept)}</p>` : ''}` : '<p class="note">The answer is not valid JSON.</p>'}
+      <p class="note">${esc(String(r.audit?.flags?.[lab]?.length ?? 0))} sentence(s) flagged against the evidence ledger</p></div>`; };
+  return `<div class="ab"><div class="two">${side(labels[0], r.a)}${side(labels[1], r.b)}</div><p class="note">${esc(r.audit?.verdict ?? '')} ${esc(r.caveat ?? '')}</p></div>`;
+}
+async function runAb(provider, btn) {
+  btn.disabled = true; const old = btn.textContent; btn.textContent = 'Running the same prompt… ~60s';
+  const r = await J('/api/ai-ab', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task: 'brief', provider }) });
+  btn.disabled = false; btn.textContent = old;
+  $('about').innerHTML = r?.ok ? abHtml(r) : `<div class="err">${esc(r?.error ?? 'no response')}${r?.how ? ' ' + esc(r.how) : ''}</div>`;
+}
+function drawAb() {
+  const ai = D.ai; const box = $('abbox'); if (!box) return; if (!ai?.ok || !D.intel?.ok) { box.innerHTML = ''; return; }
+  const cur = D.intel.llm?.provider ?? briefModel()?.provider, others = ai.providers.filter(p => p.configured && p.id !== cur);
+  box.innerHTML = others.length ? `<div class="card"><h2>${ic('layers')}Compare models on the same brief</h2><p class="note" style="margin-bottom:8px">Replays the last brief call's exact prompt on another model, then shows both side by side with a check against the evidence ledger. One model call each.</p><div class="chips">${others.map(p => `<button class="btn" data-ab="${esc(p.id)}">Run on ${esc(p.label)}</button>`).join('')}</div><div id="about" style="margin-top:10px"></div></div>` : '';
+  document.querySelectorAll('[data-ab]').forEach(b => { b.onclick = () => runAb(b.getAttribute('data-ab'), b); });
+}
 
 /* ── global ── */
 function heroHtml() {
@@ -413,7 +491,7 @@ function heroHtml() {
   const head = a?.headline ? esc(a.headline) : 'No Intelligence brief yet today';
   const body = a ? esc(a.driver?.[0]?.explain ?? a.driver?.[0]?.what ?? '') : 'Press Generate for the argument: what is driving markets, how it transmits, what would confirm or break it, and what to learn from it. One model call.';
   return `<div><div class="kick">${kick}${age}${who}</div><h2>${head}</h2><p>${body}</p>
-     <p style="margin-top:10px"><button class="btn" id="genbtn">${icS('bulb')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds</span></p></div>
+     <p style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="aibox" id="heroai"></span><button class="btn" id="genbtn">${icS('bulb')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds, sends today's Behind / Now / Ahead rows with it</span></p></div>
      <div class="gauge">${rf ? dial(rf.active ?? 0, rf.total ?? 5) : ''}</div><div class="gauge">${ring()}</div>`;
 }
 const fmtRate = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev != null ? (t.last - t.prev) * 100 : null, b20 = back(key, 20), d20 = b20 != null ? (t.last - b20) * 100 : null; return { v: t.last, d1, d20 }; };
@@ -428,7 +506,7 @@ function globalPosition() {
   const chgHtml = chg.length ? `<div class="chg"><span>What changed</span><span>1d</span><span>5d</span><span>20d</span></div>` + chg.map(r => `<div class="chg"><span>${esc(r.label)}</span><span class="${r.d1 > 0 ? 'up' : r.d1 < 0 ? 'dn' : ''}">${cell(r.d1, r)}</span><span class="${r.d5 > 0 ? 'up' : r.d5 < 0 ? 'dn' : ''}">${cell(r.d5, r)}</span><span class="${r.d20 > 0 ? 'up' : r.d20 < 0 ? 'dn' : ''}">${cell(r.d20, r)}</span></div>`).join('') : '';
   const cb = P.cbTone(cbHist()), cbHtml = cb.length ? `<div class="cbgrid">${cb.map(c => `<div class="cbc"><b>${esc(c.bank)}</b> <span class="mono ${c.delta > 0.05 ? 'up' : c.delta < -0.05 ? 'dn' : ''}">${sg(c.latest)}</span><div>${sparkSvg(c.scores, 'var(--violet)', 90, 26)}</div><div class="note">${esc(c.trend)} · ${esc(String(c.regime ?? '').toLowerCase())}</div></div>`).join('')}</div>` : '';
   const sb = P.surpriseBars(D.es), sbHtml = sb.length ? sb.map(s => barRow(s.ccy, s.score, 0.6, `${sg(s.score)} · ${s.nRecent ?? s.n}`, 'l')).join('') : '';
-  const crowd = P.crowding(D.ce).filter(c => c.state !== 'mid-range'), crowdHtml = crowd.length ? `<div class="chips">${crowd.map(c => `<span class="pill ${/crowded/.test(c.state) ? 'amber' : ''}" title="speculative position at the ${c.pct}th percentile of its history">${esc(c.sym)} · ${esc(c.state)}</span>`).join('')}</div>` : '<p class="note">No FX position is at an extreme.</p>';
+  const crowd = P.crowding(D.ce).filter(c => c.state !== 'mid-range'), crowdHtml = crowd.length ? `<div class="chips">${crowd.map(c => `<span class="pill ${/crowded/.test(c.state) ? 'amber' : ''}" title="speculative position at the ${ord(c.pct)} percentile of its history">${esc(c.sym)} · ${esc(c.state)}</span>`).join('')}</div>` : '<p class="note">No FX position is at an extreme.</p>';
   const eod = D.eod?.review?.hook ? `<p class="tl-line" style="margin-top:10px"><b>Yesterday's review:</b> ${esc(D.eod.review.hook)} <span class="note">(${D.eod.stale ? 'stale, ' : ''}${Math.round((D.eod.ageMin ?? 0) / 60)}h old)</span></p>` : '';
   const behind = tense('behind', 'Behind us: what history and the week say', 'back',
     tl(lines.behind) + (regRows ? `<h3>What each market did in this regime, per month since 2007</h3><div class="fac">${regRows}</div><p class="note" style="margin-top:6px">${esc(regime.note)}</p>` : '') + `<h3>What changed</h3>${chgHtml || loading()}<h3>Central-bank tone, last 6 meetings</h3>${cbHtml || loading()}<h3>Who has been beating or missing consensus</h3><div class="fac">${sbHtml || loading()}</div><h3>Who is crowded</h3>${D.ce ? crowdHtml : loading()}${eod}<div class="shelf">${ledgerPill('cot-positioning-factor')}</div>`);
@@ -451,7 +529,7 @@ function globalPosition() {
 }
 
 function drawGlobal() {
-  $('hero').innerHTML = heroHtml(); const gb = $('genbtn'); if (gb) gb.onclick = generateIntel;
+  $('hero').innerHTML = heroHtml(); const gb = $('genbtn'); if (gb) gb.onclick = generateIntel; $('intelbody').innerHTML = intelBodyHtml(); drawAi(); drawAb();
   $('position').innerHTML = globalPosition();
   const { links } = derived.chain, g = (key, kind) => (kind === 'rate' ? fmtRate(key) : fmtPct(key));
   const bp = x => (x == null ? '' : `${sg(x, 0)}bp`), pc = x => (x == null ? '' : `${sg(x, 2)}%`);
@@ -496,7 +574,7 @@ function stripHtml(kind) { return derived.str.map(c => { const w = Math.min(50, 
 const wireStrip = id => document.querySelectorAll('#' + id + ' .cc').forEach(b => { b.onclick = () => go('ccy', { ccy: b.getAttribute('data-c') }); });
 async function generateIntel() {
   const b = $('genbtn'); if (!b) return; b.disabled = true; b.textContent = 'Generating… about 90s';
-  const r = await J('/api/morning-brief?mode=intel', { method: 'POST' });
+  const r = await J('/api/morning-brief?mode=intel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ context: positionContext() }) });
   if (r?.ok) { D.intel = r; drawGlobal(); } else { b.disabled = false; b.textContent = 'Generate Intelligence brief'; $('loaderr').innerHTML = `<div class="err">Generate failed: ${esc(r?.error ?? 'no response')}</div>`; }
 }
 
@@ -506,7 +584,7 @@ function ccyPosition(k) {
   const country = COUNTRY_OF[k], ahead = P.aheadEvents(D.events, Date.now(), { countries: country ? [country] : null, withinHours: 120 });
   const behindBody = (cb ? `<h3>${esc(cb.bank)} tone over its last ${cb.scores.length} meetings</h3><div>${sparkSvg(cb.scores, 'var(--violet)', 140, 34)}</div><p class="tl-line">Latest ${sg(cb.latest)} (${esc(String(cb.regime ?? '').toLowerCase())}), ${esc(cb.trend)} against the previous meeting.${cb.headline ? ' ' + esc(cb.headline) : ''}</p><p class="note">Tone momentum against forward price tested null here: context, not a lean. ${ledgerPill('cb-tone-direction')}</p>` : `<p class="note">${k} has no tracked central bank on this desk (FOMC, ECB, BoE and BoJ only).</p>`)
     + (sb ? `<h3>Beating or missing consensus</h3>${barRow(k, sb.score, 0.6, `${sg(sb.score)} · ${sb.nRecent ?? sb.n} recent`, 'l')}${sb.top.length ? `<div class="rows" style="margin-top:6px">${sb.top.map(t => `<div class="rw"><span>${esc(t.event)}<small>actual ${esc(t.actual)} against ${esc(t.estimate)}</small></span><span class="mono ${t.z > 0 ? 'up' : 'dn'}">z ${sg(t.z, 1)}</span></div>`).join('')}</div>` : ''}<p class="note">A positive score means releases have come in above consensus. The size of a surprise is validated for range; its direction is not. ${ledgerPill('surprise-size')}</p>` : '')
-    + (crowd ? `<h3>Positioning</h3><p class="tl-line">Speculators are <b>${esc(CROWD_WORDS[crowd.state] ?? crowd.state)}</b> (${crowd.pct}th percentile of their history). ${ledgerPill('cot-positioning-factor')}</p>` : '');
+    + (crowd ? `<h3>Positioning</h3><p class="tl-line">Speculators are <b>${esc(CROWD_WORDS[crowd.state] ?? crowd.state)}</b> (${ord(crowd.pct)} percentile of their history). ${ledgerPill('cot-positioning-factor')}</p>` : '');
   const nowBody = `<p class="tl-line">Measured today: ${derived.str.find(x => x.ccy === k) ? sg(derived.str.find(x => x.ccy === k).score) + '% on the 1-day pair average' : 'no pair data'}. The macro read (the radar above) is the current state of the six factors.</p>${k === 'USD' ? `<p class="tl-line">Desk-watch conditions firing on the dollar: ${P.deskFiring(D.ds).filter(f => /dollar|USD|Treasur|real yield/i.test(f.label)).map(f => esc(f.label)).join('; ') || 'none'}.</p>` : ''}`;
   const aheadBody = (ahead.length ? ahead.map(e => `<div class="evrow"><span class="tm">${esc(ukTime(e.ms))}</span><span>${esc(e.event)}<small>${e.estimate ? 'expected ' + esc(e.estimate) : 'no consensus listed'}${e.prev ? ', previous ' + esc(e.prev) : ''}</small></span><span class="pill ${e.impact === 'high' ? 'amber' : ''}">${esc(e.impact)}</span></div>`).join('') : `<p class="note">No high or medium impact ${k} release is listed in the next five days.</p>`)
     + (k === 'USD' ? (() => { const fp = P.fedPathCard(D.fp), m = P.nextMeeting(D.fcal), nc = P.nowcastCard(D.nc); return `${m ? `<p class="tl-line">Next FOMC: ${esc(m.date)}, ${m.inDays} days away${m.sep ? ' (with projections)' : ''}.</p>` : ''}${fp ? `<p class="tl-line">The Fed path prices ${fp.hike}% odds of a higher rate by ${esc(fp.ref)}.</p>` : ''}${nc ? `<p class="tl-line">GDPNow ${nc.gdpnow ?? '?'}%; Cleveland CPI nowcast ${nc.cpi ?? '?'}% for ${esc(nc.month ?? '')}.</p>` : ''}`; })() : '');
@@ -524,7 +602,7 @@ function drawCcy() {
   const reasons = card.drivers.map(d => `<div class="whyp"><div class="wh"><b>${esc(d.label)}</b> <span class="pill ${d.direction === 'strong' ? 'bull' : 'bear'}">${d.direction} ${sg(d.score)}</span> ${d.backing ? `<span class="fg">${esc(d.backing)}${d.thin ? ' · thin' : ''}</span>` : ''}</div><p>${esc(d.why)}</p></div>`).join('') || '<p class="note">No macro factor has enough fresh data for this currency.</p>';
   const rel = Object.keys(insts()).filter(p => acOf(p) === 'fx' && p.includes(k)), exprs = card.expressions;
   const cotKey = { EUR: 'EUR/USD', GBP: 'GBP/USD', AUD: 'AUD/USD' }[k], cd = cotKey && D.cot?.data?.[cotKey];
-  const cotHtml = cd ? `<div class="cot">${[['Leveraged funds', cd.levNet, cd.levPct], ['Asset managers', cd.amNet, null]].map(r => r[2] == null ? `<div class="lab"><span>${r[0]}</span><span class="mono">${r[1] >= 0 ? 'net long' : 'net short'} ${Math.abs(r[1]).toLocaleString()} contracts</span></div>` : `<div><div class="lab"><span>${r[0]}</span><span class="mono">${r[1] >= 0 ? 'net long' : 'net short'} ${Math.abs(r[1]).toLocaleString()} · ${Math.round(r[2])}th percentile</span></div><div class="pct"><i style="left:calc(${Math.max(0, Math.min(100, r[2]))}% - 2px)"></i></div></div>`).join('')}</div><p class="note" style="margin-top:8px">Positioning says who has to act if they are wrong. It does not say which way price goes.</p>` : `<p class="note">Positioning for ${k} is on its pair page (the report is keyed by pair).</p>`;
+  const cotHtml = cd ? `<div class="cot">${[['Leveraged funds', cd.levNet, cd.levPct], ['Asset managers', cd.amNet, null]].map(r => r[2] == null ? `<div class="lab"><span>${r[0]}</span><span class="mono">${r[1] >= 0 ? 'net long' : 'net short'} ${Math.abs(r[1]).toLocaleString()} contracts</span></div>` : `<div><div class="lab"><span>${r[0]}</span><span class="mono">${r[1] >= 0 ? 'net long' : 'net short'} ${Math.abs(r[1]).toLocaleString()} · ${ord(Math.round(r[2]))} percentile</span></div><div class="pct"><i style="left:calc(${Math.max(0, Math.min(100, r[2]))}% - 2px)"></i></div></div>`).join('')}</div><p class="note" style="margin-top:8px">Positioning says who has to act if they are wrong. It does not say which way price goes.</p>` : `<p class="note">Positioning for ${k} is on its pair page (the report is keyed by pair).</p>`;
   $('ccybody').innerHTML =
    `<div class="hero"><div class="hd"><span class="fl2">${FLAG[k]}</span><div><div class="big">${k} <span style="font-weight:500;color:var(--text2);font-size:16px">${NAME[k]}</span></div>
      <div class="kick" style="margin:6px 0 0"><span class="pill ${card.thin ? '' : card.cls === 'bull' ? 'bull' : card.cls === 'bear' ? 'bear' : 'amber'}">${esc(card.word)}${card.composite != null && !card.thin ? ' ' + sg(card.composite) : ''}</span>${mv ? `<span class="pill">moved ${sg(mv.score)}% today (rank ${derived.str.findIndex(x => x.ccy === k) + 1} of ${derived.str.length})</span>` : ''}${card.coverage ? `<span class="pill">${esc(card.coverage)}${card.thinCoverage ? ' · thin' : ''}</span>` : ''}</div></div></div></div>
@@ -551,7 +629,7 @@ function pairPosition(k, cc, d) {
   const ahead = P.aheadEvents(D.events, Date.now(), { countries, withinHours: 48 }), allFiring = P.deskFiring(D.ds, k), firing = allFiring.filter(f => f.instruments.includes(k)), globalFiring = allFiring.length - firing.length;
   const behindBody = [
     regime ? `<p class="tl-line">In the ${esc(regime.regime.toLowerCase())} regime since 2007, ${esc(labelOf(k))} has averaged <b>${sg(regime.mean)}%</b> a month, up in ${regime.posShare}% of months (${regime.n} months, typical monthly range ${regime.range}%).</p><p class="note">A base rate for the regime, not a forecast.</p>` : '<p class="note">The regime study does not cover this instrument.</p>',
-    ...(!cc && COT_SYM[k] && crowd.find(x => x.sym === COT_SYM[k]) ? [`<div class="rw"><span><b>Positioning</b><small>speculators ${CROWD_WORDS[crowd.find(x => x.sym === COT_SYM[k]).state]} (${crowd.find(x => x.sym === COT_SYM[k]).pct}th percentile)</small></span>${ledgerPill('cot-positioning-factor')}</div>`] : []),
+    ...(!cc && COT_SYM[k] && crowd.find(x => x.sym === COT_SYM[k]) ? [`<div class="rw"><span><b>Positioning</b><small>speculators ${CROWD_WORDS[crowd.find(x => x.sym === COT_SYM[k]).state]} (${ord(crowd.find(x => x.sym === COT_SYM[k]).pct)} percentile)</small></span>${ledgerPill('cot-positioning-factor')}</div>`] : []),
     ...ccs.map(c => { const cb = cbs.find(x => x.ccy === c), sb = sbs.find(x => x.ccy === c), cr = crowd.find(x => x.sym === c); const bits = [cb ? `${cb.bank} tone ${sg(cb.latest)} (${cb.trend})` : null, sb ? `data surprises ${sg(sb.score)}` : null, cr ? `speculators ${CROWD_WORDS[cr.state] ?? cr.state}` : null].filter(Boolean); return bits.length ? `<div class="rw"><span><b>${FLAG[c]} ${c}</b><small>${esc(bits.join(' · '))}</small></span></div>` : ''; }),
   ].join('');
   const nowBody = [
@@ -590,7 +668,7 @@ function drawPair() {
   const reg = d.regime?.label ? `<span class="pill ${d.regime.label === 'TREND' ? 'violet' : 'blue'}">${esc(d.regime.label)}${d.regime.range_prob ? ' ' + d.regime.range_prob + '%' : ''}</span>` : '';
   $('pairbody').innerHTML =
    `<div class="hero"><div class="pairhd">${cc ? `<button class="flagbtn" data-c="${cc[0]}">${FLAG[cc[0]]} ${cc[0]}</button><span style="color:var(--text3)">${ic('pair', '')}</span><button class="flagbtn" data-c="${cc[1]}">${FLAG[cc[1]]} ${cc[1]}</button>` : `<span class="disp" style="font-size:22px;font-weight:700">${esc(label)}</span>`}
-     <span class="disp" style="font-size:28px;font-weight:700;margin-left:6px">${d.price != null ? d.price.toFixed(d.dp ?? 4) : '—'}</span>${used != null ? `<span class="pill blue">${used}% of expected range</span>` : ''}${reg}${d.volPct != null ? `<span class="pill">vol ${d.volPct}th pct</span>` : ''}${d.stale ? '<span class="pill amber">price stale</span>' : ''}</div></div>
+     <span class="disp" style="font-size:28px;font-weight:700;margin-left:6px">${d.price != null ? d.price.toFixed(d.dp ?? 4) : '—'}</span>${used != null ? `<span class="pill blue">${used}% of expected range</span>` : ''}${reg}${d.volPct != null ? `<span class="pill">vol ${ord(d.volPct)} pct</span>` : ''}${d.stale ? '<span class="pill amber">price stale</span>' : ''}</div></div>
    ${pairPosition(k, cc, d)}
    <div class="two"><div class="card"><h2>${ic('chart')}How much of the day is done</h2>${ladder}<p class="note">Expected range ${d.hlMed != null ? d.hlMed.toFixed(2) + '%' : '—'} (median high-to-low); a wide day ${d.hl75 != null ? d.hl75.toFixed(2) + '%' : '—'}. Calibrated: the median day uses about 100% of it.</p></div>
    <div class="card"><h2>${ic('link')}Linked markets today</h2>${con}<div class="legend"><span><i style="background:var(--bull)"></i>holding</span><span><i style="background:var(--amber)"></i>broken</span><span><i style="background:var(--text3)"></i>quiet</span></div></div></div>
@@ -618,7 +696,7 @@ async function main() {
   (await Promise.all(EXTRA.map(s => J(s[0])))).forEach((r, i) => { D[EXTRA[i][1]] = r; });
   D.__extra = true; drawAi(); redraw(); drawSrcs();
 }
-window.__atlas = { go, state, D, main };
+window.__atlas = { go, state, D, main, positionContext, abHtml, intelBodyHtml };
 main().catch(e => { $('loaderr').innerHTML = `<div class="err">Page error: ${esc(e.message)}</div>`; console.error('[atlas]', e); });
 </script>
 </body>

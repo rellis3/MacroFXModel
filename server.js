@@ -5387,7 +5387,7 @@ let _morningBriefRunning = false;
 // almost every time, so transmission is conditional and the only forward statement the
 // evidence supports is "wider", where a validated range effect applies.
 const _INTEL_BRIEF_KV = 'morning_brief_intel_v1';
-function _intelBriefPrompt(data, chainBlock) {
+function _intelBriefPrompt(data, chainBlock, position = '') {
   return `You are writing the CROSS-ASSET MARKET INTELLIGENCE BRIEF for an FX/macro trading desk. This is NOT a summary of what the dashboard measured. It is an argument: what is driving markets right now, how that driver transmits across bonds, credit, FX, equities and commodities, which assets are responding and which are not, what would confirm the view and what would break it, and where this desk has no edge.
 
 NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/BoJ head, etc.) anywhere in your output, even if a name appears in the headlines or calendar below — refer to them only by role.
@@ -5395,7 +5395,10 @@ NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/B
 === THE CHAIN — the textbook links in causal order, each judged on measured 20-day moves at BOTH ends (HOLDING = moved together as the textbook says; BROKEN = both moved, the wrong way round; QUIET = at least one end inside its noise floor, not judged) ===
 ${chainBlock}
 
-${data}
+${position ? `=== TODAY'S POSITION: behind us, right now, ahead (this desk's own analysis, already measured; use it to place the day, do not restate it line by line) ===
+${position}
+
+` : ''}${data}
 
 HOW TO REASON:
 - THE DRIVER COMES FROM THE CHAIN AND THE MEASURED MOVES, NOT FROM THE HEADLINES. Start from the nodes that moved past their noise floors and the links that are HOLDING; the driver is the upstream node whose move the holding links explain. Headlines may name it; they never establish it. One driver, two at most.
@@ -5403,15 +5406,16 @@ HOW TO REASON:
 - TRANSMISSION IS CONDITIONAL, NOT A FORECAST. "If the driver stands, X should fall" is the textbook; whether X IS falling comes from the chain and the snapshot. Never state which way an instrument goes next — this desk has tested direction claims again and again and nearly all were null (the TESTED ON THIS DESK block). Where a validated RANGE effect applies today (a VIX inversion, a release in the surprise table, the front of the vol curve), say the day runs wider: that is the one forward statement the evidence supports.
 - CONFIRM / INVALIDATE MUST BE OBSERVABLE: a number on a named series, a scheduled event with its time, or a chain link flipping. "Watch risk sentiment" is not a check. Three of each, each one something a trader can look at and answer yes or no.
 - CATALYSTS come from the calendar block, ranked by the Event Response Book's measured impact where it is given; say which driver each one tests. If the calendar feed is unavailable, say so and give none.
+- WHERE TODAY SITS: use TODAY'S POSITION, when it is given, to place the day in three tenses. BEHIND US is what history says about this backdrop and what has already happened this week. RIGHT NOW is what is true at this moment. AHEAD is what is already scheduled: a scheduled release is the one cause you can prepare for, so say which driver it tests and the measured size effect, never its direction. A regime's textbook prose and its measured table can disagree; when they do, say so and trust the table.
 - SIZING IS "HOW MUCH, NOT WHICH WAY": the correlation regime, the risk flags and the vol reads decide how much to have on. One paragraph, numbers once.
 - NO EDGE: name the parts of your own view that rest on relationships this desk has tested null or has never tested. Be specific — the tested claim in plain words, and which part of the argument leans on it.
 - THE READER IS LEARNING. For each driver, "explain" teaches the mechanism step by step; "lesson" picks the one concept today best illustrates (a broken link, a real versus nominal yield move, why credit and equities agree, why a stronger dollar presses commodity currencies) and teaches it with today's actual numbers. Say why things happen, not just that they did.
 - Plain English for a sharp non-specialist; gloss a desk term the first time you use it (3–6 words). Say each number once, where it decides something. Be honest about data age: anything the snapshot flags as stale, unavailable or in conflict is said to be so, and nothing is built on it.
 
 Respond with ONLY valid JSON, no markdown:
-{"headline":"one sentence: the driver and what it is doing to markets","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","driver":[{"what":"the driver in one plain sentence","evidence":"the nodes and links that establish it, with their 20-day numbers","explain":"two or three plain sentences on HOW this driver moves prices: the mechanism, step by step, as if teaching someone who is learning markets"}],"transmission":[{"asset":"instrument or node","should":"what the textbook says it does under this driver","is":"what it is actually doing, with the number","state":"RESPONDING|NOT RESPONDING|QUIET"}],"confirm":[{"check":"what to look at","level":"the number or event","when":"today / this week / the print and its time"}],"invalidate":[{"check":"what to look at","level":"the number or event","when":"when"}],"catalysts":[{"when":"time or day","event":"the release or decision","impact":"measured impact from the Event Response Book, or unmeasured","touches":"which driver it tests"}],"sizing":"one paragraph: how much to have on and why","noEdge":["a part of this view that rests on a tested-null or untested relationship, named"],"lesson":{"concept":"one market concept today illustrates, in a few words","today":"two or three sentences using TODAY's numbers to teach that concept, so the reader learns something they can reuse"}}`;
+{"headline":"ONE sentence, at most 25 words: the driver and what it is doing to markets","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","driver":[{"what":"the driver in one plain sentence","evidence":"the nodes and links that establish it, with their 20-day numbers","explain":"two or three plain sentences on HOW this driver moves prices: the mechanism, step by step, as if teaching someone who is learning markets"}],"transmission":[{"asset":"instrument or node","should":"what the textbook says it does under this driver","is":"what it is actually doing, with the number","state":"RESPONDING|NOT RESPONDING|QUIET"}],"confirm":[{"check":"what to look at","level":"the number or event","when":"today / this week / the print and its time"}],"invalidate":[{"check":"what to look at","level":"the number or event","when":"when"}],"catalysts":[{"when":"time or day","event":"the release or decision","impact":"measured impact from the Event Response Book, or unmeasured","touches":"which driver it tests"}],"sizing":"one paragraph: how much to have on and why","noEdge":["a part of this view that rests on a tested-null or untested relationship, named"],"lesson":{"concept":"one market concept today illustrates, in a few words","today":"two or three sentences using TODAY's numbers to teach that concept, so the reader learns something they can reuse"}}`;
 }
-async function _buildMorningBrief(mode = 'column') {
+async function _buildMorningBrief(mode = 'column', context = '') {
   // Was ANT_KEY-only. callModel picks the provider for this task and throws if
   // THAT one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
   if (!_aiAnyKey()) throw new Error('no model provider configured');
@@ -6027,7 +6031,7 @@ Respond with ONLY valid JSON, no markdown:
     try { const wi = await _watchInputs(); chainBlock = _chainForPrompt(wi.chain) || chainBlock; } catch (e) { chainBlock = `(chain unavailable: ${e.message})`; }
     const cut = prompt.indexOf('=== MACRO SNAPSHOT'), cutEnd = prompt.indexOf('READABILITY IS THE #1 GOAL');
     const data = prompt.slice(cut > 0 ? cut : 0, cutEnd > cut ? cutEnd : undefined);
-    finalPrompt = _intelBriefPrompt(data, chainBlock);
+    finalPrompt = _intelBriefPrompt(data, chainBlock, context);
     kvKey = _INTEL_BRIEF_KV;
   }
   const antRes = await callModel({ task: 'brief', maxTokens: 16000,
@@ -6053,10 +6057,10 @@ app.get('/api/morning-brief', async (req, res) => {
     return res.json({ ok: false, error: 'No morning brief yet — click Generate.' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-app.post('/api/morning-brief', async (req, res) => {
+app.post('/api/morning-brief', express.json({ limit: '64kb' }), async (req, res) => {
   if (_morningBriefRunning) return res.status(409).json({ ok: false, error: 'a morning brief is already generating' });
   _morningBriefRunning = true;
-  try { res.json({ ok: true, ...(await _buildMorningBrief(req.query?.mode === 'intel' ? 'intel' : 'column')) }); }
+  try { res.json({ ok: true, ...(await _buildMorningBrief(req.query?.mode === 'intel' ? 'intel' : 'column', typeof req.body?.context === 'string' ? req.body.context.slice(0, 9000) : '')) }); }
   catch (e) { res.status(/ANT_KEY/.test(e.message) ? 503 : 500).json({ ok: false, error: e.message }); }
   finally { _morningBriefRunning = false; }
 });
