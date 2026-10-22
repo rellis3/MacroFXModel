@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Five Ways to Trade Options, and How Each One Fails — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 </head>
@@ -13,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Five Ways to Trade Options — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, a style lab, an edge calculator and a 6-question self-test?<a href="options-trading-styles.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -183,7 +184,19 @@
       <p class="sl-p">At 20% every bar sits at minus the cost. At 25% the buyers are paid and the put seller is not. At 15% it flips. The style did not decide it: the gap between realised and implied did.</p>
     </section>
 
+    <!-- WB:options_trading_styles-deck:START -->
     <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Five ways to trade the same month</h2>
+      <!-- WB:options_trading_styles:START -->
+      <div class="wb" data-title="Five ways to trade the same month">
+        <script type="application/json">{"w":600,"h":845,"intro":"One stock, one month, five ways to trade the options on it. Every price is fair, so the interesting part is the shape of each bet. Press play, or step through.","steps":[{"cap":"A stock at 100 and options that expire in 30 days, priced at 20% implied volatility. That prices a typical one-month move of about 5.7 either way.","do":[{"icon":"you","name":"person","x":20,"y":14,"s":0.7,"tone":"blue","label":"you","lsize":18},{"box":"stk","x":140,"y":20,"w":190,"h":62,"text":"stock = 100","tone":"blue"},{"box":"mo","x":360,"y":20,"w":220,"h":62,"text":"30 days","tone":"blue","sub":"implied vol 20%"}]},{"cap":"The prices are fair: if the market has volatility right, the average result of every trade is zero before costs. The five styles are five different ways of getting to that same zero.","do":[{"note":"fair","x":300,"y":128,"text":"fair price: average result = 0 (before costs)","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Style 1, buy direction. A 105 call costs $0.64. It wins only 15.8% of the time, the average win is $3.26 and the average loss is $0.73.","do":[{"hide":"fair"},{"box":"buy","x":10,"y":100,"w":285,"h":66,"text":"1 · buy a 105 call","tone":"green","sub":"pay $0.64 · wins 15.8%","size":18}]},{"cap":"Twenty-four months of that trade, illustrative: four wins and twenty losses. Long flat stretches of small losses, then a jump. It ends slightly down, because of costs.","do":[{"chart":"run","x":10,"y":180,"w":580,"h":250,"title":"Cumulative result per share, 24 trades (illustrative)","xd":[0,24],"yd":[-6,8],"yt":[[-5,"−5"],[0,"0"],[5,"5"]],"xt":[[0,"0"],[12,"12"],[24,"24 trades"]],"zero":true,"pl":44,"pr":110},{"series":"b","chart":"run","pts":[[0,0.0],[1,-0.73],[2,-1.46],[3,-2.19],[4,-2.92],[5,0.34],[6,-0.39],[7,-1.12],[8,-1.85],[9,-2.58],[10,-3.31],[11,-0.05],[12,-0.78],[13,-1.51],[14,-2.24],[15,1.02],[16,0.29],[17,-0.44],[18,-1.17],[19,-1.9],[20,-2.63],[21,-3.36],[22,-0.1],[23,-0.83],[24,-1.56]],"tone":"green","ms":2200,"label":"buyer −1.56","lat":[24,-1.56],"ldx":6,"ldy":0,"lanchor":"start","lsize":15}]},{"cap":"Style 2, sell premium. The 95 put collects $0.57 and wins 82.9% of the time. The average win is $0.46, but the average loss is $2.82, six times bigger.","do":[{"box":"sell","x":305,"y":100,"w":285,"h":66,"text":"2 · sell a 95 put","tone":"amber","sub":"collect $0.57 · wins 82.9%","size":18}]},{"cap":"The same twenty-four months for the seller: a steady climb of small wins, then four sharp drops. It ends slightly down too. Fair prices: a high win rate and a low one are two slices of the same average.","do":[{"series":"s","chart":"run","pts":[[0,0.0],[1,0.46],[2,0.92],[3,1.38],[4,1.84],[5,2.3],[6,2.76],[7,3.22],[8,3.68],[9,0.86],[10,1.32],[11,1.78],[12,2.24],[13,2.7],[14,-0.12],[15,0.34],[16,0.8],[17,1.26],[18,1.72],[19,-1.1],[20,-0.64],[21,-0.18],[22,0.28],[23,-2.54],[24,-2.08]],"tone":"amber","ms":2200,"label":"seller −2.08","lat":[24,-2.08],"ldx":6,"ldy":18,"lanchor":"start","lsize":15}]},{"cap":"Style 3, trade volatility. A 100 straddle costs $4.57 and profits if the price travels more than $4.77 either way, which happens 40.5% of the time. It bets on size, not direction.","do":[{"box":"vol","x":10,"y":452,"w":185,"h":120,"text":"3 · long\nstraddle","tone":"purple","sub":"$4.57 · wins 40.5%","size":18}]},{"cap":"Style 4, hedge. You already own 100 shares. The 95 put costs $0.57 and caps your loss at $5.67 a share. Most months it expires unused, and that is what protection looks like.","do":[{"box":"hed","x":208,"y":452,"w":185,"h":120,"text":"4 · shares\n+ 95 put","tone":"blue","sub":"worst case −$5.67","size":18}]},{"cap":"Style 5, relative value. Sell the 30-day call and buy the 90-day call, both at 100. You bet on the gap between two prices, not on direction. Profit sits in a narrow hump near the strike.","do":[{"box":"rv","x":406,"y":452,"w":185,"h":120,"text":"5 · sell 30-day\nbuy 90-day","tone":"red","sub":"best $1.36 · worst $1.87","size":16}]},{"cap":"What decides who is paid is not the style but the gap between realised and implied volatility. Say realised comes in at 25%: the buyers are paid, the put seller and the calendar are not. At 15% it flips.","do":[{"chart":"ev","x":10,"y":590,"w":580,"h":200,"title":"Average result per share if realised vol = 25%","xd":[0,5],"yd":[-0.8,1.5],"yt":[[-0.5,"−0.5"],[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[],"zero":true,"pl":44,"pr":16},{"bars":"evb","chart":"ev","data":[[0.5,0.34,"call","green"],[1.5,-0.5,"put","red"],[2.5,0.94,"straddle","green"],[3.5,0.3,"hedge","green"],[4.5,-0.42,"calendar","red"]],"bw":50}]},{"cap":"So before any of the five: finish the sentence \"I get paid because…\". If you cannot, the average result is minus your costs, whichever style you pick.","do":[{"note":"end","x":300,"y":826,"text":"no edge = minus the costs","size":19,"anchor":"middle","tone":"red"}]}]}</script>
+      </div>
+      <!-- WB:options_trading_styles:END -->
+    </section>
+    <!-- WB:options_trading_styles-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The buyer and the seller of the same month</h2>
       <p class="sl-sub">Two fair trades with the same zero average before costs, wearing completely different faces.</p>
@@ -213,7 +226,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Volatility, hedging and relative value</h2>
       <div class="sl-icard-grid">
@@ -224,7 +237,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Who tends to use which</h2>
       <p class="sl-sub">Tendencies, not rules. Most participants use more than one style.</p>
@@ -236,7 +249,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">What the retail data say</h2>
       <div class="sl-callout amber">
@@ -250,7 +263,7 @@
       <p class="sl-p">For scale: 12.6% of the $0.64 call is about 8 cents of spread, more than the 10 cents per leg the lab assumes once you cross it both ways. These are averages in particular samples. They do not say every retail trader loses.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8 · It actually happened</div>
       <h2 class="sl-h2">Berkshire Hathaway's index puts, 2008</h2>
       <div class="sl-callout amber">
@@ -271,7 +284,7 @@
       <p class="sl-p">Maximum payment is 7.6 times the premium. The structure, not the style, made it survivable. A retail seller faces daily margin and can be closed out at the worst moment.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Which style fits your edge</h2>
       <p class="sl-sub">Start from what you can actually forecast.</p>
@@ -285,7 +298,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where each style quietly goes wrong</h2>
       <div class="sl-icard-grid">
@@ -298,7 +311,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -349,7 +362,7 @@
       </div>
     </section>
 
-    <section class="sl-slide sl-vark" data-slide="14">
+    <section class="sl-slide sl-vark" data-slide="15">
       <div class="sl-kicker">Your call</div>
   <div class="tl-drill">
     <div class="tl-drill-label">Scenario drill · an illustrative earnings week</div>
@@ -365,7 +378,7 @@
   </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -554,5 +567,6 @@
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
 <script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

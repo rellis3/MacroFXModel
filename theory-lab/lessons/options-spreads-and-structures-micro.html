@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Option Spreads &amp; Structures — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <style>
@@ -24,7 +25,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Option Spreads &amp; Structures — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, a live calculator, and a 6-question self-test?<a href="options-spreads-and-structures.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -239,7 +240,19 @@
       <p class="sl-p">Each one finances a bought leg with a sold leg. "Zero cost" means the premium nets out; it does not mean nothing was given up.</p>
     </section>
 
+    <!-- WB:options_spreads_and_structures-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Four bricks, many shapes: building option structures</h2>
+      <!-- WB:options_spreads_and_structures:START -->
+      <div class="wb" data-title="Four bricks, many shapes: building option structures">
+        <script type="application/json">{"w":600,"h":640,"intro":"Four bricks and the shapes you can build with them. Spot 100, three months, 20% volatility, 2% rates. Press play, or step through.","steps":[{"cap":"Four bricks: buy a call, sell a call, buy a put, sell a put. Every named structure is a sum of these, at different strikes and expiries.","do":[{"box":"b1","x":10,"y":10,"w":135,"h":64,"text":"BUY\ncall","tone":"blue","size":18},{"box":"b2","x":155,"y":10,"w":135,"h":64,"text":"SELL\ncall","tone":"amber","size":18},{"box":"b3","x":305,"y":10,"w":135,"h":64,"text":"BUY\nput","tone":"blue","size":18},{"box":"b4","x":450,"y":10,"w":140,"h":64,"text":"SELL\nput","tone":"amber","size":18}]},{"cap":"Start with one brick: buy the 100 call for 4.23. Below 100 you lose the 4.23. Above 100 you gain one for one, with no cap.","do":[{"chart":"pl","x":10,"y":96,"w":580,"h":330,"title":"Profit and loss at expiry, per share","xd":[80,120],"yd":[-14,17],"yt":[[10,"+10"],[0,"0"],[-10,"−10"]],"xt":[[80,"80"],[90,"90"],[100,"100"],[110,"110"],[120,"120"]],"zero":true,"pl":46,"pr":16},{"series":"lc","chart":"pl","pts":[[80,-4.232],[81,-4.232],[82,-4.232],[83,-4.232],[84,-4.232],[85,-4.232],[86,-4.232],[87,-4.232],[88,-4.232],[89,-4.232],[90,-4.232],[91,-4.232],[92,-4.232],[93,-4.232],[94,-4.232],[95,-4.232],[96,-4.232],[97,-4.232],[98,-4.232],[99,-4.232],[100,-4.232],[101,-3.232],[102,-2.232],[103,-1.232],[104,-0.232],[105,0.768],[106,1.768],[107,2.768],[108,3.768],[109,4.768],[110,5.768],[111,6.768],[112,7.768],[113,8.768],[114,9.768],[115,10.768],[116,11.768],[117,12.768],[118,13.768],[119,14.768],[120,15.768]],"tone":"blue","ms":1300,"label":"buy 100 call","lat":[118,13.768],"ldx":-4,"ldy":-14,"lanchor":"end","lsize":16}]},{"cap":"Add a second brick: sell the 105 call and collect 2.22. It gains at most 2.22 and loses one for one above 105.","do":[{"series":"sc","chart":"pl","pts":[[80,2.223],[81,2.223],[82,2.223],[83,2.223],[84,2.223],[85,2.223],[86,2.223],[87,2.223],[88,2.223],[89,2.223],[90,2.223],[91,2.223],[92,2.223],[93,2.223],[94,2.223],[95,2.223],[96,2.223],[97,2.223],[98,2.223],[99,2.223],[100,2.223],[101,2.223],[102,2.223],[103,2.223],[104,2.223],[105,2.223],[106,1.223],[107,0.223],[108,-0.777],[109,-1.777],[110,-2.777],[111,-3.777],[112,-4.777],[113,-5.777],[114,-6.777],[115,-7.777],[116,-8.777],[117,-9.777],[118,-10.777],[119,-11.777],[120,-12.777]],"tone":"amber","ms":1300,"dash":true,"label":"sell 105 call","lat":[118,-10.777],"ldx":-4,"ldy":14,"lanchor":"end","lsize":16}]},{"cap":"Add them up. The two ramps cancel above 105 and the result is a flat shelf: the bull call spread. You paid 2.01, so the worst case is 2.01 below 100 and the best is +2.99 above 105.","do":[{"series":"sp","chart":"pl","pts":[[80,-2.009],[81,-2.009],[82,-2.009],[83,-2.009],[84,-2.009],[85,-2.009],[86,-2.009],[87,-2.009],[88,-2.009],[89,-2.009],[90,-2.009],[91,-2.009],[92,-2.009],[93,-2.009],[94,-2.009],[95,-2.009],[96,-2.009],[97,-2.009],[98,-2.009],[99,-2.009],[100,-2.009],[101,-1.009],[102,-0.009],[103,0.991],[104,1.991],[105,2.991],[106,2.991],[107,2.991],[108,2.991],[109,2.991],[110,2.991],[111,2.991],[112,2.991],[113,2.991],[114,2.991],[115,2.991],[116,2.991],[117,2.991],[118,2.991],[119,2.991],[120,2.991]],"tone":"green","ms":1500,"label":"spread: pay 2.01","lat":[112,2.991],"ldx":0,"ldy":-16,"lanchor":"middle","lsize":17},{"dim":"lc"},{"dim":"sc"},{"dot":"sm","chart":"pl","at":[100,-2.0089277267237122],"text":"worst −2.01","tone":"red","dx":-6,"dy":20,"anchor":"end"},{"dot":"sg","chart":"pl","at":[105,2.991072273276302],"text":"best +2.99","tone":"green","dx":-6,"dy":-16,"anchor":"end"}]},{"cap":"What you bought: the same bet for 2.01 instead of 4.23. What you sold: everything above 105. A structure is cheaper because you gave something away.","do":[{"box":"why","x":10,"y":440,"w":285,"h":78,"text":"cheaper: pay 2.01 not 4.23","tone":"green","size":18},{"box":"why2","x":305,"y":440,"w":285,"h":78,"text":"cost: nothing above 105","tone":"amber","size":18}]},{"cap":"Different shape, same bricks: buy the 100 call and the 100 put. That is a straddle, a V. It costs 7.97, so spot must end below 92.03 or above 107.97 for you to profit.","do":[{"hide":"lc"},{"hide":"sc"},{"hide":"sp"},{"hide":"sm"},{"hide":"sg"},{"hide":"why"},{"hide":"why2"},{"series":"st","chart":"pl","pts":[[80,12.034],[81,11.034],[82,10.034],[83,9.034],[84,8.034],[85,7.034],[86,6.034],[87,5.034],[88,4.034],[89,3.034],[90,2.034],[91,1.034],[92,0.034],[93,-0.966],[94,-1.966],[95,-2.966],[96,-3.966],[97,-4.966],[98,-5.966],[99,-6.966],[100,-7.966],[101,-6.966],[102,-5.966],[103,-4.966],[104,-3.966],[105,-2.966],[106,-1.966],[107,-0.966],[108,0.034],[109,1.034],[110,2.034],[111,3.034],[112,4.034],[113,5.034],[114,6.034],[115,7.034],[116,8.034],[117,9.034],[118,10.034],[119,11.034],[120,12.034]],"tone":"purple","ms":1500,"label":"straddle: pay 7.97","lat":[100,-7.966],"ldx":0,"ldy":24,"lsize":17},{"dot":"s1","chart":"pl","at":[92.0344325445942,0],"text":"92.03","tone":"amber","dx":-4,"dy":-16,"anchor":"end"},{"dot":"s2","chart":"pl","at":[107.9655674554058,0],"text":"107.97","tone":"amber","dx":4,"dy":-16,"anchor":"start"}]},{"cap":"Buy the wings and sell two 100 calls: a butterfly, a tent. It costs only 0.97 and can make 4.03, but only if spot ends close to 100. Break-evens 95.97 and 104.03.","do":[{"hide":"st"},{"hide":"s1"},{"hide":"s2"},{"series":"fl","chart":"pl","pts":[[80,-0.973],[81,-0.973],[82,-0.973],[83,-0.973],[84,-0.973],[85,-0.973],[86,-0.973],[87,-0.973],[88,-0.973],[89,-0.973],[90,-0.973],[91,-0.973],[92,-0.973],[93,-0.973],[94,-0.973],[95,-0.973],[96,0.027],[97,1.027],[98,2.027],[99,3.027],[100,4.027],[101,3.027],[102,2.027],[103,1.027],[104,0.027],[105,-0.973],[106,-0.973],[107,-0.973],[108,-0.973],[109,-0.973],[110,-0.973],[111,-0.973],[112,-0.973],[113,-0.973],[114,-0.973],[115,-0.973],[116,-0.973],[117,-0.973],[118,-0.973],[119,-0.973],[120,-0.973]],"tone":"green","ms":1500,"label":"butterfly: pay 0.97","lat":[100,4.027],"ldx":0,"ldy":-16,"lsize":17},{"dot":"f1","chart":"pl","at":[95.97256966771657,0],"text":"95.97","tone":"amber","dx":-4,"dy":-16,"anchor":"end"},{"dot":"f2","chart":"pl","at":[104.02743033228343,0],"text":"104.03","tone":"amber","dx":4,"dy":-16,"anchor":"start"}]},{"cap":"Sell a put spread below and a call spread above: a short iron condor. You collect 1.49, and that is the most you can make. The worst case is 8.51: 5.7 times the best.","do":[{"hide":"fl"},{"hide":"f1"},{"hide":"f2"},{"series":"co","chart":"pl","pts":[[80,-8.513],[81,-7.513],[82,-6.513],[83,-5.513],[84,-4.513],[85,-3.513],[86,-2.513],[87,-1.513],[88,-0.513],[89,0.487],[90,1.487],[91,1.487],[92,1.487],[93,1.487],[94,1.487],[95,1.487],[96,1.487],[97,1.487],[98,1.487],[99,1.487],[100,1.487],[101,1.487],[102,1.487],[103,1.487],[104,1.487],[105,1.487],[106,1.487],[107,1.487],[108,1.487],[109,1.487],[110,1.487],[111,0.487],[112,-0.513],[113,-1.513],[114,-2.513],[115,-3.513],[116,-4.513],[117,-5.513],[118,-6.513],[119,-7.513],[120,-8.513]],"tone":"red","ms":1500,"label":"condor: get 1.49","lat":[100,1.487],"ldx":0,"ldy":-16,"lsize":17},{"dot":"c1","chart":"pl","at":[80,-8.51296341074358],"text":"worst −8.51","tone":"red","dx":8,"dy":-16,"anchor":"start"}]},{"cap":"Own the shares, buy the 95 put, sell the 105 call: a collar. The dashed line is the shares alone. The collar floors the loss at 4.52 and caps the gain at 5.48, for a net credit of 0.48 at flat vol.","do":[{"hide":"co"},{"hide":"c1"},{"series":"sh","chart":"pl","pts":[[86,-14],[87,-13],[88,-12],[89,-11],[90,-10],[91,-9],[92,-8],[93,-7],[94,-6],[95,-5],[96,-4],[97,-3],[98,-2],[99,-1],[100,0],[101,1],[102,2],[103,3],[104,4],[105,5],[106,6],[107,7],[108,8],[109,9],[110,10],[111,11],[112,12],[113,13],[114,14]],"tone":"blue","ms":900,"dash":true,"label":"shares alone","lat":[112,12],"ldx":-6,"ldy":-6,"lanchor":"end","lsize":16},{"series":"cl","chart":"pl","pts":[[80,-4.517],[81,-4.517],[82,-4.517],[83,-4.517],[84,-4.517],[85,-4.517],[86,-4.517],[87,-4.517],[88,-4.517],[89,-4.517],[90,-4.517],[91,-4.517],[92,-4.517],[93,-4.517],[94,-4.517],[95,-4.517],[96,-3.517],[97,-2.517],[98,-1.517],[99,-0.517],[100,0.483],[101,1.483],[102,2.483],[103,3.483],[104,4.483],[105,5.483],[106,5.483],[107,5.483],[108,5.483],[109,5.483],[110,5.483],[111,5.483],[112,5.483],[113,5.483],[114,5.483],[115,5.483],[116,5.483],[117,5.483],[118,5.483],[119,5.483],[120,5.483]],"tone":"green","ms":1500,"label":"collar","lat":[112,5.483],"ldx":0,"ldy":-16,"lsize":17}]},{"cap":"Greeks add leg by leg. Long straddle: long gamma and vega, pays theta. Condor and butterfly: the mirror image, collecting theta and short gamma and vega.","do":[{"box":"g1","x":10,"y":440,"w":285,"h":84,"text":"straddle:\nwants a big move","tone":"purple","size":17},{"box":"g2","x":305,"y":440,"w":285,"h":84,"text":"condor, butterfly:\nwant quiet","tone":"red","size":17}]},{"cap":"Defined risk is not low risk. In the model the condor profits about 75% of the time, averaging +1.42 when it wins and −4.31 when it does not: an expected value near zero. A fair price, not an edge.","do":[{"box":"fair","x":10,"y":540,"w":580,"h":84,"text":"high win rate, small wins, big losses = fair price","tone":"amber","size":18}]},{"cap":"Before you trade any structure, ask one question: what did I sell to make it look attractive? Then size by the worst case.","do":[{"pulse":"fair"}]}]}</script>
+      </div>
+      <!-- WB:options_spreads_and_structures:END -->
+    </section>
+    <!-- WB:options_spreads_and_structures-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Build one: the payoff builder</h2>
       <p class="sl-sub">Entry at spot 100, three months, 20% vol. Slide time and volatility to see why the expiry picture is only half the story.</p>
@@ -285,7 +298,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The Greek signature: what each structure wants</h2>
       <div class="sl-compare">
@@ -309,7 +322,7 @@
       <p class="sl-p">Greeks add leg by leg. A calendar is the odd one: long theta and vega (+0.016, +0.084) but short gamma (−0.0293).</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Defined risk is not low risk</h2>
       <div class="sl-callout amber">
@@ -322,7 +335,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">Barings, 1995: a short straddle with no wings</h2>
       <div class="sl-callout amber">
@@ -340,7 +353,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -391,7 +404,7 @@
       </div>
     </section>
 
-    <section class="sl-slide sl-vark" data-slide="15">
+    <section class="sl-slide sl-vark" data-slide="16">
 
       <div class="sl-kicker">Your call</div>
 
@@ -410,7 +423,7 @@
 
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -695,5 +708,6 @@
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
 <script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Short Premium: Risk, Margin &amp; Sizing — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <style>
@@ -240,7 +241,19 @@
       <p class="sl-p">The second sizing is smaller and earns less. That premium is the price of taking the worst square and still trading next month. Switch to the iron condor: its cap is small, but 50% margin still buys so many that the loss is about half the account.</p>
     </section>
 
+    <!-- WB:short_premium_risk_and_sizing-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">One strangle, two ways to size it</h2>
+      <!-- WB:short_premium_risk_and_sizing:START -->
+      <div class="wb" data-title="One strangle, two ways to size it">
+        <script type="application/json">{"w":600,"h":905,"intro":"One short strangle on an index, a $100,000 account, and two ways to decide how many to sell. Press play, or step through.","steps":[{"cap":"You sell a strangle on an index at 100: a 95 put and a 105 call, 45 days out. Buyers pay you $198 per contract in premium. Your account is $100,000.","do":[{"icon":"you","name":"person","x":20,"y":14,"s":0.7,"tone":"blue","label":"you, the\nseller","lsize":17},{"icon":"acct","name":"piggy","x":150,"y":14,"s":0.75,"tone":"blue","label":"account\n$100,000","sym":"$","lsize":17},{"icon":"buyers","name":"crowd","x":310,"y":14,"s":0.7,"label":"option buyers","lsize":17},{"icon":"prem","name":"coin","x":470,"y":22,"s":0.55,"tone":"green","label":"+$198\nper contract","sym":"$","lsize":17}]},{"cap":"Suppose eight cycles in a row expire worthless (illustrative). Each pays $198, and the line climbs to +$1,581. A high win rate and a smooth curve. This is the toll booth.","do":[{"chart":"cum","x":10,"y":138,"w":580,"h":250,"title":"One strangle, cumulative profit ($)","xd":[0,9],"yd":[-400,1900],"yt":[[0,"0"],[1000,"+1,000"],[1800,"+1,800"]],"xt":[[0,"0"],[4,"4"],[8,"8 cycles"]],"zero":true,"pl":62,"pr":40},{"series":"wins","chart":"cum","pts":[[0,0.0],[1,197.6],[2,395.2],[3,592.8],[4,790.4],[5,988.0],[6,1185.6],[7,1383.2],[8,1580.8]],"tone":"green","ms":1700,"label":"+$1,581","lat":[8,1580.8],"ldx":0,"ldy":-16,"lsize":17}]},{"cap":"Then the worst square on the grid: the index up 20% and volatility up 30 points, one day later. That one night costs $1,651, more than eight cycles of income. The line ends below where it started.","do":[{"series":"shock","chart":"cum","pts":[[8,1580.8],[9,-69.7]],"tone":"red","ms":1100,"label":"−$1,651","lat":[9,-69.7],"ldx":-6,"ldy":22,"lanchor":"end","lsize":17},{"dot":"endpt","chart":"cum","at":[9,-69.7],"text":"","tone":"red"}]},{"cap":"Win rate says nothing here. If every loser lost that much, you would need to win 89% of cycles just to break even. The shape of the payoff is what matters.","do":[{"box":"be","x":78,"y":180,"w":320,"h":62,"text":"break-even win rate\n= loss ÷ (loss + credit) = 89.3%","tone":"amber","size":17}]},{"cap":"Where does it hurt? Re-price the strangle on a grid of spot moves and volatility jumps. This is the row with volatility up 20 points, one day later. Both tails lose, and the up-move has no cap.","do":[{"hide":"be"},{"chart":"row","x":10,"y":402,"w":580,"h":228,"title":"Profit or loss per strangle, vol +20 pts ($)","xd":[-0.6,6.6],"yd":[-1750,250],"yt":[[0,"0"],[-1000,"−1,000"]],"xt":[[0,"−20%"],[1,"−10%"],[2,"−5%"],[3,"0"],[4,"+5%"],[5,"+10%"],[6,"+20%"]],"zero":true,"pl":62,"pr":14,"pb":30},{"bars":"lad","chart":"row","data":[[0,-1347,"−1,347"],[1,-675,"−675"],[2,-510,"−510"],[3,-481,"−481"],[4,-584,"−584"],[5,-804,"−804"],[6,-1499,"−1,499"]],"bw":40,"size":15,"ms":1300}]},{"cap":"Now margin. On a common equity-option rule your broker asks for about $1,698 per strangle. That is the collateral it wants today. It is a rule, not your worst case, and it can be raised after a shock.","do":[{"box":"mg","x":10,"y":648,"w":580,"h":76,"text":"broker margin: $1,698 per strangle\na collateral rule, not a bound","tone":"amber","size":19}]},{"cap":"Size by margin and use half the account: $50,000 ÷ $1,698 = 29 strangles. In the worst square each loses $1,651, so the book loses $47,866, nearly half the account.","do":[{"hide":"mg"},{"box":"bm","x":10,"y":648,"w":285,"h":112,"text":"sized by margin\n29 strangles","tone":"red","sub":"−0.0% of account","size":19},{"count":"bm","from":0,"to":47.9,"dp":1,"pre":"−","suf":"% of account","ms":1300}]},{"cap":"Size by the worst case instead. Budget 2% = $2,000. Divide by $1,651 per strangle and round down: one strangle. The worst square costs 1.7% of the account, and you trade next month.","do":[{"box":"bw","x":305,"y":648,"w":285,"h":112,"text":"sized by worst case\n1 strangle","tone":"green","sub":"−0.0% of account","size":19},{"count":"bw","from":0,"to":1.7,"dp":1,"pre":"−","suf":"% of account","ms":1000}]},{"cap":"The price of survival: 29 strangles collect $5,730 a cycle, one collects $198. Nobody advertises that trade-off, but it is the real cost of staying in the game.","do":[{"note":"inc","x":300,"y":790,"text":"premium per cycle: $5,730 against $198","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Defined risk changes the arithmetic. An iron condor has long wings that cap the loss at $353 a contract, so the same $2,000 budget buys 5 of them and collects $736 a cycle.","do":[{"box":"ic","x":10,"y":812,"w":580,"h":78,"text":"iron condor: cap $353, 5 contracts\npremium $736 a cycle, worst case 1.8%","tone":"blue","size":19}]},{"cap":"But defined risk caps the loss per contract, not how many you hold. Size 141 condors by half the account in margin and the same $353 cap still adds up to about half the account.","do":[{"pulse":"bm"},{"pulse":"ic"}]},{"cap":"So: re-price on a grid, take the worst square, divide your loss budget by it, round down. Size so the worst night is a bad week, not the end.","do":[{"pulse":"bw"}]}]}</script>
+      </div>
+      <!-- WB:short_premium_risk_and_sizing:END -->
+    </section>
+    <!-- WB:short_premium_risk_and_sizing-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Greeks are a local map</h2>
       <p class="sl-sub">Estimate from delta, gamma, vega and theta against a full re-pricing, for the strangle after one day.</p>
@@ -258,7 +271,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Gamma, assignment and gaps</h2>
       <div class="sl-icard-grid">
@@ -269,7 +282,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Ten positions, how many independent bets?</h2>
       <p class="sl-sub">For N equal positions with average correlation ρ: N_eff = N / (1 + (N − 1) ρ). Drag ρ and watch the effective number of bets.</p>
@@ -297,7 +310,7 @@
       <p class="sl-p">Correlations of 0.25 and 0.80 are illustrative round numbers. The shape is the lesson: once correlation is high, adding positions adds almost nothing. Run the grid on the whole book with everything moved together.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9 · It actually happened</div>
       <h2 class="sl-h2">5 February 2018: a year of calm, one session of 115%</h2>
       <div class="sl-callout amber">
@@ -315,7 +328,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The same night, in your account</h2>
       <p class="sl-sub">The note lost 96.1% in a day. Your loss is your allocation times 0.961.</p>
@@ -333,7 +346,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -384,7 +397,7 @@
       </div>
     </section>
 
-    <section class="sl-slide sl-vark" data-slide="14">
+    <section class="sl-slide sl-vark" data-slide="15">
 
       <div class="sl-kicker">Your call</div>
 
@@ -403,7 +416,7 @@
 
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -573,5 +586,6 @@ var SPM = (function () {
 <script src="../assets/paths.js" defer></script>
 <script src="../assets/tts.js?v=6" defer></script>
 <script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

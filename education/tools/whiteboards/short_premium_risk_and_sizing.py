@@ -44,7 +44,7 @@ SPR = dict(w=600, h=905, intro='One short strangle on an index, a $100,000 accou
          series('shock', 'cum', FALL, 'red', ms=1100, label='−$1,651', lat=[9, FALL[1][1]], ldx=-6, ldy=22, lanchor='end', lsize=17),
          dot('endpt', 'cum', FALL[1], '', 'red')),
     step('Win rate says nothing here. If every loser lost that much, you would need to win 89% of cycles just to break even. The shape of the payoff is what matters.',
-         box('be', 20, 88, 560, 44, 'break-even win rate = loss ÷ (loss + credit) = 89.3%', 'amber', size=18)),
+         box('be', 78, 180, 320, 62, 'break-even win rate\n= loss ÷ (loss + credit) = 89.3%', 'amber', size=17)),
     step('Where does it hurt? Re-price the strangle on a grid of spot moves and volatility jumps. This is the row with volatility up 20 points, one day later. Both tails lose, and the up-move has no cap.',
          dict(hide='be'),
          chart('row', CH2, 'Profit or loss per strangle, vol +20 pts ($)', [-0.6, 6.6], [-1750, 250],
