@@ -67,6 +67,7 @@ function isAllowedKVKey(key) {
     'cog_legs_live_v1',
     'cog_line_live_v1',
     'spread_episodes_v1',
+    'morning_brief_intel_v1',
     'newsletter_archive_v1',
     'funding_read_v1',
     'bank_credit_v1',
@@ -1074,6 +1075,7 @@ export default {
             // spread_episodes_v1: the spread-turn episodes forward record (written by Railway; a 48h TTL would reset it).
             'spread_episodes_v1',
             // funding_read_v1: the daily funding & leverage read record (written by Railway).
+            'morning_brief_intel_v1',
             'newsletter_archive_v1',
             'funding_read_v1',
             // bank_credit_v1: BIS bank-credit snapshot + the date each quarter was first seen (point-in-time; written by Railway).

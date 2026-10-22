@@ -561,18 +561,17 @@ async function drawPast() {
   el.innerHTML = NL_ARCH.length ? NL_ARCH.slice(0, 14).map(i => `<div class="rw"><span><b>${esc(i.kind === 'weekly' ? 'Weekly' : 'Daily')} · ${esc(i.date)}</b><small>${esc(i.subject)}${i.score ? ' · ' + esc(`median day ${i.score.median}x the expected size, ${i.score.pastShare}% past it`) : i.kind === 'daily' ? ' · not scored yet' : ''}</small></span><span style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn" href="/api/newsletter/issue?id=${encodeURIComponent(i.id)}" target="_blank" rel="noopener">Open</a><button class="btn" data-tg="${esc(i.id)}">Send to Telegram</button></span></div>`).join('') : '<p class="note">Nothing saved yet. Build an issue and it is saved here automatically.</p>';
   el.querySelectorAll('[data-tg]').forEach(b => { b.onclick = async () => { b.disabled = true; const r = await J('/api/newsletter/telegram', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: b.getAttribute('data-tg') }) }); $('nlStatus').textContent = r?.ok ? 'Sent to Telegram.' : (r?.error ?? 'Could not send.'); b.disabled = false; }; });
 }
-async function ensureBrief(st) {
-  const stale = !D.intel?.ok || !D.intel.generatedAt || (Date.now() - Date.parse(D.intel.generatedAt)) > 8 * 3.6e6;
-  if (!stale) return true;
-  st.textContent = "Generating today's brief first (about 90 seconds)…";
-  if (await generateIntel()) return true;
-  st.textContent = 'The brief did not generate. Try again.'; return false;
+// A newsletter never generates a brief. Only the Generate button does (it costs a model call, and the owner decides when). If the stored brief is old, the issue is built from it and says so.
+function ensureBrief(st) {
+  if (!D.intel?.ok || !D.intel.analysis) { st.textContent = 'There is no Intelligence brief yet. Press Generate Intelligence brief on the Global page first.'; return false; }
+  const hrs = (Date.now() - Date.parse(D.intel.generatedAt)) / 3.6e6;
+  st.textContent = hrs > 8 ? `Using the stored brief, written ${hrs < 48 ? Math.round(hrs) + ' hours' : Math.round(hrs / 24) + ' days'} ago. Press Generate on the Global page for a fresh one.` : '';
+  return true;
 }
 async function buildIssue(kind) {
   const weekly = kind === 'weekly', btn = $(weekly ? 'nlBuildW' : 'nlBuild'), st = $('nlStatus'); $('nlBuild').disabled = $('nlBuildW').disabled = true;
   try {
-    if (!(await ensureBrief(st))) return;
-    st.textContent = 'Reading the archive…';
+    if (!ensureBrief(st)) return;
     const arch = await loadArchive(), today = ukDate();
     const { eventImpactFor } = await import('./js/eventImpactMap.js');
     const bookFor = e => { try { return eventImpactFor(e.country, e.event); } catch { return null; } };
