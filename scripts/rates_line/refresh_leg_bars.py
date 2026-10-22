@@ -31,7 +31,7 @@ sys.path.insert(0, str(ROOT / 'scripts' / 'rates_line'))
 import build_leg_bars as B
 BASE = 'https://macrofxmodel-production.up.railway.app'
 KV_KEY = 'cog_legs_live_v1'
-IB_SPEC = {   # name: (IBKR symbol, exchange, currency, contract-month parameter). CORE = the seven legs the C.OG work uses; --all adds every other live US / euro rates contract.
+IB_SPEC = {   # name: (IBKR symbol, exchange, currency, contract-month parameter). CORE = the legs the C.OG work uses; --all adds every other live US / euro rates contract.
     'SR3U6': ('SOFR3', 'CME', 'USD', '202609'), 'SR3Z6': ('SOFR3', 'CME', 'USD', '202612'), 'SR3H7': ('SOFR3', 'CME', 'USD', '202703'),
     'IH7': ('I', 'ICEEU', 'EUR', '202703'), 'IZ6': ('I', 'ICEEU', 'EUR', '202612'), 'ER3Z6': ('ER3', 'ICEEU', 'EUR', '202612'), 'ER3H7': ('ER3', 'ICEEU', 'EUR', '202703'),
     'SR3M7': ('SOFR3', 'CME', 'USD', '202706'), 'SR3U7': ('SOFR3', 'CME', 'USD', '202709'), 'IM7': ('I', 'ICEEU', 'EUR', '202706'), 'IU7': ('I', 'ICEEU', 'EUR', '202709'),
@@ -39,7 +39,7 @@ IB_SPEC = {   # name: (IBKR symbol, exchange, currency, contract-month parameter
     'ZQV6': ('ZQ', 'CBOT', 'USD', '202610'), 'ZQX6': ('ZQ', 'CBOT', 'USD', '202611'), 'ZQZ6': ('ZQ', 'CBOT', 'USD', '202612'), 'ZQF7': ('ZQ', 'CBOT', 'USD', '202701'), 'ZQH7': ('ZQ', 'CBOT', 'USD', '202703'),
     'ZTZ6': ('ZT', 'CBOT', 'USD', '202612'), 'FGBS2612': ('FGBS', 'EUREX', 'EUR', '202612'),
 }
-CORE = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7']
+CORE = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7', 'IM7']      # IM7: becomes I2! when IZ6 expires (14 Dec 2026), so the stitched I2 line stays live
 last = [0.0]
 
 

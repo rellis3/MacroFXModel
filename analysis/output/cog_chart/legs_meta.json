@@ -10,7 +10,34 @@
   "asOf": "2026-10-19 19:59:00+00:00",
   "m5": 5040,
   "m15": 10160,
-  "stem": "ICEEU_ER3H7"
+  "h1": 9787,
+  "m5First": "2026-09-21",
+  "m15First": "2026-04-23",
+  "h1First": "2024-11-14",
+  "folders": [
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "ICEEU_ER3H7",
+  "days": 491,
+  "missing": 12,
+  "missingDates": [
+   "2024-12-25",
+   "2024-12-26",
+   "2025-01-01",
+   "2025-04-18",
+   "2025-04-21",
+   "2025-05-01",
+   "2025-12-25",
+   "2025-12-26",
+   "2026-01-01",
+   "2026-04-03",
+   "2026-04-06",
+   "2026-05-01"
+  ],
+  "maxGapDays": 4.5,
+  "barsPerDay": 1200,
+  "bars1m": 587038
  },
  {
   "name": "ER3M7",
@@ -23,7 +50,24 @@
   "asOf": "2026-10-19 09:59:00+00:00",
   "m5": 4680,
   "m15": 10080,
-  "stem": "ICEEU_ER3M7"
+  "h1": 2670,
+  "m5First": "2026-09-21",
+  "m15First": "2026-04-22",
+  "h1First": "2026-04-13",
+  "folders": [
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "ICEEU_ER3M7",
+  "days": 134,
+  "missing": 2,
+  "missingDates": [
+   "2026-05-01",
+   "2026-10-12"
+  ],
+  "maxGapDays": 3.2,
+  "barsPerDay": 1200,
+  "bars1m": 160200
  },
  {
   "name": "ER3U6",
@@ -36,7 +80,24 @@
   "asOf": "2026-10-19 09:59:00+00:00",
   "m5": 4518,
   "m15": 10026,
-  "stem": "ICEEU_ER3U6"
+  "h1": 2677,
+  "m5First": "2026-09-21",
+  "m15First": "2026-04-22",
+  "h1First": "2026-04-10",
+  "folders": [
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "ICEEU_ER3U6",
+  "days": 135,
+  "missing": 2,
+  "missingDates": [
+   "2026-05-01",
+   "2026-10-12"
+  ],
+  "maxGapDays": 3.7,
+  "barsPerDay": 1200,
+  "bars1m": 160590
  },
  {
   "name": "ER3U7",
@@ -49,7 +110,24 @@
   "asOf": "2026-10-19 10:00:00+00:00",
   "m5": 4681,
   "m15": 10081,
-  "stem": "ICEEU_ER3U7"
+  "h1": 2671,
+  "m5First": "2026-09-21",
+  "m15First": "2026-04-22",
+  "h1First": "2026-04-13",
+  "folders": [
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "ICEEU_ER3U7",
+  "days": 134,
+  "missing": 2,
+  "missingDates": [
+   "2026-05-01",
+   "2026-10-12"
+  ],
+  "maxGapDays": 3.2,
+  "barsPerDay": 1200,
+  "bars1m": 160201
  },
  {
   "name": "ER3Z6",
@@ -62,7 +140,34 @@
   "asOf": "2026-10-19 19:59:00+00:00",
   "m5": 5040,
   "m15": 10160,
-  "stem": "ICEEU_ER3Z6"
+  "h1": 9788,
+  "m5First": "2026-09-21",
+  "m15First": "2026-04-23",
+  "h1First": "2024-11-14",
+  "folders": [
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "ICEEU_ER3Z6",
+  "days": 491,
+  "missing": 12,
+  "missingDates": [
+   "2024-12-25",
+   "2024-12-26",
+   "2025-01-01",
+   "2025-04-18",
+   "2025-04-21",
+   "2025-05-01",
+   "2025-12-25",
+   "2025-12-26",
+   "2026-01-01",
+   "2026-04-03",
+   "2026-04-06",
+   "2026-05-01"
+  ],
+  "maxGapDays": 4.5,
+  "barsPerDay": 1200,
+  "bars1m": 587100
  },
  {
   "name": "FGBL2612",
@@ -75,7 +180,20 @@
   "asOf": "2026-09-25 20:04:00+00:00",
   "m5": 2380,
   "m15": 800,
-  "stem": "EUREX_FGBL_20261208_M"
+  "h1": 210,
+  "m5First": "2026-09-14",
+  "m15First": "2026-09-14",
+  "h1First": "2026-09-14",
+  "folders": [
+   "stir_1m_bonds"
+  ],
+  "stem": "EUREX_FGBL_20261208_M",
+  "days": 10,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.2,
+  "barsPerDay": 1190,
+  "bars1m": 11900
  },
  {
   "name": "FGBM2612",
@@ -88,7 +206,20 @@
   "asOf": "2026-09-25 20:04:00+00:00",
   "m5": 2380,
   "m15": 800,
-  "stem": "EUREX_FGBM_20261208_M"
+  "h1": 210,
+  "m5First": "2026-09-14",
+  "m15First": "2026-09-14",
+  "h1First": "2026-09-14",
+  "folders": [
+   "stir_1m_bonds"
+  ],
+  "stem": "EUREX_FGBM_20261208_M",
+  "days": 10,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.2,
+  "barsPerDay": 1190,
+  "bars1m": 11900
  },
  {
   "name": "FGBS2609",
@@ -101,7 +232,22 @@
   "asOf": "2026-09-08 19:59:00+00:00",
   "m5": 5235,
   "m15": 8479,
-  "stem": "EUREX_FGBS_20260908_M"
+  "h1": 2225,
+  "m5First": "2026-08-10",
+  "m15First": "2026-04-13",
+  "h1First": "2026-04-13",
+  "folders": [
+   "stir_1m"
+  ],
+  "stem": "EUREX_FGBS_20260908_M",
+  "days": 106,
+  "missing": 1,
+  "missingDates": [
+   "2026-05-01"
+  ],
+  "maxGapDays": 3.2,
+  "barsPerDay": 1190,
+  "bars1m": 126135
  },
  {
   "name": "FGBS2612",
@@ -114,7 +260,22 @@
   "asOf": "2026-10-09 12:53:00+00:00",
   "m5": 5236,
   "m15": 10081,
-  "stem": "EUREX_FGBS_20261208_M"
+  "h1": 2647,
+  "m5First": "2026-09-09",
+  "m15First": "2026-04-15",
+  "h1First": "2026-04-15",
+  "folders": [
+   "stir_1m"
+  ],
+  "stem": "EUREX_FGBS_20261208_M",
+  "days": 127,
+  "missing": 1,
+  "missingDates": [
+   "2026-05-01"
+  ],
+  "maxGapDays": 3.2,
+  "barsPerDay": 1190,
+  "bars1m": 149943
  },
  {
   "name": "FGBX2612",
@@ -127,7 +288,20 @@
   "asOf": "2026-09-25 20:04:00+00:00",
   "m5": 2380,
   "m15": 800,
-  "stem": "EUREX_FGBX_20261208_M"
+  "h1": 210,
+  "m5First": "2026-09-14",
+  "m15First": "2026-09-14",
+  "h1First": "2026-09-14",
+  "folders": [
+   "stir_1m_bonds"
+  ],
+  "stem": "EUREX_FGBX_20261208_M",
+  "days": 10,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.2,
+  "barsPerDay": 1190,
+  "bars1m": 11900
  },
  {
   "name": "IF7",
@@ -140,7 +314,20 @@
   "asOf": "2026-09-25 19:59:00+00:00",
   "m5": 2400,
   "m15": 800,
-  "stem": "ICEEU_IF7"
+  "h1": 200,
+  "m5First": "2026-09-14",
+  "m15First": "2026-09-14",
+  "h1First": "2026-09-14",
+  "folders": [
+   "mid"
+  ],
+  "stem": "ICEEU_IF7",
+  "days": 10,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.2,
+  "barsPerDay": 1200,
+  "bars1m": 12000
  },
  {
   "name": "IG7",
@@ -153,7 +340,20 @@
   "asOf": "2026-09-25 19:59:00+00:00",
   "m5": 2400,
   "m15": 800,
-  "stem": "ICEEU_IG7"
+  "h1": 200,
+  "m5First": "2026-09-14",
+  "m15First": "2026-09-14",
+  "h1First": "2026-09-14",
+  "folders": [
+   "mid"
+  ],
+  "stem": "ICEEU_IG7",
+  "days": 10,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.2,
+  "barsPerDay": 1200,
+  "bars1m": 12000
  },
  {
   "name": "IH7",
@@ -166,7 +366,36 @@
   "asOf": "2026-10-19 19:59:00+00:00",
   "m5": 5040,
   "m15": 10160,
-  "stem": "ICEEU_IH7"
+  "h1": 12828,
+  "m5First": "2026-09-21",
+  "m15First": "2026-04-23",
+  "h1First": "2024-04-15",
+  "folders": [
+   "mid",
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "ICEEU_IH7",
+  "days": 643,
+  "missing": 13,
+  "missingDates": [
+   "2024-05-01",
+   "2024-12-25",
+   "2024-12-26",
+   "2025-01-01",
+   "2025-04-18",
+   "2025-04-21",
+   "2025-05-01",
+   "2025-12-25",
+   "2025-12-26",
+   "2026-01-01",
+   "2026-04-03",
+   "2026-04-06",
+   "2026-05-01"
+  ],
+  "maxGapDays": 4.5,
+  "barsPerDay": 1200,
+  "bars1m": 769500
  },
  {
   "name": "IK6",
@@ -179,7 +408,20 @@
   "asOf": "2026-04-24 19:59:00+00:00",
   "m5": 3360,
   "m15": 1120,
-  "stem": "ICEEU_IK6"
+  "h1": 280,
+  "m5First": "2026-04-07",
+  "m15First": "2026-04-07",
+  "h1First": "2026-04-07",
+  "folders": [
+   "stir_1m_i2"
+  ],
+  "stem": "ICEEU_IK6",
+  "days": 14,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.2,
+  "barsPerDay": 1200,
+  "bars1m": 16800
  },
  {
   "name": "IM6",
@@ -192,7 +434,22 @@
   "asOf": "2026-05-29 19:59:00+00:00",
   "m5": 5040,
   "m15": 2720,
-  "stem": "ICEEU_IM6"
+  "h1": 680,
+  "m5First": "2026-04-30",
+  "m15First": "2026-04-13",
+  "h1First": "2026-04-13",
+  "folders": [
+   "stir_1m_i2"
+  ],
+  "stem": "ICEEU_IM6",
+  "days": 34,
+  "missing": 1,
+  "missingDates": [
+   "2026-05-01"
+  ],
+  "maxGapDays": 3.2,
+  "barsPerDay": 1200,
+  "bars1m": 40800
  },
  {
   "name": "IM7",
@@ -205,7 +462,24 @@
   "asOf": "2026-10-19 09:59:00+00:00",
   "m5": 4920,
   "m15": 10160,
-  "stem": "ICEEU_IM7"
+  "h1": 2690,
+  "m5First": "2026-09-21",
+  "m15First": "2026-04-22",
+  "h1First": "2026-04-13",
+  "folders": [
+   "mid",
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "ICEEU_IM7",
+  "days": 135,
+  "missing": 1,
+  "missingDates": [
+   "2026-05-01"
+  ],
+  "maxGapDays": 3.2,
+  "barsPerDay": 1200,
+  "bars1m": 161400
  },
  {
   "name": "IN6",
@@ -218,7 +492,20 @@
   "asOf": "2026-06-26 19:59:00+00:00",
   "m5": 5280,
   "m15": 2400,
-  "stem": "ICEEU_IN6"
+  "h1": 600,
+  "m5First": "2026-05-28",
+  "m15First": "2026-05-18",
+  "h1First": "2026-05-18",
+  "folders": [
+   "stir_1m_i2"
+  ],
+  "stem": "ICEEU_IN6",
+  "days": 30,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.2,
+  "barsPerDay": 1200,
+  "bars1m": 36000
  },
  {
   "name": "IQ6",
@@ -231,7 +518,20 @@
   "asOf": "2026-07-24 19:59:00+00:00",
   "m5": 5280,
   "m15": 2400,
-  "stem": "ICEEU_IQ6"
+  "h1": 600,
+  "m5First": "2026-06-25",
+  "m15First": "2026-06-15",
+  "h1First": "2026-06-15",
+  "folders": [
+   "stir_1m_i2"
+  ],
+  "stem": "ICEEU_IQ6",
+  "days": 30,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.2,
+  "barsPerDay": 1200,
+  "bars1m": 36000
  },
  {
   "name": "IU6",
@@ -244,7 +544,20 @@
   "asOf": "2026-08-28 19:59:00+00:00",
   "m5": 5280,
   "m15": 2800,
-  "stem": "ICEEU_IU6"
+  "h1": 700,
+  "m5First": "2026-07-30",
+  "m15First": "2026-07-13",
+  "h1First": "2026-07-13",
+  "folders": [
+   "stir_1m_i2"
+  ],
+  "stem": "ICEEU_IU6",
+  "days": 35,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.2,
+  "barsPerDay": 1200,
+  "bars1m": 42000
  },
  {
   "name": "IU7",
@@ -257,7 +570,25 @@
   "asOf": "2026-10-19 09:59:00+00:00",
   "m5": 4680,
   "m15": 10080,
-  "stem": "ICEEU_IU7"
+  "h1": 2670,
+  "m5First": "2026-09-21",
+  "m15First": "2026-04-22",
+  "h1First": "2026-04-13",
+  "folders": [
+   "mid",
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "ICEEU_IU7",
+  "days": 134,
+  "missing": 2,
+  "missingDates": [
+   "2026-05-01",
+   "2026-10-12"
+  ],
+  "maxGapDays": 3.2,
+  "barsPerDay": 1200,
+  "bars1m": 160200
  },
  {
   "name": "IV6",
@@ -270,7 +601,21 @@
   "asOf": "2026-09-25 19:59:00+00:00",
   "m5": 5280,
   "m15": 2400,
-  "stem": "ICEEU_IV6"
+  "h1": 600,
+  "m5First": "2026-08-27",
+  "m15First": "2026-08-17",
+  "h1First": "2026-08-17",
+  "folders": [
+   "stir_1m",
+   "stir_1m_i2"
+  ],
+  "stem": "ICEEU_IV6",
+  "days": 30,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.2,
+  "barsPerDay": 1200,
+  "bars1m": 36000
  },
  {
   "name": "IX6",
@@ -283,7 +628,21 @@
   "asOf": "2026-10-09 19:59:00+00:00",
   "m5": 4800,
   "m15": 1600,
-  "stem": "ICEEU_IX6"
+  "h1": 400,
+  "m5First": "2026-09-14",
+  "m15First": "2026-09-14",
+  "h1First": "2026-09-14",
+  "folders": [
+   "stir_1m",
+   "stir_1m_i2"
+  ],
+  "stem": "ICEEU_IX6",
+  "days": 20,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.2,
+  "barsPerDay": 1200,
+  "bars1m": 24000
  },
  {
   "name": "IZ6",
@@ -296,7 +655,36 @@
   "asOf": "2026-10-19 19:59:00+00:00",
   "m5": 5040,
   "m15": 10160,
-  "stem": "ICEEU_IZ6"
+  "h1": 12828,
+  "m5First": "2026-09-21",
+  "m15First": "2026-04-23",
+  "h1First": "2024-04-15",
+  "folders": [
+   "mid",
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "ICEEU_IZ6",
+  "days": 643,
+  "missing": 13,
+  "missingDates": [
+   "2024-05-01",
+   "2024-12-25",
+   "2024-12-26",
+   "2025-01-01",
+   "2025-04-18",
+   "2025-04-21",
+   "2025-05-01",
+   "2025-12-25",
+   "2025-12-26",
+   "2026-01-01",
+   "2026-04-03",
+   "2026-04-06",
+   "2026-05-01"
+  ],
+  "maxGapDays": 4.5,
+  "barsPerDay": 1200,
+  "bars1m": 769500
  },
  {
   "name": "SR3H7",
@@ -309,7 +697,23 @@
   "asOf": "2026-10-19 22:27:00+00:00",
   "m5": 5802,
   "m15": 11528,
-  "stem": "CME_SR3H7"
+  "h1": 14813,
+  "m5First": "2026-09-20",
+  "m15First": "2026-04-22",
+  "h1First": "2024-04-14",
+  "folders": [
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "CME_SR3H7",
+  "days": 655,
+  "missing": 1,
+  "missingDates": [
+   "2025-04-18"
+  ],
+  "maxGapDays": 3.0,
+  "barsPerDay": 1380,
+  "bars1m": 888478
  },
  {
   "name": "SR3M7",
@@ -322,7 +726,21 @@
   "asOf": "2026-10-19 10:04:00+00:00",
   "m5": 5389,
   "m15": 11436,
-  "stem": "CME_SR3M7"
+  "h1": 3033,
+  "m5First": "2026-09-20",
+  "m15First": "2026-04-22",
+  "h1First": "2026-04-12",
+  "folders": [
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "CME_SR3M7",
+  "days": 136,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 3.0,
+  "barsPerDay": 1380,
+  "bars1m": 181925
  },
  {
   "name": "SR3N6",
@@ -335,7 +753,20 @@
   "asOf": "2026-09-25 20:59:00+00:00",
   "m5": 2760,
   "m15": 920,
-  "stem": "CME_SR3N6"
+  "h1": 230,
+  "m5First": "2026-09-13",
+  "m15First": "2026-09-13",
+  "h1First": "2026-09-13",
+  "folders": [
+   "mid"
+  ],
+  "stem": "CME_SR3N6",
+  "days": 10,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.0,
+  "barsPerDay": 1380,
+  "bars1m": 13800
  },
  {
   "name": "SR3Q6",
@@ -348,7 +779,20 @@
   "asOf": "2026-09-25 20:59:00+00:00",
   "m5": 2759,
   "m15": 920,
-  "stem": "CME_SR3Q6"
+  "h1": 230,
+  "m5First": "2026-09-13",
+  "m15First": "2026-09-13",
+  "h1First": "2026-09-13",
+  "folders": [
+   "mid"
+  ],
+  "stem": "CME_SR3Q6",
+  "days": 10,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.0,
+  "barsPerDay": 1380,
+  "bars1m": 13792
  },
  {
   "name": "SR3U6",
@@ -361,7 +805,23 @@
   "asOf": "2026-10-19 22:27:00+00:00",
   "m5": 5802,
   "m15": 11528,
-  "stem": "CME_SR3U6"
+  "h1": 14813,
+  "m5First": "2026-09-20",
+  "m15First": "2026-04-22",
+  "h1First": "2024-04-14",
+  "folders": [
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "CME_SR3U6",
+  "days": 655,
+  "missing": 1,
+  "missingDates": [
+   "2025-04-18"
+  ],
+  "maxGapDays": 3.0,
+  "barsPerDay": 1380,
+  "bars1m": 888478
  },
  {
   "name": "SR3U7",
@@ -374,7 +834,21 @@
   "asOf": "2026-10-19 10:04:00+00:00",
   "m5": 5389,
   "m15": 11436,
-  "stem": "CME_SR3U7"
+  "h1": 3033,
+  "m5First": "2026-09-20",
+  "m15First": "2026-04-22",
+  "h1First": "2026-04-12",
+  "folders": [
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "CME_SR3U7",
+  "days": 136,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 3.0,
+  "barsPerDay": 1380,
+  "bars1m": 181925
  },
  {
   "name": "SR3V6",
@@ -387,7 +861,20 @@
   "asOf": "2026-09-25 20:59:00+00:00",
   "m5": 2760,
   "m15": 920,
-  "stem": "CME_SR3V6"
+  "h1": 230,
+  "m5First": "2026-09-13",
+  "m15First": "2026-09-13",
+  "h1First": "2026-09-13",
+  "folders": [
+   "mid"
+  ],
+  "stem": "CME_SR3V6",
+  "days": 10,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.0,
+  "barsPerDay": 1380,
+  "bars1m": 13799
  },
  {
   "name": "SR3X6",
@@ -400,7 +887,20 @@
   "asOf": "2026-09-25 20:59:00+00:00",
   "m5": 2760,
   "m15": 920,
-  "stem": "CME_SR3X6"
+  "h1": 230,
+  "m5First": "2026-09-13",
+  "m15First": "2026-09-13",
+  "h1First": "2026-09-13",
+  "folders": [
+   "mid"
+  ],
+  "stem": "CME_SR3X6",
+  "days": 10,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.0,
+  "barsPerDay": 1380,
+  "bars1m": 13799
  },
  {
   "name": "SR3Z6",
@@ -413,7 +913,23 @@
   "asOf": "2026-10-19 22:27:00+00:00",
   "m5": 5802,
   "m15": 11528,
-  "stem": "CME_SR3Z6"
+  "h1": 14813,
+  "m5First": "2026-09-20",
+  "m15First": "2026-04-22",
+  "h1First": "2024-04-14",
+  "folders": [
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "CME_SR3Z6",
+  "days": 655,
+  "missing": 1,
+  "missingDates": [
+   "2025-04-18"
+  ],
+  "maxGapDays": 3.0,
+  "barsPerDay": 1380,
+  "bars1m": 888478
  },
  {
   "name": "UBZ6",
@@ -426,7 +942,20 @@
   "asOf": "2026-09-25 20:59:00+00:00",
   "m5": 2760,
   "m15": 920,
-  "stem": "CBOT_UBZ6"
+  "h1": 230,
+  "m5First": "2026-09-13",
+  "m15First": "2026-09-13",
+  "h1First": "2026-09-13",
+  "folders": [
+   "stir_1m_bonds"
+  ],
+  "stem": "CBOT_UBZ6",
+  "days": 10,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.0,
+  "barsPerDay": 1380,
+  "bars1m": 13800
  },
  {
   "name": "ZBZ6",
@@ -439,7 +968,20 @@
   "asOf": "2026-09-25 20:59:00+00:00",
   "m5": 2760,
   "m15": 920,
-  "stem": "CBOT_ZBZ6"
+  "h1": 230,
+  "m5First": "2026-09-13",
+  "m15First": "2026-09-13",
+  "h1First": "2026-09-13",
+  "folders": [
+   "stir_1m_bonds"
+  ],
+  "stem": "CBOT_ZBZ6",
+  "days": 10,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.0,
+  "barsPerDay": 1380,
+  "bars1m": 13800
  },
  {
   "name": "ZFZ6",
@@ -452,7 +994,20 @@
   "asOf": "2026-09-25 20:59:00+00:00",
   "m5": 2760,
   "m15": 920,
-  "stem": "CBOT_ZFZ6"
+  "h1": 230,
+  "m5First": "2026-09-13",
+  "m15First": "2026-09-13",
+  "h1First": "2026-09-13",
+  "folders": [
+   "stir_1m_bonds"
+  ],
+  "stem": "CBOT_ZFZ6",
+  "days": 10,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.0,
+  "barsPerDay": 1380,
+  "bars1m": 13800
  },
  {
   "name": "ZNZ6",
@@ -465,7 +1020,20 @@
   "asOf": "2026-09-25 20:59:00+00:00",
   "m5": 2760,
   "m15": 920,
-  "stem": "CBOT_ZNZ6"
+  "h1": 230,
+  "m5First": "2026-09-13",
+  "m15First": "2026-09-13",
+  "h1First": "2026-09-13",
+  "folders": [
+   "stir_1m_bonds"
+  ],
+  "stem": "CBOT_ZNZ6",
+  "days": 10,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.0,
+  "barsPerDay": 1380,
+  "bars1m": 13800
  },
  {
   "name": "ZQF7",
@@ -478,7 +1046,44 @@
   "asOf": "2026-10-19 10:05:00+00:00",
   "m5": 5390,
   "m15": 11436,
-  "stem": "CBOT_ZQF7"
+  "h1": 8121,
+  "m5First": "2026-09-20",
+  "m15First": "2026-04-22",
+  "h1First": "2025-04-22",
+  "folders": [
+   "stir_1m_deep",
+   "stir_1m_meeting"
+  ],
+  "stem": "CBOT_ZQF7",
+  "days": 368,
+  "missing": 22,
+  "missingDates": [
+   "2025-04-23",
+   "2025-04-24",
+   "2025-04-25",
+   "2025-04-28",
+   "2025-04-29",
+   "2025-04-30",
+   "2025-05-01",
+   "2025-05-02",
+   "2025-05-05",
+   "2025-05-14",
+   "2025-05-15",
+   "2025-05-16",
+   "2025-05-19",
+   "2025-05-20",
+   "2025-05-21",
+   "2025-05-22",
+   "2025-05-23",
+   "2025-05-26",
+   "2025-05-27",
+   "2025-05-28",
+   "2025-06-03",
+   "2025-06-06"
+  ],
+  "maxGapDays": 15.9,
+  "barsPerDay": 1380,
+  "bars1m": 486781
  },
  {
   "name": "ZQH7",
@@ -491,7 +1096,26 @@
   "asOf": "2026-10-19 10:06:00+00:00",
   "m5": 5390,
   "m15": 11436,
-  "stem": "CBOT_ZQH7"
+  "h1": 9844,
+  "m5First": "2026-09-20",
+  "m15First": "2026-04-22",
+  "h1First": "2025-02-03",
+  "folders": [
+   "stir_1m_deep",
+   "stir_1m_meeting"
+  ],
+  "stem": "CBOT_ZQH7",
+  "days": 442,
+  "missing": 4,
+  "missingDates": [
+   "2025-04-18",
+   "2025-04-30",
+   "2025-05-02",
+   "2025-05-05"
+  ],
+  "maxGapDays": 5.1,
+  "barsPerDay": 1380,
+  "bars1m": 590233
  },
  {
   "name": "ZQV6",
@@ -504,7 +1128,21 @@
   "asOf": "2026-10-19 10:05:00+00:00",
   "m5": 5390,
   "m15": 11436,
-  "stem": "CBOT_ZQV6"
+  "h1": 8727,
+  "m5First": "2026-09-20",
+  "m15First": "2026-04-22",
+  "h1First": "2025-04-21",
+  "folders": [
+   "stir_1m_deep",
+   "stir_1m_meeting"
+  ],
+  "stem": "CBOT_ZQV6",
+  "days": 391,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 3.0,
+  "barsPerDay": 1380,
+  "bars1m": 523290
  },
  {
   "name": "ZQX6",
@@ -517,7 +1155,26 @@
   "asOf": "2026-10-19 10:05:00+00:00",
   "m5": 5390,
   "m15": 11436,
-  "stem": "CBOT_ZQX6"
+  "h1": 8601,
+  "m5First": "2026-09-20",
+  "m15First": "2026-04-22",
+  "h1First": "2025-04-21",
+  "folders": [
+   "stir_1m_deep",
+   "stir_1m_meeting"
+  ],
+  "stem": "CBOT_ZQX6",
+  "days": 387,
+  "missing": 4,
+  "missingDates": [
+   "2025-04-23",
+   "2025-04-25",
+   "2025-04-28",
+   "2025-04-29"
+  ],
+  "maxGapDays": 5.7,
+  "barsPerDay": 1380,
+  "bars1m": 515683
  },
  {
   "name": "ZQZ6",
@@ -530,7 +1187,54 @@
   "asOf": "2026-10-19 10:05:00+00:00",
   "m5": 5390,
   "m15": 11436,
-  "stem": "CBOT_ZQZ6"
+  "h1": 10706,
+  "m5First": "2026-09-20",
+  "m15First": "2026-04-22",
+  "h1First": "2024-11-05",
+  "folders": [
+   "stir_1m_deep",
+   "stir_1m_meeting"
+  ],
+  "stem": "CBOT_ZQZ6",
+  "days": 478,
+  "missing": 32,
+  "missingDates": [
+   "2024-11-07",
+   "2024-11-08",
+   "2024-11-11",
+   "2024-11-12",
+   "2024-11-13",
+   "2024-11-14",
+   "2024-11-15",
+   "2024-11-18",
+   "2024-11-19",
+   "2024-11-27",
+   "2024-11-28",
+   "2024-11-29",
+   "2024-12-02",
+   "2024-12-03",
+   "2024-12-12",
+   "2024-12-13",
+   "2024-12-16",
+   "2024-12-17",
+   "2024-12-20",
+   "2024-12-23",
+   "2024-12-24",
+   "2024-12-25",
+   "2024-12-26",
+   "2024-12-27",
+   "2024-12-30",
+   "2024-12-31",
+   "2025-01-01",
+   "2025-01-02",
+   "2025-01-03",
+   "2025-01-06",
+   "2025-01-07",
+   "2025-04-18"
+  ],
+  "maxGapDays": 19.6,
+  "barsPerDay": 1380,
+  "bars1m": 641928
  },
  {
   "name": "ZTU6",
@@ -543,7 +1247,20 @@
   "asOf": "2026-09-30 20:59:00+00:00",
   "m5": 6024,
   "m15": 11068,
-  "stem": "CBOT_ZTU6"
+  "h1": 2767,
+  "m5First": "2026-08-31",
+  "m15First": "2026-04-12",
+  "h1First": "2026-04-12",
+  "folders": [
+   "stir_1m"
+  ],
+  "stem": "CBOT_ZTU6",
+  "days": 123,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 3.0,
+  "barsPerDay": 1380,
+  "bars1m": 166018
  },
  {
   "name": "ZTZ6",
@@ -556,6 +1273,107 @@
   "asOf": "2026-10-19 10:06:00+00:00",
   "m5": 5290,
   "m15": 11384,
-  "stem": "CBOT_ZTZ6"
+  "h1": 3013,
+  "m5First": "2026-09-20",
+  "m15First": "2026-04-22",
+  "h1First": "2026-04-13",
+  "folders": [
+   "stir_1m",
+   "stir_1m_deep"
+  ],
+  "stem": "CBOT_ZTZ6",
+  "days": 136,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 3.4,
+  "barsPerDay": 1380,
+  "bars1m": 180529
+ },
+ {
+  "name": "I2",
+  "label": "Euribor I2! rolling (2nd quarterly, stitched like TradingView)",
+  "group": "Euribor 3M (ICE I)",
+  "side": "EUR",
+  "kind": "rate",
+  "period": "always the 2nd quarterly Euribor contract; rolls when the front one expires",
+  "first": "2025-06-19",
+  "asOf": "2026-10-19 19:45:00+00:00",
+  "m5": 5040,
+  "m15": 10157,
+  "h1": 6627,
+  "m5First": "2026-09-21",
+  "m15First": "2026-04-22",
+  "h1First": "2025-06-19",
+  "folders": [
+   "stitched"
+  ],
+  "stem": "I2",
+  "stitched": true,
+  "segments": [
+   {
+    "contract": "IZ5",
+    "start": "2025-06-19 00:00",
+    "end": "2025-09-12 19:45",
+    "rollAt": "2025-09-15",
+    "source": "IBKR 15-minute TRADES (archive)"
+   },
+   {
+    "contract": "IH6",
+    "start": "2025-09-18 00:15",
+    "end": "2025-12-12 20:45",
+    "rollAt": "2025-12-15",
+    "source": "IBKR 15-minute TRADES (archive)"
+   },
+   {
+    "contract": "IM6",
+    "start": "2025-12-18 01:00",
+    "end": "2026-03-13 20:45",
+    "rollAt": "2026-03-16",
+    "source": "IBKR 15-minute TRADES (archive)"
+   },
+   {
+    "contract": "IU6",
+    "start": "2026-03-19 01:00",
+    "end": "2026-06-12 19:45",
+    "rollAt": "2026-06-15",
+    "source": "IBKR 15-minute TRADES (archive)"
+   },
+   {
+    "contract": "IZ6",
+    "start": "2026-06-15 00:00",
+    "end": "2026-09-11 19:59",
+    "rollAt": "2026-09-14",
+    "source": "IBKR 1-minute MIDPOINT"
+   },
+   {
+    "contract": "IH7",
+    "start": "2026-09-14 00:00",
+    "end": "2026-10-19 19:59",
+    "rollAt": "2026-12-14",
+    "source": "IBKR 1-minute MIDPOINT"
+   }
+  ],
+  "days": 333,
+  "missing": 15,
+  "missingDates": [
+   "2025-09-15",
+   "2025-09-16",
+   "2025-09-17",
+   "2025-12-15",
+   "2025-12-16",
+   "2025-12-17",
+   "2025-12-25",
+   "2025-12-26",
+   "2026-01-01",
+   "2026-03-16",
+   "2026-03-17",
+   "2026-03-18",
+   "2026-04-03",
+   "2026-04-06",
+   "2026-05-01"
+  ],
+  "maxGapDays": 5.2,
+  "barsPerDay": null,
+  "bars1m": null
  }
 ]

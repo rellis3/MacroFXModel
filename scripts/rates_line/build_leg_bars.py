@@ -1,8 +1,10 @@
 """Compact per-contract bars for the chart page (cog-chart.html): one JSON file per futures contract, 5-minute and 15-minute OHLC of the IBKR 1-minute MIDPOINT price,
 drawn at BAR-OPEN time (TradingView's convention: the bar stamped 10:15 holds the minutes 10:15 to 10:29; IBKR stamps a 1-minute bar by its start).
     python scripts/rates_line/build_leg_bars.py [--m5-days 30] [--m15-days 180]
+Each file also carries h1 = 1-hour bars over the WHOLE history on disk (back to 2024 for the long-lived legs), so the page's 1h / 4h charts reach as far back as the data does.
 Discovers EVERY US and euro rates contract on disk (SOFR 3M, fed funds 30-day, 2y/5y/10y/30y Treasury futures, Euribor 3M, ESTR 3M, Schatz / Bobl / Bund / Buxl), merging the same contract
-from every folder it appears in. Writes analysis/output/cog_chart/leg_<NAME>.json (columnar: t = epoch seconds, o h l c = PRICE, not rate) and legs_meta.json (name, label, group, side, kind, period, coverage).
+from every folder it appears in. Writes analysis/output/cog_chart/leg_<NAME>.json (columnar: t = epoch seconds, o h l c = PRICE, not rate), legs_meta.json (name, label, group, side, kind, period, coverage)
+a stitched leg_I2.json (TradingView's ICEEU:I2!, see stitch_i2) and archive.json (contracts held only in the 15-minute TRADES archive analysis/output/stir/ or the 1-minute Schatz archive, mostly EXPIRED ones, which the page lists but cannot draw).
 `kind` is 'rate' for contracts quoted as 100 - rate (the page can turn price into rate) and 'price' for bond futures (it cannot)."""
 import argparse
 import calendar
@@ -72,6 +74,96 @@ def pack(b):
     return dict(t=t, o=r(b.o), h=r(b.h), l=r(b.l), c=r(b.c))
 
 
+def coverage(d):
+    """Weekday coverage of a 1-minute frame: trading days, weekdays with no bar (exchange holidays or a thin newly listed contract), longest gap in days."""
+    days = d.index.normalize().unique()
+    days = days[days.dayofweek < 5]      # CME opens Sunday evening UTC: a Sunday stub is not a trading day
+    wk = pd.bdate_range(days.min(), days.max(), tz='UTC')
+    missing = [x.strftime('%Y-%m-%d') for x in wk.difference(days)]
+    gap = d.index.to_series().diff().dt.total_seconds().max() / 86400
+    per_day = d.groupby(d.index.normalize()).size()
+    per_day = per_day[per_day.index.dayofweek < 5]
+    return dict(days=len(days), missing=len(missing), missingDates=missing[:40], maxGapDays=round(float(gap or 0), 1), barsPerDay=int(per_day.median()), bars1m=len(d))
+
+
+def archive():
+    """Contracts in the 15-minute TRADES archive (stir/*.csv) and the 1-minute Schatz archive (stir_1m_hist), with their date range: the page lists them, it cannot draw them."""
+    out = []
+    for f in sorted((OUTROOT / 'stir').glob('*.csv')):
+        x = pd.read_csv(f, usecols=['time'])
+        t = pd.to_datetime(x.time, utc=True)
+        info = describe(f.stem)
+        out.append(dict(name=info[0] if info else f.stem, label=info[1] if info else f.stem, group=info[2] if info else 'other', file=f'stir/{f.name}', source='IBKR 15-minute TRADES',
+                        first=str(t.min())[:10], last=str(t.max())[:10], bars=len(x), days=int(t.dt.normalize().nunique())))
+    for f in sorted((OUTROOT / 'stir_1m_hist').glob('*.parquet')):
+        t = pd.to_datetime(pd.read_parquet(f, columns=['time']).time, utc=True)
+        info = describe(f.stem)
+        out.append(dict(name=info[0] if info else f.stem, label=info[1] if info else f.stem, group=info[2] if info else 'other', file=f'stir_1m_hist/{f.name}', source='IBKR 1-minute MIDPOINT',
+                        first=str(t.min())[:10], last=str(t.max())[:10], bars=len(t), days=int(t.dt.normalize().nunique())))
+    return out
+
+
+def euribor_last_trade(y, m):
+    """ICE Euribor last trading day: two business days before the 3rd Wednesday of the contract month, i.e. the Monday."""
+    return third_wed(y, m) - dt.timedelta(days=2)
+
+
+def ohlc15_to(b, rule):
+    g = b.resample(rule, label='left', closed='left')
+    out = pd.DataFrame({'o': g['o'].first(), 'h': g['h'].max(), 'l': g['l'].min(), 'c': g['c'].last()})
+    return out.dropna(subset=['c'])
+
+
+def stitch_i2(found, rank=2):
+    """TradingView's ICEEU:I2! as we identified it in the video week (analysis/output/cog_video_0918/RECONSTRUCTION.md): the 2nd QUARTERLY Euribor contract (H M U Z),
+    serial months skipped, rolled when the front quarterly expires, no back-adjustment (so the line steps at each roll, as on TradingView).
+    Roll instant: 00:00 UTC on the front contract's last trading day. Per segment the 1-minute MIDPOINT data is used from its first bar on; before that (expired
+    contracts IBKR no longer serves) the 15-minute TRADES archive analysis/output/stir/ICEEU_<name>.csv fills in. Returns (m1 midpoint frame or None, 15-min frame, segments)."""
+    qs = [(y, m) for y in range(2023, 2029) for m in (3, 6, 9, 12)]
+    name = lambda y, m: f'I{"HMUZ"[m // 3 - 1]}{y % 10}'
+    exp = [pd.Timestamp(euribor_last_trade(y, m), tz='UTC') for y, m in qs]
+    segs, m1s, b15s = [], [], []
+    for i in range(1, len(qs) - rank + 1):
+        start, end = exp[i - 1], exp[i]                  # front = qs[i] in [start, end); I(rank) = qs[i + rank - 1]
+        n = name(*qs[i + rank - 1])
+        mid = None
+        if n in found:
+            mid = pd.concat([pd.read_parquet(f) for f in found[n]['files']])
+            mid['time'] = pd.to_datetime(mid['time'], utc=True)
+            mid = mid.drop_duplicates('time', keep='last').set_index('time').sort_index()[['open', 'high', 'low', 'close']]
+            mid = mid[(mid.index >= start) & (mid.index < end)]
+            if not len(mid):
+                mid = None
+        cut = mid.index.min().floor('15min') if mid is not None else end
+        trd = None
+        f = OUTROOT / 'stir' / f'ICEEU_{n}.csv'
+        if f.exists() and cut > start:
+            x = pd.read_csv(f, usecols=['time', 'open', 'high', 'low', 'close'])
+            x['time'] = pd.to_datetime(x['time'], utc=True)
+            x = x.set_index('time').sort_index().rename(columns={'open': 'o', 'high': 'h', 'low': 'l', 'close': 'c'})
+            trd = x[(x.index >= start) & (x.index < cut)]
+            if not len(trd):
+                trd = None
+        if mid is None and trd is None:
+            continue
+        parts = []
+        if trd is not None:
+            parts.append(trd)
+            segs.append(dict(contract=n, start=str(trd.index.min())[:16], end=str(trd.index.max())[:16], rollAt=str(end)[:10], source='IBKR 15-minute TRADES (archive)'))
+        if mid is not None:
+            m15 = bars(mid, '15min')
+            parts.append(m15)
+            m1s.append(mid)
+            segs.append(dict(contract=n, start=str(mid.index.min())[:16], end=str(mid.index.max())[:16], rollAt=str(end)[:10], source='IBKR 1-minute MIDPOINT'))
+        b15s.append(pd.concat(parts).sort_index())
+    if not b15s:
+        return None, None, []
+    b15 = pd.concat(b15s).sort_index()
+    b15 = b15[~b15.index.duplicated(keep='last')]
+    m1 = pd.concat(m1s).sort_index() if m1s else None
+    return m1, b15, segs
+
+
 def discover():
     found = {}
     for d in DIRS:
@@ -102,10 +194,35 @@ if __name__ == '__main__':
         m15 = m15[m15.index >= end - pd.Timedelta(days=a.m15_days)]
         m5 = bars(d[d.index >= end - pd.Timedelta(days=a.m5_days + 1)], '5min')
         m5 = m5[m5.index >= end - pd.Timedelta(days=a.m5_days)]
+        h1 = bars(d, '1h')
+        cov = coverage(d)
         obj = dict(name=name, label=label, group=group, side=side, kind=kind, period=period, source='IBKR 1-minute MIDPOINT (bid/ask midpoint, not trades)', convention='bar-open time (TradingView)',
-                   first=str(start), asOf=str(end), m5=pack(m5), m15=pack(m15))
+                   first=str(start), asOf=str(end), m5=pack(m5), m15=pack(m15), h1=pack(h1))
         (OUT / f'leg_{name}.json').write_text(json.dumps(obj, separators=(',', ':')), encoding='utf-8')
-        meta.append(dict(name=name, label=label, group=group, side=side, kind=kind, period=period, first=str(start)[:10], asOf=str(end), m5=len(m5), m15=len(m15), stem=rec['stem']))
-        print(f'{name}: {group} | {str(start)[:10]} -> {str(end)[:16]} | m5 {len(m5)} m15 {len(m15)} | {(OUT / f"leg_{name}.json").stat().st_size / 1024:.0f} KB')
+        first_of = lambda b: str(b.index.min())[:10] if len(b) else None
+        meta.append(dict(name=name, label=label, group=group, side=side, kind=kind, period=period, first=str(start)[:10], asOf=str(end), m5=len(m5), m15=len(m15), h1=len(h1),
+                         m5First=first_of(m5), m15First=first_of(m15), h1First=first_of(h1), folders=sorted({f.parent.name for f in rec['files']}), stem=rec['stem'], **cov))
+        print(f'{name}: {group} | {str(start)[:10]} -> {str(end)[:16]} | m5 {len(m5)} m15 {len(m15)} h1 {len(h1)} | {(OUT / f"leg_{name}.json").stat().st_size / 1024:.0f} KB')
+    m1, b15, segs = stitch_i2(discover())
+    if b15 is not None:
+        end, start = b15.index.max(), b15.index.min()
+        m15 = b15[b15.index >= end - pd.Timedelta(days=a.m15_days)]
+        h1 = ohlc15_to(b15, '1h')
+        m5 = bars(m1[m1.index >= end - pd.Timedelta(days=a.m5_days + 1)], '5min') if m1 is not None else b15.iloc[:0]
+        m5 = m5[m5.index >= end - pd.Timedelta(days=a.m5_days)]
+        cov = coverage(b15.rename(columns={'c': 'close'}))
+        cov.update(barsPerDay=None, bars1m=None)          # counted on 15-minute bars: the 1-minute counts do not apply to a stitched line
+        live = segs[-1]['contract']                       # the contract I2! is now: the laptop's live push of it is laid over this line from the roll on (server.js)
+        label = 'Euribor I2! rolling (2nd quarterly, stitched like TradingView)'
+        period = 'always the 2nd quarterly Euribor contract; rolls when the front one expires'
+        obj = dict(name='I2', label=label, group='Euribor 3M (ICE I)', side='EUR', kind='rate', period=period, source='IBKR 1-minute MIDPOINT, 15-minute TRADES before the midpoints start (see segments)',
+                   convention='bar-open time (TradingView)', first=str(start), asOf=str(end), liveFrom=live, liveSince=int(pd.Timestamp(segs[-1]['start'], tz='UTC').timestamp()), segments=segs,
+                   m5=pack(m5), m15=pack(m15), h1=pack(h1))
+        (OUT / 'leg_I2.json').write_text(json.dumps(obj, separators=(',', ':')), encoding='utf-8')
+        first_of = lambda b: str(b.index.min())[:10] if len(b) else None
+        meta.append(dict(name='I2', label=label, group='Euribor 3M (ICE I)', side='EUR', kind='rate', period=period, first=str(start)[:10], asOf=str(end), m5=len(m5), m15=len(m15), h1=len(h1),
+                         m5First=first_of(m5), m15First=first_of(m15), h1First=first_of(h1), folders=['stitched'], stem='I2', stitched=True, segments=segs, **cov))
+        print(f'I2 (stitched): {str(start)[:10]} -> {str(end)[:16]} | ' + ' | '.join(f"{x['contract']} {x['start'][:10]}..{x['end'][:10]} {x['source'].split()[1]}" for x in segs))
     (OUT / 'legs_meta.json').write_text(json.dumps(meta, indent=1), encoding='utf-8')
+    (OUT / 'archive.json').write_text(json.dumps(archive(), indent=1), encoding='utf-8')
     print(len(meta), 'contracts')

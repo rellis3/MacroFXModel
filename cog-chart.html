@@ -37,6 +37,21 @@
   #readout b{color:var(--text)}
   .note{font-size:11.5px;color:var(--text3);line-height:1.6;max-width:100ch}
   .note b{color:var(--text2)}
+  details.box>summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--text)}
+  .gtitle{font-size:12px;font-weight:700;margin:14px 0 2px} .guse{font-size:11.5px;color:var(--text2);margin-bottom:5px;max-width:110ch}
+  .tblwrap{overflow-x:auto} table.cov{border-collapse:collapse;font-size:11.5px;width:100%;font-variant-numeric:tabular-nums}
+  table.cov th{text-align:left;color:var(--text3);font-weight:600;font-size:10.5px;padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap}
+  table.cov td{padding:4px 6px;border-bottom:1px solid #222a35;vertical-align:top} table.cov td.n{white-space:nowrap} table.cov .sub{color:var(--text3);font-size:10.5px}
+  .tag{font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--border);white-space:nowrap} .tag.long{color:var(--bull);border-color:var(--bull)} .tag.mid{color:var(--amber);border-color:var(--amber)} .tag.short{color:var(--red);border-color:var(--red)}
+  .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;margin-top:6px}
+  .fcard{background:var(--card2);border:1px solid var(--border);border-left:3px solid var(--text3);border-radius:8px;padding:9px 11px;font-size:12px;line-height:1.5}
+  .fcard.works{border-left-color:var(--bull)} .fcard.real-not-tradeable{border-left-color:var(--blue)} .fcard.no-edge{border-left-color:var(--text3)} .fcard.underpowered{border-left-color:var(--amber)}
+  .fcard .q{font-weight:700;color:var(--text);margin:4px 0 3px} .fcard .h{color:var(--text2)} .fcard .t{margin-top:5px;color:var(--text)} .fcard .t b{color:var(--text2);font-weight:600}
+  .fcard .nums{margin-top:5px;font:11px ui-monospace,Consolas,monospace;color:var(--text2)} .fcard .src{margin-top:5px;font-size:10.5px;color:var(--text3);word-break:break-word}
+  .vpill{font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+  .vpill.works{color:var(--bull)} .vpill.real-not-tradeable{color:var(--blue)} .vpill.no-edge{color:var(--text3)} .vpill.underpowered{color:var(--amber)}
+  .fchips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 2px} .fchips .btn{font-size:11.5px}
+  .keybox{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-top:8px;font-size:12px;line-height:1.6}
 </style>
 </head>
 <body>
@@ -55,7 +70,7 @@
       <h2>Price</h2>
       <div class="row"><select id="asset"></select>
         <span id="tfs"></span></div>
-      <div class="row"><label>Bars <select id="bars"><option>300</option><option>600</option><option selected>1500</option><option>3000</option></select></label>
+      <div class="row"><label>Bars <select id="bars"><option>300</option><option>600</option><option selected>1500</option><option>3000</option><option>5000</option></select></label>
         <label><input type="checkbox" id="live" checked> live (every 15 s)</label></div>
     </div>
     <div class="box">
@@ -73,12 +88,15 @@
     <div id="chart"></div>
     <div id="readout">Move the cursor over the chart.</div>
     <div class="note" id="notes"></div>
+    <details class="box" id="findBox" open><summary>Analysis findings: everything we tested on these rate legs, and what came out</summary><div id="findings">loading</div></details>
+    <details class="box" id="covBox" open><summary>Contracts &amp; data: what each one is, what it is good for, how far back it goes</summary><div id="coverage">loading</div></details>
   </div>
 </div>
 <script type="module">
 import { DEFAULTS, TF_SEC, barsFromColumns, legOnChart, carryForward, legRaw, spreadRaw, mapSeries, shiftPoints } from './js/cogChartMath.js';
+import { FINDINGS, BOTTOM_LINE, THEMES, VERDICTS } from './js/cogFindings.js';
 
-let LEGMETA = [];      // every contract the server holds: { name, label, group, side, kind ('rate' | 'price'), period, first, asOf }
+let LEGMETA = [], ARCHIVE = [];      // every contract the server holds: { name, label, group, side, kind ('rate' | 'price'), period, first, asOf }
 const LEGKIND = n => LEGMETA.find(l => l.name === n)?.kind ?? 'rate';
 const COLORS = ['#4f7df0', '#f97316', '#10b981', '#a371f7', '#d29922', '#f85149', '#22d3ee'];
 const KEY = 'cogChartState_v1';
@@ -109,7 +127,7 @@ async function jget(url) { const r = await fetch(url); if (!r.ok) throw new Erro
 async function ensureLeg(name, since = null) {
   const have = legCache[name];
   const j = await jget(`/api/cog-chart/leg?name=${name}`);
-  legCache[name] = { m5: barsFromColumns(j.m5), m15: barsFromColumns(j.m15), staticAsOf: j.staticAsOf, liveAsOf: j.liveAsOf, label: j.label, period: j.period };
+  legCache[name] = { m5: barsFromColumns(j.m5), m15: barsFromColumns(j.m15), h1: j.h1 ? barsFromColumns(j.h1) : null, staticAsOf: j.staticAsOf, liveAsOf: j.liveAsOf, label: j.label, period: j.period };
   void have; void since;
 }
 async function loadCandles() {
@@ -122,9 +140,9 @@ function neededLegs() { const s = new Set(); state.series.forEach(d => { if (d.k
 function legPrices(name, d, times, step) {
   const L = legCache[name]; if (!L) return times.map(() => null);
   const dataStep = d.dataTf === 'chart' ? step : TF_SEC[d.dataTf];
-  const useM5 = dataStep <= 300 && step <= 900;
-  const bars = useM5 ? L.m5 : L.m15;
-  const px = legOnChart(bars, times, step, d.src, dataStep, useM5 ? 300 : 900);
+  const useM5 = dataStep <= 300 && step <= 900, useH1 = !useM5 && dataStep >= 3600 && step >= 3600 && L.h1?.length > 0;      // 1h / 4h: the whole history (h1); 15m keeps 180 days, 5m 30 days
+  const bars = useM5 ? L.m5 : useH1 ? L.h1 : L.m15;
+  const px = legOnChart(bars, times, step, d.src, dataStep, useM5 ? 300 : useH1 ? 3600 : 900);
   const out = d.carry ? carryForward(px) : px;
   const lastT = bars.length ? bars[bars.length - 1].t + dataStep : Infinity;      // the leg's data ends here: carrying the last print beyond it would draw a flat line that looks like data
   return out.map((v, i) => (times[i] >= lastT ? null : v));
@@ -300,6 +318,7 @@ const PRESETS = {
   'C.OG default': () => ({ series: [cogDefault(1)], nextId: 2, active: 1 }),
   'Both legs, own axes': () => { const a = { ...cogDefault(1), kind: 'leg', leg: 'SR3U6', invert: false, inBps: false, scale: 1, offset: 0, label: 'SR3U6', color: COLORS[0] }; const b = { ...a, id: 2, leg: 'IH7', label: 'IH7', color: COLORS[1] }; return { series: [a, b], nextId: 3, active: 1 }; },
   'C.OG line over price': () => { const d = cogDefault(1); d.mapMode = 'auto'; return { series: [d], nextId: 2, active: 1 }; },
+  'C.OG line, rolling I2!': () => { const d = { ...cogDefault(1), eur: 'I2', label: 'C.OG line (SOFR Sep26 - rolling I2!)' }; return { series: [d], nextId: 2, active: 1 }; },
   'SOFR Dec26 - ESTR Dec26': () => { const d = { ...cogDefault(1), eur: 'ER3Z6', usd: 'SR3Z6', label: 'Spread (SR3Z6 - ER3Z6)' }; return { series: [d], nextId: 2, active: 1 }; },
 };
 $('presets').innerHTML = Object.keys(PRESETS).map(k => `<button class="btn" data-p="${esc(k)}">${esc(k)}</button>`).join('');
@@ -312,10 +331,118 @@ $('asset').onchange = async e => { state.asset = e.target.value; await loadCandl
 $('bars').onchange = async e => { state.bars = +e.target.value; await loadCandles(); redraw(true); save(); };
 $('live').onchange = e => { state.live = e.target.checked; save(); };
 
+// ---------------------------------------------------------------- contracts & data breakdown
+// What each contract is (the rate it settles on), what it is good for here, and how much data we hold. Numbers come from legs_meta.json / archive.json (build_leg_bars.py).
+const GUIDE = {
+  'SOFR 3M (CME SR3)': 'US 3-month SOFR futures: the average overnight SOFR over the 3 months that start on the contract month\'s 3rd Wednesday, so each contract is the Fed path at that horizon. Liquid nearly 23 hours a day. Quarterly months (H M U Z) are the main contracts; serial months (N Q V X) are thin.',
+  'Fed funds 30-day (CBOT ZQ)': 'Average effective fed funds rate over ONE calendar month. Consecutive months give the per-FOMC-meeting odds (the CME FedWatch maths). Use for meeting pricing, not as a spread leg.',
+  'Euribor 3M (ICE I)': 'Euro 3-month interbank rate for the 3 months starting at the contract month: the ECB path at that horizon and the most liquid euro leg intraday. TradingView\'s I1! / I2! roll through the quarterly months (Z H M U).',
+  'ESTR 3M (ICE ER3)': 'Euro overnight rate (€STR) compounded over 3 months: the cleanest ECB policy expectation, but it barely trades intraday (median 0-2 contracts per 15 min), so the intraday bars are mostly unchanged quotes. Fine for daily levels, weak for 15-min work.',
+  'US Treasury futures (price, not a rate)': 'US 2y / 5y / 10y / 30y / Ultra bond futures. These are PRICES (up = yields down) and cannot be turned into a rate with 100 - price. Good for curve and duration moves.',
+  'German bond futures (price, not a rate)': 'Eurex Schatz (2y), Bobl (5y), Bund (10y), Buxl (30y). PRICES, not rates. The Schatz is the euro 2-year proxy.',
+};
+const NOTE = {
+  I2: 'TradingView\'s ICEEU:I2!: the 2nd quarterly Euribor, rolled when the front expires, not back-adjusted. Use it to match C.OG\'s chart exactly; use the pinned IH7 for long tests (no roll steps).',
+  SR3U6: 'C.OG\'s USD leg (the pinned SOFR Sep26). Since 16 Sep 2026 it is inside its own 3-month window: part of its rate is already fixed by published SOFR, so it moves less each day until it expires on 15 Dec 2026.',
+  IH7: 'C.OG\'s EUR leg: what TradingView\'s I2! was in the video week (Sep 2026), and I2! since the Sep26 contract expired on 14 Sep 2026.',
+  IZ6: 'I1! (front Euribor quarterly) since 14 Sep 2026; it was I2! from mid-Jun to mid-Sep 2026.',
+  ER3Z6: 'The €STR leg C.OG\'s Discord note named (the "SOFR Dec26 - ESTR Dec26" preset).',
+  SR3Z6: 'Next quarterly after Sep26: the Dec 2026 to Mar 2027 Fed path. Long history.',
+  SR3H7: 'The Mar 2027 to Jun 2027 Fed path. Long history.',
+};
+const ONEOFF = 'one-off pull, 2 weeks';
+// The stitched I2 line: which contract it was when, and from which source. Steps at each roll are real (TradingView does not back-adjust I2! either).
+function i2Txt(l) {
+  if (!l?.segments?.length) return '';
+  const seg = l.segments.map(x => `${x.contract} ${x.start.slice(0, 10)} to ${x.end.slice(0, 10)} (${/TRADES/.test(x.source) ? '15-min trades' : '1-min midpoints'})`).join(', ');
+  const holes = l.segments.slice(1).filter((x, i) => (Date.parse(x.start) - Date.parse(l.segments[i].end)) / 864e5 > 4).length;
+  return `Pieces: ${seg}. It steps at each roll, as TradingView's does.${holes ? ` ${holes} roll week${holes > 1 ? 's have' : ' has'} a 3-day hole (Mon-Wed) in the trade archive; <b>run_deep_history.bat --i2-archive</b> fills them and takes I2! back to mid-2024.` : ''}`;
+}
+const MCODES = 'FGHJKMNQUVXZ';
+function expiry(l) {
+  const m = /^(\d\d \w{3} \d{4}) - (\d\d \w{3} \d{4})$/.exec(l.period || '');
+  if (m) return new Date(Date.parse((/^(SR3|ER3)/.test(l.name) ? m[2] : m[1]) + ' UTC'));      // SOFR and €STR compound over their 3 months and settle at the END; Euribor fixes at the START
+  const f = /^FGB\w(\d{2})(\d{2})$/.exec(l.name);
+  if (f) return new Date(Date.UTC(2000 + +f[1], +f[2] - 1, 8));
+  const z = /([FGHJKMNQUVXZ])(\d)$/.exec(l.name);
+  if (z) return new Date(Date.UTC(2020 + +z[2], MCODES.indexOf(z[1]) + 1, 0));      // fed funds and US bond futures: by the end of the contract month
+  return null;
+}
+const fmtD = s => (s ? String(s).slice(0, 10) : 'n/a');
+const spanTag = days => days >= 250 ? '<span class="tag long">long history</span>' : days >= 60 ? '<span class="tag mid">months</span>' : '<span class="tag short">weeks only</span>';
+function legStatus(l, newest) {
+  const ex = expiry(l), as = Date.parse(l.asOf);
+  if (ex && ex < Date.now()) return `expired ${ex.toISOString().slice(0, 10)}`;
+  if (newest - as > 3 * 864e5) return l.days <= 12 ? ONEOFF : `not refreshed since ${fmtD(l.asOf)}`;
+  return 'current';
+}
+function useTxt(l) {
+  if (NOTE[l.name]) return NOTE[l.name];
+  if (l.days <= 12) return 'Two weeks only: enough to check which month a TradingView continuous maps to, not enough to test anything.';
+  if (l.group.startsWith('Euribor') && l.days < 60) return 'Serial month, a few weeks before expiry: only part of an I2! stitch if TradingView counted serial months (in the video week it did not).';
+  return (l.days ?? 0) >= 250 ? 'Long enough to test on (discover / validate / out-of-sample).' : 'A few months: the live chart and descriptive checks; too short for a test on its own.';
+}
+function renderCoverage() {
+  if (!LEGMETA.length) return;
+  const newest = Math.max(...LEGMETA.map(l => Date.parse(l.asOf))), by = n => LEGMETA.find(l => l.name === n);
+  const u = by('SR3U6'), e = by('IH7');
+  const arch = n => ARCHIVE.filter(a => a.name === n).map(a => `${a.first} to ${a.last}`).join(', ');
+  let h = `<div class="keybox"><b>C.OG's original line (SOFR Sep26 - Euribor I2!): the data we have</b><br>` +
+    `&bull; <b>SOFR Sep26 (SR3U6)</b>: IBKR 1-minute midpoints ${fmtD(u?.first)} to ${fmtD(u?.asOf)}, ${u?.days ?? '?'} trading days (missing weekdays: ${(u?.missingDates || []).join(', ') || 'none'}), about ${u?.barsPerDay ?? '?'} one-minute bars a day. Also 15-minute trade prices ${arch('SR3U6') || 'n/a'}.<br>` +
+    `&bull; <b>Euribor Mar27 (IH7)</b>, what I2! showed in the video week: 1-minute midpoints ${fmtD(e?.first)} to ${fmtD(e?.asOf)}, ${e?.days ?? '?'} trading days; the ${e?.missing ?? '?'} missing weekdays are ICE holidays (Christmas, New Year, Easter, 1 May).<br>` +
+    `&bull; <b>The rolling I2!</b> is on the chart as <b>I2</b> (preset "C.OG line, rolling I2!"): always the 2nd quarterly Euribor, like TradingView, from <b>${fmtD(by('I2')?.first)}</b>. ${i2Txt(by('I2'))} The pinned SR3U6 - IH7 pair is the longer version (back to ${fmtD(u?.first)}).<br>` +
+    `&bull; Nothing before ${fmtD(u?.first)} yet: that is where our pulls stopped, not where IBKR's data ends. <b>scripts/rates_line/run_deep_history.bat</b> (laptop, IB Gateway open) extends every live contract back towards its listing; expired contracts cannot be fetched.<br>` +
+    `&bull; <b>The tested study</b> (spread-episodes Case 1) used SR3U6 - IH7 vs NAS100 on 15-min bars, 15 Apr 2024 to 20 Aug 2026 (614 weekdays, 47,166 bars); after 20 Aug is the held-back final test.<br>` +
+    `&bull; <b>On this chart</b>: 1h and 4h draw the whole history (pick 4h and 5000 bars and scroll left); 15m draws the last 180 days, 5m the last 30. The OANDA candles set how far back the chart goes (5000 bars at most).</div>`;
+  const groups = {};
+  LEGMETA.forEach(l => (groups[`${l.side === 'US' ? 'US' : 'Euro'} / ${l.group}`] ||= { g: l.group, ls: [] }).ls.push(l));
+  Object.entries(groups).sort().forEach(([title, { g, ls }]) => {
+    h += `<div class="gtitle">${esc(title)}</div><div class="guse">${esc(GUIDE[g] || '')}</div><div class="tblwrap"><table class="cov"><tr><th>contract</th><th>rate period</th><th>1-min data held</th><th>days</th><th>gaps</th><th>status</th><th>good for</th></tr>`;
+    ls.forEach(l => {
+      const st = legStatus(l, newest), ex = expiry(l);
+      h += `<tr><td class="n"><b>${l.name}</b><br><span class="sub">${esc(l.label.replace(/ = what.*$/, ''))}</span></td>` +
+        `<td>${esc(l.period)}${ex ? `<br><span class="sub">last trade about ${ex.toISOString().slice(0, 10)}</span>` : ''}</td>` +
+        `<td class="n">${fmtD(l.first)} to ${fmtD(l.asOf)}<br>${spanTag(l.days ?? 0)}</td><td class="n">${l.days ?? '?'}</td>` +
+        `<td class="n">${l.missing ? `${l.missing} weekday${l.missing > 1 ? 's' : ''}` : 'none'}${l.maxGapDays > 4.5 ? `<br><span style="color:var(--amber)">longest ${l.maxGapDays} d</span>` : ''}</td>` +
+        `<td class="n" style="color:${st === 'current' ? 'var(--bull)' : 'var(--amber)'}">${esc(st)}</td><td>${esc(useTxt(l))}</td></tr>`;
+    });
+    h += '</table></div>';
+  });
+  if (ARCHIVE.length) {
+    h += `<div class="gtitle">Archive only (not drawable here)</div><div class="guse">15-minute TRADE prices (analysis/output/stir/) and 1-minute Schatz midpoints. Most are EXPIRED contracts IBKR no longer serves, so these files are the only copy. Trade prices only print when the contract trades, so thin contracts show stale bars.</div>` +
+      `<div class="tblwrap"><table class="cov"><tr><th>contract</th><th>source</th><th>from</th><th>to</th><th>days</th></tr>` +
+      ARCHIVE.map(a => `<tr><td class="n"><b>${esc(a.name)}</b><br><span class="sub">${esc(a.label)}</span></td><td>${esc(a.source)}</td><td class="n">${a.first}</td><td class="n">${a.last}</td><td class="n">${a.days}</td></tr>`).join('') + '</table></div>';
+  }
+  $('coverage').innerHTML = h;
+}
+
+// ---------------------------------------------------------------- analysis findings (js/cogFindings.js: one entry per tested question, checked against its results file)
+let findFilter = 'all';
+function renderFindings() {
+  const n = v => FINDINGS.filter(f => f.verdict === v).length;
+  let h = `<div class="keybox"><b>Bottom line</b><br>${BOTTOM_LINE.map(x => `&bull; ${x}`).join('<br>')}</div>`;
+  h += `<div class="fchips"><button class="btn ${findFilter === 'all' ? 'on' : ''}" data-f="all">All ${FINDINGS.length}</button>` +
+    Object.entries(VERDICTS).map(([k, v]) => `<button class="btn ${findFilter === k ? 'on' : ''}" data-f="${k}"><span class="vpill ${k}">${esc(v.label)}</span> ${n(k)}</button>`).join('') + '</div>';
+  h += `<div class="sm" style="color:var(--text3);font-size:11px">${Object.values(VERDICTS).map(v => `<b>${esc(v.label)}</b>: ${esc(v.means)}`).join(' &middot; ')}</div>`;
+  Object.entries(THEMES).forEach(([k, title]) => {
+    const fs = FINDINGS.filter(f => f.theme === k && (findFilter === 'all' || f.verdict === findFilter));
+    if (!fs.length) return;
+    h += `<div class="gtitle">${esc(title)}</div><div class="fgrid">` + fs.map(f => `<div class="fcard ${f.verdict}">` +
+      `<span class="vpill ${f.verdict}">${esc(VERDICTS[f.verdict].label)}</span> <span style="font-size:10.5px;color:var(--text3)">${esc(f.date)}</span>` +
+      `<div class="q">${esc(f.question)}</div><div class="h">${esc(f.headline)}</div>` +
+      `<div class="t"><b>For trading:</b> ${esc(f.forTrading)}</div>` +
+      (f.numbers?.length ? `<div class="nums">${f.numbers.map(esc).join('<br>')}</div>` : '') +
+      `<div class="src">${esc(f.data)} &middot; ${esc(f.source)}</div></div>`).join('') + '</div>';
+  });
+  $('findings').innerHTML = h;
+}
+$('findings').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (!b) return; findFilter = b.dataset.f; renderFindings(); });
+renderFindings();
+
 // ---------------------------------------------------------------- boot and live polling
 async function boot() {
   const meta = await jget('/api/cog-chart/meta');
-  LEGMETA = meta.legs;
+  LEGMETA = meta.legs; ARCHIVE = meta.archive || []; renderCoverage();
   const groups = {}; meta.assets.forEach(a => (groups[a.group] ||= []).push(a));
   $('asset').innerHTML = Object.entries(groups).map(([g, a]) => `<optgroup label="${esc(g)}">${a.map(x => `<option value="${x.key}" ${x.key === state.asset ? 'selected' : ''}>${x.key}</option>`).join('')}</optgroup>`).join('');
   $('bars').value = String(state.bars); $('live').checked = !!state.live; drawTfs();
