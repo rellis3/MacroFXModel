@@ -1,0 +1,345 @@
+{
+  "id": "quarter-end-funding",
+  "seed": 20261022,
+  "B": 2000,
+  "prereg": "forge/QUARTER_END_FUNDING_PREREG.md",
+  "cells": {
+    "spike": {
+      "n": 33,
+      "first": "2018-06-29",
+      "last": "2026-06-30",
+      "rho": -0.3161064828346424,
+      "ci95": [
+        -0.6487031724975685,
+        0.07052453992173692
+      ],
+      "half1": -0.2532279935573193,
+      "half2": -0.6150469237487567,
+      "n_half1": 17,
+      "n_half2": 16,
+      "placebo95": [
+        -0.3158950824627099,
+        0.355352899463985
+      ],
+      "placebo_mean": 0.02119008325373769,
+      "p": 0.08491164327652512,
+      "events": [
+        {
+          "end": "2018-06-29",
+          "spike_bp": 23.0,
+          "rrp_bn": 1.4,
+          "level_bp": 17.0
+        },
+        {
+          "end": "2018-09-28",
+          "spike_bp": 6.0,
+          "rrp_bn": 17.5,
+          "level_bp": 5.0
+        },
+        {
+          "end": "2018-12-31",
+          "spike_bp": 59.0,
+          "rrp_bn": 8.8,
+          "level_bp": 60.0
+        },
+        {
+          "end": "2019-03-29",
+          "spike_bp": 24.0,
+          "rrp_bn": 5.0,
+          "level_bp": 25.0
+        },
+        {
+          "end": "2019-06-28",
+          "spike_bp": 13.0,
+          "rrp_bn": 21.4,
+          "level_bp": 15.0
+        },
+        {
+          "end": "2019-09-30",
+          "spike_bp": 45.0,
+          "rrp_bn": 7.5,
+          "level_bp": 55.0
+        },
+        {
+          "end": "2019-12-31",
+          "spike_bp": 1.0,
+          "rrp_bn": 7.7,
+          "level_bp": 0.0
+        },
+        {
+          "end": "2020-03-31",
+          "spike_bp": -9.0,
+          "rrp_bn": 41.5,
+          "level_bp": -9.0
+        },
+        {
+          "end": "2020-06-30",
+          "spike_bp": 2.0,
+          "rrp_bn": 0.0,
+          "level_bp": 0.0
+        },
+        {
+          "end": "2020-09-30",
+          "spike_bp": -1.0,
+          "rrp_bn": 0.0,
+          "level_bp": -2.0
+        },
+        {
+          "end": "2020-12-31",
+          "spike_bp": -1.0,
+          "rrp_bn": 0.9,
+          "level_bp": -3.0
+        },
+        {
+          "end": "2021-03-31",
+          "spike_bp": 0.0,
+          "rrp_bn": 21.9,
+          "level_bp": -9.0
+        },
+        {
+          "end": "2021-06-30",
+          "spike_bp": -1.0,
+          "rrp_bn": 813.6,
+          "level_bp": -10.0
+        },
+        {
+          "end": "2021-09-30",
+          "spike_bp": 0.0,
+          "rrp_bn": 1352.5,
+          "level_bp": -10.0
+        },
+        {
+          "end": "2021-12-31",
+          "spike_bp": 0.0,
+          "rrp_bn": 1577.8,
+          "level_bp": -10.0
+        },
+        {
+          "end": "2022-03-31",
+          "spike_bp": -1.0,
+          "rrp_bn": 1707.7,
+          "level_bp": -11.0
+        },
+        {
+          "end": "2022-06-30",
+          "spike_bp": 5.0,
+          "rrp_bn": 2285.4,
+          "level_bp": -15.0
+        },
+        {
+          "end": "2022-09-30",
+          "spike_bp": -4.0,
+          "rrp_bn": 2319.4,
+          "level_bp": -17.0
+        },
+        {
+          "end": "2022-12-30",
+          "spike_bp": -0.0,
+          "rrp_bn": 2222.9,
+          "level_bp": -10.0
+        },
+        {
+          "end": "2023-03-31",
+          "spike_bp": 7.0,
+          "rrp_bn": 2218.5,
+          "level_bp": -3.0
+        },
+        {
+          "end": "2023-06-30",
+          "spike_bp": 4.0,
+          "rrp_bn": 1969.4,
+          "level_bp": -6.0
+        },
+        {
+          "end": "2023-09-29",
+          "spike_bp": 1.0,
+          "rrp_bn": 1427.6,
+          "level_bp": -9.0
+        },
+        {
+          "end": "2023-12-29",
+          "spike_bp": 7.0,
+          "rrp_bn": 778.4,
+          "level_bp": -2.0
+        },
+        {
+          "end": "2024-03-28",
+          "spike_bp": 3.0,
+          "rrp_bn": 460.6,
+          "level_bp": -6.0
+        },
+        {
+          "end": "2024-06-28",
+          "spike_bp": 1.0,
+          "rrp_bn": 421.0,
+          "level_bp": -7.0
+        },
+        {
+          "end": "2024-09-30",
+          "spike_bp": 13.0,
+          "rrp_bn": 380.4,
+          "level_bp": 6.0
+        },
+        {
+          "end": "2024-12-31",
+          "spike_bp": 12.0,
+          "rrp_bn": 116.0,
+          "level_bp": 9.0
+        },
+        {
+          "end": "2025-03-31",
+          "spike_bp": 10.0,
+          "rrp_bn": 196.6,
+          "level_bp": 1.0
+        },
+        {
+          "end": "2025-06-30",
+          "spike_bp": 16.0,
+          "rrp_bn": 165.3,
+          "level_bp": 5.0
+        },
+        {
+          "end": "2025-09-30",
+          "spike_bp": 10.0,
+          "rrp_bn": 14.4,
+          "level_bp": 9.0
+        },
+        {
+          "end": "2025-12-31",
+          "spike_bp": 20.0,
+          "rrp_bn": 5.9,
+          "level_bp": 22.0
+        },
+        {
+          "end": "2026-03-31",
+          "spike_bp": 4.0,
+          "rrp_bn": 1.1,
+          "level_bp": 3.0
+        },
+        {
+          "end": "2026-06-30",
+          "spike_bp": 6.0,
+          "rrp_bn": 6.5,
+          "level_bp": 3.0
+        }
+      ],
+      "p_holm": 0.16982328655305023,
+      "gate": {
+        "ci_excludes_0_negative_holm": false,
+        "both_halves_negative": true,
+        "outside_placebo": true
+      },
+      "verdict": "UNDERPOWERED"
+    },
+    "usd": {
+      "n_quarter": 93,
+      "n_other": 186,
+      "first": "2003-04",
+      "last": "2026-06",
+      "diff_pct": -0.06843728176494414,
+      "ci95": [
+        -0.2978408713574194,
+        0.17238027503125083
+      ],
+      "mean_quarter": -0.10297481408806636,
+      "mean_other": -0.03453753232312222,
+      "half1": -0.06319996211627711,
+      "half2": -0.07378845618858215,
+      "shifted_placebo_diff": -0.07143383428717799,
+      "p": 0.5683199044751053,
+      "p_holm": 0.5683199044751053,
+      "gate": {
+        "ci_excludes_0_positive_holm": false,
+        "both_halves_positive": false,
+        "shifted_placebo_near_0": false
+      },
+      "verdict": "UNDERPOWERED"
+    }
+  },
+  "descriptive": {
+    "month_end_rho": -0.2582288214513636,
+    "month_end_n": 66,
+    "mean_spike_quarter_vs_month": [
+      8.333333333333337,
+      4.1818181818181825
+    ],
+    "quarter_spike_rrp_lt50_vs_ge50": [
+      12.625000000000004,
+      16,
+      4.294117647058828,
+      17
+    ],
+    "year_end_events": [
+      {
+        "end": "2018-12-31",
+        "spike_bp": 59.0,
+        "rrp_bn": 8.8,
+        "level_bp": 60.0
+      },
+      {
+        "end": "2019-12-31",
+        "spike_bp": 1.0,
+        "rrp_bn": 7.7,
+        "level_bp": 0.0
+      },
+      {
+        "end": "2020-12-31",
+        "spike_bp": -1.0,
+        "rrp_bn": 0.9,
+        "level_bp": -3.0
+      },
+      {
+        "end": "2021-12-31",
+        "spike_bp": 0.0,
+        "rrp_bn": 1577.8,
+        "level_bp": -10.0
+      },
+      {
+        "end": "2022-12-30",
+        "spike_bp": -0.0,
+        "rrp_bn": 2222.9,
+        "level_bp": -10.0
+      },
+      {
+        "end": "2023-12-29",
+        "spike_bp": 7.0,
+        "rrp_bn": 778.4,
+        "level_bp": -2.0
+      },
+      {
+        "end": "2024-12-31",
+        "spike_bp": 12.0,
+        "rrp_bn": 116.0,
+        "level_bp": 9.0
+      },
+      {
+        "end": "2025-12-31",
+        "spike_bp": 20.0,
+        "rrp_bn": 5.9,
+        "level_bp": 22.0
+      }
+    ],
+    "reserves_rho": -0.3825055694406493,
+    "thin_rrp_AND_below_median_reserves_vs_rest": [
+      14.500000000000002,
+      14,
+      3.78947368421053,
+      19
+    ],
+    "forward_record_2026_12_31": {
+      "rrp_now_bn": 0.227,
+      "implied_spike_bp": 15.251976280424532,
+      "fit": [
+        -1.6558013824440478,
+        15.59070715524781
+      ],
+      "note": "OLS of spike on B over the scored quarter-ends; a forward record, not a scored claim"
+    },
+    "usd_reversal_first5_quarter_vs_other": 0.19412269263740614,
+    "usd_year_end_vs_other": -0.4814066062901613
+  },
+  "verdict": "underpowered (spike, usd)",
+  "ranAt": "2026-10-22T10:00:00Z",
+  "preregCommit": "495b9595",
+  "branch": "main"
+}

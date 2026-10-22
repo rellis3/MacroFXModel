@@ -4,21 +4,21 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-10-21.
+Generated 2026-10-22.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **164** |
+| claims tested (validated + null + underpowered) | **166** |
 | validated | 33 |
 | null | 112 |
-| underpowered | 19 |
+| underpowered | 21 |
 | context (base rates, descriptions: not counted as tests) | 34 |
-| pre-registrations with no banked verdict (below) | 41 |
+| pre-registrations with no banked verdict (below) | 74 |
 
-**What the count says (Lesson 02 §05).** If none of the 164 claims were real, tests at the usual 5% size would still pass
-about **8.2** of them by luck. 33 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 166 claims were real, tests at the usual 5% size would still pass
+about **8.3** of them by luck. 33 passed, so most passes are unlikely to be luck alone, but
 **roughly 8 of the 33 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -225,6 +225,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-21 | tff-basis-rates-vol-level | volatility | underpowered | forge/TFF_BASIS_RATES_VOL_PREREG.md |
 | 2026-10-21 | yield-ladder-eurusd | macro | null | forge/YIELD_PREDICTIVE_LADDER_PREREG.md |
 | 2026-10-21 | yield-ladder-nq | macro | underpowered | forge/YIELD_PREDICTIVE_LADDER_PREREG.md |
+| 2026-10-22 | quarter-end-funding-spike | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
+| 2026-10-22 | quarter-end-funding-usd | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -232,6 +234,9 @@ These were designed as tests but never reached the Evidence Book. Each is either
 
 - `MD files/LEAN_TRADE_RULE_PREREG.md`: LEAN-TRADE-RULE — the lean traded as a real trade, with a stop
 - `MD files/POSITIONING_INTO_RELEASE_PREREG.md`: Crowded FX positioning into a scheduled release — pre-registration
+- `forge/APPROACH_BOOK_EURUSD_PREREG.md`: EURUSD Approach Book — pre-registration (how price arrives at a line)
+- `forge/ASYMMETRIC_TRADES_PREREG.md`: Tight stop, far target at the forecast levels — pre-registration
+- `forge/BREAK_IVRV_PREREG.md`: Break trades when implied vol is rich — pre-registration
 - `forge/COG_CROSS_ASSET_PREREG.md`: COG-CROSS-ASSET: does the SOFR-Euribor / SOFR-ESTR information relate to, or lead, gold, EURUSD, USDJPY, the R
 - `forge/COG_DYNAMIC_LEAD_PREREG.md`: COG-DYNAMIC-LEAD: do yield and futures spreads begin moving first, in identifiable periods, and does FX (or go
 - `forge/COG_EVENT_FEATURES_PREREG.md`: COG-EVENT-FEATURES: do the slope, speed, persistence, magnitude and variability of the SOFR-Euribor series add
@@ -243,11 +248,22 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/COG_SHAPE_AGNOSTIC_PREREG.md`: COG-SHAPE-AGNOSTIC: does ANY repeatable shape in the SOFR-Euribor line (turn, confirmation, second move, diver
 - `forge/COG_THEORIES_PREREG.md`: COG-THEORIES: three testable theories behind the message to C.OG (time of day, carried-forward legs, selection
 - `forge/COG_TURN_EVENTS_PREREG.md`: COG-TURN-EVENTS: do SOFR-Euribor turning points carry information about Nasdaq's next turn, breakout or move?
+- `forge/COMBINED_SETUPS_PREREG.md`: Combined continue and fade setups — pre-registration
+- `forge/COMBO_EURUSD_PREREG.md`: EURUSD combination test — pre-registration (approach × day size × further target)
 - `forge/CONFIDENCE_PREREG.md`: Layer 6 — CONFIDENCE (meta-labelling): can today's conditions sharpen layer 5's probabilities?
+- `forge/CONFIRMED_BREAK_INDICES_PREREG.md`: Confirmed break on the Close median — pre-registered confirmation on unseen indices
+- `forge/CONFLUENCE_LEVELS_PREREG.md`: Confluence levels at the Vol Forecast lines — pre-registration
+- `forge/CROSSPAIR_RANGE_BOOK_PREREG.md`: Cross-pair Range Book — pre-registration
 - `forge/DE2Y_NQ_15M_LEAD_PREREG.md`: DE2Y-NQ-15M-LEAD: does a German 2-year yield move lead Nasdaq by one 15-minute bar? (one confirmation test)
 - `forge/DECISION_LAB_FILTERS_PREREG.md`: Decision Lab: filters on rule A (DRAFT, not registered; needs the owner's approval before any test runs)
 - `forge/DISTRIBUTION_FORECAST_PREREG.md`: Conditional distribution forecast for today's range, and for each remaining hour
+- `forge/DIVERGENCE_REACTION_PREREG.md`: WaveTrend divergence, the reaction after the touch, and the all-features ceiling — pre-registration
+- `forge/ENTRY_TIMING_EURUSD_PREREG.md`: EURUSD Touch Book, part 2 — entry timing (pre-registration)
+- `forge/EURUSD_MODEL_PREREG.md`: EURUSD model step — pre-registration
+- `forge/EXHAUSTION_PLAYBOOK_EURUSD_PREREG.md`: The exhaustion playbook on EURUSD — pre-registration
+- `forge/EXITS_PREREG.md`: Study 1 — Exits driven by the range book (pre-registration)
 - `forge/FED_PATH_LEAD_PREREG.md`: FED-PATH-LEAD: does the Fed-path slope lead EURUSD / AUD / silver / DAX? (one confirmation test)
+- `forge/FLOW_COLUMNS_PREREG.md`: Flow and positioning columns at the vol lines — pre-registration
 - `forge/FUTURES_COST_RESCORE_PREREG.md`: Futures-cost re-score of the line-touch fade (registered 2026-10-11, before the re-score is computed)
 - `forge/FUTURES_VOL_PREREG.md`: Futures volatility forecast — does intraday futures data beat the incumbent HAR? (shadow study)
 - `forge/FX_FACTOR_STACK_PREREG.md`: Cross-sectional FX factor stack at one to three months
@@ -255,19 +271,38 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/HEDGING_STATE_FORWARD_PREREG.md`: hedging-state-forward — On the full Cboe book, does the dealer-hedging state at the open tell us how the day b
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
+- `forge/IVRV_COT_PREREG.md`: IV ÷ RV in the book, the rich-IV break rule on the indices, and COT positioning at the lines — pre-registratio
 - `forge/LEVEL_P2_PREREG.md`: Level engine, Phase 2: reach, which-first, time-to-reach (registered 2026-10-10, before any Phase 2 outcome is
 - `forge/LEVEL_SCENARIO_SHADOW_PREREG.md`: S3 shadow: level scenarios, live reach / which-first / time (registered 2026-10-11, before any live session is
+- `forge/LINE_CLUSTER_MFE_PREREG.md`: Clusters of the forecast lines, and fade MFE / MAE at every touch — pre-registration
 - `forge/LINE_REACTION_PREREG.md`: LINE-REACTION: how price approaches the chosen forecast's lines, and what it does next
 - `forge/LINE_TOUCH_ADAPTIVE_STOP_PREREG.md`: Pre-registration: stop sized to the context of the moment (time of day, current volatility)
 - `forge/LINE_TOUCH_COST_PREREG.md`: Pre-registration: the line-touch fade with a per-instrument cost and a stop sized to it
 - `forge/LINE_TOUCH_WIDE_SCAN_PREREG.md`: Pre-registration: wide scan of candle shape / position / time / regime at the forecast lines
+- `forge/MACRO_TREND_WEEKDAY_PREREG.md`: Macro state, H1/H4 trend state and weekday at the vol lines — pre-registration
+- `forge/NEWS_TOUCH_PREREG.md`: News at the vol lines — pre-registration
+- `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration
+- `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
+- `forge/RESIDUAL_INTRADAY_PREREG.md`: Study 3 — intraday relative value: does a lagging market catch up? (pre-registration)
+- `forge/RUBBER_BAND_PREREG.md`: Study 2 — the rubber band: stretch from fair value at three speeds (pre-registration)
+- `forge/SEQUENCE_BOOK_EURUSD_PREREG.md`: EURUSD Sequence Book — pre-registration (passes, pullbacks, timing)
 - `forge/SIGNAL_JOURNAL_PREREG.md`: Signal Journal — live alerts with stated odds, tracked forward (Lesson 01 card 10, Lesson 16)
+- `forge/SLOW_MR_BOOK_PREREG.md`: Slow mean-reversion book — pre-registration
 - `forge/STABILITY_AND_HOLDOUT_PREREG.md`: STEP D — Parameter stability + the sealed holdout (Lesson 01 cards 07 and 03)
+- `forge/STACK_RICHIV_TREND_PREREG.md`: Stacking the H1 trend state and spread conditions on the rich-IV break rule — pre-registration
 - `forge/STOP_RISK_PREREG.md`: Layer 7 — STOP RISK MAP: how often does a stop fill worse than its price, and by how much?
+- `forge/SWING_FIB_PREREG.md`: Swing-based Fibonacci retracements at the vol lines — pre-registration
+- `forge/THEORY_FEATURES_LEVELS_PREREG.md`: Theory-lab features at the levels — pre-registration (EURUSD)
+- `forge/THREE_FADE_SETUPS_PREREG.md`: Three fade setups from an outside framework — pre-registration
+- `forge/TOUCH_BOOK_EURUSD_PREREG.md`: EURUSD Touch Book — pre-registration (continue vs fade at the lines, with excursions)
+- `forge/TRENDDAY_RETEST_PREREG.md`: Trend-day filter and acceptance-retest entry for the rich-IV break rule — pre-registration
 - `forge/VF3_SHADOW_P1_PREREG.md`: VF3 shadow S1: time-aware intraday probabilities, prospective evaluation (registered 2026-10-10)
 - `forge/VF3_STAGE_C_PREREG.md`: Vol Forecast V3, Stage C: registered experiments (2026-10-10, before any Stage C outcome is computed)
+- `forge/VIX_DIVERGENCE_PREREG.md`: VIX vs Nasdaq divergence at the vol lines (hourly) — pre-registration
+- `forge/VMC_DIVERGENCE_INDICES_PREREG.md`: VuManChu Cipher B divergence at the vol lines (NQ first) — pre-registration
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
+- `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
 - `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
 - `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
 - `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot
