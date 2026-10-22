@@ -76,7 +76,7 @@
       <p data-who="Trader">Everything hangs on that one comparison?</p>
       <p data-who="Quant">Over a month it works out to roughly the option's vega, about eleven and a half cents per point of volatility, times the gap between realised and implied. Realised at twenty-five against twenty implied is worth about fifty-eight cents on a two-thirty option. At fifteen, you lose about the same.</p>
       <p data-who="Trader">That sounds attractive.</p>
-      <p data-who="Quant">Here is the honest part. On a single month the spread of outcomes is about forty cents even if realised exactly matches implied. And implied volatility itself moves. If it drops three points while you hold, that costs about thirty-five cents, more than the whole edge you were hoping for.</p>
+      <p data-who="Quant">Here is the honest part. On a single month the spread of outcomes is about forty cents even if realised exactly matches implied. And implied volatility itself moves. If it drops three points while you hold, that costs about thirty-five cents, well over half of the edge you were hoping for.</p>
       <p data-who="Trader">What about hedging more often, to cut the noise?</p>
       <p data-who="Quant">The noise falls with the square root of the number of hedges. But every hedge crosses a spread, and the total traded grows with the same square root. There is no free setting.</p>
       <p data-who="Trader">Has this ever gone badly in public?</p>
@@ -262,14 +262,14 @@
           </ul>
         </div>
       </div>
-      <div class="sl-quote">Noise falls like 1/√n and shares traded rise like √n. Std dev × √n stays near 1.9. There is no free setting, so practitioners hedge to a delta band, not "as often as possible".</div>
+      <div class="sl-quote">Noise falls like 1/√n and shares traded rise like √n. Std dev × √n stays between about 1.7 and 2.0. There is no free setting, so practitioners hedge to a delta band, not "as often as possible".</div>
     </section>
 
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">What the identity leaves out</h2>
       <div class="sl-icard-grid">
-        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Implied vol moves</h4><p>The identity holds it fixed. A 3-point fall costs about $0.35 a share on this option, more than a week of gamma gains. Vega is untouched by a delta hedge.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Implied vol moves</h4><p>The identity holds it fixed. A 3-point fall costs about $0.35 a share on this option, about as much as five days of gamma gains in the worked week. Vega is untouched by a delta hedge.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">💸</div><div><h4>The option's own spread</h4><p>One volatility point of bid-ask on this contract is $0.115, about 5% of the premium. That usually outweighs the cost of the share hedge.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>The delta is a model output</h4><p>With a smile, the hedge ratio depends on how you assume implied vol moves with the stock. Two models, two hedges, two P&amp;Ls.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🕳</div><div><h4>Gaps and pins</h4><p>Long gamma benefits from a jump. A short-gamma book takes the whole thing. Near expiry at the strike, delta flips fast and the hedge needs constant care.</p></div></div>

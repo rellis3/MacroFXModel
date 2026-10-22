@@ -54,7 +54,7 @@
       <li>Over one day the hedged position makes \(\tfrac{1}{2}\Gamma\,(dS^2 - \sigma_{imp}^2 S^2\,dt)\). Gamma pays you for every move, theta charges you rent. You come out ahead on a day only if the stock moves more than \(\sigma_{imp}\sqrt{dt}\): <strong>1.26% at 20% implied</strong>.</li>
       <li>Over the option's life that becomes roughly <strong>vega × (realised vol − implied vol)</strong>. Here vega is $0.115 per vol point, so realised 25% against 20% implied is worth about +$0.58 on a $2.30 option, and 15% loses the same. In a simulation, one month's result still has a standard deviation of $0.42 to $0.57 around those averages.</li>
       <li>Hedging more often shrinks the noise like \(1/\sqrt{n}\) and raises the trading cost like \(\sqrt{n}\). There is no free setting.</li>
-      <li>The identity leaves out the things that actually hurt: implied vol falling (a 3-point drop costs about $0.35, more than the whole edge in the example), the option's own bid-ask spread, a delta that depends on the model, and gaps.</li>
+      <li>The identity leaves out the things that actually hurt: implied vol falling (a 3-point drop costs about $0.35, which is 60% of the whole $0.58 edge in the example), the option's own bid-ask spread, a delta that depends on the model, and gaps.</li>
       <li><strong>Real-world episode:</strong> on 19 October 1987 the Dow fell 22.6%. Portfolio insurers were copying a put option by selling index futures as the market fell, the same trades as a dealer hedging a put he had sold. Per the Brady Commission, as cited by a Federal Reserve staff paper, they made roughly 40% of the futures sales by non-market-makers that day.</li>
     </ul>
   </div>
@@ -103,7 +103,7 @@
       <p data-who="Trader">Everything hangs on that one comparison?</p>
       <p data-who="Quant">Over a month it works out to roughly the option's vega, about eleven and a half cents per point of volatility, times the gap between realised and implied. Realised at twenty-five against twenty implied is worth about fifty-eight cents on a two-thirty option. At fifteen, you lose about the same.</p>
       <p data-who="Trader">That sounds attractive.</p>
-      <p data-who="Quant">Here is the honest part. On a single month the spread of outcomes is about forty cents even if realised exactly matches implied. And implied volatility itself moves. If it drops three points while you hold, that costs about thirty-five cents, more than the whole edge you were hoping for.</p>
+      <p data-who="Quant">Here is the honest part. On a single month the spread of outcomes is about forty cents even if realised exactly matches implied. And implied volatility itself moves. If it drops three points while you hold, that costs about thirty-five cents, well over half of the edge you were hoping for.</p>
       <p data-who="Trader">What about hedging more often, to cut the noise?</p>
       <p data-who="Quant">The noise falls with the square root of the number of hedges. But every hedge crosses a spread, and the total traded grows with the same square root. There is no free setting.</p>
       <p data-who="Trader">Has this ever gone badly in public?</p>
@@ -531,7 +531,7 @@
     </table></div>
     <div class="tl-hint">Premium is $2.30. Std dev is the spread of the final hedged profit when realised volatility equals implied, so it is pure discrete-hedging noise. Shares is the shares traded, counting the opening hedge and every rebalance, per option share. Cost is Shares times the cost per share. Move the cost slider: at a few cents the cost is small beside the noise, and at 10 to 20 cents it is not. The cost shown is only the stock-side cost; the option's own spread is separate and is usually larger.</div>
     <div class="tl-chart-caption">
-      Eight times as many hedges cut the noise by roughly a factor of \(\sqrt{8} \approx 2.8\) while the shares traded rise by about the same factor. Multiply the std dev by \(\sqrt{n}\) and you get a near-constant, around 1.9, which is the \(1/\sqrt{n}\) law (Boyle and Emanuel, 1980).
+      Going from daily to eight times a day (eight times as many hedges) cuts the noise by a factor of 2.7, close to \(\sqrt{8} \approx 2.8\), while the shares traded rise by a factor of 2.4. Multiply the std dev by \(\sqrt{n}\) and you get a near-constant, between about 1.7 and 2.0, which is the \(1/\sqrt{n}\) law (Boyle and Emanuel, 1980).
     </div>
   </div>
 
@@ -607,8 +607,8 @@
       arbitrage that links the two was disrupted in places.
     </p>
     <p style="margin-bottom:0">
-      The role of portfolio insurance is still debated. The Chicago Mercantile Exchange's inquiry concluded that
-      "portfolio insurance did contribute significantly to selling in the futures markets. However, this strategy
+      The role of portfolio insurance is still debated. The Chicago Mercantile Exchange's inquiry concluded:
+      "Portfolio insurance did contribute significantly to selling in the futures markets. However, this strategy
       was only one of many sources of selling, and does not by itself explain the magnitude of the crash." The fair
       reading is that a hedging rule that sells into a falling market can add to the fall when many people run it
       at once, not that it caused the crash on its own.
@@ -693,8 +693,8 @@
     <p>
       <strong>Implied volatility moves.</strong> The identity holds implied volatility fixed. Real implied volatility
       changes, and the option's vega does not go away because you hedged delta. At 20% implied, vega is
-      $0.115 per point per share. A 3-point fall costs about $0.35, which is more than the gamma gains in the whole
-      five-day scenario above. Hedging delta takes the stock's direction out; it leaves the vega position fully in
+      $0.115 per point per share. A 3-point fall costs about $0.35, about the same as all the gamma gains ($0.37) in
+      the five-day scenario above. Hedging delta takes the stock's direction out; it leaves the vega position fully in
       place. See <a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a>.
     </p>
     <p>
@@ -747,7 +747,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The daily identity is \(\tfrac{1}{2}\Gamma(dS^2 - \sigma_{imp}^2 S^2 dt)\).</strong> Realised movement against implied movement, scaled by gamma. Breakeven is \(\sigma_{imp}/\sqrt{252}\) a day: 1.26% at 20%.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Over a life, the profit is about vega times the volatility gap.</strong> $0.115 per point on the worked option. It is an average. Single months spread widely around it.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Hedging frequency trades noise for cost.</strong> Noise falls like \(1/\sqrt{n}\), shares traded rise like \(\sqrt{n}\). Practitioners use bands, not "as often as possible".</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The identity assumes implied volatility stays put.</strong> A 3-point drop costs about $0.35 on the worked option, more than a week of gamma gains. Hedging delta does nothing about vega.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The identity assumes implied volatility stays put.</strong> A 3-point drop costs about $0.35 on the worked option, about as much as the whole five-day scenario's gamma gains. Hedging delta does nothing about vega.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Costs and model risk are real.</strong> The option's spread is usually a bigger drag than the hedge, and the delta you hedge with is a model output that depends on the smile.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Hedging with the move can feed the move.</strong> In 1987 portfolio insurers replicated a put by selling into a falling market, roughly 40% of non-market-maker futures sales on the day, in a 22.6% fall in the Dow. The hedge assumes you can trade at the price on your screen. A crowd following the rule makes that false.</span></div>
   </div>
@@ -816,11 +816,11 @@
     <li>Fischer Black and Myron Scholes, <em>"The Pricing of Options and Corporate Liabilities"</em>, Journal of Political Economy 81(3), 1973 — the original argument: a continuously rebalanced hedge of the option with the stock removes risk, which is where the pricing equation comes from.</li>
     <li>Nicole El Karoui, Monique Jeanblanc-Picqué and Steven Shreve, <em>"Robustness of the Black and Scholes Formula"</em>, Mathematical Finance 8(2), 1998 — the result that a hedger using the wrong volatility earns the integral of dollar gamma times the difference in variances.</li>
     <li>Phelim Boyle and David Emanuel, <em>"Discretely Adjusted Option Hedges"</em>, Journal of Financial Economics 8(3), 1980 — the error from hedging at discrete times, and how it shrinks as hedges become more frequent.</li>
-    <li>Hayne Leland, <em>"Option Pricing and Replication with Transactions Costs"</em>, Journal of Finance 40(5), 1985, and A. Elizabeth Whalley and Paul Wilmott, <em>"An Asymptotic Analysis of an Optimal Hedging Model for Option Pricing with Transaction Costs"</em>, Mathematical Finance 7(3), 1997 — hedging with costs, and why a no-trade band is better than a fixed schedule.</li>
+    <li>Hayne Leland, <em>"Option Pricing and Replication with Transactions Costs"</em>, Journal of Finance 40(5), 1985 — hedging at fixed intervals when trading is costly; and A. Elizabeth Whalley and Paul Wilmott, <em>"An Asymptotic Analysis of an Optimal Hedging Model for Option Pricing with Transaction Costs"</em>, Mathematical Finance 7(3), 1997 — the optimal no-trade band.</li>
     <li>Dimitris Bertsimas, Leonid Kogan and Andrew Lo, <em>"When Is Time Continuous?"</em>, Journal of Financial Economics 55(2), 2000 — how quickly the discrete-hedging error behaves as the number of rebalances rises.</li>
     <li>Sheldon Natenberg, <em>Option Volatility and Pricing</em>, McGraw-Hill — the standard practitioner text on gamma, theta and volatility trading.</li>
     <li>Nassim Nicholas Taleb, <em>Dynamic Hedging: Managing Vanilla and Exotic Options</em>, Wiley, 1997 — a practitioner's account of what hedging an options book involves in real markets.</li>
-    <li>Euan Sinclair, <em>Volatility Trading</em>, Wiley — on trading realised against implied volatility, and why edges there are small and noisy.</li>
+    <li>Euan Sinclair, <em>Volatility Trading</em>, Wiley — on trading volatility, including hedging and sizing.</li>
     <li>Mark Rubinstein and Hayne Leland, <em>"Replicating Options with Positions in Stock and Cash"</em>, Financial Analysts Journal 37(4), 1981 — the origin of portfolio insurance.</li>
     <li>Presidential Task Force on Market Mechanisms (the Brady Commission), <em>Report</em>, January 1988, and Mark Carlson, <em>"A Brief History of the 1987 Stock Market Crash with a Discussion of the Federal Reserve Response"</em>, Federal Reserve Board FEDS Working Paper 2007-13 — the official account and a clear summary of it.</li>
   </ul>

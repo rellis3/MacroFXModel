@@ -13,7 +13,7 @@
 <div id="deck">
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
-    <div class="sl-toptitle">Five Ways to Trade Options — Visual Guide</div>
+    <div class="sl-toptitle">Trading Styles — Visual Guide</div>
     <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, a style lab, an edge calculator and a 6-question self-test?<a href="options-trading-styles.html">Read the complete lesson →</a></div>
@@ -164,8 +164,8 @@
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it — average result per trade, after costs</div>
         <div class="sl-svgwrap">
-          <svg viewBox="0 0 640 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of the average result per trade in dollars per share for five option styles: buy direction, sell premium, trade volatility, hedge and relative value, at the chosen realised volatility with implied volatility fixed at 20 percent. Bars above the line are average profits and bars below are average losses.">
-            <g id="ds-bars"><line x1="30" x2="620" y1="130" y2="130" style="stroke:var(--text3)" stroke-width="1.2"></line><rect x="50" y="130.0" width="80" height="9.0" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="90" y="157.0" text-anchor="middle" font-size="15" font-weight="700" style="fill:var(--text)">−$0.10</text><text x="90" y="262" text-anchor="middle" font-size="13" style="fill:var(--text2)">Buy direction</text><rect x="165" y="130.0" width="80" height="9.0" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="205" y="157.0" text-anchor="middle" font-size="15" font-weight="700" style="fill:var(--text)">−$0.10</text><text x="205" y="262" text-anchor="middle" font-size="13" style="fill:var(--text2)">Sell premium</text><rect x="280" y="130.0" width="80" height="18.0" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="320" y="166.0" text-anchor="middle" font-size="15" font-weight="700" style="fill:var(--text)">−$0.20</text><text x="320" y="262" text-anchor="middle" font-size="13" style="fill:var(--text2)">Trade volatility</text><rect x="395" y="130.0" width="80" height="9.0" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="435" y="157.0" text-anchor="middle" font-size="15" font-weight="700" style="fill:var(--text)">−$0.10</text><text x="435" y="262" text-anchor="middle" font-size="13" style="fill:var(--text2)">Hedge</text><rect x="510" y="130.0" width="80" height="18.0" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="550" y="166.0" text-anchor="middle" font-size="15" font-weight="700" style="fill:var(--text)">−$0.20</text><text x="550" y="262" text-anchor="middle" font-size="13" style="fill:var(--text2)">Relative value</text><text x="30" y="22" font-size="13" style="fill:var(--text3)">average result per share, after costs</text></g>
+          <svg viewBox="0 0 640 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of the average result per trade in dollars per share for five option styles: buy direction, sell premium, trade volatility, hedge and relative value, at the chosen realised volatility with implied volatility fixed at 20 percent. Bars above the line are average profits and bars below are average losses.">
+            <g id="ds-bars"><line x1="30" x2="620" y1="112" y2="112" style="stroke:var(--text3)" stroke-width="1.2"></line><rect x="50" y="112.0" width="80" height="15.6" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="90" y="149.6" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">−$0.10</text><text x="90" y="230" text-anchor="middle" font-size="17" style="fill:var(--text2)">Direction</text><rect x="165" y="112.0" width="80" height="15.6" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="205" y="149.6" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">−$0.10</text><text x="205" y="230" text-anchor="middle" font-size="17" style="fill:var(--text2)">Premium</text><rect x="280" y="112.0" width="80" height="31.2" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="320" y="165.2" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">−$0.20</text><text x="320" y="230" text-anchor="middle" font-size="17" style="fill:var(--text2)">Volatility</text><rect x="395" y="112.0" width="80" height="15.6" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="435" y="149.6" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">−$0.10</text><text x="435" y="230" text-anchor="middle" font-size="17" style="fill:var(--text2)">Hedge</text><rect x="510" y="112.0" width="80" height="31.2" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="550" y="165.2" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">−$0.20</text><text x="550" y="230" text-anchor="middle" font-size="17" style="fill:var(--text2)">Rel. value</text></g>
           </svg>
         </div>
         <div class="sl-sliderhead"><span>Realised volatility (implied is 20%)</span><span class="sl-live" id="ds-rv-val">20%</span></div>
@@ -532,20 +532,19 @@
   if (rvEl) {
     var costEl = document.getElementById('ds-cost'), barsG = document.getElementById('ds-bars');
     var IDS = ['call', 'put', 'straddle', 'hedge', 'cal'];
-    var LAB = { call: 'Buy direction', put: 'Sell premium', straddle: 'Trade volatility', hedge: 'Hedge', cal: 'Relative value' };
+    var LAB = { call: 'Direction', put: 'Premium', straddle: 'Volatility', hedge: 'Hedge', cal: 'Rel. value' };
     var draw = function () {
-      var rv = +rvEl.value, cost = +costEl.value / 100, k, ev = {}, mx = 1, o;
+      var rv = +rvEl.value, cost = +costEl.value / 100, k, ev = {}, mx = 0.5, o;
       for (k = 0; k < IDS.length; k++) { o = outcome(IDS[k], 20, rv, 0, cost); ev[IDS[k]] = o.ev; if (Math.abs(o.ev) > mx) mx = Math.abs(o.ev); }
-      mx = Math.ceil(mx * 2) / 2;
-      var Y0 = 130, H = 90, h = '', x, bh, y, v;
+      mx = Math.ceil(mx * 4) / 4;
+      var Y0 = 112, H = 78, h = '', x, bh, y, v;
       h += '<line x1="30" x2="620" y1="' + Y0 + '" y2="' + Y0 + '" style="stroke:var(--text3)" stroke-width="1.2"/>';
       for (k = 0; k < IDS.length; k++) {
         v = ev[IDS[k]]; x = 50 + k * 115; bh = Math.abs(v) / mx * H; y = v >= 0 ? Y0 - bh : Y0;
         h += '<rect x="' + x + '" y="' + y.toFixed(1) + '" width="80" height="' + Math.max(bh, 1).toFixed(1) + '" rx="3" style="fill:var(' + (v >= 0.005 ? '--green' : '--red') + ')" opacity="0.75"/>';
-        h += '<text x="' + (x + 40) + '" y="' + (v >= 0 ? y - 8 : y + bh + 18).toFixed(1) + '" text-anchor="middle" font-size="15" font-weight="700" style="fill:var(--text)">' + eusd(v) + '</text>';
-        h += '<text x="' + (x + 40) + '" y="' + (Y0 + H + 42) + '" text-anchor="middle" font-size="13" style="fill:var(--text2)">' + LAB[IDS[k]] + '</text>';
+        h += '<text x="' + (x + 40) + '" y="' + (v >= 0 ? y - 8 : y + bh + 22).toFixed(1) + '" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">' + eusd(v) + '</text>';
+        h += '<text x="' + (x + 40) + '" y="' + (Y0 + H + 40) + '" text-anchor="middle" font-size="17" style="fill:var(--text2)">' + LAB[IDS[k]] + '</text>';
       }
-      h += '<text x="30" y="22" font-size="13" style="fill:var(--text3)">average result per share, after costs</text>';
       barsG.innerHTML = h;
       document.getElementById('ds-rv-val').textContent = rv + '%';
       document.getElementById('ds-cost-val').textContent = '$' + cost.toFixed(2);
