@@ -1326,7 +1326,7 @@ export const DESK_EVIDENCE = [
   },
   {
     id: 'funding-forecast-error-levbuild', domain: 'volatility', verdict: 'underpowered', date: '2026-10-22', doc: 'forge/FUNDING_FORECAST_ERROR_PREREG.md', also: ['analysis/output/funding-forecast-error/RESULTS.md'],
-    claim: 'When leveraged funds' net Treasury futures short (CFTC TFF) has been building over 13 weeks, markets move further than the shipped range forecast',
+    claim: 'When leveraged funds’ net Treasury futures short (CFTC TFF) has been building over 13 weeks, markets move further than the shipped range forecast',
     result: '1,558 sessions: +1.8% [-1.6%, +4.9%], halves +3.9% / -0.3%, FX +1.3% / indices +3.7%, inside the placebo [-4.7%, +4.6%]. Descriptive: HY OAS 20-day widening +5.3% (3 years only), a lead for a longer credit-spread retest.',
     use: 'Leverage build-up does not explain range-forecast misses at a size this sample can see; no band adjustment.',
   },
