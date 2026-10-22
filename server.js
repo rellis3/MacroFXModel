@@ -6063,8 +6063,18 @@ Respond with ONLY valid JSON, no markdown:
   }
   // Which model actually answered (the router can fall back), so a page can say who wrote this and when the provider changed.
   const payload = { analysis, generatedAt: new Date().toISOString(), headlineCount: headlines.length, session: fc?.session_label ?? null, mode, llm: { provider: antData.provider ?? null, model: antData.model ?? null, label: antData.label ?? null } };
-  await kv.put(kvKey, JSON.stringify(payload)).catch(() => {});
-  return payload;
+  // Saved, then read back. The old line swallowed a failed write, so a brief could appear once and be gone on the next reload
+  // (or on another device). Now it is written (one retry) and read back, and the answer says whether it really is stored.
+  let saved = false;
+  for (let attempt = 0; attempt < 2 && !saved; attempt++) {
+    try {
+      await kv.put(kvKey, JSON.stringify(payload));
+      const back = await kv.get(kvKey);
+      saved = !!back && JSON.parse(back)?.generatedAt === payload.generatedAt;
+    } catch (e) { console.warn(`[brief] save attempt ${attempt + 1} failed (${kvKey}): ${e.message}`); }
+  }
+  if (!saved) console.error(`[brief] ${kvKey} could NOT be stored; the page was told so`);
+  return { ...payload, saved };
 }
 
 

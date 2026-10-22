@@ -615,12 +615,13 @@ function heroHtml() {
   const kick = (a ? `<span class="pill ${/RISK-ON/i.test(a.regime) ? 'bull' : /RISK-OFF/i.test(a.regime) ? 'bear' : 'amber'}">${esc(a.regime)}</span>` : '') + `<span class="pill violet">${icS('bulb')}AI argument from measured links</span>`;
   let age = '', who = '';
   if (a && D.intel.generatedAt) { const h = (Date.now() - Date.parse(D.intel.generatedAt)) / 3.6e6; age = `<span class="pill ${h >= 6 ? 'amber' : ''}">${h < 1 ? Math.round(h * 60) + 'm old' : h < 24 ? h.toFixed(1) + 'h old' : Math.round(h / 24) + 'd old'}</span>`; }
+  const dev = D.intel?._device ? `<span class="pill amber" title="${esc(D.intel._why ?? '')}">device copy: ${esc(D.intel._why ?? 'this is the last brief this browser saw')}</span>` : '';
   const llm = D.intel?.llm, bm = briefModel();
   who = llm?.provider ? `<span class="pill">written by ${esc(llm.label ?? llm.provider)} · ${esc(llm.model ?? '')}</span>` : (a ? `<span class="pill" title="This brief was generated before the page recorded the model.">model not recorded</span>` : '') + (bm ? `<span class="pill" title="The model the next Generate will use.">next: ${esc(bm.provider)}</span>` : '');
-  const head = a?.headline ? esc(a.headline) : 'No Intelligence brief yet today';
-  const body = a ? esc(a.driver?.[0]?.explain ?? a.driver?.[0]?.what ?? '') : 'Press Generate for the argument: what is driving markets, how it transmits, what would confirm or break it, and what to learn from it. One model call.';
-  return `<div><div class="kick">${kick}${age}${who}</div><h2>${head}</h2><p>${body}</p>
-     <p style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="aibox" id="heroai"></span><button class="btn" id="genbtn">${icS('bulb')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds, sends today's Behind / Now / Ahead rows with it</span></p></div>
+  const unreachable = D.intel?._unreachable, head = a?.headline ? esc(a.headline) : unreachable ? 'The stored brief could not be loaded' : 'No Intelligence brief is stored';
+  const body = a ? esc(a.driver?.[0]?.explain ?? a.driver?.[0]?.what ?? '') : unreachable ? 'The server did not answer after three tries. This is a loading problem, not a missing brief: reload the page, or press Load stored brief. Nothing has been generated or cleared.' : 'Press Generate for the argument: what is driving markets, how it transmits, what would confirm or break it, and what to learn from it. One model call.';
+  return `<div><div class="kick">${kick}${age}${who}${dev}</div><h2>${head}</h2><p>${body}</p>
+     <p style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="aibox" id="heroai"></span>${unreachable ? `<button class="btn" id="reloadbtn">Load stored brief</button>` : ''}<button class="btn" id="genbtn">${icS('bulb')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds, sends today's Behind / Now / Ahead rows with it</span></p></div>
      <div class="gauge">${rf ? dial(rf.active ?? 0, rf.available ?? rf.total ?? 5) : ''}</div><div class="gauge">${ring()}</div>`;
 }
 const fmtRate = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev != null ? (t.last - t.prev) * 100 : null, b20 = back(key, 20), d20 = b20 != null ? (t.last - b20) * 100 : null; return { v: t.last, d1, d20 }; };
@@ -658,7 +659,7 @@ function globalPosition() {
 }
 
 function drawGlobal() {
-  $('hero').innerHTML = heroHtml(); const gb = $('genbtn'); if (gb) gb.onclick = generateIntel; $('intelbody').innerHTML = intelBodyHtml(); drawAi(); drawAb(); drawNl();
+  $('hero').innerHTML = heroHtml(); const gb = $('genbtn'); if (gb) gb.onclick = generateIntel; const rb = $('reloadbtn'); if (rb) rb.onclick = async () => { rb.disabled = true; rb.textContent = 'Loading…'; D.intel = await loadIntel(); drawGlobal(); }; $('intelbody').innerHTML = intelBodyHtml(); drawAi(); drawAb(); drawNl();
   $('position').innerHTML = globalPosition();
   const { links } = derived.chain, g = (key, kind) => (kind === 'rate' ? fmtRate(key) : fmtPct(key));
   const bp = x => (x == null ? '' : `${sg(x, 0)}bp`), pc = x => (x == null ? '' : `${sg(x, 2)}%`);
@@ -711,7 +712,7 @@ async function _generateIntel() {
     const t0 = Date.now(), before = D.intel?.generatedAt ?? '';
     while (Date.now() - t0 < 300000) { await new Promise(x => setTimeout(x, 6000)); const g = await J('/api/morning-brief?mode=intel'); if (g?.ok && g.generatedAt && g.generatedAt !== before) { r = g; break; } }
   }
-  if (r?.ok) { D.intel = r; drawGlobal(); return true; }
+  if (r?.ok) { D.intel = r; lsPut(r); drawGlobal(); if (r.saved === false) $('loaderr').innerHTML = '<div class="err">The brief was generated but could NOT be saved on the server, so it will be gone when you reload and other devices will not see it. Build the newsletter now to keep it, or press Generate again.</div>'; return true; }
   b.disabled = false; b.textContent = 'Generate Intelligence brief'; $('loaderr').innerHTML = `<div class="err">Generate failed: ${esc(r?.error ?? 'no response')}</div>`; return false;
 }
 
@@ -816,16 +817,34 @@ function drawPair() {
 
 /* ── boot, in two waves: the market bundle first so the page is useful at once, then the analysis feeds ── */
 const CORE = [['/api/drill-series', 'drill', '75 market series, 5 years'], ['/api/macro-scorecard', 'msc', 'six-factor currency scorecard'], ['/api/risk-flags', 'rf', 'risk flags'], ['/api/cot', 'cot', 'CFTC positioning by pair'],
-  ['/api/daily-brief', 'brief', 'prices, regimes, levels for all instruments'], ['/api/vol-forecast/session', 'sess', 'live session range'], ['/api/vol-forecast', 'fc', 'calibrated range forecast'], ['/api/calendar-feed', 'cal', 'releases printed'], ['/api/morning-brief?mode=intel', 'intel', 'Intelligence brief']];
+  ['/api/daily-brief', 'brief', 'prices, regimes, levels for all instruments'], ['/api/vol-forecast/session', 'sess', 'live session range'], ['/api/vol-forecast', 'fc', 'calibrated range forecast'], ['/api/calendar-feed', 'cal', 'releases printed']];
 const EXTRA = [['/api/global-read', 'gr', 'five axes, scenarios, per-instrument plans'], ['/api/regime', 'regime', 'macro regime and what each market did in it'], ['/api/macro-changes', 'mc', 'what changed, 1d / 5d / 20d'], ['/api/econ-surprise', 'es', 'consensus surprises by currency'],
   ['/api/cot-extremes', 'ce', 'crowding across 36 contracts'], ['/api/oi-today', 'oi', 'dealer gamma and option walls'], ['/api/desk-watch', 'ds', 'watched conditions firing'], ['/api/events', 'events', 'the calendar ahead'], ['/api/fed-path', 'fp', 'market-implied Fed path'],
   ['/api/fomc/calendar', 'fcal', 'FOMC meeting dates'], ['/api/nowcast', 'nc', 'GDPNow and Cleveland nowcasts'], ['/api/fomc/history?n=6', 'hUSD', 'FOMC tone history'], ['/api/ecb/history?n=6', 'hEUR', 'ECB tone history'], ['/api/boe/history?n=6', 'hGBP', 'BoE tone history'],
   ['/api/boj/history?n=6', 'hJPY', 'BoJ tone history'], ['/api/eod-review', 'eod', 'yesterday\'s review'], ['/api/chain-read', 'cr', 'the chain read (cached AI)'], ['/api/ai-config', 'ai', 'AI model routing']];
+
+/* ── the stored Intelligence brief: load it reliably, never confuse "could not load" with "none stored" ── */
+const INTEL_LS = 'atlas_intel_v1';
+const lsGet = () => { try { return JSON.parse(localStorage.getItem(INTEL_LS) || 'null'); } catch { return null; } };
+const lsPut = r => { try { localStorage.setItem(INTEL_LS, JSON.stringify(r)); } catch {} };
+async function loadIntel() {
+  let r = null;
+  for (const wait of [0, 1500, 4000]) {   // a restart or a busy moment must not read as "no brief"
+    if (wait) await new Promise(x => setTimeout(x, wait));
+    r = await J('/api/morning-brief?mode=intel');
+    if (r) break;
+  }
+  const local = lsGet();
+  if (r?.ok && r.analysis) { if (!local || Date.parse(r.generatedAt) >= Date.parse(local.generatedAt ?? 0)) { lsPut(r); return r; } return { ...local, _device: true }; }
+  if (local?.ok && local.analysis) return { ...local, _device: true, _why: r ? 'the server has no stored brief' : 'the server could not be reached' };
+  return r ?? { ok: false, _unreachable: true };
+}
 const okOf = r => !(r == null || r.ok === false);
-function drawSrcs() { $('srcs').innerHTML = [...CORE, ...EXTRA].map(s => { const r = D[s[1]]; const pending = D[s[1]] === undefined; return `<span class="pill ${pending ? '' : okOf(r) ? '' : 'amber'}" title="${esc(s[2])}">${pending ? '…' : okOf(r) ? '✓' : '✗'} ${esc(s[0].replace('/api/', ''))}</span>`; }).join(''); }
+function drawSrcs() { $('srcs').innerHTML = [...CORE, ['/api/morning-brief?mode=intel', 'intel', 'stored Intelligence brief'], ...EXTRA].map(s => { const r = D[s[1]]; const pending = D[s[1]] === undefined; return `<span class="pill ${pending ? '' : okOf(r) ? '' : 'amber'}" title="${esc(s[2])}">${pending ? '…' : okOf(r) ? '✓' : '✗'} ${esc(s[0].replace('/api/', ''))}</span>`; }).join(''); }
 async function main() {
   drawNav(); drawSrcs();
-  (await Promise.all(CORE.map(s => J(s[0])))).forEach((r, i) => { D[CORE[i][1]] = r; });
+  const [coreRes, intelRes] = await Promise.all([Promise.all(CORE.map(s => J(s[0]))), loadIntel()]);
+  coreRes.forEach((r, i) => { D[CORE[i][1]] = r; }); D.intel = intelRes;
   if (!D.drill?.ok) { $('loaderr').innerHTML = '<div class="err">The market bundle did not load (/api/drill-series). The page needs it for the chain and the currency moves. Reload to try again.</div>'; $('sub').textContent = 'data unavailable'; drawSrcs(); return; }
   derived = { chain: chainNow(), str: strengths() };
   $('sub').textContent = `${new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' })} · bundle to ${D.drill.to ?? D.drill.dates.at(-1)} · ${Object.keys(insts()).length} instruments`;
@@ -833,7 +852,7 @@ async function main() {
   (await Promise.all(EXTRA.map(s => J(s[0])))).forEach((r, i) => { D[EXTRA[i][1]] = r; });
   D.__extra = true; drawAi(); redraw(); drawSrcs();
 }
-window.__atlas = { go, state, D, main, positionContext, abHtml, intelBodyHtml, nlInput, buildIssue };
+window.__atlas = { go, state, D, main, positionContext, abHtml, intelBodyHtml, nlInput, buildIssue, loadIntel, heroHtml };
 main().catch(e => { $('loaderr').innerHTML = `<div class="err">Page error: ${esc(e.message)}</div>`; console.error('[atlas]', e); });
 </script>
 </body>
