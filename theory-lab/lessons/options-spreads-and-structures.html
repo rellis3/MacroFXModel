@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Option Spreads &amp; Structures — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  /* Local: structure cards, rule tables and the payoff builder's select box (os3- prefix). */
+  .os3-card{background:var(--s1);border:1px solid var(--border);border-left:4px solid var(--blue);border-radius:var(--rl);padding:14px 16px;margin:14px 0}
+  .os3-card.green{border-left-color:var(--green)}.os3-card.amber{border-left-color:var(--amber)}.os3-card.red{border-left-color:var(--red)}.os3-card.purple{border-left-color:var(--purple)}
+  .os3-card h3{font-size:16px;margin:0 0 6px}
+  .os3-card p{font-size:14px;margin:0 0 6px}
+  .os3-card dl{display:grid;grid-template-columns:104px 1fr;gap:5px 12px;margin:8px 0 0;font-size:13.5px}
+  .os3-card dt{color:var(--text3);font-family:'DM Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding-top:3px}
+  .os3-card dd{margin:0;color:var(--text2)}
+  .os3-card dd b{color:var(--text)}
+  @media (max-width:600px){.os3-card dl{grid-template-columns:1fr}.os3-card dt{padding-top:8px}}
+  .os3-scroll{overflow-x:auto;margin:14px 0}
+  .os3-table{width:100%;border-collapse:collapse;font-size:13px}
+  .os3-table th,.os3-table td{border-bottom:1px solid var(--border);padding:7px 9px;text-align:left;vertical-align:top}
+  .os3-table th{color:var(--text3);font-family:'DM Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+  .os3-table td.n,.os3-table th.n{text-align:right;font-family:'DM Mono',monospace;white-space:nowrap}
+  .os3-table tr.hl td{background:var(--blue-bg)}
+  .os3-select{background:var(--s2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:14px;width:100%}
+  .os3-btn{background:var(--s2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer}
+  .os3-btn:hover{border-color:var(--blue)}
+  .os3-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}
+  @media (max-width:600px){.os3-grid{grid-template-columns:1fr}}
+  .os3-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text2);margin:6px 0 0}
+  .os3-legend i{display:inline-block;width:18px;height:0;border-top:3px solid var(--blue);vertical-align:middle;margin-right:5px}
+  .os3-legend i.am{border-top:3px dashed var(--amber)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Options in Practice / Spreads &amp; Structures</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Options in Practice · Lesson 3 of 8</div>
+  <h1 class="tl-title">Option Spreads &amp; Structures</h1>
+  <p class="tl-dek">Verticals, straddles, butterflies, condors, calendars, collars and risk reversals are not new instruments. Each is the same four bricks combined to make a view cheaper, cap the loss, or get paid only for the exact move you expect.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — structures explained at Black-Scholes model prices; not a trade recommendation</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="options-four-positions.html">The Four Option Positions</a>, <a href="payoff-shape-vs-greek-signs.html">Same Greeks, Different Risk</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="options-spreads-and-structures-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-solid amber"><strong>Risk.</strong> Educational, not advice. A long option can lose its whole premium. A short option can lose far more than the premium it collected, and a structure with an uncapped short leg has no limit on its loss. Every price here is a model price at stated inputs, not a quote you could trade.</div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Every spread, straddle, butterfly, condor, calendar, collar and risk reversal is the same <strong>four bricks</strong>: buy or sell, call or put, at chosen strikes and expiries. Add the legs' payoffs and you have the structure's payoff. Add their Greeks and you have its Greeks.</li>
+      <li>Structures exist for three reasons: to make a view <strong>cheaper</strong> by selling the part you do not need (a 100/105 bull call spread costs 2.01 where the 100 call alone costs 4.23), to <strong>cap the loss</strong>, or to be paid only for a <strong>precise move</strong>.</li>
+      <li>Nothing here is free. At model prices every leg is fair, so a structure changes <em>where</em> you win, not whether you have an edge. A short iron condor on 80/90/110/120 collects 1.49 for a worst case of 8.51: about a 75% model chance of profit, but a reward-to-risk of only 0.17 to 1.</li>
+      <li>A long 100 straddle costs 7.97. Spot must finish more than 7.97 points (about 8.0%) away from 100 in three months to profit. The at-the-money straddle is roughly \(0.8\,S\sigma\sqrt{T}\), the market's one-line "expected move".</li>
+      <li>Greeks add leg by leg. Straddles and strangles are long gamma and vega and pay theta. Condors, butterflies and credit spreads collect theta and are short gamma and vega. Before expiry a structure is worth far less than its expiry diagram: the 95/100/105 butterfly's best case is 4.03, but it is worth 0.38 halfway there with spot unchanged.</li>
+      <li><strong>Real-world episode:</strong> a Barings trader in Singapore built up a large book of short straddles on Nikkei 225 options through 1994, a structure with no wings. The Kobe earthquake hit on 17 January 1995. Losses on his unauthorised trading reached about £827 million by 27 February and Barings was in administration by 26 February.</li>
+    </ul>
+  </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 296" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four building bricks, buy call, sell call, buy put and sell put, each shown as a profit and loss line at expiry for strike 100. Below them, four structures made by adding bricks: a bull call spread costing 2.01 with a flat top and flat floor, a long straddle costing 7.97 shaped like a V, a long butterfly costing 0.97 shaped like a tent, and a short iron condor receiving 1.49 with a flat top and two sloping sides.">
+      <rect class="tlp-box blue" x="10" y="26" width="135" height="104" rx="6"/>
+      <clipPath id="pc-b0"><rect x="18" y="36" width="119" height="62"/></clipPath><g clip-path="url(#pc-b0)"><line class="tlp-line" x1="18" y1="67.0" x2="137" y2="67.0"/><polyline class="tlp-line blue thick" points="18.0,75.7 19.7,75.7 21.3,75.7 23.0,75.7 24.6,75.7 26.3,75.7 27.9,75.7 29.6,75.7 31.2,75.7 32.9,75.7 34.5,75.7 36.2,75.7 37.8,75.7 39.5,75.7 41.1,75.7 42.8,75.7 44.4,75.7 46.1,75.7 47.8,75.7 49.4,75.7 51.1,75.7 52.7,75.7 54.4,75.7 56.0,75.7 57.7,75.7 59.3,75.7 61.0,75.7 62.6,75.7 64.3,75.7 65.9,75.7 67.6,75.7 69.2,75.7 70.9,75.7 72.5,75.7 74.2,75.7 75.8,75.7 77.5,75.7 79.2,74.7 80.8,73.7 82.5,72.6 84.1,71.6 85.8,70.6 87.4,69.5 89.1,68.5 90.7,67.5 92.4,66.4 94.0,65.4 95.7,64.4 97.3,63.3 99.0,62.3 100.6,61.3 102.3,60.2 103.9,59.2 105.6,58.2 107.2,57.1 108.9,56.1 110.6,55.1 112.2,54.0 113.9,53.0 115.5,52.0 117.2,50.9 118.8,49.9 120.5,48.9 122.1,47.8 123.8,46.8 125.4,45.8 127.1,44.7 128.7,43.7 130.4,42.7 132.0,41.6 133.7,40.6 135.3,39.6 137.0,38.5"/></g>
+      <text class="tlp-blue" x="77.5" y="113" text-anchor="middle" font-size="15" font-weight="700">Buy call</text>
+      <text class="tlp-text3" x="77.5" y="127" text-anchor="middle" font-size="12">strike 100</text>
+      <rect class="tlp-box amber" x="155" y="26" width="135" height="104" rx="6"/>
+      <clipPath id="pc-b1"><rect x="163" y="36" width="119" height="62"/></clipPath><g clip-path="url(#pc-b1)"><line class="tlp-line" x1="163" y1="67.0" x2="282" y2="67.0"/><polyline class="tlp-line amber thick" points="163.0,58.3 164.7,58.3 166.3,58.3 168.0,58.3 169.6,58.3 171.3,58.3 172.9,58.3 174.6,58.3 176.2,58.3 177.9,58.3 179.5,58.3 181.2,58.3 182.8,58.3 184.5,58.3 186.1,58.3 187.8,58.3 189.4,58.3 191.1,58.3 192.8,58.3 194.4,58.3 196.1,58.3 197.7,58.3 199.4,58.3 201.0,58.3 202.7,58.3 204.3,58.3 206.0,58.3 207.6,58.3 209.3,58.3 210.9,58.3 212.6,58.3 214.2,58.3 215.9,58.3 217.5,58.3 219.2,58.3 220.8,58.3 222.5,58.3 224.2,59.3 225.8,60.3 227.5,61.4 229.1,62.4 230.8,63.4 232.4,64.5 234.1,65.5 235.7,66.5 237.4,67.6 239.0,68.6 240.7,69.6 242.3,70.7 244.0,71.7 245.6,72.7 247.3,73.8 248.9,74.8 250.6,75.8 252.2,76.9 253.9,77.9 255.6,78.9 257.2,80.0 258.9,81.0 260.5,82.0 262.2,83.1 263.8,84.1 265.5,85.1 267.1,86.2 268.8,87.2 270.4,88.2 272.1,89.3 273.7,90.3 275.4,91.3 277.0,92.4 278.7,93.4 280.3,94.4 282.0,95.5"/></g>
+      <text class="tlp-amber" x="222.5" y="113" text-anchor="middle" font-size="15" font-weight="700">Sell call</text>
+      <text class="tlp-text3" x="222.5" y="127" text-anchor="middle" font-size="12">strike 100</text>
+      <rect class="tlp-box blue" x="300" y="26" width="135" height="104" rx="6"/>
+      <clipPath id="pc-b2"><rect x="308" y="36" width="119" height="62"/></clipPath><g clip-path="url(#pc-b2)"><line class="tlp-line" x1="308" y1="67.0" x2="427" y2="67.0"/><polyline class="tlp-line blue thick" points="308.0,37.5 309.7,38.5 311.3,39.6 313.0,40.6 314.6,41.6 316.3,42.7 317.9,43.7 319.6,44.7 321.2,45.8 322.9,46.8 324.5,47.8 326.2,48.9 327.8,49.9 329.5,50.9 331.1,52.0 332.8,53.0 334.4,54.0 336.1,55.1 337.8,56.1 339.4,57.1 341.1,58.2 342.7,59.2 344.4,60.2 346.0,61.3 347.7,62.3 349.3,63.3 351.0,64.4 352.6,65.4 354.3,66.4 355.9,67.5 357.6,68.5 359.2,69.5 360.9,70.6 362.5,71.6 364.2,72.6 365.8,73.7 367.5,74.7 369.2,74.7 370.8,74.7 372.5,74.7 374.1,74.7 375.8,74.7 377.4,74.7 379.1,74.7 380.7,74.7 382.4,74.7 384.0,74.7 385.7,74.7 387.3,74.7 389.0,74.7 390.6,74.7 392.3,74.7 393.9,74.7 395.6,74.7 397.2,74.7 398.9,74.7 400.6,74.7 402.2,74.7 403.9,74.7 405.5,74.7 407.2,74.7 408.8,74.7 410.5,74.7 412.1,74.7 413.8,74.7 415.4,74.7 417.1,74.7 418.7,74.7 420.4,74.7 422.0,74.7 423.7,74.7 425.3,74.7 427.0,74.7"/></g>
+      <text class="tlp-blue" x="367.5" y="113" text-anchor="middle" font-size="15" font-weight="700">Buy put</text>
+      <text class="tlp-text3" x="367.5" y="127" text-anchor="middle" font-size="12">strike 100</text>
+      <rect class="tlp-box amber" x="445" y="26" width="135" height="104" rx="6"/>
+      <clipPath id="pc-b3"><rect x="453" y="36" width="119" height="62"/></clipPath><g clip-path="url(#pc-b3)"><line class="tlp-line" x1="453" y1="67.0" x2="572" y2="67.0"/><polyline class="tlp-line amber thick" points="453.0,96.5 454.7,95.5 456.3,94.4 458.0,93.4 459.6,92.4 461.3,91.3 462.9,90.3 464.6,89.3 466.2,88.2 467.9,87.2 469.5,86.2 471.2,85.1 472.8,84.1 474.5,83.1 476.1,82.0 477.8,81.0 479.4,80.0 481.1,78.9 482.8,77.9 484.4,76.9 486.1,75.8 487.7,74.8 489.4,73.8 491.0,72.7 492.7,71.7 494.3,70.7 496.0,69.6 497.6,68.6 499.3,67.6 500.9,66.5 502.6,65.5 504.2,64.5 505.9,63.4 507.5,62.4 509.2,61.4 510.8,60.3 512.5,59.3 514.2,59.3 515.8,59.3 517.5,59.3 519.1,59.3 520.8,59.3 522.4,59.3 524.1,59.3 525.7,59.3 527.4,59.3 529.0,59.3 530.7,59.3 532.3,59.3 534.0,59.3 535.6,59.3 537.3,59.3 538.9,59.3 540.6,59.3 542.2,59.3 543.9,59.3 545.6,59.3 547.2,59.3 548.9,59.3 550.5,59.3 552.2,59.3 553.8,59.3 555.5,59.3 557.1,59.3 558.8,59.3 560.4,59.3 562.1,59.3 563.7,59.3 565.4,59.3 567.0,59.3 568.7,59.3 570.3,59.3 572.0,59.3"/></g>
+      <text class="tlp-amber" x="512.5" y="113" text-anchor="middle" font-size="15" font-weight="700">Sell put</text>
+      <text class="tlp-text3" x="512.5" y="127" text-anchor="middle" font-size="12">strike 100</text>
+      <text class="tlp-text2" x="300" y="16" text-anchor="middle" font-size="13" font-weight="700">FOUR BRICKS</text>
+      <text class="tlp-text2" x="300" y="156" text-anchor="middle" font-size="13">add them up, at different strikes and expiries ↓</text>
+      <rect class="tlp-box green" x="10" y="170" width="135" height="116" rx="6"/>
+      <clipPath id="pc-s0"><rect x="18" y="180" width="119" height="60"/></clipPath><g clip-path="url(#pc-s0)"><polygon points="18.0,214.2 18.0,231.4 19.5,231.4 21.0,231.4 22.5,231.4 23.9,231.4 25.4,231.4 26.9,231.4 28.4,231.4 29.9,231.4 31.4,231.4 32.9,231.4 34.4,231.4 35.8,231.4 37.3,231.4 38.8,231.4 40.3,231.4 41.8,231.4 43.3,231.4 44.8,231.4 46.3,231.4 47.8,231.4 49.2,231.4 50.7,231.4 52.2,231.4 53.7,231.4 55.2,231.4 56.7,231.4 58.2,231.4 59.6,231.4 61.1,231.4 62.6,231.4 64.1,231.4 65.6,231.4 67.1,231.4 68.6,231.4 70.1,231.4 71.6,231.4 73.0,231.4 74.5,231.4 76.0,231.4 77.5,231.4 79.0,227.1 80.5,222.9 82.0,218.6 83.5,214.3 83.5,214.2" class="tlp-red" opacity=".22"/><polygon points="83.5,214.2 84.9,210.0 86.4,205.7 87.9,201.4 89.4,197.1 90.9,192.9 92.4,188.6 93.9,188.6 95.4,188.6 96.8,188.6 98.3,188.6 99.8,188.6 101.3,188.6 102.8,188.6 104.3,188.6 105.8,188.6 107.2,188.6 108.7,188.6 110.2,188.6 111.7,188.6 113.2,188.6 114.7,188.6 116.2,188.6 117.7,188.6 119.1,188.6 120.6,188.6 122.1,188.6 123.6,188.6 125.1,188.6 126.6,188.6 128.1,188.6 129.6,188.6 131.1,188.6 132.5,188.6 134.0,188.6 135.5,188.6 137.0,188.6 137.0,214.2" class="tlp-green" opacity=".22"/><line class="tlp-line" x1="18" y1="214.2" x2="137" y2="214.2"/><polyline class="tlp-line purple thick" points="18.0,231.4 19.5,231.4 21.0,231.4 22.5,231.4 23.9,231.4 25.4,231.4 26.9,231.4 28.4,231.4 29.9,231.4 31.4,231.4 32.9,231.4 34.4,231.4 35.8,231.4 37.3,231.4 38.8,231.4 40.3,231.4 41.8,231.4 43.3,231.4 44.8,231.4 46.3,231.4 47.8,231.4 49.2,231.4 50.7,231.4 52.2,231.4 53.7,231.4 55.2,231.4 56.7,231.4 58.2,231.4 59.6,231.4 61.1,231.4 62.6,231.4 64.1,231.4 65.6,231.4 67.1,231.4 68.6,231.4 70.1,231.4 71.6,231.4 73.0,231.4 74.5,231.4 76.0,231.4 77.5,231.4 79.0,227.1 80.5,222.9 82.0,218.6 83.5,214.3 84.9,210.0 86.4,205.7 87.9,201.4 89.4,197.1 90.9,192.9 92.4,188.6 93.9,188.6 95.4,188.6 96.8,188.6 98.3,188.6 99.8,188.6 101.3,188.6 102.8,188.6 104.3,188.6 105.8,188.6 107.2,188.6 108.7,188.6 110.2,188.6 111.7,188.6 113.2,188.6 114.7,188.6 116.2,188.6 117.7,188.6 119.1,188.6 120.6,188.6 122.1,188.6 123.6,188.6 125.1,188.6 126.6,188.6 128.1,188.6 129.6,188.6 131.1,188.6 132.5,188.6 134.0,188.6 135.5,188.6 137.0,188.6"/></g>
+      <text class="tlp-text" x="77.5" y="257" text-anchor="middle" font-size="14" font-weight="700">Bull call spread</text>
+      <text class="tlp-text2" x="77.5" y="277" text-anchor="middle" font-size="13">pay 2.01</text>
+      <rect class="tlp-box green" x="155" y="170" width="135" height="116" rx="6"/>
+      <clipPath id="pc-s1"><rect x="163" y="180" width="119" height="60"/></clipPath><g clip-path="url(#pc-s1)"><polygon points="163.0,217.8 163.0,188.6 164.2,189.4 165.4,190.3 166.6,191.1 167.8,192.0 168.9,192.9 170.1,193.7 171.3,194.6 172.5,195.4 173.7,196.3 174.9,197.1 176.1,198.0 177.3,198.9 178.5,199.7 179.7,200.6 180.8,201.4 182.0,202.3 183.2,203.1 184.4,204.0 185.6,204.9 186.8,205.7 188.0,206.6 189.2,207.4 190.4,208.3 191.6,209.1 192.8,210.0 193.9,210.9 195.1,211.7 196.3,212.6 197.5,213.4 198.7,214.3 199.9,215.1 201.1,216.0 202.3,216.9 203.5,217.7 203.5,217.8" class="tlp-green" opacity=".22"/><polygon points="203.5,217.8 204.7,218.6 205.8,219.4 207.0,220.3 208.2,221.1 209.4,222.0 210.6,222.9 211.8,223.7 213.0,224.6 214.2,225.4 215.4,226.3 216.6,227.1 217.7,228.0 218.9,228.9 220.1,229.7 221.3,230.6 222.5,231.4 223.7,230.6 224.9,229.7 226.1,228.9 227.3,228.0 228.4,227.1 229.6,226.3 230.8,225.4 232.0,224.6 233.2,223.7 234.4,222.9 235.6,222.0 236.8,221.1 238.0,220.3 239.2,219.4 240.4,218.6 241.5,217.8" class="tlp-red" opacity=".22"/><polygon points="241.5,217.8 241.5,217.7 242.7,216.9 243.9,216.0 245.1,215.1 246.3,214.3 247.5,213.4 248.7,212.6 249.9,211.7 251.1,210.9 252.2,210.0 253.4,209.1 254.6,208.3 255.8,207.4 257.0,206.6 258.2,205.7 259.4,204.9 260.6,204.0 261.8,203.1 263.0,202.3 264.1,201.4 265.3,200.6 266.5,199.7 267.7,198.9 268.9,198.0 270.1,197.1 271.3,196.3 272.5,195.4 273.7,194.6 274.9,193.7 276.1,192.9 277.2,192.0 278.4,191.1 279.6,190.3 280.8,189.4 282.0,188.6 282.0,217.8" class="tlp-green" opacity=".22"/><line class="tlp-line" x1="163" y1="217.8" x2="282" y2="217.8"/><polyline class="tlp-line purple thick" points="163.0,188.6 164.2,189.4 165.4,190.3 166.6,191.1 167.8,192.0 168.9,192.9 170.1,193.7 171.3,194.6 172.5,195.4 173.7,196.3 174.9,197.1 176.1,198.0 177.3,198.9 178.5,199.7 179.7,200.6 180.8,201.4 182.0,202.3 183.2,203.1 184.4,204.0 185.6,204.9 186.8,205.7 188.0,206.6 189.2,207.4 190.4,208.3 191.6,209.1 192.8,210.0 193.9,210.9 195.1,211.7 196.3,212.6 197.5,213.4 198.7,214.3 199.9,215.1 201.1,216.0 202.3,216.9 203.5,217.7 204.7,218.6 205.8,219.4 207.0,220.3 208.2,221.1 209.4,222.0 210.6,222.9 211.8,223.7 213.0,224.6 214.2,225.4 215.4,226.3 216.6,227.1 217.7,228.0 218.9,228.9 220.1,229.7 221.3,230.6 222.5,231.4 223.7,230.6 224.9,229.7 226.1,228.9 227.3,228.0 228.4,227.1 229.6,226.3 230.8,225.4 232.0,224.6 233.2,223.7 234.4,222.9 235.6,222.0 236.8,221.1 238.0,220.3 239.2,219.4 240.4,218.6 241.5,217.7 242.7,216.9 243.9,216.0 245.1,215.1 246.3,214.3 247.5,213.4 248.7,212.6 249.9,211.7 251.1,210.9 252.2,210.0 253.4,209.1 254.6,208.3 255.8,207.4 257.0,206.6 258.2,205.7 259.4,204.9 260.6,204.0 261.8,203.1 263.0,202.3 264.1,201.4 265.3,200.6 266.5,199.7 267.7,198.9 268.9,198.0 270.1,197.1 271.3,196.3 272.5,195.4 273.7,194.6 274.9,193.7 276.1,192.9 277.2,192.0 278.4,191.1 279.6,190.3 280.8,189.4 282.0,188.6"/></g>
+      <text class="tlp-text" x="222.5" y="257" text-anchor="middle" font-size="14" font-weight="700">Long straddle</text>
+      <text class="tlp-text2" x="222.5" y="277" text-anchor="middle" font-size="13">pay 7.97</text>
+      <rect class="tlp-box green" x="300" y="170" width="135" height="116" rx="6"/>
+      <clipPath id="pc-s2"><rect x="308" y="180" width="119" height="60"/></clipPath><g clip-path="url(#pc-s2)"><polygon points="308.0,223.1 308.0,231.4 310.0,231.4 312.0,231.4 313.9,231.4 315.9,231.4 317.9,231.4 319.9,231.4 321.9,231.4 323.9,231.4 325.9,231.4 327.8,231.4 329.8,231.4 331.8,231.4 333.8,231.4 335.8,231.4 337.8,231.4 339.7,231.4 341.7,231.4 343.7,231.4 345.7,231.4 347.7,231.4 349.6,227.1 351.5,223.1" class="tlp-red" opacity=".22"/><polygon points="351.5,223.1 351.6,222.9 353.6,218.6 355.6,214.3 357.6,210.0 359.6,205.7 361.6,201.4 363.5,197.1 365.5,192.9 367.5,188.6 369.5,192.9 371.5,197.1 373.4,201.4 375.4,205.7 377.4,210.0 379.4,214.3 381.4,218.6 383.4,222.9 383.5,223.1" class="tlp-green" opacity=".22"/><polygon points="383.5,223.1 385.4,227.1 387.3,231.4 389.3,231.4 391.3,231.4 393.3,231.4 395.3,231.4 397.2,231.4 399.2,231.4 401.2,231.4 403.2,231.4 405.2,231.4 407.2,231.4 409.1,231.4 411.1,231.4 413.1,231.4 415.1,231.4 417.1,231.4 419.1,231.4 421.1,231.4 423.0,231.4 425.0,231.4 427.0,231.4 427.0,223.1" class="tlp-red" opacity=".22"/><line class="tlp-line" x1="308" y1="223.1" x2="427" y2="223.1"/><polyline class="tlp-line purple thick" points="308.0,231.4 310.0,231.4 312.0,231.4 313.9,231.4 315.9,231.4 317.9,231.4 319.9,231.4 321.9,231.4 323.9,231.4 325.9,231.4 327.8,231.4 329.8,231.4 331.8,231.4 333.8,231.4 335.8,231.4 337.8,231.4 339.7,231.4 341.7,231.4 343.7,231.4 345.7,231.4 347.7,231.4 349.6,227.1 351.6,222.9 353.6,218.6 355.6,214.3 357.6,210.0 359.6,205.7 361.6,201.4 363.5,197.1 365.5,192.9 367.5,188.6 369.5,192.9 371.5,197.1 373.4,201.4 375.4,205.7 377.4,210.0 379.4,214.3 381.4,218.6 383.4,222.9 385.4,227.1 387.3,231.4 389.3,231.4 391.3,231.4 393.3,231.4 395.3,231.4 397.2,231.4 399.2,231.4 401.2,231.4 403.2,231.4 405.2,231.4 407.2,231.4 409.1,231.4 411.1,231.4 413.1,231.4 415.1,231.4 417.1,231.4 419.1,231.4 421.1,231.4 423.0,231.4 425.0,231.4 427.0,231.4"/></g>
+      <text class="tlp-text" x="367.5" y="257" text-anchor="middle" font-size="14" font-weight="700">Long butterfly</text>
+      <text class="tlp-text2" x="367.5" y="277" text-anchor="middle" font-size="13">pay 0.97</text>
+      <rect class="tlp-box green" x="445" y="170" width="135" height="116" rx="6"/>
+      <clipPath id="pc-s3"><rect x="453" y="180" width="119" height="60"/></clipPath><g clip-path="url(#pc-s3)"><polygon points="453.0,194.9 453.0,231.4 454.0,231.4 455.0,231.4 456.0,231.4 457.0,231.4 458.0,231.4 458.9,231.4 459.9,231.4 460.9,231.4 461.9,231.4 462.9,231.4 463.9,231.4 464.9,231.4 465.9,231.4 466.9,231.4 467.9,231.4 468.9,231.4 469.9,231.4 470.9,231.4 471.8,231.4 472.8,231.4 473.8,229.3 474.8,227.1 475.8,225.0 476.8,222.9 477.8,220.7 478.8,218.6 479.8,216.4 480.8,214.3 481.8,212.1 482.8,210.0 483.7,207.9 484.7,205.7 485.7,203.6 486.7,201.4 487.7,199.3 488.7,197.1 489.7,195.0 489.7,194.9" class="tlp-red" opacity=".22"/><polygon points="489.7,194.9 490.7,192.9 491.7,190.7 492.7,188.6 493.7,188.6 494.6,188.6 495.6,188.6 496.6,188.6 497.6,188.6 498.6,188.6 499.6,188.6 500.6,188.6 501.6,188.6 502.6,188.6 503.6,188.6 504.6,188.6 505.6,188.6 506.6,188.6 507.5,188.6 508.5,188.6 509.5,188.6 510.5,188.6 511.5,188.6 512.5,188.6 513.5,188.6 514.5,188.6 515.5,188.6 516.5,188.6 517.5,188.6 518.5,188.6 519.4,188.6 520.4,188.6 521.4,188.6 522.4,188.6 523.4,188.6 524.4,188.6 525.4,188.6 526.4,188.6 527.4,188.6 528.4,188.6 529.4,188.6 530.4,188.6 531.3,188.6 532.3,188.6 533.3,190.7 534.3,192.9 535.3,194.9" class="tlp-green" opacity=".22"/><polygon points="535.3,194.9 535.3,195.0 536.3,197.1 537.3,199.3 538.3,201.4 539.3,203.6 540.3,205.7 541.3,207.9 542.2,210.0 543.2,212.1 544.2,214.3 545.2,216.4 546.2,218.6 547.2,220.7 548.2,222.9 549.2,225.0 550.2,227.1 551.2,229.3 552.2,231.4 553.2,231.4 554.1,231.4 555.1,231.4 556.1,231.4 557.1,231.4 558.1,231.4 559.1,231.4 560.1,231.4 561.1,231.4 562.1,231.4 563.1,231.4 564.1,231.4 565.1,231.4 566.0,231.4 567.0,231.4 568.0,231.4 569.0,231.4 570.0,231.4 571.0,231.4 572.0,231.4 572.0,194.9" class="tlp-red" opacity=".22"/><line class="tlp-line" x1="453" y1="194.9" x2="572" y2="194.9"/><polyline class="tlp-line purple thick" points="453.0,231.4 454.0,231.4 455.0,231.4 456.0,231.4 457.0,231.4 458.0,231.4 458.9,231.4 459.9,231.4 460.9,231.4 461.9,231.4 462.9,231.4 463.9,231.4 464.9,231.4 465.9,231.4 466.9,231.4 467.9,231.4 468.9,231.4 469.9,231.4 470.9,231.4 471.8,231.4 472.8,231.4 473.8,229.3 474.8,227.1 475.8,225.0 476.8,222.9 477.8,220.7 478.8,218.6 479.8,216.4 480.8,214.3 481.8,212.1 482.8,210.0 483.7,207.9 484.7,205.7 485.7,203.6 486.7,201.4 487.7,199.3 488.7,197.1 489.7,195.0 490.7,192.9 491.7,190.7 492.7,188.6 493.7,188.6 494.6,188.6 495.6,188.6 496.6,188.6 497.6,188.6 498.6,188.6 499.6,188.6 500.6,188.6 501.6,188.6 502.6,188.6 503.6,188.6 504.6,188.6 505.6,188.6 506.6,188.6 507.5,188.6 508.5,188.6 509.5,188.6 510.5,188.6 511.5,188.6 512.5,188.6 513.5,188.6 514.5,188.6 515.5,188.6 516.5,188.6 517.5,188.6 518.5,188.6 519.4,188.6 520.4,188.6 521.4,188.6 522.4,188.6 523.4,188.6 524.4,188.6 525.4,188.6 526.4,188.6 527.4,188.6 528.4,188.6 529.4,188.6 530.4,188.6 531.3,188.6 532.3,188.6 533.3,190.7 534.3,192.9 535.3,195.0 536.3,197.1 537.3,199.3 538.3,201.4 539.3,203.6 540.3,205.7 541.3,207.9 542.2,210.0 543.2,212.1 544.2,214.3 545.2,216.4 546.2,218.6 547.2,220.7 548.2,222.9 549.2,225.0 550.2,227.1 551.2,229.3 552.2,231.4 553.2,231.4 554.1,231.4 555.1,231.4 556.1,231.4 557.1,231.4 558.1,231.4 559.1,231.4 560.1,231.4 561.1,231.4 562.1,231.4 563.1,231.4 564.1,231.4 565.1,231.4 566.0,231.4 567.0,231.4 568.0,231.4 569.0,231.4 570.0,231.4 571.0,231.4 572.0,231.4"/></g>
+      <text class="tlp-text" x="512.5" y="257" text-anchor="middle" font-size="14" font-weight="700">Short iron condor</text>
+      <text class="tlp-text2" x="512.5" y="277" text-anchor="middle" font-size="13">get 1.49</text>
+    </svg>
+    <figcaption>Four bricks, many shapes. Spot 100, three months, 20% volatility, 2% rates. Add a bought and a sold call and you get a flat-topped spread; add a call and a put and you get a V; add four legs and you get a tent or a plateau. The picture shows profit and loss at expiry, premiums included.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I know what a call and a put are. But then people say iron condor and butterfly and I switch off. Is that a different product?</p>
+      <p data-who="Quant">No, and that is the good news. There are only four bricks: buy a call, sell a call, buy a put, sell a put. A straddle is two of them. A butterfly is three or four. A condor is four. Learn the bricks and the rest is arithmetic.</p>
+      <p data-who="Trader">Arithmetic how?</p>
+      <p data-who="Quant">You add the payoffs. Say the stock is at one hundred, three months out, volatility twenty percent. The one hundred call costs about four point two three. That is your bought brick. Now you also sell the one hundred and five call, and you collect about two point two two. Your net cost is two point zero one.</p>
+      <p data-who="Trader">So the call you sold pays for more than half of the one you bought.</p>
+      <p data-who="Quant">Yes. And what did you give up? Everything above one hundred and five. The best you can make is the five points between the strikes, minus what you paid: two point nine nine. The worst is the two point zero one. You break even at about one hundred and two.</p>
+      <p data-who="Trader">So it is a cheaper call with a ceiling.</p>
+      <p data-who="Quant">Exactly. That is the first reason structures exist: you sell what you do not need in order to pay for what you want. The second is to cap the loss. The third is to shape the bet, for example to be paid only if the stock stays in a range.</p>
+      <p data-who="Trader">The range one sounds safe. The iron condor?</p>
+      <p data-who="Quant">Careful. In the lesson's example it collects about one point four nine and the worst case is about eight and a half. On the model's own numbers it makes money roughly three times in four. But the wins are small and the losses are big, and at fair prices that is simply a fair bet in a different shape. Defined risk is not low risk.</p>
+      <p data-who="Trader">So where is the edge?</p>
+      <p data-who="Quant">Nowhere, by construction. Every leg is fairly priced in the model, so no mix of fair legs is a bargain. A structure changes what you are paid for, not whether you have an edge. And every extra leg pays its own bid-offer spread.</p>
+      <p data-who="Trader">What about before expiry?</p>
+      <p data-who="Quant">That surprises people. The diagram at expiry is the end of the road. A butterfly's best case is about four point oh three, with the stock exactly at the middle strike. Halfway to expiry, with the stock sitting right there, it is worth about thirty-eight cents. Time pays the butterfly, and only at the end.</p>
+      <p data-who="Trader">And the Greeks?</p>
+      <p data-who="Quant">They add up, leg by leg. A straddle is long gamma, long vega, and pays time decay. A condor or a butterfly is the mirror image: it collects time decay and is short gamma and short vega. That is why one wants a big move and the other wants quiet.</p>
+      <p data-who="Trader">Has this actually hurt anyone?</p>
+      <p data-who="Quant">Barings, 1994 and 1995. A trader built up a big book of short straddles on Nikkei options: collect the premium, no wings. The Kobe earthquake hit on the seventeenth of January 1995 and the market moved. Losses on his unauthorised trading eventually reached about eight hundred and twenty-seven million pounds. A bought option on each side would have put a ceiling on the loss from that one structure.</p>
+      <p data-who="Trader">One line to take away?</p>
+      <p data-who="Quant">A structure is four bricks added up. Before you trade it, ask what you pay, what you can lose, where you break even, and what you sold to make it cheap.</p>
+    </div>
+  </section>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    A single option is a blunt tool. A bought call pays for every point of upside, including points you do not expect, and
+    its price has to cover the chance of those points. A sold option collects a small premium for taking a loss that may be
+    far larger. Most of the practical craft of options trading is about <em>shaping</em> a payoff so that you pay for what
+    you believe and carry only the risk you chose.
+  </p>
+  <p>
+    That shaping is done with combinations of two or more options, often with a position in the underlying. They have
+    names (vertical, straddle, butterfly, condor, calendar, collar, risk reversal), and the names make them sound like
+    separate products. They are not. Each name is a recipe. Once you can read a recipe, you can work out for yourself the
+    cost, the worst case, the break-even points and the Greek signs of any of them, and you can see what each one is
+    really betting on.
+  </p>
+  <p>
+    This lesson is also the honest place to meet the main trap. Defined risk, "zero cost" and "high probability of profit"
+    all sound safe, and each describes a real feature of a structure. None of them means the structure has an edge. We
+    will keep returning to one question: <strong>what did you sell to make this look attractive?</strong>
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>You are not choosing a product. You are choosing a shape.</h3>
+    <p>
+      Think of the four positions from <a href="options-four-positions.html">the first lesson</a> as four bricks. A long call
+      is a ramp that rises to the right. A short call is a ramp that falls to the right. A long put and a short put are the
+      same two ramps on the left. Stacking bricks adds their heights at every price, so two ramps pointing in opposite
+      directions cancel into a flat shelf, and a ramp up on the left joined to a ramp up on the right makes a V.
+    </p>
+    <p>
+      The shelf is the key trick. A bull call spread is a long call (ramp up) whose climb is stopped by a short call at a
+      higher strike (ramp down). Above the higher strike the two cancel and the payoff goes flat. You have bought a
+      capped upside, and the sold call has refunded part of the price. What is refunded is exactly what the market charges
+      for the upside you gave away.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where a structure's profit and loss comes from, one brick at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{call}_K(S) = \color{#fbbf24}{\max(S-K,\,0)} \]</div>
+      <p>One brick. A call with strike \(K\) pays nothing below the strike and one for one above it. A put is the mirror image, \(\max(K-S,\,0)\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Pi(S) = \color{#fbbf24}{\sum_i q_i}\,\text{leg}_i(S) \]</div>
+      <p>A structure is bricks with a quantity \(q_i\): plus one to buy, minus one to sell, plus or minus two for a doubled leg. The payoff is the sum.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \pi(S) = \sum_i q_i\,\text{leg}_i(S) \;\color{#fbbf24}{-\,V_0}, \qquad V_0 = \sum_i q_i P_i \]</div>
+      <p>Profit and loss is the payoff minus what you paid. \(P_i\) is each leg's premium, so \(V_0\) is the net premium: positive is a debit you pay, negative is a credit you receive.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \pi(S) = \max(S-K_1,0) \color{#fbbf24}{- \max(S-K_2,0)} - V_0 \]</div>
+      <p>Try it on a bull call spread: buy the call at \(K_1\), sell the call at the higher strike \(K_2\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \pi(S) = \color{#10b981}{\min\!\big(\max(S-K_1,0),\; K_2-K_1\big) - V_0} \]</div>
+      <p>The two ramps cancel above \(K_2\), so the payoff is capped at the width \(W = K_2-K_1\). Max gain is \(W - V_0\) and max loss is \(V_0\). For the 100/105 spread that is \(5 - 2.01 = 2.99\) and 2.01.</p>
+    </div>
+  </div>
+
+  <p>
+    <strong>The set-up.</strong> Every number in this lesson uses the same model inputs unless it says otherwise: spot
+    \(S_0 = 100\), a flat volatility of 20%, a 2% risk-free rate, no dividends, and three months to expiry
+    (\(T = 0.25\) years), with Black-Scholes prices. These are the inputs of
+    <a href="options-four-positions.html">the first lesson</a>, where the 100 call costs 4.23 and the 100 put 3.73.
+    Premiums used below, at those inputs:
+  </p>
+  <div class="os3-scroll"><table class="os3-table">
+    <tr><th>Strike</th><th class="n">80</th><th class="n">90</th><th class="n">95</th><th class="n">100</th><th class="n">105</th><th class="n">110</th><th class="n">120</th></tr>
+    <tr><td>Call</td><td class="n">20.43</td><td class="n">11.09</td><td class="n">7.21</td><td class="n">4.23</td><td class="n">2.22</td><td class="n">1.04</td><td class="n">0.17</td></tr>
+    <tr><td>Put</td><td class="n">0.03</td><td class="n">0.64</td><td class="n">1.74</td><td class="n">3.73</td><td class="n">6.70</td><td class="n">10.50</td><td class="n">19.57</td></tr>
+  </table></div>
+
+  <p>
+    <strong>Reading the rules off the shape.</strong> Because the payoff is a sum of straight-line pieces, the maximum gain,
+    maximum loss and break-evens follow from a few rules. Let \(W\) be the width between strikes, \(D\) a debit paid and
+    \(C\) a credit received.
+  </p>
+  <div class="os3-scroll"><table class="os3-table">
+    <tr><th>Structure</th><th>Max gain</th><th>Max loss</th><th>Break-even(s)</th></tr>
+    <tr><td>Debit vertical (bull call, bear put)</td><td>\(W-D\)</td><td>\(D\)</td><td>long strike \(\pm D\)</td></tr>
+    <tr><td>Credit vertical (bull put, bear call)</td><td>\(C\)</td><td>\(W-C\)</td><td>short strike \(\mp C\)</td></tr>
+    <tr><td>Long straddle (strike \(K\))</td><td>no limit up</td><td>\(D\)</td><td>\(K\pm D\)</td></tr>
+    <tr><td>Long strangle (strikes \(K_p\lt K_c\))</td><td>no limit up</td><td>\(D\)</td><td>\(K_p-D\) and \(K_c+D\)</td></tr>
+    <tr><td>Long butterfly (wings \(W\) either side of \(K\))</td><td>\(W-D\) at \(K\)</td><td>\(D\)</td><td>\(K-W+D\) and \(K+W-D\)</td></tr>
+    <tr><td>Short iron condor (both wings \(W\))</td><td>\(C\)</td><td>\(W-C\)</td><td>short put \(-C\), short call \(+C\)</td></tr>
+    <tr><td>Collar on shares bought at \(S_0\)</td><td>cap \(-\,S_0-V_0\)</td><td>\(S_0-\) floor \(+V_0\)</td><td>\(S_0+V_0\)</td></tr>
+    <tr><td>Calendar</td><td colspan="3">no closed form: the long leg is still alive at the first expiry, so its value depends on the volatility you assume</td></tr>
+  </table></div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>W</code><span>width between the strikes of a spread</span></div>
+    <div class="tl-eq-chip c2"><code>D</code><span>net debit paid at the start, \(V_0\gt 0\)</span></div>
+    <div class="tl-eq-chip c3"><code>C</code><span>net credit received, \(C=-V_0\gt 0\)</span></div>
+    <div class="tl-eq-chip c4"><code>W−D, W−C</code><span>the "other side" of the trade: the width is the most a vertical can pay out</span></div>
+  </div>
+
+  <p>
+    <strong>The same bet in different clothes.</strong> Put-call parity (\(c-p=S-Ke^{-rT}\), from
+    <a href="options-four-positions.html">the first lesson</a>) says a call and a put at the same strike differ by a straight
+    line, which has no curvature. Subtract two such pairs at different strikes and the straight lines cancel to a constant.
+    So a debit call spread and a credit put spread on the same two strikes have payoffs that differ by a constant, and their
+    prices must add up to the discounted width:
+  </p>
+  <div class="tl-math">\[ D_{\text{call spread}} + C_{\text{put spread}} = W\,e^{-rT} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>D_call spread</code><span>cost of buying the \(K_1\) call and selling the \(K_2\) call</span></div>
+    <div class="tl-eq-chip c2"><code>C_put spread</code><span>credit for selling the \(K_2\) put and buying the \(K_1\) put</span></div>
+    <div class="tl-eq-chip c3"><code>W e^(−rT)</code><span>the width, discounted: 4.98 for \(W=5\) here</span></div>
+  </div>
+  <p>
+    On the 100/105 strikes the call spread costs 2.01 and the matching put spread pays 2.97,
+    which sum to 4.98, the discounted width. The same identity links the long call butterfly
+    (0.97) and the short iron butterfly (4.00): they add to 4.98. Whether you build it from calls
+    or puts is a choice about cash and margin, not about the bet. Likewise a collar is a bull call spread plus cash,
+    because shares plus a put equal a call plus cash:
+  </p>
+  <div class="tl-math">\[ S + \text{put}_{K_p} - \text{call}_{K_c} \;=\; \text{call}_{K_p} - \text{call}_{K_c} + K_p e^{-rT} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>S + put</code><span>shares with a put: a protective put</span></div>
+    <div class="tl-eq-chip c2"><code>call_Kp + cash</code><span>by parity, the same thing as a call plus the strike in cash</span></div>
+    <div class="tl-eq-chip c3"><code>− call_Kc</code><span>selling the upside call is what turns the call into a spread</span></div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of four kinds of Lego brick. Two of them make a ramp going up, two make a ramp going down. If you put an up-ramp and a down-ramp together, you can make a flat shelf, a V, or a roof. Every option "strategy" with a fancy name is just one of these builds. The only real question is what the build costs and how far you can fall off it.</p>
+  </div>
+
+  <p>
+    <strong>Greeks add up too.</strong> Delta, gamma, theta and vega are all slopes of the structure's value, and slopes of a
+    sum are the sum of the slopes. So the Greeks of any structure are the quantity-weighted sums of its legs' Greeks:
+  </p>
+  <div class="tl-math">\[ \Delta=\sum_i q_i\Delta_i,\qquad \Gamma=\sum_i q_i\Gamma_i,\qquad \Theta=\sum_i q_i\Theta_i,\qquad \nu=\sum_i q_i\nu_i \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Δ, Γ</code><span>price sensitivity and how fast it changes</span></div>
+    <div class="tl-eq-chip c2"><code>Θ</code><span>change in value per day, all else equal (shown per calendar day)</span></div>
+    <div class="tl-eq-chip c3"><code>ν</code><span>change in value per volatility point (one point = 1% of vol)</span></div>
+  </div>
+  <p>
+    A shares leg adds \(q\) to delta and nothing to the others. The table below applies this to every structure in the
+    lesson at the start (spot 100, three months, 20% vol; near leg of the calendar one month). The signs are the
+    "signature": they tell you what the structure wants.
+  </p>
+  <div class="os3-scroll"><table class="os3-table">
+    <tr><th>Structure (default strikes)</th><th class="n">Δ</th><th class="n">Γ</th><th class="n">Θ / day</th><th class="n">ν / vol pt</th><th>It wants</th></tr>
+    <tr><td>Bull call spread</td><td class="n">+0.191</td><td class="n">+0.0027</td><td class="n">−0.002</td><td class="n">+0.013</td><td>a rise to the short strike</td></tr>
+    <tr><td>Bear put spread</td><td class="n">−0.190</td><td class="n">+0.0066</td><td class="n">−0.002</td><td class="n">+0.033</td><td>a fall to the short strike</td></tr>
+    <tr><td>Bull put spread</td><td class="n">+0.146</td><td class="n">−0.0126</td><td class="n">+0.006</td><td class="n">−0.063</td><td>price to stay above, time to pass</td></tr>
+    <tr><td>Bear call spread</td><td class="n">−0.152</td><td class="n">−0.0093</td><td class="n">+0.006</td><td class="n">−0.046</td><td>price to stay below, time to pass</td></tr>
+    <tr><td>Long straddle</td><td class="n">+0.080</td><td class="n">+0.0794</td><td class="n">−0.044</td><td class="n">+0.397</td><td>a big move; vol rising</td></tr>
+    <tr><td>Long strangle</td><td class="n">+0.079</td><td class="n">+0.0701</td><td class="n">−0.039</td><td class="n">+0.350</td><td>a bigger move; vol rising</td></tr>
+    <tr><td>Long call butterfly</td><td class="n">−0.001</td><td class="n">−0.0093</td><td class="n">+0.005</td><td class="n">−0.047</td><td>price to pin the middle; time to pass</td></tr>
+    <tr><td>Short iron condor</td><td class="n">−0.040</td><td class="n">−0.0366</td><td class="n">+0.020</td><td class="n">−0.183</td><td>quiet; vol to fall</td></tr>
+    <tr><td>Short iron butterfly</td><td class="n">−0.001</td><td class="n">−0.0093</td><td class="n">+0.005</td><td class="n">−0.047</td><td>price to pin the middle; quiet</td></tr>
+    <tr><td>Long calendar spread</td><td class="n">+0.017</td><td class="n">−0.0293</td><td class="n">+0.016</td><td class="n">+0.084</td><td>price near the strike; far vol to hold</td></tr>
+    <tr><td>Collar on 100 shares</td><td class="n">+0.381</td><td class="n">−0.0039</td><td class="n">+0.006</td><td class="n">−0.020</td><td>a rise to the cap; protection if not</td></tr>
+    <tr><td>Bullish risk reversal</td><td class="n">+0.619</td><td class="n">+0.0039</td><td class="n">−0.006</td><td class="n">+0.020</td><td>a rise; downside skew to pay</td></tr>
+  </table></div>
+
+  <p>
+    <strong>A quick way to size an at-the-money straddle.</strong> For an at-the-money option with a small rate, the call
+    value is close to \(S\sigma\sqrt{T}/\sqrt{2\pi}\). A straddle is a call plus a put, so:
+  </p>
+  <div class="tl-math">\[ c + p \;\approx\; \frac{2\,S\sigma\sqrt{T}}{\sqrt{2\pi}} \;\approx\; 0.8\,S\,\sigma\sqrt{T} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ√T</code><span>volatility scaled to the option's life: 10% here</span></div>
+    <div class="tl-eq-chip c2"><code>0.8</code><span>\(2/\sqrt{2\pi}=0.798\)</span></div>
+    <div class="tl-eq-chip c3"><code>c + p</code><span>the model gives 7.97; the shortcut gives 7.98</span></div>
+  </div>
+  <p>
+    So the straddle price is the market's own estimate of how far spot will travel by expiry, which is why traders read it
+    as the "expected move". It is also the break-even distance for the straddle buyer: the buyer needs a bigger move than
+    the market has priced.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(S, S_0\)</td><td>Price of the underlying at expiry, and today (100 throughout).</td></tr>
+      <tr><td>\(K, K_1, K_2\)</td><td>Strikes. In a vertical \(K_1\lt K_2\); \(W=K_2-K_1\) is the width.</td></tr>
+      <tr><td>\(q_i\)</td><td>Signed quantity of leg \(i\): +1 buy one, −1 sell one, −2 sell two.</td></tr>
+      <tr><td>\(P_i,\ V_0\)</td><td>Premium of leg \(i\); net premium of the structure. \(V_0\gt 0\) is a debit, \(V_0\lt 0\) a credit.</td></tr>
+      <tr><td>\(\Pi(S),\ \pi(S)\)</td><td>Payoff of the legs at expiry; profit and loss after the net premium, \(\pi=\Pi-V_0\).</td></tr>
+      <tr><td>\(D,\ C\)</td><td>A net debit paid or net credit received (as positive numbers).</td></tr>
+      <tr><td>\(T,\ \sigma,\ r\)</td><td>Time to expiry in years, volatility, risk-free rate.</td></tr>
+      <tr><td>\(\Delta,\Gamma,\Theta,\nu\)</td><td>Delta, gamma, theta (per day) and vega (per vol point) of the structure.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>The 100/105 bull call spread against the plain 100 call</h3>
+    <p>
+      Spot 100, three months, 20% vol. Buy the 100 call at 4.23 and sell the 105 call at 2.22:
+    </p>
+    <div class="tl-math">\[ V_0 = 4.23 - 2.22 = 2.01 \qquad W = 105-100 = 5 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>V₀ = 2.01</code><span>net debit: 47% of the outright call's price</span></div>
+      <div class="tl-eq-chip c2"><code>W = 5</code><span>the most the spread can pay at expiry</span></div>
+    </div>
+    <p>
+      From the rules: maximum loss is the debit, <strong>2.01</strong>; maximum gain is
+      \(5 - 2.01 =\) <strong>2.99</strong>; break-even is \(100 + 2.01 =\) <strong>102.01</strong>. The reward-to-risk is
+      1.49 to 1. The outright call breaks even at 104.23. Here is each position's profit and loss at expiry:
+    </p>
+    <div class="os3-scroll"><table class="os3-table">
+      <tr><th>Spot at expiry</th><th class="n">95</th><th class="n">100</th><th class="n">102</th><th class="n">105</th><th class="n">110</th><th class="n">120</th></tr>
+      <tr><td>Buy the 100 call</td><td class="n">−4.23</td><td class="n">−4.23</td><td class="n">−2.23</td><td class="n">+0.77</td><td class="n">+5.77</td><td class="n">+15.77</td></tr>
+      <tr class="hl"><td>100/105 bull call spread</td><td class="n">−2.01</td><td class="n">−2.01</td><td class="n">−0.01</td><td class="n">+2.99</td><td class="n">+2.99</td><td class="n">+2.99</td></tr>
+    </table></div>
+    <p style="margin-bottom:0">
+      The spread loses less when you are wrong and breaks even about two points sooner. In return it stops paying above 105.
+      If the stock rallies to 120 the plain call makes +15.77 and the spread still makes only +2.99. Which is
+      better depends entirely on how far you think the stock can go, which is the real content of the choice.
+    </p>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Net premium, maximum gain, maximum loss and break-even from the leg premiums. The premiums are made-up quotes, not model prices. Give answers in points to two decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Bull call spread: buy the 110 call at 3.10 and sell the 120 call at 1.15. The net debit is \(3.10 - 1.15 = 1.95\). The width is 10, so the maximum gain is \(10 - 1.95 = 8.05\) and the maximum loss is 1.95. The break-even is \(110 + 1.95 =\) <span class="tl-blank" data-answer="111.95" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Short iron condor: sell the 90 put at 1.40, buy the 85 put at 0.70, sell the 110 call at 1.60, buy the 115 call at 0.85. Each wing is 5 wide. The net credit is \(1.40 - 0.70 + 1.60 - 0.85 =\) <span class="tl-blank" data-answer="1.45" data-tol="0.005"></span>. The maximum loss is the wing width minus the credit, <span class="tl-blank" data-answer="3.55" data-tol="0.005"></span>. The upper break-even is the short call plus the credit, <span class="tl-blank" data-answer="111.45" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Long strangle: buy the 105 call at 2.40 and the 95 put at 2.10. Net cost <span class="tl-blank" data-answer="4.50" data-tol="0.005"></span>; lower break-even <span class="tl-blank" data-answer="90.50" data-tol="0.005"></span>; upper break-even <span class="tl-blank" data-answer="109.50" data-tol="0.005"></span>; and the number of points spot must move from 100 (the midpoint) to reach the upper break-even <span class="tl-blank" data-answer="9.50" data-tol="0.005"></span>.</p>
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">All twelve at a glance: profit and loss at expiry, each priced at the model inputs</div>
+    <svg viewBox="0 0 640 956" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Twelve small profit and loss diagrams at expiry, one per structure, all with spot 100: Bull call spread; Bear put spread; Bull put spread; Bear call spread; Long straddle; Long strangle; Long call butterfly; Short iron condor; Short iron butterfly; Long calendar spread; Collar on 100 shares; Bullish risk reversal. Each panel shows the shape of the payoff, the net premium and the best and worst outcomes.">
+      <rect class="tlp-box" x="8" y="8" width="306" height="150" rx="6"/>
+      <text class="tlp-text" x="18" y="26" font-size="14" font-weight="700">Bull call spread</text>
+      <clipPath id="gl-bullcall"><rect x="18" y="34" width="286" height="78"/></clipPath><g clip-path="url(#gl-bullcall)"><polygon points="18.0,79.0 18.0,103.5 21.6,103.5 25.1,103.5 28.7,103.5 32.3,103.5 35.9,103.5 39.5,103.5 43.0,103.5 46.6,103.5 50.2,103.5 53.8,103.5 57.3,103.5 60.9,103.5 64.5,103.5 68.0,103.5 71.6,103.5 75.2,103.5 78.8,103.5 82.4,103.5 85.9,103.5 89.5,103.5 93.1,103.5 96.7,103.5 100.2,103.5 103.8,103.5 107.4,103.5 111.0,103.5 114.5,103.5 118.1,103.5 121.7,103.5 125.2,103.5 128.8,103.5 132.4,103.5 136.0,103.5 139.6,103.5 143.1,103.5 146.7,103.5 150.3,103.5 153.8,103.5 157.4,103.5 161.0,103.5 164.6,91.3 168.2,79.1 168.2,79.0" class="tlp-red" opacity=".22"/><polygon points="168.2,79.0 171.7,66.9 175.3,54.7 178.9,42.5 182.4,42.5 186.0,42.5 189.6,42.5 193.2,42.5 196.8,42.5 200.3,42.5 203.9,42.5 207.5,42.5 211.1,42.5 214.6,42.5 218.2,42.5 221.8,42.5 225.3,42.5 228.9,42.5 232.5,42.5 236.1,42.5 239.7,42.5 243.2,42.5 246.8,42.5 250.4,42.5 253.9,42.5 257.5,42.5 261.1,42.5 264.7,42.5 268.2,42.5 271.8,42.5 275.4,42.5 279.0,42.5 282.6,42.5 286.1,42.5 289.7,42.5 293.3,42.5 296.8,42.5 300.4,42.5 304.0,42.5 304.0,79.0" class="tlp-green" opacity=".22"/><line class="tlp-line" x1="18" y1="79.0" x2="304" y2="79.0"/><polyline class="tlp-line purple thick" points="18.0,103.5 21.6,103.5 25.1,103.5 28.7,103.5 32.3,103.5 35.9,103.5 39.5,103.5 43.0,103.5 46.6,103.5 50.2,103.5 53.8,103.5 57.3,103.5 60.9,103.5 64.5,103.5 68.0,103.5 71.6,103.5 75.2,103.5 78.8,103.5 82.4,103.5 85.9,103.5 89.5,103.5 93.1,103.5 96.7,103.5 100.2,103.5 103.8,103.5 107.4,103.5 111.0,103.5 114.5,103.5 118.1,103.5 121.7,103.5 125.2,103.5 128.8,103.5 132.4,103.5 136.0,103.5 139.6,103.5 143.1,103.5 146.7,103.5 150.3,103.5 153.8,103.5 157.4,103.5 161.0,103.5 164.6,91.3 168.2,79.1 171.7,66.9 175.3,54.7 178.9,42.5 182.4,42.5 186.0,42.5 189.6,42.5 193.2,42.5 196.8,42.5 200.3,42.5 203.9,42.5 207.5,42.5 211.1,42.5 214.6,42.5 218.2,42.5 221.8,42.5 225.3,42.5 228.9,42.5 232.5,42.5 236.1,42.5 239.7,42.5 243.2,42.5 246.8,42.5 250.4,42.5 253.9,42.5 257.5,42.5 261.1,42.5 264.7,42.5 268.2,42.5 271.8,42.5 275.4,42.5 279.0,42.5 282.6,42.5 286.1,42.5 289.7,42.5 293.3,42.5 296.8,42.5 300.4,42.5 304.0,42.5"/></g>
+      <text class="tlp-text2" x="18" y="130" font-size="12">pay 2.01 · best +2.99</text>
+      <text class="tlp-text2" x="18" y="148" font-size="13">worst −2.01</text>
+      <rect class="tlp-box" x="326" y="8" width="306" height="150" rx="6"/>
+      <text class="tlp-text" x="336" y="26" font-size="14" font-weight="700">Bear put spread</text>
+      <clipPath id="gl-bearput"><rect x="336" y="34" width="286" height="78"/></clipPath><g clip-path="url(#gl-bearput)"><polygon points="336.0,79.2 336.0,42.5 339.6,42.5 343.1,42.5 346.7,42.5 350.3,42.5 353.9,42.5 357.4,42.5 361.0,42.5 364.6,42.5 368.2,42.5 371.8,42.5 375.3,42.5 378.9,42.5 382.5,42.5 386.1,42.5 389.6,42.5 393.2,42.5 396.8,42.5 400.4,42.5 403.9,42.5 407.5,42.5 411.1,42.5 414.6,42.5 418.2,42.5 421.8,42.5 425.4,42.5 428.9,42.5 432.5,42.5 436.1,42.5 439.7,42.5 443.2,42.5 446.8,42.5 450.4,42.5 454.0,42.5 457.6,42.5 461.1,42.5 464.7,54.7 468.3,66.9 471.9,79.1 471.9,79.2" class="tlp-green" opacity=".22"/><polygon points="471.9,79.2 475.4,91.3 479.0,103.5 482.6,103.5 486.1,103.5 489.7,103.5 493.3,103.5 496.9,103.5 500.4,103.5 504.0,103.5 507.6,103.5 511.2,103.5 514.8,103.5 518.3,103.5 521.9,103.5 525.5,103.5 529.0,103.5 532.6,103.5 536.2,103.5 539.8,103.5 543.4,103.5 546.9,103.5 550.5,103.5 554.1,103.5 557.6,103.5 561.2,103.5 564.8,103.5 568.4,103.5 572.0,103.5 575.5,103.5 579.1,103.5 582.7,103.5 586.2,103.5 589.8,103.5 593.4,103.5 597.0,103.5 600.5,103.5 604.1,103.5 607.7,103.5 611.3,103.5 614.8,103.5 618.4,103.5 622.0,103.5 622.0,79.2" class="tlp-red" opacity=".22"/><line class="tlp-line" x1="336" y1="79.2" x2="622" y2="79.2"/><polyline class="tlp-line purple thick" points="336.0,42.5 339.6,42.5 343.1,42.5 346.7,42.5 350.3,42.5 353.9,42.5 357.4,42.5 361.0,42.5 364.6,42.5 368.2,42.5 371.8,42.5 375.3,42.5 378.9,42.5 382.5,42.5 386.1,42.5 389.6,42.5 393.2,42.5 396.8,42.5 400.4,42.5 403.9,42.5 407.5,42.5 411.1,42.5 414.6,42.5 418.2,42.5 421.8,42.5 425.4,42.5 428.9,42.5 432.5,42.5 436.1,42.5 439.7,42.5 443.2,42.5 446.8,42.5 450.4,42.5 454.0,42.5 457.6,42.5 461.1,42.5 464.7,54.7 468.3,66.9 471.9,79.1 475.4,91.3 479.0,103.5 482.6,103.5 486.1,103.5 489.7,103.5 493.3,103.5 496.9,103.5 500.4,103.5 504.0,103.5 507.6,103.5 511.2,103.5 514.8,103.5 518.3,103.5 521.9,103.5 525.5,103.5 529.0,103.5 532.6,103.5 536.2,103.5 539.8,103.5 543.4,103.5 546.9,103.5 550.5,103.5 554.1,103.5 557.6,103.5 561.2,103.5 564.8,103.5 568.4,103.5 572.0,103.5 575.5,103.5 579.1,103.5 582.7,103.5 586.2,103.5 589.8,103.5 593.4,103.5 597.0,103.5 600.5,103.5 604.1,103.5 607.7,103.5 611.3,103.5 614.8,103.5 618.4,103.5 622.0,103.5"/></g>
+      <text class="tlp-text2" x="336" y="130" font-size="12">pay 1.99 · best +3.01</text>
+      <text class="tlp-text2" x="336" y="148" font-size="13">worst −1.99</text>
+      <rect class="tlp-box" x="8" y="166" width="306" height="150" rx="6"/>
+      <text class="tlp-text" x="18" y="184" font-size="14" font-weight="700">Bull put spread</text>
+      <clipPath id="gl-bullput"><rect x="18" y="192" width="286" height="78"/></clipPath><g clip-path="url(#gl-bullput)"><polygon points="18.0,213.9 18.0,261.5 21.6,261.5 25.1,261.5 28.7,261.5 32.3,261.5 35.9,261.5 39.5,261.5 43.0,261.5 46.6,261.5 50.2,261.5 53.8,261.5 57.3,261.5 60.9,261.5 64.5,261.5 68.0,261.5 71.6,261.5 75.2,261.5 78.8,261.5 82.4,261.5 85.9,261.5 89.5,261.5 93.1,261.5 96.7,261.5 100.2,261.5 103.8,261.5 107.4,261.5 111.0,261.5 114.5,261.5 118.1,261.5 121.7,261.5 125.2,261.5 128.8,249.3 132.4,237.1 136.0,224.9 139.2,213.9" class="tlp-red" opacity=".22"/><polygon points="139.2,213.9 139.6,212.7 143.1,200.5 146.7,200.5 150.3,200.5 153.8,200.5 157.4,200.5 161.0,200.5 164.6,200.5 168.2,200.5 171.7,200.5 175.3,200.5 178.9,200.5 182.4,200.5 186.0,200.5 189.6,200.5 193.2,200.5 196.8,200.5 200.3,200.5 203.9,200.5 207.5,200.5 211.1,200.5 214.6,200.5 218.2,200.5 221.8,200.5 225.3,200.5 228.9,200.5 232.5,200.5 236.1,200.5 239.7,200.5 243.2,200.5 246.8,200.5 250.4,200.5 253.9,200.5 257.5,200.5 261.1,200.5 264.7,200.5 268.2,200.5 271.8,200.5 275.4,200.5 279.0,200.5 282.6,200.5 286.1,200.5 289.7,200.5 293.3,200.5 296.8,200.5 300.4,200.5 304.0,200.5 304.0,213.9" class="tlp-green" opacity=".22"/><line class="tlp-line" x1="18" y1="213.9" x2="304" y2="213.9"/><polyline class="tlp-line purple thick" points="18.0,261.5 21.6,261.5 25.1,261.5 28.7,261.5 32.3,261.5 35.9,261.5 39.5,261.5 43.0,261.5 46.6,261.5 50.2,261.5 53.8,261.5 57.3,261.5 60.9,261.5 64.5,261.5 68.0,261.5 71.6,261.5 75.2,261.5 78.8,261.5 82.4,261.5 85.9,261.5 89.5,261.5 93.1,261.5 96.7,261.5 100.2,261.5 103.8,261.5 107.4,261.5 111.0,261.5 114.5,261.5 118.1,261.5 121.7,261.5 125.2,261.5 128.8,249.3 132.4,237.1 136.0,224.9 139.6,212.7 143.1,200.5 146.7,200.5 150.3,200.5 153.8,200.5 157.4,200.5 161.0,200.5 164.6,200.5 168.2,200.5 171.7,200.5 175.3,200.5 178.9,200.5 182.4,200.5 186.0,200.5 189.6,200.5 193.2,200.5 196.8,200.5 200.3,200.5 203.9,200.5 207.5,200.5 211.1,200.5 214.6,200.5 218.2,200.5 221.8,200.5 225.3,200.5 228.9,200.5 232.5,200.5 236.1,200.5 239.7,200.5 243.2,200.5 246.8,200.5 250.4,200.5 253.9,200.5 257.5,200.5 261.1,200.5 264.7,200.5 268.2,200.5 271.8,200.5 275.4,200.5 279.0,200.5 282.6,200.5 286.1,200.5 289.7,200.5 293.3,200.5 296.8,200.5 300.4,200.5 304.0,200.5"/></g>
+      <text class="tlp-text2" x="18" y="288" font-size="12">get 1.10 · best +1.10</text>
+      <text class="tlp-text2" x="18" y="306" font-size="13">worst −3.90</text>
+      <rect class="tlp-box" x="326" y="166" width="306" height="150" rx="6"/>
+      <text class="tlp-text" x="336" y="184" font-size="14" font-weight="700">Bear call spread</text>
+      <clipPath id="gl-bearcall"><rect x="336" y="192" width="286" height="78"/></clipPath><g clip-path="url(#gl-bearcall)"><polygon points="336.0,214.9 336.0,200.5 339.6,200.5 343.1,200.5 346.7,200.5 350.3,200.5 353.9,200.5 357.4,200.5 361.0,200.5 364.6,200.5 368.2,200.5 371.8,200.5 375.3,200.5 378.9,200.5 382.5,200.5 386.1,200.5 389.6,200.5 393.2,200.5 396.8,200.5 400.4,200.5 403.9,200.5 407.5,200.5 411.1,200.5 414.6,200.5 418.2,200.5 421.8,200.5 425.4,200.5 428.9,200.5 432.5,200.5 436.1,200.5 439.7,200.5 443.2,200.5 446.8,200.5 450.4,200.5 454.0,200.5 457.6,200.5 461.1,200.5 464.7,200.5 468.3,200.5 471.9,200.5 475.4,200.5 479.0,200.5 482.6,200.5 486.1,200.5 489.7,200.5 493.3,200.5 496.9,200.5 500.4,212.7 501.1,214.9" class="tlp-green" opacity=".22"/><polygon points="501.1,214.9 504.0,224.9 507.6,237.1 511.2,249.3 514.8,261.5 518.3,261.5 521.9,261.5 525.5,261.5 529.0,261.5 532.6,261.5 536.2,261.5 539.8,261.5 543.4,261.5 546.9,261.5 550.5,261.5 554.1,261.5 557.6,261.5 561.2,261.5 564.8,261.5 568.4,261.5 572.0,261.5 575.5,261.5 579.1,261.5 582.7,261.5 586.2,261.5 589.8,261.5 593.4,261.5 597.0,261.5 600.5,261.5 604.1,261.5 607.7,261.5 611.3,261.5 614.8,261.5 618.4,261.5 622.0,261.5 622.0,214.9" class="tlp-red" opacity=".22"/><line class="tlp-line" x1="336" y1="214.9" x2="622" y2="214.9"/><polyline class="tlp-line purple thick" points="336.0,200.5 339.6,200.5 343.1,200.5 346.7,200.5 350.3,200.5 353.9,200.5 357.4,200.5 361.0,200.5 364.6,200.5 368.2,200.5 371.8,200.5 375.3,200.5 378.9,200.5 382.5,200.5 386.1,200.5 389.6,200.5 393.2,200.5 396.8,200.5 400.4,200.5 403.9,200.5 407.5,200.5 411.1,200.5 414.6,200.5 418.2,200.5 421.8,200.5 425.4,200.5 428.9,200.5 432.5,200.5 436.1,200.5 439.7,200.5 443.2,200.5 446.8,200.5 450.4,200.5 454.0,200.5 457.6,200.5 461.1,200.5 464.7,200.5 468.3,200.5 471.9,200.5 475.4,200.5 479.0,200.5 482.6,200.5 486.1,200.5 489.7,200.5 493.3,200.5 496.9,200.5 500.4,212.7 504.0,224.9 507.6,237.1 511.2,249.3 514.8,261.5 518.3,261.5 521.9,261.5 525.5,261.5 529.0,261.5 532.6,261.5 536.2,261.5 539.8,261.5 543.4,261.5 546.9,261.5 550.5,261.5 554.1,261.5 557.6,261.5 561.2,261.5 564.8,261.5 568.4,261.5 572.0,261.5 575.5,261.5 579.1,261.5 582.7,261.5 586.2,261.5 589.8,261.5 593.4,261.5 597.0,261.5 600.5,261.5 604.1,261.5 607.7,261.5 611.3,261.5 614.8,261.5 618.4,261.5 622.0,261.5"/></g>
+      <text class="tlp-text2" x="336" y="288" font-size="12">get 1.18 · best +1.18</text>
+      <text class="tlp-text2" x="336" y="306" font-size="13">worst −3.82</text>
+      <rect class="tlp-box" x="8" y="324" width="306" height="150" rx="6"/>
+      <text class="tlp-text" x="18" y="342" font-size="14" font-weight="700">Long straddle</text>
+      <clipPath id="gl-straddle"><rect x="18" y="350" width="286" height="78"/></clipPath><g clip-path="url(#gl-straddle)"><polygon points="18.0,403.3 18.0,338.2 21.6,340.2 25.1,342.3 28.7,344.3 32.3,346.3 35.9,348.4 39.5,350.4 43.0,352.4 46.6,354.5 50.2,356.5 53.8,358.5 57.3,360.6 60.9,362.6 64.5,364.6 68.0,366.7 71.6,368.7 75.2,370.7 78.8,372.8 82.4,374.8 85.9,376.8 89.5,378.8 93.1,380.9 96.7,382.9 100.2,384.9 103.8,387.0 107.4,389.0 111.0,391.0 114.5,393.1 118.1,395.1 121.7,397.1 125.2,399.2 128.8,401.2 132.4,403.2 132.5,403.3" class="tlp-green" opacity=".22"/><polygon points="132.5,403.3 136.0,405.2 139.6,407.3 143.1,409.3 146.7,411.3 150.3,413.4 153.8,415.4 157.4,417.4 161.0,419.5 164.6,417.4 168.2,415.4 171.7,413.4 175.3,411.3 178.9,409.3 182.4,407.3 186.0,405.2 189.5,403.3" class="tlp-red" opacity=".22"/><polygon points="189.5,403.3 189.6,403.2 193.2,401.2 196.8,399.2 200.3,397.1 203.9,395.1 207.5,393.1 211.1,391.0 214.6,389.0 218.2,387.0 221.8,384.9 225.3,382.9 228.9,380.9 232.5,378.8 236.1,376.8 239.7,374.8 243.2,372.8 246.8,370.7 250.4,368.7 253.9,366.7 257.5,364.6 261.1,362.6 264.7,360.6 268.2,358.5 271.8,356.5 275.4,354.5 279.0,352.4 282.6,350.4 286.1,348.4 289.7,346.3 293.3,344.3 296.8,342.3 300.4,340.2 304.0,338.2 304.0,403.3" class="tlp-green" opacity=".22"/><line class="tlp-line" x1="18" y1="403.3" x2="304" y2="403.3"/><polyline class="tlp-line purple thick" points="18.0,338.2 21.6,340.2 25.1,342.3 28.7,344.3 32.3,346.3 35.9,348.4 39.5,350.4 43.0,352.4 46.6,354.5 50.2,356.5 53.8,358.5 57.3,360.6 60.9,362.6 64.5,364.6 68.0,366.7 71.6,368.7 75.2,370.7 78.8,372.8 82.4,374.8 85.9,376.8 89.5,378.8 93.1,380.9 96.7,382.9 100.2,384.9 103.8,387.0 107.4,389.0 111.0,391.0 114.5,393.1 118.1,395.1 121.7,397.1 125.2,399.2 128.8,401.2 132.4,403.2 136.0,405.2 139.6,407.3 143.1,409.3 146.7,411.3 150.3,413.4 153.8,415.4 157.4,417.4 161.0,419.5 164.6,417.4 168.2,415.4 171.7,413.4 175.3,411.3 178.9,409.3 182.4,407.3 186.0,405.2 189.6,403.2 193.2,401.2 196.8,399.2 200.3,397.1 203.9,395.1 207.5,393.1 211.1,391.0 214.6,389.0 218.2,387.0 221.8,384.9 225.3,382.9 228.9,380.9 232.5,378.8 236.1,376.8 239.7,374.8 243.2,372.8 246.8,370.7 250.4,368.7 253.9,366.7 257.5,364.6 261.1,362.6 264.7,360.6 268.2,358.5 271.8,356.5 275.4,354.5 279.0,352.4 282.6,350.4 286.1,348.4 289.7,346.3 293.3,344.3 296.8,342.3 300.4,340.2 304.0,338.2"/></g>
+      <text class="tlp-text2" x="18" y="446" font-size="12">pay 7.97 · best no limit</text>
+      <text class="tlp-text2" x="18" y="464" font-size="13">worst −7.97</text>
+      <rect class="tlp-box" x="326" y="324" width="306" height="150" rx="6"/>
+      <text class="tlp-text" x="336" y="342" font-size="14" font-weight="700">Long strangle</text>
+      <clipPath id="gl-strangle"><rect x="336" y="350" width="286" height="78"/></clipPath><g clip-path="url(#gl-strangle)"><polygon points="336.0,409.8 336.0,334.2 339.6,336.6 343.1,339.0 346.7,341.5 350.3,343.9 353.9,346.3 357.4,348.8 361.0,351.2 364.6,353.7 368.2,356.1 371.8,358.5 375.3,361.0 378.9,363.4 382.5,365.8 386.1,368.3 389.6,370.7 393.2,373.2 396.8,375.6 400.4,378.0 403.9,380.5 407.5,382.9 411.1,385.3 414.6,387.8 418.2,390.2 421.8,392.7 425.4,395.1 428.9,397.5 432.5,400.0 436.1,402.4 439.7,404.8 443.2,407.3 446.8,409.7 447.0,409.8" class="tlp-green" opacity=".22"/><polygon points="447.0,409.8 450.4,412.2 454.0,414.6 457.6,417.0 461.1,419.5 464.7,419.5 468.3,419.5 471.9,419.5 475.4,419.5 479.0,419.5 482.6,419.5 486.1,419.5 489.7,419.5 493.3,419.5 496.9,419.5 500.4,417.0 504.0,414.6 507.6,412.2 511.0,409.8" class="tlp-red" opacity=".22"/><polygon points="511.0,409.8 511.2,409.7 514.8,407.3 518.3,404.8 521.9,402.4 525.5,400.0 529.0,397.5 532.6,395.1 536.2,392.7 539.8,390.2 543.4,387.8 546.9,385.3 550.5,382.9 554.1,380.5 557.6,378.0 561.2,375.6 564.8,373.2 568.4,370.7 572.0,368.3 575.5,365.8 579.1,363.4 582.7,361.0 586.2,358.5 589.8,356.1 593.4,353.7 597.0,351.2 600.5,348.8 604.1,346.3 607.7,343.9 611.3,341.5 614.8,339.0 618.4,336.6 622.0,334.2 622.0,409.8" class="tlp-green" opacity=".22"/><line class="tlp-line" x1="336" y1="409.8" x2="622" y2="409.8"/><polyline class="tlp-line purple thick" points="336.0,334.2 339.6,336.6 343.1,339.0 346.7,341.5 350.3,343.9 353.9,346.3 357.4,348.8 361.0,351.2 364.6,353.7 368.2,356.1 371.8,358.5 375.3,361.0 378.9,363.4 382.5,365.8 386.1,368.3 389.6,370.7 393.2,373.2 396.8,375.6 400.4,378.0 403.9,380.5 407.5,382.9 411.1,385.3 414.6,387.8 418.2,390.2 421.8,392.7 425.4,395.1 428.9,397.5 432.5,400.0 436.1,402.4 439.7,404.8 443.2,407.3 446.8,409.7 450.4,412.2 454.0,414.6 457.6,417.0 461.1,419.5 464.7,419.5 468.3,419.5 471.9,419.5 475.4,419.5 479.0,419.5 482.6,419.5 486.1,419.5 489.7,419.5 493.3,419.5 496.9,419.5 500.4,417.0 504.0,414.6 507.6,412.2 511.2,409.7 514.8,407.3 518.3,404.8 521.9,402.4 525.5,400.0 529.0,397.5 532.6,395.1 536.2,392.7 539.8,390.2 543.4,387.8 546.9,385.3 550.5,382.9 554.1,380.5 557.6,378.0 561.2,375.6 564.8,373.2 568.4,370.7 572.0,368.3 575.5,365.8 579.1,363.4 582.7,361.0 586.2,358.5 589.8,356.1 593.4,353.7 597.0,351.2 600.5,348.8 604.1,346.3 607.7,343.9 611.3,341.5 614.8,339.0 618.4,336.6 622.0,334.2"/></g>
+      <text class="tlp-text2" x="336" y="446" font-size="12">pay 3.96 · best no limit</text>
+      <text class="tlp-text2" x="336" y="464" font-size="13">worst −3.96</text>
+      <rect class="tlp-box" x="8" y="482" width="306" height="150" rx="6"/>
+      <text class="tlp-text" x="18" y="500" font-size="14" font-weight="700">Long call butterfly</text>
+      <clipPath id="gl-fly"><rect x="18" y="508" width="286" height="78"/></clipPath><g clip-path="url(#gl-fly)"><polygon points="18.0,565.6 18.0,577.5 21.6,577.5 25.1,577.5 28.7,577.5 32.3,577.5 35.9,577.5 39.5,577.5 43.0,577.5 46.6,577.5 50.2,577.5 53.8,577.5 57.3,577.5 60.9,577.5 64.5,577.5 68.0,577.5 71.6,577.5 75.2,577.5 78.8,577.5 82.4,577.5 85.9,577.5 89.5,577.5 93.1,577.5 96.7,577.5 100.2,577.5 103.8,577.5 107.4,577.5 111.0,577.5 114.5,577.5 118.1,577.5 121.7,577.5 125.2,577.5 128.8,577.5 132.4,577.5 136.0,577.5 139.6,577.5 143.1,577.5 146.6,565.6" class="tlp-red" opacity=".22"/><polygon points="146.6,565.6 146.7,565.3 150.3,553.1 153.8,540.9 157.4,528.7 161.0,516.5 164.6,528.7 168.2,540.9 171.7,553.1 175.3,565.3 175.4,565.6" class="tlp-green" opacity=".22"/><polygon points="175.4,565.6 178.9,577.5 182.4,577.5 186.0,577.5 189.6,577.5 193.2,577.5 196.8,577.5 200.3,577.5 203.9,577.5 207.5,577.5 211.1,577.5 214.6,577.5 218.2,577.5 221.8,577.5 225.3,577.5 228.9,577.5 232.5,577.5 236.1,577.5 239.7,577.5 243.2,577.5 246.8,577.5 250.4,577.5 253.9,577.5 257.5,577.5 261.1,577.5 264.7,577.5 268.2,577.5 271.8,577.5 275.4,577.5 279.0,577.5 282.6,577.5 286.1,577.5 289.7,577.5 293.3,577.5 296.8,577.5 300.4,577.5 304.0,577.5 304.0,565.6" class="tlp-red" opacity=".22"/><line class="tlp-line" x1="18" y1="565.6" x2="304" y2="565.6"/><polyline class="tlp-line purple thick" points="18.0,577.5 21.6,577.5 25.1,577.5 28.7,577.5 32.3,577.5 35.9,577.5 39.5,577.5 43.0,577.5 46.6,577.5 50.2,577.5 53.8,577.5 57.3,577.5 60.9,577.5 64.5,577.5 68.0,577.5 71.6,577.5 75.2,577.5 78.8,577.5 82.4,577.5 85.9,577.5 89.5,577.5 93.1,577.5 96.7,577.5 100.2,577.5 103.8,577.5 107.4,577.5 111.0,577.5 114.5,577.5 118.1,577.5 121.7,577.5 125.2,577.5 128.8,577.5 132.4,577.5 136.0,577.5 139.6,577.5 143.1,577.5 146.7,565.3 150.3,553.1 153.8,540.9 157.4,528.7 161.0,516.5 164.6,528.7 168.2,540.9 171.7,553.1 175.3,565.3 178.9,577.5 182.4,577.5 186.0,577.5 189.6,577.5 193.2,577.5 196.8,577.5 200.3,577.5 203.9,577.5 207.5,577.5 211.1,577.5 214.6,577.5 218.2,577.5 221.8,577.5 225.3,577.5 228.9,577.5 232.5,577.5 236.1,577.5 239.7,577.5 243.2,577.5 246.8,577.5 250.4,577.5 253.9,577.5 257.5,577.5 261.1,577.5 264.7,577.5 268.2,577.5 271.8,577.5 275.4,577.5 279.0,577.5 282.6,577.5 286.1,577.5 289.7,577.5 293.3,577.5 296.8,577.5 300.4,577.5 304.0,577.5"/></g>
+      <text class="tlp-text2" x="18" y="604" font-size="12">pay 0.97 · best +4.03</text>
+      <text class="tlp-text2" x="18" y="622" font-size="13">worst −0.97</text>
+      <rect class="tlp-box" x="326" y="482" width="306" height="150" rx="6"/>
+      <text class="tlp-text" x="336" y="500" font-size="14" font-weight="700">Short iron condor</text>
+      <clipPath id="gl-condor"><rect x="336" y="508" width="286" height="78"/></clipPath><g clip-path="url(#gl-condor)"><polygon points="336.0,525.6 336.0,577.5 339.6,577.5 343.1,577.5 346.7,577.5 350.3,577.5 353.9,577.5 357.4,577.5 361.0,577.5 364.6,577.5 368.2,577.5 371.8,577.5 375.3,577.5 378.9,577.5 382.5,577.5 386.1,577.5 389.6,577.5 393.2,577.5 396.8,577.5 400.4,577.5 403.9,577.5 407.5,577.5 411.1,571.4 414.6,565.3 418.2,559.2 421.8,553.1 425.4,547.0 428.9,540.9 432.5,534.8 436.1,528.7 437.9,525.6" class="tlp-red" opacity=".22"/><polygon points="437.9,525.6 439.7,522.6 443.2,516.5 446.8,516.5 450.4,516.5 454.0,516.5 457.6,516.5 461.1,516.5 464.7,516.5 468.3,516.5 471.9,516.5 475.4,516.5 479.0,516.5 482.6,516.5 486.1,516.5 489.7,516.5 493.3,516.5 496.9,516.5 500.4,516.5 504.0,516.5 507.6,516.5 511.2,516.5 514.8,516.5 518.3,522.6 520.1,525.6" class="tlp-green" opacity=".22"/><polygon points="520.1,525.6 521.9,528.7 525.5,534.8 529.0,540.9 532.6,547.0 536.2,553.1 539.8,559.2 543.4,565.3 546.9,571.4 550.5,577.5 554.1,577.5 557.6,577.5 561.2,577.5 564.8,577.5 568.4,577.5 572.0,577.5 575.5,577.5 579.1,577.5 582.7,577.5 586.2,577.5 589.8,577.5 593.4,577.5 597.0,577.5 600.5,577.5 604.1,577.5 607.7,577.5 611.3,577.5 614.8,577.5 618.4,577.5 622.0,577.5 622.0,525.6" class="tlp-red" opacity=".22"/><line class="tlp-line" x1="336" y1="525.6" x2="622" y2="525.6"/><polyline class="tlp-line purple thick" points="336.0,577.5 339.6,577.5 343.1,577.5 346.7,577.5 350.3,577.5 353.9,577.5 357.4,577.5 361.0,577.5 364.6,577.5 368.2,577.5 371.8,577.5 375.3,577.5 378.9,577.5 382.5,577.5 386.1,577.5 389.6,577.5 393.2,577.5 396.8,577.5 400.4,577.5 403.9,577.5 407.5,577.5 411.1,571.4 414.6,565.3 418.2,559.2 421.8,553.1 425.4,547.0 428.9,540.9 432.5,534.8 436.1,528.7 439.7,522.6 443.2,516.5 446.8,516.5 450.4,516.5 454.0,516.5 457.6,516.5 461.1,516.5 464.7,516.5 468.3,516.5 471.9,516.5 475.4,516.5 479.0,516.5 482.6,516.5 486.1,516.5 489.7,516.5 493.3,516.5 496.9,516.5 500.4,516.5 504.0,516.5 507.6,516.5 511.2,516.5 514.8,516.5 518.3,522.6 521.9,528.7 525.5,534.8 529.0,540.9 532.6,547.0 536.2,553.1 539.8,559.2 543.4,565.3 546.9,571.4 550.5,577.5 554.1,577.5 557.6,577.5 561.2,577.5 564.8,577.5 568.4,577.5 572.0,577.5 575.5,577.5 579.1,577.5 582.7,577.5 586.2,577.5 589.8,577.5 593.4,577.5 597.0,577.5 600.5,577.5 604.1,577.5 607.7,577.5 611.3,577.5 614.8,577.5 618.4,577.5 622.0,577.5"/></g>
+      <text class="tlp-text2" x="336" y="604" font-size="12">get 1.49 · best +1.49</text>
+      <text class="tlp-text2" x="336" y="622" font-size="13">worst −8.51</text>
+      <rect class="tlp-box" x="8" y="640" width="306" height="150" rx="6"/>
+      <text class="tlp-text" x="18" y="658" font-size="14" font-weight="700">Short iron butterfly</text>
+      <clipPath id="gl-ifly"><rect x="18" y="666" width="286" height="78"/></clipPath><g clip-path="url(#gl-ifly)"><polygon points="18.0,723.3 18.0,735.5 21.6,735.5 25.1,735.5 28.7,735.5 32.3,735.5 35.9,735.5 39.5,735.5 43.0,735.5 46.6,735.5 50.2,735.5 53.8,735.5 57.3,735.5 60.9,735.5 64.5,735.5 68.0,735.5 71.6,735.5 75.2,735.5 78.8,735.5 82.4,735.5 85.9,735.5 89.5,735.5 93.1,735.5 96.7,735.5 100.2,735.5 103.8,735.5 107.4,735.5 111.0,735.5 114.5,735.5 118.1,735.5 121.7,735.5 125.2,735.5 128.8,735.5 132.4,735.5 136.0,735.5 139.6,735.5 143.1,735.5 146.7,723.3" class="tlp-red" opacity=".22"/><polygon points="146.7,723.3 146.7,723.3 150.3,711.1 153.8,698.9 157.4,686.7 161.0,674.5 164.6,686.7 168.2,698.9 171.7,711.1 175.3,723.3 175.3,723.3" class="tlp-green" opacity=".22"/><polygon points="175.3,723.3 178.9,735.5 182.4,735.5 186.0,735.5 189.6,735.5 193.2,735.5 196.8,735.5 200.3,735.5 203.9,735.5 207.5,735.5 211.1,735.5 214.6,735.5 218.2,735.5 221.8,735.5 225.3,735.5 228.9,735.5 232.5,735.5 236.1,735.5 239.7,735.5 243.2,735.5 246.8,735.5 250.4,735.5 253.9,735.5 257.5,735.5 261.1,735.5 264.7,735.5 268.2,735.5 271.8,735.5 275.4,735.5 279.0,735.5 282.6,735.5 286.1,735.5 289.7,735.5 293.3,735.5 296.8,735.5 300.4,735.5 304.0,735.5 304.0,723.3" class="tlp-red" opacity=".22"/><line class="tlp-line" x1="18" y1="723.3" x2="304" y2="723.3"/><polyline class="tlp-line purple thick" points="18.0,735.5 21.6,735.5 25.1,735.5 28.7,735.5 32.3,735.5 35.9,735.5 39.5,735.5 43.0,735.5 46.6,735.5 50.2,735.5 53.8,735.5 57.3,735.5 60.9,735.5 64.5,735.5 68.0,735.5 71.6,735.5 75.2,735.5 78.8,735.5 82.4,735.5 85.9,735.5 89.5,735.5 93.1,735.5 96.7,735.5 100.2,735.5 103.8,735.5 107.4,735.5 111.0,735.5 114.5,735.5 118.1,735.5 121.7,735.5 125.2,735.5 128.8,735.5 132.4,735.5 136.0,735.5 139.6,735.5 143.1,735.5 146.7,723.3 150.3,711.1 153.8,698.9 157.4,686.7 161.0,674.5 164.6,686.7 168.2,698.9 171.7,711.1 175.3,723.3 178.9,735.5 182.4,735.5 186.0,735.5 189.6,735.5 193.2,735.5 196.8,735.5 200.3,735.5 203.9,735.5 207.5,735.5 211.1,735.5 214.6,735.5 218.2,735.5 221.8,735.5 225.3,735.5 228.9,735.5 232.5,735.5 236.1,735.5 239.7,735.5 243.2,735.5 246.8,735.5 250.4,735.5 253.9,735.5 257.5,735.5 261.1,735.5 264.7,735.5 268.2,735.5 271.8,735.5 275.4,735.5 279.0,735.5 282.6,735.5 286.1,735.5 289.7,735.5 293.3,735.5 296.8,735.5 300.4,735.5 304.0,735.5"/></g>
+      <text class="tlp-text2" x="18" y="762" font-size="12">get 4.00 · best +4.00</text>
+      <text class="tlp-text2" x="18" y="780" font-size="13">worst −1.00</text>
+      <rect class="tlp-box" x="326" y="640" width="306" height="150" rx="6"/>
+      <text class="tlp-text" x="336" y="658" font-size="14" font-weight="700">Long calendar spread</text>
+      <clipPath id="gl-calendar"><rect x="336" y="666" width="286" height="78"/></clipPath><g clip-path="url(#gl-calendar)"><polygon points="336.0,702.6 336.0,735.2 339.6,735.2 343.1,735.2 346.7,735.2 350.3,735.2 353.9,735.2 357.4,735.2 361.0,735.2 364.6,735.2 368.2,735.2 371.8,735.2 375.3,735.2 378.9,735.2 382.5,735.2 386.1,735.2 389.6,735.2 393.2,735.2 396.8,735.1 400.4,735.1 403.9,735.1 407.5,735.0 411.1,734.9 414.6,734.8 418.2,734.6 421.8,734.3 425.4,733.9 428.9,733.3 432.5,732.5 436.1,731.4 439.7,730.1 443.2,728.3 446.8,726.0 450.4,723.3 454.0,719.9 457.6,715.8 461.1,711.1 464.7,705.5 466.3,702.6" class="tlp-red" opacity=".22"/><polygon points="466.3,702.6 468.3,699.1 471.9,691.9 475.4,683.8 479.0,674.8 482.6,682.6 486.1,689.6 489.7,695.8 493.3,701.2 494.3,702.6" class="tlp-green" opacity=".22"/><polygon points="494.3,702.6 496.9,706.0 500.4,710.0 504.0,713.5 507.6,716.5 511.2,718.9 514.8,721.0 518.3,722.7 521.9,724.1 525.5,725.2 529.0,726.1 532.6,726.8 536.2,727.4 539.8,727.9 543.4,728.2 546.9,728.5 550.5,728.7 554.1,728.8 557.6,729.0 561.2,729.1 564.8,729.1 568.4,729.2 572.0,729.2 575.5,729.2 579.1,729.3 582.7,729.3 586.2,729.3 589.8,729.3 593.4,729.3 597.0,729.3 600.5,729.3 604.1,729.3 607.7,729.3 611.3,729.3 614.8,729.3 618.4,729.3 622.0,729.3 622.0,702.6" class="tlp-red" opacity=".22"/><line class="tlp-line" x1="336" y1="702.6" x2="622" y2="702.6"/><polyline class="tlp-line purple thick" points="336.0,735.2 339.6,735.2 343.1,735.2 346.7,735.2 350.3,735.2 353.9,735.2 357.4,735.2 361.0,735.2 364.6,735.2 368.2,735.2 371.8,735.2 375.3,735.2 378.9,735.2 382.5,735.2 386.1,735.2 389.6,735.2 393.2,735.2 396.8,735.1 400.4,735.1 403.9,735.1 407.5,735.0 411.1,734.9 414.6,734.8 418.2,734.6 421.8,734.3 425.4,733.9 428.9,733.3 432.5,732.5 436.1,731.4 439.7,730.1 443.2,728.3 446.8,726.0 450.4,723.3 454.0,719.9 457.6,715.8 461.1,711.1 464.7,705.5 468.3,699.1 471.9,691.9 475.4,683.8 479.0,674.8 482.6,682.6 486.1,689.6 489.7,695.8 493.3,701.2 496.9,706.0 500.4,710.0 504.0,713.5 507.6,716.5 511.2,718.9 514.8,721.0 518.3,722.7 521.9,724.1 525.5,725.2 529.0,726.1 532.6,726.8 536.2,727.4 539.8,727.9 543.4,728.2 546.9,728.5 550.5,728.7 554.1,728.8 557.6,729.0 561.2,729.1 564.8,729.1 568.4,729.2 572.0,729.2 575.5,729.2 579.1,729.3 582.7,729.3 586.2,729.3 589.8,729.3 593.4,729.3 597.0,729.3 600.5,729.3 604.1,729.3 607.7,729.3 611.3,729.3 614.8,729.3 618.4,729.3 622.0,729.3"/></g>
+      <text class="tlp-text2" x="336" y="762" font-size="12">pay 1.85 · best +1.57</text>
+      <text class="tlp-text2" x="336" y="780" font-size="13">worst −1.85</text>
+      <rect class="tlp-box" x="8" y="798" width="306" height="150" rx="6"/>
+      <text class="tlp-text" x="18" y="816" font-size="14" font-weight="700">Collar on 100 shares</text>
+      <clipPath id="gl-collar"><rect x="18" y="824" width="286" height="78"/></clipPath><g clip-path="url(#gl-collar)"><polygon points="18.0,865.9 18.0,893.5 21.6,893.5 25.1,893.5 28.7,893.5 32.3,893.5 35.9,893.5 39.5,893.5 43.0,893.5 46.6,893.5 50.2,893.5 53.8,893.5 57.3,893.5 60.9,893.5 64.5,893.5 68.0,893.5 71.6,893.5 75.2,893.5 78.8,893.5 82.4,893.5 85.9,893.5 89.5,893.5 93.1,893.5 96.7,893.5 100.2,893.5 103.8,893.5 107.4,893.5 111.0,893.5 114.5,893.5 118.1,893.5 121.7,893.5 125.2,893.5 128.8,893.5 132.4,893.5 136.0,893.5 139.6,893.5 143.1,893.5 146.7,887.4 150.3,881.3 153.8,875.2 157.4,869.1 159.3,865.9" class="tlp-red" opacity=".22"/><polygon points="159.3,865.9 161.0,863.0 164.6,856.9 168.2,850.8 171.7,844.7 175.3,838.6 178.9,832.5 182.4,832.5 186.0,832.5 189.6,832.5 193.2,832.5 196.8,832.5 200.3,832.5 203.9,832.5 207.5,832.5 211.1,832.5 214.6,832.5 218.2,832.5 221.8,832.5 225.3,832.5 228.9,832.5 232.5,832.5 236.1,832.5 239.7,832.5 243.2,832.5 246.8,832.5 250.4,832.5 253.9,832.5 257.5,832.5 261.1,832.5 264.7,832.5 268.2,832.5 271.8,832.5 275.4,832.5 279.0,832.5 282.6,832.5 286.1,832.5 289.7,832.5 293.3,832.5 296.8,832.5 300.4,832.5 304.0,832.5 304.0,865.9" class="tlp-green" opacity=".22"/><line class="tlp-line" x1="18" y1="865.9" x2="304" y2="865.9"/><polyline class="tlp-line purple thick" points="18.0,893.5 21.6,893.5 25.1,893.5 28.7,893.5 32.3,893.5 35.9,893.5 39.5,893.5 43.0,893.5 46.6,893.5 50.2,893.5 53.8,893.5 57.3,893.5 60.9,893.5 64.5,893.5 68.0,893.5 71.6,893.5 75.2,893.5 78.8,893.5 82.4,893.5 85.9,893.5 89.5,893.5 93.1,893.5 96.7,893.5 100.2,893.5 103.8,893.5 107.4,893.5 111.0,893.5 114.5,893.5 118.1,893.5 121.7,893.5 125.2,893.5 128.8,893.5 132.4,893.5 136.0,893.5 139.6,893.5 143.1,893.5 146.7,887.4 150.3,881.3 153.8,875.2 157.4,869.1 161.0,863.0 164.6,856.9 168.2,850.8 171.7,844.7 175.3,838.6 178.9,832.5 182.4,832.5 186.0,832.5 189.6,832.5 193.2,832.5 196.8,832.5 200.3,832.5 203.9,832.5 207.5,832.5 211.1,832.5 214.6,832.5 218.2,832.5 221.8,832.5 225.3,832.5 228.9,832.5 232.5,832.5 236.1,832.5 239.7,832.5 243.2,832.5 246.8,832.5 250.4,832.5 253.9,832.5 257.5,832.5 261.1,832.5 264.7,832.5 268.2,832.5 271.8,832.5 275.4,832.5 279.0,832.5 282.6,832.5 286.1,832.5 289.7,832.5 293.3,832.5 296.8,832.5 300.4,832.5 304.0,832.5"/></g>
+      <text class="tlp-text2" x="18" y="920" font-size="12">get 0.48 · best +5.48</text>
+      <text class="tlp-text2" x="18" y="938" font-size="13">worst −4.52</text>
+      <rect class="tlp-box" x="326" y="798" width="306" height="150" rx="6"/>
+      <text class="tlp-text" x="336" y="816" font-size="14" font-weight="700">Bullish risk reversal</text>
+      <clipPath id="gl-rr"><rect x="336" y="824" width="286" height="78"/></clipPath><g clip-path="url(#gl-rr)"><polygon points="336.0,862.4 336.0,905.7 339.6,904.4 343.1,903.2 346.7,902.0 350.3,900.8 353.9,899.6 357.4,898.3 361.0,897.1 364.6,895.9 368.2,894.7 371.8,893.5 375.3,892.2 378.9,891.0 382.5,889.8 386.1,888.6 389.6,887.4 393.2,886.2 396.8,884.9 400.4,883.7 403.9,882.5 407.5,881.3 411.1,880.1 414.6,878.8 418.2,877.6 421.8,876.4 425.4,875.2 428.9,874.0 432.5,872.8 436.1,871.5 439.7,870.3 443.2,869.1 446.8,867.9 450.4,866.7 454.0,865.4 457.6,864.2 461.1,863.0 464.7,863.0 468.3,863.0 471.9,863.0 475.4,863.0 479.0,863.0 482.6,863.0 486.1,863.0 489.7,863.0 493.3,863.0 496.9,863.0 498.6,862.4" class="tlp-red" opacity=".22"/><polygon points="498.6,862.4 500.4,861.8 504.0,860.6 507.6,859.3 511.2,858.1 514.8,856.9 518.3,855.7 521.9,854.5 525.5,853.2 529.0,852.0 532.6,850.8 536.2,849.6 539.8,848.4 543.4,847.2 546.9,845.9 550.5,844.7 554.1,843.5 557.6,842.3 561.2,841.1 564.8,839.8 568.4,838.6 572.0,837.4 575.5,836.2 579.1,835.0 582.7,833.8 586.2,832.5 589.8,831.3 593.4,830.1 597.0,828.9 600.5,827.7 604.1,826.4 607.7,825.2 611.3,824.0 614.8,822.8 618.4,821.6 622.0,820.3 622.0,862.4" class="tlp-green" opacity=".22"/><line class="tlp-line" x1="336" y1="862.4" x2="622" y2="862.4"/><polyline class="tlp-line purple thick" points="336.0,905.7 339.6,904.4 343.1,903.2 346.7,902.0 350.3,900.8 353.9,899.6 357.4,898.3 361.0,897.1 364.6,895.9 368.2,894.7 371.8,893.5 375.3,892.2 378.9,891.0 382.5,889.8 386.1,888.6 389.6,887.4 393.2,886.2 396.8,884.9 400.4,883.7 403.9,882.5 407.5,881.3 411.1,880.1 414.6,878.8 418.2,877.6 421.8,876.4 425.4,875.2 428.9,874.0 432.5,872.8 436.1,871.5 439.7,870.3 443.2,869.1 446.8,867.9 450.4,866.7 454.0,865.4 457.6,864.2 461.1,863.0 464.7,863.0 468.3,863.0 471.9,863.0 475.4,863.0 479.0,863.0 482.6,863.0 486.1,863.0 489.7,863.0 493.3,863.0 496.9,863.0 500.4,861.8 504.0,860.6 507.6,859.3 511.2,858.1 514.8,856.9 518.3,855.7 521.9,854.5 525.5,853.2 529.0,852.0 532.6,850.8 536.2,849.6 539.8,848.4 543.4,847.2 546.9,845.9 550.5,844.7 554.1,843.5 557.6,842.3 561.2,841.1 564.8,839.8 568.4,838.6 572.0,837.4 575.5,836.2 579.1,835.0 582.7,833.8 586.2,832.5 589.8,831.3 593.4,830.1 597.0,828.9 600.5,827.7 604.1,826.4 607.7,825.2 611.3,824.0 614.8,822.8 618.4,821.6 622.0,820.3"/></g>
+      <text class="tlp-text2" x="336" y="920" font-size="12">pay 0.48 · best no limit</text>
+      <text class="tlp-text2" x="336" y="938" font-size="13">worst −95.48 (price to 0)</text>
+    </svg>
+    <div class="tl-chart-caption">Spot 100, three months, 20% vol, flat. "Pay" is a net debit, "get" a net credit; "best" and "worst" are the extreme profit and loss at expiry. The risk reversal's worst case is spot at zero; the collar and other share structures are measured against buying the shares at 100. Notice how the credit structures (spreads, condors, iron butterfly) have a small best case and a large worst case, and the debit structures the opposite.</div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Lego add-up: two bricks become one structure (dashed = each brick, solid = the sum)</div>
+    <svg viewBox="0 0 640 276" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two panels showing how two bricks add up. Left: a long 100 call and a short 105 call, drawn as dashed lines, add to a bull call spread whose profit is flat below 100 and flat above 105. Right: a long 100 call and a long 100 put, drawn as dashed lines, add to a long straddle shaped like a V.">
+      <rect class="tlp-box" x="8" y="6" width="308" height="262" rx="6"/>
+      <text class="tlp-text" x="18" y="26" font-size="14" font-weight="700">Two bricks: +call 100, −call 105</text>
+      <clipPath id="lg0"><rect x="48" y="40" width="260" height="152"/></clipPath>
+      <text class="tlp-text3" x="43" y="177.6" text-anchor="end" font-size="12">−10</text>
+      <text class="tlp-text3" x="43" y="131.5" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="43" y="85.5" text-anchor="end" font-size="12">+10</text>
+      <line class="tlp-line" x1="48" y1="127.5" x2="308" y2="127.5"/>
+      <g clip-path="url(#lg0)">
+      <polyline class="tlp-line blue dash" points="48.0,147.0 49.9,147.0 51.8,147.0 53.7,147.0 55.6,147.0 57.6,147.0 59.5,147.0 61.4,147.0 63.3,147.0 65.2,147.0 67.1,147.0 69.0,147.0 70.9,147.0 72.9,147.0 74.8,147.0 76.7,147.0 78.6,147.0 80.5,147.0 82.4,147.0 84.3,147.0 86.2,147.0 88.1,147.0 90.1,147.0 92.0,147.0 93.9,147.0 95.8,147.0 97.7,147.0 99.6,147.0 101.5,147.0 103.4,147.0 105.4,147.0 107.3,147.0 109.2,147.0 111.1,147.0 113.0,147.0 114.9,147.0 116.8,147.0 118.7,147.0 120.6,147.0 122.6,147.0 124.5,147.0 126.4,147.0 128.3,147.0 130.2,147.0 132.1,147.0 134.0,147.0 135.9,147.0 137.9,147.0 139.8,147.0 141.7,145.9 143.6,144.7 145.5,143.6 147.4,142.4 149.3,141.3 151.2,140.1 153.1,138.9 155.1,137.8 157.0,136.6 158.9,135.5 160.8,134.3 162.7,133.2 164.6,132.0 166.5,130.9 168.4,129.7 170.4,128.6 172.3,127.4 174.2,126.3 176.1,125.1 178.0,124.0 179.9,122.8 181.8,121.7 183.7,120.5 185.6,119.4 187.6,118.2 189.5,117.1 191.4,115.9 193.3,114.8 195.2,113.6 197.1,112.5 199.0,111.3 200.9,110.2 202.9,109.0 204.8,107.9 206.7,106.7 208.6,105.6 210.5,104.4 212.4,103.3 214.3,102.1 216.2,100.9 218.1,99.8 220.1,98.6 222.0,97.5 223.9,96.3 225.8,95.2 227.7,94.0 229.6,92.9 231.5,91.7 233.4,90.6 235.4,89.4 237.3,88.3 239.2,87.1 241.1,86.0 243.0,84.8 244.9,83.7 246.8,82.5 248.7,81.4 250.6,80.2 252.6,79.1 254.5,77.9 256.4,76.8 258.3,75.6 260.2,74.5 262.1,73.3 264.0,72.2 265.9,71.0 267.9,69.9 269.8,68.7 271.7,67.6 273.6,66.4 275.5,65.3 277.4,64.1 279.3,62.9 281.2,61.8 283.1,60.6 285.1,59.5 287.0,58.3 288.9,57.2 290.8,56.0 292.7,54.9 294.6,53.7 296.5,52.6 298.4,51.4 300.4,50.3 302.3,49.1 304.2,48.0 306.1,46.8 308.0,45.7"/>
+      <polyline class="tlp-line amber dash" points="48.0,117.3 49.9,117.3 51.8,117.3 53.7,117.3 55.6,117.3 57.6,117.3 59.5,117.3 61.4,117.3 63.3,117.3 65.2,117.3 67.1,117.3 69.0,117.3 70.9,117.3 72.9,117.3 74.8,117.3 76.7,117.3 78.6,117.3 80.5,117.3 82.4,117.3 84.3,117.3 86.2,117.3 88.1,117.3 90.1,117.3 92.0,117.3 93.9,117.3 95.8,117.3 97.7,117.3 99.6,117.3 101.5,117.3 103.4,117.3 105.4,117.3 107.3,117.3 109.2,117.3 111.1,117.3 113.0,117.3 114.9,117.3 116.8,117.3 118.7,117.3 120.6,117.3 122.6,117.3 124.5,117.3 126.4,117.3 128.3,117.3 130.2,117.3 132.1,117.3 134.0,117.3 135.9,117.3 137.9,117.3 139.8,117.3 141.7,117.3 143.6,117.3 145.5,117.3 147.4,117.3 149.3,117.3 151.2,117.3 153.1,117.3 155.1,117.3 157.0,117.3 158.9,117.3 160.8,117.3 162.7,117.3 164.6,117.3 166.5,117.3 168.4,117.3 170.4,117.3 172.3,117.3 174.2,117.3 176.1,117.3 178.0,117.3 179.9,118.4 181.8,119.6 183.7,120.7 185.6,121.9 187.6,123.0 189.5,124.2 191.4,125.3 193.3,126.5 195.2,127.6 197.1,128.8 199.0,129.9 200.9,131.1 202.9,132.2 204.8,133.4 206.7,134.5 208.6,135.7 210.5,136.9 212.4,138.0 214.3,139.2 216.2,140.3 218.1,141.5 220.1,142.6 222.0,143.8 223.9,144.9 225.8,146.1 227.7,147.2 229.6,148.4 231.5,149.5 233.4,150.7 235.4,151.8 237.3,153.0 239.2,154.1 241.1,155.3 243.0,156.4 244.9,157.6 246.8,158.7 248.7,159.9 250.6,161.0 252.6,162.2 254.5,163.3 256.4,164.5 258.3,165.6 260.2,166.8 262.1,167.9 264.0,169.1 265.9,170.2 267.9,171.4 269.8,172.5 271.7,173.7 273.6,174.9 275.5,176.0 277.4,177.2 279.3,178.3 281.2,179.5 283.1,180.6 285.1,181.8 287.0,182.9 288.9,184.1 290.8,185.2 292.7,186.4 294.6,187.5 296.5,188.7 298.4,189.8 300.4,191.0 302.3,192.1 304.2,193.3 306.1,194.4 308.0,195.6"/>
+      <polyline class="tlp-line green thick" points="48.0,136.8 49.9,136.8 51.8,136.8 53.7,136.8 55.6,136.8 57.6,136.8 59.5,136.8 61.4,136.8 63.3,136.8 65.2,136.8 67.1,136.8 69.0,136.8 70.9,136.8 72.9,136.8 74.8,136.8 76.7,136.8 78.6,136.8 80.5,136.8 82.4,136.8 84.3,136.8 86.2,136.8 88.1,136.8 90.1,136.8 92.0,136.8 93.9,136.8 95.8,136.8 97.7,136.8 99.6,136.8 101.5,136.8 103.4,136.8 105.4,136.8 107.3,136.8 109.2,136.8 111.1,136.8 113.0,136.8 114.9,136.8 116.8,136.8 118.7,136.8 120.6,136.8 122.6,136.8 124.5,136.8 126.4,136.8 128.3,136.8 130.2,136.8 132.1,136.8 134.0,136.8 135.9,136.8 137.9,136.8 139.8,136.8 141.7,135.6 143.6,134.5 145.5,133.3 147.4,132.2 149.3,131.0 151.2,129.9 153.1,128.7 155.1,127.6 157.0,126.4 158.9,125.3 160.8,124.1 162.7,123.0 164.6,121.8 166.5,120.6 168.4,119.5 170.4,118.3 172.3,117.2 174.2,116.0 176.1,114.9 178.0,113.7 179.9,113.7 181.8,113.7 183.7,113.7 185.6,113.7 187.6,113.7 189.5,113.7 191.4,113.7 193.3,113.7 195.2,113.7 197.1,113.7 199.0,113.7 200.9,113.7 202.9,113.7 204.8,113.7 206.7,113.7 208.6,113.7 210.5,113.7 212.4,113.7 214.3,113.7 216.2,113.7 218.1,113.7 220.1,113.7 222.0,113.7 223.9,113.7 225.8,113.7 227.7,113.7 229.6,113.7 231.5,113.7 233.4,113.7 235.4,113.7 237.3,113.7 239.2,113.7 241.1,113.7 243.0,113.7 244.9,113.7 246.8,113.7 248.7,113.7 250.6,113.7 252.6,113.7 254.5,113.7 256.4,113.7 258.3,113.7 260.2,113.7 262.1,113.7 264.0,113.7 265.9,113.7 267.9,113.7 269.8,113.7 271.7,113.7 273.6,113.7 275.5,113.7 277.4,113.7 279.3,113.7 281.2,113.7 283.1,113.7 285.1,113.7 287.0,113.7 288.9,113.7 290.8,113.7 292.7,113.7 294.6,113.7 296.5,113.7 298.4,113.7 300.4,113.7 302.3,113.7 304.2,113.7 306.1,113.7 308.0,113.7"/>
+      </g>
+      <text class="tlp-text3" x="63.3" y="208" text-anchor="middle" font-size="12">90</text>
+      <text class="tlp-text3" x="139.8" y="208" text-anchor="middle" font-size="12">100</text>
+      <text class="tlp-text3" x="216.2" y="208" text-anchor="middle" font-size="12">110</text>
+      <text class="tlp-text3" x="292.7" y="208" text-anchor="middle" font-size="12">120</text>
+      <text class="tlp-blue" x="20" y="226" font-size="13">+call 100 (paid 4.23)</text>
+      <text class="tlp-amber" x="20" y="243" font-size="13">−call 105 (got 2.22)</text>
+      <text class="tlp-green" x="20" y="260" font-size="13" font-weight="700">sum: bull call spread (net paid 2.01)</text>
+      <rect class="tlp-box" x="324" y="6" width="308" height="262" rx="6"/>
+      <text class="tlp-text" x="334" y="26" font-size="14" font-weight="700">Two bricks: +call 100, +put 100</text>
+      <clipPath id="lg1"><rect x="364" y="40" width="260" height="152"/></clipPath>
+      <text class="tlp-text3" x="359" y="187.1" text-anchor="end" font-size="12">−10</text>
+      <text class="tlp-text3" x="359" y="142.4" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="359" y="97.6" text-anchor="end" font-size="12">+10</text>
+      <text class="tlp-text3" x="359" y="52.9" text-anchor="end" font-size="12">+20</text>
+      <line class="tlp-line" x1="364" y1="138.4" x2="624" y2="138.4"/>
+      <g clip-path="url(#lg1)">
+      <polyline class="tlp-line blue dash" points="364.0,157.3 365.6,157.3 367.2,157.3 368.9,157.3 370.5,157.3 372.1,157.3 373.8,157.3 375.4,157.3 377.0,157.3 378.6,157.3 380.2,157.3 381.9,157.3 383.5,157.3 385.1,157.3 386.8,157.3 388.4,157.3 390.0,157.3 391.6,157.3 393.2,157.3 394.9,157.3 396.5,157.3 398.1,157.3 399.8,157.3 401.4,157.3 403.0,157.3 404.6,157.3 406.2,157.3 407.9,157.3 409.5,157.3 411.1,157.3 412.8,157.3 414.4,157.3 416.0,157.3 417.6,157.3 419.2,157.3 420.9,157.3 422.5,157.3 424.1,157.3 425.8,157.3 427.4,157.3 429.0,157.3 430.6,157.3 432.2,157.3 433.9,157.3 435.5,157.3 437.1,157.3 438.8,157.3 440.4,157.3 442.0,157.3 443.6,157.3 445.2,157.3 446.9,157.3 448.5,157.3 450.1,157.3 451.8,157.3 453.4,157.3 455.0,157.3 456.6,157.3 458.2,157.3 459.9,157.3 461.5,157.3 463.1,157.3 464.8,157.3 466.4,157.3 468.0,157.3 469.6,157.3 471.2,157.3 472.9,157.3 474.5,157.3 476.1,157.3 477.8,157.3 479.4,157.3 481.0,157.3 482.6,157.3 484.2,157.3 485.9,157.3 487.5,157.3 489.1,157.3 490.8,157.3 492.4,157.3 494.0,157.3 495.6,156.2 497.2,155.0 498.9,153.9 500.5,152.8 502.1,151.7 503.8,150.6 505.4,149.4 507.0,148.3 508.6,147.2 510.2,146.1 511.9,145.0 513.5,143.9 515.1,142.7 516.8,141.6 518.4,140.5 520.0,139.4 521.6,138.3 523.2,137.2 524.9,136.0 526.5,134.9 528.1,133.8 529.8,132.7 531.4,131.6 533.0,130.4 534.6,129.3 536.2,128.2 537.9,127.1 539.5,126.0 541.1,124.9 542.8,123.7 544.4,122.6 546.0,121.5 547.6,120.4 549.2,119.3 550.9,118.2 552.5,117.0 554.1,115.9 555.8,114.8 557.4,113.7 559.0,112.6 560.6,111.4 562.2,110.3 563.9,109.2 565.5,108.1 567.1,107.0 568.8,105.9 570.4,104.7 572.0,103.6 573.6,102.5 575.2,101.4 576.9,100.3 578.5,99.2 580.1,98.0 581.8,96.9 583.4,95.8 585.0,94.7 586.6,93.6 588.2,92.4 589.9,91.3 591.5,90.2 593.1,89.1 594.8,88.0 596.4,86.9 598.0,85.7 599.6,84.6 601.2,83.5 602.9,82.4 604.5,81.3 606.1,80.2 607.8,79.0 609.4,77.9 611.0,76.8 612.6,75.7 614.2,74.6 615.9,73.4 617.5,72.3 619.1,71.2 620.8,70.1 622.4,69.0 624.0,67.9"/>
+      <polyline class="tlp-line amber dash" points="364.0,65.6 365.6,66.7 367.2,67.9 368.9,69.0 370.5,70.1 372.1,71.2 373.8,72.3 375.4,73.5 377.0,74.6 378.6,75.7 380.2,76.8 381.9,77.9 383.5,79.0 385.1,80.2 386.8,81.3 388.4,82.4 390.0,83.5 391.6,84.6 393.2,85.7 394.9,86.9 396.5,88.0 398.1,89.1 399.8,90.2 401.4,91.3 403.0,92.5 404.6,93.6 406.2,94.7 407.9,95.8 409.5,96.9 411.1,98.0 412.8,99.2 414.4,100.3 416.0,101.4 417.6,102.5 419.2,103.6 420.9,104.7 422.5,105.9 424.1,107.0 425.8,108.1 427.4,109.2 429.0,110.3 430.6,111.5 432.2,112.6 433.9,113.7 435.5,114.8 437.1,115.9 438.8,117.0 440.4,118.2 442.0,119.3 443.6,120.4 445.2,121.5 446.9,122.6 448.5,123.7 450.1,124.9 451.8,126.0 453.4,127.1 455.0,128.2 456.6,129.3 458.2,130.5 459.9,131.6 461.5,132.7 463.1,133.8 464.8,134.9 466.4,136.0 468.0,137.2 469.6,138.3 471.2,139.4 472.9,140.5 474.5,141.6 476.1,142.7 477.8,143.9 479.4,145.0 481.0,146.1 482.6,147.2 484.2,148.3 485.9,149.5 487.5,150.6 489.1,151.7 490.8,152.8 492.4,153.9 494.0,155.0 495.6,155.0 497.2,155.0 498.9,155.0 500.5,155.0 502.1,155.0 503.8,155.0 505.4,155.0 507.0,155.0 508.6,155.0 510.2,155.0 511.9,155.0 513.5,155.0 515.1,155.0 516.8,155.0 518.4,155.0 520.0,155.0 521.6,155.0 523.2,155.0 524.9,155.0 526.5,155.0 528.1,155.0 529.8,155.0 531.4,155.0 533.0,155.0 534.6,155.0 536.2,155.0 537.9,155.0 539.5,155.0 541.1,155.0 542.8,155.0 544.4,155.0 546.0,155.0 547.6,155.0 549.2,155.0 550.9,155.0 552.5,155.0 554.1,155.0 555.8,155.0 557.4,155.0 559.0,155.0 560.6,155.0 562.2,155.0 563.9,155.0 565.5,155.0 567.1,155.0 568.8,155.0 570.4,155.0 572.0,155.0 573.6,155.0 575.2,155.0 576.9,155.0 578.5,155.0 580.1,155.0 581.8,155.0 583.4,155.0 585.0,155.0 586.6,155.0 588.2,155.0 589.9,155.0 591.5,155.0 593.1,155.0 594.8,155.0 596.4,155.0 598.0,155.0 599.6,155.0 601.2,155.0 602.9,155.0 604.5,155.0 606.1,155.0 607.8,155.0 609.4,155.0 611.0,155.0 612.6,155.0 614.2,155.0 615.9,155.0 617.5,155.0 619.1,155.0 620.8,155.0 622.4,155.0 624.0,155.0"/>
+      <polyline class="tlp-line green thick" points="364.0,84.6 365.6,85.7 367.2,86.8 368.9,87.9 370.5,89.0 372.1,90.1 373.8,91.3 375.4,92.4 377.0,93.5 378.6,94.6 380.2,95.7 381.9,96.8 383.5,98.0 385.1,99.1 386.8,100.2 388.4,101.3 390.0,102.4 391.6,103.6 393.2,104.7 394.9,105.8 396.5,106.9 398.1,108.0 399.8,109.1 401.4,110.3 403.0,111.4 404.6,112.5 406.2,113.6 407.9,114.7 409.5,115.8 411.1,117.0 412.8,118.1 414.4,119.2 416.0,120.3 417.6,121.4 419.2,122.6 420.9,123.7 422.5,124.8 424.1,125.9 425.8,127.0 427.4,128.1 429.0,129.3 430.6,130.4 432.2,131.5 433.9,132.6 435.5,133.7 437.1,134.8 438.8,136.0 440.4,137.1 442.0,138.2 443.6,139.3 445.2,140.4 446.9,141.6 448.5,142.7 450.1,143.8 451.8,144.9 453.4,146.0 455.0,147.1 456.6,148.3 458.2,149.4 459.9,150.5 461.5,151.6 463.1,152.7 464.8,153.8 466.4,155.0 468.0,156.1 469.6,157.2 471.2,158.3 472.9,159.4 474.5,160.6 476.1,161.7 477.8,162.8 479.4,163.9 481.0,165.0 482.6,166.1 484.2,167.3 485.9,168.4 487.5,169.5 489.1,170.6 490.8,171.7 492.4,172.8 494.0,174.0 495.6,172.8 497.2,171.7 498.9,170.6 500.5,169.5 502.1,168.4 503.8,167.3 505.4,166.1 507.0,165.0 508.6,163.9 510.2,162.8 511.9,161.7 513.5,160.6 515.1,159.4 516.8,158.3 518.4,157.2 520.0,156.1 521.6,155.0 523.2,153.8 524.9,152.7 526.5,151.6 528.1,150.5 529.8,149.4 531.4,148.3 533.0,147.1 534.6,146.0 536.2,144.9 537.9,143.8 539.5,142.7 541.1,141.6 542.8,140.4 544.4,139.3 546.0,138.2 547.6,137.1 549.2,136.0 550.9,134.8 552.5,133.7 554.1,132.6 555.8,131.5 557.4,130.4 559.0,129.3 560.6,128.1 562.2,127.0 563.9,125.9 565.5,124.8 567.1,123.7 568.8,122.6 570.4,121.4 572.0,120.3 573.6,119.2 575.2,118.1 576.9,117.0 578.5,115.8 580.1,114.7 581.8,113.6 583.4,112.5 585.0,111.4 586.6,110.3 588.2,109.1 589.9,108.0 591.5,106.9 593.1,105.8 594.8,104.7 596.4,103.6 598.0,102.4 599.6,101.3 601.2,100.2 602.9,99.1 604.5,98.0 606.1,96.8 607.8,95.7 609.4,94.6 611.0,93.5 612.6,92.4 614.2,91.3 615.9,90.1 617.5,89.0 619.1,87.9 620.8,86.8 622.4,85.7 624.0,84.6"/>
+      </g>
+      <text class="tlp-text3" x="429.0" y="208" text-anchor="middle" font-size="12">90</text>
+      <text class="tlp-text3" x="494.0" y="208" text-anchor="middle" font-size="12">100</text>
+      <text class="tlp-text3" x="559.0" y="208" text-anchor="middle" font-size="12">110</text>
+      <text class="tlp-text3" x="624.0" y="208" text-anchor="middle" font-size="12">120</text>
+      <text class="tlp-blue" x="336" y="226" font-size="13">+call 100 (paid 4.23)</text>
+      <text class="tlp-amber" x="336" y="243" font-size="13">+put 100 (paid 3.73)</text>
+      <text class="tlp-green" x="336" y="260" font-size="13" font-weight="700">sum: long straddle (net paid 7.97)</text>
+    </svg>
+    <div class="tl-chart-caption">Left: the long 100 call rises without limit; the short 105 call falls without limit; their sum is flat above 105. Right: a call and a put at the same strike add to a V. Each dashed line already includes its own premium, so the green line is the structure's true profit and loss.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The structures, one by one</h2>
+  <p>
+    Each card gives the build, the computed extremes at the model inputs, the Greek signature, when it is used, and why it
+    exists. All figures are per share of the underlying, at the model inputs above.
+  </p>
+
+  <div class="os3-card blue">
+    <h3>1 · Vertical spread, debit: bull call spread and bear put spread</h3>
+    <p>Buy one option and sell another of the same type further out of the money. You pay to be right, with a ceiling.</p>
+    <dl>
+      <dt>Build</dt><dd>Bull call: buy 100 call (4.23), sell 105 call (2.22). Bear put: buy 100 put (3.73), sell 95 put (1.74).</dd>
+      <dt>Numbers</dt><dd>Bull call: debit <b>2.01</b>, max gain <b>2.99</b>, max loss <b>2.01</b>, break-even <b>102.01</b>. Bear put: debit 1.99, max gain 3.01, break-even 98.01.</dd>
+      <dt>Greeks</dt><dd>Bull call: Δ +0.191, Γ +0.0027, Θ −0.002 per day, ν +0.013 per vol point. Small, because the legs offset: the lone 100 call has a delta of 0.540.</dd>
+      <dt>Used when</dt><dd>You have a direction and a rough target near the short strike, and a plain option feels expensive.</dd>
+      <dt>Exists because</dt><dd>The sold option pays for part of the bought one, and the loss is capped at the debit.</dd>
+    </dl>
+  </div>
+
+  <div class="os3-card amber">
+    <h3>2 · Vertical spread, credit: bull put spread and bear call spread</h3>
+    <p>Sell the option nearer the money and buy a cheaper one further out as protection. You are paid to be "not wrong", with a floor on the loss.</p>
+    <dl>
+      <dt>Build</dt><dd>Bull put: sell 95 put (1.74), buy 90 put (0.64). Bear call: sell 105 call (2.22), buy 110 call (1.04).</dd>
+      <dt>Numbers</dt><dd>Bull put: credit <b>1.10</b>, max gain <b>1.10</b>, max loss <b>3.90</b>, break-even <b>93.90</b>. Bear call: credit 1.18, max loss 3.82, break-even 106.18.</dd>
+      <dt>Greeks</dt><dd>Bull put: Δ +0.146, Γ −0.0126, Θ +0.006, ν −0.063: short gamma and vega, collects theta.</dd>
+      <dt>Used when</dt><dd>You expect the price to stay above (below) a level and want to collect premium with a known worst case, often when implied vol is high.</dd>
+      <dt>Exists because</dt><dd>It is the defined-risk version of selling a put: the bought 90 put turns "lose down to zero" into "lose at most the width less the credit". If every loser were a maximum loss, you would need to win 78.1% of the time to break even.</dd>
+    </dl>
+  </div>
+
+  <div class="os3-card purple">
+    <h3>3 · Straddle and strangle</h3>
+    <p>Buy (or sell) a call and a put together. A straddle shares one strike; a strangle uses an out-of-the-money call and put.</p>
+    <dl>
+      <dt>Build</dt><dd>Long straddle: buy 100 call (4.23) and 100 put (3.73). Long strangle: buy 105 call (2.22) and 95 put (1.74).</dd>
+      <dt>Numbers</dt><dd>Straddle: debit <b>7.97</b>, break-evens <b>92.03 and 107.97</b>, max loss 7.97 (at 100), gain on the upside without limit. Strangle: debit <b>3.96</b>, break-evens <b>91.04 and 108.96</b>. Selling either collects that premium and mirrors every number: the loss is then uncapped on the upside, and on the downside as large as the strike less the premium.</dd>
+      <dt>Greeks</dt><dd>Straddle: Δ +0.080, Γ +0.0794, Θ −0.044 per day, ν +0.397 per vol point. Long gamma and vega; pays theta from day one.</dd>
+      <dt>Used when</dt><dd>You expect a large move but not its direction (a data release, a decision, a breakout), or, sold, you think the market is overpaying for movement.</dd>
+      <dt>Exists because</dt><dd>It isolates movement from direction. You pay for the whole expected move up front, so you need a larger move than the market priced.</dd>
+    </dl>
+  </div>
+
+  <div class="os3-card green">
+    <h3>4 · Butterfly (and its twin, the iron butterfly)</h3>
+    <p>A bet that price lands near one level. Buy the wings and sell twice the middle. The twin builds the same shape from puts and calls and is paid up front.</p>
+    <dl>
+      <dt>Build</dt><dd>Long call butterfly: buy 95 call (7.21), sell two 100 calls (4.23 each), buy 105 call (2.22). Short iron butterfly: sell 100 call and put, buy 95 put and 105 call.</dd>
+      <dt>Numbers</dt><dd>Butterfly: debit <b>0.97</b>, max gain <b>4.03</b> at exactly 100, max loss 0.97, break-evens 95.97 and 104.03. Iron butterfly: credit 4.00, max loss 1.00, same shape. Their prices add up to the discounted width.</dd>
+      <dt>Greeks</dt><dd>Δ −0.001, Γ −0.0093, Θ +0.005, ν −0.047: short gamma and vega, collects theta, like the middle strike it is built around.</dd>
+      <dt>Used when</dt><dd>You have a "pin" view: price should settle near a level at expiry, for example around a heavily traded strike or after an event is priced out.</dd>
+      <dt>Exists because</dt><dd>Long odds for little money: 4.03 for 0.97, about 4.14 to 1. The catch is the narrow tent. The model gives about a 31% chance of any profit. Halfway to expiry, with spot at 100, it is worth only 0.38.</dd>
+    </dl>
+  </div>
+
+  <div class="os3-card red">
+    <h3>5 · Iron condor</h3>
+    <p>Sell a put spread below the market and a call spread above it. A short strangle with a long option beyond each short strike, so the loss is capped.</p>
+    <dl>
+      <dt>Build</dt><dd>Sell 90 put (0.64), buy 80 put (0.03), sell 110 call (1.04), buy 120 call (0.17). It is a bull put spread plus a bear call spread.</dd>
+      <dt>Numbers</dt><dd>Credit <b>1.49</b> (also the max gain), max loss <b>8.51</b>, break-evens <b>88.51 and 111.49</b>. Reward to risk 0.17 to 1: the worst case is 5.72 times the best.</dd>
+      <dt>Greeks</dt><dd>Δ −0.040, Γ −0.0366, Θ +0.020 per day, ν −0.183 per vol point: collects theta, short gamma and vega.</dd>
+      <dt>Used when</dt><dd>You expect a range and want to sell premium with a defined worst case. Wider wings and wider bodies win more often but pay less.</dd>
+      <dt>Exists because</dt><dd>It lets you sell volatility without the open-ended risk of a naked short strangle. It still sells insurance: it pays steadily and gives it back in one move.</dd>
+    </dl>
+  </div>
+
+  <div class="os3-card blue">
+    <h3>6 · Calendar spread</h3>
+    <p>Same strike, different expiries. Sell the near option, buy the far one. The only structure here whose legs live to different dates.</p>
+    <dl>
+      <dt>Build</dt><dd>Sell 1-month 100 call (2.39), buy 3-month 100 call (4.23).</dd>
+      <dt>Numbers</dt><dd>Debit <b>1.85</b>. At the near expiry with spot at 100 the position is worth about <b>1.57</b> if vol is unchanged; break-evens about 96.47 and 104.27. If vol falls 5 points the best case drops to 0.76; if it rises 5 points it grows to 2.38. These depend on the vol assumption.</dd>
+      <dt>Greeks</dt><dd>Δ +0.017, Γ −0.0293, Θ +0.016, ν +0.084: long theta and long vega, but short gamma. An unusual mix.</dd>
+      <dt>Used when</dt><dd>You expect price to stay near the strike for the near leg's life, or you want to buy the cheaper far-dated vol against rich near-dated vol, for example around an event.</dd>
+      <dt>Exists because</dt><dd>Near-dated options decay faster than far-dated ones. It is a bet on the <em>difference</em>, which is why it is a term-structure trade as much as a price trade.</dd>
+    </dl>
+  </div>
+
+  <div class="os3-card green">
+    <h3>7 · Collar</h3>
+    <p>Own the shares, buy a put below the market, sell a call above it. The sold call helps pay for the put.</p>
+    <dl>
+      <dt>Build</dt><dd>Hold 100 shares at 100, buy 95 put (1.74), sell 105 call (2.22).</dd>
+      <dt>Numbers</dt><dd>At flat vol the options net a <b>credit of 0.48</b>. Loss is capped at <b>4.52</b> (the shares can fall to 95), gain at <b>5.48</b> (they can rise to 105), versus holding the shares alone. By parity this is a bull call spread plus cash.</dd>
+      <dt>Skew changes the price</dt><dd>Index and equity puts usually cost more vol than calls. Raising the put's vol and lowering the call's (the builder's skew control) shrinks the credit to 0.31 at a skew of −1 vol point per 10 strike points, 0.13 at −2, and flips it to a debit of 0.04 at −3.</dd>
+      <dt>Used when</dt><dd>You must keep a holding but want a floor: an executive with concentrated stock, a fund over an event, a corporate with an exposure to hedge.</dd>
+      <dt>Exists because</dt><dd>"Zero cost" protection is paid for with the upside you gave away. Hedging with options has its own lesson later in this series.</dd>
+    </dl>
+  </div>
+
+  <div class="os3-card amber">
+    <h3>8 · Risk reversal</h3>
+    <p>Buy an out-of-the-money call and sell an out-of-the-money put (the bullish version). A cheap directional position that behaves like a forward with a gap in the middle.</p>
+    <dl>
+      <dt>Build</dt><dd>Buy 105 call (2.22), sell 95 put (1.74).</dd>
+      <dt>Numbers</dt><dd>Debit <b>0.48</b> at flat vol, break-even <b>105.48</b>, gain without limit, loss as large as 95.48 if spot went to zero. With downside skew the put is dearer and the debit shrinks: 0.04 (a credit) at −3.</dd>
+      <dt>Greeks</dt><dd>Δ +0.619, Γ +0.0039, Θ −0.006, ν +0.020: roughly a forward with a dead zone between the strikes.</dd>
+      <dt>Used when</dt><dd>You are directional, want little or no premium out of pocket, and accept the short leg's risk. Dealers also quote it as a package to trade skew itself.</dd>
+      <dt>Exists because</dt><dd>It finances one side with the other. In FX the "risk reversal" is quoted as the vol difference between a call and a put of the same delta, which reads the skew directly (<a href="fx-options-quoting-rr-bf.html">FX Options Quoting</a>).</dd>
+    </dl>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A spread is two tickets stapled together: one you buy, one you sell. The one you sell pays for part of the one you buy, but it also means you stop winning past a point. A condor is two spreads stapled together. A butterfly is a spread and a mirror-image spread sharing the middle. Always ask: what did I sell, and what happens to me if that goes wrong?</p>
+  </div>
+
+  <h3>Which structure fits which view</h3>
+  <div class="os3-scroll"><table class="os3-table">
+    <tr><th>Your view</th><th>Structure</th><th>You are paid for</th><th>It hurts when</th></tr>
+    <tr><td>Up to about a target, vol not cheap</td><td>Bull call spread</td><td>a move up, to the short strike</td><td>price stalls, or runs far past the cap (you miss it)</td></tr>
+    <tr><td>Down to about a target</td><td>Bear put spread</td><td>a move down, to the short strike</td><td>price stalls or rallies</td></tr>
+    <tr><td>Will not fall below a level</td><td>Bull put spread (credit)</td><td>time passing while price stays above the short strike</td><td>a sharp fall: loss is several times the credit</td></tr>
+    <tr><td>Big move, direction unknown</td><td>Long straddle or strangle</td><td>realised movement beating the implied move</td><td>quiet markets: premium decays every day</td></tr>
+    <tr><td>Stays in a range</td><td>Short iron condor</td><td>time passing, low realised movement</td><td>a breakout or a vol spike</td></tr>
+    <tr><td>Settles near one level at expiry</td><td>Butterfly</td><td>landing close to the middle strike, late</td><td>any other outcome (the loss is the small debit)</td></tr>
+    <tr><td>Quiet near-term, vol or term structure rising</td><td>Calendar</td><td>near-dated decay and a rise in far-dated vol</td><td>a large move either way, or falling vol</td></tr>
+    <tr><td>Hold the asset, want a floor paid for by the upside</td><td>Collar</td><td>a floor and a lower net cost</td><td>a big rally above the cap</td></tr>
+    <tr><td>Directional, little cash, accept the other side</td><td>Risk reversal</td><td>a move up with almost no premium</td><td>a big fall (short put)</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Build one yourself</h2>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>A payoff builder with real Black-Scholes maths</h3>
+    <p>
+      Pick a structure, move the strikes, then slide time forward and shift volatility to see why the expiry picture is only
+      half the story. Entry is always at spot 100, three months, 20% vol, 2% rates (the calendar's near leg is one month).
+      After entry, every leg keeps its own vol plus your shift (the "sticky strike" assumption). The solid blue line is profit
+      and loss at the first expiry; the dashed amber line is the position's value after the chosen share of the time has
+      passed.
+    </p>
+    <div class="tl-predict" data-answer="7.97" data-tol="0.3" data-unit="points">
+      <div class="tl-predict-q"><strong>Predict first.</strong> A long 100 straddle costs 7.97 with three months to run. How many points must spot finish away from 100, in either direction, for you to break even? Lock in a guess, then choose "Long straddle" below and read the break-evens.</div>
+      <div class="tl-predict-reveal"><p><strong>7.97 points.</strong> Above 100 the call pays one for one and the put is worthless, so you recover your premium at \(100+7.97=107.97\). Below 100 the put does the same job at 92.03. The break-even distance is the price of the straddle, about 8.0% of spot here, close to \(0.8\,\sigma\sqrt{T}\). Now switch to "Short iron condor" and push the time slider to 90%: the position's value climbs towards the credit as time passes.</p></div>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Structure</span></div>
+        <select id="os3-struct" class="os3-select" aria-label="Structure">
+          <option value="bullcall" selected>Bull call spread</option>
+          <option value="bearput">Bear put spread</option>
+          <option value="bullput">Bull put spread (credit)</option>
+          <option value="bearcall">Bear call spread (credit)</option>
+          <option value="straddle">Long straddle</option>
+          <option value="strangle">Long strangle</option>
+          <option value="fly">Long call butterfly</option>
+          <option value="condor">Short iron condor</option>
+          <option value="ifly">Short iron butterfly</option>
+          <option value="calendar">Long calendar spread</option>
+          <option value="collar">Collar on 100 shares</option>
+          <option value="rr">Bullish risk reversal</option>
+        </select>
+      </div>
+      <div class="os3-grid">
+        <div class="tl-control">
+          <div class="tl-control-head"><span>Key strike</span></div>
+          <input type="number" id="os3-k" class="tl-scratch-input" value="100" step="1" min="10" max="190">
+        </div>
+        <div class="tl-control">
+          <div class="tl-control-head"><span>Width between strikes</span></div>
+          <input type="number" id="os3-w" class="tl-scratch-input" value="5" step="1" min="1" max="40">
+        </div>
+      </div>
+      <div class="tl-control">
+        <button type="button" id="os3-flip" class="os3-btn">Flip it: sell instead of buy</button>
+        <button type="button" id="os3-reset" class="os3-btn">Reset</button>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Price marker (spot at the first expiry)</span><span class="tl-live" id="os3-spotlab">100.00</span></div>
+        <input type="range" id="os3-spot" min="60" max="140" step="1" value="100">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time passed</span><span class="tl-live" id="os3-timev">0% of the way to the first expiry</span></div>
+        <input type="range" id="os3-time" min="0" max="100" step="5" value="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Volatility shift after entry</span><span class="tl-live" id="os3-volv">0 vol points</span></div>
+        <input type="range" id="os3-vol" min="-10" max="10" step="1" value="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Skew at entry (vol points added per 10 strike points)</span><span class="tl-live" id="os3-skewv">0.0 vol pts per 10 strike pts</span></div>
+        <input type="range" id="os3-skew" min="-3" max="1" step="0.5" value="0">
+      </div>
+    </div>
+    <div class="tl-chart interactive">
+      <div class="tl-chart-label" id="os3-name">Bull call spread</div>
+      <svg viewBox="0 0 560 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Profit and loss of the chosen option structure against the price of the underlying. The solid blue line is the result at the first expiry, with green shading where it is a profit and red where it is a loss. When time has passed, a dashed amber line shows the value before expiry. Break-even points are circled on the zero line and the chosen price marker is a dashed vertical line.">
+        <defs><clipPath id="os3-clip"><rect id="os3-clip-rect" x="54" y="16" width="494" height="242"/></clipPath></defs>
+        <g id="os3-plot"><line x1="54" x2="548" y1="234.2" y2="234.2" style="stroke:var(--border);stroke-width:1"></line><text x="48" y="238.2" text-anchor="end" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">−2</text><line x1="54" x2="548" y1="195.2" y2="195.2" style="stroke:var(--border);stroke-width:1"></line><text x="48" y="199.2" text-anchor="end" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">−1</text><line x1="54" x2="548" y1="156.2" y2="156.2" style="stroke:var(--border);stroke-width:0"></line><text x="48" y="160.2" text-anchor="end" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">0</text><line x1="54" x2="548" y1="117.1" y2="117.1" style="stroke:var(--border);stroke-width:1"></line><text x="48" y="121.1" text-anchor="end" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">+1</text><line x1="54" x2="548" y1="78.1" y2="78.1" style="stroke:var(--border);stroke-width:1"></line><text x="48" y="82.1" text-anchor="end" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">+2</text><line x1="54" x2="548" y1="39.1" y2="39.1" style="stroke:var(--border);stroke-width:1"></line><text x="48" y="43.1" text-anchor="end" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">+3</text><text x="54.0" y="275" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">60</text><text x="115.8" y="275" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">70</text><text x="177.5" y="275" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">80</text><text x="239.3" y="275" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">90</text><text x="301.0" y="275" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">100</text><text x="362.8" y="275" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">110</text><text x="424.5" y="275" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">120</text><text x="486.3" y="275" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">130</text><text x="548.0" y="275" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">140</text><g clip-path="url(#os3-clip)"><polygon points="54.0,156.2 54.0,234.6 57.1,234.6 60.2,234.6 63.3,234.6 66.3,234.6 69.4,234.6 72.5,234.6 75.6,234.6 78.7,234.6 81.8,234.6 84.9,234.6 88.0,234.6 91.0,234.6 94.1,234.6 97.2,234.6 100.3,234.6 103.4,234.6 106.5,234.6 109.6,234.6 112.7,234.6 115.8,234.6 118.8,234.6 121.9,234.6 125.0,234.6 128.1,234.6 131.2,234.6 134.3,234.6 137.4,234.6 140.4,234.6 143.5,234.6 146.6,234.6 149.7,234.6 152.8,234.6 155.9,234.6 159.0,234.6 162.1,234.6 165.2,234.6 168.2,234.6 171.3,234.6 174.4,234.6 177.5,234.6 180.6,234.6 183.7,234.6 186.8,234.6 189.9,234.6 192.9,234.6 196.0,234.6 199.1,234.6 202.2,234.6 205.3,234.6 208.4,234.6 211.5,234.6 214.6,234.6 217.6,234.6 220.7,234.6 223.8,234.6 226.9,234.6 230.0,234.6 233.1,234.6 236.2,234.6 239.3,234.6 242.3,234.6 245.4,234.6 248.5,234.6 251.6,234.6 254.7,234.6 257.8,234.6 260.9,234.6 263.9,234.6 267.0,234.6 270.1,234.6 273.2,234.6 276.3,234.6 279.4,234.6 282.5,234.6 285.6,234.6 288.6,234.6 291.7,234.6 294.8,234.6 297.9,234.6 301.0,234.6 304.1,215.1 307.2,195.5 310.3,176.0 313.4,156.5 313.4,156.2" style="fill:var(--red);opacity:.16"></polygon><polygon points="313.4,156.2 316.4,137.0 319.5,117.5 322.6,98.0 325.7,78.5 328.8,58.9 331.9,39.4 335.0,39.4 338.0,39.4 341.1,39.4 344.2,39.4 347.3,39.4 350.4,39.4 353.5,39.4 356.6,39.4 359.7,39.4 362.8,39.4 365.8,39.4 368.9,39.4 372.0,39.4 375.1,39.4 378.2,39.4 381.3,39.4 384.4,39.4 387.5,39.4 390.5,39.4 393.6,39.4 396.7,39.4 399.8,39.4 402.9,39.4 406.0,39.4 409.1,39.4 412.1,39.4 415.2,39.4 418.3,39.4 421.4,39.4 424.5,39.4 427.6,39.4 430.7,39.4 433.8,39.4 436.9,39.4 439.9,39.4 443.0,39.4 446.1,39.4 449.2,39.4 452.3,39.4 455.4,39.4 458.5,39.4 461.5,39.4 464.6,39.4 467.7,39.4 470.8,39.4 473.9,39.4 477.0,39.4 480.1,39.4 483.2,39.4 486.3,39.4 489.3,39.4 492.4,39.4 495.5,39.4 498.6,39.4 501.7,39.4 504.8,39.4 507.9,39.4 511.0,39.4 514.0,39.4 517.1,39.4 520.2,39.4 523.3,39.4 526.4,39.4 529.5,39.4 532.6,39.4 535.6,39.4 538.7,39.4 541.8,39.4 544.9,39.4 548.0,39.4 548.0,156.2" style="fill:var(--green);opacity:.16"></polygon><line x1="54" x2="548" y1="156.2" y2="156.2" style="stroke:var(--text3);stroke-width:1.2"></line><polyline points="54.0,234.6 57.1,234.6 60.2,234.6 63.3,234.6 66.3,234.6 69.4,234.6 72.5,234.6 75.6,234.6 78.7,234.6 81.8,234.6 84.9,234.6 88.0,234.6 91.0,234.6 94.1,234.6 97.2,234.6 100.3,234.6 103.4,234.6 106.5,234.6 109.6,234.6 112.7,234.6 115.8,234.6 118.8,234.6 121.9,234.6 125.0,234.6 128.1,234.6 131.2,234.6 134.3,234.6 137.4,234.6 140.4,234.6 143.5,234.6 146.6,234.6 149.7,234.6 152.8,234.6 155.9,234.6 159.0,234.6 162.1,234.6 165.2,234.6 168.2,234.6 171.3,234.6 174.4,234.6 177.5,234.6 180.6,234.6 183.7,234.6 186.8,234.6 189.9,234.6 192.9,234.6 196.0,234.6 199.1,234.6 202.2,234.6 205.3,234.6 208.4,234.6 211.5,234.6 214.6,234.6 217.6,234.6 220.7,234.6 223.8,234.6 226.9,234.6 230.0,234.6 233.1,234.6 236.2,234.6 239.3,234.6 242.3,234.6 245.4,234.6 248.5,234.6 251.6,234.6 254.7,234.6 257.8,234.6 260.9,234.6 263.9,234.6 267.0,234.6 270.1,234.6 273.2,234.6 276.3,234.6 279.4,234.6 282.5,234.6 285.6,234.6 288.6,234.6 291.7,234.6 294.8,234.6 297.9,234.6 301.0,234.6 304.1,215.1 307.2,195.5 310.3,176.0 313.4,156.5 316.4,137.0 319.5,117.5 322.6,98.0 325.7,78.5 328.8,58.9 331.9,39.4 335.0,39.4 338.0,39.4 341.1,39.4 344.2,39.4 347.3,39.4 350.4,39.4 353.5,39.4 356.6,39.4 359.7,39.4 362.8,39.4 365.8,39.4 368.9,39.4 372.0,39.4 375.1,39.4 378.2,39.4 381.3,39.4 384.4,39.4 387.5,39.4 390.5,39.4 393.6,39.4 396.7,39.4 399.8,39.4 402.9,39.4 406.0,39.4 409.1,39.4 412.1,39.4 415.2,39.4 418.3,39.4 421.4,39.4 424.5,39.4 427.6,39.4 430.7,39.4 433.8,39.4 436.9,39.4 439.9,39.4 443.0,39.4 446.1,39.4 449.2,39.4 452.3,39.4 455.4,39.4 458.5,39.4 461.5,39.4 464.6,39.4 467.7,39.4 470.8,39.4 473.9,39.4 477.0,39.4 480.1,39.4 483.2,39.4 486.3,39.4 489.3,39.4 492.4,39.4 495.5,39.4 498.6,39.4 501.7,39.4 504.8,39.4 507.9,39.4 511.0,39.4 514.0,39.4 517.1,39.4 520.2,39.4 523.3,39.4 526.4,39.4 529.5,39.4 532.6,39.4 535.6,39.4 538.7,39.4 541.8,39.4 544.9,39.4 548.0,39.4" style="fill:none;stroke:var(--blue);stroke-width:2.6;stroke-linejoin:round"></polyline></g><line x1="301.0" x2="301.0" y1="258" y2="263" style="stroke:var(--purple);stroke-width:2"></line><line x1="331.9" x2="331.9" y1="258" y2="263" style="stroke:var(--purple);stroke-width:2"></line><circle cx="313.4" cy="156.2" r="4.5" style="fill:var(--bg);stroke:var(--text);stroke-width:1.6"></circle><line x1="301.0" x2="301.0" y1="16" y2="258" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"></line><circle cx="301.0" cy="234.6" r="5" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"></circle><text x="301" y="295" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">price at the first expiry (strikes in purple)</text></g>
+      </svg>
+      <div class="os3-legend"><span><i></i>at the first expiry</span><span id="os3-legend-now" style="display:none"><i class="am"></i>after the time passed</span></div>
+      <div class="tl-readout">Legs: <b id="os3-legs">Buy 1 × 100 call at 4.23 · Sell 1 × 105 call at 2.22</b></div>
+      <div class="tl-readout">Net premium: <b id="os3-prem">Net debit 2.01 (you pay)</b> · Max gain: <b id="os3-maxg">+2.99</b> · Max loss: <b id="os3-maxl">−2.01</b> · Break-even: <b id="os3-be">102.01</b> · Reward to risk: <b id="os3-rr">1.49 to 1</b></div>
+      <div class="tl-readout">At the price marker <b id="os3-spotv">100.00</b>: profit and loss at expiry <b id="os3-pnlexp">−2.01</b> · after the time passed <b id="os3-pnlnow">0.00</b></div>
+      <div class="tl-readout">Greeks at the marker, for the whole structure: delta <b id="os3-delta">+0.191</b> · gamma <b id="os3-gamma">+0.0027</b> · theta per day <b id="os3-theta">−0.002</b> · vega per vol point <b id="os3-vega">+0.013</b></div>
+      <div class="tl-hint" id="os3-warn"></div>
+      <div class="tl-hint"><span id="os3-time-note">Move the time slider to see the value before expiry.</span> Things to try: (1) flip the long straddle and see where the unlimited loss sits; (2) set the short iron condor to 90% time and move the marker towards a short strike; (3) take the calendar to 100% time and shift vol by −5; (4) set the collar's skew to −3 and watch the credit vanish. Greeks are not shown at 100% time because an option at expiry has no meaningful Greeks.</div>
+      <div class="tl-chart-caption">Computed live with the same Black-Scholes formulas as the rest of the lesson. The maximum, minimum and break-evens are read from the expiry curve on a 0.05 grid from 0 to 300. Spot, vol and time are the only things that move; there are no dividends, no early exercise and no bid-offer spread.</div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario (illustrative)</div>
+    <h3>Same view, three ways to express it</h3>
+    <p>
+      You think a stock at 100 is more likely than not to be around 108 in three months, and you doubt it will run much
+      beyond 110. The 100 call costs 4.23. The 100/110 bull call spread (buy 100, sell the 110 call at 1.04) costs
+      3.19, with a maximum gain of 6.81 and a break-even of 103.19. Profit and loss at expiry:
+    </p>
+    <div class="os3-scroll"><table class="os3-table">
+      <tr><th>Spot at expiry</th><th class="n">95</th><th class="n">100</th><th class="n">104</th><th class="n">108</th><th class="n">112</th><th class="n">120</th></tr>
+      <tr><td>Buy the 100 call</td><td class="n">−4.23</td><td class="n">−4.23</td><td class="n">−0.23</td><td class="n">+3.77</td><td class="n">+7.77</td><td class="n">+15.77</td></tr>
+      <tr class="hl"><td>100/110 bull call spread</td><td class="n">−3.19</td><td class="n">−3.19</td><td class="n">+0.81</td><td class="n">+4.81</td><td class="n">+6.81</td><td class="n">+6.81</td></tr>
+    </table></div>
+    <p style="margin-bottom:0">
+      If you are right about 108, the spread makes more than the call because it cost less. If you are wrong in your
+      favour and the stock runs to 120, the call makes more than twice the spread. You are not getting a better deal; you
+      are choosing which outcomes to be paid for. If your estimate of the target is the part you trust least, the cheaper
+      structure is the one that hurts less when that estimate is off.
+    </p>
+  </div>
+
+  <!-- WB:options_spreads_and_structures:START -->
+  <div class="wb" id="wb-options_spreads_and_structures" data-title="Four bricks, many shapes: building option structures">
+    <script type="application/json">{"w":600,"h":640,"intro":"Four bricks and the shapes you can build with them. Spot 100, three months, 20% volatility, 2% rates. Press play, or step through.","steps":[{"cap":"Four bricks: buy a call, sell a call, buy a put, sell a put. Every named structure is a sum of these, at different strikes and expiries.","do":[{"box":"b1","x":10,"y":10,"w":135,"h":64,"text":"BUY\ncall","tone":"blue","size":18},{"box":"b2","x":155,"y":10,"w":135,"h":64,"text":"SELL\ncall","tone":"amber","size":18},{"box":"b3","x":305,"y":10,"w":135,"h":64,"text":"BUY\nput","tone":"blue","size":18},{"box":"b4","x":450,"y":10,"w":140,"h":64,"text":"SELL\nput","tone":"amber","size":18}]},{"cap":"Start with one brick: buy the 100 call for 4.23. Below 100 you lose the 4.23. Above 100 you gain one for one, with no cap.","do":[{"chart":"pl","x":10,"y":96,"w":580,"h":330,"title":"Profit and loss at expiry, per share","xd":[80,120],"yd":[-14,17],"yt":[[10,"+10"],[0,"0"],[-10,"−10"]],"xt":[[80,"80"],[90,"90"],[100,"100"],[110,"110"],[120,"120"]],"zero":true,"pl":46,"pr":16},{"series":"lc","chart":"pl","pts":[[80,-4.232],[81,-4.232],[82,-4.232],[83,-4.232],[84,-4.232],[85,-4.232],[86,-4.232],[87,-4.232],[88,-4.232],[89,-4.232],[90,-4.232],[91,-4.232],[92,-4.232],[93,-4.232],[94,-4.232],[95,-4.232],[96,-4.232],[97,-4.232],[98,-4.232],[99,-4.232],[100,-4.232],[101,-3.232],[102,-2.232],[103,-1.232],[104,-0.232],[105,0.768],[106,1.768],[107,2.768],[108,3.768],[109,4.768],[110,5.768],[111,6.768],[112,7.768],[113,8.768],[114,9.768],[115,10.768],[116,11.768],[117,12.768],[118,13.768],[119,14.768],[120,15.768]],"tone":"blue","ms":1300,"label":"buy 100 call","lat":[118,13.768],"ldx":-4,"ldy":-14,"lanchor":"end","lsize":16}]},{"cap":"Add a second brick: sell the 105 call and collect 2.22. It gains at most 2.22 and loses one for one above 105.","do":[{"series":"sc","chart":"pl","pts":[[80,2.223],[81,2.223],[82,2.223],[83,2.223],[84,2.223],[85,2.223],[86,2.223],[87,2.223],[88,2.223],[89,2.223],[90,2.223],[91,2.223],[92,2.223],[93,2.223],[94,2.223],[95,2.223],[96,2.223],[97,2.223],[98,2.223],[99,2.223],[100,2.223],[101,2.223],[102,2.223],[103,2.223],[104,2.223],[105,2.223],[106,1.223],[107,0.223],[108,-0.777],[109,-1.777],[110,-2.777],[111,-3.777],[112,-4.777],[113,-5.777],[114,-6.777],[115,-7.777],[116,-8.777],[117,-9.777],[118,-10.777],[119,-11.777],[120,-12.777]],"tone":"amber","ms":1300,"dash":true,"label":"sell 105 call","lat":[118,-10.777],"ldx":-4,"ldy":14,"lanchor":"end","lsize":16}]},{"cap":"Add them up. The two ramps cancel above 105 and the result is a flat shelf: the bull call spread. You paid 2.01, so the worst case is 2.01 below 100 and the best is +2.99 above 105.","do":[{"series":"sp","chart":"pl","pts":[[80,-2.009],[81,-2.009],[82,-2.009],[83,-2.009],[84,-2.009],[85,-2.009],[86,-2.009],[87,-2.009],[88,-2.009],[89,-2.009],[90,-2.009],[91,-2.009],[92,-2.009],[93,-2.009],[94,-2.009],[95,-2.009],[96,-2.009],[97,-2.009],[98,-2.009],[99,-2.009],[100,-2.009],[101,-1.009],[102,-0.009],[103,0.991],[104,1.991],[105,2.991],[106,2.991],[107,2.991],[108,2.991],[109,2.991],[110,2.991],[111,2.991],[112,2.991],[113,2.991],[114,2.991],[115,2.991],[116,2.991],[117,2.991],[118,2.991],[119,2.991],[120,2.991]],"tone":"green","ms":1500,"label":"spread: pay 2.01","lat":[112,2.991],"ldx":0,"ldy":-16,"lanchor":"middle","lsize":17},{"dim":"lc"},{"dim":"sc"},{"dot":"sm","chart":"pl","at":[100,-2.0089277267237122],"text":"worst −2.01","tone":"red","dx":-6,"dy":20,"anchor":"end"},{"dot":"sg","chart":"pl","at":[105,2.991072273276302],"text":"best +2.99","tone":"green","dx":-6,"dy":-16,"anchor":"end"}]},{"cap":"What you bought: the same bet for 2.01 instead of 4.23. What you sold: everything above 105. A structure is cheaper because you gave something away.","do":[{"box":"why","x":10,"y":440,"w":285,"h":78,"text":"cheaper: pay 2.01 not 4.23","tone":"green","size":18},{"box":"why2","x":305,"y":440,"w":285,"h":78,"text":"cost: nothing above 105","tone":"amber","size":18}]},{"cap":"Different shape, same bricks: buy the 100 call and the 100 put. That is a straddle, a V. It costs 7.97, so spot must end below 92.03 or above 107.97 for you to profit.","do":[{"hide":"lc"},{"hide":"sc"},{"hide":"sp"},{"hide":"sm"},{"hide":"sg"},{"hide":"why"},{"hide":"why2"},{"series":"st","chart":"pl","pts":[[80,12.034],[81,11.034],[82,10.034],[83,9.034],[84,8.034],[85,7.034],[86,6.034],[87,5.034],[88,4.034],[89,3.034],[90,2.034],[91,1.034],[92,0.034],[93,-0.966],[94,-1.966],[95,-2.966],[96,-3.966],[97,-4.966],[98,-5.966],[99,-6.966],[100,-7.966],[101,-6.966],[102,-5.966],[103,-4.966],[104,-3.966],[105,-2.966],[106,-1.966],[107,-0.966],[108,0.034],[109,1.034],[110,2.034],[111,3.034],[112,4.034],[113,5.034],[114,6.034],[115,7.034],[116,8.034],[117,9.034],[118,10.034],[119,11.034],[120,12.034]],"tone":"purple","ms":1500,"label":"straddle: pay 7.97","lat":[100,-7.966],"ldx":0,"ldy":24,"lsize":17},{"dot":"s1","chart":"pl","at":[92.0344325445942,0],"text":"92.03","tone":"amber","dx":-4,"dy":-16,"anchor":"end"},{"dot":"s2","chart":"pl","at":[107.9655674554058,0],"text":"107.97","tone":"amber","dx":4,"dy":-16,"anchor":"start"}]},{"cap":"Buy the wings and sell two 100 calls: a butterfly, a tent. It costs only 0.97 and can make 4.03, but only if spot ends close to 100. Break-evens 95.97 and 104.03.","do":[{"hide":"st"},{"hide":"s1"},{"hide":"s2"},{"series":"fl","chart":"pl","pts":[[80,-0.973],[81,-0.973],[82,-0.973],[83,-0.973],[84,-0.973],[85,-0.973],[86,-0.973],[87,-0.973],[88,-0.973],[89,-0.973],[90,-0.973],[91,-0.973],[92,-0.973],[93,-0.973],[94,-0.973],[95,-0.973],[96,0.027],[97,1.027],[98,2.027],[99,3.027],[100,4.027],[101,3.027],[102,2.027],[103,1.027],[104,0.027],[105,-0.973],[106,-0.973],[107,-0.973],[108,-0.973],[109,-0.973],[110,-0.973],[111,-0.973],[112,-0.973],[113,-0.973],[114,-0.973],[115,-0.973],[116,-0.973],[117,-0.973],[118,-0.973],[119,-0.973],[120,-0.973]],"tone":"green","ms":1500,"label":"butterfly: pay 0.97","lat":[100,4.027],"ldx":0,"ldy":-16,"lsize":17},{"dot":"f1","chart":"pl","at":[95.97256966771657,0],"text":"95.97","tone":"amber","dx":-4,"dy":-16,"anchor":"end"},{"dot":"f2","chart":"pl","at":[104.02743033228343,0],"text":"104.03","tone":"amber","dx":4,"dy":-16,"anchor":"start"}]},{"cap":"Sell a put spread below and a call spread above: a short iron condor. You collect 1.49, and that is the most you can make. The worst case is 8.51: 5.7 times the best.","do":[{"hide":"fl"},{"hide":"f1"},{"hide":"f2"},{"series":"co","chart":"pl","pts":[[80,-8.513],[81,-7.513],[82,-6.513],[83,-5.513],[84,-4.513],[85,-3.513],[86,-2.513],[87,-1.513],[88,-0.513],[89,0.487],[90,1.487],[91,1.487],[92,1.487],[93,1.487],[94,1.487],[95,1.487],[96,1.487],[97,1.487],[98,1.487],[99,1.487],[100,1.487],[101,1.487],[102,1.487],[103,1.487],[104,1.487],[105,1.487],[106,1.487],[107,1.487],[108,1.487],[109,1.487],[110,1.487],[111,0.487],[112,-0.513],[113,-1.513],[114,-2.513],[115,-3.513],[116,-4.513],[117,-5.513],[118,-6.513],[119,-7.513],[120,-8.513]],"tone":"red","ms":1500,"label":"condor: get 1.49","lat":[100,1.487],"ldx":0,"ldy":-16,"lsize":17},{"dot":"c1","chart":"pl","at":[80,-8.51296341074358],"text":"worst −8.51","tone":"red","dx":8,"dy":-16,"anchor":"start"}]},{"cap":"Own the shares, buy the 95 put, sell the 105 call: a collar. The dashed line is the shares alone. The collar floors the loss at 4.52 and caps the gain at 5.48, for a net credit of 0.48 at flat vol.","do":[{"hide":"co"},{"hide":"c1"},{"series":"sh","chart":"pl","pts":[[86,-14],[87,-13],[88,-12],[89,-11],[90,-10],[91,-9],[92,-8],[93,-7],[94,-6],[95,-5],[96,-4],[97,-3],[98,-2],[99,-1],[100,0],[101,1],[102,2],[103,3],[104,4],[105,5],[106,6],[107,7],[108,8],[109,9],[110,10],[111,11],[112,12],[113,13],[114,14]],"tone":"blue","ms":900,"dash":true,"label":"shares alone","lat":[112,12],"ldx":-6,"ldy":-6,"lanchor":"end","lsize":16},{"series":"cl","chart":"pl","pts":[[80,-4.517],[81,-4.517],[82,-4.517],[83,-4.517],[84,-4.517],[85,-4.517],[86,-4.517],[87,-4.517],[88,-4.517],[89,-4.517],[90,-4.517],[91,-4.517],[92,-4.517],[93,-4.517],[94,-4.517],[95,-4.517],[96,-3.517],[97,-2.517],[98,-1.517],[99,-0.517],[100,0.483],[101,1.483],[102,2.483],[103,3.483],[104,4.483],[105,5.483],[106,5.483],[107,5.483],[108,5.483],[109,5.483],[110,5.483],[111,5.483],[112,5.483],[113,5.483],[114,5.483],[115,5.483],[116,5.483],[117,5.483],[118,5.483],[119,5.483],[120,5.483]],"tone":"green","ms":1500,"label":"collar","lat":[112,5.483],"ldx":0,"ldy":-16,"lsize":17}]},{"cap":"Greeks add leg by leg. Long straddle: long gamma and vega, pays theta. Condor and butterfly: the mirror image, collecting theta and short gamma and vega.","do":[{"box":"g1","x":10,"y":440,"w":285,"h":84,"text":"straddle:\nwants a big move","tone":"purple","size":17},{"box":"g2","x":305,"y":440,"w":285,"h":84,"text":"condor, butterfly:\nwant quiet","tone":"red","size":17}]},{"cap":"Defined risk is not low risk. In the model the condor profits about 75% of the time, averaging +1.42 when it wins and −4.31 when it does not: an expected value near zero. A fair price, not an edge.","do":[{"box":"fair","x":10,"y":540,"w":580,"h":84,"text":"high win rate, small wins, big losses = fair price","tone":"amber","size":18}]},{"cap":"Before you trade any structure, ask one question: what did I sell to make it look attractive? Then size by the worst case.","do":[{"pulse":"fair"}]}]}</script>
+  </div>
+  <!-- WB:options_spreads_and_structures:END -->
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>It actually happened: Barings, 1995</h2>
+  <p>
+    A structure with no wings has no limit on what it can lose, and the clearest historical illustration is a short
+    straddle. The facts below are as reported in the official inquiry and in later academic accounts of it.
+  </p>
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Selling straddles on the Nikkei, with nothing to stop the loss</h3>
+    <p>
+      Barings was a London merchant bank. By 1995 one of its traders in Singapore, Nick Leeson, was running
+      large unauthorised positions on the Nikkei 225 index. From January 1994 he had built up a large series of short
+      straddles on Nikkei index options, that is, selling both a call and a put at the
+      same strike: in effect a bet that the Japanese market would not move much. That collects a premium and has no wings. (Some popular accounts date the trade to a single day, 16 January 1995; the inquiry-based record describes a position built over many months.) If
+      the index finishes near the strike you keep the premium. The further it moves in either direction, the more you lose.
+    </p>
+    <p>
+      The Great Hanshin (Kobe) earthquake struck early on 17 January 1995. The Nikkei fell, and the short put side of the
+      straddle moved sharply against the position. Rather than reduce it, he added to his other positions in the hope that the
+      market would recover, which it did not. His losses were also hidden by wider failures of control at the bank, and
+      those are the larger part of the story. The options book had been worth about US$178 million at the end of 1994 and was about US$108 million
+      under water by the end of February, mainly because of the earthquake. By 27 February the unauthorised trading had lost
+      about £827 million (US$1.4 billion), well over twice the Group's recorded capital of about £350 million, and
+      administrators were appointed to the Barings Group parent company on 26 February 1995.
+    </p>
+    <p style="margin-bottom:0">
+      The point for this lesson is narrow and structural. A short straddle is the long straddle of the builder flipped
+      upside down. Buy a put and a call further out and the same short straddle becomes an iron butterfly: a smaller
+      premium, but a loss that cannot exceed the wing width less the credit.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link"><b>Short straddle</b>Built up from 1994: sells a call and a put at one strike, collects premium</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · no wings</b>Both sides uncapped: loss grows as the index moves away</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link shock"><b>Kobe earthquake</b>17 Jan 1995: the Nikkei falls</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Losses grow</b>Positions added to hope for a recovery</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>About £827m lost; Barings in administration 26 Feb 1995</div>
+  </div>
+  <p>
+    The starred link is the structure. Every later link is the market delivering a move the premium had not paid for.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>The diagram is the end of the road, and the prices are a model</h3>
+    <p style="margin-bottom:0">
+      The payoff diagrams assume you hold to expiry, flat volatility, and prices at their fair model value. In practice you
+      mark the position to market long before expiry; volatility differs by strike (skew), and moves after you enter; and
+      each leg is quoted with a bid and an offer. Most of the ways these structures hurt are in the gap between the
+      neat expiry diagram and that daily reality.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Selling a straddle is like promising to pay anyone who guesses whether the weather will turn, whichever way it turns, in return for a small fee. If it stays calm you keep the fees. If a storm comes, you pay and pay with no upper limit. A "wing" is buying cheap insurance so your promise has a ceiling.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>How practitioners actually use structures</h2>
+  <p>
+    <strong>Retail and small accounts.</strong> Mostly defined-risk verticals and the occasional condor or butterfly. The
+    defined worst case matches how brokers set margin and which strategies they approve for an account. The risk is
+    treating a "high probability of profit" as an edge: the iron condor above has a 75% model chance of
+    profit, wins an average of 1.42 when it wins, and loses an average of 4.31 when it does not.
+    That is an expected value of −0.01, which is what a fair price looks like.
+  </p>
+  <p>
+    <strong>Dealers and funds.</strong> They trade packages rather than legs: listed exchanges offer complex-order books so a
+    multi-leg structure can be executed as one order at one net price, and over-the-counter markets quote standard
+    packages directly. Butterflies and risk reversals are used to buy and sell the shape of the volatility smile (see
+    <a href="implied-vol-smile-skew.html">The IV Smile &amp; Skew</a>); calendars to trade the term structure of vol around
+    events. The point is a view on <em>relative</em> volatility with directional exposure netted out.
+  </p>
+  <p>
+    <strong>Corporates and holders of concentrated positions.</strong> Collars and risk reversals are the standard way to put
+    a floor under a position or a currency exposure without paying full premium, and in FX the zero-cost versions of these are
+    a staple of corporate hedging. The trade-off is the same one as in the card: the floor is paid for with the upside.
+  </p>
+  <p>
+    <strong>What the pros check before they trade one.</strong> The net price against the sum of the legs' mid-prices
+    (the bid-offer cost of crossing four legs); the maximum loss as a share of the account, not of the margin; the Greek
+    signature, in particular gamma and vega; and what happens to the position on the day before and the day of each
+    event. A later lesson in this series, on choosing a trade, puts these checks to work.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where spreads and structures quietly go wrong</h3>
+    <p>
+      <strong>Treating "defined risk" as "low risk".</strong> The condor's maximum loss is 5.72 times its
+      maximum gain. Defined means you know the worst case in advance; it does not make it small. Size by that worst case.
+    </p>
+    <p>
+      <strong>Forgetting what you sold.</strong> A cheap structure is cheap because you gave something up: the upside above
+      the short call, the downside below the short put, the tail beyond a wing. "Zero-cost" collars and risk reversals are
+      the clearest cases.
+    </p>
+    <p>
+      <strong>Ignoring the cost of legs.</strong> Four legs pay four bid-offer spreads. If each leg costs just 0.05 to cross
+      on entry, the condor's credit falls from 1.49 to 1.29, a cut of 13% before
+      commissions. Check the net price, and prefer a single multi-leg order to legging in, which also removes the risk of
+      getting one leg filled and not the other.
+    </p>
+    <p>
+      <strong>Assignment and pin risk.</strong> On American-style options (most equity and ETF options) the short leg of a
+      spread can be exercised before expiry, most often when it is deep in the money or just before a dividend. The long leg
+      still caps your loss, but you can wake up with shares, a margin change and a leg to close. At expiry, with price close to
+      a short strike, you cannot be sure whether you will be assigned. Cash-settled European index options avoid early assignment and delivery.
+    </p>
+    <p>
+      <strong>Reading the expiry diagram as today's value.</strong> The butterfly's 4.03 is for the very last day. Halfway
+      there, with spot at 100, it is worth 0.38. A long straddle waiting for its move bleeds to time: marked at
+      the halfway point with spot unchanged it is worth −2.33, while a 5-point rise in vol on day one would
+      be worth +1.98 straight away. Both are position values, not expiry values.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>Trusting flat vol.</strong> Real vol differs by strike. In the collar, the put is usually the dearer leg, which is
+      why a "free" collar often costs something. The calendar's value depends on a vol forecast for a date that has not
+      happened, so its maximum is an estimate, not a number you can bank.
+    </p>
+  </div>
+
+  <div class="tl-drill" data-date="1995-01-16">
+    <div class="tl-drill-label">Scenario drill · 16 January 1995, the day before Kobe</div>
+    <h3>You want to be paid for the Nikkei sitting still</h3>
+    <p>You trade Nikkei 225 index options and believe the market will not move much over the next few weeks. You want to collect premium for that view. Rather than a plain bought option, you are choosing a structure. Which do you use?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Sell an at-the-money straddle: the most premium for the view.<div class="tl-drill-why">It collects the most, and nothing stops the loss in either direction. If the market is hit by a shock, the loss is a multiple of the premium with no ceiling. This is the structure that turned an ordinary range view into a catastrophe.</div></li>
+      <li data-verdict="bad">Sell a wider strangle and rely on a stop-loss order.<div class="tl-drill-why">A wider strangle is safer on a normal day, but the loss is still uncapped. A stop order does not protect you from a gap: it is a trigger to trade, and if the market jumps through your level, you are filled at the next available price, far beyond it.</div></li>
+      <li data-verdict="good">Sell an iron butterfly or iron condor: the same short premium, with a bought option on each side as a wing.<div class="tl-drill-why">You collect less, but the worst case is fixed in advance at the wing width less the credit. A shock costs you that amount and no more. You pay for the protection out of the premium; that is the price of surviving the surprise.</div></li>
+      <li data-verdict="ok">Skip the trade: your view of "quiet" is not strong enough to be paid for.<div class="tl-drill-why">Defensible and cheap. If you cannot say what you sold to collect the premium, and what the worst case is in points and in money, standing aside is a position. It earns nothing, but it loses nothing.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> A Barings trader had built up a large book of short straddles on Nikkei index options during 1994 and into 1995 (the dated scenario above is hypothetical, set on the eve of the quake). The Kobe earthquake struck early on 17 January 1995 and the market fell; the options book swung from a gain of about US$178 million at end-1994 to a loss of about US$108 million by end-February. The trader added to other positions hoping for a recovery. Unauthorised trading losses reached about £827 million (US$1.4 billion) by 27 February, and administrators were appointed to the Barings Group parent company on 26 February 1995. The losses were made far larger by hidden positions and failures of control, so this drill is about the option structure only. A wing on each side of that one option position would have capped its loss; it would not have fixed the controls.</p><p class="tl-drill-sources">Sources: Board of Banking Supervision, <em>Report of the Board of Banking Supervision Inquiry into the Circumstances of the Collapse of Barings</em>, HMSO, July 1995; Nick Leeson, <em>Rogue Trader</em>, Little, Brown, 1996. Option-book values and the build-up from January 1994: S. Brown and O. Steenbeek, "Doubling: Nick Leeson's trading strategy", <em>Pacific-Basin Finance Journal</em> 9 (2001), citing the Singapore and Bank of England reports; £827 million at 27 February 1995 and administration on 26 February: Reserve Bank of Australia <em>Bulletin</em>, November 1995. The US$ conversion is as commonly reported; the exact position size is not stated here.</p></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Every structure is four bricks added up.</strong> Payoff, net premium and Greeks are sums over the legs, so you can work out any structure's cost, worst case and break-evens yourself: bull call 100/105 is debit 2.01, max gain 2.99, max loss 2.01, break-even 102.01.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Structures buy you cheapness, a cap, or precision, and each is paid for.</strong> The sold leg pays for the bought one but takes away a part of the payoff.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Same bet, different clothes.</strong> A debit call spread and a credit put spread on the same strikes add to the discounted width; so do a butterfly and an iron butterfly. A collar is a bull call spread plus cash.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Read the Greek signature.</strong> Straddles and strangles are long gamma and vega and pay theta; condors, butterflies and credit spreads are the mirror image. That signature says what the structure needs from the market.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Defined risk is not low risk, and a high win rate is not an edge.</strong> The condor wins about 75% of the time in the model and still has an expected value near zero, because its average loss (4.31) is about three times its average win (1.42).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The expiry diagram is not today's value.</strong> The butterfly is worth 0.38, not 4.03, halfway through its life with spot at the middle. Costs multiply with the number of legs, and short American-style legs can be assigned early.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A short structure with no wings has no ceiling on its loss.</strong> Barings' short straddles on the Nikkei, 1994 to early 1995, are the standing example: the structure alone cannot lose less than the market moves against it.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. A 100/105 bull call spread is built from a 100 call at 4.23 and a 105 call at 2.22. What are its maximum gain, maximum loss and break-even?</summary>
+    <div class="tl-answer">
+      The net debit is \(4.23-2.22=2.01\) (more precisely 2.01 before rounding the legs). Maximum loss is the debit, 2.01, if spot finishes at or below 100. Maximum gain is the width minus the debit, \(5-2.01=2.99\), if spot finishes at or above 105. Break-even is \(100+2.01=102.01\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why do a 100/105 debit call spread and a 100/105 credit put spread behave like the same bet?</summary>
+    <div class="tl-answer">
+      By put-call parity, a call and a put at the same strike differ by a straight line (\(S-Ke^{-rT}\)). Subtract two strikes and the straight lines cancel to a constant, so the two payoffs differ only by a constant and their prices sum to the discounted width: 2.01 plus 2.97 is 4.98, which is \(5e^{-rT}\). You choose between them for cash, margin and who is on the other side, not for the bet.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. The short iron condor collects 1.49 with a worst case of 8.51, and the model says it makes money about 75% of the time. Is that an edge?</summary>
+    <div class="tl-answer">
+      No. Under the model's own (risk-neutral) distribution, the wins average 1.42 and the losses average 4.31. \(0.75\times1.42-0.25\times4.31\approx-0.01\), which is the interest on the credit, so the expected value is about zero. A high win rate with a small average win is the shape of selling insurance. An edge would need the real world to pay less often than the model charges for, which is a claim about volatility, not about the structure.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A long 100 straddle costs 7.97. Where does it break even, and how can you estimate its price without a model?</summary>
+    <div class="tl-answer">
+      It breaks even at \(100\pm7.97\), that is 92.03 and 107.97. For an at-the-money option, \(c+p\approx0.8\,S\sigma\sqrt{T}=0.8\times100\times0.20\times0.5=8.0\), close to the model's 7.97. The buyer needs the realised move to exceed what the market priced.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is the 95/100/105 butterfly worth 0.38, and not its 4.03 best case, halfway to expiry with spot at 100?</summary>
+    <div class="tl-answer">
+      The 4.03 is the value on the last day only. With spot at exactly 100 then, just the bought 95 call is alive, worth 5, so the profit is \(5-0.97\). Before that, every leg carries time value. The two sold at-the-money calls carry the most, which offsets nearly all of the bought wings' value, so the net is small until the final weeks. Time pays a butterfly, and it pays at the end.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is a "zero-cost" collar not free, and why can it cost money in a market with downside skew?</summary>
+    <div class="tl-answer">
+      Selling the upside call finances the protective put, so the premium nets near zero, but you give up everything above the cap. With downside skew the put's vol is higher than the call's, so the put costs more than the call brings in. In the builder, at −3 skew the collar's credit of 0.48 becomes a debit of 0.04. Free in cash is not free in outcomes.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson (many editions) — the chapter "Trading Strategies Involving Options" covers spreads, combinations and payoff diagrams with worked numbers.</li>
+    <li>Sheldon Natenberg, <em>Option Volatility and Pricing: Advanced Trading Strategies and Techniques</em>, McGraw-Hill (2nd ed., 2014) — the standard practitioner text on spreads, volatility and risk; thorough on why structures are priced as they are.</li>
+    <li>Lawrence G. McMillan, <em>Options as a Strategic Investment</em>, Prentice Hall Press (5th ed., 2012) — a catalogue of strategies with margin, assignment and adjustment rules.</li>
+    <li>Options Clearing Corporation, <em>Characteristics and Risks of Standardized Options</em> — the options disclosure document, with plain-language descriptions of spreads, early exercise and assignment.</li>
+    <li>Fischer Black and Myron Scholes, <em>"The Pricing of Options and Corporate Liabilities"</em>, Journal of Political Economy, 1973 — the model behind every price on this page.</li>
+    <li>Nick Leeson, <em>Rogue Trader</em>, Little, Brown, 1996, and the Board of Banking Supervision's <em>Report of the Inquiry into the Circumstances of the Collapse of Barings</em>, HMSO, July 1995 — the first-person account and the official one.</li>
+  </ul>
+  </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="options-four-positions.html">The Four Option Positions</a> <span>· the four bricks themselves</span></li>
+        <li><a href="payoff-shape-vs-greek-signs.html">Same Greeks, Different Risk</a> <span>· why the payoff shape matters as much as the Greeks</span></li>
+        <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> <span>· where every price on this page comes from</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="covered-call-equals-short-put.html">The Covered Call Is a Short Put</a> <span>· one more identity between structures</span></li>
+        <li><a href="implied-vol-smile-skew.html">The IV Smile &amp; Skew</a> <span>· why collars and risk reversals are priced as they are</span></li>
+        <li><a href="fx-options-quoting-rr-bf.html">FX Options Quoting: Delta, Risk Reversals &amp; Butterflies</a> <span>· risk reversals and butterflies as quoted packages</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> almost every real options trade is a structure, and the name does not tell you what it risks. Being able to build the payoff yourself tells you.</p>
+  </nav>
+
+  <div class="tl-footer-nav">
+    <a href="options-trading-styles.html">← Five Ways to Trade Options, and How Each One Fails</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="options-trade-selection.html">From View to Trade: Choosing the Expiry and Strike →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var sel = document.getElementById('os3-struct');
+  if (!sel) return;
+  function $(id){ return document.getElementById(id); }
+  // ---- inputs of the model (fixed): spot 100, 2% rate, 20% flat vol, 3 months; near leg of the calendar 1 month ----
+  var S0 = 100, R = 0.02, SIG = 0.20, T0 = 0.25, TN = 1 / 12;
+
+  // ---- Black-Scholes (q = 0), normal CDF to double precision (West 2005) ----
+  function cnd(x){
+    var a = Math.abs(x), c, b;
+    if (a > 37) c = 0;
+    else {
+      var e = Math.exp(-a * a / 2);
+      if (a < 7.07106781186547) {
+        b = 3.52624965998911e-02 * a + 0.700383064443688;
+        b = b * a + 6.37396220353165; b = b * a + 33.912866078383; b = b * a + 112.079291497871;
+        b = b * a + 221.213596169931; b = b * a + 220.206867912376;
+        c = e * b;
+        b = 8.83883476483184e-02 * a + 1.75566716318264;
+        b = b * a + 16.064177579207; b = b * a + 86.7807322029461; b = b * a + 296.564248779674;
+        b = b * a + 637.333633378831; b = b * a + 793.826512519948; b = b * a + 440.413735824752;
+        c = c / b;
+      } else {
+        b = a + 0.65; b = a + 4 / b; b = a + 3 / b; b = a + 2 / b; b = a + 1 / b;
+        c = e / b / 2.506628274631;
+      }
+    }
+    return x > 0 ? 1 - c : c;
+  }
+  function pdf(x){ return Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI); }
+  function bs(S, K, T, v, cp){
+    if (T <= 1e-9) return cp === 'c' ? Math.max(S - K, 0) : Math.max(K - S, 0);
+    if (S <= 0) return cp === 'c' ? 0 : K * Math.exp(-R * T);
+    var sq = v * Math.sqrt(T), d1 = (Math.log(S / K) + (R + v * v / 2) * T) / sq, d2 = d1 - sq;
+    return cp === 'c' ? S * cnd(d1) - K * Math.exp(-R * T) * cnd(d2) : K * Math.exp(-R * T) * cnd(-d2) - S * cnd(-d1);
+  }
+  function grk(S, K, T, v, cp){
+    var sq = v * Math.sqrt(T), d1 = (Math.log(S / K) + (R + v * v / 2) * T) / sq, d2 = d1 - sq, e = Math.exp(-R * T);
+    var delta = cp === 'c' ? cnd(d1) : cnd(d1) - 1;
+    var gamma = pdf(d1) / (S * sq);
+    var vega = S * pdf(d1) * Math.sqrt(T) / 100;
+    var th = -S * pdf(d1) * v / (2 * Math.sqrt(T)) + (cp === 'c' ? -R * K * e * cnd(d2) : R * K * e * cnd(-d2));
+    return [delta, gamma, th / 365, vega];
+  }
+
+  // ---- structures: each is a list of legs (q = signed quantity, t = c/p/s(hares), k = strike, e = n(ear)/f(ar) expiry) ----
+  function L(q, t, k, e){ return { q: q, t: t, k: k, e: e || 'f' }; }
+  var P = {
+    bullcall: { name: 'Bull call spread',  flip: 'Bear call spread',  k: 100, w: 5, legs: function(k, w){ return [L(1,'c',k), L(-1,'c',k+w)]; } },
+    bearput:  { name: 'Bear put spread',   flip: 'Bull put spread',   k: 100, w: 5, legs: function(k, w){ return [L(1,'p',k), L(-1,'p',k-w)]; } },
+    bullput:  { name: 'Bull put spread',   flip: 'Bear put spread',   k: 95,  w: 5, legs: function(k, w){ return [L(-1,'p',k), L(1,'p',k-w)]; } },
+    bearcall: { name: 'Bear call spread',  flip: 'Bull call spread',  k: 105, w: 5, legs: function(k, w){ return [L(-1,'c',k), L(1,'c',k+w)]; } },
+    straddle: { name: 'Long straddle',     flip: 'Short straddle',    k: 100, w: 5, legs: function(k, w){ return [L(1,'c',k), L(1,'p',k)]; } },
+    strangle: { name: 'Long strangle',     flip: 'Short strangle',    k: 100, w: 5, legs: function(k, w){ return [L(1,'c',k+w), L(1,'p',k-w)]; } },
+    fly:      { name: 'Long call butterfly', flip: 'Short call butterfly', k: 100, w: 5, legs: function(k, w){ return [L(1,'c',k-w), L(-2,'c',k), L(1,'c',k+w)]; } },
+    condor:   { name: 'Short iron condor', flip: 'Long iron condor',  k: 100, w: 10, legs: function(k, w){ return [L(1,'p',k-2*w), L(-1,'p',k-w), L(-1,'c',k+w), L(1,'c',k+2*w)]; } },
+    ifly:     { name: 'Short iron butterfly', flip: 'Long iron butterfly', k: 100, w: 5, legs: function(k, w){ return [L(1,'p',k-w), L(-1,'p',k), L(-1,'c',k), L(1,'c',k+w)]; } },
+    calendar: { name: 'Long calendar spread', flip: 'Short calendar spread', k: 100, w: 5, legs: function(k, w){ return [L(-1,'c',k,'n'), L(1,'c',k,'f')]; } },
+    collar:   { name: 'Collar on 100 shares', flip: 'Reverse collar (short shares)', k: 100, w: 5, legs: function(k, w){ return [L(1,'s',0), L(1,'p',k-w), L(-1,'c',k+w)]; } },
+    rr:       { name: 'Bullish risk reversal', flip: 'Bearish risk reversal', k: 100, w: 5, legs: function(k, w){ return [L(1,'c',k+w), L(-1,'p',k-w)]; } }
+  };
+  var flipped = false;
+
+  function Tof(l){ return l.e === 'n' ? TN : T0; }
+  function ivOf(l, skew, shift){ return Math.max(0.05, SIG + skew * (l.k - S0) / 10 / 100 + shift / 100); }
+  function horizon(ls){ var h = 9; ls.forEach(function(l){ if (l.t !== 's') h = Math.min(h, Tof(l)); }); return h; }
+  function pnl(ls, S, frac, shift, skew, V0){
+    var H = horizon(ls), tot = -V0;
+    ls.forEach(function(l){
+      if (l.t === 's') { tot += l.q * (S - S0); return; }
+      var Tn = Tof(l) - frac * H;
+      if (Tn <= 1e-9) tot += l.q * (l.t === 'c' ? Math.max(S - l.k, 0) : Math.max(l.k - S, 0));
+      else tot += l.q * bs(S, l.k, Tn, ivOf(l, skew, shift), l.t);
+    });
+    return tot;
+  }
+  function f2(x){ var s = Math.abs(x) < 0.005 ? '0.00' : Math.abs(x).toFixed(2); return (x < -0.005 ? '−' : '') + s; }
+  function sg(x){ return (x > 0.005 ? '+' : '') + f2(x); }
+  function f3(x){ var s = Math.abs(x) < 0.0005 ? '0.000' : Math.abs(x).toFixed(3); return (x < -0.0005 ? '−' : '') + s; }
+  function f4(x){ var s = Math.abs(x) < 0.00005 ? '0.0000' : Math.abs(x).toFixed(4); return (x < -0.00005 ? '−' : '') + s; }
+  function sg3(x){ return (x > 0.0005 ? '+' : '') + f3(x); }
+  function sg4(x){ return (x > 0.00005 ? '+' : '') + f4(x); }
+
+  function num(id, def){ var e = $(id); if (!e) return def; var v = parseFloat(e.value); return isFinite(v) ? v : def; }
+  function setText(id, t){ var e = $(id); if (e) e.textContent = t; }
+  function strikeName(l){ return l.k; }
+
+  function niceTicks(lo, hi){
+    var span = hi - lo, raw = span / 5, mag = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), st = mag;
+    [1, 2, 5, 10].forEach(function(m){ if (raw >= m * mag * 0.999) st = m * mag; });
+    var out = [], t = Math.ceil(lo / st) * st;
+    for (; t <= hi + 1e-9; t += st) out.push(Math.round(t / st) * st);
+    return out;
+  }
+
+  function update(){
+    var key = sel.value, pr = P[key];
+    var k = Math.round(num('os3-k', pr.k)), w = Math.round(num('os3-w', pr.w));
+    var skew = num('os3-skew', 0), shift = num('os3-vol', 0), frac = num('os3-time', 0) / 100, spot = num('os3-spot', S0);
+    var warn = $('os3-warn');
+    var ls = pr.legs(k, w);
+    if (flipped) ls.forEach(function(l){ l.q = -l.q; });
+    var bad = ls.some(function(l){ return l.t !== 's' && l.k < 1; }) || w < 1;
+    if (bad) { if (warn) warn.textContent = 'Strikes must stay above zero and the width must be at least 1.'; return; }
+    if (warn) warn.textContent = '';
+
+    // entry
+    var prem = ls.map(function(l){ return l.t === 's' ? 0 : bs(S0, l.k, Tof(l), ivOf(l, skew, 0), l.t); });
+    var V0 = 0; ls.forEach(function(l, i){ V0 += l.q * prem[i]; });
+    var H = horizon(ls);
+
+    // statistics from the payoff at the first expiry, on a 0.05 grid from 0 to 300
+    var mx = -1e18, mn = 1e18, be = [], prevS = 0, prevY = pnl(ls, 0, 1, shift, skew, V0);
+    mx = mn = prevY;
+    for (var i = 1; i <= 6000; i++){
+      var S = i * 0.05, y = pnl(ls, S, 1, shift, skew, V0);
+      if (y > mx) mx = y; if (y < mn) mn = y;
+      if ((prevY < 0 && y > 0) || (prevY > 0 && y < 0)) be.push(prevS + (0 - prevY) / (y - prevY) * (S - prevS));
+      prevS = S; prevY = y;
+    }
+    var slopeUp = 0; ls.forEach(function(l){ if (l.t === 'c' || l.t === 's') slopeUp += l.q; });
+
+    // text readouts
+    var parts = ls.map(function(l, i){
+      if (l.t === 's') return (l.q > 0 ? 'Hold ' : 'Short ') + Math.abs(l.q) * 100 + ' shares at ' + S0;
+      var exp = (key === 'calendar') ? (l.e === 'n' ? ' (1 month)' : ' (3 months)') : '';
+      return (l.q > 0 ? 'Buy ' : 'Sell ') + Math.abs(l.q) + ' × ' + l.k + (l.t === 'c' ? ' call' : ' put') + exp + ' at ' + f2(prem[i]);
+    });
+    setText('os3-name', flipped ? pr.flip : pr.name);
+    setText('os3-legs', parts.join(' · '));
+    setText('os3-prem', V0 >= 0 ? 'Net debit ' + f2(V0) + ' (you pay)' : 'Net credit ' + f2(-V0) + ' (you receive)');
+    setText('os3-maxg', slopeUp > 0 ? 'no limit' : '+' + f2(mx));
+    setText('os3-maxl', slopeUp < 0 ? 'no limit' : f2(mn));
+    setText('os3-be', be.length ? be.map(f2).join(' and ') : 'none');
+    var rrTxt = '—';
+    if (slopeUp === 0 && mn < -0.005 && mx > 0.005) rrTxt = f2(mx / -mn) + ' to 1';
+    setText('os3-rr', rrTxt);
+    var pe = pnl(ls, spot, 1, shift, skew, V0), pn = pnl(ls, spot, frac, shift, skew, V0);
+    setText('os3-spotv', f2(spot));
+    setText('os3-pnlexp', sg(pe));
+    setText('os3-pnlnow', sg(pn));
+    // Greeks of the whole structure, at the chosen spot, time and vol
+    if (frac >= 0.999) {
+      ['delta', 'gamma', 'theta', 'vega'].forEach(function(n){ setText('os3-' + n, '—'); });
+    } else {
+      var d = 0, g = 0, th = 0, ve = 0;
+      ls.forEach(function(l){
+        if (l.t === 's') { d += l.q; return; }
+        var a = grk(spot, l.k, Tof(l) - frac * H, ivOf(l, skew, shift), l.t);
+        d += l.q * a[0]; g += l.q * a[1]; th += l.q * a[2]; ve += l.q * a[3];
+      });
+      setText('os3-delta', sg3(d)); setText('os3-gamma', sg4(g)); setText('os3-theta', sg3(th)); setText('os3-vega', sg3(ve));
+    }
+    var fb = $('os3-flip'); if (fb) fb.textContent = flipped ? 'Flipped: you now sell it (press to buy again)' : 'Flip it: sell instead of buy';
+    setText('os3-timev', Math.round(frac * 100) + '% of the way to the first expiry');
+    setText('os3-volv', (shift > 0 ? '+' : shift < 0 ? '−' : '') + Math.abs(shift) + ' vol points');
+    setText('os3-skewv', (skew > 0 ? '+' : skew < 0 ? '−' : '') + Math.abs(skew).toFixed(1) + ' vol pts per 10 strike pts');
+    setText('os3-spotlab', f2(spot));
+
+    // chart
+    var W = 560, Ht = 300, X0 = 54, X1 = 548, Y0 = 16, Y1 = 258, XL = 60, XH = 140;
+    function px(x){ return X0 + (x - XL) / (XH - XL) * (X1 - X0); }
+    var xs = [], ye = [], yn = [];
+    for (var x = XL; x <= XH + 1e-9; x += 0.5){ xs.push(x); ye.push(pnl(ls, x, 1, shift, skew, V0)); yn.push(pnl(ls, x, frac, shift, skew, V0)); }
+    var lo = 0, hi = 0;
+    xs.forEach(function(x, j){ if (x >= 70 && x <= 130) { lo = Math.min(lo, ye[j], yn[j]); hi = Math.max(hi, ye[j], yn[j]); } });
+    var pad = Math.max(0.5, (hi - lo) * 0.12); lo -= pad; hi += pad;
+    function py(y){ return Y1 - (y - lo) / (hi - lo) * (Y1 - Y0); }
+    var svg = '';
+    niceTicks(lo, hi).forEach(function(t){
+      svg += '<line x1="' + X0 + '" x2="' + X1 + '" y1="' + py(t).toFixed(1) + '" y2="' + py(t).toFixed(1) + '" style="stroke:var(--border);stroke-width:' + (t === 0 ? 0 : 1) + '"/>';
+      svg += '<text x="' + (X0 - 6) + '" y="' + (py(t) + 4).toFixed(1) + '" text-anchor="end" fill="var(--text3)" font-size="12" font-family="\'DM Mono\',monospace">' + (Math.abs(t) < 1e-9 ? '0' : (t > 0 ? '+' : '−') + Math.abs(t)) + '</text>';
+    });
+    for (var tx = 60; tx <= 140; tx += 10){
+      svg += '<text x="' + px(tx).toFixed(1) + '" y="' + (Y1 + 17) + '" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="\'DM Mono\',monospace">' + tx + '</text>';
+    }
+    svg += '<g clip-path="url(#os3-clip)">';
+    // profit and loss areas under the expiry curve
+    var posPts = [], negPts = [];
+    function flush(arr, cls){ if (arr.length > 2) svg += '<polygon points="' + arr.join(' ') + '" style="fill:var(--' + cls + ');opacity:.16"/>'; }
+    var cur = [], curSign = 0;
+    for (var j = 0; j < xs.length; j++){
+      var sgn = ye[j] >= 0 ? 1 : -1;
+      if (j > 0 && sgn !== curSign){
+        var t = ye[j - 1] / (ye[j - 1] - ye[j]), xc = xs[j - 1] + t * (xs[j] - xs[j - 1]);
+        cur.push(px(xc).toFixed(1) + ',' + py(0).toFixed(1));
+        flush(cur, curSign > 0 ? 'green' : 'red');
+        cur = [px(xc).toFixed(1) + ',' + py(0).toFixed(1)];
+      } else if (j === 0) { cur = [px(xs[0]).toFixed(1) + ',' + py(0).toFixed(1)]; }
+      curSign = sgn;
+      cur.push(px(xs[j]).toFixed(1) + ',' + py(ye[j]).toFixed(1));
+    }
+    cur.push(px(xs[xs.length - 1]).toFixed(1) + ',' + py(0).toFixed(1)); flush(cur, curSign > 0 ? 'green' : 'red');
+    svg += '<line x1="' + X0 + '" x2="' + X1 + '" y1="' + py(0).toFixed(1) + '" y2="' + py(0).toFixed(1) + '" style="stroke:var(--text3);stroke-width:1.2"/>';
+    if (frac > 0.001 && frac < 0.999) {
+      svg += '<polyline points="' + xs.map(function(x, j){ return px(x).toFixed(1) + ',' + py(yn[j]).toFixed(1); }).join(' ') + '" style="fill:none;stroke:var(--amber);stroke-width:2.2;stroke-dasharray:6,4"/>';
+    }
+    svg += '<polyline points="' + xs.map(function(x, j){ return px(x).toFixed(1) + ',' + py(ye[j]).toFixed(1); }).join(' ') + '" style="fill:none;stroke:var(--blue);stroke-width:2.6;stroke-linejoin:round"/>';
+    svg += '</g>';
+    // strike ticks and spot marker
+    ls.forEach(function(l){
+      if (l.t === 's' || l.k < XL || l.k > XH) return;
+      svg += '<line x1="' + px(l.k).toFixed(1) + '" x2="' + px(l.k).toFixed(1) + '" y1="' + Y1 + '" y2="' + (Y1 + 5) + '" style="stroke:var(--purple);stroke-width:2"/>';
+    });
+    be.forEach(function(b){
+      if (b < XL || b > XH) return;
+      svg += '<circle cx="' + px(b).toFixed(1) + '" cy="' + py(0).toFixed(1) + '" r="4.5" style="fill:var(--bg);stroke:var(--text);stroke-width:1.6"/>';
+    });
+    var sp = Math.min(XH, Math.max(XL, spot));
+    svg += '<line x1="' + px(sp).toFixed(1) + '" x2="' + px(sp).toFixed(1) + '" y1="' + Y0 + '" y2="' + Y1 + '" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>';
+    svg += '<circle cx="' + px(sp).toFixed(1) + '" cy="' + Math.max(Y0, Math.min(Y1, py(pe))).toFixed(1) + '" r="5" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>';
+    if (frac > 0.001 && frac < 0.999) svg += '<circle cx="' + px(sp).toFixed(1) + '" cy="' + Math.max(Y0, Math.min(Y1, py(pn))).toFixed(1) + '" r="5" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>';
+    svg += '<text x="' + ((X0 + X1) / 2) + '" y="' + (Ht - 5) + '" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="\'DM Mono\',monospace">price at the first expiry (strikes in purple)</text>';
+    var plot = $('os3-plot'); if (plot) plot.innerHTML = svg;
+    var cp = $('os3-clip-rect'); if (cp) { cp.setAttribute('x', X0); cp.setAttribute('y', Y0); cp.setAttribute('width', X1 - X0); cp.setAttribute('height', Y1 - Y0); }
+    var leg = $('os3-legend-now'); if (leg) leg.style.display = (frac > 0.001 && frac < 0.999) ? '' : 'none';
+    var tl = $('os3-time-note'); if (tl) tl.textContent = (frac > 0.001 && frac < 0.999) ? 'The dashed amber line is the position valued today-plus-elapsed-time with the vol shift applied.' : (frac >= 0.999 ? 'At the first expiry the two curves are the same line.' : 'Move the time slider to see the value before expiry.');
+  }
+
+  function loadPreset(){
+    var pr = P[sel.value];
+    var ke = $('os3-k'), we = $('os3-w');
+    if (ke) ke.value = pr.k; if (we) we.value = pr.w;
+    flipped = false;
+  }
+  sel.addEventListener('change', function(){ loadPreset(); update(); });
+  ['os3-k', 'os3-w', 'os3-skew', 'os3-vol', 'os3-time', 'os3-spot'].forEach(function(id){
+    var e = $(id); if (e) e.addEventListener('input', update);
+  });
+  var fb = $('os3-flip'); if (fb) fb.addEventListener('click', function(){ flipped = !flipped; update(); });
+  var rb = $('os3-reset');
+  if (rb) rb.addEventListener('click', function(){
+    sel.value = 'bullcall'; loadPreset();
+    ['os3-skew', 'os3-vol', 'os3-time'].forEach(function(id){ var e = $(id); if (e) e.value = 0; });
+    var se = $('os3-spot'); if (se) se.value = S0;
+    update();
+  });
+  loadPreset();
+  update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
+</body>
+</html>

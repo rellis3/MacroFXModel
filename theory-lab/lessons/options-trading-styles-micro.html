@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Five Ways to Trade Options, and How Each One Fails — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
+<link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Trading Styles — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, a style lab, an edge calculator and a 6-question self-test?<a href="options-trading-styles.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 2 · Options in Practice</div>
+      <h1 class="sl-h1">Five Ways to Trade Options, or <em>How Each One Fails</em></h1>
+      <p class="sl-lede">"I trade options" describes almost nothing. People buy direction, sell premium, trade volatility, hedge and trade one option against another. Same contract, five different bets, five different ways to lose. This guide shows what each one is really betting on, how often it wins, and what edge it needs. Educational, not advice: options you buy can lose the whole premium, and options you sell can lose far more than you collect.</p>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="2">
+      <div class="sl-kicker">The whole idea</div>
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five small payoff diagrams for a 30-day trade on a stock at 100. Buy direction, a long 105 call: wins 15.8 percent of the time, a flat loss of the premium below the strike and an unlimited gain above. Sell premium, a short 95 put: wins 82.9 percent of the time, a small capped gain and a large loss that grows as the price falls. Trade volatility, a long 100 straddle: wins 40.5 percent, a V shape that profits from a large move either way. Hedge, 100 shares plus a long 95 put: the loss is floored at 5.67 dollars. Relative value, a short 30-day and long 90-day call: wins 42.7 percent, a small hump of profit near the strike.">
+      <rect class="tlp-box" x="8" y="6" width="184" height="158" rx="8" opacity=".5"/>
+      <text class="tlp-text" x="18" y="28" font-size="15" font-weight="700">1 Buy direction</text>
+      <text class="tlp-text2" x="18" y="46" font-size="12.5">long 105 call</text>
+      <path class="tlp-green" d="M16.0,108.9 L16.0,108.9 L21.6,108.9 L27.2,108.9 L32.8,108.9 L38.4,108.9 L44.0,108.9 L49.6,108.9 L55.2,108.9 L60.8,108.9 L66.4,108.9 L72.0,108.9 L77.6,108.9 L83.2,108.9 L88.8,108.9 L94.4,108.9 L100.0,108.9 L105.6,108.9 L111.2,108.9 L116.8,108.9 L122.4,108.9 L128.0,108.9 L133.6,107.7 L139.2,103.0 L144.8,98.4 L150.4,93.7 L156.0,89.0 L161.6,84.3 L167.2,79.6 L172.8,75.0 L178.4,70.3 L184.0,65.6 L184.0,108.9 Z" opacity=".35"/><path class="tlp-red" d="M16.0,108.9 L16.0,112.4 L21.6,112.4 L27.2,112.4 L32.8,112.4 L38.4,112.4 L44.0,112.4 L49.6,112.4 L55.2,112.4 L60.8,112.4 L66.4,112.4 L72.0,112.4 L77.6,112.4 L83.2,112.4 L88.8,112.4 L94.4,112.4 L100.0,112.4 L105.6,112.4 L111.2,112.4 L116.8,112.4 L122.4,112.4 L128.0,112.4 L133.6,108.9 L139.2,108.9 L144.8,108.9 L150.4,108.9 L156.0,108.9 L161.6,108.9 L167.2,108.9 L172.8,108.9 L178.4,108.9 L184.0,108.9 L184.0,108.9 Z" opacity=".35"/>
+      <line class="tlp-line" x1="16.0" y1="108.9" x2="184.0" y2="108.9"/>
+      <line class="tlp-line dash" x1="100.0" y1="60" x2="100.0" y2="118"/>
+      <polyline class="tlp-line blue thick" points="16.0,112.4 21.6,112.4 27.2,112.4 32.8,112.4 38.4,112.4 44.0,112.4 49.6,112.4 55.2,112.4 60.8,112.4 66.4,112.4 72.0,112.4 77.6,112.4 83.2,112.4 88.8,112.4 94.4,112.4 100.0,112.4 105.6,112.4 111.2,112.4 116.8,112.4 122.4,112.4 128.0,112.4 133.6,107.7 139.2,103.0 144.8,98.4 150.4,93.7 156.0,89.0 161.6,84.3 167.2,79.6 172.8,75.0 178.4,70.3 184.0,65.6"/>
+      <text class="tlp-text" x="18" y="136" font-size="13.5" font-weight="700">wins 15.8%</text>
+      <text class="tlp-text2" x="18" y="154" font-size="13">avg win $3.26 · loss $0.73</text>
+      <rect class="tlp-box" x="204" y="6" width="184" height="158" rx="8" opacity=".5"/>
+      <text class="tlp-text" x="214" y="28" font-size="15" font-weight="700">2 Sell premium</text>
+      <text class="tlp-text2" x="214" y="46" font-size="12.5">short 95 put</text>
+      <path class="tlp-green" d="M212.0,67.8 L212.0,67.8 L217.6,67.8 L223.2,67.8 L228.8,67.8 L234.4,67.8 L240.0,67.8 L245.6,67.8 L251.2,67.8 L256.8,67.8 L262.4,67.8 L268.0,65.6 L273.6,65.6 L279.2,65.6 L284.8,65.6 L290.4,65.6 L296.0,65.6 L301.6,65.6 L307.2,65.6 L312.8,65.6 L318.4,65.6 L324.0,65.6 L329.6,65.6 L335.2,65.6 L340.8,65.6 L346.4,65.6 L352.0,65.6 L357.6,65.6 L363.2,65.6 L368.8,65.6 L374.4,65.6 L380.0,65.6 L380.0,67.8 Z" opacity=".35"/><path class="tlp-red" d="M212.0,67.8 L212.0,112.4 L217.6,107.7 L223.2,103.0 L228.8,98.4 L234.4,93.7 L240.0,89.0 L245.6,84.3 L251.2,79.6 L256.8,75.0 L262.4,70.3 L268.0,67.8 L273.6,67.8 L279.2,67.8 L284.8,67.8 L290.4,67.8 L296.0,67.8 L301.6,67.8 L307.2,67.8 L312.8,67.8 L318.4,67.8 L324.0,67.8 L329.6,67.8 L335.2,67.8 L340.8,67.8 L346.4,67.8 L352.0,67.8 L357.6,67.8 L363.2,67.8 L368.8,67.8 L374.4,67.8 L380.0,67.8 L380.0,67.8 Z" opacity=".35"/>
+      <line class="tlp-line" x1="212.0" y1="67.8" x2="380.0" y2="67.8"/>
+      <line class="tlp-line dash" x1="296.0" y1="60" x2="296.0" y2="118"/>
+      <polyline class="tlp-line blue thick" points="212.0,112.4 217.6,107.7 223.2,103.0 228.8,98.4 234.4,93.7 240.0,89.0 245.6,84.3 251.2,79.6 256.8,75.0 262.4,70.3 268.0,65.6 273.6,65.6 279.2,65.6 284.8,65.6 290.4,65.6 296.0,65.6 301.6,65.6 307.2,65.6 312.8,65.6 318.4,65.6 324.0,65.6 329.6,65.6 335.2,65.6 340.8,65.6 346.4,65.6 352.0,65.6 357.6,65.6 363.2,65.6 368.8,65.6 374.4,65.6 380.0,65.6"/>
+      <text class="tlp-text" x="214" y="136" font-size="13.5" font-weight="700">wins 82.9%</text>
+      <text class="tlp-text2" x="214" y="154" font-size="13">avg win $0.46 · loss $2.82</text>
+      <rect class="tlp-box" x="400" y="6" width="184" height="158" rx="8" opacity=".5"/>
+      <text class="tlp-text" x="410" y="28" font-size="15" font-weight="700">3 Trade volatility</text>
+      <text class="tlp-text2" x="410" y="46" font-size="12.5">long 100 straddle</text>
+      <path class="tlp-green" d="M408.0,97.5 L408.0,65.6 L413.6,68.7 L419.2,71.8 L424.8,75.0 L430.4,78.1 L436.0,81.2 L441.6,84.3 L447.2,87.4 L452.8,90.6 L458.4,93.7 L464.0,96.8 L469.6,97.5 L475.2,97.5 L480.8,97.5 L486.4,97.5 L492.0,97.5 L497.6,97.5 L503.2,97.5 L508.8,97.5 L514.4,97.5 L520.0,96.8 L525.6,93.7 L531.2,90.6 L536.8,87.4 L542.4,84.3 L548.0,81.2 L553.6,78.1 L559.2,75.0 L564.8,71.8 L570.4,68.7 L576.0,65.6 L576.0,97.5 Z" opacity=".35"/><path class="tlp-red" d="M408.0,97.5 L408.0,97.5 L413.6,97.5 L419.2,97.5 L424.8,97.5 L430.4,97.5 L436.0,97.5 L441.6,97.5 L447.2,97.5 L452.8,97.5 L458.4,97.5 L464.0,97.5 L469.6,99.9 L475.2,103.0 L480.8,106.2 L486.4,109.3 L492.0,112.4 L497.6,109.3 L503.2,106.2 L508.8,103.0 L514.4,99.9 L520.0,97.5 L525.6,97.5 L531.2,97.5 L536.8,97.5 L542.4,97.5 L548.0,97.5 L553.6,97.5 L559.2,97.5 L564.8,97.5 L570.4,97.5 L576.0,97.5 L576.0,97.5 Z" opacity=".35"/>
+      <line class="tlp-line" x1="408.0" y1="97.5" x2="576.0" y2="97.5"/>
+      <line class="tlp-line dash" x1="492.0" y1="60" x2="492.0" y2="118"/>
+      <polyline class="tlp-line blue thick" points="408.0,65.6 413.6,68.7 419.2,71.8 424.8,75.0 430.4,78.1 436.0,81.2 441.6,84.3 447.2,87.4 452.8,90.6 458.4,93.7 464.0,96.8 469.6,99.9 475.2,103.0 480.8,106.2 486.4,109.3 492.0,112.4 497.6,109.3 503.2,106.2 508.8,103.0 514.4,99.9 520.0,96.8 525.6,93.7 531.2,90.6 536.8,87.4 542.4,84.3 548.0,81.2 553.6,78.1 559.2,75.0 564.8,71.8 570.4,68.7 576.0,65.6"/>
+      <text class="tlp-text" x="410" y="136" font-size="13.5" font-weight="700">wins 40.5%</text>
+      <text class="tlp-text2" x="410" y="154" font-size="13">avg win $3.21 · loss $2.52</text>
+      <rect class="tlp-box" x="8" y="172" width="184" height="158" rx="8" opacity=".5"/>
+      <text class="tlp-text" x="18" y="194" font-size="15" font-weight="700">4 Hedge</text>
+      <text class="tlp-text2" x="18" y="212" font-size="12.5">100 shares + long 95 put</text>
+      <path class="tlp-green" d="M16.0,265.1 L16.0,265.1 L21.6,265.1 L27.2,265.1 L32.8,265.1 L38.4,265.1 L44.0,265.1 L49.6,265.1 L55.2,265.1 L60.8,265.1 L66.4,265.1 L72.0,265.1 L77.6,265.1 L83.2,265.1 L88.8,265.1 L94.4,265.1 L100.0,265.1 L105.6,264.4 L111.2,262.0 L116.8,259.7 L122.4,257.3 L128.0,255.0 L133.6,252.7 L139.2,250.3 L144.8,248.0 L150.4,245.6 L156.0,243.3 L161.6,241.0 L167.2,238.6 L172.8,236.3 L178.4,234.0 L184.0,231.6 L184.0,265.1 Z" opacity=".35"/><path class="tlp-red" d="M16.0,265.1 L16.0,278.4 L21.6,278.4 L27.2,278.4 L32.8,278.4 L38.4,278.4 L44.0,278.4 L49.6,278.4 L55.2,278.4 L60.8,278.4 L66.4,278.4 L72.0,278.4 L77.6,276.0 L83.2,273.7 L88.8,271.4 L94.4,269.0 L100.0,266.7 L105.6,265.1 L111.2,265.1 L116.8,265.1 L122.4,265.1 L128.0,265.1 L133.6,265.1 L139.2,265.1 L144.8,265.1 L150.4,265.1 L156.0,265.1 L161.6,265.1 L167.2,265.1 L172.8,265.1 L178.4,265.1 L184.0,265.1 L184.0,265.1 Z" opacity=".35"/>
+      <line class="tlp-line" x1="16.0" y1="265.1" x2="184.0" y2="265.1"/>
+      <line class="tlp-line dash" x1="100.0" y1="226" x2="100.0" y2="284"/>
+      <polyline class="tlp-line blue thick" points="16.0,278.4 21.6,278.4 27.2,278.4 32.8,278.4 38.4,278.4 44.0,278.4 49.6,278.4 55.2,278.4 60.8,278.4 66.4,278.4 72.0,278.4 77.6,276.0 83.2,273.7 88.8,271.4 94.4,269.0 100.0,266.7 105.6,264.4 111.2,262.0 116.8,259.7 122.4,257.3 128.0,255.0 133.6,252.7 139.2,250.3 144.8,248.0 150.4,245.6 156.0,243.3 161.6,241.0 167.2,238.6 172.8,236.3 178.4,234.0 184.0,231.6"/>
+      <text class="tlp-text" x="18" y="302" font-size="13.5" font-weight="700">worst case −$5.67</text>
+      <text class="tlp-text2" x="18" y="320" font-size="13">premium $0.57 · win rate n/a</text>
+      <rect class="tlp-box" x="204" y="172" width="184" height="158" rx="8" opacity=".5"/>
+      <text class="tlp-text" x="214" y="194" font-size="15" font-weight="700">5 Relative value</text>
+      <text class="tlp-text2" x="214" y="212" font-size="12.5">short 30d, long 90d call</text>
+      <path class="tlp-green" d="M212.0,251.7 L212.0,251.7 L217.6,251.7 L223.2,251.7 L228.8,251.7 L234.4,251.7 L240.0,251.7 L245.6,251.7 L251.2,251.7 L256.8,251.7 L262.4,251.7 L268.0,251.7 L273.6,251.7 L279.2,251.2 L284.8,245.4 L290.4,238.9 L296.0,231.6 L301.6,238.4 L307.2,244.5 L312.8,249.8 L318.4,251.7 L324.0,251.7 L329.6,251.7 L335.2,251.7 L340.8,251.7 L346.4,251.7 L352.0,251.7 L357.6,251.7 L363.2,251.7 L368.8,251.7 L374.4,251.7 L380.0,251.7 L380.0,251.7 Z" opacity=".35"/><path class="tlp-red" d="M212.0,251.7 L212.0,278.4 L217.6,278.0 L223.2,277.4 L228.8,276.6 L234.4,275.5 L240.0,274.1 L245.6,272.4 L251.2,270.3 L256.8,267.6 L262.4,264.5 L268.0,260.7 L273.6,256.3 L279.2,251.7 L284.8,251.7 L290.4,251.7 L296.0,251.7 L301.6,251.7 L307.2,251.7 L312.8,251.7 L318.4,254.6 L324.0,258.7 L329.6,262.3 L335.2,265.3 L340.8,267.9 L346.4,270.1 L352.0,271.9 L357.6,273.4 L363.2,274.6 L368.8,275.6 L374.4,276.5 L380.0,277.1 L380.0,251.7 Z" opacity=".35"/>
+      <line class="tlp-line" x1="212.0" y1="251.7" x2="380.0" y2="251.7"/>
+      <line class="tlp-line dash" x1="296.0" y1="226" x2="296.0" y2="284"/>
+      <polyline class="tlp-line blue thick" points="212.0,278.4 217.6,278.0 223.2,277.4 228.8,276.6 234.4,275.5 240.0,274.1 245.6,272.4 251.2,270.3 256.8,267.6 262.4,264.5 268.0,260.7 273.6,256.3 279.2,251.2 284.8,245.4 290.4,238.9 296.0,231.6 301.6,238.4 307.2,244.5 312.8,249.8 318.4,254.6 324.0,258.7 329.6,262.3 335.2,265.3 340.8,267.9 346.4,270.1 352.0,271.9 357.6,273.4 363.2,274.6 368.8,275.6 374.4,276.5 380.0,277.1"/>
+      <text class="tlp-text" x="214" y="302" font-size="13.5" font-weight="700">wins 42.7%</text>
+      <text class="tlp-text2" x="214" y="320" font-size="13">avg win $0.66 · loss $0.84</text>
+      <rect class="tlp-box blue" x="400" y="172" width="184" height="158" rx="8" opacity=".5"/>
+      <text class="tlp-blue" x="410" y="194" font-size="14" font-weight="700">How to read it</text>
+      <text class="tlp-text2" x="410" y="214" font-size="12.5">Profit and loss at 30 days,</text>
+      <text class="tlp-text2" x="410" y="229" font-size="12.5">spot 85 to 115, dashed line</text>
+      <text class="tlp-text2" x="410" y="244" font-size="12.5">at 100. Green is profit, red</text>
+      <text class="tlp-text2" x="410" y="259" font-size="12.5">is loss. Each panel has its</text>
+      <text class="tlp-text2" x="410" y="274" font-size="12.5">own vertical scale.</text>
+      <text class="tlp-text2" x="410" y="304" font-size="12.5">Stock 100, implied vol 20%,</text>
+      <text class="tlp-text2" x="410" y="319" font-size="12.5">costs $0.10 per option leg.</text>
+    </svg>
+    <figcaption>Same stock, same 30 days, same fair prices: only the shape of the bet changes. The buyer wins rarely and big, the seller wins often and small, the volatility trader wins on size of move, the hedger buys a floor, the relative-value trader earns a small hump. Win rate alone tells you nothing about which is the better trade.</figcaption>
+  </figure>
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">People keep telling me options are dangerous. But they are just contracts. Where does the danger actually come from?</p>
+      <p data-who="Quant">From how you use them. There are five common ways. You can buy for direction, sell premium, trade volatility, hedge, or trade one option against another. Same contract, five different bets.</p>
+      <p data-who="Trader">Take the first two. A stock is at one hundred, and the market expects a normal swing of about six percent over the next month.</p>
+      <p data-who="Quant">Buying a call struck at one hundred and five costs about sixty-four cents. It only pays if the stock finishes above one hundred and five, plus the premium. That happens about sixteen times in a hundred. When it does, the average win is about three dollars twenty-six, roughly four and a half times the average loss.</p>
+      <p data-who="Trader">A low win rate, with big wins. And selling?</p>
+      <p data-who="Quant">Sell a put struck at ninety-five and you collect fifty-seven cents. You keep it about eighty-three times in a hundred. But the average win is forty-six cents and the average loss is two dollars eighty-two. The loss is six times the win.</p>
+      <p data-who="Trader">So the seller looks like a genius for months.</p>
+      <p data-who="Quant">Until the month that matters. And here is the key point. If volatility is priced fairly, both traders average the same result before costs, which is zero. A high win rate and a low win rate are two ways of slicing the same average.</p>
+      <p data-who="Trader">Then how does anyone make money?</p>
+      <p data-who="Quant">Only by holding a view that differs from the price, and being right. A seller needs implied volatility to run above what is later realised. A buyer needs a bigger move than the price assumes. Without that, costs turn it into a small, steady loss.</p>
+      <p data-who="Trader">Do costs really matter that much?</p>
+      <p data-who="Quant">Researchers who studied retail option traders, in the Netherlands and in the United States, found they lose money on average. The American study found they favour cheap weekly options, with an average bid-ask spread of twelve point six percent. Paying that on every trade is a heavy toll.</p>
+      <p data-who="Trader">What about the other three styles?</p>
+      <p data-who="Quant">Volatility traders bet on how far the price travels, not which way, and fail when the move is already in the price. Hedgers pay to cap a risk they already hold, so their option usually expires unused. That is the point. Relative-value traders bet that two options are mispriced against each other, and fail when the gap widens before it closes.</p>
+      <p data-who="Trader">Has anyone sold insurance at scale and survived?</p>
+      <p data-who="Quant">Berkshire Hathaway sold about thirty-seven billion dollars of long-dated index puts and collected four point nine billion. At the end of two thousand and eight it valued them as a ten billion dollar liability, a five point one billion dollar paper loss. But the contracts could only be settled at the end, and only a small share needed collateral, so nobody could force it to sell.</p>
+      <p data-who="Trader">So a style can survive, with the right funding.</p>
+      <p data-who="Quant">Right. Before you trade any of the five, finish the sentence: I get paid because. Then know exactly how you lose, and whether you can hold through it.</p>
+    </div>
+  </section>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One instrument, five bets</h2>
+      <p class="sl-sub">A stock at 100, 30 days, implied volatility 20%, costs of 10 cents a leg. Figures include those costs.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>1. Buy direction</h4><p>Betting on direction, size and timing at once. The 105 call wins 15.8% of the time; the average win is 4.5 times the average loss.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧾</div><div><h4>2. Sell premium</h4><p>Betting on a quieter market than priced. The 95 put wins 82.9%, but one loss ($2.82) is worth 6.1 wins ($0.46).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>3. Trade volatility</h4><p>Betting on how far, not which way. The unhedged 100 straddle wins 40.5%, average win $3.21 against average loss $2.52.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🛡️</div><div><h4>4. Hedge</h4><p>Betting on nothing: paying to cap a risk you hold. 100 shares plus the 95 put cap the loss at $5.67 for $0.57. Win rate is the wrong measure.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖️</div><div><h4>5. Relative value</h4><p>Betting that one option is rich against another. Short 30-day, long 90-day call: wins 42.7%, best case $1.36, worst case $1.87.</p></div></div>
+      </div>
+      <div class="sl-quote">Same contracts, same fair prices. What changes is the shape of the bet, and with it how you lose.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Win rate and payoff shape are one fact</h2>
+      <p class="sl-sub">At a fair price the average payoff equals the price, so p·W = (1 − p)·L before costs. Edit the numbers: they start on the short put.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — edge calculator</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Win rate p (%)</label><input type="number" class="sl-input" id="es-p" value="83.4" step="0.1" min="0" max="100"></div>
+          <div class="sl-calc-field"><label>Average win W ($)</label><input type="number" class="sl-input" id="es-w" value="0.56" step="0.01" min="0"></div>
+          <div class="sl-calc-field"><label>Average loss L ($)</label><input type="number" class="sl-input" id="es-l" value="2.81" step="0.01" min="0"></div>
+          <div class="sl-calc-field"><label>Costs c ($)</label><input type="number" class="sl-input" id="es-c" value="0.10" step="0.01" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Result after costs</div>
+            <div class="sl-calc-result-val" id="es-net">−$0.10</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Average result before costs: <b id="es-gross">$0.00</b></div>
+          <div>Payoff ratio W/L: <b id="es-ratio">0.20</b></div>
+          <div>Win rate needed to break even, before costs: <b id="es-pfair">83.4%</b> · after costs: <b id="es-pbe">86.4%</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="es-reset">Reset to the short put's numbers</button>
+        <div class="sl-note" id="es-note">Negative after costs: this win rate does not pay for this payoff shape.</div>
+      </div>
+      <p class="sl-p">edge = p·W − (1 − p)·L − c = V(you) − P − c. V(you) is what the position is worth on your forecast, P is what you pay. With no forecast of your own, edge is minus the costs.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Who gets paid depends on volatility, not on the style</h2>
+      <p class="sl-sub">Options are priced at 20% implied volatility. Move realised volatility and watch the average result per trade for each style.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — average result per trade, after costs</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of the average result per trade in dollars per share for five option styles: buy direction, sell premium, trade volatility, hedge and relative value, at the chosen realised volatility with implied volatility fixed at 20 percent. Bars above the line are average profits and bars below are average losses.">
+            <g id="ds-bars"><line x1="30" x2="620" y1="112" y2="112" style="stroke:var(--text3)" stroke-width="1.2"></line><rect x="50" y="112.0" width="80" height="15.6" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="90" y="149.6" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">−$0.10</text><text x="90" y="230" text-anchor="middle" font-size="17" style="fill:var(--text2)">Direction</text><rect x="165" y="112.0" width="80" height="15.6" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="205" y="149.6" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">−$0.10</text><text x="205" y="230" text-anchor="middle" font-size="17" style="fill:var(--text2)">Premium</text><rect x="280" y="112.0" width="80" height="31.2" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="320" y="165.2" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">−$0.20</text><text x="320" y="230" text-anchor="middle" font-size="17" style="fill:var(--text2)">Volatility</text><rect x="395" y="112.0" width="80" height="15.6" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="435" y="149.6" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">−$0.10</text><text x="435" y="230" text-anchor="middle" font-size="17" style="fill:var(--text2)">Hedge</text><rect x="510" y="112.0" width="80" height="31.2" rx="3" style="fill:var(--red)" opacity="0.75"></rect><text x="550" y="165.2" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">−$0.20</text><text x="550" y="230" text-anchor="middle" font-size="17" style="fill:var(--text2)">Rel. value</text></g>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Realised volatility (implied is 20%)</span><span class="sl-live" id="ds-rv-val">20%</span></div>
+        <input type="range" class="sl-slider" id="ds-rv" min="10" max="40" step="1" value="20">
+        <div class="sl-sliderhead"><span>Cost per option leg</span><span class="sl-live" id="ds-cost-val">$0.10</span></div>
+        <input type="range" class="sl-slider" id="ds-cost" min="0" max="30" step="1" value="10">
+        <div class="sl-verdict" id="ds-verdict">Realised equals implied: every style averages minus its costs.</div>
+        <div class="sl-calc-steps">
+          <div>Buy direction (long 105 call): <b id="ds-call">−$0.10</b> a share</div>
+          <div>Sell premium (short 95 put): <b id="ds-put">−$0.10</b></div>
+          <div>Trade volatility (long 100 straddle): <b id="ds-straddle">−$0.20</b></div>
+          <div>Hedge (100 shares and long 95 put): <b id="ds-hedge">−$0.10</b></div>
+          <div>Relative value (short 30-day, long 90-day call): <b id="ds-cal">−$0.20</b></div>
+        </div>
+      </div>
+      <p class="sl-p">At 20% every bar sits at minus the cost. At 25% the buyers are paid and the put seller is not. At 15% it flips. The style did not decide it: the gap between realised and implied did.</p>
+    </section>
+
+    <!-- WB:options_trading_styles-deck:START -->
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Five ways to trade the same month</h2>
+      <!-- WB:options_trading_styles:START -->
+      <div class="wb" data-title="Five ways to trade the same month">
+        <script type="application/json">{"w":600,"h":845,"intro":"One stock, one month, five ways to trade the options on it. Every price is fair, so the interesting part is the shape of each bet. Press play, or step through.","steps":[{"cap":"A stock at 100 and options that expire in 30 days, priced at 20% implied volatility. That prices a typical one-month move of about 5.7 either way.","do":[{"icon":"you","name":"person","x":20,"y":14,"s":0.7,"tone":"blue","label":"you","lsize":18},{"box":"stk","x":140,"y":20,"w":190,"h":62,"text":"stock = 100","tone":"blue"},{"box":"mo","x":360,"y":20,"w":220,"h":62,"text":"30 days","tone":"blue","sub":"implied vol 20%"}]},{"cap":"The prices are fair: if the market has volatility right, the average result of every trade is zero before costs. The five styles are five different ways of getting to that same zero.","do":[{"note":"fair","x":300,"y":128,"text":"fair price: average result = 0 (before costs)","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Style 1, buy direction. A 105 call costs $0.64. It wins only 15.8% of the time, the average win is $3.26 and the average loss is $0.73.","do":[{"hide":"fair"},{"box":"buy","x":10,"y":100,"w":285,"h":66,"text":"1 · buy a 105 call","tone":"green","sub":"pay $0.64 · wins 15.8%","size":18}]},{"cap":"Twenty-four months of that trade, illustrative: four wins and twenty losses. Long flat stretches of small losses, then a jump. It ends slightly down, because of costs.","do":[{"chart":"run","x":10,"y":180,"w":580,"h":250,"title":"Cumulative result per share, 24 trades (illustrative)","xd":[0,24],"yd":[-6,8],"yt":[[-5,"−5"],[0,"0"],[5,"5"]],"xt":[[0,"0"],[12,"12"],[24,"24 trades"]],"zero":true,"pl":44,"pr":110},{"series":"b","chart":"run","pts":[[0,0.0],[1,-0.73],[2,-1.46],[3,-2.19],[4,-2.92],[5,0.34],[6,-0.39],[7,-1.12],[8,-1.85],[9,-2.58],[10,-3.31],[11,-0.05],[12,-0.78],[13,-1.51],[14,-2.24],[15,1.02],[16,0.29],[17,-0.44],[18,-1.17],[19,-1.9],[20,-2.63],[21,-3.36],[22,-0.1],[23,-0.83],[24,-1.56]],"tone":"green","ms":2200,"label":"buyer −1.56","lat":[24,-1.56],"ldx":6,"ldy":0,"lanchor":"start","lsize":15}]},{"cap":"Style 2, sell premium. The 95 put collects $0.57 and wins 82.9% of the time. The average win is $0.46, but the average loss is $2.82, six times bigger.","do":[{"box":"sell","x":305,"y":100,"w":285,"h":66,"text":"2 · sell a 95 put","tone":"amber","sub":"collect $0.57 · wins 82.9%","size":18}]},{"cap":"The same twenty-four months for the seller: a steady climb of small wins, then four sharp drops. It ends slightly down too. Fair prices: a high win rate and a low one are two slices of the same average.","do":[{"series":"s","chart":"run","pts":[[0,0.0],[1,0.46],[2,0.92],[3,1.38],[4,1.84],[5,2.3],[6,2.76],[7,3.22],[8,3.68],[9,0.86],[10,1.32],[11,1.78],[12,2.24],[13,2.7],[14,-0.12],[15,0.34],[16,0.8],[17,1.26],[18,1.72],[19,-1.1],[20,-0.64],[21,-0.18],[22,0.28],[23,-2.54],[24,-2.08]],"tone":"amber","ms":2200,"label":"seller −2.08","lat":[24,-2.08],"ldx":6,"ldy":18,"lanchor":"start","lsize":15}]},{"cap":"Style 3, trade volatility. A 100 straddle costs $4.57 and profits if the price travels more than $4.77 either way, which happens 40.5% of the time. It bets on size, not direction.","do":[{"box":"vol","x":10,"y":452,"w":185,"h":120,"text":"3 · long\nstraddle","tone":"purple","sub":"$4.57 · wins 40.5%","size":18}]},{"cap":"Style 4, hedge. You already own 100 shares. The 95 put costs $0.57 and caps your loss at $5.67 a share. Most months it expires unused, and that is what protection looks like.","do":[{"box":"hed","x":208,"y":452,"w":185,"h":120,"text":"4 · shares\n+ 95 put","tone":"blue","sub":"worst case −$5.67","size":18}]},{"cap":"Style 5, relative value. Sell the 30-day call and buy the 90-day call, both at 100. You bet on the gap between two prices, not on direction. Profit sits in a narrow hump near the strike.","do":[{"box":"rv","x":406,"y":452,"w":185,"h":120,"text":"5 · sell 30-day\nbuy 90-day","tone":"red","sub":"best $1.36 · worst $1.87","size":16}]},{"cap":"What decides who is paid is not the style but the gap between realised and implied volatility. Say realised comes in at 25%: the buyers are paid, the put seller and the calendar are not. At 15% it flips.","do":[{"chart":"ev","x":10,"y":590,"w":580,"h":200,"title":"Average result per share if realised vol = 25%","xd":[0,5],"yd":[-0.8,1.5],"yt":[[-0.5,"−0.5"],[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[],"zero":true,"pl":44,"pr":16},{"bars":"evb","chart":"ev","data":[[0.5,0.34,"call","green"],[1.5,-0.5,"put","red"],[2.5,0.94,"straddle","green"],[3.5,0.3,"hedge","green"],[4.5,-0.42,"calendar","red"]],"bw":50}]},{"cap":"So before any of the five: finish the sentence \"I get paid because…\". If you cannot, the average result is minus your costs, whichever style you pick.","do":[{"note":"end","x":300,"y":826,"text":"no edge = minus the costs","size":19,"anchor":"middle","tone":"red"}]}]}</script>
+      </div>
+      <!-- WB:options_trading_styles:END -->
+    </section>
+    <!-- WB:options_trading_styles-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The buyer and the seller of the same month</h2>
+      <p class="sl-sub">Two fair trades with the same zero average before costs, wearing completely different faces.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Long 105 call · pays $0.64</span>
+          <ul>
+            <li>Wins 15.8% of the time</li>
+            <li>Average win $3.26, average loss $0.73</li>
+            <li>Needs the price above 105.74 at expiry</li>
+            <li>Failure: right on direction, wrong on size or time</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Short 95 put · collects $0.57</span>
+          <ul>
+            <li>Wins 82.9% of the time</li>
+            <li>Average win $0.46, average loss $2.82</li>
+            <li>Loses a dollar for every dollar below 94.53</li>
+            <li>Failure: one loss undoes many wins</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Same view, different style</div>
+        <p>You expect 108. The call makes $2.26 a share, the put makes only its $0.47 credit. At 103 (up 3%) the call loses $0.74 and the put wins $0.47. At 90 the call loses $0.74 and the put loses $4.53. A view on direction does not choose the style.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Volatility, hedging and relative value</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>Trade volatility</h4><p>Edge is vega times the gap between your volatility forecast and the price: ν·(σ you − σ market) − c. A move that is already priced in pays nothing. Professionals delta-hedge so direction drops out.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🛡️</div><div><h4>Hedge</h4><p>The option usually expires unused. Judge it by the floor it buys and its price. It fails when it hedges the wrong exposure, is bought after the shock at peak prices, or is dropped after a long bleed.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖️</div><div><h4>Relative value</h4><p>One option rich against another: term structure, skew, strike against strike. Needs a view of fair value, tight spreads and funding to wait. It fails when the gap widens before it closes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Styles blend</h4><p>A covered call mixes hedging and selling premium. A collar sells upside to pay for downside cover. Name the main bet, then the second bet you did not mean to take.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Who tends to use which</h2>
+      <p class="sl-sub">Tendencies, not rules. Most participants use more than one style.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🙋</div><div><h4>Retail traders</h4><p>Mostly buying calls and puts (style 1) and covered calls, cash-secured puts and simple credit spreads (style 2).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Dealers and market makers</h4><p>Quote both sides, earn the spread, then hedge the delta and vega they are left with. Their book is the other side of everyone else's trade.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Funds</h4><p>Volatility and relative-value funds run styles 3 and 5, delta-hedged and risk-sized. Macro funds buy options for convexity and sell them for income.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏭</div><div><h4>Corporates, managers, insurers</h4><p>Mostly hedging (style 4): currency and commodity exposure, protective puts and collars on holdings.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">What the retail data say</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Two peer-reviewed studies</div>
+        <p><strong>Bauer, Cosemans and Eichholtz (2009), Journal of Banking &amp; Finance.</strong> Most individual investors lost substantially on their option positions, much more than on equities. The authors point to poor timing and high trading costs, and find gambling and entertainment motives matter far more than hedging.</p>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">United States, payment for order flow</div>
+        <p><strong>Bryzgalova, Pavlova and Sikorskaya (2023), Journal of Finance.</strong> Retail investors favoured cheaper, weekly options, with an average bid-ask spread of 12.6%, and lost money on average.</p>
+      </div>
+      <p class="sl-p">For scale: 12.6% of the $0.64 call is about 8 cents of spread. A round trip across it costs that whole width, so the lab's 10 cents per leg is realistic for such options. These are averages in particular samples. They do not say every retail trader loses.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 8 · It actually happened</div>
+      <h2 class="sl-h2">Berkshire Hathaway's index puts, 2008</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>By the end of 2008 Berkshire had sold put options on the S&amp;P 500, FTSE 100, Euro Stoxx 50 and Nikkei 225, expiring in 15 and 20 years (first on 9 September 2019, last on 24 January 2028). Maximum payout $37.1 billion; premiums received $4.9 billion. Neither side could settle early, and only a small percentage of its derivative contracts called for collateral. At year-end it valued the puts at a $10 billion liability, a reported mark-to-market loss of $5.1 billion with nothing yet paid. Source: Berkshire Hathaway chairman's letter for 2008.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link"><b>Premium</b>$4.9bn received up front</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ Style 2</b>Win small now, owe a tail later</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link shock"><b>2008</b>Puts marked at $10bn liability</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Structure</b>No early settlement, little collateral</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>$5.1bn paper loss, no forced selling</div>
+      </div>
+      <p class="sl-p">Maximum payment is 7.6 times the premium. The structure, not the style, kept it from being forced out. A retail seller faces daily margin and can be closed out at the worst moment.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Which style fits your edge</h2>
+      <p class="sl-sub">Start from what you can actually forecast.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Direction, size and a window</h4><p>Buy direction. You must beat the break-even and the time decay. Size it so losing the whole premium is acceptable.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧾</div><div><h4>Implied usually above realised</h4><p>Sell premium, defined risk first. Size by the worst case, not the margin, and expect rare large losses.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>A better forecast of move size</h4><p>Trade volatility, delta-hedged. The forecast must beat implied out of sample, with tight execution.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🛡️</div><div><h4>A risk you already hold</h4><p>Hedge. You need a reason, a budget and a fair price. Judge it by what it protects.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖️</div><div><h4>One option rich against another</h4><p>Relative value. Tight spreads on every leg, funding to wait, and a view of fair value.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∅</div><div><h4>Cannot finish "I get paid because…"</h4><p>None of the five. Not trading is a position. Without an edge every style averages minus its costs.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where each style quietly goes wrong</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏆</div><div><h4>Reading win rate as skill</h4><p>A seller's high win rate is the shape of the bet. A long winning run is what the shape predicts.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Choosing from the view, not the price</h4><p>"I am bullish, so I buy a call" skips how big, by when, and what the market already assumes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧱</div><div><h4>Defined risk is not small risk</h4><p>A capped loss limits the worst case. It does not make a bad edge good.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🪙</div><div><h4>Ignoring costs</h4><p>Costs are certain and an edge is not. With wide spreads and several legs they can exceed a small edge.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Style drift</h4><p>Selling "to fund the buying" changes the risk without changing the limits. Write down the bet before you trade.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Sizing from margin</h4><p>Margin is a funding number, not a risk number. Size by the worst case you can name.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>A short put wins 83% of the time but averages a loss. Why?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Its average loss is about six times its average win, and costs push the average below zero</button>
+        <button class="sl-quiz-opt">Options sellers always lose</button>
+        <button class="sl-quiz-opt">The win rate must be miscalculated</button>
+        <div class="sl-quiz-explain">At a fair price p·W = (1 − p)·L. The put wins $0.46 and loses $2.82 on average, so 0.829 × 0.46 − 0.171 × 2.82 = −$0.10 after costs.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>If implied volatility equals realised, what does each style average before costs?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Zero</button>
+        <button class="sl-quiz-opt">Buyers lose and sellers win</button>
+        <button class="sl-quiz-opt">Sellers lose and buyers win</button>
+        <div class="sl-quiz-explain">A fairly priced option's average payoff equals its price. Costs then take a toll on every leg, so each style averages minus its costs.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why is win rate the wrong measure for a hedge?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The option usually expires unused by design; what matters is the floor it buys and its price</button>
+        <button class="sl-quiz-opt">Hedges always win</button>
+        <button class="sl-quiz-opt">Hedges have no cost</button>
+        <div class="sl-quiz-explain">You buy a hedge to cap a risk you already hold. 100 shares plus the 95 put cap the loss at $5.67 a share for a premium of $0.57.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What kept Berkshire's short index puts from forcing it out?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Fixed final settlement, little collateral to post and a 15 to 20 year horizon</button>
+        <button class="sl-quiz-opt">It chose the right month to sell</button>
+        <button class="sl-quiz-opt">Index puts cannot lose money</button>
+        <div class="sl-quiz-explain">A $5.1 billion paper loss at the end of 2008 did not force it to sell. A retail seller facing daily margin can be closed out at the worst moment.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Realised volatility comes in at 25% against 20% implied. Who is paid?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Buyers of options, such as the straddle and the call; the put seller averages a loss</button>
+        <button class="sl-quiz-opt">Everyone, because the market is more active</button>
+        <button class="sl-quiz-opt">Only the sellers of premium</button>
+        <div class="sl-quiz-explain">With costs of 10 cents a leg the straddle buyer averages +$0.94 and the call buyer +$0.34, while the put seller averages −$0.50.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="15">
+      <div class="sl-kicker">Your call</div>
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative earnings week</div>
+    <h3>Everyone expects a big move. Which side do you take?</h3>
+    <p>This is a hypothetical situation, not a real company, with round numbers chosen to keep the arithmetic clear. A stock is at $100 and reports results tomorrow after the close. The nearest at-the-money straddle costs $6.40, so the market is pricing a move of roughly 6% either way. You also expect a big move, perhaps 6%. You have no view on direction, and costs are $0.10 per option leg. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Buy the straddle. A big move is coming.<div class="tl-drill-why">The price already contains your forecast. If the move is 6% as priced, the straddle returns about what it cost before costs, and the 20 cents of costs on two legs makes the average result negative. You need the move to be larger than 6.4% plus costs, and you have no reason to think it will be.</div></li>
+      <li data-verdict="bad">Sell the straddle. The price is high, so collect it.<div class="tl-drill-why">A price that matches a fair forecast is not high. If the move is 6% you roughly break even before costs. A 15% move would lose about $8.60 against the $6.40 collected, with no cap on how large it can be, and you have no reason to think the move will be smaller than priced.</div></li>
+      <li data-verdict="good">Pass, unless you can say why you expect a move bigger or smaller than 6.4%.<div class="tl-drill-why">Edge is your forecast against the price. Where the two agree there is none, and costs make the average trade a loss on either side. A trade is worth considering only when you have a reason for a different number, and then you size it for the case where you are wrong.</div></li>
+      <li data-verdict="ok">Buy a small straddle for the fun of it, sized so that losing the premium is trivial.<div class="tl-drill-why">Defensible as a bet you treat as entertainment, with the loss capped at an amount you do not mind. It is not an edge: the expected result is minus the costs. The research on retail option traders found entertainment was a bigger motive than hedging, and it found large average losses.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>This is a hypothetical, so there is no outcome to report.</strong> The arithmetic is the point. If the typical move really is the priced 6.4%, a straddle buyer's average result is zero before costs and −$0.20 after them, and the seller's is also −$0.20. Both sides lose the toll to the market maker. Someone can only do better than that with a forecast that differs from the price and is right.</p></div>
+  </div>
+    </section>
+
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>There are five styles: buy direction, sell premium, trade volatility, hedge and relative value. Same contracts, different bets, different ways to lose.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Win rate and payoff shape are one fact: at fair prices p·W = (1 − p)·L. A high win rate means a large average loss.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Edge = V(you) − P − c: your forecast against the price, minus costs. For a volatility view it is vega times the volatility gap.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Retail option traders have lost money on average in two peer-reviewed studies; timing, costs and wide spreads are among the reasons.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>It actually happened, Berkshire 2008: $37.1bn of 15 and 20 year index puts, $4.9bn collected, a $5.1bn paper loss, no forced selling. Funding, not style, decided whether it could hold on.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Before any trade, finish the sentence "I get paid because…", name how you lose, and check you can hold through it.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Look at any options trade and say which of the five bets it really is, how often it should win and how big the average win and loss are, what must be true for it to pay, and how it fails. That is the question set the rest of this series builds on.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Option Spreads &amp; Structures</h3>
+        <p>Spreads, straddles, butterflies, condors, collars: all just four option bricks combined. Build the payoff yourself, see what each costs and risks, and why a high win rate is not an edge.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="options-spreads-and-structures-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="options-trading-styles.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Pricing and outcome engine. Black-Scholes, r = q = 0, spot 100, 30-day horizon.
+  var S0 = 100, T0 = 30 / 365, NG = 4001, ZMAX = 7;
+  function cnd(x){
+    var xa = Math.abs(x), r;
+    if (xa > 37) { r = 0; }
+    else {
+      var e = Math.exp(-xa * xa / 2), b;
+      if (xa < 7.07106781186547) {
+        b = 3.52624965998911E-02 * xa + 0.700383064443688;
+        b = b * xa + 6.37396220353165; b = b * xa + 33.912866078383;
+        b = b * xa + 112.079291497871; b = b * xa + 221.213596169931;
+        b = b * xa + 220.206867912376; r = e * b;
+        b = 8.83883476483184E-02 * xa + 1.75566716318264;
+        b = b * xa + 16.064177579207; b = b * xa + 86.7807322029461;
+        b = b * xa + 296.564248779674; b = b * xa + 637.333633378831;
+        b = b * xa + 793.826512519948; b = b * xa + 440.413735824752;
+        r = r / b;
+      } else {
+        b = xa + 0.65; b = xa + 4 / b; b = xa + 3 / b; b = xa + 2 / b; b = xa + 1 / b;
+        r = e / b / 2.506628274631;
+      }
+    }
+    return x > 0 ? 1 - r : r;
+  }
+  function bs(S, K, T, v, call){
+    if (T <= 0) return call ? Math.max(S - K, 0) : Math.max(K - S, 0);
+    var sd = v * Math.sqrt(T), d1 = (Math.log(S / K) + 0.5 * sd * sd) / sd, d2 = d1 - sd;
+    return call ? S * cnd(d1) - K * cnd(d2) : K * cnd(-d2) - S * cnd(-d1);
+  }
+  // legs: [call?, strike, qty, years to expiry now, years left at the horizon, vol]
+  function structure(id, iv, term){
+    var ivb = iv + term;
+    if (id === 'call') return { legs: [[1, 105, 1, 30 / 365, 0, iv]], stock: 0 };
+    if (id === 'put') return { legs: [[0, 95, -1, 30 / 365, 0, iv]], stock: 0 };
+    if (id === 'straddle') return { legs: [[1, 100, 1, 30 / 365, 0, iv], [0, 100, 1, 30 / 365, 0, iv]], stock: 0 };
+    if (id === 'hedge') return { legs: [[0, 95, 1, 30 / 365, 0, iv]], stock: 1 };
+    return { legs: [[1, 100, -1, 30 / 365, 0, iv], [1, 100, 1, 90 / 365, 60 / 365, ivb]], stock: 0 };
+  }
+  function pnlFn(st, cost){
+    var entry = 0, i, L = st.legs;
+    for (i = 0; i < L.length; i++) entry += L[i][2] * bs(S0, L[i][1], L[i][3], L[i][5], L[i][0] === 1);
+    var f = function(S){
+      var val = 0, j;
+      for (j = 0; j < L.length; j++) val += L[j][2] * bs(S, L[j][1], L[j][4], L[j][5], L[j][0] === 1);
+      return val - entry + st.stock * (S - S0) - cost * L.length;
+    };
+    return { f: f, entry: entry };
+  }
+  var ZG = null;
+  function grid(){
+    if (ZG) return ZG;
+    var z = [], w = [], s = 0, i;
+    for (i = 0; i < NG; i++) { z.push(-ZMAX + 2 * ZMAX * i / (NG - 1)); w.push(Math.exp(-z[i] * z[i] / 2)); s += w[i]; }
+    for (i = 0; i < NG; i++) w[i] /= s;
+    ZG = { z: z, w: w };
+    return ZG;
+  }
+  // iv, rv, term in vol points (20 = 20%); cost in dollars per option leg
+  function outcome(id, iv, rv, term, cost){
+    var g = grid(), st = structure(id, iv / 100, term / 100), pf = pnlFn(st, cost);
+    var sd = rv / 100 * Math.sqrt(T0), drift = -0.5 * sd * sd;
+    var win = 0, sw = 0, sl = 0, ev = 0, i, p, s;
+    for (i = 0; i < NG; i++) {
+      s = S0 * Math.exp(drift + sd * g.z[i]);
+      p = pf.f(s); ev += g.w[i] * p;
+      if (p > 0) { win += g.w[i]; sw += g.w[i] * p; } else { sl -= g.w[i] * p; }
+    }
+    return { entry: pf.entry, win: win, aw: win > 0 ? sw / win : 0, al: win < 1 ? sl / (1 - win) : 0, ev: ev, f: pf.f, legs: st.legs.length };
+  }
+  // breakevens, worst case and best case over a wide spot range
+  function shape(id, iv, term, cost){
+    var pf = pnlFn(structure(id, iv / 100, term / 100), cost), f = pf.f, be = [], lo = 1e9, hi = -1e9;
+    var a = 1e-9, b = 400, n = 8000, prev = f(a), prevS = a, i, s, v;
+    for (i = 0; i <= n; i++) {
+      s = a + (b - a) * i / n; v = f(s);
+      if (v < lo) lo = v; if (v > hi) hi = v;
+      if (i > 0 && ((prev <= 0 && v > 0) || (prev > 0 && v <= 0))) {
+        var x0 = prevS, x1 = s, k, xm;
+        for (k = 0; k < 50; k++) { xm = (x0 + x1) / 2; if ((f(xm) > 0) === (prev > 0)) x0 = xm; else x1 = xm; }
+        be.push((x0 + x1) / 2);
+      }
+      prev = v; prevS = s;
+    }
+    return { be: be, worst: lo, best: hi, entry: pf.entry };
+  }
+
+  function eusd(x) { var s = Math.abs(x).toFixed(2); return ((x < 0 && Number(s) !== 0) ? '−' : ((x > 0 && Number(s) !== 0) ? '+' : '')) + '$' + s; }
+  // Edge calculator
+  var pEl = document.getElementById('es-p');
+  if (pEl) {
+    var wEl = document.getElementById('es-w'), lEl = document.getElementById('es-l'), cEl = document.getElementById('es-c');
+    var D = { p: 83.4, w: 0.56, l: 2.81, c: 0.1 };
+    var g = function (id) { return document.getElementById(id); };
+    var recalc = function () {
+      var p = parseFloat(pEl.value) / 100, w = parseFloat(wEl.value), l = parseFloat(lEl.value), c = parseFloat(cEl.value);
+      if (!isFinite(p) || !isFinite(w) || !isFinite(l) || !isFinite(c) || p < 0 || p > 1 || w <= 0 || l <= 0 || c < 0) {
+        ['es-net', 'es-gross', 'es-ratio', 'es-pfair', 'es-pbe'].forEach(function (id) { g(id).textContent = '—'; });
+        g('es-note').textContent = 'Need 0 to 100% for the win rate, and positive average win and loss.';
+        return;
+      }
+      var gross = p * w - (1 - p) * l, net = gross - c;
+      g('es-gross').textContent = eusd(gross);
+      g('es-net').textContent = eusd(net);
+      g('es-ratio').textContent = (w / l).toFixed(2);
+      g('es-pfair').textContent = (l / (w + l) * 100).toFixed(1) + '%';
+      g('es-pbe').textContent = ((l + c) / (w + l) * 100).toFixed(1) + '%';
+      g('es-note').textContent = net > 0 ? 'Positive after costs, if these are your real, out-of-sample averages.' : 'Negative after costs: this win rate does not pay for this payoff shape.';
+    };
+    [pEl, wEl, lEl, cEl].forEach(function (el) { el.addEventListener('input', recalc); });
+    g('es-reset').addEventListener('click', function () { pEl.value = D.p; wEl.value = D.w; lEl.value = D.l; cEl.value = D.c; recalc(); });
+    recalc();
+  }
+  // Realised-volatility bars
+  var rvEl = document.getElementById('ds-rv');
+  if (rvEl) {
+    var costEl = document.getElementById('ds-cost'), barsG = document.getElementById('ds-bars');
+    var IDS = ['call', 'put', 'straddle', 'hedge', 'cal'];
+    var LAB = { call: 'Direction', put: 'Premium', straddle: 'Volatility', hedge: 'Hedge', cal: 'Rel. value' };
+    var draw = function () {
+      var rv = +rvEl.value, cost = +costEl.value / 100, k, ev = {}, mx = 0.5, o;
+      for (k = 0; k < IDS.length; k++) { o = outcome(IDS[k], 20, rv, 0, cost); ev[IDS[k]] = o.ev; if (Math.abs(o.ev) > mx) mx = Math.abs(o.ev); }
+      mx = Math.ceil(mx * 4) / 4;
+      var Y0 = 112, H = 78, h = '', x, bh, y, v;
+      h += '<line x1="30" x2="620" y1="' + Y0 + '" y2="' + Y0 + '" style="stroke:var(--text3)" stroke-width="1.2"/>';
+      for (k = 0; k < IDS.length; k++) {
+        v = ev[IDS[k]]; x = 50 + k * 115; bh = Math.abs(v) / mx * H; y = v >= 0 ? Y0 - bh : Y0;
+        h += '<rect x="' + x + '" y="' + y.toFixed(1) + '" width="80" height="' + Math.max(bh, 1).toFixed(1) + '" rx="3" style="fill:var(' + (v >= 0.005 ? '--green' : '--red') + ')" opacity="0.75"/>';
+        h += '<text x="' + (x + 40) + '" y="' + (v >= 0 ? y - 8 : y + bh + 22).toFixed(1) + '" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">' + eusd(v) + '</text>';
+        h += '<text x="' + (x + 40) + '" y="' + (Y0 + H + 40) + '" text-anchor="middle" font-size="17" style="fill:var(--text2)">' + LAB[IDS[k]] + '</text>';
+      }
+      barsG.innerHTML = h;
+      document.getElementById('ds-rv-val').textContent = rv + '%';
+      document.getElementById('ds-cost-val').textContent = '$' + cost.toFixed(2);
+      for (k = 0; k < IDS.length; k++) document.getElementById('ds-' + IDS[k]).textContent = eusd(ev[IDS[k]]);
+      var t;
+      if (rv > 20) t = 'Realised volatility is above implied: buyers of options are paid, sellers are not.';
+      else if (rv < 20) t = 'Realised volatility is below implied: sellers of premium are paid, buyers are not.';
+      else t = 'Realised equals implied: every style averages minus its costs.';
+      document.getElementById('ds-verdict').textContent = t;
+    };
+    rvEl.addEventListener('input', draw); costEl.addEventListener('input', draw);
+    draw();
+  }
+
+})();
+</script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
+</body>
+</html>

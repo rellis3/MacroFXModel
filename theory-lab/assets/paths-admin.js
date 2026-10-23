@@ -24,6 +24,12 @@
    "action-edge-after-costs",
    "action-edge-decay"
   ],
+  "options-practice": [
+   "action-trade-plan",
+   "action-expected-value",
+   "action-vol-to-size",
+   "action-edge-after-costs"
+  ],
   "volatility": [
    "action-trade-plan",
    "action-expected-value",

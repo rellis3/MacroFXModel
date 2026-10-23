@@ -26,6 +26,7 @@ window.TL_PATHS = {
      "name": "The four positions",
      "lessons": [
       "options-four-positions",
+      "options-contract-mechanics",
       "payoff-shape-vs-greek-signs",
       "covered-call-equals-short-put",
       "black-scholes"
@@ -38,6 +39,7 @@ window.TL_PATHS = {
       "vega-volatility-surface",
       "fx-options-quoting-rr-bf",
       "second-order-greeks",
+      "delta-hedging-gamma-scalping",
       "gamma-exposure-dealer-hedging",
       "open-interest-walls-max-pain"
      ]
@@ -46,6 +48,7 @@ window.TL_PATHS = {
      "name": "Measuring and modelling volatility",
      "lessons": [
       "vix-uncertainty-not-fear",
+      "variance-risk-premium",
       "garch-volatility",
       "merton-jump-diffusion",
       "heston-model",
@@ -98,6 +101,86 @@ window.TL_PATHS = {
      }
     ]
    }
+  },
+  {
+   "id": "options-practice",
+   "name": "Options in Practice",
+   "icon": "🎯",
+   "who": "For anyone who is about to trade options, or already does: what you are actually buying, the five ways people use them, how to pick the contract, why selling premium pays until it doesn't, and how to size and hedge.",
+   "deliverable": {
+    "title": "A trade ticket for one options position",
+    "what": "For one real or imagined position, a one-page ticket that a sceptical colleague could check: the view, the structure, the contract, the worst case and the size, with every number computed rather than guessed.",
+    "steps": [
+     {
+      "text": "State what you are betting on (direction, size of move, volatility, or protection) and which of the five styles that is",
+      "lesson": "options-trading-styles"
+     },
+     {
+      "text": "Choose the structure and write its maximum loss, maximum gain and break-evens",
+      "lesson": "options-spreads-and-structures"
+     },
+     {
+      "text": "Pick the expiry and strike by comparing the break-even with the market's expected move, and note what you pay in time value and spread",
+      "lesson": "options-trade-selection"
+     },
+     {
+      "text": "Say whether you are paid for the risk: implied against your own estimate of realised volatility",
+      "lesson": "variance-risk-premium"
+     },
+     {
+      "text": "Write the worst case in a stress grid (price and volatility) and size the position so that loss is a number you can survive",
+      "lesson": "short-premium-risk-and-sizing"
+     },
+     {
+      "text": "Say what, if anything, the position is hedging and what that hedge costs",
+      "lesson": "hedging-with-options"
+     }
+    ]
+   },
+   "stages": [
+    {
+     "name": "What you are trading",
+     "lessons": [
+      "options-four-positions",
+      "options-contract-mechanics",
+      "payoff-shape-vs-greek-signs",
+      "covered-call-equals-short-put"
+     ]
+    },
+    {
+     "name": "Ways to trade them",
+     "lessons": [
+      "options-trading-styles",
+      "options-spreads-and-structures",
+      "options-trade-selection"
+     ]
+    },
+    {
+     "name": "Where the money is made and lost",
+     "lessons": [
+      "theta-decay",
+      "vega-volatility-surface",
+      "variance-risk-premium",
+      "delta-hedging-gamma-scalping"
+     ]
+    },
+    {
+     "name": "Staying alive",
+     "lessons": [
+      "short-premium-risk-and-sizing",
+      "hedging-with-options",
+      "tail-risk-hedging-convexity",
+      "trade-management-exits"
+     ]
+    },
+    {
+     "name": "The human side",
+     "lessons": [
+      "loss-aversion-prospect-theory",
+      "process-vs-outcome-decision-journals"
+     ]
+    }
+   ]
   },
   {
    "id": "macro",
@@ -1318,6 +1401,46 @@ window.TL_PATHS = {
   "event-trading-playbook": {
    "t": "The Event-Trading Playbook: Payrolls, CPI and Central Banks",
    "min": 18,
+   "micro": true
+  },
+  "options-contract-mechanics": {
+   "t": "Options Contract Mechanics: What You Actually Trade",
+   "min": 18,
+   "micro": true
+  },
+  "options-trading-styles": {
+   "t": "Five Ways to Trade Options, and How Each One Fails",
+   "min": 17,
+   "micro": true
+  },
+  "options-spreads-and-structures": {
+   "t": "Option Spreads & Structures",
+   "min": 18,
+   "micro": true
+  },
+  "options-trade-selection": {
+   "t": "From View to Trade: Choosing the Expiry and Strike",
+   "min": 17,
+   "micro": true
+  },
+  "variance-risk-premium": {
+   "t": "The Variance Risk Premium: Why Implied Volatility Usually Beats Realised",
+   "min": 18,
+   "micro": true
+  },
+  "delta-hedging-gamma-scalping": {
+   "t": "Delta Hedging & Gamma Scalping",
+   "min": 18,
+   "micro": true
+  },
+  "short-premium-risk-and-sizing": {
+   "t": "Short Premium: Risk, Margin & Sizing",
+   "min": 21,
+   "micro": true
+  },
+  "hedging-with-options": {
+   "t": "Hedging with Options: Puts, Collars and FX Cover",
+   "min": 19,
    "micro": true
   }
  }

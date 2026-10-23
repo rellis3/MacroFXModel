@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hedging with Options: Puts, Collars and FX Cover — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
+<link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<style>
+  /* Local: the small comparison tables on the deck's scenario slides. */
+  .hd-wrap{overflow-x:auto;margin:10px 0 4px}
+  .hd-table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px}
+  .hd-table th,.hd-table td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;color:var(--text2);white-space:nowrap}
+  .hd-table th:first-child,.hd-table td:first-child{text-align:left}
+  .hd-table th{color:var(--text3);font-weight:500}
+  .hd-table td b{color:var(--text);font-weight:600}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Hedging with Options — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, three live charts, a calculator and a 6-question self-test?<a href="hedging-with-options.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 8 · Options in Practice</div>
+      <h1 class="sl-h1">Hedging with Options, or <em>Paying a Known Price for a Better Worst Case</em></h1>
+      <p class="sl-lede">You already own something, or owe something, and one bad outcome could hurt more than you can bear. Options let you cap that outcome for a premium. This guide shows how the protective put, the collar and the put spread are built, how a company hedges a currency payment, what each costs, and when the premium is not worth paying. Educational, not advice: options can lose the whole premium, and sold options can lose more.</p>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Profit and loss at expiry against the price at expiry, from 70 to 130, for $100 of an index fund held six months. Unhedged, the line runs straight from a loss of 30 to a gain of 30. With a 95 put bought for 2.68, the worst case is a loss of 7.68 and the gain is unlimited. With a 95/110 collar costing about nothing, the worst case is a loss of 4.92 and the best case a gain of 10.08.">
+      <line class="tlp-line" x1="60" y1="135" x2="575" y2="135"/>
+      <line class="tlp-line" x1="60" y1="20" x2="60" y2="218"/>
+      <polyline class="tlp-line dash" points="111.0,214.2 570.0,36.0"/>
+      <polyline class="tlp-line blue thick" points="60.0,160.3 272.5,160.3 570.0,44.8"/>
+      <polyline class="tlp-line green thick" points="60.0,151.2 272.5,151.2 400.0,101.7 570.0,101.7"/>
+      <text class="tlp-text3" x="52" y="139" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="66" y="30" font-size="12">profit ↑</text>
+      <text class="tlp-blue" x="66" y="182" font-size="14" font-weight="700">put: worst −7.68</text>
+      <text class="tlp-green" x="498" y="121" text-anchor="middle" font-size="14" font-weight="700">collar: gains stop</text>
+      <line class="tlp-line dash" x1="296" y1="167" x2="324" y2="167"/>
+      <text class="tlp-text2" x="332" y="172" font-size="14">unhedged: −30 to +30</text>
+      <line class="tlp-line blue thick" x1="296" y1="189" x2="324" y2="189"/>
+      <text class="tlp-blue" x="332" y="194" font-size="14">put (cost 2.68): worst −7.68</text>
+      <line class="tlp-line green thick" x1="296" y1="211" x2="324" y2="211"/>
+      <text class="tlp-green" x="332" y="216" font-size="14">collar (cost ≈ 0): −4.92 to +10.08</text>
+      <text class="tlp-text3" x="60" y="236" text-anchor="middle" font-size="13">70</text>
+      <text class="tlp-text3" x="185" y="236" text-anchor="middle" font-size="13">85</text>
+      <text class="tlp-text3" x="315" y="236" text-anchor="middle" font-size="13">100</text>
+      <text class="tlp-text3" x="443" y="236" text-anchor="middle" font-size="13">115</text>
+      <text class="tlp-text3" x="570" y="236" text-anchor="middle" font-size="13">130</text>
+      <text class="tlp-text3" x="315" y="252" text-anchor="middle" font-size="13">price of the fund at expiry →</text>
+    </svg>
+    <figcaption>Profit and loss at expiry for $100 of an index fund held six months. The put draws a floor under the dashed line and costs 2.68. The collar lowers the floor further and costs about nothing, but its gains stop at +10.08. Every hedge is a trade between the floor, the cap and the price.</figcaption>
+  </figure>
+
+        <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I hold a hundred thousand dollars of an index fund and the next six months worry me. Someone said buy a put. What does that actually do?</p>
+      <p data-who="Quant">A put is the right to sell at a fixed price. Say the fund is at one hundred and you buy a six-month put struck at ninety-five. If the fund ends at seventy, you still sell at ninety-five. So the most you can lose on the shares is five percent.</p>
+      <p data-who="Trader">And what does that right cost?</p>
+      <p data-who="Quant">About two dollars sixty-eight for every hundred of fund. Call it two point seven percent, paid today, gone if you never needed it. Add it to the five and your worst case is about seven point seven percent. That is the whole trade: you swap a possible big loss for a certain small one.</p>
+      <p data-who="Trader">Two point seven percent for six months sounds like a lot.</p>
+      <p data-who="Quant">It is, and that is the first lesson. Repeat it every six months and you pay over five percent a year, which is most of what you hope shares will earn. Insurance is not free, because the seller prices it for the risk.</p>
+      <p data-who="Trader">Can I make it cheaper?</p>
+      <p data-who="Quant">Only by giving something up. Sell a call at one hundred and ten and its premium pays for the put almost exactly, so the collar costs nothing. But your gains now stop at ten percent. Or buy a put spread: the ninety-five put, minus an eighty-five put. It costs about two dollars, but below eighty-five you are exposed again.</p>
+      <p data-who="Trader">So a cheaper hedge is a different shape.</p>
+      <p data-who="Quant">Always. When a hedge is cheap, ask where the hole is.</p>
+      <p data-who="Trader">How many contracts for a big portfolio?</p>
+      <p data-who="Quant">Size it by beta. Two million dollars, a beta of one point two, an index at five thousand, a hundred dollars a point. That works out at four point eight contracts, so you round to five. And the hedge only works as well as the index tracks what you own.</p>
+      <p data-who="Trader">What about a company with a currency bill?</p>
+      <p data-who="Quant">Same logic. An American firm owes ten million euros in six months. A forward fixes the rate at one point oh eight eight one, a little worse than today. That is not a fee, it is the gap between dollar and euro interest rates. An option costs a premium but lets you gain if the euro falls. The no-premium versions, the collar, the participating forward and the seagull, all sell some of that benefit, and the seagull hands the protection back if the euro soars.</p>
+      <p data-who="Trader">When is an option hedge poor value?</p>
+      <p data-who="Quant">After the shock. On the nineteenth of February twenty twenty the VIX closed at fourteen. On the sixteenth of March it closed at eighty-two point six nine, a record. On a simple flat-volatility illustration, a three-month put ten percent out of the money went from about a quarter of one percent of the portfolio to seven percent. Same insurance, twenty-seven times the price.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Decide the loss you cannot live with, price the ways to cap it, take the cheapest shape whose hole you can afford, and set the budget before the panic, not during it.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A hedge buys a better worst case, and it is never free</h2>
+      <p class="sl-sub">A portfolio manager with a drawdown limit, a company with a euro bill and an investor with one large holding are in the same position. None of them is forecasting. They are buying a limit.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">💸</div><div><h4>Paying too much</h4><p>Premium is a certain loss. A put rolled every few months can cost most of the return you hold the asset to earn.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🕳</div><div><h4>A hole you did not look for</h4><p>Cheaper structures give something up: a cap on gains, or no cover below a lower strike.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Hedging the wrong thing</h4><p>An index put on stock-specific holdings leaves basis risk. A mismatched hedge is a separate bet.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>Hedging after the shock</h4><p>Protection costs most when everyone wants it, because the premium is the volatility.</p></div></div>
+      </div>
+      <div class="sl-quote">You do not insure the house because you expect a fire. Judge a hedge by its worst case and its price, never by whether the bad thing happened.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The protective put: a floor under your shares</h2>
+      <p class="sl-sub">$100 of stock, a six-month put struck at 95, 20% implied volatility, 4% interest, no dividends.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Follow the numbers</div>
+        <div class="sl-tabs" id="hd-put-tabs">
+          <button class="sl-tab active" data-panel="hd-put-1">The floor</button>
+          <button class="sl-tab" data-panel="hd-put-2">The cost</button>
+          <button class="sl-tab" data-panel="hd-put-3">Breakeven</button>
+        </div>
+        <div class="sl-panel active" id="hd-put-1">
+          <div class="sl-row"><div class="sl-box">Shares: S_T − S₀</div><div class="sl-arrow">+</div><div class="sl-box amber">Put: max(K − S_T, 0)</div><div class="sl-arrow">−</div><div class="sl-box">Premium P</div><div class="sl-arrow">=</div><div class="sl-box green">Floor: K − S₀ − P = −7.68</div></div>
+          <div class="sl-verdict">Below the strike, every point the shares lose the put gives back, so the profit is stuck at 95 − 100 − 2.68 = −7.68. The worst case is the gap to the strike <strong>plus</strong> the premium.</div>
+        </div>
+        <div class="sl-panel" id="hd-put-2">
+          <div class="sl-row"><div class="sl-box amber">2.68 per 100</div><div class="sl-arrow">=</div><div class="sl-box">2.68% of the position</div><div class="sl-arrow">=</div><div class="sl-box red">$2,679 on 1,000 shares</div></div>
+          <div class="sl-verdict">Paid today, gone if you did not need it. Repeat the same six-month hedge twice a year and the cost is 5.36% of the position a year, which is a large share of what shares are expected to earn.</div>
+        </div>
+        <div class="sl-panel" id="hd-put-3">
+          <div class="sl-row"><div class="sl-box">S₀ + P</div><div class="sl-arrow">=</div><div class="sl-box green">100 + 2.68 = 102.68</div></div>
+          <div class="sl-verdict">The shares must rise 2.68% before the hedged position is ahead. Above that, every gain is yours: the put only gives up the premium.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Cheaper hedges are different shapes</h2>
+      <p class="sl-sub">Pick a structure and slide the floor. Watch the cost and the two stress columns: a 30% crash and a 30% rally.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="hd-eq-tabs">
+          <button class="sl-tab active" data-s="put" data-panel="hd-eq-p1">Put</button>
+          <button class="sl-tab" data-s="spr" data-panel="hd-eq-p2">Put spread</button>
+          <button class="sl-tab" data-s="col" data-panel="hd-eq-p3">Collar</button>
+        </div>
+        <div class="sl-panel active" id="hd-eq-p1"><div class="sl-note">Buy the put at the floor strike. Keeps all gains. The dearest of the three.</div></div>
+        <div class="sl-panel" id="hd-eq-p2"><div class="sl-note">Buy the put, sell a put 10 points lower. Cheaper, but the cover ends at the lower strike: look at the crash column.</div></div>
+        <div class="sl-panel" id="hd-eq-p3"><div class="sl-note">Buy the put, sell a 110 call. Nearly free, but gains stop at the cap: look at the rally column.</div></div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Profit and loss at expiry against the price at expiry, from 60 to 140, for 100 dollars of stock. The dashed line is unhedged. The bold line is the chosen hedge: a protective put, a put spread or a collar.">
+            <line x1="60" y1="20" x2="60" y2="230" style="stroke:var(--border2)"/>
+            <line x1="60" y1="130" x2="620" y2="130" style="stroke:var(--border2)"/>
+            <line x1="130" y1="20" x2="130" y2="230" style="stroke:var(--text3);stroke-dasharray:2,4;opacity:.6"/>
+            <line x1="550" y1="20" x2="550" y2="230" style="stroke:var(--text3);stroke-dasharray:2,4;opacity:.6"/>
+            <text x="130" y="14" text-anchor="middle" font-size="10.5" style="fill:var(--text2);font-family:'DM Mono',monospace">crash: 70</text>
+            <text x="550" y="14" text-anchor="middle" font-size="10.5" style="fill:var(--text2);font-family:'DM Mono',monospace">rally: 130</text>
+            <text x="54" y="134" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0</text>
+            <text x="340" y="246" text-anchor="middle" font-size="10.5" style="fill:var(--text3);font-family:'DM Mono',monospace">price at expiry (dashed = unhedged)</text>
+            <path id="hd-eq-un" d="M60.0,230.0 L620.0,26.0" fill="none" style="stroke:var(--text3)" stroke-width="1.6" stroke-dasharray="6,4"/>
+            <path id="hd-eq-line" d="M60.0,150.0 L305.0,150.0 L620.0,33.0" fill="none" style="stroke:var(--blue)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Put strike (floor)</span><span class="sl-live" id="hd-eq-kp-v">put strike 95</span></div>
+        <input type="range" class="sl-slider" id="hd-eq-kp" min="80" max="100" step="1" value="95">
+        <div class="sl-calc-steps">
+          <div>Net premium per 100: <b id="hd-eq-prem">2.68</b> (negative is a credit)</div>
+          <div>If it ends at 70: <b id="hd-eq-crash">−7.68</b>&emsp;If it ends at 130: <b id="hd-eq-rally">+27.32</b></div>
+          <div>Breakeven price: <b id="hd-eq-be">102.68</b></div>
+        </div>
+      </div>
+      <p class="sl-p">Put spread lower strike is 10 below the floor and the collar's call is struck at 110. Same inputs as the previous slide, 20% volatility for every leg.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Price a protective put yourself</h2>
+      <p class="sl-sub">Starts on the worked example. Change any input and the figures recalculate. Interest rate is 4% and there are no dividends.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — protective put calculator</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Spot</label><input type="number" class="sl-input" id="hd-c-s" value="100" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Strike</label><input type="number" class="sl-input" id="hd-c-k" value="95" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Months</label><input type="number" class="sl-input" id="hd-c-m" value="6" step="1" min="1"></div>
+          <div class="sl-calc-field"><label>Volatility (%)</label><input type="number" class="sl-input" id="hd-c-v" value="20" step="1" min="1"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Premium, % of position</div>
+            <div class="sl-calc-result-val" id="hd-c-pct">2.68%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Annualised if the same hedge is repeated: <b id="hd-c-ann">5.36%</b></div>
+          <div>Worst-case loss, premium included: <b id="hd-c-max">7.68%</b></div>
+          <div>Breakeven price: <b id="hd-c-be">102.68</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="hd-c-reset">Reset to 100 / 95 / 6 months / 20%</button>
+      </div>
+      <p class="sl-p">Try volatility 30: the premium rises by about 93%, nearly doubling, because an out-of-the-money put gains more than in proportion when a big fall becomes likelier.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">How many contracts: size by exposure</h2>
+      <p class="sl-sub">$2m of shares with beta 1.2, hedged with index puts. The index is at 5,000 (illustrative), the multiplier is 100.</p>
+      <div class="sl-row"><div class="sl-box amber">β = 1.2</div><div class="sl-arrow">×</div><div class="sl-box">V = $2,000,000</div><div class="sl-arrow">÷</div><div class="sl-box">5,000 × 100</div><div class="sl-arrow">=</div><div class="sl-box green">4.8 → 5 contracts</div></div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Case A</span>
+          <ul>
+            <li>Index falls 20% to 4,000, so the portfolio falls 24% ($480,000)</li>
+            <li>Five 4,750 puts pay $375,000</li>
+            <li>Net of the $66,964 premium: <strong>−8.60%</strong></li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Case B: basis risk</span>
+          <ul>
+            <li>Your shares fall the same 24%, but the index falls only 10% to 4,500</li>
+            <li>The puts pay $125,000</li>
+            <li>Net of premium: <strong>−21.10%</strong>. The hedge covered a quarter of the loss.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-note">Beta is the correlation times the ratio of volatilities (0.8 × 22.5 ÷ 15 = 1.2). A perfectly sized hedge removes only ρ² = 64% of the variance. The rest is basis risk, and a beta from last year may not hold in the next fall.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The budget: what it costs to keep a hedge rolling</h2>
+      <p class="sl-sub">Annual cost of buying a 95 put again each time it expires, if the market goes nowhere (20% volatility, 4% interest).</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1m</div><div><h4>6.22% a year</h4><p>One-month puts, rolled twelve times. 0.52% each time.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3m</div><div><h4>6.40% a year</h4><p>Three-month puts, rolled four times. 1.60% each time.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">6m</div><div><h4>5.36% a year</h4><p>Six-month puts, rolled twice. 2.68% each time.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">12m</div><div><h4>4.03% a year</h4><p>One twelve-month put. 4.03% once.</p></div></div>
+      </div>
+      <p class="sl-p">Shorter hedges are cheaper each time and not cheaper per year. Turn it round: a budget of 2% a year buys a three-month put struck near 89 (11% out of the money). The budget fixes how much disaster you can insure.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>These are costs if nothing happens. When the market does fall, the put pays and the picture changes. The honest question is whether the price was fair for the protection. On average, bought index puts have earned negative returns, which is the cost side of insurance.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Currency cover: forward or option?</h2>
+      <p class="sl-sub">A US importer owes €10m in six months. EURUSD is 1.0800, dollar rate 4.5%, euro rate 3.0%, volatility a flat 8% (hypothetical).</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Forward</span>
+          <ul>
+            <li>Fixes <strong>1.0881</strong>, no premium</li>
+            <li>The 81.3 pips over spot are the interest gap between dollars and euros, not a fee</li>
+            <li>If the euro falls to 1.00 you still pay 1.0881: it costs $881,305 against going unhedged</li>
+            <li>Firm obligation: the bank may ask for collateral if the rate moves against it</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Euro call at 1.10</span>
+          <ul>
+            <li>Premium 0.0188 per euro: 1.74% of the amount, $187,776</li>
+            <li>Pays market below 1.10 and 1.10 above it, plus the premium</li>
+            <li>Worst case 1.1188: <strong>worse than the forward</strong>, like an insurance excess</li>
+            <li>Keeps the benefit if the euro falls: at 1.00 you pay 1.0188</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Forward for certainty, option for contingency: a bid that may not be won, a payment that may change, a benefit you want to keep.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Paying for the option by giving something up</h2>
+      <p class="sl-sub">Dollars paid per euro. Default strikes: call bought at 1.10, flat 8% volatility.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Three zero-premium structures</div>
+        <div class="sl-tabs" id="hd-fx-tabs">
+          <button class="sl-tab active" data-panel="hd-fx-1">Collar</button>
+          <button class="sl-tab" data-panel="hd-fx-2">Participating forward</button>
+          <button class="sl-tab" data-panel="hd-fx-3">Seagull</button>
+        </div>
+        <div class="sl-panel active" id="hd-fx-1">
+          <div class="sl-row"><div class="sl-box green">Buy call 1.1000</div><div class="sl-arrow">+</div><div class="sl-box amber">Sell put 1.0769</div></div>
+          <div class="sl-verdict">Rate paid stays between 1.0769 and 1.1000. You are protected above 1.10 and obliged to pay 1.0769 if the euro is lower, so almost all of the benefit of a falling euro is sold.</div>
+        </div>
+        <div class="sl-panel" id="hd-fx-2">
+          <div class="sl-row"><div class="sl-box green">Buy call 1.1000 on 100%</div><div class="sl-arrow">+</div><div class="sl-box amber">Sell put 1.1000 on 61.8%</div></div>
+          <div class="sl-verdict">The fraction is the call premium divided by the put premium. Above 1.10 you pay 1.10. Below it you pay 61.8% at 1.10 and the rest at market, so you share the benefit on 38.2%. At 1.00 you pay 1.0618.</div>
+        </div>
+        <div class="sl-panel" id="hd-fx-3">
+          <div class="sl-row"><div class="sl-box green">Buy call 1.1000</div><div class="sl-arrow">−</div><div class="sl-box red">Sell call 1.1400</div><div class="sl-arrow">−</div><div class="sl-box amber">Sell put 1.0576</div></div>
+          <div class="sl-verdict">Protected only from 1.10 to 1.14. Above 1.14 every cent costs you again: at 1.20 you pay 1.1600. "Zero cost" means the premium was paid in the tail.</div>
+        </div>
+      </div>
+      <p class="sl-p">Rate paid at EURUSD of 1.00 and 1.20: collar 1.0769 and 1.1000; participating forward 1.0618 and 1.1000; seagull 1.0576 and 1.1600; vanilla call 1.0188 and 1.1188; forward 1.0881 both times.</p>
+    </section>
+
+    <!-- WB:hedging_with_options-deck:START -->
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Hedging with options: floor, cap, size and price</h2>
+      <!-- WB:hedging_with_options:START -->
+      <div class="wb" data-title="Hedging with options: floor, cap, size and price">
+        <script type="application/json">{"w":600,"h":1420,"intro":"Hedging with options, drawn step by step: a floor, two cheaper shapes, the contract count, what it costs to keep the cover on, a currency payment, and why the same put cost 27 times as much in March 2020. Press play, or step through.","steps":[{"cap":"You hold $100 of an index fund. Unhedged, your profit follows the market one for one: the dashed line. If the fund falls to 70 you are down 30.","do":[{"chart":"pl","x":10,"y":10,"w":580,"h":330,"title":"Profit at expiry, $100 of stock (six months)","xd":[66,134],"yd":[-36,36],"yt":[[30,"+30"],[0,"0"],[-30,"−30"]],"xt":[[70,"70"],[100,"100"],[130,"130"]],"zero":true,"pl":52,"pr":14},{"series":"un","chart":"pl","pts":[[66,-34],[134,34]],"tone":null,"dash":true,"ms":900,"label":"unhedged","lat":[128,28],"ldx":-4,"ldy":-14,"lanchor":"end","lsize":17}]},{"cap":"Buy a six-month put struck at 95 for 2.68. Below 95 every point the shares lose, the put pays back, so the profit is stuck at 95 − 100 − 2.68 = −7.68. The upside stays open, less the 2.68 premium.","do":[{"series":"put","chart":"pl","pts":[[66,-7.68],[95,-7.68],[134,31.32]],"tone":"blue","ms":1300},{"dot":"pf","chart":"pl","at":[78,-7.68],"text":"worst −7.68","tone":"blue","dx":0,"dy":22,"size":17}]},{"cap":"Cheaper: also sell an 85 put. The net cost falls from 2.68 to 2.08. But the hole opens below 85, where the two puts cancel and the loss grows again: −22.08 if the fund falls to 70.","do":[{"dim":"put"},{"dim":"pf"},{"series":"spr","chart":"pl","pts":[[66,-26.08],[85,-7.08],[95,-7.08],[134,31.92]],"tone":"amber","ms":1300},{"dot":"sf","chart":"pl","at":[70,-22.08],"text":"−22.08 at 70","tone":"amber","dx":14,"dy":-4,"anchor":"start","size":17}]},{"cap":"Or sell a 110 call and keep its 2.76: the collar nets a small credit of 0.08, and the floor is better, −4.92. But gains stop at +10.08: the call you sold takes back every point above 110. Nothing is free; it was paid in upside.","do":[{"dim":"spr"},{"dim":"sf"},{"series":"col","chart":"pl","pts":[[66,-4.92],[95,-4.92],[110,10.08],[134,10.08]],"tone":"green","ms":1300},{"dot":"cc","chart":"pl","at":[122,10.08],"text":"cap +10.08","tone":"green","dx":0,"dy":22,"size":17},{"dot":"cf","chart":"pl","at":[78,-4.92],"text":"−4.92","tone":"green","dx":0,"dy":-16,"size":17}]},{"cap":"Three prices, three shapes, same fund. Look at both columns: what you lose in a crash to 70, and what you keep in a rally to 130.","do":[{"box":"b1","x":10,"y":352,"w":186,"h":100,"text":"Put · cost 2.68\ncrash −7.68\nrally +27.32","tone":"blue","size":17},{"box":"b2","x":207,"y":352,"w":186,"h":100,"text":"Spread · cost 2.08\ncrash −22.08\nrally +27.92","tone":"amber","size":17},{"box":"b3","x":404,"y":352,"w":186,"h":100,"text":"Collar · cost −0.08\ncrash −4.92\nrally +10.08","tone":"green","size":17}]},{"cap":"How many contracts? You size by exposure. A $2m portfolio with beta 1.2, against an index at 5,000 with a multiplier of 100: 1.2 × 2,000,000 ÷ 500,000 = 4.8, so 5 contracts.","do":[{"box":"sz","x":10,"y":468,"w":580,"h":96,"text":"contracts = β × V ÷ (index × 100)\n1.2 × 2,000,000 ÷ 500,000 = 4.8 → 5","tone":"purple","size":19}]},{"cap":"Beta is an average. If the index falls 20%, the portfolio falls 24% and the five puts pay $375,000: net of the $66,964 premium you lose 8.6%. If your shares fall 24% but the index falls only 10%, the puts pay $125,000 and you lose 21.1%. That gap is basis risk.","do":[{"box":"ba","x":10,"y":578,"w":285,"h":100,"text":"index −20%\nportfolio −24%\nnet −8.6%","tone":"green","size":18},{"box":"bb","x":305,"y":578,"w":285,"h":100,"text":"shares −24%\nindex only −10%\nnet −21.1%","tone":"red","size":18}]},{"cap":"What the cover costs if you keep it on. Roll a 95 put every month, quarter, half-year or year, and if the market goes nowhere you pay between 4% and 6.4% of the position a year. Shorter rolls are cheaper each time, not per year.","do":[{"chart":"rl","x":10,"y":692,"w":580,"h":212,"title":"Yearly cost of a rolled 95 put, market flat (%)","xd":[0.4,4.6],"yd":[0,7.6],"yt":[[2,"2%"],[4,"4%"],[6,"6%"]],"xt":[[1,"1-month"],[2,"3-month"],[3,"6-month"],[4,"12-month"]],"pl":50,"pr":14},{"bars":"rb","chart":"rl","data":[[1,6.22,"6.22","red"],[2,6.4,"6.40","red"],[3,5.36,"5.36","amber"],[4,4.03,"4.03","blue"]],"bw":64,"ms":1200,"size":17}]},{"cap":"Now a company: a US importer owes €10m in six months and fears a stronger euro. The dashed line is what it pays unhedged, dollars per euro. A forward fixes 1.0881, flat. The 81 pips over spot are the dollar–euro interest gap, not a fee.","do":[{"chart":"fx","x":10,"y":914,"w":580,"h":270,"title":"Dollars paid per euro, by EURUSD at payment","xd":[1.0,1.2],"yd":[1.0,1.2],"yt":[[1.0,"1.00"],[1.1,"1.10"],[1.2,"1.20"]],"xt":[[1.0,"1.00"],[1.08,"spot 1.08"],[1.2,"1.20"]],"pl":52,"pr":14},{"series":"fu","chart":"fx","pts":[[1.0,1.0],[1.2,1.2]],"tone":null,"dash":true,"ms":700},{"series":"ff","chart":"fx","pts":[[1.0,1.0881],[1.2,1.0881]],"tone":"purple","ms":900,"label":"forward 1.0881","lat":[1.2,1.0881],"ldx":-4,"ldy":-14,"lanchor":"end","lsize":17}]},{"cap":"An option keeps the benefit. A 1.10 euro call costs 0.0188 a euro (1.74%): the blue line pays market below 1.10 and 1.10 above, plus the premium. Its worst case, 1.1188, is worse than the forward. A zero-cost collar sells a 1.0769 put to pay for it: the green band.","do":[{"dim":"ff"},{"series":"fv","chart":"fx","pts":[[1.0,1.0188],[1.1,1.1188],[1.2,1.1188]],"tone":"blue","ms":1000},{"series":"fc","chart":"fx","pts":[[1.0,1.0769],[1.0769,1.0769],[1.1,1.1],[1.2,1.1]],"tone":"green","ms":1000}]},{"cap":"A seagull sells a second call at 1.14 as well, so it can keep a better put strike. But the red line comes back up above 1.14: at 1.20 the importer pays 1.16. Protected between 1.10 and 1.14, exposed beyond it, exactly where a treasurer is frightened.","do":[{"dim":"fv"},{"dim":"fc"},{"series":"fs","chart":"fx","pts":[[1.0,1.0576],[1.0576,1.0576],[1.1,1.1],[1.14,1.1],[1.2,1.16]],"tone":"red","ms":1300},{"dot":"fh","chart":"fx","at":[1.2,1.16],"text":"exposed again","tone":"red","dx":-10,"dy":26,"anchor":"end","size":17}]},{"cap":"Last, when it is poor value. The same three-month put, 10% out of the money: at 15% volatility, about the VIX before the crash, it costs 0.26% of the portfolio. At 60%, a deliberately round number below the record VIX of March 2020, it costs 7.01%. Illustrative prices. Same cover, 27 times the price.","do":[{"chart":"vs","x":10,"y":1198,"w":580,"h":212,"title":"Three-month 90% put, % of the portfolio (illustrative)","xd":[0.4,2.6],"yd":[0,8.5],"yt":[[0,"0"],[4,"4%"],[8,"8%"]],"xt":[[1,"19 Feb 2020: 15% vol"],[2,"16 Mar 2020: 60% vol"]],"pl":50,"pr":14},{"bars":"vb","chart":"vs","data":[[1,0.26,"0.26%","green"],[2,7.01,"7.01%","red"]],"bw":110,"ms":1300,"size":19},{"note":"x27","chart":"vs","at":[1.5,6.4],"text":"≈ 27×","tone":"red","size":24,"anchor":"middle","dx":0,"dy":0}]}]}</script>
+      </div>
+      <!-- WB:hedging_with_options:END -->
+    </section>
+    <!-- WB:hedging_with_options-deck:END -->
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 9 · It actually happened</div>
+      <h2 class="sl-h2">The same insurance at two prices, 2020</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>On 19 February 2020 the S&amp;P 500 closed at a record 3,386.15 and the VIX closed at 14.38. By 16 March the index had closed at 2,386.13, 29.5% below that peak, and the VIX closed at a record 82.69. On illustrative flat-volatility prices, a three-month put 10% out of the money went from 0.26% of the portfolio at 15% volatility to 7.01% at 60%, about 27 times as much. The index closed at 3,124.74 on 16 June, 31.0% above 16 March.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link"><b>Calm</b>VIX 14.38, cover cheap and unwanted</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link shock"><b>Shock</b>Index −29.5% by 16 March</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson: the premium is the volatility</b>Same put, about 27× the price</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Late buyers pay the panic price; the index rises 31.0% by 16 June</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">When options are poor value</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>After a volatility spike</h4><p>You pay the panic price. Consider a smaller size, a spread, or a collar that sells some of the dear volatility too.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔒</div><div><h4>The exposure is certain</h4><p>A fixed invoice is cheaper to cover with a forward, which has no premium.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>Rolled short-dated, all year</h4><p>At-the-money puts rolled monthly can cost more than the return you hold the asset for.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂️</div><div><h4>The position is small</h4><p>Selling part of it does the same job with no premium and no spread.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>This lesson's toy uses one flat volatility for every strike. Real puts trade at higher volatilities than calls, so a "free" collar usually needs a lower cap or a small net payment. And a hedge is a position with Greeks: a long put bleeds in calm markets and marks up in a crisis, which is the behaviour you paid for.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>You own a share at 100 and buy a 90 put for 3. What is the most you can lose at expiry?</h4>
+        <button class="sl-quiz-opt" data-correct="true">13</button>
+        <button class="sl-quiz-opt">10</button>
+        <button class="sl-quiz-opt">3</button>
+        <div class="sl-quiz-explain">Below 90 the put cancels the share loss, so the profit is stuck at 90 − 100 − 3 = −13. The premium sits on top of the gap to the strike.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A collar costs nothing upfront. What has been paid instead?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Gains above the call strike</button>
+        <button class="sl-quiz-opt">Nothing, the options cancel exactly</button>
+        <button class="sl-quiz-opt">Losses below the put strike</button>
+        <div class="sl-quiz-explain">The call you sold returns its premium today and takes back every point above its strike. The premium has been swapped for the upside.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A $3m portfolio has beta 0.9. The index is at 4,000 and the multiplier is 100. How many contracts is the beta-sized hedge?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About 6.75, so 7</button>
+        <button class="sl-quiz-opt">About 7.5, so 8</button>
+        <button class="sl-quiz-opt">About 0.75, so 1</button>
+        <div class="sl-quiz-explain">N = 0.9 × 3,000,000 ÷ (4,000 × 100) = 2,700,000 ÷ 400,000 = 6.75.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why does a US company pay more than spot to buy euros six months forward?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Dollar interest rates are above euro rates, and the points are that gap</button>
+        <button class="sl-quiz-opt">The bank expects the euro to rise</button>
+        <button class="sl-quiz-opt">It is the bank's fee for the contract</button>
+        <div class="sl-quiz-explain">F = S × e^((r_d − r_f)T). With dollars at 4.5% and euros at 3.0% the euro trades at a forward premium. It is interest, not a fee and not a forecast.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Where does a seagull stop protecting you?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Above its second, higher call strike, and below its sold put</button>
+        <button class="sl-quiz-opt">It protects at every rate, like a forward</button>
+        <button class="sl-quiz-opt">Only below the bought call's strike</button>
+        <div class="sl-quiz-explain">The seagull covers the band between its two call strikes. Above the higher strike each extra cent costs again, so it fails in the very tail a treasurer worries about.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="15">
+
+      <div class="sl-kicker">Your call</div>
+
+        <div class="tl-drill" data-date="2020-03-16">
+    <div class="tl-drill-label">Scenario drill · 16 March 2020</div>
+    <h3>The index is down 30%, the VIX is at a record, and the committee wants cover</h3>
+    <p>You manage a $10m portfolio that tracks the S&amp;P 500. It is unhedged. At the close on 16 March 2020 the index is 2,386.13, 29.5% below its peak of about four weeks earlier, and the VIX has just closed at a record 82.69. Your risk committee wants protection for the next three months. For the arithmetic, suppose three-month options are priced at a flat 60% volatility, with no interest (an illustration, not a quote). What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Buy three-month at-the-money puts on the whole portfolio.<div class="tl-drill-why">At the illustrative price this costs about 11.9% of the portfolio, $1,192,354 on $10m. The index would need to fall more than that again just for you to break even, and you would have paid close to the highest price on record for the cover.</div></li>
+      <li data-verdict="ok">Buy three-month puts 10% out of the money on the whole portfolio.<div class="tl-drill-why">Cheaper, at about 7.0%, and it does set a floor. But the worst case is then 10% plus 7.0%, about 17.0% of a portfolio that has already fallen by about 30%, and you are still paying a panic price for it.</div></li>
+      <li data-verdict="good">Buy the 90% put and sell a 120% call against it, a collar, so that the volatility you sell pays for most of the volatility you buy.<div class="tl-drill-why">At 60% the 120 call is worth about 5.4%, so the collar costs only about 1.6% net. The worst case is a further 11.6%, and the price is a cap on gains at +20% for three months. Real call volatilities sit below put volatilities (skew), so the real net cost is higher, which you should check before trading. The idea is the point: when volatility is dear, sell some of it too.</div></li>
+      <li data-verdict="bad">Wait for volatility to fall before buying any protection.<div class="tl-drill-why">You stay fully exposed to the next leg down while you wait. A week later, on 23 March, the index closed at 2,237.40, another 6.2% lower, and the VIX was still 61.59.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The index closed at 2,237.40 on 23 March, its closing low and 33.9% below the February peak, then recovered: on 16 June it closed at 3,124.74, 31.0% above the 16 March close, and it set a new record close of 3,389.78 on 18 August. On those illustrative prices the plain 90% put would have cost 7.0% and expired worthless over the three months. The collar would have capped the recovery at +20% less its net cost, 18.4%, against the index's +31.0%. Hindsight favours the unhedged, and it proves nothing about the decision: in a different path the cap would have been irrelevant and the floor everything. The choice is graded on prices and mandate at the time. The option prices here are illustrative flat-volatility Black-Scholes values, not market quotes.</p><p class="tl-drill-sources">Sources: <a href="https://fred.stlouisfed.org/series/VIXCLS">Cboe Volatility Index (VIX), daily close, via FRED series VIXCLS</a>; <a href="https://fred.stlouisfed.org/series/SP500">S&amp;P 500 index, daily close, via FRED series SP500</a> (S&amp;P Dow Jones Indices).</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A hedge buys a better worst case for a certain cost. The protective put's floor is K − S₀ − P, set the day you buy. On average it costs money, and that is what insurance is.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Every cheaper hedge is a different shape. A put spread loses cover below the lower strike. A collar gives up gains above the cap. Judge a structure by its worst case, not its premium.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Size by exposure: contracts = beta × value ÷ (index × multiplier). A hedge removes ρ² of the variance at best, and the rest is basis risk.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Forward for certainty, option for contingency. The forward's points are an interest gap, not a fee. Collars, participating forwards and seagulls pay for the option by giving something up, and the seagull gives protection back in the far tail.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Set the budget in calm. A rolled 95 put costs roughly 4% to 6.4% a year at 20% volatility if nothing happens, and in March 2020 the same put cost about 27 times as much on illustrative prices.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>It actually happened, 2020: VIX 14.38 on 19 February, a record 82.69 on 16 March. The premium is the volatility on the day you buy.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>State a hedge's worst case, cost and cap before you trade it; size it by exposure and not by feel; choose between a forward and an option for a currency payment; and spot when a "free" structure has been paid for in the tail or in the upside.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Tail Risk Hedging &amp; Portfolio Convexity</h3>
+        <p>How to hold convexity on purpose: what portfolio-level tail protection costs and when it pays.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="tail-risk-hedging-convexity-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="hedging-with-options.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+
+window.hwOpt = (function () {
+  function erf(x) {
+    var ax = Math.abs(x);
+    if (ax > 6) return x > 0 ? 1 : -1;
+    var term = ax, sum = ax, n = 0;
+    while (Math.abs(term) > 1e-17 * Math.abs(sum) && n < 300) { n++; term *= 2 * ax * ax / (2 * n + 1); sum += term; }
+    var r = 2 / Math.sqrt(Math.PI) * Math.exp(-ax * ax) * sum;
+    return x < 0 ? -r : r;
+  }
+  function N(x) { return 0.5 * (1 + erf(x / Math.SQRT2)); }
+  function d12(S, K, T, r, sg, q) {
+    var d1 = (Math.log(S / K) + (r - q + 0.5 * sg * sg) * T) / (sg * Math.sqrt(T));
+    return [d1, d1 - sg * Math.sqrt(T)];
+  }
+  function bs(S, K, T, r, sg, q, cp) {
+    if (T <= 0) return cp === 'c' ? Math.max(S - K, 0) : Math.max(K - S, 0);
+    var d = d12(S, K, T, r, sg, q);
+    if (cp === 'c') return S * Math.exp(-q * T) * N(d[0]) - K * Math.exp(-r * T) * N(d[1]);
+    return K * Math.exp(-r * T) * N(-d[1]) - S * Math.exp(-q * T) * N(-d[0]);
+  }
+  function delta(S, K, T, r, sg, q, cp) {
+    var d = d12(S, K, T, r, sg, q);
+    return cp === 'c' ? Math.exp(-q * T) * N(d[0]) : -Math.exp(-q * T) * N(-d[0]);
+  }
+  function bisect(f, lo, hi) {
+    var flo = f(lo);
+    for (var i = 0; i < 200; i++) {
+      var m = (lo + hi) / 2, fm = f(m);
+      if ((fm > 0) === (flo > 0)) { lo = m; flo = fm; } else { hi = m; }
+    }
+    return (lo + hi) / 2;
+  }
+  function fx(x, dp) { var s = Math.abs(x).toFixed(dp); return (x < 0 && +s > 0 ? '−' : '') + s; }
+  function sg(x, dp) { var s = Math.abs(x).toFixed(dp); return (x < 0 && +s > 0 ? '−' : '+') + s; }
+  function n0(x) { var s = Math.abs(Math.round(x)).toLocaleString('en-US'); return (x < 0 && Math.round(x) !== 0 ? '−' : '') + s; }
+  function usd(x, dp) { var s = Math.abs(x).toFixed(dp); return (x < 0 && +s > 0 ? '\u2212' : '') + '$' + s; }
+  return { N: N, bs: bs, delta: delta, bisect: bisect, f: fx, s: sg, n0: n0, usd: usd };
+})();
+
+</script>
+<script>
+
+(function () {
+  var H = window.hwOpt, $ = function (i) { return document.getElementById(i); };
+  if (!H || !$('hd-eq-kp')) return;
+  var S0 = 100, T = 0.5, R = 0.04, V = 0.2, KC = 110, sel = 'put';
+  function X(s) { return 60 + (s - 60) * 7; }
+  function Y(v) { return Math.max(20, Math.min(230, 130 - v * 2.6)); }
+  function model() {
+    var kp = +$('hd-eq-kp').value, kl = kp - 10;
+    var P = H.bs(S0, kp, T, R, V, 0, 'p'), Pl = H.bs(S0, kl, T, R, V, 0, 'p'), C = H.bs(S0, KC, T, R, V, 0, 'c');
+    return {
+      kp: kp, kl: kl,
+      fn: {
+        put: function (s) { return s - S0 + Math.max(kp - s, 0) - P; },
+        spr: function (s) { return s - S0 + Math.max(kp - s, 0) - Math.max(kl - s, 0) - (P - Pl); },
+        col: function (s) { return s - S0 + Math.max(kp - s, 0) - Math.max(s - KC, 0) - (P - C); }
+      },
+      prem: { put: P, spr: P - Pl, col: P - C },
+      kinks: { put: [kp], spr: [kl, kp], col: [kp, KC] }
+    };
+  }
+  function dPath(fn, ks) {
+    var xs = [60].concat(ks, [140]);
+    return 'M' + xs.map(function (s) { return X(s).toFixed(1) + ',' + Y(fn(s)).toFixed(1); }).join(' L');
+  }
+  function update() {
+    var m = model(), f = m.fn[sel];
+    $('hd-eq-kp-v').textContent = 'put strike ' + m.kp;
+    $('hd-eq-line').setAttribute('d', dPath(f, m.kinks[sel]));
+    $('hd-eq-un').setAttribute('d', 'M' + X(60).toFixed(1) + ',' + Y(-40).toFixed(1) + ' L' + X(140).toFixed(1) + ',' + Y(40).toFixed(1));
+    $('hd-eq-prem').textContent = H.f(m.prem[sel], 2);
+    $('hd-eq-crash').textContent = H.s(f(70), 2);
+    $('hd-eq-rally').textContent = H.s(f(130), 2);
+    var be = (f(0) < 0 && f(300) > 0) ? H.bisect(f, 0, 300) : null;
+    $('hd-eq-be').textContent = be === null ? 'none' : H.f(be, 2);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('#hd-eq-tabs .sl-tab'), function (b) {
+    b.addEventListener('click', function () { sel = b.getAttribute('data-s'); update(); });
+  });
+  $('hd-eq-kp').addEventListener('input', update);
+  update();
+})();
+
+</script>
+<script>
+
+(function () {
+  var H = window.hwOpt, $ = function (i) { return document.getElementById(i); };
+  if (!H || !$('hd-c-s')) return;
+  var DEF = { s: 100, k: 95, m: 6, v: 20 };
+  function recompute() {
+    var S = +$('hd-c-s').value, K = +$('hd-c-k').value, m = +$('hd-c-m').value, v = +$('hd-c-v').value / 100;
+    var out = ['pct', 'ann', 'max', 'be'];
+    if (!(S > 0 && K > 0 && m > 0 && v > 0)) { out.forEach(function (o) { $('hd-c-' + o).textContent = '—'; }); return; }
+    var P = H.bs(S, K, m / 12, 0.04, v, 0, 'p');
+    $('hd-c-pct').textContent = H.f(P / S * 100, 2) + '%';
+    $('hd-c-ann').textContent = H.f(P / S * 100 * 12 / m, 2) + '%';
+    $('hd-c-max').textContent = H.f(((S - K) + P) / S * 100, 2) + '%';
+    $('hd-c-be').textContent = H.f(S + P, 2);
+  }
+  ['s', 'k', 'm', 'v'].forEach(function (i) { $('hd-c-' + i).addEventListener('input', recompute); });
+  $('hd-c-reset').addEventListener('click', function () { ['s', 'k', 'm', 'v'].forEach(function (i) { $('hd-c-' + i).value = DEF[i]; }); recompute(); });
+  recompute();
+})();
+
+</script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
+</body>
+</html>

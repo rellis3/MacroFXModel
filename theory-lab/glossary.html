@@ -234,6 +234,42 @@
       <div class="tl-gloss-where">Defined in: <a href="lessons/fx-fixings-wm-reuters.html">FX Fixings &amp; the 4pm Fix</a>.</div>
     </div>
 
+    <div class="tl-gloss-card" data-search="K strike m multiplier contract n contracts bid ask a b fees c options contract mechanics moneyness">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(K,\ m,\ n\)</div><div class="tl-gloss-name">Strike, multiplier, number of contracts<span>What an options contract is</span></div></div>
+      <div class="tl-gloss-def">\(K\) is the strike, the price at which the option can be exercised. \(m\) is the multiplier: how many units one contract covers (100 shares for a US stock or ETF option, $100 per index point for SPX). \(n\) is the number of contracts, so a premium of \(p\) per share costs \(p \cdot m \cdot n\). The bid \(b\) and ask \(a\) are the prices you can sell and buy at; the gap between them is a cost you pay every time you trade.</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/options-contract-mechanics.html">Options Contract Mechanics</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="VRP variance risk premium implied realised sigma_imp sigma_real straddle selling volatility">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\sigma_{imp},\ \sigma_{real},\ VRP\)</div><div class="tl-gloss-name">Implied vol, realised vol, variance risk premium<span>What the market charges for movement</span></div></div>
+      <div class="tl-gloss-def">\(\sigma_{imp}\) is the volatility an option's price implies; \(\sigma_{real}\) is the volatility that actually happened over its life. The variance risk premium is the gap between them, usually measured in variance: \(\sigma_{imp}^2 - \sigma_{real}^2\). On index options it has been positive on average, which pays sellers, but the average hides a rare, large loss when realised volatility jumps.</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/variance-risk-premium.html">The Variance Risk Premium</a>. Used in: <a href="lessons/delta-hedging-gamma-scalping.html">Delta Hedging &amp; Gamma Scalping</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="dollar gamma Gamma S squared delta hedge gamma scalping breakeven move P&L identity">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\Gamma S^2\)</div><div class="tl-gloss-name">Dollar gamma<span>The size of the delta-hedged bet</span></div></div>
+      <div class="tl-gloss-def">For a delta-hedged option, one day's profit is \(\tfrac12 \Gamma\,(dS^2 - \sigma_{imp}^2 S^2\,dt)\): you gain when the stock moves more than the implied daily move \(\sigma_{imp} S \sqrt{dt}\), and lose the option's daily rent when it moves less. \(\Gamma S^2\) converts gamma into dollars per unit of squared percentage move, so books of different stocks can be compared.</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/delta-hedging-gamma-scalping.html">Delta Hedging &amp; Gamma Scalping</a>. Background: <a href="lessons/theta-decay.html">Theta Decay</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="worst case loss l star risk budget B contracts n star floor short premium sizing effective number of bets N_eff">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\ell^*,\ B,\ n^*\)</div><div class="tl-gloss-name">Worst-case loss, risk budget, position size<span>Sizing short options</span></div></div>
+      <div class="tl-gloss-def">\(\ell^*\) is the worst loss per contract on a stress grid of price and volatility moves (for a defined-risk spread, width minus credit, times the multiplier). \(B\) is the most you are willing to lose on one idea, in money. The position size is \(n^* = \lfloor B / \ell^* \rfloor\): size by the worst case, not by the broker's margin requirement.</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/short-premium-risk-and-sizing.html">Short Premium: Risk, Margin &amp; Sizing</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="M1 expected move one standard deviation S sigma sqrt tau breakeven distance R implied moves options trade selection">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(M_1,\ R\)</div><div class="tl-gloss-name">One-sigma move, breakeven distance<span>Choosing the strike</span></div></div>
+      <div class="tl-gloss-def">\(M_1 = S\,\sigma\sqrt{\tau}\) is the market's one-standard-deviation move to expiry, in price units. \(R\) is how far the breakeven sits from today's price, measured in these moves. An option whose breakeven is half a one-sigma move away needs less to happen than one whose breakeven is a full move away, and costs more.</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/options-trade-selection.html">From View to Trade</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="hedge ratio h star minimum variance beta rho forward F collar put strike K_p K_c hedging with options">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(h^*,\ K_p,\ K_c\)</div><div class="tl-gloss-name">Hedge ratio, put and call strikes<span>Hedging with options</span></div></div>
+      <div class="tl-gloss-def">\(h^* = \rho\,\sigma_s/\sigma_f\) is the hedge ratio that minimises the variance of the hedged position: the correlation between your holdings and the hedge instrument times the ratio of their volatilities, which is the regression beta. The hedge removes a share \(\rho^2\) of the variance. \(K_p\) and \(K_c\) are the strikes of the put you buy and the call you sell in a collar, which sets a floor and a cap.</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/hedging-with-options.html">Hedging with Options</a>.</div>
+    </div>
+
   </div>
 
   <!-- ============================================================ -->

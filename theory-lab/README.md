@@ -127,6 +127,13 @@ Details in the style guide (§5.18).
   QE/QT), and *How Markets Talk to Each Other* (the domino chain, forced
   selling, the VIX as uncertainty, the yield curve and growth, four markets
   four questions). Sits above Foundation Mathematics on the hub.
+- **Options in Practice** (8, each with a full lesson, a visual guide and a
+  whiteboard) — how options are actually traded and how it goes wrong:
+  contract mechanics, five trading styles, spreads and structures, choosing
+  the expiry and strike, the variance risk premium, delta hedging and gamma
+  scalping, short-premium risk and sizing, hedging with options. Sits after
+  *Options from the Ground Up* on the hub and has its own learning path
+  (`options-practice`).
 - **Foundation Mathematics** (5) — algebra/functions, trigonometry/logs/
   exponentials, complex numbers, partial derivatives/multivariable calculus,
   optimization basics. Start here if you've only done GCSE-level maths —

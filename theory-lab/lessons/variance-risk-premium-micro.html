@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Variance Risk Premium — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
+<link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">The Variance Risk Premium — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full maths, two live calculators, the evidence table and a 6-question self-test?<a href="variance-risk-premium.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 5 · Options in Practice</div>
+      <h1 class="sl-h1">The Variance Risk Premium, or <em>Why Selling Options Pays Until It Doesn't</em></h1>
+      <p class="sl-lede">Options have, on average, been priced for more movement than then arrived. That gap pays the people who sell insurance, and it is the reason selling options looks so good right up to the month it does not. Educational only, not advice: options can lose the whole premium, and a short option can lose many times it.</p>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Histogram of the gap between implied and subsequently realised S&amp;P 500 volatility, in volatility points, for 431 one-month windows from 1990 to 2025. Most of the bars sit to the right of zero, where the option seller is paid: 364 of 431 months, an average gap of about 3.9 points. A thin tail of 67 months sits to the left, where the seller loses, and 6 of them lose by more than 20 points.">
+      <line class="tlp-line" x1="40" y1="190" x2="570" y2="190"/>
+      <rect class="tlp-red" x="61.4" y="186.6" width="18.4" height="3.4" rx="2" opacity=".85"/>
+      <rect class="tlp-red" x="102.2" y="188.9" width="18.4" height="1.1" rx="2" opacity=".85"/>
+      <rect class="tlp-red" x="142.9" y="188.9" width="18.4" height="1.1" rx="2" opacity=".85"/>
+      <rect class="tlp-red" x="183.7" y="188.9" width="18.4" height="1.1" rx="2" opacity=".85"/>
+      <rect class="tlp-red" x="224.5" y="188.9" width="18.4" height="1.1" rx="2" opacity=".85"/>
+      <rect class="tlp-red" x="244.8" y="187.7" width="18.4" height="2.3" rx="2" opacity=".85"/>
+      <rect class="tlp-red" x="265.2" y="186.6" width="18.4" height="3.4" rx="2" opacity=".85"/>
+      <rect class="tlp-red" x="285.6" y="183.2" width="18.4" height="6.8" rx="2" opacity=".85"/>
+      <rect class="tlp-red" x="306.0" y="183.2" width="18.4" height="6.8" rx="2" opacity=".85"/>
+      <rect class="tlp-red" x="326.4" y="175.3" width="18.4" height="14.7" rx="2" opacity=".85"/>
+      <rect class="tlp-red" x="346.8" y="156.0" width="18.4" height="34.0" rx="2" opacity=".85"/>
+      <rect class="tlp-green" x="367.2" y="127.7" width="18.4" height="62.3" rx="2" opacity=".85"/>
+      <rect class="tlp-green" x="387.5" y="62.0" width="18.4" height="128.0" rx="2" opacity=".85"/>
+      <rect class="tlp-green" x="407.9" y="79.0" width="18.4" height="111.0" rx="2" opacity=".85"/>
+      <rect class="tlp-green" x="428.3" y="125.4" width="18.4" height="64.6" rx="2" opacity=".85"/>
+      <rect class="tlp-green" x="448.7" y="158.3" width="18.4" height="31.7" rx="2" opacity=".85"/>
+      <rect class="tlp-green" x="469.1" y="179.8" width="18.4" height="10.2" rx="2" opacity=".85"/>
+      <rect class="tlp-green" x="489.5" y="187.7" width="18.4" height="2.3" rx="2" opacity=".85"/>
+      <rect class="tlp-green" x="509.8" y="188.9" width="18.4" height="1.1" rx="2" opacity=".85"/>
+      <rect class="tlp-green" x="550.6" y="188.9" width="18.4" height="1.1" rx="2" opacity=".85"/>
+      <line class="tlp-line dash" x1="366.2" y1="64" x2="366.2" y2="190"/>
+      <text class="tlp-text3" x="40.0" y="207" text-anchor="middle" font-size="13">−40</text>
+      <text class="tlp-text3" x="203.1" y="207" text-anchor="middle" font-size="13">−20</text>
+      <text class="tlp-text3" x="366.2" y="207" text-anchor="middle" font-size="13">0</text>
+      <text class="tlp-text3" x="529.2" y="207" text-anchor="middle" font-size="13">+20</text>
+      <text class="tlp-text3" x="570" y="226" text-anchor="end" font-size="13">implied minus realised vol (points), per month →</text>
+      <text class="tlp-green" x="570" y="30" text-anchor="end" font-size="15" font-weight="700">364 of 431 months: seller paid</text>
+      <text class="tlp-text2" x="570" y="50" text-anchor="end" font-size="13">average gap +3.9 points (VIX 19.3, then 15.4)</text>
+      <text class="tlp-red" x="46" y="70" font-size="15" font-weight="700">67 months: seller loses.</text>
+      <text class="tlp-red" x="46" y="90" font-size="15" font-weight="700">6 by over 20 points</text>
+      <line class="tlp-line red" x1="70" y1="100" x2="68.5" y2="176"/>
+    </svg>
+    <figcaption>Each bar counts months. Most of the weight sits on the green side, which is why the average pays. The red tail is thin but long: a few months cost far more than a typical month earns. Computed for this lesson from Cboe VIX closes and S&amp;P 500 closes.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I keep hearing that selling options is free money, because implied volatility is almost always higher than what the market then does. Is that true?</p>
+      <p data-who="Quant">Half true, which is the dangerous kind. Start with the true half. Implied volatility is an option's price expressed as a speed: how much movement the market is charging for. Realised volatility is how much it then moved. Over thirty-five years of one-month windows on the S&amp;P 500, the market charged for about nineteen, and the index then moved at about fifteen.</p>
+      <p data-who="Trader">So it charged for nineteen and delivered fifteen.</p>
+      <p data-who="Quant">On average, yes. Call it four points of volatility. And in about eighty-four months out of every hundred, the seller of that insurance came out ahead.</p>
+      <p data-who="Trader">Eighty-four percent. That does sound like free money.</p>
+      <p data-who="Quant">Look at the other sixteen. They are not the mirror image of the good months. In the window that began in March twenty-twenty, the market charged for about fifty-four and then moved at about eighty-nine.</p>
+      <p data-who="Trader">So the average hides a tail.</p>
+      <p data-who="Quant">A short option can only ever earn the premium, but it can pay out many times that. In variance terms, the five worst windows out of four hundred and thirty-one made up more than half of all the losses.</p>
+      <p data-who="Trader">Why would the market overcharge at all? Surely somebody arbitrages it away.</p>
+      <p data-who="Quant">It is not a mispricing you can lock in. It is insurance pricing. Investors buy puts to protect portfolios. The dealers who sell them cannot hedge perfectly, because prices jump, so they charge for that. And volatility spikes exactly when stocks fall, so the seller loses when everyone else is already hurting. Being paid for that is like being paid to sell hurricane cover.</p>
+      <p data-who="Trader">Does the research back it up?</p>
+      <p data-who="Quant">Yes. Carr and Wu, in two thousand and nine, measured it using variance swaps. Coval and Shumway, in two thousand and one, found that buyers of at-the-money straddles lost about three percent a week on average. Bondarenko found that S&amp;P five hundred puts looked too expensive to fit standard models.</p>
+      <p data-who="Trader">Give me one number I can hold on to.</p>
+      <p data-who="Quant">Sell a thirty-day straddle priced at twenty percent volatility, and say the market then moves at fifteen. You collect about four point six percent of the price. On average you pay back about three point four. You keep about one point one percent.</p>
+      <p data-who="Trader">One percent, with the risk of losing fifteen in a bad month.</p>
+      <p data-who="Quant">Exactly. In a simulation with a small chance of a crash each month, the average month is positive, and even so the typical worst drawdown over ten years is about seventeen percent. Triple the size, and more than four paths in ten fall by half at some point.</p>
+      <p data-who="Trader">And the one-line version?</p>
+      <p data-who="Quant">The premium is real on average, and it is the price of a tail you will eventually meet. Size for the worst month, not the average one.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">An option seller is an insurer</h2>
+      <p class="sl-sub">Implied volatility is the speed of movement an option is priced for. Realised volatility is the speed the market then moved. The average gap between them is the premium.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏠</div><div><h4>The insurer's business</h4><p>A home insurer charges more than it expects to pay out, on average. That is not a trick: buyers pay for protection and the insurer is paid for standing ready.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>The option version</h4><p>Index options have, on average, cost more than the movement that then arrived. The VIX averaged 19.3 in our count, and the next 21 days' realised volatility 15.4.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌀</div><div><h4>The hurricane year</h4><p>An insurer with thirty good years looks wonderful until a storm takes a decade of profit in a week. The average was real and it was the price of the storm.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>What the seller earns</h4><p>Gains are capped at the premium. Losses are not. That asymmetry is what the rest of the lesson is about.</p></div></div>
+      </div>
+      <div class="sl-quote">"It makes money in 85% of months" and "it makes money on average" are both true, and neither says what it does to your account in the other 15%.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Two volatilities and the gap between them</h2>
+      <p class="sl-sub">One is a price. One is what happened. The difference is what a variance seller is paid.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Follow it through</div>
+        <div class="sl-tabs" id="vrp-tabs">
+          <button class="sl-tab active" data-panel="vrp-p1">Implied</button>
+          <button class="sl-tab" data-panel="vrp-p2">Realised</button>
+          <button class="sl-tab" data-panel="vrp-p3">The premium</button>
+        </div>
+        <div class="sl-panel active" id="vrp-p1">
+          <div class="sl-row"><div class="sl-box blue">σ<sub>imp</sub>: the volatility that reproduces the option's price in Black-Scholes</div></div>
+          <div class="sl-verdict">It is a <strong>price</strong>, quoted as a speed. A variance swap's strike, K<sub>var</sub>, is the same thing as a variance, and the VIX is the 30-day version for S&amp;P 500 options.</div>
+        </div>
+        <div class="sl-panel" id="vrp-p2">
+          <div class="sl-row"><div class="sl-box green">σ<sub>real</sub>: the annualised standard deviation of the daily returns that actually happened</div></div>
+          <div class="sl-verdict">It is an <strong>outcome</strong>, known only afterwards. Variance is its square, so big moves count quadratically.</div>
+        </div>
+        <div class="sl-panel" id="vrp-p3">
+          <div class="sl-row"><div class="sl-box amber">VRP ≈ σ²<sub>imp</sub> − σ²<sub>real</sub></div></div>
+          <div class="sl-verdict">Implied minus realised. 20 against 15 is <strong>5 volatility points</strong> but 20² − 15² = <strong>175 variance points</strong>. Positive means the seller was paid. (Carr and Wu quote it the other way round.)</div>
+        </div>
+      </div>
+      <p class="sl-p">The seller's average profit on a one-month straddle is about 0.8 × √T × (σ<sub>imp</sub> − σ<sub>real</sub>) of spot. The calculator on the next slide computes it exactly.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Worked example: sell a 30-day straddle at 20%</h2>
+      <p class="sl-sub">Spot 100, rates zero. Change implied, realised or the days and every number recalculates.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — straddle calculator</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Implied vol (%)</label><input type="number" class="sl-input" id="vc-iv" value="20" step="0.5" min="1"></div>
+          <div class="sl-calc-field"><label>Realised vol (%)</label><input type="number" class="sl-input" id="vc-rv" value="15" step="0.5" min="1"></div>
+          <div class="sl-calc-field"><label>Days to expiry</label><input type="number" class="sl-input" id="vc-d" value="30" step="1" min="1"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Average P&amp;L for the seller</div>
+            <div class="sl-calc-result-val" id="vc-pnl">+1.14%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Premium collected: <b id="vc-prem">4.57%</b> of spot</div>
+          <div>Average payout at the realised volatility: <b id="vc-pay">3.43%</b></div>
+          <div>Gap: <b id="vc-gap">5.0</b> volatility points = <b id="vc-var">175</b> variance points</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="vc-reset">Reset to 20 / 15 / 30</button>
+      </div>
+      <p class="sl-p">Collect 4.57%, pay back 3.43% on average, keep 1.14%. Now the tail: if the index falls 10% in the month, the result is 4.57% − 10% = <strong>−5.43%</strong>. A 15% fall gives −10.43%, which undoes about nine average months.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The evidence: each dot is one month</h2>
+      <p class="sl-sub">431 non-overlapping 21-day windows, S&amp;P 500, 1990 to late 2025. VIX at the start, realised volatility afterwards.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Implied against realised</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter chart of 431 one-month windows. Horizontal axis: the VIX at the start; vertical axis: realised volatility over the next 21 trading days. Most dots sit below the dashed realised-equals-implied diagonal, where the option seller is paid. A few red dots sit far above it, including October 2008, February 2020 and March 2020.">
+            <line x1="58" y1="292.0" x2="622" y2="292.0" style="stroke:var(--border)"/>
+      <text x="52" y="296.0" text-anchor="end" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">0</text>
+      <line x1="58" y1="234.3" x2="622" y2="234.3" style="stroke:var(--border)"/>
+      <text x="52" y="238.3" text-anchor="end" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">20</text>
+      <line x1="58" y1="176.6" x2="622" y2="176.6" style="stroke:var(--border)"/>
+      <text x="52" y="180.6" text-anchor="end" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">40</text>
+      <line x1="58" y1="118.9" x2="622" y2="118.9" style="stroke:var(--border)"/>
+      <text x="52" y="122.9" text-anchor="end" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">60</text>
+      <line x1="58" y1="61.3" x2="622" y2="61.3" style="stroke:var(--border)"/>
+      <text x="52" y="65.3" text-anchor="end" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">80</text>
+      <text x="105.0" y="308" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">10</text>
+      <text x="199.0" y="308" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">20</text>
+      <text x="293.0" y="308" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">30</text>
+      <text x="387.0" y="308" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">40</text>
+      <text x="481.0" y="308" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">50</text>
+      <text x="575.0" y="308" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">60</text>
+      <line x1="58.0" y1="277.6" x2="622.0" y2="104.5" style="stroke:var(--text3);stroke-dasharray:4,4;stroke-width:1.4"/>
+      <text x="556.2" y="116.7" text-anchor="end" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">realised = implied</text>
+      <circle cx="173.1" cy="241.0" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="249.4" cy="259.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="211.6" cy="261.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="225.7" cy="260.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="192.6" cy="255.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="171.6" cy="255.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="163.8" cy="256.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="214.4" cy="216.3" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="292.0" cy="237.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="274.8" cy="231.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="297.9" cy="246.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="235.8" cy="258.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="259.0" cy="236.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="211.9" cy="241.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="207.1" cy="248.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="176.5" cy="251.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="175.7" cy="254.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="169.6" cy="253.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="176.7" cy="264.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="156.4" cy="247.1" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="146.9" cy="269.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="150.2" cy="258.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="156.3" cy="246.2" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="201.4" cy="247.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="192.5" cy="263.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="175.4" cy="261.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="169.7" cy="270.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="163.1" cy="251.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="157.0" cy="265.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="146.6" cy="264.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="136.5" cy="262.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="137.9" cy="272.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="134.5" cy="262.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="151.7" cy="261.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="160.9" cy="269.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="129.3" cy="271.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="126.5" cy="272.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="124.2" cy="257.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="138.8" cy="260.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="126.0" cy="260.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="131.3" cy="263.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="137.6" cy="268.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="117.1" cy="267.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="116.8" cy="275.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="123.0" cy="270.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="125.6" cy="275.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="123.9" cy="267.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="140.4" cy="276.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="103.3" cy="273.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="116.0" cy="258.1" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="150.1" cy="272.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="151.1" cy="248.9" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="147.4" cy="264.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="128.4" cy="264.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="152.4" cy="274.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="124.1" cy="267.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="125.6" cy="264.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="143.8" cy="262.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="158.6" cy="258.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="174.9" cy="265.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="124.5" cy="275.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="116.8" cy="270.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="128.6" cy="269.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="117.5" cy="275.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="123.1" cy="266.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="125.7" cy="260.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="127.3" cy="264.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="134.9" cy="277.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="126.9" cy="274.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="132.3" cy="272.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="147.2" cy="267.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="122.6" cy="261.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="119.0" cy="258.2" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="132.6" cy="254.3" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="165.0" cy="249.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="178.3" cy="259.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="149.4" cy="261.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="157.1" cy="270.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="156.0" cy="244.6" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="193.3" cy="258.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="144.3" cy="261.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="165.6" cy="270.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="165.6" cy="266.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="159.2" cy="253.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="194.3" cy="256.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="184.6" cy="251.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="198.8" cy="255.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="183.2" cy="237.1" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="209.8" cy="238.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="193.0" cy="247.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="213.1" cy="248.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="206.7" cy="242.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="237.5" cy="241.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="223.8" cy="250.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="227.1" cy="190.1" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="261.5" cy="249.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="295.5" cy="237.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="220.3" cy="257.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="186.1" cy="259.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="231.6" cy="255.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="238.2" cy="256.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="206.0" cy="246.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="193.0" cy="251.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="248.4" cy="231.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="303.7" cy="167.5" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="335.8" cy="217.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="315.4" cy="249.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="229.8" cy="231.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="212.9" cy="236.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="290.5" cy="229.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="273.1" cy="237.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="232.3" cy="239.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="240.4" cy="238.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="275.3" cy="245.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="223.7" cy="251.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="225.8" cy="240.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="210.4" cy="238.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="259.2" cy="232.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="239.0" cy="240.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="201.4" cy="255.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="227.9" cy="229.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="232.3" cy="226.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="243.0" cy="211.5" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="244.7" cy="201.3" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="257.2" cy="227.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="241.0" cy="235.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="215.9" cy="250.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="195.2" cy="255.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="166.4" cy="259.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="216.7" cy="218.2" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="261.5" cy="232.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="255.4" cy="217.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="281.1" cy="221.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="223.2" cy="242.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="260.0" cy="206.4" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="279.7" cy="205.8" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="236.8" cy="244.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="219.1" cy="251.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="207.3" cy="237.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="217.8" cy="252.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="204.3" cy="202.1" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="304.1" cy="236.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="326.5" cy="245.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="235.1" cy="249.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="224.5" cy="244.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="209.5" cy="233.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="201.8" cy="256.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="196.9" cy="243.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="200.8" cy="225.0" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="235.6" cy="228.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="287.5" cy="166.9" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="399.1" cy="193.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="386.7" cy="203.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="357.2" cy="195.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="303.7" cy="225.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="269.1" cy="231.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="249.7" cy="227.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="302.6" cy="238.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="296.6" cy="211.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="276.2" cy="242.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="209.6" cy="244.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="204.8" cy="247.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="193.3" cy="248.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="210.9" cy="259.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="193.7" cy="245.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="206.5" cy="262.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="162.3" cy="259.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="163.9" cy="264.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="182.3" cy="260.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="174.0" cy="264.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="146.4" cy="248.0" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="158.0" cy="257.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="166.6" cy="261.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="171.1" cy="262.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="163.8" cy="266.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="163.4" cy="253.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="145.2" cy="263.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="137.1" cy="260.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="163.1" cy="259.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="133.0" cy="268.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="143.4" cy="263.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="120.6" cy="262.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="123.2" cy="263.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="139.6" cy="248.1" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="141.2" cy="263.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="125.2" cy="269.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="120.8" cy="267.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="122.2" cy="266.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="134.6" cy="266.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="128.1" cy="249.3" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="150.6" cy="266.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="116.7" cy="268.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="115.7" cy="263.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="135.4" cy="265.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="130.8" cy="270.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="115.7" cy="267.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="122.5" cy="250.1" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="167.5" cy="250.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="144.0" cy="254.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="146.9" cy="271.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="123.4" cy="269.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="126.1" cy="270.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="119.2" cy="268.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="120.6" cy="273.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="119.2" cy="270.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="110.2" cy="247.8" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="154.3" cy="257.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="135.4" cy="268.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="134.6" cy="264.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="150.8" cy="253.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="149.4" cy="231.4" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="226.6" cy="228.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="242.1" cy="249.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="184.3" cy="245.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="227.3" cy="221.3" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="234.6" cy="236.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="236.0" cy="218.8" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="276.5" cy="242.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="270.0" cy="208.7" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="221.7" cy="247.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="182.2" cy="249.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="186.1" cy="233.8" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="253.3" cy="221.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="209.7" cy="233.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="236.9" cy="132.4" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="435.3" cy="56.8" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="515.6" cy="74.6" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="581.8" cy="188.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="378.4" cy="185.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="423.2" cy="171.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="474.7" cy="164.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="395.7" cy="204.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="316.0" cy="215.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="289.4" cy="230.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="301.0" cy="240.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="245.1" cy="241.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="265.7" cy="244.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="263.3" cy="236.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="281.8" cy="245.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="222.1" cy="260.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="192.9" cy="236.0" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="256.2" cy="255.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="178.2" cy="270.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="167.2" cy="232.6" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="319.3" cy="199.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="354.8" cy="226.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="263.3" cy="238.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="218.7" cy="234.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="211.3" cy="250.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="215.5" cy="266.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="194.9" cy="244.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="180.3" cy="274.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="174.4" cy="260.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="167.9" cy="253.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="205.2" cy="250.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="173.1" cy="264.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="182.1" cy="252.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="184.8" cy="249.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="164.6" cy="223.2" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="308.6" cy="160.7" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="329.8" cy="205.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="394.7" cy="208.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="318.8" cy="210.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="269.7" cy="237.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="219.9" cy="265.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="171.7" cy="266.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="207.2" cy="260.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="165.5" cy="249.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="191.1" cy="249.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="243.0" cy="238.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="175.5" cy="248.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="158.0" cy="274.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="180.0" cy="259.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="156.0" cy="258.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="184.1" cy="250.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="165.7" cy="251.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="140.6" cy="268.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="137.1" cy="259.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="129.3" cy="267.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="131.7" cy="249.9" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="130.0" cy="257.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="153.3" cy="247.5" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="145.9" cy="269.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="133.0" cy="263.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="160.0" cy="263.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="193.5" cy="257.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="135.7" cy="266.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="152.8" cy="263.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="132.4" cy="248.0" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="173.0" cy="263.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="144.5" cy="261.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="151.0" cy="258.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="137.2" cy="269.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="115.8" cy="272.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="120.5" cy="260.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="167.6" cy="272.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="130.0" cy="257.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="172.7" cy="242.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="144.2" cy="277.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="122.1" cy="242.7" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="192.5" cy="245.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="173.5" cy="262.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="167.9" cy="256.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="134.0" cy="261.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="131.9" cy="268.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="147.0" cy="255.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="198.7" cy="262.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="136.9" cy="203.3" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="245.1" cy="241.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="184.0" cy="258.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="152.5" cy="248.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="159.9" cy="237.9" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="245.9" cy="226.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="255.4" cy="242.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="183.4" cy="261.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="155.4" cy="267.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="148.0" cy="262.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="143.4" cy="235.8" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="135.1" cy="275.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="119.1" cy="278.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="123.2" cy="250.6" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="131.7" cy="271.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="222.6" cy="262.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="121.8" cy="267.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="117.4" cy="275.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="117.1" cy="271.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="126.6" cy="273.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="132.0" cy="272.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="104.6" cy="268.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="106.5" cy="269.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="115.4" cy="280.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="114.0" cy="263.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="119.6" cy="276.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="101.7" cy="278.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="99.4" cy="273.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="114.6" cy="272.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="100.5" cy="236.1" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="271.7" cy="232.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="148.6" cy="227.0" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="203.4" cy="259.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="137.1" cy="263.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="125.5" cy="266.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="129.8" cy="270.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="113.0" cy="271.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="150.9" cy="274.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="158.5" cy="223.2" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="198.2" cy="226.0" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="229.4" cy="208.7" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="198.8" cy="257.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="158.8" cy="264.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="140.4" cy="261.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="136.0" cy="266.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="161.8" cy="246.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="161.3" cy="268.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="132.5" cy="247.1" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="179.9" cy="236.3" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="153.9" cy="255.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="186.2" cy="268.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="130.7" cy="271.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="160.1" cy="270.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="128.9" cy="254.5" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="152.4" cy="145.3" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="517.7" cy="34.6" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="402.7" cy="210.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="270.2" cy="229.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="270.2" cy="209.3" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="267.5" cy="258.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="219.0" cy="233.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="281.8" cy="236.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="258.8" cy="228.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="244.7" cy="255.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="205.4" cy="260.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="213.7" cy="245.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="214.3" cy="241.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="217.0" cy="258.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="170.0" cy="260.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="216.3" cy="256.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="162.3" cy="263.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="163.0" cy="261.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="168.8" cy="269.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="187.7" cy="248.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="187.4" cy="264.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="172.9" cy="244.8" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="198.1" cy="247.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="187.3" cy="235.5" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="212.5" cy="220.4" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="295.2" cy="239.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="209.9" cy="202.7" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="321.1" cy="214.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="256.2" cy="212.0" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="267.5" cy="234.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="196.6" cy="234.0" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="225.2" cy="209.5" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="316.0" cy="221.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="251.1" cy="216.6" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="220.5" cy="238.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="204.5" cy="243.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="205.7" cy="246.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="260.3" cy="249.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="190.4" cy="252.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="170.1" cy="257.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="152.1" cy="262.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="138.9" cy="266.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="150.5" cy="258.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="144.8" cy="255.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="162.2" cy="249.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="154.7" cy="262.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="129.7" cy="261.0" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="127.9" cy="260.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="141.9" cy="255.5" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="140.2" cy="260.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="173.7" cy="256.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="138.8" cy="266.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="124.2" cy="270.9" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="134.3" cy="229.7" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="181.3" cy="249.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="171.5" cy="263.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="203.3" cy="253.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="151.7" cy="268.7" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="138.7" cy="246.6" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="186.9" cy="255.3" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="152.9" cy="234.4" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="203.8" cy="159.6" r="3" fill="var(--red)" fill-opacity="0.85"/>
+      <circle cx="294.1" cy="229.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="178.6" cy="256.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="190.6" cy="266.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="166.3" cy="262.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="152.8" cy="266.6" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="164.8" cy="256.2" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="205.0" cy="255.1" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <circle cx="199.0" cy="258.4" r="3" fill="var(--blue)" fill-opacity="0.45"/>
+      <text x="427.3" y="52.8" text-anchor="end" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace">Oct 2008: 45 → 82</text>
+      <text x="509.7" y="38.6" text-anchor="end" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace">Mar 2020: 54 → 89</text>
+      <text x="161.4" y="149.3" text-anchor="start" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace">Feb 2020: 15 → 51</text>
+      <text x="340" y="326" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">VIX at the start of the month (implied, % a year)</text>
+      <text x="18" y="155" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 18 155)">realised over next 21 days</text>
+          </svg>
+        </div>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard green"><span class="sl-ctag green">What the average says</span><ul><li>364 of 431 windows (84.5%): seller paid</li><li>Average gap +3.9 points (19.3 against 15.4)</li></ul></div>
+        <div class="sl-ccard red"><span class="sl-ctag red">What it hides</span><ul><li>67 windows lost; 6 by over 20 points</li><li>Five windows: 57% of all losses</li></ul></div>
+      </div>
+    </section>
+
+    <!-- WB:variance_risk_premium-deck:START -->
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">The variance risk premium: what the average pays and what it hides</h2>
+      <!-- WB:variance_risk_premium:START -->
+      <div class="wb" data-title="The variance risk premium: what the average pays and what it hides">
+        <script type="application/json">{"w":600,"h":830,"intro":"Selling an option is selling insurance. Real S&P 500 numbers from 1990 to 2025 show what the average pays, and what it hides. Press play, or step through.","steps":[{"cap":"Selling an option is selling insurance. A fund that wants protection pays a premium. A seller collects it and agrees to cover the move.","do":[{"icon":"buyer","name":"person","x":40,"y":14,"s":0.75,"tone":"blue","label":"protection buyer","lsize":17},{"icon":"um","name":"umbrella","x":262,"y":14,"s":0.8,"tone":"amber","label":"the option","lsize":17},{"icon":"seller","name":"person","x":480,"y":14,"s":0.75,"tone":"green","label":"option seller","lsize":17},{"chip":"prem","x":120,"y":120,"text":"premium","tone":"amber"},{"move":"prem","x":440,"y":120,"ms":1400}]},{"cap":"Over 431 one-month windows from 1990 to 2025, the VIX, the market's price for movement, averaged 19.3. The S&P 500 then actually moved at an annualised 15.4.","do":[{"hide":"prem"},{"chart":"avg","x":20,"y":170,"w":270,"h":230,"title":"Volatility, % a year (average)","xd":[0,3],"yd":[0,24],"yt":[[0,"0"],[10,"10"],[20,"20"]],"xt":[[1,"priced"],[2,"realised"]],"pl":44,"pr":10},{"bars":"ab","chart":"avg","data":[[1,19.3,"19.3","blue"],[2,15.4,"15.4","green"]],"bw":56,"ms":1300}]},{"cap":"The gap is about 3.9 volatility points. That gap is the variance risk premium. In 364 of the 431 windows, 84%, the option seller came out ahead.","do":[{"box":"gap","x":310,"y":190,"w":280,"h":96,"text":"gap ≈ 3.9 points\n= the premium","tone":"amber","size":19},{"box":"paid","x":310,"y":308,"w":280,"h":84,"text":"seller paid in\n364 of 431 months","tone":"green","size":18}]},{"cap":"Here is every window, counted by how far implied beat realised. Green bars are months the seller was paid. The hump sits on the paying side.","do":[{"hide":"gap"},{"hide":"paid"},{"chart":"hist","x":10,"y":410,"w":440,"h":230,"title":"Months, by implied minus realised (vol points)","xd":[-42,27],"yd":[0,125],"yt":[[0,"0"],[50,"50"],[100,"100"]],"xt":[[-40,"−40"],[-20,"−20"],[0,"0"],[20,"+20"]],"pl":44,"pr":14},{"bars":"hb","chart":"hist","data":[[-36.25,3,"","red"],[-31.25,1,"","red"],[-26.25,1,"","red"],[-21.25,1,"","red"],[-16.25,1,"","red"],[-13.75,2,"","red"],[-11.25,3,"","red"],[-8.75,6,"","red"],[-6.25,6,"","red"],[-3.75,13,"","red"],[-1.25,30,"","red"],[1.25,55,"","green"],[3.75,113,"","green"],[6.25,98,"","green"],[8.75,57,"","green"],[11.25,28,"","green"],[13.75,9,"","green"],[16.25,2,"","green"],[18.75,1,"","green"],[23.75,1,"","green"]],"bw":11,"ms":1700}]},{"cap":"Now look left. In 67 months the seller lost, and in 6 of them by more than 20 volatility points. The worst were October 2008 and February and March 2020.","do":[{"note":"tail","chart":"hist","at":[-27,58],"text":"the tail:\n−36 points","tone":"red","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Count it in variance points and the tail is heavy. The five worst windows lost 17,316 points, which is 57% of all the losses and 23% of all the gains.","do":[{"box":"w5","x":462,"y":440,"w":128,"h":118,"text":"worst 5\nmonths:\n57% of all\nlosses","tone":"red","size":17}]},{"cap":"Why does the premium exist? Investors and funds pay a dealer for protection against falls. Their demand is steady and price-insensitive.","do":[{"hide":"buyer"},{"hide":"um"},{"hide":"seller"},{"icon":"crowd","name":"crowd","x":30,"y":14,"s":0.75,"tone":"blue","label":"hedgers","lsize":17},{"icon":"dealer","name":"bank","x":262,"y":14,"s":0.75,"tone":"green","label":"dealer","lsize":17},{"arrow":["crowd","dealer"],"label":"buy puts","tone":"amber"}]},{"cap":"The dealer cannot hedge a jump, and volatility tends to rise exactly when stocks fall. So the seller is paid for being short crash risk, in the states where everyone else is already hurting.","do":[{"icon":"fall","name":"down","x":480,"y":14,"s":0.75,"tone":"red","label":"stocks fall,\nvol jumps","lsize":17},{"arrow":["dealer","fall"],"label":"hurt here","tone":"red"},{"pulse":"fall"}]},{"cap":"A toy simulation of one seller who sells a one-month straddle every month for ten years, with a small chance of a crash each month (illustrative). It ends at 3.8 times the start.","do":[{"chart":"sim","x":10,"y":650,"w":330,"h":170,"title":"One simulated life, capital (toy model)","xd":[0,120],"yd":[0.4,4.2],"yt":[[1,"1×"],[2,"2×"],[3,"3×"],[4,"4×"]],"xt":[[0,"0"],[60,"5 years"],[120,"10"]],"pl":40,"pr":20},{"series":"sp","chart":"sim","pts":[[0,1],[4,1.013],[8,1.072],[12,1.175],[16,1.221],[20,1.348],[24,1.389],[28,1.348],[32,1.206],[36,1.255],[40,1.276],[44,1.415],[48,1.327],[52,1.43],[56,1.569],[60,1.679],[64,1.766],[68,1.751],[72,1.935],[76,2.071],[80,2.265],[84,2.409],[88,2.37],[92,2.545],[96,2.63],[100,2.792],[104,3.031],[108,3.32],[112,3.64],[116,3.789],[120,3.829]],"tone":"blue","ms":2000}]},{"cap":"But live through it: from month 30 to month 37 it fell 16.3%, with a single month of −10.0%. The average is positive. The path is not smooth.","do":[{"dot":"pk","chart":"sim","at":[30,1.437],"text":"peak","tone":"amber","dy":-14},{"dot":"tr","chart":"sim","at":[37,1.202],"text":"−16.3%","tone":"red","dy":24}]},{"cap":"This is not free money. The average pays for a tail, the gap shrinks after costs, and it is weak or absent in some markets. Size for the worst month you can survive, not the average month.","do":[{"box":"nofree","x":360,"y":660,"w":230,"h":140,"text":"not free money:\nthe average pays\nfor a tail","tone":"red","size":18},{"pulse":"nofree"}]}]}</script>
+      </div>
+      <!-- WB:variance_risk_premium:END -->
+    </section>
+    <!-- WB:variance_risk_premium-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Why the premium exists</h2>
+      <p class="sl-sub">It is insurance pricing, not a loophole. Sellers are paid for carrying something unpleasant.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🛡</div><div><h4>Demand for protection</h4><p>Funds buy index puts to cap downside and are price-insensitive. One-sided demand lifts prices (Garleanu, Pedersen and Poteshman, 2009).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Dealer risk</h4><p>Dealers hedge by trading the underlying. The hedge slips when prices jump, and hedging ties up capital. They charge for both.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>It pays in bad times</h4><p>Volatility tends to rise when stocks fall, so the seller loses when wealth is already low. That is what insurance is.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>Jumps</h4><p>No hedge works against a gap. The premium includes a price for that risk.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>The premium is not a law of nature. Carr and Wu report smaller premia for most individual stocks than for the major indices, and FX variance premia are generally smaller and less consistent than the equity-index one.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Ten simulated years: the average, and the ride</h2>
+      <p class="sl-sub">A toy model, clearly a simulation: sell a 30-day straddle every month at an implied volatility of 19%, with ordinary realised volatility of 14% and a crash of 15% at the chance below.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — simulated capital, 30 lives and the median</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simulated capital for a trader selling a one-month straddle every month for ten years, on a log scale: 30 thin paths and a green median. Paths rise with occasional sharp falls; larger size or a higher crash chance makes the falls deeper." id="vd-svg">
+            <line x1="60" y1="20" x2="60" y2="258" style="stroke:var(--border2)"/>
+            <line x1="60" y1="258" x2="620" y2="258" style="stroke:var(--border2)"/>
+            <g id="vd-ygrid"></g><g id="vd-paths"></g>
+            <path id="vd-median" d="" style="fill:none;stroke:var(--green);stroke-width:3"/>
+            <text x="340" y="282" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">months (120 = ten years)</text>
+            <text x="16" y="140" text-anchor="middle" transform="rotate(-90 16 140)" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">capital, start = 1 (log scale)</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Chance of a crash month</span><span class="sl-live" id="vd-lam-val">2%</span></div>
+        <input type="range" class="sl-slider" id="vd-lam" min="0" max="6" step="0.5" value="2">
+        <div class="sl-sliderhead"><span>Size: straddle notional ÷ capital</span><span class="sl-live" id="vd-lev-val">1.0×</span></div>
+        <input type="range" class="sl-slider" id="vd-lev" min="0.5" max="4" step="0.5" value="1">
+        <div class="sl-calc-steps">
+          <div>Average P&amp;L per month: <b id="vd-avg">+0.89%</b> · months that make money: <b id="vd-win">70.6%</b></div>
+          <div>Worst month: <b id="vd-worst">−20.6%</b> · median worst drawdown: <b id="vd-mdd">16.9%</b></div>
+          <div>Paths that fall 50% at some point: <b id="vd-dd50">0.1%</b> · median ending capital: <b id="vd-fin">2.78×</b></div>
+        </div>
+        <div class="sl-verdict" id="vd-verdict">A positive average with tolerable drawdowns at this size. Now raise the crash chance or the size and watch the tail.</div>
+      </div>
+      <p class="sl-p">Same edge, bigger size: at 3× the median path grows faster and more than four in ten paths fall by half at some point. The draws are fixed by a seed, so the same settings always give the same numbers.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 7 · It actually happened</div>
+      <h2 class="sl-h2">February to March 2020: 15% priced, over 80% delivered</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>On 19 February 2020 the S&amp;P 500 closed at a record 3,386.15 and the VIX at 14.38. By 23 March the index closed at 2,237.40, 33.9% lower. The VIX closed at 82.69 on 16 March, the highest close in Cboe's daily history (from 1990), the day the index fell 12.0%. Realised volatility over the 23 trading days from 20 February was about 84% a year. A seller of a 30-day straddle at the VIX of 15.04 on 10 February collected about 3.4% of the index level, and the index fell 18.2% by 11 March: a loss of roughly 15% (treating the VIX as an at-the-money volatility, which it is not exactly).</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link"><b>Calm</b>VIX 14.38 on 19 Feb</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ The premium</b>Priced for ~15% a year</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link shock"><b>Shock</b>Covid-19; pandemic declared 11 Mar</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>VIX 82.69; ~84% realised</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">What this does not say</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>Not free money</h4><p>The average pays for a tail. After the bid-ask spread, commissions and the cost of margin, a 1%-a-month edge is thin.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Not a timing signal</h4><p>The gap is bigger after spikes, and so is the risk: a window that began at a VIX of 53.9 on 11 March 2020 realised 89%.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌍</div><div><h4>Not the same everywhere</h4><p>An equity-index premium measured over 35 years says little about an FX, rates or single-stock premium. Measure it for what you trade.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧱</div><div><h4>One history</h4><p>One market, 35 years, a few crises. The average depends on whether disasters of that size are in the sample.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>The premium assumes you are still there to collect it. Margin requirements rise when volatility rises, so the call for more money comes at the worst time. The average accrues only to a seller with enough capital and discipline to be there for all of it.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Implied 20, realised 15, 30 days, zero rates. About what does a straddle seller make on average, as a share of spot?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About 1.1%</button>
+        <button class="sl-quiz-opt">About 5%</button>
+        <button class="sl-quiz-opt">About 0.1%</button>
+        <div class="sl-quiz-explain">Premium 4.57% minus average payout 3.43% is 1.14%. The quick formula 0.8 × 0.287 × 5 points gives the same.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A short straddle wins in 85% of months. Why can it still ruin an account?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Gains are capped at the premium, losses are not, so a few months can be many times a typical gain</button>
+        <button class="sl-quiz-opt">An 85% win rate is not enough to be profitable</button>
+        <button class="sl-quiz-opt">Option sellers pay tax on gains but not on losses</button>
+        <div class="sl-quiz-explain">The hit rate says how often you win, not how much you lose when you do not. Large positions can also be closed by margin calls before the average arrives.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does the premium exist?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Buyers pay for protection and dealers cannot hedge jumps, and sellers carry variance that spikes when stocks fall</button>
+        <button class="sl-quiz-opt">Option markets are slow and nobody has noticed the mispricing</button>
+        <button class="sl-quiz-opt">Realised volatility is always lower than implied, by definition</button>
+        <div class="sl-quiz-explain">It is compensation for bearing crash risk, not a loophole. Realised volatility is not always lower: in 67 of 431 windows it was higher.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>The VIX is at 54, far above its average. Is that a safe moment to sell options?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Not necessarily: the premium and the risk both rise, and a window that began at 53.9 on 11 March 2020 realised 89%</button>
+        <button class="sl-quiz-opt">Yes, because implied volatility always falls back</button>
+        <button class="sl-quiz-opt">Yes, but only for puts</button>
+        <div class="sl-quiz-explain">High implied volatility has gone both ways: the 2008 spike was followed by the largest positive gap in our sample, and March 2020 by one of the worst losses.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>In the simulation, the size is raised from 1× to 3× with the same edge. What happens to the drawdowns?</h4>
+        <button class="sl-quiz-opt" data-correct="true">They get much deeper: over four in ten paths fall by half at some point</button>
+        <button class="sl-quiz-opt">They stay the same because the edge is the same</button>
+        <button class="sl-quiz-opt">They shrink because there is more premium</button>
+        <div class="sl-quiz-explain">The premium scales with size, and so does the loss in a crash month. The same edge at 3× turns a tolerable ride into one that regularly halves the account.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="13">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2017-11-03">
+    <div class="tl-drill-label">Scenario drill · 3 November 2017</div>
+    <h3>The quietest market on record, and a perfect year</h3>
+    <p>You have sold a one-month at-the-money S&amp;P 500 straddle every month for two years, sized to your comfort, and every month has made money. Today the VIX closes at 9.14, the lowest close in Cboe's daily history, and the index has realised only about 5% volatility over the last month. A 30-day straddle at 9.14% volatility pays about 2.1% of the index level. What do you do with your size?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Add size. The gap is still positive and the strategy has not lost in two years.<div class="tl-drill-why">The premium is thin: about 2.1% of the index for a month, against a tail that is as large as ever. Two perfect years are a short sample for a strategy whose losses come from rare events. Adding size here buys the least pay per unit of tail risk you will ever be offered.</div></li>
+      <li data-verdict="bad">Go the other way. Volatility cannot go lower, so buy straddles instead.<div class="tl-drill-why">Low can stay low, and the same research says buyers lose on average, month after month, to the premium they pay. "Cheap" is not the same as "about to rise". You would be paying to be early.</div></li>
+      <li data-verdict="good">Keep size set by the worst month you could survive, not by the calm of the last two years, and consider capping the tail with bought options.<div class="tl-drill-why">The premium on offer is at its lowest, so the case for taking more risk is at its weakest. Sizing from the worst case and paying for protection costs some of the thin premium and keeps you in the game for the month that matters.</div></li>
+      <li data-verdict="ok">Carry on unchanged. The long-run average says the premium is positive.<div class="tl-drill-why">Defensible, and it is what a rule-based seller would do. But it ignores that sizes chosen in a calm market tend to be too large for a volatile one, and that a thin premium is thin pay for the same tail.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 2 February 2018 the VIX closed at 17.31. On Monday 5 February it closed at 37.32, up 20.01 points or 115.6% in a day, and the S&amp;P 500 fell 4.1%. Realised volatility over the 21 trading days from 5 February was about 25%, against about 7% across 2017. A single episode cannot prove a rule; it shows the shape. Calm months paid small amounts, then a few days returned many months of them. Later in this series we look at how short-volatility products and books failed that week.</p><p class="tl-drill-sources">Sources: <a href="https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv">Cboe, VIX daily historical data, 1990 onwards (closes on 3 Nov 2017, 2 Feb 2018 and 5 Feb 2018)</a>; S&amp;P 500 daily closing values, S&amp;P Dow Jones Indices. Percentage changes, the 21-day realised volatilities and the straddle price are our own calculations (straddle: Black-Scholes, zero rate).</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The variance risk premium is implied variance minus the variance that then arrives, on average: positive for S&amp;P 500 options. VIX averaged 19.3 and realised 15.4 in our count.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The seller's average profit on a one-month straddle is about 0.8 × √T × (σ<sub>imp</sub> − σ<sub>real</sub>) of spot: 1.14% at 20 against 15 over 30 days, before costs.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Research from Carr and Wu, Coval and Shumway, Bondarenko, and Bakshi and Kapadia finds sellers paid on average in index options.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>It is insurance pricing: protection demand, dealer hedging risk, and variance that rises when stocks fall.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The average hides a left tail. Gains are capped at the premium; the five worst windows made up 57% of all losses.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>It is not free money and not a timing signal. 19 February to 23 March 2020: 15% priced, more than 80% delivered.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read a claim like "implied is usually above realised, so sell it" for what it actually says: a documented average, with a price attached. Ask how big the left tail is, what the position does to your account in the worst month, and whether the gap survives costs in the market you trade.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Delta Hedging &amp; Gamma Scalping</h3>
+        <p>Hedge away the direction of an option and what is left is a bet on how much the stock moves, against a daily rent. One equation shows when you win, and what it costs.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="delta-hedging-gamma-scalping-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="variance-risk-premium.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var iv=document.getElementById('vc-iv'); if(!iv) return;
+  var rv=document.getElementById('vc-rv'), dd=document.getElementById('vc-d');
+  var oP=document.getElementById('vc-prem'), oY=document.getElementById('vc-pay'), oN=document.getElementById('vc-pnl'),
+      oG=document.getElementById('vc-gap'), oV=document.getElementById('vc-var');
+  function erf(x){var s=x<0?-1:1;x=Math.abs(x);var t=1/(1+0.3275911*x);var y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);return s*y;}
+  function cdf(x){return 0.5*(1+erf(x/Math.SQRT2));}
+  function strad(s,T){return 2*(2*cdf(s*Math.sqrt(T)/2)-1);}
+  function run(){
+    var a=parseFloat(iv.value), b=parseFloat(rv.value), d=parseFloat(dd.value);
+    if(!isFinite(a)||!isFinite(b)||!isFinite(d)||a<=0||b<=0||d<=0){oP.textContent=oY.textContent=oN.textContent=oG.textContent=oV.textContent='—';return;}
+    var T=d/365, p=strad(a/100,T), y=strad(b/100,T), n=p-y;
+    oP.textContent=(p*100).toFixed(2)+'%';
+    oY.textContent=(y*100).toFixed(2)+'%';
+    oN.textContent=(n<0?'−':'+')+Math.abs(n*100).toFixed(2)+'%';
+    oG.textContent=(a-b).toFixed(1);
+    oV.textContent=(a*a-b*b).toFixed(0);
+  }
+  [iv,rv,dd].forEach(function(e){e.addEventListener('input',run);});
+  document.getElementById('vc-reset').addEventListener('click',function(){iv.value=20;rv.value=15;dd.value=30;run();});
+  run();
+})();
+</script>
+<script>
+// shared simulation core (inlined into the lesson)
+function vrpMulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function vrpErf(x){var s=x<0?-1:1;x=Math.abs(x);var t=1/(1+0.3275911*x);var y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);return s*y;}
+function vrpCdf(x){return 0.5*(1+vrpErf(x/Math.SQRT2));}
+function vrpStraddle(sig,T){return 2*(2*vrpCdf(sig*Math.sqrt(T)/2)-1);}
+var VRP_NP=2000,VRP_NM=120,VRP_T=30/365;
+function vrpDraws(seed){var r=vrpMulberry(seed),n=VRP_NP*VRP_NM,Z=new Float64Array(n),U=new Float64Array(n);
+  for(var i=0;i<n;i++){var u1=r(),u2=r();Z[i]=Math.sqrt(-2*Math.log(u1||1e-12))*Math.cos(2*Math.PI*u2);U[i]=r();}
+  return {Z:Z,U:U};}
+function vrpRun(d,p){
+  var P=vrpStraddle(p.iv/100,VRP_T),sd=p.sd/100,sT=sd*Math.sqrt(VRP_T),lam=p.lam/100,J=p.J/100,L=p.lev;
+  var comp=1/(1-lam*J),NP=VRP_NP,NM=VRP_NM;
+  var bins=new Array(55).fill(0),win=0,big=0,worst=0,sum=0,below=0,dd50=0;
+  var mdd=new Float64Array(NP),fin=new Float64Array(NP),paths=[],eq=new Float64Array(NP*(NM+1));
+  for(var k=0;k<NP;k++){var e=1,pk=1,m=0;eq[k*(NM+1)]=1;
+    for(var t=0;t<NM;t++){var i=k*NM+t;
+      var x=Math.exp(-0.5*sT*sT+sT*d.Z[i])*(d.U[i]<lam?(1-J):1)*comp;
+      var pnl=L*(P-Math.abs(x-1));
+      e*=1+pnl;if(e<0)e=0;if(e>pk)pk=e;var dd=1-e/pk;if(dd>m)m=dd;
+      eq[k*(NM+1)+t+1]=e;
+      sum+=pnl;if(pnl>0)win++;if(pnl<-0.10)big++;if(pnl<worst)worst=pnl;
+      var b=Math.floor(pnl*100)+40;if(b<0)b=0;if(b>54)b=54;bins[b]++;}
+    mdd[k]=m;fin[k]=e;if(e<1)below++;if(m>=0.5)dd50++;}
+  var ms=Array.prototype.slice.call(mdd).sort(function(a,b){return a-b;});
+  var fs=Array.prototype.slice.call(fin).sort(function(a,b){return a-b;});
+  var med=new Array(NM+1);
+  for(var t=0;t<=NM;t++){var col=new Array(NP);for(var k=0;k<NP;k++)col[k]=eq[k*(NM+1)+t];col.sort(function(a,b){return a-b;});med[t]=col[NP>>1];}
+  return {prem:P*L,avg:sum/(NP*NM),win:win/(NP*NM),big:big/(NP*NM),worst:worst,mddMed:ms[NP>>1],mdd90:ms[Math.floor(NP*0.9)],
+    below:below/NP,dd50:dd50/NP,finMed:fs[NP>>1],bins:bins,med:med,eq:eq,effVol:Math.sqrt(sd*sd+12*lam*J*J)};
+}
+
+function vrpFmt(r){
+  function pc(x,d){return (x*100).toFixed(d)+'%';}
+  function sg(x){return (x<0?'\u2212':'+')+Math.abs(x*100).toFixed(2)+'%';}
+  var ng=r.worst<0?'\u2212'+Math.abs(r.worst*100).toFixed(1)+'%':'0.0%';
+  var v;
+  if(r.avg<=0)v='At these settings the average month loses money: the gap is too small to pay for the tail.';
+  else if(r.dd50>0.2)v='The average is positive, but at this size a large share of paths suffer a 50% drawdown on the way.';
+  else if(r.big>0.02)v='The average is positive, but losing months of more than 10% are common. Expect a rough ride.';
+  else v='A positive average with tolerable drawdowns at this size. Now raise the crash chance or the size and watch the tail.';
+  return {prem:pc(r.prem,2),avg:sg(r.avg),win:pc(r.win,1),big:pc(r.big,2)+(r.big>0?' (about 1 in '+Math.round(1/r.big)+')':''),
+    worst:ng,mdd:pc(r.mddMed,1),mdd90:pc(r.mdd90,1),below:pc(r.below,1),dd50:pc(r.dd50,1),fin:r.finMed.toFixed(2)+'\u00d7',
+    eff:(r.effVol*100).toFixed(1)+'%',verdict:v};
+}
+
+
+(function(){
+  var el=document.getElementById('vd-lam'); if(!el) return;
+  var draws=vrpDraws(7), YMIN=0.25;
+  function g(id){return document.getElementById(id);}
+  function render(){
+    var lam=parseFloat(g('vd-lam').value), lev=parseFloat(g('vd-lev').value);
+    g('vd-lam-val').textContent=lam+'%'; g('vd-lev-val').textContent=lev.toFixed(1)+'×';
+    var r=vrpRun(draws,{iv:19,sd:14,lam:lam,J:15,lev:lev}), f=vrpFmt(r), NM=VRP_NM, t, k2;
+    g('vd-avg').textContent=f.avg; g('vd-win').textContent=f.win; g('vd-worst').textContent=f.worst; g('vd-mdd').textContent=f.mdd;
+    g('vd-dd50').textContent=f.dd50; g('vd-fin').textContent=f.fin; g('vd-verdict').textContent=f.verdict;
+    var ymax=4;
+    for(k2=0;k2<30;k2++){for(t=0;t<=NM;t+=6){var e=r.eq[k2*(NM+1)+t];if(e>ymax)ymax=e;}}
+    for(t=0;t<=NM;t++){if(r.med[t]>ymax)ymax=r.med[t];}
+    ymax=YMIN*Math.pow(2,Math.ceil(Math.log(ymax*1.05/YMIN)/Math.LN2));
+    var L=Math.log(ymax/YMIN);
+    function X(t){return 60+t/NM*560;}
+    function Y(v){if(v<YMIN)v=YMIN;return 258-Math.log(v/YMIN)/L*238;}
+    var grid='';
+    for(var v=YMIN;v<=ymax*1.001;v*=2){grid+='<line x1="60" y1="'+Y(v).toFixed(1)+'" x2="620" y2="'+Y(v).toFixed(1)+'" style="stroke:var(--border2);'+(v===1?'stroke-dasharray:4,3;':'')+'"/><text x="54" y="'+(Y(v)+4).toFixed(1)+'" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:\'DM Mono\',monospace">'+(v<1?v:Math.round(v*100)/100)+'</text>';}
+    g('vd-ygrid').innerHTML=grid;
+    var s='';
+    for(k2=0;k2<30;k2++){var pts=[],end=r.eq[k2*(NM+1)+NM];
+      for(t=0;t<=NM;t++){pts.push(X(t).toFixed(1)+','+Y(r.eq[k2*(NM+1)+t]).toFixed(1));}
+      s+='<polyline points="'+pts.join(' ')+'" style="fill:none;stroke:'+(end<1?'var(--red)':'var(--blue)')+';stroke-width:1.1;stroke-opacity:'+(end<1?'0.8':'0.35')+'"/>';}
+    g('vd-paths').innerHTML=s;
+    var md=[];for(t=0;t<=NM;t++)md.push((t?'L':'M')+X(t).toFixed(1)+','+Y(r.med[t]).toFixed(1));
+    g('vd-median').setAttribute('d',md.join(' '));
+  }
+  g('vd-lam').addEventListener('input',render); g('vd-lev').addEventListener('input',render);
+  render();
+})();
+</script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
+</body>
+</html>

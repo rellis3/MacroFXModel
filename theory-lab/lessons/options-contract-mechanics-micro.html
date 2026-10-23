@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Options Contract Mechanics: What You Actually Trade — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
+<link rel="stylesheet" href="../assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Options Contract Mechanics — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, a live calculator, and a 6-question self-test?<a href="options-contract-mechanics.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 1 · Options in Practice</div>
+      <h1 class="sl-h1">Options Contract Mechanics, or <em>What You Actually Trade</em></h1>
+      <p class="sl-lede">Before the view, the Greeks or the strategy, there is a contract: a strike, an expiry, a multiplier, a premium and a way of ending. This guide covers what is printed on it, what it costs to get in and out, and how it settles. Options can lose the whole premium, and short options can lose more. This is education, not advice.</p>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Profit and loss per contract against the stock price at expiry for one long call, strike 105, bought at 1.15 a share, so 115 dollars a contract. At expiry the line is flat at minus 115 dollars up to the strike, then rises with every dollar above it, crossing zero at the break-even of 106.15. Today, with 30 days left at 25 percent volatility, the value curve sits above the expiry line everywhere; that gap is time value, which melts away by expiry.">
+      <rect class="tlp-box red" x="70" y="155.5" width="317.2" height="40.5" rx="4" opacity=".25"/>
+      <rect class="tlp-box green" x="387.2" y="24" width="182.8" height="131.5" rx="4" opacity=".25"/>
+      <line class="tlp-line" x1="70" y1="155.5" x2="570" y2="155.5"/>
+      <line class="tlp-line" x1="70" y1="24" x2="70" y2="196"/>
+      <line class="tlp-line dash" x1="351.2" y1="24" x2="351.2" y2="196"/>
+      <polyline class="tlp-line blue dash" points="70.0,171.1 85.6,169.8 101.2,168.4 116.9,166.8 132.5,165.1 148.1,163.1 163.8,161.0 179.4,158.6 195.0,156.0 210.6,153.2 226.2,150.2 241.9,146.8 257.5,143.3 273.1,139.5 288.8,135.4 304.4,131.0 320.0,126.4 335.6,121.5 351.2,116.3 366.9,110.9 382.5,105.2 398.1,99.3 413.8,93.1 429.4,86.6 445.0,79.9 460.6,73.0 476.2,65.8 491.9,58.4 507.5,50.8 523.1,43.0 538.8,35.0 554.4,26.9 570.0,18.6"/>
+      <polyline class="tlp-line purple thick" points="70.0,178.8 85.6,178.8 101.2,178.8 116.9,178.8 132.5,178.8 148.1,178.8 163.8,178.8 179.4,178.8 195.0,178.8 210.6,178.8 226.2,178.8 241.9,178.8 257.5,178.8 273.1,178.8 288.8,178.8 304.4,178.8 320.0,178.8 335.6,178.8 351.2,178.8 366.9,168.7 382.5,158.6 398.1,148.4 413.8,138.3 429.4,128.2 445.0,118.1 460.6,108.0 476.2,97.9 491.9,87.7 507.5,77.6 523.1,67.5 538.8,57.4 554.4,47.3 570.0,37.2"/>
+      <circle class="tlp-green" cx="387.2" cy="155.5" r="6"/>
+      <text class="tlp-text2" x="357" y="38" font-size="13" font-weight="700">strike 105</text>
+      <text class="tlp-green" x="394" y="172" font-size="13" font-weight="700">break-even 106.15</text>
+      <text class="tlp-red" x="80" y="191" font-size="12.5" font-weight="700">worst case −$115 = 1.15 × 100</text>
+      <text class="tlp-green" x="470" y="60" text-anchor="middle" font-size="13" font-weight="700">profit zone</text>
+      <line class="tlp-line purple thick" x1="82" y1="40" x2="112" y2="40"/>
+      <text class="tlp-text2" x="118" y="44" font-size="12.5">at expiry</text>
+      <line class="tlp-line blue dash" x1="82" y1="60" x2="112" y2="60"/>
+      <text class="tlp-blue" x="118" y="64" font-size="12.5">today, 30 days left</text>
+      <text class="tlp-amber" x="258" y="108" text-anchor="end" font-size="13" font-weight="700">time value: paid for, then it melts</text>
+      <text class="tlp-text3" x="195" y="214" text-anchor="middle" font-size="13">100</text>
+      <text class="tlp-text3" x="351.2" y="214" text-anchor="middle" font-size="13">105</text>
+      <text class="tlp-text3" x="507.5" y="214" text-anchor="middle" font-size="13">110</text>
+      <text class="tlp-text3" x="566" y="234" text-anchor="end" font-size="13">stock price at expiry →</text>
+      <text class="tlp-text3" x="64" y="159" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text" x="300" y="258" text-anchor="middle" font-size="14" font-weight="700">1 contract = 100 shares · you pay 1.15 × 100 = $115 today</text>
+    </svg>
+    <figcaption>One long call: stock 100, strike 105, 30 days, 25% volatility, bought at the 1.15 ask. The worst case is the premium. The break-even sits above the strike by the premium. Until expiry the option is worth more than the purple line, and that gap is time value.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="5">
+    <div class="tl-listen-head">🎧 Listen · the five-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I looked at a call on a stock trading at one hundred dollars. The screen says one fifteen. So it costs a dollar fifteen?</p>
+      <p data-who="Quant">Almost. That is the price per share. One contract covers a hundred shares, so one contract costs a hundred and fifteen dollars. Buy five and it is five hundred and seventy-five.</p>
+      <p data-who="Trader">And what exactly am I buying for that?</p>
+      <p data-who="Quant">A right, not a position. The right to buy a hundred shares at a fixed price, the strike, say one hundred and five, at any time up to an expiry date thirty days away. The seller took your money, and now has the obligation to deliver if you ask.</p>
+      <p data-who="Trader">The stock is at a hundred. Why pay anything for the right to buy at one-oh-five?</p>
+      <p data-who="Quant">Because it might rise. That is time value, the price of the chance. Exercising today would be pointless, so the call has no intrinsic value, and the whole one fifteen is time value. It melts. On expiry day the call is worth whatever the stock is above one-oh-five, or nothing.</p>
+      <p data-who="Trader">So where do I break even?</p>
+      <p data-who="Quant">At expiry, the strike plus what you paid: one hundred and six fifteen. The stock has to rise more than six percent in thirty days before you have made a cent.</p>
+      <p data-who="Trader">And if I want out before expiry?</p>
+      <p data-who="Quant">You sell it, and that is where the spread bites. The screen shows a bid of one ten and an ask of one fifteen. You buy at the ask and sell at the bid. Five contracts, that is twenty-five dollars gone the moment you trade, plus fees. About thirty-two dollars in all, five and a half percent of what you put in.</p>
+      <p data-who="Trader">That is not terrible.</p>
+      <p data-who="Quant">On a busy contract, no. On a thinly traded one the bid might be ninety cents and the ask a dollar thirty. Same five contracts, and the round trip costs two hundred and seven dollars, nearly a third of your money, before the stock has moved at all.</p>
+      <p data-who="Trader">What about when it ends? Do I get shares?</p>
+      <p data-who="Quant">It depends on the market. A US stock or ETF option is settled in shares: exercise, and a hundred shares arrive and you pay the strike. If it finishes even a cent in the money, it is exercised for you automatically unless you say otherwise. An S and P five hundred index option is settled in cash, no shares. Currency options are private contracts. They expire at ten in the morning New York time, and the currencies are delivered two business days later.</p>
+      <p data-who="Trader">And if I am the seller?</p>
+      <p data-who="Quant">You can be assigned. The clearing house picks by a random process and your broker passes it down. With US stock options that can happen before expiry, for example on a deep in-the-money call just before a dividend. And if the stock closes right at the strike on expiry day, you may not know whether you have been assigned until after the close. That is pin risk.</p>
+      <p data-who="Trader">Where did this standard contract come from?</p>
+      <p data-who="Quant">Chicago, the twenty-sixth of April, nineteen seventy-three. Before that, options were one-off private deals. The Chicago Board Options Exchange fixed the strikes, the expiry dates and the contract size, and put a clearing house in the middle. On the first day, nine hundred and eleven contracts traded, calls only. Standardising the contract is what made it tradable.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Know what the contract says, what it costs you to get in and out, and how it ends, before you ask whether your view is any good.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">An option is a voucher with the terms printed on it</h2>
+      <p class="sl-sub">The example used throughout: a made-up stock, XYZ, at 100, and its 30-day call struck at 105.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Strike and expiry</h4><p>The fixed price (105) and the last moment the right exists (30 days). After expiry the contract is gone.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📦</div><div><h4>Multiplier</h4><p>One US stock or ETF contract covers 100 shares. SPX pays $100 a point. FX is sized by notional.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏷</div><div><h4>Premium</h4><p>Quoted per share, paid up front. 1.15 a share is $115 a contract. The seller keeps it whatever happens.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧾</div><div><h4>Style and settlement</h4><p>American or European. Shares, cash or currency on exercise. These decide what you hold on Monday.</p></div></div>
+      </div>
+      <div class="sl-quote">A listed option is a voucher where every term is standardised, so strangers can trade the same piece of paper. An over-the-counter option is written to order for two parties.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The quote is per share; the bill is per contract, plus the spread</h2>
+      <p class="sl-sub">Bid 1.10, ask 1.15, five contracts, $0.70 fees each way. Edit any number.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it: the cost of a round trip</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Bid</label><input type="number" class="sl-input" id="ocmd-bid" value="1.10" step="0.05" min="0"></div>
+          <div class="sl-calc-field"><label>Ask</label><input type="number" class="sl-input" id="ocmd-ask" value="1.15" step="0.05" min="0"></div>
+          <div class="sl-calc-field"><label>Contracts</label><input type="number" class="sl-input" id="ocmd-n" value="5" step="1" min="1"></div>
+          <div class="sl-calc-field"><label>Fees per contract per side ($)</label><input type="number" class="sl-input" id="ocmd-fee" value="0.70" step="0.05" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Round-trip cost ($)</div>
+            <div class="sl-calc-result-val" id="ocmd-rt">32.00</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Cash out to buy at the ask: ask × 100 × contracts + fees = <b id="ocmd-out">578.50</b></div>
+          <div>Round trip as a share of cash out: <b id="ocmd-pct">5.53</b>%</div>
+          <div>The spread alone, as a share of the mid price: <b id="ocmd-spreadpct">4.44</b>%</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="ocmd-reset">Reset to bid 1.10, ask 1.15</button>
+        <div class="sl-note" id="ocmd-warn"></div>
+      </div>
+      <p class="sl-p">Try 0.90 and 1.30, a thin contract: the same five contracts cost $207 round trip, nearly a third of the cash laid out, before the stock has moved.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Premium = intrinsic value + time value</h2>
+      <p class="sl-sub">The 105 call, 30 days, 25% volatility. Drag the stock price and watch where the value comes from.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Value of the 105 call per share against the stock price. A grey line is intrinsic value and a blue curve is the model value today. The shaded gap between them is time value, largest at the strike.">
+            <line x1="60" y1="20" x2="60" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="230" x2="600" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+            <path id="ocmd-gap" d="" style="fill:var(--amber);opacity:.28;stroke:none"/>
+            <line id="ocmd-kline" x1="330" y1="20" x2="330" y2="230" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="330" y="14" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">strike 105</text>
+            <path id="ocmd-ip" d="" style="fill:none;stroke:var(--text3);stroke-width:2"/>
+            <path id="ocmd-vp" d="" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linecap:round"/>
+            <circle id="ocmd-dot" cx="60" cy="230" r="5" style="fill:var(--amber)"/>
+            <text x="330" y="252" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">stock price (92 to 118)</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Stock price</span><span class="sl-live" id="ocmd-s-val">100.0</span></div>
+        <input type="range" class="sl-slider" id="ocmd-s" min="92" max="118" step="0.5" value="100">
+        <div class="sl-calc-steps">
+          <div>Model value <b id="ocmd-val">1.13</b> = intrinsic <b id="ocmd-intr">0.00</b> + time value <b id="ocmd-tv">1.13</b> per share</div>
+        </div>
+        <div class="sl-verdict" id="ocmd-verdict">Out of the money: the whole premium is time value, and it melts to zero by expiry.</div>
+      </div>
+      <p class="sl-p">Only time value decays. An out-of-the-money option is all time value, so it needs a move just to be worth what you paid.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">How it ends depends on where it trades</h2>
+      <p class="sl-sub">One in-the-money call in each market, finishing 3% above its strike. Same move, different settlement.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="ocmd-tabs">
+          <button class="sl-tab active" data-panel="ocmd-p1">US stock</button>
+          <button class="sl-tab" data-panel="ocmd-p2">SPX index</button>
+          <button class="sl-tab" data-panel="ocmd-p3">EUR/USD</button>
+        </div>
+        <div class="sl-panel active" id="ocmd-p1">
+          <div class="sl-row"><div class="sl-box">Strike 105, XYZ closes 108.15</div><div class="sl-arrow">→</div><div class="sl-box green">Buy 100 shares at 105.00, worth 10,815.00</div></div>
+          <div class="sl-verdict">American-style, physically settled. Intrinsic gain 315.00. OCC auto-exercises anything $0.01 or more in the money. The shares settle in the following business day, and you need the cash to hold them. A seller can be assigned early.</div>
+        </div>
+        <div class="sl-panel" id="ocmd-p2">
+          <div class="sl-row"><div class="sl-box">Strike 5,000, SPX settles 5,150</div><div class="sl-arrow">→</div><div class="sl-box amber">Cash: (5,150 − 5,000) × $100 = 15,000.00</div></div>
+          <div class="sl-verdict">European-style, cash-settled, no shares move and no early assignment. The standard monthly series is settled on Friday's opening prices after its last trading day on Thursday. Weeklies and dailies settle on the close.</div>
+        </div>
+        <div class="sl-panel" id="ocmd-p3">
+          <div class="sl-row"><div class="sl-box">Strike 1.0800, 10:00 New York cut 1.1124</div><div class="sl-arrow">→</div><div class="sl-box">Worth USD 32,400 on EUR 1,000,000</div></div>
+          <div class="sl-verdict">Over the counter, usually European. In the money is judged on the spot rate at 10:00 New York time. Currencies are delivered two business days after expiry unless the parties net-settle in cash.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Listed versus over the counter</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Listed (US stock, ETF, SPX)</span>
+          <ul>
+            <li>Standard strikes, expiries and size</li>
+            <li>A clearing house between buyer and seller: no credit risk to the other side</li>
+            <li>A visible bid and ask, and open interest</li>
+            <li>You accept standard terms</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Over the counter (mainly FX)</span>
+          <ul>
+            <li>Any strike, expiry and notional</li>
+            <li>Dealt with a dealer under an ISDA agreement: you carry their credit risk unless collateral is posted</li>
+            <li>No central order book: the spread depends on your dealer and your size</li>
+            <li>Premium in a stated currency, quoted as pips or a percentage</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Listed means standardised and cleared. It does not mean liquid: many listed strikes trade rarely.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Expiry day for a US stock option</h2>
+      <p class="sl-sub">The order of events decides what the seller knows and when.</p>
+      <div class="sl-row">
+        <div class="sl-box">4:00 p.m. New York: trading stops</div><div class="sl-arrow">→</div>
+        <div class="sl-box amber">OCC auto-exercises anything $0.01 or more in the money</div><div class="sl-arrow">→</div>
+        <div class="sl-box amber">About 5:30 p.m.: holders can still decide, with after-hours prices</div><div class="sl-arrow">→</div>
+        <div class="sl-box">Sellers learn of assignment; shares follow</div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Pin risk</div>
+        <p>If the stock closes within pennies of the strike, a seller cannot know whether the option will be exercised, and cannot hedge both outcomes. The simple defence is not to be short a near-the-money contract when trading ends.</p>
+      </div>
+      <p class="sl-p">Early assignment is also possible on American-style shorts, typically before a dividend on a deep in-the-money call.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Liquidity is a cost you pay before the view is tested</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Busy contract: 1.10 / 1.15</span>
+          <ul>
+            <li>Five contracts: round trip $32.00</li>
+            <li>5.53% of the $578.50 laid out</li>
+            <li>Spread 4.44% of mid, about 1.2 days of time decay</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag red">Thin contract: 0.90 / 1.30</span>
+          <ul>
+            <li>Five contracts: round trip $207.00</li>
+            <li>31.7% of the $653.50 laid out</li>
+            <li>Spread 36.4% of mid, about 9.8 days of time decay</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">Before trading, check the spread as a percentage of the mid, the volume and the open interest. Use limit orders: a market order buys at the ask.</p>
+    </section>
+
+    <!-- WB:options_contract_mechanics-deck:START -->
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">What an options contract is, costs and how it ends</h2>
+      <!-- WB:options_contract_mechanics:START -->
+      <div class="wb" data-title="What an options contract is, costs and how it ends">
+        <script type="application/json">{"w":600,"h":420,"intro":"One call on a made-up stock: what is printed on the contract, what it costs to get in and out, and how it ends. Press play, or step through.","steps":[{"cap":"One call on XYZ, which trades at 100. The contract is the right to buy 100 shares at 105, any time in the next 30 days. A buyer and a seller sit on opposite sides.","do":[{"icon":"you","name":"person","x":20,"y":18,"s":0.7,"tone":"blue","label":"you (buyer)","lsize":18},{"icon":"sel","name":"person","x":470,"y":18,"s":0.7,"tone":"green","label":"seller","lsize":18},{"box":"ct","x":150,"y":30,"w":300,"h":78,"text":"1 call on XYZ","tone":"blue","sub":"strike 105 · 30 days · 100 shares"}]},{"cap":"The quote is 1.15 a share, but one contract covers 100 shares. So the buyer pays $115 to the seller, up front. The seller keeps it whatever happens.","do":[{"chip":"cash","x":90,"y":150,"text":"$115","tone":"amber"},{"move":"cash","x":440,"y":150,"ms":1300},{"note":"calc","x":300,"y":205,"text":"1.15 × 100 shares = $115","size":22,"anchor":"middle","tone":"amber"}]},{"cap":"The buyer holds a right: use it, sell it, or walk away. The seller holds an obligation: deliver if the buyer asks. The most the buyer can lose is the $115.","do":[{"note":"r1","x":300,"y":262,"text":"buyer: a right, can walk away","size":20,"anchor":"middle","tone":"green"},{"note":"r2","x":300,"y":300,"text":"seller: an obligation, must deliver","size":20,"anchor":"middle","tone":"red"}]},{"cap":"At expiry the call pays whatever the stock finishes above 105, or nothing. After the $115 paid, the P&L is flat at −$115 up to the strike, then climbs. Break-even is 106.15, the strike plus the premium.","do":[{"hide":"you"},{"hide":"sel"},{"hide":"ct"},{"hide":"cash"},{"hide":"calc"},{"hide":"r1"},{"hide":"r2"},{"chart":"pl","x":10,"y":10,"w":580,"h":340,"title":"One contract: P&L per contract at expiry ($)","xd":[98,112],"yd":[-200,650],"yt":[[0,"0"],[300,"+300"],[600,"+600"]],"xt":[[100,"100"],[105,"105"],[110,"110"]],"zero":true,"pl":62,"pr":20},{"series":"exp","chart":"pl","pts":[[98.0,-115.0],[98.5,-115.0],[99.0,-115.0],[99.5,-115.0],[100.0,-115.0],[100.5,-115.0],[101.0,-115.0],[101.5,-115.0],[102.0,-115.0],[102.5,-115.0],[103.0,-115.0],[103.5,-115.0],[104.0,-115.0],[104.5,-115.0],[105.0,-115.0],[105.5,-65.0],[106.0,-15.0],[106.5,35.0],[107.0,85.0],[107.5,135.0],[108.0,185.0],[108.5,235.0],[109.0,285.0],[109.5,335.0],[110.0,385.0],[110.5,435.0],[111.0,485.0],[111.5,535.0],[112.0,585.0]],"tone":"purple","ms":1600},{"dot":"be","chart":"pl","at":[106.15,0],"text":"break-even 106.15","tone":"green","dx":10,"dy":24,"anchor":"start"},{"dot":"ml","chart":"pl","at":[100,-115],"text":"worst case −$115","tone":"red","dx":8,"dy":-18,"anchor":"start"}]},{"cap":"Before expiry the option is worth more than that line. With 30 days left at 25% volatility, today's value (blue dashes) sits above it everywhere. The shaded gap is time value: you pay for it, and it melts to zero by expiry.","do":[{"series":"now","chart":"pl","pts":[[98.0,-47.2],[98.5,-37.6],[99.0,-27.0],[99.5,-15.3],[100.0,-2.5],[100.5,11.4],[101.0,26.6],[101.5,42.9],[102.0,60.5],[102.5,79.4],[103.0,99.6],[103.5,121.1],[104.0,143.9],[104.5,168.1],[105.0,193.6],[105.5,220.5],[106.0,248.6],[106.5,278.0],[107.0,308.7],[107.5,340.6],[108.0,373.8],[108.5,408.1],[109.0,443.5],[109.5,480.0],[110.0,517.5],[110.5,556.0],[111.0,595.4],[111.5,635.8],[112.0,676.9]],"tone":"blue","dash":true,"ms":1500},{"gap":"tv","chart":"pl","top":[[98.0,-47.2],[98.5,-37.6],[99.0,-27.0],[99.5,-15.3],[100.0,-2.5],[100.5,11.4],[101.0,26.6],[101.5,42.9],[102.0,60.5],[102.5,79.4],[103.0,99.6],[103.5,121.1],[104.0,143.9],[104.5,168.1],[105.0,193.6],[105.5,220.5],[106.0,248.6],[106.5,278.0],[107.0,308.7],[107.5,340.6],[108.0,373.8],[108.5,408.1],[109.0,443.5],[109.5,480.0],[110.0,517.5],[110.5,556.0],[111.0,595.4],[111.5,635.8],[112.0,676.9]],"bot":[[98.0,-115.0],[98.5,-115.0],[99.0,-115.0],[99.5,-115.0],[100.0,-115.0],[100.5,-115.0],[101.0,-115.0],[101.5,-115.0],[102.0,-115.0],[102.5,-115.0],[103.0,-115.0],[103.5,-115.0],[104.0,-115.0],[104.5,-115.0],[105.0,-115.0],[105.5,-65.0],[106.0,-15.0],[106.5,35.0],[107.0,85.0],[107.5,135.0],[108.0,185.0],[108.5,235.0],[109.0,285.0],[109.5,335.0],[110.0,385.0],[110.5,435.0],[111.0,485.0],[111.5,535.0],[112.0,585.0]],"tone":"amber","op":0.22},{"note":"tvn","chart":"pl","at":[102,200],"text":"time value","tone":"amber","size":20,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Now getting out. The screen shows bid 1.10 and ask 1.15. You buy at the ask and sell at the bid. On five contracts the 5-cent spread is $25, plus $7 of fees both ways: $32, or 5.5% of the $578.50 laid out.","do":[{"hide":"pl"},{"hide":"exp"},{"hide":"now"},{"hide":"tv"},{"hide":"be"},{"hide":"ml"},{"hide":"tvn"},{"box":"bid","x":20,"y":40,"w":250,"h":84,"text":"bid 1.10","tone":"red","sub":"you sell here"},{"box":"ask","x":330,"y":40,"w":250,"h":84,"text":"ask 1.15","tone":"green","sub":"you buy here"},{"arrow":["ask","bid"],"tone":"amber"},{"note":"rt","x":300,"y":200,"text":"five contracts, round trip:\n$25 spread + $7 fees = $32","size":22,"anchor":"middle","tone":"amber"}]},{"cap":"The same five contracts in a thin market, quoted 0.90 and 1.30. The spread is 36% of the mid, and the round trip costs $207, or 31.7% of the cash laid out, before the stock has moved.","do":[{"hide":"bid"},{"hide":"ask"},{"hide":"ask>bid"},{"hide":"rt"},{"chart":"cost","x":10,"y":20,"w":290,"h":260,"title":"Round-trip cost ($)","xd":[0,3],"yd":[0,250],"yt":[[0,"0"],[100,"$100"],[200,"$200"]],"xt":[[1,"busy"],[2,"thin"]],"pl":52,"pr":14},{"bars":"cb","chart":"cost","data":[[1,32,"$32","green"],[2,207,"$207","red"]],"bw":50,"ms":1200},{"box":"thin","x":320,"y":50,"w":270,"h":140,"text":"thin: 0.90 / 1.30\n36% of the mid\n31.7% of the cash","tone":"red","size":20}]},{"cap":"How it ends depends on where it trades. A US stock option can be exercised any time and settles in shares. An SPX option is exercised only at expiry and settles in cash. An FX option is a private contract, judged at 10:00 New York time, with currencies delivered two business days later.","do":[{"hide":"cost"},{"hide":"cb"},{"hide":"thin"},{"box":"b1","x":15,"y":60,"w":180,"h":130,"text":"US stock","tone":"blue","sub":"100 shares","size":20},{"box":"b2","x":210,"y":60,"w":180,"h":130,"text":"SPX index","tone":"amber","sub":"cash, $100 a point","size":20},{"box":"b3","x":405,"y":60,"w":180,"h":130,"text":"EUR/USD","tone":"purple","sub":"currency, 10:00 NY","size":20}]},{"cap":"Expiry day for a US stock option. Trading stops at 4:00 p.m. New York time. The OCC then exercises anything $0.01 or more in the money. Holders can still decide until about 5:30 p.m. The seller learns of assignment only after that.","do":[{"hide":"b1"},{"hide":"b2"},{"hide":"b3"},{"box":"t1","x":110,"y":10,"w":380,"h":58,"text":"4:00 pm New York: trading stops","tone":"blue","size":19},{"box":"t2","x":110,"y":108,"w":380,"h":58,"text":"OCC auto-exercises if ≥ $0.01 ITM","tone":"amber","size":19},{"box":"t3","x":110,"y":206,"w":380,"h":58,"text":"~5:30 pm: holders can still decide","tone":"red","size":19},{"box":"t4","x":110,"y":304,"w":380,"h":58,"text":"sellers learn of assignment later","tone":"purple","size":19},{"arrow":["t1","t2"],"tone":"amber"},{"arrow":["t2","t3"],"tone":"amber"},{"arrow":["t3","t4"],"tone":"amber"}]},{"cap":"The pin-risk rule: a seller cannot know, or hedge for both outcomes, if the stock closes within pennies of the strike. Before the close, buy it back or accept a position you did not plan to hold over the weekend.","do":[{"note":"pin","x":300,"y":396,"text":"pin risk: close near-the-money shorts before the bell","size":19,"anchor":"middle","tone":"red"}]}]}</script>
+      </div>
+      <!-- WB:options_contract_mechanics:END -->
+    </section>
+    <!-- WB:options_contract_mechanics-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 8 · It actually happened</div>
+      <h2 class="sl-h2">Cboe, April 1973: the day options became a standard product</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Before 1973, US options were mostly written over the counter, one negotiated deal at a time, with no easy way to sell before expiry. On 26 April 1973 the Chicago Board Options Exchange opened with fixed strikes, fixed expiry dates, a set contract size and central clearing. According to Cboe, 911 contracts traded on 16 listings on the first day. Only calls traded; puts followed in 1977. The Black-Scholes paper appeared the same year.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Before 1973</b>Bespoke deals, hard to sell</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson</b>Standard contract and clearing house</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>26 April 1973</b>Cboe opens: 911 contracts</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>A tradable market with a bid, an ask and a cost to cross</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where contract mechanics quietly cost money</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">💯</div><div><h4>Reading the quote as the bill</h4><p>2.40 is $240 a contract. Size is premium × multiplier × contracts. SPX at 5,000 is $500,000 a contract of notional.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>Exercising early</h4><p>Exercise throws away time value. At 108, the 105 call is worth about 4.89 but exercises for 3.00: $189 a contract given away.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📎</div><div><h4>Adjusted contracts</h4><p>After splits, mergers or special dividends the OCC changes the strike and deliverable. Check what an adjusted series delivers.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🛑</div><div><h4>Margin is not risk</h4><p>A broker's margin is a lender's minimum. A defined-risk call spread has a known worst case; a naked short does not.</p></div></div>
+      </div>
+      <div class="sl-quote">None of these is an argument against options. They are an argument for reading the contract before reading the chart.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>A US stock option is quoted at 2.40. What does one contract cost before fees?</h4>
+        <button class="sl-quiz-opt" data-correct="true">$240</button>
+        <button class="sl-quiz-opt">$2.40</button>
+        <button class="sl-quiz-opt">$24,000</button>
+        <div class="sl-quiz-explain">The quote is per share and one contract covers 100 shares: 2.40 × 100 = $240.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>The stock is at 100 and you hold a 105 call. What is its intrinsic value?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Zero: it is out of the money, so the whole premium is time value</button>
+        <button class="sl-quiz-opt">5.00, the gap between stock and strike</button>
+        <button class="sl-quiz-opt">The premium you paid</button>
+        <div class="sl-quiz-explain">Intrinsic value of a call is max(S − K, 0) = max(100 − 105, 0) = 0.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Which of these settles in cash and has no early assignment?</h4>
+        <button class="sl-quiz-opt" data-correct="true">An SPX index option</button>
+        <button class="sl-quiz-opt">A US stock option</button>
+        <button class="sl-quiz-opt">Neither: all options settle in shares</button>
+        <div class="sl-quiz-explain">SPX options are European-style and cash-settled: at expiry you receive (settlement value − strike) × $100, and nothing can be exercised earlier. US stock and ETF options are American-style and physically settled.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>You buy at the ask of 1.15 and immediately sell at the bid of 1.10. Five contracts, fees ignored. What did that cost?</h4>
+        <button class="sl-quiz-opt" data-correct="true">$25</button>
+        <button class="sl-quiz-opt">Nothing, if the stock did not move</button>
+        <button class="sl-quiz-opt">$2.50</button>
+        <div class="sl-quiz-explain">The spread is 0.05, times 100 shares, times 5 contracts: $25. You pay the spread whatever the stock does.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>You are short a US stock call that finishes expiry day $0.05 in the money. What is the realistic risk?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Automatic exercise, so you may be short shares over the weekend without knowing until after the close</button>
+        <button class="sl-quiz-opt">None: it is only five cents</button>
+        <button class="sl-quiz-opt">The OCC will always let it expire unexercised</button>
+        <div class="sl-quiz-explain">The OCC exercises options in the money by $0.01 or more unless the holder says otherwise, and holders can decide after the close. That is pin risk.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="14">
+
+      <div class="sl-kicker">Your call</div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative expiry Friday</div>
+    <h3>Your short call is ten cents in the money, with minutes left</h3>
+    <p>This is a hypothetical scenario, not a real episode. It is the third Friday of the month, 3:45 p.m. New York time, 15 minutes before the close. You are short 5 contracts of the XYZ 105 call on a US-listed stock, sold weeks ago for a profit if it expires worthless. XYZ is trading at 105.10. The call is quoted 0.10 bid, 0.15 ask. You intended to let it expire. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Do nothing. It is only ten cents in the money, so it will probably expire and you keep the premium.<div class="tl-drill-why">An option that is $0.01 or more in the money is exercised automatically by the OCC unless the holder says otherwise, and holders can decide after the close with after-hours prices in front of them. You would not know whether you were assigned until after the market has closed. Being assigned leaves you short 500 shares into the weekend. You also cannot hedge for both outcomes.</div></li>
+      <li data-verdict="good">Buy the five calls back at the ask, about $75 plus fees, before the close.<div class="tl-drill-why">It costs 0.15 × 100 × 5 = $75 and removes the assignment and the weekend gap risk completely. You give up a small amount of the premium you collected, but you end trading with a known position. It is the pin-risk rule of thumb: do not hold a short contract that is near the strike when trading ends.</div></li>
+      <li data-verdict="ok">Buy 500 shares of XYZ now, so that if you are assigned the shares are covered.<div class="tl-drill-why">This does protect against assignment, but if the call is not exercised you own 500 shares you did not want, over a weekend, with the same gap risk in the other direction. It swaps one uncertainty for another and costs more in commissions than the buy-back.</div></li>
+      <li data-verdict="bad">Sell more calls at the same strike, because the premium is higher than at the open and you think the stock will fall back.<div class="tl-drill-why">That doubles the exposure at the worst time. A contract with minutes left and the stock at the strike has the largest risk of a binary outcome relative to what you collect. You would be adding to a position that cannot be managed once the market closes.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What would happen.</strong> This is an illustrative situation, so there is no recorded result. The mechanics are real and documented: the OCC's automatic exercise of options in the money by $0.01 or more, the holder's later deadline (about 5:30 p.m. New York time, often earlier at brokers), and the delivery of shares after assignment. The point of the drill is that on expiry day the decision you can still control is the one before the close.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>An option is a standardised contract: a right to buy or sell a fixed amount at a fixed strike by a fixed expiry, bought for a premium paid up front.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Quotes are per share; trades are per contract. Multiply by 100 for US stock and ETF options, or $100 a point for SPX.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Premium is intrinsic value plus time value. Only time value decays, and out-of-the-money options are all time value.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>US equity options are American and physically settled; SPX options are European and cash-settled; FX options are over the counter, cut at 10:00 New York and delivered two business days later.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The round trip costs the full spread plus fees both ways: $32 on a busy contract, $207 on a thin one, for the same five contracts.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Short options can be assigned, early and at expiry. Pin risk, dividends and margin rules are properties of the contract.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened, Cboe 1973: standard strikes, expiries and size, plus a clearing house, turned bespoke options into a tradable product.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read any options quote as dollars, say what you will hold on settlement day, price the round trip before you trade, and spot the contract terms that turn a good view into a bad outcome.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Five Ways to Trade Options, and How Each One Fails</h3>
+        <p>Buying direction, selling premium, trading volatility, hedging and relative value: what each is really a bet on, how often it wins, and how it goes wrong.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="options-trading-styles-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="options-contract-mechanics.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Round-trip cost calculator
+  (function(){
+    var bidI = document.getElementById('ocmd-bid');
+    if (!bidI) return;
+    var askI = document.getElementById('ocmd-ask'), nI = document.getElementById('ocmd-n'), feeI = document.getElementById('ocmd-fee');
+    var rtO = document.getElementById('ocmd-rt'), outO = document.getElementById('ocmd-out'), pctO = document.getElementById('ocmd-pct'), spO = document.getElementById('ocmd-spreadpct');
+    var warn = document.getElementById('ocmd-warn'), reset = document.getElementById('ocmd-reset');
+    function recompute(){
+      var bid = parseFloat(bidI.value), ask = parseFloat(askI.value), n = parseFloat(nI.value), fee = parseFloat(feeI.value);
+      if (![bid, ask, n, fee].every(isFinite) || bid < 0 || ask <= 0 || ask < bid || n < 1 || fee < 0) {
+        warn.textContent = 'Need ask at least the bid, at least 1 contract, and no negative numbers.';
+        return;
+      }
+      warn.textContent = '';
+      var cash = ask * 100 * n + fee * n, proceeds = bid * 100 * n - fee * n, rt = cash - proceeds, mid = (ask + bid) / 2;
+      rtO.textContent = rt.toFixed(2); outO.textContent = cash.toFixed(2); pctO.textContent = (100 * rt / cash).toFixed(2);
+      spO.textContent = mid > 0 ? (100 * (ask - bid) / mid).toFixed(2) : '—';
+    }
+    [bidI, askI, nI, feeI].forEach(function(e){ e.addEventListener('input', recompute); });
+    reset.addEventListener('click', function(){ bidI.value = 1.10; askI.value = 1.15; nI.value = 5; feeI.value = 0.70; recompute(); });
+    recompute();
+  })();
+
+  // Intrinsic and time value, 105 call, 30 days, 25% vol
+  (function(){
+    var sl = document.getElementById('ocmd-s');
+    if (!sl) return;
+    var K = 105, R = 0.02, T = 30 / 365, SIG = 0.25, SMIN = 92, SMAX = 118, YMAX = 15, X0 = 60, X1 = 600, Y0 = 230, Y1 = 20;
+    function N(x){
+      var t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989422804014327 * Math.exp(-x * x / 2);
+      var p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+      return x >= 0 ? 1 - p : p;
+    }
+    function call(S){
+      var d1 = (Math.log(S / K) + (R + SIG * SIG / 2) * T) / (SIG * Math.sqrt(T)), d2 = d1 - SIG * Math.sqrt(T);
+      return S * N(d1) - K * Math.exp(-R * T) * N(d2);
+    }
+    function xp(S){ return X0 + (S - SMIN) / (SMAX - SMIN) * (X1 - X0); }
+    function yp(v){ return Y0 - Math.min(v, YMAX) / YMAX * (Y0 - Y1); }
+    var vp = document.getElementById('ocmd-vp'), ip = document.getElementById('ocmd-ip'), gap = document.getElementById('ocmd-gap'), dot = document.getElementById('ocmd-dot');
+    var sv = document.getElementById('ocmd-s-val'), val = document.getElementById('ocmd-val'), intr = document.getElementById('ocmd-intr'), tv = document.getElementById('ocmd-tv'), verdict = document.getElementById('ocmd-verdict');
+    (function draw(){
+      var v = [], i2 = [], top = [], bot = [];
+      for (var i = 0; i <= 80; i++){
+        var s = SMIN + (SMAX - SMIN) * i / 80, c = call(s), it = Math.max(s - K, 0);
+        v.push(xp(s).toFixed(1) + ',' + yp(c).toFixed(1)); i2.push(xp(s).toFixed(1) + ',' + yp(it).toFixed(1));
+        top.push(xp(s).toFixed(1) + ',' + yp(c).toFixed(1)); bot.unshift(xp(s).toFixed(1) + ',' + yp(it).toFixed(1));
+      }
+      vp.setAttribute('d', 'M' + v.join(' L')); ip.setAttribute('d', 'M' + i2.join(' L')); gap.setAttribute('d', 'M' + top.join(' L') + ' L' + bot.join(' L') + ' Z');
+    })();
+    function update(){
+      var S = parseFloat(sl.value), c = call(S), it = Math.max(S - K, 0);
+      sv.textContent = S.toFixed(1); val.textContent = c.toFixed(2); intr.textContent = it.toFixed(2); tv.textContent = Math.max(c - it, 0).toFixed(2);
+      dot.setAttribute('cx', xp(S)); dot.setAttribute('cy', yp(c));
+      verdict.textContent = S > K + 0.5 ? 'In the money: some of the premium is intrinsic, and time value is still there on top of it.'
+        : S >= K - 0.5 ? 'At the money: no intrinsic value, and time value is at its largest.'
+        : 'Out of the money: the whole premium is time value, and it melts to zero by expiry.';
+    }
+    sl.addEventListener('input', update); update();
+  })();
+})();
+</script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
+</body>
+</html>
