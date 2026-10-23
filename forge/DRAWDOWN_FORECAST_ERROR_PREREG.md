@@ -71,3 +71,13 @@ Verdict words: VALIDATED if the gate holds; NULL if the CI lies inside (−3%, +
 - **VALIDATED** → ledger entry (research-only). A **shadow** band (forecast × the measured factor after a 20-day S&P drop) is logged beside the shipped forecast and never replaces it, with a forward record. Promotion only at |t| ≥ 3 plus the forward record.
 - **NULL** → ledger entry. The shipped forecast already absorbs the leverage effect, so nothing changes.
 - **UNDERPOWERED** → ledger entry. The CI says how large a miss is still possible.
+
+## Amendments
+
+### A1 — 2026-10-23 — PRE-RESULTS (forward record): the shadow band, fixed before any forward session is scored
+This is the §8 next step, fixed now so the forward test cannot be tuned after the fact.
+- **Trigger.** S&P 500 (OANDA SPX500_USD) 20-day log return ≤ −2.0%, using the last complete New York-close daily candle before the London session's midnight and the candle 20 earlier. −2.0% is the in-sample top-quintile edge (−2.04%), rounded.
+- **Shadow lines.** On trigger sessions, every rung of the **live** ladder (`vol_forecast_<date>`, HL/OH/OL/OC at p50/p75/p90) is multiplied by **1.067 for FX pairs** and **1.028 for indices** (NQ, SPX500, US30, US2000, DE30, UK100). These are the in-sample worst-quintile misses. Gold, commodities and BTC are not covered. On other sessions the shadow equals live.
+- **Where it runs.** `js/drawdownShadowCore.js` + `js/drawdownShadowRoutes.js` (`GET /api/drawdown-shadow`). Read-only: no KV writes, and no change to any shipped engine (side-by-side rule). It is scored from `vol_session_<date>` with the HAR shadow's late-audit guard.
+- **Forward record starts 2026-10-23.**
+- **Judgement, at ≥ 40 trigger sessions:** the shadow passes if its HL p75 exceedance on trigger sessions is closer to the 25% design rate than live's, and the date-clustered bootstrap CI of (live exceedance − shadow exceedance) excludes 0. In-sample, live ran at 29.4% (FX) and 25.0% (indices) on these sessions, so the indices are expected to show little. Promotion to the shipped lines only on the owner's decision after that.
