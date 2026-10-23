@@ -1216,7 +1216,7 @@
   .chain-ends{font-size:12px;color:var(--text2);display:inline-flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
   .chain-n b{font-size:12.5px;font-weight:800} .chain-n b.up{color:var(--bull)} .chain-n b.dn{color:var(--red)} .chain-n b.muted{color:var(--text3);font-weight:600}
   .chain-exp{font-size:10px;color:var(--amber);font-weight:700;letter-spacing:.02em}
-  .chain-g{overflow-x:auto;margin:8px 0 10px;padding-bottom:2px}
+  .chain-g{overflow-x:auto;margin:8px 0 10px;padding-bottom:2px}
   .pc-hmm{margin:5px 0 0;opacity:.95}
   .dr-hmm{margin-top:12px;padding-top:10px;border-top:1px dashed var(--border2)}
   .dr-hmm .stl{font-size:11px;color:var(--text3);margin:7px 0 3px}
@@ -2137,6 +2137,7 @@ let ism = null;          // /api/ism — growth-surprise proxy per currency (js/
 let calAhead = null;     // /api/calendar-ahead — Nasdaq forward lists past ForexFactory's this-week file (week-ahead panel)
 let gpr = null;          // /api/gpr — Geopolitical Risk Index (Caldara & Iacoviello), global/currency-agnostic backdrop read; the one series here NOT on FRED (js/gprEngine.js)
 let bankCredit = null;   // /api/bank-credit — BIS cross-border bank credit regime (js/bankCredit.js); quarterly, context only (bank-credit-dollar-*)
+let drawdownShadow = null; // /api/drawdown-shadow — research shadow band after a 20-day S&P fall (drawdown-forecast-error A1); live lines untouched
 let fundingRead = null;  // /api/funding-read — daily/weekly funding & leverage read (js/fundingRead.js); context only, untested as forecasts
 let macroMoved = null;   // /api/macro-changes — per-series 1d/5d/20d change rows (what moved)
 let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite (zoom 0)
@@ -2669,6 +2670,7 @@ async function loadGate() {
   jget('/api/gpr').then(r => { gpr = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { gpr = { down: true, error: e.message }; render(); });   // geopolitical risk line; a dead feed says so
   jget('/api/bank-credit').then(r => { bankCredit = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { bankCredit = { down: true, error: e.message }; render(); });   // BIS bank-credit regime line (quarterly)
   jget('/api/funding-read?spark=0').then(r => { fundingRead = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { fundingRead = { down: true, error: e.message }; render(); });   // funding & leverage block
+  jget('/api/drawdown-shadow').then(r => { drawdownShadow = r?.rule ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { drawdownShadow = { down: true, error: e.message }; render(); });   // drawdown shadow line
   jget('/api/econ-surprise').then(r => { if (r?.ok) { econSurprise = r; render(); } }).catch(() => {});   // actual-vs-consensus surprise per currency
   jget('/api/macro-regime-fx').then(r => { if (r?.ok) { regimeFx = r; render(); } }).catch(() => {});   // regime-conditional FX base rates
   renderGate(); renderRiskFlags(); renderMacroMoved(); renderNewsPlay(); renderSummary(); render();
@@ -5404,6 +5406,22 @@ function bankCreditLine() {
     + ` <span class="muted">· non-banks ${sg(h.nbfiG)} · Cayman $ ${sg(h.caymanUsdG)} · yen ex-Japan ${sg(h.yenOffshoreG)} · <a href="bank-credit.html" target="_blank">detail</a></span></div>`;
 }
 
+/* Drawdown shadow band (js/drawdownShadowCore.js): validated in-sample that after a 20-day S&P fall of 2%+ the shipped
+   range lines run too narrow (FX ~7%, indices ~3%). Shown side by side as a research shadow; the live lines are unchanged. */
+function drawdownShadowLine() {
+  const d = drawdownShadow;
+  if (!d) return '';
+  if (d.down) return `<div class="riskverdict muted" style="margin-top:3px">Drawdown shadow: unavailable · ${esc0(d.error ?? '')}</div>`;
+  const sc = d.scorecard ?? {}, fx = sc.byClass?.fx?.hl_p75 ?? {};
+  const pct = v => (v == null ? '–' : `${Math.round(v * 100)}%`);
+  const s = d.spx20 == null ? '–' : `${d.spx20 > 0 ? '+' : ''}${d.spx20.toFixed(1)}%`;
+  const eu = (d.today ?? []).find(x => x.sym === 'EURUSD');
+  const ex = d.trigger && eu ? ` · e.g. EURUSD HL p75 ${eu.live.hl_p75?.toFixed(3)} → shadow ${eu.shadow.hl_p75?.toFixed(3)}` : '';
+  const tip = 'Validated 2020-2026 (drawdown-forecast-error): after the S&P 500 fell 2% or more over 20 days, ranges ran about 7% above the FX lines and 3% above the index lines. The shadow widens the lines by that much on those days only and is scored beside the live lines from 2026-10-23; judged at 40 trigger sessions. Research only: the live lines do not change.';
+  return `<div class="riskverdict help" style="margin-top:3px" title="${esc0(tip)}">Drawdown shadow: S&amp;P 20d <b>${s}</b> · <b class="tone ${d.trigger ? 'mix' : ''}">${d.trigger ? 'ACTIVE: FX lines ×1.067, indices ×1.028 (shadow only)' : 'inactive'}</b>${esc0(ex)}`
+    + `<span class="muted"> · forward record ${sc.triggerSessions ?? 0}/${sc.judgeAt ?? 40} trigger sessions${fx.live != null ? ` (FX p75 hit: live ${pct(fx.live)} vs shadow ${pct(fx.shadow)})` : ''}</span></div>`;
+}
+
 /* Funding & leverage (js/fundingRead.js): where each plumbing series sits in its own history.
    Untested as forecasts (funding-stress is NULL), so states are descriptions; flagged rows lead. */
 function fundingBlock() {
@@ -5629,6 +5647,7 @@ function renderMarketRead() {
         ${coherenceLine()}
         ${bankCreditLine()}
         ${fundingBlock()}
+        ${drawdownShadowLine()}
         ${risk.gpr ? `<div class="riskverdict" style="margin-top:3px" title="Caldara &amp; Iacoviello's Geopolitical Risk Index (Federal Reserve Board) — counts geopolitical-tension language across 10 major newspapers. The source republishes this file weekly (Mondays), not daily, so freshness is checked against that cadence, not a daily one. Shown as a 30-day smoothed level, z-scored against its own trailing 2-year history. Genuinely global and currency-agnostic — not derived from anything else on this page. Context, not a backtested rule.">Geopolitical risk: ${risk.gpr.stale ? `<b class="tone off" style="font-weight:800">⚠ stale</b><span class="muted"> · last update ${risk.gpr.asOfDate} (${risk.gpr.daysStale}d ago) — the weekly pull may have failed, check /api/gpr/refresh-status</span>` : `<b class="tone ${risk.gpr.z > 0.75 ? 'off' : risk.gpr.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.gpr.z > 0.75 ? 'elevated' : risk.gpr.z < -0.5 ? 'subdued' : 'normal'}</b><span class="muted"> · z ${risk.gpr.z >= 0 ? '+' : ''}${risk.gpr.z} · ${risk.gpr.trend}${risk.gpr.asOfDate ? ` · as of ${risk.gpr.asOfDate}` : ''}</span>`}</div>` : ''}
       </div>
     </div>
