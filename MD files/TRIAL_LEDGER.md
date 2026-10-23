@@ -10,16 +10,16 @@ Generated 2026-10-23.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **185** |
-| validated | 41 |
-| null | 115 |
-| underpowered | 29 |
+| claims tested (validated + null + underpowered) | **191** |
+| validated | 42 |
+| null | 118 |
+| underpowered | 31 |
 | context (base rates, descriptions: not counted as tests) | 37 |
-| pre-registrations with no banked verdict (below) | 75 |
+| pre-registrations with no banked verdict (below) | 78 |
 
-**What the count says (Lesson 02 §05).** If none of the 185 claims were real, tests at the usual 5% size would still pass
-about **9.3** of them by luck. 41 passed, so most passes are unlikely to be luck alone, but
-**roughly 9 of the 41 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 191 claims were real, tests at the usual 5% size would still pass
+about **9.6** of them by luck. 42 passed, so most passes are unlikely to be luck alone, but
+**roughly 10 of the 42 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -239,6 +239,12 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-22 | positioning-into-release-range | positioning | null | MD files/POSITIONING_INTO_RELEASE_PREREG.md |
 | 2026-10-22 | quarter-end-funding-spike | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
 | 2026-10-22 | quarter-end-funding-usd | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
+| 2026-10-23 | basis-stress-chf-fxvol | volatility | null | forge/BASIS_STRESS_JPYCHF_PREREG.md |
+| 2026-10-23 | basis-stress-chf-usd | macro | underpowered | forge/BASIS_STRESS_JPYCHF_PREREG.md |
+| 2026-10-23 | basis-stress-jpy-fxvol | volatility | null | forge/BASIS_STRESS_JPYCHF_PREREG.md |
+| 2026-10-23 | basis-stress-jpy-usd | macro | null | forge/BASIS_STRESS_JPYCHF_PREREG.md |
+| 2026-10-23 | basis-yearend-chf | events | validated | forge/BASIS_STRESS_JPYCHF_PREREG.md |
+| 2026-10-23 | basis-yearend-jpy | events | underpowered | forge/BASIS_STRESS_JPYCHF_PREREG.md |
 | 2026-10-23 | garin-vix-intraday-oos | price | underpowered | forge/VIX_CALCULUS_PREREG.md |
 | 2026-10-23 | short-vx-rule | volatility | underpowered | forge/SHORT_VX_RULE_PREREG.md |
 | 2026-10-23 | vix-beta-change | price | validated | forge/VIX_NASDAQ_BETA_PREREG.md |
@@ -258,6 +264,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/APPROACH_BOOK_EURUSD_PREREG.md`: EURUSD Approach Book — pre-registration (how price arrives at a line)
 - `forge/ASYMMETRIC_TRADES_PREREG.md`: Tight stop, far target at the forecast levels — pre-registration
 - `forge/BREAK_IVRV_PREREG.md`: Break trades when implied vol is rich — pre-registration
+- `forge/COG_ANALOG_PREREG.md`: COG-ANALOG: match the last 12 hours of the line against its own past and read what Nasdaq did next
 - `forge/COG_CROSS_ASSET_PREREG.md`: COG-CROSS-ASSET: does the SOFR-Euribor / SOFR-ESTR information relate to, or lead, gold, EURUSD, USDJPY, the R
 - `forge/COG_DYNAMIC_LEAD_PREREG.md`: COG-DYNAMIC-LEAD: do yield and futures spreads begin moving first, in identifiable periods, and does FX (or go
 - `forge/COG_EVENT_FEATURES_PREREG.md`: COG-EVENT-FEATURES: do the slope, speed, persistence, magnitude and variability of the SOFR-Euribor series add
@@ -269,6 +276,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/COG_SHAPE_AGNOSTIC_PREREG.md`: COG-SHAPE-AGNOSTIC: does ANY repeatable shape in the SOFR-Euribor line (turn, confirmation, second move, diver
 - `forge/COG_THEORIES_PREREG.md`: COG-THEORIES: three testable theories behind the message to C.OG (time of day, carried-forward legs, selection
 - `forge/COG_TURN_EVENTS_PREREG.md`: COG-TURN-EVENTS: do SOFR-Euribor turning points carry information about Nasdaq's next turn, breakout or move?
+- `forge/COG_VARIABLE_LEAD_PREREG.md`: COG-VARIABLE-LEAD: can a lead that varies be known in advance?
 - `forge/COMBINED_SETUPS_PREREG.md`: Combined continue and fade setups — pre-registration
 - `forge/COMBO_EURUSD_PREREG.md`: EURUSD combination test — pre-registration (approach × day size × further target)
 - `forge/CONFIDENCE_PREREG.md`: Layer 6 — CONFIDENCE (meta-labelling): can today's conditions sharpen layer 5's probabilities?
@@ -290,6 +298,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/FUTURES_VOL_PREREG.md`: Futures volatility forecast — does intraday futures data beat the incumbent HAR? (shadow study)
 - `forge/FX_FACTOR_STACK_PREREG.md`: Cross-sectional FX factor stack at one to three months
 - `forge/HARNESS_REGISTRY_PREREG.md`: Unified study harness, and deflating the registry it will re-score
+- `forge/HEDGING_PLAN_OI_PREREG.md`: HEDGING PLAN, OI-LEVEL VERSION: do orders on the OI map's own levels do better than orders on the forecast lin
 - `forge/HEDGING_STATE_FORWARD_PREREG.md`: hedging-state-forward — On the full Cboe book, does the dealer-hedging state at the open tell us how the day b
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 

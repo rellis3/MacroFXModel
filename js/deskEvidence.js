@@ -1458,6 +1458,44 @@ export const DESK_EVIDENCE = [
     use: 'Implied vol absorbs part of the leverage effect but not all: index lines run wide after rallies and a little narrow after falls. Research-only until the shadow band forward record.',
     instruments: ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
   },
+  {
+    id: 'basis-stress-jpy-usd', domain: 'macro', verdict: 'null', date: '2026-10-23', doc: 'forge/BASIS_STRESS_JPYCHF_PREREG.md', also: ['analysis/output/basis-stress-jpychf/RESULTS.md'],
+    claim: 'C.OG basis rule on the yen: a one-day widening of the USDJPY cross-currency basis (CME 6J vs spot, TONA, fixed rate legs) is followed by USD strength over the next 5 days',
+    result: '1,833 days 2016-2026: r -0.002 [-0.050, +0.045], halves -0.060 / +0.047, inside the placebo. Interval inside the 0.10 bar.',
+    use: 'A yen basis widening is not an early warning of dollar strength.',
+  },
+  {
+    id: 'basis-stress-jpy-fxvol', domain: 'volatility', verdict: 'null', date: '2026-10-23', doc: 'forge/BASIS_STRESS_JPYCHF_PREREG.md', also: ['analysis/output/basis-stress-jpychf/RESULTS.md'],
+    claim: 'A one-day widening of the USDJPY basis is followed by FX volatility above persistence over the next 5 days',
+    result: '1,838 days: r +0.010 [-0.024, +0.050], halves -0.010 / +0.026, inside the placebo.',
+    use: 'No vol warning from yen basis moves.',
+  },
+  {
+    id: 'basis-stress-chf-usd', domain: 'macro', verdict: 'underpowered', date: '2026-10-23', doc: 'forge/BASIS_STRESS_JPYCHF_PREREG.md', also: ['analysis/output/basis-stress-jpychf/RESULTS.md'],
+    claim: 'A one-day widening of the USDCHF basis (CME 6S vs spot, SARON) is followed by USD strength over the next 5 days',
+    result: '1,811 days: r +0.040 [-0.019, +0.104], halves +0.057 / +0.021, above the placebo [-0.035, +0.034], Holm p 0.81. Right sign but the interval includes 0 and the 0.10 bar.',
+    use: 'At most a weak lead; not a signal.',
+  },
+  {
+    id: 'basis-stress-chf-fxvol', domain: 'volatility', verdict: 'null', date: '2026-10-23', doc: 'forge/BASIS_STRESS_JPYCHF_PREREG.md', also: ['analysis/output/basis-stress-jpychf/RESULTS.md'],
+    claim: 'A one-day widening of the USDCHF basis is followed by FX volatility above persistence over the next 5 days',
+    result: '1,816 days: r +0.007 [-0.032, +0.046], inside the placebo.',
+    use: 'No vol warning from franc basis moves. Across EUR, GBP, JPY and CHF the basis does not move first.',
+  },
+  {
+    id: 'basis-yearend-jpy', domain: 'events', verdict: 'underpowered', date: '2026-10-23', doc: 'forge/BASIS_STRESS_JPYCHF_PREREG.md', also: ['analysis/output/basis-stress-jpychf/RESULTS.md'],
+    claim: 'Dollars borrowed via the yen across 31 December cost more than across an ordinary quarter-end',
+    result: '10 vs 32 contracts: -12.4bp [-24.1, +0.8], halves -12.7 / -14.2, Holm p 0.25. March contracts wide every year (-53 to -11bp) but the yen also widens at its other quarter-ends (mean -12bp) and its fiscal year-end (June contracts -13.7bp, descriptive).',
+    use: 'The yen basis widens at quarter-ends generally, not specially at 31 December.',
+    instruments: ['USDJPY'],
+  },
+  {
+    id: 'basis-yearend-chf', domain: 'events', verdict: 'validated', date: '2026-10-23', doc: 'forge/BASIS_STRESS_JPYCHF_PREREG.md', also: ['analysis/output/basis-stress-jpychf/RESULTS.md'],
+    claim: 'Dollars borrowed via the Swiss franc across 31 December cost more than across an ordinary quarter-end',
+    result: '10 vs 32 contracts 2016-2026: -19.3bp [-32.4, -6.1], Holm p 0.024, halves -25.9 / -16.4; March contracts -50, -63, -20, -23, -28, -18, -36 then -4, -7, -4bp (2024-26).',
+    use: 'A known seasonal in franc dollar-funding cost, much smaller since 2024. Calendar context only; says nothing about spot direction.',
+    instruments: ['USDCHF'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1601,6 +1639,12 @@ const POWER = {
   'hy-spread-vol-idx':                 { n: '3,451 days 2007-2020 (~158 months)', note: 'gate met; demoted: partial r after SPX 20d return +0.019' },
   'drawdown-forecast-error-fx':        { n: '1,556 sessions x 29 pairs (~73 monthly units)', note: 'MDE about 5%; CI [+2.2%, +9.3%], |t| about 3.2' },
   'drawdown-forecast-error-idx':       { n: '1,547 sessions x 6 indices (~73 monthly units)', note: 'CI [+2.9%, +10.4%], |t| about 3.3' },
+  'basis-stress-jpy-usd': { n: '1,833 days 2016-2026', note: 'MDE r 0.081; CI inside 0.10' },
+  'basis-stress-jpy-fxvol': { n: '1,838 days', note: 'CI inside 0.10' },
+  'basis-stress-chf-usd': { n: '1,811 days', note: 'CI [-0.019, +0.104] reaches the bar' },
+  'basis-stress-chf-fxvol': { n: '1,816 days', note: 'CI inside 0.10' },
+  'basis-yearend-jpy': { n: '10 vs 32 contracts', note: 'CI [-24.1, +0.8] includes 0 and the bar' },
+  'basis-yearend-chf': { n: '10 vs 32 contracts', note: 'Holm p 0.024; both halves' },
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
 };
