@@ -86,20 +86,92 @@ Moody's France review on Fri the 23rd).
   trade (AI sells off, bonds rally). That gives a little positive carry plus a hedge against
   equities, which is good for portfolio construction.
 
+### E02: "6% yields": Brent shorts the Nasdaq, the search for a new bond equilibrium
+Recorded around Thu 2026-10-09 ("happy Thanksgiving, Canada"), so it is **before E01**. This is the
+episode where BD puts on the QQQ short that he takes profit on at the start of E01.
+
+**PROCESS**
+- **BD: if a trade is embarrassing to say out loud, that can be the signal.** His example: shorting
+  AUD above parity in 2007 when sales told him "Aussie only goes up". It worked. If everyone feels
+  the same, the trade is crowded the other way.
+- **BD: trade both directions or don't trade it.** If you can never be long Tesla because you
+  dislike Musk, don't trade Tesla, because the bias will cost you. He lives by this: E02 is long USD
+  ("consolidate, then higher"), and a week later in E01 he's short USDCAD because the price action
+  changed.
+- **BD: index shorts are negative-Sharpe as a habit, so only do them tactically.** Systematically
+  buying index puts loses money; *selling* index puts has been one of the best Sharpe strategies for
+  30 years (with risk management). A tactical short needs a timing trigger and a hard stop ("out
+  above 772.50 QQQ"). Don't keep re-shorting a rising index (2010-14 bear-rally believers).
+- **BD: setup and trigger are separate.** His bearish conditions had been in place for two weeks;
+  he waited until his "liquidity thermometers" (silver and Bitcoin) turned down before taking the
+  shot. The conditions tell you to get ready; the trigger tells you to act.
+- **BD repeats his bet shape** (Theme Index): he's after 55/45 or 60/40 bets, or 50/50 bets that pay
+  2 to 1.
+- **BD on overfitting, which matches this repo's rules almost exactly:**
+  (a) The idea came from a conversation with a trader (PTIG), not from searching through variables.
+  (b) **Perturb every parameter** (within 2/3/5/10% of the high; MOVE at the 70th/80th/90th
+  percentile) and only trust it if the result holds across the range.
+  (c) Be suspicious of over-parameterised "never before has X < 33 and Y < 56 and Z > 61..."
+  stats, because you can find a bearish one any day of any year.
+  (d) Signals **cluster** (2007, 2015, 2021), so the real number of independent episodes is small.
+- **AP: write your biases down and fight them.** His are "always want to buy bonds and sell
+  dollars", from starting his career in 2013-2020 (QE, zero inflation). Druckenmiller (long stocks,
+  short long bonds as the hedge) made no sense to him until his own model agreed. "6% is not a
+  magic number; it's fair, not cheap."
+- **AP: a macro book caps equity beta.** He only goes outright short equities on macro *tails*
+  (runaway inflation, recession). Otherwise he just becomes "more conservative": being underweight
+  instead of short.
+- **BD: a hard setup is a logical trend that's overbought and crowded.** He has no reason to be
+  short USD, but USD tops his cross-asset RSI heatmap and his positioning gauge is "close to scary".
+  His usual expectation is **consolidation** (time for the overbought reading to burn off and
+  options to expire), then the trend resumes.
+- **AP: the turn in the rate of change matters, not the level.** Capex doesn't have to fall; what
+  matters is when its growth stops accelerating. **BD:** the place to hear it first is hyperscaler
+  earnings calls, or a story that corporations are moving to open-source models to cut costs.
+- **BD: some statements only get made at the highs.** "Returns on AI are infinite, so the cost of
+  capital doesn't matter" = Howard Marks's "no price too high".
+- **BD on fiscal stories:** the bad numbers have been true for years, and *when* the market decides
+  to attack them is arbitrary. Either recognise it when it happens or put the catalysts (election,
+  ratings reviews) on your calendar. **AP:** markets punish fiscal *loosening*, not a party; a Le Pen
+  vote for a tight budget would help French spreads (like Meloni in Italy).
+
+**Their macro reads (opinion)**
+- *AP's equilibrium model:* stable core nominal GDP is running at about 6%; the 30y was at 5.62%,
+  still about 40bp below it. US 30y yields have been below nominal GDP almost continuously since
+  2012-13, and the rare times yields were above it were good times to overweight bonds. Fed neutral
+  is 3.25%; the front end is now fairly priced; the long end needs more term premium (full
+  employment plus a 3% primary deficit). On the other side: US private debt to GDP is at a 25-year
+  low, and energy is 7% of nominal wages versus about 14% in 2011. **Fair value is about 5.5% for
+  the 10y and 6% for the 30y.** Getting there "can get messy", so he's more conservative on stocks
+  and prefers to be underweight anything except mega-caps.
+- *BD:* there may be no big "buy the bond dip" trade, because yields could just settle into a new
+  range (around 5.0-6.2%).
+- *Both on what ends the trend:* the market deciding capex has peaked (an early hint came when an
+  OpenAI revenue headline produced stocks down and bonds up), US fiscal tightening (unlikely), or
+  higher rates eventually slowing nominal growth.
+
+**TESTABLE / ON FILE**: R7-R9 below; R4 picks up a second mention.
+
 ---
 
 ## Theme Index
 
 | Theme | Speaker | Episodes |
 |---|---|---|
-| Hit rate barely above 50%; edge comes from sizing/exits; journal every trade | BD | E01 |
-| Invalidation decided in advance at weekly-close structural levels | AP | E01 |
+| Hit rate barely above 50%; bets shaped 55/45, 60/40 or 50/50 paying 2:1; journal every trade | BD | E01, E02 |
+| Invalidation decided in advance (weekly close for AP; hard price stop for BD) | AP, BD | E01, E02 |
 | Separate recurring headlines from regime change by checking slow data | AP | E01 |
 | Good news, bad price: a failed reaction to favourable data is the signal | BD | E01 |
 | A well-known release pattern sets up a crowded lean and a bigger miss | BD | E01 |
-| Priced-in bad news: watch the reaction, not the event | BD | E01 |
-| Stock-bond correlation regime decides whether bonds hedge | AP, BD | E01 |
-| Fed credibility / financial conditions drive yields and the dollar | AP, BD | E01 |
+| Priced-in bad news: watch the reaction, not the event; fiscal-attack timing is arbitrary, so diary the catalysts | BD | E01, E02 |
+| Stock-bond correlation regime decides whether bonds hedge (AI wobble = stocks down, bonds up) | AP, BD | E01, E02 |
+| Fed credibility / financial conditions drive yields and the dollar ("dovish panic hikes") | AP, BD | E01, E02 |
+| Overfitting hygiene: idea from a conversation, perturb parameters, distrust "never before" stats, count clusters | BD | E02 |
+| Setup (conditions) is separate from trigger (liquidity gauges turning) | BD | E02 |
+| Trade both directions; write down your biases and fight them | BD, AP | E02 |
+| Crowded and overbought but logical trend → consolidation, then continuation | BD | E02 |
+| Watch the turn in the rate of change (peak capex), not the level | AP | E02 |
+| Yields vs nominal GDP as a long-run equilibrium | AP | E02 |
 
 ---
 
@@ -150,12 +222,48 @@ Context and range only; don't expect direction.
 Not in the catalogue. It's quarterly, so it's a backdrop for a country card or Atlas, not a
 trading input. Cheap to add from FRED/BEA as context.
 
+**R7. BD's "breadth bad at the highs while bonds are stressed" equity setup (from PTIG).** TESTABLE,
+and the best-specified idea so far.
+- *Conditions:* S&P within 5% of its high; MOVE in the top 20% of its 52-week range; high-yield
+  underperforming Treasuries and below its 50-day average; NYSE net new highs < 0.
+  *Trigger:* silver and BTC turn down. *Claim:* forward equity returns are worse than baseline.
+  Clusters: 2007, 2015, 2021.
+- *Data:* MOVE (`yahoo:^MOVE`, from 2002) ✓, HY OAS (`BAMLH0A0HYM2`) ✓ (his version is a
+  total-return ratio; OAS is a fair proxy), S&P ✓, silver and BTC ✓. **NYSE net new highs is not
+  held.** That's the one new feed needed (or an S&P-constituent proxy, with survivorship care).
+- *Prior work:* `project_breadth_narrowing_null`: RSP-SPY narrowing alone was null on all four
+  (35 episodes). This is a different, multi-condition claim, so the old null doesn't rule it out,
+  but it's a warning that breadth on its own carried nothing.
+- *Honest framing before running:* three clusters ≈ three independent episodes, so a forward-return
+  number can't reach significance. House rule: test it as **distribution/size** (forward drawdown,
+  range, P(−5%)), not direction. Use BD's own perturbation grid as the robustness section of the
+  prereg; it *is* our method.
+
+**R8. Crowded, overbought, logical trend → consolidation, then continuation (BD).** TESTABLE.
+Condition: the pair is near the top of a cross-asset RSI ranking AND COT leveraged funds are stretched
+in the trend's direction AND (judgement call) no fundamental reason to fade. Claim: the next 2-3
+weeks have a *smaller range* than usual, then the trend resumes. *On file:* FX trend-following is
+null (`project_trend_following_status`) and retail crowding is null (`project_squeeze_vol_null`),
+but COT TFF leveraged-fund extremes are wired (`project_positioning_into_release`) and the
+"consolidation" half is a **range** claim, which is where this desk's edges have actually been.
+Test the range half first.
+
+**R9. 30y yield vs core nominal GDP as a bond-value gauge (AP).** CONTEXT. Claim: when yields sit
+*above* nominal GDP growth, that's a good time to overweight bonds. FRED has decades of `DGS30`/GDP,
+but the claim is about rare regimes (none since 2012), so the episodes are few. It belongs as a
+level on a country card or Atlas (with R6), not as a test.
+
 ---
 
 ## Calls to Score
 
 | Date | Speaker | Call | Check by | Level at call | Outcome |
 |---|---|---|---|---|---|
+| ~2026-10-09 | BD | Short QQQ, stop above 772.50, target 710-715 | ~2 weeks | QQQ ≈ 753 | **Profit taken**, per BD at the start of E01 (exit level not stated) |
+| ~2026-10-09 | BD | USD consolidates, then strengthens; EURUSD to 1.08-1.09 | rolling | | Changed his mind by E01 (constructive on EUR, short USDCAD) |
+| ~2026-10-09 | AP | 10y fair ≈ 5.5%, 30y ≈ 6%; below that isn't equilibrium | rolling | 30y 5.62% | |
+| ~2026-10-09 | AP | EUR lower, mainly because the ECB is hesitant | rolling | | |
+| ~2026-10-09 | BD | French spread blow-off at 160 may be the top; now 138 | Moody's 10-23 | 138bp (E01 says 168 peak; the transcripts disagree) | |
 | ~2026-10-16 | BD | Short USDCAD / USD "another leg lower next week" on good-news-bad-price | 2026-10-23 | USDCAD ≈ 1.4150, EURUSD ≈ 1.1260 | |
 | ~2026-10-16 | BD | France news priced in; spreads peaked at 168 (two Fridays earlier) | 2026-10-30 | OAT-Bund 168 peak | |
 | ~2026-10-16 | AP | Rates trend resumes higher; thesis wrong on a weekly close well below 5% US 10y | rolling | 10y just above 5% (peak 5.35%) | |
