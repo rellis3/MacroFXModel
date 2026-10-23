@@ -10,15 +10,15 @@ Generated 2026-10-23.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **184** |
+| claims tested (validated + null + underpowered) | **185** |
 | validated | 41 |
 | null | 115 |
-| underpowered | 28 |
+| underpowered | 29 |
 | context (base rates, descriptions: not counted as tests) | 37 |
-| pre-registrations with no banked verdict (below) | 74 |
+| pre-registrations with no banked verdict (below) | 75 |
 
-**What the count says (Lesson 02 §05).** If none of the 184 claims were real, tests at the usual 5% size would still pass
-about **9.2** of them by luck. 41 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 185 claims were real, tests at the usual 5% size would still pass
+about **9.3** of them by luck. 41 passed, so most passes are unlikely to be luck alone, but
 **roughly 9 of the 41 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -240,6 +240,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-22 | quarter-end-funding-spike | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
 | 2026-10-22 | quarter-end-funding-usd | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
 | 2026-10-23 | garin-vix-intraday-oos | price | underpowered | forge/VIX_CALCULUS_PREREG.md |
+| 2026-10-23 | short-vx-rule | volatility | underpowered | forge/SHORT_VX_RULE_PREREG.md |
 | 2026-10-23 | vix-beta-change | price | validated | forge/VIX_NASDAQ_BETA_PREREG.md |
 | 2026-10-23 | vix-beta-level | volatility | underpowered | forge/VIX_NASDAQ_BETA_PREREG.md |
 | 2026-10-23 | vix-brownian-scaling | volatility | context | forge/VIX_CALCULUS_PREREG.md |
@@ -321,6 +322,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VF3_SHADOW_P1_PREREG.md`: VF3 shadow S1: time-aware intraday probabilities, prospective evaluation (registered 2026-10-10)
 - `forge/VF3_STAGE_C_PREREG.md`: Vol Forecast V3, Stage C: registered experiments (2026-10-10, before any Stage C outcome is computed)
 - `forge/VIX_DIVERGENCE_PREREG.md`: VIX vs Nasdaq divergence at the vol lines (hourly) — pre-registration
+- `forge/VIX_SIGNALS_FORWARD_PREREG.md`: vix-signals-forward: forward record of the four VIX/Nasdaq signals banked 2026-10-23
 - `forge/VMC_DIVERGENCE_INDICES_PREREG.md`: VuManChu Cipher B divergence at the vol lines (NQ first) — pre-registration
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Research Log</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--amber:#d29922;--red:#f85149;--green:#3fb950;
+        --b1:#3f5f8f;--b2:#6b9be0;--b3:#b3cdf5;--s1:#3987e5;--s2:#d95926;--grid:#21262d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:14px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--s1);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700} .spacer{flex:1}
+  .wrap{max-width:1100px;margin:0 auto;padding:14px 16px 48px;display:flex;flex-direction:column;gap:16px}
+  .wrap>*,#studies{min-width:0;max-width:100%} #studies{display:flex;flex-direction:column;gap:16px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;min-width:0}
+  .eyebrow{font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--b3);margin-bottom:4px}
+  h2{font-size:20px;line-height:1.3;margin-bottom:6px} h3{font-size:14px;margin:12px 0 4px;color:var(--text)}
+  p,li{color:var(--text2);max-width:85ch;overflow-wrap:anywhere} p{margin:6px 0} p b,li b{color:var(--text)} ul{margin:4px 0 4px 18px}
+  .meta{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0} .chip{font-size:11.5px;padding:2px 9px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .v{display:inline-block;font:700 11px ui-monospace,Menlo,monospace;padding:2px 8px;border-radius:5px;border:1px solid var(--border);margin-right:6px}
+  .v.validated{color:var(--green);border-color:var(--green)} .v.underpowered,.v.context{color:var(--amber);border-color:var(--amber)} .v.null{color:var(--text3)}
+  .ledger{border-top:1px solid var(--grid);padding:8px 0;font-size:13px} .ledger .id{font:600 12px ui-monospace,Menlo,monospace;color:var(--text)} .ledger .res{color:var(--text2);margin:2px 0} .ledger .use{color:var(--text3);font-size:12.5px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px} @media (max-width:820px){.grid2{grid-template-columns:1fr}}
+  .panel{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;min-width:0} .panel h4{font-size:13px;margin-bottom:4px}
+  img.fig{width:100%;height:auto;border-radius:8px;border:1px solid var(--border);background:#fff}
+  svg{display:block;width:100%;height:auto} svg text{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;fill:var(--text3)} svg .lbl{fill:var(--text2)}
+  @media (max-width:600px){svg text{font-size:19px} h2{font-size:18px}}
+  .links{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px} .links a{font-size:12.5px;padding:3px 10px;border:1px solid var(--border);border-radius:999px}
+  .toc{display:flex;gap:6px;flex-wrap:wrap} .toc a{font-size:12px;padding:3px 9px;border:1px solid var(--border);border-radius:999px;color:var(--text2)}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums} th,td{padding:4px 8px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap} th{color:var(--text3);font-weight:600} td:first-child,th:first-child{text-align:left}
+  .xs{overflow-x:auto} .mut{color:var(--text3)} .pos{color:var(--green)} .neg{color:var(--s2)}
+  .bar{height:8px;border-radius:4px;background:var(--grid);position:relative;margin-top:4px} .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--b2)} .bar u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--text3)}
+  .note{font-size:12px;color:var(--text3);margin-top:6px}
+  #err{color:var(--red)}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <a href="today.html">&larr; Today</a>
+  <h1>Research log</h1>
+  <span class="spacer"></span>
+  <a class="chip" href="evidence.html">Evidence Book</a>
+  <a class="chip" href="vix-calculus.html">VIX calculus suite</a>
+</div>
+<div class="wrap">
+  <div class="box">
+    <div class="eyebrow">What has been done in the repo · October 2026</div>
+    <h2>Every study run in these sessions: the question, how it was tested, what came out, and where it lives</h2>
+    <p>Each study follows the same protocol: the question and the exact test are written down and pushed <b>before</b> any result is computed (the pre-registration), the run uses data only up to the 2026-08-21 lockbox, and the answer is one of four words: <b>VALIDATED</b> (passed the registered bar), <b>NULL</b> (the effect is ruled out), <b>UNDERPOWERED</b> (couldn't tell either way with this much data) or <b>CONTEXT</b> (a description, not a prediction). The verdicts and numbers below are read live from the Evidence Book (<code>js/deskEvidence.js</code>), so they stay current if anything is re-run.</p>
+    <div class="toc" id="toc"></div>
+  </div>
+  <div class="box" id="live"></div>
+  <div id="studies"></div>
+  <div class="box" id="builds"></div>
+  <div id="err"></div>
+</div>
+<script type="module">
+import { DESK_EVIDENCE } from './js/deskEvidence.js';
+const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sg = (v, d = 2) => v == null || !Number.isFinite(v) ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d);
+const J = async p => { try { const r = await fetch(p, { cache: 'no-cache' }); return r.ok ? r.json() : null; } catch { return null; } };
+
+/** t-value strip: one dot per scored cell, the pass bar drawn as two lines. */
+function tstrip(cells, { bar = 3.15, label = c => '', pass = c => false, height = 70 } = {}) {
+  const W = 640, H = height, L = 10, R = 10, lim = Math.max(4, ...cells.map(c => Math.abs(c.t || 0))) + 0.3, x = t => L + (W - L - R) * (t + lim) / (2 * lim), y0 = H / 2;
+  let s = `<svg viewBox="0 0 ${W} ${H + 22}">`;
+  for (let t = -Math.floor(lim); t <= lim; t++) s += `<line x1="${x(t)}" x2="${x(t)}" y1="8" y2="${H - 4}" stroke="var(--grid)"/><text x="${x(t)}" y="${H + 14}" text-anchor="middle">${t}</text>`;
+  s += [-bar, bar].map(b => `<line x1="${x(b)}" x2="${x(b)}" y1="4" y2="${H}" stroke="var(--amber)" stroke-dasharray="4 3"/>`).join('');
+  cells.forEach((c, i) => { const jit = ((i * 37) % 21 - 10) * (H / 60); s += `<g><title>${esc(label(c))}: t ${sg(c.t)}</title><circle cx="${x(c.t)}" cy="${y0 + jit}" r="${pass(c) ? 7 : 5}" fill="${pass(c) ? 'var(--green)' : 'var(--b2)'}" stroke="var(--card)" stroke-width="2"/></g>`; });
+  return s + `</svg><p class="note">Each dot is one scored test (its t-statistic). Dashed lines: roughly the multiple-test pass bar (|t| ≈ ${bar}). Green: passed every registered condition. Hover a dot for its label.</p>`;
+}
+function bars(groups, { ref = 0, fmt = v => sg(v), height = 220, min, max } = {}) {
+  const vals = groups.flatMap(g => g.bars.flatMap(b => [b.value, b.lo ?? b.value, b.hi ?? b.value])).filter(Number.isFinite).concat([ref]);
+  let lo = min ?? Math.min(...vals), hi = max ?? Math.max(...vals); const pad = (hi - lo) * 0.15 || 0.1; lo -= pad; hi += pad;
+  const W = 640, H = height, L = 52, R = 10, T = 22, B = 40, pw = W - L - R, ph = H - T - B, y = v => T + ph * (hi - v) / (hi - lo);
+  const step = (() => { const r = (hi - lo) / 5, m = 10 ** Math.floor(Math.log10(r)); return [1, 2, 2.5, 5, 10].map(k => k * m).find(k => k >= r); })();
+  let s = `<svg viewBox="0 0 ${W} ${H}">`;
+  for (let t = Math.ceil(lo / step) * step; t <= hi; t += step) s += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)"/><text x="${L - 6}" y="${y(t) + 4}" text-anchor="end">${fmt(t)}</text>`;
+  s += `<line x1="${L}" x2="${W - R}" y1="${y(ref)}" y2="${y(ref)}" stroke="var(--text3)"/>`; const gw = pw / groups.length;
+  groups.forEach((g, gi) => { const n = g.bars.length, bw = Math.min(64, gw * 0.7 / n), x0 = L + gi * gw + (gw - bw * n - 3 * (n - 1)) / 2;
+    g.bars.forEach((b, bi) => { const x = x0 + bi * (bw + 3), y1 = y(Math.max(b.value, ref)), y2 = y(Math.min(b.value, ref));
+      s += `<g><title>${esc(b.tip ?? fmt(b.value))}</title><rect x="${x}" y="${y1}" width="${bw}" height="${Math.max(1.5, y2 - y1)}" rx="4" fill="${b.color}"/>`;
+      if (Number.isFinite(b.lo)) s += `<line x1="${x + bw / 2}" x2="${x + bw / 2}" y1="${y(b.hi)}" y2="${y(b.lo)}" stroke="var(--text)" stroke-width="1.4"/>`;
+      s += `<text class="lbl" x="${x + bw / 2}" y="${b.value >= ref ? y(Math.max(b.value, b.hi ?? b.value)) - 5 : y(Math.min(b.value, b.lo ?? b.value)) + 13}" text-anchor="middle">${fmt(b.value)}</text></g>`; });
+    s += `<text x="${L + gi * gw + gw / 2}" y="${H - 18}" text-anchor="middle" class="lbl">${esc(g.label)}</text>`; });
+  return s + '</svg>';
+}
+function line(pts, { height = 200, fmt = v => v.toFixed(3), ref } = {}) {
+  const W = 640, H = height, L = 52, R = 12, T = 12, B = 26, xs = pts.map((_, i) => i), ys = pts.map(p => p.v).concat(ref != null ? [ref] : []);
+  const lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo) * 0.1 || 0.01, y = v => T + (H - T - B) * (hi + pad - v) / (hi - lo + 2 * pad), x = i => L + (W - L - R) * i / Math.max(1, pts.length - 1);
+  let s = `<svg viewBox="0 0 ${W} ${H}">`;
+  for (let k = 0; k <= 4; k++) { const v = lo - pad + (hi - lo + 2 * pad) * k / 4; s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${fmt(v)}</text>`; }
+  if (ref != null) s += `<line x1="${L}" x2="${W - R}" y1="${y(ref)}" y2="${y(ref)}" stroke="var(--text3)" stroke-dasharray="4 3"/>`;
+  s += `<polyline fill="none" stroke="var(--b2)" stroke-width="2" points="${pts.map((p, i) => `${x(i)},${y(p.v)}`).join(' ')}"/>`;
+  [0, Math.floor(pts.length / 2), pts.length - 1].forEach(i => { s += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${esc(pts[i].label)}</text>`; });
+  return s + '</svg>';
+}
+
+const ledgerFor = doc => DESK_EVIDENCE.filter(e => e.doc === doc);
+const ledgerHtml = doc => ledgerFor(doc).map(e => `<div class="ledger"><span class="v ${e.verdict}">${e.verdict.toUpperCase()}</span><span class="id">${esc(e.id)}</span><div class="res">${esc(e.result)}</div><div class="use"><b>Use:</b> ${esc(e.use)}</div></div>`).join('') || '<p class="mut">Not banked yet.</p>';
+
+const STUDIES = [
+  { id: 'vix-signals-forward', date: '2026-10-23', who: 'follow-up you asked for', title: 'Forward record of the four VIX signals', doc: 'forge/VIX_SIGNALS_FORWARD_PREREG.md',
+    q: 'Do the four signals banked on 2026-10-23 keep working on days nobody had seen when they were found?',
+    how: ['Rules frozen on 2026-10-23; only signals from 2026-10-26 count.', 'Rebuilt from public end-of-day closes (CBOE VIX/VVIX/VXN, FRED or Yahoo Nasdaq-100, CBOE VX settlements), so re-running the scorer at any later date reproduces the same record.', 'Each signal judged at 20 events (the short-VX rule at 15 trades) or on 2028-10-23.'],
+    links: [['Pre-registration', 'forge/VIX_SIGNALS_FORWARD_PREREG.md'], ['Scorer', 'scripts/vix-signals-forward/score.py'], ['Record (JSON)', 'analysis/output/vix-signals-forward/record.json']], chart: 'forward' },
+  { id: 'short-vx-rule', date: '2026-10-23', who: 'Garin’s tradeability point, costed', title: 'A costed, sized short-VX rule on the "fear ran ahead" flag', doc: 'forge/SHORT_VX_RULE_PREREG.md',
+    q: 'Could a trader have used the VIX give-back: short the VX future on the flag, with a stop, 1% risk, after costs, and done better than shorting VX on any day?',
+    how: ['Short the nearest VX with ≥ 35 days left at the next settle; stop +25% on settles; hold 20 sessions; one position at a time; 0.10 points round trip.', 'Benchmark: the same rule on 2,000 sets of random entry days, same trade count per year (shorting VX earns the contango roll anyway).', 'Data: CBOE VX settlements 2013-05 → 2026-08-21, 52 trades.'],
+    links: [['Pre-registration', 'forge/SHORT_VX_RULE_PREREG.md'], ['Results', 'analysis/output/short-vx-rule/RESULTS.md'], ['Trades (CSV)', 'analysis/output/short-vx-rule/trades.csv']], chart: 'shortvx' },
+  { id: 'vix-calculus', date: '2026-10-23', who: 'C.OG (Brownian motion, differentiation, integration), Jordan, Garin', title: 'VIX calculus suite', doc: 'forge/VIX_CALCULUS_PREREG.md',
+    q: 'Five questions from the VIP-Discord thread: is IV·√Δt the right priced-in move; do integrals (variance risk premia, accumulated unexplained fear) predict anything; do second derivatives; does Garin’s intraday ES rule hold after 2020; does the VIX give-back survive on tradable futures?',
+    how: ['Daily CBOE VIX/VVIX/VXN and Nasdaq-100 2009 → 2026-08; VX futures 2013 →; 5-minute VIX from IB Gateway 2016 → with the S&P/Nasdaq CFDs.', 'Regression on the extreme flags with VIX-state controls, Newey–West, three periods, 200 shifted-signal placebos, Holm within each part; Garin’s rule rebuilt and tested on 2021–2026 with a session-clustered bootstrap.', 'Power checks for D and E run and recorded before their outcomes were read.'],
+    links: [['Full page with charts', 'vix-calculus.html'], ['Pre-registration', 'forge/VIX_CALCULUS_PREREG.md'], ['Results', 'analysis/output/vix-calculus/RESULTS.md'], ['Garin’s notes', 'education/friend-vix-ratio-intraday/NOTES.md']], chart: 'calculus' },
+  { id: 'vix-nasdaq-beta', date: '2026-10-23', who: 'C.OG’s clarified spec (dR/dt, signed ratio)', title: 'C.OG’s dR/dt: the signed VIX-per-Nasdaq ratio and how fast it changes', doc: 'forge/VIX_NASDAQ_BETA_PREREG.md',
+    q: 'R = signed % VIX move per % Nasdaq move (the 20-session slope); dR/dt = its 5-session change. Do extremes of either predict the VIX, the Nasdaq or the range next, beyond what was already banked?',
+    how: ['Same daily panel, 16 cells (2 constructions × 2 tails × 4 outcomes), Holm-16, three periods, placebos.', 'The level cells carry the earlier ratio’s flags as controls, so they must add something new.', 'Post-hoc robustness (short-term reversal, VIX moves, leave-one-year-out, drop outliers), demote-only.'],
+    links: [['Pre-registration', 'forge/VIX_NASDAQ_BETA_PREREG.md'], ['Results', 'analysis/output/vix-nasdaq-beta/RESULTS.md'], ['Live on Atlas', 'atlas.html']], chart: 'beta' },
+  { id: 'vvix-nasdaq-ratio', date: '2026-10-23', who: 'C.OG (“when that ratio is at an extreme, what then happens”)', title: 'Fear versus the Nasdaq: the VVIX/VIX-to-Nasdaq ratio at extremes', doc: 'forge/VVIX_NASDAQ_RATIO_PREREG.md',
+    q: 'When the VVIX (or VIX) has been moving far more per % of Nasdaq movement than usual, what happens next to the VIX, the Nasdaq and the range?',
+    how: ['Three ratio constructions (realised VVIX/Nasdaq, realised VIX/Nasdaq, implied VVIX/VXN), top and bottom decile of their own last year.', '24 cells, VIX-state controls, Newey–West, Holm-24, three periods, 200 placebos; planted-signal power check before registration.'],
+    links: [['Pre-registration', 'forge/VVIX_NASDAQ_RATIO_PREREG.md'], ['Results', 'analysis/output/vvix-nasdaq-ratio/RESULTS.md'], ['Live on Atlas', 'atlas.html']],
+    figs: [['What happens around the extremes', 'analysis/output/vvix-nasdaq-ratio/fig_event_paths.png'], ['The ratio over time', 'analysis/output/vvix-nasdaq-ratio/fig_ratio_timeseries.png']], chart: 'vvix' },
+  { id: 'rate-surprise-events', date: '2026-10-21', who: 'your Phase 2 brief', title: 'Do rate surprises provide tradable information?', doc: 'forge/RATE_SURPRISE_EVENTS_PREREG.md',
+    q: 'After a data release moves the front end of the curve unexpectedly, does EURUSD or the Nasdaq keep moving (or reverse) in a way you could trade?',
+    how: ['Event study on releases with 15-minute OANDA prices, surprise size from the 2-year yield move, fixed rules plus a model ladder, planted-signal power check.'],
+    links: [['Pre-registration', 'forge/RATE_SURPRISE_EVENTS_PREREG.md'], ['Results', 'analysis/output/rate-surprise-events/RESULTS.md']],
+    figs: [['Response profiles after surprises', 'analysis/output/rate-surprise-events/fig_profiles.png'], ['Scored cells', 'analysis/output/rate-surprise-events/fig_cells.png']] },
+  { id: 'yield-predictive-ladder', date: '2026-10-21', who: 'your institutional yield-to-asset brief', title: 'Institutional yield-to-asset predictive framework', doc: 'forge/YIELD_PREDICTIVE_LADDER_PREREG.md',
+    q: 'Do rates (levels, spreads, curve shape, changes) predict EURUSD or the Nasdaq out of sample, at any lag, beyond the same-bar link?',
+    how: ['A ladder from simple lags to ridge models, walk-forward, Clark–West tests against a no-rates model, planted-signal power check (which found the ladder’s power was overstated and demoted it).', 'A data audit caught a fake lag-1 lead from the EURUSD noon fix vs 15:30 yields.'],
+    links: [['Pre-registration', 'forge/YIELD_PREDICTIVE_LADDER_PREREG.md'], ['Results', 'analysis/output/yield-predictive-ladder/RESULTS.md'], ['Synthesis (shortlist)', 'analysis/output/yield-predictive-ladder/SYNTHESIS.md']],
+    figs: [['Out-of-sample: Nasdaq', 'analysis/output/yield-predictive-ladder/fig_oos_nq.png'], ['Planted-signal power check', 'analysis/output/yield-predictive-ladder/fig_planted.png']] },
+  { id: 'spread-episodes', date: '2026-10-20', who: 'your spread-episodes brief', title: 'Do yield spreads and prices move together in episodes you can catch?', doc: 'forge/SPREAD_EPISODES_PREREG.md',
+    q: 'Case 1: SOFR Sep26 − Euribor Mar27 vs NAS100 (15-minute). Case 2: the normalised US 10y/2y vs EURUSD (daily). Are there real coupled episodes, can you recognise them as they start, and does price follow a confirmed spread turn?',
+    how: ['Causal zig-zag turns, an episode taxonomy, three controls (matched random bars, shifted spread, price’s own turns), three chronological splits, FDR across 864 variants.', 'A live monitor with alerts and a lightweight-charts page was built alongside.'],
+    links: [['Live page', 'spread-episodes.html'], ['Pre-registration', 'forge/SPREAD_EPISODES_PREREG.md'], ['Results', 'analysis/output/spread-episodes/RESULTS.md']], chart: 'spread' },
+];
+
+async function chartFor(s) {
+  if (s.chart === 'shortvx') {
+    const r = await J('analysis/output/short-vx-rule/results.json'); if (!r) return '';
+    const a2 = r.a2_fixed_sampler ?? {};
+    return `<div class="grid2"><div class="panel"><h4>Mean net R per trade</h4>${bars([{ label: 'Flag rule', bars: [{ value: r.mean_R, lo: r.ci95[0], hi: r.ci95[1], color: 'var(--b3)' }] }, { label: 'Random entry (the roll)', bars: [{ value: a2.random_mean_R ?? r.random_mean_R, color: 'var(--b1)' }] }], { height: 200 })}</div>
+      <div class="panel"><h4>Equity at 1% risk per trade</h4>${line(r.equity_curve.map(p => ({ v: p.equity, label: p.date.slice(0, 7) })), { ref: 1, fmt: v => '×' + v.toFixed(2) })}</div></div>
+      <p>${r.n_trades} trades, mean <b>${sg(r.mean_R)}R</b> (${sg(r.mean_ret_pct, 1)}% of entry), ${Math.round(r.win_share * 100)}% winners, positive in all three periods. Shorting VX on random days made ${sg(a2.random_mean_R)}R, so the flag's extra ${sg(a2.flag_minus_random)}R isn't proven (p ${a2.p_vs_random?.toFixed(3)}). The +25% stop fired once; that trade gapped to <b>${sg(r.worst_R)}R</b>. Whole-sample equity at 1% risk: ×${r.equity_final_1pct_risk.toFixed(3)}, worst drawdown ${(r.max_drawdown_1pct_risk * 100).toFixed(1)}%.</p>`;
+  }
+  if (s.chart === 'calculus') {
+    const S = await J('analysis/output/vix-calculus/summary.json'); if (!S) return '';
+    const cells = [...S.B.cells, ...S.C.cells];
+    return `<h3>Parts B and C: every scored test</h3>${tstrip(cells, { bar: 3.0, label: c => `${c.construction} ${c.tail} → ${c.outcome}`, pass: c => c.gate })}
+      <h3>Part E: the VIX give-back, spot vs the future you could hold</h3>${bars(S.E.cells.map(c => ({ label: c.construction === 'R_a' ? 'VVIX ratio top 10%' : 'VIX ratio top 10%', bars: [{ value: c.spot_pct_effect, color: 'var(--b2)', tip: 'spot' }, { value: c.pct_effect, color: 'var(--b3)', tip: 'future' }] })), { fmt: v => sg(v, 1) + '%', height: 200 })}
+      <p class="note">Left bar spot VIX, right bar the VX future: the future captures about 60% of the fall. Part D (Garin's rule) did not reproduce on his own years and did not appear in 2021–2026: see the full page.</p>`;
+  }
+  if (s.chart === 'beta') {
+    const r = await J('analysis/output/vix-nasdaq-beta/results.json'); if (!r) return '';
+    return `<h3>All 16 scored tests</h3>${tstrip(r.cells, { bar: 3.15, label: c => `${c.construction === 'B_level' ? 'R level' : 'dR/dt'} ${c.tail} → ${c.outcome}`, pass: c => c.verdict_cell === 'validated' })}`;
+  }
+  if (s.chart === 'vvix') {
+    const r = await J('analysis/output/vvix-nasdaq-ratio/results.json'); if (!r?.cells) return '';
+    return `<h3>All scored tests</h3>${tstrip(r.cells, { bar: 3.25, label: c => `${c.construction} ${c.tail} → ${c.outcome}`, pass: c => c.verdict_cell === 'validated' || c.gate })}`;
+  }
+  if (s.chart === 'spread') {
+    const r = await J('analysis/output/spread-episodes/summary.json'); if (!r) return '';
+    return ['case1', 'case2'].filter(k => r[k]).map(k => `<div class="panel" style="margin-top:8px"><h4>${k === 'case1' ? 'Case 1 · SOFR−Euribor vs NAS100' : 'Case 2 · US 10y/2y vs EURUSD'}: ${esc(r[k].verdict)}</h4><p>${esc(r[k].headline)}</p><ul>${['episodes_real', 'recognisable', 'follows', 'oos'].filter(x => r[k][x]).map(x => `<li><b>${{ episodes_real: 'Real episodes?', recognisable: 'Recognisable as they start?', follows: 'Does price follow?', oos: 'Out of sample' }[x]}</b> ${esc(r[k][x])}</li>`).join('')}</ul></div>`).join('');
+  }
+  if (s.chart === 'forward') return '';
+  return '';
+}
+
+async function renderLive() {
+  const r = await J('analysis/output/vix-signals-forward/record.json');
+  if (!r) { $('#live').innerHTML = '<div class="eyebrow">Live forward record</div><p class="mut">No record yet: run scripts/vix-signals-forward/score.py.</p>'; return; }
+  const T = r.today, row = (label, p, on, tail, words) => `<tr><td>${esc(label)}</td><td>${Math.round(p * 100)}th<div class="bar"><i style="width:${Math.max(2, p * 100)}%;background:${on ? 'var(--amber)' : 'var(--b2)'}"></i><u style="left:${tail}%"></u></div></td><td>${on ? '<b style="color:var(--amber)">on</b>' : '<span class="mut">off</span>'}</td><td class="mut">${esc(words)}</td></tr>`;
+  const sig = r.signals.map(s => `<tr><td>${esc(s.signal)}</td><td>${s.n_scored}</td><td>${s.mean_pct != null ? sg(s.mean_pct) + '%' : s.mean_R != null ? sg(s.mean_R) + 'R' : '–'}</td><td>${s.all_days_mean_pct != null ? sg(s.all_days_mean_pct) + '%' : s.random_entry_mean_R != null ? sg(s.random_entry_mean_R) + 'R (backtest)' : '–'}</td><td>${(s.events ?? s.trades ?? []).length}</td><td>${esc(s.status)}</td></tr>`).join('');
+  $('#live').innerHTML = `<div class="eyebrow">Live · forward record · last close ${esc(r.last_close)} · scored from ${esc(r.forward_start)}</div><h2>Where the four VIX signals stand now</h2>
+    <div class="xs"><table><tr><th>Reading (percentile of its past year)</th><th>Now</th><th>Signal</th><th>What it has meant</th></tr>
+      ${row('VVIX vs Nasdaq ratio (R_a)', T.pct_R_a, T.pct_R_a >= 0.9, 90, 'top 10% → VIX about −7% over a month')}
+      ${row('VIX vs Nasdaq ratio (R_b)', T.pct_R_b, T.pct_R_b >= 0.9, 90, 'top 10% → VIX about −7% over a month')}
+      ${row("C.OG's dR/dt", T.pct_dRdt, T.dRdt_bottom, 10, 'bottom 10% → Nasdaq +0.76% over 5 sessions vs +0.33%')}
+      ${row('dR/dt of VVIX/VXN', T.pct_dRimp, T.implied_change_top, 90, 'top 10% → Nasdaq +2.5% over 20 sessions vs +1.3%')}
+    </table></div>
+    <h3>Forward record so far</h3><div class="xs"><table><tr><th>Signal</th><th>Scored</th><th>Mean after</th><th>All days / benchmark</th><th>Events</th><th>Status</th></tr>${sig}</table></div>
+    <p class="note">Sources this run: ${Object.entries(r.sources).map(([k, v]) => `${k} ${esc(v)}`).join(' · ')}. Generated ${esc(r.generated)}. Each signal is judged at 20 events (the VX rule at 15 trades) or on 2028-10-23. All four are research-only: none is a trade signal yet.</p>`;
+}
+
+async function main() {
+  $('#toc').innerHTML = STUDIES.map(s => `<a href="#${s.id}">${esc(s.date.slice(5))} · ${esc(s.title.length > 42 ? s.title.slice(0, 40) + '…' : s.title)}</a>`).join('') + '<a href="#builds">Builds</a>';
+  renderLive();
+  let h = '';
+  for (const s of STUDIES) {
+    const led = ledgerFor(s.doc), ch = await chartFor(s);
+    h += `<div class="box" id="${s.id}"><div class="eyebrow">${esc(s.date)} · asked by ${esc(s.who)}</div><h2>${esc(s.title)}</h2>
+      <div class="meta">${led.map(e => `<span class="v ${e.verdict}">${e.verdict.toUpperCase()}</span>`).join('')}<span class="chip">${esc(s.id)}</span></div>
+      <h3>The question</h3><p>${esc(s.q)}</p><h3>How it was tested</h3><ul>${s.how.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+      ${ch}${s.figs ? `<div class="grid2" style="margin-top:8px">${s.figs.map(([t, src]) => `<div class="panel"><h4>${esc(t)}</h4><a href="${src}" target="_blank"><img class="fig" loading="lazy" src="${src}" alt="${esc(t)}"></a></div>`).join('')}</div>` : ''}
+      <h3>What came out (from the Evidence Book)</h3>${ledgerHtml(s.doc)}
+      <div class="links">${s.links.map(([t, u]) => `<a href="${u}" target="_blank">${esc(t)}</a>`).join('')}</div></div>`;
+  }
+  $('#studies').innerHTML = h;
+  $('#builds').innerHTML = `<div class="eyebrow">Builds (not studies)</div><h2>What was added to the site and the data pipeline</h2><ul>
+    <li><b>Atlas · Fear versus the Nasdaq:</b> C.OG's dR/dt and the VVIX/VXN dR/dt readings, each with its past-year flags, research-only labels and a parity test that fails if the page ever drifts from the study's code (<code>js/fearVsNasdaq.js</code>). Also in the newsletter.</li>
+    <li><b>Rate legs chart (cog-chart.html):</b> US 2/5/10/30y and German 2/5/10/30y yields (intraday implied from bond CFDs, checked to within 1 bp of the Treasury curve), US real yields and breakevens, and presets (US−DE 2y and 10y spreads, 2s10s, gold vs inverted real yield), added without touching the SOFR/Euribor work (<code>js/yieldLegs.js</code>).</li>
+    <li><b>IB Gateway legs:</b> Eurex Schatz/Bobl/Bund/Buxl (symbol fix), BTP and OAT, US 5/10/30y and Ultra futures, the dollar index, VIX futures and the VVIX/VIX/VXN indices, refreshed every 30 minutes from the laptop.</li>
+    <li><b>Spread-turn episodes page</b> with a live monitor and alerts (<a href="spread-episodes.html">spread-episodes.html</a>).</li>
+    <li><b>VIX calculus suite page</b> (<a href="vix-calculus.html">vix-calculus.html</a>) and this log.</li>
+    <li><b>Data:</b> 5-minute VIX 2016–2026 from IB (kept on the laptop), CBOE VX futures settlements 2013–2026 (in the repo).</li></ul>
+    <p class="note">Each study's register row is in <a href="plans/RESEARCH_REGISTER.md">plans/RESEARCH_REGISTER.md</a>; the full ledger of every tested idea is <a href="MD%20files/TRIAL_LEDGER.md">MD files/TRIAL_LEDGER.md</a>.</p>`;
+}
+main().catch(e => { $('#err').textContent = 'Something failed to load: ' + e.message; });
+</script>
+</body>
+</html>

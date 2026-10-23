@@ -1,0 +1,63 @@
+{
+ "id": "vix-signals-forward",
+ "generated": "2026-10-23 17:46 UTC",
+ "forward_start": "2026-10-26",
+ "last_close": "2026-10-22",
+ "sources": {
+  "VIX": "cboe live",
+  "VVIX": "cboe live",
+  "VXN": "cboe live",
+  "NDX": "local copy to 2026-10-20 + yahoo ^NDX",
+  "VX": "cboe live"
+ },
+ "today": {
+  "ratio_flag": false,
+  "dRdt_bottom": true,
+  "implied_change_top": false,
+  "pct_R_a": 0.7182539682539683,
+  "pct_R_b": 0.42857142857142855,
+  "pct_dRdt": 0.06746031746031746,
+  "pct_dRimp": 0.13095238095238096
+ },
+ "signals": [
+  {
+   "signal": "vvix-ratio-range",
+   "horizon": 20,
+   "expected_sign": -1,
+   "events": [],
+   "n_scored": 0,
+   "mean_pct": null,
+   "all_days_mean_pct": null,
+   "status": "collecting"
+  },
+  {
+   "signal": "vix-beta-change",
+   "horizon": 5,
+   "expected_sign": 1,
+   "events": [],
+   "n_scored": 0,
+   "mean_pct": null,
+   "all_days_mean_pct": null,
+   "status": "collecting"
+  },
+  {
+   "signal": "vix-second-derivative",
+   "horizon": 20,
+   "expected_sign": 1,
+   "events": [],
+   "n_scored": 0,
+   "mean_pct": null,
+   "all_days_mean_pct": null,
+   "status": "collecting"
+  },
+  {
+   "signal": "short-vx-rule",
+   "trades": [],
+   "n_scored": 0,
+   "mean_R": null,
+   "backtest_mean_R": 0.218,
+   "random_entry_mean_R": 0.118,
+   "status": "collecting"
+  }
+ ]
+}

@@ -113,3 +113,18 @@ trades (≈ 2.8 × SD ÷ √n), go in a PRE-RESULTS amendment before the flag ru
 - The NULL clause (interval inside ±0.15R) is unlikely to be reachable.
 - A failed gate will most likely be **UNDERPOWERED**.
 - 2022 has no flag trades, so the random benchmark draws none in 2022 either.
+
+### A2 — 2026-10-23 — POST-HOC (results seen; demote-only)
+
+The registered rejection sampler for the random-entry benchmark often failed to place a year's trades without
+overlap. The first run also accepted sets missing a year (a bug).
+
+- Requiring complete sets: 539 of 2,000.
+- A sequential sampler that always completes (`greedy=True` in `rule.py`): all 2,000 sets, p 0.096.
+- The first, buggy run: p 0.061.
+
+All fail the gate's p < 0.05, so the verdict is unchanged: **UNDERPOWERED**.
+
+## RESULTS
+
+See `analysis/output/short-vx-rule/RESULTS.md`.

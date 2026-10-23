@@ -44,19 +44,30 @@ def run_rule(C, flag):
     return pd.DataFrame(out)
 
 
-def random_sets(C, per_year, B):
+def random_sets(C, per_year, B, greedy=False):
+    """Matched random-entry sets: per calendar year, the flag rule's trade count, no overlapping positions.
+    greedy=False: the registered rejection sampler (draw n, keep if no overlap; it fails often in crowded years).
+    greedy=True (A2 fix): sequential random draws from the sessions still free, restarting a year until it fills; every set completes."""
     cand = np.array([i for i in range(N) if C.get(i)]); yr = dates.year.to_numpy(); res = []
     for _ in range(B):
         picks = []
-        for y, n in per_year.items():
+        for y, n in sorted(per_year.items()):
             pool = cand[yr[cand] == y]
             for _try in range(500):
-                s = np.sort(rng.choice(pool, n, replace=False)); ok = True
-                for a, b in zip(s[:-1], s[1:]):
-                    if b < C[a][2]: ok = False; break
-                if ok: picks.extend(s.tolist()); break
+                if greedy:
+                    chosen = []
+                    for _k in range(n):
+                        free = [j for j in pool if all(not (a <= j < C[a][2]) and not (j <= a < C[j][2]) for a in chosen + picks)]
+                        if not free: break
+                        chosen.append(int(rng.choice(free)))
+                    if len(chosen) == n: picks.extend(chosen); break
+                else:
+                    s = np.sort(rng.choice(pool, n, replace=False)); ok = True
+                    for a, b in zip(s[:-1], s[1:]):
+                        if b < C[a][2]: ok = False; break
+                    if ok: picks.extend(s.tolist()); break
         picks.sort(); ok = all(b >= C[a][2] for a, b in zip(picks[:-1], picks[1:]))
-        if ok: res.append(np.array([C[i][0] for i in picks]))
+        if ok and len(picks) == sum(per_year.values()): res.append(np.array([C[i][0] for i in picks]))
     return res
 
 
@@ -78,6 +89,7 @@ if sys.argv[1:] == ['power']:
 T = run_rule(C, FLAG); T['period'] = np.where(pd.to_datetime(T['date']).dt.year <= 2016, '2013-16', np.where(pd.to_datetime(T['date']).dt.year <= 2020, '2017-20', '2021-26'))
 R = T['R'].to_numpy(); meanR = float(R.mean()); ci = boot_ci(R)
 RS = random_sets(C, per_year, 2000); rnd_means = np.array([r.mean() for r in RS])
+RSg = random_sets(C, per_year, 2000, greedy=True); rnd_g = np.array([r.mean() for r in RSg])   # A2 post-hoc: every set completes
 p_vs_random = float(np.mean(rnd_means >= meanR)); diff = meanR - rnd_means; diff_ci = [float(np.percentile(diff, 2.5)), float(np.percentile(diff, 97.5))]
 per = T.groupby('period')['R'].agg(['mean', 'count']).to_dict('index')
 gate = dict(ci_excludes_0=ci[0] > 0, beats_random=p_vs_random < 0.05, all_periods_positive=all(v['mean'] > 0 for v in per.values()) and len(per) == 3)
@@ -92,6 +104,8 @@ res = dict(id='short-vx-rule', seed=SEED, n_trades=len(T), mean_R=meanR, ci95=ci
            worst_R=float(R.min()), best_R=float(R.max()), random_mean_R=float(rnd_means.mean()), random_mean_R_p05_p95=[float(np.percentile(rnd_means, 5)), float(np.percentile(rnd_means, 95))],
            flag_minus_random=float(meanR - rnd_means.mean()), flag_minus_random_ci95=diff_ci, p_vs_random=p_vs_random, per_period={k: dict(mean_R=float(v['mean']), n=int(v['count'])) for k, v in per.items()},
            gate=gate, verdict=verdict, equity_final_1pct_risk=float(eq[-1]), max_drawdown_1pct_risk=dd, random_equity_final_median=float(np.median(rnd_eq_final)),
-           equity_curve=[dict(date=d, equity=float(e)) for d, e in zip(T['exit'], eq)], descriptive=desc, random_sets_used=len(RS))
+           equity_curve=[dict(date=d, equity=float(e)) for d, e in zip(T['exit'], eq)], descriptive=desc, random_sets_used=len(RS),
+           a2_fixed_sampler=dict(sets=len(RSg), random_mean_R=float(rnd_g.mean()), p_vs_random=float(np.mean(rnd_g >= meanR)), flag_minus_random=float(meanR - rnd_g.mean()),
+                                 flag_minus_random_ci95=[float(np.percentile(meanR - rnd_g, 2.5)), float(np.percentile(meanR - rnd_g, 97.5))]))
 T.to_csv(os.path.join(OUT, 'trades.csv'), index=False); json.dump(res, open(os.path.join(OUT, 'results.json'), 'w'), indent=1)
 print(json.dumps({k: v for k, v in res.items() if k != 'equity_curve'}, indent=1))

@@ -1171,6 +1171,12 @@ export const DESK_EVIDENCE = [
     use: 'Credit and equities agree in the same window (the chain’s hy->nq and hy->spx links); on 22 years of Moody’s spreads credit does NOT lead equities at 1-20 sessions, in direction or in vol. Never write that credit "moves first". The one thing worth more data is HY OAS -> next-week vol on three years, which needs a longer high-yield series (HYG/JNK from 2007) before it is anything.',
   },
   {
+    id: 'short-vx-rule', domain: 'volatility', verdict: 'underpowered', date: '2026-10-23', doc: 'forge/SHORT_VX_RULE_PREREG.md', also: ['analysis/output/short-vx-rule/RESULTS.md', 'research-log.html'],
+    claim: 'A costed, sized short-VX-futures rule on the validated ratio flag (vvix-ratio-range): short the nearest VX with 35+ days left at the next settle, +25% stop, 20-session hold, 1% risk, 0.10 pts costs, beats shorting VX on random days',
+    result: '2013-05 to 2026-08-21, 52 trades: mean net +0.22R per trade (+5.5% of entry), 95% CI +0.06 to +0.35, 77% winners, positive in 2013-16/2017-20/2021-26. Random-entry shorting (2,000 matched sets) made +0.12R, so flag minus random +0.10R, interval -0.04 to +0.25, one-sided p 0.096: fails the beat-random condition. The +25% stop fired once in 52 trades and that trade gapped to -2.19R. Equity at 1% risk x1.119, max drawdown -2.4%.',
+    use: 'Not a trading rule: shorting VX on the flag has made money, but mostly the contango roll that shorting VX earns on any day; the flag edge over random entry is unproven and the stop does not stop gaps. Paper-traded in the forward record (judged at 15 trades).',
+  },
+  {
     id: 'vix-brownian-scaling', domain: 'volatility', verdict: 'context', date: '2026-10-23', doc: 'forge/VIX_CALCULUS_PREREG.md', also: ['analysis/output/vix-calculus/RESULTS.md', 'vix-calculus.html'],
     claim: 'C.OG (2026-10-23, Brownian motion) and Jordan\'s card: the move priced in over dt is IV x sqrt(dt) (VXN for the Nasdaq, VVIX for the VIX), and VIX % per 1% Nasdaq = VVIX / VXN',
     result: 'Daily 2009-2026. Realised / priced absolute move (Brownian factor): Nasdaq 0.84-0.85 at 1, 5, 10 and 20 sessions (sqrt(dt) holds; realised moves ~16% smaller than VXN prices); VIX 1.14 at 1 session falling to 0.84 at 20 (mean reversion; variance ratio 0.50 at 20). Realised |VIX-on-Nasdaq slope| / (VVIX/VXN): median 1.08, 0.59 in the loosest-correlation fifth of days to 1.46 in the tightest.',
@@ -1522,6 +1528,7 @@ const POWER = {
   'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
   'range-ladder-placebo-confirm': { n: '2,745 session dates (21-session block bootstrap), 15 instruments', note: 'pooled MDE 0.37 pp vs a 1.0 pp bar; per-line MDE 0.69-0.89 pp' },
   'range-edge-limit-fade':   { n: '2,456 session dates (21-session block bootstrap), 34 instruments, 24,006 trades', note: 'MDE 0.023R (T1) / 0.029R (T2) vs the +0.05R null line; both CIs below zero' },
+  'short-vx-rule':           { n: '52 trades 2013-26 vs 2,000 random-entry sets', note: 'MDE ~0.28R flag minus random (A1); observed +0.10R, p 0.096' },
   'vix-brownian-scaling':    { n: '4,259 sessions 2009-26', note: 'descriptive calibration with block-bootstrap intervals' },
   'vix-integral-gaps':       { n: '4,259 sessions 2009-26 (24 cells)', note: 'design floor 0.35 SD (5d) / 0.6 SD (20d); 0 pass Holm-24' },
   'vix-second-derivative':   { n: '4,259 sessions 2009-26 (413 flagged days)', note: 't 3.04 Holm-16, all periods, placebo; fails Holm-46; all-controls t 2.42 (research only)' },
