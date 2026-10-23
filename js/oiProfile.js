@@ -18,7 +18,7 @@ import { levelExpectation } from './levelExpectation.js';
 import { RIPPLE_BUCKETS } from './rippleBook.js';
 
 const LABEL = { call_wall: 'CALL WALL', put_wall: 'PUT WALL', gamma_peak: 'GAMMA PEAK', zero_gamma: 'ZERO GAMMA', gex_flip: 'GEX FLIP', max_pain: 'MAX PAIN',
-  vanna_flip: 'VANNA FLIP', charm_flip: 'CHARM FLIP', oi_volume: 'VOLUME', exp_hi: 'EXP MOVE ↑', exp_lo: 'EXP MOVE ↓' };
+  vanna_flip: 'VANNA FLIP', charm_flip: 'CHARM FLIP', oi_volume: 'VOLUME', exp_hi: 'EXP MOVE ↑', exp_lo: 'EXP MOVE ↓', short_gamma_node: 'SHORT-GAMMA NODE', long_gamma_node: 'LONG-GAMMA NODE' };
 const EXPECT_TYPE = { call_wall: 'call_wall', put_wall: 'put_wall', zero_gamma: 'gex_flip', gex_flip: 'gex_flip', max_pain: 'max_pain', vanna_flip: 'vanna_flip',
   charm_flip: 'charm_flip', oi_volume: 'oi_volume' };
 const bucketOf = dte => (Number.isFinite(dte) ? RIPPLE_BUCKETS.find(b => dte <= b.max) : null) || RIPPLE_BUCKETS[RIPPLE_BUCKETS.length - 1];
@@ -72,6 +72,18 @@ export function buildOiProfile(inst, opts = {}) {
   const peak = lad.strikes.map((k, i) => ({ k, v: Math.abs(net[i]) })).sort((a, b) => b.v - a.v)[0];
   const nmax = Math.max(...net.map(Math.abs), 1e-12);
   if (peak) add('gamma_peak', peak.k, peak.v / nmax);
+  // Gamma NODES: the next-largest net-gamma strikes. Walls rank one side's gamma (calls above spot, puts below), so a strike where the OTHER side dominates (puts above spot,
+  // calls below) never qualifies as a wall even when it carries a lot of net gamma. These are labelled by the sign of the net, not by a wall name. Skipped where a wall or the peak already sits.
+  {
+    const taken = levels.filter(l => l.type === 'call_wall' || l.type === 'put_wall' || l.type === 'gamma_peak');
+    const byNet = lad.strikes.map((k, i) => ({ k, i, v: Math.abs(net[i]) })).sort((a, b) => b.v - a.v);
+    let nodes = 0;
+    for (const x of byNet) {
+      if (nodes >= 2 || x.v < 0.25 * nmax) break;
+      if (taken.some(u => Math.abs(u.price - x.k) <= 0.12 * rm)) continue;
+      add(net[x.i] < 0 ? 'short_gamma_node' : 'long_gamma_node', x.k, x.v / nmax); nodes++;
+    }
+  }
   const zg = (opts.hedge?.zeroGamma || []).slice().sort((a, b) => Math.abs(a.price - spot) - Math.abs(b.price - spot))[0];
   if (zg) add('zero_gamma', zg.price, 0.9);
   else if (Number.isFinite(inst?.gexFlip)) add('gex_flip', inst.gexFlip, 0.8);
@@ -87,7 +99,7 @@ export function buildOiProfile(inst, opts = {}) {
   for (const l of levels) {
     l.label = LABEL[l.type] + (l.rank ? ` ${l.rank}` : '');
     const ex = EXPECT_TYPE[l.type] ? levelExpectation({ type: EXPECT_TYPE[l.type], price: l.price }, { spot, gexFlips: inst?.gexFlips, gammaFlip: inst?.gammaFlip, refMove: rm }) : null;
-    l.expect = ex?.short || ({ gamma_peak: 'Biggest gamma', vanna_flip: 'IV-driven', charm_flip: 'Time pull', exp_hi: 'Range edge', exp_lo: 'Range edge' }[l.type] ?? '');
+    l.expect = ex?.short || ({ gamma_peak: 'Biggest gamma', vanna_flip: 'IV-driven', charm_flip: 'Time pull', exp_hi: 'Range edge', exp_lo: 'Range edge', short_gamma_node: 'Speeds moves', long_gamma_node: 'Pins moves' }[l.type] ?? '');
     const r = opts.reach ? opts.reach(l.price) : null;
     l.touchPct = r && Number.isFinite(r.p) ? Math.round(r.p * 100) : null; l.etaMin = r && Number.isFinite(r.eta) ? Math.round(r.eta) : null;
   }

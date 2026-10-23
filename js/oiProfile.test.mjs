@@ -58,5 +58,16 @@ const parts = chunkText(big, 3900);
 ok('chunkText: every part fits the 4,096-character Pine string limit', parts.length > 1 && parts.every(x => x.length <= 3900));
 ok('chunkText: parts rejoin to the original, split only on line boundaries', parts.join(String.fromCharCode(10)) === big);
 ok('integers only in the bar series (compact)', rows.filter(r => /^[GVO]\|/.test(r)).every(r => /^[GVO]\|[\d.]+\|-?\d+$/.test(r)), rows.find(r => /^[GVO]\|/.test(r) && !/^[GVO]\|[\d.]+\|-?\d+$/.test(r)));
+// a put-heavy strike ABOVE spot is not a wall (put walls look below spot, call walls rank call gamma), but its net gamma is large: it becomes a short-gamma node
+{
+  const ks = []; for (let k = 90; k <= 110; k += 1) ks.push(k);
+  const calls = ks.map(k => (k === 101 ? 4000 : k === 104 ? 3000 : k === 108 ? 2500 : 0));
+  const puts = ks.map(k => (k === 95 ? 3500 : k === 102 ? 2600 : 0));
+  const pn = buildOiProfile({ spot: 100, refMove: { move: 2 } }, { legs: [{ dte: 4, strikes: ks, calls, puts, sigma: 0.2 }], mult: 1, flat: 0.2 });
+  const nodes = pn.levels.filter(l => l.type === 'short_gamma_node');
+  ok('a put-heavy strike above spot becomes a SHORT-GAMMA NODE, not a wall', nodes.some(l => Math.abs(l.price - 102) < 0.6), JSON.stringify(pn.levels.map(l => l.label + '@' + l.price)));
+  ok('nodes are skipped where a wall or the peak already sits', pn.levels.every(l => !(l.type.endsWith('gamma_node') && pn.levels.some(w => (w.type === 'call_wall' || w.type === 'put_wall' || w.type === 'gamma_peak') && Math.abs(w.price - l.price) < 0.25))));
+  ok('the node survives into the paste text', buildProfileText(pn, { name: 'X', digits: 2 }).includes('|short_gamma_node|'));
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
