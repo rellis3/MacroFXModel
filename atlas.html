@@ -682,12 +682,13 @@ function heroHtml() {
   const kick = (a ? `<span class="pill ${/RISK-ON/i.test(a.regime) ? 'bull' : /RISK-OFF/i.test(a.regime) ? 'bear' : 'amber'}">${esc(a.regime)}</span>` : '') + `<span class="pill violet">${icS('bulb')}AI argument from measured links</span>`;
   let age = '', who = '';
   if (a && D.intel.generatedAt) { const h = (Date.now() - Date.parse(D.intel.generatedAt)) / 3.6e6; age = `<span class="pill ${h >= 6 ? 'amber' : ''}">${h < 1 ? Math.round(h * 60) + 'm old' : h < 24 ? h.toFixed(1) + 'h old' : Math.round(h / 24) + 'd old'}</span>`; }
+  const part = D.intel?.analysis?.truncated ? `<span class="pill amber" title="${esc(D.intel.analysis.truncated.note)}">partial brief: the model ran out of room</span>` : '';
   const dev = D.intel?._device ? `<span class="pill amber" title="${esc(D.intel._why ?? '')}">device copy: ${esc(D.intel._why ?? 'this is the last brief this browser saw')}</span>` : '';
   const llm = D.intel?.llm, bm = briefModel();
   who = '';   // no "written by <model>" or "next: <model>" pills: the AI model selector beside Generate already says what will run, and the issue's footer carries the general AI disclosure.
   const unreachable = D.intel?._unreachable, head = a?.headline ? esc(a.headline) : unreachable ? 'The stored brief could not be loaded' : 'No Intelligence brief is stored';
   const body = a ? esc(a.driver?.[0]?.explain ?? a.driver?.[0]?.what ?? '') : unreachable ? 'The server did not answer after three tries. This is a loading problem, not a missing brief: reload the page, or press Load stored brief. Nothing has been generated or cleared.' : 'Press Generate for the argument: what is driving markets, how it transmits, what would confirm or break it, and what to learn from it. One model call.';
-  return `<div><div class="kick">${kick}${age}${who}${dev}</div><h2>${head}</h2><p>${body}</p>
+  return `<div><div class="kick">${kick}${age}${who}${dev}${part}</div><h2>${head}</h2><p>${body}</p>
      <p style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="aibox" id="heroai"></span>${unreachable ? `<button class="btn" id="reloadbtn">Load stored brief</button>` : ''}<button class="btn" id="genbtn">${icS('bulb')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds, sends today's Behind / Now / Ahead rows with it</span></p></div>
      <div class="gauge">${rf ? dial(rf.active ?? 0, rf.available ?? rf.total ?? 5) : ''}${rf ? proxBlock(rf) : ''}</div><div class="gauge">${ring()}</div>`;
 }

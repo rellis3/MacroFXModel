@@ -5457,6 +5457,8 @@ NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/B
 
 If a MARKET FACTS block appears below, write one entry in "markets" for EVERY line in it, using only the facts on that line and the rest of this brief. Describe what happened, what in the facts explains it, and how stretched the day is. Do NOT predict or advise: never write expect, likely, should, will, leans, squeeze, extension, fade, target, or any call on where price goes next. \"expected\" is fine only for a published consensus figure.
 
+LENGTH LIMITS (the whole reply must stay under about 5,000 words, so it finishes): at most 3 driver items, 8 transmission rows, 3 confirm and 3 invalidate items, 5 catalysts and 4 noEdge items of one sentence each; sizing at most 3 sentences; each markets read at most 45 words and each watch at most 12 words; the lesson at most 90 words.
+
 WRITE FOR A CURIOUS NON-SPECIALIST, NOT A QUANT. Never use the desk\'s internal vocabulary or field names (no rateDiff, no "macro scorecard", "dimension", "composite", "baseline", "desk-watch", "axes"): say "economic score", "factor", "overall score", and describe a factor in words such as growth, inflation or interest rates. Short sentences, plain words, one idea each. Say "borrowing costs" or "bond yields", not "term premium"; "stress warnings", not "risk flags"; "prices usually move together", not "correlation". If you must use a market term, explain it in a few words the first time. Spell out any acronym once. Keep every field tight: the headline under 20 words, each driver explanation at most two sentences.
 
 === THE CHAIN — the textbook links in causal order, each judged on measured 20-day moves at BOTH ends (HOLDING = moved together as the textbook says; BROKEN = both moved, the wrong way round; QUIET = at least one end inside its noise floor, not judged) ===
@@ -6101,17 +6103,24 @@ Respond with ONLY valid JSON, no markdown:
     finalPrompt = _intelBriefPrompt(data, chainBlock, context);
     kvKey = _INTEL_BRIEF_KV;
   }
-  const antRes = await callModel({ task: 'brief', maxTokens: 16000, ...(timeoutMs ? { timeoutMs } : {}),
+  const antRes = await callModel({ task: 'brief', maxTokens: 30000, ...(timeoutMs ? { timeoutMs } : {}),
     system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.',
     standing: _evidenceForPrompt(),
     prompt: finalPrompt });
   const antData = antRes;
-  if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
   const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   // The model occasionally appends a sentence after the closing brace ("Unexpected
   // non-whitespace character after JSON at position 3840"), which threw the whole
   // brief away. Take the first balanced object; the trailing text is never wanted.
-  const analysis = _firstJsonObject(clean);
+  let analysis;
+  if (antData.stop_reason === 'max_tokens') {
+    // A verbose model can run out of room mid-brief. The finished sections are worth keeping (the unfinished tail is the least critical): rescue them
+    // rather than throw away minutes of paid work. If not even the headline and drivers survived, report it as before.
+    const { salvageTopLevel } = await import('./js/jsonSalvage.js'), sv = salvageTopLevel(clean);
+    if (!sv?.obj?.headline || !Array.isArray(sv.obj.driver) || !sv.obj.driver.length) throw new Error('response truncated — try again');
+    analysis = sv.obj;
+    if (sv.cut) { analysis.truncated = { kept: Object.keys(analysis), note: 'The model ran out of room, so the last sections are missing.' }; console.warn(`[brief] truncated; kept ${Object.keys(analysis).join(', ')}`); }
+  } else analysis = _firstJsonObject(clean);
   if (mode === 'intel' && Array.isArray(analysis?.markets)) {   // the model is told not to predict; this check does not rely on it obeying
     const { readIsSafe, plainRead } = await import('./js/newsletterRecord.js'), all = analysis.markets;
     analysis.markets = all.filter(m => m && typeof m.key === 'string').map(m => ({ ...m, read: plainRead(m.read), watch: m.watch == null ? null : plainRead(String(m.watch)) })).filter(m => m.read && readIsSafe(m.read) && (m.watch == null || readIsSafe(m.watch)));
