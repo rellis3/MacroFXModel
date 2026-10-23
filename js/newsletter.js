@@ -32,6 +32,7 @@ export const RANGE_EFFECT = {
 };
 import { CHAIN_LAYOUT } from './macroChain.js';
 import { pressureWords } from './rangePressure.js';
+import { fearWords } from './fearVsNasdaq.js';
 import { hourlyStripSvg, dailyStripSvg, summarize, summaryWords, pillWords, COLOUR as STATE_COLOUR } from './stateStrip.js';
 const FAMILY_RE = [['cpi', /\bcpi\b|consumer price|inflation rate/i], ['employment', /non-farm|nonfarm|payroll|unemployment|jobless|claims|employment change/i], ['gdp', /\bgdp\b/i], ['rate decision', /rate decision|cash rate|official bank rate|federal funds|interest rate|policy rate|refinancing/i], ['pmi', /\bpmi\b|ism /i], ['retail sales', /retail sales/i]];
 export const familyOf = event => FAMILY_RE.find(([, re]) => re.test(event ?? ''))?.[0] ?? null;
@@ -199,6 +200,7 @@ function plumbingSvg(stages) {
 }
 
 const CSS = `
+.fb{position:relative;height:7px;border-radius:4px;background:#e6ecf5;margin-top:5px}.fb i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;display:block}.fb u{position:absolute;top:-3px;bottom:-3px;width:2px;background:${COLORS.ink};text-decoration:none}
 .zn{font-size:12.5px;margin:8px 0 2px;line-height:1.45}.zn small{display:block;font-size:11.5px;color:${COLORS.muted};margin-top:2px}
 .rp{display:grid;gap:7px}.rpr{display:grid;grid-template-columns:62px 1fr;gap:8px;align-items:start;font-size:13px}.rpr small{display:block;font-size:11.5px;color:${COLORS.muted};margin-top:2px}
 .st{display:flex;flex-wrap:wrap;gap:4px 6px;margin:8px 0 3px}.sp{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:3px 8px;border-radius:999px;background:${COLORS.paper};border:1px solid ${COLORS.line};color:${COLORS.text}}.sp i{display:inline-block;width:8px;height:8px;border-radius:50%}.stl{font-size:10.5px;color:${COLORS.muted};margin:5px 0 2px}
@@ -264,6 +266,10 @@ export function buildNewsletter(n) {
   const tiles = n.tiles?.length ? sec('The numbers', 'Part 1 · The world', `<div class="tiles">${n.tiles.map(t => `<div class="tile"><div class="k">${esc(t.name)}</div><div class="v">${esc(t.value)}</div><div class="d ${t.tone ?? ''}">${esc(t.sub)}</div>${sparkSvg(t.spark, t.tone === 'dn' ? COLORS.orange : t.tone === 'up' ? COLORS.green : COLORS.blue)}</div>`).join('')}</div>${n.riskFlags ? `<div class="strip">${dialSvg(n.riskFlags.active, n.riskFlags.total)}<div class="small" style="flex:1;min-width:250px">${(n.riskFlags.flags ?? []).length ? `<div class="pxg">${proxHtml(n.riskFlags.flags)}</div>` : `${n.riskFlags.active} of ${n.riskFlags.total} stress warnings are on.`}<div class="muted" style="margin-top:6px">Each bar is how close that warning is to firing; a full bar means it is on. Stress tends to mean bigger daily swings, not a particular direction.</div></div></div>` : ''}`) : '';
 
 
+  // ── Fear versus the Nasdaq: a CALMING signal, beside the range-pressure gauge and never subtracted from it (js/fearVsNasdaq.js, ledger vvix-ratio-range) ──
+  const fv = n.fearVsNasdaq;
+  const fbar = c => `<div class="fb"><i style="width:${Math.max(2, c.pct)}%;background:${c.on ? COLORS.amber : COLORS.blue}"></i><u style="left:90%"></u></div>`;
+  const fearHtml = fv && (fv.a || fv.b) ? sec('Fear versus the Nasdaq', 'Part 1 · The world', `<p style="margin:0 0 8px"><b>${esc(fearWords(fv))}</b></p>${[['VIX', fv.b], ['VVIX, the volatility of the VIX', fv.a]].filter(([, c]) => c).map(([l, c]) => `<div class="rpr"><span class="rps">${c.on ? pill('extreme', 'a') : pill('normal', 'g')}</span><span><b>${esc(l)}</b> <span class="muted">moved ${c.ratio} times as much as the Nasdaq over 20 sessions, ${c.pct}th percentile of the past year</span>${fbar(c)}</span></div>`).join('')}<p class="small muted" style="margin-top:6px">The tick marks the 90th percentile. After the top tenth, the VIX has tended to fall about 7% over the next month. The Nasdaq's own direction after it came out too uncertain to call. This is a signal that fear is overdone, not a view on stocks.</p>`) : '';
   // ── Range pressure: how many validated "bigger day than usual" signals are on (js/rangePressure.js). Size only, never direction. ──
   const rp = n.rangePressure;
   const rpHtml = rp?.n ? sec('Is today set up for a bigger day than usual?', 'Part 1 · The world', `<p style="margin:0 0 8px"><b>${esc(pressureWords(rp))}</b></p><div class="rp">${rp.rows.map(r => `<div class="rpr"><span class="rps">${r.on === true ? pill('on', 'a') : r.on === false ? pill('off', 'g') : pill('no data')}</span><span><b>${esc(r.label)}</b>${r.value ? ` <span class="muted">${esc(r.value)}</span>` : ''}${r.on === true ? `<small>${esc(r.effect)}</small>` : ''}</span></div>`).join('')}</div><p class="small muted" style="margin-top:6px">Each signal is a tested finding that it went with bigger-than-usual ranges. None says which way. A count of zero means no validated reason to expect more than the usual range, not that the day will be quiet.</p>`) : '';
@@ -389,7 +395,7 @@ export function buildNewsletter(n) {
 
   const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}</div></div>`;
 
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${glance}${sinceHtml}${letterSec}${tiles}${rpHtml}${driving}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${lesson}${noEdge}${foot}</div></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${glance}${sinceHtml}${letterSec}${tiles}${rpHtml}${fearHtml}${driving}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${lesson}${noEdge}${foot}</div></body></html>`;
 
   const T = [];
   T.push(`DESK ATLAS · ${weekly ? 'WEEKLY' : 'DAILY'} · ${n.date}`, '', headline, '');

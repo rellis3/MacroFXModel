@@ -116,5 +116,12 @@ const znI = buildNewsletter({ date: 'd', assets: [{ key: 'EURUSD', label: 'EUR/U
 ok('a market card shows its option zone in plain words with the dealer note and its expiry', /Option zone<\/b> 1\.1226 to 1\.1251/.test(znI.html) && /price is inside it/.test(znI.html) && /amplify moves\. Options here run out in 15 days/.test(znI.html));
 ok('a market the dealer read is not validated on says so; one it is validated on does not', /Untested on this market/.test(znI.html) && !/Untested on this market/.test(buildNewsletter({ date: 'd', assets: [{ key: 'SPX500', label: 'S&P 500', zone: { ...znFix, validated: true } }] }).html));
 ok('the option-zone legend calls it a place, not a pull, and never uses wall, gamma or max pain', /marks a place, not a pull/.test(znI.html) && !/\b(call wall|put wall|max pain|gamma)\b/i.test(znI.html.replace(/<style>[\s\S]*?<\/style>/, '')));
+
+const fvOff = buildNewsletter({ date: 'd', fearVsNasdaq: { a: { ratio: 6, pct: 85, on: false }, b: { ratio: 6.64, pct: 65, on: false }, on: false, top: 85 } });
+ok('fear versus the Nasdaq shows both ratios with their percentile and says it is not at the extreme', /Fear versus the Nasdaq/.test(fvOff.html) && /85th percentile/.test(fvOff.html) && /65th percentile of the past year/.test(fvOff.html) && /below the top-tenth level/.test(fvOff.html));
+const fvOn = buildNewsletter({ date: 'd', fearVsNasdaq: { a: { ratio: 9, pct: 96, on: true }, b: { ratio: 8, pct: 93, on: true }, on: true, top: 96 } });
+ok('at the extreme it says fear has run ahead, cites the 7% give-back and keeps it to volatility', /Fear has run ahead of the Nasdaq/.test(fvOn.html) && /about 7%/.test(fvOn.html) && /not a view on stocks/.test(fvOn.html) && /extreme/.test(fvOn.html));
+ok('it is a separate calming section, not part of the range-pressure count', !/bigger day than usual/.test(fvOn.html) && !/bigger day than usual/.test(fvOff.html));
+ok('no fear data means no section', !/Fear versus the Nasdaq/.test(buildNewsletter({ date: 'd' }).html));
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

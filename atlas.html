@@ -294,6 +294,7 @@ import { snapshotOf, diffSnapshots, scoreLine, weekRecord, plainRead } from './j
 import { closuresBetween } from './js/marketCalendars.js';
 import { summarize as stateSummary } from './js/stateStrip.js';
 import { rangePressure, pressureWords } from './js/rangePressure.js';
+import { fearVsNasdaq, fearWords } from './js/fearVsNasdaq.js';
 import { optionZone } from './js/optionZone.js';
 import { DESK_EVIDENCE } from './js/deskEvidence.js';
 
@@ -549,7 +550,7 @@ function nlInput({ bookFor = () => null } = {}) {
     assets: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k), reg = P.regimeFor(D.regime, k), gam = P.gammaFor(D.oi, k), fire = P.deskFiring(D.ds, k).filter(f => f.instruments.includes(k)).length, g = { fx: 'FX', index: 'Index', commodity: 'Gold', crypto: 'Bitcoin' }[acOf(k)] ?? '';
       const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: mv?.d1 ?? null, d20: mv?.d20 ?? null, read: plainRead(mk?.read), watch: plainRead(mk?.watch), zone: (() => { const row = (D.oi?.pairs ?? []).find(p => p.pair === P.OI_PAIR_FOR[k]); return row ? optionZone(row, k, d.dp ?? 4) : null; })(), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
     yieldStack: (() => { const y = fmtRate('us10y'), r = fmtRate('tips'), b = fmtRate('bei'); return y && r && b ? { nominal: y.v, real: r.v, bei: b.v, dNom: y.d20, dReal: r.d20, dBei: b.d20 } : null; })(),
-    rangePressure: rpNow(),
+    rangePressure: rpNow(), fearVsNasdaq: fearNow(),
     ...nlStrips(),
     strengths: derived.str, surprise: P.surpriseBars(D.es), cb: P.cbTone(cbHist()), crowding: P.crowding(D.ce), regimeCard: regime, changes: P.changesRows(D.mc), fedPath: fp, scenarios: P.scenarios(D.gr), nowcast: nc,
     eod: D.eod?.review ? { hook: D.eod.review.hook, right: D.eod.review.plan?.right, wrong: D.eod.review.plan?.wrong } : null,
@@ -573,13 +574,15 @@ function nlStrips() {
 }
 /** The range-pressure gauge from the series already in the market bundle. */
 function rpNow() { const S = D.drill?.series; if (!S) return null; return rangePressure({ vix: S.vix, vix3m: S.vix3m, vix9d: S.vix9d, spx: S.spx, nq: S.nq, dspx: S.dspx }); }
+function fearNow() { const S = D.drill?.series; return S ? fearVsNasdaq({ vix: S.vix, vvix: S.vvix, nq: S.nq }) : null; }
 function drawRp() {
   const box = $('rpbox'); if (!box) return; const rp = rpNow();
   if (!rp?.n) { box.innerHTML = ''; return; }
   box.innerHTML = `<div class="card"><h2>${ic('pulse')}Is today set up for a bigger day than usual? <span class="note" style="text-transform:none;letter-spacing:0;margin-left:auto">${rp.on} of ${rp.n} validated signals on</span></h2>
     <p style="margin:0 0 8px"><b>${esc(pressureWords(rp))}</b></p>
     <div class="rows">${rp.rows.map(r => `<div class="rw"><span><b>${esc(r.label)}</b><small>${esc(r.value ?? 'not measurable today')}${r.on === true ? ' · ' + esc(r.effect) : ''}</small></span><span style="display:flex;gap:6px;align-items:center"><span class="pill ${r.on === true ? 'amber' : ''}">${r.on === true ? 'on' : r.on === false ? 'off' : 'no data'}</span>${ledgerPill(r.evidence)}</span></div>`).join('')}</div>
-    <p class="note" style="margin-top:8px">Each signal is a validated finding that it went with bigger-than-usual ranges: size, never direction. Zero means no validated reason to expect more than the usual, not that the day will be quiet.</p></div>`;
+    <p class="note" style="margin-top:8px">Each signal is a validated finding that it went with bigger-than-usual ranges: size, never direction. Zero means no validated reason to expect more than the usual, not that the day will be quiet.</p>
+    ${(() => { const fv = fearNow(); return fv ? `<h3 style="margin-top:14px">Fear versus the Nasdaq ${ledgerPill('vvix-ratio-range')}</h3><p style="margin:4px 0 6px">${esc(fearWords(fv))}</p><div class="rows">${[['VIX', fv.b], ['VVIX', fv.a]].filter(([, c]) => c).map(([l, c]) => `<div class="rw"><span><b>${l} against the Nasdaq</b><small>moved ${c.ratio} times as much over 20 sessions, ${c.pct}th percentile of the past year</small></span><span class="pill ${c.on ? 'amber' : ''}">${c.on ? 'extreme' : 'normal'}</span></div>`).join('')}</div>` : ''; })()}</div>`;
 }
 /** The market-state read for each card: the daily model (already in the brief), the hourly log, the 30-day daily history. */
 async function nlHmm(keys) {
