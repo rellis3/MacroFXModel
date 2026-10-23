@@ -21,6 +21,7 @@ const CAND_NODES = {
   jp225: { s: 'jp225', unit: 'pct', floor: 3, label: 'Nikkei 225' }, de30: { s: 'de30', unit: 'pct', floor: 3, label: 'DAX' }, uk100: { s: 'uk100', unit: 'pct', floor: 2.5, label: 'FTSE 100' },
   move: { s: 'move', unit: 'pt', floor: 10, label: 'Bond-market fear (MOVE)' }, ccc: { s: 'ccc', unit: 'bp', floor: Number(process.env.CCC_FLOOR ?? 100), label: 'CCC credit spread' }, ig: { s: 'ig', unit: 'bp', floor: 8, label: 'Investment-grade spread' },
   natgas: { s: 'natgas', unit: 'pct', floor: 10, label: 'Natural gas' }, silver: { s: 'silver', unit: 'pct', floor: 3, label: 'Silver' }, brent: { s: 'brent', unit: 'pct', floor: 3, label: 'Brent' },
+  cpspread: { s: 'cpspread', unit: 'bp', floor: 10, label: 'Short-term credit (3M commercial paper minus 3M bill)' }, emdollar: { s: 'emdollar', unit: 'pct', floor: 1, label: 'Emerging-market dollar index' }, emoas: { s: 'emoas', unit: 'bp', floor: 10, label: 'Emerging-market corporate spread' },
   skew: { s: 'skew', unit: 'pt', floor: 8, label: 'Crash-protection price (SKEW)' }, vix9d: { s: 'vix9d', unit: 'pt', floor: 3, label: 'VIX 9-day' }, xlp: { s: 'xlp', unit: 'pct', floor: 3, label: 'Staples (XLP)' }, xlk: { s: 'xlk', unit: 'pct', floor: 3, label: 'Technology (XLK)' },
 };
 const nodeDef = k => CHAIN_NODES[k] ? { s: SERIES[k], unit: CHAIN_NODES[k].unit, floor: CHAIN_NODES[k].floor, label: CHAIN_NODES[k].label } : CAND_NODES[k];
@@ -44,6 +45,14 @@ const CANDIDATES = [
   ['silver', 'gold', 1, 'Precious metals move as a group'],
   ['brent', 'oil', 1, 'Brent and WTI should agree (a check on the oil chip)'],
   ['vix', 'skew', 1, 'Fear and the price of crash protection'],
+  ['cpspread', 'hy', 1, 'Short-term bank funding stress widens junk spreads'],
+  ['cpspread', 'vix', 1, 'Short-term funding stress raises equity fear'],
+  ['cpspread', 'dxy', 1, 'Short-term dollar funding stress lifts the dollar'],
+  ['dxy', 'emdollar', 1, 'A strong dollar means weak emerging-market currencies'],
+  ['emoas', 'hy', 1, 'Emerging-market credit stress spills into US junk'],
+  ['emoas', 'vix', 1, 'Emerging-market credit stress raises equity fear'],
+  ['emdollar', 'copper', -1, 'Weak emerging-market currencies mean weaker commodity demand'],
+  ['emdollar', 'emoas', 1, 'Weak emerging-market currencies and wider emerging-market credit go together'],
   ['xlp', 'xlk', -1, 'Defensives up while tech falls = rotation to safety'],
 ];
 const BASE = CHAIN_LINKS.map(l => [l.from, l.to, l.sign, l.id]);

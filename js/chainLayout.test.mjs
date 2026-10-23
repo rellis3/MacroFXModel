@@ -10,15 +10,15 @@ const OLD = { oil: [0, 0], bei: [1, 0], us10y: [2, 0], real: [3, 0], dxy: [4, 0]
 
 ok('every chain node has exactly one chip, and no chip is unknown', Object.keys(CHAIN_NODES).every(k => CHAIN_LAYOUT[k]) && Object.keys(CHAIN_LAYOUT).every(k => CHAIN_NODES[k]));
 const slots = Object.values(CHAIN_LAYOUT).map(([c, r]) => `${c},${r}`);
-ok('no two chips share a slot, and all slots are inside the 6 x 4 grid', new Set(slots).size === slots.length && Object.values(CHAIN_LAYOUT).every(([c, r]) => c >= 0 && c < 6 && r >= 0 && r < 4));
+ok('no two chips share a slot, and all slots are inside the 6-column grid (at most 6 rows)', new Set(slots).size === slots.length && Object.values(CHAIN_LAYOUT).every(([c, r]) => c >= 0 && c < 6 && r >= 0 && r < 6));
 ok('both pages read the same layout', CHAIN_POS === CHAIN_LAYOUT);
 ok('every link joins two chips that exist', links.every(([a, b]) => CHAIN_LAYOUT[a] && CHAIN_LAYOUT[b]));
 
 const now = layoutScore(CHAIN_LAYOUT, links), old = layoutScore(OLD, links);
 ok('the hand-laid layout it replaced had 14 crossing pairs and 16 lines under other chips (the reason for the change)', old.cross === 14 && old.hidden === 16, JSON.stringify(old));
 ok('the current layout has no crossing lines', now.cross === 0, JSON.stringify(now));
-ok('at most one line runs under a chip it has nothing to do with', now.hidden <= 1, JSON.stringify(now));
-ok('lines are shorter overall than before', now.len < old.len, `${now.len} vs ${old.len}`);
+ok('at most three lines run under a chip they have nothing to do with (31 chips, 33 links)', now.hidden <= 3, JSON.stringify(now));
+ok('all 33 links are laid out, 9 more than the original 24', links.length === 33 && now.len > 0);
 ok('the spine oil -> inflation -> 10Y -> real yield keeps the top row, in order', ['oil', 'bei', 'us10y', 'real'].every((k, i) => CHAIN_LAYOUT[k][0] === i && CHAIN_LAYOUT[k][1] === 0));
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

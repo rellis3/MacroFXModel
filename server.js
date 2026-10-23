@@ -31183,6 +31183,35 @@ app.get('/api/calendar-ahead', async (_req, res) => {
 });
 
 
+// ── Chain extras: the history behind the chips added 2026-10-23 ──────────────────────────────────────────────────────────────
+// today.html loads its chain values from FRED and OANDA directly. Seven new chips (semiconductors, energy stocks, real estate, MOVE, CCC credit, the
+// emerging-market dollar and emerging-market credit) need series it does not hold. Five are already in the daily drill bundle; two come from FRED.
+// This returns just the last 70 observations of each as {date, value}, a few KB, so no page has to download the 770KB bundle for them (the bill is egress).
+const _chainExtra = { at: 0, data: null };
+app.get('/api/chain-extra', async (_req, res) => {
+  try {
+    if (!_chainExtra.data || Date.now() - _chainExtra.at > 6 * 3600e3) {
+      const series = {}, missing = [];
+      if (!_drillBundle.data) { try { await _refreshDrillBundle(); } catch (e) { console.warn('[chain-extra] drill bundle:', e.message); } }
+      const d = _drillBundle.data;
+      for (const k of ['smh', 'xle', 'xlre', 'move', 'ccc']) {
+        const a = d?.series?.[k]; if (!a) { missing.push(k); continue; }
+        const pts = []; for (let i = a.length - 1; i >= 0 && pts.length < 70; i--) if (a[i] != null && Number.isFinite(a[i])) pts.unshift({ date: d.dates[i], value: +a[i].toFixed(4) });
+        series[k] = pts;
+      }
+      const fredKey = process.env.FRED_KEY, from = new Date(Date.now() - 140 * 864e5).toISOString().slice(0, 10);
+      for (const [k, id] of [['emdollar', 'DTWEXEMEGS'], ['emoas', 'BAMLEMCBPIOAS']]) {
+        try { if (!fredKey) throw new Error('FRED_KEY not set'); const m = await fetchFredObservations(id, from, fredKey); series[k] = [...m].map(([date, value]) => ({ date, value })).slice(-70); }
+        catch (e) { missing.push(k); console.warn(`[chain-extra] ${id}:`, e.message); }
+      }
+      if (Object.keys(series).length) { _chainExtra.data = { series, missing }; _chainExtra.at = Date.now(); }
+      else throw new Error('no chain-extra series available');
+    }
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ ok: true, at: new Date(_chainExtra.at).toISOString(), ..._chainExtra.data });
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+
 // ── The week's schedules that are not data releases: big-company earnings, Treasury auctions, Fed speakers ──────────
 // Free public sources, no key, cached 6h each. Parsers live in js/marketCalendars.js and are tested there. These are SCHEDULES (when
 // something happens), used by the newsletter's "Beyond the calendar" section; nothing here forecasts what an event does to price.

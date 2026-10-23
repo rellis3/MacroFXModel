@@ -136,7 +136,7 @@ export const CHAIN_POS = CHAIN_LAYOUT;   // the same grid today.html draws (js/m
 export function chainSvg(links) {
   const L = (links ?? []).filter(l => l.verdict !== 'unmeasured' && CHAIN_POS[l.a?.key] && CHAIN_POS[l.b?.key]);
   if (!L.length) return '';
-  const PX = 150, PY = 66, BW = 124, BH = 40, OX = 8, OY = 8, COLS = 6, ROWS = 4, W = OX * 2 + PX * (COLS - 1) + BW, H = OY * 2 + PY * (ROWS - 1) + BH;
+  const PX = 150, PY = 66, BW = 124, BH = 40, OX = 8, OY = 8, COLS = 6, ROWS = Math.max(...Object.values(CHAIN_POS).map(p => p[1])) + 1, W = OX * 2 + PX * (COLS - 1) + BW, H = OY * 2 + PY * (ROWS - 1) + BH;
   const cx = k => OX + CHAIN_POS[k][0] * PX + BW / 2, cy = k => OY + CHAIN_POS[k][1] * PY + BH / 2;
   const clipE = (x0, y0, x1, y1) => { const dx = x1 - x0, dy = y1 - y0, t = Math.min(dx ? (BW / 2 + 2) / Math.abs(dx) : Infinity, dy ? (BH / 2 + 2) / Math.abs(dy) : Infinity); return [x0 + dx * t, y0 + dy * t]; };
   const ends = {}, state = {};

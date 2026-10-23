@@ -330,8 +330,9 @@ function spark(key, n = 30) { const a = D.drill?.series?.[key]; return a ? a.sli
 function chainNow() {
   const S = D.drill.series, N = D.drill.dates.length - 1;
   const pts = key => { const a = S[key]; if (!a) return null; const out = []; for (let k = Math.max(0, N - 45); k <= N; k++) if (a[k] != null) out.push({ date: D.drill.dates[k], value: a[k] }); return out.length > 20 ? out : null; };
-  const map = { real: 'tips', dxy: 'dxy', oil: 'oil', gold: 'gold', copper: 'copper', btc: 'btc', nq: 'nq', spx: 'spx', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', bei: 'bei', vix: 'vix', hy: 'hy', audusd: 'audusd', usdcad: 'usdcad', usdjpy: 'usdjpy', eurusd: 'eurusd', gbpusd: 'gbpusd' };
+  const map = { smh: 'smh', xle: 'xle', xlre: 'xlre', move: 'move', ccc: 'ccc', real: 'tips', dxy: 'dxy', oil: 'oil', gold: 'gold', copper: 'copper', btc: 'btc', nq: 'nq', spx: 'spx', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', bei: 'bei', vix: 'vix', hy: 'hy', audusd: 'audusd', usdcad: 'usdcad', usdjpy: 'usdjpy', eurusd: 'eurusd', gbpusd: 'gbpusd' };
   const vals = {}; for (const [node, key] of Object.entries(map)) { const p = pts(key); vals[node] = p ? nodeDelta(p, CHAIN_NODES[node]) : null; }
+  for (const node of ['emdollar', 'emoas']) { const p = D.cx?.series?.[node]; vals[node] = Array.isArray(p) && p.length > 20 ? nodeDelta(p, CHAIN_NODES[node]) : null; }   // the two chips FRED supplies (/api/chain-extra)
   let links = []; try { links = evaluateChain(vals); } catch { links = []; }
   return { vals, links };
 }
@@ -854,7 +855,7 @@ function drawPair() {
 
 /* ── boot, in two waves: the market bundle first so the page is useful at once, then the analysis feeds ── */
 const CORE = [['/api/drill-series', 'drill', '75 market series, 5 years'], ['/api/macro-scorecard', 'msc', 'six-factor currency scorecard'], ['/api/risk-flags', 'rf', 'risk flags'], ['/api/cot', 'cot', 'CFTC positioning by pair'],
-  ['/api/daily-brief', 'brief', 'prices, regimes, levels for all instruments'], ['/api/vol-forecast/session', 'sess', 'live session range'], ['/api/vol-forecast', 'fc', 'calibrated range forecast'], ['/api/calendar-feed', 'cal', 'releases printed']];
+  ['/api/daily-brief', 'brief', 'prices, regimes, levels for all instruments'], ['/api/vol-forecast/session', 'sess', 'live session range'], ['/api/vol-forecast', 'fc', 'calibrated range forecast'], ['/api/calendar-feed', 'cal', 'releases printed'], ['/api/chain-extra', 'cx', 'chain chips: EM dollar and EM credit']];
 const EXTRA = [['/api/global-read', 'gr', 'five axes, scenarios, per-instrument plans'], ['/api/regime', 'regime', 'macro regime and what each market did in it'], ['/api/macro-changes', 'mc', 'what changed, 1d / 5d / 20d'], ['/api/econ-surprise', 'es', 'consensus surprises by currency'],
   ['/api/cot-extremes', 'ce', 'crowding across 36 contracts'], ['/api/oi-today', 'oi', 'dealer gamma and option walls'], ['/api/desk-watch', 'ds', 'watched conditions firing'], ['/api/events', 'events', 'the calendar ahead'], ['/api/fed-path', 'fp', 'market-implied Fed path'],
   ['/api/fomc/calendar', 'fcal', 'FOMC meeting dates'], ['/api/nowcast', 'nc', 'GDPNow and Cleveland nowcasts'], ['/api/fomc/history?n=6', 'hUSD', 'FOMC tone history'], ['/api/ecb/history?n=6', 'hEUR', 'ECB tone history'], ['/api/boe/history?n=6', 'hGBP', 'BoE tone history'],

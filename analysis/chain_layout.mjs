@@ -7,45 +7,44 @@
 // as few chips as possible from where the reader already expects them.
 //
 // Scoring is on straight centre-to-centre segments, which is how the diagonal links are drawn. Pure and deterministic (seeded).
-import { CHAIN_LINKS } from '../js/macroChain.js';
+import { CHAIN_LINKS, CHAIN_LAYOUT, CHAIN_NODES } from '../js/macroChain.js';
 
-export const COLS = 6, ROWS = 4;
-export const CURRENT = {
-  oil: [0, 0], bei: [1, 0], us10y: [2, 0], real: [3, 0], dxy: [4, 0], audusd: [5, 0],
-  usdcad: [0, 1], crack: [1, 1], us30y: [2, 1], gold: [4, 1], usdjpy: [5, 1],
-  vix: [0, 2], hy: [1, 2], spx: [2, 2], nq: [3, 2], copper: [4, 2], btc: [5, 2],
-  funding: [3, 1], giltgap: [0, 3], gbpusd: [1, 3], bundgap: [2, 3], eurusd: [3, 3], jgbgap: [4, 3], us2y: [5, 3],
-};
+export const COLS = 6, ROWS = Number(process.env.ROWS ?? 6);
+export const CURRENT = Object.fromEntries(Object.entries(CHAIN_LAYOUT));   // the chips already placed; new chips start in free slots and the search keeps the old ones near here
 export const LINKS = CHAIN_LINKS.map(l => l.id.split('-'));   // [from, to]
-const W = { cross: 10, under: 7, len: 0.6, back: 2.5, move: Number(process.env.MOVE ?? 0.35), flat: 0 };   // MOVE=1.5 keeps more chips where the reader expects them
+const CORE = new Set(CHAIN_LINKS.slice(0, 24).map(l => l.id));   // the original 24 links: a line from one of these running under a chip costs double (they are the textbook spine readers know)
+const W = { cross: 10, under: Number(process.env.UNDER ?? 7), len: 0.6, back: 2.5, move: Number(process.env.MOVE ?? 0.35), flat: 0 };   // MOVE=1.5 keeps more chips where the reader expects them
+const PIN = new Set((process.env.PIN ?? 'oil,bei,us10y,real').split(',').filter(Boolean));
 const CW = 1.55;   // a column is wider than a row is tall, as drawn
 
 const ccw = (a, b, c) => (c[1] - a[1]) * (b[0] - a[0]) - (b[1] - a[1]) * (c[0] - a[0]);
 const segCross = (p1, p2, p3, p4) => { const d1 = ccw(p3, p4, p1), d2 = ccw(p3, p4, p2), d3 = ccw(p1, p2, p3), d4 = ccw(p1, p2, p4); return d1 * d2 < -1e-9 && d3 * d4 < -1e-9; };
 // does the segment p->q pass through the chip centred at c (half-width .42 col, half-height .3 row), ignoring the ends themselves?
-const under = (p, q, c) => { for (let i = 1; i < 20; i++) { const t = i / 20, x = p[0] + (q[0] - p[0]) * t, y = p[1] + (q[1] - p[1]) * t; if (Math.abs(x - c[0]) < 0.42 * CW && Math.abs(y - c[1]) < 0.3) return true; } return false; };
+const under = (p, q, c) => { for (let i = 1; i < 10; i++) { const t = i / 10, x = p[0] + (q[0] - p[0]) * t, y = p[1] + (q[1] - p[1]) * t; if (Math.abs(x - c[0]) < 0.42 * CW && Math.abs(y - c[1]) < 0.3) return true; } return false; };
 const pt = pos => k => [pos[k][0] * CW, pos[k][1]];
 
 export function score(pos, base = CURRENT) {
-  const P = pt(pos), segs = LINKS.map(([a, b]) => [P(a), P(b), a, b]);
-  let cross = 0, hidden = 0, len = 0, back = 0, move = 0;
+  const P = pt(pos), segs = LINKS.filter(([a, b]) => pos[a] && pos[b]).map(([a, b]) => [P(a), P(b), a, b]);
+  let cross = 0, hidden = 0, len = 0, back = 0, move = 0; const hiddenList = [];
   for (let i = 0; i < segs.length; i++) {
     const [p, q, a, b] = segs[i];
     len += Math.hypot(p[0] - q[0], p[1] - q[1]); if (pos[a][0] > pos[b][0]) back++;
     for (let j = i + 1; j < segs.length; j++) { const [r, s, c, d] = segs[j]; if (a === c || a === d || b === c || b === d) continue; if (segCross(p, q, r, s)) cross++; }
-    for (const k of Object.keys(pos)) if (k !== a && k !== b && under(p, q, P(k))) hidden++;
+    for (const k of Object.keys(pos)) if (k !== a && k !== b && under(p, q, P(k))) { hidden += CORE.has(`${a}-${b}`) ? 2 : 1; hiddenList.push(`${a}-${b} under ${k}`); }
   }
-  for (const k of Object.keys(pos)) move += Math.abs(pos[k][0] - base[k][0]) + Math.abs(pos[k][1] - base[k][1]);
+  for (const k of Object.keys(pos)) if (base[k]) move += Math.abs(pos[k][0] - base[k][0]) + Math.abs(pos[k][1] - base[k][1]);
+  for (const k of PIN) if (base[k] && pos[k] && (pos[k][0] !== base[k][0] || pos[k][1] !== base[k][1])) move += 200;   // pinned chips (the top-row spine) never move
+  score.last = hiddenList;
   return { cross, hidden, len: +len.toFixed(1), back, move, cost: W.cross * cross + W.under * hidden + W.len * len + W.back * back + W.move * move };
 }
 
 function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
-export function optimise({ seed = 7, restarts = Number(process.env.RESTARTS ?? 40), steps = Number(process.env.STEPS ?? 30000) } = {}) {
-  const keys = Object.keys(CURRENT), slots = []; for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) slots.push([c, r]);
+export function optimise({ seed = Number(process.env.SEED ?? 7), restarts = Number(process.env.RESTARTS ?? 40), steps = Number(process.env.STEPS ?? 30000) } = {}) {
+  const keys = Object.keys(CHAIN_NODES), slots = []; for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) slots.push([c, r]);
   let best = null;
   for (let rs = 0; rs < restarts; rs++) {
     const rand = rng(seed * 1000 + rs);
-    let pos = rs === 0 ? structuredClone(CURRENT) : (() => { const sh = [...slots].sort(() => rand() - 0.5), o = {}; keys.forEach((k, i) => { o[k] = sh[i]; }); return o; })();
+    let pos = rs === 0 ? (() => { const o = structuredClone(CURRENT), used = new Set(Object.values(o).map(v => v.join())), free = slots.filter(sl => !used.has(sl.join())); keys.filter(k => !o[k]).forEach((k, i) => { o[k] = free[i]; }); return o; })() : (() => { const sh = [...slots].sort(() => rand() - 0.5), o = {}; keys.forEach((k, i) => { o[k] = sh[i]; }); return o; })();
     let cur = score(pos).cost, T = 12;
     for (let i = 0; i < steps; i++) {
       T = 12 * (1 - i / steps) + 0.05;

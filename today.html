@@ -2205,6 +2205,8 @@ function mveChip(r) {
 // fetch pair (today's live-ish quote + yesterday's completed OHLC close) —
 // oil is context here, not a tradeable card, so it doesn't need to tick live.
 let commodityDrivers = null;
+let chainExtra = null;   // /api/chain-extra: the last 70 observations behind the seven chips added 2026-10-23 (semiconductors, energy stocks, real estate, MOVE, CCC, EM dollar, EM credit)
+async function loadChainExtra() { try { const r = await jget('/api/chain-extra'); chainExtra = r?.ok ? r : null; } catch { chainExtra = null; } }
 let intlYields = null;   // /api/intl-yields -- gilt, JGB, bund 10Y daily, for the chain's gap chips
 let crackData = null;    // /api/crack -- the 3-2-1 refining margin: the Crude & the crack card and the chain's crack node
 async function loadCrack() { try { const j = await jget('/api/crack'); if (j?.ok) { crackData = j; render(); } } catch { /* card stays hidden */ } }
@@ -2597,6 +2599,7 @@ async function loadGate() {
   loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
   loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
+  loadChainExtra().then(() => render()).catch(() => {});
   loadIntlYields();   // gilt / bund / JGB gap chips on the chain
   loadCrack();        // crude & the crack card + chain node
   loadDeskWatch();                                                 // early-warning strip (server-side engine)
@@ -3891,6 +3894,10 @@ function chainVals() {
       out[node] = gap.length ? B.nodeDelta(gap, B.CHAIN_NODES[node]) : null;
     }
   } catch { /* unmeasured */ }
+  for (const node of ['smh', 'xle', 'xlre', 'move', 'ccc', 'emdollar', 'emoas']) {
+    const pts = chainExtra?.series?.[node];
+    out[node] = Array.isArray(pts) && pts.length > 20 ? B.nodeDelta(pts, B.CHAIN_NODES[node]) : null;
+  }
   try { const pts = crackData?.series; out.crack = Array.isArray(pts) && pts.length ? B.nodeDelta(pts, B.CHAIN_NODES.crack) : null; } catch { out.crack = null; }
   return out;
 }
@@ -4106,7 +4113,7 @@ const CHAIN_POS_FALLBACK = {   // only used if the macroChain module fails to lo
   us2y: [5, 3],   // the front end: its one link runs up-left to the 30Y between the S&P and Nasdaq chips; the crack took its old slot beside oil
 };
 // Short edge labels that fit the gap between boxes; the full name is in the hover.
-const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nom→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'Cu→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→HY', 'dxy-btc': '$→BTC', 'funding-dxy': 'fund→$', 'funding-vix': 'fund→fear', 'giltgap-gbpusd': 'gilts→£', 'bundgap-eurusd': 'bunds→€', 'jgbgap-usdjpy': 'JGBs→yen', 'crack-bei': 'crack→infl.', 'hy-nq': 'HY→growth', 'hy-spx': 'HY→broad' };
+const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nom→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'Cu→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→HY', 'dxy-btc': '$→BTC', 'funding-dxy': 'fund→$', 'funding-vix': 'fund→fear', 'giltgap-gbpusd': 'gilts→£', 'bundgap-eurusd': 'bunds→€', 'jgbgap-usdjpy': 'JGBs→yen', 'crack-bei': 'crack→infl.', 'hy-nq': 'HY→growth', 'hy-spx': 'HY→broad', 'smh-nq': 'chips→Nasdaq', 'oil-xle': 'oil→energy', 'us10y-xlre': '10Y→property', 'move-vix': 'bond fear→VIX', 'hy-ccc': 'HY→CCC', 'ccc-nq': 'CCC→growth', 'dxy-emdollar': '$→EM FX', 'emdollar-copper': 'EM→Cu', 'emoas-hy': 'EM credit→HY' };
 let _chainNodeSel = null, _chainLinkSel = null, _chainQuiet = true;   // quiet links stay drawn (they are the wiring); the legend can hide them. With the re-laid chips they no longer tangle
 function toggleChainQuiet(ev) { ev?.stopPropagation?.(); _chainQuiet = !_chainQuiet; render(); }
 function selectChainNode(key, ev) { ev?.stopPropagation?.(); _chainLinkSel = null; _chainNodeSel = _chainNodeSel === key ? null : key; render(); }
@@ -4180,11 +4187,18 @@ function chainGraphHtml(links) {
   })() : '';
   const defs = `<defs>${['hold', 'broke', 'quiet', 'none'].map(c => `<marker id="chain-arrow-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 Z" class="gah ${c}"/></marker>`).join('')}</defs>`;
   return `<div class="chain-g"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="The macro chain today: each chip is a thing that moves, each curve a textbook link, flowing where the link is holding, amber where it broke">${defs}${edges}${nodes}</svg></div>
-    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span class="chain-quiet-toggle" onclick="toggleChainQuiet(event)" style="cursor:pointer" title="Quiet links carry no information today, so they are hidden by default"><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged · <u>${_chainQuiet ? 'hide them' : 'show them'}</u></span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is, a pill for why the link exists</span><span class="chain-names">in market words: US 2Y / 10Y / 30Y yield = Treasury bonds (the 2Y is the Fed path, the 30Y the inflation and deficit vote) · Real yield = 10-year TIPS · Infl. pricing = breakevens, nominal minus TIPS · Credit (HY) = junk-bond spreads · Funding = overnight repo against the Fed floor · £ € ¥ = the gilt, Bund and JGB 10-year minus the Treasury 10-year (who is repricing faster), from the BoE, Bundesbank and Japan MoF · Crack spread = the refining margin, fuel minus crude per barrel</span></div>${linkCard}${sel}`;
+    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span class="chain-quiet-toggle" onclick="toggleChainQuiet(event)" style="cursor:pointer" title="Quiet links carry no information today, so they are hidden by default"><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged · <u>${_chainQuiet ? 'hide them' : 'show them'}</u></span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is, a pill for why the link exists</span><span class="chain-names">in market words: US 2Y / 10Y / 30Y yield = Treasury bonds (the 2Y is the Fed path, the 30Y the inflation and deficit vote) · Real yield = 10-year TIPS · Infl. pricing = breakevens, nominal minus TIPS · Credit (HY) = junk-bond spreads · Funding = overnight repo against the Fed floor · £ € ¥ = the gilt, Bund and JGB 10-year minus the Treasury 10-year (who is repricing faster), from the BoE, Bundesbank and Japan MoF · Crack spread = the refining margin, fuel minus crude per barrel · MOVE = the bond market\u2019s fear gauge · CCC = the riskiest company credit · EM = emerging markets</span></div>${linkCard}${sel}`;
 }
 // Pictograms, one weight, 24-unit box — drawn here so they render the same on
 // every phone (emoji do not).
 const CHAIN_ICON = {
+  smh: '<rect x="7" y="7" width="10" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+  xle: '<path d="M12 3c3 4 6 6.5 6 10.5a6 6 0 0 1-12 0C6 9.5 9 7 12 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+  xlre: '<path d="M4 11.5 12 4l8 7.5V20H4z M10 20v-5h4v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+  move: '<path d="M3 12c2-6 4-6 6 0s4 6 6 0 4-6 6 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+  ccc: '<path d="M12 4 21 19H3z M12 10v4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="17" r="1.1" fill="currentColor"/>',
+  emdollar: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 12h17M12 3.5c3 3 3 14 0 17M12 3.5c-3 3-3 14 0 17" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+  emoas: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="16.3" r="1.1" fill="currentColor"/>',
   oil: '<path d="M7 3h10v3l2 2v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8l2-2z M5 12h14 M5 16h14" fill="none" stroke="currentColor" stroke-width="1.8"/>',
   bei: '<path d="M12 3a2 2 0 0 0-2 2v9.5a4 4 0 1 0 4 0V5a2 2 0 0 0-2-2z M12 8v8" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="17" r="1.6" fill="currentColor"/>',
   us2y: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3.5 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',

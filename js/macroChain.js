@@ -28,15 +28,17 @@ import { seriesDeltas } from './macroChange.js';
 
 /**
  * WHERE EACH CHIP SITS in the chain graphic (today.html "The chain, today" and the newsletter's chain picture). One layout, read by both.
- * Found by analysis/chain_layout.mjs (simulated annealing on the scorer in js/chainLayout.js): 0 crossing links and 1 line under an unrelated
- * chip, against 14 and 16 for the hand-laid layout it replaced (2026-10-23). The top row, the oil -> inflation -> 10Y -> real-yield spine, kept
+ * Found by analysis/chain_layout.mjs (simulated annealing on the scorer in js/chainLayout.js): 0 crossing links and 3 lines under an unrelated
+ * chip across 31 chips and 33 links (2026-10-23); the hand-laid layout it replaced had 14 and 16 across 24 chips. The top row, the oil -> inflation -> 10Y -> real-yield spine, kept
  * its place. Add a chip? Re-run the search and keep js/chainLayout.test.mjs green; do not just drop it in a free slot.
  */
-export const CHAIN_LAYOUT = {   // [column, row] on a 6 x 4 grid; causes sit left of effects where the links allow
+export const CHAIN_LAYOUT = {   // [column, row] on a 6-column grid; causes sit left of effects where the links allow
   oil: [0, 0], bei: [1, 0], us10y: [2, 0], real: [3, 0], gold: [4, 0], audusd: [5, 0],
-  usdcad: [0, 1], crack: [1, 1], spx: [2, 1], nq: [3, 1], dxy: [4, 1], copper: [5, 1],
-  gbpusd: [0, 2], us30y: [1, 2], hy: [2, 2], vix: [3, 2], funding: [4, 2], btc: [5, 2],
-  giltgap: [0, 3], us2y: [1, 3], bundgap: [2, 3], eurusd: [3, 3], usdjpy: [4, 3], jgbgap: [5, 3],
+  usdcad: [0, 1], crack: [1, 1], xlre: [2, 1], spx: [3, 1], dxy: [4, 1], copper: [5, 1],
+  xle: [0, 2], nq: [1, 2], hy: [2, 2], funding: [3, 2], btc: [4, 2], emdollar: [5, 2],
+  smh: [0, 3], ccc: [1, 3], emoas: [2, 3], vix: [3, 3], usdjpy: [4, 3], jgbgap: [5, 3],
+  gbpusd: [0, 4], us2y: [1, 4], us30y: [2, 4], move: [3, 4], bundgap: [4, 4], eurusd: [5, 4],
+  giltgap: [0, 5],
 };
 
 export const CHAIN_WINDOW_DAYS = 20;
@@ -62,6 +64,14 @@ export const CHAIN_NODES = {
   nq:     { label: 'Growth stocks (Nasdaq)',          unit: 'pct', floor: 2,   dp: 1, what: 'NAS100: the long-duration equity. Its earnings sit far in the future, so a higher real yield discounts them hardest. Tested here 2026-09-17: a Nasdaq DOWN-week widens the next session (~+0.2 ATR); the yield move itself predicts nothing.' },
   spx:    { label: 'Broad stocks (S&P 500)',          unit: 'pct', floor: 2,   dp: 1, what: 'SPX500: the broad, blend-not-growth benchmark. Less duration exposure than the Nasdaq, so it answers to the real yield more slowly and less — which is exactly why it can sit quiet (the "milk in the grocery store" read) while the chain upstream of it is genuinely moving. A quiet SPX does not mean a quiet market; check nq, dxy and gold before concluding nothing is happening. Not yet tested for forward predictability here (nq has been; see above) — a natural next pre-registration, not yet run.' },
   funding: { label: 'Funding (SOFR − floor)',       unit: 'bp',  floor: 5,   dp: 0, what: 'Overnight repo (SOFR) against the rate the Fed pays on reserves — the floor. Cash is plentiful when repo trades a few points under the floor; when it rises through it, someone is paying up for overnight money. The one plumbing number in the chain: funding stress bids the dollar and sells risk, in the textbook. Described, not tested (P1 registered 2026-09-20).' },
+  // ── added 2026-10-23 (analysis/chain_candidates.mjs: each one's link is judged in 20-47% of 20-day windows and the textbook holds 83-100% of those) ──
+  smh:    { label: 'Semiconductors (SMH)',            unit: 'pct', floor: 5,   dp: 1, what: 'The semiconductor ETF. A handful of chip and AI names carry the Nasdaq, so when this moves a lot, the Nasdaq usually moves with it.' },
+  xle:    { label: 'Energy stocks (XLE)',             unit: 'pct', floor: 3,   dp: 1, what: 'US energy companies. Their profits ride the oil price, so they normally follow crude.' },
+  xlre:   { label: 'Real-estate stocks (XLRE)',       unit: 'pct', floor: 3,   dp: 1, what: 'US property companies. They borrow heavily and are priced like bonds, so they are sensitive to the 10-year yield.' },
+  move:   { label: 'Bond-market fear (MOVE)',         unit: 'pt',  floor: 10,  dp: 0, what: 'The MOVE index: how much bond traders expect Treasury yields to swing. The bond market\u2019s version of the VIX.' },
+  ccc:    { label: 'CCC credit spread (riskiest)',    unit: 'bp',  floor: 40,  dp: 0, what: 'The extra yield the riskiest companies (CCC rated) pay over Treasuries. The weakest borrowers feel tight credit first, so this is where stress shows earliest.' },
+  emdollar: { label: 'EM currencies (dollar index)',  unit: 'pct', floor: 1,   dp: 1, what: 'The Fed\u2019s dollar index against emerging-market currencies. Up = emerging-market currencies are weaker against the dollar.' },
+  emoas:  { label: 'EM credit spread',                unit: 'bp',  floor: 10,  dp: 0, what: 'The extra yield emerging-market companies pay over Treasuries (ICE BofA EM corporate OAS). Widening = lenders are nervous about borrowers outside the US.' },
   // The refiner's margin: fuel prices minus crude, per barrel. Tested 2026-09-21
   // (MD files/CRACK_SPREAD.md): adds to inflation pricing beyond crude (C2).
   crack:  { label: 'Crack spread (3-2-1)',            unit: 'usd', floor: 5,   dp: 0, what: 'What a refiner earns turning three barrels of crude into two of gasoline and one of diesel: ((2 x gasoline + heating oil) x 42 gallons - 3 x WTI) / 3, in dollars a barrel. Normal is $15-25; above $35 is the top tenth of its history. Crude and fuel are two markets: when crude falls but the crack widens, products are tight and the pump price does not follow crude down -- and tested here, the bond market’s inflation pricing does not take the relief either (partial correlation 0.19 after crude; disagreement windows +15bp of breakevens vs agreement).' },
@@ -361,6 +371,116 @@ export const CHAIN_LINKS = [
     broken: {
       up:   'Dollar and bitcoin both rose. Bitcoin is trading as a risk asset rather than as an anti-dollar asset.',
       down: 'Dollar fell but bitcoin fell too. The dollar weakness is not a credibility story — or bitcoin is trading as risk, and risk is being sold.',
+    },
+  },
+  // ── added 2026-10-23 ──
+  {
+    id: 'smh-nq',
+    short: 'chips → Nasdaq',
+    punch: { holds: 'Chips and the Nasdaq agree: the index is following its leaders.', up: 'Chips up, Nasdaq down → the rest of the index is selling harder than chips are rising.', down: 'Chips down, Nasdaq up → the index is being held up by something other than its chip leaders.' },
+    from: 'smh', to: 'nq', sign: +1,
+    textbook: 'The Nasdaq is led by a handful of chip and AI companies, so it moves with them',
+    holds: 'Semiconductors and the Nasdaq moved the same way: the index is following its biggest names.',
+    broken: {
+      up:   'Chips rose but the Nasdaq fell. The weight of the other big names is overpowering the chip leaders.',
+      down: 'Chips fell but the Nasdaq rose. Something other than the chip leaders is carrying the index.',
+    },
+  },
+  {
+    id: 'oil-xle',
+    short: 'oil → energy stocks',
+    punch: { holds: 'Energy stocks are following crude.', up: 'Oil up, energy stocks down → the market doubts the oil move will last.', down: 'Oil down, energy stocks up → the market is looking past the oil dip.' },
+    from: 'oil', to: 'xle', sign: +1,
+    textbook: 'Energy companies earn more when oil is dearer, so their shares follow crude',
+    holds: 'Oil and energy stocks moved together: the market is treating the oil move as real money for the producers.',
+    broken: {
+      up:   'Oil rose but energy stocks fell. Shareholders do not believe the higher price will last, or something company-specific is weighing on them.',
+      down: 'Oil fell but energy stocks rose. The market is looking through the dip, or something company-specific is lifting the sector.',
+    },
+  },
+  {
+    id: 'us10y-xlre',
+    short: '10Y yield → property stocks',
+    punch: { holds: 'Property stocks are responding to the 10-year yield.', up: 'Yields up, property stocks up → something else (rents, a takeover wave) is outweighing higher funding costs.', down: 'Yields down, property stocks down → worry about the economy is outweighing cheaper funding.' },
+    from: 'us10y', to: 'xlre', sign: -1,
+    textbook: 'Property companies borrow heavily and are priced like bonds, so higher yields hurt them',
+    holds: 'Yields and property stocks moved opposite ways: the sector is behaving like the bond proxy it is.',
+    broken: {
+      up:   'Yields rose but property stocks rose too. Something other than funding costs is driving the sector.',
+      down: 'Yields fell but property stocks fell as well. Worry about the economy is outweighing the help from cheaper funding.',
+    },
+  },
+  {
+    id: 'move-vix',
+    short: 'bond fear → stock fear',
+    punch: { holds: 'Bond-market fear and stock-market fear are moving together.', up: 'Bond fear up, stock fear down → stocks are calm while the bond market is nervous.', down: 'Bond fear down, stock fear up → the stress is an equity story, not a rates story.' },
+    from: 'move', to: 'vix', sign: +1,
+    textbook: 'When bond traders expect big yield swings, equity traders soon price bigger stock swings too',
+    holds: 'Bond-market fear and the VIX moved the same way: one market\u2019s nerves are showing in the other.',
+    broken: {
+      up:   'Bond-market fear rose but the VIX fell. Stocks are calm while the bond market is nervous, a gap that has closed before by stocks catching up.',
+      down: 'Bond-market fear fell but the VIX rose. The stress is in stocks, not in rates.',
+    },
+  },
+  {
+    id: 'hy-ccc',
+    short: 'junk credit → riskiest credit',
+    punch: { holds: 'The riskiest credit is moving with junk credit, and further.', up: 'Junk spreads wider, CCC tighter → the weakest borrowers are not being punished.', down: 'Junk spreads tighter, CCC wider → distress is concentrating in the weakest names.' },
+    from: 'hy', to: 'ccc', sign: +1,
+    textbook: 'The riskiest borrowers feel tight credit first and hardest, so their spread moves with junk credit and moves more',
+    holds: 'Junk and CCC spreads moved the same way. The riskiest tier usually moves more, so a big CCC move is the part to read.',
+    broken: {
+      up:   'Junk spreads widened but CCC spreads tightened. The weakest borrowers are not being punished, which is unusual.',
+      down: 'Junk spreads tightened but CCC spreads widened. Stress is concentrating in the weakest borrowers while the average looks fine.',
+    },
+  },
+  {
+    id: 'ccc-nq',
+    short: 'riskiest credit → growth stocks',
+    punch: { holds: 'The riskiest credit and growth stocks agree.', up: 'Distress in CCC, Nasdaq up anyway → shareholders are ignoring the weakest lenders.', down: 'CCC calm, Nasdaq down → an equity story, not a credit one.' },
+    from: 'ccc', to: 'nq', sign: -1,
+    evidence: ['credit-leads-equities'],
+    textbook: 'Wider spreads on the riskiest credit and lower growth stocks tend to travel together',
+    holds: 'CCC spreads and the Nasdaq moved the textbook way round in the same window. Whether credit moved FIRST is not something this window can say, and the desk\u2019s test says credit does not lead the Nasdaq.',
+    broken: {
+      up:   'CCC spreads widened but the Nasdaq rose. Lenders to the weakest companies want more, and shareholders do not care.',
+      down: 'CCC spreads tightened but the Nasdaq fell. Credit is calm, so this is an equity story.',
+    },
+  },
+  {
+    id: 'dxy-emdollar',
+    short: 'dollar → EM currencies',
+    punch: { holds: 'Emerging-market currencies are following the dollar.', up: 'Dollar up, EM currencies stronger → the move is about emerging markets, not the dollar.', down: 'Dollar down, EM currencies weaker → emerging markets have their own problem.' },
+    from: 'dxy', to: 'emdollar', sign: +1,
+    textbook: 'A strong dollar means weak emerging-market currencies, because many of their debts are in dollars',
+    holds: 'The broad dollar and the emerging-market dollar index moved the same way: emerging-market currencies are following the dollar.',
+    broken: {
+      up:   'The broad dollar rose but emerging-market currencies strengthened. The move is about emerging markets themselves.',
+      down: 'The broad dollar fell but emerging-market currencies weakened. Emerging markets have their own problem.',
+    },
+  },
+  {
+    id: 'emdollar-copper',
+    short: 'EM currencies → copper',
+    punch: { holds: 'Copper and emerging-market currencies agree on global demand.', up: 'EM currencies weaker, copper up → supply or China is outweighing emerging-market weakness.', down: 'EM currencies stronger, copper down → copper has its own supply story.' },
+    from: 'emdollar', to: 'copper', sign: -1,
+    textbook: 'Emerging markets buy the world\u2019s copper, so weaker emerging-market currencies tend to come with weaker copper',
+    holds: 'Emerging-market currencies and copper moved the textbook way round: one demand read across the two.',
+    broken: {
+      up:   'Emerging-market currencies weakened but copper rose. Supply, or Chinese buying, is outweighing emerging-market weakness.',
+      down: 'Emerging-market currencies strengthened but copper fell. Copper has its own supply or inventory story.',
+    },
+  },
+  {
+    id: 'emoas-hy',
+    short: 'EM credit → junk credit',
+    punch: { holds: 'Emerging-market credit stress is showing in US junk.', up: 'EM credit wider, US junk tighter → the stress is staying outside the US.', down: 'EM credit tighter, US junk wider → the stress is a US story.' },
+    from: 'emoas', to: 'hy', sign: +1,
+    textbook: 'Nervous lenders pull back from emerging-market and US junk borrowers together',
+    holds: 'Emerging-market and US junk spreads moved the same way: the same lenders are getting nervous in both places.',
+    broken: {
+      up:   'Emerging-market credit widened but US junk tightened. The stress is staying outside the US for now.',
+      down: 'Emerging-market credit tightened but US junk widened. The stress is a US story.',
     },
   },
 ];
