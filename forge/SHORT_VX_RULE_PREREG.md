@@ -99,4 +99,17 @@ trades (≈ 2.8 × SD ÷ √n), go in a PRE-RESULTS amendment before the flag ru
 
 ## Amendments
 
-(none)
+### A1 — 2026-10-23 — PRE-RESULTS (power from random-entry trades only; flag trades not yet run)
+
+`scripts/short-vx-rule/rule.py power` (`analysis/output/short-vx-rule/power.json`):
+
+- The flag rule makes **52 trades**. Entry dates only were counted, with no outcome read. By year: 2013 3, 2014 4,
+  2015 2, 2016 4, 2017 6, 2018 2, 2019 3, 2020 1, 2021 8, **2022 0**, 2023 7, 2024 6, 2025 4, 2026 2.
+- The random-entry net R per trade, over all 3,314 candidate sessions, has a mean of +0.074R and an SD of 0.72R.
+- At 80% power the minimum detectable flag-minus-random difference is **≈ 0.28R** per trade.
+
+**Consequences:**
+
+- The NULL clause (interval inside ±0.15R) is unlikely to be reachable.
+- A failed gate will most likely be **UNDERPOWERED**.
+- 2022 has no flag trades, so the random benchmark draws none in 2022 either.
