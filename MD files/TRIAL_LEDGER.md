@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-10-22.
+Generated 2026-10-23.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **174** |
-| validated | 36 |
-| null | 114 |
+| claims tested (validated + null + underpowered) | **176** |
+| validated | 37 |
+| null | 115 |
 | underpowered | 24 |
 | context (base rates, descriptions: not counted as tests) | 36 |
-| pre-registrations with no banked verdict (below) | 74 |
+| pre-registrations with no banked verdict (below) | 73 |
 
-**What the count says (Lesson 02 §05).** If none of the 174 claims were real, tests at the usual 5% size would still pass
-about **8.7** of them by luck. 36 passed, so most passes are unlikely to be luck alone, but
-**roughly 9 of the 36 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 176 claims were real, tests at the usual 5% size would still pass
+about **8.8** of them by luck. 37 passed, so most passes are unlikely to be luck alone, but
+**roughly 9 of the 37 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -235,6 +235,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-22 | funding-forecast-error-squeeze | volatility | underpowered | forge/FUNDING_FORECAST_ERROR_PREREG.md |
 | 2026-10-22 | hy-spread-vol-fx | volatility | context | forge/HY_SPREAD_VOL_PREREG.md |
 | 2026-10-22 | hy-spread-vol-idx | volatility | context | forge/HY_SPREAD_VOL_PREREG.md |
+| 2026-10-22 | positioning-into-release-direction | positioning | validated | MD files/POSITIONING_INTO_RELEASE_PREREG.md |
+| 2026-10-22 | positioning-into-release-range | positioning | null | MD files/POSITIONING_INTO_RELEASE_PREREG.md |
 | 2026-10-22 | quarter-end-funding-spike | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
 | 2026-10-22 | quarter-end-funding-usd | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
 
@@ -243,7 +245,6 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 These were designed as tests but never reached the Evidence Book. Each is either still to run, or ran and was not banked (the second is the failure Lesson 02 warns about: a search that forgets its misses looks better than it is). Bank or close each one.
 
 - `MD files/LEAN_TRADE_RULE_PREREG.md`: LEAN-TRADE-RULE — the lean traded as a real trade, with a stop
-- `MD files/POSITIONING_INTO_RELEASE_PREREG.md`: Crowded FX positioning into a scheduled release — pre-registration
 - `forge/APPROACH_BOOK_EURUSD_PREREG.md`: EURUSD Approach Book — pre-registration (how price arrives at a line)
 - `forge/ASYMMETRIC_TRADES_PREREG.md`: Tight stop, far target at the forecast levels — pre-registration
 - `forge/BREAK_IVRV_PREREG.md`: Break trades when implied vol is rich — pre-registration

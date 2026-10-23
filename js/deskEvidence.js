@@ -200,7 +200,25 @@ export const DESK_EVIDENCE = [
     claim: 'Speculative positioning, as a share of open interest and ranked against its own history, carries information about forward returns (two-sided: follow or fade)',
     result: 'CFTC TFF + disaggregated, 8 instruments, 899 scored weeks each, 3,576 OOS rows 2018-2026. Pooled OOS rank-IC -0.0317 (~1.7 sigma), p=0.0936 against a p<0.05 bar: FAIL. Both OOS halves share the sign and 8/8 instruments qualified, so two of three checks passed and significance did not. Per instrument the spread is wide and the ends disagree: GBP -0.228, GOLD +0.117, and AUD +0.004 -- nothing. Two flaws found while reading the result (the block bootstrap resampled neighbouring INSTRUMENTS rather than consecutive weeks, and the 7 FX legs are largely one USD trade) BOTH flatter the signal, so the null is robust to them.',
     use: 'Never write that crowded positioning predicts which way a market goes: the one registered test says it does not, and it says so for AUD at +0.004 specifically. Positioning is a read on WHO HOLDS WHAT and therefore who has to act if they are wrong -- it is not a direction signal, and the companion result (crowded-bond-short-fomc) found crowded shorts into a scheduled event got PAID rather than squeezed. Show it as context next to a release; never as a lean.',
+  },  {
+    // Registered 2026-10-14, run 2026-10-22 with two PRE-RESULTS data amendments (M15 closes for M1, no
+    // NZD price, ForexFactory calendar 2018-01..2025-04-07, an explicit rate-decision list). Two scored
+    // questions, banked separately as the prereg requires.
+    id: 'positioning-into-release-range', domain: 'positioning', verdict: 'null', date: '2026-10-22',
+    doc: 'MD files/POSITIONING_INTO_RELEASE_PREREG.md', also: ['analysis/output/positioning-into-release/RESULTS.md'],
+    claim: 'On a high-impact release day for a currency, a crowded leveraged-fund position in it (share-of-OI percentile >=80 long / <=20 short, sign agreeing) makes the day wider than a matched non-crowded release day',
+    result: '6 FX pairs, 2018-01..2025-04, 2,105 matched crowded event-days in 335 weeks. TR/ATR effect vs pair x kind x vol-decile control -0.003 [-0.037, +0.036] (week bootstrap); the +0.15 ATR gate is ruled out; halves -0.009/+0.001. Placebo (non-release days) +0.009, does not fire.',
+    use: 'Do not say a crowded book makes a release day bigger: matched against the same kind of release in the same vol regime, it does not.',
   },
+  {
+    id: 'positioning-into-release-direction', domain: 'positioning', verdict: 'validated', date: '2026-10-22',
+    doc: 'MD files/POSITIONING_INTO_RELEASE_PREREG.md', also: ['analysis/output/positioning-into-release/RESULTS.md'],
+    claim: 'On a high-impact release day, price moves against a crowded leveraged-fund position more than on a matched non-crowded release day (two-sided, registered expecting a null)',
+    result: '2,105 matched crowded event-days, 335 weeks: +0.064 ATR against the crowd [+0.019, +0.111]; halves +0.029/+0.129; 6 of 6 pairs positive (+0.012 USDJPY to +0.110 GBPUSD). Placebo on non-release days -0.009 [-0.053, +0.032], does not fire; the trimmed-book mirror has only 74 days and little power. Post-hoc: survives a control for the 40-day price trend (crowding +0.046, trend +0.023); 7 of 8 years positive. Small: ~6% of a day range, ~3-4 pips on EURUSD, before costs.',
+    use: 'Passed as registered, but the prereg itself says a pass is a hypothesis to confirm on held-out years (2008-2017), not a lean: it runs against crowded-bond-short-fomc and cot-positioning-factor. Until that confirmation, a page may say only that on 2018-2025 release days price drifted slightly against a crowded book, by about 0.06 of a day range; never a trade direction.',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
+  },
+
   {
     id: 'approach-speed', domain: 'price', verdict: 'null', date: '2026-09-12', doc: 'MD files/APPROACH_SPEED_CONTROL_TEST.md',
     claim: 'Price arriving slowly at a level dwells there',
@@ -1463,6 +1481,8 @@ const POWER = {
   'cog-turn-sequence-model':   { n: '3,152 line turns; 36 specs; 79 model features; about 190 days per half', note: 'selection-aware placebo; walk-forward by quarter' },
   'cog-rate-futures-other-tests': { n: '48 + 6 + 32 cells over 604 days', note: 'Asian-session leg cells untestable as registered; 5- and 20-day option windows under-powered' },
   'credit-leads-equities':   { n: '5,549-5,587 OOS rows per cell, 2 indices, 12 cells', note: '0/12 past BH-FDR 10%, every interval across zero; HY OAS vol lead +0.26 p 0.002 is on three years, descriptive' },
+  'positioning-into-release-range':     { n: '335 weeks (2,105 crowded event-days)', note: 'CI [-0.037, +0.036] ATR rules out the +0.15 gate' },
+  'positioning-into-release-direction': { n: '335 weeks (2,105 crowded event-days)', note: '+0.064 ATR [+0.019, +0.111]; registered bar CI excl 0 + halves + 5/6 pairs (met 6/6); mirror arm only 74 days' },
   'cot-positioning-factor':  { n: '3,576 OOS rows, 8 instruments', note: 'pooled rank-IC -0.0317, p=0.0936 vs a p<0.05 bar; AUD leg +0.004; both known flaws flatter the signal' },
   // Verified by reading the entry on 2026-10-03.
   'gex-range':               { n: '770 NQ sessions',           note: 're-run 2026-10-21: vm +0.288 [+0.176, +0.400], MDE ~0.15; registered single-shift placebo failed (+0.125), all-shift placebo passes' },
