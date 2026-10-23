@@ -1,0 +1,123 @@
+{
+ "vvix-ratio-range": {
+  "flag": {
+   "label": "After fear ran ahead",
+   "mean": -2.31,
+   "up": 47,
+   "n": 819
+  },
+  "all": {
+   "label": "All days",
+   "mean": -0.21,
+   "up": 45
+  },
+  "years_same_way": 9,
+  "years": 16
+ },
+ "vix-beta-change": {
+  "flag": {
+   "label": "After C.OG's dR/dt bottom 10%",
+   "mean": 0.76,
+   "up": 67,
+   "n": 410
+  },
+  "all": {
+   "label": "All days",
+   "mean": 0.33,
+   "up": 60
+  },
+  "years_same_way": 12,
+  "years": 17
+ },
+ "vix-second-derivative": {
+  "flag": {
+   "label": "After VVIX/VXN jumped",
+   "mean": 2.53,
+   "up": 77,
+   "n": 407
+  },
+  "all": {
+   "label": "All days",
+   "mean": 1.34,
+   "up": 67
+  },
+  "years_same_way": 14,
+  "years": 17
+ },
+ "vix-ratio-vx-futures": {
+  "spot": {
+   "flag": {
+    "label": "Spot VIX after the flag",
+    "mean": -2.91,
+    "up": 45,
+    "n": 661
+   },
+   "all": {
+    "label": "Spot VIX, all days",
+    "mean": 0.01,
+    "up": 47
+   },
+   "years_same_way": 7,
+   "years": 13
+  },
+  "future": {
+   "flag": {
+    "label": "VX future after the flag",
+    "mean": -7.77,
+    "up": 21,
+    "n": 661
+   },
+   "all": {
+    "label": "VX future, all days",
+    "mean": -4.84,
+    "up": 29
+   },
+   "years_same_way": 9,
+   "years": 13
+  }
+ },
+ "short-vx-rule": {
+  "flag_ret": 5.46,
+  "random_ret": 2.94,
+  "win": 77,
+  "years_positive": 11,
+  "years": 13,
+  "worst_ret": -54.8,
+  "n": 52
+ },
+ "vix-brownian-scaling": {
+  "NDX": {
+   "1d": 84,
+   "5d": 84,
+   "20d": 85
+  },
+  "VIX": {
+   "1d": 114,
+   "5d": 104,
+   "20d": 83
+  },
+  "jordan": {
+   "0": 0.59,
+   "1": 0.94,
+   "2": 1.13,
+   "3": 1.19,
+   "4": 1.46
+  }
+ },
+ "garin-vix-intraday-oos": {
+  "ES-down": {
+   "garin": 0.12,
+   "rebuild": -0.067,
+   "oos": -0.065,
+   "years_positive": 3,
+   "years": 6
+  },
+  "ES-up": {
+   "garin": 0.098,
+   "rebuild": -0.015,
+   "oos": -0.062,
+   "years_positive": 2,
+   "years": 6
+  }
+ }
+}

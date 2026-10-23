@@ -27,7 +27,8 @@
   .panel{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;min-width:0} .panel h4{font-size:13px;margin-bottom:4px}
   img.fig{width:100%;height:auto;border-radius:8px;border:1px solid var(--border);background:#fff}
   svg{display:block;width:100%;height:auto} svg text{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;fill:var(--text3)} svg .lbl{fill:var(--text2)}
-  @media (max-width:600px){svg text{font-size:19px} h2{font-size:18px}}
+  @media (max-width:600px){h2{font-size:18px}}
+  .box svg,.mini svg{max-width:680px}
   .links{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px} .links a{font-size:12.5px;padding:3px 10px;border:1px solid var(--border);border-radius:999px}
   .toc{display:flex;gap:6px;flex-wrap:wrap} .toc a{font-size:12px;padding:3px 9px;border:1px solid var(--border);border-radius:999px;color:var(--text2)}
   table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums} th,td{padding:4px 8px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap} th{color:var(--text3);font-weight:600} td:first-child,th:first-child{text-align:left}
@@ -35,6 +36,15 @@
   .bar{height:8px;border-radius:4px;background:var(--grid);position:relative;margin-top:4px} .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--b2)} .bar u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--text3)}
   .note{font-size:12px;color:var(--text3);margin-top:6px}
   #err{color:var(--red)}
+  .pv{display:inline-block;font:700 12px -apple-system,'Segoe UI',sans-serif;padding:3px 10px;border-radius:999px;border:1px solid var(--border);margin-right:8px}
+  .pv.ok{color:var(--green);border-color:var(--green)} .pv.warn{color:var(--amber);border-color:var(--amber)} .pv.mut{color:var(--text2)} .pv.run{color:var(--b3);border-color:var(--b3)}
+  .pvx{font-size:12px;color:var(--text3)}
+  h2.head{font-size:24px;line-height:1.25;margin:6px 0 10px} @media (max-width:600px){h2.head{font-size:20px}}
+  h3.hl{font-size:16px;line-height:1.35;margin:8px 0} ul.plain{margin:8px 0 4px 18px} ul.plain li{margin:4px 0;font-size:14.5px;color:var(--text2)}
+  .minis{display:grid;grid-template-columns:1fr;gap:12px}
+  .mini{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;min-width:0}
+  .cap{font-size:12px;color:var(--text3);margin:2px 0 4px}
+  details.how{margin-top:12px;border-top:1px solid var(--grid);padding-top:8px} details.how>summary{cursor:pointer;color:var(--s1);font-size:13px;font-weight:600;list-style:none} details.how>summary::before{content:'▸ '} details.how[open]>summary::before{content:'▾ '}
 </style>
 </head>
 <body>
@@ -48,8 +58,8 @@
 <div class="wrap">
   <div class="box">
     <div class="eyebrow">What has been done in the repo · October 2026</div>
-    <h2>Every study run in these sessions: the question, how it was tested, what came out, and where it lives</h2>
-    <p>Each study follows the same protocol: the question and the exact test are written down and pushed <b>before</b> any result is computed (the pre-registration), the run uses data only up to the 2026-08-21 lockbox, and the answer is one of four words: <b>VALIDATED</b> (passed the registered bar), <b>NULL</b> (the effect is ruled out), <b>UNDERPOWERED</b> (couldn't tell either way with this much data) or <b>CONTEXT</b> (a description, not a prediction). The verdicts and numbers below are read live from the Evidence Book (<code>js/deskEvidence.js</code>), so they stay current if anything is re-run.</p>
+    <h2>What we found, one card per study</h2>
+    <p>Each card leads with the answer in one line, one chart, and a plain verdict: <b>Holds</b> (it passed a test set in advance; still research only), <b>Not proven</b> (couldn't tell either way), <b>Ruled out</b> (tested and not there) or <b>Description</b> (a fact, not a prediction). Every test was written down before it was run, and only uses data up to 21 Aug 2026. Tap <b>How we tested it</b> on any card for the method, statistics and files.</p>
     <div class="toc" id="toc"></div>
   </div>
   <div class="box" id="live"></div>
@@ -75,7 +85,8 @@ function tstrip(cells, { bar = 3.15, label = c => '', pass = c => false, height 
 function bars(groups, { ref = 0, fmt = v => sg(v), height = 220, min, max } = {}) {
   const vals = groups.flatMap(g => g.bars.flatMap(b => [b.value, b.lo ?? b.value, b.hi ?? b.value])).filter(Number.isFinite).concat([ref]);
   let lo = min ?? Math.min(...vals), hi = max ?? Math.max(...vals); const pad = (hi - lo) * 0.15 || 0.1; lo -= pad; hi += pad;
-  const W = 640, H = height, L = 52, R = 10, T = 22, B = 40, pw = W - L - R, ph = H - T - B, y = v => T + ph * (hi - v) / (hi - lo);
+  const narrow = innerWidth < 600, subs = g => g.sub ? g.sub.split(' · ') : [], nsub = Math.max(0, ...groups.map(g => subs(g).length));
+  const W = narrow ? 360 : 640, H = height + nsub * 12, L = narrow ? 44 : 52, R = 10, T = 22, B = 30 + nsub * 13, pw = W - L - R, ph = H - T - B, y = v => T + ph * (hi - v) / (hi - lo);
   const step = (() => { const r = (hi - lo) / 5, m = 10 ** Math.floor(Math.log10(r)); return [1, 2, 2.5, 5, 10].map(k => k * m).find(k => k >= r); })();
   let s = `<svg viewBox="0 0 ${W} ${H}">`;
   for (let t = Math.ceil(lo / step) * step; t <= hi; t += step) s += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)"/><text x="${L - 6}" y="${y(t) + 4}" text-anchor="end">${fmt(t)}</text>`;
@@ -85,7 +96,7 @@ function bars(groups, { ref = 0, fmt = v => sg(v), height = 220, min, max } = {}
       s += `<g><title>${esc(b.tip ?? fmt(b.value))}</title><rect x="${x}" y="${y1}" width="${bw}" height="${Math.max(1.5, y2 - y1)}" rx="4" fill="${b.color}"/>`;
       if (Number.isFinite(b.lo)) s += `<line x1="${x + bw / 2}" x2="${x + bw / 2}" y1="${y(b.hi)}" y2="${y(b.lo)}" stroke="var(--text)" stroke-width="1.4"/>`;
       s += `<text class="lbl" x="${x + bw / 2}" y="${b.value >= ref ? y(Math.max(b.value, b.hi ?? b.value)) - 5 : y(Math.min(b.value, b.lo ?? b.value)) + 13}" text-anchor="middle">${fmt(b.value)}</text></g>`; });
-    s += `<text x="${L + gi * gw + gw / 2}" y="${H - 18}" text-anchor="middle" class="lbl">${esc(g.label)}</text>`; });
+    const cx = L + gi * gw + gw / 2, base = H - B + 18; s += `<text x="${cx}" y="${base}" text-anchor="middle" class="lbl">${esc(g.label)}</text>` + subs(g).map((t, k) => `<text x="${cx}" y="${base + 13 * (k + 1)}" text-anchor="middle">${esc(t)}</text>`).join(''); });
   return s + '</svg>';
 }
 function line(pts, { height = 200, fmt = v => v.toFixed(3), ref } = {}) {
@@ -101,6 +112,52 @@ function line(pts, { height = 200, fmt = v => v.toFixed(3), ref } = {}) {
 
 const ledgerFor = doc => DESK_EVIDENCE.filter(e => e.doc === doc);
 const ledgerHtml = doc => ledgerFor(doc).map(e => `<div class="ledger"><span class="v ${e.verdict}">${e.verdict.toUpperCase()}</span><span class="id">${esc(e.id)}</span><div class="res">${esc(e.result)}</div><div class="use"><b>Use:</b> ${esc(e.use)}</div></div>`).join('') || '<p class="mut">Not banked yet.</p>';
+
+// ── Plain cards (Garin-style): the finding as the headline, one chart in plain units, "same way X of Y years", two or three plain lines.
+// Numbers come from analysis/output/research-log/plain.json (scripts/research-log/plain.py), re-expressing each study's own data.
+const PV = { holds: ['Holds', 'research only, not a trade yet', 'ok'], notproven: ['Not proven', 'could not tell either way with this much data', 'warn'], ruled: ['Ruled out', 'tested and not there', 'mut'],
+  desc: ['Description', 'a fact about how markets behave, not a prediction', 'warn'], running: ['Running', 'scoring new days as they come', 'run'] };
+const pv = k => `<span class="pv ${PV[k][2]}">${PV[k][0]}</span><span class="pvx">${PV[k][1]}</span>`;
+const C1 = 'var(--b1)', C3 = 'var(--b3)';
+const pair = (x, unit = '%', h = 210) => bars([{ label: x.all.label, sub: `higher ${x.all.up}% of the time`, bars: [{ value: x.all.mean, color: C1 }] },
+  { label: x.flag.label, sub: `higher ${x.flag.up}% · same way ${x.years_same_way} of ${x.years} years`, bars: [{ value: x.flag.mean, color: C3 }] }], { fmt: v => sg(v, Math.abs(v) < 1 ? 2 : 1) + unit, height: h });
+const lines = a => `<ul class="plain">${a.map(x => `<li>${x}</li>`).join('')}</ul>`;
+const mini = (title, verdict, chart, bl) => `<div class="mini"><div class="minih">${pv(verdict)}</div><h3 class="hl">${title}</h3>${chart}${lines(bl)}</div>`;
+const PLAIN = {
+  'vix-signals-forward': X => ({ head: 'Four signals are now being checked on new days, with the rules frozen', v: 'running',
+    body: lines(['The table at the top of this page shows where each one stands today and how many new signals have been scored.', 'Nothing is judged until each has 20 new signals (the VX trade 15), or by October 2028.', "Re-running the scorer at any time gives the same record, so it can't be nudged after the fact."]) }),
+  'short-vx-rule': X => { const s = X['short-vx-rule']; return { head: 'Shorting VX after a fear spike made money, but not more than shorting VX on any day', v: 'notproven',
+    body: bars([{ label: 'Short VX on random days', sub: 'the normal contango slide', bars: [{ value: s.random_ret, color: C1 }] }, { label: 'Short VX after the flag', sub: `${s.win}% winners · up in ${s.years_positive} of ${s.years} years`, bars: [{ value: s.flag_ret, color: C3 }] }], { fmt: v => sg(v, 1) + '%', height: 210 }) +
+      `<p class="cap">Average result per trade, after costs, % of the VX price.</p>` +
+      lines([`Shorting VX tends to make money anyway, because the futures slide down towards spot. The flag added a bit more (${sg(s.flag_ret - s.random_ret, 1)} points a trade), not enough to be sure it's real.`, `One trade in ${s.n} lost <b>${Math.abs(s.worst_ret).toFixed(0)}%</b> overnight (February 2018). A stop didn't help: the price jumped straight past it.`, 'Verdict: not a trade. It keeps running as a paper trade in the forward record.']) }; },
+  'vix-calculus': X => { const b = X['vix-brownian-scaling'], f = X['vix-ratio-vx-futures'], c = X['vix-second-derivative'], g = X['garin-vix-intraday-oos'];
+    return { head: "Five ideas from the Discord thread: two found something, three didn't", v: null,
+      body: `<div class="minis">` +
+      mini("When the option market suddenly prices the VIX's swings up (VVIX/VXN jumps), the Nasdaq has done better over the next month", 'holds', pair(c),
+        [`Nasdaq's next 20 sessions: <b>${sg(c.flag.mean, 1)}%</b> after the jump vs ${sg(c.all.mean, 1)}% normally; higher ${c.flag.up}% of the time vs ${c.all.up}%.`, `Same way in ${c.years_same_way} of ${c.years} years. Part of it is the VIX simply calming down, so it's research only.`]) +
+      mini('The VIX fall after "fear ran ahead" does show up in the VX future you could actually trade', 'holds', bars([{ label: "Spot VIX (can't trade)", sub: `same way ${f.spot.years_same_way} of ${f.spot.years} years`, bars: [{ value: f.spot.all.mean, color: C1 }, { value: f.spot.flag.mean, color: C3 }] },
+        { label: 'VX future (can trade)', sub: `same way ${f.future.years_same_way} of ${f.future.years} years`, bars: [{ value: f.future.all.mean, color: C1 }, { value: f.future.flag.mean, color: C3 }] }], { fmt: v => sg(v, 1) + '%', height: 210 }) + `<p class="cap">Next 20 sessions. Dark: all days. Light: after the flag.</p>`,
+        [`The future normally slides ${sg(f.future.all.mean, 1)}% a month (contango). After the flag it slid <b>${sg(f.future.flag.mean, 1)}%</b>, about 3 points more, the same extra drop as spot.`, 'So Garin was right to ask, and the answer is it does carry over. Turning it into a trade is the short-VX study above.']) +
+      mini('The "priced-in move" (IV × √time) is right for the Nasdaq, but not for the VIX', 'desc', bars([{ label: 'Nasdaq', sub: 'vs VXN', bars: [{ value: b.NDX['1d'], color: C1, tip: '1 day' }, { value: b.NDX['20d'], color: C3, tip: '20 days' }] }, { label: 'VIX', sub: 'vs VVIX', bars: [{ value: b.VIX['1d'], color: C1, tip: '1 day' }, { value: b.VIX['20d'], color: C3, tip: '20 days' }] }], { ref: 100, fmt: v => Math.round(v) + '%', height: 210, min: 60, max: 125 }) + `<p class="cap">How much of the priced-in move actually happened. Dark: over 1 day. Light: over 20 days. 100% = priced exactly.</p>`,
+        [`The Nasdaq moves about ${b.NDX['1d']}% of what VXN prices, at every horizon: the √time rule works, options just charge a premium.`, `The VIX moves <b>more</b> than VVIX prices over a day (${b.VIX['1d']}%) and <b>less</b> over a month (${b.VIX['20d']}%), because it snaps back.`, `Jordan's R = VVIX/VXN is right on average but swings from ${b.jordan['0']}× to ${b.jordan['4']}× of the real VIX-per-Nasdaq move, depending on how tightly they're moving together.`]) +
+      mini("Garin's \"VIX reacts hard → ES leans up\" didn't show up when we rebuilt it", 'notproven', bars(['ES-down', 'ES-up'].map(k => ({ label: k === 'ES-down' ? 'ES down since 10:00' : 'ES up since 10:00', sub: `2021–26: ${g[k].years_positive} of ${g[k].years} years positive`, bars: [{ value: g[k].garin, color: 'var(--b2)', tip: 'Garin 2016–20' }, { value: g[k].rebuild, color: C1, tip: 'our rebuild 2016–20' }, { value: g[k].oos, color: C3, tip: 'our test 2021–26' }] })), { height: 210 }) + `<p class="cap">"Hard" minus "barely" reaction, in units of a normal rest-of-day move. Bars: Garin 2016–20 · our rebuild 2016–20 · 2021–26.</p>`,
+        ['On his own years our rebuild gets slightly negative where he got +0.10 to +0.12, so something in the data or code differs.', "After 2020 it isn't there either. Next step: his code, run on the same data."]) +
+      mini('Integrals (variance premia, "accumulated fear") and the second derivative found nothing', 'notproven', '', ['None of 24 integral tests or 8 second-derivative tests passed. The second derivative of a noisy slope is mostly noise, as expected.']) +
+      `</div><p class="cap"><a href="vix-calculus.html">Full suite page with every chart →</a></p>` }; },
+  'vix-nasdaq-beta': X => { const c = X['vix-beta-change']; return { head: "When the VIX suddenly reacts much harder against the Nasdaq (C.OG's dR/dt), the Nasdaq has done better over the next week", v: 'holds',
+    body: pair(c) + `<p class="cap">Nasdaq's next 5 sessions.</p>` + lines([`<b>${sg(c.flag.mean, 2)}%</b> after the signal vs ${sg(c.all.mean, 2)}% normally; higher ${c.flag.up}% of the time vs ${c.all.up}%. Same way in ${c.years_same_way} of ${c.years} years.`, "It isn't the usual short-term bounce or the VIX's own moves. The level of R (not its change) added nothing new.", "Research only. It's live on Atlas and in the forward record. On the 22 Oct close it was already in its bottom 10%."]) }; },
+  'vvix-nasdaq-ratio': X => { const c = X['vvix-ratio-range']; return { head: 'When fear (VIX/VVIX) has been moving far more than the Nasdaq, the VIX tends to calm down over the next month', v: 'holds',
+    body: pair(c) + `<p class="cap">VIX change over the next 20 sessions.</p>` + lines([`Raw: the VIX fell <b>${sg(c.flag.mean, 1)}%</b> after the flag vs ${sg(c.all.mean, 1)}% normally (same way ${c.years_same_way} of ${c.years} years). After allowing for where the VIX already was, the extra fall is about 7%.`, 'It says nothing reliable about which way the Nasdaq goes: that part was not proven.', 'Shown on Atlas as "Fear versus the Nasdaq". The VX-futures version is in the calculus suite.']) }; },
+  'rate-surprise-events': X => ({ head: 'A rate surprise moves EURUSD and the Nasdaq in the first 15 minutes, then tells you nothing more', v: 'notproven',
+    body: bars([{ label: '2010–17', bars: [{ value: -0.09, color: C3 }] }, { label: '2018–21', bars: [{ value: -0.10, color: C3 }] }, { label: '2022–26', bars: [{ value: -0.07, color: C3 }] }], { height: 190, min: -0.15, max: 0.05 }) + `<p class="cap">Nasdaq over the 5 days after a data surprise, in the surprise's direction (units of a normal 5-day move). Negative = it gave the move back.</p>` +
+      lines(["The surprise <b>is</b> the release-window move: once that's happened, the next hour to five days carry no reliable follow-through for EURUSD.", "Nasdaq leaned the other way over the next 5 days in all three periods, but too weakly to pass. It's a candidate for a forward record, not a trade."]) }),
+  'yield-predictive-ladder': X => ({ head: "Rates explain the day, but they don't forecast EURUSD or the Nasdaq days ahead", v: 'ruled',
+    body: bars([{ label: 'Next day', bars: [{ value: -0.02, color: C3 }] }, { label: 'Next 5 days', bars: [{ value: -0.10, color: C3 }] }, { label: 'Next 20 days', bars: [{ value: -0.20, color: C3 }] }], { height: 190, min: -0.25, max: 0.1 }) + `<p class="cap">EURUSD: how well the rate models called the direction (0 = coin flip, negative = pointed the wrong way). Tested 2020–2026.</p>` +
+      lines(['For EURUSD, models trained on older rate relationships <b>pointed the wrong way</b> afterwards: ruled out.', 'For the Nasdaq the models never disagreed with just holding it, so nothing could be learned (not proven). If anything, the Nasdaq moves <b>before</b> real yields, not after.', 'A data check caught a fake one-day "lead" caused by a noon-vs-afternoon price timing mismatch.']) }),
+  'spread-episodes': X => ({ head: "Yield spreads and prices move together on the same bar, but a spread turn doesn't tell you where price goes next", v: 'ruled',
+    body: bars([{ label: 'Price followed the turn', bars: [{ value: 28, color: C3 }] }, { label: 'Price reverted', bars: [{ value: 26, color: C1 }] }], { fmt: v => Math.round(v) + '%', height: 190, min: 0, max: 40 }) + `<p class="cap">SOFR−Euribor spread vs NAS100: what price did in the 4 hours after 2,991 confirmed spread turns. Random bars look the same.</p>` +
+      lines(["Real \"coupled\" spells exist, but you can't spot them as they start, and following a spread turn is a coin flip.", 'The US 10y/2y vs EURUSD version is the same, with a slight lean to reversal (not tested as its own idea yet).', 'The live page keeps logging turns as a forward record.']) }),
+};
 
 const STUDIES = [
   { id: 'vix-signals-forward', date: '2026-10-23', who: 'follow-up you asked for', title: 'Forward record of the four VIX signals', doc: 'forge/VIX_SIGNALS_FORWARD_PREREG.md',
@@ -190,15 +247,18 @@ async function renderLive() {
 async function main() {
   $('#toc').innerHTML = STUDIES.map(s => `<a href="#${s.id}">${esc(s.date.slice(5))} · ${esc(s.title.length > 42 ? s.title.slice(0, 40) + '…' : s.title)}</a>`).join('') + '<a href="#builds">Builds</a>';
   renderLive();
+  const X = await J('analysis/output/research-log/plain.json') ?? {};
   let h = '';
   for (const s of STUDIES) {
-    const led = ledgerFor(s.doc), ch = await chartFor(s);
-    h += `<div class="box" id="${s.id}"><div class="eyebrow">${esc(s.date)} · asked by ${esc(s.who)}</div><h2>${esc(s.title)}</h2>
-      <div class="meta">${led.map(e => `<span class="v ${e.verdict}">${e.verdict.toUpperCase()}</span>`).join('')}<span class="chip">${esc(s.id)}</span></div>
+    const led = ledgerFor(s.doc), ch = await chartFor(s), C = PLAIN[s.id] ? PLAIN[s.id](X) : null;
+    h += `<div class="box" id="${s.id}"><div class="eyebrow">${esc(s.date)} · asked by ${esc(s.who)}</div>
+      ${C ? `${C.v ? pv(C.v) : ''}<h2 class="head">${esc(C.head)}</h2>${C.body}` : `<h2 class="head">${esc(s.title)}</h2>`}
+      <details class="how"><summary>How we tested it, the statistics and the files</summary>
+      <h3>${esc(s.title)}</h3><div class="meta">${led.map(e => `<span class="v ${e.verdict}">${e.verdict.toUpperCase()}</span>`).join('')}<span class="chip">${esc(s.id)}</span></div>
       <h3>The question</h3><p>${esc(s.q)}</p><h3>How it was tested</h3><ul>${s.how.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
       ${ch}${s.figs ? `<div class="grid2" style="margin-top:8px">${s.figs.map(([t, src]) => `<div class="panel"><h4>${esc(t)}</h4><a href="${src}" target="_blank"><img class="fig" loading="lazy" src="${src}" alt="${esc(t)}"></a></div>`).join('')}</div>` : ''}
-      <h3>What came out (from the Evidence Book)</h3>${ledgerHtml(s.doc)}
-      <div class="links">${s.links.map(([t, u]) => `<a href="${u}" target="_blank">${esc(t)}</a>`).join('')}</div></div>`;
+      <h3>The Evidence Book entries</h3>${ledgerHtml(s.doc)}
+      <div class="links">${s.links.map(([t, u]) => `<a href="${u}" target="_blank">${esc(t)}</a>`).join('')}</div></details></div>`;
   }
   $('#studies').innerHTML = h;
   $('#builds').innerHTML = `<div class="eyebrow">Builds (not studies)</div><h2>What was added to the site and the data pipeline</h2><ul>
