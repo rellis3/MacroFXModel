@@ -10,16 +10,16 @@ Generated 2026-10-23.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **176** |
-| validated | 37 |
+| claims tested (validated + null + underpowered) | **178** |
+| validated | 38 |
 | null | 115 |
-| underpowered | 24 |
+| underpowered | 25 |
 | context (base rates, descriptions: not counted as tests) | 36 |
-| pre-registrations with no banked verdict (below) | 73 |
+| pre-registrations with no banked verdict (below) | 74 |
 
-**What the count says (Lesson 02 §05).** If none of the 176 claims were real, tests at the usual 5% size would still pass
-about **8.8** of them by luck. 37 passed, so most passes are unlikely to be luck alone, but
-**roughly 9 of the 37 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 178 claims were real, tests at the usual 5% size would still pass
+about **8.9** of them by luck. 38 passed, so most passes are unlikely to be luck alone, but
+**roughly 9 of the 38 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -239,6 +239,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-22 | positioning-into-release-range | positioning | null | MD files/POSITIONING_INTO_RELEASE_PREREG.md |
 | 2026-10-22 | quarter-end-funding-spike | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
 | 2026-10-22 | quarter-end-funding-usd | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
+| 2026-10-23 | vvix-ratio-direction | volatility | underpowered | forge/VVIX_NASDAQ_RATIO_PREREG.md |
+| 2026-10-23 | vvix-ratio-range | volatility | validated | forge/VVIX_NASDAQ_RATIO_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -273,6 +275,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/EURUSD_MODEL_PREREG.md`: EURUSD model step — pre-registration
 - `forge/EXHAUSTION_PLAYBOOK_EURUSD_PREREG.md`: The exhaustion playbook on EURUSD — pre-registration
 - `forge/EXITS_PREREG.md`: Study 1 — Exits driven by the range book (pre-registration)
+- `forge/FAILED_AUCTION_VOLUME_PREREG.md`: failed-auction-volume — Does real CME volume turn a failed auction at a range edge into a tradeable futures se
 - `forge/FED_PATH_LEAD_PREREG.md`: FED-PATH-LEAD: does the Fed-path slope lead EURUSD / AUD / silver / DAX? (one confirmation test)
 - `forge/FLOW_COLUMNS_PREREG.md`: Flow and positioning columns at the vol lines — pre-registration
 - `forge/FUTURES_COST_RESCORE_PREREG.md`: Futures-cost re-score of the line-touch fade (registered 2026-10-11, before the re-score is computed)

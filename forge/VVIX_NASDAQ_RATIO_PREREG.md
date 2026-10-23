@@ -135,7 +135,16 @@ so only large directional effects are findable.
 
 ## Amendments
 
-(none)
+### A1 — 2026-10-23 — POST-HOC (results seen; demote-only)
+
+These robustness checks were run on the two passing cells (R_a and R_b top decile → dvix20), in
+`scripts/vvix-nasdaq-ratio/robust.py`:
+
+- extra controls: VIX's own 5- and 20-day change, the VVIX percentile, the VIX z-score;
+- leave each year out in turn;
+- the continuous percentile in place of the flag.
+
+The rule was that any of them could demote a cell, and none did. Results are in `RESULTS.md`.
 
 ## RESULTS
 
