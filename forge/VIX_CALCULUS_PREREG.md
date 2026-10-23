@@ -289,6 +289,56 @@ and was fixed before E ran. D is unchanged.
 - The readings builder's lookup was fixed before this check: an M1/5m bar at or within 5 minutes before each time, so
   that gaps in the CFD bars don't drop readings. That is a data-plumbing fix, made before any D outcome was read.
 
+### A4 — 2026-10-23 — POST-HOC (results seen; demote-only)
+
+`scripts/vix-calculus/robust.py` checked the passing cells: C2 (dR/dt of VVIX/VXN, top decile → Nasdaq 20d) and E
+(R_a/R_b → VX futures).
+
+- **C2:**
+  - extra controls: Nasdaq 5/10d return, VIX 5/20d change, the dR/dt flags, the banked ratio flags, the
+    implied-ratio percentile, and all of them together;
+  - leave one year out;
+  - drop the 10 largest flagged moves;
+  - which leg drives it.
+- **E:**
+  - leave one year out;
+  - exclude the Feb–Mar 2018 and Feb–Apr 2020 vol shocks;
+  - control for VIX's 20-day change.
+
+None reversed a sign or took a cell's t below 2.1. C2 weakens to t 2.42 with every control and fails the Holm-46 view,
+so it is kept **research only**, not promoted. E stays at t −2.1 to −3.1 across its checks. Neither is demoted.
+
+### A5 — 2026-10-23 — POST-HOC (results seen; descriptive only)
+
+**D's reproduction check failed.** Our rebuild of Garin's method on his own 2016–2020 years gives Hard − Barely of:
+
+- **ES-down −0.067** (his +0.120);
+- **ES-up −0.015** (his +0.098).
+
+As §3 D requires, this is written up before the 2021+ result is interpreted.
+
+`scripts/vix-calculus/garin_variants.py` (2016–2020 only, `garin_variants.json`) tried the other plausible readings:
+
+- thirds per hour;
+- thirds per day type;
+- thirds per hour × day type;
+- the unsigned ratio;
+- raw % outcomes.
+
+**None reproduces his positive ES lean.** Every ES value is between −0.067 and 0.
+
+The difference is therefore in data or code, not in the period:
+
+- his ES/NQ futures against our OANDA CFDs;
+- his VIX source and bar timing;
+- his "normal move" scaling;
+- or something else in his code.
+
+**What this does and doesn't change:**
+
+- The scored 2021–2026 cells are unchanged: all four have Hard − Barely −0.05 to −0.07 and fail.
+- The registered verdict rule gives **UNDERPOWERED**.
+- The finding to report is **"not reproduced from his description"**, and the next step is his code, not another test.
 
 ## RESULTS
 

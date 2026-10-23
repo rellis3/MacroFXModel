@@ -1,0 +1,44 @@
+{
+ "as registered (signed, thirds per index)": {
+  "ES-up": -0.015,
+  "ES-down": -0.067,
+  "NQ-up": -0.065,
+  "NQ-down": 0.001
+ },
+ "thirds per index x hour": {
+  "ES-up": -0.01,
+  "ES-down": -0.063,
+  "NQ-up": -0.053,
+  "NQ-down": 0.012
+ },
+ "thirds per index x day type": {
+  "ES-up": -0.0,
+  "ES-down": -0.04,
+  "NQ-up": -0.042,
+  "NQ-down": -0.047
+ },
+ "thirds per index x hour x day type": {
+  "ES-up": -0.006,
+  "ES-down": -0.022,
+  "NQ-up": -0.061,
+  "NQ-down": -0.04
+ },
+ "unsigned |VIX%|/|index%|, thirds per index x day type": {
+  "ES-up": -0.027,
+  "ES-down": -0.045,
+  "NQ-up": -0.111,
+  "NQ-down": -0.025
+ },
+ "signed, thirds per index x day type, outcome in raw %": {
+  "ES-up": -0.012,
+  "ES-down": -0.012,
+  "NQ-up": -0.036,
+  "NQ-down": -0.017
+ },
+ "Garin (his table)": {
+  "ES-down": 0.12,
+  "ES-up": 0.098,
+  "NQ-down": -0.007,
+  "NQ-up": -0.015
+ }
+}

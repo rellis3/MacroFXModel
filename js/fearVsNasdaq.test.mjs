@@ -1,5 +1,5 @@
 // Tests for js/fearVsNasdaq.js.   node js/fearVsNasdaq.test.mjs      (STRICT=1 also requires the ledger entry to exist in this checkout)
-import { fearVsNasdaq, fearWords, WINDOW, LOOKBACK, vixBetaSeries, vixBeta, vixBetaWords } from './fearVsNasdaq.js';
+import { fearVsNasdaq, fearWords, WINDOW, LOOKBACK, vixBetaSeries, vixBeta, vixBetaWords, impliedRatioSeries, impliedRatioChange, impliedRatioWords } from './fearVsNasdaq.js';
 import { readFileSync } from 'node:fs';
 import { DESK_EVIDENCE } from './deskEvidence.js';
 let failures = 0;
@@ -42,5 +42,15 @@ const onW = vixBetaWords({ ...vb, on: true, pct: 6 }), offW = vixBetaWords(vb);
 ok('the words cite the tested numbers and say research only in both states', /\+0\.76%/.test(onW) && /67%/.test(onW) && /bottom tenth/.test(onW) && /Research only/.test(onW) && /Research only/.test(offW) && /44th percentile/.test(offW) && vixBetaWords(null) === '');
 const eb = DESK_EVIDENCE.find(x => x.id === 'vix-beta-change');
 ok('the cited ledger entry, where this checkout has it, is validated', process.env.STRICT ? !!eb && eb.verdict === 'validated' : !eb || eb.verdict === 'validated');
+// ── vix-calculus C2: dR/dt of the implied ratio VVIX/VXN, parity with the study's pandas code ──
+const G = JSON.parse(readFileSync(new URL('./fixtures/impliedRatio.parity.json', import.meta.url), 'utf8')), IS = impliedRatioSeries(G.vvix, G.vxn);
+let wI = 0, missI = 0, flagI = 0;
+G.dates.forEach((_, t) => { if (t >= 300 && G.pct[t] != null) { if (IS.pct[t] == null) missI++; else { wI = Math.max(wI, Math.abs(G.pct[t] - IS.pct[t])); if ((G.pct[t] >= 0.9) !== (IS.pct[t] >= 0.9)) flagI++; } } });
+ok('the implied-ratio change percentile and top-tenth flag match the study on 400 sessions', missI === 0 && wI < 1e-6 && flagI === 0, `missing ${missI}, worst ${wI}, flag mismatches ${flagI}`);
+const ir = impliedRatioChange({ vvix: G.vvix, vxn: G.vxn, nq: G.ndx, dates: G.dates });
+ok('the reading carries the ratio, the 5-session change, a percentile and the past year of flags with the Nasdaq 20-session move', ir && ir.ratio > 0 && Number.isFinite(ir.change5) && ir.pct >= 0 && ir.pct <= 100 && Array.isArray(ir.flags) && ir.flags.every(f => f.nq20 === null || Number.isFinite(f.nq20)), JSON.stringify(ir));
+ok('no VXN means no reading, not a guess', impliedRatioChange({ vvix: G.vvix, vxn: [], nq: G.ndx }) === null && impliedRatioChange(null) === null);
+const irOn = impliedRatioWords({ ...ir, on: true, pct: 95 });
+ok('the words cite the tested numbers and say research only', /\+2\.5%/.test(irOn) && /76%/.test(irOn) && /Research only/.test(irOn) && /Research only/.test(impliedRatioWords(ir)) && impliedRatioWords(null) === '');
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

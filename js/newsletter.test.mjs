@@ -125,5 +125,7 @@ ok('it is a separate calming section, not part of the range-pressure count', !/b
 ok('no fear data means no section', !/Fear versus the Nasdaq/.test(buildNewsletter({ date: 'd' }).html));
 const vbOn = buildNewsletter({ date: 'd', vixBeta: { beta: -7.1, change: -3.2, pct: 4, on: true, flags: [{ date: '2026-06-05', nq5: 3.84 }, { date: '2026-10-20', nq5: null }] } });
 ok("C.OG's dR/dt shows in the fear section, labelled research only, with the past year's flags and a pending one", /Fear versus the Nasdaq/.test(vbOn.html) && /dR\/dt/.test(vbOn.html) && /Research only/.test(vbOn.html) && /2026-06-05 Nasdaq \+3\.84%/.test(vbOn.html) && /pending/.test(vbOn.html) && /bottom tenth/.test(vbOn.html));
+const irOnN = buildNewsletter({ date: 'd', impliedRatio: { ratio: 5.1, change5: 12.4, pct: 96, on: true, flags: [] } });
+ok('the implied-ratio change shows in the fear section, research only', /Fear versus the Nasdaq/.test(irOnN.html) && /VVIX\/VXN/.test(irOnN.html) && /Research only/.test(irOnN.html) && /top tenth/.test(irOnN.html));
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

@@ -209,4 +209,30 @@ denominator, what "extreme" means.
 (normally negative; it equals the unsigned ratio of the first test x the VIX-Nasdaq correlation). Tested as a follow-up,
 `forge/VIX_NASDAQ_BETA_PREREG.md`: the beta level and its rate of change at extremes.
 
-**A friend's intraday version (2026-10-23).** Rich shared a friend's own study of this ratio: VIX % per 1% index move since 10:00 ET, read hourly, outcome to 16:55, in-sample 2016-2020. ES shows a small lean up when the VIX reacts hard (4/5 and 5/5 years); NQ shows no pattern, and they found dR/dt hourly to be noise. It is in-sample only and has not been corrected for the number of buckets. The screenshots, numbers and how it sits next to our daily tests are in `education/friend-vix-ratio-intraday/NOTES.md`.
+**Garin's intraday version (2026-10-23).** Rich shared Garin's own study of this ratio: VIX % per 1% index move since 10:00 ET, read hourly, outcome to 16:55, in-sample 2016-2020. ES shows a small lean up when the VIX reacts hard (4/5 and 5/5 years); NQ shows no pattern, and he found dR/dt hourly to be noise. The screenshots, numbers and how it sits next to our daily tests are in `education/friend-vix-ratio-intraday/NOTES.md`; it was tested out of sample in `forge/VIX_CALCULUS_PREREG.md` part D.
+
+### 3c. The calculus thread (VIP Discord, 2026-10-23, 12:15-12:56 UK; screenshots shared by Rich)
+
+> **Garin 12:15** (forwarded, his own earlier answer): VIX spot is an index, you can't trade it I believe - whereas VIX futures are tradeable contracts and they price where VIX is expected to be instead of where it's at now - they usually sit above spot (which means contango) so backtesting spot VIX could possibly overstate whats actually able to capture. I may be wrong tho there. So double check with the big dog
+>
+> **C.OG 12:21:** This is a good explanation
+>
+> **Garin 12:21:** VVIX is volatilty of VIX ... **12:23:** Yes, expected volatility of Vix itself, derived from VIX options
+>
+> **C.OG 12:24:** Are you familiar with stuff like differentiation and integration?
+>
+> **C.OG 12:25:** That will be very useful. An example is when @Garin speaks about bonds. Within the bond structure pricing the discounted cash flows can be represented as integrals when payments are continuous. Same with stuff like brownian motion and stochastic modeling they use integrals to describe how random processes accumulate over time. I don't know to write this in discord as the proper notion but for this
+>
+> **C.OG 12:29:** How quickly the ratio is changing could be modelled as dR/dt. Where R is the relative change of vix % at time t / the relative change of Nasdaq % at time t. Just make sure to factor in the sign as they're negatively correlated
+>
+> **Jordan 12:45:** like this? [card: "Nasdaq move priced in, per Δt: VXN · √Δt | VIX move priced in, per Δt: VVIX · √Δt | VIX % per 1% Nasdaq: R = VVIX / VXN"]
+>
+> **C.OG 12:56:** I'll try figure out how to put formulas into discord
+
+**Tested (ours):** `forge/VIX_CALCULUS_PREREG.md` turns each idea into a test, with results on `vix-calculus.html`:
+
+- (A) is IV·√Δt calibrated (Jordan's card);
+- (B) integrals: variance risk premia, accumulated unexplained fear;
+- (C) d²R/dt² and dR/dt of VVIX/VXN;
+- (D) Garin's intraday rule on 2021-2026;
+- (E) Garin's futures point, with the VIX give-back held on VX futures.

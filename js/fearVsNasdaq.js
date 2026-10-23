@@ -99,3 +99,50 @@ export function vixBetaWords(v) {
   if (v.on) return `C.OG's dR/dt is in its bottom tenth (${v.pct}th percentile of the past year): over the last week the VIX has started reacting much harder against the Nasdaq. In the 2009-2026 test, the Nasdaq's next 5 sessions after this averaged +0.76% (higher on 67% of occasions) against +0.33% (60%) on all days. ${tail}`;
   return `C.OG's dR/dt, how fast the VIX's reaction to the Nasdaq is changing, is at the ${v.pct}th percentile of its past year. The research reading is the bottom tenth (10th or below), after which the Nasdaq's next 5 sessions averaged +0.76% against +0.33% on all days. ${tail}`;
 }
+
+/*
+ * dR/dt of the IMPLIED ratio (vix-calculus part C2, forge/VIX_CALCULUS_PREREG.md, ledger `vix-second-derivative`, research only).
+ * Jordan's card puts the priced-in "VIX % per 1% Nasdaq" at R = VVIX / VXN. Its 5-session change in logs, ln(VVIX/VXN) today minus five sessions ago,
+ * in the top tenth of its own last 252 sessions (>= 200 known, today included) means the option market has just started pricing the VIX's own swings
+ * far more richly than the Nasdaq's. The finding: the Nasdaq's next 20 sessions from the next close averaged +2.5% (higher 76% of the time) against
+ * +1.3% (66%) on all days, 2009-2026; beyond the VIX state t 3.04, all periods, placebo; with every control t 2.42, so research only.
+ * Parity with the study's pandas code: js/fearVsNasdaq.test.mjs against js/fixtures/impliedRatio.parity.json.
+ */
+export const IMP_STEP = 5, IMP_TOP = 0.9, IMP_HOLD = 20;
+
+/** Full series over rows where VVIX and VXN both exist: { idx, change, pct } (pct 0..1). */
+export function impliedRatioSeries(vvix, vxn) {
+  const idx = [], lr = [], n = Math.min(vvix?.length ?? 0, vxn?.length ?? 0);
+  for (let i = 0; i < n; i++) if (fin(vvix[i]) && fin(vxn[i]) && vvix[i] > 0 && vxn[i] > 0) { idx.push(i); lr.push(Math.log(vvix[i] / vxn[i])); }
+  const m = idx.length, change = new Array(m).fill(null), pct = new Array(m).fill(null);
+  for (let t = IMP_STEP; t < m; t++) change[t] = lr[t] - lr[t - IMP_STEP];
+  for (let t = 0; t < m; t++) {
+    if (!fin(change[t])) continue;
+    const win = change.slice(Math.max(0, t - LOOKBACK + 1), t + 1).filter(fin); if (win.length < BETA_MIN_KNOWN) continue;
+    const x = change[t]; let lt = 0, eq = 0; for (const v of win) { if (v < x) lt++; else if (v === x) eq++; }
+    pct[t] = (lt + (eq + 1) / 2) / win.length;
+  }
+  return { idx, change, pct };
+}
+
+/** Today's reading plus the past year's flag runs with the Nasdaq's next 20 sessions after the next close. s = { vvix, vxn, nq, dates? }. */
+export function impliedRatioChange(s) {
+  const S = impliedRatioSeries(s?.vvix, s?.vxn), T = S.idx.length - 1;
+  if (T < 0 || !fin(S.pct[T])) return null;
+  const nq = s.nq ?? [], flags = [], ok = i => i != null && fin(nq[i]) && nq[i] > 0;
+  for (let t = Math.max(0, T - LOOKBACK + 1); t <= T; t++) {
+    if (!(S.pct[t] >= IMP_TOP) || (t > 0 && S.pct[t - 1] >= IMP_TOP)) continue;
+    const a = S.idx[t + 1], b = S.idx[t + 1 + IMP_HOLD];
+    flags.push({ date: s.dates?.[S.idx[t]] ?? null, nq20: ok(a) && ok(b) ? Math.round((nq[b] / nq[a] - 1) * 10000) / 100 : null });
+  }
+  const i = S.idx[T];
+  return { ratio: Math.round(s.vvix[i] / s.vxn[i] * 100) / 100, change5: Math.round((Math.exp(S.change[T]) - 1) * 1000) / 10, pct: Math.round(S.pct[T] * 100), on: S.pct[T] >= IMP_TOP, flags, evidence: 'vix-second-derivative' };
+}
+
+/** Plain words; research only in both states. */
+export function impliedRatioWords(v) {
+  if (!v) return '';
+  const tail = 'Research only: it needs a costed rule and a forward record before it can be traded.';
+  if (v.on) return `The priced-in ratio VVIX/VXN (${v.ratio}) has risen ${v.change5 > 0 ? '+' : ''}${v.change5}% in 5 sessions, in the top tenth of its past year (${v.pct}th percentile): options have just started pricing the VIX's own swings far more richly than the Nasdaq's. In the 2009-2026 test the Nasdaq's next 20 sessions after this averaged +2.5% (higher on 76% of occasions) against +1.3% (66%) on all days. ${tail}`;
+  return `The priced-in ratio VVIX/VXN is ${v.ratio}; its 5-session change (${v.change5 > 0 ? '+' : ''}${v.change5}%) is at the ${v.pct}th percentile of its past year. The research reading is the top tenth (90th or above), after which the Nasdaq's next 20 sessions averaged +2.5% against +1.3% on all days. ${tail}`;
+}

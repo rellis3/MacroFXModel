@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VIX Calculus Suite</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--amber:#d29922;--red:#f85149;--green:#3fb950;
+        --b1:#3f5f8f;--b2:#6b9be0;--b3:#b3cdf5;--s1:#3987e5;--s2:#d95926;--grid:#21262d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:14px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--s1);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .chip.ok{color:var(--green);border-color:var(--green)} .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.mut{color:var(--text3)}
+  .wrap{max-width:1100px;margin:0 auto;padding:14px 16px 48px;display:flex;flex-direction:column;gap:16px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;min-width:0}
+  .eyebrow{font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--b3);margin-bottom:4px}
+  h2{font-size:22px;line-height:1.25;margin-bottom:8px}
+  h3{font-size:15px;margin:14px 0 6px}
+  p{color:var(--text2);margin:6px 0;max-width:80ch} p b{color:var(--text)}
+  .quote{border-left:3px solid var(--border);padding:4px 12px;margin:8px 0;color:var(--text2);font-style:italic}
+  .who{font-style:normal;font-weight:700;color:var(--text)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media (max-width:820px){.grid2{grid-template-columns:1fr}}
+  .panel{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;min-width:0}
+  .panel h4{font-size:15px;margin-bottom:2px} .panel .tag{font:600 12px ui-monospace,Menlo,monospace;letter-spacing:.06em;color:var(--b3);text-transform:uppercase;margin-bottom:6px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--text2);margin:6px 0}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:6px}
+  svg{display:block;width:100%;height:auto} svg text{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;fill:var(--text3)} svg .lbl{fill:var(--text2)} svg .cat{font:600 12px -apple-system,'Segoe UI',sans-serif;fill:var(--text)}
+  .xs{overflow-x:auto} table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+  th,td{padding:4px 8px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap} th{color:var(--text3);font-weight:600} td:first-child,th:first-child{text-align:left}
+  .pass{color:var(--green);font-weight:700} .mut{color:var(--text3)} .neg{color:var(--s2)} .pos{color:var(--green)}
+  .verdict{display:inline-block;font:700 11px ui-monospace,Menlo,monospace;padding:2px 8px;border-radius:5px;border:1px solid var(--border);margin-right:6px;vertical-align:2px}
+  .verdict.VALIDATED{color:var(--green);border-color:var(--green)} .verdict.UNDERPOWERED,.verdict.CONTEXT{color:var(--amber);border-color:var(--amber)} .verdict.NULL{color:var(--text3)}
+  .note{font-size:12px;color:var(--text3);margin-top:8px;max-width:90ch} .note b{color:var(--text2)}
+  .toc{display:flex;gap:8px;flex-wrap:wrap} .toc a{font-size:12.5px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;color:var(--text2)}
+  #err{color:var(--red)}
+  .wrap>*,#out{min-width:0;max-width:100%} #out{display:flex;flex-direction:column;gap:16px}
+  .quote,p{overflow-wrap:anywhere}
+  @media (max-width:600px){svg text{font-size:19px} svg .cat{font-size:20px} h2{font-size:19px}}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <a href="atlas.html">&larr; Atlas</a>
+  <h1>VIX calculus suite</h1>
+  <span class="spacer"></span>
+  <span class="chip" id="chips">loading…</span>
+</div>
+<div class="wrap">
+  <div class="box">
+    <div class="eyebrow">C.OG · VIP Discord · 2026-10-23</div>
+    <h2>Brownian motion, differentiation and integration, applied to the VIX, the VVIX and the Nasdaq</h2>
+    <p class="quote"><span class="who">C.OG:</span> "Same with stuff like brownian motion and stochastic modeling they use integrals to describe how random processes accumulate over time … How quickly the ratio is changing could be modelled as dR/dt, where R is the relative change of vix % at time t / the relative change of Nasdaq % at time t. Just make sure to factor in the sign as they're negatively correlated."</p>
+    <p class="quote"><span class="who">Jordan:</span> "Nasdaq move priced in, per Δt = VXN·√Δt · VIX move priced in, per Δt = VVIX·√Δt · VIX % per 1% Nasdaq: R = VVIX / VXN"</p>
+    <p class="quote"><span class="who">Garin:</span> "VIX spot is an index, you can't trade it … VIX futures … usually sit above spot (contango) so backtesting spot VIX could possibly overstate what's actually able to capture."</p>
+    <p>Each idea was turned into a test and written down before any result was looked at (<a href="forge/VIX_CALCULUS_PREREG.md">pre-registration</a>). Data: daily CBOE VIX, VVIX and VXN and the Nasdaq-100 from 2009, VX futures settlements from 2013, and 5-minute VIX with the S&amp;P and Nasdaq futures from 2016. Nothing after 2026-08-21 is scored; those days are kept for a forward check.</p>
+    <div class="toc" id="toc"></div>
+  </div>
+  <div id="err"></div>
+  <div id="out"></div>
+</div>
+<script>
+const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sg = (v, d = 2) => v == null || !Number.isFinite(v) ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d);
+const COL = { barely: 'var(--b1)', middle: 'var(--b2)', hard: 'var(--b3)' };
+
+/** Grouped bars. groups: [{label, sub, bars:[{key, value, lo?, hi?, color, tip}]}]; ref: a horizontal reference value (e.g. 0 or 1). */
+function bars(groups, { ref = 0, fmt = v => sg(v), height = 260, min, max } = {}) {
+  const vals = groups.flatMap(g => g.bars.flatMap(b => [b.value, b.lo ?? b.value, b.hi ?? b.value])).filter(Number.isFinite).concat([ref]);
+  let lo = min ?? Math.min(...vals), hi = max ?? Math.max(...vals); const pad = (hi - lo) * 0.15 || 0.1; lo -= pad; hi += pad;
+  const W = 640, H = height, L = 52, R = 10, T = 22, B = 46, pw = W - L - R, ph = H - T - B, y = v => T + ph * (hi - v) / (hi - lo);
+  const step = (() => { const r = (hi - lo) / 5, m = 10 ** Math.floor(Math.log10(r)); return [1, 2, 2.5, 5, 10].map(k => k * m).find(k => k >= r); })();
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  for (let t = Math.ceil(lo / step) * step; t <= hi; t += step) s += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)"/><text x="${L - 6}" y="${y(t) + 4}" text-anchor="end">${fmt(t)}</text>`;
+  s += `<line x1="${L}" x2="${W - R}" y1="${y(ref)}" y2="${y(ref)}" stroke="var(--text3)" stroke-width="1.2"/>`;
+  const gw = pw / groups.length;
+  groups.forEach((g, gi) => {
+    const n = g.bars.length, bw = Math.min(56, (gw * 0.8) / n), x0 = L + gi * gw + (gw - bw * n - 3 * (n - 1)) / 2;
+    g.bars.forEach((b, bi) => {
+      if (!Number.isFinite(b.value)) return;
+      const x = x0 + bi * (bw + 3), y1 = y(Math.max(b.value, ref)), y2 = y(Math.min(b.value, ref)), h = Math.max(1.5, y2 - y1);
+      s += `<g><title>${esc(b.tip ?? `${g.label} · ${b.key}: ${fmt(b.value)}`)}</title><rect x="${x}" y="${y1}" width="${bw}" height="${h}" rx="4" fill="${b.color}"/>`;
+      if (Number.isFinite(b.lo) && Number.isFinite(b.hi)) s += `<line x1="${x + bw / 2}" x2="${x + bw / 2}" y1="${y(b.hi)}" y2="${y(b.lo)}" stroke="var(--text)" stroke-width="1.4"/>`;
+      const above = b.value >= ref; s += `<text class="lbl" x="${x + bw / 2}" y="${above ? y(Math.max(b.value, b.hi ?? b.value)) - 5 : y(Math.min(b.value, b.lo ?? b.value)) + 13}" text-anchor="middle">${fmt(b.value)}</text></g>`;
+    });
+    s += `<text class="cat" x="${L + gi * gw + gw / 2}" y="${H - 26}" text-anchor="middle">${esc(g.label)}</text>${g.sub ? `<text x="${L + gi * gw + gw / 2}" y="${H - 10}" text-anchor="middle">${esc(g.sub)}</text>` : ''}`;
+  });
+  return s + '</svg>';
+}
+const legend = items => `<div class="legend">${items.map(([c, l]) => `<span><i style="background:${c}"></i>${esc(l)}</span>`).join('')}</div>`;
+const V = w => `<span class="verdict ${w}">${w}</span>`;
+const sec = (id, eyebrow, title, verdict, body) => `<div class="box" id="${id}"><div class="eyebrow">${esc(eyebrow)}</div><h2>${V(verdict)}${esc(title)}</h2>${body}</div>`;
+const NAMES = { vrpN: 'Nasdaq VRP (priced variance − integrated realised)', vrpV: 'VIX VRP (VVIX² − integrated realised VIX variance)', F20: 'Accumulated unexplained fear (Σ VIX move the Nasdaq did not explain)',
+  d2R: 'd²R/dt² (change in C.OG’s dR/dt)', dRimp: 'dR/dt of the implied ratio VVIX/VXN' };
+const ONAME = { ret5: 'Nasdaq 5d', ret20: 'Nasdaq 20d', range20: 'Range vs implied 20d', dvix20: 'VIX 20d' };
+
+function cellTable(cs) {
+  return `<div class="xs"><table><tr><th>Construction</th><th>Tail</th><th>Next</th><th>Effect (SD)</th><th>t</th><th>Periods</th><th>Placebo p95</th><th>Verdict</th></tr>${cs.map(c => `<tr><td>${esc(NAMES[c.construction] ?? c.construction)}</td><td>${c.tail === 'hi' ? 'top 10%' : 'bottom 10%'}</td><td>${ONAME[c.outcome]}</td><td class="${c.gate ? 'pass' : ''}">${sg(c.beta_sd, 3)}</td><td class="${c.gate ? 'pass' : ''}">${sg(c.t)}</td><td>${[c.discover_beta, c.validate_beta, c.test_beta].map(v => sg(v)).join(' / ')}</td><td>${c.placebo_t95.toFixed(2)}</td><td>${c.verdict_cell === 'validated' ? '<span class="pass">validated</span>' : `<span class="mut">${c.verdict_cell}</span>`}</td></tr>`).join('')}</table></div>`;
+}
+
+function render(S) {
+  const vd = S.verdicts; $('#chips').outerHTML = Object.entries(vd).map(([k, v]) => `<span class="chip ${v === 'VALIDATED' ? 'ok' : v === 'NULL' ? 'mut' : 'warn'}">${k} ${v.toLowerCase()}</span>`).join('');
+  $('#toc').innerHTML = [['A', 'Brownian scaling'], ['B', 'Integrals'], ['C', 'Second derivatives'], ['D', 'Garin’s intraday rule'], ['E', 'VX futures']].map(([k, l]) => `<a href="#p${k}">${k} · ${l}</a>`).join('');
+  let h = '';
+
+  // ── A ──
+  const A = S.A, kN = A.kappa.NDX, kV = A.kappa.VIX, J = A.jordan;
+  h += sec('pA', 'Part A · Brownian motion', 'Is the "priced-in move" (IV · √Δt) right?', vd.A, `
+    <p>If prices move like Brownian motion, the expected size of a move over Δt grows with √Δt, and an implied volatility (VXN for the Nasdaq, VVIX for the VIX) gives that size directly. The bars show <b>realised ÷ priced</b>: 1.00 means the option market priced the move exactly.</p>
+    ${legend([['var(--b2)', 'Nasdaq move ÷ VXN·√Δt'], ['var(--b3)', 'VIX move ÷ VVIX·√Δt']])}
+    ${bars([1, 5, 10, 20].map(hh => ({ label: `${hh} day${hh > 1 ? 's' : ''}`, bars: [
+      { key: 'Nasdaq', value: kN.find(x => x.h === hh).v, lo: kN.find(x => x.h === hh).lo, hi: kN.find(x => x.h === hh).hi, color: 'var(--b2)' },
+      { key: 'VIX', value: kV.find(x => x.h === hh).v, lo: kV.find(x => x.h === hh).lo, hi: kV.find(x => x.h === hh).hi, color: 'var(--b3)' }] })), { ref: 1, fmt: v => v.toFixed(2), min: 0.6, max: 1.25 })}
+    <p><b>Nasdaq:</b> moves come in at about ${kN[0].v.toFixed(2)}× what VXN prices, at every horizon. The √Δt scaling holds; VXN simply carries a premium of about ${Math.round((1 / kN[0].v - 1) * 100)}% (the variance risk premium).</p>
+    <p><b>VIX:</b> it does <b>not</b> behave like Brownian motion. VVIX·√Δt <b>underprices</b> one-day VIX moves (×${kV[0].v.toFixed(2)}) and <b>overprices</b> 20-day moves (×${kV[3].v.toFixed(2)}), because the VIX snaps back toward its average. Over 20 days the VIX's variance is only ${(A.vr.VIX.find(x => x.h === 20).v).toFixed(2)}× what √Δt scaling of its daily variance implies (Nasdaq ${(A.vr.NDX.find(x => x.h === 20).v).toFixed(2)}×).</p>
+    <h3>Jordan's card: R = VVIX / VXN</h3>
+    <p>The realised "% VIX move per 1% Nasdaq move" (the slope over 20 sessions) has a median of ${J.median_abs_beta.toFixed(2)}; VVIX/VXN has a median of ${J.median_VVIX_over_VXN.toFixed(2)}. The card is right <b>on average</b> (realised ÷ card = ${J.median_ratio.toFixed(2)}), but only because two errors cancel: the card leaves out the correlation (median |ρ| ${J.median_abs_rho.toFixed(2)}), while VVIX underprices daily VIX moves and VXN overprices daily Nasdaq moves. How well it fits depends on how tightly the two are moving together:</p>
+    ${bars(Object.entries(J.by_rho_quintile).map(([q, v]) => ({ label: ['loosest', '2', '3', '4', 'tightest'][+q], sub: 'VIX–Nasdaq link', bars: [{ key: 'realised ÷ card', value: v, color: 'var(--b2)' }] })), { ref: 1, fmt: v => v.toFixed(2), height: 220, min: 0.4, max: 1.6 })}
+    <p class="note"><b>Practical read:</b> when VIX and Nasdaq are moving loosely, a 1% Nasdaq move comes with about ${(J.by_rho_quintile['0']).toFixed(1)}× the card's VIX move; when they're locked together, ${(J.by_rho_quintile['4']).toFixed(1)}×. Use the realised slope (C.OG's R, now on Atlas) rather than VVIX/VXN when you need the actual number. Context only: no prediction is claimed here.</p>`);
+
+  // ── B ──
+  h += sec('pB', 'Part B · Integration', 'Does "what has accumulated" against "what was priced" tell you anything?', vd.B, `
+    <p>Three integrals, each at its top and bottom 10% of the past year, against what came next (Nasdaq 5 and 20 days, VIX 20 days, range vs implied):</p>
+    <p><b>Nasdaq VRP:</b> VXN² minus the sum of squared daily Nasdaq moves over 20 days (priced variance minus accumulated realised variance). <b>VIX VRP:</b> the same for the VIX with VVIX. <b>Accumulated unexplained fear:</b> the running sum, over 20 days, of the part of each VIX move the Nasdaq's move did not explain.</p>
+    ${cellTable(S.B.cells)}
+    <p class="note">${S.B.cells.some(c => c.gate) ? '' : '<b>Nothing passes.</b> The closest are VRP extremes reading the VIX itself (a high Nasdaq VRP before VIX falls; a low VIX VRP before calmer ranges), which are the same vol-reverting behaviour Part A shows, and none clears the multiple-test bar. The accumulated unexplained fear adds nothing beyond the ratio result already on Atlas.'} Effects are in SD of the outcome; "Periods" is 2009–15 / 2016–20 / 2021–26. A cell passes only with the Holm correction, the same sign in all three periods, and a t above 95% of shuffled-signal fakes.</p>`);
+
+  // ── C ──
+  const pass = S.C.cells.filter(c => c.gate), rb = S.C.robust;
+  h += sec('pC', 'Part C · Differentiation', 'Second derivatives: d²R/dt², and dR/dt of the implied ratio', vd.C, `
+    ${pass.length ? `<p><b>One result:</b> when the implied ratio VVIX/VXN has just risen fast (top 10% of its 5-day change: the option market is suddenly pricing the VIX's own swings up relative to the Nasdaq's), <b>the Nasdaq has been higher over the next 20 sessions</b>.</p>
+    <div class="grid2">
+      <div class="panel"><h4>Average next-20-session Nasdaq move</h4>${bars([{ label: 'All days', bars: [{ key: 'all', value: rb.flag_days.all_mean_pct, color: 'var(--b1)' }] }, { label: 'After a flag', bars: [{ key: 'flagged', value: rb.flag_days.mean_pct, color: 'var(--b3)' }] }], { fmt: v => sg(v, 1) + '%', height: 200 })}</div>
+      <div class="panel"><h4>Share of times the Nasdaq was higher</h4>${bars([{ label: 'All days', bars: [{ key: 'all', value: rb.flag_days.all_up * 100, color: 'var(--b1)' }] }, { label: 'After a flag', bars: [{ key: 'flagged', value: rb.flag_days.up_share * 100, color: 'var(--b3)' }] }], { fmt: v => Math.round(v) + '%', height: 200, min: 0, max: 100 })}</div>
+    </div>
+    <p>${rb.flag_days.n} flagged days: Nasdaq averaged <b>${sg(rb.flag_days.mean_pct)}%</b> over the next 20 sessions, higher ${Math.round(rb.flag_days.up_share * 100)}% of the time, against ${sg(rb.flag_days.all_mean_pct)}% and ${Math.round(rb.flag_days.all_up * 100)}% on all days. Beyond the VIX state: ${sg(pass[0].beta_sd, 3)} SD, t ${pass[0].t.toFixed(2)}, the same sign in all three periods (${[pass[0].discover_beta, pass[0].validate_beta, pass[0].test_beta].map(v => sg(v)).join(' / ')}).</p>
+    <p class="note"><b>Why research-only:</b> it fails the stricter family-wide correction (46 tests); with every extra control (Nasdaq and VIX recent moves, the dR/dt and ratio flags) it falls to ${sg(rb.checks['all of the above'].beta, 3)} SD, t ${rb.checks['all of the above'].t.toFixed(2)}, and dropping single years leaves t ${rb.leave_one_year_out_t.min.toFixed(1)}–${rb.leave_one_year_out_t.max.toFixed(1)}. It overlaps C.OG's own dR/dt signal on only ${Math.round(rb.overlap_with_dRdt_bottom * 100)}% of days, so it's a separate reading, and it is driven mostly by the VVIX rising (t ${rb.leg_controls['VVIX 5d change only'].t.toFixed(2)} even after controlling for that) more than by VXN falling.</p>` : '<p>Nothing passes.</p>'}
+    <p><b>d²R/dt²</b> (how fast C.OG's dR/dt is itself changing) adds nothing beyond dR/dt: as expected, a second difference of a noisy slope is mostly noise.</p>
+    ${cellTable(S.C.cells)}`);
+
+  // ── D ──
+  const D = S.D, rows = ['ES · Down since 10:00', 'ES · Up since 10:00', 'NQ · Down since 10:00', 'NQ · Up since 10:00'];
+  const panel = (src, idx) => bars(['Down since 10:00', 'Up since 10:00'].map(dt => { const r = src[`${idx} · ${dt}`] ?? {}; return { label: dt, sub: r.years_same_way ? `same way ${r.years_same_way} years` : '', bars: ['barely', 'middle', 'hard'].map(b => ({ key: b, value: r[b], color: COL[b] })) }; }), { height: 230, min: -0.15, max: 0.3 });
+  const dc = Object.fromEntries(D.cells.map(c => [c.cell, c]));
+  h += sec('pD', 'Part D · Garin’s rule, out of sample', '"When VIX reacts hard, ES leans up afterwards": does it hold after 2020?', vd.D, `
+    <p>Garin measured, each hour from 11:00 to 16:00 ET, how much the VIX had moved per 1% of index movement since 10:00 (sign-adjusted, so bigger = VIX reacting harder), sorted the readings into thirds, and measured what the index did from that hour to 16:55 in units of its normal move. His sample was 2016–2020. We rebuilt his method, cut the thirds on 2016–2020 exactly as he did, and applied them unchanged to <b>2021 → Aug 2026</b>, years he never used.</p>
+    ${legend([['var(--b1)', 'VIX barely reacting'], ['var(--b2)', 'Middle'], ['var(--b3)', 'VIX reacting hard']])}
+    <div class="grid2">
+      <div class="panel"><h4>ES · Garin, 2016–2020</h4><div class="tag">his numbers</div>${panel(D.garin, 'ES')}</div>
+      <div class="panel"><h4>ES · our rebuild, 2016–2020</h4><div class="tag">${(() => { const g = D.garin['ES · Up since 10:00'], r = D.repro['ES · Up since 10:00'], g2 = D.garin['ES · Down since 10:00'], r2 = D.repro['ES · Down since 10:00']; return Math.sign(g.hard - g.barely) === Math.sign(r.hard - r.barely) && Math.sign(g2.hard - g2.barely) === Math.sign(r2.hard - r2.barely) ? 'reproduction matches' : 'does not match his'; })()}</div>${panel(D.repro, 'ES')}</div>
+      <div class="panel"><h4>ES · out of sample, 2021–2026</h4><div class="tag">${dc['ES-down']?.pass && dc['ES-up']?.pass ? 'holds' : 'the test'}</div>${panel(D.oos, 'ES')}</div>
+      <div class="panel"><h4>NQ · out of sample, 2021–2026</h4><div class="tag">he found no NQ pattern</div>${panel(D.oos, 'NQ')}</div>
+    </div>
+    <div class="xs" style="margin-top:10px"><table><tr><th>Hard − Barely (normal moves)</th><th>Garin 2016–20</th><th>Rebuild 2016–20</th><th>2021–26</th><th>95% interval</th><th>One-sided p</th><th>Years positive</th><th>Passes</th></tr>
+      ${D.cells.map(c => { const key = `${c.cell.slice(0, 2)} · ${c.cell.endsWith('down') ? 'Down' : 'Up'} since 10:00`, g = D.garin[key], r = D.repro[key]; return `<tr><td>${key}</td><td>${sg(g.hard - g.barely, 3)}</td><td>${sg(r.hard - r.barely, 3)}</td><td class="${c.pass ? 'pass' : ''}">${sg(c.diff, 3)}</td><td>${sg(c.ci_lo, 3)} to ${sg(c.ci_hi, 3)}</td><td>${c.p_one_sided.toFixed(3)}</td><td>${c.years_positive}/${c.n_years}</td><td>${c.pass ? '<span class="pass">yes</span>' : '<span class="mut">no</span>'}</td></tr>`; }).join('')}</table></div>
+    <p id="dtext"></p>
+    <h3>Why our rebuild disagrees with his own years</h3>
+    <p>Before reading 2021–2026, the rule was to check that our code gives his 2016–2020 numbers. It doesn't: on ES the "VIX reacting hard" third did slightly <b>worse</b> than the "barely" third, where his did better. We tried the other plausible readings of his description, on 2016–2020 only:</p>
+    <div class="xs"><table><tr><th>Reading of his method (2016–2020)</th><th>ES-down Hard − Barely</th><th>ES-up Hard − Barely</th></tr>${Object.entries(D.variants).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="${v['ES-down'] > 0 ? 'pos' : 'neg'}">${sg(v['ES-down'], 3)}</td><td class="${v['ES-up'] > 0 ? 'pos' : 'neg'}">${sg(v['ES-up'], 3)}</td></tr>`).join('')}</table></div>
+    <p>None gives his positive lean, so the gap is in the data or the code (ES futures vs our CFDs, the VIX feed and bar timing, how a "normal move" is scaled, or something in the code), not in the years. <b>The useful next step is his code</b>: run it on the same data and the difference will show up.</p>
+    <p class="note"><b>Notes.</b> ES and NQ here are the OANDA S&amp;P 500 and Nasdaq-100 CFDs (they track the futures intraday); VIX is 5-minute CBOE data from Interactive Brokers. ${Math.round(D.tiny_share * 1000) / 10}% of readings were skipped because the index had moved less than 0.01% since 10:00 (the ratio is undefined). The power check, run on 2016–2020 only before the test years were opened, showed this design reliably detects a Hard − Barely gap of about 0.15–0.2 normal moves, larger than Garin's own in-sample 0.10–0.12, so a miss here is "not proven", not "disproven".</p>`);
+
+  // ── E ──
+  const E = S.E, ra = E.cells.find(c => c.construction === 'R_a'), rbb = E.cells.find(c => c.construction === 'R_b'), ru = E.rule;
+  h += sec('pE', 'Part E · Garin’s tradeability point', 'Does the VIX give-back survive on VX futures?', vd.E, `
+    <p>The earlier result: when the VIX (or VVIX) has been moving far more than the Nasdaq (top 10% of its past year), the VIX has given back about 7% over the next month. Garin's point: you can't trade spot VIX, and futures already price some of the fall. So we held the actual VX future (the nearest contract with at least 35 days left, never rolled) for the same 20 sessions.</p>
+    ${legend([['var(--b2)', 'Spot VIX, same dates'], ['var(--b3)', 'VX future you could hold']])}
+    ${bars([['VVIX ratio top 10%', ra], ['VIX ratio top 10%', rbb]].map(([l, c]) => ({ label: l, sub: `beyond the VIX state, t ${c.t.toFixed(2)}`, bars: [{ key: 'spot', value: c.spot_pct_effect, color: 'var(--b2)' }, { key: 'future', value: c.pct_effect, color: 'var(--b3)' }] })), { fmt: v => sg(v, 1) + '%', height: 240 })}
+    <p><b>It survives, at about 60% of the spot effect.</b> Beyond what the VIX's own state predicts, the future fell ${sg(ra.pct_effect, 1)}% (VVIX ratio) and ${sg(rbb.pct_effect, 1)}% (VIX ratio) over 20 sessions, against ${sg(ra.spot_pct_effect, 1)}% and ${sg(rbb.spot_pct_effect, 1)}% for spot on the same dates. Both pass the registered test (all three periods 2013–16 / 2017–20 / 2021–26 negative, above the shuffled-signal fakes), and both hold when each year is dropped in turn and when the Feb-2018 and Mar-2020 vol shocks are excluded. Raw: the future averaged ${sg(ra.raw_flag_mean_vx20_pct, 1)}% after a flag against ${sg(ra.raw_all_mean_vx20_pct, 1)}% on all days (the usual contango slide).</p>
+    <p><b>A simple rule</b> (short one VX future on a flag, hold 20 sessions, no overlap, 0.10 points round-trip cost): ${ru.n} trades, average <b>${sg(ru.mean_net_pct, 1)}%</b> of the entry price, ${Math.round(ru.win_share * 100)}% winners, best ${sg(ru.best_pct, 1)}%, <b>worst ${sg(ru.worst_pct, 1)}%</b>. Shorting VX every day earns ${sg(E.unconditional.mean_short_vx20_net_pct, 1)}% per 20 sessions anyway, so the flag roughly doubles it, but the tail is brutal. This is a description, not a tested strategy: sizing and a stop need their own pre-registration.</p>
+    <p class="note">Research-only: t ${ra.t.toFixed(2)} and ${rbb.t.toFixed(2)} are under the |t| ≥ 3 bar for anything live. ${E.n_sessions.toLocaleString()} sessions with a futures outcome, 2013-05 → 2026-08-21.</p>`);
+
+  h += `<div class="box"><div class="eyebrow">Where this lives</div><p>Pre-registration and amendments: <a href="forge/VIX_CALCULUS_PREREG.md">forge/VIX_CALCULUS_PREREG.md</a> · results write-up: <a href="analysis/output/vix-calculus/RESULTS.md">RESULTS.md</a> · scripts: <code>scripts/vix-calculus/</code> · Garin's original screenshots: <a href="education/friend-vix-ratio-intraday/NOTES.md">education/friend-vix-ratio-intraday/</a>. Verdicts use the repo's four words: VALIDATED, NULL, UNDERPOWERED, CONTEXT.</p></div>`;
+  $('#out').innerHTML = h;
+  const es = ['ES-down', 'ES-up'].map(k => dc[k]);
+  $('#dtext').innerHTML = es.every(c => c?.pass) ? `<b>It holds.</b> Both ES cells pass out of sample: a hard VIX reaction has been followed by a stronger rest-of-day ES move on down days and up days in 2021–2026 as well.`
+    : `<b>Not seen out of sample.</b> ${es.map(c => `${c.cell}: ${sg(c.diff, 3)} (${c.years_positive}/${c.n_years} years positive)`).join('; ')}. ${es.some(c => c.diff > 0) ? 'The lean keeps its sign where it is positive but is smaller than this design can confirm.' : 'All four cells are slightly negative in 2021–2026; none passes.'} By the registered rule that is UNDERPOWERED rather than NULL: the intervals are too wide to rule out a small lean.`;
+}
+fetch('analysis/output/vix-calculus/summary.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject(new Error(r.status))).then(render).catch(e => { $('#err').textContent = 'Could not load the results (' + e.message + ').'; });
+</script>
+</body>
+</html>
