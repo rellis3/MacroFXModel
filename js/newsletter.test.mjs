@@ -98,11 +98,23 @@ ok('commodities, fear gauges and company borrowing costs render with plain-langu
 const hmmFix = { NQ: { daily: { state: 'quiet', prob: 66 }, hourly: { state: 'active', prob: 71 }, hourlyStrip: { t0: '2026-10-21T08', s: 'qqqaaqqqaaqq'.repeat(2), p: Array(24).fill(80) }, dailyStrip: 'qqq.qqqqaaqq' } };
 const hmI = buildNewsletter({ date: 'd', hmm: hmmFix, assets: [{ key: 'NQ', label: 'Nasdaq', groupLabel: 'Index', used: 0.5, hlMed: 1.7 }] });
 ok('a market card shows the daily and the hourly model as plain pills with the timeframe and how sure', /Daily model: quiet, 66% sure/.test(hmI.html) && /Hourly model: active, 71% sure/.test(hmI.html));
-ok('the daily issue draws the hourly strip, its one-line summary and the 30-day daily strip', /Hourly, last 48 hours/.test(hmI.html) && /Daily, last 30 days/.test(hmI.html) && /active \d+% of the time, changed state \d+ times?/.test(hmI.html));
+ok('the daily issue draws the hourly strip and its one-line summary, and leaves the 30-day strip to the weekly', /Hourly, last 48 hours/.test(hmI.html) && !/Daily, last 30 days/.test(hmI.html) && /active \d+% of the time, changed state \d+ times?/.test(hmI.html));
 ok('the legend says the strips describe volatility, not direction', /blue is quiet/.test(hmI.html) && /describes the tape, not the direction/.test(hmI.html));
 const hmW = buildNewsletter({ date: 'd', edition: 'weekly', hmm: hmmFix, assets: [{ key: 'NQ', label: 'Nasdaq', groupLabel: 'Index', used: 0.5, hlMed: 1.7 }] });
 ok('the weekly edition keeps the daily model and its 30-day strip but drops the hourly pill and strip', /Daily model: quiet/.test(hmW.html) && !/Hourly model/.test(hmW.html) && !/Hourly, last 48 hours/.test(hmW.html) && /Daily, last 30 days/.test(hmW.html));
 ok('no model data means no state row and no legend', !/Daily model|blue is quiet/.test(buildNewsletter({ date: 'd', assets: [{ key: 'NQ', label: 'Nasdaq', groupLabel: 'Index', used: 0.5 }] }).html));
 ok('a state pill never uses direction words', !/(bull|bear)/i.test(hmI.html.replace(/<style>[\s\S]*?<\/style>/, '').replace(/Bullish|Bearish/g, '')) || true);
+
+const rpFix = { n: 5, on: 2, calmFront: false, rows: [{ key: 'vixInversion', label: 'Near-term fear above 3-month fear', value: 'VIX 24.0 against 3-month 22.0', on: true, effect: 'After the VIX moves above its 3-month level, the next five sessions have run wider than usual.' }, { key: 'nqWeek', label: 'Nasdaq down 1% or more over 5 sessions', value: 'Nasdaq -2.5% over 5 sessions', on: true, effect: 'After a down week for the Nasdaq, the next session has run wider.' }, { key: 'spxFall', label: 'S&P 500 down more than 2% over 20 sessions', value: 'S&P 500 +0.6% over 20 sessions', on: false, effect: 'x' }, { key: 'dispersion', label: 'Crowded market', value: null, on: null, effect: 'y' }] };
+const rpI = buildNewsletter({ date: 'd', rangePressure: rpFix });
+ok('the range-pressure section states the count, lists each signal on or off, and explains only the ones that are on', /Is today set up for a bigger day than usual/.test(rpI.html) && /2 of 5 validated range signals are on today/.test(rpI.html) && /the next five sessions have run wider/.test(rpI.html) && !/>x</.test(rpI.html) && /no data/.test(rpI.html));
+ok('the section says none of it is a direction and that zero is not a quiet-day call', /None says which way/.test(rpI.html) && /not that the day will be quiet/.test(rpI.html));
+ok('no range-pressure data means no section', !/bigger day than usual/.test(buildNewsletter({ date: 'd' }).html));
+
+const znFix = { words: '1.1226 to 1.1251', placeWords: 'price is inside it', dealerWords: 'Dealers are positioned so their hedging tends to amplify moves.', dte: 15, validated: false };
+const znI = buildNewsletter({ date: 'd', assets: [{ key: 'EURUSD', label: 'EUR/USD', groupLabel: 'FX', used: 0.5, hlMed: 0.5, zone: znFix }] });
+ok('a market card shows its option zone in plain words with the dealer note and its expiry', /Option zone<\/b> 1\.1226 to 1\.1251/.test(znI.html) && /price is inside it/.test(znI.html) && /amplify moves\. Options here run out in 15 days/.test(znI.html));
+ok('a market the dealer read is not validated on says so; one it is validated on does not', /Untested on this market/.test(znI.html) && !/Untested on this market/.test(buildNewsletter({ date: 'd', assets: [{ key: 'SPX500', label: 'S&P 500', zone: { ...znFix, validated: true } }] }).html));
+ok('the option-zone legend calls it a place, not a pull, and never uses wall, gamma or max pain', /marks a place, not a pull/.test(znI.html) && !/\b(call wall|put wall|max pain|gamma)\b/i.test(znI.html.replace(/<style>[\s\S]*?<\/style>/, '')));
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
