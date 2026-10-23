@@ -1,5 +1,5 @@
 // Tests for js/hmmHourly.js.   node js/hmmHourly.test.mjs
-import { barsToReturns, hourlyState, backfill, appendReading, tail, summarise, window_, backfillAsync, lastHour, barHour, MIN_BARS } from './hmmHourly.js';
+import { dirAt, barsToReturns, hourlyState, backfill, appendReading, tail, summarise, window_, backfillAsync, lastHour, barHour, MIN_BARS } from './hmmHourly.js';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
 
@@ -50,5 +50,12 @@ ok('the log keeps only its window and moves its start hour with it', big.pairs.X
 const sm = summarise([{ state: 'quiet', prob: 90 }, { state: 'active', prob: 70 }, { state: null }, { state: 'active', prob: 80 }, { state: 'quiet', prob: 60 }]);
 ok('the summary counts active hours and state changes over known hours only', sm.hours === 4 && sm.activeHours === 2 && sm.flips === 2 && sm.now.state === 'quiet');
 ok('an empty log summarises to nothing', summarise([]) === null && tail({ pairs: {} }, 'Y', 5).length === 0);
+
+{ const cs = [{ ms: 0, c: 1 }, { ms: 3.6e6, c: 1.1 }, { ms: 7.2e6, c: 1.0 }, { ms: 7.2e6 + 10 * 3.6e6, c: 1.2 }];
+  ok('dirAt says what the hour did: up, down, and unknown across a gap', dirAt(cs, 1) === 'u' && dirAt(cs, 2) === 'd' && dirAt(cs, 3) === '.' && dirAt(cs, 0) === '.');
+  const s2 = { pairs: {} }; appendReading(s2, 'X', '2026-10-21T08', 'active', 90, { dir: 'u' }); appendReading(s2, 'X', '2026-10-21T10', 'quiet', 80, { dir: 'd' });
+  ok('direction is kept one character per hour, with gaps unknown', s2.pairs.X.d === 'u.d' && s2.pairs.X.d.length === s2.pairs.X.s.length && window_(s2, 'X', 2).d === '.d');
+  const old = { pairs: { Y: { t0: '2026-10-21T08', s: 'qa', p: [90, 80] } } }; appendReading(old, 'Y', '2026-10-21T10', 'active', 70, { dir: 'd' });
+  ok('a log written before direction existed is padded, not broken', old.pairs.Y.d === '..d' && window_(old, 'Y', 3).d === '..d'); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

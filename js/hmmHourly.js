@@ -12,6 +12,7 @@
  *
  * STORE SHAPE (compact on purpose, the bill is egress):
  *   { v: 1, pairs: { 'EUR/USD': { t0: '2026-10-21T08', s: 'qqqaaq.q', p: [97, 95, 71, ...] } } }
+ *   plus d: one character per hour of what the hour's price DID (u up, d down, f flat, . unknown), kept so the strip can colour active hours green or red.
  *   one character per consecutive hour from t0: q quiet, a active, . unknown (no bar that hour: weekend, holiday, a missed run); p = percent sure.
  *
  * Pure: no fetch, no clock. Tested in js/hmmHourly.test.mjs.
@@ -37,6 +38,13 @@ export function barsToReturns(candles, { maxGapH = 4 } = {}) {
   return returns;
 }
 
+/** What the hour just completed DID: 'u' closed up, 'd' closed down, 'f' flat, '.' unknown (no previous bar close by). Past tense only; a description, never a forecast. */
+export function dirAt(candles, k) {
+  const a = candles[k - 1], b = candles[k];
+  if (!a || !b || !(a.c > 0) || !(b.c > 0) || (b.ms - a.ms) / 3.6e6 > 4) return '.';
+  return b.c > a.c ? 'u' : b.c < a.c ? 'd' : 'f';
+}
+
 /** The model's read at the LAST bar of `candles`. null when there is too little data or the fit fails. */
 export function hourlyState(candles) {
   const slice = candles.slice(-FIT_BARS);
@@ -53,7 +61,7 @@ export function backfill(candles, hours) {
   const out = [], n = candles.length;
   for (let k = Math.max(MIN_BARS, n - hours); k < n; k++) {
     const st = hourlyState(candles.slice(0, k + 1));
-    if (st) out.push({ hour: hourKey(candles[k].ms), state: st.state, prob: st.prob });
+    if (st) out.push({ hour: hourKey(candles[k].ms), state: st.state, prob: st.prob, dir: dirAt(candles, k) });
   }
   return out;
 }
@@ -63,7 +71,7 @@ export async function backfillAsync(candles, hours, { yieldEvery = 3 } = {}) {
   const out = [], n = candles.length; let i = 0;
   for (let k = Math.max(MIN_BARS, n - hours); k < n; k++) {
     const st = hourlyState(candles.slice(0, k + 1));
-    if (st) out.push({ hour: hourKey(candles[k].ms), state: st.state, prob: st.prob });
+    if (st) out.push({ hour: hourKey(candles[k].ms), state: st.state, prob: st.prob, dir: dirAt(candles, k) });
     if (++i % yieldEvery === 0) await new Promise(r => setImmediate(r));
   }
   return out;
@@ -76,21 +84,22 @@ export function lastHour(store, key) {
 export const barHour = ms => hourKey(ms);
 
 /** Add one reading to the store. Gaps between the last stored hour and this one are filled with '.', so the string stays one character per hour. */
-export function appendReading(store, key, hour, state, prob, { keep = KEEP_HOURS } = {}) {
+export function appendReading(store, key, hour, state, prob, { keep = KEEP_HOURS, dir = '.' } = {}) {
   store.pairs ??= {};
   const ch = state === 'quiet' ? 'q' : state === 'active' ? 'a' : '.', pv = ch === '.' ? 0 : Math.round(prob);
   const e = store.pairs[key];
-  if (!e) { store.pairs[key] = { t0: hour, s: ch, p: [pv] }; return store; }
+  if (!e) { store.pairs[key] = { t0: hour, s: ch, p: [pv], d: dir }; return store; }
+  if (typeof e.d !== 'string' || e.d.length !== e.s.length) e.d = '.'.repeat(e.s.length);   // logs written before direction was kept
   const have = hourMs(e.t0) + (e.s.length - 1) * 3.6e6, want = hourMs(hour);
   if (want <= have) {                                  // an hour already stored (a re-run): overwrite it, never duplicate
     const i = Math.round((want - hourMs(e.t0)) / 3.6e6);
-    if (i >= 0) { e.s = e.s.slice(0, i) + ch + e.s.slice(i + 1); e.p[i] = pv; }
+    if (i >= 0) { e.s = e.s.slice(0, i) + ch + e.s.slice(i + 1); e.p[i] = pv; e.d = e.d.slice(0, i) + dir + e.d.slice(i + 1); }
     return store;
   }
   const gap = Math.round((want - have) / 3.6e6) - 1;
-  if (gap > 0) { e.s += '.'.repeat(gap); e.p.push(...Array(gap).fill(0)); }
-  e.s += ch; e.p.push(pv);
-  if (e.s.length > keep) { const drop = e.s.length - keep; e.t0 = hourKey(hourMs(e.t0) + drop * 3.6e6); e.s = e.s.slice(drop); e.p = e.p.slice(drop); }
+  if (gap > 0) { e.s += '.'.repeat(gap); e.d += '.'.repeat(gap); e.p.push(...Array(gap).fill(0)); }
+  e.s += ch; e.d += dir; e.p.push(pv);
+  if (e.s.length > keep) { const drop = e.s.length - keep; e.t0 = hourKey(hourMs(e.t0) + drop * 3.6e6); e.s = e.s.slice(drop); e.d = e.d.slice(drop); e.p = e.p.slice(drop); }
   return store;
 }
 
@@ -115,5 +124,5 @@ export function summarise(rows) {
 export function window_(store, key, hours) {
   const e = store?.pairs?.[key]; if (!e) return null;
   const drop = Math.max(0, e.s.length - hours);
-  return { t0: hourKey(hourMs(e.t0) + drop * 3.6e6), s: e.s.slice(drop), p: e.p.slice(drop) };
+  return { t0: hourKey(hourMs(e.t0) + drop * 3.6e6), s: e.s.slice(drop), p: e.p.slice(drop), d: typeof e.d === 'string' && e.d.length === e.s.length ? e.d.slice(drop) : '.'.repeat(e.s.length - drop) };
 }

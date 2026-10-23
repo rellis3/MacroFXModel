@@ -1220,6 +1220,7 @@
   .pc-hmm{margin:5px 0 0;opacity:.95}
   .dr-hmm{margin-top:12px;padding-top:10px;border-top:1px dashed var(--border2)}
   .dr-hmm .stl{font-size:11px;color:var(--text3);margin:7px 0 3px}
+  .dr-hmm .stax,.dr-hmm .stlg{font-size:10.5px;color:var(--text3)}.dr-hmm .stax{display:flex;justify-content:space-between;margin-top:2px}.dr-hmm .stlg{margin:3px 0}.dr-hmm .stlg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin:0 3px 0 6px;vertical-align:-1px}.dr-hmm .stlg i:first-child{margin-left:0}
   .chain-g svg{display:block;min-width:1020px;width:100%;height:auto}
   .chain-g .gn{cursor:pointer}
   .chain-g .gn .chip{fill:var(--card2);stroke:var(--border2);stroke-width:1.2}
@@ -2221,7 +2222,7 @@ function hourlyChip(name) {
 // The last 24 hours as a thin strip under the card's chips.
 function hmmCardStrip(name) {
   const S = window.stateStripBrick, e = hmmHourly?.pairs?.[name]; if (!S || !e) return '';
-  const svg = S.hourlyStripSvg(e, 24, { bw: 4, bh: 6, titles: false }); return svg ? `<div class="pc-hmm" title="Hourly market state, last 24 hours: blue quiet, amber active, fainter = less sure">${svg}</div>` : '';
+  const svg = S.hourlyStripSvg(e, 24, { bw: 4, bh: 6, titles: false }); return svg ? `<div class="pc-hmm" title="Hourly market state, last 24 hours: blue quiet or choppy, green active and closed up, red active and closed down, amber active (direction not recorded), fainter = less sure">${svg}</div>` : '';
 }
 // The drawer's fuller view: both models as pills, 48 hours of strip, 30 days of daily strip, and what it does and does not say.
 async function fillDrHmm(name) {
@@ -2234,7 +2235,7 @@ async function fillDrHmm(name) {
   const hourly = sm ? pill('Hourly', sm.now, sm.nowProb) : '';
   if (!daily && !hourly && !ds) { host.innerHTML = ''; return; }
   host.innerHTML = `<div class="stl" style="margin-top:0"><b>Market state</b> <span class="muted">how volatile this market has been, not which way it will go</span></div><div style="margin:6px 0">${daily}${hourly}</div>`
-    + (e ? `<div class="stl">Hourly, last 48 hours</div>${S.hourlyStripSvg(e, 48, { bw: 6, bh: 10 })}<div class="stl">${esc0(S.summaryWords(sm, 48))}</div>` : '')
+    + (e ? `<div class="stl">Hourly, last 48 hours</div>${S.hourlyStripWithAxis(e, 48, { bw: 6, bh: 10 })}<div class="stl">${esc0(S.summaryWords(sm, 48))}</div>` : '')
     + (ds && /[qa]/.test(ds) ? `<div class="stl">Daily, last 30 days</div>${S.dailyStripSvg(ds, { bw: 10, bh: 10 })}` : '')
     + `<div class="stl">Blue is quiet, amber is active; fainter means the model was less sure; grey means no reading. A two-state model fitted on returns: the daily one suits longer trades, the hourly one suits the day. Descriptive only.</div>`;
 }

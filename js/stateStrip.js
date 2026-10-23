@@ -12,7 +12,7 @@
  *
  * Pure: no DOM, no clock. Tested in js/stateStrip.test.mjs.
  */
-export const COLOUR = { quiet: '#7fa8e6', active: '#e8a31a', none: '#cfd6e2' };
+export const COLOUR = { quiet: '#7fa8e6', active: '#e8a31a', up: '#2e9e6b', down: '#d4574a', none: '#cfd6e2' };
 const NAME = { q: 'quiet', a: 'active' };
 const hourStamp = (t0, i) => new Date(Date.parse(t0 + ':00:00Z') + i * 3.6e6).toISOString().slice(0, 13).replace('T', ' ') + ':00 UTC';
 
@@ -20,15 +20,15 @@ const hourStamp = (t0, i) => new Date(Date.parse(t0 + ':00:00Z') + i * 3.6e6).to
 export function lastHours(e, hours) {
   if (!e?.s) return [];
   const n = e.s.length, from = Math.max(0, n - hours);
-  return Array.from({ length: n - from }, (_, k) => ({ ch: e.s[from + k], p: e.p?.[from + k] ?? 0, at: hourStamp(e.t0, from + k) }));
+  return Array.from({ length: n - from }, (_, k) => ({ ch: e.s[from + k], p: e.p?.[from + k] ?? 0, d: e.d?.[from + k] ?? '.', at: hourStamp(e.t0, from + k) }));
 }
 
 /** Blocks as SVG. `cells` = [{ ch, p, at }]. Opacity follows how sure the model was (hourly only: pass p). */
 export function stripSvg(cells, { bw = 5, bh = 9, gap = 1, titles = true, label = '' } = {}) {
   if (!cells.length) return '';
   const w = cells.length * (bw + gap) - gap, rects = cells.map((c, i) => {
-    const col = c.ch === 'q' ? COLOUR.quiet : c.ch === 'a' ? COLOUR.active : COLOUR.none, op = c.ch === 'q' || c.ch === 'a' ? (c.p != null && c.p > 0 ? 0.4 + 0.6 * Math.min(100, c.p) / 100 : 1) : 0.7;
-    const tip = titles ? `<title>${c.at ?? ''} ${c.ch === 'q' || c.ch === 'a' ? NAME[c.ch] + (c.p ? ', ' + c.p + '% sure' : '') : 'no reading'}</title>` : '';
+    const col = c.ch === 'q' ? COLOUR.quiet : c.ch === 'a' ? (c.d === 'u' ? COLOUR.up : c.d === 'd' ? COLOUR.down : COLOUR.active) : COLOUR.none, op = c.ch === 'q' || c.ch === 'a' ? (c.p != null && c.p > 0 ? 0.4 + 0.6 * Math.min(100, c.p) / 100 : 1) : 0.7;
+    const tip = titles ? `<title>${c.at ?? ''} ${c.ch === 'q' || c.ch === 'a' ? (c.ch === 'a' && (c.d === 'u' || c.d === 'd') ? 'active, closed ' + (c.d === 'u' ? 'up' : 'down') : NAME[c.ch]) + (c.p ? ', ' + c.p + '% sure' : '') : 'no reading'}</title>` : '';
     return `<rect x="${i * (bw + gap)}" y="0" width="${bw}" height="${bh}" rx="1.2" fill="${col}" fill-opacity="${op.toFixed(2)}">${tip}</rect>`;
   }).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${bh}" width="${w}" height="${bh}" role="img" aria-label="${label || 'market state strip'}" style="display:block;max-width:100%">${rects}</svg>`;
@@ -51,3 +51,11 @@ export function summaryWords(sm, hours) {
 }
 /** The pill text. kind: 'Daily' | 'Hourly'. */
 export const pillWords = (kind, state, prob) => `${kind} model: ${state}${prob ? `, ${prob}% sure` : ''}`;
+
+/** The strip with an axis under it ("48h ago ... now") and the legend, so it reads on its own. Three colours: blue quiet or choppy, green active and closed up, red active and closed down. */
+export function hourlyStripWithAxis(e, hours = 48, opts = {}) {
+  const svg = hourlyStripSvg(e, hours, opts); if (!svg) return '';
+  const hasDir = lastHours(e, hours).some(c => c.d === 'u' || c.d === 'd');
+  return `${svg}<div class="stax"><span>${hours}h ago</span><span>now</span></div><div class="stlg"><i style="background:${COLOUR.quiet}"></i>quiet or choppy <i style="background:${hasDir ? COLOUR.up : COLOUR.active}"></i>${hasDir ? 'active, closed up' : 'active'} ${hasDir ? `<i style="background:${COLOUR.down}"></i>active, closed down ` : ''}<i style="background:${COLOUR.none}"></i>no reading</div>`;
+}
+export const hourlyLegendNote = 'The model only knows quiet or active. Green and red say which way the hour closed; they are history, not a forecast.';
