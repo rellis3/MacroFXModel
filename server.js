@@ -565,10 +565,18 @@ for (const [sig, code] of [['SIGTERM', 143], ['SIGINT', 130]]) {
   process.on(sig, () => {
     if (_svcShuttingDown) return;
     _svcShuttingDown = true;
-    console.log(`[service-stats] ${sig} — flushing before exit`);
-    const bail = setTimeout(() => process.exit(code), 4_000);
-    // also the KV write-time ledger the Data Map reads: with redeploys every few minutes its 30-min timer never fires
-    Promise.allSettled([svcStatsFlush(sig), kv.flushWriteTimes()]).finally(() => { clearTimeout(bail); process.exit(code); });
+    const finish = () => {
+      console.log(`[service-stats] ${sig} — flushing before exit`);
+      const bail = setTimeout(() => process.exit(code), 4_000);
+      // also the KV write-time ledger the Data Map reads: with redeploys every few minutes its 30-min timer never fires
+      Promise.allSettled([svcStatsFlush(sig), kv.flushWriteTimes()]).finally(() => { clearTimeout(bail); process.exit(code); });
+    };
+    // A brief being written by a slow model (minutes, and paid for) must not be thrown away by someone else's push. Wait for it, up to 9 minutes. This only helps
+    // if the host leaves the old process alive that long: on Railway that is the deployment draining time (RAILWAY_DEPLOYMENT_DRAINING_SECONDS).
+    if (typeof _morningBriefRunning !== 'undefined' && _morningBriefRunning) {
+      console.log(`[brief] ${sig} while a brief is being written: waiting up to 9 minutes for it before exiting`);
+      const t0 = Date.now(), iv = setInterval(() => { if (!_morningBriefRunning || Date.now() - t0 > 540_000) { clearInterval(iv); finish(); } }, 1000);
+    } else finish();
   });
 }
 
