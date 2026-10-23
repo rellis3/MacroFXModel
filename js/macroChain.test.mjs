@@ -127,5 +127,23 @@ console.log('[chainForPrompt]');
   ok('empty chain -> empty string', chainForPrompt(evaluateChain({})) === '');
 }
 
+
+// ── the seven chips added 2026-10-23 ──
+{
+  const v = delta => ({ delta, last: 1 }), byId = (links, id) => links.find(l => l.id === id);
+  ok('31 chips and 33 links, every link joins two known chips', Object.keys(CHAIN_NODES).length === 31 && CHAIN_LINKS.length === 33 && CHAIN_LINKS.every(l => CHAIN_NODES[l.from] && CHAIN_NODES[l.to]));
+  ok('every new chip has a plain-language label, a unit, a floor and an explanation', ['smh', 'xle', 'xlre', 'move', 'ccc', 'emdollar', 'emoas'].every(k => CHAIN_NODES[k] && CHAIN_NODES[k].label.length > 5 && ['pct', 'bp', 'pt'].includes(CHAIN_NODES[k].unit) && CHAIN_NODES[k].floor > 0 && CHAIN_NODES[k].what.length > 40));
+  const up = evaluateChain({ smh: v(-9.9), nq: v(-2.2), oil: v(4.4), xle: v(8.7), us10y: v(-17), xlre: v(3.4), hy: v(21), ccc: v(148), dxy: v(0.9), emdollar: v(1.1) });
+  ok('chips and the Nasdaq falling together is HOLDING, as the chain should show on a chip-led day', byId(up, 'smh-nq').verdict === 'holding');
+  ok('oil up and energy stocks up is holding; yields down and property stocks up is holding (opposite signs)', byId(up, 'oil-xle').verdict === 'holding' && byId(up, 'us10y-xlre').verdict === 'holding');
+  ok('junk and CCC spreads widening together is holding; CCC wider with the Nasdaq lower is holding; the dollar and EM currencies agree', byId(up, 'hy-ccc').verdict === 'holding' && byId(up, 'ccc-nq').verdict === 'holding' && byId(up, 'dxy-emdollar').verdict === 'holding');
+  const br = evaluateChain({ smh: v(-9.9), nq: v(3), oil: v(5), xle: v(-6), move: v(15), vix: v(-4) });
+  ok('chips down while the Nasdaq rises is BROKEN, with a reason that names the cause', byId(br, 'smh-nq').verdict === 'broken' && /other than the chip leaders/.test(byId(br, 'smh-nq').read));
+  ok('oil up but energy stocks down is broken; bond fear up but VIX down is broken', byId(br, 'oil-xle').verdict === 'broken' && byId(br, 'move-vix').verdict === 'broken');
+  ok('a small CCC move is quiet (floor 40bp), a 50bp one is judged', byId(evaluateChain({ hy: v(20), ccc: v(30) }), 'hy-ccc').verdict === 'quiet' && byId(evaluateChain({ hy: v(20), ccc: v(50) }), 'hy-ccc').verdict === 'holding');
+  ok('the CCC to Nasdaq link carries the same honesty as the junk one: credit does not lead (evidence id, and the words)', byId(CHAIN_LINKS.map(l => ({ id: l.id, evidence: l.evidence ?? [] })), 'ccc-nq').evidence.includes('credit-leads-equities') && /does not lead the Nasdaq/.test(CHAIN_LINKS.find(l => l.id === 'ccc-nq').holds));
+  ok('no link states a forecast (will rise, will fall, predicts)', CHAIN_LINKS.slice(24).every(l => !/\bwill (rise|fall|go|move)|predict|forecast/i.test([l.textbook, l.holds, l.broken.up, l.broken.down, l.punch?.holds, l.punch?.up, l.punch?.down].join(' '))));
+}
+
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

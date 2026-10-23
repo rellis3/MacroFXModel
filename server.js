@@ -173,7 +173,9 @@ import { compareForecastLines as _compareForecastLines } from './js/forecastDrif
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';
-import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';   // gilts, JGBs, bunds daily, for the chain's gap chips
+import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';
+import { parseBubaCsv as _parseBubaCsv } from './js/intlYields.js';
+import { YIELD_LEGS as _YL, YIELD_GROUP as _YL_GROUP, yieldMeta as _ylMeta, buildYieldLeg as _ylBuild, toColumns as _ylCols } from './js/yieldLegs.js';   // gilts, JGBs, bunds daily, for the chain's gap chips
 import { crackHistory as _crackHistory, crackContext as _crackContext } from './js/crackSpread.js';
 import { BAND_REACH_PARAMS as _BAND_REACH_PARAMS } from './js/bandReachParams.js';   // T7b: the band clock and the Asia conditioner, for the digest's board   // the 3-2-1 refining margin (MD files/CRACK_SPREAD.md)
 import { isBoeSeries as _isBoeSeries, fetchBoeSeries as _fetchBoeSeries } from './js/boeSeries.js';
@@ -4581,7 +4583,7 @@ app.get('/api/cog-chart/meta', (_req, res) => {
   try {
     const legs = _cogJson(path.join(_CC_DIR, 'legs_meta.json'));
     let archive = []; try { archive = _cogJson(path.join(_CC_DIR, 'archive.json')); } catch {}      // contracts held only in the 15-min TRADES / Schatz archives: listed on the page, not drawable
-    res.json({ ok: true, assets: Object.entries(_CC_ASSETS).map(([key, [oanda, group]]) => ({ key, oanda, group })), timeframes: Object.keys(_CC_TF), legs, archive });
+    res.json({ ok: true, assets: Object.entries(_CC_ASSETS).map(([key, [oanda, group]]) => ({ key, oanda, group })), timeframes: Object.keys(_CC_TF), legs: [...legs, ..._ylMeta(_ylAsOf)], archive });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 const _ccCandleCache = new Map();
@@ -4597,9 +4599,44 @@ app.get('/api/cog-chart/candles', async (req, res) => {
     _ccCandleCache.set(key, { at: Date.now(), v }); res.json(v);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── Yield legs for the chart page (js/yieldLegs.js): US and German government yields in %, beside the futures legs ──
+// The futures legs are PRICES; these are yields (FRED H.15 / Bundesbank par curve daily, OANDA bond CFDs for intraday, anchored to
+// each official close through a duration fitted on the data). Names start with Y_ and are served by an early branch of the leg
+// route below, so every existing leg name takes exactly the path it did before. Cached 15 min (CFD) / 6 h (official dailies).
+const _ylCache = new Map(), _ylAsOf = {}; let _ylDaily = { at: 0, v: {} };
+async function _ylOfficial(spec) {
+  if (Date.now() - _ylDaily.at > 6 * 3600_000) _ylDaily = { at: Date.now(), v: {} };
+  const k = `${spec.src}:${spec.id}`; if (_ylDaily.v[k]) return _ylDaily.v[k];
+  let rows;
+  if (spec.src === 'fred') rows = await _fredCsv(spec.id);
+  else {
+    const r = await fetch(`https://api.statistiken.bundesbank.de/rest/download/BBSIS/D.I.ZAR.ZI.EUR.S1311.B.A604.${spec.id}.R.A.A._Z._Z.A?format=csv&lang=en`, { headers: { 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, signal: AbortSignal.timeout(30_000) });
+    if (!r.ok) throw new Error(`Bundesbank ${spec.id} HTTP ${r.status}`);
+    rows = _parseBubaCsv(await r.text());
+  }
+  rows = rows.filter(o => o.date >= '2015-01-01');
+  _ylDaily.v[k] = rows; return rows;
+}
+async function _ylLeg(name) {
+  const hit = _ylCache.get(name); if (hit && Date.now() - hit.at < 15 * 60_000) return hit.v;
+  const s = _YL[name], official = await _ylOfficial(s.daily);
+  let m15 = [], m5 = [];
+  if (s.cfd && process.env.OANDA_KEY) {
+    const map = b => b.map(x => ({ t: x.time, o: x.open, h: x.high, l: x.low, c: x.close })), from = d => new Date(Date.now() - d * 86400e3).toISOString().slice(0, 10);
+    [m15, m5] = await Promise.all([fetchIntraday(s.cfd, 'M15', { from: from(180) }).then(map), fetchIntraday(s.cfd, 'M5', { from: from(30) }).then(map)]);
+  }
+  const L = _ylBuild(name, { official, m15, m5 }), all = L.h1.length ? L.h1 : L.m15;
+  const first = all.length ? new Date(all[0].t * 1000).toISOString() : null, last = L.m15.length ? L.m15[L.m15.length - 1] : null;
+  const asOf = last ? new Date(last.t * 1000).toISOString() : null; _ylAsOf[name] = { first, asOf };
+  const v = { ok: true, name, label: s.label, group: _YL_GROUP, side: s.side, kind: 'yield', period: L.mode === 'intraday' ? 'intraday, anchored to each official close' : 'daily official close',
+             source: s.cfd ? `${s.daily.src === 'fred' ? 'FRED' : 'Bundesbank'} ${s.daily.id} + OANDA ${s.cfd}` : `Bundesbank ${s.daily.id}`, convention: 'bar-open time; yield in %', first, staticAsOf: asOf,
+             liveAsOf: L.mode === 'intraday' ? asOf : null, segments: null, duration: L.duration, mode: L.mode, m5: _ylCols(L.m5), m15: _ylCols(L.m15), h1: _ylCols(L.h1) };
+  _ylCache.set(name, { at: Date.now(), v }); return v;
+}
 app.get('/api/cog-chart/leg', async (req, res) => {
   try {
     const name = String(req.query.name || '');
+    if (_YL[name]) { res.set('Cache-Control', 'no-store'); return res.json(await _ylLeg(name)); }      // yield legs (Y_*): their own path; nothing below changes
     if (!_ccLegNames().includes(name)) return res.status(400).json({ ok: false, error: 'unknown contract' });
     const base = _cogJson(path.join(_CC_DIR, `leg_${name}.json`)), live = await _ccLivePush();
     let add = live?.legs?.[base.liveFrom ?? name]?.m5;      // a stitched leg (I2 = rolling 2nd Euribor) takes the live push of the contract it is now, only from its roll on
@@ -5401,7 +5438,7 @@ NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/B
 
 If a MARKET FACTS block appears below, write one entry in "markets" for EVERY line in it, using only the facts on that line and the rest of this brief. Describe what happened, what in the facts explains it, and how stretched the day is. Do NOT predict or advise: never write expect, likely, should, will, leans, squeeze, extension, fade, target, or any call on where price goes next. \"expected\" is fine only for a published consensus figure.
 
-WRITE FOR A CURIOUS NON-SPECIALIST, NOT A QUANT. Short sentences, plain words, one idea each. Say "borrowing costs" or "bond yields", not "term premium"; "stress warnings", not "risk flags"; "prices usually move together", not "correlation". If you must use a market term, explain it in a few words the first time. Spell out any acronym once. Keep every field tight: the headline under 20 words, each driver explanation at most two sentences.
+WRITE FOR A CURIOUS NON-SPECIALIST, NOT A QUANT. Never use the desk\'s internal vocabulary or field names (no rateDiff, no "macro scorecard", "dimension", "composite", "baseline", "desk-watch", "axes"): say "economic score", "factor", "overall score", and describe a factor in words such as growth, inflation or interest rates. Short sentences, plain words, one idea each. Say "borrowing costs" or "bond yields", not "term premium"; "stress warnings", not "risk flags"; "prices usually move together", not "correlation". If you must use a market term, explain it in a few words the first time. Spell out any acronym once. Keep every field tight: the headline under 20 words, each driver explanation at most two sentences.
 
 === THE CHAIN — the textbook links in causal order, each judged on measured 20-day moves at BOTH ends (HOLDING = moved together as the textbook says; BROKEN = both moved, the wrong way round; QUIET = at least one end inside its noise floor, not judged) ===
 ${chainBlock}
@@ -6057,8 +6094,8 @@ Respond with ONLY valid JSON, no markdown:
   // brief away. Take the first balanced object; the trailing text is never wanted.
   const analysis = _firstJsonObject(clean);
   if (mode === 'intel' && Array.isArray(analysis?.markets)) {   // the model is told not to predict; this check does not rely on it obeying
-    const { readIsSafe } = await import('./js/newsletterRecord.js'), all = analysis.markets;
-    analysis.markets = all.filter(m => m && typeof m.key === 'string' && readIsSafe(m.read) && (m.watch == null || readIsSafe(String(m.watch))));
+    const { readIsSafe, plainRead } = await import('./js/newsletterRecord.js'), all = analysis.markets;
+    analysis.markets = all.filter(m => m && typeof m.key === 'string').map(m => ({ ...m, read: plainRead(m.read), watch: m.watch == null ? null : plainRead(String(m.watch)) })).filter(m => m.read && readIsSafe(m.read) && (m.watch == null || readIsSafe(m.watch)));
     if (analysis.markets.length < all.length) { analysis.marketsDropped = all.length - analysis.markets.length; console.warn(`[intel brief] dropped ${analysis.marketsDropped} market read(s) that predicted or advised`); }
   }
   // Which model actually answered (the router can fall back), so a page can say who wrote this and when the provider changed.
@@ -31145,6 +31182,39 @@ app.get('/api/calendar-ahead', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+
+// ── Chain extras: the history behind the chips added 2026-10-23 ──────────────────────────────────────────────────────────────
+// today.html loads its chain values from FRED and OANDA directly. Seven new chips (semiconductors, energy stocks, real estate, MOVE, CCC credit, the
+// emerging-market dollar and emerging-market credit) need series it does not hold. Five are already in the daily drill bundle; two come from FRED.
+// This returns just the last 70 observations of each as {date, value}, a few KB, so no page has to download the 770KB bundle for them (the bill is egress).
+const _chainExtra = { at: 0, data: null };
+app.get('/api/chain-extra', async (_req, res) => {
+  try {
+    if (!_chainExtra.data || Date.now() - _chainExtra.at > 6 * 3600e3) {
+      const series = {}, missing = [];
+      if (!_drillBundle.data) { try { await _refreshDrillBundle(); } catch (e) { console.warn('[chain-extra] drill bundle:', e.message); } }
+      const d = _drillBundle.data;
+      for (const k of ['smh', 'xle', 'xlre', 'move', 'ccc']) {
+        const a = d?.series?.[k]; let pts = [];
+        if (a) for (let i = a.length - 1; i >= 0 && pts.length < 70; i--) if (a[i] != null && Number.isFinite(a[i])) pts.unshift({ date: d.dates[i], value: +a[i].toFixed(4) });
+        if (pts.length < 25) {   // the daily bundle misses a series now and then (a Yahoo hiccup at the moment it was built): fetch it directly rather than leave the chip empty for a day
+          try { const m = await fetchYahooOHLC({ smh: 'SMH', xle: 'XLE', xlre: 'XLRE', move: '^MOVE' }[k] ?? k, Math.floor(Date.now() / 1000) - 140 * 86400); pts = [...m].map(([date, o]) => ({ date, value: +o.close.toFixed(4) })).slice(-70); }
+          catch (e) { console.warn(`[chain-extra] ${k} fallback:`, e.message); }
+        }
+        if (pts.length >= 25) series[k] = pts; else missing.push(k);
+      }
+      const fredKey = process.env.FRED_KEY, from = new Date(Date.now() - 140 * 864e5).toISOString().slice(0, 10);
+      for (const [k, id] of [['emdollar', 'DTWEXEMEGS'], ['emoas', 'BAMLEMCBPIOAS']]) {
+        try { if (!fredKey) throw new Error('FRED_KEY not set'); const m = await fetchFredObservations(id, from, fredKey); series[k] = [...m].map(([date, value]) => ({ date, value })).slice(-70); }
+        catch (e) { missing.push(k); console.warn(`[chain-extra] ${id}:`, e.message); }
+      }
+      if (Object.keys(series).length) { _chainExtra.data = { series, missing }; _chainExtra.at = missing.length ? Date.now() - 5.5 * 3600e3 : Date.now(); }   // anything missing: look again in 30 minutes, not 6 hours
+      else throw new Error('no chain-extra series available');
+    }
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ ok: true, at: new Date(_chainExtra.at).toISOString(), ..._chainExtra.data });
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
 
 // ── The week's schedules that are not data releases: big-company earnings, Treasury auctions, Fed speakers ──────────
 // Free public sources, no key, cached 6h each. Parsers live in js/marketCalendars.js and are tested there. These are SCHEDULES (when

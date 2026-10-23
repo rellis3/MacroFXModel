@@ -148,7 +148,9 @@ export function parseNasdaq(json, isoDate) {
       // headcount surprise is not comparable with a percentage one — read as not yet
       // printed, and Australia's employment report vanished from the panel. Printed and
       // scorable are two different things and this is the first of them.
-      released: String(r.actual ?? '').trim() !== '',
+      // Nasdaq sends "&nbsp;" (a space entity) for every event that has not happened yet. That used to count as an actual, so every future
+      // row read as RELEASED and the forward calendar filtered them all out (the weekly newsletter had nothing after this week).
+      released: String(r.actual ?? '').replace(/&nbsp;|&#160;|\u00a0/gi, '').trim() !== '',
       source: 'nasdaq',
     });
   }

@@ -30,6 +30,7 @@ export const RANGE_EFFECT = {
   pmi: { USDJPY: '+0.21 on the day (big surprises)' },
   'retail sales': { GBPUSD: '+0.11 on the day', AUDUSD: '+0.12 on the day' },
 };
+import { CHAIN_LAYOUT } from './macroChain.js';
 const FAMILY_RE = [['cpi', /\bcpi\b|consumer price|inflation rate/i], ['employment', /non-farm|nonfarm|payroll|unemployment|jobless|claims|employment change/i], ['gdp', /\bgdp\b/i], ['rate decision', /rate decision|cash rate|official bank rate|federal funds|interest rate|policy rate|refinancing/i], ['pmi', /\bpmi\b|ism /i], ['retail sales', /retail sales/i]];
 export const familyOf = event => FAMILY_RE.find(([, re]) => re.test(event ?? ''))?.[0] ?? null;
 
@@ -131,16 +132,11 @@ export const BANNER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 
 /** The chain of impact as a picture: the same grid and verdicts as the "The chain, today" graphic on today.html, redrawn as plain SVG
  *  (no page styles) so it prints and survives a forward. Green = the textbook link is holding, amber = both ends moved the wrong way
  *  round, grey dashed = an end is inside its noise floor. Boxes are opaque and sit on top of the lines. */
-export const CHAIN_POS = {   // [column, row]; mirrors today.html CHAIN_POS so the map is the same place in both
-  oil: [0, 0], bei: [1, 0], us10y: [2, 0], real: [3, 0], dxy: [4, 0], audusd: [5, 0],
-  usdcad: [0, 1], crack: [1, 1], us30y: [2, 1], funding: [3, 1], gold: [4, 1], usdjpy: [5, 1],
-  vix: [0, 2], hy: [1, 2], spx: [2, 2], nq: [3, 2], copper: [4, 2], btc: [5, 2],
-  giltgap: [0, 3], gbpusd: [1, 3], bundgap: [2, 3], eurusd: [3, 3], jgbgap: [4, 3], us2y: [5, 3],
-};
+export const CHAIN_POS = CHAIN_LAYOUT;   // the same grid today.html draws (js/macroChain.js)
 export function chainSvg(links) {
   const L = (links ?? []).filter(l => l.verdict !== 'unmeasured' && CHAIN_POS[l.a?.key] && CHAIN_POS[l.b?.key]);
   if (!L.length) return '';
-  const PX = 150, PY = 66, BW = 124, BH = 40, OX = 8, OY = 8, COLS = 6, ROWS = 4, W = OX * 2 + PX * (COLS - 1) + BW, H = OY * 2 + PY * (ROWS - 1) + BH;
+  const PX = 150, PY = 66, BW = 124, BH = 40, OX = 8, OY = 8, COLS = 6, ROWS = Math.max(...Object.values(CHAIN_POS).map(p => p[1])) + 1, W = OX * 2 + PX * (COLS - 1) + BW, H = OY * 2 + PY * (ROWS - 1) + BH;
   const cx = k => OX + CHAIN_POS[k][0] * PX + BW / 2, cy = k => OY + CHAIN_POS[k][1] * PY + BH / 2;
   const clipE = (x0, y0, x1, y1) => { const dx = x1 - x0, dy = y1 - y0, t = Math.min(dx ? (BW / 2 + 2) / Math.abs(dx) : Infinity, dy ? (BH / 2 + 2) / Math.abs(dy) : Infinity); return [x0 + dx * t, y0 + dy * t]; };
   const ends = {}, state = {};
@@ -181,7 +177,10 @@ function bars(rows, { max = 1, fmt = v => sg(v), wide = false } = {}) {
 const pctBars = rows => rows.map(r => `<div class="br p"><span class="bl">${esc(r.label)}</span><span class="bt"><i class="fill" style="left:0;width:${Math.max(0, Math.min(100, r.p))}%;background:${r.color ?? COLORS.blue}"></i></span><span class="bv">${esc(r.text ?? r.p + '%')}</span></div>`).join('');
 const sec = (title, kicker, body) => (body ? `<section><h2><small>${esc(kicker)}</small>${esc(title)}</h2>${body}</section>` : '');
 const pill = (t, cls = '') => `<span class="pill ${cls}">${esc(t)}</span>`;
-const para = arr => (arr ?? []).filter(Boolean).map(l => `<p>${esc(l)}</p>`).join('');
+const plainLine = l => String(l)
+  .replace(/(\d+) desk-watch conditions? (?:are|is) firing/i, (_, k) => `${k} watched market condition${k === '1' ? ' is' : 's are'} flashing`).replace(/desk-watch/gi, 'watched')
+  .replace(/The global axes are/i, 'The big-picture signals are').replace(/of its inputs agreeing/i, 'of its parts agreeing');
+const para = arr => (arr ?? []).filter(Boolean).map(l => `<p>${esc(plainLine(l))}</p>`).join('');
 
 /** The plumbing diagram: four stages joined by pipes, drawn as SVG. */
 function plumbingSvg(stages) {
@@ -237,7 +236,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{font:700 10px "Segoe
 ul.t{margin:0;padding-left:18px}ul.t li{margin:0 0 7px}
 .foot{margin-top:18px;border:2px solid ${COLORS.ink};border-radius:14px;padding:14px 16px;background:#fff;font-size:12px;line-height:1.55;color:${COLORS.text}}.foot h4{margin:0 0 6px;font:800 13px "Segoe UI",sans-serif;letter-spacing:.06em;color:${COLORS.ink}}.foot p{margin:0 0 7px}.foot .meta{color:${COLORS.muted};font:11px ui-monospace,Menlo,Consolas,monospace;margin-top:10px}
 @media (max-width:560px){.tiles{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.br{grid-template-columns:70px 1fr 104px}.br.p{grid-template-columns:96px 1fr 50px}}
-*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:12mm}@media print{body{background:#fff}.foot,.mast,.cc,.card2,.lk,tr,.tile{break-inside:avoid}h2,h3{break-after:avoid}.wrap{padding:0}}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:12mm}@media print{body{background:#fff}.foot,.mast,.cc,.cc2,.pc,.px,.rw2,.glance>div,.card2,.lk,tr,.tile,.tense>div{break-inside:avoid}h2,h3{break-after:avoid}.wrap{padding:0}}
 `;
 
 /**
@@ -275,7 +274,7 @@ export function buildNewsletter(n) {
 
   // What changed since the last issue: the reader's first question every day after the first.
   const since = n.since;
-  const sinceHtml = since ? sec(since.first ? 'This is the first saved issue' : `What changed since ${esc(since.from ?? 'the last issue')}`, 'Since last time', since.first ? `<p class="small muted">There is nothing to compare against yet. From the next issue this box lists new broken links, stress warnings switching on or off, backdrop changes and central-bank tone moves.</p>` : (since.items ?? []).length ? `<ul class="t">${since.items.slice(0, 8).map(i => `<li>${esc(i.text)}</li>`).join('')}</ul>` : `<p class="small muted">Nothing on the checklist changed: the same broken links, the same stress warnings, the same backdrop.</p>`) : '';
+  const sinceHtml = since ? sec(since.first ? 'No earlier issue to compare with yet' : `What changed since ${esc(since.from ?? 'the last issue')}`, 'Since last time', since.first ? `<p class="small muted">Changes are measured against the previous day's saved issue, and there isn't one yet. From the next day this box lists new broken links, stress warnings switching on or off, backdrop changes and central-bank tone moves.</p>` : (since.items ?? []).length ? `<ul class="t">${since.items.slice(0, 8).map(i => `<li>${esc(i.text)}</li>`).join('')}</ul>` : `<p class="small muted">Nothing on the checklist changed: the same broken links, the same stress warnings, the same backdrop.</p>`) : '';
 
   // How the last issue's one checkable claim, the size of the day, came out.
   const rec = n.record;
@@ -359,7 +358,7 @@ export function buildNewsletter(n) {
     else if (m && strMap[m[1]] != null && strMap[m[2]] != null) story = `${m[1]} ${sg(strMap[m[1]])}% and ${m[2]} ${sg(strMap[m[2]])}% against the other currencies today.`;
     if (!story && (r.d1 != null || r.d20 != null)) story = `${r.label} ${r.d1 != null ? 'moved ' + sg(r.d1) + '% today' : ''}${r.d1 != null && r.d20 != null ? ' and ' : ''}${r.d20 != null ? sg(r.d20, 1) + '% over 20 days' : ''}${r.used != null ? ', and has used ' + Math.round(r.used * 100) + '% of a normal day\'s range' : ''}.`;
     const ev = key ? evAll.find(e => (e.impact === 'high' || e.impact === 'medium') && (e.note?.pairs ?? []).includes(key)) : null;
-    const stretch = r.used == null ? '' : r.hl75Ratio != null && r.used >= r.hl75Ratio ? 'bigger than about 3 in 4 days' : r.used >= 1 ? 'past a typical day' : 'within a typical day';
+    const stretch = r.used == null ? '' : r.hl75Ratio != null && r.used >= r.hl75Ratio ? 'bigger than about 3 in 4 days' : Math.round(r.used * 100) > 100 ? 'past a typical day' : Math.round(r.used * 100) === 100 ? 'a typical day so far' : 'within a typical day';
     const chips = [r.watch ? 'watch: ' + r.watch : null, ...(r.chips ?? []), ev && !r.watch ? `next: ${ev.event}, ${ukTime(ev.ms)}` : null].filter(Boolean).slice(0, 3);
     return `<div class="pc"><div class="h">${assetIcon(key, r.label)}<div class="t"><b>${esc(r.label)}</b><small>${esc(r.groupLabel ?? (m ? 'FX' : ''))}${r.price ? ' · ' + esc(r.price) : ''}</small></div>${(r.spark ?? []).length > 2 ? sparkSvg(r.spark, (r.d20 ?? 0) >= 0 ? COLORS.green : COLORS.orange, 96, 32) : ''}</div>${r.d1 != null || r.d20 != null ? `<div class="mv">${r.d1 != null ? `Today <b class="${r.d1 >= 0 ? 'up' : 'dn'}">${sg(r.d1)}%</b>` : ''}${r.d1 != null && r.d20 != null ? ' · ' : ''}${r.d20 != null ? `20 days <b class="${r.d20 >= 0 ? 'up' : 'dn'}">${sg(r.d20, 1)}%</b>` : ''}</div>` : ''}${r.used != null ? `<div class="rb"><i style="width:${Math.min(100, r.used * 100 / 1.5)}%"></i><u></u></div><small class="muted">${Math.round(r.used * 100)}% of a normal day's range · ${stretch}</small>` : ''}${story ? `<p>${esc(story)}</p>` : ''}${chips.length ? `<div class="chips">${chips.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}</div>`;
   }).join('');

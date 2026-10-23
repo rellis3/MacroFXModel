@@ -249,7 +249,7 @@ function cardHtml(d) {
     <div class="top"><input type="color" data-k="color" value="${d.color}"><b>${esc(d.label)}</b>
       <label class="sm"><input type="checkbox" data-k="visible" ${d.visible ? 'checked' : ''}> show</label>
       <button class="btn" data-act="active" title="Make this the line that [ and ] step">select</button><button class="btn" data-act="del">&times;</button></div>
-    <div class="sm">${d.kind === 'spread' ? 'Spread = EUR leg - USD leg (the indicator logic)' : 'Single leg'}${[d.eur, d.usd, d.leg].some(n => n && LEGKIND(n) === 'price') ? ' - includes a bond future: it is a PRICE, rate conversion is off' : ''}</div>
+    <div class="sm">${d.kind === 'spread' ? 'Spread = EUR leg - USD leg (the indicator logic)' : 'Single leg'}${[d.eur, d.usd, d.leg].some(n => n && LEGKIND(n) === 'price') ? ' - includes a bond future: it is a PRICE, rate conversion is off' : ''}${[d.eur, d.usd, d.leg].some(n => n && LEGKIND(n) === 'yield') ? ' - yield legs are already in %, used as they are (no 100 - price)' : ''}${staleNote(d)}</div>
     ${legsHtml}
     <div class="grid2" style="margin-top:4px">
       <label>Data timeframe<select data-k="dataTf">${['chart', '5m', '15m', '1h', '4h'].map(x => `<option ${x === d.dataTf ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
@@ -295,7 +295,7 @@ $('cards').addEventListener('change', async e => {
   const id = +el.closest('.card').dataset.id, d = state.series.find(x => x.id === id);
   d[k] = el.type === 'checkbox' ? el.checked : el.type === 'number' ? (k === 'smooth' ? Math.max(1, +el.value | 0) : (k === 'shift' || k === 'fitLen' ? (+el.value | 0) : +el.value)) : el.value;
   if (k === 'mapMode' || k === 'color' || k === 'visible') { /* series scale changes need a rebuild */ }
-  if (['eur', 'usd', 'leg'].includes(k)) { if ([d.eur, d.usd, d.leg].some(n => n && LEGKIND(n) === 'price')) d.asRate = false; d.label = d.kind === 'spread' ? `${d.usd === 'SR3U6' && d.eur === 'IH7' ? 'C.OG line' : 'Spread'} (${d.usd} - ${d.eur})` : d.leg; await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); }
+  if (['eur', 'usd', 'leg'].includes(k)) { if ([d.eur, d.usd, d.leg].some(n => n && ['price', 'yield'].includes(LEGKIND(n)))) d.asRate = false; d.label = d.kind === 'spread' ? `${d.usd === 'SR3U6' && d.eur === 'IH7' ? 'C.OG line' : 'Spread'} (${d.usd} - ${d.eur})` : d.leg; await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); }
   state.active = id; if (k === 'mapMode') rebuildLines(); renderCardsSoon(); redraw(); rescale(); save();
 });
 function addSeries(kind) {
@@ -320,7 +320,20 @@ const PRESETS = {
   'C.OG line over price': () => { const d = cogDefault(1); d.mapMode = 'auto'; return { series: [d], nextId: 2, active: 1 }; },
   'C.OG line, rolling I2!': () => { const d = { ...cogDefault(1), eur: 'I2', label: 'C.OG line (SOFR Sep26 - rolling I2!)' }; return { series: [d], nextId: 2, active: 1 }; },
   'SOFR Dec26 - ESTR Dec26': () => { const d = { ...cogDefault(1), eur: 'ER3Z6', usd: 'SR3Z6', label: 'Spread (SR3Z6 - ER3Z6)' }; return { series: [d], nextId: 2, active: 1 }; },
+  // government bond YIELDS (js/yieldLegs.js), in bp on their own axis. The spread is EUR leg - USD leg, so US - DE needs invert on.
+  'US - DE 2y yield (bp)': () => ({ series: [yieldSpread(1, 'Y_DE2', 'Y_US2', true, 'US - DE 2y yield (bp)')], nextId: 2, active: 1 }),
+  'US - DE 10y yield (bp)': () => ({ series: [yieldSpread(1, 'Y_DE10', 'Y_US10', true, 'US - DE 10y yield (bp)')], nextId: 2, active: 1 }),
+  'US 2s10s (bp)': () => ({ series: [yieldSpread(1, 'Y_US10', 'Y_US2', false, 'US 10y - 2y (bp)')], nextId: 2, active: 1 }),
+  'DE 2s10s (bp)': () => ({ series: [yieldSpread(1, 'Y_DE10', 'Y_DE2', false, 'DE 10y - 2y (bp)')], nextId: 2, active: 1 }),
+  'US & DE 10y yields (%)': () => { const a = { ...cogDefault(1), kind: 'leg', leg: 'Y_US10', asRate: false, invert: false, inBps: false, scale: 1, offset: 0, mapMode: 'axis', label: 'US 10y yield %', color: COLORS[0] }; const b = { ...a, id: 2, leg: 'Y_DE10', label: 'DE 10y yield %', color: COLORS[1] }; return { series: [a, b], nextId: 3, active: 1 }; },
 };
+function yieldSpread(id, eur, usd, invert, label) { return { ...cogDefault(id), eur, usd, asRate: false, invert, inBps: true, smooth: 1, carry: true, mapMode: 'axis', scale: 1, offset: 0, label }; }
+// a leg whose data ends before the first candle draws nothing: say so on the card instead of leaving a blank chart
+function staleNote(d) {
+  const t0 = candles.length ? candles[0].t : null; if (t0 == null) return '';
+  const old = (d.kind === 'spread' ? [d.eur, d.usd] : [d.leg]).filter(n => { const L = legCache[n]; const b = L && (L.m15.length ? L.m15 : L.h1 || []); return b && b.length && b[b.length - 1].t < t0; });
+  return old.length ? ` - <b style="color:#f85149">${old.map(esc).join(', ')} ${old.length > 1 ? 'end' : 'ends'} before this chart window, so nothing is drawn: pick a live leg or a longer bar count</b>` : '';
+}
 $('presets').innerHTML = Object.keys(PRESETS).map(k => `<button class="btn" data-p="${esc(k)}">${esc(k)}</button>`).join('');
 $('presets').addEventListener('click', async e => { const k = e.target.dataset.p; if (!k) return; Object.assign(state, PRESETS[k]()); await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); rebuildLines(); renderCards(); redraw(true); save(); });
 $('btnReset').onclick = async () => { Object.assign(state, PRESETS['C.OG default'](), { asset: 'NAS100', tf: '15m', bars: 1500 }); await boot(); };

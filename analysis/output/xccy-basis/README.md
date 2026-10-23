@@ -1,25 +1,39 @@
-# Cross-currency basis (phase 1: EURUSD, GBPUSD)
+# Cross-currency basis (EURUSD, GBPUSD, USDJPY, USDCHF)
 
-Built 2026-10-22 by `scripts/xccy-basis/build.py`. This is a data build only: no test has been run on it yet.
+Built by `scripts/xccy-basis/build.py`: phase 1 (EUR, GBP) on 2026-10-22, phase 2 (JPY, CHF, plus the traded-minute fix) on 2026-10-23. This is a data build. Tests run on it are in the Evidence Book (`basis-stress-*`, `basis-yearend-premium`; those used the phase-1 EUR/GBP build).
 
-**What it is.** The premium non-US holders pay to swap EUR or GBP into dollars, backed out of covered interest parity using CME FX futures (NinjaTrader per-contract 1-minute archive, `analysis/output/nt8/contracts/6E|6B`) against OANDA spot at the same minutes (19:00–19:14 UTC, near the CME settle). Rate legs are overnight: SOFR (EFFR before 2018-04), €STR (EONIA − 8.5bp before 2019-10) and SONIA, from FRED. **Negative = dollars are scarce or expensive offshore.** The course (Currency Markets & Global Flows) calls this the dollar-funding stress gauge.
+**What it is.** The premium non-US holders pay to swap their currency into dollars, backed out of covered interest parity using CME FX futures (NinjaTrader per-contract 1-minute archive, `analysis/output/nt8/contracts/6E|6B|6J|6S`) against OANDA spot. Only minutes **with a futures trade** between 18:30 and 19:29 UTC are used, and the day value is the median. Overnight legs:
+- USD: SOFR (EFFR before 2018-04)
+- EUR: €STR (EONIA − 8.5bp before 2019-10)
+- GBP: SONIA (FRED)
+- JPY: TONA (Bank of Japan stat-search `FM01/STRDCLUCON`)
+- CHF: SARON (SNB data portal `snbgwdzid`)
+
+6J and 6S quote USD per JPY/CHF, so OANDA USDJPY/USDCHF spot is inverted. **Negative = dollars are scarce or expensive offshore.**
 
 | Series (feature store) | Use |
 |---|---|
-| `xccy_basis_{eur,gbp}_live` | The level known on the day. It carries expected policy moves, because overnight legs are held flat across a 25–95 day tenor. |
-| `xccy_basis_{eur,gbp}_realised` | The clean level: fixings compounded over the contract life. Known only after delivery, so research only. |
-| `xccy_basis_{eur,gbp}_dchg` | The **daily change at fixed rate legs**, same contract. Priced policy steps cancel out. Use this for "the basis moved 20–30bp in a day". |
+| `xccy_basis_{eur,gbp,jpy,chf}_live` | The level known on the day. It carries expected policy moves, because overnight legs are held flat across a 25–95 day tenor. |
+| `xccy_basis_{…}_realised` | The clean level: fixings compounded over the contract life. Known only after delivery, so research only. |
+| `xccy_basis_{…}_dchg` | The daily change at fixed rate legs, same contract. Priced policy steps cancel out. |
 
-**Checks** (`qa.json`):
-- Yearly median EUR: −49bp (2016), −31 (2017), −34 (2018), −12 (2019), −27 (2022), then about 0 by 2025–26. This matches the known history.
-- March 2020: live −113bp; realised minimum −146bp (EUR) and −99bp (GBP).
-- Daily change: SD 5.5bp (EUR) and 5.9bp (GBP); median absolute 2.4 / 2.9bp.
-- The largest days are real events: the Brexit vote, 2020-03-23, the 2017 year-end turn, and the eve of the June 2022 75bp hike.
+**Checks** (`qa.json`, after the traded-minute fix):
+
+| | EUR | GBP | JPY | CHF |
+|---|---|---|---|---|
+| Typical daily change (median abs, bp) | 1.7 | 2.1 | 2.6 | 2.5 |
+| March 2020 low (live, bp) | −110 | −87 | **−246** | −132 |
+| 2016 / 2022 / 2026 yearly median (bp) | −50 / −27 / +1 | −35 / −13 / +1 | −71 / −72 / −15 | −64 / −62 / −20 |
+
+JPY carries the widest and most persistent dollar premium (−72bp through 2022, still about −15bp), as the literature describes. EUR and GBP are about 0 now.
 
 **Data decisions.**
-- Contracts need at least 25 days to delivery. Forward points are only about 10 pips, so one futures tick (half a pip) is about 5bp at 25 days and 15–25bp at 10. Days in the 2–3 weeks before each roll are therefore missing (1,879 of about 2,170 trading days kept).
-- The rate legs use the **median of the last 5 fixings**, so one-day prints (September 2019 repo spike, quarter-ends) are not held flat across months.
-- **Feed fault removed:** 2020-10-19 → 2020-10-22, in both 6E and 6B. The futures−spot gap swung ±25 pips with flat rates, which is a timestamp misalignment. Nothing else is removed. A trailing "spike" flag is kept in `basis_daily.csv` for information only, because it also fires on genuine squeezes.
-- The data stops at 2026-08-19 (where local OANDA M1 ends). Sessions after 2026-08-21 are lockbox anyway.
+- At least 25 days to delivery, because one tick is a large share of 10–25 pips of forward points. The 2–3 weeks before each roll are missing.
+- Rate legs use the median of the last 5 fixings.
+- **Feed faults excluded:**
+  1. 2020-10-19 → 22, all pairs (futures−spot misalignment).
+  2. **CHF 2022-04-20 → 2022-05-31** (contract 6S_06-22). The futures−spot gap jumps between 5 and 25 pips day to day while intraday-consistent with aligned clocks; rates imply about 15. Cause unknown.
+- CHF is the noisiest pair because 6S trades thinly.
+- Data stops 2026-08-19. Sessions after 2026-08-21 are lockbox.
 
-**Not built yet (phase 2):** JPY and CHF (TONA and SARON are not on FRED; they need BoJ/SNB fetchers), and a live daily feed (it would need a CME futures settlement source on Railway, for example the QuikStrike capture's `future` column).
+**Not built:** a live daily feed. It needs a CME futures settlement source on Railway, for example the QuikStrike capture's `future` column, which is collected locally.

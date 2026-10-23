@@ -60,6 +60,14 @@ if exist ".chrome-profile\SingletonLock" (
 set RC=%ERRORLEVEL%
 echo [%date% %time%] finished with exit code %RC% >> "%LOGFILE%"
 
+REM --- rates implied vol (2026-10-22): SOFR / 2Y / 10Y / 10Y Ultra options, capture only ----
+REM Same browser, run straight after, never ingested (run_secondary.py --rates). Its exit code is
+REM logged but does NOT change this task's result: the commodity run above is what the task reports.
+REM Rates settlements are viewable only after 12:00am CT, which this 07:30 UK slot always is.
+set RATESLOG=logs\rates_%DSTAMP%.log
+"%PY%" run_secondary.py --rates --headless >> "%RATESLOG%" 2>&1
+echo [%date% %time%] rates capture finished with exit code %ERRORLEVEL% (see %RATESLOG%) >> "%LOGFILE%"
+
 echo.
 findstr /C:"capture " /C:"ingest " /C:"no pid yet" /C:"VERDICT" "%LOGFILE%"
 echo Full log: %~dp0%LOGFILE%
