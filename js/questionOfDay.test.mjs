@@ -1,6 +1,7 @@
 // Tests for js/questionOfDay.js and the bank behind it.   node js/questionOfDay.test.mjs
 import { questionFor } from './questionOfDay.js';
 import { QUESTIONS } from './questionBank.js';
+import { WEB_QUESTIONS } from './questionBankWeb.js';
 import { readFileSync } from 'node:fs';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -26,5 +27,15 @@ for (const q of QUESTIONS) {
   if (/[—–→()]/.test(`${q.question} ${q.clue} ${q.answer} ${q.why}`)) bad.push(`${q.id}: dash, arrow or bracket in the text`);
 }
 ok(`the real bank has ${QUESTIONS.length} questions, each with a quote found verbatim in its lesson`, QUESTIONS.length >= 40 && !bad.length, bad.slice(0, 5).join(' | '));
+// The web bank: sources are https pages (quotes were checked against the downloaded page when written), so here we check shape, uniqueness across both banks, and quote length.
+const wbad = [], allIds = new Set(QUESTIONS.map(q => q.id));
+for (const q of WEB_QUESTIONS) {
+  for (const k of ['id', 'topic', 'question', 'clue', 'answer', 'why', 'source', 'quote']) if (!String(q[k] ?? '').trim()) wbad.push(`${q.id}: empty ${k}`);
+  if (allIds.has(q.id)) wbad.push(`${q.id}: duplicate id`); allIds.add(q.id);
+  if (!/^https:\/\//.test(q.source) || q.web !== true) wbad.push(`${q.id}: source or web flag`);
+  if (String(q.quote).split(/\s+/).length >= 30) wbad.push(`${q.id}: quote too long`);
+  if (!/^Clue: /.test(q.clue) || /[—–→()]/.test(`${q.question} ${q.clue} ${q.answer} ${q.why}`)) wbad.push(`${q.id}: clue or punctuation`);
+}
+ok(`the web bank has ${WEB_QUESTIONS.length} questions, each with an https source, a short quote and a unique id`, WEB_QUESTIONS.length >= 40 && !wbad.length, wbad.slice(0, 5).join(' | '));
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

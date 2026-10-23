@@ -35,6 +35,7 @@ import { pressureWords } from './rangePressure.js';
 import { buildIdea } from './macroIdea.js';
 import { questionFor } from './questionOfDay.js';
 import { QUESTIONS } from './questionBank.js';
+import { WEB_QUESTIONS } from './questionBankWeb.js';
 import { fearWords, vixBetaWords, impliedRatioWords } from './fearVsNasdaq.js';
 import { hourlyStripSvg, hourlyStripWithAxis, hourlyLegendNote, dailyStripSvg, summarize, summaryWords, pillWords, COLOUR as STATE_COLOUR } from './stateStrip.js';
 const FAMILY_RE = [['cpi', /\bcpi\b|consumer price|inflation rate/i], ['employment', /non-farm|nonfarm|payroll|unemployment|jobless|claims|employment change/i], ['gdp', /\bgdp\b/i], ['rate decision', /rate decision|cash rate|official bank rate|federal funds|interest rate|policy rate|refinancing/i], ['pmi', /\bpmi\b|ism /i], ['retail sales', /retail sales/i]];
@@ -301,9 +302,9 @@ export function buildNewsletter(n) {
   const ideaHtml = idea ? sec('The idea of the day', 'Reasoning, not a trade', `<p style="margin:0 0 6px;font-weight:600">${esc(idea.headline)}</p>${idea.pattern ? `<p class="small" style="margin:0 0 8px"><b>Pattern:</b> ${esc(idea.pattern)}. When the cause moves and the price will not follow, the price is usually the better guide to what the market believes.</p>` : ''}${['view', 'timing', 'trade'].map(g => `<h3>${ideaGroups[g]}</h3>${idea.q.filter(x => x.g === g).map(x => `<p class="small" style="margin:4px 0"><b>${x.n}. ${esc(x.t)}</b> ${esc(x.body)}</p>`).join('')}`).join('')}<p class="small muted" style="margin-top:8px">This is a way of reading the day, built from measured moves, not a call to buy or sell. This desk's tests found direction calls close to a coin flip, so the size of moves is better evidenced than where they head. Where the desk has no data for a question, the answer says so.</p>`) : '';
 
   // ── Question of the day / week, from the desk's own lessons (js/questionBank.js, each answer quoted from its lesson). Today's question and clue, yesterday's answer. ──
-  const qod = /^\d{4}-\d{2}-\d{2}/.test(n.date ?? '') ? questionFor(QUESTIONS, String(n.date).slice(0, 10), { weekly }) : null;
+  const qod = /^\d{4}-\d{2}-\d{2}/.test(n.date ?? '') ? questionFor([...QUESTIONS, ...WEB_QUESTIONS], String(n.date).slice(0, 10), { weekly }) : null;
   const qWord = weekly ? 'week' : 'day', prevWord = weekly ? 'last week' : 'yesterday';
-  const qodHtml = qod ? sec(`Question of the ${qWord}`, 'From the lessons', `<div class="lesson"><p style="margin:0 0 6px;font-weight:600">${esc(qod.today.question)}</p><p class="small muted" style="margin:0">${esc(qod.today.clue)}</p></div>${qod.previous ? `<p class="small" style="margin:10px 0 2px"><b>The answer to ${prevWord}'s question:</b> ${esc(qod.previous.question)}</p><p class="small" style="margin:2px 0">${esc(qod.previous.answer)} <span class="muted">${esc(qod.previous.why)}</span></p>` : ''}<p class="small muted" style="margin-top:6px">Taken from the education lessons. Think it through before you read the answer.</p>`) : '';
+  const qodHtml = qod ? sec(`Question of the ${qWord}`, 'From the lessons', `<div class="lesson"><p style="margin:0 0 6px;font-weight:600">${esc(qod.today.question)}</p><p class="small muted" style="margin:0">${esc(qod.today.clue)}</p></div>${qod.previous ? `<p class="small" style="margin:10px 0 2px"><b>The answer to ${prevWord}'s question:</b> ${esc(qod.previous.question)}</p><p class="small" style="margin:2px 0">${esc(qod.previous.answer)} <span class="muted">${esc(qod.previous.why)}</span></p>` : ''}<p class="small muted" style="margin-top:6px">Taken from the education lessons and from central-bank and exchange education pages. Think it through before you read the answer.</p>`) : '';
 
   // What changed since the last issue: the reader's first question every day after the first.
   const since = n.since;
