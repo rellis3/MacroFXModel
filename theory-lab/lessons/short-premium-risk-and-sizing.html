@@ -625,14 +625,15 @@
       On 15 January 2015 the SNB discontinued the minimum rate "with immediate effect", stopped the foreign-currency purchases
       that enforced it, and cut the rate on sight deposits to &minus;0.75% (effective 22 January). It held a press
       conference at short notice. The franc surged: at one point on the day it was up about 30% against the euro, and
-      later EUR/CHF was down about 13%, near 1.04. The next day it was around 1.02. In the first minutes liquidity vanished, so stop-losses
+      later EUR/CHF was down about 13% to 14%, near 1.04 (the Federal Reserve's New York noon rate was about 1.04; on 16 January it was about 0.98). Wire reports called the extreme move "about 30%" for the franc; measured as the fall in EUR/CHF from 1.20 to a low near 0.85 it is about 29%. In the first minutes liquidity vanished, so stop-losses
       and other resting orders were often filled far from their levels.
     </p>
     <p style="margin-bottom:0">
       The damage was done by leverage on a gap. Alpari UK, a London retail broker, entered insolvency after client losses
       that exceeded their account equity were passed to the firm. Global Brokers NZ said it could not resume business. FXCM,
-      a large US retail broker, said in the days after that client losses could reach $225 million, according to reports, and took a $300 million
-      financing from Leucadia National on 16 January. The clients had been sized by margin. The market closed the gap in
+      a large US retail broker, said on 15 January that client losses had created negative balances owed to it of about $225 million and that it might be in breach of
+      regulatory capital requirements, and on 16 January it announced a $300 million
+      financing from Leucadia National. The clients had been sized by margin. The market closed the gap in
       minutes and the margin did not.
     </p>
   </div>
@@ -648,13 +649,13 @@
     </p>
     <div class="tl-math">\[ \text{loss} = 1{,}000{,}000 \times (1.15 - 1.04) = \text{CHF } 110{,}000 \qquad\text{and}\qquad 1{,}000{,}000 \times (1.15 - 0.85) = \text{CHF } 300{,}000 \]</div>
     <div class="tl-eq-break">
-      <div class="tl-eq-chip c1"><code>1.04</code><span>roughly where EUR/CHF stood later on the day (about 13% down)</span></div>
+      <div class="tl-eq-chip c1"><code>1.04</code><span>roughly where EUR/CHF stood later on the day (about 13% to 14% down)</span></div>
       <div class="tl-eq-chip c2"><code>0.85</code><span>roughly the extreme, about 30% down on a few screens</span></div>
       <div class="tl-eq-chip c3"><code>110×, 300×</code><span>the payout as a multiple of the CHF 1,000 premium</span></div>
     </div>
     <p>
       On a CHF 500,000 account that sold two of these (EUR 2,000,000 notional), the payout at 1.04 is CHF 220,000, which is 44% of
-      the account. At 0.85 it is CHF 600,000, more than the account. The settled level of the day, a 13% fall, sits between
+      the account. At 0.85 it is CHF 600,000, more than the account. The level later in the day, a fall of 13% to 14%, sits between
       the ladder's &minus;10% and &minus;20% columns. The extreme is beyond the grid, which is the reason to make the grid reach
       farther than anything in your sample, and to size the book on the extreme cell.
     </p>
@@ -718,7 +719,7 @@
   <p>
     Risk reports are also only as honest as the people who write them. In a 2022 case about an options fund called
     Structured Alpha, the SEC alleged that a modelled crash loss of about 42% in a risk report had been altered to about 4%, and said
-    the fund lost over $5 billion when volatility spiked in March 2020. Allianz Global Investors U.S. agreed in May 2022 to plead
+    investors lost over $5 billion when volatility spiked in March 2020. Allianz Global Investors U.S. agreed in May 2022 to plead
     guilty to one count of securities fraud. Those are allegations and a plea about one case. The general lesson stands:
     the scenario grid has to be written by the person who bears the loss, and it has to be allowed to show a bad number.
   </p>
@@ -730,8 +731,8 @@
     <p>
       Inverse-volatility exchange-traded products such as XIV and SVXY aim to return the opposite (&minus;1&times;) of the
       daily return of an index of short-dated VIX futures. An exact &minus;1&times; daily product cannot lose more than 100%, but it
-      can be terminated well before: Credit Suisse's terms for XIV let it redeem the notes early if the indicative value
-      fell by 80% or more in a day, and that happened on 5 February 2018, when the note lost about 96% of its value and was paid out at about
+      can be terminated well before: Credit Suisse's terms for XIV let it redeem the notes early if the intraday indicative value
+      fell to 20% or less of the previous day's closing value (a fall of 80% or more), and that happened on 5 February 2018, when the note lost about 96% of its value and was paid out at about
       $6. The issuer said it hedged by trading VIX futures, and an academic study of XIV and SVXY argues that the rebalancing of these
       products in futures fed a feedback loop that pushed futures higher. The lesson for sizing is the same as for options: the
       loss is the allocation times the move, and a holder who was right a week later was already out. (The VIX figures for that
@@ -792,7 +793,7 @@
       <li data-verdict="good">Put the floor-removed scenario into the grid: a fall of 15% to 30% in minutes, no fills in between. Cut the notional until that loss fits a small budget, and treat the long position as having no stop.<div class="tl-drill-why">This is the sizing rule applied to a can't-happen row. Divide the budget by the loss in the worst cell and round down. You give up income on the quiet days and keep the account on the day the market skips the stop.</div></li>
       <li data-verdict="ok">Keep the size but place stop-loss orders just below 1.20 on the long position.<div class="tl-drill-why">A stop is an order, not a guarantee. Once triggered it is filled at the next available price, and in a gap that can be far below the stop. It helps in an orderly decline, but it does not answer the sizing question for a jump, and it does nothing for the short puts.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Thursday 15 January 2015 the SNB discontinued the minimum rate "with immediate effect", stopped its foreign-currency purchases and cut the rate on sight deposits to &minus;0.75%. At one point on the day the franc was up about 30% against the euro, and EUR/CHF was later down about 13%, near 1.04. Alpari UK, a London retail broker, entered insolvency, Global Brokers NZ said it could not resume business, and FXCM took a $300 million financing from Leucadia National on 16 January. This drill is a simplified position built on documented events, not anyone's actual account.</p><p class="tl-drill-sources">Sources: <a href="https://www.bis.org/review/r150116a.htm">Thomas Jordan, "The rationale for discontinuing the minimum exchange rate and lowering interest rates", SNB press conference, 15 January 2015 (BIS central bankers' speeches)</a>; <a href="https://www.foxnews.com/world/swiss-francs-unprecedented-surge-causes-2-brokerage-firms-to-become-insolvent.amp">Fox News report, "Swiss franc's 'unprecedented' surge causes 2 brokerage firms to become insolvent", January 2015</a>; <a href="https://www.financemagnates.com/forex/brokers/breaking-leucadia-hands-fxcm-300-mln-life-line/">Finance Magnates, Leucadia financing of FXCM, 16 January 2015</a>.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Thursday 15 January 2015 the SNB discontinued the minimum rate "with immediate effect", stopped its foreign-currency purchases and cut the rate on sight deposits to &minus;0.75%. At one point on the day the franc was up about 30% against the euro, and EUR/CHF was later down about 13% to 14%, near 1.04. Alpari UK, a London retail broker, entered insolvency, Global Brokers NZ said it could not resume business, and FXCM, which said client losses had created negative balances of about $225 million, took a $300 million financing from Leucadia National on 16 January. This drill is a simplified position built on documented events, not anyone's actual account.</p><p class="tl-drill-sources">Sources: <a href="https://www.bis.org/review/r150116a.htm">Thomas Jordan, "The rationale for discontinuing the minimum exchange rate and lowering interest rates", SNB press conference, 15 January 2015 (BIS central bankers' speeches)</a>; <a href="https://www.foxnews.com/world/swiss-francs-unprecedented-surge-causes-2-brokerage-firms-to-become-insolvent.amp">Fox News report, "Swiss franc's 'unprecedented' surge causes 2 brokerage firms to become insolvent", January 2015</a>; <a href="https://www.financemagnates.com/forex/brokers/breaking-leucadia-hands-fxcm-300-mln-life-line/">Finance Magnates, Leucadia financing of FXCM, 16 January 2015</a>; <a href="https://mondovisione.com/media-and-resources/news/fxcm-comments-on-swiss-franc-movement-2015116/">FXCM, "FXCM Comments on Swiss Franc Movement", 15 January 2015</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

@@ -67,7 +67,7 @@
       <li>Nothing here is free. At model prices every leg is fair, so a structure changes <em>where</em> you win, not whether you have an edge. A short iron condor on 80/90/110/120 collects 1.49 for a worst case of 8.51: about a 75% model chance of profit, but a reward-to-risk of only 0.17 to 1.</li>
       <li>A long 100 straddle costs 7.97. Spot must finish more than 7.97 points (about 8.0%) away from 100 in three months to profit. The at-the-money straddle is roughly \(0.8\,S\sigma\sqrt{T}\), the market's one-line "expected move".</li>
       <li>Greeks add leg by leg. Straddles and strangles are long gamma and vega and pay theta. Condors, butterflies and credit spreads collect theta and are short gamma and vega. Before expiry a structure is worth far less than its expiry diagram: the 95/100/105 butterfly's best case is 4.03, but it is worth 0.38 halfway there with spot unchanged.</li>
-      <li><strong>Real-world episode:</strong> in January 1995 a Barings trader sold straddles on the Nikkei 225, a structure with no wings. The Kobe earthquake hit on 17 January. Losses eventually reached £827 million and Barings was insolvent by 26 February.</li>
+      <li><strong>Real-world episode:</strong> a Barings trader in Singapore built up a large book of short straddles on Nikkei 225 options through 1994, a structure with no wings. The Kobe earthquake hit on 17 January 1995. Losses on his unauthorised trading reached about £827 million by 27 February and Barings was in administration by 26 February.</li>
     </ul>
   </div>
 
@@ -133,7 +133,7 @@
       <p data-who="Trader">And the Greeks?</p>
       <p data-who="Quant">They add up, leg by leg. A straddle is long gamma, long vega, and pays time decay. A condor or a butterfly is the mirror image: it collects time decay and is short gamma and short vega. That is why one wants a big move and the other wants quiet.</p>
       <p data-who="Trader">Has this actually hurt anyone?</p>
-      <p data-who="Quant">Barings, January 1995. A trader sold straddles on the Nikkei: collect the premium, no wings. The Kobe earthquake hit on the seventeenth and the market moved. Losses eventually reached eight hundred and twenty-seven million pounds. A bought option on each side would have put a ceiling on the loss from that one structure.</p>
+      <p data-who="Quant">Barings, 1994 and 1995. A trader built up a big book of short straddles on Nikkei options: collect the premium, no wings. The Kobe earthquake hit on the seventeenth of January 1995 and the market moved. Losses on his unauthorised trading eventually reached about eight hundred and twenty-seven million pounds. A bought option on each side would have put a ceiling on the loss from that one structure.</p>
       <p data-who="Trader">One line to take away?</p>
       <p data-who="Quant">A structure is four bricks added up. Before you trade it, ask what you pay, what you can lose, where you break even, and what you sold to make it cheap.</p>
     </div>
@@ -729,23 +729,26 @@
   <h2>It actually happened: Barings, 1995</h2>
   <p>
     A structure with no wings has no limit on what it can lose, and the clearest historical illustration is a short
-    straddle. The facts below are as widely reported; the primary account is the official inquiry's report.
+    straddle. The facts below are as reported in the official inquiry and in later academic accounts of it.
   </p>
   <div class="tl-story" id="story-1">
     <div class="tl-story-label">It actually happened</div>
     <h3>Selling straddles on the Nikkei, with nothing to stop the loss</h3>
     <p>
-      Barings was a London merchant bank. In January 1995 one of its traders in Singapore, Nick Leeson, was running
-      positions on the Nikkei 225 index. On 16 January 1995 he sold a straddle, that is, both a call and a put at the
-      same strike: in effect a bet that the Japanese market would not move much. That collects a premium and has no wings. If
+      Barings was a London merchant bank. By 1995 one of its traders in Singapore, Nick Leeson, was running
+      large unauthorised positions on the Nikkei 225 index. From January 1994 he had built up a large series of short
+      straddles on Nikkei index options, that is, selling both a call and a put at the
+      same strike: in effect a bet that the Japanese market would not move much. That collects a premium and has no wings. (Some popular accounts date the trade to a single day, 16 January 1995; the inquiry-based record describes a position built over many months.) If
       the index finishes near the strike you keep the premium. The further it moves in either direction, the more you lose.
     </p>
     <p>
       The Great Hanshin (Kobe) earthquake struck early on 17 January 1995. The Nikkei fell, and the short put side of the
       straddle moved sharply against the position. Rather than reduce it, he added to his other positions in the hope that the
       market would recover, which it did not. His losses were also hidden by wider failures of control at the bank, and
-      those are the larger part of the story. By late February the losses had reached about £827 million (US$1.4 billion), about twice
-      Barings' available trading capital, and Barings was declared insolvent on 26 February 1995.
+      those are the larger part of the story. The options book had been worth about US$178 million at the end of 1994 and was about US$108 million
+      under water by the end of February, mainly because of the earthquake. By 27 February the unauthorised trading had lost
+      about £827 million (US$1.4 billion), well over twice the Group's recorded capital of about £350 million, and
+      administrators were appointed to the Barings Group parent company on 26 February 1995.
     </p>
     <p style="margin-bottom:0">
       The point for this lesson is narrow and structural. A short straddle is the long straddle of the builder flipped
@@ -755,7 +758,7 @@
   </div>
 
   <div class="tl-chain">
-    <div class="tl-chain-link"><b>Short straddle</b>16 Jan 1995: sells a call and a put at one strike, collects premium</div>
+    <div class="tl-chain-link"><b>Short straddle</b>Built up from 1994: sells a call and a put at one strike, collects premium</div>
     <div class="tl-chain-arrow">→</div>
     <div class="tl-chain-link concept"><b>★ This lesson · no wings</b>Both sides uncapped: loss grows as the index moves away</div>
     <div class="tl-chain-arrow">→</div>
@@ -763,7 +766,7 @@
     <div class="tl-chain-arrow">→</div>
     <div class="tl-chain-link"><b>Losses grow</b>Positions added to hope for a recovery</div>
     <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link end"><b>Outcome</b>About £827m lost; Barings insolvent 26 Feb 1995</div>
+    <div class="tl-chain-link end"><b>Outcome</b>About £827m lost; Barings in administration 26 Feb 1995</div>
   </div>
   <p>
     The starred link is the structure. Every later link is the market delivering a move the premium had not paid for.
@@ -853,7 +856,7 @@
   </div>
 
   <div class="tl-drill" data-date="1995-01-16">
-    <div class="tl-drill-label">Scenario drill · 16 January 1995</div>
+    <div class="tl-drill-label">Scenario drill · 16 January 1995, the day before Kobe</div>
     <h3>You want to be paid for the Nikkei sitting still</h3>
     <p>You trade Nikkei 225 index options and believe the market will not move much over the next few weeks. You want to collect premium for that view. Rather than a plain bought option, you are choosing a structure. Which do you use?</p>
     <ol class="tl-drill-options">
@@ -862,7 +865,7 @@
       <li data-verdict="good">Sell an iron butterfly or iron condor: the same short premium, with a bought option on each side as a wing.<div class="tl-drill-why">You collect less, but the worst case is fixed in advance at the wing width less the credit. A shock costs you that amount and no more. You pay for the protection out of the premium; that is the price of surviving the surprise.</div></li>
       <li data-verdict="ok">Skip the trade: your view of "quiet" is not strong enough to be paid for.<div class="tl-drill-why">Defensible and cheap. If you cannot say what you sold to collect the premium, and what the worst case is in points and in money, standing aside is a position. It earns nothing, but it loses nothing.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> As widely reported, on 16 January 1995 a trader at Barings sold a straddle on the Nikkei 225. The Kobe earthquake struck early on 17 January and the market fell. The trader added to other positions hoping for a recovery. Losses reached about £827 million (US$1.4 billion) and Barings was declared insolvent on 26 February 1995. The losses were made far larger by hidden positions and failures of control, so this drill is about the option structure only. A wing on each side of that one option position would have capped its loss; it would not have fixed the controls.</p><p class="tl-drill-sources">Sources: Board of Banking Supervision, <em>Report of the Board of Banking Supervision Inquiry into the Circumstances of the Collapse of Barings</em>, HMSO, July 1995; Nick Leeson, <em>Rogue Trader</em>, Little, Brown, 1996. Figures (£827 million, US$1.4 billion, 26 February 1995) are as commonly reported; the exact position size is not stated here.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> A Barings trader had built up a large book of short straddles on Nikkei index options during 1994 and into 1995 (the dated scenario above is hypothetical, set on the eve of the quake). The Kobe earthquake struck early on 17 January 1995 and the market fell; the options book swung from a gain of about US$178 million at end-1994 to a loss of about US$108 million by end-February. The trader added to other positions hoping for a recovery. Unauthorised trading losses reached about £827 million (US$1.4 billion) by 27 February, and administrators were appointed to the Barings Group parent company on 26 February 1995. The losses were made far larger by hidden positions and failures of control, so this drill is about the option structure only. A wing on each side of that one option position would have capped its loss; it would not have fixed the controls.</p><p class="tl-drill-sources">Sources: Board of Banking Supervision, <em>Report of the Board of Banking Supervision Inquiry into the Circumstances of the Collapse of Barings</em>, HMSO, July 1995; Nick Leeson, <em>Rogue Trader</em>, Little, Brown, 1996. Option-book values and the build-up from January 1994: S. Brown and O. Steenbeek, "Doubling: Nick Leeson's trading strategy", <em>Pacific-Basin Finance Journal</em> 9 (2001), citing the Singapore and Bank of England reports; £827 million at 27 February 1995 and administration on 26 February: Reserve Bank of Australia <em>Bulletin</em>, November 1995. The US$ conversion is as commonly reported; the exact position size is not stated here.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -874,7 +877,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Read the Greek signature.</strong> Straddles and strangles are long gamma and vega and pay theta; condors, butterflies and credit spreads are the mirror image. That signature says what the structure needs from the market.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Defined risk is not low risk, and a high win rate is not an edge.</strong> The condor wins about 75% of the time in the model and still has an expected value near zero, because its average loss (4.31) is about three times its average win (1.42).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The expiry diagram is not today's value.</strong> The butterfly is worth 0.38, not 4.03, halfway through its life with spot at the middle. Costs multiply with the number of legs, and short American-style legs can be assigned early.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A short structure with no wings has no ceiling on its loss.</strong> Barings' short straddle on the Nikkei, January 1995, is the standing example: the structure alone cannot lose less than the market moves against it.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A short structure with no wings has no ceiling on its loss.</strong> Barings' short straddles on the Nikkei, 1994 to early 1995, are the standing example: the structure alone cannot lose less than the market moves against it.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>
@@ -920,8 +923,8 @@
   <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson (many editions) — the chapter "Trading Strategies Involving Options" covers spreads, combinations and payoff diagrams with worked numbers.</li>
-    <li>Sheldon Natenberg, <em>Option Volatility and Pricing: Advanced Trading Strategies and Techniques</em>, McGraw-Hill (2nd ed., 2015) — the standard practitioner text on spreads, volatility and risk; thorough on why structures are priced as they are.</li>
-    <li>Lawrence G. McMillan, <em>Options as a Strategic Investment</em>, New York Institute of Finance / Prentice Hall (5th ed., 2012) — a catalogue of strategies with margin, assignment and adjustment rules.</li>
+    <li>Sheldon Natenberg, <em>Option Volatility and Pricing: Advanced Trading Strategies and Techniques</em>, McGraw-Hill (2nd ed., 2014) — the standard practitioner text on spreads, volatility and risk; thorough on why structures are priced as they are.</li>
+    <li>Lawrence G. McMillan, <em>Options as a Strategic Investment</em>, Prentice Hall Press (5th ed., 2012) — a catalogue of strategies with margin, assignment and adjustment rules.</li>
     <li>Options Clearing Corporation, <em>Characteristics and Risks of Standardized Options</em> — the options disclosure document, with plain-language descriptions of spreads, early exercise and assignment.</li>
     <li>Fischer Black and Myron Scholes, <em>"The Pricing of Options and Corporate Liabilities"</em>, Journal of Political Economy, 1973 — the model behind every price on this page.</li>
     <li>Nick Leeson, <em>Rogue Trader</em>, Little, Brown, 1996, and the Board of Banking Supervision's <em>Report of the Inquiry into the Circumstances of the Collapse of Barings</em>, HMSO, July 1995 — the first-person account and the official one.</li>

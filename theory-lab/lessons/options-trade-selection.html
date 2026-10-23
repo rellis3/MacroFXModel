@@ -54,7 +54,7 @@
       <li>The test for any strike: the breakeven distance divided by \(M_1\), call it \(R\). An at-the-money option sits near \(R \approx 0.4\) at every expiry. Out-of-the-money strikes need a larger \(R\), so "cheap" options ask for bigger moves: a 5% out-of-the-money 56-day call needs \(R\) = 0.77.</li>
       <li>Choose the expiry to outlast your window with room to spare, not to match it. A 28-day call loses 1.84% of its value a day to theta; the 56-day call loses 0.93%. If your move arrives late, the shorter option may already be dead.</li>
       <li>Check the volatility you are paying against what you expect to be realised, and check costs. A 56-day at-the-money call bought at 22% costs 21% more than the same call at your 18% forecast, and a $0.05 spread is 22.6% of a 22-cent option.</li>
-      <li><strong>Real-world episode:</strong> Netflix, 20 April 2022. Its first fall in subscribers in over a decade sent the shares down about 35% in a day, about three and a half times the move that market commentary said the options were pricing. Implied moves are averages, not ceilings.<!-- DESK:START --> Nothing in this lesson has been tested as a trading rule on this desk.<!-- DESK:END --></li>
+      <li><strong>Real-world episode:</strong> Netflix, 20 April 2022. Its first fall in subscribers in over a decade sent the shares down about 35% in a day, more than three times the move that an options-analytics firm said the options were pricing (about 10%). Implied moves are averages, not ceilings.<!-- DESK:START --> Nothing in this lesson has been tested as a trading rule on this desk.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -104,7 +104,7 @@
       <p data-who="Trader">What about volatility itself?</p>
       <p data-who="Quant">You are paying twenty-two percent. If you think the stock will really move at eighteen, you are paying about a fifth more than the call is worth to you. And watch events. Before earnings, implied volatility is high, then it collapses. In our example a call gains only fourteen percent on a five percent rally, and loses forty percent if the stock just sits there.</p>
       <p data-who="Trader">Anything else?</p>
-      <p data-who="Quant">Costs. Five cents of spread on a three-fifty option is nothing. Five cents on a twenty-two cent option is nearly a quarter of what you pay. And remember that averages are not ceilings. In April twenty twenty-two Netflix reported its first fall in subscribers in over a decade. Commentary at the time put the options-implied move near ten percent. The shares fell about thirty-five percent in a day.</p>
+      <p data-who="Quant">Costs. Five cents of spread on a three-fifty option is nothing. Five cents on a twenty-two cent option is nearly a quarter of what you pay. And remember that averages are not ceilings. In April twenty twenty-two Netflix reported its first fall in subscribers in over a decade. An options-analytics firm put the options-implied move at about ten percent. The shares fell about thirty-five percent in a day.</p>
       <p data-who="Trader">So the one-line version?</p>
       <p data-who="Quant">Before you buy an option, write down direction, size, timing and what you are paying for each. Trade it only if your numbers beat the market's by more than the costs.</p>
     </div>
@@ -582,10 +582,10 @@
       2.5 million paying subscribers. It reported a loss of about 200,000, its first fall in subscribers in more than a decade.
     </p>
     <p>
-      Pre-earnings market commentary put the move the options market was pricing at roughly 10% either way. That is a single figure from commentary,
-      not an exchange record, so treat it as approximate. On 20 April the shares closed down about 35%, at $226.19, taking
+      The options analytics firm ORATS put the move the options market was pricing at 10.3% either way. That is a single
+      vendor figure, not an exchange record, so treat it as approximate. On 20 April the shares closed down about 35%, at $226.19, taking
       roughly $54 billion off the company's market value, according to Bloomberg's report that day, which called it the biggest one-day fall
-      since October 2004. That was about three and a half times the quoted implied move.
+      since October 2004. That was a little over three times the quoted implied move.
     </p>
     <p style="margin-bottom:0">
       Think about what that does to the strike choices from this lesson. A buyer of puts near the pre-report price was paid for a move that was much
@@ -596,7 +596,7 @@
   </div>
 
   <div class="tl-chain">
-    <div class="tl-chain-link"><b>Options</b>Commentary: implied move near ±10% for the report</div>
+    <div class="tl-chain-link"><b>Options</b>ORATS: implied move about ±10% for the report</div>
     <div class="tl-chain-arrow">→</div>
     <div class="tl-chain-link concept"><b>★ This lesson · M₁ and R</b>The straddle quotes a typical move, not a limit</div>
     <div class="tl-chain-arrow">→</div>
@@ -604,13 +604,13 @@
     <div class="tl-chain-arrow">→</div>
     <div class="tl-chain-link"><b>The next day</b>Shares close about 35% lower, at $226.19</div>
     <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link end"><b>Outcome</b>About 3.5 times the quoted implied move; "outside the expected move" was not safe</div>
+    <div class="tl-chain-link end"><b>Outcome</b>A little over 3 times the quoted implied move; "outside the expected move" was not safe</div>
   </div>
   <p>
     The starred link is this lesson's tool. The expected move is useful for choosing which contract fits a view and for noticing
     when the market is charging a lot. It says nothing about how bad the tail can be.
   </p>
-  <p class="tp-note">Sources for the episode: Netflix, first-quarter 2022 shareholder letter, 19 April 2022 (the subscriber figure); Bloomberg, 20 April 2022, report on the share fall (the 35% fall, the $226.19 close, about $54 billion of market value and the largest fall since October 2004). The guidance of about 2.5 million added subscribers comes from news reports at the time. The roughly 10% options-implied move is from pre-earnings market commentary and is approximate. The strike arithmetic in the last paragraph is illustrative, not a record of anyone's trade.</p>
+  <p class="tp-note">Sources for the episode: Netflix, first-quarter 2022 shareholder letter, 19 April 2022 (the subscriber figure); Bloomberg, 20 April 2022, report on the share fall (the 35% fall, the $226.19 close, about $54 billion of market value and the largest fall since October 2004). The guidance of about 2.5 million added subscribers comes from news reports at the time. The 10.3% options-implied move is from ORATS, "NFLX earnings crash had signs", 20 April 2022, a single source, so treat it as approximate; the ratio of about 3.4 is therefore also approximate. The strike arithmetic in the last paragraph is illustrative, not a record of anyone's trade.</p>
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -703,7 +703,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Let the expiry outlast the window.</strong> Longer options cost more cash but lose a smaller share a day and survive a late move. You pay for the days you hold, not the days you buy.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Check the volatility and the costs.</strong> Buying 22% when you expect 18% costs about 21% more. Events carry volatility that crushes afterwards. A spread that is 20% of the premium is the first thing to fix.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Your numbers are estimates.</strong> The expected value calculator turns beliefs into dollars, but a 4% target, an 18% forecast and a timing guess are all uncertain. A one-point edge barely covers the costs.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Never put the strike at your target, and never treat the expected move as a ceiling.</strong> At the target the option pays nothing, and Netflix moved about 3.5 times the quoted implied move in a day. Size by the worst case.<!-- DESK:START --> Nothing in this lesson has been tested as a trading rule on this desk.<!-- DESK:END --></span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Never put the strike at your target, and never treat the expected move as a ceiling.</strong> At the target the option pays nothing, and Netflix moved a little over three times the quoted implied move in a day. Size by the worst case.<!-- DESK:START --> Nothing in this lesson has been tested as a trading rule on this desk.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>
@@ -760,7 +760,7 @@
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson (many editions) — the standard textbook for the mechanics, the Greeks and the conventions.</li>
     <li>Sheldon Natenberg, <em>Option Volatility and Pricing</em>, McGraw-Hill (2nd edition 2014) — the practitioner's guide to reading implied volatility and choosing positions.</li>
     <li>Euan Sinclair, <em>Volatility Trading</em> (Wiley, 2nd edition 2013) and <em>Positional Option Trading</em> (Wiley, 2020) — a sceptical practitioner's view of edge, costs and sizing in options.</li>
-    <li>Lawrence G. McMillan, <em>Options as a Strategic Investment</em>, New York Institute of Finance (5th edition 2012) — a long catalogue of strategies and when each is used.</li>
+    <li>Lawrence G. McMillan, <em>Options as a Strategic Investment</em>, Prentice Hall Press (5th edition 2012) — a long catalogue of strategies and when each is used.</li>
     <li>Joshua D. Coval and Tyler Shumway, <em>"Expected Option Returns"</em>, Journal of Finance 56(3), 2001, and Gurdip Bakshi and Nikunj Kapadia, <em>"Delta-Hedged Gains and the Negative Market Volatility Risk Premium"</em>, Review of Financial Studies 16(2), 2003 — empirical work on what index option buyers have earned on average. Read these before assuming an option bought at random is a fair bet.</li>
   </ul>
   </details>
