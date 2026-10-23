@@ -102,6 +102,11 @@ export const YIELD_LEGS = {
   Y_DE5:  { label: 'German 5y Bund yield (%), daily', side: 'EUR', daily: { src: 'bbk', id: 'R05XX' }, cfd: null, fix: DE_FIX },
   Y_DE10: { label: 'German 10y Bund yield (%)', side: 'EUR', daily: { src: 'bbk', id: 'R10XX' }, cfd: 'DE10YB_EUR', D: 8.5, fix: DE_FIX },
   Y_DE30: { label: 'German 30y Bund yield (%), daily', side: 'EUR', daily: { src: 'bbk', id: 'R30XX' }, cfd: null, fix: DE_FIX },
+  // US real yields (TIPS) and breakevens, daily from FRED (2026-10-23): the real-vs-inflation split desks use for Nasdaq and gold
+  Y_USR5:  { label: 'US 5y real yield (TIPS, %), daily', side: 'US', daily: { src: 'fred', id: 'DFII5' },  cfd: null, fix: US_FIX },
+  Y_USR10: { label: 'US 10y real yield (TIPS, %), daily', side: 'US', daily: { src: 'fred', id: 'DFII10' }, cfd: null, fix: US_FIX },
+  Y_USBE5:  { label: 'US 5y breakeven inflation (%), daily', side: 'US', daily: { src: 'fred', id: 'T5YIE' },  cfd: null, fix: US_FIX },
+  Y_USBE10: { label: 'US 10y breakeven inflation (%), daily', side: 'US', daily: { src: 'fred', id: 'T10YIE' }, cfd: null, fix: US_FIX },
 };
 export const YIELD_GROUP = 'Yields % (US Treasury, German Bund)';
 

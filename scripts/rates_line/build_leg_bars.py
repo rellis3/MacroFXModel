@@ -59,6 +59,25 @@ def describe(stem):
         y, mo = int(d[:4]), int(d[4:6])
         label = {'FGBS': 'Schatz (German 2y)', 'FGBM': 'Bobl (German 5y)', 'FGBL': 'Bund (German 10y)', 'FGBX': 'Buxl (German 30y)'}[root]
         return f'{root}{d[2:6]}', f'{label} future {MNAME[mo]}{str(y)[2:]} (Eurex {root})', 'German bond futures (price, not a rate)', 'EUR', 'price', 'bond future: price only'
+    # 2026-10-23: euro sovereign spread legs, the dollar index and volatility (pulled by refresh_leg_bars.py; stems are EXCHANGE_NAME)
+    m = re.match(r'^EUREX_(FBTP|FOAT)(\d{2})(\d{2})$', stem)
+    if m:
+        root, yy, mm = m.groups(); mo = int(mm)
+        label = {'FBTP': 'Italy BTP 10y', 'FOAT': 'France OAT 10y'}[root]
+        return f'{root}{yy}{mm}', f'{label} future {MNAME[mo]}{yy} (Eurex {root})', 'Euro sovereign bond futures (price, not a rate)', 'EUR', 'price', 'bond future: price only (BTP/OAT minus Bund = euro-area spread risk)'
+    m = re.match(r'^NYBOT_DX([FGHJKMNQUVXZ])(\d)$', stem)
+    if m:
+        mc, yd = m.groups(); mo = MONTH[mc]
+        return f'DX{mc}{yd}', f'US Dollar Index future {MNAME[mo]}2{yd} (ICE DX{mc}{yd})', 'Dollar and volatility', 'US', 'price', 'index future: price'
+    m = re.match(r'^CFE_VX([FGHJKMNQUVXZ])(\d)$', stem)
+    if m:
+        mc, yd = m.groups(); mo = MONTH[mc]
+        return f'VX{mc}{yd}', f'VIX future {MNAME[mo]}2{yd} (CFE VX{mc}{yd})', 'Dollar and volatility', 'US', 'price', 'VIX future: index points'
+    m = re.match(r'^CBOE_(VVIX|VIX|VXN)$', stem)
+    if m:
+        root = m.group(1)
+        label = {'VVIX': 'VVIX index (vol of VIX)', 'VIX': 'VIX index (S&P 500 30-day implied vol)', 'VXN': 'VXN index (Nasdaq-100 30-day implied vol)'}[root]
+        return root, label, 'Dollar and volatility', 'US', 'price', 'index level (RTH trades)'
     return None
 
 

@@ -43,9 +43,14 @@ IB_SPEC = {   # name: (IBKR symbol, exchange, currency, contract-month parameter
     'ZTZ6': ('ZT', 'CBOT', 'USD', '202612'), 'ZFZ6': ('ZF', 'CBOT', 'USD', '202612'), 'ZNZ6': ('ZN', 'CBOT', 'USD', '202612'),
     'ZBZ6': ('ZB', 'CBOT', 'USD', '202612'), 'UBZ6': ('UB', 'CBOT', 'USD', '202612'),
     'FGBS2612': ('GBS', 'EUREX', 'EUR', '202612'), 'FGBM2612': ('GBM', 'EUREX', 'EUR', '202612'), 'FGBL2612': ('GBL', 'EUREX', 'EUR', '202612'), 'FGBX2612': ('GBX', 'EUREX', 'EUR', '202612'),
+    # 2026-10-23: euro spread legs (BTP/OAT minus Bund), the dollar index, VIX futures, and three vol indices ('IND' = an index: no expiry, TRADES bars, RTH)
+    'FBTP2612': ('BTP', 'EUREX', 'EUR', '202612'), 'FOAT2612': ('OAT', 'EUREX', 'EUR', '202612'), 'DXZ6': ('DX', 'NYBOT', 'USD', '202612'),
+    'VXX6': ('VIX', 'CFE', 'USD', '202611'), 'VXZ6': ('VIX', 'CFE', 'USD', '202612'),
+    'VVIX': ('VVIX', 'CBOE', 'USD', 'IND'), 'VIX': ('VIX', 'CBOE', 'USD', 'IND'), 'VXN': ('VXN', 'CBOE', 'USD', 'IND'),
 }
 CORE = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7', 'IM7']      # IM7: becomes I2! when IZ6 expires (14 Dec 2026), so the stitched I2 line stays live
 BONDS = ['ZTZ6', 'ZFZ6', 'ZNZ6', 'ZBZ6', 'UBZ6', 'FGBS2612', 'FGBM2612', 'FGBL2612', 'FGBX2612']      # US 2/5/10/30/ultra and German 2/5/10/30: pulled on every run too (2026-10-23)
+MACRO = ['FBTP2612', 'FOAT2612', 'DXZ6', 'VXX6', 'VXZ6', 'VVIX', 'VIX', 'VXN']      # euro spreads, dollar, vol: pulled on every run too (2026-10-23)
 last = [0.0]
 
 
@@ -75,14 +80,15 @@ if __name__ == '__main__':
     ap.add_argument('--push-days', type=int, default=3)
     ap.add_argument('--commit', action='store_true')
     ap.add_argument('--no-pull', action='store_true')
+    ap.add_argument('--names', default='', help='comma-separated leg names to pull instead of the default set (e.g. a one-off backfill of newly added legs)')
     ap.add_argument('--all', action='store_true', help='pull every contract in IB_SPEC, not only the seven core legs (about 4 minutes per week of history)')
     a = ap.parse_args()
     now = datetime.now(timezone.utc)
-    names = list(IB_SPEC) if a.all else CORE + BONDS
+    names = [n.strip() for n in a.names.split(',') if n.strip()] if a.names else (list(IB_SPEC) if a.all else CORE + BONDS + MACRO)
     found = B.discover()
     stem = lambda n: found[n]['stem'] if n in found else f'{IB_SPEC[n][1]}_{n}'
     if not a.no_pull:
-        from ib_insync import IB, Future, util
+        from ib_insync import IB, Future, Index, util
         newest = None
         for n in names:
             p = SRC / f'{stem(n)}.parquet'
@@ -100,22 +106,24 @@ if __name__ == '__main__':
         print(f'pulling the last {days} day(s) for {names}')
         for name in names:
             sym, exch, ccy, month = IB_SPEC[name]
-            det = ib.reqContractDetails(Future(symbol=sym, exchange=exch, currency=ccy, lastTradeDateOrContractMonth=month))
+            is_index = month == 'IND'
+            det = ib.reqContractDetails(Index(symbol=sym, exchange=exch, currency=ccy) if is_index else Future(symbol=sym, exchange=exch, currency=ccy, lastTradeDateOrContractMonth=month))
             if not det:
                 print(f'{name}: contract not found (expired or not listed)')
                 continue
             c = det[0].contract
-            c.lastTradeDateOrContractMonth = c.lastTradeDateOrContractMonth.split(' ')[0]
-            if datetime.strptime(c.lastTradeDateOrContractMonth, '%Y%m%d').replace(tzinfo=timezone.utc) < now - timedelta(days=1):
-                print(f'{name}: expired {c.lastTradeDateOrContractMonth}, skipping')
-                continue
+            if not is_index:
+                c.lastTradeDateOrContractMonth = c.lastTradeDateOrContractMonth.split(' ')[0]
+                if datetime.strptime(c.lastTradeDateOrContractMonth, '%Y%m%d').replace(tzinfo=timezone.utc) < now - timedelta(days=1):
+                    print(f'{name}: expired {c.lastTradeDateOrContractMonth}, skipping')
+                    continue
             got = 0
             for w in range(max(1, days // 7 + 1)):
                 end = min(sat - timedelta(weeks=w), now)
                 pace()
                 ib.RequestTimeout = 0
                 try:
-                    bars = ib.reqHistoricalData(c, endDateTime=end, durationStr='1 W', barSizeSetting='1 min', whatToShow='MIDPOINT', useRTH=False, formatDate=2, timeout=600)
+                    bars = ib.reqHistoricalData(c, endDateTime=end, durationStr='1 W', barSizeSetting='1 min', whatToShow='TRADES' if is_index else 'MIDPOINT', useRTH=is_index, formatDate=2, timeout=600)
                 except Exception as e:
                     print(f'  {name} {end:%Y-%m-%d}: failed {e}')
                     continue

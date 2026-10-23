@@ -1,5 +1,31 @@
 [
  {
+  "name": "DXZ6",
+  "label": "US Dollar Index future Dec26 (ICE DXZ6)",
+  "group": "Dollar and volatility",
+  "side": "US",
+  "kind": "price",
+  "period": "index future: price",
+  "first": "2026-08-23",
+  "asOf": "2026-10-23 11:08:00+00:00",
+  "m5": 5640,
+  "m15": 3813,
+  "h1": 954,
+  "m5First": "2026-09-23",
+  "m15First": "2026-08-23",
+  "h1First": "2026-08-23",
+  "folders": [
+   "stir_1m_deep"
+  ],
+  "stem": "NYBOT_DXZ6",
+  "days": 45,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.0,
+  "barsPerDay": 1260,
+  "bars1m": 57189
+ },
+ {
   "name": "ER3H7",
   "label": "ESTR 3M Mar27 (ICE ER3H7)",
   "group": "ESTR 3M (ICE ER3)",
@@ -7,10 +33,10 @@
   "kind": "rate",
   "period": "17 Mar 2027 - 16 Jun 2027",
   "first": "2024-11-14",
-  "asOf": "2026-10-23 09:05:00+00:00",
-  "m5": 5281,
-  "m15": 10277,
-  "h1": 9857,
+  "asOf": "2026-10-23 10:53:00+00:00",
+  "m5": 5280,
+  "m15": 10284,
+  "h1": 9858,
   "m5First": "2026-09-23",
   "m15First": "2026-04-27",
   "h1First": "2024-11-14",
@@ -37,7 +63,7 @@
   ],
   "maxGapDays": 4.5,
   "barsPerDay": 1200,
-  "bars1m": 591184
+  "bars1m": 591292
  },
  {
   "name": "ER3M7",
@@ -137,10 +163,10 @@
   "kind": "rate",
   "period": "16 Dec 2026 - 17 Mar 2027",
   "first": "2024-11-14",
-  "asOf": "2026-10-23 09:03:00+00:00",
+  "asOf": "2026-10-23 10:52:00+00:00",
   "m5": 5280,
-  "m15": 10277,
-  "h1": 9858,
+  "m15": 10284,
+  "h1": 9859,
   "m5First": "2026-09-23",
   "m15First": "2026-04-27",
   "h1First": "2024-11-14",
@@ -167,7 +193,33 @@
   ],
   "maxGapDays": 4.5,
   "barsPerDay": 1200,
-  "bars1m": 591244
+  "bars1m": 591353
+ },
+ {
+  "name": "FBTP2612",
+  "label": "Italy BTP 10y future Dec26 (Eurex FBTP)",
+  "group": "Euro sovereign bond futures (price, not a rate)",
+  "side": "EUR",
+  "kind": "price",
+  "period": "bond future: price only (BTP/OAT minus Bund = euro-area spread risk)",
+  "first": "2026-08-24",
+  "asOf": "2026-10-23 11:04:00+00:00",
+  "m5": 2904,
+  "m15": 1957,
+  "h1": 490,
+  "m5First": "2026-09-23",
+  "m15First": "2026-08-24",
+  "h1First": "2026-08-24",
+  "folders": [
+   "stir_1m_deep"
+  ],
+  "stem": "EUREX_FBTP2612",
+  "days": 45,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.5,
+  "barsPerDay": 660,
+  "bars1m": 29345
  },
  {
   "name": "FGBL2612",
@@ -177,10 +229,10 @@
   "kind": "price",
   "period": "bond future: price only",
   "first": "2026-09-14",
-  "asOf": "2026-10-23 09:11:00+00:00",
+  "asOf": "2026-10-23 10:54:00+00:00",
   "m5": 5236,
-  "m15": 2356,
-  "h1": 619,
+  "m15": 2363,
+  "h1": 620,
   "m5First": "2026-09-23",
   "m15First": "2026-09-14",
   "h1First": "2026-09-14",
@@ -194,7 +246,7 @@
   "missingDates": [],
   "maxGapDays": 2.2,
   "barsPerDay": 1190,
-  "bars1m": 35047
+  "bars1m": 35150
  },
  {
   "name": "FGBM2612",
@@ -204,10 +256,10 @@
   "kind": "price",
   "period": "bond future: price only",
   "first": "2026-09-14",
-  "asOf": "2026-10-23 09:11:00+00:00",
+  "asOf": "2026-10-23 10:54:00+00:00",
   "m5": 5236,
-  "m15": 2356,
-  "h1": 619,
+  "m15": 2363,
+  "h1": 620,
   "m5First": "2026-09-23",
   "m15First": "2026-09-14",
   "h1First": "2026-09-14",
@@ -221,7 +273,7 @@
   "missingDates": [],
   "maxGapDays": 2.2,
   "barsPerDay": 1190,
-  "bars1m": 35047
+  "bars1m": 35150
  },
  {
   "name": "FGBS2609",
@@ -259,10 +311,10 @@
   "kind": "price",
   "period": "bond future: price only",
   "first": "2026-04-15",
-  "asOf": "2026-10-23 09:11:00+00:00",
+  "asOf": "2026-10-23 10:54:00+00:00",
   "m5": 5236,
-  "m15": 10276,
-  "h1": 2854,
+  "m15": 10283,
+  "h1": 2855,
   "m5First": "2026-09-23",
   "m15First": "2026-04-27",
   "h1First": "2026-04-15",
@@ -278,7 +330,7 @@
   ],
   "maxGapDays": 3.2,
   "barsPerDay": 1190,
-  "bars1m": 161621
+  "bars1m": 161724
  },
  {
   "name": "FGBX2612",
@@ -288,10 +340,10 @@
   "kind": "price",
   "period": "bond future: price only",
   "first": "2026-09-14",
-  "asOf": "2026-10-23 09:11:00+00:00",
+  "asOf": "2026-10-23 10:54:00+00:00",
   "m5": 5236,
-  "m15": 2356,
-  "h1": 619,
+  "m15": 2363,
+  "h1": 620,
   "m5First": "2026-09-23",
   "m15First": "2026-09-14",
   "h1First": "2026-09-14",
@@ -305,7 +357,33 @@
   "missingDates": [],
   "maxGapDays": 2.2,
   "barsPerDay": 1190,
-  "bars1m": 35047
+  "bars1m": 35150
+ },
+ {
+  "name": "FOAT2612",
+  "label": "France OAT 10y future Dec26 (Eurex FOAT)",
+  "group": "Euro sovereign bond futures (price, not a rate)",
+  "side": "EUR",
+  "kind": "price",
+  "period": "bond future: price only (BTP/OAT minus Bund = euro-area spread risk)",
+  "first": "2026-08-24",
+  "asOf": "2026-10-23 11:06:00+00:00",
+  "m5": 5236,
+  "m15": 3564,
+  "h1": 936,
+  "m5First": "2026-09-23",
+  "m15First": "2026-08-24",
+  "h1First": "2026-08-24",
+  "folders": [
+   "stir_1m_deep"
+  ],
+  "stem": "EUREX_FOAT2612",
+  "days": 45,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.2,
+  "barsPerDay": 1190,
+  "bars1m": 53012
  },
  {
   "name": "IF7",
@@ -367,10 +445,10 @@
   "kind": "rate",
   "period": "17 Mar 2027 - 16 Jun 2027",
   "first": "2024-04-15",
-  "asOf": "2026-10-23 09:01:00+00:00",
+  "asOf": "2026-10-23 10:52:00+00:00",
   "m5": 5280,
-  "m15": 10277,
-  "h1": 12898,
+  "m15": 10284,
+  "h1": 12899,
   "m5First": "2026-09-23",
   "m15First": "2026-04-27",
   "h1First": "2024-04-15",
@@ -399,7 +477,7 @@
   ],
   "maxGapDays": 4.5,
   "barsPerDay": 1200,
-  "bars1m": 773642
+  "bars1m": 773753
  },
  {
   "name": "IK6",
@@ -463,10 +541,10 @@
   "kind": "rate",
   "period": "16 Jun 2027 - 15 Sep 2027",
   "first": "2026-04-13",
-  "asOf": "2026-10-23 09:06:00+00:00",
+  "asOf": "2026-10-23 10:53:00+00:00",
   "m5": 5280,
-  "m15": 10277,
-  "h1": 2770,
+  "m15": 10284,
+  "h1": 2771,
   "m5First": "2026-09-23",
   "m15First": "2026-04-27",
   "h1First": "2026-04-13",
@@ -483,7 +561,7 @@
   ],
   "maxGapDays": 3.2,
   "barsPerDay": 1200,
-  "bars1m": 166147
+  "bars1m": 166254
  },
  {
   "name": "IN6",
@@ -656,10 +734,10 @@
   "kind": "rate",
   "period": "16 Dec 2026 - 17 Mar 2027",
   "first": "2024-04-15",
-  "asOf": "2026-10-23 09:02:00+00:00",
+  "asOf": "2026-10-23 10:52:00+00:00",
   "m5": 5280,
-  "m15": 10277,
-  "h1": 12898,
+  "m15": 10284,
+  "h1": 12899,
   "m5First": "2026-09-23",
   "m15First": "2026-04-27",
   "h1First": "2024-04-15",
@@ -688,7 +766,7 @@
   ],
   "maxGapDays": 4.5,
   "barsPerDay": 1200,
-  "bars1m": 773643
+  "bars1m": 773753
  },
  {
   "name": "SR3H7",
@@ -698,10 +776,10 @@
   "kind": "rate",
   "period": "17 Mar 2027 - 16 Jun 2027",
   "first": "2024-04-14",
-  "asOf": "2026-10-23 09:04:00+00:00",
+  "asOf": "2026-10-23 10:57:00+00:00",
   "m5": 6072,
-  "m15": 11665,
-  "h1": 14893,
+  "m15": 11672,
+  "h1": 14894,
   "m5First": "2026-09-23",
   "m15First": "2026-04-26",
   "h1First": "2024-04-14",
@@ -717,7 +795,7 @@
   ],
   "maxGapDays": 3.0,
   "barsPerDay": 1380,
-  "bars1m": 893255
+  "bars1m": 893368
  },
  {
   "name": "SR3M7",
@@ -806,10 +884,10 @@
   "kind": "rate",
   "period": "16 Sep 2026 - 16 Dec 2026",
   "first": "2024-04-14",
-  "asOf": "2026-10-23 09:01:00+00:00",
+  "asOf": "2026-10-23 10:57:00+00:00",
   "m5": 6072,
-  "m15": 11665,
-  "h1": 14893,
+  "m15": 11672,
+  "h1": 14894,
   "m5First": "2026-09-23",
   "m15First": "2026-04-26",
   "h1First": "2024-04-14",
@@ -825,7 +903,7 @@
   ],
   "maxGapDays": 3.0,
   "barsPerDay": 1380,
-  "bars1m": 893252
+  "bars1m": 893368
  },
  {
   "name": "SR3U7",
@@ -914,10 +992,10 @@
   "kind": "rate",
   "period": "16 Dec 2026 - 17 Mar 2027",
   "first": "2024-04-14",
-  "asOf": "2026-10-23 09:02:00+00:00",
+  "asOf": "2026-10-23 10:57:00+00:00",
   "m5": 6072,
-  "m15": 11665,
-  "h1": 14893,
+  "m15": 11672,
+  "h1": 14894,
   "m5First": "2026-09-23",
   "m15First": "2026-04-26",
   "h1First": "2024-04-14",
@@ -933,7 +1011,7 @@
   ],
   "maxGapDays": 3.0,
   "barsPerDay": 1380,
-  "bars1m": 893253
+  "bars1m": 893368
  },
  {
   "name": "UBZ6",
@@ -943,10 +1021,10 @@
   "kind": "price",
   "period": "bond future: price only",
   "first": "2026-09-13",
-  "asOf": "2026-10-23 09:11:00+00:00",
+  "asOf": "2026-10-23 10:59:00+00:00",
   "m5": 6072,
-  "m15": 2713,
-  "h1": 679,
+  "m15": 2720,
+  "h1": 680,
   "m5First": "2026-09-23",
   "m15First": "2026-09-13",
   "h1First": "2026-09-13",
@@ -960,7 +1038,143 @@
   "missingDates": [],
   "maxGapDays": 2.0,
   "barsPerDay": 1380,
-  "bars1m": 40692
+  "bars1m": 40800
+ },
+ {
+  "name": "VIX",
+  "label": "VIX index (S&P 500 30-day implied vol)",
+  "group": "Dollar and volatility",
+  "side": "US",
+  "kind": "price",
+  "period": "index level (RTH trades)",
+  "first": "2026-08-24",
+  "asOf": "2026-10-23 11:19:00+00:00",
+  "m5": 3564,
+  "m15": 2339,
+  "h1": 607,
+  "m5First": "2026-09-23",
+  "m15First": "2026-08-24",
+  "h1First": "2026-08-24",
+  "folders": [
+   "stir_1m_deep"
+  ],
+  "stem": "CBOE_VIX",
+  "days": 44,
+  "missing": 1,
+  "missingDates": [
+   "2026-09-07"
+  ],
+  "maxGapDays": 3.4,
+  "barsPerDay": 810,
+  "bars1m": 35069
+ },
+ {
+  "name": "VVIX",
+  "label": "VVIX index (vol of VIX)",
+  "group": "Dollar and volatility",
+  "side": "US",
+  "kind": "price",
+  "period": "index level (RTH trades)",
+  "first": "2026-08-24",
+  "asOf": "2026-10-22 19:59:00+00:00",
+  "m5": 1716,
+  "m15": 1118,
+  "h1": 301,
+  "m5First": "2026-09-23",
+  "m15First": "2026-08-24",
+  "h1First": "2026-08-24",
+  "folders": [
+   "stir_1m_deep"
+  ],
+  "stem": "CBOE_VVIX",
+  "days": 43,
+  "missing": 1,
+  "missingDates": [
+   "2026-09-07"
+  ],
+  "maxGapDays": 3.7,
+  "barsPerDay": 389,
+  "bars1m": 16727
+ },
+ {
+  "name": "VXN",
+  "label": "VXN index (Nasdaq-100 30-day implied vol)",
+  "group": "Dollar and volatility",
+  "side": "US",
+  "kind": "price",
+  "period": "index level (RTH trades)",
+  "first": "2026-08-24",
+  "asOf": "2026-10-22 19:59:00+00:00",
+  "m5": 1716,
+  "m15": 1118,
+  "h1": 301,
+  "m5First": "2026-09-23",
+  "m15First": "2026-08-24",
+  "h1First": "2026-08-24",
+  "folders": [
+   "stir_1m_deep"
+  ],
+  "stem": "CBOE_VXN",
+  "days": 43,
+  "missing": 1,
+  "missingDates": [
+   "2026-09-07"
+  ],
+  "maxGapDays": 3.7,
+  "barsPerDay": 389,
+  "bars1m": 16727
+ },
+ {
+  "name": "VXX6",
+  "label": "VIX future Nov26 (CFE VXX6)",
+  "group": "Dollar and volatility",
+  "side": "US",
+  "kind": "price",
+  "period": "VIX future: index points",
+  "first": "2026-08-23",
+  "asOf": "2026-10-23 11:16:00+00:00",
+  "m5": 6072,
+  "m15": 4080,
+  "h1": 1021,
+  "m5First": "2026-09-23",
+  "m15First": "2026-08-23",
+  "h1First": "2026-08-23",
+  "folders": [
+   "stir_1m_deep"
+  ],
+  "stem": "CFE_VXX6",
+  "days": 45,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.0,
+  "barsPerDay": 1380,
+  "bars1m": 61187
+ },
+ {
+  "name": "VXZ6",
+  "label": "VIX future Dec26 (CFE VXZ6)",
+  "group": "Dollar and volatility",
+  "side": "US",
+  "kind": "price",
+  "period": "VIX future: index points",
+  "first": "2026-08-23",
+  "asOf": "2026-10-23 11:19:00+00:00",
+  "m5": 6072,
+  "m15": 4080,
+  "h1": 1021,
+  "m5First": "2026-09-23",
+  "m15First": "2026-08-23",
+  "h1First": "2026-08-23",
+  "folders": [
+   "stir_1m_deep"
+  ],
+  "stem": "CFE_VXZ6",
+  "days": 45,
+  "missing": 0,
+  "missingDates": [],
+  "maxGapDays": 2.0,
+  "barsPerDay": 1380,
+  "bars1m": 61190
  },
  {
   "name": "ZBZ6",
@@ -970,10 +1184,10 @@
   "kind": "price",
   "period": "bond future: price only",
   "first": "2026-09-13",
-  "asOf": "2026-10-23 09:11:00+00:00",
+  "asOf": "2026-10-23 10:59:00+00:00",
   "m5": 6072,
-  "m15": 2713,
-  "h1": 679,
+  "m15": 2720,
+  "h1": 680,
   "m5First": "2026-09-23",
   "m15First": "2026-09-13",
   "h1First": "2026-09-13",
@@ -987,7 +1201,7 @@
   "missingDates": [],
   "maxGapDays": 2.0,
   "barsPerDay": 1380,
-  "bars1m": 40692
+  "bars1m": 40800
  },
  {
   "name": "ZFZ6",
@@ -997,10 +1211,10 @@
   "kind": "price",
   "period": "bond future: price only",
   "first": "2026-09-13",
-  "asOf": "2026-10-23 09:11:00+00:00",
+  "asOf": "2026-10-23 10:58:00+00:00",
   "m5": 6072,
-  "m15": 2713,
-  "h1": 679,
+  "m15": 2720,
+  "h1": 680,
   "m5First": "2026-09-23",
   "m15First": "2026-09-13",
   "h1First": "2026-09-13",
@@ -1014,7 +1228,7 @@
   "missingDates": [],
   "maxGapDays": 2.0,
   "barsPerDay": 1380,
-  "bars1m": 40692
+  "bars1m": 40799
  },
  {
   "name": "ZNZ6",
@@ -1024,10 +1238,10 @@
   "kind": "price",
   "period": "bond future: price only",
   "first": "2026-09-13",
-  "asOf": "2026-10-23 09:11:00+00:00",
+  "asOf": "2026-10-23 10:58:00+00:00",
   "m5": 6072,
-  "m15": 2713,
-  "h1": 679,
+  "m15": 2720,
+  "h1": 680,
   "m5First": "2026-09-23",
   "m15First": "2026-09-13",
   "h1First": "2026-09-13",
@@ -1041,7 +1255,7 @@
   "missingDates": [],
   "maxGapDays": 2.0,
   "barsPerDay": 1380,
-  "bars1m": 40692
+  "bars1m": 40799
  },
  {
   "name": "ZQF7",
@@ -1278,10 +1492,10 @@
   "kind": "price",
   "period": "bond future: price only",
   "first": "2026-04-13",
-  "asOf": "2026-10-23 09:11:00+00:00",
+  "asOf": "2026-10-23 10:58:00+00:00",
   "m5": 6072,
-  "m15": 11659,
-  "h1": 3135,
+  "m15": 11666,
+  "h1": 3136,
   "m5First": "2026-09-23",
   "m15First": "2026-04-26",
   "h1First": "2026-04-13",
@@ -1295,7 +1509,7 @@
   "missingDates": [],
   "maxGapDays": 3.0,
   "barsPerDay": 1380,
-  "bars1m": 187875
+  "bars1m": 187982
  },
  {
   "name": "I2",
@@ -1305,10 +1519,10 @@
   "kind": "rate",
   "period": "always the 2nd quarterly Euribor contract; rolls when the front one expires",
   "first": "2025-06-19",
-  "asOf": "2026-10-23 09:00:00+00:00",
-  "m5": 5281,
-  "m15": 10273,
-  "h1": 6697,
+  "asOf": "2026-10-23 10:45:00+00:00",
+  "m5": 5282,
+  "m15": 10280,
+  "h1": 6698,
   "m5First": "2026-09-23",
   "m15First": "2026-04-27",
   "h1First": "2025-06-19",
@@ -1356,7 +1570,7 @@
    {
     "contract": "IH7",
     "start": "2026-09-14 00:00",
-    "end": "2026-10-23 09:01",
+    "end": "2026-10-23 10:52",
     "rollAt": "2026-12-14",
     "source": "IBKR 1-minute MIDPOINT"
    }

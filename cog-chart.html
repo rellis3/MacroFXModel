@@ -325,6 +325,8 @@ const PRESETS = {
   'US - DE 10y yield (bp)': () => ({ series: [yieldSpread(1, 'Y_DE10', 'Y_US10', true, 'US - DE 10y yield (bp)')], nextId: 2, active: 1 }),
   'US 2s10s (bp)': () => ({ series: [yieldSpread(1, 'Y_US10', 'Y_US2', false, 'US 10y - 2y (bp)')], nextId: 2, active: 1 }),
   'DE 2s10s (bp)': () => ({ series: [yieldSpread(1, 'Y_DE10', 'Y_DE2', false, 'DE 10y - 2y (bp)')], nextId: 2, active: 1 }),
+  'Gold vs inverted US 10y real yield': () => { const d = { ...cogDefault(1), kind: 'leg', leg: 'Y_USR10', asRate: false, invert: true, inBps: false, scale: 1, offset: 0, mapMode: 'axis', label: 'US 10y real yield, inverted (%)', color: COLORS[0] }; return { series: [d], nextId: 2, active: 1, asset: 'GOLD' }; },
+  'US 10y real yield vs breakeven (%)': () => { const a = { ...cogDefault(1), kind: 'leg', leg: 'Y_USR10', asRate: false, invert: false, inBps: false, scale: 1, offset: 0, mapMode: 'axis', label: 'US 10y real %', color: COLORS[0] }; const b = { ...a, id: 2, leg: 'Y_USBE10', label: 'US 10y breakeven %', color: COLORS[1] }; return { series: [a, b], nextId: 3, active: 1 }; },
   'US & DE 10y yields (%)': () => { const a = { ...cogDefault(1), kind: 'leg', leg: 'Y_US10', asRate: false, invert: false, inBps: false, scale: 1, offset: 0, mapMode: 'axis', label: 'US 10y yield %', color: COLORS[0] }; const b = { ...a, id: 2, leg: 'Y_DE10', label: 'DE 10y yield %', color: COLORS[1] }; return { series: [a, b], nextId: 3, active: 1 }; },
 };
 function yieldSpread(id, eur, usd, invert, label) { return { ...cogDefault(id), eur, usd, asRate: false, invert, inBps: true, smooth: 1, carry: true, mapMode: 'axis', scale: 1, offset: 0, label }; }
@@ -335,7 +337,7 @@ function staleNote(d) {
   return old.length ? ` - <b style="color:#f85149">${old.map(esc).join(', ')} ${old.length > 1 ? 'end' : 'ends'} before this chart window, so nothing is drawn: pick a live leg or a longer bar count</b>` : '';
 }
 $('presets').innerHTML = Object.keys(PRESETS).map(k => `<button class="btn" data-p="${esc(k)}">${esc(k)}</button>`).join('');
-$('presets').addEventListener('click', async e => { const k = e.target.dataset.p; if (!k) return; Object.assign(state, PRESETS[k]()); await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); rebuildLines(); renderCards(); redraw(true); save(); });
+$('presets').addEventListener('click', async e => { const k = e.target.dataset.p; if (!k) return; const was = state.asset; Object.assign(state, PRESETS[k]()); if (state.asset !== was) { $('asset').value = state.asset; await loadCandles(); } await Promise.all(neededLegs().map(n => legCache[n] ? 0 : ensureLeg(n))); rebuildLines(); renderCards(); redraw(true); save(); });
 $('btnReset').onclick = async () => { Object.assign(state, PRESETS['C.OG default'](), { asset: 'NAS100', tf: '15m', bars: 1500 }); await boot(); };
 $('btnShare').onclick = async () => { const u = location.origin + location.pathname + '#s=' + btoa(unescape(encodeURIComponent(JSON.stringify(state)))); try { await navigator.clipboard.writeText(u); $('btnShare').textContent = 'Copied ✓'; } catch { prompt('Copy this link', u); } setTimeout(() => { $('btnShare').textContent = 'Copy link'; }, 2000); };
 function drawTfs() { $('tfs').innerHTML = ['5m', '15m', '1h', '4h'].map(t => `<button class="btn ${t === state.tf ? 'on' : ''}" data-tf="${t}">${t}</button>`).join(' '); }
