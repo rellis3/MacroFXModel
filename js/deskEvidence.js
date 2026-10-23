@@ -1171,6 +1171,19 @@ export const DESK_EVIDENCE = [
     use: 'Credit and equities agree in the same window (the chain’s hy->nq and hy->spx links); on 22 years of Moody’s spreads credit does NOT lead equities at 1-20 sessions, in direction or in vol. Never write that credit "moves first". The one thing worth more data is HY OAS -> next-week vol on three years, which needs a longer high-yield series (HYG/JNK from 2007) before it is anything.',
   },
   {
+    id: 'vix-beta-change', domain: 'price', verdict: 'validated', date: '2026-10-23', doc: 'forge/VIX_NASDAQ_BETA_PREREG.md', also: ['analysis/output/vix-nasdaq-beta/RESULTS.md', 'education/cog-snippets.md'],
+    claim: 'C.OG (Discord 2026-10-23): R = signed % change of VIX / % change of Nasdaq, and how quickly it is changing, dR/dt. Tested: the 5-session change of the 20-session slope of VIX % moves on Nasdaq % moves, at its extremes',
+    result: '4,259 sessions 2009-09 to 2026-08-21, entry next close, VIX-state controls, Newey-West. dR/dt bottom decile (VIX has just started reacting much harder against Nasdaq) -> Nasdaq next 5 sessions +0.211 SD (about +0.57%), t 3.00, discover/validate/test +0.09/+0.35/+0.20, shifted placebo p95 1.92, Holm across 16 passed. Raw: 410 flagged days, next 5 sessions +0.76% (67% up) vs +0.33% (60%) on all days. Post-hoc checks (demote-only): + Nasdaq 1d/5d return t 2.99, + VIX 5d/20d change t 3.29, all controls + the banked unsigned ratio t 2.91, leave-one-year-out t 2.74 to 4.42, dropping the 10 largest flagged moves t 3.73.',
+    use: 'Research-only (all-controls t 2.91 is under the |t| 3 promotion bar): when C.OG dR/dt sits in its bottom decile, Nasdaq next 5 sessions have averaged +0.76% vs +0.33% on all days. Context on the desk; a costed NQ rule and a forward record come before any sizing.',
+    instruments: ['NQ'],
+  },
+  {
+    id: 'vix-beta-level', domain: 'volatility', verdict: 'underpowered', date: '2026-10-23', doc: 'forge/VIX_NASDAQ_BETA_PREREG.md', also: ['analysis/output/vix-nasdaq-beta/RESULTS.md'],
+    claim: 'C.OG (2026-10-23): the signed VIX-per-Nasdaq % ratio R itself, at its extremes, carries information beyond the unsigned ratio already validated (vvix-ratio-range)',
+    result: '0 of 8 level cells pass with the banked ratio flags as controls; its VIX effect (bottom decile -> VIX -0.33 SD, t -3.8 without the control) is the banked vvix-ratio-range result and falls to -0.26 (t -2.86) with it; the warning tail (VIX barely falling as Nasdaq rises) Nasdaq +0.17/+0.18 SD, t 1.5-1.7. One cell null; the rest under the 0.35-0.6 SD design floor.',
+    use: 'The signed level adds nothing over vvix-ratio-range; use that entry for the VIX read.',
+  },
+  {
     id: 'vvix-ratio-range', domain: 'volatility', verdict: 'validated', date: '2026-10-23', doc: 'forge/VVIX_NASDAQ_RATIO_PREREG.md', also: ['analysis/output/vvix-nasdaq-ratio/RESULTS.md', 'education/cog-snippets.md'],
     claim: 'C.OG (Discord 2026-10-23): model the ratio of how VVIX (or VIX) and Nasdaq price information, per % Nasdaq moves per unit time; when the ratio is at an extreme, something follows. Tested: when the 20-session ratio of VVIX (or VIX) realised moves to Nasdaq realised moves is in the top decile of its last year, VIX falls over the next month beyond the VIX state',
     result: '4,259 sessions 2009-09 to 2026-08-21, entry next close, controls VIX percentile / VIX>VIX3M / VIX9D-VIX / Nasdaq 20d return / rv20-VXN, Newey-West. VVIX/Nasdaq top decile -> VIX over the next 20 sessions -0.295 SD (about -7.3%), t -3.07, discover/validate/test -0.20/-0.45/-0.39, shifted-ratio placebo p95 |t| 2.24; VIX/Nasdaq -0.287 SD, t -3.15, -0.28/-0.26/-0.29. Holm across 24 cells passed. Survives VIX own 5/20d change, VVIX percentile and VIX z as extra controls (t -2.9 to -3.0), every leave-one-year-out (t -2.4 to -3.5), and a continuous percentile (t -2.9/-3.1). Event path: VIX rises 7-11% into the extreme while Nasdaq barely moves, then gives it back.',
@@ -1477,6 +1490,8 @@ const POWER = {
   'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
   'range-ladder-placebo-confirm': { n: '2,745 session dates (21-session block bootstrap), 15 instruments', note: 'pooled MDE 0.37 pp vs a 1.0 pp bar; per-line MDE 0.69-0.89 pp' },
   'range-edge-limit-fade':   { n: '2,456 session dates (21-session block bootstrap), 34 instruments, 24,006 trades', note: 'MDE 0.023R (T1) / 0.029R (T2) vs the +0.05R null line; both CIs below zero' },
+  'vix-beta-change':         { n: '4,259 sessions 2009-26 (410 flagged days; NW lag 5)', note: 't 3.00 Holm-16, all periods, placebo; all-controls t 2.91 (research-only)' },
+  'vix-beta-level':          { n: '4,259 sessions 2009-26', note: 'no information beyond the banked unsigned ratio; design floor 0.35 SD (5d) / 0.6 SD (20d)' },
   'vvix-ratio-range':        { n: '4,259 sessions 2009-26 (31-33 top-decile episodes per construction; NW lag 20)', note: 't -3.07/-3.15, passes Holm 24, all three periods, shifted placebo; robust to extra VIX controls and leave-one-year-out' },
   'vvix-ratio-direction':    { n: '4,259 sessions 2009-26', note: '80% power only at 0.35 SD (5d) / 0.6 SD (20d) vs a 0.2 SD bar' },
   'rate-surprise-eurusd':    { n: '466-495 events 2010-26 (16 cells across both assets)', note: '80% power only at rho ~0.25-0.27 vs a 0.10 bar; data-surprise cells at 1h-1d exclude +-0.10 (null there)' },

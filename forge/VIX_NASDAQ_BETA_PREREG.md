@@ -92,7 +92,19 @@ there). The Holm-16 bar (|t| ≈ 3.15) is slightly easier than Holm-24. 80% powe
 
 ## Amendments
 
-(none)
+### A1 — 2026-10-23 — POST-HOC (results seen; demote-only)
+
+These robustness checks were run on the one passing cell (dR/dt bottom decile → ret5), in
+`scripts/vix-nasdaq-beta/robust.py`:
+
+- extra controls for short-term reversal (Nasdaq 1d and 5d return);
+- VIX's 5d and 20d change;
+- the banked unsigned-ratio percentile;
+- leave each year out in turn;
+- drop the 10 largest flagged moves.
+
+The rule was that any of them could demote the cell, and none did. With every control the t is 2.91, below the |t| ≥ 3
+promotion bar, so the cell is research-only.
 
 ## RESULTS
 

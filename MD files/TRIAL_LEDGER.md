@@ -10,16 +10,16 @@ Generated 2026-10-23.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **178** |
-| validated | 38 |
+| claims tested (validated + null + underpowered) | **180** |
+| validated | 39 |
 | null | 115 |
-| underpowered | 25 |
+| underpowered | 26 |
 | context (base rates, descriptions: not counted as tests) | 36 |
 | pre-registrations with no banked verdict (below) | 74 |
 
-**What the count says (Lesson 02 §05).** If none of the 178 claims were real, tests at the usual 5% size would still pass
-about **8.9** of them by luck. 38 passed, so most passes are unlikely to be luck alone, but
-**roughly 9 of the 38 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 180 claims were real, tests at the usual 5% size would still pass
+about **9** of them by luck. 39 passed, so most passes are unlikely to be luck alone, but
+**roughly 9 of the 39 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -239,6 +239,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-22 | positioning-into-release-range | positioning | null | MD files/POSITIONING_INTO_RELEASE_PREREG.md |
 | 2026-10-22 | quarter-end-funding-spike | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
 | 2026-10-22 | quarter-end-funding-usd | macro | underpowered | forge/QUARTER_END_FUNDING_PREREG.md |
+| 2026-10-23 | vix-beta-change | price | validated | forge/VIX_NASDAQ_BETA_PREREG.md |
+| 2026-10-23 | vix-beta-level | volatility | underpowered | forge/VIX_NASDAQ_BETA_PREREG.md |
 | 2026-10-23 | vvix-ratio-direction | volatility | underpowered | forge/VVIX_NASDAQ_RATIO_PREREG.md |
 | 2026-10-23 | vvix-ratio-range | volatility | validated | forge/VVIX_NASDAQ_RATIO_PREREG.md |
 
