@@ -295,6 +295,8 @@ export const SERVICES = [
     cadence: 'every 6 h', cost: 'low', lean: false, on: true, feeds: 'the chain gap chips (gilt, bund, JGB minus Treasuries) and rates.html' },
   { id: 'crack', where: 'server', label: 'Crude and the crack spread (FRED EIA spot, no key)',
     cadence: 'every 6 h', cost: 'low', lean: false, on: true, feeds: 'the Crude & the crack card and the chain crack node' },
+  { id: 'hmmHourly', where: 'server', label: 'Hourly market-state log: the daily two-state model refitted on hourly bars, one reading per pair per hour',
+    cadence: 'every 20 min (writes once an hour)', cost: 'low', lean: false, on: true, feeds: '/api/hmm-hourly, the newsletter pair cards and today.html pair cards; hmm_hourly_v1' },
   { id: 'drill', where: 'server', label: 'Drill history bundle (six years of daily closes)',
     cadence: 'daily', cost: 'low', lean: false, on: true, feeds: 'drill.html — the learning drill builds every question from it client-side' },
   { id: 'weekMap', where: 'server', label: 'Week map rebuild (every series scored against itself)',

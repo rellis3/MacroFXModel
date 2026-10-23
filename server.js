@@ -4133,6 +4133,17 @@ app.get('/api/daily-snapshot', async (req, res) => {
   try { const st = await _loadSnapStore(); const n = Math.min(120, Math.max(1, parseInt(req.query.days ?? '30', 10) || 30)); res.json({ ok: true, days: (st?.days ?? []).slice(-n) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// The daily model's state for every market, one character a day for the last 30 days (q quiet, a active, . not recorded), read from the daily snapshot
+// store on the server so a page never has to download the whole 400KB snapshot for it. Descriptive: the daily snapshot already records this each day.
+app.get('/api/hmm-daily-history', async (_req, res) => {
+  try {
+    const st = await _loadSnapStore(), days = (st?.days ?? []).slice(-30), pairs = {};
+    for (const d of days) for (const [name, p] of Object.entries(d.plan?.pairs ?? {})) if (!pairs[name]) pairs[name] = '';
+    for (const name of Object.keys(pairs)) pairs[name] = days.map(d => { const r = d.plan?.pairs?.[name]?.regime; return r === 'RANGE' ? 'q' : r === 'TREND' ? 'a' : '.'; }).join('');
+    res.set('Cache-Control', 'public, max-age=900');
+    res.json({ ok: true, days: days.map(d => d.day), pairs, note: 'daily two-state model: q quiet (RANGE), a active (TREND); descriptive, not a forecast of direction' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.post('/api/daily-snapshot/tick', async (_req, res) => { try { await _dailySnapshotTick(); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
 svcInterval('dailySnapshot', () => _dailySnapshotTick().catch(e => console.error('[snapshot]', e.message)), 60 * 60_000);
 
@@ -31182,6 +31193,60 @@ app.get('/api/calendar-ahead', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+
+// ── The hourly market-state log (js/hmmHourly.js) ─────────────────────────────────────────────────────────────────────────────
+// Every pair the daily model covers gets the SAME two-state model fitted on its last ~600 hourly bars. Only the state for the hour just completed is kept
+// (as it was known then), so the log is a point-in-time record of how each market moved between quiet and active through the day. The first run backfills
+// 72 hours the same way (refitting at each hour on bars up to that hour). Written to KV only when an hour was added: ~24 writes a day, not one per run.
+const _HMM_HOURLY_KV = 'hmm_hourly_v1';
+let _hmmHourlyRunning = false, _hmmHourlyStore = null;
+async function _fetchHourlyCandles(sym, count) {
+  const base = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  try {
+    const r = await fetch(`${base}/v3/instruments/${encodeURIComponent(sym.replace('/', '_'))}/candles?granularity=H1&count=${count}&price=M`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return (d.candles ?? []).filter(c => c.complete && c.mid).map(c => ({ ms: Date.parse(c.time), c: parseFloat(c.mid.c) })).filter(c => Number.isFinite(c.ms) && c.c > 0);
+  } catch { return null; }
+}
+async function _loadHmmHourly() {
+  if (_hmmHourlyStore) return _hmmHourlyStore;
+  try { const raw = await kv.get(_HMM_HOURLY_KV); _hmmHourlyStore = raw ? JSON.parse(raw) : { v: 1, pairs: {} }; return _hmmHourlyStore; }
+  catch (e) { console.warn('[hmm-hourly] store unreadable, not touching it:', e.message); return null; }
+}
+async function runHmmHourly() {
+  if (!process.env.OANDA_KEY || _hmmHourlyRunning) return;
+  const keys = Object.keys(state.hmmRegimes ?? {}); if (!keys.length) return;   // the daily fits come first (the levels refresh), so wait for them
+  _hmmHourlyRunning = true;
+  try {
+    const { hourlyState, backfillAsync, appendReading, lastHour, barHour, FIT_BARS } = await import('./js/hmmHourly.js');
+    const store = await _loadHmmHourly(); if (!store) return;
+    const before = JSON.stringify(store);
+    for (const key of keys) {
+      const fresh = !store.pairs?.[key];
+      const candles = await _fetchHourlyCandles(key, FIT_BARS + (fresh ? 72 : 3));
+      if (!candles || candles.length < 130) continue;
+      if (fresh) { for (const r of await backfillAsync(candles, 72)) appendReading(store, key, r.hour, r.state, r.prob); }
+      else if (lastHour(store, key) !== barHour(candles.at(-1).ms)) { const st = hourlyState(candles); if (st) appendReading(store, key, barHour(candles.at(-1).ms), st.state, st.prob); }   // one fit per pair per hour; a closed market adds nothing
+      await new Promise(r => setTimeout(r, 120));
+    }
+    if (JSON.stringify(store) !== before) { store.updatedAt = new Date().toISOString(); await kv.put(_HMM_HOURLY_KV, JSON.stringify(store)).catch(e => console.warn('[hmm-hourly] save failed:', e.message)); }
+  } catch (e) { console.warn('[hmm-hourly]', e.message); }
+  finally { _hmmHourlyRunning = false; }
+}
+svcInterval('hmmHourly', () => runHmmHourly(), 20 * 60_000);
+svcTimeout('hmmHourly', () => runHmmHourly(), 4 * 60_000);
+app.get('/api/hmm-hourly', async (req, res) => {
+  try {
+    const store = await _loadHmmHourly(); if (!store) return res.status(503).json({ ok: false, error: 'the log could not be read' });
+    const { window_ } = await import('./js/hmmHourly.js');
+    const hours = Math.min(24 * 45, Math.max(6, (parseInt(req.query.days ?? '2', 10) || 2) * 24)), pairs = {};
+    for (const [name, key] of Object.entries(BRIEF_HMM_KEYS)) { const w = window_(store, key, hours); if (w) pairs[name] = { key, ...w }; }
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ ok: true, updatedAt: store.updatedAt ?? null, hours, pairs, note: 'quiet or active, per hour, from the same two-state model as the daily page fitted on hourly returns; descriptive, not a forecast of direction' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 // ── Chain extras: the history behind the chips added 2026-10-23 ──────────────────────────────────────────────────────────────
 // today.html loads its chain values from FRED and OANDA directly. Seven new chips (semiconductors, energy stocks, real estate, MOVE, CCC credit, the

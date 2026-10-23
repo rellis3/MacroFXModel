@@ -44,6 +44,7 @@ export const STORES = {
   cog_line_live_v1: R('COG line live', 1),
   spread_episodes_v1: L('Spread-turn episodes forward record', 5),
   bank_credit_v1: L('BIS bank-credit snapshot + release dates', 5),
+  hmm_hourly_v1: R('Hourly market-state log (quiet/active per pair)', 2),
   newsletter_archive_v1: L('Newsletter archive (issues + range-calibration score)', 3, { market: false }),
   funding_read_v1: L('Funding & leverage daily read record', 5),
   zq_path_v1: R('Fed-funds path (ZQ)', 1),

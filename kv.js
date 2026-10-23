@@ -58,6 +58,7 @@ const _CF_EXACT = new Set([
   'bank_credit_v1',         // BIS bank-credit snapshot + the date each quarter was FIRST seen (point-in-time release record;
                              // not re-derivable). Must also be in _worker.js PERMANENT_KEYS.
   'morning_brief_intel_v1', // the Intelligence brief (mode=intel): same reason as morning_brief_v1 — it must survive a redeploy and be the same on every device, replaced only when the owner presses Generate. Also in _worker.js (both lists).
+  'hmm_hourly_v1',          // hourly quiet/active log per pair (js/hmmHourly.js): point-in-time, ~24 writes a day. Also in _worker.js (both lists).
   'newsletter_archive_v1', // the newsletter archive: each issue's snapshot, text and gzipped html, scored against the realised day (js/newsletterRecord.js). Also in _worker.js (both lists).
   'funding_read_v1',       // funding & leverage read: one row per day of states/values (js/fundingRead.js); the forward record of an
                              // untested read, not re-derivable. Must also be in _worker.js PERMANENT_KEYS.

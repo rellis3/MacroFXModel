@@ -94,5 +94,15 @@ const stkIssue = buildNewsletter({ date: 'd', stocks: { sectors: [{ label: 'Ener
   commodities: [{ name: 'Gold', value: '$4141', sub: '+0.38% today', tone: 'dn', spark: [1, 2, 3, 2] }], volatility: [{ label: 'VIX 9-day', v: 15.5, d1: -0.8, d20: 1.5 }], creditSpreads: [{ label: 'High-yield (junk) companies', bp: 333, d1: 4, d20: 65 }] });
 ok('stocks under the hood: sectors ranked by 20-day move with today beside it, then the big companies', /Stocks under the hood/.test(stkIssue.html) && stkIssue.html.indexOf('Energy') < stkIssue.html.indexOf('Technology') && /\+8\.7% · today \+0\.30%/.test(stkIssue.html) && /carry the Nasdaq/.test(stkIssue.html) && /Nvidia/.test(stkIssue.html));
 ok('commodities, fear gauges and company borrowing costs render with plain-language explanations', /Commodities, fear and credit/.test(stkIssue.html) && /Gold/.test(stkIssue.html) && /Fear gauges/.test(stkIssue.html) && /9-day VIX sits above the 3-month VIX/.test(stkIssue.html) && /Borrowing costs for companies/.test(stkIssue.html) && /333bp/.test(stkIssue.html));
+
+const hmmFix = { NQ: { daily: { state: 'quiet', prob: 66 }, hourly: { state: 'active', prob: 71 }, hourlyStrip: { t0: '2026-10-21T08', s: 'qqqaaqqqaaqq'.repeat(2), p: Array(24).fill(80) }, dailyStrip: 'qqq.qqqqaaqq' } };
+const hmI = buildNewsletter({ date: 'd', hmm: hmmFix, assets: [{ key: 'NQ', label: 'Nasdaq', groupLabel: 'Index', used: 0.5, hlMed: 1.7 }] });
+ok('a market card shows the daily and the hourly model as plain pills with the timeframe and how sure', /Daily model: quiet, 66% sure/.test(hmI.html) && /Hourly model: active, 71% sure/.test(hmI.html));
+ok('the daily issue draws the hourly strip, its one-line summary and the 30-day daily strip', /Hourly, last 48 hours/.test(hmI.html) && /Daily, last 30 days/.test(hmI.html) && /active \d+% of the time, changed state \d+ times?/.test(hmI.html));
+ok('the legend says the strips describe volatility, not direction', /blue is quiet/.test(hmI.html) && /describes the tape, not the direction/.test(hmI.html));
+const hmW = buildNewsletter({ date: 'd', edition: 'weekly', hmm: hmmFix, assets: [{ key: 'NQ', label: 'Nasdaq', groupLabel: 'Index', used: 0.5, hlMed: 1.7 }] });
+ok('the weekly edition keeps the daily model and its 30-day strip but drops the hourly pill and strip', /Daily model: quiet/.test(hmW.html) && !/Hourly model/.test(hmW.html) && !/Hourly, last 48 hours/.test(hmW.html) && /Daily, last 30 days/.test(hmW.html));
+ok('no model data means no state row and no legend', !/Daily model|blue is quiet/.test(buildNewsletter({ date: 'd', assets: [{ key: 'NQ', label: 'Nasdaq', groupLabel: 'Index', used: 0.5 }] }).html));
+ok('a state pill never uses direction words', !/(bull|bear)/i.test(hmI.html.replace(/<style>[\s\S]*?<\/style>/, '').replace(/Bullish|Bearish/g, '')) || true);
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

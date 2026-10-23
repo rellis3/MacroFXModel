@@ -1216,7 +1216,10 @@
   .chain-ends{font-size:12px;color:var(--text2);display:inline-flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
   .chain-n b{font-size:12.5px;font-weight:800} .chain-n b.up{color:var(--bull)} .chain-n b.dn{color:var(--red)} .chain-n b.muted{color:var(--text3);font-weight:600}
   .chain-exp{font-size:10px;color:var(--amber);font-weight:700;letter-spacing:.02em}
-  .chain-g{overflow-x:auto;margin:8px 0 10px;padding-bottom:2px}
+  .chain-g{overflow-x:auto;margin:8px 0 10px;padding-bottom:2px}
+  .pc-hmm{margin:5px 0 0;opacity:.95}
+  .dr-hmm{margin-top:12px;padding-top:10px;border-top:1px dashed var(--border2)}
+  .dr-hmm .stl{font-size:11px;color:var(--text3);margin:7px 0 3px}
   .chain-g svg{display:block;min-width:1020px;width:100%;height:auto}
   .chain-g .gn{cursor:pointer}
   .chain-g .gn .chip{fill:var(--card2);stroke:var(--border2);stroke-width:1.2}
@@ -2205,6 +2208,36 @@ function mveChip(r) {
 // fetch pair (today's live-ish quote + yesterday's completed OHLC close) —
 // oil is context here, not a tradeable card, so it doesn't need to tick live.
 let commodityDrivers = null;
+let hmmHourly = null, hmmDaily = null;   // /api/hmm-hourly (last 2 days, ~6KB) and /api/hmm-daily-history (30 days, loaded when a drawer opens)
+async function loadHmmHourly() { try { const r = await jget('/api/hmm-hourly?days=2'); if (r?.ok && r.updatedAt !== hmmHourly?.updatedAt) { hmmHourly = r; return true; } } catch { /* keep the last good copy */ } return false; }
+async function loadHmmDaily() { if (hmmDaily) return; try { const r = await jget('/api/hmm-daily-history'); hmmDaily = r?.ok ? r : null; } catch { hmmDaily = null; } }
+const _HMM_COL = { quiet: '#7fa8e6', active: '#e8a31a' };
+// The HOURLY model's read for one market as a small chip: quiet or active, and how sure. Variance, not direction.
+function hourlyChip(name) {
+  const S = window.stateStripBrick, e = hmmHourly?.pairs?.[name]; if (!S || !e) return '';
+  const sm = S.summarize(e, 48); if (!sm) return '';
+  return `<span class="chip" title="${esc0(S.pillWords('Hourly', sm.now, sm.nowProb))}. ${esc0(S.summaryWords(sm, 48))} Quiet or active describes how volatile the tape has been, not which way it will go."><i style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${_HMM_COL[sm.now]};margin-right:4px"></i>1h ${sm.now}</span>`;
+}
+// The last 24 hours as a thin strip under the card's chips.
+function hmmCardStrip(name) {
+  const S = window.stateStripBrick, e = hmmHourly?.pairs?.[name]; if (!S || !e) return '';
+  const svg = S.hourlyStripSvg(e, 24, { bw: 4, bh: 6, titles: false }); return svg ? `<div class="pc-hmm" title="Hourly market state, last 24 hours: blue quiet, amber active, fainter = less sure">${svg}</div>` : '';
+}
+// The drawer's fuller view: both models as pills, 48 hours of strip, 30 days of daily strip, and what it does and does not say.
+async function fillDrHmm(name) {
+  const host = $('drHmm'); if (!host) return;
+  await loadHmmDaily();
+  const S = window.stateStripBrick; if (!S) return;
+  const e = hmmHourly?.pairs?.[name], ds = hmmDaily?.pairs?.[name], reg = brief?.instruments?.[name]?.regime, sm = e ? S.summarize(e, 48) : null;
+  const pill = (kind, st, prob) => `<span class="chip" style="margin-right:6px"><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${_HMM_COL[st]};margin-right:5px"></i>${esc0(S.pillWords(kind, st, prob))}</span>`;
+  const daily = reg && (reg.label === 'TREND' || reg.label === 'RANGE') ? pill('Daily', reg.label === 'TREND' ? 'active' : 'quiet', reg.label === 'TREND' ? reg.trend_prob : reg.range_prob) : '';
+  const hourly = sm ? pill('Hourly', sm.now, sm.nowProb) : '';
+  if (!daily && !hourly && !ds) { host.innerHTML = ''; return; }
+  host.innerHTML = `<div class="stl" style="margin-top:0"><b>Market state</b> <span class="muted">how volatile this market has been, not which way it will go</span></div><div style="margin:6px 0">${daily}${hourly}</div>`
+    + (e ? `<div class="stl">Hourly, last 48 hours</div>${S.hourlyStripSvg(e, 48, { bw: 6, bh: 10 })}<div class="stl">${esc0(S.summaryWords(sm, 48))}</div>` : '')
+    + (ds && /[qa]/.test(ds) ? `<div class="stl">Daily, last 30 days</div>${S.dailyStripSvg(ds, { bw: 10, bh: 10 })}` : '')
+    + `<div class="stl">Blue is quiet, amber is active; fainter means the model was less sure; grey means no reading. A two-state model fitted on returns: the daily one suits longer trades, the hourly one suits the day. Descriptive only.</div>`;
+}
 let chainExtra = null;   // /api/chain-extra: the last 70 observations behind the seven chips added 2026-10-23 (semiconductors, energy stocks, real estate, MOVE, CCC, EM dollar, EM credit)
 async function loadChainExtra() { try { const r = await jget('/api/chain-extra'); chainExtra = r?.ok ? r : null; } catch { chainExtra = null; } }
 let intlYields = null;   // /api/intl-yields -- gilt, JGB, bund 10Y daily, for the chain's gap chips
@@ -2600,6 +2633,8 @@ async function loadGate() {
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
   loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
   loadChainExtra().then(() => render()).catch(() => {});
+  loadHmmHourly().then(() => render()).catch(() => {});
+  setInterval(() => { loadHmmHourly().then(ch => { if (ch) render(); }).catch(() => {}); }, 20 * 60_000);
   loadIntlYields();   // gilt / bund / JGB gap chips on the chain
   loadCrack();        // crude & the crack card + chain node
   loadDeskWatch();                                                 // early-warning strip (server-side engine)
@@ -9013,7 +9048,7 @@ function allReadsHtml(r) {
   const row = `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${ivRvChip(r)}${tapeSpeedChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${goldKindChip(r)}${sessionResearchChip(r)}`;
   return `<div style="display:flex;flex-wrap:wrap;gap:4px">${row}</div>`;   // turn zones have their own full section under Levels
 }
-function pairStripsHtml(r) { return ''; }   // strips now live in the drawer (ladder → Levels, motif → Research)
+function pairStripsHtml(r) { return hmmCardStrip(r.name); }   // the ladder and motif strips live in the drawer (ladder → Levels, motif → Research); the card carries the thin hourly market-state strip
 
 // ── "Now": one paragraph, from values the page already computes ──────────────
 // Order matters and is the same every time -- the hour, the day so far, the lean
@@ -9132,7 +9167,7 @@ function cardHtml(r) {
       <span class="pc-name">${dispName(r.name)}</span>
       ${d.stale ? `<span class="chip warn" title="The live data fetch failed when this forecast was computed (e.g. an Oanda outage) — showing the last good forecast${d.carried_from ? `, from the ${d.carried_from} session` : ''}. It refreshes automatically once the data source recovers.">⟳ ${d.carried_from ?? 'carried'}</span>` : ''}
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
-      <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
+      <span class="push">${regimeChip(d)}${hourlyChip(r.name)}${sizeChip(d)}</span>
     </div>
     <div class="pc-bias">${pairChipsHtml(r)}</div>
     ${pairStripsHtml(r)}
@@ -10639,6 +10674,7 @@ async function openDrawer(name) {
   // The drawer opens on one paragraph, composed from values the page already has --
   // not the card again. The material the card no longer shows lands in its tab.
   try { $('drStatus').innerHTML = drStatusHtml(r); } catch (e) { $('drStatus').innerHTML = ''; console.error('[status]', e); }
+  try { $('drStatus').insertAdjacentHTML('beforeend', '<div id="drHmm" class="dr-hmm"></div>'); fillDrHmm(name).catch(() => {}); } catch (e) { console.error('[hmm]', e); }
   // The tab strip pins directly under the header. The header's height depends on
   // whether the status line wrapped, so measure it rather than hard-code it.
   requestAnimationFrame(() => { try { $('drawer').querySelector('.dr-tabs').style.top = (Math.max(34, $('drawer').querySelector('.dr-top').offsetHeight) - 16) + 'px'; } catch {} });
@@ -14042,6 +14078,12 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
 <script type="module">
   import * as MacroChain from './js/macroChain.js';
   window.macroChainBrick = MacroChain;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- Market-state strips (js/stateStrip.js): quiet / active blocks per hour and per day, shared with the newsletter. Descriptive: variance, not direction. -->
+<script type="module">
+  import * as StateStrip from './js/stateStrip.js';
+  window.stateStripBrick = StateStrip;
   try { window.render?.(); } catch (e) {}
 </script>
 <!-- The desk's evidence ledger (js/deskEvidence.js): every relationship this desk

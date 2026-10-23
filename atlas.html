@@ -291,6 +291,7 @@ import * as P from './js/atlasPosition.js';
 import { buildNewsletter, eventNote, flagProximity, familyOf } from './js/newsletter.js';
 import { snapshotOf, diffSnapshots, scoreLine, weekRecord, plainRead } from './js/newsletterRecord.js';
 import { closuresBetween } from './js/marketCalendars.js';
+import { summarize as stateSummary } from './js/stateStrip.js';
 import { DESK_EVIDENCE } from './js/deskEvidence.js';
 
 const $ = id => document.getElementById(id);
@@ -566,6 +567,17 @@ function nlStrips() {
     creditSpreads: NL_CREDS.map(([k, label]) => { const f = fmtRate(k); return f ? { label, bp: f.v * 100, d1: f.d1, d20: f.d20 } : null; }).filter(Boolean),
   };
 }
+/** The market-state read for each card: the daily model (already in the brief), the hourly log, the 30-day daily history. */
+async function nlHmm(keys) {
+  const [h, d] = await Promise.all([J('/api/hmm-hourly?days=2'), J('/api/hmm-daily-history')]), out = {};
+  for (const k of keys) {
+    const reg = insts()[k]?.regime, hr = h?.ok ? h.pairs?.[k] ?? null : null, ds = d?.ok ? d.pairs?.[k] ?? null : null, sm = hr ? stateSummary(hr, 48) : null;
+    const daily = reg && (reg.label === 'TREND' || reg.label === 'RANGE') ? { state: reg.label === 'TREND' ? 'active' : 'quiet', prob: reg.label === 'TREND' ? reg.trend_prob : reg.range_prob } : null;
+    const hourly = sm ? { state: sm.now, prob: sm.nowProb } : null;
+    if (daily || hourly || ds) out[k] = { daily, hourly, hourlyStrip: hr, dailyStrip: ds };
+  }
+  return out;
+}
 async function nlExtras(horizonDays) {
   const today = ukDate(), to = ukDate(new Date(Date.now() + horizonDays * 864e5)), errors = [];
   const [ea, ta, fs] = await Promise.all([J('/api/earnings-ahead'), J('/api/treasury-auctions'), J('/api/fed-speakers')]);
@@ -604,7 +616,7 @@ async function buildIssue(kind) {
     const { eventImpactFor } = await import('./js/eventImpactMap.js');
     const bookFor = e => { try { return eventImpactFor(e.country, e.event); } catch { return null; } };
     const base = nlInput({ bookFor });
-    st.textContent = 'Fetching earnings, auctions and the Fed diary…'; base.extras = await nlExtras(weekly ? 8 : 3);
+    st.textContent = 'Fetching earnings, auctions and the Fed diary…'; base.extras = await nlExtras(weekly ? 8 : 3); base.hmm = await nlHmm(NL_RANGE_KEYS);
     if (weekly) {
       base.edition = 'weekly';
       const wf = await J('/api/vol-forecast/weekly'), keys = Object.keys(insts());
