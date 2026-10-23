@@ -127,5 +127,16 @@ const vbOn = buildNewsletter({ date: 'd', vixBeta: { beta: -7.1, change: -3.2, p
 ok("C.OG's dR/dt shows in the fear section, labelled research only, with the past year's flags and a pending one", /Fear versus the Nasdaq/.test(vbOn.html) && /dR\/dt/.test(vbOn.html) && /Research only/.test(vbOn.html) && /2026-06-05 Nasdaq \+3\.84%/.test(vbOn.html) && /pending/.test(vbOn.html) && /bottom tenth/.test(vbOn.html));
 const irOnN = buildNewsletter({ date: 'd', impliedRatio: { ratio: 5.1, change5: 12.4, pct: 96, on: true, flags: [] } });
 ok('the implied-ratio change shows in the fear section, research only', /Fear versus the Nasdaq/.test(irOnN.html) && /VVIX\/VXN/.test(irOnN.html) && /Research only/.test(irOnN.html) && /top tenth/.test(irOnN.html));
+
+{ const { evaluateChain, CHAIN_NODES } = await import('./macroChain.js'); const f = k => CHAIN_NODES[k].floor;
+  const links = evaluateChain({ oil: { delta: f('oil') * 4 }, bei: { delta: f('bei') * 3 }, us10y: { delta: -f('us10y') * 3 }, real: { delta: f('real') * 1.2 } });
+  const withIdea = buildNewsletter({ date: 'd', links });
+  ok('the idea of the day is a section with all eight questions, labelled as reasoning and not a trade', /The idea of the day/.test(withIdea.html) && /Reasoning, not a trade/.test(withIdea.html) && /8\. What would prove it wrong/.test(withIdea.html) && /THE IDEA OF THE DAY/.test(withIdea.text));
+  ok('no chain data means no idea section', !/The idea of the day/.test(buildNewsletter({ date: 'd' }).html)); }
+
+{ const d = buildNewsletter({ date: '2026-10-24' }), d2 = buildNewsletter({ date: '2026-10-25' }), w = buildNewsletter({ date: '2026-10-24', edition: 'weekly' });
+  ok('the daily issue carries a question of the day with a clue', /Question of the day/.test(d.html) && /Clue:/.test(d.html) && /QUESTION OF THE DAY/.test(d.text));
+  ok('it shows the previous answer and the question changes day to day', /The answer to yesterday/.test(d.html) && d.html.match(/Question of the day.*?<\/div>/s)[0] !== d2.html.match(/Question of the day.*?<\/div>/s)[0]);
+  ok('the weekly issue asks a question of the week', /Question of the week/.test(w.html) && /last week/.test(w.html)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

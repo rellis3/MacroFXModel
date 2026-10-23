@@ -32,6 +32,9 @@ export const RANGE_EFFECT = {
 };
 import { CHAIN_LAYOUT } from './macroChain.js';
 import { pressureWords } from './rangePressure.js';
+import { buildIdea } from './macroIdea.js';
+import { questionFor } from './questionOfDay.js';
+import { QUESTIONS } from './questionBank.js';
 import { fearWords, vixBetaWords, impliedRatioWords } from './fearVsNasdaq.js';
 import { hourlyStripSvg, hourlyStripWithAxis, hourlyLegendNote, dailyStripSvg, summarize, summaryWords, pillWords, COLOUR as STATE_COLOUR } from './stateStrip.js';
 const FAMILY_RE = [['cpi', /\bcpi\b|consumer price|inflation rate/i], ['employment', /non-farm|nonfarm|payroll|unemployment|jobless|claims|employment change/i], ['gdp', /\bgdp\b/i], ['rate decision', /rate decision|cash rate|official bank rate|federal funds|interest rate|policy rate|refinancing/i], ['pmi', /\bpmi\b|ism /i], ['retail sales', /retail sales/i]];
@@ -292,6 +295,16 @@ export function buildNewsletter(n) {
   const _evTop = (n.events ?? []).find(e => e.impact === 'high') ?? (n.events ?? []).find(e => e.impact === 'medium');
   const glance = (n.riskFlags || _tl.length || _evTop) ? `<div class="glance">${n.riskFlags ? `<div><b>${n.riskFlags.active}/${n.riskFlags.total}</b><span>stress warnings on</span></div>` : ''}${_tl.length ? `<div><b>${_bk} of ${_tl.length}</b><span>chain links broken</span></div>` : ''}${_evTop ? `<div><b>${esc(ukTime(_evTop.ms))}</b><span>${esc(clip(_evTop.event, 34))}</span></div>` : ''}</div>` : '';
 
+  // ── The idea of the day: one chain worked through the eight questions (js/macroIdea.js). Reasoning and context, never a trade. ──
+  const idea = buildIdea({ links: n.links, events: n.events, rangePressure: n.rangePressure, fear: n.fearVsNasdaq, nowMs: n.nowMs ?? null });
+  const ideaGroups = { view: 'The view', timing: 'The timing', trade: 'How to test it' };
+  const ideaHtml = idea ? sec('The idea of the day', 'Reasoning, not a trade', `<p style="margin:0 0 6px;font-weight:600">${esc(idea.headline)}</p>${idea.pattern ? `<p class="small" style="margin:0 0 8px"><b>Pattern:</b> ${esc(idea.pattern)}. When the cause moves and the price will not follow, the price is usually the better guide to what the market believes.</p>` : ''}${['view', 'timing', 'trade'].map(g => `<h3>${ideaGroups[g]}</h3>${idea.q.filter(x => x.g === g).map(x => `<p class="small" style="margin:4px 0"><b>${x.n}. ${esc(x.t)}</b> ${esc(x.body)}</p>`).join('')}`).join('')}<p class="small muted" style="margin-top:8px">This is a way of reading the day, built from measured moves, not a call to buy or sell. This desk's tests found direction calls close to a coin flip, so the size of moves is better evidenced than where they head. Where the desk has no data for a question, the answer says so.</p>`) : '';
+
+  // ── Question of the day / week, from the desk's own lessons (js/questionBank.js, each answer quoted from its lesson). Today's question and clue, yesterday's answer. ──
+  const qod = /^\d{4}-\d{2}-\d{2}/.test(n.date ?? '') ? questionFor(QUESTIONS, String(n.date).slice(0, 10), { weekly }) : null;
+  const qWord = weekly ? 'week' : 'day', prevWord = weekly ? 'last week' : 'yesterday';
+  const qodHtml = qod ? sec(`Question of the ${qWord}`, 'From the lessons', `<div class="lesson"><p style="margin:0 0 6px;font-weight:600">${esc(qod.today.question)}</p><p class="small muted" style="margin:0">${esc(qod.today.clue)}</p></div>${qod.previous ? `<p class="small" style="margin:10px 0 2px"><b>The answer to ${prevWord}'s question:</b> ${esc(qod.previous.question)}</p><p class="small" style="margin:2px 0">${esc(qod.previous.answer)} <span class="muted">${esc(qod.previous.why)}</span></p>` : ''}<p class="small muted" style="margin-top:6px">Taken from the education lessons. Think it through before you read the answer.</p>`) : '';
+
   // What changed since the last issue: the reader's first question every day after the first.
   const since = n.since;
   const sinceHtml = since ? sec(since.first ? 'No earlier issue to compare with yet' : `What changed since ${esc(since.from ?? 'the last issue')}`, 'Since last time', since.first ? `<p class="small muted">Changes are measured against the previous day's saved issue, and there isn't one yet. From the next day this box lists new broken links, stress warnings switching on or off, backdrop changes and central-bank tone moves.</p>` : (since.items ?? []).length ? `<ul class="t">${since.items.slice(0, 8).map(i => `<li>${esc(i.text)}</li>`).join('')}</ul>` : `<p class="small muted">Nothing on the checklist changed: the same broken links, the same stress warnings, the same backdrop.</p>`) : '';
@@ -400,7 +413,7 @@ export function buildNewsletter(n) {
 
   const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}</div></div>`;
 
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${glance}${sinceHtml}${letterSec}${tiles}${rpHtml}${fearHtml}${driving}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${lesson}${noEdge}${foot}</div></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${glance}${sinceHtml}${letterSec}${tiles}${rpHtml}${fearHtml}${driving}${ideaHtml}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${qodHtml}${lesson}${noEdge}${foot}</div></body></html>`;
 
   const T = [];
   T.push(`DESK ATLAS · ${weekly ? 'WEEKLY' : 'DAILY'} · ${n.date}`, '', headline, '');
@@ -418,8 +431,10 @@ export function buildNewsletter(n) {
     for (const a of (x.auctions ?? []).filter(a => a.type !== 'Bill')) L.push(`- ${a.date} Treasury auction: ${a.term} ${a.type} $${a.amountB}bn`);
     for (const f of x.fed ?? []) L.push(`- ${f.date} Fed: ${f.what}`);
     if (L.length) T.push('BEYOND THE CALENDAR', ...L, ''); }
+  if (idea) { T.push('THE IDEA OF THE DAY (reasoning, not a trade)', idea.headline); for (const x of idea.q) T.push(`${x.n}. ${x.t} ${x.body}`); T.push(''); }
   if (rec) T.push('TRACK RECORD', rec.line, '');
   T.push('HOW TO READ THIS', ...LIMITS.map(x => '- ' + x), '');
+  if (qod) { T.push(`QUESTION OF THE ${qWord.toUpperCase()}`, qod.today.question, qod.today.clue, ''); if (qod.previous) T.push(`ANSWER TO ${prevWord.toUpperCase()}'S QUESTION`, qod.previous.question, qod.previous.answer, ''); }
   if (a.lesson?.concept) T.push(`TODAY'S LESSON: ${a.lesson.concept}`, a.lesson.today, '');
   T.push('---', 'NOT FINANCIAL ADVICE.', ...DISCLAIMER.map(d => d.replace(/^NOT FINANCIAL ADVICE\.\s*/, '')));
   return { subject, preheader, html, text: T.join('\n') };
