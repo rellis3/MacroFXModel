@@ -170,3 +170,24 @@ line looks like an aggregate hedging requirement against price. The circles were
 read as support (bounce) and as acceleration (break), so the screenshots cannot test anything. Prior verdicts that apply:
 gamma-sign → next-day range is REAL on NQ; walls/flips as levels are NULL (wall placebo, G3, ripple walls). Rebuilt as
 the "Dealer hedging map" (05c) on `oi-dashboard-v2.html` (engine `js/hedgingScenario.js`), 2026-10-18.
+
+## 3. VVIX vs Nasdaq "pricing ratio" (Discord, 2026-10-23)
+
+**Observed (screenshot, 12:03–12:08 UK).** Jordan asked C.OG for insights ("anything at this point", posting a chart of
+gold against an inverted US 10Y yield, 15-min). C.OG replied:
+
+> Take a look at the ratio between how vvix and Nasdaq are pricing in information
+> So model it as a ratio and say for every % Nasdaq prices in what is the relative priced in % of vix all per unit time
+> and then you want to create a time series of that ratio and see how it looks over time and when that ratio is at an extreme
+> What then happens
+> Will be very interesting
+> Might even just get yourself a system idea from this
+
+**Not stated by C.OG (open):** whether "priced in" means realised moves or implied vol; whether the second leg is VVIX or
+VIX (he names VVIX, then writes "vix"); the unit of time; what "extreme" means; what to look at afterwards.
+
+**Inference (ours).** Three readings, registered as separate constructions in `forge/VVIX_NASDAQ_RATIO_PREREG.md`:
+(a) realised: % move of VVIX per % move of Nasdaq over a window (ratio of realised vols); (b) the same with VIX;
+(c) implied: VVIX ÷ VXN (vol-of-vol priced per unit of Nasdaq vol). Jordan's gold-vs-inverted-10Y chart is the known
+same-day real-yield link (ledger `which-gold`, context); it is drawable on cog-chart.html (preset "Gold vs inverted US 10y
+real yield").
