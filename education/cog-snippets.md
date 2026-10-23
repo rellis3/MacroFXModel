@@ -191,3 +191,20 @@ VIX (he names VVIX, then writes "vix"); the unit of time; what "extreme" means; 
 (c) implied: VVIX ÷ VXN (vol-of-vol priced per unit of Nasdaq vol). Jordan's gold-vs-inverted-10Y chart is the known
 same-day real-yield link (ledger `which-gold`, context); it is drawable on cog-chart.html (preset "Gold vs inverted US 10y
 real yield").
+
+### 3b. The same thread, clarified (Discord, 2026-10-23, 12:21–12:45 UK)
+
+**Observed.** Garin described VVIX as "expected volatility of VIX itself, derived from VIX options"; C.OG: "This is a good
+explanation". C.OG then (to Jordan, about calculus: bond cash flows as integrals, Brownian motion accumulating over time):
+
+> How quickly the ratio is changing could be modelled as dR/dt
+> Where R is the relative change of vix % at time t / the relative change of Nasdaq % at time t
+> Just make sure to factor in the sign as they're negatively correlated
+
+**What this settles (stated by C.OG):** the ratio is **VIX** (not VVIX) % change over Nasdaq % change, **signed**; and its
+rate of change dR/dt is of interest. **Still open:** the time step, how to handle a near-zero Nasdaq move in the
+denominator, what "extreme" means.
+
+**Inference (ours).** Over a window, a signed % change ratio is the slope (beta) of VIX % changes on Nasdaq % changes
+(normally negative; it equals the unsigned ratio of the first test x the VIX-Nasdaq correlation). Tested as a follow-up,
+`forge/VIX_NASDAQ_BETA_PREREG.md`: the beta level and its rate of change at extremes.
