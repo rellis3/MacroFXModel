@@ -309,6 +309,7 @@ import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
+import { buildOiPlan as _hpoBuild, OI_PLAN as _HPO_CFG } from './js/hedgingPlanOI.js';   // OI-level hedging plan (shadow)
 import { buildHedgePlanText as _hpText, orderStates as _hpStates } from './js/hedgingPlanExport.js';   // hedge plan → pine/OI Bot Trades.pine
 import { cmeBookContracts as _cmeBook, priceDigits as _priceDigits } from './js/hedgingBooks.js';
 import { buildOiProfile, buildProfileText, shiftProfilePrices, chunkText } from './js/oiProfile.js';   // OI Profile indicator export   // CME listed book → hedging contracts (FX, US30)
@@ -23802,6 +23803,27 @@ app.get('/api/hedging-plan', async (req, res) => {
 });
 // GET /api/hedging-plan/export -> today's plan as the text block pine/OI Bot Trades.pine draws (paste below or instead
 // of the OI bot block). Each order carries its live state from today's bars: armed / open / done / primed.
+// GET /api/hedging-plan-oi -> the textbook version of today's plan (js/hedgingPlanOI.js): the same fade/follow playbook, but the orders sit on the OI map's walls
+// instead of the forecast percentile lines. SHADOW: read-only, no KV, no orders, the live plan above is untouched. Prereg: forge/HEDGING_PLAN_OI_PREREG.md.
+let _hpoCache = { at: 0, v: null };
+app.get('/api/hedging-plan-oi', async (req, res) => {
+  try {
+    if (!_hpoCache.v || Date.now() - _hpoCache.at > 5 * 60_000 || req.query.fresh === '1') {
+      const r = await fetch(`http://127.0.0.1:${PORT}/api/oi-profile/export?pair=core&reach=0&json=1`, { signal: AbortSignal.timeout(90_000) });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'profile unavailable');
+      const markets = (j.items || []).map(it => {
+        const p = it.prof, sigma = it.dayMove ?? p.refMove;
+        return { pair: String(it.sk).replace('/', '_'), spot: p.spot, sigma, regime: p.regime, book: p.book?.label ?? null,
+          levels: (p.levels || []).filter(l => ['call_wall', 'put_wall', 'zero_gamma', 'max_pain'].includes(l.type)).map(l => ({ type: l.type, price: l.price, label: l.label })),
+          plan: _hpoBuild({ spot: p.spot, sigma, regime: p.regime, levels: p.levels || [] }) };
+      });
+      _hpoCache = { at: Date.now(), v: { date: new Date().toISOString().slice(0, 10), markets, config: _HPO_CFG,
+        evidence: 'Textbook structure, not a validated edge. The forecast-line version averaged -0.03R on NQ and -0.08R on EURUSD/GBPUSD/AUDUSD after costs; walls and flips did not beat placebo levels. Shadow only, scored forward (forge/HEDGING_PLAN_OI_PREREG.md).' } };
+    }
+    res.json({ ok: true, ..._hpoCache.v });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.get('/api/hedging-plan/export', async (req, res) => {
   try {
     const v = await _hedgingPlanPayload(req.query.fresh === '1');
@@ -24965,6 +24987,7 @@ app.get('/api/oi-profile/export', async (req, res) => {
       return buildProfileText(prof, { name: fk || String(sk).toUpperCase().replace(/[^A-Z0-9]/g, ''), generated: new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC · saved ' + (inst.savedAt || '?'), digits: _priceDigits(sk, inst.spot), savedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null });
     });
     if (!blocks.length) return res.status(404).type('text/plain').send('No profile could be built (no book on the record).');
+    if (String(req.query.json || '') === '1') return res.json({ ok: true, items: items.map(it => ({ sk: it.sk, dayMove: it.dayMove, prof: it.prof })) });   // internal: the OI-level hedging plan reads the levels
     // Pine v6 caps a string at 40,960 characters. Instruments go in store order (FX, gold, indices, then commodities), so if the whole book ever outgrows the cap it is the
     // commodity blocks at the END that are left out, and a line says which (the indicator ignores it).
     const CAP = Math.min(40000, Math.max(4000, parseInt(req.query.max, 10) || 40000));

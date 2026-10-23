@@ -95,6 +95,13 @@ svg text{font-family:var(--mono)}
     <div id="plainBody" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px"></div>
   </div>
 
+  <div class="card" id="hpoCard">
+    <h2><em>00b</em> Hedging plan, textbook version <span class="pill" style="font-size:11px;padding:2px 9px;margin-left:8px;cursor:default">shadow · not live</span></h2>
+    <div class="sub"><b>Same playbook, orders on the OI map's own levels.</b> When dealers are long gamma ("PIN") they sell rallies and buy dips, so the big walls act as edges: <b>fade</b> the nearest wall each side, stop a small buffer beyond it (a quarter of the day's σ), target the next level back toward price. When they are short gamma ("BREAKOUT") they chase, so a confirmed break of a wall is fed: <b>follow</b> it, stop back inside the wall, target the next level out. A wall the day cannot plausibly reach (beyond 1.5σ) is not an order. The line under each market shows how far the current plan's entries sit by comparison. <b>This is the textbook structure, not a proven edge</b> (walls did not beat placebo levels; the forecast-line version averaged −0.03R after costs). It is scored forward, side by side.</div>
+    <div class="tbl" style="overflow-x:auto"><div id="hpoBody"><div class="sub">Loading…</div></div></div>
+    <div class="legend" id="hpoNote"></div>
+  </div>
+
   <div class="card">
     <h2><em>01</em> Live gamma terrain
       <span class="tgl"><span class="pill" data-tf="M5">5m</span><span class="pill on" data-tf="M15">15m</span><span class="pill" data-tf="H1">1h</span></span></h2>
@@ -1105,6 +1112,28 @@ $('#hedgeTvBtn').onclick = async () => {
   setTimeout(() => { b.textContent = was; }, 2500);
 };
 
+// ── 00b: the textbook (OI-level) hedging plan beside the current (forecast-line) one ─────────────────────────────────────────
+const hpFmt = v => !Number.isFinite(v) ? '-' : Math.abs(v) >= 1000 ? v.toFixed(1) : Math.abs(v) >= 10 ? v.toFixed(3) : v.toFixed(5);
+async function drawPlanOI(){
+  const body = $('#hpoBody'); if (!body) return;
+  try {
+    const [O, P] = await Promise.all([fetch('/api/hedging-plan-oi').then(r => r.json()), fetch('/api/hedging-plan').then(r => r.json()).catch(() => null)]);
+    if (!O.ok) throw new Error(O.error || 'unavailable');
+    const cur = Object.fromEntries((P?.markets ?? []).map(x => [x.pair, x]));
+    const nameOf = pair => NAMES[pair] || NAMES[pair.replace('_', '/')] || pair;
+    const pctOf = (a, b) => (Math.abs(a / b - 1) * 100).toFixed(2) + '%';
+    const rows = O.markets.map(m => {
+      const pl = m.plan, fade = m.regime === 'PIN', col = fade ? `rgb(${LONG})` : `rgb(${SHORT})`;
+      const ords = (pl?.orders ?? []).map(o => `<div style="margin:2px 0"><b style="color:${o.side === 'buy' ? `rgb(${LONG})` : `rgb(${SHORT})`}">${o.side.toUpperCase()} ${o.type}</b> at ${esc(o.level)} <b>${hpFmt(o.entry)}</b> <span style="color:var(--tx3)">(${pctOf(o.entry, m.spot)} from spot, ${o.distSigma.toFixed(1)}σ)</span> · stop ${hpFmt(o.stop)} (${pctOf(o.stop, o.entry)}) · target ${esc(o.targetName)} ${hpFmt(o.target)} · R:R ${o.rr.toFixed(1)}</div>`).join('');
+      const skipped = (pl?.skipped ?? []).map(s => `<div style="color:var(--tx3);font-size:12px">no ${s.trigger === 'up' ? 'upper' : 'lower'} order: ${esc(s.reason)}</div>`).join('');
+      const c = cur[m.pair]?.plan, oc = cur[m.pair]?.open;
+      const old = c && oc ? `<div style="color:var(--tx3);font-size:12px;margin-top:3px">current plan (forecast lines): entries ${c.orders.map(o => pctOf(o.entry, oc)).join(' and ')} from the open, stops ${c.orders.map(o => pctOf(o.stop, o.entry)).join(' and ')} beyond</div>` : '';
+      return `<tr><td style="white-space:nowrap;vertical-align:top"><b>${esc(nameOf(m.pair))}</b><br><span style="color:${col};font-size:12px">${fade ? 'long gamma · FADE' : 'short gamma · FOLLOW'}</span></td><td style="vertical-align:top;font-size:12.5px">${ords || '<span style="color:var(--tx3)">no order today</span>'}${skipped}${old}</td></tr>`;
+    }).join('');
+    body.innerHTML = `<table style="width:100%;border-collapse:collapse"><tbody>${rows}</tbody></table>`;
+    $('#hpoNote').innerHTML = esc(O.evidence);
+  } catch (err) { body.innerHTML = `<div class="sub">Could not load the textbook plan: ${esc(err.message)}</div>`; }
+}
 async function drawPlain(){
   const body = $('#plainBody');
   body.innerHTML = '<div class="sub">Loading last night\'s options books…</div>';
@@ -1210,7 +1239,7 @@ document.querySelectorAll('[data-ah]').forEach(b => b.onclick = () => { AH = +b.
 document.querySelectorAll('[data-tf]').forEach(b => b.onclick = () => { TF = b.dataset.tf; document.querySelectorAll('[data-tf]').forEach(x => x.classList.toggle('on', x === b)); drawTerrain(); });
 
 (async () => {
-  drawPlain();
+  drawPlain(); drawPlanOI();
   try {
     const r = await fetch('/api/oi-store'); const j = await r.json(); STORE = j.data ?? j;
     try { const c = await (await fetch('/api/kv/get?key=oi_store_cmdty')).json(); const cd = c.data?.data ?? c.data ?? {}; for (const [k, v] of Object.entries(cd)) if (!STORE[k] && v && typeof v === 'object') STORE[k] = v; } catch (_) { /* commodities optional */ }
