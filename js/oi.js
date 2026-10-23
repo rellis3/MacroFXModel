@@ -494,7 +494,7 @@ if (typeof document !== 'undefined') {
 // CME FX futures quotes the foreign currency in USD for EUR/USD, GBP/USD, AUD/USD
 // but quotes the USD in foreign-currency terms for USD/JPY (6J), USD/CAD (6C), USD/CHF (6S).
 // For those three, the raw CME price must be inverted (1/price) to get the spot-equivalent.
-function futuresIsInverted(pair) {
+export function futuresIsInverted(pair) {
   return pair === 'USD/JPY' || pair === 'USD/CAD' || pair === 'USD/CHF' || pair.includes('JPY');
 }
 

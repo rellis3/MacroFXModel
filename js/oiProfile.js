@@ -12,7 +12,7 @@
  *
  * Pure. `buildOiProfile` returns a plain object; `buildProfileText` serialises it as pipe-delimited lines the Pine indicator parses.
  */
-import { oiBookLegs } from './oi.js';
+import { oiBookLegs, oiParseVolume, futuresIsInverted } from './oi.js';
 import { gexLadder } from './gexLadder.js';
 import { levelExpectation } from './levelExpectation.js';
 import { RIPPLE_BUCKETS } from './rippleBook.js';
@@ -111,7 +111,17 @@ export function buildOiProfile(inst, opts = {}) {
   const mk = () => new Array(nBins).fill(0);
   const gC = mk(), gP = mk(), gV = mk(), vol = mk();
   lad.strikes.forEach((k, i) => { const b = binOf(k); if (b >= 0 && b < nBins) { gC[b] += call[i]; gP[b] += put[i]; gV[b] += van[i]; } });
-  for (const r of inst?.volCP || []) { const b = binOf(r[0]); if (b >= 0 && b < nBins) vol[b] += (r[1] || 0) + (r[2] || 0); }
+  // per-strike volume: the stored call/put split (volCP). A re-analyse of an unchanged volume paste can drop that split, leaving only rawVol (total volume per strike):
+  // fall back to it, moved onto the same basis the ladder uses, so the VOLUME column never silently empties.
+  let volRows = Array.isArray(inst?.volCP) && inst.volCP.length ? inst.volCP : null;
+  if (!volRows && inst?.rawVol) {
+    try {
+      const basis = Number.isFinite(inst.basis) ? inst.basis : 0, inv = futuresIsInverted(inst.pair || '');
+      const shift = s => (basis !== 0 ? (inv ? 1 / s - basis : s - basis) : s);
+      volRows = oiParseVolume(inst.rawVol).map(x => [shift(x.strike), x.volume, 0]).filter(r => Number.isFinite(r[0]) && r[0] > 0);
+    } catch { volRows = null; }
+  }
+  for (const r of volRows || []) { const b = binOf(r[0]); if (b >= 0 && b < nBins) vol[b] += (r[1] || 0) + (r[2] || 0); }
   const rows = (fn) => Array.from({ length: nBins }, (_, b) => fn(b)).filter(Boolean);
   const mid = b => lo + (b + 0.5) * bw;
   const gex = rows(b => ((gC[b] || gP[b]) ? { price: mid(b), net: gC[b] - gP[b], call: gC[b], put: gP[b] } : null));

@@ -69,5 +69,14 @@ ok('integers only in the bar series (compact)', rows.filter(r => /^[GVO]\|/.test
   ok('nodes are skipped where a wall or the peak already sits', pn.levels.every(l => !(l.type.endsWith('gamma_node') && pn.levels.some(w => (w.type === 'call_wall' || w.type === 'put_wall' || w.type === 'gamma_peak') && Math.abs(w.price - l.price) < 0.25))));
   ok('the node survives into the paste text', buildProfileText(pn, { name: 'X', digits: 2 }).includes('|short_gamma_node|'));
 }
+// the call/put volume split (volCP) can be dropped by a re-analyse; the VOLUME column must fall back to the per-strike totals in rawVol, not go empty
+{
+  const T = String.fromCharCode(9), N = String.fromCharCode(10);
+  const noSplit = { ...inst, volCP: null, rawVol: ['98' + T + '500', '102' + T + '200', '99' + T + '100'].join(N) };
+  const pv = buildOiProfile(noSplit, { legs, mult: 1, flat: 0.2, hedge });
+  ok('volume bars fall back to rawVol when volCP is missing', pv.volume.length >= 2 && pv.volume.some(r => Math.abs(r.price - 98) < 1.5), JSON.stringify(pv.volume));
+  const none = buildOiProfile({ ...inst, volCP: null, rawVol: '' }, { legs, mult: 1, flat: 0.2, hedge });
+  ok('no volume data at all: the column is simply empty, nothing invented', none.volume.length === 0);
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
