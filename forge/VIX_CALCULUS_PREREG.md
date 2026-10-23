@@ -238,7 +238,31 @@ Reproduced from his description:
 
 ## Amendments
 
-(none)
+### A1 — 2026-10-23 — PRE-RESULTS (E power; no real E outcome read)
+
+`scripts/vix-calculus/vx.py power` used synthetic fat-tailed 20-session outcomes (t(4) daily shocks summed, 300 reps)
+on the real E sample: 3,314 sessions with a VX outcome, the real R_a/R_b flags and the registered controls. It found
+80% power at a planted **0.5 SD**:
+
+| Planted effect | Power (R_a / R_b) |
+|---|---|
+| 0.2 SD | 0.22 / 0.21 |
+| 0.3 SD | 0.42 / 0.40 |
+| 0.5 SD | 0.84 / 0.80 |
+
+This is better than the 0.65 SD written in §5.
+
+- The spot give-back was −0.29 SD, so a futures effect of the same size in SD units would be found less than half the
+  time.
+- An E cell that fails with its interval reaching past −0.2 SD is therefore **UNDERPOWERED**, not NULL.
+
+Synthetic noise replaced the "planted on 2013–2016" wording of §5, so no real outcome was used.
+
+### A2 — 2026-10-23 — note (results of A, B and C seen before E and D were run)
+
+Parts A–C ran before this amendment. E's definitions are unchanged from the registered text, except for one fix: the
+three-period sign check coded "negative in all three periods", as §3 E says. The first draft of that line was garbled
+and was fixed before E ran. D is unchanged.
 
 ## RESULTS
 
