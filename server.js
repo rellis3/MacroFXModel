@@ -31195,16 +31195,20 @@ app.get('/api/chain-extra', async (_req, res) => {
       if (!_drillBundle.data) { try { await _refreshDrillBundle(); } catch (e) { console.warn('[chain-extra] drill bundle:', e.message); } }
       const d = _drillBundle.data;
       for (const k of ['smh', 'xle', 'xlre', 'move', 'ccc']) {
-        const a = d?.series?.[k]; if (!a) { missing.push(k); continue; }
-        const pts = []; for (let i = a.length - 1; i >= 0 && pts.length < 70; i--) if (a[i] != null && Number.isFinite(a[i])) pts.unshift({ date: d.dates[i], value: +a[i].toFixed(4) });
-        series[k] = pts;
+        const a = d?.series?.[k]; let pts = [];
+        if (a) for (let i = a.length - 1; i >= 0 && pts.length < 70; i--) if (a[i] != null && Number.isFinite(a[i])) pts.unshift({ date: d.dates[i], value: +a[i].toFixed(4) });
+        if (pts.length < 25) {   // the daily bundle misses a series now and then (a Yahoo hiccup at the moment it was built): fetch it directly rather than leave the chip empty for a day
+          try { const m = await fetchYahooOHLC({ smh: 'SMH', xle: 'XLE', xlre: 'XLRE', move: '^MOVE' }[k] ?? k, Math.floor(Date.now() / 1000) - 140 * 86400); pts = [...m].map(([date, o]) => ({ date, value: +o.close.toFixed(4) })).slice(-70); }
+          catch (e) { console.warn(`[chain-extra] ${k} fallback:`, e.message); }
+        }
+        if (pts.length >= 25) series[k] = pts; else missing.push(k);
       }
       const fredKey = process.env.FRED_KEY, from = new Date(Date.now() - 140 * 864e5).toISOString().slice(0, 10);
       for (const [k, id] of [['emdollar', 'DTWEXEMEGS'], ['emoas', 'BAMLEMCBPIOAS']]) {
         try { if (!fredKey) throw new Error('FRED_KEY not set'); const m = await fetchFredObservations(id, from, fredKey); series[k] = [...m].map(([date, value]) => ({ date, value })).slice(-70); }
         catch (e) { missing.push(k); console.warn(`[chain-extra] ${id}:`, e.message); }
       }
-      if (Object.keys(series).length) { _chainExtra.data = { series, missing }; _chainExtra.at = Date.now(); }
+      if (Object.keys(series).length) { _chainExtra.data = { series, missing }; _chainExtra.at = missing.length ? Date.now() - 5.5 * 3600e3 : Date.now(); }   // anything missing: look again in 30 minutes, not 6 hours
       else throw new Error('no chain-extra series available');
     }
     res.set('Cache-Control', 'public, max-age=1800');
