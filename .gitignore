@@ -691,3 +691,6 @@ Oanda Parquet Files/Bid and Ask/xauusd_h4.parquet
 
 # OANDA spread/financing pull (2026-10-20): local data, ~2.8 GB, never commit
 /Oanda Parquet Files/
+# vix-calculus: IB 5-minute VIX bars and the intraday readings built from them stay local (rebuild: scripts/vix-calculus/fetch_ib_intraday.py, intraday.py build)
+analysis/output/vix-calculus/data/VIX_5m.parquet
+analysis/output/vix-calculus/readings.parquet
