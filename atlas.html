@@ -772,15 +772,26 @@ const wireStrip = id => document.querySelectorAll('#' + id + ' .cc').forEach(b =
 let _genP = null;
 function generateIntel() { return (_genP ??= _generateIntel().finally(() => { _genP = null; })); }   // one at a time on this page: a second click or the newsletter button joins the first
 async function _generateIntel() {
-  const b = $('genbtn'); if (!b) return false; b.disabled = true; b.textContent = 'Generating… about 90s';
-  let r = await J('/api/morning-brief?mode=intel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ context: positionContext() }) });
-  if (!r?.ok && /already generating/.test(r?.error ?? '')) {   // the server has one slot: an earlier click, another tab or another device holds it. Wait for that brief instead of failing.
-    b.textContent = 'Another brief is generating, waiting for it…';
-    const t0 = Date.now(), before = D.intel?.generatedAt ?? '';
-    while (Date.now() - t0 < 300000) { await new Promise(x => setTimeout(x, 6000)); const g = await J('/api/morning-brief?mode=intel'); if (g?.ok && g.generatedAt && g.generatedAt !== before) { r = g; break; } }
+  const b = $('genbtn'); if (!b) return false; b.disabled = true; b.textContent = 'Starting…';
+  const fail = msg => { b.disabled = false; b.textContent = 'Generate Intelligence brief'; $('loaderr').innerHTML = `<div class="err">Generate failed: ${esc(msg)}</div>`; return false; };
+  const done = r => { D.intel = r; lsPut(r); drawGlobal(); if (r.saved === false) $('loaderr').innerHTML = '<div class="err">The brief was generated but could NOT be saved on the server, so it will be gone when you reload and other devices will not see it. Build the newsletter now to keep it, or press Generate again.</div>'; return true; };
+  // The work runs on the server in the background. This page only starts it and watches, so a dropped phone connection or a long model no longer loses it.
+  const r0 = await J('/api/morning-brief?mode=intel&async=1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ context: positionContext() }) });
+  const joined = !r0?.ok && /already generating/.test(r0?.error ?? '');
+  if (!r0?.ok && !joined) return fail(r0?.error ?? 'the server did not answer');
+  const t0 = r0?.startedAt ?? Date.now(); let sawRunning = false, quiet = 0;
+  for (;;) {
+    const el = Math.round((Date.now() - t0) / 1000); b.textContent = `${joined ? 'Another brief is generating' : 'Writing the brief'}… ${Math.floor(el / 60)}m ${String(el % 60).padStart(2, '0')}s`;
+    await new Promise(x => setTimeout(x, 4000));
+    const s = await J('/api/morning-brief/status');
+    if (!s?.ok) { if (++quiet > 20) return fail('lost contact with the server'); continue; } quiet = 0;
+    if (s.running) { sawRunning = true; continue; }
+    const j = s.job;
+    if (j?.status === 'done' && j.payload) return done(j.payload);
+    if (j?.status === 'error') return fail(j.error ?? 'the model returned an error');
+    if (sawRunning || joined) return fail('the server restarted or lost the job while it was writing; press Generate again');
+    if (Date.now() - t0 > 14 * 60000) return fail('timed out after 14 minutes');
   }
-  if (r?.ok) { D.intel = r; lsPut(r); drawGlobal(); if (r.saved === false) $('loaderr').innerHTML = '<div class="err">The brief was generated but could NOT be saved on the server, so it will be gone when you reload and other devices will not see it. Build the newsletter now to keep it, or press Generate again.</div>'; return true; }
-  b.disabled = false; b.textContent = 'Generate Intelligence brief'; $('loaderr').innerHTML = `<div class="err">Generate failed: ${esc(r?.error ?? 'no response')}</div>`; return false;
 }
 
 /* ── currency ── */
@@ -919,7 +930,7 @@ async function main() {
   (await Promise.all(EXTRA.map(s => J(s[0])))).forEach((r, i) => { D[EXTRA[i][1]] = r; });
   D.__extra = true; drawAi(); redraw(); drawSrcs();
 }
-window.__atlas = { go, state, D, main, positionContext, abHtml, intelBodyHtml, nlInput, buildIssue, loadIntel, heroHtml };
+window.__atlas = { go, state, D, main, positionContext, abHtml, intelBodyHtml, nlInput, buildIssue, loadIntel, heroHtml, generateIntel };
 // A brief generated on another device shows up when this tab comes back into view (no reload needed). Never while this page is generating one itself.
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState !== 'visible' || !D.drill || _genP) return;

@@ -3590,7 +3590,7 @@ function modelCallStats() {
  * it here rather than gluing it into `prompt`: it becomes the cached prefix, and that is
  * where the saving comes from.
  */
-async function callModel({ task = 'misc', system = '', standing = '', prompt = '', maxTokens = 4000, temperature = null } = {}) {
+async function callModel({ task = 'misc', system = '', standing = '', prompt = '', maxTokens = 4000, temperature = null, timeoutMs = 300_000 } = {}) {
   const cfg = _aiConfig();
   const r = aiResolveTask(task, cfg);
   const P = AI_PROVIDERS[r.provider];
@@ -3604,10 +3604,10 @@ async function callModel({ task = 'misc', system = '', standing = '', prompt = '
   // A provider that never answers must not hold the single brief slot forever (every retry gets a 409 until it ends), so the call is bounded.
   let httpRes;
   try {
-    httpRes = await fetch(req.url, { method: 'POST', headers: aiAuthHeaders(req, key), body: JSON.stringify(req.body), signal: AbortSignal.timeout(300_000) });
+    httpRes = await fetch(req.url, { method: 'POST', headers: aiAuthHeaders(req, key), body: JSON.stringify(req.body), signal: AbortSignal.timeout(timeoutMs) });
   } catch (err) {
     _recordModelCall({ task, provider: r.provider, model: r.model, ok: false, httpStatus: 0, ms: Date.now() - started });
-    const e = new Error(err?.name === 'TimeoutError' ? `${P.label} did not answer within 5 minutes` : `${P.label} request failed: ${err?.message ?? err}`);
+    const e = new Error(err?.name === 'TimeoutError' ? `${P.label} did not answer within ${Math.round(timeoutMs / 60000)} minutes` : `${P.label} request failed: ${err?.message ?? err}`);
     e.status = 504; e.provider = r.provider; throw e;
   }
   if (!httpRes.ok) {
@@ -5474,7 +5474,7 @@ HOW TO REASON:
 Respond with ONLY valid JSON, no markdown:
 {"headline":"ONE sentence, at most 25 words: the driver and what it is doing to markets","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","driver":[{"what":"the driver in one plain sentence","evidence":"the nodes and links that establish it, with their 20-day numbers","explain":"two or three plain sentences on HOW this driver moves prices: the mechanism, step by step, as if teaching someone who is learning markets"}],"transmission":[{"asset":"instrument or node","should":"what the textbook says it does under this driver","is":"what it is actually doing, with the number","state":"RESPONDING|NOT RESPONDING|QUIET"}],"confirm":[{"check":"what to look at","level":"the number or event","when":"today / this week / the print and its time"}],"invalidate":[{"check":"what to look at","level":"the number or event","when":"when"}],"catalysts":[{"when":"time or day","event":"the release or decision","impact":"measured impact from the Event Response Book, or unmeasured","touches":"which driver it tests"}],"sizing":"one paragraph: how much to have on and why","noEdge":["a part of this view that rests on a tested-null or untested relationship, named"],"lesson":{"concept":"one market concept today illustrates, in a few words","today":"two or three sentences using TODAY's numbers to teach that concept, so the reader learns something they can reuse"},"markets":[{"key":"the KEY exactly as given in MARKET FACTS","read":"two or three plain sentences analysing THIS market today: what it has done, why (use the driver, the currencies involved, positioning, data surprises, the backdrop base rate), and how stretched the day is","watch":"one short phrase: the single thing that would change this market's story, such as the next release"}],"letter":{"subject":"under 70 characters, plain words, no hype, no direction call","opening":"three plain sentences that open a daily newsletter: what is happening and why it matters, for a reader who has not seen the dashboard","signoff":"one sentence pointing at the first scheduled release and what it tests"}}`;
 }
-async function _buildMorningBrief(mode = 'column', context = '') {
+async function _buildMorningBrief(mode = 'column', context = '', { timeoutMs } = {}) {
   // Was ANT_KEY-only. callModel picks the provider for this task and throws if
   // THAT one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
   if (!_aiAnyKey()) throw new Error('no model provider configured');
@@ -6093,7 +6093,7 @@ Respond with ONLY valid JSON, no markdown:
     finalPrompt = _intelBriefPrompt(data, chainBlock, context);
     kvKey = _INTEL_BRIEF_KV;
   }
-  const antRes = await callModel({ task: 'brief', maxTokens: 16000,
+  const antRes = await callModel({ task: 'brief', maxTokens: 16000, ...(timeoutMs ? { timeoutMs } : {}),
     system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.',
     standing: _evidenceForPrompt(),
     prompt: finalPrompt });
@@ -6197,9 +6197,28 @@ app.get('/api/morning-brief', async (req, res) => {
     return res.json({ ok: false, error: 'No morning brief yet — click Generate.' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// A long brief (an Opus-class model can take five minutes or more to write it) must not depend on one browser request staying open: phones drop the
+// connection, and the hosting proxy cuts a request that waits too long. `?async=1` starts the work in the background and answers at once (202); the page
+// then polls /api/morning-brief/status, which carries the finished brief itself, so even a failed save does not lose it. The old synchronous path is untouched
+// for the other pages that call it.
+let _briefJob = null;
+app.get('/api/morning-brief/status', (_req, res) => {
+  const j = _briefJob; res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, running: _morningBriefRunning, job: j ? { mode: j.mode, status: j.status, startedAt: j.startedAt, finishedAt: j.finishedAt ?? null, error: j.error ?? null, payload: j.status === 'done' ? j.payload : null } : null });
+});
 app.post('/api/morning-brief', express.json({ limit: '64kb' }), async (req, res) => {
   if (_morningBriefRunning) return res.status(409).json({ ok: false, error: 'a morning brief is already generating' });
   _morningBriefRunning = true;
+  if (req.query?.async === '1') {
+    const mode = req.query?.mode === 'intel' ? 'intel' : 'column', context = typeof req.body?.context === 'string' ? req.body.context.slice(0, 16000) : '';
+    const job = _briefJob = { mode, status: 'running', startedAt: Date.now(), finishedAt: null, error: null, payload: null };
+    res.status(202).json({ ok: true, started: true, startedAt: job.startedAt });
+    _buildMorningBrief(mode, context, { timeoutMs: 540_000 })
+      .then(p => { job.payload = { ok: true, ...p }; job.status = 'done'; })
+      .catch(e => { job.error = e.message; job.status = 'error'; console.warn('[brief async]', e.message); })
+      .finally(() => { job.finishedAt = Date.now(); _morningBriefRunning = false; });
+    return;
+  }
   try { res.json({ ok: true, ...(await _buildMorningBrief(req.query?.mode === 'intel' ? 'intel' : 'column', typeof req.body?.context === 'string' ? req.body.context.slice(0, 16000) : '')) }); }
   catch (e) { res.status(/ANT_KEY/.test(e.message) ? 503 : 500).json({ ok: false, error: e.message }); }
   finally { _morningBriefRunning = false; }
