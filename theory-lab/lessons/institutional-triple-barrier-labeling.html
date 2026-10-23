@@ -20,7 +20,7 @@
   <p class="tl-dek">The obvious way to label training data for a trading model — "was the return over the next fixed N bars positive?" — describes a trade nobody actually places. A real position exits at a stop-loss, a take-profit, or a time limit, whichever comes first, and a label built on the wrong exit teaches a model the wrong payoff shape entirely.</p>
   <div class="tl-meta">
     <!-- DESK:START --><span class="tl-status course">VERIFIED IN THIS REPO — <code>pylego/barrier_race.py</code>'s <code>_first_touch()</code> is a genuine upper/lower/vertical triple-barrier walker (a first-touch race between a TP price array, an SL price array, and a <code>max_bars_ahead</code> timeout), reused across <code>AnalogML/ml_walkforward.py</code>, the range-line and volatility-bot engines, and <code>Trade_Decision_Engine/backfill.js</code>; <code>bot/modules/ml_confidence.py</code> is a genuine two-stage primary → secondary meta-labelling architecture — direction is inherited from upstream signal modules while a separately-trained XGBoost + LightGBM ensemble predicts a win-probability that only ever scales position size, never blocks a trade outright</span><!-- DESK:END -->
-    <span>~18 min read</span>
+    <span>~25 min read</span>
     <span>Prereqs: <a href="institutional-reality-check-spa.html">White's Reality Check &amp; Hansen's SPA Test</a>, <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a></span>
   </div>
 

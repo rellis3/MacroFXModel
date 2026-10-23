@@ -20,7 +20,7 @@
   <p class="tl-dek">The Deflated Sharpe Ratio corrects one reported Sharpe for an <em>estimate</em> of how many trials produced it. These two tests skip the estimate entirely — they bootstrap the full return history of every candidate strategy you actually ran, directly against each other.</p>
   <div class="tl-meta">
     <span class="tl-status concept">CONCEPT<!-- DESK:START --> — this repo's own stationary block bootstrap (<code>statsCore.js</code>) is real, battle-tested machinery, but every use of it in this repo tests ONE strategy/statistic at a time; the one place a best-of-N correction exists (<code>volReversionCore.js</code>, best of 4 horizons) uses a parametric Bonferroni adjustment, not a bootstrap-of-the-max — and a sharper version of this exact problem (best of ~600 configs per pair) is named an unaddressed risk elsewhere in this repo. No White's Reality Check or Hansen's SPA machinery exists anywhere here<!-- DESK:END --></span>
-    <span>~18 min read</span>
+    <span>~31 min read</span>
     <span>Prereqs: <a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a>, <a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo Simulation</a></span>
   </div>
 
