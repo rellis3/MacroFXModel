@@ -37,9 +37,15 @@ IB_SPEC = {   # name: (IBKR symbol, exchange, currency, contract-month parameter
     'SR3M7': ('SOFR3', 'CME', 'USD', '202706'), 'SR3U7': ('SOFR3', 'CME', 'USD', '202709'), 'IM7': ('I', 'ICEEU', 'EUR', '202706'), 'IU7': ('I', 'ICEEU', 'EUR', '202709'),
     'ER3U6': ('ER3', 'ICEEU', 'EUR', '202609'), 'ER3M7': ('ER3', 'ICEEU', 'EUR', '202706'), 'ER3U7': ('ER3', 'ICEEU', 'EUR', '202709'),
     'ZQV6': ('ZQ', 'CBOT', 'USD', '202610'), 'ZQX6': ('ZQ', 'CBOT', 'USD', '202611'), 'ZQZ6': ('ZQ', 'CBOT', 'USD', '202612'), 'ZQF7': ('ZQ', 'CBOT', 'USD', '202701'), 'ZQH7': ('ZQ', 'CBOT', 'USD', '202703'),
-    'ZTZ6': ('ZT', 'CBOT', 'USD', '202612'), 'FGBS2612': ('FGBS', 'EUREX', 'EUR', '202612'),
+    # government bond futures (PRICES; the chart's yield legs come from js/yieldLegs.js). IBKR's Eurex symbols are GBS/GBM/GBL/GBX:
+    # 'FGBS' does not resolve ("contract not found"), which is why the Schatz leg stopped on 2026-10-09. Dec contracts: roll to Mar27
+    # (ZTH7 ... / *2703) in late November for the US notes and early December for the Eurex bonds.
+    'ZTZ6': ('ZT', 'CBOT', 'USD', '202612'), 'ZFZ6': ('ZF', 'CBOT', 'USD', '202612'), 'ZNZ6': ('ZN', 'CBOT', 'USD', '202612'),
+    'ZBZ6': ('ZB', 'CBOT', 'USD', '202612'), 'UBZ6': ('UB', 'CBOT', 'USD', '202612'),
+    'FGBS2612': ('GBS', 'EUREX', 'EUR', '202612'), 'FGBM2612': ('GBM', 'EUREX', 'EUR', '202612'), 'FGBL2612': ('GBL', 'EUREX', 'EUR', '202612'), 'FGBX2612': ('GBX', 'EUREX', 'EUR', '202612'),
 }
 CORE = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7', 'IM7']      # IM7: becomes I2! when IZ6 expires (14 Dec 2026), so the stitched I2 line stays live
+BONDS = ['ZTZ6', 'ZFZ6', 'ZNZ6', 'ZBZ6', 'UBZ6', 'FGBS2612', 'FGBM2612', 'FGBL2612', 'FGBX2612']      # US 2/5/10/30/ultra and German 2/5/10/30: pulled on every run too (2026-10-23)
 last = [0.0]
 
 
@@ -72,7 +78,7 @@ if __name__ == '__main__':
     ap.add_argument('--all', action='store_true', help='pull every contract in IB_SPEC, not only the seven core legs (about 4 minutes per week of history)')
     a = ap.parse_args()
     now = datetime.now(timezone.utc)
-    names = list(IB_SPEC) if a.all else CORE
+    names = list(IB_SPEC) if a.all else CORE + BONDS
     found = B.discover()
     stem = lambda n: found[n]['stem'] if n in found else f'{IB_SPEC[n][1]}_{n}'
     if not a.no_pull:
