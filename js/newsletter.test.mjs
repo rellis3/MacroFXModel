@@ -123,5 +123,7 @@ const fvOn = buildNewsletter({ date: 'd', fearVsNasdaq: { a: { ratio: 9, pct: 96
 ok('at the extreme it says fear has run ahead, cites the 7% give-back and keeps it to volatility', /Fear has run ahead of the Nasdaq/.test(fvOn.html) && /about 7%/.test(fvOn.html) && /not a view on stocks/.test(fvOn.html) && /extreme/.test(fvOn.html));
 ok('it is a separate calming section, not part of the range-pressure count', !/bigger day than usual/.test(fvOn.html) && !/bigger day than usual/.test(fvOff.html));
 ok('no fear data means no section', !/Fear versus the Nasdaq/.test(buildNewsletter({ date: 'd' }).html));
+const vbOn = buildNewsletter({ date: 'd', vixBeta: { beta: -7.1, change: -3.2, pct: 4, on: true, flags: [{ date: '2026-06-05', nq5: 3.84 }, { date: '2026-10-20', nq5: null }] } });
+ok("C.OG's dR/dt shows in the fear section, labelled research only, with the past year's flags and a pending one", /Fear versus the Nasdaq/.test(vbOn.html) && /dR\/dt/.test(vbOn.html) && /Research only/.test(vbOn.html) && /2026-06-05 Nasdaq \+3\.84%/.test(vbOn.html) && /pending/.test(vbOn.html) && /bottom tenth/.test(vbOn.html));
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

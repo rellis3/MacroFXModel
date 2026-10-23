@@ -1,5 +1,6 @@
 // Tests for js/fearVsNasdaq.js.   node js/fearVsNasdaq.test.mjs      (STRICT=1 also requires the ledger entry to exist in this checkout)
-import { fearVsNasdaq, fearWords, WINDOW, LOOKBACK } from './fearVsNasdaq.js';
+import { fearVsNasdaq, fearWords, WINDOW, LOOKBACK, vixBetaSeries, vixBeta, vixBetaWords } from './fearVsNasdaq.js';
+import { readFileSync } from 'node:fs';
 import { DESK_EVIDENCE } from './deskEvidence.js';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -27,5 +28,19 @@ ok('the words say it is a volatility read and not a direction call, in both stat
 ok('the words claim only what the study found: about 7% back over the next month, nothing about stocks rising', /about 7%/.test(fearWords(hot)) && !/\b(rally|bounce|buy|sell|will rise|bullish)\b/i.test(fearWords(hot) + fearWords(quietFear)));
 const e = DESK_EVIDENCE.find(x => x.id === 'vvix-ratio-range');
 ok(process.env.STRICT ? 'the cited ledger entry exists and is validated' : 'the cited ledger entry, where this checkout has it, is validated (STRICT=1 requires it)', process.env.STRICT ? !!e && e.verdict === 'validated' : !e || e.verdict === 'validated');
+// ── C.OG's dR/dt (vix-beta-change): parity with the study's pandas code on the last 700 study sessions ──
+const F = JSON.parse(readFileSync(new URL('./fixtures/vixBeta.parity.json', import.meta.url), 'utf8')), BS = vixBetaSeries(F.vix, F.ndx);
+let worstB = 0, worstP = 0, missing = 0, flagDiff = 0;
+F.dates.forEach((_, t) => { if (t >= WINDOW && F.beta[t] != null) worstB = Math.max(worstB, Math.abs(F.beta[t] - (BS.beta[t] ?? 1e9)));
+  if (t >= 300 && F.pct[t] != null) { if (BS.pct[t] == null) missing++; else { worstP = Math.max(worstP, Math.abs(F.pct[t] - BS.pct[t])); if ((F.pct[t] <= 0.1) !== (BS.pct[t] <= 0.1)) flagDiff++; } } });
+ok('the 20-session VIX-per-Nasdaq slope matches the study to 1e-6', worstB < 1e-6, `worst ${worstB}`);
+ok('the dR/dt percentile and the bottom-tenth flag match the study on 400 sessions', missing === 0 && worstP < 1e-6 && flagDiff === 0, `missing ${missing}, worst ${worstP}, flag mismatches ${flagDiff}`);
+const vb = vixBeta({ vix: F.vix, nq: F.ndx, dates: F.dates });
+ok("the last study day matches (2026-08-21: 44th percentile, flag off) and the year's flag runs carry their next-5-session Nasdaq move", vb.pct === 44 && vb.on === false && vb.flags.length >= 1 && vb.flags.every(f => /^\d{4}-\d{2}-\d{2}$/.test(f.date) && (f.nq5 === null || Number.isFinite(f.nq5))), JSON.stringify(vb));
+ok('too little history is no reading', vixBeta({ vix: F.vix.slice(0, 150), nq: F.ndx.slice(0, 150) }) === null && vixBeta(null) === null);
+const onW = vixBetaWords({ ...vb, on: true, pct: 6 }), offW = vixBetaWords(vb);
+ok('the words cite the tested numbers and say research only in both states', /\+0\.76%/.test(onW) && /67%/.test(onW) && /bottom tenth/.test(onW) && /Research only/.test(onW) && /Research only/.test(offW) && /44th percentile/.test(offW) && vixBetaWords(null) === '');
+const eb = DESK_EVIDENCE.find(x => x.id === 'vix-beta-change');
+ok('the cited ledger entry, where this checkout has it, is validated', process.env.STRICT ? !!eb && eb.verdict === 'validated' : !eb || eb.verdict === 'validated');
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

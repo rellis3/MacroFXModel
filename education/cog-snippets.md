@@ -208,3 +208,5 @@ denominator, what "extreme" means.
 **Inference (ours).** Over a window, a signed % change ratio is the slope (beta) of VIX % changes on Nasdaq % changes
 (normally negative; it equals the unsigned ratio of the first test x the VIX-Nasdaq correlation). Tested as a follow-up,
 `forge/VIX_NASDAQ_BETA_PREREG.md`: the beta level and its rate of change at extremes.
+
+**A friend's intraday version (2026-10-23).** Rich shared a friend's own study of this ratio: VIX % per 1% index move since 10:00 ET, read hourly, outcome to 16:55, in-sample 2016-2020. ES shows a small lean up when the VIX reacts hard (4/5 and 5/5 years); NQ shows no pattern, and they found dR/dt hourly to be noise. It is in-sample only and has not been corrected for the number of buckets. The screenshots, numbers and how it sits next to our daily tests are in `education/friend-vix-ratio-intraday/NOTES.md`.

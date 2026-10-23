@@ -45,3 +45,57 @@ export function fearWords(f) {
   if (f.on) return `Fear has run ahead of the Nasdaq. Over the last 20 sessions the VIX${f.a?.on ? ' and the VVIX (the volatility of the VIX)' : ''} ${f.a?.on && f.b?.on ? 'have' : 'has'} moved far more than the Nasdaq, in the top tenth of the past year. After that, the VIX has tended to give back about 7% over the following month. It is a read on volatility. It does not say which way stocks will go.`;
   return `Fear versus the Nasdaq is at the ${f.top}th percentile of its past year, below the top-tenth level (90th) that has gone with the VIX giving back about 7% over the next month. It is a read on volatility only. It does not say which way stocks will go.`;
 }
+
+/*
+ * C.OG's dR/dt (Discord 2026-10-23, education/cog-snippets.md §3b): R = the signed % change of the VIX per % change of the Nasdaq, and how fast it is changing.
+ * Pre-registered and run the same day (forge/VIX_NASDAQ_BETA_PREREG.md, ledger `vix-beta-change` VALIDATED research-only, `vix-beta-level` UNDERPOWERED).
+ *   R over a window = slope of daily change in ln VIX on daily change in ln Nasdaq over the last 20 sessions (normally about -5)
+ *   dR/dt          = R today minus R five sessions ago
+ *   extreme        = dR/dt's percentile among its own last 252 sessions (at least 200 known), today included; bottom tenth is 10% or less
+ * The finding: in the bottom tenth (the VIX has just started reacting much harder against the Nasdaq) the Nasdaq's next 5 sessions, from the next close,
+ * averaged +0.76% (up 67% of days) against +0.33% (60%) on all days, 2009-09 to 2026-08-21. All-controls t 2.91 is under the |t| 3 bar, so it is a
+ * research reading, not a trade signal. Parity with the study's pandas code: js/fearVsNasdaq.test.mjs against js/fixtures/vixBeta.parity.json.
+ */
+export const BETA_STEP = 5, BETA_MIN_KNOWN = 200, BOTTOM = 0.1;
+
+/** Full series over the rows where both closes exist. vix, nq: daily closes oldest first, same dates. Returns { idx, beta, change, pct } (pct 0..1). */
+export function vixBetaSeries(vix, nq) {
+  const idx = [], lv = [], ln = [], n = Math.min(vix?.length ?? 0, nq?.length ?? 0);
+  for (let i = 0; i < n; i++) if (fin(vix[i]) && fin(nq[i]) && vix[i] > 0 && nq[i] > 0) { idx.push(i); lv.push(Math.log(vix[i])); ln.push(Math.log(nq[i])); }
+  const m = idx.length, beta = new Array(m).fill(null), change = new Array(m).fill(null), pct = new Array(m).fill(null);
+  for (let t = WINDOW; t < m; t++) {
+    let sx = 0, sy = 0; for (let k = t - WINDOW + 1; k <= t; k++) { sx += ln[k] - ln[k - 1]; sy += lv[k] - lv[k - 1]; }
+    const mx = sx / WINDOW, my = sy / WINDOW; let cxy = 0, cxx = 0;
+    for (let k = t - WINDOW + 1; k <= t; k++) { const x = ln[k] - ln[k - 1] - mx; cxy += x * (lv[k] - lv[k - 1] - my); cxx += x * x; }
+    beta[t] = cxx > 0 ? cxy / cxx : null;
+    if (t >= BETA_STEP && fin(beta[t]) && fin(beta[t - BETA_STEP])) change[t] = beta[t] - beta[t - BETA_STEP];
+  }
+  for (let t = 0; t < m; t++) {
+    if (!fin(change[t])) continue;
+    const win = change.slice(Math.max(0, t - LOOKBACK + 1), t + 1).filter(fin); if (win.length < BETA_MIN_KNOWN) continue;
+    const x = change[t]; let lt = 0, eq = 0; for (const v of win) { if (v < x) lt++; else if (v === x) eq++; }
+    pct[t] = (lt + (eq + 1) / 2) / win.length;                                    // pandas rank(pct=True), ties averaged
+  }
+  return { idx, beta, change, pct };
+}
+
+/** Today's reading plus the flag days in the last year with what the Nasdaq did over the 5 sessions after the next close. s = { vix, nq, dates? }. */
+export function vixBeta(s) {
+  const S = vixBetaSeries(s?.vix, s?.nq), T = S.idx.length - 1;
+  if (T < 0 || !fin(S.pct[T])) return null;
+  const nq = s.nq, flags = [];
+  for (let t = Math.max(0, T - LOOKBACK + 1); t <= T; t++) {
+    if (!(S.pct[t] <= BOTTOM) || (t > 0 && S.pct[t - 1] <= BOTTOM)) continue;      // first day of each run only
+    const a = S.idx[t + 1], b = S.idx[t + 1 + BETA_STEP];
+    flags.push({ date: s.dates?.[S.idx[t]] ?? null, nq5: a != null && b != null ? Math.round((nq[b] / nq[a] - 1) * 10000) / 100 : null });
+  }
+  return { beta: Math.round(S.beta[T] * 100) / 100, change: Math.round(S.change[T] * 100) / 100, pct: Math.round(S.pct[T] * 100), on: S.pct[T] <= BOTTOM, flags, evidence: 'vix-beta-change' };
+}
+
+/** Plain words. It is a research reading and says so in both states. */
+export function vixBetaWords(v) {
+  if (!v) return '';
+  const tail = 'Research only: it needs a costed rule and a forward record before it can be traded.';
+  if (v.on) return `C.OG's dR/dt is in its bottom tenth (${v.pct}th percentile of the past year): over the last week the VIX has started reacting much harder against the Nasdaq. In the 2009-2026 test, the Nasdaq's next 5 sessions after this averaged +0.76% (higher on 67% of occasions) against +0.33% (60%) on all days. ${tail}`;
+  return `C.OG's dR/dt, how fast the VIX's reaction to the Nasdaq is changing, is at the ${v.pct}th percentile of its past year. The research reading is the bottom tenth (10th or below), after which the Nasdaq's next 5 sessions averaged +0.76% against +0.33% on all days. ${tail}`;
+}
