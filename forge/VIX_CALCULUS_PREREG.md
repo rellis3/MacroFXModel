@@ -264,6 +264,32 @@ Parts A–C ran before this amendment. E's definitions are unchanged from the re
 three-period sign check coded "negative in all three periods", as §3 E says. The first draft of that line was garbled
 and was fixed before E ran. D is unchanged.
 
+### A3 — 2026-10-23 — PRE-RESULTS (D power; no 2021+ outcome read)
+
+`scripts/vix-calculus/intraday.py power` ran on 2016–2020 readings only, which is Garin's sample:
+
+- whole days resampled to 1,420 test-period days;
+- in-sample bucket effects removed;
+- +δ normal-moves planted on Hard;
+- the registered session-clustered bootstrap with one-sided Holm-4 (worst case α 0.0125), 100 reps.
+
+| δ (normal moves) | ES-down | ES-up | NQ-down | NQ-up |
+|---|---|---|---|---|
+| 0.10 | 0.00 | 0.00 | 0.00 | 0.05 |
+| 0.15 | 0.06 | 0.78 | 0.23 | 0.96 |
+| 0.20 | 0.56 | 1.00 | 0.88 | 1.00 |
+
+**What this means for the verdict:**
+
+- Garin's in-sample Hard − Barely differences (ES-down +0.12, ES-up +0.10) sit **below** what this design detects:
+  about 0.15 on up days and about 0.2 on down days.
+- D can confirm his lean only if it is larger out of sample than in.
+- A D fail is therefore expected to be **UNDERPOWERED**, as the registered rule says, unless its intervals are tight
+  enough to meet the NULL clause.
+- The readings builder's lookup was fixed before this check: an M1/5m bar at or within 5 minutes before each time, so
+  that gaps in the CFD bars don't drop readings. That is a data-plumbing fix, made before any D outcome was read.
+
+
 ## RESULTS
 
 To follow in `analysis/output/vix-calculus/RESULTS.md`.

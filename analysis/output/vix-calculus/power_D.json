@@ -1,0 +1,29 @@
+{
+ "n_test_days_used": 1420,
+ "cuts": {
+  "ES": [
+   4.3837809536279355,
+   11.870710564375967
+  ],
+  "NQ": [
+   2.191119534120693,
+   8.323688039214796
+  ]
+ },
+ "ES|down|delta0.05": 0.0,
+ "ES|down|delta0.1": 0.0,
+ "ES|down|delta0.15": 0.06,
+ "ES|down|delta0.2": 0.56,
+ "ES|up|delta0.05": 0.0,
+ "ES|up|delta0.1": 0.0,
+ "ES|up|delta0.15": 0.78,
+ "ES|up|delta0.2": 1.0,
+ "NQ|down|delta0.05": 0.0,
+ "NQ|down|delta0.1": 0.0,
+ "NQ|down|delta0.15": 0.23,
+ "NQ|down|delta0.2": 0.88,
+ "NQ|up|delta0.05": 0.0,
+ "NQ|up|delta0.1": 0.05,
+ "NQ|up|delta0.15": 0.96,
+ "NQ|up|delta0.2": 1.0
+}
