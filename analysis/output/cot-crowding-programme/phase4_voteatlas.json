@@ -1,0 +1,191 @@
+{
+ "id": "cot-crowding-programme",
+ "phase": 4,
+ "part": "Vote Atlas VA1-VA2",
+ "seed": 20261024,
+ "n_trades": 33972,
+ "window": [
+  "2022-05-05",
+  "2026-08-20"
+ ],
+ "by_inst": {
+  "audusd": {
+   "n": 3481,
+   "test": 138,
+   "control": 1824
+  },
+  "dow": {
+   "n": 1036,
+   "test": 0,
+   "control": 439
+  },
+  "eurusd": {
+   "n": 3317,
+   "test": 139,
+   "control": 1097
+  },
+  "gbpusd": {
+   "n": 3340,
+   "test": 181,
+   "control": 1169
+  },
+  "gold": {
+   "n": 3393,
+   "test": 70,
+   "control": 1153
+  },
+  "nq": {
+   "n": 2232,
+   "test": 12,
+   "control": 757
+  },
+  "nzdusd": {
+   "n": 3719,
+   "test": 143,
+   "control": 1460
+  },
+  "spx": {
+   "n": 1055,
+   "test": 0,
+   "control": 341
+  },
+  "us2000": {
+   "n": 2204,
+   "test": 18,
+   "control": 737
+  },
+  "usdcad": {
+   "n": 3446,
+   "test": 74,
+   "control": 1437
+  },
+  "usdchf": {
+   "n": 3564,
+   "test": 57,
+   "control": 1428
+  },
+  "usdjpy": {
+   "n": 3185,
+   "test": 72,
+   "control": 1310
+  }
+ },
+ "state_counts": {
+  "none": 29053,
+  "A": 2423,
+  "B": 1401,
+  "C": 738,
+  "D": 357
+ },
+ "cells": {
+  "VA1": {
+   "metric": "mean pnlPct (test - matched control cell mean)",
+   "est": 0.0024,
+   "ci": [
+    -0.0185,
+    0.0297
+   ],
+   "p": 0.8431,
+   "n_test": 904,
+   "n_test_matched": 903,
+   "n_control": 13152,
+   "is_est": 0.0184,
+   "oos_est": 0.0066,
+   "n_test_is": 348,
+   "n_test_oos": 556,
+   "descriptive": {
+    "test": {
+     "mean_pnl": 0.0341,
+     "win": 0.581,
+     "mae": 0.1653
+    },
+    "control": {
+     "mean_pnl": 0.0386,
+     "win": 0.577,
+     "mae": 0.2248
+    },
+    "against_crowd_in_BD": {
+     "n": 854,
+     "mean_pnl": 0.0194
+    },
+    "test_by_state": {
+     "B": {
+      "mean": 0.0467,
+      "size": 725
+     },
+     "D": {
+      "mean": -0.017,
+      "size": 179
+     }
+    },
+    "test_by_inst": {
+     "audusd": {
+      "mean": 0.0144,
+      "size": 138
+     },
+     "eurusd": {
+      "mean": 0.0156,
+      "size": 139
+     },
+     "gbpusd": {
+      "mean": 0.017,
+      "size": 181
+     },
+     "gold": {
+      "mean": 0.0053,
+      "size": 70
+     },
+     "nq": {
+      "mean": 0.2487,
+      "size": 12
+     },
+     "nzdusd": {
+      "mean": 0.0431,
+      "size": 143
+     },
+     "us2000": {
+      "mean": 0.5628,
+      "size": 18
+     },
+     "usdcad": {
+      "mean": 0.0133,
+      "size": 74
+     },
+     "usdchf": {
+      "mean": 0.0277,
+      "size": 57
+     },
+     "usdjpy": {
+      "mean": 0.0188,
+      "size": 72
+     }
+    }
+   },
+   "checks": {
+    "CI excludes 0": false,
+    "same sign IS and OOS": true
+   },
+   "underpowered": false
+  },
+  "VA2": {
+   "metric": "OOS mean pnlPct per trade: skip rule minus all trades",
+   "est": 0.00046,
+   "ci": [
+    -0.00029,
+    0.00107
+   ],
+   "p": 0.1833,
+   "n_oos": 18624,
+   "n_skipped": 556,
+   "total_pnl_all": 735.784,
+   "total_pnl_skip": 722.172,
+   "mean_all": 0.03951,
+   "mean_skip": 0.03997,
+   "checks": {
+    "mean improves, CI excludes 0": false,
+    "total OOS pnl does not fall": false
+   },
+   "underpowered": false
+  }
+ }
+}

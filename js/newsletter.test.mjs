@@ -254,5 +254,9 @@ ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d
   const ck = buildNewsletterV2({ date: 'x', isoDate: '2026-10-24', links, assets });
   ok('a series that stops days before the rest is flagged, and the dollar claim is cross-checked against the daily pairs', /Data checks: what could not be reconciled/.test(ck.html) && /last printed on 16 Oct, 7 days before/.test(ck.html) && /stronger against 1 of 7/.test(ck.html) && /unconfirmed/.test(ck.html));
   ok('page one points the reader to the check', /the dollar claim rests on an index that ends days before the rest/.test(ck.html)); }
+{ const crowding = [{ sym: 'JPY', pct: 95, state: 'crowded long', ccyPct: 5, ccyState: 'crowded short', cot: { key: 'D', label: 'Crowded, pulling back as the crowd leaves', line: 'Historically a reset rather than a reversal.', ev: 'cot-crowding-p5', verdict: 'validated' } }];
+  const c = buildNewsletter({ date: 'd', isoDate: '2026-10-24', crowding, cotDate: '2026-10-20', ranges: [{ key: 'USDJPY', label: 'USD/JPY', price: '1', hlMed: 1, used: 0.5 }] });
+  ok('a JPY row reads in yen terms on the card (long USDJPY = short the yen)', /JPY speculators:<\/b> crowded short · crowded, pulling back/.test(c.html) && !/JPY speculators:<\/b> crowded long/.test(c.html));
+  ok('the crowding-map line carries its verdict', /Historically a reset rather than a reversal\. <span title="cot-crowding-p5">\(measured\)/.test(c.html)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

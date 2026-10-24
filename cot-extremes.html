@@ -316,6 +316,10 @@ const ord = n => { const v = Math.abs(n) % 100, d = v % 10;
 // kept switchable because the two disagree materially (ES, MXN) and seeing that is useful.
 const pctOf = x => BASIS==='share' ? (x.specSharePct ?? x.specPct) : x.specPct;
 const zOf   = x => BASIS==='share' ? (x.specShareZ  ?? x.specZ)   : x.specZ;
+// The same reads in "long the currency" terms, for currency cards and cross legs (a no-op except JPY/CAD/CHF).
+const ccyPctOf = x => { const p = pctOf(x); return p == null || !COT_FLIPPED.has(x.sym) ? p : 100 - p; };
+const ccyZOf = x => { const z = zOf(x); return z == null || !COT_FLIPPED.has(x.sym) ? z : -z; };
+const ccyShareOf = x => x.specShare == null || !COT_FLIPPED.has(x.sym) ? x.specShare : -x.specShare;
 const colFor = p => p==null ? 'var(--tx3)' : p>=90 ? 'var(--long)' : p<=10 ? 'var(--short)'
               : p>=70 ? 'rgba(232,97,95,.65)' : p<=30 ? 'rgba(70,184,122,.65)' : 'var(--tx3)';
 const stat = (lbl, val, clr) => '<div class="pa-stat"><div class="pa-lbl">'+lbl+'</div><div class="pa-val" style="color:'+clr+'">'+val+'</div></div>';
@@ -323,7 +327,10 @@ const stat = (lbl, val, clr) => '<div class="pa-stat"><div class="pa-lbl">'+lbl+
 // an obvious abbreviation for the US Dollar right next to Pair Lab's derived 'USD' currency
 // card — two unrelated instruments with near-identical labels. `pick()`/the API still use
 // the real 'US' ticker; this only changes what's drawn on screen.
-const dispSym = x => x.sym === 'US' ? 'US30Y' : x.sym;
+// JPY/CAD/CHF rows arrive in USD-pair terms (positive = long USDJPY = short the yen; js/cotState.js), so they are
+// labelled as the pair wherever the row's own numbers are shown.
+const COT_FLIPPED = new Set(['JPY','CAD','CHF']);
+const dispSym = x => x.sym === 'US' ? 'US30Y' : COT_FLIPPED.has(x.sym) ? 'USD' + x.sym : x.sym;
 
 const HELP = {
   what:['What COT is','A weekly CFTC report of who holds what in the futures market, split by trader type. It shows <b>positioning</b> — who is already committed — not price.','Read it as crowding: when one side is historically stretched, the fuel for further moves that way is thin and an unwind can be violent. It is not a timing tool.'],
@@ -781,7 +788,10 @@ const FX_PAIRS = [
 
 // 'long'/'short' at the existing 90th/10th percentile extreme threshold (same
 // cutoff as colFor() elsewhere on this page); null = not stretched.
-const crowdState = x => { const p = pctOf(x); return p==null ? null : p>=90?'long':p<=10?'short':null; };
+// In currency terms, and the net has to be on the same side as the percentile: a 95th-percentile reading with a net
+// short is a short that has been cut right back, not a crowded long.
+const crowdState = x => { const p = ccyPctOf(x), sh = ccyShareOf(x);
+  return p==null ? null : p>=90 && !(sh <= 0) ? 'long' : p<=10 && !(sh >= 0) ? 'short' : null; };
 
 // ── derived USD crowding read ──────────────────────────────────────────────
 // This feed has no direct CFTC USD-index future, so there is no real specNet
@@ -830,7 +840,7 @@ async function loadUsdMirror(){
       const net = h.specNet?.[i], oi = h.oi?.[i];
       if (!Number.isFinite(net) || !Number.isFinite(oi)) return;
       const row = byDate.get(d) || { net: 0, oi: 0, n: 0 };
-      row.net += -net; row.oi += oi; row.n += 1;
+      row.net += COT_FLIPPED.has(h.sym) ? net : -net; row.oi += oi; row.n += 1;   // JPY/CAD/CHF are already long-USD terms
       byDate.set(d, row);
     });
   });
@@ -867,12 +877,12 @@ function crowdingCards(big){
   const list = (DATA.instruments||[]).filter(x => x.group === 'fx' && crowdState(x));
   if (usd && crowdState(usd)) list.push(usd);
   if (!list.length) return kicker + '<div class="empty">No currency is currently at a 90th/10th-percentile crowding extreme — nothing stretched enough to flag right now.</div>';
-  list.sort((a, b) => Math.abs(50 - pctOf(b)) - Math.abs(50 - pctOf(a)));
+  list.sort((a, b) => Math.abs(50 - ccyPctOf(b)) - Math.abs(50 - ccyPctOf(a)));
 
   const cardsHtml = list.map(x => {
     const st = crowdState(x), clr = st === 'long' ? 'var(--long)' : 'var(--short)';
     const label = st === 'long' ? '&#9888; OVERCROWDED LONG' : '&#9661; HEAVILY SHORT';
-    const z = zOf(x), p = pctOf(x), sh = x.specShare;
+    const z = ccyZOf(x), p = ccyPctOf(x), sh = ccyShareOf(x);
     return `<div class="pa-card ${st}${x._derived ? ' derived' : ''}">`
       + `<div class="pa-head"><span class="pa-pair">${esc(x.sym)}${x._derived ? ' <span class="pa-derived-tag" title="Derived: mirror of the other 7 majors’ positioning, not a real CFTC-tracked USD-index future — see the note below.">DERIVED</span>' : ''}</span>`
       + `<span class="pa-badge" style="color:${clr}">${label}</span></div>`
@@ -1392,7 +1402,7 @@ function oiCrossCheck(big){
   // badge and the sentence underneath can never describe the same reading differently.
   const legState = x => {
     if (!x) return { crowded:false, txt:'NO COT', clr:'var(--tx3)', word:null };
-    const p = pctOf(x);
+    const p = x ? ccyPctOf(x) : null;   // a cross leg reads "long the currency"
     if (p == null) return { crowded:false, txt:'NO READ', clr:'var(--tx3)', word:null };
     if (p >= 90) return { crowded:true, txt:'CROWDED LONG', clr:'var(--long)',
       word:'stretched net <b>long</b> — that bet is already mostly made, so there is less fresh buying left to push it further' };
@@ -1404,9 +1414,9 @@ function oiCrossCheck(big){
   };
 
   const legCell = (leg, x) => {
-    const st = legState(x), p = x ? pctOf(x) : null;
+    const st = legState(x), p = x ? ccyPctOf(x) : null;
     // XAU/XAG are priced legs, not currencies — show which COT contract stood in for them.
-    const mapped = (x && dispSym(x) !== leg) ? ' &rarr; '+esc(dispSym(x)) : '';
+    const mapped = (x && !COT_FLIPPED.has(x.sym) && dispSym(x) !== leg) ? ' &rarr; '+esc(dispSym(x)) : '';
     return '<div class="pa-stat"><div class="pa-lbl">'+esc(leg)+mapped+'</div>'
       + '<div style="margin:5px 0 3px"><span class="xc-chip" style="color:'+st.clr+'">'+st.txt+'</span></div>'
       + '<div class="pa-sub">'+(p != null ? ord(p)+' pctile' : 'not tracked in this feed')+'</div></div>';
@@ -1455,7 +1465,7 @@ function oiCrossCheck(big){
 
     const crowdedLegs = [[r.base, r.A, sA], [r.quote, r.B, sB]].filter(l => l[2].crowded);
     if (bothMissing) say.push('Neither leg maps to a COT contract in this feed, so this card is the options side only.');
-    else if (crowdedLegs.length) say.push(crowdedLegs.map(l => '<b>'+esc(dispSym(l[1]))+'</b> is '+l[2].word).join(', and ')
+    else if (crowdedLegs.length) say.push(crowdedLegs.map(l => '<b>'+esc(COT_FLIPPED.has(l[1].sym) ? l[1].sym : dispSym(l[1]))+'</b> is '+l[2].word).join(', and ')
       + '. A stretched futures position sitting this close to a hedging level is the case this panel exists to surface — worth noting, not a trade.');
     else say.push('Neither leg is crowded on COT, so nothing on the futures side argues with these levels either way.');
 
@@ -1956,10 +1966,11 @@ function thisWeeksRead(){
   // Reinforcing FX pairs
   const bySym = {}; ext.filter(x => x.group==='fx').forEach(x => bySym[x.sym] = x);
   const usdR = usdDerivedReading();
-  if(usdR && (pctOf(usdR) >= 90 || pctOf(usdR) <= 10)) bySym.USD = usdR;
+  if(usdR && crowdState(usdR)) bySym.USD = usdR;
   const combos = FX_PAIRS.filter(p => { const A = bySym[p[0]], B = bySym[p[1]];
       if(!A || !B) return false;
-      return (pctOf(A) >= 90) !== (pctOf(B) >= 90); })
+      const sA = crowdState(A), sB = crowdState(B);   // currency terms, sign-checked
+      return sA && sB && sA !== sB; })
     .map(p => p[0]+p[1]);
   sub.push(_rd(combos.length ? 'warn' : 'ok', 'Reinforcing FX pairs',
     combos.length ? '<b>'+combos.length+'</b> cross'+(combos.length===1?'':'es')+' with both legs stretched: '

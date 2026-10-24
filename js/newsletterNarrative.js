@@ -32,7 +32,8 @@ export function currencyNarrative(ccy, ctx) {
   const S = [...strengths].filter(s => Number.isFinite(s.score)).sort((a, b) => b.score - a.score), me = S.find(s => s.ccy === ccy); if (!me) return null;
   const rank = S.indexOf(me) + 1, N = S.length, name = names[ccy] ?? ccy;
   const state = rank === 1 ? 'Strongest today' : rank === N ? 'Weakest today' : rank <= N / 2 ? 'Upper half today' : 'Lower half today';
-  const c = cb.find(x => x.ccy === ccy), su = surprise.find(x => x.ccy === ccy), cr = crowding.find(x => x.sym === ccy), ev = nextEvent(events, [ccy], nowMs);
+  // positioning read as long the currency (JPY/CAD/CHF crowding rows are in USD-pair terms; atlasPosition.crowding)
+  const c = cb.find(x => x.ccy === ccy), su = surprise.find(x => x.ccy === ccy), cr0 = crowding.find(x => x.sym === ccy), cr = cr0 && { ...cr0, state: cr0.ccyState ?? cr0.state, pct: cr0.ccyPct ?? cr0.pct }, ev = nextEvent(events, [ccy], nowMs);
   const bank = c?.bank ?? banks[ccy] ?? null, regime = regimeWord(c?.regime), hawk = /hawk/.test(regime), dove = /dov/.test(regime);
 
   const lines = [];
