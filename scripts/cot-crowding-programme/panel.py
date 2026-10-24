@@ -60,6 +60,65 @@ def daily_prices():
     return px
 
 
+# macro driver per market, in the market's own price terms (+ = supports a rise in this price)
+FX_DIFF = {"EUR": ("EZ", "US"), "GBP": ("GB", "US"), "AUD": ("AU", "US"), "NZD": ("NZ", "US"), "MXN": ("MX", "US"),
+           "JPY": ("US", "JP"), "CAD": ("US", "CA"), "CHF": ("US", "CH"), "USD": ("US", "EZ")}
+
+
+def _monthly(code):
+    m = pd.read_csv(os.path.join(DATA, f"macro_IR3TIB01{code}M156N.csv"), parse_dates=["date"])
+    # a monthly average dated the 1st is published ~45 days after its month ends; stale after 4 months
+    m["usable"] = m.date + pd.offsets.MonthEnd(0) + pd.Timedelta(days=45)
+    return m
+
+
+def macro_series():
+    """{sym: DataFrame(date, mval)} where mval rises when the macro driver favours a higher price."""
+    out = {}
+    rates = {c: _monthly(c) for c in ("US", "EZ", "GB", "JP", "AU", "CA", "CH", "NZ", "MX")}
+    for sym, (a, b) in FX_DIFF.items():
+        ra, rb = rates[a], rates[b]
+        out[sym] = ("monthly", ra[["usable", "date", "value"]].rename(columns={"value": "a"}),
+                    rb[["usable", "date", "value"]].rename(columns={"value": "b"}))
+    for sym, code, sign in (("GOLD", "DFII10", -1), ("TY", "DGS2", -1), ("US", "DGS2", -1), ("TU", "DGS2", -1)):
+        d = pd.read_csv(os.path.join(DATA, f"macro_{code}.csv"), parse_dates=["date"])
+        d["usable"] = d.date + pd.Timedelta(days=1)
+        out[sym] = ("daily", d, sign)
+    return out
+
+
+def _asof(df, col, when, stale_days):
+    df = df.sort_values("usable")
+    i = df.usable.searchsorted(when, side="right") - 1
+    if i < 0:
+        return np.nan
+    return df[col].iat[i] if (when - df.usable.iat[i]).days <= stale_days else np.nan
+
+
+def macro_dir(sym, dates):
+    """sign of the 13-week change in the macro driver, in price terms; NaN where undefined or stale."""
+    ms = MACRO.get(sym)
+    if ms is None:
+        return np.full(len(dates), np.nan)
+    res = []
+    for t in pd.to_datetime(dates):
+        if pd.isna(t):
+            res.append(np.nan); continue
+        t0 = t - pd.Timedelta(weeks=13)
+        if ms[0] == "monthly":
+            a1, b1 = _asof(ms[1], "a", t, 120), _asof(ms[2], "b", t, 120)
+            a0, b0 = _asof(ms[1], "a", t0, 120), _asof(ms[2], "b", t0, 120)
+            ch = (a1 - b1) - (a0 - b0)
+        else:
+            v1, v0 = _asof(ms[1], "value", t, 10), _asof(ms[1], "value", t0, 10)
+            ch = ms[2] * (v1 - v0)
+        res.append(np.sign(ch) if np.isfinite(ch) and ch != 0 else np.nan)
+    return np.array(res)
+
+
+MACRO = macro_series()
+
+
 def build(min_weeks=260):
     cot = pd.read_csv(os.path.join(DATA, "cot_weekly.csv"), parse_dates=["report_date"])
     cot = cot[cot.oi > 0].sort_values(["sym", "report_date"])
@@ -103,6 +162,7 @@ def build(min_weeks=260):
         c["sigma_w"] = c.w.shift(1).rolling(52, min_periods=40).std()
         for k in (4, 13, 26):
             c[f"mom{k}"] = np.log(c.P / c.P.shift(k))          # trailing, known at the release
+        c["macro_dir"] = macro_dir(sym, c.report_date + pd.Timedelta(days=3))   # as of the release Friday
         bad = np.zeros(n, bool)
         for a, b in SHUTDOWNS:
             bad |= ((c.report_date >= a) & (c.report_date <= b)).values
