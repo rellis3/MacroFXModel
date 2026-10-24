@@ -1,6 +1,7 @@
 import { S } from './state.js';
 import { COMPASS_CONFIG, KALMAN5M_DEFAULTS, FEATURE_FLAGS } from './config.js';
 import { ema, calcRSI, filterTradingDays } from './utils.js';
+import { netLiquidityBn } from './netLiquidity.js';
 
 // ── PCA-inspired tier decorrelation ───────────────────────────────────────────
 // Applies discount weights to tier score contributions when pairs of tiers are
@@ -167,9 +168,12 @@ function computeT1_Equity() {
     };
   }
 
-  const netLiq     = walcl - tga - rrp;
+  // $bn (WALCL/TGA arrive in $M, RRP in $bn). The ±15/50/100 thresholds and the "$xT"/"bn"
+  // labels below were written for $bn; before 2026-10-24 this was computed in mixed units, so
+  // the score sat at ±3 and the level read ~1000× too large (DATA_SPEC §5 #8).
+  const netLiq     = netLiquidityBn(walcl, tga, rrp);
   const netLiqPrev = (walclPrev != null && tgaPrev != null && rrpPrev != null)
-    ? walclPrev - tgaPrev - rrpPrev
+    ? netLiquidityBn(walclPrev, tgaPrev, rrpPrev)
     : null;
   const change = netLiqPrev != null ? netLiq - netLiqPrev : null;
 

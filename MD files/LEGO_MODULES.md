@@ -8228,12 +8228,11 @@ unit sentinel in each direction).
 
 | Brick | File | Owns | Consumers |
 | --- | --- | --- | --- |
-| **Net liquidity** | `js/netLiquidity.js` | `netLiquidityBn(walclM, tgaM, rrpB)`, `netLiquiditySeriesBn`, `netLiqUnitWarnings`, `NET_LIQ_FRED_UNITS` | `server.js` `computeNetLiqZ` (liquidity gate live + backtest), `js/macroEquityEngine.js`, `analysis/liquidityNetRegressionCore.mjs` |
+| **Net liquidity** | `js/netLiquidity.js` | `netLiquidityBn(walclM, tgaM, rrpB)`, `netLiquiditySeriesBn`, `netLiqUnitWarnings`, `NET_LIQ_FRED_UNITS` | `server.js` `computeNetLiqZ` (liquidity gate live + backtest), `js/macroEquityEngine.js`, `js/macro.js` (index.html equity T1 tile, 2026-10-24), `analysis/liquidityNetRegressionCore.mjs` |
 
 **Known copies that cannot import it** (same arithmetic inline, comment points here): `js/globalLiquidityEngine.js`
 (classic script), `diversification.html` (classic script block), `MacroEquityBot/fred_signal.py`,
 `macro-regime-conditional/macro_equity_backtest.py`, the three `analysis/macro_confluence_*_study.mjs`.
-**Still wrong, held for the owner:** `js/macro.js` `computeT1_Equity` (index.html equity T1 tile) computes in mixed units, so its score sits at ±3; it feeds the Bayesian score that index.html writes to `ai_decision_meta_*`, which the server merges into live level state, so changing it is a live-input change. Fix is one line: `netLiquidityBn(walcl, tga, rrp)`.
 **Correct and left alone:** `cog-replication/engine/cogShadow.js` (caller converts RRP ×1000 to millions) and
 `cog-replication/test_g1_direction.py`. Results banked on the wrong series are listed in `plans/DATA_SPEC.md` §5 #8.
 
