@@ -37,3 +37,4 @@ Format: `YYYY-MM-DD — slug (full + micro) — category — source notes / why`
   practice.html, errors.html, checklist.html, journal.html, cheatsheet.html, replay.html (desk only); the hub's Today
   card (desk only). Recorded dialogues in theory-lab/audio (Kokoro, built locally by build_audio.py).
 - 2026-10-24: cog Course Notes 2 (Quant & Macro) split from one 73-min page into an index (quant-macro-lessons.html), six full lessons qm-1..qm-6 each with a -micro deck, and qm-reference.html. Built in full house style except the two-voice spoken block and whiteboards (owner: skip). Glossary cards and stories.html entries NOT added yet. Read-time labels come from scripts/tl_read_times.mjs.
+- 2026-10-24 (later): qm-2 and qm-6 (42 and 45 min) each split in two (qm-2 + qm-2b, qm-6 + qm-6b); course keeps the six-lesson numbering, so display is "Lesson 2, part 1 of 2". Index shows eight parts.

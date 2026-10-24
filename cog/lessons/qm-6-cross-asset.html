@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cross-Asset Synthesis — COG Hub — MacroFX</title>
+<title>Cross-Asset Synthesis, Part 1: The Framework — COG Hub — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../theory-lab/assets/theory.css">
 <script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
@@ -24,14 +24,14 @@
 </head>
 <body>
 <div id="page">
-  <div class="tl-crumb"><a href="../hub.html">COG Hub</a> / Course Notes / Quant &amp; Macro / Cross-Asset Synthesis</div>
+  <div class="tl-crumb"><a href="../hub.html">COG Hub</a> / Course Notes / Quant &amp; Macro / Cross-Asset Synthesis, Part 1</div>
   <div class="tl-glosslink">🔎 <a href="../../theory-lab/glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
-  <div class="tl-kicker">Course Notes · Quant &amp; Macro 6 of 6</div>
-  <h1 class="tl-title">Cross-Asset Synthesis</h1>
-  <p class="tl-dek">How a global macro fund reads rates, credit, currencies, equities and volatility as one story: the growth-and-inflation regime map, the order in which markets react, why stock-bond correlation is a variable, and three real episodes (2022, late 2023, March 2023) to test the framework against.</p>
+  <div class="tl-kicker">Course Notes · Quant &amp; Macro · Lesson 6, part 1 of 2</div>
+  <h1 class="tl-title">Cross-Asset Synthesis, Part 1: The Framework</h1>
+  <p class="tl-dek">Part 1 of 2. How a global macro fund reads rates, credit, currencies, equities and volatility as one story: the growth-and-inflation regime map, the data dashboard, the order in which markets react, and why stock-bond correlation is a variable. Part 2 tests the framework against three real episodes and asks where edge actually lives.</p>
   <div class="tl-meta">
     <span class="tl-status course">COURSE NOTES — framework as taught, not a backtested strategy</span>
-    <span>~45 min read</span>
+    <span>~27 min read</span>
     <span>Difficulty: Intermediate</span>
     <span>Prereqs: <a href="qm-5-currency-flows.html">Quant &amp; Macro 5 (currency flows)</a> and the earlier lessons in this course</span>
   </div>
@@ -50,8 +50,7 @@
       <li>Growth (accelerating or decelerating) and inflation (rising or falling) make four regimes: Goldilocks, Reflation, Stagflation and Deflation. Each leans different asset classes. The money is in spotting the transition early, not in labelling the regime after the fact.</li>
       <li>Markets that all tell the same story are <em>coherent</em>, and trends tend to persist. When they disagree, someone is wrong, the regime is changing, or the picture is genuinely uncertain. Divergences do not say what to do; they say <em>investigate</em>.</li>
       <li>Correlations are variables, not constants. The stock-bond correlation is negative when growth fears drive markets and positive when inflation fears do; 2022 was the year the assumption broke. In a liquidity crisis, correlations head towards 1.</li>
-      <li>Three episodes are worked in full: the 2022 bear market (rates led, FX confirmed, credit warned, equities followed), the Q4 2023 "everything rally" (peak coherence), and March 2023 (credit led, rate volatility led equity volatility, and a weekly review would have missed it).</li>
-      <li><strong>The honest part:</strong> understanding the framework is not an edge. Markets are efficient at short horizons. The edge the course points to is data infrastructure, systematic rules, longer horizons and the ability to hold through drawdowns, and none of it is proved here.</li>
+      <li><strong>This is part 1 of 2.</strong> It builds the framework and tests it with simulations. <a href="qm-6b-episodes-and-implementation.html">Part 2</a> works three real episodes (2022, Q4 2023, March 2023), shows how one view is expressed and sized across the capital structure, and gives the honest verdict: understanding the framework is not an edge, and none of it is proved here.</li>
     </ul>
   </div>
 
@@ -91,7 +90,7 @@
   </figure>
 
   <div class="tl-callout">
-    <strong>A note on the numbers in this lesson.</strong> The specific correlations, levels and percentages in the course notes are <em>exemplar data</em> representing typical historical ranges, as the course material itself states. In the three case studies, the <em>dates and order of events</em> are public record, while the <em>level figures in the tables</em> are the course's rounded values: treat them as approximate until checked against a data source. Every simulation in this lesson is labelled as a simulation and uses made-up numbers.
+    <strong>A note on the numbers in this lesson.</strong> The specific correlations, levels and percentages in the course notes are <em>exemplar data</em> representing typical historical ranges, as the course material itself states. Every simulation in this lesson is labelled as a simulation and uses made-up numbers.
   </div>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
@@ -154,7 +153,7 @@
     <h3>The cascade order is not fixed</h3>
     <p style="margin-bottom:0">
       The course states the order two ways: Rates → Credit → FX → Equities in its first section and key takeaways, but Rates → FX → Credit → Equities in
-      its lead-lag section. The case studies below show the order changes with the episode: late 2023 went rates, then credit, then FX, then equities;
+      its lead-lag section. The case studies in Part 2 show the order changes with the episode: late 2023 went rates, then credit, then FX, then equities;
       March 2023 started in credit. Treat the cascade as a hypothesis about <em>who tends to move first</em> that you test, not as a rule.
     </p>
   </div>
@@ -180,7 +179,7 @@
   <div class="tl-solid red">
     <strong>The reality check, in the course's own words:</strong> understanding the framework is not the same as having an edge. Markets are efficient at short horizons.
     The institutional edge is superior data infrastructure, systematic implementation, longer horizons and the capacity to hold through volatility.
-    The rest of this lesson is the framework; Section 08 returns to why that matters.
+    This part builds the framework; Part 2 returns to why that matters.
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -390,7 +389,7 @@
     <div class="tl-chain-link end"><b>5 Alert</b>Threshold alerts for big moves and divergences</div>
   </div>
   <p>
-    Step 5 is not a luxury. As the March 2023 case below shows, some of the most important moves happen in days, and a weekly review is the wrong cadence for them.
+    Step 5 is not a luxury. As the March 2023 case in Part 2 shows, some of the most important moves happen in days, and a weekly review is the wrong cadence for them.
   </p>
 
   <details class="tl-section-collapse">
@@ -706,28 +705,6 @@
     </p>
   </div>
 
-  <figure class="tl-picture" style="margin-top:20px">
-    <div class="tl-picture-label">Who moved first? The order changes with the episode</div>
-    <svg viewBox="0 0 600 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three rows of numbered boxes showing the order in which markets moved: in 2022 rates, then FX, then credit, then equities; in late 2023 rates, then credit, then FX, then equities; in March 2023 credit first, then rate volatility, then equity volatility.">
-      <text class="tlp-text" x="14" y="38" font-size="13" font-weight="700">2022 bear market</text>
-      <rect class="tlp-box blue" x="170" y="18" width="96" height="32" rx="6"/><text class="tlp-text" x="218" y="39" text-anchor="middle" font-size="12">1 Rates</text>
-      <rect class="tlp-box blue" x="276" y="18" width="96" height="32" rx="6"/><text class="tlp-text" x="324" y="39" text-anchor="middle" font-size="12">2 FX</text>
-      <rect class="tlp-box blue" x="382" y="18" width="96" height="32" rx="6"/><text class="tlp-text" x="430" y="39" text-anchor="middle" font-size="12">3 Credit</text>
-      <rect class="tlp-box amber" x="488" y="18" width="96" height="32" rx="6"/><text class="tlp-text" x="536" y="39" text-anchor="middle" font-size="12">4 Equities</text>
-      <text class="tlp-text" x="14" y="98" font-size="13" font-weight="700">Q4 2023 rally</text>
-      <rect class="tlp-box blue" x="170" y="78" width="96" height="32" rx="6"/><text class="tlp-text" x="218" y="99" text-anchor="middle" font-size="12">1 Rates</text>
-      <rect class="tlp-box blue" x="276" y="78" width="96" height="32" rx="6"/><text class="tlp-text" x="324" y="99" text-anchor="middle" font-size="12">2 Credit</text>
-      <rect class="tlp-box blue" x="382" y="78" width="96" height="32" rx="6"/><text class="tlp-text" x="430" y="99" text-anchor="middle" font-size="12">3 FX</text>
-      <rect class="tlp-box amber" x="488" y="78" width="96" height="32" rx="6"/><text class="tlp-text" x="536" y="99" text-anchor="middle" font-size="12">4 Equities</text>
-      <text class="tlp-text" x="14" y="158" font-size="13" font-weight="700">March 2023 (SVB)</text>
-      <rect class="tlp-box red" x="170" y="138" width="96" height="32" rx="6"/><text class="tlp-text" x="218" y="159" text-anchor="middle" font-size="12">1 Credit (CDS)</text>
-      <rect class="tlp-box blue" x="276" y="138" width="96" height="32" rx="6"/><text class="tlp-text" x="324" y="159" text-anchor="middle" font-size="12">2 MOVE</text>
-      <rect class="tlp-box amber" x="382" y="138" width="96" height="32" rx="6"/><text class="tlp-text" x="430" y="159" text-anchor="middle" font-size="12">3 VIX</text>
-      <text class="tlp-text3" x="488" y="159" font-size="11">2Y yield collapses</text>
-    </svg>
-    <figcaption>The order is read from the course's own episode write-ups (the notes' "key lesson" for each). It is a description of three cases, not a law.</figcaption>
-  </figure>
-
   <p><strong>Section summary (as given):</strong> information flows through markets in sequence; lead-lag reflects market structure (who participates and how fast they process); confirmation builds conviction (more asset classes agreeing, more confidence); divergences require investigation (mispricing, transition, or missing information).</p>
   <!-- DESK:START -->
   <div class="tl-verdict untested">
@@ -913,280 +890,6 @@
   <div class="tl-verdict context" data-evidence="stock-bond-flip" data-evidence-date="2026-09-17"><span class="tl-verdict-tag">Desk data: base rate</span><span><strong>Stocks and bonds falling together.</strong> A negative 20-day stock/yield correlation happened in 71 episodes since 2008, a median of 5 sessions long, 17% of days. Only 36 clean flips: too few to test what follows. Describe it if you see it; do not forecast from it.</span></div>
   <!-- DESK:END -->
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
-  <h2>Three episodes, three lessons</h2>
-  <p>
-    The course tests the framework against three episodes. Read them as a set: the first is a regime shift that all the signals showed in advance, the second is peak coherence, and the third is a fast crisis where timing and cadence mattered most.
-    <strong>Source note:</strong> the dates and order of events below are public record. The level figures in the tables are the course's rounded values (labelled exemplar data) and are approximate.
-  </p>
-
-  <h3>Episode 1: the 2022 cross-asset bear market</h3>
-  <div class="tl-story" id="story-1">
-    <div class="tl-story-label">It actually happened</div>
-    <h3>The year the stock-bond hedge broke, and every signal was visible first</h3>
-    <p>
-      <strong>Setup, late 2021.</strong> Inflation expectations were at multi-decade highs (the course gives a 5-year breakeven near 3.2%), 10-year real yields were deeply negative (about −1.0%), Fed language was drifting away from "transitory", and the curve was bear-flattening as the front end priced hikes. The regime was moving from Goldilocks to Reflation, with stagflation risk building.
-    </p>
-    <p>
-      <strong>The cascade.</strong> On 30 November 2021 Fed Chair Powell said it was time to retire the word "transitory", and the 2-year yield began to climb (the course: roughly 0.5% towards 1.0%) while equities initially ignored it. By January 2022 the 2-year was through 1%, real yields had risen from about −1.0% towards zero, the Nasdaq entered a correction, and long-duration growth stocks led the decline, as duration arithmetic predicts.
-      Russia invaded Ukraine on 24 February 2022, adding a commodity and inflation shock (oil spiked well above $100). The Fed's first hike, 25 basis points, came on 16 March; the 2s10s curve briefly inverted around the start of April.
-      Then came 50 basis points in May and 75 in June, with the 2-year near 3%, real yields positive for the first time since early 2020, high-yield spreads widening from about 300 to over 500 basis points, and the stock-bond correlation firmly positive.
-      In September and October the 2-year peaked (the course: about 4.5%), the 10-year real yield reached about 1.7%, the dollar index passed 114, the UK gilt market was in turmoil and the MOVE index spiked. The S&P 500 finished about a quarter below its January peak at the October low (roughly −25% on closes, near −27% at the intraday low).
-    </p>
-    <p style="margin-bottom:0">
-      <strong>The lesson as taught.</strong> Rates led, FX confirmed, credit warned, equities followed. The stock-bond correlation flip was <em>the</em> signal that the diversification assumption had broken. Equity-only watchers were blindsided; full-capital-structure watchers had months of warning.
-    </p>
-  </div>
-  <div class="tl-chain">
-    <div class="tl-chain-link shock"><b>Nov 2021</b>Powell retires "transitory"; 2Y begins to rise</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link"><b>Jan 2022</b>Real yields rise from about −1.0%; Nasdaq correction; growth leads down</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link"><b>Mar 2022</b>First hike; Ukraine adds an oil and inflation shock; curve inverts in April</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link concept"><b>★ This lesson · May to Jun</b>Bigger hikes; real yields positive; HY 300 to 500+; stock-bond correlation positive</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link end"><b>Sep to Oct 2022</b>2Y peaks; dollar above 114; gilt crisis; S&amp;P about a quarter off its peak</div>
-  </div>
-  <div class="tl-table"><table>
-    <thead><tr><th>Signal (course figures, approximate)</th><th>Late 2021</th><th>Mid 2022</th><th>Oct 2022 lows</th></tr></thead>
-    <tbody>
-      <tr><td>2Y yield</td><td>0.5% → 1.0%</td><td>1.5% → 3.5%</td><td>~4.5% peak</td></tr>
-      <tr><td>Real yields</td><td>−1.0%</td><td>flipping positive</td><td>+1.7% peak</td></tr>
-      <tr><td>2s10s</td><td>flattening</td><td>inverting (about −0.2% to −0.4%)</td><td>deeply inverted</td></tr>
-      <tr><td>HY spreads</td><td>~300 bps</td><td>~500 bps</td><td>~550 bps</td></tr>
-      <tr><td>DXY</td><td>strengthening</td><td>surging</td><td>114 peak</td></tr>
-      <tr><td>Stock-bond correlation</td><td>turning positive</td><td>firmly positive (+0.5)</td><td>positive</td></tr>
-    </tbody>
-  </table></div>
-      <div class="tl-solid green"><strong>What worked:</strong> short duration; long commodities early (energy through June); long USD; long volatility (VIX and MOVE); value over growth (energy and financials versus tech); cash, once rising short rates made it competitive.</div>
-    <div class="tl-solid red"><strong>What failed:</strong> 60/40 (one of its worst years in decades); risk parity (leveraged bond exposure amplified the losses); growth stocks (crushed by rising real yields); "TINA" (cash became an alternative); EM assets (devastated by dollar strength).</div>
-  <p>
-    <strong>Systematic lessons:</strong> regime-conditional allocation outperformed; trend-following (CTAs short bonds and equities) did well; a simple real-yield rule would have flagged the growth-to-value rotation; carry-adjusted positioning justified defensiveness as cash yields rose.
-    <em>The edge was not prediction. It was systematic response to observable signals.</em>
-  </p>
-  <div class="tl-box pitfall">
-    <div class="tl-icon-badge amber">⚠️</div>
-    <div class="tl-box-label">Where this case study needs care</div>
-    <h3>Hindsight makes every cascade look obvious</h3>
-    <p style="margin-bottom:0">
-      The course claims every signal was visible. That is true of the <em>ones that worked</em>, written after the fact. At the time there were also plenty of signals pointing the other way (a strong labour market read as "soft landing", an inverted curve that "always" precedes recession for 18 months, transitory-inflation forecasts), and the lesson does not say how many false alarms the same rules would have produced in other years.
-      One episode is a story, not a test.
-    </p>
-  </div>
-
-  <h3>Episode 2: the Q4 2023 "everything rally" (peak coherence)</h3>
-  <div class="tl-story" id="story-2">
-    <div class="tl-story-label">It actually happened</div>
-    <h3>When rates, credit, FX, equities and volatility all said the same thing</h3>
-    <p>
-      <strong>Setup, summer to autumn 2023.</strong> Inflation had fallen from about 9% to about 3% (core was stickier), the labour market stayed resilient, and the Fed had stopped raising rates after July with "higher for longer" messaging. The curve was deeply inverted but no recession had arrived. The debate was a soft landing (Goldilocks) against a delayed hard landing (Deflation): <strong>coherence was low</strong>.
-    </p>
-    <p>
-      <strong>The October trough.</strong> The 10-year yield spiked to about 5% on term premium, supply and resilient data. The S&amp;P 500 fell about 10% from its July highs, but credit spreads were only modestly wider and the VIX was around 20: elevated, not panicked. Crucially it was a <strong>rates-driven</strong> sell-off, not a credit-driven one: high-yield spreads did not blow out, so credit was <em>not</em> confirming a hard landing. That divergence was informative.
-    </p>
-    <p>
-      <strong>The pivot.</strong> On 27 October the course reads the core PCE print (0.3% on the month, 3.7% on the year, down from 3.8%) as soft, shifting the inflation narrative towards "mission accomplished". On 1 November the FOMC held and Powell was less hawkish than feared (the course quotes "proceed carefully"); markets read it as peak rates. On 3 November weak payrolls pulled the 10-year from about 4.9% to about 4.5% within days and the front end rallied. In November and December came the everything rally: bonds up, credit tighter, equities surging, the dollar weaker and volatility collapsing. The December FOMC's projections then showed rate cuts in 2024.
-    </p>
-    <p style="margin-bottom:0">
-      <strong>The lesson as taught.</strong> <em>Coherence is a signal.</em> When every asset class tells the same story, the risk of being wrong is lower. Sequencing was textbook: rates first (FOMC and data), credit confirmed (no stress), FX confirmed (weak dollar), equities followed. Waiting for "certainty" missed the move; tracking coherence gave early confirmation.
-    </p>
-  </div>
-  <div class="tl-chain">
-    <div class="tl-chain-link shock"><b>Oct 2023</b>10Y near 5%; S&amp;P −10%; but HY spreads not confirming</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link"><b>27 Oct to 3 Nov</b>Soft inflation read; FOMC hold, "proceed carefully"; weak payrolls; 10Y 4.9% → ~4.5%</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link concept"><b>★ This lesson · coherence</b>Credit tightens, dollar weakens, volatility falls: every layer agrees</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link end"><b>Year-end</b>Yields 100+ bps lower; equities up about 16% from the October low</div>
-  </div>
-  <div class="tl-table"><table>
-    <thead><tr><th>Asset (course figures, approximate)</th><th>Oct lows</th><th>Year-end</th><th>Signal</th></tr></thead>
-    <tbody>
-      <tr><td>10Y</td><td>~5.0%</td><td>~3.9%</td><td>confirming (falling)</td></tr>
-      <tr><td>2Y</td><td>~5.2%</td><td>~4.2%</td><td>confirming (falling)</td></tr>
-      <tr><td>HY spreads</td><td>~450 bps</td><td>~330 bps</td><td>confirming (tightening)</td></tr>
-      <tr><td>S&amp;P 500</td><td>~4,100</td><td>~4,770</td><td>confirming (rallying)</td></tr>
-      <tr><td>DXY</td><td>~107</td><td>~101</td><td>confirming (weakening)</td></tr>
-      <tr><td>VIX</td><td>~21</td><td>~12</td><td>confirming (falling)</td></tr>
-      <tr><td>Gold</td><td>~$1,820</td><td>~$2,060</td><td>confirming (real yields falling)</td></tr>
-    </tbody>
-  </table></div>
-  <p><strong>What worked:</strong> long duration (yields down more than 100 bps); long credit (tightening plus carry); long equities (growth and small caps led); short volatility (VIX from about 20 to about 12); short USD; long gold (a real-yield collapse).</p>
-  <div class="tl-box pitfall">
-    <div class="tl-icon-badge amber">⚠️</div>
-    <div class="tl-box-label">Where this case study needs care</div>
-    <h3>Coherence after the fact is easy to see</h3>
-    <p style="margin-bottom:0">
-      Every row in the confirmation table is the same direction, which is the point, but the table is read from the year-end. At the start of November the question was whether the October credit divergence meant rates were wrong or credit was.
-      The lesson is a statement about how to <em>use</em> coherence (more layers agreeing is more confidence), not proof that coherence predicts. Also note this is the same episode in which waiting would have missed the move, and the lesson does not tell you how many times waiting for coherence cost the same trader a loss.
-    </p>
-  </div>
-
-  <h3>Episode 3: March 2023 banking stress (SVB)</h3>
-  <div class="tl-story" id="story-3">
-    <div class="tl-story-label">It actually happened</div>
-    <h3>Five days in which a hiking cycle turned into emergency cuts priced</h3>
-    <p>
-      <strong>Setup.</strong> The Fed was still hiking (25 to 50 basis points were expected in March), the 2-year was near 5% and the 10-year near 4%. Banks' held-to-maturity bond portfolios carried large unrealised losses from the 2022 rate surge, and regional banks with concentrated deposits and a duration mismatch were vulnerable.
-    </p>
-    <p>
-      <strong>The cascade.</strong> On Wednesday 8 March Silvergate announced a liquidation, which was treated as idiosyncratic. After the close that day Silicon Valley Bank disclosed a $1.8 billion loss on securities sales and a capital raise; its stock fell about 60% on Thursday 9 March, regional-bank credit default swaps spiked, and depositors tried to pull about $42 billion in a day. <strong>Credit reacted first: this was the early warning.</strong>
-      On Friday 10 March the FDIC took SVB into receivership, then the second-largest bank failure in US history. The 2-year yield collapsed, about 30 basis points on 10 March and a further 57 on Monday 13 March on FRED closes, in a flight to safety, and regional-bank stocks cratered.
-      On Sunday 12 March Signature Bank was closed, and the Fed announced the Bank Term Funding Program (BTFP), lending against underwater bonds at par, together with measures protecting depositors: the policy firewall. Stabilisation followed with aftershocks (concern about First Republic; the separate Credit Suisse rescue). The Fed still hiked 25 basis points on 22 March, threading the needle.
-    </p>
-    <p style="margin-bottom:0">
-      <strong>The lesson as taught.</strong> Credit leads at stress points; the MOVE index can lead the VIX in rates-driven crises; regime shifts can be violent and fast (hiking to emergency cuts priced in about 48 hours); and the policy response matters. For systematic work: <strong>crisis signals must be monitored in real time. A weekly review would have missed this.</strong>
-    </p>
-  </div>
-  <div class="tl-chain">
-    <div class="tl-chain-link"><b>8 Mar (Wed)</b>Silvergate liquidation, seen as idiosyncratic; SVB announces its loss after the close</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link concept"><b>★ This lesson · 9 Mar</b>SVB −60%; bank CDS spike first; credit is the early warning</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link shock"><b>10 Mar (Fri)</b>FDIC seizes SVB; 2Y collapses; MOVE spikes ahead of VIX</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link"><b>12 Mar (Sun)</b>Signature closed; BTFP and depositor protection announced</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link end"><b>13 to 22 Mar</b>Stabilisation with aftershocks; Fed hikes 25 bps on 22 Mar</div>
-  </div>
-  <div class="tl-table"><table>
-    <thead><tr><th>Signal (course figures, approximate)</th><th>Pre-crisis (8 Mar)</th><th>Peak stress (13 Mar)</th><th>Post-response (20 Mar)</th></tr></thead>
-    <tbody>
-      <tr><td>2Y yield</td><td>5.05%</td><td>4.03% (−102 bps)</td><td>3.92%</td></tr>
-      <tr><td>10Y yield</td><td>3.98%</td><td>3.55%</td><td>3.47%</td></tr>
-      <tr><td>Fed funds expectations</td><td>+50 bps priced</td><td>cuts priced for 2023</td><td>+25 bps priced</td></tr>
-      <tr><td>Regional bank ETF (KRE)</td><td>$58</td><td>$40 (−30%)</td><td>$42</td></tr>
-      <tr><td>HY spreads</td><td>~450 bps</td><td>~520 bps</td><td>~480 bps</td></tr>
-      <tr><td>MOVE</td><td>~120</td><td>~180 (spiked before VIX)</td><td>~140</td></tr>
-      <tr><td>VIX</td><td>~19</td><td>~26</td><td>~24</td></tr>
-    </tbody>
-  </table></div>
-  <ol>
-    <li><strong>Credit led.</strong> Bank CDS and subordinated debt moved before equity (9 March).</li>
-    <li><strong>MOVE led VIX.</strong> Rate volatility spiked first; it was fundamentally a rates and duration crisis.</li>
-    <li><strong>The 2Y move was historic.</strong> A three-day drop among the largest ever, pricing emergency cuts.</li>
-    <li><strong>Flight to quality</strong> followed the classic deflation-scare playbook.</li>
-    <li><strong>The policy response mattered.</strong> The BTFP arrested the panic; cross-asset normalisation took days.</li>
-  </ol>
-  <div class="tl-box pitfall">
-    <div class="tl-icon-badge amber">⚠️</div>
-    <div class="tl-box-label">Where this case study needs care</div>
-    <h3>A single fast crisis tests your cadence, not your model</h3>
-    <p style="margin-bottom:0">
-      The lesson here is operational: alerts, not weekly reviews. It does not show that "credit leads" or "MOVE leads VIX" is a rule; the course's own lead-lag finding is that leads appear at turning points, which makes them easy to cherry-pick.
-      The 2-year yield also whipsawed afterwards (FRED closes: 4.03% on 13 March, 3.93% on 15 March, 4.17% on 21 March), so a trader who simply extrapolated the collapse would not have been rewarded.
-    </p>
-  </div>
-
-  <div class="tl-section-mark"><span>Section 07</span></div>
-  <h2>Expressing a view across the capital structure</h2>
-  <p>
-    A view is not a trade. Take "the Fed will cut sooner than expected" and look at seven ways to express it:
-  </p>
-  <div class="tl-table"><table>
-    <thead><tr><th>Expression</th><th>Instrument</th><th>Risk profile</th><th>Carry</th><th>Convexity</th></tr></thead>
-    <tbody>
-      <tr><td>Direct rates</td><td>Long 2Y Treasuries</td><td>Low volatility, clean</td><td>Positive (coupon)</td><td>Low</td></tr>
-      <tr><td>Curve</td><td>2s10s steepener</td><td>Lower volatility than outright</td><td>Often negative</td><td>Low</td></tr>
-      <tr><td>Rate options</td><td>Receiver swaptions</td><td>Defined risk, asymmetric</td><td>Negative (premium)</td><td>High</td></tr>
-      <tr><td>FX</td><td>Short USD / long EUR</td><td>Higher volatility, rate-differential sensitive</td><td>Variable</td><td>Low</td></tr>
-      <tr><td>Equity</td><td>Long growth (QQQ)</td><td>High volatility, many other factors</td><td>Low / variable</td><td>Low</td></tr>
-      <tr><td>Equity options</td><td>Long QQQ calls</td><td>Defined risk, levered upside</td><td>Negative (premium)</td><td>High</td></tr>
-      <tr><td>Gold</td><td>Long GLD</td><td>Real-yield proxy</td><td>Zero</td><td>Low</td></tr>
-    </tbody>
-  </table></div>
-  <ul>
-    <li><strong>High conviction + short horizon:</strong> direct 2Y or front-end rate options are cleanest.</li>
-    <li><strong>Moderate conviction + longer horizon:</strong> a steepener or gold may offer better risk-adjusted returns.</li>
-    <li><strong>Equities are the noisiest expression.</strong></li>
-  </ul>
-  <p><strong>What decides the expression:</strong> conviction (high means direct; low means relative value or optionality); time horizon (short means liquid; long can accept an illiquidity premium); risk budget (limited means options for defined risk); carry profile (can you afford negative carry while you wait?); correlation to the existing book; and liquidity and exit needs.</p>
-
-  <h3>The "cleanest" expression</h3>
-  <p>The cleanest expression is the one most directly tied to the thesis, with the fewest confounders:</p>
-  <div class="tl-table"><table>
-    <thead><tr><th>Thesis</th><th>Cleanest</th><th>Noisier</th></tr></thead>
-    <tbody>
-      <tr><td>"Inflation surprises higher"</td><td>Long breakevens (TIPS vs nominals)</td><td>Short bonds, long commodities, long value</td></tr>
-      <tr><td>"Credit stress coming"</td><td>Long CDX HY protection</td><td>Short equities, long VIX, long quality</td></tr>
-      <tr><td>"Dollar will weaken"</td><td>Short DXY / long EUR/USD</td><td>Long EM equities, long gold, long commodities</td></tr>
-    </tbody>
-  </table></div>
-
-  <h3>Sizing several expressions</h3>
-  <p>
-    The course's systematic version weights multiple expressions by signal strength, risk contribution (volatility-adjusted sizing), the correlation between expressions and costs, with this sizing heuristic:
-  </p>
-  <div class="tl-math">\[ \text{Position size} \;=\; \frac{\text{Target risk}}{\text{Instrument volatility} \times \text{Correlation to view}} \]</div>
-  <div class="tl-eq-break">
-    <div class="tl-eq-chip c1"><code>Target risk</code><span>how much risk you want this view to carry, as a share of capital</span></div>
-    <div class="tl-eq-chip c2"><code>Instrument volatility</code><span>how much the instrument itself moves; wilder means smaller size</span></div>
-    <div class="tl-eq-chip c3"><code>Correlation to view</code><span>how tightly the instrument tracks the thesis; looser tracking means more size to carry the same view</span></div>
-  </div>
-  <div class="tl-box example">
-    <div class="tl-icon-badge purple">🧮</div>
-    <div class="tl-box-label">Worked example</div>
-    <h3>Two instruments, one view</h3>
-    <p>
-      Target risk is 1% of capital. Instrument A has 10% volatility and tracks the view perfectly (correlation 1). Then size \(= 0.01 / (0.10 \times 1) = 10\%\) of capital.
-      Instrument B has the same 10% volatility but tracks the view with correlation 0.5. Then size \(= 0.01 / (0.10 \times 0.5) = 20\%\): twice as much, to carry the same slice of the view.
-    </p>
-  </div>
-  <div class="tl-box example">
-    <div class="tl-icon-badge purple">🧪</div>
-    <div class="tl-box-label">Try it yourself</div>
-    <h3>Recompute the size and see what happens as the correlation falls</h3>
-    <p>Starts on instrument A from the worked example. Change any input and the size recalculates.</p>
-    <div class="tl-predict" data-answer="20" data-tol="2" data-unit="%">
-      <div class="tl-predict-q"><strong>Predict first.</strong> Target risk 1%, instrument volatility 10%. If the instrument only has a correlation of 0.5 with the view, what share of capital is the position? Lock in a guess, then type 0.5 into the correlation field below to check it.</div>
-      <div class="tl-predict-reveal"><p><strong>20%.</strong> \(0.01 / (0.10 \times 0.5) = 0.20\). Halving the correlation doubles the size. Now push the correlation to 0.1: the size becomes 100% of capital. That is the formula's weakness, and the reason a size cap belongs next to it.</p></div>
-    </div>
-    <div class="tl-controls">
-      <div class="tl-control">
-        <div class="tl-control-head"><span>Target risk (% of capital)</span></div>
-        <input type="number" id="ca-p-risk" class="tl-scratch-input" value="1" step="0.1" min="0">
-      </div>
-      <div class="tl-control">
-        <div class="tl-control-head"><span>Instrument volatility (%)</span></div>
-        <input type="number" id="ca-p-vol" class="tl-scratch-input" value="10" step="1" min="0">
-      </div>
-      <div class="tl-control">
-        <div class="tl-control-head"><span>Correlation to the view</span></div>
-        <input type="number" id="ca-p-corr" class="tl-scratch-input" value="1" step="0.05" min="0" max="1">
-      </div>
-    </div>
-    <div class="tl-readout tl-scratch-readout">
-      Size = <b id="ca-p-size">—</b> of capital <span id="ca-p-note" class="tl-scratch-note"></span>
-    </div>
-    <button type="button" id="ca-p-reset" class="tl-scratch-reset-btn">Reset to the worked example</button>
-  </div>
-  <script>
-  (function(){
-    var r = document.getElementById('ca-p-risk');
-    if (!r) return;
-    var v = document.getElementById('ca-p-vol'), c = document.getElementById('ca-p-corr');
-    var out = document.getElementById('ca-p-size'), note = document.getElementById('ca-p-note');
-    function recompute(){
-      var risk = parseFloat(r.value) / 100, vol = parseFloat(v.value) / 100, cor = parseFloat(c.value);
-      if (!isFinite(risk) || !isFinite(vol) || !isFinite(cor) || vol <= 0 || cor <= 0 || risk < 0){
-        out.textContent = '—';
-        note.textContent = '(need volatility above 0 and correlation above 0)';
-        return;
-      }
-      var size = risk / (vol * cor);
-      out.textContent = (size * 100).toFixed(1) + '%';
-      note.textContent = size > 1 ? '(above 100% of capital: leverage, and a sign the instrument tracks the view too loosely)' : '';
-    }
-    [r, v, c].forEach(function(el){ el.addEventListener('input', recompute); });
-    document.getElementById('ca-p-reset').addEventListener('click', function(){ r.value = 1; v.value = 10; c.value = 1; recompute(); });
-    recompute();
-  })();
-  </script>
-  <div class="tl-solid red">
-    <strong>The trap in the formula:</strong> dividing by the correlation makes the size explode as the correlation falls towards zero. It is the course's heuristic, not a derived result; any real use needs a hard cap on size and a floor on how loosely an instrument may track the view.
-  </div>
 
   <div class="tl-fade">
     <div class="tl-fade-label">✎ Your turn · the same calculations, less help each round</div>
@@ -1201,76 +904,15 @@
     </div>
     <div class="tl-fade-round">
       <h4>Round 3 · on your own</h4>
-      <p>A balance sheet of $7.0 trillion, a TGA of $0.4 trillion and reverse repo of $1.2 trillion give net liquidity of <span class="tl-blank" data-answer="5.4" data-tol="0.05"></span> trillion. The TGA then rises by $0.3 trillion: net liquidity becomes <span class="tl-blank" data-answer="5.1" data-tol="0.05"></span>. For a position with target risk 0.5%, volatility 10% and correlation 0.25, the size is <span class="tl-blank" data-answer="0.2" data-tol="0.005"></span> of capital (give it as a decimal).</p>
+      <p>A balance sheet of $7.0 trillion, a TGA of $0.4 trillion and reverse repo of $1.2 trillion give net liquidity of <span class="tl-blank" data-answer="5.4" data-tol="0.05"></span> trillion. The TGA then rises by $0.3 trillion: net liquidity becomes <span class="tl-blank" data-answer="5.1" data-tol="0.05"></span>.</p>
     </div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 08</span></div>
-  <h2>Implementation reality: where edge actually lives</h2>
-  <div class="tl-solid red">
-    <strong>The hard truth (the course's own words):</strong> reading cross-asset signals and trading them profitably on a discretionary daily basis is extremely difficult. Markets are highly efficient at short horizons; most retail traders, and many professionals, who try to "trade the macro" lose money. Institutional edge comes from infrastructure, time horizon and systematic implementation.
-  </div>
-  <h3>Why daily discretionary macro is hard</h3>
-  <ul>
-    <li><strong>Information is priced fast.</strong> By the time you see a signal, so has everyone.</li>
-    <li><strong>Noise dominates short horizons.</strong> Daily moves are mostly noise; signal emerges over weeks and months.</li>
-    <li><strong>Behavioural biases compound.</strong> Overtrading, confirmation bias, recency bias.</li>
-    <li><strong>Transaction costs</strong> erode returns with frequency.</li>
-    <li><strong>Narrative is seductive.</strong> A post-hoc story for any move is not tradeable.</li>
-  </ul>
-  <h3>Where edge can exist</h3>
-  <ul>
-    <li>Longer time horizons (weeks to months), where behavioural biases and structural flows create opportunity.</li>
-    <li>Systematic implementation: rules remove emotion and enforce discipline.</li>
-    <li>Superior data and infrastructure: the same signals, faster or at higher resolution.</li>
-    <li>Capacity to hold through drawdowns that force others out.</li>
-    <li>Structural advantages: market access, leverage, information.</li>
-    <li><strong>The retail edge:</strong> no benchmark, no redemptions, no career risk. You can be patient and hold through volatility that would get a fund manager fired. Use it.</li>
-  </ul>
-  <h3>Strategy families the signals map to (all testable)</h3>
-  <div class="tl-takeaways">
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Regime identification models:</strong> classify, then allocate by historical regime performance.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Cross-asset trend-following.</strong></span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Carry strategies with systematic exits.</strong></span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Relative value and mean reversion</strong> in relationships (stock-bond correlation, credit-equity).</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Risk parity</strong> with regime-conditional correlations.</span></div>
-  </div>
-  <p>Each can be backtested, validated out-of-sample and stress-tested: evidence beyond narrative. What the course's data-modelling section promises to cover: building data pipelines (FRED, alternative data), signal construction and normalisation, rigorous backtesting (walk-forward, no lookahead, cost modelling), regime detection (HMM, rules, ensembles), portfolio construction (signal combination, correlation-aware sizing, risk budgeting) and monitoring and execution (alerts, rebalancing, slippage).</p>
-  <h3>The realistic path, as taught</h3>
-  <div class="tl-chain">
-    <div class="tl-chain-link"><b>1 Education</b>Understand how institutions think about cross-asset dynamics</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link"><b>2 Context</b>Use the framework to interpret moves even when you are not trading them</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link"><b>3 Longer horizon</b>Inform medium-term allocation: months, not days</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link concept"><b>4 Test</b>Build and test systematically before trading any of it</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link end"><b>5 Humility</b>Recognise the limits of discretionary macro at retail scale</div>
-  </div>
-  <p><em>"This isn't defeatism. It's realism… value comes from proper application, not from thinking you can out-trade Goldman Sachs on a daily basis."</em></p>
-  <!-- DESK:START -->
-  <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Not tested here</span>
-    <span><strong>None of the course's strategy families has been tested on this desk from this lesson.</strong> This lesson is a framework, and a framework is not a result.
-    <div class="tl-howtotest"><strong>How to test it:</strong> pick one family (for example cross-asset trend-following on a fixed list of liquid futures), fix the rules before looking, run walk-forward with costs and a held-out final period, and apply the multiple-testing correction for every variant tried. Report the held-out result whether it is good or not.</div></span>
-  </div>
-  <!-- DESK:END -->
-
-  <div class="tl-drill" data-date="2023-03-10">
-    <div class="tl-drill-label">Scenario drill · 10 March 2023</div>
-    <h3>A bank has just failed, and you are short the front end</h3>
-    <p>The Fed is in the middle of a hiking cycle, and the market expected a 25 to 50 basis point hike on 22 March. You hold a short position in the 2-year Treasury, sized in calm conditions for a market that is still pricing hikes. Silicon Valley Bank was taken over by the FDIC this morning. The 2-year yield has dropped sharply, regional-bank credit has been under stress since Thursday, and rate volatility is jumping. It is Friday close and the weekend is ahead. What do you do?</p>
-    <ol class="tl-drill-options">
-      <li data-verdict="bad">Hold the short. One bank is not the system, and the Fed's hiking path is still intact.<div class="tl-drill-why">Credit moved first and rate volatility is spiking, which is the lesson's signal that the regime is shifting from "hiking" towards "emergency cuts priced". A position sized for calm rates volatility is now much too large for the new volatility, and the weekend is a gap risk in which policy can change the picture.</div></li>
-      <li data-verdict="bad">Add to the short: yields have fallen too far, too fast and will snap back.<div class="tl-drill-why">It is a fade of a move in a stress event with a policy response not yet known. If the authorities stabilise things the yields may bounce, but if they do not you are adding to a loser in the fastest market in years. Adding is a view on timing you cannot support.</div></li>
-      <li data-verdict="good">Cut the position well down before the weekend, treat it as a possible regime break, and rebuild only when the policy response and credit signals confirm.<div class="tl-drill-why">This respects both lessons of the episode: credit and rate volatility led, and a regime shift can arrive in 48 hours. Reducing is not a bet on the new direction; it is admitting your sizing assumed a world that may have just ended. You can re-enter once more layers agree.</div></li>
-      <li data-verdict="ok">Flip to a large long in 2-year Treasuries to ride the flight to safety.<div class="tl-drill-why">The direction of the next few days was plausible, but it is a full-size bet on one outcome in a gap-prone weekend, and the 2-year whipsawed afterwards. Right direction for the wrong reason can still be wrongly sized.</div></li>
-    </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Sunday 12 March regulators closed Signature Bank, and the Federal Reserve announced the Bank Term Funding Program, lending to banks against Treasuries and other eligible securities valued at par; depositors at the failed banks were protected. The 2-year yield fell much further on Monday 13 March and stayed very volatile, and the Fed raised rates by 25 basis points on 22 March.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20230312a.htm">Federal Reserve Board press release, 12 March 2023 (Bank Term Funding Program)</a>; <a href="https://www.federalreserve.gov/publications/files/svb-review-20230428.pdf">Board of Governors, Review of the Federal Reserve's Supervision and Regulation of Silicon Valley Bank, 28 April 2023</a>.</p></div>
+  <div class="tl-callout">
+    <strong>Next: part 2.</strong> <a href="qm-6b-episodes-and-implementation.html">Part 2: Episodes and Implementation</a> takes this framework to three real episodes (the 2022 bear market, the Q4 2023 everything rally and March 2023), shows how one view is expressed and sized across the capital structure, and ends with the honest question of where edge actually lives. A scenario drill and the closing verdict are there.
   </div>
 
-  <div class="tl-section-mark"><span>Section 09</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Trade the capital structure, not single assets.</strong> One view has many expressions with different risk and reward; the cleanest one is most directly tied to the thesis.</span></div>
@@ -1278,13 +920,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Regimes determine allocation.</strong> Growth × inflation gives four worlds; the opportunity is in detecting transitions early, not in naming the regime afterwards.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Correlations are variables, not constants.</strong> Stock-bond correlation flips between growth-driven and inflation-driven regimes; diversification can fail when it is most needed.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Coherence builds conviction; divergence means investigate.</strong> Aligned markets raise confidence and size; disagreement is a question, not a signal.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Credit leads at turning points</strong>, in the course's episodes. Skeptical, downside-focused investors move first.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Infrastructure enables edge, and crises need real-time alerts.</strong> Pipelines, alerting and quantitative testing are what turn a framework into something usable; a weekly review would have missed March 2023.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Three episodes are three stories, not a test.</strong> Each is told with hindsight; none shows how often the same rules misfire.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Daily discretionary macro is extremely hard.</strong> Time horizon is the edge: longer horizons, systematic rules, patience. Understanding the framework is not an edge, and none of it is validated here.<!-- DESK:START --> Nothing in this lesson has been tested on this desk.<!-- DESK:END --></span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 10</span></div>
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why did stocks and bonds fall together in 2022, and what does that say about the diversification assumption?</summary>
@@ -1297,7 +935,7 @@
     <summary>Q2. Equities are rallying but high-yield credit spreads are widening. What does the framework say, and what does it not say?</summary>
     <div class="tl-answer">
       It says there is a divergence: credit may be seeing risk that equities ignore, and historically credit is often right at turning points, so it is a prompt to investigate.
-      It does <em>not</em> say sell equities. A divergence tells you to ask why they disagree and what would resolve it. Credit can also be wrong, and the course notes that either the bonds overreact or equities catch down. The October 2023 episode is the mirror case: a sell-off in rates with credit <em>not</em> confirming a hard landing was informative, and credit was right to stay calm.
+      It does <em>not</em> say sell equities. A divergence tells you to ask why they disagree and what would resolve it. Credit can also be wrong, and the course notes that either the bonds overreact or equities catch down. The October 2023 episode (in Part 2) is the mirror case: a sell-off in rates with credit <em>not</em> confirming a hard landing was informative, and credit was right to stay calm.
     </div>
   </details>
   <details class="tl-quiz">
@@ -1312,18 +950,6 @@
       Growth shocks push stocks and bond prices in opposite directions (a negative contribution, \(-c\,\sigma_g^2\)); inflation shocks push both down together (a positive contribution, \(+bd\,\sigma_\pi^2\)). The sign of the sum depends on which kind of news is more volatile. It flips when \(\sigma_\pi/\sigma_g = \sqrt{c/(bd)}\), about 1.44 with the lesson's made-up sensitivities. The model is a teaching device: it shows that a changing mix of news can flip the correlation with no change in how stocks and bonds themselves behave.
     </div>
   </details>
-  <details class="tl-quiz">
-    <summary>Q5. What would a weekly review have missed in March 2023, and what does that imply for how a macro dashboard is run?</summary>
-    <div class="tl-answer">
-      The credit warning on 9 March (bank CDS and the SVB stock collapse), the FDIC takeover on 10 March, the historic 2-year yield move, the weekend policy response on 12 March and the near-48-hour swing from hikes priced to cuts priced were all over before a weekly check. The implication is that slow-moving tiers (policy and liquidity) can be reviewed weekly or monthly, but credit stress, rate volatility and curve alerts need to be automated and real-time, with thresholds set in advance.
-    </div>
-  </details>
-  <details class="tl-quiz">
-    <summary>Q6. Why does the course say that understanding this framework is not the same as having an edge?</summary>
-    <div class="tl-answer">
-      Markets are efficient at short horizons: information is priced fast, daily moves are mostly noise, behavioural biases compound, costs scale with trading frequency, and any story can be told after the fact. What the course points to as potential edge is different: longer horizons where biases and structural flows matter, systematic rules that remove emotion, better data and infrastructure, and the ability (especially a retail trader's, with no benchmark or redemptions) to hold through drawdowns. Even those need to be tested before they are trusted.
-    </div>
-  </details>
 
   <details class="tl-section-collapse">
     <summary><h2>Further reading</h2></summary>
@@ -1334,7 +960,6 @@
       <li>John Y. Campbell, Adi Sunderam and Luis M. Viceira, "Inflation Bets or Deflation Hedges? The Changing Risks of Nominal Bonds", <em>Critical Finance Review</em>, 2017: why the sign of the stock-bond relationship changes with the inflation regime.</li>
       <li>J.P. Morgan/Reuters, <em>RiskMetrics Technical Document</em>, 4th ed., 1996: the origin of the exponentially weighted volatility and correlation estimates with \(\lambda = 0.94\) for daily data.</li>
       <li>Clive W. J. Granger, "Investigating Causal Relations by Econometric Models and Cross-spectral Methods", <em>Econometrica</em>, 1969: the lead-lag causality test named in the course.</li>
-      <li>Federal Reserve Board, <em>Review of the Federal Reserve's Supervision and Regulation of Silicon Valley Bank</em>, 28 April 2023: a primary account of the March 2023 failure.</li>
     </ul>
   </details>
 
@@ -1350,18 +975,18 @@
     <div class="tl-fits-col">
       <div class="tl-fits-k">Read next</div>
       <ul>
-        <li><a href="qm-reference.html">Course reference: formulas, data sources, daily scans</a> <span>· the appendices to all six lessons</span></li>
+        <li><a href="qm-6b-episodes-and-implementation.html">Cross-Asset Synthesis, Part 2: Episodes and Implementation</a> <span>· three real episodes, expressing a view, where edge lives</span></li>
         <li><a href="../../theory-lab/lessons/hidden-markov-models.html">Hidden Markov Models</a> <span>· a quant way to classify regimes</span></li>
         <li><a href="../../theory-lab/lessons/domino-chain-cross-asset.html">The Domino Effect: One Shock Through the Whole Board</a> <span>· a shock's path across assets</span></li>
       </ul>
     </div>
-    <p class="tl-fits-why"><strong>Why you'd care:</strong> every other lesson in the course looks at one layer. This one asks whether the layers agree, and it is honest that agreeing is context, not an edge.</p>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every other lesson in the course looks at one layer. This part gives you the framework for asking whether the layers agree; Part 2 tests it and is honest that agreeing is context, not an edge.</p>
   </nav>
 
   <div class="tl-footer-nav">
-    <a href="qm-5-currency-flows.html">← Currency Markets &amp; Global Flows</a>
+    <a href="qm-5-currency-flows.html">← Currency Markets &amp; Global Flows (Lesson 5)</a>
     <a href="../hub.html">COG hub</a>
-    <a href="qm-reference.html">Course reference: formulas, data sources, daily scans →</a>
+    <a href="qm-6b-episodes-and-implementation.html">Part 2: Episodes and Implementation →</a>
   </div>
 </div>
 <script>

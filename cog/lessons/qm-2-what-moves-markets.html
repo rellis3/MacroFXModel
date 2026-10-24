@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Understanding What Moves Markets — COG Hub — MacroFX</title>
+<title>What Moves Markets, Part 1: The Flow Hierarchy and Rates — COG Hub — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../theory-lab/assets/theory.css">
 <script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
@@ -29,14 +29,14 @@
 </head>
 <body>
 <div id="page">
-  <div class="tl-crumb"><a href="../hub.html">COG Hub</a> / Course Notes / Quant &amp; Macro / What Moves Markets</div>
+  <div class="tl-crumb"><a href="../hub.html">COG Hub</a> / Course Notes / Quant &amp; Macro / What Moves Markets, Part 1</div>
   <div class="tl-glosslink">🔎 <a href="../../theory-lab/glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
-  <div class="tl-kicker">Course Notes · Quant &amp; Macro 2 of 6</div>
-  <h1 class="tl-title">Understanding What Moves Markets</h1>
-  <p class="tl-dek">Who moves first and who inherits the lag: the chain from central banks down to credit, how interest-rate gaps pull capital across borders, how risk regimes, liquidity and scheduled institutional flows push prices, and why positioning decides how violently news lands.</p>
+  <div class="tl-kicker">Course Notes · Quant &amp; Macro · Lesson 2, part 1 of 2</div>
+  <h1 class="tl-title">What Moves Markets, Part 1: The Flow Hierarchy and Rates</h1>
+  <p class="tl-dek">Who moves first and who inherits the lag: the chain from central banks down to credit, and how interest-rate gaps pull capital across borders, power the carry trade and set up its violent unwind. Part 1 of 2 of Lesson 2.</p>
   <div class="tl-meta">
     <span class="tl-status course">COURSE NOTES — framework as taught, not a backtested strategy</span>
-    <span>~42 min read</span>
+    <span>~18 min read</span>
     <span>Prereqs: <a href="qm-1-repositioning.html">Lesson 1, Repositioning Your Approach</a></span>
   </div>
 
@@ -44,7 +44,7 @@
   <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
 
   <div class="tl-callout">
-    <strong>Prefer pictures to prose?</strong> Try the <a href="qm-2-what-moves-markets-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+    <strong>Prefer pictures to prose?</strong> Try the <a href="qm-2-what-moves-markets-micro.html">Visual Guide</a> — the same ground as this part, broken into short interactive slides.
   </div>
 
   <div class="tl-callout">
@@ -56,10 +56,7 @@
     <ul>
       <li>Policy shifts cascade through markets in a predictable order: central banks, then government bonds (hours to days), G10 currencies (days to weeks), equities (weeks to months) and corporate credit (months to quarters). Each step down adds lag and noise, and most retail trading sits at the bottom two rungs.</li>
       <li>Interest rates are the price of money and capital chases the best risk-adjusted return. That is why a rate gap pulls on a currency, and why the carry trade that harvests the gap earns small steady returns and then loses years of them in days when it unwinds. A 10% yen rally against a 4.9% carry is about two years of carry gone.</li>
-      <li>Markets switch between risk-on and risk-off, and in stress correlations converge towards 1: ten assets that diversify to about 61% of one asset's volatility at a correlation of 0.3 only get to 95% at 0.9. Check the regime (VIX level and structure, credit spreads, yen and franc, stock-bond correlation) before the trade thesis.</li>
-      <li>Liquidity, not just fundamentals, sets the tide. The course case is March 2020: the worst quarter of GDP on record, yet equities bottomed on the day the Fed promised to buy in the amounts needed (the press called it unlimited QE).</li>
-      <li>Institutions rebalance, expire options and window-dress on a calendar, and mandates force them to. A 60/40 fund whose stocks gain 5% against flat bonds drifts to 61.2/38.8 and must sell about 1.2% of the portfolio. Know the calendar so you are not the liquidity for someone's forced trade.</li>
-      <li>News explains moves after the fact; positioning tells you how violently a move can happen. Crowding is stored energy and a catalyst releases it. <strong>Real-world episode:</strong> GameStop, January 2021, short interest above 100% of the float and a price that rose many-fold in weeks with the business unchanged.</li>
+      <li>Part 2 picks up from here: risk-on and risk-off regimes, central-bank liquidity, the institutional flow calendar and positioning data.</li>
     </ul>
   </div>
 
@@ -94,7 +91,7 @@
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
-    This lesson names the forces that push prices, in the order they act. Most medium-term moves are the late echo of one of six things: a central-bank decision, an interest-rate gap, a switch of risk appetite, a change in the amount of money in the system, a calendar-driven institutional flow, or a crowded position being forced out. None is secret. The skill is knowing which is in play and where in the queue your market sits.
+    This lesson, in two parts, names the forces that push prices, in the order they act. Most medium-term moves are the late echo of one of six things: a central-bank decision, an interest-rate gap, a switch of risk appetite, a change in the amount of money in the system, a calendar-driven institutional flow, or a crowded position being forced out. None is secret. The skill is knowing which is in play and where in the queue your market sits. Part 1 covers the first two (who moves first, and why rate gaps move money); part 2 covers the other four.
   </p>
   <p>
     The lesson also keeps score on honesty. The course states its figures as exemplars and its relationships as frameworks, and this page keeps that status visible: it marks what is the course's claim and what is this page's own arithmetic.<!-- DESK:START --> A few of the relationships, such as bond yields leading equities or net liquidity as a tailwind, can be tested and some have been; where a result exists the verdict box says so, and where none exists it says "not tested here".<!-- DESK:END -->
@@ -473,660 +470,15 @@
   <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
-  <h2>Risk regimes: knowing which game you are in</h2>
-  <p>
-    Markets oscillate between <strong>risk-on</strong> and <strong>risk-off</strong>. In those regimes cross-asset correlations become highly predictable, because capital flows mechanically between safe and risky assets. The course's strongest sentence on the topic: <em>knowing which regime you are in matters more than your specific trade thesis.</em>
-  </p>
-
-  <h3>What leans which way</h3>
-  <p>
-    Choose a regime. Risk-off is the course's list: capital exits equities, EM, credit, oil and the Australian dollar and goes into Treasuries, the yen, the franc, gold and dollar cash. Risk-on is the mirror image, with the course's own examples at the top (equities, AUD/JPY as the best risk-on proxy, falling VIX, Treasury prices sold). Rows marked "mirror" are inferred from the risk-off list rather than stated for risk-on.
-  </p>
-  <div class="tl-btnrow" role="group" aria-label="Choose a regime">
-    <button type="button" class="tl-btn active" id="qmw-reg-on" aria-pressed="true">Risk-on</button>
-    <button type="button" class="tl-btn" id="qmw-reg-off" aria-pressed="false">Risk-off</button>
-  </div>
-  <div class="tl-table"><table>
-    <tr><th>Asset</th><th>Group</th><th id="qmw-reg-head">Leans (risk-on)</th><th>Source in the course</th></tr>
-    <tr><td>Equities (S&amp;P, Nasdaq)</td><td>Risk asset</td><td class="qmw-up" id="qmw-reg-r1">▲ rally</td><td id="qmw-reg-s1">Stated</td></tr>
-    <tr><td>AUD/JPY</td><td>Risk proxy</td><td class="qmw-up" id="qmw-reg-r2">▲ rally</td><td id="qmw-reg-s2">Stated</td></tr>
-    <tr><td>EM vs developed</td><td>Risk asset</td><td class="qmw-up" id="qmw-reg-r3">▲ outperform</td><td id="qmw-reg-s3">Stated</td></tr>
-    <tr><td>Credit (HY spreads)</td><td>Risk asset</td><td class="qmw-up" id="qmw-reg-r4">▼ spreads tighten</td><td id="qmw-reg-s4">Stated</td></tr>
-    <tr><td>Oil</td><td>Risk asset</td><td class="qmw-up" id="qmw-reg-r5">▲ firmer</td><td id="qmw-reg-s5">Mirror</td></tr>
-    <tr><td>Treasuries</td><td>Haven</td><td class="qmw-down" id="qmw-reg-r6">▼ prices fall (safety sold)</td><td id="qmw-reg-s6">Stated</td></tr>
-    <tr><td>JPY and CHF</td><td>Haven</td><td class="qmw-down" id="qmw-reg-r7">▼ weaken</td><td id="qmw-reg-s7">Mirror</td></tr>
-    <tr><td>Gold</td><td>Haven</td><td class="qmw-down" id="qmw-reg-r8">▼ softer</td><td id="qmw-reg-s8">Mirror</td></tr>
-    <tr><td>VIX</td><td>Fear gauge</td><td class="qmw-up" id="qmw-reg-r9">▼ falls</td><td id="qmw-reg-s9">Stated</td></tr>
-    <tr><td>Carry trades</td><td>Strategy</td><td class="qmw-up" id="qmw-reg-r10">▲ profitable</td><td id="qmw-reg-s10">Stated</td></tr>
-  </table></div>
-  <p class="tl-hint">Green: moves with the regime's winners (or is the regime's signature, like the VIX). Red: the side being sold. "Stated" means the course says it; "Mirror" means I inferred it as the opposite of the stated list.</p>
-  <div class="tl-hint" id="qmw-reg-note">Risk-on: VIX below about 18, credit spreads tightening, EM outperforming developed markets. Stock and bond prices can even fall together if rates are normalising higher.</div>
-
-  <h3>The correlation problem</h3>
-  <p>
-    Modern Portfolio Theory assumes correlations are stable. In stress, correlations converge towards 1: everything falls together, exactly when diversification is needed. The course gives three bands: <strong>0.2 to 0.4</strong> normal markets, diversification works; <strong>0.5 to 0.7</strong> elevated stress, reduce exposure; <strong>0.8 to 1.0</strong> crisis, everything moves together, cash is king.
-  </p>
-
-  <div class="tl-eqbuild">
-    <div class="tl-eqbuild-label">Watch the formula build</div>
-    <div class="tl-eqbuild-title">Why diversification melts as correlation rises (equal weights, equal volatilities)</div>
-    <div class="tl-eqbuild-step">
-      <div class="tl-math">\[ \frac{\sigma_p^2}{\sigma^2} = \color{#fbbf24}{\frac{1}{N}} \]</div>
-      <p>Start with the part that always diversifies. Each of \(N\) equal-weight assets contributes its own variance, scaled down by its weight squared. Alone this shrinks like \(1/N\).</p>
-    </div>
-    <div class="tl-eqbuild-step">
-      <div class="tl-math">\[ \frac{\sigma_p^2}{\sigma^2} = \frac{1}{N} + \color{#fbbf24}{\frac{N-1}{N}\,\rho} \]</div>
-      <p>Add the co-movement. Every asset has \(N-1\) partners, each adding \(\rho\) times the product of the weights. This term does not shrink as you add assets; it settles at \(\rho\).</p>
-    </div>
-    <div class="tl-eqbuild-step">
-      <div class="tl-math">\[ \frac{\sigma_p}{\sigma} = \color{#10b981}{\sqrt{\frac{1 + (N-1)\rho}{N}}} \]</div>
-      <p>Take the square root for volatility. At \(\rho = 0\) it is \(1/\sqrt{N}\); at \(\rho = 1\) it is 1: no benefit at all. As \(N\) grows, the floor is \(\sqrt{\rho}\).</p>
-    </div>
-  </div>
-  <div class="tl-eq-break">
-    <div class="tl-eq-chip c1"><code>σ_p / σ</code><span>portfolio volatility as a share of one asset's volatility (1 means no diversification)</span></div>
-    <div class="tl-eq-chip c2"><code>N</code><span>number of equally weighted assets</span></div>
-    <div class="tl-eq-chip c3"><code>ρ</code><span>the average pairwise correlation, assumed the same for every pair</span></div>
-    <div class="tl-eq-chip c4"><code>√ρ</code><span>the floor you can never diversify below, however many assets you add</span></div>
-  </div>
-
-  <div class="tl-chart interactive">
-    <div class="tl-chart-label">Diversification vs correlation: portfolio volatility as a share of one asset's</div>
-    <svg viewBox="0 0 640 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve of portfolio volatility, as a share of a single asset's volatility, against the average correlation between assets, for ten equal-weight assets. The curve rises from zero at slightly negative correlation to 100 percent at a correlation of 1. Shaded bands mark the course's normal, elevated-stress and crisis correlation ranges. At a correlation of 0.3 the portfolio volatility is 60.8 percent.">
-      <rect x="322" y="40" width="72" height="210" style="fill:var(--green-bg)"/>
-      <rect x="430" y="40" width="72" height="210" style="fill:var(--amber-bg)"/>
-      <rect x="538" y="40" width="72" height="210" style="fill:var(--red-bg)"/>
-      <text x="358" y="52" text-anchor="middle" font-size="10" style="fill:var(--green);font-family:'DM Mono',monospace">normal 0.2–0.4</text>
-      <text x="466" y="52" text-anchor="middle" font-size="10" style="fill:var(--amber);font-family:'DM Mono',monospace">elevated 0.5–0.7</text>
-      <text x="574" y="52" text-anchor="middle" font-size="10" style="fill:var(--red);font-family:'DM Mono',monospace">crisis 0.8–1.0</text>
-      <line x1="70" y1="250" x2="610" y2="250" style="stroke:var(--border2)"/>
-      <line x1="70" y1="40" x2="70" y2="250" style="stroke:var(--border2)"/>
-      <line x1="70" y1="50" x2="610" y2="50" style="stroke:var(--border);stroke-dasharray:3,3"/>
-      <text x="64" y="54" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">100%</text>
-      <text x="64" y="154" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">50%</text>
-      <text x="64" y="254" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0</text>
-      <text x="70" y="268" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−0.5</text>
-      <text x="160" y="268" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−0.25</text>
-      <text x="250" y="268" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0</text>
-      <text x="340" y="268" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0.25</text>
-      <text x="430" y="268" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0.5</text>
-      <text x="520" y="268" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0.75</text>
-      <text x="610" y="268" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">1.0</text>
-      <text x="340" y="284" text-anchor="middle" font-size="11" style="fill:var(--text3)">average pairwise correlation ρ</text>
-      <path id="qmw-corr-curve" d="M210.0,250.0 L216.7,224.2 L223.3,213.5 L230.0,205.3 L236.7,198.4 L243.3,192.3 L250.0,186.8 L256.7,181.7 L263.3,177.0 L270.0,172.5 L276.7,168.4 L283.3,164.4 L290.0,160.6 L296.7,156.9 L303.3,153.4 L310.0,150.0 L316.7,146.7 L323.3,143.5 L330.0,140.5 L336.7,137.5 L343.3,134.5 L350.0,131.7 L356.7,128.9 L363.3,126.2 L370.0,123.5 L376.7,120.9 L383.3,118.3 L390.0,115.8 L396.7,113.4 L403.3,111.0 L410.0,108.6 L416.7,106.2 L423.3,103.9 L430.0,101.7 L436.7,99.4 L443.3,97.2 L450.0,95.1 L456.7,92.9 L463.3,90.8 L470.0,88.8 L476.7,86.7 L483.3,84.7 L490.0,82.7 L496.7,80.7 L503.3,78.7 L510.0,76.8 L516.7,74.9 L523.3,73.0 L530.0,71.1 L536.7,69.3 L543.3,67.4 L550.0,65.6 L556.7,63.8 L563.3,62.0 L570.0,60.3 L576.7,58.5 L583.3,56.8 L590.0,55.1 L596.7,53.4 L603.3,51.7 L610.0,50.0" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linecap:round"/>
-      <circle id="qmw-corr-dot" cx="358.0" cy="128.3" r="6" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
-    </svg>
-    <div class="tl-controls">
-      <div class="tl-control">
-        <div class="tl-control-head"><span>Average correlation ρ</span><span class="tl-live" id="qmw-corr-r-val">0.30</span></div>
-        <input type="range" id="qmw-corr-r" min="-0.5" max="1" step="0.05" value="0.3" aria-label="Average pairwise correlation">
-      </div>
-      <div class="tl-control">
-        <div class="tl-control-head"><span>Number of assets N</span><span class="tl-live" id="qmw-corr-n-val">10</span></div>
-        <input type="range" id="qmw-corr-n" min="2" max="30" step="1" value="10" aria-label="Number of assets">
-      </div>
-    </div>
-    <div class="tl-readout">
-      Portfolio volatility: <b id="qmw-corr-out">60.8%</b> of one asset's · diversification benefit <b id="qmw-corr-ben">39.2%</b> · floor as N grows (√ρ) <b id="qmw-corr-floor">54.8%</b>
-    </div>
-    <div class="tl-readout">
-      Band: <b id="qmw-corr-band">normal</b>
-    </div>
-    <div class="tl-hint">With N = 2 the same formula reproduces the stock-bond flip the course describes: at ρ = −0.30 the pair keeps 59.2% of one asset's volatility (a 40.8% benefit); at ρ = +0.40 it keeps 83.7% (a 16.3% benefit). Equal weights and equal volatilities are a simplification; a real 60/40 book is not that.</div>
-    <div class="tl-chart-caption">
-      The correlation is clamped at \(-1/(N-1)\), the lowest value for which N equal assets can all be that negatively correlated. Bands follow the course's ranges; values in the gaps (for example 0.45) are treated as belonging to the band below.
-    </div>
-  </div>
-
-  <div class="tl-eli5">
-    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
-    <p>Imagine ten friends carrying umbrellas, and each one gets wet at a random time. Most of the time someone is dry, so the group stays comfortable. Then a huge storm hits: everyone gets wet at the same moment. The friends did not become more numerous, they became <em>the same</em>. In a crisis, different assets stop being different friends and start behaving like one friend.</p>
-  </div>
-
-  <h3>Regime indicators</h3>
-  <div class="tl-table"><table>
-    <tr><th>Indicator</th><th>Calm / risk-on</th><th>Stress / risk-off</th></tr>
-    <tr><td>VIX level</td><td>below 15 calm; 15–25 normal</td><td>25–35 elevated; 35+ panic</td></tr>
-    <tr><td>VIX term structure</td><td>contango: normal, even complacency</td><td>backwardation: fear and hedging demand</td></tr>
-    <tr><td>High-yield OAS</td><td>below 350 bps: risk-on</td><td>above 500 bps: risk-off</td></tr>
-    <tr><td>Yen and franc</td><td>weak or stable</td><td>strengthening: risk-off flows in progress</td></tr>
-    <tr><td>Gold and Treasuries</td><td>mixed</td><td>both rising: the classic flight-to-quality</td></tr>
-  </table></div>
-  <details class="tl-section-collapse">
-    <summary><h2>Cross-asset correlation matrix (exemplar, "normal" conditions)</h2></summary>
-    <div class="tl-table"><table>
-      <tr><th></th><th>SPX</th><th>UST10Y</th><th>Gold</th><th>DXY</th><th>Crude</th><th>HY</th><th>VIX</th></tr>
-      <tr><td>SPX</td><td>1.00</td><td>−0.30</td><td>0.15</td><td>−0.25</td><td>0.45</td><td>0.85</td><td>−0.82</td></tr>
-      <tr><td>UST10Y</td><td>−0.30</td><td>1.00</td><td>0.40</td><td>0.20</td><td>−0.35</td><td>−0.25</td><td>0.28</td></tr>
-      <tr><td>Gold</td><td>0.15</td><td>0.40</td><td>1.00</td><td>−0.55</td><td>0.25</td><td>0.18</td><td>0.20</td></tr>
-      <tr><td>DXY</td><td>−0.25</td><td>0.20</td><td>−0.55</td><td>1.00</td><td>−0.42</td><td>−0.20</td><td>0.22</td></tr>
-      <tr><td>Crude</td><td>0.45</td><td>−0.35</td><td>0.25</td><td>−0.42</td><td>1.00</td><td>0.50</td><td>−0.38</td></tr>
-      <tr><td>HY</td><td>0.85</td><td>−0.25</td><td>0.18</td><td>−0.20</td><td>0.50</td><td>1.00</td><td>−0.78</td></tr>
-      <tr><td>VIX</td><td>−0.82</td><td>0.28</td><td>0.20</td><td>0.22</td><td>−0.38</td><td>−0.78</td><td>1.00</td></tr>
-    </table></div>
-    <p>These are the course's illustrative figures for normal conditions. Read the HY and SPX cell (0.85) and the SPX and VIX cell (−0.82) as the strong links, and the SPX and UST10Y cell (−0.30) as the diversifier that failed in 2022.</p>
-  </details>
-
-  <div class="tl-box pitfall">
-    <div class="tl-icon-badge red">⚠️</div>
-    <div class="tl-box-label">Critical warning (from the course)</div>
-    <h3>Correlations are not stable</h3>
-    <p style="margin-bottom:0">
-      In March 2020, correlations across risk assets spiked above 0.9 within 48 hours. In 2022 the −0.30 SPX/UST correlation flipped to +0.40 for much of the year, so stocks and bonds fell together. A "diversified" portfolio can become one concentrated bet. Verify the current regime's correlations before relying on historical averages.
-    </p>
-  </div>
-
-  <h3>The daily risk dashboard</h3>
-  <p>
-    The course's checklist has four items: VIX level and structure, the credit canary, the FX tells and a stock-bond correlation check. Its rule: <strong>if three or more flash, reduce gross exposure before analysing individual positions.</strong> Set today's readings below. The thresholds are the course's where it gives them; two are my reading and are marked.
-  </p>
-  <div class="tl-box example">
-    <div class="tl-icon-badge purple">🧪</div>
-    <div class="tl-box-label">Try it yourself</div>
-    <h3>Today's risk dashboard</h3>
-    <div class="tl-controls">
-      <div class="tl-control">
-        <div class="tl-control-head"><span>VIX level</span><span class="tl-live" id="qmw-dash-vix-val">16</span></div>
-        <input type="range" id="qmw-dash-vix" min="10" max="60" step="1" value="16" aria-label="VIX level">
-      </div>
-      <div class="tl-control">
-        <div class="tl-control-head"><span>VIX term structure: second month ÷ front month</span><span class="tl-live" id="qmw-dash-ts-val">1.05</span></div>
-        <input type="range" id="qmw-dash-ts" min="0.8" max="1.15" step="0.01" value="1.05" aria-label="VIX second month divided by front month">
-      </div>
-      <div class="tl-control">
-        <div class="tl-control-head"><span>High-yield OAS (bps)</span><span class="tl-live" id="qmw-dash-oas-val">320</span></div>
-        <input type="range" id="qmw-dash-oas" min="250" max="800" step="10" value="320" aria-label="High yield option adjusted spread in basis points">
-      </div>
-      <div class="tl-control">
-        <div class="tl-control-head"><span>CDX HY change today (bps)</span><span class="tl-live" id="qmw-dash-cdx-val">+2</span></div>
-        <input type="range" id="qmw-dash-cdx" min="-10" max="40" step="1" value="2" aria-label="CDX high yield change today in basis points">
-      </div>
-      <div class="tl-control">
-        <div class="tl-control-head"><span>Stock-bond correlation (recent window)</span><span class="tl-live" id="qmw-dash-corr-val">−0.30</span></div>
-        <input type="range" id="qmw-dash-corr" min="-0.6" max="0.8" step="0.05" value="-0.3" aria-label="Stock bond correlation">
-      </div>
-      <div class="tl-control">
-        <div class="tl-control-head"><span>JPY strengthening against AUD and MXN today?</span></div>
-        <label><input type="checkbox" id="qmw-dash-fx"> yes, the yen is outperforming the high-beta currencies</label>
-      </div>
-    </div>
-    <div class="qmw-checks">
-      <div class="qmw-check"><span class="tl-pill green" id="qmw-dash-c1">OK</span><span>1 · VIX level and structure (flash at 25 or more, or a ratio below 0.9)</span></div>
-      <div class="qmw-check"><span class="tl-pill green" id="qmw-dash-c2">OK</span><span>2 · Credit canary: CDX HY widening more than 20 bps in a day</span></div>
-      <div class="qmw-check"><span class="tl-pill green" id="qmw-dash-c3">OK</span><span>3 · FX tells: yen strong against AUD and MXN</span></div>
-      <div class="qmw-check"><span class="tl-pill green" id="qmw-dash-c4">OK</span><span>4 · Correlation check: stocks and bonds moving together (my reading: a correlation above 0)</span></div>
-    </div>
-    <div class="tl-readout">
-      VIX band: <b id="qmw-dash-band">normal (15–25)</b> · credit regime: <b id="qmw-dash-credit">risk-on (HY OAS below 350)</b><br>
-      Flashing: <b id="qmw-dash-n">0</b> of 4 → <b id="qmw-dash-verdict">no change to gross exposure from this checklist</b>
-    </div>
-    <div class="tl-hint">The course writes the term-structure test as "VIX1/VIX2 ratio below 0.9 = stress", which only makes sense if the ratio puts the later contract on top. This page defines it as second month ÷ front month, so below 1 is backwardation (front above second, fear) and 0.9 is a clearly backwardated curve. Between 0.9 and 1 the curve is backwardated but not flagged. The correlation threshold of 0 is mine.</div>
-  </div>
-
-  <!-- DESK:START -->
-  <div class="tl-verdict validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
-    <span class="tl-verdict-tag">Desk test: held up</span>
-    <span><strong>The term-structure item has a tested range effect, not a direction.</strong> On the first day VIX closes above VIX3M, the next five sessions' range is wider than matched controls: SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all intervals clear of zero). The checklist's own thresholds have not been tested.</span>
-  </div>
-  <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Not tested here</span>
-    <span><strong>"If three or more indicators flash, cut gross exposure."</strong> Taught as a rule; its payoff has not been measured.
-    <div class="tl-howtotest"><strong>How to test it:</strong> build the four flags from daily data with thresholds fixed in advance, then compare the forward 5-day drawdown of a fixed-risk book on 3+ flag days with other days, treating consecutive flag days as one episode. Gate: a larger drawdown than a date-shuffled placebo, in both halves.</div></span>
-  </div>
-  <!-- DESK:END -->
-
-  <div class="tl-section-mark"><span>Section 05</span></div>
-  <h2>Central-bank liquidity regimes</h2>
-  <p>
-    The course calls liquidity the dominant variable in modern markets: <em>"don't fight the Fed" isn't wisdom, it's mathematics.</em> Liquidity is the amount of money in the financial system. More money means higher asset prices; less means lower.
-  </p>
-  <div class="tl-box intuition">
-    <div class="tl-icon-badge blue">💡</div>
-    <div class="tl-box-label">Bathtub analogy</div>
-    <p style="margin-bottom:0">
-      Central banks control the faucet. QE raises the water level and everything floats higher; QT drains the tub and boats that were comfortably afloat find the bottom. A single boat's quality matters much less than whether the water is rising or falling.
-    </p>
-  </div>
-
-  <div class="tl-symbols"><table>
-    <tr><td>QE</td><td>Quantitative easing. The central bank creates new money and buys bonds from banks, putting cash into the banking system and eventually into other assets.</td></tr>
-    <tr><td>QT</td><td>Quantitative tightening. The central bank lets bonds mature without replacing them, or sells them, and money is removed from the system.</td></tr>
-    <tr><td>TGA, RRP</td><td>The Treasury General Account and the overnight reverse-repo facility. The course says to track the Fed balance sheet, the RRP and the TGA weekly.</td></tr>
-  </table></div>
-
-  <h3>How QE transmits</h3>
-  <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A six-step flow: the central bank creates reserves; buys government bonds from primary dealers; dealers receive cash and must deploy it; cash flows into the next-best alternatives such as credit and equities; asset prices rise, yields compress and risk-taking increases; the wealth effect feeds economic activity, in theory.">
-    <rect class="tlp-box green" x="14" y="16" width="190" height="64" rx="8"/>
-    <text class="tlp-text" x="109" y="42" text-anchor="middle" font-size="13" font-weight="700">1 · Central bank</text>
-    <text class="tlp-text2" x="109" y="62" text-anchor="middle" font-size="12">creates reserves</text>
-    <line class="tlp-line" x1="204" y1="48" x2="225" y2="48"/><polygon class="tlp-arrow" points="222,43 232,48 222,53"/>
-    <rect class="tlp-box blue" x="225" y="16" width="190" height="64" rx="8"/>
-    <text class="tlp-text" x="320" y="42" text-anchor="middle" font-size="13" font-weight="700">2 · Buys govt bonds</text>
-    <text class="tlp-text2" x="320" y="62" text-anchor="middle" font-size="12">from primary dealers</text>
-    <line class="tlp-line" x1="415" y1="48" x2="436" y2="48"/><polygon class="tlp-arrow" points="433,43 443,48 433,53"/>
-    <rect class="tlp-box blue" x="436" y="16" width="190" height="64" rx="8"/>
-    <text class="tlp-text" x="531" y="42" text-anchor="middle" font-size="13" font-weight="700">3 · Dealers hold cash</text>
-    <text class="tlp-text2" x="531" y="62" text-anchor="middle" font-size="12">and must deploy it</text>
-    <line class="tlp-line" x1="531" y1="80" x2="531" y2="104"/><polygon class="tlp-arrow" points="526,101 531,111 536,101"/>
-    <rect class="tlp-box amber" x="436" y="112" width="190" height="64" rx="8"/>
-    <text class="tlp-text" x="531" y="138" text-anchor="middle" font-size="13" font-weight="700">4 · Next-best assets</text>
-    <text class="tlp-text2" x="531" y="158" text-anchor="middle" font-size="12">credit, equities</text>
-    <line class="tlp-line" x1="436" y1="144" x2="415" y2="144"/><polygon class="tlp-arrow" points="418,139 408,144 418,149"/>
-    <rect class="tlp-box amber" x="225" y="112" width="190" height="64" rx="8"/>
-    <text class="tlp-text" x="320" y="138" text-anchor="middle" font-size="13" font-weight="700">5 · Prices up, yields down</text>
-    <text class="tlp-text2" x="320" y="158" text-anchor="middle" font-size="12">more risk-taking</text>
-    <line class="tlp-line" x1="225" y1="144" x2="204" y2="144"/><polygon class="tlp-arrow" points="207,139 197,144 207,149"/>
-    <rect class="tlp-box purple" x="14" y="112" width="190" height="64" rx="8"/>
-    <text class="tlp-text" x="109" y="138" text-anchor="middle" font-size="13" font-weight="700">6 · Wealth effect</text>
-    <text class="tlp-text2" x="109" y="158" text-anchor="middle" font-size="12">activity, in theory</text>
-    <text class="tlp-text3" x="320" y="200" text-anchor="middle" font-size="11">Steps 1 to 3 run left to right; steps 4 to 6 run right to left</text>
-  </svg>
-
-  <details class="tl-section-collapse">
-    <summary><h2>QE market-impact table (typical, exemplar)</h2></summary>
-    <div class="tl-table"><table>
-      <tr><th>Asset class</th><th>Direction</th><th>Magnitude (typical/exemplar)</th></tr>
-      <tr><td>Equity indices</td><td>↑ strong rally</td><td>historically +15–25% per $1T (varies widely)</td></tr>
-      <tr><td>Bond yields</td><td>↓ compressed</td><td>−50–100 bps typical</td></tr>
-      <tr><td>Credit spreads</td><td>↓ tighter</td><td>−100–200 bps HY</td></tr>
-      <tr><td>Domestic FX</td><td>↓ weaker</td><td>−5–10% on major pairs</td></tr>
-      <tr><td>Volatility</td><td>↓ crushed</td><td>VIX to sub-15</td></tr>
-      <tr><td>Commodities</td><td>↑ supported</td><td>dollar-weakness effect</td></tr>
-    </table></div>
-    <p>Why QE weakens the currency: more dollars in circulation means supply and demand push the dollar down against other currencies. The magnitudes are the course's exemplar ranges; "per $1T" is a wide generalisation across very different episodes and should not be used as a forecasting rule.</p>
-  </details>
-
-  <div class="tl-section-mark"><span>Section 06</span></div>
-  <h2>It actually happened: March 2020, the liquidity firehose</h2>
-  <div class="tl-story" id="story-1">
-    <div class="tl-story-label">It actually happened</div>
-    <h3>Fundamentals said sell; liquidity said buy; liquidity won</h3>
-    <p>
-      By late March 2020 the picture looked as bad as markets get. Lockdowns had begun, unemployment was spiking, and earnings were collapsing; the second quarter would turn out to be the worst quarter of GDP on record. The S&amp;P 500 was about a third below its February peak. On the morning of 23 March the Federal Reserve announced that it would buy Treasury and agency mortgage securities in the amounts needed to support the functioning of markets, which the press called unlimited QE. The S&amp;P 500 closed that day at 2,237.40, its low of the sell-off. By early June it was roughly 45% higher.
-    </p>
-    <p style="margin-bottom:0">
-      The course's account of the rest: about $2.9 trillion injected in April to June, then $120 billion a month from July through December, with the Nasdaq making new highs month after month. The key tell it draws is the timing. The bottom came from the liquidity announcement, not from vaccine news (the first efficacy results came in November) or from any data. The course adds that combined Fed, ECB, BoJ and BoE balance sheets and the S&amp;P 500 move together across QE zones (up) and QT zones (struggle).
-    </p>
-  </div>
-  <div class="tl-chain">
-    <div class="tl-chain-link shock"><b>Shock</b>Pandemic lockdowns: S&amp;P about a third off its peak, worst GDP quarter on record to come</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link concept"><b>★ This lesson · liquidity regime</b>23 March: the Fed promises purchases in the amounts needed</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link"><b>Transmission</b>Dealers deploy cash, spreads tighten, VIX falls</div>
-    <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link end"><b>Outcome</b>S&amp;P 500 low on 23 March; roughly +45% by early June</div>
-  </div>
-  <div class="tl-box pitfall">
-    <div class="tl-icon-badge red">⚠️</div>
-    <div class="tl-box-label">Where the textbook version breaks</div>
-    <h3>"Liquidity beat fundamentals. It almost always does."</h3>
-    <p style="margin-bottom:0">
-      2020 is the course's flagship case. One episode cannot show "almost always", and fiscal stimulus and a very fast policy response arrived at the same time. In QT episodes the evidence is harder to read, because markets price expected policy before it happens.
-    </p>
-  </div>
-
-  <!-- DESK:START -->
-  <div class="tl-verdict underpowered" data-evidence="net-liquidity-tailwind-spx" data-evidence-date="2026-10-21">
-    <span class="tl-verdict-tag">Desk test: too small to tell</span>
-    <span><strong>Net liquidity (Fed balance sheet minus TGA minus RRP) as a tailwind.</strong> 786 Fridays, 2011 to 2026, first-published vintages only. Weeks with a rising 4-week change were followed by +1.09% on the S&amp;P 500 over the next 4 weeks against +0.67% after falling weeks: a +0.42 percentage-point difference with an interval of −0.47 to +1.32, inside the placebo. The sign is right but the design could only have detected about 2.0 pp. That rules out a large effect and says nothing about a small one. The Nasdaq version is the same shape. Quoted as context, never as a forecast.</span>
-  </div>
-  <!-- DESK:END -->
-
-  <div class="tl-eli5">
-    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
-    <p>If the water in a swimming pool is rising, every toy floating in it goes up, the good toys and the broken ones. When the water is drained, every toy sinks towards the bottom. QE is someone turning the tap on; QT is someone pulling the plug. In March 2020 the pool was nearly empty, and someone turned the tap to full.</p>
-  </div>
-
-  <div class="tl-section-mark"><span>Section 07</span></div>
-  <h2>The institutional flow calendar</h2>
-  <p>
-    Institutional money moves on predictable schedules: pension rebalancing, index reconstitution, options expiration and month-end flows. They create mechanical buying and selling pressure unrelated to fundamentals. The reason is mandates. A 60/40 fund whose equities rally to 65% <em>must</em> sell at month-end to rebalance, which is not a choice. Know the calendar so you are not the liquidity for someone else's forced trade.
-  </p>
-
-  <h3>Month-end rebalancing</h3>
-  <ol>
-    <li>Stocks outperform during the month (the course's example is +5% against flat bonds).</li>
-    <li>The portfolio is now overweight equities against its 60/40 target.</li>
-    <li>The fund must sell stocks and buy bonds: sell winners, buy losers, the opposite of momentum.</li>
-    <li>That creates counter-trend pressure in the final two to three days after a strong month.</li>
-  </ol>
-
-  <div class="tl-eqbuild">
-    <div class="tl-eqbuild-label">Watch the formula build</div>
-    <div class="tl-eqbuild-title">How far a 60/40 portfolio drifts in a month, and what it must trade</div>
-    <div class="tl-eqbuild-step">
-      <div class="tl-math">\[ V_E = w\,\color{#fbbf24}{(1 + r_E)} \]</div>
-      <p>Start with the equity sleeve. It begins at target weight \(w\) and grows by the month's equity return \(r_E\).</p>
-    </div>
-    <div class="tl-eqbuild-step">
-      <div class="tl-math">\[ V_B = (1 - w)\,\color{#fbbf24}{(1 + r_B)} \]</div>
-      <p>The bond sleeve starts at \(1-w\) and grows by the bond return \(r_B\).</p>
-    </div>
-    <div class="tl-eqbuild-step">
-      <div class="tl-math">\[ w' = \frac{V_E}{\color{#fbbf24}{V_E + V_B}} \]</div>
-      <p>The new equity weight is its share of the new total.</p>
-    </div>
-    <div class="tl-eqbuild-step">
-      <div class="tl-math">\[ \text{trade} = \color{#10b981}{w' - w} \quad\text{(sell equities if positive)} \]</div>
-      <p>To return to target the fund sells the excess, as a share of the whole portfolio.</p>
-    </div>
-  </div>
-  <div class="tl-eq-break">
-    <div class="tl-eq-chip c1"><code>w</code><span>target equity weight (0.60 in a 60/40 fund)</span></div>
-    <div class="tl-eq-chip c2"><code>r_E, r_B</code><span>the month's equity and bond returns</span></div>
-    <div class="tl-eq-chip c3"><code>w′</code><span>the equity weight after the drift, before rebalancing</span></div>
-    <div class="tl-eq-chip c4"><code>w′ − w</code><span>the equity sale, as a share of the portfolio</span></div>
-  </div>
-
-  <div class="tl-box example">
-    <div class="tl-icon-badge purple">🧪</div>
-    <div class="tl-box-label">Try it yourself</div>
-    <h3>How big is the month-end sale?</h3>
-    <p>
-      The course's example is stocks +5% against flat bonds and a drift to "62/38". Doing the arithmetic gives a slightly smaller drift, so the calculator starts there. Set the three inputs and read what a fund of any size has to trade.
-    </p>
-    <div class="tl-controls">
-      <div class="tl-control">
-        <div class="tl-control-head"><span>Equity return in the month</span><span class="tl-live" id="qmw-reb-re-val">+5%</span></div>
-        <input type="range" id="qmw-reb-re" min="-10" max="30" step="1" value="5" aria-label="Equity return in the month in percent">
-      </div>
-      <div class="tl-control">
-        <div class="tl-control-head"><span>Bond return in the month</span><span class="tl-live" id="qmw-reb-rb-val">0.0%</span></div>
-        <input type="range" id="qmw-reb-rb" min="-5" max="5" step="0.5" value="0" aria-label="Bond return in the month in percent">
-      </div>
-      <div class="tl-control">
-        <div class="tl-control-head"><span>Target equity weight</span><span class="tl-live" id="qmw-reb-w-val">60%</span></div>
-        <input type="range" id="qmw-reb-w" min="40" max="80" step="5" value="60" aria-label="Target equity weight in percent">
-      </div>
-    </div>
-    <div class="tl-readout">
-      Drifted weights: equities <b id="qmw-reb-we">61.17%</b>, bonds <b id="qmw-reb-wb">38.83%</b> · trade to rebalance: <b id="qmw-reb-verb">sell equities, buy bonds</b> <b id="qmw-reb-trade">1.17%</b> of the portfolio, which is <b id="qmw-reb-bn">$1.17bn</b> per $100bn
-    </div>
-    <div class="tl-readout">
-      Equity return needed for equities to drift 5 points above target (bonds as set): <b id="qmw-reb-need">23.81%</b>
-    </div>
-    <div class="tl-hint">With the course's numbers (+5% stocks, flat bonds), the weight reaches 61.2/38.8, not 62/38. A 62/38 split needs about +8.8% for equities, and the 65% of the course's "rally to 65%" needs +23.8%. The direction and the mechanism are unchanged; only the size is smaller than the notes suggest.</div>
-  </div>
-
-  <h3>Options expiration</h3>
-  <ul>
-    <li>Monthly options expire on the third Friday.</li>
-    <li><strong>Pin risk.</strong> Prices gravitate towards strikes with high open interest into expiry. This is hedging mechanics, not news.</li>
-    <li><strong>Gamma squeeze.</strong> Dealer hedging near expiry can amplify moves in either direction, in self-reinforcing loops.</li>
-  </ul>
-  <p>
-    <em>Trading implication (as taught):</em> OpEx week, especially the Friday, is dominated by hedging flows rather than information. Reduce directional bets into expiry; real moves often happen the week after.
-  </p>
-
-  <h3>Seasonality and quarter-end</h3>
-  <ul>
-    <li><strong>September</strong> is historically the weakest month for the S&amp;P 500 (a 74-year pattern in the course's 1950 to 2024 data). Theories: tax-loss selling ahead of October's mutual-fund fiscal year-end, institutional portfolio reviews, and pattern-following.</li>
-    <li><strong>November and December</strong> are historically strong (the "Santa rally"): tax-loss selling is done, bonuses are invested, holidays lift optimism. The course says the "why" matters less than the "what".</li>
-    <li><strong>Quarter-end window dressing.</strong> Managers buy winners so they show up in their reports.</li>
-  </ul>
-
-  <div class="tl-box example">
-    <div class="tl-icon-badge purple">🧪</div>
-    <div class="tl-box-label">Try it yourself</div>
-    <h3>What does the calendar say today?</h3>
-    <p>
-      Pick a month and a day in 2026. The page computes the real third Friday and the last three weekday trading days from the calendar (exchange holidays ignored), then lists the forced flows in play. The third Friday always falls between the 15th and the 21st, and the last three trading days are not always the 29th to the 31st, because weekends push them earlier.
-    </p>
-    <div class="tl-chart interactive">
-      <div class="tl-chart-label">Flow calendar for <span id="qmw-cal-title">October 2026</span></div>
-      <svg viewBox="0 0 640 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A strip of the days of the chosen month in 2026. October 2026 is shown by default: the OpEx week of 12 to 16 October is shaded blue with the third Friday, the 16th, in a stronger blue, and the last three trading days, 28 to 30 October, are shaded amber. A marker shows the selected day.">
-        <g id="qmw-cal-cells"><rect x="41" y="40" width="18" height="34" class="tlp-box"/><text x="50" y="61" text-anchor="middle" font-size="9" class="tlp-text2">1</text><rect x="59" y="40" width="18" height="34" class="tlp-box"/><text x="68" y="61" text-anchor="middle" font-size="9" class="tlp-text2">2</text><rect x="77" y="40" width="18" height="34" class="tlp-box"/><text x="86" y="61" text-anchor="middle" font-size="9" class="tlp-text2">3</text><rect x="95" y="40" width="18" height="34" class="tlp-box"/><text x="104" y="61" text-anchor="middle" font-size="9" class="tlp-text2">4</text><rect x="113" y="40" width="18" height="34" class="tlp-box"/><text x="122" y="61" text-anchor="middle" font-size="9" class="tlp-text2">5</text><rect x="131" y="40" width="18" height="34" class="tlp-box"/><text x="140" y="61" text-anchor="middle" font-size="9" class="tlp-text2">6</text><rect x="149" y="40" width="18" height="34" class="tlp-box"/><text x="158" y="61" text-anchor="middle" font-size="9" class="tlp-text2">7</text><rect x="167" y="40" width="18" height="34" class="tlp-box"/><text x="176" y="61" text-anchor="middle" font-size="9" class="tlp-text2">8</text><rect x="185" y="40" width="18" height="34" class="tlp-box"/><text x="194" y="61" text-anchor="middle" font-size="9" class="tlp-text2">9</text><rect x="203" y="40" width="18" height="34" class="tlp-box"/><text x="212" y="61" text-anchor="middle" font-size="9" class="tlp-text2">10</text><rect x="221" y="40" width="18" height="34" class="tlp-box"/><text x="230" y="61" text-anchor="middle" font-size="9" class="tlp-text2">11</text><rect x="239" y="40" width="18" height="34" class="tlp-box blue" opacity=".5"/><text x="248" y="61" text-anchor="middle" font-size="9" class="tlp-text2">12</text><rect x="257" y="40" width="18" height="34" class="tlp-box blue" opacity=".5"/><text x="266" y="61" text-anchor="middle" font-size="9" class="tlp-text2">13</text><rect x="275" y="40" width="18" height="34" class="tlp-box blue" opacity=".5"/><text x="284" y="61" text-anchor="middle" font-size="9" class="tlp-text2">14</text><rect x="293" y="40" width="18" height="34" class="tlp-box blue" opacity=".5"/><text x="302" y="61" text-anchor="middle" font-size="9" class="tlp-text2">15</text><rect x="311" y="40" width="18" height="34" class="tlp-box blue"/><text x="320" y="61" text-anchor="middle" font-size="9" class="tlp-text2">16</text><rect x="329" y="40" width="18" height="34" class="tlp-box"/><text x="338" y="61" text-anchor="middle" font-size="9" class="tlp-text2">17</text><rect x="347" y="40" width="18" height="34" class="tlp-box"/><text x="356" y="61" text-anchor="middle" font-size="9" class="tlp-text2">18</text><rect x="365" y="40" width="18" height="34" class="tlp-box"/><text x="374" y="61" text-anchor="middle" font-size="9" class="tlp-text2">19</text><rect x="383" y="40" width="18" height="34" class="tlp-box"/><text x="392" y="61" text-anchor="middle" font-size="9" class="tlp-text2">20</text><rect x="401" y="40" width="18" height="34" class="tlp-box"/><text x="410" y="61" text-anchor="middle" font-size="9" class="tlp-text2">21</text><rect x="419" y="40" width="18" height="34" class="tlp-box"/><text x="428" y="61" text-anchor="middle" font-size="9" class="tlp-text2">22</text><rect x="437" y="40" width="18" height="34" class="tlp-box"/><text x="446" y="61" text-anchor="middle" font-size="9" class="tlp-text2">23</text><rect x="455" y="40" width="18" height="34" class="tlp-box"/><text x="464" y="61" text-anchor="middle" font-size="9" class="tlp-text2">24</text><rect x="473" y="40" width="18" height="34" class="tlp-box"/><text x="482" y="61" text-anchor="middle" font-size="9" class="tlp-text2">25</text><rect x="491" y="40" width="18" height="34" class="tlp-box"/><text x="500" y="61" text-anchor="middle" font-size="9" class="tlp-text2">26</text><rect x="509" y="40" width="18" height="34" class="tlp-box"/><text x="518" y="61" text-anchor="middle" font-size="9" class="tlp-text2">27</text><rect x="527" y="40" width="18" height="34" class="tlp-box amber"/><text x="536" y="61" text-anchor="middle" font-size="9" class="tlp-text2">28</text><rect x="545" y="40" width="18" height="34" class="tlp-box amber"/><text x="554" y="61" text-anchor="middle" font-size="9" class="tlp-text2">29</text><rect x="563" y="40" width="18" height="34" class="tlp-box amber"/><text x="572" y="61" text-anchor="middle" font-size="9" class="tlp-text2">30</text><rect x="581" y="40" width="18" height="34" class="tlp-box"/><text x="590" y="61" text-anchor="middle" font-size="9" class="tlp-text2">31</text></g>
-        <text id="qmw-cal-lbl-opex" x="320" y="32" text-anchor="middle" font-size="11" style="fill:var(--blue);font-family:'DM Mono',monospace">third Friday</text>
-        <text id="qmw-cal-lbl-mend" x="554" y="32" text-anchor="middle" font-size="11" style="fill:var(--amber);font-family:'DM Mono',monospace">month-end</text>
-        <rect id="qmw-cal-sel" x="311" y="38" width="18" height="38" rx="3" style="fill:none;stroke:var(--text);stroke-width:2"/>
-        <text x="41" y="98" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">day of month →</text>
-      </svg>
-      <div class="tl-controls">
-        <div class="tl-control">
-          <div class="tl-control-head"><span>Month (2026)</span><span class="tl-live" id="qmw-cal-m-val">October</span></div>
-          <input type="range" id="qmw-cal-m" min="1" max="12" step="1" value="10" aria-label="Month of 2026">
-        </div>
-        <div class="tl-control">
-          <div class="tl-control-head"><span>Day of month</span><span class="tl-live" id="qmw-cal-d-val">16 (Friday)</span></div>
-          <input type="range" id="qmw-cal-d" min="1" max="31" step="1" value="16" aria-label="Day of month">
-        </div>
-      </div>
-      <div class="tl-readout">
-        Third Friday (OpEx): <b id="qmw-cal-third">Friday 16 October</b> · last three trading days: <b id="qmw-cal-mend">28–30 October</b>
-      </div>
-      <div class="tl-readout" id="qmw-cal-today">Third Friday: monthly options expire (OpEx). Pin risk and dealer hedging dominate; real moves often come the week after.</div>
-      <div class="tl-legend"><span><i style="background:var(--blue);opacity:.5"></i> OpEx week (Monday to third Friday)</span><span><i style="background:var(--blue)"></i> third Friday</span><span><i style="background:var(--amber)"></i> last three weekday trading days</span></div>
-      <div class="tl-chart-caption">
-        The calendar is real arithmetic; the flows it points to are the course's account. Whether those flows move prices is a separate, testable question, taken up in the verdict below.
-      </div>
-    </div>
-  </div>
-
-  <p><strong>The rule from the course:</strong> know when forced flows happen so you are not their liquidity, and do not provide liquidity to scheduled flows unless you are paid to.</p>
-
-  <!-- DESK:START -->
-  <div class="tl-verdict null" data-evidence="month-end-rebalance" data-evidence-date="2026-09-19">
-    <span class="tl-verdict-tag">Desk test: nothing found</span>
-    <span><strong>"After a strong month, rebalancing sells stocks in the last two or three sessions."</strong> SPX500 2007 to 2026, 229 months: after top-quintile months the last three sessions returned +0.11% (interval −0.32 to +0.50), negative 47% of the time. After bottom-quintile months they returned +0.65%; in ordinary months −0.06%. No month-end drag to trade or to warn about. The mechanism is arithmetic; its price footprint, on this test, is not visible.</span>
-  </div>
-  <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Not tested here</span>
-    <span><strong>OpEx pin risk, the week-after-OpEx effect, September weakness and the year-end rally.</strong> Taught as patterns; none has a registered test here.
-    <div class="tl-howtotest"><strong>How to test it:</strong> compare OpEx-week and next-week ranges since 2007 with matched ordinary weeks; for seasonality, rank September and November–December against the other months with a multiple-comparison correction across all twelve. Gate: the effect holds in both halves and survives that correction.</div></span>
-  </div>
-  <!-- DESK:END -->
-
-  <div class="tl-section-mark"><span>Section 08</span></div>
-  <h2>Positioning data and flow analysis</h2>
-  <p>
-    <strong>News explains moves retroactively; positioning shows where crowded trades are before they unwind.</strong> The same headline can be bullish or bearish depending on existing positioning. Positioning is potential energy.
-  </p>
-  <div class="tl-box intuition">
-    <div class="tl-icon-badge blue">💡</div>
-    <div class="tl-box-label">Room analogy</div>
-    <p style="margin-bottom:0">
-      Everyone leaning on one wall of a room: any shout of "fire" causes a violent stampede to the other side. People spread evenly across the room move in an orderly way. The shout is the news; the lean is the positioning.
-    </p>
-  </div>
-
-  <h3>The narrative trap: same news, opposite headlines</h3>
-  <details class="tl-section-collapse">
-    <summary><h2>Headlines written after the move</h2></summary>
-    <div class="tl-table"><table>
-      <tr><th>If stocks rise</th><th>If stocks fall</th></tr>
-      <tr><td>"Stocks rally on strong jobs data"</td><td>"Stocks fall on hot jobs (Fed fears)"</td></tr>
-      <tr><td>"Market shrugs off hawkish Fed"</td><td>"Hawkish Fed sends stocks tumbling"</td></tr>
-      <tr><td>"Earnings beat expectations"</td><td>"Guidance disappoints despite beat"</td></tr>
-    </table></div>
-  </details>
-  <p>
-    The narrative is written <em>after</em> the move to explain it, so it has no predictive value. Professionals ask: <em>how is the market positioned, and will this news force repositioning?</em> Not: what does this news mean?
-  </p>
-  <div class="tl-solid red">
-    <strong>The trap:</strong> a headline explains a move only after the fact. The same story is written as bullish or bearish depending on how the market was positioned beforehand. Trading the headline instead of the positioning behind it means reacting to the story, not the mechanism.
-  </div>
-
-  <h3>Where positioning data comes from</h3>
-  <div class="tl-icard-grid">
-    <div class="tl-icard"><div class="tl-icon-badge blue">📋</div><h4>CFTC COT report (Fridays)</h4><p>Futures positioning by trader type, commercial hedgers versus speculators. Extreme speculator long or short often precedes reversals, in the course's account.</p></div>
-    <div class="tl-icard"><div class="tl-icon-badge green">💧</div><h4>Fund flows</h4><p>ETF and mutual-fund flows. Massive inflows often mark tops (everyone who wants to buy has bought); outflows can mark bottoms.</p></div>
-    <div class="tl-icard"><div class="tl-icon-badge red">🔻</div><h4>Short interest</h4><p>Very high short interest means squeeze potential if price rises.</p></div>
-    <div class="tl-icard"><div class="tl-icon-badge amber">⚖️</div><h4>Options put/call ratio</h4><p>Heavy puts read as bearish sentiment (a contrarian buy); heavy calls read as bullish sentiment (a contrarian sell).</p></div>
-  </div>
-
-  <h3>Reading the extremes</h3>
-  <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A two-by-two grid. Columns: no catalyst and catalyst arrives. Rows: crowding low and crowding high. Low crowding with no catalyst is quiet. Low crowding with a catalyst gives an orderly repricing. High crowding with no catalyst is stored energy. High crowding with a catalyst is a violent unwind, with the size of the move set by the crowding.">
-    <text class="tlp-text3" x="330" y="18" text-anchor="middle" font-size="12" font-weight="700">no catalyst</text>
-    <text class="tlp-text3" x="525" y="18" text-anchor="middle" font-size="12" font-weight="700">catalyst arrives</text>
-    <text class="tlp-text3" x="135" y="86" text-anchor="end" font-size="12" font-weight="700">crowding low</text>
-    <text class="tlp-text3" x="135" y="196" text-anchor="end" font-size="12" font-weight="700">crowding high</text>
-    <rect class="tlp-box blue" x="145" y="28" width="185" height="100" rx="8"/>
-    <text class="tlp-text" x="237" y="68" text-anchor="middle" font-size="13" font-weight="700">Quiet</text>
-    <text class="tlp-text2" x="237" y="88" text-anchor="middle" font-size="11">fundamentals and news drive it</text>
-    <rect class="tlp-box green" x="340" y="28" width="185" height="100" rx="8"/>
-    <text class="tlp-text" x="432" y="68" text-anchor="middle" font-size="13" font-weight="700">Orderly repricing</text>
-    <text class="tlp-text2" x="432" y="88" text-anchor="middle" font-size="11">the move fits the news</text>
-    <rect class="tlp-box amber" x="145" y="138" width="185" height="100" rx="8"/>
-    <text class="tlp-text" x="237" y="178" text-anchor="middle" font-size="13" font-weight="700">Stored energy</text>
-    <text class="tlp-text2" x="237" y="198" text-anchor="middle" font-size="11">fragile, waiting for a trigger</text>
-    <rect class="tlp-box red" x="340" y="138" width="185" height="100" rx="8"/>
-    <text class="tlp-text" x="432" y="178" text-anchor="middle" font-size="13" font-weight="700">Violent unwind</text>
-    <text class="tlp-text2" x="432" y="198" text-anchor="middle" font-size="11">size set by the crowding</text>
-    <text class="tlp-text2" x="535" y="188" font-size="11">forced covering</text>
-    <text class="tlp-text2" x="535" y="204" font-size="11">margin calls</text>
-  </svg>
-  <ul>
-    <li><strong>Extreme long.</strong> Crowded long, vulnerable to negative catalysts: everyone who wants to buy already has, so who is left to buy?</li>
-    <li><strong>Neutral.</strong> No extreme. Fundamentals and news flow drive direction.</li>
-    <li><strong>Extreme short.</strong> Crowded short, vulnerable to a squeeze: forced covering accelerates rallies.</li>
-  </ul>
-  <p>
-    A crowded book tells you how <em>far</em> a move can run once something triggers it. It does not tell you which way the trigger will push. That distinction is the one the verdicts below keep making.
-  </p>
-
-  <div class="tl-eqbuild">
-    <div class="tl-eqbuild-label">Watch the formula build</div>
-    <div class="tl-eqbuild-title">Putting a number on "extreme": the COT index</div>
-    <div class="tl-eqbuild-step">
-      <div class="tl-math">\[ x - x_{\min} \]</div>
-      <p>Take the current net speculative position \(x\) and measure how far it sits above its lowest reading in the look-back window.</p>
-    </div>
-    <div class="tl-eqbuild-step">
-      <div class="tl-math">\[ \frac{x - x_{\min}}{\color{#fbbf24}{x_{\max} - x_{\min}}} \]</div>
-      <p>Divide by the window's full range. The result is between 0 (the most short it has been) and 1 (the most long).</p>
-    </div>
-    <div class="tl-eqbuild-step">
-      <div class="tl-math">\[ I = \color{#10b981}{100 \times \frac{x - x_{\min}}{x_{\max} - x_{\min}}} \]</div>
-      <p>Scale to 0 to 100. Readings near the ends mean the book is crowded one way relative to its own history. The 90 and 10 cut-offs below are a common convention I chose for illustration; the course does not fix them.</p>
-    </div>
-  </div>
-  <div class="tl-eq-break">
-    <div class="tl-eq-chip c1"><code>x</code><span>current net speculative position, in contracts</span></div>
-    <div class="tl-eq-chip c2"><code>x_min, x_max</code><span>lowest and highest reading in the look-back window (often three years)</span></div>
-    <div class="tl-eq-chip c3"><code>I</code><span>the COT index, 0 (most short) to 100 (most long)</span></div>
-  </div>
-
-  <div class="tl-box example">
-    <div class="tl-icon-badge purple">🧪</div>
-    <div class="tl-box-label">Try it yourself</div>
-    <h3>Where does today's position sit in its own history?</h3>
-    <p>
-      The look-back window is fixed at an illustrative −120 to +100 thousand contracts. Move the current net speculative position and read the index.
-    </p>
-    <div class="tl-chart interactive">
-      <svg viewBox="0 0 640 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A horizontal gauge from 0 to 100 for the COT index. The bottom ten percent is shaded red as extreme short, the top ten percent is shaded red as extreme long, and the middle is neutral. With a net position of plus 40 thousand contracts the index is 72.7 and the marker sits in the neutral zone.">
-        <rect x="60" y="40" width="52" height="26" style="fill:var(--red-bg)"/>
-        <rect x="112" y="40" width="416" height="26" style="fill:var(--s2)"/>
-        <rect x="528" y="40" width="52" height="26" style="fill:var(--red-bg)"/>
-        <text x="86" y="32" text-anchor="middle" font-size="10" style="fill:var(--red);font-family:'DM Mono',monospace">extreme short</text>
-        <text x="554" y="32" text-anchor="middle" font-size="10" style="fill:var(--red);font-family:'DM Mono',monospace">extreme long</text>
-        <text x="320" y="32" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">neutral</text>
-        <text x="60" y="88" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0</text>
-        <text x="320" y="88" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">50</text>
-        <text x="580" y="88" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">100</text>
-        <line id="qmw-pos-mk" x1="438.2" y1="34" x2="438.2" y2="72" style="stroke:var(--amber);stroke-width:4;stroke-linecap:round"/>
-      </svg>
-      <div class="tl-controls">
-        <div class="tl-control">
-          <div class="tl-control-head"><span>Net speculative position (thousand contracts)</span><span class="tl-live" id="qmw-pos-x-val">+40</span></div>
-          <input type="range" id="qmw-pos-x" min="-150" max="150" step="5" value="40" aria-label="Net speculative position in thousand contracts">
-        </div>
-      </div>
-      <div class="tl-readout">
-        Window: −120 to +100 · COT index <b id="qmw-pos-idx">72.7</b> · reading: <b id="qmw-pos-read">neutral: no extreme</b>
-      </div>
-      <div class="tl-hint">Push the slider past +100 or below −120 and the position is outside its own window: the index pins at 100 or 0, a new extreme.</div>
-    </div>
-  </div>
-
-  <div class="tl-box scenario">
-    <div class="tl-icon-badge amber">🎯</div>
-    <div class="tl-box-label">Case study — GameStop, January 2021</div>
-    <h3>A textbook positioning unwind</h3>
-    <ul>
-      <li><strong>Setup.</strong> Short interest above 100% of the float, about 140% in the course's figure: more shares sold short than the company had available to trade. Extreme crowding.</li>
-      <li><strong>Catalyst.</strong> Retail buying lifted the price, and shorts faced margin calls.</li>
-      <li><strong>Unwind.</strong> Forced covering meant more buying, which meant more margin calls: a reflexive loop.</li>
-      <li><strong>Result.</strong> The course puts the rise at about +1,700% in weeks with nothing about the business changed.</li>
-    </ul>
-    <p style="margin-bottom:0"><em>The course's lesson:</em> extreme positioning is stored energy and a catalyst releases it. The size of the move is proportional to the crowding, not to the importance of the news. GameStop is an extreme case, not a base rate.</p>
-  </div>
-
-  <h3>The pre-trade positioning checklist</h3>
-  <div class="tl-solid green">
-    <ol style="margin-bottom:0">
-      <li><strong>Who is already in this trade?</strong> (COT, flows, options positioning)</li>
-      <li><strong>What would force them out?</strong> (identify the unwind catalyst)</li>
-      <li><strong>Am I early or late?</strong> If everyone is talking about it, you are late; the move happens when positioning builds, not when it is recognised.</li>
-      <li><strong>What is my edge over the crowd?</strong> If you cannot identify one, you <em>are</em> the crowd.</li>
-    </ol>
-  </div>
-
-  <!-- DESK:START -->
-  <div class="tl-verdict null" data-evidence="cot-positioning-factor" data-evidence-date="2026-08-22">
-    <span class="tl-verdict-tag">Desk test: nothing found</span>
-    <span><strong>"Extreme speculator positioning predicts which way a market goes next."</strong> CFTC data, 8 instruments, 899 scored weeks each, 3,576 out-of-sample rows 2018 to 2026. Pooled out-of-sample rank-correlation −0.0317 (about 1.7 sigma), p = 0.094 against a p &lt; 0.05 bar: fail. Per instrument the spread is wide and the ends disagree (GBP −0.228, gold +0.117, AUD +0.004). Positioning says who holds what and who has to act if they are wrong. It is not a direction signal.</span>
-  </div>
-  <div class="tl-verdict null" data-evidence="crowded-bond-short-fomc" data-evidence-date="2026-09-17">
-    <span class="tl-verdict-tag">Desk test: nothing found</span>
-    <span><strong>"Everyone is short bonds into the Fed, so a consensus decision squeezes them."</strong> 84 meetings since 2010. After crowded-short meetings the 30-year yield rose +4 bp over five sessions against −0.3 bp after the rest; on consensus decisions +9.1 bp. The shorts were paid, not squeezed. Check the CFTC percentile before repeating "everyone is short".</span>
-  </div>
-  <!-- DESK:END -->
-
-  <div class="tl-eli5">
-    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
-    <p>A see-saw with ten kids piled on one end is held up by a single plank. If one kid jumps off, the whole end crashes, and the kids on the other side go flying. The kids on the see-saw are positioning. The kid who jumps is the news. It is not the jump that decides how hard it crashes, it is how many kids were piled on. And the pile does not tell you who will jump, or whether they jump left or right.</p>
-  </div>
-
-  <div class="tl-section-mark"><span>Section 09</span></div>
-  <h2>Putting it together</h2>
-  <p>
-    The six pieces answer six questions: <strong>who moves first</strong> (the hierarchy), <strong>why money moves</strong> (rate gaps), <strong>how risk is priced</strong> (the regime), <strong>how much water is in the tub</strong> (liquidity), <strong>who has to trade</strong> (the calendar) and <strong>who is leaning</strong> (positioning). Ask them in that order before a trade, and write down which answers you looked up rather than assumed.
-  </p>
-
-  <div class="tl-box pitfall">
-    <div class="tl-icon-badge red">⚠️</div>
-    <div class="tl-box-label">Common pitfalls</div>
-    <h3>Where this framework is easy to misuse</h3>
-    <p>
-      <strong>Reading a framework as a forecast.</strong> The hierarchy says the order effects arrive in, not when or by how much. Several of its headline lead-lags are taught as averages with no direct test<!-- DESK:START -->, and the shorter-horizon versions tested on this desk's data came back null<!-- DESK:END -->.
-    </p>
-    <p>
-      <strong>Hindsight cases and exemplar figures.</strong> 2020, 2022 and GameStop are tidy examples picked because the story is clean. The correlation matrix, the QE magnitudes and the regime thresholds are typical ranges that drift with the era.
-    </p>
-    <p style="margin-bottom:0">
-      <strong>Mistaking a mechanism for a trade.</strong> The month-end drift is real arithmetic and the carry unwind is a real chain. Neither has been shown here to leave a footprint large enough to trade after costs. Knowing the flow exists helps you avoid being its victim; it does not by itself pay you.
-    </p>
-  </div>
-
-  <div class="tl-drill" data-date="2020-03-23">
-    <div class="tl-drill-label">Scenario drill · 23 March 2020</div>
-    <h3>The Fed has just promised to buy in the amounts needed</h3>
-    <p>It is the morning of 23 March 2020. The S&amp;P 500 is about a third below its February high, the VIX is above 60, and the data are terrible and about to get worse: lockdowns are spreading, unemployment claims are about to explode, and no vaccine is in sight. You are short equity index futures and have been right for a month. This morning the Federal Reserve announced that it would buy Treasuries and agency mortgage securities in the amounts needed to restore smooth market functioning. What do you do with the short?</p>
-    <ol class="tl-drill-options">
-      <li data-verdict="bad">Add to it. The fundamentals are collapsing and the market has not priced the data yet.<div class="tl-drill-why">Fundamentals can be right and still lose to the tide. The announcement changes the supply of money and the willingness of dealers to hold risk, which is the course's point that liquidity beats fundamentals. Adding to a short on the day the biggest buyer in the system steps in is fighting the Fed, in the most expensive way.</div></li>
-      <li data-verdict="bad">Hold the short until the economic data or a vaccine news item shows it is safe to cover.<div class="tl-drill-why">The data and the vaccine arrived long after the low. The first efficacy results came in November; the second-quarter GDP print came in July. A rule that waits for fundamentals to improve would have covered months after the rally began.</div></li>
-      <li data-verdict="good">Cover most or all of the short now and stay light, because the regime has changed from a liquidity drain to a liquidity flood, while volatility is still extreme.<div class="tl-drill-why">This follows the framework without pretending to call the bottom. Nobody knew 23 March was the low. The decision rests on a change in the liquidity regime, not a prediction, and with a VIX above 60 smaller size is the sensible way to be wrong.</div></li>
-      <li data-verdict="ok">Flip to a large long right away to catch the rebound.<div class="tl-drill-why">The direction was right but the size is a bet on a call nobody could make. With volatility this high, a position sized like a normal day can be stopped out by a move that has nothing to do with the thesis. Defensible, not best.</div></li>
-    </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The S&amp;P 500 closed at 2,237.40 on 23 March 2020, its closing low of the sell-off, about 34% below its February peak, and then rose. By early June it was roughly 45% higher, with the second-quarter economy still contracting at a record pace. The course reads this as liquidity beating fundamentals. A fair caveat: this was one episode, and at the same time governments were announcing large fiscal support.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200323b.htm">Federal Reserve Board, press release, 23 March 2020</a>; <a href="https://fred.stlouisfed.org/series/SP500">S&amp;P 500 daily closes, FRED series SP500</a>; <a href="https://fred.stlouisfed.org/series/VIXCLS">CBOE VIX daily closes, FRED series VIXCLS</a>.</p></div>
-  </div>
-
-  <div class="tl-section-mark"><span>Section 10</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The hierarchy is not optional.</strong> Central banks, bonds, FX, equities, credit: information degrades at each level, so check the levels above before any position.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Rates drive the cross-border flow.</strong> Differentials explain most of the medium-term FX moves in the course's account; the 2-year yield is the one to watch. A carry trade earns a little steadily and gives it back in a rush: a 10% yen rally against a 4.9% carry is about two years of carry.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Know your regime.</strong> Risk-on and risk-off are distinct states; correlations rise in stress (ten assets: 61% of one asset's volatility at 0.3, 95% at 0.9). Check VIX structure and credit spreads daily; three or more warnings means cut gross exposure before analysing single positions.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Liquidity sets the tide.</strong> Track the Fed balance sheet, the RRP and the TGA weekly, and do not fight the flow. March 2020 is the flagship case.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Flows are mechanical.</strong> Month-end, OpEx and reconstitution create forced trades. A 60/40 fund after a +5% equity month sells about 1.2% of its portfolio. Do not provide liquidity to scheduled flows unless you are paid to.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Position before narrative.</strong> Extreme positioning plus a catalyst makes a violent move. Check COT, flows and options positioning before trading headlines.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The figures are exemplars.</strong> Correlations, QE magnitudes, thresholds and lead-lags are typical ranges from the course, not constants. The month-end example also drifts to 61.2/38.8, not 62/38.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The mechanisms are real; the trades are not shown.</strong> A framework tells you what to look at. Whether rates lead equities, whether yields predict the next FX move, whether crowded positioning predicts direction, or whether a month-end drag exists are separate questions, and the course states them as lessons, not as measured results.<!-- DESK:START --> On this desk's data each of those came back null; see the verdict boxes above.<!-- DESK:END --></span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The figures are exemplars.</strong> The lead-lags, the 0.7 to 0.9 USD/JPY link, the 6 to 18 month cycle lag and the 80/20 carry split are typical ranges from the course, not constants, and the cascade percentages are this page's own teaching model.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The mechanisms are real; the trades are not shown.</strong> A framework tells you what to look at. Whether rates lead equities and whether yields predict the next FX move are separate questions, and the course states them as lessons, not as measured results.<!-- DESK:START --> On this desk's data each of those came back null; see the verdict boxes above.<!-- DESK:END --></span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 11</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does the course say to check the levels above your asset before taking a position?</summary>
@@ -1141,27 +493,15 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q3. Ten equally weighted assets have an average correlation of 0.3 in calm markets and 0.9 in a crisis. How much does the portfolio's volatility, as a share of one asset's, change, and why does that matter?</summary>
+    <summary>Q3. The dollar pays 5% and the yen 0.1%. How big a yen rally over the year makes the carry trade break even, and what does that tell you about the 10% rally in Q2?</summary>
     <div class="tl-answer">
-      \(\sqrt{(1 + 9\rho)/10}\): at 0.3 that is \(\sqrt{0.37} = 60.8\%\), and at 0.9 it is \(\sqrt{0.91} = 95.4\%\). The diversification benefit shrinks from about 39% to under 5%. Diversification is a bet on correlations staying low, and it fails exactly when it is needed. The course's examples are March 2020 (above 0.9 within 48 hours) and 2022, when the −0.30 stock-bond correlation turned to +0.40.
+      The break-even is \(x^{*} = (1 + i_H)/(1 + i_F) - 1 = 1.05/1.001 - 1 = 4.90\%\). A funding-currency rally of 4.9% over the year turns the whole year of carry into zero, and anything larger is a loss. A 10% rally is roughly twice the break-even, which is the same fact as the 2.04 years of carry erased: the loss is the carry earned over a couple of years, delivered in days.
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q4. The course says liquidity beat fundamentals in March 2020. What is the evidence in the case, and what are the caveats?</summary>
+    <summary>Q4. The Fed is hiking, yet inflation is rising faster than the nominal rate. Why might gold rise, and what should you watch instead of the nominal rate?</summary>
     <div class="tl-answer">
-      The S&amp;P 500 closed at its low on 23 March, the day the Fed promised purchases in the amounts needed, then rose roughly 45% by early June while the second quarter was the worst quarter of GDP on record. The timing points to the announcement, not to data or to vaccine news, which came later. The caveats: it is one episode, fiscal support arrived at the same time, and "it almost always does" is a rule of thumb.<!-- DESK:START --> On this desk's test of net liquidity as a tailwind (786 weeks), the sign was right but the effect was too small to tell from noise.<!-- DESK:END -->
-    </div>
-  </details>
-  <details class="tl-quiz">
-    <summary>Q5. A 60/40 fund's stocks gain 5% in a month while bonds are flat. What weights does it hold, and what does it have to trade?</summary>
-    <div class="tl-answer">
-      The equity sleeve is \(0.60 \times 1.05 = 0.63\), the bond sleeve is 0.40, the total is 1.03, so equities are \(0.63/1.03 = 61.17\%\) and bonds 38.83%. The fund sells \(61.17 - 60 = 1.17\%\) of the portfolio, about $1.17bn on $100bn, selling winners and buying losers. The course's example rounds the drift to 62/38, which would take about an 8.8% equity gain.<!-- DESK:START --> On this desk's data, though, the last three sessions after the strongest months did not show a drag (+0.11%, interval −0.32% to +0.50%), so the mechanism is real arithmetic without a visible footprint.<!-- DESK:END -->
-    </div>
-  </details>
-  <details class="tl-quiz">
-    <summary>Q6. The same jobs report is written up as "Stocks rally on strong jobs data" one day and "Stocks fall on hot jobs" another. What question do professionals ask instead, and what does a crowded position tell you?</summary>
-    <div class="tl-answer">
-      They ask how the market is positioned and whether the news will force repositioning, because a headline is written after the move and has no predictive value on its own. A crowded position tells you how violent a move can be once a catalyst arrives (the magnitude scales with the crowding, as in GameStop), not which way. Positioning says who has to act if they are wrong, not what the market does next.<!-- DESK:START --> This desk's one registered test of crowded positioning as a direction signal was a null.<!-- DESK:END -->
+      Gold responds mainly to <em>real</em> rates, the nominal rate minus inflation. If inflation rises faster than the nominal rate, the real rate falls, so the opportunity cost of holding gold falls with it and gold can rally even while the Fed hikes. That is why the course says to watch TIPS yields, not only nominal ones. The easy rule that hikes pressure gold holds only when the hikes raise real rates.
     </div>
   </details>
 
@@ -1171,12 +511,6 @@
     <li>Bank for International Settlements, <em>Triennial Central Bank Survey of foreign exchange and OTC derivatives turnover</em> — the source of the $7.5 trillion daily FX turnover figure (April 2022 survey); later surveys give higher numbers.</li>
     <li>Markus K. Brunnermeier, Stefan Nagel and Lasse H. Pedersen, <em>"Carry Trades and Currency Crashes"</em>, NBER Macroeconomics Annual 2008 — why high-yield currencies tend to crash when funding liquidity dries up, the academic version of the steamroller.</li>
     <li>Hanno Lustig, Nikolai Roussanov and Adrien Verdelhan, <em>"Common Risk Factors in Currency Markets"</em>, Review of Financial Studies, 2011 — carry returns as compensation for a common risk factor.</li>
-    <li>François Longin and Bruno Solnik, <em>"Extreme Correlation of International Equity Markets"</em>, Journal of Finance, 2001 — correlations rise in bear markets, the empirical backbone of the "everything falls together" warning.</li>
-    <li>Federal Reserve Board, <em>press release of 23 March 2020</em> — the primary source for the announcement in the story and the drill.</li>
-    <li>Sophie X. Ni, Neil D. Pearson and Allen M. Poteshman, <em>"Stock Price Clustering on Option Expiration Dates"</em>, Journal of Financial Economics, 2005 — evidence on the pin-risk idea behind OpEx.</li>
-    <li>Lawrence Harris and Eitan Gurel, <em>"Price and Volume Effects Associated with Changes in the S&amp;P 500 List"</em>, Journal of Finance, 1986 — the classic study of index-reconstitution flows.</li>
-    <li>U.S. Securities and Exchange Commission staff, <em>Report on Equity and Options Market Structure Conditions in Early 2021</em>, October 2021 — the official account of the GameStop episode.</li>
-    <li>CFTC, <em>Commitments of Traders</em> reports (cftc.gov) — the free positioning data behind the COT index.</li>
   </ul>
   </details>
 
@@ -1186,24 +520,27 @@
       <div class="tl-fits-k">Read first</div>
       <ul>
         <li><a href="qm-1-repositioning.html">Lesson 1, Repositioning Your Approach</a> <span>· why a framework is a map, not an edge</span></li>
-        <li><a href="../../theory-lab/lessons/primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· the maths behind the diversification curve</span></li>
       </ul>
     </div>
     <div class="tl-fits-col">
       <div class="tl-fits-k">Read next</div>
       <ul>
-        <li><a href="qm-3-central-bank-policy.html">Lesson 3, Central Bank Policy</a> <span>· the top rung of the hierarchy in detail</span></li>
+        <li><a href="qm-2b-regimes-and-positioning.html">Lesson 2, part 2: Regimes, Liquidity and Positioning</a> <span>· the other four forces: regime, liquidity, calendar, positioning</span></li>
         <li><a href="../../theory-lab/lessons/interest-rate-parity.html">Interest Rate Parity — Covered vs. Uncovered</a> <span>· why carry can pay, and when it should not</span></li>
-        <li><a href="../../theory-lab/lessons/vix-uncertainty-not-fear.html">The VIX Is an Uncertainty Index, Not a Fear Gauge</a> <span>· a closer look at the regime indicator</span></li>
+        <li><a href="qm-3-central-bank-policy.html">Lesson 3, Central Bank Policy</a> <span>· the top rung of the hierarchy in detail</span></li>
       </ul>
     </div>
-    <p class="tl-fits-why"><strong>Why you'd care:</strong> before you act on a headline or a chart, you can ask where in the queue your market sits, which regime it is in, and who is forced to trade.</p>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> before you act on a headline or a chart, you can ask where in the queue your market sits and what the rate gap is paying money to do.</p>
   </nav>
+
+  <div class="tl-callout">
+    <strong>Next: part 2.</strong> <a href="qm-2b-regimes-and-positioning.html">What Moves Markets, Part 2: Regimes, Liquidity and Positioning</a> covers risk-on and risk-off regimes and the correlation problem, central-bank liquidity and the March 2020 story, the institutional flow calendar, and positioning data.
+  </div>
 
   <div class="tl-footer-nav">
     <a href="qm-1-repositioning.html">← Lesson 1: Repositioning</a>
     <a href="../hub.html">COG hub</a>
-    <a href="qm-3-central-bank-policy.html">Lesson 3: Central Bank Policy →</a>
+    <a href="qm-2b-regimes-and-positioning.html">Part 2: Regimes, Liquidity and Positioning →</a>
   </div>
 </div>
 
@@ -1215,7 +552,6 @@
   var MINUS = '−';
   function pct2(v){ v = r6(v); return (v < 0 ? MINUS : '') + Math.abs(v).toFixed(2) + '%'; }
   function sgn1(v){ v = r6(v); return (v < 0 ? MINUS : '+') + Math.abs(v).toFixed(1) + '%'; }
-  function sgn0(v){ return (v < 0 ? MINUS : '+') + Math.abs(v).toFixed(0); }
   function money(v){ return '$' + Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 
   // ---------- A. cascade ----------
@@ -1269,197 +605,6 @@
       $('qmw-inc-d').textContent = money(1e6 * (ih - iF));
     }
     [ihS, ifS, xS].forEach(function(e){ e.addEventListener('input', upd); }); upd();
-  })();
-
-  // ---------- C. regime selector ----------
-  (function(){
-    var on = $('qmw-reg-on'); if (!on) return;
-    var off = $('qmw-reg-off');
-    // [risk-on text, risk-off text, group (0 risk asset, 1 haven, 2 moves with the regime), source on, source off]
-    var ROWS = [
-      ['▲ rally', '▼ sell off', 0, 'Stated', 'Stated'],
-      ['▲ rally', '▼ falls', 0, 'Stated', 'Mirror'],
-      ['▲ outperform', '▼ outflows', 0, 'Stated', 'Stated'],
-      ['▼ spreads tighten', '▲ spreads widen', 0, 'Stated', 'Stated'],
-      ['▲ firmer', '▼ weaker', 0, 'Mirror', 'Stated'],
-      ['▼ prices fall (safety sold)', '▲ prices rise (flight to quality)', 1, 'Stated', 'Stated'],
-      ['▼ weaken', '▲ strengthen', 1, 'Mirror', 'Stated'],
-      ['▼ softer', '▲ firmer', 1, 'Mirror', 'Stated'],
-      ['▼ falls', '▲ spikes', 2, 'Stated', 'Stated'],
-      ['▲ profitable', '▼ unwind', 0, 'Stated', 'Stated']
-    ];
-    var NOTE = {
-      on: 'Risk-on: VIX below about 18, credit spreads tightening, EM outperforming developed markets. Stock and bond prices can even fall together if rates are normalising higher.',
-      off: 'Risk-off: capital exits equities, EM, credit, oil and the Australian dollar for Treasuries, yen, franc, gold and dollar cash. Gold and Treasuries both rising is the classic flight to quality.'
-    };
-    function set(mode){
-      var isOn = mode === 'on';
-      on.classList.toggle('active', isOn); off.classList.toggle('active', !isOn);
-      on.setAttribute('aria-pressed', isOn ? 'true' : 'false'); off.setAttribute('aria-pressed', isOn ? 'false' : 'true');
-      $('qmw-reg-head').textContent = 'Leans (' + (isOn ? 'risk-on' : 'risk-off') + ')';
-      for (var i = 0; i < ROWS.length; i++){
-        var r = ROWS[i], c = $('qmw-reg-r' + (i + 1));
-        // green = moves with the regime's winners (or is the regime's signature); red = the side being sold
-        var favoured = r[2] === 2 ? true : (r[2] === 0 ? isOn : !isOn);
-        c.textContent = r[isOn ? 0 : 1];
-        c.className = favoured ? 'qmw-up' : 'qmw-down';
-        $('qmw-reg-s' + (i + 1)).textContent = r[isOn ? 3 : 4];
-      }
-      $('qmw-reg-note').textContent = NOTE[mode];
-    }
-    on.addEventListener('click', function(){ set('on'); });
-    off.addEventListener('click', function(){ set('off'); });
-    set('on');
-  })();
-
-  // ---------- D. diversification vs correlation ----------
-  (function(){
-    var rS = $('qmw-corr-r'); if (!rS) return;
-    var nS = $('qmw-corr-n');
-    var X0 = 70, W = 540, RMIN = -0.5, RMAX = 1;
-    function xr(r){ return X0 + (r - RMIN) / (RMAX - RMIN) * W; }
-    function yv(v){ return 250 - v * 200; }
-    function sp(n, r){ return Math.sqrt(Math.max(0, (1 + (n - 1) * r) / n)); }
-    function upd(){
-      var n = parseInt(nS.value, 10), r = parseFloat(rS.value);
-      var lo = Math.max(RMIN, -1 / (n - 1));
-      if (r < lo) r = lo;
-      $('qmw-corr-r-val').textContent = (r < 0 ? MINUS : '') + Math.abs(r).toFixed(2);
-      $('qmw-corr-n-val').textContent = String(n);
-      var pts = [];
-      for (var i = 0; i <= 60; i++){
-        var rr = lo + (RMAX - lo) * i / 60;
-        pts.push(xr(rr).toFixed(1) + ',' + yv(sp(n, rr)).toFixed(1));
-      }
-      $('qmw-corr-curve').setAttribute('d', 'M' + pts.join(' L'));
-      var v = sp(n, r);
-      $('qmw-corr-dot').setAttribute('cx', xr(r).toFixed(1));
-      $('qmw-corr-dot').setAttribute('cy', yv(v).toFixed(1));
-      $('qmw-corr-out').textContent = (v * 100).toFixed(1) + '%';
-      $('qmw-corr-ben').textContent = ((1 - v) * 100).toFixed(1) + '%';
-      $('qmw-corr-floor').textContent = r > 0 ? (Math.sqrt(r) * 100).toFixed(1) + '%' : 'n/a (ρ ≤ 0)';
-      var band = r < 0.5 ? 'normal' : (r < 0.8 ? 'elevated stress' : 'crisis');
-      $('qmw-corr-band').textContent = band;
-    }
-    [rS, nS].forEach(function(e){ e.addEventListener('input', upd); }); upd();
-  })();
-
-  // ---------- E. daily risk dashboard ----------
-  (function(){
-    var vixS = $('qmw-dash-vix'); if (!vixS) return;
-    var tsS = $('qmw-dash-ts'), oasS = $('qmw-dash-oas'), cdxS = $('qmw-dash-cdx'), corS = $('qmw-dash-corr'), fx = $('qmw-dash-fx');
-    function pill(id, flash){
-      var p = $(id); p.textContent = flash ? 'FLASH' : 'OK';
-      p.className = 'tl-pill ' + (flash ? 'red' : 'green');
-    }
-    function upd(){
-      var vix = parseFloat(vixS.value), ts = parseFloat(tsS.value), oas = parseFloat(oasS.value),
-          cdx = parseFloat(cdxS.value), cor = parseFloat(corS.value);
-      $('qmw-dash-vix-val').textContent = String(vix);
-      $('qmw-dash-ts-val').textContent = ts.toFixed(2);
-      $('qmw-dash-oas-val').textContent = String(oas);
-      $('qmw-dash-cdx-val').textContent = (cdx < 0 ? MINUS : '+') + Math.abs(cdx);
-      $('qmw-dash-corr-val').textContent = (cor < 0 ? MINUS : '') + Math.abs(cor).toFixed(2);
-      var f1 = vix >= 25 || ts < 0.9, f2 = cdx > 20, f3 = fx.checked, f4 = cor > 0;
-      pill('qmw-dash-c1', f1); pill('qmw-dash-c2', f2); pill('qmw-dash-c3', f3); pill('qmw-dash-c4', f4);
-      var n = (f1 ? 1 : 0) + (f2 ? 1 : 0) + (f3 ? 1 : 0) + (f4 ? 1 : 0);
-      $('qmw-dash-band').textContent = vix < 15 ? 'calm (below 15)' : vix < 25 ? 'normal (15–25)' : vix < 35 ? 'elevated (25–35)' : 'panic (35+)';
-      $('qmw-dash-credit').textContent = oas < 350 ? 'risk-on (HY OAS below 350)' : oas > 500 ? 'risk-off (HY OAS above 500)' : 'in between (350–500)';
-      $('qmw-dash-n').textContent = String(n);
-      $('qmw-dash-verdict').textContent = n >= 3 ? 'three or more: reduce gross exposure before analysing individual positions'
-        : n >= 1 ? 'below the three-flag rule: watch closely' : 'no change to gross exposure from this checklist';
-    }
-    [vixS, tsS, oasS, cdxS, corS].forEach(function(e){ e.addEventListener('input', upd); });
-    fx.addEventListener('change', upd); upd();
-  })();
-
-  // ---------- G. month-end rebalancing ----------
-  (function(){
-    var reS = $('qmw-reb-re'); if (!reS) return;
-    var rbS = $('qmw-reb-rb'), wS = $('qmw-reb-w');
-    function upd(){
-      var re = parseFloat(reS.value) / 100, rb = parseFloat(rbS.value) / 100, w = parseFloat(wS.value) / 100;
-      $('qmw-reb-re-val').textContent = (re < 0 ? MINUS : '+') + Math.abs(re * 100).toFixed(0) + '%';
-      $('qmw-reb-rb-val').textContent = (rb < 0 ? MINUS : '') + Math.abs(rb * 100).toFixed(1) + '%';
-      $('qmw-reb-w-val').textContent = (w * 100).toFixed(0) + '%';
-      var VE = w * (1 + re), VB = (1 - w) * (1 + rb), wp = VE / (VE + VB), tr = wp - w;
-      $('qmw-reb-we').textContent = (wp * 100).toFixed(2) + '%';
-      $('qmw-reb-wb').textContent = ((1 - wp) * 100).toFixed(2) + '%';
-      var big = Math.abs(tr) * 100;
-      $('qmw-reb-verb').textContent = big < 0.005 ? 'no trade needed:' : (tr > 0 ? 'sell equities, buy bonds' : 'buy equities, sell bonds');
-      $('qmw-reb-trade').textContent = big.toFixed(2) + '%';
-      $('qmw-reb-bn').textContent = '$' + big.toFixed(2) + 'bn';
-      var w2 = Math.min(w + 0.05, 0.95);
-      var need = ((w2 / (1 - w2)) / (w / (1 - w))) * (1 + rb) - 1;
-      $('qmw-reb-need').textContent = (need < 0 ? MINUS : '') + Math.abs(need * 100).toFixed(2) + '%';
-    }
-    [reS, rbS, wS].forEach(function(e){ e.addEventListener('input', upd); }); upd();
-  })();
-
-  // ---------- H. flow calendar ----------
-  (function(){
-    var mS = $('qmw-cal-m'); if (!mS) return;
-    var dS = $('qmw-cal-d'), g = $('qmw-cal-cells');
-    var MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    var DN = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    var YEAR = 2026, NS = 'http://www.w3.org/2000/svg', CX0 = 41, CW = 18;
-    function dim(m){ return new Date(YEAR, m, 0).getDate(); }
-    function dow(m, d){ return new Date(YEAR, m - 1, d).getDay(); }
-    function thirdFri(m){ var first = 1 + ((5 - dow(m, 1)) + 7) % 7; return first + 14; }
-    function lastTrading(m){ var out = [], d = dim(m); while (out.length < 3 && d > 0){ var w = dow(m, d); if (w !== 0 && w !== 6) out.unshift(d); d--; } return out; }
-    function cx(d){ return CX0 + (d - 1) * CW; }
-    function upd(){
-      var m = parseInt(mS.value, 10), n = dim(m), d = Math.min(parseInt(dS.value, 10), n);
-      var tf = thirdFri(m), me = lastTrading(m), q = (m % 3 === 0);
-      $('qmw-cal-title').textContent = MN[m - 1] + ' ' + YEAR;
-      $('qmw-cal-m-val').textContent = MN[m - 1];
-      $('qmw-cal-d-val').textContent = d + ' (' + DN[dow(m, d)] + ')';
-      while (g.firstChild) g.removeChild(g.firstChild);
-      for (var i = 1; i <= n; i++){
-        var r = document.createElementNS(NS, 'rect');
-        var inMe = me.indexOf(i) >= 0, inWeek = (i >= tf - 4 && i <= tf);
-        r.setAttribute('x', cx(i)); r.setAttribute('y', 40); r.setAttribute('width', CW); r.setAttribute('height', 34);
-        r.setAttribute('class', 'tlp-box' + (inMe ? ' amber' : (inWeek ? ' blue' : '')));
-        if (inWeek && i !== tf && !inMe) r.setAttribute('opacity', '.5');
-        g.appendChild(r);
-        var t = document.createElementNS(NS, 'text');
-        t.setAttribute('x', cx(i) + CW / 2); t.setAttribute('y', 61); t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', 9);
-        t.setAttribute('class', 'tlp-text2'); t.textContent = i; g.appendChild(t);
-      }
-      $('qmw-cal-sel').setAttribute('x', cx(d));
-      $('qmw-cal-lbl-opex').setAttribute('x', cx(tf) + CW / 2);
-      $('qmw-cal-lbl-mend').setAttribute('x', (cx(me[0]) + cx(me[2]) + CW) / 2);
-      $('qmw-cal-third').textContent = 'Friday ' + tf + ' ' + MN[m - 1];
-      $('qmw-cal-mend').textContent = me[0] + '–' + me[2] + ' ' + MN[m - 1];
-      var parts = [];
-      if (d === tf) parts.push('Third Friday: monthly options expire (OpEx). Pin risk and dealer hedging dominate; real moves often come the week after.');
-      else if (d >= tf - 4 && d < tf) parts.push('OpEx week: hedging flows, not information. Reduce directional bets into Friday.');
-      else if (d > tf && d <= tf + 7) parts.push('The week after OpEx: the course says real moves often happen now.');
-      if (me.indexOf(d) >= 0) parts.push('Month-end window (last three trading days): after a strong month, rebalancing from equities into bonds can lean against the rally. Do not chase breakouts.');
-      if (me.indexOf(d) >= 0 && q) parts.push('Quarter-end: managers may buy winners (window dressing) to show them in reports.');
-      if (m === 9) parts.push('September: historically the weakest month for the S&P 500 (a 74-year pattern in the course).');
-      if (m === 11 || m === 12) parts.push('November–December: historically strong (the "Santa rally").');
-      if (!parts.length) parts.push('No scheduled forced flow flagged by this calendar for that day.');
-      $('qmw-cal-today').textContent = parts.join(' ');
-    }
-    [mS, dS].forEach(function(e){ e.addEventListener('input', upd); }); upd();
-  })();
-
-  // ---------- I. COT index ----------
-  (function(){
-    var xS = $('qmw-pos-x'); if (!xS) return;
-    var MIN = -120, MAX = 100;
-    function upd(){
-      var x = parseFloat(xS.value);
-      $('qmw-pos-x-val').textContent = (x < 0 ? MINUS : '+') + Math.abs(x);
-      var idx = Math.max(0, Math.min(100, (x - MIN) / (MAX - MIN) * 100));
-      $('qmw-pos-idx').textContent = idx.toFixed(1);
-      var mx = 60 + idx / 100 * 520;
-      var mk = $('qmw-pos-mk'); mk.setAttribute('x1', mx.toFixed(1)); mk.setAttribute('x2', mx.toFixed(1));
-      $('qmw-pos-read').textContent = idx >= 90 ? 'extreme long: crowded, vulnerable to negative catalysts'
-        : idx <= 10 ? 'extreme short: crowded, vulnerable to a squeeze' : 'neutral: no extreme';
-    }
-    xS.addEventListener('input', upd); upd();
   })();
 })();
 </script>
