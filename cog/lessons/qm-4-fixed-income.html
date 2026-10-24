@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixed Income Fundamentals for Traders — COG Hub — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theory-lab/assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+/* Local extension: wide multi-column reference tables (same variables as the shared sheet) and a button row for the
+   curve-shape explorer. */
+.tl-table{overflow-x:auto;margin:14px 0;border:1px solid var(--border);border-radius:var(--r)}
+.tl-table table{width:100%;border-collapse:collapse;font-size:13px}
+.tl-table th{background:var(--s2);color:var(--text);text-align:left;padding:8px 10px;border-bottom:1.5px solid var(--border2);font-weight:600;white-space:nowrap}
+.tl-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+.tl-table tr:last-child td{border-bottom:none}
+.tl-table tbody tr:hover{background:var(--s1)}
+.tp-btnrow{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
+.tp-btnrow button{margin-top:0}
+.tp-btnrow button.tp-on{border-color:var(--blue);color:var(--text)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">COG Hub</a> / Course Notes / Quant &amp; Macro / Fixed Income Fundamentals</div>
+  <div class="tl-glosslink">🔎 <a href="../../theory-lab/glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Course Notes · Quant &amp; Macro 4 of 6</div>
+  <h1 class="tl-title">Fixed Income Fundamentals for Traders</h1>
+  <p class="tl-dek">Why a bond's price and yield are the same fact seen from two ends, how duration turns a yield move into a price move, and what the curve, credit spreads and real yields are saying before stocks, gold and currencies catch up.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">COURSE NOTES — framework as taught, not a backtested strategy</span>
+    <span>~39 min read</span>
+    <span>Level: Intermediate (the duration and convexity maths in Section 03 leans Advanced)</span>
+    <span>Prereqs: <a href="qm-3-central-bank-policy.html">Central Bank Policy</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="qm-4-fixed-income-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Price and yield move in opposite directions, always.</strong> A bond pays a fixed coupon, so if its price falls, the yield you earn by buying it now rises. This is arithmetic, not opinion.</li>
+      <li><strong>Duration</strong> is the bond's sensitivity to yields: price change \(\approx -D \times \Delta y\). A 10-year note with \(D\approx 8\) loses about 4% when yields rise half a point. <strong>Convexity</strong> is the curvature that makes that estimate slightly too gloomy for rises and too small for falls.</li>
+      <li><strong>The yield curve</strong> (yield against maturity) encodes what the market expects for policy, growth and inflation. The course teaches that an inversion (2Y above 10Y) has preceded every US recession in 50+ years, with a variable 6 to 24 month lead.</li>
+      <li><strong>Credit spreads</strong> are the fear gauge, <strong>real yields</strong> (TIPS) are the opportunity cost of holding gold and growth stocks, and <strong>2-year yield differentials</strong> are the course's main fundamental driver of currencies.</li>
+      <!-- DESK:START --><li>Where the desk has tested these as <em>predictors</em>, they came back null: an inverted curve did not separate equity returns from a control, credit did not lead equities at 1 to 20 sessions, and yield moves did not forecast FX or index direction. The relationships are real in the same window; the "bonds first" lead is not established.</li><!-- DESK:END -->
+      <li><strong>Real-world episode:</strong> in 2022 the 10-year yield rose from about 1.5% to about 4.2% (the course's rounded numbers). Duration arithmetic on a 10-year note gives roughly a 20% loss, in the same year real yields crushed gold and growth stocks. In March 2023 the same maths broke a bank: Silicon Valley Bank was forced to sell long bonds bought when yields were low.</li>
+    </ul>
+  </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curved, downward-sloping line of bond price against yield for a 10-year 4.5% par bond. At a 4.5% yield the price is 100. A straight dashed tangent line through that point has slope equal to duration, about 8. The curve bends above the tangent: a one-point fall in yield to 3.5% lifts the price 8.4%, while a one-point rise to 5.5% cuts it only 7.6%.">
+      <line class="tlp-line" x1="70" y1="30" x2="70" y2="205"/>
+      <line class="tlp-line" x1="70" y1="205" x2="545" y2="205"/>
+      <polyline class="tlp-line purple thick" points="70.0,30.0 89.6,39.2 109.2,48.2 128.8,57.0 148.3,65.5 167.9,73.9 187.5,82.1 207.1,90.0 226.7,97.8 246.3,105.4 265.8,112.8 285.4,120.0 305.0,127.1 324.6,134.0 344.2,140.7 363.8,147.3 383.3,153.7 402.9,160.0 422.5,166.1 442.1,172.1 461.7,177.9 481.3,183.7 500.8,189.2 520.4,194.7 540.0,200.0"/>
+      <line class="tlp-line amber dash" x1="70" y1="43.3" x2="500.8" y2="196.9"/>
+      <line class="tlp-line dash" x1="305" y1="127.1" x2="305" y2="205"/>
+      <circle class="tlp-green" cx="226.7" cy="97.8" r="6"/>
+      <circle class="tlp-blue" cx="305" cy="127.1" r="7"/>
+      <circle class="tlp-red" cx="383.3" cy="153.7" r="6"/>
+      <text class="tlp-blue" x="312" y="122" font-size="14" font-weight="700">yield 4.5% · price 100</text>
+      <text class="tlp-green" x="218" y="86" text-anchor="end" font-size="14" font-weight="700">yield −1 pt: price +8.4%</text>
+      <text class="tlp-red" x="392" y="148" font-size="14" font-weight="700">yield +1 pt: price −7.6%</text>
+      <text class="tlp-amber" x="108" y="112" font-size="13" font-weight="700">straight line = duration only (±8.0%)</text>
+      <text class="tlp-purple" x="96" y="52" font-size="13" font-weight="700">the real curve bends above it: convexity</text>
+      <text class="tlp-text3" x="62" y="48" text-anchor="end" font-size="12">price ↑</text>
+      <text class="tlp-text3" x="540" y="222" text-anchor="end" font-size="12">yield →</text>
+      <text class="tlp-text3" x="305" y="222" text-anchor="middle" font-size="12">4.5%</text>
+    </svg>
+    <figcaption>One 10-year bond, one price-yield curve. The slope at today's yield is duration. The curve sits above its straight-line estimate, so the same one-point move gains more than it loses. Computed for a 4.5% coupon, 10-year par bond with semiannual coupons.</figcaption>
+  </figure>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Almost every other market in the course is priced off the bond market. Mortgage rates, equity valuations, gold, and the
+    dollar all lean on yields, and the central banks of Lesson 3 act on the front end of the bond curve first. If you read the
+    bond market, you read the plumbing that the other markets sit on.
+  </p>
+  <p>
+    The course puts the claim bluntly: bonds are institution-dominated and obsessed with downside (will I be paid back or not?),
+    so they react to macro news before narrative-driven equity traders do. <strong>That claim is a framework, not a result.</strong>
+    This lesson teaches the bond maths, which is mathematical fact, and then each relationship the course builds on top of it,
+    with the evidence status of every one stated where the claim appears.
+  </p>
+
+  <div class="tl-callout">
+    <strong>How hard is this lesson?</strong> The ideas are intermediate, but Section 03 (duration and convexity) is the most mathematical
+    in the whole Quant &amp; Macro series and leans Advanced. You can read the plain-English paragraphs and the sliders and skip
+    the derivations; the rest of the lesson only needs the one-line rule \(\Delta P/P \approx -D\,\Delta y\).
+    The specific figures, as in the rest of the course, are exemplar numbers representing typical ranges, not live data.
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Why a bond's price falls when yields rise</h3>
+    <p>
+      You hold a bond that pays $50 a year, which is 5% on $1,000. Then the market changes and brand-new bonds pay $60 a year.
+      Nobody will pay full price for your $50 stream when $60 is on offer, so the price of your bond has to fall until
+      the $50 looks as good as the new $60 does. Its <em>price</em> fell so that its <em>yield</em> could rise to the market's level.
+    </p>
+    <p>
+      Think of a seesaw. Price is one end, yield the other. The coupon is fixed, so it cannot move; only the price can,
+      and when the market's required return goes up, the price end goes down. Everything else in this lesson is about
+      <em>how far</em> the price end moves (duration), and what the shape of yields across maturities (the curve), the extra yield
+      on risky borrowers (credit spreads) and the inflation-adjusted yield (real yields) are telling you.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Bond maths essentials</h2>
+  <p>
+    <strong>The fundamental law: price up means yield down, and price down means yield up. Always.</strong>
+    A bond is a fixed list of cash payments: a coupon every six months, and the face value back at the end.
+    What you pay for that list is its price; the single discount rate that makes the list worth that price is its yield.
+    Pay more for the same payments and the rate you earn must be lower.
+  </p>
+  <div class="tl-math">\[ \text{Yield} \approx \frac{\text{Coupon}}{\text{Price}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Yield</code><span>the return you earn buying at today's price, as a percentage</span></div>
+    <div class="tl-eq-chip c2"><code>Coupon</code><span>the fixed annual cash payment, a percentage of face value</span></div>
+    <div class="tl-eq-chip c3"><code>Price</code><span>what the bond costs now; the only moving part, so yield moves inversely to it</span></div>
+    <div class="tl-eq-chip c4"><code>≈</code><span>this is the simplified "current yield"; the exact version (yield to maturity) is below</span></div>
+  </div>
+  <p>
+    This simplified yield ignores the gain or loss you will take at maturity. Bought at 95, you pay 95 and get 100 back, so your true
+    return is higher than coupon over price. The full version is <strong>yield to maturity (YTM)</strong>: the one rate that
+    discounts every remaining payment back to today's price. It is "the yield" people quote.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>Face value / par</td><td>Repaid at maturity, typically $1,000. "At par" means priced at 100.</td></tr>
+    <tr><td>Coupon</td><td>The annual interest, as a percentage of face value. It is fixed when the bond is issued.</td></tr>
+    <tr><td>Maturity</td><td>The date the bond repays its face value.</td></tr>
+    <tr><td>YTM</td><td>Yield to maturity: the total return if held to maturity, accounting for price, coupon and time.</td></tr>
+  </table></div>
+
+  <div class="tl-table"><table>
+    <tr><th>Price quote</th><th>Name</th><th>Yield vs coupon</th><th>What happens at maturity</th></tr>
+    <tr><td>100</td><td>Par</td><td>Yield = coupon</td><td>You get back what you paid</td></tr>
+    <tr><td>95</td><td>Discount</td><td>Yield &gt; coupon</td><td>Capital gain at maturity (pay 95, receive 100)</td></tr>
+    <tr><td>105</td><td>Premium</td><td>Yield &lt; coupon</td><td>Capital loss at maturity (pay 105, receive 100)</td></tr>
+  </table></div>
+
+  <p>
+    <strong>Headline translation.</strong> "The 10-year yield hits 4.5%" means investors now demand 4.5% to hold 10-year Treasuries.
+    If yesterday it was 4.3%, yields rose and prices fell: people already holding the bond lost money, and new buyers get a better
+    rate.
+  </p>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where a bond's price comes from, one payment at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P = \color{#fbbf24}{\frac{k}{1+r} + \frac{k}{(1+r)^2} + \cdots + \frac{k}{(1+r)^N}} \]</div>
+      <p>Start with the coupons. A bond with an annual coupon rate \(c\) pays \(k = cF/2\) every six months. Each future payment is worth less today, so each is divided by \((1+r)\) once for every period it is away, where \(r = y/2\) is the six-month yield.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P = \sum_{t=1}^{N}\frac{k}{(1+r)^t} + \color{#fbbf24}{\frac{F}{(1+r)^N}} \]</div>
+      <p>Add the face value \(F\), returned in the last period \(N\) (twice the years to maturity, for semiannual coupons) and discounted the same way.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ y \uparrow \;\Rightarrow\; (1+r)^t \uparrow \;\Rightarrow\; \color{#10b981}{P \downarrow} \]</div>
+      <p>Raise the yield and every denominator grows, so every payment is worth less today. Price and yield are opposites by construction. The calculators below use this exact formula with \(c\) equal to the starting yield (a par bond).</p>
+    </div>
+  </div>
+
+  <div class="tl-math">\[ P(y) = \sum_{t=1}^{N}\frac{k}{(1+y/2)^t} + \frac{F}{(1+y/2)^N} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P(y)</code><span>the bond's price as a function of its yield</span></div>
+    <div class="tl-eq-chip c2"><code>k</code><span>the coupon paid each half-year, \(cF/2\)</span></div>
+    <div class="tl-eq-chip c3"><code>y/2</code><span>the half-year yield, because coupons arrive twice a year</span></div>
+    <div class="tl-eq-chip c4"><code>N</code><span>the number of half-year periods left: twice the years to maturity</span></div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine you own a lemonade stand that always pays you $5 a week. Someone opens a stand next door that pays $6 a week. If you want to sell yours, you have to take less money for it, so the new buyer still gets a good deal. A cheaper price for the same $5 means a better "return per dollar" for the buyer. That return per dollar is the yield, and it goes up exactly when the price goes down.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Duration and convexity</h2>
+  <p>
+    Knowing price and yield move oppositely is not enough for trading; you need to know <em>how far</em>. That is what <strong>duration</strong> measures.
+    In the course's words, duration is roughly the percentage price change per 1% yield move. A longer maturity means a higher duration, which
+    means more rate sensitivity.
+  </p>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From the price curve to the duration rule, and its correction</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{dP}{dy} \]</div>
+      <p>Start with the slope of the price-yield curve: how many dollars of price one extra unit of yield removes. It is always negative.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ D = \color{#fbbf24}{-\frac{1}{P}}\,\frac{dP}{dy} \]</div>
+      <p>Divide by the price and flip the sign. Now the slope is a <em>percentage</em> price change per unit of yield, and positive. That is (modified) duration.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{\Delta P}{P} \approx \color{#fbbf24}{-D\,\Delta y} \]</div>
+      <p>For a small yield move \(\Delta y\), the price change is the slope times the move. This is the course's rule of thumb. It is a straight line drawn tangent to the curve.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ C = \frac{1}{P}\frac{d^2P}{dy^2} \]</div>
+      <p>The curve is not straight. Its bend is measured by the second derivative, again divided by price. That is convexity \(C\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{\Delta P}{P} \approx -D\,\Delta y + \color{#10b981}{\tfrac{1}{2}\,C\,(\Delta y)^2} \]</div>
+      <p>Add the bend. Because \((\Delta y)^2\) is positive whichever way yields move, convexity <em>always adds</em> to the price: it softens falls and boosts rises.</p>
+    </div>
+  </div>
+
+  <div class="tl-math">\[ \text{Price change} \approx -\text{Duration} \times \text{Yield change} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Duration</code><span>the bond's rate sensitivity (about 2 for a 2Y, 8 for a 10Y, 18 for a 30Y, as the course rounds it)</span></div>
+    <div class="tl-eq-chip c2"><code>Yield change</code><span>how much yields moved, in the same units (0.5% = 0.5 percentage points)</span></div>
+    <div class="tl-eq-chip c4"><code>−</code><span>the minus sign: yields up means price down, always</span></div>
+  </div>
+
+  <div class="tl-math">\[ \frac{\Delta P}{P} \approx -D\,\Delta y + \tfrac{1}{2}\,C\,(\Delta y)^2 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ΔP/P</code><span>the fractional price change; multiply by 100 for a percentage</span></div>
+    <div class="tl-eq-chip c2"><code>−D Δy</code><span>the duration term: a straight line, correct for small moves</span></div>
+    <div class="tl-eq-chip c3"><code>½ C (Δy)²</code><span>the convexity term: always positive, grows with the square of the move</span></div>
+    <div class="tl-eq-chip c4"><code>Δy</code><span>the yield change as a decimal, so +1 percentage point is 0.01</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">−D Δy</div>
+      <div class="tl-fp-name">Duration term</div>
+      <div class="tl-fp-desc">The straight-line estimate. Sign follows the yield move; size scales with maturity.</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">½ C (Δy)²</div>
+      <div class="tl-fp-name">Convexity term</div>
+      <div class="tl-fp-desc">The correction for the curve's bend. Always positive for ordinary bonds, so it favours the holder.</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">ΔP/P</div>
+      <div class="tl-fp-name">The price change</div>
+      <div class="tl-fp-desc">The sum of the two. The bigger the yield move, the more the second term matters.</div>
+    </div>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(P\)</td><td>The bond's price, with face value 100.</td></tr>
+    <tr><td>\(y\)</td><td>The yield to maturity, annualised.</td></tr>
+    <tr><td>\(\Delta y\)</td><td>The change in yield, as a decimal (+0.01 means yields rise one percentage point).</td></tr>
+    <tr><td>\(D\)</td><td>Modified duration: the percentage price change per one percentage point of yield. This is what the course calls "duration".</td></tr>
+    <tr><td>\(C\)</td><td>Convexity: the curvature of the price-yield curve relative to price. It is large for long bonds.</td></tr>
+    <tr><td>\(k, F, N, r\)</td><td>Half-year coupon, face value, number of half-year periods, and half-year yield \(y/2\).</td></tr>
+  </table></div>
+
+  <div class="tl-table"><table>
+    <tr><th>Bond</th><th>Duration (course)</th><th>Yields +0.5%</th><th>Yields −0.5%</th></tr>
+    <tr><td>2Y</td><td>~2</td><td>≈ −1%</td><td>≈ +1%</td></tr>
+    <tr><td>10Y</td><td>~8</td><td>≈ −4%</td><td>≈ +4%</td></tr>
+    <tr><td>30Y</td><td>~18</td><td>≈ −9%</td><td>≈ +9%</td></tr>
+  </table></div>
+  <p>
+    Checked against the exact formula for a 4.5% par bond, the true durations are 1.89 (2Y), 7.98 (10Y) and 16.37 (30Y), and a 0.5-point yield rise
+    cuts the price by 0.94%, 3.90% and 7.73%. The course's rounded durations are fine for the 2Y and 10Y; the 30Y's 18 depends on the coupon (a 3% coupon 30-year bond is nearer 19.7), so
+    read "~18" as a typical value, not a constant.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Duration says how long the bond makes you wait for your money, and the longer you wait, the more a change in the "going rate" hurts. A bond that pays you back tomorrow barely cares about rates. A bond that pays you back in 30 years cares a lot. Convexity is the bonus: the long bond gains more when rates fall than it loses when rates rise by the same amount.</p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Predict first, then drag the yield</h3>
+    <p>Use the chart below to see the duration estimate and the exact price side by side. Lock in a guess about the simple rule first.</p>
+    <div class="tl-predict" data-answer="4" data-tol="0.25" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> A 10-year Treasury has a duration of about 8. Yields rise by half a percentage point. By roughly how many percent does its price fall? Lock in a guess, then set the yield move in the chart below to +50 bp to check.</div>
+      <div class="tl-predict-reveal"><p><strong>About 4%.</strong> \(-D\Delta y = -8 \times 0.5 = -4\%\), the same as the course's table. The exact formula gives 3.90% for a 4.5% par 10-year, because convexity trims the loss slightly. Now push the slider to +250 bp and watch the estimate and the exact answer drift apart.</p></div>
+    </div>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Price against yield: the duration line, the convexity correction, and the exact price</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price of a par bond against its yield. The solid curve is the exact price. A dashed straight line is the duration-only estimate and a dotted curve adds the convexity correction. Dots mark the bond's price after the chosen yield move on each of the three.">
+      <defs><clipPath id="fi-pc-clip"><rect x="64" y="14" width="560" height="260"/></clipPath></defs>
+      <line x1="64" y1="14" x2="64" y2="274" style="stroke:var(--border2);stroke-width:1"/>
+      <line x1="64" y1="274" x2="624" y2="274" style="stroke:var(--border2);stroke-width:1"/>
+      <g id="fi-pc-ticks"></g>
+      <g clip-path="url(#fi-pc-clip)">
+        <line id="fi-pc-v0" x1="300" y1="14" x2="300" y2="274" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+        <line id="fi-pc-v1" x1="360" y1="14" x2="360" y2="274" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:2,4"/>
+        <polyline id="fi-pc-tan" points="" style="fill:none;stroke:var(--amber);stroke-width:2;stroke-dasharray:6,4"/>
+        <polyline id="fi-pc-quad" points="" style="fill:none;stroke:var(--green);stroke-width:2;stroke-dasharray:2,3"/>
+        <polyline id="fi-pc-curve" points="" style="fill:none;stroke:var(--blue);stroke-width:2.8;stroke-linecap:round"/>
+        <circle id="fi-pc-d-tan" cx="300" cy="100" r="5" style="fill:var(--amber)"/>
+        <circle id="fi-pc-d-quad" cx="300" cy="100" r="5" style="fill:var(--green)"/>
+        <circle id="fi-pc-d-exact" cx="300" cy="100" r="6" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>
+      </g>
+      <text x="344" y="308" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">yield (%)</text>
+      <text x="22" y="150" text-anchor="middle" transform="rotate(-90 22 150)" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">price (face = 100)</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Maturity</span><span class="tl-live" id="fi-pc-mat-val">10 years</span></div>
+        <input type="range" id="fi-pc-mat" min="1" max="30" step="1" value="10">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Starting yield (= coupon, a par bond)</span><span class="tl-live" id="fi-pc-y0-val">4.50%</span></div>
+        <input type="range" id="fi-pc-y0" min="3" max="8" step="0.25" value="4.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Yield move</span><span class="tl-live" id="fi-pc-dy-val">+100 bp</span></div>
+        <input type="range" id="fi-pc-dy" min="-300" max="300" step="5" value="100">
+      </div>
+    </div>
+    <div class="tl-readout">Duration D = <b id="fi-pc-D">7.98</b> · Convexity C = <b id="fi-pc-C">76.2</b> · New price (exact) = <b id="fi-pc-newp">92.39</b></div>
+    <div class="tl-readout">Exact change <b id="fi-pc-exact">−7.61%</b> · Duration only <b id="fi-pc-dur">−7.98%</b> · Duration + convexity <b id="fi-pc-both">−7.60%</b></div>
+    <div class="tl-readout">Error of the duration-only estimate: <b id="fi-pc-err">0.37</b> percentage points</div>
+    <div class="tl-hint" id="fi-pc-note">Yields up: duration alone overstates the loss, because the curve bends above its tangent.</div>
+    <div class="tl-chart-caption">
+      Blue: the exact price from the full present-value formula. Dashed amber: the straight duration line. Dotted green: duration plus the convexity term. For small moves the three agree.
+      For large moves, and especially for long bonds, the straight line drifts away, and the green dotted curve stays close to the truth.
+      The bond is a par bond (coupon equal to starting yield) with semiannual coupons; the "course" durations of 2, 8 and 18 correspond to maturities of about 2, 10 and 20 to 30 years.
+    </div>
+  </div>
+  <script>
+  (function(){
+    var sm = document.getElementById('fi-pc-mat'); if (!sm) return;
+    var sy = document.getElementById('fi-pc-y0'), sd = document.getElementById('fi-pc-dy');
+    var curve = document.getElementById('fi-pc-curve'), tan = document.getElementById('fi-pc-tan'), quad = document.getElementById('fi-pc-quad');
+    var dEx = document.getElementById('fi-pc-d-exact'), dTa = document.getElementById('fi-pc-d-tan'), dQu = document.getElementById('fi-pc-d-quad');
+    var v0 = document.getElementById('fi-pc-v0'), v1 = document.getElementById('fi-pc-v1'), ticks = document.getElementById('fi-pc-ticks');
+    var MINUS = '−';
+    function price(c, n, y){ var N = 2 * n, k = c / 2 * 100, r = y / 2, p = 0; for (var t = 1; t <= N; t++) p += k / Math.pow(1 + r, t); return p + 100 / Math.pow(1 + r, N); }
+    function stats(c, n, y){ var h = 1e-4, P = price(c, n, y), Pu = price(c, n, y + h), Pd = price(c, n, y - h); return { P: P, D: -(Pu - Pd) / (2 * h) / P, C: (Pu + Pd - 2 * P) / (h * h) / P }; }
+    function sgn(x, d){ var s = Math.abs(x).toFixed(d); return (x < 0 && +s !== 0 ? MINUS : (x > 0 && +s !== 0 ? '+' : '')) + s; }
+    function set(id, t){ document.getElementById(id).textContent = t; }
+    var X0 = 64, XW = 560, Y0 = 274, YH = 260;
+    function update(){
+      var n = +sm.value, y0 = +sy.value / 100, dyb = +sd.value, dy = dyb / 10000;
+      set('fi-pc-mat-val', n + (n === 1 ? ' year' : ' years'));
+      set('fi-pc-y0-val', (y0 * 100).toFixed(2) + '%');
+      set('fi-pc-dy-val', (dyb > 0 ? '+' : (dyb < 0 ? MINUS : '')) + Math.abs(dyb) + ' bp');
+      var yNew = Math.max(0, y0 + dy), dyEff = yNew - y0;
+      var s = stats(y0, n, y0);
+      var lo = Math.max(0, y0 * 100 - 3.3), hi = lo + 6.4; // percent
+      var pts = [], pq = [], pt = [], N = 64, i, pmin = 1e9, pmax = -1e9, ys = [];
+      for (i = 0; i <= N; i++){
+        var yy = (lo + (hi - lo) * i / N) / 100, ex = price(y0, n, yy), d = yy - y0;
+        ys.push([yy, ex, 100 * (1 - s.D * d), 100 * (1 - s.D * d + 0.5 * s.C * d * d)]);
+        if (ex < pmin) pmin = ex; if (ex > pmax) pmax = ex;
+      }
+      var pad = (pmax - pmin) * 0.06; pmin -= pad; pmax += pad;
+      function X(yy){ return X0 + (yy * 100 - lo) / (hi - lo) * XW; }
+      function Y(p){ return Y0 - (p - pmin) / (pmax - pmin) * YH; }
+      ys.forEach(function(r){ pts.push(X(r[0]).toFixed(1) + ',' + Y(r[1]).toFixed(1)); pt.push(X(r[0]).toFixed(1) + ',' + Y(r[2]).toFixed(1)); pq.push(X(r[0]).toFixed(1) + ',' + Y(r[3]).toFixed(1)); });
+      curve.setAttribute('points', pts.join(' ')); tan.setAttribute('points', pt.join(' ')); quad.setAttribute('points', pq.join(' '));
+      var exact = price(y0, n, yNew), pex = exact / s.P - 1, pdu = -s.D * dyEff, pbo = pdu + 0.5 * s.C * dyEff * dyEff;
+      var xn = X(yNew), x0 = X(y0);
+      v0.setAttribute('x1', x0); v0.setAttribute('x2', x0); v1.setAttribute('x1', xn); v1.setAttribute('x2', xn);
+      dEx.setAttribute('cx', xn); dEx.setAttribute('cy', Y(exact));
+      dTa.setAttribute('cx', xn); dTa.setAttribute('cy', Y(100 * (1 + pdu)));
+      dQu.setAttribute('cx', xn); dQu.setAttribute('cy', Y(100 * (1 + pbo)));
+      var tk = '';
+      for (var v = Math.ceil(lo); v <= hi; v += 1) tk += '<text x="' + X(v / 100).toFixed(1) + '" y="290" text-anchor="middle" style="fill:var(--text3);font-size:10px;font-family:\'DM Mono\',monospace">' + v + '</text>';
+      ticks.innerHTML = tk;
+      set('fi-pc-D', s.D.toFixed(2)); set('fi-pc-C', s.C.toFixed(1)); set('fi-pc-newp', exact.toFixed(2));
+      set('fi-pc-exact', sgn(pex * 100, 2) + '%'); set('fi-pc-dur', sgn(pdu * 100, 2) + '%'); set('fi-pc-both', sgn(pbo * 100, 2) + '%');
+      set('fi-pc-err', Math.abs(pdu - pex) * 100 < 0.005 ? '0.00' : (Math.abs(pdu - pex) * 100).toFixed(2));
+      var note;
+      if (Math.abs(dyEff) < 0.00001) note = 'No yield move: the price is 100 because the coupon equals the yield.';
+      else if (dyEff > 0) note = 'Yields up: duration alone overstates the loss, because the curve bends above its tangent. Convexity cushions the fall.';
+      else note = 'Yields down: duration alone understates the gain, because the curve bends above its tangent. Convexity adds to the rise.';
+      set('fi-pc-note', note);
+    }
+    [sm, sy, sd].forEach(function(e){ e.addEventListener('input', update); });
+    update();
+  })();
+  </script>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A 10-year par bond at 4.5%, with yields up one point</h3>
+    <p>Take a 10-year bond with a 4.5% coupon, priced at par (100) with a 4.5% yield. Its exact duration and convexity, from the formula above, are \(D = 7.98\) and \(C = 76.2\). Yields now rise by one percentage point, \(\Delta y = +0.01\).</p>
+    <div class="tl-math">\[ \text{Duration term} = -7.98 \times 0.01 = -7.98\% \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>7.98</code><span>duration of this 10-year bond</span></div>
+      <div class="tl-eq-chip c2"><code>0.01</code><span>the one-point yield rise, as a decimal</span></div>
+      <div class="tl-eq-chip c4"><code>−7.98%</code><span>the straight-line price loss</span></div>
+    </div>
+    <div class="tl-math">\[ \text{Convexity term} = \tfrac{1}{2}\times 76.2 \times (0.01)^2 = +0.38\% \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>76.2</code><span>convexity of this bond</span></div>
+      <div class="tl-eq-chip c3"><code>(0.01)²</code><span>the yield move squared: 0.0001</span></div>
+      <div class="tl-eq-chip c4"><code>+0.38%</code><span>the correction in the holder's favour</span></div>
+    </div>
+    <p>
+      Together: \(-7.98\% + 0.38\% = -7.60\%\). Repricing the bond exactly at a 5.5% yield gives 92.39, a change of \(-7.61\%\). The duration-only estimate was off by 0.37 points, and
+      adding convexity brings it to within 0.01. Run the same bond in the other direction (yields down one point) and the exact price gain is \(+8.38\%\), not 7.98%: the gain is larger than the loss, which is
+      what "positive convexity" means.
+    </p>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Use \(\Delta P/P \approx -D\,\Delta y + \tfrac12 C (\Delta y)^2\). Answer in percent as positive numbers (loss of 6.0 means type 6).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>A bond with \(D = 8\) sees yields rise 0.75 percentage points. The duration estimate of the price change is \(-8 \times 0.75 =\) a loss of <span class="tl-blank" data-answer="6" data-tol="0.05" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>A 30-year bond with \(D = 16.4\) and \(C = 385\) sees yields <em>fall</em> one percentage point (\(\Delta y = -0.01\)). The duration term is a gain of <span class="tl-blank" data-answer="16.4" data-tol="0.05" data-unit="%"></span>, the convexity term \(\tfrac12 \times 385 \times 0.0001\) adds <span class="tl-blank" data-answer="1.93" data-tol="0.03" data-unit="%"></span>, so the total is a gain of <span class="tl-blank" data-answer="18.3" data-tol="0.1" data-unit="%"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>The 2022 shock on a 10-year bond with \(D = 7.98\) and \(C = 76.2\): yields rise 2.5 points (\(\Delta y = +0.025\)). The duration-only loss is <span class="tl-blank" data-answer="19.95" data-tol="0.05" data-unit="%"></span>; the convexity add-back \(\tfrac12 \times 76.2 \times 0.025^2\) is <span class="tl-blank" data-answer="2.38" data-tol="0.03" data-unit="%"></span>; the net loss is <span class="tl-blank" data-answer="17.57" data-tol="0.1" data-unit="%"></span>. (Exact repricing gives 17.77%.)</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Why 2022 was historic</div>
+    <p>
+      In 2022 the 10-year yield rose about 2.5 points (from roughly 1.5% to roughly 4%, in the course's rounded numbers). With a duration near 8, that is a loss of about 20%: the worst bond market in decades.
+      Round 3 above is that arithmetic. The exact figure is a little smaller (17.8% for a par 4.5% 10-year, because of convexity); a real note also earns its coupon along the way, which narrows the loss further.
+    </p>
+  </div>
+
+  <h3>Growth stocks have duration too</h3>
+  <p>
+    The course's second duration idea is that equities are bonds with a messier cash-flow list. A growth company's value rests mostly on earnings far in the future, so a higher discount rate hits it harder, the same way
+    it hits a 30-year bond harder than a 2-year. High-duration equities: growth, tech, unprofitable companies. Low-duration: value, and banks, which often benefit from higher rates. This is why the
+    Nasdaq and 30-year Treasuries (for example the TLT ETF) often trade together, and the course puts growth-stock duration at 25 or more.
+  </p>
+  <p>
+    The simplest equity model shows where such a number can come from. A stream of cash flows growing at a constant rate \(g\), discounted at \(r\), is worth \(P = D_1/(r-g)\).
+  </p>
+  <div class="tl-math">\[ D_{equity} = -\frac{1}{P}\frac{dP}{dr} = \frac{1}{r-g} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>D_equity</code><span>the stock's sensitivity to the discount rate, same definition as for a bond</span></div>
+    <div class="tl-eq-chip c2"><code>r</code><span>the discount rate (a risk-free yield plus a risk premium)</span></div>
+    <div class="tl-eq-chip c3"><code>g</code><span>the growth rate of the cash flows, held fixed here</span></div>
+    <div class="tl-eq-chip c4"><code>1/(r−g)</code><span>the closer \(g\) is to \(r\), the longer the effective wait, so the higher the duration (4% gap means 25)</span></div>
+  </div>
+  <p>
+    That is a textbook result for a constant-growth stream, shown here to explain the "25 or more" and not as a valuation tool. It also shows why the mathematics is "mechanical": higher rates mean lower price-to-earnings multiples through the discount rate.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Convexity, and the cases where duration is not enough</div>
+    <h3>Positive and negative convexity</h3>
+    <p>
+      The price-yield relationship is curved, not linear. With <strong>positive convexity</strong> (most bonds), prices rise more when yields fall than they fall when yields rise, which is good for holders.
+      With <strong>negative convexity</strong> (for example mortgage-backed securities, because homeowners prepay when rates fall), the bond behaves <em>worse</em> than duration predicts in both directions.
+      For most trading purposes duration is enough. Convexity matters for large bond books, mortgage-backed securities, and big yield moves, as the 30-year line in the chart above shows.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The yield curve</h2>
+  <p>
+    The curve plots yields (vertical) against maturity (horizontal): 3 months, 2 years, 5, 10, 30. Its shape is the market's collective expectation for future rates, growth and inflation.
+    The course's line is that this is "the bond market talking, and it's usually smarter than the stock market".
+  </p>
+
+  <div class="tl-table"><table>
+    <tr><th>Shape</th><th>What it looks like</th><th>As the course reads it</th></tr>
+    <tr><td>Normal (upward)</td><td>Long yields above short</td><td>Healthy economy expected; growth and inflation anticipated</td></tr>
+    <tr><td>Flat</td><td>Little difference across maturities</td><td>Uncertainty; often a transition phase</td></tr>
+    <tr><td>Inverted</td><td>Short rates above long</td><td>Recession signal; the market expects cuts</td></tr>
+    <tr><td>Humped</td><td>The middle maturities highest</td><td>Rare; policy transition or unusual conditions</td></tr>
+  </table></div>
+
+  <div class="tl-math">\[ \text{2s10s} = y_{10\text{Y}} - y_{2\text{Y}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>2s10s</code><span>the most-watched curve spread, quoted in basis points; negative means inverted</span></div>
+    <div class="tl-eq-chip c2"><code>y₁₀</code><span>the 10-year Treasury yield</span></div>
+    <div class="tl-eq-chip c3"><code>y₂</code><span>the 2-year Treasury yield, the market's read of the policy path</span></div>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Curve-shape explorer: pick a shape, then move the short and long ends</div>
+    <svg viewBox="0 0 640 310" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Yield curve with five maturities: 3 month, 2 year, 5 year, 10 year and 30 year. A dashed line shows the chosen preset shape. A solid line shows the curve after the short-end and long-end moves.">
+      <g id="fi-yc-grid"></g>
+      <line x1="64" y1="270" x2="624" y2="270" style="stroke:var(--border2);stroke-width:1"/>
+      <polyline id="fi-yc-base" points="" style="fill:none;stroke:var(--text3);stroke-width:2;stroke-dasharray:5,4"/>
+      <polyline id="fi-yc-now" points="" style="fill:none;stroke:var(--blue);stroke-width:3;stroke-linecap:round;stroke-linejoin:round"/>
+      <g id="fi-yc-dots"></g>
+      <text x="344" y="304" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">maturity (evenly spaced; not to scale)</text>
+      <text x="20" y="150" text-anchor="middle" transform="rotate(-90 20 150)" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">yield (%)</text>
+    </svg>
+    <div class="tp-btnrow" id="fi-yc-presets">
+      <button type="button" class="tl-scratch-reset-btn tp-on" data-preset="normal">Normal</button>
+      <button type="button" class="tl-scratch-reset-btn" data-preset="flat">Flat</button>
+      <button type="button" class="tl-scratch-reset-btn" data-preset="inverted">Inverted</button>
+      <button type="button" class="tl-scratch-reset-btn" data-preset="humped">Humped</button>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Move the short end (3M and 2Y)</span><span class="tl-live" id="fi-yc-short-val">0 bp</span></div>
+        <input type="range" id="fi-yc-short" min="-150" max="150" step="5" value="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Move the long end (10Y and 30Y)</span><span class="tl-live" id="fi-yc-long-val">0 bp</span></div>
+        <input type="range" id="fi-yc-long" min="-150" max="150" step="5" value="0">
+      </div>
+    </div>
+    <div class="tl-readout">2s10s = <b id="fi-yc-2s10s">+60 bp</b> · 3M–10Y = <b id="fi-yc-3m10y">+90 bp</b> · 2s30s = <b id="fi-yc-2s30s">+100 bp</b></div>
+    <div class="tl-readout">Shape now: <b id="fi-yc-shape">Normal (upward sloping)</b> · Move from the preset: <b id="fi-yc-move">No move</b></div>
+    <div class="tl-hint" id="fi-yc-read">Pick a preset, then try moving only the short end down (a bull steepener) or only the short end up (a bear flattener). The 5Y point moves half as much as the nearer end.</div>
+    <div class="tl-chart-caption">
+      The preset yields are illustrative shapes, not market data. The shape labels use thresholds chosen for this demo (inverted if 2s10s is −5 bp or lower, flat under +25 bp, humped if 2Y or 5Y is more than 10 bp above both the 3M and 30Y); they are not official definitions.
+      The move label compares the new curve with the dashed preset: bull means yields fell, bear means yields rose, steepener means 2s10s widened, flattener means it narrowed.
+    </div>
+  </div>
+  <script>
+  (function(){
+    var sS = document.getElementById('fi-yc-short'); if (!sS) return;
+    var sL = document.getElementById('fi-yc-long');
+    var PRE = { normal: [3.50, 3.80, 4.10, 4.40, 4.80], flat: [4.30, 4.20, 4.20, 4.25, 4.40], inverted: [5.30, 4.90, 4.40, 4.20, 4.40], humped: [3.80, 4.50, 4.60, 4.30, 4.20] };
+    var NM = ['3M', '2Y', '5Y', '10Y', '30Y'];
+    var MEAN = {
+      'Bull steepener': 'Short rates fall faster than long: Fed cuts being priced; early recession or crisis response.',
+      'Bear steepener': 'Long rates rise faster than short: growth or inflation expectations rising; recovery or inflation fear.',
+      'Bull flattener': 'Long rates fall faster than short: flight to quality; growth fears; long bonds as a haven.',
+      'Bear flattener': 'Short rates rise faster than long: Fed tightening; hikes expected to slow the economy; inversion risk.'
+    };
+    var cur = 'normal', MINUS = '−';
+    var XS = [100, 225, 350, 475, 600];
+    function Y(v){ return 270 - (v - 1.5) / 5.5 * 230; }
+    function bp(x){ var r = Math.round(x); return (r > 0 ? '+' : (r < 0 ? MINUS : '')) + Math.abs(r) + ' bp'; }
+    function pts(a){ return a.map(function(v, i){ return XS[i] + ',' + Y(v).toFixed(1); }).join(' '); }
+    function shifted(base, s, l){ var d = [s, s, (s + l) / 2, l, l]; return base.map(function(v, i){ return v + d[i] / 100; }); }
+    function shape(a){
+      var s = Math.round((a[3] - a[1]) * 100), hump = Math.max(a[1], a[2]) - Math.max(a[0], a[4]);
+      if (hump >= 0.10) return 'Humped';
+      if (s <= -5) return 'Inverted';
+      if (s < 25) return 'Flat';
+      return 'Normal (upward sloping)';
+    }
+    var grid = '';
+    for (var g = 2; g <= 7; g++) grid += '<line x1="64" y1="' + Y(g).toFixed(1) + '" x2="624" y2="' + Y(g).toFixed(1) + '" style="stroke:var(--border);stroke-width:1"/><text x="56" y="' + (Y(g) + 4).toFixed(1) + '" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:\'DM Mono\',monospace">' + g + '</text>';
+    NM.forEach(function(n, i){ grid += '<text x="' + XS[i] + '" y="288" text-anchor="middle" style="fill:var(--text2);font-size:11px;font-family:\'DM Mono\',monospace">' + n + '</text>'; });
+    document.getElementById('fi-yc-grid').innerHTML = grid;
+    function update(){
+      var s = +sS.value, l = +sL.value, base = PRE[cur], a = shifted(base, s, l);
+      document.getElementById('fi-yc-short-val').textContent = s === 0 ? '0 bp' : bp(s);
+      document.getElementById('fi-yc-long-val').textContent = l === 0 ? '0 bp' : bp(l);
+      document.getElementById('fi-yc-base').setAttribute('points', pts(base));
+      document.getElementById('fi-yc-now').setAttribute('points', pts(a));
+      var dots = ''; a.forEach(function(v, i){ dots += '<circle cx="' + XS[i] + '" cy="' + Y(v).toFixed(1) + '" r="5" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/><text x="' + XS[i] + '" y="' + (Y(v) - 10).toFixed(1) + '" text-anchor="middle" style="fill:var(--text);font-size:11px;font-family:\'DM Mono\',monospace">' + v.toFixed(2) + '</text>'; });
+      document.getElementById('fi-yc-dots').innerHTML = dots;
+      var s2s10s = (a[3] - a[1]) * 100, s3m10 = (a[3] - a[0]) * 100, s2s30 = (a[4] - a[1]) * 100;
+      document.getElementById('fi-yc-2s10s').textContent = bp(s2s10s);
+      document.getElementById('fi-yc-3m10y').textContent = bp(s3m10);
+      document.getElementById('fi-yc-2s30s').textContent = bp(s2s30);
+      document.getElementById('fi-yc-shape').textContent = shape(a);
+      var mv, d = l - s;
+      if (s === 0 && l === 0) mv = 'No move';
+      else if (Math.abs(d) < 1) mv = 'Parallel shift ' + (s > 0 ? 'up' : 'down');
+      else mv = ((s + l) / 2 < 0 ? 'Bull ' : 'Bear ') + (d > 0 ? 'steepener' : 'flattener');
+      document.getElementById('fi-yc-move').textContent = mv;
+      var rd = MEAN[mv];
+      if (!rd) rd = (mv === 'No move') ? 'Pick a preset, then try moving only the short end down (a bull steepener) or only the short end up (a bear flattener). The 5Y point moves half as much as the nearer end.' : 'Both ends moved the same amount, so the shape is unchanged and 2s10s did not move.';
+      if (shape(a) === 'Inverted') rd += ' The curve is inverted: the course reads this as a recession warning with a variable 6 to 24 month lead, a warning and not a timer.';
+      document.getElementById('fi-yc-read').textContent = rd;
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('#fi-yc-presets button'), function(b){
+      b.addEventListener('click', function(){
+        cur = b.getAttribute('data-preset');
+        Array.prototype.forEach.call(document.querySelectorAll('#fi-yc-presets button'), function(o){ o.classList.toggle('tp-on', o === b); });
+        update();
+      });
+    });
+    [sS, sL].forEach(function(e){ e.addEventListener('input', update); });
+    update();
+  })();
+  </script>
+
+  <h3>Why inversion predicts recession (the mechanism)</h3>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>1 · Fed tightens</b>Policy hikes push short rates (the 2Y) up</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>2 · Market looks ahead</b>It expects the hikes to slow the economy and force cuts later</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>3 · Long rates average</b>A 10Y yield reflects the expected <em>average</em> of future short rates, so expected cuts hold it down</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>4 · 2Y &gt; 10Y</b>The inverted curve is the market pricing that the Fed will be forced to cut</div>
+  </div>
+  <p>
+    The course states that an inverted curve has preceded <strong>every US recession in the past 50+ years</strong>, with a lead time that is variable, historically <strong>6 to 24 months</strong>: a warning sign, not a precise timer.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Normally you get paid more to lend money for a long time than for a short time, like a bigger prize for waiting longer. When the curve inverts, lenders accept less for the long wait, because they think times will be bad later and the grown-ups in charge of rates will have to cut them. So a "backwards" curve is the market whispering that it expects trouble.</p>
+  </div>
+
+  <h3>Key spreads and curve moves</h3>
+  <ul>
+    <li><strong>2s10s:</strong> the most popular measure; negative means inverted; watched by media and the Fed.</li>
+    <li><strong>3M–10Y:</strong> some research says it has better recession-predictive power; the Fed's preferred measure.</li>
+    <li><strong>2s30s:</strong> the very long end; more volatile, and it can diverge from 2s10s.</li>
+  </ul>
+  <div class="tl-table"><table>
+    <tr><th>Move</th><th>What's happening</th><th>Signal (as taught)</th></tr>
+    <tr><td>Bull steepener</td><td>Short rates fall faster than long</td><td>Fed cuts being priced; early recession or crisis response</td></tr>
+    <tr><td>Bear steepener</td><td>Long rates rise faster than short</td><td>Growth or inflation expectations rising; recovery or inflation fear</td></tr>
+    <tr><td>Bull flattener</td><td>Long rates fall faster than short</td><td>Flight to quality; growth fears; long bonds as haven</td></tr>
+    <tr><td>Bear flattener</td><td>Short rates rise faster than long</td><td>Fed tightening; hikes expected to slow the economy; inversion risk</td></tr>
+  </table></div>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Curve to equity positioning (as taught)</h2></summary>
+  <ul>
+    <li><strong>Steepening (bull or bear):</strong> generally favours cyclicals, value and banks.</li>
+    <li><strong>Flattening toward inversion:</strong> caution; reduce cyclicals, favour defensives.</li>
+    <li><strong>Deeply inverted:</strong> recession risk elevated, timing uncertain; reduce risk gradually and don't panic.</li>
+    <li><strong>Rapid un-inversion:</strong> often happens right before the recession actually starts, so the steepening after an inversion can be the final warning.</li>
+  </ul>
+  <p>These are the course's positioning rules of thumb. None is tested here; treat them as a vocabulary for thinking about the curve, not as signals.</p>
+  </details>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>"Every recession" is a small sample, and the lead time is wide</h3>
+    <p>
+      Fifty-odd years holds only a handful of US recessions, so "inversion preceded every one" rests on a few observations. Inversion is also not
+      the same as "a recession follows": the claim runs from recession back to inversion, not forward, and false alarms are possible. The 2022 inversion lasted roughly two years, far longer than the course's usual window shows;
+      whether a recession has been dated by the NBER is something to check, not assume. The 6 to 24 month lead is wide enough that "inverted today" is a poor entry timer.
+    </p>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="curve-inversion" data-evidence-date="2026-10-01">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>curve-inversion: NULL for the tradeable half.</strong> 12,581 daily 10y-minus-2y observations (1976 to 2026) collapse to <strong>ten</strong> inversion episodes. A recession within 24 months followed <strong>6 of 10 (60%, 95% interval 31% to 83%)</strong>, an interval that contains a coin flip; within 12 months only 3 of 10. Forward Nasdaq returns against a month-matched control did not separate at any horizon, and steepening episodes did <em>worse</em> than inversions, so curve shape is not what divides the periods. The recession association can be quoted descriptively, always with the denominator.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Credit spreads and risk appetite</h2>
+  <p>
+    A <strong>credit spread</strong> is the extra yield investors demand to hold corporate debt instead of government debt. Treasury at 4%, corporate at 6%: the spread is 200 basis points, the compensation for default risk.
+    Spreads <strong>widening</strong> means fear is rising; <strong>tightening</strong> means confidence is rising.
+  </p>
+  <div class="tl-math">\[ \text{Credit spread} = y_{\text{corporate}} - y_{\text{Treasury}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Credit spread</code><span>the extra yield for default risk, in basis points (1 bp = 0.01%)</span></div>
+    <div class="tl-eq-chip c2"><code>y_corp</code><span>the yield on a corporate bond of similar maturity</span></div>
+    <div class="tl-eq-chip c3"><code>y_Treasury</code><span>the "risk-free" yield on a Treasury of the same maturity</span></div>
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>IG</td><td>Investment grade: BBB− and above.</td></tr>
+    <tr><td>HY</td><td>High yield ("junk"): BB+ and below.</td></tr>
+    <tr><td>OAS</td><td>Option-adjusted spread: the spread after stripping out the value of embedded options, the standard way to quote an index.</td></tr>
+    <tr><td>CDX</td><td>A tradeable credit-default index (see the reference block below).</td></tr>
+  </table></div>
+
+  <p><strong>Why credit is supposed to lead equities (the course's reasoning).</strong> Bond investors are more institutional, more downside-focused and less swayed by narrative. Bonds have a defined downside (paid back or not), which breeds natural scepticism,
+  and credit liquidity can seize faster, giving early signals. The classic pattern as taught: spreads start widening, equities ignore it for days or weeks, then equities sell off. Watching credit is advance warning.</p>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">The course's 2007 example</div>
+    <p>High-yield spreads began widening significantly in summer 2007; equities made new highs in October 2007. Credit warned for months before the 2008 collapse.</p>
+  </div>
+
+  <div class="tl-table"><table>
+    <tr><th>HY spread level</th><th>Read (rough guideposts)</th></tr>
+    <tr><td>&lt; 300 bp</td><td>Very tight: strong risk appetite, potentially complacent</td></tr>
+    <tr><td>300–400</td><td>Normal: healthy risk appetite</td></tr>
+    <tr><td>400–500</td><td>Elevated: some stress, monitor</td></tr>
+    <tr><td>500–700</td><td>Stressed: risk-off, recession pricing</td></tr>
+    <tr><td>&gt; 800</td><td>Crisis: distress, defaults expected</td></tr>
+  </table></div>
+  <p>
+    The course's bands leave 700 to 800 bp unlabelled; read it as between stressed and crisis. And the course's own rule: <strong>direction and speed matter more than level.</strong> +50 bp in a week is more significant than a slow drift,
+    and +20 bp in a single day often precedes equity volatility.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Illustrative only: a made-up credit blow-out and the equity drawdown that follows it</div>
+    <svg viewBox="0 0 640 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two stacked panels over 120 days. Top: a high-yield spread that is flat at 300 basis points, then widens steadily from day 30 to day 90 and holds. Bottom: a stylised equity index that keeps rising for the chosen lag in days after the widening starts, then falls in proportion to the widening that happened one lag earlier.">
+      <text x="64" y="16" style="fill:var(--amber);font-size:11px;font-weight:700;font-family:'DM Mono',monospace">HY spread (bp), made-up path</text>
+      <text x="64" y="188" style="fill:var(--blue);font-size:11px;font-weight:700;font-family:'DM Mono',monospace">Equity index, made-up path (start = 100)</text>
+      <line x1="64" y1="24" x2="64" y2="150" style="stroke:var(--border2)"/><line x1="64" y1="150" x2="620" y2="150" style="stroke:var(--border2)"/>
+      <line x1="64" y1="196" x2="64" y2="300" style="stroke:var(--border2)"/><line x1="64" y1="300" x2="620" y2="300" style="stroke:var(--border2)"/>
+      <g id="fi-cr-bands"></g>
+      <line id="fi-cr-t0" x1="64" y1="24" x2="64" y2="300" style="stroke:var(--amber);stroke-dasharray:3,3"/>
+      <line id="fi-cr-t1" x1="64" y1="24" x2="64" y2="300" style="stroke:var(--blue);stroke-dasharray:3,3"/>
+      <text id="fi-cr-t0l" x="64" y="322" text-anchor="middle" style="fill:var(--amber);font-size:10px;font-family:'DM Mono',monospace">widening starts</text>
+      <text id="fi-cr-t1l" x="64" y="334" text-anchor="middle" style="fill:var(--blue);font-size:10px;font-family:'DM Mono',monospace">equities turn</text>
+      <polyline id="fi-cr-sp" points="" style="fill:none;stroke:var(--amber);stroke-width:2.6;stroke-linejoin:round"/>
+      <polyline id="fi-cr-eq" points="" style="fill:none;stroke:var(--blue);stroke-width:2.6;stroke-linejoin:round"/>
+      <text x="620" y="312" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">day 0 to 120</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Widening speed</span><span class="tl-live" id="fi-cr-w-val">20 bp / week</span></div>
+        <input type="range" id="fi-cr-w" min="5" max="70" step="5" value="20">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Days equities ignore it (the lag)</span><span class="tl-live" id="fi-cr-l-val">15 days</span></div>
+        <input type="range" id="fi-cr-l" min="0" max="40" step="1" value="15">
+      </div>
+    </div>
+    <div class="tl-readout">Spread at day 120: <b id="fi-cr-end">540 bp</b> · Course band: <b id="fi-cr-band">Stressed: risk-off, recession pricing</b></div>
+    <div class="tl-readout">Peak-to-day-120 equity drawdown: <b id="fi-cr-dd">7.2%</b> · Is this a +50 bp-in-a-week move? <b id="fi-cr-flag">No</b></div>
+    <div class="tl-hint">This is a stylised illustration of the course's story, not data. The rules are mine and are stated here: the spread widens at the chosen speed from day 30 to day 90; equities drift up until the lag has passed, then give back 3 percentage points of price for every 100 bp of widening seen one lag earlier.</div>
+    <div class="tl-chart-caption">
+      <strong>ILLUSTRATIVE, not a measurement.</strong> The lead in this picture is built in by the lag slider; the picture shows what the course <em>claims</em>, not what markets did. Set the lag to 0 and the two simply move together.
+    </div>
+  </div>
+  <script>
+  (function(){
+    var sw = document.getElementById('fi-cr-w'); if (!sw) return;
+    var sl = document.getElementById('fi-cr-l');
+    var T = 120, T0 = 30, T1 = 90, S0 = 300, K = 0.03, G = 0.0004;
+    function set(id, t){ document.getElementById(id).textContent = t; }
+    function band(s){
+      if (s < 300) return 'Very tight: strong risk appetite, potentially complacent';
+      if (s < 400) return 'Normal: healthy risk appetite';
+      if (s < 500) return 'Elevated: some stress, monitor';
+      if (s <= 700) return 'Stressed: risk-off, recession pricing';
+      if (s <= 800) return 'Between stressed and crisis (the course leaves this range unlabelled)';
+      return 'Crisis: distress, defaults expected';
+    }
+    function spreadAt(t, w){ if (t <= T0) return S0; return S0 + w / 5 * (Math.min(t, T1) - T0); }
+    function eqAt(t, w, L){
+      var up = 100 * Math.pow(1 + G, Math.min(t, T0 + L)), ds = Math.max(0, spreadAt(t - L, w) - S0);
+      return up * (1 - K * ds / 100);
+    }
+    function X(t){ return 64 + t / T * 556; }
+    var bandsG = document.getElementById('fi-cr-bands');
+    function update(){
+      var w = +sw.value, L = +sl.value, t, sp = [], eq = [], peak = 0, mn = 1e9, mx = -1e9, e = [];
+      set('fi-cr-w-val', w + ' bp / week'); set('fi-cr-l-val', L + (L === 1 ? ' day' : ' days'));
+      var smax = Math.max(500, S0 + w / 5 * (T1 - T0) + 60);
+      for (t = 0; t <= T; t++){ var v = eqAt(t, w, L); e.push(v); if (v > peak) peak = v; if (v < mn) mn = v; if (v > mx) mx = v; }
+      var lo = Math.floor(mn - 1), hi = Math.ceil(mx + 1);
+      function YS(s){ return 150 - (s - 200) / (smax - 200) * 120; }
+      function YE(v){ return 300 - (v - lo) / (hi - lo) * 96; }
+      for (t = 0; t <= T; t++){ sp.push(X(t).toFixed(1) + ',' + YS(spreadAt(t, w)).toFixed(1)); eq.push(X(t).toFixed(1) + ',' + YE(e[t]).toFixed(1)); }
+      document.getElementById('fi-cr-sp').setAttribute('points', sp.join(' '));
+      document.getElementById('fi-cr-eq').setAttribute('points', eq.join(' '));
+      var x0 = X(T0), x1 = X(Math.min(T, T0 + L));
+      ['fi-cr-t0', 'fi-cr-t0l'].forEach(function(id){ var el = document.getElementById(id); el.setAttribute(id.slice(-1) === 'l' ? 'x' : 'x1', x0); if (id.slice(-1) !== 'l') el.setAttribute('x2', x0); });
+      ['fi-cr-t1', 'fi-cr-t1l'].forEach(function(id){ var el = document.getElementById(id); el.setAttribute(id.slice(-1) === 'l' ? 'x' : 'x1', x1); if (id.slice(-1) !== 'l') el.setAttribute('x2', x1); });
+      var bl = '', lv = [300, 400, 500, 700];
+      lv.forEach(function(b){ if (b < smax) bl += '<line x1="64" y1="' + YS(b).toFixed(1) + '" x2="620" y2="' + YS(b).toFixed(1) + '" style="stroke:var(--border);stroke-dasharray:2,4"/><text x="58" y="' + (YS(b) + 3).toFixed(1) + '" text-anchor="end" style="fill:var(--text3);font-size:9px;font-family:\'DM Mono\',monospace">' + b + '</text>'; });
+      bandsG.innerHTML = bl;
+      var send = spreadAt(T, w);
+      set('fi-cr-end', Math.round(send) + ' bp'); set('fi-cr-band', band(send));
+      set('fi-cr-dd', ((peak - e[T]) / peak * 100).toFixed(1) + '%');
+      set('fi-cr-flag', w >= 50 ? 'Yes' : 'No');
+    }
+    [sw, sl].forEach(function(el){ el.addEventListener('input', update); });
+    update();
+  })();
+  </script>
+
+  <details class="tl-section-collapse">
+  <summary><h2>CDX indices and the credit monitoring routine (as taught)</h2></summary>
+  <ul>
+    <li><strong>CDX IG:</strong> 125 North American investment-grade names.</li>
+    <li><strong>CDX HY:</strong> 100 high-yield names; more volatile and more correlated with equities.</li>
+  </ul>
+  <p>Both are liquid and tradeable; the course notes that many institutional desks watch CDX more closely than equity indices for real-time risk sentiment.</p>
+  <ol>
+    <li><strong>Daily:</strong> HY spread level and direction; a widening trend is a caution for equity longs.</li>
+    <li><strong>Divergence alert:</strong> equities rally while spreads widen; be sceptical of the rally.</li>
+    <li><strong>Speed:</strong> +20 bp in a day often precedes equity volatility.</li>
+    <li><strong>Confirmation:</strong> add equity risk preferably when credit is stable or tightening.</li>
+  </ol>
+  </details>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="credit-leads-equities" data-evidence-date="2026-10-19">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>credit-leads-equities: NULL.</strong> Credit and equities agree in the same window, but on 22 years of Moody's Baa-minus-Aaa and Baa-over-Treasury spreads, widening was <em>not</em> followed by lower Nasdaq or S&amp;P returns, or more volatility than persistence predicts, at 1, 5 or 20 sessions (every interval across zero, twelve scored cells, none surviving false-discovery control, and a lagged placebo looked the same). One descriptive leg is worth more data: ICE high-yield spread widening followed by higher next-week realised volatility, but only three years of history exist, so it is not yet a finding. The 2007 example is one episode.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>TIPS and real yields</h2>
+  <p>
+    A nominal yield bundles two things: what you earn after inflation, and what you are compensated for expecting inflation to be. Pull them apart and you get the <strong>real yield</strong>, the true after-inflation return.
+    Nominal 4.5% with 2.5% expected inflation means a real yield of roughly 2%.
+  </p>
+  <div class="tl-math">\[ \text{Real yield} \approx \text{Nominal yield} - \text{Expected inflation} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Real yield</code><span>the return after inflation: what a bond truly pays</span></div>
+    <div class="tl-eq-chip c2"><code>Nominal yield</code><span>the quoted Treasury yield, no inflation adjustment</span></div>
+    <div class="tl-eq-chip c3"><code>Expected inflation</code><span>the market's expected average inflation over the bond's life</span></div>
+  </div>
+  <p>
+    <strong>TIPS</strong> (Treasury Inflation-Protected Securities) have a principal that adjusts with inflation, so the TIPS yield is approximately the real yield directly. That gives a direct readout of the market's inflation expectation:
+  </p>
+  <div class="tl-math">\[ \text{Breakeven inflation} = \text{Nominal yield} - \text{TIPS yield} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Breakeven</code><span>the market's implied average inflation over that horizon</span></div>
+    <div class="tl-eq-chip c2"><code>Nominal yield</code><span>the ordinary Treasury yield for the maturity</span></div>
+    <div class="tl-eq-chip c3"><code>TIPS yield</code><span>the real yield on the inflation-protected bond of the same maturity</span></div>
+  </div>
+  <p>
+    Course example: the 10-year at 4.5% and the 10-year TIPS at 2.0% give a 10-year breakeven of 2.5%. The name comes from what it tells you: hold the TIPS rather than the nominal bond, and you come out ahead only if inflation
+    averages more than that breakeven.
+  </p>
+  <p>
+    <strong>Why real yields matter.</strong> They are the opportunity cost of holding assets that pay nothing. High real yields mean bonds pay a real return, so why hold gold (no yield), speculative growth, or crypto? Low or negative real yields mean bonds don't beat inflation, which makes
+    the non-yielders attractive. The course says gold performs well when real yields are falling or negative and struggles when they rise, "documented over decades".
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Breakeven decomposition: nominal = real + breakeven, and where a move in the nominal yield came from</div>
+    <svg viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two horizontal bars on a percent axis from −2 to 8. Each bar starts at zero, runs along the real yield, then continues along the breakeven inflation to reach the nominal yield. The top bar is the current setting and the bottom bar is a saved before state.">
+      <g id="fi-be-grid"></g>
+      <text x="22" y="58" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">NOW</text>
+      <text x="22" y="148" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">BEFORE</text>
+      <rect id="fi-be-r1" x="70" y="40" width="0" height="30" style="fill:var(--blue);opacity:.85"/>
+      <rect id="fi-be-b1" x="70" y="40" width="0" height="30" style="fill:var(--amber);opacity:.85"/>
+      <rect id="fi-be-r0" x="70" y="130" width="0" height="30" style="fill:var(--blue);opacity:.45"/>
+      <rect id="fi-be-b0" x="70" y="130" width="0" height="30" style="fill:var(--amber);opacity:.45"/>
+      <text id="fi-be-t1" x="70" y="34" style="fill:var(--text);font-size:11px;font-family:'DM Mono',monospace"></text>
+      <text id="fi-be-t0" x="70" y="124" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace"></text>
+      <rect x="400" y="196" width="12" height="12" style="fill:var(--blue)"/><text x="418" y="206" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">real</text>
+      <rect x="470" y="196" width="12" height="12" style="fill:var(--amber)"/><text x="488" y="206" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">breakeven</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>10Y nominal yield</span><span class="tl-live" id="fi-be-nom-val">4.50%</span></div>
+        <input type="range" id="fi-be-nom" min="0" max="8" step="0.05" value="4.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>10Y TIPS (real) yield</span><span class="tl-live" id="fi-be-real-val">2.00%</span></div>
+        <input type="range" id="fi-be-real" min="-2" max="4" step="0.05" value="2">
+      </div>
+    </div>
+    <div class="tp-btnrow">
+      <button type="button" class="tl-scratch-reset-btn" id="fi-be-ex">Course example (4.50 / 2.00)</button>
+      <button type="button" class="tl-scratch-reset-btn" id="fi-be-end">Course 2022 end-state (4.20 / 1.50)</button>
+      <button type="button" class="tl-scratch-reset-btn" id="fi-be-snap">Save current as "before"</button>
+    </div>
+    <div class="tl-readout">Breakeven inflation now = <b id="fi-be-be">2.50%</b> · "Before" state: nominal <b id="fi-be-n0">1.50%</b>, real <b id="fi-be-r0v">−1.00%</b>, breakeven <b id="fi-be-be0">2.50%</b></div>
+    <div class="tl-readout">Change in nominal <b id="fi-be-dn">+3.00 pp</b> = change in real <b id="fi-be-dr">+3.00 pp</b> + change in breakeven <b id="fi-be-dbe">+0.00 pp</b> · Share of the nominal move that was real: <b id="fi-be-share">100%</b></div>
+    <div class="tl-hint">The "before" state starts at the course's rounded start of 2022 (nominal about 1.5%, real about −1.0%). Use the second button to jump to the course's end-state and see how little of the move was inflation expectations.</div>
+    <div class="tl-chart-caption">
+      The bar reads left to right as an addition: start at zero, add the real yield, add the breakeven, and you land on the nominal yield. If the nominal yield rises but breakevens do not, the whole rise is real yield, which is the number gold and growth stocks care about. The figures are the course's rounded numbers, not a data series; current values are on FRED as DGS10, DFII10 and T10YIE.
+    </div>
+  </div>
+  <script>
+  (function(){
+    var sn = document.getElementById('fi-be-nom'); if (!sn) return;
+    var sr = document.getElementById('fi-be-real');
+    var MINUS = '−', before = { nom: 1.5, real: -1.0 };
+    function fmtPct(x){ return (x < 0 ? MINUS : '') + Math.abs(x).toFixed(2) + '%'; }
+    function fmtPP(x){ var s = Math.abs(x).toFixed(2); return (x < 0 && +s !== 0 ? MINUS : '+') + s + ' pp'; }
+    function set(id, t){ document.getElementById(id).textContent = t; }
+    function X(v){ return 70 + (v + 2) * 54; }
+    var gr = ''; for (var v = -2; v <= 8; v += 2) gr += '<line x1="' + X(v) + '" y1="20" x2="' + X(v) + '" y2="180" style="stroke:var(--border);stroke-width:' + (v === 0 ? 1.8 : 1) + '"/><text x="' + X(v) + '" y="192" text-anchor="middle" style="fill:var(--text3);font-size:10px;font-family:\'DM Mono\',monospace">' + v + '%</text>';
+    document.getElementById('fi-be-grid').innerHTML = gr;
+    function bar(rId, bId, tId, nom, real){
+      var r = document.getElementById(rId), b = document.getElementById(bId);
+      r.setAttribute('x', Math.min(X(0), X(real))); r.setAttribute('width', Math.abs(X(real) - X(0)));
+      b.setAttribute('x', Math.min(X(real), X(nom))); b.setAttribute('width', Math.abs(X(nom) - X(real)));
+      var t = document.getElementById(tId); t.setAttribute('x', 70);
+      t.textContent = 'nominal ' + fmtPct(nom) + ' = real ' + fmtPct(real) + ' + breakeven ' + fmtPct(nom - real);
+    }
+    function update(){
+      var nom = +sn.value, real = +sr.value;
+      set('fi-be-nom-val', fmtPct(nom)); set('fi-be-real-val', fmtPct(real));
+      bar('fi-be-r1', 'fi-be-b1', 'fi-be-t1', nom, real);
+      bar('fi-be-r0', 'fi-be-b0', 'fi-be-t0', before.nom, before.real);
+      var be = nom - real, be0 = before.nom - before.real, dn = nom - before.nom, dr = real - before.real, dbe = be - be0;
+      set('fi-be-be', fmtPct(be)); set('fi-be-be0', fmtPct(be0)); set('fi-be-n0', fmtPct(before.nom)); set('fi-be-r0v', fmtPct(before.real));
+      set('fi-be-dn', fmtPP(dn)); set('fi-be-dr', fmtPP(dr)); set('fi-be-dbe', fmtPP(dbe));
+      set('fi-be-share', Math.abs(dn) < 0.005 ? 'n/a' : Math.round(dr / dn * 100) + '%');
+    }
+    function setBoth(n, r){ sn.value = n; sr.value = r; update(); }
+    document.getElementById('fi-be-ex').addEventListener('click', function(){ setBoth(4.5, 2); });
+    document.getElementById('fi-be-end').addEventListener('click', function(){ setBoth(4.2, 1.5); });
+    document.getElementById('fi-be-snap').addEventListener('click', function(){ before = { nom: +sn.value, real: +sr.value }; document.getElementById('fi-be-snap').textContent = 'Saved: before = ' + fmtPct(before.nom) + ' / ' + fmtPct(before.real); update(); });
+    [sn, sr].forEach(function(e){ e.addEventListener('input', update); });
+    update();
+  })();
+  </script>
+
+  <div class="tl-table"><table>
+    <tr><th>Real-yield environment</th><th>Gold</th><th>Growth stocks</th></tr>
+    <tr><td>Negative or falling</td><td>Supportive</td><td>Supportive (lower discount rate)</td></tr>
+    <tr><td>Rising toward positive</td><td>Pressure</td><td>Pressure (higher discount rate)</td></tr>
+    <tr><td>High positive (2%+)</td><td>Headwind</td><td>Challenging (works only if growth is strong enough)</td></tr>
+  </table></div>
+  <p>
+    <strong>2022 in context.</strong> In the course's numbers, real yields swung from roughly −1% to +1.5%, a swing of about 2.5 points, and crushed gold and growth stocks at the same time. Not random: real yields. The decomposition above makes the same point.
+    On those rounded numbers the 10-year nominal yield rose 2.7 points (1.5% to 4.2%); 2.5 of that was the real yield and only 0.2 was breakeven inflation.
+  </p>
+  <p>
+    <strong>Monitoring.</strong> Track the 10-year TIPS yield (FRED series DFII10, TradingView, Bloomberg). Watch direction more than level. Cross-check the gold and growth-stock response. And decompose nominal moves: if rising nominals are all breakevens (inflation expectations), real yields may not be rising much.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict context" data-evidence="which-gold" data-evidence-date="2026-09-21">
+    <span class="tl-verdict-tag">Desk data: base rate</span>
+    <span><strong>which-gold: real yields explain gold only part of the time.</strong> Rolling 60-session regressions of gold on real yields and the broad dollar over 689 windows (2010 to 2026): rates alone drove gold in 19% of windows, the dollar alone in 18%, both in 16%, neither in 45%, and the wrong sign in 3%. In 2022 rates explained 36% of windows (plus 16% with the dollar); in 2025 neither explained 96%. "Gold follows real yields" is a regime-dependent statement, a base rate and not a rule.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Yields as the FX driver</h2>
+  <p>
+    <strong>Core mechanism.</strong> Money flows to the highest return. If US rates are 5% and European rates are 3%, capital tends to flow to US dollar assets and EUR/USD falls. The course calls this the fundamental FX driver over weeks to months, more important than GDP, trade balances or politics in most regimes.
+  </p>
+  <div class="tl-math">\[ \text{Differential} = y^{\text{US}}_{2\text{Y}} - y^{\text{foreign}}_{2\text{Y}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Differential</code><span>the gap between two countries' 2-year yields; its change is what matters</span></div>
+    <div class="tl-eq-chip c2"><code>y²ʸ US</code><span>the US 2-year Treasury yield</span></div>
+    <div class="tl-eq-chip c3"><code>y²ʸ foreign</code><span>the matching 2-year yield in the other country</span></div>
+  </div>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>US 2Y 5% vs Germany 2Y 3%</b>The differential is two points in favour of the dollar</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>Capital seeks the return</b>Money flows toward USD assets</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>EUR/USD lower</b>Over weeks to months, in the course's framing</div>
+  </div>
+  <p>
+    <strong>Why the 2-year tenor.</strong> It reflects the central bank's policy trajectory over the relevant horizon; it is less noisy day to day than the 3-month; and it is more policy-driven than the 10-year, which embeds term premium and inflation uncertainty. FX desks at major banks watch 2-year differentials closely.
+    The rule of thumb: track the 2-year differential between two countries for fundamental FX pressure, and <strong>watch the spread, not absolute levels</strong>.
+  </p>
+  <div class="tl-table"><table>
+    <tr><th>FX pair</th><th>Spread to watch</th><th>Relationship (as taught)</th></tr>
+    <tr><td>EUR/USD</td><td>US 2Y − Germany 2Y</td><td>Spread widens → EUR/USD falls</td></tr>
+    <tr><td>USD/JPY</td><td>US 2Y − Japan 2Y</td><td>Spread widens → USD/JPY rises</td></tr>
+    <tr><td>GBP/USD</td><td>UK 2Y − US 2Y</td><td>UK spread widens → GBP/USD rises</td></tr>
+    <tr><td>AUD/USD</td><td>Australia 2Y − US 2Y</td><td>Aussie spread widens → AUD/USD rises</td></tr>
+  </table></div>
+  <p>
+    Correlation is not constant: differentials typically explain a significant portion of FX variance, but the strength varies, and in risk-off the safe-haven flows can override differentials.
+  </p>
+
+  <details class="tl-section-collapse">
+  <summary><h2>When rates do not drive FX</h2></summary>
+  <div class="tl-table"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Why</th></tr>
+    <tr><td>Risk-off panic</td><td>JPY and CHF rally regardless of rates</td><td>Haven flows overwhelm carry logic</td></tr>
+    <tr><td>Central bank intervention</td><td>FX moves against rate logic</td><td>The BoJ or PBoC can overpower markets short-term</td></tr>
+    <tr><td>Balance-of-payments crisis</td><td>An EM currency collapses despite high rates</td><td>Capital flight dominates</td></tr>
+    <tr><td>Extreme positioning</td><td>FX reverses despite rates</td><td>Unwind mechanics dominate</td></tr>
+  </table></div>
+  </details>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario · USD/JPY 2021 to 2024 (the course's textbook case)</div>
+    <ul>
+      <li>Start: US and Japanese 2-year yields both near zero; a small differential.</li>
+      <li>2022 to 2023: the Fed hiked aggressively while the Bank of Japan stayed near zero under yield-curve control.</li>
+      <li>The differential blew out: the US 2-year went from about 0.25% to about 5%, while Japan stayed near zero.</li>
+      <li>USD/JPY tracked it, from about 110 to 150 and beyond.</li>
+      <li>Japan intervened several times but could not sustainably reverse a rate-driven trend; the pair turned only when US rate expectations shifted.</li>
+    </ul>
+    <p style="margin-bottom:0">The course's figures are approximate and the correlation was at the high end of its historical range; treat it as a clean example of the mechanism, not proof that the differential is a reliable forecast. Intervention and haven flows are the reasons it was not the whole story.</p>
+  </div>
+
+  <p>
+    <strong>Using rates for FX views (as taught).</strong> Build a rate-differential watchlist (US 2Y against Germany, Japan, UK and Australia at minimum). Watch for divergence: differentials move but FX does not, which means FX may catch up or something else is driving. Rate expectations shift around FOMC, ECB and BoJ meetings.
+    Combine differentials (the fundamental bias) with technicals (entry timing).
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="spread-leads-fx-hours" data-evidence-date="2026-09-19">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>spread-leads-fx-hours: NULL.</strong> On 61,000 hourly bars (2012 to 2026), the German-minus-US 10-year spread and EUR/USD were correlated at −0.30 in the same hour every year, but at +1 hour the correlation was −0.015 (placebo 0.013) and from +2 to +48 hours it was zero. After a spread move that spot did not follow, spot went in the spread's direction 52% of the time (interval 48 to 56), the same as the control. The spread explains the move in the hour it happens; it did not announce the next one.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Bonds leading equities</h2>
+  <p>
+    <strong>Why bonds often lead (the course's argument).</strong> The bond market is dominated by institutions (central banks, pensions, insurers, banks) that move on macro faster. They are obsessed with downside (paid back or not), so they are naturally sceptical and quicker to react. And Treasury markets are among the most liquid in the world,
+    so information is priced quickly.
+  </p>
+
+  <figure class="tl-picture" style="margin-top:12px">
+    <div class="tl-picture-label">The information cascade, as taught</div>
+    <svg viewBox="0 0 600 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A timeline of three boxes. Policy signals emerge first. Bond markets react within hours to days. FX adjusts over days to weeks. Equities reprice over weeks to months. The longer bars show a longer lag.">
+      <rect class="tlp-box blue" x="20" y="20" width="150" height="46" rx="6"/>
+      <text class="tlp-blue" x="95" y="48" text-anchor="middle" font-size="14" font-weight="700">Policy signal</text>
+      <rect class="tlp-box purple" x="20" y="76" width="150" height="26" rx="6"/>
+      <text class="tlp-purple" x="95" y="94" text-anchor="middle" font-size="13" font-weight="700">Bonds · hours to days</text>
+      <rect class="tlp-box amber" x="170" y="76" width="190" height="26" rx="6"/>
+      <text class="tlp-amber" x="265" y="94" text-anchor="middle" font-size="13" font-weight="700">FX · days to weeks</text>
+      <rect class="tlp-box green" x="170" y="108" width="400" height="26" rx="6"/>
+      <text class="tlp-green" x="370" y="126" text-anchor="middle" font-size="13" font-weight="700">Equities · weeks to months</text>
+      <line class="tlp-line" x1="20" y1="150" x2="570" y2="150"/>
+      <text class="tlp-text3" x="20" y="165" font-size="12">first</text>
+      <text class="tlp-text3" x="570" y="165" text-anchor="end" font-size="12">last domino</text>
+    </svg>
+    <figcaption>The course's picture: if you only watch equities, you see the last domino. This is the framework as taught, not a tested result; it has not been shown to forecast the next move.</figcaption>
+  </figure>
+
+  <p>
+    <strong>Yields and equity valuations.</strong> Higher rates mean lower price-to-earnings multiples; that is mathematical, via the discount rate (see the \(1/(r-g)\) result in Section 03). The <strong>rate of change matters most</strong>: a rapid move from 3% to 5% is more disruptive than sitting at 5% for a year.
+    Don't use simplistic rules like "10-year above X% means sell stocks"; the impact depends on <em>why</em> rates are moving (growth optimism versus inflation fear) and on what is priced in.
+  </p>
+
+  <details class="tl-section-collapse">
+  <summary><h2>The MOVE index (the bond market's VIX)</h2></summary>
+  <div class="tl-table"><table>
+    <tr><th>MOVE level</th><th>Read (as taught)</th></tr>
+    <tr><td>&lt; 80</td><td>Low volatility: calm bond market, stable rate expectations</td></tr>
+    <tr><td>80–120</td><td>Normal uncertainty range</td></tr>
+    <tr><td>120–150</td><td>Elevated: rising rate uncertainty; watch for equity spillover</td></tr>
+    <tr><td>&gt; 150</td><td>High stress: bond turmoil; equities typically follow</td></tr>
+  </table></div>
+  <p>The course adds that MOVE spikes often precede VIX spikes, and that March 2023 (the Silicon Valley Bank failure) saw MOVE at extremes before equities fully reacted. These are the course's observations, not tested here.</p>
+  </details>
+
+  <h3>The bond-first framework and the 5-minute scan</h3>
+  <div class="tl-box example">
+    <div class="tl-icon-badge green">✅</div>
+    <div class="tl-box-label">Before any equity position, ask five questions</div>
+    <ol>
+      <li><strong>What are yields doing?</strong> Rising is a headwind for growth and long-duration assets.</li>
+      <li><strong>What is the curve saying?</strong> Flattening or inverting means caution.</li>
+      <li><strong>What are credit spreads doing?</strong> Widening is a risk-off warning.</li>
+      <li><strong>What is MOVE doing?</strong> Elevated means expect equity volatility.</li>
+      <li><strong>Any divergence?</strong> Bonds warning while stocks rally means be sceptical.</li>
+    </ol>
+    <p><strong>The daily 5-minute fixed-income scan</strong> (the course says this context "shapes the entire trading day"):</p>
+    <ol>
+      <li>10Y yield, against yesterday and against last week</li>
+      <li>2s10s: steepening or flattening? still inverted?</li>
+      <li>2Y: policy expectations shifting?</li>
+      <li>HY spreads (CDX HY): tightening or widening?</li>
+      <li>MOVE: elevated or calm?</li>
+      <li>Real yields (10Y TIPS): rising or falling?</li>
+      <li>Rate differentials: the US against major partners</li>
+    </ol>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="yields-to-fx-direction" data-evidence-date="2026-08-23">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>yields-to-fx-direction: NULL.</strong> Yield moves did not predict the next-period direction of FX or indices; the relationship is real only in the same bar. The five-question scan above describes the market's current state; as a forecast of where a pair or an index goes next it is not supported by the desk's tests, and neither is the claim that credit moves first (credit-leads-equities, Section 05).</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>It actually happened: 2022, then March 2023</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The rate shock that hit bonds, gold, growth stocks, and then a bank</h3>
+    <p>
+      The course reads 2022 as every fixed-income signal arriving at once. In its rounded numbers: the 10-year yield surged from about 1.5% to about 4.2%; real yields flipped from deeply negative to positive, crushing gold and growth stocks; 2s10s inverted; high-yield spreads roughly doubled; MOVE hit multi-year highs; the dollar surged on large differentials against Europe and Japan; and equities followed, with the S&amp;P about −25% and the Nasdaq about −35%, the duration assets hit hardest.
+      Its lesson: every signal was visible in fixed income first; watched from the bond market, none of the equity damage was surprising.
+    </p>
+    <p>
+      The bond maths did a second, less expected job. Silicon Valley Bank had put deposits into long-dated Treasury and agency securities, mostly bought in 2020 and 2021 when yields were very low. After yields rose, those holdings were worth far less than their cost, and as long as the bank could hold them to maturity the loss stayed on paper.
+      On 8 March 2023 the bank announced it had sold about $21 billion of securities at a loss of about $1.8 billion and would raise $2.25 billion of new equity. Depositors tried to withdraw about $42 billion on 9 March, and on 10 March California regulators closed the bank. It is the duration rule at work: a fixed stream bought at low yields, forced to be sold at high ones.
+    </p>
+    <p style="margin-bottom:0"><em>The 2022 figures are the course's rounded numbers; check FRED (DGS10, DFII10, T10Y2Y, BAMLH0A0HYM2) for actuals. The SVB figures are from the Federal Reserve's April 2023 review.</em></p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Inflation, then Fed hikes</b>Policy rates rise fast through 2022</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · yields up</b>10Y 1.5% → 4.2%; with duration near 8, a loss of order 20%</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Real yields up</b>Gold and growth stocks (long duration) hit together</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>March 2023</b>A bank forced to sell long bonds at a loss is closed in two days</div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>The relationships are mechanical; the leads are not</h3>
+    <p style="margin-bottom:0">
+      Duration, breakevens and spreads are identities: the numbers always add up. The claims that bonds <em>lead</em> everything else, that an inverted curve <em>means</em> equities fall, or that rate differentials <em>forecast</em> currencies are statements about the future, and those are the parts that vary by regime. "Every signal was visible in fixed income first" is a statement about 2022, seen with hindsight; the same signals in other years did not all point the same way.
+    </p>
+  </div>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Common pitfalls</h2></summary>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where fixed-income reading goes wrong</h3>
+    <p><strong>Mixing up the direction.</strong> A rising "bond price" and a rising yield cannot both be true. Check which one a chart or headline is showing before reading it.</p>
+    <p><strong>Treating duration as exact.</strong> It is a straight-line estimate. For large moves, long bonds, or mortgage-backed securities, use the convexity term or reprice.</p>
+    <p><strong>Reading inversion as a timer.</strong> The lead is 6 to 24 months and varies, and the curve can stay inverted for a long time.</p>
+    <p><strong>Using one rule on "why" a yield is rising.</strong> A rise from growth optimism and a rise from inflation fear (or from real yields versus breakevens) have different effects on equities, gold and FX. Decompose first.</p>
+    <p><strong>Quoting the course's numbers as data.</strong> The levels and percentages are exemplar figures. Look up the actual series before relying on them.</p>
+  </div>
+  </details>
+
+  <div class="tl-drill" data-date="2023-03-08">
+    <div class="tl-drill-label">Scenario drill · 8 March 2023</div>
+    <h3>A bank sells its "safe" bonds at a loss</h3>
+    <p>Silicon Valley Bank has just announced that it sold about $21 billion of securities at a loss of about $1.8 billion and will raise $2.25 billion of new equity. Its holdings are Treasury and agency securities, bought mostly in 2020 and 2021 when yields were very low; yields have since risen several points. A colleague says: "It is all government paper, so how can it lose money?" What does this lesson tell you?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">It cannot be the bonds. Government securities carry no risk, so this must be hidden credit losses in the loan book.<div class="tl-drill-why">Government bonds carry almost no default risk, but they carry full price risk. Duration turns a multi-point rise in yields into a large fall in the price of long bonds, whatever the credit quality.</div></li>
+      <li data-verdict="good">It is duration. Long bonds bought at low yields fall in price by roughly duration times the yield rise; a loss that was only on paper becomes real the moment the bonds must be sold to meet withdrawals.<div class="tl-drill-why">This is the lesson's rule applied. On illustrative numbers, a portfolio with a duration of 6 hit by a 3-point rise falls by roughly 18% before convexity. Held to maturity the loss may never be realised; a forced sale realises it.</div></li>
+      <li data-verdict="ok">The loss is only on paper until the bonds are sold, so it does not matter.<div class="tl-drill-why">Right about the accounting, wrong about the risk. A paper loss matters when the holder is forced to sell: withdrawals turn an unrealised loss into a realised one, and the market reads the sale as a signal about the rest of the book.</div></li>
+      <li data-verdict="bad">Convexity will protect the bank, since bond prices rise more than they fall.<div class="tl-drill-why">Convexity cushions the fall slightly, as the worked example shows (0.38 points on a 7.98-point loss). It does not offset a multi-point rise in yields on a long portfolio.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> After the announcement, customers tried to withdraw about $42 billion on 9 March. On 10 March 2023 the California Department of Financial Protection and Innovation closed the bank and appointed the FDIC as receiver. Rising rates had cut the value of long-dated securities bought when yields were low, and a run on deposits forced the sale that made the loss real.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/publications/files/svb-review-20230428.pdf">Board of Governors of the Federal Reserve System, Review of the Federal Reserve's Supervision and Regulation of Silicon Valley Bank (Barr review), 28 April 2023</a>.</p></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 10</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Price and yield are opposites.</strong> Master this or nothing else makes sense. A fixed coupon plus a falling price is a rising yield, by arithmetic.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Duration is rate sensitivity.</strong> \(\Delta P/P \approx -D\,\Delta y\); a 10-year note loses about 4% when yields rise half a point. Growth stocks are long-duration assets, which explains much of 2022.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Convexity is the correction.</strong> The curve bends above the duration line, so duration overstates losses and understates gains, and the error grows with the size of the move and the length of the bond.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Real yield = nominal − breakeven.</strong> Decompose every nominal move: gold and growth stocks respond to the real yield, so a nominal rise that is all breakeven is a different story.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Read direction and speed.</strong> For credit spreads, +50 bp in a week matters more than a slow drift; for the curve, the shape and the move (steepener or flattener, bull or bear) carry the message.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The curve is a warning, not a timer.</strong> The course says inversion preceded every US recession in 50+ years, with a variable 6 to 24 month lead; that is a handful of episodes, and the claim does not run forward with certainty.<!-- DESK:START --> The desk's pre-registered test found six recessions in ten inversions and no separation of equity returns from a control.<!-- DESK:END --></span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Rate differentials drive FX in the same window, with exceptions.</strong> The 2-year spread is the course's key metric, but haven flows, intervention, balance-of-payments crises and extreme positioning can override it.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Bonds lead, equities follow" is a framework, not a result.</strong> The cascade and the 5-minute scan describe the state of the market today; they have not been shown to forecast tomorrow's move.<!-- DESK:START --> The desk's tests of credit leading equities and of yields predicting FX and index direction both came back null.<!-- DESK:END --></span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 11</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. A bond pays a fixed $50 coupon on $1,000, and its price rises from 1,000 to 1,100. What has happened to its yield, and why?</summary>
+    <div class="tl-answer">
+      The yield has fallen. The coupon is fixed, so a higher price means each dollar invested earns less: roughly 50/1,100 = 4.5% instead of 5% on the simple measure (the exact YTM is lower still because you also lose 100 at maturity).
+      Price and yield are the same fact seen from two ends: pay more for the same payments and the return you earn must be lower.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A 30-year bond has a duration of about 18, and a 2-year bond a duration of about 2. Yields rise by 0.5 points. Roughly what happens to each, and why do they differ?</summary>
+    <div class="tl-answer">
+      The 30-year loses about 9% (\(18 \times 0.5\)) and the 2-year about 1% (\(2 \times 0.5\)). Duration is the sensitivity of price to yield, and it grows with maturity: the longer the wait for the payments, the more a change in the discount rate changes what they are worth today. Exact repricing of a 4.5% par bond gives 7.7% and 0.9%, because convexity trims the loss on the long bond.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is the duration estimate too pessimistic when yields rise, and too modest when yields fall?</summary>
+    <div class="tl-answer">
+      Duration is the slope of the price-yield curve at today's yield, so it is a straight tangent line. The actual curve is convex, bending above its tangent. A rise in yields moves you down the curve, but the curve falls less steeply than the tangent, so the true loss is smaller than the estimate. A fall in yields moves you up, where the curve climbs more steeply than the tangent, so the true gain is bigger. The convexity term \(\tfrac12 C(\Delta y)^2\) is positive either way, and corrects both.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. The 10-year yield is 4.5% and the 10-year TIPS yield is 2.0%. What is the breakeven, and if the nominal yield rises 0.5 points while the TIPS yield is unchanged, what changed?</summary>
+    <div class="tl-answer">
+      Breakeven inflation = 4.5% − 2.0% = 2.5%. If the nominal yield rises to 5.0% with TIPS unchanged at 2.0%, the whole 0.5-point rise is breakeven (it is now 3.0%): the market is pricing higher inflation, not a higher real return. Real yields, which matter most to gold and growth stocks, did not rise.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Walk through why an inverted curve is read as a recession warning, and name two reasons the signal is not a precise trading tool.</summary>
+    <div class="tl-answer">
+      The Fed tightens, pushing short rates up. The market expects the hikes to slow the economy and force cuts later. Long yields reflect the expected average of future short rates, so expected cuts hold them down; the 2-year ends up above the 10-year. The two weaknesses: the lead time is wide and variable (6 to 24 months), so inversion is a poor entry timer; and the claim rests on a small number of episodes and runs from recession back to inversion, so an inversion is not a guaranteed recession. A third: the market may already have priced it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. HY spreads go from 350 bp to 520 bp over two weeks while equities hold near highs. What does the course's framework say, and what should you remember about its status?</summary>
+    <div class="tl-answer">
+      By the course's bands, 520 bp is in the stressed region (500 to 700), and a 170 bp move in two weeks is fast; the divergence alert says to be sceptical of the equity rally and to add equity risk preferably only when credit is stable or tightening. The status: that credit <em>leads</em> equities is a framework, not a tested result; credit and equities move together in the same window, and a lead at 1 to 20 sessions was not found in <!-- DESK:START -->the desk's test<!-- DESK:END -->, so use the spread as a gauge of present stress rather than a forecast.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Colez Trades, <em>Quant &amp; Macro course</em>, Lesson 4 — the framework taught here: bond maths, the curve, credit spreads, TIPS, yields and FX, and bonds leading equities.</li>
+    <li>Frank J. Fabozzi, <em>Fixed Income Mathematics</em> — the standard reference for price, yield, duration and convexity formulas.</li>
+    <li>Bruce Tuckman and Angel Serrat, <em>Fixed Income Securities: Tools for Today's Markets</em>, Wiley — duration, convexity and the term structure from a practitioner's angle.</li>
+    <li>Arturo Estrella and Frederic S. Mishkin, <em>The Yield Curve as a Predictor of U.S. Recessions</em>, Current Issues in Economics and Finance, Federal Reserve Bank of New York, 1996 — the research behind the recession-warning claim, including the case for the 3-month to 10-year spread.</li>
+    <li>Simon Gilchrist and Egon Zakrajšek, <em>Credit Spreads and Business Cycle Fluctuations</em>, American Economic Review, 2012 — credit spreads and the real economy.</li>
+    <li>John Y. Campbell, Robert J. Shiller and Luis M. Viceira, <em>Understanding Inflation-Indexed Bond Markets</em>, Brookings Papers on Economic Activity, 2009 — TIPS, real yields and breakevens.</li>
+    <li>Board of Governors of the Federal Reserve System, <em>Review of the Federal Reserve's Supervision and Regulation of Silicon Valley Bank</em>, 28 April 2023 — the primary account of the failure used in the drill.</li>
+  </ul>
+  </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="qm-3-central-bank-policy.html">Central Bank Policy</a> <span>· the policy rate the front end of the curve follows</span></li>
+        <li><a href="../../theory-lab/lessons/bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a> <span>· the price formula in full</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="qm-5-currency-flows.html">Currency Markets &amp; Global Flows</a> <span>· where the 2-year differential meets the dollar</span></li>
+        <li><a href="../../theory-lab/lessons/duration-convexity.html">Duration &amp; Convexity</a> <span>· the maths of Section 03 in full</span></li>
+        <li><a href="../../theory-lab/lessons/yield-curve-growth-expectations.html">What the Yield Curve Says About Growth</a> <span>· the curve, with the evidence</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> yields are the discount rate every other asset is priced with. Duration tells you how far a yield move travels, and the curve, credit spreads and real yields tell you what that move means.</p>
+  </nav>
+
+  <div class="tl-footer-nav">
+    <a href="qm-3-central-bank-policy.html">← Central Bank Policy</a>
+    <a href="../hub.html">COG hub</a>
+    <a href="qm-5-currency-flows.html">Currency Markets &amp; Global Flows →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../../theory-lab/assets/progress.js?v=1" defer></script>
+<script src="../../theory-lab/assets/tts.js?v=6" defer></script>
+<script src="../../theory-lab/assets/vark.js?v=2" defer></script>
+<script src="../../theory-lab/assets/verdicts.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cross-Asset Synthesis — Visual Guide — COG Hub — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theory-lab/assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← COG Hub</a>
+    <div class="sl-toptitle">Cross-Asset Synthesis — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">19</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full tables, the equation build-ups and a 6-question self-test?<a href="qm-6-cross-asset.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Quant &amp; Macro 6 of 6 · Course Notes</div>
+      <h1 class="sl-h1">Cross-Asset Synthesis, or <em>Reading the Whole Board at Once</em></h1>
+      <p class="sl-lede">Rates, credit, currencies, equities and volatility all react to the same macro story, at different speeds and with different amounts of noise. This lesson is the course framework for reading them together, tested against three real episodes. It is a framework as taught, not a backtested strategy.</p>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="2">
+      <div class="sl-kicker">The whole idea</div>
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five asset layers stepping down from rates, which price macro first, through credit, currencies and equities, to the volatility surface. Underneath, a bracket says that when the layers agree the market is coherent and conviction can be higher, and when they disagree you investigate. On the right, a growth-by-inflation grid shows Goldilocks, Reflation, Deflation and Stagflation.">
+      <rect class="tlp-box blue" x="14" y="14" width="150" height="34" rx="6"/>
+      <text class="tlp-text" x="24" y="36" font-size="13" font-weight="700">1 Rates, sovereigns</text>
+      <rect class="tlp-box blue" x="34" y="56" width="150" height="34" rx="6"/>
+      <text class="tlp-text" x="44" y="78" font-size="13" font-weight="700">2 Credit (IG, HY)</text>
+      <rect class="tlp-box blue" x="54" y="98" width="150" height="34" rx="6"/>
+      <text class="tlp-text" x="64" y="120" font-size="13" font-weight="700">3 FX</text>
+      <rect class="tlp-box blue" x="74" y="140" width="150" height="34" rx="6"/>
+      <text class="tlp-text" x="84" y="162" font-size="13" font-weight="700">4 Equities</text>
+      <rect class="tlp-box blue" x="94" y="182" width="150" height="34" rx="6"/>
+      <text class="tlp-text" x="104" y="204" font-size="13" font-weight="700">5 Volatility surface</text>
+      <text class="tlp-green" x="172" y="36" font-size="11" font-weight="700">first to price macro</text>
+      <text class="tlp-amber" x="232" y="162" font-size="11" font-weight="700">noisiest, last to price</text>
+      <text class="tlp-text3" x="14" y="234" font-size="11">order varies by episode: test it, do not assume it</text>
+      <rect class="tlp-box green" x="330" y="20" width="120" height="86" rx="6" opacity=".55"/>
+      <rect class="tlp-box amber" x="456" y="20" width="120" height="86" rx="6" opacity=".55"/>
+      <rect class="tlp-box purple" x="330" y="112" width="120" height="86" rx="6" opacity=".55"/>
+      <rect class="tlp-box red" x="456" y="112" width="120" height="86" rx="6" opacity=".55"/>
+      <text class="tlp-green" x="390" y="58" text-anchor="middle" font-size="14" font-weight="700">Goldilocks</text>
+      <text class="tlp-text2" x="390" y="76" text-anchor="middle" font-size="11">growth up, inflation down</text>
+      <text class="tlp-amber" x="516" y="58" text-anchor="middle" font-size="14" font-weight="700">Reflation</text>
+      <text class="tlp-text2" x="516" y="76" text-anchor="middle" font-size="11">growth up, inflation up</text>
+      <text class="tlp-blue" x="390" y="150" text-anchor="middle" font-size="14" font-weight="700">Deflation</text>
+      <text class="tlp-text2" x="390" y="168" text-anchor="middle" font-size="11">growth down, inflation down</text>
+      <text class="tlp-red" x="516" y="150" text-anchor="middle" font-size="14" font-weight="700">Stagflation</text>
+      <text class="tlp-text2" x="516" y="168" text-anchor="middle" font-size="11">growth down, inflation up</text>
+      <text class="tlp-text3" x="453" y="216" text-anchor="middle" font-size="11">inflation rising →</text>
+      <text class="tlp-text3" x="322" y="62" font-size="11" text-anchor="end" transform="rotate(-90 322 62)">growth ↑</text>
+      <text class="tlp-text2" x="453" y="234" text-anchor="middle" font-size="12">agree = coherent = more conviction · disagree = investigate</text>
+    </svg>
+    <figcaption>Left: information tends to cascade down the capital structure, and the cleanest, most institution-driven markets move first. Right: two axes, growth and inflation, decide which asset classes lean which way. When the layers agree you have conviction; when they disagree, you have a question.</figcaption>
+  </figure>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One view, many expressions</h2>
+      <p class="sl-sub">"The Fed pivots dovish earlier than expected." A macro fund asks five questions before it trades that.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Highest-conviction expression?</h4><p>Perhaps 2-year rates, not equities.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>Best risk-adjusted expression?</h4><p>Perhaps rate options, for convexity.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>What should confirm it?</h4><p>Credit tightening, a weaker dollar.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>What invalidates it?</h4><p>Inflation re-accelerating.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱</div><div><h4>What is the horizon?</h4><p>Weeks, months or quarters.</p></div></div>
+      </div>
+      <div class="sl-quote">Watching only equities is watching one character of a film. Equities are noisy, narrative-driven and often the last to price a macro shift; the rates, credit and FX moves that told the story earlier go unseen.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Coherence: do the layers agree?</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">High coherence</span>
+          <ul>
+            <li>Every asset class prices the same scenario</li>
+            <li>Trends tend to persist; trend-following tends to work</li>
+            <li>More conviction, bigger size is defensible</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Low coherence</span>
+          <ul>
+            <li>Conflicting stories: someone is wrong (opportunity), or markets are in transition (wait), or it is genuinely uncertain (reduce risk)</li>
+            <li>A divergence does not say what to do. It says investigate</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>The course states the cascade order two ways (Rates, Credit, FX, Equities, and Rates, FX, Credit, Equities), and its own case studies differ: late 2023 went rates, credit, FX, equities; March 2023 started in credit. The order is a hypothesis to test, not a rule. Understanding this is not an edge: markets are efficient at short horizons.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The four-quadrant regime map</h2>
+      <p class="sl-sub">Growth (ISM above or below 50) crossed with inflation (core CPI above or below 3%): the course's own example thresholds. Move the dot.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 400 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A grid with core inflation across and the ISM index up, split into Goldilocks, Reflation, Deflation and Stagflation, with a dot for the current state.">
+            <rect x="40" y="10" width="160" height="125" style="fill:var(--green-bg);stroke:var(--border2)"/>
+            <rect x="200" y="10" width="160" height="125" style="fill:var(--amber-bg);stroke:var(--border2)"/>
+            <rect x="40" y="135" width="160" height="125" style="fill:var(--blue-bg);stroke:var(--border2)"/>
+            <rect x="200" y="135" width="160" height="125" style="fill:var(--red-bg);stroke:var(--border2)"/>
+            <text x="120" y="32" text-anchor="middle" style="fill:var(--green);font-size:13px;font-weight:700">Goldilocks</text>
+            <text x="280" y="32" text-anchor="middle" style="fill:var(--amber);font-size:13px;font-weight:700">Reflation</text>
+            <text x="120" y="248" text-anchor="middle" style="fill:var(--blue);font-size:13px;font-weight:700">Deflation</text>
+            <text x="280" y="248" text-anchor="middle" style="fill:var(--red);font-size:13px;font-weight:700">Stagflation</text>
+            <circle id="ca-q-dot" cx="120" cy="60" r="9" style="fill:var(--text);stroke:var(--bg);stroke-width:2"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Growth: ISM manufacturing index</span><span class="sl-live" id="ca-q-ism-val">52.0</span></div>
+        <input type="range" class="sl-slider" id="ca-q-ism" min="44" max="56" step="0.5" value="52">
+        <div class="sl-sliderhead"><span>Inflation: core CPI, year on year</span><span class="sl-live" id="ca-q-cpi-val">2.5%</span></div>
+        <input type="range" class="sl-slider" id="ca-q-cpi" min="0" max="6" step="0.1" value="2.5">
+        <div class="sl-verdict" id="ca-q-out">—</div>
+      </div>
+      <p class="sl-p">Near the lines the map blends regimes smoothly (a teaching device, not the course's model). The leans come from the course's table: Goldilocks favours credit, growth equities and short volatility; Reflation favours commodities, value and TIPS; Stagflation favours gold, energy and cash; Deflation favours duration, quality and long volatility.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Transitions are where the money is made</h2>
+      <p class="sl-sub">Naming the regime is backward-looking; by the time you are confident, much of the move has happened.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it · what to watch for each transition</div>
+        <div class="sl-tabs" id="tr-tabs">
+          <button class="sl-tab active" data-panel="tr-1">→ Goldilocks</button>
+          <button class="sl-tab" data-panel="tr-2">→ Reflation</button>
+          <button class="sl-tab" data-panel="tr-3">→ Stagflation</button>
+          <button class="sl-tab" data-panel="tr-4">→ Deflation</button>
+        </div>
+        <div class="sl-panel active" id="tr-1">
+          <div class="sl-row"><div class="sl-box green">Leading: bull steepening, credit tightening, stable breakevens</div><div class="sl-arrow">→</div><div class="sl-box">Confirm: equity breadth, volatility falling, EM FX stronger</div></div>
+        </div>
+        <div class="sl-panel" id="tr-2">
+          <div class="sl-row"><div class="sl-box amber">Leading: breakevens rising, commodities breaking out, bear steepening</div><div class="sl-arrow">→</div><div class="sl-box">Confirm: value beats growth, banks rallying, TIPS beat nominals</div></div>
+        </div>
+        <div class="sl-panel" id="tr-3">
+          <div class="sl-row"><div class="sl-box red">Leading: growth data weakening with breakevens elevated, curve flattening from the front</div><div class="sl-arrow">→</div><div class="sl-box">Confirm: credit widening, equities falling, gold and commodities holding</div></div>
+        </div>
+        <div class="sl-panel" id="tr-4">
+          <div class="sl-row"><div class="sl-box purple">Leading: bull flattening, credit blowing out, volatility spiking</div><div class="sl-arrow">→</div><div class="sl-box">Confirm: JPY surging, gold bid on a real-yield collapse, quality dominating</div></div>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Rule-based thresholds are interpretable but arbitrary; Hidden Markov Models are elegant but can overfit; clustering is another route. Robustness means testing across methods. Early transition detection is the hard, valuable part.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The macro dashboard: six tiers, medium-term</h2>
+      <p class="sl-sub">Built for weeks to months, not daily trading. The full series list is in the lesson's collapsible reference.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Policy &amp; liquidity</h4><p>Balance sheet, reverse repo, TGA, financial conditions, lending standards.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Rates &amp; curve</h4><p>2Y, 10Y, 2s10s, real yield, breakeven, MOVE. First to price macro.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Credit</h4><p>IG, HY, CDX, EM spreads. Often leads equity at turning points.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>FX &amp; flows</h4><p>Broad dollar, majors, basis swaps. The dollar is the key one.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">5</div><div><h4>Volatility</h4><p>VIX and term structure, VVIX, SKEW, MOVE, MOVE/VIX ratio.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">6</div><div><h4>Commodities</h4><p>Oil, copper, gold, copper/gold, broad basket.</p></div></div>
+      </div>
+      <div class="sl-quote">Net liquidity ≈ Fed balance sheet − TGA − reverse repo. Rising tends to help risk assets. The course is explicit that it is a condition, not a signal.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Lead-lag: slide one series along the other</h2>
+      <p class="sl-sub">A simulation: the follower is the leader delayed by 5 days, plus noise. Find the delay.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it · simulation, not market data</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top: a shifted leader series and a follower series. Bottom: bars showing the correlation at each lag from minus 10 to plus 20.">
+            <path id="ca-l-x" d="" style="fill:none;stroke:var(--blue);stroke-width:1.8"/>
+            <path id="ca-l-y" d="" style="fill:none;stroke:var(--amber);stroke-width:1.8"/>
+            <line x1="40" y1="205" x2="620" y2="205" style="stroke:var(--border2)"/>
+            <g id="ca-l-bars"></g>
+            <text x="40" y="224" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">k = −10</text>
+            <text x="620" y="224" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">k = +20</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Lag tested (days the leader is shifted forward)</span><span class="sl-live" id="ca-l-k-val">k = 0</span></div>
+        <input type="range" class="sl-slider" id="ca-l-k" min="-10" max="20" step="1" value="0">
+        <div class="sl-verdict" id="ca-l-out">—</div>
+      </div>
+      <p class="sl-p">The tool is the cross-correlation ρ(k) = corr(X<sub>t</sub>, Y<sub>t+k</sub>): scan k, find the peak. The course also names Granger causality, VAR models and rolling-window stability tests. Its critical finding: leads are strongest at regime turning points and weakest in stable trends, so cherry-picked episodes flatter them.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Divergences say "investigate", not "trade"</h2>
+      <p class="sl-sub">A simulation: equities and credit agree for 240 days, then credit cracks. Move the alarm threshold.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it · simulation, not market data</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top: simulated equity and credit lines. Bottom: the gap between them with a threshold and red dots where the gap exceeds it.">
+            <line id="ca-d-split" x1="518" y1="8" x2="518" y2="240" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+            <path id="ca-d-eq" d="" style="fill:none;stroke:var(--blue);stroke-width:2"/>
+            <path id="ca-d-cr" d="" style="fill:none;stroke:var(--amber);stroke-width:2"/>
+            <line id="ca-d-zero" x1="50" y1="200" x2="620" y2="200" style="stroke:var(--border2)"/>
+            <path id="ca-d-gap" d="" style="fill:none;stroke:var(--purple);stroke-width:1.5"/>
+            <line id="ca-d-thr" x1="50" y1="180" x2="620" y2="180" style="stroke:var(--red);stroke-dasharray:4,3"/>
+            <g id="ca-d-flags"></g>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Flag when the gap exceeds</span><span class="sl-live" id="ca-d-thr-val">1.50 σ</span></div>
+        <input type="range" class="sl-slider" id="ca-d-thr-in" min="0.5" max="3" step="0.25" value="1.5">
+        <div class="sl-verdict" id="ca-d-out">—</div>
+      </div>
+      <p class="sl-p">The course's examples: equities rallying while credit widens (credit is often right at turning points); yields falling while equities stay flat (bonds see a growth fear); JPY strengthening while equities rally (haven flows against the risk narrative). The threshold trades early detection against false alarms, and there is no free setting.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Stock-bond correlation is a variable</h2>
+      <p class="sl-sub">Growth news pushes stocks and bond prices apart; inflation news pushes them together. The mix decides the sign.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it · simulation, not market data</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A rolling 60-day stock-bond correlation from a simulation: negative in the first half, and moving positive in the second half if inflation shocks are large enough.">
+            <rect x="335" y="10" width="285" height="190" style="fill:var(--red-bg);opacity:.5"/>
+            <line x1="50" y1="105" x2="620" y2="105" style="stroke:var(--border2)"/>
+            <line id="ca-c-l1" x1="50" y1="160" x2="335" y2="160" style="stroke:var(--green);stroke-dasharray:5,4;stroke-width:1.5"/>
+            <line id="ca-c-l2" x1="335" y1="70" x2="620" y2="70" style="stroke:var(--red);stroke-dasharray:5,4;stroke-width:1.5"/>
+            <path id="ca-c-line" d="" style="fill:none;stroke:var(--blue);stroke-width:2"/>
+            <text x="44" y="109" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">0</text>
+            <text x="58" y="26" style="fill:var(--green);font-size:11px;font-family:'DM Mono',monospace">growth news dominates</text>
+            <text x="342" y="26" style="fill:var(--red);font-size:11px;font-family:'DM Mono',monospace">inflation volatility from the slider</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Inflation-shock volatility, second half (× growth shocks)</span><span class="sl-live" id="ca-c-r-val">2.00×</span></div>
+        <input type="range" class="sl-slider" id="ca-c-r" min="0.3" max="3" step="0.1" value="2">
+        <div class="sl-verdict" id="ca-c-out">—</div>
+      </div>
+      <p class="sl-p">In this made-up two-shock model cov(S,B) = −c·σ<sub>g</sub>² + b·d·σ<sub>π</sub>², which changes sign when σ<sub>π</sub>/σ<sub>g</sub> = √(c/(bd)), about 1.44 here. 2022 was the real-world version: the Fed hiked into weakness and 60/40 had one of its worst years in decades.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">When correlation goes to 1, and how to measure it</h2>
+      <div class="sl-row">
+        <div class="sl-box">1 Idiosyncratic: diversification "works"</div><div class="sl-arrow">→</div>
+        <div class="sl-box amber">2 Contagion: correlations rise</div><div class="sl-arrow">→</div>
+        <div class="sl-box red">3 Liquidation: forced selling, correlation → 1</div><div class="sl-arrow">→</div>
+        <div class="sl-box green">4 Stabilisation: policy responds</div>
+      </div>
+      <p class="sl-p">March 2020 is the course's example. To monitor it: rolling windows of 20 to 60 days (tactical) or 120 to 252 days (strategic), or an EWMA correlation with decay λ ≈ 0.94, which weights today most and fades old data. Its effective window is about 1/(1−λ), roughly 17 days.</p>
+      <div class="sl-quote">ρ<sub>t</sub> = Σ λ<sup>i</sup> r₁,ₜ₋ᵢ r₂,ₜ₋ᵢ / √[Σ λ<sup>i</sup> r₁² · Σ λ<sup>i</sup> r₂²]</div>
+      <!-- DESK:START -->
+      <div class="sl-stamp context" data-evidence="stock-bond-flip" data-evidence-date="2026-09-17"><span class="sl-stamp-tag">Desk data: base rate</span><span><strong>Stocks and bonds falling together (stock-bond-flip).</strong> 71 episodes since 2008, median 5 sessions, p75 17. Too few clean flips to test what follows.</span></div>
+      <!-- DESK:END -->
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 10 · It actually happened</div>
+      <h2 class="sl-h2">2022: every signal visible, equities last</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Powell retired "transitory" on 30 November 2021. The 2-year yield rose, real yields climbed from about −1% towards zero, the Nasdaq corrected in January, Russia invaded Ukraine on 24 February, the Fed's first hike came on 16 March, bigger hikes followed in May and June, and the S&amp;P 500 ended about a quarter off its peak by October. Figures: the course's, approximate.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Nov 2021</b>"Transitory" retired; 2Y rises</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Jan to Mar 2022</b>Real yields up; growth falls; hikes begin</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ Stock-bond correlation flips</b>Positive: the hedge breaks</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Oct 2022</b>2Y ~4.5%, DXY above 114, gilt turmoil</div>
+      </div>
+      <p class="sl-p"><strong>Worked:</strong> short duration, commodities early, long USD, long volatility, value over growth, cash. <strong>Failed:</strong> 60/40, risk parity, growth stocks, EM. The edge was not prediction but systematic response to observable signals. The caveat: this is one episode told with hindsight.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 11 · It actually happened</div>
+      <h2 class="sl-h2">Q4 2023: peak coherence</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>In October 2023 the 10-year hit about 5% and the S&amp;P fell about 10% from July, yet credit spreads barely widened: a rates-driven sell-off that credit did not confirm. After a soft inflation read, a Fed hold on 1 November with Powell less hawkish than feared, and weak payrolls on 3 November, yields fell and everything rallied.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Oct</b>10Y ~5%; HY not confirming</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>27 Oct to 3 Nov</b>Soft inflation; Fed hold; weak jobs</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ Coherence</b>Credit, dollar, volatility all agree</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Year-end</b>10Y ~3.9%, HY ~330 bps, VIX ~12</div>
+      </div>
+      <p class="sl-p">Sequencing as taught: rates first, credit confirmed, FX confirmed, equities followed. Waiting for "certainty" missed the move; tracking coherence gave early confirmation. Caveat: the table is read from the year-end, and the lesson does not say how often waiting for coherence costs a trader.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 12 · It actually happened</div>
+      <h2 class="sl-h2">March 2023: credit led, and a weekly review missed it</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Silvergate announced its liquidation on 8 March; after that day's close Silicon Valley Bank disclosed a $1.8 billion securities loss and a capital raise. Its stock fell about 60% on 9 March, with about $42 billion of withdrawal attempts in a day. The FDIC took SVB on 10 March. On Sunday 12 March Signature was closed and the Fed announced the Bank Term Funding Program. The Fed still hiked 25 bps on 22 March.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link"><b>9 Mar</b>Bank CDS spike first</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ MOVE leads VIX</b>A rates crisis; the 2Y collapses ~100 bps</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link shock"><b>10 to 12 Mar</b>FDIC seizure; BTFP firewall</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>13 to 22 Mar</b>Stabilise; 2Y whipsaws</div>
+      </div>
+      <p class="sl-p"><strong>Lesson:</strong> hiking to emergency cuts priced in about 48 hours; crisis signals need real-time alerts on credit stress, rate volatility and inversion. The 2Y level figures (5.05% on 8 March, 4.03% on 13 March, 3.92% on 20 March) are FRED DGS2 closes.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">Express the view, then size it</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Cleanest vs noisier</span>
+          <ul>
+            <li>Inflation higher: long breakevens (cleanest) vs short bonds, long commodities, long value</li>
+            <li>Credit stress: long CDX HY protection vs short equities, long VIX</li>
+            <li>Dollar weaker: short DXY / long EUR/USD vs long EM equities, long gold</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Choosing the expression</span>
+          <ul>
+            <li>High conviction, short horizon: direct 2Y or front-end options</li>
+            <li>Moderate conviction, longer horizon: steepener or gold</li>
+            <li>Options for defined risk; can you afford negative carry while waiting?</li>
+            <li>Equities are the noisiest expression</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Position size = Target risk / (Instrument volatility × Correlation to view). Target risk 1%, volatility 10%, correlation 1 gives 10% of capital; correlation 0.5 gives 20%.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Dividing by the correlation makes the size explode as the correlation falls towards zero. It is the course's heuristic, not a derived result; it needs a hard size cap.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 14</div>
+      <h2 class="sl-h2">Implementation reality: where edge actually lives</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Why daily discretionary macro is hard</span>
+          <ul>
+            <li>Information is priced fast</li>
+            <li>Noise dominates short horizons</li>
+            <li>Behavioural biases compound</li>
+            <li>Costs erode returns with frequency</li>
+            <li>A post-hoc story is not tradeable</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Where edge can exist</span>
+          <ul>
+            <li>Longer horizons (weeks to months)</li>
+            <li>Systematic rules and discipline</li>
+            <li>Better data and infrastructure</li>
+            <li>Capacity to hold through drawdowns</li>
+            <li>The retail edge: no benchmark, no redemptions, no career risk</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-box">1 Education</div><div class="sl-arrow">→</div>
+        <div class="sl-box">2 Context</div><div class="sl-arrow">→</div>
+        <div class="sl-box">3 Longer horizon</div><div class="sl-arrow">→</div>
+        <div class="sl-box green">4 Test first</div><div class="sl-arrow">→</div>
+        <div class="sl-box amber">5 Humility</div>
+      </div>
+      <!-- DESK:START -->
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Not tested here</span>
+        <span><strong>Nothing in this lesson has been tested on this desk.</strong> A fair test picks one strategy family, fixes the rules first, runs walk-forward with costs and a held-out period, and corrects for every variant tried.</span>
+      </div>
+      <!-- DESK:END -->
+    </section>
+
+    <section class="sl-slide" data-slide="17">
+      <div class="sl-kicker">Section 15</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Stocks and bonds both fell in 2022. What was driving markets?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Inflation fears, which push rates up and hurt both</button>
+        <button class="sl-quiz-opt">Growth fears, which push investors into bonds</button>
+        <button class="sl-quiz-opt">Nothing: correlations are constants</button>
+        <div class="sl-quiz-explain">Inflation-driven regimes make the stock-bond correlation positive. Growth-driven regimes make it negative. The sign depends on which fear dominates.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Equities rally while high-yield spreads widen. The framework says:</h4>
+        <button class="sl-quiz-opt" data-correct="true">There is a divergence: investigate, since credit is often right at turning points</button>
+        <button class="sl-quiz-opt">Sell equities immediately</button>
+        <button class="sl-quiz-opt">Ignore credit, because equities are the broadest market</button>
+        <div class="sl-quiz-explain">A divergence does not say what to do; it says to find out why the layers disagree and what would resolve it.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In the simple two-shock model, when does the stock-bond covariance turn positive?</h4>
+        <button class="sl-quiz-opt" data-correct="true">When inflation shocks are volatile enough relative to growth shocks</button>
+        <button class="sl-quiz-opt">When stocks rise</button>
+        <button class="sl-quiz-opt">Only in a liquidity crisis</button>
+        <div class="sl-quiz-explain">cov = −c·σg² + b·d·σπ². It flips when σπ/σg exceeds √(c/(bd)). The mix of news changes the sign without either asset changing its behaviour.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What did March 2023 show about monitoring cadence?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Crisis signals (credit stress, rate volatility, inversion) need real-time alerts; a weekly review would have missed it</button>
+        <button class="sl-quiz-opt">Weekly review is enough if you read it carefully</button>
+        <button class="sl-quiz-opt">Only equity prices matter in a crisis</button>
+        <div class="sl-quiz-explain">The move from hikes priced to emergency cuts priced took about 48 hours. Slow tiers can be reviewed weekly; stress signals cannot.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>The course says understanding this framework is not an edge. Where does it point to edge instead?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Longer horizons, systematic rules, data infrastructure and the capacity to hold through drawdowns</button>
+        <button class="sl-quiz-opt">Faster discretionary daily trading</button>
+        <button class="sl-quiz-opt">Knowing the regime name earlier than anyone</button>
+        <div class="sl-quiz-explain">Markets are efficient at short horizons. Even the sources of edge the course names must be tested before they are trusted.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="18">
+      <div class="sl-kicker">Your call</div>
+      <div class="tl-drill" data-date="2023-03-10">
+    <div class="tl-drill-label">Scenario drill · 10 March 2023</div>
+    <h3>A bank has just failed, and you are short the front end</h3>
+    <p>The Fed is in the middle of a hiking cycle, and the market expected a 25 to 50 basis point hike on 22 March. You hold a short position in the 2-year Treasury, sized in calm conditions for a market that is still pricing hikes. Silicon Valley Bank was taken over by the FDIC this morning. The 2-year yield has dropped sharply, regional-bank credit has been under stress since Thursday, and rate volatility is jumping. It is Friday close and the weekend is ahead. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold the short. One bank is not the system, and the Fed's hiking path is still intact.<div class="tl-drill-why">Credit moved first and rate volatility is spiking, which is the lesson's signal that the regime is shifting from "hiking" towards "emergency cuts priced". A position sized for calm rates volatility is now much too large for the new volatility, and the weekend is a gap risk in which policy can change the picture.</div></li>
+      <li data-verdict="bad">Add to the short: yields have fallen too far, too fast and will snap back.<div class="tl-drill-why">It is a fade of a move in a stress event with a policy response not yet known. If the authorities stabilise things the yields may bounce, but if they do not you are adding to a loser in the fastest market in years. Adding is a view on timing you cannot support.</div></li>
+      <li data-verdict="good">Cut the position well down before the weekend, treat it as a possible regime break, and rebuild only when the policy response and credit signals confirm.<div class="tl-drill-why">This respects both lessons of the episode: credit and rate volatility led, and a regime shift can arrive in 48 hours. Reducing is not a bet on the new direction; it is admitting your sizing assumed a world that may have just ended. You can re-enter once more layers agree.</div></li>
+      <li data-verdict="ok">Flip to a large long in 2-year Treasuries to ride the flight to safety.<div class="tl-drill-why">The direction of the next few days was plausible, but it is a full-size bet on one outcome in a gap-prone weekend, and the 2-year whipsawed afterwards. Right direction for the wrong reason can still be wrongly sized.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Sunday 12 March regulators closed Signature Bank, and the Federal Reserve announced the Bank Term Funding Program, lending to banks against Treasuries and other eligible securities valued at par; depositors at the failed banks were protected. The 2-year yield fell much further on Monday 13 March and stayed very volatile, and the Fed raised rates by 25 basis points on 22 March.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20230312a.htm">Federal Reserve Board press release, 12 March 2023 (Bank Term Funding Program)</a>; <a href="https://www.federalreserve.gov/publications/files/svb-review-20230428.pdf">Board of Governors, Review of the Federal Reserve's Supervision and Regulation of Silicon Valley Bank, 28 April 2023</a>.</p></div>
+  </div>
+    </section>
+
+    <section class="sl-slide" data-slide="19">
+      <div class="sl-kicker">Section 16</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Trade the capital structure, not single assets: one view, many expressions, different risk and reward. The cleanest is most directly tied to the thesis.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Information tends to flow rates, credit, FX, equities, but the order changes by episode. Treat it as a hypothesis to test.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Growth × inflation gives four regimes; the opportunity is in detecting transitions early, not labelling the regime after the fact.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Correlations are variables. Stock-bond correlation flips between growth-driven and inflation-driven regimes; in a liquidity crisis, everything heads towards 1.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Coherence builds conviction; divergence means investigate. Credit often leads at turning points, and crisis signals need real-time alerts.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Time horizon is the edge: daily discretionary macro is extremely hard. Longer horizons, systematic rules and patience, tested before trusted.<!-- DESK:START --> Nothing here is tested on this desk.<!-- DESK:END --></p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read a market move as one layer of a larger story, ask what should confirm it and what would invalidate it, recognise when a diversification assumption has broken, and be honest that the framework gives context and discipline rather than a signal.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Course reference: formulas, data sources, daily scans</h3>
+        <p>The appendices to all six lessons gathered in one place: the formulas, the named data sources and the daily scans, for looking things up.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="qm-reference.html">Open the reference →</a>
+          <a class="sl-btn ghost" href="qm-6-cross-asset.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to the COG hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../../theory-lab/assets/deck.js"></script>
+<script>
+(function(){
+  function rng(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function normals(seed, n){ var r = rng(seed), o = []; while (o.length < n){ var u = Math.max(r(), 1e-12), v = r(), m = Math.sqrt(-2 * Math.log(u)); o.push(m * Math.cos(2 * Math.PI * v)); o.push(m * Math.sin(2 * Math.PI * v)); } return o.slice(0, n); }
+  function sd(a){ var m = 0, i; for (i = 0; i < a.length; i++) m += a[i]; m /= a.length; var v = 0; for (i = 0; i < a.length; i++) v += (a[i] - m) * (a[i] - m); return Math.sqrt(v / a.length); }
+  function corrRange(a, b, s, e){ var n = e - s, ma = 0, mb = 0, i; for (i = s; i < e; i++){ ma += a[i]; mb += b[i]; } ma /= n; mb /= n; var sab = 0, saa = 0, sbb = 0; for (i = s; i < e; i++){ var da = a[i] - ma, db = b[i] - mb; sab += da * db; saa += da * da; sbb += db * db; } return sab / Math.sqrt(saa * sbb); }
+
+  // ---- Slide 5: four-quadrant map ----
+  (function(){
+    var ism = document.getElementById('ca-q-ism');
+    if (!ism) return;
+    var cpi = document.getElementById('ca-q-cpi');
+    var NAMES = ['Goldilocks', 'Reflation', 'Stagflation', 'Deflation'];
+    var ASSETS = ['duration', 'credit', 'equities', 'commodities and real assets', 'volatility', 'cash and safe havens'];
+    var LEAN = [[0, -1, 0, 1], [1, 0, -1, 0], [1, 1, -1, -1], [0, 1, 1, 0], [-1, 0, 0, 1], [0, 0, 1, 1]];
+    function sig(x){ return 1 / (1 + Math.exp(-x)); }
+    function update(){
+      var g = parseFloat(ism.value), c = parseFloat(cpi.value);
+      document.getElementById('ca-q-ism-val').textContent = g.toFixed(1);
+      document.getElementById('ca-q-cpi-val').textContent = c.toFixed(1) + '%';
+      var pg = sig((g - 50) / 1.5), pi = sig((c - 3) / 0.5);
+      var w = [pg * (1 - pi), pg * pi, (1 - pg) * pi, (1 - pg) * (1 - pi)], best = 0, i, r, q;
+      for (i = 1; i < 4; i++) if (w[i] > w[best]) best = i;
+      var sc = [];
+      for (r = 0; r < 6; r++){ var s = 0; for (q = 0; q < 4; q++) s += w[q] * LEAN[r][q]; sc.push(s); }
+      var hi = 0, lo = 0;
+      for (r = 1; r < 6; r++){ if (sc[r] > sc[hi]) hi = r; if (sc[r] < sc[lo]) lo = r; }
+      document.getElementById('ca-q-dot').setAttribute('cx', (40 + c / 6 * 320).toFixed(1));
+      document.getElementById('ca-q-dot').setAttribute('cy', (260 - (g - 44) / 12 * 250).toFixed(1));
+      document.getElementById('ca-q-out').textContent = NAMES[best] + ' (' + Math.round(w[best] * 100) + '% of the weight). Strongest lean long: ' + ASSETS[hi] + '. Strongest lean short: ' + (sc[lo] < -0.05 ? ASSETS[lo] : 'none') + '.';
+    }
+    ism.addEventListener('input', update);
+    cpi.addEventListener('input', update);
+    update();
+  })();
+
+  // ---- Slide 8: lead-lag ----
+  (function(){
+    var kIn = document.getElementById('ca-l-k');
+    if (!kIn) return;
+    var M = 400, L = 5, e1 = normals(55, M), e2 = normals(66, M), xs = [0], t, i;
+    for (t = 1; t < M; t++) xs.push(0.8 * xs[t - 1] + e1[t]);
+    var y = [];
+    for (i = 0; i < M; i++) y.push((i >= L ? 0.7 * xs[i - L] : 0) + e2[i]);
+    var sx = sd(xs), sy = sd(y);
+    function ccf(k){ var a = [], b = []; for (var j = 30; j < M; j++){ var q = j - k; if (q < 0 || q >= M) continue; a.push(xs[q]); b.push(y[j]); } return corrRange(a, b, 0, a.length); }
+    var rhos = [], best = -9, bk = 0, k;
+    for (k = -10; k <= 20; k++){ var r = ccf(k); rhos.push(r); if (r > best){ best = r; bk = k; } }
+    var X0 = 40, X1 = 620, BW = (X1 - X0) / 31;
+    function update(){
+      var kk = parseInt(kIn.value, 10);
+      document.getElementById('ca-l-k-val').textContent = 'k = ' + (kk > 0 ? '+' : '') + kk;
+      var html = '';
+      for (var n = 0; n < 31; n++){
+        var h = Math.abs(rhos[n]) * 70, sel = (n - 10) === kk, pk = (n - 10) === bk;
+        html += '<rect x="' + (X0 + n * BW + 2).toFixed(1) + '" y="' + (rhos[n] >= 0 ? 205 - h : 205).toFixed(1) + '" width="' + (BW - 4).toFixed(1) + '" height="' + Math.max(h, 0.5).toFixed(1) + '" style="fill:' + (sel ? 'var(--amber)' : (pk ? 'var(--green)' : 'var(--blue)')) + ';opacity:' + (sel || pk ? 1 : 0.55) + '"/>';
+      }
+      document.getElementById('ca-l-bars').innerHTML = html;
+      var p1 = '', p2 = '', from = 250, to = 400;
+      for (var d = from; d < to; d++){
+        var xx = X0 + (X1 - X0) * (d - from) / (to - from - 1), j2 = d - kk, xv = (j2 >= 0 && j2 < M) ? xs[j2] : 0;
+        p1 += (d === from ? 'M' : 'L') + xx.toFixed(1) + ',' + (60 - xv / sx * 20).toFixed(1);
+        p2 += (d === from ? 'M' : 'L') + xx.toFixed(1) + ',' + (60 - y[d] / sy * 20).toFixed(1);
+      }
+      document.getElementById('ca-l-x').setAttribute('d', p1);
+      document.getElementById('ca-l-y').setAttribute('d', p2);
+      document.getElementById('ca-l-out').textContent = 'Correlation at k = ' + (kk > 0 ? '+' : '') + kk + ': ' + rhos[kk + 10].toFixed(2) + '. The peak is at k = ' + (bk > 0 ? '+' : '') + bk + ' with ρ = ' + best.toFixed(2) + '.';
+    }
+    kIn.addEventListener('input', update);
+    update();
+  })();
+
+  // ---- Slide 9: divergence flag ----
+  (function(){
+    var thrIn = document.getElementById('ca-d-thr-in');
+    if (!thrIn) return;
+    var T = 300, W = 20, D = 240, t;
+    var f = normals(77, T), ne = normals(88, T), nc = normals(99, T), fw = [0], E = [], C = [];
+    for (t = 1; t < T; t++) fw.push(fw[t - 1] + 0.3 * f[t]);
+    for (t = 0; t < T; t++){ E.push(fw[t] + 0.7 * ne[t]); C.push(fw[t] + 0.7 * nc[t] - (t > D ? 0.12 * (t - D) : 0)); }
+    function chg(s, i){ return i >= W ? s[i] - s[i - W] : 0; }
+    var ce = [], cc = [];
+    for (t = W; t < D - W; t++){ ce.push(chg(E, t)); cc.push(chg(C, t)); }
+    var se = sd(ce), sc = sd(cc), gap = [];
+    for (t = 0; t < T; t++) gap.push(t < W ? 0 : chg(E, t) / se - chg(C, t) / sc);
+    var X0 = 50, X1 = 620;
+    function xs(i){ return X0 + (X1 - X0) * i / (T - 1); }
+    var all = E.concat(C), lo = Math.min.apply(null, all), hi = Math.max.apply(null, all);
+    function yTop(v){ return 120 - (v - lo) / (hi - lo) * 105; }
+    function yGap(v){ return 238 - (v + 3.5) / 8.5 * 70; }
+    function path(a, fn){ var s = ''; for (var i = 0; i < a.length; i++) s += (i ? 'L' : 'M') + xs(i).toFixed(1) + ',' + fn(a[i]).toFixed(1); return s; }
+    document.getElementById('ca-d-eq').setAttribute('d', path(E, yTop));
+    document.getElementById('ca-d-cr').setAttribute('d', path(C, yTop));
+    document.getElementById('ca-d-gap').setAttribute('d', path(gap, yGap));
+    var z = document.getElementById('ca-d-zero');
+    z.setAttribute('y1', yGap(0).toFixed(1)); z.setAttribute('y2', yGap(0).toFixed(1));
+    var sp = document.getElementById('ca-d-split');
+    sp.setAttribute('x1', xs(D).toFixed(1)); sp.setAttribute('x2', xs(D).toFixed(1));
+    function update(){
+      var th = parseFloat(thrIn.value);
+      document.getElementById('ca-d-thr-val').textContent = th.toFixed(2) + ' σ';
+      var l = document.getElementById('ca-d-thr'), yy = yGap(th).toFixed(1);
+      l.setAttribute('y1', yy); l.setAttribute('y2', yy);
+      var pre = 0, post = 0, first = null, html = '';
+      for (var i = W; i < T; i++){
+        if (gap[i] > th){
+          if (i <= D) pre++; else { post++; if (first === null) first = i; }
+          html += '<circle cx="' + xs(i).toFixed(1) + '" cy="' + yGap(gap[i]).toFixed(1) + '" r="2.4" style="fill:var(--red)"/>';
+        }
+      }
+      document.getElementById('ca-d-flags').innerHTML = html;
+      document.getElementById('ca-d-out').textContent = 'False flags before the crack: ' + pre + '. Flags after it: ' + post + '. First real flag: ' + (first === null ? 'never' : 'day ' + first + ' (' + (first - D) + ' after the crack)') + '.';
+    }
+    thrIn.addEventListener('input', update);
+    update();
+  })();
+
+  // ---- Slide 10: stock-bond correlation ----
+  (function(){
+    var rIn = document.getElementById('ca-c-r');
+    if (!rIn) return;
+    var N = 500, H = 250, B = 0.8, C = 1.0, D = 0.6, W = 60;
+    var zg = normals(11, N), zp = normals(22, N), es = normals(33, N), eb = normals(44, N);
+    function theo(sp){ var cov = -C + B * D * sp * sp, vs = 1 + B * B * sp * sp + 0.25, vb = C * C + D * D * sp * sp + 0.25; return cov / Math.sqrt(vs * vb); }
+    function xs(t){ return 50 + 570 * t / (N - 1); }
+    function yv(v){ return 105 - v * 80; }
+    function update(){
+      var R = parseFloat(rIn.value), s = [], b = [], t;
+      document.getElementById('ca-c-r-val').textContent = R.toFixed(2) + '×';
+      for (t = 0; t < N; t++){
+        var sp = t < H ? 0.5 : R, g = zg[t], p = sp * zp[t];
+        s.push(g - B * p + 0.5 * es[t]);
+        b.push(-C * g - D * p + 0.5 * eb[t]);
+      }
+      var d = '', last = 0;
+      for (t = W; t <= N; t++){ last = corrRange(s, b, t - W, t); d += (t === W ? 'M' : 'L') + xs(t - 1).toFixed(1) + ',' + yv(last).toFixed(1); }
+      document.getElementById('ca-c-line').setAttribute('d', d);
+      var t1 = theo(0.5), t2 = theo(R);
+      var l1 = document.getElementById('ca-c-l1'), l2 = document.getElementById('ca-c-l2');
+      l1.setAttribute('y1', yv(t1).toFixed(1)); l1.setAttribute('y2', yv(t1).toFixed(1));
+      l2.setAttribute('y1', yv(t2).toFixed(1)); l2.setAttribute('y2', yv(t2).toFixed(1));
+      document.getElementById('ca-c-out').textContent = 'Formula correlation: ' + t1.toFixed(2) + ' in the first half, ' + t2.toFixed(2) + ' in the second. Tipping ratio ' + Math.sqrt(C / (B * D)).toFixed(2) + '×. Measured in the last 60 days: ' + last.toFixed(2) + '.';
+    }
+    rIn.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+<script src="../../theory-lab/assets/verdicts.js" defer></script>
+<script src="../../theory-lab/assets/tts.js?v=6" defer></script>
+<script src="../../theory-lab/assets/vark.js?v=2" defer></script>
+</body>
+</html>

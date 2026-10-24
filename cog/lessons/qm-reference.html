@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quant &amp; Macro — Course Reference — COG Hub — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theory-lab/assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+/* Local extension: the shared stylesheet only styles two-column symbol
+   legends (.tl-symbols). This page is dense with wide multi-column
+   reference tables, so it adds a generic table wrapper in the same
+   dark-theme language (same CSS variables) rather than duplicating or
+   fighting the shared sheet. */
+.tl-table{overflow-x:auto;margin:14px 0;border:1px solid var(--border);border-radius:var(--r)}
+.tl-table table{width:100%;border-collapse:collapse;font-size:13px}
+.tl-table th{background:var(--s2);color:var(--text);text-align:left;padding:8px 10px;border-bottom:1.5px solid var(--border2);font-weight:600;white-space:nowrap}
+.tl-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+.tl-table tr:last-child td{border-bottom:none}
+.tl-table tbody tr:hover{background:var(--s1)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">COG Hub</a> / Course Notes / <a href="quant-macro-lessons.html">Quant &amp; Macro</a> / Course reference</div>
+  <div class="tl-glosslink">🔎 <a href="../../theory-lab/glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Course Notes · Quant &amp; Macro reference</div>
+  <h1 class="tl-title">Quant &amp; Macro: Course Reference</h1>
+  <p class="tl-dek">The lookup page for the six Quant &amp; Macro lessons: every formula in one place, the data sources and tools the course names, the daily scans as taught, the course's own key takeaways, and the topics it flagged for later.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">COURSE NOTES — a lookup page, not a lesson and not a backtested strategy</span>
+    <span>~5 min read</span>
+    <span>Prereqs: <a href="quant-macro-lessons.html">the six Quant &amp; Macro lessons</a></span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Appendix A</strong> collects the formulas used across the lessons (bond price, duration, breakeven, carry, correlation and the rest) so you can check one without re-reading a lesson.</li>
+      <li><strong>Appendix B</strong> lists the data sources and tools the course names, so you know where each series the lessons rely on comes from.</li>
+      <li><strong>Appendix C</strong> is the daily scan routine as taught: what a macro trader looks at each morning, in order.</li>
+      <li><strong>Key Takeaways</strong> and <strong>Appendix D</strong> (topics flagged for future investigation) close the course.</li>
+    </ul>
+  </div>
+
+  <div class="tl-callout">
+    <strong>A note on the numbers in this file.</strong> The specific correlations, percentages and figures throughout these lessons are <em>exemplar data</em> representing typical historical ranges, as the lesson material itself states. Actual values vary by time period, market regime and measurement methodology. The relationships and mechanisms described are well-established; treat exact figures as illustrative until verified against current data.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Appendix A — Master reference: formulas from the course</h2>
+  <div class="tl-table"><table>
+    <tr><th>Formula</th><th>Context</th></tr>
+    <tr><td><code>SNR = Signal Power / Noise Power</code></td><td>L1 — noise vs signal by horizon</td></tr>
+    <tr><td><code>Yield ≈ Coupon / Price</code></td><td>L4 — simplified bond yield</td></tr>
+    <tr><td><code>Price change ≈ −Duration × Yield change</code></td><td>L4 — rate sensitivity</td></tr>
+    <tr><td><code>Breakeven Inflation = Nominal Yield − TIPS Yield</code></td><td>L4 — market inflation expectation</td></tr>
+    <tr><td><code>Net Liquidity ≈ Fed Balance Sheet − TGA − RRP</code></td><td>L3/L6 — liquidity available to markets</td></tr>
+    <tr><td><code>Carry Return = Rate Differential − Hedging Cost</code></td><td>L5 — carry mechanics</td></tr>
+    <tr><td><code>Forward Premium ≈ Interest Rate Differential</code></td><td>L5 — covered interest parity</td></tr>
+    <tr><td><code>Implied FF rate = 100 − futures price</code></td><td>L3 — Fed funds futures</td></tr>
+    <tr><td>EWMA correlation with λ ≈ 0.94</td><td>L6 — correlation-regime monitoring</td></tr>
+    <tr><td><code>Position Size = Target Risk / (Instrument Vol × Correlation to View)</code></td><td>L6 — vol-adjusted sizing</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Appendix B — Master reference: data sources &amp; tools named in the course</h2>
+  <div class="tl-table"><table>
+    <tr><th>Source / tool</th><th>What for</th></tr>
+    <tr><td>FRED <code>WALCL</code></td><td>Fed balance sheet (weekly)</td></tr>
+    <tr><td>FRED <code>RRPONTSYD</code></td><td>Overnight reverse repo (daily)</td></tr>
+    <tr><td>FRED <code>WTREGEN</code></td><td>Treasury General Account (weekly)</td></tr>
+    <tr><td>FRED <code>NFCI</code></td><td>Chicago Fed financial conditions (weekly)</td></tr>
+    <tr><td>FRED <code>DRTSCILM</code></td><td>SLOOS bank lending standards (quarterly)</td></tr>
+    <tr><td>H.4.1 release</td><td>Fed weekly balance sheet, Thursdays 4:30 PM ET</td></tr>
+    <tr><td>CME FedWatch</td><td>Market-implied meeting probabilities</td></tr>
+    <tr><td>Fed funds futures / OIS</td><td>Rate expectations pricing</td></tr>
+    <tr><td>CFTC COT report</td><td>Futures positioning by trader type (Fridays)</td></tr>
+    <tr><td>CDX IG / CDX HY</td><td>Tradeable credit indices; real-time risk sentiment</td></tr>
+    <tr><td>HY OAS</td><td>Credit-spread fear gauge</td></tr>
+    <tr><td>MOVE index</td><td>Treasury volatility ("bond VIX")</td></tr>
+    <tr><td>VIX + VIX term structure (VIX1/VIX2)</td><td>Equity vol; contango vs backwardation</td></tr>
+    <tr><td>10Y TIPS yield (e.g. FRED DFII10)</td><td>Real yields</td></tr>
+    <tr><td>2s10s / 3M-10Y spreads</td><td>Curve slope / recession signal</td></tr>
+    <tr><td>Cross-currency basis (EUR/USD, JPY/USD)</td><td>Dollar funding stress</td></tr>
+    <tr><td>Dot plot / SEP</td><td>FOMC projections (Mar/Jun/Sep/Dec)</td></tr>
+    <tr><td>Fed speech calendar; WSJ (Timiraos)</td><td>Fedspeak &amp; trial balloons</td></tr>
+    <tr><td>Put/call ratio, short interest, fund flows</td><td>Positioning/sentiment</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Appendix C — Master reference: the daily scans (as taught)</h2>
+  <p><strong>Risk dashboard (L2):</strong> VIX level &amp; term structure → CDX HY day change → JPY vs high-beta FX → stock-bond correlation check → if 3+ warn, cut gross first.</p>
+  <p><strong>Fixed income scan, 5 min (L4):</strong> 10Y level/change → 2s10s → 2Y → HY spreads → MOVE → 10Y TIPS → key rate differentials.</p>
+  <p><strong>FX scan, 5 min (L5):</strong> DXY direction &amp; why → USD/JPY (JPY strength = risk-off) → EUR/USD → AUD/USD (risk + China) → EM FX breadth → cross-currency basis if available.</p>
+  <p><strong>Pre-trade checks:</strong> levels above you in the hierarchy (L2) → positioning (who's in, what forces them out, am I early or late, what's my edge) (L2) → bond-first framework (L4) → regime &amp; coherence context (L6).</p>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Systematic validation decouples time from capital.</strong> Hypothesis → in-sample → out-of-sample → walk-forward → small live size fails most ideas before any money is at risk; ad-hoc/intuition-based trading fails ideas with capital already deployed — the "double negative" of lost time and lost capital (Lesson 1).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Check the levels above you before any position.</strong> Policy cascades central banks → government bonds → currencies → equities → credit, with information degrading and lag increasing at each step down; most retail activity happens at the noisiest, most crowded bottom rungs (Lesson 2).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fed communication is precise, not vague — but it's conditional, not a commitment.</strong> Statement word-diffs, press-conference tone, and dot-plot shifts telegraph policy before it happens; the dot plot itself has a documented poor track record and should never be read as a promise (Lesson 3).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bond math is mechanical and it leads the other asset classes.</strong> Price and yield move inversely by definition; duration converts yield moves into price moves; an inverted yield curve has preceded every US recession in 50+ years (6–24 month variable lead); credit spreads and real yields (TIPS) often explain equity/gold/FX moves before the equity tape does (Lesson 4).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Rate differentials drive FX medium-term, but risk sentiment overrides in stress.</strong> Haven flows (JPY, CHF, USD) and carry-trade unwinds can swamp the rate-differential logic entirely — a sharp JPY rally on a "risk-off" day is a mechanical unwind signal to read, not a rate-based forecast to fight (Lesson 5).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Understanding the cross-asset framework is not the same as having an edge.</strong> The lesson material's own verdict: markets are efficient at short horizons, and daily discretionary macro trading is documented to be extremely difficult even for professionals — the institutional edge is data infrastructure, systematic implementation, longer time horizons, and the discipline to test before trading, not discretionary daily macro calls (Lesson 6).</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">✓</span><span><strong>These are course notes, not a validated trading system.</strong> The specific correlations, percentages and figures throughout are exemplar data representing typical historical ranges, as the lesson material itself states — the mechanisms are well-established, but exact numbers should be treated as illustrative until verified against current data, and none of this framework has been backtested or proven out-of-sample on this platform.</span></div>
+  </div>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Appendix D — Topics flagged for future investigation</h2></summary>
+  <p>
+    These are open threads named in the lesson material itself — testable
+    ideas the course points at but doesn't resolve, not conclusions to trade
+    on as given.
+  </p>
+  <ul>
+    <li>Lead-lag measurement: cross-correlation by lag, Granger causality, VAR, rolling-window stability (L6 notes these are strongest at regime turns).</li>
+    <li>Regime detection methods: rule-based thresholds vs HMM vs clustering; robustness across methods (L6).</li>
+    <li>Coherence scoring: cross-asset correlation vs regime norms as a conviction/size input; behaviour of trend vs mean-reversion under high/low coherence (L6).</li>
+    <li>Correlation methodology: rolling vs EWMA (λ=0.94), regime-conditional estimates, stress correlations (L6).</li>
+    <li>Carry strategy literature: UIP failure, long-run carry returns and crash risk (L5).</li>
+    <li>Pre-FOMC drift and the two-phase FOMC reaction; post-event drift over days 1–5 (L3).</li>
+    <li>Dot-plot vs market-pricing gaps as surprise-direction indicator (L3).</li>
+    <li>Net-liquidity ↔ risk-asset relationship ("a condition, not a signal") (L3/L6).</li>
+    <li>Calendar-flow effects: month-end rebalancing pressure, OpEx pinning/gamma, September/year-end seasonality (L2).</li>
+    <li>Positioning extremes (COT percentile, short interest, put/call) as reversal conditioning (L2).</li>
+    <li>Yield-curve inversion lead times and the un-inversion "final warning" (L4).</li>
+    <li>Real-yield relationships with gold and growth equities; breakeven decomposition of nominal moves (L4).</li>
+    <li>Cross-currency basis as a funding-stress indicator; quarter-end seasonality; Fed swap lines (L5).</li>
+    <li>Intervention episodes and their limits (Japan 2022–24) (L5).</li>
+    <li>Vol-adjusted sizing and expression selection across the capital structure (L6).</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="qm-6-cross-asset.html">← Lesson 6: Cross-Asset Synthesis</a>
+    <a href="quant-macro-lessons.html">Quant &amp; Macro index</a>
+    <a href="regression-analysis-course.html">Regression Analysis →</a>
+  </div>
+</div>
+<script src="../../theory-lab/assets/progress.js?v=1" defer></script>
+</body>
+</html>

@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Repositioning Your Approach to Financial Markets — COG Hub — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theory-lab/assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+/* Local extension: reference tables (same variables as the shared sheet). */
+.tl-table{overflow-x:auto;margin:14px 0;border:1px solid var(--border);border-radius:var(--r)}
+.tl-table table{width:100%;border-collapse:collapse;font-size:13px}
+.tl-table th{background:var(--s2);color:var(--text);text-align:left;padding:8px 10px;border-bottom:1.5px solid var(--border2);font-weight:600;white-space:nowrap}
+.tl-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+.tl-table tr:last-child td{border-bottom:none}
+.tl-table tbody tr:hover{background:var(--s1)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">COG Hub</a> / Course Notes / Quant &amp; Macro / Repositioning Your Approach</div>
+  <div class="tl-glosslink">🔎 <a href="../../theory-lab/glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Course Notes · Quant &amp; Macro 1 of 6</div>
+  <h1 class="tl-title">Repositioning Your Approach to Financial Markets</h1>
+  <p class="tl-dek">Most of what you see in a price chart is noise, short-term trading pays friction on every trade, and the cheapest place to find out an idea is wrong is a spreadsheet, not your account. This lesson is the case for testing before trading.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">COURSE NOTES — framework as taught, not a backtested strategy</span>
+    <span>~22 min read</span>
+    <span>Prereqs: none</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="qm-1-repositioning-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Noise dominates short horizons.</strong> Many kinds of participant, with different horizons and mandates, generate price moves that are essentially random. The signal-to-noise ratio (SNR) improves as the holding period lengthens.</li>
+      <li><strong>Friction is the second penalty.</strong> Spread, slippage and market impact are paid per trade, so short holding periods meet low SNR <em>and</em> high cost. The holding period where expected edge first exceeds cost is the minimum viable holding period.</li>
+      <li><strong>Testing before trading decouples time from capital.</strong> A systematic process (hypothesis, in-sample, out-of-sample, walk-forward, small live size) fails most ideas for the price of compute. Trading on intuition fails the same ideas with real money already deployed.</li>
+      <li><strong>Know the numbers before you need them.</strong> A backtest gives you eleven statistics (CAGR, Sharpe, max drawdown and so on) before day one. Without them, an ordinary −15% drawdown looks like a verdict on the strategy.</li>
+      <li><strong>Real-world episode:</strong> Knight Capital, 1 August 2012, found a software defect in the live market rather than before it, and lost more than $400 million in about 45 minutes. It was an operations failure, not a strategy that failed validation, but the cost structure is the same: a defect found live is paid for in capital.</li>
+    </ul>
+  </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart of trading cost as a share of expected edge against holding period on a log axis. Cost share falls steeply: above 100 percent for holding periods shorter than about 1.25 days (costs exceed edge, shaded red), below it for longer holds (shaded green). Signal-to-noise reaches 1 only at about 225 days. Below the chart, two bars: testing an idea on compute puts 0 percent of capital at risk, testing it live puts 100 percent at risk.">
+      <rect class="tlp-box red" x="60" y="30" width="148.2" height="160" opacity=".3"/>
+      <rect class="tlp-box green" x="208.2" y="30" width="351.8" height="160" opacity=".25"/>
+      <line class="tlp-line" x1="60" y1="190" x2="570" y2="190"/>
+      <line class="tlp-line" x1="60" y1="30" x2="60" y2="190"/>
+      <line class="tlp-line dash" x1="60" y1="115" x2="570" y2="115"/>
+      <polyline class="tlp-line blue thick" points="60.0,40.0 68.3,40.0 76.7,40.0 85.0,40.0 93.3,40.0 101.7,40.0 110.0,40.0 118.3,40.0 126.7,40.0 135.0,40.0 143.3,40.0 151.7,40.0 160.0,40.0 168.3,42.0 176.7,61.6 185.0,78.6 193.3,93.3 201.7,106.1 210.0,117.2 218.3,126.9 226.7,135.2 235.0,142.5 243.3,148.8 251.7,154.2 260.0,159.0 268.3,163.1 276.7,166.6 285.0,169.7 293.3,172.4 301.7,174.7 310.0,176.8 318.3,178.5 326.7,180.0 335.0,181.4 343.3,182.5 351.7,183.5 360.0,184.4 368.3,185.1 376.7,185.7 385.0,186.3 393.3,186.8 401.7,187.2 410.0,187.6 418.3,187.9 426.7,188.2 435.0,188.4 443.3,188.6 451.7,188.8 460.0,189.0 468.3,189.1 476.7,189.2 485.0,189.3 493.3,189.4 501.7,189.5 510.0,189.6 518.3,189.6 526.7,189.7 535.0,189.7 543.3,189.8 551.7,189.8 560.0,189.8"/>
+      <line class="tlp-line dash" x1="208.2" y1="30" x2="208.2" y2="190"/>
+      <line class="tlp-line dash" x1="513.0" y1="30" x2="513.0" y2="190"/>
+      <text class="tlp-red" x="68" y="176" font-size="13" font-weight="700">costs exceed edge</text>
+      <text class="tlp-green" x="218.2" y="84" font-size="13" font-weight="700">edge exceeds costs</text>
+      <text class="tlp-amber" x="214.2" y="24" font-size="12" font-weight="700">break-even ≈ 1.25 days</text>
+      <text class="tlp-purple" x="507.0" y="24" text-anchor="end" font-size="12" font-weight="700">SNR = 1 ≈ 225 days</text>
+      <text class="tlp-text3" x="52" y="119" text-anchor="end" font-size="11">100%</text>
+      <text class="tlp-text3" x="52" y="194" text-anchor="end" font-size="11">0</text>
+      <text class="tlp-text3" x="60.0" y="206" text-anchor="middle" font-size="11">0.1 d</text>
+      <text class="tlp-text3" x="195.1" y="206" text-anchor="middle" font-size="11">1 d</text>
+      <text class="tlp-text3" x="330.3" y="206" text-anchor="middle" font-size="11">10 d</text>
+      <text class="tlp-text3" x="465.4" y="206" text-anchor="middle" font-size="11">100 d</text>
+      <text class="tlp-text3" x="570" y="222" text-anchor="end" font-size="11">holding period →</text>
+      <text class="tlp-text3" x="66" y="22" font-size="11">cost ÷ edge ↑</text>
+      <rect class="tlp-box green" x="60" y="232" width="250" height="30" rx="6" opacity=".35"/>
+      <text class="tlp-green" x="185" y="252" text-anchor="middle" font-size="13" font-weight="700">test on compute: 0% of capital at risk</text>
+      <rect class="tlp-box red" x="320" y="232" width="250" height="30" rx="6" opacity=".35"/>
+      <text class="tlp-red" x="445" y="252" text-anchor="middle" font-size="13" font-weight="700">test live: 100% of capital at risk</text>
+    </svg>
+    <figcaption>Illustrative numbers (edge 4 bps a day, cost 5 bps, daily noise 60 bps), not an estimate for any real strategy. Costs swamp the edge on short holds, and even once the edge beats the costs the move can still be mostly noise. The cheapest way to learn which side of the line an idea sits on is to test it before it touches capital.</figcaption>
+  </figure>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Most people come to markets the way they come to any new skill: they form a view, try it, and learn from the result. In most fields that works, because feedback is fast, cheap and informative. Markets break all three. Feedback is slow (a strategy needs months to show anything), expensive (every lesson is paid for in capital), and uninformative (one run of P&amp;L is a single random path, so a good run and a bad run can both come from the same underlying edge).
+  </p>
+  <p>
+    This first lesson of the Quant &amp; Macro course asks you to change the order of operations. Instead of "trade, then find out", it argues for "find out, then trade": measure how much of a price move is noise, work out what trading costs you, test ideas on history before they touch money, and arrive at day one already knowing what a normal drawdown for your strategy looks like. The rest of the course (what moves markets, central banks, bonds, currencies, putting it together) assumes you have made that switch.
+  </p>
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Think of testing a recipe on a stove vs. testing it at a wedding</h3>
+    <p>
+      A cook who tries a new dish at home risks one dinner. A cook who tries it for the first time at a 200-person wedding risks the event, and learns exactly the same thing, only more expensively and with an audience. Trading a new idea with real capital is the wedding. Testing it on history, then on data it has never seen, then in small size, is the home kitchen. Both cooks find out the dish is bad; only one pays for it with something that cannot be re-made.
+    </p>
+  </div>
+  <div class="tl-solid amber">
+    <strong>A note on the numbers.</strong> The course states that its specific correlations, percentages and figures are <em>exemplar data</em> representing typical historical ranges, not measurements. The mechanisms are well-established; the exact figures (the 52-idea funnel, the −22% maximum drawdown, the six-month timeline) are teaching examples. Treat them as illustrative.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Noise: who is trading, and why most of the movement is random</h2>
+  <p>
+    A price is the running outcome of many different participants acting at once: central banks, pension funds, sovereign wealth funds, hedge funds, proprietary desks and algorithmic traders. They differ in time horizon (a pension fund thinks in decades, an algorithm in milliseconds), in mandate (one must hedge, another must track an index, another is paid to speculate) and in what they know. A move caused by a pension fund rebalancing at month-end tells you nothing about where the market is going; it only tells you someone had to trade.
+  </p>
+  <p>
+    The course calls the part of price movement that comes from this clash of unrelated motives <strong>market noise</strong>: movements that are fundamentally random and carry no predictive signal. It sits on top of whatever real information the price also carries. The question for anyone building a strategy is how much of what they see is the second thing and how much is the first.
+  </p>
+  <div class="tl-math">\[ \text{SNR} = \frac{\text{Signal Power}}{\text{Noise Power}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Signal Power</code><span>how large the genuinely predictive part of a move is (squared size)</span></div>
+    <div class="tl-eq-chip c2"><code>Noise Power</code><span>how large the random part is (squared size)</span></div>
+    <div class="tl-eq-chip c3"><code>SNR</code><span>their ratio: above 1 the signal wins, below 1 the noise wins</span></div>
+  </div>
+  <div class="tl-table"><table>
+    <tr><th>SNR</th><th>Reading</th><th>What it means for a strategy</th></tr>
+    <tr><td><strong>&lt; 1 (low)</strong></td><td>Noise dominates</td><td>Random fluctuations overwhelm the signal; any pattern you see is more likely luck than edge.</td></tr>
+    <tr><td><strong>≈ 1 (neutral)</strong></td><td>Signal ≈ noise</td><td>Edge is uncertain; the strategy might work, but a short track record cannot tell you.</td></tr>
+    <tr><td><strong>&gt; 1 (high)</strong></td><td>Signal dominates</td><td>Exploitable patterns emerge and can be measured.</td></tr>
+  </table></div>
+  <p>
+    The crucial fact is that SNR is not a fixed property of a market. It <strong>varies with the holding period</strong>. Short horizons are noise-dominated; longer horizons move through a transition zone into signal-extractable territory. Extending the holding period improves signal-extraction potential. Section 04 builds a small model that shows <em>why</em>, and lets you move the dials.
+  </p>
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine listening for one quiet song in a crowded playground. For one second all you hear is shouting (noise). If you listen for a whole minute, the shouting jumbles together into a background hum, and the song, which keeps repeating, starts to stand out. Holding a trade longer is like listening longer.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Friction: the second penalty on short horizons</h2>
+  <p>
+    Noise is only half of why short-term trading is hard. The other half is cost. Institutions reach markets through prime brokerage, whose cost structures differ materially from retail execution. At short horizons, costs compound geometrically across four components: <strong>spread</strong> (the gap between buy and sell prices), <strong>slippage</strong> (the price moves while your order is working), <strong>market impact</strong> (your own order moves the price against you) and <strong>opportunity cost</strong> (capital tied up in a trade that does not pay).
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard"><h4>↔ Spread</h4><p>Pay the ask to buy, receive the bid to sell. The gap is a toll, charged on every round trip.</p></div>
+    <div class="tl-icard"><h4>🏃 Slippage</h4><p>The price you get is not the price you saw. The longer an order takes to fill, the more it drifts.</p></div>
+    <div class="tl-icard"><h4>💥 Market impact</h4><p>A large order moves the price against you as it executes. It grows with size relative to available liquidity.</p></div>
+    <div class="tl-icard"><h4>⏳ Opportunity cost</h4><p>Capital committed to a trade that earns nothing is capital unavailable for something that would.</p></div>
+  </div>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Alpha erosion, the course's example</div>
+    <h3>5 bps of expected alpha per trade</h3>
+    <p>
+      A strategy with 5 basis points (0.05%) of expected alpha per trade is only profitable if each round trip costs <em>less than</em> 5 bps. At a cost of 4 bps it keeps +1 bp a trade; at 6 bps it loses 1 bp a trade, and because costs are certain while the alpha is only expected, the strategy has negative expected value from the first trade. At high trading frequency, where each trade carries a small edge but the cost is still paid in full, this is the common outcome: the edge is real and the strategy still loses money.
+    </p>
+  </div>
+  <div class="tl-solid red">
+    <strong>The double penalty.</strong> Short horizons suffer <em>both</em> low SNR (noise dominates) <em>and</em> high transaction-cost impact. The two compound: with little signal to find and a fixed toll to pay on each attempt, extracting alpha at short horizons is exceptionally difficult. The holding period where expected alpha first exceeds friction is the <strong>minimum viable holding period</strong> for any strategy.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The maths: a toy model of signal, noise and cost</h2>
+  <p>
+    The course states the SNR idea and the break-even idea in words. To see them move together, here is a deliberately simple model, built for teaching and <strong>not taken from the course or fitted to any market</strong>. It assumes the edge accumulates in a straight line with time held, while the random wobble accumulates only with the square root of time.
+  </p>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From "edge per day" to the minimum viable holding period, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E(h) = \color{#fbbf24}{k\,h} \]</div>
+      <p>Expected gross edge of a trade held for \(h\) days: a drift of \(k\) basis points a day, collected for \(h\) days.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E(h) = k\,h \qquad N(h) = \color{#fbbf24}{\sigma\sqrt{h}} \]</div>
+      <p>The random part. Independent daily wobbles of size \(\sigma\) do not add up in a straight line, because ups and downs partly cancel. After \(h\) days their typical size is \(\sigma\sqrt{h}\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{SNR}(h) = \frac{E(h)^2}{N(h)^2} = \color{#fbbf24}{\frac{k^2}{\sigma^2}}\,h \]</div>
+      <p>Power is squared size, so SNR is the signal squared over the noise squared. The edge grows with \(h\) and the noise only with \(\sqrt{h}\), so SNR rises in proportion to the holding period. This is the maths behind "longer holding periods improve signal extraction".</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{net}(h) = k\,h - \color{#fbbf24}{C} \]</div>
+      <p>Now subtract the toll. \(C\) is the round-trip cost of one trade in basis points, paid once however long you hold.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ k\,h^* - C = 0 \;\Rightarrow\; \color{#10b981}{h^* = \frac{C}{k}} \]</div>
+      <p>Break-even: the holding period where expected edge exactly pays the cost. Shorter than \(h^*\), the trade loses on average; this is the minimum viable holding period.</p>
+    </div>
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">C</div><div class="tl-fp-name">The toll</div><div class="tl-fp-desc">Round-trip cost in bps: spread, slippage and impact per trade</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">k</div><div class="tl-fp-name">The edge rate</div><div class="tl-fp-desc">Expected gross edge earned per day held, in bps</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">h*</div><div class="tl-fp-name">The clock</div><div class="tl-fp-desc">Minimum viable holding period: cost divided by edge rate</div></div>
+  </div>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(h\)</td><td>Holding period in trading days.</td></tr>
+      <tr><td>\(k\)</td><td>Expected gross edge per day held, in basis points (1 bp = 0.01%).</td></tr>
+      <tr><td>\(\sigma\)</td><td>Typical daily random move, in basis points.</td></tr>
+      <tr><td>\(C\)</td><td>Round-trip transaction cost per trade, in basis points.</td></tr>
+      <tr><td>\(E(h), N(h)\)</td><td>Expected gross edge, and typical random move, over a hold of \(h\) days.</td></tr>
+      <tr><td>\(\text{SNR}(h)\)</td><td>Signal power over noise power, \(E^2/N^2\).</td></tr>
+      <tr><td>\(h^*\)</td><td>Break-even holding period, \(C/k\).</td></tr>
+    </table>
+  </div>
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Say you walk to a shop and every trip costs you a fixed bus fare, but you only collect a little pocket money for every hour you spend there. Stay five minutes and the fare is more than you earned. Stay long enough and the pocket money beats the fare. The "break-even stay" is the fare divided by the pocket money per hour.</p>
+  </div>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Edge of 4 bps a day, cost of 5 bps, noise of 60 bps a day</h3>
+    <p>Break-even is \(h^* = C/k = 5/4 =\) 1.25 days. Hold for 1 day and you earn 4 bps gross against a 5 bps toll: net −1 bp. Hold for 5 days: gross \(4 \times 5 = 20\) bps, net \(20 - 5 = +15\) bps, and cost has shrunk from 125% of the edge (1 day) to 25% (5 days).</p>
+    <div class="tl-math">\[ \text{SNR}(5) = \frac{k^2}{\sigma^2}\,h = \frac{4^2}{60^2}\times 5 = \frac{80}{3600} \approx 0.022 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>k²/σ²</code><span>16 / 3600 per day</span></div>
+      <div class="tl-eq-chip c2"><code>× 5</code><span>five days held</span></div>
+      <div class="tl-eq-chip c3"><code>≈ 0.022</code><span>signal power is about 2% of noise power</span></div>
+    </div>
+    <p>So the trade clears its costs at 1.25 days <em>and is still overwhelmingly noise</em> at 5 days. SNR reaches 1 only when \(h = \sigma^2/k^2 = 3600/16 =\) 225 days. Break-even on cost and a clear signal are two different thresholds, and the second comes much later. This is only a model with a straight-line edge: a real edge can decay or saturate, and the numbers are chosen to make the shape visible.</p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Move the dials: how long must you hold before costs stop mattering?</h3>
+    <p>The chart plots round-trip cost as a share of expected edge, \(C/(k\,h)\), against holding period on a log axis. Above 100% the trade loses on average; the purple line marks where SNR reaches 1. Starts on the worked example: \(k=4\), \(C=5\), \(\sigma=60\), \(h=5\) days.</p>
+    <div class="tl-predict" data-answer="1.25" data-tol="0.1" data-unit=" days">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the edge at 4 bps a day and the round-trip cost at 5 bps, what is the shortest holding period (in days) at which a trade breaks even on average? Lock in a guess, then read the "Break-even h*" figure below the chart.</div>
+      <div class="tl-predict-reveal"><p><strong>1.25 days.</strong> \(h^* = C/k = 5/4\). Now raise the cost to 10 and watch the break-even slide to 2.5 days: doubling the cost doubles the minimum holding period. Then halve the edge instead, and see the same thing.</p></div>
+    </div>
+    <div class="tl-chart interactive">
+      <div class="tl-chart-label">Cost as a share of expected edge, against holding period (log scale)</div>
+      <svg viewBox="0 0 640 310" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart on a log x-axis from 0.1 to 500 days of round-trip cost as a share of expected gross edge. The curve falls steeply from above 200 percent at very short holds to under 1 percent at 500 days, crossing 100 percent at the break-even holding period. The area left of break-even is shaded red, the area right of it green. A purple dashed line marks where signal-to-noise reaches 1, and an amber dot shows the holding period selected on the slider.">
+        <line x1="70" y1="30" x2="70" y2="270" style="stroke:var(--border2);stroke-width:1"/>
+        <line x1="70" y1="270" x2="610" y2="270" style="stroke:var(--border2);stroke-width:1"/>
+        <line x1="70" y1="150" x2="610" y2="150" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+        <text x="64" y="154" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">100%</text>
+        <text x="64" y="274" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">0%</text>
+        <text x="64" y="40" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">200%+</text>
+        <text x="70.0" y="286" text-anchor="middle" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">0.1</text>
+        <text x="215.9" y="286" text-anchor="middle" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">1</text>
+        <text x="361.9" y="286" text-anchor="middle" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">10</text>
+        <text x="507.8" y="286" text-anchor="middle" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">100</text>
+        <text x="340" y="304" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">holding period (trading days, log scale)</text>
+        <g id="qm1c-dyn"><rect x="70" y="30" width="160.1" height="240" style="fill:var(--red);opacity:.12"/><rect x="230.1" y="30" width="379.9" height="240" style="fill:var(--green);opacity:.10"/><polyline points="70.0,30.0 77.3,30.0 84.6,30.0 91.9,30.0 99.2,30.0 106.5,30.0 113.8,30.0 121.1,30.0 128.4,30.0 135.7,30.0 143.0,30.0 150.3,30.0 157.6,30.0 164.9,30.0 172.2,30.0 179.5,30.0 186.8,32.3 194.1,58.1 201.4,81.2 208.6,101.7 215.9,120.0 223.2,136.3 230.5,150.9 237.8,163.8 245.1,175.4 252.4,185.6 259.7,194.8 267.0,203.0 274.3,210.3 281.6,216.8 288.9,222.6 296.2,227.7 303.5,232.3 310.8,236.4 318.1,240.1 325.4,243.3 332.7,246.2 340.0,248.8 347.3,251.1 354.6,253.2 361.9,255.0 369.2,256.6 376.5,258.1 383.8,259.4 391.1,260.5 398.4,261.6 405.7,262.5 413.0,263.3 420.3,264.0 427.6,264.7 434.9,265.3 442.2,265.8 449.5,266.2 456.8,266.6 464.1,267.0 471.4,267.3 478.6,267.6 485.9,267.9 493.2,268.1 500.5,268.3 507.8,268.5 515.1,268.7 522.4,268.8 529.7,268.9 537.0,269.1 544.3,269.2 551.6,269.2 558.9,269.3 566.2,269.4 573.5,269.5 580.8,269.5 588.1,269.6 595.4,269.6 602.7,269.7 610.0,269.7" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round"/><line x1="230.1" y1="30" x2="230.1" y2="270" style="stroke:var(--amber);stroke-width:1.2;stroke-dasharray:4,3"/><text x="236.1" y="46" text-anchor="start" style="fill:var(--amber);font-size:11px;font-family:'DM Mono',monospace">break-even h* = 1.25 days</text><line x1="559.2" y1="30" x2="559.2" y2="270" style="stroke:var(--purple);stroke-width:1.2;stroke-dasharray:2,3"/><text x="553.2" y="250" text-anchor="end" style="fill:var(--purple);font-size:11px;font-family:'DM Mono',monospace">SNR = 1 at 225 days</text><line x1="318.0" y1="30" x2="318.0" y2="270" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:1,3"/><circle cx="318.0" cy="240.0" r="5.5" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/></g>
+      </svg>
+      <div class="tl-controls">
+        <div class="tl-control"><div class="tl-control-head"><span>Holding period h</span><span class="tl-live" id="qm1c-h-val">{{A_h}}</span></div>
+          <input type="range" id="qm1c-h" min="0" max="13" step="1" value="6"></div>
+        <div class="tl-control"><div class="tl-control-head"><span>Edge rate k (bps per day held)</span><span class="tl-live" id="qm1c-k-val">4 bps/day</span></div>
+          <input type="range" id="qm1c-k" min="0.5" max="10" step="0.5" value="4"></div>
+        <div class="tl-control"><div class="tl-control-head"><span>Round-trip cost C (bps)</span><span class="tl-live" id="qm1c-c-val">5 bps</span></div>
+          <input type="range" id="qm1c-c" min="1" max="20" step="0.5" value="5"></div>
+        <div class="tl-control"><div class="tl-control-head"><span>Daily noise σ (bps)</span><span class="tl-live" id="qm1c-s-val">60 bps</span></div>
+          <input type="range" id="qm1c-s" min="20" max="120" step="5" value="60"></div>
+      </div>
+      <div class="tl-readout">Gross edge <b id="qm1c-gross">{{A_gross}}</b> · net of cost <b id="qm1c-net">{{A_net}}</b> · cost is <b id="qm1c-share">{{A_share}}</b> of the edge · SNR <b id="qm1c-snr">{{A_snr}}</b></div>
+      <div class="tl-readout">Break-even h* = <b id="qm1c-hstar">{{A_hstar}}</b> · SNR reaches 1 at <b id="qm1c-hsnr">{{A_hsnr}}</b></div>
+      <div class="tl-hint" id="qm1c-verdict">{{A_verdict}}</div>
+      <div class="tl-chart-caption">The toy model is a teaching device: edge in a straight line, noise with the square root of time, one flat cost per trade. Raise the cost, or lower the edge, and the break-even point moves right: short-horizon strategies are the ones that need the cheapest execution and the strongest edge.</div>
+    </div>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Break-even \(h^* = C/k\), net edge \(k\,h - C\) and cost share \(C/(k\,h)\). New inputs each round; give cost share as a decimal (0.20, not 20%).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(k = 4\) bps a day, \(C = 5\) bps, held \(h = 5\) days. Gross edge is \(4 \times 5 = 20\) bps, so the net edge is \(20 - 5 =\) <span class="tl-blank" data-answer="15" data-tol="0.1" data-unit=" bps"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Now \(k = 3\), \(C = 6\). Break-even \(h^* = 6/3 =\) <span class="tl-blank" data-answer="2" data-tol="0.05" data-unit=" days"></span>. Held for 10 days the net edge is \(3 \times 10 - 6 =\) <span class="tl-blank" data-answer="24" data-tol="0.1" data-unit=" bps"></span>, and cost is <span class="tl-blank" data-answer="0.2" data-tol="0.01"></span> of the gross edge.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(k = 2.5\), \(C = 4\), held \(h = 4\) days. Break-even \(h^* =\) <span class="tl-blank" data-answer="1.6" data-tol="0.05" data-unit=" days"></span>; net edge <span class="tl-blank" data-answer="6" data-tol="0.1" data-unit=" bps"></span>; cost share <span class="tl-blank" data-answer="0.4" data-tol="0.01"></span>. A trade 2.5 times longer than break-even still hands 40% of its edge to the broker.</p>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Two ways to build a strategy</h2>
+  <p>
+    Given that noise is large and friction is certain, how you decide whether an idea is any good matters more than how you come up with it. The course sets two approaches side by side.
+  </p>
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Systematic practitioner (data-driven)</div>
+    <ul>
+      <li>Hypothesis generation from empirical observation</li>
+      <li>In-sample parameter estimation with regularisation</li>
+      <li>Out-of-sample validation on held-out data</li>
+      <li>Walk-forward analysis simulating live deployment</li>
+      <li>Monte Carlo simulation for tail-risk assessment</li>
+      <li>Paper trading before capital allocation</li>
+    </ul>
+  </div>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Retail trader (intuition-based, no validation)</div>
+    <ul>
+      <li>Hypothesis from intuition or narrative</li>
+      <li>No systematic parameter optimisation</li>
+      <li>Live market is the only test environment</li>
+      <li>Strategy invalidation requires months of live trading</li>
+      <li>Drawdown limits discovered through experience</li>
+      <li>Real capital at risk from day one</li>
+    </ul>
+  </div>
+  <p>The difference is not intelligence or effort. It is <strong>where the test happens</strong>. The systematic route moves every test that can be run on history to before the first dollar is exposed; the intuition route has one test environment, the live account.</p>
+
+  <h3>Time and capital, side by side</h3>
+  <div class="tl-table"><table>
+    <tr><th>Metric</th><th>Systematic</th><th>Intuition-based</th></tr>
+    <tr><td>Time to invalidation</td><td>~2 weeks</td><td>~6 months</td></tr>
+    <tr><td>Capital risked to test</td><td>$0</td><td>100%</td></tr>
+    <tr><td>Strategies tested per year</td><td>50+</td><td>2–3</td></tr>
+    <tr><td>Cost of a failed strategy</td><td>Time only</td><td>Time + money</td></tr>
+  </table></div>
+  <p>The last two rows are the compounding ones. A process that rejects an idea in two weeks tests about twenty-five times as many ideas a year as one that needs six months, and since most ideas fail, the testing rate matters more than the quality of any single idea.</p>
+
+  <h3>The two lifecycles, week by week</h3>
+  <figure class="tl-picture">
+    <div class="tl-picture-label">Same starting point, very different bills</div>
+    <svg viewBox="0 0 640 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two timelines. Systematic: week 1 hypothesis and data preparation, week 2 in-sample development, week 3 out-of-sample validation where the strategy degrades and is rejected with no capital lost, week 4 a new hypothesis, capital preserved. Intuition-based: week 1 live trading begins with capital deployed on conviction, month 1 a minus 8 percent drawdown, month 3 minus 15 percent, month 6 the strategy is abandoned at minus 22 percent: lost time and lost capital. The two lanes are not drawn to the same time scale.">
+      <text class="tlp-green" x="20" y="24" font-size="14" font-weight="700">Systematic · capital at risk: $0</text>
+      <line class="tlp-line green thick" x1="60" y1="60" x2="590" y2="60"/>
+      <circle class="tlp-blue" cx="100" cy="60" r="9"/><circle class="tlp-blue" cx="240" cy="60" r="9"/><circle class="tlp-red" cx="380" cy="60" r="9"/><circle class="tlp-green" cx="520" cy="60" r="9"/>
+      <text class="tlp-text" x="100" y="90" text-anchor="middle" font-size="12" font-weight="700">Week 1</text>
+      <text class="tlp-text2" x="100" y="106" text-anchor="middle" font-size="11">Hypothesis &amp; data:</text>
+      <text class="tlp-text2" x="100" y="120" text-anchor="middle" font-size="11">clean data, universe,</text>
+      <text class="tlp-text2" x="100" y="134" text-anchor="middle" font-size="11">falsifiability criteria</text>
+      <text class="tlp-text" x="240" y="90" text-anchor="middle" font-size="12" font-weight="700">Week 2</text>
+      <text class="tlp-text2" x="240" y="106" text-anchor="middle" font-size="11">In-sample build:</text>
+      <text class="tlp-text2" x="240" y="120" text-anchor="middle" font-size="11">cross-validated tuning,</text>
+      <text class="tlp-text2" x="240" y="134" text-anchor="middle" font-size="11">guard vs overfitting</text>
+      <text class="tlp-text" x="380" y="90" text-anchor="middle" font-size="12" font-weight="700">Week 3</text>
+      <text class="tlp-text2" x="380" y="106" text-anchor="middle" font-size="11">Out-of-sample:</text>
+      <text class="tlp-red" x="380" y="120" text-anchor="middle" font-size="11" font-weight="700">degrades → rejected</text>
+      <text class="tlp-green" x="380" y="134" text-anchor="middle" font-size="11" font-weight="700">no capital lost</text>
+      <text class="tlp-text" x="520" y="90" text-anchor="middle" font-size="12" font-weight="700">Week 4</text>
+      <text class="tlp-text2" x="520" y="106" text-anchor="middle" font-size="11">New hypothesis:</text>
+      <text class="tlp-text2" x="520" y="120" text-anchor="middle" font-size="11">refine, restart cycle</text>
+      <text class="tlp-green" x="520" y="134" text-anchor="middle" font-size="11" font-weight="700">capital preserved</text>
+      <text class="tlp-red" x="20" y="184" font-size="14" font-weight="700">Intuition-based · capital at risk: 100%</text>
+      <line class="tlp-line red thick" x1="60" y1="220" x2="590" y2="220"/>
+      <circle class="tlp-blue" cx="100" cy="220" r="9"/><circle class="tlp-amber" cx="240" cy="220" r="9"/><circle class="tlp-amber" cx="380" cy="220" r="9"/><circle class="tlp-red" cx="520" cy="220" r="9"/>
+      <text class="tlp-text" x="100" y="250" text-anchor="middle" font-size="12" font-weight="700">Week 1</text>
+      <text class="tlp-text2" x="100" y="266" text-anchor="middle" font-size="11">Live trading begins:</text>
+      <text class="tlp-text2" x="100" y="280" text-anchor="middle" font-size="11">capital on conviction,</text>
+      <text class="tlp-text2" x="100" y="294" text-anchor="middle" font-size="11">P&amp;L is the "test"</text>
+      <text class="tlp-text" x="240" y="250" text-anchor="middle" font-size="12" font-weight="700">Month 1</text>
+      <text class="tlp-amber" x="240" y="266" text-anchor="middle" font-size="11" font-weight="700">−8% drawdown</text>
+      <text class="tlp-text2" x="240" y="280" text-anchor="middle" font-size="11">noise or failure?</text>
+      <text class="tlp-text2" x="240" y="294" text-anchor="middle" font-size="11">keeps trading</text>
+      <text class="tlp-text" x="380" y="250" text-anchor="middle" font-size="12" font-weight="700">Month 3</text>
+      <text class="tlp-amber" x="380" y="266" text-anchor="middle" font-size="11" font-weight="700">−15% drawdown</text>
+      <text class="tlp-text2" x="380" y="280" text-anchor="middle" font-size="11">conviction wavers,</text>
+      <text class="tlp-text2" x="380" y="294" text-anchor="middle" font-size="11">too little data to conclude</text>
+      <text class="tlp-text" x="520" y="250" text-anchor="middle" font-size="12" font-weight="700">Month 6</text>
+      <text class="tlp-red" x="520" y="266" text-anchor="middle" font-size="11" font-weight="700">abandoned at −22%</text>
+      <text class="tlp-red" x="520" y="280" text-anchor="middle" font-size="11" font-weight="700">6 months lost: time</text>
+      <text class="tlp-red" x="520" y="294" text-anchor="middle" font-size="11" font-weight="700">AND capital</text>
+      <text class="tlp-text3" x="590" y="320" text-anchor="end" font-size="10">not to scale: the top lane is weeks, the bottom lane is months</text>
+    </svg>
+    <figcaption>Top: the systematic cycle rejects a bad idea in week 3 and starts the next one in week 4, with all capital intact. Bottom: the live-only route needs six months and a −22% drawdown to reach the same conclusion. The bottom lane's slow reveal is the "double negative" of the course: it destroys time and capital at once.</figcaption>
+  </figure>
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>One kid tests whether a paper plane flies by throwing it across the room, again and again, and changing the fold. Another kid builds an expensive model plane and flies it off a cliff to see what happens. Both find out which design is better. Only one of them has to buy a new plane each time.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>The validation funnel</h2>
+  <p>
+    The systematic route is a sequence of gates. Each gate costs compute (time on a computer), not capital, and each one removes ideas that looked fine at the previous stage:
+  </p>
+  <div class="tl-chain">
+    <div class="tl-chain-link"><b>Idea</b>52 hypotheses</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>In-sample</b>34 pass</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>Out-of-sample</b>13 pass</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Walk-forward</b>6 pass</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Live, small</b>4 deployed</div>
+  </div>
+  <p>
+    The course's worked numbers: <strong>52 hypotheses generated → 34 pass in-sample → 13 pass out-of-sample → 6 pass walk-forward → 4 deployed live</strong>. That is 48 strategies rejected safely, with $0 lost to failed strategies. The intuition-based route skips every gate: 3 hypotheses are generated, all validation stages are skipped, 3 are deployed live untested, 100% of capital is exposed during what amounts to testing, and 0 were validated before deployment.
+  </p>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>How many ideas do you need to deploy a handful?</h3>
+    <p>The funnel starts on the course's example, with each gate's own pass rate (65%, 38%, 46%, 67%). Drag the pass-rate slider to give every gate the same rate instead, or change how many ideas you generate.</p>
+    <div class="tl-chart interactive">
+      <div class="tl-chart-label">The validation funnel: attrition at every gate, $0 at risk until deployment</div>
+      <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Funnel of five horizontal bands narrowing from top to bottom: hypotheses generated, pass in-sample, pass out-of-sample, pass walk-forward, deployed live. The width of each band is proportional to the number of ideas surviving to that stage; the labels at the right give the counts and the pass rate from the stage above.">
+        <g id="qm1f-dyn"><rect x="20.0" y="14" width="420.0" height="46" rx="6" style="fill:var(--blue);opacity:.88"/><text x="460" y="34" style="fill:var(--text);font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif">52 hypotheses generated</text><rect x="92.7" y="72" width="274.6" height="46" rx="6" style="fill:var(--blue2);opacity:.88"/><text x="460" y="92" style="fill:var(--text);font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif">34 pass in-sample</text><text x="460" y="110" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">65% of the stage above</text><rect x="177.5" y="130" width="105.0" height="46" rx="6" style="fill:var(--purple);opacity:.88"/><text x="460" y="150" style="fill:var(--text);font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif">13 pass out-of-sample</text><text x="460" y="168" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">38% of the stage above</text><rect x="205.8" y="188" width="48.5" height="46" rx="6" style="fill:var(--amber);opacity:.88"/><text x="460" y="208" style="fill:var(--text);font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif">6 pass walk-forward</text><text x="460" y="226" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">46% of the stage above</text><rect x="213.8" y="246" width="32.3" height="46" rx="6" style="fill:var(--green);opacity:.88"/><text x="460" y="266" style="fill:var(--text);font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif">4 deployed live</text><text x="460" y="284" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">67% of the stage above</text></g>
+      </svg>
+      <div class="tl-controls">
+        <div class="tl-control"><div class="tl-control-head"><span>Ideas generated</span><span class="tl-live" id="qm1f-n-val">52</span></div>
+          <input type="range" id="qm1f-n" min="10" max="200" step="1" value="52"></div>
+        <div class="tl-control"><div class="tl-control-head"><span>Same pass rate at every gate</span><span class="tl-live" id="qm1f-p-val">course rates</span></div>
+          <input type="range" id="qm1f-p" min="5" max="100" step="1" value="50"></div>
+      </div>
+      <div class="tl-readout">Deployed live <b id="qm1f-live">{{B_live}}</b> · rejected safely <b id="qm1f-rej">{{B_rejected}}</b> · overall yield <b id="qm1f-yield">{{B_yld}}</b> · ideas needed per live strategy <b id="qm1f-per">{{B_per}}</b></div>
+      <div class="tl-hint"><button type="button" class="tl-btn" id="qm1f-course">Use the course's example rates</button> Capital lost to the rejected ideas: $0, because every gate ran on compute. The intuition path, by comparison, takes 3 ideas straight to live: 3 of 3 deployed untested.</div>
+      <div class="tl-chart-caption">The survivors fall quickly even at generous pass rates. If each gate passes half of what reaches it, 52 ideas yield about 3.25 live strategies; the intuition path would have deployed all of them to find out which three were any good.</div>
+    </div>
+  </div>
+  <div class="tl-solid amber">
+    <strong>What the funnel does not promise.</strong> Passing every gate shows an idea survived the tests it was given, not that it has an edge. With enough hypotheses, some will clear any fixed gate by luck (the multiple-testing problem), and a walk-forward run on one data set is still one path. The funnel's actual guarantee is smaller and more useful: the failures are found for the price of compute. The survivors then go live <em>small</em>, because the last gate is the real market.
+  </div>
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A funnel has a wide top and a narrow spout. Lots of ideas go in; each stage lets only some through. Because the stages cost nothing but thinking time, when an idea gets stuck you lose nothing but a bit of effort. The kid who skips the funnel pours all her ideas straight onto the floor to see which ones bounce.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>What you know before you go live</h2>
+  <p>
+    Running ideas through the funnel does more than filter. It produces a statistical profile of each survivor. The systematic practitioner enters live trading with <strong>11 of 11</strong> key metrics already known from the backtest; the intuition-based trader knows <strong>0 of 11</strong> and discovers them through live P&amp;L, which the course calls "paying tuition to the market".
+  </p>
+  <figure class="tl-picture">
+    <div class="tl-picture-label">Eleven numbers you have, or do not have, on day one</div>
+    <svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two rows of eleven circles labelled with the eleven metrics: CAGR, Sharpe, Sortino, max drawdown, drawdown duration, win rate, profit factor, max consecutive losses, expectancy, Calmar, tail ratio. Top row, systematic: all eleven filled green, known from the backtest. Bottom row, intuition-based: all eleven empty red circles with a question mark, discovered through live P and L.">
+      <text class="tlp-green" x="14" y="22" font-size="13" font-weight="700">Systematic: 11 of 11 known before day one</text>
+      <circle class="tlp-green" cx="40" cy="50" r="10"/><circle class="tlp-green" cx="96" cy="50" r="10"/><circle class="tlp-green" cx="152" cy="50" r="10"/><circle class="tlp-green" cx="208" cy="50" r="10"/><circle class="tlp-green" cx="264" cy="50" r="10"/><circle class="tlp-green" cx="320" cy="50" r="10"/><circle class="tlp-green" cx="376" cy="50" r="10"/><circle class="tlp-green" cx="432" cy="50" r="10"/><circle class="tlp-green" cx="488" cy="50" r="10"/><circle class="tlp-green" cx="544" cy="50" r="10"/><circle class="tlp-green" cx="600" cy="50" r="10"/>
+      <text class="tlp-red" x="14" y="102" font-size="13" font-weight="700">Intuition-based: 0 of 11 known, learned from live P&amp;L</text>
+      <circle class="tlp-box red" cx="40" cy="130" r="10" fill="none" stroke-width="2"/><text class="tlp-red" x="40" y="134" text-anchor="middle" font-size="12" font-weight="700">?</text><circle class="tlp-box red" cx="96" cy="130" r="10" fill="none" stroke-width="2"/><text class="tlp-red" x="96" y="134" text-anchor="middle" font-size="12" font-weight="700">?</text><circle class="tlp-box red" cx="152" cy="130" r="10" fill="none" stroke-width="2"/><text class="tlp-red" x="152" y="134" text-anchor="middle" font-size="12" font-weight="700">?</text><circle class="tlp-box red" cx="208" cy="130" r="10" fill="none" stroke-width="2"/><text class="tlp-red" x="208" y="134" text-anchor="middle" font-size="12" font-weight="700">?</text><circle class="tlp-box red" cx="264" cy="130" r="10" fill="none" stroke-width="2"/><text class="tlp-red" x="264" y="134" text-anchor="middle" font-size="12" font-weight="700">?</text><circle class="tlp-box red" cx="320" cy="130" r="10" fill="none" stroke-width="2"/><text class="tlp-red" x="320" y="134" text-anchor="middle" font-size="12" font-weight="700">?</text><circle class="tlp-box red" cx="376" cy="130" r="10" fill="none" stroke-width="2"/><text class="tlp-red" x="376" y="134" text-anchor="middle" font-size="12" font-weight="700">?</text><circle class="tlp-box red" cx="432" cy="130" r="10" fill="none" stroke-width="2"/><text class="tlp-red" x="432" y="134" text-anchor="middle" font-size="12" font-weight="700">?</text><circle class="tlp-box red" cx="488" cy="130" r="10" fill="none" stroke-width="2"/><text class="tlp-red" x="488" y="134" text-anchor="middle" font-size="12" font-weight="700">?</text><circle class="tlp-box red" cx="544" cy="130" r="10" fill="none" stroke-width="2"/><text class="tlp-red" x="544" y="134" text-anchor="middle" font-size="12" font-weight="700">?</text><circle class="tlp-box red" cx="600" cy="130" r="10" fill="none" stroke-width="2"/><text class="tlp-red" x="600" y="134" text-anchor="middle" font-size="12" font-weight="700">?</text>
+      <text class="tlp-text3" x="40" y="76" text-anchor="middle" font-size="9">CAGR</text><text class="tlp-text3" x="40" y="156" text-anchor="middle" font-size="9">CAGR</text><text class="tlp-text3" x="96" y="76" text-anchor="middle" font-size="9">Sharpe</text><text class="tlp-text3" x="96" y="156" text-anchor="middle" font-size="9">Sharpe</text><text class="tlp-text3" x="152" y="76" text-anchor="middle" font-size="9">Sortino</text><text class="tlp-text3" x="152" y="156" text-anchor="middle" font-size="9">Sortino</text><text class="tlp-text3" x="208" y="76" text-anchor="middle" font-size="9">Max DD</text><text class="tlp-text3" x="208" y="156" text-anchor="middle" font-size="9">Max DD</text><text class="tlp-text3" x="264" y="76" text-anchor="middle" font-size="9">DD time</text><text class="tlp-text3" x="264" y="156" text-anchor="middle" font-size="9">DD time</text><text class="tlp-text3" x="320" y="76" text-anchor="middle" font-size="9">Win rate</text><text class="tlp-text3" x="320" y="156" text-anchor="middle" font-size="9">Win rate</text><text class="tlp-text3" x="376" y="76" text-anchor="middle" font-size="9">Profit F.</text><text class="tlp-text3" x="376" y="156" text-anchor="middle" font-size="9">Profit F.</text><text class="tlp-text3" x="432" y="76" text-anchor="middle" font-size="9">Streak</text><text class="tlp-text3" x="432" y="156" text-anchor="middle" font-size="9">Streak</text><text class="tlp-text3" x="488" y="76" text-anchor="middle" font-size="9">Expect.</text><text class="tlp-text3" x="488" y="156" text-anchor="middle" font-size="9">Expect.</text><text class="tlp-text3" x="544" y="76" text-anchor="middle" font-size="9">Calmar</text><text class="tlp-text3" x="544" y="156" text-anchor="middle" font-size="9">Calmar</text><text class="tlp-text3" x="600" y="76" text-anchor="middle" font-size="9">Tail</text><text class="tlp-text3" x="600" y="156" text-anchor="middle" font-size="9">Tail</text>
+    </svg>
+    <figcaption>The eleven metrics, left to right: CAGR, Sharpe, Sortino, maximum drawdown, drawdown duration, win rate, profit factor, max consecutive losses, expectancy, Calmar, tail ratio. Full definitions are in the reference table below.</figcaption>
+  </figure>
+  <details class="tl-section-collapse">
+    <summary><h2>Reference: the eleven metrics and why each matters</h2></summary>
+    <div class="tl-table"><table>
+      <tr><th>Metric</th><th>Definition / why it matters</th></tr>
+      <tr><td><strong>CAGR</strong></td><td>Expected annualised return; is the strategy worth the operational overhead and opportunity cost of capital?</td></tr>
+      <tr><td><strong>Sharpe ratio</strong></td><td>Return per unit of volatility; enables comparison across strategies and asset classes. Below 0.5 generally unacceptable.</td></tr>
+      <tr><td><strong>Sortino ratio</strong></td><td>Return per unit of downside deviation; more relevant than Sharpe when losses matter more than volatility (i.e. always).</td></tr>
+      <tr><td><strong>Maximum drawdown</strong></td><td>Largest peak-to-trough decline; critical for survival: determines position sizing and whether you can psychologically and financially endure the strategy.</td></tr>
+      <tr><td><strong>Drawdown duration</strong></td><td>Time to recovery; a 20% drawdown lasting 18 months will break most investors, so know it before deployment.</td></tr>
+      <tr><td><strong>Win rate</strong></td><td>% of winning trades; psychological sustainability. A 30% win-rate strategy can be highly profitable but emotionally brutal without preparation.</td></tr>
+      <tr><td><strong>Profit factor</strong></td><td>Gross profit ÷ gross loss; below 1.0 = losing strategy; below 1.5 leaves little margin for execution slippage.</td></tr>
+      <tr><td><strong>Max consecutive losses</strong></td><td>Longest losing streak; even profitable strategies have 10+ consecutive losses. Without this knowledge, streaks feel like strategy failure.</td></tr>
+      <tr><td><strong>Expectancy</strong></td><td>Average profit per trade after costs; negative expectancy = guaranteed long-term loss.</td></tr>
+      <tr><td><strong>Calmar ratio</strong></td><td>CAGR ÷ max drawdown: "is the expected return worth the worst historical pain?"</td></tr>
+      <tr><td><strong>Tail ratio</strong></td><td>Right tail ÷ left tail (95th percentile); are your big days wins or losses? Critical for the true risk profile.</td></tr>
+    </table></div>
+  </details>
+  <p>Notice what these numbers have in common: nearly all of them are about <strong>what to expect when things go badly</strong> (drawdown, losing streaks, tails, recovery time). They are the context you need in order to keep running a strategy through the stretch where it looks broken. The next section shows why that matters.</p>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>The blindfold problem</h2>
+  <p>
+    Suppose both traders are sitting in the same −15% drawdown. Their decisions will be very different, because only one of them can tell what −15% means.
+  </p>
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">With backtest data</div>
+    <p>Historical max drawdown −22%; average drawdown duration 47 days; current drawdown 31 days old; 8 similar historical drawdowns, 8 of 8 recovered. <em>Within expected parameters; continue executing; this is normal variance.</em> The −15% is about 68% of the way to the historical worst (15 ÷ 22), and it is 16 days short of the average length.</p>
+  </div>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Without backtest data</div>
+    <p>Historical max ??? · expected duration ??? · is this normal ??? · will it recover ??? <em>No framework for the decision; likely abandons the strategy at the worst possible time, locking in the loss.</em></p>
+  </div>
+  <p>
+    The point is not that drawdowns are rare. It is that they are <em>typical</em>, and you cannot know how typical without simulating. The course recommends Monte Carlo simulation (for example 1,000 simulated equity paths) to show the range of outcomes before deployment. The chart below does exactly that for an <strong>edge that is real by construction</strong>: every path has the same average return and volatility (10% a year, 12.5% volatility, a Sharpe ratio of 0.8). Only the luck differs.
+  </p>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Same edge, different luck</h3>
+    <p>Twelve of the 1,000 simulated monthly equity paths are drawn (the blue one is highlighted); the amber dashed line is the expected path. Statistics below are over all 1,000.</p>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> A strategy has a genuine edge: Sharpe 0.8 over a 5-year (60 month) run. What share of such runs will dip at least 15% below their previous peak at some point?</div>
+      <ul class="tl-predict-options"><li>About 10%</li><li>About 25%</li><li data-correct>About 50%</li><li>About 90%</li></ul>
+      <div class="tl-predict-reveal"><p><strong>About half (50.4% in this simulation).</strong> A real, positive edge still hits a −15% drawdown in roughly one run in two over five years. Now drag the sample length to 120 months: it climbs to about 79%. A drawdown of this size is not evidence that the edge has gone; it is the normal price of holding it.</p></div>
+    </div>
+    <div class="tl-chart interactive">
+      <div class="tl-chart-label">Equity curves from one and the same edge: only the luck differs</div>
+      <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Twelve simulated equity curves from a strategy with the same real edge, starting at 100 and running for the chosen number of months. They fan out widely: some end far above the amber dashed expected path and some end below the starting value. The curve highlighted in blue suffers a drawdown of about 22 percent and ends well below the expected path.">
+        <line x1="60" y1="20" x2="60" y2="270" style="stroke:var(--border2);stroke-width:1"/>
+        <line x1="60" y1="270" x2="610" y2="270" style="stroke:var(--border2);stroke-width:1"/>
+        <g id="qm1b-dyn"><line x1="60" y1="222.4" x2="610" y2="222.4" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/><text x="54" y="226.4" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">100</text><text x="54" y="39.6" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">249</text><text x="54" y="269.9" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">65</text><polyline points="60.0,222.4 69.2,225.8 78.3,229.7 87.5,226.9 96.7,224.6 105.8,224.1 115.0,224.0 124.2,219.7 133.3,218.8 142.5,218.5 151.7,217.5 160.8,215.4 170.0,218.0 179.2,216.3 188.3,215.7 197.5,211.2 206.7,203.7 215.8,207.3 225.0,201.7 234.2,200.2 243.3,206.7 252.5,205.7 261.7,217.5 270.8,212.9 280.0,220.0 289.2,212.0 298.3,203.7 307.5,194.3 316.7,197.4 325.8,202.7 335.0,196.8 344.2,200.4 353.3,198.2 362.5,188.9 371.7,186.4 380.8,191.5 390.0,193.8 399.2,195.7 408.3,196.5 417.5,187.2 426.7,187.5 435.8,185.3 445.0,187.0 454.2,163.7 463.3,159.6 472.5,170.6 481.7,174.0 490.8,166.3 500.0,162.3 509.2,155.8 518.3,152.0 527.5,143.9 536.7,142.0 545.8,156.3 555.0,149.4 564.2,148.6 573.3,144.3 582.5,137.8 591.7,139.4 600.8,136.5 610.0,143.4" style="fill:none;stroke:var(--text3);stroke-width:1.1;opacity:.55;stroke-linejoin:round"/><polyline points="60.0,222.4 69.2,213.8 78.3,212.6 87.5,211.7 96.7,212.4 105.8,206.1 115.0,195.6 124.2,190.0 133.3,190.0 142.5,187.6 151.7,181.6 160.8,175.8 170.0,180.0 179.2,177.5 188.3,172.7 197.5,171.7 206.7,167.8 215.8,162.4 225.0,155.5 234.2,151.9 243.3,143.3 252.5,137.9 261.7,134.4 270.8,119.6 280.0,111.0 289.2,107.8 298.3,95.2 307.5,94.3 316.7,75.8 325.8,91.0 335.0,91.3 344.2,86.7 353.3,71.7 362.5,76.5 371.7,86.2 380.8,76.1 390.0,85.9 399.2,69.1 408.3,68.4 417.5,79.2 426.7,84.3 435.8,92.2 445.0,68.4 454.2,51.8 463.3,68.1 472.5,50.9 481.7,43.3 490.8,58.6 500.0,61.3 509.2,86.5 518.3,90.9 527.5,94.0 536.7,81.8 545.8,86.1 555.0,64.9 564.2,62.5 573.3,54.2 582.5,49.6 591.7,42.7 600.8,40.2 610.0,35.6" style="fill:none;stroke:var(--text3);stroke-width:1.1;opacity:.55;stroke-linejoin:round"/><polyline points="60.0,222.4 69.2,227.4 78.3,226.3 87.5,228.3 96.7,236.1 105.8,234.9 115.0,228.8 124.2,218.7 133.3,222.4 142.5,221.6 151.7,217.2 160.8,213.3 170.0,218.9 179.2,218.5 188.3,219.9 197.5,216.6 206.7,215.8 215.8,214.7 225.0,212.0 234.2,208.7 243.3,207.9 252.5,209.5 261.7,216.3 270.8,212.3 280.0,211.6 289.2,204.1 298.3,202.5 307.5,192.5 316.7,188.1 325.8,187.9 335.0,191.0 344.2,185.1 353.3,185.7 362.5,191.7 371.7,182.5 380.8,187.4 390.0,186.9 399.2,184.8 408.3,183.2 417.5,179.3 426.7,167.6 435.8,170.3 445.0,174.1 454.2,172.0 463.3,172.2 472.5,163.3 481.7,164.6 490.8,164.1 500.0,153.1 509.2,152.0 518.3,147.0 527.5,168.3 536.7,162.1 545.8,161.7 555.0,160.9 564.2,175.4 573.3,172.3 582.5,172.8 591.7,181.8 600.8,180.7 610.0,191.0" style="fill:none;stroke:var(--text3);stroke-width:1.1;opacity:.55;stroke-linejoin:round"/><polyline points="60.0,222.4 69.2,225.2 78.3,222.9 87.5,222.5 96.7,220.5 105.8,225.4 115.0,226.3 124.2,224.2 133.3,223.8 142.5,230.1 151.7,232.7 160.8,230.0 170.0,229.4 179.2,227.2 188.3,227.7 197.5,237.4 206.7,237.8 215.8,234.2 225.0,236.0 234.2,237.8 243.3,242.8 252.5,255.0 261.7,256.2 270.8,254.5 280.0,254.2 289.2,254.4 298.3,253.6 307.5,250.1 316.7,250.0 325.8,244.5 335.0,247.4 344.2,249.0 353.3,255.7 362.5,261.5 371.7,259.4 380.8,261.6 390.0,260.2 399.2,261.7 408.3,265.9 417.5,262.2 426.7,260.8 435.8,262.2 445.0,260.4 454.2,262.1 463.3,260.7 472.5,255.5 481.7,257.3 490.8,255.9 500.0,253.2 509.2,248.5 518.3,247.3 527.5,239.7 536.7,240.2 545.8,231.2 555.0,238.0 564.2,236.0 573.3,235.7 582.5,227.4 591.7,225.9 600.8,231.7 610.0,232.7" style="fill:none;stroke:var(--text3);stroke-width:1.1;opacity:.55;stroke-linejoin:round"/><polyline points="60.0,222.4 69.2,221.0 78.3,224.3 87.5,220.9 96.7,217.2 105.8,222.0 115.0,220.2 124.2,213.1 133.3,214.8 142.5,215.4 151.7,218.7 160.8,218.1 170.0,220.9 179.2,212.8 188.3,207.9 197.5,207.2 206.7,206.2 215.8,215.0 225.0,212.2 234.2,203.3 243.3,201.8 252.5,199.8 261.7,196.6 270.8,192.0 280.0,193.6 289.2,180.3 298.3,176.9 307.5,170.6 316.7,170.3 325.8,173.4 335.0,171.2 344.2,165.9 353.3,155.1 362.5,163.6 371.7,165.4 380.8,160.2 390.0,156.1 399.2,157.3 408.3,156.6 417.5,153.6 426.7,146.5 435.8,153.5 445.0,143.2 454.2,139.5 463.3,129.3 472.5,124.8 481.7,108.4 490.8,97.5 500.0,96.7 509.2,123.2 518.3,124.6 527.5,104.8 536.7,103.4 545.8,110.3 555.0,106.4 564.2,100.4 573.3,118.0 582.5,116.6 591.7,120.5 600.8,120.9 610.0,101.0" style="fill:none;stroke:var(--text3);stroke-width:1.1;opacity:.55;stroke-linejoin:round"/><polyline points="60.0,222.4 69.2,219.4 78.3,223.6 87.5,221.5 96.7,219.0 105.8,215.9 115.0,213.7 124.2,209.1 133.3,211.0 142.5,206.9 151.7,200.4 160.8,204.1 170.0,197.6 179.2,210.5 188.3,209.9 197.5,208.6 206.7,208.7 215.8,195.9 225.0,191.1 234.2,193.7 243.3,200.0 252.5,199.8 261.7,187.9 270.8,191.0 280.0,189.5 289.2,185.3 298.3,191.7 307.5,189.1 316.7,194.0 325.8,186.1 335.0,185.4 344.2,169.0 353.3,165.8 362.5,154.4 371.7,151.0 380.8,143.3 390.0,148.7 399.2,149.5 408.3,153.7 417.5,146.5 426.7,150.7 435.8,149.5 445.0,142.8 454.2,142.8 463.3,132.5 472.5,134.3 481.7,138.6 490.8,133.5 500.0,141.8 509.2,136.0 518.3,130.4 527.5,108.5 536.7,113.6 545.8,140.5 555.0,133.6 564.2,135.0 573.3,119.2 582.5,97.8 591.7,94.6 600.8,76.1 610.0,75.2" style="fill:none;stroke:var(--text3);stroke-width:1.1;opacity:.55;stroke-linejoin:round"/><polyline points="60.0,222.4 69.2,214.5 78.3,219.3 87.5,214.7 96.7,218.0 105.8,220.6 115.0,213.2 124.2,212.4 133.3,206.3 142.5,205.0 151.7,206.0 160.8,205.7 170.0,206.4 179.2,203.8 188.3,195.7 197.5,187.8 206.7,198.6 215.8,197.1 225.0,198.8 234.2,202.3 243.3,199.9 252.5,197.6 261.7,193.2 270.8,193.0 280.0,182.1 289.2,185.4 298.3,183.9 307.5,179.3 316.7,160.1 325.8,164.9 335.0,159.6 344.2,145.2 353.3,139.4 362.5,142.3 371.7,143.6 380.8,139.1 390.0,143.1 399.2,139.4 408.3,146.8 417.5,138.2 426.7,151.0 435.8,153.9 445.0,175.2 454.2,171.4 463.3,160.3 472.5,160.7 481.7,166.8 490.8,169.4 500.0,168.5 509.2,178.6 518.3,162.0 527.5,169.2 536.7,162.4 545.8,168.7 555.0,168.2 564.2,164.1 573.3,171.2 582.5,164.7 591.7,157.2 600.8,154.5 610.0,159.7" style="fill:none;stroke:var(--text3);stroke-width:1.1;opacity:.55;stroke-linejoin:round"/><polyline points="60.0,222.4 69.2,232.0 78.3,227.7 87.5,224.9 96.7,219.0 105.8,224.9 115.0,222.2 124.2,224.1 133.3,223.7 142.5,216.5 151.7,217.8 160.8,217.0 170.0,216.6 179.2,219.4 188.3,217.8 197.5,218.3 206.7,216.0 215.8,205.0 225.0,196.4 234.2,194.5 243.3,187.7 252.5,179.7 261.7,178.3 270.8,179.1 280.0,182.5 289.2,184.7 298.3,200.2 307.5,201.3 316.7,192.0 325.8,197.8 335.0,204.6 344.2,202.5 353.3,193.9 362.5,198.6 371.7,191.3 380.8,189.8 390.0,193.1 399.2,190.8 408.3,183.7 417.5,180.4 426.7,173.3 435.8,167.5 445.0,177.2 454.2,171.8 463.3,165.6 472.5,152.7 481.7,150.6 490.8,151.6 500.0,149.8 509.2,141.8 518.3,137.3 527.5,132.8 536.7,144.6 545.8,145.7 555.0,142.5 564.2,149.8 573.3,147.4 582.5,144.5 591.7,146.9 600.8,140.8 610.0,133.4" style="fill:none;stroke:var(--text3);stroke-width:1.1;opacity:.55;stroke-linejoin:round"/><polyline points="60.0,222.4 69.2,215.8 78.3,216.1 87.5,217.3 96.7,224.3 105.8,221.1 115.0,220.9 124.2,219.1 133.3,223.0 142.5,224.0 151.7,217.1 160.8,211.4 170.0,219.3 179.2,218.1 188.3,205.3 197.5,208.5 206.7,198.5 215.8,199.6 225.0,200.9 234.2,208.2 243.3,207.1 252.5,195.7 261.7,196.9 270.8,196.3 280.0,195.2 289.2,189.8 298.3,197.1 307.5,186.9 316.7,188.2 325.8,189.3 335.0,188.0 344.2,180.4 353.3,184.8 362.5,171.9 371.7,177.2 380.8,187.2 390.0,193.5 399.2,190.5 408.3,180.4 417.5,186.0 426.7,185.7 435.8,185.2 445.0,190.3 454.2,193.4 463.3,193.1 472.5,187.6 481.7,193.9 490.8,192.9 500.0,200.3 509.2,198.1 518.3,193.9 527.5,196.7 536.7,193.0 545.8,185.4 555.0,181.3 564.2,179.6 573.3,174.8 582.5,181.1 591.7,182.7 600.8,188.3 610.0,189.6" style="fill:none;stroke:var(--text3);stroke-width:1.1;opacity:.55;stroke-linejoin:round"/><polyline points="60.0,222.4 69.2,226.7 78.3,230.7 87.5,222.9 96.7,224.8 105.8,221.1 115.0,216.9 124.2,211.1 133.3,213.2 142.5,215.8 151.7,210.1 160.8,209.5 170.0,202.5 179.2,197.7 188.3,196.9 197.5,195.1 206.7,191.4 215.8,183.4 225.0,185.0 234.2,180.7 243.3,182.5 252.5,185.6 261.7,184.6 270.8,183.0 280.0,178.1 289.2,169.4 298.3,159.7 307.5,155.2 316.7,149.2 325.8,152.1 335.0,133.0 344.2,122.8 353.3,135.8 362.5,145.2 371.7,147.5 380.8,140.8 390.0,134.9 399.2,131.2 408.3,130.7 417.5,120.5 426.7,115.7 435.8,129.2 445.0,135.5 454.2,147.3 463.3,157.7 472.5,164.1 481.7,158.8 490.8,163.0 500.0,168.0 509.2,168.4 518.3,168.5 527.5,160.3 536.7,160.8 545.8,172.9 555.0,186.5 564.2,180.0 573.3,173.4 582.5,167.3 591.7,167.1 600.8,165.8 610.0,171.1" style="fill:none;stroke:var(--text3);stroke-width:1.1;opacity:.55;stroke-linejoin:round"/><polyline points="60.0,222.4 69.2,222.0 78.3,226.4 87.5,227.8 96.7,240.3 105.8,240.5 115.0,232.2 124.2,225.7 133.3,220.8 142.5,215.1 151.7,211.5 160.8,211.4 170.0,211.1 179.2,206.8 188.3,207.6 197.5,204.6 206.7,200.0 215.8,200.9 225.0,194.2 234.2,195.5 243.3,191.4 252.5,186.1 261.7,177.9 270.8,170.5 280.0,170.9 289.2,179.4 298.3,167.6 307.5,178.8 316.7,184.0 325.8,187.0 335.0,180.5 344.2,177.8 353.3,176.2 362.5,163.4 371.7,164.2 380.8,160.7 390.0,161.4 399.2,174.8 408.3,159.0 417.5,158.1 426.7,154.6 435.8,147.5 445.0,148.8 454.2,145.8 463.3,140.6 472.5,137.7 481.7,130.8 490.8,129.5 500.0,126.8 509.2,116.1 518.3,121.9 527.5,137.9 536.7,145.0 545.8,152.8 555.0,145.2 564.2,145.0 573.3,150.0 582.5,139.8 591.7,145.9 600.8,134.2 610.0,135.6" style="fill:none;stroke:var(--text3);stroke-width:1.1;opacity:.55;stroke-linejoin:round"/><polyline points="60.0,222.4 69.2,225.0 78.3,230.2 87.5,236.3 96.7,240.2 105.8,245.4 115.0,248.5 124.2,243.7 133.3,241.8 142.5,246.1 151.7,249.9 160.8,240.5 170.0,235.0 179.2,239.1 188.3,240.1 197.5,240.4 206.7,245.7 215.8,237.5 225.0,236.0 234.2,227.5 243.3,231.6 252.5,229.8 261.7,231.6 270.8,236.1 280.0,231.1 289.2,223.3 298.3,215.4 307.5,205.7 316.7,200.3 325.8,204.9 335.0,204.2 344.2,207.2 353.3,206.9 362.5,197.8 371.7,196.8 380.8,198.1 390.0,194.7 399.2,199.4 408.3,207.4 417.5,208.3 426.7,208.6 435.8,208.8 445.0,208.6 454.2,208.8 463.3,215.3 472.5,210.0 481.7,204.9 490.8,206.6 500.0,205.3 509.2,203.1 518.3,210.4 527.5,206.3 536.7,207.2 545.8,205.4 555.0,202.2 564.2,198.2 573.3,196.7 582.5,202.7 591.7,205.9 600.8,207.8 610.0,205.0" style="fill:none;stroke:var(--blue);stroke-width:2.6;stroke-linejoin:round"/><polyline points="60.0,222.4 69.2,221.4 78.3,220.3 87.5,219.3 96.7,218.2 105.8,217.1 115.0,216.0 124.2,214.9 133.3,213.8 142.5,212.7 151.7,211.6 160.8,210.4 170.0,209.3 179.2,208.1 188.3,207.0 197.5,205.8 206.7,204.6 215.8,203.4 225.0,202.2 234.2,201.0 243.3,199.7 252.5,198.5 261.7,197.3 270.8,196.0 280.0,194.7 289.2,193.5 298.3,192.2 307.5,190.9 316.7,189.6 325.8,188.2 335.0,186.9 344.2,185.6 353.3,184.2 362.5,182.9 371.7,181.5 380.8,180.1 390.0,178.7 399.2,177.3 408.3,175.9 417.5,174.4 426.7,173.0 435.8,171.5 445.0,170.0 454.2,168.6 463.3,167.1 472.5,165.6 481.7,164.0 490.8,162.5 500.0,160.9 509.2,159.4 518.3,157.8 527.5,156.2 536.7,154.6 545.8,153.0 555.0,151.4 564.2,149.8 573.3,148.1 582.5,146.4 591.7,144.8 600.8,143.1 610.0,141.4" style="fill:none;stroke:var(--amber);stroke-width:2;stroke-dasharray:6,4"/><text x="608" y="134.4" text-anchor="end" style="fill:var(--amber);font-size:11px;font-family:'DM Mono',monospace">expected path</text><text x="60" y="290" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">0</text><text x="335" y="290" text-anchor="middle" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">30</text><text x="610" y="290" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">60 months</text></g>
+      </svg>
+      <div class="tl-controls">
+        <div class="tl-control"><div class="tl-control-head"><span>Sample length</span><span class="tl-live" id="qm1b-len-val">60 months</span></div>
+          <input type="range" id="qm1b-len" min="12" max="120" step="12" value="60"></div>
+        <div class="tl-control"><div class="tl-control-head"><span>Drawdown you are sitting in</span><span class="tl-live" id="qm1b-dd-val">15%</span></div>
+          <input type="range" id="qm1b-dd" min="5" max="40" step="1" value="15"></div>
+      </div>
+      <div class="tl-readout">Over 1,000 simulated paths: <b id="qm1b-hit">{{C_hit}}</b> dipped at least <b id="qm1b-ddr">{{C_dd}}</b> below a previous peak at some point · median worst drawdown <b id="qm1b-med">{{C_med}}</b> · 1-in-10 worst <b id="qm1b-p90">{{C_p90}}</b> · <b id="qm1b-below">{{C_below}}</b> ended below their starting value</div>
+      <div class="tl-readout">Blue path: worst drawdown <b id="qm1b-mine">{{C_mine}}</b>, ends at <b id="qm1b-mineEnd">{{C_mineEnd}}</b> against <b id="qm1b-expEnd">{{C_expEnd}}</b> on the expected path</div>
+      <div class="tl-hint">The same genuine edge produces an equity curve that can end far above, or below, where the average says. With a short sample, whether a track record "worked" is mostly luck.</div>
+      <div class="tl-chart-caption">Illustrative simulation: independent monthly returns, normally distributed, 10% a year with 12.5% volatility (so no fat tails, no autocorrelation, no costs). Real returns are less friendly, which makes honest drawdown expectations larger, not smaller.</div>
+    </div>
+  </div>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Reading −15% with and without the map</h3>
+    <p>With the backtest and simulation: the live drawdown is −15% against a historical worst of −22%, so you are at \(15/22 \approx 68\%\) of the worst case, and 31 days against an average of 47. Eight of eight similar historical drawdowns recovered. The decision is "execute the plan", and the plan can even say in advance what depth (say, beyond the historical −22%) would trigger a review. Without any of this, the same −15% is a single number with nothing to compare it to, and the only available action is to react to how it feels.</p>
+  </div>
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you know a hill on a hike is steep, a hard climb is normal and you keep walking. If someone blindfolds you and puts you on that same hill, every step feels like you are about to fall off a cliff, so you stop and turn back, right before the top. The backtest takes the blindfold off.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>It actually happened: Knight Capital, 2012</h2>
+  <p>
+    The course's argument is about where defects get found. A famous case of a defect being found in the most expensive place possible is Knight Capital. It was not a trading idea that failed validation: it was an operational failure. It is included because the cost structure it shows is exactly the one the timeline above describes.
+  </p>
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>A defect found in the live market, in 45 minutes</h3>
+    <p>
+      Knight Capital Group was one of the largest US equity market makers. On the morning of 1 August 2012 it rolled out new trading software to its servers. Seven of eight servers received the new code; the eighth still carried an old, supposedly retired routine, which the new release re-activated by accident.
+    </p>
+    <p>
+      When the market opened, the system began sending a flood of unintended orders. In about 45 minutes Knight built large unwanted positions in about 150 stocks and lost more than $400 million. Within days it raised about $400 million of emergency financing from a group of investors, and it later agreed to merge with Getco. In October 2013 the US Securities and Exchange Commission found that Knight had violated the Market Access Rule, which requires adequate risk controls on market access, and fined it $12 million.
+    </p>
+    <p style="margin-bottom:0">
+      Sources: U.S. Securities and Exchange Commission, <em>In the Matter of Knight Capital Americas LLC</em>, Exchange Act Release No. 34-70694, 16 October 2013.
+    </p>
+  </div>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>New code on 8 servers, 1 Aug 2012; one still runs the old routine</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · where the defect is found</b>The first real test of the release is the live market</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Over $400m lost in ~45 min; emergency financing; merger</div>
+  </div>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where this analogy stops</div>
+    <p>Knight's failure was a software-deployment and risk-control failure, not a strategy whose backtest was misleading. The parallel is only the structure of the bill: when a defect is first found live, the loss is capital, and at Knight's speed it arrived in minutes rather than months. A statistical edge that quietly fails to replicate, the funnel's main subject, is a slower and quieter version of the same cost.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 10</span></div>
+  <h2>Where the course's picture needs qualifying</h2>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <ul>
+      <li><strong>Treating the example numbers as measurements.</strong> 52 → 34 → 13 → 6 → 4, "6 months" and "−22%" are teaching figures. Your funnel will have its own rates.</li>
+      <li><strong>Equating "passed the funnel" with "has an edge".</strong> More hypotheses means more lucky survivors. See the Multiple Testing lesson.</li>
+      <li><strong>Treating the break-even holding period as the target.</strong> At \(h^*\) a trade only pays its costs, with no margin for slippage, and the move is still mostly noise.</li>
+      <li><strong>Reading simulated drawdowns as a ceiling.</strong> The simulation above uses well-behaved returns. Real strategies have fatter tails and clustered losses, so the true worst case is deeper than a Gaussian simulation suggests.</li>
+      <li><strong>Using the backtest as a promise.</strong> "8 of 8 recovered" is a statement about history. It tells you what normal looked like; it does not guarantee the ninth.</li>
+    </ul>
+  </div>
+  <!-- DESK:START -->
+  <div class="tl-verdict untested"><span class="tl-verdict-tag">Not tested here</span><span><strong>"Longer holding periods are where the edge is, net of costs, for the instruments and strategies on the desk."</strong> The course states it as a general principle; no test of it has been run in this repository, and the course's funnel rates (65%, 38%, 46%, 67%) have not been checked against any real research pipeline.<div class="tl-howtotest"><strong>How to test it:</strong> take each candidate signal, record its per-trade gross edge at several fixed holding periods on a held-out sample, subtract the measured round-trip cost, and fix the pass rule (net edge above zero with a confidence interval that excludes it) before looking. Count every signal tried, not only the survivors.</div></span></div>
+  <!-- DESK:END -->
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative drawdown</div>
+    <h3>Month 3, and you are down 15%</h3>
+    <p>You deployed a strategy after testing it. The backtest and simulation said: historical maximum drawdown −22%, average drawdown duration 47 days, and 8 of 8 similar historical drawdowns recovered. Three months in you are −15% from the peak, and the drawdown is 31 days old. You have checked that data, fills and costs match what the backtest assumed. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Stop trading it. A 15% loss is too much to sit through.<div class="tl-drill-why">The backtest said drawdowns of this size are normal, and this one is well inside the historical worst. Closing the strategy now converts a paper loss into a realised one, and removes you before any recovery. Without the map, this is what −15% usually produces.</div></li>
+      <li data-verdict="bad">Double the size so the recovery is twice as fast.<div class="tl-drill-why">Size scales the drawdown too. If the historical worst was −22% at your planned size, then doubling roughly doubles it to about −44%, and you would be taking that risk after a loss, with less capital, on an edge you have no new evidence for.</div></li>
+      <li data-verdict="good">Keep executing at the planned size. Confirm that the live behaviour (hit rate, average trade, costs) matches the backtest, and write down in advance what drawdown or duration, beyond the historical worst, would trigger a formal review.<div class="tl-drill-why">This is the case for the whole lesson. The drawdown sits inside the range the testing predicted, so it carries no new information about the strategy. A review rule set beyond the historical worst keeps you honest: if the strategy breaks the map, that is a signal; if it follows the map, that is just variance.</div></li>
+      <li data-verdict="ok">Halve the size until it recovers.<div class="tl-drill-why">Defensible, especially if the plan already contained a de-risking rule written before the trade. Improvised after the fact, it reacts to a number the backtest called normal, and it makes the strategy earn back less while it recovers. Better than quitting, worse than following a rule you set when you were calm.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>Illustrative scenario.</strong> This is not a documented episode; the figures are the course's own example numbers (−22% historical worst, 47-day average, 8 of 8 recovered). The correct call in a real drawdown also depends on the specifics of the strategy and the account. The general point holds: the person with a pre-trade map can classify the drawdown as expected, and the person without one cannot.</p><p class="tl-drill-sources">Source: illustrative scenario built from the example figures in Colez Trades, Quant &amp; Macro course, Lesson 1. No real episode is claimed.</p></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 11</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Signal vs noise.</strong> At short horizons noise dominates; extending the holding period improves signal extraction. In the toy model, SNR rises in proportion to \(h\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Transaction cost drag.</strong> Costs compound at high frequencies; the crossover point of alpha versus friction sets the minimum viable holding period (\(h^* = C/k\) in the model). Short horizons pay both penalties.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Systematic validation.</strong> Walk-forward testing costs compute, not capital. Most hypotheses fail; the advantage is discovering the failure <em>before</em> deployment.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The double negative.</strong> Ad-hoc validation risks destroying time and capital at the same time; systematic approaches decouple them, so failed strategies consume only time.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Know your numbers first.</strong> Eleven statistics from the backtest turn a drawdown from a verdict into a data point. In the simulation, a real edge dipped 15% in about half of all five-year runs.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span>Passing the funnel is not proof of edge, and the funnel's rates and the drawdown figures are the course's illustrative numbers. Break-even on cost and a clear signal are different thresholds, and the second comes much later.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Trading as the test.</strong> Making the live account the only test environment turns every idea into a capital event, and every drawdown into a decision made blindfolded.<!-- DESK:START --> The claim that longer holds are where the net edge is has not been tested here.<!-- DESK:END --></span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 12</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why do short holding periods carry a "double penalty"?</summary>
+    <div class="tl-answer">Two separate things go wrong together. First, SNR is low: over a short window the random part of a move is large relative to any predictive part, so signal extraction is hard. Second, transaction costs (spread, slippage, market impact, opportunity cost) are paid on every trade regardless of how long it is held, so many short trades pay the toll many times against a small edge. Either problem alone makes short-term trading harder; both together make alpha extraction at short horizons exceptionally difficult.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In the toy model with \(k = 4\) bps a day, \(C = 5\) bps and \(\sigma = 60\) bps a day, at what holding period does the trade break even, and is it a clear signal at that point?</summary>
+    <div class="tl-answer">Break-even is \(h^* = C/k = 1.25\) days. It is not a clear signal there: \(\text{SNR} = (k^2/\sigma^2)h = (16/3600)\times 1.25 \approx 0.0056\), far below 1. SNR does not reach 1 until \(h = \sigma^2/k^2 = 225\) days. Clearing costs and having a measurable signal are different thresholds, and the second comes much later. (The model is a teaching device, not a claim about any market.)</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. The funnel in the course goes 52 → 34 → 13 → 6 → 4. What does the systematic route lose to the 48 rejected ideas, and what does passing every gate not prove?</summary>
+    <div class="tl-answer">It loses time and compute, and $0 of capital, because every gate runs on history, held-out data or simulation. Passing every gate does not prove an edge exists: with many hypotheses some clear a fixed bar by luck (multiple testing), and walk-forward on one history is still one path. The funnel's job is cheap rejection, which is why survivors go live small.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Two traders are both −15% from their peak. One has a backtest (max drawdown −22%, 47-day average, 8 of 8 recovered), the other does not. Why does the same number lead to different decisions?</summary>
+    <div class="tl-answer">The first trader can compare −15% and 31 days with a distribution: it sits inside the historical range and well within the average duration, so it is "normal variance, continue executing". The second has no reference class: no historical maximum, no expected duration, no idea whether it will recover. A drawdown with nothing to compare it to feels like failure, so they are most likely to abandon the strategy at the worst moment and lock in the loss.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the simulation, a strategy with a genuine Sharpe ratio of 0.8 dips 15% in about half of five-year runs. What does that say about judging a strategy by its recent live drawdown?</summary>
+    <div class="tl-answer">A drawdown of that size is the normal price of a real edge over a modest sample, so it carries little information about whether the edge is gone. With only one live path, the intuition-based trader cannot separate "unlucky run of a good strategy" from "broken strategy", which is why invalidation takes about six months of live trading in the course's example, against about two weeks when the test runs on history.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Fischer Black, <em>"Noise"</em>, Journal of Finance, 1986 — the classic argument that noise trading is what makes markets liquid and prices only loosely informative.</li>
+    <li>André Perold, <em>"The Implementation Shortfall: Paper versus Reality"</em>, Journal of Portfolio Management, 1988 — the standard way to measure how much a trade costs relative to the paper price.</li>
+    <li>David H. Bailey, Jonathan M. Borwein, Marcos López de Prado and Qiji Jim Zhu, <em>"Pseudo-Mathematics and Financial Charlatanism"</em>, Notices of the American Mathematical Society, 2014 — how backtest overfitting makes mediocre strategies look good.</li>
+    <li>David H. Bailey and Marcos López de Prado, <em>"The Deflated Sharpe Ratio"</em>, Journal of Portfolio Management, 2014 — correcting a Sharpe ratio for the number of strategies tried.</li>
+    <li>Campbell R. Harvey, Yan Liu and Heqing Zhu, <em>"…and the Cross-Section of Expected Returns"</em>, Review of Financial Studies, 2016 — hundreds of published return factors, and why the bar for a new one should be higher.</li>
+    <li>Robert Pardo, <em>The Evaluation and Optimization of Trading Strategies</em>, Wiley, 2nd ed. 2008 — the practitioner reference for walk-forward analysis.</li>
+    <li>Malik Magdon-Ismail and Amir Atiya, <em>"Maximum Drawdown"</em>, Risk magazine, 2004 — the expected size of the worst drawdown for a given edge and horizon.</li>
+  </ul>
+  </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="data-foundations.html">Data Foundations</a> <span>· where the numbers you test on come from</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="qm-2-what-moves-markets.html">Lesson 2: What Moves Markets</a> <span>· the capital-flow hierarchy behind the noise</span></li>
+        <li><a href="../../theory-lab/lessons/walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· the funnel's later gates in detail</span></li>
+        <li><a href="../../theory-lab/lessons/drawdowns-risk-of-ruin.html">Drawdowns, Risk of Ruin, and Why Good Systems Get Abandoned</a> <span>· the blindfold problem in depth</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every later lesson in the course is only worth acting on if you test it first. This one is the reason.</p>
+  </nav>
+
+  <div class="tl-footer-nav">
+    <a href="quant-macro-lessons.html">← Quant &amp; Macro course index</a>
+    <a href="../hub.html">COG hub</a>
+    <a href="qm-2-what-moves-markets.html">Lesson 2: What Moves Markets →</a>
+  </div>
+  <!-- DESK:START -->
+  <p class="tl-hint">Raw notes for this lesson: education/QUANT_MACRO_LESSONS_1-6.md, section Lesson 1.</p>
+  <!-- DESK:END -->
+</div>
+<script>
+var QM1 = (function(){
+  function n1(x){ return x.toFixed(1); }
+  function fnum(x){ var s = x.toFixed(1); return s.replace(/\.0$/, ''); }
+  function pts(a){ return a.map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' '); }
+  var MONO = "font-family:'DM Mono',monospace";
+
+  /* ---------- A. cost friction vs holding period ---------- */
+  var HOLD = [0.1, 0.25, 0.5, 1, 2, 3, 5, 10, 20, 40, 60, 120, 250, 500];
+  var AX0 = 70, AW = 540, AY0 = 270;
+  function ax(h){ return AX0 + AW * (Math.log(h) / Math.LN10 + 1) / 3.7; }
+  function ay(s){ return AY0 - 120 * Math.min(s, 2); }
+  function aModel(k, sd, c, h){
+    return { gross: k * h, net: k * h - c, share: c / (k * h), snr: k * k * h / (sd * sd), hstar: c / k, hsnr: sd * sd / (k * k) };
+  }
+  function dayWord(x){ return (x < 1 ? x.toFixed(2).replace(/0$/, '') : String(x)) + (x === 1 ? ' day' : ' days'); }
+  function aDraw(k, sd, c, idx){
+    var h = HOLD[idx], m = aModel(k, sd, c, h), g = '', i;
+    var xs = m.hstar < 0.1 ? AX0 : (m.hstar > 500 ? AX0 + AW : ax(m.hstar));
+    g += '<rect x="' + AX0 + '" y="30" width="' + (xs - AX0).toFixed(1) + '" height="240" style="fill:var(--red);opacity:.12"/>';
+    g += '<rect x="' + xs.toFixed(1) + '" y="30" width="' + (AX0 + AW - xs).toFixed(1) + '" height="240" style="fill:var(--green);opacity:.10"/>';
+    var cp = [];
+    for (i = 0; i <= 74; i++){ var hh = Math.pow(10, -1 + 3.7 * i / 74); cp.push([ax(hh), ay(c / (k * hh))]); }
+    g += '<polyline points="' + pts(cp) + '" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round"/>';
+    if (m.hstar >= 0.1 && m.hstar <= 500){
+      var right = xs > 480;
+      g += '<line x1="' + xs.toFixed(1) + '" y1="30" x2="' + xs.toFixed(1) + '" y2="270" style="stroke:var(--amber);stroke-width:1.2;stroke-dasharray:4,3"/>';
+      g += '<text x="' + (xs + (right ? -6 : 6)).toFixed(1) + '" y="46" text-anchor="' + (right ? 'end' : 'start') + '" style="fill:var(--amber);font-size:11px;' + MONO + '">break-even h* = ' + m.hstar.toFixed(2) + ' days</text>';
+    }
+    var hsTxt = m.hsnr >= 10 ? m.hsnr.toFixed(0) : m.hsnr.toFixed(1);
+    if (m.hsnr >= 0.1 && m.hsnr <= 500){
+      var xn = ax(m.hsnr), rn = xn > 480;
+      g += '<line x1="' + xn.toFixed(1) + '" y1="30" x2="' + xn.toFixed(1) + '" y2="270" style="stroke:var(--purple);stroke-width:1.2;stroke-dasharray:2,3"/>';
+      g += '<text x="' + (xn + (rn ? -6 : 6)).toFixed(1) + '" y="250" text-anchor="' + (rn ? 'end' : 'start') + '" style="fill:var(--purple);font-size:11px;' + MONO + '">SNR = 1 at ' + hsTxt + ' days</text>';
+    }
+    g += '<line x1="' + ax(h).toFixed(1) + '" y1="30" x2="' + ax(h).toFixed(1) + '" y2="270" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:1,3"/>';
+    g += '<circle cx="' + ax(h).toFixed(1) + '" cy="' + ay(m.share).toFixed(1) + '" r="5.5" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>';
+    return { svg: g, m: m, h: h,
+      out: { gross: n1(m.gross) + ' bps', net: (m.net >= 0 ? '+' : String.fromCharCode(8722)) + Math.abs(m.net).toFixed(1) + ' bps', share: (m.share * 100).toFixed(0) + '%', snr: m.snr.toFixed(3), hstar: m.hstar.toFixed(2) + ' days', hsnr: hsTxt + ' days', h: dayWord(h) } };
+  }
+  function aVerdict(m){
+    var t = m.net < 0 ? 'Costs eat more than the whole edge: negative expectancy before the trade even runs.' : (m.share > 0.5 ? 'Positive, but costs still take more than half of the edge: very little margin for slippage.' : 'Costs are a small slice of the edge: friction is no longer the binding problem.');
+    t += m.snr < 1 ? ' The move is still mostly noise (SNR below 1).' : ' Signal now outweighs noise (SNR above 1).';
+    return t;
+  }
+
+  /* ---------- B. validation funnel ---------- */
+  var COURSE = [34 / 52, 13 / 34, 6 / 13, 4 / 6];
+  var STAGES = ['hypotheses generated', 'pass in-sample', 'pass out-of-sample', 'pass walk-forward', 'deployed live'];
+  var FCOL = ['var(--blue)', 'var(--blue2)', 'var(--purple)', 'var(--amber)', 'var(--green)'];
+  function bCounts(n, rates){ var c = [n], i; for (i = 0; i < 4; i++) c.push(c[i] * rates[i]); return c; }
+  function bDraw(n, rates){
+    var c = bCounts(n, rates), g = '', i;
+    for (i = 0; i < 5; i++){
+      var w = Math.max(10, 420 * c[i] / n), y = 14 + 58 * i;
+      g += '<rect x="' + (230 - w / 2).toFixed(1) + '" y="' + y + '" width="' + w.toFixed(1) + '" height="46" rx="6" style="fill:' + FCOL[i] + ';opacity:.88"/>';
+      g += '<text x="460" y="' + (y + 20) + '" style="fill:var(--text);font-size:13px;font-weight:700;font-family:\'DM Sans\',sans-serif">' + fnum(c[i]) + ' ' + STAGES[i] + '</text>';
+      if (i > 0) g += '<text x="460" y="' + (y + 38) + '" style="fill:var(--text2);font-size:11px;' + MONO + '">' + (rates[i - 1] * 100).toFixed(0) + '% of the stage above</text>';
+    }
+    var live = c[4];
+    return { svg: g, c: c, out: { live: fnum(live), rejected: fnum(n - live), yld: (100 * live / n).toFixed(1) + '%', per: live > 0 ? (n / live).toFixed(1) : 'n/a' } };
+  }
+
+  /* ---------- C. the blindfold: simulated equity paths ---------- */
+  var MU = 0.10 / 12, SD = 0.125 / Math.sqrt(12), NP = 1000, NM = 120;
+  function mulberry(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  var rnd = mulberry(20261024);
+  function gauss(){ var u = 1 - rnd(), v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  var paths = [], pi, pj;
+  for (pi = 0; pi < NP; pi++){ var e = [100], w = 100; for (pj = 0; pj < NM; pj++){ w *= 1 + MU + SD * gauss(); e.push(w); } paths.push(e); }
+  function mdd(e, L){ var pk = e[0], m = 0, k; for (k = 1; k <= L; k++){ if (e[k] > pk) pk = e[k]; var d = 1 - e[k] / pk; if (d > m) m = d; } return m; }
+  function cStats(L, X){
+    var d = [], below = 0, hit = 0, i;
+    for (i = 0; i < NP; i++){ var m = mdd(paths[i], L); d.push(m); if (paths[i][L] < 100) below++; if (m >= X - 1e-9) hit++; }
+    d.sort(function(a, b){ return a - b; });
+    return { med: d[Math.floor(NP / 2)], p90: d[Math.floor(NP * 0.9)], below: below / NP, hit: hit / NP };
+  }
+  function cDraw(L, X){
+    var i, t, lo = 100, hi = 100, shown = 12;
+    for (i = 0; i < shown; i++) for (t = 0; t <= L; t++){ if (paths[i][t] < lo) lo = paths[i][t]; if (paths[i][t] > hi) hi = paths[i][t]; }
+    var exp = 100 * Math.pow(1 + MU, L); if (exp > hi) hi = exp;
+    var lo0 = lo, hi0 = hi; lo *= 0.95; hi *= 1.05;
+    function X0(tt){ return 60 + 550 * tt / L; }
+    function Y0(v){ return 270 - 250 * (v - lo) / (hi - lo); }
+    function tick(v){ return '<text x="54" y="' + (Y0(v) + 4).toFixed(1) + '" text-anchor="end" style="fill:var(--text3);font-size:10px;' + MONO + '">' + v.toFixed(0) + '</text>'; }
+    var g = '<line x1="60" y1="' + Y0(100).toFixed(1) + '" x2="610" y2="' + Y0(100).toFixed(1) + '" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>';
+    g += tick(100) + tick(hi0);
+    if (lo0 < 90) g += tick(lo0);
+    var ex = []; for (t = 0; t <= L; t++) ex.push([X0(t), Y0(100 * Math.pow(1 + MU, t))]);
+    for (i = shown - 1; i >= 0; i--){
+      var p = []; for (t = 0; t <= L; t++) p.push([X0(t), Y0(paths[i][t])]);
+      g += i === 0 ? '<polyline points="' + pts(p) + '" style="fill:none;stroke:var(--blue);stroke-width:2.6;stroke-linejoin:round"/>' : '<polyline points="' + pts(p) + '" style="fill:none;stroke:var(--text3);stroke-width:1.1;opacity:.55;stroke-linejoin:round"/>';
+    }
+    g += '<polyline points="' + pts(ex) + '" style="fill:none;stroke:var(--amber);stroke-width:2;stroke-dasharray:6,4"/>';
+    g += '<text x="608" y="' + (Y0(exp) - 7).toFixed(1) + '" text-anchor="end" style="fill:var(--amber);font-size:11px;' + MONO + '">expected path</text>';
+    g += '<text x="60" y="290" style="fill:var(--text3);font-size:10px;' + MONO + '">0</text>';
+    g += '<text x="335" y="290" text-anchor="middle" style="fill:var(--text3);font-size:10px;' + MONO + '">' + (L / 2) + '</text>';
+    g += '<text x="610" y="290" text-anchor="end" style="fill:var(--text3);font-size:10px;' + MONO + '">' + L + ' months</text>';
+    var s = cStats(L, X);
+    return { svg: g, out: {
+      med: (s.med * 100).toFixed(1) + '%', p90: (s.p90 * 100).toFixed(1) + '%', below: (s.below * 100).toFixed(1) + '%', hit: (s.hit * 100).toFixed(1) + '%',
+      mine: (mdd(paths[0], L) * 100).toFixed(1) + '%', mineEnd: paths[0][L].toFixed(1), expEnd: exp.toFixed(1), len: L + ' months', dd: Math.round(X * 100) + '%' } };
+  }
+  return { aDraw: aDraw, aVerdict: aVerdict, HOLD: HOLD, ax: ax, ay: ay, bDraw: bDraw, COURSE: COURSE, cDraw: cDraw, cStats: cStats, pts: pts };
+})();
+
+</script>
+<script>
+(function(){
+  /* A. cost friction vs holding period */
+  var hS = document.getElementById('qm1c-h');
+  if (hS){
+    var kS = document.getElementById('qm1c-k'), cS = document.getElementById('qm1c-c'), sS = document.getElementById('qm1c-s');
+    var dyn = document.getElementById('qm1c-dyn');
+    function setT(id, v){ var e = document.getElementById(id); if (e) e.textContent = v; }
+    function runA(){
+      var k = +kS.value, c = +cS.value, sd = +sS.value, i = +hS.value;
+      var r = QM1.aDraw(k, sd, c, i);
+      dyn.innerHTML = r.svg;
+      setT('qm1c-h-val', r.out.h); setT('qm1c-k-val', k + ' bps/day'); setT('qm1c-c-val', c + ' bps'); setT('qm1c-s-val', sd + ' bps');
+      setT('qm1c-gross', r.out.gross); setT('qm1c-net', r.out.net); setT('qm1c-share', r.out.share); setT('qm1c-snr', r.out.snr);
+      setT('qm1c-hstar', r.out.hstar); setT('qm1c-hsnr', r.out.hsnr); setT('qm1c-verdict', QM1.aVerdict(r.m));
+    }
+    [hS, kS, cS, sS].forEach(function(el){ el.addEventListener('input', runA); });
+    runA();
+  }
+})();
+(function(){
+  /* B. validation funnel */
+  var nS = document.getElementById('qm1f-n');
+  if (!nS) return;
+  var pS = document.getElementById('qm1f-p'), dyn = document.getElementById('qm1f-dyn'), btn = document.getElementById('qm1f-course');
+  var course = true;
+  function setT(id, v){ var e = document.getElementById(id); if (e) e.textContent = v; }
+  function runB(){
+    var n = +nS.value, p = +pS.value / 100;
+    var rates = course ? QM1.COURSE : [p, p, p, p];
+    var r = QM1.bDraw(n, rates);
+    dyn.innerHTML = r.svg;
+    setT('qm1f-n-val', String(n)); setT('qm1f-p-val', course ? 'course rates' : Math.round(p * 100) + '% each gate');
+    setT('qm1f-live', r.out.live); setT('qm1f-rej', r.out.rejected); setT('qm1f-yield', r.out.yld); setT('qm1f-per', r.out.per);
+  }
+  nS.addEventListener('input', runB);
+  pS.addEventListener('input', function(){ course = false; runB(); });
+  btn.addEventListener('click', function(){ course = true; runB(); });
+  runB();
+})();
+(function(){
+  /* C. the blindfold */
+  var lS = document.getElementById('qm1b-len');
+  if (!lS) return;
+  var dS = document.getElementById('qm1b-dd'), dyn = document.getElementById('qm1b-dyn');
+  function setT(id, v){ var e = document.getElementById(id); if (e) e.textContent = v; }
+  function runC(){
+    var L = +lS.value, X = +dS.value / 100;
+    var r = QM1.cDraw(L, X);
+    dyn.innerHTML = r.svg;
+    setT('qm1b-len-val', r.out.len); setT('qm1b-dd-val', r.out.dd); setT('qm1b-ddr', r.out.dd);
+    setT('qm1b-hit', r.out.hit); setT('qm1b-med', r.out.med); setT('qm1b-p90', r.out.p90); setT('qm1b-below', r.out.below);
+    setT('qm1b-mine', r.out.mine); setT('qm1b-mineEnd', r.out.mineEnd); setT('qm1b-expEnd', r.out.expEnd);
+  }
+  lS.addEventListener('input', runC); dS.addEventListener('input', runC);
+  runC();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../../theory-lab/assets/progress.js?v=1" defer></script>
+<script src="../../theory-lab/assets/tts.js?v=6" defer></script>
+<script src="../../theory-lab/assets/vark.js?v=2" defer></script>
+</body>
+</html>

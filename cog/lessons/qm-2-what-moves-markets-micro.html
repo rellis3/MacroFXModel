@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Understanding What Moves Markets — Visual Guide — COG Hub — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theory-lab/assets/deck.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← COG Hub</a>
+    <div class="sl-toptitle">Understanding What Moves Markets — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, live calculators, and a 6-question self-test?<a href="qm-2-what-moves-markets.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Quant &amp; Macro · 2 of 6</div>
+      <h1 class="sl-h1">Understanding What Moves Markets, or <em>Who Moves First</em></h1>
+      <p class="sl-lede">Policy shifts cascade through markets in a fixed order, interest-rate gaps pull money across borders, risk regimes switch correlations on and off, liquidity sets the tide, institutions trade on a calendar, and crowded positioning decides how violently news lands. A course-notes framework, not a backtested strategy.</p>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A staircase of five levels stepping down and to the right: central banks are the source, government bonds react in hours to days, G10 currencies in days to weeks, equity indices in weeks to months, and corporate credit in months to quarters. Signal quality falls and noise and crowding rise at each step. Institutions trade the top steps; retail mostly trades the bottom two.">
+      <rect class="tlp-box green" x="20" y="14" width="200" height="30" rx="6"/>
+      <text class="tlp-text" x="32" y="34" font-size="13" font-weight="700">1 · Central banks</text>
+      <text class="tlp-green" x="232" y="34" font-size="12" font-weight="700">source · highest signal</text>
+      <line class="tlp-line" x1="75" y1="44" x2="75" y2="52"/><polygon class="tlp-arrow" points="70,50 80,50 75,57"/>
+      <rect class="tlp-box blue" x="75" y="52" width="200" height="30" rx="6"/>
+      <text class="tlp-text" x="87" y="72" font-size="13" font-weight="700">2 · Government bonds</text>
+      <text class="tlp-blue" x="287" y="72" font-size="12" font-weight="700">hours – days</text>
+      <line class="tlp-line" x1="130" y1="82" x2="130" y2="90"/><polygon class="tlp-arrow" points="125,88 135,88 130,95"/>
+      <rect class="tlp-box blue" x="130" y="90" width="200" height="30" rx="6"/>
+      <text class="tlp-text" x="142" y="110" font-size="13" font-weight="700">3 · G10 currencies</text>
+      <text class="tlp-blue" x="342" y="110" font-size="12" font-weight="700">days – weeks</text>
+      <line class="tlp-line" x1="185" y1="120" x2="185" y2="128"/><polygon class="tlp-arrow" points="180,126 190,126 185,133"/>
+      <rect class="tlp-box amber" x="185" y="128" width="200" height="30" rx="6"/>
+      <text class="tlp-text" x="197" y="148" font-size="13" font-weight="700">4 · Equity indices</text>
+      <text class="tlp-amber" x="397" y="148" font-size="12" font-weight="700">weeks – months</text>
+      <line class="tlp-line" x1="240" y1="158" x2="240" y2="166"/><polygon class="tlp-arrow" points="235,164 245,164 240,171"/>
+      <rect class="tlp-box amber" x="240" y="166" width="200" height="30" rx="6"/>
+      <text class="tlp-text" x="252" y="186" font-size="13" font-weight="700">5 · Corporate credit</text>
+      <text class="tlp-amber" x="452" y="186" font-size="12" font-weight="700">months – quarters</text>
+      <text class="tlp-green" x="20" y="226" font-size="12" font-weight="700">Institutions trade causes…</text>
+      <text class="tlp-amber" x="580" y="226" text-anchor="end" font-size="12" font-weight="700">…retail trades effects</text>
+    </svg>
+    <figcaption>Same shock, five arrival times. The higher the rung, the earlier and cleaner the signal; the lower the rung, the more participants, the more crowding and the smaller the edge.</figcaption>
+  </figure>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Watch the weather map, not the window</h2>
+      <p class="sl-sub">Central banks are the pressure systems. Stocks are the rain you see out of the window, forecast days ago.</p>
+      <div class="sl-row">
+        <div class="sl-box green">Central bank</div><div class="sl-arrow">→</div>
+        <div class="sl-box">Bonds<br>hours</div><div class="sl-arrow">→</div>
+        <div class="sl-box">FX<br>days–weeks</div><div class="sl-arrow">→</div>
+        <div class="sl-box amber">Equities<br>weeks–months</div><div class="sl-arrow">→</div>
+        <div class="sl-box amber">Credit<br>months</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🌀</div><div><h4>Each step down adds noise</h4><p>Lag, interpretation error and crowding all grow as you move away from the source.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Retail trades the effects</h4><p>Most retail activity sits at levels 4 and 5 while institutions trade the causes.</p></div></div>
+      </div>
+      <div class="sl-quote">Before any position, check the levels above you. Trading equities: bond yields, curve slope, credit spreads first. Trading FX: Fed Funds futures, 2-year differentials, forward guidance.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Thirty days after a Fed shock, who has priced it?</h2>
+      <p class="sl-sub">Teaching model: C(t) = 1 − e^(−t/τ), with illustrative time constants of 1, 10, 60 and 150 days (the course gives lag ranges, not curves).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four progress bars for government bonds, G10 currencies, equity indices and corporate credit showing what share of a policy shock's repricing is complete at the chosen number of days. At day 30 bonds are 100 percent, currencies 95 percent, equities 39.3 percent and credit 18.1 percent.">
+            <line x1="160" y1="22" x2="160" y2="214" style="stroke:var(--border2)"/>
+            <line x1="360" y1="22" x2="360" y2="214" style="stroke:var(--border);stroke-dasharray:3,3"/>
+            <line x1="560" y1="22" x2="560" y2="214" style="stroke:var(--border);stroke-dasharray:3,3"/>
+            <text x="160" y="16" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0%</text>
+            <text x="360" y="16" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">50%</text>
+            <text x="560" y="16" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">100%</text>
+            <text x="150" y="53" text-anchor="end" font-size="12" style="fill:var(--text2)">2 · Govt bonds</text>
+            <text x="150" y="103" text-anchor="end" font-size="12" style="fill:var(--text2)">3 · G10 FX</text>
+            <text x="150" y="153" text-anchor="end" font-size="12" style="fill:var(--text2)">4 · Equities</text>
+            <text x="150" y="203" text-anchor="end" font-size="12" style="fill:var(--text2)">5 · Credit</text>
+            <rect x="160" y="36" width="400" height="26" rx="4" style="fill:var(--s2)"/>
+            <rect x="160" y="86" width="400" height="26" rx="4" style="fill:var(--s2)"/>
+            <rect x="160" y="136" width="400" height="26" rx="4" style="fill:var(--s2)"/>
+            <rect x="160" y="186" width="400" height="26" rx="4" style="fill:var(--s2)"/>
+            <rect id="qmw-casc-b1" x="160" y="36" width="400.0" height="26" rx="4" style="fill:var(--green)"/>
+            <rect id="qmw-casc-b2" x="160" y="86" width="380.1" height="26" rx="4" style="fill:var(--blue)"/>
+            <rect id="qmw-casc-b3" x="160" y="136" width="157.4" height="26" rx="4" style="fill:var(--amber)"/>
+            <rect id="qmw-casc-b4" x="160" y="186" width="72.5" height="26" rx="4" style="fill:var(--amber)"/>
+            <text id="qmw-casc-p1" x="568" y="54" font-size="12" style="fill:var(--text);font-family:'DM Mono',monospace">100.0%</text>
+            <text id="qmw-casc-p2" x="568" y="104" font-size="12" style="fill:var(--text);font-family:'DM Mono',monospace">95.0%</text>
+            <text id="qmw-casc-p3" x="568" y="154" font-size="12" style="fill:var(--text);font-family:'DM Mono',monospace">39.3%</text>
+            <text id="qmw-casc-p4" x="568" y="204" font-size="12" style="fill:var(--text);font-family:'DM Mono',monospace">18.1%</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Days since the policy shock</span><span class="sl-live" id="qmw-casc-val">day 30</span></div>
+        <input type="range" class="sl-slider" id="qmw-casc-slider" min="0" max="180" step="1" value="30" aria-label="Days since the policy shock">
+        <div class="sl-verdict">Share of the repricing done: bonds <b id="qmw-casc-r1">100.0%</b>, currencies <b id="qmw-casc-r2">95.0%</b>, equities <b id="qmw-casc-r3">39.3%</b>, credit <b id="qmw-casc-r4">18.1%</b>.</div>
+      </div>
+      <p class="sl-p">By the time policy reaches the stock you are watching, the people who read the bond market have been positioned for months. The percentages are this deck's illustration of the order, not measured values.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">One rate hike, five arrival times</h2>
+      <p class="sl-sub">The course's worked example: the Fed announces +0.25%.</p>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Signal</b>Fed +0.25%</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Bonds · hours</b>2Y yield jumps, bond prices fall</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>FX · days–weeks</b>Money flows into USD; the dollar strengthens</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>Equities · weeks–months</b>Profits worth less today; growth stocks hit hardest</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Credit · months</b>Refinancing costs rise; weaker bonds fall</div>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Signal quality</span>
+          <ul><li>Central banks: highest</li><li>Bonds: high</li><li>G10 FX: medium-high</li><li>Equities: medium</li><li>Credit: lower</li></ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Quant implications</span>
+          <ul><li>Yields lead equities 3–6 months in rate-driven regimes (as taught)</li><li>Rate gaps lead FX 2–8 weeks (as taught)</li><li>Lower rung = more crowded = smaller edge</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Rates are the price of money: the carry pull</h2>
+      <p class="sl-sub">$1M earns more in one country than another and flows there. A carry trade borrows the cheap currency and holds the dear one: R = (1 + i<sub>H</sub>)/(1 + x) − (1 + i<sub>F</sub>), where x is the funding currency's rally.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three vertical bars on a percent scale: the carry, the exchange-rate effect and the net one-year return of a carry trade. With a 5 percent high-yield rate, a 0.1 percent funding rate and no exchange-rate move, carry and net are both plus 4.9 percent and the exchange-rate effect is zero.">
+            <line x1="60" y1="30" x2="60" y2="270" style="stroke:var(--border2)"/>
+            <line x1="60" y1="150" x2="600" y2="150" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="60" y1="90" x2="600" y2="90" style="stroke:var(--border);stroke-dasharray:3,3"/>
+            <line x1="60" y1="30" x2="600" y2="30" style="stroke:var(--border);stroke-dasharray:3,3"/>
+            <line x1="60" y1="210" x2="600" y2="210" style="stroke:var(--border);stroke-dasharray:3,3"/>
+            <line x1="60" y1="270" x2="600" y2="270" style="stroke:var(--border);stroke-dasharray:3,3"/>
+            <text x="54" y="34" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">+20%</text>
+            <text x="54" y="94" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">+10%</text>
+            <text x="54" y="154" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0</text>
+            <text x="54" y="214" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−10%</text>
+            <text x="54" y="274" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−20%</text>
+            <rect id="qmw-carry-bc" x="110" y="120.6" width="100" height="29.4" rx="3" style="fill:var(--green)"/>
+            <rect id="qmw-carry-bs" x="270" y="150.0" width="100" height="0.0" rx="3" style="fill:var(--blue)"/>
+            <rect id="qmw-carry-bn" x="430" y="120.6" width="100" height="29.4" rx="3" style="fill:var(--purple)"/>
+            <text id="qmw-carry-vc" x="160" y="114.6" text-anchor="middle" font-size="13" font-weight="700" style="fill:var(--text);font-family:'DM Mono',monospace">+4.9%</text>
+            <text id="qmw-carry-vs" x="320" y="144.0" text-anchor="middle" font-size="13" font-weight="700" style="fill:var(--text);font-family:'DM Mono',monospace">+0.0%</text>
+            <text id="qmw-carry-vn" x="480" y="114.6" text-anchor="middle" font-size="13" font-weight="700" style="fill:var(--text);font-family:'DM Mono',monospace">+4.9%</text>
+            <text x="160" y="290" text-anchor="middle" font-size="11" style="fill:var(--text2)">carry (i_H − i_F)</text>
+            <text x="320" y="290" text-anchor="middle" font-size="11" style="fill:var(--text2)">exchange-rate effect</text>
+            <text x="480" y="290" text-anchor="middle" font-size="11" style="fill:var(--text2)">net one-year return</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>High-yield rate i<sub>H</sub> (e.g. USD)</span><span class="sl-live" id="qmw-carry-ih-val">5.0%</span></div>
+        <input type="range" class="sl-slider" id="qmw-carry-ih" min="0" max="10" step="0.1" value="5" aria-label="High-yield rate in percent">
+        <div class="sl-sliderhead"><span>Funding rate i<sub>F</sub> (e.g. JPY)</span><span class="sl-live" id="qmw-carry-if-val">0.1%</span></div>
+        <input type="range" class="sl-slider" id="qmw-carry-if" min="0" max="5" step="0.1" value="0.1" aria-label="Funding rate in percent">
+        <div class="sl-sliderhead"><span>Funding currency's move x (+ = it rallies)</span><span class="sl-live" id="qmw-carry-x-val">+0%</span></div>
+        <input type="range" class="sl-slider" id="qmw-carry-x" min="-15" max="15" step="1" value="0" aria-label="Funding currency move in percent">
+        <div class="sl-calc-steps">
+          <div>Carry <b id="qmw-carry-out">4.90%</b> · exchange-rate effect <b id="qmw-spot-out">0.00%</b> · net <b id="qmw-net-out">4.90%</b></div>
+          <div>Years of carry erased by the move (x ÷ carry): <b id="qmw-yrs-out">0.00</b> · break-even rally x*: <b id="qmw-be-out">4.90%</b></div>
+          <div>The pull on $1M: <b id="qmw-inc-h">$50,000</b> at i<sub>H</sub> versus <b id="qmw-inc-f">$1,000</b> at i<sub>F</sub>, a gap of <b id="qmw-inc-d">$49,000</b></div>
+        </div>
+      </div>
+      <p class="sl-p">Set the yen to +10%: the net is −4.65%, about two years of carry gone in days. That is "picking up pennies in front of a steamroller".</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The unwind, and what rate cycles do to everything else</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>1 · Scare</b>Something rattles markets</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>2 · Exit</b>Sell the high-yield holding, buy back the yen or franc</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ 3 · Haven spike</b>Mechanical buying of the funding currency</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>4 · Risk assets fall together</b>Liquidity withdrawn from everything</div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Rate-cycle playbook</div>
+        <div class="sl-tabs" id="qmw-cycle-tabs">
+          <button class="sl-tab active" data-panel="qmw-cyc-up">Rates rise</button>
+          <button class="sl-tab" data-panel="qmw-cyc-down">Rates fall</button>
+          <button class="sl-tab" data-panel="qmw-cyc-2022">2022 case</button>
+        </div>
+        <div class="sl-panel active" id="qmw-cyc-up">
+          <div class="sl-verdict">Domestic currency <strong>strengthens</strong> · bond prices <strong>fall</strong> · growth stocks <strong>underperform</strong> (higher discount rate) · value and banks <strong>outperform</strong> (margins widen) · gold <strong>pressured</strong> · EM <strong>outflows</strong>.</div>
+        </div>
+        <div class="sl-panel" id="qmw-cyc-down">
+          <div class="sl-verdict">The mirror: currency <strong>weakens</strong> · bonds <strong>rally</strong> · growth <strong>outperforms</strong> · value and banks <strong>underperform</strong> (margin compression) · gold <strong>supported</strong> · EM <strong>inflows</strong>.</div>
+        </div>
+        <div class="sl-panel" id="qmw-cyc-2022">
+          <div class="sl-verdict">Weeks 1–4: 2Y yield 0.25% → 1.5%. Months 1–3: DXY +15%, EUR/USD 1.15 → parity. Months 3–9: Nasdaq −35%. Months 9–18: HY spreads +250 bps. Those watching bonds exited growth stocks 3–6 months before the bottom fell out. Figures are the course's, rounded; one cycle, in hindsight.</div>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Gold nuance</div>
+        <p>Gold follows <strong>real</strong> rates (nominal minus inflation). If inflation rises faster than nominal rates, gold can rally even while the Fed hikes. Watch TIPS yields.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Risk-on or risk-off: what leans which way</h2>
+      <p class="sl-sub">Knowing which regime you are in matters more than your specific trade thesis.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="qmw-reg-tabs">
+          <button class="sl-tab active" data-panel="qmw-reg-on">Risk-on</button>
+          <button class="sl-tab" data-panel="qmw-reg-off">Risk-off</button>
+        </div>
+        <div class="sl-panel active" id="qmw-reg-on">
+          <div class="sl-compare">
+            <div class="sl-ccard green"><span class="sl-ctag green">Moves up</span><ul><li>S&amp;P and Nasdaq</li><li>AUD/JPY (best risk-on proxy)</li><li>EM versus developed markets</li><li>Carry trades</li></ul></div>
+            <div class="sl-ccard red"><span class="sl-ctag red">Moves down</span><ul><li>VIX (below about 18)</li><li>Credit spreads (tightening)</li><li>Treasury prices (safety sold)</li><li>Yen and franc</li></ul></div>
+          </div>
+        </div>
+        <div class="sl-panel" id="qmw-reg-off">
+          <div class="sl-compare">
+            <div class="sl-ccard green"><span class="sl-ctag green">Goes up</span><ul><li>Treasuries</li><li>Yen and franc</li><li>Gold</li><li>USD cash; the VIX</li></ul></div>
+            <div class="sl-ccard red"><span class="sl-ctag red">Gets sold</span><ul><li>Equities and EM</li><li>Credit (spreads widen)</li><li>Oil and AUD</li><li>Carry trades unwind</li></ul></div>
+          </div>
+        </div>
+      </div>
+      <p class="sl-p">Only some of the risk-on rows are stated in the course; the haven rows in risk-on (yen, franc, gold) are the mirror image of the stated risk-off list. Gold and Treasuries both rising is the classic flight to quality.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">In stress, everything becomes one asset</h2>
+      <p class="sl-sub">Ten equal assets: σ<sub>p</sub>/σ = √((1 + (N − 1)ρ) / N). Drag the average correlation.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve of portfolio volatility, as a share of a single asset's volatility, against the average correlation between assets, for ten equal-weight assets. Shaded bands mark the course's normal, elevated-stress and crisis correlation ranges. At a correlation of 0.3 the portfolio volatility is 60.8 percent.">
+            <rect x="322" y="40" width="72" height="210" style="fill:var(--green-bg)"/>
+            <rect x="430" y="40" width="72" height="210" style="fill:var(--amber-bg)"/>
+            <rect x="538" y="40" width="72" height="210" style="fill:var(--red-bg)"/>
+            <text x="358" y="52" text-anchor="middle" font-size="10" style="fill:var(--green);font-family:'DM Mono',monospace">normal 0.2–0.4</text>
+            <text x="466" y="52" text-anchor="middle" font-size="10" style="fill:var(--amber);font-family:'DM Mono',monospace">elevated 0.5–0.7</text>
+            <text x="574" y="52" text-anchor="middle" font-size="10" style="fill:var(--red);font-family:'DM Mono',monospace">crisis 0.8–1.0</text>
+            <line x1="70" y1="250" x2="610" y2="250" style="stroke:var(--border2)"/>
+            <line x1="70" y1="40" x2="70" y2="250" style="stroke:var(--border2)"/>
+            <line x1="70" y1="50" x2="610" y2="50" style="stroke:var(--border);stroke-dasharray:3,3"/>
+            <text x="64" y="54" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">100%</text>
+            <text x="64" y="154" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">50%</text>
+            <text x="64" y="254" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0</text>
+            <text x="250" y="268" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0</text>
+            <text x="430" y="268" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0.5</text>
+            <text x="610" y="268" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">1.0</text>
+            <text x="340" y="284" text-anchor="middle" font-size="11" style="fill:var(--text3)">average pairwise correlation ρ</text>
+            <path d="M210.0,250.0 L216.7,224.2 L223.3,213.5 L230.0,205.3 L236.7,198.4 L243.3,192.3 L250.0,186.8 L256.7,181.7 L263.3,177.0 L270.0,172.5 L276.7,168.4 L283.3,164.4 L290.0,160.6 L296.7,156.9 L303.3,153.4 L310.0,150.0 L316.7,146.7 L323.3,143.5 L330.0,140.5 L336.7,137.5 L343.3,134.5 L350.0,131.7 L356.7,128.9 L363.3,126.2 L370.0,123.5 L376.7,120.9 L383.3,118.3 L390.0,115.8 L396.7,113.4 L403.3,111.0 L410.0,108.6 L416.7,106.2 L423.3,103.9 L430.0,101.7 L436.7,99.4 L443.3,97.2 L450.0,95.1 L456.7,92.9 L463.3,90.8 L470.0,88.8 L476.7,86.7 L483.3,84.7 L490.0,82.7 L496.7,80.7 L503.3,78.7 L510.0,76.8 L516.7,74.9 L523.3,73.0 L530.0,71.1 L536.7,69.3 L543.3,67.4 L550.0,65.6 L556.7,63.8 L563.3,62.0 L570.0,60.3 L576.7,58.5 L583.3,56.8 L590.0,55.1 L596.7,53.4 L603.3,51.7 L610.0,50.0" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linecap:round"/>
+            <circle id="qmw-corr-dot" cx="358.0" cy="128.3" r="6" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Average correlation ρ</span><span class="sl-live" id="qmw-corr-r-val">0.30</span></div>
+        <input type="range" class="sl-slider" id="qmw-corr-r" min="-0.1" max="1" step="0.05" value="0.3" aria-label="Average pairwise correlation">
+        <div class="sl-verdict">Portfolio volatility: <b id="qmw-corr-out">60.8%</b> of one asset's · diversification benefit <b id="qmw-corr-ben">39.2%</b> · band: <b id="qmw-corr-band">normal</b></div>
+      </div>
+      <p class="sl-p">March 2020: correlations above 0.9 within 48 hours. 2022: the −0.30 stock-bond correlation flipped to +0.40. Two assets with equal weights and volatilities keep 59.2% of one asset's volatility at −0.30 and 83.7% at +0.40.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The daily risk dashboard: three flags and you cut</h2>
+      <p class="sl-sub">Four checks from the course. If three or more flash, reduce gross exposure before analysing individual positions.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-sliderhead"><span>VIX level</span><span class="sl-live" id="qmw-dash-vix-val">16</span></div>
+        <input type="range" class="sl-slider" id="qmw-dash-vix" min="10" max="60" step="1" value="16" aria-label="VIX level">
+        <div class="sl-sliderhead"><span>VIX term structure: second month ÷ front month</span><span class="sl-live" id="qmw-dash-ts-val">1.05</span></div>
+        <input type="range" class="sl-slider" id="qmw-dash-ts" min="0.8" max="1.15" step="0.01" value="1.05" aria-label="VIX second month divided by front month">
+        <div class="sl-sliderhead"><span>CDX HY change today (bps)</span><span class="sl-live" id="qmw-dash-cdx-val">+2</span></div>
+        <input type="range" class="sl-slider" id="qmw-dash-cdx" min="-10" max="40" step="1" value="2" aria-label="CDX high yield change today in basis points">
+        <div class="sl-sliderhead"><span>Stock-bond correlation</span><span class="sl-live" id="qmw-dash-corr-val">−0.30</span></div>
+        <input type="range" class="sl-slider" id="qmw-dash-corr" min="-0.6" max="0.8" step="0.05" value="-0.3" aria-label="Stock bond correlation">
+        <label class="sl-note"><input type="checkbox" id="qmw-dash-fx"> Yen strengthening against AUD and MXN today</label>
+        <div class="sl-calc-steps">
+          <div><span class="sl-ctag green" id="qmw-dash-c1">OK</span> VIX 25 or more, or a ratio below 0.9</div>
+          <div><span class="sl-ctag green" id="qmw-dash-c2">OK</span> Credit canary: CDX HY wider by more than 20 bps</div>
+          <div><span class="sl-ctag green" id="qmw-dash-c3">OK</span> FX tells: yen strong against high-beta currencies</div>
+          <div><span class="sl-ctag green" id="qmw-dash-c4">OK</span> Stocks and bonds moving together (my reading: correlation above 0)</div>
+        </div>
+        <div class="sl-verdict">Flashing: <b id="qmw-dash-n">0</b> of 4 → <b id="qmw-dash-verdict">no change to gross exposure from this checklist</b></div>
+      </div>
+      <p class="sl-note">Thresholds are the course's (VIX bands 15 / 25 / 35, term-structure 0.9, CDX 20 bps) except the correlation cut at 0, which is mine. The course writes the term-structure test as "VIX1/VIX2 below 0.9"; here it is second month ÷ front month, so below 1 is backwardation (fear).</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 9 · It actually happened</div>
+      <h2 class="sl-h2">March 2020: fundamentals said sell, liquidity said buy</h2>
+      <div class="sl-row">
+        <div class="sl-box blue">Central bank creates reserves</div><div class="sl-arrow">→</div>
+        <div class="sl-box blue">Buys bonds from dealers</div><div class="sl-arrow">→</div>
+        <div class="sl-box amber">Dealers deploy the cash</div><div class="sl-arrow">→</div>
+        <div class="sl-box green">Prices up, yields down</div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>The S&amp;P 500 was about a third below its February peak and the second quarter would be the worst quarter of GDP on record. On 23 March 2020 the Fed announced purchases in the amounts needed to support market functioning. The S&amp;P closed that day at 2,237.40, its low of the sell-off, and was roughly 45% higher by early June. The course: $2.9T injected April to June, then $120B a month, with Nasdaq new highs. The vaccine news came in November.</p>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🛁</div><div><h4>The bathtub</h4><p>QE raises the water level and everything floats; QT drains it. Track the Fed balance sheet, RRP and TGA weekly.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠️</div><div><h4>Caveat</h4><p>One episode, and fiscal support arrived at the same time. "Liquidity almost always beats fundamentals" is a rule of thumb.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">The institutional calendar: forced trades</h2>
+      <p class="sl-sub">A 60/40 fund after a strong stock month is overweight equities and has to sell: w′ = w(1 + r<sub>E</sub>) / (w(1 + r<sub>E</sub>) + (1 − w)(1 + r<sub>B</sub>)).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-sliderhead"><span>Equity return in the month</span><span class="sl-live" id="qmw-reb-re-val">+5%</span></div>
+        <input type="range" class="sl-slider" id="qmw-reb-re" min="-10" max="30" step="1" value="5" aria-label="Equity return in the month in percent">
+        <div class="sl-sliderhead"><span>Bond return in the month</span><span class="sl-live" id="qmw-reb-rb-val">0.0%</span></div>
+        <input type="range" class="sl-slider" id="qmw-reb-rb" min="-5" max="5" step="0.5" value="0" aria-label="Bond return in the month in percent">
+        <div class="sl-calc-steps">
+          <div>Drifted weights from 60/40: equities <b id="qmw-reb-we">61.17%</b>, bonds <b id="qmw-reb-wb">38.83%</b></div>
+          <div>To rebalance: <b id="qmw-reb-verb">sell equities, buy bonds</b> <b id="qmw-reb-trade">1.17%</b> of the portfolio, which is <b id="qmw-reb-bn">$1.17bn</b> per $100bn</div>
+        </div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📅</div><div><h4>OpEx</h4><p>The third Friday (always the 15th to the 21st). Pin risk and dealer hedging dominate; real moves often come the week after.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🍂</div><div><h4>Seasonality</h4><p>September historically weakest; November–December strong; quarter-end window dressing. The "why" matters less than the "what", says the course.</p></div></div>
+      </div>
+      <p class="sl-note">The course says stocks +5% against flat bonds gives "62/38". The arithmetic gives 61.2/38.8; 62/38 needs about +8.8%.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Positioning is potential energy</h2>
+      <p class="sl-sub">News explains moves afterwards. Crowding tells you how far a move can run once a catalyst arrives. COT index I = 100 × (x − x<sub>min</sub>) / (x<sub>max</sub> − x<sub>min</sub>).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A horizontal gauge from 0 to 100 for the COT index. The bottom ten percent is extreme short, the top ten percent is extreme long, and the middle is neutral. With a net position of plus 40 thousand contracts the index is 72.7 and the marker sits in the neutral zone.">
+            <rect x="60" y="40" width="52" height="26" style="fill:var(--red-bg)"/>
+            <rect x="112" y="40" width="416" height="26" style="fill:var(--s2)"/>
+            <rect x="528" y="40" width="52" height="26" style="fill:var(--red-bg)"/>
+            <text x="86" y="32" text-anchor="middle" font-size="10" style="fill:var(--red);font-family:'DM Mono',monospace">extreme short</text>
+            <text x="554" y="32" text-anchor="middle" font-size="10" style="fill:var(--red);font-family:'DM Mono',monospace">extreme long</text>
+            <text x="320" y="32" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">neutral</text>
+            <text x="60" y="88" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0</text>
+            <text x="320" y="88" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">50</text>
+            <text x="580" y="88" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">100</text>
+            <line id="qmw-pos-mk" x1="438.2" y1="34" x2="438.2" y2="72" style="stroke:var(--amber);stroke-width:4;stroke-linecap:round"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Net speculative position, thousand contracts (window −120 to +100)</span><span class="sl-live" id="qmw-pos-x-val">+40</span></div>
+        <input type="range" class="sl-slider" id="qmw-pos-x" min="-150" max="150" step="5" value="40" aria-label="Net speculative position in thousand contracts">
+        <div class="sl-verdict">COT index <b id="qmw-pos-idx">72.7</b> · <b id="qmw-pos-read">neutral: no extreme</b></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">GameStop, January 2021</div>
+        <p>Short interest above 100% of the float (about 140% in the course), retail buying, margin calls, forced covering, more buying: a reflexive loop. The course puts the rise at about +1,700% in weeks with the business unchanged. The size of the move tracked the crowding, not the news. An extreme case, not a base rate. The 90 / 10 cut-offs are my convention.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Where this needs qualifying<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>These are course-notes frameworks with exemplar figures, and the cleanest cases (2020, 2022, GameStop) are hindsight picks. The month-end drift is real arithmetic; the carry unwind is a real chain. Neither has been shown here to leave a footprint large enough to trade after costs.</p>
+      </div>
+      <!-- DESK:START -->
+      <div class="sl-stamp null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>Rates lead equities, intraday:</strong> 2,010 pivots, well powered, null. A confirmed rates low was followed by an up-move 54.1% of the time and the base rate is 54.1%.</span></div>
+      <div class="sl-stamp null" data-evidence="yields-to-fx-direction" data-evidence-date="2026-08-23"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>Yield moves predict FX and indices:</strong> forward coupling null; real only in the same bar.</span></div>
+      <div class="sl-stamp validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>VIX above VIX3M:</strong> next-5-session range wider, SPX500 +0.76 ATR, NAS100 +0.82 (86 entries). Range, not direction.</span></div>
+      <div class="sl-stamp null" data-evidence="month-end-rebalance" data-evidence-date="2026-09-19"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>Month-end selling after strong months:</strong> last three sessions +0.11% (interval −0.32 to +0.50) over 229 months. No drag to trade.</span></div>
+      <div class="sl-stamp null" data-evidence="cot-positioning-factor" data-evidence-date="2026-08-22"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>Crowded positioning predicts direction:</strong> pooled out-of-sample rank-correlation −0.0317, p = 0.094, fail. Positioning says who must act, not which way.</span></div>
+      <div class="sl-stamp underpowered" data-evidence="net-liquidity-tailwind-spx" data-evidence-date="2026-10-21"><span class="sl-stamp-tag">Desk test: too small to tell</span><span><strong>Net liquidity as a tailwind:</strong> +0.42 pp over 4 weeks, interval −0.47 to +1.32, inside the placebo. Context, not a forecast.</span></div>
+      <!-- DESK:END -->
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why check bond yields and credit spreads before trading an equity index?</h4>
+        <button class="sl-quiz-opt" data-correct="true">They sit higher in the cascade, so they carry the earlier and cleaner signal</button>
+        <button class="sl-quiz-opt">Bonds are always right and equities are always wrong</button>
+        <button class="sl-quiz-opt">Equities are not affected by central banks</button>
+        <div class="sl-quiz-explain">Policy reaches bonds in hours, FX in days to weeks, equities in weeks to months and credit in months to quarters. Each step down adds lag, noise and crowding.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A carry trade earns 4.9% a year and the funding currency rallies 10% in days. What happens?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About two years of carry are erased; the exact one-year return is −4.65%</button>
+        <button class="sl-quiz-opt">The carry cushions the move and the trade still profits</button>
+        <button class="sl-quiz-opt">Nothing, exchange-rate moves average out within a year</button>
+        <div class="sl-quiz-explain">1.05/1.10 − 1.001 = −4.65%. The 10% move is 10 ÷ 4.9 = 2.04 years of carry, which is why an unwind is called picking up pennies in front of a steamroller.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Ten equal assets: how much does the portfolio's volatility, relative to one asset, change when the average correlation goes from 0.3 to 0.9?</h4>
+        <button class="sl-quiz-opt" data-correct="true">From about 61% to about 95%: most of the diversification disappears</button>
+        <button class="sl-quiz-opt">It falls, because more assets always reduce risk</button>
+        <button class="sl-quiz-opt">It does not change; correlation only affects returns</button>
+        <div class="sl-quiz-explain">√((1 + 9ρ)/10): 0.3 gives √0.37 = 60.8%, 0.9 gives √0.91 = 95.4%. Diversification is a bet that correlations stay low, and it fails when it is most needed.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A 60/40 fund's stocks gain 5% and bonds are flat. What weights does it hold, and what must it do?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About 61.2/38.8; sell roughly 1.2% of the portfolio in equities and buy bonds</button>
+        <button class="sl-quiz-opt">About 65/35; sell 5% of the portfolio</button>
+        <button class="sl-quiz-opt">Still 60/40; nothing to do</button>
+        <div class="sl-quiz-explain">0.60 × 1.05 = 0.63 against 0.40 bonds, a total of 1.03, so equities are 61.17%. Rebalancing means selling the 1.17% excess. A rally to 65% would need about +23.8%.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What does an extreme crowded position tell you?</h4>
+        <button class="sl-quiz-opt" data-correct="true">How violent a move can be once a catalyst arrives, not which way it goes</button>
+        <button class="sl-quiz-opt">Which way the market will go next</button>
+        <button class="sl-quiz-opt">Nothing, because news is all that matters</button>
+        <div class="sl-quiz-explain">Crowding is stored energy and the magnitude tracks the crowding, as in GameStop. The direction depends on who has to act and on the catalyst, so positioning is context, not a direction signal.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2020-03-23">
+    <div class="tl-drill-label">Scenario drill · 23 March 2020</div>
+    <h3>The Fed has just promised to buy in the amounts needed</h3>
+    <p>It is the morning of 23 March 2020. The S&amp;P 500 is about a third below its February high, the VIX is above 60, and the data are terrible and about to get worse: lockdowns are spreading, unemployment claims are about to explode, and no vaccine is in sight. You are short equity index futures and have been right for a month. This morning the Federal Reserve announced that it would buy Treasuries and agency mortgage securities in the amounts needed to restore smooth market functioning. What do you do with the short?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Add to it. The fundamentals are collapsing and the market has not priced the data yet.<div class="tl-drill-why">Fundamentals can be right and still lose to the tide. The announcement changes the supply of money and the willingness of dealers to hold risk, which is the course's point that liquidity beats fundamentals. Adding to a short on the day the biggest buyer in the system steps in is fighting the Fed, in the most expensive way.</div></li>
+      <li data-verdict="bad">Hold the short until the economic data or a vaccine news item shows it is safe to cover.<div class="tl-drill-why">The data and the vaccine arrived long after the low. The first efficacy results came in November; the second-quarter GDP print came in July. A rule that waits for fundamentals to improve would have covered months after the rally began.</div></li>
+      <li data-verdict="good">Cover most or all of the short now and stay light, because the regime has changed from a liquidity drain to a liquidity flood, while volatility is still extreme.<div class="tl-drill-why">This follows the framework without pretending to call the bottom. Nobody knew 23 March was the low. The decision rests on a change in the liquidity regime, not a prediction, and with a VIX above 60 smaller size is the sensible way to be wrong.</div></li>
+      <li data-verdict="ok">Flip to a large long right away to catch the rebound.<div class="tl-drill-why">The direction was right but the size is a bet on a call nobody could make. With volatility this high, a position sized like a normal day can be stopped out by a move that has nothing to do with the thesis. Defensible, not best.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The S&amp;P 500 closed at 2,237.40 on 23 March 2020, its closing low of the sell-off, about 34% below its February peak, and then rose. By early June it was roughly 45% higher, with the second-quarter economy still contracting at a record pace. The course reads this as liquidity beating fundamentals. A fair caveat: this was one episode, and at the same time governments were announcing large fiscal support.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20200323b.htm">Federal Reserve Board, press release, 23 March 2020</a>; <a href="https://fred.stlouisfed.org/series/SP500">S&amp;P 500 daily closes, FRED series SP500</a>; <a href="https://fred.stlouisfed.org/series/VIXCLS">CBOE VIX daily closes, FRED series VIXCLS</a>.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
+      <div class="sl-kicker">Section 14</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The hierarchy is not optional: central banks, bonds, FX, equities, credit. Information degrades at each level, so check the levels above before any position.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Rates drive cross-border flow; watch the 2-year. A carry trade earns steadily and gives it back in a rush: a 10% yen rally against 4.9% carry is about two years gone.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Know your regime: correlations spike in stress (ten assets: 61% of one asset's volatility at 0.3, 95% at 0.9). Three or more daily warnings means cut gross exposure first.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Liquidity sets the tide (March 2020). Track the Fed balance sheet, RRP and TGA weekly; do not fight the flow.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Flows are mechanical: month-end, OpEx, reconstitution. A 60/40 fund after +5% stocks sells about 1.2% of the portfolio. Do not be the liquidity for a forced trade unless you are paid.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Position before narrative: crowding plus a catalyst means a violent move, and crowding tells you how violent, not which way.</p></div>
+<!-- DESK:START -->
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>On this desk's data, rates leading equities intraday, yields predicting FX, crowded positioning predicting direction and a month-end drag all came back null. The mechanisms are real; the trades are not shown.</p></div>
+<!-- DESK:END -->
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Before acting on a headline or a chart, ask where in the queue your market sits, which regime it is in, what the liquidity tide is doing, who is forced to trade today and who is leaning on which wall.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Central Bank Policy</h3>
+        <p>The top rung of the hierarchy in detail: how central banks decide, how to read their statements, and what the balance sheet is telling you.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="qm-3-central-bank-policy-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="qm-2-what-moves-markets.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to COG hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../../theory-lab/assets/deck.js"></script>
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function r6(v){ return Math.round(v * 1e6) / 1e6; }
+  var MINUS = '−';
+  function pct2(v){ v = r6(v); return (v < 0 ? MINUS : '') + Math.abs(v).toFixed(2) + '%'; }
+  function sgn1(v){ v = r6(v); return (v < 0 ? MINUS : '+') + Math.abs(v).toFixed(1) + '%'; }
+  function money(v){ return '$' + Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+  // cascade
+  (function(){
+    var s = $('qmw-casc-slider'); if (!s) return;
+    var TAU = [1, 10, 60, 150], W = 400;
+    function upd(){
+      var t = parseInt(s.value, 10);
+      $('qmw-casc-val').textContent = 'day ' + t;
+      for (var i = 0; i < 4; i++){
+        var c = 1 - Math.exp(-t / TAU[i]);
+        $('qmw-casc-b' + (i + 1)).setAttribute('width', (c * W).toFixed(1));
+        $('qmw-casc-p' + (i + 1)).textContent = (c * 100).toFixed(1) + '%';
+        $('qmw-casc-r' + (i + 1)).textContent = (c * 100).toFixed(1) + '%';
+      }
+    }
+    s.addEventListener('input', upd); upd();
+  })();
+
+  // carry
+  (function(){
+    var ihS = $('qmw-carry-ih'); if (!ihS) return;
+    var ifS = $('qmw-carry-if'), xS = $('qmw-carry-x');
+    var Y0 = 150, SC = 6;
+    function bar(rect, txt, v){
+      var d = Math.max(-20, Math.min(20, v));
+      var h = Math.abs(d) * SC, y = d >= 0 ? Y0 - h : Y0;
+      $(rect).setAttribute('y', y.toFixed(1)); $(rect).setAttribute('height', h.toFixed(1));
+      $(txt).setAttribute('y', (d >= 0 ? y - 6 : y + h + 14).toFixed(1));
+      $(txt).textContent = sgn1(v);
+    }
+    function upd(){
+      var ih = parseFloat(ihS.value) / 100, iF = parseFloat(ifS.value) / 100, x = parseFloat(xS.value) / 100;
+      $('qmw-carry-ih-val').textContent = (ih * 100).toFixed(1) + '%';
+      $('qmw-carry-if-val').textContent = (iF * 100).toFixed(1) + '%';
+      $('qmw-carry-x-val').textContent = (x < 0 ? MINUS : '+') + Math.abs(x * 100).toFixed(0) + '%';
+      var carry = (ih - iF) * 100;
+      var net = ((1 + ih) / (1 + x) - (1 + iF)) * 100;
+      var spot = net - carry;
+      bar('qmw-carry-bc', 'qmw-carry-vc', carry);
+      bar('qmw-carry-bs', 'qmw-carry-vs', spot);
+      bar('qmw-carry-bn', 'qmw-carry-vn', net);
+      $('qmw-carry-out').textContent = pct2(carry);
+      $('qmw-spot-out').textContent = pct2(spot);
+      $('qmw-net-out').textContent = pct2(net);
+      var yrs = (carry > 0 && x > 0) ? (x * 100) / carry : 0;
+      $('qmw-yrs-out').textContent = yrs.toFixed(2);
+      $('qmw-be-out').textContent = pct2(((1 + ih) / (1 + iF) - 1) * 100);
+      $('qmw-inc-h').textContent = money(1e6 * ih);
+      $('qmw-inc-f').textContent = money(1e6 * iF);
+      $('qmw-inc-d').textContent = money(1e6 * (ih - iF));
+    }
+    [ihS, ifS, xS].forEach(function(e){ e.addEventListener('input', upd); }); upd();
+  })();
+
+  // correlation (N fixed at 10)
+  (function(){
+    var rS = $('qmw-corr-r'); if (!rS) return;
+    var N = 10, X0 = 70, W = 540, RMIN = -0.5, RMAX = 1;
+    function xr(r){ return X0 + (r - RMIN) / (RMAX - RMIN) * W; }
+    function yv(v){ return 250 - v * 200; }
+    function sp(r){ return Math.sqrt(Math.max(0, (1 + (N - 1) * r) / N)); }
+    function upd(){
+      var r = parseFloat(rS.value), v = sp(r);
+      $('qmw-corr-r-val').textContent = (r < 0 ? MINUS : '') + Math.abs(r).toFixed(2);
+      $('qmw-corr-dot').setAttribute('cx', xr(r).toFixed(1));
+      $('qmw-corr-dot').setAttribute('cy', yv(v).toFixed(1));
+      $('qmw-corr-out').textContent = (v * 100).toFixed(1) + '%';
+      $('qmw-corr-ben').textContent = ((1 - v) * 100).toFixed(1) + '%';
+      $('qmw-corr-band').textContent = r < 0.5 ? 'normal' : (r < 0.8 ? 'elevated stress' : 'crisis');
+    }
+    rS.addEventListener('input', upd); upd();
+  })();
+
+  // dashboard
+  (function(){
+    var vixS = $('qmw-dash-vix'); if (!vixS) return;
+    var tsS = $('qmw-dash-ts'), cdxS = $('qmw-dash-cdx'), corS = $('qmw-dash-corr'), fx = $('qmw-dash-fx');
+    function pill(id, flash){
+      var p = $(id); p.textContent = flash ? 'FLASH' : 'OK';
+      p.className = 'sl-ctag ' + (flash ? 'red' : 'green');
+    }
+    function upd(){
+      var vix = parseFloat(vixS.value), ts = parseFloat(tsS.value), cdx = parseFloat(cdxS.value), cor = parseFloat(corS.value);
+      $('qmw-dash-vix-val').textContent = String(vix);
+      $('qmw-dash-ts-val').textContent = ts.toFixed(2);
+      $('qmw-dash-cdx-val').textContent = (cdx < 0 ? MINUS : '+') + Math.abs(cdx);
+      $('qmw-dash-corr-val').textContent = (cor < 0 ? MINUS : '') + Math.abs(cor).toFixed(2);
+      var f1 = vix >= 25 || ts < 0.9, f2 = cdx > 20, f3 = fx.checked, f4 = cor > 0;
+      pill('qmw-dash-c1', f1); pill('qmw-dash-c2', f2); pill('qmw-dash-c3', f3); pill('qmw-dash-c4', f4);
+      var n = (f1 ? 1 : 0) + (f2 ? 1 : 0) + (f3 ? 1 : 0) + (f4 ? 1 : 0);
+      $('qmw-dash-n').textContent = String(n);
+      $('qmw-dash-verdict').textContent = n >= 3 ? 'three or more: reduce gross exposure before analysing individual positions'
+        : n >= 1 ? 'below the three-flag rule: watch closely' : 'no change to gross exposure from this checklist';
+    }
+    [vixS, tsS, cdxS, corS].forEach(function(e){ e.addEventListener('input', upd); });
+    fx.addEventListener('change', upd); upd();
+  })();
+
+  // rebalancing (target weight fixed at 60%)
+  (function(){
+    var reS = $('qmw-reb-re'); if (!reS) return;
+    var rbS = $('qmw-reb-rb'), w = 0.6;
+    function upd(){
+      var re = parseFloat(reS.value) / 100, rb = parseFloat(rbS.value) / 100;
+      $('qmw-reb-re-val').textContent = (re < 0 ? MINUS : '+') + Math.abs(re * 100).toFixed(0) + '%';
+      $('qmw-reb-rb-val').textContent = (rb < 0 ? MINUS : '') + Math.abs(rb * 100).toFixed(1) + '%';
+      var VE = w * (1 + re), VB = (1 - w) * (1 + rb), wp = VE / (VE + VB), tr = wp - w;
+      $('qmw-reb-we').textContent = (wp * 100).toFixed(2) + '%';
+      $('qmw-reb-wb').textContent = ((1 - wp) * 100).toFixed(2) + '%';
+      var big = Math.abs(tr) * 100;
+      $('qmw-reb-verb').textContent = big < 0.005 ? 'no trade needed:' : (tr > 0 ? 'sell equities, buy bonds' : 'buy equities, sell bonds');
+      $('qmw-reb-trade').textContent = big.toFixed(2) + '%';
+      $('qmw-reb-bn').textContent = '$' + big.toFixed(2) + 'bn';
+    }
+    [reS, rbS].forEach(function(e){ e.addEventListener('input', upd); }); upd();
+  })();
+
+  // COT index
+  (function(){
+    var xS = $('qmw-pos-x'); if (!xS) return;
+    var MIN = -120, MAX = 100;
+    function upd(){
+      var x = parseFloat(xS.value);
+      $('qmw-pos-x-val').textContent = (x < 0 ? MINUS : '+') + Math.abs(x);
+      var idx = Math.max(0, Math.min(100, (x - MIN) / (MAX - MIN) * 100));
+      $('qmw-pos-idx').textContent = idx.toFixed(1);
+      var mx = 60 + idx / 100 * 520;
+      var mk = $('qmw-pos-mk'); mk.setAttribute('x1', mx.toFixed(1)); mk.setAttribute('x2', mx.toFixed(1));
+      $('qmw-pos-read').textContent = idx >= 90 ? 'extreme long: crowded, vulnerable to negative catalysts'
+        : idx <= 10 ? 'extreme short: crowded, vulnerable to a squeeze' : 'neutral: no extreme';
+    }
+    xS.addEventListener('input', upd); upd();
+  })();
+})();
+</script>
+<script src="../../theory-lab/assets/verdicts.js" defer></script>
+<script src="../../theory-lab/assets/tts.js?v=6" defer></script>
+<script src="../../theory-lab/assets/vark.js?v=2" defer></script>
+</body>
+</html>

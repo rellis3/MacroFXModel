@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Central Bank Policy Deep Dive — COG Hub — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theory-lab/assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+/* Local extension: wide multi-column reference tables in the same dark-theme language as the shared sheet. */
+.tl-table{overflow-x:auto;margin:14px 0;border:1px solid var(--border);border-radius:var(--r)}
+.tl-table table{width:100%;border-collapse:collapse;font-size:13px}
+.tl-table th{background:var(--s2);color:var(--text);text-align:left;padding:8px 10px;border-bottom:1.5px solid var(--border2);font-weight:600;white-space:nowrap}
+.tl-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+.tl-table tr:last-child td{border-bottom:none}
+.tl-table tbody tr:hover{background:var(--s1)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">COG Hub</a> / Course Notes / Quant &amp; Macro / Central Bank Policy</div>
+  <div class="tl-glosslink">🔎 <a href="../../theory-lab/glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Course Notes · Quant &amp; Macro 3 of 6</div>
+  <h1 class="tl-title">Central Bank Policy Deep Dive</h1>
+  <p class="tl-dek">How the Fed decides, how it talks, what its dots and balance sheet really say, how the other big central banks differ, and why the tradeable object is always the gap between what the Fed signals and what the market has already priced.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">COURSE NOTES — framework as taught, not a backtested strategy</span>
+    <span>~38 min read</span>
+    <span>Prereqs: <a href="qm-2-what-moves-markets.html">Lesson 2: What Moves Markets</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="qm-3-central-bank-policy-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Markets move on <strong>changes in expectations</strong> about the Fed, not on the decisions themselves. Edge, if there is any, is seeing where policy is heading before it is fully priced: what the Fed watches, how its members think, and what their words reveal.</li>
+      <li>The Fed has a <strong>dual mandate</strong> (maximum employment, price stability with a 2% PCE target), 12 FOMC voters out of 19 participants, and 8 scheduled meetings a year. A hawkish-leaning committee tightens faster and higher; dissents map the range of views.</li>
+      <li>Communication has a fixed rhythm: <strong>blackout, statement (2:00 pm ET), press conference (2:30 pm ET), minutes three weeks later</strong>. In the statement the <em>change in wording</em> is the signal, so diff it against the last one.</li>
+      <li>The dot plot is a set of <strong>conditional projections, not commitments</strong>. The tradeable thing is <em>dots versus market pricing</em>, read with the dispersion and the shift from the last SEP.</li>
+      <li>The balance sheet is liquidity: <code>Net liquidity ≈ Fed balance sheet − TGA − RRP</code>. QE adds reserves gradually; QT can drain them until something breaks suddenly (September 2019). Other central banks differ (ECB, BoJ, BoE, PBoC), and <strong>policy divergence</strong> drives FX.</li>
+      <li><strong>Real-world episodes:</strong> the 2021-22 pivot from "transitory" to the first hike (16 March 2022) was telegraphed months earlier in the wording; the 17 September 2019 repo spike showed QT hitting scarce reserves; and 22 September 2022 showed policy divergence meeting a Japanese intervention. Course framework throughout; <em>patience is the edge</em> is not itself tested here.</li>
+    </ul>
+  </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A left-to-right chain: what the Fed watches (inflation, jobs, financial conditions, global factors) feeds its reaction function, which shows up in its words (statement, press conference, minutes, dots, Fedspeak) and its tools (the policy rate and the balance sheet), which reach markets. Below the chain, a bar says the edge is the gap between what the Fed signals and what markets have already priced in.">
+      <rect class="tlp-box blue" x="8" y="20" width="106" height="110" rx="8"/>
+      <text class="tlp-blue" x="61" y="42" text-anchor="middle" font-size="13" font-weight="700">What it watches</text>
+      <text class="tlp-text2" x="61" y="64" text-anchor="middle" font-size="12">inflation (PCE)</text>
+      <text class="tlp-text2" x="61" y="82" text-anchor="middle" font-size="12">jobs, wages</text>
+      <text class="tlp-text2" x="61" y="100" text-anchor="middle" font-size="12">fin. conditions</text>
+      <text class="tlp-text2" x="61" y="118" text-anchor="middle" font-size="12">global, dollar</text>
+      <rect class="tlp-box purple" x="140" y="20" width="106" height="110" rx="8"/>
+      <text class="tlp-purple" x="193" y="42" text-anchor="middle" font-size="13" font-weight="700">Reaction function</text>
+      <text class="tlp-text2" x="193" y="68" text-anchor="middle" font-size="12">hawk ↔ dove</text>
+      <text class="tlp-text2" x="193" y="86" text-anchor="middle" font-size="12">Chair + voters</text>
+      <text class="tlp-text2" x="193" y="104" text-anchor="middle" font-size="12">dissents</text>
+      <rect class="tlp-box amber" x="272" y="20" width="106" height="110" rx="8"/>
+      <text class="tlp-amber" x="325" y="42" text-anchor="middle" font-size="13" font-weight="700">Its words</text>
+      <text class="tlp-text2" x="325" y="64" text-anchor="middle" font-size="12">statement</text>
+      <text class="tlp-text2" x="325" y="82" text-anchor="middle" font-size="12">presser, minutes</text>
+      <text class="tlp-text2" x="325" y="100" text-anchor="middle" font-size="12">dots, Fedspeak</text>
+      <rect class="tlp-box green" x="404" y="20" width="106" height="110" rx="8"/>
+      <text class="tlp-green" x="457" y="42" text-anchor="middle" font-size="13" font-weight="700">Its tools</text>
+      <text class="tlp-text2" x="457" y="68" text-anchor="middle" font-size="12">policy rate</text>
+      <text class="tlp-text2" x="457" y="88" text-anchor="middle" font-size="12">balance sheet</text>
+      <text class="tlp-text2" x="457" y="108" text-anchor="middle" font-size="12">(QE / QT)</text>
+      <rect class="tlp-box" x="536" y="20" width="96" height="110" rx="8"/>
+      <text class="tlp-text" x="584" y="42" text-anchor="middle" font-size="13" font-weight="700">Markets</text>
+      <text class="tlp-text2" x="584" y="68" text-anchor="middle" font-size="12">yields</text>
+      <text class="tlp-text2" x="584" y="86" text-anchor="middle" font-size="12">dollar</text>
+      <text class="tlp-text2" x="584" y="104" text-anchor="middle" font-size="12">stocks</text>
+      <line class="tlp-line" x1="114" y1="75" x2="138" y2="75"/><polygon class="tlp-arrow" points="140,75 132,71 132,79"/>
+      <line class="tlp-line" x1="246" y1="75" x2="270" y2="75"/><polygon class="tlp-arrow" points="272,75 264,71 264,79"/>
+      <line class="tlp-line" x1="378" y1="75" x2="402" y2="75"/><polygon class="tlp-arrow" points="404,75 396,71 396,79"/>
+      <line class="tlp-line" x1="510" y1="75" x2="534" y2="75"/><polygon class="tlp-arrow" points="536,75 528,71 528,79"/>
+      <rect class="tlp-box red" x="8" y="156" width="624" height="62" rx="8"/>
+      <text class="tlp-red" x="320" y="182" text-anchor="middle" font-size="15" font-weight="700">The tradeable object: signalled path  minus  priced path</text>
+      <text class="tlp-text2" x="320" y="204" text-anchor="middle" font-size="12.5">Markets are already pricing the first four boxes. Only a gap between the Fed's path and the market's path is news.</text>
+    </svg>
+    <figcaption>Everything in this lesson sits on one chain. The Fed reads the economy, applies a reaction function, speaks and acts, and markets reprice. A move only happens where the Fed's path differs from the one already in prices.</figcaption>
+  </figure>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The Federal Reserve sets the price of dollar money, and almost every other price is quoted against it. Bond yields, the dollar, equity valuations and credit spreads all contain an assumed path for the Fed funds rate. So a trader does not really trade "the Fed decision". A trader trades the <strong>difference between the path the Fed is heading for and the path the market has priced</strong>.
+  </p>
+  <p>
+    Getting that difference right needs three things from this lesson: <em>(1)</em> the inputs the Fed watches, <em>(2)</em> how its members think, and <em>(3)</em> how their communication reveals intent. We then add the balance sheet (the second tool, which acts on liquidity), the other major central banks (because FX is a relative price), and a framework for trading around Fed events, including the honest option of sitting them out.
+  </p>
+  <p>
+    This is a course-notes lesson. The structure of the Fed and the mechanics of its balance sheet stay relevant across cycles. Specific stances, rates and committee compositions change, so verify current data before using any number here as a live input.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A central bank is a thermostat that talks before it acts</h3>
+    <p>Think of the Fed as a thermostat for the economy. It reads the temperature (inflation, jobs), decides whether the room is too hot or too cold, and moves the dial (the policy rate, the balance sheet). The odd thing is that this thermostat <em>announces</em> where it plans to move the dial, months ahead, in careful coded language. Because everyone can hear the announcements, the market adjusts before the dial moves.</p>
+    <p>So the dial turning is rarely the news. The news is a change in the plan, a surprise in how fast, how far, or how sure the Fed sounds. That is why the lesson spends so long on language, projections and pricing, and only then on the tools themselves.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The Fed's structure and decision-making</h2>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>12</td><td>Regional Federal Reserve banks.</td></tr>
+      <tr><td>7</td><td>Board governors, who are permanent FOMC voters.</td></tr>
+      <tr><td>12</td><td>FOMC voters at each meeting (7 governors plus 5 presidents).</td></tr>
+      <tr><td>8</td><td>Scheduled FOMC meetings per year.</td></tr>
+      <tr><td>19</td><td>Participants who attend, discuss and submit projections (up to 7 governors plus 12 presidents). Only 12 vote.</td></tr>
+    </table>
+  </div>
+
+  <h3>The dual mandate</h3>
+  <p>The Fed answers to two goals set by Congress, and they sometimes pull in opposite directions:</p>
+  <ol>
+    <li><strong>Maximum employment.</strong> The lowest sustainable unemployment that does not trigger inflation. The "natural rate" \(u^*\) is <em>estimated</em>, not fixed.</li>
+    <li><strong>Price stability.</strong> Since 2012 an explicit <strong>2% inflation target</strong>, measured by <strong>PCE</strong> (not CPI). In 2020 the Fed shifted to <em>average inflation targeting</em>: inflation could run above 2% for a while to make up for earlier shortfalls. <span style="color:var(--text3)">(As taught; the Fed has reviewed its framework since, so check the current statement of longer-run goals.)</span></li>
+  </ol>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧭</div>
+    <div class="tl-box-label">Trading implication</div>
+    <p><strong>Low unemployment and high inflation</strong> means there is no trade-off between the two mandates, so the Fed tightens aggressively. <strong>High unemployment and high inflation</strong> (stagflation) forces a painful choice, so watch <em>which</em> mandate the Chair prioritises.</p>
+  </div>
+
+  <h3>Who votes: the FOMC composition</h3>
+  <figure class="tl-picture">
+    <div class="tl-picture-label">Who is in the room</div>
+    <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three groups. Seven permanent voters: the Chair, Vice Chair and five other governors. Five rotating voters: the New York Fed president, who is a permanent voter for market operations, and four regional presidents rotating annually. Seven non-voting participants: the remaining regional presidents, who attend, discuss and submit projections.">
+      <rect class="tlp-box green" x="8" y="14" width="200" height="150" rx="8"/>
+      <text class="tlp-green" x="108" y="36" text-anchor="middle" font-size="14" font-weight="700">Permanent voters · 7</text>
+      <text class="tlp-text2" x="108" y="62" text-anchor="middle" font-size="12.5">Chair (most powerful voice)</text>
+      <text class="tlp-text2" x="108" y="82" text-anchor="middle" font-size="12.5">Vice Chair</text>
+      <text class="tlp-text2" x="108" y="102" text-anchor="middle" font-size="12.5">5 other governors</text>
+      <text class="tlp-text3" x="108" y="130" text-anchor="middle" font-size="11.5">presidential appointees,</text>
+      <text class="tlp-text3" x="108" y="146" text-anchor="middle" font-size="11.5">Senate-confirmed</text>
+      <rect class="tlp-box blue" x="220" y="14" width="200" height="150" rx="8"/>
+      <text class="tlp-blue" x="320" y="36" text-anchor="middle" font-size="14" font-weight="700">Rotating voters · 5</text>
+      <text class="tlp-text2" x="320" y="62" text-anchor="middle" font-size="12.5">NY Fed president</text>
+      <text class="tlp-text3" x="320" y="78" text-anchor="middle" font-size="11.5">(permanent: market operations)</text>
+      <text class="tlp-text2" x="320" y="102" text-anchor="middle" font-size="12.5">+ 4 regional presidents</text>
+      <text class="tlp-text3" x="320" y="118" text-anchor="middle" font-size="11.5">rotating annually</text>
+      <rect class="tlp-box" x="432" y="14" width="200" height="150" rx="8"/>
+      <text class="tlp-text" x="532" y="36" text-anchor="middle" font-size="14" font-weight="700">Non-voting · 7</text>
+      <text class="tlp-text2" x="532" y="62" text-anchor="middle" font-size="12.5">remaining regional presidents</text>
+      <text class="tlp-text3" x="532" y="84" text-anchor="middle" font-size="11.5">attend, discuss, submit</text>
+      <text class="tlp-text3" x="532" y="100" text-anchor="middle" font-size="11.5">projections (dots)</text>
+      <text class="tlp-text3" x="532" y="126" text-anchor="middle" font-size="11.5">they shape the debate and</text>
+      <text class="tlp-text3" x="532" y="142" text-anchor="middle" font-size="11.5">signal when they rotate in</text>
+      <text class="tlp-text2" x="320" y="192" text-anchor="middle" font-size="12.5">7 + 5 = 12 votes per meeting · 7 + 5 + 7 = 19 participants in the dot plot</text>
+    </svg>
+    <figcaption>The NY Fed president is counted among the five "rotating" seats in the course notes' arithmetic but is a permanent voter because the New York bank runs market operations. A non-voter this year is a potential voter in a later year, which is why their words still matter.</figcaption>
+  </figure>
+
+  <h3>The hawk–dove spectrum</h3>
+  <figure class="tl-picture">
+    <div class="tl-picture-label">Where committee members sit</div>
+    <svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A horizontal spectrum from dovish on the left, through neutral, to hawkish on the right. Dovish: prioritises employment, tolerates higher inflation, slower to hike, lower terminal rates. Neutral: balanced, data-dependent, flexible on timing. Hawkish: prioritises price stability, inflation-focused, quicker to hike, higher terminal rates.">
+      <defs><linearGradient id="cb3-spec" x1="0" x2="1"><stop offset="0" stop-color="var(--blue)"/><stop offset=".5" stop-color="var(--text3)"/><stop offset="1" stop-color="var(--red)"/></linearGradient></defs>
+      <rect x="40" y="62" width="560" height="10" rx="5" fill="url(#cb3-spec)" opacity=".8"/>
+      <circle class="tlp-blue" cx="60" cy="67" r="9"/><circle class="tlp-text3" cx="320" cy="67" r="9"/><circle class="tlp-red" cx="580" cy="67" r="9"/>
+      <text class="tlp-blue" x="60" y="40" text-anchor="middle" font-size="15" font-weight="700">Dovish</text>
+      <text class="tlp-text" x="320" y="40" text-anchor="middle" font-size="15" font-weight="700">Neutral</text>
+      <text class="tlp-red" x="580" y="40" text-anchor="middle" font-size="15" font-weight="700">Hawkish</text>
+      <text class="tlp-text2" x="60" y="102" text-anchor="start" font-size="12">prioritises employment</text>
+      <text class="tlp-text2" x="60" y="120" text-anchor="start" font-size="12">tolerates higher inflation</text>
+      <text class="tlp-text2" x="60" y="138" text-anchor="start" font-size="12">slower to hike</text>
+      <text class="tlp-text2" x="60" y="158" text-anchor="start" font-size="12" font-weight="700">dove-heavy: patience, lower terminal rate</text>
+      <text class="tlp-text2" x="320" y="102" text-anchor="middle" font-size="12">balanced, data-dependent</text>
+      <text class="tlp-text2" x="320" y="120" text-anchor="middle" font-size="12">flexible on timing</text>
+      <text class="tlp-text2" x="580" y="102" text-anchor="end" font-size="12">prioritises price stability</text>
+      <text class="tlp-text2" x="580" y="120" text-anchor="end" font-size="12">inflation-focused, quicker to hike</text>
+      <text class="tlp-text2" x="580" y="158" text-anchor="end" font-size="12" font-weight="700">hawk-heavy: faster, higher, hawkish surprises</text>
+    </svg>
+    <figcaption>The Chair's view usually dominates, but a strongly opposed committee can constrain the Chair. Watch dissents: they map the range of views, and a unified committee is more predictable than a divided one.</figcaption>
+  </figure>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a class voting on how hot to keep the room. Some kids hate being cold (doves: they worry about people being out of work), some hate being too hot (hawks: they worry about prices rising). The teacher (the Chair) usually gets her way, but if lots of kids disagree she has to be careful. Counting who is hot-or-cold tells you what the room will probably do next.</p>
+  </div>
+
+  <h3>The Fed's reaction function and the Fed-watcher scorecard</h3>
+  <p>A <strong>reaction function</strong> is the Fed's rule of thumb: given these inputs, here is the likely response. The table lists what the Fed watches, what it tends to do, and how markets usually read it.</p>
+  <details class="tl-section-collapse">
+    <summary><h2>Reference table: the reaction function</h2></summary>
+    <div class="tl-table"><table>
+      <tr><th>Input</th><th>What the Fed watches</th><th>Policy response</th><th>Market impact</th></tr>
+      <tr><td>Inflation (PCE)</td><td>Core PCE YoY, expectations surveys, breakevens</td><td>Above 2% → tighten; below → ease</td><td>Hot CPI = hawkish repricing, yields up</td></tr>
+      <tr><td>Employment</td><td>NFP, unemployment rate, JOLTS, wage growth</td><td>Tight labor → tighten; rising unemployment → ease</td><td>Strong jobs = hawkish; "bad news is good news" late-cycle</td></tr>
+      <tr><td>Financial conditions</td><td>Credit spreads, equity levels, lending surveys</td><td>Loose → can tighten more; tight → pause/ease</td><td>Market selloffs can slow Fed tightening</td></tr>
+      <tr><td>Global factors</td><td>Dollar strength, foreign CB policy, global growth</td><td>Strong USD = effective tightening already; global stress → cautious</td><td>Global risk-off can delay hikes</td></tr>
+    </table></div>
+  </details>
+  <div class="tl-box example">
+    <div class="tl-icon-badge green">✅</div>
+    <div class="tl-box-label">Fed-watcher scorecard — run before each FOMC</div>
+    <ol>
+      <li><strong>Inflation check:</strong> core PCE versus 2%, and its trend direction.</li>
+      <li><strong>Labor check:</strong> unemployment direction, wage growth.</li>
+      <li><strong>Financial conditions:</strong> spreads tight or wide, any big equity moves.</li>
+      <li><strong>Committee composition:</strong> who votes this year, and the net hawk/dove tilt.</li>
+      <li><strong>Recent Fedspeak:</strong> what members have signalled, and any tone shift.</li>
+    </ol>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The FOMC communication cycle</h2>
+  <p>Fed communication follows a fixed rhythm, and each piece has a different weight. In order of importance:</p>
+  <ol>
+    <li><strong>FOMC statement</strong> — the official decision and forward guidance.</li>
+    <li><strong>Press conference</strong> — the Chair's interpretation; the Q&amp;A reveals nuance.</li>
+    <li><strong>Minutes</strong> — detailed discussion, released three weeks later.</li>
+    <li><strong>Individual speeches</strong> — personal views that can signal future consensus.</li>
+    <li><strong>Interviews and Congressional testimony</strong> — often more candid.</li>
+  </ol>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">The meeting cycle: drag the day to see what is public and what is not</div>
+    <svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A timeline from 14 days before an FOMC decision to 22 days after. A shaded blackout band runs from 11 days before the decision to 1 day after. Markers show meeting day 1 (day minus 1), the decision day with the 2:00 pm statement and 2:30 pm press conference (day 0), and the minutes three weeks later (day 21). A moving cursor shows the selected day.">
+      <rect id="cb3-tl-band" x="50" y="60" width="100" height="44" rx="4" style="fill:var(--red-bg);stroke:var(--red-bd)"/>
+      <text id="cb3-tl-bandlab" x="100" y="86" text-anchor="middle" style="fill:var(--red);font-size:11px;font-family:'DM Mono',monospace">blackout</text>
+      <line x1="50" y1="132" x2="590" y2="132" style="stroke:var(--border2);stroke-width:1.2"/>
+      <g id="cb3-tl-ticks"></g>
+      <g id="cb3-tl-events"></g>
+      <line id="cb3-tl-cursor" x1="50" y1="40" x2="50" y2="140" style="stroke:var(--blue);stroke-width:2.5"/>
+      <circle id="cb3-tl-dot" cx="50" cy="132" r="6" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Day relative to the decision (day 0 = Wednesday)</span><span class="tl-live" id="cb3-tl-val">Day 0</span></div>
+        <input type="range" id="cb3-tl-slider" min="-14" max="22" step="1" value="0">
+      </div>
+    </div>
+    <div class="tl-readout"><b id="cb3-tl-phase">Decision day (Wed)</b> — <span id="cb3-tl-text">2:00 pm ET statement, 2:30 pm ET press conference. Phase 1 is the algorithmic reaction; Phase 2 is human digestion.</span></div>
+    <div class="tl-hint">The course notes put the start of the blackout 10-14 days before the meeting. The Fed's published rule is the second Saturday before the meeting begins, which for a Wednesday decision is 11 days earlier, so the band here starts at day −11 and ends at midnight after the meeting. Speeches just before it are the last chance to signal.</div>
+    <div class="tl-chart-caption">One cycle of eight a year. Quiet before, loud for ninety minutes, then a long digestion, then the minutes as a second, smaller event.</div>
+  </div>
+
+  <h3>Reading the statement: the word changes are the signal</h3>
+  <p>The statement is rewritten lightly each meeting, so the level of the language tells you little. The <strong>change</strong> versus the previous statement is the message. A good habit: paste the two statements side by side and read only the differences.</p>
+  <details class="tl-section-collapse">
+    <summary><h2>Reference table: language shifts and their signal</h2></summary>
+    <div class="tl-table"><table>
+      <tr><th>Language shift</th><th>Signal</th></tr>
+      <tr><td>"some further" → "further"</td><td>Hawkish — more tightening coming</td></tr>
+      <tr><td>"monitoring" → "closely monitoring"</td><td>Dovish — increased concern</td></tr>
+      <tr><td>"gradual" → "patient"</td><td>Dovish — slower pace</td></tr>
+      <tr><td>"balanced" → "weighted to downside"</td><td>Dovish — growth worry</td></tr>
+      <tr><td>adding "elevated" before inflation</td><td>Hawkish — inflation concern rising</td></tr>
+      <tr><td>removing forward guidance</td><td>Neutral — flexibility, data-dependent</td></tr>
+    </table></div>
+  </details>
+
+  <h3>The press-conference edge</h3>
+  <ul>
+    <li><strong>Prepared remarks (first 10-15 minutes):</strong> tone (confident or cautious) and emphasis reveal priorities. New phrases that are not in the statement are an important signal.</li>
+    <li><strong>Q&amp;A:</strong> less scripted. Hesitation or deflection, and repetition of a theme (strong conviction), are tells; "we'll see" and "it depends" mean genuine uncertainty.</li>
+  </ul>
+  <div class="tl-solid red">
+    <strong>The trap:</strong> the first market move on the press conference is largely algorithmic, scanning for keywords. It often reverses. Real positioning arrives over the following hours and days, as people digest the nuance.
+  </div>
+
+  <h3>Reading the minutes efficiently</h3>
+  <ol>
+    <li>Skip to <em>Participants' Views</em>; the staff review is background.</li>
+    <li>Look for the <strong>quantifiers</strong>. They run \(\text{a few} < \text{several} < \text{many} < \text{most} < \text{all}\), and they reveal how wide the consensus is.</li>
+    <li>Find the <strong>"however" sentences</strong>. The clause after "however" usually reveals the true concern.</li>
+    <li>Check the <strong>balance of risks</strong>: which scenarios were explicitly considered.</li>
+  </ol>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge green">✅</div>
+    <div class="tl-box-label">FOMC meeting prep checklist</div>
+    <ol>
+      <li>Review the previous statement (the baseline language).</li>
+      <li>Check market pricing (CME FedWatch gives the probability of each outcome).</li>
+      <li>Read recent Fedspeak since the last meeting.</li>
+      <li>Note data releases since the last meeting (CPI, NFP, PCE).</li>
+      <li>Identify the key questions the market needs answered.</li>
+      <li>Plan scenarios in advance: hawkish surprise → X; dovish surprise → Y; as expected → Z.</li>
+    </ol>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The dot plot and rate expectations</h2>
+  <p>
+    Four times a year (March, June, September and December) the Fed publishes its <strong>Summary of Economic Projections (SEP)</strong>, which includes the <strong>dot plot</strong>. Each dot is one participant's view of where the Fed funds rate should be at each year-end, plus a "longer run" dot, their estimate of the neutral rate. Voters and non-voters both submit dots.
+  </p>
+  <div class="tl-solid red">
+    <strong>Critical:</strong> dots are <em>not forecasts</em> and not promises. They are <strong>conditional projections</strong>: where rates <em>should</em> go <em>if</em> the economy evolves as that member expects. When the economy surprises, the dots move.
+  </div>
+
+  <h3>How the market's side of the comparison is built</h3>
+  <p>To compare dots with the market you need the market's number. Fed funds futures give it directly: the contract settles to the average effective Fed funds rate over its month, so its price encodes the expected rate.</p>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From a futures price to the probability of a move, one step at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ r_{\text{implied}} = \color{#fbbf24}{100 - P} \]</div>
+      <p>The futures price \(P\) is quoted as 100 minus the rate. A contract at 95.50 is pricing an average rate of 4.50%.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Delta r = r_{\text{implied}} \color{#fbbf24}{- r_{\text{now}}} \]</div>
+      <p>Subtract the rate today. The difference is the average change the market expects by that month.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{prob} = \color{#10b981}{\frac{\Delta r}{s}} \]</div>
+      <p>Divide by the usual move size \(s\) (25 basis points). That gives a rough probability of one move; above 100% means more than one move is priced. This is a simplification: a meeting mid-month needs day-weighting, and the sign says hike or cut.</p>
+    </div>
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P</code><span>futures price (100 minus the rate)</span></div>
+    <div class="tl-eq-chip c2"><code>r_now</code><span>current effective Fed funds rate</span></div>
+    <div class="tl-eq-chip c3"><code>s</code><span>size of a standard move, 0.25 percentage points</span></div>
+    <div class="tl-eq-chip c4"><code>prob</code><span>implied probability of one move (hike if positive, cut if negative)</span></div>
+  </div>
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A futures price is a bet on the future interest rate written backwards: price 95.5 means "the crowd expects the rate to be 4.5". Compare that with today's rate and you can read off how likely the crowd thinks a change is. If today is 4.33 and the crowd says 4.50, they think a quarter-point hike is more likely than not.</p>
+  </div>
+  <p>Three tools show market pricing, from simple to professional: the free <strong>CME FedWatch</strong> tool (probabilities per meeting), <strong>Fed funds futures</strong> (implied rate = 100 − price), and <strong>OIS (overnight index swaps)</strong>, more liquid for longer horizons.</p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>From futures price to implied rate and probability</h3>
+    <p>Starts on illustrative numbers: a contract at 95.50 and a current effective rate of 4.33%. Edit any field and the implied rate, the expected change and the probability recalculate.</p>
+    <div class="tl-predict" data-answer="4.5" data-tol="0.02" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> A Fed funds futures contract trades at 95.50. What average rate is the market pricing? Lock in a guess, then enter 95.50 in the first field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>4.50%.</strong> \(100 - 95.50 = 4.50\). If the effective rate today is 4.33%, the market expects 17 basis points more on average, about two-thirds of a 25bp hike. That is the market's number; the dot plot's median is the Fed's number, and the comparison is the trade.</p></div>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control"><div class="tl-control-head"><span>Futures price P</span></div><input type="number" id="cb3-fut-p" class="tl-scratch-input" value="95.5" step="0.01"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Current effective rate (%)</span></div><input type="number" id="cb3-fut-r" class="tl-scratch-input" value="4.33" step="0.01"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Move size s (percentage points)</span></div><input type="number" id="cb3-fut-s" class="tl-scratch-input" value="0.25" step="0.05" min="0.05"></div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Implied rate = <b id="cb3-fut-imp">4.50%</b>&emsp;Expected change = <b id="cb3-fut-chg">+17bp</b>
+    </div>
+    <div class="tl-readout">
+      Probability of one move: <b id="cb3-fut-prob">68%</b> <span id="cb3-fut-note" class="tl-scratch-note">hike</span>
+    </div>
+    <button type="button" id="cb3-fut-reset" class="tl-scratch-reset-btn">Reset to the example numbers</button>
+  </div>
+
+  <h3>Reading the dot plot: a live explorer</h3>
+  <ul>
+    <li><strong>Median dot:</strong> the media focus, but only one data point. The distribution matters more.</li>
+    <li><strong>Range and dispersion:</strong> wide means high uncertainty or disagreement; tight means consensus, so follow-through is more likely.</li>
+    <li><strong>The shift versus the previous SEP is the signal</strong>, not the absolute level.</li>
+    <li><strong>Longer-run dots:</strong> the neutral-rate estimate (\(r^*\)). Rising longer-run dots mean a structurally higher rate environment.</li>
+  </ul>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Dot-plot explorer: nineteen illustrative dots against what the market has priced</div>
+    <svg viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A dot plot of 19 illustrative year-end rate projections, stacked by value on a vertical rate axis from 1.5 to 6 percent. Horizontal lines mark the current rate, the median dot and the market-implied year-end rate. Sliders move the median, the market pricing and the dispersion of the dots.">
+      <g id="cb3-dp-grid"></g>
+      <line id="cb3-dp-cur" x1="72" x2="610" y1="150" y2="150" style="stroke:var(--text3);stroke-width:1.4;stroke-dasharray:5,4"/>
+      <text id="cb3-dp-curlab" x="78" y="144" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">now 4.375%</text>
+      <line id="cb3-dp-mkt" x1="72" x2="610" y1="150" y2="150" style="stroke:var(--amber);stroke-width:2;stroke-dasharray:2,3"/>
+      <text id="cb3-dp-mktlab" x="606" y="144" text-anchor="end" style="fill:var(--amber);font-size:11px;font-family:'DM Mono',monospace">market</text>
+      <line id="cb3-dp-med" x1="72" x2="610" y1="150" y2="150" style="stroke:var(--green);stroke-width:2"/>
+      <text id="cb3-dp-medlab" x="606" y="144" text-anchor="end" style="fill:var(--green);font-size:11px;font-family:'DM Mono',monospace">median dot</text>
+      <g id="cb3-dp-dots"></g>
+      <text x="340" y="312" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">projection for the next year-end (each circle is one participant)</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control"><div class="tl-control-head"><span>Median dot (year-end rate)</span><span class="tl-live" id="cb3-dp-medval">3.875%</span></div>
+        <input type="range" id="cb3-dp-medsl" min="2" max="5.5" step="0.125" value="3.875"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Market-implied year-end rate</span><span class="tl-live" id="cb3-dp-mktval">4.125%</span></div>
+        <input type="range" id="cb3-dp-mktsl" min="2" max="5.5" step="0.125" value="4.125"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Dispersion of the dots (× the example spread)</span><span class="tl-live" id="cb3-dp-dispval">1.0×</span></div>
+        <input type="range" id="cb3-dp-dispsl" min="0.5" max="2" step="0.25" value="1"></div>
+    </div>
+    <div class="tl-readout">
+      Dots imply <b id="cb3-dp-dmoves">−2.0</b> moves of 25bp from today; the market implies <b id="cb3-dp-mmoves">−1.0</b>. Gap (dots − market): <b id="cb3-dp-gap">−25bp</b>.
+    </div>
+    <div class="tl-readout">
+      Range of dots: <b id="cb3-dp-range">3.500% to 4.375% (87.5bp, moderate)</b>
+    </div>
+    <div class="tl-readout"><span id="cb3-dp-read">Dots below the market: more dovish than priced. On the course framework: yields down, stocks up, USD down.</span></div>
+    <div class="tl-hint">Illustrative numbers: today's target-range midpoint is fixed at 4.375% (a 4.25-4.50% range) and the dots follow a made-up pattern. The dispersion labels (tight under 75bp, wide over 150bp) are this lesson's rule of thumb, not an official definition. The reaction in the last line is the course framework, not a tested rule.</div>
+    <div class="tl-chart-caption">Move the median to change what the Fed seems to say; move the market line to change what is priced. The edge in the framework is the gap between the two, and the dispersion tells you how much weight the median deserves.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example (illustrative numbers)</div>
+    <h3>Dots below the market: reading a dovish gap</h3>
+    <p>Today's target range is 4.25-4.50%, midpoint 4.375%. The median year-end dot sits at 3.875%, which is two 25bp cuts away: \((3.875 - 4.375)/0.25 = -2.0\). The market's year-end implied rate is 4.125%, one cut: \((4.125 - 4.375)/0.25 = -1.0\).</p>
+    <div class="tl-math">\[ \text{gap} = 3.875 - 4.125 = -0.25 \text{ pp} = -25\text{bp} \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>3.875</code><span>median dot, year-end</span></div>
+      <div class="tl-eq-chip c2"><code>4.125</code><span>market-implied year-end rate</span></div>
+      <div class="tl-eq-chip c3"><code>−25bp</code><span>dots below market: a dovish gap</span></div>
+    </div>
+    <p>The dots are 25bp more dovish than priced. The nineteen dots range from 3.500% to 4.375%, 87.5bp wide, so this is a moderate rather than a tight consensus. On the framework: yields down, stocks up, USD down, but only to the extent that the dispersion and the statement agree. If the dots then sat on the market line, the gap would be zero and attention would move to the statement and press-conference tone.</p>
+  </div>
+
+  <h3>Dots versus market pricing: where the edge is</h3>
+  <details class="tl-section-collapse">
+    <summary><h2>Reference table: dots vs the market</h2></summary>
+    <div class="tl-table"><table>
+      <tr><th>Scenario</th><th>Interpretation</th><th>Typical reaction (framework)</th></tr>
+      <tr><td>Dots &gt; market</td><td>Fed more hawkish than priced</td><td>Yields ↑, stocks ↓, USD ↑</td></tr>
+      <tr><td>Dots &lt; market</td><td>Fed more dovish than priced</td><td>Yields ↓, stocks ↑, USD ↓</td></tr>
+      <tr><td>Dots = market</td><td>Already priced</td><td>Focus shifts to statement/presser tone</td></tr>
+      <tr><td>Dispersion widens</td><td>Committee uncertain</td><td>Volatility ↑, path unclear</td></tr>
+    </table></div>
+  </details>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">The dot plot's dirty secret</div>
+    <h3>A poor track record</h3>
+    <p>In 2020 and early 2021 the median dots showed rates staying near zero for years, with no hike before 2023 at the earliest. The first hike came on 16 March 2022, and by the end of 2022 the target range was 4.25-4.50%. The course notes summarise this as: <em>do not treat dots as commitments</em>. The source also says the 2021 dots showed zero rates through 2024; I could not confirm that exact wording, so the weaker, verified version above is the one to quote.</p>
+  </div>
+
+  <h3>The SEP beyond the dots</h3>
+  <details class="tl-section-collapse">
+    <summary><h2>Reference table: the other SEP components</h2></summary>
+    <div class="tl-table"><table>
+      <tr><th>Component</th><th>Shows</th><th>Watch for</th></tr>
+      <tr><td>GDP growth</td><td>Expected real growth by year</td><td>Marking down growth? Recession concern?</td></tr>
+      <tr><td>Unemployment rate</td><td>Expected jobless rate</td><td>Higher projection = acknowledging tightening pain</td></tr>
+      <tr><td>PCE inflation</td><td>Headline + core path</td><td>When do they expect 2%? How confident?</td></tr>
+      <tr><td>Longer-run estimates</td><td>Structural equilibrium</td><td>Rising r* = secular shift to higher rates</td></tr>
+    </table></div>
+  </details>
+  <p><strong>Consistency check:</strong> do the dots make sense given the projections? Low unemployment and low inflation projections do not compute with aggressive cuts. Inconsistencies signal uncertainty or wishful thinking.</p>
+  <div class="tl-box example">
+    <div class="tl-icon-badge green">✅</div>
+    <div class="tl-box-label">SEP analysis framework</div>
+    <ol>
+      <li>Compare to the <strong>previous SEP</strong>.</li>
+      <li>Compare to the <strong>market</strong>.</li>
+      <li>Check the <strong>dispersion</strong>.</li>
+      <li>Is the longer-run \(r^*\) changing?</li>
+      <li>Cross-check the dots against the GDP, unemployment and inflation forecasts.</li>
+      <li>Count the outliers and consider who they might be.</li>
+    </ol>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>From a futures price to an implied probability: \(r_{\text{implied}} = 100 - P\), \(\Delta r = r_{\text{implied}} - r_{\text{now}}\), \(\text{prob} = \Delta r / 0.25\). Give rates in percent and probabilities as decimals (0.40, not 40%).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>The contract is at 95.20 and the current rate is 4.58%. The implied rate is \(100 - 95.20 = 4.80\%\). The expected change is \(4.80 - 4.58 = 0.22\) pp, so the probability of a 25bp hike is \(0.22/0.25 =\) <span class="tl-blank" data-answer="0.88" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>The contract is at 95.90 and the current rate is 4.33%. The implied rate is <span class="tl-blank" data-answer="4.1" data-tol="0.005"></span>%. The expected change is <span class="tl-blank" data-answer="-0.23" data-tol="0.005"></span> pp (negative: a cut), so the probability of a 25bp cut is <span class="tl-blank" data-answer="0.92" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>The contract is at 95.45 and the current rate is 4.58%. Implied rate: <span class="tl-blank" data-answer="4.55" data-tol="0.005"></span>%. Expected change: <span class="tl-blank" data-answer="-0.03" data-tol="0.005"></span> pp. Probability of a 25bp move: <span class="tl-blank" data-answer="0.12" data-tol="0.005"></span> (in magnitude). A change this small says the meeting is essentially priced for no move.</p>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Reading Fedspeak</h2>
+  <p>
+    Fed officials speak a constructed language, and phrases that sound vague carry precise meanings. This is not obfuscation, it is precision: the goal is to <em>communicate intent</em> (manage expectations) <em>without committing</em> (preserve flexibility). Learn the dictionary.
+  </p>
+  <details class="tl-section-collapse">
+    <summary><h2>Reference table: the Fedspeak decoder</h2></summary>
+    <div class="tl-table"><table>
+      <tr><th>Phrase</th><th>Meaning</th></tr>
+      <tr><td>"Inflation remains elevated"</td><td>Hawkish — concerned, likely to act</td></tr>
+      <tr><td>"Inflation has eased"</td><td>Dovish — progress noted, may slow tightening</td></tr>
+      <tr><td>"Strongly committed to returning inflation to 2%"</td><td>Hawkish — no pivot coming</td></tr>
+      <tr><td>"We're seeing the effects of our policy actions"</td><td>Dovish — tightening is working</td></tr>
+      <tr><td>"The labor market remains tight"</td><td>Hawkish — wage-pressure concern</td></tr>
+      <tr><td>"Labor market coming into better balance"</td><td>Dovish — cooling appropriately</td></tr>
+      <tr><td>"Prepared to raise rates further if appropriate"</td><td>Hawkish — door open, don't price cuts</td></tr>
+      <tr><td>"We can proceed carefully"</td><td>Dovish — slowing pace, pause likely</td></tr>
+    </table></div>
+  </details>
+  <h3>"Data dependent" decoded</h3>
+  <details class="tl-section-collapse">
+    <summary><h2>Reference table: what "data dependent" really means</h2></summary>
+    <div class="tl-table"><table>
+      <tr><th>Phrase</th><th>Actual meaning</th></tr>
+      <tr><td>"We are data dependent"</td><td>Standard disclaimer — signals nothing</td></tr>
+      <tr><td>"Particularly attentive to incoming data"</td><td>Next few prints heavily influence the decision</td></tr>
+      <tr><td>"The data will guide us"</td><td>Genuine uncertainty</td></tr>
+      <tr><td>"We need to see more evidence"</td><td>Current data isn't enough — inertia wins</td></tr>
+      <tr><td>"One/two prints don't change our view"</td><td>No reaction to next release — need a sustained trend</td></tr>
+    </table></div>
+  </details>
+  <p><strong>Key question:</strong> when they say "data dependent", ask <em>which data</em>: inflation, employment or financial conditions? The emphasis tells you the trigger.</p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Grown-ups at the Fed use special code words so they can warn you what is coming without promising it. "Inflation remains elevated" is like a parent saying "we'll see about that ice cream" in a firm voice: you can tell the answer is probably no. Learn the code words and you can hear the answer before it is spoken.</p>
+  </div>
+
+  <h3>Language shifts precede policy shifts</h3>
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>From "transitory" to the first hike, 2021-22</h3>
+    <p>By mid-2021 US inflation was running well above 2%, and for months the Fed described it as <em>transitory</em>. Then the wording started to move. On 30 November 2021 Chair Powell told the Senate Banking Committee it was "probably a good time to retire that word". At the 15 December 2021 meeting the statement no longer called pandemic-related price pressures temporary: it said supply and demand imbalances "have continued to contribute to elevated levels of inflation", the Committee sped up its bond-purchase taper, and the median dot showed hikes in 2022. On 26 January 2022 the statement said the Committee "expects it will soon be appropriate to raise the target range". On 16 March 2022 it raised the range to 0.25-0.50%, the first hike since 2018, and said it anticipated "ongoing increases".</p>
+    <p style="margin-bottom:0">The course lesson drawn from the sequence: the word change was the signal, months before the hike. The reaction function did not change on the day of the hike. The language had already moved.</p>
+  </div>
+  <div class="tl-chain">
+    <div class="tl-chain-link"><b>2021</b>"Transitory": inflation above target but described as temporary</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ 30 Nov to 15 Dec 2021</b>"Retire that word"; statement drops it; dots show 2022 hikes</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link shock"><b>26 Jan 2022</b>"Soon be appropriate to raise"</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>16 Mar 2022</b>First hike, to 0.25-0.50%</div>
+  </div>
+  <p>The starred link is the signal this section is about. The wording is stated from the Fed's own published statements; Powell's quote is from his testimony of 30 November 2021.</p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="cb-tone-direction" data-evidence-date="2026-08-20">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>The statement is priced in half an hour.</strong> Tested on 82 FOMC meetings: the first-30-minute reaction agreed in sign with the next-day dollar move only 46% of the time (t = 0.32), and the statement's change in hawkishness did not predict the next-day move (t = −0.75), though it <em>was</em> priced inside 30 minutes (t = 2.04). So "language precedes action" describes months, not the day after: do not carry the statement's tone forward as a next-day lean.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <h3>Trial balloons</h3>
+  <p>A <strong>trial balloon</strong> is a deliberate test of the market's reaction. A non-voting member or lesser voice floats an idea, or a "leak" goes to a well-connected journalist (the course names Nick Timiraos of the WSJ). The Fed watches the reaction: if it is acceptable the idea is adopted more broadly, and if it is severe it is walked back as "one person's view".</p>
+  <ul>
+    <li>Watch for a lesser-known official suddenly getting attention.</li>
+    <li>Watch for WSJ stories citing unnamed "Fed officials".</li>
+  </ul>
+  <div class="tl-box example">
+    <div class="tl-icon-badge green">✅</div>
+    <div class="tl-box-label">Fedspeak monitoring system</div>
+    <ol>
+      <li>Follow the <strong>speech calendar</strong> (published on the Fed website).</li>
+      <li><strong>Prioritise by influence:</strong> Chair, then Vice Chair, then NY Fed, then governors, then regional presidents.</li>
+      <li>Keep a <strong>log of key phrases</strong> and monitor for changes.</li>
+      <li>Note the <strong>context</strong>: a hawk turning dovish is more significant than a dove being dovish.</li>
+      <li>Watch for <strong>clustering</strong>: several officials using similar new language suggests coordination, so a policy shift is coming.</li>
+    </ol>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>The Fed's balance sheet: QE and QT mechanics</h2>
+  <p>
+    The second tool is the balance sheet. It grew from about $900 billion before 2008 to nearly <strong>$9 trillion at the 2022 peak</strong>. The core mechanism: the Fed buys assets and pays with <em>newly created reserves</em>. The reserves enter the banking system, there is more liquidity, and asset prices tend to rise. <strong>QT</strong> (quantitative tightening) reverses the process.
+  </p>
+
+  <h3>Balance sheet anatomy</h3>
+  <figure class="tl-picture">
+    <div class="tl-picture-label">What the Fed owns and what it owes</div>
+    <svg viewBox="0 0 640 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two stacked bars drawn at the midpoints of the ranges in the course notes. Assets: Treasuries about 60 to 70 percent, mortgage-backed securities about 25 to 30 percent, loans and other about 5 percent. Liabilities: currency in circulation about 25 percent, bank reserves about 35 to 40 percent, reverse repo about 20 to 25 percent, Treasury General Account about 5 to 10 percent. Reserves plus reverse repo plus the TGA are the liquidity that can flow to markets.">
+      <text class="tlp-text" x="160" y="22" text-anchor="middle" font-size="14" font-weight="700">Assets (what it owns)</text>
+      <rect class="tlp-box blue" x="60" y="34" width="200" height="132" rx="0"/>
+      <rect class="tlp-box purple" x="60" y="166" width="200" height="56" rx="0"/>
+      <rect class="tlp-box" x="60" y="222" width="200" height="12" rx="0"/>
+      <text class="tlp-text" x="160" y="106" text-anchor="middle" font-size="13" font-weight="700">Treasuries</text>
+      <text class="tlp-text2" x="160" y="124" text-anchor="middle" font-size="12">~60-70%</text>
+      <text class="tlp-text" x="160" y="190" text-anchor="middle" font-size="13" font-weight="700">MBS</text>
+      <text class="tlp-text2" x="160" y="207" text-anchor="middle" font-size="12">~25-30%</text>
+      <text class="tlp-text2" x="160" y="250" text-anchor="middle" font-size="11.5">loans &amp; other ~5%</text>
+      <text class="tlp-text" x="480" y="22" text-anchor="middle" font-size="14" font-weight="700">Liabilities (what it owes)</text>
+      <rect class="tlp-box" x="380" y="34" width="200" height="52" rx="0"/>
+      <rect class="tlp-box green" x="380" y="86" width="200" height="78" rx="0"/>
+      <rect class="tlp-box amber" x="380" y="164" width="200" height="50" rx="0"/>
+      <rect class="tlp-box red" x="380" y="214" width="200" height="20" rx="0"/>
+      <text class="tlp-text" x="480" y="56" text-anchor="middle" font-size="13" font-weight="700">Currency</text>
+      <text class="tlp-text2" x="480" y="74" text-anchor="middle" font-size="12">~25%</text>
+      <text class="tlp-text" x="480" y="120" text-anchor="middle" font-size="13" font-weight="700">Bank reserves</text>
+      <text class="tlp-text2" x="480" y="138" text-anchor="middle" font-size="12">~35-40%</text>
+      <text class="tlp-text" x="480" y="186" text-anchor="middle" font-size="13" font-weight="700">Reverse repo (RRP)</text>
+      <text class="tlp-text2" x="480" y="203" text-anchor="middle" font-size="12">~20-25%</text>
+      <text class="tlp-text2" x="480" y="228" text-anchor="middle" font-size="11.5">TGA ~5-10%</text>
+      <path class="tlp-line green" d="M584 86 L600 86 L600 234 L584 234"/>
+      <text class="tlp-green" x="606" y="150" font-size="11.5" font-weight="700" transform="rotate(90 606 150)" text-anchor="middle">reserves + RRP + TGA = liquidity</text>
+    </svg>
+    <figcaption>Bar heights use the midpoints of the percentage ranges the course quotes, so they are a sketch of proportions, not an exact balance sheet. The green bracket is the "liquidity" that can flow to markets.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Assets (what the Fed owns):</strong> Treasuries about 60-70%; mortgage-backed securities (MBS) about 25-30%; loans and other about 5%. Growing assets = QE = liquidity injection = bullish for risk assets.</li>
+    <li><strong>Liabilities (what the Fed owes):</strong> currency in circulation about 25%; bank reserves about 35-40%; reverse repo (RRP) about 20-25%; Treasury General Account (TGA) about 5-10%. Reserves + RRP + TGA are the "liquidity" that can flow to markets.</li>
+  </ul>
+
+  <h3>How QE and QT transmit</h3>
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The two flows</div>
+    <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two flow diagrams. QE: the Fed announces purchases, buys bonds from primary dealers, credits their reserve accounts, reserves enter the banking system, sellers rebalance into credit and equities, and asset prices rise. QT: bonds mature without replacement, with monthly runoff caps; the Treasury must issue new bonds to replace the maturing debt; the private sector absorbs the supply using cash from markets; reserves drain, which is a headwind for risk assets.">
+      <text class="tlp-green" x="8" y="20" font-size="14" font-weight="700">QE: reserves created, liquidity in</text>
+      <rect class="tlp-box green" x="8" y="30" width="110" height="52" rx="6"/><text class="tlp-text" x="63" y="52" text-anchor="middle" font-size="11.5" font-weight="700">Announce</text><text class="tlp-text2" x="63" y="68" text-anchor="middle" font-size="11">e.g. $120B/month</text>
+      <rect class="tlp-box green" x="134" y="30" width="110" height="52" rx="6"/><text class="tlp-text" x="189" y="52" text-anchor="middle" font-size="11.5" font-weight="700">Buy from dealers</text><text class="tlp-text2" x="189" y="68" text-anchor="middle" font-size="11">credit their reserves</text>
+      <rect class="tlp-box green" x="260" y="30" width="110" height="52" rx="6"/><text class="tlp-text" x="315" y="52" text-anchor="middle" font-size="11.5" font-weight="700">Reserves rise</text><text class="tlp-text2" x="315" y="68" text-anchor="middle" font-size="11">in the banking system</text>
+      <rect class="tlp-box green" x="386" y="30" width="110" height="52" rx="6"/><text class="tlp-text" x="441" y="52" text-anchor="middle" font-size="11.5" font-weight="700">Rebalancing</text><text class="tlp-text2" x="441" y="68" text-anchor="middle" font-size="11">cash into credit, equities</text>
+      <rect class="tlp-box green" x="512" y="30" width="120" height="52" rx="6"/><text class="tlp-text" x="572" y="52" text-anchor="middle" font-size="11.5" font-weight="700">Asset prices up</text><text class="tlp-text2" x="572" y="68" text-anchor="middle" font-size="11">across markets</text>
+      <line class="tlp-line" x1="118" y1="56" x2="132" y2="56"/><polygon class="tlp-arrow" points="134,56 127,52 127,60"/>
+      <line class="tlp-line" x1="244" y1="56" x2="258" y2="56"/><polygon class="tlp-arrow" points="260,56 253,52 253,60"/>
+      <line class="tlp-line" x1="370" y1="56" x2="384" y2="56"/><polygon class="tlp-arrow" points="386,56 379,52 379,60"/>
+      <line class="tlp-line" x1="496" y1="56" x2="510" y2="56"/><polygon class="tlp-arrow" points="512,56 505,52 505,60"/>
+      <text class="tlp-red" x="8" y="130" font-size="14" font-weight="700">QT: reserves destroyed, liquidity out</text>
+      <rect class="tlp-box red" x="8" y="140" width="110" height="52" rx="6"/><text class="tlp-text" x="63" y="162" text-anchor="middle" font-size="11.5" font-weight="700">Bonds mature</text><text class="tlp-text2" x="63" y="178" text-anchor="middle" font-size="11">not replaced (cap)</text>
+      <rect class="tlp-box red" x="134" y="140" width="110" height="52" rx="6"/><text class="tlp-text" x="189" y="162" text-anchor="middle" font-size="11.5" font-weight="700">Treasury reissues</text><text class="tlp-text2" x="189" y="178" text-anchor="middle" font-size="11">to refinance the debt</text>
+      <rect class="tlp-box red" x="260" y="140" width="110" height="52" rx="6"/><text class="tlp-text" x="315" y="162" text-anchor="middle" font-size="11.5" font-weight="700">Private sector buys</text><text class="tlp-text2" x="315" y="178" text-anchor="middle" font-size="11">using cash from markets</text>
+      <rect class="tlp-box red" x="386" y="140" width="110" height="52" rx="6"/><text class="tlp-text" x="441" y="162" text-anchor="middle" font-size="11.5" font-weight="700">Reserves drain</text><text class="tlp-text2" x="441" y="178" text-anchor="middle" font-size="11">gradually, then suddenly</text>
+      <rect class="tlp-box red" x="512" y="140" width="120" height="52" rx="6"/><text class="tlp-text" x="572" y="162" text-anchor="middle" font-size="11.5" font-weight="700">Headwind</text><text class="tlp-text2" x="572" y="178" text-anchor="middle" font-size="11">for risk assets</text>
+      <line class="tlp-line" x1="118" y1="166" x2="132" y2="166"/><polygon class="tlp-arrow" points="134,166 127,162 127,170"/>
+      <line class="tlp-line" x1="244" y1="166" x2="258" y2="166"/><polygon class="tlp-arrow" points="260,166 253,162 253,170"/>
+      <line class="tlp-line" x1="370" y1="166" x2="384" y2="166"/><polygon class="tlp-arrow" points="386,166 379,162 379,170"/>
+      <line class="tlp-line" x1="496" y1="166" x2="510" y2="166"/><polygon class="tlp-arrow" points="512,166 505,162 505,170"/>
+      <text class="tlp-text2" x="320" y="226" text-anchor="middle" font-size="12.5">QE's effects are gradual. QT can turn into sudden stress when reserves get scarce.</text>
+    </svg>
+    <figcaption>QE: the Fed announces purchases, buys from primary dealers and credits their reserve accounts, and sellers redeploy the cash into credit and equities. QT: bonds are allowed to mature without replacement (with monthly runoff caps, for example $60B of Treasuries plus $35B of MBS), the Treasury issues new bonds to refinance, and the private sector pays for them with cash from markets.</figcaption>
+  </figure>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>QE is the Fed using a magic printing pen to buy bonds from banks and handing them fresh digital cash, which then goes looking for something to buy. QT is the opposite: the Fed lets its bonds expire and the cash disappears. It is easy to pour water into a bath and hard to know how little water you can leave before the pipes start to bang. The Fed finds that out by hitting it.</p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The pipes bang: the repo spike of September 2019</h3>
+    <p>The Fed had been running down its balance sheet, and on 31 July 2019 it decided to end the runoff in August, two months earlier than planned. Six weeks later, on 17 September 2019, overnight lending rates in the repo market spiked far above the Fed's target range, and the New York Fed stepped in with repo operations to add reserves. On 11 October 2019 the Fed announced that it would buy Treasury bills "to maintain over time ample reserve balances" and run repo operations at least into the following year. The Fed said these were reserve-management measures, not a new round of stimulus.</p>
+    <p style="margin-bottom:0">The lesson the course draws: <em>QE effects are gradual, QT can cause sudden stress when reserves get scarce</em>, and the Fed often does not know where the pain point is until it hits it. It lists March 2023 bank stress as a second instance. A caveat on the numbers: the course quotes "below about $3 trillion of reserves has historically caused stress", but in September 2019 reserves were far lower, roughly $1.4 trillion, so the threshold moves with the demand for reserves. Treat $3 trillion as a post-2020 rule of thumb, not a law.</p>
+  </div>
+
+  <h3>The net liquidity equation</h3>
+  <p>The headline balance sheet can mislead, because the Treasury's checking account (the TGA) and the money-market funds' overnight parking spot (the RRP) both sit on the liability side. Money in either is out of the banking system. So the course tracks a simple composite:</p>
+  <div class="tl-math">\[ \text{Net liquidity} \approx \text{Fed balance sheet} - \text{TGA} - \text{RRP} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Fed balance sheet</code><span>total assets, the bonds held</span></div>
+    <div class="tl-eq-chip c2"><code>TGA</code><span>Treasury General Account, the Treasury's checking account at the Fed</span></div>
+    <div class="tl-eq-chip c3"><code>RRP</code><span>reverse repo, cash parked overnight at the Fed by money-market funds</span></div>
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">BS</div><div class="tl-fp-name">The balance sheet</div><div class="tl-fp-desc">Growing = adding liquidity; shrinking = draining it</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">TGA</div><div class="tl-fp-name">Treasury's account</div><div class="tl-fp-desc">Rising = the Treasury is hoarding cash (drains); falling = it is spending (adds)</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">RRP</div><div class="tl-fp-name">Idle cash at the Fed</div><div class="tl-fp-desc">Rising = excess cash sitting idle; falling = cash flowing back to markets</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">NL</div><div class="tl-fp-name">The result</div><div class="tl-fp-desc">Rising = risk-asset tailwind; falling = headwind (track weekly)</div></div>
+  </div>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example (illustrative numbers, in $ trillion)</div>
+    <h3>Net liquidity can rise during QT</h3>
+    <p>Week 1: balance sheet 6.60, TGA 0.80, RRP 0.40, so net liquidity is \(6.60 - 0.80 - 0.40 = 5.40\). Week 2: the Fed runs off another 0.05 (balance sheet 6.55), the Treasury spends 0.10 of its account (TGA 0.70), and money funds move 0.10 out of the RRP back into markets (RRP 0.30).</p>
+    <div class="tl-math">\[ \text{NL}_2 = 6.55 - 0.70 - 0.30 = 5.55 \qquad \Delta\text{NL} = 5.55 - 5.40 = +0.15 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>−0.05</code><span>QT runoff: the balance sheet shrinks</span></div>
+      <div class="tl-eq-chip c2"><code>+0.10</code><span>TGA drawdown adds liquidity</span></div>
+      <div class="tl-eq-chip c3"><code>+0.10</code><span>RRP outflow adds liquidity</span></div>
+    </div>
+    <p style="margin-bottom:0">The headline balance sheet fell, yet net liquidity <em>rose</em> by 0.15. That is the course's point: even during QT, a TGA drawdown or a falling RRP can mean net liquidity is rising. Track the composite, not the headline.</p>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Net liquidity \(= \text{BS} - \text{TGA} - \text{RRP}\), in $ trillion. Then the change between two weeks.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Balance sheet 6.60, TGA 0.80, RRP 0.20. Net liquidity \(= 6.60 - 0.80 - 0.20 =\) <span class="tl-blank" data-answer="5.6" data-tol="0.005"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Two weeks later: balance sheet 6.50, TGA 0.95, RRP 0.10. Net liquidity is <span class="tl-blank" data-answer="5.45" data-tol="0.005"></span>, a change of <span class="tl-blank" data-answer="-0.15" data-tol="0.005"></span> from Round 1: the balance sheet fell and the TGA rose, which drains, though the RRP fall cushioned it.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Balance sheet 6.90, TGA 0.65, RRP 0.35. Net liquidity <span class="tl-blank" data-answer="5.9" data-tol="0.005"></span>. If the balance sheet then falls 0.20 while the TGA falls 0.30 and the RRP is unchanged, the new net liquidity is <span class="tl-blank" data-answer="6" data-tol="0.005"></span>: a rise during QT.</p>
+    </div>
+  </div>
+
+  <h3>How fast does QT drain reserves? A live model</h3>
+  <p>
+    A runoff cap sets how many dollars leave the balance sheet each month. Where the cash comes from decides the pain. If money-market funds have a big RRP buffer, they absorb part of the drain by moving cash out of the RRP, and reserves fall less. Once the buffer is empty, every dollar of runoff comes straight out of bank reserves.
+  </p>
+  <div class="tl-math">\[ \Delta R_t = -\left(C - A_t\right), \qquad A_t = \min\left(s\,C,\; \text{RRP}_{t-1}\right) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>C</code><span>monthly runoff cap, in $ billion</span></div>
+    <div class="tl-eq-chip c2"><code>s</code><span>share of runoff the RRP would absorb while it has cash</span></div>
+    <div class="tl-eq-chip c3"><code>A</code><span>amount actually absorbed by the RRP this month</span></div>
+    <div class="tl-eq-chip c4"><code>ΔR</code><span>change in bank reserves</span></div>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">QT runoff: who pays, and how soon do reserves reach the line?</div>
+    <svg viewBox="0 0 680 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A flow of boxes at the top: bonds mature at the monthly cap, part of the cash comes out of the reverse repo facility and the rest out of bank reserves. Below, a line chart over 36 months of bank reserves, falling from 3.4 trillion at a slope set by the sliders, with a dashed line at 3.0 trillion and a second line for the remaining reverse repo balance.">
+      <rect class="tlp-box red" x="8" y="10" width="150" height="56" rx="6"/>
+      <text class="tlp-text" x="83" y="32" text-anchor="middle" font-size="12" font-weight="700">Runoff cap C</text>
+      <text id="cb3-fl-cap" class="tlp-red" x="83" y="53" text-anchor="middle" font-size="14" font-weight="700">$95B / month</text>
+      <rect class="tlp-box amber" x="206" y="10" width="200" height="56" rx="6"/>
+      <text class="tlp-text" x="306" y="32" text-anchor="middle" font-size="12" font-weight="700">Paid from the RRP buffer</text>
+      <text id="cb3-fl-rrp" class="tlp-amber" x="306" y="53" text-anchor="middle" font-size="14" font-weight="700">$38B / month</text>
+      <rect class="tlp-box blue" x="454" y="10" width="218" height="56" rx="6"/>
+      <text class="tlp-text" x="563" y="32" text-anchor="middle" font-size="12" font-weight="700">Paid from bank reserves</text>
+      <text id="cb3-fl-res" class="tlp-blue" x="563" y="53" text-anchor="middle" font-size="14" font-weight="700">$57B / month</text>
+      <line class="tlp-line" x1="158" y1="38" x2="204" y2="38"/><polygon class="tlp-arrow" points="206,38 198,34 198,42"/>
+      <line class="tlp-line" x1="406" y1="38" x2="452" y2="38"/><polygon class="tlp-arrow" points="454,38 446,34 446,42"/>
+      <g id="cb3-q-grid"></g>
+      <line x1="60" y1="330" x2="640" y2="330" style="stroke:var(--border2)"/>
+      <line x1="60" y1="90" x2="60" y2="330" style="stroke:var(--border2)"/>
+      <line id="cb3-q-thr" x1="60" x2="640" y1="140" y2="140" style="stroke:var(--red);stroke-dasharray:5,4;stroke-width:1.4"/>
+      <text x="636" y="134" text-anchor="end" style="fill:var(--red);font-size:11px;font-family:'DM Mono',monospace">$3.0T line (course rule of thumb)</text>
+      <polyline id="cb3-q-rrp" points="" style="fill:none;stroke:var(--amber);stroke-width:2"/>
+      <polyline id="cb3-q-res" points="" style="fill:none;stroke:var(--blue);stroke-width:2.8"/>
+      <circle id="cb3-q-cross" cx="60" cy="140" r="5" style="fill:var(--red);stroke:var(--bg);stroke-width:2"/>
+      <text x="350" y="364" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">months from the start of QT</text>
+      <text x="22" y="210" text-anchor="middle" transform="rotate(-90 22 210)" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">$ trillion</text>
+      <text x="70" y="106" style="fill:var(--blue);font-size:11px;font-family:'DM Mono',monospace">bank reserves</text>
+      <text x="70" y="312" style="fill:var(--amber);font-size:11px;font-family:'DM Mono',monospace">RRP balance</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control"><div class="tl-control-head"><span>Monthly runoff cap C ($ billion, Treasuries + MBS)</span><span class="tl-live" id="cb3-cap-val">$95B</span></div>
+        <input type="range" id="cb3-cap-sl" min="0" max="150" step="5" value="95"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Share s absorbed by the RRP buffer</span><span class="tl-live" id="cb3-s-val">40%</span></div>
+        <input type="range" id="cb3-s-sl" min="0" max="100" step="5" value="40"></div>
+    </div>
+    <div class="tl-readout">
+      Reserves fall <b id="cb3-q-drain">$57B</b> a month. Time to the $3.0T line: <b id="cb3-q-months">7.0 months</b>.
+    </div>
+    <div class="tl-readout">
+      After 12 months: reserves <b id="cb3-q-r12">$2.72T</b> · RRP left <b id="cb3-q-rrp12">$44B</b> · net liquidity <b id="cb3-q-nl12">$5.02T</b> (from $5.70T).
+    </div>
+    <div class="tl-hint">Illustrative start (not actual data): balance sheet $7.0T, reserves $3.4T, RRP $0.5T, TGA held fixed at $0.8T, currency fixed. The example caps ($60B Treasuries + $35B MBS = $95B) are the figures the course quotes. At the defaults the RRP covers $38B a month for 13 months, then runs dry; once it is empty the full cap comes out of reserves, which is why the reserve line bends down faster late in the window when the share is high.</div>
+    <div class="tl-chart-caption">Slide the cap up and the line is reached sooner. Slide the RRP share up and the same cap hurts reserves less, until the buffer runs out. This is the mechanism behind "gradually, then suddenly".</div>
+  </div>
+
+  <h3>Balance sheet monitoring</h3>
+  <ul>
+    <li><strong>H.4.1 release:</strong> every Thursday at 4:30 pm ET, the Fed's weekly balance sheet and the primary source. Track the week-over-week trend, not the level.</li>
+    <li><strong>Reserves:</strong> the course says below about $3 trillion has historically caused stress (see the caveat in the 2019 story).</li>
+    <li><strong>TGA:</strong> watch quarterly refunding plans. Big TGA buildups (debt ceiling, heavy issuance) drain liquidity.</li>
+    <li><strong>RRP:</strong> high means excess cash parked; draining means cash that can support markets.</li>
+  </ul>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>"Net liquidity rising = risk-asset tailwind" is a course claim, not a result of this desk's own work.</strong> A related composite (Fed net-liquidity momentum with the yield curve and credit stress) has been tested as a direction signal; see the ledger entries for the macro-confluence tests before quoting any liquidity lean.<div class="tl-howtotest"><strong>How to test it:</strong> take weekly H.4.1 data (balance sheet, TGA, RRP), build the net liquidity change using only values published by each Thursday, and compare the next-week return of the S&amp;P 500 and the dollar when net liquidity rose versus fell. Fix the horizon and the sign in advance, require a placebo from shuffled weeks, and report both halves of the sample; any edge must survive that before it is worth sizing.</div></span>
+  </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../global-liquidity.html">Global liquidity</a> tracks the balance-sheet composite this section describes.</div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Other major central banks and policy divergence</h2>
+  <p>FX is a relative price, so the Fed alone is never enough. A currency pair moves on the <em>difference</em> between two central banks' paths. Here is the course's one-line profile of each, followed by how divergence drives FX.</p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td><strong>ECB</strong></td><td>Single mandate (price stability). Must manage fragmentation risk across about 20 economies (the euro area has grown over time).</td></tr>
+      <tr><td><strong>BoJ</strong></td><td>Signature policy as taught: <strong>Yield Curve Control (YCC)</strong>, which targets the 10-year yield in a band around 0%, unique among major central banks. Decades fighting deflation, so structurally dovish: they <em>want</em> inflation. Owns about half of JGBs and is a major holder of Japanese equities through ETFs. 8 meetings a year but could adjust YCC at any time. <strong>The wildcard, most likely to surprise.</strong></td></tr>
+      <tr><td><strong>BoE</strong></td><td>Faces stagflation risk: high inflation plus weak growth limits its options.</td></tr>
+      <tr><td><strong>PBoC</strong></td><td>Different toolkit: reserve requirement ratios (RRR), administered rates and FX management. Moves often outside scheduled meetings. China stimulus matters globally.</td></tr>
+    </table>
+  </div>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">A dated claim</div>
+    <h3>YCC is history; the lesson is the mechanism</h3>
+    <p>The course describes the BoJ's YCC as live. The BoJ ended negative rates and YCC in March 2024, so read the BoJ paragraph as a description of the mechanism and of the 2016-24 regime, then check the current policy. What the course keeps: BoJ moves cause extreme yen moves, a widening of the YCC band was a <em>de facto</em> tightening, and BoJ policy surprises were the most likely shock among the majors. The Fed, ECB and BoE rates and ranges below are dated facts from the decisions themselves.</p>
+  </div>
+  <p>Watch for four BoJ signals: YCC band changes (widening = de facto tightening), FX intervention (by the BoJ or Ministry of Finance), the governor's commentary on inflation expectations, and surprises generally. A removal of YCC would be seismic globally.</p>
+
+  <h3>Policy divergence drives FX</h3>
+  <details class="tl-section-collapse">
+    <summary><h2>Reference table: divergence scenarios</h2></summary>
+    <div class="tl-table"><table>
+      <tr><th>Scenario</th><th>FX impact</th><th>Example</th></tr>
+      <tr><td>Fed hawkish, ECB dovish</td><td>EUR/USD falls</td><td>2022: Fed hiked aggressively, ECB lagged → EUR to parity</td></tr>
+      <tr><td>Fed hawkish, BoJ dovish</td><td>USD/JPY rises</td><td>2022-24: differential drove USD/JPY 115 → 150+</td></tr>
+      <tr><td>Fed pauses, others catch up</td><td>USD weakens broadly</td><td>Late 2023: Fed pause while others hiked → DXY declined</td></tr>
+      <tr><td>Synchronized easing</td><td>FX stable, risk assets rally</td><td>2020 coordinated easing</td></tr>
+    </table></div>
+  </details>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Policy divergence in the data: Fed vs ECB, end of each quarter, 2022-23</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two line series over seven quarter-ends from March 2022 to September 2023: the Fed funds target upper bound rising from 0.50 to 5.50 percent, and the ECB deposit facility rate rising from minus 0.50 to 4.00 percent. The gap between them widens to 2.50 points in September and December 2022 and then narrows to 1.50 points. A cursor selects a quarter.">
+      <g id="cb3-dv-grid"></g>
+      <polygon id="cb3-dv-gapfill" points="" style="fill:var(--blue-bg);stroke:none;opacity:.7"/>
+      <polyline id="cb3-dv-fed" points="" style="fill:none;stroke:var(--blue);stroke-width:2.8"/>
+      <polyline id="cb3-dv-ecb" points="" style="fill:none;stroke:var(--amber);stroke-width:2.8"/>
+      <line id="cb3-dv-cursor" x1="100" x2="100" y1="30" y2="250" style="stroke:var(--text3);stroke-dasharray:4,4"/>
+      <circle id="cb3-dv-fdot" cx="100" cy="100" r="5.5" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>
+      <circle id="cb3-dv-edot" cx="100" cy="200" r="5.5" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+      <text x="76" y="24" style="fill:var(--blue);font-size:11px;font-family:'DM Mono',monospace">Fed target, upper bound</text>
+      <text x="340" y="24" style="fill:var(--amber);font-size:11px;font-family:'DM Mono',monospace">ECB deposit facility rate</text>
+      <g id="cb3-dv-xl"></g>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control"><div class="tl-control-head"><span>Quarter-end</span><span class="tl-live" id="cb3-dv-val">Sep 2022</span></div>
+        <input type="range" id="cb3-dv-sl" min="0" max="6" step="1" value="2"></div>
+    </div>
+    <div class="tl-readout">
+      <b id="cb3-dv-lab">End Sep 2022</b>: Fed <b id="cb3-dv-f">3.25%</b> · ECB <b id="cb3-dv-e">0.75%</b> · gap <b id="cb3-dv-g">2.50 pp</b> (<span id="cb3-dv-d">+0.25 pp vs the previous quarter</span>)
+    </div>
+    <div class="tl-readout"><span id="cb3-dv-read">Gap widening: on the divergence framework this is dollar-supportive against the euro.</span></div>
+    <div class="tl-hint">Data: the Fed funds target upper bound and the ECB deposit facility rate as set at each central bank's decisions, read at the end of each quarter. On 12 July 2022, between the June and September points, EUR/USD touched parity for the first time since 2002. The ECB made its first hike of the cycle on 21 July 2022.</div>
+    <div class="tl-chart-caption">The gap rose from 1.00 point to 2.50 as the Fed hiked first and faster, then fell back to 1.50 as the ECB caught up. The framework reads the direction of change in the gap, not its level; it describes a mechanism, it is not a trade rule.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge green">✅</div>
+    <div class="tl-box-label">Global central bank monitoring framework</div>
+    <ol>
+      <li>Keep a <strong>central bank meeting calendar</strong>; dates cluster into event-heavy weeks.</li>
+      <li>For each bank note the <strong>current rate, direction of travel, and relative hawkishness</strong>.</li>
+      <li>Track which banks <strong>converge or diverge</strong>: that drives FX.</li>
+      <li>Expect surprises mainly from the <strong>BoJ</strong> and <strong>off-schedule PBoC</strong> moves.</li>
+    </ol>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Trading around Fed events</h2>
+  <p><strong>The core question: trade or avoid?</strong> Fed events are high volatility, not necessarily high edge. Before trading an FOMC, ask: do I have a view that differs from market pricing? Can I size for the volatility? Is this a real edge, or a gamble on a binary outcome? <strong>Sitting out is valid.</strong> Some of the best traders reduce exposure before meetings and re-engage afterwards.</p>
+
+  <h3>Pre-FOMC dynamics</h3>
+  <ul>
+    <li><strong>Week before:</strong> volatility compresses ("the calm before the storm").</li>
+    <li><strong>1-2 days before:</strong> light positioning; the market sits on its hands.</li>
+    <li><strong>Morning of:</strong> low-conviction moves; everyone waits for 2:00 pm.</li>
+    <li><strong>Pre-FOMC drift:</strong> a documented slight positive equity bias in the 24 hours before announcements. Well known, probably mostly arbitraged away, and it persists only weakly.</li>
+    <li><strong>Positioning:</strong> reduce gross exposure if you have no edge; if you position for a surprise, size smaller than normal; options strategies can benefit from the volatility expansion.</li>
+  </ul>
+
+  <h3>The two-phase reaction and the real move</h3>
+  <figure class="tl-picture">
+    <div class="tl-picture-label">A decision day, then a week</div>
+    <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A timeline. Phase 1, from 2:00 to 2:05 pm ET: algorithmic keyword scanning of the statement; fast but often wrong; high volatility, low signal. Phase 2, from 2:05 to 4:00 pm: human digestion of the statement and press conference in context; can reverse Phase 1. Day 1: high volatility and frequent reversals, do not trust the close. Day 2: digestion. Days 3 to 5: true repositioning by funds, a trend often establishes. Weeks 2 to 3: minutes can reinforce or modify.">
+      <rect class="tlp-box red" x="8" y="20" width="130" height="86" rx="8"/>
+      <text class="tlp-red" x="73" y="42" text-anchor="middle" font-size="13" font-weight="700">Phase 1 · 2:00-2:05</text>
+      <text class="tlp-text2" x="73" y="62" text-anchor="middle" font-size="11.5">algorithmic, keywords</text>
+      <text class="tlp-text2" x="73" y="78" text-anchor="middle" font-size="11.5">fast but often wrong</text>
+      <text class="tlp-text2" x="73" y="94" text-anchor="middle" font-size="11.5">high vol, low signal</text>
+      <rect class="tlp-box amber" x="150" y="20" width="160" height="86" rx="8"/>
+      <text class="tlp-amber" x="230" y="42" text-anchor="middle" font-size="13" font-weight="700">Phase 2 · 2:05-4:00</text>
+      <text class="tlp-text2" x="230" y="62" text-anchor="middle" font-size="11.5">humans digest statement</text>
+      <text class="tlp-text2" x="230" y="78" text-anchor="middle" font-size="11.5">and presser in context</text>
+      <text class="tlp-text2" x="230" y="94" text-anchor="middle" font-size="11.5">can reverse Phase 1</text>
+      <rect class="tlp-box" x="322" y="20" width="96" height="86" rx="8"/>
+      <text class="tlp-text" x="370" y="42" text-anchor="middle" font-size="13" font-weight="700">Day 1</text>
+      <text class="tlp-text2" x="370" y="62" text-anchor="middle" font-size="11.5">frequent reversals</text>
+      <text class="tlp-text2" x="370" y="78" text-anchor="middle" font-size="11.5">don't trust the</text>
+      <text class="tlp-text2" x="370" y="94" text-anchor="middle" font-size="11.5">close</text>
+      <rect class="tlp-box blue" x="430" y="20" width="96" height="86" rx="8"/>
+      <text class="tlp-blue" x="478" y="42" text-anchor="middle" font-size="13" font-weight="700">Day 2</text>
+      <text class="tlp-text2" x="478" y="62" text-anchor="middle" font-size="11.5">digestion, analyst</text>
+      <text class="tlp-text2" x="478" y="78" text-anchor="middle" font-size="11.5">takes, positioning</text>
+      <text class="tlp-text2" x="478" y="94" text-anchor="middle" font-size="11.5">adjusts</text>
+      <rect class="tlp-box green" x="538" y="20" width="94" height="86" rx="8"/>
+      <text class="tlp-green" x="585" y="42" text-anchor="middle" font-size="13" font-weight="700">Days 3-5</text>
+      <text class="tlp-text2" x="585" y="62" text-anchor="middle" font-size="11.5">funds reposition,</text>
+      <text class="tlp-text2" x="585" y="78" text-anchor="middle" font-size="11.5">trend often</text>
+      <text class="tlp-text2" x="585" y="94" text-anchor="middle" font-size="11.5">establishes</text>
+      <line class="tlp-line" x1="8" y1="140" x2="632" y2="140"/>
+      <polygon class="tlp-arrow" points="634,140 626,136 626,144"/>
+      <text class="tlp-text3" x="8" y="160" font-size="11.5">time →</text>
+      <text class="tlp-text2" x="320" y="196" text-anchor="middle" font-size="12.5">Edge insight: if you are not a speed trader, your edge on Fed events is patience.</text>
+      <text class="tlp-text2" x="320" y="216" text-anchor="middle" font-size="12.5">Let algos and fast money establish positions, then decide to follow or fade. Weeks 2-3: the minutes can add a secondary move.</text>
+    </svg>
+    <figcaption>Phase 1 is the algorithmic keyword reaction, high volatility and low signal. Phase 2 is the human read of the full statement and press conference, which can reverse it. The real repositioning by funds takes days.</figcaption>
+  </figure>
+  <details class="tl-section-collapse">
+    <summary><h2>Reference table: the post-FOMC timeline</h2></summary>
+    <div class="tl-table"><table>
+      <tr><th>Timeframe</th><th>What happens</th><th>Implication</th></tr>
+      <tr><td>Day 1</td><td>High vol, frequent reversals (algos + initial reactions)</td><td>Don't trust the close</td></tr>
+      <tr><td>Day 2</td><td>Digestion; analyst takes; positioning adjustments</td><td>Direction clearer, still volatile</td></tr>
+      <tr><td>Days 3-5</td><td>True repositioning by funds</td><td>Trend often establishes; safer entry</td></tr>
+      <tr><td>Weeks 2-3</td><td>Minutes released</td><td>Can reinforce or modify; secondary move if new info</td></tr>
+    </table></div>
+  </details>
+  <div class="tl-solid red">
+    <strong>Do not chase the first spike.</strong> Wait until the press conference finishes before committing to a directional trade.
+  </div>
+
+  <h3>Fade or follow</h3>
+  <div class="tl-box example">
+    <div class="tl-icon-badge green">✅</div>
+    <div class="tl-box-label">Follow when</div>
+    <ul>
+      <li>The outcome genuinely surprised (the dots moved against pricing).</li>
+      <li>The language shifted materially.</li>
+      <li>The move is consistent across assets (stocks, bonds and FX all confirm).</li>
+      <li>The move persists through the press conference.</li>
+      <li>The macro backdrop supports the new path.</li>
+    </ul>
+  </div>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Fade when</div>
+    <ul>
+      <li>The outcome was roughly as expected but the market overreacted.</li>
+      <li>The move reversed during the press conference.</li>
+      <li>Cross-asset confirmation is missing (for example stocks up but yields also up on a "dovish" read).</li>
+      <li>Positioning was already extreme going in.</li>
+      <li>Technicals suggest exhaustion.</li>
+    </ul>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge green">✅</div>
+    <div class="tl-box-label">FOMC trading checklist</div>
+    <p><strong>Before:</strong> check market pricing (what would surprise?); decide trade-or-sit-out; define scenarios and sizes in advance; set alerts for 2:00 and 2:30 pm ET.</p>
+    <p style="margin-bottom:0"><strong>During and after:</strong> do not react to the Phase 1 spike; compare the outcome to your pre-defined scenarios; check cross-asset confirmation; consider waiting until Day 2-3 for a cleaner entry; calendar the minutes release three weeks out.</p>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict context" data-evidence="fed-two-moves" data-evidence-date="2026-09-17">
+    <span class="tl-verdict-tag">Desk data: base rate</span>
+    <span><strong>"The first move reverses" has the same base rate as any big day.</strong> On 84 FOMC days (2016 onwards), the share of day-0 moves that gave back at least half within 20 sessions was the same as for non-FOMC days with a move of equal size: 2-year 38% vs 39%, 10-year 50% vs 45%, dollar 48% vs 40%, S&amp;P 500 45% vs 51%. The reference class that matters is "big days", not "Fed days", so the patience advice above is a course framework, not something this result supports on its own.</span>
+  </div>
+  <div class="tl-verdict validated" data-evidence="post-fomc-usd-drift" data-evidence-date="2026-08-20">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>A base rate for the days after a meeting.</strong> Over 81 FOMC meetings, the dollar basket averaged +26bp over the five sessions after the meeting, positive 65% of the time, against −3bp and 49% in non-FOMC windows. It sat at the 99.8th percentile of 10,000 placebos and held in both halves (2016-20 and 2021-26). It is a calendar base rate, never a call on a single meeting, and it is <em>not forward-proven</em>.</span>
+  </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../fomc-sentiment.html">FOMC sentiment</a> shows the statement-language reading used in the tone test above, and <a href="../../evidence.html">Evidence Book</a> lists every tested claim with its verdict.</div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Central-bank watching is a daily discipline at macro desks, but it is mostly <em>preparation</em>, not prediction. Practitioners keep the scorecard, the statement diff, the SEP comparison and the speech log so that when a meeting arrives they already know which outcomes would surprise the market, and what they would do in each case. The value is in having scenarios and sizes decided before the 2:00 pm release, not in guessing the decision.
+  </p>
+  <p>
+    The market's number is the benchmark. A professional compares what the Fed seems to be signalling with what futures, OIS and FedWatch show, and treats only the gap as information. The balance sheet gets a weekly check (H.4.1 each Thursday), and the other central banks get a calendar and a relative-hawkishness note, because FX moves on differences.
+  </p>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where central-bank reading quietly goes wrong</h3>
+    <p><strong>Treating the dots as promises.</strong> They are conditional projections from up to 19 people, and they have been wrong by large margins. Use the shift from the last SEP and the gap to market pricing, not the level.</p>
+    <p><strong>Reading the statement without the previous one.</strong> The level of the language tells you almost nothing. Only the diff does. And statement tone is priced very fast, so a tone read is not a next-day lean.</p>
+    <p><strong>Trading the first spike.</strong> Phase 1 is algorithmic and often wrong. Wait for the press conference and, ideally, for Day 2-3.</p>
+    <p><strong>Reading the balance sheet headline.</strong> Total assets can fall while net liquidity rises, because of the TGA and RRP. Track the composite.</p>
+    <p><strong>Using stale structure.</strong> Committee membership, the Chair, the framework, and even whole regimes (the BoJ's YCC) change. The mechanics last; the specific stances do not. Verify current data.</p>
+    <p style="margin-bottom:0"><strong>Believing that understanding the Fed is an edge by itself.</strong> Everyone watches the Fed. Understanding it is the entry ticket; the edge, if any, is in a differentiated view of the gap, in sizing, or in patience.</p>
+  </div>
+
+  <div class="tl-drill" data-date="2022-09-22">
+    <div class="tl-drill-label">Scenario drill · 22 September 2022</div>
+    <h3>The Fed hiked 75bp yesterday, and the BoJ has just held</h3>
+    <p>You have been long USD/JPY on the policy-divergence theme since the spring: the Fed is hiking fast, and the Bank of Japan keeps its policy rate and its 10-year yield control unchanged. Yesterday the Fed raised its target range by 75bp to 3.00-3.25% and signalled "ongoing increases". Today the Bank of Japan has just left policy unchanged, and USD/JPY has jumped to about 146, the highest in 24 years. Japan's Ministry of Finance has been warning about the yen's moves. What do you do with the position?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Add. The divergence just widened again, so the trend is your friend.<div class="tl-drill-why">The thesis is intact, but the risk is not symmetric. The course calls the BoJ and Japanese authorities the wildcard; a government that has been warning about the currency can move it by several yen in minutes, and adding size at the 24-year high is the largest exposure to exactly that tail.</div></li>
+      <li data-verdict="good">Keep the thesis, cut the size, and plan for a sharp one-way gap against you.<div class="tl-drill-why">Divergence describes the direction of travel but not the path. A smaller position that survives an intervention gap lets you stay in a thesis you still believe. This matches the course's "size for the volatility" and "sitting out is valid" rules for event risk.</div></li>
+      <li data-verdict="bad">Reverse to short: intervention is obviously coming, so fade the move.<div class="tl-drill-why">Fading a trend because a government might act is a timing bet against the policy gap, with no trigger. The pair can be pushed down on the day and still go back up if the divergence is unchanged, so a full reversal risks being right about the event and wrong about the aftermath.</div></li>
+      <li data-verdict="ok">Hold at the same size and wait for the Bank of Japan's next meeting.<div class="tl-drill-why">Reasonable if you already sized for a tail like this, but nothing in the setup tells you that the next BoJ meeting is when the risk lands. The Ministry of Finance does not wait for meetings.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Later on 22 September, Japan's Ministry of Finance intervened to buy yen, for the first time since 1998, and USD/JPY fell by about five yen, from roughly 146 to roughly 140, in a short burst. The pair then drifted back up as the policy gap persisted, reaching about 152 in October, when Japan intervened again. In December 2022 the Bank of Japan widened the band around its 10-year yield target, a de facto tightening, and the yen jumped by more than 3% in a day. The policy divergence was real and persistent, and it came with a policy-driven path risk the textbook framework does not price.</p><p class="tl-drill-sources">Sources: <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20220921a.htm">Federal Reserve, FOMC statement, 21 September 2022</a>; <a href="https://www.mof.go.jp/english/policy/international_policy/reference/feio/index.html">Ministry of Finance, Japan, foreign exchange intervention operations</a>. Yen levels are rounded; the Ministry's data gives the exact intervention amounts.</p></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 10</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Know the players.</strong> Committee composition, hawk/dove leanings and dissents matter. The Chair dominates, but a unified committee is more predictable than a divided one.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Language precedes action.</strong> Pivots are telegraphed through word changes ("transitory" to "elevated" to "soon be appropriate to raise"). Diff the statements: the diff is the signal.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Dots are not destiny.</strong> They are conditional projections, not commitments. The tradeable object is dots versus market pricing, read with the dispersion and the shift versus the last SEP.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Balance sheet = liquidity.</strong> Track net liquidity (balance sheet − TGA − RRP) weekly via H.4.1. Rising = risk tailwind; falling = headwind. QT can cause sudden stress when reserves get scarce.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Divergence drives FX.</strong> Monitor relative policy paths; the BoJ is the wildcard.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Patience is edge.</strong> First moves often reverse; wait for the press conference, check cross-asset confirmation, consider waiting days.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>These are framework claims, not validated rules.</strong> The statement is priced within half an hour, and "the first move reverses" has the same base rate as any big day. Stances, members and even regimes (YCC) change, so verify current data.<!-- DESK:START --> Only the post-meeting dollar base rate has survived this desk's tests.<!-- DESK:END --></span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Do not trade the first spike or treat the dots as promises.</strong> Phase 1 is algorithmic and often wrong, and the dots have missed by hundreds of basis points.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 11</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. A futures contract trades at 95.20 and the current effective rate is 4.58%. What does it say about the next meeting?</summary>
+    <div class="tl-answer">
+      The implied rate is \(100 - 95.20 = 4.80\%\), which is 22bp above the current rate. Divided by a 25bp move that is 0.88, so the market prices a hike with roughly 88% probability. It is a simplified read (it ignores day-weighting inside the month), but it is the right order of magnitude, and it is the market's number you compare with the dot plot's median.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is the dot plot "not a forecast", and how should you use it instead?</summary>
+    <div class="tl-answer">
+      Each dot is a conditional projection: where that participant thinks rates should be if the economy evolves as they expect. When the economy surprises, the dots move. The 2020-21 dots showed rates near zero for years, and rates reached 4.25-4.50% by the end of 2022. So use the shift versus the previous SEP, the dispersion, and above all the gap to market pricing.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. The Fed's headline balance sheet falls during QT, yet net liquidity rises. How?</summary>
+    <div class="tl-answer">
+      Net liquidity is balance sheet minus TGA minus RRP. If the Treasury spends down its TGA, or money-market funds move cash out of the RRP, those reduce the subtracted terms and add liquidity to markets. In the worked example the balance sheet fell by 0.05 while the TGA fell by 0.10 and the RRP by 0.10, so net liquidity rose by 0.15.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why did the 17 September 2019 repo spike come as a surprise, and what does it teach about QT?</summary>
+    <div class="tl-answer">
+      QE's effects build gradually, but QT can cause sudden stress when reserves become scarce, and the Fed often does not know where the pain point is until it hits it. In September 2019 the runoff had already been brought to an end (in August), yet overnight repo rates spiked well above the target range; the Fed added reserves through repo operations and bill purchases. The point: the threshold for "scarce" moves with the demand for reserves, so a single number such as $3 trillion is a rule of thumb, not a law.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. The Fed hikes and the BoJ holds. What does the policy-divergence framework say, and what does the 22 September 2022 episode add?</summary>
+    <div class="tl-answer">
+      The framework says USD/JPY rises as the rate differential widens, and in 2022 it did (115 to 150+). The episode adds path risk: the BoJ is the wildcard, and Japan's Ministry of Finance intervened on 22 September 2022 for the first time since 1998, pushing the pair down about five yen in a short burst before the underlying gap pulled it back up. Divergence gives direction, not a smooth path, so size for event risk.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. When is it better to fade an FOMC move, and when to follow it?</summary>
+    <div class="tl-answer">
+      Follow when the outcome truly surprised against pricing, the wording shifted materially, stocks, bonds and FX all confirm, the move survives the press conference and the macro backdrop supports it. Fade when the outcome was roughly as expected but the market overreacted, the move reversed in the press conference, cross-asset confirmation is missing, positioning was already extreme, or technicals show exhaustion. If neither set applies, sitting out is a valid decision.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+    <summary><h2>Further reading</h2></summary>
+    <ul class="tl-refs">
+      <li>Federal Reserve Board, <em>FOMC meeting calendars, statements and minutes</em>, and the quarterly <em>Summary of Economic Projections</em> — the primary sources for every communication in this lesson, including each SEP's dot plot.</li>
+      <li>Federal Reserve Board, <em>H.4.1: Factors Affecting Reserve Balances</em>, weekly (Thursdays) — the primary balance sheet release, with the TGA and reverse repo lines used in net liquidity.</li>
+      <li>Federal Reserve Board, <em>Policy on External Communications of Committee Participants</em> — the rules behind the blackout period.</li>
+      <li>Kenneth N. Kuttner, <em>"Monetary policy surprises and interest rates: evidence from the Fed funds futures market"</em>, Journal of Monetary Economics, 2001 — how to turn futures prices into expected and surprise components of a decision.</li>
+      <li>Refet S. Gürkaynak, Brian Sack and Eric Swanson, <em>"Do actions speak louder than words? The response of asset prices to monetary policy actions and statements"</em>, International Journal of Central Banking, 2005 — shows that the statement and guidance move markets independently of the rate decision.</li>
+      <li>Arvind Krishnamurthy and Annette Vissing-Jorgensen, <em>"The Effects of Quantitative Easing on Interest Rates"</em>, Brookings Papers on Economic Activity, 2011 — channels through which asset purchases affect yields.</li>
+      <li>David O. Lucca and Emanuel Moench, <em>"The Pre-FOMC Announcement Drift"</em>, Journal of Finance, 2015 — the documented positive equity drift ahead of announcements, and the case for treating it as a weak, well-known effect.</li>
+      <li>Colez Trades, Quant &amp; Macro course, Lesson 3 — the framework this lesson restructures.</li>
+    </ul>
+  </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="qm-2-what-moves-markets.html">Quant &amp; Macro 2: What Moves Markets</a> <span>· the capital-flow hierarchy that puts central banks at the top</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="qm-4-fixed-income.html">Quant &amp; Macro 4: Fixed Income</a> <span>· what the policy rate does to bonds and the curve</span></li>
+        <li><a href="../../theory-lab/lessons/central-bank-policy.html">Central Bank Policy &amp; Forward Guidance</a> <span>· the Theory Lab treatment of the same machinery</span></li>
+        <li><a href="../../theory-lab/lessons/fed-corridor-iorb-srf-discount-window.html">The Fed's Corridor: IORB, SRF &amp; the Discount Window</a> <span>· how the policy rate is actually held in place</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every other asset class in this course is priced off the central bank's path. Knowing what the Fed has signalled, and what is already priced, is the first filter on every macro idea.</p>
+  </nav>
+
+  <div class="tl-footer-nav">
+    <a href="qm-2-what-moves-markets.html">← Lesson 2: What Moves Markets</a>
+    <a href="../hub.html">COG hub</a>
+    <a href="qm-4-fixed-income.html">Lesson 4: Fixed Income →</a>
+  </div>
+</div>
+
+<script>
+/* ---- Chart 1: FOMC meeting cycle scrubber ---- */
+(function(){
+  var slider = document.getElementById('cb3-tl-slider');
+  if (!slider) return;
+  var DMIN = -14, DMAX = 22, X0 = 50, XW = 540;
+  var NS = 'http://www.w3.org/2000/svg';
+  function xAt(d){ return X0 + (d - DMIN) / (DMAX - DMIN) * XW; }
+  function mk(tag, attrs, txt){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (txt !== undefined) e.textContent = txt;
+    return e;
+  }
+  var band = document.getElementById('cb3-tl-band');
+  band.setAttribute('x', xAt(-11)); band.setAttribute('width', xAt(1) - xAt(-11));
+  document.getElementById('cb3-tl-bandlab').setAttribute('x', (xAt(-11) + xAt(1)) / 2);
+  var ticks = document.getElementById('cb3-tl-ticks');
+  [-14,-7,0,7,14,21].forEach(function(d){
+    ticks.appendChild(mk('line', {x1: xAt(d), x2: xAt(d), y1: 128, y2: 136, style: 'stroke:var(--text3)'}));
+    ticks.appendChild(mk('text', {x: xAt(d), y: 152, 'text-anchor': 'middle', style: "fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace"}, d === 0 ? 'day 0' : (d > 0 ? '+' + d : String(d))));
+  });
+  var evs = document.getElementById('cb3-tl-events');
+  var EV = [
+    {d: -11, t: 'blackout starts', y: 118, c: 'var(--red)'},
+    {d: -1, t: 'day 1', y: 118, c: 'var(--text2)'},
+    {d: 0, t: 'statement 2:00 · presser 2:30', y: 36, c: 'var(--green)'},
+    {d: 21, t: 'minutes 2:00', y: 118, c: 'var(--amber)'}
+  ];
+  EV.forEach(function(e){
+    evs.appendChild(mk('circle', {cx: xAt(e.d), cy: 132, r: 4.5, style: 'fill:' + e.c}));
+    evs.appendChild(mk('text', {x: xAt(e.d), y: e.y, 'text-anchor': e.d >= 21 ? 'end' : (e.d === 0 ? 'middle' : 'middle'), style: 'fill:' + e.c + ";font-size:11px;font-family:'DM Mono',monospace"}, e.t));
+  });
+  function phase(d){
+    if (d <= -12) return ['Free to speak', 'Officials can still speak publicly. Speeches just before the blackout are the last clear signal before the meeting.'];
+    if (d <= -2) return ['Blackout', 'No public comment on policy from FOMC participants. Markets run on data releases and pricing (FedWatch, futures).'];
+    if (d === -1) return ['Blackout · meeting day 1 (Tue)', 'Staff economic and financial review, and the start of the committee discussion. Still silent publicly.'];
+    if (d === 0) return ['Decision day (Wed)', '2:00 pm ET statement, 2:30 pm ET press conference. Phase 1 is the algorithmic reaction; Phase 2 is human digestion.'];
+    if (d === 1) return ['Day +1 · blackout ends at midnight', 'High volatility and frequent reversals; do not trust the close. The blackout formally ends at midnight.'];
+    if (d <= 20) return ['Fedspeak resumes', 'Officials explain and interpret the decision. Days 3-5 are when funds do their true repositioning.'];
+    if (d === 21) return ['Minutes day', '2:00 pm ET: the minutes show the range of views and the reasoning behind any dissent.'];
+    return ['After the minutes', 'The cycle restarts; the next blackout begins about a month later.'];
+  }
+  var cur = document.getElementById('cb3-tl-cursor'), dot = document.getElementById('cb3-tl-dot');
+  function update(){
+    var d = parseInt(slider.value, 10);
+    var x = xAt(d);
+    cur.setAttribute('x1', x); cur.setAttribute('x2', x); dot.setAttribute('cx', x);
+    document.getElementById('cb3-tl-val').textContent = 'Day ' + (d > 0 ? '+' + d : d);
+    var p = phase(d);
+    document.getElementById('cb3-tl-phase').textContent = p[0];
+    document.getElementById('cb3-tl-text').textContent = p[1];
+  }
+  slider.addEventListener('input', update);
+  update();
+})();
+
+/* ---- Futures-implied rate calculator ---- */
+(function(){
+  var pIn = document.getElementById('cb3-fut-p');
+  if (!pIn) return;
+  var rIn = document.getElementById('cb3-fut-r'), sIn = document.getElementById('cb3-fut-s');
+  var imp = document.getElementById('cb3-fut-imp'), chg = document.getElementById('cb3-fut-chg');
+  var prob = document.getElementById('cb3-fut-prob'), note = document.getElementById('cb3-fut-note');
+  var DEF = {p: 95.5, r: 4.33, s: 0.25};
+  function recompute(){
+    var P = parseFloat(pIn.value), r = parseFloat(rIn.value), s = parseFloat(sIn.value);
+    if (!isFinite(P) || !isFinite(r) || !isFinite(s) || s <= 0) {
+      imp.textContent = '—'; chg.textContent = '—'; prob.textContent = '—'; note.textContent = '(enter a price, a rate and a move size above 0)';
+      return;
+    }
+    var ri = 100 - P, d = ri - r, pr = Math.abs(d) / s;
+    imp.textContent = ri.toFixed(2) + '%';
+    var bp = Math.round(d * 100);
+    chg.textContent = (bp > 0 ? '+' : '') + bp + 'bp';
+    prob.textContent = Math.round(Math.min(pr, 1) * 100) + '%';
+    var kind = d > 0 ? 'hike' : (d < 0 ? 'cut' : 'no move');
+    note.textContent = pr > 1 ? kind + ' (more than one move priced: ' + pr.toFixed(2) + ' moves)' : kind;
+  }
+  [pIn, rIn, sIn].forEach(function(el){ el.addEventListener('input', recompute); });
+  document.getElementById('cb3-fut-reset').addEventListener('click', function(){
+    pIn.value = DEF.p; rIn.value = DEF.r; sIn.value = DEF.s; recompute();
+  });
+  recompute();
+})();
+
+/* ---- Chart 2: dot-plot explorer ---- */
+(function(){
+  var medSl = document.getElementById('cb3-dp-medsl');
+  if (!medSl) return;
+  var mktSl = document.getElementById('cb3-dp-mktsl'), dispSl = document.getElementById('cb3-dp-dispsl');
+  var NS = 'http://www.w3.org/2000/svg';
+  var OFF = [-3,-2,-2,-1,-1,-1,-1,0,0,0,0,0,1,1,1,2,2,3,4]; // 19 participants, in steps of 12.5bp; median offset 0
+  var NOW = 4.375, RMIN = 1.5, RMAX = 6.0, YT = 30, YB = 290, STEP = 0.125;
+  function yAt(r){ return YB - (r - RMIN) / (RMAX - RMIN) * (YB - YT); }
+  function mk(tag, attrs, txt){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (txt !== undefined) e.textContent = txt;
+    return e;
+  }
+  var grid = document.getElementById('cb3-dp-grid');
+  for (var g = 2; g <= 6; g++) {
+    grid.appendChild(mk('line', {x1: 72, x2: 610, y1: yAt(g), y2: yAt(g), style: 'stroke:var(--border);stroke-width:1'}));
+    grid.appendChild(mk('text', {x: 64, y: yAt(g) + 4, 'text-anchor': 'end', style: "fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace"}, g + '%'));
+  }
+  var curLine = document.getElementById('cb3-dp-cur'), curLab = document.getElementById('cb3-dp-curlab');
+  curLine.setAttribute('y1', yAt(NOW)); curLine.setAttribute('y2', yAt(NOW)); curLab.setAttribute('y', yAt(NOW) - 5);
+  var dotsG = document.getElementById('cb3-dp-dots');
+  function fmt(v){ return v.toFixed(3) + '%'; }
+  function update(){
+    var med = parseFloat(medSl.value), mkt = parseFloat(mktSl.value), k = parseFloat(dispSl.value);
+    document.getElementById('cb3-dp-medval').textContent = fmt(med);
+    document.getElementById('cb3-dp-mktval').textContent = fmt(mkt);
+    document.getElementById('cb3-dp-dispval').textContent = k.toFixed(1) + '×';
+    var vals = OFF.map(function(o){ return Math.min(RMAX - 0.1, Math.max(RMIN + 0.1, med + Math.round(o * k) * STEP)); });
+    vals.sort(function(a, b){ return a - b; });
+    var median = vals[9];
+    dotsG.innerHTML = '';
+    var seen = {};
+    vals.forEach(function(v){
+      var key = v.toFixed(3); seen[key] = (seen[key] || 0) + 1;
+      var n = OFF.filter(function(_, i){ return vals[i] === v; }).length;
+      var x = 340 + (seen[key] - 1 - (n - 1) / 2) * 17;
+      dotsG.appendChild(mk('circle', {cx: x, cy: yAt(v), r: 6.5, style: 'fill:var(--green);fill-opacity:.55;stroke:var(--green);stroke-width:1.5'}));
+    });
+    var medLine = document.getElementById('cb3-dp-med'), mktLine = document.getElementById('cb3-dp-mkt');
+    var medLab = document.getElementById('cb3-dp-medlab'), mktLab = document.getElementById('cb3-dp-mktlab');
+    medLine.setAttribute('y1', yAt(median)); medLine.setAttribute('y2', yAt(median));
+    mktLine.setAttribute('y1', yAt(mkt)); mktLine.setAttribute('y2', yAt(mkt));
+    var medAbove = median >= mkt;
+    medLab.setAttribute('y', yAt(median) + (medAbove ? -5 : 13));
+    mktLab.setAttribute('y', yAt(mkt) + (medAbove ? 13 : -5));
+    medLab.textContent = 'median dot ' + median.toFixed(3) + '%';
+    mktLab.textContent = 'market ' + mkt.toFixed(3) + '%';
+    var dm = (median - NOW) / 0.25, mm = (mkt - NOW) / 0.25;
+    document.getElementById('cb3-dp-dmoves').textContent = (dm > 0 ? '+' : (dm < 0 ? '−' : '')) + Math.abs(dm).toFixed(1);
+    document.getElementById('cb3-dp-mmoves').textContent = (mm > 0 ? '+' : (mm < 0 ? '−' : '')) + Math.abs(mm).toFixed(1);
+    var gap = Math.round((median - mkt) * 10000) / 100; // bp
+    document.getElementById('cb3-dp-gap').textContent = (gap > 0 ? '+' : (gap < 0 ? '−' : '')) + Math.abs(gap) + 'bp';
+    var lo = vals[0], hi = vals[18], rng = (hi - lo) * 10000 / 100;
+    var lab = rng < 75 ? 'tight' : (rng > 150 ? 'wide' : 'moderate');
+    document.getElementById('cb3-dp-range').textContent = fmt(lo) + ' to ' + fmt(hi) + ' (' + rng + 'bp, ' + lab + ')';
+    var txt;
+    if (Math.abs(gap) < 12.5) txt = 'Dots about equal to the market: already priced. Attention shifts to the statement and press-conference tone.';
+    else if (gap < 0) txt = 'Dots below the market: more dovish than priced. On the course framework: yields down, stocks up, USD down.';
+    else txt = 'Dots above the market: more hawkish than priced. On the course framework: yields up, stocks down, USD up.';
+    if (lab === 'wide') txt += ' A wide spread means the median deserves little weight: volatility up, path unclear.';
+    document.getElementById('cb3-dp-read').textContent = txt;
+  }
+  [medSl, mktSl, dispSl].forEach(function(el){ el.addEventListener('input', update); });
+  update();
+})();
+
+/* ---- Chart 3: QT runoff and reserves ---- */
+(function(){
+  var capSl = document.getElementById('cb3-cap-sl');
+  if (!capSl) return;
+  var sSl = document.getElementById('cb3-s-sl');
+  var NS = 'http://www.w3.org/2000/svg';
+  var BS0 = 7.0, R0 = 3.4, RRP0 = 0.5, TGA = 0.8, THR = 3.0, MONTHS = 36;
+  var XL = 60, XR = 640, YT = 90, YB = 330, YMAX = 3.6;
+  function xAt(m){ return XL + m / MONTHS * (XR - XL); }
+  function yAt(v){ return YB - Math.max(0, v) / YMAX * (YB - YT); }
+  function mk(tag, attrs, txt){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (txt !== undefined) e.textContent = txt;
+    return e;
+  }
+  var grid = document.getElementById('cb3-q-grid');
+  [0, 1, 2, 3].forEach(function(v){
+    grid.appendChild(mk('text', {x: 54, y: yAt(v) + 4, 'text-anchor': 'end', style: "fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace"}, '$' + v + 'T'));
+  });
+  [0, 12, 24, 36].forEach(function(m){
+    grid.appendChild(mk('text', {x: xAt(m), y: 346, 'text-anchor': 'middle', style: "fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace"}, String(m)));
+  });
+  document.getElementById('cb3-q-thr').setAttribute('y1', yAt(THR));
+  document.getElementById('cb3-q-thr').setAttribute('y2', yAt(THR));
+  function simulate(capB, share){
+    var C = capB / 1000, R = [R0], RRP = [RRP0], BS = [BS0];
+    for (var m = 1; m <= MONTHS; m++) {
+      var a = Math.min(share * C, RRP[m - 1]);
+      R.push(R[m - 1] - (C - a));
+      RRP.push(RRP[m - 1] - a);
+      BS.push(BS[m - 1] - C);
+    }
+    return {R: R, RRP: RRP, BS: BS};
+  }
+  function update(){
+    var capB = parseInt(capSl.value, 10), share = parseInt(sSl.value, 10) / 100;
+    document.getElementById('cb3-cap-val').textContent = '$' + capB + 'B';
+    document.getElementById('cb3-s-val').textContent = Math.round(share * 100) + '%';
+    var sim = simulate(capB, share);
+    var fromRrp = capB * share, fromRes = capB * (1 - share);
+    document.getElementById('cb3-fl-cap').textContent = '$' + capB + 'B / month';
+    document.getElementById('cb3-fl-rrp').textContent = '$' + Math.round(fromRrp) + 'B / month';
+    document.getElementById('cb3-fl-res').textContent = '$' + Math.round(fromRes) + 'B / month';
+    var pr = [], pe = [];
+    for (var m = 0; m <= MONTHS; m++) {
+      pr.push(xAt(m).toFixed(1) + ',' + yAt(sim.R[m]).toFixed(1));
+      pe.push(xAt(m).toFixed(1) + ',' + yAt(sim.RRP[m]).toFixed(1));
+    }
+    document.getElementById('cb3-q-res').setAttribute('points', pr.join(' '));
+    document.getElementById('cb3-q-rrp').setAttribute('points', pe.join(' '));
+    var cross = null;
+    for (var i = 1; i <= MONTHS; i++) {
+      if (sim.R[i] < THR) { cross = (i - 1) + (sim.R[i - 1] - THR) / (sim.R[i - 1] - sim.R[i]); break; }
+    }
+    var dot = document.getElementById('cb3-q-cross');
+    if (cross === null) { dot.setAttribute('cx', -20); }
+    else { dot.setAttribute('cx', xAt(cross)); dot.setAttribute('cy', yAt(THR)); }
+    document.getElementById('cb3-q-drain').textContent = '$' + Math.round(fromRes) + 'B';
+    document.getElementById('cb3-q-months').textContent = cross === null ? 'not within 36 months' : cross.toFixed(1) + ' months';
+    document.getElementById('cb3-q-r12').textContent = '$' + sim.R[12].toFixed(2) + 'T';
+    document.getElementById('cb3-q-rrp12').textContent = '$' + Math.round(sim.RRP[12] * 1000) + 'B';
+    var nl12 = sim.BS[12] - TGA - sim.RRP[12];
+    document.getElementById('cb3-q-nl12').textContent = '$' + nl12.toFixed(2) + 'T';
+  }
+  [capSl, sSl].forEach(function(el){ el.addEventListener('input', update); });
+  update();
+})();
+
+/* ---- Chart 4: Fed vs ECB policy divergence (documented rates) ---- */
+(function(){
+  var sl = document.getElementById('cb3-dv-sl');
+  if (!sl) return;
+  var NS = 'http://www.w3.org/2000/svg';
+  var Q = ['Mar 2022', 'Jun 2022', 'Sep 2022', 'Dec 2022', 'Mar 2023', 'Jun 2023', 'Sep 2023'];
+  var FED = [0.50, 1.75, 3.25, 4.50, 5.00, 5.25, 5.50];   // Fed funds target range, upper bound
+  var ECB = [-0.50, -0.50, 0.75, 2.00, 3.00, 3.50, 4.00]; // ECB deposit facility rate
+  var XL = 100, XS = 75, YT = 40, YB = 250, RMIN = -1, RMAX = 6;
+  function xAt(i){ return XL + i * XS; }
+  function yAt(v){ return YB - (v - RMIN) / (RMAX - RMIN) * (YB - YT); }
+  function mk(tag, attrs, txt){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (txt !== undefined) e.textContent = txt;
+    return e;
+  }
+  var grid = document.getElementById('cb3-dv-grid');
+  [-1, 0, 1, 2, 3, 4, 5, 6].forEach(function(v){
+    grid.appendChild(mk('line', {x1: 80, x2: 570, y1: yAt(v), y2: yAt(v), style: 'stroke:var(--border);stroke-width:' + (v === 0 ? 1.6 : 1)}));
+    grid.appendChild(mk('text', {x: 72, y: yAt(v) + 4, 'text-anchor': 'end', style: "fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace"}, v + '%'));
+  });
+  var xl = document.getElementById('cb3-dv-xl');
+  Q.forEach(function(q, i){
+    xl.appendChild(mk('text', {x: xAt(i), y: 272, 'text-anchor': 'middle', style: "fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace"}, q));
+  });
+  var fp = [], ep = [], gp = [];
+  FED.forEach(function(v, i){ fp.push(xAt(i) + ',' + yAt(v)); ep.push(xAt(i) + ',' + yAt(ECB[i])); });
+  gp = fp.concat(ep.slice().reverse());
+  document.getElementById('cb3-dv-fed').setAttribute('points', fp.join(' '));
+  document.getElementById('cb3-dv-ecb').setAttribute('points', ep.join(' '));
+  document.getElementById('cb3-dv-gapfill').setAttribute('points', gp.join(' '));
+  function pct(v){ return v.toFixed(2) + '%'; }
+  function update(){
+    var i = parseInt(sl.value, 10);
+    var x = xAt(i);
+    var c = document.getElementById('cb3-dv-cursor'); c.setAttribute('x1', x); c.setAttribute('x2', x);
+    document.getElementById('cb3-dv-fdot').setAttribute('cx', x); document.getElementById('cb3-dv-fdot').setAttribute('cy', yAt(FED[i]));
+    document.getElementById('cb3-dv-edot').setAttribute('cx', x); document.getElementById('cb3-dv-edot').setAttribute('cy', yAt(ECB[i]));
+    var gap = FED[i] - ECB[i];
+    document.getElementById('cb3-dv-val').textContent = Q[i];
+    document.getElementById('cb3-dv-lab').textContent = 'End ' + Q[i];
+    document.getElementById('cb3-dv-f').textContent = pct(FED[i]);
+    document.getElementById('cb3-dv-e').textContent = pct(ECB[i]);
+    document.getElementById('cb3-dv-g').textContent = gap.toFixed(2) + ' pp';
+    var dtxt, rtxt;
+    if (i === 0) { dtxt = 'first point in the series'; rtxt = 'Start of the series: the Fed has just begun hiking; the ECB deposit rate is still negative.'; }
+    else {
+      var ch = gap - (FED[i - 1] - ECB[i - 1]);
+      dtxt = (ch > 0 ? '+' : (ch < 0 ? '−' : '')) + Math.abs(ch).toFixed(2) + ' pp vs the previous quarter';
+      if (ch > 0.001) rtxt = 'Gap widening: on the divergence framework this is dollar-supportive against the euro.';
+      else if (ch < -0.001) rtxt = 'Gap narrowing: on the divergence framework this is a headwind for the dollar against the euro.';
+      else rtxt = 'Gap unchanged this quarter: the divergence framework gives no new impulse.';
+    }
+    document.getElementById('cb3-dv-d').textContent = dtxt;
+    document.getElementById('cb3-dv-read').textContent = rtxt;
+  }
+  sl.addEventListener('input', update);
+  update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../../theory-lab/assets/progress.js?v=1" defer></script>
+<script src="../../theory-lab/assets/tts.js?v=6" defer></script>
+<script src="../../theory-lab/assets/vark.js?v=2" defer></script>
+<script src="../../theory-lab/assets/verdicts.js" defer></script>
+</body>
+</html>

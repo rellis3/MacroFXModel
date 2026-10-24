@@ -43,7 +43,8 @@ earns trust after it clears this repo's real out-of-sample bar.
 ```
 cog/
   hub.html      — curriculum map for both categories, linked from index.html
-  lessons/*.html — 12 lesson files (10 Course Notes + 2 COG), reusing
+  lessons/*.html — 25 files: 10 Course Notes + 2 COG, where Course Note 2 (Quant & Macro) is an index plus
+                   six lessons (qm-1 … qm-6, each with a -micro Visual Guide) and a reference page; reusing
                    theory-lab/assets/theory.css and glossary.html rather
                    than duplicating them
 ```

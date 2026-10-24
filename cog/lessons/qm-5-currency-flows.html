@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Currency Markets &amp; Global Flows — COG Hub — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theory-lab/assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+/* Local extension: wide multi-column reference tables in the same dark-theme language as the shared sheet. */
+.tl-table{overflow-x:auto;margin:14px 0;border:1px solid var(--border);border-radius:var(--r)}
+.tl-table table{width:100%;border-collapse:collapse;font-size:13px}
+.tl-table th{background:var(--s2);color:var(--text);text-align:left;padding:8px 10px;border-bottom:1.5px solid var(--border2);font-weight:600;white-space:nowrap}
+.tl-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+.tl-table tr:last-child td{border-bottom:none}
+.tl-table tbody tr:hover{background:var(--s1)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">COG Hub</a> / Course Notes / Quant &amp; Macro / Currency Markets</div>
+  <div class="tl-glosslink">🔎 <a href="../../theory-lab/glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Course Notes · Quant &amp; Macro 5 of 6</div>
+  <h1 class="tl-title">Currency Markets &amp; Global Flows</h1>
+  <p class="tl-dek">How the largest market on earth is organised, what moves a currency at each horizon, and why carry, the dollar and dollar funding all behave differently once calm turns to stress.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">COURSE NOTES — framework as taught, not a backtested strategy</span>
+    <span>~38 min read</span>
+    <span>Prereqs: <a href="qm-4-fixed-income.html">Lesson 4, Fixed Income</a></span>
+    <span>Difficulty: Intermediate</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="qm-5-currency-flows-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>FX is the world's largest market (about $7.5 trillion a day in the survey the course quotes, with the dollar on one side of about 88% of trades), so it is liquid, hard to manipulate and quick to price information. For an equity trader it is the <strong>transmission mechanism</strong> from central-bank policy to every other asset.</li>
+      <li>What moves a currency depends on the horizon. Over <strong>weeks to months</strong> the dominant driver is the <strong>rate differential</strong> (policy divergence); in a fear spike <strong>risk sentiment overrides it</strong> and the havens (USD, JPY, CHF) are bid whatever the rates say.</li>
+      <li>The <strong>Dollar Smile</strong>: the dollar is strong at both extremes (US exceptionalism on the left, global panic on the right) and weak in the middle (synchronised growth). Ask <em>why</em> the dollar is strong, because the answer changes what it means for other assets.</li>
+      <li><strong>Carry</strong> earns the interest-rate gap in calm markets and gives it back in lumps: with spot risk, a 10% fall in a currency yielding 9.9% more cancels a full year of carry, and leverage multiplies both sides. Unwinds are reflexive, so JPY strength in a risk-off is the tell.</li>
+      <li>The <strong>cross-currency basis</strong> is the premium paid to swap into dollars. A negative basis that widens fast means dollar scarcity. The course's guideposts for EUR/USD run from 0 to −20 bps (normal) to below −100 bps (crisis).</li>
+      <li><strong>Central banks can slow a move, not reverse a trend</strong> that fundamentals support. <strong>Real-world episodes:</strong> the 5 August 2024 yen carry unwind, the March 2020 dollar squeeze, and Japan's yen interventions of 2022–2024.</li>
+    </ul>
+  </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two lanes. In calm markets, rate differentials drive currencies over weeks and months, carry earns the interest gap, and the dollar is weakest in the middle of its smile. When a shock hits, fear rises, the havens JPY, CHF and USD are bid, carry unwinds and the dollar funding basis blows out, and central banks step in.">
+      <text class="tlp-text3" x="14" y="24" font-size="12" font-weight="700">CALM</text>
+      <rect class="tlp-box blue" x="14" y="32" width="170" height="52" rx="6"/>
+      <text class="tlp-blue" x="99" y="54" text-anchor="middle" font-size="13" font-weight="700">Rate differentials rule</text>
+      <text class="tlp-text2" x="99" y="72" text-anchor="middle" font-size="11">weeks to months</text>
+      <rect class="tlp-box green" x="214" y="32" width="170" height="52" rx="6"/>
+      <text class="tlp-green" x="299" y="54" text-anchor="middle" font-size="13" font-weight="700">Carry earns the gap</text>
+      <text class="tlp-text2" x="299" y="72" text-anchor="middle" font-size="11">steady, low-vol yield</text>
+      <rect class="tlp-box green" x="414" y="32" width="170" height="52" rx="6"/>
+      <text class="tlp-green" x="499" y="54" text-anchor="middle" font-size="13" font-weight="700">Dollar: bottom of the smile</text>
+      <text class="tlp-text2" x="499" y="72" text-anchor="middle" font-size="11">weak when growth is shared</text>
+      <line class="tlp-line" x1="184" y1="58" x2="212" y2="58"/><line class="tlp-line" x1="384" y1="58" x2="412" y2="58"/>
+      <line class="tlp-line red thick" x1="300" y1="92" x2="300" y2="138"/>
+      <polygon class="tlp-red" points="294,136 306,136 300,146"/>
+      <text class="tlp-red" x="312" y="122" font-size="13" font-weight="700">shock: sentiment overrides rates</text>
+      <text class="tlp-text3" x="14" y="166" font-size="12" font-weight="700">STRESS</text>
+      <rect class="tlp-box red" x="14" y="174" width="128" height="60" rx="6"/>
+      <text class="tlp-red" x="78" y="196" text-anchor="middle" font-size="12" font-weight="700">Fear rises</text>
+      <text class="tlp-text2" x="78" y="214" text-anchor="middle" font-size="11">VIX up, spreads wide</text>
+      <rect class="tlp-box amber" x="160" y="174" width="128" height="60" rx="6"/>
+      <text class="tlp-amber" x="224" y="196" text-anchor="middle" font-size="12" font-weight="700">Haven bid</text>
+      <text class="tlp-text2" x="224" y="214" text-anchor="middle" font-size="11">JPY · CHF · USD up</text>
+      <rect class="tlp-box red" x="306" y="174" width="140" height="60" rx="6"/>
+      <text class="tlp-red" x="376" y="196" text-anchor="middle" font-size="12" font-weight="700">Carry unwinds</text>
+      <text class="tlp-text2" x="376" y="214" text-anchor="middle" font-size="11">basis blows out</text>
+      <rect class="tlp-box purple" x="464" y="174" width="122" height="60" rx="6"/>
+      <text class="tlp-purple" x="525" y="196" text-anchor="middle" font-size="12" font-weight="700">Authorities act</text>
+      <text class="tlp-text2" x="525" y="214" text-anchor="middle" font-size="11">swap lines · intervention</text>
+      <line class="tlp-line" x1="142" y1="204" x2="158" y2="204"/><line class="tlp-line" x1="288" y1="204" x2="304" y2="204"/><line class="tlp-line" x1="446" y1="204" x2="462" y2="204"/>
+    </svg>
+    <figcaption>Two regimes, one market. In calm, differentials and growth set the direction and carry quietly earns. In stress, the haven bid, carry unwinds and dollar scarcity take over, and only then do authorities step in. Telling which regime you are in is most of the skill.</figcaption>
+  </figure>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters: the market everything else trades through</h2>
+  <p>
+    Every asset price is quoted in some currency, and every cross-border investment is a currency position as well as an asset position. A fund that buys Japanese stocks is also long or short the yen. That is why policy divergence between central banks shows up in exchange rates first and in stocks later: a currency is the cheapest, deepest place for large, sophisticated players to express a view on macro.
+  </p>
+  <p>
+    The course puts FX at <strong>Level 3 of its hierarchy</strong>: it often moves before equities fully price information, it reveals risk sentiment (JPY strength, EM weakness and basis blowouts have preceded VIX spikes), and it feeds straight into earnings (dollar strength hurts US multinationals' foreign earnings and helps importers). This lesson builds the map in the order a trader needs it: the plumbing, the personalities, the drivers by horizon, the dollar, then the three stress mechanisms (carry, the basis, intervention).
+  </p>
+  <p><em>Course note: FX relationships are well-established but regime-varying. Dynamics can shift rapidly during intervention, crisis or regime change.</em></p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>An exchange rate is the price of one country's money in another's</h3>
+    <p>
+      Think of each currency as a share in a country's economy and policy. When the Fed promises higher rates than the ECB, holding dollars pays more than holding euros, so money tilts toward the dollar and EUR/USD falls. When the world gets frightened, people stop caring about the yield and want the currencies that are safe and easy to sell, so the havens jump. Almost everything in this lesson is one of those two forces, <strong>the reward for holding a currency</strong> and <strong>the fear of holding the wrong one</strong>, fighting each other at different speeds.
+    </p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>~$7.5 trillion a day</td><td>Daily FX turnover in the BIS Triennial Survey the course quotes: the largest market by turnover. (Later surveys are larger; read it as an order of magnitude.)</td></tr>
+    <tr><td>24/5</td><td>Trading follows the sun: Sydney, then Tokyo, London and New York, five days a week.</td></tr>
+    <tr><td>~88% with USD</td><td>About 88% of trades have the dollar on one side, which is why USD is the hub of nearly every cross.</td></tr>
+    <tr><td>OTC</td><td>Over-the-counter: decentralised, no single exchange. The size makes it liquid and efficient: harder to manipulate and faster to price information, so FX moves tend to be large sophisticated players repositioning on macro.</td></tr>
+  </table></div>
+
+  <details class="tl-section-collapse">
+    <summary><h2>Reference: quoting conventions, participants and instruments</h2></summary>
+    <h3>Quoting conventions</h3>
+    <ul>
+      <li>Always pairs. <strong>EUR/USD = 1.0850</strong> means 1 euro buys 1.0850 dollars. The first currency is the <em>base</em>, the second the <em>quote</em>; the number rising means the base is strengthening.</li>
+      <li><strong>USD/JPY = 150.00</strong> means 1 dollar buys 150 yen. Rising means the USD is strengthening and the yen weakening.</li>
+      <li>Most pairs quote USD first, but EUR, GBP, AUD and NZD quote USD second. That is historical convention, not logic.</li>
+    </ul>
+    <h3>Participants</h3>
+    <div class="tl-table"><table>
+      <tr><th>Participant</th><th>What they do</th></tr>
+      <tr><td>Central banks</td><td>Reserves, intervention, policy</td></tr>
+      <tr><td>Commercial banks</td><td>Client facilitation, proprietary trading</td></tr>
+      <tr><td>Corporates</td><td>Hedging trade and investment flows</td></tr>
+      <tr><td>Asset managers</td><td>Portfolio hedging, currency overlay</td></tr>
+      <tr><td>Hedge funds</td><td>Speculation, macro</td></tr>
+      <tr><td>Retail</td><td>A small fraction of volume, mostly noise</td></tr>
+    </table></div>
+    <h3>Instruments</h3>
+    <div class="tl-table"><table>
+      <tr><th>Instrument</th><th>What</th><th>Who uses</th></tr>
+      <tr><td>Spot</td><td>Immediate exchange (T+2)</td><td>Everyone: the quoted "price"</td></tr>
+      <tr><td>Forwards</td><td>Exchange at a future date at an agreed rate</td><td>Corporates hedging future flows</td></tr>
+      <tr><td>Swaps</td><td>Simultaneous spot + forward (rolling positions)</td><td>Banks and institutions managing funding</td></tr>
+      <tr><td>Options</td><td>Right (not obligation) at a strike</td><td>Hedgers wanting protection with flexibility</td></tr>
+    </table></div>
+    <p><strong>Swaps are the largest segment by volume</strong>, which is why "dollar funding stress" shows up in the swap market first (Section 06).</p>
+  </details>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Swapping money between countries is like swapping trading cards. "EUR/USD = 1.0850" says one euro card is worth 1.0850 dollar cards. If the number goes up, the euro card got more valuable. The market for swapping them is so big, and open so many hours, that no one kid can push the prices around for long.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Currency personalities: havens, risk currencies and commodity links</h2>
+  <p>
+    Each major currency has a stable character that you can use to cross-check a story. The first split is <strong>safe havens</strong> (USD, JPY, CHF), which strengthen in stress, against <strong>risk currencies</strong> (AUD, NZD, CAD, NOK, SEK and emerging markets), which strengthen with risk appetite and weaken in stress and are often commodity- or carry-linked. The yen is the purest haven: it rallies in risk-off even when Japan's fundamentals are weak.
+  </p>
+
+  <div class="tl-table"><table>
+    <tr><th>Currency</th><th>Character</th></tr>
+    <tr><td><strong>USD</strong></td><td>Reserve currency, always in demand; safe haven in risk-off; highly rate-sensitive; "anti-risk" in most regimes</td></tr>
+    <tr><td><strong>EUR</strong></td><td>ECB policy-driven; current-account surplus; fragmentation risk; USD's main counterweight</td></tr>
+    <tr><td><strong>JPY</strong></td><td><strong>Ultimate safe haven</strong>; funding currency (low rates); BoJ intervention risk; rallies on risk-off</td></tr>
+    <tr><td><strong>GBP</strong></td><td>High beta / volatile; BoE-sensitive; current-account deficit; stagflation-prone economy</td></tr>
+    <tr><td><strong>CHF</strong></td><td>Safe haven; current-account surplus; SNB intervention history; negative-rate history</td></tr>
+    <tr><td><strong>AUD</strong></td><td>Commodity currency; <strong>China proxy</strong>; risk-on currency; historically high carry</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Personality matrix: which way does each currency lean in each scenario?</div>
+    <svg viewBox="0 0 640 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Horizontal bar chart of the direction each G10 and emerging-market currency is expected to move in the chosen scenario, on a scale from minus 2 to plus 2. Green bars to the right are stronger, red bars to the left are weaker.">
+      <line x1="368" y1="10" x2="368" y2="320" style="stroke:var(--border2)"/>
+      <text x="96" y="35" text-anchor="end" font-size="12" font-weight="700" style="fill:var(--text)">USD</text>
+      <rect id="pm-b0" x="368" y="20" width="80" height="20" rx="3" style="fill:var(--green)"/>
+      <text id="pm-v0" x="458" y="35" text-anchor="start" font-size="11" style="fill:var(--text2);font-family:'DM Mono',monospace">+1</text>
+<text x="96" y="65" text-anchor="end" font-size="12" font-weight="700" style="fill:var(--text)">EUR</text>
+      <rect id="pm-b1" x="367" y="50" width="2" height="20" rx="3" style="fill:var(--text3)"/>
+      <text id="pm-v1" x="378" y="65" text-anchor="start" font-size="11" style="fill:var(--text2);font-family:'DM Mono',monospace">0</text>
+<text x="96" y="95" text-anchor="end" font-size="12" font-weight="700" style="fill:var(--text)">JPY</text>
+      <rect id="pm-b2" x="368" y="80" width="160" height="20" rx="3" style="fill:var(--green)"/>
+      <text id="pm-v2" x="538" y="95" text-anchor="start" font-size="11" style="fill:var(--text2);font-family:'DM Mono',monospace">+2</text>
+<text x="96" y="125" text-anchor="end" font-size="12" font-weight="700" style="fill:var(--text)">GBP</text>
+      <rect id="pm-b3" x="288" y="110" width="80" height="20" rx="3" style="fill:var(--red)"/>
+      <text id="pm-v3" x="278" y="125" text-anchor="end" font-size="11" style="fill:var(--text2);font-family:'DM Mono',monospace">−1</text>
+<text x="96" y="155" text-anchor="end" font-size="12" font-weight="700" style="fill:var(--text)">CHF</text>
+      <rect id="pm-b4" x="368" y="140" width="160" height="20" rx="3" style="fill:var(--green)"/>
+      <text id="pm-v4" x="538" y="155" text-anchor="start" font-size="11" style="fill:var(--text2);font-family:'DM Mono',monospace">+2</text>
+<text x="96" y="185" text-anchor="end" font-size="12" font-weight="700" style="fill:var(--text)">AUD</text>
+      <rect id="pm-b5" x="208" y="170" width="160" height="20" rx="3" style="fill:var(--red)"/>
+      <text id="pm-v5" x="198" y="185" text-anchor="end" font-size="11" style="fill:var(--text2);font-family:'DM Mono',monospace">−2</text>
+<text x="96" y="215" text-anchor="end" font-size="12" font-weight="700" style="fill:var(--text)">NZD</text>
+      <rect id="pm-b6" x="208" y="200" width="160" height="20" rx="3" style="fill:var(--red)"/>
+      <text id="pm-v6" x="198" y="215" text-anchor="end" font-size="11" style="fill:var(--text2);font-family:'DM Mono',monospace">−2</text>
+<text x="96" y="245" text-anchor="end" font-size="12" font-weight="700" style="fill:var(--text)">CAD</text>
+      <rect id="pm-b7" x="288" y="230" width="80" height="20" rx="3" style="fill:var(--red)"/>
+      <text id="pm-v7" x="278" y="245" text-anchor="end" font-size="11" style="fill:var(--text2);font-family:'DM Mono',monospace">−1</text>
+<text x="96" y="275" text-anchor="end" font-size="12" font-weight="700" style="fill:var(--text)">NOK</text>
+      <rect id="pm-b8" x="288" y="260" width="80" height="20" rx="3" style="fill:var(--red)"/>
+      <text id="pm-v8" x="278" y="275" text-anchor="end" font-size="11" style="fill:var(--text2);font-family:'DM Mono',monospace">−1</text>
+<text x="96" y="305" text-anchor="end" font-size="12" font-weight="700" style="fill:var(--text)">EM</text>
+      <rect id="pm-b9" x="208" y="290" width="160" height="20" rx="3" style="fill:var(--red)"/>
+      <text id="pm-v9" x="198" y="305" text-anchor="end" font-size="11" style="fill:var(--text2);font-family:'DM Mono',monospace">−2</text>
+
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Pick a scenario</span><span class="tl-live" id="pm-name">Risk-off</span></div>
+        <div class="tl-btnrow">
+          <button type="button" class="tl-scratch-reset-btn" data-pm="0">Risk-off</button>
+          <button type="button" class="tl-scratch-reset-btn" data-pm="1">Risk-on</button>
+          <button type="button" class="tl-scratch-reset-btn" data-pm="2">Oil rally</button>
+          <button type="button" class="tl-scratch-reset-btn" data-pm="3">China stimulus</button>
+          <button type="button" class="tl-scratch-reset-btn" data-pm="4">Hawkish Fed</button>
+        </div>
+      </div>
+    </div>
+    <div class="tl-readout">Strongest: <b id="pm-top">JPY, CHF</b> · Weakest: <b id="pm-bot">AUD, NZD, EM</b></div>
+    <div class="tl-hint" id="pm-note">Fear rises: havens (JPY, CHF, USD) are bid and risk currencies sell. If AUD rallies on a day called risk-off, question the narrative.</div>
+    <div class="tl-chart-caption">A <strong>qualitative</strong> chart, not a measurement: the bars are the direction (−2 to +2) that each currency's character implies, taken from the course notes. The notes name JPY, CHF, AUD and EM explicitly for risk-off, CAD and NOK for oil, and AUD for China; other cells, such as GBP in risk-off, are inferred from the "high beta" label and should be read as a prior, not a rule.</div>
+  </div>
+  <script>(function(){
+  var btns = document.querySelectorAll('[data-pm]'); if (!btns.length) return;
+  var CCY = ["USD", "EUR", "JPY", "GBP", "CHF", "AUD", "NZD", "CAD", "NOK", "EM"];
+  var SC = [{"n": "Risk-off", "v": [1, 0, 2, -1, 2, -2, -2, -1, -1, -2], "t": "Fear rises: havens (JPY, CHF, USD) are bid and risk currencies sell. If AUD rallies on a day called risk-off, question the narrative."}, {"n": "Risk-on, synchronised growth", "v": [-1, 1, -1, 1, -1, 2, 2, 1, 1, 2], "t": "Appetite is high and carry works: funding and haven currencies lag, commodity and high-yield currencies lead, and the dollar sits at the bottom of its smile."}, {"n": "Oil rally", "v": [0, 0, 0, 0, 0, 0, 0, 2, 2, 0], "t": "The oil-linked currencies, CAD and NOK, are the ones that track crude; the rest are roughly unmoved by this alone."}, {"n": "China stimulus", "v": [0, 0, 0, 0, 0, 2, 1, 0, 0, 1], "t": "AUD is the China-demand proxy, NZD follows through dairy and agriculture, and EM benefits from the demand."}, {"n": "Fed hawkish / US exceptionalism", "v": [2, -1, -1, -1, -1, -1, -1, -1, 0, -2], "t": "Left side of the smile: rate differentials favour the dollar and EM is pressured. Cells other than USD and EM are inferred, not stated in the notes."}];
+  var SCALE = 80;
+  var top = document.getElementById('pm-top'), bot = document.getElementById('pm-bot'), note = document.getElementById('pm-note'), nm = document.getElementById('pm-name');
+  function sg(v){ return v < 0 ? '−' + Math.abs(v) : (v > 0 ? '+' + v : '0'); }
+  function show(k){
+    var s = SC[k], mx = Math.max.apply(null, s.v), mn = Math.min.apply(null, s.v);
+    for (var i = 0; i < CCY.length; i++){
+      var v = s.v[i], b = document.getElementById('pm-b' + i), t = document.getElementById('pm-v' + i);
+      var w = Math.abs(v) * SCALE, x = 368 + (v < 0 ? v * SCALE : 0);
+      if (v === 0){ w = 2; x = 367; }
+      b.setAttribute('x', x); b.setAttribute('width', w);
+      b.style.fill = v > 0 ? 'var(--green)' : (v < 0 ? 'var(--red)' : 'var(--text3)');
+      t.setAttribute('x', 368 + v * SCALE + (v >= 0 ? 10 : -10)); t.setAttribute('text-anchor', v >= 0 ? 'start' : 'end'); t.textContent = sg(v);
+    }
+    top.textContent = CCY.filter(function(c, i){ return s.v[i] === mx; }).join(', ');
+    bot.textContent = CCY.filter(function(c, i){ return s.v[i] === mn; }).join(', ');
+    note.textContent = s.t; nm.textContent = s.n;
+    Array.prototype.forEach.call(btns, function(b){ var on = +b.getAttribute('data-pm') === k; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.style.borderColor = on ? 'var(--blue)' : ''; b.style.color = on ? 'var(--blue)' : ''; });
+  }
+  Array.prototype.forEach.call(btns, function(b){ b.addEventListener('click', function(){ show(+b.getAttribute('data-pm')); }); });
+  show(0);
+})();</script>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Commodity currencies: use the link to cross-check a narrative</div>
+    <div class="tl-table"><table>
+      <tr><th>Currency</th><th>Linked to</th><th>Cross-check</th></tr>
+      <tr><td>AUD</td><td>Iron ore, coal; China demand proxy</td><td>China stimulus → AUD strength</td></tr>
+      <tr><td>CAD</td><td>Oil (tracks crude)</td><td>Oil rally → CAD strength</td></tr>
+      <tr><td>NZD</td><td>Dairy / agriculture; China demand</td><td>Often moves with AUD on China news</td></tr>
+      <tr><td>NOK</td><td>Oil (tracks Brent)</td><td>Oil rally → NOK strength</td></tr>
+    </table></div>
+    <p style="margin-bottom:0"><em>Implication:</em> in a risk-off expect JPY and CHF up and AUD and EM down. <strong>If AUD rallies during a supposed "risk-off", question the narrative</strong>: either it is not really risk-off, or something specific (China, commodities) is overriding.</p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Some currencies are like a cosy blanket (yen, Swiss franc, dollar): you grab them when you are scared. Others are like a bouncy castle (Aussie dollar, emerging markets): fun when everyone is happy, but you leave in a hurry when things go wrong. If the bouncy castle is booming while everyone says they are scared, someone is telling a story that does not fit.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>What moves currencies: the answer depends on the horizon</h2>
+  <p>
+    "Why did the euro move?" has no single answer, because the dominant driver changes with the time scale. The course sorts them into four horizons, and the useful point is where the <em>signal-to-noise</em> is best: weeks to months, where rate differentials and relative growth do the work.
+  </p>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">Drivers by horizon, and how much signal each carries</div>
+    <svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four boxes along a time axis from intraday to years. Intraday is noise-dominated and driven by order flow and headlines. Days to weeks is a mix of signal and noise, driven by rate expectations, sentiment and positioning. Weeks to months is the highest-signal sweet spot, driven by rate differentials, policy divergence and relative growth. Months to years is slow anchors such as current account, valuation and structural flows.">
+      <rect class="tlp-box red" x="10" y="30" width="146" height="120" rx="6"/>
+      <text class="tlp-red" x="83" y="52" text-anchor="middle" font-size="13" font-weight="700">Intraday</text>
+      <text class="tlp-text2" x="83" y="76" text-anchor="middle" font-size="11">order flow, liquidity,</text><text class="tlp-text2" x="83" y="91" text-anchor="middle" font-size="11">data, headlines</text>
+      <text class="tlp-red" x="83" y="128" text-anchor="middle" font-size="11" font-weight="700">noise-dominated</text>
+      <rect class="tlp-box amber" x="168" y="30" width="146" height="120" rx="6"/>
+      <text class="tlp-amber" x="241" y="52" text-anchor="middle" font-size="13" font-weight="700">Days to weeks</text>
+      <text class="tlp-text2" x="241" y="76" text-anchor="middle" font-size="11">rate expectations,</text><text class="tlp-text2" x="241" y="91" text-anchor="middle" font-size="11">sentiment, positioning</text>
+      <text class="tlp-amber" x="241" y="128" text-anchor="middle" font-size="11" font-weight="700">signal and noise mixed</text>
+      <rect class="tlp-box green" x="326" y="22" width="150" height="136" rx="6" style="stroke-width:2.4"/>
+      <text class="tlp-green" x="401" y="46" text-anchor="middle" font-size="13" font-weight="700">Weeks to months</text>
+      <text class="tlp-text2" x="401" y="72" text-anchor="middle" font-size="11">rate differentials,</text><text class="tlp-text2" x="401" y="87" text-anchor="middle" font-size="11">policy divergence,</text><text class="tlp-text2" x="401" y="102" text-anchor="middle" font-size="11">relative growth</text>
+      <text class="tlp-green" x="401" y="136" text-anchor="middle" font-size="11" font-weight="700">★ highest signal</text>
+      <rect class="tlp-box blue" x="488" y="30" width="142" height="120" rx="6"/>
+      <text class="tlp-blue" x="559" y="52" text-anchor="middle" font-size="13" font-weight="700">Months to years</text>
+      <text class="tlp-text2" x="559" y="76" text-anchor="middle" font-size="11">current account,</text><text class="tlp-text2" x="559" y="91" text-anchor="middle" font-size="11">valuation (PPP),</text><text class="tlp-text2" x="559" y="106" text-anchor="middle" font-size="11">structural flows</text>
+      <text class="tlp-blue" x="559" y="136" text-anchor="middle" font-size="11" font-weight="700">slow anchors</text>
+      <line class="tlp-line" x1="10" y1="172" x2="630" y2="172"/><polygon class="tlp-arrow" points="630,167 640,172 630,177"/>
+      <text class="tlp-text3" x="10" y="186" font-size="11">shorter horizon</text><text class="tlp-text3" x="630" y="186" text-anchor="end" font-size="11">longer horizon</text>
+    </svg>
+    <figcaption>The sweet spot for macro positioning is weeks to months. Shorter than that is mostly noise you cannot predict; longer than that is slow valuation context that frames risk but times nothing.</figcaption>
+  </figure>
+
+  <h3>Rate differentials: the dominant medium-term driver</h3>
+  <p>
+    The 2-year yield differential reflects the policy trajectory over the horizon most relevant for carry and macro positioning, so it is the number to watch. Over weeks to months, differentials typically explain a substantial part of major-pair moves: the course cites <strong>50–80%</strong> depending on the period and pair.
+  </p>
+  <div class="tl-solid red">
+    <strong>Treat "50–80%" as a range people quote, not a constant.</strong> It varies by pair and period, it is an in-sample style statement, and the course itself lists when it breaks: safe-haven flows (JPY rallies in risk-off despite a rate disadvantage), intervention, and extreme positioning reversals.
+  </div>
+
+  <h3>Risk sentiment: the overrider</h3>
+  <p>When fear rises, the order of events is predictable. Once the panic subsides, fundamentals reassert themselves.</p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Fear rises</b>VIX spikes, credit spreads widen</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Haven bid</b>USD, JPY, CHF strengthen regardless of rate differentials</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Risk currencies sell</b>AUD, NZD, EM fall; carry positions unwind</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Panic fades</b>Fundamentals (differentials, growth) reassert</div>
+  </div>
+
+  <h3>Long-term anchors</h3>
+  <ul>
+    <li><strong>Purchasing power parity (PPP):</strong> exchange rates should equalise the price of identical goods. Deviations can persist for years, but extremes tend to mean-revert eventually.</li>
+    <li><strong>Current account:</strong> persistent deficits need foreign capital (a weaker currency or higher rates); surpluses give structural support.</li>
+  </ul>
+  <p>Long-term valuation <strong>does not time anything</strong>, but it frames the context: extreme undervaluation can limit downside and extreme overvaluation can limit upside, eventually.</p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a dog on a very long lead walking beside you. Minute to minute the dog zig-zags for no reason you can predict (noise). Over a few weeks it follows you, because the lead is short enough to matter (rate differentials). Over years the lead pulls it back to where a sensible dog should be (valuation). The loud bang that sends the dog bolting to its basket is risk-off.</p>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="regime-divergence-fx" data-evidence-date="2026-09-20">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>Policy divergence as a trading setup.</strong> Two economies in different growth and inflation regimes (labels for USD, GBP, EUR and CAD, 2008–2026): in diverging months against aligned months, EUR/USD's range was +0.03pp [−0.48, +0.52] and GBP/USD's −0.33pp [−0.86, +0.23], and return differences were all through zero. State the two regimes as the backdrop of a pair; never call divergence a setup.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The dollar cycle and the Dollar Smile</h2>
+  <h3>Why the dollar is special</h3>
+  <ul>
+    <li><strong>Reserve currency:</strong> about 58–60% of global central-bank reserves (gradually declining, still dominant), so there is structural demand.</li>
+    <li><strong>Invoicing currency</strong> for most global trade, even between non-US countries.</li>
+    <li><strong>Funding currency:</strong> most global debt is dollar-denominated, so dollar strength makes that debt harder to service.</li>
+    <li><strong>Safe haven:</strong> in a crisis the world wants dollars, even when the crisis is US-originated.</li>
+  </ul>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Two completely different reasons to want dollars</h3>
+    <p>
+      Sometimes people buy dollars because America is the best place to earn a return: growth is strong, the Fed is hawkish, rate differentials point to the dollar. Sometimes they buy dollars because they are frightened and need the world's safest, most liquid money. In between, when everyone is growing and happy, nobody needs either reason, so the dollar is weakest. Plot the demand against the state of the world and you get a smile. The Dollar Smile framework is generally credited to Stephen Jen, then at Morgan Stanley, in the early 2000s.
+    </p>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">The Dollar Smile: slide through the state of the world</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A stylised Dollar Smile curve. The horizontal axis is the state of the world from US exceptionalism on the left, through synchronised global growth in the middle, to global risk-off on the right. The curve of USD strength is high at both ends and lowest in the middle. A slider moves a dot along the curve and a second slider tilts the left side up or down.">
+      <rect x="70" y="30" width="162" height="240" rx="4" style="fill:var(--blue-bg);stroke:none"/>
+      <rect x="232" y="30" width="216" height="240" style="fill:var(--green-bg);stroke:none"/>
+      <rect x="448" y="30" width="162" height="240" rx="4" style="fill:var(--red-bg);stroke:none"/>
+      <line x1="70" y1="270" x2="610" y2="270" style="stroke:var(--border2)"/>
+      <line x1="70" y1="30" x2="70" y2="270" style="stroke:var(--border2)"/>
+      <line x1="70" y1="178.0" x2="610" y2="178.0" style="stroke:var(--border2);stroke-dasharray:3,3"/>
+      <text x="606" y="173.0" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">neutral</text>
+      <text x="151" y="46" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--blue)">LEFT: US exceptionalism</text>
+      <text x="340" y="46" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--green)">MIDDLE: synchronised growth</text>
+      <text x="529" y="46" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--red)">RIGHT: global risk-off</text>
+      <path id="ds-curve" d="M70.0,86.0 L80.8,97.5 L91.6,108.6 L102.4,119.2 L113.2,129.3 L124.0,139.0 L134.8,148.2 L145.6,156.9 L156.4,165.1 L167.2,172.9 L178.0,180.2 L188.8,187.0 L199.6,193.4 L210.4,199.3 L221.2,204.7 L232.0,209.6 L242.8,214.1 L253.6,218.1 L264.4,221.7 L275.2,224.7 L286.0,227.3 L296.8,229.4 L307.6,231.1 L318.4,232.3 L329.2,233.0 L340.0,233.2 L350.8,233.0 L361.6,232.3 L372.4,231.1 L383.2,229.4 L394.0,227.3 L404.8,224.7 L415.6,221.7 L426.4,218.1 L437.2,214.1 L448.0,209.6 L458.8,204.7 L469.6,199.3 L480.4,193.4 L491.2,187.0 L502.0,180.2 L512.8,172.9 L523.6,165.1 L534.4,156.9 L545.2,148.2 L556.0,139.0 L566.8,129.3 L577.6,119.2 L588.4,108.6 L599.2,97.5 L610.0,86.0" style="fill:none;stroke:var(--purple);stroke-width:3;stroke-linecap:round"/>
+      <circle id="ds-dot" cx="340.0" cy="233.2" r="7" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+      <line x1="151.0" y1="262" x2="151.0" y2="278" style="stroke:var(--blue);stroke-width:2"/>
+      <line x1="556.0" y1="262" x2="556.0" y2="278" style="stroke:var(--red);stroke-width:2"/>
+      <text x="151.0" y="296" text-anchor="middle" font-size="10.5" style="fill:var(--blue)">Sep 2022 (illustrative position)</text>
+      <text x="556.0" y="296" text-anchor="middle" font-size="10.5" style="fill:var(--red)">Mar 2020 (illustrative position)</text>
+      <text x="26" y="150" text-anchor="middle" transform="rotate(-90 26 150)" font-size="11" style="fill:var(--text3);font-family:'DM Mono',monospace">USD strength (stylised)</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>State of the world (0 left · 50 middle · 100 right)</span><span class="tl-live" id="ds-state-val">50</span></div>
+        <input type="range" id="ds-state" min="0" max="100" step="1" value="50">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Fed / US-rate edge over the rest of the world (lifts or lowers the left side)</span><span class="tl-live" id="ds-tilt-val">neutral</span></div>
+        <input type="range" id="ds-tilt" min="-10" max="10" step="1" value="0">
+      </div>
+    </div>
+    <div class="tl-readout">USD strength (stylised) = <b id="ds-val">−0.60</b> · regime: <b id="ds-reg">Middle · synchronised global growth</b></div>
+    <div class="tl-hint" id="ds-note">Global growth is strong and risk appetite is high; carry works and the dollar is the funding side, so it is weakest here.</div>
+    <div class="tl-chart-caption">A <strong>stylised</strong> curve, not an estimate: \(\text{USD}(s) = 1.6u^2 - 0.6 + 0.4\,h\,\max(0,-u)\) with \(u = (s-50)/50\) and \(h\) the US-rate edge. It is built only to show the shape: strong at both ends, weak in the middle, and a hawkish Fed lifting the left side but not the right. The two pins mark where the course's two example episodes sit in spirit; their horizontal positions are illustrative.</div>
+  </div>
+  <script>(function(){
+  var st = document.getElementById('ds-state'); if (!st) return;
+  var tl = document.getElementById('ds-tilt'), curve = document.getElementById('ds-curve'), dot = document.getElementById('ds-dot');
+  var val = document.getElementById('ds-val'), reg = document.getElementById('ds-reg'), note = document.getElementById('ds-note');
+  var sv = document.getElementById('ds-state-val'), tv = document.getElementById('ds-tilt-val');
+  var NOTES = {
+    left: 'US growth and a hawkish Fed pull money into dollars; rate differentials favour the USD.',
+    mid: 'Global growth is strong and risk appetite is high; carry works and the dollar is the funding side, so it is weakest here.',
+    right: 'Panic and flight to safety: the world wants dollars, even when the crisis started in the US.'
+  };
+  function xAt(s){ return 70 + 540 * s / 100; }
+  function yAt(v){ return 270 - (v + 1) / 2.5 * 230; }
+  function usd(s, h){ var u = (s - 50) / 50; return 1.6 * u * u - 0.6 + 0.4 * h * Math.max(0, -u); }
+  function sg(v){ var t = Math.abs(v).toFixed(2); return (v < -0.005 ? '−' : (v > 0.005 ? '+' : '')) + t; }
+  function update(){
+    var s = parseInt(st.value, 10), h = parseInt(tl.value, 10) / 10;
+    var pts = [];
+    for (var i = 0; i <= 50; i++){ var q = 2 * i; pts.push(xAt(q).toFixed(1) + ',' + yAt(usd(q, h)).toFixed(1)); }
+    curve.setAttribute('d', 'M' + pts.join(' L'));
+    dot.setAttribute('cx', xAt(s).toFixed(1)); dot.setAttribute('cy', yAt(usd(s, h)).toFixed(1));
+    val.textContent = sg(usd(s, h));
+    var k = s < 30 ? 'left' : (s <= 70 ? 'mid' : 'right');
+    reg.textContent = k === 'left' ? 'Left side · US exceptionalism' : (k === 'mid' ? 'Middle · synchronised global growth' : 'Right side · global risk-off');
+    note.textContent = NOTES[k];
+    sv.textContent = String(s);
+    tv.textContent = h === 0 ? 'neutral' : (h > 0 ? 'US edge ' : 'US edge ') + sg(h);
+  }
+  st.addEventListener('input', update); tl.addEventListener('input', update); update();
+})();</script>
+
+  <div class="tl-table"><table>
+    <tr><th>Regime</th><th>Characteristics</th><th>USD</th></tr>
+    <tr><td>Left side: US exceptionalism</td><td>US growth &gt; rest of world, Fed hawkish, differentials favour USD</td><td><strong>Strong</strong></td></tr>
+    <tr><td>Middle: synchronised global growth</td><td>Global growth strong, risk appetite high, carry works</td><td><strong>Weak</strong></td></tr>
+    <tr><td>Right side: global risk-off</td><td>Panic, VIX spiking, flight to safety</td><td><strong>Strong</strong></td></tr>
+  </table></div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Same strong dollar, opposite meaning</div>
+    <p><strong>2022 was left-side strength:</strong> a hawkish Fed and wide differentials. The dollar index peaked near 114 in late September 2022. <strong>March 2020 was right-side strength:</strong> panic, with the dollar surging even though the US was a pandemic epicentre (Section 06 tells that story). A strong dollar is the same on the screen and very different in what it implies for other assets.</p>
+  </div>
+
+  <h3>Dollar strength: good or bad for risk assets? It depends on the driver</h3>
+  <div class="tl-table"><table>
+    <tr><th>Driver</th><th>Risk-asset impact</th><th>Why</th></tr>
+    <tr><td>US growth outperformance</td><td>Mixed to positive (for US)</td><td>Strong economy supports US equities; pressures EM and exporters</td></tr>
+    <tr><td>Fed hawkishness</td><td>Negative</td><td>Higher rates mean lower valuations; hits growth stocks</td></tr>
+    <tr><td>Global risk-off</td><td>Negative</td><td>USD rallying because everything else is selling</td></tr>
+  </table></div>
+  <p>Ask "<strong>why</strong> is the dollar strong?", not just "is it strong?"</p>
+
+  <h3>Dollar cycles</h3>
+  <p>
+    Dollar cycles are multi-year, historically roughly <strong>7–10 years</strong> peak to peak. The 1980s: strong early (Volcker), weak late. The 1990s: weak early, strong late (tech boom). The 2000s: weak (EM boom, commodity supercycle). The 2010s: bottomed around 2011 and strengthened through 2022.
+  </p>
+  <div class="tl-solid red">
+    <strong>Caution:</strong> cycle timing is imprecise. Do not try to call major turns; understand the current regime and what would change it.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a seesaw with a very popular kid sitting at each end. One kid is there because the playground (America) is the best fun around. The other kid is there because there is a thunderstorm and the playground has the only roof. When the sun is out and every playground is fun, the middle of the seesaw is empty. The smile is just the seesaw drawn as a curve.</p>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Using the Dollar-Smile regime (left, middle or right) to condition trades has not been tested on this desk.</strong> The framework is a way of describing why the dollar moves; whether labelling the regime adds any forward information is open.
+    <div class="tl-howtotest"><strong>How to test it:</strong> fix the regime rules in advance from data known at the time (for example the VIX level for the right side and a US-minus-world growth surprise for the left), label every day, then compare the next-5-day dollar-basket move and range across regimes against matched controls, with a shift placebo and a held-out final period.</div></span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Carry trades: mechanics and risks</h2>
+  <p>
+    A carry trade borrows a low-yielding <strong>funding</strong> currency and invests in a high-yielding one. The example the course gives: borrow JPY at 0.1%, invest in MXN at 10%, and collect about <strong>9.9%</strong> a year. The exposure is the spot rate, because you owe yen and hold pesos: a 10% fall in the peso exceeds a year's carry. This is the classic "pennies in front of a steamroller".
+  </p>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The carry roles</div>
+    <svg viewBox="0 0 600 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A carry trade borrows a low-rate funding currency such as JPY, CHF or historically EUR, and buys a high-rate investment currency such as AUD, NZD or emerging markets. The trader collects the rate gap but carries the spot risk of the investment currency falling against the funding currency.">
+      <rect class="tlp-box blue" x="10" y="30" width="170" height="86" rx="6"/>
+      <text class="tlp-blue" x="95" y="54" text-anchor="middle" font-size="13" font-weight="700">FUNDING (borrow)</text>
+      <text class="tlp-text" x="95" y="78" text-anchor="middle" font-size="14" font-weight="700">JPY · CHF · EUR</text>
+      <text class="tlp-text2" x="95" y="100" text-anchor="middle" font-size="11">low / negative rates, stable</text>
+      <rect class="tlp-box green" x="420" y="30" width="170" height="86" rx="6"/>
+      <text class="tlp-green" x="505" y="54" text-anchor="middle" font-size="13" font-weight="700">INVESTMENT (buy)</text>
+      <text class="tlp-text" x="505" y="78" text-anchor="middle" font-size="14" font-weight="700">AUD · NZD · EM</text>
+      <text class="tlp-text2" x="505" y="100" text-anchor="middle" font-size="11">high rates, commodity exposure</text>
+      <line class="tlp-line green thick" x1="184" y1="73" x2="414" y2="73"/><polygon class="tlp-green" points="412,66 424,73 412,80"/>
+      <text class="tlp-green" x="300" y="64" text-anchor="middle" font-size="12" font-weight="700">collect the rate gap</text>
+      <line class="tlp-line red dash" x1="416" y1="104" x2="186" y2="104"/><polygon class="tlp-red" points="188,98 176,104 188,110"/>
+      <text class="tlp-red" x="300" y="124" text-anchor="middle" font-size="12" font-weight="700">risk: the high-yielder falls in spot</text>
+    </svg>
+    <figcaption>You earn the gap steadily and pay for it in lumps. The whole trade is a bet that the spot move will not be bigger than the gap.</figcaption>
+  </figure>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where a carry trade's return comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ R = \color{#fbbf24}{i_h - i_f} \]</div>
+      <p>Start with the interest. You hold the high-yielding currency (rate \(i_h\)) and owe interest on the funding currency (rate \(i_f\)). In the course's example that is 10% − 0.1% = 9.9%.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ R = (i_h - i_f) + \color{#fbbf24}{s} \]</div>
+      <p>Add the spot move \(s\): the percentage change in the high-yielder, measured in the funding currency. Nobody pays you for this term. It can be positive or negative, and in a crisis it is the term that dominates.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ R_{\text{equity}} = \color{#fbbf24}{L}\,\big[(i_h - i_f) + s\big] \]</div>
+      <p>Leverage \(L\) multiplies both terms. At 5× a 9.9% differential becomes 49.5% of equity, and so does a 10% spot loss become 50%.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ s^{*} = \color{#10b981}{-(i_h - i_f)} \]</div>
+      <p>Set \(R = 0\) and solve: the break-even spot move is minus the differential. A fall in the high-yielder bigger than the gap, in one year, loses money before costs.</p>
+    </div>
+  </div>
+
+  <div class="tl-math">\[ \text{Carry Return} = \text{Interest Rate Differential} - \text{Hedging Cost} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Interest Rate Differential</code><span>the yield gap you collect by holding the high-yielder</span></div>
+    <div class="tl-eq-chip c4"><code>Hedging Cost</code><span>what you give up, or lose to spot moves, protecting the position</span></div>
+  </div>
+  <p>
+    In practice the return has three components: the interest differential, the spot return, and the <strong>roll yield</strong> (forward points). In calm markets the differential dominates and the yield is steady; in volatile markets spot dominates and can overwhelm years of carry in days.
+  </p>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">\(i_h - i_f\)</div><div class="tl-fp-name">The pay</div><div class="tl-fp-desc">Interest differential: small, steady, earned every day</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">\(s\)</div><div class="tl-fp-name">The risk</div><div class="tl-fp-desc">Spot move: unpaid, either sign, fat-tailed in a crisis</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">\(L\)</div><div class="tl-fp-name">The amplifier</div><div class="tl-fp-desc">Leverage: scales both, and decides whether a loss is survivable</div></div>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(i_h,\ i_f\)</td><td>Interest rates (per year) on the high-yielding investment currency and the low-yielding funding currency.</td></tr>
+    <tr><td>\(s\)</td><td>Spot move of the investment currency over the holding period, in percent, measured in the funding currency. Negative means the high-yielder fell.</td></tr>
+    <tr><td>\(L\)</td><td>Leverage: position size divided by your equity.</td></tr>
+    <tr><td>\(s^{*}\)</td><td>The break-even spot move, \(-(i_h-i_f)\).</td></tr>
+  </table></div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You borrow a friend's sweets that cost almost nothing to borrow, and swap them for a different kind that pays you a few extra sweets every month. Most months that is free sweets. But if the price of the new kind suddenly drops, you owe your friend the original sweets back and you no longer have enough. Borrowing five times as many sweets makes the free ones five times bigger, and the sudden drop five times worse.</p>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Carry explorer: one year of carry against one spot move</div>
+    <svg viewBox="0 0 640 310" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of the one-year profit or loss of a carry trade, as a percentage of equity, against the move in the spot exchange rate of the high-yield currency. The line rises one-for-one with leverage, starts below zero when the spot move is more negative than the interest differential, and crosses zero at the break-even spot move.">
+      <defs><clipPath id="cy-clip"><rect x="70" y="30" width="540" height="240"/></clipPath></defs>
+      <rect x="70" y="30" width="540" height="240" style="fill:none;stroke:var(--border)"/>
+      <line x1="70" y1="150" x2="610" y2="150" style="stroke:var(--border2)"/>
+      <line x1="455.7" y1="30" x2="455.7" y2="270" style="stroke:var(--border2);stroke-dasharray:2,3"/>
+      <line x1="70.0" y1="270" x2="70.0" y2="274" style="stroke:var(--border2)"/><text x="70.0" y="288" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−25</text><line x1="147.1" y1="270" x2="147.1" y2="274" style="stroke:var(--border2)"/><text x="147.1" y="288" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−20</text><line x1="224.3" y1="270" x2="224.3" y2="274" style="stroke:var(--border2)"/><text x="224.3" y="288" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−15</text><line x1="301.4" y1="270" x2="301.4" y2="274" style="stroke:var(--border2)"/><text x="301.4" y="288" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−10</text><line x1="378.6" y1="270" x2="378.6" y2="274" style="stroke:var(--border2)"/><text x="378.6" y="288" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−5</text><line x1="455.7" y1="270" x2="455.7" y2="274" style="stroke:var(--border2)"/><text x="455.7" y="288" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0</text><line x1="532.9" y1="270" x2="532.9" y2="274" style="stroke:var(--border2)"/><text x="532.9" y="288" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">5</text><line x1="610.0" y1="270" x2="610.0" y2="274" style="stroke:var(--border2)"/><text x="610.0" y="288" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">10</text><text x="64" y="273" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−60</text><text x="64" y="233" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−40</text><text x="64" y="193" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−20</text><text x="64" y="153" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0</text><text x="64" y="113" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">+20</text><text x="64" y="73" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">+40</text><text x="64" y="33" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">+60</text>
+      <line id="cy-be" x1="303.0" y1="30" x2="303.0" y2="270" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:5,4"/>
+      <text id="cy-be-t" x="303.0" y="24" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--amber)">break-even −9.9%</text>
+      <g clip-path="url(#cy-clip)"><line id="cy-line" x1="70.0" y1="180.2" x2="610.0" y2="110.2" style="stroke:var(--purple);stroke-width:3;stroke-linecap:round"/></g>
+      <circle id="cy-dot" cx="301.4" cy="150.2" r="7" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+      <text x="340" y="304" text-anchor="middle" font-size="11" style="fill:var(--text3);font-family:'DM Mono',monospace">spot move of the high-yield currency over the year, %</text>
+      <text x="22" y="150" text-anchor="middle" transform="rotate(-90 22 150)" font-size="11" style="fill:var(--text3);font-family:'DM Mono',monospace">P&amp;L on equity, % (clipped at 60)</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Rate differential \(i_h - i_f\), % a year</span><span class="tl-live" id="cy-dval">9.9%</span></div>
+        <input type="range" id="cy-d" min="0" max="12" step="0.1" value="9.9">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Leverage \(L\)</span><span class="tl-live" id="cy-Lval">1×</span></div>
+        <input type="range" id="cy-L" min="1" max="10" step="1" value="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spot move of the high-yielder over the year</span><span class="tl-live" id="cy-sval">−10.0%</span></div>
+        <input type="range" id="cy-s" min="-25" max="10" step="0.5" value="-10">
+      </div>
+    </div>
+    <div class="tl-readout">Carry earned = <b id="cy-carry">+9.90%</b> · Spot P&amp;L = <b id="cy-spot">−10.00%</b> · <strong>Net on equity = <b id="cy-total">−0.10%</b></strong></div>
+    <div class="tl-readout">Break-even spot move = <b id="cy-bev">−9.9%</b> · This move erases <b id="cy-years">1.01 years</b> of carry</div>
+    <div class="tl-hint" id="cy-verdict">The spot move has eaten the carry: the position is behind.</div>
+    <div class="tl-chart-caption">The line is \(L\,[(i_h-i_f)+s]\) before transaction costs and margin interest. It starts on the course's JPY/MXN numbers (differential 9.9%, no leverage, a 10% peso fall). Raise the leverage and the line steepens through the break-even point: the same gap pays more in calm and the same crash costs more in stress. Slide the spot move to the right of the dashed line and every year looks easy, which is exactly why carry attracts leverage.</div>
+  </div>
+  <script>(function(){
+  var ds = document.getElementById('cy-d'); if (!ds) return;
+  var ls = document.getElementById('cy-L'), ss = document.getElementById('cy-s');
+  var line = document.getElementById('cy-line'), dot = document.getElementById('cy-dot'), be = document.getElementById('cy-be'), bet = document.getElementById('cy-be-t');
+  var o = {}; ['carry','spot','total','years','bev','dval','Lval','sval','verdict'].forEach(function(k){ o[k] = document.getElementById('cy-' + k); });
+  function xAt(s){ return 70 + (s + 25) / 35 * 540; }
+  function yAt(v){ return 150 - 2 * v; }
+  function pct(v, p){ var t = Math.abs(v).toFixed(p), e = 0.5 * Math.pow(10, -p); return (v < -e ? '−' : (v > e ? '+' : '')) + t + '%'; }
+  function update(){
+    var d = parseFloat(ds.value), L = parseFloat(ls.value), s = parseFloat(ss.value);
+    var tot = L * (d + s);
+    line.setAttribute('x1', xAt(-25).toFixed(1)); line.setAttribute('y1', yAt(L * (d - 25)).toFixed(1));
+    line.setAttribute('x2', xAt(10).toFixed(1)); line.setAttribute('y2', yAt(L * (d + 10)).toFixed(1));
+    var bx = xAt(-d).toFixed(1);
+    be.setAttribute('x1', bx); be.setAttribute('x2', bx); bet.setAttribute('x', bx);
+    bet.textContent = 'break-even ' + pct(-d, 1);
+    dot.setAttribute('cx', xAt(s).toFixed(1)); dot.setAttribute('cy', yAt(Math.max(-60, Math.min(60, tot))).toFixed(1));
+    o.carry.textContent = pct(L * d, 2); o.spot.textContent = pct(L * s, 2); o.total.textContent = pct(tot, 2);
+    o.years.textContent = (s < 0 && d > 0.05) ? (Math.abs(s) / d).toFixed(2) + ' years' : (s >= 0 ? 'none (spot gain)' : 'no carry to erase');
+    o.bev.textContent = pct(-d, 1);
+    o.dval.textContent = d.toFixed(1) + '%'; o.Lval.textContent = L.toFixed(0) + '×'; o.sval.textContent = pct(s, 1);
+    o.verdict.textContent = tot <= -100 ? 'The loss is larger than the whole equity: a margin call would end this long before the year does.' : (tot >= 0 ? 'The carry outweighs the spot move: the position is ahead.' : 'The spot move has eaten the carry: the position is behind.');
+  }
+  [ds, ls, ss].forEach(function(e){ e.addEventListener('input', update); }); update();
+})();</script>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The course's JPY/MXN trade, worked through</h3>
+    <div class="tl-predict" data-answer="9.9" data-tol="0.2" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> You borrow yen at 0.1% and hold pesos at 10%, unlevered. How big a peso fall over the year just cancels the carry? Lock in a guess before reading on.</div>
+      <div class="tl-predict-reveal"><p><strong>9.9%.</strong> The break-even spot move is minus the differential: \(10\% - 0.1\% = 9.9\%\). A 10% peso fall therefore leaves you at \(9.9 - 10 = -0.1\%\), a year of risk for nothing. The next step is what happens when you lever it.</p></div>
+    </div>
+    <p>Differential \(= 10\% - 0.1\% = 9.9\%\). With no leverage and a 10% peso fall:</p>
+    <div class="tl-math">\[ R = 1 \times (9.9\% - 10\%) = -0.1\% \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>9.9%</code><span>the year of carry collected</span></div>
+      <div class="tl-eq-chip c2"><code>−10%</code><span>the spot loss, same size as the carry</span></div>
+      <div class="tl-eq-chip c4"><code>−0.1%</code><span>the net: a whole year's yield erased by one move</span></div>
+    </div>
+    <p>Now run it at \(L = 5\). Carry becomes \(5 \times 9.9\% = +49.5\%\) of equity, the 10% fall costs \(5 \times 10\% = -50.0\%\), and the net is \(-0.5\%\). In a harsher 15% fall the net is \(5\times(9.9-15) = -25.5\%\). The same trade that looked like a steady 49.5% a year loses a quarter of the equity in one move, and the spot loss alone is half of it.</p>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Net return on equity \(= L\,[(i_h - i_f) + s]\). Type percentages as plain numbers (4.5, not 4.5%).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Borrow CHF at 1.0%, invest in AUD at 4.5%: the differential is 3.5%. Leverage \(L = 3\), and AUD falls 2% against CHF. Net on equity \(= 3\times(3.5 - 2) =\) <span class="tl-blank" data-answer="4.5" data-tol="0.05" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Borrow JPY at 0.5%, invest in NZD at 5.5%. The differential is <span class="tl-blank" data-answer="5" data-tol="0.05" data-unit="%"></span>. With \(L = 4\) and NZD down 8%, net on equity \(=\) <span class="tl-blank" data-answer="-12" data-tol="0.1" data-unit="%"></span>, and that 8% fall erases <span class="tl-blank" data-answer="1.6" data-tol="0.02"></span> years of carry.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Borrow EUR at 2.0%, invest in MXN at 9.0%, \(L = 6\), MXN down 12%. Differential <span class="tl-blank" data-answer="7" data-tol="0.05" data-unit="%"></span>; net on equity <span class="tl-blank" data-answer="-30" data-tol="0.1" data-unit="%"></span>; break-even spot move <span class="tl-blank" data-answer="-7" data-tol="0.05" data-unit="%"></span>.</p>
+    </div>
+  </div>
+
+  <h3>Why carry works, usually</h3>
+  <p>
+    In theory the high-yielder should depreciate by the rate gap, so that the carry is exactly offset (<strong>uncovered interest parity</strong>):
+  </p>
+  <div class="tl-math">\[ \mathbb{E}[s] = -(i_h - i_f) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>E[s]</code><span>the spot move you should expect if markets offered no free lunch</span></div>
+    <div class="tl-eq-chip c2"><code>−(i_h − i_f)</code><span>minus the rate gap: the high-yielder falls just enough to cancel the extra interest</span></div>
+  </div>
+  <p>
+    In practice it often does not, at least not immediately, for three reasons the course gives: a <strong>risk premium</strong> (carry compensates real risk), <strong>momentum</strong> (flows toward yield strengthen the high-yielder further) and <strong>slow adjustment</strong>. The historical studies show positive long-run returns with significant crisis drawdowns, which is the shape you would expect from a premium for bearing crash risk.
+  </p>
+  <div class="tl-table"><table>
+    <tr><th>Role</th><th>Currencies</th><th>Why</th></tr>
+    <tr><td>Funding (borrow)</td><td>JPY, CHF, EUR (historically)</td><td>Low/negative rates; stable economies</td></tr>
+    <tr><td>Investment (buy)</td><td>AUD, NZD, EM</td><td>High rates; commodity exposure</td></tr>
+  </table></div>
+  <p>
+    <strong>The JPY carry trade:</strong> decades of near-zero rates made the yen the world's favourite funding currency, with trillions of carry positions built on borrowed yen. That is why the yen moves violently in risk-off: the same positions are being closed at once.
+  </p>
+
+  <h3>Anatomy of a carry unwind</h3>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>1 · Trigger</b>Risk-off shock, vol spike, or an unexpected policy shift</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>2 · First selling</b>Some carry traders close, selling the high-yielders</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>3 · Spot turns</b>High-yielders weaken; funding currencies (JPY) strengthen</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>4 · Stops hit</b>More forced exits: selling begets selling</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>5 · Cascade</b>JPY can rally 5–10% in days; years of carry wiped out</div>
+  </div>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Reflexivity</div>
+    <p style="margin-bottom:0">Yen strength hits stops, which forces more yen buying, which makes the yen stronger still. The funding currency being bought back is the thing the position is short, so the unwind feeds itself. This is why yen moves are explosive in risk-off.</p>
+  </div>
+
+  <h3>Monitoring carry</h3>
+  <ul>
+    <li><strong>JPY in risk-off:</strong> a sharp JPY rally means carry is unwinding, so be cautious about all risk.</li>
+    <li><strong>COT positioning:</strong> extreme short JPY means crowded carry.</li>
+    <li><strong>Volatility:</strong> carry works in low vol; rising FX vol is a headwind.</li>
+    <li><strong>Differential narrowing</strong> (for example Fed cuts) makes carry less attractive.</li>
+  </ul>
+
+  <h3>It actually happened: 5 August 2024, the yen carry unwind</h3>
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>A weak-yen trade, a Bank of Japan hike and a bad jobs report</h3>
+    <p>
+      By early July 2024 USD/JPY had climbed to about 162, the weakest the yen had been against the dollar since 1986, with Japan's policy rate near zero against a US policy rate of 5.25–5.50%. That is a textbook carry set-up, and it had already drawn Japanese Ministry of Finance intervention in late April and early May and again on 11 and 12 July.
+    </p>
+    <p>
+      On 31 July the Bank of Japan raised its policy rate to about 0.25% and signalled that more could follow. On Friday 2 August the US payrolls report came in at 114,000 with unemployment at 4.3%, much weaker than expected, and the Sahm-rule recession indicator triggered. The yen strengthened sharply. On Monday 5 August USD/JPY traded below 142, the Nikkei 225 fell 12.4% (its worst day since October 1987), and the VIX spiked above 65 intraday before closing near 38.6. The next day the Nikkei rebounded about 10%, and on 7 August a Bank of Japan deputy governor said the bank would not raise rates while markets were unstable.
+    </p>
+    <p style="margin-bottom:0">
+      How much of the move was carry unwinding, as opposed to other leveraged positions being cut in thin August liquidity, is debated. What is not debated is the shape: USD/JPY falling about 12% from its peak in a month, risk assets selling at the same time, and the whole thing reversing partly within days. Core market figures here are widely reported; check them against your own data vendor before relying on them for anything but the story.
+    </p>
+  </div>
+  <div class="tl-chain">
+    <div class="tl-chain-link"><b>Setup</b>Yen at ~162, near-zero Japanese rates, big carry positions</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link shock"><b>Triggers</b>BoJ hike (31 Jul), weak US jobs (2 Aug)</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · the unwind</b>Spot turns, stops hit, funding currency bought back</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>5 Aug</b>USD/JPY &lt; 142, Nikkei −12.4%, VIX &gt; 65 intraday</div>
+  </div>
+  <p>The starred link is the mechanism of this section: a differential that was narrowing (a BoJ hike, expected US cuts) removed the pay, and the spot move arrived as a lump.</p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>"Carry compensates a risk premium" is true on average and silent about your path</h3>
+    <p style="margin-bottom:0">
+      Long-run carry returns can be positive and still end an account that was levered on the calm years, because the crash does not wait for the average to arrive. The same logic as sizing against a calm-sample volatility applies: a leverage that looks conservative at the quiet-year variance can sit far above the growth-optimal size at the crisis variance. The course's own reading rule is the practical one: treat a sharp yen rally in a risk-off as a mechanical unwind signal, not a rate-based forecast to fight.
+    </p>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict context" data-evidence="yen-into-yields" data-evidence-date="2026-09-18">
+    <span class="tl-verdict-tag">Desk data: base rate</span>
+    <span><strong>The carry-unwind shape (yen firming while US yields rise) is too rare to score.</strong> There were <strong>35 episodes in 18 years</strong>, too few to score; five sessions later USD/JPY was higher 47% of the time, EUR/JPY 62%, AUD/JPY 47%. The shape can be described; nothing can be claimed about the week after.</span>
+  </div>
+  <div class="tl-verdict underpowered" data-evidence="fx-factor-book-v2" data-evidence-date="2026-09-27">
+    <span class="tl-verdict-tag">Desk test: too small to tell</span>
+    <span><strong>The desk's G10 carry basket, and overlays such as a risk-off gate on carry.</strong> Out of sample (5.7 years, 7 USD crosses) the carry basket shows a Sharpe of +0.61, about 1.5 standard errors (the standard error of a Sharpe ratio on that sample is 0.41) and sitting in the 2021–26 rate-divergence era; in-sample it was −0.12. None of the overlay variants could be told apart from noise, and the risk-off gate ran with a design flaw, so the idea was not tested as meant. Do not cite the basket's out-of-sample Sharpe as an edge.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Cross-currency basis: reading dollar funding stress (advanced)</h2>
+  <p>
+    The basis answers a different question from carry: not "which currency pays more?" but "what does it cost a non-US bank to get dollars?". It is the cleanest gauge of dollar scarcity, and it lives in the swap market, the largest segment of FX.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Two ways to turn euros into dollars-for-a-quarter should cost the same</h3>
+    <p>
+      A European bank can get dollars for three months in two ways. It can borrow them directly, or it can lend euros, swap them into dollars on the spot market, and agree today to swap back at a set forward rate. If the two routes cost different amounts, someone could borrow cheap and lend dear and pocket a free profit, so the forward rate should be set to make them equal. That is <strong>covered interest parity (CIP)</strong>. The <strong>basis</strong> is how far the real market deviates from it. When everyone suddenly wants dollars, the swap route gets more expensive than CIP says, the basis goes negative, and that negative number is a price of dollar scarcity.
+    </p>
+  </div>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the forward rate and the basis come from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Route A (EUR):}\quad 1 + \color{#fbbf24}{i_{EUR}\,T} \]</div>
+      <p>A euro holder who just deposits the euro gets \(1 + i_{EUR}T\) euros back after time \(T\) (a fraction of a year).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Route B (via USD):}\quad \frac{S\,(1 + \color{#fbbf24}{i_{USD}\,T})}{F} \]</div>
+      <p>Or convert the euro to \(S\) dollars at spot, earn the dollar rate, and convert back at the forward \(F\) agreed today.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ F = S\,\frac{1 + i_{USD}T}{1 + i_{EUR}T} \quad\Rightarrow\quad \text{Forward Premium} \approx \color{#10b981}{\text{Interest Rate Differential}} \]</div>
+      <p>No free lunch means the two routes pay the same. Solve for \(F\): the forward premium or discount equals the rate differential. This is covered interest parity.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ F_x = S\,\frac{1 + i_{USD}T}{1 + (i_{EUR} + \color{#fbbf24}{x})\,T} \]</div>
+      <p>The basis \(x\) (in basis points per year, negative when dollars are scarce) is the shortfall in what the euro leg earns through the swap route. Route B pays less than route A by \(|x|\) a year, so the forward must be higher than CIP says.</p>
+    </div>
+  </div>
+
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>S</code><span>spot rate (USD per EUR)</span></div>
+    <div class="tl-eq-chip c2"><code>F</code><span>forward rate for time T that CIP predicts</span></div>
+    <div class="tl-eq-chip c3"><code>x</code><span>the basis, in bps a year; negative means non-US entities pay a premium for dollars</span></div>
+    <div class="tl-eq-chip c4"><code>T</code><span>time to maturity as a fraction of a year (a quarter is 0.25)</span></div>
+  </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">Two routes, one price, until dollars get scarce</div>
+    <svg viewBox="0 0 620 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two routes from a euro today to euros in a quarter. The direct route deposits the euro at the euro rate. The swap route converts to dollars at spot, earns the dollar rate, and converts back at the forward rate. Covered interest parity says the two end in the same place. The basis is the gap when the swap route ends up with less, which happens when dollars are scarce.">
+      <text class="tlp-text3" x="10" y="22" font-size="11">Start: 1 euro</text>
+      <rect class="tlp-box blue" x="10" y="34" width="560" height="44" rx="6"/>
+      <text class="tlp-blue" x="24" y="52" font-size="12" font-weight="700">Route A</text>
+      <text class="tlp-text2" x="24" y="68" font-size="11.5">Deposit the euro at the euro rate</text>
+      <text class="tlp-text" x="560" y="62" text-anchor="end" font-size="13" font-weight="700">1 + i_EUR · T</text>
+      <rect class="tlp-box amber" x="10" y="92" width="560" height="44" rx="6"/>
+      <text class="tlp-amber" x="24" y="110" font-size="12" font-weight="700">Route B</text>
+      <text class="tlp-text2" x="24" y="126" font-size="11.5">Swap into USD at spot, earn the USD rate, swap back at the forward</text>
+      <text class="tlp-text" x="560" y="120" text-anchor="end" font-size="13" font-weight="700">S (1 + i_USD · T) / F</text>
+      <text class="tlp-green" x="10" y="166" font-size="12.5" font-weight="700">CIP: A = B. No free lunch.</text>
+      <text class="tlp-red" x="10" y="186" font-size="12.5" font-weight="700">Basis x &lt; 0: B pays less than A, so dollars cost extra to obtain this way.</text>
+    </svg>
+    <figcaption>The basis is the price of the second route's shortfall. A rising dollar premium means more non-US institutions are paying up for dollars.</figcaption>
+  </figure>
+
+  <div class="tl-symbols"><table>
+    <tr><td>Negative basis</td><td>Obtaining dollars via FX swaps costs <strong>more</strong> than CIP predicts: non-US entities are paying a premium for dollar funding, which means dollar scarcity or stress. (An EUR/USD basis of −30 bps means European entities pay about 30 bps a year extra to swap euros into dollars.)</td></tr>
+    <tr><td>Positive basis</td><td>Rare, usually minor.</td></tr>
+  </table></div>
+
+  <p><strong>Why the basis exists at all:</strong> global dollar demand (trade, debt service, reserves); post-2008 bank balance-sheet regulation that limits arbitrage; quarter-end balance-sheet reduction (a seasonal widening, so do not overreact); and risk aversion blocking arbitrage in stress.</p>
+
+  <div class="tl-table"><table>
+    <tr><th>EUR/USD basis</th><th>Read</th></tr>
+    <tr><td>0 to −20 bps</td><td>Normal</td></tr>
+    <tr><td>−20 to −50 bps</td><td>Elevated: dollar demand pressure</td></tr>
+    <tr><td>−50 to −100 bps</td><td>Stressed: significant funding pressure</td></tr>
+    <tr><td>below −100 bps</td><td>Crisis: severe dollar shortage (2008 / 2020 style)</td></tr>
+  </table></div>
+  <p>The levels are rough guideposts for EUR/USD. <strong>Direction and speed matter more than levels</strong>, and the structure has evolved with regulation.</p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Basis stress gauge: level, zone, cost and one-day speed</div>
+    <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A horizontal gauge of the EUR/USD cross-currency basis in basis points, from zero on the left to minus 150 on the right. Four coloured zones mark normal, elevated, stressed and crisis levels. Two markers show where the basis is now and where it was yesterday, joined by a line whose length is the one-day move.">
+      <rect x="60.0" y="86" width="69.3" height="28" style="fill:var(--green-bg);stroke:var(--green-bd)"/><text x="94.7" y="104" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--text2)">Normal</text><rect x="129.3" y="86" width="104.0" height="28" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/><text x="181.3" y="104" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--text2)">Elevated</text><rect x="233.3" y="86" width="173.3" height="28" style="fill:var(--red-bg);stroke:var(--red-bd)"/><text x="320.0" y="104" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--text2)">Stressed</text><rect x="406.7" y="86" width="173.3" height="28" style="fill:var(--red-bg);stroke:var(--red)"/><text x="493.3" y="104" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--text2)">Crisis</text><line x1="60.0" y1="114" x2="60.0" y2="120" style="stroke:var(--text3)"/><text x="60.0" y="134" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0</text><line x1="129.3" y1="114" x2="129.3" y2="120" style="stroke:var(--text3)"/><text x="129.3" y="134" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−20</text><line x1="233.3" y1="114" x2="233.3" y2="120" style="stroke:var(--text3)"/><text x="233.3" y="134" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−50</text><line x1="406.7" y1="114" x2="406.7" y2="120" style="stroke:var(--text3)"/><text x="406.7" y="134" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−100</text><line x1="580.0" y1="114" x2="580.0" y2="120" style="stroke:var(--text3)"/><text x="580.0" y="134" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">−150</text>
+      <line id="bs-arrow" x1="87.7" y1="62" x2="164.0" y2="62" style="stroke:var(--amber);stroke-width:3"/>
+      <circle id="bs-prev" cx="87.7" cy="62" r="6" style="fill:var(--bg);stroke:var(--text2);stroke-width:2"/>
+      <circle id="bs-now" cx="164.0" cy="62" r="8" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+      <text id="bs-prev-t" x="87.7" y="46" text-anchor="middle" font-size="10.5" style="fill:var(--text3)">yesterday</text>
+      <text id="bs-now-t" x="164.0" y="30" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--amber)">now</text>
+      <text x="320" y="170" text-anchor="middle" font-size="11" style="fill:var(--text3);font-family:'DM Mono',monospace">EUR/USD cross-currency basis, bps (more negative = dollars scarcer offshore)</text>
+      <text x="320" y="192" text-anchor="middle" font-size="10.5" style="fill:var(--text3)">Guideposts are the course's rough EUR/USD levels; direction and speed matter more than level.</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>EUR/USD basis today</span><span class="tl-live" id="bs-xval">−30 bps</span></div>
+        <input type="range" id="bs-x" min="-150" max="0" step="1" value="-30">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>EUR/USD basis yesterday</span><span class="tl-live" id="bs-yval">−8 bps</span></div>
+        <input type="range" id="bs-y" min="-150" max="0" step="1" value="-8">
+      </div>
+    </div>
+    <div class="tl-readout">Zone: <b id="bs-zone">Elevated</b> · Extra annual cost of dollars via swaps: <b id="bs-cost">30 bps</b> · On $100m for 3 months: <b id="bs-usd">$75,000</b></div>
+    <div class="tl-readout">Spot 1.0850, USD 3m 5.00%, EUR 3m 3.50%. CIP forward = <b id="bs-fcip">1.08903</b> · Forward with the basis = <b id="bs-fb">1.08984</b> · Shift = <b id="bs-pips">+8.1 pips</b></div>
+    <div class="tl-readout">One-day move in the basis = <b id="bs-day">−22 bps</b> · <span id="bs-flag">At or past the 20 bps one-day flag: funding stress may be emerging, unless it is a quarter-end.</span></div>
+    <div class="tl-hint">Try moving "yesterday" close to "today": the level can look alarming while the one-day move is tiny, and the reverse. The course reads the speed (20 to 30 bps in a day) as the early signal and the level as the context. The rates and spot are fixed illustrative inputs; only the basis moves.</div>
+    <div class="tl-chart-caption">The forward shift is \(F_x - F\) in pips (1 pip = 0.0001), computed from the formula above with a quarter-year tenor. The $ cost is \(\$100\text{m} \times |x| \times 0.25\).</div>
+  </div>
+  <script>(function(){
+  var xs = document.getElementById('bs-x'); if (!xs) return;
+  var ys = document.getElementById('bs-y');
+  var now = document.getElementById('bs-now'), prev = document.getElementById('bs-prev'), arrow = document.getElementById('bs-arrow'), nowt = document.getElementById('bs-now-t'), prevt = document.getElementById('bs-prev-t');
+  var o = {}; ['xval','yval','zone','cost','usd','fcip','fb','pips','day','flag'].forEach(function(k){ o[k] = document.getElementById('bs-' + k); });
+  var S = 1.085, IU = 0.05, IE = 0.035, T = 0.25;
+  function xAt(b){ return 60 + (-b / 150) * 520; }
+  function fwd(b){ return S * (1 + IU * T) / (1 + (IE + b / 10000) * T); }
+  function zone(b){ return b >= -20 ? 'Normal' : (b >= -50 ? 'Elevated' : (b >= -100 ? 'Stressed' : 'Crisis')); }
+  function comma(n){ return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function sg(v, p, u){ var t = Math.abs(v).toFixed(p), e = 0.5 * Math.pow(10, -p); return (v < -e ? '−' : (v > e ? '+' : '')) + t + u; }
+  function bp(v){ return (v === 0 ? '0' : '−' + Math.abs(v)) + ' bps'; }
+  function update(){
+    var x = parseInt(xs.value, 10), y = parseInt(ys.value, 10), d = x - y;
+    now.setAttribute('cx', xAt(x).toFixed(1)); prev.setAttribute('cx', xAt(y).toFixed(1));
+    arrow.setAttribute('x1', xAt(y).toFixed(1)); arrow.setAttribute('x2', xAt(x).toFixed(1));
+    nowt.setAttribute('x', xAt(x).toFixed(1)); prevt.setAttribute('x', xAt(y).toFixed(1));
+    o.xval.textContent = bp(x); o.yval.textContent = bp(y); o.zone.textContent = zone(x);
+    o.cost.textContent = Math.abs(x) + ' bps';
+    o.usd.textContent = '$' + comma(100e6 * Math.abs(x) / 1e4 * T);
+    o.fcip.textContent = fwd(0).toFixed(5); o.fb.textContent = fwd(x).toFixed(5);
+    o.pips.textContent = sg((fwd(x) - fwd(0)) * 1e4, 1, ' pips');
+    o.day.textContent = sg(d, 0, ' bps');
+    o.flag.textContent = d <= -20 ? 'At or past the 20 bps one-day flag: funding stress may be emerging, unless it is a quarter-end.' : 'Under the 20 bps one-day flag.';
+  }
+  xs.addEventListener('input', update); ys.addEventListener('input', update); update();
+})();</script>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine the whole world needs to borrow umbrellas (dollars) at once and there are not enough. The shop that lends umbrellas starts charging extra just to hand one over, even if you promise to return it. The "basis" is that extra charge. When the extra charge suddenly jumps, it is a sign that a lot of people are rushing for umbrellas because they think it is about to rain.</p>
+  </div>
+
+  <h3>It actually happened: March 2020, everyone needed dollars</h3>
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The dollar surged in the middle of a US-centred crisis</h3>
+    <p>
+      As the pandemic shock spread in March 2020, institutions around the world scrambled to raise dollars to meet dollar debts and margin calls. The dollar index rose from the mid-90s in early March to about 103 around 20 March, even though the United States was a pandemic epicentre. By the course's account the EUR/USD basis blew out from about −20 bps to beyond −100 bps in days, the crisis-zone reading in the table above.
+    </p>
+    <p>
+      The Federal Reserve responded. On 15 March, with the Bank of Canada, Bank of England, Bank of Japan, ECB and Swiss National Bank, it cut the price of its standing dollar swap lines and began weekly 84-day operations. On 19 March it opened temporary swap lines with nine more central banks (Australia, Brazil, Denmark, South Korea, Mexico, Norway, New Zealand, Singapore and Sweden). The basis then normalised quickly. The Fed had in effect backstopped global dollar funding.
+    </p>
+    <p style="margin-bottom:0">
+      <!-- DESK:START -->On the desk's own futures-implied build the March 2020 lows were −110 bps for EUR, −87 for GBP, −246 for JPY and −132 for CHF. <!-- DESK:END -->The lesson in the course's words: the basis warned of dollar stress before other indicators, and its normalisation showed that the intervention was working.
+    </p>
+  </div>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>Pandemic: global scramble for dollars</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · the basis</b>EUR/USD basis from −20 to beyond −100 bps in days</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Dollar surges</b>DXY to ~103 despite a US-centred crisis (right side of the smile)</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Backstop</b>Fed swap lines, 15 and 19 March; basis normalises</div>
+  </div>
+
+  <h3>Monitoring the basis</h3>
+  <ul>
+    <li>Track the <strong>EUR/USD and JPY/USD</strong> basis: the most liquid and watched.</li>
+    <li><strong>20–30 bps in a day</strong> means funding stress may be emerging.</li>
+    <li><strong>USD rallying with the basis blowing out</strong> is a funding squeeze, more concerning than rate-driven strength.</li>
+    <li>A Fed swap-line activation means expect normalisation.</li>
+    <li>Ignore the predictable <strong>quarter-end</strong> widenings.</li>
+  </ul>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="basis-stress-usd" data-evidence-date="2026-10-22">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>"A basis moving 20–30 bps in a day signals funding stress emerging", scored as dollar strength over the next 5 days.</strong> On the EUR and GBP basis built from CME futures, 1,830 days from 2016 to 2026: r +0.018 [−0.030, +0.071], inside the shift placebo, and only 5 days met the literal 20 bps threshold. The same-day correlation with the dollar was only +0.017. The yen and the franc were tested too and agree (see the ledger). A widening day was not an early warning of dollar strength.</span>
+  </div>
+  <div class="tl-verdict null" data-evidence="basis-stress-fxvol" data-evidence-date="2026-10-22">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>The same widening, scored as busier FX over the next 5 days.</strong> 1,835 days: r −0.003 [−0.036, +0.032], inside the placebo and inside the pre-set bar. No volatility warning from basis moves; do not widen FX ranges on a basis widening.</span>
+  </div>
+  <div class="tl-verdict validated" data-evidence="basis-yearend-premium" data-evidence-date="2026-10-22">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>"The basis widens at quarter-end", tested as the year-end turn against other quarter-ends.</strong> Dollars borrowed via EUR and GBP across 31 December cost −14.4 bps [−24.2, −4.8] more than across an ordinary quarter-end (10 year-ends against 32 other contracts, 2016–2026, Holm p 0.011), but the premium has shrunk: about −39 and −46 bps in 2017–18 and under −10 bps in 2024–26. A known calendar seasonal in funding cost; it says nothing about spot direction.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Central-bank FX intervention</h2>
+  <p>
+    Central banks step in when a currency move is "disorderly" or economically harmful. The most active interveners are the <strong>Bank of Japan / Ministry of Finance, the SNB and the PBoC</strong>; the Fed rarely intervenes. Intervention <strong>can work in the short term</strong>, especially against one-sided positioning, but <strong>it struggles against fundamentals in the long term</strong>.
+  </p>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The escalation ladder</div>
+    <svg viewBox="0 0 600 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A three-step staircase. Step one is verbal warnings, step two is rate checks, step three is actual intervention. A note says intervention can reverse positioning in the short term but cannot beat fundamentals such as a wide rate differential in the long term.">
+      <rect class="tlp-box blue" x="10" y="120" width="170" height="56" rx="6"/>
+      <text class="tlp-blue" x="95" y="144" text-anchor="middle" font-size="13" font-weight="700">1 · Verbal warnings</text>
+      <text class="tlp-text2" x="95" y="162" text-anchor="middle" font-size="11">"excessive moves"</text>
+      <rect class="tlp-box amber" x="215" y="80" width="170" height="96" rx="6"/>
+      <text class="tlp-amber" x="300" y="104" text-anchor="middle" font-size="13" font-weight="700">2 · Rate checks</text>
+      <text class="tlp-text2" x="300" y="122" text-anchor="middle" font-size="11">authorities ask dealers</text><text class="tlp-text2" x="300" y="137" text-anchor="middle" font-size="11">for prices: a signal</text>
+      <rect class="tlp-box red" x="420" y="30" width="170" height="146" rx="6"/>
+      <text class="tlp-red" x="505" y="54" text-anchor="middle" font-size="13" font-weight="700">3 · Intervention</text>
+      <text class="tlp-text2" x="505" y="76" text-anchor="middle" font-size="11">actual buying or selling</text>
+      <text class="tlp-green" x="505" y="104" text-anchor="middle" font-size="11" font-weight="700">short term: can work,</text><text class="tlp-green" x="505" y="119" text-anchor="middle" font-size="11" font-weight="700">esp. vs one-sided positioning</text>
+      <text class="tlp-red" x="505" y="146" text-anchor="middle" font-size="11" font-weight="700">long term: fundamentals win</text>
+      <line class="tlp-line" x1="180" y1="148" x2="213" y2="148"/><line class="tlp-line" x1="385" y1="128" x2="418" y2="128"/>
+    </svg>
+    <figcaption>The ladder is a signal in itself: each step shows how uncomfortable the authority is. Traders who know where it has acted before treat those levels as "lines in the sand".</figcaption>
+  </figure>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Intervention against the drift: how long does the gap last?</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Stylised chart of an exchange rate over 60 days. A dashed line shows where the rate would have gone with no intervention, rising at the fundamental drift. A solid line shows the rate after a one-off intervention drops it by a set amount: it then rises again at the same drift and, if the drift is upward, climbs back to the pre-intervention level after a computed number of days.">
+      <rect x="70" y="30" width="540" height="230" style="fill:none;stroke:var(--border)"/>
+      <line x1="70" y1="224.6" x2="610" y2="224.6" style="stroke:var(--border)"/><text x="64" y="227.6" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">130</text><line x1="70" y1="153.8" x2="610" y2="153.8" style="stroke:var(--border)"/><text x="64" y="156.8" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">150</text><line x1="70" y1="83.1" x2="610" y2="83.1" style="stroke:var(--border)"/><text x="64" y="86.1" text-anchor="end" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">170</text><text x="70.0" y="276" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">0</text><text x="250.0" y="276" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">20</text><text x="430.0" y="276" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">40</text><text x="610.0" y="276" text-anchor="middle" font-size="10" style="fill:var(--text3);font-family:'DM Mono',monospace">60</text>
+      <line x1="70" y1="153.8" x2="610" y2="153.8" style="stroke:var(--text3);stroke-dasharray:2,3"/>
+      <text x="606" y="148.8" text-anchor="end" font-size="10.5" style="fill:var(--text3)">pre-intervention level (150.0, illustrative)</text>
+      <line id="iv-no" x1="70" y1="153.8" x2="610" y2="100.8" style="stroke:var(--text3);stroke-width:2;stroke-dasharray:6,4"/>
+      <line id="iv-yes" x1="70" y1="171.5" x2="610" y2="118.5" style="stroke:var(--purple);stroke-width:3;stroke-linecap:round"/>
+      <circle id="iv-dot" cx="250.0" cy="153.8" r="6" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+      <text id="iv-dot-t" x="250.0" y="175.8" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--amber)">gap closed</text>
+      <text x="76" y="189.5" font-size="11" font-weight="700" style="fill:var(--purple)">with intervention</text>
+      <text x="76" y="44" font-size="11" style="fill:var(--text3)">dashed: no intervention</text>
+      <text x="340" y="294" text-anchor="middle" font-size="11" style="fill:var(--text3);font-family:'DM Mono',monospace">days after the intervention</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Size of the intervention move (yen on USD/JPY)</span><span class="tl-live" id="iv-Jval">5.0 yen</span></div>
+        <input type="range" id="iv-J" min="1" max="10" step="0.5" value="5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Fundamental drift: the daily pull of the rate differential</span><span class="tl-live" id="iv-dval">+0.25 yen/day</span></div>
+        <input type="range" id="iv-d" min="-30" max="50" step="5" value="25">
+      </div>
+    </div>
+    <div class="tl-readout">Days until the rate is back at the pre-intervention level = <b id="iv-days">20.0 days</b></div>
+    <div class="tl-readout">Level on day 60: with intervention = <b id="iv-d60">160.0</b> · without = <b id="iv-no60">165.0</b></div>
+    <div class="tl-hint">Push the drift to zero or negative: the gap never closes, because fundamentals moved with the authority. That is the course's resolution of Japan 2022–2024: the trend only reversed when US rate expectations shifted.</div>
+    <div class="tl-chart-caption">An <strong>illustrative model</strong> with a constant daily drift: after a one-off drop of \(J\) yen the rate resumes the same drift \(d\) from the lower level, so the time to recover the gap is \(J/d\) days. It has no real prices; the level 150 is arbitrary. Real intervention can also change positioning, which this deliberately leaves out.</div>
+  </div>
+  <script>(function(){
+  var js = document.getElementById('iv-J'); if (!js) return;
+  var ds = document.getElementById('iv-d');
+  var no = document.getElementById('iv-no'), yes = document.getElementById('iv-yes'), dot = document.getElementById('iv-dot'), dott = document.getElementById('iv-dot-t');
+  var o = {}; ['Jval','dval','days','d60','no60'].forEach(function(k){ o[k] = document.getElementById('iv-' + k); });
+  function xAt(t){ return 70 + 9 * t; }
+  function yAt(v){ return 260 - (v - 120) / 65 * 230; }
+  function sg(v, p){ var t = Math.abs(v).toFixed(p), e = 0.5 * Math.pow(10, -p); return (v < -e ? '−' : (v > e ? '+' : '')) + t; }
+  function update(){
+    var J = parseFloat(js.value), d = parseInt(ds.value, 10) / 100;
+    no.setAttribute('y2', yAt(150 + 60 * d).toFixed(1));
+    yes.setAttribute('y1', yAt(150 - J).toFixed(1)); yes.setAttribute('y2', yAt(150 - J + 60 * d).toFixed(1));
+    var ts = d > 0.0001 ? J / d : Infinity;
+    if (ts <= 60){
+      dot.setAttribute('visibility', 'visible'); dott.setAttribute('visibility', 'visible');
+      dot.setAttribute('cx', xAt(ts).toFixed(1)); dot.setAttribute('cy', yAt(150).toFixed(1));
+      dott.setAttribute('x', xAt(ts).toFixed(1)); dott.setAttribute('y', (yAt(150) + 22).toFixed(1));
+      o.days.textContent = ts.toFixed(1) + ' days';
+    } else {
+      dot.setAttribute('visibility', 'hidden'); dott.setAttribute('visibility', 'hidden');
+      o.days.textContent = d > 0.0001 ? 'more than 60 days' : 'never: the drift runs the wrong way';
+    }
+    o.Jval.textContent = J.toFixed(1) + ' yen'; o.dval.textContent = sg(d, 2) + ' yen/day';
+    o.d60.textContent = (150 - J + 60 * d).toFixed(1); o.no60.textContent = (150 + 60 * d).toFixed(1);
+  }
+  js.addEventListener('input', update); ds.addEventListener('input', update); update();
+})();</script>
+
+  <h3>It actually happened: Japan 2022–2024, buying yen against a wide rate gap</h3>
+  <div class="tl-story" id="story-3">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Verbal warnings, rate checks, then actual intervention, and a trend that only turned with rates</h3>
+    <p>
+      On 22 September 2022 the Bank of Japan held its policy rate while other central banks tightened, USD/JPY touched about 145.9, and Japan's Ministry of Finance intervened for the first time since 1998. The rate fell roughly five yen within hours, to about 140. By 21 October it had climbed back to about 152, and the ministry intervened again, bringing the total for September and October 2022 to roughly ¥9.2 trillion (about $60 billion).
+    </p>
+    <p>
+      The pattern repeated in 2024. After USD/JPY reached about 160 on 29 April, the ministry spent roughly ¥9.8 trillion over the 26 April to 29 May window, with the operations on 29 April and 1 May, and a few weeks later spent about ¥5.5 trillion on 11 and 12 July. Each time the rate dropped several yen quickly; each time the pressure of the rate gap pulled it back toward the highs, and it printed about 162 on 3 July. The lasting reversal came only as US rate expectations fell and the Bank of Japan began to hike (Section 05).
+    </p>
+    <p style="margin-bottom:0">
+      The course's lesson: <strong>intervention slows moves and hurts speculators; it buys time but does not change fundamentals.</strong> The ministry's own published intervention data are the record of amounts and dates.
+    </p>
+  </div>
+  <div class="tl-chain">
+    <div class="tl-chain-link"><b>Pressure</b>Wide US–Japan rate gap, weak yen</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link shock"><b>Escalation</b>Warnings, rate checks, then intervention</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · the limit</b>A sharp drop of a few yen, then the gap pulls it back</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Resolution</b>Trend turns when US rate expectations shift</div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">The opposite case: when the authority stops</div>
+    <h3>Swiss National Bank, 15 January 2015</h3>
+    <p style="margin-bottom:0">
+      On 6 September 2011 the SNB set a floor of 1.20 on EUR/CHF and defended it with large purchases. On 15 January 2015 it abandoned the floor without warning, and cut its deposit rate further below zero the same day. EUR/CHF fell by about 30% at the low (to roughly 0.85) before settling near 1.04. Intervention that holds a level is a policy, and a policy can end; the move it was suppressing can then arrive in one step.
+    </p>
+  </div>
+
+  <h3>Trading around intervention</h3>
+  <ul>
+    <li>Know the "<strong>lines in the sand</strong>": levels where the authority intervened before.</li>
+    <li>Watch the verbal-escalation ladder.</li>
+    <li><strong>Respect the firepower short term</strong>: do not fight it.</li>
+    <li><strong>Do not overestimate it long term.</strong></li>
+    <li>Intervention-driven moves can provide entries <em>if fundamentals still favour the original direction</em>.</li>
+  </ul>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>That earlier intervention levels act as "lines in the sand", and that intervention-driven dips are entries, has not been tested on this desk.</strong>
+    <div class="tl-howtotest"><strong>How to test it:</strong> take the Ministry of Finance's published intervention dates and amounts, record USD/JPY at each, then compare the reaction when the rate later revisits those levels against matched placebo levels at the same distance, and the 5- and 20-day return after an intervention-day drop against matched drops with no intervention. Fix the horizons and the holdout in advance.</div></span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>FX for the non-FX trader</h2>
+  <p>
+    You do not need to trade currencies to use them. FX often moves before equities fully price information, and several of its patterns are early readings of risk.
+  </p>
+  <div class="tl-chain">
+    <div class="tl-chain-link"><b>Central-bank policy</b>Divergence in rates and guidance</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ FX · the transmission mechanism</b>Reprices first, in a deep and liquid market</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Global assets</b>Equities, credit, commodities follow</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Earnings</b>Dollar strength hurts US multinationals' foreign earnings, helps importers</div>
+  </div>
+
+  <h3>The FX signal table</h3>
+  <div class="tl-table"><table>
+    <tr><th>Signal</th><th>Watch</th><th>Implication</th></tr>
+    <tr><td>Risk-off warning</td><td>JPY strengthening sharply, especially vs AUD</td><td>Carry unwinding; risk assets likely to follow</td></tr>
+    <tr><td>Dollar funding stress</td><td>Cross-currency basis widening rapidly</td><td>Global liquidity tightening; credit stress possible</td></tr>
+    <tr><td>EM contagion</td><td>Broad EM FX weakness, especially "fragile" currencies</td><td>Risk-off spreading; may hit DM</td></tr>
+    <tr><td>China sentiment</td><td>AUD weakness, CNY fixing surprises</td><td>Growth concerns; commodities and EM exposed</td></tr>
+    <tr><td>Rate expectations</td><td>Differential moves vs FX moves</td><td>FX not following rates means something else is driving</td></tr>
+    <tr><td>Dollar regime</td><td>DXY direction + Dollar-Smile position</td><td>Strong USD is a headwind for US multinational earnings, EM and commodities</td></tr>
+  </table></div>
+
+  <h3>The daily FX scan (five minutes)</h3>
+  <ol>
+    <li><strong>DXY</strong> direction: strengthening or weakening, and why?</li>
+    <li><strong>USD/JPY:</strong> JPY strength is a risk-off signal.</li>
+    <li><strong>EUR/USD:</strong> dollar strength against developed markets.</li>
+    <li><strong>AUD/USD:</strong> risk sentiment and the China proxy.</li>
+    <li><strong>EM FX:</strong> broad weakness or specific stress?</li>
+    <li><strong>Cross-currency basis:</strong> any blowout (if accessible)?</li>
+  </ol>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>FX is a smoke alarm for the rest of the market. The yen jumping, the emerging-market currencies dropping, and the dollar-borrowing charge leaping are like the alarm chirping before you can see the fire. It does not tell you how big the fire is, and sometimes the alarm is just burnt toast, but it is worth checking the kitchen.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Where the textbook version breaks</h2>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Five ways this framework misleads</h3>
+    <p><strong>Treating regime-varying relationships as constants.</strong> The course itself flags that FX relationships are well-established but regime-varying. A haven that stops behaving like one (or a pair whose rate sensitivity flips) is a regime change, not a data error.</p>
+    <p><strong>Reading "a strong dollar" as one thing.</strong> Left-side strength and right-side strength have opposite implications for risk assets. Always ask why.</p>
+    <p><strong>Using the basis guideposts as fixed thresholds.</strong> They are rough EUR/USD levels from a particular regulatory era, the structure has evolved, and quarter-ends widen the basis by design.</p>
+    <p><strong>Sizing carry on calm-sample volatility.</strong> The same arithmetic as the explorer above: a leverage that looks tame at quiet-year variance can be far above the survivable size at crisis variance.</p>
+    <p style="margin-bottom:0"><strong>Fighting the firepower, or trusting it forever.</strong> Intervention is real short-term firepower and no long-term anchor. The failure modes are on both sides of the line.</p>
+  </div>
+
+  <div class="tl-drill" data-date="2024-08-02">
+    <div class="tl-drill-label">Scenario drill · Friday 2 August 2024</div>
+    <h3>The yen is rallying and the jobs report was weak. You are levered carry.</h3>
+    <p>You run a carry basket: short yen as the funding leg, long AUD and MXN against it, at about 5× your equity. USD/JPY was near 162 at the start of July and is now about 147. The Bank of Japan raised rates two days ago. The US payrolls report out this morning was much weaker than expected and unemployment rose to 4.3%. The VIX is around 23. Markets are about to close for the weekend. What do you do with the size?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold. The rate gap still favours carry, and a 9% yen move is just a pullback.<div class="tl-drill-why">At 5× a further 10% spot fall costs about 50% of equity, which is five times the 9.9% of a year of carry in the lesson's example. The differential is also narrowing (a BoJ hike, US cuts being priced). "Still favours carry" is exactly what is true right up until the unwind.</div></li>
+      <li data-verdict="bad">Add. The yen's rise looks overdone, so buy the dip in carry.<div class="tl-drill-why">Averaging into a funding-currency rally while the trigger is live is the unwind's reflexive step in reverse: you would be adding size just as stops start to be hit. The explorer shows the loss scales with leverage.</div></li>
+      <li data-verdict="good">Cut the leverage to a size where a further 10% adverse gap would be survivable, and accept the cost now.<div class="tl-drill-why">This is the arithmetic of the explorer. At 5× a 10% fall is −50% of equity; at 2× it is −20%. Over a weekend you cannot exit at your stop, so the survivable size is the size you hold when the gap arrives. Cutting early does cost the carry you would have earned and, as it turned out, gave up some of the rebound.</div></li>
+      <li data-verdict="ok">Keep the size but set a tighter stop for Monday.<div class="tl-drill-why">A stop is not a guarantee in a fast, gapping market: it fills at the next available price. A tighter stop makes sense as one layer, but it does not change the size you are carrying into a weekend with this trigger live.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Monday 5 August USD/JPY traded below 142, the Nikkei 225 fell 12.4% and the VIX spiked above 65 intraday before closing near 38.6. The next day the Nikkei rebounded about 10%, and on 7 August a Bank of Japan deputy governor said the bank would not raise rates while markets were unstable. Cutting on Friday would have given up some of that rebound and would have survived Monday; the lesson is about the size you can hold through the gap, not about predicting the low.</p><p class="tl-drill-sources">Sources: <a href="https://www.bls.gov/news.release/archives/empsit_08022024.htm">US Bureau of Labor Statistics, The Employment Situation, July 2024 (released 2 August 2024)</a>; <a href="https://www.boj.or.jp/en/">Bank of Japan, Statement on Monetary Policy, 31 July 2024</a>; <a href="https://www.cboe.com/tradable_products/vix/vix_historical_data/">Cboe, VIX historical data</a>; <a href="https://www.jpx.co.jp/english/">Japan Exchange Group, Nikkei 225 daily closes</a>.</p></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 10</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>FX is the transmission mechanism.</strong> Policy divergence flows through currencies to global assets, often before equities price it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Rate differentials dominate the medium term</strong> (weeks to months), but <strong>risk sentiment overrides in stress</strong>.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Dollar Smile:</strong> strong at both extremes, weak in synchronised growth. Know the regime, and ask why the dollar is strong.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Cross-currency basis equals funding stress.</strong> A fast widening of a negative basis marks dollar scarcity; speed matters more than level.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>EM FX is the canary:</strong> it often leads broader risk moves. Use FX to confirm equity views; a divergence between FX and equities is a warning.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Intervention has limits.</strong> It slows a move and hurts speculators, but cannot fight fundamentals forever. The basis guideposts and the "50–80%" differential figure are ranges, not laws.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Carry works until it doesn't.</strong> Unwinds are violent and reflexive; JPY strength in a risk-off is the unwind signal. Leverage turns a year of yield into one move's loss.<!-- DESK:START --> The carry basket's out-of-sample record here is too small to tell.<!-- DESK:END --></span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 11</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. The yen rallies hard on a day described as "risk-off", even though Japanese rates are far below US rates. Does the rate-differential view fail? What does the move signal?</summary>
+    <div class="tl-answer">
+      No, the differential view is overridden, not wrong. In stress, haven flows and carry unwinds dominate: the yen is the world's favourite funding currency, so fear forces holders to buy it back to close carry trades, and the rate disadvantage is irrelevant for the duration of the panic. A sharp yen rally in a risk-off is therefore a mechanical unwind signal, and a reason for caution on all risk. Once the panic subsides, fundamentals reassert.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. The dollar index is up 5% this month. What is the first question to ask, and why does the answer matter?</summary>
+    <div class="tl-answer">
+      Why is it strong? On the left of the smile (US growth ahead, a hawkish Fed, differentials favouring USD, as in 2022) a strong dollar pressures EM and exporters but can sit alongside a strong US economy. On the right (panic and flight to safety, as in March 2020) the dollar is rising because everything else is selling, and it is a negative for risk assets. The same chart means different things for other assets.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. You borrow JPY at 0.1% and hold MXN at 10%, leveraged 5×. The peso falls 10% over the year. What is the spot P&amp;L on equity, the carry, and the net? What fall would take the net to zero?</summary>
+    <div class="tl-answer">
+      Carry \(= 5\times 9.9\% = +49.5\%\), spot \(= 5\times(-10\%) = -50.0\%\), net \(= -0.5\%\). The net is zero at a spot move of \(-9.9\%\), the negative of the differential, whatever the leverage (leverage scales both sides equally, so it changes the size of the gain or loss, not the break-even). The sharp edge of leverage is that the loss is five times bigger on the way to a margin call.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. The EUR/USD basis goes from −8 bps to −30 bps in a day. The level is in the "elevated" band. What does the course read into the speed, and what would make you discount it?</summary>
+    <div class="tl-answer">
+      A 22 bps move in a day is in the 20–30 bps range the course reads as funding stress emerging, and an EUR/USD level of −30 is "elevated: dollar demand pressure". It is more worrying still if the dollar is rallying at the same time (a funding squeeze rather than rate-driven strength). Discount it if the date is a quarter-end, when the basis widens predictably as banks shrink balance sheets for reporting dates.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the intervention model, the ministry pushes the rate down 5 yen and the underlying drift is +0.25 yen per day. How long until the gap is closed, and what if the drift is zero or negative?</summary>
+    <div class="tl-answer">
+      Five yen at 0.25 yen a day is 20 days (\(J/d\)). If the drift is zero or negative the gap never closes, because fundamentals now point the same way as the intervention. This is the course's point: intervention buys time and can hurt speculators in the short run, but the trend reverses only when the rate-differential pull does. (The model is illustrative: it ignores any change in positioning that the intervention itself causes.)
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. AUD/USD rallies strongly on a day when headlines say markets are in a risk-off panic. What do you do with the narrative?</summary>
+    <div class="tl-answer">
+      Question it. AUD is a risk currency and a China-demand proxy, and it normally weakens in a real risk-off. A rally means either the day is not actually risk-off, or something specific (China stimulus, a commodity move) is overriding sentiment. Cross-check with the haven currencies (JPY, CHF), EM FX and the VIX before accepting the story.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Bank for International Settlements, <em>Triennial Central Bank Survey of foreign exchange and OTC derivatives markets</em> — the source of the daily-turnover and dollar-share figures; later surveys update them.</li>
+    <li>Craig Burnside, Martin Eichenbaum, Isaac Kleshchelski and Sergio Rebelo, <em>"Do Peso Problems Explain the Returns to the Carry Trade?"</em>, Review of Financial Studies, 2011 — why carry earns a premium and what the crash risk looks like.</li>
+    <li>Markus Brunnermeier, Stefan Nagel and Lasse Pedersen, <em>"Carry Trades and Currency Crashes"</em>, NBER Macroeconomics Annual, 2008 — carry, funding liquidity and sudden unwinds.</li>
+    <li>Wenxin Du, Alexander Tepper and Adrien Verdelhan, <em>"Deviations from Covered Interest Rate Parity"</em>, Journal of Finance, 2018 — the cross-currency basis, post-crisis.</li>
+    <li>Claudio Borio, Robert McCauley, Patrick McGuire and Vladyslav Sushko, <em>"Covered interest parity lost: understanding the cross-currency basis"</em>, BIS Quarterly Review, September 2016.</li>
+    <li>Eugene Fama, <em>"Forward and spot exchange rates"</em>, Journal of Monetary Economics, 1984 — the original statement of why uncovered interest parity fails in the data.</li>
+    <li>Christopher Neely, <em>"An analysis of recent studies of the effect of foreign exchange intervention"</em>, Federal Reserve Bank of St. Louis Review, 2005 — what the evidence says about intervention.</li>
+    <li>Federal Reserve Board press releases on dollar liquidity swap arrangements, 15 March and 19 March 2020; Swiss National Bank press release of 15 January 2015; Japan Ministry of Finance, foreign-exchange intervention operations data.</li>
+  </ul>
+  </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="qm-4-fixed-income.html">Quant &amp; Macro 4: Fixed Income Fundamentals</a> <span>· the yields behind the rate differential</span></li>
+        <li><a href="../../theory-lab/lessons/interest-rate-parity.html">Interest Rate Parity</a> <span>· the CIP and UIP identities in more depth</span></li>
+        <li><a href="../../theory-lab/lessons/central-bank-policy.html">Central Bank Policy</a> <span>· who sets the rates in the differential</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="qm-6-cross-asset.html">Quant &amp; Macro 6: Cross-Asset Synthesis</a> <span>· FX as one layer of the whole picture</span></li>
+        <li><a href="../../theory-lab/lessons/purchasing-power-parity.html">Purchasing Power Parity</a> <span>· the slow price anchor under exchange rates</span></li>
+        <li><a href="../../theory-lab/lessons/kelly-criterion.html">The Kelly Criterion &amp; Position Sizing</a> <span>· why carry leverage is sized on crisis variance</span></li>
+        <li><a href="../../theory-lab/lessons/extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> <span>· the fat left tail carry is short</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every cross-border position is a currency position, and the three stress mechanisms here (carry unwinds, dollar scarcity, intervention) are where currency risk stops being small.</p>
+  </nav>
+
+  <div class="tl-footer-nav">
+    <a href="qm-4-fixed-income.html">← Lesson 4: Fixed Income</a>
+    <a href="../hub.html">COG hub</a>
+    <a href="qm-6-cross-asset.html">Lesson 6: Cross-Asset Synthesis →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../../theory-lab/assets/progress.js?v=1" defer></script>
+<script src="../../theory-lab/assets/tts.js?v=6" defer></script>
+<script src="../../theory-lab/assets/vark.js?v=2" defer></script>
+<script src="../../theory-lab/assets/verdicts.js" defer></script>
+</body>
+</html>
