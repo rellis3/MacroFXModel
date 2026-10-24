@@ -260,4 +260,40 @@ a null isn't a surprise.
 
 ## Amendments
 
-(none yet)
+### A1 — 2026-10-24 — PRE-RESULTS for the new cells (P1–P10 results had been seen; none of these cells had been computed)
+
+The owner, after P1–P10: "Not just overcrowding but opposites too — this isn't about trading but research." The
+programme's question widens from "what does crowding with the trend mean" to **what each part of the positioning
+spectrum means**. Phase 4 (trading) stays in the report as secondary. These cells are added. They were defined
+before any of them was computed and use the same matching, outcomes, bootstrap and holdout as P1–P10.
+
+**Family 3 (spectrum, research).** Positioning is put in trend terms: `pos_t` = pct_share if trend_dir = +1, else
+100 − pct_share. So 100 = specs maximally positioned *with* the trend and 0 = maximally *against* it. Five bins:
+
+| Bin | pos_t | Reading |
+|---|---|---|
+| S0 | ≤ 10, sign agreeing (net against the trend) | **opposite extreme**: specs crowded against the trend |
+| S1 | 10–30 | leaning against |
+| S2 | 30–70 | neutral (reference) |
+| S3 | 70–90 | leaning with |
+| S4 | ≥ 90, sign agreeing | crowded with the trend (the P-family's group) |
+
+Bins S0, S1, S3, S4 are each compared with **S2 weeks** (instead of the P-family's s < 70 controls) matched on
+market × T3 × m4 × V3. Outcomes: r4, r12, big_adverse4, rv_ratio.
+
+| # | Cell | Gate |
+|---|---|---|
+| **S0-r12** | opposite extreme vs neutral, 12-wk continuation of the trend | as P1 (CI excludes 0 on holdout, discovery same sign, both halves, Holm within family 3, practical bar 0.20) |
+| **S0-adv** | opposite extreme vs neutral, P(2σ adverse within 4 wks) | as P2 (bar 0.05) |
+| **SLOPE-r12** | monotone dose: Spearman ρ between bin index (S0…S4) and the matched r12 effect across bins, by holdout market-block bootstrap; and S4 − S0 difference | S4 − S0 CI excludes 0 on holdout and discovery same sign; Holm within family 3 |
+| **SLOPE-adv** | same for big_adverse4 | same |
+| **ASYM** | crowded **long** vs crowded **short** (S4 rows split by crowd sign; the S0 split reported alongside): difference in r12 and big_adverse4 | CI excludes 0 on holdout, both halves, discovery same sign, Holm within family 3 |
+
+**Descriptive (BH q = 0.10, no gate):**
+- **Under-positioned strong trends:** T3 = top tercile and S2 (neutral) vs T3 = top and S3/S4.
+- **Commercials at their own extreme in trend terms:** comm_pct ≥ 90 / ≤ 10 in trend terms vs not.
+- **Low vs high open interest:** oi_pct ≤ 20 vs ≥ 80, within S4 and within S0.
+- **Trimmed books:** already run as the P-family mirror.
+
+**Family 3 Holm:** S0-r12, S0-adv, SLOPE-r12, SLOPE-adv, ASYM-r12, ASYM-adv (6 cells). Verdict words as §4.
+Script: `scripts/cot-crowding-programme/phase_spectrum.py` → `phase_spectrum_results.json`.
