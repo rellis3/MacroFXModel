@@ -1,0 +1,2 @@
+GBP_USD: dates 1512 with S 1499; basis median +2.3 pips, IQR [-0.4,+5.8], |b| p90 13.8; expiry range median 6.0 pips; align median|diff| pips  D-1:55.3 D:0.7 D+1:54.9
+  basis by year (pips): {2020: 4.7, 2021: 1.4, 2022: 6.1, 2023: 5.1, 2024: 3.2, 2025: 1.0, 2026: -0.8}

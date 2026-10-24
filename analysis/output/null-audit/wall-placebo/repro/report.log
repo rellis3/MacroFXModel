@@ -1,0 +1,23 @@
+side  horizon_min  wall_break_pct  grid_break_pct  offgrid_break_pct  diff_pp  ci_lo_pp  ci_hi_pp  n_wall  n_grid  n_clusters
+call           15           38.13           38.78              36.52    -0.65     -3.11      1.83    2893   11228         792
+call           60           45.45           45.00              42.04     0.45     -2.55      3.57    2869   11080         791
+call          240           47.73           48.21              45.77    -0.48     -4.91      3.56    2625    9960         787
+ put           15           40.01           38.10              38.38     1.91     -0.45      4.30    2607   10291         738
+ put           60           42.83           43.31              44.20    -0.48     -3.85      3.04    2561   10166         737
+ put          240           47.67           45.26              44.73     2.41     -1.71      6.78    2295    9340         733
+      pair side  horizon_min  wall  grid  offgrid  n_wall
+   AUD_USD call           15  30.6  32.3     30.1     327
+   EUR_USD call           15  31.6  35.5     32.0     412
+   GBP_USD call           15  38.5  36.1     32.1     434
+NAS100_USD call           15  46.3  46.1     46.6     818
+   USD_CAD call           15  36.9  34.4     35.2     436
+   USD_CHF call           15  31.6  34.2     30.8     275
+   USD_JPY call           15  41.4  44.6     36.7     191
+   AUD_USD  put           15  37.0  36.2     33.7     227
+   EUR_USD  put           15  37.4  35.6     31.0     425
+   GBP_USD  put           15  40.2  39.9     39.4     448
+NAS100_USD  put           15  42.3  47.0     48.8     619
+   USD_CAD  put           15  38.3  35.8     37.1      81
+   USD_CHF  put           15  39.3  31.8     32.1     270
+   USD_JPY  put           15  41.2  35.6     39.0     537
+FAIL

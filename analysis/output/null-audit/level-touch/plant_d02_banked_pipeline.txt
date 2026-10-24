@@ -1,0 +1,55 @@
+EURUSD:
+  2693 sessions, 25821 touches across all families, split 2022-06-22
+GBPUSD:
+  2689 sessions, 27198 touches across all families, split 2022-06-28
+USDJPY:
+  2678 sessions, 25488 touches across all families, split 2022-06-21
+GOLD:
+  2677 sessions, 24092 touches across all families, split 2022-06-24
+NQ:
+  2656 sessions, 22767 touches across all families, split 2022-06-23
+DE30:
+  2627 sessions, 21631 touches across all families, split 2022-07-01
+
+Built 6/6 pairs -> C:\Users\relli\AppData\Local\Temp\claude\c--Users-relli-OneDrive-Documents-Programming-Trading-v2-trading-model-MacroFXModel\a71de311-2ab8-48a8-88ca-d9c2f1ea77a1\scratchpad\plant_d02\out\line-touch-response
+  2693 sessions, 25821 paired controls
+GBPUSD:
+  2689 sessions, 27198 paired controls
+USDJPY:
+  2678 sessions, 25488 paired controls
+GOLD:
+  2677 sessions, 24092 paired controls
+NQ:
+  2656 sessions, 22767 paired controls
+DE30:
+  2627 sessions, 21630 paired controls
+
+Built 6/6 -> C:\Users\relli\AppData\Local\Temp\claude\c--Users-relli-OneDrive-Documents-Programming-Trading-v2-trading-model-MacroFXModel\a71de311-2ab8-48a8-88ca-d9c2f1ea77a1\scratchpad\plant_d02\out\line-touch-control
+Report with: node analysis/line_touch_control_report.mjs
+====================================================================================================
+CONTROL A — touch vs a RANDOM MOMENT on a different day (runway-matched, same side)
+  This is the tradeability test: a p90 touch is observable in real time, so "the day was
+  directional" is part of the signal, not a bias. Positive diff = the touch beat random.
+====================================================================================================
+family   pairs  totalN   touchEdge  ctrlEdge    diff    t(pooled)  pairs+
+hl50        6    12203     -0.0001   -0.0046  +0.0027      t0.23     3/6
+hl75        6    12209     +0.0302   +0.0075  +0.0177      t1.54     3/6
+hl90        6     5629     +0.0885   -0.0030  +0.0923      t5.09     5/6
+oh50        6    36151     -0.0169   +0.0033  -0.0201     t-2.93     2/6
+oh75        6    19447     -0.0081   -0.0021  -0.0073     t-0.82     2/6
+oh90        6     7238     +0.0491   +0.0154  +0.0227      t1.51     3/6
+dopen       6    54119     +0.0166   -0.0038  +0.0195      t3.43     5/6
+
+====================================================================================================
+CONTROL B — touch vs a random OTHER TIME in the SAME day (same side)
+  This is a mechanism probe, NOT a tradeable alternative — you cannot know in advance that a
+  day will trend. Read controlEntryOffset before reading anything else in this block.
+====================================================================================================
+family   pairs  totalN   touchEdge  ctrlEdge    diff    t(pooled)  pairs+   ctrlEntryOff
+hl50        6    10488     -0.0022   +0.3588  -0.3664    t-46.01     0/6        -0.2496
+hl75        6    10472     +0.0266   +0.3543  -0.3323    t-38.82     0/6        -0.2279
+hl90        6     4767     +0.0953   +0.4632  -0.3715    t-25.18     0/6        -0.2698
+oh50        6    31357     -0.0158   +0.2210  -0.2362    t-71.57     0/6        -0.1509
+elapsed 281s
+
+[exited with code 0]

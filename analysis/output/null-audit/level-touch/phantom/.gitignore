@@ -1,0 +1,2 @@
+# per-touch arrays (~176 MB), rebuildable with scripts/null-audit/level-touch/phantom.py
+*.npz

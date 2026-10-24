@@ -16,5 +16,6 @@ ok('edges given the wrong way round are put in order', optionZone({ spot: 5, put
 ok('no levels means no zone', optionZone({ spot: 1 }, 'X') === null && optionZone(null, 'X') === null);
 ok('the dealer note is flagged validated for the S&P only', optionZone({ spot: 1, putWall: 0.9, callWall: 1.1, regime: 'PIN' }, 'SPX500', 2).validated === true && eur.validated === false);
 ok('the zone is described as a location: nothing says price is drawn to it', !/magnet|attract|drawn|pull|target|resistance|support/i.test(JSON.stringify(eur)));
+ok('walls of zero mean the levels did not load, so no zone is drawn instead of 0.0 to 0.0 and an infinite distance', optionZone({ spot: 52284.1, putWall: 0, callWall: 0, regime: 'BREAKOUT' }, 'US30', 1) === null && optionZone({ spot: 100, putWall: 0, callWall: 120 }, 'X', 1) === null);
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

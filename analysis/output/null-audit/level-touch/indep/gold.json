@@ -1,0 +1,76 @@
+{
+ "pair": "gold",
+ "sessions_ge200": 2744,
+ "sessions_lt200": 558,
+ "days_after_warmup_sigma": 2684,
+ "days_with_touch_indep": 2677,
+ "days_banked": 2677,
+ "touches_indep": 23825,
+ "touches_banked": 23825,
+ "matched": 23825,
+ "only_indep": 0,
+ "only_banked": 0,
+ "sigma_rel_err_median": 2.779051341178125e-05,
+ "sigma_rel_err_max": 0.00012298460421043882,
+ "examples_only_indep": [],
+ "examples_only_banked": [],
+ "families": {
+  "hl50": {
+   "n_indep": 1908,
+   "n_banked": 1908,
+   "edge_indep": 0.03685416441602778,
+   "edge_banked": 0.036854162583206715,
+   "matched": 1908,
+   "max_abs_edge_diff_matched": 1.664228134412582e-06
+  },
+  "hl75": {
+   "n_indep": 1604,
+   "n_banked": 1604,
+   "edge_indep": 0.11838152279628121,
+   "edge_banked": 0.11838152827184886,
+   "matched": 1604,
+   "max_abs_edge_diff_matched": 1.4997604557143163e-06
+  },
+  "hl90": {
+   "n_indep": 782,
+   "n_banked": 782,
+   "edge_indep": 0.20197032911623436,
+   "edge_banked": 0.20197031404859953,
+   "matched": 782,
+   "max_abs_edge_diff_matched": 1.517957274765891e-06
+  },
+  "oh50": {
+   "n_indep": 6048,
+   "n_banked": 6048,
+   "edge_indep": 0.05757527320389375,
+   "edge_banked": 0.057575268707412065,
+   "matched": 6048,
+   "max_abs_edge_diff_matched": 1.5702569400311006e-06
+  },
+  "oh75": {
+   "n_indep": 3251,
+   "n_banked": 3251,
+   "edge_indep": 0.05242373041172664,
+   "edge_banked": 0.05242372750573365,
+   "matched": 3251,
+   "max_abs_edge_diff_matched": 1.5427160606207302e-06
+  },
+  "oh90": {
+   "n_indep": 1255,
+   "n_banked": 1255,
+   "edge_indep": 0.0654957337540458,
+   "edge_banked": 0.06549571756344606,
+   "matched": 1255,
+   "max_abs_edge_diff_matched": 1.7378640871923423e-06
+  },
+  "dopen": {
+   "n_indep": 8977,
+   "n_banked": 8977,
+   "edge_indep": -7.335772801266195e-05,
+   "edge_banked": -7.335972424854979e-05,
+   "matched": 8977,
+   "max_abs_edge_diff_matched": 1.707894855762504e-06
+  }
+ },
+ "secs": 15.4
+}

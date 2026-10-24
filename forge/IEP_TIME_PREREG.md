@@ -132,3 +132,13 @@ smallest feature set recommended for prospective shadow evaluation. No productio
 - **D:** New York clock vs London clock on h 12-18: log loss +0.04% [0.004, 0.091], Brier n.s., Bonferroni p 0.12 — no evidence the NY clock is better.
 - **Daily (reused result confirmed on the export, out of sample):** HL p75 exceeded Mon 19.3% ±3.0, Tue 24.7, Wed 26.1, Thu 29.4 ±3.4, Fri 26.7 (target 25).
 - **Stage 3 (IEP registration):** see the IEP prereg Stage 3 record.
+
+## Amendments
+
+### Correction — 2026-10-24 — POST-HOC (describe only)
+
+The prior-art table cites `level-touch` as a null on prior-day high/low. The 2026-10-24 null-audit of that entry
+(`analysis/output/null-audit/level-touch/AUDIT.md`) found it never tested prior-day high/low: its "hl" family is the
+dynamic high-low range rungs, and its controls were random times, not random prices. The entry has been corrected.
+Prior-day high/low has no level-touch verdict. This changes nothing in this study's design or result.
+

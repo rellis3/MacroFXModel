@@ -181,7 +181,16 @@ async function loadDecodedSnapshot(client, pairKey) {
   }
 }
 
+// Only the deployed server writes the shared decoded-snapshot cache. A local research run that happens
+// to have R2 keys in its environment must never write to production R2 (data-rules "Never"; flagged by
+// the 2026-10-24 level-touch audit). Railway sets RAILWAY_* in its containers; M1_SNAPSHOT_WRITE=1 is the
+// explicit opt-in for a deliberate local rebuild.
+const _r2SnapshotWritesAllowed = () =>
+  process.env.M1_SNAPSHOT_WRITE === '1' ||
+  !!(process.env.RAILWAY_ENVIRONMENT_NAME || process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID || process.env.RAILWAY_SERVICE_ID);
+
 async function saveDecodedSnapshot(client, pairKey, packed, sourceEtag) {
+  if (!_r2SnapshotWritesAllowed()) return;            // local/sandbox: read the cache, never write it
   const key = `${M1_DECODED_PREFIX}/${pairKey}.bin`;
   const body = packToBinary(packed, sourceEtag);
   noteBytes('r2', `${M1_DECODED_PREFIX}/*`, body.length ?? body.byteLength ?? 0);

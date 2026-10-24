@@ -1,0 +1,2 @@
+EUR_USD: dates 1511 with S 1498; basis median +25.0 pips, IQR [+14.4,+39.6], |b| p90 53.1; expiry range median 46.0 pips; align median|diff| pips  D-1:44.3 D:0.8 D+1:43.8
+  basis by year (pips): {2020: 16.4, 2021: 13.6, 2022: 30.5, 2023: 31.8, 2024: 26.4, 2025: 36.9, 2026: 28.1}

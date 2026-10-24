@@ -1,0 +1,45 @@
+grid placebo OI / wall OI: quantiles {0.1: 0.04, 0.25: 0.12, 0.5: 0.31, 0.75: 0.57, 0.9: 0.79}
+share of grid placebo touches with OI >= 50% of the wall: 0.314
+
+break rate by level OI as share of wall OI, h=15m (corrected design)
+                  mean  count
+side bin                    
+call <10%        43.4   3234
+     10-25%      40.4   2597
+     25-50%      36.2   3039
+     50-75%      35.7   1968
+     75-99.9%    37.9   1178
+     wall(100%)  38.7   3072
+put  <10%        43.0   1756
+     10-25%      41.4   2295
+     25-50%      36.8   2756
+     50-75%      33.7   2367
+     75-99.9%    34.8   1665
+     wall(100%)  38.0   2839
+
+break rate by level OI as share of wall OI, h=60m (corrected design)
+                  mean  count
+side bin                    
+call <10%        45.8   3186
+     10-25%      45.5   2572
+     25-50%      44.3   3001
+     50-75%      43.0   1929
+     75-99.9%    44.8   1161
+     wall(100%)  43.9   3033
+put  <10%        44.6   1725
+     10-25%      44.0   2260
+     25-50%      44.0   2722
+     50-75%      38.0   2342
+     75-99.9%    41.0   1647
+     wall(100%)  42.6   2800
+h=15: grid break rate slope per 100% of wall OI = -10.1pp  CI [-13.0, -7.2]
+h=60: grid break rate slope per 100% of wall OI = -5.2pp  CI [-8.2, -1.8]
+
+within-stratum (pair x side x k) slope, grid placebos only:
+  h=15: -3.7pp per 100% of wall OI, CI [-6.8, -0.1]
+  h=60: -1.5pp per 100% of wall OI, CI [-5.7, +2.1]
+
+break rate 15m by pair (grid): {'AUD_USD': 34.1, 'EUR_USD': 33.6, 'GBP_USD': 38.0, 'NAS100_USD': 46.8, 'USD_CAD': 34.5, 'USD_CHF': 32.7, 'USD_JPY': 39.1}
+median oi_ratio by pair (grid): {'AUD_USD': 0.43, 'EUR_USD': 0.41, 'GBP_USD': 0.39, 'NAS100_USD': 0.09, 'USD_CAD': 0.59, 'USD_CHF': 0.2, 'USD_JPY': 0.46}
+break rate 15m by k (grid): {('call', -2.0): 39.9, ('call', -1.0): 40.0, ('call', 1.0): 38.8, ('call', 2.0): 37.2, ('put', -2.0): 35.7, ('put', -1.0): 37.3, ('put', 1.0): 40.4, ('put', 2.0): 37.8}
+median oi_ratio by k (grid): {('call', -2.0): 0.24, ('call', -1.0): 0.23, ('call', 1.0): 0.3, ('call', 2.0): 0.34, ('put', -2.0): 0.37, ('put', -1.0): 0.41, ('put', 1.0): 0.29, ('put', 2.0): 0.33}
