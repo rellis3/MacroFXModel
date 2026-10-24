@@ -41,5 +41,9 @@ ok('ordinary prose and tickers pass untouched', plainRead('EUR/USD fell 0.3% and
   ok('the next issue says what became of the last idea, first in the list', d2.items[0]?.kind === 'idea-followup' && /quiet/.test(d2.items[0].text));
   const d3 = diffSnapshots(day1, day1);
   ok('an idea that is still broken is reported as carrying on', d3.items[0]?.kind === 'idea-followup' && /carried on/.test(d3.items[0].text)); }
+
+{ const p = snapshotOf({ crowding: [{ sym: 'EUR', state: 'mid-range' }, { sym: 'GOLD', state: 'crowded long' }] }, { date: '2026-10-17', kind: 'weekly' }), c = snapshotOf({ crowding: [{ sym: 'EUR', state: 'crowded short' }, { sym: 'GOLD', state: 'crowded long' }] }, { date: '2026-10-24', kind: 'weekly' });
+  const d = diffSnapshots(p, c);
+  ok('a change in who is crowded is reported once, and unchanged positions are not', d.items.filter(i => i.kind === 'crowd-change').length === 1 && /EUR: speculators went from mid-range to crowded short/.test(d.items.find(i => i.kind === 'crowd-change').text)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

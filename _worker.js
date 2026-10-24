@@ -7,6 +7,7 @@
 // Position-book maths lives in its own tested module. The inline version here
 // counted BUCKETS rather than positions and read every instrument as 100% long.
 import { summarisePositionBook } from './js/positionBookMetrics.js';
+import { cotCacheIsStale } from './js/cotFreshness.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -1950,7 +1951,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           if (cached) {
             try {
               const { ts, data } = JSON.parse(cached);
-              if (Date.now() - ts < 7 * 24 * 60 * 60 * 1000) {
+              if (Date.now() - ts < 7 * 24 * 60 * 60 * 1000 && !cotCacheIsStale({ cachedReportDate: data?.reportDate, cachedAtMs: ts, nowMs: Date.now() })) {   // a newer CFTC report is out: recompute instead of serving last week's until the 7 days run out
                 // The cached payload is deliberately LEAN — the 200-week series is stripped
                 // before caching, so a `?history=` request served straight from cache would
                 // return null forever and no refresh would ever fix it (that is exactly what

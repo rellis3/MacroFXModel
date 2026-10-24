@@ -257,7 +257,7 @@ ul.t{margin:0;padding-left:18px}ul.t li{margin:0 0 7px}
  * section is left out rather than filled with placeholder text.
  */
 export function buildNewsletter(n) {
-  const a = n.brief ?? {}, letter = a.letter ?? {}, headline = n.headline ?? a.headline ?? 'Desk Atlas Daily';
+  const a = n.brief ?? {}, letter = a.letter ?? {}, headline = n.headline ?? a.headline ?? (n.edition === 'weekly' ? 'Desk Atlas Weekly' : 'Desk Atlas Daily');
   const subject = clip(letter.subject || headline, 78), regimeWord = String(n.regimeWord ?? a.regime ?? 'MIXED').toUpperCase();
   const opening = letter.opening || a.driver?.[0]?.explain || a.driver?.[0]?.what || '';
   const preheader = clip(opening || headline, 140);
@@ -298,7 +298,7 @@ export function buildNewsletter(n) {
   const glance = (n.riskFlags || _tl.length || _evTop) ? `<div class="glance">${n.riskFlags ? `<div><b>${n.riskFlags.active}/${n.riskFlags.total}</b><span>stress warnings on</span></div>` : ''}${_tl.length ? `<div><b>${_bk} of ${_tl.length}</b><span>chain links broken</span></div>` : ''}${_evTop ? `<div><b>${esc(ukTime(_evTop.ms))}</b><span>${esc(clip(_evTop.event, 34))}</span></div>` : ''}</div>` : '';
 
   // ── The idea of the day: one chain worked through the eight questions (js/macroIdea.js). Reasoning and context, never a trade. ──
-  const idea = buildIdea({ links: n.links, events: n.events, rangePressure: n.rangePressure, fear: null, nowMs: n.nowMs ?? null });
+  const idea = buildIdea({ links: n.links, events: n.events, rangePressure: n.rangePressure, fear: null, crowding: n.crowding, cotDate: n.cotDate ?? null, nowMs: n.nowMs ?? null });
   const ideaGroups = { view: 'The view', timing: 'The timing', trade: 'How to test it' };
   const ideaHtml = idea ? sec('The idea of the day', 'Reasoning, not a trade', `<p style="margin:0 0 6px;font-weight:600">${esc(idea.headline)}</p><p class="small" style="margin:4px 0 8px"><b>${esc(idea.q0.t)}</b> ${esc(idea.q0.body)}</p>${idea.patterns.length ? `<h3>Patterns in play</h3>${idea.patterns.map(p => `<p class="small" style="margin:4px 0"><b>${esc(p.name)}.</b> ${esc(p.why)}</p>`).join('')}` : ''}${['view', 'timing', 'trade'].map(g => `<h3>${ideaGroups[g]}</h3>${idea.q.filter(x => x.g === g).map(x => `<p class="small" style="margin:4px 0"><b>${x.n}. ${esc(x.t)}</b> ${esc(x.body)}</p>`).join('')}`).join('')}<h3>Ways it could go</h3>${idea.scenarios.map(s => `<p class="small" style="margin:4px 0"><b>${esc(s.name)}.</b> ${esc(s.what)}</p>`).join('')}<p class="small muted" style="margin-top:8px">No chances are attached to these. This desk's tests found direction close to a coin flip, so each is a condition to watch for, not a forecast. This is a way of reading the day, built from measured moves, not a call to buy or sell. Where the desk has no data for a question, the answer says so. The next issue says which way it went.</p>`) : '';
 
@@ -312,6 +312,17 @@ export function buildNewsletter(n) {
 
   // What changed since the last issue: the reader's first question every day after the first.
   const since = n.since;
+
+  // ── Positioning: who is crowded, from the weekly CFTC report (Tuesday's book, published Friday evening). Context for who must act if they are wrong, never a direction signal:
+  //    the desk's registered test found crowded positioning does not predict which way a market goes (ledger cot-positioning-factor) or make a release day wider. ──
+  const POS_NAME = { NQ: 'Nasdaq futures', ES: 'S&P 500 futures', YM: 'Dow futures', RTY: 'Russell 2000 futures', GOLD: 'Gold', BTC: 'Bitcoin', WTI: 'Oil' };
+  const POS_WORD = { 'crowded long': 'crowded long', 'crowded short': 'crowded short', 'smallest long in years': 'smallest long in years', 'smallest short in years': 'smallest short in years' };
+  const posList = (n.crowding ?? []).filter(c => POS_WORD[c.state]).sort((a, b) => Math.abs(b.pct - 50) - Math.abs(a.pct - 50));
+  const posIso = [n.isoDate, n.date].map(x => String(x ?? '').slice(0, 10)).find(x => /^\d{4}-\d{2}-\d{2}$/.test(x));
+  const posAge = n.cotDate && posIso ? Math.round((Date.parse(posIso) - Date.parse(n.cotDate)) / 864e5) : null;
+  const posChanges = (since?.items ?? []).filter(i => i.kind === 'crowd-change');
+  const relToday = (n.events ?? []).filter(e => e.impact === 'high' && posList.some(c => c.sym === e.ccy)).slice(0, 2);
+  const posHtml = posList.length ? sec(weekly ? 'Positioning: who is crowded' : 'Positioning backdrop', 'Updated weekly', `${n.cotDate ? `<p class="small muted" style="margin:0 0 6px">From the CFTC report for ${esc(n.cotDate)}${posAge != null && posAge > 10 ? `, which is ${posAge} days old: a newer report may not have loaded yet` : ', published the Friday after. It stays the backdrop until the next one'}.</p>` : ''}<div style="display:flex;flex-wrap:wrap;gap:6px 8px">${posList.map(c => `<span class="pill ${/crowded/.test(c.state) ? 'a' : ''}" title="${c.pct}th percentile of its own history">${esc(POS_NAME[c.sym] ?? c.sym)}: ${esc(POS_WORD[c.state])}, ${c.pct}th percentile</span>`).join('')}</div>${posChanges.length ? `<h3>New this week</h3>${posChanges.map(i => `<p class="small" style="margin:3px 0">${esc(i.text)}</p>`).join('')}` : ''}${relToday.length ? `<p class="small" style="margin:8px 0 0"><b>Worth knowing today:</b> ${relToday.map(e => `${esc(e.ccy)} speculators are ${esc(POS_WORD[posList.find(c => c.sym === e.ccy).state])} and ${esc(e.event)} is due, so a surprise would hit hardest where they are caught.`).join(' ')}</p>` : ''}<p class="small muted" style="margin-top:8px">${weekly ? "Crowded means speculators hold an unusually large position compared with their own history. It says who has to act if they are wrong, not which way price will go: the desk's registered test found crowded positioning does not predict direction, and does not make a release day bigger. The one hint, still to be confirmed, is that on release days price drifted slightly against a crowded book, by about a twentieth of a normal day range. " : 'Context only: it says who is exposed, not which way price will go. '}Smallest long or short in years means the position has been cut right back.</p>`) : '';
   const sinceHtml = since ? sec(since.first ? 'No earlier issue to compare with yet' : `What changed since ${esc(since.from ?? 'the last issue')}`, 'Since last time', since.first ? `<p class="small muted">Changes are measured against the previous day's saved issue, and there isn't one yet. From the next day this box lists new broken links, stress warnings switching on or off, backdrop changes and central-bank tone moves.</p>` : (since.items ?? []).length ? `<ul class="t">${since.items.slice(0, 8).map(i => `<li>${esc(i.text)}</li>`).join('')}</ul>` : `<p class="small muted">Nothing on the checklist changed: the same broken links, the same stress warnings, the same backdrop.</p>`) : '';
 
   // How the last issue's one checkable claim, the size of the day, came out.
@@ -418,7 +429,7 @@ export function buildNewsletter(n) {
 
   const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}</div></div>`;
 
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${glance}${sinceHtml}${letterSec}${tiles}${rpHtml}${driving}${ideaHtml}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${qodHtml}${lesson}${noEdge}${foot}</div></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${glance}${sinceHtml}${letterSec}${tiles}${rpHtml}${driving}${posHtml}${ideaHtml}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${qodHtml}${lesson}${noEdge}${foot}</div></body></html>`;
 
   const T = [];
   T.push(`DESK ATLAS · ${weekly ? 'WEEKLY' : 'DAILY'} · ${n.date}`, '', headline, '');
@@ -437,6 +448,7 @@ export function buildNewsletter(n) {
     for (const f of x.fed ?? []) L.push(`- ${f.date} Fed: ${f.what}`);
     if (L.length) T.push('BEYOND THE CALENDAR', ...L, ''); }
   if (idea) { T.push('THE IDEA OF THE DAY (reasoning, not a trade)', idea.headline, `${idea.q0.t} ${idea.q0.body}`); for (const p of idea.patterns) T.push(`Pattern: ${p.name}. ${p.why}`); for (const x of idea.q) T.push(`${x.n}. ${x.t} ${x.body}`); T.push('Ways it could go (no chances attached):'); for (const s of idea.scenarios) T.push(`- ${s.name}: ${s.what}`); T.push(''); }
+  if (posList.length) { T.push(`POSITIONING (CFTC report for ${n.cotDate ?? 'latest'}; who is crowded, not a direction call)`, ...posList.map(c => `- ${POS_NAME[c.sym] ?? c.sym}: ${POS_WORD[c.state]}, ${c.pct}th percentile`), ...posChanges.map(i => '- ' + i.text), ''); }
   if (rec) T.push('TRACK RECORD', rec.line, '');
   T.push('HOW TO READ THIS', ...LIMITS.map(x => '- ' + x), '');
   if (qod) { T.push(`QUESTION OF THE ${qWord.toUpperCase()}`, qod.today.question, qod.today.clue, ''); if (qod.previous) T.push(`ANSWER TO ${prevWord.toUpperCase()}'S QUESTION`, qod.previous.question, qod.previous.answer, ''); }

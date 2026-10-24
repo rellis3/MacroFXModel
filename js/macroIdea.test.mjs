@@ -12,7 +12,9 @@ ok('with moving links an idea is built with eight questions in three groups', id
 ok('a broken link is chosen as the story and named as the pattern', idea.broken && /did not follow/.test(idea.pattern));
 ok('the chain has at least two markets and every step names a market', idea.steps.length >= 2 && idea.steps.every(s => s.label));
 ok('the calendar question uses only high-impact releases', /CPI/.test(idea.q[5].body) && !/PMI/.test(idea.q[5].body));
-ok('it admits there is no positioning feed', /no positioning feed/.test(idea.q[3].body));
+ok('without the CFTC report it says positioning is not loaded', /not loaded/.test(idea.q[3].body));
+const withCot = buildIdea({ links, crowding: [{ sym: 'EUR', state: 'crowded short' }, { sym: 'GBP', state: 'mid-range' }], cotDate: '2026-10-20' });
+ok('with the CFTC report it names the crowded markets and the report date, and keeps to who must act', /EUR \(short\)/.test(withCot.q[3].body) && /2026-10-20/.test(withCot.q[3].body) && /not which way price goes/.test(withCot.q[3].body) && !/GBP/.test(withCot.q[3].body));
 ok('it never gives a trade level or a direction forecast', !/\b(stop|target|buy|sell|short|long)\b|will (rise|fall)/i.test(idea.q.map(x => x.body).join(' ')));
 ok('nothing judged means no idea', buildIdea({ links: evaluateChain({}) }) === null && buildIdea({}) === null);
 ok('question zero filters by timeframe and says slow structural stories are not measured', idea.q0.n === 0 && /noise band/.test(idea.q0.body) && /not measured here/.test(idea.q0.body));

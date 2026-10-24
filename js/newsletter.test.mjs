@@ -132,5 +132,19 @@ ok('fear versus the Nasdaq stays on the Atlas page and is not in the newsletter'
   ok('it shows the previous answer and the question changes day to day', /The answer|class="qans"/.test(d.html) && /Think it through/.test(d.html) && d.html.match(/class="qq">([^<]*)</)[1] !== d2.html.match(/class="qq">([^<]*)</)[1]);
 ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d.html) && /class="qi"><svg/.test(d.html));
   ok('the weekly issue asks a question of the week', /Question of the week/.test(w.html) && /last week/.test(w.html)); }
+
+{ const crowding = [{ sym: 'EUR', pct: 1, state: 'crowded short' }, { sym: 'GOLD', pct: 96, state: 'crowded long' }, { sym: 'GBP', pct: 50, state: 'mid-range' }, { sym: 'NQ', pct: 8, state: 'smallest long in years' }];
+  const events = [{ ms: 5, ccy: 'EUR', event: 'German CPI', impact: 'high' }];
+  const since = { first: false, from: '2026-10-17', items: [{ kind: 'crowd-change', text: 'Positioning, EUR: speculators went from mid-range to crowded short.' }] };
+  const w = buildNewsletter({ date: '2026-10-24', isoDate: '2026-10-24', edition: 'weekly', crowding, cotDate: '2026-10-20', events, since });
+  ok('the weekly issue has a positioning section with the report date, the crowded markets and what is new', /Positioning: who is crowded/.test(w.html) && /report for 2026-10-20/.test(w.html) && /Gold: crowded long, 96th percentile/.test(w.html) && /Nasdaq futures: smallest long in years/.test(w.html) && !/GBP: /.test(w.html) && /New this week/.test(w.html) && /EUR: speculators went from mid-range/.test(w.html));
+  ok('it says crowded positioning is not a direction signal and quotes the one unconfirmed hint', /does not predict direction/.test(w.html) && /still to be confirmed/.test(w.html) && /who has to act/.test(w.html));
+  ok('a crowded currency with a high-impact release today is called out', /Worth knowing today/.test(w.html) && /EUR speculators are crowded short and German CPI is due/.test(w.html));
+  const d = buildNewsletter({ date: '2026-10-26', isoDate: '2026-10-26', crowding, cotDate: '2026-10-20' });
+  ok('the daily issue carries it as a short backdrop that stays until the next report', /Positioning backdrop/.test(d.html) && /stays the backdrop until the next one/.test(d.html) && !/registered test/.test(d.html));
+  const stale = buildNewsletter({ date: '2026-11-10', isoDate: '2026-11-10', crowding, cotDate: '2026-10-20' });
+  ok('an old report is flagged as old instead of passed off as current', /21 days old/.test(stale.html) && /POSITIONING/.test(stale.text));
+  ok('the idea of the day uses the same report', /Speculators are at an extreme in EUR \(short\), GOLD \(long\)/.test(buildNewsletter({ date: 'd', isoDate: '2026-10-24', crowding, cotDate: '2026-10-20', links: (await import('./macroChain.js')).evaluateChain({ oil: { delta: 99 }, bei: { delta: 99 }, us10y: { delta: -99 }, real: { delta: 99 } }) }).html));
+  ok('no crowded markets means no positioning section', !/Positioning backdrop|Positioning: who is crowded/.test(buildNewsletter({ date: 'd', crowding: [{ sym: 'EUR', pct: 50, state: 'mid-range' }] }).html)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

@@ -34,6 +34,7 @@ export function snapshotOf(n, { date, kind = 'daily' } = {}) {
     flagsOn: (n?.riskFlags?.flags ?? []).filter(f => f.on === true).map(f => f.label),
     flagsTotal: n?.riskFlags?.total ?? null,
     cb, ranges, idea,
+    crowd: Object.fromEntries((n?.crowding ?? []).filter(c => c?.sym && c.state).map(c => [c.sym, c.state])),
   };
 }
 
@@ -46,6 +47,10 @@ export function diffSnapshots(prev, cur) {
   if (prev.idea) {   // the scorecard: what became of the last issue's idea
     const id = prev.idea.id, now = (cur.broken ?? []).some(x => x.id === id) ? 'broken' : (cur.holding ?? []).some(x => x.id === id) ? 'holding' : 'quiet';
     items.unshift({ kind: 'idea-followup', text: `Last issue's idea, ${prev.idea.name}, was ${prev.idea.verdict === 'broken' ? 'a broken link' : 'a holding link'}. It is now ${now === 'quiet' ? 'quiet: one end has drifted back inside its noise band, so the story has faded or paused' : now === prev.idea.verdict ? `still ${now}: the story carried on` : `${now}: it ${now === 'holding' ? 'has repaired' : 'has broken'}`}.` });
+  }
+  for (const [sym, st] of Object.entries(cur.crowd ?? {})) {   // positioning is weekly, so a change here is the new CFTC report
+    const was = prev.crowd?.[sym]; if (!was || was === st) continue;
+    items.push({ kind: 'crowd-change', text: `Positioning, ${sym}: speculators went from ${was} to ${st}.` });
   }
   const pf = new Set(prev.flagsOn ?? []), cf = new Set(cur.flagsOn ?? []);
   for (const f of cf) if (!pf.has(f)) items.push({ kind: 'flag-on', text: `Stress warning switched on: ${f}.` });

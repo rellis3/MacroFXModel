@@ -8,7 +8,7 @@
  * markets it touches and what would end it all come from the evaluated chain, the range-pressure gauge, the fear gauge and the release calendar.
  *
  * WHAT IS NOT CLAIMED. No entry, stop or target, and no direction forecast: this desk's tests found direction calls null, and range and size better
- * evidenced. Where the desk holds no data for a question (there is no positioning feed such as COT) the idea says so instead of filling the gap.
+ * evidenced. Where the desk holds no data for a question (for example, the CFTC report is weekly and not loaded) the idea says so instead of filling the gap.
  *
  * Pure: no fetch, no clock (the caller passes nowMs). Tested in js/macroIdea.test.mjs.
  */
@@ -24,7 +24,7 @@ function strength(l, nodes) {
 }
 const dirWord = d => (d === 'up' ? 'rose' : d === 'down' ? 'fell' : 'did not move');
 
-export function buildIdea({ links = [], events = [], rangePressure = null, fear = null, nowMs = null, nodes = CHAIN_NODES } = {}) {
+export function buildIdea({ links = [], events = [], rangePressure = null, fear = null, crowding = null, cotDate = null, nowMs = null, nodes = CHAIN_NODES } = {}) {
   const judged = links.filter(l => l.verdict === 'holding' || l.verdict === 'broken');
   if (!judged.length) return null;
   const score = new Map(judged.map(l => [l.id, strength(l, nodes)]));
@@ -57,7 +57,9 @@ export function buildIdea({ links = [], events = [], rangePressure = null, fear 
   const posn = [];
   if (rp) posn.push(`${rp.on} of ${rp.n} validated bigger-day signals are on, which speaks to size, not direction.`);
   if (fv) posn.push(fv.on ? 'Fear has run ahead of the Nasdaq, a level the VIX has tended to give back from.' : 'Fear against the Nasdaq is not at its extreme.');
-  posn.push('The desk holds no positioning feed such as COT, so what the crowd already owns is not measured here.');
+  const crowded = (crowding ?? []).filter(c => c.state === 'crowded long' || c.state === 'crowded short');
+  if (crowding?.length) posn.push(crowded.length ? `Speculators are at an extreme in ${crowded.map(c => `${c.sym} (${c.state.replace('crowded ', '')})`).join(', ')}${cotDate ? `, as of the report for ${cotDate}` : ''}. That says who must act if they are wrong, not which way price goes.` : `No market is at a crowded extreme in the weekly CFTC report${cotDate ? ` for ${cotDate}` : ''}.`);
+  else posn.push('The weekly CFTC positioning report is not loaded, so what the crowd already owns is not measured here.');
 
   const expectDir = story.expected === 'up' ? 'rise' : story.expected === 'down' ? 'fall' : null;
   const cal = (events ?? []).filter(e => e.impact === 'high' && (!num(nowMs) || e.ms >= nowMs)).slice(0, 2);
