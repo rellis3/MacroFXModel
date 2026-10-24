@@ -104,7 +104,7 @@ export const MAG_CSS = `
   .pg .deskhd{margin:0 0 14px;padding:14px 20px 12px}
   .pg h1.hd{font-size:38px}
   .pg .acctn .num{font-size:30pt}.pg p{font-size:11.5pt}.pg .th2 p{font-size:9pt;line-height:1.35;margin:0 0 3px}.pg .th2 h3{font-size:13.5pt}.pg .th2{margin:0 0 7px}.pg .em{font-size:10px}.pg .em td{padding:1px 4px}.pg .qnote{display:none}.pg .sf{font-size:13.5pt}.pg .box{margin:4px 0 8px;padding:8px 12px}.pg .box p{font-size:8.6pt;line-height:1.38;margin:0 0 3px}.pg .p5 figcaption{font-size:8.5pt}
-  .pg .pgbreak{break-before:page}.pg .tx td{padding:3px 6px 3px 0}.pg .two h3.ss{margin:6px 0 2px}.pg .acsf{display:none}.p1 .cols p{font-size:10.4pt;line-height:1.46}.p1 aside.side{font-size:8.8pt}.p1 aside.side p{font-size:8.6pt;line-height:1.4}.p1 .al>div{padding:6px 9px}.p1 .evkey{margin:0 0 4px}.p1 .evb{font-size:7.5px;padding:1px 5px}.pg.land .sf{display:none}.pg.land .chain-fig{padding:8px 8px 4px}.pg.land .chain-fig svg{width:80%;margin:0 auto}.pg.land .chain-fig figcaption{font-size:7.6pt;line-height:1.35}.pg table.wkr td,.pg table.wkr th{padding-top:2px;padding-bottom:2px}.pg.desk .gg{padding-top:2px;padding-bottom:2px;margin:0}.pg.desk section table:not(.ft) td,.pg.desk section table:not(.ft) th{padding-top:2px;padding-bottom:2px}.pg.desk section table:not(.ft){margin-bottom:4px}.pg .meth{font-size:7.8pt;line-height:1.4;margin-top:6px;padding-top:5px}.pg.desk section{padding:6px 0 2px;margin:0 0 5px}.pg.desk section .small.muted{font-size:8.6pt;line-height:1.35}.pg .bk .bkc .cot2{grid-template-columns:1fr 70px;font-size:10px;line-height:1.25}.pg .bk .bkc .cot2 small{font-size:9px}.pg.desk table{break-inside:avoid}.pg .refs{padding:7px 12px;margin:8px 0;font-size:9.5px}.pg .refs .rf{padding:0}.pg .foot{margin-top:8px}.pg .foot p{font-size:8.6pt;margin:0 0 4px}.pg.desk p,.pg.desk li{font-size:9.4pt;line-height:1.4}.pg.desk .cc2,.pg.desk .pc{padding:9px 11px}.pg section table td,.pg section table th{padding-top:3px;padding-bottom:3px}.pg .wkd{padding:5px 0}.pg .refs,.pg .foot,.pg .box{break-inside:avoid}.pg section>h2{break-inside:avoid}  .pg.desk .ccg2{column-count:2}.pg.desk .pcg{display:grid;grid-template-columns:1fr 1fr;gap:10px;column-count:auto}.pg.desk section{break-inside:auto}.pg.desk section>h2,.pg.desk section>h3{break-after:avoid-page;page-break-after:avoid}.pg.desk section>h2+*{break-before:avoid-page}.pg.desk .pcg>.pc:first-child,.pg.desk .ccg2>.cc2:first-child{break-before:avoid-page}.pg.desk .pc,.pg.desk .cc2,.pg.desk .rw2,.pg.desk tr{break-inside:avoid}
+  .pg .pgbreak{break-before:page}.pg .tx td{padding:3px 6px 3px 0}.pg .two h3.ss{margin:6px 0 2px}.pg .acsf{display:none}.p1 .cols p{font-size:10.4pt;line-height:1.46}.p1 aside.side{font-size:8.8pt}.p1 aside.side p{font-size:8.6pt;line-height:1.4}.p1 .al>div{padding:6px 9px}.p1 .evkey{margin:0 0 4px}.p1 .evb{font-size:7.5px;padding:1px 5px}.pg.land .sf{display:none}.pg.land .chain-fig{padding:8px 8px 4px}.pg.land .chain-fig svg{width:80%;margin:0 auto}.pg.land .chain-fig figcaption{font-size:7.6pt;line-height:1.35}.pg table.wkr td,.pg table.wkr th{padding-top:1px;padding-bottom:1px;font-size:11.5px}.pg.desk .gg{padding-top:2px;padding-bottom:2px;margin:0}.pg.desk section table:not(.ft) td,.pg.desk section table:not(.ft) th{padding-top:2px;padding-bottom:2px}.pg.desk section table:not(.ft){margin-bottom:4px}.pg .meth{font-size:7.8pt;line-height:1.4;margin-top:6px;padding-top:5px}.pg.desk section{padding:6px 0 2px;margin:0 0 5px}.pg.desk section .small.muted{font-size:8.6pt;line-height:1.35}.pg .bk .bkc .cot2{grid-template-columns:1fr 70px;font-size:10px;line-height:1.25}.pg .bk .bkc .cot2 small{font-size:9px}.pg.desk table{break-inside:avoid}.pg .refs{padding:7px 12px;margin:8px 0;font-size:9.5px}.pg .refs .rf{padding:0}.pg .foot{margin-top:8px}.pg .foot p{font-size:8.6pt;margin:0 0 4px}.pg.desk p,.pg.desk li{font-size:9.4pt;line-height:1.4}.pg.desk .cc2,.pg.desk .pc{padding:9px 11px}.pg section table td,.pg section table th{padding-top:3px;padding-bottom:3px}.pg .wkd{padding:5px 0}.pg .refs,.pg .foot,.pg .box{break-inside:avoid}.pg section>h2{break-inside:avoid}  .pg.desk .ccg2{column-count:2}.pg.desk .pcg{display:grid;grid-template-columns:1fr 1fr;gap:10px;column-count:auto}.pg.desk section{break-inside:auto}.pg.desk section>h2,.pg.desk section>h3{break-after:avoid-page;page-break-after:avoid}.pg.desk section>h2+*{break-before:avoid-page}.pg.desk .pcg>.pc:first-child,.pg.desk .ccg2>.cc2:first-child{break-before:avoid-page}.pg.desk .pc,.pg.desk .cc2,.pg.desk .rw2,.pg.desk tr{break-inside:avoid}
 }
 
 /* ── terminal theme ── */
@@ -196,6 +196,24 @@ export const MAG_CSS = `
 @media (max-width:560px){.pg .rg{grid-template-columns:1fr}.pg .cnt{flex-wrap:wrap}.pg .hc dl{grid-template-columns:1fr}.pg .bk .facts{grid-template-columns:1fr}}
 .pg .bk2{padding:6px 0 5px;border-top:1px solid #dfe6f1;break-inside:avoid;font-family:var(--sans);font-size:11.5px}.pg .bk2:first-of-type{border-top:0}.pg .bk2 .h{display:grid;grid-template-columns:200px 120px 1fr;gap:10px;align-items:center}.pg .bk2 .nm{display:flex;gap:9px;align-items:center}.pg .bk2 .nm b{font-size:15px;color:var(--navy)}.pg .bk2 .nm small{display:block;font-family:var(--mono);font-size:10.5px;color:#5b6b82}.pg .bk2 .mv{font-family:var(--mono);font-size:12px}.pg .bk2 .mv small{display:block;font-family:var(--sans);font-size:10.5px;color:#5b6b82;margin-top:1px}.pg .bk2 .s{margin:5px 0 4px}.pg .bk2 .s svg{display:block;max-width:100%;height:auto}.pg .bk2 .facts{display:grid;grid-template-columns:1.05fr 1.25fr 1fr;gap:3px 18px;font-size:11px;line-height:1.42;color:#33445c}.pg .bk2 .facts b{display:block;font-family:var(--mono);font-size:8.8px;letter-spacing:.1em;text-transform:uppercase;color:#5b6b82}.pg .bk2 .facts small{display:block;color:#6b7b92;font-size:10.2px}.pg .bk2 .facts .cot2{margin:0}.pg .bk2 .sy{margin:4px 0 0;font-size:11px;color:#4a5a70;border-left:3px solid #cdd9ea;padding-left:9px}.pg .bk2 .muted{color:#8a98ad}
 @media (max-width:560px){.pg .bk2 .h{grid-template-columns:1fr}.pg .bk2 .facts{grid-template-columns:1fr}}
+
+/* narrative cards: a currency in a few sentences, with its drivers and where it differs most from another */
+.pg .cc2{border:1px solid #d6e0ee;border-radius:12px;overflow:hidden;margin:0 0 10px;break-inside:avoid;font-family:var(--sans);background:#fff}
+.pg .cc2 .hd{display:flex;align-items:center;gap:12px;background:#0b1220;color:#e6eefb;padding:9px 14px;-webkit-print-color-adjust:exact}
+.pg .cc2 .hd .nm{flex:1}.pg .cc2 .hd b{font-size:19px;letter-spacing:.02em;display:block;line-height:1.1}.pg .cc2 .hd small{font-size:10.5px;color:#8aa0bd}
+.pg .cc2 .chip{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:3px 10px;border:1px solid #2b3d5c;color:#9db1cc;white-space:nowrap}
+.pg .cc2 .chip.u{color:#19d3a0;border-color:#19d3a0}.pg .cc2 .chip.d{color:#ff8a9a;border-color:#ff5d73}
+.pg .cc2 .sc{text-align:right;font-family:var(--mono)}.pg .cc2 .sc b{font-size:19px;color:#fff}.pg .cc2 .sc small{display:block;font-size:9.5px}
+.pg .cc2 .bd{padding:9px 14px 8px}
+.pg .cc2 p.syn{margin:0 0 7px;font-size:11.6px;line-height:1.5;color:#1b2a40;border-left:3px solid #e0b64a;padding-left:10px}
+.pg .cc2 .dr{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 6px}
+.pg .cc2 .dr span,.pg .nar .dr span{display:block;border:1px solid #d6e0ee;border-radius:7px;padding:5px 8px;font-size:10.4px;line-height:1.35;color:#33445c;background:#f7f9fd}
+.pg .cc2 .dr i,.pg .nar .dr i{display:block;font-style:normal;font-family:var(--mono);font-size:8.3px;letter-spacing:.1em;text-transform:uppercase;color:#7a52c9;margin-bottom:1px}
+.pg .cc2 .gp{font-size:10.5px;line-height:1.4;color:#33445c;background:#f4f7fc;border-radius:7px;padding:5px 9px;margin:0 0 6px}.pg .cc2 .gp b{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:#5b6b82;display:block}
+.pg .cc2 .cy{display:flex;gap:8px;align-items:center;font-size:10.4px;color:#5b6b82}.pg .cc2 .cy b{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:#5b6b82}.pg .cc2 .cy em{font-style:normal;font-weight:700;color:#9a6200;border:1px solid #e0b64a;background:#fff6e0;border-radius:6px;padding:1px 8px}
+.pg .cc2 .un{font-size:10px;color:#8a98ad;margin-top:3px}
+.pg .nar{grid-column:1/-1;margin:5px 0 4px}.pg .nar p{margin:0 0 5px;font-size:11.2px;line-height:1.48;color:#1b2a40;border-left:3px solid #e0b64a;padding-left:9px}.pg .nar .dr{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.pg .nar .un{font-size:9.8px;color:#8a98ad;margin-top:3px}
+@media (max-width:560px){.pg .cc2 .dr,.pg .nar .dr{grid-template-columns:1fr}.pg .cc2 .hd{flex-wrap:wrap}}
 `;
 
 const N = x => (Number.isFinite(x) ? x : null);
@@ -367,6 +385,22 @@ export function theoryCard(t, H) {
     + row('Other stories that look the same', t.alsoFits)
     + row('What would separate them', t.separate)
     + `</dl></div>`;
+}
+
+/** A currency as a narrative card: header with today's standing, a few sentences, three drivers, where it differs most from another currency, and its monetary cycle. */
+export function currencyCard(nv, H, flag = '') {
+  if (!nv) return '';
+  const cls = nv.rank === 1 ? 'u' : nv.rank === nv.n ? 'd' : '';
+  return `<div class="cc2"><div class="hd">${flag}<div class="nm"><b>${H.esc(nv.ccy)}</b><small>${H.esc(nv.name)}${nv.bank ? ` — ${H.esc(nv.bank)}` : ''}</small></div><span class="chip ${cls}">${H.esc(nv.state)}</span><div class="sc"><b>${nv.score > 0 ? '+' : nv.score < 0 ? '−' : ''}${Math.abs(nv.score).toFixed(2)}%</b><small>${nv.rank} of ${nv.n} today</small></div></div>`
+    + `<div class="bd"><p class="syn">${H.esc(nv.synthesis)}</p>${nv.drivers.length ? `<div class="dr">${nv.drivers.map(d => `<span><i>${H.esc(d.tag)}</i>${H.esc(d.text)}</span>`).join('')}</div>` : ''}`
+    + `${nv.pairs.length ? `<div class="gp"><b>Where it differs most from another currency today</b>${nv.pairs.map(p => H.esc(p.text)).join(' ')} A gap describes today's move; it is not a signal.</div>` : ''}`
+    + `${nv.cycle ? `<div class="cy"><b>Monetary cycle</b><em>${H.esc(nv.cycle.label)}</em><span>${H.esc(nv.cycle.note)}</span></div>` : ''}${nv.uncertain.length ? `<div class="un">Not available: ${H.esc(nv.uncertain.join(' '))}</div>` : ''}</div></div>`;
+}
+
+/** A market's narrative: a few sentences and up to three drivers, placed under its strip. */
+export function marketNarrative(pn, H) {
+  if (!pn?.synthesis) return '';
+  return `<div class="nar"><p>${H.esc(pn.synthesis)}</p>${pn.drivers.length ? `<div class="dr">${pn.drivers.map(d => `<span><i>${H.esc(d.tag)}</i>${H.esc(d.text)}</span>`).join('')}</div>` : ''}${pn.uncertain.length ? `<div class="un">${H.esc(pn.uncertain.join(' '))}</div>` : ''}</div>`;
 }
 
 /** Trim the empty band under a diagram: the viewBox ends 40 units below the lowest thing drawn. */
