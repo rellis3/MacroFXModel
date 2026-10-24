@@ -3,10 +3,11 @@ import { loadCached, kvSet } from './utils.js';
 
 const COT_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days — COT is weekly
 
-// Maps COT extremes instrument sym → slash pair key used by renderCOTCard
+// Maps COT extremes instrument sym → slash pair key used by renderCOTCard. Feed rows are already in the terms of the
+// pair named here: JPY/CAD/CHF arrive as USDJPY/USDCAD/USDCHF (js/cotState.js), the rest long the currency.
 const EXTREMES_TO_SLASH = {
   EUR:'EUR/USD', GBP:'GBP/USD', JPY:'USD/JPY', AUD:'AUD/USD',
-  CAD:'USD/CAD', CHF:'USD/CHF', NZD:'NZD/USD', MXN:'USD/MXN',
+  CAD:'USD/CAD', CHF:'USD/CHF', NZD:'NZD/USD', MXN:'MXN/USD',   // MXN row is long the peso (flip:false), i.e. MXN/USD terms
   GOLD:'XAU/USD', SILVER:'XAG/USD', COPPER:'XCU/USD',
   NQ:'NAS100_USD', ES:'SPX500_USD', YM:'US30_USD', RTY:'US2000_USD', BTC:'BTC/USD',
 };

@@ -613,6 +613,7 @@ import { PAIRS } from './js/config.js';
 import { S } from './js/state.js';
 import { calculateTierScores, computeMacroRegime, computeUSDStrength, computeDollarRegime } from './js/macro.js';
 import { pairComposite, cotPairBias } from './js/pairCompositeEngine.js';
+import { toCcyRow } from './js/cotState.js';
 
 /* The set daily-brief actually covers (server.js HR_INSTRUMENTS) — the
    platform's 14 range-line-strong FX pairs + gold + 6 indices. The other ~11
@@ -874,7 +875,8 @@ async function loadMacroBackdrop(){
     // today.html already use, just not previously fetched on this page.
     const cotResp = await jget('/api/cot-extremes');
     if (cotResp?.ok && cotResp.instruments?.length) {
-      S.cotByCcy = Object.fromEntries(cotResp.instruments.map(i => [i.sym, i]));
+      // cotPairBias wants "long the currency"; the feed has JPY/CAD/CHF in USD-pair terms (js/cotState.js).
+      S.cotByCcy = Object.fromEntries(cotResp.instruments.map(i => [i.sym, toCcyRow(i)]));
     }
     if (S.fredData) MACRO_REGIME = computeMacroRegime();
     // USD composite needs OHLC for the 4 USD pairs — fetch them (cheap, 4 calls).
