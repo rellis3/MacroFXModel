@@ -9,7 +9,41 @@ Prereg: `forge/COT_CROWDING_PROGRAMME_PREREG.md` (registered `705e46ea`, 2026-10
 
 ## What COT crowding means in practice — the short answer
 
-PHASE4_SUMMARY_PLACEHOLDER
+**Across 34 markets and 19 years, COT crowding says very little about what price does next once price, trend
+strength and volatility are known. The one thing it does change is how a pullback inside a crowded trend should be
+read.**
+
+1. **A crowded trend that is still healthy** (state A: price continuing, crowd still building) behaves like any other
+   trend of the same strength and vol: no extra continuation, no extra risk (P6 NULL). On the dashboard, "crowded
+   and still going" is not a warning.
+2. **A crowded trend that looks vulnerable** (B: momentum fading while the crowd keeps buying; or "danger": stalling
+   while open interest contracts) did **not** show more large adverse moves than matched non-crowded weeks. Both
+   leaned slightly the other way (P4, P7 UNDERPOWERED).
+3. **An active positioning unwind** (D: price pulling back while the crowd leaves) is the one state with a
+   confirmed difference, and it's **the opposite of a warning** (P5 VALIDATED).
+   - The trend resumed more: +0.27σ over 4 weeks, +0.23σ over 12.
+   - There were 8.5pp fewer 2σ adverse moves than in non-crowded pullbacks of the same depth.
+   - Read it as a positioning reset. Caveats: the discovery markets show it only weakly (+0.07), and it's rare.
+4. **Crowded markets where COT adds nothing:** everything else.
+   - Adding the COT features to a price/vol/macro model made held-out prediction of large adverse moves slightly
+     *worse* and didn't improve continuation calls (P9, P10 NULL).
+   - Macro (non-)confirmation made no measurable difference (P8 NULL).
+5. **The opposite end of the spectrum is no different** (family 3). Specs crowded *against* the trend, crowded
+   shorts vs longs, under-positioned trends, commercials at their own extremes: none differs from neutral
+   positioning in a way the discovery markets and both halves agree on.
+6. **The only consistent shape is volatility.** Next-month vol rises 3–4% as specs lean with the trend, mostly where
+   open interest is high. That's real but small, and the trimmed mirror shows a similar uplift, so it's not specific
+   to crowding.
+7. **No trading decision improved** (Phase 4, all NULL, the secondary part of this research). Entry filters, risk
+   halving, exits and state-scaling on the trend system, and skipping crowded trades in the Vote Atlas bot, changed
+   OOS Sharpe by −0.001 to +0.015 with intervals that rule out anything above about +0.05.
+
+**What "overcrowded" means, then:**
+- It says that a trend has happened and that speculators followed it (Phase 1: positioning tracks the prior 1–2
+  months of price; at extremes the crowd builds with new positions and leaves by liquidating).
+- It does not say the trend is about to fail. When the crowd starts leaving during a pullback, that has historically
+  been a better moment for the trend, not a worse one.
+- The Q17 null stands, and it now extends to conditional, risk-based and decision-based versions of the question.
 
 ## Phase 1 — what the measurements capture (descriptive)
 
@@ -123,9 +157,25 @@ Holdout effects [95% CI], with the discovery estimate in parentheses:
   (12-wk −0.08 [−0.23, +0.09]).
 - **Commercials at their own extremes,** with or against the trend: no measurable difference on any outcome.
 
-## Phase 4 — trading decisions
+## Phase 4 — trading decisions (secondary)
 
-PHASE4_TABLE_PLACEHOLDER
+Trend system: desk engine `js/trendFollowEngine.js` imported unchanged, 34 markets, OOS 2017 → 2026-08-21. Vote
+Atlas: 12 instruments with their own COT market, 33,972 trades 2022-05 → 2026-08. Detail: `phase4_RESULTS.md`.
+
+| Cell | Rule | OOS result vs base [95% CI] | Verdict |
+|---|---|---|---|
+| A1 | no new entries into a B/D crowd on the signal's side | Sharpe +0.015 [−0.024, +0.044]; subperiods +0.023 / +0.006 | NULL |
+| A2 | halve exposure in a B/D crowd | CVaR(97.5%) +0.002 pts [−0.012, +0.017]; Sharpe +0.009 [−0.018, +0.036]; max DD +0.06 pts | NULL |
+| A3 | flat in a D crowd | Sharpe −0.001 [−0.036, +0.041] | NULL |
+| A4 | scale by state (A 1, C 1, B 0.5, D 0) | Sharpe +0.007 [−0.033, +0.051] | NULL |
+| VA1 | Vote Atlas trades with a B/D crowd (904) vs matched non-crowded trades | pnl/trade +0.002% [−0.019, +0.030] | NULL |
+| VA2 | skip those trades (OOS, 556 skipped) | pnl/trade +0.0005% [−0.0003, +0.0011]; total OOS pnl 735.8 → 722.2 | NULL |
+
+- The rules rarely bind: 0.6–4.5% of position-days change.
+- The engine reproduces the earlier trend-filter study's base exactly (IS 0.498 / OOS 0.097 on the 12 discovery
+  markets).
+- **Side finding about the trend system itself (not COT):** across these 34 markets its Sharpe was +0.43 in
+  2007–16, then −0.04 over 2017–26 (+0.10 in 2017–21, −0.21 in 2022–26).
 
 ## Deviations from the prereg
 
@@ -142,4 +192,15 @@ No threshold, state or bar changed.
 
 ## What this changes
 
-PHASE4_CHANGES_PLACEHOLDER
+- **Banked:** one ledger entry per scored cell (`cot-crowding-p1` … `p10`, `cot-crowding-s0-r12` … `asym-adv`,
+  `cot-crowding-a1` … `a4`, `va1`, `va2`).
+- **COT Extremes page (§8):** the validated cell earns a measured line, e.g. "historically, a crowded-trend pullback
+  while the crowd is leaving was followed by fewer large adverse moves than an ordinary pullback". It is proposed,
+  not added in this change. Given the weak discovery replication and the rarity of state D, it should carry the
+  caveat or wait for a forward record. No composite score and no new indicator: the research doesn't justify one.
+- **Trading systems:** no change. No COT rule improved either system.
+- **What would reopen it:**
+  - longer history (legacy COT from the 1990s plus pre-2006 prices) to power the underpowered cells (B, danger,
+    long/short asymmetry, the opposite extreme);
+  - a forward record of state D;
+  - a separate look at why the trend system's edge faded after 2016.

@@ -10,16 +10,16 @@ Generated 2026-10-24.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **192** |
-| validated | 42 |
-| null | 118 |
-| underpowered | 32 |
+| claims tested (validated + null + underpowered) | **214** |
+| validated | 43 |
+| null | 129 |
+| underpowered | 42 |
 | context (base rates, descriptions: not counted as tests) | 36 |
 | pre-registrations with no banked verdict (below) | 80 |
 
-**What the count says (Lesson 02 §05).** If none of the 192 claims were real, tests at the usual 5% size would still pass
-about **9.6** of them by luck. 42 passed, so most passes are unlikely to be luck alone, but
-**roughly 10 of the 42 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 214 claims were real, tests at the usual 5% size would still pass
+about **10.7** of them by luck. 43 passed, so most passes are unlikely to be luck alone, but
+**roughly 11 of the 43 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -252,6 +252,28 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-23 | vix-second-derivative | price | validated | forge/VIX_CALCULUS_PREREG.md |
 | 2026-10-23 | vvix-ratio-direction | volatility | underpowered | forge/VVIX_NASDAQ_RATIO_PREREG.md |
 | 2026-10-23 | vvix-ratio-range | volatility | validated | forge/VVIX_NASDAQ_RATIO_PREREG.md |
+| 2026-10-24 | cot-crowding-a1 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-a2 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-a3 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-a4 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-asym-adv | positioning | underpowered | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-asym-r12 | positioning | underpowered | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-p1 | positioning | underpowered | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-p10 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-p2 | positioning | underpowered | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-p3 | positioning | underpowered | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-p4 | positioning | underpowered | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-p5 | positioning | validated | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-p6 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-p7 | positioning | underpowered | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-p8 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-p9 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-s0-adv | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-s0-r12 | positioning | underpowered | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-slope-adv | positioning | underpowered | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-slope-r12 | positioning | underpowered | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-va1 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
+| 2026-10-24 | cot-crowding-va2 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
 | 2026-10-24 | macro-confluence-baa-credit | macro | null | MD files/MACRO_CONFLUENCE_BAA_CREDIT_PREREG.md |
 | 2026-10-24 | macro-confluence-direction | macro | underpowered | MD files/MACRO_CONFLUENCE_DIRECTION_PREREG.md |
 | 2026-10-24 | macro-confluence-range | macro | null | MD files/MACRO_CONFLUENCE_RANGE_PREREG.md |
