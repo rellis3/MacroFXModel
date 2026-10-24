@@ -1,5 +1,5 @@
 // Tests for js/hmmHourly.js.   node js/hmmHourly.test.mjs
-import { dirAt, barsToReturns, hourlyState, backfill, appendReading, tail, summarise, window_, backfillAsync, lastHour, barHour, MIN_BARS } from './hmmHourly.js';
+import { fillDirections, dirAt, barsToReturns, hourlyState, backfill, appendReading, tail, summarise, window_, backfillAsync, lastHour, barHour, MIN_BARS } from './hmmHourly.js';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
 
@@ -57,5 +57,9 @@ ok('an empty log summarises to nothing', summarise([]) === null && tail({ pairs:
   ok('direction is kept one character per hour, with gaps unknown', s2.pairs.X.d === 'u.d' && s2.pairs.X.d.length === s2.pairs.X.s.length && window_(s2, 'X', 2).d === '.d');
   const old = { pairs: { Y: { t0: '2026-10-21T08', s: 'qa', p: [90, 80] } } }; appendReading(old, 'Y', '2026-10-21T10', 'active', 70, { dir: 'd' });
   ok('a log written before direction existed is padded, not broken', old.pairs.Y.d === '..d' && window_(old, 'Y', 3).d === '..d'); }
+{ const cs = Array.from({ length: 6 }, (_, i) => ({ ms: Date.parse('2026-10-21T08:00:00Z') + i * 3.6e6, c: [1, 1.1, 1.0, 1.0, 0.9, 1.2][i] }));
+  const sx = { pairs: { Z: { t0: '2026-10-21T08', s: 'qaaqa.', p: [9, 9, 9, 9, 9, 0], d: '......' } } };
+  const n = fillDirections(sx, 'Z', cs);
+  ok('directions are filled in for hours logged before they were kept, from the price history', sx.pairs.Z.d === '.udfd.' && n === 4, sx.pairs.Z.d); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

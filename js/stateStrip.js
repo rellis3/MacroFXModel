@@ -50,12 +50,14 @@ export function summaryWords(sm, hours) {
   return `Last ${sm.hours} of ${hours} hours known: active ${sm.activeShare}% of the time, changed state ${sm.flips} time${sm.flips === 1 ? '' : 's'}.`;
 }
 /** The pill text. kind: 'Daily' | 'Hourly'. */
-export const pillWords = (kind, state, prob) => `${kind} model: ${state}${prob ? `, ${prob}% sure` : ''}`;
+export const pillWords = (kind, state, prob) => `${kind === 'Daily' ? 'Last few weeks' : kind === 'Hourly' ? 'Last few hours' : kind}: ${state}${prob ? `, ${prob}% sure` : ''}`;
 
 /** The strip with an axis under it ("48h ago ... now") and the legend, so it reads on its own. Three colours: blue quiet or choppy, green active and closed up, red active and closed down. */
 export function hourlyStripWithAxis(e, hours = 48, opts = {}) {
   const svg = hourlyStripSvg(e, hours, opts); if (!svg) return '';
-  const hasDir = lastHours(e, hours).some(c => c.d === 'u' || c.d === 'd');
-  return `${svg}<div class="stax"><span>${hours}h ago</span><span>now</span></div><div class="stlg"><i style="background:${COLOUR.quiet}"></i>quiet or choppy <i style="background:${hasDir ? COLOUR.up : COLOUR.active}"></i>${hasDir ? 'active, closed up' : 'active'} ${hasDir ? `<i style="background:${COLOUR.down}"></i>active, closed down ` : ''}<i style="background:${COLOUR.none}"></i>no reading</div>`;
+  const cells = lastHours(e, hours), has = f => cells.some(f);
+  const items = [[COLOUR.quiet, 'quiet or choppy', has(c => c.ch === 'q')], [COLOUR.up, 'active, closed up', has(c => c.ch === 'a' && c.d === 'u')], [COLOUR.down, 'active, closed down', has(c => c.ch === 'a' && c.d === 'd')],
+    [COLOUR.active, 'active, direction not recorded', has(c => c.ch === 'a' && c.d !== 'u' && c.d !== 'd')], [COLOUR.none, 'no reading', has(c => c.ch !== 'q' && c.ch !== 'a')]].filter(x => x[2]);
+  return `${svg}<div class="stax"><span>${hours}h ago</span><span>now</span></div><div class="stlg">${items.map(([col, w]) => `<i style="background:${col}"></i>${w}`).join(' ')}</div>`;
 }
 export const hourlyLegendNote = 'The model only knows quiet or active. Green and red say which way the hour closed; they are history, not a forecast.';
