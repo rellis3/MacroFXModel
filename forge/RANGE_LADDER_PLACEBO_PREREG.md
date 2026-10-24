@@ -109,6 +109,13 @@ comes from the real Monday, and Saturday/Sunday sessions (the weekend stub) are 
 Nothing else changes. No outcome had been computed: the only data read so far was bar counts and the session check
 above. The book's own handling is recorded as a fault (`plans/DATA_SPEC.md` §5) for whoever owns the book.
 
+### A2 — 2026-10-24 — POST-HOC (describe only)
+
+§2 cites `level-touch` as a null on prior-day high/low. The 2026-10-24 null-audit of that entry
+(`analysis/output/null-audit/level-touch/AUDIT.md`) found it never tested prior-day high/low: its "hl" family is the
+dynamic high-low range rungs, and its controls were random times, not random prices. The entry has been corrected.
+Prior-day high/low has no level-touch verdict. This changes nothing in this study's design or result.
+
 ## RESULTS
 
 Run 2026-10-19 → `analysis/output/range-ladder-placebo/RESULTS.md`. **UNDERPOWERED (no verdict by the registered rule)**: control C1 failed (−0.09 pp, CI [−0.16, −0.02]). Descriptive: real lines revert +0.91 pp more than shifted ladders [+0.82, +1.01], under the 2-pp bar; the difference sits at the Asia range edges (A_1 +3.07, A_0 +2.83).

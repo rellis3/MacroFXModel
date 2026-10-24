@@ -234,9 +234,9 @@ export const DESK_EVIDENCE = [
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'GOLD', 'NQ', 'SPX500'],
   },
   {
-    id: 'level-touch', domain: 'price', verdict: 'null', date: '2026-09-10', doc: 'analysis/line_touch_control_study.mjs · memory project_hl_signal_null',
-    claim: 'Price reacts at pre-drawn levels (prior-day high/low, daily open, p50/p75/p90 range lines) -- touches bounce or break in a usable way',
-    result: 'The original Sharpe 5.36 came from a survivorship filter (only touches that later "held" were counted). Barrier-free re-test with paired controls at random non-level prices: p50, p75, p90 and the daily open closed in BOTH directions. The level increment over a random price is zero or negative.',
+    id: 'level-touch', domain: 'price', verdict: 'null', date: '2026-10-24', doc: 'analysis/line_touch_control_study.mjs · memory project_hl_signal_null', also: ['analysis/output/null-audit/level-touch/AUDIT.md'],
+    claim: 'Price reacts at pre-drawn levels (the dynamic high-low range rungs, the open-anchored p50/p75/p90 range lines, the daily open) -- touches bounce or break in a usable way. NOT tested: prior-day high/low (an earlier wording of this entry said it was)',
+    result: 'Banked 2026-09-10; audited 2026-10-24 (null-audit, bugs found, verdict unchanged). The original Sharpe 5.36 came from a survivorship filter. The banked controls were random TIMES on other days, not random prices, and showed small positive increments the record omitted. Audit: an independent re-implementation matched all 396,538 touches; a planted fade was detected (t -7.8 / -2.9 at two sizes); the comparison this entry claims -- real lines vs the same lines shifted 0.8-1.2x on the same day, date-clustered -- gives about zero for every family on every metric (|z| < 1.9; e.g. hl50 +0.007, oh50 +0.001, daily open +0.002 of the day range; MDE 0.005-0.035).',
     use: 'A level is a place, not a signal. The page draws them for orientation; nothing on this desk trades a touch on its own.',
   },
   {
@@ -844,9 +844,9 @@ export const DESK_EVIDENCE = [
     use: 'Use IV as the vol forecast input; it says nothing about direction.',
   },
   {
-    id: 'wall-placebo', domain: 'positioning', verdict: 'null', date: '2026-09-23', doc: 'oi_research_book/WALL_PLACEBO_PREREG.md',
+    id: 'wall-placebo', domain: 'positioning', verdict: 'null', date: '2026-10-24', doc: 'oi_research_book/WALL_PLACEBO_PREREG.md', also: ['analysis/output/null-audit/wall-placebo/AUDIT.md'],
     claim: 'The ~60% rejection at a max-OI wall touch is specific to the wall rather than any touched level',
-    result: 'Wall-minus-placebo break rates within +/-2.1pp at every horizon, every CI containing 0; the wall beats placebo in 6/14 cells.',
+    result: 'Banked 2026-09-23: wall-minus-placebo break rates within +/-2.1pp, every CI containing 0. Audit 2026-10-24 (bugs found, verdict unchanged): the shared builder oi_research_book/01_build_daily_dataset.py compared futures-priced walls with CFD prices WITHOUT the futures-CFD basis (EUR +25 pips, JPY -66, CHF -37, NQ ~+100 pts) and did not swap call/put on the inverted pairs (USD/JPY, CAD, CHF), so the banked design could not see a 4-6pp effect at the true wall. Corrected (basis + swap; also own-expiry basis, book used only once public, clock-time horizons): still null, all CIs contain 0, none reaches 1pp at 15 min; intervals exclude a wall-specific excess above ~2.8pp. Reproduction exact; 246 lockbox rows in the banked run (no effect).',
     use: 'Treat OI walls as ordinary levels; the wall-touch read describes a detector artefact plus short-horizon mean reversion.',
   },
   {
@@ -1247,10 +1247,10 @@ export const DESK_EVIDENCE = [
     use: 'The surprise explains the release window; it does not tell where Nasdaq goes next in a way this sample can confirm. Candidate only: a 5-day fade of the data-surprise direction, to be judged on a forward record (~100 new events), not traded.',
   },
   {
-    id: 'yield-ladder-eurusd', domain: 'macro', verdict: 'null', date: '2026-10-21', doc: 'forge/YIELD_PREDICTIVE_LADDER_PREREG.md', also: ['analysis/output/yield-predictive-ladder/RESULTS.md', 'analysis/output/yield-predictive-ladder/SYNTHESIS.md'],
+    id: 'yield-ladder-eurusd', domain: 'macro', verdict: 'underpowered', date: '2026-10-24', doc: 'forge/YIELD_PREDICTIVE_LADDER_PREREG.md', also: ['analysis/output/yield-predictive-ladder/RESULTS.md', 'analysis/output/yield-predictive-ladder/SYNTHESIS.md', 'analysis/output/null-audit/yield-ladder-eurusd/AUDIT.md'],
     claim: 'Owner brief (institutional yield-to-asset framework, Phase D): decomposed US rate drivers (2y policy proxy, 10y real, breakeven, Kim-Wright term premium, slope) and the US-DE 2y/10y differentials add out-of-sample forecast value for EURUSD at 1/5/20 days beyond momentum/vol/VIX/oil, with predefined regimes, and survive costs',
-    result: 'Nested walk-forward ridge ladder M0-M5, annual refits, validation 2015-19, test 2020-26/08, point-in-time (inputs <= d-1; broad dollar / term premium lagged per A1), 200 shifted-rates placebos. 0 of 12 cells pass (test Clark-West t <= 1.15). Where the models expressed a rate view it was wrong: OOS IC at 5d -0.10..-0.11, at 20d -0.18..-0.21 (95% intervals below 0), in every regime split, without the term premium and with inputs a day staler; no rule beats the baseline net of costs. 1d test IC -0.019 [-0.067, +0.029] is underpowered (a planted 0.05 edge is not detected by this ladder). Same-day links are real (US-DE 2y -0.13/-0.18/-0.21; US 2y -0.25 in 2020-26). The apparent lag+1 lead is the noon FX print overlapping the 15:30 yields.',
-    use: 'Rates explain the EURUSD day, they do not forecast the next 5-20 days: models trained on 2005-14 rate relationships pointed the wrong way afterwards. Use the US-DE front-end move for same-day attribution only. Shortlist of what is still open (rate surprises at releases, intraday) is in SYNTHESIS.md.',
+    result: 'Re-judged 2026-10-24 by the null-audit (was null on 2026-10-21): the pipeline is mechanically clean and reproduces exactly, but the reported OOS ICs (-0.11 at 5d, -0.20 at 20d) are the INTERCEPT\'s -- an expanding-mean forecast with no signals (M0) gives the identical numbers -- because cross-validated ridge chose lambda 100-1000, leaving forecasts that are mostly the yearly mean. Ranked within year the rate models are ~0 (+0.015/+0.016 at 20d); the rate-specific test IC (US-DE 2y change + momentum) is +0.015 [-0.07, +0.10] at 5d and +0.044 [-0.11, +0.20] at 20d, both intervals reaching the registered bars, and the ladder could not see a planted rho 0.10 at 5d. 0 of 12 cells pass (Clark-West t <= 1.15); nothing points to an edge, but by the prereg\'s power rule the word is UNDERPOWERED, not NULL.',
+    use: 'Rates explain the EURUSD day; whether they forecast the next 5-20 days is not answered by this design (too heavily shrunk to see moderate effects). Use the US-DE front-end move for same-day attribution only. A re-test needs a new prereg with a small fixed-feature or incremental-IC test, not the ridge ladder.',
   },
   {
     id: 'yield-ladder-nq', domain: 'macro', verdict: 'underpowered', date: '2026-10-21', doc: 'forge/YIELD_PREDICTIVE_LADDER_PREREG.md', also: ['analysis/output/yield-predictive-ladder/RESULTS.md', 'analysis/output/yield-predictive-ladder/SYNTHESIS.md'],
@@ -1578,7 +1578,7 @@ const POWER = {
   'vvix-ratio-direction':    { n: '4,259 sessions 2009-26', note: '80% power only at 0.35 SD (5d) / 0.6 SD (20d) vs a 0.2 SD bar' },
   'rate-surprise-eurusd':    { n: '466-495 events 2010-26 (16 cells across both assets)', note: '80% power only at rho ~0.25-0.27 vs a 0.10 bar; data-surprise cells at 1h-1d exclude +-0.10 (null there)' },
   'rate-surprise-nq':        { n: '443-493 events 2010-26', note: '80% power at rho ~0.17-0.24 vs a 0.10 bar; 5-day reversal p 0.058 vs Holm 0.003' },
-  'yield-ladder-eurusd':     { n: '1,650 test days (2020-26), 2,900 OOS days 2015-26; 12 scored cells', note: 'OOS IC at 5d/20d intervals below 0 exclude the +0.10 bar (null there); 1d underpowered (planted 0.05 edge undetected)' },
+  'yield-ladder-eurusd':     { n: '1,650 test days (2020-26), 2,900 OOS days 2015-26; 12 scored cells', note: 'null-audit 2026-10-24: the 5d/20d OOS ICs were the intercept; rate-specific IC intervals reach the bars (5d [-0.07,+0.10], 20d [-0.11,+0.20]); the ladder could not see a planted rho 0.10 at 5d -> underpowered' },
   'yield-ladder-nq':         { n: '1,650 test days (2020-26), 2,900 OOS days 2015-26; 12 scored cells', note: 'positive control: only rho >= 0.10 detected at 1d, none at 5d; forecasts constant-long -> underpowered' },
   'spread-episodes-nq':      { n: '809 Final-period turns on 159 sessions (2,991 in all; day/week clustered)', note: 'Final MDE 0.056 sigma vs a 0.10 bar; interval [-0.037, +0.052] excludes it -- a real null' },
   'spread-episodes-eurusd':  { n: '198 Final-period turns on 79 months (808 in all; month clustered)', note: 'Final MDE 0.19 sigma vs a 0.10 bar; interval [-0.213, +0.097] excludes a 0.10 follow only narrowly; a 0.10 revert is not excluded' },

@@ -12,8 +12,8 @@ Generated 2026-10-24.
 |---|---|
 | claims tested (validated + null + underpowered) | **192** |
 | validated | 42 |
-| null | 118 |
-| underpowered | 32 |
+| null | 117 |
+| underpowered | 33 |
 | context (base rates, descriptions: not counted as tests) | 36 |
 | pre-registrations with no banked verdict (below) | 80 |
 
@@ -41,7 +41,6 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-01 | zone-engine | price | null | memory project_confluencebot_zone_verdict · MD files/CONFLUENCE_LIVE_VS_BACKTEST.md |
 | 2026-09-02 | execution-gate | execution | validated | memory project_execution_feasibility_gate |
 | 2026-09-10 | backtest-artifacts | execution | context | MD files/LIVE_BACKTEST_ALIGNMENT.md · MD files/FIB_ATLAS_BACKTEST_VS_LIVE.md · memory project_qmr_freehour_falsification |
-| 2026-09-10 | level-touch | price | null | analysis/line_touch_control_study.mjs · memory project_hl_signal_null |
 | 2026-09-10 | oi-max-pain | positioning | null | memory project_oi_pipeline_audit |
 | 2026-09-12 | approach-speed | price | null | MD files/APPROACH_SPEED_CONTROL_TEST.md |
 | 2026-09-12 | tape-speed-persistence | price | validated | MD files/APPROACH_SPEED_CONTROL_TEST.md |
@@ -105,7 +104,6 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-23 | mv-dispersion-range | volatility | validated | MD files/OUTCOME_LOOP.md |
 | 2026-09-23 | mv-extreme-forward | price | null | MD files/OUTCOME_LOOP.md |
 | 2026-09-23 | mv-vixterm-range | volatility | validated | MD files/OUTCOME_LOOP.md |
-| 2026-09-23 | wall-placebo | positioning | null | oi_research_book/WALL_PLACEBO_PREREG.md |
 | 2026-09-25 | dr-copper | macro | null | MD files/DR_COPPER_PREREG.md |
 | 2026-09-25 | driver-roundtrip | price | null | MD files/ROUNDTRIP_PREREG.md |
 | 2026-09-25 | rates-pivot-lead | macro | null | MD files/RATES_PIVOT_LEAD_PREREG.md |
@@ -220,7 +218,6 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-21 | rates-vol-gap-state | volatility | underpowered | forge/RATES_VOL_GAP_PREREG.md |
 | 2026-10-21 | tff-basis-rates-vol-build | volatility | underpowered | forge/TFF_BASIS_RATES_VOL_PREREG.md |
 | 2026-10-21 | tff-basis-rates-vol-level | volatility | underpowered | forge/TFF_BASIS_RATES_VOL_PREREG.md |
-| 2026-10-21 | yield-ladder-eurusd | macro | null | forge/YIELD_PREDICTIVE_LADDER_PREREG.md |
 | 2026-10-21 | yield-ladder-nq | macro | underpowered | forge/YIELD_PREDICTIVE_LADDER_PREREG.md |
 | 2026-10-22 | basis-stress-fxvol | volatility | null | forge/BASIS_STRESS_RULES_PREREG.md |
 | 2026-10-22 | basis-stress-usd | macro | null | forge/BASIS_STRESS_RULES_PREREG.md |
@@ -252,9 +249,12 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-23 | vix-second-derivative | price | validated | forge/VIX_CALCULUS_PREREG.md |
 | 2026-10-23 | vvix-ratio-direction | volatility | underpowered | forge/VVIX_NASDAQ_RATIO_PREREG.md |
 | 2026-10-23 | vvix-ratio-range | volatility | validated | forge/VVIX_NASDAQ_RATIO_PREREG.md |
+| 2026-10-24 | level-touch | price | null | analysis/line_touch_control_study.mjs · memory project_hl_signal_null |
 | 2026-10-24 | macro-confluence-baa-credit | macro | null | MD files/MACRO_CONFLUENCE_BAA_CREDIT_PREREG.md |
 | 2026-10-24 | macro-confluence-direction | macro | underpowered | MD files/MACRO_CONFLUENCE_DIRECTION_PREREG.md |
 | 2026-10-24 | macro-confluence-range | macro | null | MD files/MACRO_CONFLUENCE_RANGE_PREREG.md |
+| 2026-10-24 | wall-placebo | positioning | null | oi_research_book/WALL_PLACEBO_PREREG.md |
+| 2026-10-24 | yield-ladder-eurusd | macro | underpowered | forge/YIELD_PREDICTIVE_LADDER_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
