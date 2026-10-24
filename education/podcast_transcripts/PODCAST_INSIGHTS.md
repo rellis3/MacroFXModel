@@ -156,6 +156,10 @@ episode where BD puts on the QQQ short that he takes profit on at the start of E
 Recorded around early Sept 2026 (two months before the midterms; Treasury buyback on the 9th). The earliest of the three episodes.
 The reasoning is decoded in `HOW_THEY_THINK.md` (patterns F-L). The ideas that could be tested are R10 and R11 below.
 
+### E04: credit cracks, two schools of thought, FX correlations broken, Brazil (Fri 2026-10-23)
+Reasoning decoded in `HOW_THEY_THINK.md` §3c (patterns M-T), including a scorecard of E01-E03.
+Things we could test: R12, below.
+
 ---
 
 ## Theme Index
@@ -179,7 +183,11 @@ The reasoning is decoded in `HOW_THEY_THINK.md` (patterns F-L). The ideas that c
 | Starting conditions / positioning decide the reaction to news | BD | E01, E03 |
 | Policy credibility: markets test low-credibility policymakers | BD, AP | E01, E02, E03 |
 | Release valves (currency, long end) | AP, BD | E01, E03 |
-| Idiosyncratic, uncorrelated bets; Sharpe grows with √N independent bets | AP, BD | E03 |
+| Idiosyncratic, uncorrelated bets; Sharpe grows with √N independent bets | AP, BD | E03, E04 (Brazil, long horizon) |
+| Correlation flips reveal a story change (oil: inflation → growth scare) | BD, AP | E01, E04 |
+| Reflexivity: the AI chain runs in reverse | AP, BD | E01, E04 |
+| Discount hyped events that don't change the economy (tariffs, midterms) | BD | E03, E04 |
+| Decompose a price into competing drivers; agnostic when they cancel | BD | E04 |
 
 ---
 
@@ -274,6 +282,12 @@ test. If the CME gold option settlements give a 25-delta risk reversal, plot it.
 later: skew at multi-year lows → larger *range* in the following month. Rare episodes, so expect
 "context".
 
+**R12. Garden-variety corrections as a base rate (BD, E04).** CONTEXT, cheap to compute. How often
+does NQ/SPX have a 5-10% drawdown from a high inside a year, and what is the forward 1-3 month
+distribution once it's ~8% down? That's the base rate behind his dip-buy. It's a distribution
+claim, which suits this desk. Condition on credit widening (HY OAS) vs not, to see whether "this
+time is credit" changes the base rate.
+
 ---
 
 ## Calls to Score
@@ -282,7 +296,7 @@ later: skew at multi-year lows → larger *range* in the following month. Rare e
 |---|---|---|---|---|---|
 | ~2026-09-05 | BD | If the 9 Sept buyback isn't bigger, disappointment; if bigger, buy gold and BTC | 2026-09-10 | | |
 | ~2026-09-05 | AP | Bigger buyback → gold at new all-time highs within 2 weeks | ~2026-09-24 | gold ~4,000 → +20% rally already | |
-| ~2026-09-05 | AP | One hot core PCE print → long end sells off, Fed forced to hike | rolling | | Long end broke above 5% by mid-Oct (E01/E02); a Fed hike is implied, not confirmed |
+| ~2026-09-05 | AP | One hot core PCE print → long end sells off, Fed forced to hike | rolling | | **Right**: long end to 5.35%; E04 confirms one hike delivered |
 | ~2026-09-05 | BD | Receive NZ rates / short NZD / long AUDNZD on Labour's dual-mandate plan | 3-6 months; NZ election Nov | | |
 | ~2026-09-05 | AP | Long CZK: EURCZK lower, or long CZK / short PLN | 3-12 months | | |
 | ~2026-09-05 | BD | Fade tariff news on CAD | rolling | | |
@@ -291,7 +305,13 @@ later: skew at multi-year lows → larger *range* in the following month. Rare e
 | ~2026-10-09 | AP | 10y fair ≈ 5.5%, 30y ≈ 6%; below that isn't equilibrium | rolling | 30y 5.62% | |
 | ~2026-10-09 | AP | EUR lower, mainly because the ECB is hesitant | rolling | | |
 | ~2026-10-09 | BD | French spread blow-off at 160 may be the top; now 138 | Moody's 10-23 | 138bp (E01 says 168 peak; the transcripts disagree) | |
-| ~2026-10-16 | BD | Short USDCAD / USD "another leg lower next week" on good-news-bad-price | 2026-10-23 | USDCAD ≈ 1.4150, EURUSD ≈ 1.1260 | |
-| ~2026-10-16 | BD | France news priced in; spreads peaked at 168 (two Fridays earlier) | 2026-10-30 | OAT-Bund 168 peak | |
-| ~2026-10-16 | AP | Rates trend resumes higher; thesis wrong on a weekly close well below 5% US 10y | rolling | 10y just above 5% (peak 5.35%) | |
-| ~2026-10-16 | AP | Fed likely skips October; if so the long end sells off | after Oct FOMC | Oct hike priced < 5-6bp | |
+| ~2026-10-16 | BD | Short USDCAD / USD "another leg lower next week" on good-news-bad-price | 2026-10-23 | USDCAD ≈ 1.4150, EURUSD ≈ 1.1260 | **Not confirmed**: EUR unchanged on the week (E04); BD now agnostic |
+| ~2026-10-16 | BD | France news priced in; spreads peaked at 168 (two Fridays earlier) | 2026-10-30 | OAT-Bund 168 peak | **Wrong** by 10-23: back at 171; BD now says "path of least resistance is wider" |
+| ~2026-10-16 | AP | Rates trend resumes higher; thesis wrong on a weekly close well below 5% US 10y | rolling | 10y just above 5% (peak 5.35%) | **Being tested**: 10y 4.95% on 10-23 ("well below" never pinned to a number); AP still school 1 |
+| ~2026-10-16 | AP | Fed likely skips October; if so the long end sells off | after Oct FOMC | Oct hike priced < 5-6bp | **Right**: no Oct hike; December hike priced < 65% at the 10-22 low |
+| 2026-10-23 | BD | Nasdaq buyer; range 29-30k NQ, S&P ~7,600; "a garden-variety correction" | ~4 weeks | NQ ≈ 29,000, ~8% off high | |
+| 2026-10-23 | BD | BoC may pause despite a hike being ~fully priced | next BoC meeting | | |
+| 2026-10-23 | BD | Brazil: Flávio wins, BRL then flatlines quickly; vol collapses either way | after the 10-25 runoff | 1w vol ~57; Polymarket ~77% | |
+| 2026-10-23 | AP | If Bolsonaro side wins, BRL rallies harder than expected and knocks out RKOs | after the 10-25 runoff | | |
+| 2026-10-23 | AP | School 1: AI repricing then drift; hikes continue unless credit (AI, France) tightens further | rolling | | |
+| 2026-10-23 | BD | No December Fed hike if equities fall another ~8% | Dec FOMC | | |
