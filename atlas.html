@@ -567,6 +567,19 @@ function nlSources(hmmAt) {
     { label: 'Central-bank tone', source: 'bank statements, own scoring', asOf: cbAt, cadence: 'irregular' },
   ];
 }
+/** The 10-year yield, its real part (TIPS) and its inflation part (breakeven) measured on ONE date: the latest day all three printed. Three series that last printed on different days cannot be added
+ *  (nominal = real + breakeven only holds on a shared date), so the later print of any one of them is kept apart as a note, not mixed in. */
+function alignedYield() {
+  const S = D.drill?.series, dts = D.drill?.dates; if (!S?.us10y || !S?.tips || !S?.bei || !dts?.length) return null;
+  const ok = i => S.us10y[i] != null && S.tips[i] != null && S.bei[i] != null;
+  let L = null; for (let i = dts.length - 1; i >= 0; i--) if (ok(i)) { L = i; break; } if (L == null) return null;
+  const want = Date.parse(dts[L]) - 20 * 864e5; let R = null; for (let i = L; i >= 0; i--) if (Date.parse(dts[i]) <= want && ok(i)) { R = i; break; } if (R == null) return null;
+  const idx = []; for (let i = R; i <= L; i++) if (ok(i)) idx.push(i);
+  const bp = k => idx.map(i => +((S[k][i] - S[k][R]) * 100).toFixed(2));
+  const series = { us10y: bp('us10y'), real: bp('tips'), bei: bp('bei') };
+  let later = null; for (let i = dts.length - 1; i > L; i--) if (S.bei[i] != null) { later = { date: dts[i], d: +((S.bei[i] - S.bei[R]) * 100).toFixed(1) }; break; }
+  return { asOf: dts[L], from: dts[R], nominal: S.us10y[L], real: S.tips[L], bei: S.bei[L], dNom: series.us10y.at(-1), dReal: series.real.at(-1), dBei: series.bei.at(-1), series, later };
+}
 function nlInput({ bookFor = () => null } = {}) {
   const regime = P.regimeCard(D.regime), axes = P.axesRows(D.gr), firing = P.deskFiring(D.ds), ahead = P.aheadEvents(D.events, Date.now(), { limit: 12, withinHours: 72 }), fp = P.fedPathCard(D.fp), meeting = P.nextMeeting(D.fcal), nc = P.nowcastCard(D.nc);
   const position = P.positionLines({ regime, axes, firing, events: ahead, fedPath: fp, meeting }), a = D.intel?.analysis ?? null, keys = Object.keys(insts()), { tiles, stages } = nlNumbers();
@@ -579,7 +592,8 @@ function nlInput({ bookFor = () => null } = {}) {
     ranges: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k); return { label: labelOf(k), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used }; }),
     assets: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k), reg = P.regimeFor(D.regime, k), gam = P.gammaFor(D.oi, k), fire = P.deskFiring(D.ds, k).filter(f => f.instruments.includes(k)).length, g = { fx: 'FX', index: 'Index', commodity: 'Gold', crypto: 'Bitcoin' }[acOf(k)] ?? '';
       const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: mv?.d1 ?? null, d20: mv?.d20 ?? null, read: plainRead(mk?.read), watch: plainRead(mk?.watch), implied: impliedRow(D.ivl?.implied?.[impliedKeyFor(k)], k, Date.now()), zone: (() => { const row = (D.oi?.pairs ?? []).find(p => p.pair === P.OI_PAIR_FOR[k]); return row ? optionZone(row, k, d.dp ?? 4) : null; })(), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
-    yieldStack: (() => { const y = fmtRate('us10y'), r = fmtRate('tips'), b = fmtRate('bei'); return y && r && b ? { nominal: y.v, real: r.v, bei: b.v, dNom: y.d20, dReal: r.d20, dBei: b.d20 } : null; })(),
+    yieldStack: (() => { const al = alignedYield(); if (al) return { nominal: al.nominal, real: al.real, bei: al.bei, dNom: al.dNom, dReal: al.dReal, dBei: al.dBei, asOf: al.asOf, from: al.from, later: al.later }; const y = fmtRate('us10y'), r = fmtRate('tips'), b = fmtRate('bei'); return y && r && b ? { nominal: y.v, real: r.v, bei: b.v, dNom: y.d20, dReal: r.d20, dBei: b.d20 } : null; })(),
+    yieldSeries: alignedYield()?.series ?? null,
     rangePressure: rpNow(), fearVsNasdaq: fearNow(), vixBeta: betaNow(), impliedRatio: impNow(),
     ...nlStrips(),
     strengths: derived.str, surprise: P.surpriseBars(D.es), cb: P.cbTone(cbHist()), crowding: P.crowding(D.ce), cotDate: D.ce?.instruments?.find(i => i.reportDate)?.reportDate ?? null, regimeCard: regime, changes: P.changesRows(D.mc), fedPath: fp, scenarios: P.scenarios(D.gr), nowcast: nc,
