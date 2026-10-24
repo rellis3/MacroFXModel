@@ -12,7 +12,7 @@
  *
  * Pure. `buildOiProfile` returns a plain object; `buildProfileText` serialises it as pipe-delimited lines the Pine indicator parses.
  */
-import { oiBookLegs, oiParseVolume, futuresIsInverted } from './oi.js';
+import { oiBookLegs, oiParseVolume, parseOIMatrix, futuresIsInverted } from './oi.js';
 import { gexLadder } from './gexLadder.js';
 import { levelExpectation } from './levelExpectation.js';
 import { RIPPLE_BUCKETS } from './rippleBook.js';
@@ -122,11 +122,23 @@ export function buildOiProfile(inst, opts = {}) {
     } catch { volRows = null; }
   }
   for (const r of volRows || []) { const b = binOf(r[0]); if (b >= 0 && b < nBins) vol[b] += (r[1] || 0) + (r[2] || 0); }
+  // OI CHANGE by strike: the day's net change in open interest (contracts opened minus closed, all expiries, calls plus puts), signed. Building = positioning added, unwinding = positions closed.
+  // It comes from the QuikStrike change columns already stored as inst.rawChg; strikes move onto the same basis as the rest of the profile.
+  const chg = mk();
+  if (inst?.rawChg) {
+    try {
+      const m = parseOIMatrix(inst.rawChg, { signed: true, mode: 'aggregate' });
+      const basis = Number.isFinite(inst.basis) ? inst.basis : 0, inv = futuresIsInverted(inst.pair || '');
+      const shift = s => (basis !== 0 ? (inv ? 1 / s - basis : s - basis) : s);
+      if (m) m.strikes.forEach((s, i) => { const px = shift(s), b = binOf(px); if (Number.isFinite(px) && b >= 0 && b < nBins) chg[b] += (m.calls[i] || 0) + (m.puts[i] || 0); });
+    } catch { /* no change data: the column is simply empty */ }
+  }
   const rows = (fn) => Array.from({ length: nBins }, (_, b) => fn(b)).filter(Boolean);
   const mid = b => lo + (b + 0.5) * bw;
   const gex = rows(b => ((gC[b] || gP[b]) ? { price: mid(b), net: gC[b] - gP[b], call: gC[b], put: gP[b] } : null));
   const vanna = rows(b => (gV[b] ? { price: mid(b), v: gV[b] } : null));
   const volume = rows(b => (vol[b] ? { price: mid(b), v: vol[b] } : null));
+  const oiChg = rows(b => (chg[b] ? { price: mid(b), v: chg[b] } : null));
 
   // ── 4. IV smile: real points only (best-covered smile on the record) ─────────────────────────────────────────────
   const smiles = [inst?.ivSmile, ...(Array.isArray(inst?.ivSmiles) ? inst.ivSmiles.map(s => s?.smile ?? s) : [])].filter(s => s?.strikes?.length && s?.iv?.length);
@@ -151,7 +163,7 @@ export function buildOiProfile(inst, opts = {}) {
     em: (em && Number.isFinite(em.dte) && em.dte <= 2) ? { hi: em.upper, lo: em.lower, pct: em.pct, dte: em.dte, source: 'options' }
       : (opts.dayMove > 0 ? { hi: spot + opts.dayMove, lo: spot - opts.dayMove, pct: +(opts.dayMove / spot * 100).toFixed(3), dte: 1, source: 'forecast' } : null),
     iv: { atm: inst?.ivDynamics?.atmIV ?? null, rr: inst?.riskReversal?.rr ?? null, tilt: inst?.riskReversal?.tilt ?? null },
-    levels, gex, vanna, volume, smile, helix, binWidth: bw,
+    levels, gex, vanna, volume, oiChg, smile, helix, binWidth: bw,
     hedgeRead: opts.hedge?.atSpot ? { up1: opts.hedge.atSpot.hedgeUp1pct, dn1: opts.hedge.atSpot.hedgeDown1pct } : null,
   };
 }
@@ -163,7 +175,7 @@ export function shiftProfilePrices(p, fn, label = 'futures') {
   const f = v => (Number.isFinite(v) ? fn(v) : v);
   const mapRows = rows => (rows || []).map(r => ({ ...r, price: f(r.price) }));
   return { ...p, terms: label, spot: f(p.spot), zeroGamma: f(p.zeroGamma), flip: f(p.flip), em: p.em ? { ...p.em, hi: f(p.em.hi), lo: f(p.em.lo) } : null,
-    levels: mapRows(p.levels), gex: mapRows(p.gex), vanna: mapRows(p.vanna), volume: mapRows(p.volume), smile: mapRows(p.smile), helix: p.helix ? mapRows(p.helix) : null };
+    levels: mapRows(p.levels), gex: mapRows(p.gex), vanna: mapRows(p.vanna), volume: mapRows(p.volume), oiChg: mapRows(p.oiChg ?? []), smile: mapRows(p.smile), helix: p.helix ? mapRows(p.helix) : null };
 }
 
 /** Pipe-delimited block for the Pine indicator. One instrument per block; first line after the title names it.
@@ -185,6 +197,9 @@ export function buildProfileText(p, { name, generated = '', digits = 2, savedAtM
   const gm = mxAbs(p.gex.map(r => r.net)); for (const r of keep(p.gex, r => r.net, gm)) out.push(`G|${f(r.price)}|${sc(r.net, gm)}`);
   const vm = mxAbs(p.vanna.map(r => r.v)); for (const r of keep(p.vanna, r => r.v, vm)) out.push(`V|${f(r.price)}|${sc(r.v, vm)}`);
   const om = mxAbs(p.volume.map(r => r.v)); for (const r of keep(p.volume, r => r.v, om)) out.push(`O|${f(r.price)}|${sc(r.v, om)}`);
+  // OI change is sparse and spiky: only the biggest movers (at least 5% of the peak, 14 at most) so the paste stays inside Pine's string cap
+  const cm = mxAbs((p.oiChg ?? []).map(r => r.v));
+  for (const r of (p.oiChg ?? []).filter(r => Math.abs(r.v) / cm >= 0.05).sort((x, y) => Math.abs(y.v) - Math.abs(x.v)).slice(0, 14).sort((x, y) => x.price - y.price)) out.push(`C|${f(r.price)}|${sc(r.v, cm)}`);
   const sm = p.smile.length > 24 ? p.smile.filter((_, i) => i % Math.ceil(p.smile.length / 24) === 0 || i === p.smile.length - 1) : p.smile;   // ≤24 points: a smooth curve needs no more
   for (const r of sm) out.push(`S|${f(r.price)}|${(+r.iv).toFixed(1)}`);
   if (p.helix) {
