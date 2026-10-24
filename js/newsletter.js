@@ -33,6 +33,7 @@ export const RANGE_EFFECT = {
 import { CHAIN_LAYOUT } from './macroChain.js';
 import { pressureWords } from './rangePressure.js';
 import { buildIdea } from './macroIdea.js';
+import { freshness, healthLine } from './dataFreshness.js';
 import { questionFor } from './questionOfDay.js';
 import { QUESTIONS } from './questionBank.js';
 import { WEB_QUESTIONS } from './questionBankWeb.js';
@@ -222,6 +223,8 @@ const CSS = `
 .cot2{display:grid;grid-template-columns:1fr 112px;gap:8px;align-items:center;margin:5px 0 2px;font-size:11.5px;line-height:1.25}.cot2 small{display:block;color:${COLORS.muted};font-size:10.5px}
 .gg{display:grid;grid-template-columns:150px 1fr;gap:8px;align-items:center;margin:5px 0;font-size:12px}.gg b{font-weight:600}.gg small{display:block;color:${COLORS.muted};font-size:10.5px}
 .flow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 2px;margin:6px 0 8px}.fn{background:${COLORS.paper};border:1px solid #cfd8ee;border-radius:10px;padding:5px 8px;font-size:12px;line-height:1.25}.fn b{display:block;font-size:12px}.fn.bad{border-color:${COLORS.orange};background:#fff4e8}.fa{font-size:15px;color:${COLORS.muted};padding:0 2px}.fa.bad{color:${COLORS.orange};font-weight:700}
+.hc{background:#fff4e8;border:1px solid #f1c79b;border-radius:12px;padding:8px 12px;margin:0 0 10px;font-size:12.5px;color:${COLORS.text}}.refs{background:${COLORS.card};border:1px solid ${COLORS.line};border-radius:14px;padding:12px 14px;margin:12px 0;font-size:11.5px;color:${COLORS.muted}}.refs h4{margin:0 0 6px;font-size:11px;letter-spacing:.09em;text-transform:uppercase}.refs .rf{display:grid;grid-template-columns:8px 1fr auto;gap:2px 8px;align-items:baseline;padding:2px 0}.refs .rf i{width:8px;height:8px;border-radius:50%;background:#2bb88a;display:block;align-self:center}.refs .rf.stale i,.refs .rf.missing i{background:${COLORS.orange}}.refs .rf b{color:${COLORS.text};font-weight:600}
+.wkd{display:grid;grid-template-columns:62px 1fr;gap:6px 10px;padding:7px 0;border-top:1px solid ${COLORS.line}}.wkd:first-of-type{border-top:0}.wkd .dl{font-size:12px;line-height:1.2}.wkd .dl b{display:block;font-size:13px}.wkd .dl span{color:${COLORS.orange};letter-spacing:1px;font-size:11px}.wkd .ch{display:flex;flex-wrap:wrap;gap:4px}.ev2{display:inline-flex;align-items:center;gap:5px;background:${COLORS.paper};border-radius:999px;padding:3px 9px 3px 7px;font-size:11px;line-height:1.2}.ev2 i{width:8px;height:8px;border-radius:50%;background:#b8c4d8;flex:none}.ev2.hi{background:#fff1e0}.ev2.hi i{background:${COLORS.orange}}.ev2 u{text-decoration:none;color:${COLORS.muted}}
 .stax{display:flex;justify-content:space-between;font-size:10px;color:${COLORS.muted};margin-top:2px}.stlg{font-size:10px;color:${COLORS.muted};margin:3px 0 2px}.stlg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin:0 3px 0 6px;vertical-align:-1px}.stlg i:first-child{margin-left:0}
 .st{display:flex;flex-wrap:wrap;gap:4px 6px;margin:8px 0 3px}.sp{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:3px 8px;border-radius:999px;background:${COLORS.paper};border:1px solid ${COLORS.line};color:${COLORS.text}}.sp i{display:inline-block;width:8px;height:8px;border-radius:50%}.stl{font-size:10.5px;color:${COLORS.muted};margin:5px 0 2px}
 .br.w{grid-template-columns:150px 1fr 170px}.br.w .bv{white-space:nowrap}.rw2{font-size:13px;margin:6px 0;line-height:1.5}
@@ -348,9 +351,11 @@ export function buildNewsletter(n) {
   const wk = n.week ?? null;
   const dayLabel = ms => new Date(ms).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Europe/London' });
   const wkCal = (weekly && wk?.events?.length) ? (() => {
-    const by = new Map(); for (const e of wk.events) { if (e.impact !== 'high' && e.impact !== 'medium') continue; const k = dayLabel(e.ms); (by.get(k) ?? by.set(k, []).get(k)).push(e); }
-    const rows = [...by].map(([d, es]) => `<tr><td style="width:26%"><b>${esc(d)}</b></td><td>${es.slice(0, 7).map(e => `<div class="small" style="margin-bottom:3px">${esc(new Date(e.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }))} ${e.ccy ? (FLAG[e.ccy] ?? '') + ' ' : ''}<b>${esc(e.event)}</b> ${e.impact === 'high' ? pill('big one', 'a') : ''}${e.note?.measured ? ` <span class="muted">${esc([e.note.book, e.note.range].filter(Boolean).join(' · '))}</span>` : ''}</div>`).join('')}${es.length > 7 ? `<div class="small muted">…and ${es.length - 7} more</div>` : ''}</td></tr>`).join('');
-    return sec('The week ahead, day by day', 'Part 1 · The world', `<table>${rows}</table><p class="small muted">UK time, high and medium impact only. A note after a release means this desk measured an unusually big move on that market around it. Which way any surprise pushes a market cannot be forecast, so none is offered.</p>`);
+    const by = new Map(); for (const e of wk.events) { if (e.impact !== 'high' && e.impact !== 'medium') continue; const k = new Date(e.ms).toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); (by.get(k) ?? by.set(k, []).get(k)).push(e); }
+    const hm = ms => new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+    const rows = [...by].sort((x, y) => x[0] < y[0] ? -1 : 1).map(([k, es]) => { const d = new Date(es[0].ms), big = es.filter(e => e.impact === 'high').length;
+      return `<div class="wkd"><div class="dl"><b>${esc(d.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'Europe/London' }))} ${esc(d.toLocaleDateString('en-GB', { day: 'numeric', timeZone: 'Europe/London' }))}</b><span title="${big} big release${big === 1 ? '' : 's'}">${'●'.repeat(Math.min(big, 6)) || '&nbsp;'}</span></div><div class="ch">${es.slice(0, 8).map(e => `<span class="ev2 ${e.impact === 'high' ? 'hi' : ''}" title="${esc(e.event)}${e.note?.measured ? ' · ' + esc([e.note.book, e.note.range].filter(Boolean).join(' · ')) : ''}"><i></i><u>${esc(hm(e.ms))}</u><b>${e.ccy ? esc(e.ccy) + ' ' : ''}${esc(clipS(e.event, 26))}</b></span>`).join('')}${es.length > 8 ? `<span class="small muted">+${es.length - 8} more</span>` : ''}</div></div>`; }).join('');
+    return sec('The week ahead', 'Part 1 · The world', `${rows}<p class="small muted" style="margin-top:6px">UK time. Orange is a big release, grey a medium one, and the dots by each day count the big ones. Hover or tap a release for the desk's history on it. Which way a surprise pushes a market cannot be forecast, so none is offered.</p>`);
   })() : '';
   const wkRanges = (weekly && wk?.ranges?.length) ? sec('How far each market is expected to travel this week', 'Part 3 · Pair by pair', `<table><tr><th>Market</th><th class="n">Typical week</th><th class="n">Big week (1 in 4)</th><th class="n">Typical day</th></tr>${wk.ranges.map(r => `<tr><td><b>${esc(r.label)}</b></td><td class="n">${r.hl5 != null ? r.hl5.toFixed(2) + '%' : '·'}</td><td class="n">${r.hl5_75 != null ? r.hl5_75.toFixed(2) + '%' : '·'}</td><td class="n">${r.hlMed != null ? r.hlMed.toFixed(2) + '%' : '·'}</td></tr>`).join('')}</table><p class="small muted">High to low, as a share of price, from the calibrated forecast. About half of weeks run past the typical figure and about one in four past the big-week figure. It is a ruler for size, not a forecast of direction.</p>`) : '';
 
@@ -446,11 +451,16 @@ export function buildNewsletter(n) {
   const li = arr => (arr ?? []).slice(0, 3).map(c => `<li>${esc(c.check)} <span class="muted">— ${esc(c.level)}</span></li>`).join('');
   const trig = ((a.confirm ?? []).length || (a.invalidate ?? []).length) ? sec('What would change the story', 'Watch for', `<div class="two"><div><h3 style="margin-top:0;color:${COLORS.green}">Backs it up</h3><ul class="t">${li(a.confirm)}</ul></div><div><h3 style="margin-top:0;color:${COLORS.orange}">Breaks it</h3><ul class="t">${li(a.invalidate)}</ul></div></div>${a.sizing ? `<p class="small muted" style="margin-top:8px"><b>Sizing:</b> ${esc(clipS(a.sizing, 260))}</p>` : ''}`) : '';
   const lesson = a.lesson?.concept ? `<div class="lesson" style="margin-top:14px"><b>Today's lesson: ${esc(a.lesson.concept)}</b><p style="margin:6px 0 0">${esc(a.lesson.today)}</p></div>` : '';
+  // ── Sources and freshness: every feed the issue leans on, with its own as-of date; a one-line check under the masthead only when something is old or missing ──
+  const fresh = freshness(n.sources ?? [], n.isoDate ?? n.date), healthTxt = healthLine(fresh);
+  const healthHtml = healthTxt ? `<div class="hc"><b>Data check.</b> ${esc(healthTxt.replace(/^Data check: /, ''))}</div>` : '';
+  const refDay = d => { const t = Date.parse(d + 'T00:00:00Z'); return Number.isFinite(t) ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : d; };
+  const refsHtml = fresh.length ? `<div class="refs"><h4>Where this comes from</h4>${fresh.map(r => `<div class="rf ${r.status}"><i></i><span><b>${esc(r.label)}</b> · ${esc(r.source)}</span><span>${r.asOf ? 'as of ' + esc(refDay(r.asOf)) : 'not loaded'}</span></div>`).join('')}</div>` : '';
   const noEdge = sec('What this can and cannot tell you', 'How to read it', `<ul class="t small">${LIMITS.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`);
 
   const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}</div></div>`;
 
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${glance}${sinceHtml}${letterSec}${tiles}${rpHtml}${driving}${posHtml}${ideaHtml}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${qodHtml}${lesson}${noEdge}${foot}</div></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}</style></head><body><div class="wrap">${mast}${healthHtml}${glance}${sinceHtml}${letterSec}${tiles}${rpHtml}${driving}${posHtml}${ideaHtml}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${qodHtml}${lesson}${noEdge}${refsHtml}${foot}</div></body></html>`;
 
   const T = [];
   T.push(`DESK ATLAS · ${weekly ? 'WEEKLY' : 'DAILY'} · ${n.date}`, '', headline, '');
@@ -474,6 +484,8 @@ export function buildNewsletter(n) {
   T.push('HOW TO READ THIS', ...LIMITS.map(x => '- ' + x), '');
   if (qod) { T.push(`QUESTION OF THE ${qWord.toUpperCase()}`, qod.today.question, qod.today.clue, ''); if (qod.previous) T.push(`ANSWER TO ${prevWord.toUpperCase()}'S QUESTION`, qod.previous.question, qod.previous.answer, ''); }
   if (a.lesson?.concept) T.push(`TODAY'S LESSON: ${a.lesson.concept}`, a.lesson.today, '');
+  if (fresh.length) { T.push('SOURCES (as of)', ...fresh.map(r => `- ${r.label}, ${r.source}: ${r.asOf ?? 'not loaded'}${r.status === 'ok' ? '' : ' (' + r.note + ')'}`), ''); }
+  if (healthTxt) T.splice(2, 0, healthTxt, '');
   T.push('---', 'NOT FINANCIAL ADVICE.', ...DISCLAIMER.map(d => d.replace(/^NOT FINANCIAL ADVICE\.\s*/, '')));
   return { subject, preheader, html, text: T.join('\n') };
 }
