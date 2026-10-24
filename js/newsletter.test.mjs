@@ -107,8 +107,8 @@ ok('a state pill never uses direction words', !/(bull|bear)/i.test(hmI.html.repl
 
 const rpFix = { n: 5, on: 2, calmFront: false, rows: [{ key: 'vixInversion', label: 'Near-term fear above 3-month fear', value: 'VIX 24.0 against 3-month 22.0', on: true, effect: 'After the VIX moves above its 3-month level, the next five sessions have run wider than usual.' }, { key: 'nqWeek', label: 'Nasdaq down 1% or more over 5 sessions', value: 'Nasdaq -2.5% over 5 sessions', on: true, effect: 'After a down week for the Nasdaq, the next session has run wider.' }, { key: 'spxFall', label: 'S&P 500 down more than 2% over 20 sessions', value: 'S&P 500 +0.6% over 20 sessions', on: false, effect: 'x' }, { key: 'dispersion', label: 'Crowded market', value: null, on: null, effect: 'y' }] };
 const rpI = buildNewsletter({ date: 'd', rangePressure: rpFix });
-ok('the range-pressure section states the count, lists each signal on or off, and explains only the ones that are on', /Is today set up for a bigger day than usual/.test(rpI.html) && /2 of 5 validated range signals are on today/.test(rpI.html) && /the next five sessions have run wider/.test(rpI.html) && !/>x</.test(rpI.html) && /no data/.test(rpI.html));
-ok('the section says none of it is a direction and that zero is not a quiet-day call', /None says which way/.test(rpI.html) && /not that the day will be quiet/.test(rpI.html));
+ok('the range-pressure section states the count and draws each signal as a light, on or off, with no long explanations', /Is today set up for a bigger day than usual/.test(rpI.html) && /2 of 5 validated range signals are on today/.test(rpI.html) && (rpI.html.match(/class="lt on"/g) ?? []).length === 2 && !/the next five sessions have run wider/.test(rpI.html) && /class="lt nd"/.test(rpI.html));
+ok('the section says none of it is a direction and that no lit dots is not a quiet-day call', /None says which way/.test(rpI.html) && /not a quiet day/.test(rpI.html));
 ok('no range-pressure data means no section', !/bigger day than usual/.test(buildNewsletter({ date: 'd' }).html));
 
 const znFix = { words: '1.1226 to 1.1251', placeWords: 'price is inside it', dealerWords: 'Dealers are positioned so their hedging tends to amplify moves.', dte: 15, validated: false };
@@ -137,8 +137,8 @@ ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d
   const events = [{ ms: 5, ccy: 'EUR', event: 'German CPI', impact: 'high' }];
   const since = { first: false, from: '2026-10-17', items: [{ kind: 'crowd-change', text: 'Positioning, EUR: speculators went from mid-range to crowded short.' }] };
   const w = buildNewsletter({ date: '2026-10-24', isoDate: '2026-10-24', edition: 'weekly', crowding, cotDate: '2026-10-20', events, since });
-  ok('the weekly issue has a positioning section with the report date, the crowded markets and what is new', /Positioning: who is crowded/.test(w.html) && /report for 2026-10-20/.test(w.html) && /Gold: crowded long, 96th percentile/.test(w.html) && /Nasdaq futures: smallest long in years/.test(w.html) && !/GBP: /.test(w.html) && /New this week/.test(w.html) && /EUR: speculators went from mid-range/.test(w.html));
-  ok('it says crowded positioning is not a direction signal and quotes the one unconfirmed hint', /does not predict direction/.test(w.html) && /still to be confirmed/.test(w.html) && /who has to act/.test(w.html));
+  ok('the weekly issue has a positioning section with the report date, the crowded markets and what is new', /Positioning: who is crowded/.test(w.html) && /report for 2026-10-20/.test(w.html) && /Gold<\/b><small>crowded long, 96th percentile/.test(w.html) && /Nasdaq futures<\/b><small>smallest long in years/.test(w.html) && !/GBP<\/b>/.test(w.html) && /New this week/.test(w.html) && /EUR: speculators went from mid-range/.test(w.html));
+  ok('it says crowded positioning is not a direction signal and quotes the one unconfirmed hint', /does not predict direction/.test(w.html) && /still to be confirmed/.test(w.html) && /who has to act/.test(w.html) && !/does not make a release day bigger/.test(w.html));
   ok('a crowded currency with a high-impact release today is called out', /Worth knowing today/.test(w.html) && /EUR speculators are crowded short and German CPI is due/.test(w.html));
   const d = buildNewsletter({ date: '2026-10-26', isoDate: '2026-10-26', crowding, cotDate: '2026-10-20' });
   ok('the daily issue carries it as a short backdrop that stays until the next report', /Positioning backdrop/.test(d.html) && /stays the backdrop until the next one/.test(d.html) && !/registered test/.test(d.html));
@@ -153,5 +153,13 @@ ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d
   const ideaTxt = (r.html.match(/The idea of the day[\s\S]*?<\/section>/) ?? [''])[0].replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
   ok(`the idea of the day stays compact: ${ideaTxt} words, under the 380 budget`, ideaTxt > 60 && ideaTxt <= 380);
   ok('the nowcast sits in the bigger picture as context, with the quarter and month named', /GDPNow puts Q3 2026 US growth at 3\.5%/.test(r.html) && /October consumer prices running 0\.25%/.test(r.html) && /not a forecast of the print/.test(r.html)); }
+
+{ const { evaluateChain, CHAIN_NODES } = await import('./macroChain.js'); const f = k => CHAIN_NODES[k].floor;
+  const links = evaluateChain({ oil: { delta: f('oil') * 4 }, bei: { delta: f('bei') * 3 }, us10y: { delta: -f('us10y') * 3 }, real: { delta: f('real') * 1.2 } });
+  const rpRows = [{ key: 'vixInversion', label: 'x', value: 'VIX 24 vs 22', on: true }, { key: 'spxFall', label: 'y', value: null, on: false }, { key: 'dispersion', label: 'z', value: null, on: null }];
+  const v = buildNewsletter({ date: 'd', isoDate: '2026-10-24', links, rangePressure: { on: 1, n: 2, rows: rpRows }, crowding: [{ sym: 'EUR', pct: 1, state: 'crowded short' }, { sym: 'NQ', pct: 8, state: 'smallest long in years' }], cotDate: '2026-10-20' });
+  ok('range pressure is drawn as lights: one lit, one off, one not measurable', /class="lt on"/.test(v.html) && /class="lt "/.test(v.html) && /class="lt nd"/.test(v.html) && !/class="rpr"/.test(v.html));
+  ok('positioning is drawn as a gauge per market with the dot placed by percentile', (v.html.match(/<circle cx="/g) ?? []).length >= 2 && /cx="4"/.test(v.html) && /cx="16"/.test(v.html));
+  ok('the idea of the day draws its story as a flow and marks the broken link', /class="flow"/.test(v.html) && /class="fa bad"/.test(v.html) && /class="fn bad"/.test(v.html)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
