@@ -65,6 +65,14 @@ const jan6 = Date.UTC(2024, 0, 10, 6, 0, 0) / 1000;
 ok('GMT 06:00Z → today 00:00Z', sessionStartEpoch(0, jan6) === Date.UTC(2024, 0, 10, 0, 0, 0) / 1000);
 // Just after the boundary (23:30Z, BST) → the new session started today 23:00Z.
 ok('BST 23:30Z → today 23:00Z', sessionStartEpoch(23, Date.UTC(2024, 4, 8, 23, 30, 0) / 1000) === Date.UTC(2024, 4, 8, 23, 0, 0) / 1000);
+// London midnight on the London calendar ('Europe/London', the default since 2026-10-24)
+const LDN = 'Europe/London', u = (y, m, d, h, mi = 0) => Date.UTC(y, m - 1, d, h, mi) / 1000;
+ok('London: BST 05:00Z → prior 23:00Z', sessionStartEpoch(LDN, u(2026, 10, 20, 5)) === u(2026, 10, 19, 23));
+ok('London: BST 23:30Z → that 23:00Z', sessionStartEpoch(LDN, u(2026, 10, 20, 23, 30)) === u(2026, 10, 20, 23));
+ok('London: GMT 06:00Z → today 00:00Z', sessionStartEpoch(LDN, u(2026, 11, 2, 6)) === u(2026, 11, 2, 0));
+ok('London: clock-change Sunday 10:00Z → Sat 23:00Z (midnight still BST)', sessionStartEpoch(LDN, u(2026, 10, 25, 10)) === u(2026, 10, 24, 23));
+ok('London: Monday after the change 00:30Z → 00:00Z', sessionStartEpoch(LDN, u(2026, 10, 26, 0, 30)) === u(2026, 10, 26, 0));
+ok("'london' is accepted too", sessionStartEpoch('london', u(2026, 11, 2, 6)) === u(2026, 11, 2, 0));
 
 console.log('[packLiveM1 — packs, sorts, dedupes, drops the forming session]');
 // Two complete GMT sessions (Jan 8, Jan 9) + a partial forming session (Jan 10 00:00–00:30).

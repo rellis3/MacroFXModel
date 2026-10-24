@@ -251,12 +251,20 @@ async function drawChart(p, d) {
   if (p.price) _priceLines.push(_series.createPriceLine({ price:p.price, color:'#facc15', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'price' }));
 }
 
-// Most-recent London-midnight (boundaryHour:00 UTC) anchor + the Asia window end.
+// Most-recent session anchor + the Asia window end. boundaryHour 'Europe/London' (default) =
+// London midnight on the London calendar, DST-aware; a number = that fixed UTC hour (old plans).
+function _londonMidnightMs(now) {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(now));
+  const [y, m, d] = parts.split('-').map(Number), t0 = Date.UTC(y, m - 1, d);
+  const hh = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hourCycle: 'h23' }).format(new Date(t0));
+  return t0 - (hh === 1 ? 3600000 : 0);            // 00:00Z reads 01:00 London in BST → midnight was 23:00Z
+}
 function asiaWindow() {
-  const bh = _data?.boundaryHour ?? 0, ah = _data?.asiaHrs ?? 6;
+  const bh = _data?.boundaryHour ?? 'Europe/London', ah = _data?.asiaHrs ?? 6;
   const now = Date.now();
-  let anchor = Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate(), bh, 0, 0);
-  if (anchor > now) anchor -= 86400000;
+  let anchor;
+  if (bh === 'Europe/London' || bh === 'london') anchor = _londonMidnightMs(now);
+  else { anchor = Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate(), +bh, 0, 0); if (anchor > now) anchor -= 86400000; }
   const start = Math.floor(anchor / 1000);
   return { start, end: start + ah * 3600 };
 }

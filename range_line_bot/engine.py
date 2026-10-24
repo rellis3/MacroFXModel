@@ -25,6 +25,32 @@ from pylego.strategy.rangeline import (
 SRC_MINUTES = {"A": 5, "M": 15}
 
 
+def _is_london(boundary):
+    return isinstance(boundary, str) and boundary.lower() in ("europe/london", "london")
+
+
+def _london_is_bst(dt_utc):
+    """UK summer time: 01:00 UTC on the last Sunday of March until 01:00 UTC on the last Sunday of
+    October (the same rule as js/forecastAnalyser.js _londonIsBst, so bot and server agree)."""
+    def last_sunday_1am(year, month):
+        d = datetime(year, month, 31, 1, 0, tzinfo=timezone.utc)
+        return d - timedelta(days=(d.weekday() + 1) % 7)
+    y = dt_utc.year
+    return last_sunday_1am(y, 3) <= dt_utc < last_sunday_1am(y, 10)
+
+
+def london_date(epoch):
+    """The London calendar date of a UTC epoch."""
+    dt = datetime.fromtimestamp(epoch, tz=timezone.utc)
+    return (dt + timedelta(hours=1 if _london_is_bst(dt) else 0)).date()
+
+
+def london_midnight_epoch(d):
+    """Epoch of 00:00 London on calendar date `d` (23:00 UTC the day before in BST)."""
+    t0 = datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
+    return int((t0 - timedelta(hours=1 if _london_is_bst(t0 - timedelta(hours=1)) else 0)).timestamp())
+
+
 def session_anchor_epoch(now_epoch, boundary_hour):
     """Most-recent ``boundary_hour:00`` UTC as an epoch — the range-window open.
 
@@ -32,6 +58,10 @@ def session_anchor_epoch(now_epoch, boundary_hour):
     the policy was learned on (the plan ships ``boundaryHour``). At the autumn
     clock change, re-freeze with ``boundaryHour=0`` and the bot follows (no drift).
     """
+    if _is_london(boundary_hour):
+        # 'Europe/London' (plans since 2026-10-24): London midnight on the London calendar, so the
+        # session is London midnight whatever the clocks say and no re-freeze is needed.
+        return london_midnight_epoch(london_date(now_epoch))
     now = datetime.fromtimestamp(now_epoch, tz=timezone.utc)
     anchor = now.replace(hour=int(boundary_hour) % 24, minute=0, second=0, microsecond=0)
     if anchor > now:

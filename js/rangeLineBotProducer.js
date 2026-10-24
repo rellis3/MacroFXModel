@@ -39,7 +39,7 @@ export async function refreshRangeLineBotPlan({
   pipFor = () => null,
   freeze = defaultFreeze,
   sources = ['asia', 'monday'],
-  boundaryHour = 0, asiaHrs = 6, chandFrac = 0.5,
+  boundaryHour = 'Europe/London', asiaHrs = 6, chandFrac = 0.5,
   minN = 50, marginPct = 0,
   buildPlan,                                  // injected for testing (defaults to the real builder)
   now = () => new Date().toISOString(), stamp = () => Date.now(),

@@ -36,7 +36,7 @@ from pylego.ohlc_feed import KvOhlcFeed                      # noqa: E402
 from pylego.costs import entry_slip_pct, realized_fill, expected_fill, max_spread  # noqa: E402
 from pylego.risk_guard import RiskGuard, log_block_transition  # noqa: E402
 from pylego.strategy.rangeline import chandelier_stop        # noqa: E402
-from range_line_bot.engine import RangeSession, session_anchor_epoch, SRC_MINUTES  # noqa: E402
+from range_line_bot.engine import RangeSession, session_anchor_epoch, SRC_MINUTES, london_date, london_midnight_epoch  # noqa: E402
 from volatility_bot.engine import _london_offset_hours       # noqa: E402  (shared DST rule)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -217,6 +217,8 @@ def check_plan_boundary_dst(plan, now_epoch: float | None = None) -> bool | None
     """
     if not plan or plan.get("boundaryHour") is None:
         return None
+    if isinstance(plan.get("boundaryHour"), str):          # 'Europe/London': follows the clocks itself
+        return True
     now_utc = datetime.fromtimestamp(now_epoch if now_epoch is not None else time.time(),
                                      tz=timezone.utc)
     offset = _london_offset_hours(now_utc)
@@ -238,6 +240,12 @@ def monday_anchor_epoch(now_epoch: float, boundary_hour: int) -> int:
     """Start epoch of the most-recent COMPLETED Monday session (never the forming
     one): step back from today's session-open day to this week's Monday, or last
     week's if today's session day is itself Monday."""
+    if isinstance(boundary_hour, str):
+        # London calendar: today's London date; step back on the CALENDAR (not 7 x 24h, which is an
+        # hour off across a clock change) to this week's Monday, or last week's on a Monday.
+        today = london_date(now_epoch)
+        back = today.weekday() if today.weekday() != 0 else 7
+        return london_midnight_epoch(today - timedelta(days=back))
     anc = datetime.fromtimestamp(session_anchor_epoch(now_epoch, boundary_hour), tz=timezone.utc)
     # The weekday of the session's TRADING date: an evening open (boundary >= 12, e.g. 23:00 UTC in
     # BST) starts the next date's session. Taking the weekday of the open itself made the BST

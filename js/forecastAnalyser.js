@@ -385,6 +385,15 @@ function _londonIsBst(dt) {
   return dt >= _lastSundayUtc1am(y, 2) && dt < _lastSundayUtc1am(y, 9);
 }
 // The Europe/London calendar date for a UTC instant (the trading-day key).
+export function londonDateKey(dt) { return _londonDateKey(dt instanceof Date ? dt : new Date(dt)); }
+export const isLondonBoundary = b => b === 'Europe/London' || b === 'london';
+// Most recent London midnight at or before `nowSec` (epoch seconds), DST-aware: 23:00 UTC in BST,
+// 00:00 UTC in GMT, decided by the offset in force at that midnight (so the clock-change Sundays are right).
+export function londonMidnightEpochSec(nowSec) {
+  const [y, m, d] = _londonDateKey(new Date(nowSec * 1000)).split('-').map(Number);
+  const t0 = Date.UTC(y, m - 1, d);
+  return t0 / 1000 - (_londonIsBst(new Date(t0 - 3600000)) ? 3600 : 0);
+}
 function _londonDateKey(dt) {
   const local = new Date(dt.getTime() + (_londonIsBst(dt) ? 3600000 : 0));
   return `${local.getUTCFullYear()}-${String(local.getUTCMonth() + 1).padStart(2, '0')}-${String(local.getUTCDate()).padStart(2, '0')}`;

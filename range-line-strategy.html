@@ -54,7 +54,7 @@
       <span><label>Max level</label><select id="maxLevel" title="Cap |fib level| — near-mid only drops the rare far extensions"><option value="0">all levels</option><option value="3">≤ 3</option><option value="2">≤ 2 (near-mid)</option><option value="1.5">≤ 1.5</option></select></span>
       <span><label>min N / cell</label><input id="minN" type="number" value="50" min="5" max="500" style="width:64px"></span>
       <span><label>OOS</label><select id="splitFrac"><option value="0.4">40%</option><option value="0.6" selected>40/60</option><option value="0.5">50%</option></select></span>
-      <span><label>Range window</label><select id="rangeWindow" title="The window that forms the range; the breakout is traded after it. London midnight–6am, but the data is UTC so the right option depends on DST: BST/summer = 23:00–05:00 UTC, GMT/winter = 00:00–06:00 UTC."><option value="23,6" selected>London midnight–6am · BST/summer (23:00–05:00 UTC)</option><option value="0,6">London midnight–6am · GMT/winter (00:00–06:00 UTC)</option><option value="22,6">Asia 22:00–04:00 UTC (legacy)</option><option value="0,8">00:00–08:00 UTC</option></select></span>
+      <span><label>Range window</label><select id="rangeWindow" title="The window that forms the range; the breakout is traded after it. London midnight–6am on the London calendar (DST-aware). The fixed-UTC options are kept only for comparing with old runs."><option value="london,6" selected>London midnight–6am · Europe/London, DST-aware (default)</option><option value="23,6">fixed 23:00–05:00 UTC (old BST setting)</option><option value="0,6">fixed 00:00–06:00 UTC (old GMT setting)</option><option value="22,6">Asia 22:00–04:00 UTC (legacy)</option><option value="0,8">00:00–08:00 UTC</option></select></span>
       <span><label title="Hold the (none) direction policy fixed and only trade levels backed by structural confluence (15m fibs / pivots / POC-VAH-VAL / S&amp;R / round / VWAP). Answers 'do stronger levels trade better?' as a QUALITY FILTER — not a direction condition. Leave Condition on 'none'.">confluence filter <input id="confluenceFilter" type="checkbox"></label></span>
       <span><label title="How confluence is priced. 'session' = daily+15m fibs fixed from the session open (static). 'touch' = intraday-dynamic: daily sources fixed, but swing-fibs re-anchor to the running high/low and VWAP is cumulative AS OF each touch — so zones strengthen/weaken through the day. Validates the live intraday-refresh design. No lookahead (bars ≤ touch only).">confluence mode <select id="confMode">
         <option value="session" selected>session (static)</option>
@@ -197,8 +197,8 @@ async function run() {
     confMode: $('confMode').value,
     confNaked: $('confNaked').checked,
   };
-  const [bh, ah] = ($('rangeWindow').value || '23,6').split(',');
-  body.boundaryHour = parseInt(bh); body.asiaHrs = parseFloat(ah);
+  const [bh, ah] = ($('rangeWindow').value || 'london,6').split(',');
+  body.boundaryHour = bh === 'london' ? 'Europe/London' : parseInt(bh); body.asiaHrs = parseFloat(ah);
   try {
     const r = await fetch('/api/range-line/run', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
     const d = await r.json();

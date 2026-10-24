@@ -933,7 +933,7 @@ export function recordsForPair(packed, assetClass = 'fx', opts = {}) {
 // path, no drift. Returns { date, levels:[{price,source}] }. The dashboard producer
 // ships this per instrument; the bot pairs it with its live range via the tolerance.
 export function latestSessionConfluence(packed, {
-  boundaryHour = 0, confLookback = 5, pip = 0,
+  boundaryHour = 'Europe/London', confLookback = 5, pip = 0,
   sources = CONFLUENCE_SOURCES, fib15 = true, fib15ClusterPips = 8,
   naked = false, nakedLookback = 30, nakedBufferPips = 0,
 } = {}) {

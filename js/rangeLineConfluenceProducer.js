@@ -18,6 +18,7 @@
  */
 
 import { latestSessionConfluence } from './rangeLineAnalyser.js';
+import { isLondonBoundary, londonMidnightEpochSec } from './forecastAnalyser.js';
 
 // ── Fresh-M1 packing (live path) ─────────────────────────────────────────────
 // The backtest sources confluence from the M1 STORE (loadM1ForPair). Live, that
@@ -32,7 +33,10 @@ import { latestSessionConfluence } from './rangeLineAnalyser.js';
 // FORMING session and must be dropped — the confluence is "levels known at today's
 // open", so it may only use completed prior sessions (the no-lookahead rule the
 // touch-mode test enforces). boundaryHour=23,now=05:00Z → yesterday 23:00Z.
+// boundaryHour 'Europe/London' (the range-line default since 2026-10-24): the most recent London
+// midnight, DST-aware, so the session is London midnight whatever the clocks say.
 export function sessionStartEpoch(boundaryHour, nowSec) {
+  if (isLondonBoundary(boundaryHour)) return londonMidnightEpochSec(nowSec);
   const d = new Date(nowSec * 1000);
   const startToday = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), boundaryHour, 0, 0) / 1000;
   return d.getUTCHours() >= boundaryHour ? startToday : startToday - 86400;
@@ -41,7 +45,7 @@ export function sessionStartEpoch(boundaryHour, nowSec) {
 // Raw bars [{time(epochSec),open,high,low,close,volume}] → packed arrays, sorted,
 // deduped by time, with the forming session dropped (see sessionStartEpoch). Pure
 // — offline-testable, no network/clock (pass nowSec).
-export function packLiveM1(bars, { boundaryHour = 0, nowSec = null } = {}) {
+export function packLiveM1(bars, { boundaryHour = 'Europe/London', nowSec = null } = {}) {
   const clean = (Array.isArray(bars) ? bars : []).filter(b => b && Number.isFinite(b.time));
   clean.sort((a, b) => a.time - b.time);
   const now = Number.isFinite(nowSec) ? nowSec : (clean.length ? clean[clean.length - 1].time : 0);
@@ -72,7 +76,7 @@ export function packLiveM1(bars, { boundaryHour = 0, nowSec = null } = {}) {
 export async function refreshRangeLineConfluence({
   universe, getPacked, kvPut,
   assetClassFor = () => 'fx', pipFor = () => null,
-  boundaryHour = 0, confLookback = 5, tolFrac = 0.1, fib15ClusterPips = 8,
+  boundaryHour = 'Europe/London', confLookback = 5, tolFrac = 0.1, fib15ClusterPips = 8,
   now = () => new Date().toISOString(), stamp = () => Date.now(), onLog = () => {},
 } = {}) {
   if (!Array.isArray(universe) || !universe.length)

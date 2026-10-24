@@ -177,6 +177,7 @@ import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeRelea
 import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';
 import { parseBubaCsv as _parseBubaCsv } from './js/intlYields.js';
 import { buildFlowChain as _buildFlowChain } from './js/flowChainSources.js';
+import { londonDateKey as _londonDateKey, isLondonBoundary as _isLondonBoundary } from './js/forecastAnalyser.js';
 import { YIELD_LEGS as _YL, YIELD_GROUP as _YL_GROUP, yieldMeta as _ylMeta, buildYieldLeg as _ylBuild, toColumns as _ylCols } from './js/yieldLegs.js';   // gilts, JGBs, bunds daily, for the chain's gap chips
 import { crackHistory as _crackHistory, crackContext as _crackContext } from './js/crackSpread.js';
 import { BAND_REACH_PARAMS as _BAND_REACH_PARAMS } from './js/bandReachParams.js';   // T7b: the band clock and the Asia conditioner, for the digest's board   // the 3-2-1 refining margin (MD files/CRACK_SPREAD.md)
@@ -19279,11 +19280,17 @@ function _ukIsBST(now = new Date()) {
   const y = now.getUTCFullYear();
   return now >= _lastSundayUTC(y, 2) && now < _lastSundayUTC(y, 9);
 }
-function _rlBoundaryHour(now = new Date()) {
+// The range-line session boundary: London midnight on the London calendar ('Europe/London'),
+// whatever the clocks say (owner, 2026-10-24). Before, a fixed UTC hour (23 in BST, 0 in GMT)
+// was frozen into each plan, so history was re-bucketed an hour off London midnight for half
+// the year and the bot needed a re-freeze at every clock change. A numeric env override stays
+// for testing. _rlLondonMidnightUtcHour() is only for "what UTC hour is London midnight today".
+function _rlBoundaryHour(_now = new Date()) {
   const env = process.env.RANGE_BOT_BOUNDARY_HOUR;
   if (env != null && env !== '') return Number(env);     // explicit override (testing)
-  return _ukIsBST(now) ? 23 : 0;                          // London midnight in UTC, DST-aware
+  return 'Europe/London';
 }
+const _rlLondonMidnightUtcHour = (now = new Date()) => (_ukIsBST(now) ? 23 : 0);
 let _rlBotPlanRunning = false;
 async function _refreshRangeLineBotPlan() {
   if (_rlBotPlanRunning) { console.log('[range-line-bot] plan refresh already running — skipped'); return null; }
@@ -19291,7 +19298,7 @@ async function _refreshRangeLineBotPlan() {
   const refreshLog = [];
   const onLog = m => { console.log('[range-line-bot]', m); refreshLog.push(m); };
   const boundaryHour = _rlBoundaryHour();                 // DST-aware London midnight, computed at freeze time
-  onLog(`London-midnight boundary = ${String(boundaryHour).padStart(2, '0')}:00 UTC (${_ukIsBST() ? 'BST' : 'GMT'}); Asia range = London 00:00–${String(RL_BOT_ASIA_HRS).padStart(2, '0')}:00`);
+  onLog(`Session boundary = ${_isLondonBoundary(boundaryHour) ? `London midnight (Europe/London, DST-aware; today ${String(_rlLondonMidnightUtcHour()).padStart(2, '0')}:00 UTC)` : `${boundaryHour}:00 UTC (override)`}; Asia range = London 00:00–${String(RL_BOT_ASIA_HRS).padStart(2, '0')}:00`);
   try {
     // getRecords: load the instrument's M1 → analyser line records using the frozen
     // window. Released after each instrument (only one M1 resident at a time).
@@ -19408,7 +19415,7 @@ const RL_CONF_UTC_MIN = Number(process.env.RANGE_LINE_CONF_UTC_MIN ?? 10);
 let _rlConfLastFired = null;
 svcInterval('rangeLineConfluence', () => {
   const now = new Date();
-  const targetHour = (_rlBoundaryHour(now) + 6) % 24;    // 6am London in UTC, DST-aware
+  const targetHour = (_rlLondonMidnightUtcHour(now) + 6) % 24;    // 6am London in UTC, DST-aware
   const dateKey = now.toISOString().slice(0, 10);
   if (now.getUTCHours() === targetHour && now.getUTCMinutes() === RL_CONF_UTC_MIN && _rlConfLastFired !== dateKey) {
     _rlConfLastFired = dateKey;
@@ -19458,6 +19465,7 @@ app.get('/api/range-line-bot/zones', async (req, res) => {
 function _rlSessionDate(ts, boundaryHour = _rlBoundaryHour()) {
   const d = ts == null ? new Date() : (typeof ts === 'number' ? new Date(ts < 1e12 ? ts * 1000 : ts) : new Date(ts));
   if (isNaN(d)) return null;
+  if (_isLondonBoundary(boundaryHour)) return _londonDateKey(d);   // the London calendar date
   // Same rule as bucketM1IntoSessions: an evening boundary (>= 12) opens the next date's
   // session, a boundary at/after midnight opens the same date's (boundary 0 used to label
   // every day one day late — DATA_SPEC §5 #10, fixed 2026-10-24).
@@ -33302,7 +33310,8 @@ app.post('/api/range-line/run', async (req, res) => {
     // Range-formation window. boundaryHour = session/day start (UTC); the range is
     // the first asiaHrs of that session. Default = London midnight→6am (00:00–06:00
     // UTC), trade the breakout after. Legacy Asia window was 22:00 + 6h.
-    boundaryHour: (b.boundaryHour != null && b.boundaryHour !== '') ? parseInt(b.boundaryHour) : 0,
+    // Default London midnight (Europe/London, DST-aware); a number keeps a fixed UTC hour for comparison runs.
+    boundaryHour: (b.boundaryHour == null || b.boundaryHour === '' || _isLondonBoundary(b.boundaryHour)) ? 'Europe/London' : parseInt(b.boundaryHour),
     asiaHrs:      (b.asiaHrs != null && b.asiaHrs !== '') ? parseFloat(b.asiaHrs) : 6,
     dateFrom:   b.dateFrom || '', dateTo: b.dateTo || '',
     mcRuns: 1000, bootRuns: 1000,
