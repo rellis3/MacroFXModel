@@ -189,7 +189,7 @@ export const MAG_CSS = `
 @media screen{.pg .lsplit{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start}}
 @media print{.pg .lsplit{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;align-items:start}.pg .lside .rg{margin-top:6px}}
 .pg .rg.col{grid-template-columns:1fr}.pg .lside .cnt{flex-wrap:wrap}.pg .lside .cnt div{flex:1 1 30%}
-.pg .dsec.k{break-inside:avoid}
+.pg .dsec.k{break-inside:avoid}.pg.desk figure{break-inside:avoid}
 .pg .bk2 .tg{display:inline-block;font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;background:#fff1d6;color:#9a6200;border-radius:999px;padding:1px 7px;margin-left:8px;vertical-align:middle}.pg .bk2 .facts .cot2 span>b{display:none}
 .pg .bk2 .facts .cot2{display:block}.pg .bk2 .facts .cot2 small{display:inline;margin-left:4px}
 @media print{.pg.p5 h2.sh{font-size:23px;margin:2px 0 6px}.pg.p1 h1.hd{font-size:40px;margin:0 0 8px}.pg.p1 .fiu p{font-size:11.9px;line-height:1.38}.pg.p1 .fiu>div{padding:7px 14px 4px 18px;margin:0 0 6px}.pg.p1 .map{margin:4px 0 0;padding-top:5px}.pg.p5 .rg{margin:6px 0 6px}.pg.p5 h3.ss{margin:8px 0 4px!important}.pg.p5 .box{margin:8px 0}.pg .rg{break-inside:avoid}.pg .stv{break-inside:avoid}}
@@ -214,6 +214,14 @@ export const MAG_CSS = `
 .pg .cc2 .un{font-size:10px;color:#8a98ad;margin-top:3px}
 .pg .nar{grid-column:1/-1;margin:5px 0 4px}.pg .nar p{margin:0 0 5px;font-size:11.2px;line-height:1.48;color:#1b2a40;border-left:3px solid #e0b64a;padding-left:9px}.pg .nar .dr{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.pg .nar .un{font-size:9.8px;color:#8a98ad;margin-top:3px}
 @media (max-width:560px){.pg .cc2 .dr,.pg .nar .dr{grid-template-columns:1fr}.pg .cc2 .hd{flex-wrap:wrap}}
+
+/* Data Desk: structured tables for what changed, the signal panel, the calendar, positioning and the bigger picture */
+.pg .dsub{break-after:avoid;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#2f6fb5;margin:12px 0 2px;font-weight:700}
+.pg .kt{display:inline-block;font-family:var(--mono);font-size:8.6px;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:2px 8px;font-weight:700;white-space:nowrap}
+.pg .kt.r{background:#fde9ec;color:#c4303f}.pg .kt.g{background:#e3f6ee;color:#0a7a5c}.pg .kt.b{background:#e9f0fb;color:#2f66bf}.pg .kt.a{background:#fff1d6;color:#9a6200}
+.pg .lit{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px;border:1.5px solid #9db1cc}.pg .lit.on{background:#e09a00;border-color:#e09a00}
+.pg .rpn{display:flex;gap:10px;align-items:baseline;margin:2px 0 4px;font-family:var(--sans)}.pg .rpn b{font-family:var(--mono);font-size:26px;color:var(--navy)}.pg .rpn span{font-size:12px;color:#33445c}
+.pg table.ft td.l b{color:var(--navy)}.pg table.ft td.g svg{display:block;width:150px;height:18px}.pg table.ft td.m{font-size:10.6px;color:#5b6b82}
 `;
 
 const N = x => (Number.isFinite(x) ? x : null);
@@ -286,7 +294,7 @@ export function barFigure(title, rows, H, { unit = '%', note = '' } = {}) {
 /** Commodity tiles on dark panels: name, price, the move, and a sparkline. items: [{ name, value, sub, tone, spark }] */
 export function tileRow(items, H) {
   const sp = a => { if (!Array.isArray(a) || a.length < 3) return ''; const lo = Math.min(...a), hi = Math.max(...a), W = 120, Ht = 28, X = i => 2 + i * (W - 4) / (a.length - 1), Y = v => Ht - 3 - (hi === lo ? 0.5 : (v - lo) / (hi - lo)) * (Ht - 6); return `<svg viewBox="0 0 ${W} ${Ht}" width="100%" height="28" aria-hidden="true"><path d="${a.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ')}" fill="none" stroke="${a.at(-1) >= a[0] ? T.up : T.down}" stroke-width="1.8" stroke-linejoin="round"/></svg>`; };
-  return `<div class="tl6">${(items ?? []).map(t => `<div class="tl"><small>${H.esc(t.name)}</small><b>${H.esc(t.value)}</b><i class="${t.tone === 'up' ? 'up' : 'dn'}">${H.esc(t.sub)}</i>${sp(t.spark)}</div>`).join('')}</div>`;
+  return `<div class="tl6">${(items ?? []).map(t => `<div class="tl"><small>${H.esc(t.name)}</small><b>${H.esc(t.value)}</b><i class="${t.tone === 'up' ? 'up' : t.tone === 'dn' ? 'dn' : ''}">${H.esc(t.sub)}</i>${sp(t.spark)}</div>`).join('')}</div>`;
 }
 
 /** A flat editorial table: header row, then rows of cells (already escaped strings). Up and down values take a class from the sign. */
