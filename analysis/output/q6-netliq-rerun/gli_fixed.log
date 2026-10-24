@@ -1,0 +1,32 @@
+[gli fixed] FX pairs loaded 26/26
+{
+ "weeks": 973,
+ "span": "2008-01-01 -> 2026-08-18",
+ "covered": "26/26",
+ "sharpe": 0.018,
+ "annRet": 0.0007,
+ "maxDD": -0.1321,
+ "wf": {
+  "windows": 28,
+  "isSharpe": -1.613,
+  "oosSharpe": -1.229,
+  "wfe": 0.762,
+  "oosPositiveShare": 0.5
+ },
+ "regimes": {
+  "REFLATION": 290,
+  "GOLDILOCKS_LATE": 292,
+  "RECOVERY": 284,
+  "DEFLATION": 107
+ },
+ "gateWeeks": 88
+}
+NQ buy&hold Sharpe 0.691
+  Buy & hold (benchmark): Sharpe 0.691 OOS 0.78 time-in 0.999
+  Liq long/flat (impulse>0 & gate clear): Sharpe 0.614 OOS 0.576 time-in 0.487
+  Regime long/flat (risk-on & gate clear): Sharpe 0.614 OOS 0.576 time-in 0.535
+  Liq long/short (sign, gate→flat): Sharpe 0.384 OOS 0.46 time-in 0.86
+  Gate-only (long unless gate tripped): Sharpe 0.454 OOS 0.566 time-in 0.909
+  No liquidity rule beats buy-and-hold NQ risk-adjusted — the signal adds no timing edge.
+regression: 1/26 pairs |t|>=1.96; pooled t -1.25
+written analysis\output\q6-netliq-rerun\gli_fixed.json

@@ -1,0 +1,13 @@
+NAS100_USD  B&H Sharpe same span 1.24  in-trade share 0.122
+NAS100_USD  bars 2342 creditZ from 2023-12-11  trades 36 (L34/S2)  win 56%  Sharpe -0.87 (SE 0.64)  CAGR -1.55%  maxDD 4.57%  total -3.6%  corrWeekly -0.018 hitWeekly 0.548
+SPX500_USD  B&H Sharpe same span 1.39  in-trade share 0.122
+SPX500_USD  bars 2344 creditZ from 2023-12-11  trades 36 (L34/S2)  win 56%  Sharpe -0.64 (SE 0.64)  CAGR -0.75%  maxDD 2.79%  total -1.74%  corrWeekly -0.023 hitWeekly 0.552
+US30_USD    B&H Sharpe same span 1.11  in-trade share 0.122
+US30_USD    bars 2345 creditZ from 2023-12-11  trades 36 (L34/S2)  win 47%  Sharpe -0.39 (SE 0.64)  CAGR -0.36%  maxDD 2.17%  total -0.84%  corrWeekly -0.025 hitWeekly 0.550
+US2000_USD  B&H Sharpe same span 0.98  in-trade share 0.122
+US2000_USD  bars 2331 creditZ from 2023-12-11  trades 36 (L34/S2)  win 56%  Sharpe -0.42 (SE 0.64)  CAGR -0.82%  maxDD 3.87%  total -1.91%  corrWeekly -0.028 hitWeekly 0.525
+DE30_USD    B&H Sharpe same span n/a  in-trade share n/a
+DE30_USD    bars 3 creditZ from null  trades 0 (L0/S0)  win 0%  Sharpe 0 (SE null)  CAGR 0%  maxDD 0%  total 0%  corrWeekly NaN hitWeekly NaN
+UK100_GBP   B&H Sharpe same span n/a  in-trade share n/a
+UK100_GBP   bars 6 creditZ from null  trades 0 (L0/S0)  win 0%  Sharpe 0 (SE null)  CAGR 0%  maxDD 0%  total 0%  corrWeekly NaN hitWeekly NaN
+written analysis\output\q6-netliq-rerun\liqgate_old.json

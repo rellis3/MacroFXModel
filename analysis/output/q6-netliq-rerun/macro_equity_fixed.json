@@ -1,0 +1,225 @@
+{
+ "mode": "fixed",
+ "ranAt": "2026-10-24T15:18:32.826Z",
+ "from": "2005-01-01",
+ "end": "2026-08-21",
+ "dateRange": {
+  "start": "2005-01-03",
+  "end": "2026-08-21"
+ },
+ "nDays": 5640,
+ "instruments": {
+  "QQQ": {
+   "metrics": {
+    "cagr": 0.0909,
+    "sharpe": 0.9026,
+    "sortino": 0.9177,
+    "maxDD": -0.3126,
+    "winRate": 0.6178,
+    "avgWin": 0.0261,
+    "avgLoss": -0.0219,
+    "profitFactor": 1.927,
+    "calmar": 0.2909,
+    "timeInMarket": 0.5733,
+    "finalEquity": 6.5923,
+    "years": 21.6667,
+    "totalMonths": 260,
+    "nTrades": 259
+   },
+   "bh": {
+    "cagr": 0.1464,
+    "sharpe": 0.8368,
+    "maxDD": -0.503,
+    "finalEquity": 19.2913
+   },
+   "walkForward": {
+    "windows": 78,
+    "meanOOSSharpe": 1.1879,
+    "meanISSharpe": 1.0187,
+    "wfe": 1.1661
+   },
+   "verdict": {
+    "oosSharpe": {
+     "value": 1.1879,
+     "pass": true,
+     "target": 0.5
+    },
+    "wfe": {
+     "value": 1.1661,
+     "pass": true,
+     "target": 0.5
+    },
+    "maxDD": {
+     "strat": -0.3126,
+     "bh": -0.503,
+     "pass": true
+    },
+    "overallPass": true
+   },
+   "regime": [
+    {
+     "name": "Score HIGH (>1.0)",
+     "nTrades": 16,
+     "winRate": 0.625,
+     "avgReturn": 0.0136,
+     "cumReturn": 0.2296,
+     "sharpe": 1.3299
+    },
+    {
+     "name": "Score MID (0–1)",
+     "nTrades": 110,
+     "winRate": 0.6909,
+     "avgReturn": 0.0099,
+     "cumReturn": 1.8206,
+     "sharpe": 1.1277
+    },
+    {
+     "name": "Score LOW (<0)",
+     "nTrades": 99,
+     "winRate": 0.5556,
+     "avgReturn": 0.0053,
+     "cumReturn": 0.6102,
+     "sharpe": 0.6031
+    },
+    {
+     "name": "VIX LOW  (<−0.5)",
+     "nTrades": 98,
+     "winRate": 0.5714,
+     "avgReturn": 0.007,
+     "cumReturn": 0.8923,
+     "sharpe": 0.779
+    },
+    {
+     "name": "VIX HIGH  (>0.75)",
+     "nTrades": 67,
+     "winRate": 0.6866,
+     "avgReturn": 0.0083,
+     "cumReturn": 0.6962,
+     "sharpe": 1.0014
+    },
+    {
+     "name": "Trend ABOVE MA",
+     "nTrades": 200,
+     "winRate": 0.625,
+     "avgReturn": 0.0076,
+     "cumReturn": 3.213,
+     "sharpe": 0.981
+    },
+    {
+     "name": "Trend BELOW MA",
+     "nTrades": 52,
+     "winRate": 0.6346,
+     "avgReturn": 0.009,
+     "cumReturn": 0.5304,
+     "sharpe": 0.7865
+    }
+   ]
+  },
+  "SPY": {
+   "metrics": {
+    "cagr": 0.056,
+    "sharpe": 0.7163,
+    "sortino": 0.6596,
+    "maxDD": -0.3062,
+    "winRate": 0.6332,
+    "avgWin": 0.0187,
+    "avgLoss": -0.019,
+    "profitFactor": 1.6945,
+    "calmar": 0.1831,
+    "timeInMarket": 0.5692,
+    "finalEquity": 3.2592,
+    "years": 21.6667,
+    "totalMonths": 260,
+    "nTrades": 259
+   },
+   "bh": {
+    "cagr": 0.0898,
+    "sharpe": 0.6513,
+    "maxDD": -0.5261,
+    "finalEquity": 6.4449
+   },
+   "walkForward": {
+    "windows": 78,
+    "meanOOSSharpe": 0.9329,
+    "meanISSharpe": 0.7833,
+    "wfe": 1.1909
+   },
+   "verdict": {
+    "oosSharpe": {
+     "value": 0.9329,
+     "pass": true,
+     "target": 0.5
+    },
+    "wfe": {
+     "value": 1.1909,
+     "pass": true,
+     "target": 0.5
+    },
+    "maxDD": {
+     "strat": -0.3062,
+     "bh": -0.5261,
+     "pass": true
+    },
+    "overallPass": true
+   },
+   "regime": [
+    {
+     "name": "Score HIGH (>1.0)",
+     "nTrades": 16,
+     "winRate": 0.5625,
+     "avgReturn": 0.0092,
+     "cumReturn": 0.1477,
+     "sharpe": 0.9604
+    },
+    {
+     "name": "Score MID (0–1)",
+     "nTrades": 110,
+     "winRate": 0.6455,
+     "avgReturn": 0.0059,
+     "cumReturn": 0.857,
+     "sharpe": 0.8616
+    },
+    {
+     "name": "Score LOW (<0)",
+     "nTrades": 99,
+     "winRate": 0.6061,
+     "avgReturn": 0.0034,
+     "cumReturn": 0.3609,
+     "sharpe": 0.4912
+    },
+    {
+     "name": "VIX LOW  (<−0.5)",
+     "nTrades": 98,
+     "winRate": 0.6224,
+     "avgReturn": 0.003,
+     "cumReturn": 0.3045,
+     "sharpe": 0.456
+    },
+    {
+     "name": "VIX HIGH  (>0.75)",
+     "nTrades": 67,
+     "winRate": 0.6418,
+     "avgReturn": 0.0067,
+     "cumReturn": 0.5273,
+     "sharpe": 0.8513
+    },
+    {
+     "name": "Trend ABOVE MA",
+     "nTrades": 200,
+     "winRate": 0.66,
+     "avgReturn": 0.0052,
+     "cumReturn": 1.7015,
+     "sharpe": 0.9257
+    },
+    {
+     "name": "Trend BELOW MA",
+     "nTrades": 52,
+     "winRate": 0.5385,
+     "avgReturn": 0.0039,
+     "cumReturn": 0.1859,
+     "sharpe": 0.3803
+    }
+   ]
+  }
+ }
+}

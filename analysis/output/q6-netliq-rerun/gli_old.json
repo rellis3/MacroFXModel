@@ -1,0 +1,374 @@
+{
+ "mode": "old",
+ "ranAt": "2026-10-24T15:43:51.940Z",
+ "start": "2008-01-01",
+ "end": "2026-08-21",
+ "fxFiles": {
+  "EURUSD": "VolRangeForecaster\\data\\m1\\eurusd_m1.parquet",
+  "GBPUSD": "VolRangeForecaster\\data\\m1\\gbpusd_m1.parquet",
+  "AUDUSD": "VolRangeForecaster\\data\\m1\\audusd_m1.parquet",
+  "NZDUSD": "VolRangeForecaster\\data\\m1\\nzdusd_m1.parquet",
+  "USDJPY": "VolRangeForecaster\\data\\m1\\usdjpy_m1.parquet",
+  "USDCAD": "VolRangeForecaster\\data\\m1\\usdcad_m1.parquet",
+  "USDCHF": "VolRangeForecaster\\data\\m1\\usdchf_m1.parquet",
+  "EURGBP": "VolRangeForecaster\\data\\m1\\eurgbp_m1.parquet",
+  "EURJPY": "VolRangeForecaster\\data\\m1\\eurjpy_m1.parquet",
+  "EURCHF": "VolRangeForecaster\\data\\m1\\eurchf_m1.parquet",
+  "EURCAD": "VolRangeForecaster\\data\\m1\\eurcad_m1.parquet",
+  "EURAUD": "VolRangeForecaster\\data\\m1\\euraud_m1.parquet",
+  "EURNZD": "VolRangeForecaster\\data\\m1\\eurnzd_m1.parquet",
+  "GBPJPY": "VolRangeForecaster\\data\\m1\\gbpjpy_m1.parquet",
+  "GBPCHF": "VolRangeForecaster\\data\\m1\\gbpchf_m1.parquet",
+  "GBPAUD": "VolRangeForecaster\\data\\m1\\gbpaud_m1.parquet",
+  "GBPCAD": "VolRangeForecaster\\data\\m1\\gbpcad_m1.parquet",
+  "GBPNZD": "VolRangeForecaster\\data\\m1\\gbpnzd_m1.parquet",
+  "AUDJPY": "VolRangeForecaster\\data\\m1\\audjpy_m1.parquet",
+  "AUDNZD": "VolRangeForecaster\\data\\m1\\audnzd_m1.parquet",
+  "AUDCAD": "VolRangeForecaster\\data\\m1\\audcad_m1.parquet",
+  "AUDCHF": "VolRangeForecaster\\data\\m1\\audchf_m1.parquet",
+  "NZDJPY": "VolRangeForecaster\\data\\m1\\nzdjpy_m1.parquet",
+  "CADJPY": "VolRangeForecaster\\data\\m1\\cadjpy_m1.parquet",
+  "CHFJPY": "VolRangeForecaster\\data\\m1\\chfjpy_m1.parquet",
+  "XAUUSD": "VolRangeForecaster\\data\\m1\\gold_m1.parquet"
+ },
+ "nqFile": "VolRangeForecaster\\data\\m1\\nq_m1.parquet",
+ "backtest": {
+  "fredSource": "fredgraph dump 2026-10-24T14:51:30.435Z (units old)",
+  "real": true,
+  "asOf": "2026-08-18",
+  "start": "2008-01-01",
+  "weeks": 973,
+  "coveredPairs": 26,
+  "totalPairs": 26,
+  "sharpe": -0.179,
+  "annReturn": -0.0068,
+  "annVol": 0.0379,
+  "maxDrawdown": -0.2084,
+  "hitRate": 0.306,
+  "avgGross": 0.72,
+  "tradesPerWeek": 1.81,
+  "gateWeeks": 88,
+  "regimes": {
+   "REFLATION": 277,
+   "GOLDILOCKS_LATE": 305,
+   "RECOVERY": 235,
+   "DEFLATION": 156
+  },
+  "walkForward": {
+   "windows": 28,
+   "isSharpe": -1.955,
+   "oosSharpe": -1.663,
+   "wfe": 0.851,
+   "oosPositiveShare": 0.32
+  }
+ },
+ "nq": {
+  "fredSource": "fredgraph dump 2026-10-24T14:51:30.435Z (units old)",
+  "real": true,
+  "instrument": "NQ",
+  "asOf": "2026-08-18",
+  "start": "2008-01-01",
+  "weeks": 973,
+  "coverage": 0.57,
+  "buyHoldSharpe": 0.691,
+  "rules": {
+   "Buy & hold (benchmark)": {
+    "sharpe": 0.691,
+    "annReturn": 0.1086,
+    "annVol": 0.1571,
+    "maxDrawdown": -0.3781,
+    "timeInMarket": 0.999,
+    "oosSharpe": 0.78
+   },
+   "Liq long/flat (impulse>0 & gate clear)": {
+    "sharpe": 0.499,
+    "annReturn": 0.0452,
+    "annVol": 0.0906,
+    "maxDrawdown": -0.2274,
+    "timeInMarket": 0.438,
+    "oosSharpe": 0.64
+   },
+   "Regime long/flat (risk-on & gate clear)": {
+    "sharpe": 0.499,
+    "annReturn": 0.0452,
+    "annVol": 0.0906,
+    "maxDrawdown": -0.2274,
+    "timeInMarket": 0.486,
+    "oosSharpe": 0.64
+   },
+   "Liq long/short (sign, gate→flat)": {
+    "sharpe": 0.211,
+    "annReturn": 0.0287,
+    "annVol": 0.1359,
+    "maxDrawdown": -0.3013,
+    "timeInMarket": 0.86,
+    "oosSharpe": 0.274
+   },
+   "Gate-only (long unless gate tripped)": {
+    "sharpe": 0.454,
+    "annReturn": 0.0617,
+    "annVol": 0.1357,
+    "maxDrawdown": -0.425,
+    "timeInMarket": 0.909,
+    "oosSharpe": 0.566
+   }
+  },
+  "anyRuleBeatsBuyHold": false,
+  "verdict": "No liquidity rule beats buy-and-hold NQ risk-adjusted — the signal adds no timing edge."
+ },
+ "regression": {
+  "fredSource": "fredgraph dump 2026-10-24T14:51:30.435Z (units old)",
+  "real": true,
+  "asOf": "2026-08-18",
+  "start": "2008-12-30",
+  "weeks": 921,
+  "pairsTested": 26,
+  "significantPairs": 4,
+  "meanR2": 0.0021,
+  "perPair": [
+   {
+    "pair": "EURUSD",
+    "n": 920,
+    "beta": 0.00025,
+    "r2": 0.0038,
+    "tStatNW": 1.93,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "GBPUSD",
+    "n": 920,
+    "beta": -0.00007,
+    "r2": 0.0001,
+    "tStatNW": -0.25,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "AUDUSD",
+    "n": 920,
+    "beta": 0.00074,
+    "r2": 0.0063,
+    "tStatNW": 2.71,
+    "bandwidth": 6,
+    "significant": true
+   },
+   {
+    "pair": "NZDUSD",
+    "n": 920,
+    "beta": 0.00058,
+    "r2": 0.0036,
+    "tStatNW": 2.11,
+    "bandwidth": 6,
+    "significant": true
+   },
+   {
+    "pair": "USDJPY",
+    "n": 920,
+    "beta": 0.00011,
+    "r2": 0.0004,
+    "tStatNW": 0.67,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "USDCAD",
+    "n": 920,
+    "beta": 0.00053,
+    "r2": 0.0067,
+    "tStatNW": 2.37,
+    "bandwidth": 6,
+    "significant": true
+   },
+   {
+    "pair": "USDCHF",
+    "n": 920,
+    "beta": 0.00001,
+    "r2": 0,
+    "tStatNW": 0.08,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "EURGBP",
+    "n": 920,
+    "beta": 0.00023,
+    "r2": 0.0014,
+    "tStatNW": 1.21,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "EURJPY",
+    "n": 920,
+    "beta": 0.00021,
+    "r2": 0.0009,
+    "tStatNW": 1.23,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "EURCHF",
+    "n": 920,
+    "beta": 0.00017,
+    "r2": 0.0032,
+    "tStatNW": 1.93,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "EURCAD",
+    "n": 920,
+    "beta": -0.00009,
+    "r2": 0.0002,
+    "tStatNW": -0.5,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "EURAUD",
+    "n": 920,
+    "beta": -0.00048,
+    "r2": 0.0046,
+    "tStatNW": -2.52,
+    "bandwidth": 6,
+    "significant": true
+   },
+   {
+    "pair": "EURNZD",
+    "n": 920,
+    "beta": -0.00035,
+    "r2": 0.0025,
+    "tStatNW": -1.79,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "GBPJPY",
+    "n": 920,
+    "beta": 0.00008,
+    "r2": 0,
+    "tStatNW": 0.22,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "GBPCHF",
+    "n": 920,
+    "beta": 0.00023,
+    "r2": 0.0007,
+    "tStatNW": 0.92,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "GBPAUD",
+    "n": 920,
+    "beta": -0.00073,
+    "r2": 0.0032,
+    "tStatNW": -1.74,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "GBPCAD",
+    "n": 920,
+    "beta": -0.00089,
+    "r2": 0.0018,
+    "tStatNW": -1.39,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "GBPNZD",
+    "n": 920,
+    "beta": -0.00058,
+    "r2": 0.002,
+    "tStatNW": -1.44,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "AUDJPY",
+    "n": 920,
+    "beta": -0.00069,
+    "r2": 0.0039,
+    "tStatNW": -1.81,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "AUDNZD",
+    "n": 920,
+    "beta": 0,
+    "r2": 0,
+    "tStatNW": 0,
+    "bandwidth": 0,
+    "significant": false
+   },
+   {
+    "pair": "AUDCAD",
+    "n": 920,
+    "beta": -0.00051,
+    "r2": 0.0005,
+    "tStatNW": -0.85,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "AUDCHF",
+    "n": 920,
+    "beta": -0.00017,
+    "r2": 0.0009,
+    "tStatNW": -0.99,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "NZDJPY",
+    "n": 920,
+    "beta": -0.00059,
+    "r2": 0.0033,
+    "tStatNW": -1.68,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "CADJPY",
+    "n": 920,
+    "beta": -0.00024,
+    "r2": 0.0005,
+    "tStatNW": -0.77,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "CHFJPY",
+    "n": 920,
+    "beta": 0.00019,
+    "r2": 0.0014,
+    "tStatNW": 1.14,
+    "bandwidth": 6,
+    "significant": false
+   },
+   {
+    "pair": "XAUUSD",
+    "n": 920,
+    "beta": 0.00082,
+    "r2": 0.0032,
+    "tStatNW": 1.52,
+    "bandwidth": 6,
+    "significant": false
+   }
+  ],
+  "pooled": {
+   "n": 23920,
+   "beta": 0.00005,
+   "r2": 0,
+   "tStatNW": 1.03,
+   "bandwidth": 13
+  },
+  "verdict": "Liquidity spread significantly predicts next-week return (|t|≥1.96, NW-HAC) in 4/26 pairs: AUDUSD, NZDUSD, USDCAD, EURAUD.",
+  "caveat": "The pooled regression stacks all pair-weeks together and does not correct for every pair sharing the same weekly GLI shock (cross-sectional correlation), so its t-stat is optimistic — treat it as a headline, not proof. The per-pair regressions are each an honest single time-series HAC test."
+ }
+}

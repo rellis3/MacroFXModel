@@ -1,0 +1,191 @@
+{
+ "mode": "fixed",
+ "ranAt": "2026-10-24T15:15:35.768Z",
+ "from": "2015-01-01",
+ "end": "2026-08-21",
+ "cfg": {
+  "netliqThreshold": 0.25,
+  "stopPct": 3,
+  "riskPct": 1,
+  "requireBoth": true
+ },
+ "fredFetchedAt": "2026-10-24T14:51:30.435Z",
+ "results": {
+  "NAS100_USD": {
+   "bars": 2342,
+   "span": "2016-01-04 -> 2026-08-20",
+   "stats": {
+    "n": 84,
+    "wins": 52,
+    "winRate": 0.6190476190476191,
+    "cagr": 1.97,
+    "sharpe": 0.82,
+    "sortino": 1.23,
+    "sharpeSE": 0.64,
+    "minTrackYears": 4,
+    "maxDD": 2.55,
+    "totalReturn": 4.67
+   },
+   "diagnostics": {
+    "corrNextDay": -0.014268797806994091,
+    "hitRateNextDay": 0.5015184381778742,
+    "corrWeekly": -0.0030267852073741584,
+    "hitRateWeekly": 0.4915254237288136
+   },
+   "firstCreditZ": "2023-12-11",
+   "firstAlignedDay": "2023-12-14",
+   "trades": 84,
+   "longs": 83,
+   "shorts": 1,
+   "stops": 1,
+   "buyHoldSharpeSameSpan": 1.24,
+   "shareOfDaysInTrade": 0.338
+  },
+  "SPX500_USD": {
+   "bars": 2344,
+   "span": "2016-01-04 -> 2026-08-20",
+   "stats": {
+    "n": 84,
+    "wins": 47,
+    "winRate": 0.5595238095238095,
+    "cagr": 1.68,
+    "sharpe": 0.95,
+    "sortino": 1.63,
+    "sharpeSE": 0.64,
+    "minTrackYears": 3,
+    "maxDD": 1.64,
+    "totalReturn": 3.98
+   },
+   "diagnostics": {
+    "corrNextDay": -0.024709925630931554,
+    "hitRateNextDay": 0.4859124403987863,
+    "corrWeekly": -0.008382603217209426,
+    "hitRateWeekly": 0.4950065132435953
+   },
+   "firstCreditZ": "2023-12-11",
+   "firstAlignedDay": "2023-12-14",
+   "trades": 84,
+   "longs": 83,
+   "shorts": 1,
+   "stops": 0,
+   "buyHoldSharpeSameSpan": 1.39,
+   "shareOfDaysInTrade": 0.338
+  },
+  "US30_USD": {
+   "bars": 2345,
+   "span": "2016-01-04 -> 2026-08-20",
+   "stats": {
+    "n": 84,
+    "wins": 41,
+    "winRate": 0.4880952380952381,
+    "cagr": 0.82,
+    "sharpe": 0.42,
+    "sortino": 0.63,
+    "sharpeSE": 0.64,
+    "minTrackYears": 15.6,
+    "maxDD": 2.17,
+    "totalReturn": 1.93
+   },
+   "diagnostics": {
+    "corrNextDay": -0.02735479777819288,
+    "hitRateNextDay": 0.49263431542461006,
+    "corrWeekly": -0.013971194401724387,
+    "hitRateWeekly": 0.4952256944444444
+   },
+   "firstCreditZ": "2023-12-11",
+   "firstAlignedDay": "2023-12-14",
+   "trades": 84,
+   "longs": 83,
+   "shorts": 1,
+   "stops": 1,
+   "buyHoldSharpeSameSpan": 1.11,
+   "shareOfDaysInTrade": 0.338
+  },
+  "US2000_USD": {
+   "bars": 2331,
+   "span": "2016-01-04 -> 2026-08-20",
+   "stats": {
+    "n": 84,
+    "wins": 41,
+    "winRate": 0.4880952380952381,
+    "cagr": 1.47,
+    "sharpe": 0.41,
+    "sortino": 0.68,
+    "sharpeSE": 0.64,
+    "minTrackYears": 16.2,
+    "maxDD": 4.93,
+    "totalReturn": 3.48
+   },
+   "diagnostics": {
+    "corrNextDay": -0.03514884927152932,
+    "hitRateNextDay": 0.493025283347864,
+    "corrWeekly": -0.013146170923162719,
+    "hitRateWeekly": 0.5034934497816594
+   },
+   "firstCreditZ": "2023-12-11",
+   "firstAlignedDay": "2023-12-14",
+   "trades": 84,
+   "longs": 83,
+   "shorts": 1,
+   "stops": 4,
+   "buyHoldSharpeSameSpan": 0.98,
+   "shareOfDaysInTrade": 0.338
+  },
+  "DE30_USD": {
+   "bars": 3,
+   "span": "2017-10-06 -> 2019-11-05",
+   "stats": {
+    "n": 0,
+    "wins": 0,
+    "winRate": 0,
+    "cagr": 0,
+    "sharpe": 0,
+    "sortino": 0,
+    "sharpeSE": null,
+    "minTrackYears": null,
+    "maxDD": 0,
+    "totalReturn": 0
+   },
+   "diagnostics": {
+    "corrNextDay": null,
+    "hitRateNextDay": null,
+    "corrWeekly": null,
+    "hitRateWeekly": null
+   },
+   "firstCreditZ": null,
+   "firstAlignedDay": null,
+   "trades": 0,
+   "longs": 0,
+   "shorts": 0,
+   "stops": 0
+  },
+  "UK100_GBP": {
+   "bars": 6,
+   "span": "2017-10-06 -> 2020-10-28",
+   "stats": {
+    "n": 0,
+    "wins": 0,
+    "winRate": 0,
+    "cagr": 0,
+    "sharpe": 0,
+    "sortino": 0,
+    "sharpeSE": null,
+    "minTrackYears": null,
+    "maxDD": 0,
+    "totalReturn": 0
+   },
+   "diagnostics": {
+    "corrNextDay": null,
+    "hitRateNextDay": null,
+    "corrWeekly": null,
+    "hitRateWeekly": null
+   },
+   "firstCreditZ": null,
+   "firstAlignedDay": null,
+   "trades": 0,
+   "longs": 0,
+   "shorts": 0,
+   "stops": 0
+  }
+ }
+}
