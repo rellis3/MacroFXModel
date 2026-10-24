@@ -612,7 +612,7 @@ function nlStrips() {
   const lvl = ([k, label]) => { const t = lastTwo(k); if (!t) return null; const b = back(k, 20); return { label, v: t.last, d1: t.prev != null ? t.last - t.prev : null, d20: b != null ? t.last - b : null }; };
   return {
     stocks: { sectors: NL_SECTORS.map(pct).filter(Boolean), mega: NL_MEGA.map(pct).filter(Boolean) },
-    commodities: NL_COMMS.map(([k, name, cur]) => { const m = fmtPct(k); if (!m) return null; return { name, value: cur + (m.v >= 100 ? m.v.toFixed(0) : m.v.toFixed(2)), sub: `${m.d1 != null ? sg(m.d1, 2) + '% today · ' : ''}20d ${sg(m.d20, 1)}%`, tone: m.d20 == null ? '' : m.d20 >= 0 ? 'up' : 'dn', spark: spark(k, 30) }; }).filter(Boolean),
+    commodities: NL_COMMS.map(([k, name, cur]) => { const m = fmtPct(k); if (!m) return null; return { name, value: cur + (m.v >= 100 ? m.v.toFixed(0) : m.v.toFixed(2)), sub: `${m.d1 != null ? sg(m.d1, 2) + '% today · ' : ''}20d ${sg(m.d20, 1)}%`, tone: m.d20 == null ? '' : m.d20 >= 0 ? 'up' : 'dn', spark: spark(k, 30), d1: m.d1, d20: m.d20 }; }).filter(Boolean),
     volatility: NL_VOLS.map(lvl).filter(Boolean),
     creditSpreads: NL_CREDS.map(([k, label]) => { const f = fmtRate(k); return f ? { label, bp: f.v * 100, d1: f.d1, d20: f.d20 } : null; }).filter(Boolean),
   };

@@ -36,7 +36,7 @@ export function dataChecks({ links, assets, windowDays = 20 } = {}) {
   const dollarLag = lagging.find(x => x.key === 'dxy');
   if (dollarLag) {
     const d = dollarOnDailyFx(assets);
-    if (d.n >= 4) out.push({ id: 'dollar', title: 'The dollar claim needs checking', body: `The story says the dollar was bought. That rests on the broad dollar index, whose last print is ${pretty(dollarLag.asOf)}, ${dollarLag.days} days before the newest data (${pretty(latest)}). On the daily dollar pairs over the same ${windowDays} days to the latest close, the dollar is stronger against ${d.stronger} of ${d.n} and weaker against ${d.n - d.stronger}. The two measures cover different windows and point different ways, so "the dollar is bought" is unconfirmed until the index catches up or the daily pairs are used instead.` });
+    if (d.n >= 4) out.push({ id: 'dollar', title: 'The dollar claim needs checking', facts: { asOf: dollarLag.asOf, days: dollarLag.days, stronger: d.stronger, n: d.n }, body: `The story says the dollar was bought. That rests on the broad dollar index, whose last print is ${pretty(dollarLag.asOf)}, ${dollarLag.days} days before the newest data (${pretty(latest)}). On the daily dollar pairs over the same ${windowDays} days to the latest close, the dollar is stronger against ${d.stronger} of ${d.n} and weaker against ${d.n - d.stronger}. The two measures cover different windows and point different ways, so "the dollar is bought" is unconfirmed until the index catches up or the daily pairs are used instead.` });
   }
   return out;
 }

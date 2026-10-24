@@ -26,3 +26,15 @@ A pass over the figures, dates and claims in the magazine edition (V2). Nothing 
 ## Evidence status labels
 
 Observed data, model output, tested association, context not a signal, hypothesis, untested interpretation. Every figure or section carries one.
+
+## V4: reader's edition (same day)
+
+The research and every threshold are unchanged. What changed is how each result is explained, from `js/newsletterExplain.js`, so words and figures come from the same data.
+
+- **Opening in three voices.** What the data shows (green), what it might mean (blue), what we cannot confirm (amber). A contradiction is stated only when the data shows it.
+- **Every exhibit explains itself.** What you are looking at, why it matters, what it tells us, and what is uncertain, under the yield figure, the chain, the audit, positioning and each Data Desk section.
+- **Chain counts reconcile.** 33 defined, 27 measurable (6 lack data), 10 quiet, 17 judged, 13 held, 4 broke. Links that use a series that stops early are marked timing unconfirmed, not a clean break.
+- **Stress.** The broad warnings are listed with reading and trigger, the nine watched conditions are split into broken relationships, setup watches and background context, and the closest warning to tripping is named. The dial counts measurable warnings only (5 of 6 today).
+- **Explanations.** Each states what it means, what we would see if true, what fits, what does not, which other stories look the same, and what would separate them. Broken links none of them speak to are listed as unexplained.
+- **Headline.** The dollar part of the headline is marked unconfirmed under the headline. The headline text itself is not edited.
+- **Data Desk.** Market blocks with the story's markets first, a key for the repeated definitions, and one shared dealer-effect caveat.

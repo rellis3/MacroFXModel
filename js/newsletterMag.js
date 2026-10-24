@@ -159,6 +159,43 @@ export const MAG_CSS = `
 @media (max-width:560px){.pg .mh{margin:-18px -15px 0;padding:10px 12px}.pg .tape{margin:0 -15px 14px;flex-wrap:nowrap;overflow-x:auto;padding:8px 12px}.pg .deskhd .tape{margin:-14px -15px 12px}.pg h1.hd{font-size:33px}.pg h2.sh{font-size:25px}}
 @media print{.pg .mh{margin:0}.pg .tape{margin:0 0 14px}.pg .deskhd .tape{margin:0 0 12px}}
 
+
+/* V4: the reader's guide, the three voices, the stress panel and the hypothesis cards */
+.pg .rg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 16px;margin:10px 0 12px;padding:11px 14px;background:#eef3fb;border-radius:10px;font-family:var(--sans);font-size:11.5px;line-height:1.45;-webkit-print-color-adjust:exact}
+.pg .rg>div b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#2f6fb5;margin-bottom:2px}
+.pg .rg .u{grid-column:1/-1;border-top:1px solid #cdd9ea;padding-top:6px;margin-top:2px}.pg .rg .u b{color:#9a6200}
+.pg .rg.sm{font-size:10.8px;padding:8px 12px;margin:6px 0 8px}
+.pg .fiu{margin:6px 0 14px;font-family:var(--sans)}
+.pg .fiu>div{position:relative;padding:9px 14px 6px 18px;margin:0 0 7px;border-radius:8px;-webkit-print-color-adjust:exact}
+.pg .fiu>div:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;border-radius:8px 0 0 8px}
+.pg .fiu b.v{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:3px}
+.pg .fiu p{margin:0 0 4px;font-size:12.3px;line-height:1.42;color:#1b2a40}
+.pg .fiu .f{background:#e9f8f2}.pg .fiu .f:before{background:#19b88a}.pg .fiu .f b.v{color:#0a8f6c}
+.pg .fiu .i{background:#eaf1fc}.pg .fiu .i:before{background:#3b7be0}.pg .fiu .i b.v{color:#2f66bf}
+.pg .fiu .x{background:#fff6e5}.pg .fiu .x:before{background:#e09a00}.pg .fiu .x b.v{color:#9a6200}
+.pg .map{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;color:#5b6b82;border-top:1px solid #dfe6f1;padding-top:7px;margin:8px 0 0;line-height:1.7}.pg .map b{color:var(--navy)}
+.pg .cnt{display:flex;gap:6px;align-items:stretch;margin:8px 0;font-family:var(--sans)}.pg .cnt div{flex:1;background:var(--navy);border-radius:8px;padding:7px 9px;color:#cfe0f5;-webkit-print-color-adjust:exact}.pg .cnt div b{display:block;font-family:var(--mono);font-size:21px;color:#fff;line-height:1.1}.pg .cnt div small{font-size:9.6px;line-height:1.25;display:block}.pg .cnt div.g b{color:#19d3a0}.pg .cnt div.r b{color:#ff8a9a}.pg .cnt div.q b{color:#8aa0bd}
+.pg .sdiv{break-after:avoid}.pg .stv{display:flex;gap:14px;align-items:center;background:var(--navy);color:#e6eefb;border-radius:10px;padding:12px 16px;margin:8px 0 10px;-webkit-print-color-adjust:exact}.pg .stv b.n{font-family:var(--mono);font-size:34px;color:#19d3a0;line-height:1}.pg .stv .t{font-family:var(--sans);font-size:15px;font-weight:800}.pg .stv small{display:block;font-family:var(--sans);font-weight:400;font-size:11.5px;color:#9db1cc;margin-top:2px}
+.pg table.fl{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:11.3px;margin:4px 0 8px}.pg table.fl th{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;text-align:left;border-bottom:2px solid var(--navy);padding:4px 8px 4px 0;color:var(--navy)}.pg table.fl td{border-bottom:1px solid #e3e9f2;padding:5px 8px 5px 0;vertical-align:top}.pg table.fl .st{font-family:var(--mono);font-size:10px;font-weight:700;white-space:nowrap}.pg table.fl .st.off{color:#0a8f6c}.pg table.fl .st.on{color:#d63a52}.pg table.fl .st.na{color:#9a6200}
+.pg .hc{border:1px solid #d6e0ee;border-radius:10px;padding:6px 12px;margin:0 0 6px;font-family:var(--sans);font-size:10.7px;line-height:1.36;break-inside:avoid;background:#fff}.pg .hc h3{font-size:15px;margin:0 0 2px;color:var(--navy);display:flex;gap:10px;align-items:center;justify-content:space-between}.pg .hc .sc{font-family:var(--mono);font-size:10px;background:var(--navy);color:#fff;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.pg .hc dl{display:grid;grid-template-columns:112px 1fr;gap:2px 12px;margin:4px 0 0}.pg .hc dt{font-family:var(--mono);font-size:8.8px;letter-spacing:.1em;text-transform:uppercase;color:#5b6b82;padding-top:2px}.pg .hc dd{margin:0}.pg .hc dd.ok{color:#0a7a5c}.pg .hc dd.no{color:#c4303f}
+.pg .rl{border:1px solid #d6e0ee;border-radius:10px;padding:0 0 9px;overflow:hidden;break-inside:avoid;font-family:var(--sans);font-size:11px;line-height:1.42;background:#fff}.pg .rl .fsvg{display:block;border-radius:0;width:100%}.pg .rl .in{padding:8px 12px 0}.pg .rl .in p{margin:0 0 4px}.pg .rl .in b.k{font-family:var(--mono);font-size:8.8px;letter-spacing:.1em;text-transform:uppercase;color:#5b6b82}.pg .rl .chip{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:2px 8px;margin-bottom:5px;font-weight:700}.pg .rl .chip.d{background:#fde9ec;color:#c4303f}.pg .rl .chip.t{background:#fff1d6;color:#9a6200}
+.pg .bkey{font-family:var(--sans);font-size:11px;line-height:1.5;background:#f4f7fc;border-radius:8px;padding:9px 13px;margin:6px 0 10px;color:#33445c}.pg .bkey b{color:var(--navy)}
+.pg .sdiv{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#2f6fb5;margin:12px 0 2px;border-bottom:1px solid #cdd9ea;padding-bottom:3px}
+.pg .bk .tg{display:inline-block;font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;background:#fff1d6;color:#9a6200;border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+.pg .bk .facts{grid-column:1/-1;display:grid;grid-template-columns:1.1fr 1.2fr 1fr;gap:3px 16px;font-size:10.8px;line-height:1.4;color:#33445c}.pg .bk .facts b{display:block;font-family:var(--mono);font-size:8.6px;letter-spacing:.1em;text-transform:uppercase;color:#5b6b82;font-weight:700}
+@media screen{.pg .hdchk{display:block}}
+.pg .hdchk{font-family:var(--sans);font-size:11.5px;color:#9a6200;background:#fff6e5;border-left:4px solid #e09a00;padding:5px 10px;margin:4px 0 6px;border-radius:0 6px 6px 0;-webkit-print-color-adjust:exact}
+@media screen{.pg .lsplit{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start}}
+@media print{.pg .lsplit{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;align-items:start}.pg .lside .rg{margin-top:6px}}
+.pg .rg.col{grid-template-columns:1fr}.pg .lside .cnt{flex-wrap:wrap}.pg .lside .cnt div{flex:1 1 30%}
+.pg .dsec.k{break-inside:avoid}
+.pg .bk2 .tg{display:inline-block;font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;background:#fff1d6;color:#9a6200;border-radius:999px;padding:1px 7px;margin-left:8px;vertical-align:middle}.pg .bk2 .facts .cot2 span>b{display:none}
+.pg .bk2 .facts .cot2{display:block}.pg .bk2 .facts .cot2 small{display:inline;margin-left:4px}
+@media print{.pg.p5 h2.sh{font-size:23px;margin:2px 0 6px}.pg.p1 h1.hd{font-size:40px;margin:0 0 8px}.pg.p1 .fiu p{font-size:11.9px;line-height:1.38}.pg.p1 .fiu>div{padding:7px 14px 4px 18px;margin:0 0 6px}.pg.p1 .map{margin:4px 0 0;padding-top:5px}.pg.p5 .rg{margin:6px 0 6px}.pg.p5 h3.ss{margin:8px 0 4px!important}.pg.p5 .box{margin:8px 0}.pg .rg{break-inside:avoid}.pg .stv{break-inside:avoid}}
+@media (max-width:560px){.pg .rg{grid-template-columns:1fr}.pg .cnt{flex-wrap:wrap}.pg .hc dl{grid-template-columns:1fr}.pg .bk .facts{grid-template-columns:1fr}}
+.pg .bk2{padding:6px 0 5px;border-top:1px solid #dfe6f1;break-inside:avoid;font-family:var(--sans);font-size:11.5px}.pg .bk2:first-of-type{border-top:0}.pg .bk2 .h{display:grid;grid-template-columns:200px 120px 1fr;gap:10px;align-items:center}.pg .bk2 .nm{display:flex;gap:9px;align-items:center}.pg .bk2 .nm b{font-size:15px;color:var(--navy)}.pg .bk2 .nm small{display:block;font-family:var(--mono);font-size:10.5px;color:#5b6b82}.pg .bk2 .mv{font-family:var(--mono);font-size:12px}.pg .bk2 .mv small{display:block;font-family:var(--sans);font-size:10.5px;color:#5b6b82;margin-top:1px}.pg .bk2 .s{margin:5px 0 4px}.pg .bk2 .s svg{display:block;max-width:100%;height:auto}.pg .bk2 .facts{display:grid;grid-template-columns:1.05fr 1.25fr 1fr;gap:3px 18px;font-size:11px;line-height:1.42;color:#33445c}.pg .bk2 .facts b{display:block;font-family:var(--mono);font-size:8.8px;letter-spacing:.1em;text-transform:uppercase;color:#5b6b82}.pg .bk2 .facts small{display:block;color:#6b7b92;font-size:10.2px}.pg .bk2 .facts .cot2{margin:0}.pg .bk2 .sy{margin:4px 0 0;font-size:11px;color:#4a5a70;border-left:3px solid #cdd9ea;padding-left:9px}.pg .bk2 .muted{color:#8a98ad}
+@media (max-width:560px){.pg .bk2 .h{grid-template-columns:1fr}.pg .bk2 .facts{grid-template-columns:1fr}}
 `;
 
 const N = x => (Number.isFinite(x) ? x : null);
@@ -203,13 +240,13 @@ export function relationChart(l, S, H) {
   const X = i => left + i * (W - left - right) / (L - 1), Y = v => top + (1 - (v + m) / (2 * m)) * (Ht - top - bot);
   const P = s => s.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
   const la = { y: Y(A[L - 1]), t: l.a.label, mv: l.a.text, c: T.cyan }, lb = { y: Y(B[L - 1]), t: l.b.label, mv: l.b.text, c: T.amber };
-  const arr = [la, lb].sort((p, q) => p.y - q.y); if (arr[1].y - arr[0].y < 34) arr[1].y = arr[0].y + 34;
+  const arr = [la, lb].sort((p, q) => p.y - q.y); if (arr[1].y - arr[0].y < 34) arr[1].y = arr[0].y + 34; const spill = arr[1].y - (Ht - 30); if (spill > 0) { arr[0].y -= spill; arr[1].y -= spill; }
   const short = t => String(t).replace(/\s*\(.*\)/, '');
   return `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="${H.esc(l.a.label)} and ${H.esc(l.b.label)} over 20 days" class="fsvg" font-family="Consolas,'SF Mono',Menlo,monospace">`
     + `<rect width="${W}" height="${Ht}" rx="10" fill="${T.bg}"/>`
     + `<line x1="${left}" y1="${Y(0)}" x2="${W - right}" y2="${Y(0)}" stroke="${T.zero}" stroke-width="1"/>`
     + `<line x1="${left}" y1="${Y(1).toFixed(1)}" x2="${W - right}" y2="${Y(1).toFixed(1)}" stroke="${T.grid}" stroke-dasharray="3 3"/><line x1="${left}" y1="${Y(-1).toFixed(1)}" x2="${W - right}" y2="${Y(-1).toFixed(1)}" stroke="${T.grid}" stroke-dasharray="3 3"/>`
-    + `<text x="${left + 2}" y="${(Y(1) - 4).toFixed(1)}" font-size="8.5" fill="${T.txt}">ONE USUAL WOBBLE</text>`
+    + `<text x="${left + 2}" y="${(Y(1) - 4).toFixed(1)}" font-size="8.5" fill="${T.txt}" stroke="${T.bg}" stroke-width="3" paint-order="stroke">ONE USUAL WOBBLE</text>`
     + `<path d="${P(A)}" fill="none" stroke="${la.c}" stroke-width="2.4" stroke-linejoin="round"/><path d="${P(B)}" fill="none" stroke="${lb.c}" stroke-width="2.4" stroke-linejoin="round"/>`
     + `<circle cx="${X(L - 1)}" cy="${Y(A[L - 1]).toFixed(1)}" r="4" fill="${la.c}" stroke="${T.bg}" stroke-width="2"/><circle cx="${X(L - 1)}" cy="${Y(B[L - 1]).toFixed(1)}" r="4" fill="${lb.c}" stroke="${T.bg}" stroke-width="2"/>`
     + arr.map(e => `<text x="${W - right + 11}" y="${(e.y - 2).toFixed(1)}" font-size="10" font-weight="700" fill="${e.c}">${H.esc(short(e.t)).toUpperCase().slice(0, 14)}</text><text x="${W - right + 11}" y="${(e.y + 11).toFixed(1)}" font-size="11" fill="${T.hi}">${H.esc(e.mv)}</text>`).join('')
@@ -219,12 +256,12 @@ export function relationChart(l, S, H) {
 /** A horizontal bar figure on a dark panel: each row a market, the bar its move over the window (green up, red down), the value and today's move written beside it. rows: [{ label, v, sub }] */
 export function barFigure(title, rows, H, { unit = '%', note = '' } = {}) {
   const R = (rows ?? []).filter(r => Number.isFinite(r.v)); if (!R.length) return '';
-  const W = 660, row = 17, top = 28, left = 152, right = 190, Ht = top + R.length * row + 14, mx = Math.max(1, ...R.map(r => Math.abs(r.v))), zero = left + (W - left - right) / 2, half = (W - left - right) / 2;
+  const W = 660, row = 19, top = 30, left = 152, right = 190, Ht = top + R.length * row + 14, mx = Math.max(1, ...R.map(r => Math.abs(r.v))), zero = left + (W - left - right) / 2, half = (W - left - right) / 2;
   const f = (v, d = 1) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(d)}`;
   return `<figure><svg viewBox="0 0 ${W} ${Ht}" class="fsvg fw" role="img" aria-label="${H.esc(title)}" font-family="Consolas,'SF Mono',Menlo,monospace"><rect width="${W}" height="${Ht}" rx="10" fill="${T.bg}"/>`
     + `<text x="12" y="17" font-size="10.5" font-weight="700" fill="${T.hi}" letter-spacing="1">${H.esc(title.toUpperCase())}</text><line x1="${zero}" y1="${top - 6}" x2="${zero}" y2="${Ht - 8}" stroke="${T.zero}"/>`
     + R.map((r, i) => { const y = top + i * row, w = Math.max(1.5, Math.abs(r.v) / mx * half), x = r.v >= 0 ? zero : zero - w, c = r.v >= 0 ? T.up : T.down;
-      return `<text x="12" y="${y + 11}" font-size="11" fill="${T.hi}">${H.esc(String(r.label).slice(0, 22))}</text><rect x="${x.toFixed(1)}" y="${y + 2}" width="${w.toFixed(1)}" height="11" rx="2" fill="${c}"/><text x="${W - right + 14}" y="${y + 11}" font-size="11" font-weight="700" fill="${c}">${f(r.v)}${unit}</text><text x="${W - 12}" y="${y + 11}" text-anchor="end" font-size="10" fill="${T.txt}">${Number.isFinite(r.sub) ? f(r.sub, 2) + ' today' : ''}</text>`; }).join('')
+      return `<text x="12" y="${y + 12}" font-size="12" fill="${T.hi}">${H.esc(String(r.label).slice(0, 22))}</text><rect x="${x.toFixed(1)}" y="${y + 2}" width="${w.toFixed(1)}" height="12" rx="2" fill="${c}"/>${r.note ? `<text x="${r.v >= 0 ? zero - 8 : zero + 8}" y="${y + 12}" text-anchor="${r.v >= 0 ? 'end' : 'start'}" font-size="10" fill="${T.amber}">${H.esc(r.note)}</text>` : ''}<text x="${W - right + 14}" y="${y + 12}" font-size="12" font-weight="700" fill="${c}">${f(r.v)}${unit}</text><text x="${W - 12}" y="${y + 12}" text-anchor="end" font-size="10.5" fill="${T.txt}">${Number.isFinite(r.sub) ? f(r.sub, 2) + ' today' : ''}</text>`; }).join('')
     + `</svg>${note ? `<figcaption>${note}</figcaption>` : ''}</figure>`;
 }
 
@@ -252,7 +289,7 @@ const NAME = { GOLD: 'Gold', NQ: 'Nasdaq', SPX500: 'S&P 500', US30: 'Dow', US200
 /** Last issue's forecast audit: each market's real day against the size the issue expected, with the half-to-one-and-a-half band shaded. */
 export function auditChart(rows, H) {
   const R = (rows ?? []).filter(r => N(r.ratio) != null).sort((a, b) => b.ratio - a.ratio); if (R.length < 3) return '';
-  const W = 640, row = 12.5, top = 24, left = 96, right = 44, Ht = top + R.length * row + 30, mx = Math.max(2, ...R.map(r => r.ratio)) * 1.05, X = v => left + v / mx * (W - left - right);
+  const W = 640, row = 12, top = 24, left = 96, right = 44, Ht = top + R.length * row + 30, mx = Math.max(2, ...R.map(r => r.ratio)) * 1.05, X = v => left + v / mx * (W - left - right);
   return `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="Each market's realised day as a multiple of the expected size" class="fsvg fw" font-family="Consolas,'SF Mono',Menlo,monospace">`
     + `<rect width="${W}" height="${Ht}" rx="10" fill="${T.bg}"/><rect x="${X(0.5)}" y="${top - 6}" width="${X(1.5) - X(0.5)}" height="${R.length * row + 8}" fill="rgba(25,211,160,.10)"/>`
     + [0, 0.5, 1, 1.5, 2].filter(t => t <= mx).map(t => `<line x1="${X(t)}" y1="${top - 6}" x2="${X(t)}" y2="${top + R.length * row + 2}" stroke="${t === 1 ? T.hi : T.grid}" stroke-width="${t === 1 ? 1.3 : 1}"/><text x="${X(t)}" y="${top - 11}" text-anchor="middle" font-size="10" fill="${T.txt}">${t}×</text>`).join('')
@@ -263,7 +300,7 @@ export function auditChart(rows, H) {
 /** The recurring accountability feature. record = { line, score, date, history, week }; eod = { hook, right, wrong } (the stored review of the last call).
  *  Two different things are scored and they are kept on separate halves of the page: the SIZE forecast (how big each market's day was against the range the issue printed)
  *  and the DIRECTIONAL read of the previous brief. They measure different things and must not be blended into one verdict. */
-export function accountabilityPage(record, eod, H) {
+export function accountabilityPage(record, eod, H, ag = null) {
   const s = record?.score, wk = record?.week; if (!s && !wk && !eod?.hook) return '';
   const rows = s?.rows ?? [], out = rows.filter(r => r.ratio < 0.5 || r.ratio > 1.5), inBand = rows.length - out.length;
   const wide = out.filter(r => r.ratio > 1.5).map(r => `${NAME[r.key] ?? r.key} ${r.ratio.toFixed(1)}×`), quiet = out.filter(r => r.ratio < 0.5).map(r => `${NAME[r.key] ?? r.key} ${r.ratio.toFixed(1)}×`);
@@ -279,15 +316,61 @@ export function accountabilityPage(record, eod, H) {
 ${s || wk ? `<h3 class="ss">${evBadge('model')}1. The size forecast against what happened</h3>
 <p style="font-size:12.5px;margin:2px 0 6px;font-family:var(--sans)">Built from the sizes printed in that issue when it was written and the audit stored after the close. Nothing was re-estimated afterwards.</p>
 ${wk && !s ? `<div class="acctn">${stat(`${wk.withinShare}%`, `of ${wk.n} market-days inside the expected band`)}${stat(`${wk.median}×`, 'median against the expected size')}${stat(`${wk.pastShare}%`, 'ran past the expected size (about half is calibrated)')}</div>` : ''}${s ? `<div class="acctn">${stat(`${inBand} of ${rows.length}`, 'markets inside the expected band')}${stat(`${s.median}×`, 'median against the expected size')}${stat(`${s.pastShare}%`, 'ran past the expected size (about half is calibrated)')}</div>
-<figure>${auditChart(rows, H)}<figcaption><b>Figure.</b> Each bar is one market: the real range divided by the range the issue expected. Amber bars landed outside half to one-and-a-half times.</figcaption></figure>` : ''}
-<div class="two"><div><h3 class="ss" style="color:#0f9f6e">What was right</h3>${right.map(x => `<p style="font-size:13px">${H.esc(x)}</p>`).join('')}</div>
-<div><h3 class="ss" style="color:#d98a00">What was wrong</h3>${wrong.map(x => `<p style="font-size:13px">${H.esc(x)}</p>`).join('')}</div></div>
-<p class="small" style="font-family:var(--sans);font-size:11.5px;color:#5b6b82;border-left:3px solid #d98a00;padding-left:10px">${H.esc(sample)}</p>
-${hist.length > 1 ? `<table class="tx"><tr><th>Issue</th><th>Median vs expected</th><th>Ran past it</th><th>Inside the band</th></tr>${hist.map(h => `<tr><td>${H.esc(h.date)}</td><td>${h.median}×</td><td>${h.pastShare}%</td><td>${h.withinShare}%</td></tr>`).join('')}</table>` : ''}` : ''}
+<figure>${auditChart(rows, H)}<figcaption><b>Figure.</b> Each bar is one market: the real range divided by the range the issue expected. Amber bars landed outside half to one-and-a-half times.</figcaption></figure>` : ''}${guide(ag && { looking: ag.looking, matters: ag.matters, tells: ag.tells, unsure: ag.unsure }, H, 'sm')}
+<p style="font-size:12.5px;line-height:1.5;margin:6px 0 8px;font-family:var(--sans)"><b style="color:#0f9f6e">Inside the band.</b> ${right.map(x => H.esc(x)).join(' ')} <b style="color:#d98a00">Outside it.</b> ${wrong.map(x => H.esc(x)).join(' ')}</p>
+${hist.length > 2 ? `<table class="tx"><tr><th>Issue</th><th>Median vs expected</th><th>Ran past it</th><th>Inside the band</th></tr>${hist.map(h => `<tr><td>${H.esc(h.date)}</td><td>${h.median}×</td><td>${h.pastShare}%</td><td>${h.withinShare}%</td></tr>`).join('')}</table>` : ''}` : ''}
 ${eod?.hook ? `<h3 class="ss" style="margin-top:16px">${evBadge('model')}2. A separate test: the previous brief's directional read</h3>
-<div class="box"><p>${H.esc(eod.hook)}</p>${asList(eod.right).length ? `<p><b>Right:</b> ${H.esc(asList(eod.right).slice(0, 3).join('; '))}</p>` : ''}${asList(eod.wrong).length ? `<p><b>Wrong:</b> ${H.esc(asList(eod.wrong).slice(0, 3).join('; '))}</p>` : ''}<p style="font-size:11.5px;color:#5b6b82">Scored on its own; it does not feed the size record. In the desk's tests, direction calls from price patterns are close to a coin flip, so a poor score here is expected and says nothing about the size forecast.</p></div>` : ''}
+<div class="box"><p>${H.esc(eod.hook)}</p>${asList(eod.right).length ? `<p><b>Right:</b> ${H.esc(asList(eod.right).slice(0, 3).join('; '))}</p>` : ''}${asList(eod.wrong).length ? `<p><b>Wrong:</b> ${H.esc(asList(eod.wrong).slice(0, 3).join('; '))}</p>` : ''}<p style="font-size:11.5px;color:#5b6b82">${H.esc(ag?.direction ?? "Scored on its own; it does not feed the size record. In the desk's tests, direction calls from price patterns are close to a coin flip, so a poor score here is expected and says nothing about the size forecast.")}</p></div>` : ''}
 </div>`;
 }
+
+/** The reader's guide under a figure: what it is, why it matters, what it says today, and what is uncertain. Every part is optional. */
+export function guide(gd, H, cls = '') {
+  if (!gd) return '';
+  const cell = (h, t) => (t ? `<div><b>${h}</b>${H.esc(t)}</div>` : '');
+  const body = cell('What you are looking at', gd.looking) + cell('Why it matters', gd.matters) + cell('What it tells us', gd.tells);
+  return body || gd.unsure ? `<div class="rg ${cls}">${body}${gd.unsure ? `<div class="u"><b>What is uncertain</b>${H.esc(gd.unsure)}</div>` : ''}</div>` : '';
+}
+
+/** Fact, interpretation, uncertainty: three kinds of statement, kept apart and coloured. */
+export function threeVoices(iv, H) {
+  const blk = (cls, label, arr) => (arr?.length ? `<div class="${cls}"><b class="v">${label}</b>${arr.map(t => `<p>${H.esc(t)}</p>`).join('')}</div>` : '');
+  return `<div class="fiu">${blk('f', 'What the data shows', iv.fact)}${blk('i', 'What it might mean', iv.why)}${blk('x', 'What we cannot confirm', iv.unsure)}</div>`;
+}
+
+/** The count of links, from everything defined down to what was judged and what broke. */
+export function countStrip(c) {
+  const t = (cls, n, l) => `<div class="${cls}"><b>${n}</b><small>${l}</small></div>`;
+  return `<div class="cnt">${t('', c.defined, 'links defined')}${t('', c.measurable, `measurable today${c.unmeasured ? `, ${c.unmeasured} lack data` : ''}`)}${t('q', c.quiet, 'quiet: an end barely moved')}${t('', c.judged, 'judged')}${t('g', c.holding, 'held')}${t('r', c.broken, 'broke')}</div>`;
+}
+
+/** The stress dashboard: the broad warnings against the narrower watched conditions, and what would change the reading. */
+export function stressPanel(sr, H) {
+  if (!sr) return '';
+  const st = f => (f.state === 'on' ? '<span class="st on">ON</span>' : f.state === 'off' ? '<span class="st off">off</span>' : '<span class="st na">not measured</span>');
+  return `<div class="stv"><b class="n">${sr.active}/${sr.measured}</b><div class="t">${H.esc(sr.verdict)}<small>${H.esc(sr.why)}</small></div></div>
+<table class="fl"><tr><th>Broad warning</th><th>Reading now and the level that trips it</th><th>Status</th></tr>${sr.flags.map(f => `<tr><td><b>${H.esc(f.label)}</b></td><td>${H.esc(f.detail)}</td><td>${st(f)}</td></tr>`).join('')}</table>
+<p style="font-family:var(--sans);font-size:12px;line-height:1.5;margin:4px 0">${H.esc([sr.split, sr.closest, sr.change, sr.na].filter(Boolean).join(' '))}</p>`;
+}
+
+const lcf = s => (s ? s.charAt(0).toLowerCase() + s.slice(1) : '');
+/** One explanation as a card of ordinary-language answers. t comes from buildTheories(). */
+export function theoryCard(t, H) {
+  const yes = t.checks.filter(c => c.ok === true).map(c => c.text), no = t.checks.filter(c => c.ok === false).map(c => c.text), nm = t.checks.filter(c => c.ok === null).map(c => c.text);
+  const row = (k, v, cls = '') => (v ? `<dt>${k}</dt><dd${cls ? ` class="${cls}"` : ''}>${H.esc(v)}</dd>` : '');
+  return `<div class="hc"><h3>${H.esc(t.name)}<span class="sc">${t.measurable ? `${t.agree} of ${t.measurable} checks agree` : 'not tested'}</span></h3><dl>`
+    + row('In plain terms', t.plain || t.blurb)
+    + row('If it were true we would see', t.checks.map(c => lcf(c.text)).join('; ') + '.')
+    + row('What fits today', yes.length ? yes.join('; ') + '.' : 'Nothing measured agrees.', 'ok')
+    + row('What does not fit', no.length ? no.join('; ') + '.' : '', 'no')
+    + row('Not measured today', nm.length ? nm.join('; ') + '.' : '')
+    + row('Other stories that look the same', t.alsoFits)
+    + row('What would separate them', t.separate)
+    + `</dl></div>`;
+}
+
+/** Trim the empty band under a diagram: the viewBox ends 40 units below the lowest thing drawn. */
+const cropSvg = s => String(s ?? '').replace(/viewBox="0 0 ([\d.]+) ([\d.]+)"/, (m, w, h) => { const bottoms = [...String(s).matchAll(/<rect[^>]* y="(-?[\d.]+)" width="[\d.]+" height="([\d.]+)"/g)].map(x => +x[1] + +x[2]); const mx = Math.max(0, ...bottoms); return mx > 0 && mx + 14 < +h ? `viewBox="0 0 ${w} ${Math.ceil(mx + 14)}"` : m; });
 
 /** Compose the whole magazine page. All inputs are strings or plain data prepared by buildNewsletter. */
 export function composeMagazine(c, H) {
@@ -297,44 +380,57 @@ export function composeMagazine(c, H) {
   const tape = (c.ticker ?? []).length ? `<div class="tape">${c.ticker.map(t => `<span>${esc(t.label)} <b>${esc(t.price)}</b> <i class="${t.chg >= 0 ? 'up' : 'dn'}">${t.chg >= 0 ? '▲' : '▼'} ${Math.abs(t.chg).toFixed(2)}%</i></span>`).join('')}</div>` : '';
   const paras = (arr, lead = true) => (arr ?? []).filter(Boolean).map((p, i) => `<p${i === 0 && lead ? ' class="lead"' : ''}>${p.head ? `<b>${esc(p.head)}</b> ` : ''}${esc(typeof p === 'string' ? p : p.text)}</p>`).join('');
   const feature = c.feature;
-  // page 1: the opening of the feature
+  // page 1: the situation in plain terms, before any analysis
   const p1 = `<div class="pg p1">${mh('The story')}${tape}
 <div class="kick">${esc(M.regime)} regime · the investigation</div><h1 class="hd">${esc(feature.headline)}</h1>${feature.standfirst ? `<p class="sf"><span class="sfl">The desk's reading</span>${esc(feature.standfirst)}</p>` : ''}
-<p class="by">By the Desk Atlas research desk · ${esc(M.date)}</p>
-<p class="evkey"><span>HOW TO READ THE LABELS</span>${evBadge('observed')}${evBadge('model')}${evBadge('tested')}${evBadge('context')}${evBadge('hyp')}${evBadge('untested')}</p>
-<p class="small" style="font-family:var(--sans);font-size:11.5px;color:#5b6b82;margin:-4px 0 12px">Prices and measured moves are facts. Every explanation in this issue is a hypothesis: it fits the data and is not established by it, and several other stories fit as well.</p>
-<div class="split"><div class="cols">${paras(feature.opening)}${feature.pull ? `<div class="pq">“${esc(feature.pull)}”<small>The desk's reading, set against its counter-arguments in Exhibit 4</small></div>` : ''}${paras(feature.continued, false)}</div>
-<aside class="side"><h4>At a glance</h4><span class="big">${esc(c.glance.broken)}<small>chain links broken of ${esc(c.glance.testable)} testable</small></span>${c.glance.next ? `<p><b>Next:</b> ${esc(c.glance.next)}</p>` : ''}<h4 style="margin-top:14px">Two kinds of alarm</h4>${c.alarms}${(c.checks ?? []).some(k => k.id === 'dollar') ? '<p class="chk"><b>Check:</b> the dollar claim rests on an index that ends days before the rest. See the data checks in Exhibit 3.</p>' : ''}</aside></div></div>`;
-  // page 2: the yield decomposition, the first piece of evidence
-  const p2 = c.yieldFig ? `<div class="pg">${mh('The evidence')}
-<div class="kick">Exhibit 1</div><h2 class="sh">What the fall in yields is made of</h2>
-<figure>${c.yieldFig}<figcaption>${evBadge('observed')}<b>Figure 1.</b> The 10-year Treasury yield split into the real yield (what lenders want above inflation) and expected inflation, as moves in basis points over the last 20 days. ${esc(c.yieldCaption)}</figcaption></figure>
-${(feature.evidence ?? []).length ? `<div class="cols">${paras(feature.evidence, false)}</div>` : ''}
+${(c.checks ?? []).some(k => k.id === 'dollar') && /dollar/i.test(`${feature.headline} ${feature.standfirst ?? ''}`) ? '<p class="hdchk"><b>Headline check.</b> The dollar part of this headline is unconfirmed. See what we cannot confirm, below.</p>' : ''}<p class="by">By the Desk Atlas research desk · ${esc(M.date)}</p>
+<div class="split"><div>${c.intro ? threeVoices(c.intro, H) : ''}
+<p class="map"><b>How the issue builds.</b> 1 What happened · 2 Why it might be happening · 3 How markets connect · 4 What broke · 5 Stress and data checks · 6 Competing explanations · 7 What does not fit · 8 The scorecard · the Data Desk</p>
+<p class="evkey" style="margin-top:6px"><span>LABELS</span>${evBadge('observed')}${evBadge('model')}${evBadge('tested')}${evBadge('context')}${evBadge('hyp')}${evBadge('untested')}</p></div>
+<aside class="side"><h4>At a glance</h4><span class="big">${esc(c.glance.broken)}<small>chain links broken of ${esc(c.glance.testable)} judged</small></span>${c.glance.next ? `<p><b>Next:</b> ${esc(c.glance.next)}</p>` : ''}<h4 style="margin-top:14px">Two kinds of alarm</h4>${c.alarms}${(c.checks ?? []).some(k => k.id === 'dollar') ? '<p class="chk"><b>Check:</b> the dollar claim rests on an index that ends days before the rest. See the data check in Exhibit 5.</p>' : ''}</aside></div></div>`;
+  // page 2: what happened, the first piece of evidence
+  const p2 = c.yieldFig ? `<div class="pg">${mh('What happened')}
+<div class="kick">Exhibit 1 · what happened</div><h2 class="sh">What the fall in yields is made of</h2>
+<figure>${c.yieldFig}<figcaption>${evBadge('observed')}<b>Figure 1.</b> Moves in basis points over the last 20 days. ${esc(c.yieldCaption)}</figcaption></figure>
+${guide(c.yieldGuide, H)}
 ${c.textbook ? `<div class="keep"><h3 class="ss">Textbook against today</h3><p class="evl">${evBadge('hyp')}<span style="font:11px var(--sans);color:#5b6b82">The right-hand column is observed; the reading of it is not established.</span></p>${c.textbook}</div>` : ''}</div>` : '';
-  // page 3: the signature spread, landscape in print
-  const p3 = c.chainFig ? `<div class="pg land">${mh('The chain of impact')}
-<div class="kick">Exhibit 2 · the signature view</div><h2 class="sh">Where the textbook is not working</h2>
-<p class="sf" style="font-size:15px">${esc(c.chainLead)}</p>
-<figure class="chain-fig">${c.chainFig}<figcaption>${evBadge('observed')}<b>Figure 2.</b> Each box is a market; each arrow a textbook link from cause to effect, judged on the last 20 days at both ends. Green flows the textbook way, grey has an end inside its noise floor, and orange did not hold. The numbered markers are the broken links; each is drawn and explained on the next page, in the context of the story.</figcaption></figure>${c.chainMethod ? `<div class="meth">${c.chainMethod}</div>` : ''}</div>` : '';
-  // page 4: the broken relationships, drawn
-  const p4 = (c.relationFigs || (c.checks ?? []).length) ? `<div class="pg">${mh('The evidence')}
-<div class="kick">Exhibit 3</div><h2 class="sh">Four relationships that did not hold</h2>
-<p class="sf" style="font-size:15px">${esc(c.relationLead)}</p>
-<div class="fig2">${c.relationFigs}</div>${c.relationFoot}${(c.checks ?? []).length ? `<div class="box warn"><h4>Data checks: what could not be reconciled</h4>${c.checks.map(k => `<p><b>${esc(k.title)}.</b> ${esc(k.body)}</p>`).join('')}</div>` : ''}</div>` : '';
-  // page 5: competing explanations
-  const p5 = c.theories ? `<div class="pg p5">${mh('Competing explanations')}
-<div class="kick">Exhibit 4 · hypotheses, not conclusions</div><h2 class="sh">Four ways to read the same move</h2>
-<p class="sf" style="font-size:14.5px">${esc(c.theoryLead)}</p>
+  // page 3: the desk's reading of why
+  const p3 = ((feature.opening ?? []).length || (feature.evidence ?? []).length) ? `<div class="pg">${mh("The desk's reading")}
+<div class="kick">Exhibit 2 · why it might be happening</div><h2 class="sh">The desk's reading of the story</h2>
+<p class="evl">${evBadge('hyp')}<span style="font:11px var(--sans);color:#5b6b82">The desk's written interpretation of the figures. It is argued from the data and set against its counter-arguments in Exhibit 6.</span></p>
+<div class="cols">${paras(feature.opening)}${feature.pull ? `<div class="pq">“${esc(feature.pull)}”<small>The desk's reading, set against its counter-arguments in Exhibit 6</small></div>` : ''}${paras(feature.continued, false)}${paras(feature.evidence, false)}</div></div>` : '';
+  // page 4: the signature spread, landscape in print
+  const p4 = c.chainFig ? `<div class="pg land">${mh('The chain of impact')}
+<div class="kick">Exhibit 3 · how markets are connected</div><h2 class="sh">Where the textbook is not working</h2>
+<figure class="chain-fig">${cropSvg(c.chainFig)}<figcaption>${evBadge('observed')}<b>Figure 2.</b> Each box is a market; each arrow a textbook link from cause to effect, judged on the last 20 days at both ends. Green flows the textbook way, grey has an end inside its noise floor, orange did not hold. Numbered markers are the broken links, drawn on the next page.</figcaption></figure>${c.chainGuide ? countStrip(c.chainGuide.c) : ''}${guide(c.chainGuide && { looking: c.chainGuide.looking, matters: c.chainGuide.matters, tells: c.chainGuide.tells, unsure: c.chainGuide.unsure }, H, 'sm')}</div>` : '';
+  // page 5: the broken relationships, drawn and explained
+  const p5 = c.relationFigs ? `<div class="pg">${mh('The evidence')}
+<div class="kick">Exhibit 4 · what did not hold</div><h2 class="sh">The relationships that did not hold</h2>
+<p class="sf" style="font-size:14px">${esc(c.relationLead)}</p>
+<div class="fig2">${c.relationFigs}</div></div>` : '';
+  // page 6: is it stress, and can we trust the comparison
+  const p6 = (c.stress || (c.checks ?? []).length || c.chainMethod) ? `<div class="pg">${mh('Stress and data checks')}
+<div class="kick">Exhibit 5 · is this stress, and can we trust the comparison</div><h2 class="sh">Isolated warning signs, or a broad stress event?</h2>
+${c.stress ? `<p class="evl">${evBadge('model')}<span style="font:11px var(--sans);color:#5b6b82">The broad warnings are fixed rules in the desk's own dashboard. The watched conditions are narrower.</span></p>${stressPanel(c.stress, H)}` : ''}
+${(c.checks ?? []).length ? `<div class="box warn"><h4>Data checks: what could not be reconciled</h4>${c.checks.map(k => `<p><b>${esc(k.title)}.</b> ${esc(k.body)}</p>`).join('')}</div>` : ''}${c.chainMethod ? `<div class="box"><h4>How the chain was built</h4>${c.chainGuide ? `<p><b>How the numbers reconcile.</b> ${esc(c.chainGuide.counts)}</p>` : ''}${c.chainMethod}</div>` : ''}</div>` : '';
+  const p9in = (c.watch || c.theoryCaution || (c.notFit ?? []).length) ? `
+${(c.notFit ?? []).length ? `<h2 class="sh">What none of the stories explain</h2><div class="box warn" style="margin-top:6px"><ul class="lst" style="margin:0">${c.notFit.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
+${c.theoryCaution ? `<div class="box"><h4>How to hold the four readings</h4><p>${esc(c.theoryCaution)}</p></div>` : ''}
+${c.watch ? `<div class="kick" style="margin-top:14px">The next test</div><h2 class="sh">What would change the story</h2><div class="two">${c.watch}</div>` : ''}${M.edition === 'Weekly' ? '' : c.aheadHtml}` : '';
+  // page 7: competing explanations, the matrix and how to read the count
+  const p7 = c.theoriesData?.length ? `<div class="pg p5">${mh('Competing explanations')}
+<div class="kick">Exhibit 6 · hypotheses, not conclusions</div><h2 class="sh">Four ways to read the same move</h2>
+<p class="sf" style="font-size:14px">${esc(c.theoryLead)}</p>
 <figure>${c.matrix}<figcaption><b>Figure 3.</b> ✓ the day's moves agree with the check, ✗ they do not, · the check does not apply to that story. Counts are agreeing checks, not probabilities or independent proof.</figcaption></figure>
-<div class="cols">${c.theories}</div></div>` : '';
-  // page 6: what to watch
-  const p6 = (c.watch || c.theoryCaution) ? `<div class="pg">${mh('What to watch')}
-${c.theoryCaution ? `<div class="box" style="margin-top:0"><h4>How to hold the four readings</h4><p>${esc(c.theoryCaution)}</p></div>` : ''}
-${c.watch ? `<div class="kick" style="margin-top:14px">The next test</div><h2 class="sh">What would change the story</h2><div class="two">${c.watch}</div>` : ''}${c.lessonBox ? `<div class="box"><h4>Today's lesson</h4>${c.lessonBox}</div>` : ''}${M.edition === 'Weekly' ? '' : c.aheadHtml}</div>` : '';
+<div class="rg"><div><b>What the count measures</b>${esc('How many of the checks we could run agree with a story. "4 of 4" means every check we ran fits it.')}</div><div><b>What it does not mean</b>${esc('It is not the chance the story is true. Several stories can fit every check, the checks overlap, and a story that fits can still be wrong.')}</div><div><b>How to use it</b>${esc('Read the counter-arguments as seriously as the count. The question is what evidence would separate the stories, listed under each one.')}</div></div>
+<h3 class="ss" style="margin:12px 0 6px">What each explanation says, and what would tell them apart</h3>${c.theoriesData.map(t => theoryCard(t, H)).join('')}${p9in ? `<div class="kick" style="margin-top:16px">Exhibit 7 · what does not fit and what to watch</div>${p9in}` : ''}</div>` : '';
+  const p8 = '';
+  // page 9: what does not fit, what to watch
+  const p9 = c.theoriesData?.length ? '' : (p9in ? `<div class="pg">${mh('What to watch')}${p9in}</div>` : '');
   const pAhead = M.edition === 'Weekly' && (c.aheadHtml || c.weekRanges) ? `<div class="pg">${mh('The week ahead')}${c.aheadHtml}${c.weekRanges ?? ''}</div>` : '';
-  const p7 = c.accountability;
+  const pAcc = c.accountability;
   // data desk
-  const desk = `<div class="pg desk"><div class="deskhd">${tape}<div class="kick">The Data Desk</div><h2>Market monitor and reference</h2><p>Everything behind the story: the signals, the currencies, every market, and the detail tables. Read it when you want the depth.</p></div>${c.desk}</div>`;
+  const desk = `<div class="pg desk"><div class="deskhd">${tape}<div class="kick">The Data Desk</div><h2>Market monitor and reference</h2><p>Everything behind the story. Each section opens with what to notice, why it matters and whether it supports or challenges the main story.</p></div>${c.desk}</div>`;
   const back = (c.qod || c.refs) ? `<div class="pg">${mh('Back page')}${c.qod ?? ''}${c.refs ?? ''}</div>` : '';
-  return `<div class="mg">${p1}${p2}${p3}${p4}${p5}${p6}${pAhead}${p7}${desk}${back}</div>`;
+  return `<div class="mg">${p1}${p2}${p3}${p4}${p5}${p6}${p7}${p8}${p9}${pAhead}${pAcc}${desk}${back}</div>`;
 }
