@@ -205,9 +205,9 @@ ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d
   ok('the V2 draft is a different publication from the current issue and says so in its masthead', v.html !== cur.html && /V2 draft/.test(v.html) && !/V2 draft/.test(cur.html));
   ok('the feature opens with the brief\'s own headline, attributed standfirst, drop-cap article and a pull quote', /class="hd">Yields fall, credit widens, and the dollar is bought anyway/.test(v.html) && /The desk&#39;s reading|The desk's reading/.test(v.html) && /class="lead">The bond market/.test(v.html) && /class="pq">/.test(v.html));
   ok('the pull quote is one clause and is not cut at a decimal point', /class="pq">“Cheaper money that nobody wants is a growth warning”/.test(v.html));
-  ok('page two draws the yield move split into real yield and expected inflation, ending where the numbers say', /Figure 1/.test(v.html) && /Real yield −/.test(v.html) && /Expected inflation/.test(v.html));
+  ok('page two draws the yield move split into real yield and expected inflation, ending where the numbers say', /Figure 1/.test(v.html) && /REAL YIELD −/.test(v.html) && /EXPECTED INFLATION/.test(v.html));
   ok('the chain is the signature spread on its own landscape page with numbered markers on the broken links', /class="pg land"/.test(v.html) && /Where the textbook is not working/.test(v.html) && (v.html.match(/font-weight="800" fill="#fff"[^>]*>\d</g) ?? []).length >= 1);
-  ok('each broken link is drawn and explained once, numbered to match the chain', /Four relationships that did not hold/.test(v.html) && /<b>1\. /.test(v.html) && /usual wobble/.test(v.html));
+  ok('each broken link is drawn and explained once, numbered to match the chain', /Four relationships that did not hold/.test(v.html) && /<b>1\. /.test(v.html) && /USUAL WOBBLE/.test(v.html));
   ok('four explanations are argued, never scored: a count of agreeing checks, a counter-argument each, and the not-a-probability warning', /Four ways to read the same move/.test(v.html) && (v.html.match(/class="th2"/g) ?? []).length === 4 && /not a probability/.test(v.html) && /agree/.test(v.html) && !/\d+\s*%\s*(chance|probab)/i.test(v.html) && (v.html.match(/class="lim"/g) ?? []).length === 4);
   ok('when several explanations fit every check, it says the count cannot choose between them', /the count cannot choose between them/.test(v.html));
   ok('the two alarms are explained side by side: broad stress warnings against watched conditions, with the broken chain links counted in the second', /Broad stress warnings/.test(v.html) && /Watched conditions firing/.test(v.html) && /1 are the broken links/.test(v.html));
@@ -215,5 +215,9 @@ ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d
   ok('the weekly edition keeps the structure and marks the week, not one day', /Weekly/.test(vw.html) && /class="pg land"/.test(vw.html));
   ok('the Data Desk holds the reference material after the story, with the market cards kept in full', v.html.indexOf('The Data Desk') > v.html.indexOf('Four ways to read the same move') && /Each market at a glance/.test(v.html) && /class="pc"/.test(v.html) && /class="pcg"/.test(v.html));
   ok('the disclaimer, sources and question are all still there', /NOT FINANCIAL ADVICE/.test(v.html) && /Where this comes from|Question of the day/.test(v.html)); }
+
+{ const tk = buildNewsletterV2({ date: 'x', isoDate: '2026-10-25', assets: [{ key: 'NQ', label: 'Nasdaq', price: '29019.9', d1: 0.26, d20: -5.9, spark: [1, 2], used: 0.5, hlMed: 1 }, { key: 'GOLD', label: 'Gold', price: '3995.8', d1: -0.71, d20: -3.5, spark: [2, 1], used: 0.5, hlMed: 1 }] });
+  ok('the ticker tape shows each market price and the move today, green up and red down, from the own data of the day', /class="tape"/.test(tk.html) && /Nasdaq <b>29019\.9<\/b> <i class="up">▲ 0\.26%/.test(tk.html) && /Gold <b>3995\.8<\/b> <i class="dn">▼ 0\.71%/.test(tk.html));
+  ok('every page carries the dark masthead bar with the candlestick mark', (tk.html.match(/class="mh"><b><svg class="logo"/g) ?? []).length >= 2); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

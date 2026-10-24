@@ -101,9 +101,61 @@ export const MAG_CSS = `
   .pg .acctn .num{font-size:30pt}.pg p{font-size:11.5pt}.pg .th2 p{font-size:9pt;line-height:1.35;margin:0 0 3px}.pg .th2 h3{font-size:13.5pt}.pg .th2{margin:0 0 7px}.pg .em{font-size:10px}.pg .em td{padding:1px 4px}.pg .qnote{display:none}.pg .sf{font-size:13.5pt}.pg .box{margin:4px 0 8px;padding:8px 12px}.pg .box p{font-size:9pt;line-height:1.4}.pg .p5 figcaption{font-size:8.5pt}
   .pg .pgbreak{break-before:page}.pg.desk table{break-inside:avoid}.pg .refs{padding:7px 12px;margin:8px 0;font-size:9.5px}.pg .refs .rf{padding:0}.pg .foot{margin-top:8px}.pg .foot p{font-size:8.6pt;margin:0 0 4px}.pg.desk p,.pg.desk li{font-size:9.4pt;line-height:1.4}.pg.desk .cc2,.pg.desk .pc{padding:9px 11px}.pg section table td,.pg section table th{padding-top:3px;padding-bottom:3px}.pg .wkd{padding:5px 0}.pg .refs,.pg .foot,.pg .box{break-inside:avoid}.pg section>h2{break-inside:avoid}  .pg.desk .pcg,.pg.desk .ccg2{column-count:2}.pg.desk section{break-inside:auto}.pg.desk section>h2,.pg.desk section>h3{break-after:avoid-page;page-break-after:avoid}.pg.desk section>h2+*{break-before:avoid-page}.pg.desk .pcg>.pc:first-child,.pg.desk .ccg2>.cc2:first-child{break-before:avoid-page}.pg.desk .pc,.pg.desk .cc2,.pg.desk .rw2,.pg.desk tr{break-inside:avoid}
 }
+
+/* ── terminal theme ── */
+.pg{--navy:#0b1220;--navy2:#111c2f;--grid:#1c2a40;--up:#19d3a0;--dn:#ff5d73;--amb:#ffb020;--cy:#4cc9f0;--mono:Consolas,'SF Mono',Menlo,monospace;--sans:'Segoe UI',Inter,system-ui,sans-serif}
+.pg .mh{background:var(--navy);color:#cfe0f5;border:0;margin:-26px -28px 0;padding:11px 18px;font-family:var(--mono);font-size:10px;letter-spacing:.12em}
+.pg .mh b{display:flex;align-items:center;gap:9px;font-family:var(--sans);font-weight:800;font-size:15px;letter-spacing:.14em;color:#fff;text-transform:uppercase}
+.pg .mh .logo{display:block}
+.pg .tape{display:flex;flex-wrap:wrap;gap:3px 20px;background:var(--navy2);color:#cfe0f5;border-bottom:3px solid var(--up);margin:0 -28px 18px;padding:8px 18px;font-family:var(--mono);font-size:10.5px;line-height:1.35;white-space:nowrap;-webkit-print-color-adjust:exact}
+.pg .tape b{color:#fff;font-weight:700}.pg .tape i{font-style:normal;font-weight:700}.pg .tape i.up{color:var(--up)}.pg .tape i.dn{color:var(--dn)}
+.pg .deskhd .tape{margin:-18px -28px 14px;background:#0f1a2e}
+.pg .kick{font-family:var(--mono);color:var(--amb);letter-spacing:.14em;display:flex;align-items:center;gap:8px;margin-top:16px}
+.pg .kick::before{content:'';width:6px;height:13px;background:var(--up);box-shadow:0 -4px 0 -2.5px var(--up),0 4px 0 -2.5px var(--up);flex:none}
+.pg .mh+.kick{margin-top:18px}
+.pg h1.hd,.pg h2.sh{font-family:var(--sans);font-weight:800;letter-spacing:-.028em;color:var(--navy)}
+.pg h1.hd{font-size:45px;line-height:1.02}
+.pg h2.sh{font-size:29px;line-height:1.08}
+.pg .by{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--grid)}
+.pg .sf{border-left:4px solid var(--up);padding-left:13px}
+.pg .sfl{font-family:var(--mono)}
+.pg .pq{border-top:0;border-bottom:0;border-left:6px solid var(--up);padding:6px 4px 6px 16px;background:linear-gradient(90deg,rgba(25,211,160,.09),transparent)}
+.pg .pq small{font-family:var(--mono)}
+.pg .cols p.lead::first-letter{color:var(--up);font-family:var(--sans)}
+.pg h3.ss{font-family:var(--mono);letter-spacing:.14em;color:var(--navy)}
+.pg aside.side{background:var(--navy);color:#dbe7f7;border-top:3px solid var(--up);-webkit-print-color-adjust:exact}
+.pg aside.side h4{font-family:var(--mono);color:var(--up)}
+.pg aside.side .big{font-family:var(--mono);color:#fff}.pg aside.side .big small{color:#8aa0bd;font-family:var(--sans)}
+.pg aside.side p{color:#cfe0f5}
+.pg .al>div{background:var(--navy2);border:1px solid var(--grid);border-top:3px solid var(--up);color:#cfe0f5}
+.pg .al>div.w{border-top-color:var(--amb)}
+.pg .al b.n2{font-family:var(--mono);color:#fff}.pg .al .lb2{color:#fff}
+.pg figure>svg,.pg figure .fsvg{border-radius:10px}
+.pg figcaption{font-family:var(--mono);font-size:10.5px;letter-spacing:.01em;border-top:1px solid #dfe6f1}
+.pg figcaption b{color:var(--navy)}
+.pg .chain-fig{background:var(--navy);border-radius:12px;padding:14px 14px 10px;-webkit-print-color-adjust:exact}
+.pg .chain-fig svg{background:transparent!important}
+.pg .chain-fig figcaption{color:#8aa0bd;border-top-color:var(--grid)}.pg .chain-fig figcaption b{color:#fff}
+.pg .tx th,.pg .em th{font-family:var(--mono);letter-spacing:.1em;border-bottom-color:var(--navy)}
+.pg .tx td{font-family:var(--sans)}
+.pg .em .y{color:var(--up)}.pg .em .x{color:var(--dn)}
+.pg .acctn{border-top:3px solid var(--navy)}
+.pg .acctn .num,.pg .acct .num{font-family:var(--mono);color:var(--navy)}
+.pg .acctn .num small{font-family:var(--sans)}
+.pg .box{border-left-color:var(--up);background:#eef6f4}.pg .box h4{font-family:var(--mono);color:#0a8f6c}
+.pg .th2 .chipx{font-family:var(--mono);background:var(--navy);color:var(--up)}
+.pg .deskhd{background:var(--navy);-webkit-print-color-adjust:exact}.pg .deskhd .kick{color:var(--amb)}
+.pg .deskhd h2{font-family:var(--sans);font-weight:800}
+.pg.desk section h2{font-family:var(--sans)}
+@page{@bottom-right{content:counter(page);font:9px Consolas,monospace;color:#8aa0bd}}
+@media (max-width:560px){.pg .mh{margin:-18px -15px 0;padding:10px 12px}.pg .tape{margin:0 -15px 14px;flex-wrap:nowrap;overflow-x:auto;padding:8px 12px}.pg .deskhd .tape{margin:-14px -15px 12px}.pg h1.hd{font-size:33px}.pg h2.sh{font-size:25px}}
+@media print{.pg .mh{margin:0}.pg .tape{margin:0 0 14px}.pg .deskhd .tape{margin:0 0 12px}}
+
 `;
 
 const N = x => (Number.isFinite(x) ? x : null);
+/** The terminal palette the charts are drawn in: deep navy panels with green and red for direction, amber for what did not hold, cyan for the series being read. */
+const T = { bg: '#0b1220', panel: '#111c2f', grid: '#1c2a40', zero: '#5b7090', txt: '#8aa0bd', hi: '#e6eefb', up: '#19d3a0', down: '#ff5d73', amber: '#ffb020', cyan: '#4cc9f0' };
 const asList = v => (Array.isArray(v) ? v : v ? [v] : []);
 
 /** The three yield moves as lines in basis points since the window began: the 10-year, its real part, and its inflation part. Annotated at the ends. */
@@ -111,22 +163,24 @@ export function yieldDecompChart(S, H) {
   const nom = S?.us10y, real = S?.real, bei = S?.bei;
   if (!nom || !real || !bei || nom.length < 5) return '';
   const L = Math.min(nom.length, real.length, bei.length, 26), cut = s => s.slice(-L).map(v => v - s.slice(-L)[0]);
-  const A = cut(nom), R = cut(real), B = cut(bei), W = 660, Ht = 250, left = 44, right = 150, top = 16, bot = 30;
+  const A = cut(nom), R = cut(real), B = cut(bei), W = 700, Ht = 262, left = 46, right = 206, top = 22, bot = 32;
   const all = [...A, ...R, ...B], lo = Math.min(0, ...all), hi = Math.max(0, ...all), span = Math.max(8, hi - lo), y0 = lo - span * 0.12, y1 = hi + span * 0.12;
   const X = i => left + i * (W - left - right) / (L - 1), Y = v => top + (1 - (v - y0) / (y1 - y0)) * (Ht - top - bot);
   const step = span > 60 ? 20 : span > 30 ? 10 : 5, ticks = []; for (let t = Math.ceil(y0 / step) * step; t <= y1; t += step) ticks.push(t);
   const P = s => s.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
-  const ends = [['10-year yield', A, H.COLORS.ink, 2.8], ['Real yield', R, H.COLORS.blue, 2.4], ['Expected inflation', B, '#d98a00', 2.4]];
+  const ends = [['10-year yield', A, '#ffffff', 2.8], ['Real yield', R, T.cyan, 2.5], ['Expected inflation', B, T.amber, 2.5]];
   const lab = ends.map(([name, s, c]) => ({ name, v: s[L - 1], c, y: Y(s[L - 1]) })).sort((p, q) => p.y - q.y);
   for (let i = 1; i < lab.length; i++) if (lab[i].y - lab[i - 1].y < 30) lab[i].y = lab[i - 1].y + 30;
   const sgn = v => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(Math.round(v))}bp`;
   const shareReal = A[L - 1] !== 0 ? Math.round(100 * R[L - 1] / A[L - 1]) : null;
-  return `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="The ten-year yield move split into the real yield and expected inflation over the last 20 days" class="fsvg fw" font-family="Segoe UI,system-ui,sans-serif">`
-    + ticks.map(t => `<line x1="${left}" y1="${Y(t).toFixed(1)}" x2="${W - right}" y2="${Y(t).toFixed(1)}" stroke="${t === 0 ? '#14202e' : '#e1e8f2'}" stroke-width="${t === 0 ? 1.2 : 1}"/><text x="${left - 6}" y="${(Y(t) + 3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="#5b6b82">${t > 0 ? '+' : t < 0 ? '−' : ''}${Math.abs(t)}</text>`).join('')
-    + `<text x="${left}" y="${Ht - 8}" font-size="10" fill="#5b6b82">20 days ago</text><text x="${W - right}" y="${Ht - 8}" text-anchor="end" font-size="10" fill="#5b6b82">latest</text><text x="${left - 6}" y="10" text-anchor="end" font-size="9.5" fill="#5b6b82">bp</text>`
-    + ends.map(([, s, c, w]) => `<path d="${P(s)}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${X(L - 1).toFixed(1)}" cy="${Y(s[L - 1]).toFixed(1)}" r="4" fill="${c}"/>`).join('')
-    + lab.map(l => `<text x="${W - right + 12}" y="${(l.y + 4).toFixed(1)}" font-size="12" font-weight="700" fill="${l.c}">${l.name} ${sgn(l.v)}</text>`).join('')
-    + (shareReal != null && Math.abs(A[L - 1]) >= 5 ? `<text x="${left + 10}" y="${top + 12}" font-size="12.5" font-style="italic" font-weight="600" fill="${H.COLORS.blue}">${shareReal}% of the ${Math.abs(Math.round(A[L - 1]))}bp fall is the real yield</text>` : '')
+  const area = `${P(A)} L${X(L - 1).toFixed(1)} ${Y(0).toFixed(1)} L${X(0).toFixed(1)} ${Y(0).toFixed(1)} Z`;
+  return `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="The ten-year yield move split into the real yield and expected inflation over the last 20 days" class="fsvg fw" font-family="Consolas,'SF Mono',Menlo,monospace">`
+    + `<rect width="${W}" height="${Ht}" rx="10" fill="${T.bg}"/><path d="${area}" fill="rgba(255,255,255,.05)"/>`
+    + ticks.map(t => `<line x1="${left}" y1="${Y(t).toFixed(1)}" x2="${W - right}" y2="${Y(t).toFixed(1)}" stroke="${t === 0 ? T.zero : T.grid}" stroke-width="${t === 0 ? 1.2 : 1}"/><text x="${left - 7}" y="${(Y(t) + 3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="${T.txt}">${t > 0 ? '+' : t < 0 ? '−' : ''}${Math.abs(t)}</text>`).join('')
+    + `<text x="${left}" y="${Ht - 10}" font-size="10" fill="${T.txt}">20 DAYS AGO</text><text x="${W - right}" y="${Ht - 10}" text-anchor="end" font-size="10" fill="${T.txt}">LATEST</text><text x="${left - 7}" y="13" text-anchor="end" font-size="9.5" fill="${T.txt}">BP</text>`
+    + ends.map(([, s, c, w]) => `<path d="${P(s)}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${X(L - 1).toFixed(1)}" cy="${Y(s[L - 1]).toFixed(1)}" r="4.5" fill="${c}" stroke="${T.bg}" stroke-width="2"/>`).join('')
+    + lab.map(l => `<text x="${W - right + 13}" y="${(l.y + 4).toFixed(1)}" font-size="12" font-weight="700" fill="${l.c}">${l.name.toUpperCase()} ${sgn(l.v)}</text>`).join('')
+    + (shareReal != null && Math.abs(A[L - 1]) >= 5 ? `<text x="${left + 12}" y="${top + 8}" font-size="12" font-weight="700" fill="${T.cyan}">${shareReal}% OF THE ${Math.abs(Math.round(A[L - 1]))}BP FALL IS THE REAL YIELD</text>` : '')
     + `</svg>`;
 }
 
@@ -134,20 +188,21 @@ export function yieldDecompChart(S, H) {
 export function relationChart(l, S, H) {
   const sa = S?.[l.a.key], sb = S?.[l.b.key]; if (!sa || !sb || sa.length < 5 || sb.length < 5) return '';
   const L = Math.min(sa.length, sb.length, 26), floor = k => H.CHAIN_NODES[k]?.floor ?? 1, cut = s => s.slice(-L), nrm = (s, k) => cut(s).map(v => (v - cut(s)[0]) / floor(k));
-  const A = nrm(sa, l.a.key), B = nrm(sb, l.b.key), W = 330, Ht = 205, left = 8, right = 96, top = 14, bot = 22, m = Math.max(1.5, ...A.map(Math.abs), ...B.map(Math.abs)) * 1.12;
+  const A = nrm(sa, l.a.key), B = nrm(sb, l.b.key), W = 330, Ht = 205, left = 10, right = 98, top = 16, bot = 24, m = Math.max(1.5, ...A.map(Math.abs), ...B.map(Math.abs)) * 1.12;
   const X = i => left + i * (W - left - right) / (L - 1), Y = v => top + (1 - (v + m) / (2 * m)) * (Ht - top - bot);
   const P = s => s.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
-  const la = { y: Y(A[L - 1]), t: l.a.label, mv: l.a.text, c: H.COLORS.blue }, lb = { y: Y(B[L - 1]), t: l.b.label, mv: l.b.text, c: '#d98a00' };
+  const la = { y: Y(A[L - 1]), t: l.a.label, mv: l.a.text, c: T.cyan }, lb = { y: Y(B[L - 1]), t: l.b.label, mv: l.b.text, c: T.amber };
   const arr = [la, lb].sort((p, q) => p.y - q.y); if (arr[1].y - arr[0].y < 34) arr[1].y = arr[0].y + 34;
   const short = t => String(t).replace(/\s*\(.*\)/, '');
-  return `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="${H.esc(l.a.label)} and ${H.esc(l.b.label)} over 20 days" class="fsvg" font-family="Segoe UI,system-ui,sans-serif">`
-    + `<line x1="${left}" y1="${Y(0)}" x2="${W - right}" y2="${Y(0)}" stroke="#14202e" stroke-width="1"/>`
-    + `<line x1="${left}" y1="${Y(1).toFixed(1)}" x2="${W - right}" y2="${Y(1).toFixed(1)}" stroke="#e1e8f2" stroke-dasharray="3 3"/><line x1="${left}" y1="${Y(-1).toFixed(1)}" x2="${W - right}" y2="${Y(-1).toFixed(1)}" stroke="#e1e8f2" stroke-dasharray="3 3"/>`
-    + `<text x="${left + 2}" y="${(Y(1) - 3).toFixed(1)}" font-size="9" fill="#9aa8bb">one usual wobble</text>`
+  return `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="${H.esc(l.a.label)} and ${H.esc(l.b.label)} over 20 days" class="fsvg" font-family="Consolas,'SF Mono',Menlo,monospace">`
+    + `<rect width="${W}" height="${Ht}" rx="10" fill="${T.bg}"/>`
+    + `<line x1="${left}" y1="${Y(0)}" x2="${W - right}" y2="${Y(0)}" stroke="${T.zero}" stroke-width="1"/>`
+    + `<line x1="${left}" y1="${Y(1).toFixed(1)}" x2="${W - right}" y2="${Y(1).toFixed(1)}" stroke="${T.grid}" stroke-dasharray="3 3"/><line x1="${left}" y1="${Y(-1).toFixed(1)}" x2="${W - right}" y2="${Y(-1).toFixed(1)}" stroke="${T.grid}" stroke-dasharray="3 3"/>`
+    + `<text x="${left + 2}" y="${(Y(1) - 4).toFixed(1)}" font-size="8.5" fill="${T.txt}">ONE USUAL WOBBLE</text>`
     + `<path d="${P(A)}" fill="none" stroke="${la.c}" stroke-width="2.4" stroke-linejoin="round"/><path d="${P(B)}" fill="none" stroke="${lb.c}" stroke-width="2.4" stroke-linejoin="round"/>`
-    + `<circle cx="${X(L - 1)}" cy="${Y(A[L - 1]).toFixed(1)}" r="3.8" fill="${la.c}"/><circle cx="${X(L - 1)}" cy="${Y(B[L - 1]).toFixed(1)}" r="3.8" fill="${lb.c}"/>`
-    + arr.map(e => `<text x="${W - right + 10}" y="${(e.y - 2).toFixed(1)}" font-size="10.5" font-weight="700" fill="${e.c}">${H.esc(short(e.t))}</text><text x="${W - right + 10}" y="${(e.y + 11).toFixed(1)}" font-size="10.5" fill="${e.c}">${H.esc(e.mv)}</text>`).join('')
-    + `<text x="${left}" y="${Ht - 6}" font-size="9.5" fill="#5b6b82">20 days ago</text><text x="${W - right}" y="${Ht - 6}" text-anchor="end" font-size="9.5" fill="#5b6b82">latest</text></svg>`;
+    + `<circle cx="${X(L - 1)}" cy="${Y(A[L - 1]).toFixed(1)}" r="4" fill="${la.c}" stroke="${T.bg}" stroke-width="2"/><circle cx="${X(L - 1)}" cy="${Y(B[L - 1]).toFixed(1)}" r="4" fill="${lb.c}" stroke="${T.bg}" stroke-width="2"/>`
+    + arr.map(e => `<text x="${W - right + 11}" y="${(e.y - 2).toFixed(1)}" font-size="10" font-weight="700" fill="${e.c}">${H.esc(short(e.t)).toUpperCase().slice(0, 14)}</text><text x="${W - right + 11}" y="${(e.y + 11).toFixed(1)}" font-size="11" fill="${T.hi}">${H.esc(e.mv)}</text>`).join('')
+    + `<text x="${left}" y="${Ht - 8}" font-size="9" fill="${T.txt}">20D AGO</text><text x="${W - right}" y="${Ht - 8}" text-anchor="end" font-size="9" fill="${T.txt}">LATEST</text></svg>`;
 }
 
 /** The evidence matrix: every distinct check as a row, every explanation as a column. A mark is a fact about the day's moves, not a weight. */
@@ -162,12 +217,12 @@ const NAME = { GOLD: 'Gold', NQ: 'Nasdaq', SPX500: 'S&P 500', US30: 'Dow', US200
 /** Last issue's forecast audit: each market's real day against the size the issue expected, with the half-to-one-and-a-half band shaded. */
 export function auditChart(rows, H) {
   const R = (rows ?? []).filter(r => N(r.ratio) != null).sort((a, b) => b.ratio - a.ratio); if (R.length < 3) return '';
-  const W = 640, row = 16, top = 22, left = 92, right = 40, Ht = top + R.length * row + 26, mx = Math.max(2, ...R.map(r => r.ratio)) * 1.05, X = v => left + v / mx * (W - left - right);
-  return `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="Each market's realised day as a multiple of the expected size" class="fsvg fw" font-family="Segoe UI,system-ui,sans-serif">`
-    + `<rect x="${X(0.5)}" y="${top - 6}" width="${X(1.5) - X(0.5)}" height="${R.length * row + 8}" fill="#e8f6ef"/>`
-    + [0, 0.5, 1, 1.5, 2].filter(t => t <= mx).map(t => `<line x1="${X(t)}" y1="${top - 6}" x2="${X(t)}" y2="${top + R.length * row + 2}" stroke="${t === 1 ? '#14202e' : '#d8e0ec'}" stroke-width="${t === 1 ? 1.4 : 1}"/><text x="${X(t)}" y="${top - 10}" text-anchor="middle" font-size="10" fill="#5b6b82">${t}×</text>`).join('')
-    + R.map((r, i) => { const y = top + i * row, out = r.ratio < 0.5 || r.ratio > 1.5; return `<text x="${left - 8}" y="${y + 11}" text-anchor="end" font-size="11.5" fill="#14202e">${H.esc(NAME[r.key] ?? r.key)}</text><rect x="${X(0)}" y="${y + 2}" width="${Math.max(2, X(r.ratio) - X(0))}" height="12" rx="2" fill="${out ? '#d98a00' : H.COLORS.blue}"/><text x="${X(r.ratio) + 5}" y="${y + 12}" font-size="10.5" fill="#14202e">${r.ratio.toFixed(2)}×</text>`; }).join('')
-    + `<text x="${X(1)}" y="${Ht - 6}" text-anchor="middle" font-size="10" fill="#5b6b82">1× means the day was exactly the size the issue expected; the green band is half to one-and-a-half times</text></svg>`;
+  const W = 640, row = 16, top = 26, left = 96, right = 44, Ht = top + R.length * row + 30, mx = Math.max(2, ...R.map(r => r.ratio)) * 1.05, X = v => left + v / mx * (W - left - right);
+  return `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="Each market's realised day as a multiple of the expected size" class="fsvg fw" font-family="Consolas,'SF Mono',Menlo,monospace">`
+    + `<rect width="${W}" height="${Ht}" rx="10" fill="${T.bg}"/><rect x="${X(0.5)}" y="${top - 6}" width="${X(1.5) - X(0.5)}" height="${R.length * row + 8}" fill="rgba(25,211,160,.10)"/>`
+    + [0, 0.5, 1, 1.5, 2].filter(t => t <= mx).map(t => `<line x1="${X(t)}" y1="${top - 6}" x2="${X(t)}" y2="${top + R.length * row + 2}" stroke="${t === 1 ? T.hi : T.grid}" stroke-width="${t === 1 ? 1.3 : 1}"/><text x="${X(t)}" y="${top - 11}" text-anchor="middle" font-size="10" fill="${T.txt}">${t}×</text>`).join('')
+    + R.map((r, i) => { const y = top + i * row, out = r.ratio < 0.5 || r.ratio > 1.5; return `<text x="${left - 9}" y="${y + 11}" text-anchor="end" font-size="11" fill="${T.hi}">${H.esc(NAME[r.key] ?? r.key)}</text><rect x="${X(0)}" y="${y + 2}" width="${Math.max(2, X(r.ratio) - X(0))}" height="11" rx="2" fill="${out ? T.amber : T.cyan}"/><text x="${X(r.ratio) + 6}" y="${y + 11.5}" font-size="10.5" fill="${T.hi}">${r.ratio.toFixed(2)}×</text>`; }).join('')
+    + `<text x="${X(1)}" y="${Ht - 9}" text-anchor="middle" font-size="9.5" fill="${T.txt}">1× = THE DAY WAS EXACTLY THE SIZE EXPECTED · GREEN BAND = HALF TO ONE-AND-A-HALF TIMES</text></svg>`;
 }
 
 /** The recurring accountability feature. record = { line, score, date, history }; eod = { hook, right, wrong } (the stored review of the last call). */
@@ -185,7 +240,7 @@ export function accountabilityPage(record, eod, H) {
 <div class="kick">How we did</div><h2 class="sh" style="font-size:30px">${wk && !s ? "This week's calls, marked" : "Last issue's call, marked"}</h2>
 <p class="sf" style="font-size:14.5px">${H.esc(tested)}</p>
 ${wk && !s ? `<div class="acctn">${stat(`${wk.withinShare}%`, `of ${wk.n} market-days inside the expected band`)}${stat(`${wk.median}×`, 'median against the expected size')}${stat(`${wk.pastShare}%`, 'ran past the expected size (about half is calibrated)')}</div>` : ''}${s ? `<div class="acctn">${stat(`${inBand} of ${rows.length}`, 'markets inside the expected band')}${stat(`${s.median}×`, 'median against the expected size')}${stat(`${s.pastShare}%`, 'ran past the expected size (about half is calibrated)')}</div>
-<figure>${auditChart(rows, H)}<figcaption><b>Figure.</b> Each bar is one market: the real range divided by the range the issue expected. Orange bars landed outside half to one-and-a-half times. ${H.esc(calib)}</figcaption></figure>` : ''}
+<figure>${auditChart(rows, H)}<figcaption><b>Figure.</b> Each bar is one market: the real range divided by the range the issue expected. Amber bars landed outside half to one-and-a-half times. ${H.esc(calib)}</figcaption></figure>` : ''}
 <div class="two"><div><h3 class="ss" style="color:#0f9f6e">What was right</h3>${right.map(x => `<p style="font-size:13.5px">${H.esc(x)}</p>`).join('')}</div>
 <div><h3 class="ss" style="color:#d98a00">What was wrong</h3>${wrong.map(x => `<p style="font-size:13.5px">${H.esc(x)}</p>`).join('')}</div></div>
 ${hist.length > 1 ? `<h3 class="ss">The running record</h3><table class="tx"><tr><th>Issue</th><th>Median vs expected</th><th>Ran past it</th><th>Inside the band</th></tr>${hist.map(h => `<tr><td>${H.esc(h.date)}</td><td>${h.median}×</td><td>${h.pastShare}%</td><td>${h.withinShare}%</td></tr>`).join('')}</table>` : ''}
@@ -195,11 +250,13 @@ ${hist.length > 1 ? `<h3 class="ss">The running record</h3><table class="tx"><tr
 /** Compose the whole magazine page. All inputs are strings or plain data prepared by buildNewsletter. */
 export function composeMagazine(c, H) {
   const { esc } = H, M = c.meta;
-  const mh = (sec) => `<div class="mh"><b>Desk Atlas</b><span>${esc(sec)}</span><span>${esc(M.edition)}${M.tag ? ' · ' + esc(M.tag) : ''} · ${esc(M.date)}</span></div>`;
+  const candles = '<svg class="logo" viewBox="0 0 28 22" width="26" height="20" aria-hidden="true"><g stroke-width="1.6" stroke-linecap="round"><line x1="5" y1="2" x2="5" y2="20" stroke="#19d3a0"/><rect x="2.5" y="7" width="5" height="9" rx="1" fill="#19d3a0" stroke="none"/><line x1="14" y1="1" x2="14" y2="17" stroke="#ff5d73"/><rect x="11.5" y="4" width="5" height="9" rx="1" fill="#ff5d73" stroke="none"/><line x1="23" y1="4" x2="23" y2="21" stroke="#ffb020"/><rect x="20.5" y="8" width="5" height="9" rx="1" fill="#ffb020" stroke="none"/></g></svg>';
+  const mh = (sec) => `<div class="mh"><b>${candles}Desk Atlas</b><span>${esc(sec)}</span><span>${esc(M.edition)}${M.tag ? ' · ' + esc(M.tag) : ''} · ${esc(M.date)}</span></div>`;
+  const tape = (c.ticker ?? []).length ? `<div class="tape">${c.ticker.map(t => `<span>${esc(t.label)} <b>${esc(t.price)}</b> <i class="${t.chg >= 0 ? 'up' : 'dn'}">${t.chg >= 0 ? '▲' : '▼'} ${Math.abs(t.chg).toFixed(2)}%</i></span>`).join('')}</div>` : '';
   const paras = (arr, lead = true) => (arr ?? []).filter(Boolean).map((p, i) => `<p${i === 0 && lead ? ' class="lead"' : ''}>${p.head ? `<b>${esc(p.head)}</b> ` : ''}${esc(typeof p === 'string' ? p : p.text)}</p>`).join('');
   const feature = c.feature;
   // page 1: the opening of the feature
-  const p1 = `<div class="pg">${mh('The story')}
+  const p1 = `<div class="pg">${mh('The story')}${tape}
 <div class="kick">${esc(M.regime)} regime · the investigation</div><h1 class="hd">${esc(feature.headline)}</h1>${feature.standfirst ? `<p class="sf"><span class="sfl">The desk's reading</span>${esc(feature.standfirst)}</p>` : ''}
 <p class="by">By the Desk Atlas research desk · ${esc(M.date)} · every figure from the desk's own measured data</p>
 <div class="split"><div class="cols">${paras(feature.opening)}${feature.pull ? `<div class="pq">“${esc(feature.pull)}”<small>The desk's reading, set against its counter-arguments in Exhibit 4</small></div>` : ''}${paras(feature.continued, false)}</div>
@@ -233,7 +290,7 @@ ${c.watch ? `<div class="kick" style="margin-top:14px">The next test</div><h2 cl
   const pAhead = M.edition === 'Weekly' && (c.aheadHtml || c.weekRanges) ? `<div class="pg">${mh('The week ahead')}${c.aheadHtml}${c.weekRanges ?? ''}</div>` : '';
   const p7 = c.accountability;
   // data desk
-  const desk = `<div class="pg desk"><div class="deskhd"><div class="kick">The Data Desk</div><h2>Market monitor and reference</h2><p>Everything behind the story: the signals, the currencies, every market, and the detail tables. Read it when you want the depth.</p></div>${c.desk}</div>`;
+  const desk = `<div class="pg desk"><div class="deskhd">${tape}<div class="kick">The Data Desk</div><h2>Market monitor and reference</h2><p>Everything behind the story: the signals, the currencies, every market, and the detail tables. Read it when you want the depth.</p></div>${c.desk}</div>`;
   const back = (c.qod || c.refs) ? `<div class="pg">${mh('Back page')}${c.qod ?? ''}${c.refs ?? ''}</div>` : '';
   return `<div class="mg">${p1}${p2}${p3}${p4}${p5}${p6}${pAhead}${p7}${desk}${back}</div>`;
 }
