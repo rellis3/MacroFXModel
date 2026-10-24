@@ -348,7 +348,7 @@ function strengths() {
 }
 const composites = () => Object.fromEntries((D.msc?.ranked ?? []).map(r => [r.ccy, { composite: r.composite, factorsScored: r.factorsScored, factorsTotal: r.factorsTotal, factors: r.factors }]));
 const facVec = ccy => { const r = (D.msc?.ranked ?? []).find(x => x.ccy === ccy); return FACT.map(([k]) => (r?.factors?.[k]?.score ?? null)); };
-const cbHist = () => ({ USD: D.hUSD?.history, EUR: D.hEUR?.history, GBP: D.hGBP?.history, JPY: D.hJPY?.history });
+const cbHist = () => ({ USD: D.hUSD?.history, EUR: D.hEUR?.history, GBP: D.hGBP?.history, JPY: D.hJPY?.history, NZD: D.hNZD?.history, AUD: D.hAUD?.history, CAD: D.hCAD?.history });
 const loading = () => D.__extra ? '' : '<p class="note">Loading the analysis feeds…</p>';
 
 /* ── small renderers ── */
@@ -804,7 +804,7 @@ async function _generateIntel() {
 function ccyPosition(k) {
   const bank = P.BANK_OF[k], cb = P.cbTone(cbHist()).find(c => c.ccy === k), sb = P.surpriseBars(D.es).find(s => s.ccy === k), crowd = P.crowding(D.ce).find(c => c.sym === k);
   const country = COUNTRY_OF[k], ahead = P.aheadEvents(D.events, Date.now(), { countries: country ? [country] : null, withinHours: 120 });
-  const behindBody = (cb ? `<h3>${esc(cb.bank)} tone over its last ${cb.scores.length} meetings</h3><div>${sparkSvg(cb.scores, 'var(--violet)', 140, 34)}</div><p class="tl-line">Latest ${sg(cb.latest)} (${esc(String(cb.regime ?? '').toLowerCase())}), ${esc(cb.trend)} against the previous meeting.${cb.headline ? ' ' + esc(cb.headline) : ''}</p><p class="note">Tone momentum against forward price tested null here: context, not a lean. ${ledgerPill('cb-tone-direction')}</p>` : `<p class="note">${k} has no tracked central bank on this desk (FOMC, ECB, BoE and BoJ only).</p>`)
+  const behindBody = (cb ? `<h3>${esc(cb.bank)} tone over its last ${cb.scores.length} meetings</h3><div>${sparkSvg(cb.scores, 'var(--violet)', 140, 34)}</div><p class="tl-line">Latest ${sg(cb.latest)} (${esc(String(cb.regime ?? '').toLowerCase())}), ${esc(cb.trend)} against the previous meeting.${cb.headline ? ' ' + esc(cb.headline) : ''}</p><p class="note">Tone momentum against forward price tested null here: context, not a lean. ${ledgerPill('cb-tone-direction')}</p>` : `<p class="note">${k} has no tracked central bank on this desk (FOMC, ECB, BoE, BoJ, RBNZ, RBA and BoC only).</p>`)
     + (sb ? `<h3>Beating or missing consensus</h3>${barRow(k, sb.score, 0.6, `${sg(sb.score)} · ${sb.nRecent ?? sb.n} recent`, 'l')}${sb.top.length ? `<div class="rows" style="margin-top:6px">${sb.top.map(t => `<div class="rw"><span>${esc(t.event)}<small>actual ${esc(t.actual)} against ${esc(t.estimate)}</small></span><span class="mono ${t.z > 0 ? 'up' : 'dn'}">z ${sg(t.z, 1)}</span></div>`).join('')}</div>` : ''}<p class="note">A positive score means releases have come in above consensus. The size of a surprise is validated for range; its direction is not. ${ledgerPill('surprise-size')}</p>` : '')
     + (crowd ? `<h3>Positioning</h3><p class="tl-line">Speculators are <b>${esc(CROWD_WORDS[crowd.state] ?? crowd.state)}</b> (${ord(crowd.pct)} percentile of their history). ${ledgerPill('cot-positioning-factor')}</p>` : '');
   const nowBody = `<p class="tl-line">Measured today: ${derived.str.find(x => x.ccy === k) ? sg(derived.str.find(x => x.ccy === k).score) + '% on the 1-day pair average' : 'no pair data'}. The macro read (the radar above) is the current state of the six factors.</p>${k === 'USD' ? `<p class="tl-line">Desk-watch conditions firing on the dollar: ${P.deskFiring(D.ds).filter(f => /dollar|USD|Treasur|real yield/i.test(f.label)).map(f => esc(f.label)).join('; ') || 'none'}.</p>` : ''}`;
@@ -905,7 +905,7 @@ const CORE = [['/api/drill-series', 'drill', '75 market series, 5 years'], ['/ap
 const EXTRA = [['/api/global-read', 'gr', 'five axes, scenarios, per-instrument plans'], ['/api/regime', 'regime', 'macro regime and what each market did in it'], ['/api/macro-changes', 'mc', 'what changed, 1d / 5d / 20d'], ['/api/econ-surprise', 'es', 'consensus surprises by currency'],
   ['/api/cot-extremes', 'ce', 'crowding across 36 contracts'], ['/api/oi-today', 'oi', 'dealer gamma and option walls'], ['/api/desk-watch', 'ds', 'watched conditions firing'], ['/api/events', 'events', 'the calendar ahead'], ['/api/fed-path', 'fp', 'market-implied Fed path'],
   ['/api/fomc/calendar', 'fcal', 'FOMC meeting dates'], ['/api/nowcast', 'nc', 'GDPNow and Cleveland nowcasts'], ['/api/fomc/history?n=6', 'hUSD', 'FOMC tone history'], ['/api/ecb/history?n=6', 'hEUR', 'ECB tone history'], ['/api/boe/history?n=6', 'hGBP', 'BoE tone history'],
-  ['/api/boj/history?n=6', 'hJPY', 'BoJ tone history'], ['/api/eod-review', 'eod', 'yesterday\'s review'], ['/api/chain-read', 'cr', 'the chain read (cached AI)'], ['/api/ai-config', 'ai', 'AI model routing']];
+  ['/api/boj/history?n=6', 'hJPY', 'BoJ tone history'], ['/api/rbnz/history?n=6', 'hNZD', 'RBNZ tone history'], ['/api/rba/history?n=6', 'hAUD', 'RBA tone history'], ['/api/boc/history?n=6', 'hCAD', 'BoC tone history'], ['/api/eod-review', 'eod', 'yesterday\'s review'], ['/api/chain-read', 'cr', 'the chain read (cached AI)'], ['/api/ai-config', 'ai', 'AI model routing']];
 
 /* ── the stored Intelligence brief: load it reliably, never confuse "could not load" with "none stored" ── */
 const INTEL_LS = 'atlas_intel_v1';

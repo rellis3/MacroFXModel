@@ -136,6 +136,9 @@
         <a class="sm-item" href="ecb-sentiment.html" target="_blank"><span class="sm-item-name">🇪🇺 ECB Sentiment</span><span class="sm-item-desc">ECB statement/press-conference sentiment per meeting</span></a>
         <a class="sm-item" href="boe-sentiment.html" target="_blank"><span class="sm-item-name">🇬🇧 BoE Sentiment</span><span class="sm-item-desc">Bank of England statement/minutes sentiment per meeting</span></a>
         <a class="sm-item" href="boj-sentiment.html" target="_blank"><span class="sm-item-name">🇯🇵 BoJ Sentiment</span><span class="sm-item-desc">Bank of Japan statement sentiment per meeting</span></a>
+        <a class="sm-item" href="rbnz-sentiment.html" target="_blank"><span class="sm-item-name">🇳🇿 RBNZ Sentiment</span><span class="sm-item-desc">RBNZ OCR decision + record of meeting sentiment per meeting</span></a>
+        <a class="sm-item" href="rba-sentiment.html" target="_blank"><span class="sm-item-name">🇦🇺 RBA Sentiment</span><span class="sm-item-desc">RBA decision statement, SMP and minutes sentiment per meeting</span></a>
+        <a class="sm-item" href="boc-sentiment.html" target="_blank"><span class="sm-item-name">🇨🇦 BoC Sentiment</span><span class="sm-item-desc">Bank of Canada announcement, MPR and deliberations sentiment per meeting</span></a>
         <a class="sm-item" href="beige-book.html" target="_blank"><span class="sm-item-name">📖 Beige Book</span><span class="sm-item-desc">Fed Beige Book release viewer with sentiment scoring and calendar</span></a>
         <a class="sm-item" href="cpi.html" target="_blank"><span class="sm-item-name">📈 CPI / Inflation</span><span class="sm-item-desc">US CPI / inflation release dashboard</span></a>
         <a class="sm-item" href="ppi.html" target="_blank"><span class="sm-item-name">🏭 PPI</span><span class="sm-item-desc">US pipeline inflation read</span></a>

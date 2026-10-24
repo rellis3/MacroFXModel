@@ -133,7 +133,7 @@ export function buildCountryCard(input) {
   // Monetary-cycle chip, only where a central bank is tracked.
   const cycle = cb && CYCLE[cb.trend]
     ? { bank: cb.bank, ...CYCLE[cb.trend], latestScore: cb.latestScore ?? null, delta: cb.deltaVsPrev ?? null }
-    : { bank: null, word: 'No tracked bank', cls: 'neu', why: 'This desk tracks FOMC, ECB, BoE and BoJ tone only.', latestScore: null, delta: null };
+    : { bank: null, word: 'No tracked bank', cls: 'neu', why: 'This desk tracks FOMC, ECB, BoE, BoJ, RBNZ, RBA and BoC tone only.', latestScore: null, delta: null };
 
   // Best expressions: this currency against every other, differenced, oriented by the pair's own base/quote.
   const comp = Object.fromEntries(board.filter(b => b?.composite != null).map(b => [b.ccy, b.composite]));
