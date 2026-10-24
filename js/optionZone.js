@@ -19,7 +19,7 @@ export const DEALER_VALIDATED = new Set(['SPX500']);
 /** row = one entry of /api/oi-today `pairs`; key = the page's instrument key (EURUSD, NQ, SPX500...). dp = decimals to print. */
 export function optionZone(row, key, dp = 4) {
   const spot = num(row?.spot), a = num(row?.putWall), b = num(row?.callWall);
-  if (spot == null || a == null || b == null) return null;
+  if (spot == null || a == null || b == null || !(spot > 0) || !(a > 0) || !(b > 0)) return null;   // a wall of 0 means the level did not load, not a level at zero
   const lo = Math.min(a, b), hi = Math.max(a, b), f = v => v.toFixed(dp);
   const where = spot < lo ? 'below' : spot > hi ? 'above' : 'inside';
   const edgePct = where === 'below' ? (lo / spot - 1) * 100 : where === 'above' ? (spot / hi - 1) * 100 : 0;

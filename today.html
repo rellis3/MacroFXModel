@@ -2223,7 +2223,7 @@ function hourlyChip(name) {
 // The last 24 hours as a thin strip under the card's chips.
 function hmmCardStrip(name) {
   const S = window.stateStripBrick, e = hmmHourly?.pairs?.[name]; if (!S || !e) return '';
-  const svg = S.hourlyStripSvg(e, 24, { bw: 4, bh: 6, titles: false }); return svg ? `<div class="pc-hmm" title="Hourly market state, last 24 hours: blue quiet or choppy, green active and closed up, red active and closed down, amber active (direction not recorded), fainter = less sure">${svg}</div>` : '';
+  const svg = S.hourlyStripSvg(e, 24, { bw: 4, bh: 6, titles: false }); return svg ? `<div class="pc-hmm" title="Hourly market state, last 24 hours: blue choppy or quiet, green bullish hour, red bearish hour, amber active (direction not recorded), fainter = less sure">${svg}</div>` : '';
 }
 // The drawer's fuller view: both models as pills, 48 hours of strip, 30 days of daily strip, and what it does and does not say.
 async function fillDrHmm(name) {
@@ -2238,7 +2238,7 @@ async function fillDrHmm(name) {
   host.innerHTML = `<div class="stl" style="margin-top:0"><b>Market state</b> <span class="muted">how volatile this market has been, not which way it will go</span></div><div style="margin:6px 0">${daily}${hourly}</div>`
     + (e ? `<div class="stl">Hourly, last 48 hours</div>${S.hourlyStripWithAxis(e, 48, { bw: 6, bh: 10 })}<div class="stl">${esc0(S.summaryWords(sm, 48))}</div>` : '')
     + (ds && /[qa]/.test(ds) ? `<div class="stl">Daily, last 30 days</div>${S.dailyStripSvg(ds, { bw: 10, bh: 10 })}` : '')
-    + `<div class="stl">Blue is quiet or choppy. Green is an active hour that closed up and red one that closed down; amber is active with the direction not recorded; grey is no reading; fainter means the model was less sure. The model only knows quiet or active, and green or red is what the hour did, not a forecast. The daily read looks at weeks and the hourly at hours, so they can differ.</div>`;
+    + `<div class="stl">Blue is a choppy or quiet hour, green a bullish hour, red a bearish hour, amber active with the direction not recorded, grey no reading; fainter means the model was less sure. The model only knows quiet or active, and green or red is what the hour did, not a forecast. The daily read looks at weeks and the hourly at hours, so they can differ.</div>`;
 }
 let chainExtra = null;   // /api/chain-extra: the last 70 observations behind the seven chips added 2026-10-23 (semiconductors, energy stocks, real estate, MOVE, CCC, EM dollar, EM credit)
 async function loadChainExtra() { try { const r = await jget('/api/chain-extra'); chainExtra = r?.ok ? r : null; } catch { chainExtra = null; } }
