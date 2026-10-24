@@ -1,4 +1,5 @@
 // Tests for js/newsletter.js.   node js/newsletter.test.mjs
+import { buildNewsletterV2 } from './newsletterV2.js';
 import { chainSvg, buildNewsletter, eventNote, familyOf, BANNER_SVG, sparkSvg, DISCLAIMER } from './newsletter.js';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -184,5 +185,9 @@ ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d
   const wI = buildNewsletter({ date: 'x', isoDate: '2026-10-25', edition: 'weekly', ranges: rg, hmm: hmmW }), dI = buildNewsletter({ date: 'x', isoDate: '2026-10-25', ranges: rg, hmm: hmmW });
   ok('the weekly note describes the 30-day daily strip, with no hourly colours', /one block per day over the last 30 days/.test(wI.html) && !/bullish hour/.test(wI.html) && /Daily, last 30 days/.test(wI.html) && !/Hourly, last 48 hours/.test(wI.html));
   ok('the daily note describes the hourly strip with bullish and bearish hours', /one block per hour/.test(dI.html) && /bullish hour/.test(dI.html) && /Hourly, last 48 hours/.test(dI.html) && !/Daily, last 30 days/.test(dI.html)); }
+
+{ const base = { date: 'x', isoDate: '2026-10-25' }, cur = buildNewsletter(base), v2 = buildNewsletterV2(base);
+  ok('the V2 draft is tagged in its masthead and the current issue is not', /V2 draft/.test(v2.html) && !/V2 draft/.test(cur.html));
+  ok('with nothing changed yet the two differ only by that tag, so a V2 change shows up cleanly', v2.html.replace(' · V2 draft', '') === cur.html && v2.text === cur.text); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

@@ -160,6 +160,7 @@ select{background:var(--card2);color:var(--text);border:1px solid var(--line);bo
 .btn{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:10px;padding:6px 11px;font:600 12px var(--body);cursor:pointer}
 .btn:hover{border-color:var(--blue)}.btn[disabled]{opacity:.55;cursor:wait}
 .btn .i{width:15px;height:15px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}.cmp>div{min-width:0}.cmp iframe{width:100%;height:760px;border:1px solid var(--line);border-radius:12px;background:#fff}.cmp[hidden]{display:none}@media (max-width:820px){.cmp{grid-template-columns:1fr}}
 .cot{display:grid;gap:10px}
 .cot .lab{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text2)}
 .pct{height:10px;border-radius:5px;background:linear-gradient(90deg,color-mix(in srgb,var(--bear) 40%,transparent),var(--line2) 50%,color-mix(in srgb,var(--bull) 40%,transparent));position:relative}
@@ -290,6 +291,7 @@ import { buildCountryCard } from './js/countryCard.js';
 import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
 import * as P from './js/atlasPosition.js';
 import { buildNewsletter, eventNote, flagProximity, familyOf } from './js/newsletter.js';
+import { buildNewsletterV2 } from './js/newsletterV2.js';
 import { snapshotOf, diffSnapshots, scoreLine, weekRecord, plainRead } from './js/newsletterRecord.js';
 import { closuresBetween } from './js/marketCalendars.js';
 import { summarize as stateSummary } from './js/stateStrip.js';
@@ -677,7 +679,8 @@ async function buildIssue(kind) {
     const snap = snapshotOf(base, { date: today, kind }), prev = arch.find(i => i.kind === kind && i.date < today);
     base.since = diffSnapshots(prev?.snapshot ?? null, snap);
     const out = buildNewsletter(base);
-    showNl(out, kind);
+    let out2 = null; try { out2 = buildNewsletterV2(base); } catch (e) { console.warn('[atlas newsletter] V2 failed:', e.message); }   // the V2 draft is for comparing only: it is never saved or sent
+    showNl(out, kind, out2);
     st.textContent = `Built: ${out.subject}. Saving…`;
     const sv = await J('/api/newsletter/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject: out.subject, html: out.html, text: out.text, snapshot: snap }) });
     st.textContent = sv?.ok ? `Built and saved: ${out.subject}` : `Built, but not saved to the archive (${sv?.error ?? 'no response'}): ${out.subject}`;
@@ -685,10 +688,16 @@ async function buildIssue(kind) {
   } catch (e) { st.textContent = 'Could not build the newsletter: ' + e.message; console.error('[atlas newsletter]', e); }
   finally { $('nlBuild').disabled = $('nlBuildW').disabled = false; }
 }
-function showNl(out, kind = 'daily') {
+function showNl(out, kind = 'daily', out2 = null) {
   const url = URL.createObjectURL(new Blob([out.html], { type: 'text/html' })), fname = `desk-atlas-${kind}-${new Date().toISOString().slice(0, 10)}.html`;
-  $('nlOut').innerHTML = `<div class="chips" style="margin:12px 0 8px"><button class="btn" id="nlPdf">Save as PDF</button><a class="btn" href="${url}" download="${fname}">Download .html</a><button class="btn" id="nlCopy">Copy plain text</button><a class="btn" href="${url}" target="_blank" rel="noopener">Open full page</a></div><p class="note" style="margin-bottom:8px"><b>Subject:</b> ${esc(out.subject)}</p><iframe id="nlFrame" title="Newsletter preview" sandbox style="width:100%;height:760px;border:1px solid var(--line);border-radius:12px;background:#fff"></iframe><p class="note" style="margin-top:6px">Self-contained: no scripts and no external requests, so it looks the same when attached, forwarded or printed to PDF.</p>`;
+  $('nlOut').innerHTML = `<div class="chips" style="margin:12px 0 8px"><button class="btn" id="nlPdf">Save as PDF</button><a class="btn" href="${url}" download="${fname}">Download .html</a><button class="btn" id="nlCopy">Copy plain text</button><a class="btn" href="${url}" target="_blank" rel="noopener">Open full page</a>${out2 ? '<button class="btn" id="nlCmp">Compare with V2</button>' : ''}</div><p class="note" style="margin-bottom:8px"><b>Subject:</b> ${esc(out.subject)}</p><iframe id="nlFrame" title="Newsletter preview" sandbox style="width:100%;height:760px;border:1px solid var(--line);border-radius:12px;background:#fff"></iframe><p class="note" style="margin-top:6px">Self-contained: no scripts and no external requests, so it looks the same when attached, forwarded or printed to PDF.</p>`;
   $('nlFrame').srcdoc = out.html;
+  if (out2) {   // side by side: the current issue on the left, the V2 draft on the right (stacked on a phone). Preview only, V2 is never saved or sent.
+    const url2 = URL.createObjectURL(new Blob([out2.html], { type: 'text/html' }));
+    $('nlOut').insertAdjacentHTML('beforeend', `<div id="nlCmpBox" class="cmp" hidden><div><p class="note"><b>Current</b></p><iframe id="nlFrameA" title="Current newsletter" sandbox></iframe></div><div><p class="note"><b>V2 draft</b> <a href="${url2}" target="_blank" rel="noopener">open full page</a></p><iframe id="nlFrameB" title="V2 newsletter draft" sandbox></iframe></div></div>`);
+    $('nlFrameA').srcdoc = out.html; $('nlFrameB').srcdoc = out2.html;
+    $('nlCmp').onclick = () => { const box = $('nlCmpBox'); box.hidden = !box.hidden; $('nlFrame').style.display = box.hidden ? '' : 'none'; $('nlCmp').textContent = box.hidden ? 'Compare with V2' : 'Back to one view'; };
+  }
   $('nlPdf').onclick = () => { const w = window.open(url, '_blank'); if (!w) { $('nlStatus').textContent = 'Pop-up blocked: allow pop-ups, or use Open full page then Ctrl+P.'; return; } w.addEventListener('load', () => setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 400)); $('nlStatus').textContent = 'In the print window choose Save as PDF, and turn on Background graphics if the colours look flat.'; };
   $('nlCopy').onclick = async () => { try { await navigator.clipboard.writeText(out.text); $('nlStatus').textContent = 'Copied the plain-text version.'; } catch { $('nlStatus').textContent = 'Copy was blocked here; use Download .html.'; } };
 }
