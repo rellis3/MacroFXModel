@@ -96,7 +96,8 @@ svg text{font-family:var(--mono)}
   </div>
 
   <div class="card" id="hpoCard">
-    <h2><em>00b</em> Hedging plan, textbook version <span class="pill" style="font-size:11px;padding:2px 9px;margin-left:8px;cursor:default">shadow · not live</span></h2>
+    <h2><em>00b</em> Hedging plan, textbook version <span class="pill" style="font-size:11px;padding:2px 9px;margin-left:8px;cursor:default">shadow · not live</span>
+      <span class="tgl"><button class="btn" id="hpoTvBtn" title="Copies the textbook plan as a block for the 'OI Bot Trades' TradingView indicator (pine/OI Bot Trades.pine): the same zones as the hedge plan, labelled HEDGE oi-fade / oi-follow, entry at the wall, stop box, target box. Paste it alone, or below the forecast-line hedge plan to see both.">⬇ TradingView (textbook plan)</button><a class="btn" href="/api/hedging-plan-oi/record" target="_blank" title="Forward record: both plans scored on the same sessions (counts only until 250 sessions)">forward record</a></span></h2>
     <div class="sub"><b>Same playbook, orders on the OI map's own levels.</b> When dealers are long gamma ("PIN") they sell rallies and buy dips, so the big walls act as edges: <b>fade</b> the nearest wall each side, stop a small buffer beyond it (a quarter of the day's σ), target the next level back toward price. When they are short gamma ("BREAKOUT") they chase, so a confirmed break of a wall is fed: <b>follow</b> it, stop back inside the wall, target the next level out. A wall the day cannot plausibly reach (beyond 1.5σ) is not an order. The line under each market shows how far the current plan's entries sit by comparison. <b>This is the textbook structure, not a proven edge</b> (walls did not beat placebo levels; the forecast-line version averaged −0.03R after costs). It is scored forward, side by side.</div>
     <div class="tbl" style="overflow-x:auto"><div id="hpoBody"><div class="sub">Loading…</div></div></div>
     <div class="legend" id="hpoNote"></div>
@@ -1101,6 +1102,16 @@ function planHtml(x){
     <ul style="margin:4px 0 0;padding-left:18px;color:var(--tx3);font-size:11.5px;line-height:1.5">${p.notes.map(n => `<li>${esc(n)}</li>`).join('')}<li>${esc(p.evidence)}</li></ul></div>`;
 }
 
+$('#hpoTvBtn').onclick = async () => {
+  const b = $('#hpoTvBtn'), was = b.textContent;
+  try {
+    b.textContent = 'fetching…';
+    const txt = await (await fetch('/api/hedging-plan-oi/export', { cache: 'no-store' })).text();
+    await navigator.clipboard.writeText(txt);
+    b.textContent = 'Copied ✓ — paste into OI Bot Trades';
+  } catch (e) { b.textContent = 'Copy failed'; }
+  setTimeout(() => { b.textContent = was; }, 2500);
+};
 $('#hedgeTvBtn').onclick = async () => {
   const b = $('#hedgeTvBtn'), was = b.textContent;
   try {

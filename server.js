@@ -312,8 +312,8 @@ import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
-import { buildOiPlan as _hpoBuild, OI_PLAN as _HPO_CFG } from './js/hedgingPlanOI.js';   // OI-level hedging plan (shadow)
-import { buildHedgePlanText as _hpText, orderStates as _hpStates } from './js/hedgingPlanExport.js';   // hedge plan → pine/OI Bot Trades.pine
+import { buildOiPlan as _hpoBuild, scoreOiPlan as _hpoScore, orderStatesOI as _hpoStates, buildOiPlanText as _hpoText, OI_PLAN as _HPO_CFG } from './js/hedgingPlanOI.js';   // OI-level hedging plan (shadow)
+import { buildHedgePlanText as _hpText, orderStates as _hpStates, HEDGE_BLOCK as _HP_BLOCK } from './js/hedgingPlanExport.js';   // hedge plan → pine/OI Bot Trades.pine
 import { cmeBookContracts as _cmeBook, priceDigits as _priceDigits } from './js/hedgingBooks.js';
 import { buildOiProfile, buildProfileText, shiftProfilePrices, chunkText } from './js/oiProfile.js';   // OI Profile indicator export   // CME listed book → hedging contracts (FX, US30)
 import compression from 'compression';
@@ -23842,26 +23842,114 @@ app.get('/api/hedging-plan', async (req, res) => {
 // GET /api/hedging-plan/export -> today's plan as the text block pine/OI Bot Trades.pine draws (paste below or instead
 // of the OI bot block). Each order carries its live state from today's bars: armed / open / done / primed.
 // GET /api/hedging-plan-oi -> the textbook version of today's plan (js/hedgingPlanOI.js): the same fade/follow playbook, but the orders sit on the OI map's walls
-// instead of the forecast percentile lines. SHADOW: read-only, no KV, no orders, the live plan above is untouched. Prereg: forge/HEDGING_PLAN_OI_PREREG.md.
+// instead of the forecast percentile lines. SHADOW: no orders, the live plan above is untouched. Prereg: forge/HEDGING_PLAN_OI_PREREG.md.
 let _hpoCache = { at: 0, v: null };
+async function _hedgingPlanOiPayload(fresh = false) {
+  if (!_hpoCache.v || Date.now() - _hpoCache.at > 5 * 60_000 || fresh) {
+    const r = await fetch(`http://127.0.0.1:${PORT}/api/oi-profile/export?pair=core&reach=0&json=1`, { signal: AbortSignal.timeout(90_000) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'profile unavailable');
+    const markets = (j.items || []).map(it => {
+      const p = it.prof, sigma = it.dayMove ?? p.refMove;
+      return { pair: String(it.sk).replace('/', '_'), spot: p.spot, sigma, regime: p.regime, book: p.book?.label ?? null,
+        levels: (p.levels || []).filter(l => ['call_wall', 'put_wall', 'zero_gamma', 'max_pain'].includes(l.type)).map(l => ({ type: l.type, price: l.price, label: l.label })),
+        plan: _hpoBuild({ spot: p.spot, sigma, regime: p.regime, levels: p.levels || [] }) };
+    });
+    _hpoCache = { at: Date.now(), v: { date: new Date().toISOString().slice(0, 10), markets, config: _HPO_CFG,
+      evidence: 'Textbook structure, not a validated edge. The forecast-line version averaged -0.03R on NQ and -0.08R on EURUSD/GBPUSD/AUDUSD after costs; walls and flips did not beat placebo levels. Shadow only, scored forward (forge/HEDGING_PLAN_OI_PREREG.md).' } };
+  }
+  return _hpoCache.v;
+}
 app.get('/api/hedging-plan-oi', async (req, res) => {
+  try { res.json({ ok: true, ...(await _hedgingPlanOiPayload(req.query.fresh === '1')) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/hedging-plan-oi/export -> the same plan as the text block pine/OI Bot Trades.pine draws (TZ lines; mode word oi-fade / oi-follow), each order with its live state.
+app.get('/api/hedging-plan-oi/export', async (req, res) => {
   try {
-    if (!_hpoCache.v || Date.now() - _hpoCache.at > 5 * 60_000 || req.query.fresh === '1') {
-      const r = await fetch(`http://127.0.0.1:${PORT}/api/oi-profile/export?pair=core&reach=0&json=1`, { signal: AbortSignal.timeout(90_000) });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'profile unavailable');
-      const markets = (j.items || []).map(it => {
-        const p = it.prof, sigma = it.dayMove ?? p.refMove;
-        return { pair: String(it.sk).replace('/', '_'), spot: p.spot, sigma, regime: p.regime, book: p.book?.label ?? null,
-          levels: (p.levels || []).filter(l => ['call_wall', 'put_wall', 'zero_gamma', 'max_pain'].includes(l.type)).map(l => ({ type: l.type, price: l.price, label: l.label })),
-          plan: _hpoBuild({ spot: p.spot, sigma, regime: p.regime, levels: p.levels || [] }) };
-      });
-      _hpoCache = { at: Date.now(), v: { date: new Date().toISOString().slice(0, 10), markets, config: _HPO_CFG,
-        evidence: 'Textbook structure, not a validated edge. The forecast-line version averaged -0.03R on NQ and -0.08R on EURUSD/GBPUSD/AUDUSD after costs; walls and flips did not beat placebo levels. Shadow only, scored forward (forge/HEDGING_PLAN_OI_PREREG.md).' } };
+    const v = await _hedgingPlanOiPayload(req.query.fresh === '1');
+    const lp = _hfLondon(new Date()), nowL = (+lp.hour % 24) * 60 + (+lp.minute), date = `${lp.year}-${lp.month}-${lp.day}`;
+    const mid0 = _hfLondonMidnightMs(date), states = {};
+    for (const m of v.markets) {
+      if (!m.plan?.orders?.length) continue;
+      try {
+        const bars = (await _hfSessionBars(m.pair, date, 1320)).filter(b => b.t < Math.min(Date.now() - 60_000, mid0 + 22 * 3600_000))
+          .map(b => ({ ...b, h: b.h ?? Math.max(b.o, b.c), l: b.l ?? Math.min(b.o, b.c), lmin: Math.round((b.t - mid0) / 60_000) }));
+        states[m.pair] = _hpoStates(m.plan, bars, nowL);
+      } catch { /* no bars -> armed */ }
     }
-    res.json({ ok: true, ..._hpoCache.v });
+    res.type('text/plain').send(_hpoText(v.markets, _HP_BLOCK, states));
+  } catch (e) { res.status(500).type('text/plain').send(`Export failed: ${e.message}`); }
+});
+
+// FORWARD RECORD of the textbook plan, beside the forecast-line plan. Weekdays: snapshot the plan once between 07:00 and 08:00 London (before the entry window opens, so the
+// snapshot cannot see the entries), score both plans on the session's 1-minute bars after 22:15 London. One write-once R2 object per session:
+// forward/hedging_plan_oi/<date>.json. A snapshot that would land after 08:00 is recorded as missed, never taken late. No verdict before the judge date.
+const _HPO_PREFIX = 'forward/hedging_plan_oi/';
+const _hpoDone = new Map();
+const _hpoClass = pair => (/^(NAS100|SPX500|US2000|US30)/.test(pair) ? 'indices' : /^XAU/.test(pair) ? 'gold' : 'fx');
+async function _hedgingPlanOiTick() {
+  if (!_r2Ok()) return;
+  const p = _hfLondon(new Date());
+  if (p.weekday === 'Sat' || p.weekday === 'Sun') return;
+  const date = `${p.year}-${p.month}-${p.day}`, mins = (+p.hour % 24) * 60 + (+p.minute), key = `${_HPO_PREFIX}${date}.json`;
+  if (_hpoDone.get(date) === 'scored' || mins < 7 * 60) return;
+  let rec = await _r2GetJSON(key);
+  if (!rec) {
+    if (mins >= 8 * 60) {
+      rec = { v: 1, prereg: 'forge/HEDGING_PLAN_OI_PREREG.md', date, snapshotAt: null, missed: 'no snapshot before the 08:00 London entry window', markets: [], scoredAt: new Date().toISOString() };
+      await _r2PutJSON(key, rec); _hpoDone.set(date, 'scored'); return;
+    }
+    const v = await _hedgingPlanOiPayload(true);
+    rec = { v: 1, prereg: 'forge/HEDGING_PLAN_OI_PREREG.md', date, snapshotAt: new Date().toISOString(), config: _HPO_CFG,
+      markets: v.markets.map(m => ({ pair: m.pair, spot: m.spot, sigma: m.sigma, regime: m.regime, book: m.book, plan: m.plan, paper: null, paperOld: null })), scoredAt: null };
+    await _r2PutJSON(key, rec);
+    _hpoDone.set(date, 'morning');
+  }
+  if (rec.scoredAt || rec.missed || mins < 22 * 60 + 15) return;
+  const old = await _r2GetJSON(`${_HF_PREFIX}${date}.json`).catch(() => null);   // the forecast-line plan, scored by its own job
+  if (!old?.scoredAt && mins < 23 * 60 + 30) return;                             // wait for it (next tick), but never hold this record past 23:30
+  const mid0 = _hfLondonMidnightMs(date);
+  for (const m of rec.markets) {
+    const bars = (await _hfSessionBars(m.pair, date, 1320)).filter(b => b.t < mid0 + 22 * 3600_000);
+    if (bars.length < 60) { m.paper = { triggered: false, reason: `only ${bars.length} bars` }; continue; }
+    const bb = bars.map(x => ({ ...x, h: x.h ?? Math.max(x.o, x.c), l: x.l ?? Math.min(x.o, x.c), lmin: Math.round((x.t - mid0) / 60_000) }));
+    m.paper = m.plan ? _hpoScore(m.plan, bb) : { triggered: false, reason: 'no plan' };
+    m.paperOld = old?.markets?.find(x => x.pair === m.pair)?.paper ?? null;
+  }
+  rec.scoredAt = new Date().toISOString();
+  await _r2PutJSON(key, rec);
+  _hpoDone.set(date, 'scored');
+}
+svcInterval('hedgingPlanOiForward', () => _hedgingPlanOiTick().catch(e => console.error('[hedging-plan-oi]', e.message)), 10 * 60_000);
+
+// GET /api/hedging-plan-oi/record -> counts and descriptive R of both plans per asset class and regime; no verdict before the judge date.
+app.get('/api/hedging-plan-oi/record', async (req, res) => {
+  try {
+    const keys = (await _r2ListKeys(_HPO_PREFIX)).filter(k => /\d{4}-\d{2}-\d{2}\.json$/.test(k)).sort();
+    const acc = {};
+    const slot = (cls, reg) => (acc[`${cls}|${reg}`] ||= { cls, regime: reg, sessions: 0, oi: { fills: 0, sumR: 0 }, old: { fills: 0, sumR: 0, sessions: 0 } });
+    let scored = 0, missed = 0;
+    for (const k of keys) {
+      const rec = await _r2GetJSON(k).catch(() => null);
+      if (!rec) continue;
+      if (rec.missed) { missed++; continue; }
+      if (!rec.scoredAt) continue;
+      scored++;
+      for (const m of rec.markets) {
+        const a = slot(_hpoClass(m.pair), m.regime);
+        a.sessions++;
+        if (m.paper?.triggered && Number.isFinite(m.paper.R)) { a.oi.fills++; a.oi.sumR += m.paper.R; }
+        if (m.paperOld) { a.old.sessions++; if (m.paperOld.triggered && Number.isFinite(m.paperOld.R)) { a.old.fills++; a.old.sumR += m.paperOld.R; } }
+      }
+    }
+    const fin = o => ({ ...o, sumR: +o.sumR.toFixed(2), meanR: o.fills ? +(o.sumR / o.fills).toFixed(3) : null });
+    res.json({ ok: true, prereg: 'forge/HEDGING_PLAN_OI_PREREG.md', sessionsScored: scored, sessionsMissed: missed, first: keys[0]?.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? null,
+      judgeAt: '>= 250 scored sessions per primary market and >= 60 fills in each regime', rows: Object.values(acc).map(a => ({ ...a, oi: fin(a.oi), old: fin(a.old) })),
+      note: 'Counts and descriptive R only until the judge date. "old" = the forecast-line plan on the same sessions.' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+
 app.get('/api/hedging-plan/export', async (req, res) => {
   try {
     const v = await _hedgingPlanPayload(req.query.fresh === '1');

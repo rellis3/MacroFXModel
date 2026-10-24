@@ -58,7 +58,7 @@ export function buildOiPlan(m, cfg = {}) {
     let target, targetName, projected = false;
     if (beyond[0]) { target = beyond[0].price; targetName = beyond[0].label; }
     else { target = entry + tdir * C.fallbackσ * sigma; targetName = `${C.fallbackσ}σ projected`; projected = true; }
-    orders.push({ side: direction, type, entry, stop, target, trigger: side, level: w.label, targetName, projected,
+    orders.push({ side: direction, type, entry, stop, target, trigger: side, level: w.label, levelPrice: w.price, targetName, projected,
       riskPts: risk, rewardPts: Math.abs(target - entry), rr: risk > 0 ? Math.abs(target - entry) / risk : null,
       distSigma: Math.abs(entry - spot) / sigma, riskSigma: risk / sigma });
   }
@@ -101,4 +101,47 @@ export function scoreOiPlan(plan, bars, cfg = {}) {
   const pnl = long ? exit - ord.entry : ord.entry - exit;
   const R = ord.riskPts > 0 ? (pnl - C.cost * ord.entry) / ord.riskPts : null;
   return { triggered: true, side: ord.side, type: ord.type, level: ord.level, entry: ord.entry, exit, how, R: R == null ? null : +R.toFixed(3), minutes: at - i0 };
+}
+
+/** Live state of each order from the session's bars so far (same words as the forecast-line plan): armed, open, done, primed. nowLmin = London minutes now. */
+export function orderStatesOI(plan, bars, nowLmin, cfg = {}) {
+  const C = { ...OI_PLAN, ...cfg };
+  const st = Object.fromEntries((plan?.orders ?? []).map(o => [o.trigger, 'armed']));
+  if (!plan?.orders?.length || !Array.isArray(bars) || !bars.length) return st;
+  const r = scoreOiPlan(plan, bars, C);
+  if (r.reason === 'level touched before 08:00') { for (const k in st) st[k] = 'primed'; return st; }
+  if (r.reason === 'first touch after 20:00' || (nowLmin != null && nowLmin >= C.window[1] && !r.triggered)) { for (const k in st) st[k] = 'done'; return st; }
+  if (!r.triggered) return st;
+  const mine = plan.orders.find(o => o.side === r.side)?.trigger;
+  for (const k in st) st[k] = 'done';
+  if (mine) st[mine] = r.how === 'close 22:00' && (nowLmin == null || nowLmin < 22 * 60) ? 'open' : 'done';
+  return st;
+}
+
+const digitsOfName = name => (/^[A-Z]{6}$/.test(name) ? (name.endsWith('JPY') ? 3 : 5) : 2);
+const numOf = (v, d = 2) => (Number.isFinite(Number(v)) && v !== null ? Number(v).toFixed(d) : '-');
+/**
+ * The plan as the text block `pine/OI Bot Trades.pine` draws (the same TZ lines as the forecast-line hedge plan; the title says HEDGE so the indicator
+ * files them under its hedge switch, and the mode word 'oi-fade' / 'oi-follow' tells the two plans apart on the chart).
+ *   TZ <SIDE> <mode> <level> <entry> <sl> <tp> - <state> <R:R>
+ * names: { PAIR: 'NQ' } block names (the same as hedgingPlanExport.HEDGE_BLOCK); states: { PAIR: { up, down } }.
+ */
+export function buildOiPlanText(markets, names, states = {}, { generated = null } = {}) {
+  const ts = d => new Date(d).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+  const out = ['──── HEDGE PLAN (OI LEVELS) ' + '─'.repeat(20), `Generated: ${ts(generated ?? Date.now())} · textbook plan on the OI walls, not the forecast lines (shadow, not a proven edge)`];
+  for (const m of markets ?? []) {
+    const name = names[m.pair];
+    if (!name) continue;
+    out.push('', name);
+    const p = m.plan;
+    if (!p) { out.push('· no plan today'); continue; }
+    const d = digitsOfName(name);
+    if (!p.orders.length) { out.push(`· spot ${numOf(m.spot, d)} · no order today (${(p.skipped?.[0]?.reason ?? 'no wall in reach').replace(/\s+/g, ' ').slice(0, 50)})`); continue; }
+    out.push(`· spot ${numOf(m.spot, d)} · ${p.mode === 'follow' ? 'FOLLOW breaks of the walls (short gamma)' : 'FADE the walls (long gamma)'} · shadow`);
+    for (const o of p.orders) {
+      const st = states[m.pair]?.[o.trigger] ?? 'armed';
+      out.push(`TZ ${o.side.toUpperCase()} ${p.mode === 'follow' ? 'oi-follow' : 'oi-fade'} ${numOf(o.levelPrice, d)} ${numOf(o.entry, d)} ${numOf(o.stop, d)} ${numOf(o.target, d)} - ${st} ${numOf(o.rr, 1)}`);
+    }
+  }
+  return out.join(String.fromCharCode(10));
 }

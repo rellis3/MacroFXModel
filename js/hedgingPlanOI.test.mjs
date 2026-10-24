@@ -1,5 +1,5 @@
 // OI-level hedging plan.   node js/hedgingPlanOI.test.mjs
-import { buildOiPlan, scoreOiPlan, OI_PLAN } from './hedgingPlanOI.js';
+import { buildOiPlan, scoreOiPlan, orderStatesOI, buildOiPlanText, OI_PLAN } from './hedgingPlanOI.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
@@ -39,6 +39,20 @@ ok('same minute stop and target counts as the stop', scoreOiPlan(pin, win([bar(5
 ok('a touch before 08:00 is no trade (primed)', scoreOiPlan(pin, win([bar(300, 7740, 7751, 7739, 7745)])).reason === 'level touched before 08:00');
 ok('no touch = no trade, and a one-sided plan still scores', scoreOiPlan(pin, win([bar(540, 7700, 7705, 7695, 7700)])).triggered === false && scoreOiPlan({ orders: [sell] }, win([bar(540, 7740, 7751, 7739, 7745)])).triggered === true);
 ok('no order or no bars is handled', scoreOiPlan({ orders: [] }, [bar(1, 1, 1, 1, 1)]).triggered === false && scoreOiPlan(pin, []).triggered === false);
+
+// chart output: states and the TradingView block
+const idle = [bar(500, 7700, 7701, 7699, 7700)];
+ok('states: untouched orders are armed', JSON.stringify(orderStatesOI(pin, idle, 520)) === JSON.stringify({ up: 'armed', down: 'armed' }));
+const sOpen = orderStatesOI(pin, [bar(540, 7740, 7751, 7739, 7745)], 541);
+ok('states: the filled side is open, the other done (one trade a day)', sOpen.up === 'open' && sOpen.down === 'done', JSON.stringify(sOpen));
+const sDone = orderStatesOI(pin, [bar(540, 7740, 7751, 7739, 7745), bar(560, 7745, 7746, 7719, 7720)], 561);
+ok('states: a trade that hit its target is done on both sides', sDone.up === 'done' && sDone.down === 'done');
+ok('states: a touch before 08:00 primes both orders', Object.values(orderStatesOI(pin, [bar(300, 7740, 7751, 7739, 7745)], 330)).every(v => v === 'primed'));
+const txt = buildOiPlanText([{ pair: 'NAS100_USD', spot: 7700, plan: pin }, { pair: 'EUR_USD', spot: 1.1, plan: { orders: [], skipped: [{ reason: 'no call wall above spot' }] } }, { pair: 'XXX_USD', spot: 1, plan: pin }], { NAS100_USD: 'NQ', EUR_USD: 'EURUSD' }, { NAS100_USD: { up: 'open', down: 'done' } }, { generated: 0 });
+const lines = txt.split(String.fromCharCode(10));
+ok('block: title says HEDGE so the indicator files it under its hedge switch', /HEDGE/.test(lines[0]) && !/OI-VOL/.test(lines[0].toUpperCase()));
+ok('block: TZ line has the ten tokens the indicator parses, mode oi-fade, level then entry', lines.some(l => { const q = l.split(' '); return q[0] === 'TZ' && q.length === 10 && q[1] === 'SELL' && q[2] === 'oi-fade' && q[3] === '7750.00' && q[4] === '7750.00' && q[8] === 'open'; }), lines.filter(l => l.startsWith('TZ')).join(' | '));
+ok('block: an instrument with no order says so, an unknown pair is left out', lines.some(l => /no order today/.test(l)) && !lines.includes('XXX_USD'));
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
