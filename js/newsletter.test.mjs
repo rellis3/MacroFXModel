@@ -178,5 +178,11 @@ ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d
   const wkI = buildNewsletter({ date: 'x', isoDate: '2026-10-25', edition: 'weekly', week: { events: wkEv } });
   ok('the weekly calendar is a day-by-day picture: one row per day with a chip per release, orange for big and grey for medium', (wkI.html.match(/class="wkd"/g) ?? []).length === 2 && /class="ev2 hi"/.test(wkI.html) && /class="ev2 "/.test(wkI.html) && !/Durable Goods/.test(wkI.html));
   ok('each day counts its big releases in dots', /title="1 big release">●</.test(wkI.html) && /title="2 big releases">●●</.test(wkI.html)); }
+
+{ const hmmW = { EURUSD: { daily: { state: 'quiet', prob: 90 }, hourly: { state: 'active', prob: 80 }, hourlyStrip: { t0: '2026-10-24T00', s: 'qqaa', p: [90, 90, 90, 90], d: '.udu' }, dailyStrip: '..qqaqq' } };
+  const rg = [{ key: 'EURUSD', label: 'EUR/USD', price: '1.1', hlMed: 1, used: 0.5 }];
+  const wI = buildNewsletter({ date: 'x', isoDate: '2026-10-25', edition: 'weekly', ranges: rg, hmm: hmmW }), dI = buildNewsletter({ date: 'x', isoDate: '2026-10-25', ranges: rg, hmm: hmmW });
+  ok('the weekly note describes the 30-day daily strip, with no hourly colours', /one block per day over the last 30 days/.test(wI.html) && !/bullish hour/.test(wI.html) && /Daily, last 30 days/.test(wI.html) && !/Hourly, last 48 hours/.test(wI.html));
+  ok('the daily note describes the hourly strip with bullish and bearish hours', /one block per hour/.test(dI.html) && /bullish hour/.test(dI.html) && /Hourly, last 48 hours/.test(dI.html) && !/Daily, last 30 days/.test(dI.html)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
