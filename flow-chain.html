@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capital-Flow Chain</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--amber:#d29922;--red:#f85149;
+        --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#a371f7;--band:rgba(157,167,179,.18);--overlap:rgba(210,153,34,.08);--grid:#21262d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--s1);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .chip.warn{color:var(--amber);border-color:var(--amber)}
+  .wrap{max-width:1500px;margin:0 auto;padding:12px 16px 40px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0}
+  label{font-size:11.5px;color:var(--text3)}
+  select,input[type=number]{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font:inherit;font-size:12px}
+  input[type=range]{width:min(420px,100%);accent-color:var(--s1)}
+  .btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .btn:hover{color:var(--text);border-color:#4d5560} .btn.on{background:#22304d;color:#fff;border-color:var(--s1)}
+  .grid2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;align-items:start}
+  @media (max-width:980px){.grid2{grid-template-columns:1fr}}
+  .cpane{background:var(--card);border:1px solid var(--border);border-radius:8px;min-width:0;position:relative}
+  .plabel{position:absolute;left:8px;top:4px;z-index:3;font-size:11px;color:var(--text2);pointer-events:none}
+  .plabel b{color:var(--text)}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12px} .kv span:nth-child(odd){color:var(--text3)} .kv b{font-variant-numeric:tabular-nums}
+  .note{font-size:11.5px;color:var(--text3);line-height:1.6;max-width:120ch} .note b{color:var(--text2)}
+  .ev{border-top:1px solid var(--grid);padding:6px 0;font-size:12px} .ev:first-child{border-top:0}
+  .vw{display:inline-block;font-size:10.5px;font-weight:700;padding:0 7px;border-radius:5px;border:1px solid var(--border);margin-right:6px;text-transform:uppercase}
+  .vw.null{color:var(--text2)} .vw.validated{color:var(--s3);border-color:var(--s3)} .vw.underpowered{color:var(--amber);border-color:var(--amber)} .vw.context{color:var(--s4);border-color:var(--s4)}
+  .ev .claim{color:var(--text)} .ev .res{color:var(--text3);font-size:11.5px}
+  #prof{width:100%;height:220px;display:block;cursor:crosshair}
+  .chain{display:flex;flex-direction:column;gap:4px}
+  .err{color:var(--red);font-size:12px}
+  .mut{color:var(--text3)}
+</style>
+</head>
+<body>
+<div id="commandHub"></div>
+<script src="js/commandHub.js"></script>
+
+<div class="hdr">
+  <h1>Capital-Flow Chain</h1>
+  <span class="chip warn" title="Nothing on this page is a tested signal. The tested verdicts are listed beside the charts.">description, not a test</span>
+  <span class="chip" id="asof">loading…</span>
+  <span class="spacer"></span>
+  <a class="chip" href="evidence.html" target="_blank">Evidence Book</a>
+  <a class="chip" href="rates.html" target="_blank">Rates &amp; Policy</a>
+  <a class="chip" href="cog-chart.html" target="_blank">Intraday rate legs</a>
+</div>
+
+<div class="wrap">
+  <div class="box note">
+    The course's <b>capital-flow hierarchy</b> (Quant &amp; Macro Insights, Lesson 2.1) says moves travel down a chain, each level
+    lagging the one above: <b>central banks → government bonds (hours–days) → G10 FX (days–weeks) → equities (weeks–months) →
+    credit (months–quarters)</b>. Pick a leader and a follower, slide the lag, and watch whether the leader's line, moved forward in
+    time, lines up with the follower. The bar chart shows the correlation of their <b>N-day changes</b> at every lag, with a grey
+    <b>chance band</b> (the same series with the link destroyed). Bars inside the band are noise. Bars in the amber zone overlap in
+    time, so they are the <b>same move</b>, not a lead.
+  </div>
+
+  <div class="box">
+    <h2>Leader vs follower</h2>
+    <div class="row">
+      <label>Leader</label><select id="lead"></select>
+      <label>Follower</label><select id="foll"></select>
+      <label>Change window N</label>
+      <select id="win"><option value="5">5 days</option><option value="10">10 days</option><option value="20" selected>20 days</option><option value="40">40 days</option><option value="63">63 days</option></select>
+      <label>Sample</label>
+      <select id="rng"><option value="all">All</option><option value="2005-01-01|2014-12-31">2005–2014</option><option value="2015-01-01|2026-12-31">2015–now</option><option value="2020-01-01|2026-12-31">2020–now</option><option value="visible">Visible on chart</option></select>
+      <button class="btn" id="flip" title="Draw the leader upside down (e.g. US−DE spread up should mean EUR/USD down)">invert leader</button>
+    </div>
+    <div class="row">
+      <label>Lag: leader moved forward by</label>
+      <input type="range" id="lag" min="-120" max="120" step="1" value="0">
+      <input type="number" id="lagN" min="-120" max="120" value="0" style="width:64px"><span class="mut">trading days</span>
+      <button class="btn" id="best" title="Jump to the lag with the strongest correlation outside the overlap zone">strongest lead</button>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="cpane"><div class="plabel" id="pl1" style="left:72px"></div><div id="cMain" style="height:380px"></div></div>
+        <div class="cpane" style="margin-top:6px"><div class="note" style="padding:6px 10px 0">Correlation of N-day changes: leader ending day t vs follower ending day t + lag. Click a bar to set the lag. <span style="color:var(--text2)">Grey band</span> = chance for one lag; <span style="color:var(--s1)">dashed</span> = chance for the best of a lag search.</div>
+          <svg id="prof" viewBox="0 0 1000 220" preserveAspectRatio="none"></svg></div>
+      </div>
+      <div>
+        <div class="box" style="padding:10px 12px">
+          <h2>At this lag</h2>
+          <div class="kv" id="read"></div>
+          <p class="note" style="margin-top:8px" id="readNote"></p>
+        </div>
+        <div class="box" style="padding:10px 12px;margin-top:10px">
+          <h2>What the desk has tested on this link</h2>
+          <div id="evid"><span class="mut">loading…</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>The chain, level by level</h2>
+    <div class="note" style="margin-bottom:6px">Five synced daily charts, top to bottom in the course's order. Scroll or zoom any one and the rest follow; the crosshair date is shared.</div>
+    <div class="chain" id="chain"></div>
+  </div>
+
+  <div class="box note" id="srcNote"></div>
+</div>
+
+<script type="module">
+import { FLOW_LEVELS, FLOW_SERIES, FLOW_SPREADS, columnOf, ffill, changes, leadLagProfile, placeboBand, rangeIdx, labelOf, kindOf, levelOf, independentWindows } from './js/flowChain.js';
+let DESK = [];
+try { ({ DESK_EVIDENCE: DESK } = await import('./js/deskEvidence.js')); } catch (e) { DESK = []; }
+
+const $ = s => document.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const LW = window.LightweightCharts;
+const SRC = new URLSearchParams(location.search).get('src') || '/api/flow-chain';
+const ls = { get(k, d) { try { return localStorage.getItem('flowchain_' + k) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem('flowchain_' + k, v); } catch {} } };
+
+// Tested links shown beside the charts: [leader level or id, follower id(s), evidence ids].
+const LINKS = [
+  { lead: ['us_2y', 'us_10y', 'de_2y', 'de_10y', 'us_de_2y', 'us_de_10y'], foll: ['eurusd'], ids: ['yield-ladder-eurusd', 'spread-leads-fx-hours', 'spread-episodes-eurusd', 'yields-to-fx-direction', 'yield-spread-sleeve', 'nonus-yield-gap-direction'] },
+  { lead: ['us_2y', 'jp_2y', 'us_jp_2y', 'jp_10y', 'us_10y'], foll: ['usdjpy'], ids: ['yields-to-fx-direction', 'front-end-shock', 'nonus-yield-gap-direction', 'yield-spread-sleeve'] },
+  { lead: ['uk_10y', 'us_uk_10y', 'boe_bank', 'us_10y'], foll: ['gbpusd'], ids: ['yields-to-fx-direction', 'front-end-shock', 'nonus-yield-gap-direction', 'multi-spread-sleeve'] },
+  { lead: ['us_2y', 'us_10y', 'us_2s10s'], foll: ['nas100', 'spx500'], ids: ['yield-ladder-nq', 'rates-pivot-lead', 'curve-inversion', 'spread-episodes-nq', 'rates-spread-asset-lead', 'yields-to-fx-direction'] },
+  { lead: ['nas100', 'spx500'], foll: ['baa10y', 'hy_oas'], ids: ['credit-leads-equities'] },
+  { lead: ['baa10y', 'hy_oas'], foll: ['nas100', 'spx500'], ids: ['credit-leads-equities'] },
+  { lead: ['us_ff', 'ecb_dfr', 'boe_bank'], foll: ['eurusd', 'usdjpy', 'gbpusd', 'us_2y'], ids: ['post-fomc-usd-drift', 'front-end-shock'] },
+  { lead: ['us_10y', 'us_2y'], foll: ['xauusd'], ids: ['yields-to-fx-direction', 'fear-gold'] },
+];
+const evidenceFor = (a, b) => {
+  const ids = new Set();
+  for (const L of LINKS) if (L.lead.includes(a) && L.foll.includes(b)) L.ids.forEach(i => ids.add(i));
+  for (const L of LINKS) if (L.lead.includes(b) && L.foll.includes(a)) L.ids.forEach(i => ids.add(i));
+  return [...ids].map(id => DESK.find(e => e.id === id)).filter(Boolean);
+};
+
+let P = null, COLS = {}, state = { lead: ls.get('lead', 'us_de_2y'), foll: ls.get('foll', 'eurusd'), win: +ls.get('win', 20), rng: ls.get('rng', 'all'), lag: +ls.get('lag', 0), flip: ls.get('flip', '1') === '1' };
+const ALL_IDS = () => [...Object.keys(FLOW_SERIES), ...Object.keys(FLOW_SPREADS)].filter(id => FLOW_SPREADS[id] ? (P.line[FLOW_SPREADS[id].a] && P.line[FLOW_SPREADS[id].b]) : (P.line[id] || P.ohlc[id]));
+const col = id => (COLS[id] ??= ffill(columnOf(P, id), 5));
+
+function fillSelects() {
+  for (const sel of [$('#lead'), $('#foll')]) {
+    sel.innerHTML = FLOW_LEVELS.map(L => `<optgroup label="${L.level}. ${L.name}">` +
+      ALL_IDS().filter(id => levelOf(id) === L.level).map(id => `<option value="${id}">${labelOf(id)}</option>`).join('') + '</optgroup>').join('');
+  }
+  $('#lead').value = state.lead; $('#foll').value = state.foll; $('#win').value = String(state.win); $('#rng').value = state.rng;
+  $('#lag').value = state.lag; $('#lagN').value = state.lag; $('#flip').classList.toggle('on', state.flip);
+}
+
+// ── Main chart: follower (candles or line) + leader shifted forward by the lag ─────────────
+const opts = h => ({ height: h, layout: { background: { color: css('--card') }, textColor: css('--text2'), fontSize: 11 },
+  grid: { vertLines: { color: css('--grid') }, horzLines: { color: css('--grid') } }, rightPriceScale: { borderColor: css('--border') },
+  leftPriceScale: { visible: true, borderColor: css('--border') }, timeScale: { borderColor: css('--border') }, crosshair: { mode: 0 } });
+const cMain = LW.createChart($('#cMain'), opts(380));
+let sFollC = null, sFollL = null, sLead = null;
+function drawMain() {
+  const a = state.lead, b = state.foll, D = P.dates, L = state.lag;
+  if (sFollC) { cMain.removeSeries(sFollC); sFollC = null; } if (sFollL) { cMain.removeSeries(sFollL); sFollL = null; } if (sLead) { cMain.removeSeries(sLead); sLead = null; }
+  const fo = P.ohlc[b];
+  if (fo) {
+    sFollC = cMain.addCandlestickSeries({ upColor: css('--s3'), downColor: css('--s2'), borderVisible: false, wickUpColor: css('--s3'), wickDownColor: css('--s2'), priceScaleId: 'right' });
+    sFollC.setData(D.map((d, i) => fo.c[i] == null ? null : { time: d, open: fo.o[i], high: fo.h[i], low: fo.l[i], close: fo.c[i] }).filter(Boolean));
+  } else {
+    sFollL = cMain.addLineSeries({ color: css('--text'), lineWidth: 2, priceScaleId: 'right', priceLineVisible: false });
+    sFollL.setData(D.map((d, i) => col(b)[i] == null ? null : { time: d, value: col(b)[i] }).filter(Boolean));
+  }
+  sLead = cMain.addLineSeries({ color: css('--s1'), lineWidth: 2, priceScaleId: 'left', priceLineVisible: false, lastValueVisible: false });
+  const x = col(a), sign = state.flip ? -1 : 1, pts = [];
+  for (let i = 0; i < D.length; i++) { const j = i + L; if (j < 0 || j >= D.length || x[i] == null) continue; pts.push({ time: D[j], value: sign * x[i] }); }
+  sLead.setData(pts);
+  cMain.applyOptions({ leftPriceScale: { invertScale: false } });
+  $('#pl1').innerHTML = `<b>${labelOf(b)}</b> (right) &nbsp;·&nbsp; <span style="color:${css('--s1')}">${state.flip ? '− ' : ''}${labelOf(a)}${L ? `, moved forward ${L} days` : ''}</span> (left)`;
+}
+
+// ── Lead/lag profile (SVG) ───────────────────────────────────────────────────
+let PROF = null, BAND = null, MAXLAG = 120;
+function sampleIdx() {
+  if (state.rng === 'all') return { from: 0, to: P.dates.length };
+  if (state.rng === 'visible') { const r = cMain.timeScale().getVisibleRange(); return r ? rangeIdx(P.dates, r.from, r.to) : { from: 0, to: P.dates.length }; }
+  const [d0, d1] = state.rng.split('|'); return rangeIdx(P.dates, d0, d1);
+}
+function computeProfile() {
+  const n = state.win, X = changes(col(state.lead), n, kindOf(state.lead)), Y = changes(col(state.foll), n, kindOf(state.foll));
+  const { from, to } = sampleIdx();
+  PROF = leadLagProfile(X, Y, { n, maxLag: MAXLAG, from, to });
+  BAND = placeboBand(X, Y, { n, maxLag: MAXLAG, from, to, shifts: 30 });
+}
+function drawProfile() {
+  const svg = $('#prof'), W = 1000, H = 220, m = { l: 34, r: 8, t: 18, b: 20 }, n = state.win;
+  const xs = L => m.l + (L + MAXLAG) / (2 * MAXLAG) * (W - m.l - m.r);
+  const rs = PROF.map(p => p.r).filter(v => v != null), bs = [...BAND.lo, ...BAND.hi].filter(v => v != null);
+  const lim = Math.max(0.15, ...rs.map(Math.abs), ...bs.map(Math.abs)) * 1.1;
+  const ys = r => m.t + (1 - (r + lim) / (2 * lim)) * (H - m.t - m.b);
+  const bw = (W - m.l - m.r) / (2 * MAXLAG + 1);
+  let g = `<rect x="${xs(-n + 1) - bw / 2}" y="${m.t}" width="${xs(n - 1) - xs(-n + 1) + bw}" height="${H - m.t - m.b}" fill="${css('--overlap')}"/>`;
+  let band = '';
+  PROF.forEach((p, i) => { if (BAND.lo[i] == null) return; band += `${i ? 'L' : 'M'}${xs(p.lag)},${ys(BAND.hi[i])} `; });
+  for (let i = PROF.length - 1; i >= 0; i--) if (BAND.lo[i] != null) band += `L${xs(PROF[i].lag)},${ys(BAND.lo[i])} `;
+  if (band) g += `<path d="${band}Z" fill="${css('--band')}"/>`;
+  g += `<line x1="${m.l}" x2="${W - m.r}" y1="${ys(0)}" y2="${ys(0)}" stroke="${css('--border')}"/>`;
+  // search-aware chance: the best |r| a lag search reaches with no link (dashed)
+  const seg = (a, b, v, c) => v == null ? '' : [v, -v].map(r => `<line x1="${xs(a)}" x2="${xs(b)}" y1="${ys(r)}" y2="${ys(r)}" stroke="${c}" stroke-dasharray="5 4" stroke-width="1.2"/>`).join('');
+  g += seg(n, MAXLAG, BAND.searchLead, css('--s1')) + seg(-MAXLAG, -n, BAND.searchFoll, css('--s4'));
+  PROF.forEach((p, i) => {
+    if (p.r == null) return;
+    const out = BAND.hi[i] != null && (p.r > BAND.hi[i] || p.r < BAND.lo[i]);
+    const c = p.overlap ? css('--amber') : out ? (p.lag > 0 ? css('--s1') : css('--s4')) : css('--text3');
+    g += `<rect data-lag="${p.lag}" x="${xs(p.lag) - bw * 0.42}" y="${Math.min(ys(0), ys(p.r))}" width="${bw * 0.84}" height="${Math.max(1, Math.abs(ys(p.r) - ys(0)))}" fill="${c}" opacity="${out || p.overlap ? 0.95 : 0.55}"/>`;
+  });
+  g += `<line x1="${xs(state.lag)}" x2="${xs(state.lag)}" y1="${m.t - 4}" y2="${H - m.b}" stroke="${css('--text')}" stroke-dasharray="3 3"/>`;
+  for (const L of [-120, -90, -60, -30, 0, 30, 60, 90, 120]) g += `<text x="${xs(L)}" y="${H - 5}" fill="${css('--text3')}" font-size="10" text-anchor="middle">${L}</text>`;
+  for (const r of [-lim / 1.1, 0, lim / 1.1]) g += `<text x="${m.l - 4}" y="${ys(r) + 3}" fill="${css('--text3')}" font-size="10" text-anchor="end">${r.toFixed(2)}</text>`;
+  g += `<text x="${xs(-MAXLAG / 2)}" y="12" fill="${css('--s4')}" font-size="10.5" text-anchor="middle">← ${labelOf(state.foll)} moves first</text>`;
+  g += `<text x="${xs(MAXLAG / 2)}" y="12" fill="${css('--s1')}" font-size="10.5" text-anchor="middle">${labelOf(state.lead)} moves first →</text>`;
+  g += `<text x="${xs(0)}" y="12" fill="${css('--amber')}" font-size="10.5" text-anchor="middle">same move</text>`;
+  svg.innerHTML = g;
+}
+function bestLead() {
+  let best = null;
+  for (const p of PROF) if (!p.overlap && p.lag > 0 && p.r != null && (!best || Math.abs(p.r) > best.a)) best = { lag: p.lag, a: Math.abs(p.r) };
+  return best;
+}
+function drawRead() {
+  const i = PROF.findIndex(p => p.lag === state.lag), p = PROF[i], n = state.win;
+  if (!p) return;
+  const lo = BAND.lo[i], hi = BAND.hi[i], out = p.r != null && lo != null && (p.r > hi || p.r < lo);
+  const lvl = p.lag >= n ? BAND.searchLead : p.lag <= -n ? BAND.searchFoll : null;
+  const srch = p.r != null && lvl != null && Math.abs(p.r) > lvl;
+  const srchTxt = p.overlap ? 'n/a (same move)' : lvl == null ? '—' : `${srch ? 'yes' : 'no'} (chance best ±${lvl.toFixed(3)})`;
+  const where = p.overlap ? 'windows overlap — the same move, not a lead' : p.lag > 0 ? `${labelOf(state.lead)} ahead by ${p.lag} days` : `${labelOf(state.foll)} ahead by ${-p.lag} days`;
+  $('#read').innerHTML = `<span>lag</span><b>${p.lag} days</b><span>reading</span><b>${where}</b>
+    <span>correlation</span><b>${p.r == null ? '—' : p.r.toFixed(3)}</b><span>chance band</span><b>${lo == null ? '—' : `${lo.toFixed(3)} … ${hi.toFixed(3)}`}</b>
+    <span>outside band?</span><b style="color:${out ? (p.overlap ? css('--amber') : css('--s1')) : css('--text3')}">${p.r == null ? '—' : out ? 'yes' : 'no'}</b>
+    <span>beats a lag search?</span><b style="color:${srch ? css('--s1') : css('--text3')}">${srchTxt}</b>
+    <span>days paired</span><b>${p.n.toLocaleString()}</b><span>independent windows</span><b>≈ ${independentWindows(p.n, n)}</b>`;
+  $('#readNote').innerHTML = `Changes are ${n}-day: ${kindOf(state.lead) === 'rate' ? 'bp' : 'log %'} for the leader, ${kindOf(state.foll) === 'rate' ? 'bp' : 'log %'} for the follower.
+    Overlapping windows make neighbouring bars move together, so judge the <b>shape</b> against the grey band, not one bar.
+    The grey band is chance for <b>one lag chosen in advance</b>. If you picked this lag because it looked best, compare it with the <b>dashed line</b> instead:
+    the strongest lead that ${MAXLAG - n + 1} lags reach by chance alone.`;
+}
+function drawEvidence() {
+  const ev = evidenceFor(state.lead, state.foll);
+  $('#evid').innerHTML = ev.length ? ev.map(e => `<div class="ev"><span class="vw ${e.verdict}">${e.verdict}</span><a href="evidence.html#${e.id}" target="_blank">${e.id}</a> <span class="mut">${e.date}</span>
+      <div class="claim">${e.claim}</div><div class="res">${String(e.result).slice(0, 280)}${String(e.result).length > 280 ? '…' : ''}</div></div>`).join('')
+    : `<span class="mut">No banked test matches this exact pair. Treat what you see as untested.</span>`;
+}
+
+let tmr = null;
+function update({ recompute = true } = {}) {
+  ls.set('lead', state.lead); ls.set('foll', state.foll); ls.set('win', state.win); ls.set('rng', state.rng); ls.set('lag', state.lag); ls.set('flip', state.flip ? '1' : '0');
+  drawMain();
+  if (recompute) { clearTimeout(tmr); tmr = setTimeout(() => { computeProfile(); drawProfile(); drawRead(); }, 30); } else { drawProfile(); drawRead(); }
+  drawEvidence();
+}
+const setLag = L => { state.lag = Math.max(-MAXLAG, Math.min(MAXLAG, Math.round(L))); $('#lag').value = state.lag; $('#lagN').value = state.lag; update({ recompute: false }); };
+
+// ── The chain: five synced panes ─────────────────────────────────────────────
+const PANE_DEFAULT = { 1: 'us_ff', 2: 'us_2y', 3: 'eurusd', 4: 'nas100', 5: 'baa10y' };
+const panes = [];
+function buildChain() {
+  const host = $('#chain'); host.innerHTML = '';
+  for (const L of FLOW_LEVELS) {
+    const ids = ALL_IDS().filter(id => levelOf(id) === L.level); if (!ids.length) continue;
+    const div = document.createElement('div'); div.className = 'cpane';
+    div.innerHTML = `<div class="plabel" style="pointer-events:auto"><b>${L.level}. ${L.name}</b> <span class="mut">(${L.lag})</span>
+      <select data-l="${L.level}" style="margin-left:6px">${ids.map(id => `<option value="${id}">${labelOf(id)}</option>`).join('')}</select></div><div style="height:150px"></div>`;
+    host.appendChild(div);
+    const c = LW.createChart(div.lastElementChild, { ...opts(150), leftPriceScale: { visible: false }, timeScale: { borderColor: css('--border'), visible: L.level === 5 } });
+    const pane = { level: L.level, chart: c, series: null, id: ls.get('pane' + L.level, PANE_DEFAULT[L.level]) };
+    if (!ids.includes(pane.id)) pane.id = ids[0];
+    div.querySelector('select').value = pane.id;
+    div.querySelector('select').onchange = e => { pane.id = e.target.value; ls.set('pane' + L.level, pane.id); drawPane(pane); };
+    panes.push(pane); drawPane(pane);
+  }
+  let syncing = false;
+  for (const a of panes) {
+    a.chart.timeScale().subscribeVisibleLogicalRangeChange(r => { if (syncing || !r) return; syncing = true; for (const b of panes) if (b !== a) b.chart.timeScale().setVisibleLogicalRange(r); syncing = false; });
+    a.chart.subscribeCrosshairMove(prm => { if (syncing) return; syncing = true;
+      for (const b of panes) if (b !== a && b.series) { if (prm.time) { const v = valueAt(b.id, prm.time); if (v != null) b.chart.setCrosshairPosition(v, prm.time, b.series); } else b.chart.clearCrosshairPosition(); }
+      syncing = false; });
+  }
+}
+const dIdx = new Map();
+const valueAt = (id, t) => { const i = dIdx.get(t); return i == null ? null : col(id)[i]; };
+function drawPane(p) {
+  if (p.series) p.chart.removeSeries(p.series);
+  const D = P.dates, o = P.ohlc[p.id];
+  if (o) { p.series = p.chart.addCandlestickSeries({ upColor: css('--s3'), downColor: css('--s2'), borderVisible: false, wickUpColor: css('--s3'), wickDownColor: css('--s2') });
+    p.series.setData(D.map((d, i) => o.c[i] == null ? { time: d } : { time: d, open: o.o[i], high: o.h[i], low: o.l[i], close: o.c[i] })); }
+  else { p.series = p.chart.addLineSeries({ color: css('--s1'), lineWidth: 2, priceLineVisible: false });
+    p.series.setData(D.map((d, i) => col(p.id)[i] == null ? { time: d } : { time: d, value: col(p.id)[i] })); }
+  // every pane carries every date (blank where no print), so the bar-index sync lines the panes up
+}
+
+// ── Wiring ───────────────────────────────────────────────────────────────────
+$('#lead').onchange = e => { state.lead = e.target.value; update(); };
+$('#foll').onchange = e => { state.foll = e.target.value; update(); };
+$('#win').onchange = e => { state.win = +e.target.value; update(); };
+$('#rng').onchange = e => { state.rng = e.target.value; update(); };
+$('#flip').onclick = () => { state.flip = !state.flip; $('#flip').classList.toggle('on', state.flip); update({ recompute: false }); };
+$('#lag').oninput = e => setLag(+e.target.value);
+$('#lagN').onchange = e => setLag(+e.target.value);
+$('#best').onclick = () => { const b = bestLead(); if (b) setLag(b.lag); };
+$('#prof').onclick = e => { const r = $('#prof').getBoundingClientRect(); const fx = (e.clientX - r.left) / r.width * 1000; setLag((fx - 34) / (1000 - 42) * 2 * MAXLAG - MAXLAG); };
+cMain.timeScale().subscribeVisibleTimeRangeChange(() => { if (state.rng === 'visible') { clearTimeout(tmr); tmr = setTimeout(() => { computeProfile(); drawProfile(); drawRead(); }, 250); } });
+new ResizeObserver(() => { const w1 = $('#cMain').clientWidth, w2 = $('#chain').clientWidth - 2;
+  if (w1 > 50) cMain.applyOptions({ width: w1 }); if (w2 > 50) for (const p of panes) p.chart.applyOptions({ width: w2 }); }).observe(document.body);
+
+try {
+  const r = await fetch(SRC); P = await r.json();
+  if (!P || !P.dates) throw new Error(P?.error || `HTTP ${r.status}`);
+  P.dates.forEach((d, i) => dIdx.set(d, i));
+  $('#asof').textContent = `data to ${P.dates.at(-1)} · built ${String(P.at).slice(0, 16).replace('T', ' ')} UTC`;
+  if (!ALL_IDS().includes(state.lead)) state.lead = ALL_IDS().includes('us_de_2y') ? 'us_de_2y' : ALL_IDS()[0];
+  if (!ALL_IDS().includes(state.foll)) state.foll = ALL_IDS().includes('eurusd') ? 'eurusd' : ALL_IDS()[1];
+  fillSelects(); update(); buildChain();
+  $('#srcNote').innerHTML = `<b>Sources</b> (daily, ${P.from} on): ` + Object.entries(P.src).map(([k, v]) => `${labelOf(k)} — ${v}`).join(' · ') +
+    (P.errors?.length ? `<div class="err">Not loaded: ${P.errors.join(' · ')}</div>` : '') +
+    `<br><b>Not a test.</b> Correlations here are computed on overlapping windows over whatever sample you pick, and choosing the best-looking pair and lag is exactly the search a pre-registration exists to price. A pattern worth trading goes to <code>forge/</code> as a prereg first.`;
+} catch (e) {
+  $('#asof').textContent = 'data unavailable';
+  document.querySelector('.wrap').insertAdjacentHTML('afterbegin', `<div class="box err">Could not load the chain: ${e.message}. The first build after a deploy takes about a minute; reload shortly.</div>`);
+}
+</script>
+</body>
+</html>

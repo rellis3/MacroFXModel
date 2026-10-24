@@ -234,6 +234,7 @@
 
       <div class="sm-group" data-group="research">
         <div class="sm-group-hd" style="color:#f59e0b">Macro Research</div>
+        <a class="sm-item" href="flow-chain.html" target="_blank"><span class="sm-item-name">⛓ Capital-Flow Chain</span><span class="sm-item-desc">The course's central bank → bonds → FX → equities → credit chain on synced daily charts since 2005: slide a lag, see the lead/lag correlation profile against a chance band and a search-aware line, with the desk's tested verdict on each link beside it. Description, not a test</span></a>
         <a class="sm-item" href="correlations.html" target="_blank"><span class="sm-item-name">⬡ Corr Lab</span><span class="sm-item-desc">Rolling 20/60-day correlation matrix + hedge pair scanner; compares any instrument set</span></a>
         <a class="sm-item" href="cot-extremes.html" target="_blank"><span class="sm-item-name">📋 COT Extremes</span><span class="sm-item-desc">CFTC Commitment of Traders — flags extreme net positioning in FX, commodities and bonds</span></a>
         <a class="sm-item" href="regime-viewer.html" target="_blank"><span class="sm-item-name">🔍 Regime Viewer</span><span class="sm-item-desc">V1 HMM and V2 Baum-Welch regime overlaid on price; compare classifier output and transitions</span></a>

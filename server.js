@@ -176,6 +176,7 @@ import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';
 import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';
 import { parseBubaCsv as _parseBubaCsv } from './js/intlYields.js';
+import { buildFlowChain as _buildFlowChain } from './js/flowChainSources.js';
 import { YIELD_LEGS as _YL, YIELD_GROUP as _YL_GROUP, yieldMeta as _ylMeta, buildYieldLeg as _ylBuild, toColumns as _ylCols } from './js/yieldLegs.js';   // gilts, JGBs, bunds daily, for the chain's gap chips
 import { crackHistory as _crackHistory, crackContext as _crackContext } from './js/crackSpread.js';
 import { BAND_REACH_PARAMS as _BAND_REACH_PARAMS } from './js/bandReachParams.js';   // T7b: the band clock and the Asia conditioner, for the digest's board   // the 3-2-1 refining margin (MD files/CRACK_SPREAD.md)
@@ -16471,6 +16472,30 @@ async function _refreshIntlYields() {
   _intlYields = { ..._intlYields, at: Date.now(), series: Object.keys(out).length ? out : null, error: errs.join('; ') || null };
   return _intlYields;
 }
+// ── Capital-flow chain (flow-chain.html) ─────────────────────────────────────
+// Daily central-bank rates, 2Y/10Y yields (US, DE, JP, UK), FX, indices and credit from 2005 on one
+// weekday calendar, for the page that charts the course's capital-flow hierarchy at a chosen lag.
+// Description only: tested verdicts on these links are in js/deskEvidence.js. Built on request,
+// cached 12h; a stale copy is served while a refresh runs, so only the first build waits (~30-60s).
+let _flowChain = { at: 0, data: null, building: null };
+function _refreshFlowChain() {
+  _flowChain.building ??= _buildFlowChain({ fredKey: process.env.FRED_KEY || null, oandaKey: process.env.OANDA_KEY || null,
+      oandaBase: process.env.OANDA_KEY ? _oandaBaseMe() : null })
+    .then(d => { if (d.ok) _flowChain = { ..._flowChain, at: Date.now(), data: d }; return _flowChain.data; })
+    .catch(e => { console.warn('[flow-chain]', e.message); return _flowChain.data; })
+    .finally(() => { _flowChain.building = null; });
+  return _flowChain.building;
+}
+app.get('/api/flow-chain', async (_req, res) => {
+  try {
+    const stale = Date.now() - _flowChain.at > 12 * 3600_000;
+    if (!_flowChain.data) await _refreshFlowChain(); else if (stale) _refreshFlowChain();
+    if (!_flowChain.data) return res.status(503).json({ ok: false, error: 'flow chain not built yet' });
+    res.set('Cache-Control', 'private, max-age=1800');
+    res.json(_flowChain.data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/intl-yields', async (_req, res) => {
   try {
     if (Date.now() - _intlYields.at > 6 * 3600_000) await _refreshIntlYields();
