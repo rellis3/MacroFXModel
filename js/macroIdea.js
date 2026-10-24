@@ -75,5 +75,19 @@ export function buildIdea({ links = [], events = [], rangePressure = null, fear 
     { n: 8, g: 'trade', t: 'What would prove it wrong?', body: story.verdict === 'broken' ? `If ${story.a.label} drifts back inside its noise band (${floorTxt}) the story is over. If ${story.b.label} starts to ${expectDir ?? 'follow'}, the link has repaired itself.` : `If ${story.a.label} drifts back inside its noise band (${floorTxt}) the story is over. If ${story.b.label} stops moving with it, the link has broken.` },
   ];
   const pattern = story.verdict === 'broken' ? 'The cause moved but price did not follow' : null;
-  return { headline: `${steps[0].label} ${steps[0].text} to ${steps.at(-1).label} ${steps.at(-1).text}`, steps, broken: story.verdict === 'broken', pattern, weakest, q, storyId: story.id, strength: Math.round(score.get(story.id) * 10) / 10 };
+  // Question 0, the horizon filter: does this move markets on a weeks timeframe, or is it background? Judged on the size of the move against the noise floor.
+  const str = score.get(story.id), real = str >= 2;
+  const q0 = { n: 0, g: 'filter', t: 'Does it matter on your timeframe?', body: `${real ? 'Both ends moved at least twice their noise band over' : 'The ends only just cleared their noise band over'} ${CHAIN_WINDOW_DAYS} calendar days, so ${real ? 'this is a real weeks story' : 'treat this as background, not a driver'}. Slow structural stories, such as a government deficit that has built for decades, are not measured here and are context rather than a call.` };
+  // At least three scenarios, always including "nothing happens". Conditions to watch, never probabilities: this desk's tests found direction not forecastable.
+  const scenarios = [
+    { name: 'The story carries on', what: `${story.a.label} keeps moving the way it has${story.verdict === 'broken' ? ` and ${story.b.label} keeps going the other way` : ` and ${story.b.label} keeps moving with it`}.` },
+    { name: 'The story fades', what: `${story.a.label} drifts back inside its noise band (${floorTxt}) and the link has nothing left to judge.` },
+    { name: 'Nothing happens, steady state', what: 'Neither end moves past its noise band. The usual ranges hold and this idea simply goes quiet.' },
+    ...(story.verdict === 'broken' ? [{ name: 'The link repairs', what: `${story.b.label} starts to ${expectDir ?? 'follow'}, catching up with what ${story.a.label} did.` }] : []),
+  ];
+  // Patterns the desk can name from its own measurements. Each carries the numbers that triggered it; none is forced.
+  const patterns = [];
+  if (pattern) patterns.push({ name: 'The cause moved but price did not follow', why: `${story.a.label} ${story.a.text}, ${story.b.label} ${story.b.text}. When the news says one thing and price another, price is usually the better guide to what the market believes.` });
+  if (rp && rp.on >= 1) patterns.push({ name: 'How loaded is the spring', why: `${rp.on} of ${rp.n} validated bigger-day signals are on, so a small push can do more than usual. Starting conditions matter more than the size of the news. This speaks to size, not direction.` });
+  return { q0, scenarios, patterns, headline: `${steps[0].label} ${steps[0].text} to ${steps.at(-1).label} ${steps.at(-1).text}`, steps, broken: story.verdict === 'broken', pattern, weakest, q, storyId: story.id, strength: Math.round(score.get(story.id) * 10) / 10 };
 }

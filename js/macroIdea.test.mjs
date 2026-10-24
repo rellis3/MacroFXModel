@@ -15,5 +15,10 @@ ok('the calendar question uses only high-impact releases', /CPI/.test(idea.q[5].
 ok('it admits there is no positioning feed', /no positioning feed/.test(idea.q[3].body));
 ok('it never gives a trade level or a direction forecast', !/\b(stop|target|buy|sell|short|long)\b|will (rise|fall)/i.test(idea.q.map(x => x.body).join(' ')));
 ok('nothing judged means no idea', buildIdea({ links: evaluateChain({}) }) === null && buildIdea({}) === null);
+ok('question zero filters by timeframe and says slow structural stories are not measured', idea.q0.n === 0 && /noise band/.test(idea.q0.body) && /not measured here/.test(idea.q0.body));
+ok('there are at least three ways it could go and one is the steady state', idea.scenarios.length >= 3 && idea.scenarios.some(s => /Nothing happens/.test(s.name)));
+ok('scenarios carry no probabilities or price targets', !/\d+\s*%|chance|likely|probab/i.test(idea.scenarios.map(s => s.what).join(' ')));
+const loaded = buildIdea({ links, rangePressure: { on: 3, n: 5 } }), calm = buildIdea({ links, rangePressure: { on: 0, n: 5 } });
+ok('a loaded spring is named only when the bigger-day signals are on, with the count', loaded.patterns.some(p => /loaded/.test(p.name) && /3 of 5/.test(p.why)) && !calm.patterns.some(p => /loaded/.test(p.name)));
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

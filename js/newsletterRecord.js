@@ -1,3 +1,4 @@
+import { buildIdea } from './macroIdea.js';
 /**
  * The newsletter's memory: what each issue said, what changed since the last one, and how its one checkable claim fared.
  *
@@ -18,6 +19,7 @@ const r2 = v => Math.round(v * 100) / 100;
 
 /** The small, stable record of one issue. Stored with the issue; never holds prose the page cannot re-derive. */
 export function snapshotOf(n, { date, kind = 'daily' } = {}) {
+  const idea = (() => { try { const i = buildIdea({ links: n?.links ?? [] }); const l = i && (n.links ?? []).find(x => x.id === i.storyId); return i && l ? { id: `${l.a.key}>${l.b.key}`, name: `${l.a.label} → ${l.b.label}`, verdict: l.verdict, headline: i.headline } : null; } catch { return null; } })();
   const links = (n?.links ?? []).filter(l => l?.a?.key && l?.b?.key);
   const id = l => `${l.a.key}>${l.b.key}`, nm = l => `${l.a.label} → ${l.b.label}`;
   const ranges = {};
@@ -31,7 +33,7 @@ export function snapshotOf(n, { date, kind = 'daily' } = {}) {
     holding: links.filter(l => l.verdict === 'holding').map(l => ({ id: id(l), name: nm(l) })),
     flagsOn: (n?.riskFlags?.flags ?? []).filter(f => f.on === true).map(f => f.label),
     flagsTotal: n?.riskFlags?.total ?? null,
-    cb, ranges,
+    cb, ranges, idea,
   };
 }
 
@@ -41,6 +43,10 @@ export function diffSnapshots(prev, cur) {
   const items = [], pb = new Map((prev.broken ?? []).map(x => [x.id, x.name])), cb = new Map((cur.broken ?? []).map(x => [x.id, x.name]));
   for (const [k, v] of cb) if (!pb.has(k)) items.push({ kind: 'link-broke', text: `New broken link: ${v}. Both ends moved the wrong way round.` });
   for (const [k, v] of pb) if (!cb.has(k)) items.push({ kind: 'link-healed', text: `Link back to normal: ${v}.` });
+  if (prev.idea) {   // the scorecard: what became of the last issue's idea
+    const id = prev.idea.id, now = (cur.broken ?? []).some(x => x.id === id) ? 'broken' : (cur.holding ?? []).some(x => x.id === id) ? 'holding' : 'quiet';
+    items.unshift({ kind: 'idea-followup', text: `Last issue's idea, ${prev.idea.name}, was ${prev.idea.verdict === 'broken' ? 'a broken link' : 'a holding link'}. It is now ${now === 'quiet' ? 'quiet: one end has drifted back inside its noise band, so the story has faded or paused' : now === prev.idea.verdict ? `still ${now}: the story carried on` : `${now}: it ${now === 'holding' ? 'has repaired' : 'has broken'}`}.` });
+  }
   const pf = new Set(prev.flagsOn ?? []), cf = new Set(cur.flagsOn ?? []);
   for (const f of cf) if (!pf.has(f)) items.push({ kind: 'flag-on', text: `Stress warning switched on: ${f}.` });
   for (const f of pf) if (!cf.has(f)) items.push({ kind: 'flag-off', text: `Stress warning cleared: ${f}.` });

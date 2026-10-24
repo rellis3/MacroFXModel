@@ -32,5 +32,14 @@ ok('predictions and advice are refused', ['The stale book leans against a euro s
 ok('internal jargon is swapped for plain words', plainRead('The macro scorecard has EUR at +0.27, and the yield curve dimension (+0.72) is doing the lifting; the composite is mixed.') === 'The economic score has EUR at +0.27, and the yield curve factor (+0.72) is doing the lifting; the overall score is mixed.');
 ok('a raw field name in a read cannot be fixed, so the read is refused; the known one is swapped', plainRead('The gap is not wide (rateDiff -0.03).') === 'The gap is not wide (interest-rate gap -0.03).' && plainRead('It broke the fooBarBaz threshold.') === null && plainRead(null) === null);
 ok('ordinary prose and tickers pass untouched', plainRead('EUR/USD fell 0.3% and BoE speakers are due; GBP held.') === 'EUR/USD fell 0.3% and BoE speakers are due; GBP held.');
+{ const { evaluateChain, CHAIN_NODES } = await import('./macroChain.js'); const f = k => CHAIN_NODES[k].floor;
+  const mk = v => evaluateChain(v);
+  const day1 = snapshotOf({ links: mk({ oil: { delta: f('oil') * 4 }, bei: { delta: f('bei') * 3 }, us10y: { delta: -f('us10y') * 3 }, real: { delta: f('real') * 1.2 } }) }, { date: '2026-10-23' });
+  ok('a snapshot remembers the idea of the issue', !!day1.idea && day1.idea.verdict === 'broken' && /→/.test(day1.idea.name));
+  const day2 = snapshotOf({ links: mk({ oil: { delta: 0 }, bei: { delta: 0 } }) }, { date: '2026-10-24' });
+  const d2 = diffSnapshots(day1, day2);
+  ok('the next issue says what became of the last idea, first in the list', d2.items[0]?.kind === 'idea-followup' && /quiet/.test(d2.items[0].text));
+  const d3 = diffSnapshots(day1, day1);
+  ok('an idea that is still broken is reported as carrying on', d3.items[0]?.kind === 'idea-followup' && /carried on/.test(d3.items[0].text)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
