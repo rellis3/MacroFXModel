@@ -38,6 +38,7 @@ showTable  = input.bool(true, "Summary table", group=G2)
 showGex    = input.bool(true, "GEX profile", group=G2)
 showVanna  = input.bool(true, "Vanna", group=G2)
 showVol    = input.bool(true, "Volume", group=G2)
+showChg    = input.bool(true, "OI change", group=G2, tooltip="The day's net change in open interest by strike: green = contracts added (positioning building), red = contracts closed (unwinding). Updated once a day with the OI snapshot.")
 showSmile  = input.bool(true, "IV smile", group=G2)
 showHelix  = input.bool(true, "Gamma helix", group=G2)
 G3 = "3 · Layout"
@@ -97,6 +98,8 @@ var array<float> vP = array.new_float()
 var array<float> vV = array.new_float()
 var array<float> oP = array.new_float()
 var array<float> oV = array.new_float()
+var array<float> cP = array.new_float()
+var array<float> cV = array.new_float()
 var array<float> sP = array.new_float()
 var array<float> sI = array.new_float()
 var array<float> xP = array.new_float()
@@ -279,6 +282,9 @@ if barstate.isfirst
                         else if tag == "O"
                             array.push(oP, f_num(p, 1))
                             array.push(oV, f_num(p, 2))
+                        else if tag == "C"
+                            array.push(cP, f_num(p, 1))
+                            array.push(cV, f_num(p, 2))
                         else if tag == "S"
                             array.push(sP, f_num(p, 1))
                             array.push(sI, f_num(p, 2))
@@ -367,7 +373,8 @@ if barstate.islast
         int c0 = xL + hw                             // GEX centre
         int c1 = c0 + colW + colGap                  // vanna centre
         int c2 = c1 + colW + colGap                  // volume centre
-        int s3 = c2 + hw + colGap                    // smile left edge
+        int c3 = showChg ? c2 + colW + colGap : c2    // OI-change centre (the column only takes room when shown)
+        int s3 = c3 + hw + colGap                    // smile left edge
         int c4 = s3 + colW + colGap + hw             // helix centre
         int xEnd = c4 + hw
         float ref = na(mRef) ? math.max(syminfo.mintick * 50, (nz(f_arrMax(gP), close) - nz(f_arrMin(gP), close)) / 6.4) : mRef
@@ -445,6 +452,9 @@ if barstate.islast
         if showVol
             array.push(dLbl, label.new(x=c2, y=yT, text="VOLUME", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
             array.push(dLine, line.new(x1=c2 - hw, y1=pBot, x2=c2 - hw, y2=pTop, xloc=xloc.bar_index, color=color.new(#2a3340, 0), width=1))
+        if showChg
+            array.push(dLbl, label.new(x=c3, y=yT, text="OI CHG", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
+            array.push(dLine, line.new(x1=c3, y1=pBot, x2=c3, y2=pTop, xloc=xloc.bar_index, color=color.new(#2a3340, 0), width=1))
         if showSmile
             array.push(dLbl, label.new(x=s3 + hw, y=yT, text="IV SMILE", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
         if showHelix
@@ -485,6 +495,17 @@ if barstate.islast
                     if len >= 1
                         float py = array.get(oP, i)
                         array.push(dBox, box.new(left=c2 - hw, top=py + halfBin * 0.5, right=c2 - hw + len, bottom=py - halfBin * 0.5, border_color=color(na), bgcolor=color.new(cVol, 30)))
+
+        // ── OI change bars: green right = contracts added, red left = contracts closed ──
+        if showChg and array.size(cP) > 0
+            float cmax = f_absMax(cV)
+            if cmax > 0
+                for i = 0 to array.size(cP) - 1
+                    float v = array.get(cV, i)
+                    int len = int(math.round(math.abs(v) / cmax * hw))
+                    if len >= 1
+                        float py = array.get(cP, i)
+                        array.push(dBox, box.new(left=v > 0 ? c3 : c3 - len, top=py + halfBin * 0.5, right=v > 0 ? c3 + len : c3, bottom=py - halfBin * 0.5, border_color=color(na), bgcolor=color.new(v > 0 ? cPut : cCall, 30)))
 
         // ── IV smile (stored points only) ──
         if showSmile and array.size(sP) > 1

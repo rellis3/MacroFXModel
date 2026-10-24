@@ -78,5 +78,14 @@ ok('integers only in the bar series (compact)', rows.filter(r => /^[GVO]\|/.test
   const none = buildOiProfile({ ...inst, volCP: null, rawVol: '' }, { legs, mult: 1, flat: 0.2, hedge });
   ok('no volume data at all: the column is simply empty, nothing invented', none.volume.length === 0);
 }
+// OI change column: empty and absent from the paste without change data; shifted with the other columns
+{
+  const pc = buildOiProfile(inst, { legs, mult: 1, flat: 0.2, hedge });
+  ok('no change data: oiChg is an empty array and the paste has no C lines', Array.isArray(pc.oiChg) && pc.oiChg.length === 0 && !buildProfileText(pc, { name: 'X', digits: 2 }).split(String.fromCharCode(10)).some(l => l.startsWith('C|')));
+  const withChg = { ...pc, oiChg: [{ price: 99, v: 40 }, { price: 101, v: -60 }] };
+  const lines = buildProfileText(withChg, { name: 'X', digits: 2 }).split(String.fromCharCode(10)).filter(l => l.startsWith('C|'));
+  ok('change rows are signed, scaled to +-1000 and written as C lines', lines.length === 2 && lines.includes('C|101.00|-1000') && lines.includes('C|99.00|667'), lines.join(' '));
+  ok('shifting prices moves the change rows too', shiftProfilePrices(withChg, v => v + 10).oiChg[0].price === 109);
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

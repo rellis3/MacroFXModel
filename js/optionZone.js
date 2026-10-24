@@ -28,5 +28,8 @@ export function optionZone(row, key, dp = 4) {
   return { lo: f(lo), hi: f(hi), where, awayPct: Math.round(Math.abs(edgePct) * 100) / 100, dealers, dte: num(row.dte), validated,
     words: `${f(lo)} to ${f(hi)}`,
     placeWords: where === 'inside' ? 'price is inside it' : `price is ${Math.abs(edgePct) < 0.05 ? 'just ' : ''}${where} it${Math.abs(edgePct) >= 0.05 ? `, ${Math.abs(edgePct).toFixed(1)}% away` : ''}`,
-    dealerWords: dealers === 'amplify' ? 'Dealers are positioned so their hedging tends to amplify moves.' : dealers === 'calm' ? 'Dealers are positioned so their hedging tends to calm moves.' : '' };
+    // Where the dealer read has been tested (the S&P 500 only) it is stated; elsewhere it is a conditional reading of the open interest, not an observed behaviour.
+    dealerWords: dealers == null ? '' : validated
+      ? (dealers === 'amplify' ? 'Dealers are positioned so their hedging tends to amplify moves.' : 'Dealers are positioned so their hedging tends to calm moves.')
+      : (dealers === 'amplify' ? 'If dealers are positioned as the open interest suggests, their hedging would tend to amplify moves.' : 'If dealers are positioned as the open interest suggests, their hedging would tend to calm moves.') };
 }

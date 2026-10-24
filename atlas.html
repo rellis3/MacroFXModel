@@ -160,6 +160,7 @@ select{background:var(--card2);color:var(--text);border:1px solid var(--line);bo
 .btn{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:10px;padding:6px 11px;font:600 12px var(--body);cursor:pointer}
 .btn:hover{border-color:var(--blue)}.btn[disabled]{opacity:.55;cursor:wait}
 .btn .i{width:15px;height:15px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}.cmp>div{min-width:0}.cmp iframe{width:100%;height:760px;border:1px solid var(--line);border-radius:12px;background:#fff}.cmp[hidden]{display:none}@media (max-width:820px){.cmp{grid-template-columns:1fr}}
 .cot{display:grid;gap:10px}
 .cot .lab{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text2)}
 .pct{height:10px;border-radius:5px;background:linear-gradient(90deg,color-mix(in srgb,var(--bear) 40%,transparent),var(--line2) 50%,color-mix(in srgb,var(--bull) 40%,transparent));position:relative}
@@ -290,6 +291,8 @@ import { buildCountryCard } from './js/countryCard.js';
 import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
 import * as P from './js/atlasPosition.js';
 import { buildNewsletter, eventNote, flagProximity, familyOf } from './js/newsletter.js';
+import { buildNewsletterV2 } from './js/newsletterV2.js';
+import { impliedRow, impliedKeyFor } from './js/impliedMove.js';
 import { snapshotOf, diffSnapshots, scoreLine, weekRecord, plainRead } from './js/newsletterRecord.js';
 import { closuresBetween } from './js/marketCalendars.js';
 import { summarize as stateSummary } from './js/stateStrip.js';
@@ -339,7 +342,13 @@ function chainNow() {
   const vals = {}; for (const [node, key] of Object.entries(map)) { const p = pts(key); vals[node] = p ? nodeDelta(p, CHAIN_NODES[node]) : null; }
   for (const node of ['emdollar', 'emoas']) { const p = D.cx?.series?.[node]; vals[node] = Array.isArray(p) && p.length > 20 ? nodeDelta(p, CHAIN_NODES[node]) : null; }   // the two chips FRED supplies (/api/chain-extra)
   let links = []; try { links = evaluateChain(vals); } catch { links = []; }
-  return { vals, links };
+  // the last ~26 points of each market, for the V2 newsletter's charts of the links that broke
+  // each series is turned into the move since its first point, in the node's own unit (percent, basis points or points), exactly as nodeDelta does for the verdict
+  const moved = (vals, node) => { const v0 = vals[0], u = CHAIN_NODES[node]?.unit; return vals.map(v => u === 'pct' ? (v0 ? (v / v0 - 1) * 100 : 0) : u === 'bp' ? (v - v0) * 100 : v - v0); };
+  const seg = (p, node) => { const ref = vals[node]?.refDate; const s = ref ? p.filter(x => x.date >= ref) : p.slice(-15); return (s.length >= 5 ? s : p.slice(-15)).map(x => x.value); };   // from the reference date nodeDelta used, so the chart ends where the number says
+  const ser = {}; for (const [node, key] of Object.entries(map)) { const p = pts(key); if (p) ser[node] = moved(seg(p, node), node); }
+  for (const node of ['emdollar', 'emoas']) { const p = D.cx?.series?.[node]; if (Array.isArray(p) && p.length > 20) ser[node] = moved(p.slice(-15).map(x => (typeof x === 'number' ? x : x?.value)), node); }
+  return { vals, links, ser };
 }
 function strengths() {
   const acc = {}; for (const c of Object.keys(FLAG)) acc[c] = [];
@@ -449,7 +458,7 @@ function intelBodyHtml() {
 
 /* the rows Atlas shows, as text for the model, so the brief and the page can never disagree about the facts */
 
-const MK_SERIES = { EURUSD: 'eurusd', GBPUSD: 'gbpusd', USDJPY: 'usdjpy', AUDUSD: 'audusd', USDCAD: 'usdcad', USDCHF: 'usdchf', NZDUSD: 'nzdusd', GOLD: 'gold', NQ: 'nq', SPX500: 'spx', DE30: 'de30', UK100: 'uk100', BTCUSD: 'btc' };
+const MK_SERIES = { EURUSD: 'eurusd', GBPUSD: 'gbpusd', USDJPY: 'usdjpy', AUDUSD: 'audusd', USDCAD: 'usdcad', USDCHF: 'usdchf', NZDUSD: 'nzdusd', GOLD: 'gold', NQ: 'nq', SPX500: 'spx', US2000: 'r2k', DE30: 'de30', UK100: 'uk100', BTCUSD: 'btc' };
 /** One line of facts per market, so the model can write a real read for every card from numbers, not guesses. */
 function marketFacts() {
   const cbs = P.cbTone(cbHist()), sbs = P.surpriseBars(D.es), crowd = P.crowding(D.ce, D.cs).map(P.crowdCcy), ahead = P.aheadEvents(D.events, Date.now(), { limit: 40, withinHours: 72 });
@@ -538,16 +547,18 @@ function nlNumbers() {
   ];
   return { tiles, stages };
 }
-const NL_RANGE_KEYS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'GOLD', 'NQ', 'SPX500', 'US30', 'DE30', 'UK100', 'BTCUSD'];
+const NL_RANGE_KEYS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100', 'BTCUSD'];
 /** The feeds an issue leans on, each with its own as-of date and rhythm, for the sources list and the freshness check in the newsletter (js/dataFreshness.js). */
 function nlSources(hmmAt) {
   const ukDay = s => { const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(String(s ?? '')); return m ? `${m[3]}-${m[2]}-${m[1]}` : null; };
   const oiAt = (D.oi?.pairs ?? []).map(p => ukDay(p.savedAt)).filter(Boolean).sort().at(-1) ?? null;
+  const ivlAt = Object.values(D.ivl?.implied ?? {}).map(x => x?.savedAtMs).filter(Number.isFinite).sort().at(-1);
   const cbAt = Object.values(cbHist()).flatMap(h => (h ?? []).map(x => x?.meetingDate)).filter(Boolean).sort().at(-1) ?? null;
   return [
     { label: 'Market prices, yields, volatility, credit', source: 'OANDA, FRED, Cboe, Yahoo', asOf: D.drill?.dates?.at(-1) ?? null, cadence: 'daily' },
     { label: 'Speculative positioning', source: 'CFTC Commitments of Traders', asOf: D.ce?.reportDate ?? D.ce?.instruments?.find(i => i.reportDate)?.reportDate ?? null, cadence: 'cftc' },
     { label: 'Option positions and dealer gamma', source: 'CME QuikStrike settlements', asOf: oiAt, cadence: 'daily' },
+    { label: 'Implied volatility', source: 'CME QuikStrike settlements', asOf: ivlAt ? new Date(ivlAt).toISOString() : null, cadence: 'daily' },
     { label: 'Release calendar', source: 'Nasdaq, ForexFactory', asOf: D.cal?.at ?? null, cadence: 'live' },
     { label: 'Data surprises', source: 'consensus against actual, own scoring', asOf: D.es?.generatedAt ?? null, cadence: 'live' },
     { label: 'Market-implied Fed path', source: 'CME fed funds futures', asOf: D.fp?.zq?.asOf ?? D.fp?.asOf ?? null, cadence: 'daily' },
@@ -557,6 +568,19 @@ function nlSources(hmmAt) {
     { label: 'Central-bank tone', source: 'bank statements, own scoring', asOf: cbAt, cadence: 'irregular' },
   ];
 }
+/** The 10-year yield, its real part (TIPS) and its inflation part (breakeven) measured on ONE date: the latest day all three printed. Three series that last printed on different days cannot be added
+ *  (nominal = real + breakeven only holds on a shared date), so the later print of any one of them is kept apart as a note, not mixed in. */
+function alignedYield() {
+  const S = D.drill?.series, dts = D.drill?.dates; if (!S?.us10y || !S?.tips || !S?.bei || !dts?.length) return null;
+  const ok = i => S.us10y[i] != null && S.tips[i] != null && S.bei[i] != null;
+  let L = null; for (let i = dts.length - 1; i >= 0; i--) if (ok(i)) { L = i; break; } if (L == null) return null;
+  const want = Date.parse(dts[L]) - 20 * 864e5; let R = null; for (let i = L; i >= 0; i--) if (Date.parse(dts[i]) <= want && ok(i)) { R = i; break; } if (R == null) return null;
+  const idx = []; for (let i = R; i <= L; i++) if (ok(i)) idx.push(i);
+  const bp = k => idx.map(i => +((S[k][i] - S[k][R]) * 100).toFixed(2));
+  const series = { us10y: bp('us10y'), real: bp('tips'), bei: bp('bei') };
+  let later = null; for (let i = dts.length - 1; i > L; i--) if (S.bei[i] != null) { later = { date: dts[i], d: +((S.bei[i] - S.bei[R]) * 100).toFixed(1) }; break; }
+  return { asOf: dts[L], from: dts[R], nominal: S.us10y[L], real: S.tips[L], bei: S.bei[L], dNom: series.us10y.at(-1), dReal: series.real.at(-1), dBei: series.bei.at(-1), series, later };
+}
 function nlInput({ bookFor = () => null } = {}) {
   const regime = P.regimeCard(D.regime), axes = P.axesRows(D.gr), firing = P.deskFiring(D.ds), ahead = P.aheadEvents(D.events, Date.now(), { limit: 12, withinHours: 72 }), fp = P.fedPathCard(D.fp), meeting = P.nextMeeting(D.fcal), nc = P.nowcastCard(D.nc);
   const position = P.positionLines({ regime, axes, firing, events: ahead, fedPath: fp, meeting }), a = D.intel?.analysis ?? null, keys = Object.keys(insts()), { tiles, stages } = nlNumbers();
@@ -564,15 +588,17 @@ function nlInput({ bookFor = () => null } = {}) {
     date: new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' }),
     isoDate: ukDate(),
     generatedAt: D.intel?.generatedAt ?? null, headline: a?.headline, regimeWord: a?.regime ?? 'MIXED', riskFlags: D.rf ? { active: D.rf.active ?? 0, total: D.rf.available ?? D.rf.total ?? 5, flags: (D.rf.flags ?? []).map(f => ({ key: f.key, label: f.label, on: f.on, value: f.value, detail: f.detail })) } : null,
-    brief: a, llm: D.intel?.llm ?? null, tiles, stages, links: derived.chain.links, position,
+    brief: a, llm: D.intel?.llm ?? null, tiles, stages, links: derived.chain.links, nodeSeries: derived.chain.ser, position,
     events: ahead.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })),
     ranges: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k); return { label: labelOf(k), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used }; }),
     assets: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k), reg = P.regimeFor(D.regime, k), gam = P.gammaFor(D.oi, k), fire = P.deskFiring(D.ds, k).filter(f => f.instruments.includes(k)).length, g = { fx: 'FX', index: 'Index', commodity: 'Gold', crypto: 'Bitcoin' }[acOf(k)] ?? '';
-      const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: mv?.d1 ?? null, d20: mv?.d20 ?? null, read: plainRead(mk?.read), watch: plainRead(mk?.watch), zone: (() => { const row = (D.oi?.pairs ?? []).find(p => p.pair === P.OI_PAIR_FOR[k]); return row ? optionZone(row, k, d.dp ?? 4) : null; })(), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
-    yieldStack: (() => { const y = fmtRate('us10y'), r = fmtRate('tips'), b = fmtRate('bei'); return y && r && b ? { nominal: y.v, real: r.v, bei: b.v, dNom: y.d20, dReal: r.d20, dBei: b.d20 } : null; })(),
+      const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: mv?.d1 ?? null, d20: mv?.d20 ?? null, read: plainRead(mk?.read), watch: plainRead(mk?.watch), implied: impliedRow(D.ivl?.implied?.[impliedKeyFor(k)], k, Date.now()), zone: (() => { const row = (D.oi?.pairs ?? []).find(p => p.pair === P.OI_PAIR_FOR[k]); return row ? optionZone(row, k, d.dp ?? 4) : null; })(), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
+    yieldStack: (() => { const al = alignedYield(); if (al) return { nominal: al.nominal, real: al.real, bei: al.bei, dNom: al.dNom, dReal: al.dReal, dBei: al.dBei, asOf: al.asOf, from: al.from, later: al.later }; const y = fmtRate('us10y'), r = fmtRate('tips'), b = fmtRate('bei'); return y && r && b ? { nominal: y.v, real: r.v, bei: b.v, dNom: y.d20, dReal: r.d20, dBei: b.d20 } : null; })(),
+    yieldSeries: alignedYield()?.series ?? null,
     rangePressure: rpNow(), fearVsNasdaq: fearNow(), vixBeta: betaNow(), impliedRatio: impNow(),
     ...nlStrips(),
     strengths: derived.str, surprise: P.surpriseBars(D.es), cb: P.cbTone(cbHist()), crowding: P.crowding(D.ce, D.cs), cotDate: D.ce?.instruments?.find(i => i.reportDate)?.reportDate ?? null, regimeCard: regime, changes: P.changesRows(D.mc), fedPath: fp, scenarios: P.scenarios(D.gr), nowcast: nc,
+    watching: firing.map(f => ({ id: f.id, label: f.label, kind: f.kind })),
     eod: D.eod?.review ? { hook: D.eod.review.hook, right: D.eod.review.plan?.right, wrong: D.eod.review.plan?.wrong } : null,
   };
 }
@@ -670,15 +696,16 @@ async function buildIssue(kind) {
       const evs = P.aheadEvents([...(D.events ?? []), ...extra], Date.now(), { limit: 90, withinHours: 8 * 24 });
       base.week = { events: evs.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })), ranges: NL_RANGE_KEYS.filter(k => wf?.instruments?.[k]).map(k => { const f = wf.instruments[k]; return { label: labelOf(k), hl5: f.hl_5d, hl5_75: f.hl_5d_75, hlMed: pairData(k).hlMed }; }) };
       const weekAgo = ukDate(new Date(Date.now() - 8 * 864e5)), wkd = arch.filter(i => i.kind === 'daily' && i.score && i.date > weekAgo), wr = weekRecord(wkd);
-      base.record = wr ? { line: `${wr.days} daily issues, ${wr.n} market-days: the median day came out ${wr.median}x the expected size, ${wr.pastShare}% ran past it and ${wr.withinShare}% landed within half to one-and-a-half times. A well-calibrated forecast has the median near 1 and about half past it.`, days: wkd.map(i => ({ date: i.date, line: `median ${i.score.median}x the expected size, ${i.score.pastShare}% past it` })) } : null;
+      base.record = wr ? { line: `${wr.days} daily issues, ${wr.n} market-days: the median day came out ${wr.median}x the expected size, ${wr.pastShare}% ran past it and ${wr.withinShare}% landed within half to one-and-a-half times. A well-calibrated forecast has the median near 1 and about half past it.`, days: wkd.map(i => ({ date: i.date, line: `median ${i.score.median}x the expected size, ${i.score.pastShare}% past it` })), date: today, week: { days: wr.days, n: wr.n, median: wr.median, pastShare: wr.pastShare, withinShare: wr.withinShare }, history: wkd.map(i => ({ date: i.date, median: i.score.median, pastShare: i.score.pastShare, withinShare: i.score.withinShare })) } : null;
     } else {
       const lastScored = arch.find(i => i.kind === 'daily' && i.score && i.date < today);
-      base.record = lastScored ? { line: `Issue of ${lastScored.date}. ${scoreLine(lastScored.score)}` } : null;
+      base.record = lastScored ? { line: `Issue of ${lastScored.date}. ${scoreLine(lastScored.score)}`, date: lastScored.date, score: lastScored.score, history: arch.filter(i => i.kind === 'daily' && i.score && i.date <= today).slice(0, 8).map(i => ({ date: i.date, median: i.score.median, pastShare: i.score.pastShare, withinShare: i.score.withinShare })) } : null;
     }
     const snap = snapshotOf(base, { date: today, kind }), prev = arch.find(i => i.kind === kind && i.date < today);
     base.since = diffSnapshots(prev?.snapshot ?? null, snap);
     const out = buildNewsletter(base);
-    showNl(out, kind);
+    let out2 = null; try { out2 = buildNewsletterV2(base); } catch (e) { console.warn('[atlas newsletter] V2 failed:', e.message); }   // the V2 draft is for comparing only: it is never saved or sent
+    showNl(out, kind, out2);
     st.textContent = `Built: ${out.subject}. Saving…`;
     const sv = await J('/api/newsletter/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject: out.subject, html: out.html, text: out.text, snapshot: snap }) });
     st.textContent = sv?.ok ? `Built and saved: ${out.subject}` : `Built, but not saved to the archive (${sv?.error ?? 'no response'}): ${out.subject}`;
@@ -686,10 +713,16 @@ async function buildIssue(kind) {
   } catch (e) { st.textContent = 'Could not build the newsletter: ' + e.message; console.error('[atlas newsletter]', e); }
   finally { $('nlBuild').disabled = $('nlBuildW').disabled = false; }
 }
-function showNl(out, kind = 'daily') {
+function showNl(out, kind = 'daily', out2 = null) {
   const url = URL.createObjectURL(new Blob([out.html], { type: 'text/html' })), fname = `desk-atlas-${kind}-${new Date().toISOString().slice(0, 10)}.html`;
-  $('nlOut').innerHTML = `<div class="chips" style="margin:12px 0 8px"><button class="btn" id="nlPdf">Save as PDF</button><a class="btn" href="${url}" download="${fname}">Download .html</a><button class="btn" id="nlCopy">Copy plain text</button><a class="btn" href="${url}" target="_blank" rel="noopener">Open full page</a></div><p class="note" style="margin-bottom:8px"><b>Subject:</b> ${esc(out.subject)}</p><iframe id="nlFrame" title="Newsletter preview" sandbox style="width:100%;height:760px;border:1px solid var(--line);border-radius:12px;background:#fff"></iframe><p class="note" style="margin-top:6px">Self-contained: no scripts and no external requests, so it looks the same when attached, forwarded or printed to PDF.</p>`;
+  $('nlOut').innerHTML = `<div class="chips" style="margin:12px 0 8px"><button class="btn" id="nlPdf">Save as PDF</button><a class="btn" href="${url}" download="${fname}">Download .html</a><button class="btn" id="nlCopy">Copy plain text</button><a class="btn" href="${url}" target="_blank" rel="noopener">Open full page</a>${out2 ? '<button class="btn" id="nlCmp">Compare with V2</button>' : ''}</div><p class="note" style="margin-bottom:8px"><b>Subject:</b> ${esc(out.subject)}</p><iframe id="nlFrame" title="Newsletter preview" sandbox style="width:100%;height:760px;border:1px solid var(--line);border-radius:12px;background:#fff"></iframe><p class="note" style="margin-top:6px">Self-contained: no scripts and no external requests, so it looks the same when attached, forwarded or printed to PDF.</p>`;
   $('nlFrame').srcdoc = out.html;
+  if (out2) {   // side by side: the current issue on the left, the V2 draft on the right (stacked on a phone). Preview only, V2 is never saved or sent.
+    const url2 = URL.createObjectURL(new Blob([out2.html], { type: 'text/html' }));
+    $('nlOut').insertAdjacentHTML('beforeend', `<div id="nlCmpBox" class="cmp" hidden><div><p class="note"><b>Current</b></p><iframe id="nlFrameA" title="Current newsletter" sandbox></iframe></div><div><p class="note"><b>V2 draft</b> <a href="${url2}" target="_blank" rel="noopener">open full page</a></p><iframe id="nlFrameB" title="V2 newsletter draft" sandbox></iframe></div></div>`);
+    $('nlFrameA').srcdoc = out.html; $('nlFrameB').srcdoc = out2.html;
+    $('nlCmp').onclick = () => { const box = $('nlCmpBox'); box.hidden = !box.hidden; $('nlFrame').style.display = box.hidden ? '' : 'none'; $('nlCmp').textContent = box.hidden ? 'Compare with V2' : 'Back to one view'; };
+  }
   $('nlPdf').onclick = () => { const w = window.open(url, '_blank'); if (!w) { $('nlStatus').textContent = 'Pop-up blocked: allow pop-ups, or use Open full page then Ctrl+P.'; return; } w.addEventListener('load', () => setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 400)); $('nlStatus').textContent = 'In the print window choose Save as PDF, and turn on Background graphics if the colours look flat.'; };
   $('nlCopy').onclick = async () => { try { await navigator.clipboard.writeText(out.text); $('nlStatus').textContent = 'Copied the plain-text version.'; } catch { $('nlStatus').textContent = 'Copy was blocked here; use Download .html.'; } };
 }
@@ -924,7 +957,7 @@ function drawPair() {
 const CORE = [['/api/drill-series', 'drill', '75 market series, 5 years'], ['/api/macro-scorecard', 'msc', 'six-factor currency scorecard'], ['/api/risk-flags', 'rf', 'risk flags'], ['/api/cot', 'cot', 'CFTC positioning by pair'],
   ['/api/daily-brief', 'brief', 'prices, regimes, levels for all instruments'], ['/api/vol-forecast/session', 'sess', 'live session range'], ['/api/vol-forecast', 'fc', 'calibrated range forecast'], ['/api/calendar-feed', 'cal', 'releases printed'], ['/api/chain-extra', 'cx', 'chain chips: EM dollar and EM credit']];
 const EXTRA = [['/api/global-read', 'gr', 'five axes, scenarios, per-instrument plans'], ['/api/regime', 'regime', 'macro regime and what each market did in it'], ['/api/macro-changes', 'mc', 'what changed, 1d / 5d / 20d'], ['/api/econ-surprise', 'es', 'consensus surprises by currency'],
-  ['/api/cot-extremes', 'ce', 'crowding across 36 contracts'], ['/api/cot-state', 'cs', 'where each market sits on the crowding map'], ['/api/oi-today', 'oi', 'dealer gamma and option walls'], ['/api/desk-watch', 'ds', 'watched conditions firing'], ['/api/events', 'events', 'the calendar ahead'], ['/api/fed-path', 'fp', 'market-implied Fed path'],
+  ['/api/cot-extremes', 'ce', 'crowding across 36 contracts'], ['/api/cot-state', 'cs', 'where each market sits on the crowding map'], ['/api/oi-today', 'oi', 'dealer gamma and option walls'], ['/api/oi-levels', 'ivl', 'options-implied day move per market'], ['/api/desk-watch', 'ds', 'watched conditions firing'], ['/api/events', 'events', 'the calendar ahead'], ['/api/fed-path', 'fp', 'market-implied Fed path'],
   ['/api/fomc/calendar', 'fcal', 'FOMC meeting dates'], ['/api/nowcast', 'nc', 'GDPNow and Cleveland nowcasts'], ['/api/fomc/history?n=6', 'hUSD', 'FOMC tone history'], ['/api/ecb/history?n=6', 'hEUR', 'ECB tone history'], ['/api/boe/history?n=6', 'hGBP', 'BoE tone history'],
   ['/api/boj/history?n=6', 'hJPY', 'BoJ tone history'], ['/api/rbnz/history?n=6', 'hNZD', 'RBNZ tone history'], ['/api/rba/history?n=6', 'hAUD', 'RBA tone history'], ['/api/boc/history?n=6', 'hCAD', 'BoC tone history'], ['/api/eod-review', 'eod', 'yesterday\'s review'], ['/api/chain-read', 'cr', 'the chain read (cached AI)'], ['/api/ai-config', 'ai', 'AI model routing']];
 
