@@ -1,0 +1,2 @@
+# raw fetches are large and reproducible; commit DATA_PACK.md and pack.json only
+*/raw.json

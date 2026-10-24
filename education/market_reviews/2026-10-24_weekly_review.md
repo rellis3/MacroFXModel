@@ -3,6 +3,13 @@
 as a chain, where it breaks, what the data says, what's priced, how price reacts, the calendar,
 then each market's own chain. Reasoning and context only, not trade advice.*
 
+> **Correction (2026-10-24, later the same day):** the first version of the calendar (§6) and the day
+> references in §7-8 were **one day late**. Nasdaq's calendar API returns day D−1's events when asked for
+> day D (documented in `scripts/calendar/fetch_nasdaq_calendar.py`, and I didn't apply it). Corrected below:
+> RBNZ and Australia CPI are Tue evening ET; the UK statement, BoC and FOMC are Wed; core PCE, GDP and the
+> ECB are Thu; the BoJ is Thu night ET. Earnings dates were right (that endpoint has no offset). The generic
+> follow-up to this review is `2026-10-24_cross_market_review.md`.
+
 **Data:** Friday 2026-10-23 closes. Yahoo (FX, indices, commodities, US yields), Bundesbank
 (Bund 10y), local futures captures (fed funds, SOFR, €STR and Euribor; OAT, Bund and BTP
 futures), CFTC Traders in Financial Futures (as of Tue 10-20), Nasdaq calendar.
@@ -120,16 +127,17 @@ risk-proxy Aussie have both stopped working, while credit and bonds have taken o
 |---|---|---|
 | **Sun 10-25** | Brazil runoff | BRL long positioning, 1-week vol ~57 (Brent), Polymarket ~77% |
 | Tue 10-27 | US durable goods, Conference Board confidence | Wealth effect showing up in confidence? |
+| Tue 10-27 20:30 | Australia CPI (cons 1.3% q/q, prev 0.6) | Oil passing into headline inflation |
+| Tue 10-27 21:00 | **RBNZ** (cons hike 2.75 → 3.00%) | Tests Brent's E03 "receive NZ rates" idea: NZ is still *hiking* |
+| **Wed 10-28** 08:30 | UK Autumn Forecast Statement | Fiscal: gilts and GBP as the release valve (Pattern I) |
+| Wed 10-28 09:45 | **Bank of Canada** (cons hike 2.25 → 2.50%) | Brent thinks they might pause even though it's priced; CAD shorts are crowded |
+| **Wed 10-28** 14:00 | **FOMC** (cons hold 4.00%) | Tone for December; Warsh gives no forward guidance |
 | **Wed 10-28** after close | **Microsoft, Alphabet earnings** | **The weak link: capex guidance, funding commentary** (Brent's "how will I know") |
-| Wed 10-28 20:30 | Australia CPI (cons 1.3% q/q, prev 0.6) | Oil passing into headline inflation |
-| Wed 10-28 21:00 | **RBNZ** (cons hike 2.75 → 3.00%) | Tests Brent's E03 "receive NZ rates" idea: NZ is still *hiking* |
-| **Thu 10-29** 08:30 | UK Autumn Forecast Statement | Fiscal: gilts and GBP as the release valve (Pattern I) |
-| Thu 10-29 09:45 | **Bank of Canada** (cons hike 2.25 → 2.50%) | Brent thinks they might pause even though it's priced; CAD shorts are crowded |
-| **Thu 10-29** 14:00 | **FOMC** (cons hold 4.00%) | Tone for December; Warsh gives no forward guidance |
+| **Thu 10-29** 08:30 | **US core PCE (cons 0.3% m/m)**, Q3 GDP (cons 3.0%) | **AP's E03 trigger: "imagine core PCE is 0.30 not 0.20"** |
+| Thu 10-29 09:15 | **ECB** (cons hold, depo 2.50%) | Does Lagarde lean on France to skip December? |
 | Thu 10-29 after close | **Amazon** | Third hyperscaler on capex |
-| **Fri 10-30** 08:30 | **US core PCE (cons 0.3% m/m)**, Q3 GDP (cons 3.0%) | **AP's E03 trigger: "imagine core PCE is 0.30 not 0.20"** |
-| Fri 10-30 09:15 | **ECB** (cons hold, depo 2.50%) | Does Lagarde lean on France to skip December? |
-| Fri 10-30 23:00 | **BoJ** (cons hold 1.25%) | Yen as the hedge; GPIF buying JGBs? |
+| Thu 10-29 23:00 | **BoJ** (cons hold 1.25%) | Yen as the hedge; GPIF buying JGBs? |
+| Fri 10-30 | France, Germany, euro-area Q3 GDP; Canada GDP | Growth check on both credit stories |
 
 (Meta and Apple weren't in next week's earnings list. Check their dates.)
 
@@ -158,7 +166,7 @@ risk-proxy Aussie have both stopped working, while credit and bonds have taken o
   The bond market is doing the worrying.
 - **Positioning:** fast money is the shortest EUR in 20 weeks. That's the setup for a squeeze if
   France calms (Moody's was Friday; the market's reaction on Monday is the information, Pattern B).
-- **What decides it:** ECB on Friday (does it lean dovish because of France? EUR-negative via
+- **What decides it:** ECB on Thursday (does it lean dovish because of France? EUR-negative via
   rates, but possibly *positive* via spreads if it reassures); French politics; whether US yields
   keep falling faster than Bund yields.
 - **Scorecard:** Brent's E02 "EUR to 1.08-1.09" hasn't happened; his E01 "constructive EUR" hasn't
@@ -167,7 +175,7 @@ risk-proxy Aussie have both stopped working, while credit and bonds have taken o
 ### 7b. USDCAD: oil wins
 ```
  Oil +12% ──► Canada's terms of trade improve ──► CAD up
- BoC hawkish talk (Macklem) ──► hike ~priced for Thursday ──► CAD up
+ BoC hawkish talk (Macklem) ──► hike ~priced for Wednesday ──► CAD up
  Fast money still SHORT CAD (and added shorts) ──► squeeze ──► CAD up
                                          ▼
                  USDCAD 1.4224 (10-09) → 1.4003 (−1.6%)
@@ -175,20 +183,20 @@ risk-proxy Aussie have both stopped working, while credit and bonds have taken o
 - **Scorecard:** Brent's E01 short USDCAD (~1.4150 on 10-16) is **working, ~−1.0% in USDCAD**,
   even though the oil-USDCAD daily correlation is weak (−0.17). The move is more about the
   squeeze and the BoC than about day-to-day oil.
-- **The risk is Thursday:** Brent thinks the BoC could *pause* (core below target, headline above).
+- **The risk is Wednesday:** Brent thinks the BoC could *pause* (core below target, headline above).
   A pause with shorts still crowded is the cleanest test of Pattern Q: priced vs actual reaction function.
 
 ### 7c. USDJPY: the yen is the hedge, but slowly
 - 158.06 → 156.81 (−0.8%), tracking US 10y (+0.63 correlation).
 - **Real money is the most long yen in 20 weeks**, and that's the hedge position. Brent: shorts
   "pay a lot of carry" while it goes nowhere. The chain only speeds up if US yields keep falling
-  *and* the BoJ (Friday) or GPIF buying adds a push. Carry cost is the reason to wait (Pattern R).
+  *and* the BoJ (Thursday night ET) or GPIF buying adds a push. Carry cost is the reason to wait (Pattern R).
 
 ### 7d. AUD and NZD: commodity beta beats risk-off
 - AUD 0.6959 → 0.7020 (+0.9%), NZD +1.4%, **despite** the Nasdaq sell-off. AUD's link to the
   Nasdaq has collapsed (+0.70 → +0.05).
 - **AUDNZD** (Brent E03 long from 1.2236): 1.2340 now (+0.85%), but off the 1.2465 peak.
-  Wednesday's RBNZ is expected to **hike**, the opposite of the dual-mandate easing story, which
+  Tuesday night's (ET) RBNZ is expected to **hike**, the opposite of the dual-mandate easing story, which
   hinges on the November election. **The idea's catalyst hasn't arrived yet; meanwhile the
   current policy runs against it.**
 
@@ -252,8 +260,8 @@ risk-proxy Aussie have both stopped working, while credit and bonds have taken o
 | **2. Credit wobble spreads** (School 2) | Someone blinks on capex or funding; credit widens; Nasdaq breaks 28,800; bonds rally hard; Dec hike priced out | HYG/TLT keeps falling; Italy starts widening with France; VIX catches up with MOVE; MXN and silver keep sliding |
 | **3. Inflation scare returns** (AP's E03 trigger) | Core PCE ≥ 0.3%, Q3 GDP strong, oil > $115 → long end sells off again, Dec hike firmed up, dollar up | 10y back above 5.10%; oil-yields correlation flips back positive; USDJPY up with yields |
 
-**Note the tension:** scenarios 2 and 3 can collide on Friday. A growth scare in credit and a
-hot inflation print on the same day is the "goat rodeo" (E03), where the Fed's reaction function
+**Note the tension:** scenarios 2 and 3 can collide on Thursday. A growth scare in credit and a
+hot inflation print the next morning is the "goat rodeo" (E03), where the Fed's reaction function
 (Pattern Q) decides which one wins.
 
 ---
