@@ -117,26 +117,20 @@ ok('a market card shows its option zone in plain words with the dealer note and 
 ok('a market the dealer read is not validated on says so; one it is validated on does not', /Untested on this market/.test(znI.html) && !/Untested on this market/.test(buildNewsletter({ date: 'd', assets: [{ key: 'SPX500', label: 'S&P 500', zone: { ...znFix, validated: true } }] }).html));
 ok('the option-zone legend calls it a place, not a pull, and never uses wall, gamma or max pain', /marks a place, not a pull/.test(znI.html) && !/\b(call wall|put wall|max pain|gamma)\b/i.test(znI.html.replace(/<style>[\s\S]*?<\/style>/, '')));
 
-const fvOff = buildNewsletter({ date: 'd', fearVsNasdaq: { a: { ratio: 6, pct: 85, on: false }, b: { ratio: 6.64, pct: 65, on: false }, on: false, top: 85 } });
-ok('fear versus the Nasdaq shows both ratios with their percentile and says it is not at the extreme', /Fear versus the Nasdaq/.test(fvOff.html) && /85th percentile/.test(fvOff.html) && /65th percentile of the past year/.test(fvOff.html) && /below the top-tenth level/.test(fvOff.html));
-const fvOn = buildNewsletter({ date: 'd', fearVsNasdaq: { a: { ratio: 9, pct: 96, on: true }, b: { ratio: 8, pct: 93, on: true }, on: true, top: 96 } });
-ok('at the extreme it says fear has run ahead, cites the 7% give-back and keeps it to volatility', /Fear has run ahead of the Nasdaq/.test(fvOn.html) && /about 7%/.test(fvOn.html) && /not a view on stocks/.test(fvOn.html) && /extreme/.test(fvOn.html));
-ok('it is a separate calming section, not part of the range-pressure count', !/bigger day than usual/.test(fvOn.html) && !/bigger day than usual/.test(fvOff.html));
-ok('no fear data means no section', !/Fear versus the Nasdaq/.test(buildNewsletter({ date: 'd' }).html));
-const vbOn = buildNewsletter({ date: 'd', vixBeta: { beta: -7.1, change: -3.2, pct: 4, on: true, flags: [{ date: '2026-06-05', nq5: 3.84 }, { date: '2026-10-20', nq5: null }] } });
-ok("C.OG's dR/dt shows in the fear section, labelled research only, with the past year's flags and a pending one", /Fear versus the Nasdaq/.test(vbOn.html) && /dR\/dt/.test(vbOn.html) && /Research only/.test(vbOn.html) && /2026-06-05 Nasdaq \+3\.84%/.test(vbOn.html) && /pending/.test(vbOn.html) && /bottom tenth/.test(vbOn.html));
-const irOnN = buildNewsletter({ date: 'd', impliedRatio: { ratio: 5.1, change5: 12.4, pct: 96, on: true, flags: [] } });
-ok('the implied-ratio change shows in the fear section, research only', /Fear versus the Nasdaq/.test(irOnN.html) && /VVIX\/VXN/.test(irOnN.html) && /Research only/.test(irOnN.html) && /top tenth/.test(irOnN.html));
+const fvOn = buildNewsletter({ date: 'd', fearVsNasdaq: { a: { ratio: 9, pct: 96, on: true }, b: { ratio: 8, pct: 93, on: true }, on: true, top: 96 }, vixBeta: { beta: -7.1, change: -3.2, pct: 4, on: true, flags: [] }, impliedRatio: { ratio: 5.1, change5: 12.4, pct: 96, on: true, flags: [] } });
+ok('fear versus the Nasdaq stays on the Atlas page and is not in the newsletter', !/Fear versus the Nasdaq/.test(fvOn.html) && !/dR\/dt/.test(fvOn.html) && !/Fear has run ahead/.test(fvOn.html) && !/VVIX/.test(fvOn.text));
 
 { const { evaluateChain, CHAIN_NODES } = await import('./macroChain.js'); const f = k => CHAIN_NODES[k].floor;
   const links = evaluateChain({ oil: { delta: f('oil') * 4 }, bei: { delta: f('bei') * 3 }, us10y: { delta: -f('us10y') * 3 }, real: { delta: f('real') * 1.2 } });
-  const withIdea = buildNewsletter({ date: 'd', links });
+  const withIdea = buildNewsletter({ date: 'd', links, fearVsNasdaq: { a: { ratio: 9, pct: 96, on: true }, on: true, top: 96 } });
+  ok('the idea of the day does not bring the fear read back', !/ran ahead of the Nasdaq/.test(withIdea.html));
   ok('the idea of the day is a section with all eight questions, labelled as reasoning and not a trade', /The idea of the day/.test(withIdea.html) && /Reasoning, not a trade/.test(withIdea.html) && /8\. What would prove it wrong/.test(withIdea.html) && /THE IDEA OF THE DAY/.test(withIdea.text));
   ok('no chain data means no idea section', !/The idea of the day/.test(buildNewsletter({ date: 'd' }).html)); }
 
-{ const d = buildNewsletter({ date: '2026-10-24' }), d2 = buildNewsletter({ date: '2026-10-25' }), w = buildNewsletter({ date: '2026-10-24', edition: 'weekly' });
+{ const d = buildNewsletter({ date: 'Saturday 24 October 2026', isoDate: '2026-10-24' }), d2 = buildNewsletter({ date: 'x', isoDate: '2026-10-25' }), w = buildNewsletter({ date: '2026-10-24', edition: 'weekly' });
   ok('the daily issue carries a question of the day with a clue', /Question of the day/.test(d.html) && /Clue:/.test(d.html) && /QUESTION OF THE DAY/.test(d.text));
-  ok('it shows the previous answer and the question changes day to day', /The answer to yesterday/.test(d.html) && d.html.match(/Question of the day.*?<\/div>/s)[0] !== d2.html.match(/Question of the day.*?<\/div>/s)[0]);
+  ok('it shows the previous answer and the question changes day to day', /The answer|class="qans"/.test(d.html) && /Think it through/.test(d.html) && d.html.match(/class="qq">([^<]*)</)[1] !== d2.html.match(/class="qq">([^<]*)</)[1]);
+ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d.html) && /class="qi"><svg/.test(d.html));
   ok('the weekly issue asks a question of the week', /Question of the week/.test(w.html) && /last week/.test(w.html)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

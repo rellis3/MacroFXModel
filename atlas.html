@@ -543,6 +543,7 @@ function nlInput({ bookFor = () => null } = {}) {
   const position = P.positionLines({ regime, axes, firing, events: ahead, fedPath: fp, meeting }), a = D.intel?.analysis ?? null, keys = Object.keys(insts()), { tiles, stages } = nlNumbers();
   return {
     date: new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' }),
+    isoDate: ukDate(),
     generatedAt: D.intel?.generatedAt ?? null, headline: a?.headline, regimeWord: a?.regime ?? 'MIXED', riskFlags: D.rf ? { active: D.rf.active ?? 0, total: D.rf.available ?? D.rf.total ?? 5, flags: (D.rf.flags ?? []).map(f => ({ key: f.key, label: f.label, on: f.on, value: f.value, detail: f.detail })) } : null,
     brief: a, llm: D.intel?.llm ?? null, tiles, stages, links: derived.chain.links, position,
     events: ahead.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })),
