@@ -85,6 +85,44 @@ pullback hurt less:
   trend, the trend tended to win.
 - **Time to reversal (holdout):** within 12 weeks, A 42%, B 42%, C 43%, D 35%, controls 45%.
 
+## Family 3 — the whole positioning spectrum, both extremes (amendment A1, registered `d34e6952` before it ran)
+
+Positioning in trend terms, 0 = specs maximally positioned **against** the trend and 100 = maximally **with** it.
+Every bin is compared with neutral weeks (30–70) matched on market × trend strength × 4-week momentum × vol regime.
+Holdout effects [95% CI], with the discovery estimate in parentheses:
+
+| Bin | n (holdout) / episodes | 4-wk move | 12-wk move | P(2σ adverse, 4 wks) | next-month vol ratio |
+|---|---|---|---|---|---|
+| **S0 opposite extreme** (crowded against the trend) | 1,061 / 356 | +0.11 [−0.04, +0.28] (+0.01) | +0.22 [+0.01, +0.49] (−0.07) | +0.000 [−0.04, +0.04] (−0.00) | −0.004 [−0.05, +0.06] (−0.02) |
+| S1 leaning against | 2,510 / 902 | +0.04 [−0.04, +0.10] | +0.03 [−0.06, +0.10] | −0.005 | −0.014 |
+| S2 neutral (reference) | 6,808 | 0 | 0 | 0 | 0 |
+| S3 leaning with | 4,876 / 1,344 | +0.03 [−0.04, +0.11] | −0.01 [−0.11, +0.09] | +0.000 | **+0.034 [+0.01, +0.05]** (+0.02) |
+| **S4 crowded with the trend** | 4,362 / 689 | +0.06 [−0.02, +0.15] | +0.07 [−0.06, +0.20] | −0.019 [−0.06, +0.01] | **+0.039 [+0.01, +0.07]** (+0.06) |
+
+| Scored cell (Holm over 6) | Holdout | Discovery | Halves | Verdict |
+|---|---|---|---|---|
+| S0-r12: opposite extreme → trend continues? | +0.22 [+0.01, +0.49] | −0.07 | −0.06 / +0.42 | UNDERPOWERED (not confirmed: discovery and the halves disagree) |
+| S0-adv: opposite extreme → more 2σ adverse moves? | +0.000 [−0.040, +0.040] | −0.004 | +0.04 / −0.02 | **NULL** |
+| SLOPE-r12: S4 − S0 | −0.16 [−0.46, +0.09] | +0.01 | +0.04 / −0.32 | UNDERPOWERED |
+| SLOPE-adv: S4 − S0 | −0.02 [−0.07, +0.02] | +0.03 | −0.04 / −0.00 | UNDERPOWERED |
+| ASYM-r12: crowded long − crowded short | +0.26 [−0.04, +0.49] | −0.03 | +0.25 / +0.51 | UNDERPOWERED (discovery disagrees) |
+| ASYM-adv | −0.02 [−0.08, +0.03] | −0.04 | −0.05 / −0.06 | UNDERPOWERED |
+
+**What the spectrum says:**
+- **Direction and adverse risk are flat across the whole range.** From specs crowded against the trend to crowded
+  with it, no bin differs from neutral in a way the discovery markets and both halves agree on. The opposite extreme
+  is no more a reversal warning than the crowded extreme. Its holdout lean (the trend continued against a crowd
+  fighting it) isn't confirmed.
+- **Volatility has a shape.** Next-month vol rises as specs lean *with* the trend: S3 +3.4%, S4 +3.9%, both CIs
+  above 0, discovery the same sign. Leaning against shows nothing. Within the crowded-with-trend group,
+  **high-open-interest** crowding carries the vol: low-OI crowding is 13% calmer [−22%, −6%], the one descriptive
+  survivor of BH (1 of 20).
+- **Overbought vs oversold:** crowded longs continued more than crowded shorts on the holdout (+0.18 vs −0.08), but
+  the discovery markets don't show it (−0.07 vs −0.04). Unconfirmed.
+- **Under-positioned strong trends** (strong trend, specs neutral) behaved no differently from well-positioned ones
+  (12-wk −0.08 [−0.23, +0.09]).
+- **Commercials at their own extremes,** with or against the trend: no measurable difference on any outcome.
+
 ## Phase 4 — trading decisions
 
 PHASE4_TABLE_PLACEHOLDER
