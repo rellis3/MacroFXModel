@@ -152,6 +152,10 @@ episode where BD puts on the QQQ short that he takes profit on at the start of E
 
 **TESTABLE / ON FILE**: R7-R9 below; R4 picks up a second mention.
 
+### E03: Bessent buybacks, credibility, NZ and Czech (reasoning decoded in HOW_THEY_THINK.md §3b)
+Recorded around early Sept 2026 (two months before the midterms; Treasury buyback on the 9th). The earliest of the three episodes.
+The reasoning is decoded in `HOW_THEY_THINK.md` (patterns F-L). The ideas that could be tested are R10 and R11 below.
+
 ---
 
 ## Theme Index
@@ -170,8 +174,12 @@ episode where BD puts on the QQQ short that he takes profit on at the start of E
 | Setup (conditions) is separate from trigger (liquidity gauges turning) | BD | E02 |
 | Trade both directions; write down your biases and fight them | BD, AP | E02 |
 | Crowded and overbought but logical trend → consolidation, then continuation | BD | E02 |
-| Watch the turn in the rate of change (peak capex), not the level | AP | E02 |
-| Yields vs nominal GDP as a long-run equilibrium | AP | E02 |
+| Watch the turn in the rate of change (peak capex, inflation acceleration), not the level | AP | E02, E03 |
+| Yields vs nominal GDP as a long-run equilibrium | AP | E02, E03 |
+| Starting conditions / positioning decide the reaction to news | BD | E01, E03 |
+| Policy credibility: markets test low-credibility policymakers | BD, AP | E01, E02, E03 |
+| Release valves (currency, long end) | AP, BD | E01, E03 |
+| Idiosyncratic, uncorrelated bets; Sharpe grows with √N independent bets | AP, BD | E03 |
 
 ---
 
@@ -253,12 +261,31 @@ Test the range half first.
 but the claim is about rare regimes (none since 2012), so the episodes are few. It belongs as a
 level on a country card or Atlas (with R6), not as a test.
 
+**R10. Same news, opposite reaction depending on starting conditions (BD, E03).** TESTABLE as a
+**size** claim. Claim: an instrument that's washed out (oversold, extended over several weeks, or
+options skew against it) moves more on a surprise headline in its favour than one that's crowded. We
+hold release surprises (US, FRED vintages), COT positioning, and IV term/skew from CME settlements
+(`project_iv_from_settlements`), so the condition is measurable. Direction after news is a banked
+coin flip, so the prereg should be: the 30-minute or next-day *size* of the reaction, split by the
+prior 20-day move tercile. Closely related to R1.
+
+**R11. Gold call-put skew going negative = washed-out positioning (AP/BD, E03).** CONTEXT, maybe a
+test. If the CME gold option settlements give a 25-delta risk reversal, plot it. Claim to check
+later: skew at multi-year lows → larger *range* in the following month. Rare episodes, so expect
+"context".
+
 ---
 
 ## Calls to Score
 
 | Date | Speaker | Call | Check by | Level at call | Outcome |
 |---|---|---|---|---|---|
+| ~2026-09-05 | BD | If the 9 Sept buyback isn't bigger, disappointment; if bigger, buy gold and BTC | 2026-09-10 | | |
+| ~2026-09-05 | AP | Bigger buyback → gold at new all-time highs within 2 weeks | ~2026-09-24 | gold ~4,000 → +20% rally already | |
+| ~2026-09-05 | AP | One hot core PCE print → long end sells off, Fed forced to hike | rolling | | Long end broke above 5% by mid-Oct (E01/E02); a Fed hike is implied, not confirmed |
+| ~2026-09-05 | BD | Receive NZ rates / short NZD / long AUDNZD on Labour's dual-mandate plan | 3-6 months; NZ election Nov | | |
+| ~2026-09-05 | AP | Long CZK: EURCZK lower, or long CZK / short PLN | 3-12 months | | |
+| ~2026-09-05 | BD | Fade tariff news on CAD | rolling | | |
 | ~2026-10-09 | BD | Short QQQ, stop above 772.50, target 710-715 | ~2 weeks | QQQ ≈ 753 | **Profit taken**, per BD at the start of E01 (exit level not stated) |
 | ~2026-10-09 | BD | USD consolidates, then strengthens; EURUSD to 1.08-1.09 | rolling | | Changed his mind by E01 (constructive on EUR, short USDCAD) |
 | ~2026-10-09 | AP | 10y fair ≈ 5.5%, 30y ≈ 6%; below that isn't equilibrium | rolling | 30y 5.62% | |
