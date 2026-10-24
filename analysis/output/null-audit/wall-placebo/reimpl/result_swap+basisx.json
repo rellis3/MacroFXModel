@@ -1,0 +1,685 @@
+{
+ "tag": "swap+basisx",
+ "modes": [
+  "basisx",
+  "swap"
+ ],
+ "plant": 0.0,
+ "plant_mode": [
+  "base"
+ ],
+ "planted": {},
+ "pooled": [
+  {
+   "side": "call",
+   "h": 15,
+   "wall": 38.82618510158014,
+   "grid": 38.57767510931441,
+   "offgrid": 37.96782665791202,
+   "diff": 0.2485099922657219,
+   "lo": -2.1241616172324527,
+   "hi": 2.7739655110445782,
+   "n_wall": 3101,
+   "n_grid": 12121,
+   "n_cl": 841
+  },
+  {
+   "side": "call",
+   "h": 60,
+   "wall": 43.82756368386676,
+   "grid": 44.65735084930132,
+   "offgrid": 44.346524775523775,
+   "diff": -0.829787165434559,
+   "lo": -3.6488406253366237,
+   "hi": 2.283089414108242,
+   "n_wall": 3062,
+   "n_grid": 11951,
+   "n_cl": 840
+  },
+  {
+   "side": "call",
+   "h": 240,
+   "wall": 47.268832559800074,
+   "grid": 48.299759748660136,
+   "offgrid": 48.76197361286824,
+   "diff": -1.0309271888600646,
+   "lo": -4.788983503707224,
+   "hi": 2.986101862535138,
+   "n_wall": 2801,
+   "n_grid": 10822,
+   "n_cl": 838
+  },
+  {
+   "side": "put",
+   "h": 15,
+   "wall": 38.12154696132597,
+   "grid": 37.65345328460313,
+   "offgrid": 37.84355179704017,
+   "diff": 0.46809367672284163,
+   "lo": -1.8212586122040013,
+   "hi": 2.8776749443114333,
+   "n_wall": 2896,
+   "n_grid": 10671,
+   "n_cl": 763
+  },
+  {
+   "side": "put",
+   "h": 60,
+   "wall": 42.19187675070028,
+   "grid": 42.30075045122067,
+   "offgrid": 42.52853067047076,
+   "diff": -0.10887370052038992,
+   "lo": -3.401912625765942,
+   "hi": 3.231967398882344,
+   "n_wall": 2856,
+   "n_grid": 10527,
+   "n_cl": 762
+  },
+  {
+   "side": "put",
+   "h": 240,
+   "wall": 44.46601941747573,
+   "grid": 44.583463663851525,
+   "offgrid": 44.70289288506646,
+   "diff": -0.11744424637579742,
+   "lo": -4.210069538119315,
+   "hi": 3.7986405652807447,
+   "n_wall": 2575,
+   "n_grid": 9591,
+   "n_cl": 760
+  }
+ ],
+ "per_pair": [
+  {
+   "pair": "AUD_USD",
+   "side": "call",
+   "h": 15,
+   "wall": 36.65689149560117,
+   "grid": 31.556503198294244,
+   "n_wall": 341
+  },
+  {
+   "pair": "EUR_USD",
+   "side": "call",
+   "h": 15,
+   "wall": 38.477366255144034,
+   "grid": 32.9747175901022,
+   "n_wall": 486
+  },
+  {
+   "pair": "GBP_USD",
+   "side": "call",
+   "h": 15,
+   "wall": 32.98538622129436,
+   "grid": 37.666831438457734,
+   "n_wall": 479
+  },
+  {
+   "pair": "NAS100_USD",
+   "side": "call",
+   "h": 15,
+   "wall": 44.38138479001135,
+   "grid": 46.25574479589078,
+   "n_wall": 881
+  },
+  {
+   "pair": "USD_CAD",
+   "side": "call",
+   "h": 15,
+   "wall": 42.69662921348314,
+   "grid": 34.244080145719494,
+   "n_wall": 89
+  },
+  {
+   "pair": "USD_CHF",
+   "side": "call",
+   "h": 15,
+   "wall": 34.13897280966767,
+   "grid": 33.44459279038718,
+   "n_wall": 331
+  },
+  {
+   "pair": "USD_JPY",
+   "side": "call",
+   "h": 15,
+   "wall": 38.8663967611336,
+   "grid": 38.90675241157556,
+   "n_wall": 494
+  },
+  {
+   "pair": "AUD_USD",
+   "side": "call",
+   "h": 60,
+   "wall": 43.8235294117647,
+   "grid": 39.80582524271845,
+   "n_wall": 340
+  },
+  {
+   "pair": "EUR_USD",
+   "side": "call",
+   "h": 60,
+   "wall": 43.86694386694387,
+   "grid": 41.13475177304964,
+   "n_wall": 481
+  },
+  {
+   "pair": "GBP_USD",
+   "side": "call",
+   "h": 60,
+   "wall": 36.477987421383645,
+   "grid": 43.29177057356608,
+   "n_wall": 477
+  },
+  {
+   "pair": "NAS100_USD",
+   "side": "call",
+   "h": 60,
+   "wall": 47.630057803468205,
+   "grid": 48.986301369863014,
+   "n_wall": 865
+  },
+  {
+   "pair": "USD_CAD",
+   "side": "call",
+   "h": 60,
+   "wall": 48.86363636363637,
+   "grid": 45.11970534069982,
+   "n_wall": 88
+  },
+  {
+   "pair": "USD_CHF",
+   "side": "call",
+   "h": 60,
+   "wall": 41.66666666666667,
+   "grid": 42.98365122615804,
+   "n_wall": 324
+  },
+  {
+   "pair": "USD_JPY",
+   "side": "call",
+   "h": 60,
+   "wall": 44.76386036960985,
+   "grid": 44.721311475409834,
+   "n_wall": 487
+  },
+  {
+   "pair": "AUD_USD",
+   "side": "call",
+   "h": 240,
+   "wall": 46.8944099378882,
+   "grid": 44.60093896713615,
+   "n_wall": 322
+  },
+  {
+   "pair": "EUR_USD",
+   "side": "call",
+   "h": 240,
+   "wall": 42.82560706401766,
+   "grid": 44.00694846554719,
+   "n_wall": 453
+  },
+  {
+   "pair": "GBP_USD",
+   "side": "call",
+   "h": 240,
+   "wall": 40.08810572687225,
+   "grid": 48.11471056824217,
+   "n_wall": 454
+  },
+  {
+   "pair": "NAS100_USD",
+   "side": "call",
+   "h": 240,
+   "wall": 51.47849462365591,
+   "grid": 52.08469055374593,
+   "n_wall": 744
+  },
+  {
+   "pair": "USD_CAD",
+   "side": "call",
+   "h": 240,
+   "wall": 42.857142857142854,
+   "grid": 49.09819639278557,
+   "n_wall": 70
+  },
+  {
+   "pair": "USD_CHF",
+   "side": "call",
+   "h": 240,
+   "wall": 48.28767123287671,
+   "grid": 46.30177514792899,
+   "n_wall": 292
+  },
+  {
+   "pair": "USD_JPY",
+   "side": "call",
+   "h": 240,
+   "wall": 52.14592274678112,
+   "grid": 49.409312022237664,
+   "n_wall": 466
+  },
+  {
+   "pair": "AUD_USD",
+   "side": "put",
+   "h": 15,
+   "wall": 37.15596330275229,
+   "grid": 35.120643431635386,
+   "n_wall": 218
+  },
+  {
+   "pair": "EUR_USD",
+   "side": "put",
+   "h": 15,
+   "wall": 33.415233415233416,
+   "grid": 33.76470588235294,
+   "n_wall": 407
+  },
+  {
+   "pair": "GBP_USD",
+   "side": "put",
+   "h": 15,
+   "wall": 40.79497907949791,
+   "grid": 36.06442577030812,
+   "n_wall": 478
+  },
+  {
+   "pair": "NAS100_USD",
+   "side": "put",
+   "h": 15,
+   "wall": 45.289256198347104,
+   "grid": 47.1872376154492,
+   "n_wall": 605
+  },
+  {
+   "pair": "USD_CAD",
+   "side": "put",
+   "h": 15,
+   "wall": 36.234177215189874,
+   "grid": 35.20090548953028,
+   "n_wall": 632
+  },
+  {
+   "pair": "USD_CHF",
+   "side": "put",
+   "h": 15,
+   "wall": 34.96932515337423,
+   "grid": 32.9073482428115,
+   "n_wall": 326
+  },
+  {
+   "pair": "USD_JPY",
+   "side": "put",
+   "h": 15,
+   "wall": 32.608695652173914,
+   "grid": 36.950146627565985,
+   "n_wall": 230
+  },
+  {
+   "pair": "AUD_USD",
+   "side": "put",
+   "h": 60,
+   "wall": 43.72093023255814,
+   "grid": 39.055404178019984,
+   "n_wall": 215
+  },
+  {
+   "pair": "EUR_USD",
+   "side": "put",
+   "h": 60,
+   "wall": 42.82178217821782,
+   "grid": 41.23588829471183,
+   "n_wall": 404
+  },
+  {
+   "pair": "GBP_USD",
+   "side": "put",
+   "h": 60,
+   "wall": 45.03171247357294,
+   "grid": 44.68838526912181,
+   "n_wall": 473
+  },
+  {
+   "pair": "NAS100_USD",
+   "side": "put",
+   "h": 60,
+   "wall": 47.30639730639731,
+   "grid": 46.666666666666664,
+   "n_wall": 594
+  },
+  {
+   "pair": "USD_CAD",
+   "side": "put",
+   "h": 60,
+   "wall": 40.16129032258065,
+   "grid": 39.75972540045767,
+   "n_wall": 620
+  },
+  {
+   "pair": "USD_CHF",
+   "side": "put",
+   "h": 60,
+   "wall": 38.31775700934579,
+   "grid": 38.70445344129554,
+   "n_wall": 321
+  },
+  {
+   "pair": "USD_JPY",
+   "side": "put",
+   "h": 60,
+   "wall": 31.4410480349345,
+   "grid": 42.9563492063492,
+   "n_wall": 229
+  },
+  {
+   "pair": "AUD_USD",
+   "side": "put",
+   "h": 240,
+   "wall": 46.666666666666664,
+   "grid": 40.23099133782483,
+   "n_wall": 195
+  },
+  {
+   "pair": "EUR_USD",
+   "side": "put",
+   "h": 240,
+   "wall": 44.81865284974093,
+   "grid": 45.66729917773561,
+   "n_wall": 386
+  },
+  {
+   "pair": "GBP_USD",
+   "side": "put",
+   "h": 240,
+   "wall": 52.11581291759465,
+   "grid": 48.038490007401926,
+   "n_wall": 449
+  },
+  {
+   "pair": "NAS100_USD",
+   "side": "put",
+   "h": 240,
+   "wall": 45.806451612903224,
+   "grid": 42.79021343050495,
+   "n_wall": 465
+  },
+  {
+   "pair": "USD_CAD",
+   "side": "put",
+   "h": 240,
+   "wall": 43.738977072310405,
+   "grid": 46.23522090852521,
+   "n_wall": 567
+  },
+  {
+   "pair": "USD_CHF",
+   "side": "put",
+   "h": 240,
+   "wall": 43.389830508474574,
+   "grid": 42.46935201401051,
+   "n_wall": 295
+  },
+  {
+   "pair": "USD_JPY",
+   "side": "put",
+   "h": 240,
+   "wall": 26.605504587155966,
+   "grid": 46.0,
+   "n_wall": 218
+  }
+ ],
+ "PASS": false,
+ "rows": [
+  {
+   "pair": "AUD_USD",
+   "side": "call",
+   "kind": "grid",
+   "n": 938
+  },
+  {
+   "pair": "AUD_USD",
+   "side": "call",
+   "kind": "offgrid",
+   "n": 601
+  },
+  {
+   "pair": "AUD_USD",
+   "side": "call",
+   "kind": "wall",
+   "n": 341
+  },
+  {
+   "pair": "AUD_USD",
+   "side": "put",
+   "kind": "grid",
+   "n": 1125
+  },
+  {
+   "pair": "AUD_USD",
+   "side": "put",
+   "kind": "offgrid",
+   "n": 575
+  },
+  {
+   "pair": "AUD_USD",
+   "side": "put",
+   "kind": "wall",
+   "n": 219
+  },
+  {
+   "pair": "EUR_USD",
+   "side": "call",
+   "kind": "grid",
+   "n": 1873
+  },
+  {
+   "pair": "EUR_USD",
+   "side": "call",
+   "kind": "offgrid",
+   "n": 927
+  },
+  {
+   "pair": "EUR_USD",
+   "side": "call",
+   "kind": "wall",
+   "n": 490
+  },
+  {
+   "pair": "EUR_USD",
+   "side": "put",
+   "kind": "grid",
+   "n": 1709
+  },
+  {
+   "pair": "EUR_USD",
+   "side": "put",
+   "kind": "offgrid",
+   "n": 743
+  },
+  {
+   "pair": "EUR_USD",
+   "side": "put",
+   "kind": "wall",
+   "n": 409
+  },
+  {
+   "pair": "GBP_USD",
+   "side": "call",
+   "kind": "grid",
+   "n": 2029
+  },
+  {
+   "pair": "GBP_USD",
+   "side": "call",
+   "kind": "offgrid",
+   "n": 978
+  },
+  {
+   "pair": "GBP_USD",
+   "side": "call",
+   "kind": "wall",
+   "n": 479
+  },
+  {
+   "pair": "GBP_USD",
+   "side": "put",
+   "kind": "grid",
+   "n": 1433
+  },
+  {
+   "pair": "GBP_USD",
+   "side": "put",
+   "kind": "offgrid",
+   "n": 905
+  },
+  {
+   "pair": "GBP_USD",
+   "side": "put",
+   "kind": "wall",
+   "n": 480
+  },
+  {
+   "pair": "NAS100_USD",
+   "side": "call",
+   "kind": "grid",
+   "n": 3712
+  },
+  {
+   "pair": "NAS100_USD",
+   "side": "call",
+   "kind": "offgrid",
+   "n": 1682
+  },
+  {
+   "pair": "NAS100_USD",
+   "side": "call",
+   "kind": "wall",
+   "n": 881
+  },
+  {
+   "pair": "NAS100_USD",
+   "side": "put",
+   "kind": "grid",
+   "n": 2386
+  },
+  {
+   "pair": "NAS100_USD",
+   "side": "put",
+   "kind": "offgrid",
+   "n": 1223
+  },
+  {
+   "pair": "NAS100_USD",
+   "side": "put",
+   "kind": "wall",
+   "n": 610
+  },
+  {
+   "pair": "USD_CAD",
+   "side": "call",
+   "kind": "grid",
+   "n": 553
+  },
+  {
+   "pair": "USD_CAD",
+   "side": "call",
+   "kind": "offgrid",
+   "n": 268
+  },
+  {
+   "pair": "USD_CAD",
+   "side": "call",
+   "kind": "wall",
+   "n": 91
+  },
+  {
+   "pair": "USD_CAD",
+   "side": "put",
+   "kind": "grid",
+   "n": 1779
+  },
+  {
+   "pair": "USD_CAD",
+   "side": "put",
+   "kind": "offgrid",
+   "n": 1178
+  },
+  {
+   "pair": "USD_CAD",
+   "side": "put",
+   "kind": "wall",
+   "n": 639
+  },
+  {
+   "pair": "USD_CHF",
+   "side": "call",
+   "kind": "grid",
+   "n": 1500
+  },
+  {
+   "pair": "USD_CHF",
+   "side": "call",
+   "kind": "offgrid",
+   "n": 692
+  },
+  {
+   "pair": "USD_CHF",
+   "side": "call",
+   "kind": "wall",
+   "n": 332
+  },
+  {
+   "pair": "USD_CHF",
+   "side": "put",
+   "kind": "grid",
+   "n": 1260
+  },
+  {
+   "pair": "USD_CHF",
+   "side": "put",
+   "kind": "offgrid",
+   "n": 601
+  },
+  {
+   "pair": "USD_CHF",
+   "side": "put",
+   "kind": "wall",
+   "n": 326
+  },
+  {
+   "pair": "USD_JPY",
+   "side": "call",
+   "kind": "grid",
+   "n": 1562
+  },
+  {
+   "pair": "USD_JPY",
+   "side": "call",
+   "kind": "offgrid",
+   "n": 970
+  },
+  {
+   "pair": "USD_JPY",
+   "side": "call",
+   "kind": "wall",
+   "n": 498
+  },
+  {
+   "pair": "USD_JPY",
+   "side": "put",
+   "kind": "grid",
+   "n": 1028
+  },
+  {
+   "pair": "USD_JPY",
+   "side": "put",
+   "kind": "offgrid",
+   "n": 473
+  },
+  {
+   "pair": "USD_JPY",
+   "side": "put",
+   "kind": "wall",
+   "n": 230
+  }
+ ]
+}

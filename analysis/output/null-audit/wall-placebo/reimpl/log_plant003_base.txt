@@ -1,0 +1,24 @@
+== base_plant0.03@base  (32s)  planted touches: {'EUR_USD': 27, 'GBP_USD': 27, 'AUD_USD': 19, 'USD_CAD': 14, 'USD_CHF': 13, 'USD_JPY': 16, 'NAS100_USD': 39}
+side   h  wall  grid  offgrid  diff    lo    hi  n_wall  n_grid  n_cl
+call  15 33.55 38.79    36.85 -5.24 -7.65 -2.64    3058   11222   792
+call  60 39.83 45.00    42.32 -5.16 -8.36 -1.96    3030   11074   791
+call 240 43.62 48.28    45.67 -4.66 -8.91 -0.55    2765    9961   787
+ put  15 35.47 38.17    38.25 -2.70 -5.06 -0.10    2749   10289   738
+ put  60 37.92 43.47    44.02 -5.55 -8.89 -2.15    2698   10164   737
+ put 240 43.33 45.34    44.66 -2.01 -6.01  2.31    2405    9339   733
+      pair side  h  wall  grid  n_wall
+   AUD_USD call 15  27.7  32.3     343
+   EUR_USD call 15  27.8  35.5     436
+   GBP_USD call 15  34.3  36.0     461
+NAS100_USD call 15  38.6  46.2     902
+   USD_CAD call 15  32.7  34.4     452
+   USD_CHF call 15  31.4  34.2     274
+   USD_JPY call 15  36.8  44.6     190
+   AUD_USD  put 15  35.3  36.2     235
+   EUR_USD  put 15  33.8  35.8     441
+   GBP_USD  put 15  34.9  39.8     475
+NAS100_USD  put 15  38.1  47.0     646
+   USD_CAD  put 15  32.6  36.0      89
+   USD_CHF  put 15  34.9  32.0     284
+   USD_JPY  put 15  35.1  35.7     579
+FAIL

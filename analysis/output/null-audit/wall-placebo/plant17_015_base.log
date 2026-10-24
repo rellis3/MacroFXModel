@@ -1,0 +1,101 @@
+planted {'EUR_USD': 110, 'GBP_USD': 149, 'AUD_USD': 71, 'USD_CAD': 83, 'USD_CHF': 72, 'USD_JPY': 99, 'NAS100_USD': 212}
+[EUR_USD] call done
+[EUR_USD] put done
+[EUR_USD] 5,997 events -> analysis/output/null-audit/wall-placebo/plant17_0.15_base/wall_placebo_events.csv
+side  kind   
+call  grid       1442
+      offgrid     768
+      wall        485
+put   grid       1779
+      offgrid    1008
+      wall        515
+dtype: int64
+[GBP_USD] call done
+[GBP_USD] put done
+[GBP_USD] 6,470 events -> analysis/output/null-audit/wall-placebo/plant17_0.15_base/wall_placebo_events_gbp_usd.csv
+side  kind   
+call  grid       1991
+      offgrid     932
+      wall        582
+put   grid       1529
+      offgrid     887
+      wall        549
+dtype: int64
+[AUD_USD] call done
+[AUD_USD] put done
+[AUD_USD] 3,714 events -> analysis/output/null-audit/wall-placebo/plant17_0.15_base/wall_placebo_events_aud_usd.csv
+side  kind   
+call  grid        876
+      offgrid     534
+      wall        380
+put   grid       1145
+      offgrid     507
+      wall        272
+dtype: int64
+[USD_CAD] call done
+[USD_CAD] put done
+[USD_CAD] 4,283 events -> analysis/output/null-audit/wall-placebo/plant17_0.15_base/wall_placebo_events_usd_cad.csv
+side  kind   
+call  grid       1745
+      offgrid    1026
+      wall        550
+put   grid        635
+      offgrid     227
+      wall        100
+dtype: int64
+[USD_CHF] call done
+[USD_CHF] put done
+[USD_CHF] 4,278 events -> analysis/output/null-audit/wall-placebo/plant17_0.15_base/wall_placebo_events_usd_chf.csv
+side  kind   
+call  grid       1138
+      offgrid     548
+      wall        318
+put   grid       1392
+      offgrid     558
+      wall        324
+dtype: int64
+[USD_JPY] call done
+[USD_JPY] put done
+[USD_JPY] 4,787 events -> analysis/output/null-audit/wall-placebo/plant17_0.15_base/wall_placebo_events_usd_jpy.csv
+side  kind   
+call  grid        801
+      offgrid     293
+      wall        225
+put   grid       1785
+      offgrid    1034
+      wall        649
+dtype: int64
+[NAS100_USD] call done
+[NAS100_USD] put done
+[NAS100_USD] 10,035 events -> analysis/output/null-audit/wall-placebo/plant17_0.15_base/wall_placebo_events_nas100_usd.csv
+side  kind   
+call  grid       3255
+      offgrid    1550
+      wall       1127
+put   grid       2089
+      offgrid    1173
+      wall        841
+dtype: int64
+side  horizon_min  wall_break_pct  grid_break_pct  offgrid_break_pct  diff_pp  ci_lo_pp  ci_hi_pp  n_wall  n_grid  n_clusters
+call           15           21.01           39.04              37.00   -18.03    -20.28    -15.54    3646   11188         793
+call           60           23.56           45.23              42.25   -21.66    -24.56    -18.71    3603   11040         792
+call          240           30.57           48.43              46.03   -17.86    -21.57    -14.04    3245    9930         788
+ put           15           22.73           38.25              38.64   -15.52    -18.36    -12.43    3234   10309         738
+ put           60           23.69           43.46              43.67   -19.77    -23.03    -16.21    3175   10180         737
+ put          240           33.82           45.39              44.50   -11.56    -15.49     -7.24    2800    9342         733
+      pair side  horizon_min  wall  grid  offgrid  n_wall
+   AUD_USD call           15  22.8  32.3     31.3     378
+   EUR_USD call           15  22.5  35.7     33.0     481
+   GBP_USD call           15  21.9  36.4     32.0     581
+NAS100_USD call           15  18.7  46.7     47.1    1119
+   USD_CAD call           15  21.8  34.4     35.4     546
+   USD_CHF call           15  22.5  34.2     30.8     316
+   USD_JPY call           15  20.4  44.6     37.2     225
+   AUD_USD  put           15  27.3  36.2     34.5     271
+   EUR_USD  put           15  24.6  35.7     31.0     513
+   GBP_USD  put           15  24.5  39.8     39.5     548
+NAS100_USD  put           15  16.9  47.3     47.9     834
+   USD_CAD  put           15  25.3  36.0     37.7      99
+   USD_CHF  put           15  26.0  32.1     33.7     323
+   USD_JPY  put           15  23.4  35.7     39.7     646
+PASS
