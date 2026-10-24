@@ -292,6 +292,7 @@ import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
 import * as P from './js/atlasPosition.js';
 import { buildNewsletter, eventNote, flagProximity, familyOf } from './js/newsletter.js';
 import { buildNewsletterV2 } from './js/newsletterV2.js';
+import { impliedRow, impliedKeyFor } from './js/impliedMove.js';
 import { snapshotOf, diffSnapshots, scoreLine, weekRecord, plainRead } from './js/newsletterRecord.js';
 import { closuresBetween } from './js/marketCalendars.js';
 import { summarize as stateSummary } from './js/stateStrip.js';
@@ -457,7 +458,7 @@ function intelBodyHtml() {
 
 /* the rows Atlas shows, as text for the model, so the brief and the page can never disagree about the facts */
 
-const MK_SERIES = { EURUSD: 'eurusd', GBPUSD: 'gbpusd', USDJPY: 'usdjpy', AUDUSD: 'audusd', USDCAD: 'usdcad', USDCHF: 'usdchf', NZDUSD: 'nzdusd', GOLD: 'gold', NQ: 'nq', SPX500: 'spx', DE30: 'de30', UK100: 'uk100', BTCUSD: 'btc' };
+const MK_SERIES = { EURUSD: 'eurusd', GBPUSD: 'gbpusd', USDJPY: 'usdjpy', AUDUSD: 'audusd', USDCAD: 'usdcad', USDCHF: 'usdchf', NZDUSD: 'nzdusd', GOLD: 'gold', NQ: 'nq', SPX500: 'spx', US2000: 'r2k', DE30: 'de30', UK100: 'uk100', BTCUSD: 'btc' };
 /** One line of facts per market, so the model can write a real read for every card from numbers, not guesses. */
 function marketFacts() {
   const cbs = P.cbTone(cbHist()), sbs = P.surpriseBars(D.es), crowd = P.crowding(D.ce), ahead = P.aheadEvents(D.events, Date.now(), { limit: 40, withinHours: 72 });
@@ -545,16 +546,18 @@ function nlNumbers() {
   ];
   return { tiles, stages };
 }
-const NL_RANGE_KEYS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'GOLD', 'NQ', 'SPX500', 'US30', 'DE30', 'UK100', 'BTCUSD'];
+const NL_RANGE_KEYS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100', 'BTCUSD'];
 /** The feeds an issue leans on, each with its own as-of date and rhythm, for the sources list and the freshness check in the newsletter (js/dataFreshness.js). */
 function nlSources(hmmAt) {
   const ukDay = s => { const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(String(s ?? '')); return m ? `${m[3]}-${m[2]}-${m[1]}` : null; };
   const oiAt = (D.oi?.pairs ?? []).map(p => ukDay(p.savedAt)).filter(Boolean).sort().at(-1) ?? null;
+  const ivlAt = Object.values(D.ivl?.implied ?? {}).map(x => x?.savedAtMs).filter(Number.isFinite).sort().at(-1);
   const cbAt = Object.values(cbHist()).flatMap(h => (h ?? []).map(x => x?.meetingDate)).filter(Boolean).sort().at(-1) ?? null;
   return [
     { label: 'Market prices, yields, volatility, credit', source: 'OANDA, FRED, Cboe, Yahoo', asOf: D.drill?.dates?.at(-1) ?? null, cadence: 'daily' },
     { label: 'Speculative positioning', source: 'CFTC Commitments of Traders', asOf: D.ce?.reportDate ?? D.ce?.instruments?.find(i => i.reportDate)?.reportDate ?? null, cadence: 'cftc' },
     { label: 'Option positions and dealer gamma', source: 'CME QuikStrike settlements', asOf: oiAt, cadence: 'daily' },
+    { label: 'Implied volatility', source: 'CME QuikStrike settlements', asOf: ivlAt ? new Date(ivlAt).toISOString() : null, cadence: 'daily' },
     { label: 'Release calendar', source: 'Nasdaq, ForexFactory', asOf: D.cal?.at ?? null, cadence: 'live' },
     { label: 'Data surprises', source: 'consensus against actual, own scoring', asOf: D.es?.generatedAt ?? null, cadence: 'live' },
     { label: 'Market-implied Fed path', source: 'CME fed funds futures', asOf: D.fp?.zq?.asOf ?? D.fp?.asOf ?? null, cadence: 'daily' },
@@ -575,7 +578,7 @@ function nlInput({ bookFor = () => null } = {}) {
     events: ahead.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })),
     ranges: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k); return { label: labelOf(k), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used }; }),
     assets: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k), reg = P.regimeFor(D.regime, k), gam = P.gammaFor(D.oi, k), fire = P.deskFiring(D.ds, k).filter(f => f.instruments.includes(k)).length, g = { fx: 'FX', index: 'Index', commodity: 'Gold', crypto: 'Bitcoin' }[acOf(k)] ?? '';
-      const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: mv?.d1 ?? null, d20: mv?.d20 ?? null, read: plainRead(mk?.read), watch: plainRead(mk?.watch), zone: (() => { const row = (D.oi?.pairs ?? []).find(p => p.pair === P.OI_PAIR_FOR[k]); return row ? optionZone(row, k, d.dp ?? 4) : null; })(), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
+      const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: mv?.d1 ?? null, d20: mv?.d20 ?? null, read: plainRead(mk?.read), watch: plainRead(mk?.watch), implied: impliedRow(D.ivl?.implied?.[impliedKeyFor(k)], k, Date.now()), zone: (() => { const row = (D.oi?.pairs ?? []).find(p => p.pair === P.OI_PAIR_FOR[k]); return row ? optionZone(row, k, d.dp ?? 4) : null; })(), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
     yieldStack: (() => { const y = fmtRate('us10y'), r = fmtRate('tips'), b = fmtRate('bei'); return y && r && b ? { nominal: y.v, real: r.v, bei: b.v, dNom: y.d20, dReal: r.d20, dBei: b.d20 } : null; })(),
     rangePressure: rpNow(), fearVsNasdaq: fearNow(), vixBeta: betaNow(), impliedRatio: impNow(),
     ...nlStrips(),
@@ -937,7 +940,7 @@ function drawPair() {
 const CORE = [['/api/drill-series', 'drill', '75 market series, 5 years'], ['/api/macro-scorecard', 'msc', 'six-factor currency scorecard'], ['/api/risk-flags', 'rf', 'risk flags'], ['/api/cot', 'cot', 'CFTC positioning by pair'],
   ['/api/daily-brief', 'brief', 'prices, regimes, levels for all instruments'], ['/api/vol-forecast/session', 'sess', 'live session range'], ['/api/vol-forecast', 'fc', 'calibrated range forecast'], ['/api/calendar-feed', 'cal', 'releases printed'], ['/api/chain-extra', 'cx', 'chain chips: EM dollar and EM credit']];
 const EXTRA = [['/api/global-read', 'gr', 'five axes, scenarios, per-instrument plans'], ['/api/regime', 'regime', 'macro regime and what each market did in it'], ['/api/macro-changes', 'mc', 'what changed, 1d / 5d / 20d'], ['/api/econ-surprise', 'es', 'consensus surprises by currency'],
-  ['/api/cot-extremes', 'ce', 'crowding across 36 contracts'], ['/api/oi-today', 'oi', 'dealer gamma and option walls'], ['/api/desk-watch', 'ds', 'watched conditions firing'], ['/api/events', 'events', 'the calendar ahead'], ['/api/fed-path', 'fp', 'market-implied Fed path'],
+  ['/api/cot-extremes', 'ce', 'crowding across 36 contracts'], ['/api/oi-today', 'oi', 'dealer gamma and option walls'], ['/api/oi-levels', 'ivl', 'options-implied day move per market'], ['/api/desk-watch', 'ds', 'watched conditions firing'], ['/api/events', 'events', 'the calendar ahead'], ['/api/fed-path', 'fp', 'market-implied Fed path'],
   ['/api/fomc/calendar', 'fcal', 'FOMC meeting dates'], ['/api/nowcast', 'nc', 'GDPNow and Cleveland nowcasts'], ['/api/fomc/history?n=6', 'hUSD', 'FOMC tone history'], ['/api/ecb/history?n=6', 'hEUR', 'ECB tone history'], ['/api/boe/history?n=6', 'hGBP', 'BoE tone history'],
   ['/api/boj/history?n=6', 'hJPY', 'BoJ tone history'], ['/api/rbnz/history?n=6', 'hNZD', 'RBNZ tone history'], ['/api/rba/history?n=6', 'hAUD', 'RBA tone history'], ['/api/boc/history?n=6', 'hCAD', 'BoC tone history'], ['/api/eod-review', 'eod', 'yesterday\'s review'], ['/api/chain-read', 'cr', 'the chain read (cached AI)'], ['/api/ai-config', 'ai', 'AI model routing']];
 

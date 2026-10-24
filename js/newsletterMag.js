@@ -76,8 +76,8 @@ export const MAG_CSS = `
 .pg .deskhd p{color:#c4d0e2;font-size:13.5px;margin:6px 0 0;font-family:'Segoe UI',system-ui,sans-serif}
 .pg.desk,.pg.desk p,.pg.desk li,.pg.desk td{font-family:'Segoe UI',system-ui,sans-serif}.pg.desk p{font-size:13.5px;line-height:1.5}.pg.desk .small,.pg.desk small{font-size:12px}
 .pg.desk section{box-shadow:none;border:1px solid #e1e8f2;border-radius:10px;margin:0 0 14px}
-.pg.desk .pcg,.pg.desk .ccg2{display:block;column-count:1;column-gap:12px}.pg.desk .pcg>.pc,.pg.desk .ccg2>.cc2{break-inside:avoid;margin:0 0 12px;display:block}
-@media (min-width:640px){.pg.desk .pcg,.pg.desk .ccg2{column-count:2}}
+.pg.desk .ccg2{display:block;column-count:1;column-gap:12px}.pg.desk .pcg{display:grid;grid-template-columns:1fr;gap:10px}.pg.desk .pcg>.pc,.pg.desk .ccg2>.cc2{break-inside:avoid;margin:0 0 12px;display:block}.pg.desk .pcg>.pc{margin:0}
+@media (min-width:640px){.pg.desk .ccg2{column-count:2}.pg.desk .pcg{grid-template-columns:1fr 1fr}}
 .acct{display:grid;gap:14px}
 .acct .num{font-family:Georgia,serif;font-size:44px;line-height:1;font-weight:700}
 .acct .num small{display:block;font:11px 'Segoe UI',sans-serif;color:#5b6b82;margin-top:3px;letter-spacing:.03em}
@@ -99,7 +99,7 @@ export const MAG_CSS = `
   .pg .deskhd{margin:0 0 14px;padding:14px 20px 12px}
   .pg h1.hd{font-size:38px}
   .pg .acctn .num{font-size:30pt}.pg p{font-size:11.5pt}.pg .th2 p{font-size:9pt;line-height:1.35;margin:0 0 3px}.pg .th2 h3{font-size:13.5pt}.pg .th2{margin:0 0 7px}.pg .em{font-size:10px}.pg .em td{padding:1px 4px}.pg .qnote{display:none}.pg .sf{font-size:13.5pt}.pg .box{margin:4px 0 8px;padding:8px 12px}.pg .box p{font-size:9pt;line-height:1.4}.pg .p5 figcaption{font-size:8.5pt}
-  .pg .pgbreak{break-before:page}.pg.desk table{break-inside:avoid}.pg .refs{padding:7px 12px;margin:8px 0;font-size:9.5px}.pg .refs .rf{padding:0}.pg .foot{margin-top:8px}.pg .foot p{font-size:8.6pt;margin:0 0 4px}.pg.desk p,.pg.desk li{font-size:9.4pt;line-height:1.4}.pg.desk .cc2,.pg.desk .pc{padding:9px 11px}.pg section table td,.pg section table th{padding-top:3px;padding-bottom:3px}.pg .wkd{padding:5px 0}.pg .refs,.pg .foot,.pg .box{break-inside:avoid}.pg section>h2{break-inside:avoid}  .pg.desk .pcg,.pg.desk .ccg2{column-count:2}.pg.desk section{break-inside:auto}.pg.desk section>h2,.pg.desk section>h3{break-after:avoid-page;page-break-after:avoid}.pg.desk section>h2+*{break-before:avoid-page}.pg.desk .pcg>.pc:first-child,.pg.desk .ccg2>.cc2:first-child{break-before:avoid-page}.pg.desk .pc,.pg.desk .cc2,.pg.desk .rw2,.pg.desk tr{break-inside:avoid}
+  .pg .pgbreak{break-before:page}.pg.desk section{padding:11px 15px;margin:0 0 9px}.pg.desk section .small.muted{font-size:8.6pt;line-height:1.35}.pg.desk table{break-inside:avoid}.pg .refs{padding:7px 12px;margin:8px 0;font-size:9.5px}.pg .refs .rf{padding:0}.pg .foot{margin-top:8px}.pg .foot p{font-size:8.6pt;margin:0 0 4px}.pg.desk p,.pg.desk li{font-size:9.4pt;line-height:1.4}.pg.desk .cc2,.pg.desk .pc{padding:9px 11px}.pg section table td,.pg section table th{padding-top:3px;padding-bottom:3px}.pg .wkd{padding:5px 0}.pg .refs,.pg .foot,.pg .box{break-inside:avoid}.pg section>h2{break-inside:avoid}  .pg.desk .ccg2{column-count:2}.pg.desk .pcg{display:grid;grid-template-columns:1fr 1fr;gap:10px;column-count:auto}.pg.desk section{break-inside:auto}.pg.desk section>h2,.pg.desk section>h3{break-after:avoid-page;page-break-after:avoid}.pg.desk section>h2+*{break-before:avoid-page}.pg.desk .pcg>.pc:first-child,.pg.desk .ccg2>.cc2:first-child{break-before:avoid-page}.pg.desk .pc,.pg.desk .cc2,.pg.desk .rw2,.pg.desk tr{break-inside:avoid}
 }
 
 /* ── terminal theme ── */
@@ -146,6 +146,7 @@ export const MAG_CSS = `
 .pg .th2 .chipx{font-family:var(--mono);background:var(--navy);color:var(--up)}
 .pg .deskhd{background:var(--navy);-webkit-print-color-adjust:exact}.pg .deskhd .kick{color:var(--amb)}
 .pg .deskhd h2{font-family:var(--sans);font-weight:800}
+.pg .dgh{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-weight:700;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--navy);border-bottom:2px solid var(--navy);margin:20px 0 10px;padding-bottom:6px;break-after:avoid}.pg .dgh b{background:var(--navy);color:var(--up);width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;-webkit-print-color-adjust:exact}.pg .dgh:first-child{margin-top:0}
 .pg.desk section h2{font-family:var(--sans)}
 @page{@bottom-right{content:counter(page);font:9px Consolas,monospace;color:#8aa0bd}}
 @media (max-width:560px){.pg .mh{margin:-18px -15px 0;padding:10px 12px}.pg .tape{margin:0 -15px 14px;flex-wrap:nowrap;overflow-x:auto;padding:8px 12px}.pg .deskhd .tape{margin:-14px -15px 12px}.pg h1.hd{font-size:33px}.pg h2.sh{font-size:25px}}
