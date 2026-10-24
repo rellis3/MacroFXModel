@@ -1,0 +1,13 @@
+{
+ "updated": "2026-10-24T15:20:59+00:00",
+ "weeks": [
+  {
+   "date": "2026-10-24",
+   "pack": "analysis/output/market-review/2026-10-24/pack.json",
+   "reviews": [
+    "education/market_reviews/2026-10-24_cross_market_review.md",
+    "education/market_reviews/2026-10-24_weekly_review.md"
+   ]
+  }
+ ]
+}

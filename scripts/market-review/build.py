@@ -176,6 +176,27 @@ def fed_path(raw):
     def key(k): return (int(k[1]), code.index(k[0]))
     return [(k, v['implied'], v['week_ago'], v['last_time'][:10]) for k, v in sorted(zq.items(), key=lambda kv: key(kv[0]))]
 
+def clean(o):
+    """JSON-safe for the browser: NaN/inf -> None, numpy scalars -> Python."""
+    if isinstance(o, dict): return {str(k): clean(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)): return [clean(v) for v in o]
+    if isinstance(o, (np.bool_, bool)): return bool(o)
+    if isinstance(o, (np.integer,)): return int(o)
+    if isinstance(o, (float, np.floating)): return None if not np.isfinite(o) else float(o)
+    return o
+
+def write_index():
+    """analysis/output/market-review/index.json: every dated pack, newest first, with its written reviews (read by market-review.html)."""
+    base = os.path.join(ROOT, 'analysis', 'output', 'market-review'); rev = os.path.join(ROOT, 'education', 'market_reviews')
+    out = []
+    for dname in sorted(os.listdir(base), reverse=True):
+        if not re.match(r'^\d{4}-\d{2}-\d{2}$', dname) or not os.path.exists(os.path.join(base, dname, 'pack.json')): continue
+        reviews = sorted(f for f in os.listdir(rev) if f.startswith(dname) and f.endswith('.md')) if os.path.isdir(rev) else []
+        out.append(dict(date=dname, pack=f'analysis/output/market-review/{dname}/pack.json',
+                        reviews=[f'education/market_reviews/{f}' for f in reviews]))
+    json.dump(dict(updated=dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), weeks=out),
+              open(os.path.join(base, 'index.json'), 'w', encoding='utf-8'), indent=1)
+
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--asof', default=dt.date.today().isoformat()); a = ap.parse_args()
     d = os.path.join(ROOT, 'analysis', 'output', 'market-review', a.asof)
@@ -228,10 +249,12 @@ def main():
             mv = move_block(df, c)
             if not mv: continue
             drv, charge = driver_block(ch, name, spec); dec = decomp_block(ch, spec); cot = cot_block(raw, spec); cal = calendar_block(raw, spec)
-            pack['markets'][name] = dict(move=mv, drivers=drv, in_charge=(None if not charge or charge.get('weak') else charge['key']),
-                                         decomp=dec, cot=cot, calendar=cal)
+
             lvl = num(mv["last"]) if c not in YIELDS or c in ('^VIX', '^MOVE') else f'{mv["last"]:.2f}' + ('' if c in ('FR_DE', 'IT_DE') else '%')
             if c in ('FR_DE', 'IT_DE'): lvl = f'{mv["last"]:+.0f}bp vs start of capture'
+            units = 'pt' if c in ('^VIX', '^MOVE') else ('bp' if c in YIELDS else 'pct')
+            pack['markets'][name] = dict(sym=c, group=g, units=units, level_text=lvl, move=mv, drivers=drv, in_charge=(None if not charge or charge.get('weak') else charge['key']),
+                                         decomp=dec, cot=cot, calendar=cal)
             usual = (f'{ordn(mv["move4_pct"])} pct of 2y 4w moves' if not np.isnan(mv['move4_pct']) else '')
             L += [f'### {name}  `{c}`  {lvl} ({mv["last_date"]})',
                   f'**Move:** 1w {fmt_move(c, mv["w1"])} · 4w {fmt_move(c, mv["w4"])} ({usual}) · 13w {fmt_move(c, mv["w13"])} · '
@@ -259,7 +282,8 @@ def main():
             L.append('')
     md = os.path.join(d, 'DATA_PACK.md')
     open(md, 'w', encoding='utf-8').write('\n'.join(L) + '\n')
-    json.dump(pack, open(os.path.join(d, 'pack.json'), 'w', encoding='utf-8'), default=lambda o: None if isinstance(o, float) and np.isnan(o) else str(o))
+    json.dump(clean(pack), open(os.path.join(d, 'pack.json'), 'w', encoding='utf-8'), allow_nan=False)
+    write_index()
     print('wrote', md, f'({len(pack["markets"])} markets)')
     for n in notes: print('  NOTE', n)
 

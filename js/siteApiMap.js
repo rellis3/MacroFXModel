@@ -237,6 +237,7 @@
 
       <div class="sm-group" data-group="research">
         <div class="sm-group-hd" style="color:#f59e0b">Macro Research</div>
+        <a class="sm-item" href="market-review.html" target="_blank"><span class="sm-item-name">🌐 Weekly Market Review</span><span class="sm-item-desc">The podcast method made generic: 40 markets, which driver is in charge, what the drivers can't explain, crowded positioning, the week's calendar and the written review. Rebuilt weekly from scripts/market-review</span></a>
         <a class="sm-item" href="flow-chain.html" target="_blank"><span class="sm-item-name">⛓ Capital-Flow Chain</span><span class="sm-item-desc">The course's central bank → bonds → FX → equities → credit chain on synced daily charts since 2005: slide a lag, see the lead/lag correlation profile against a chance band and a search-aware line, with the desk's tested verdict on each link beside it. Description, not a test</span></a>
         <a class="sm-item" href="correlations.html" target="_blank"><span class="sm-item-name">⬡ Corr Lab</span><span class="sm-item-desc">Rolling 20/60-day correlation matrix + hedge pair scanner; compares any instrument set</span></a>
         <a class="sm-item" href="cot-extremes.html" target="_blank"><span class="sm-item-name">📋 COT Extremes</span><span class="sm-item-desc">CFTC Commitment of Traders — flags extreme net positioning in FX, commodities and bonds</span></a>
@@ -306,6 +307,7 @@
 
       <div class="sm-group" data-group="learn">
         <div class="sm-group-hd" style="color:#a78bfa">Learn</div>
+        <a class="sm-item" href="market-review.html#learn" target="_blank"><span class="sm-item-name">🎙 How Traders Think</span><span class="sm-item-desc">Macro Trading Floor episodes decoded: the eight questions, reasoning patterns, glossary, and their calls scored against prices</span></a>
         <a class="sm-item" href="theory-lab/hub.html" target="_blank"><span class="sm-item-name">🎓 Theory Lab</span><span class="sm-item-desc">From-scratch quant curriculum — 114 lessons + glossary, Beginner/Intermediate/Advanced filter. The most active collection in the repo</span></a>
         <a class="sm-item" href="cog/hub.html" target="_blank"><span class="sm-item-name">📊 COG Hub</span><span class="sm-item-desc">12 styled course-note lessons incl. the COG case-study writeups (reverse-engineering + the gated system and its null result)</span></a>
         <a class="sm-item" href="repo-brick-map.html" target="_blank"><span class="sm-item-name">🧩 Repo Brick Map</span><span class="sm-item-desc">Maps Theory Lab concepts to the real internal modules — internal, dashboard only</span></a>

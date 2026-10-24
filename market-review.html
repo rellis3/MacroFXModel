@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weekly Market Review</title>
+<!-- Reads committed files only: analysis/output/market-review/index.json → <date>/pack.json, and the
+     markdown reviews in education/market_reviews/ + education/podcast_transcripts/. Rebuild with
+     scripts/market-review/fetch.py then build.py (see education/market_reviews/PLAYBOOK.md). -->
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+        --amber:#d29922;--red:#f85149;--green:#3fb950;--blue:#3987e5;--orange:#d95926;--grid:#21262d;--hi:#b3cdf5}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:14px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  select,button{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font:inherit;font-size:12.5px;cursor:pointer}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px 0;max-width:1240px;margin:0 auto}
+  .tab{padding:6px 12px;border:1px solid var(--border);border-radius:999px;color:var(--text2);font-size:13px;cursor:pointer;background:none}
+  .tab.on{color:var(--text);border-color:var(--hi);background:var(--card2)}
+  .wrap{max-width:1240px;margin:0 auto;padding:14px 16px 60px;display:flex;flex-direction:column;gap:16px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;min-width:0}
+  .eyebrow{font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--hi);margin-bottom:6px}
+  .note{font-size:12px;color:var(--text3)} .warn{color:var(--amber)}
+  .chip{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap;margin:1px 2px}
+  .chip.flip{color:var(--amber);border-color:var(--amber)} .chip.inv{color:var(--orange);border-color:var(--orange)} .chip.tb{color:var(--green);border-color:rgba(63,185,80,.5)}
+  .chip.charge{color:var(--text);border-color:var(--hi);font-weight:600}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+  th,td{padding:5px 8px;border-bottom:1px solid var(--grid);text-align:left;vertical-align:top} th{color:var(--text3);font-weight:600}
+  td.n{text-align:right;white-space:nowrap}
+  .xs{overflow-x:auto}
+  .filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+  .card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;min-width:0;display:flex;flex-direction:column;gap:6px}
+  .card h4{font-size:15px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap} .card h4 .lvl{font:600 13px ui-monospace,Menlo,monospace;color:var(--text2)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--text2)} .row b{color:var(--text)}
+  .pos{color:var(--green)} .neg{color:var(--orange)}
+  .bar{position:relative;height:8px;border-radius:4px;background:var(--grid);overflow:hidden;flex:1;min-width:80px}
+  .bar i{position:absolute;top:0;bottom:0;left:0;border-radius:4px}
+  .bar .mk{position:absolute;top:-2px;bottom:-2px;width:3px;background:var(--text);border-radius:2px}
+  .lbl{font-size:11.5px;color:var(--text3);width:96px;flex:none}
+  .kv{display:flex;align-items:center;gap:8px;font-size:12px}
+  .flag{font:700 10.5px ui-monospace,Menlo,monospace;padding:1px 6px;border-radius:4px;border:1px solid}
+  .flag.unusual{color:var(--amber);border-color:var(--amber)} .flag.crowd{color:var(--red);border-color:var(--red)} .flag.resid{color:var(--hi);border-color:var(--hi)}
+  .md{max-width:92ch} .md h1{font-size:22px;margin:4px 0 10px} .md h2{font-size:18px;margin:22px 0 8px;padding-top:10px;border-top:1px solid var(--border)}
+  .md h3{font-size:15px;margin:16px 0 6px} .md p,.md li{color:var(--text2);margin:6px 0} .md strong{color:var(--text)} .md ul,.md ol{padding-left:22px}
+  .md table{margin:8px 0;display:block;overflow-x:auto} .md td,.md th{border:1px solid var(--grid)}
+  .md pre{background:#0b0f15;border:1px solid var(--border);border-radius:8px;padding:10px 12px;overflow-x:auto;font-size:12px;line-height:1.45;margin:8px 0}
+  .md code{font:12px ui-monospace,Menlo,monospace;color:var(--hi)} .md pre code{color:var(--text2)}
+  .md blockquote{border-left:3px solid var(--amber);padding:2px 12px;margin:8px 0;background:rgba(210,153,34,.06)}
+  .sub{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  #err{color:var(--red)}
+  .hidden{display:none!important}
+  @media (max-width:600px){.grid{grid-template-columns:1fr}.lbl{width:78px}}
+</style>
+</head>
+<body>
+<div id="commandHub"></div>
+<script src="js/commandHub.js"></script>
+
+<div class="hdr">
+  <a href="today.html">&larr; Today</a>
+  <h1>🌐 Weekly Market Review</h1>
+  <span class="spacer"></span>
+  <label class="note">Week <select id="week"></select></label>
+</div>
+<div class="tabs" id="tabs">
+  <button class="tab" data-t="week">This week</button>
+  <button class="tab" data-t="board">Board · 40 markets</button>
+  <button class="tab" data-t="watch">Watch lists</button>
+  <button class="tab" data-t="calendar">Calendar</button>
+  <button class="tab" data-t="method">Method</button>
+  <button class="tab" data-t="learn">How traders think</button>
+</div>
+<div class="wrap">
+  <div id="err"></div>
+
+  <!-- THIS WEEK -->
+  <section data-p="week">
+    <div class="box"><div class="sub" id="revPick"></div><div class="md" id="revBody">Loading…</div></div>
+  </section>
+
+  <!-- BOARD -->
+  <section data-p="board" class="hidden">
+    <div class="box">
+      <div class="eyebrow">Which story is the market trading?</div>
+      <div class="xs"><table id="regime"></table></div>
+      <p class="note" id="vol" style="margin-top:8px"></p>
+      <p class="note" id="fed"></p>
+      <p class="note warn" id="notes"></p>
+    </div>
+    <div class="box">
+      <div class="filters">
+        <span class="note">Group</span><span id="groups"></span>
+        <span class="spacer"></span>
+        <label class="note">Sort <select id="sort">
+          <option value="group">by group</option>
+          <option value="unusual">most unusual 4-week move</option>
+          <option value="resid">biggest unexplained move</option>
+          <option value="crowd">most crowded positioning</option>
+        </select></label>
+      </div>
+      <p class="note" style="margin:8px 0 12px">Each card: the move and how unusual it is (percentile of 2 years of 4-week moves), which driver is in charge
+        (correlation of daily moves over the last 20 sessions; <span class="chip flip">flipped</span> = changed vs the 60 before), how much of the
+        last 20 sessions the drivers explain (the <b>unexplained</b> part is the question to research), and CFTC positioning as a 3-year percentile.
+        Descriptive only, not a signal.</p>
+      <div class="grid" id="grid"></div>
+    </div>
+  </section>
+
+  <!-- WATCH -->
+  <section data-p="watch" class="hidden">
+    <div class="box"><div class="eyebrow">Unusual moves (4-week move ≥ 90th percentile of 2 years)</div><div class="xs"><table id="wUnusual"></table></div></div>
+    <div class="box"><div class="eyebrow">Unexplained: moves the textbook drivers don't cover (go read the news)</div><div class="xs"><table id="wResid"></table></div></div>
+    <div class="box"><div class="eyebrow">Crowded or washed-out positioning (≤ 10th or ≥ 90th percentile of 3 years)</div><div class="xs"><table id="wCrowd"></table></div>
+      <p class="note" style="margin-top:6px">Sign-adjusted to the market as quoted: a high percentile = long the market as quoted (e.g. long USDJPY = short yen). Fast money = leveraged funds, real money = asset managers, commodity funds = managed money.</p></div>
+    <div class="box"><div class="eyebrow">Flipped drivers: markets that changed story</div><div class="xs"><table id="wFlip"></table></div></div>
+  </section>
+
+  <!-- CALENDAR -->
+  <section data-p="calendar" class="hidden">
+    <div class="box"><div class="eyebrow">The week ahead (US Eastern time) and which markets each event hits</div><div class="xs"><table id="cal"></table></div></div>
+  </section>
+
+  <!-- METHOD -->
+  <section data-p="method" class="hidden">
+    <div class="box"><div class="md" id="playbook">Loading…</div></div>
+  </section>
+
+  <!-- LEARN -->
+  <section data-p="learn" class="hidden">
+    <div class="box">
+      <div class="sub" id="learnPick"></div>
+      <div class="md" id="learnBody">Loading…</div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const md = t => (window.marked ? marked.parse(t, { gfm: true }) : '<pre>' + esc(t) + '</pre>');
+  const getText = p => fetch(p, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(p + ' ' + r.status); return r.text(); });
+  const getJson = p => fetch(p, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(p + ' ' + r.status); return r.json(); });
+
+  const LEARN = [
+    ['education/podcast_transcripts/HOW_THEY_THINK.md', 'How they think (decoded episodes)'],
+    ['education/podcast_transcripts/PODCAST_INSIGHTS.md', 'Ideas log + calls scorecard'],
+  ];
+  let INDEX = null, PACK = null, groupOn = 'All';
+
+  // ---------- tabs (hash-routed so links like market-review.html#learn work) ----------
+  function show(t){
+    if (!document.querySelector(`section[data-p="${t}"]`)) t = 'week';
+    document.querySelectorAll('section[data-p]').forEach(s => s.classList.toggle('hidden', s.dataset.p !== t));
+    document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+    if (location.hash.slice(1) !== t) history.replaceState(null, '', '#' + t);
+    if (t === 'method' && !$('#playbook').dataset.done) loadDoc('education/market_reviews/PLAYBOOK.md', $('#playbook'));
+    if (t === 'learn' && !$('#learnBody').dataset.done) pickLearn(0);
+  }
+  $('#tabs').addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) show(t.dataset.t); });
+  window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+
+  function loadDoc(path, el){
+    el.innerHTML = 'Loading…';
+    getText(path).then(t => { el.innerHTML = md(t) + `<p class="note" style="margin-top:16px">Source: <code>${esc(path)}</code></p>`; el.dataset.done = 1; })
+      .catch(e => { el.innerHTML = `<span id="err">Could not load ${esc(path)}: ${esc(e.message)}</span>`; });
+  }
+  function pickLearn(i){
+    $('#learnPick').innerHTML = LEARN.map((l, j) => `<button class="tab ${j === i ? 'on' : ''}" data-i="${j}">${esc(l[1])}</button>`).join('');
+    loadDoc(LEARN[i][0], $('#learnBody'));
+  }
+  $('#learnPick').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) pickLearn(+b.dataset.i); });
+
+  // ---------- formatting ----------
+  const fm = (v, u) => v == null ? 'n/a' : u === 'pct' ? (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%' : u === 'bp' ? (v >= 0 ? '+' : '') + (v * 100).toFixed(0) + 'bp' : (v >= 0 ? '+' : '') + v.toFixed(1);
+  const cls = v => v == null ? '' : v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+  const ord = x => { if (x == null) return 'n/a'; const n = Math.round(x), t = n % 100; return n + ((t >= 11 && t <= 13) ? 'th' : ({1:'st',2:'nd',3:'rd'}[n % 10] || 'th')); };
+  const sc = x => x == null ? 'n/a' : (x >= 0 ? '+' : '') + x.toFixed(2);
+  const residBig = m => { const d = m.decomp; if (!d || d.resid == null) return false; const lim = m.units === 'pct' ? 0.015 : m.units === 'bp' ? 0.10 : 1.5;
+                          return Math.abs(d.resid) >= lim && Math.abs(d.resid) >= 0.5 * Math.abs(d.actual || 0); };
+  const crowdOf = m => !m.cot || !m.cot.groups ? [] : m.cot.groups.filter(g => g.pct3y != null && (g.pct3y <= 10 || g.pct3y >= 90));
+  const crowdScore = m => !m.cot || !m.cot.groups ? 0 : Math.max(0, ...m.cot.groups.map(g => g.pct3y == null ? 0 : Math.abs(g.pct3y - 50)));
+
+  function bar(pct, color){ const p = Math.max(0, Math.min(100, pct ?? 0)); return `<span class="bar"><i style="width:${p}%;background:${color}"></i></span>`; }
+  function marker(pos){ const p = Math.max(0, Math.min(100, (pos ?? 0) * 100)); return `<span class="bar"><span class="mk" style="left:calc(${p}% - 1px)"></span></span>`; }
+
+  // ---------- board ----------
+  function card(name, m){
+    const mv = m.move, d = m.decomp, flags = [];
+    if (mv.move4_pct != null && mv.move4_pct >= 90) flags.push('<span class="flag unusual">UNUSUAL</span>');
+    if (residBig(m)) flags.push('<span class="flag resid">UNEXPLAINED</span>');
+    if (crowdOf(m).length) flags.push('<span class="flag crowd">CROWDED</span>');
+    const drv = (m.drivers || []).filter(r => !r.missing && r.recent != null).map(r => {
+      const c = r.flipped ? 'flip' : r.lab === 'INVERTED' ? 'inv' : r.lab === 'textbook' ? 'tb' : '';
+      const ch = m.in_charge === r.key ? ' charge' : '';
+      return `<span class="chip ${c}${ch}" title="${esc(r.why)} · prior ${sc(r.prior)} (${esc(r.lab_prior)})">${esc(r.key)} ${sc(r.recent)}${r.flipped ? ' ⟲' : ''}</span>`;
+    }).join('');
+    const charge = m.in_charge ? `<b>${esc(m.in_charge)}</b> in charge` : '<b>no clear driver</b> (all |corr| &lt; 0.3)';
+    let dec = '';
+    if (d) {
+      const parts = Object.entries(d.contrib || {}).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 3)
+        .map(([k, v]) => `${esc(k)} <span class="${cls(v)}">${fm(v, m.units)}</span>`).join(' · ');
+      dec = `<div class="row" title="Regression of daily moves on the drivers; R² says how much to trust the split">Last 20 sessions <b class="${cls(d.actual)}">${fm(d.actual, m.units)}</b> = ${parts} · unexplained <b class="${cls(d.resid)}">${fm(d.resid, m.units)}</b> <span class="note">(R² ${d.r2?.toFixed(2)}, n=${d.n})</span></div>`;
+    }
+    const cot = (m.cot && m.cot.groups || []).map(g => `<div class="kv"><span class="lbl">${esc(g.group)}</span>${bar(g.pct3y, g.pct3y <= 10 || g.pct3y >= 90 ? 'var(--red)' : 'var(--blue)')}<span class="note" style="width:150px">${ord(g.pct3y)} pct · 4w ${g.chg4 >= 0 ? '+' : ''}${Math.round(g.chg4 ?? 0).toLocaleString()}</span></div>`).join('');
+    const cal = (m.calendar || []).slice(0, 3).map(e => `<div class="note">📅 ${esc(e.date.slice(5))} ${esc(e.time_et || '')} ET · ${esc(e.country)}: ${esc(e.event)}${e.consensus ? ' (cons ' + esc(e.consensus) + ')' : ''}</div>`).join('');
+    return `<div class="card">
+      <h4>${esc(name)} <span class="lvl">${esc(m.level_text)}</span> ${flags.join(' ')}</h4>
+      <div class="row">1w <b class="${cls(mv.w1)}">${fm(mv.w1, m.units)}</b> · 4w <b class="${cls(mv.w4)}">${fm(mv.w4, m.units)}</b> · 13w <span class="${cls(mv.w13)}">${fm(mv.w13, m.units)}</span></div>
+      <div class="kv"><span class="lbl">4w move vs 2y</span>${bar(mv.move4_pct, mv.move4_pct >= 90 ? 'var(--amber)' : 'var(--text3)')}<span class="note" style="width:70px">${ord(mv.move4_pct)}</span></div>
+      <div class="kv"><span class="lbl">52w range</span>${marker(mv.range_pos)}<span class="note" style="width:70px">${mv.range_pos == null ? 'n/a' : Math.round(mv.range_pos * 100) + '%'}</span></div>
+      <div class="row">${charge}</div><div>${drv}</div>
+      ${dec}${cot ? '<div class="note" style="margin-top:2px">Positioning (CFTC ' + esc(m.cot.date || '') + ', 3y percentile)</div>' + cot : ''}${cal}
+    </div>`;
+  }
+  function renderBoard(){
+    const M = PACK.markets, names = Object.keys(M);
+    const groups = ['All', ...new Set(names.map(n => M[n].group))];
+    $('#groups').innerHTML = groups.map(g => `<button class="tab ${g === groupOn ? 'on' : ''}" data-g="${esc(g)}">${esc(g)}</button>`).join('');
+    let list = names.filter(n => groupOn === 'All' || M[n].group === groupOn);
+    const s = $('#sort').value;
+    if (s === 'unusual') list.sort((a, b) => (M[b].move.move4_pct ?? -1) - (M[a].move.move4_pct ?? -1));
+    if (s === 'resid') list.sort((a, b) => (residBig(M[b]) - residBig(M[a])) || (Math.abs(M[b].decomp?.resid ?? 0) / (M[b].units === 'pct' ? 1 : 10)) - (Math.abs(M[a].decomp?.resid ?? 0) / (M[a].units === 'pct' ? 1 : 10)));
+    if (s === 'crowd') list.sort((a, b) => crowdScore(M[b]) - crowdScore(M[a]));
+    $('#grid').innerHTML = list.map(n => card(n, M[n])).join('') || '<p class="note">No markets.</p>';
+  }
+  $('#groups').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (b) { groupOn = b.dataset.g; renderBoard(); } });
+  $('#sort').addEventListener('change', renderBoard);
+
+  function renderRegime(){
+    $('#regime').innerHTML = '<tr><th>Pair</th><th>Last 20 sessions</th><th>60 before</th><th>Status</th><th>What it means</th></tr>' +
+      (PACK.regime || []).map(r => `<tr><td>${esc(r.a)} vs ${esc(r.b)}</td><td class="n">${sc(r.recent)}</td><td class="n">${sc(r.prior)}</td>
+        <td>${/FLIPPED/.test(r.status) ? '<span class="chip flip">' + esc(r.status) + '</span>' : /INVERTED/.test(r.status) ? '<span class="chip inv">' + esc(r.status) + '</span>' : esc(r.status)}</td><td class="note">${esc(r.why)}</td></tr>`).join('');
+    const fp = PACK.fed_path || [];
+    $('#fed').innerHTML = fp.length ? '<b>Fed funds futures</b> (implied average rate by contract month, change vs ~1 week): ' + fp.map(([k, v, w]) => `${esc(k)} ${v.toFixed(3)}% <span class="${cls(v - w)}">(${(v - w >= 0 ? '+' : '') + (v - w).toFixed(3)})</span>`).join(' · ') : '';
+    $('#notes').textContent = (PACK.notes || []).length ? 'Data notes: ' + PACK.notes.join(' · ') : '';
+    const vix = PACK.markets && null; // VIX/MOVE live in the pack markdown; show from regime context if present
+    $('#vol').textContent = 'Pack built for ' + PACK.asof + '. Correlations are of daily moves; 20 sessions is noisy, so a flip is a question, not a signal.';
+  }
+
+  // ---------- watch lists ----------
+  function renderWatch(){
+    const M = PACK.markets, N = Object.keys(M);
+    const un = N.filter(n => (M[n].move.move4_pct ?? 0) >= 90).sort((a, b) => M[b].move.move4_pct - M[a].move.move4_pct);
+    $('#wUnusual').innerHTML = '<tr><th>Market</th><th>4w move</th><th>Percentile</th><th>In charge</th><th>52w range</th></tr>' + (un.map(n => `<tr><td>${esc(n)}</td><td class="n ${cls(M[n].move.w4)}">${fm(M[n].move.w4, M[n].units)}</td><td class="n">${ord(M[n].move.move4_pct)}</td><td>${esc(M[n].in_charge || 'no clear driver')}</td><td class="n">${Math.round((M[n].move.range_pos ?? 0) * 100)}%</td></tr>`).join('') || '<tr><td colspan="5" class="note">None this week.</td></tr>');
+    const rs = N.filter(n => residBig(M[n])).sort((a, b) => Math.abs(M[b].decomp.resid) / (M[b].units === 'pct' ? 1 : 10) - Math.abs(M[a].decomp.resid) / (M[a].units === 'pct' ? 1 : 10));
+    $('#wResid').innerHTML = '<tr><th>Market</th><th>20-session move</th><th>Unexplained</th><th>R²</th><th>Drivers checked</th></tr>' + (rs.map(n => `<tr><td>${esc(n)}</td><td class="n ${cls(M[n].decomp.actual)}">${fm(M[n].decomp.actual, M[n].units)}</td><td class="n ${cls(M[n].decomp.resid)}"><b>${fm(M[n].decomp.resid, M[n].units)}</b></td><td class="n">${M[n].decomp.r2.toFixed(2)}</td><td class="note">${esc(Object.keys(M[n].decomp.contrib).join(', '))}</td></tr>`).join('') || '<tr><td colspan="5" class="note">None this week.</td></tr>');
+    const cr = [];
+    N.forEach(n => crowdOf(M[n]).forEach(g => cr.push([n, g])));
+    cr.sort((a, b) => Math.abs(b[1].pct3y - 50) - Math.abs(a[1].pct3y - 50));
+    $('#wCrowd').innerHTML = '<tr><th>Market</th><th>Who</th><th>Net (as quoted)</th><th>3y percentile</th><th>4w change</th><th>Report</th></tr>' + (cr.map(([n, g]) => `<tr><td>${esc(n)}</td><td>${esc(g.group)}</td><td class="n">${Math.round(g.net).toLocaleString()}</td><td class="n"><b>${ord(g.pct3y)}</b></td><td class="n ${cls(g.chg4)}">${Math.round(g.chg4 ?? 0).toLocaleString()}</td><td class="note">${esc(M[n].cot.date)}</td></tr>`).join('') || '<tr><td colspan="6" class="note">None.</td></tr>');
+    const fl = [];
+    N.forEach(n => (M[n].drivers || []).forEach(r => { if (r.flipped) fl.push([n, r]); }));
+    $('#wFlip').innerHTML = '<tr><th>Market</th><th>Driver</th><th>Now</th><th>Before</th><th>Why it matters</th></tr>' + (fl.map(([n, r]) => `<tr><td>${esc(n)}</td><td>${esc(r.key)}</td><td class="n">${sc(r.recent)} <span class="note">${esc(r.lab)}</span></td><td class="n">${sc(r.prior)} <span class="note">${esc(r.lab_prior)}</span></td><td class="note">${esc(r.why)}</td></tr>`).join('') || '<tr><td colspan="5" class="note">None.</td></tr>');
+  }
+
+  // ---------- calendar ----------
+  function renderCal(){
+    const M = PACK.markets, ev = new Map();
+    Object.entries(M).forEach(([n, m]) => (m.calendar || []).forEach(e => {
+      const k = e.date + '|' + (e.time_et || '') + '|' + e.country + '|' + e.event;
+      if (!ev.has(k)) ev.set(k, { ...e, mk: new Set() });
+      ev.get(k).mk.add(n);
+    }));
+    const rows = [...ev.values()].sort((a, b) => (a.date + (a.time_et || '')).localeCompare(b.date + (b.time_et || '')));
+    const day = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+    $('#cal').innerHTML = '<tr><th>Day</th><th>ET</th><th>Event</th><th>Consensus / prev</th><th>Markets on the board it hits</th></tr>' +
+      rows.map(e => `<tr><td>${esc(day(e.date))}</td><td class="n">${esc(e.time_et || '')}</td><td><b>${esc(e.country)}</b>: ${esc(e.event)}</td><td class="note">${esc(e.consensus || '–')} / ${esc(e.previous || '–')}</td><td class="note">${esc([...e.mk].slice(0, 8).join(', '))}${e.mk.size > 8 ? ' …' : ''}</td></tr>`).join('');
+  }
+
+  // ---------- this week (written reviews) ----------
+  function renderReviews(w){
+    const revs = w.reviews || [];
+    const label = p => /cross_market/.test(p) ? 'Cross-market review' : /weekly_review/.test(p) ? 'Podcast-style review' : p.split('/').pop();
+    revs.sort((a, b) => /cross_market/.test(b) - /cross_market/.test(a));
+    $('#revPick').innerHTML = revs.map((p, i) => `<button class="tab ${i === 0 ? 'on' : ''}" data-r="${esc(p)}">${esc(label(p))}</button>`).join('');
+    if (revs.length) loadDoc(revs[0], $('#revBody')); else $('#revBody').innerHTML = '<p class="note">No written review for this week yet; the Board and Watch lists are built from the data pack.</p>';
+  }
+  $('#revPick').addEventListener('click', e => { const b = e.target.closest('[data-r]'); if (!b) return;
+    document.querySelectorAll('#revPick .tab').forEach(x => x.classList.toggle('on', x === b)); loadDoc(b.dataset.r, $('#revBody')); });
+
+  function loadWeek(i){
+    const w = INDEX.weeks[i];
+    renderReviews(w);
+    getJson(w.pack).then(p => { PACK = p; renderRegime(); renderBoard(); renderWatch(); renderCal(); })
+      .catch(e => { $('#err').textContent = 'Could not load the data pack: ' + e.message; });
+  }
+  $('#week').addEventListener('change', e => loadWeek(+e.target.value));
+
+  getJson('analysis/output/market-review/index.json').then(ix => {
+    INDEX = ix;
+    $('#week').innerHTML = ix.weeks.map((w, i) => `<option value="${i}">${esc(w.date)}</option>`).join('');
+    loadWeek(0);
+  }).catch(e => { $('#err').textContent = 'Could not load the review index: ' + e.message; });
+  show(location.hash.slice(1) || 'week');
+})();
+</script>
+</body>
+</html>
