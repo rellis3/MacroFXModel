@@ -52,6 +52,11 @@ const pl = P.positionLines({ regime: rc, axes: P.axesRows(gr), firing: P.deskFir
 ok('position lines: three tenses, each non-empty, each names its numbers', pl.behind.length >= 1 && pl.right.length >= 1 && pl.ahead.length >= 1 && /month 1 after 5 months of goldilocks/.test(pl.behind[0]) && /94.1%/.test(pl.ahead.join(' ')));
 ok('textbook and measured record are separate, labelled lines', pl.behind.some(l => /^The textbook says/.test(l)) && pl.behind.some(l => /^The measured record since 2007/.test(l) && /S&P 500 \+1.49% a month \(69% of months up\)/.test(l)), pl.behind.join(' | '));
 ok('position lines never state a direction', !JSON.stringify(pl).match(/\bwill (rise|fall|go|move|drop)\b|\bbullish\b|\bbearish\b|predict/i));
+{ const j = P.crowding({ instruments: [{ sym: 'JPY', group: 'fx', specSharePct: 95, specShare: 20 }] },
+    { instruments: { USDJPY: { sym: 'JPY', key: 'D', label: 'Crowded, pulling back as the crowd leaves', line: 'x', ev: 'cot-crowding-p5', verdict: 'validated', zone: 'with' } } })[0];
+  ok('crowding: a JPY row (USDJPY terms) is crowded long USDJPY = crowded short the yen', j.state === 'crowded long' && j.ccyState === 'crowded short' && j.ccyPct === 5);
+  ok('crowding: the /api/cot-state read rides along by feed symbol', j.inst === 'USDJPY' && j.cot.key === 'D' && j.cot.ev === 'cot-crowding-p5');
+  ok('crowdCcy: currency view swaps state and pct', P.crowdCcy(j).state === 'crowded short' && P.crowdCcy(j).pct === 5); }
 ok('ccysOf', P.ccysOf('EURUSD', 'fx').join() === 'EUR,USD' && P.ccysOf('GOLD', 'commodity') === null);
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

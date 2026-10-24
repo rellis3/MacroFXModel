@@ -178,5 +178,9 @@ ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d
   const wkI = buildNewsletter({ date: 'x', isoDate: '2026-10-25', edition: 'weekly', week: { events: wkEv } });
   ok('the weekly calendar is a day-by-day picture: one row per day with a chip per release, orange for big and grey for medium', (wkI.html.match(/class="wkd"/g) ?? []).length === 2 && /class="ev2 hi"/.test(wkI.html) && /class="ev2 "/.test(wkI.html) && !/Durable Goods/.test(wkI.html));
   ok('each day counts its big releases in dots', /title="1 big release">●</.test(wkI.html) && /title="2 big releases">●●</.test(wkI.html)); }
+{ const crowding = [{ sym: 'JPY', pct: 95, state: 'crowded long', ccyPct: 5, ccyState: 'crowded short', cot: { key: 'D', label: 'Crowded, pulling back as the crowd leaves', line: 'Historically a reset rather than a reversal.', ev: 'cot-crowding-p5', verdict: 'validated' } }];
+  const c = buildNewsletter({ date: 'd', isoDate: '2026-10-24', crowding, cotDate: '2026-10-20', ranges: [{ key: 'USDJPY', label: 'USD/JPY', price: '1', hlMed: 1, used: 0.5 }] });
+  ok('a JPY row reads in yen terms on the card (long USDJPY = short the yen)', /JPY speculators:<\/b> crowded short · crowded, pulling back/.test(c.html) && !/JPY speculators:<\/b> crowded long/.test(c.html));
+  ok('the crowding-map line carries its verdict', /Historically a reset rather than a reversal\. <span title="cot-crowding-p5">\(measured\)/.test(c.html)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

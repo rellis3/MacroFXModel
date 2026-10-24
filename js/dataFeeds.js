@@ -269,7 +269,7 @@ const HAND_FEEDS = [
     details: 'Legacy/TFF futures reports from publicreporting.cftc.gov; a 10-year factor history for the COT test.',
     refresh: 'Live routes recompute on request (worker KV cache). The factor history backfill is manual (POST /api/cot-backfill/run).',
     store: 'KV cot_extremes_v3, cot_series_v2, cot_factor_history_v1',
-    endpoints: ['/api/cot', '/api/cot-extremes', '/api/cot-analysis', '/api/cot-backfill/status'],
+    endpoints: ['/api/cot', '/api/cot-extremes', '/api/cot-analysis', '/api/cot-state', '/api/cot-backfill/status'],
     hosts: ['publicreporting.cftc.gov'] },
   { id: 'myfxbook', name: 'Retail sentiment', provider: 'Myfxbook community outlook', category: 'positioning',
     purpose: 'Percent of retail traders long/short per pair — a contrarian crowding read.',

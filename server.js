@@ -123,6 +123,7 @@ import { LADDER_PARAMS as _LA_LADDER_PARAMS } from './js/forecastLadderParams.js
 import { costForPair as _laCostForPair } from './js/perLineStrategy.js';
 import { assetClass as _assetClassOf } from './js/instrumentRegistry.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
+import { cotStateFor as _cotStateFor, COT_ROW_FOR as _COT_ROW_FOR, OANDA_FOR as _COT_OANDA_FOR, FLIPPED as _COT_FLIPPED, toCcyTerms as _cotToCcy, pctToCcyTerms as _cotPctToCcy } from './js/cotState.js';
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical, validateInstrumentWithRegimeSplit as _mveValidateFull } from './js/mve/validateInstrument.js';
@@ -1449,7 +1450,7 @@ async function computeCotCorrelations() {
     for (let i = 1; i < s.dates.length; i++) {
       const a = s.specShare[i - 1], b = s.specShare[i];
       if (a == null || b == null || s.dates[i] == null) continue;
-      m.set(s.dates[i], b - a);
+      m.set(s.dates[i], _cotToCcy(ccy, b - a));   // "long the currency" terms: JPY/CAD/CHF series arrive in USD-pair terms
     }
     if (m.size >= 10) deltasByCcy[ccy] = m;
   }
@@ -3068,8 +3069,8 @@ ${s.cot ? `Report date: ${s.cot.reportDate ?? 'N/A'}  |  Open Interest: ${s.cot.
 Leveraged funds net: ${s.cot.levNet ?? 'N/A'} (${s.cot.levNetChg != null ? (s.cot.levNetChg >= 0 ? '+' : '') + s.cot.levNetChg : 'N/A'} wk)  |  Net % of OI: ${s.cot.levPct != null ? s.cot.levPct.toFixed(1) + '%' : 'N/A'}
 Spec traders: ${s.cot.numLevLong ?? 'N/A'} long · ${s.cot.numLevShort ?? 'N/A'} short  |  Avg size: ${s.cot.avgContracts ?? 'N/A'} contracts
 Asset Mgr net: ${s.cot.amNet ?? 'N/A'} (${s.cot.amNetChg != null ? (s.cot.amNetChg >= 0 ? '+' : '') + s.cot.amNetChg : 'N/A'} wk)  |  Dealer net: ${s.cot.dealerNet ?? 'N/A'}
-Gross L/S ratio: ${s.cot.grossRatio ?? 'N/A'}  |  Crowding: ${s.cot.crowdingPct != null ? s.cot.crowdingPct.toFixed(1) + '% of OI' : 'N/A'}${s.cot.crowdingPct >= 20 ? ' — EXTREME (unwind risk elevated)' : s.cot.crowdingPct >= 10 ? ' — ELEVATED' : ''}
-Crowding percentile (net as SHARE of OI, ranked — the read that survives OI itself changing): ${s.cot.crowdSharePct != null ? s.cot.crowdSharePct + 'th pct' : 'N/A'}${s.cot.crowdShare != null ? `  |  net = ${s.cot.crowdShare}% of OI` : ''}${s.cot.crowdSharePct >= 90 ? ' — CROWDED LONG this pair' : s.cot.crowdSharePct <= 10 ? ' — CROWDED SHORT this pair' : ''}${s.cot.inverted ? '  (futures are the foreign leg; already flipped into pair terms)' : ''}
+Gross L/S ratio: ${s.cot.grossRatio ?? 'N/A'}  |  Crowding: ${s.cot.crowdingPct != null ? s.cot.crowdingPct.toFixed(1) + '% of OI' : 'N/A'}${s.cot.crowdingPct >= 20 ? ' — a large share of OI (context: crowding was tested and does not say which way price goes)' : s.cot.crowdingPct >= 10 ? ' — ELEVATED' : ''}
+Crowding percentile (net as SHARE of OI, ranked — the read that survives OI itself changing): ${s.cot.crowdSharePct != null ? s.cot.crowdSharePct + 'th pct' : 'N/A'}${s.cot.crowdShare != null ? `  |  net = ${s.cot.crowdShare}% of OI` : ''}${s.cot.crowdSharePct >= 90 && (s.cot.crowdShare ?? 1) > 0 ? ' — CROWDED LONG this pair' : s.cot.crowdSharePct <= 10 && (s.cot.crowdShare ?? -1) < 0 ? ' — CROWDED SHORT this pair' : (s.cot.crowdSharePct >= 90 || s.cot.crowdSharePct <= 10) ? ' — extreme percentile but the net is on the other side: a trimmed book, not crowded' : ''}${s.cot.inverted ? '  (the feed delivers this row in pair terms already)' : ''}
 NOTE ON COT TIMING: this is a Tuesday snapshot released Friday, so it is ALWAYS several days old — treat it as a positioning/regime conditioner, never as a timing signal, and say so if you lean on it.` : '  COT data not available (set CFTC URL via COT toolbar button)'}
 ${s.cotMarket ? `CROSS-MARKET POSITIONING (${s.cotMarket.n} instruments, report ${s.cotMarket.reportDate}) — is this pair's crowding idiosyncratic or part of a board-wide stretch?
 Extremes: ${s.cotMarket.extremes.length ? s.cotMarket.extremes.map(e => `${e.sym} ${e.pct}th (${e.side})`).join('  ·  ') : 'none at the 10th/90th percentile'}
@@ -3232,9 +3233,9 @@ ${s.moveAttribution ? Object.entries(s.moveAttribution).filter(([k]) => k !== 'n
 ${s.moveAttribution.note}${s.moveAttribution.pairSpecificSharePct >= 50 ? `
 IMPORTANT: most of this move is pair-specific, so do NOT frame it as a macro/currency story — say plainly that a macro view is better expressed elsewhere.` : ''}` : '  Not available'}
 
-POSITIONING vs PRICE
-${s.positioningDivergence ? `${s.positioningDivergence.state}: the crowd is ${s.positioningDivergence.crowdSide} at the ${s.positioningDivergence.cotPercentile}th percentile and today price ${s.positioningDivergence.state === 'STALLED' ? 'has gone nowhere' : 'moved the other way'} (${s.positioningDivergence.todayMoveDayRanges} day-ranges)${s.positioningDivergence.derived ? ', derived from both legs' : ''}.
-${s.positioningDivergence.note}` : '  No crowded-and-stalled condition — nothing to report here.'}
+POSITIONING STATE (registered study cot-crowding-programme)
+${s.positioningState ? `${s.positioningState.label} (speculators crowded ${s.positioningState.crowdSide ?? '-'}; CFTC report ${s.positioningState.reportDate ?? 'n/a'}): ${s.positioningState.read}${s.positioningState.volNote ? ' ' + s.positioningState.volNote : ''} [evidence ${s.positioningState.evidence ?? 'descriptive'}, ${s.positioningState.verdict}]
+${s.positioningState.note}` : '  Not crowded on either side; nothing to report here.'}
 
 DATA CONFLICTS (resolve before narrating - these outrank everything below)
 ${s.dataConflicts ? s.dataConflicts.map(c => `  ${c.what}: ${c.sourceA} vs ${c.sourceB} - ${c.gapPct}% apart. Load-bearing for ${c.loadBearingFor}.`).join('\n') + `
@@ -6482,8 +6483,14 @@ async function _buildCotAnalysis() {
   // Reinforcing FX crosses — both legs individually at a 90th/10th extreme, direction
   // reinforcing on the cross between them (same test as the page's Reinforcing FX Pairs panel).
   const bySym = {}; ext.filter(x => x.group === 'fx').forEach(x => bySym[x.sym] = x);
+  // Legs compared in "long the currency" terms: the feed's JPY/CAD/CHF rows are in USD-pair terms (js/cotState.js),
+  // so comparing raw percentiles inverted every cross with exactly one of those legs (EURJPY, AUDCAD, EURCHF...).
+  const ccyPct = x => _cotPctToCcy(x.sym, pctOf(x));
   const combos = _COT_FX_PAIRS.filter(([b, q]) => { const A = bySym[b], B = bySym[q];
-    return A && B && (pctOf(A) >= 90) !== (pctOf(B) >= 90); }).map(([b, q]) => b + q);
+    return A && B && (ccyPct(A) >= 90) !== (ccyPct(B) >= 90); }).map(([b, q]) => b + q);
+  // JPY/CAD/CHF rows are USDJPY/USDCAD/USDCHF positions: name them that way so "JPY crowded long" is never printed
+  // for a book that is long USD against the yen.
+  const nm = x => x.sym === 'US' ? 'US30Y' : _COT_FLIPPED.has(x.sym) ? 'USD' + x.sym : x.sym;
 
   // Event risk — crowded FX/Treasury markets walking into a scheduled release for
   // their own currency in the next 3 days (same window as the page's own overlay).
@@ -6499,7 +6506,7 @@ async function _buildCotAnalysis() {
         const e = upcoming.find(v => countries.includes(v.country));
         if (!e) return null;
         const hrs = Math.round((e.ms - now) / 3.6e6);
-        return `${x.sym} (${pctOf(x) >= 90 ? 'crowded long' : 'crowded short'}) → ${e.event} in ${hrs < 24 ? hrs + 'h' : Math.round(hrs / 24) + 'd'} (${e.impact} impact)`;
+        return `${nm(x)} (${crowdWord(x)}) → ${e.event} in ${hrs < 24 ? hrs + 'h' : Math.round(hrs / 24) + 'd'} (${e.impact} impact)`;
       }).filter(Boolean);
     }
   } catch {}
@@ -6515,10 +6522,11 @@ async function _buildCotAnalysis() {
     }
   } catch {}
 
-  const nm = x => x.sym === 'US' ? 'US30Y' : x.sym;
+  const crowdWord = x => { const p = pctOf(x), agree = (p >= 90 && (x.specShare ?? x.specNet) > 0) || (p <= 10 && (x.specShare ?? x.specNet) < 0);
+    return agree ? (p >= 90 ? 'crowded LONG' : 'crowded SHORT') : 'trimmed (extreme percentile, net on the other side)'; };
   const rows = ext.map(x => {
     const p = pctOf(x), c = commOf(x), f = flowOf(x);
-    return `${nm(x)} [${_COT_GRP_NAME[x.group] || x.group}] — spec crowding ${p}th pctile (${p >= 90 ? 'crowded LONG' : 'crowded SHORT'}), net ${x.specShare != null ? (x.specShare > 0 ? '+' : '') + x.specShare + '% of OI' : 'n/a'}`
+    return `${nm(x)} [${_COT_GRP_NAME[x.group] || x.group}] — spec crowding ${p}th pctile (${crowdWord(x)}), net ${x.specShare != null ? (x.specShare > 0 ? '+' : '') + x.specShare + '% of OI' : 'n/a'}`
       + `${Number.isFinite(x.specShareChg) ? `, ${x.specShareChg > 0 ? '+' : ''}${x.specShareChg}pp this wk` : ''}`
       + `${c != null ? `, commercials ${c}th pctile` : ''}${f ? `, ${f} this week` : ''}${confluence.has(x) ? ', COMMERCIAL CONFLUENCE' : ''}`;
   }).join('\n');
@@ -6567,6 +6575,42 @@ Respond with ONLY valid JSON, no markdown:
   await kv.put(_COT_ANALYSIS_KV, JSON.stringify(payload)).catch(() => {});
   return payload;
 }
+// ── /api/cot-state — where each instrument sits on the COT crowding map (js/cotState.js) ─────────────────────
+// One read for today.html's per-pair drawer and the Atlas newsletter, so both say the same thing. States and wording
+// come from the registered study cot-crowding-programme; every row carries its ledger id. Inputs: the cached
+// /api/cot-extremes book + its weekly series (KV, written by _worker.js) and OANDA daily closes for the trend.
+// On demand only (no timer); cached in memory per COT report date for 6 hours.
+let _cotStateCache = null;
+async function _buildCotState() {
+  const raw = await kv.get(COT_KV.extremes);
+  if (!raw) throw new Error('No COT data cached yet; load cot-extremes.html once first.');
+  const cd = JSON.parse(raw);
+  const rows = cd.data?.instruments ?? cd.instruments ?? [];
+  const bySym = Object.fromEntries(rows.filter(x => x && x.sym).map(x => [x.sym, x]));
+  let series = {};
+  try { series = JSON.parse((await kv.get(COT_KV.series)) || '{}')?.series ?? {}; } catch { series = {}; }
+  const reportDate = rows.find(x => x.reportDate)?.reportDate ?? null;
+  if (_cotStateCache && _cotStateCache.reportDate === reportDate && Date.now() - _cotStateCache.ts < 6 * 3600e3) return _cotStateCache.data;
+  const out = {}, errors = [];
+  await Promise.all(Object.entries(_COT_ROW_FOR).map(async ([inst, sym]) => {
+    const row = bySym[sym];
+    if (!row) return;
+    let bars = [];
+    try { bars = await _btFetchD1(_COT_OANDA_FOR[inst], 140); } catch (e) { errors.push(`${inst}: ${e.message}`); }
+    const st = _cotStateFor({ row, series: series[sym], bars });
+    if (st) out[inst] = { sym, ...st, priced: bars.length > 0 };
+  }));
+  const data = { ok: true, reportDate, generated: new Date().toISOString(), study: 'cot-crowding-programme',
+    note: 'Where speculators sit relative to the trend, and what the desk\'s registered study found for that state. Context, never a direction.',
+    instruments: out, errors: errors.length ? errors : undefined };
+  _cotStateCache = { ts: Date.now(), reportDate, data };
+  return data;
+}
+app.get('/api/cot-state', async (_req, res) => {
+  try { res.json(await _buildCotState()); }
+  catch (e) { res.status(503).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/cot-analysis', async (_req, res) => {
   try {
     const raw = await kv.get(_COT_ANALYSIS_KV);
@@ -6608,12 +6652,13 @@ async function _getAutoBriefCfg() {
 // KV key EXACTLY as the drawer reads it: ai_<lvlKey(name,sym) with '/' stripped>.
 const _AI_LK = { GOLD: 'XAU/USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD', DE30: 'DE30_USD', UK100: 'UK100_GBP', US30: 'US30_USD', US2000: 'US2000_USD' };
 // brief name → [COT symbol, flip] and → relevant news countries (ported from today.html)
-const _COT_MAP = { EURUSD:['EUR',false], GBPUSD:['GBP',false], USDJPY:['JPY',true], AUDUSD:['AUD',false], NZDUSD:['NZD',false], USDCAD:['CAD',true], USDCHF:['CHF',true], GOLD:['GOLD',false], NQ:['NQ',false], SPX500:['ES',false], US30:['YM',false], US2000:['RTY',false] };
-// ONE definition of "COT expressed in PAIR terms". Inverted pairs (USD/JPY, USD/CAD,
-// USD/CHF) trade the FOREIGN currency's future, so the net, the OI share, the z and the
-// percentile must ALL be flipped together — flip some and not others and a crowded-short
-// JPY reads as a crowded-short USD/JPY. Both the morning brief and the C+Z export read
-// through here so that flip can never drift into two disagreeing copies.
+const _COT_MAP = { EURUSD:['EUR',false], GBPUSD:['GBP',false], USDJPY:['JPY',false], AUDUSD:['AUD',false], NZDUSD:['NZD',false], USDCAD:['CAD',false], USDCHF:['CHF',false], GOLD:['GOLD',false], NQ:['NQ',false], SPX500:['ES',false], US30:['YM',false], US2000:['RTY',false] };
+// ONE definition of "COT expressed in PAIR terms". /api/cot-extremes ALREADY delivers the JPY, CAD and CHF rows in
+// USD-pair terms (_worker.js processTFF flips net, shares, z, percentiles, weeklyChg and the series together), so
+// no row needs flipping here and every _COT_MAP flag is false. Those three used to be true, which flipped them a
+// SECOND time: a crowded long USDJPY printed as "crowded short this pair" in the per-pair AI prompt, the morning
+// brief and the C+Z export (fixed 2026-10-24; convention in js/cotState.js). The `inverted` path stays for any
+// future row that arrives in currency terms. Both the morning brief and the C+Z export read through here.
 // NOTE `specShare`/`commShare` arrive from _worker.js ALREADY in percent (×100, 2dp) —
 // do not scale them again downstream.
 function _cotPairView(c, inverted) {
@@ -6768,17 +6813,22 @@ async function _serverSnapshotFor(name, sym) {
       const ext = list.filter(x => pctOf(x) != null && (pctOf(x) >= 90 || pctOf(x) <= 10))
         .sort((a, b) => Math.abs(50 - pctOf(b)) - Math.abs(50 - pctOf(a)))
         .slice(0, 8)
-        .map(x => ({ sym: x.sym, group: x.group, pct: pctOf(x),
-          side: pctOf(x) >= 90 ? 'crowded long' : 'crowded short',
-          z: x.specShareZ ?? x.specZ, wkChg: x.weeklyChg }));
+        // JPY/CAD/CHF rows are USDJPY/USDCAD/USDCHF positions (js/cotState.js): named that way. Crowded only when the
+        // net agrees with the percentile; otherwise it is a trimmed book.
+        .map(x => { const sg = x.specShare ?? x.specNet, p = pctOf(x), agree = (p >= 90 && sg > 0) || (p <= 10 && sg < 0);
+          return { sym: _COT_FLIPPED.has(x.sym) ? 'USD' + x.sym : x.sym, group: x.group, pct: p,
+            side: agree ? (p >= 90 ? 'crowded long' : 'crowded short') : 'trimmed (net on the other side)',
+            z: x.specShareZ ?? x.specZ, wkChg: x.weeklyChg }; });
       if (list.length) {
         snap.cotMarket = { reportDate: list[0].reportDate, n: list.length, extremes: ext,
           // Direction of the crowd BY GROUP, so "risk-on positioning" is visible rather
           // than inferred from a wall of individual rows.
           byGroup: [...new Set(list.map(x => x.group))].map(g => {
             const rows = list.filter(x => x.group === g && pctOf(x) != null);
+            // FX in "long the currency" terms so the median does not mix USD-pair and currency rows
+            const pv = x => (g === 'fx' ? _cotPctToCcy(x.sym, pctOf(x)) : pctOf(x));
             return { group: g, n: rows.length,
-              medPct: rows.length ? Math.round(rows.map(pctOf).sort((a, b) => a - b)[rows.length >> 1]) : null };
+              medPct: rows.length ? Math.round(rows.map(pv).sort((a, b) => a - b)[rows.length >> 1]) : null };
           }) };
       }
     }
