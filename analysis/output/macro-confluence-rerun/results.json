@@ -1,0 +1,195 @@
+{
+ "id": "macro-confluence-rerun",
+ "ranAt": "2026-10-24T14:30:07.066Z",
+ "seed": 20261003,
+ "B": 1000,
+ "block": 5,
+ "preregs": [
+  "MD files/MACRO_CONFLUENCE_DIRECTION_PREREG.md",
+  "MD files/MACRO_CONFLUENCE_BAA_CREDIT_PREREG.md",
+  "MD files/MACRO_CONFLUENCE_RANGE_PREREG.md"
+ ],
+ "branch": "worktree-agent-abe91e57843ba5c43",
+ "verdicts": {
+  "macro-confluence-direction": "underpowered",
+  "macro-confluence-baa-credit": "null",
+  "macro-confluence-range": "parked (not re-run)"
+ },
+ "priceSource": "feature store px_d1 (OANDA D1 closes), cut 2026-10-02, last 5000 rows; reproduces banked baa-credit exactly with old units",
+ "baaCredit": {
+  "episodes": {
+   "pos": 45,
+   "neg": 42
+  },
+  "span": {
+   "from": "2009-01-02",
+   "to": "2026-10-02"
+  },
+  "gate": {
+   "EURUSD|H5": {
+    "posReal": false,
+    "halvesAgreePos": false,
+    "halvesAgreeNeg": false,
+    "mirrorOpposite": true,
+    "pass": false
+   },
+   "EURUSD|H20": {
+    "posReal": false,
+    "halvesAgreePos": true,
+    "halvesAgreeNeg": false,
+    "mirrorOpposite": true,
+    "pass": false
+   },
+   "SPX500|H5": {
+    "posReal": false,
+    "halvesAgreePos": true,
+    "halvesAgreeNeg": false,
+    "mirrorOpposite": true,
+    "pass": false
+   },
+   "SPX500|H20": {
+    "posReal": false,
+    "halvesAgreePos": true,
+    "halvesAgreeNeg": true,
+    "mirrorOpposite": true,
+    "pass": false
+   },
+   "GOLD|H5": {
+    "posReal": false,
+    "halvesAgreePos": true,
+    "halvesAgreeNeg": false,
+    "mirrorOpposite": false,
+    "pass": false
+   },
+   "GOLD|H20": {
+    "posReal": false,
+    "halvesAgreePos": false,
+    "halvesAgreeNeg": true,
+    "mirrorOpposite": true,
+    "pass": false
+   }
+  },
+  "scored": "fixed units, date-aligned"
+ },
+ "direction": {
+  "episodes": {
+   "pos": 14,
+   "neg": 7
+  },
+  "span": {
+   "from": "2023-11-22",
+   "to": "2026-10-02"
+  },
+  "minEvents": 30
+ },
+ "cells": [
+  {
+   "name": "baa-credit EURUSD|sign1|H5",
+   "n": 45,
+   "nControl": 2114,
+   "est": -0.0985,
+   "lo": -0.3572,
+   "hi": 0.1453,
+   "real": false
+  },
+  {
+   "name": "baa-credit EURUSD|sign1|H20",
+   "n": 45,
+   "nControl": 2099,
+   "est": -0.5797,
+   "lo": -1.1822,
+   "hi": 0.0438,
+   "real": false
+  },
+  {
+   "name": "baa-credit EURUSD|sign-1|H5",
+   "n": 42,
+   "nControl": 2114,
+   "est": 0.1021,
+   "lo": -0.3042,
+   "hi": 0.5043,
+   "real": false
+  },
+  {
+   "name": "baa-credit EURUSD|sign-1|H20",
+   "n": 42,
+   "nControl": 2099,
+   "est": 0.2168,
+   "lo": -0.7485,
+   "hi": 1.1915,
+   "real": false
+  },
+  {
+   "name": "baa-credit SPX500|sign1|H5",
+   "n": 45,
+   "nControl": 1936,
+   "est": 0.1776,
+   "lo": -0.2803,
+   "hi": 0.6548,
+   "real": false
+  },
+  {
+   "name": "baa-credit SPX500|sign1|H20",
+   "n": 45,
+   "nControl": 1921,
+   "est": 0.1126,
+   "lo": -1.0521,
+   "hi": 1.2089,
+   "real": false
+  },
+  {
+   "name": "baa-credit SPX500|sign-1|H5",
+   "n": 42,
+   "nControl": 1936,
+   "est": -0.2653,
+   "lo": -1.1034,
+   "hi": 0.5455,
+   "real": false
+  },
+  {
+   "name": "baa-credit SPX500|sign-1|H20",
+   "n": 42,
+   "nControl": 1921,
+   "est": -0.8039,
+   "lo": -2.4145,
+   "hi": 0.5824,
+   "real": false
+  },
+  {
+   "name": "baa-credit GOLD|sign1|H5",
+   "n": 45,
+   "nControl": 2059,
+   "est": -0.5065,
+   "lo": -1.1963,
+   "hi": 0.0965,
+   "real": false
+  },
+  {
+   "name": "baa-credit GOLD|sign1|H20",
+   "n": 45,
+   "nControl": 2044,
+   "est": -0.8092,
+   "lo": -1.9318,
+   "hi": 0.3721,
+   "real": false
+  },
+  {
+   "name": "baa-credit GOLD|sign-1|H5",
+   "n": 42,
+   "nControl": 2059,
+   "est": -0.3357,
+   "lo": -1.2596,
+   "hi": 0.5078,
+   "real": false
+  },
+  {
+   "name": "baa-credit GOLD|sign-1|H20",
+   "n": 42,
+   "nControl": 2044,
+   "est": 0.336,
+   "lo": -1.114,
+   "hi": 1.8637,
+   "real": false
+  }
+ ]
+}

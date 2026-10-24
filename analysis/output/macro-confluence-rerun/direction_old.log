@@ -1,0 +1,35 @@
+[rerun] direction mode=old END_DATE=2026-10-02 -> analysis\output\macro-confluence-rerun\direction_old.json
+pulling FRED series (WALCL, WTREGEN, RRPONTSYD, T10Y2Y, BAMLH0A0HYM2)...
+  WALCL 1245  TGA 1245  RRP 3353  T10Y2Y 12596  HY OAS 786
+pulling EURUSD...
+  EURUSD: 5000 bars, 2008-12-06 -> 2026-10-02
+pulling SPX500...
+  SPX500: 5000 bars, 2007-08-02 -> 2026-10-02
+pulling GOLD...
+  GOLD: 5000 bars, 2008-08-14 -> 2026-10-02
+domains computable 2023-11-22 -> 2026-10-02 (742 days)
+confluence +1,+1,+1 episodes: 11  (2024-01-11, 2024-01-31, 2024-04-03, 2024-10-01, 2025-05-08, 2025-06-05, 2025-07-17, 2025-08-27, 2025-10-08, 2025-12-11, 2026-08-24)
+confluence -1,-1,-1 episodes: 5  (2024-04-18, 2024-06-03, 2025-10-23, 2026-03-09, 2026-09-24)
+EURUSD sign+1 H=5: UNTESTABLE (n=11)
+EURUSD sign+1 H=20: UNTESTABLE (n=11)
+EURUSD sign-1 H=5: UNTESTABLE (n=5)
+EURUSD sign-1 H=20: UNTESTABLE (n=4)
+SPX500 sign+1 H=5: UNTESTABLE (n=11)
+SPX500 sign+1 H=20: UNTESTABLE (n=11)
+SPX500 sign-1 H=5: UNTESTABLE (n=5)
+SPX500 sign-1 H=20: UNTESTABLE (n=4)
+GOLD sign+1 H=5: UNTESTABLE (n=11)
+GOLD sign+1 H=20: UNTESTABLE (n=11)
+GOLD sign-1 H=5: UNTESTABLE (n=5)
+GOLD sign-1 H=20: UNTESTABLE (n=4)
+
+THE GATE (per instrument/horizon): pos REAL, both halves agree (pos AND neg), mirror opposite-signed
+  EURUSD H5: UNTESTABLE
+  EURUSD H20: UNTESTABLE
+  SPX500 H5: UNTESTABLE
+  SPX500 H20: UNTESTABLE
+  GOLD H5: UNTESTABLE
+  GOLD H20: UNTESTABLE
+
+VERDICT: UNTESTABLE — not enough independent episodes. This is not a null.
+written analysis\output\macro-confluence-rerun\direction_old.json

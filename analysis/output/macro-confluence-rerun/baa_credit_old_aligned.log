@@ -1,0 +1,36 @@
+[rerun] baa_credit mode=old END_DATE=2026-10-02 -> analysis\output\macro-confluence-rerun\baa_credit_old_aligned.json
+pulling FRED series (WALCL, WTREGEN, RRPONTSYD, T10Y2Y, BAA10Y, AAA10Y)...
+  WALCL 1245  TGA 1245  RRP 3353  T10Y2Y 12596  BAA10Y 10202  AAA10Y 10949
+pulling EURUSD...
+  EURUSD: 5000 bars, 2008-12-06 -> 2026-10-02
+pulling SPX500...
+  SPX500: 5000 bars, 2007-08-02 -> 2026-10-02
+pulling GOLD...
+  GOLD: 5000 bars, 2008-08-14 -> 2026-10-02
+domains computable 2009-01-02 -> 2026-10-02 (4975 days)
+confluence +1,+1,+1 episodes: 39  (2009-01-09, 2009-05-07, 2009-09-10, 2009-12-17, 2010-02-04, 2010-08-05, 2011-02-03, 2012-02-09, 2012-03-15, 2012-09-21, 2012-10-18, 2013-07-25, 2013-08-15, 2015-02-19, 2016-03-31, 2016-08-04, 2016-10-06, 2016-12-08, 2017-02-02, 2019-09-17, 2020-05-14, 2020-08-13, 2020-09-10, 2020-11-12, 2020-12-17, 2021-01-14, 2021-03-18, 2021-05-13, 2021-06-03, 2023-07-28, 2023-09-22, 2024-01-11, 2024-04-10, 2024-10-02, 2024-11-04, 2025-07-17, 2026-01-02, 2026-02-05, 2026-05-21)
+confluence -1,-1,-1 episodes: 38  (2009-12-03, 2010-02-24, 2010-05-27, 2010-06-24, 2011-07-20, 2011-08-15, 2011-12-22, 2012-06-01, 2012-07-25, 2014-03-07, 2014-09-04, 2014-12-02, 2015-03-24, 2015-07-23, 2015-09-07, 2015-09-24, 2015-12-03, 2015-12-24, 2016-03-03, 2016-06-03, 2016-09-01, 2017-04-13, 2018-03-15, 2018-11-15, 2020-04-15, 2020-07-09, 2021-07-01, 2021-08-23, 2021-12-30, 2022-03-03, 2022-03-18, 2022-06-03, 2022-06-30, 2022-07-29, 2022-09-22, 2022-11-03, 2023-06-01, 2026-03-13)
+EURUSD sign+1 H=5: -0.255% [-0.519, +0.005]  n=39 vs 2381 ctl  halves -0.37/-0.08 -> null
+EURUSD sign+1 H=20: -0.616% [-1.117, -0.080]  n=39 vs 2366 ctl  halves -0.75/-0.35 -> REAL
+EURUSD sign-1 H=5: -0.065% [-0.470, +0.292]  n=38 vs 2381 ctl  halves -0.11/+0.04 -> null
+EURUSD sign-1 H=20: -0.023% [-0.807, +0.692]  n=38 vs 2366 ctl  halves -0.16/+0.26 -> null
+SPX500 sign+1 H=5: -0.021% [-0.478, +0.506]  n=39 vs 2200 ctl  halves -0.18/+0.62 -> null
+SPX500 sign+1 H=20: -0.082% [-1.186, +1.005]  n=39 vs 2185 ctl  halves +0.42/+1.97 -> null
+SPX500 sign-1 H=5: -0.549% [-1.200, +0.113]  n=38 vs 2200 ctl  halves -0.44/-0.15 -> null
+SPX500 sign-1 H=20: -0.828% [-1.980, +0.550]  n=38 vs 2185 ctl  halves +0.41/+0.53 -> null
+GOLD sign+1 H=5: -0.198% [-0.722, +0.292]  n=39 vs 2325 ctl  halves -0.19/+0.11 -> null
+GOLD sign+1 H=20: -0.031% [-1.252, +1.276]  n=39 vs 2310 ctl  halves +1.38/+0.21 -> null
+GOLD sign-1 H=5: -0.264% [-1.134, +0.439]  n=38 vs 2325 ctl  halves -0.47/+0.27 -> null
+GOLD sign-1 H=20: -0.205% [-1.572, +1.256]  n=38 vs 2310 ctl  halves +0.28/+0.93 -> null
+
+THE GATE (per instrument/horizon): pos REAL, both halves agree (pos AND neg), mirror opposite-signed
+  EURUSD H5: pos REAL=false  halves agree pos/neg=true/false  mirror opposite=false -> fail
+  EURUSD H20: pos REAL=true  halves agree pos/neg=true/false  mirror opposite=false -> fail
+  SPX500 H5: pos REAL=false  halves agree pos/neg=false/true  mirror opposite=false -> fail
+  SPX500 H20: pos REAL=false  halves agree pos/neg=true/true  mirror opposite=false -> fail
+  GOLD H5: pos REAL=false  halves agree pos/neg=false/false  mirror opposite=false -> fail
+  GOLD H20: pos REAL=false  halves agree pos/neg=true/true  mirror opposite=false -> fail
+
+VERDICT: NULL
+written analysis\output\macro-confluence-rerun\baa_credit_old_aligned.json
+[aligned] spine dates with no bar on that date, per instrument-start|H (events+control): {"2007-08-02|5":362,"2007-08-02|20":362,"2008-08-14|5":112,"2008-08-14|20":112}

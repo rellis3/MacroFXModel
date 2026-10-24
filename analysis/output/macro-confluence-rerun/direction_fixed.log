@@ -1,0 +1,13 @@
+[rerun] direction mode=fixed END_DATE=2026-10-02 -> analysis\output\macro-confluence-rerun\direction_fixed.json
+pulling FRED series (WALCL, WTREGEN, RRPONTSYD, T10Y2Y, BAMLH0A0HYM2)...
+  WALCL 1245  TGA 1245  RRP 3353  T10Y2Y 12596  HY OAS 786
+pulling EURUSD...
+  EURUSD: 5000 bars, 2008-12-06 -> 2026-10-02
+pulling SPX500...
+  SPX500: 5000 bars, 2007-08-02 -> 2026-10-02
+pulling GOLD...
+  GOLD: 5000 bars, 2008-08-14 -> 2026-10-02
+domains computable 2023-11-22 -> 2026-10-02 (742 days)
+confluence +1,+1,+1 episodes: 14  (2024-01-12, 2024-02-02, 2024-07-26, 2024-09-04, 2024-10-02, 2024-11-04, 2025-01-27, 2025-05-02, 2025-06-05, 2025-07-11, 2025-08-27, 2025-10-08, 2025-12-02, 2026-08-24)
+confluence -1,-1,-1 episodes: 7  (2024-04-18, 2024-06-06, 2025-02-26, 2025-08-01, 2025-10-23, 2026-03-02, 2026-09-24)
+EURUSD sign+1 H=5: UNTESTABLE (n=14)

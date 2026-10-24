@@ -1,0 +1,204 @@
+{
+ "id": "macro-confluence-baa-credit",
+ "ranAt": "2026-10-24T14:27:43.335Z",
+ "minEvents": 30,
+ "domainSpan": {
+  "from": "2009-01-02",
+  "to": "2026-10-02"
+ },
+ "episodeCounts": {
+  "pos": 45,
+  "neg": 42
+ },
+ "cells": {
+  "EURUSD|sign1|H5": {
+   "nA": 45,
+   "nB": 2114,
+   "diff": -0.0985,
+   "lo": -0.3572,
+   "hi": 0.1453,
+   "real": false,
+   "halves": [
+    -0.2334,
+    0.0621
+   ]
+  },
+  "EURUSD|sign1|H20": {
+   "nA": 45,
+   "nB": 2099,
+   "diff": -0.5797,
+   "lo": -1.1822,
+   "hi": 0.0438,
+   "real": false,
+   "halves": [
+    -1.0914,
+    -0.0948
+   ]
+  },
+  "EURUSD|sign-1|H5": {
+   "nA": 42,
+   "nB": 2114,
+   "diff": 0.1021,
+   "lo": -0.3042,
+   "hi": 0.5043,
+   "real": false,
+   "halves": [
+    -0.245,
+    0.4814
+   ]
+  },
+  "EURUSD|sign-1|H20": {
+   "nA": 42,
+   "nB": 2099,
+   "diff": 0.2168,
+   "lo": -0.7485,
+   "hi": 1.1915,
+   "real": false,
+   "halves": [
+    -0.293,
+    0.7219
+   ]
+  },
+  "SPX500|sign1|H5": {
+   "nA": 45,
+   "nB": 2114,
+   "diff": -0.1695,
+   "lo": -1.0681,
+   "hi": 0.6619,
+   "real": false,
+   "halves": [
+    -0.3331,
+    0.166
+   ]
+  },
+  "SPX500|sign1|H20": {
+   "nA": 45,
+   "nB": 2099,
+   "diff": 1.0066,
+   "lo": -0.045,
+   "hi": 1.9282,
+   "real": false,
+   "halves": [
+    0.6384,
+    2.0009
+   ]
+  },
+  "SPX500|sign-1|H5": {
+   "nA": 42,
+   "nB": 2114,
+   "diff": -0.0394,
+   "lo": -0.6838,
+   "hi": 0.7054,
+   "real": false,
+   "halves": [
+    -0.3011,
+    0.4054
+   ]
+  },
+  "SPX500|sign-1|H20": {
+   "nA": 42,
+   "nB": 2099,
+   "diff": 0.7719,
+   "lo": -0.8819,
+   "hi": 2.4076,
+   "real": false,
+   "halves": [
+    1.401,
+    0.7991
+   ]
+  },
+  "GOLD|sign1|H5": {
+   "nA": 45,
+   "nB": 2114,
+   "diff": 0.0001,
+   "lo": -0.6127,
+   "hi": 0.549,
+   "real": false,
+   "halves": [
+    0.2915,
+    0.2052
+   ]
+  },
+  "GOLD|sign1|H20": {
+   "nA": 45,
+   "nB": 2099,
+   "diff": -0.7148,
+   "lo": -1.5386,
+   "hi": 0.1646,
+   "real": false,
+   "halves": [
+    0.1826,
+    0.4594
+   ]
+  },
+  "GOLD|sign-1|H5": {
+   "nA": 42,
+   "nB": 2114,
+   "diff": -0.4613,
+   "lo": -1.1258,
+   "hi": 0.1463,
+   "real": false,
+   "halves": [
+    -0.0435,
+    -0.3844
+   ]
+  },
+  "GOLD|sign-1|H20": {
+   "nA": 42,
+   "nB": 2099,
+   "diff": 0.6772,
+   "lo": -0.547,
+   "hi": 1.7403,
+   "real": false,
+   "halves": [
+    1.4238,
+    2.0084
+   ]
+  }
+ },
+ "gate": {
+  "EURUSD|H5": {
+   "posReal": false,
+   "halvesAgreePos": false,
+   "halvesAgreeNeg": false,
+   "mirrorOpposite": true,
+   "pass": false
+  },
+  "EURUSD|H20": {
+   "posReal": false,
+   "halvesAgreePos": true,
+   "halvesAgreeNeg": false,
+   "mirrorOpposite": true,
+   "pass": false
+  },
+  "SPX500|H5": {
+   "posReal": false,
+   "halvesAgreePos": false,
+   "halvesAgreeNeg": false,
+   "mirrorOpposite": false,
+   "pass": false
+  },
+  "SPX500|H20": {
+   "posReal": false,
+   "halvesAgreePos": true,
+   "halvesAgreeNeg": true,
+   "mirrorOpposite": false,
+   "pass": false
+  },
+  "GOLD|H5": {
+   "posReal": false,
+   "halvesAgreePos": true,
+   "halvesAgreeNeg": true,
+   "mirrorOpposite": true,
+   "pass": false
+  },
+  "GOLD|H20": {
+   "posReal": false,
+   "halvesAgreePos": true,
+   "halvesAgreeNeg": true,
+   "mirrorOpposite": true,
+   "pass": false
+  }
+ },
+ "verdict": "NULL"
+}
