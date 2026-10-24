@@ -91,4 +91,9 @@ trade), broker-specific swap tables (T2 uses a stated markup), and dividends poi
 
 ## Amendments
 
+### A1 — 2026-10-25 — PRE-RESULTS
+T2's cash rate r: `rate3m_usd` has no point-in-time vintage before 2013-06. For days before its first vintage, financing uses
+the store's latest published value for that month. It is a cost input, not a signal, so a revised value cannot select
+trades. T9's result (all five sleeves ≥ 0.9975 on 2014+) was already computed when this was written; T2 had not been run.
+
 ## RESULTS
