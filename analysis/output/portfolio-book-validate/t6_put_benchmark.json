@@ -1,0 +1,51 @@
+{
+ "id": "portfolio-book-validate/T6",
+ "window": [
+  "2008-02",
+  "2026-08"
+ ],
+ "bar": "corr >= 0.6 AND S5 Sharpe - PUT excess Sharpe <= 0.4",
+ "S5": {
+  "months": 223,
+  "corr": 0.582,
+  "sharpeProxy": 1.074,
+  "sharpePutExcess": 0.565,
+  "gap": 0.51,
+  "worstMonthProxyPct": -20.69,
+  "worstMonthPutPct": -17.92,
+  "halves": [
+   {
+    "from": "2008-02",
+    "sharpeProxy": 1.435,
+    "sharpePut": 0.567
+   },
+   {
+    "from": "2017-05",
+    "sharpeProxy": 0.756,
+    "sharpePut": 0.563
+   }
+  ]
+ },
+ "S5g": {
+  "months": 223,
+  "corr": 0.273,
+  "sharpeProxy": 0.885,
+  "sharpePutExcess": 0.565,
+  "gap": 0.321,
+  "worstMonthProxyPct": -19.46,
+  "worstMonthPutPct": -17.92,
+  "halves": [
+   {
+    "from": "2008-02",
+    "sharpeProxy": 1.438,
+    "sharpePut": 0.567
+   },
+   {
+    "from": "2017-05",
+    "sharpeProxy": 0.405,
+    "sharpePut": 0.563
+   }
+  ]
+ },
+ "pass": false
+}

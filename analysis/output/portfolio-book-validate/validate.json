@@ -1,0 +1,191 @@
+{
+ "id": "portfolio-book-validate",
+ "ranAt": "2026-10-24T23:40:59.361Z",
+ "prereg": "forge/PORTFOLIO_BOOK_VALIDATE_PREREG.md",
+ "tests": {
+  "T2": {
+   "sharpe": 0.834,
+   "cagrPct": 8.98,
+   "volPct": 11.05,
+   "maxDdPct": 22.3,
+   "tStat": 3.643,
+   "sharpeIs": 0.803,
+   "sharpeOos": 0.869,
+   "halves": [
+    0.776,
+    0.889
+   ],
+   "worstMonthPct": -9.7,
+   "yearsPositive": "15/19",
+   "from": "2008-02-27",
+   "to": "2026-08-21",
+   "bar": "Sharpe > 0.66",
+   "pass": true
+  },
+  "T3": {
+   "sharpe": 1.171,
+   "cagrPct": 13.24,
+   "volPct": 11.17,
+   "maxDdPct": 23.84,
+   "tStat": 5.111,
+   "sharpeIs": 1.1,
+   "sharpeOos": 1.246,
+   "halves": [
+    1.083,
+    1.252
+   ],
+   "worstMonthPct": -12.15,
+   "yearsPositive": "18/19",
+   "from": "2008-02-27",
+   "to": "2026-08-21",
+   "bar": ">= 0.75 x base Sharpe",
+   "ratio": 1.061,
+   "pass": true
+  },
+  "T4": {
+   "sharpe": 1.104,
+   "cagrPct": 12.15,
+   "volPct": 10.94,
+   "maxDdPct": 20.63,
+   "tStat": 4.821,
+   "sharpeIs": 0.949,
+   "sharpeOos": 1.272,
+   "halves": [
+    0.895,
+    1.3
+   ],
+   "worstMonthPct": -9.78,
+   "yearsPositive": "17/19",
+   "from": "2008-02-27",
+   "to": "2026-08-21",
+   "bar": "Sharpe > 0.66",
+   "pass": true
+  },
+  "T5": {
+   "sharpe": 0.98,
+   "cagrPct": 10.91,
+   "volPct": 11.21,
+   "maxDdPct": 17.45,
+   "tStat": 4.281,
+   "sharpeIs": 1.009,
+   "sharpeOos": 0.952,
+   "halves": [
+    1.01,
+    0.955
+   ],
+   "worstMonthPct": -11.28,
+   "yearsPositive": "16/19",
+   "from": "2008-02-27",
+   "to": "2026-08-21",
+   "bar": "Sharpe > 0.66 (not blind: audit printed 0.98)",
+   "pass": true
+  },
+  "combined": {
+   "sharpe": 0.744,
+   "cagrPct": 8.07,
+   "volPct": 11.3,
+   "maxDdPct": 29.34,
+   "tStat": 3.249,
+   "sharpeIs": 0.813,
+   "sharpeOos": 0.676,
+   "halves": [
+    0.818,
+    0.681
+   ],
+   "worstMonthPct": -13.39,
+   "yearsPositive": "13/19",
+   "from": "2008-02-27",
+   "to": "2026-08-21",
+   "bar": "descriptive"
+  },
+  "combinedSleeves": {
+   "S1g": 0.407,
+   "S2": 0.003,
+   "S3g": -0.156,
+   "S5g": 1.117
+  },
+  "combinedCfdOnly": {
+   "sharpe": 0.214,
+   "cagrPct": 1.7,
+   "volPct": 10.4,
+   "maxDdPct": 41.66,
+   "tStat": 0.934,
+   "sharpeIs": -0.16,
+   "sharpeOos": 0.644,
+   "halves": [
+    -0.19,
+    0.616
+   ],
+   "worstMonthPct": -8.23,
+   "yearsPositive": "12/19",
+   "from": "2008-02-27",
+   "to": "2026-08-21",
+   "bar": "descriptive: CFD-tradeable sleeves, all haircuts"
+  },
+  "T1": {
+   "cuts": {
+    "2012-06-29": {
+     "compared": 45708,
+     "mismatched": 0,
+     "examples": [],
+     "bookMaxAbsDiff": 0
+    },
+    "2017-03-31": {
+     "compared": 93717,
+     "mismatched": 0,
+     "examples": [],
+     "bookMaxAbsDiff": 0
+    },
+    "2022-09-30": {
+     "compared": 149448,
+     "mismatched": 0,
+     "examples": [],
+     "bookMaxAbsDiff": 0
+    }
+   },
+   "bar": "100% identical before each cut",
+   "pass": true
+  },
+  "T8": {
+   "sharpe": 0.892,
+   "cagrPct": 11.19,
+   "volPct": 12.87,
+   "maxDdPct": 16.67,
+   "tStat": 1.701,
+   "sharpeIs": 0.892,
+   "sharpeOos": null,
+   "halves": [
+    0.892,
+    null
+   ],
+   "worstMonthPct": -12.78,
+   "yearsPositive": "3/4",
+   "from": "2004-06-28",
+   "to": "2007-12-31",
+   "bar": "Sharpe > 0 (UNDERPOWERED: sign check)",
+   "sleeves": {
+    "S1": 0.711,
+    "S2": -0.006,
+    "S5": 1.221
+   },
+   "pass": true
+  }
+ },
+ "base": {
+  "sharpe": 1.104,
+  "cagrPct": 12.24,
+  "volPct": 11.02,
+  "maxDdPct": 17.45,
+  "tStat": 4.821,
+  "sharpeIs": 1.003,
+  "sharpeOos": 1.214,
+  "halves": [
+   0.963,
+   1.236
+  ],
+  "worstMonthPct": -9.57,
+  "yearsPositive": "17/19",
+  "from": "2008-02-27",
+  "to": "2026-08-21"
+ }
+}

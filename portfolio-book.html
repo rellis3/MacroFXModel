@@ -64,6 +64,11 @@ select { background: var(--s1); color: var(--text); border: 1.5px solid var(--bo
     </div>
   </div>
 
+  <div class="card" id="valCard" style="border-color:var(--amber-bd)"><h3>Bias checks <span class="muted">— portfolio-book-validate, 2026-10-25 · what survives when the backtest is made honest</span></h3>
+    <div class="note" id="valNote" style="margin-top:0">loading…</div>
+    <div class="tw"><table class="t" id="valTab"></table></div>
+  </div>
+
   <div class="grid" style="margin-top:12px">
     <div class="card"><h3>Equity <span class="muted" id="eqSub"></span></h3>
       <div class="btns" id="eqToggles"></div>
@@ -127,6 +132,7 @@ const res = await fetch('analysis/output/portfolio-book/book.json', { cache: 'no
 DATA = await res.json();
 const RES = await fetch('analysis/output/portfolio-book/results.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null);
 const REG = await fetch('analysis/output/portfolio-book/registered/results.json', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+const VAL = await fetch('analysis/output/portfolio-book-validate/results.json', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
 const AUD = await fetch('analysis/output/portfolio-book/audit.json', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
 trials.add(JSON.stringify(P1_WEIGHTS));
 
@@ -280,13 +286,34 @@ $('dlCsv').addEventListener('click', () => {
   document.body.appendChild(a); a.click(); a.remove();
 });
 
-$('caveats').innerHTML = `<b>The vol premium sleeve is a proxy.</b> It prices a short SPX variance swap at VIX². You cannot place that on an MT5 CFD account; the real trade is SPX/ES options or VIX futures, which have wider costs and gap risk inside a day that a close-to-close proxy misses. Use the "CFD-tradeable only" preset to see the book without it.<br>
+$('caveats').innerHTML = `<b>The vol premium sleeve is a proxy.</b> It prices a short SPX variance swap at VIX². You cannot place that on an MT5 CFD account; the real trade is SPX/ES options or VIX futures, which have wider costs and gap risk inside a day that a close-to-close proxy misses. The bias checks found it overstates real put-writing (Cboe PUT index) by about 0.5 Sharpe, and its VIX gate costs it rather than protecting it. Do not plan around it until an instrument-true version passes. The "CFD-tradeable only" preset shows the book without it, but after financing and the other haircuts that book is about 0.2.<br>
 <b>2008–2026 was kind to two of these sleeves.</b> Core beta and short vol both bet on no crash, and they correlate 0.45 here. The VIX gate and vol targeting kept the stress windows small, but a 1987-style one-day gap would land on both at once.<br>
 <b>Not everything was blind.</b> Every sleeve has prior art on this data (trend, carry and FOMC drift were tested before), which is why the bar is a deflated Sharpe. The FOMC sleeve lost money in the first half. Carry has no history before 2013 (the point-in-time rate vintages start then).<br>
 <b>Not in it:</b> intraday systems (Fib Atlas, rich-IV breaks), bonds, energy, the DAX, broker swap markups, and the cost of the book's own rescaling.<br>
 <b>Next:</b> a confirm prereg with the corrected trial rule, then a forward record on demo. That is the only out-of-sample test left.`;
 
-renderVerdict(); renderWeights(); renderSleeves(); initCharts(); recompute();
+function renderValidation() {
+  if (!VAL) { $('valNote').textContent = 'Validation results not found.'; return; }
+  const T = VAL.tests, ok = v => (v === true ? '<span class="pos">✓ pass</span>' : v === false ? '<span class="neg">✗ fail</span>' : '<span class="muted">—</span>');
+  const c = T.combined, cf = T.combinedCfdOnly;
+  $('valNote').innerHTML = `<b>Built correctly, but flattered.</b> The independent rebuild matches, there is no lookahead, NAS100 isn't carrying it and an unseen period is positive.
+    Make it realistic, though, and it shrinks. With CFD financing, a one-day fill delay, no NAS100 and no FOMC all applied, the book is <b>${fmt(c.sharpe)}</b> (${fmt(c.cagrPct, 1)}% a year, worst drawdown ${fmt(c.maxDdPct, 1)}%).
+    The CFD-tradeable sleeves alone are <b>${fmt(cf.sharpe)}</b>. The vol premium proxy <b>fails its benchmark</b>: it correlates ${fmt(T.T6.S5.corr)} with Cboe's PUT index, and its Sharpe ${fmt(T.T6.S5.sharpeProxy)} is ${fmt(T.T6.S5.gap)} above PUT's ${fmt(T.T6.S5.sharpePutExcess)}. Treat the headline above as the upper bound, with about 0.5 as a realistic book.`;
+  const rows = [
+    ['T1', 'Future-poisoning: data cut at 3 dates, every earlier day must match', `${Object.values(T.T1.cuts).reduce((a, x) => a + x.compared, 0).toLocaleString()} leg-days, ${Object.values(T.T1.cuts).reduce((a, x) => a + x.mismatched, 0)} differ`, T.T1.pass],
+    ['T9', 'Independent rebuild from a written spec (separate agent, never saw the code)', 'corr ' + ['S1g', 'S2', 'S3g', 'S4', 'S5g'].map(k => fmt(T.T9[k]['2014+'].corr, 3)).join(' / '), Object.values(T.T9).every(x => x.pass)],
+    ['T2', 'CFD financing: cash rate + 2.5% on index/gold (less dividends), +1% on FX', `Sharpe ${fmt(T.T2.sharpe)}, max DD ${fmt(T.T2.maxDdPct, 1)}%`, T.T2.pass],
+    ['T3', 'Every fill one day later', `Sharpe ${fmt(T.T3.sharpe)} (×${fmt(T.T3.ratio)})`, T.T3.pass],
+    ['T4', 'No NAS100 (hindsight pick)', `Sharpe ${fmt(T.T4.sharpe)}`, T.T4.pass],
+    ['T5', 'No FOMC sleeve (found on this data)', `Sharpe ${fmt(T.T5.sharpe)}`, T.T5.pass],
+    ['T6', 'Vol proxy vs Cboe PUT index (real put-writing)', `corr ${fmt(T.T6.S5.corr)}, Sharpe ${fmt(T.T6.S5.sharpeProxy)} vs ${fmt(T.T6.S5.sharpePutExcess)}`, T.T6.pass],
+    ['T8', '2004–2007, never seen (sign check only)', `Sharpe ${fmt(T.T8.sharpe)}`, T.T8.pass],
+    ['All', 'T2 + T3 + T4 + T5 together', `Sharpe ${fmt(c.sharpe)} · ${fmt(c.cagrPct, 1)}%/yr · DD ${fmt(c.maxDdPct, 1)}%`, null],
+    ['All, CFD only', 'Same, beta + trend + carry (what MT5 can trade)', `Sharpe ${fmt(cf.sharpe)} · ${fmt(cf.cagrPct, 1)}%/yr · DD ${fmt(cf.maxDdPct, 1)}%`, null],
+  ];
+  $('valTab').innerHTML = '<tr><th>Test</th><th>What it checks</th><th>Result</th><th>Outcome</th></tr>' + rows.map(r => `<tr><td>${r[0]}</td><td class="wrap">${r[1]}</td><td>${r[2]}</td><td>${ok(r[3])}</td></tr>`).join('');
+}
+renderVerdict(); renderValidation(); renderWeights(); renderSleeves(); initCharts(); recompute();
 </script>
 </body>
 </html>

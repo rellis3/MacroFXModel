@@ -907,11 +907,18 @@ export const DESK_EVIDENCE = [
     use: 'No trade rule from the gamma regime on the CME book. The hedging map stays context. Rerun on the Cboe index + ETF capture (from 2026-10-19) after ~400 days.',
   },
   {
+    id: 'portfolio-book-validate', domain: 'price', verdict: 'context', date: '2026-10-25', doc: 'forge/PORTFOLIO_BOOK_VALIDATE_PREREG.md',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500'],
+    claim: 'The portfolio-book result survives bias checks: future-poisoning, CFD financing, one-day fill delay, no NAS100, no FOMC sleeve, a Cboe PUT-index benchmark for the vol proxy, an unseen 2004-07 period and an independent rebuild',
+    result: 'Construction holds: future-poisoning 288,873 leg-days identical at 3 cut dates (after fixing a harness index-cost rule that moved with the window end); independent rebuild corr 0.9975-1.0000 per sleeve; no NAS100 1.10; one-day delay x1.06; 2004-07 unseen 0.89 (sign check). Realism does not: CFD financing alone 0.83; the vol proxy FAILS its benchmark (corr 0.58 with the Cboe PUT index, Sharpe 1.07 vs PUT 0.57 over cash). All haircuts together 0.74 (8.1%/yr, max DD 29%); CFD-tradeable sleeves only 0.21 (core beta 0.41 after financing, trend 0.00, carry -0.16).',
+    use: 'Quote 0.74 (about 0.5 once the proxy overstatement is allowed for), not 1.1. The CFD-tradeable part does not justify live money. The vol sleeve is not tradeable as tested; its VIX gate costs it (exits after spikes, misses the rebound). Next: an instrument-true XSP/SPX put-spread sleeve.',
+  },
+  {
     id: 'portfolio-book', domain: 'price', verdict: 'context', date: '2026-10-19', doc: 'forge/PORTFOLIO_BOOK_PREREG.md',
     instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500'],
     claim: 'A fixed equal-risk book of the standard sleeves (VIX-gated core beta, multi-asset trend, VIX-gated carry, post-FOMC USD hold, VIX-gated short-variance proxy) earns a deflated positive Sharpe after costs',
     result: 'Harness run 2008-02 to 2026-08-21: net Sharpe 1.06 (t 4.87), 11.7% a year at 11.1% vol, max drawdown 17.5%, bootstrap p 0.002, halves 0.91 / 1.22, 17 of 19 years positive; weekend rows folded (DATA_SPEC #9) 1.11. Gate NOT met: deflated Sharpe 0.49 vs 0.95, because the registered trial variance included the sign-flipped mirror (a prereg design error; 0.96 without it, post-hoc). Leave-one-sleeve-out 0.94-1.15; best 3 years removed 0.77; CFD-tradeable sleeves only (no vol proxy) 0.89 (0.94 folded; first half 0.34). Sleeves alone: core beta 0.92, trend 0.26, carry 0.13 (2013+), FOMC 0.95 (first half negative), vol proxy 0.89 (skew -9).',
-    use: 'Describe the book, do not cite it as validated. The vol-premium sleeve is a VIX-squared proxy, not options P&L. Core beta and short vol both lose in a crash (corr 0.45). Next: portfolio-book-confirm with the corrected trial rule on a forward demo record.',
+    use: 'Validated for construction but not realism by portfolio-book-validate (2026-10-25): all haircuts 0.74, CFD-tradeable only 0.21, vol proxy overstated (PUT benchmark). Describe the book, do not cite it as validated. The vol-premium sleeve is a VIX-squared proxy, not options P&L. Core beta and short vol both lose in a crash (corr 0.45). Next: portfolio-book-confirm with the corrected trial rule on a forward demo record.',
   },
   {
     id: 'opex-cycle-range', domain: 'volatility', verdict: 'underpowered', date: '2026-10-19', doc: 'forge/OPEX_CYCLE_RANGE_PREREG.md',
@@ -1561,6 +1568,7 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'portfolio-book-validate': { n: '10 tests on 4,645 weekdays 2008-2026 + 3.7 years 2004-07 + 223 months vs PUT', note: 'robustness of one banked result; T1 exact, T9 corr >= 0.9975, T6 fails (corr 0.58, gap 0.51); T8 underpowered by design' },
   'gamma-regime-trades-fx':  { n: '1,963 trades on 4,632 sessions, EUR/GBP/AUD 2020-09 to 2026-08 (10-session block bootstrap over dates)', note: 'half-width 0.04R; interval [-0.12, -0.04] is wholly below zero -- a real null, not a power problem' },
   'rule-a-late-entry':       { n: '823 trades, 11 instruments, 2020-08 to 2026-08 (4-week block bootstrap)', note: 'MDE about 0.16R; interval [-0.26, +0.06] excludes it -- a real null' },
   'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
