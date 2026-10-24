@@ -121,7 +121,6 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-29 | v4-stage1 | price | null | forge/V4_EURUSD_STAGE1_PREREG.md |
 | 2026-10-01 | curve-inversion | macro | null | MD files/CURVE_INVERSION_PREREG.md |
 | 2026-10-02 | funding-stress | macro | null | MD files/FUNDING_STRESS_PREREG.md |
-| 2026-10-03 | macro-confluence-range | macro | null | MD files/MACRO_CONFLUENCE_RANGE_PREREG.md |
 | 2026-10-03 | skew-fade | volatility | null | forge/SKEW_FADE_PREREG.md |
 | 2026-10-03 | tag-x-persistence | volatility | null | forge/TAG_X_PERSISTENCE_PREREG.md |
 | 2026-10-04 | directional-rescore | volatility | null | forge/DIRECTIONAL_RESCORE_PREREG.md |
@@ -255,6 +254,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-23 | vvix-ratio-range | volatility | validated | forge/VVIX_NASDAQ_RATIO_PREREG.md |
 | 2026-10-24 | macro-confluence-baa-credit | macro | null | MD files/MACRO_CONFLUENCE_BAA_CREDIT_PREREG.md |
 | 2026-10-24 | macro-confluence-direction | macro | underpowered | MD files/MACRO_CONFLUENCE_DIRECTION_PREREG.md |
+| 2026-10-24 | macro-confluence-range | macro | null | MD files/MACRO_CONFLUENCE_RANGE_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 

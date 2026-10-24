@@ -1,0 +1,44 @@
+[runstudy] OANDA credentials loaded (65 chars)
+[rerun] range mode=fixed aligned END_DATE=2026-10-02 -> analysis\output\macro-confluence-rerun\range_fixed_aligned.json
+pulling FRED series (WALCL, WTREGEN, RRPONTSYD, T10Y2Y, BAA10Y, AAA10Y)...
+pulling EURUSD...
+  EURUSD: 5000 bars, 2008-12-06 -> 2026-10-02
+pulling SPX500...
+  SPX500: 5000 bars, 2007-08-02 -> 2026-10-02
+pulling GOLD...
+  GOLD: 5000 bars, 2008-08-14 -> 2026-10-02
+domains computable 2009-01-02 -> 2026-10-02 (4975 days)
+confluence +1: 45  -1: 42  pooled: 87
+EURUSD pooled H=5: -0.283 ATR [-0.459, -0.091]  n=87 vs 2114 ctl  halves +2.11/+2.23 -> REAL
+EURUSD pooled H=20: -0.450 ATR [-0.888, +0.062]  n=87 vs 2099 ctl  halves +4.37/+4.76 -> null
+EURUSD pos    H=5: -0.391 ATR [-0.591, -0.152]  n=45 vs 2114 ctl  halves +1.95/+2.17 -> REAL
+EURUSD pos    H=20: -0.579 ATR [-1.117, +0.041]  n=45 vs 2099 ctl  halves +4.30/+4.56 -> null
+EURUSD neg    H=5: -0.168 ATR [-0.405, +0.076]  n=42 vs 2114 ctl  halves +2.28/+2.29 -> null
+EURUSD neg    H=20: -0.311 ATR [-0.838, +0.251]  n=42 vs 2099 ctl  halves +4.44/+4.97 -> null
+EURUSD dose-response (H=5 ATR by # domains agreeing): 0:2.468(n=136)  1:2.406(n=2563)  2:2.352(n=2017)  3:2.201(n=254)
+SPX500 pooled H=5: -0.244 ATR [-0.429, -0.065]  n=87 vs 1936 ctl  halves +2.24/+2.22 -> REAL
+SPX500 pooled H=20: -0.805 ATR [-1.236, -0.407]  n=87 vs 1921 ctl  halves +4.44/+4.74 -> REAL
+SPX500 pos    H=5: -0.268 ATR [-0.473, -0.035]  n=45 vs 1936 ctl  halves +2.16/+2.25 -> REAL
+SPX500 pos    H=20: -0.904 ATR [-1.436, -0.344]  n=45 vs 1921 ctl  halves +4.16/+4.82 -> REAL
+SPX500 neg    H=5: -0.219 ATR [-0.389, -0.051]  n=42 vs 1936 ctl  halves +2.33/+2.19 -> REAL
+SPX500 neg    H=20: -0.698 ATR [-1.235, -0.188]  n=42 vs 1921 ctl  halves +4.74/+4.66 -> REAL
+SPX500 dose-response (H=5 ATR by # domains agreeing): 0:2.429(n=127)  1:2.41(n=2369)  2:2.402(n=1886)  3:2.287(n=243)
+GOLD pooled H=5: -0.248 ATR [-0.496, -0.019]  n=87 vs 2059 ctl  halves +2.18/+2.38 -> REAL
+GOLD pooled H=20: -0.510 ATR [-1.039, +0.129]  n=87 vs 2044 ctl  halves +4.53/+5.45 -> null
+GOLD pos    H=5: -0.383 ATR [-0.702, +0.022]  n=45 vs 2059 ctl  halves +1.92/+2.37 -> null
+GOLD pos    H=20: -0.866 ATR [-1.563, -0.050]  n=45 vs 2044 ctl  halves +4.25/+5.01 -> REAL
+GOLD neg    H=5: -0.104 ATR [-0.510, +0.313]  n=42 vs 2059 ctl  halves +2.45/+2.40 -> null
+GOLD neg    H=20: -0.128 ATR [-0.897, +0.650]  n=42 vs 2044 ctl  halves +4.82/+5.92 -> null
+GOLD dose-response (H=5 ATR by # domains agreeing): 0:2.337(n=131)  1:2.506(n=2499)  2:2.46(n=1972)  3:2.295(n=248)
+
+THE GATE (per instrument/horizon): pooled REAL + clears +0.10 ATR, halves agree, BOTH signs separately diff>0
+  EURUSD H5: pooled -0.283 clears+0.10=false  halves agree=true  pos=-0.391 neg=-0.168 both>0=false -> fail
+  EURUSD H20: pooled -0.450 clears+0.10=false  halves agree=true  pos=-0.579 neg=-0.311 both>0=false -> fail
+  SPX500 H5: pooled -0.244 clears+0.10=false  halves agree=true  pos=-0.268 neg=-0.219 both>0=false -> fail
+  SPX500 H20: pooled -0.805 clears+0.10=false  halves agree=true  pos=-0.904 neg=-0.698 both>0=false -> fail
+  GOLD H5: pooled -0.248 clears+0.10=false  halves agree=true  pos=-0.383 neg=-0.104 both>0=false -> fail
+  GOLD H20: pooled -0.510 clears+0.10=false  halves agree=true  pos=-0.866 neg=-0.128 both>0=false -> fail
+
+VERDICT: NULL
+written analysis\output\macro-confluence-rerun\range_fixed_aligned.json
+[aligned] spine dates with no bar on that date, per instrument-start|H: {"2007-08-02|5":879,"2007-08-02|20":534,"2008-08-14|5":285,"2008-08-14|20":165}

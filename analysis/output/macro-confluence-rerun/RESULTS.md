@@ -114,6 +114,24 @@ re-run. To re-run: `railway run node analysis/macro_confluence_range_study.mjs` 
 ## What this changes
 
 Nothing live. The baa-credit null stands and is cleaner (no nominal cell left). Direction stays unanswered for want
-of HY OAS history. The range result and its SPX500 "confluence narrows range" observation are now flagged as
-scored at misaligned dates. Do not build a prereg on that observation until the range study is re-run with dates
-joined.
+of HY OAS history. The range study was then re-run with OANDA (section below): NULL as registered, and the SPX500 "confluence
+narrows range" observation survives the date fix.
+
+## Range study (re-run 2026-10-24 with OANDA)
+
+Run through `python scratchpad/runstudy.py scripts/macro-confluence-rerun/run_range.mjs <old|fixed> [aligned]`
+(the same registered script; OANDA D1 high/low, the request pinned to `to=2026-10-03T00:00Z` so the 5,000-bar window
+equals the original run's). **Reproduction check: `old` (original net-liquidity line, positional join) matches the
+banked `analysis/output/macro_confluence_range.json` on all 219 fields.**
+
+| run | verdict | SPX500 H=20 pooled | EURUSD H=20 pooled | GOLD H=20 pooled |
+|---|---|---|---|---|
+| old (banked) | NULL | −0.969 | −0.553 | — |
+| fixed units, date-aligned (**corrected**) | **NULL** | -0.805 ATR [-1.236, -0.407] n=87 | -0.450 ATR [-0.888, +0.062] n=87 | -0.510 ATR [-1.039, +0.129] n=87 |
+
+The registered gate needs WIDER range (pooled diff clears +0.10 ATR, both signs > 0): it fails on all six
+instrument × horizon cells, as before. **The opposite, unregistered pattern survives both fixes**: when the three
+macro domains agree, forward range is NARROWER — SPX500 H=20 -0.904 ATR [-1.436, -0.344] n=45 (positive confluence) and
+-0.698 ATR [-1.235, -0.188] n=42 (negative), halves agree; SPX500 H=5 -0.244 ATR [-0.429, -0.065] n=87; EURUSD and GOLD
+at H=5 lean the same way. It is a candidate for its OWN pre-registration on data after the lockbox cut, not a
+result. Spine dates with no instrument bar (holidays): see range_fixed_aligned.log.

@@ -1,0 +1,339 @@
+{
+ "id": "macro-confluence-range",
+ "ranAt": "2026-10-24T17:07:29.511Z",
+ "minEvents": 30,
+ "domainSpan": {
+  "from": "2009-01-02",
+  "to": "2026-10-02"
+ },
+ "episodeCounts": {
+  "pos": 45,
+  "neg": 42,
+  "pooled": 87
+ },
+ "cells": {
+  "EURUSD|pooled|H5": {
+   "nA": 87,
+   "nB": 2114,
+   "diff": -0.2831,
+   "lo": -0.4592,
+   "hi": -0.0906,
+   "real": true,
+   "halves": [
+    2.1131,
+    2.2277
+   ]
+  },
+  "EURUSD|pooled|H20": {
+   "nA": 87,
+   "nB": 2099,
+   "diff": -0.4495,
+   "lo": -0.8885,
+   "hi": 0.0619,
+   "real": false,
+   "halves": [
+    4.3676,
+    4.7556
+   ]
+  },
+  "EURUSD|pos|H5": {
+   "nA": 45,
+   "nB": 2114,
+   "diff": -0.3907,
+   "lo": -0.5913,
+   "hi": -0.1525,
+   "real": true,
+   "halves": [
+    1.9533,
+    2.1687
+   ]
+  },
+  "EURUSD|pos|H20": {
+   "nA": 45,
+   "nB": 2099,
+   "diff": -0.5791,
+   "lo": -1.1165,
+   "hi": 0.0413,
+   "real": false,
+   "halves": [
+    4.2988,
+    4.5638
+   ]
+  },
+  "EURUSD|neg|H5": {
+   "nA": 42,
+   "nB": 2114,
+   "diff": -0.1678,
+   "lo": -0.4053,
+   "hi": 0.0765,
+   "real": false,
+   "halves": [
+    2.2804,
+    2.2923
+   ]
+  },
+  "EURUSD|neg|H20": {
+   "nA": 42,
+   "nB": 2099,
+   "diff": -0.3107,
+   "lo": -0.8377,
+   "hi": 0.2507,
+   "real": false,
+   "halves": [
+    4.4397,
+    4.9657
+   ]
+  },
+  "SPX500|pooled|H5": {
+   "nA": 87,
+   "nB": 1936,
+   "diff": -0.244,
+   "lo": -0.4294,
+   "hi": -0.0649,
+   "real": true,
+   "halves": [
+    2.2436,
+    2.2214
+   ]
+  },
+  "SPX500|pooled|H20": {
+   "nA": 87,
+   "nB": 1921,
+   "diff": -0.8047,
+   "lo": -1.2359,
+   "hi": -0.4067,
+   "real": true,
+   "halves": [
+    4.4439,
+    4.742
+   ]
+  },
+  "SPX500|pos|H5": {
+   "nA": 45,
+   "nB": 1936,
+   "diff": -0.2677,
+   "lo": -0.473,
+   "hi": -0.0352,
+   "real": true,
+   "halves": [
+    2.1625,
+    2.253
+   ]
+  },
+  "SPX500|pos|H20": {
+   "nA": 45,
+   "nB": 1921,
+   "diff": -0.9045,
+   "lo": -1.4358,
+   "hi": -0.3437,
+   "real": true,
+   "halves": [
+    4.1595,
+    4.8157
+   ]
+  },
+  "SPX500|neg|H5": {
+   "nA": 42,
+   "nB": 1936,
+   "diff": -0.2187,
+   "lo": -0.389,
+   "hi": -0.0512,
+   "real": true,
+   "halves": [
+    2.3286,
+    2.1869
+   ]
+  },
+  "SPX500|neg|H20": {
+   "nA": 42,
+   "nB": 1921,
+   "diff": -0.6978,
+   "lo": -1.2349,
+   "hi": -0.1881,
+   "real": true,
+   "halves": [
+    4.7418,
+    4.6614
+   ]
+  },
+  "GOLD|pooled|H5": {
+   "nA": 87,
+   "nB": 2059,
+   "diff": -0.2484,
+   "lo": -0.4965,
+   "hi": -0.0193,
+   "real": true,
+   "halves": [
+    2.1772,
+    2.3826
+   ]
+  },
+  "GOLD|pooled|H20": {
+   "nA": 87,
+   "nB": 2044,
+   "diff": -0.5098,
+   "lo": -1.0389,
+   "hi": 0.1289,
+   "real": false,
+   "halves": [
+    4.5284,
+    5.445
+   ]
+  },
+  "GOLD|pos|H5": {
+   "nA": 45,
+   "nB": 2059,
+   "diff": -0.3831,
+   "lo": -0.7018,
+   "hi": 0.0218,
+   "real": false,
+   "halves": [
+    1.917,
+    2.3659
+   ]
+  },
+  "GOLD|pos|H20": {
+   "nA": 45,
+   "nB": 2044,
+   "diff": -0.8658,
+   "lo": -1.5625,
+   "hi": -0.0504,
+   "real": true,
+   "halves": [
+    4.2471,
+    5.008
+   ]
+  },
+  "GOLD|neg|H5": {
+   "nA": 42,
+   "nB": 2059,
+   "diff": -0.1042,
+   "lo": -0.5099,
+   "hi": 0.3134,
+   "real": false,
+   "halves": [
+    2.4497,
+    2.4009
+   ]
+  },
+  "GOLD|neg|H20": {
+   "nA": 42,
+   "nB": 2044,
+   "diff": -0.1284,
+   "lo": -0.8973,
+   "hi": 0.6503,
+   "real": false,
+   "halves": [
+    4.8231,
+    5.9236
+   ]
+  }
+ },
+ "doseResponse": {
+  "EURUSD|agree0": {
+   "n": 136,
+   "meanRange": 2.468
+  },
+  "EURUSD|agree1": {
+   "n": 2563,
+   "meanRange": 2.406
+  },
+  "EURUSD|agree2": {
+   "n": 2017,
+   "meanRange": 2.352
+  },
+  "EURUSD|agree3": {
+   "n": 254,
+   "meanRange": 2.201
+  },
+  "SPX500|agree0": {
+   "n": 127,
+   "meanRange": 2.429
+  },
+  "SPX500|agree1": {
+   "n": 2369,
+   "meanRange": 2.41
+  },
+  "SPX500|agree2": {
+   "n": 1886,
+   "meanRange": 2.402
+  },
+  "SPX500|agree3": {
+   "n": 243,
+   "meanRange": 2.287
+  },
+  "GOLD|agree0": {
+   "n": 131,
+   "meanRange": 2.337
+  },
+  "GOLD|agree1": {
+   "n": 2499,
+   "meanRange": 2.506
+  },
+  "GOLD|agree2": {
+   "n": 1972,
+   "meanRange": 2.46
+  },
+  "GOLD|agree3": {
+   "n": 248,
+   "meanRange": 2.295
+  }
+ },
+ "gate": {
+  "EURUSD|H5": {
+   "pooledDiff": -0.2831,
+   "clearsBar": false,
+   "halvesAgree": true,
+   "posDiff": -0.3907,
+   "negDiff": -0.1678,
+   "bothSignsPositive": false,
+   "pass": false
+  },
+  "EURUSD|H20": {
+   "pooledDiff": -0.4495,
+   "clearsBar": false,
+   "halvesAgree": true,
+   "posDiff": -0.5791,
+   "negDiff": -0.3107,
+   "bothSignsPositive": false,
+   "pass": false
+  },
+  "SPX500|H5": {
+   "pooledDiff": -0.244,
+   "clearsBar": false,
+   "halvesAgree": true,
+   "posDiff": -0.2677,
+   "negDiff": -0.2187,
+   "bothSignsPositive": false,
+   "pass": false
+  },
+  "SPX500|H20": {
+   "pooledDiff": -0.8047,
+   "clearsBar": false,
+   "halvesAgree": true,
+   "posDiff": -0.9045,
+   "negDiff": -0.6978,
+   "bothSignsPositive": false,
+   "pass": false
+  },
+  "GOLD|H5": {
+   "pooledDiff": -0.2484,
+   "clearsBar": false,
+   "halvesAgree": true,
+   "posDiff": -0.3831,
+   "negDiff": -0.1042,
+   "bothSignsPositive": false,
+   "pass": false
+  },
+  "GOLD|H20": {
+   "pooledDiff": -0.5098,
+   "clearsBar": false,
+   "halvesAgree": true,
+   "posDiff": -0.8658,
+   "negDiff": -0.1284,
+   "bothSignsPositive": false,
+   "pass": false
+  }
+ },
+ "verdict": "NULL"
+}
