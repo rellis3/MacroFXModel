@@ -305,6 +305,143 @@ story, and stay precise about the trigger.
 
 ---
 
+## 3c. Episode 04 decoded (Fri 2026-10-23): credit cracks, two schools of thought, the correlation matrix ripped up
+
+### The setup
+"Complete mayhem." Credit dislocations (cash vs CDS basis) are as stretched as March 2020; big
+credit funds are deleveraging. The 10y has rallied from 5.35% to 4.95%. The Nasdaq is down ~8%
+and the high-beta momentum basket has gone from +70% YTD to flat. Oil is above $100, but yields are
+*falling*. The French spread has re-widened to 171bp. Brazil's runoff is this weekend.
+
+### Pattern M: When a variable's correlation flips, the market has changed which story it's trading (BD)
+- Oil up and yields **down** this week. Two readings: (a) oil has stopped mattering at the margin
+  ("an extra $2 doesn't make a difference"); or (b) **oil has flipped from an inflation story to a
+  growth-scare story**: each rise now squeezes demand more than it lifts inflation, while central
+  banks hike into it.
+- **Analogue: 2008.** Oil was ripping, then suddenly it wasn't inflationary any more; it was a
+  growth scare.
+- **Supporting tells:** tech and high-beta down, oil up, yet *energy stocks not trading well*, and
+  credit widening. When the pieces fit reading (b), believe (b).
+- This is the follow-on to E01's "bonds used to be oil, now bonds are AI". **Track which
+  driver each asset is currently tied to; when that changes, so does the market's main story.**
+
+### Pattern N: It's not the price of credit, it's whether credit is available (BD)
+- The bull case said "AI returns are so high that borrowing costs don't matter". The real risk is
+  the **window shutting**, not the rate.
+- **Insiders said it themselves:** Meta's special committee (needed for a new share class) wrote
+  that capital availability is becoming a problem as every hyperscaler tries to borrow and issue
+  at once, so Meta must "beat the rush". Even the best borrower in the world thinks the window
+  might close. Earlier tell: the cancelled Australian AI IPO.
+- **The question the market is pricing:** "We're in 2026, the payoff is visible ~2028-29. How do
+  you get there without dropping the baton?"
+- **Rule:** read what insiders write in filings and committee documents. When the strongest player
+  hedges, that matters more than any commentator.
+
+### Pattern O: State both schools of thought, pick one, and say how wide your uncertainty is (AP)
+- **School 1 ("repricing, then drift"):** like a high-carry currency with bad policy (Turkish lira):
+  it reprices down to a new level, and from there the carry wins. Here: credit spreads, yields and
+  shares reprice until the expected return on AI investment overcomes the fear; insiders know
+  something; buy eventually.
+- **School 2 ("capex vigilantes"):** like bond vigilantes, the market keeps punishing the spending
+  (wider spreads, lower shares) until companies throw in the towel. **The first company to cut
+  capex triggers everyone else**, which means a different cycle: buy bonds, sell shares,
+  structurally.
+- **AP:** school 1, "but my uncertainty window is big", because judging an AI credit cycle is
+  much harder than judging a country.
+- **Reflexivity (AP + BD):** share prices up → fundamentals *look* better → borrow more → capex
+  → earnings. And the reverse: shares down → looks like weaker fundamentals → harder to borrow →
+  delay projects → the wealth effect fades → the consumer spends less. (This is E01's
+  one-legged stool, now running in reverse.)
+- **BD:** agnostic; long-run sceptical (the products look like commodities; he puts the same
+  query into Gemini, ChatGPT and Claude and often gets the same answer), and "the real question
+  isn't whether OpenAI can make $500bn but whether the market will give them the chance".
+  Crucially: **"I don't trade that time horizon. Will AI pay off? I don't think a human can forecast
+  that."** A question that can't be forecast gets no weight in his trade.
+
+### Pattern P: Base rates over stories when the move is ordinary (BD's dip-buy)
+- He covered the Nasdaq short and is now **a buyer**. Not for fundamental reasons: "a
+  garden-variety 5-10% correction can happen at any time for no reason." At ~7-8.5% down, with
+  heavy support from here to 28,800, the base rate says buy. Range 29-30k NQ, S&P ~7,600.
+- **Sentiment and positioning only matter at extremes** (he mostly ignores them). One caveat
+  noted: retail is buying the dip hard, which opens an "elevator shaft" risk if it breaks.
+- **Discount hyped events that don't change the economy:** the midterms. Congress has done
+  "absolutely nothing" this term; policy bypasses it. So it's not a major market event. (Same logic
+  as fading tariff headlines in E03.)
+- **Keep an open mind:** "this could be something bigger, but my intuition is that it's another
+  random correction that will soon be forgotten."
+- **Note:** short on 9 Oct, flat after profit, buyer on 23 Oct. That's "trade both directions"
+  (E02) in practice.
+
+### Pattern Q: Read the reaction function, and find where the asymmetry is (BD + AP)
+- **The reaction function:** how a central bank actually responds to data, as opposed to what it
+  says. Market odds of a December Fed hike fell below 65% at the Nasdaq low, even though a second
+  hike had been telegraphed.
+- **BD: headline vs core divergence.** In Canada headline inflation is above the 1-3% band and
+  core is below it, and the same is true in many places. The right question is about **second-round
+  effects** (does oil feed into wages and core?). If they don't show up, hiking into an oil shock
+  is wrong, which "leaves room for big reversals in the front end".
+- **BD on the Fed's DNA:** "shamed into" credibility, but a dovish bias; "the bar to stop hiking
+  is super low", because there's always a trimmed-mean or super-core measure to justify it. He could
+  see 8% more down in equities and no December hike.
+- **AP's counterweight:** the Fed's own FCI is *still loose* even after the sell-off. Private
+  balance sheets are strong and government deficits keep feeding them, so $100 oil alone won't
+  derail growth, and hikes are likely to continue *unless* the two **exogenous credit stories**
+  (AI credit, France) keep tightening. "The market is doing the work" is the ECB's excuse.
+- **The skill:** list what would make each central bank stop, and how much the market already
+  prices. The asymmetry lives in the gap.
+
+### Pattern R: Rip up the correlation matrix and rebuild it from the drivers (BD)
+- The old rule "equities down → buy USD as a safe haven" has broken, because the world is
+  **overweight US assets**, so US equity weakness can mean *selling* dollars.
+- **Three time horizons of the same sell-off:**
+  1. Equities fall → "sell USA" → USD down.
+  2. If liquidity drains (BTC, silver, gold falling) → waves of USD buying (a dash for cash).
+  3. As it deepens, bonds rally and rate differentials move → USD down again.
+- **Decompose a price into its competing drivers:** EURUSD vs the rate differential (says EUR
+  higher) vs the French spread (says EUR lower). EURUSD sits **exactly between the two lines**, so
+  the drivers cancel and there's no dollar edge. "I'm pretty agnostic." **Being agnostic is a valid
+  answer** when the drivers offset.
+- **Commodity beta beats risk-off:** CAD is strong despite equity weakness, because oil is a
+  positive terms-of-trade shock (the back end of the oil curve is moving). But BoC hawkishness
+  looks overpriced, so there's a chance they pause even though a hike is ~fully priced.
+- **Cost of waiting:** short USDJPY "pays a lot of carry" while it goes nowhere for three weeks.
+  Being right eventually isn't free.
+- **The only constant:** rate differentials matter in the bigger picture, but right now they're
+  "a small piece of the puzzle".
+
+### Pattern S: Read the options market, and how other people's options will behave (AP + BD, Brazil)
+- **AP: be on a different horizon from the crowd.** He's held Brazil election positions for **five
+  months**; everyone else is reacting to the latest poll this week. "Not alpha, but differentiating:
+  you're doing something different from most people."
+- **AP: think about how others' option structures change the move.** Many traders are long BRL
+  through **reverse knock-out (RKO)** options, which pay if BRL rallies but die if it rallies *too
+  far*. AP thinks BRL could rally harder than they expect, knocking them out: "happy, then very
+  soon unhappy." Barriers create cliffs where flows change.
+- **BD: compare two markets pricing the same event.** One-week BRL vol at ~57 (FX vol is usually
+  single digits) means forced buying of protection. Polymarket says ~77% for Flávio; the options
+  price far higher tail odds "simply because no one will sell the tail". The gap is
+  information about *who must act*, not just about odds.
+- **BD: will the news change enough to keep the move going?** Even if Flávio wins, BRL probably
+  "flatlines quickly". This isn't a carry-chasing world (Mexico, AI, KOSPI), and "the delta of the
+  policies isn't big enough" (the fiscal deficit is still lurking). Ask whether the outcome changes
+  the economics enough for the move to keep going.
+
+### Pattern T: Survive first
+"Agnostically trying not to blow up ourselves. Please do the same. You need to keep a seat, or you
+don't get to play again." / "Don't blow up and have fun."
+
+### Scoring the earlier episodes against this one
+| Earlier call | Status on 2026-10-23 | Lesson |
+|---|---|---|
+| BD E02: short QQQ ~753 | Profit taken; it kept falling (AP: "blame the gods for taking profit too early") | A planned exit beats perfect timing; he didn't chase it |
+| AP E01: Fed skips October | **Right.** One hike delivered, December is the next one, priced < 65% | |
+| AP E03: hot inflation → long end sells off → Fed forced to hike | **Right** (10y to 5.35%, a hike delivered) | Find the variable that would make it blow up (Pattern J) |
+| BD E01: France priced in, spreads peaked at 168 | **Wrong.** Back to 171; now "the path of least resistance is wider" | He updated openly and didn't defend the old call |
+| BD E01: another leg lower in USD | **Not confirmed.** EUR unchanged; he's now agnostic | Drivers offsetting (Pattern R) |
+| AP E01: wrong on a weekly close *well below* 5% (10y) | **Being tested:** 10y at 4.95% on Friday. He hasn't called it invalidated; he now says rates "depend on how the exogenous credit tightening evolves" | Watch next episode: does he honour the line, or quietly move it? "Well below" was never pinned to a number. **Make invalidation levels exact.** |
+
+---
+
 ## 4. Glossary: words they assume you know
 
 | Term | Plain meaning |
@@ -347,6 +484,21 @@ story, and stay precise about the trigger.
 | **Independent bets** | Bets that don't move together. More of them = smoother returns (Sharpe ∝ √N) |
 | **Extrapolation bias** | Assuming the recent past will continue forever, then designing policy for it just as it ends |
 | **POMO / TIC data** | Fed open-market operations (2010) / Treasury data on foreign buying of US assets. Obscure releases that occasionally become *the* thing everyone watches |
+| **Cash-CDS basis** | The gap between a company's bond spread and its CDS price. A big gap = forced selling and dislocation (as in March 2020) |
+| **Deleveraging** | Funds forced to cut borrowed positions, selling whatever they can |
+| **High-beta momentum basket** | A basket of the most volatile recent winners; it shows how much speculative froth is being unwound |
+| **Reaction function** | How a central bank actually responds to data, as opposed to what it says |
+| **Headline vs core inflation** | Headline includes food and energy; core excludes them. Oil shocks lift headline first |
+| **Second-round effects** | When an energy shock spreads into wages and core prices. Central banks hike if they see it |
+| **Trimmed mean / super-core** | Alternative inflation measures that strip out extremes or volatile items; a convenient excuse to be dovish |
+| **Terms of trade** | The price of what a country exports vs what it imports. Oil up = good for Canada |
+| **Commodity beta** | How much a currency moves with commodity prices (CAD, NOK, AUD) |
+| **Carry cost** | What you pay to hold a position (e.g. short a high-yielder): waiting is expensive |
+| **Barrier / RKO option** | An option that dies if price crosses a level. Reverse knock-out = dies when the move goes your way too far |
+| **Risk reversal** | Price of calls minus puts. It shows which tail traders are paying to protect |
+| **Polymarket** | A prediction market: a second "price" for an event, to compare with options |
+| **TPI** | The ECB's Transmission Protection Instrument, its tool to cap a member's spreads (hard to trigger) |
+| **GPIF** | Japan's giant pension fund; a big potential buyer of JGBs or foreign assets |
 
 ---
 
@@ -377,6 +529,7 @@ comparing**.
 ## Episode index
 | Ep | Recorded | Main reasoning lessons |
 |---|---|---|
+| E04 | Fri 2026-10-23 | Correlation flip = story change (M); credit availability > price (N); two schools + uncertainty width (O); base rates for ordinary corrections (P); reaction functions + asymmetry (Q); decompose a price into its drivers, agnostic is valid (R); options/barriers/Polymarket (S); survive (T); scorecard of E01-E03 |
 | E03 | ~early Sept 2026 | Horizon filter (Q0); 3 scenarios incl. "nothing happens"; starting conditions > news size (F); size in risk units/DV01 (G); credibility (H); release valves + EM medicine (I); tail variable + 2nd derivative (J); idiosyncratic bets, NZ, Czech vs Poland (K); fade tariffs (L); scored against what happened next |
 | E02 | ~2026-10-09 | Setup vs trigger (Nasdaq short); equilibrium fair-value build (Pattern C); what ends the trend (D); overbought-but-logical (E); robustness thinking |
 | E01 | ~2026-10-16 | One-legged stool chain; fragility vs current-flow disagreement; good news / bad price (A); priced-in France (B) |
