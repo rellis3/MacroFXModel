@@ -24,8 +24,8 @@
 // another without real backtested evidence for a specific weighting — an
 // unweighted average is the honest default until/unless that evidence
 // exists. `cbSentiment` (central-bank text sentiment) is only available
-// for the 4 currencies with a built sentiment engine (USD/EUR/GBP/JPY) —
-// AUD/CAD/CHF/NZD simply score on their remaining dimensions, same
+// for the 7 currencies with a built sentiment engine (USD/EUR/GBP/JPY/
+// NZD/AUD/CAD) — CHF simply scores on its remaining dimensions, same
 // "average whatever's available" pattern every per-engine composite here
 // already uses for partial coverage.
 export const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'];

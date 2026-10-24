@@ -41,7 +41,7 @@ export function stampOf(v, depth = 0) {
 
 /** dataHealth.js state -> the word the map shows. */
 const FROM_HEALTH = { fresh: 'current', lagging: 'behind', stale: 'stale', dead: 'dead', snapshot: 'file' };
-const RANK = { dead: 0, stale: 1, behind: 2, loading: 3, file: 4, current: 5, untracked: 6 };
+const RANK = { dead: 0, stale: 1, behind: 2, loading: 3, file: 4, current: 5, untracked: 6, retired: 7 };
 export const NEEDS_EYES = new Set(['dead', 'stale', 'behind']);
 
 const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -128,7 +128,12 @@ export function buildCatalogue({ feeds = [], categories = [], healthRows = [], u
     const rows = [...(f.health ?? []), ...(f.kvStamp ? [`kv:${f.kvStamp.key}`] : [])].flatMap(rowsFor);
     const h = statusOf(rows);
     let status, why, lastUpdated = null;
-    if (h) {
+    if (f.retired) {
+      // Stopped on purpose (owner decision): listed with its last write, never counted as needing attention.
+      status = 'retired';
+      lastUpdated = h ? (typeof h.last === 'number' ? new Date(h.last).toISOString() : (h.last ?? null)) : null;
+      why = `Retired: ${f.retired}${lastUpdated ? ` Last written ${String(lastUpdated).slice(0, 10)}.` : ''}`;
+    } else if (h) {
       status = h.status;
       lastUpdated = typeof h.last === 'number' ? new Date(h.last).toISOString() : (h.last ?? null);
       why = h.status === 'loading'

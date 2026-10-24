@@ -165,6 +165,12 @@ import { BOE_MEETINGS, pendingAsOf as boePendingAsOf } from './js/boeCalendar.js
 import { FETCHERS as BOE_FETCHERS, extractVote as boeExtractVote } from './js/boeFetch.js';
 import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js';
 import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookViewUrl as bojOutlookViewUrl, outlookFullUrl as bojOutlookFullUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
+import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf } from './js/rbnzCalendar.js';
+import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote } from './js/rbnzFetch.js';
+import { RBA_MEETINGS, pendingAsOf as rbaPendingAsOf } from './js/rbaCalendar.js';
+import { FETCHERS as RBA_FETCHERS, extractVote as rbaExtractVote } from './js/rbaFetch.js';
+import { BOC_MEETINGS, pendingAsOf as bocPendingAsOf } from './js/bocCalendar.js';
+import { FETCHERS as BOC_FETCHERS } from './js/bocFetch.js';
 import { BEIGE_BOOK_RELEASES, pendingAsOf as beigeBookPendingAsOf } from './js/beigeBookCalendar.js';
 import { fetchBeigeBook, beigeBookPdfUrl } from './js/beigeBookFetch.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
@@ -8047,6 +8053,248 @@ app.get('/api/boj/debug-fetch', async (req, res) => {
   res.json({ ok: true, dateChecked: date, results });
 });
 
+// ── RBNZ / RBA / BoC Sentiment Engines ──────────────────────────────────────
+// Banks five to seven, same shape as the FOMC/ECB/BoE/BoJ engines above:
+// raw text into KV (<bank>_raw_<kind>_<date>), an AI read grounded in that
+// text plus the word diff vs the previous meeting's same document
+// (<bank>_analysis_<kind>_<date>, same JSON schema), <bank>_latest pointer,
+// <bank>_fetch_log heartbeat, the same /api/<bank>/* route set and the same
+// 30-min poll on the already-registered 'cbSentiment' service id. Written once
+// as a factory rather than pasted three more times: the routes, KV keys,
+// prompt skeleton and schema are identical to the BoJ block, only the
+// per-bank wording differs. Sources, calendars and the live verification
+// notes live in js/{rbnz,rba,boc}{Calendar,Fetch}.js.
+//   RBNZ: one same-day page = OCR media release + Summary record of meeting.
+//         rbnz.govt.nz blocks Node clients at its firewall (see rbnzFetch.js);
+//         a block is logged loudly, never retried around.
+//   RBA:  statement + quarterly SMP overview same day; minutes two weeks on.
+//   BoC:  rate announcement + quarterly MPR overview same day; summary of
+//         Governing Council deliberations two weeks on. No vote is published.
+const _CB_EXTRA_ENGINES = {
+  rbnz: {
+    name: 'RBNZ', ccy: 'NZD', meetings: RBNZ_MEETINGS, pendingAsOf: rbnzPendingAsOf, fetchers: RBNZ_FETCHERS, extractVote: rbnzExtractVote,
+    voteKinds: ['statement'], kinds: ['statement'], meetingLabel: 'RBNZ Monetary Policy Committee decision',
+    labels: {
+      statement: 'RBNZ OCR DECISION — the Monetary Policy Committee\'s media release together with its Summary Record of Meeting (the RBNZ\'s minutes equivalent), both published on one page at 2pm NZ time on decision day',
+    },
+    guidance: {
+      statement: `\nREADING TECHNIQUE: the release and the Summary Record of Meeting are in one text. The record is where the committee's internal debate lives — the options it considered (e.g. hold vs 25bp vs 50bp), how close the call was, and its forward guidance on the OCR path. "Reached consensus" means no formal vote was needed; a recorded vote split is a strong signal of a contested decision.\n`,
+    },
+    dimsNote: 'the RBNZ has a flexible inflation-targeting remit (1-3% band, 2% mid-point) that also asks it to support maximum sustainable employment — laborConcern should capture employment/unemployment and wage discussion; financialStabilityConcern should capture housing-market, bank-funding and global-risk discussion',
+    assets: 'NZD|NZGBs|Equities', assetsByAsset: 'NZD|NZGBs|Equities|FX majors', boardWord: 'committee member',
+  },
+  rba: {
+    name: 'RBA', ccy: 'AUD', meetings: RBA_MEETINGS, pendingAsOf: rbaPendingAsOf, fetchers: RBA_FETCHERS, extractVote: rbaExtractVote,
+    voteKinds: ['statement', 'minutes'], kinds: ['statement', 'smp', 'minutes'], kindFlags: { smp: 'smp' }, meetingLabel: 'RBA Monetary Policy Board meeting',
+    labels: {
+      statement: 'RBA MONETARY POLICY BOARD DECISION STATEMENT — the decision media release, published at 2:30pm Sydney time on decision day, ending with the Board\'s (unattributed) vote',
+      smp: 'RBA STATEMENT ON MONETARY POLICY — OVERVIEW — the quarterly forecasts summary, published alongside 4 of the 8 decisions/year (Feb/May/Aug/Nov)',
+      minutes: 'RBA MINUTES OF THE MONETARY POLICY BOARD MEETING — the record of the Board\'s discussion, published two weeks after the decision',
+    },
+    guidance: {
+      statement: `\nREADING TECHNIQUE: the RBA now publishes the Board's vote (unanimous, or e.g. 5-4 with what each side wanted — see VOTE below). A split is a direct read on how contested the decision was and which way the next move leans.\n`,
+      minutes: `\nREADING TECHNIQUE: this is a TWO-WEEK-OLD record, not fresh news — read it for the options the Board considered, how it weighed them, and hints about the next decision, not as a new directional signal on its own.\n`,
+    },
+    dimsNote: 'the RBA has a dual mandate (price stability — 2-3% target, 2.5% mid-point — and full employment) — laborConcern should capture labour-market tightness, unemployment and wages; financialStabilityConcern should capture household debt, housing-price and global-risk discussion',
+    assets: 'AUD|ACGBs|Equities', assetsByAsset: 'AUD|ACGBs|Equities|FX majors', boardWord: 'Board member',
+  },
+  boc: {
+    name: 'BoC', ccy: 'CAD', meetings: BOC_MEETINGS, pendingAsOf: bocPendingAsOf, fetchers: BOC_FETCHERS, extractVote: null,
+    voteKinds: [], kinds: ['statement', 'mpr', 'deliberations'], kindFlags: { mpr: 'mpr' }, meetingLabel: 'Bank of Canada fixed announcement date',
+    labels: {
+      statement: 'BANK OF CANADA RATE ANNOUNCEMENT — the policy-rate press release, published at 09:45 ET on the fixed announcement date',
+      mpr: 'BANK OF CANADA MONETARY POLICY REPORT — OVERVIEW — the quarterly projections summary, published alongside 4 of the 8 announcements/year (Jan/Apr/Jul/Oct)',
+      deliberations: 'BANK OF CANADA SUMMARY OF GOVERNING COUNCIL DELIBERATIONS — the account of the Council\'s discussion leading to the decision, published about two weeks later',
+    },
+    guidance: {
+      statement: `\nREADING TECHNIQUE: the Governing Council decides by consensus and publishes no vote — read the forward-guidance sentences (what the Council "will assess", whether it is "prepared to adjust") and the risk balance; those carry most of the signal.\n`,
+      deliberations: `\nREADING TECHNIQUE: this is a TWO-WEEK-OLD account, not fresh news — read it for the range of views ("some members", "a diversity of views"), which options were weighed, and how close the call was, not as a fresh directional signal.\n`,
+    },
+    dimsNote: 'the BoC targets 2% CPI inflation (1-3% control range) and weighs growth/slack — laborConcern should capture labour-market slack and wages; financialStabilityConcern should capture household debt, housing and trade/tariff-shock risk to the financial system',
+    assets: 'CAD|GoC bonds|Equities', assetsByAsset: 'CAD|GoC bonds|Equities|FX majors', boardWord: 'Council member',
+  },
+};
+
+function _cbxVoteBlock(vote) {
+  if (!vote) return '';
+  if (vote.unanimous) return `=== VOTE ===\n${vote.consensus ? 'Consensus (no formal vote)' : 'Unanimous'}`;
+  let s = `=== VOTE ===\nMajority ${vote.majority}-${vote.minority}`;
+  if (vote.majorityView) s += `\nMajority voted to ${vote.majorityView}`;
+  if (vote.minorityView) s += `\nMinority voted to ${vote.minorityView}`;
+  return s;
+}
+
+function _registerCbEngine(key, cfg) {
+  // Previous meeting that published the SAME kind — for a quarterly kind
+  // (smp / mpr) that is the previous report meeting, not the previous meeting.
+  const prevMeetingDate = (meetingDate, kind = 'statement') => {
+    const flag = cfg.kindFlags?.[kind];
+    const idx = cfg.meetings.findIndex(m => m.date === meetingDate);
+    for (let i = idx - 1; i >= 0; i--) if (!flag || cfg.meetings[i][flag]) return cfg.meetings[i].date;
+    return null;
+  };
+  const getRaw = async (kind, date) => {
+    const raw = await kv.get(`${key}_raw_${kind}_${date}`);
+    return raw ? JSON.parse(raw) : null;
+  };
+
+  // Builds the prompt only — split out so it can be checked without calling a model.
+  async function buildPrompt(kind, meetingDate) {
+    const rawRec = await getRaw(kind, meetingDate);
+    if (!rawRec) throw new Error(`no raw ${kind} text captured for ${meetingDate} yet`);
+    const { text, url } = rawRec;
+    const clipped = text.length > _FOMC_MAX_CHARS ? text.slice(0, _FOMC_MAX_CHARS) + '\n[...truncated...]' : text;
+    const vote = (cfg.extractVote && cfg.voteKinds.includes(kind)) ? cfg.extractVote(text) : null;
+    const voteBlock = _cbxVoteBlock(vote);
+    // The diff only ever compares like with like: the previous meeting's SAME kind.
+    let diffBlock = '', diffSegments = null;
+    const prevDate = prevMeetingDate(meetingDate, kind);
+    if (prevDate) {
+      const prevRec = await getRaw(kind, prevDate);
+      if (prevRec) {
+        const d = fomcWordDiff(prevRec.text, text);
+        diffSegments = d.segments;
+        const lines = fomcDiffToPromptLines(d, 2);
+        diffBlock = `=== WORDING CHANGES vs the ${prevDate} ${kind} ===\n` +
+          (lines.length ? lines.slice(0, 40).join('\n') : '(no material wording changes — near-identical to the prior release)');
+      }
+    }
+    const prompt = `You are analysing the ${cfg.labels[kind] || kind.toUpperCase()} from the ${meetingDate} ${cfg.meetingLabel} for an FX/macro trading desk. Read it for HAWKISH vs DOVISH signal and likely market impact on ${cfg.ccy} — this feeds a central-bank sentiment page traders check right after release, so be specific and plain-spoken.
+${cfg.guidance[kind] || ''}
+NEVER name a specific individual (Governor, ${cfg.boardWord}, reporter) anywhere in your output — refer to them only by role. A named individual anchors the read on personal reputation, which goes stale (or becomes wrong) the moment membership changes.
+
+Ground every claim in the text below — do NOT invent numbers, names, or events not present in it.
+
+${voteBlock}
+
+${diffBlock}
+
+=== FULL TEXT ===
+${clipped}
+
+Also score five separate dimensions, each 0.0 (no signal of this in the text) to 1.0 (dominant theme) — magnitude, not direction, independent of each other and of hawkishScore:
+- inflationConcern, laborConcern, growthConcern, financialStabilityConcern: how much the text dwells on each (${cfg.dimsNote})
+- committeeConfidence: how confident vs. uncertain/hedged the tone reads (0=deeply uncertain/hedged, 1=confident/decisive)
+
+Respond with ONLY valid JSON, no markdown:
+{"headline":"one-sentence front-page read, plain-English so-what first","hawkishScore":-1.0 to 1.0 (negative=dovish, positive=hawkish, 0=neutral),"regime":"HAWKISH|DOVISH|NEUTRAL|MIXED","confidence":"LOW|MEDIUM|HIGH (how confident YOU are in this read)","dimensions":{"inflationConcern":0.0-1.0,"laborConcern":0.0-1.0,"growthConcern":0.0-1.0,"financialStabilityConcern":0.0-1.0,"committeeConfidence":0.0-1.0},"summary":"2-3 plain-spoken sentences","whatChanged":"1-2 sentences on what's different from last time, grounded ONLY in the wording changes above — say plainly if there was no material change","voteNote":"1 sentence on what the vote split implies for the policy debate, or null if no vote data was given","keyQuotes":[{"quote":"short verbatim excerpt from the text above, under 30 words","why":"why this line matters","asset":"${cfg.assets}","lean":"BULLISH|BEARISH|NEUTRAL"}] (max 5, ranked most market-moving first),"byAsset":[{"asset":"${cfg.assetsByAsset}","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}]}`;
+    return { prompt, vote, diffSegments, prevDate, url };
+  }
+
+  async function buildAnalysis(kind, meetingDate) {
+    // Same gate as the other engines: any configured provider, not Anthropic only.
+    if (!_aiAnyKey()) throw new Error('no model provider configured');
+    const { prompt, vote, diffSegments, prevDate, url } = await buildPrompt(kind, meetingDate);
+    const antData = await callModel({ task: 'doc-summary', maxTokens: 16000,
+      system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.',
+      prompt });
+    if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
+    const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+    const analysis = JSON.parse(clean);
+    const payload = { kind, meetingDate, analysis, vote, diffSegments, prevDate, sourceUrl: url, generatedAt: new Date().toISOString() };
+    await kv.put(`${key}_analysis_${kind}_${meetingDate}`, JSON.stringify(payload)).catch(() => {});
+    await kv.put(`${key}_latest`, JSON.stringify({ kind, meetingDate })).catch(() => {});
+    return payload;
+  }
+
+  // Oldest first, so a cold start captures the earlier meeting before the
+  // later one is analysed — the later analysis then has a prior to diff.
+  async function autoCheck(reason = 'schedule') {
+    const pending = cfg.pendingAsOf(Date.now(), 120).slice().sort((a, b) => a.meetingDate.localeCompare(b.meetingDate) || a.expectedAt - b.expectedAt);
+    const log = [];
+    for (const rel of pending) {
+      const already = await getRaw(rel.kind, rel.meetingDate);
+      if (already) continue;
+      try {
+        const r = await cfg.fetchers[rel.kind](rel.meetingDate);
+        if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.kind} ${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
+        if (!r.text || r.text.length < 200) { log.push(`${rel.kind} ${rel.meetingDate} ✗ page fetched but only ${r.text?.length ?? 0} chars of text — not stored`); continue; }
+        await kv.put(`${key}_raw_${rel.kind}_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, fetchedAt: new Date().toISOString() }));
+        log.push(`${rel.kind} ${rel.meetingDate} ✓ fetched`);
+        if (_aiAnyKey()) {
+          try { await buildAnalysis(rel.kind, rel.meetingDate); log.push(`${rel.kind} ${rel.meetingDate} ✓ analysed`); }
+          catch (e) { log.push(`${rel.kind} ${rel.meetingDate} analysis ✗ ${e.message}`); }
+        }
+      } catch (e) { log.push(`${rel.kind} ${rel.meetingDate} ✗ ${e.message}`); }
+    }
+    await kv.put(`${key}_fetch_log`, JSON.stringify({ at: new Date().toISOString(), reason, log })).catch(() => {});
+    if (log.length) console.log(`[${key}] (${reason}) ${log.join(' · ')}`);
+    return log;
+  }
+
+  app.get(`/api/${key}/calendar`, (_req, res) => {
+    res.json({ ok: true, meetings: cfg.meetings, pending: cfg.pendingAsOf(Date.now(), 120) });
+  });
+  app.get(`/api/${key}/latest`, async (_req, res) => {
+    try {
+      const ptr = await kv.get(`${key}_latest`);
+      if (!ptr) return res.json({ ok: false, error: `No ${cfg.name} analysis yet — click Fetch now.` });
+      const { kind, meetingDate } = JSON.parse(ptr);
+      const raw = await kv.get(`${key}_analysis_${kind}_${meetingDate}`);
+      if (!raw) return res.json({ ok: false, error: 'Pointer set but analysis missing — click Fetch now.' });
+      res.json({ ok: true, ...JSON.parse(raw) });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+  app.get(`/api/${key}/meeting/:date`, async (req, res) => {
+    const date = req.params.date;
+    const out = {};
+    for (const kind of cfg.kinds) {
+      const raw = await kv.get(`${key}_analysis_${kind}_${date}`).catch(() => null);
+      if (raw) out[kind] = JSON.parse(raw);
+    }
+    res.json({ ok: true, meetingDate: date, releases: out });
+  });
+  app.get(`/api/${key}/history`, async (req, res) => {
+    const n = Math.min(24, Math.max(1, parseInt(req.query.n) || 8));
+    const past = cfg.meetings.filter(m => Date.parse(m.date) <= Date.now()).slice(-n);
+    const out = [];
+    for (const m of past) {
+      const raw = await kv.get(`${key}_analysis_statement_${m.date}`).catch(() => null);
+      if (raw) { const p = JSON.parse(raw); out.push({ meetingDate: m.date, headline: p.analysis?.headline, hawkishScore: p.analysis?.hawkishScore, regime: p.analysis?.regime }); }
+      else out.push({ meetingDate: m.date, headline: null, hawkishScore: null, regime: null });
+    }
+    res.json({ ok: true, history: out });
+  });
+  let running = false;
+  const runCheck = reason => {
+    if (running) return false;
+    running = true;
+    autoCheck(reason).catch(() => {}).finally(() => { running = false; });
+    return true;
+  };
+  app.post(`/api/${key}/fetch-now`, (_req, res) => {
+    const started = runCheck('manual');
+    res.json({ ok: true, started, alreadyRunning: !started });
+  });
+  app.get(`/api/${key}/fetch-status`, async (_req, res) => {
+    const raw = await kv.get(`${key}_fetch_log`).catch(() => null);
+    res.json({ ok: true, running, last: raw ? JSON.parse(raw) : null });
+  });
+  // Read-only diagnostic, same purpose as /api/boj/debug-fetch: runs every
+  // fetcher for one date from the deployed server and reports what came back
+  // (status, error, text length, a snippet) — no KV writes, no model call.
+  // ?prompt=1 also returns the analysis prompt that WOULD be sent for kinds
+  // already captured in KV (still no model call).
+  app.get(`/api/${key}/debug-fetch`, async (req, res) => {
+    const date = req.query.date;
+    if (!date) return res.status(400).json({ ok: false, error: 'pass ?date=YYYY-MM-DD' });
+    const results = [];
+    for (const kind of cfg.kinds) {
+      try {
+        const r = await cfg.fetchers[kind](date);
+        const row = { kind, ok: r.ok, notYetPublished: r.notYetPublished ?? null, status: r.status ?? null, error: r.error ?? null, url: r.url, via: r.via ?? null, chars: r.text?.length ?? 0, snippet: r.text ? r.text.slice(0, 300) : null };
+        if (r.ok && cfg.extractVote && cfg.voteKinds.includes(kind)) row.vote = cfg.extractVote(r.text);
+        if (req.query.prompt === '1') { try { row.prompt = (await buildPrompt(kind, date)).prompt; } catch (e) { row.prompt = `(not built: ${e.message})`; } }
+        results.push(row);
+      } catch (e) { results.push({ kind, error: e.message }); }
+    }
+    res.json({ ok: true, bank: cfg.name, dateChecked: date, results });
+  });
+  svcInterval('cbSentiment', () => { runCheck('poll'); }, 30 * 60_000);
+  return { buildPrompt, buildAnalysis, autoCheck, runCheck };
+}
+const _cbExtraEngines = Object.fromEntries(Object.entries(_CB_EXTRA_ENGINES).map(([k, cfg]) => [k, _registerCbEngine(k, cfg)]));
+
 // ── Beige Book Engine ───────────────────────────────────────────────────────
 // The simplest release-tracking engine yet: ONE document, no delayed
 // minutes/opinions/accounts equivalent, no press conference, no vote to
@@ -8994,8 +9242,8 @@ setTimeout(() => { if (process.env.FRED_KEY) _consumerConfidencePoller.tick().ca
 // fetching, no new refresh loop, just an aggregation read computed fresh
 // on each request from data every other engine is already keeping warm on
 // its own daily-gated schedule. `cbSentiment` (central-bank text
-// sentiment) only covers USD/EUR/GBP/JPY (the 4 currencies with a built
-// sentiment engine) — AUD/CAD/CHF/NZD score on their remaining numeric
+// sentiment) covers USD/EUR/GBP/JPY/NZD/AUD/CAD (the 7 currencies with a
+// built sentiment engine) — CHF scores on its remaining numeric
 // dimensions, same partial-coverage handling every per-engine composite
 // here already does.
 const _CB_SENTIMENT = [
@@ -9003,6 +9251,9 @@ const _CB_SENTIMENT = [
   { ccy: 'EUR', meetings: ECB_MEETINGS, prefix: 'ecb_analysis_statement_' },
   { ccy: 'GBP', meetings: BOE_MEETINGS, prefix: 'boe_analysis_summary_' },
   { ccy: 'JPY', meetings: BOJ_MEETINGS, prefix: 'boj_analysis_statement_' },
+  { ccy: 'NZD', meetings: RBNZ_MEETINGS, prefix: 'rbnz_analysis_statement_' },
+  { ccy: 'AUD', meetings: RBA_MEETINGS, prefix: 'rba_analysis_statement_' },
+  { ccy: 'CAD', meetings: BOC_MEETINGS, prefix: 'boc_analysis_statement_' },
 ];
 async function _loadCbSentiment() {
   const out = {};

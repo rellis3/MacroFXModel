@@ -110,3 +110,16 @@ test('a prefix health id gathers every leg discovered at run time; kvStamp adds 
   assert.equal(out.feeds[0].status, 'file', 'EVZ is not a CME leg');
   assert.equal(out.feeds[1].status, 'current');
 });
+
+test('a retired store is listed with its last write and never needs attention', () => {
+  const out = buildCatalogue({
+    feeds: [{ id: 'a', name: 'paused bot state', category: 'records', kvStamp: { key: 'k1' }, retired: 'paused since 2026-09-29' },
+            { id: 'b', name: 'live record', category: 'records', kvStamp: { key: 'k2' } }],
+    healthRows: [{ id: 'kv:k1', last: '2026-09-29T07:00:00Z', state: 'stale', cadenceDays: 3 },
+                 { id: 'kv:k2', last: '2026-09-01T07:00:00Z', state: 'stale', cadenceDays: 1 }],
+  });
+  assert.equal(out.feeds[0].status, 'retired');
+  assert.match(out.feeds[0].why, /paused since 2026-09-29.*2026-09-29/);
+  assert.equal(out.feeds[1].status, 'stale', 'only the retired one is exempt');
+  assert.equal(out.summary.needsEyes, 1);
+});

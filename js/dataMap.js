@@ -89,6 +89,7 @@
     loading:   { label: 'Loading',        colour: '#60a5fa', rank: 3 },
     file:      { label: 'Static file',    colour: '#a78bfa', rank: 4 },
     untracked: { label: 'Not tracked',    colour: '#475569', rank: 6 },
+    retired:   { label: 'Retired',        colour: '#64748b', rank: 7 },
   };
   var ATTENTION = { behind: 1, stale: 1, dead: 1 };
 
@@ -179,7 +180,7 @@
     };
     var html = chip('all', 'feeds', d.feeds.length);
     if (d.summary.needsEyes) html += chip('attention', 'need attention', d.summary.needsEyes, '#ef4444');
-    ['current', 'loading', 'file', 'untracked'].forEach(function (k) { if (c[k]) html += chip(k, STATUS[k].label.toLowerCase(), c[k], STATUS[k].colour); });
+    ['current', 'loading', 'file', 'untracked', 'retired'].forEach(function (k) { if (c[k]) html += chip(k, STATUS[k].label.toLowerCase(), c[k], STATUS[k].colour); });
     sum.innerHTML = html;
 
     cats.innerHTML = '<button class="dm-chip' + (state.cat === 'all' ? ' on' : '') + '" data-cat="all">All areas</button>' +

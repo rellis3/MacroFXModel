@@ -449,6 +449,11 @@ function isCfKey(key) {
   if (key.startsWith('boe_')) return true;
   // boj_* — same reasoning as fomc_/ecb_/boe_ above.
   if (key.startsWith('boj_')) return true;
+  // rbnz_* / rba_* / boc_* — the RBNZ/RBA/BoC engines' point-in-time captures,
+  // same reasoning as fomc_/ecb_/boe_/boj_ above.
+  if (key.startsWith('rbnz_')) return true;
+  if (key.startsWith('rba_')) return true;
+  if (key.startsWith('boc_')) return true;
   // beigebook_* — same reasoning as fomc_/ecb_/boe_/boj_ above.
   if (key.startsWith('beigebook_')) return true;
   // oi_raw_YYYY-MM-DD - the per-day raw OI capture (ladder + IV boxes). One key per

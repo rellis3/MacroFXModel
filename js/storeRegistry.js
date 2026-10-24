@@ -149,6 +149,24 @@ export const STORES = {
   motif_bot_credentials: X('Motif bot credentials'),
 };
 
+
+// ── retired: stopped on purpose (owner, 2026-10-24: "mark the paused bots as retired"). Listed, never alarming. ──
+// These bots last wrote on 2026-09-29; only the OI-Gamma and OI-Vol bots are trading. If one is switched back on, delete
+// its key here and the Data Map watches it again.
+const PAUSED = 'paused since 2026-09-29; only the OI bots are trading';
+const RETIRED = {
+  volatility_bot_v2_plan: PAUSED, volatility_bot_v2_state: PAUSED, volatility_bot_v2_trade_log: PAUSED,
+  volatility_bot_v2_decision_log: PAUSED, volatility_bot_v2_drift_history: PAUSED,
+  volatility_bot_v3_state: PAUSED, volatility_bot_v3_trade_log: PAUSED, volatility_bot_v3_decision_log: PAUSED,
+  fib_atlas_bot_plan: PAUSED, fib_atlas_bot_state: PAUSED, fib_atlas_bot_trade_log: PAUSED, fib_atlas_bot_decision_log: PAUSED,
+  fib_atlas_bot_v2_state: PAUSED, fib_atlas_bot_v2_trade_log: PAUSED, fib_atlas_bot_v2_decision_log: PAUSED,
+  motif_bot_plan: PAUSED, motif_bot_state: PAUSED, motif_bot_decision_log: PAUSED, motif_bot_spread_stats: PAUSED,
+};
+for (const [k, why] of Object.entries(RETIRED)) if (STORES[k]) STORES[k] = { ...STORES[k], retired: why };
+// written by a hand-run research job or on rare events, not weekly: a loose bound, not an alarm
+for (const k of ['policy_v2', 'policy_v2_status', 'ledger_v2']) if (STORES[k]) STORES[k] = { ...STORES[k], cadenceDays: 120 };
+if (STORES.cot_factor_history_v1) STORES.cot_factor_history_v1 = { ...STORES.cot_factor_history_v1, cadenceDays: 120 };
+
 /**
  * FEED-shaped entries for js/dataFeeds.js, one per readable store (record / log / state) that the registry
  * describes and that does not already have a hand-written feed with a kvStamp.
@@ -163,5 +181,6 @@ export function storeFeeds(already = new Set()) {
         : 'A bot or engine working state, rewritten on every tick while it runs.',
       store: `KV ${key}`, refresh: `${s.kind}, expected within ${s.cadenceDays} day${s.cadenceDays === 1 ? '' : 's'}`,
       kvStamp: { key, cadenceDays: s.cadenceDays, market: s.market !== false },
+      ...(s.retired ? { retired: s.retired } : {}),
     }));
 }
