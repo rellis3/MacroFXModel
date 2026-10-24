@@ -341,7 +341,12 @@ function chainNow() {
   const vals = {}; for (const [node, key] of Object.entries(map)) { const p = pts(key); vals[node] = p ? nodeDelta(p, CHAIN_NODES[node]) : null; }
   for (const node of ['emdollar', 'emoas']) { const p = D.cx?.series?.[node]; vals[node] = Array.isArray(p) && p.length > 20 ? nodeDelta(p, CHAIN_NODES[node]) : null; }   // the two chips FRED supplies (/api/chain-extra)
   let links = []; try { links = evaluateChain(vals); } catch { links = []; }
-  return { vals, links };
+  // the last ~26 points of each market, for the V2 newsletter's charts of the links that broke
+  // each series is turned into the move since its first point, in the node's own unit (percent, basis points or points), exactly as nodeDelta does for the verdict
+  const moved = (vals, node) => { const v0 = vals[0], u = CHAIN_NODES[node]?.unit; return vals.map(v => u === 'pct' ? (v0 ? (v / v0 - 1) * 100 : 0) : u === 'bp' ? (v - v0) * 100 : v - v0); };
+  const ser = {}; for (const [node, key] of Object.entries(map)) { const p = pts(key); if (p) ser[node] = moved(p.slice(-26).map(x => x.value), node); }
+  for (const node of ['emdollar', 'emoas']) { const p = D.cx?.series?.[node]; if (Array.isArray(p) && p.length > 20) ser[node] = moved(p.slice(-26).map(x => (typeof x === 'number' ? x : x?.value)), node); }
+  return { vals, links, ser };
 }
 function strengths() {
   const acc = {}; for (const c of Object.keys(FLAG)) acc[c] = [];
@@ -565,7 +570,7 @@ function nlInput({ bookFor = () => null } = {}) {
     date: new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' }),
     isoDate: ukDate(),
     generatedAt: D.intel?.generatedAt ?? null, headline: a?.headline, regimeWord: a?.regime ?? 'MIXED', riskFlags: D.rf ? { active: D.rf.active ?? 0, total: D.rf.available ?? D.rf.total ?? 5, flags: (D.rf.flags ?? []).map(f => ({ key: f.key, label: f.label, on: f.on, value: f.value, detail: f.detail })) } : null,
-    brief: a, llm: D.intel?.llm ?? null, tiles, stages, links: derived.chain.links, position,
+    brief: a, llm: D.intel?.llm ?? null, tiles, stages, links: derived.chain.links, nodeSeries: derived.chain.ser, position,
     events: ahead.map(e => ({ ...e, note: eventNote(e, bookFor(e), keys) })),
     ranges: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k); return { label: labelOf(k), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used }; }),
     assets: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k), reg = P.regimeFor(D.regime, k), gam = P.gammaFor(D.oi, k), fire = P.deskFiring(D.ds, k).filter(f => f.instruments.includes(k)).length, g = { fx: 'FX', index: 'Index', commodity: 'Gold', crypto: 'Bitcoin' }[acOf(k)] ?? '';

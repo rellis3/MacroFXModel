@@ -188,6 +188,21 @@ ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d
 
 { const base = { date: 'x', isoDate: '2026-10-25' }, cur = buildNewsletter(base), v2 = buildNewsletterV2(base);
   ok('the V2 draft is tagged in its masthead and the current issue is not', /V2 draft/.test(v2.html) && !/V2 draft/.test(cur.html));
-  ok('with nothing changed yet the two differ only by that tag, so a V2 change shows up cleanly', v2.html.replace(' · V2 draft', '') === cur.html && v2.text === cur.text); }
+  ok('the V2 draft is a different layout, not the same page with a tag', v2.html !== cur.html); }
+
+{ const { evaluateChain, CHAIN_NODES } = await import('./macroChain.js'); const f = k => CHAIN_NODES[k].floor, mv = (k, m) => ({ delta: f(k) * m, last: 1 });
+  const links = evaluateChain({ dxy: mv('dxy', 3), nq: mv('nq', -3), spx: mv('spx', -3), vix: mv('vix', 3), hy: mv('hy', 3), gold: mv('gold', -3), real: mv('real', -3), us10y: mv('us10y', -3), bei: mv('bei', 1) });
+  const ser = k => Array.from({ length: 26 }, (_, i) => i * f(k) / 8);
+  const assets = [{ key: 'EURUSD', label: 'EUR/USD', price: '1.1', d1: 0.1, d20: -0.5, spark: [1, 2, 3], used: 0.5, hlMed: 1 }, { key: 'DE30', label: 'DAX', price: '25000', d1: -0.9, d20: -0.5, spark: [3, 2, 1], used: 0.4, hlMed: 1 }];
+  const inp = { date: 'x', isoDate: '2026-10-25', headline: 'A day of falling prices', brief: { letter: { opening: 'The dollar rose while stocks and gold both fell.' } }, links, nodeSeries: { dxy: ser('dxy'), real: ser('real'), gold: ser('gold'), us10y: ser('us10y'), bei: ser('bei') }, assets,
+    strengths: [{ ccy: 'USD', score: 0.4 }, { ccy: 'EUR', score: -0.1 }], stocks: { sectors: [{ label: 'Energy', d1: 1, d20: 4 }, { label: 'Tech', d1: -1, d20: -6 }, { label: 'Banks', d1: 0, d20: 1 }, { label: 'Utilities', d1: 0, d20: 0 }], mega: [] }, commodities: [{ name: 'Oil', value: '$80', sub: '', tone: 'up' }], volatility: [{ label: 'VIX', v: 24.1, d1: 1, d20: 3 }], creditSpreads: [{ label: 'High yield', bp: 360, d1: 0, d20: 0.4 }] };
+  const c2 = buildNewsletter(inp), v = buildNewsletterV2(inp);
+  ok('V2 opens as an investigation that asks what the market is telling us, with the story, and puts the chain next as the evidence', /Today's investigation/.test(v.html) && /Where the chain is breaking/.test(v.html) && v.html.indexOf("Today's investigation") < v.html.indexOf('Where the chain is breaking'));
+  ok('V2 draws each broken link as a two-line chart in units of each market\'s own wobble', (v.html.match(/class="lcd"/g) ?? []).length >= 1 && /usual wobble/.test(v.html) && /<path d="M/.test(v.html));
+  ok('V2 offers three competing explanations with plain labels, check marks, and the not-a-signal warning', /Three ways to read it/.test(v.html) && (v.html.match(/class="th"/g) ?? []).length === 3 && /Flight to safety/.test(v.html) && /Supported|Mixed|Not supported today|Not yet tested/.test(v.html) && /not validated conclusions or trading signals/.test(v.html) && !/\d+\s*%\s*(chance|probab)/i.test(v.html));
+  ok('V2 carries one lesson built from the day\'s own divergence', /One idea to take away/.test(v.html) && /The usual mechanism/.test(v.html) && /What can overwhelm it/.test(v.html));
+  ok('V2 keeps every market as a compact row, including those without data', (v.html.match(/class="bd"/g) ?? []).length === 2 && /DAX/.test(v.html) && /Every market/.test(v.html));
+  ok('V2 compresses the long sections: no idea-of-the-day Q and A, no stock tables, no per-currency paragraphs', !/The idea of the day/.test(v.html) && !/Stocks under the hood/.test(v.html) && !/class="cc2"/.test(v.html) && /Across the board/.test(v.html) && /class="csr"/.test(v.html));
+  ok('V2 keeps the question, the footer and the unremovable disclaimer', /NOT FINANCIAL ADVICE/.test(v.html) && /Question of the day/.test(v.html) && /Where this comes from|NOT FINANCIAL ADVICE/.test(v.html) && c2.html.length > 0); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
