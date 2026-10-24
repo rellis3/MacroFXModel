@@ -538,6 +538,24 @@ function nlNumbers() {
   return { tiles, stages };
 }
 const NL_RANGE_KEYS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'GOLD', 'NQ', 'SPX500', 'US30', 'DE30', 'UK100', 'BTCUSD'];
+/** The feeds an issue leans on, each with its own as-of date and rhythm, for the sources list and the freshness check in the newsletter (js/dataFreshness.js). */
+function nlSources(hmmAt) {
+  const ukDay = s => { const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(String(s ?? '')); return m ? `${m[3]}-${m[2]}-${m[1]}` : null; };
+  const oiAt = (D.oi?.pairs ?? []).map(p => ukDay(p.savedAt)).filter(Boolean).sort().at(-1) ?? null;
+  const cbAt = Object.values(cbHist()).flatMap(h => (h ?? []).map(x => x?.meetingDate)).filter(Boolean).sort().at(-1) ?? null;
+  return [
+    { label: 'Market prices, yields, volatility, credit', source: 'OANDA, FRED, Cboe, Yahoo', asOf: D.drill?.dates?.at(-1) ?? null, cadence: 'daily' },
+    { label: 'Speculative positioning', source: 'CFTC Commitments of Traders', asOf: D.ce?.reportDate ?? D.ce?.instruments?.find(i => i.reportDate)?.reportDate ?? null, cadence: 'cftc' },
+    { label: 'Option positions and dealer gamma', source: 'CME QuikStrike settlements', asOf: oiAt, cadence: 'daily' },
+    { label: 'Release calendar', source: 'Nasdaq, ForexFactory', asOf: D.cal?.at ?? null, cadence: 'live' },
+    { label: 'Data surprises', source: 'consensus against actual, own scoring', asOf: D.es?.generatedAt ?? null, cadence: 'live' },
+    { label: 'Market-implied Fed path', source: 'CME fed funds futures', asOf: D.fp?.zq?.asOf ?? D.fp?.asOf ?? null, cadence: 'daily' },
+    { label: 'Nowcasts', source: 'Atlanta Fed GDPNow, Cleveland Fed', asOf: D.nc?.cleveland?.asOf ?? null, cadence: 'irregular' },   // the Cleveland model updates on its own schedule, so its date is shown and never flagged
+    { label: 'Range forecast', source: 'own model on OANDA prices', asOf: D.fc?.computed_at ?? null, cadence: 'live' },
+    { label: 'Hourly volatility state', source: 'OANDA hourly prices, own model', asOf: hmmAt ?? null, cadence: 'hourly' },
+    { label: 'Central-bank tone', source: 'bank statements, own scoring', asOf: cbAt, cadence: 'irregular' },
+  ];
+}
 function nlInput({ bookFor = () => null } = {}) {
   const regime = P.regimeCard(D.regime), axes = P.axesRows(D.gr), firing = P.deskFiring(D.ds), ahead = P.aheadEvents(D.events, Date.now(), { limit: 12, withinHours: 72 }), fp = P.fedPathCard(D.fp), meeting = P.nextMeeting(D.fcal), nc = P.nowcastCard(D.nc);
   const position = P.positionLines({ regime, axes, firing, events: ahead, fedPath: fp, meeting }), a = D.intel?.analysis ?? null, keys = Object.keys(insts()), { tiles, stages } = nlNumbers();
@@ -591,7 +609,7 @@ function drawRp() {
 }
 /** The market-state read for each card: the daily model (already in the brief), the hourly log, the 30-day daily history. */
 async function nlHmm(keys) {
-  const [h, d] = await Promise.all([J('/api/hmm-hourly?days=2'), J('/api/hmm-daily-history')]), out = {};
+  const [h, d] = await Promise.all([J('/api/hmm-hourly?days=2'), J('/api/hmm-daily-history')]), out = {}; D.hmmAt = h?.updatedAt ?? null;
   for (const k of keys) {
     const reg = insts()[k]?.regime, hr = h?.ok ? h.pairs?.[k] ?? null : null, ds = d?.ok ? d.pairs?.[k] ?? null : null, sm = hr ? stateSummary(hr, 48) : null;
     const daily = reg && (reg.label === 'TREND' || reg.label === 'RANGE') ? { state: reg.label === 'TREND' ? 'active' : 'quiet', prob: reg.label === 'TREND' ? reg.trend_prob : reg.range_prob } : null;
@@ -638,7 +656,7 @@ async function buildIssue(kind) {
     const { eventImpactFor } = await import('./js/eventImpactMap.js');
     const bookFor = e => { try { return eventImpactFor(e.country, e.event); } catch { return null; } };
     const base = nlInput({ bookFor });
-    st.textContent = 'Fetching earnings, auctions and the Fed diary…'; base.extras = await nlExtras(weekly ? 8 : 3); base.hmm = await nlHmm(NL_RANGE_KEYS);
+    st.textContent = 'Fetching earnings, auctions and the Fed diary…'; base.extras = await nlExtras(weekly ? 8 : 3); base.hmm = await nlHmm(NL_RANGE_KEYS); base.sources = nlSources(D.hmmAt);
     if (weekly) {
       base.edition = 'weekly';
       const wf = await J('/api/vol-forecast/weekly'), keys = Object.keys(insts());

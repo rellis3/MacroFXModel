@@ -1263,8 +1263,10 @@ async function tickPrice(displaySym, oandaSym) {
   }
 }
 
+// OANDA quotes the DAX as DE30_EUR; the desk's key DE30_USD is not a live symbol, so the DAX never got a regime (daily or hourly) and its cards had no state pills.
+const OANDA_ALIAS = { DE30_USD: 'DE30_EUR' };
 async function fetchDailyCandles(sym, count = 60) {
-  const instrument = sym.replace('/', '_');
+  const instrument = OANDA_ALIAS[sym.replace('/', '_')] ?? sym.replace('/', '_');
   const base = (process.env.OANDA_ENV || 'live') === 'practice'
     ? 'https://api-fxpractice.oanda.com'
     : 'https://api-fxtrade.oanda.com';
@@ -31640,7 +31642,7 @@ let _hmmHourlyRunning = false, _hmmHourlyStore = null;
 async function _fetchHourlyCandles(sym, count) {
   const base = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
   try {
-    const r = await fetch(`${base}/v3/instruments/${encodeURIComponent(sym.replace('/', '_'))}/candles?granularity=H1&count=${count}&price=M`,
+    const r = await fetch(`${base}/v3/instruments/${encodeURIComponent(OANDA_ALIAS[sym.replace('/', '_')] ?? sym.replace('/', '_'))}/candles?granularity=H1&count=${count}&price=M`,
       { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
     if (!r.ok) return null;
     const d = await r.json();
