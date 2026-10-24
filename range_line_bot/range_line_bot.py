@@ -239,7 +239,11 @@ def monday_anchor_epoch(now_epoch: float, boundary_hour: int) -> int:
     one): step back from today's session-open day to this week's Monday, or last
     week's if today's session day is itself Monday."""
     anc = datetime.fromtimestamp(session_anchor_epoch(now_epoch, boundary_hour), tz=timezone.utc)
-    wd = anc.weekday()                                     # Mon=0 … Sun=6
+    # The weekday of the session's TRADING date: an evening open (boundary >= 12, e.g. 23:00 UTC in
+    # BST) starts the next date's session. Taking the weekday of the open itself made the BST
+    # "Monday" range the London Tuesday session (plans/DATA_SPEC.md §5 #10, fixed 2026-10-24).
+    trade_day = anc + timedelta(days=1) if int(boundary_hour) % 24 >= 12 else anc
+    wd = trade_day.weekday()                               # Mon=0 … Sun=6
     days_back = wd if wd != 0 else 7
     return int((anc - timedelta(days=days_back)).timestamp())
 

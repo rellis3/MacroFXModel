@@ -541,6 +541,18 @@ console.log('[bucketM1IntoSessions — midnight Europe/London]');
     times: [mk('2026-06-29T21:59:00Z'), mk('2026-06-29T22:00:00Z')],
     opens: [1, 2], highs: [1, 2], lows: [1, 2], closes: [1, 2] });
   ok('default 22:00-UTC boundary still splits at 22:00Z', (utc.get('2026-06-30') || [])[0]?.open === 2);
+  // Boundary 0 (UTC midnight): a UTC day is labelled with ITS OWN date, so Monday's bars are
+  // "Monday" and Sunday's evening stub is "Sunday" (DATA_SPEC §5 #10).
+  const b0 = bucketM1IntoSessions({ n: 3,
+    times: [mk('2026-08-02T21:04:00Z'), mk('2026-08-03T00:00:00Z'), mk('2026-08-03T23:59:00Z')],
+    opens: [1, 2, 3], highs: [1, 2, 3], lows: [1, 2, 3], closes: [1, 2, 3] }, 0);
+  ok('boundary 0: Sunday stub stays Sunday', (b0.get('2026-08-02') || []).map(b => b.open).join(',') === '1');
+  ok('boundary 0: Monday 00:00-23:59Z is Monday', (b0.get('2026-08-03') || []).map(b => b.open).join(',') === '2,3');
+  // Boundary 23 (BST London midnight as a fixed UTC hour): Sun 23:00Z opens Monday.
+  const b23 = bucketM1IntoSessions({ n: 2,
+    times: [mk('2026-08-02T22:59:00Z'), mk('2026-08-02T23:00:00Z')],
+    opens: [1, 2], highs: [1, 2], lows: [1, 2], closes: [1, 2] }, 23);
+  ok('boundary 23: Sun 23:00Z opens the Monday session', (b23.get('2026-08-03') || [])[0]?.open === 2 && (b23.get('2026-08-02') || [])[0]?.open === 1);
 }
 
 console.log('[backtestStats — drawdown honesty]');

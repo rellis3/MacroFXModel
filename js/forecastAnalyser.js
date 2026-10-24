@@ -412,8 +412,15 @@ export function bucketM1IntoSessions(packed, boundaryHour = 22) {
     if (london) {
       key = _londonDateKey(dt);                              // session = London calendar day
     } else {
+      // Label = the date the session TRADES on. An evening boundary (>= 12, e.g. 22/23 UTC) opens
+      // the NEXT date's session; a boundary at/after midnight (0..11) opens that same date's
+      // session, and bars before it belong to the previous date. Before 2026-10-24 boundary 0
+      // labelled every UTC day one day late, so the "Monday" session was Sunday's stub
+      // (plans/DATA_SPEC.md §5 #10).
       const d = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()));
-      if (dt.getUTCHours() >= boundaryHour) d.setUTCDate(d.getUTCDate() + 1);  // belongs to next session
+      const h = dt.getUTCHours();
+      if (boundaryHour >= 12) { if (h >= boundaryHour) d.setUTCDate(d.getUTCDate() + 1); }
+      else if (h < boundaryHour) d.setUTCDate(d.getUTCDate() - 1);
       key = d.toISOString().slice(0, 10);
     }
     if (!map.has(key)) map.set(key, []);

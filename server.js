@@ -19433,8 +19433,12 @@ app.get('/api/range-line-bot/zones', async (req, res) => {
 function _rlSessionDate(ts, boundaryHour = _rlBoundaryHour()) {
   const d = ts == null ? new Date() : (typeof ts === 'number' ? new Date(ts < 1e12 ? ts * 1000 : ts) : new Date(ts));
   if (isNaN(d)) return null;
+  // Same rule as bucketM1IntoSessions: an evening boundary (>= 12) opens the next date's
+  // session, a boundary at/after midnight opens the same date's (boundary 0 used to label
+  // every day one day late — DATA_SPEC §5 #10, fixed 2026-10-24).
   const day = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  if (d.getUTCHours() >= boundaryHour) day.setUTCDate(day.getUTCDate() + 1);
+  if (boundaryHour >= 12) { if (d.getUTCHours() >= boundaryHour) day.setUTCDate(day.getUTCDate() + 1); }
+  else if (d.getUTCHours() < boundaryHour) day.setUTCDate(day.getUTCDate() - 1);
   return day.toISOString().slice(0, 10);
 }
 

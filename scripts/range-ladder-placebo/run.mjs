@@ -66,7 +66,9 @@ for (const [key, cls] of INSTRUMENTS) {
   const raw = bucketM1IntoSessions(packed, 0);
   // A1: the label is the NEXT UTC date at boundaryHour 0 → re-label to the true UTC date.
   const sessions = new Map();
-  for (const [lab, bars] of raw) sessions.set(dayShift(lab, -1), bars);
+  // A1 dating = the true UTC date of the session's first bar (independent of how
+  // bucketM1IntoSessions labels boundary 0, which was one day late before 2026-10-24).
+  for (const [, bars] of raw) sessions.set(new Date(bars[0].time * 1000).toISOString().slice(0, 10), bars);
   const dates = [...sessions.keys()].sort()
     .filter(d => sessions.get(d).length >= MIN_BARS && dow(d) !== 0 && dow(d) !== 6 && d <= END);
   const monCache = new Map();
