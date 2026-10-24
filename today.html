@@ -2238,7 +2238,7 @@ async function fillDrHmm(name) {
   host.innerHTML = `<div class="stl" style="margin-top:0"><b>Market state</b> <span class="muted">how volatile this market has been, not which way it will go</span></div><div style="margin:6px 0">${daily}${hourly}</div>`
     + (e ? `<div class="stl">Hourly, last 48 hours</div>${S.hourlyStripWithAxis(e, 48, { bw: 6, bh: 10 })}<div class="stl">${esc0(S.summaryWords(sm, 48))}</div>` : '')
     + (ds && /[qa]/.test(ds) ? `<div class="stl">Daily, last 30 days</div>${S.dailyStripSvg(ds, { bw: 10, bh: 10 })}` : '')
-    + `<div class="stl">Blue is quiet, amber is active; fainter means the model was less sure; grey means no reading. A two-state model fitted on returns: the daily one suits longer trades, the hourly one suits the day. Descriptive only.</div>`;
+    + `<div class="stl">Blue is quiet or choppy. Green is an active hour that closed up and red one that closed down; amber is active with the direction not recorded; grey is no reading; fainter means the model was less sure. The model only knows quiet or active, and green or red is what the hour did, not a forecast. The daily read looks at weeks and the hourly at hours, so they can differ.</div>`;
 }
 let chainExtra = null;   // /api/chain-extra: the last 70 observations behind the seven chips added 2026-10-23 (semiconductors, energy stocks, real estate, MOVE, CCC, EM dollar, EM credit)
 async function loadChainExtra() { try { const r = await jget('/api/chain-extra'); chainExtra = r?.ok ? r : null; } catch { chainExtra = null; } }

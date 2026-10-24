@@ -17,6 +17,6 @@ ok('the daily strip is one wider block per day with no tooltips', (dsv.match(/<r
 const sm = summarize(e, 8);
 ok('the summary counts active share and state changes over known hours only', sm.hours === 7 && sm.activeShare === 29 && sm.flips === 2 && sm.now === 'quiet' && sm.nowProb === 90);
 ok('the words are plain and singular/plural correct', /active 29% of the time, changed state 2 times/.test(summaryWords(sm, 8)) && /1 time\./.test(summaryWords({ ...sm, flips: 1 }, 8)) && summaryWords(null, 8) === '');
-ok('the pill says which model, the state and how sure, and never a direction', pillWords('Hourly', 'active', 71) === 'Hourly model: active, 71% sure' && !/bull|bear|up|down/i.test(pillWords('Daily', 'quiet', 97)));
+ok('the pill says which span, the state and how sure, and never a direction', pillWords('Hourly', 'active', 71) === 'Last few hours: active, 71% sure' && pillWords('Daily', 'quiet', 97) === 'Last few weeks: quiet, 97% sure' && !/bull|bear/i.test(pillWords('Daily', 'quiet', 97)));
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

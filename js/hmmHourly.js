@@ -77,6 +77,20 @@ export async function backfillAsync(candles, hours, { yieldEvery = 3 } = {}) {
   return out;
 }
 
+/** Hours logged before direction was kept have d '.', but the price history still says what each hour did. Fills them in place from `candles`; returns how many it filled. */
+export function fillDirections(store, key, candles) {
+  const e = store?.pairs?.[key]; if (!e) return 0;
+  if (typeof e.d !== 'string' || e.d.length !== e.s.length) e.d = '.'.repeat(e.s.length);
+  const t0 = hourMs(e.t0); let filled = 0;
+  for (let k = 1; k < candles.length; k++) {
+    const i = Math.round((hourMs(hourKey(candles[k].ms)) - t0) / 3.6e6);
+    if (i < 0 || i >= e.s.length || e.d[i] !== '.' || e.s[i] === '.') continue;
+    const d = dirAt(candles, k); if (d === '.') continue;
+    e.d = e.d.slice(0, i) + d + e.d.slice(i + 1); filled++;
+  }
+  return filled;
+}
+
 /** The hour of the last reading stored for a pair, or null. Lets a run skip a pair that already has the hour it would compute. */
 export function lastHour(store, key) {
   const e = store?.pairs?.[key]; return e ? hourKey(hourMs(e.t0) + (e.s.length - 1) * 3.6e6) : null;

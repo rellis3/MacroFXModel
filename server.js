@@ -31281,7 +31281,7 @@ async function runHmmHourly() {
   const keys = Object.keys(state.hmmRegimes ?? {}); if (!keys.length) return;   // the daily fits come first (the levels refresh), so wait for them
   _hmmHourlyRunning = true;
   try {
-    const { hourlyState, backfillAsync, appendReading, lastHour, barHour, dirAt, FIT_BARS } = await import('./js/hmmHourly.js');
+    const { hourlyState, backfillAsync, appendReading, lastHour, barHour, dirAt, fillDirections, FIT_BARS } = await import('./js/hmmHourly.js');
     const store = await _loadHmmHourly(); if (!store) return;
     const before = JSON.stringify(store);
     for (const key of keys) {
@@ -31290,6 +31290,7 @@ async function runHmmHourly() {
       if (!candles || candles.length < 130) continue;
       if (fresh) { for (const r of await backfillAsync(candles, 72)) appendReading(store, key, r.hour, r.state, r.prob, { dir: r.dir }); }
       else if (lastHour(store, key) !== barHour(candles.at(-1).ms)) { const st = hourlyState(candles); if (st) appendReading(store, key, barHour(candles.at(-1).ms), st.state, st.prob, { dir: dirAt(candles, candles.length - 1) }); }   // one fit per pair per hour; a closed market adds nothing
+      if (store.pairs?.[key]) fillDirections(store, key, candles);   // hours logged before direction was kept
       await new Promise(r => setTimeout(r, 120));
     }
     if (JSON.stringify(store) !== before) { store.updatedAt = new Date().toISOString(); await kv.put(_HMM_HOURLY_KV, JSON.stringify(store)).catch(e => console.warn('[hmm-hourly] save failed:', e.message)); }
