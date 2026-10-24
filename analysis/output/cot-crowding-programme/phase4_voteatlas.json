@@ -3,9 +3,9 @@
  "phase": 4,
  "part": "Vote Atlas VA1-VA2",
  "seed": 20261024,
- "n_trades": 34098,
+ "n_trades": 33972,
  "window": [
-  "2022-03-10",
+  "2022-05-05",
   "2026-08-20"
  ],
  "by_inst": {
@@ -60,19 +60,19 @@
    "control": 1437
   },
   "usdchf": {
-   "n": 3572,
+   "n": 3564,
    "test": 57,
    "control": 1428
   },
   "usdjpy": {
-   "n": 3303,
+   "n": 3185,
    "test": 72,
-   "control": 1352
+   "control": 1310
   }
  },
  "state_counts": {
-  "none": 29125,
-  "A": 2477,
+  "none": 29053,
+  "A": 2423,
   "B": 1401,
   "C": 738,
   "D": 357
@@ -80,15 +80,15 @@
  "cells": {
   "VA1": {
    "metric": "mean pnlPct (test - matched control cell mean)",
-   "est": 0.0022,
+   "est": 0.0024,
    "ci": [
-    -0.0208,
-    0.0288
+    -0.0185,
+    0.0297
    ],
-   "p": 0.8603,
+   "p": 0.8431,
    "n_test": 904,
    "n_test_matched": 903,
-   "n_control": 13194,
+   "n_control": 13152,
    "is_est": 0.0184,
    "oos_est": 0.0066,
    "n_test_is": 348,
@@ -100,9 +100,9 @@
      "mae": 0.1653
     },
     "control": {
-     "mean_pnl": 0.0388,
-     "win": 0.578,
-     "mae": 0.2245
+     "mean_pnl": 0.0386,
+     "win": 0.577,
+     "mae": 0.2248
     },
     "against_crowd_in_BD": {
      "n": 854,
@@ -171,10 +171,10 @@
    "metric": "OOS mean pnlPct per trade: skip rule minus all trades",
    "est": 0.00046,
    "ci": [
-    -0.00026,
-    0.00106
+    -0.00029,
+    0.00107
    ],
-   "p": 0.1693,
+   "p": 0.1833,
    "n_oos": 18624,
    "n_skipped": 556,
    "total_pnl_all": 735.784,
