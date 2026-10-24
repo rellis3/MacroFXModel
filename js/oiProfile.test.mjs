@@ -43,7 +43,7 @@ const t = buildProfileText(p, { name: 'NQ', generated: 'test', digits: 2 });
 const rows = t.split('\n');
 ok('title and instrument header lines', rows[0].startsWith('──── OI PROFILE') && rows[3] === 'NQ', rows[3]);
 ok('M line carries spot, regime, zero gamma', /^M\|spot\|100\.00\|regime\|BREAKOUT/.test(rows.find(r => r.startsWith('M|'))) && /zg\|101\.70/.test(rows.find(r => r.startsWith('M|'))));
-ok('level lines have 8 pipe fields', rows.filter(r => r.startsWith('L|')).every(r => r.split('|').length === 8));
+ok('level lines have 9 pipe fields; the last is the OI change in % of the OI at that strike, or - when there is no change data', rows.filter(r => r.startsWith('L|')).every(r => { const q = r.split('|'); return q.length === 9 && /^(-?\d+|-)$/.test(q[8]); }));
 ok('every data line is pipe-delimited with a known tag', rows.filter(r => /^[A-Z]\d?\|/.test(r)).every(r => 'MHLGVOSX'.includes(r[0])));
 ok('no exponent notation anywhere (Pine tonumber-safe)', !rows.some(r => /\d[eE][+-]?\d/.test(r) && /^[MHLGVOSX]\d?\|/.test(r)));
 ok('no empty fields between pipes (Pine split-safe)', rows.filter(r => /^[MHLGVOSX]\d?\|/.test(r)).every(r => !/\|\|/.test(r) && !/\|$/.test(r)), rows.find(r => /^[MHLGVOSX]\d?\|/.test(r) && (/\|\|/.test(r) || /\|$/.test(r))));

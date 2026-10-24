@@ -62,6 +62,21 @@ export function buildOiProfile(inst, opts = {}) {
   const net = call.map((c, i) => c - put[i]);
 
   // ── 2. reaction levels ───────────────────────────────────────────────────────────────────────────────────────────
+  // OI CHANGE at each strike-based level: the day's net change in open interest (all expiries, calls plus puts) as a share of the OI there. It tells you whether the
+  // line was BUILT up or run DOWN since the last snapshot. Descriptive: it does not change a level's strength (that is gamma share) and has not been tested as a predictor.
+  const chgMap = new Map();
+  if (inst?.rawChg) {
+    try {
+      const m = parseOIMatrix(inst.rawChg, { signed: true, mode: 'aggregate' });
+      const basis0 = Number.isFinite(inst.basis) ? inst.basis : 0, inv0 = futuresIsInverted(inst.pair || '');
+      const shift0 = s => (basis0 !== 0 ? (inv0 ? 1 / s - basis0 : s - basis0) : s);
+      if (m) m.strikes.forEach((s, i) => { const px = shift0(s); if (Number.isFinite(px)) chgMap.set(px, (m.calls[i] || 0) + (m.puts[i] || 0)); });
+    } catch { /* no change data */ }
+  }
+  const oiMap = new Map();
+  for (const l of legs) l.strikes.forEach((s, i) => oiMap.set(s, (oiMap.get(s) || 0) + (l.calls[i] || 0) + (l.puts[i] || 0)));
+  const nearestVal = (map, px, tol) => { let best = null, bd = Infinity; for (const [s, v] of map) { const d = Math.abs(s - px); if (d < bd) { bd = d; best = v; } } return bd <= tol ? best : null; };
+  const CHG_TYPES = new Set(['call_wall', 'put_wall', 'gamma_peak', 'short_gamma_node', 'long_gamma_node', 'oi_volume', 'max_pain']);
   const levels = [];
   const add = (type, price, strength = 0.5, extra = {}) => { if (Number.isFinite(price) && Math.abs(price - spot) <= windowRm * rm) levels.push({ type, price, strength, ...extra }); };
   const topSide = (arr, above) => lad.strikes.map((k, i) => ({ k, v: arr[i], i })).filter(x => (above ? x.k > spot : x.k < spot) && x.v > 0).sort((a, b) => b.v - a.v);
@@ -98,6 +113,10 @@ export function buildOiProfile(inst, opts = {}) {
   if (emDay) { add('exp_hi', emDay.upper, 0.3); add('exp_lo', emDay.lower, 0.3); }
   for (const l of levels) {
     l.label = LABEL[l.type] + (l.rank ? ` ${l.rank}` : '');
+    if (CHG_TYPES.has(l.type)) {
+      const c = nearestVal(chgMap, l.price, 0.1 * rm), o = nearestVal(oiMap, l.price, 0.1 * rm);
+      l.chg = c; l.chgPct = (c != null && o > 0) ? Math.round(c / o * 100) : null;
+    }
     const ex = EXPECT_TYPE[l.type] ? levelExpectation({ type: EXPECT_TYPE[l.type], price: l.price }, { spot, gexFlips: inst?.gexFlips, gammaFlip: inst?.gammaFlip, refMove: rm }) : null;
     l.expect = ex?.short || ({ gamma_peak: 'Biggest gamma', vanna_flip: 'IV-driven', charm_flip: 'Time pull', exp_hi: 'Range edge', exp_lo: 'Range edge', short_gamma_node: 'Speeds moves', long_gamma_node: 'Pins moves' }[l.type] ?? '');
     const r = opts.reach ? opts.reach(l.price) : null;
@@ -125,14 +144,7 @@ export function buildOiProfile(inst, opts = {}) {
   // OI CHANGE by strike: the day's net change in open interest (contracts opened minus closed, all expiries, calls plus puts), signed. Building = positioning added, unwinding = positions closed.
   // It comes from the QuikStrike change columns already stored as inst.rawChg; strikes move onto the same basis as the rest of the profile.
   const chg = mk();
-  if (inst?.rawChg) {
-    try {
-      const m = parseOIMatrix(inst.rawChg, { signed: true, mode: 'aggregate' });
-      const basis = Number.isFinite(inst.basis) ? inst.basis : 0, inv = futuresIsInverted(inst.pair || '');
-      const shift = s => (basis !== 0 ? (inv ? 1 / s - basis : s - basis) : s);
-      if (m) m.strikes.forEach((s, i) => { const px = shift(s), b = binOf(px); if (Number.isFinite(px) && b >= 0 && b < nBins) chg[b] += (m.calls[i] || 0) + (m.puts[i] || 0); });
-    } catch { /* no change data: the column is simply empty */ }
-  }
+  for (const [px, v] of chgMap) { const b = binOf(px); if (b >= 0 && b < nBins) chg[b] += v; }
   const rows = (fn) => Array.from({ length: nBins }, (_, b) => fn(b)).filter(Boolean);
   const mid = b => lo + (b + 0.5) * bw;
   const gex = rows(b => ((gC[b] || gP[b]) ? { price: mid(b), net: gC[b] - gP[b], call: gC[b], put: gP[b] } : null));
@@ -193,7 +205,7 @@ export function buildProfileText(p, { name, generated = '', digits = 2, savedAtM
   out.push(`M|spot|${f(p.spot)}|regime|${p.regime}|netgex|${Number.isFinite(p.netGex) ? Math.round(p.netGex / 1000) : '-'}|book|${p.book.label.replace(/\s+/g, '')}|bookpct|${p.book.share}|zg|${f(p.zeroGamma)}|flip|${f(p.flip)}`
     + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 2)}|iv|${plain(p.iv.atm, 1)}|rr|${plain(p.iv.rr, 1)}|refmove|${f(p.refMove)}|binw|${plain(p.binWidth, 2)}|terms|${p.terms || 'spot'}` + (Number.isFinite(savedAtMs) ? `|saved|${new Date(savedAtMs).toISOString().slice(0, 16).replace('T', ' ')}` : ''));
   if (p.hedgeRead) out.push(`H0|up1|${Math.round(p.hedgeRead.up1)}|dn1|${Math.round(p.hedgeRead.dn1)}`);
-  for (const l of p.levels) out.push(`L|${l.type}|${f(l.price)}|${l.label}|${(+l.strength).toFixed(1)}|${l.touchPct ?? '-'}|${l.etaMin ?? '-'}|${l.expect || '-'}`);
+  for (const l of p.levels) out.push(`L|${l.type}|${f(l.price)}|${l.label}|${(+l.strength).toFixed(1)}|${l.touchPct ?? '-'}|${l.etaMin ?? '-'}|${l.expect || '-'}|${Number.isFinite(l.chgPct) ? l.chgPct : '-'}`);
   const gm = mxAbs(p.gex.map(r => r.net)); for (const r of keep(p.gex, r => r.net, gm)) out.push(`G|${f(r.price)}|${sc(r.net, gm)}`);
   const vm = mxAbs(p.vanna.map(r => r.v)); for (const r of keep(p.vanna, r => r.v, vm)) out.push(`V|${f(r.price)}|${sc(r.v, vm)}`);
   const om = mxAbs(p.volume.map(r => r.v)); for (const r of keep(p.volume, r => r.v, om)) out.push(`O|${f(r.price)}|${sc(r.v, om)}`);

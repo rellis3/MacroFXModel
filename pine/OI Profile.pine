@@ -88,6 +88,7 @@ var float mDn1 = na
 var array<string> lvType = array.new_string()
 var array<string> lvLabel = array.new_string()
 var array<string> lvExp = array.new_string()
+var array<float> lvChg = array.new_float()
 var array<float> lvPrice = array.new_float()
 var array<float> lvStr = array.new_float()
 var array<float> lvTouch = array.new_float()
@@ -116,6 +117,11 @@ f_num(a, i) =>
 
 f_str(a, i) =>
     i < array.size(a) ? str.trim(array.get(a, i)) : ""
+
+// OI change chip for a level: "  ·  OI +12%" (building) or "  ·  OI -5%" (unwinding) when the day moved the OI at that strike by 3% or more of it
+f_chgChip(i) =>
+    float c = i < array.size(lvChg) ? array.get(lvChg, i) : na
+    na(c) ? "" : math.abs(c) >= 3 ? "  ·  OI " + (c > 0 ? "+" : "") + str.tostring(c, "#") + "%" : ""
 
 // Same chart-symbol normaliser as pine/Confluence Zones Indicator.pine and the Volatility Overlay (gold/index/commodity/futures aliases; FX pairs pass through)
 f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT) =>
@@ -273,6 +279,7 @@ if barstate.isfirst
                             array.push(lvTouch, f_num(p, 5))
                             array.push(lvEta, f_num(p, 6))
                             array.push(lvExp, f_str(p, 7))
+                            array.push(lvChg, f_num(p, 8))
                         else if tag == "G"
                             array.push(gP, f_num(p, 1))
                             array.push(gN, f_num(p, 2))
@@ -438,7 +445,7 @@ if barstate.islast
                         lastY := ly
                         float tp = array.get(lvTouch, i)
                         float et = array.get(lvEta, i)
-                        string txt = array.get(lvLabel, i) + "  " + str.tostring(p, format.mintick) + (array.get(lvExp, i) != "" ? "  ·  " + array.get(lvExp, i) : "") + (na(tp) ? "" : "  ·  " + str.tostring(tp, "#") + "%" + (na(et) ? "" : "~" + str.tostring(et, "#") + "m"))
+                        string txt = array.get(lvLabel, i) + "  " + str.tostring(p, format.mintick) + (array.get(lvExp, i) != "" ? "  ·  " + array.get(lvExp, i) : "") + (f_chgChip(i)) + (na(tp) ? "" : "  ·  " + str.tostring(tp, "#") + "%" + (na(et) ? "" : "~" + str.tostring(et, "#") + "m"))
                         array.push(dLbl, label.new(x=labX, y=ly, text=txt, xloc=xloc.bar_index, yloc=yloc.price, color=color.new(#0d1117, 12), style=(labLeft ? label.style_label_right : label.style_label_left), textcolor=col, size=f_lblSize()))
 
         // ── column titles + spines ──
