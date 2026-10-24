@@ -16,9 +16,14 @@ import pandas as pd
 
 
 def compute(panel, px, dir_col):
+    """`panel` must be the complete weekly panel per market (one row per consecutive report): horizons
+    are counted in rows. Filter AFTER computing, never before."""
     out = []
-    for sym, g in panel.groupby("sym"):
-        g = g.sort_values("report_date")
+    panel = panel.sort_values(["sym", "report_date"])
+    # a gap of more than two weeks between reports (a contract that stopped and restarted, e.g. RTY
+    # 2008-2017) starts a new segment: horizons never reach across it
+    seg = panel.groupby("sym").report_date.transform(lambda s: (s.diff().dt.days > 14).cumsum())
+    for (sym, _), g in panel.groupby([panel.sym, seg]):
         d = px[px.sym == sym].set_index("date").sort_index()
         dates, lo, hi, cl = d.index.values, d.low.values, d.high.values, d.close.values
         lr = np.r_[np.nan, np.diff(np.log(cl))]
