@@ -124,7 +124,7 @@ ok('fear versus the Nasdaq stays on the Atlas page and is not in the newsletter'
   const links = evaluateChain({ oil: { delta: f('oil') * 4 }, bei: { delta: f('bei') * 3 }, us10y: { delta: -f('us10y') * 3 }, real: { delta: f('real') * 1.2 } });
   const withIdea = buildNewsletter({ date: 'd', links, fearVsNasdaq: { a: { ratio: 9, pct: 96, on: true }, on: true, top: 96 } });
   ok('the idea of the day does not bring the fear read back', !/ran ahead of the Nasdaq/.test(withIdea.html));
-  ok('the idea of the day is a section with all eight questions, labelled as reasoning and not a trade', /The idea of the day/.test(withIdea.html) && /Reasoning, not a trade/.test(withIdea.html) && /8\. What would prove it wrong/.test(withIdea.html) && /THE IDEA OF THE DAY/.test(withIdea.text));
+  ok('the idea of the day is a section with its key questions, labelled as reasoning and not a trade', /The idea of the day/.test(withIdea.html) && /Reasoning, not a trade/.test(withIdea.html) && /What would prove it wrong/.test(withIdea.html) && /Ways it could go/.test(withIdea.html) && /THE IDEA OF THE DAY/.test(withIdea.text));
   ok('no chain data means no idea section', !/The idea of the day/.test(buildNewsletter({ date: 'd' }).html)); }
 
 { const d = buildNewsletter({ date: 'Saturday 24 October 2026', isoDate: '2026-10-24' }), d2 = buildNewsletter({ date: 'x', isoDate: '2026-10-25' }), w = buildNewsletter({ date: '2026-10-24', edition: 'weekly' });
@@ -146,5 +146,12 @@ ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d
   ok('an old report is flagged as old instead of passed off as current', /21 days old/.test(stale.html) && /POSITIONING/.test(stale.text));
   ok('the idea of the day uses the same report', /Speculators are at an extreme in EUR \(short\), GOLD \(long\)/.test(buildNewsletter({ date: 'd', isoDate: '2026-10-24', crowding, cotDate: '2026-10-20', links: (await import('./macroChain.js')).evaluateChain({ oil: { delta: 99 }, bei: { delta: 99 }, us10y: { delta: -99 }, real: { delta: 99 } }) }).html));
   ok('no crowded markets means no positioning section', !/Positioning backdrop|Positioning: who is crowded/.test(buildNewsletter({ date: 'd', crowding: [{ sym: 'EUR', pct: 50, state: 'mid-range' }] }).html)); }
+
+{ const { evaluateChain, CHAIN_NODES } = await import('./macroChain.js'); const f = k => CHAIN_NODES[k].floor;
+  const links = evaluateChain({ oil: { delta: f('oil') * 4 }, bei: { delta: f('bei') * 3 }, us10y: { delta: -f('us10y') * 3 }, real: { delta: f('real') * 1.2 } });
+  const r = buildNewsletter({ date: 'd', isoDate: '2026-10-24', links, crowding: [{ sym: 'EUR', pct: 1, state: 'crowded short' }], cotDate: '2026-10-20', rangePressure: { on: 2, n: 5, rows: [] }, nowcast: { gdpnow: 3.5, gdpQuarter: '2026-07-01', cpi: 0.253, core: 0.211, month: '2026-10' } });
+  const ideaTxt = (r.html.match(/The idea of the day[\s\S]*?<\/section>/) ?? [''])[0].replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+  ok(`the idea of the day stays compact: ${ideaTxt} words, under the 380 budget`, ideaTxt > 60 && ideaTxt <= 380);
+  ok('the nowcast sits in the bigger picture as context, with the quarter and month named', /GDPNow puts Q3 2026 US growth at 3\.5%/.test(r.html) && /October consumer prices running 0\.25%/.test(r.html) && /not a forecast of the print/.test(r.html)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
