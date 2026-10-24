@@ -4,20 +4,20 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-10-23.
+Generated 2026-10-24.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **191** |
+| claims tested (validated + null + underpowered) | **192** |
 | validated | 42 |
 | null | 118 |
-| underpowered | 31 |
-| context (base rates, descriptions: not counted as tests) | 37 |
-| pre-registrations with no banked verdict (below) | 78 |
+| underpowered | 32 |
+| context (base rates, descriptions: not counted as tests) | 36 |
+| pre-registrations with no banked verdict (below) | 80 |
 
-**What the count says (Lesson 02 §05).** If none of the 191 claims were real, tests at the usual 5% size would still pass
+**What the count says (Lesson 02 §05).** If none of the 192 claims were real, tests at the usual 5% size would still pass
 about **9.6** of them by luck. 42 passed, so most passes are unlikely to be luck alone, but
 **roughly 10 of the 42 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
@@ -121,8 +121,6 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-29 | v4-stage1 | price | null | forge/V4_EURUSD_STAGE1_PREREG.md |
 | 2026-10-01 | curve-inversion | macro | null | MD files/CURVE_INVERSION_PREREG.md |
 | 2026-10-02 | funding-stress | macro | null | MD files/FUNDING_STRESS_PREREG.md |
-| 2026-10-03 | macro-confluence-baa-credit | macro | null | MD files/MACRO_CONFLUENCE_BAA_CREDIT_PREREG.md |
-| 2026-10-03 | macro-confluence-direction | macro | context | MD files/MACRO_CONFLUENCE_DIRECTION_PREREG.md |
 | 2026-10-03 | macro-confluence-range | macro | null | MD files/MACRO_CONFLUENCE_RANGE_PREREG.md |
 | 2026-10-03 | skew-fade | volatility | null | forge/SKEW_FADE_PREREG.md |
 | 2026-10-03 | tag-x-persistence | volatility | null | forge/TAG_X_PERSISTENCE_PREREG.md |
@@ -255,6 +253,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-23 | vix-second-derivative | price | validated | forge/VIX_CALCULUS_PREREG.md |
 | 2026-10-23 | vvix-ratio-direction | volatility | underpowered | forge/VVIX_NASDAQ_RATIO_PREREG.md |
 | 2026-10-23 | vvix-ratio-range | volatility | validated | forge/VVIX_NASDAQ_RATIO_PREREG.md |
+| 2026-10-24 | macro-confluence-baa-credit | macro | null | MD files/MACRO_CONFLUENCE_BAA_CREDIT_PREREG.md |
+| 2026-10-24 | macro-confluence-direction | macro | underpowered | MD files/MACRO_CONFLUENCE_DIRECTION_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -267,10 +267,12 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/COG_ANALOG_PREREG.md`: COG-ANALOG: match the last 12 hours of the line against its own past and read what Nasdaq did next
 - `forge/COG_CROSS_ASSET_PREREG.md`: COG-CROSS-ASSET: does the SOFR-Euribor / SOFR-ESTR information relate to, or lead, gold, EURUSD, USDJPY, the R
 - `forge/COG_DYNAMIC_LEAD_PREREG.md`: COG-DYNAMIC-LEAD: do yield and futures spreads begin moving first, in identifiable periods, and does FX (or go
+- `forge/COG_EVENT_ALIGN_PREREG.md`: 
 - `forge/COG_EVENT_FEATURES_PREREG.md`: COG-EVENT-FEATURES: do the slope, speed, persistence, magnitude and variability of the SOFR-Euribor series add
 - `forge/COG_INDICATOR_OPTIONS_PREREG.md`: COG-INDICATOR-OPTIONS: do the settings in C.OG's indicator hide a forecasting read?
 - `forge/COG_LEGS_SESSION_PREREG.md`: COG-LEGS-SESSION: does what each leg does in the European morning say anything about Nasdaq's US session?
 - `forge/COG_MATCHED_PAIRS_PREREG.md`: COG-MATCHED-PAIRS: do better-matched SOFR and euro legs (same reference period, SOFR vs ESTR) carry what C.OG'
+- `forge/COG_MATCH_CONFIRM_PREREG.md`: COG-MATCH-CONFIRM: the owner's own procedure, run mechanically on all history
 - `forge/COG_MEETING_PATH_PREREG.md`: COG-MEETING-PATH: does the near-term priced Fed path (30-day fed funds strip) give notice of Nasdaq moves?
 - `forge/COG_SEQUENCE_EVENTS_PREREG.md`: COG-SEQUENCE-EVENTS: an interpretable test of the sequence "direction change, then confirmation / confluence, 
 - `forge/COG_SHAPE_AGNOSTIC_PREREG.md`: COG-SHAPE-AGNOSTIC: does ANY repeatable shape in the SOFR-Euribor line (turn, confirmation, second move, diver
