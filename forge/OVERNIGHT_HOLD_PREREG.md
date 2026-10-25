@@ -107,7 +107,13 @@ is generic); MT5 broker costs (the bid/ask is OANDA practice); slippage on large
 
 ## Amendments
 
-*(none)*
+### A1 — 2026-10-25 — POST-HOC (results seen)
+
+The mirror integrity criterion ("overnight + intraday must reconstruct buy & hold within 0.5%") was mis-stated: the
+engine's mirror leg is 14:30→20:00 on entry dates only, so the pair skips every Friday 14:30 → Monday 14:30 and
+holiday gap by construction. Replaced by the full identity (overnight legs × every exit→next-entry leg = buy & hold),
+which closes to 1.000000. 3× leverage prop runs added as descriptive. Engine-option fixes (§8) done in the study
+scripts instead of the engine. None of this changes a scored cell.
 
 ## RESULTS
 

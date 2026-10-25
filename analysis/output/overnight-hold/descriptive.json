@@ -1,0 +1,32 @@
+{
+  "nq": {
+    "bh_cfd_net": {
+      "cagr": 14.260834579057624,
+      "max_dd": -38.137793565184715,
+      "sharpe_ann": 0.7324698732787153
+    },
+    "overnight_net": {
+      "cagr": 6.042402484086629,
+      "max_dd": -18.596287761101244,
+      "sharpe_ann": 0.5302787966417077
+    },
+    "daytime_and_weekend_gross_compounded_pct": 126.1741476927667,
+    "overnight_gross_compounded_pct": 164.08623196258048,
+    "identity_ratio_should_be_1": 0.9999999999999961
+  },
+  "gold": {
+    "bh_cfd_net": {
+      "cagr": 9.4760936278377,
+      "max_dd": -27.0739450158175,
+      "sharpe_ann": 0.6421668238778608
+    },
+    "overnight_net": {
+      "cagr": 3.9498280689930665,
+      "max_dd": -20.280727308661426,
+      "sharpe_ann": 0.41317664872903737
+    },
+    "daytime_and_weekend_gross_compounded_pct": 13.475718622014199,
+    "overnight_gross_compounded_pct": 211.8037251992719,
+    "identity_ratio_should_be_1": 1.0000000000000024
+  }
+}
