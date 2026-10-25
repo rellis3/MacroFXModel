@@ -4818,6 +4818,43 @@ app.post('/api/spread-episodes/tick', async (req, res) => {
 svcInterval('spreadEpisodes', () => _seTick().catch(e => console.error('[spread-episodes]', e.message)), 15 * 60_000);
 svcTimeout('spreadEpisodes', () => _seTick({ silent: true }).catch(e => console.error('[spread-episodes]', e.message)), 4 * 60_000);
 
+// ── Release Reaction (release-reaction.html; scripts/release_layer1/, plans/RESEARCH_REGISTER.md row release-layer1) ──
+// Layer 1 of C.OG's frame (Discord 2026-10-19): WHAT HAPPENED around each US release. Descriptive only: SOFR Sep26 / Euribor Mar27 legs and their spread, the 2y, 10y, the dollar and Nasdaq,
+// rebased to the release minute. History (74 releases to 2026-10) is committed under analysis/output/release_layer1/ (summary.json = metrics, paths.json = minute paths, served one event at a time);
+// the laptop pushes the live record (releases since 2026-07-03 plus what is ahead) to KV release_layer1_v1 every 5 minutes (scripts/release_layer1/live_push.py; IBKR cannot be reached from Railway).
+const _RL_DIR = path.join(__dirname, 'analysis', 'output', 'release_layer1'), _RL_KV = 'release_layer1_v1';
+let _rlLive = { at: 0, v: null };
+async function _rlLivePush() {
+  if (Date.now() - _rlLive.at > 20_000) {
+    try { const raw = await kv.get(_RL_KV); const p = raw ? JSON.parse(raw) : null; _rlLive = { v: p?.data ?? p ?? null, at: Date.now() }; }
+    catch { _rlLive = { ..._rlLive, at: Date.now() }; }
+  }
+  return _rlLive.v;
+}
+app.get('/api/release-layer1', async (_req, res) => {
+  try {
+    const base = _cogJson(path.join(_RL_DIR, 'summary.json')), live = await _rlLivePush();
+    const byId = new Map(base.rows.map(r => [r.id, r]));
+    for (const r of (live?.rows ?? [])) byId.set(r.id, { ...r, live: true });      // the laptop's rebuild wins for any release it covers (a release still forming, or one with newer bars)
+    const rows = [...byId.values()].sort((a, b) => (a.t < b.t ? -1 : 1));
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true, builtAt: base.built, offs: base.offs, asOf: live?.asOf ?? null, ageSec: live?.asOf ? Math.round((Date.now() - Date.parse(live.asOf)) / 1000) : null, note: live?.note ?? null,
+               lastBar: live?.lastBar ?? null, ahead: live?.ahead ?? [], rows });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/release-layer1/paths', async (req, res) => {
+  try {
+    const id = String(req.query.id || ''), live = await _rlLivePush();
+    const P = live?.paths?.[id] ?? _cogJson(path.join(_RL_DIR, 'paths.json'))[id];
+    if (!P) return res.status(404).json({ ok: false, error: 'unknown release' });
+    res.set('Cache-Control', live?.paths?.[id] ? 'no-store' : 'public, max-age=3600'); res.json({ ok: true, id, paths: P });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/release-layer1/checks', (_req, res) => {
+  try { res.set('Cache-Control', 'public, max-age=900'); res.type('text/plain').send(fs.readFileSync(path.join(_RL_DIR, 'LAYER1_CHECKS.md'), 'utf8')); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // ── Bank credit (js/bankCredit.js; BIS Locational Banking Statistics, evidence bank-credit-dollar-*) ──
 // The bank-lending leg of the money chain: cross-border credit growth by currency, borrower sector (non-bank
 // financials), Cayman USD, yen lent outside Japan, and whose banks fund the world's dollars. Quarterly, ~4 months

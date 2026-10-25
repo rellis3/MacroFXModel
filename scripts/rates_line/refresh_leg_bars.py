@@ -47,10 +47,11 @@ IB_SPEC = {   # name: (IBKR symbol, exchange, currency, contract-month parameter
     'FBTP2612': ('BTP', 'EUREX', 'EUR', '202612'), 'FOAT2612': ('OAT', 'EUREX', 'EUR', '202612'), 'DXZ6': ('DX', 'NYBOT', 'USD', '202612'),
     'VXX6': ('VIX', 'CFE', 'USD', '202611'), 'VXZ6': ('VIX', 'CFE', 'USD', '202612'),
     'VVIX': ('VVIX', 'CBOE', 'USD', 'IND'), 'VIX': ('VIX', 'CBOE', 'USD', 'IND'), 'VXN': ('VXN', 'CBOE', 'USD', 'IND'),
+    'NQZ6': ('NQ', 'CME', 'USD', '202612'),      # 2026-10-25: Nasdaq-100 future for the Release Reaction page (scripts/release_layer1); no chart leg file, so the push skips it
 }
 CORE = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7', 'IM7']      # IM7: becomes I2! when IZ6 expires (14 Dec 2026), so the stitched I2 line stays live
 BONDS = ['ZTZ6', 'ZFZ6', 'ZNZ6', 'ZBZ6', 'UBZ6', 'FGBS2612', 'FGBM2612', 'FGBL2612', 'FGBX2612']      # US 2/5/10/30/ultra and German 2/5/10/30: pulled on every run too (2026-10-23)
-MACRO = ['FBTP2612', 'FOAT2612', 'DXZ6', 'VXX6', 'VXZ6', 'VVIX', 'VIX', 'VXN']      # euro spreads, dollar, vol: pulled on every run too (2026-10-23)
+MACRO = ['FBTP2612', 'FOAT2612', 'DXZ6', 'VXX6', 'VXZ6', 'VVIX', 'VIX', 'VXN', 'NQZ6']      # euro spreads, dollar, vol: pulled on every run too (2026-10-23)
 last = [0.0]
 
 
@@ -138,6 +139,7 @@ if __name__ == '__main__':
     if a.push:
         payload = {'asOf': now.isoformat(), 'legs': {}}
         for name in names:
+            if not (OUT / f'leg_{name}.json').exists(): continue      # contracts with no chart leg (NQZ6) are only pulled to disk
             j = json.loads((OUT / f'leg_{name}.json').read_text(encoding='utf-8'))
             m = j['m5']
             cut = int(now.timestamp()) - a.push_days * 86400

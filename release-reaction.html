@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Release Reaction</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--amber:#d29922;--red:#f85149;
+        --s1:#3987e5;--s2:#d95926;--s3:#199e70;--grid:#21262d;--zero:#484f58;
+        --c-sofr:#3987e5;--c-eur:#b07ae0;--c-spr:#e6edf3;--c-zt:#d29922;--c-zn:#e0833f;--c-dx:#199e70;--c-nq:#4fc3d9}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--s1);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.bad{color:var(--red);border-color:var(--red)} .chip.ok{color:var(--s3);border-color:var(--s3)}
+  .btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .btn:hover{color:var(--text);border-color:#4d5560} .btn.on{background:#22304d;color:#fff;border-color:var(--s1)}
+  .wrap{max-width:1500px;margin:0 auto;padding:12px 16px 40px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .note{font-size:11.5px;color:var(--text3);line-height:1.6;max-width:120ch} .note b{color:var(--text2)}
+  .now{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:14px;align-items:start}
+  @media (max-width:900px){.now,.split{grid-template-columns:1fr !important}}
+  .big{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12px} .kv span:nth-child(odd){color:var(--text3)} .kv b{font-variant-numeric:tabular-nums}
+  .badge{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:5px;border:1px solid var(--border);color:var(--text2)}
+  .badge.live{color:var(--bg);background:var(--s3);border-color:var(--s3)} .badge.up{color:var(--s1);border-color:var(--s1)}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
+  th,td{padding:3px 7px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+  th{color:var(--text3);font-weight:600;position:sticky;top:0;background:var(--card);z-index:1}
+  td:first-child,th:first-child,td.l,th.l{text-align:left}
+  tbody tr.sel td{background:#22304d} tbody tr.pick{cursor:pointer} tbody tr.pick:hover td{background:var(--card2)}
+  .tscroll{overflow:auto;max-height:340px} .xscroll{overflow-x:auto;max-width:100%}
+  .pos{color:var(--s3)} .neg{color:var(--s2)} .mut{color:var(--text3)}
+  .split{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+  .charts{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+  .cp{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;min-width:0}
+  .cp .t{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:11.5px;margin-bottom:2px}
+  .cp .t b{font-weight:600} .cp .t span{color:var(--text3);font-size:10.5px}
+  .cp .v{font-variant-numeric:tabular-nums;font-size:11px;color:var(--text2)}
+  svg{display:block;width:100%;height:auto} svg text{font:10px -apple-system,'Segoe UI',Roboto,sans-serif;fill:var(--text3)}
+  .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}
+  .tiles{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+  .tile{border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11.5px;background:var(--card2)}
+  .tile i{font-style:normal;font-weight:700}
+  pre{white-space:pre-wrap;font:11.5px/1.6 ui-monospace,Consolas,monospace;color:var(--text2);max-height:420px;overflow:auto}
+  .fill{background:var(--card2);border-radius:4px;height:6px;overflow:hidden;margin-top:3px} .fill>div{height:100%;background:var(--s1)}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <a href="today.html">&larr; Today</a>
+  <h1>Release Reaction</h1>
+  <span class="chip" id="chipLayer">Layer 1: what happened</span>
+  <span class="chip" id="chipFresh">loading</span>
+  <span class="spacer"></span>
+  <a class="btn" href="cog-chart.html" target="_blank">Rate legs chart</a>
+  <button class="btn" id="btnRefresh">Refresh</button>
+</div>
+<div class="wrap">
+
+  <div class="box">
+    <h2>Now and next</h2>
+    <div class="now">
+      <div id="nextBox"><div class="mut">loading</div></div>
+      <div id="liveBox"></div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="box">
+      <h2>Every release (newest first): click one</h2>
+      <div class="row" id="famTabs"></div>
+      <div class="tscroll"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+      <p class="note" style="margin-top:8px">Moves are from the instant of the release: SOFR, Euribor and their line in <b>bp of rate</b> (positive = rates up); the 2y and 10y are note futures in <b>% of price</b>, so a <b>negative</b> number there means yields rose; the dollar and Nasdaq in %. The 2y, 10y and dollar are <b>15-minute CFD or short-history</b> before September 2026 (see the data checks), so their 1- and 5-minute cells are blank for older releases rather than guessed. Agreement counts the SOFR leg, Euribor leg, 2y and 10y that moved in the same rates direction over the first 30 minutes.</p>
+    </div>
+    <div class="box" id="detail"><h2>Release detail</h2><div class="mut">Choose a release.</div></div>
+  </div>
+
+  <div class="box">
+    <h2>Typical shape by release</h2>
+    <p class="note" style="margin:0 0 8px">Median absolute move from the release instant, over the releases in each family (1-minute assets only). It shows how fast and how large a typical reaction is, not which way it goes. Cells show the median, with how many releases moved at all in brackets.</p>
+    <div class="xscroll"><table id="shape"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>Data checks (built with the history)</h2>
+    <p class="note" style="margin:0 0 8px">Is the clock right, and how much of each asset do we really have? This is the part to trust before anything else on the page.</p>
+    <pre id="checks">loading</pre>
+  </div>
+
+  <p class="note">Exploratory and descriptive, not pre-registered; it predicts nothing. Built from C.OG's layered frame (Discord, 19 Oct 2026): Layer 1 is what happened, Layers 2 (why) and 3 (how unusual) come next, one at a time. The laptop pushes new bars every 5 minutes around a scheduled release and the page re-reads every 30 seconds, so a release forms here as it happens, at the delay shown in the freshness chip. If the laptop or the Gateway is off, the chip says so and the numbers stop where the data stops. Code: <code>scripts/release_layer1/</code>.</p>
+</div>
+
+<script>
+const KEYS = ['sofr','eur','spr','zt','zn','dx','nq'];
+const LAB = {sofr:'SOFR Sep26 leg',eur:'Euribor Mar27 leg',spr:'SOFR − Euribor line',zt:'US 2y note future',zn:'US 10y note future',dx:'Dollar index future',nq:'Nasdaq'};
+const UNIT = {sofr:'bp',eur:'bp',spr:'bp',zt:'%',zn:'%',dx:'%',nq:'%'};
+const COL = {sofr:'var(--c-sofr)',eur:'var(--c-eur)',spr:'var(--c-spr)',zt:'var(--c-zt)',zn:'var(--c-zn)',dx:'var(--c-dx)',nq:'var(--c-nq)'};
+const RSIGN = {sofr:1,eur:1,spr:1,zt:-1,zn:-1};
+const FAMNAME = {FOMC:'Fed decision',CPI:'Core CPI',NFP:'Payrolls',PCE:'Core PCE',GDP:'GDP',RETAIL:'Retail sales'};
+const OFF0 = -30;
+let D = null, SEL = null, FAM = 'all', PATHS = {}, TICK = 0, DETAIL_LIVE = false;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const dpOf = k => UNIT[k] === 'bp' ? 1 : (k === 'nq' ? 2 : 3);
+const num = (v, k, plus = true) => v == null ? '<span class="mut">·</span>' : `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : 'mut'}">${(plus && v > 0 ? '+' : '') + v.toFixed(dpOf(k))}</span>`;
+const lon = (iso, o) => new Date(iso).toLocaleString('en-GB', Object.assign({ timeZone: 'Europe/London' }, o || { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }));
+const utc = iso => new Date(iso).toISOString().slice(11, 16) + 'Z';
+
+async function load() {
+  try {
+    const r = await fetch('/api/release-layer1', { cache: 'no-store' }); D = await r.json();
+    if (!D.ok) throw new Error(D.error || 'not ok');
+    renderAll();
+  } catch (e) { $('chipFresh').className = 'chip bad'; $('chipFresh').textContent = 'could not load: ' + e.message; }
+}
+function renderAll() { renderFresh(); renderNext(); renderTable(); renderShape(); if (SEL) loadDetail(SEL, true); }
+
+function renderFresh() {
+  const c = $('chipFresh'); if (D.ageSec == null) { c.className = 'chip warn'; c.textContent = 'laptop has not pushed yet: history only'; return; }
+  const m = Math.round(D.ageSec / 60), nowLive = (D.rows || []).some(r => r.inProgress);
+  const lb = D.lastBar || {}, newest = Object.values(lb).filter(Boolean).sort().pop();
+  const lag = newest ? Math.round((Date.now() - Date.parse(newest)) / 60000) : null;
+  c.className = 'chip ' + (m > (nowLive ? 12 : 45) ? 'bad' : m > (nowLive ? 7 : 35) ? 'warn' : 'ok');
+  c.textContent = `pushed ${m} min ago · newest bar ${lag == null ? '?' : lag + ' min old'}` + (D.note ? ' · ' + D.note : '');
+  c.title = Object.entries(lb).map(([k, v]) => `${LAB[k]}: ${v ? v.slice(5, 16).replace('T', ' ') + 'Z' : 'none'}`).join('\n');
+}
+
+function countdown(ms) { if (ms <= 0) return 'now'; const s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return (d ? d + 'd ' : '') + (h || d ? h + 'h ' : '') + m + 'm ' + String(s % 60).padStart(2, '0') + 's'; }
+function renderNext() {
+  const ahead = (D.ahead || []).slice().sort((a, b) => a.t < b.t ? -1 : 1), nx = ahead[0];
+  const now = (D.rows || []).filter(r => r.inProgress);
+  let h = '';
+  if (nx) {
+    h += `<div class="mut" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em">Next release</div><div class="big" id="cd" data-t="${nx.t}">${countdown(Date.parse(nx.t) - Date.now())}</div>
+      <div style="margin:2px 0 8px"><b>${esc(nx.name)}</b> <span class="badge up">${lon(nx.t)} London · ${utc(nx.t)}</span></div>
+      <div class="kv"><span>Consensus</span><b>${nx.consensus ?? '·'}</b><span>Previous</span><b>${esc(nx.previous ?? '·')}</b></div>`;
+    const more = ahead.slice(1, 6);
+    if (more.length) h += `<div style="margin-top:10px" class="mut">Then:</div>` + more.map(e => `<div style="font-size:12px">${lon(e.t, { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })} · ${esc(e.name)}</div>`).join('');
+  } else h += `<div class="mut">No release ahead in the schedule${D.ageSec == null ? ' (the laptop has not pushed the schedule yet)' : ''}.</div>`;
+  $('nextBox').innerHTML = h;
+  const lv = $('liveBox');
+  if (now.length) {
+    const r = now[now.length - 1], mins = Math.max(0, Math.round((Date.now() - Date.parse(r.t)) / 60000));
+    lv.innerHTML = `<div style="margin-bottom:6px"><span class="badge live">LIVE</span> <b>${esc(r.name)}</b> released ${mins} min ago <span class="mut">(${lon(r.t)} London)</span> <button class="btn" style="margin-left:8px" onclick="pick('${r.id}')">Open detail</button></div>
+      <div class="tiles">${KEYS.map(k => { const m = r.M[k]; const v = m ? (m.m30 ?? m.m15 ?? m.m5 ?? m.m1) : null; return `<div class="tile">${LAB[k]} <i>${v == null ? '·' : (v > 0 ? '+' : '') + v.toFixed(dpOf(k))}</i> <span class="mut">${UNIT[k]}</span></div>`; }).join('')}</div>
+      <div class="note">The release is still inside its four-hour window, so its numbers keep filling in as bars arrive (blank = not reached yet).</div>`;
+    if (!SEL) pick(r.id, true);
+  } else lv.innerHTML = `<div class="note">When a release is within ten minutes the laptop switches to a fast pull; its reaction appears here and in the detail pane, forming minute by minute. Meanwhile the table below holds every earlier release, newest first.</div>`;
+}
+setInterval(() => { const e = $('cd'); if (e) { const t = Date.parse(e.dataset.t) - Date.now(); e.textContent = countdown(t); if (t < -5000) renderNext(); } }, 1000);
+
+function agreeTxt(a) { if (!a || !a.n) return '<span class="mut">·</span>'; const dir = a.up === a.n ? 'up' : a.down === a.n ? 'down' : 'mixed'; const cl = dir === 'mixed' ? 'mut' : dir === 'up' ? 'pos' : 'neg'; return `<span class="${cl}">${dir === 'mixed' ? a.up + '↑ ' + a.down + '↓' : a.n + '/' + a.n + ' ' + dir}</span>`; }
+function renderTable() {
+  const fams = ['all', ...new Set(D.rows.map(r => r.family))];
+  $('famTabs').innerHTML = fams.map(f => `<button class="btn ${FAM === f ? 'on' : ''}" onclick="setFam('${f}')">${f === 'all' ? 'All' : (FAMNAME[f] || f)} <span class="mut">${f === 'all' ? D.rows.length : D.rows.filter(r => r.family === f).length}</span></button>`).join('');
+  const cols = [['sofr', 'm5'], ['sofr', 'm30'], ['eur', 'm30'], ['spr', 'm30'], ['zt', 'm30'], ['zn', 'm30'], ['dx', 'm30'], ['nq', 'm30']];
+  $('tbl').querySelector('thead').innerHTML = `<tr><th>Time (London)</th><th class="l">Release</th>${cols.map(([k, m]) => `<th title="${LAB[k]}, ${m.slice(1)} min after">${k === 'spr' ? 'Line' : k.toUpperCase()} ${m.slice(1)}m</th>`).join('')}<th>Agree</th><th title="Minute of the largest SOFR-leg 1-min move relative to the stamp">Clock</th></tr>`;
+  const rows = D.rows.filter(r => FAM === 'all' || r.family === FAM).slice().reverse();
+  $('tbl').querySelector('tbody').innerHTML = rows.map(r => `<tr class="pick ${SEL === r.id ? 'sel' : ''}" onclick="pick('${r.id}')"><td>${lon(r.t, { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}${r.inProgress ? ' <span class="badge live">LIVE</span>' : ''}</td><td class="l">${esc(FAMNAME[r.family] || r.family)}</td>${cols.map(([k, m]) => `<td>${num(r.M[k]?.[m], k)}</td>`).join('')}<td>${agreeTxt(r.agree)}</td><td>${r.jump == null ? '<span class="mut">·</span>' : (Math.abs(r.jump) <= 1 ? '<span class="pos">ok</span>' : `<span class="neg">${r.jump > 0 ? '+' : ''}${r.jump}m</span>`)}</td></tr>`).join('');
+}
+function setFam(f) { FAM = f; renderTable(); renderShape(); }
+function pick(id, quiet) { SEL = id; DETAIL_LIVE = true; renderTable(); loadDetail(id, false); if (!quiet) $('detail').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+
+async function loadDetail(id, refresh) {
+  const row = D.rows.find(r => r.id === id); if (!row) return;
+  if (!PATHS[id] || (refresh && row.inProgress)) {
+    try { const r = await fetch('/api/release-layer1/paths?id=' + encodeURIComponent(id), { cache: 'no-store' }); const j = await r.json(); if (j.ok) PATHS[id] = j.paths; }
+    catch (e) { $('detail').innerHTML = `<h2>Release detail</h2><div class="neg">could not load the paths: ${esc(e.message)}</div>`; return; }
+  }
+  renderDetail(row, PATHS[id]);
+}
+
+function chart(P, k, row, xmax) {
+  const W = 320, H = 130, L = 34, R = 6, T = 8, B = 16;
+  if (!P) return `<svg viewBox="0 0 ${W} ${H}"><text x="${W / 2}" y="${H / 2}" text-anchor="middle">no data for this release</text></svg>`;
+  const pts = []; for (let i = 0; i < P.v.length; i++) { const m = OFF0 + i; if (P.v[i] != null && m <= xmax) pts.push([m, P.v[i]]); }
+  if (!pts.length) return `<svg viewBox="0 0 ${W} ${H}"><text x="${W / 2}" y="${H / 2}" text-anchor="middle">no bars yet</text></svg>`;
+  let lo = Math.min(0, ...pts.map(p => p[1])), hi = Math.max(0, ...pts.map(p => p[1])); if (hi - lo < 1e-9) { hi += 1; lo -= 1; } const pad = (hi - lo) * .08; lo -= pad; hi += pad;
+  const X = m => L + (m - OFF0) / (xmax - OFF0) * (W - L - R), Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  const step = P.step === 15, dp = dpOf(k);
+  let d = '', pen = false; for (let m = OFF0; m <= xmax; m++) { const i = m - OFF0, v = P.v[i]; if (v == null) { pen = false; continue; } d += (pen ? 'L' : 'M') + X(m).toFixed(1) + ' ' + Y(v).toFixed(1); pen = true; }
+  const ticks = [lo + pad, 0, hi - pad].filter((v, i, a) => a.findIndex(z => Math.abs(z - v) < (hi - lo) * .06) === i);
+  const mk = row.family === 'FOMC' && xmax >= 30 ? `<line x1="${X(30)}" x2="${X(30)}" y1="${T}" y2="${H - B}" stroke="var(--amber)" stroke-dasharray="2 3" stroke-width="1"/><text x="${X(30) + 3}" y="${T + 8}" fill="var(--amber)" style="fill:var(--amber)">presser</text>` : '';
+  const xt = [-30, 0, 30, 60, 120, 180, 240].filter(m => m <= xmax);
+  return `<svg viewBox="0 0 ${W} ${H}" data-k="${k}" data-xmax="${xmax}">
+    <line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--zero)" stroke-width="1"/><line x1="${X(0)}" x2="${X(0)}" y1="${T}" y2="${H - B}" stroke="var(--zero)" stroke-width="1" stroke-dasharray="3 3"/>${mk}
+    ${ticks.map(v => `<text x="${L - 4}" y="${Y(v) + 3}" text-anchor="end">${v.toFixed(dp > 2 ? 2 : dp)}</text>`).join('')}
+    ${xt.map(m => `<text x="${X(m)}" y="${H - 3}" text-anchor="middle">${m}</text>`).join('')}
+    <path d="${d}" fill="none" stroke="${COL[k]}" stroke-width="1.6" stroke-linejoin="round"/>
+    ${step ? pts.filter(p => p[0] % 15 === 0).map(p => `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="2.2" fill="${COL[k]}"/>`).join('') : ''}
+  </svg>`;
+}
+
+let XMAX = 120;
+function renderDetail(row, P) {
+  const A = row.agree, tiles = KEYS.filter(k => RSIGN[k] != null && k !== 'spr').map(k => {
+    const m = row.M[k]?.m30; if (m == null) return `<div class="tile mut">${LAB[k]} <i>·</i></div>`; const v = m * RSIGN[k]; return `<div class="tile">${LAB[k]} <i class="${v > 0 ? 'pos' : v < 0 ? 'neg' : 'mut'}">${v > 0 ? 'rates ↑' : v < 0 ? 'rates ↓' : 'unchanged'}</i></div>`; }).join('');
+  const rows = KEYS.map(k => { const m = row.M[k]; if (!m) return `<tr><td class="l">${LAB[k]}</td><td colspan="12" class="mut">no data for this release</td></tr>`;
+    const c = x => num(m[x], k); const f = (x, d) => x == null ? '<span class="mut">·</span>' : x.toFixed(d);
+    return `<tr><td class="l">${LAB[k]}${m.res === 15 ? ' <span class="badge">15-min</span>' : ''}</td><td>${c('pre30')}</td><td>${c('m1')}</td><td>${c('m5')}</td><td>${c('m15')}</td><td>${c('m30')}</td><td>${c('m60')}</td><td>${c('m120')}</td><td>${c('m240')}</td><td>${c('peak')}</td><td>${m.t_peak ?? '·'}</td><td>${m.t_half ?? '·'}</td><td>${f(m.retain, 2)}</td><td>${f(m.z_cond, 1)}</td></tr>`; }).join('');
+  const act = row.actual, cons = row.consensus;
+  $('detail').innerHTML = `<h2>Release detail</h2>
+    <div style="font-size:15px;font-weight:700">${esc(row.name)} ${row.inProgress ? '<span class="badge live">LIVE</span>' : ''}</div>
+    <div class="mut" style="margin-bottom:4px">${lon(row.t, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })} London · ${utc(row.t)}${act != null ? ` · actual <b style="color:var(--text)">${act}</b>${cons != null ? ' vs consensus <b style="color:var(--text)">' + cons + '</b>' : ''}` : ''}</div>
+    <div class="tiles">${tiles}<div class="tile">Rates agreement ${agreeTxt(A)}</div></div>
+    <div class="row"><span class="mut">Window after the release:</span>${[60, 120, 240].map(x => `<button class="btn ${XMAX === x ? 'on' : ''}" onclick="XMAX=${x};renderDetail(D.rows.find(r=>r.id==='${row.id}'),PATHS['${row.id}'])">${x} min</button>`).join('')}<span class="mut" style="margin-left:6px">every chart starts at 0 at the release instant; dashed line = release</span></div>
+    <div class="charts">${KEYS.map(k => `<div class="cp"><div class="t"><b style="color:${COL[k]}">${LAB[k]}</b><span>${UNIT[k]}${P?.[k]?.step === 15 ? ' · 15-min points' : ''}</span></div>${chart(P?.[k], k, row, XMAX)}</div>`).join('')}</div>
+    <div class="xscroll" style="margin-top:10px"><table><thead><tr><th class="l">Asset</th><th title="drift in the 30 min before">Before 30m</th><th>1m</th><th>5m</th><th>15m</th><th>30m</th><th>60m</th><th>120m</th><th>240m</th><th title="largest excursion in the first 30 minutes">Peak</th><th title="minute of that peak">at</th><th title="minutes to reach half the peak">Half by</th><th title="30-minute move as a share of the peak: 1 = held, below 0 = reversed">Held</th><th title="30-minute move divided by the typical move in the same clock window on days with no release">z (cond.)</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="note" style="margin-top:6px">Clock check for this release: ${row.jump == null ? 'no clear jump in the SOFR leg' : Math.abs(row.jump) <= 1 ? 'the largest 1-minute move of the SOFR leg is in the release minute, as stamped.' : `the largest 1-minute move of the SOFR leg is ${row.jump > 0 ? '+' : ''}${row.jump} min from the stamp; with a small reaction that is usually noise, with a large one check the stamp.`} "z (cond.)" compares with the same clock window on the 40 prior weekdays that carried no release.</p>`;
+}
+
+function renderShape() {
+  const fams = [...new Set(D.rows.map(r => r.family))].filter(f => FAM === 'all' || f === FAM), ms = ['m1', 'm5', 'm15', 'm30', 'm60', 'm120'];
+  const med = a => { a = a.filter(x => x != null).sort((x, y) => x - y); return a.length ? (a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2) : null; };
+  let h = `<thead><tr><th class="l">Release</th><th class="l">Asset</th><th>n</th>${ms.map(m => `<th>|${m.slice(1)}m|</th>`).join('')}<th title="median minutes to half of the peak">Half by</th><th title="share of releases where the 30-minute move was exactly zero">Unmoved</th></tr></thead><tbody>`;
+  for (const f of fams) for (const k of ['sofr', 'eur', 'spr', 'nq']) {
+    const R = D.rows.filter(r => r.family === f && r.M[k] && r.M[k].res === 1); if (R.length < 3) continue;
+    h += `<tr><td class="l">${FAMNAME[f] || f}</td><td class="l" style="color:${COL[k]}">${LAB[k]}</td><td>${R.length}</td>${ms.map(m => { const a = R.map(r => r.M[k][m] == null ? null : Math.abs(r.M[k][m])), md = med(a); return `<td>${md == null ? '·' : md.toFixed(dpOf(k) + (k === 'nq' ? 0 : 0))}</td>`; }).join('')}<td>${med(R.map(r => r.M[k].t_half)) ?? '·'}</td><td>${Math.round(100 * R.filter(r => r.M[k].m30 === 0).length / R.length)}%</td></tr>`;
+  }
+  $('shape').innerHTML = h + '</tbody>';
+}
+
+$('btnRefresh').onclick = load;
+fetch('/api/release-layer1/checks').then(r => r.text()).then(t => { $('checks').textContent = t; }).catch(() => { $('checks').textContent = 'not available'; });
+load(); setInterval(load, 30000);
+</script>
+</body>
+</html>
