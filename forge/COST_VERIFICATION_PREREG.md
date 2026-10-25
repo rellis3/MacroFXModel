@@ -96,4 +96,15 @@ promoted).
 
 ## Amendments
 
-*None yet.*
+### A1 — 2026-10-25 — POST-HOC (results seen)
+
+- Part B: the entry-side comparison the prereg made primary isn't a clean spread reading. The bots send market
+  orders, yet NQ entries came out better than the minute's OANDA mid and exits worse, so the fill-vs-mid number
+  carries the strategies' own timing. The "overstated" band from it is not used to change the gold spread model;
+  entry + exit together are reported as a bracket instead.
+- Account groups: bots with no overnight gold position are left unassigned rather than defaulted to a group. US100 is
+  pooled as group B (only B bots plus OI-Vol hold it overnight, at an identical rate).
+
+## RESULTS
+
+*In `analysis/output/cost-verification/RESULTS.md`.*

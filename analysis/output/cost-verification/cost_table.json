@@ -1,0 +1,44 @@
+{
+ "source": "cost-verification 2026-10-25",
+ "financing": [
+  {
+   "instrument": "gold",
+   "group": "A",
+   "per_night_pct": -0.0030829246637628736,
+   "annual_pct": -1.1252675022734488,
+   "wed_multiple": 2.966496444434552,
+   "implied_markup_pp": -2.5030658310598852,
+   "band_week": "overstated"
+  },
+  {
+   "instrument": "gold",
+   "group": "B",
+   "per_night_pct": -0.016218320712684423,
+   "annual_pct": -5.919687060129815,
+   "wed_multiple": 0.9993208865034411,
+   "implied_markup_pp": 2.1468299172726724,
+   "band_week": "verified"
+  },
+  {
+   "instrument": "nq",
+   "group": "B",
+   "per_night_pct": -0.018991108843961466,
+   "annual_pct": -6.931754728045935,
+   "wed_multiple": 0.9968483690974008,
+   "implied_markup_pp": 3.2392547280459354,
+   "band_week": "verified"
+  }
+ ],
+ "spread": {
+  "nq": {
+   "measured_round_trip_pct": -0.013695646825702344,
+   "oanda_model_round_trip_pct": 0.0068,
+   "band": "measured <= 0"
+  },
+  "gold": {
+   "measured_round_trip_pct": 0.0032404433495787956,
+   "oanda_model_round_trip_pct": 0.0225,
+   "band": "overstated"
+  }
+ }
+}

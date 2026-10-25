@@ -1,0 +1,2960 @@
+{
+ "seed": 20261025,
+ "paths": 5000,
+ "block": 5,
+ "sizes": [
+  0.5,
+  1,
+  2,
+  3,
+  5
+ ],
+ "books": {
+  "nq": {
+   "gross": {
+    "mean_return_pct": 0.053799691740903016,
+    "rows": 1949,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.7072,
+      "phases": [
+       {
+        "pass": 0.7716,
+        "fail": 0.0322,
+        "timeout": 0.1962,
+        "daily_or_maxloss": 161
+       },
+       {
+        "pass": 0.9174,
+        "fail": 0.0304,
+        "timeout": 0.0522,
+        "daily_or_maxloss": 152
+       }
+      ],
+      "median_days_to_funded": 392.0,
+      "payout_12m_pct_of_account": 6.686710008992981,
+      "funded_blown_12m": 0.04242081447963797,
+      "breakeven_fee_pct_of_account": 4.728841318359836
+     },
+     "1": {
+      "funded": 0.5084,
+      "phases": [
+       {
+        "pass": 0.6522,
+        "fail": 0.343,
+        "timeout": 0.0048,
+        "daily_or_maxloss": 1715
+       },
+       {
+        "pass": 0.7756,
+        "fail": 0.2244,
+        "timeout": 0.0,
+        "daily_or_maxloss": 1122
+       }
+      ],
+      "median_days_to_funded": 148.0,
+      "payout_12m_pct_of_account": 10.638097602044711,
+      "funded_blown_12m": 0.5885129819040126,
+      "breakeven_fee_pct_of_account": 5.40840882087953
+     },
+     "2": {
+      "funded": 0.2174,
+      "phases": [
+       {
+        "pass": 0.3774,
+        "fail": 0.6226,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3113
+       },
+       {
+        "pass": 0.572,
+        "fail": 0.428,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2140
+       }
+      ],
+      "median_days_to_funded": 41.0,
+      "payout_12m_pct_of_account": 5.501890894003121,
+      "funded_blown_12m": 0.9981600735970562,
+      "breakeven_fee_pct_of_account": 1.1961110803562784
+     },
+     "3": {
+      "funded": 0.116,
+      "phases": [
+       {
+        "pass": 0.261,
+        "fail": 0.739,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3695
+       },
+       {
+        "pass": 0.4364,
+        "fail": 0.5636,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2818
+       }
+      ],
+      "median_days_to_funded": 21.5,
+      "payout_12m_pct_of_account": 1.4986963340173638,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.17384877474601423
+     },
+     "5": {
+      "funded": 0.0692,
+      "phases": [
+       {
+        "pass": 0.2086,
+        "fail": 0.7914,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3957
+       },
+       {
+        "pass": 0.3236,
+        "fail": 0.6764,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3382
+       }
+      ],
+      "median_days_to_funded": 12.0,
+      "payout_12m_pct_of_account": 0.37073184858311886,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.025654643921951825
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.002,
+      "phases": [
+       {
+        "pass": 0.002,
+        "fail": 0.0034,
+        "timeout": 0.9946,
+        "daily_or_maxloss": 0,
+        "consistency": 17
+       }
+      ],
+      "median_days_to_funded": 26.0
+     },
+     "1": {
+      "funded": 0.0298,
+      "phases": [
+       {
+        "pass": 0.0298,
+        "fail": 0.1576,
+        "timeout": 0.8126,
+        "daily_or_maxloss": 416,
+        "consistency": 372
+       }
+      ],
+      "median_days_to_funded": 25.0
+     },
+     "2": {
+      "funded": 0.0592,
+      "phases": [
+       {
+        "pass": 0.0592,
+        "fail": 0.7314,
+        "timeout": 0.2094,
+        "daily_or_maxloss": 2360,
+        "consistency": 1297
+       }
+      ],
+      "median_days_to_funded": 16.0
+     },
+     "3": {
+      "funded": 0.0206,
+      "phases": [
+       {
+        "pass": 0.0206,
+        "fail": 0.9602,
+        "timeout": 0.0192,
+        "daily_or_maxloss": 3254,
+        "consistency": 1547
+       }
+      ],
+      "median_days_to_funded": 13.0
+     },
+     "5": {
+      "funded": 0.0068,
+      "phases": [
+       {
+        "pass": 0.0068,
+        "fail": 0.9932,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3541,
+        "consistency": 1425
+       }
+      ],
+      "median_days_to_funded": 7.0
+     }
+    }
+   },
+   "net": {
+    "mean_return_pct": 0.03352864348327662,
+    "rows": 1949,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.4582,
+      "phases": [
+       {
+        "pass": 0.5706,
+        "fail": 0.084,
+        "timeout": 0.3454,
+        "daily_or_maxloss": 420
+       },
+       {
+        "pass": 0.8062,
+        "fail": 0.079,
+        "timeout": 0.1148,
+        "daily_or_maxloss": 395
+       }
+      ],
+      "median_days_to_funded": 429.0,
+      "payout_12m_pct_of_account": 5.3004584077379295,
+      "funded_blown_12m": 0.06634657354866869,
+      "breakeven_fee_pct_of_account": 2.4286700424255194
+     },
+     "1": {
+      "funded": 0.3874,
+      "phases": [
+       {
+        "pass": 0.5458,
+        "fail": 0.4462,
+        "timeout": 0.008,
+        "daily_or_maxloss": 2231
+       },
+       {
+        "pass": 0.7102,
+        "fail": 0.2896,
+        "timeout": 0.0002,
+        "daily_or_maxloss": 1448
+       }
+      ],
+      "median_days_to_funded": 159.0,
+      "payout_12m_pct_of_account": 8.02575093796267,
+      "funded_blown_12m": 0.6794011357769747,
+      "breakeven_fee_pct_of_account": 3.1091759133667383
+     },
+     "2": {
+      "funded": 0.1726,
+      "phases": [
+       {
+        "pass": 0.319,
+        "fail": 0.681,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3405
+       },
+       {
+        "pass": 0.5366,
+        "fail": 0.4634,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2317
+       }
+      ],
+      "median_days_to_funded": 43.0,
+      "payout_12m_pct_of_account": 4.752666826182369,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.8203102941990771
+     },
+     "3": {
+      "funded": 0.099,
+      "phases": [
+       {
+        "pass": 0.2252,
+        "fail": 0.7748,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3874
+       },
+       {
+        "pass": 0.4298,
+        "fail": 0.5702,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2851
+       }
+      ],
+      "median_days_to_funded": 22.0,
+      "payout_12m_pct_of_account": 1.5048100504094697,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.1489761949905375
+     },
+     "5": {
+      "funded": 0.0586,
+      "phases": [
+       {
+        "pass": 0.179,
+        "fail": 0.821,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4105
+       },
+       {
+        "pass": 0.3182,
+        "fail": 0.6818,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3409
+       }
+      ],
+      "median_days_to_funded": 12.0,
+      "payout_12m_pct_of_account": 0.3087120889635504,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.018090528413264053
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0004,
+      "phases": [
+       {
+        "pass": 0.0004,
+        "fail": 0.0032,
+        "timeout": 0.9964,
+        "daily_or_maxloss": 0,
+        "consistency": 16
+       }
+      ],
+      "median_days_to_funded": 22.0
+     },
+     "1": {
+      "funded": 0.0208,
+      "phases": [
+       {
+        "pass": 0.0208,
+        "fail": 0.1496,
+        "timeout": 0.8296,
+        "daily_or_maxloss": 447,
+        "consistency": 301
+       }
+      ],
+      "median_days_to_funded": 25.0
+     },
+     "2": {
+      "funded": 0.0542,
+      "phases": [
+       {
+        "pass": 0.0542,
+        "fail": 0.728,
+        "timeout": 0.2178,
+        "daily_or_maxloss": 2468,
+        "consistency": 1172
+       }
+      ],
+      "median_days_to_funded": 18.0
+     },
+     "3": {
+      "funded": 0.0208,
+      "phases": [
+       {
+        "pass": 0.0208,
+        "fail": 0.9594,
+        "timeout": 0.0198,
+        "daily_or_maxloss": 3375,
+        "consistency": 1422
+       }
+      ],
+      "median_days_to_funded": 13.0
+     },
+     "5": {
+      "funded": 0.0052,
+      "phases": [
+       {
+        "pass": 0.0052,
+        "fail": 0.9946,
+        "timeout": 0.0002,
+        "daily_or_maxloss": 3641,
+        "consistency": 1332
+       }
+      ],
+      "median_days_to_funded": 6.0
+     }
+    }
+   },
+   "gross_zero_edge": {
+    "mean_return_pct": 9.114196200103902e-18,
+    "rows": 1949,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.141,
+      "phases": [
+       {
+        "pass": 0.2544,
+        "fail": 0.2802,
+        "timeout": 0.4654,
+        "daily_or_maxloss": 1401
+       },
+       {
+        "pass": 0.5408,
+        "fail": 0.2634,
+        "timeout": 0.1958,
+        "daily_or_maxloss": 1317
+       }
+      ],
+      "median_days_to_funded": 435.0,
+      "payout_12m_pct_of_account": 3.3102150959104524,
+      "funded_blown_12m": 0.1645390070921986,
+      "breakeven_fee_pct_of_account": 0.46674032852337366
+     },
+     "1": {
+      "funded": 0.2186,
+      "phases": [
+       {
+        "pass": 0.3774,
+        "fail": 0.6144,
+        "timeout": 0.0082,
+        "daily_or_maxloss": 3072
+       },
+       {
+        "pass": 0.574,
+        "fail": 0.426,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2130
+       }
+      ],
+      "median_days_to_funded": 164.0,
+      "payout_12m_pct_of_account": 5.122292855347816,
+      "funded_blown_12m": 0.7831655992680695,
+      "breakeven_fee_pct_of_account": 1.1197332181790325
+     },
+     "2": {
+      "funded": 0.1064,
+      "phases": [
+       {
+        "pass": 0.243,
+        "fail": 0.757,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3785
+       },
+       {
+        "pass": 0.4466,
+        "fail": 0.5534,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2767
+       }
+      ],
+      "median_days_to_funded": 43.0,
+      "payout_12m_pct_of_account": 3.021714293332978,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.3215104008106288
+     },
+     "3": {
+      "funded": 0.0614,
+      "phases": [
+       {
+        "pass": 0.1768,
+        "fail": 0.8232,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4116
+       },
+       {
+        "pass": 0.3472,
+        "fail": 0.6528,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3264
+       }
+      ],
+      "median_days_to_funded": 23.0,
+      "payout_12m_pct_of_account": 1.1684139738776724,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.07174061799608909
+     },
+     "5": {
+      "funded": 0.036,
+      "phases": [
+       {
+        "pass": 0.1516,
+        "fail": 0.8484,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4242
+       },
+       {
+        "pass": 0.2666,
+        "fail": 0.7334,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3667
+       }
+      ],
+      "median_days_to_funded": 11.0,
+      "payout_12m_pct_of_account": 0.12137614763235088,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.004369541314764631
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0004,
+      "phases": [
+       {
+        "pass": 0.0004,
+        "fail": 0.0044,
+        "timeout": 0.9952,
+        "daily_or_maxloss": 1,
+        "consistency": 21
+       }
+      ],
+      "median_days_to_funded": 24.5
+     },
+     "1": {
+      "funded": 0.0112,
+      "phases": [
+       {
+        "pass": 0.0112,
+        "fail": 0.1478,
+        "timeout": 0.841,
+        "daily_or_maxloss": 481,
+        "consistency": 258
+       }
+      ],
+      "median_days_to_funded": 26.0
+     },
+     "2": {
+      "funded": 0.0314,
+      "phases": [
+       {
+        "pass": 0.0314,
+        "fail": 0.7304,
+        "timeout": 0.2382,
+        "daily_or_maxloss": 2718,
+        "consistency": 934
+       }
+      ],
+      "median_days_to_funded": 17.0
+     },
+     "3": {
+      "funded": 0.0114,
+      "phases": [
+       {
+        "pass": 0.0114,
+        "fail": 0.9636,
+        "timeout": 0.025,
+        "daily_or_maxloss": 3713,
+        "consistency": 1105
+       }
+      ],
+      "median_days_to_funded": 12.0
+     },
+     "5": {
+      "funded": 0.0032,
+      "phases": [
+       {
+        "pass": 0.0032,
+        "fail": 0.9966,
+        "timeout": 0.0002,
+        "daily_or_maxloss": 3954,
+        "consistency": 1029
+       }
+      ],
+      "median_days_to_funded": 7.0
+     }
+    }
+   },
+   "net_zero_edge": {
+    "mean_return_pct": -2.3696910120270144e-17,
+    "rows": 1949,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.1414,
+      "phases": [
+       {
+        "pass": 0.2594,
+        "fail": 0.2774,
+        "timeout": 0.4632,
+        "daily_or_maxloss": 1387
+       },
+       {
+        "pass": 0.5528,
+        "fail": 0.2506,
+        "timeout": 0.1966,
+        "daily_or_maxloss": 1253
+       }
+      ],
+      "median_days_to_funded": 422.0,
+      "payout_12m_pct_of_account": 3.3512089436896835,
+      "funded_blown_12m": 0.17256011315417252,
+      "breakeven_fee_pct_of_account": 0.4738609446377212
+     },
+     "1": {
+      "funded": 0.211,
+      "phases": [
+       {
+        "pass": 0.3682,
+        "fail": 0.6234,
+        "timeout": 0.0084,
+        "daily_or_maxloss": 3117
+       },
+       {
+        "pass": 0.5692,
+        "fail": 0.4308,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2154
+       }
+      ],
+      "median_days_to_funded": 168.0,
+      "payout_12m_pct_of_account": 5.011972838982644,
+      "funded_blown_12m": 0.7838862559241706,
+      "breakeven_fee_pct_of_account": 1.057526269025338
+     },
+     "2": {
+      "funded": 0.1058,
+      "phases": [
+       {
+        "pass": 0.2438,
+        "fail": 0.7562,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3781
+       },
+       {
+        "pass": 0.4564,
+        "fail": 0.5436,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2718
+       }
+      ],
+      "median_days_to_funded": 44.0,
+      "payout_12m_pct_of_account": 2.876196890686634,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.30430163103464586
+     },
+     "3": {
+      "funded": 0.058,
+      "phases": [
+       {
+        "pass": 0.1682,
+        "fail": 0.8318,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4159
+       },
+       {
+        "pass": 0.3514,
+        "fail": 0.6486,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3243
+       }
+      ],
+      "median_days_to_funded": 23.0,
+      "payout_12m_pct_of_account": 0.7060047147944712,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.04094827345807933
+     },
+     "5": {
+      "funded": 0.0394,
+      "phases": [
+       {
+        "pass": 0.1482,
+        "fail": 0.8518,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4259
+       },
+       {
+        "pass": 0.2668,
+        "fail": 0.7332,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3666
+       }
+      ],
+      "median_days_to_funded": 12.0,
+      "payout_12m_pct_of_account": 0.1280031192488884,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.005043322898406203
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0006,
+      "phases": [
+       {
+        "pass": 0.0006,
+        "fail": 0.004,
+        "timeout": 0.9954,
+        "daily_or_maxloss": 4,
+        "consistency": 16
+       }
+      ],
+      "median_days_to_funded": 27.0
+     },
+     "1": {
+      "funded": 0.0098,
+      "phases": [
+       {
+        "pass": 0.0098,
+        "fail": 0.1516,
+        "timeout": 0.8386,
+        "daily_or_maxloss": 504,
+        "consistency": 254
+       }
+      ],
+      "median_days_to_funded": 24.0
+     },
+     "2": {
+      "funded": 0.0308,
+      "phases": [
+       {
+        "pass": 0.0308,
+        "fail": 0.7294,
+        "timeout": 0.2398,
+        "daily_or_maxloss": 2709,
+        "consistency": 938
+       }
+      ],
+      "median_days_to_funded": 19.0
+     },
+     "3": {
+      "funded": 0.0148,
+      "phases": [
+       {
+        "pass": 0.0148,
+        "fail": 0.9558,
+        "timeout": 0.0294,
+        "daily_or_maxloss": 3659,
+        "consistency": 1120
+       }
+      ],
+      "median_days_to_funded": 12.0
+     },
+     "5": {
+      "funded": 0.0026,
+      "phases": [
+       {
+        "pass": 0.0026,
+        "fail": 0.9974,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3863,
+        "consistency": 1124
+       }
+      ],
+      "median_days_to_funded": 6.0
+     }
+    }
+   },
+   "net_ci_low": {
+    "mean_return_pct": 0.00109999999999999,
+    "rows": 1949,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.1544,
+      "phases": [
+       {
+        "pass": 0.2786,
+        "fail": 0.27,
+        "timeout": 0.4514,
+        "daily_or_maxloss": 1350
+       },
+       {
+        "pass": 0.5482,
+        "fail": 0.254,
+        "timeout": 0.1978,
+        "daily_or_maxloss": 1270
+       }
+      ],
+      "median_days_to_funded": 445.0,
+      "payout_12m_pct_of_account": 3.242543222242221,
+      "funded_blown_12m": 0.17616580310880825,
+      "breakeven_fee_pct_of_account": 0.500648673514199
+     },
+     "1": {
+      "funded": 0.2056,
+      "phases": [
+       {
+        "pass": 0.3718,
+        "fail": 0.6178,
+        "timeout": 0.0104,
+        "daily_or_maxloss": 3089
+       },
+       {
+        "pass": 0.5594,
+        "fail": 0.44,
+        "timeout": 0.0006,
+        "daily_or_maxloss": 2200
+       }
+      ],
+      "median_days_to_funded": 170.5,
+      "payout_12m_pct_of_account": 5.534014241856125,
+      "funded_blown_12m": 0.7859922178988327,
+      "breakeven_fee_pct_of_account": 1.1377933281256194
+     },
+     "2": {
+      "funded": 0.1068,
+      "phases": [
+       {
+        "pass": 0.2424,
+        "fail": 0.7576,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3788
+       },
+       {
+        "pass": 0.451,
+        "fail": 0.549,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2745
+       }
+      ],
+      "median_days_to_funded": 45.0,
+      "payout_12m_pct_of_account": 2.908621478637499,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.3106407739184849
+     },
+     "3": {
+      "funded": 0.059,
+      "phases": [
+       {
+        "pass": 0.178,
+        "fail": 0.822,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4110
+       },
+       {
+        "pass": 0.3512,
+        "fail": 0.6488,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3244
+       }
+      ],
+      "median_days_to_funded": 22.0,
+      "payout_12m_pct_of_account": 0.8306377694857222,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.04900762839965761
+     },
+     "5": {
+      "funded": 0.0392,
+      "phases": [
+       {
+        "pass": 0.1464,
+        "fail": 0.8536,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4268
+       },
+       {
+        "pass": 0.2598,
+        "fail": 0.7402,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3701
+       }
+      ],
+      "median_days_to_funded": 12.0,
+      "payout_12m_pct_of_account": 0.0987318385461263,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.0038702880710081507
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0,
+      "phases": [
+       {
+        "pass": 0.0,
+        "fail": 0.0026,
+        "timeout": 0.9974,
+        "daily_or_maxloss": 1,
+        "consistency": 12
+       }
+      ],
+      "median_days_to_funded": null
+     },
+     "1": {
+      "funded": 0.0114,
+      "phases": [
+       {
+        "pass": 0.0114,
+        "fail": 0.1464,
+        "timeout": 0.8422,
+        "daily_or_maxloss": 471,
+        "consistency": 261
+       }
+      ],
+      "median_days_to_funded": 25.0
+     },
+     "2": {
+      "funded": 0.0328,
+      "phases": [
+       {
+        "pass": 0.0328,
+        "fail": 0.7308,
+        "timeout": 0.2364,
+        "daily_or_maxloss": 2770,
+        "consistency": 884
+       }
+      ],
+      "median_days_to_funded": 17.0
+     },
+     "3": {
+      "funded": 0.012,
+      "phases": [
+       {
+        "pass": 0.012,
+        "fail": 0.9642,
+        "timeout": 0.0238,
+        "daily_or_maxloss": 3652,
+        "consistency": 1169
+       }
+      ],
+      "median_days_to_funded": 12.0
+     },
+     "5": {
+      "funded": 0.0038,
+      "phases": [
+       {
+        "pass": 0.0038,
+        "fail": 0.9962,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3830,
+        "consistency": 1151
+       }
+      ],
+      "median_days_to_funded": 7.0
+     }
+    }
+   },
+   "net_ci_high": {
+    "mean_return_pct": 0.066,
+    "rows": 1949,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.807,
+      "phases": [
+       {
+        "pass": 0.8488,
+        "fail": 0.0178,
+        "timeout": 0.1334,
+        "daily_or_maxloss": 89
+       },
+       {
+        "pass": 0.9532,
+        "fail": 0.0188,
+        "timeout": 0.028,
+        "daily_or_maxloss": 94
+       }
+      ],
+      "median_days_to_funded": 353.0,
+      "payout_12m_pct_of_account": 7.6617220264903265,
+      "funded_blown_12m": 0.022800495662949172,
+      "breakeven_fee_pct_of_account": 6.1830096753776935
+     },
+     "1": {
+      "funded": 0.5558,
+      "phases": [
+       {
+        "pass": 0.6884,
+        "fail": 0.31,
+        "timeout": 0.0016,
+        "daily_or_maxloss": 1550
+       },
+       {
+        "pass": 0.8088,
+        "fail": 0.1912,
+        "timeout": 0.0,
+        "daily_or_maxloss": 956
+       }
+      ],
+      "median_days_to_funded": 135.0,
+      "payout_12m_pct_of_account": 11.903247134664989,
+      "funded_blown_12m": 0.5786254048218784,
+      "breakeven_fee_pct_of_account": 6.6158247574468
+     },
+     "2": {
+      "funded": 0.2504,
+      "phases": [
+       {
+        "pass": 0.4158,
+        "fail": 0.5842,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2921
+       },
+       {
+        "pass": 0.597,
+        "fail": 0.403,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2015
+       }
+      ],
+      "median_days_to_funded": 40.0,
+      "payout_12m_pct_of_account": 5.770333289650546,
+      "funded_blown_12m": 0.9976038338658147,
+      "breakeven_fee_pct_of_account": 1.4448914557284969
+     },
+     "3": {
+      "funded": 0.131,
+      "phases": [
+       {
+        "pass": 0.2808,
+        "fail": 0.7192,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3596
+       },
+       {
+        "pass": 0.4628,
+        "fail": 0.5372,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2686
+       }
+      ],
+      "median_days_to_funded": 21.0,
+      "payout_12m_pct_of_account": 1.825910531676447,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.2391942796496146
+     },
+     "5": {
+      "funded": 0.0834,
+      "phases": [
+       {
+        "pass": 0.212,
+        "fail": 0.788,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3940
+       },
+       {
+        "pass": 0.3508,
+        "fail": 0.6492,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3246
+       }
+      ],
+      "median_days_to_funded": 12.0,
+      "payout_12m_pct_of_account": 0.414670860718073,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.03458354978388729
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.001,
+      "phases": [
+       {
+        "pass": 0.001,
+        "fail": 0.0044,
+        "timeout": 0.9946,
+        "daily_or_maxloss": 2,
+        "consistency": 20
+       }
+      ],
+      "median_days_to_funded": 28.0
+     },
+     "1": {
+      "funded": 0.0404,
+      "phases": [
+       {
+        "pass": 0.0404,
+        "fail": 0.1626,
+        "timeout": 0.797,
+        "daily_or_maxloss": 404,
+        "consistency": 409
+       }
+      ],
+      "median_days_to_funded": 24.0
+     },
+     "2": {
+      "funded": 0.0646,
+      "phases": [
+       {
+        "pass": 0.0646,
+        "fail": 0.725,
+        "timeout": 0.2104,
+        "daily_or_maxloss": 2271,
+        "consistency": 1354
+       }
+      ],
+      "median_days_to_funded": 17.0
+     },
+     "3": {
+      "funded": 0.0286,
+      "phases": [
+       {
+        "pass": 0.0286,
+        "fail": 0.955,
+        "timeout": 0.0164,
+        "daily_or_maxloss": 3120,
+        "consistency": 1655
+       }
+      ],
+      "median_days_to_funded": 12.0
+     },
+     "5": {
+      "funded": 0.0076,
+      "phases": [
+       {
+        "pass": 0.0076,
+        "fail": 0.9922,
+        "timeout": 0.0002,
+        "daily_or_maxloss": 3410,
+        "consistency": 1551
+       }
+      ],
+      "median_days_to_funded": 7.5
+     }
+    }
+   }
+  },
+  "gold": {
+   "gross": {
+    "mean_return_pct": 0.060885796285212325,
+    "rows": 1962,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.7804,
+      "phases": [
+       {
+        "pass": 0.8252,
+        "fail": 0.0108,
+        "timeout": 0.164,
+        "daily_or_maxloss": 54
+       },
+       {
+        "pass": 0.9432,
+        "fail": 0.0134,
+        "timeout": 0.0434,
+        "daily_or_maxloss": 67
+       }
+      ],
+      "median_days_to_funded": 373.0,
+      "payout_12m_pct_of_account": 7.160220954338181,
+      "funded_blown_12m": 0.019220912352639674,
+      "breakeven_fee_pct_of_account": 5.587836432765516
+     },
+     "1": {
+      "funded": 0.695,
+      "phases": [
+       {
+        "pass": 0.793,
+        "fail": 0.2008,
+        "timeout": 0.0062,
+        "daily_or_maxloss": 1004
+       },
+       {
+        "pass": 0.8742,
+        "fail": 0.1256,
+        "timeout": 0.0002,
+        "daily_or_maxloss": 628
+       }
+      ],
+      "median_days_to_funded": 165.0,
+      "payout_12m_pct_of_account": 12.317698869190796,
+      "funded_blown_12m": 0.3896402877697842,
+      "breakeven_fee_pct_of_account": 8.560800714087604
+     },
+     "2": {
+      "funded": 0.3804,
+      "phases": [
+       {
+        "pass": 0.5392,
+        "fail": 0.4608,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2304
+       },
+       {
+        "pass": 0.7138,
+        "fail": 0.2862,
+        "timeout": 0.0,
+        "daily_or_maxloss": 1431
+       }
+      ],
+      "median_days_to_funded": 52.0,
+      "payout_12m_pct_of_account": 9.689579742800474,
+      "funded_blown_12m": 0.9800210304942166,
+      "breakeven_fee_pct_of_account": 3.6859161341613
+     },
+     "3": {
+      "funded": 0.2438,
+      "phases": [
+       {
+        "pass": 0.399,
+        "fail": 0.601,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3005
+       },
+       {
+        "pass": 0.5912,
+        "fail": 0.4088,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2044
+       }
+      ],
+      "median_days_to_funded": 25.0,
+      "payout_12m_pct_of_account": 3.7918058328847537,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.924442262057303
+     },
+     "5": {
+      "funded": 0.1084,
+      "phases": [
+       {
+        "pass": 0.274,
+        "fail": 0.726,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3630
+       },
+       {
+        "pass": 0.4002,
+        "fail": 0.5998,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2999
+       }
+      ],
+      "median_days_to_funded": 12.0,
+      "payout_12m_pct_of_account": 0.7107844283413328,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.07704903203220048
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0016,
+      "phases": [
+       {
+        "pass": 0.0016,
+        "fail": 0.0008,
+        "timeout": 0.9976,
+        "daily_or_maxloss": 0,
+        "consistency": 4
+       }
+      ],
+      "median_days_to_funded": 27.5
+     },
+     "1": {
+      "funded": 0.0534,
+      "phases": [
+       {
+        "pass": 0.0534,
+        "fail": 0.0752,
+        "timeout": 0.8714,
+        "daily_or_maxloss": 159,
+        "consistency": 217
+       }
+      ],
+      "median_days_to_funded": 24.0
+     },
+     "2": {
+      "funded": 0.1038,
+      "phases": [
+       {
+        "pass": 0.1038,
+        "fail": 0.5442,
+        "timeout": 0.352,
+        "daily_or_maxloss": 1436,
+        "consistency": 1285
+       }
+      ],
+      "median_days_to_funded": 18.0
+     },
+     "3": {
+      "funded": 0.038,
+      "phases": [
+       {
+        "pass": 0.038,
+        "fail": 0.9006,
+        "timeout": 0.0614,
+        "daily_or_maxloss": 2535,
+        "consistency": 1968
+       }
+      ],
+      "median_days_to_funded": 11.0
+     },
+     "5": {
+      "funded": 0.0054,
+      "phases": [
+       {
+        "pass": 0.0054,
+        "fail": 0.9944,
+        "timeout": 0.0002,
+        "daily_or_maxloss": 3138,
+        "consistency": 1834
+       }
+      ],
+      "median_days_to_funded": 7.0
+     }
+    }
+   },
+   "net": {
+    "mean_return_pct": 0.022308668228306763,
+    "rows": 1962,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.3248,
+      "phases": [
+       {
+        "pass": 0.4442,
+        "fail": 0.0982,
+        "timeout": 0.4576,
+        "daily_or_maxloss": 491
+       },
+       {
+        "pass": 0.7438,
+        "fail": 0.0898,
+        "timeout": 0.1664,
+        "daily_or_maxloss": 449
+       }
+      ],
+      "median_days_to_funded": 448.5,
+      "payout_12m_pct_of_account": 4.175342381248987,
+      "funded_blown_12m": 0.0535714285714286,
+      "breakeven_fee_pct_of_account": 1.3561512054296707
+     },
+     "1": {
+      "funded": 0.416,
+      "phases": [
+       {
+        "pass": 0.5726,
+        "fail": 0.4024,
+        "timeout": 0.025,
+        "daily_or_maxloss": 2012
+       },
+       {
+        "pass": 0.7274,
+        "fail": 0.2706,
+        "timeout": 0.002,
+        "daily_or_maxloss": 1353
+       }
+      ],
+      "median_days_to_funded": 200.0,
+      "payout_12m_pct_of_account": 6.97686567624856,
+      "funded_blown_12m": 0.5740384615384615,
+      "breakeven_fee_pct_of_account": 2.902376121319401
+     },
+     "2": {
+      "funded": 0.251,
+      "phases": [
+       {
+        "pass": 0.4136,
+        "fail": 0.5864,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2932
+       },
+       {
+        "pass": 0.5996,
+        "fail": 0.4004,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2002
+       }
+      ],
+      "median_days_to_funded": 57.0,
+      "payout_12m_pct_of_account": 6.3116614832713385,
+      "funded_blown_12m": 0.9864541832669322,
+      "breakeven_fee_pct_of_account": 1.584227032301106
+     },
+     "3": {
+      "funded": 0.1614,
+      "phases": [
+       {
+        "pass": 0.3188,
+        "fail": 0.6812,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3406
+       },
+       {
+        "pass": 0.5028,
+        "fail": 0.4972,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2486
+       }
+      ],
+      "median_days_to_funded": 28.0,
+      "payout_12m_pct_of_account": 3.024526137612965,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.4881585186107325
+     },
+     "5": {
+      "funded": 0.0752,
+      "phases": [
+       {
+        "pass": 0.219,
+        "fail": 0.781,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3905
+       },
+       {
+        "pass": 0.354,
+        "fail": 0.646,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3230
+       }
+      ],
+      "median_days_to_funded": 12.0,
+      "payout_12m_pct_of_account": 0.4183706768486941,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.0314614748990218
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0008,
+      "phases": [
+       {
+        "pass": 0.0008,
+        "fail": 0.0006,
+        "timeout": 0.9986,
+        "daily_or_maxloss": 1,
+        "consistency": 2
+       }
+      ],
+      "median_days_to_funded": 23.5
+     },
+     "1": {
+      "funded": 0.0266,
+      "phases": [
+       {
+        "pass": 0.0266,
+        "fail": 0.0712,
+        "timeout": 0.9022,
+        "daily_or_maxloss": 202,
+        "consistency": 154
+       }
+      ],
+      "median_days_to_funded": 24.0
+     },
+     "2": {
+      "funded": 0.0698,
+      "phases": [
+       {
+        "pass": 0.0698,
+        "fail": 0.5452,
+        "timeout": 0.385,
+        "daily_or_maxloss": 1697,
+        "consistency": 1029
+       }
+      ],
+      "median_days_to_funded": 17.0
+     },
+     "3": {
+      "funded": 0.0332,
+      "phases": [
+       {
+        "pass": 0.0332,
+        "fail": 0.9022,
+        "timeout": 0.0646,
+        "daily_or_maxloss": 2952,
+        "consistency": 1559
+       }
+      ],
+      "median_days_to_funded": 11.0
+     },
+     "5": {
+      "funded": 0.0032,
+      "phases": [
+       {
+        "pass": 0.0032,
+        "fail": 0.9964,
+        "timeout": 0.0004,
+        "daily_or_maxloss": 3436,
+        "consistency": 1546
+       }
+      ],
+      "median_days_to_funded": 8.0
+     }
+    }
+   },
+   "gross_zero_edge": {
+    "mean_return_pct": 7.243045216718657e-18,
+    "rows": 1962,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.123,
+      "phases": [
+       {
+        "pass": 0.2232,
+        "fail": 0.24,
+        "timeout": 0.5368,
+        "daily_or_maxloss": 1200
+       },
+       {
+        "pass": 0.5282,
+        "fail": 0.22,
+        "timeout": 0.2518,
+        "daily_or_maxloss": 1100
+       }
+      ],
+      "median_days_to_funded": 454.0,
+      "payout_12m_pct_of_account": 3.1257417974483155,
+      "funded_blown_12m": 0.11544715447154474,
+      "breakeven_fee_pct_of_account": 0.38446624108614286
+     },
+     "1": {
+      "funded": 0.2448,
+      "phases": [
+       {
+        "pass": 0.4022,
+        "fail": 0.5654,
+        "timeout": 0.0324,
+        "daily_or_maxloss": 2827
+       },
+       {
+        "pass": 0.6092,
+        "fail": 0.3876,
+        "timeout": 0.0032,
+        "daily_or_maxloss": 1938
+       }
+      ],
+      "median_days_to_funded": 202.0,
+      "payout_12m_pct_of_account": 4.9371738213831176,
+      "funded_blown_12m": 0.6936274509803921,
+      "breakeven_fee_pct_of_account": 1.2086201514745871
+     },
+     "2": {
+      "funded": 0.181,
+      "phases": [
+       {
+        "pass": 0.339,
+        "fail": 0.661,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3305
+       },
+       {
+        "pass": 0.5268,
+        "fail": 0.4732,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2366
+       }
+      ],
+      "median_days_to_funded": 58.0,
+      "payout_12m_pct_of_account": 4.778384141227025,
+      "funded_blown_12m": 0.9933701657458563,
+      "breakeven_fee_pct_of_account": 0.8648875295620914
+     },
+     "3": {
+      "funded": 0.1276,
+      "phases": [
+       {
+        "pass": 0.268,
+        "fail": 0.732,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3660
+       },
+       {
+        "pass": 0.4536,
+        "fail": 0.5464,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2732
+       }
+      ],
+      "median_days_to_funded": 27.0,
+      "payout_12m_pct_of_account": 2.2613795247885213,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.2885520273630153
+     },
+     "5": {
+      "funded": 0.0568,
+      "phases": [
+       {
+        "pass": 0.1858,
+        "fail": 0.8142,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4071
+       },
+       {
+        "pass": 0.3232,
+        "fail": 0.6768,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3384
+       }
+      ],
+      "median_days_to_funded": 12.0,
+      "payout_12m_pct_of_account": 0.1929640797407764,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.0109603597292761
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0006,
+      "phases": [
+       {
+        "pass": 0.0006,
+        "fail": 0.0004,
+        "timeout": 0.999,
+        "daily_or_maxloss": 0,
+        "consistency": 2
+       }
+      ],
+      "median_days_to_funded": 22.0
+     },
+     "1": {
+      "funded": 0.0202,
+      "phases": [
+       {
+        "pass": 0.0202,
+        "fail": 0.0782,
+        "timeout": 0.9016,
+        "daily_or_maxloss": 245,
+        "consistency": 146
+       }
+      ],
+      "median_days_to_funded": 23.0
+     },
+     "2": {
+      "funded": 0.049,
+      "phases": [
+       {
+        "pass": 0.049,
+        "fail": 0.5646,
+        "timeout": 0.3864,
+        "daily_or_maxloss": 1880,
+        "consistency": 943
+       }
+      ],
+      "median_days_to_funded": 19.0
+     },
+     "3": {
+      "funded": 0.023,
+      "phases": [
+       {
+        "pass": 0.023,
+        "fail": 0.9154,
+        "timeout": 0.0616,
+        "daily_or_maxloss": 3227,
+        "consistency": 1350
+       }
+      ],
+      "median_days_to_funded": 12.0
+     },
+     "5": {
+      "funded": 0.0012,
+      "phases": [
+       {
+        "pass": 0.0012,
+        "fail": 0.9982,
+        "timeout": 0.0006,
+        "daily_or_maxloss": 3633,
+        "consistency": 1358
+       }
+      ],
+      "median_days_to_funded": 5.5
+     }
+    }
+   },
+   "net_zero_edge": {
+    "mean_return_pct": 1.2675329129257648e-17,
+    "rows": 1962,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.1182,
+      "phases": [
+       {
+        "pass": 0.2316,
+        "fail": 0.2284,
+        "timeout": 0.54,
+        "daily_or_maxloss": 1142
+       },
+       {
+        "pass": 0.5234,
+        "fail": 0.2218,
+        "timeout": 0.2548,
+        "daily_or_maxloss": 1109
+       }
+      ],
+      "median_days_to_funded": 479.0,
+      "payout_12m_pct_of_account": 2.9077424261842797,
+      "funded_blown_12m": 0.1302876480541455,
+      "breakeven_fee_pct_of_account": 0.34369515477498186
+     },
+     "1": {
+      "funded": 0.239,
+      "phases": [
+       {
+        "pass": 0.383,
+        "fail": 0.5828,
+        "timeout": 0.0342,
+        "daily_or_maxloss": 2914
+       },
+       {
+        "pass": 0.6028,
+        "fail": 0.395,
+        "timeout": 0.0022,
+        "daily_or_maxloss": 1975
+       }
+      ],
+      "median_days_to_funded": 210.0,
+      "payout_12m_pct_of_account": 5.00450949555871,
+      "funded_blown_12m": 0.6912133891213389,
+      "breakeven_fee_pct_of_account": 1.1960777694385316
+     },
+     "2": {
+      "funded": 0.1806,
+      "phases": [
+       {
+        "pass": 0.3462,
+        "fail": 0.6538,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3269
+       },
+       {
+        "pass": 0.5324,
+        "fail": 0.4676,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2338
+       }
+      ],
+      "median_days_to_funded": 58.0,
+      "payout_12m_pct_of_account": 4.68988265414803,
+      "funded_blown_12m": 0.9988925802879292,
+      "breakeven_fee_pct_of_account": 0.8469928073391343
+     },
+     "3": {
+      "funded": 0.1258,
+      "phases": [
+       {
+        "pass": 0.2694,
+        "fail": 0.7306,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3653
+       },
+       {
+        "pass": 0.47,
+        "fail": 0.53,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2650
+       }
+      ],
+      "median_days_to_funded": 26.0,
+      "payout_12m_pct_of_account": 2.7442404031524927,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.3452254427165836
+     },
+     "5": {
+      "funded": 0.0634,
+      "phases": [
+       {
+        "pass": 0.1928,
+        "fail": 0.8072,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4036
+       },
+       {
+        "pass": 0.3092,
+        "fail": 0.6908,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3454
+       }
+      ],
+      "median_days_to_funded": 12.0,
+      "payout_12m_pct_of_account": 0.3842121909402515,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.024359052905611946
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0002,
+      "phases": [
+       {
+        "pass": 0.0002,
+        "fail": 0.0004,
+        "timeout": 0.9994,
+        "daily_or_maxloss": 1,
+        "consistency": 1
+       }
+      ],
+      "median_days_to_funded": 30.0
+     },
+     "1": {
+      "funded": 0.0194,
+      "phases": [
+       {
+        "pass": 0.0194,
+        "fail": 0.0718,
+        "timeout": 0.9088,
+        "daily_or_maxloss": 232,
+        "consistency": 127
+       }
+      ],
+      "median_days_to_funded": 24.0
+     },
+     "2": {
+      "funded": 0.052,
+      "phases": [
+       {
+        "pass": 0.052,
+        "fail": 0.5746,
+        "timeout": 0.3734,
+        "daily_or_maxloss": 1992,
+        "consistency": 881
+       }
+      ],
+      "median_days_to_funded": 19.0
+     },
+     "3": {
+      "funded": 0.0212,
+      "phases": [
+       {
+        "pass": 0.0212,
+        "fail": 0.9092,
+        "timeout": 0.0696,
+        "daily_or_maxloss": 3203,
+        "consistency": 1343
+       }
+      ],
+      "median_days_to_funded": 12.0
+     },
+     "5": {
+      "funded": 0.0024,
+      "phases": [
+       {
+        "pass": 0.0024,
+        "fail": 0.9972,
+        "timeout": 0.0004,
+        "daily_or_maxloss": 3541,
+        "consistency": 1445
+       }
+      ],
+      "median_days_to_funded": 8.5
+     }
+    }
+   },
+   "net_ci_low": {
+    "mean_return_pct": -0.009200000000000002,
+    "rows": 1962,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.075,
+      "phases": [
+       {
+        "pass": 0.1698,
+        "fail": 0.3142,
+        "timeout": 0.516,
+        "daily_or_maxloss": 1571
+       },
+       {
+        "pass": 0.4334,
+        "fail": 0.301,
+        "timeout": 0.2656,
+        "daily_or_maxloss": 1505
+       }
+      ],
+      "median_days_to_funded": 464.0,
+      "payout_12m_pct_of_account": 2.473916948835218,
+      "funded_blown_12m": 0.19466666666666665,
+      "breakeven_fee_pct_of_account": 0.18554377116264134
+     },
+     "1": {
+      "funded": 0.1718,
+      "phases": [
+       {
+        "pass": 0.3194,
+        "fail": 0.6516,
+        "timeout": 0.029,
+        "daily_or_maxloss": 3258
+       },
+       {
+        "pass": 0.5472,
+        "fail": 0.4488,
+        "timeout": 0.004,
+        "daily_or_maxloss": 2244
+       }
+      ],
+      "median_days_to_funded": 205.0,
+      "payout_12m_pct_of_account": 4.2235165495385205,
+      "funded_blown_12m": 0.7240977881257276,
+      "breakeven_fee_pct_of_account": 0.7256001432107178
+     },
+     "2": {
+      "funded": 0.149,
+      "phases": [
+       {
+        "pass": 0.2866,
+        "fail": 0.7134,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3567
+       },
+       {
+        "pass": 0.503,
+        "fail": 0.497,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2485
+       }
+      ],
+      "median_days_to_funded": 55.0,
+      "payout_12m_pct_of_account": 3.3288975511063446,
+      "funded_blown_12m": 0.9946308724832215,
+      "breakeven_fee_pct_of_account": 0.4960057351148453
+     },
+     "3": {
+      "funded": 0.098,
+      "phases": [
+       {
+        "pass": 0.2316,
+        "fail": 0.7684,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3842
+       },
+       {
+        "pass": 0.432,
+        "fail": 0.568,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2840
+       }
+      ],
+      "median_days_to_funded": 25.5,
+      "payout_12m_pct_of_account": 2.435105572140307,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.23864034606975013
+     },
+     "5": {
+      "funded": 0.0574,
+      "phases": [
+       {
+        "pass": 0.1812,
+        "fail": 0.8188,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4094
+       },
+       {
+        "pass": 0.321,
+        "fail": 0.679,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3395
+       }
+      ],
+      "median_days_to_funded": 13.0,
+      "payout_12m_pct_of_account": 0.217624377530237,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.012491639270235605
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0014,
+      "phases": [
+       {
+        "pass": 0.0014,
+        "fail": 0.0002,
+        "timeout": 0.9984,
+        "daily_or_maxloss": 1,
+        "consistency": 0
+       }
+      ],
+      "median_days_to_funded": 26.0
+     },
+     "1": {
+      "funded": 0.014,
+      "phases": [
+       {
+        "pass": 0.014,
+        "fail": 0.0784,
+        "timeout": 0.9076,
+        "daily_or_maxloss": 269,
+        "consistency": 123
+       }
+      ],
+      "median_days_to_funded": 24.0
+     },
+     "2": {
+      "funded": 0.0446,
+      "phases": [
+       {
+        "pass": 0.0446,
+        "fail": 0.5672,
+        "timeout": 0.3882,
+        "daily_or_maxloss": 2011,
+        "consistency": 825
+       }
+      ],
+      "median_days_to_funded": 17.0
+     },
+     "3": {
+      "funded": 0.0186,
+      "phases": [
+       {
+        "pass": 0.0186,
+        "fail": 0.9096,
+        "timeout": 0.0718,
+        "daily_or_maxloss": 3243,
+        "consistency": 1305
+       }
+      ],
+      "median_days_to_funded": 11.0
+     },
+     "5": {
+      "funded": 0.0032,
+      "phases": [
+       {
+        "pass": 0.0032,
+        "fail": 0.9966,
+        "timeout": 0.0002,
+        "daily_or_maxloss": 3737,
+        "consistency": 1246
+       }
+      ],
+      "median_days_to_funded": 6.0
+     }
+    }
+   },
+   "net_ci_high": {
+    "mean_return_pct": 0.0538,
+    "rows": 1962,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.7142,
+      "phases": [
+       {
+        "pass": 0.773,
+        "fail": 0.022,
+        "timeout": 0.205,
+        "daily_or_maxloss": 110
+       },
+       {
+        "pass": 0.9244,
+        "fail": 0.0182,
+        "timeout": 0.0574,
+        "daily_or_maxloss": 91
+       }
+      ],
+      "median_days_to_funded": 397.0,
+      "payout_12m_pct_of_account": 6.5097516363328705,
+      "funded_blown_12m": 0.021282553906468826,
+      "breakeven_fee_pct_of_account": 4.649264618668935
+     },
+     "1": {
+      "funded": 0.669,
+      "phases": [
+       {
+        "pass": 0.768,
+        "fail": 0.2226,
+        "timeout": 0.0094,
+        "daily_or_maxloss": 1113
+       },
+       {
+        "pass": 0.8702,
+        "fail": 0.1292,
+        "timeout": 0.0006,
+        "daily_or_maxloss": 646
+       }
+      ],
+      "median_days_to_funded": 174.0,
+      "payout_12m_pct_of_account": 11.36803434754919,
+      "funded_blown_12m": 0.41405082212257105,
+      "breakeven_fee_pct_of_account": 7.605214978510408
+     },
+     "2": {
+      "funded": 0.3596,
+      "phases": [
+       {
+        "pass": 0.5204,
+        "fail": 0.4796,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2398
+       },
+       {
+        "pass": 0.6968,
+        "fail": 0.3032,
+        "timeout": 0.0,
+        "daily_or_maxloss": 1516
+       }
+      ],
+      "median_days_to_funded": 54.0,
+      "payout_12m_pct_of_account": 9.117956949205627,
+      "funded_blown_12m": 0.9721913236929922,
+      "breakeven_fee_pct_of_account": 3.2788173189343435
+     },
+     "3": {
+      "funded": 0.216,
+      "phases": [
+       {
+        "pass": 0.3854,
+        "fail": 0.6146,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3073
+       },
+       {
+        "pass": 0.562,
+        "fail": 0.438,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2190
+       }
+      ],
+      "median_days_to_funded": 25.0,
+      "payout_12m_pct_of_account": 3.817782476524314,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.8246410149292519
+     },
+     "5": {
+      "funded": 0.101,
+      "phases": [
+       {
+        "pass": 0.2608,
+        "fail": 0.7392,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3696
+       },
+       {
+        "pass": 0.402,
+        "fail": 0.598,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2990
+       }
+      ],
+      "median_days_to_funded": 12.0,
+      "payout_12m_pct_of_account": 0.6735322276772762,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.0680267549954049
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0014,
+      "phases": [
+       {
+        "pass": 0.0014,
+        "fail": 0.0012,
+        "timeout": 0.9974,
+        "daily_or_maxloss": 0,
+        "consistency": 6
+       }
+      ],
+      "median_days_to_funded": 25.0
+     },
+     "1": {
+      "funded": 0.0406,
+      "phases": [
+       {
+        "pass": 0.0406,
+        "fail": 0.0794,
+        "timeout": 0.88,
+        "daily_or_maxloss": 194,
+        "consistency": 203
+       }
+      ],
+      "median_days_to_funded": 25.0
+     },
+     "2": {
+      "funded": 0.1108,
+      "phases": [
+       {
+        "pass": 0.1108,
+        "fail": 0.5266,
+        "timeout": 0.3626,
+        "daily_or_maxloss": 1409,
+        "consistency": 1224
+       }
+      ],
+      "median_days_to_funded": 18.0
+     },
+     "3": {
+      "funded": 0.037,
+      "phases": [
+       {
+        "pass": 0.037,
+        "fail": 0.9022,
+        "timeout": 0.0608,
+        "daily_or_maxloss": 2661,
+        "consistency": 1850
+       }
+      ],
+      "median_days_to_funded": 12.0
+     },
+     "5": {
+      "funded": 0.005,
+      "phases": [
+       {
+        "pass": 0.005,
+        "fail": 0.9944,
+        "timeout": 0.0006,
+        "daily_or_maxloss": 3179,
+        "consistency": 1793
+       }
+      ],
+      "median_days_to_funded": 7.0
+     }
+    }
+   }
+  },
+  "combined": {
+   "gross": {
+    "mean_return_pct": 0.05707723448208818,
+    "rows": 1965,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.7828,
+      "phases": [
+       {
+        "pass": 0.8168,
+        "fail": 0.0038,
+        "timeout": 0.1794,
+        "daily_or_maxloss": 19
+       },
+       {
+        "pass": 0.9594,
+        "fail": 0.002,
+        "timeout": 0.0386,
+        "daily_or_maxloss": 10
+       }
+      ],
+      "median_days_to_funded": 421.0,
+      "payout_12m_pct_of_account": 6.52609716053256,
+      "funded_blown_12m": 0.0015329586101174852,
+      "breakeven_fee_pct_of_account": 5.108628857264888
+     },
+     "1": {
+      "funded": 0.8026,
+      "phases": [
+       {
+        "pass": 0.8688,
+        "fail": 0.1166,
+        "timeout": 0.0146,
+        "daily_or_maxloss": 583
+       },
+       {
+        "pass": 0.9236,
+        "fail": 0.0748,
+        "timeout": 0.0016,
+        "daily_or_maxloss": 374
+       }
+      ],
+      "median_days_to_funded": 206.0,
+      "payout_12m_pct_of_account": 12.27087869553317,
+      "funded_blown_12m": 0.2053326688263145,
+      "breakeven_fee_pct_of_account": 9.848607241034921
+     },
+     "2": {
+      "funded": 0.379,
+      "phases": [
+       {
+        "pass": 0.5298,
+        "fail": 0.4702,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2351
+       },
+       {
+        "pass": 0.7114,
+        "fail": 0.2886,
+        "timeout": 0.0,
+        "daily_or_maxloss": 1443
+       }
+      ],
+      "median_days_to_funded": 66.0,
+      "payout_12m_pct_of_account": 9.807082324939856,
+      "funded_blown_12m": 0.9488126649076517,
+      "breakeven_fee_pct_of_account": 3.7168842011522054
+     },
+     "3": {
+      "funded": 0.2036,
+      "phases": [
+       {
+        "pass": 0.3536,
+        "fail": 0.6464,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3232
+       },
+       {
+        "pass": 0.5678,
+        "fail": 0.4322,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2161
+       }
+      ],
+      "median_days_to_funded": 32.0,
+      "payout_12m_pct_of_account": 4.235124145425667,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.8622712760086658
+     },
+     "5": {
+      "funded": 0.0792,
+      "phases": [
+       {
+        "pass": 0.2138,
+        "fail": 0.7862,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3931
+       },
+       {
+        "pass": 0.3786,
+        "fail": 0.6214,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3107
+       }
+      ],
+      "median_days_to_funded": 15.0,
+      "payout_12m_pct_of_account": 0.8648748444464185,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.06849808768015636
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0,
+      "phases": [
+       {
+        "pass": 0.0,
+        "fail": 0.0002,
+        "timeout": 0.9998,
+        "daily_or_maxloss": 0,
+        "consistency": 1
+       }
+      ],
+      "median_days_to_funded": null
+     },
+     "1": {
+      "funded": 0.02,
+      "phases": [
+       {
+        "pass": 0.02,
+        "fail": 0.0452,
+        "timeout": 0.9348,
+        "daily_or_maxloss": 104,
+        "consistency": 122
+       }
+      ],
+      "median_days_to_funded": 25.0
+     },
+     "2": {
+      "funded": 0.1252,
+      "phases": [
+       {
+        "pass": 0.1252,
+        "fail": 0.4226,
+        "timeout": 0.4522,
+        "daily_or_maxloss": 1270,
+        "consistency": 843
+       }
+      ],
+      "median_days_to_funded": 20.0
+     },
+     "3": {
+      "funded": 0.073,
+      "phases": [
+       {
+        "pass": 0.073,
+        "fail": 0.8186,
+        "timeout": 0.1084,
+        "daily_or_maxloss": 2566,
+        "consistency": 1527
+       }
+      ],
+      "median_days_to_funded": 15.0
+     },
+     "5": {
+      "funded": 0.0102,
+      "phases": [
+       {
+        "pass": 0.0102,
+        "fail": 0.9886,
+        "timeout": 0.0012,
+        "daily_or_maxloss": 3539,
+        "consistency": 1404
+       }
+      ],
+      "median_days_to_funded": 9.0
+     }
+    }
+   },
+   "net": {
+    "mean_return_pct": 0.02776512295492213,
+    "rows": 1965,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.3518,
+      "phases": [
+       {
+        "pass": 0.4502,
+        "fail": 0.0234,
+        "timeout": 0.5264,
+        "daily_or_maxloss": 117
+       },
+       {
+        "pass": 0.7836,
+        "fail": 0.0232,
+        "timeout": 0.1932,
+        "daily_or_maxloss": 116
+       }
+      ],
+      "median_days_to_funded": 512.0,
+      "payout_12m_pct_of_account": 3.9984019306817506,
+      "funded_blown_12m": 0.011938601478112543,
+      "breakeven_fee_pct_of_account": 1.4066377992138397
+     },
+     "1": {
+      "funded": 0.5564,
+      "phases": [
+       {
+        "pass": 0.6838,
+        "fail": 0.24,
+        "timeout": 0.0762,
+        "daily_or_maxloss": 1200
+       },
+       {
+        "pass": 0.8138,
+        "fail": 0.1736,
+        "timeout": 0.0126,
+        "daily_or_maxloss": 868
+       }
+      ],
+      "median_days_to_funded": 261.0,
+      "payout_12m_pct_of_account": 7.747853744601183,
+      "funded_blown_12m": 0.31560028756290437,
+      "breakeven_fee_pct_of_account": 4.310905823496098
+     },
+     "2": {
+      "funded": 0.2492,
+      "phases": [
+       {
+        "pass": 0.4076,
+        "fail": 0.5924,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2962
+       },
+       {
+        "pass": 0.6108,
+        "fail": 0.3892,
+        "timeout": 0.0,
+        "daily_or_maxloss": 1946
+       }
+      ],
+      "median_days_to_funded": 75.0,
+      "payout_12m_pct_of_account": 5.903399494280452,
+      "funded_blown_12m": 0.9759229534510433,
+      "breakeven_fee_pct_of_account": 1.4711271539746889
+     },
+     "3": {
+      "funded": 0.1374,
+      "phases": [
+       {
+        "pass": 0.2834,
+        "fail": 0.7166,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3583
+       },
+       {
+        "pass": 0.4864,
+        "fail": 0.5136,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2568
+       }
+      ],
+      "median_days_to_funded": 34.0,
+      "payout_12m_pct_of_account": 2.976463645594852,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.4089661049047327
+     },
+     "5": {
+      "funded": 0.055,
+      "phases": [
+       {
+        "pass": 0.1774,
+        "fail": 0.8226,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4113
+       },
+       {
+        "pass": 0.319,
+        "fail": 0.681,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3405
+       }
+      ],
+      "median_days_to_funded": 15.0,
+      "payout_12m_pct_of_account": 0.20843617002425643,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.011463989351334103
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0004,
+      "phases": [
+       {
+        "pass": 0.0004,
+        "fail": 0.0004,
+        "timeout": 0.9992,
+        "daily_or_maxloss": 0,
+        "consistency": 2
+       }
+      ],
+      "median_days_to_funded": 22.0
+     },
+     "1": {
+      "funded": 0.0102,
+      "phases": [
+       {
+        "pass": 0.0102,
+        "fail": 0.0354,
+        "timeout": 0.9544,
+        "daily_or_maxloss": 80,
+        "consistency": 97
+       }
+      ],
+      "median_days_to_funded": 25.0
+     },
+     "2": {
+      "funded": 0.0812,
+      "phases": [
+       {
+        "pass": 0.0812,
+        "fail": 0.431,
+        "timeout": 0.4878,
+        "daily_or_maxloss": 1496,
+        "consistency": 659
+       }
+      ],
+      "median_days_to_funded": 21.0
+     },
+     "3": {
+      "funded": 0.0504,
+      "phases": [
+       {
+        "pass": 0.0504,
+        "fail": 0.8242,
+        "timeout": 0.1254,
+        "daily_or_maxloss": 2915,
+        "consistency": 1206
+       }
+      ],
+      "median_days_to_funded": 16.0
+     },
+     "5": {
+      "funded": 0.008,
+      "phases": [
+       {
+        "pass": 0.008,
+        "fail": 0.9904,
+        "timeout": 0.0016,
+        "daily_or_maxloss": 3772,
+        "consistency": 1180
+       }
+      ],
+      "median_days_to_funded": 11.0
+     }
+    }
+   },
+   "gross_zero_edge": {
+    "mean_return_pct": -1.7175969439493515e-17,
+    "rows": 1965,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.063,
+      "phases": [
+       {
+        "pass": 0.1372,
+        "fail": 0.129,
+        "timeout": 0.7338,
+        "daily_or_maxloss": 645
+       },
+       {
+        "pass": 0.4304,
+        "fail": 0.126,
+        "timeout": 0.4436,
+        "daily_or_maxloss": 630
+       }
+      ],
+      "median_days_to_funded": 517.0,
+      "payout_12m_pct_of_account": 2.486156527742839,
+      "funded_blown_12m": 0.050793650793650835,
+      "breakeven_fee_pct_of_account": 0.15662786124779884
+     },
+     "1": {
+      "funded": 0.2212,
+      "phases": [
+       {
+        "pass": 0.3642,
+        "fail": 0.5262,
+        "timeout": 0.1096,
+        "daily_or_maxloss": 2631
+       },
+       {
+        "pass": 0.605,
+        "fail": 0.3704,
+        "timeout": 0.0246,
+        "daily_or_maxloss": 1852
+       }
+      ],
+      "median_days_to_funded": 286.0,
+      "payout_12m_pct_of_account": 4.5583877954705,
+      "funded_blown_12m": 0.511754068716094,
+      "breakeven_fee_pct_of_account": 1.0083153803580747
+     },
+     "2": {
+      "funded": 0.1416,
+      "phases": [
+       {
+        "pass": 0.2866,
+        "fail": 0.7134,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3567
+       },
+       {
+        "pass": 0.4932,
+        "fail": 0.5068,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2534
+       }
+      ],
+      "median_days_to_funded": 80.0,
+      "payout_12m_pct_of_account": 3.657080523295384,
+      "funded_blown_12m": 0.9830508474576272,
+      "breakeven_fee_pct_of_account": 0.5178426020986264
+     },
+     "3": {
+      "funded": 0.0774,
+      "phases": [
+       {
+        "pass": 0.194,
+        "fail": 0.806,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4030
+       },
+       {
+        "pass": 0.4068,
+        "fail": 0.5932,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2966
+       }
+      ],
+      "median_days_to_funded": 33.0,
+      "payout_12m_pct_of_account": 2.171620145512748,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.16808339926268667
+     },
+     "5": {
+      "funded": 0.0356,
+      "phases": [
+       {
+        "pass": 0.127,
+        "fail": 0.873,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4365
+       },
+       {
+        "pass": 0.2658,
+        "fail": 0.7342,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3671
+       }
+      ],
+      "median_days_to_funded": 15.0,
+      "payout_12m_pct_of_account": 0.38275022982078427,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.01362590818161992
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0,
+      "phases": [
+       {
+        "pass": 0.0,
+        "fail": 0.0004,
+        "timeout": 0.9996,
+        "daily_or_maxloss": 0,
+        "consistency": 2
+       }
+      ],
+      "median_days_to_funded": null
+     },
+     "1": {
+      "funded": 0.0072,
+      "phases": [
+       {
+        "pass": 0.0072,
+        "fail": 0.0386,
+        "timeout": 0.9542,
+        "daily_or_maxloss": 117,
+        "consistency": 76
+       }
+      ],
+      "median_days_to_funded": 24.0
+     },
+     "2": {
+      "funded": 0.0444,
+      "phases": [
+       {
+        "pass": 0.0444,
+        "fail": 0.4362,
+        "timeout": 0.5194,
+        "daily_or_maxloss": 1620,
+        "consistency": 561
+       }
+      ],
+      "median_days_to_funded": 21.0
+     },
+     "3": {
+      "funded": 0.0322,
+      "phases": [
+       {
+        "pass": 0.0322,
+        "fail": 0.8374,
+        "timeout": 0.1304,
+        "daily_or_maxloss": 3248,
+        "consistency": 939
+       }
+      ],
+      "median_days_to_funded": 16.0
+     },
+     "5": {
+      "funded": 0.0028,
+      "phases": [
+       {
+        "pass": 0.0028,
+        "fail": 0.9964,
+        "timeout": 0.0008,
+        "daily_or_maxloss": 4012,
+        "consistency": 970
+       }
+      ],
+      "median_days_to_funded": 10.5
+     }
+    }
+   },
+   "net_zero_edge": {
+    "mean_return_pct": 3.615993566209161e-18,
+    "rows": 1965,
+    "ftmo": {
+     "0.5": {
+      "funded": 0.0552,
+      "phases": [
+       {
+        "pass": 0.136,
+        "fail": 0.1408,
+        "timeout": 0.7232,
+        "daily_or_maxloss": 704
+       },
+       {
+        "pass": 0.4268,
+        "fail": 0.1342,
+        "timeout": 0.439,
+        "daily_or_maxloss": 671
+       }
+      ],
+      "median_days_to_funded": 540.0,
+      "payout_12m_pct_of_account": 2.4150033231743477,
+      "funded_blown_12m": 0.050724637681159424,
+      "breakeven_fee_pct_of_account": 0.133308183439224
+     },
+     "1": {
+      "funded": 0.2282,
+      "phases": [
+       {
+        "pass": 0.3864,
+        "fail": 0.4984,
+        "timeout": 0.1152,
+        "daily_or_maxloss": 2492
+       },
+       {
+        "pass": 0.5886,
+        "fail": 0.3886,
+        "timeout": 0.0228,
+        "daily_or_maxloss": 1943
+       }
+      ],
+      "median_days_to_funded": 292.0,
+      "payout_12m_pct_of_account": 4.414221598845399,
+      "funded_blown_12m": 0.504820333041192,
+      "breakeven_fee_pct_of_account": 1.0073253688565202
+     },
+     "2": {
+      "funded": 0.1386,
+      "phases": [
+       {
+        "pass": 0.283,
+        "fail": 0.717,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3585
+       },
+       {
+        "pass": 0.4992,
+        "fail": 0.5008,
+        "timeout": 0.0,
+        "daily_or_maxloss": 2504
+       }
+      ],
+      "median_days_to_funded": 80.0,
+      "payout_12m_pct_of_account": 3.682695474946709,
+      "funded_blown_12m": 0.9884559884559885,
+      "breakeven_fee_pct_of_account": 0.5104215928276138
+     },
+     "3": {
+      "funded": 0.0804,
+      "phases": [
+       {
+        "pass": 0.201,
+        "fail": 0.799,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3995
+       },
+       {
+        "pass": 0.3944,
+        "fail": 0.6056,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3028
+       }
+      ],
+      "median_days_to_funded": 36.0,
+      "payout_12m_pct_of_account": 2.1314610386125077,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.1713694675044456
+     },
+     "5": {
+      "funded": 0.0304,
+      "phases": [
+       {
+        "pass": 0.1246,
+        "fail": 0.8754,
+        "timeout": 0.0,
+        "daily_or_maxloss": 4377
+       },
+       {
+        "pass": 0.2688,
+        "fail": 0.7312,
+        "timeout": 0.0,
+        "daily_or_maxloss": 3656
+       }
+      ],
+      "median_days_to_funded": 16.0,
+      "payout_12m_pct_of_account": 0.6965546345364476,
+      "funded_blown_12m": 1.0,
+      "breakeven_fee_pct_of_account": 0.021175260889908006
+     }
+    },
+    "generic": {
+     "0.5": {
+      "funded": 0.0002,
+      "phases": [
+       {
+        "pass": 0.0002,
+        "fail": 0.0,
+        "timeout": 0.9998,
+        "daily_or_maxloss": 0,
+        "consistency": 0
+       }
+      ],
+      "median_days_to_funded": 30.0
+     },
+     "1": {
+      "funded": 0.005,
+      "phases": [
+       {
+        "pass": 0.005,
+        "fail": 0.0388,
+        "timeout": 0.9562,
+        "daily_or_maxloss": 119,
+        "consistency": 75
+       }
+      ],
+      "median_days_to_funded": 26.0
+     },
+     "2": {
+      "funded": 0.0466,
+      "phases": [
+       {
+        "pass": 0.0466,
+        "fail": 0.4426,
+        "timeout": 0.5108,
+        "daily_or_maxloss": 1668,
+        "consistency": 545
+       }
+      ],
+      "median_days_to_funded": 22.0
+     },
+     "3": {
+      "funded": 0.0338,
+      "phases": [
+       {
+        "pass": 0.0338,
+        "fail": 0.833,
+        "timeout": 0.1332,
+        "daily_or_maxloss": 3228,
+        "consistency": 937
+       }
+      ],
+      "median_days_to_funded": 17.0
+     },
+     "5": {
+      "funded": 0.0054,
+      "phases": [
+       {
+        "pass": 0.0054,
+        "fail": 0.9924,
+        "timeout": 0.0022,
+        "daily_or_maxloss": 4008,
+        "consistency": 954
+       }
+      ],
+      "median_days_to_funded": 11.0
+     }
+    }
+   }
+  }
+ },
+ "posthoc_A1": {
+  "nq_gross_historical_k1": {
+   "funded": 41,
+   "failed": 39,
+   "unfinished": 13,
+   "funded_of_finished": 0.5125,
+   "median_days": 168.0
+  },
+  "nq_gross_historical_k0.5": {
+   "funded": 66,
+   "failed": 0,
+   "unfinished": 27,
+   "funded_of_finished": 1.0,
+   "median_days": 391.0
+  },
+  "nq_net_historical_k1": {
+   "funded": 35,
+   "failed": 48,
+   "unfinished": 10,
+   "funded_of_finished": 0.42168674698795183,
+   "median_days": 205.0
+  },
+  "nq_net_historical_k0.5": {
+   "funded": 35,
+   "failed": 1,
+   "unfinished": 57,
+   "funded_of_finished": 0.9722222222222222,
+   "median_days": 406.0
+  },
+  "gold_gross_historical_k1": {
+   "funded": 85,
+   "failed": 7,
+   "unfinished": 2,
+   "funded_of_finished": 0.9239130434782609,
+   "median_days": 201.0
+  },
+  "gold_gross_historical_k0.5": {
+   "funded": 85,
+   "failed": 0,
+   "unfinished": 9,
+   "funded_of_finished": 1.0,
+   "median_days": 460.0
+  },
+  "gold_net_historical_k1": {
+   "funded": 44,
+   "failed": 48,
+   "unfinished": 2,
+   "funded_of_finished": 0.4782608695652174,
+   "median_days": 256.0
+  },
+  "gold_net_historical_k0.5": {
+   "funded": 81,
+   "failed": 3,
+   "unfinished": 10,
+   "funded_of_finished": 0.9642857142857143,
+   "median_days": 911.0
+  },
+  "combined_gross_historical_k1": {
+   "funded": 74,
+   "failed": 12,
+   "unfinished": 8,
+   "funded_of_finished": 0.8604651162790697,
+   "median_days": 237.0
+  },
+  "combined_gross_historical_k0.5": {
+   "funded": 77,
+   "failed": 0,
+   "unfinished": 17,
+   "funded_of_finished": 1.0,
+   "median_days": 443.0
+  },
+  "combined_net_historical_k1": {
+   "funded": 53,
+   "failed": 37,
+   "unfinished": 4,
+   "funded_of_finished": 0.5888888888888889,
+   "median_days": 263.0
+  },
+  "combined_net_historical_k0.5": {
+   "funded": 75,
+   "failed": 0,
+   "unfinished": 19,
+   "funded_of_finished": 1.0,
+   "median_days": 711.0
+  },
+  "nq_net_block21_k1": 0.4082,
+  "nq_net_zero_edge_block21_k1": 0.1948,
+  "gold_net_block21_k1": 0.4484,
+  "gold_net_zero_edge_block21_k1": 0.2288,
+  "combined_net_block21_k1": 0.5192,
+  "combined_net_zero_edge_block21_k1": 0.202
+ }
+}

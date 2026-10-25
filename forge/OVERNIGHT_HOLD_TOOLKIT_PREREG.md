@@ -97,4 +97,15 @@ from this study alone.
 
 ## Amendments
 
-*None yet.*
+### A1 — 2026-10-25 — POST-HOC (results seen)
+
+- Added two descriptive checks: FTMO on the actual trade sequence (a fresh attempt every 21 trades, no resampling)
+  and a 21-trade bootstrap block for the net 1× cells. They don't change any registered cell.
+- THE GATE reads yes on the letter, but its EV leg turned out not to discriminate: in this payout model the
+  zero-edge control also clears a ~0.54% fee (break-even fee ~1.0–1.2%), because a challenge caps losses at the fee.
+  The registered reading is reported as is, with this caveat and the fact that the edge contribution is ~0 at the
+  lower end of the edge interval.
+
+## RESULTS
+
+*In `analysis/output/overnight-hold-toolkit/RESULTS.md`.*
