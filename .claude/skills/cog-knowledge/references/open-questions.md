@@ -38,3 +38,5 @@ Fix these only when asked, or when touching the file anyway, and then remove the
 
 
 **2026-10-18 (his ES dealer-hedging chart, `education/cog-snippets.md` §2; not yet asked):** are the per-strike fans delta or gamma; which expiries; IV source ("IV less ATM" = sticky-strike shift?); the difference between "flip (zero crossing)", "total gamma flip" and "zero gamma"; what the white line is; does he assume dealers long calls / short puts.
+
+**2026-10-25 (C.OG promo video, "Options, rates, commodities and liquidity, in one feed"; open):** is it a paid product or member feed, and when; the data sources; whether the commodities "z-score" is mean/sd or a two-year range position; the rolling-correlation window; whether any panel carries a tested signal. See `education/cog-snippets.md` §4.
