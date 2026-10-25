@@ -10,15 +10,15 @@ Generated 2026-10-25.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **214** |
+| claims tested (validated + null + underpowered) | **217** |
 | validated | 43 |
-| null | 128 |
-| underpowered | 43 |
+| null | 129 |
+| underpowered | 45 |
 | context (base rates, descriptions: not counted as tests) | 37 |
 | pre-registrations with no banked verdict (below) | 80 |
 
-**What the count says (Lesson 02 §05).** If none of the 214 claims were real, tests at the usual 5% size would still pass
-about **10.7** of them by luck. 43 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 217 claims were real, tests at the usual 5% size would still pass
+about **10.9** of them by luck. 43 passed, so most passes are unlikely to be luck alone, but
 **roughly 11 of the 43 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -277,6 +277,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-24 | macro-confluence-range | macro | null | MD files/MACRO_CONFLUENCE_RANGE_PREREG.md |
 | 2026-10-24 | wall-placebo | positioning | null | oi_research_book/WALL_PLACEBO_PREREG.md |
 | 2026-10-24 | yield-ladder-eurusd | macro | underpowered | forge/YIELD_PREDICTIVE_LADDER_PREREG.md |
+| 2026-10-25 | dax-ifo-lookahead | macro | null | forge/DAX_IFO_LOOKAHEAD_PREREG.md |
+| 2026-10-25 | overnight-hold-gold | price | underpowered | forge/OVERNIGHT_HOLD_PREREG.md |
+| 2026-10-25 | overnight-hold-nq | price | underpowered | forge/OVERNIGHT_HOLD_PREREG.md |
 | 2026-10-25 | portfolio-book-validate | price | context | forge/PORTFOLIO_BOOK_VALIDATE_PREREG.md |
 
 ## Pre-registered, but no banked verdict

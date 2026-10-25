@@ -1,5 +1,7 @@
 # IFO-DAX Trading Strategy
 
+> **2026-10-25: LOOKAHEAD, never tradable** (Evidence Book `dax-ifo-lookahead`, NULL). The scripts trade the whole month on an IFO reading published ~25th of that month. Using only a published reading: -5.3% CAGR (next month) / -7.0% (from release), t -0.95 / -1.21. See `analysis/output/dax-ifo-lookahead/RESULTS.md`. The results below are kept for the record only.
+
 Quantitative trading strategy using German IFO Business Climate Index to generate DAX signals.
 
 ## Setup

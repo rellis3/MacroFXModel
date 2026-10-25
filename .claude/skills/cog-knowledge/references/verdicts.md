@@ -46,6 +46,12 @@ Plain-English cards of every row below (and the wider rates tests) are on the ch
 |---|---|---|---|
 | 2026-07-31 | 2 | 07-30 both stood aside; 07-31 we disagreed and were right (he stopped, −76.1). Pre-registered bar: real if ≥ 70% agreement at n ≥ 30, null if ≤ 60% | `cog-replication/FORWARD_LOG.md` |
 
+## His research tasks (Bank micro-education)
+
+| Question | Verdict | Key numbers | Source |
+|---|---|---|---|
+| Overnight Hold vs Buy & Hold (2026-10-25): long 20:00 → 14:30 UK, NAS100 and XAUUSD | **UNDERPOWERED** both (`overnight-hold-nq`, `overnight-hold-gold`) | net of real bid/ask + OANDA financing: NQ +0.034%/trade [+0.001, +0.066], +6.0%/yr, Holm p 0.085, decaying; gold +4.0%/yr, t 1.4. CFD buy & hold +14.3% / +9.5%. Prop pass 2–3% of starts at 1×. The page's earlier "net negative" was placeholder costs 2.5–4× too high. His prediction (NQ something, gold weaker) roughly held gross; gold's move is almost all overnight | `analysis/output/overnight-hold/RESULTS.md`, `forge/OVERNIGHT_HOLD_PREREG.md` |
+
 ## Jordan / Colez mechanisations (adjacent, not C.OG's system)
 
 | Study | Verdict | Source |

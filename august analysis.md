@@ -39,7 +39,7 @@ These are **banked nulls with recorded numbers** — the docs already say "answe
 - **NQ-QMR** — *falsified*, the repo's defining cautionary tale: the engine gave every trade a free pass through the 13:00–14:00 NY-open hour. Honest Sharpe **0.06 vs claimed 1.56** on the same 590 trades. All downstream results (walk-forward Sharpe 1.18, both-sides book, tearsheet) withdrawn.
 - **Macro as a signal**: econ-trend momentum (OOS 0.09, below placebo), macro-direction (null), credit-stress gating (made the book *worse* OOS), CB-sentiment→price (priced in 30 minutes, nothing at daily horizon), FOMC surprise magnitude (null), GLI→FX (Sharpe 0.01). The repo's own verdict: macro is "decoration, not a judge" — its correct roles are the event/news gate and slow regime context, never a per-minute signal.
 - **Mechanical fades at vol-forecast lines**: every tested exit negative; the overshoot mechanism (price runs ~36 pips past the line; MFE≈38/MAE≈37) kills tight and wide stops alike. Lines are context, not triggers.
-- **Misc**: hedge-v1 correlation "hedging" (bleeds by construction), hurst feature (dropped — predicts nothing), layer2 vol-bot SL/TP grid (net-negative every pair), sltp hindsight-best ≈ zero edge, overnight hold (gross effect, net negative), max-copier (autopsy: post-impulse drift is a coin flip), inverse-σ sizing on chandelier books (chandelier already σ-normalizes), Dax IFO (decayed 2020+), MVE fair-value z-fade (deflated Sharpe 0.008 — "worse than inert").
+- **Misc**: hedge-v1 correlation "hedging" (bleeds by construction), hurst feature (dropped — predicts nothing), layer2 vol-bot SL/TP grid (net-negative every pair), sltp hindsight-best ≈ zero edge, overnight hold (gross effect real; net of REAL costs +6%/yr NQ, +4% gold, unconfirmed and below buy & hold, prop-check fail — `overnight-hold-nq`/`-gold` underpowered, 2026-10-25), max-copier (autopsy: post-impulse drift is a coin flip), inverse-σ sizing on chandelier books (chandelier already σ-normalizes), Dax IFO (LOOKAHEAD, never tradable — `dax-ifo-lookahead` null, 2026-10-25), MVE fair-value z-fade (deflated Sharpe 0.008 — "worse than inert").
 
 ### 1.3 The repo's actual diseases (not bad ideas — process)
 
@@ -284,7 +284,7 @@ Two things wearing one dashboard. The evidence-bearing spine is good — seven p
 | liquidity-backtest.html | Intraday POC/VAH/OI levels help range book? (misnamed — microstructure) | A/B on range-line analyser, pre-registered pass rule | 4 | **KEEP one recorded run**; rename |
 | cot-extremes.html | Positioning extremes context | OI-normalized spec share percentiles, 156w | 4 | **KEEP** + run the pre-registered COT factor test before wiring anything |
 | news-exhaustion.html | (see fades §4.3) | — | 4 | **KEEP — run and bank** |
-| Dax Base IFO System/ | IFO MoM → DAX | sign rule + OLS | 3 | **CULL (archive)** — decayed 2020+; lessons extracted |
+| Dax Base IFO System/ | IFO MoM → DAX | sign rule + OLS | 3 | **CULL (archive)** — lookahead, never tradable (`dax-ifo-lookahead`, 2026-10-25); lessons extracted |
 | macro-regime-conditional/ | Composite score × QQQ/SPY | weekly z-composite, ladder, WF | 4 | **PARK pending Q6 re-run** |
 | system-credit-equity/system-yield-curve.html | P2/P3 display panels | hand-tunable thresholds — unfalsifiable as shipped | 2 | **CULL** — honest versions exist elsewhere; one already nulled |
 
