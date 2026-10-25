@@ -155,7 +155,7 @@ export async function runStudy(spec, { store = null, write = true, log = () => {
     if (!legs) notes.push(`${inst}: no rate legs (not a six-letter FX pair) — carry 0`);
     px[inst] = { dates, closes, rets, vol, legs, carryIds, mask: decisionMask(dates, spec) };
   }
-  const costs = await CostModel.open(store, { entryHourUtc: spec.entryHourUtc ?? FIXED.entryHourUtc, universe: spec.universe, px });
+  const costs = await CostModel.open(store, { entryHourUtc: spec.entryHourUtc ?? FIXED.entryHourUtc, universe: spec.universe, px, unmeasuredFrac: spec.unmeasuredCostFrac });
   notes.push(...costs.notes);
 
   // ── walk-forward fits (only when the study fits anything) ──

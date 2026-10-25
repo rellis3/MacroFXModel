@@ -96,4 +96,20 @@ T2's cash rate r: `rate3m_usd` has no point-in-time vintage before 2013-06. For 
 the store's latest published value for that month. It is a cost input, not a signal, so a revised value cannot select
 trades. T9's result (all five sleeves ≥ 0.9975 on 2014+) was already computed when this was written; T2 had not been run.
 
-## RESULTS
+### A2 — 2026-10-25 — POST-HOC (results seen)
+**T1 failed and was diagnosed.** In all three cuts, 6% of leg-days before the cut differed from the full run. No position
+and no vol estimate differed anywhere, and the vol proxy matched exactly. Every mismatch was the **cost on the NAS100 and
+SPX500 legs**. The harness charges unmeasured instruments the worst FX pair in the universe, priced off the mean of the
+window's **last 250 closes**, so the charge moved with the window end. It also differed by sleeve: 1.41 bp in S1/S1g,
+where gold is the only FX-type leg, and 2.68 bp in S2. Fix: an opt-in harness option `spec.unmeasuredCostFrac`
+(other studies unchanged), set to a fixed **3.0 bp** round trip for NAS100/SPX500 in `build.mjs`. That is above the
+1.41/2.68 bp charged before, so it can only lower results. Every test is re-run with the fix, and T1 must then pass
+exactly. The parent's outputs are regenerated with the fixed cost. `PB_LEGACY_COST=1` reproduces the old rule.
+T2–T5 and T8 were computed once with the old rule; those numbers are superseded, not reported as results.
+
+## RESULTS — run 2026-10-25
+
+**CONTEXT.** Construction holds. T0, T1 after the A2 fix (288,873 leg-days identical), T3 (×1.06), T4 (1.10), T8 (0.89,
+sign only) and T9 (≥ 0.9975) pass, and T2 passes at 0.83. **T6 fails**: the proxy correlates 0.58 with the PUT index, and
+its Sharpe 1.07 is 0.51 above PUT's 0.57. All haircuts together give **0.74**; the CFD-tradeable sleeves alone give
+**0.21**. Full write-up: `analysis/output/portfolio-book-validate/RESULTS.md`.

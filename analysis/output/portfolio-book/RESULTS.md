@@ -4,6 +4,11 @@ Prereg: `forge/PORTFOLIO_BOOK_PREREG.md` (committed in `e5dd7a7a`, 2026-10-19; a
 any outcome). Run 2026-10-19, harness seed `0x9e3779b9`, B = 1,000. Branch `main`. Ledger id: `portfolio-book`.
 Page: `portfolio-book.html`.
 
+> **Update 2026-10-25 (`portfolio-book-validate`).** The index-cost rule moved with the window end (a harness flaw found by
+> its future-poisoning test). Outputs here are regenerated with a fixed 3.0 bp index cost: P1 1.107 → **1.104**. The bias
+> checks put the honest book at **0.74** with all haircuts, and **0.21** for the CFD-tradeable sleeves alone. The vol proxy
+> overstates real put-writing. See `analysis/output/portfolio-book-validate/RESULTS.md`.
+
 ## Verdict: CONTEXT (registered gate not met)
 
 The equal-risk book P1 (S1g core beta, S2 trend, S3g carry, S4 FOMC USD drift, S5g vol-premium proxy) made **net

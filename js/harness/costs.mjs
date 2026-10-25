@@ -22,14 +22,14 @@ const PIP = inst => (/jpy$/.test(inst) ? 0.01 : (inst === 'xauusd' || inst === '
 const IS_INDEX = inst => /^(nas100|spx500|us30|de30|uk100|us2000)/.test(inst);
 
 export class CostModel {
-  static async open(store, { entryHourUtc, universe, px }) {
+  static async open(store, { entryHourUtc, universe, px, unmeasuredFrac }) {
     const rows = await store.profile('spread_profile');
     const byPair = {};
     for (const r of rows) (byPair[r.pair] ??= {})[Number(r.hour)] = r;
-    return new CostModel(byPair, { entryHourUtc, universe, px });
+    return new CostModel(byPair, { entryHourUtc, universe, px, unmeasuredFrac });
   }
 
-  constructor(byPair, { entryHourUtc, universe, px }) {
+  constructor(byPair, { entryHourUtc, universe, px, unmeasuredFrac }) {
     this.byPair = byPair;
     this.hour = entryHourUtc;
     this.notes = [];
@@ -58,6 +58,15 @@ export class CostModel {
       }
     }
     this.worstFx = worst;
+    // Opt-in (spec.unmeasuredCostFrac): a fixed round-trip fraction for unmeasured instruments. The default rule below prices
+    // the worst FX pair off the mean of the window's LAST 250 closes, so the charge depends on where the window ends and on
+    // which FX legs share the universe (found by forge/PORTFOLIO_BOOK_VALIDATE_PREREG.md T1, 2026-10-25). Studies that do not
+    // pass it are unchanged.
+    if (Number.isFinite(unmeasuredFrac)) {
+      this.worstFx = { inst: 'fixed', frac: unmeasuredFrac };
+      for (const inst of this.unmeasured) this.notes.push(`${inst}: spread UNMEASURED — charged a fixed ${(unmeasuredFrac * 1e4).toFixed(2)} bp of price per round trip (spec.unmeasuredCostFrac)`);
+      return;
+    }
     for (const inst of this.unmeasured) {
       if (worst) this.notes.push(`${inst}: spread UNMEASURED at ${entryHourUtc}:00 UTC — charged the worst measured FX pair (${worst.inst}, ${(worst.frac * 1e4).toFixed(2)} bp of price per round trip)`);
       else this.notes.push(`${inst}: spread UNMEASURED and no reference pair — cost 0 (this result is gross)`);

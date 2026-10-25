@@ -1,0 +1,107 @@
+{
+ "S1g": {
+  "full": {
+   "corr": 0.9994,
+   "days": 4474,
+   "sr_orig": 0.874,
+   "sr_rebuild": 0.866,
+   "mean_abs_diff_bp": 0.61,
+   "only_orig_nonzero": 1,
+   "only_rebuild_nonzero": 0
+  },
+  "2014+": {
+   "corr": 1.0,
+   "days": 3105,
+   "sr_orig": 0.975,
+   "sr_rebuild": 0.968,
+   "mean_abs_diff_bp": 0.098,
+   "only_orig_nonzero": 0,
+   "only_rebuild_nonzero": 0
+  },
+  "pass": true
+ },
+ "S2": {
+  "full": {
+   "corr": 0.9763,
+   "days": 4844,
+   "sr_orig": 0.209,
+   "sr_rebuild": 0.233,
+   "mean_abs_diff_bp": 2.608,
+   "only_orig_nonzero": 0,
+   "only_rebuild_nonzero": 2
+  },
+  "2014+": {
+   "corr": 0.9975,
+   "days": 3282,
+   "sr_orig": 0.104,
+   "sr_rebuild": 0.132,
+   "mean_abs_diff_bp": 0.569,
+   "only_orig_nonzero": 0,
+   "only_rebuild_nonzero": 0
+  },
+  "pass": true
+ },
+ "S3g": {
+  "full": {
+   "corr": 0.9999,
+   "days": 3263,
+   "sr_orig": 0.097,
+   "sr_rebuild": 0.092,
+   "mean_abs_diff_bp": 0.054,
+   "only_orig_nonzero": 0,
+   "only_rebuild_nonzero": 0
+  },
+  "2014+": {
+   "corr": 0.9999,
+   "days": 3115,
+   "sr_orig": 0.113,
+   "sr_rebuild": 0.108,
+   "mean_abs_diff_bp": 0.075,
+   "only_orig_nonzero": 0,
+   "only_rebuild_nonzero": 0
+  },
+  "pass": true
+ },
+ "S4": {
+  "full": {
+   "corr": 0.9991,
+   "days": 504,
+   "sr_orig": 0.65,
+   "sr_rebuild": 0.665,
+   "mean_abs_diff_bp": 0.022,
+   "only_orig_nonzero": 0,
+   "only_rebuild_nonzero": 0
+  },
+  "2014+": {
+   "corr": 0.9991,
+   "days": 504,
+   "sr_orig": 0.79,
+   "sr_rebuild": 0.809,
+   "mean_abs_diff_bp": 0.033,
+   "only_orig_nonzero": 0,
+   "only_rebuild_nonzero": 0
+  },
+  "pass": true
+ },
+ "S5g": {
+  "full": {
+   "corr": 0.9913,
+   "days": 3134,
+   "sr_orig": 1.091,
+   "sr_rebuild": 1.05,
+   "mean_abs_diff_bp": 0.619,
+   "only_orig_nonzero": 26,
+   "only_rebuild_nonzero": 0
+  },
+  "2014+": {
+   "corr": 0.9999,
+   "days": 2092,
+   "sr_orig": 0.647,
+   "sr_rebuild": 0.64,
+   "mean_abs_diff_bp": 0.033,
+   "only_orig_nonzero": 0,
+   "only_rebuild_nonzero": 0
+  },
+  "pass": true
+ }
+}

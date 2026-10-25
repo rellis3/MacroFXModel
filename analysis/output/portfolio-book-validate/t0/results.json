@@ -1,0 +1,843 @@
+{
+ "id": "portfolio-book",
+ "ranAt": "2026-10-24T23:29:19.567Z",
+ "weekendFold": true,
+ "prereg": "forge/PORTFOLIO_BOOK_PREREG.md",
+ "seed": 2654435769,
+ "window": {
+  "from": "2008-01-02",
+  "to": "2026-08-21",
+  "isEnd": "2018-01-01"
+ },
+ "trials": 11,
+ "varTrialSr": 0.0018388597388137268,
+ "gate": {
+  "checks": [
+   {
+    "key": "p",
+    "label": "Mean daily net return p < 0.05 (date-block bootstrap)",
+    "pass": true,
+    "value": 0.002
+   },
+   {
+    "key": "dsr",
+    "label": "Deflated Sharpe ≥ 0.95 at N = 11",
+    "pass": false,
+    "value": 0.5048
+   },
+   {
+    "key": "halves",
+    "label": "Sharpe > 0 in both halves (split 2017-05-01)",
+    "pass": true,
+    "value": "0.967 / 1.238"
+   }
+  ],
+  "pass": false,
+  "live": true
+ },
+ "cells": {
+  "S1": {
+   "from": "2008-01-30",
+   "to": "2026-08-21",
+   "nDays": 4824,
+   "years": 19.14,
+   "cagrPct": 9.9,
+   "volPct": 10.31,
+   "sharpe": 0.967,
+   "sortino": 1.346,
+   "tStat": 4.232,
+   "maxDdPct": 19.01,
+   "calmar": 0.521,
+   "longestDdDays": 534,
+   "sharpeIs": 0.812,
+   "sharpeOos": 1.144,
+   "sharpeHalves": [
+    0.712,
+    1.218
+   ],
+   "hitDays": 0.554,
+   "worstDayPct": -4.69,
+   "worstMonthPct": -6.77,
+   "bestMonthPct": 9.26,
+   "monthsPositive": 0.616,
+   "skew": -0.597,
+   "kurt": 5.817,
+   "meanDailyCi95": [
+    0.00021,
+    0.00057
+   ],
+   "pValue": 0.002,
+   "dsr": 0.2783,
+   "dsrTrials": 11,
+   "perYearPct": {
+    "2008": -11.92,
+    "2009": 21.06,
+    "2010": 18.79,
+    "2011": 6.95,
+    "2012": 6.53,
+    "2013": 7.15,
+    "2014": 5.7,
+    "2015": -5.47,
+    "2016": 4.07,
+    "2017": 38.3,
+    "2018": -2.66,
+    "2019": 28.33,
+    "2020": 16.62,
+    "2021": 9.47,
+    "2022": -11.78,
+    "2023": 24.63,
+    "2024": 21.27,
+    "2025": 20.41,
+    "2026": 6.99
+   },
+   "yearsPositive": "15/19",
+   "srPeriod": 0.060924604388419394
+  },
+  "S1g": {
+   "from": "2008-02-01",
+   "to": "2026-08-21",
+   "nDays": 4822,
+   "years": 19.13,
+   "cagrPct": 9.38,
+   "volPct": 10.34,
+   "sharpe": 0.919,
+   "sortino": 1.28,
+   "tStat": 4.021,
+   "maxDdPct": 19.34,
+   "calmar": 0.485,
+   "longestDdDays": 534,
+   "sharpeIs": 0.713,
+   "sharpeOos": 1.156,
+   "sharpeHalves": [
+    0.609,
+    1.226
+   ],
+   "hitDays": 0.54,
+   "worstDayPct": -4.85,
+   "worstMonthPct": -7.74,
+   "bestMonthPct": 10.23,
+   "monthsPositive": 0.574,
+   "skew": -0.592,
+   "kurt": 6.137,
+   "meanDailyCi95": [
+    0.00019,
+    0.00056
+   ],
+   "pValue": 0.002,
+   "dsr": 0.2136,
+   "dsrTrials": 11,
+   "perYearPct": {
+    "2008": -13.64,
+    "2009": 18.32,
+    "2010": 17.8,
+    "2011": 7.04,
+    "2012": 5.47,
+    "2013": 4.92,
+    "2014": 6.26,
+    "2015": -5.34,
+    "2016": 1.53,
+    "2017": 38.02,
+    "2018": -6.8,
+    "2019": 24.65,
+    "2020": 28.27,
+    "2021": 8.38,
+    "2022": -14.28,
+    "2023": 24.73,
+    "2024": 19.59,
+    "2025": 28.43,
+    "2026": 4.35
+   },
+   "yearsPositive": "15/19",
+   "srPeriod": 0.05791054553773917
+  },
+  "S2": {
+   "from": "2008-01-30",
+   "to": "2026-08-21",
+   "nDays": 4824,
+   "years": 19.14,
+   "cagrPct": 2.05,
+   "volPct": 9.88,
+   "sharpe": 0.255,
+   "sortino": 0.355,
+   "tStat": 1.115,
+   "maxDdPct": 19.84,
+   "calmar": 0.103,
+   "longestDdDays": 1225,
+   "sharpeIs": 0.33,
+   "sharpeOos": 0.168,
+   "sharpeHalves": [
+    0.292,
+    0.218
+   ],
+   "hitDays": 0.526,
+   "worstDayPct": -3.86,
+   "worstMonthPct": -5.99,
+   "bestMonthPct": 12.8,
+   "monthsPositive": 0.504,
+   "skew": -0.208,
+   "kurt": 5.628,
+   "meanDailyCi95": [
+    -0.00005,
+    0.00026
+   ],
+   "pValue": 0.2318,
+   "dsr": 0.0001,
+   "dsrTrials": 11,
+   "perYearPct": {
+    "2008": 18.17,
+    "2009": 6.59,
+    "2010": 5.13,
+    "2011": -4.9,
+    "2012": -7.27,
+    "2013": 10.37,
+    "2014": 11.85,
+    "2015": -2.68,
+    "2016": -11.49,
+    "2017": 7,
+    "2018": 6.53,
+    "2019": -10.08,
+    "2020": 6.97,
+    "2021": -5.28,
+    "2022": 12.21,
+    "2023": 1.11,
+    "2024": 5.48,
+    "2025": 0.48,
+    "2026": -4.9
+   },
+   "yearsPositive": "12/19",
+   "srPeriod": 0.016056596063919387
+  },
+  "S3": {
+   "from": "2013-06-10",
+   "to": "2026-08-21",
+   "nDays": 3428,
+   "years": 13.6,
+   "cagrPct": 0.61,
+   "volPct": 10.35,
+   "sharpe": 0.111,
+   "sortino": 0.153,
+   "tStat": 0.408,
+   "maxDdPct": 40.85,
+   "calmar": 0.015,
+   "longestDdDays": 2553,
+   "sharpeIs": -0.673,
+   "sharpeOos": 0.527,
+   "sharpeHalves": [
+    -0.606,
+    0.414
+   ],
+   "hitDays": 0.516,
+   "worstDayPct": -5.12,
+   "worstMonthPct": -9.5,
+   "bestMonthPct": 9.41,
+   "monthsPositive": 0.484,
+   "skew": -0.326,
+   "kurt": 5.477,
+   "meanDailyCi95": [
+    -0.00017,
+    0.00026
+   ],
+   "pValue": 0.7253,
+   "dsr": 0.0001,
+   "dsrTrials": 11,
+   "perYearPct": {
+    "2013": 1.22,
+    "2014": -14.52,
+    "2015": -17,
+    "2016": 8.61,
+    "2017": -10,
+    "2018": 13.62,
+    "2019": -0.05,
+    "2020": -6.52,
+    "2021": 18.08,
+    "2022": 15.01,
+    "2023": -1.7,
+    "2024": 13.28,
+    "2025": -3.83,
+    "2026": 0.26
+   },
+   "yearsPositive": "7/14",
+   "srPeriod": 0.006972606563244906
+  },
+  "S3g": {
+   "from": "2013-06-05",
+   "to": "2026-08-21",
+   "nDays": 3431,
+   "years": 13.62,
+   "cagrPct": 0.85,
+   "volPct": 10.29,
+   "sharpe": 0.134,
+   "sortino": 0.186,
+   "tStat": 0.493,
+   "maxDdPct": 38.74,
+   "calmar": 0.022,
+   "longestDdDays": 2553,
+   "sharpeIs": -0.627,
+   "sharpeOos": 0.534,
+   "sharpeHalves": [
+    -0.544,
+    0.415
+   ],
+   "hitDays": 0.503,
+   "worstDayPct": -3.4,
+   "worstMonthPct": -9.1,
+   "bestMonthPct": 9.3,
+   "monthsPositive": 0.497,
+   "skew": -0.198,
+   "kurt": 4.67,
+   "meanDailyCi95": [
+    -0.00017,
+    0.00026
+   ],
+   "pValue": 0.6513,
+   "dsr": 0.0002,
+   "dsrTrials": 11,
+   "perYearPct": {
+    "2013": 0.36,
+    "2014": -14.93,
+    "2015": -11.07,
+    "2016": 7.96,
+    "2017": -12.08,
+    "2018": 18.92,
+    "2019": 0.63,
+    "2020": -10.96,
+    "2021": 17.14,
+    "2022": 9.82,
+    "2023": -1.38,
+    "2024": 13.16,
+    "2025": 3.26,
+    "2026": -1.45
+   },
+   "yearsPositive": "8/14",
+   "srPeriod": 0.00841516429686703
+  },
+  "S4": {
+   "from": "2016-03-16",
+   "to": "2026-08-21",
+   "nDays": 2711,
+   "years": 10.76,
+   "cagrPct": 8.86,
+   "volPct": 9.4,
+   "sharpe": 0.95,
+   "sortino": 1.514,
+   "tStat": 3.116,
+   "maxDdPct": 11.45,
+   "calmar": 0.774,
+   "longestDdDays": 354,
+   "sharpeIs": 0.26,
+   "sharpeOos": 1.074,
+   "sharpeHalves": [
+    -0.512,
+    1.105
+   ],
+   "hitDays": 0.474,
+   "worstDayPct": -5.36,
+   "worstMonthPct": -5.76,
+   "bestMonthPct": 7.98,
+   "monthsPositive": 0.492,
+   "skew": 0.607,
+   "kurt": 24.675,
+   "meanDailyCi95": [
+    0.00012,
+    0.00057
+   ],
+   "pValue": 0.006,
+   "dsr": 0.305,
+   "dsrTrials": 11,
+   "perYearPct": {
+    "2016": -3.53,
+    "2017": 7.17,
+    "2018": 27.03,
+    "2019": 2.67,
+    "2020": 18.02,
+    "2021": 21.63,
+    "2022": 6.14,
+    "2023": 5.22,
+    "2024": 9.8,
+    "2025": 9.13,
+    "2026": -3.79
+   },
+   "yearsPositive": "9/11",
+   "srPeriod": 0.05983880939778495
+  },
+  "S5": {
+   "from": "2008-01-30",
+   "to": "2026-08-21",
+   "nDays": 4824,
+   "years": 19.14,
+   "cagrPct": 14.21,
+   "volPct": 12.51,
+   "sharpe": 1.127,
+   "sortino": 1.247,
+   "tStat": 4.932,
+   "maxDdPct": 33.51,
+   "calmar": 0.424,
+   "longestDdDays": 945,
+   "sharpeIs": 1.597,
+   "sharpeOos": 0.674,
+   "sharpeHalves": [
+    1.554,
+    0.773
+   ],
+   "hitDays": 0.731,
+   "worstDayPct": -17.02,
+   "worstMonthPct": -20.69,
+   "bestMonthPct": 7.35,
+   "monthsPositive": 0.746,
+   "skew": -6.707,
+   "kurt": 87.189,
+   "meanDailyCi95": [
+    0.00033,
+    0.00079
+   ],
+   "pValue": 0.002,
+   "dsr": 0.5317,
+   "dsrTrials": 11,
+   "perYearPct": {
+    "2008": -12.9,
+    "2009": 40.98,
+    "2010": 27.81,
+    "2011": 2.74,
+    "2012": 47.2,
+    "2013": 26.06,
+    "2014": 14.5,
+    "2015": 3.88,
+    "2016": 15.36,
+    "2017": 49.77,
+    "2018": -23.27,
+    "2019": 12.94,
+    "2020": -3.04,
+    "2021": 25.4,
+    "2022": 0.92,
+    "2023": 44.68,
+    "2024": 7.97,
+    "2025": 8.02,
+    "2026": 15.36
+   },
+   "yearsPositive": "16/19",
+   "srPeriod": 0.07100420672221114
+  },
+  "S5g": {
+   "from": "2008-02-04",
+   "to": "2026-08-21",
+   "nDays": 4821,
+   "years": 19.13,
+   "cagrPct": 11.68,
+   "volPct": 13.44,
+   "sharpe": 0.893,
+   "sortino": 0.998,
+   "tStat": 3.907,
+   "maxDdPct": 37.85,
+   "calmar": 0.309,
+   "longestDdDays": 988,
+   "sharpeIs": 1.545,
+   "sharpeOos": 0.321,
+   "sharpeHalves": [
+    1.552,
+    0.394
+   ],
+   "hitDays": 0.709,
+   "worstDayPct": -23.67,
+   "worstMonthPct": -19.5,
+   "bestMonthPct": 12.3,
+   "monthsPositive": 0.547,
+   "skew": -8.98,
+   "kurt": 173.989,
+   "meanDailyCi95": [
+    0.00021,
+    0.00071
+   ],
+   "pValue": 0.004,
+   "dsr": 0.2357,
+   "dsrTrials": 11,
+   "perYearPct": {
+    "2008": -3.07,
+    "2009": 31.71,
+    "2010": 33.31,
+    "2011": 8.85,
+    "2012": 63.03,
+    "2013": 13.56,
+    "2014": 11.44,
+    "2015": -5.49,
+    "2016": 16.33,
+    "2017": 42.73,
+    "2018": -7.73,
+    "2019": 18.22,
+    "2020": -8.18,
+    "2021": -17.01,
+    "2022": -10.35,
+    "2023": 44.83,
+    "2024": 12.32,
+    "2025": 10.07,
+    "2026": 3.41
+   },
+   "yearsPositive": "13/19",
+   "srPeriod": 0.05626762419909205
+  },
+  "P1": {
+   "from": "2008-02-27",
+   "to": "2026-08-21",
+   "nDays": 4804,
+   "years": 19.06,
+   "cagrPct": 12.28,
+   "volPct": 11.02,
+   "sharpe": 1.107,
+   "sortino": 1.404,
+   "tStat": 4.835,
+   "maxDdPct": 17.38,
+   "calmar": 0.707,
+   "longestDdDays": 732,
+   "sharpeIs": 1.007,
+   "sharpeOos": 1.216,
+   "sharpeHalves": [
+    0.967,
+    1.238
+   ],
+   "hitDays": 0.603,
+   "worstDayPct": -10.79,
+   "worstMonthPct": -9.56,
+   "bestMonthPct": 11.74,
+   "monthsPositive": 0.614,
+   "skew": -2.709,
+   "kurt": 29.636,
+   "meanDailyCi95": [
+    0.00029,
+    0.00068
+   ],
+   "pValue": 0.002,
+   "dsr": 0.5048,
+   "dsrTrials": 11,
+   "perYearPct": {
+    "2008": 4.88,
+    "2009": 21.66,
+    "2010": 23.61,
+    "2011": 1.31,
+    "2012": 27.64,
+    "2013": 12.27,
+    "2014": 5.32,
+    "2015": -10.76,
+    "2016": 3.73,
+    "2017": 26.21,
+    "2018": 15.35,
+    "2019": 13.12,
+    "2020": 8.71,
+    "2021": 4.86,
+    "2022": 1.86,
+    "2023": 40.83,
+    "2024": 26.45,
+    "2025": 22.56,
+    "2026": -2.29
+   },
+   "yearsPositive": "17/19",
+   "srPeriod": 0.06975400030843086
+  },
+  "P2": {
+   "from": "2008-02-27",
+   "to": "2026-08-21",
+   "nDays": 4804,
+   "years": 19.06,
+   "cagrPct": 10.98,
+   "volPct": 10.92,
+   "sharpe": 1.009,
+   "sortino": 1.282,
+   "tStat": 4.407,
+   "maxDdPct": 13.8,
+   "calmar": 0.796,
+   "longestDdDays": 423,
+   "sharpeIs": 1.056,
+   "sharpeOos": 0.96,
+   "sharpeHalves": [
+    1.009,
+    1.011
+   ],
+   "hitDays": 0.591,
+   "worstDayPct": -11.67,
+   "worstMonthPct": -8.19,
+   "bestMonthPct": 10.06,
+   "monthsPositive": 0.556,
+   "skew": -2.687,
+   "kurt": 30.641,
+   "meanDailyCi95": [
+    0.00024,
+    0.00064
+   ],
+   "pValue": 0.002,
+   "dsr": 0.3526,
+   "dsrTrials": 11,
+   "perYearPct": {
+    "2008": -0.43,
+    "2009": 18.93,
+    "2010": 22.48,
+    "2011": 3.74,
+    "2012": 22.08,
+    "2013": 10.7,
+    "2014": 11.17,
+    "2015": -7.97,
+    "2016": 4.1,
+    "2017": 35.84,
+    "2018": -2.83,
+    "2019": 19.88,
+    "2020": 10.29,
+    "2021": -2.12,
+    "2022": -7.08,
+    "2023": 42.13,
+    "2024": 19.74,
+    "2025": 22.84,
+    "2026": 1.39
+   },
+   "yearsPositive": "14/19",
+   "srPeriod": 0.06358047248117346
+  },
+  "mirror": {
+   "from": "2008-02-27",
+   "to": "2026-08-21",
+   "nDays": 4804,
+   "years": 19.06,
+   "cagrPct": -12.02,
+   "volPct": 11.02,
+   "sharpe": -1.107,
+   "sortino": -1.789,
+   "tStat": -4.835,
+   "maxDdPct": 92.32,
+   "calmar": -0.13,
+   "longestDdDays": 4694,
+   "sharpeIs": -1.007,
+   "sharpeOos": -1.216,
+   "sharpeHalves": [
+    -0.967,
+    -1.238
+   ],
+   "hitDays": 0.397,
+   "worstDayPct": -4.88,
+   "worstMonthPct": -10.59,
+   "bestMonthPct": 9.27,
+   "monthsPositive": 0.368,
+   "skew": 2.709,
+   "kurt": 29.636,
+   "meanDailyCi95": [
+    -0.00067,
+    -0.00028
+   ],
+   "pValue": 0.002,
+   "dsr": 0,
+   "dsrTrials": 11,
+   "perYearPct": {
+    "2008": -5.6,
+    "2009": -18.73,
+    "2010": -20.05,
+    "2011": -2.41,
+    "2012": -22.55,
+    "2013": -11.94,
+    "2014": -6.1,
+    "2015": 10.64,
+    "2016": -4.9,
+    "2017": -21.72,
+    "2018": -14.37,
+    "2019": -12.69,
+    "2020": -9.72,
+    "2021": -6.22,
+    "2022": -2.71,
+    "2023": -29.79,
+    "2024": -21.98,
+    "2025": -19.4,
+    "2026": 1.38
+   },
+   "yearsPositive": "2/19",
+   "srPeriod": -0.06975400030843086
+  }
+ },
+ "correlation": {
+  "ids": [
+   "S1g",
+   "S2",
+   "S3g",
+   "S4",
+   "S5g"
+  ],
+  "matrix": {
+   "S1g": {
+    "S1g": 1,
+    "S2": 0.257,
+    "S3g": -0.142,
+    "S4": -0.162,
+    "S5g": 0.449
+   },
+   "S2": {
+    "S1g": 0.257,
+    "S2": 1,
+    "S3g": -0.065,
+    "S4": -0.047,
+    "S5g": 0.165
+   },
+   "S3g": {
+    "S1g": -0.142,
+    "S2": -0.065,
+    "S3g": 1,
+    "S4": 0.335,
+    "S5g": -0.002
+   },
+   "S4": {
+    "S1g": -0.162,
+    "S2": -0.047,
+    "S3g": 0.335,
+    "S4": 1,
+    "S5g": -0.036
+   },
+   "S5g": {
+    "S1g": 0.449,
+    "S2": 0.165,
+    "S3g": -0.002,
+    "S4": -0.036,
+    "S5g": 1
+   }
+  }
+ },
+ "harness": {
+  "S1": {
+   "sharpeOosHarness": 1.087,
+   "sharpeAllHarness": 0.927,
+   "grossOos": 1.09,
+   "costDragAnnBp": 2.09,
+   "carryAnnBp": 0,
+   "turnoverPerYear": 1.76,
+   "tradesOos": 0,
+   "pfOos": null,
+   "winOos": null,
+   "notes": [
+    "nas100: no rate legs (not a six-letter FX pair) — carry 0",
+    "spx500: no rate legs (not a six-letter FX pair) — carry 0",
+    "xauusd: carry leg missing (,rate3m_usd) — carry set to 0",
+    "nas100: spread UNMEASURED at 22:00 UTC — charged the worst measured FX pair (xauusd, 1.41 bp of price per round trip)",
+    "spx500: spread UNMEASURED at 22:00 UTC — charged the worst measured FX pair (xauusd, 1.41 bp of price per round trip)"
+   ]
+  },
+  "S1g": {
+   "sharpeOosHarness": 1.007,
+   "sharpeAllHarness": 0.848,
+   "grossOos": 1.024,
+   "costDragAnnBp": 12.97,
+   "carryAnnBp": 0,
+   "turnoverPerYear": 10.05,
+   "tradesOos": 168,
+   "pfOos": 2.294,
+   "winOos": 0.488,
+   "notes": [
+    "nas100: no rate legs (not a six-letter FX pair) — carry 0",
+    "spx500: no rate legs (not a six-letter FX pair) — carry 0",
+    "xauusd: carry leg missing (,rate3m_usd) — carry set to 0",
+    "nas100: spread UNMEASURED at 22:00 UTC — charged the worst measured FX pair (xauusd, 1.41 bp of price per round trip)",
+    "spx500: spread UNMEASURED at 22:00 UTC — charged the worst measured FX pair (xauusd, 1.41 bp of price per round trip)"
+   ]
+  },
+  "S2": {
+   "sharpeOosHarness": 0.074,
+   "sharpeAllHarness": 0.198,
+   "grossOos": 0.112,
+   "costDragAnnBp": 12.54,
+   "carryAnnBp": 2.09,
+   "turnoverPerYear": 13.42,
+   "tradesOos": 562,
+   "pfOos": 1.062,
+   "winOos": 0.297,
+   "notes": [
+    "xauusd: carry leg missing (,rate3m_usd) — carry set to 0",
+    "nas100: no rate legs (not a six-letter FX pair) — carry 0",
+    "spx500: no rate legs (not a six-letter FX pair) — carry 0",
+    "nas100: spread UNMEASURED at 22:00 UTC — charged the worst measured FX pair (nzdusd, 2.68 bp of price per round trip)",
+    "spx500: spread UNMEASURED at 22:00 UTC — charged the worst measured FX pair (nzdusd, 2.68 bp of price per round trip)"
+   ]
+  },
+  "S3": {
+   "sharpeOosHarness": 0.456,
+   "sharpeAllHarness": 0.035,
+   "grossOos": 0.462,
+   "costDragAnnBp": 2.12,
+   "carryAnnBp": 97.71,
+   "turnoverPerYear": 2.71,
+   "tradesOos": 34,
+   "pfOos": 1.496,
+   "winOos": 0.441,
+   "notes": []
+  },
+  "S3g": {
+   "sharpeOosHarness": 0.518,
+   "sharpeAllHarness": 0.092,
+   "grossOos": 0.554,
+   "costDragAnnBp": 11.27,
+   "carryAnnBp": 91.35,
+   "turnoverPerYear": 14.22,
+   "tradesOos": 420,
+   "pfOos": 1.544,
+   "winOos": 0.531,
+   "notes": []
+  },
+  "S4": {
+   "sharpeOosHarness": 1.037,
+   "sharpeAllHarness": 0.618,
+   "grossOos": 1.087,
+   "costDragAnnBp": 8.77,
+   "carryAnnBp": 11.13,
+   "turnoverPerYear": 10.91,
+   "tradesOos": 476,
+   "pfOos": 2.182,
+   "winOos": 0.643,
+   "notes": []
+  }
+ },
+ "names": {
+  "S1": "Core beta",
+  "S1g": "Core beta (VIX-gated)",
+  "S2": "Trend (21/63/126/252)",
+  "S3": "Carry",
+  "S3g": "Carry (VIX-gated)",
+  "S4": "FOMC USD drift (5 sessions)",
+  "S5": "Vol premium proxy",
+  "S5g": "Vol premium proxy (gated)"
+ },
+ "costs": {
+  "rule": "half of the measured 22:00 UTC spread per unit turnover (spread_profile feature); indices charged the worst measured FX pair",
+  "entryHourUtc": 22,
+  "measured": {
+   "eurusd": {
+    "spreadPriceUnits": 0.000086,
+    "pips": 0.86
+   },
+   "gbpusd": {
+    "spreadPriceUnits": 0.000156,
+    "pips": 1.56
+   },
+   "audusd": {
+    "spreadPriceUnits": 0.000149,
+    "pips": 1.49
+   },
+   "nzdusd": {
+    "spreadPriceUnits": 0.000156,
+    "pips": 1.56
+   },
+   "usdcad": {
+    "spreadPriceUnits": 0.000211,
+    "pips": 2.11
+   },
+   "usdchf": {
+    "spreadPriceUnits": 0.000178,
+    "pips": 1.78
+   },
+   "usdjpy": {
+    "spreadPriceUnits": 0.0187,
+    "pips": 1.87
+   },
+   "xauusd": {
+    "spreadPriceUnits": 0.62,
+    "pips": 0.62
+   }
+  },
+  "unmeasured": [
+   "nas100",
+   "spx500"
+  ],
+  "worstFx": {
+   "inst": "nzdusd",
+   "roundTripBp": 2.68
+  }
+ }
+}
