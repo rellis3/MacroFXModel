@@ -66,9 +66,9 @@ const THEORIES = [
 ];
 const LABEL_TEXT = { supported: 'All measurable checks agree', mixed: 'Some checks agree', against: 'Few checks agree', untested: 'Not yet tested' };
 
-/** The labelled theories, best supported first. Each check is { text, ok: true | false | null }. */
-export function buildTheories(links) {
-  const m = nodeMoves(links);
+/** The labelled theories, best supported first. `overrides` replaces a market's move, for example the dollar measured on the daily pairs instead of a lagging index. Each check is { text, ok: true | false | null }. */
+export function buildTheories(links, overrides = {}) {
+  const m = { ...nodeMoves(links), ...overrides };
   if (!Object.keys(m).length) return [];
   const rank = { supported: 0, mixed: 1, against: 2, untested: 3 };
   return THEORIES.map(t => {

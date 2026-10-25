@@ -425,11 +425,11 @@ export function composeMagazine(c, H) {
   // page 1: the situation in plain terms, before any analysis
   const p1 = `<div class="pg p1">${mh('The story')}${tape}
 <div class="kick">${esc(M.regime)} regime · the investigation</div><h1 class="hd">${esc(feature.headline)}</h1>${feature.standfirst ? `<p class="sf"><span class="sfl">The desk's reading</span>${esc(feature.standfirst)}</p>` : ''}
-${(c.checks ?? []).some(k => k.id === 'dollar') && /dollar/i.test(`${feature.headline} ${feature.standfirst ?? ''}`) ? '<p class="hdchk"><b>Headline check.</b> The dollar part of this headline is unconfirmed. See what we cannot confirm, below.</p>' : ''}<p class="by">By the Desk Atlas research desk · ${esc(M.date)}</p>
+<p class="by">By the Desk Atlas research desk · ${esc(M.date)}</p>
 <div class="split"><div>${c.intro ? threeVoices(c.intro, H) : ''}
 <p class="map"><b>How the issue builds.</b> 1 What happened · 2 Why it might be happening · 3 How markets connect · 4 What broke · 5 Stress and data checks · 6 Competing explanations · 7 What does not fit · 8 The scorecard · the Data Desk</p>
 <p class="evkey" style="margin-top:6px"><span>LABELS</span>${evBadge('observed')}${evBadge('model')}${evBadge('tested')}${evBadge('context')}${evBadge('hyp')}${evBadge('untested')}</p></div>
-<aside class="side"><h4>At a glance</h4><span class="big">${esc(c.glance.broken)}<small>chain links broken of ${esc(c.glance.testable)} judged</small></span>${c.glance.next ? `<p><b>Next:</b> ${esc(c.glance.next)}</p>` : ''}<h4 style="margin-top:14px">Two kinds of alarm</h4>${c.alarms}${(c.checks ?? []).some(k => k.id === 'dollar') ? '<p class="chk"><b>Check:</b> the dollar claim rests on an index that ends days before the rest. See the data check in Exhibit 5.</p>' : ''}</aside></div></div>`;
+<aside class="side"><h4>At a glance</h4><span class="big">${esc(c.glance.broken)}<small>chain links broken of ${esc(c.glance.testable)} judged</small></span>${c.glance.next ? `<p><b>Next:</b> ${esc(c.glance.next)}</p>` : ''}<h4 style="margin-top:14px">Two kinds of alarm</h4>${c.alarms}${(c.checks ?? []).some(k => k.id === 'dollar') ? '<p class="chk"><b>Check:</b> the dollar links use an index that ends days before the rest. See the data check in Exhibit 5.</p>' : ''}</aside></div></div>`;
   // page 2: what happened, the first piece of evidence
   const p2 = c.yieldFig ? `<div class="pg">${mh('What happened')}
 <div class="kick">Exhibit 1 · what happened</div><h2 class="sh">What the fall in yields is made of</h2>
@@ -449,12 +449,12 @@ ${c.textbook ? `<div class="keep"><h3 class="ss">Textbook against today</h3><p c
   const p5 = c.relationFigs ? `<div class="pg">${mh('The evidence')}
 <div class="kick">Exhibit 4 · what did not hold</div><h2 class="sh">The relationships that did not hold</h2>
 <p class="sf" style="font-size:14px">${esc(c.relationLead)}</p>
-<div class="fig2">${c.relationFigs}</div></div>` : '';
+<div class="fig2">${c.relationFigs}</div>${c.chainMethod ? `<div class="box"><h4>How the chain was built</h4>${c.chainGuide ? `<p><b>How the numbers reconcile.</b> ${esc(c.chainGuide.counts)}</p>` : ''}${c.chainMethod}</div>` : ''}</div>` : '';
   // page 6: is it stress, and can we trust the comparison
-  const p6 = (c.stress || (c.checks ?? []).length || c.chainMethod) ? `<div class="pg">${mh('Stress and data checks')}
+  const p6 = (c.stress || (c.checks ?? []).length) ? `<div class="pg">${mh('Stress and data checks')}
 <div class="kick">Exhibit 5 · is this stress, and can we trust the comparison</div><h2 class="sh">Isolated warning signs, or a broad stress event?</h2>
 ${c.stress ? `<p class="evl">${evBadge('model')}<span style="font:11px var(--sans);color:#5b6b82">The broad warnings are fixed rules in the desk's own dashboard. The watched conditions are narrower.</span></p>${stressPanel(c.stress, H)}` : ''}
-${(c.checks ?? []).length ? `<div class="box warn"><h4>Data checks: what could not be reconciled</h4>${c.checks.map(k => `<p><b>${esc(k.title)}.</b> ${esc(k.body)}</p>`).join('')}</div>` : ''}${c.chainMethod ? `<div class="box"><h4>How the chain was built</h4>${c.chainGuide ? `<p><b>How the numbers reconcile.</b> ${esc(c.chainGuide.counts)}</p>` : ''}${c.chainMethod}</div>` : ''}</div>` : '';
+${(c.checks ?? []).length ? `<div class="box warn"><h4>Data checks: what could not be reconciled</h4>${c.checks.map(k => `<p><b>${esc(k.title)}.</b> ${esc(k.body)}</p>`).join('')}</div>` : ''}</div>` : '';
   const p9in = (c.watch || c.theoryCaution || (c.notFit ?? []).length) ? `
 ${(c.notFit ?? []).length ? `<h2 class="sh">What none of the stories explain</h2><div class="box warn" style="margin-top:6px"><ul class="lst" style="margin:0">${c.notFit.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
 ${c.theoryCaution ? `<div class="box"><h4>How to hold the four readings</h4><p>${esc(c.theoryCaution)}</p></div>` : ''}

@@ -8,14 +8,14 @@ const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e 
 const f = k => CHAIN_NODES[k].floor, mv = (k, m, asOf = '2026-10-23') => ({ delta: f(k) * m, last: 1, asOf });
 const links = evaluateChain({ dxy: mv('dxy', 3, '2026-10-16'), nq: mv('nq', -3), spx: mv('spx', -3), vix: mv('vix', 3), hy: mv('hy', 3), gold: mv('gold', -3), real: mv('real', -3), us10y: mv('us10y', -3), bei: mv('bei', 1), audusd: mv('audusd', 1.2) });
 const ys = { dNom: -32, dReal: -28, dBei: -4 };
-const dollarCheck = { id: 'dollar', facts: { asOf: '2026-10-16', days: 7, stronger: 1, n: 7 } };
+const dollarCheck = { id: 'dollar', facts: { asOf: '2026-10-16', days: 7, stronger: 1, n: 7, avg: -0.87 } };
 
 console.log('the opening');
 { const iv = storyIntro({ ys, links, checks: [dollarCheck], gdpnow: 3.5 });
   ok('what happened states the yield move and the real share from the figure', /fell 32bp/.test(iv.fact[0]) && /About 88%/.test(iv.fact[0]));
   ok('the contradiction is stated only when the data shows it: real yields fell yet the Nasdaq and gold fell', /This time the Nasdaq fell [\d.]+% and gold fell [\d.]+%/.test(iv.fact.join(' ')));
   ok('the interpretation is one reading of four, not a conclusion', /growth scare/.test(iv.why.join(' ')) && /one of four explanations/.test(iv.why.join(' ')) && /cannot yet choose between them/.test(iv.why.join(' ')));
-  ok('the dollar limitation comes before any conclusion about safety', /unconfirmed/.test(iv.unsure[0]) && /16 Oct/.test(iv.unsure[0]) && /only 1 of 7/.test(iv.unsure[0]));
+  ok('the dollar is reported as the daily pairs show it, and the stale index is named, before any conclusion about safety', /On daily prices the dollar fell 0\.9% on average against 7 majors/.test(iv.unsure[0]) && /only 1 of 7/.test(iv.unsure[0]) && /16 Oct/.test(iv.unsure[0]) && /not supported by the daily prices/.test(iv.unsure[0]));
   ok('a strong growth nowcast is named as the fact that does not fit a growth scare', iv.unsure.some(t => /3\.5%/.test(t) && /does not fit/.test(t)));
   const none = storyIntro({ ys, links: [], checks: [], gdpnow: null });
   ok('with no contradiction in the data the opening does not invent one', !/This time/.test(none.fact.join(' '))); }

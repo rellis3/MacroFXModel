@@ -29,6 +29,13 @@ export function dollarOnDailyFx(assets) {
   return { n: rows.length, stronger: rows.filter(r => r.stronger).length, rows };
 }
 
+/** The dollar on the seven daily pairs: the average move of the dollar against the other currency (positive means the dollar rose) and how many it rose against. */
+export function dollarBasket(assets) {
+  const moves = (assets ?? []).filter(a => USD_PAIRS[a.key] != null && Number.isFinite(a.d20)).map(a => USD_PAIRS[a.key] * a.d20);   // +1 when the dollar is the base: a rise in the pair is a rise in the dollar
+  const n = moves.length;
+  return { n, avg: n ? moves.reduce((x, y) => x + y, 0) / n : 0, stronger: moves.filter(v => v > 0).length };
+}
+
 /** The findings, as [{ id, title, body }]. Empty when everything lines up. */
 export function dataChecks({ links, assets, windowDays = 20 } = {}) {
   const out = [], { latest, lagging } = laggingSeries(links), pretty = d => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
@@ -36,7 +43,7 @@ export function dataChecks({ links, assets, windowDays = 20 } = {}) {
   const dollarLag = lagging.find(x => x.key === 'dxy');
   if (dollarLag) {
     const d = dollarOnDailyFx(assets);
-    if (d.n >= 4) out.push({ id: 'dollar', title: 'The dollar claim needs checking', facts: { asOf: dollarLag.asOf, days: dollarLag.days, stronger: d.stronger, n: d.n }, body: `The story says the dollar was bought. That rests on the broad dollar index, whose last print is ${pretty(dollarLag.asOf)}, ${dollarLag.days} days before the newest data (${pretty(latest)}). On the daily dollar pairs over the same ${windowDays} days to the latest close, the dollar is stronger against ${d.stronger} of ${d.n} and weaker against ${d.n - d.stronger}. The two measures cover different windows and point different ways, so "the dollar is bought" is unconfirmed until the index catches up or the daily pairs are used instead.` });
+    if (d.n >= 4) { const bk = dollarBasket(assets); out.push({ id: 'dollar', title: 'The dollar: index and daily pairs disagree', facts: { asOf: dollarLag.asOf, days: dollarLag.days, stronger: d.stronger, n: d.n, avg: bk.avg }, body: `The chain's dollar links use the broad dollar index, whose last print is ${pretty(dollarLag.asOf)}, ${dollarLag.days} days before the newest data (${pretty(latest)}). On the ${d.n} daily dollar pairs over the same ${windowDays} days to the latest close, the dollar moved ${bk.avg > 0 ? '+' : bk.avg < 0 ? '−' : ''}${Math.abs(bk.avg).toFixed(1)}% on average and was stronger against ${d.stronger} of ${d.n} and weaker against ${d.n - d.stronger}. The two measures cover different windows and may point different ways, so the dollar links are unconfirmed until the index catches up.` }); }
   }
   return out;
 }

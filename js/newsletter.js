@@ -32,7 +32,8 @@ export const RANGE_EFFECT = {
 };
 import { CHAIN_LAYOUT, CHAIN_NODES, CHAIN_LINKS, CHAIN_WINDOW_DAYS } from './macroChain.js';
 import { buildTheories, buildInsight, plainText, uncoveredBreaks, nodeMoves } from './macroTheories.js';
-import { dataChecks, laggingSeries } from './dataChecks.js';
+import { dataChecks, laggingSeries, dollarBasket } from './dataChecks.js';
+import { evidenceFor, checkClaims, scrubText, dataHeadline } from './headlineCheck.js';
 import { currencyNarrative, pairNarrative } from './newsletterNarrative.js';
 import { storyIntro, yieldGuide, chainGuide, relationNote, stressRead, auditGuide, positioningGuide, sectorNote, commodityNote, fearNote, currencyNote } from './newsletterExplain.js';
 import { MAG_CSS, composeMagazine, yieldDecompChart, relationChart, evidenceMatrix, accountabilityPage, evBadge, barFigure, tileRow, flatTable, guide, currencyCard, marketNarrative } from './newsletterMag.js';
@@ -494,12 +495,19 @@ export function buildNewsletter(n) {
   // ══ V2: the magazine edition (js/newsletterMag.js). The same research, composed as a feature, a signature chain spread, competing explanations, an accountability page and a Data Desk. ══
   let v2Body = '';
   if (v2) {
-    const th = buildTheories(n.links ?? []), ins = buildInsight(n.links ?? [], idea?.storyId ?? null), S = n.nodeSeries ?? {}, Hh = { esc, COLORS, CHAIN_NODES };
+    const basket = dollarBasket(n.assets ?? n.ranges ?? []), dxyOv = basket.n >= 4 ? { dxy: { delta: basket.avg, moved: Math.abs(basket.avg) >= CHAIN_NODES.dxy.floor, dir: basket.avg > 0 ? 'up' : basket.avg < 0 ? 'down' : null, text: `${basket.avg > 0 ? '+' : basket.avg < 0 ? '−' : ''}${Math.abs(basket.avg).toFixed(1)}%`, label: 'Dollar (seven daily majors)' } } : {};
+    const th = buildTheories(n.links ?? [], dxyOv), ins = buildInsight(n.links ?? [], idea?.storyId ?? null), S = n.nodeSeries ?? {}, Hh = { esc, COLORS, CHAIN_NODES };
     const sents = t => String(t ?? '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s+(?=[A-Z“"'‘(])/).map(s => s.trim()).filter(Boolean);
-    const openS = sents(letter.opening || ''), pullRaw = openS.length >= 2 ? openS[openS.length - 1] : '', pull = (pullRaw.split(/,\s+and\s+/)[0] || pullRaw).replace(/[.,;:\s]+$/, '');
-    const drv = (a.driver ?? []).map(d => [d.what, d.explain].filter(Boolean).join(' ')).filter(Boolean);
-    const subjectLine = letter.subject || headline, longHead = n.headline ?? a.headline ?? '';
-    const feature = { headline: subjectLine, standfirst: longHead && longHead !== subjectLine ? clipS(longHead, 280) : '', opening: [letter.opening || opening].filter(Boolean), pull: clipS(pull, 210), continued: drv.slice(0, 1), evidence: drv.slice(1) };
+    const evd = evidenceFor({ links: n.links, ys: n.yieldStack, assets: n.assets ?? n.ranges }), claimNotes = [];
+    const scrub = t => { const r = scrubText(t, evd); for (const x of r.removed) claimNotes.push(x); return r.text; };
+    const openText = scrub(letter.opening || opening || ''), openS = sents(openText), pullRaw = openS.length >= 2 ? openS[openS.length - 1] : '', pull = (pullRaw.split(/,\s+and\s+/)[0] || pullRaw).replace(/[.,;:\s]+$/, '');
+    const drv = (a.driver ?? []).map(d => scrub([d.what, d.explain].filter(Boolean).join(' '))).filter(Boolean);
+    const subjectLine0 = letter.subject || headline, longHead0 = n.headline ?? a.headline ?? '';
+    // a headline or standfirst with any claim the figures do not verify is replaced by one built from the verified figures
+    const hClaims = [...checkClaims(subjectLine0, evd), ...checkClaims(longHead0, evd)], headlineOk = hClaims.every(c => c.status === 'verified'), dh = headlineOk ? null : dataHeadline({ ys: n.yieldStack, links: n.links, assets: n.assets ?? n.ranges });
+    if (!headlineOk) for (const c of hClaims.filter(x => x.status !== 'verified')) claimNotes.push({ sentence: c.sentence, what: c.what, evidence: c.evidence, headline: true });
+    const subjectLine = dh?.headline ?? subjectLine0, longHead = dh ? dh.standfirst : longHead0;
+    const feature = { headline: subjectLine, standfirst: longHead && longHead !== subjectLine ? clipS(longHead, 280) : '', opening: [openText].filter(Boolean), pull: clipS(pull, 210), continued: drv.slice(0, 1), evidence: drv.slice(1) };
     const ys2 = n.yieldStack, pad = d => { const t = Date.parse(d + 'T00:00:00Z'); return Number.isFinite(t) ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : d; };
     const partsSum = ys2 && Number.isFinite(ys2.dReal) && Number.isFinite(ys2.dBei) ? ys2.dReal + ys2.dBei : null;
     const yieldCaption = ys2 && Number.isFinite(ys2.dNom) ? `Measured on ${ys2.asOf ? pad(ys2.asOf) : 'the latest day all three printed'}${ys2.from ? `, against ${pad(ys2.from)}` : ''}: the 10-year moved ${sg(ys2.dNom, 0)}bp, made of ${sg(ys2.dReal ?? 0, 0)}bp real yield and ${sg(ys2.dBei ?? 0, 0)}bp expected inflation${partsSum != null ? `, which add to ${sg(partsSum, 0)}bp${Math.abs(partsSum - ys2.dNom) <= 0.6 ? ', the same as the 10-year' : `, ${Math.abs(Math.round(ys2.dNom - partsSum))}bp short of it`}` : ''}. They add up only on a shared date.${ys2.later ? ` Expected inflation printed again on ${pad(ys2.later.date)} (${sg(ys2.later.d, 0)}bp from the start) and is left out.` : ''}` : '';
@@ -507,6 +515,9 @@ export function buildNewsletter(n) {
     const lessonBox = ins ? `<p><b>${esc(ins.title)}</b></p><p>${esc(ins.mechanism)}</p><p>${esc(ins.today)}</p>${ins.alternatives ? `<p><b>What can overwhelm it.</b> ${esc(ins.alternatives)}</p>` : ''}` : '';
     const brokenL = (n.links ?? []).filter(l => l.verdict === 'broken').sort((x, y) => (x.id === idea?.storyId ? -1 : 0) - (y.id === idea?.storyId ? -1 : 0)).slice(0, 4);
     const checks = dataChecks({ links: n.links, assets: n.assets ?? n.ranges }), lagging = laggingSeries(n.links ?? []).lagging, mv = nodeMoves(n.links ?? []);
+    { const strip = s => clipS(s, 140).replace(/[.!?…]+$/, ''), hn = claimNotes.filter(c => c.headline), sn = claimNotes.filter(c => !c.headline);
+      if (hn.length) checks.push({ id: 'claim', title: 'Headline replaced', body: `The brief's headline and standfirst said: ${hn.map(c => `"${strip(c.sentence)}"`).join(' and ')}. The figures do not verify that ${[...new Set(hn.map(c => c.what))].join(' or ')}: ${hn[0].evidence}. The headline was rebuilt from verified figures.` });
+      for (const c of sn) checks.push({ id: 'claim', title: 'Sentence left out', body: `The desk's written reading said: "${strip(c.sentence)}". The figures do not verify that ${c.what}: ${c.evidence}. The sentence was left out.` }); }
     const intro = storyIntro({ ys: n.yieldStack, links: n.links ?? [], checks, gdpnow: Number.isFinite(+n.nowcast?.gdpnow) ? +n.nowcast.gdpnow : null });
     const nodeFloors = [...new Set(brokenL.flatMap(l => [l.a, l.b]).map(e => `${e.label} ${e.floorText ?? ''}`.trim()))].join(' · ');
     const chainMethod = `<p><b>Selection and noise floors.</b> The ${(n.links ?? []).length} links are a fixed list, the same every day, not picked after seeing today's moves. The noise floors are fixed in the code and not tuned to today: ${esc(nodeFloors)}. A broken link describes one window and is not a signal. Seven markets were added on 23 Oct 2026 after a five-year screen of history, not this week's moves.</p>`;
