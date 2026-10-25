@@ -236,3 +236,63 @@ denominator, what "extreme" means.
 - (C) d²R/dt² and dR/dt of VVIX/VXN;
 - (D) Garin's intraday rule on 2021-2026;
 - (E) Garin's futures point, with the VIX give-back held on VX futures.
+
+## 4. "Options, rates, commodities and liquidity, in one feed": a possible new release (Discord, 2026-10-25)
+
+**Observed (26-second promo video posted by C.OG, 11:08 UK; screenshots shared by Rich).** No message text came with it
+in the screenshots, and nothing says it is a product, a price or a date, so "release" is Rich's reading, not C.OG's.
+Seven terminal-style screens on a dark background, with these captions (verbatim):
+
+![feed overview](cog_snippets/2026-10-25-feed-overview.jpg) ![rates](cog_snippets/2026-10-25-feed-rates.jpg)
+![liquidity](cog_snippets/2026-10-25-feed-liquidity.jpg) ![correlations](cog_snippets/2026-10-25-feed-correlations.jpg)
+![commodities](cog_snippets/2026-10-25-feed-commodities.jpg)
+
+> Options, rates, commodities and liquidity, in one feed.
+>
+> **Rates** — Eleven tenors, five years of history. The US Treasury curve as a surface, with any date or tenor pulled out.
+>
+> **Liquidity** — The Fed balance sheet, weekly. Treasury General Account, reverse repo, bank reserves and net liquidity.
+>
+> **Cross-asset** — Rolling correlations between markets. S&P 500, Treasury yields, the dollar, crude and gold.
+>
+> **Commodities** — Sixteen markets, ranked by z-score. Where each market sits in its own two-year range.
+
+What the screens show (small and blurred, so read loosely):
+
+- **Rates:** the 3D curve surface (tenor × week) with two slice panels: the picked week's curve, and the picked
+  tenor's history. The instructions read "click a point on the surface to update the two charts at the right; arrow keys
+  move the pick; Esc closes the pane". A tab row reads roughly "the curve · credit · equities · currencies · liquidity ·
+  positioning · rates · sectors", with tenor and time-window pickers (1M … 10Y; 1Y/2Y/5Y).
+- **Liquidity:** a table with columns latest / week / z of the move / month / year / source, rows Fed balance sheet,
+  TGA, reverse repo (RRP), bank reserves, net liquidity, and a SOFR-less-IORB style spread in bp. One-line read under it
+  ("net liquidity rose on the week with the TGA draining and the RRP falling …").
+- **Cross-asset:** a grid of pairwise rolling-correlation strips 2024–2026 (blue above zero, amber below), pairs such as
+  S&P 500 × broad dollar, S&P 500 × gold, UST 10Y yield × WTI crude, broad dollar × WTI crude, latest value at the right.
+- **Commodities:** a 16-row heat map over two years (platinum, a commodity basket, silver, copper, gold, heating oil,
+  RBOB, WTI, Brent, wheat, corn, soybeans, natural gas, …), with a side pane for the picked row: "its standing now",
+  "on the week", "in its window" (% of the way from its low to its high over 104 weeks), its standing through the window,
+  and its price level. Data appear weekly.
+- **Options:** 3D surfaces in the opening montage (expiry × strike style); no caption of its own.
+
+**Not stated by C.OG (open):** whether this is a paid product, the members' feed or content for a video; data sources
+(the liquidity table's source column looks like FRED); whether "z-score" is mean/sd or a range position (the side pane
+reads as a range %); the correlation window; whether any of it carries a tested signal or is a read only.
+
+**Inference (ours).** This is the "one chapter per market complex" shape this repo already borrowed from him, now
+packaged as one feed. Almost every panel has a counterpart here, and two have verdicts that should travel with it:
+
+| His panel | Ours | What the evidence says |
+|---|---|---|
+| Rates surface, any date/tenor pulled out | `surface-lab.html` (rates surface "the way COG draws it"), `yield-curve.html`, level/slope/curvature split in `js/chapterEngine.js` | a way of looking; the surface itself is not a signal |
+| Fed balance sheet, TGA, RRP, reserves, net liquidity | `global-liquidity.html`, `liquidity-pulse.html` (daily TGA/RRP vs NQ), the liquidity chapter in `chapters.html` | **NULL** as direction: G1 net-liquidity tide, OOS hit 51.9/49.5/51.5% at 1/5/20d, and standalone net liquidity t −0.14 (`references/verdicts.md`) |
+| Rolling cross-asset correlations | `correlations.html`, `scripts/build_corr_history.py` | context; no verdict banked on correlation level as a signal |
+| 16 commodities by z / two-year range | receipts (robust z + percentile in window) in `js/chapterEngine.js`; FRED energy series in `js/dataCatalogue.js` | **gap**: we have no commodities chapter or 16-market heat map; range position as a signal is untested here (z-score/range-position indicator options on the Fed funds strip were null, 2026-10-16) |
+| Options surfaces | `oi-dashboard-v2.html`, dealer hedging map (snippet 2) | G2 GEX → next-day **range** on NQ is REAL; walls/flips as levels NULL |
+
+The useful build, if one is wanted, is the commodities chapter (the only missing panel), with the evidence line saying
+it is a read, not a tested signal.
+
+**Built 2026-10-25:** `feed.html` ("The Feed") brings all five panels onto one page in his style, with each panel's
+verdict beside it. New on it: the sixteen-commodity range map, the weekly liquidity table (week / month / year, z of the
+week, SOFR − IORB) and his five-leg cross-asset correlations (API `/api/feed`, maths `js/feedCore.js`). Rates and options
+reuse Surface Lab; OI dashboard v2 is linked, not changed.

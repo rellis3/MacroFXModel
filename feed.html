@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Feed</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.34.0/plotly.min.js" defer></script>
+<style>
+  /* The Feed: C.OG's "options, rates, commodities and liquidity, in one feed" (education/cog-snippets.md §4), built
+     from this repo's own data. A montage of live screens up top, then one full screen per complex. Blue reads high or
+     positive, amber low or negative, the way his screens draw it. Data: /api/feed (js/feedRoutes.js) and
+     /api/surface-lab?field=rates|volTerm. Every panel says whether its reading has ever been tested. */
+  :root { --bg:#02050b; --glow:#0c1d44; --panel:rgba(8,14,28,.92); --line:#1d2b44; --text:#e8eef8; --text2:#b4c0d4; --text3:#7d8aa3;
+          --blue:#5aa2ff; --blue2:#9ccaff; --amber:#e0a93b; --amber2:#f3cf7e; --cyanline:rgba(110,165,240,.55); --amberline:rgba(224,169,59,.6);
+          --pos:#3fb950; --neg:#f0745e; --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace; }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  html { background:var(--bg); }
+  body { margin:0; color:var(--text); font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+         background:radial-gradient(1200px 520px at 50% -80px, var(--glow), transparent 70%), radial-gradient(900px 400px at 85% 40%, rgba(20,40,90,.35), transparent 70%), var(--bg);
+         background-attachment:fixed; min-height:100vh; }
+  a { color:var(--blue2); }
+  .wrap { max-width:1360px; margin:0 auto; padding:14px 16px 64px; }
+  .strip { display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 16px; font:11px var(--mono); color:var(--text3); border-bottom:1px solid var(--line); padding-bottom:8px; }
+  .strip b { color:var(--text); letter-spacing:.12em; }
+  .strip .dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--pos); box-shadow:0 0 8px var(--pos); margin-right:6px; vertical-align:1px; }
+  .strip .dot.off { background:var(--amber); box-shadow:0 0 8px var(--amber); }
+
+  /* hero: the montage */
+  .hero { text-align:center; padding:30px 0 6px; }
+  .hero h1 { font-size:clamp(22px,3.4vw,34px); font-weight:700; letter-spacing:-.01em; margin:0; text-wrap:balance; text-shadow:0 0 30px rgba(90,162,255,.35); }
+  .hero p { color:var(--text2); margin:6px auto 0; max-width:70ch; }
+  .hero { position:relative; }
+  .hero::before { content:""; position:absolute; inset:60px 0 -40px; z-index:-1; pointer-events:none;
+                  background:radial-gradient(ellipse 55% 60% at 50% 55%, rgba(60,110,220,.30), rgba(20,40,110,.12) 45%, transparent 75%); }
+  .montage { perspective:1500px; perspective-origin:50% 40%; margin:26px auto 30px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px 18px; max-width:1180px; transform-style:preserve-3d; }
+  @media (max-width:860px) { .montage { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:520px) { .montage { grid-template-columns:minmax(0,1fr); } }
+  .tile { position:relative; display:block; text-decoration:none; color:inherit; border:1px solid var(--cyanline); border-radius:6px; background:var(--panel); overflow:hidden;
+          box-shadow:0 0 0 1px rgba(90,162,255,.08), 0 0 26px rgba(60,120,230,.22), inset 0 0 40px rgba(40,90,190,.12); transition:transform .35s ease, box-shadow .35s ease; }
+  .tile.amber { border-color:var(--amberline); box-shadow:0 0 0 1px rgba(224,169,59,.08), 0 0 26px rgba(224,169,59,.18), inset 0 0 40px rgba(224,169,59,.08); }
+  /* a curved wall of screens: the outer columns turn in, the middle comes forward, the bottom row reflects on the floor */
+  .montage .tile:nth-child(3n+1) { transform:rotateY(16deg) translateZ(-20px); } .montage .tile:nth-child(3n+2) { transform:translateZ(24px); }
+  .montage .tile:nth-child(3n) { transform:rotateY(-16deg) translateZ(-20px); }
+  .montage .tile:nth-child(n+4) { -webkit-box-reflect:below 6px linear-gradient(transparent 72%, rgba(255,255,255,.09)); }
+  .montage .tile { animation:drift 7s ease-in-out infinite; } .montage .tile:nth-child(2n) { animation-delay:-3.5s; } .montage .tile:nth-child(3n) { animation-delay:-1.8s; }
+  @keyframes drift { 0%,100% { translate:0 0; } 50% { translate:0 -4px; } }
+  @media (max-width:860px) { .montage .tile { transform:none !important; } }
+  .tile:hover, .tile:focus-visible { transform:none !important; box-shadow:0 0 0 1px rgba(90,162,255,.25), 0 0 40px rgba(60,120,230,.4); outline:none; }
+  .tile canvas { display:block; width:100%; height:150px; }
+  .cap { position:absolute; left:0; right:0; bottom:0; padding:22px 12px 9px; text-align:left; background:linear-gradient(transparent, rgba(2,5,11,.92) 55%); }
+  .kick { font:600 10.5px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--blue); letter-spacing:.02em; }
+  .tile.amber .kick { color:var(--amber); }
+  .cap b { display:block; font-size:15px; font-weight:700; line-height:1.2; margin-top:2px; }
+  .cap span { display:block; color:var(--text3); font-size:11px; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tagline { text-align:center; color:var(--text2); font-weight:600; font-size:15px; margin:14px 0 0; }
+
+  /* screens */
+  .screen { margin-top:30px; border:1px solid var(--cyanline); border-radius:8px; background:var(--panel);
+            box-shadow:0 0 0 1px rgba(90,162,255,.06), 0 0 46px rgba(50,110,230,.16), inset 0 0 60px rgba(40,90,190,.08); scroll-margin-top:12px; }
+  .screen.amber { border-color:var(--amberline); box-shadow:0 0 0 1px rgba(224,169,59,.06), 0 0 46px rgba(224,169,59,.12), inset 0 0 60px rgba(224,169,59,.05); }
+  .shead { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:8px 18px; padding:14px 16px 10px; border-bottom:1px solid var(--line); }
+  .shead .kick { font-size:12px; }
+  .shead h2 { margin:2px 0 0; font-size:clamp(18px,2.2vw,24px); font-weight:700; letter-spacing:-.01em; text-wrap:balance; }
+  .shead p { margin:2px 0 0; color:var(--text3); font-size:12px; max-width:80ch; }
+  .links { display:flex; flex-wrap:wrap; gap:6px; }
+  .links a { font:500 11.5px var(--mono); text-decoration:none; color:var(--text2); border:1px solid var(--line); border-radius:3px; padding:4px 9px; background:rgba(255,255,255,.02); }
+  .links a:hover { border-color:var(--blue); color:var(--text); }
+  .sbody { padding:12px 16px 16px; }
+  .two { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); gap:14px; }
+  @media (max-width:900px) { .two { grid-template-columns:minmax(0,1fr); } }
+  .card { border:1px solid var(--line); border-radius:5px; background:rgba(3,7,16,.6); min-width:0; }
+  .card h3 { margin:0; padding:7px 10px; font:600 11px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--text3); border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .card h3 span { color:var(--amber2); text-transform:none; letter-spacing:.02em; }
+  .card .in { padding:8px 10px; }
+  .hint { font:11px var(--mono); color:var(--text3); margin:0 0 8px; }
+  canvas.plot { display:block; width:100%; cursor:crosshair; }
+  .mono { font-family:var(--mono); }
+  .read { margin:10px 0 0; padding:9px 12px; border-left:2px solid var(--blue); background:rgba(90,162,255,.06); color:var(--text); font-size:13.5px; }
+  .ev { margin:10px 0 0; padding:9px 12px; border-left:2px solid var(--amber); background:rgba(224,169,59,.07); color:var(--text2); font-size:12.5px; }
+  .ev b { color:var(--amber2); }
+  .ev.null { border-left-color:var(--neg); background:rgba(240,116,94,.08); } .ev.null b { color:#ffb3a5; }
+  .ev.real { border-left-color:var(--pos); background:rgba(63,185,80,.08); } .ev.real b { color:#8fe39b; }
+  .empty { color:var(--text3); font:12px var(--mono); padding:18px 12px; }
+
+  table.liq { width:100%; border-collapse:collapse; font:12px var(--mono); }
+  table.liq th { text-align:right; color:var(--text3); font-weight:500; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  table.liq th:first-child, table.liq td:first-child { text-align:left; }
+  table.liq td { text-align:right; padding:6px 8px; border-bottom:1px solid rgba(29,43,68,.6); white-space:nowrap; }
+  table.liq td.src { color:var(--text3); font-size:10.5px; text-align:left; }
+  table.liq tr:hover td { background:rgba(90,162,255,.05); }
+  .up { color:var(--blue2); } .dn { color:var(--amber2); }
+  .zb { display:inline-block; min-width:3.4em; padding:0 4px; border-radius:2px; }
+  .scroll { overflow-x:auto; }
+
+  .corrgrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  @media (max-width:760px) { .corrgrid { grid-template-columns:minmax(0,1fr); } }
+  .corr { border:1px solid var(--line); border-radius:4px; background:rgba(3,7,16,.6); padding:6px 8px 4px; }
+  .corr .t { display:flex; justify-content:space-between; gap:8px; font:11px var(--mono); color:var(--text2); }
+  .corr .t b { font-size:13px; }
+  .corr canvas { display:block; width:100%; height:64px; }
+  .corr .m { font:10.5px var(--mono); color:var(--text3); }
+
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:3px 12px; font:12px var(--mono); }
+  .kv dt { color:var(--text3); } .kv dd { margin:0; color:var(--text); }
+  .step { font:600 11px var(--mono); color:var(--text3); text-transform:uppercase; letter-spacing:.08em; margin:10px 0 4px; }
+  .legend { display:flex; align-items:center; gap:8px; font:10.5px var(--mono); color:var(--text3); margin-top:6px; flex-wrap:wrap; }
+  .legend i { display:inline-block; width:120px; height:8px; border-radius:2px; background:linear-gradient(90deg, #e0a93b, #6b4b16 30%, #141c2c 50%, #1f4f9a 70%, #cfe5ff); }
+
+  .gaps { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:10px; }
+  .gap { border:1px dashed var(--line); border-radius:5px; padding:10px 12px; background:rgba(3,7,16,.5); }
+  .gap b { display:block; margin-bottom:3px; } .gap p { margin:0; color:var(--text2); font-size:12.5px; }
+  .gap .st { font:600 10px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--amber); }
+  .gap .st.done { color:var(--pos); }
+  footer { margin-top:28px; color:var(--text3); font:11px var(--mono); }
+  /* his tab row: one line of the complexes, sticky, the current one lit */
+  .tabs { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:2px 4px; align-items:center; padding:7px 0; margin:0 0 4px;
+          background:linear-gradient(rgba(2,5,11,.96), rgba(2,5,11,.88)); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); font:11.5px var(--mono); }
+  .tabs a { color:var(--text3); text-decoration:none; padding:3px 9px; border-radius:3px; border:1px solid transparent; white-space:nowrap; }
+  .tabs a:hover { color:var(--text); border-color:var(--line); }
+  .tabs a.on { color:#06101f; background:var(--blue2); box-shadow:0 0 12px rgba(90,162,255,.5); }
+  .tabs a.amb.on { background:var(--amber2); box-shadow:0 0 12px rgba(224,169,59,.5); }
+  .tabs .sep { width:1px; height:14px; background:var(--line); margin:0 6px; }
+  .tabs .ext { color:#5d6a82; }
+  /* the instruction line along the top of each screen, as on his */
+  .instr { display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 14px; padding:6px 16px; border-bottom:1px solid var(--line); font:10.5px var(--mono); color:var(--text3); background:rgba(90,162,255,.035); }
+  .instr b { color:#06101f; background:var(--amber2); padding:0 5px; border-radius:2px; font-weight:600; }
+  .vsw { display:inline-flex; border:1px solid var(--line); border-radius:3px; overflow:hidden; }
+  .vsw button { font:600 10.5px var(--mono); color:var(--text3); background:transparent; border:0; padding:2px 9px; cursor:pointer; letter-spacing:.06em; }
+  .vsw button[aria-pressed="true"] { color:#06101f; background:var(--blue2); }
+  .surf { height:min(58vh,460px); min-height:340px; }
+  .legend i.vir { background:linear-gradient(90deg, #0b1d4f, #1f5fbf 30%, #2aa5a0 55%, #9ccf5a 80%, #f2d14a); }
+  @media (prefers-reduced-motion: reduce) { .tile { transition:none; animation:none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="strip">
+    <span><b>THE FEED</b> &nbsp;options · rates · commodities · liquidity</span>
+    <span id="status"><span class="dot off"></span>loading…</span>
+  </div>
+
+  <nav class="tabs" id="tabs" aria-label="Complexes">
+    <a href="#rates">the curve</a><a href="#liquidity">liquidity</a><a href="#cross">cross-asset</a><a href="#commodities" class="amb">commodities</a><a href="#options">options</a><a href="#gaps" class="amb">tested?</a>
+    <span class="sep"></span>
+    <a class="ext" href="credit-stress.html" target="_blank">credit ↗</a><a class="ext" href="market-view.html" target="_blank">equities · sectors ↗</a><a class="ext" href="fx-factor-v2.html" target="_blank">currencies ↗</a><a class="ext" href="cot-extremes.html" target="_blank">positioning ↗</a><a class="ext" href="chapters.html" target="_blank">chapters ↗</a>
+  </nav>
+
+  <section class="hero">
+    <h1>Options, rates, commodities and liquidity, in one feed.</h1>
+    <p>Every complex on one page, read the same way: where it sits in its own history, what moved this week, and whether being there has ever meant anything.</p>
+    <nav class="montage" aria-label="Panels">
+      <a class="tile" href="#rates"><canvas id="m-rates"></canvas><div class="cap"><div class="kick">Rates</div><b>Eleven tenors, five years of history.</b><span>The US Treasury curve as a surface</span></div></a>
+      <a class="tile" href="#liquidity"><canvas id="m-liq"></canvas><div class="cap"><div class="kick">Liquidity</div><b>The Fed balance sheet, weekly.</b><span>TGA, reverse repo, reserves and net liquidity</span></div></a>
+      <a class="tile" href="#cross"><canvas id="m-cross"></canvas><div class="cap"><div class="kick">Cross-asset</div><b>Rolling correlations between markets.</b><span>S&amp;P 500, Treasury yields, the dollar, crude and gold</span></div></a>
+      <a class="tile amber" href="#commodities"><canvas id="m-comm"></canvas><div class="cap"><div class="kick">Commodities</div><b>Sixteen markets, ranked by z-score.</b><span>Where each sits in its own two-year range</span></div></a>
+      <a class="tile" href="#options"><canvas id="m-opt"></canvas><div class="cap"><div class="kick">Options</div><b>The implied vol curve, through time.</b><span>VIX 1D to 6M, plus the dealer hedging map</span></div></a>
+      <a class="tile amber" href="#gaps"><canvas id="m-gaps"></canvas><div class="cap"><div class="kick">The honest part</div><b>What has been tested.</b><span>Each panel's evidence, and the gaps still open</span></div></a>
+    </nav>
+  </section>
+
+  <!-- RATES -->
+  <section class="screen" id="rates">
+    <div class="shead">
+      <div><div class="kick">Rates</div><h2>Eleven tenors, five years of history.</h2><p>The US Treasury curve, week by week (5-week mean). Click any cell to pull out that week's curve and that tenor's history; arrow keys move the pick.</p></div>
+      <div class="links"><a href="surface-lab.html?field=rates" target="_blank">3D surface ↗</a><a href="yield-curve.html" target="_blank">yield curve ↗</a><a href="chapters.html" target="_blank">chapters ↗</a></div>
+    </div>
+    <div class="instr"><span><b>click</b> a point on the surface to update the two charts at the right · arrow keys move the pick · drag to turn it</span><span>FRED DGS1MO … DGS30 · weekly, 5-week mean</span></div>
+    <div class="sbody">
+      <div class="two">
+        <div class="card"><h3><span class="vsw" data-sec="rates"><button data-v="3d">3D</button><button data-v="flat">FLAT</button></span> <span id="r-pick">–</span></h3><div class="in">
+          <div class="surf" id="r-surf" hidden></div><canvas class="plot" id="r-heat" tabindex="0" aria-label="Treasury curve heat map: tenors down, weeks across"></canvas>
+          <div class="legend"><span>low yield</span><i class="vir"></i><span>high yield</span></div></div></div>
+        <div style="display:grid;gap:14px;min-width:0">
+          <div class="card"><h3>1) the curve on the picked week</h3><div class="in"><canvas class="plot" id="r-curve" style="height:150px"></canvas><p class="hint">Amber: the picked week. Dotted: a year earlier.</p></div></div>
+          <div class="card"><h3>2) the picked tenor through five years</h3><div class="in"><canvas class="plot" id="r-hist" style="height:150px"></canvas></div></div>
+        </div>
+      </div>
+      <div class="read" id="r-read">–</div>
+      <div class="ev">This is a way of <b>looking</b> at the curve, not a signal. The tested version is Surface Lab's steepener/flattener label and its forward outcomes, on the 3D page.</div>
+    </div>
+  </section>
+
+  <!-- LIQUIDITY -->
+  <section class="screen" id="liquidity">
+    <div class="shead">
+      <div><div class="kick">Liquidity</div><h2>The Fed balance sheet, weekly.</h2><p>Treasury General Account, reverse repo, bank reserves and net liquidity (balance sheet − TGA − RRP), plus the SOFR-less-IORB funding spread. "z of the week" scores this week's change against three years of weekly changes.</p></div>
+      <div class="links"><a href="global-liquidity.html" target="_blank">global liquidity ↗</a><a href="liquidity-pulse.html" target="_blank">daily TGA/RRP vs NQ ↗</a><a href="liquidity-net-regression.html" target="_blank">net-liquidity regression ↗</a></div>
+    </div>
+    <div class="instr"><span>blue: up on the week · amber: down · a <b>rising</b> TGA or RRP drains money from the system · the z column says how unusual the week was</span><span>FRED WALCL · WDTGAL · RRPONTSYD · WRESBAL · SOFR · IORB · weekly (H.4.1)</span></div>
+    <div class="sbody">
+      <div class="card"><h3>instrument <span id="l-asof">–</span></h3><div class="scroll"><table class="liq" id="l-table"></table></div></div>
+      <div class="read" id="l-read">–</div>
+      <div class="ev null"><b>Tested: no edge as a direction signal.</b> The G1 net-liquidity tide was NULL out of sample: hit rates 51.9% / 49.5% / 51.5% at 1 / 5 / 20 days, and the in-sample 20-day IC of +0.19 flipped to −0.03 (a QE-era artefact). Net liquidity as a standalone daily direction: t −0.14, n 521. Read it as context. Source: <span class="mono">cog-replication/DECISIONS.md</span>.</div>
+    </div>
+  </section>
+
+  <!-- CROSS-ASSET -->
+  <section class="screen" id="cross">
+    <div class="shead">
+      <div><div class="kick">Cross-asset</div><h2>Rolling correlations between markets.</h2><p>63-day correlation of daily changes (log returns; the 10-year yield uses its change in level), three years, weekly. Blue above zero, amber below. Sorted by how much each pair moved over the last quarter: the change is the news.</p></div>
+      <div class="links"><a href="correlations.html" target="_blank">FX correlation lab ↗</a><a href="surface-lab.html?field=absorption" target="_blank">one-trade absorption ↗</a><a href="yield-coupling.html" target="_blank">yield coupling ↗</a></div>
+    </div>
+    <div class="instr"><span>63-day window on daily changes · the biggest moves in the last quarter come first</span><span>OANDA SPX500 · XAU · WTICO · FRED DGS10 · DTWEXBGS</span></div>
+    <div class="sbody">
+      <div class="corrgrid" id="x-grid"></div>
+      <div class="ev">Context only. No correlation <b>level</b> has been tested as a signal here. The tested cousins are on the linked pages: Surface Lab's absorption (how much of everything is one trade) and the yield-coupling studies.</div>
+    </div>
+  </section>
+
+  <!-- COMMODITIES -->
+  <section class="screen amber" id="commodities">
+    <div class="shead">
+      <div><div class="kick" style="color:var(--amber)">Commodities</div><h2>Sixteen markets, ranked by z-score.</h2><p>Each cell is that week's position in the market's own trailing 104-week range: amber at the low, blue at the high, white at a new two-year high. Rows are ranked by the z-score of the level inside the same window. Click a row; arrow keys move the pick.</p></div>
+      <div class="links"><a href="gold.html" target="_blank">gold ↗</a><a href="cot-extremes.html" target="_blank">COT positioning ↗</a></div>
+    </div>
+    <div class="instr"><span><b>click</b> a market to open it on the right · arrow keys move the pick · height and colour are its place in its own two-year range</span><span>OANDA daily (front-month CFDs) · FRED energy spot · weekly</span></div>
+    <div class="sbody">
+      <div class="two">
+        <div class="card"><h3><span class="vsw" data-sec="comm"><button data-v="3d">3D</button><button data-v="flat">FLAT</button></span> <span id="c-pickh">–</span></h3><div class="in">
+          <div class="surf" id="c-surf" hidden></div><canvas class="plot" id="c-heat" tabindex="0" aria-label="Commodities range-position heat map: markets down, weeks across"></canvas>
+          <div class="legend"><span>low of its 2y range</span><i></i><span>high</span></div></div></div>
+        <div class="card"><h3>the picked row <span id="c-name">–</span></h3><div class="in" id="c-side"></div></div>
+      </div>
+      <div class="ev">New panel, built for this page. It is a <b>read</b>: where each market sits. Range position as a trading signal is untested here, and the nearest test (range position / z-score as indicator options on the Fed funds strip, 2026-10-16) was null. The OANDA rows track the front future; heating oil, gasoline and Henry Hub are FRED spot prices.</div>
+    </div>
+  </section>
+
+  <!-- OPTIONS -->
+  <section class="screen" id="options">
+    <div class="shead">
+      <div><div class="kick">Options</div><h2>The implied vol curve, through time.</h2><p>S&amp;P implied vol at five expiries (VIX1D, VIX9D, VIX, VIX3M, VIX6M), daily. A curve that inverts (front above back) is the market paying up for protection now.</p></div>
+      <div class="links"><a href="surface-lab.html?field=volTerm" target="_blank">3D vol term surface ↗</a><a href="oi-dashboard-v2.html" target="_blank">OI dashboard v2: dealer hedging map ↗</a><a href="vix-calculus.html" target="_blank">VIX calculus ↗</a></div>
+    </div>
+    <div class="instr"><span>height is the level of implied vol · colour is how stressed it is <b>for that expiry</b> · drag to turn it</span><span>CBOE VIX1D · VIX9D · VIX · VIX3M · VIX6M · daily</span></div>
+    <div class="sbody">
+      <div class="two">
+        <div class="card"><h3><span class="vsw" data-sec="opt"><button data-v="3d">3D</button><button data-v="flat">FLAT</button></span> <span id="o-pick">–</span></h3><div class="in">
+          <div class="surf" id="o-surf" hidden></div><canvas class="plot" id="o-heat" aria-label="VIX term structure heat map"></canvas>
+          <div class="legend"><span>calm for that expiry</span><i class="vir"></i><span>stressed</span></div></div></div>
+        <div class="card"><h3>the curve now</h3><div class="in"><canvas class="plot" id="o-curve" style="height:170px"></canvas><div class="kv" id="o-kv" style="margin-top:8px"></div></div></div>
+      </div>
+      <div class="ev real"><b>Tested, and real for range.</b> The front of this curve (VIX9D/VIX) sorts how often NQ/SPX break their p75 range (21% / 29% / 35% calm → dear, VOL_CURVE_FRONT_PREREG, H5 PASS). Dealer gamma (GEX) predicts next-day NQ <b>range</b> (G2). Neither gives direction, and walls/flips as price levels were null. The strike-level dealer map lives on OI dashboard v2, which is linked here and not changed.</div>
+    </div>
+  </section>
+
+  <!-- GAPS -->
+  <section class="screen amber" id="gaps">
+    <div class="shead"><div><div class="kick" style="color:var(--amber)">The honest part</div><h2>What C.OG's feed shows that this one does not yet.</h2><p>Built where we had nothing; the rest is listed so it can be decided, not quietly dropped.</p></div></div>
+    <div class="sbody"><div class="gaps">
+      <div class="gap"><span class="st done">built</span><b>Commodities range map</b><p>Sixteen rows (15 markets plus an equal-weight basket), 104-week range position, ranked by z, with the picked-row pane.</p></div>
+      <div class="gap"><span class="st done">built</span><b>Weekly liquidity table</b><p>Week / month / year changes, z of the week, SOFR − IORB. Previously only daily TGA/RRP and the global composite existed.</p></div>
+      <div class="gap"><span class="st done">built</span><b>Cross-asset correlations</b><p>His five legs (S&amp;P, 10y, dollar, crude, gold). The existing lab only had FX pairs on H4 bars.</p></div>
+      <div class="gap"><span class="st">to discuss</span><b>A strike × expiry IV surface</b><p>His options screen looks like a 3D surface by strike and expiry. We have the term structure (by expiry) and the OI/GEX map (by strike), not both in one surface. Needs an options-chain source with IV per strike; OI dashboard v2 has the chains but is off-limits without close monitoring.</p></div>
+      <div class="gap"><span class="st">to discuss</span><b>His tab row: credit · equities · currencies · positioning · sectors</b><p>We have each of these somewhere (credit-stress, market-view sectors, cot-extremes, chapters). Do you want them as screens here too, or kept as links?</p></div>
+      <div class="gap"><span class="st">to discuss</span><b>Commodity futures vs spot</b><p>OANDA CFDs track the front month and roll. A true continuous-futures or curve (contango / backwardation) view would need a futures source.</p></div>
+      <div class="gap"><span class="st">to discuss</span><b>His z definition</b><p>"Ranked by z-score" but the pane reads "% of the way from its low to its high". We show both; if he confirms one, the ranking switches.</p></div>
+    </div></div>
+  </section>
+
+  <footer id="foot">feed.html · data: /api/feed (FRED, OANDA), /api/surface-lab · shape after C.OG's promo, 2026-10-25 (education/cog-snippets.md §4)</footer>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const fin = Number.isFinite;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+// amber (low) → dark → blue (high) → near-white at the very top: his heat-map palette
+const STOPS = [[0, [224, 169, 59]], [0.3, [107, 75, 22]], [0.5, [20, 28, 44]], [0.72, [31, 79, 154]], [0.93, [120, 180, 255]], [1, [235, 244, 255]]];
+function heat(t) {
+  if (!fin(t)) return 'rgba(0,0,0,0)';
+  t = Math.max(0, Math.min(1, t));
+  for (let i = 1; i < STOPS.length; i++) if (t <= STOPS[i][0]) {
+    const [a, ca] = STOPS[i - 1], [b, cb] = STOPS[i], f = (t - a) / (b - a);
+    return `rgb(${ca.map((c, k) => Math.round(c + (cb[k] - c) * f)).join(',')})`;
+  }
+  return 'rgb(235,244,255)';
+}
+// sized canvas with device-pixel-ratio; returns ctx and css size
+function sized(cv, h) {
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth || cv.parentElement.clientWidth;
+  const H = h ?? (cv.clientHeight || 150);
+  cv.width = Math.round(w * dpr); cv.height = Math.round(H * dpr); cv.style.height = H + 'px';
+  const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, H);
+  return { x, w, h: H };
+}
+function line(cv, series, { h, color = '#5aa2ff', fill = true, zero = false, band = null, ref = null, dots = false, labels = null, axis = true, ymin, ymax } = {}) {
+  const { x, w, h: H } = sized(cv, h);
+  const all = series.flatMap(s => s.v).concat(band ?? []).filter(fin);
+  if (!all.length) return;
+  let lo = ymin ?? Math.min(...all), hi = ymax ?? Math.max(...all); if (zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+  if (hi === lo) { hi += 1; lo -= 1; }
+  const pad = { l: 4, r: axis ? 44 : 2, t: axis ? 6 : 2, b: labels ? 16 : (axis ? 6 : 2) }, W = w - pad.l - pad.r, HH = H - pad.t - pad.b;
+  const n = Math.max(...series.map(s => s.v.length));
+  const X = i => pad.l + (n <= 1 ? W / 2 : i / (n - 1) * W), Y = v => pad.t + (1 - (v - lo) / (hi - lo)) * HH;
+  x.font = '10px ui-monospace,Menlo,monospace'; x.fillStyle = '#7d8aa3'; x.textAlign = 'left';
+  if (axis) for (const v of [hi, lo]) x.fillText(Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2), w - pad.r + 4, Y(v) + 3);
+  if (zero && lo < 0 && hi > 0) { x.strokeStyle = 'rgba(180,192,212,.35)'; x.setLineDash([3, 3]); x.beginPath(); x.moveTo(pad.l, Y(0)); x.lineTo(w - pad.r, Y(0)); x.stroke(); x.setLineDash([]); }
+  if (band) { x.fillStyle = 'rgba(224,169,59,.08)'; x.fillRect(pad.l, Y(band[1]), W, Y(band[0]) - Y(band[1])); }
+  if (labels) { x.fillStyle = '#7d8aa3'; x.textAlign = 'center'; labels.forEach(([i, t]) => x.fillText(t, X(i), H - 3)); }
+  for (const s of series) {
+    const pts = s.v.map((v, i) => fin(v) ? [X(i), Y(v)] : null);
+    if (fill && s.fill !== false) {
+      // fill toward zero (or the bottom): blue above, amber below when zero-centred
+      const base = zero && lo < 0 && hi > 0 ? Y(0) : pad.t + HH;
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i]; if (!a || !b) continue;
+        x.fillStyle = zero ? ((s.v[i] ?? 0) >= 0 ? 'rgba(90,162,255,.38)' : 'rgba(224,169,59,.42)') : 'rgba(90,162,255,.22)';
+        x.beginPath(); x.moveTo(a[0], base); x.lineTo(a[0], a[1]); x.lineTo(b[0], b[1]); x.lineTo(b[0], base); x.closePath(); x.fill();
+      }
+    }
+    x.strokeStyle = s.color ?? color; x.lineWidth = s.width ?? 1.4; if (s.dash) x.setLineDash(s.dash);
+    x.beginPath(); let on = false; for (const p of pts) { if (!p) { on = false; continue; } on ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]); on = true; } x.stroke(); x.setLineDash([]);
+    if (dots) { x.fillStyle = s.color ?? color; for (const p of pts) if (p) { x.beginPath(); x.arc(p[0], p[1], 2.2, 0, 7); x.fill(); } }
+  }
+  if (ref != null) { x.strokeStyle = 'rgba(243,207,126,.7)'; x.beginPath(); x.moveTo(X(ref), pad.t); x.lineTo(X(ref), pad.t + HH); x.stroke(); }
+  return { X, Y };
+}
+// a rows × cols heat map. val(r, c) in 0..1. Returns hit-test helper.
+function heatmap(cv, rows, cols, val, { h, labelW = 0, label = null, pick = null, colLabels = null, color = heat } = {}) {
+  const { x, w, h: H } = sized(cv, h);
+  const top = 2, bottom = colLabels ? 16 : 2, W = w - labelW, cw = W / cols, rh = (H - top - bottom) / rows;
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { x.fillStyle = color(val(r, c)); x.fillRect(labelW + c * cw, top + r * rh, Math.ceil(cw) + 0.5, Math.ceil(rh) + 0.5); }
+  if (label) { x.font = `${Math.min(11, rh * 0.75)}px ui-monospace,Menlo,monospace`; x.textAlign = 'right'; x.textBaseline = 'middle';
+    for (let r = 0; r < rows; r++) { let t = label(r); while (t.length > 3 && x.measureText(t).width > labelW - 10) t = t.slice(0, -2) + '…';
+      x.fillStyle = pick && pick.r === r ? '#f3cf7e' : '#b4c0d4'; x.fillText(t, labelW - 6, top + (r + 0.5) * rh); } }
+  if (colLabels) { x.font = '10px ui-monospace,Menlo,monospace'; x.fillStyle = '#7d8aa3'; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+    for (const [c, t] of colLabels) x.fillText(t, labelW + (c + 0.5) * cw, H - 3); }
+  if (pick) { x.strokeStyle = '#f3cf7e'; x.lineWidth = 1.2;
+    if (pick.r != null) x.strokeRect(labelW + 0.5, top + pick.r * rh + 0.5, W - 1, rh - 1);
+    if (pick.c != null) x.strokeRect(labelW + pick.c * cw, top, Math.max(1.5, cw), H - top - bottom); }
+  return ev => { const b = cv.getBoundingClientRect(), px = ev.clientX - b.left, py = ev.clientY - b.top;
+    return { r: Math.max(0, Math.min(rows - 1, Math.floor((py - top) / rh))), c: px < labelW ? null : Math.max(0, Math.min(cols - 1, Math.floor((px - labelW) / cw))) }; };
+}
+const yearTicks = dates => { const out = []; let y = null; dates.forEach((d, i) => { const yy = String(d).slice(0, 4); if (yy !== y) { if (y !== null) out.push([i, yy]); y = yy; } }); return out; };
+const sign = (v, d = 1) => fin(v) ? (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d) : '–';
+const money = v => fin(v) ? Math.round(v).toLocaleString('en-US') : '–';
+const px = v => fin(v) ? v.toLocaleString('en-US', { maximumFractionDigits: Math.abs(v) >= 100 ? 2 : 4 }) : '–';
+
+// his surface palette: deep blue → teal → yellow
+const VIR = [[0, [11, 29, 79]], [0.3, [31, 95, 191]], [0.55, [42, 165, 160]], [0.8, [156, 207, 90]], [1, [242, 209, 74]]];
+const PLOTLY_VIR = VIR.map(([t, c]) => [t, `rgb(${c.join(',')})`]);
+const PLOTLY_HEAT = STOPS.map(([t, c]) => [t, `rgb(${c.join(',')})`]);
+function ramp(stops, t, shade = 1) {
+  if (!fin(t)) return 'rgba(0,0,0,0)';
+  t = Math.max(0, Math.min(1, t));
+  for (let i = 1; i < stops.length; i++) if (t <= stops[i][0]) {
+    const [a, ca] = stops[i - 1], [b, cb] = stops[i], f = (t - a) / (b - a);
+    return `rgb(${ca.map((c, k) => Math.round((c + (cb[k] - c) * f) * shade)).join(',')})`;
+  }
+  return `rgb(${stops.at(-1)[1].map(c => Math.round(c * shade)).join(',')})`;
+}
+const vir = t => ramp(VIR, t);
+
+// Isometric render for the wall of screens: a surface (quads) or extruded bars, painted back to front.
+function iso(cv, rows, cols, val, { h = 150, bars = false, stops = VIR, step = 1 } = {}) {
+  const { x, w, h: H } = sized(cv, h);
+  const nc = Math.ceil(cols / step), ox = w * 0.10, oy = H * 0.20, Z = H * 0.36;
+  const ux = w * 0.66 / nc, uy = H * 0.10 / nc, vx = w * 0.20 / rows, vy = H * 0.50 / rows;
+  const P = (c, r, z) => [ox + c * ux + r * vx, oy + c * uy + r * vy - z * Z + Z * 0.55];
+  const v = (r, c) => { let s = 0, n = 0; for (let k = c * step; k < Math.min(cols, (c + 1) * step); k++) { const q = val(r, k); if (fin(q)) { s += q; n++; } } return n ? s / n : NaN; };
+  const poly = (pts, fill) => { x.beginPath(); x.moveTo(...pts[0]); for (const p of pts.slice(1)) x.lineTo(...p); x.closePath(); x.fillStyle = fill; x.fill(); x.strokeStyle = fill; x.lineWidth = 0.6; x.stroke(); };
+  for (let r = 0; r < rows; r++) for (let c = 0; c < nc; c++) {
+    const z = v(r, c); if (!fin(z)) continue;
+    if (bars) {
+      const zz = Math.max(0.03, z), g = 0.85;
+      poly([P(c + g, r, 0), P(c + g, r + g, 0), P(c + g, r + g, zz), P(c + g, r, zz)], ramp(stops, z, 0.55));      // right side
+      poly([P(c, r + g, 0), P(c + g, r + g, 0), P(c + g, r + g, zz), P(c, r + g, zz)], ramp(stops, z, 0.75));      // front
+      poly([P(c, r, zz), P(c + g, r, zz), P(c + g, r + g, zz), P(c, r + g, zz)], ramp(stops, z));                    // top
+    } else {
+      const z2 = v(r, Math.min(nc - 1, c + 1)), z3 = v(Math.min(rows - 1, r + 1), Math.min(nc - 1, c + 1)), z4 = v(Math.min(rows - 1, r + 1), c);
+      const zs = [z, fin(z2) ? z2 : z, fin(z3) ? z3 : z, fin(z4) ? z4 : z];
+      poly([P(c, r, zs[0]), P(c + 1, r, zs[1]), P(c + 1, r + 1, zs[2]), P(c, r + 1, zs[3])], ramp(stops, (zs[0] + zs[1] + zs[2] + zs[3]) / 4, 0.75 + 0.25 * (r / rows)));
+    }
+  }
+}
+
+// ── 3D (Plotly): his surfaces. Each has a FLAT twin that is easier to read exact values from; phones start flat.
+const VIEW = (() => { try { return JSON.parse(localStorage.getItem('feedView') || '{}'); } catch { return {}; } })();
+const view = sec => VIEW[sec] ?? (window.innerWidth < 760 ? 'flat' : '3d');
+const has3d = () => typeof window.Plotly !== 'undefined';
+function wireSwitches() {
+  document.querySelectorAll('.vsw').forEach(sw => {
+    const sec = sw.dataset.sec;
+    sw.querySelectorAll('button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.v === view(sec)));
+      b.onclick = () => { VIEW[sec] = b.dataset.v; try { localStorage.setItem('feedView', JSON.stringify(VIEW)); } catch {} wireSwitches(); redraw(); };
+    });
+  });
+}
+function showView(sec, surfId, flatId) {
+  const three = view(sec) === '3d' && has3d();
+  $(surfId).hidden = !three; $(flatId).hidden = three;
+  return three;
+}
+const CFG = { displayModeBar: false, responsive: true };
+const ax3 = (title, o = {}) => ({ title: { text: title, font: { size: 10, color: '#7d8aa3' } }, gridcolor: '#1d2b44', zerolinecolor: '#1d2b44', linecolor: '#2a3c5c',
+  showbackground: true, backgroundcolor: 'rgba(8,16,36,.55)', tickfont: { size: 9, color: '#7d8aa3' }, showspikes: false, ...o });
+const L3 = (scene, rev) => ({ paper_bgcolor: 'rgba(0,0,0,0)', margin: { l: 0, r: 0, t: 0, b: 0 }, showlegend: false, uirevision: rev,
+  font: { family: 'ui-monospace,Menlo,monospace', size: 10, color: '#7d8aa3' }, hoverlabel: { bgcolor: '#0b1428', bordercolor: '#5aa2ff', font: { family: 'ui-monospace,Menlo,monospace', size: 11, color: '#e8eef8' } },
+  scene: { bgcolor: 'rgba(0,0,0,0)', uirevision: rev, ...scene } });
+const yearTickvals = dates => { const t = yearTicks(dates); return { tickvals: t.map(p => p[0]), ticktext: t.map(p => p[1]) }; };
+
+async function get(url) {
+  try { const r = await fetch(url); const j = await r.json(); return j; } catch (e) { return { ok: false, error: e.message }; }
+}
+
+// ── RATES ──────────────────────────────────────────────────────────────────
+const RS = { pick: null };
+function drawRates(R) {
+  if (!R?.curve?.length) { $('r-read').textContent = 'Surface Lab has not built its rates surface yet.'; return; }
+  const W = R.weeks, T = R.tenors, C = R.curve, n = W.length;
+  if (!RS.pick) RS.pick = { c: n - 1, r: T.indexOf('10Y') >= 0 ? T.indexOf('10Y') : T.length - 1 };
+  const all = C.flat().filter(fin), lo = Math.min(...all), hi = Math.max(...all);
+  const hit = heatmap($('r-heat'), T.length, n, (r, c) => (C[c]?.[T.length - 1 - r] - lo) / (hi - lo),
+    { h: 300, labelW: 34, label: r => T[T.length - 1 - r], pick: { r: T.length - 1 - RS.pick.r, c: RS.pick.c }, colLabels: yearTicks(W), color: vir });
+  if (showView('rates', 'r-surf', 'r-heat')) rates3d(R);
+  $('r-heat').onclick = ev => { const p = hit(ev); RS.pick = { c: p.c ?? RS.pick.c, r: T.length - 1 - p.r }; drawRates(R); };
+  $('r-heat').onkeydown = ev => {
+    const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[ev.key]; if (!d) return; ev.preventDefault();
+    RS.pick = { c: Math.max(0, Math.min(n - 1, RS.pick.c + d[0])), r: Math.max(0, Math.min(T.length - 1, RS.pick.r + d[1])) }; drawRates(R);
+  };
+  const c = RS.pick.c, k = RS.pick.r, yAgo = Math.max(0, c - 52);
+  $('r-pick').textContent = `pick: ${W[c]} · ${T[k]} ${fin(C[c][k]) ? C[c][k].toFixed(2) + '%' : ''} · ${R.regime?.[c] ?? ''}`;
+  line($('r-curve'), [{ v: C[yAgo], color: '#7d8aa3', dash: [3, 3], fill: false }, { v: C[c], color: '#f3cf7e', width: 2, fill: false }], { h: 150, dots: true, labels: T.map((t, i) => [i, t]).filter((_, i) => i % 2 === 0) });
+  line($('r-hist'), [{ v: C.map(row => row[k]) }], { h: 150, ref: c, labels: yearTicks(W) });
+  const now = C[n - 1], ago = C[Math.max(0, n - 5)];
+  const ti = t => T.indexOf(t), slope = r => fin(r[ti('10Y')]) && fin(r[ti('2Y')]) ? (r[ti('10Y')] - r[ti('2Y')]) * 100 : null;
+  $('r-read').innerHTML = `Week of ${esc(W[n - 1])}: 2Y ${fin(now[ti('2Y')]) ? now[ti('2Y')].toFixed(2) : '–'}%, 10Y ${fin(now[ti('10Y')]) ? now[ti('10Y')].toFixed(2) : '–'}%, 2s10s ${sign(slope(now), 0)}bp (${sign(slope(now) - slope(ago), 0)}bp over four weeks). Surface Lab labels the curve <b>${esc(R.now?.regime ?? R.regime?.[n - 1] ?? '–')}</b>.`;
+  mini('m-rates', cv => iso(cv, T.length, n, (r, cc) => (C[cc]?.[r] - lo) / (hi - lo), { step: Math.ceil(n / 70) }));
+}
+function rates3d(R) {
+  const W = R.weeks, T = R.tenors, C = R.curve, c = RS.pick.c, k = RS.pick.r, idx = W.map((_, i) => i);
+  const z = T.map((_, t) => W.map((_, w) => C[w][t]));
+  Plotly.react('r-surf', [
+    { type: 'surface', x: idx, y: T.map((_, i) => i), z, colorscale: PLOTLY_VIR, showscale: false, opacity: 0.97,
+      contours: { x: { show: false }, y: { show: false }, z: { show: true, usecolormap: true, highlightcolor: '#f3cf7e', project: { z: true } } },
+      lighting: { ambient: 0.75, diffuse: 0.6, specular: 0.25, roughness: 0.6 }, customdata: T.map(t => W.map(w => [w, t])),
+      hovertemplate: '%{customdata[0]} · %{customdata[1]}: %{z:.2f}%<extra></extra>' },
+    { type: 'scatter3d', mode: 'lines', x: T.map(() => c), y: T.map((_, i) => i), z: C[c].map(v => v + 0.03), line: { color: '#f3cf7e', width: 7 }, hoverinfo: 'skip' },
+    { type: 'scatter3d', mode: 'lines', x: idx, y: idx.map(() => k), z: z[k].map(v => v + 0.03), line: { color: '#ffffff', width: 5 }, hoverinfo: 'skip' },
+  ], L3({ xaxis: ax3('', yearTickvals(W)), yaxis: ax3('', { tickvals: T.map((_, i) => i), ticktext: T }), zaxis: ax3('yield %'),
+    aspectmode: 'manual', aspectratio: { x: 1.9, y: 1.1, z: 0.55 }, camera: { eye: { x: -1.2, y: -1.65, z: 0.85 }, center: { x: 0.05, y: 0, z: -0.08 } } }, 'rates'), CFG);
+  const el = $('r-surf');
+  if (!el._wired) { el._wired = true; el.on('plotly_click', ev => { const p = ev.points?.[0]; if (!p || p.data.type !== 'surface') return;
+    RS.pick = { c: Math.round(p.x), r: Math.round(p.y) }; drawRates(LAST.rates); }); }
+}
+
+// ── LIQUIDITY ──────────────────────────────────────────────────────────────
+function drawLiquidity(L) {
+  if (!L?.rows?.length) { $('l-table').innerHTML = '<tr><td class="empty">No liquidity build yet.</td></tr>'; return; }
+  const zcell = z => { if (!fin(z)) return '–'; const a = Math.min(1, Math.abs(z) / 3); const bg = z >= 0 ? `rgba(90,162,255,${0.12 + a * 0.45})` : `rgba(224,169,59,${0.12 + a * 0.45})`; return `<span class="zb" style="background:${bg}">${sign(z, 2)}</span>`; };
+  const cls = v => fin(v) ? (v > 0 ? 'up' : v < 0 ? 'dn' : '') : '';
+  const fmt = (r, v, signed) => r.unit === 'bp' ? (signed ? sign(v, 1) : (fin(v) ? v.toFixed(1) : '–')) + 'bp' : (signed ? (fin(v) ? sign(v, 1) + 'bn' : '–') : money(v) + 'bn');
+  $('l-table').innerHTML = `<thead><tr><th>instrument</th><th>latest</th><th>week</th><th>z of the week</th><th>month</th><th>year</th><th>3y range</th><th>3 years</th><th>source</th></tr></thead><tbody>` +
+    L.rows.map((r, i) => `<tr><td>${esc(r.label)} <span style="color:var(--text3)">${r.unit === 'bp' ? '' : '$'}</span></td><td>${fmt(r, r.latest)}</td>
+      <td class="${cls(r.week)}">${fmt(r, r.week, true)}</td><td>${zcell(r.zWeek)}</td><td class="${cls(r.month)}">${fmt(r, r.month, true)}</td><td class="${cls(r.year)}">${fmt(r, r.year, true)}</td>
+      <td>${fin(r.pctl) ? r.pctl + '%' : '–'}</td><td style="width:130px"><canvas id="l-sp${i}" style="width:120px;height:24px;display:block;margin-left:auto"></canvas></td><td class="src">${esc(r.source)}</td></tr>`).join('') + '</tbody>';
+  L.rows.forEach((r, i) => line($(`l-sp${i}`), [{ v: r.series.map(p => p[1]), color: r.key === 'net' ? '#f3cf7e' : '#5aa2ff', width: 1.2 }], { h: 24, fill: r.key === 'net', axis: false }));
+  $('l-asof').textContent = 'week of ' + (L.rows.find(r => r.key === 'net')?.asOf ?? L.rows[0].asOf);
+  $('l-read').textContent = L.read ?? '–';
+  const net = L.rows.find(r => r.key === 'net') ?? L.rows[0];
+  mini('m-liq', cv => line(cv, [{ v: net.series.map(p => p[1]), color: '#f3cf7e', width: 1.6 }], { h: 150, axis: false }));
+}
+
+// ── CROSS-ASSET ────────────────────────────────────────────────────────────
+function drawCross(X) {
+  if (!X?.pairs?.length) { $('x-grid').innerHTML = '<div class="empty">No cross-asset build yet.</div>'; return; }
+  $('x-grid').innerHTML = X.pairs.map((p, i) => `<div class="corr"><div class="t"><span>${esc(p.label)}</span><b class="${p.last >= 0 ? 'up' : 'dn'}">${sign(p.last, 2)}</b></div>
+    <canvas id="x-c${i}"></canvas><div class="m">13w change ${sign(p.chg13, 2)} · 3y avg ${sign(p.avg, 2)} · ${fin(p.pctl) ? p.pctl + 'th pct of its 3y' : ''}</div></div>`).join('') +
+    (X.missing?.length ? `<div class="empty">missing legs this build: ${esc(X.missing.join(', '))}</div>` : '');
+  X.pairs.forEach((p, i) => line($(`x-c${i}`), [{ v: p.series.map(s => s[1]), color: '#9ccaff', width: 1.1 }], { h: 64, zero: true, ymin: -1, ymax: 1 }));
+  mini('m-cross', cv => {
+    const { x, w, h } = sized(cv, 150), k = Math.min(6, X.pairs.length), rh = h / k;
+    X.pairs.slice(0, k).forEach((p, j) => { const v = p.series.map(s => s[1]), n = v.length;
+      for (let i = 1; i < n; i++) { if (!fin(v[i])) continue; const y0 = j * rh + rh / 2, y = y0 - v[i] * rh * 0.45;
+        x.fillStyle = v[i] >= 0 ? 'rgba(90,162,255,.55)' : 'rgba(224,169,59,.6)'; x.fillRect(i / n * w, Math.min(y, y0), w / n + 0.5, Math.abs(y - y0)); } });
+  });
+}
+
+// ── COMMODITIES ────────────────────────────────────────────────────────────
+const CS = { r: 0 };
+function drawCommodities(K) {
+  if (!K?.rows?.length) { $('c-side').innerHTML = '<div class="empty">No commodities build yet.</div>'; return; }
+  const rows = K.rows, cols = Math.max(...rows.map(r => r.cells.length));
+  const dates = rows.reduce((a, r) => r.cells.length > a.length ? r.cells.map(c => c[0]) : a, []);
+  const labelW = Math.min(220, Math.max(130, $('c-heat').clientWidth * 0.32));
+  const cell = (r, c) => { const cs = rows[r].cells, off = cols - cs.length, v = cs[c - off]?.[1]; return fin(v) ? v / 100 : NaN; };
+  const hit = heatmap($('c-heat'), rows.length, cols, cell, { h: Math.max(320, rows.length * 22), labelW, pick: { r: CS.r },
+    label: r => `${fin(rows[r].z) ? sign(rows[r].z, 1) + '  ' : ''}${rows[r].label}`, colLabels: yearTicks(dates) });
+  $('c-heat').onclick = ev => { CS.r = hit(ev).r; drawCommodities(K); };
+  if (showView('comm', 'c-surf', 'c-heat')) comm3d(K, cols, dates, cell);
+  $('c-heat').onkeydown = ev => { const d = { ArrowUp: -1, ArrowDown: 1 }[ev.key]; if (!d) return; ev.preventDefault(); CS.r = Math.max(0, Math.min(rows.length - 1, CS.r + d)); drawCommodities(K); };
+  const R = rows[CS.r]; $('c-name').textContent = R.label; $('c-pickh').textContent = `${rows.length} rows · ranked by z · week of ${rows[0].asOf}`;
+  const src = K.sources?.[R.key] ?? (R.key === 'basket' ? 'equal-weight chain of the members\' weekly log returns' : '');
+  $('c-side').innerHTML = `
+    <div class="step">1) its standing now</div>
+    <dl class="kv"><dt>z in its window</dt><dd class="${(R.z ?? 0) >= 0 ? 'up' : 'dn'}">${sign(R.z, 2)}</dd>
+      <dt>in its window</dt><dd>${fin(R.pos) ? R.pos + '% of the way from its low to its high' : '–'}</dd>
+      <dt>on the week</dt><dd class="${(R.week ?? 0) >= 0 ? 'up' : 'dn'}">${fin(R.week) ? sign(R.week, 2) + '%' : '–'}${fin(R.posWeek) ? ` (${sign(R.posWeek, 0)} pts of range)` : ''}</dd>
+      <dt>above its median</dt><dd>${fin(R.above) ? R.above + '% of the 104 weeks' : '–'}</dd></dl>
+    <div class="step">2) its standing through the window</div><canvas class="plot" id="c-pos" style="height:70px"></canvas>
+    <div class="step">3) its level</div><canvas class="plot" id="c-lvl" style="height:110px"></canvas>
+    <p class="hint" style="margin-top:6px">${esc(R.label)} ${px(R.last)} · 2y low ${px(R.lo)} · median ${px(R.median)} · high ${px(R.hi)} · ${esc(src)}</p>`;
+  line($('c-pos'), [{ v: R.cells.map(c => c[1] - 50), width: 1.1, color: '#9ccaff' }], { h: 70, zero: true, ymin: -50, ymax: 50 });
+  line($('c-lvl'), [{ v: R.prices.map(p => p[1]), color: '#f3cf7e', width: 1.4 }], { h: 110, band: [R.lo, R.hi], labels: yearTicks(R.prices.map(p => p[0])) });
+  mini('m-comm', cv => iso(cv, rows.length, cols, cell, { bars: true, stops: STOPS, step: 4 }));
+}
+// extruded bars, one per market-week: height and colour are the range position, the picked row is outlined in amber
+function comm3d(K, cols, dates, cell) {
+  const rows = K.rows, step = window.innerWidth < 1100 ? 2 : 1, nc = Math.ceil(cols / step), g = 0.82;
+  const X = [], Y = [], Z = [], I = [], J = [], Kk = [], F = [], txt = [];
+  const at = (r, c) => { let s = 0, n = 0; for (let q = c * step; q < Math.min(cols, (c + 1) * step); q++) { const v = cell(r, q); if (fin(v)) { s += v; n++; } } return n ? s / n : NaN; };
+  for (let r = 0; r < rows.length; r++) for (let c = 0; c < nc; c++) {
+    const v = at(r, c); if (!fin(v)) continue;
+    const y0 = rows.length - 1 - r, h = Math.max(0.02, v), b = X.length, col = heat(v);
+    const tip = `${rows[r].label} · wk ${dates[Math.min(cols - 1, c * step)] ?? ''} · ${Math.round(v * 100)}% of its 2y range`;
+    for (const [dx, dy, dz] of [[0, 0, 0], [g, 0, 0], [g, g, 0], [0, g, 0], [0, 0, h], [g, 0, h], [g, g, h], [0, g, h]]) { X.push(c + dx); Y.push(y0 + dy); Z.push(dz); txt.push(tip); }
+    for (const [a, bb, cc] of [[4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4], [1, 2, 6], [1, 6, 5], [2, 3, 7], [2, 7, 6], [3, 0, 4], [3, 4, 7]]) { I.push(b + a); J.push(b + bb); Kk.push(b + cc); F.push(col); }
+  }
+  const pr = rows.length - 1 - CS.r, yt = yearTicks(dates).map(([i, t]) => [i / step, t]);
+  Plotly.react('c-surf', [
+    { type: 'mesh3d', x: X, y: Y, z: Z, i: I, j: J, k: Kk, facecolor: F, flatshading: true, text: txt, hovertemplate: '%{text}<extra></extra>',
+      lighting: { ambient: 0.65, diffuse: 0.75, specular: 0.15, facenormalsepsilon: 0 }, lightposition: { x: -100, y: -200, z: 300 } },
+    { type: 'scatter3d', mode: 'lines', x: [0, nc, nc, 0, 0], y: [pr - 0.05, pr - 0.05, pr + g + 0.05, pr + g + 0.05, pr - 0.05], z: [1.04, 1.04, 1.04, 1.04, 1.04], line: { color: '#f3cf7e', width: 4 }, hoverinfo: 'skip' },
+  ], L3({ xaxis: ax3('', { tickvals: yt.map(p => p[0]), ticktext: yt.map(p => p[1]) }),
+    yaxis: ax3('', { tickvals: rows.map((_, r) => rows.length - 1 - r + 0.4), ticktext: rows.map(x => x.label), tickfont: { size: 9, color: '#b4c0d4' } }),
+    zaxis: ax3('', { range: [0, 1.08], showticklabels: false }),
+    aspectmode: 'manual', aspectratio: { x: 2.1, y: 1.25, z: 0.42 }, camera: { eye: { x: -0.8, y: -1.6, z: 0.95 }, center: { x: 0, y: 0, z: -0.1 } } }, 'comm'), CFG);
+  const el = $('c-surf');
+  if (!el._wired) { el._wired = true; el.on('plotly_click', ev => { const p = ev.points?.[0]; if (!p || p.data.type !== 'mesh3d') return;
+    CS.r = Math.max(0, Math.min(rows.length - 1, rows.length - 1 - Math.floor(p.y))); drawCommodities(LAST.feed.commodities); }); }
+}
+
+// ── OPTIONS ────────────────────────────────────────────────────────────────
+function drawOptions(V) {
+  const z = V?.z, D = V?.dates;
+  if (!z?.length || !D?.length) { $('o-kv').innerHTML = '<dd class="empty">Surface Lab has not built the vol term structure yet.</dd>'; return; }
+  const keep = Math.min(D.length, 520), off = D.length - keep, T = V.tenors;
+  // each expiry against its own history (2nd to 98th percentile): 1D vol always sits below 6M, so one shared scale would only show the tenor
+  const qs = z.map(row => { const a = row.slice(off).filter(fin).sort((p, q) => p - q); return [a[Math.floor(0.02 * (a.length - 1))], a[Math.floor(0.98 * (a.length - 1))]]; });
+  const val = (r, c) => { const i = T.length - 1 - r, [lo, hi] = qs[i]; return (z[i][off + c] - lo) / (hi - lo); };
+  heatmap($('o-heat'), T.length, keep, val, { h: 220, labelW: 40, label: r => T[T.length - 1 - r], colLabels: yearTicks(D.slice(off)), color: vir });
+  if (showView('opt', 'o-surf', 'o-heat')) {
+    // weekly (5-day mean) for the 3D: daily VIX is too spiky to read as a surface
+    const days = D.slice(off), wk = [];
+    for (let e = keep; e > 0; e -= 5) wk.unshift([Math.max(0, e - 5), e]);
+    const avg = (row, a, b) => { const xs = row.slice(off + a, off + b).filter(fin); return xs.length ? xs.reduce((p, q) => p + q, 0) / xs.length : null; };
+    const zz = T.map((_, i) => wk.map(([a, b]) => avg(z[i], a, b)));
+    const sc = T.map((_, i) => wk.map(([a, b]) => { const [lo, hi] = qs[i], v = avg(z[i], a, b); return fin(v) ? (v - lo) / (hi - lo) : null; }));
+    const lab = wk.map(([, b]) => days[b - 1]), idx = wk.map((_, j) => j), m = wk.length - 1;
+    Plotly.react('o-surf', [{ type: 'surface', x: idx, y: T.map((_, i) => i), z: zz, surfacecolor: sc, cmin: 0, cmax: 1, colorscale: PLOTLY_VIR, showscale: false,
+      lighting: { ambient: 0.75, diffuse: 0.6, specular: 0.2 }, customdata: T.map(t => lab.map(d => [d, t])), hovertemplate: 'week to %{customdata[0]} · %{customdata[1]}: %{z:.2f}<extra></extra>' },
+      { type: 'scatter3d', mode: 'lines', x: T.map(() => m), y: T.map((_, i) => i), z: T.map((_, i) => (zz[i][m] ?? 0) + 0.3), line: { color: '#f3cf7e', width: 7 }, hoverinfo: 'skip' }],
+      L3({ xaxis: ax3('', yearTickvals(lab)), yaxis: ax3('', { tickvals: T.map((_, i) => i), ticktext: T }), zaxis: ax3('implied vol'),
+        aspectmode: 'manual', aspectratio: { x: 2, y: 1, z: 0.55 }, camera: { eye: { x: -1.2, y: -1.65, z: 0.85 }, center: { x: 0.05, y: 0, z: -0.08 } } }, 'opt'), CFG);
+  }
+
+  const lastIdx = i => { for (let k = D.length - 1; k >= 0; k--) if (fin(z[i][k])) return k; return -1; };
+  const now = T.map((_, i) => z[i][lastIdx(i)]), monthAgo = T.map((_, i) => z[i][Math.max(0, lastIdx(i) - 21)]);
+  line($('o-curve'), [{ v: monthAgo, color: '#7d8aa3', dash: [3, 3], fill: false }, { v: now, color: '#f3cf7e', width: 2, fill: false }], { h: 170, dots: true, labels: T.map((t, i) => [i, t]) });
+  const N = V.now ?? {}, pct = v => fin(v) ? Math.round(v * 100) + '%' : '–';
+  $('o-pick').textContent = `${D[D.length - 1]} · ${keep} days`;
+  $('o-kv').innerHTML = `<dt>as of</dt><dd>${esc(D[D.length - 1])}</dd>${T.map((t, i) => `<dt>${esc(t)}</dt><dd>${fin(now[i]) ? now[i].toFixed(2) : '–'} <span style="color:var(--text3)">(${fin(now[i]) && fin(monthAgo[i]) ? sign(now[i] - monthAgo[i], 2) : '–'} vs a month ago)</span></dd>`).join('')}` +
+    (fin(N.front) ? `<dt>front (9D/30D)</dt><dd>${N.front.toFixed(3)} · <b>${esc(N.frontState ?? '–')}</b> · NQ/SPX past p75 on ${pct(N.p75Front)} of such days</dd>` : '') +
+    (fin(N.back) ? `<dt>back (30D/3M)</dt><dd>${N.back.toFixed(3)} · ${esc(N.backState ?? '–')}</dd>` : '');
+  mini('m-opt', cv => iso(cv, T.length, keep, (r, c) => val(T.length - 1 - r, c), { step: Math.ceil(keep / 80) }));
+}
+
+// ── montage tiles ───────────────────────────────────────────────────────────
+const MINI = {};
+function mini(id, draw) { MINI[id] = draw; draw($(id)); }
+function drawGapsTile() {
+  const { x, w, h } = sized($('m-gaps'), 150);
+  const rows = [['rates', 'look', '#5aa2ff'], ['liquidity', 'null', '#f0745e'], ['cross-asset', 'context', '#5aa2ff'], ['commodities', 'new · read', '#e0a93b'], ['options', 'real (range)', '#3fb950']];
+  x.font = '10.5px ui-monospace,Menlo,monospace'; x.textBaseline = 'middle';
+  rows.forEach(([a, b, c], i) => { const y = 12 + i * 15; x.fillStyle = '#b4c0d4'; x.textAlign = 'left'; x.fillText(a, 14, y);
+    x.fillStyle = c; x.fillRect(w * 0.48, y - 6, 4, 12); x.fillText(b, w * 0.48 + 10, y); });
+}
+
+let LAST = {};
+function redraw() {
+  if (LAST.rates) drawRates(LAST.rates); if (LAST.feed) { drawLiquidity(LAST.feed.liquidity); drawCross(LAST.feed.crossAsset); drawCommodities(LAST.feed.commodities); }
+  if (LAST.vol) drawOptions(LAST.vol); drawGapsTile();
+}
+// light the tab of the screen in view
+(() => { const tabs = [...document.querySelectorAll('#tabs a[href^="#"]')], io = new IntersectionObserver(es => {
+  for (const e of es) if (e.isIntersecting) tabs.forEach(t => t.classList.toggle('on', t.getAttribute('href') === '#' + e.target.id)); }, { rootMargin: '-40% 0px -55% 0px' });
+  document.querySelectorAll('section.screen').forEach(s => io.observe(s)); })();
+let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(redraw, 150); });
+
+(async function main() {
+  drawGapsTile(); wireSwitches();
+  // Plotly loads deferred; if the data arrives first the flat views show, then the 3D views swap in
+  if (!has3d()) window.addEventListener('load', () => { if (has3d()) redraw(); });
+  const [feed, rates, vol] = await Promise.all([get('/api/feed'), get('/api/surface-lab?field=rates'), get('/api/surface-lab?field=volTerm')]);
+  LAST = { feed: feed?.ok ? feed : null, rates: rates?.rates ?? null, vol: vol?.volTerm ?? null };
+  try { drawRates(LAST.rates); } catch (e) { console.error(e); }
+  try { drawLiquidity(feed?.liquidity); } catch (e) { console.error(e); }
+  try { drawCross(feed?.crossAsset); } catch (e) { console.error(e); }
+  try { drawCommodities(feed?.commodities); } catch (e) { console.error(e); }
+  try { drawOptions(LAST.vol); } catch (e) { console.error(e); }
+  const errs = { ...(feed?.errors ?? {}) }; if (!feed?.ok) errs.feed = feed?.error ?? 'unavailable';
+  if (!rates?.rates) errs.rates = rates?.error ?? 'no build'; if (!vol?.volTerm) errs.volTerm = vol?.error ?? 'no build';
+  const n = Object.keys(errs).length;
+  $('status').innerHTML = `<span class="dot${n ? ' off' : ''}"></span>${feed?.builtAt ? 'built ' + esc(feed.builtAt.slice(0, 16).replace('T', ' ')) + ' UTC' : 'not built yet'}${n ? ` · <span title="${esc(JSON.stringify(errs))}">${n} panel${n > 1 ? 's' : ''} short</span>` : ''}`;
+})();
+</script>
+</body>
+</html>
