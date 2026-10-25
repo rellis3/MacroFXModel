@@ -14,7 +14,7 @@ Generated 2026-10-25.
 | validated | 43 |
 | null | 129 |
 | underpowered | 45 |
-| context (base rates, descriptions: not counted as tests) | 37 |
+| context (base rates, descriptions: not counted as tests) | 39 |
 | pre-registrations with no banked verdict (below) | 80 |
 
 **What the count says (Lesson 02 §05).** If none of the 217 claims were real, tests at the usual 5% size would still pass
@@ -277,9 +277,11 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-24 | macro-confluence-range | macro | null | MD files/MACRO_CONFLUENCE_RANGE_PREREG.md |
 | 2026-10-24 | wall-placebo | positioning | null | oi_research_book/WALL_PLACEBO_PREREG.md |
 | 2026-10-24 | yield-ladder-eurusd | macro | underpowered | forge/YIELD_PREDICTIVE_LADDER_PREREG.md |
+| 2026-10-25 | cost-verification | price | context | forge/COST_VERIFICATION_PREREG.md |
 | 2026-10-25 | dax-ifo-lookahead | macro | null | forge/DAX_IFO_LOOKAHEAD_PREREG.md |
 | 2026-10-25 | overnight-hold-gold | price | underpowered | forge/OVERNIGHT_HOLD_PREREG.md |
 | 2026-10-25 | overnight-hold-nq | price | underpowered | forge/OVERNIGHT_HOLD_PREREG.md |
+| 2026-10-25 | overnight-hold-toolkit | price | context | forge/OVERNIGHT_HOLD_TOOLKIT_PREREG.md |
 | 2026-10-25 | portfolio-book-validate | price | context | forge/PORTFOLIO_BOOK_VALIDATE_PREREG.md |
 
 ## Pre-registered, but no banked verdict

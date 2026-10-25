@@ -86,3 +86,13 @@ worked.
 - Overnight hold: parked, not dead. The honest next step is a forward paper record at the 14:30 exit from 2026-08-22
   on, with real costs, judged against buy & hold. Not a prop attempt: at 1× it doesn't reach target and sized up it
   breaks the daily-loss rule.
+
+## Follow-up the same day: the toolkit stage and a cost check
+
+- **Toolkit (`overnight-hold-toolkit`, context).** On FTMO 2-step rules with no time limit, the hold gets funded about
+  40% of the time at 1× net (NQ 39%, gold 42%, both at half size 56%) against ~22% for a zero-edge copy, in 8–10
+  months. The 2–3% above came from a 30-day clock. A pass rate on its own says little: compare with zero edge.
+- **Costs (`cost-verification`, context).** Real swaps from 86 overnight positions on the owner's accounts: NQ
+  financing verified; gold financing 4.5× too high on one account and about right on the other (no triple
+  Wednesday there). Re-costed, NQ nets +5.6% a year and gold +4.7–6.3%. The spread can't be pinned from fills; the
+  clean check needs the MT5 terminals (part C, waiting for the owner's OK).
