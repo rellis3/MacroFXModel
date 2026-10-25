@@ -13,6 +13,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent)); sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'rates_line'))
 from layer1_lib import *
 from schedule import all_events, HIST_END, BASE
+from daily_lib import refresh_daily, load_daily
 
 KV_KEY = 'release_layer1_v1'
 NAMES = ['SR3U6', 'IH7', 'ZTZ6', 'ZNZ6', 'DXZ6', 'NQZ6']
@@ -54,7 +55,9 @@ if __name__ == '__main__':
     if (in_window or a.force_pull) and not a.no_pull:
         note = pull(NAMES, hours=30 if a.force_pull else 8)
         if in_window: note = f'{", ".join(e["family"] for e in in_window)} in window: ' + note
-    S = load_sources(); event_days = {e['t'].date() for e in EV}
+    try: dnote = refresh_daily(max_age_h=4)
+    except Exception as e: dnote = f'daily refresh failed ({type(e).__name__}); cache used'
+    S = load_sources(); S['_daily'] = load_daily(S); note += ' | ' + dnote; event_days = {e['t'].date() for e in EV}
     rows, paths = [], {}
     for e in live:
         if e['t'] > now: continue

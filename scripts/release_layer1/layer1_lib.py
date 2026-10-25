@@ -176,4 +176,9 @@ def build_event(S, ev, event_days):
     ag = agreement(M)
     r = {k: v for k, v in ev.items() if k != 't'}
     r.update(t=t.strftime('%Y-%m-%dT%H:%M:%SZ'), M=M, agree=ag, jump=jo)
+    a_, c_ = ev.get('actual'), ev.get('consensus')
+    r['surprise'] = None if a_ is None or c_ is None else round(a_ - c_, 4)                                    # raw actual - consensus, in the release's own unit (Layer 2 models it)
+    if S.get('_daily') is not None:                                                                          # the days view (daily_lib): trading-day path k=-6..+5 around the release date
+        from daily_lib import daily_path, DKEYS
+        day = t.tz_convert('America/New_York').tz_localize(None).normalize(); r['D'] = {k: daily_path(S['_daily'], k, day, ev.get('family')) for k in DKEYS}
     return r, {k: ({kk: vv for kk, vv in P[k].items()} if P.get(k) else None) for k in KEYS}

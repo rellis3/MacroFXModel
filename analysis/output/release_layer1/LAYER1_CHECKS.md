@@ -35,3 +35,17 @@ Releases whose largest SOFR-leg move is more than a minute from the stamped time
 - Euribor leg: median 30, fewer than 20 bars in 0 of 73 releases.
 - Euribor leg unchanged at +30 minutes in 9 of 73 releases; of those, 0 had fewer than 20 bars (a stale midpoint, not a measured non-reaction).
 
+
+## Days view: releases with a daily path (of the releases built)
+
+| series | releases with a path | newest daily close |
+|---|---|---|
+| SOFR Sep26 leg (bp) | 74 | 2026-10-23 |
+| Euribor Mar27 leg (bp) | 73 | 2026-10-23 |
+| SOFR - Euribor line (bp) | 73 | 2026-10-23 |
+| US 2y yield (bp) | 75 | 2026-10-23 |
+| US 10y yield (bp) | 75 | 2026-10-23 |
+| 10y real yield (bp) | 75 | 2026-10-23 |
+| 10y breakeven (bp) | 75 | 2026-10-23 |
+| Dollar index (%) | 74 | 2026-10-23 |
+| Nasdaq-100 (%) | 74 | 2026-10-23 |

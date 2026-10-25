@@ -8,9 +8,11 @@ import numpy as np, pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from layer1_lib import *
 from schedule import all_events
+from daily_lib import refresh_daily, load_daily, DKEYS, DLABEL
 
 OUT = AO / 'release_layer1'; OUT.mkdir(exist_ok=True)
 S = load_sources()
+print(refresh_daily()); S['_daily'] = load_daily(S)
 EV = all_events(include_ahead=False)
 event_days = {e['t'].date() for e in EV}
 rows, paths, skipped = [], {}, []
@@ -43,4 +45,7 @@ md += ['', '## Quote density in the 30 minutes after the release (1-minute bars 
        f'- SOFR leg: median {t.sofr_bars.median():.0f}, fewer than 20 bars in {int((t.sofr_bars < 20).sum())} of {len(t)} releases.',
        f'- Euribor leg: median {t.eur_bars.median():.0f}, fewer than 20 bars in {int((t.eur_bars < 20).sum())} of {len(t)} releases.',
        f'- Euribor leg unchanged at +30 minutes in {int(((D.eur_m30 == 0)).sum())} of {int(D.eur_m30.notna().sum())} releases; of those, {int(((D.eur_m30 == 0) & (D.eur_bars < 20)).sum())} had fewer than 20 bars (a stale midpoint, not a measured non-reaction).', '']
+md += ['', '## Days view: releases with a daily path (of the releases built)', '', '| series | releases with a path | newest daily close |', '|---|---|---|']
+for k in DKEYS:
+    md.append(f"| {DLABEL[k]} | {sum(1 for r in rows if (r.get('D') or {}).get(k))} | {S['_daily'][k].index.max():%Y-%m-%d} |" if k in S['_daily'] else f'| {DLABEL[k]} | 0 | none |')
 (OUT / 'LAYER1_CHECKS.md').write_text('\n'.join(md) + '\n', encoding='utf-8'); print('\n'.join(md))

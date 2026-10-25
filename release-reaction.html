@@ -7,7 +7,7 @@
 <style>
   :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--amber:#d29922;--red:#f85149;
         --s1:#3987e5;--s2:#d95926;--s3:#199e70;--grid:#21262d;--zero:#484f58;
-        --c-sofr:#3987e5;--c-eur:#b07ae0;--c-spr:#e6edf3;--c-zt:#d29922;--c-zn:#e0833f;--c-dx:#199e70;--c-nq:#4fc3d9}
+        --c-sofr:#3987e5;--c-eur:#b07ae0;--c-spr:#e6edf3;--c-zt:#d29922;--c-zn:#e0833f;--c-dx:#199e70;--c-nq:#4fc3d9;--c-real:#e05d8a;--c-be:#9ccc4a}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{overflow-x:hidden}
   body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
@@ -75,8 +75,10 @@
     <div class="box">
       <h2>Every release (newest first): click one</h2>
       <div class="row" id="famTabs"></div>
+      <div class="row" id="viewTabs"></div>
       <div class="tscroll"><table id="tbl"><thead></thead><tbody></tbody></table></div>
-      <p class="note" style="margin-top:8px">Moves are from the instant of the release: SOFR, Euribor and their line in <b>bp of rate</b> (positive = rates up); the 2y and 10y are note futures in <b>% of price</b>, so a <b>negative</b> number there means yields rose; the dollar and Nasdaq in %. The 2y, 10y and dollar are <b>15-minute CFD or short-history</b> before September 2026 (see the data checks), so their 1- and 5-minute cells are blank for older releases rather than guessed. Agreement counts the SOFR leg, Euribor leg, 2y and 10y that moved in the same rates direction over the first 30 minutes.</p>
+      <p class="note" style="margin-top:8px">Moves are from the instant of the release: SOFR, Euribor and their line in <b>bp of rate</b> (positive = rates up); the 2y and 10y are note futures in <b>% of price</b>, so a <b>negative</b> number there means yields rose; the dollar and Nasdaq in %. The 2y, 10y and dollar are <b>15-minute CFD or short-history</b> before September 2026 (see the data checks), so their 1- and 5-minute cells are blank for older releases rather than guessed. Agreement counts the SOFR leg, Euribor leg, 2y and 10y that moved in the same rates direction over the first 30 minutes. <b>Surprise</b> is the raw actual minus consensus in the release's own unit (payrolls in thousands); modelling it is Layer 2.</p>
+      <p class="note" style="margin-top:6px"><b>Days view:</b> daily closes, measured from the close of the day before the release. The 2y and 10y yields, 10y real yield and 10y breakeven (US Treasury curves) and the Euribor and SOFR legs are in <b>bp</b>, positive = rates up (a rise in the real yield is a tightening, a rise in the breakeven is more inflation priced in); dollar and Nasdaq-100 in %. <b>Release day</b> is the whole day's move to the close, so it also contains the hours before the release; <b>run-up</b> is the 5 trading days up to the pre-release close, signed as the move into the release. Euribor stops trading before a US evening decision, so its release-day cell is blank for FOMC.</p>
     </div>
     <div class="box" id="detail"><h2>Release detail</h2><div class="mut">Choose a release.</div></div>
   </div>
@@ -85,6 +87,12 @@
     <h2>Typical shape by release</h2>
     <p class="note" style="margin:0 0 8px">Median absolute move from the release instant, over the releases in each family (1-minute assets only). It shows how fast and how large a typical reaction is, not which way it goes. Cells show the median, with how many releases moved at all in brackets.</p>
     <div class="xscroll"><table id="shape"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>Typical over days, by release</h2>
+    <p class="note" style="margin:0 0 8px">Median absolute move (the size of a typical response, not its direction) over the releases in each family, from the pre-release close: the 5 days before, the release day, then 1, 2 and 5 days after. The last column is the share of releases that were up at +1 day. Follows the release tabs above.</p>
+    <div class="tscroll" style="max-height:420px"><table id="shapeDays"></table></div>
   </div>
 
   <div class="box">
@@ -102,6 +110,18 @@ const LAB = {sofr:'SOFR Sep26 leg',eur:'Euribor Mar27 leg',spr:'SOFR − Euribor
 const UNIT = {sofr:'bp',eur:'bp',spr:'bp',zt:'%',zn:'%',dx:'%',nq:'%'};
 const COL = {sofr:'var(--c-sofr)',eur:'var(--c-eur)',spr:'var(--c-spr)',zt:'var(--c-zt)',zn:'var(--c-zn)',dx:'var(--c-dx)',nq:'var(--c-nq)'};
 const RSIGN = {sofr:1,eur:1,spr:1,zt:-1,zn:-1};
+const DK = ['y2','y10','real10','be10','sofr','eur','spr','dx','nq'];
+const DLAB = {y2:'US 2y yield',y10:'US 10y yield',real10:'10y real yield',be10:'10y breakeven',sofr:'SOFR Sep26 leg',eur:'Euribor Mar27 leg',spr:'SOFR − Euribor line',dx:'Dollar index',nq:'Nasdaq-100'};
+const DSHORT = {y2:'2y',y10:'10y',real10:'Real 10y',be10:'BE 10y',sofr:'SOFR',eur:'EUR',spr:'Line',dx:'USD',nq:'NQ'};
+const DUNIT = {y2:'bp',y10:'bp',real10:'bp',be10:'bp',sofr:'bp',eur:'bp',spr:'bp',dx:'%',nq:'%'};
+const DCOL = {y2:'var(--c-zt)',y10:'var(--c-zn)',real10:'var(--c-real)',be10:'var(--c-be)',sofr:'var(--c-sofr)',eur:'var(--c-eur)',spr:'var(--c-spr)',dx:'var(--c-dx)',nq:'var(--c-nq)'};
+const KS = [-6,-5,-4,-3,-2,-1,0,1,2,3,4,5];
+const HZ = {run:['Run-up 5d','5 trading days up to the pre-release close'], d0:['Release day','pre-release close to the close of the release day'], d1:['+1 day','close of the day after, from the pre-release close'], d2:['+2 days','close two days after'], d5:['+5 days','close five trading days after']};
+let VIEW = 'min', HOR = 'd1';
+const dv = (r, k, h) => { const a = r.D && r.D[k]; if (!a) return null; const g = n => a[KS.indexOf(n)] ?? null; return h === 'run' ? (g(-6) == null ? null : -g(-6)) : h === 'd0' ? g(0) : h === 'd1' ? g(1) : h === 'd2' ? g(2) : g(5); };
+const ddp = k => DUNIT[k] === 'bp' ? 1 : 2;
+const dnum = (v, k) => v == null ? '<span class="mut">·</span>' : `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : 'mut'}">${(v > 0 ? '+' : '') + v.toFixed(ddp(k))}</span>`;
+const surTxt = r => { if (r.surprise == null) return '<span class="mut">·</span>'; const v = r.surprise, big = Math.abs(r.actual ?? 0) >= 5000 || Math.abs(v) >= 5000; const t = big ? (v / 1000).toFixed(0) + 'K' : (+v.toFixed(3)).toString(); return `<span title="actual ${r.actual} vs consensus ${r.consensus}">${v > 0 ? '+' : ''}${t}</span>`; };
 const FAMNAME = {FOMC:'Fed decision',CPI:'Core CPI',NFP:'Payrolls',PCE:'Core PCE',GDP:'GDP',RETAIL:'Retail sales'};
 const OFF0 = -30;
 let D = null, SEL = null, FAM = 'all', PATHS = {}, TICK = 0, DETAIL_LIVE = false;
@@ -119,7 +139,7 @@ async function load() {
     renderAll();
   } catch (e) { $('chipFresh').className = 'chip bad'; $('chipFresh').textContent = 'could not load: ' + e.message; }
 }
-function renderAll() { renderFresh(); renderNext(); renderTable(); renderShape(); if (SEL) loadDetail(SEL, true); }
+function renderAll() { renderFresh(); renderNext(); renderTable(); renderShape(); renderShapeDays(); if (SEL) loadDetail(SEL, true); }
 
 function renderFresh() {
   const c = $('chipFresh'); if (D.ageSec == null) { c.className = 'chip warn'; c.textContent = 'laptop has not pushed yet: history only'; return; }
@@ -159,12 +179,21 @@ function agreeTxt(a) { if (!a || !a.n) return '<span class="mut">·</span>'; con
 function renderTable() {
   const fams = ['all', ...new Set(D.rows.map(r => r.family))];
   $('famTabs').innerHTML = fams.map(f => `<button class="btn ${FAM === f ? 'on' : ''}" onclick="setFam('${f}')">${f === 'all' ? 'All' : (FAMNAME[f] || f)} <span class="mut">${f === 'all' ? D.rows.length : D.rows.filter(r => r.family === f).length}</span></button>`).join('');
-  const cols = [['sofr', 'm5'], ['sofr', 'm30'], ['eur', 'm30'], ['spr', 'm30'], ['zt', 'm30'], ['zn', 'm30'], ['dx', 'm30'], ['nq', 'm30']];
-  $('tbl').querySelector('thead').innerHTML = `<tr><th>Time (London)</th><th class="l">Release</th>${cols.map(([k, m]) => `<th title="${LAB[k]}, ${m.slice(1)} min after">${k === 'spr' ? 'Line' : k.toUpperCase()} ${m.slice(1)}m</th>`).join('')}<th>Agree</th><th title="Minute of the largest SOFR-leg 1-min move relative to the stamp">Clock</th></tr>`;
+  $('viewTabs').innerHTML = `<span class="mut">View:</span><button class="btn ${VIEW === 'min' ? 'on' : ''}" onclick="setView('min')">Minutes after</button><button class="btn ${VIEW === 'day' ? 'on' : ''}" onclick="setView('day')">Days around</button>` + (VIEW === 'day' ? `<span class="mut" style="margin-left:10px">Horizon:</span>` + Object.entries(HZ).map(([h, [t, tip]]) => `<button class="btn ${HOR === h ? 'on' : ''}" title="${tip}" onclick="setHor('${h}')">${t}</button>`).join('') : '');
   const rows = D.rows.filter(r => FAM === 'all' || r.family === FAM).slice().reverse();
-  $('tbl').querySelector('tbody').innerHTML = rows.map(r => `<tr class="pick ${SEL === r.id ? 'sel' : ''}" onclick="pick('${r.id}')"><td>${lon(r.t, { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}${r.inProgress ? ' <span class="badge live">LIVE</span>' : ''}</td><td class="l">${esc(FAMNAME[r.family] || r.family)}</td>${cols.map(([k, m]) => `<td>${num(r.M[k]?.[m], k)}</td>`).join('')}<td>${agreeTxt(r.agree)}</td><td>${r.jump == null ? '<span class="mut">·</span>' : (Math.abs(r.jump) <= 1 ? '<span class="pos">ok</span>' : `<span class="neg">${r.jump > 0 ? '+' : ''}${r.jump}m</span>`)}</td></tr>`).join('');
+  const first = r => `<td>${lon(r.t, { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}${r.inProgress ? ' <span class="badge live">LIVE</span>' : ''}</td><td class="l">${esc(FAMNAME[r.family] || r.family)}</td><td>${surTxt(r)}</td>`;
+  if (VIEW === 'day') {
+    $('tbl').querySelector('thead').innerHTML = `<tr><th>Time (London)</th><th class="l">Release</th><th title="actual minus consensus">Surprise</th>${DK.map(k => `<th title="${DLAB[k]} (${DUNIT[k]}), ${HZ[HOR][0]}">${DSHORT[k]} ${DUNIT[k]}</th>`).join('')}</tr>`;
+    $('tbl').querySelector('tbody').innerHTML = rows.map(r => `<tr class="pick ${SEL === r.id ? 'sel' : ''}" onclick="pick('${r.id}')">${first(r)}${DK.map(k => `<td>${dnum(dv(r, k, HOR), k)}</td>`).join('')}</tr>`).join('');
+    return;
+  }
+  const cols = [['sofr', 'm5'], ['sofr', 'm30'], ['eur', 'm30'], ['spr', 'm30'], ['zt', 'm30'], ['zn', 'm30'], ['dx', 'm30'], ['nq', 'm30']];
+  $('tbl').querySelector('thead').innerHTML = `<tr><th>Time (London)</th><th class="l">Release</th><th title="actual minus consensus">Surprise</th>${cols.map(([k, m]) => `<th title="${LAB[k]}, ${m.slice(1)} min after">${k === 'spr' ? 'Line' : k.toUpperCase()} ${m.slice(1)}m</th>`).join('')}<th>Agree</th><th title="Minute of the largest SOFR-leg 1-min move relative to the stamp">Clock</th></tr>`;
+  $('tbl').querySelector('tbody').innerHTML = rows.map(r => `<tr class="pick ${SEL === r.id ? 'sel' : ''}" onclick="pick('${r.id}')">${first(r)}${cols.map(([k, m]) => `<td>${num(r.M[k]?.[m], k)}</td>`).join('')}<td>${agreeTxt(r.agree)}</td><td>${r.jump == null ? '<span class="mut">·</span>' : (Math.abs(r.jump) <= 1 ? '<span class="pos">ok</span>' : `<span class="neg">${r.jump > 0 ? '+' : ''}${r.jump}m</span>`)}</td></tr>`).join('');
 }
-function setFam(f) { FAM = f; renderTable(); renderShape(); }
+function setView(v) { VIEW = v; renderTable(); }
+function setHor(h) { HOR = h; renderTable(); }
+function setFam(f) { FAM = f; renderTable(); renderShape(); renderShapeDays(); }
 function pick(id, quiet) { SEL = id; DETAIL_LIVE = true; renderTable(); loadDetail(id, false); if (!quiet) $('detail').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
 
 async function loadDetail(id, refresh) {
@@ -212,7 +241,29 @@ function renderDetail(row, P) {
     <div class="row"><span class="mut">Window after the release:</span>${[60, 120, 240].map(x => `<button class="btn ${XMAX === x ? 'on' : ''}" onclick="XMAX=${x};renderDetail(D.rows.find(r=>r.id==='${row.id}'),PATHS['${row.id}'])">${x} min</button>`).join('')}<span class="mut" style="margin-left:6px">every chart starts at 0 at the release instant; dashed line = release</span></div>
     <div class="charts">${KEYS.map(k => `<div class="cp"><div class="t"><b style="color:${COL[k]}">${LAB[k]}</b><span>${UNIT[k]}${P?.[k]?.step === 15 ? ' · 15-min points' : ''}</span></div>${chart(P?.[k], k, row, XMAX)}</div>`).join('')}</div>
     <div class="xscroll" style="margin-top:10px"><table><thead><tr><th class="l">Asset</th><th title="drift in the 30 min before">Before 30m</th><th>1m</th><th>5m</th><th>15m</th><th>30m</th><th>60m</th><th>120m</th><th>240m</th><th title="largest excursion in the first 30 minutes">Peak</th><th title="minute of that peak">at</th><th title="minutes to reach half the peak">Half by</th><th title="30-minute move as a share of the peak: 1 = held, below 0 = reversed">Held</th><th title="30-minute move divided by the typical move in the same clock window on days with no release">z (cond.)</th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${daysBlock(row)}
     <p class="note" style="margin-top:6px">Clock check for this release: ${row.jump == null ? 'no clear jump in the SOFR leg' : Math.abs(row.jump) <= 1 ? 'the largest 1-minute move of the SOFR leg is in the release minute, as stamped.' : `the largest 1-minute move of the SOFR leg is ${row.jump > 0 ? '+' : ''}${row.jump} min from the stamp; with a small reaction that is usually noise, with a large one check the stamp.`} "z (cond.)" compares with the same clock window on the 40 prior weekdays that carried no release.</p>`;
+}
+
+function dchart(a, k) {
+  const W = 320, H = 96, L = 34, R = 6, T = 8, B = 16, n = KS.length;
+  const vals = a.map(v => v == null ? 0 : v); let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); if (hi - lo < 1e-9) { hi += 1; lo -= 1; }
+  const X = i => L + (i + .5) / n * (W - L - R), Y = v => T + (hi - v) / (hi - lo) * (H - T - B), bw = (W - L - R) / n * .62;
+  const bars = a.map((v, i) => v == null ? '' : `<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${Math.min(Y(0), Y(v)).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(.8, Math.abs(Y(v) - Y(0))).toFixed(1)}" fill="${DCOL[k]}" opacity="${KS[i] >= 0 ? 1 : .45}"/>`).join('');
+  const lab = a.map((v, i) => `<text x="${X(i)}" y="${H - 3}" text-anchor="middle">${KS[i]}</text>`).join('');
+  const dp = ddp(k) > 1 ? 1 : 2, xm = ((X(5) + X(6)) / 2).toFixed(1);
+  return `<svg viewBox="0 0 ${W} ${H}"><line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--zero)"/><line x1="${xm}" x2="${xm}" y1="${T}" y2="${H - B}" stroke="var(--zero)" stroke-dasharray="3 3"/>${bars}<text x="${L - 4}" y="${T + 6}" text-anchor="end">${hi.toFixed(dp)}</text><text x="${L - 4}" y="${H - B}" text-anchor="end">${lo.toFixed(dp)}</text>${lab}</svg>`;
+}
+function daysBlock(row) {
+  if (!row.D) return '';
+  const th = KS.filter(k => k !== -1).map(k => `<th>${k < 0 ? k + 'd' : k === 0 ? 'day 0' : '+' + k + 'd'}</th>`).join('');
+  const rows = DK.map(k => { const a = row.D[k]; if (!a) return `<tr><td class="l">${DLAB[k]}</td><td colspan="12" class="mut">no daily data for this release</td></tr>`;
+    return `<tr><td class="l" style="color:${DCOL[k]}">${DLAB[k]} <span class="mut">${DUNIT[k]}</span></td><td>${dnum(a[0] == null ? null : -a[0], k)}</td>${KS.map((kk, i) => kk === -1 ? '' : `<td>${dnum(a[i], k)}</td>`).join('')}</tr>`; }).join('');
+  const ch = DK.map(k => row.D[k] ? `<div class="cp"><div class="t"><b style="color:${DCOL[k]}">${DLAB[k]}</b><span>${DUNIT[k]} vs pre-release close</span></div>${dchart(row.D[k], k)}</div>` : '').join('');
+  return `<h2 style="margin-top:14px">Days around the release</h2>
+    <div class="note" style="margin:0 0 6px">Each bar is the close of that trading day minus the close the day before the release (dashed line = the release day; faded bars are the run-up days, so -1 is zero by construction). Day 0 includes the hours before the release as well as the reaction. Blank = not yet traded, or no data.</div>
+    <div class="charts">${ch}</div>
+    <div class="xscroll" style="margin-top:8px"><table><thead><tr><th class="l">Asset</th><th title="the 5 trading days into the pre-release close, as the move into the release">Run-up 5d</th>${th}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function renderShape() {
@@ -226,6 +277,16 @@ function renderShape() {
   $('shape').innerHTML = h + '</tbody>';
 }
 
+function renderShapeDays() {
+  const fams = [...new Set(D.rows.map(r => r.family))].filter(f => FAM === 'all' || f === FAM), hs = ['run', 'd0', 'd1', 'd2', 'd5'];
+  const med = a => { a = a.filter(x => x != null).sort((x, y) => x - y); return a.length ? (a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2) : null; };
+  let h = `<thead><tr><th class="l">Release</th><th class="l">Asset</th><th>n</th>${hs.map(x => `<th title="${HZ[x][1]}">|${HZ[x][0]}|</th>`).join('')}<th title="share of releases up at +1 day">Up +1d</th></tr></thead><tbody>`;
+  for (const f of fams) for (const k of DK) {
+    const R = D.rows.filter(r => r.family === f && dv(r, k, 'd1') != null); if (R.length < 3) continue;
+    h += `<tr><td class="l">${FAMNAME[f] || f}</td><td class="l" style="color:${DCOL[k]}">${DLAB[k]}</td><td>${R.length}</td>${hs.map(x => { const m = med(R.map(r => { const v = dv(r, k, x); return v == null ? null : Math.abs(v); })); return `<td>${m == null ? '·' : m.toFixed(ddp(k))}</td>`; }).join('')}<td>${Math.round(100 * R.filter(r => dv(r, k, 'd1') > 0).length / R.length)}%</td></tr>`;
+  }
+  $('shapeDays').innerHTML = h + '</tbody>';
+}
 $('btnRefresh').onclick = load;
 fetch('/api/release-layer1/checks').then(r => r.text()).then(t => { $('checks').textContent = t; }).catch(() => { $('checks').textContent = 'not available'; });
 load(); setInterval(load, 30000);
