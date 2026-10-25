@@ -1,0 +1,743 @@
+{
+ "id": "cot-crowding-programme",
+ "phase": 4,
+ "seed": 20261024,
+ "prereg": "forge/COT_CROWDING_PROGRAMME_PREREG.md",
+ "prereg_commit": "705e46ea",
+ "family": "decisions (A1-A4, VA1, VA2), Holm 0.05",
+ "cells": {
+  "A1": {
+   "metric": "OOS Sharpe diff vs BASE",
+   "est": 0.015,
+   "ci": [
+    -0.0242,
+    0.0444
+   ],
+   "p": 0.3931,
+   "checks": {
+    "OOS Sharpe diff CI excludes 0": false,
+    "same sign both OOS subperiods": true,
+    "improves (diff > 0)": true
+   },
+   "p_holm": 1.0,
+   "verdict": "NULL",
+   "gate_passed": false
+  },
+  "A3": {
+   "metric": "OOS Sharpe diff vs BASE",
+   "est": -0.0007,
+   "ci": [
+    -0.0361,
+    0.0412
+   ],
+   "p": 0.9722,
+   "checks": {
+    "OOS Sharpe diff CI excludes 0": false,
+    "same sign both OOS subperiods": false,
+    "improves (diff > 0)": false
+   },
+   "p_holm": 1.0,
+   "verdict": "NULL",
+   "gate_passed": false
+  },
+  "A4": {
+   "metric": "OOS Sharpe diff vs BASE",
+   "est": 0.0071,
+   "ci": [
+    -0.0333,
+    0.0511
+   ],
+   "p": 0.7423,
+   "checks": {
+    "OOS Sharpe diff CI excludes 0": false,
+    "same sign both OOS subperiods": false,
+    "improves (diff > 0)": true
+   },
+   "p_holm": 1.0,
+   "verdict": "NULL",
+   "gate_passed": false
+  },
+  "A2": {
+   "metric": "OOS daily CVaR(97.5%) diff vs BASE (% points; + = less severe tail)",
+   "est": 0.0018,
+   "ci": [
+    -0.0124,
+    0.0171
+   ],
+   "p": 0.8074,
+   "checks": {
+    "CVaR improves, CI excludes 0": false,
+    "max DD no worse": true,
+    "Sharpe diff lower CI > -0.10": true,
+    "CVaR diff same sign both OOS subperiods": false
+   },
+   "sharpeOOS": {
+    "est": 0.0085,
+    "lo": -0.0181,
+    "hi": 0.0358,
+    "p": 0.5378
+   },
+   "maxDDdiffOOS": 0.06,
+   "p_holm": 1.0,
+   "verdict": "NULL",
+   "gate_passed": false
+  },
+  "VA1": {
+   "metric": "mean pnlPct (test - matched control cell mean)",
+   "est": 0.0024,
+   "ci": [
+    -0.0185,
+    0.0297
+   ],
+   "p": 0.8431,
+   "n_test": 904,
+   "n_test_matched": 903,
+   "n_control": 13152,
+   "is_est": 0.0184,
+   "oos_est": 0.0066,
+   "n_test_is": 348,
+   "n_test_oos": 556,
+   "descriptive": {
+    "test": {
+     "mean_pnl": 0.0341,
+     "win": 0.581,
+     "mae": 0.1653
+    },
+    "control": {
+     "mean_pnl": 0.0386,
+     "win": 0.577,
+     "mae": 0.2248
+    },
+    "against_crowd_in_BD": {
+     "n": 854,
+     "mean_pnl": 0.0194
+    },
+    "test_by_state": {
+     "B": {
+      "mean": 0.0467,
+      "size": 725
+     },
+     "D": {
+      "mean": -0.017,
+      "size": 179
+     }
+    },
+    "test_by_inst": {
+     "audusd": {
+      "mean": 0.0144,
+      "size": 138
+     },
+     "eurusd": {
+      "mean": 0.0156,
+      "size": 139
+     },
+     "gbpusd": {
+      "mean": 0.017,
+      "size": 181
+     },
+     "gold": {
+      "mean": 0.0053,
+      "size": 70
+     },
+     "nq": {
+      "mean": 0.2487,
+      "size": 12
+     },
+     "nzdusd": {
+      "mean": 0.0431,
+      "size": 143
+     },
+     "us2000": {
+      "mean": 0.5628,
+      "size": 18
+     },
+     "usdcad": {
+      "mean": 0.0133,
+      "size": 74
+     },
+     "usdchf": {
+      "mean": 0.0277,
+      "size": 57
+     },
+     "usdjpy": {
+      "mean": 0.0188,
+      "size": 72
+     }
+    }
+   },
+   "checks": {
+    "CI excludes 0": false,
+    "same sign IS and OOS": true
+   },
+   "underpowered": false,
+   "p_holm": 1.0,
+   "verdict": "NULL",
+   "gate_passed": false
+  },
+  "VA2": {
+   "metric": "OOS mean pnlPct per trade: skip rule minus all trades",
+   "est": 0.00046,
+   "ci": [
+    -0.00029,
+    0.00107
+   ],
+   "p": 0.1833,
+   "n_oos": 18624,
+   "n_skipped": 556,
+   "total_pnl_all": 735.784,
+   "total_pnl_skip": 722.172,
+   "mean_all": 0.03951,
+   "mean_skip": 0.03997,
+   "checks": {
+    "mean improves, CI excludes 0": false,
+    "total OOS pnl does not fall": false
+   },
+   "underpowered": false,
+   "p_holm": 1.0,
+   "verdict": "NULL",
+   "gate_passed": false
+  }
+ },
+ "trend_arms": {
+  "BASE": {
+   "IS": {
+    "sharpe": 0.425,
+    "cagr": 4.03,
+    "maxDD": -26.59,
+    "cvar975": -1.917,
+    "annVol": 10.62,
+    "days": 2406,
+    "turnover": 27,
+    "alteredPct": 0
+   },
+   "OOS": {
+    "sharpe": -0.044,
+    "cagr": -1.01,
+    "maxDD": -29.67,
+    "cvar975": -1.904,
+    "annVol": 10.55,
+    "days": 2416,
+    "turnover": 30.23,
+    "alteredPct": 0
+   },
+   "OOS1": {
+    "sharpe": 0.101,
+    "cagr": 0.51,
+    "maxDD": -25.71,
+    "cvar975": -1.943,
+    "annVol": 10.78,
+    "days": 1254,
+    "turnover": 30.76,
+    "alteredPct": 0
+   },
+   "OOS2": {
+    "sharpe": -0.207,
+    "cagr": -2.63,
+    "maxDD": -29.67,
+    "cvar975": -1.862,
+    "annVol": 10.31,
+    "days": 1162,
+    "turnover": 29.65,
+    "alteredPct": 0
+   }
+  },
+  "A1": {
+   "IS": {
+    "sharpe": 0.441,
+    "cagr": 4.21,
+    "maxDD": -26.16,
+    "cvar975": -1.92,
+    "annVol": 10.62,
+    "days": 2406,
+    "turnover": 26.62,
+    "alteredPct": 0.62
+   },
+   "OOS": {
+    "sharpe": -0.029,
+    "cagr": -0.85,
+    "maxDD": -30.01,
+    "cvar975": -1.909,
+    "annVol": 10.53,
+    "days": 2416,
+    "turnover": 29.83,
+    "alteredPct": 0.63
+   },
+   "OOS1": {
+    "sharpe": 0.124,
+    "cagr": 0.76,
+    "maxDD": -24.81,
+    "cvar975": -1.958,
+    "annVol": 10.75,
+    "days": 1254,
+    "turnover": 30.4,
+    "alteredPct": 0.64
+   },
+   "OOS2": {
+    "sharpe": -0.201,
+    "cagr": -2.57,
+    "maxDD": -30.01,
+    "cvar975": -1.856,
+    "annVol": 10.3,
+    "days": 1162,
+    "turnover": 29.21,
+    "alteredPct": 0.63
+   }
+  },
+  "A2": {
+   "IS": {
+    "sharpe": 0.433,
+    "cagr": 4.12,
+    "maxDD": -26.34,
+    "cvar975": -1.916,
+    "annVol": 10.62,
+    "days": 2406,
+    "turnover": 27,
+    "alteredPct": 3.7
+   },
+   "OOS": {
+    "sharpe": -0.035,
+    "cagr": -0.92,
+    "maxDD": -29.61,
+    "cvar975": -1.902,
+    "annVol": 10.55,
+    "days": 2416,
+    "turnover": 30.2,
+    "alteredPct": 4.53
+   },
+   "OOS1": {
+    "sharpe": 0.095,
+    "cagr": 0.44,
+    "maxDD": -25.56,
+    "cvar975": -1.948,
+    "annVol": 10.78,
+    "days": 1254,
+    "turnover": 30.75,
+    "alteredPct": 4.4
+   },
+   "OOS2": {
+    "sharpe": -0.182,
+    "cagr": -2.38,
+    "maxDD": -29.61,
+    "cvar975": -1.853,
+    "annVol": 10.31,
+    "days": 1162,
+    "turnover": 29.61,
+    "alteredPct": 4.66
+   }
+  },
+  "A3": {
+   "IS": {
+    "sharpe": 0.4,
+    "cagr": 3.75,
+    "maxDD": -27.4,
+    "cvar975": -1.92,
+    "annVol": 10.62,
+    "days": 2406,
+    "turnover": 27.1,
+    "alteredPct": 1.4
+   },
+   "OOS": {
+    "sharpe": -0.044,
+    "cagr": -1.02,
+    "maxDD": -29.51,
+    "cvar975": -1.9,
+    "annVol": 10.55,
+    "days": 2416,
+    "turnover": 30.35,
+    "alteredPct": 1.46
+   },
+   "OOS1": {
+    "sharpe": 0.104,
+    "cagr": 0.54,
+    "maxDD": -24.95,
+    "cvar975": -1.937,
+    "annVol": 10.76,
+    "days": 1254,
+    "turnover": 30.84,
+    "alteredPct": 1.38
+   },
+   "OOS2": {
+    "sharpe": -0.211,
+    "cagr": -2.67,
+    "maxDD": -29.51,
+    "cvar975": -1.86,
+    "annVol": 10.31,
+    "days": 1162,
+    "turnover": 29.82,
+    "alteredPct": 1.55
+   }
+  },
+  "A4": {
+   "IS": {
+    "sharpe": 0.42,
+    "cagr": 3.97,
+    "maxDD": -26.73,
+    "cvar975": -1.917,
+    "annVol": 10.62,
+    "days": 2406,
+    "turnover": 27.05,
+    "alteredPct": 3.7
+   },
+   "OOS": {
+    "sharpe": -0.037,
+    "cagr": -0.94,
+    "maxDD": -29.53,
+    "cvar975": -1.902,
+    "annVol": 10.55,
+    "days": 2416,
+    "turnover": 30.3,
+    "alteredPct": 4.53
+   },
+   "OOS1": {
+    "sharpe": 0.094,
+    "cagr": 0.44,
+    "maxDD": -25.14,
+    "cvar975": -1.947,
+    "annVol": 10.77,
+    "days": 1254,
+    "turnover": 30.82,
+    "alteredPct": 4.4
+   },
+   "OOS2": {
+    "sharpe": -0.184,
+    "cagr": -2.4,
+    "maxDD": -29.53,
+    "cvar975": -1.853,
+    "annVol": 10.31,
+    "days": 1162,
+    "turnover": 29.74,
+    "alteredPct": 4.66
+   }
+  }
+ },
+ "trend_sanity_discovery_BASE": {
+  "IS": {
+   "sharpe": 0.498,
+   "cagr": 4.87,
+   "maxDD": -23.51,
+   "cvar975": -1.967,
+   "annVol": 10.68,
+   "days": 2406,
+   "turnover": 35.76,
+   "alteredPct": 0
+  },
+  "OOS": {
+   "sharpe": 0.097,
+   "cagr": 0.47,
+   "maxDD": -19.15,
+   "cvar975": -1.915,
+   "annVol": 10.38,
+   "days": 2416,
+   "turnover": 44.27,
+   "alteredPct": 0
+  },
+  "OOS1": {
+   "sharpe": 0.052,
+   "cagr": 0,
+   "maxDD": -19.15,
+   "cvar975": -1.969,
+   "annVol": 10.41,
+   "days": 1254,
+   "turnover": 45.19,
+   "alteredPct": 0
+  },
+  "OOS2": {
+   "sharpe": 0.146,
+   "cagr": 0.98,
+   "maxDD": -15.51,
+   "cvar975": -1.856,
+   "annVol": 10.34,
+   "days": 1162,
+   "turnover": 43.29,
+   "alteredPct": 0
+  }
+ },
+ "trend_ex10Y": {
+  "BASE": {
+   "IS": {
+    "sharpe": 0.431,
+    "cagr": 4.09,
+    "maxDD": -27.12,
+    "cvar975": -1.913,
+    "annVol": 10.61,
+    "days": 2406,
+    "turnover": 26.01,
+    "alteredPct": 0
+   },
+   "OOS": {
+    "sharpe": -0.07,
+    "cagr": -1.28,
+    "maxDD": -28.31,
+    "cvar975": -1.898,
+    "annVol": 10.56,
+    "days": 2416,
+    "turnover": 29.55,
+    "alteredPct": 0
+   },
+   "OOS1": {
+    "sharpe": 0.035,
+    "cagr": -0.2,
+    "maxDD": -27.24,
+    "cvar975": -1.94,
+    "annVol": 10.79,
+    "days": 1254,
+    "turnover": 30.3,
+    "alteredPct": 0
+   },
+   "OOS2": {
+    "sharpe": -0.188,
+    "cagr": -2.44,
+    "maxDD": -28.31,
+    "cvar975": -1.853,
+    "annVol": 10.31,
+    "days": 1162,
+    "turnover": 28.75,
+    "alteredPct": 0
+   }
+  },
+  "A1": {
+   "IS": {
+    "sharpe": 0.445,
+    "cagr": 4.24,
+    "maxDD": -26.77,
+    "cvar975": -1.916,
+    "annVol": 10.61,
+    "days": 2406,
+    "turnover": 25.66,
+    "alteredPct": 0.61
+   },
+   "OOS": {
+    "sharpe": -0.052,
+    "cagr": -1.1,
+    "maxDD": -28.45,
+    "cvar975": -1.903,
+    "annVol": 10.54,
+    "days": 2416,
+    "turnover": 29.18,
+    "alteredPct": 0.6
+   },
+   "OOS1": {
+    "sharpe": 0.059,
+    "cagr": 0.05,
+    "maxDD": -26.38,
+    "cvar975": -1.954,
+    "annVol": 10.75,
+    "days": 1254,
+    "turnover": 29.98,
+    "alteredPct": 0.59
+   },
+   "OOS2": {
+    "sharpe": -0.176,
+    "cagr": -2.32,
+    "maxDD": -28.45,
+    "cvar975": -1.845,
+    "annVol": 10.31,
+    "days": 1162,
+    "turnover": 28.32,
+    "alteredPct": 0.61
+   }
+  },
+  "A2": {
+   "IS": {
+    "sharpe": 0.438,
+    "cagr": 4.17,
+    "maxDD": -26.94,
+    "cvar975": -1.913,
+    "annVol": 10.61,
+    "days": 2406,
+    "turnover": 26.02,
+    "alteredPct": 3.73
+   },
+   "OOS": {
+    "sharpe": -0.058,
+    "cagr": -1.16,
+    "maxDD": -28.03,
+    "cvar975": -1.898,
+    "annVol": 10.56,
+    "days": 2416,
+    "turnover": 29.51,
+    "alteredPct": 4.52
+   },
+   "OOS1": {
+    "sharpe": 0.03,
+    "cagr": -0.26,
+    "maxDD": -27.06,
+    "cvar975": -1.947,
+    "annVol": 10.79,
+    "days": 1254,
+    "turnover": 30.27,
+    "alteredPct": 4.39
+   },
+   "OOS2": {
+    "sharpe": -0.157,
+    "cagr": -2.13,
+    "maxDD": -28.03,
+    "cvar975": -1.845,
+    "annVol": 10.31,
+    "days": 1162,
+    "turnover": 28.7,
+    "alteredPct": 4.65
+   }
+  },
+  "A3": {
+   "IS": {
+    "sharpe": 0.404,
+    "cagr": 3.8,
+    "maxDD": -28.05,
+    "cvar975": -1.918,
+    "annVol": 10.6,
+    "days": 2406,
+    "turnover": 26.14,
+    "alteredPct": 1.41
+   },
+   "OOS": {
+    "sharpe": -0.065,
+    "cagr": -1.24,
+    "maxDD": -27.87,
+    "cvar975": -1.892,
+    "annVol": 10.55,
+    "days": 2416,
+    "turnover": 29.67,
+    "alteredPct": 1.45
+   },
+   "OOS1": {
+    "sharpe": 0.041,
+    "cagr": -0.14,
+    "maxDD": -26.39,
+    "cvar975": -1.936,
+    "annVol": 10.77,
+    "days": 1254,
+    "turnover": 30.36,
+    "alteredPct": 1.35
+   },
+   "OOS2": {
+    "sharpe": -0.185,
+    "cagr": -2.41,
+    "maxDD": -27.87,
+    "cvar975": -1.845,
+    "annVol": 10.32,
+    "days": 1162,
+    "turnover": 28.92,
+    "alteredPct": 1.55
+   }
+  },
+  "A4": {
+   "IS": {
+    "sharpe": 0.425,
+    "cagr": 4.02,
+    "maxDD": -27.39,
+    "cvar975": -1.914,
+    "annVol": 10.6,
+    "days": 2406,
+    "turnover": 26.08,
+    "alteredPct": 3.73
+   },
+   "OOS": {
+    "sharpe": -0.057,
+    "cagr": -1.15,
+    "maxDD": -27.81,
+    "cvar975": -1.896,
+    "annVol": 10.55,
+    "days": 2416,
+    "turnover": 29.62,
+    "alteredPct": 4.52
+   },
+   "OOS1": {
+    "sharpe": 0.03,
+    "cagr": -0.25,
+    "maxDD": -26.62,
+    "cvar975": -1.947,
+    "annVol": 10.78,
+    "days": 1254,
+    "turnover": 30.34,
+    "alteredPct": 4.39
+   },
+   "OOS2": {
+    "sharpe": -0.155,
+    "cagr": -2.11,
+    "maxDD": -27.81,
+    "cvar975": -1.841,
+    "annVol": 10.31,
+    "days": 1162,
+    "turnover": 28.83,
+    "alteredPct": 4.65
+   }
+  }
+ },
+ "voteatlas_counts": {
+  "n_trades": 33972,
+  "window": [
+   "2022-05-05",
+   "2026-08-20"
+  ],
+  "by_inst": {
+   "audusd": {
+    "n": 3481,
+    "test": 138,
+    "control": 1824
+   },
+   "dow": {
+    "n": 1036,
+    "test": 0,
+    "control": 439
+   },
+   "eurusd": {
+    "n": 3317,
+    "test": 139,
+    "control": 1097
+   },
+   "gbpusd": {
+    "n": 3340,
+    "test": 181,
+    "control": 1169
+   },
+   "gold": {
+    "n": 3393,
+    "test": 70,
+    "control": 1153
+   },
+   "nq": {
+    "n": 2232,
+    "test": 12,
+    "control": 757
+   },
+   "nzdusd": {
+    "n": 3719,
+    "test": 143,
+    "control": 1460
+   },
+   "spx": {
+    "n": 1055,
+    "test": 0,
+    "control": 341
+   },
+   "us2000": {
+    "n": 2204,
+    "test": 18,
+    "control": 737
+   },
+   "usdcad": {
+    "n": 3446,
+    "test": 74,
+    "control": 1437
+   },
+   "usdchf": {
+    "n": 3564,
+    "test": 57,
+    "control": 1428
+   },
+   "usdjpy": {
+    "n": 3185,
+    "test": 72,
+    "control": 1310
+   }
+  },
+  "state_counts": {
+   "none": 29053,
+   "A": 2423,
+   "B": 1401,
+   "C": 738,
+   "D": 357
+  }
+ }
+}

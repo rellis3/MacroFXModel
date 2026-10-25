@@ -2000,7 +2000,10 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         ];
 
         // TFF report: FX, equities, rates, crypto
-        // flip=true: CME contract quotes as USD/asset so net sign is inverted for our convention
+        // flip=true (JPY, CAD, CHF): the CME future is long the FOREIGN currency (quoted USD per JPY), so every directional
+        // field for these rows is inverted into USD-PAIR terms: positive = long USDJPY / USDCAD / USDCHF = SHORT the yen,
+        // loonie or franc. Consumers that want "long the currency" (a currency card, a cross) must turn them back:
+        // js/cotState.js toCcyTerms / pctToCcyTerms. MXN stays flip:false (positive = long the peso).
         const TFF = [
           { name:'EURO FX - CHICAGO MERCANTILE EXCHANGE',              sym:'EUR',   label:'EUR',         group:'fx',       flip:false },
           { name:'BRITISH POUND - CHICAGO MERCANTILE EXCHANGE',        sym:'GBP',   label:'GBP',         group:'fx',       flip:false },
@@ -2234,7 +2237,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             // against a record real-money short. Those imply opposite things, and the merged
             // field could not say which was which.
             //
-            // Flipped like specNets so every leg speaks in the same currency direction.
+            // Flipped like specNets, so every field of a JPY/CAD/CHF row is in the same USD-pair terms.
             // Additive: specNet and commNet are untouched, so nothing downstream moves.
             const amNets  = sorted.map(r => (inst.flip ? -1 : 1) * (amL(r) - amS(r)));
             const dlNets  = sorted.map(r => (inst.flip ? -1 : 1) * (dlL(r) - dlS(r)));
@@ -2293,9 +2296,9 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               specShareChg4w: (specShare[0] != null && specShare[4] != null) ? +((specShare[0] - specShare[4]) * 100).toFixed(3) : null,
               grossRatio: levS(cur) > 0 ? +(levL(cur) / levS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: eh ? pctRank(h(oiSer), oiSer[0]) : null,
-              // Flipped the same way as specNet above: JPY/CAD/CHF's CME contract quotes
-              // USD-per-unit, so the raw long-minus-short change is inverted relative to our
-              // currency-direction convention. Left unflipped here for a long time — harmless
+              // Flipped the same way as specNet above: JPY/CAD/CHF's CME contract is long the
+              // foreign currency, so the raw long-minus-short change is inverted into the row's
+              // USD-pair terms. Left unflipped here for a long time — harmless
               // as long as nothing depended on the SIGN of week-over-week change, but the flow
               // leaderboard below does exactly that, so it needed fixing first.
               weeklyChg: (inst.flip ? -1 : 1) * (pi(cur.change_in_lev_money_long_all ?? cur.change_in_lev_money_long ?? cur.chg_lev_long) - pi(cur.change_in_lev_money_short_all ?? cur.change_in_lev_money_short ?? cur.chg_lev_short)),

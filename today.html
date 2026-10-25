@@ -1821,7 +1821,7 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
     <div class="dr-sec-body"><div id="drEvidence"></div></div>
   </div>
 <div class="dr-sec" id="drCotSec" data-seckey="cotdetail" style="display:none">
-      <h3 class="help" title="Weekly CFTC Commitments of Traders: how large speculators are positioned in this pair's futures, how stretched that is against its own history, and which way it moved this week. This is who is ALREADY positioned, not who is buying now — a crowded one-way bet raises the odds of a snap-back if it is wrong. Crosses have no single CFTC contract, so their read is derived from both legs.">
+      <h3 class="help" title="Weekly CFTC Commitments of Traders: how large speculators are positioned in this pair's futures, how stretched that is against its own history, and which way it moved this week. This is who is ALREADY positioned, not who is buying now. The desk's registered tests found crowding does not tell you which way price goes; the state line below says what was measured for this situation. Crosses have no single CFTC contract, so their read is derived from both legs.">
         <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span><i class="ev c" title="context — measured, not predictive">~</i>Positioning &mdash; COT detail</span>
         <span class="chip neu" style="font-size:9px">real data &middot; weekly, lagged</span>
       </h3>
@@ -2123,6 +2123,7 @@ let sessionStats = null; // /api/session-stats — typical Asia/London/NY ranges
 let fredHist = null;     // /api/fredhistory — rate-spread driver series (story, lazy)
 let livePrices = null;   // /api/hedge-signals/prices — proximity watch (zoom 3)
 let cot = null;          // /api/cot-extremes — spec positioning per instrument (story + chip)
+let cotStates = null;    // /api/cot-state — where each direct-COT instrument sits on the crowding map (js/cotState.js)
 const cotHistCache = {}; // ccy -> /api/cot-extremes?history= result (currency-drawer sparkline, lazy)
 let openDrawerCcy = null; // which ccy's drawer is currently open — guards the async COT-history repaint
 let weekly = null;       // /api/vol-forecast/weekly — week-to-date range consumption
@@ -4902,43 +4903,26 @@ function curveDiffFor(name) {
            baseShape: b.shape, quoteShape: q.shape };
 }
 
-// ── Positioning vs price — the divergence that actually matters ──────────────
-// COT is shown as a level and a percentile, which answers "is the crowd stretched".
-// The read that changes a decision is the CROSS: the crowd is stretched one way AND
-// price has stopped going that way. A crowded bet still working is momentum; a crowded
-// bet that has stalled or turned is fuel, because the people who have to get out are
-// all on the same side. Both halves were already in memory and nothing crossed them.
-//
-// Deliberately NOT a signal: this is a well-known practitioner setup with no backtest
-// in this repo, and it is labelled as a warning about the shape of the risk, not a call.
-const COT_CROWD_PCTILE = 85;    // |percentile| beyond this counts as stretched
+// ── Positioning vs price: where the instrument sits on the COT crowding map ─────────
+// This used to flag "the crowd is stretched and price stalled or turned" as squeeze fuel, a practitioner pattern with
+// no backtest here. The registered study cot-crowding-programme then tested exactly that shape on 34 markets: a
+// crowded trend whose momentum fades while the crowd keeps adding showed NO extra risk (cot-crowding-p4), and a
+// crowded trend pulling back while the crowd leaves was a reset, with FEWER big adverse moves (cot-crowding-p5).
+// So the chip now shows the state and its measured read from js/cotState.js (/api/cot-state), never a warning colour,
+// because no state here says which way price goes.
 function divergenceFor(r) {
-  const ct = r.ct ?? cotFor(r.name);
-  if (!ct || ct.pctile == null || !ct.dir) return null;
-  const stretchedLong = ct.pctile >= COT_CROWD_PCTILE;
-  const stretchedShort = ct.pctile <= (100 - COT_CROWD_PCTILE);
-  if (!stretchedLong && !stretchedShort) return null;
-  // Price side: the MEASURED move, not a model lean — the question is literally
-  // "has price kept going the way the crowd is positioned".
-  const dc = moveDecompFor(r.name);
-  const move = dc?.ret ?? null;
-  if (move == null) return null;
-  const crowdSide = stretchedLong ? 1 : -1;          // +1 = crowd is long the pair
-  const priceSide = Math.abs(move) < 0.08 ? 0 : (move > 0 ? 1 : -1);
-  const state = priceSide === 0 ? 'STALLED' : (priceSide === crowdSide ? 'CONFIRMED' : 'DIVERGING');
-  return { state, crowdSide, pctile: Math.round(ct.pctile), move, dir: ct.dir, derived: !!ct.derived };
+  const st = (r.ct ?? cotFor(r.name))?.state;
+  if (!st) return null;
+  if (!st.state && !['against', 'trimmed'].includes(st.zone)) return null;
+  return { state: st.state ?? st.zone, label: st.label, line: st.line, ev: st.ev, verdict: st.verdict, side: st.side, vol: st.vol, reportDate: st.reportDate };
 }
+const COT_STATE_SHORT = { A: 'trend running', B: 'momentum fading', C: 'crowd thinning', D: 'pullback, crowd leaving', against: 'against the trend', trimmed: 'cut right back' };
 function divergenceChip(r) {
   const d = divergenceFor(r);
-  if (!d || d.state === 'CONFIRMED') return '';     // a crowded bet still working is just momentum
-  const cls = d.state === 'DIVERGING' ? 'bear' : 'warn';
-  const crowdWord = d.crowdSide > 0 ? 'long' : 'short';
-  const tip = `The crowd (large speculators, CFTC weekly) is at the ${d.pctile}th percentile ${crowdWord} this pair`
-    + `${d.derived ? ', derived from both legs since this cross has no direct contract' : ''} — and today price has `
-    + (d.state === 'STALLED' ? 'gone essentially nowhere' : `moved the OTHER way (${d.move >= 0 ? '+' : ''}${d.move} of a normal day's range)`)
-    + `. A crowded position that has stopped paying is the setup for a squeeze: the people who need to get out are all on one side. `
-    + `This is a warning about the SHAPE of the risk, not a signal — it is a practitioner pattern with no backtest here, and COT is a few days lagged.`;
-  return `<span class="chip ${cls}" title="${esc0(tip)}">⇄ crowd ${crowdWord}, price ${d.state === 'STALLED' ? 'stalled' : 'against'}</span>`;
+  if (!d) return '';
+  const word = d.state === 'trimmed' ? 'COT' : `COT crowded ${d.side ?? ''}`.trim();
+  const tip = `${d.label}. ${d.line}${d.vol ? ' ' + d.vol : ''} (CFTC report ${d.reportDate ?? ''}; ${d.ev ? `ledger ${d.ev}, ${d.verdict}` : 'descriptive'}. Context, never a direction.)`;
+  return `<span class="chip ${d.verdict === 'validated' ? 'cool' : 'neu'}" title="${esc0(tip)}">⇄ ${esc0(word)} · ${esc0(COT_STATE_SHORT[d.state] ?? d.state)}</span>`;
 }
 
 // ── The rates move, decomposed ───────────────────────────────────────────────
@@ -6212,16 +6196,19 @@ function currencyDetail(ccy) {
   legs.sort((a, b) => b.ccySig - a.ccySig);
 
   // 2) COT positioning — read straight off this currency's own CME future, not derived per-pair.
+  // The feed delivers JPY/CAD/CHF in USD-pair terms (positive = long USDJPY = short the yen; js/cotState.js), and this
+  // card speaks for the CURRENCY, so those rows are turned back to "long the currency" here. Before 2026-10-24 the yen,
+  // loonie and franc cards showed speculators on the opposite side.
   let cotInfo = null;
   if (cot?.[ccy]) {   // USD included now that the ICE dollar-index future is in the pull; the mirror below is the fallback
-    const c = cot[ccy];
+    const c = _cotCcyRow(ccy, cot[ccy]);
     const oi = c.openInterest ?? 0;
     // 200-week series is a separate lazy fetch (/api/cot-extremes?history=) — not
     // part of the eagerly-loaded snapshot, so it's only here once openCcyDrawer's
     // background load for this ccy has completed (cotHistCache warms it).
     const hist = cotHistCache[ccy];
     const series = (hist && hist !== 'loading')
-      ? hist.specShare.map((v, i) => ({ d: hist.dates?.[i], v })).filter(p => Number.isFinite(p.v)).slice(-52)
+      ? hist.specShare.map((v, i) => ({ d: hist.dates?.[i], v: _COT_FLIPPED.has(ccy) && Number.isFinite(v) ? -v : v })).filter(p => Number.isFinite(p.v)).slice(-52)
       : null;
     cotInfo = {
       specNet: c.specNet ?? null, oi,
@@ -6235,7 +6222,8 @@ function currencyDetail(ccy) {
     const others = CCY_ORDER.filter(c => c !== 'USD' && cot?.[c]);
     if (others.length) {
       let sumNet = 0, sumOi = 0;
-      for (const c of others) { sumNet += -(cot[c].specNet ?? 0); sumOi += cot[c].openInterest ?? 0; }
+      // USD long = the opposite of each currency's own net. JPY/CAD/CHF rows already count as long USD (pair terms).
+      for (const c of others) { sumNet += _COT_FLIPPED.has(c) ? (cot[c].specNet ?? 0) : -(cot[c].specNet ?? 0); sumOi += cot[c].openInterest ?? 0; }
       cotInfo = { specNet: sumNet, oi: sumOi, pct: sumOi > 0 ? +(Math.abs(sumNet) / sumOi * 100).toFixed(1) : null,
         z: null, pctile: null, wkChg: null, reportDate: cot[others[0]]?.reportDate ?? null, derived: true };
     }
@@ -6808,7 +6796,7 @@ async function loadCotHistoryFor(ccy) {
   if (!slot) return;
   const hist = cotHistCache[ccy];
   slot.innerHTML = hist
-    ? miniSparkline(hist.specShare.map((v, i) => ({ d: hist.dates?.[i], v })).filter(p => Number.isFinite(p.v)).slice(-52), { decimals: 1, suffix: '%' })
+    ? miniSparkline(hist.specShare.map((v, i) => ({ d: hist.dates?.[i], v: _COT_FLIPPED.has(ccy) && Number.isFinite(v) ? -v : v })).filter(p => Number.isFinite(p.v)).slice(-52), { decimals: 1, suffix: '%' })
     : '<div class="muted" style="margin-top:6px">No positioning history available.</div>';
 }
 
@@ -7638,14 +7626,30 @@ function nearestLevel(d) {
 
 // ── COT positioning (auto, weekly) — brief NAME → CFTC contract ──────────────
 // flip = CFTC tracks the FOREIGN ccy, so spec-long-foreign = pair-SHORT (USD base).
+// /api/cot-extremes already puts the JPY, CAD and CHF rows in USD-PAIR terms (_worker.js processTFF flips them:
+// positive = long USDJPY / USDCAD / USDCHF), so every row here is in the terms of the instrument it maps to and
+// none is flipped again. These three used to carry flip:true, which flipped them a SECOND time: the drawer showed
+// specs on the wrong side of USDJPY/USDCAD/USDCHF and their COT bias was inverted (fixed 2026-10-24, js/cotState.js
+// header has the convention). Crosses need "long the currency" terms instead; see cotFor's cross path.
 const COT_MAP = {
   EURUSD: { sym: 'EUR', flip: false }, GBPUSD: { sym: 'GBP', flip: false },
-  USDJPY: { sym: 'JPY', flip: true  }, AUDUSD: { sym: 'AUD', flip: false },
-  NZDUSD: { sym: 'NZD', flip: false }, USDCAD: { sym: 'CAD', flip: true  },
-  USDCHF: { sym: 'CHF', flip: true  }, GOLD:   { sym: 'GOLD', flip: false },
+  USDJPY: { sym: 'JPY', flip: false }, AUDUSD: { sym: 'AUD', flip: false },
+  NZDUSD: { sym: 'NZD', flip: false }, USDCAD: { sym: 'CAD', flip: false },
+  USDCHF: { sym: 'CHF', flip: false }, GOLD:   { sym: 'GOLD', flip: false },
   NQ:     { sym: 'NQ',  flip: false }, SPX500: { sym: 'ES',  flip: false },
   US30:   { sym: 'YM',  flip: false }, US2000: { sym: 'RTY', flip: false },
 };
+// "Long the currency" view of a feed row (JPY/CAD/CHF arrive in USD-pair terms). Kept inline because the cotState
+// module loads asynchronously and the currency drawer can render first; the set must match js/cotState.js FLIPPED.
+const _COT_FLIPPED = new Set(['JPY', 'CAD', 'CHF']);
+function _cotCcyRow(sym, c) {
+  if (!c || !_COT_FLIPPED.has(sym)) return c;
+  const neg = v => (v == null ? v : -v), inv = v => (v == null ? v : 100 - v);
+  return { ...c, specNet: neg(c.specNet), specShare: neg(c.specShare), specZ: neg(c.specZ), specShareZ: neg(c.specShareZ),
+    specPct: inv(c.specPct), specSharePct: inv(c.specSharePct), weeklyChg: neg(c.weeklyChg), specShareChg: neg(c.specShareChg),
+    commNet: neg(c.commNet), amNet: neg(c.amNet), amShare: neg(c.amShare), amSharePct: inv(c.amSharePct), dlNet: neg(c.dlNet), dlShare: neg(c.dlShare),
+    splitChg4w: neg(c.splitChg4w), _ccyTerms: true };
+}
 function cotFor(name) {
   const m = COT_MAP[name];
   if (m && cot?.[m.sym]) {
@@ -7656,14 +7660,19 @@ function cotFor(name) {
     const crowd = oi > 0 ? Math.abs(specNet) / oi * 100 : (c.crowdingPct ?? 0);
     // Crowded against the instrument's OWN history (percentile), not a flat 20%-of-OI cut: gold sits above 20% of OI
     // at its 32nd percentile because its structural spec length is large. Absolute share only as a fallback.
-    const pc = c.specPct;
-    const level = pc != null ? (pc >= 90 || pc <= 10 ? 'EXTREME' : pc >= 80 || pc <= 20 ? 'ELEVATED' : null)
+    // Ranked on share of open interest (the COT page's default) and only crowded when the sign AGREES: an extreme
+    // percentile with the net on the other side is a trimmed book, the opposite of crowded (14% of extremes).
+    const pc = c.specSharePct ?? c.specPct;
+    const sgn = c.specShare ?? specNet;
+    const agrees = pc != null && ((pc >= 50 && sgn > 0) || (pc < 50 && sgn < 0));
+    const trimmed = pc != null && (pc >= 90 || pc <= 10) && !agrees;
+    const level = pc != null ? (agrees && (pc >= 90 || pc <= 10) ? 'EXTREME' : agrees && (pc >= 80 || pc <= 20) ? 'ELEVATED' : null)
       : (crowd >= 20 ? 'EXTREME' : crowd >= 10 ? 'ELEVATED' : null);
     const zClip = Math.max(-1, Math.min(1, (c.specZ ?? 0) / 4));
-    return { dir: pairNet > 0 ? 'long' : pairNet < 0 ? 'short' : 'flat', crowd, level,
+    return { dir: pairNet > 0 ? 'long' : pairNet < 0 ? 'short' : 'flat', crowd, level, trimmed,
       pct: oi > 0 ? Math.abs(specNet) / oi * 100 : null, z: c.specZ ?? null,
-      pctile: c.specPct ?? null, wkChg: c.weeklyChg ?? null, reportDate: c.reportDate ?? null,
-      bias: m.flip ? -zClip : zClip, derived: false };
+      pctile: pc ?? null, wkChg: c.weeklyChg ?? null, reportDate: c.reportDate ?? null,
+      bias: m.flip ? -zClip : zClip, derived: false, state: cotStates?.[name] ?? null };
   }
   // Crosses (no direct CFTC contract, e.g. GBPJPY) get no entry in COT_MAP —
   // derive a read from BOTH legs' own positioning instead, via the shared
@@ -7676,7 +7685,13 @@ function cotFor(name) {
   const cc = PAIR_CCY[name];
   if (!cc || !window.pairCompositeBrick || !cot) return null;
   const [base, quote] = cc;
-  const r = window.pairCompositeBrick.cotPairBias(base, quote, cot);
+  // cotPairBias reads each leg as "long that currency". The feed's JPY/CAD/CHF rows are in USD-pair terms, so turn
+  // them back first (z negates, percentiles flip around 50); otherwise every JPY/CAD/CHF cross reads inverted.
+  const FL = window.cotStateBrick?.FLIPPED ?? new Set(['JPY', 'CAD', 'CHF']);
+  const cotCcy = Object.fromEntries(Object.entries(cot).map(([k, v]) => [k, FL.has(k) ? { ...v,
+    specZ: v.specZ == null ? null : -v.specZ, specPct: v.specPct == null ? null : 100 - v.specPct,
+    specSharePct: v.specSharePct == null ? null : 100 - v.specSharePct } : v]));
+  const r = window.pairCompositeBrick.cotPairBias(base, quote, cotCcy);
   if (r.score == null) return null;
   const level = r.extreme ? 'EXTREME' : (Math.abs(r.score) >= 0.5 ? 'ELEVATED' : null);
   const crowd = Math.abs(r.score) * 100;
@@ -9069,7 +9084,7 @@ function drStatusHtml(r) {
 // The old single row -- every chip, unranked -- for the drawer's "All reads".
 function allReadsHtml(r) {
   const d = r.d;
-  const row = `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${ivRvChip(r)}${tapeSpeedChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${goldKindChip(r)}${sessionResearchChip(r)}`;
+  const row = `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' && !divergenceFor(r) ? `<span class="chip neu" title="Speculators are at an extreme of their own history. The desk's tests found crowding on its own does not say which way price goes (cot-positioning-factor, cot-crowding-programme).">COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${ivRvChip(r)}${tapeSpeedChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${goldKindChip(r)}${sessionResearchChip(r)}`;
   return `<div style="display:flex;flex-wrap:wrap;gap:4px">${row}</div>`;   // turn zones have their own full section under Levels
 }
 function pairStripsHtml(r) { return hmmCardStrip(r.name); }   // the ladder and motif strips live in the drawer (ladder → Levels, motif → Research); the card carries the thin hourly market-state strip
@@ -10967,14 +10982,23 @@ function renderDrawerFlow(r) {
     const rows = [];
     if (ct.dir) rows.push(_oiKv('Specs are', `net ${esc0(ct.dir)}`, 'Which way large speculators are positioned overall.'));
     if (ct.pct != null) rows.push(_oiKv('Share of open interest', `${ct.pct.toFixed(1)}%`, 'How much of the whole contract that net position represents. Above ~20% is a crowded one-way bet.'));
-    if (ct.pctile != null) rows.push(_oiKv('Percentile vs history', `${Math.round(ct.pctile)}th`, 'Where this positioning sits against its own history. Near 0 or 100 = an extreme.'));
+    if (ct.pctile != null) rows.push(_oiKv('Percentile vs history', `${Math.round(ct.pctile)}th`, 'Where the net position, as a share of open interest, sits against its own three-year history. Near 0 or 100 = an extreme.'));
     if (ct.wkChg != null) rows.push(_oiKv('Change this week', `${ct.wkChg > 0 ? '+' : ''}${fmtN(ct.wkChg, 0)}`, 'Whether the crowd ADDED to this bet or cut it in the latest report.'));
     if (ct.reportDate) rows.push(_oiKv('Report date', esc0(ct.reportDate), 'CFTC publishes Friday for the prior Tuesday — this read is always at least a few days behind the tape.'));
     const derived = ct.derived
       ? `<div class="ccy-explain">This cross has no single CFTC contract, so the read is <b>derived from both legs'</b> own futures positioning${ct.baseRead?.z != null ? ` (base z ${ct.baseRead.z}` : ''}${ct.quoteRead?.z != null ? `, quote z ${ct.quoteRead.z})` : ct.baseRead?.z != null ? ')' : ''}. Directionally useful, less precise than a direct contract.</div>` : '';
-    const extreme = ct.level === 'EXTREME'
-      ? `<div class="ccy-explain" style="margin-top:6px"><b class="neg">Crowded.</b> A heavily one-sided position is fuel for a squeeze if the move goes the other way — this is a warning against joining late, not a reason to fade on its own.</div>` : '';
-    $('drCotDetail').innerHTML = derived + (rows.length ? `<div class="ccy-legs" style="margin-top:6px">${rows.join('')}</div>` : '') + extreme;
+    // The state read (js/cotState.js via /api/cot-state): where speculators sit relative to the trend and what the
+    // registered study found for that state. Replaces a "crowded = squeeze fuel" warning the study did not support.
+    const st = ct.state;
+    const stateBlock = st ? `<div class="ccy-explain" style="margin-top:6px"><b>${esc0(st.label)}.</b> ${esc0(st.line)}${st.vol ? ` ${esc0(st.vol)}` : ''}`
+        + `<div class="muted" style="font-size:10.5px;margin-top:3px">${st.move13 != null ? `13-week move ${(st.move13 * 100).toFixed(1)}%, 4-week ${(st.move4 * 100).toFixed(1)}%` : 'price trend unavailable'}`
+        + `${st.share4 != null && st.share != null ? ` · net share ${st.share4 > st.share ? 'down' : 'up'} over 4 reports (${(+st.share4).toFixed(1)}% → ${(+st.share).toFixed(1)}%)` : ''}`
+        + ` · ${st.ev ? `evidence: ${esc0(st.ev)} (${esc0(st.verdict)})` : 'descriptive'} · context, never a direction</div></div>`
+      : '';
+    const extreme = !st && ct.level === 'EXTREME'
+      ? `<div class="ccy-explain" style="margin-top:6px"><b>Crowded.</b> Speculators are at an extreme of their own history. The desk's tests found that crowding on its own does not say which way price goes, or that a sharp move against the crowd is more likely (cot-positioning-factor, cot-crowding-programme).</div>`
+      : ct.trimmed ? `<div class="ccy-explain" style="margin-top:6px"><b>Smallest position in years.</b> The percentile is extreme but the net sits on the other side: positions have been cut right back, the opposite of crowded.</div>` : '';
+    $('drCotDetail').innerHTML = derived + (rows.length ? `<div class="ccy-legs" style="margin-top:6px">${rows.join('')}</div>` : '') + stateBlock + extreme;
   } else {
     $('drCotSec').style.display = 'none';
   }
@@ -13401,10 +13425,10 @@ function assembleSnapshot(r) {
   }
   // Crowded positioning that has stopped paying — the shape of a squeeze.
   const dvAI = divergenceFor(r);
-  if (dvAI && dvAI.state !== 'CONFIRMED') {
-    s.positioningDivergence = { state: dvAI.state, cotPercentile: dvAI.pctile,
-      crowdSide: dvAI.crowdSide > 0 ? 'long' : 'short', todayMoveDayRanges: dvAI.move, derived: dvAI.derived,
-      note: 'The crowd is stretched one way and price has stopped going that way. A practitioner pattern with NO backtest in this repo and COT is days lagged — describe it as a risk shape, never as a signal.' };
+  if (dvAI) {
+    s.positioningState = { state: dvAI.state, label: dvAI.label, crowdSide: dvAI.side, read: dvAI.line, volNote: dvAI.vol ?? null,
+      evidence: dvAI.ev, verdict: dvAI.verdict, reportDate: dvAI.reportDate,
+      note: 'Where speculators sit relative to the trend, from the registered study cot-crowding-programme. Quote the read as given; never turn it into a direction, a squeeze call or "fuel". Only state D carries a measured difference, and it is a reset (fewer big adverse moves), not a reversal.' };
   }
   // The rates move split into its two components, which mean opposite things.
   const rdAI = ratesDecompBest();
@@ -14020,6 +14044,8 @@ async function generateMorningBrief() {
 loadAll().then(() => { pollPrices(); startLivePriceStream(); loadSpreads(); loadIvRvAll(); loadTapeSpeedAll(); loadLineState(); });
 setInterval(() => { loadLineState(); }, 15 * 60_000);   // tags change nightly; the market clock moves through the day
 loadGate();
+// The COT state read (js/cotState.js via /api/cot-state): separate and lazy, so a cold OANDA fetch never holds up the gate.
+jget('/api/cot-state').then(j => { if (j?.ok && j.instruments) { cotStates = j.instruments; invalidateRows(); render(); if (drName && _drR) { try { renderDrawerFlow(_drR); } catch (e) {} } } }).catch(() => {});
 loadMorningBrief();
 setInterval(loadGate, 60 * 60_000);            // calendar + risk state, hourly
 setInterval(pollPrices, 30_000);               // REST fallback, in case SSE can't connect
@@ -14071,6 +14097,12 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
   import * as PairComposite from './js/pairCompositeEngine.js';
   window.pairCompositeBrick = PairComposite;
   try { window.render?.(); } catch (e) {}
+</script>
+<!-- COT crowding-state brick (js/cotState.js): the sign convention (FLIPPED) and the research wording the
+     per-pair state read uses; the same module builds /api/cot-state on the server. -->
+<script type="module">
+  import * as CotState from './js/cotState.js';
+  window.cotStateBrick = CotState;
 </script>
 <!-- Tape-speed brick (js/tapeSpeedEngine.js + the generated js/tapeSpeedParams.js):
      the drawer shows the full quintile table for the current band so the one-line

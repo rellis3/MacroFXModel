@@ -27,6 +27,8 @@ import { resolveKey, pipSize, priceDigits } from './instrumentRegistry.js';
 import { S as IX } from './state.js';
 import { PAIRS } from './config.js';
 import { calculateTierScores } from './macro.js';
+// JPY/CAD/CHF feed rows are in USD-pair terms (positive = long USDJPY; js/cotState.js), so name them as the pair.
+const cotName = c => ['JPY', 'CAD', 'CHF'].includes(c.sym) ? 'USD' + c.sym : (c.label || c.sym);
 
 /* ───────────────────────── state ───────────────────────── */
 
@@ -486,7 +488,7 @@ function renderExceptions() {
   if (cs && cs.exposure < 1) items.push({ cls: cs.exposure === 0 ? 'c-red' : 'c-amber', txt: `Credit stress: CSI ${fmt(cs.csi, 2)}σ → exposure tier ${cs.exposure} (${cs.date})` });
 
   for (const c of (S.cot?.instruments || [])) {
-    if (Math.abs(c.specZ ?? 0) >= 2) items.push({ cls: 'c-blue', txt: `COT extreme: ${c.label || c.sym} spec ${c.specZ > 0 ? 'long' : 'short'} z ${fmt(c.specZ, 1)} (pct ${fmt(c.specPct, 0)}) — ${c.reportDate}` });
+    if (Math.abs(c.specZ ?? 0) >= 2) items.push({ cls: 'c-blue', txt: `COT extreme: ${cotName(c)} spec ${c.specZ > 0 ? 'long' : 'short'} z ${fmt(c.specZ, 1)} (pct ${fmt(c.specPct, 0)}) — ${c.reportDate}` });
   }
 
   const ev = Array.isArray(S.events) ? S.events : [];
@@ -652,7 +654,7 @@ function renderContext() {
     const fx = cot.filter(c => c.group === 'fx' || ['GOLD', 'NQ', 'ES'].includes(c.sym)).slice(0, 14);
     cards.push(`<div class="card"><div class="card-hd">COT positioning ${TRUST.ctx} <span class="dim sm">${esc(S.cot.reportDate || '')}</span>
       <a class="dim sm" href="cot-extremes.html" target="_blank">↗</a></div>
-      <table class="tbl sm"><tbody>${fx.map(c => `<tr><td class="dim">${esc(c.sym)}</td>
+      <table class="tbl sm"><tbody>${fx.map(c => `<tr><td class="dim">${esc(cotName(c))}</td>
         <td><div class="pbar" title="spec percentile ${fmt(c.specPct, 0)} · z ${fmt(c.specZ, 1)}"><div class="pbar-f ${c.specPct >= 85 ? 'ub-over' : c.specPct <= 15 ? 'ub-hot' : 'ub-ok'}" style="width:${Math.max(2, Math.min(100, c.specPct ?? 0)).toFixed(0)}%"></div></div></td>
         <td class="num">${fmt(c.specPct, 0)}</td></tr>`).join('')}</tbody></table></div>`);
   }

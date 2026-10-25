@@ -57,7 +57,8 @@ export function buildIdea({ links = [], events = [], rangePressure = null, fear 
   const posn = [];
   if (rp) posn.push(`${rp.on} of ${rp.n} validated bigger-day signals are on, which speaks to size, not direction.`);
   if (fv) posn.push(fv.on ? 'Fear has run ahead of the Nasdaq, a level the VIX has tended to give back from.' : 'Fear against the Nasdaq is not at its extreme.');
-  const crowded = (crowding ?? []).filter(c => c.state === 'crowded long' || c.state === 'crowded short');
+  // ccyState: "long the currency" (atlasPosition.crowding; the feed has JPY/CAD/CHF in USD-pair terms)
+  const crowded = (crowding ?? []).map(c => ({ ...c, state: c.ccyState ?? c.state })).filter(c => c.state === 'crowded long' || c.state === 'crowded short');
   if (crowding?.length) posn.push(crowded.length ? `Speculators are at an extreme in ${crowded.map(c => `${c.sym} (${c.state.replace('crowded ', '')})`).join(', ')}${cotDate ? `, as of the report for ${cotDate}` : ''}. That says who must act if they are wrong, not which way price goes.` : `No market is at a crowded extreme in the weekly CFTC report${cotDate ? ` for ${cotDate}` : ''}.`);
   else posn.push('The weekly CFTC positioning report is not loaded, so what the crowd already owns is not measured here.');
 

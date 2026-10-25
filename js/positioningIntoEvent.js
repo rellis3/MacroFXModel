@@ -34,6 +34,7 @@
  * Pure: no fetch, no DOM. Tested in js/positioningIntoEvent.test.mjs.
  */
 import { HEADLINE_INSTRUMENT } from './newsOutcome.js';
+import { toCcyRow } from './cotState.js';
 
 /** Currency -> the country code the calendar files its releases under. */
 export const CCY_COUNTRY = {
@@ -153,8 +154,12 @@ export function extremeOf(leg = {}, hi = 80, lo = 20) {
  * `cot` is one row of /api/cot-extremes (it needs the participant split -- amShare and
  * friends); `events` are the calendar rows already filtered to this currency.
  */
-export function bookFor(cot, events = [], { nowMs = Date.now(), horizonH = 96 } = {}) {
-  if (!cot) return null;
+export function bookFor(cot0, events = [], { nowMs = Date.now(), horizonH = 96 } = {}) {
+  if (!cot0) return null;
+  // This card speaks for the CURRENCY ("JPY: fast money crowded long"), so the row is read in "long the currency"
+  // terms. The feed delivers JPY/CAD/CHF in USD-pair terms (js/cotState.js); before 2026-10-24 those three were
+  // described on the wrong side.
+  const cot = toCcyRow(cot0);
   const ccy = cot.sym;
   const fast = { net: cot.specNet ?? null, share: cot.specShare ?? null, pct: cot.specSharePct ?? null, side: sideOf(cot.specShare) };
   const real = { net: cot.amNet ?? null, share: cot.amShare ?? null, pct: cot.amSharePct ?? null, side: sideOf(cot.amShare) };

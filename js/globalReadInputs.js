@@ -12,6 +12,7 @@
  * and, where the audit found it matters, adds a data-quality issue.
  */
 import { effectiveIc, freshness, REG } from './globalReadCore.js';
+import { toCcyTerms, pctToCcyTerms } from './cotState.js';
 
 export const GLOBAL_READ_ENDPOINTS = ['data-health', 'daily-read', 'desk-watch', 'today-reads', 'macro-changes', 'vol-forecast', 'hmm/regimes',
   'yield-spread/plan', 'macro-regime-fx', 'macro-scorecard', 'trend-basket', 'cot-extremes', 'cot', 'oi-today', 'oi-levels',
@@ -107,7 +108,8 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
   const cb = D['macro-scorecard']?.cbSentiment ?? {};
   const trend = Object.fromEntries((D['trend-basket']?.current ?? []).map(c => [c.ccy, c.trend]));
   const cotRows = (D['cot-extremes']?.instruments ?? []).filter(c => c.group === 'fx');
-  const cot = Object.fromEntries(cotRows.map(c => [c.sym, c.specShareZ]));
+  // currency terms: the feed has JPY/CAD/CHF in USD-pair terms (js/cotState.js)
+  const cot = Object.fromEntries(cotRows.map(c => [c.sym, toCcyTerms(c.sym, c.specShareZ)]));
   const hmm = D['hmm/regimes'] ?? {};
   const plan = D['daily-snapshot?days=2']?.days?.[0]?.plan?.pairs ?? {};
   const regimeKey = mrfx?.now?.key;
@@ -203,7 +205,7 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
       macroScore: scRow[c]?.composite ?? null, macroStale: Object.entries(D['macro-scorecard']?.staleDims ?? {}).flatMap(([dim, v]) => v.filter(x => x.ccy === c).map(x => `${dim} ${x.ageDays}d`)),
       surprise: es[c] ? { score: es[c].score, stale: !!es[c].staleOnly, lastAsOf: es[c].lastAsOf } : null,
       cb: cb[c] ? { score: cb[c].score, regime: cb[c].regime, meeting: cb[c].meetingDate } : null,
-      cot: cotRow ? { specPct: cotRow.specPct, z: cotRow.specShareZ } : null,
+      cot: cotRow ? { specPct: pctToCcyTerms(c, cotRow.specPct), z: toCcyTerms(c, cotRow.specShareZ) } : null,
       realYield: ry[c]?.latestReal ?? null, curveSlope: yc[c]?.latestSlope ?? null,
       // oriented: + = the short-rate spread favours THIS currency (the raw z is the pair's, US minus foreign)
       spreadZ: y ? +(y.z * (y.inverted ? -1 : 1) * (GR_PAIRS[pairKey][0] === c ? 1 : -1)).toFixed(2) : null, trend: trend[c] ?? null,
@@ -258,7 +260,7 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     cr?.hook ? `Chain read: ${cr.hook}` : null,
     ...(cr?.stories ?? []).map(s => `Story: ${s.name} (${s.status}).`),
     D['morning-brief']?.analysis?.headline ? `Brief: ${D['morning-brief'].analysis.headline}` : null,
-    ...((D['cot-extremes']?.instruments ?? []).filter(c => c.specPct >= 95 || c.specPct <= 5).map(c => `COT extreme: ${c.label} specs at the ${c.specPct}th percentile (context; COT direction is a banked null).`)),
+    ...((D['cot-extremes']?.instruments ?? []).filter(c => c.specPct >= 95 || c.specPct <= 5).map(c => `COT extreme: ${['JPY', 'CAD', 'CHF'].includes(c.sym) ? 'USD' + c.sym : c.label} specs at the ${c.specPct}th percentile (context; COT direction is a banked null).`)),
     mrfx?.policy ? `Front end: 2Y ${mrfx.policy.twoYear}% vs policy ${mrfx.policy.policyRate}%, ${mrfx.policy.movesPriced} ${mrfx.policy.direction} priced.` : null,
   ].filter(Boolean);
 

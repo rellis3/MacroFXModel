@@ -16,6 +16,7 @@
  * tilt, the crowding and the Fed odds are context and every row says what it is. Where a validated range effect applies
  * the page says so; nothing else is dressed as an edge.
  */
+import { FLIPPED } from './cotState.js';
 
 export const CCY_OF_COUNTRY = { US: 'USD', EU: 'EUR', GB: 'GBP', JP: 'JPY', AU: 'AUD', NZ: 'NZD', CA: 'CAD', CH: 'CHF' };
 export const BANK_OF = { USD: 'FOMC', EUR: 'ECB', GBP: 'BoE', JPY: 'BoJ', NZD: 'RBNZ', AUD: 'RBA', CAD: 'BoC' };
@@ -70,16 +71,38 @@ export function surpriseBars(es) {
   })).sort((a, b) => b.score - a.score);
 }
 
-/** Crowding: a speculative position is crowded only when its percentile AND its sign agree. ce = /api/cot-extremes. */
-export function crowding(ce) {
+/**
+ * Crowding: a speculative position is crowded only when its percentile AND its sign agree. ce = /api/cot-extremes,
+ * cs = /api/cot-state (optional).
+ *
+ * TWO sets of words per row, because the feed's JPY, CAD and CHF rows are in USD-PAIR terms (positive = long
+ * USDJPY / USDCAD / USDCHF = SHORT the yen, loonie, franc; js/cotState.js header):
+ *   state      in the terms of the instrument the row maps to (EURUSD, USDJPY, NQ...): use it on a market card.
+ *   ccyState   in "long the currency" terms: use it on a currency card or for a cross's leg. Same as `state` for every
+ *              row except JPY/CAD/CHF, where long and short swap. Using `state` on the yen card said "traders are
+ *              heavily long" when they were heavily short the yen (fixed 2026-10-24).
+ *   cot        where the instrument sits on the crowding map and what the registered study found (from cs), or null.
+ */
+const _STATE_WORD = (extreme, trimmed, long) => extreme ? (long ? 'crowded long' : 'crowded short') : trimmed ? (long ? 'smallest long in years' : 'smallest short in years') : 'mid-range';
+const _SWAP = { 'crowded long': 'crowded short', 'crowded short': 'crowded long', 'smallest long in years': 'smallest short in years', 'smallest short in years': 'smallest long in years', 'mid-range': 'mid-range' };
+export function crowding(ce, cs = null) {
+  const bySym = {};
+  for (const [inst, v] of Object.entries(cs?.instruments ?? {})) if (v?.sym) bySym[v.sym] = { inst, ...v };
   return (ce?.instruments ?? []).filter(i => i.group === 'fx' || ['NQ', 'ES', 'YM', 'RTY', 'GOLD', 'BTC', 'WTI'].includes(i.sym)).map(i => {
     const pct = num(i.specSharePct ?? i.specPct), share = num(i.specShare), net = num(i.specNet);
     const sign = share ?? net; if (pct == null || sign == null) return null;
     const long = sign > 0, extreme = (pct >= 90 && long) || (pct <= 10 && !long);
     const trimmed = (pct >= 90 && !long) || (pct <= 10 && long);   // percentile and sign disagree: positions already cut
-    return { sym: i.sym, pct, net, share, state: extreme ? (long ? 'crowded long' : 'crowded short') : trimmed ? (long ? 'smallest long in years' : 'smallest short in years') : 'mid-range' };
+    const state = _STATE_WORD(extreme, trimmed, long);
+    const flipped = FLIPPED.has(i.sym);
+    const c = bySym[i.sym];
+    return { sym: i.sym, pct, net, share, state, ccyState: flipped ? _SWAP[state] : state, ccyPct: flipped ? 100 - pct : pct,
+             inst: c?.inst ?? null, cot: c ? { key: c.key, label: c.label, line: c.line, ev: c.ev, verdict: c.verdict, vol: c.vol ?? null, zone: c.zone } : null };
   }).filter(Boolean);
 }
+
+/** A crowding row read as "long the currency" (state and pct swapped for JPY/CAD/CHF), for currency cards and pair legs. */
+export function crowdCcy(c) { return c ? { ...c, state: c.ccyState ?? c.state, pct: c.ccyPct ?? c.pct } : c; }
 
 // ── RIGHT NOW ──────────────────────────────────────────────────────────────
 
