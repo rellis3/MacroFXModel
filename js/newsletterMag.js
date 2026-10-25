@@ -336,7 +336,7 @@ export function accountabilityPage(record, eod, H, ag = null) {
   const wrong = [out.length ? `${wide.length ? `Wider than expected: ${wide.join(', ')}. ` : ''}${quiet.length ? `Much quieter than expected: ${quiet.join(', ')}. ` : ''}` : (s ? 'No market landed outside the band.' : wk ? `${100 - wk.withinShare}% of market-days landed outside the band.` : '')].filter(Boolean);
   const calib = s ? `The median market came in at ${s.median}× the expected size and ${s.pastShare}% ran past it. A calibrated forecast has the median near 1× and about half running past.` : wk ? `Across the week the median was ${wk.median}× the expected size and ${wk.pastShare}% ran past it; a calibrated forecast has the median near 1× and about half running past.` : '';
   const sample = s ? `Sample: one issue and ${rows.length} markets. ${nIssues > 1 ? `${nIssues} scored issues are on record, which is still a short run.` : 'This is the only scored issue so far.'} One issue cannot show whether the forecast is biased; only a long record can, and this one is too short to say.` : wk ? `Sample: ${wk.days} daily issues and ${wk.n} market-days. A week is a short run and cannot show a bias on its own.` : '';
-  return `<div class="pg"><div class="mh"><b>Desk Atlas</b><span>The accountability page</span><span>${H.esc(record?.date ? 'Issue of ' + record.date : '')}</span></div>
+  return `<div class="pg"><div class="mh"><b>The Chain</b><span>The accountability page</span><span>${H.esc(record?.date ? 'Issue of ' + record.date : '')}</span></div>
 <div class="kick">How we did</div><h2 class="sh" style="font-size:30px">${wk && !s ? "This week's calls, marked" : "Last issue's call, marked"}</h2>
 <p class="sf acsf" style="font-size:14px">Two different things are scored here and they are kept apart. The size forecast says how big each market's day should be. The directional read is a separate test. A good score on one says nothing about the other.</p>
 ${s || wk ? `<h3 class="ss">${evBadge('model')}1. The size forecast against what happened</h3>
@@ -418,14 +418,14 @@ const cropSvg = s => String(s ?? '').replace(/viewBox="0 0 ([\d.]+) ([\d.]+)"/, 
 export function composeMagazine(c, H) {
   const { esc } = H, M = c.meta;
   const candles = '<svg class="logo" viewBox="0 0 28 22" width="26" height="20" aria-hidden="true"><g stroke-width="1.6" stroke-linecap="round"><line x1="5" y1="2" x2="5" y2="20" stroke="#19d3a0"/><rect x="2.5" y="7" width="5" height="9" rx="1" fill="#19d3a0" stroke="none"/><line x1="14" y1="1" x2="14" y2="17" stroke="#ff5d73"/><rect x="11.5" y="4" width="5" height="9" rx="1" fill="#ff5d73" stroke="none"/><line x1="23" y1="4" x2="23" y2="21" stroke="#ffb020"/><rect x="20.5" y="8" width="5" height="9" rx="1" fill="#ffb020" stroke="none"/></g></svg>';
-  const mh = (sec) => `<div class="mh"><b>${candles}Desk Atlas</b><span>${esc(sec)}</span><span>${esc(M.edition)}${M.tag ? ' · ' + esc(M.tag) : ''} · ${esc(M.date)}</span></div>`;
+  const mh = (sec) => `<div class="mh"><b>${candles}The Chain</b><span>${esc(sec)}</span><span>${esc(M.edition)}${M.tag ? ' · ' + esc(M.tag) : ''} · ${esc(M.date)}</span></div>`;
   const tape = (c.ticker ?? []).length ? `<div class="tape">${c.ticker.map(t => `<span>${esc(t.label)} <b>${esc(t.price)}</b> <i class="${t.chg >= 0 ? 'up' : 'dn'}">${t.chg >= 0 ? '▲' : '▼'} ${Math.abs(t.chg).toFixed(2)}%</i></span>`).join('')}</div>` : '';
   const paras = (arr, lead = true) => (arr ?? []).filter(Boolean).map((p, i) => `<p${i === 0 && lead ? ' class="lead"' : ''}>${p.head ? `<b>${esc(p.head)}</b> ` : ''}${esc(typeof p === 'string' ? p : p.text)}</p>`).join('');
   const feature = c.feature;
   // page 1: the situation in plain terms, before any analysis
   const p1 = `<div class="pg p1">${mh('The story')}${tape}
 <div class="kick">${esc(M.regime)} regime · the investigation</div><h1 class="hd">${esc(feature.headline)}</h1>${feature.standfirst ? `<p class="sf"><span class="sfl">The desk's reading</span>${esc(feature.standfirst)}</p>` : ''}
-<p class="by">By the Desk Atlas research desk · ${esc(M.date)}</p>
+<p class="by">By The Chain research desk · ${esc(M.date)}</p>
 <div class="split"><div>${c.intro ? threeVoices(c.intro, H) : ''}
 <p class="map"><b>How the issue builds.</b> 1 What happened · 2 Why it might be happening · 3 How markets connect · 4 What broke · 5 Stress and data checks · 6 Competing explanations · 7 What does not fit · 8 The scorecard · the Data Desk</p>
 <p class="evkey" style="margin-top:6px"><span>LABELS</span>${evBadge('observed')}${evBadge('model')}${evBadge('tested')}${evBadge('context')}${evBadge('hyp')}${evBadge('untested')}</p></div>

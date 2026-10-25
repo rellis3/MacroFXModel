@@ -1,5 +1,5 @@
 /**
- * NEWSLETTER — the daily issue, built from the rows Desk Atlas already shows.
+ * NEWSLETTER — the daily issue, built from the rows the Atlas page already shows.
  *
  *   buildNewsletter(input) → { subject, preheader, html, text }
  *
@@ -286,7 +286,7 @@ ul.t{margin:0;padding-left:18px}ul.t li{margin:0 0 7px}
  * section is left out rather than filled with placeholder text.
  */
 export function buildNewsletter(n) {
-  const a = n.brief ?? {}, letter = a.letter ?? {}, headline = n.headline ?? a.headline ?? (n.edition === 'weekly' ? 'Desk Atlas Weekly' : 'Desk Atlas Daily');
+  const a = n.brief ?? {}, letter = a.letter ?? {}, headline = n.headline ?? a.headline ?? (n.edition === 'weekly' ? 'The Chain Weekly' : 'The Chain Daily');
   const subject = clip(letter.subject || headline, 78), regimeWord = String(n.regimeWord ?? a.regime ?? 'MIXED').toUpperCase();
   const opening = letter.opening || a.driver?.[0]?.explain || a.driver?.[0]?.what || '';
   const preheader = clip(opening || headline, 140);
@@ -294,7 +294,7 @@ export function buildNewsletter(n) {
   const art = `<div class="art">${BANNER_SVG}</div>`;
   const llm = n.llm?.provider ? `${n.llm.label ?? n.llm.provider} (${n.llm.model ?? ''})` : null;
 
-  const mast = `<div class="mast">${art}<div class="scrim"></div><div class="in"><div class="brand">Desk Atlas · ${weekly ? 'Weekly' : 'Daily'}${n.layout === 'v2' ? ' · V2 draft' : ''}</div><div class="date">${esc(n.date)}</div><h1>${esc(headline)}</h1><div class="tags">${pill(regimeWord)}${n.riskFlags ? pill(`${n.riskFlags.active}/${n.riskFlags.total} stress warnings`) : ''}${n.generatedAt ? pill('brief written ' + (new Date(n.generatedAt).toLocaleDateString('en-GB', { timeZone: 'Europe/London' }) === new Date().toLocaleDateString('en-GB', { timeZone: 'Europe/London' }) ? '' : new Date(n.generatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' }) + ' ') + new Date(n.generatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + ' UK') : ''}</div></div></div>`;
+  const mast = `<div class="mast">${art}<div class="scrim"></div><div class="in"><div class="brand">The Chain · ${weekly ? 'Weekly' : 'Daily'}${n.layout === 'v2' ? ' · V2 draft' : ''}</div><div class="date">${esc(n.date)}</div><h1>${esc(headline)}</h1><div class="tags">${pill(regimeWord)}${n.riskFlags ? pill(`${n.riskFlags.active}/${n.riskFlags.total} stress warnings`) : ''}${n.generatedAt ? pill('brief written ' + (new Date(n.generatedAt).toLocaleDateString('en-GB', { timeZone: 'Europe/London' }) === new Date().toLocaleDateString('en-GB', { timeZone: 'Europe/London' }) ? '' : new Date(n.generatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' }) + ' ') + new Date(n.generatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + ' UK') : ''}</div></div></div>`;
 
   const letterSec = (opening || n.position) ? `<section><div style="font-size:16.5px;line-height:1.65;color:${COLORS.ink}">${opening ? `<p>${esc(opening)}</p>` : ''}</div>${n.position ? `<div class="tense"><div class="b"><b>${weekly ? 'Last week and before' : 'Yesterday and before'}</b>${para((n.position.behind ?? []).slice(0, 2))}</div><div class="n"><b>${weekly ? 'Right now' : 'Today'}</b>${para((n.position.right ?? []).slice(0, 2))}</div><div class="a"><b>${weekly ? 'The week ahead' : 'Coming up'}</b>${para((n.position.ahead ?? []).slice(0, 2))}</div></div>` : ''}${letter.signoff ? `<p class="muted small" style="margin-top:10px">${esc(letter.signoff)}</p>` : ''}</section>` : '';
 
@@ -483,7 +483,7 @@ export function buildNewsletter(n) {
   const refsHtml = fresh.length ? `<div class="refs"><h4>Where this comes from</h4>${healthHtml}${fresh.map(r => `<div class="rf ${r.status}"><i></i><span><b>${esc(r.label)}</b> · ${esc(r.source)}</span><span>${r.asOf ? 'as of ' + esc(refDay(r.asOf)) : 'not loaded'}</span></div>`).join('')}</div>` : '';
   const noEdge = sec('What this can and cannot tell you', 'How to read it', `<ul class="t small">${LIMITS.slice(0, v2 ? 4 : LIMITS.length).map(x => `<li>${esc(x)}</li>`).join('')}</ul>`);
 
-  const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">Desk Atlas · issue ${esc(n.date)}</div></div>`;
+  const foot = `<div class="foot"><h4>NOT FINANCIAL ADVICE</h4>${DISCLAIMER.map(d => `<p>${esc(d.replace(/^NOT FINANCIAL ADVICE\.\s*/, ''))}</p>`).join('')}<div class="meta">The Chain · issue ${esc(n.date)}</div></div>`;
 
 
   // ══ V2: the magazine edition (js/newsletterMag.js). The same research, composed as a feature, a signature chain spread, competing explanations, an accountability page and a Data Desk. ══
