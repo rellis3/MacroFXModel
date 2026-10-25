@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Feed</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.34.0/plotly.min.js" defer></script>
 <style>
   /* The Feed: C.OG's "options, rates, commodities and liquidity, in one feed" (education/cog-snippets.md §4), built
      from this repo's own data. A montage of live screens up top, then one full screen per complex. Blue reads high or
@@ -29,13 +30,21 @@
   .hero { text-align:center; padding:30px 0 6px; }
   .hero h1 { font-size:clamp(22px,3.4vw,34px); font-weight:700; letter-spacing:-.01em; margin:0; text-wrap:balance; text-shadow:0 0 30px rgba(90,162,255,.35); }
   .hero p { color:var(--text2); margin:6px auto 0; max-width:70ch; }
-  .montage { perspective:1400px; margin:22px auto 8px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; max-width:1180px; }
+  .hero { position:relative; }
+  .hero::before { content:""; position:absolute; inset:60px 0 -40px; z-index:-1; pointer-events:none;
+                  background:radial-gradient(ellipse 55% 60% at 50% 55%, rgba(60,110,220,.30), rgba(20,40,110,.12) 45%, transparent 75%); }
+  .montage { perspective:1500px; perspective-origin:50% 40%; margin:26px auto 30px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px 18px; max-width:1180px; transform-style:preserve-3d; }
   @media (max-width:860px) { .montage { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   @media (max-width:520px) { .montage { grid-template-columns:minmax(0,1fr); } }
   .tile { position:relative; display:block; text-decoration:none; color:inherit; border:1px solid var(--cyanline); border-radius:6px; background:var(--panel); overflow:hidden;
           box-shadow:0 0 0 1px rgba(90,162,255,.08), 0 0 26px rgba(60,120,230,.22), inset 0 0 40px rgba(40,90,190,.12); transition:transform .35s ease, box-shadow .35s ease; }
   .tile.amber { border-color:var(--amberline); box-shadow:0 0 0 1px rgba(224,169,59,.08), 0 0 26px rgba(224,169,59,.18), inset 0 0 40px rgba(224,169,59,.08); }
-  .montage .tile:nth-child(3n+1) { transform:rotateY(9deg); } .montage .tile:nth-child(3n) { transform:rotateY(-9deg); }
+  /* a curved wall of screens: the outer columns turn in, the middle comes forward, the bottom row reflects on the floor */
+  .montage .tile:nth-child(3n+1) { transform:rotateY(16deg) translateZ(-20px); } .montage .tile:nth-child(3n+2) { transform:translateZ(24px); }
+  .montage .tile:nth-child(3n) { transform:rotateY(-16deg) translateZ(-20px); }
+  .montage .tile:nth-child(n+4) { -webkit-box-reflect:below 6px linear-gradient(transparent 72%, rgba(255,255,255,.09)); }
+  .montage .tile { animation:drift 7s ease-in-out infinite; } .montage .tile:nth-child(2n) { animation-delay:-3.5s; } .montage .tile:nth-child(3n) { animation-delay:-1.8s; }
+  @keyframes drift { 0%,100% { translate:0 0; } 50% { translate:0 -4px; } }
   @media (max-width:860px) { .montage .tile { transform:none !important; } }
   .tile:hover, .tile:focus-visible { transform:none !important; box-shadow:0 0 0 1px rgba(90,162,255,.25), 0 0 40px rgba(60,120,230,.4); outline:none; }
   .tile canvas { display:block; width:100%; height:150px; }
@@ -104,7 +113,24 @@
   .gap .st { font:600 10px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--amber); }
   .gap .st.done { color:var(--pos); }
   footer { margin-top:28px; color:var(--text3); font:11px var(--mono); }
-  @media (prefers-reduced-motion: reduce) { .tile { transition:none; } }
+  /* his tab row: one line of the complexes, sticky, the current one lit */
+  .tabs { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:2px 4px; align-items:center; padding:7px 0; margin:0 0 4px;
+          background:linear-gradient(rgba(2,5,11,.96), rgba(2,5,11,.88)); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); font:11.5px var(--mono); }
+  .tabs a { color:var(--text3); text-decoration:none; padding:3px 9px; border-radius:3px; border:1px solid transparent; white-space:nowrap; }
+  .tabs a:hover { color:var(--text); border-color:var(--line); }
+  .tabs a.on { color:#06101f; background:var(--blue2); box-shadow:0 0 12px rgba(90,162,255,.5); }
+  .tabs a.amb.on { background:var(--amber2); box-shadow:0 0 12px rgba(224,169,59,.5); }
+  .tabs .sep { width:1px; height:14px; background:var(--line); margin:0 6px; }
+  .tabs .ext { color:#5d6a82; }
+  /* the instruction line along the top of each screen, as on his */
+  .instr { display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 14px; padding:6px 16px; border-bottom:1px solid var(--line); font:10.5px var(--mono); color:var(--text3); background:rgba(90,162,255,.035); }
+  .instr b { color:#06101f; background:var(--amber2); padding:0 5px; border-radius:2px; font-weight:600; }
+  .vsw { display:inline-flex; border:1px solid var(--line); border-radius:3px; overflow:hidden; }
+  .vsw button { font:600 10.5px var(--mono); color:var(--text3); background:transparent; border:0; padding:2px 9px; cursor:pointer; letter-spacing:.06em; }
+  .vsw button[aria-pressed="true"] { color:#06101f; background:var(--blue2); }
+  .surf { height:min(58vh,460px); min-height:340px; }
+  .legend i.vir { background:linear-gradient(90deg, #0b1d4f, #1f5fbf 30%, #2aa5a0 55%, #9ccf5a 80%, #f2d14a); }
+  @media (prefers-reduced-motion: reduce) { .tile { transition:none; animation:none !important; } }
 </style>
 </head>
 <body>
@@ -113,6 +139,12 @@
     <span><b>THE FEED</b> &nbsp;options · rates · commodities · liquidity</span>
     <span id="status"><span class="dot off"></span>loading…</span>
   </div>
+
+  <nav class="tabs" id="tabs" aria-label="Complexes">
+    <a href="#rates">the curve</a><a href="#liquidity">liquidity</a><a href="#cross">cross-asset</a><a href="#commodities" class="amb">commodities</a><a href="#options">options</a><a href="#gaps" class="amb">tested?</a>
+    <span class="sep"></span>
+    <a class="ext" href="credit-stress.html" target="_blank">credit ↗</a><a class="ext" href="market-view.html" target="_blank">equities · sectors ↗</a><a class="ext" href="fx-factor-v2.html" target="_blank">currencies ↗</a><a class="ext" href="cot-extremes.html" target="_blank">positioning ↗</a><a class="ext" href="chapters.html" target="_blank">chapters ↗</a>
+  </nav>
 
   <section class="hero">
     <h1>Options, rates, commodities and liquidity, in one feed.</h1>
@@ -133,10 +165,12 @@
       <div><div class="kick">Rates</div><h2>Eleven tenors, five years of history.</h2><p>The US Treasury curve, week by week (5-week mean). Click any cell to pull out that week's curve and that tenor's history; arrow keys move the pick.</p></div>
       <div class="links"><a href="surface-lab.html?field=rates" target="_blank">3D surface ↗</a><a href="yield-curve.html" target="_blank">yield curve ↗</a><a href="chapters.html" target="_blank">chapters ↗</a></div>
     </div>
+    <div class="instr"><span><b>click</b> a point on the surface to update the two charts at the right · arrow keys move the pick · drag to turn it</span><span>FRED DGS1MO … DGS30 · weekly, 5-week mean</span></div>
     <div class="sbody">
       <div class="two">
-        <div class="card"><h3>tenor × week <span id="r-pick">–</span></h3><div class="in"><canvas class="plot" id="r-heat" tabindex="0" aria-label="Treasury curve heat map: tenors down, weeks across"></canvas>
-          <div class="legend"><span>low yield</span><i></i><span>high yield</span></div></div></div>
+        <div class="card"><h3><span class="vsw" data-sec="rates"><button data-v="3d">3D</button><button data-v="flat">FLAT</button></span> <span id="r-pick">–</span></h3><div class="in">
+          <div class="surf" id="r-surf" hidden></div><canvas class="plot" id="r-heat" tabindex="0" aria-label="Treasury curve heat map: tenors down, weeks across"></canvas>
+          <div class="legend"><span>low yield</span><i class="vir"></i><span>high yield</span></div></div></div>
         <div style="display:grid;gap:14px;min-width:0">
           <div class="card"><h3>1) the curve on the picked week</h3><div class="in"><canvas class="plot" id="r-curve" style="height:150px"></canvas><p class="hint">Amber: the picked week. Dotted: a year earlier.</p></div></div>
           <div class="card"><h3>2) the picked tenor through five years</h3><div class="in"><canvas class="plot" id="r-hist" style="height:150px"></canvas></div></div>
@@ -153,6 +187,7 @@
       <div><div class="kick">Liquidity</div><h2>The Fed balance sheet, weekly.</h2><p>Treasury General Account, reverse repo, bank reserves and net liquidity (balance sheet − TGA − RRP), plus the SOFR-less-IORB funding spread. "z of the week" scores this week's change against three years of weekly changes.</p></div>
       <div class="links"><a href="global-liquidity.html" target="_blank">global liquidity ↗</a><a href="liquidity-pulse.html" target="_blank">daily TGA/RRP vs NQ ↗</a><a href="liquidity-net-regression.html" target="_blank">net-liquidity regression ↗</a></div>
     </div>
+    <div class="instr"><span>blue: up on the week · amber: down · a <b>rising</b> TGA or RRP drains money from the system · the z column says how unusual the week was</span><span>FRED WALCL · WDTGAL · RRPONTSYD · WRESBAL · SOFR · IORB · weekly (H.4.1)</span></div>
     <div class="sbody">
       <div class="card"><h3>instrument <span id="l-asof">–</span></h3><div class="scroll"><table class="liq" id="l-table"></table></div></div>
       <div class="read" id="l-read">–</div>
@@ -166,6 +201,7 @@
       <div><div class="kick">Cross-asset</div><h2>Rolling correlations between markets.</h2><p>63-day correlation of daily changes (log returns; the 10-year yield uses its change in level), three years, weekly. Blue above zero, amber below. Sorted by how much each pair moved over the last quarter: the change is the news.</p></div>
       <div class="links"><a href="correlations.html" target="_blank">FX correlation lab ↗</a><a href="surface-lab.html?field=absorption" target="_blank">one-trade absorption ↗</a><a href="yield-coupling.html" target="_blank">yield coupling ↗</a></div>
     </div>
+    <div class="instr"><span>63-day window on daily changes · the biggest moves in the last quarter come first</span><span>OANDA SPX500 · XAU · WTICO · FRED DGS10 · DTWEXBGS</span></div>
     <div class="sbody">
       <div class="corrgrid" id="x-grid"></div>
       <div class="ev">Context only. No correlation <b>level</b> has been tested as a signal here. The tested cousins are on the linked pages: Surface Lab's absorption (how much of everything is one trade) and the yield-coupling studies.</div>
@@ -178,9 +214,11 @@
       <div><div class="kick" style="color:var(--amber)">Commodities</div><h2>Sixteen markets, ranked by z-score.</h2><p>Each cell is that week's position in the market's own trailing 104-week range: amber at the low, blue at the high, white at a new two-year high. Rows are ranked by the z-score of the level inside the same window. Click a row; arrow keys move the pick.</p></div>
       <div class="links"><a href="gold.html" target="_blank">gold ↗</a><a href="cot-extremes.html" target="_blank">COT positioning ↗</a></div>
     </div>
+    <div class="instr"><span><b>click</b> a market to open it on the right · arrow keys move the pick · height and colour are its place in its own two-year range</span><span>OANDA daily (front-month CFDs) · FRED energy spot · weekly</span></div>
     <div class="sbody">
       <div class="two">
-        <div class="card"><h3>market × week <span id="c-pickh">–</span></h3><div class="in"><canvas class="plot" id="c-heat" tabindex="0" aria-label="Commodities range-position heat map: markets down, weeks across"></canvas>
+        <div class="card"><h3><span class="vsw" data-sec="comm"><button data-v="3d">3D</button><button data-v="flat">FLAT</button></span> <span id="c-pickh">–</span></h3><div class="in">
+          <div class="surf" id="c-surf" hidden></div><canvas class="plot" id="c-heat" tabindex="0" aria-label="Commodities range-position heat map: markets down, weeks across"></canvas>
           <div class="legend"><span>low of its 2y range</span><i></i><span>high</span></div></div></div>
         <div class="card"><h3>the picked row <span id="c-name">–</span></h3><div class="in" id="c-side"></div></div>
       </div>
@@ -194,10 +232,12 @@
       <div><div class="kick">Options</div><h2>The implied vol curve, through time.</h2><p>S&amp;P implied vol at five expiries (VIX1D, VIX9D, VIX, VIX3M, VIX6M), daily. A curve that inverts (front above back) is the market paying up for protection now.</p></div>
       <div class="links"><a href="surface-lab.html?field=volTerm" target="_blank">3D vol term surface ↗</a><a href="oi-dashboard-v2.html" target="_blank">OI dashboard v2: dealer hedging map ↗</a><a href="vix-calculus.html" target="_blank">VIX calculus ↗</a></div>
     </div>
+    <div class="instr"><span>height is the level of implied vol · colour is how stressed it is <b>for that expiry</b> · drag to turn it</span><span>CBOE VIX1D · VIX9D · VIX · VIX3M · VIX6M · daily</span></div>
     <div class="sbody">
       <div class="two">
-        <div class="card"><h3>expiry × day <span id="o-pick">–</span></h3><div class="in"><canvas class="plot" id="o-heat" aria-label="VIX term structure heat map"></canvas>
-          <div class="legend"><span>calm for that expiry</span><i></i><span>stressed</span></div></div></div>
+        <div class="card"><h3><span class="vsw" data-sec="opt"><button data-v="3d">3D</button><button data-v="flat">FLAT</button></span> <span id="o-pick">–</span></h3><div class="in">
+          <div class="surf" id="o-surf" hidden></div><canvas class="plot" id="o-heat" aria-label="VIX term structure heat map"></canvas>
+          <div class="legend"><span>calm for that expiry</span><i class="vir"></i><span>stressed</span></div></div></div>
         <div class="card"><h3>the curve now</h3><div class="in"><canvas class="plot" id="o-curve" style="height:170px"></canvas><div class="kv" id="o-kv" style="margin-top:8px"></div></div></div>
       </div>
       <div class="ev real"><b>Tested, and real for range.</b> The front of this curve (VIX9D/VIX) sorts how often NQ/SPX break their p75 range (21% / 29% / 35% calm → dear, VOL_CURVE_FRONT_PREREG, H5 PASS). Dealer gamma (GEX) predicts next-day NQ <b>range</b> (G2). Neither gives direction, and walls/flips as price levels were null. The strike-level dealer map lives on OI dashboard v2, which is linked here and not changed.</div>
@@ -280,10 +320,10 @@ function line(cv, series, { h, color = '#5aa2ff', fill = true, zero = false, ban
   return { X, Y };
 }
 // a rows × cols heat map. val(r, c) in 0..1. Returns hit-test helper.
-function heatmap(cv, rows, cols, val, { h, labelW = 0, label = null, pick = null, colLabels = null } = {}) {
+function heatmap(cv, rows, cols, val, { h, labelW = 0, label = null, pick = null, colLabels = null, color = heat } = {}) {
   const { x, w, h: H } = sized(cv, h);
   const top = 2, bottom = colLabels ? 16 : 2, W = w - labelW, cw = W / cols, rh = (H - top - bottom) / rows;
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { x.fillStyle = heat(val(r, c)); x.fillRect(labelW + c * cw, top + r * rh, Math.ceil(cw) + 0.5, Math.ceil(rh) + 0.5); }
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { x.fillStyle = color(val(r, c)); x.fillRect(labelW + c * cw, top + r * rh, Math.ceil(cw) + 0.5, Math.ceil(rh) + 0.5); }
   if (label) { x.font = `${Math.min(11, rh * 0.75)}px ui-monospace,Menlo,monospace`; x.textAlign = 'right'; x.textBaseline = 'middle';
     for (let r = 0; r < rows; r++) { let t = label(r); while (t.length > 3 && x.measureText(t).width > labelW - 10) t = t.slice(0, -2) + '…';
       x.fillStyle = pick && pick.r === r ? '#f3cf7e' : '#b4c0d4'; x.fillText(t, labelW - 6, top + (r + 0.5) * rh); } }
@@ -300,6 +340,70 @@ const sign = (v, d = 1) => fin(v) ? (v > 0 ? '+' : v < 0 ? '−' : '') + Math.ab
 const money = v => fin(v) ? Math.round(v).toLocaleString('en-US') : '–';
 const px = v => fin(v) ? v.toLocaleString('en-US', { maximumFractionDigits: Math.abs(v) >= 100 ? 2 : 4 }) : '–';
 
+// his surface palette: deep blue → teal → yellow
+const VIR = [[0, [11, 29, 79]], [0.3, [31, 95, 191]], [0.55, [42, 165, 160]], [0.8, [156, 207, 90]], [1, [242, 209, 74]]];
+const PLOTLY_VIR = VIR.map(([t, c]) => [t, `rgb(${c.join(',')})`]);
+const PLOTLY_HEAT = STOPS.map(([t, c]) => [t, `rgb(${c.join(',')})`]);
+function ramp(stops, t, shade = 1) {
+  if (!fin(t)) return 'rgba(0,0,0,0)';
+  t = Math.max(0, Math.min(1, t));
+  for (let i = 1; i < stops.length; i++) if (t <= stops[i][0]) {
+    const [a, ca] = stops[i - 1], [b, cb] = stops[i], f = (t - a) / (b - a);
+    return `rgb(${ca.map((c, k) => Math.round((c + (cb[k] - c) * f) * shade)).join(',')})`;
+  }
+  return `rgb(${stops.at(-1)[1].map(c => Math.round(c * shade)).join(',')})`;
+}
+const vir = t => ramp(VIR, t);
+
+// Isometric render for the wall of screens: a surface (quads) or extruded bars, painted back to front.
+function iso(cv, rows, cols, val, { h = 150, bars = false, stops = VIR, step = 1 } = {}) {
+  const { x, w, h: H } = sized(cv, h);
+  const nc = Math.ceil(cols / step), ox = w * 0.10, oy = H * 0.20, Z = H * 0.36;
+  const ux = w * 0.66 / nc, uy = H * 0.10 / nc, vx = w * 0.20 / rows, vy = H * 0.50 / rows;
+  const P = (c, r, z) => [ox + c * ux + r * vx, oy + c * uy + r * vy - z * Z + Z * 0.55];
+  const v = (r, c) => { let s = 0, n = 0; for (let k = c * step; k < Math.min(cols, (c + 1) * step); k++) { const q = val(r, k); if (fin(q)) { s += q; n++; } } return n ? s / n : NaN; };
+  const poly = (pts, fill) => { x.beginPath(); x.moveTo(...pts[0]); for (const p of pts.slice(1)) x.lineTo(...p); x.closePath(); x.fillStyle = fill; x.fill(); x.strokeStyle = fill; x.lineWidth = 0.6; x.stroke(); };
+  for (let r = 0; r < rows; r++) for (let c = 0; c < nc; c++) {
+    const z = v(r, c); if (!fin(z)) continue;
+    if (bars) {
+      const zz = Math.max(0.03, z), g = 0.85;
+      poly([P(c + g, r, 0), P(c + g, r + g, 0), P(c + g, r + g, zz), P(c + g, r, zz)], ramp(stops, z, 0.55));      // right side
+      poly([P(c, r + g, 0), P(c + g, r + g, 0), P(c + g, r + g, zz), P(c, r + g, zz)], ramp(stops, z, 0.75));      // front
+      poly([P(c, r, zz), P(c + g, r, zz), P(c + g, r + g, zz), P(c, r + g, zz)], ramp(stops, z));                    // top
+    } else {
+      const z2 = v(r, Math.min(nc - 1, c + 1)), z3 = v(Math.min(rows - 1, r + 1), Math.min(nc - 1, c + 1)), z4 = v(Math.min(rows - 1, r + 1), c);
+      const zs = [z, fin(z2) ? z2 : z, fin(z3) ? z3 : z, fin(z4) ? z4 : z];
+      poly([P(c, r, zs[0]), P(c + 1, r, zs[1]), P(c + 1, r + 1, zs[2]), P(c, r + 1, zs[3])], ramp(stops, (zs[0] + zs[1] + zs[2] + zs[3]) / 4, 0.75 + 0.25 * (r / rows)));
+    }
+  }
+}
+
+// ── 3D (Plotly): his surfaces. Each has a FLAT twin that is easier to read exact values from; phones start flat.
+const VIEW = (() => { try { return JSON.parse(localStorage.getItem('feedView') || '{}'); } catch { return {}; } })();
+const view = sec => VIEW[sec] ?? (window.innerWidth < 760 ? 'flat' : '3d');
+const has3d = () => typeof window.Plotly !== 'undefined';
+function wireSwitches() {
+  document.querySelectorAll('.vsw').forEach(sw => {
+    const sec = sw.dataset.sec;
+    sw.querySelectorAll('button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.v === view(sec)));
+      b.onclick = () => { VIEW[sec] = b.dataset.v; try { localStorage.setItem('feedView', JSON.stringify(VIEW)); } catch {} wireSwitches(); redraw(); };
+    });
+  });
+}
+function showView(sec, surfId, flatId) {
+  const three = view(sec) === '3d' && has3d();
+  $(surfId).hidden = !three; $(flatId).hidden = three;
+  return three;
+}
+const CFG = { displayModeBar: false, responsive: true };
+const ax3 = (title, o = {}) => ({ title: { text: title, font: { size: 10, color: '#7d8aa3' } }, gridcolor: '#1d2b44', zerolinecolor: '#1d2b44', linecolor: '#2a3c5c',
+  showbackground: true, backgroundcolor: 'rgba(8,16,36,.55)', tickfont: { size: 9, color: '#7d8aa3' }, showspikes: false, ...o });
+const L3 = (scene, rev) => ({ paper_bgcolor: 'rgba(0,0,0,0)', margin: { l: 0, r: 0, t: 0, b: 0 }, showlegend: false, uirevision: rev,
+  font: { family: 'ui-monospace,Menlo,monospace', size: 10, color: '#7d8aa3' }, hoverlabel: { bgcolor: '#0b1428', bordercolor: '#5aa2ff', font: { family: 'ui-monospace,Menlo,monospace', size: 11, color: '#e8eef8' } },
+  scene: { bgcolor: 'rgba(0,0,0,0)', uirevision: rev, ...scene } });
+const yearTickvals = dates => { const t = yearTicks(dates); return { tickvals: t.map(p => p[0]), ticktext: t.map(p => p[1]) }; };
+
 async function get(url) {
   try { const r = await fetch(url); const j = await r.json(); return j; } catch (e) { return { ok: false, error: e.message }; }
 }
@@ -312,7 +416,8 @@ function drawRates(R) {
   if (!RS.pick) RS.pick = { c: n - 1, r: T.indexOf('10Y') >= 0 ? T.indexOf('10Y') : T.length - 1 };
   const all = C.flat().filter(fin), lo = Math.min(...all), hi = Math.max(...all);
   const hit = heatmap($('r-heat'), T.length, n, (r, c) => (C[c]?.[T.length - 1 - r] - lo) / (hi - lo),
-    { h: 300, labelW: 34, label: r => T[T.length - 1 - r], pick: { r: T.length - 1 - RS.pick.r, c: RS.pick.c }, colLabels: yearTicks(W) });
+    { h: 300, labelW: 34, label: r => T[T.length - 1 - r], pick: { r: T.length - 1 - RS.pick.r, c: RS.pick.c }, colLabels: yearTicks(W), color: vir });
+  if (showView('rates', 'r-surf', 'r-heat')) rates3d(R);
   $('r-heat').onclick = ev => { const p = hit(ev); RS.pick = { c: p.c ?? RS.pick.c, r: T.length - 1 - p.r }; drawRates(R); };
   $('r-heat').onkeydown = ev => {
     const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[ev.key]; if (!d) return; ev.preventDefault();
@@ -325,7 +430,23 @@ function drawRates(R) {
   const now = C[n - 1], ago = C[Math.max(0, n - 5)];
   const ti = t => T.indexOf(t), slope = r => fin(r[ti('10Y')]) && fin(r[ti('2Y')]) ? (r[ti('10Y')] - r[ti('2Y')]) * 100 : null;
   $('r-read').innerHTML = `Week of ${esc(W[n - 1])}: 2Y ${fin(now[ti('2Y')]) ? now[ti('2Y')].toFixed(2) : '–'}%, 10Y ${fin(now[ti('10Y')]) ? now[ti('10Y')].toFixed(2) : '–'}%, 2s10s ${sign(slope(now), 0)}bp (${sign(slope(now) - slope(ago), 0)}bp over four weeks). Surface Lab labels the curve <b>${esc(R.now?.regime ?? R.regime?.[n - 1] ?? '–')}</b>.`;
-  mini('m-rates', (cv) => heatmap(cv, T.length, n, (r, cc) => (C[cc]?.[T.length - 1 - r] - lo) / (hi - lo), { h: 150 }));
+  mini('m-rates', cv => iso(cv, T.length, n, (r, cc) => (C[cc]?.[r] - lo) / (hi - lo), { step: Math.ceil(n / 70) }));
+}
+function rates3d(R) {
+  const W = R.weeks, T = R.tenors, C = R.curve, c = RS.pick.c, k = RS.pick.r, idx = W.map((_, i) => i);
+  const z = T.map((_, t) => W.map((_, w) => C[w][t]));
+  Plotly.react('r-surf', [
+    { type: 'surface', x: idx, y: T.map((_, i) => i), z, colorscale: PLOTLY_VIR, showscale: false, opacity: 0.97,
+      contours: { x: { show: false }, y: { show: false }, z: { show: true, usecolormap: true, highlightcolor: '#f3cf7e', project: { z: true } } },
+      lighting: { ambient: 0.75, diffuse: 0.6, specular: 0.25, roughness: 0.6 }, customdata: T.map(t => W.map(w => [w, t])),
+      hovertemplate: '%{customdata[0]} · %{customdata[1]}: %{z:.2f}%<extra></extra>' },
+    { type: 'scatter3d', mode: 'lines', x: T.map(() => c), y: T.map((_, i) => i), z: C[c].map(v => v + 0.03), line: { color: '#f3cf7e', width: 7 }, hoverinfo: 'skip' },
+    { type: 'scatter3d', mode: 'lines', x: idx, y: idx.map(() => k), z: z[k].map(v => v + 0.03), line: { color: '#ffffff', width: 5 }, hoverinfo: 'skip' },
+  ], L3({ xaxis: ax3('', yearTickvals(W)), yaxis: ax3('', { tickvals: T.map((_, i) => i), ticktext: T }), zaxis: ax3('yield %'),
+    aspectmode: 'manual', aspectratio: { x: 1.9, y: 1.1, z: 0.55 }, camera: { eye: { x: -1.2, y: -1.65, z: 0.85 }, center: { x: 0.05, y: 0, z: -0.08 } } }, 'rates'), CFG);
+  const el = $('r-surf');
+  if (!el._wired) { el._wired = true; el.on('plotly_click', ev => { const p = ev.points?.[0]; if (!p || p.data.type !== 'surface') return;
+    RS.pick = { c: Math.round(p.x), r: Math.round(p.y) }; drawRates(LAST.rates); }); }
 }
 
 // ── LIQUIDITY ──────────────────────────────────────────────────────────────
@@ -371,6 +492,7 @@ function drawCommodities(K) {
   const hit = heatmap($('c-heat'), rows.length, cols, cell, { h: Math.max(320, rows.length * 22), labelW, pick: { r: CS.r },
     label: r => `${fin(rows[r].z) ? sign(rows[r].z, 1) + '  ' : ''}${rows[r].label}`, colLabels: yearTicks(dates) });
   $('c-heat').onclick = ev => { CS.r = hit(ev).r; drawCommodities(K); };
+  if (showView('comm', 'c-surf', 'c-heat')) comm3d(K, cols, dates, cell);
   $('c-heat').onkeydown = ev => { const d = { ArrowUp: -1, ArrowDown: 1 }[ev.key]; if (!d) return; ev.preventDefault(); CS.r = Math.max(0, Math.min(rows.length - 1, CS.r + d)); drawCommodities(K); };
   const R = rows[CS.r]; $('c-name').textContent = R.label; $('c-pickh').textContent = `${rows.length} rows · ranked by z · week of ${rows[0].asOf}`;
   const src = K.sources?.[R.key] ?? (R.key === 'basket' ? 'equal-weight chain of the members\' weekly log returns' : '');
@@ -385,7 +507,32 @@ function drawCommodities(K) {
     <p class="hint" style="margin-top:6px">${esc(R.label)} ${px(R.last)} · 2y low ${px(R.lo)} · median ${px(R.median)} · high ${px(R.hi)} · ${esc(src)}</p>`;
   line($('c-pos'), [{ v: R.cells.map(c => c[1] - 50), width: 1.1, color: '#9ccaff' }], { h: 70, zero: true, ymin: -50, ymax: 50 });
   line($('c-lvl'), [{ v: R.prices.map(p => p[1]), color: '#f3cf7e', width: 1.4 }], { h: 110, band: [R.lo, R.hi], labels: yearTicks(R.prices.map(p => p[0])) });
-  mini('m-comm', cv => heatmap(cv, rows.length, cols, cell, { h: 150 }));
+  mini('m-comm', cv => iso(cv, rows.length, cols, cell, { bars: true, stops: STOPS, step: 4 }));
+}
+// extruded bars, one per market-week: height and colour are the range position, the picked row is outlined in amber
+function comm3d(K, cols, dates, cell) {
+  const rows = K.rows, step = window.innerWidth < 1100 ? 2 : 1, nc = Math.ceil(cols / step), g = 0.82;
+  const X = [], Y = [], Z = [], I = [], J = [], Kk = [], F = [], txt = [];
+  const at = (r, c) => { let s = 0, n = 0; for (let q = c * step; q < Math.min(cols, (c + 1) * step); q++) { const v = cell(r, q); if (fin(v)) { s += v; n++; } } return n ? s / n : NaN; };
+  for (let r = 0; r < rows.length; r++) for (let c = 0; c < nc; c++) {
+    const v = at(r, c); if (!fin(v)) continue;
+    const y0 = rows.length - 1 - r, h = Math.max(0.02, v), b = X.length, col = heat(v);
+    const tip = `${rows[r].label} · wk ${dates[Math.min(cols - 1, c * step)] ?? ''} · ${Math.round(v * 100)}% of its 2y range`;
+    for (const [dx, dy, dz] of [[0, 0, 0], [g, 0, 0], [g, g, 0], [0, g, 0], [0, 0, h], [g, 0, h], [g, g, h], [0, g, h]]) { X.push(c + dx); Y.push(y0 + dy); Z.push(dz); txt.push(tip); }
+    for (const [a, bb, cc] of [[4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4], [1, 2, 6], [1, 6, 5], [2, 3, 7], [2, 7, 6], [3, 0, 4], [3, 4, 7]]) { I.push(b + a); J.push(b + bb); Kk.push(b + cc); F.push(col); }
+  }
+  const pr = rows.length - 1 - CS.r, yt = yearTicks(dates).map(([i, t]) => [i / step, t]);
+  Plotly.react('c-surf', [
+    { type: 'mesh3d', x: X, y: Y, z: Z, i: I, j: J, k: Kk, facecolor: F, flatshading: true, text: txt, hovertemplate: '%{text}<extra></extra>',
+      lighting: { ambient: 0.65, diffuse: 0.75, specular: 0.15, facenormalsepsilon: 0 }, lightposition: { x: -100, y: -200, z: 300 } },
+    { type: 'scatter3d', mode: 'lines', x: [0, nc, nc, 0, 0], y: [pr - 0.05, pr - 0.05, pr + g + 0.05, pr + g + 0.05, pr - 0.05], z: [1.04, 1.04, 1.04, 1.04, 1.04], line: { color: '#f3cf7e', width: 4 }, hoverinfo: 'skip' },
+  ], L3({ xaxis: ax3('', { tickvals: yt.map(p => p[0]), ticktext: yt.map(p => p[1]) }),
+    yaxis: ax3('', { tickvals: rows.map((_, r) => rows.length - 1 - r + 0.4), ticktext: rows.map(x => x.label), tickfont: { size: 9, color: '#b4c0d4' } }),
+    zaxis: ax3('', { range: [0, 1.08], showticklabels: false }),
+    aspectmode: 'manual', aspectratio: { x: 2.1, y: 1.25, z: 0.42 }, camera: { eye: { x: -0.8, y: -1.6, z: 0.95 }, center: { x: 0, y: 0, z: -0.1 } } }, 'comm'), CFG);
+  const el = $('c-surf');
+  if (!el._wired) { el._wired = true; el.on('plotly_click', ev => { const p = ev.points?.[0]; if (!p || p.data.type !== 'mesh3d') return;
+    CS.r = Math.max(0, Math.min(rows.length - 1, rows.length - 1 - Math.floor(p.y))); drawCommodities(LAST.feed.commodities); }); }
 }
 
 // ── OPTIONS ────────────────────────────────────────────────────────────────
@@ -396,7 +543,22 @@ function drawOptions(V) {
   // each expiry against its own history (2nd to 98th percentile): 1D vol always sits below 6M, so one shared scale would only show the tenor
   const qs = z.map(row => { const a = row.slice(off).filter(fin).sort((p, q) => p - q); return [a[Math.floor(0.02 * (a.length - 1))], a[Math.floor(0.98 * (a.length - 1))]]; });
   const val = (r, c) => { const i = T.length - 1 - r, [lo, hi] = qs[i]; return (z[i][off + c] - lo) / (hi - lo); };
-  heatmap($('o-heat'), T.length, keep, val, { h: 220, labelW: 40, label: r => T[T.length - 1 - r], colLabels: yearTicks(D.slice(off)) });
+  heatmap($('o-heat'), T.length, keep, val, { h: 220, labelW: 40, label: r => T[T.length - 1 - r], colLabels: yearTicks(D.slice(off)), color: vir });
+  if (showView('opt', 'o-surf', 'o-heat')) {
+    // weekly (5-day mean) for the 3D: daily VIX is too spiky to read as a surface
+    const days = D.slice(off), wk = [];
+    for (let e = keep; e > 0; e -= 5) wk.unshift([Math.max(0, e - 5), e]);
+    const avg = (row, a, b) => { const xs = row.slice(off + a, off + b).filter(fin); return xs.length ? xs.reduce((p, q) => p + q, 0) / xs.length : null; };
+    const zz = T.map((_, i) => wk.map(([a, b]) => avg(z[i], a, b)));
+    const sc = T.map((_, i) => wk.map(([a, b]) => { const [lo, hi] = qs[i], v = avg(z[i], a, b); return fin(v) ? (v - lo) / (hi - lo) : null; }));
+    const lab = wk.map(([, b]) => days[b - 1]), idx = wk.map((_, j) => j), m = wk.length - 1;
+    Plotly.react('o-surf', [{ type: 'surface', x: idx, y: T.map((_, i) => i), z: zz, surfacecolor: sc, cmin: 0, cmax: 1, colorscale: PLOTLY_VIR, showscale: false,
+      lighting: { ambient: 0.75, diffuse: 0.6, specular: 0.2 }, customdata: T.map(t => lab.map(d => [d, t])), hovertemplate: 'week to %{customdata[0]} · %{customdata[1]}: %{z:.2f}<extra></extra>' },
+      { type: 'scatter3d', mode: 'lines', x: T.map(() => m), y: T.map((_, i) => i), z: T.map((_, i) => (zz[i][m] ?? 0) + 0.3), line: { color: '#f3cf7e', width: 7 }, hoverinfo: 'skip' }],
+      L3({ xaxis: ax3('', yearTickvals(lab)), yaxis: ax3('', { tickvals: T.map((_, i) => i), ticktext: T }), zaxis: ax3('implied vol'),
+        aspectmode: 'manual', aspectratio: { x: 2, y: 1, z: 0.55 }, camera: { eye: { x: -1.2, y: -1.65, z: 0.85 }, center: { x: 0.05, y: 0, z: -0.08 } } }, 'opt'), CFG);
+  }
+
   const lastIdx = i => { for (let k = D.length - 1; k >= 0; k--) if (fin(z[i][k])) return k; return -1; };
   const now = T.map((_, i) => z[i][lastIdx(i)]), monthAgo = T.map((_, i) => z[i][Math.max(0, lastIdx(i) - 21)]);
   line($('o-curve'), [{ v: monthAgo, color: '#7d8aa3', dash: [3, 3], fill: false }, { v: now, color: '#f3cf7e', width: 2, fill: false }], { h: 170, dots: true, labels: T.map((t, i) => [i, t]) });
@@ -405,7 +567,7 @@ function drawOptions(V) {
   $('o-kv').innerHTML = `<dt>as of</dt><dd>${esc(D[D.length - 1])}</dd>${T.map((t, i) => `<dt>${esc(t)}</dt><dd>${fin(now[i]) ? now[i].toFixed(2) : '–'} <span style="color:var(--text3)">(${fin(now[i]) && fin(monthAgo[i]) ? sign(now[i] - monthAgo[i], 2) : '–'} vs a month ago)</span></dd>`).join('')}` +
     (fin(N.front) ? `<dt>front (9D/30D)</dt><dd>${N.front.toFixed(3)} · <b>${esc(N.frontState ?? '–')}</b> · NQ/SPX past p75 on ${pct(N.p75Front)} of such days</dd>` : '') +
     (fin(N.back) ? `<dt>back (30D/3M)</dt><dd>${N.back.toFixed(3)} · ${esc(N.backState ?? '–')}</dd>` : '');
-  mini('m-opt', cv => heatmap(cv, T.length, keep, val, { h: 150 }));
+  mini('m-opt', cv => iso(cv, T.length, keep, (r, c) => val(T.length - 1 - r, c), { step: Math.ceil(keep / 80) }));
 }
 
 // ── montage tiles ───────────────────────────────────────────────────────────
@@ -424,10 +586,16 @@ function redraw() {
   if (LAST.rates) drawRates(LAST.rates); if (LAST.feed) { drawLiquidity(LAST.feed.liquidity); drawCross(LAST.feed.crossAsset); drawCommodities(LAST.feed.commodities); }
   if (LAST.vol) drawOptions(LAST.vol); drawGapsTile();
 }
+// light the tab of the screen in view
+(() => { const tabs = [...document.querySelectorAll('#tabs a[href^="#"]')], io = new IntersectionObserver(es => {
+  for (const e of es) if (e.isIntersecting) tabs.forEach(t => t.classList.toggle('on', t.getAttribute('href') === '#' + e.target.id)); }, { rootMargin: '-40% 0px -55% 0px' });
+  document.querySelectorAll('section.screen').forEach(s => io.observe(s)); })();
 let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(redraw, 150); });
 
 (async function main() {
-  drawGapsTile();
+  drawGapsTile(); wireSwitches();
+  // Plotly loads deferred; if the data arrives first the flat views show, then the 3D views swap in
+  if (!has3d()) window.addEventListener('load', () => { if (has3d()) redraw(); });
   const [feed, rates, vol] = await Promise.all([get('/api/feed'), get('/api/surface-lab?field=rates'), get('/api/surface-lab?field=volTerm')]);
   LAST = { feed: feed?.ok ? feed : null, rates: rates?.rates ?? null, vol: vol?.volTerm ?? null };
   try { drawRates(LAST.rates); } catch (e) { console.error(e); }
