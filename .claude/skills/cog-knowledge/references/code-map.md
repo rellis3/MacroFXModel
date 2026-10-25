@@ -10,6 +10,7 @@
 | `cog-replay.html` | reference-data replay | served by `cog-standalone/` |
 | `cog-signal-log.html` | manual log of his four messages, resolved on OANDA M5 with costs | `/api/cog-signals` (+ `/resolve`), KV `cog_signal_log` |
 | `cog-v2-engine.html` | persistent state machine | `/api/cog-v2/*` |
+| `feed.html` | "The Feed" (2026-10-25): his one-feed promo rebuilt; rates + VIX term from Surface Lab, weekly liquidity table, five-leg cross-asset correlations, sixteen-commodity range map, each with its verdict | `/api/feed` (`js/feedRoutes.js`, maths `js/feedCore.js`, KV `feed_v1`) |
 
 `server.js` also has `/api/cog-threshold/*`, `/api/cog-v3/*` and `/api/cog-rep/shadow` (KV `cog_shadow_log`, panel
 in `bot-config.html` on the nqqmr tab). It imports `cog-replication/engine/cogShadow.js` and `oiSignalCheck.js`.

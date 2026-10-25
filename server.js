@@ -105,6 +105,7 @@ import { createHarShadow } from './js/harShadowRoutes.js';
 import { createDrawdownShadow } from './js/drawdownShadowRoutes.js';   // drawdown shadow band, read-only (drawdown-forecast-error A1)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
+import { createFeed } from './js/feedRoutes.js';
 import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming, saveAllLiveSnapshots as _faMondaySaveAllLiveSnapshots } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
@@ -29695,6 +29696,16 @@ const surfaceLab = createSurfaceLab({ kv, fetchCandles: fetchOandaCandleRange,
 surfaceLab.mount(app);
 svcInterval('surfaceLab', () => svcRun('surfaceLab', () => surfaceLab.tick('scheduled')), 30 * 60_000);
 svcTimeout('surfaceLab', () => svcRun('surfaceLab', () => surfaceLab.tick('boot')), 120_000);
+
+// The Feed (feed.html): C.OG's "options, rates, commodities and liquidity, in one feed" as one page. Builds the weekly
+// liquidity table, cross-asset rolling correlations and the sixteen-commodity range map; rates and options come from
+// Surface Lab and the OI dashboard. Rebuilt when older than 12 h; first build ~3 min after boot. KV `feed_v1`.
+const _feedFredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+const feed = createFeed({ kv, fetchCandles: fetchOandaCandleRange, fredCsv: _fredCsv,
+  fetchFred: _feedFredKey ? (id, from) => fetchFredSeries(id, from, _feedFredKey) : null });
+feed.mount(app);
+svcInterval('feed', () => svcRun('feed', () => feed.tick('scheduled')), 30 * 60_000);
+svcTimeout('feed', () => svcRun('feed', () => feed.tick('boot')), 180_000);
 
 // 1-minute VIX / VXN recorder: Yahoo keeps only 7 days of 1-minute bars, so pull every 6 hours into R2 (vix_m1/...) to build
 // the minute-level history for testing the VIX-vs-Nasdaq divergence idea later. Status: /api/vix-capture.

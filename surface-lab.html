@@ -93,6 +93,8 @@ const HZ = q => ({ 2:'30m', 4:'1h', 8:'2h', 16:'4h', 32:'8h' }[q] ?? q * 15 + 'm
 let D = null, wired = false;
 const S = { field:'absorption', inst:'EURUSD', view:'reading', amode:'fx', pick:{} };
 try { const s = JSON.parse(localStorage.getItem('surfLab') || '{}'); if (s.field) S.field = s.field; if (s.inst) S.inst = s.inst; } catch {}
+// ?field=rates|volTerm|… opens that surface directly, over the remembered field (feed.html links here)
+{ const f = new URLSearchParams(location.search).get('field'); if (['absorption', 'persistence', 'volTime', 'rates', 'volTerm'].includes(f)) S.field = f; }
 const save = () => { try { localStorage.setItem('surfLab', JSON.stringify({ field:S.field, inst:S.inst })); } catch {} };
 
 function chips(el, items, key) {

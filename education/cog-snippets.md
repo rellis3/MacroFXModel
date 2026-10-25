@@ -291,3 +291,8 @@ packaged as one feed. Almost every panel has a counterpart here, and two have ve
 
 The useful build, if one is wanted, is the commodities chapter (the only missing panel), with the evidence line saying
 it is a read, not a tested signal.
+
+**Built 2026-10-25:** `feed.html` ("The Feed") brings all five panels onto one page in his style, with each panel's
+verdict beside it. New on it: the sixteen-commodity range map, the weekly liquidity table (week / month / year, z of the
+week, SOFR − IORB) and his five-leg cross-asset correlations (API `/api/feed`, maths `js/feedCore.js`). Rates and options
+reuse Surface Lab; OI dashboard v2 is linked, not changed.
