@@ -134,7 +134,7 @@ const pc = v => v == null ? '—' : `${(v * 100).toFixed(1)}%`;
 const LABEL = { nq: 'NAS100', gold: 'Gold (XAUUSD)', combined: 'Combined (half size each)' };
 const FIN = { none: 'None (gross)', oanda: 'Our model (OANDA, banked)', A: 'Your account A (measured)', B: 'Your account B (measured)' };
 const SPR = { none: 'None (gross)', oanda: 'OANDA bid/ask per trade (banked)', fills: 'Your fills (bracket)' };
-let D = null;
+let D = null, POST = null;
 
 // ── cost selection → per-trade net returns ────────────────────────────────────
 function series(key, fin, spr) {
@@ -301,8 +301,51 @@ function render() {
   $('out').innerHTML =
     panel('nq', R.nq, G.nq, bhOf(D.instruments.nq.entry, d => pn.get(d)), cfd('nq')) +
     panel('gold', R.gold, G.gold, bhOf(D.instruments.gold.entry, d => pg.get(d)), cfd('gold')) +
-    panel('combined', combined(R.nq, R.gold), combined(G.nq, G.gold), bhC, null);
+    panel('combined', combined(R.nq, R.gold), combined(G.nq, G.gold), bhC, null) +
+    postPanel();
   priceChart('nq', R.nq); priceChart('gold', R.gold);
+}
+
+// ── since the cutoff: trades after the 2026-08-21 lockbox date, shown, never scored ─
+// Built by scripts/overnight-hold-toolkit/build_post_cutoff.py with the same rule (it reproduces the banked
+// May–August trades exactly). The "expected range" uses the backtest's own net mean and spread per trade.
+function postRows(key, fin, spr) {
+  const P = POST.instruments[key], f = fin === 'none' ? null : P.fin[fin];
+  return P.gross.map((g, i) => {
+    const fc = f ? f[i] : 0, sc = spr === 'oanda' ? P.spread[i] : spr === 'fills' ? D.fill_round_trip_pct[key] : 0;
+    return { d: P.entry[i], x: P.exit[i], g, r: g - fc - sc, m: P.mae[i] - fc - sc, mg: P.mae[i], mf: P.mfe[i], fc, sc };
+  });
+}
+function postPanel() {
+  if (!POST) return '';
+  const books = ['nq', 'gold'].map(key => {
+    const s = sel(key), rows = postRows(key, s.fin, s.spr), P = POST.instruments[key];
+    const comp = a => (a.reduce((m, r) => m * (1 + r / 100), 1) - 1) * 100;
+    const bt = series(key, s.fin, s.spr).map(t => t.r), n = rows.length;
+    const mu = bt.reduce((a, b) => a + b, 0) / bt.length, sd = Math.sqrt(bt.reduce((a, b) => a + (b - mu) ** 2, 0) / (bt.length - 1));
+    const lo = (mu - 1.96 * sd / Math.sqrt(n)) * n, hi = (mu + 1.96 * sd / Math.sqrt(n)) * n;
+    const sum = rows.reduce((a, t) => a + t.r, 0);
+    return { key, rows, n, net: comp(rows.map(t => t.r)), gross: comp(rows.map(t => t.g)), sum, lo, hi, exp: mu * n,
+      bh: (P.exit_price.at(-1) / P.price[0] - 1) * 100, win: rows.filter(t => t.r > 0).length / n * 100 };
+  });
+  const tr = b => `<tr><td>${LABEL[b.key]}</td><td>${b.n}</td><td>${sp(b.gross)}</td><td><b>${sp(b.net)}</b></td><td>${sp(b.bh)}</td><td>${fmt(b.win, 0)}%</td>
+    <td>${sp(b.sum)} vs ${sp(b.exp)} <span class="note">(${fmt(b.lo)} to ${fmt(b.hi)})</span></td><td>${b.sum >= b.lo && b.sum <= b.hi ? 'inside' : '<b>outside</b>'}</td></tr>`;
+  const list = b => `<details><summary>${LABEL[b.key]}: all ${b.n} trades since the cutoff</summary><div class="tbl"><table style="margin-top:8px">
+    <thead><tr><th>Entry</th><th>Exit</th><th>Gross %</th><th>Net %</th><th>MAE %</th><th>MFE %</th><th>Spread / financing %</th></tr></thead><tbody>
+    ${b.rows.map(t => `<tr><td>${t.d}</td><td>${t.x}</td><td>${sp(t.g, 3)}</td><td>${sp(t.r, 3)}</td><td class="neg">${fmt(t.mg, 2)}</td><td class="pos">${fmt(t.mf, 2)}</td><td>${fmt(t.sc, 4)} / ${fmt(t.fc, 4)}</td></tr>`).join('')}
+    </tbody></table></div></details>`;
+  const P0 = POST.instruments.nq;
+  return `<div class="panel" style="border-color:var(--amber)"><h2>Since the cutoff <span class="tag" style="color:var(--amber);border-color:var(--amber)">shown, not scored</span>
+      <span style="color:var(--mut);font-weight:400;font-size:13px">· ${P0.entry[0]} → ${P0.exit.at(-1)}</span></h2>
+    <p class="sub" style="margin-bottom:8px">Every table above stops at the 2026-08-21 lockbox date. These are the same rule's trades since then, at the cost settings above.
+      They're rebuilt from the OANDA bid/ask file with the same rule (it reproduces the 62 banked May–August trades exactly) and end where that file ends.
+      About 30 trades can't confirm or reject anything. This is a check that nothing broke after the backtest window, not a verdict.</p>
+    <div class="tbl"><table><thead><tr><th>Market</th><th>Trades</th><th>Gross %</th><th>Net %</th><th>Buy &amp; hold, price %</th><th>Win rate</th><th>Sum of net vs backtest's expected (95% range)</th><th>Consistent?</th></tr></thead>
+    <tbody>${books.map(tr).join('')}</tbody></table></div>
+    <p class="note">"Expected" is the backtest's own net mean per trade × the number of trades. The range is what that many trades would normally scatter across if nothing changed.
+      "Inside" means this period looks like the backtest; it says nothing about whether the edge is real.</p>
+    ${books.map(list).join('')}
+  </div>`;
 }
 
 // ── trade chart: daily candles + markers, click → that trade's M1 path ────────
@@ -489,6 +532,7 @@ async function toolkit() {
 // ── boot ──────────────────────────────────────────────────────────────────────
 function fill(id, opts, def) { $(id).innerHTML = Object.entries(opts).map(([v, l]) => `<option value="${v}"${v === def ? ' selected' : ''}>${l}</option>`).join(''); $(id).onchange = render; }
 D = await fetch('analysis/output/overnight-hold-toolkit/page_trades.json').then(r => r.json());
+POST = await fetch('analysis/output/overnight-hold-toolkit/post_cutoff.json').then(r => r.ok ? r.json() : null).catch(() => null);
 fill('finNq', { none: FIN.none, oanda: FIN.oanda, B: FIN.B }, 'B');
 fill('sprNq', SPR, 'oanda');
 fill('finGold', FIN, 'A');
