@@ -89,22 +89,21 @@
   <div id="modalRoot"></div>
 
   <div class="panel">
-    <h2>Exports <span class="tag">current settings</span></h2>
-    <p class="sub" style="margin-bottom:8px">Each button exports the timing, direction and costs selected above. Pick "None" for both costs to get the gross files.</p>
-    <div class="btns">
-      <button data-x="trade">Toolkit CSV, per trade (C.OG format)</button>
-      <button class="ghost" data-x="daily">Toolkit CSV, daily mark-to-market</button>
-    </div>
-    <p class="note"><b>Per trade</b> is C.OG's exact format: <code>Date,Return %,MAE %</code>, Date = entry date, one row per monthly position, two decimals, MAE ≤ 0 with that trade's costs taken off.
-      <b>Daily</b> has one row per trading day the position is held (flat days are 0). A monthly position can lose 5% inside one day without its monthly row showing it, so the daily file is the one that tests a prop firm's daily-loss rule properly. The toolkit replica below uses it.</p>
-    <h3>Journal import (colez-import-template-standard)</h3>
+    <h2>Exports <span class="tag">2 files</span></h2>
+    <p class="sub" style="margin-bottom:8px">Both files use the timing, direction and costs selected above (costs start on: financing and the bid/ask spread both on; commission is zero on a spread-only CFD).</p>
     <div class="grid">
-      <div><label>Position size (× account equity)</label><select id="jSize"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></div>
-      <div><label>Risk % column</label><select id="jRisk"><option value="unit" selected>1% of notional × size (the R unit)</option><option value="blank">Leave blank</option></select></div>
+      <div><label>Journal compounding</label><select id="jComp">
+        <option value="yes" selected>Compounded (each trade sized from the account at entry)</option>
+        <option value="no">Not compounded (same position size every trade, from the starting balance)</option></select></div>
     </div>
-    <div class="btns"><button class="ghost" data-x="journal">Journal CSV</button></div>
-    <p class="note">13 template columns. Times are UK: entry and exit at the 16:30 cash close. Instrument <code>DAX</code>. Return % is signed; MAE % and MFE % are positive sizes, all % of the account at the chosen size, with costs taken off.
-      There is no stop, so Risk % uses 1% of notional as the R unit (as on the overnight page). Tags: <code>long</code>/<code>short</code>, <code>flip</code> when the position reversed, <code>lookahead</code> on timing A. Notes carry the IFO reading behind each trade.</p>
+    <div class="btns">
+      <button data-x="trade">Prop-firm toolkit file</button>
+      <button class="ghost" data-x="journal">Journal file</button>
+    </div>
+    <p class="note"><b>Toolkit file:</b> C.OG's format, <code>Date,Return %,MAE %</code>, one row per monthly position (entry date, net % return, worst point ≤ 0 with that trade's costs taken off, two decimals).
+      The worst point of a whole month is counted as if it fell in one day, so a prop firm's daily-loss rule is tested conservatively.
+      <b>Journal file:</b> the import template's 13 columns, the position at 1× the account. Compounded: Return % = the trade's % move. Not compounded: the position stays at the starting balance, so each trade becomes a smaller % of the account as it grows (larger after losses). If a fixed-size position loses the whole starting balance, the file ends at that trade.
+      MAE/MFE are positive sizes; Risk % is a fixed 1% of the position (there is no stop). Times are UK, entry and exit at the 16:30 cash close. Tags: <code>long</code>/<code>short</code>, <code>flip</code>, <code>lookahead</code> on timing A; Notes carry the IFO reading.</p>
   </div>
 
   <div class="panel" id="toolkit"><h2>Toolkit replica: FTMO 2-step</h2><p class="note">Loading…</p></div>
@@ -383,18 +382,22 @@ function exportFile(kind) {
   const c = cfg();
   if (kind === 'trade') {
     download(`dax_ifo_${tag(c)}_toolkit_per_trade.csv`, 'Date,Return %,MAE %\n' + trades(c).map(t => `${t.d},${two(t.r)},${two(Math.min(t.mae, 0))}`).join('\n') + '\n');
-  } else if (kind === 'daily') {
-    download(`dax_ifo_${tag(c)}_toolkit_daily.csv`, 'Date,Return %,MAE %\n' + daily(c).map(r => `${r.d},${two(r.r)},${two(Math.min(r.m, 0))}`).join('\n') + '\n');
   } else {
-    const k = +$('jSize').value, T = trades(c);
+    const comp = $('jComp').value === 'yes', T = trades(c);
+    let acct = 1, gone = null;
     const rows = T.map((t, n) => {
+      if (gone) return null;
+      const k = comp ? 1 : 1 / acct;
+      acct += comp ? acct * t.r / 100 : t.r / 100;
+      if (acct <= 0) gone = t.x;   // a fixed-size position has lost the whole starting balance: the file ends at this trade
       const flip = n > 0 && T[n - 1].j === t.i && T[n - 1].s !== t.s;
       const tags = [t.s > 0 ? 'long' : 'short', flip ? 'flip' : '', c.t === 'A' ? 'lookahead' : ''].filter(Boolean).join(' ');
-      const notes = `IFO ${fmt(t.ifoPrev, 1)} -> ${fmt(t.ifo, 1)} (signal ${t.m}); ${TLAB[c.t]}; gross ${three(t.g)}, spread ${three(t.spc * (c.spr ? 1 : 0))}, financing ${three(t.fin * (c.fin ? 1 : 0))} (% of notional)`;
-      return [t.d, '16:30', t.x, '16:30', 'DAX', t.s > 0 ? 'Long' : 'Short', `DAX IFO ${c.t}`, $('jRisk').value === 'blank' ? '' : k.toFixed(2),
+      const notes = `IFO ${fmt(t.ifoPrev, 1)} -> ${fmt(t.ifo, 1)} (signal ${t.m}); ${TLAB[c.t]}; gross ${three(t.g)}, spread ${three(t.spc * (c.spr ? 1 : 0))}, financing ${three(t.fin * (c.fin ? 1 : 0))} (% of position)`;
+      return [t.d, '16:30', t.x, '16:30', 'DAX', t.s > 0 ? 'Long' : 'Short', `DAX IFO ${c.t}`, three(k),
               three(k * t.r), three(k * Math.abs(Math.min(t.mae, 0))), three(k * t.mfe), tags, notes].map(q).join(',');
-    });
-    download(`dax_ifo_${tag(c)}_journal_${k}x.csv`, 'Date,Time,Exit Date,Exit Time,Instrument,Direction,Model,Risk %,Return %,MAE %,MFE %,Tags,Notes\n' + rows.join('\n') + '\n');
+    }).filter(Boolean);
+    if (gone) alert(`Not compounded, these settings lose the whole starting balance by ${gone}. The journal file ends at that trade (${rows.length} of ${T.length}).`);
+    download(`dax_ifo_${tag(c)}_journal_${comp ? 'compounded' : 'fixed-size'}.csv`, 'Date,Time,Exit Date,Exit Time,Instrument,Direction,Model,Risk %,Return %,MAE %,MFE %,Tags,Notes\n' + rows.join('\n') + '\n');
   }
 }
 document.querySelectorAll('[data-x]').forEach(b => b.onclick = () => exportFile(b.dataset.x));
