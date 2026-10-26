@@ -283,6 +283,7 @@
     <div class="chub-menu">
       <a class="chub-item" href="hub.html" target="_blank" data-href="hub.html"><span class="ci-txt">⬡ Risk Hub</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('hub.html')" data-href="hub.html">☆</button></a>
       <a class="chub-item" href="overnight-hold-real-costs.html" target="_blank" data-href="overnight-hold-real-costs.html"><span class="ci-txt">🌙 Overnight Hold (real costs, toolkit CSVs)</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('overnight-hold-real-costs.html')" data-href="overnight-hold-real-costs.html">☆</button></a>
+      <a class="chub-item" href="dax-ifo.html" target="_blank" data-href="dax-ifo.html"><span class="ci-txt">🇩🇪 DAX IFO (null, toolkit CSVs)</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('dax-ifo.html')" data-href="dax-ifo.html">☆</button></a>
     </div>
   </div>
 

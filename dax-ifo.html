@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DAX IFO Backtest</title>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root { --bg:#0e1117; --panel:#161b22; --line:#2b3340; --tx:#c9d1d9; --mut:#8b949e;
+          --grn:#3fb950; --red:#f85149; --acc:#58a6ff; --amber:#d29922; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--tx); font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:24px 16px 80px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  h2 { font-size:16px; margin:0 0 10px; }
+  h3 { font-size:13px; margin:14px 0 6px; color:var(--mut); font-weight:600; }
+  .sub { color:var(--mut); margin:0 0 16px; font-size:13px; max-width:900px; }
+  .banner { border:1px solid var(--red); border-radius:6px; padding:9px 12px; margin-bottom:14px; font-size:13px; color:var(--tx); }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+  label { display:block; font-size:12px; color:var(--mut); margin-bottom:4px; }
+  select { width:100%; background:#0d1117; border:1px solid var(--line); color:var(--tx); border-radius:6px; padding:7px 9px; font-size:13px; }
+  button { background:var(--acc); color:#04121f; border:0; border-radius:6px; padding:8px 14px; font-weight:600; cursor:pointer; font-size:13px; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--tx); font-weight:500; }
+  button.ghost:hover { border-color:var(--acc); }
+  button:disabled { opacity:.45; cursor:default; }
+  .tbl { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:right; padding:6px 9px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th:first-child,td:first-child { text-align:left; }
+  thead th { color:var(--mut); font-weight:600; font-size:12px; }
+  .pos { color:var(--grn); } .neg { color:var(--red); }
+  .note { color:var(--mut); font-size:12px; margin-top:8px; }
+  code { background:#0d1117; padding:1px 5px; border-radius:4px; color:var(--acc); }
+  .chart-label { font-size:12px; color:var(--mut); margin:14px 0 4px; }
+  svg.chart { width:100%; height:auto; background:#0d1117; border:1px solid var(--line); border-radius:8px; }
+  .facts { display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--mut); margin:4px 0 12px; }
+  .facts b { color:var(--tx); }
+  details { margin-top:12px; border:1px solid var(--line); border-radius:8px; padding:10px 14px; background:#0d1117; }
+  summary { cursor:pointer; font-weight:600; font-size:13px; }
+  .tag { display:inline-block; padding:1px 7px; border-radius:9px; font-size:11px; font-weight:700; border:1px solid var(--line); color:var(--mut); }
+  .price-chart { height:380px; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px; }
+  .modal-box { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; width:min(820px,100%); max-height:90vh; overflow:auto; }
+  .modal-box .close { float:right; }
+  .kv { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; margin:10px 0 12px; font-size:12.5px; }
+  .kv div { background:#0d1117; border:1px solid var(--line); border-radius:6px; padding:7px 10px; }
+  .kv .k { display:block; color:var(--mut); font-size:11px; }
+  .btns { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="banner"><b>Banked 2026-10-25: NULL</b> (Evidence Book <code>dax-ifo-lookahead</code>). The original +9.4% a year traded each month on an IFO reading
+    that is only published around the 25th of that month: lookahead. Traded only on published readings it loses money (timings B and C).
+    This page shows every timing with costs and exports so the full process can be run on it. It is not a recommendation to trade it.</div>
+  <h1>DAX IFO Backtest <span style="color:var(--mut);font-weight:400">· the IFO system, honest timing, costs, toolkit exports</span></h1>
+  <p class="sub">Rule (<code>Dax Base IFO System/System</code>): long the DAX when the German IFO business climate index rose on the month, short when it fell.
+    DAX cash index daily data 2006-01 → 2026-07, IFO to June 2026. The banked study's numbers are reproduced exactly before anything else is built
+    (<code>scripts/dax-ifo-page/build.py</code>). Analysis: <code>analysis/output/dax-ifo-lookahead/RESULTS.md</code>.</p>
+
+  <div class="panel">
+    <h2>Settings</h2>
+    <div class="grid">
+      <div><label>Timing</label><select id="timing">
+        <option value="B" selected>B · next month (signal at month end → next month end)</option>
+        <option value="C">C · from release (~25th close → next release)</option>
+        <option value="A">A · original, LOOKAHEAD (same month, for reference)</option></select></div>
+      <div><label>Direction</label><select id="mode">
+        <option value="ls" selected>Long / short (the original rule)</option>
+        <option value="lf">Long / flat (only the "IFO rose" signal)</option></select></div>
+      <div><label>Financing</label><select id="fin">
+        <option value="none">None (gross)</option><option value="model" selected>OANDA model (ECB deposit + markup)</option></select></div>
+      <div><label>Spread</label><select id="spr">
+        <option value="none">None (gross)</option><option value="oanda" selected>OANDA bid/ask at the 16:30 close</option></select></div>
+    </div>
+    <p class="note" id="costNote"></p>
+  </div>
+
+  <div id="out"><p class="note">Loading…</p></div>
+  <div id="modalRoot"></div>
+
+  <div class="panel">
+    <h2>Exports <span class="tag">current settings</span></h2>
+    <p class="sub" style="margin-bottom:8px">Each button exports the timing, direction and costs selected above. Pick "None" for both costs to get the gross files.</p>
+    <div class="btns">
+      <button data-x="trade">Toolkit CSV, per trade (C.OG format)</button>
+      <button class="ghost" data-x="daily">Toolkit CSV, daily mark-to-market</button>
+    </div>
+    <p class="note"><b>Per trade</b> is C.OG's exact format: <code>Date,Return %,MAE %</code>, Date = entry date, one row per monthly position, two decimals, MAE ≤ 0 with that trade's costs taken off.
+      <b>Daily</b> has one row per trading day the position is held (flat days are 0). A monthly position can lose 5% inside one day without its monthly row showing it, so the daily file is the one that tests a prop firm's daily-loss rule properly. The toolkit replica below uses it.</p>
+    <h3>Journal import (colez-import-template-standard)</h3>
+    <div class="grid">
+      <div><label>Position size (× account equity)</label><select id="jSize"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></div>
+      <div><label>Risk % column</label><select id="jRisk"><option value="unit" selected>1% of notional × size (the R unit)</option><option value="blank">Leave blank</option></select></div>
+    </div>
+    <div class="btns"><button class="ghost" data-x="journal">Journal CSV</button></div>
+    <p class="note">13 template columns. Times are UK: entry and exit at the 16:30 cash close. Instrument <code>DAX</code>. Return % is signed; MAE % and MFE % are positive sizes, all % of the account at the chosen size, with costs taken off.
+      There is no stop, so Risk % uses 1% of notional as the R unit (as on the overnight page). Tags: <code>long</code>/<code>short</code>, <code>flip</code> when the position reversed, <code>lookahead</code> on timing A. Notes carry the IFO reading behind each trade.</p>
+  </div>
+
+  <div class="panel" id="toolkit"><h2>Toolkit replica: FTMO 2-step</h2><p class="note">Loading…</p></div>
+
+  <div class="panel">
+    <h2>How to read this</h2>
+    <ul class="sub" style="margin:0;padding-left:18px">
+      <li><b>Timing A looks good because it cheats.</b> It uses each month's IFO before it's published. Compare A with B and C to see what knowing the number in advance is worth.</li>
+      <li><b>B and C are the honest versions.</b> Both lose money long/short. Long/flat stays positive only because it's long the DAX half the time, and it still trails buy &amp; hold.</li>
+      <li><b>The toolkit's zero-edge copy</b> shows how often luck alone gets funded with the same volatility. A strategy has to beat it, not just pass.</li>
+    </ul>
+  </div>
+</div>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 2) => (v == null || !Number.isFinite(v)) ? '—' : Number(v).toFixed(d);
+const sp = (v, d = 2) => `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : ''}">${fmt(v, d)}</span>`;
+const pc = v => v == null ? '—' : `${(v * 100).toFixed(1)}%`;
+const TLAB = { A: 'Timing A (original, lookahead)', B: 'Timing B (next month)', C: 'Timing C (from release)' };
+let D = null, TK = null;
+
+const cfg = () => ({ t: $('timing').value, mode: $('mode').value, fin: $('fin').value !== 'none', spr: $('spr').value !== 'none' });
+const bookOf = c => D.books[`${c.t}_${c.mode}`];
+
+// ── trades and daily rows at the selected costs ───────────────────────────────
+function trades(c) {
+  const T = bookOf(c).trades, dd = D.daily.d;
+  return T.g.map((g, k) => {
+    const cost = (c.fin ? T.fin[k] : 0) + (c.spr ? T.sp[k] : 0);
+    return { k, m: T.m[k], i: T.i[k], j: T.j[k], s: T.s[k], d: dd[T.i[k]], x: dd[T.j[k]], g, r: g - cost, cost,
+             fin: T.fin[k], spc: T.sp[k], mae: T.mae[k] - cost, maeG: T.mae[k], mfe: Math.max(T.mfe[k] - cost, 0), mfeG: T.mfe[k],
+             ifo: T.ifo[k], ifoPrev: T.ifo_prev[k], days: T.j[k] - T.i[k], measured: T.hs_measured[k] };
+  });
+}
+function daily(c) {
+  const B = bookOf(c).daily;
+  return B.g.map((g, n) => {
+    const cost = (c.fin ? B.fin[n] : 0) + (c.spr ? B.sp[n] : 0), idx = B.start + 1 + n;
+    return { idx, d: D.daily.d[idx], r: g - cost, m: B.m[n] - cost, g, pos: B.pos[n] };
+  });
+}
+
+// ── metrics ───────────────────────────────────────────────────────────────────
+function curve(rets) { let e = 1; return rets.map(r => (e *= 1 + r / 100)); }
+function ddStats(eq, dates) {
+  let peak = eq[0], pi = 0, mdd = 0, dur = 0, start = null;
+  for (let i = 0; i < eq.length; i++) {
+    if (eq[i] >= peak) { if (start != null) { dur = Math.max(dur, (Date.parse(dates[i]) - Date.parse(dates[start])) / 864e5); start = null; } peak = eq[i]; pi = i; }
+    else { if (start == null) start = pi; mdd = Math.min(mdd, eq[i] / peak - 1); }
+  }
+  let ongoing = false;
+  if (start != null) { const o = (Date.parse(dates.at(-1)) - Date.parse(dates[start])) / 864e5; if (o > dur) { dur = o; ongoing = true; } }
+  return { mdd: mdd * 100, dur, ongoing };
+}
+function dailyMetrics(rets, dates) {
+  const eq = curve(rets), n = rets.length, years = (Date.parse(dates.at(-1)) - Date.parse(dates[0])) / 864e5 / 365.25;
+  const mean = rets.reduce((a, b) => a + b, 0) / n, sd = Math.sqrt(rets.reduce((a, r) => a + (r - mean) ** 2, 0) / (n - 1));
+  const dsd = Math.sqrt(rets.reduce((a, r) => a + Math.min(r, 0) ** 2, 0) / n), cagr = (eq.at(-1) ** (1 / years) - 1) * 100, dd = ddStats(eq, dates);
+  return { eq, total: (eq.at(-1) - 1) * 100, cagr, dd, sharpe: mean / sd * Math.sqrt(252), sortino: mean / dsd * Math.sqrt(252), calmar: cagr / Math.abs(dd.mdd), sdAnn: sd * Math.sqrt(252) };
+}
+function tradeMetrics(rs) {
+  const n = rs.length, mean = rs.reduce((a, b) => a + b, 0) / n, sd = Math.sqrt(rs.reduce((a, r) => a + (r - mean) ** 2, 0) / (n - 1));
+  const w = rs.filter(r => r > 0), l = rs.filter(r => r < 0), sum = a => a.reduce((x, y) => x + y, 0);
+  let st = 0, worst = 0; for (const r of rs) { st = r < 0 ? st + 1 : 0; worst = Math.max(worst, st); }
+  return { n, mean, sd, t: mean / (sd / Math.sqrt(n)), win: w.length / n * 100, pf: sum(w) / Math.abs(sum(l)),
+           avgW: w.length ? sum(w) / w.length : null, avgL: l.length ? sum(l) / l.length : null, best: Math.max(...rs), worst: Math.min(...rs), streak: worst };
+}
+const corr = (a, b) => { const n = a.length, ma = a.reduce((s, x) => s + x, 0) / n, mb = b.reduce((s, x) => s + x, 0) / n;
+  let c = 0, va = 0, vb = 0; for (let i = 0; i < n; i++) { c += (a[i] - ma) * (b[i] - mb); va += (a[i] - ma) ** 2; vb += (b[i] - mb) ** 2; } return c / Math.sqrt(va * vb); };
+
+// ── rendering ─────────────────────────────────────────────────────────────────
+function equityChart(eqA, eqB, dates, label) {
+  const W = 1080, H = 230, DH = 80, PAD = 34, n = eqA.length;
+  const all = [...eqA, ...eqB]; const lo = Math.min(...all) * 0.95, hi = Math.max(...all) * 1.05;
+  const x = i => PAD + i / Math.max(n - 1, 1) * (W - 2 * PAD);
+  const y = v => H - 18 - (v - lo) / (hi - lo || 1) * (H - 36);
+  const path = eq => eq.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join('');
+  let pk = -Infinity; const dd = eqA.map(v => { pk = Math.max(pk, v); return v / pk - 1; });
+  const mdd = Math.min(...dd, -1e-9), yd = v => H + 16 + (v / mdd) * (DH - 14);
+  const ddPath = `M${x(0)} ${H + 16}` + dd.map((v, i) => `L${x(i).toFixed(1)} ${yd(v).toFixed(1)}`).join('') + `L${x(n - 1)} ${H + 16}Z`;
+  const years = [...new Set(dates.map(d => d.slice(0, 4)))].filter((_, i) => i % 2 === 0).map(yr => ({ yr, i: dates.findIndex(d => d.startsWith(yr)) }));
+  return `<div class="chart-label">${label}: equity (start = 100) vs DAX buy &amp; hold, drawdown of the strategy underneath (worst ${(mdd * 100).toFixed(1)}%)</div>
+  <svg class="chart" viewBox="0 0 ${W} ${H + DH + 24}" role="img" aria-label="${label} equity and drawdown">
+    <line x1="${PAD}" x2="${W - PAD}" y1="${y(1)}" y2="${y(1)}" stroke="#2b3340" stroke-dasharray="4 3"/>
+    ${years.map(o => `<line x1="${x(o.i)}" x2="${x(o.i)}" y1="16" y2="${H + DH + 4}" stroke="#1c2230"/><text x="${x(o.i) + 3}" y="${H + DH + 18}" fill="#8b949e" font-size="10">${o.yr}</text>`).join('')}
+    <path d="${path(eqB)}" fill="none" stroke="#8b949e" stroke-width="1.4"/>
+    <path d="${path(eqA)}" fill="none" stroke="#58a6ff" stroke-width="1.8"/>
+    <path d="${ddPath}" fill="#f85149" opacity=".3"/>
+    <text x="${PAD}" y="12" fill="#58a6ff" font-size="11">strategy (selected costs) ${fmt((eqA.at(-1) - 1) * 100, 1)}%</text>
+    <text x="${PAD + 250}" y="12" fill="#8b949e" font-size="11">buy &amp; hold, price ${fmt((eqB.at(-1) - 1) * 100, 1)}%</text>
+  </svg>`;
+}
+
+function render() {
+  const c = cfg(), T = trades(c), Dl = daily(c), G = daily({ ...c, fin: false, spr: false });
+  const dates = Dl.map(r => r.d), C = D.daily.c;
+  const bhR = Dl.map(r => (C[r.idx] / C[r.idx - 1] - 1) * 100);
+  const bhCfd = Dl.map((r, n) => bhR[n] - D.daily.fin_long[r.idx] - (n === 0 ? D.daily.hs[r.idx - 1] : 0) - (n === Dl.length - 1 ? D.daily.hs[r.idx] : 0));
+  const net = dailyMetrics(Dl.map(r => r.r), dates), gross = dailyMetrics(G.map(r => r.g), dates);
+  const bh = dailyMetrics(bhR, dates), cfd = dailyMetrics(bhCfd, dates);
+  const tn = tradeMetrics(T.map(t => t.r)), tg = tradeMetrics(T.map(t => t.g));
+  const inMkt = Dl.filter(r => r.pos !== 0).length / Dl.length;
+  const longs = T.filter(t => t.s > 0), shorts = T.filter(t => t.s < 0);
+  const ddc = m => `${sp(m.dd.mdd)} / ${fmt(m.dd.dur, 0)}d${m.dd.ongoing ? ' (ongoing)' : ''}`;
+  const rows = [
+    ['Total return %', sp(net.total), sp(gross.total), sp(bh.total), sp(cfd.total)],
+    ['CAGR %', sp(net.cagr), sp(gross.cagr), sp(bh.cagr), sp(cfd.cagr)],
+    ['Max drawdown % / duration', ddc(net), ddc(gross), ddc(bh), ddc(cfd)],
+    ['Sharpe (ann., daily)', fmt(net.sharpe), fmt(gross.sharpe), fmt(bh.sharpe), fmt(cfd.sharpe)],
+    ['Sortino (ann.)', fmt(net.sortino), fmt(gross.sortino), fmt(bh.sortino), fmt(cfd.sortino)],
+    ['Calmar', fmt(net.calmar), fmt(gross.calmar), fmt(bh.calmar), fmt(cfd.calmar)],
+    ['Volatility (ann.) %', fmt(net.sdAnn, 1), fmt(gross.sdAnn, 1), fmt(bh.sdAnn, 1), fmt(cfd.sdAnn, 1)],
+    ['Win rate % (months)', fmt(tn.win, 1), fmt(tg.win, 1), '—', '—'],
+    ['Profit factor', fmt(tn.pf, 3), fmt(tg.pf, 3), '—', '—'],
+    ['Avg win / avg loss %', `${sp(tn.avgW)} / ${sp(tn.avgL)}`, `${sp(tg.avgW)} / ${sp(tg.avgL)}`, '—', '—'],
+    ['Largest win / loss %', `${sp(tn.best)} / ${sp(tn.worst)}`, `${sp(tg.best)} / ${sp(tg.worst)}`, '—', '—'],
+    ['Longest losing streak (months)', fmt(tn.streak, 0), fmt(tg.streak, 0), '—', '—'],
+    ['Mean per trade % (t, iid)', `${sp(tn.mean, 3)} (${fmt(tn.t)})`, `${sp(tg.mean, 3)} (${fmt(tg.t)})`, '—', '—'],
+    ['Total trades', fmt(tn.n, 0), fmt(tg.n, 0), '—', '—'],
+  ];
+  const sideRow = (lab, a) => a.length ? `<tr><td>${lab}</td><td>${a.length}</td><td>${sp(a.reduce((s, t) => s + t.g, 0) / a.length, 3)}</td><td>${sp(a.reduce((s, t) => s + t.r, 0) / a.length, 3)}</td><td>${fmt(a.filter(t => t.r > 0).length / a.length * 100, 1)}</td></tr>` : '';
+  // by year, compounding the daily rows
+  const yrs = {}; Dl.forEach((r, n) => { const y = r.d.slice(0, 4); (yrs[y] ||= { s: 1, b: 1 }); yrs[y].s *= 1 + r.r / 100; yrs[y].b *= 1 + bhR[n] / 100; });
+  const gm = dates.length ? `${dates[0]} → ${dates.at(-1)}` : '';
+  $('costNote').innerHTML = `Financing model: long pays (ECB deposit rate + ${fmt(D.costs.markup_long_pp)}pp) a year, short earns (ECB deposit rate − ${fmt(D.costs.markup_short_pp)}pp), per calendar night, from OANDA's DE30 snapshot.
+    Spread: OANDA's DE30 half-spread at the 16:30 close, charged only when the position changes; before ${D.costs.measured_from} the median (${fmt(D.costs.half_spread_fallback_pct, 4)}%) is used.
+    None of your accounts has held DAX overnight, so unlike NQ and gold these costs are not measured.`;
+  $('out').innerHTML = `<div class="panel">
+    <h2>${TLAB[c.t]} · ${c.mode === 'ls' ? 'long / short' : 'long / flat'} <span style="color:var(--mut);font-weight:400;font-size:13px">· ${gm}</span>
+      ${c.t === 'A' ? '<span class="tag" style="color:var(--red);border-color:var(--red)">LOOKAHEAD</span>' : ''}</h2>
+    <div class="facts">
+      <span>Time in market <b>${(inMkt * 100).toFixed(0)}%</b></span>
+      <span>Position changes <b>${T.filter((t, k) => k === 0 || T[k - 1].s !== t.s || T[k - 1].j !== t.i).length}</b> in ${T.length} months</span>
+      <span>Correlation to buy &amp; hold <b>${fmt(corr(G.map(r => r.g), bhR))}</b> <span class="note" style="display:inline">(daily, gross)</span></span>
+      <span>Average costs per trade <b>${fmt(T.reduce((s, t) => s + t.cost, 0) / T.length, 3)}%</b></span>
+    </div>
+    <div class="tbl"><table><thead><tr><th>Metric</th><th>Strategy, selected costs</th><th>Strategy, gross</th><th>Buy &amp; hold, price</th><th>Buy &amp; hold CFD, net</th></tr></thead>
+      <tbody>${rows.map(r => `<tr>${r.map(x => `<td>${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+    <div class="chart-label">DAX daily candles, each monthly trade marked at its entry (▲ long, ▼ short; green = net win, red = loss). Click a marker to open the trade. Scroll to zoom, drag to pan.</div>
+    <div class="price-chart" id="pc"></div>
+    ${equityChart(net.eq, bh.eq, dates, TLAB[c.t])}
+    <details><summary>Longs vs shorts</summary><div class="tbl"><table style="margin-top:8px"><thead><tr><th>Side</th><th>Trades</th><th>Mean gross %</th><th>Mean net %</th><th>Win rate %</th></tr></thead>
+      <tbody>${sideRow('Long (IFO rose)', longs)}${sideRow('Short (IFO fell)', shorts)}</tbody></table></div></details>
+    <details><summary>By year</summary><div class="tbl"><table style="margin-top:8px"><thead><tr><th>Year</th><th>Strategy %</th><th>Buy &amp; hold %</th></tr></thead>
+      <tbody>${Object.entries(yrs).map(([y, v]) => `<tr><td>${y}</td><td>${sp((v.s - 1) * 100)}</td><td>${sp((v.b - 1) * 100)}</td></tr>`).join('')}</tbody></table></div></details>
+    <details><summary>All ${T.length} trades</summary><div class="tbl"><table style="margin-top:8px"><thead><tr><th>Signal month</th><th>IFO (prev → this)</th><th>Side</th><th>Entry</th><th>Exit</th><th>Gross %</th><th>Net %</th><th>MAE %</th><th>MFE %</th></tr></thead>
+      <tbody>${T.map(t => `<tr><td>${t.m}</td><td>${fmt(t.ifoPrev, 1)} → ${fmt(t.ifo, 1)}</td><td>${t.s > 0 ? 'Long' : 'Short'}</td><td>${t.d}</td><td>${t.x}</td><td>${sp(t.g)}</td><td>${sp(t.r)}</td><td class="neg">${fmt(t.mae)}</td><td class="pos">${fmt(t.mfe)}</td></tr>`).join('')}</tbody></table></div></details>
+  </div>`;
+  priceChart(T);
+  toolkitPanel(c);
+}
+
+// ── trade chart + trade pop-up (daily data, no server needed) ─────────────────
+let CH = null, VIEW = null, MODAL = null;
+const ep = d => Date.parse(d + 'T00:00:00Z') / 1000;
+const CANDLE = { upColor: '#3fb950', downColor: '#f85149', borderVisible: false, wickUpColor: '#3fb950', wickDownColor: '#f85149' };
+const DARK = { layout: { background: { color: '#0d1117' }, textColor: '#c9d1d9' }, grid: { vertLines: { color: '#1c2128' }, horzLines: { color: '#1c2128' } },
+  timeScale: { borderColor: '#2b3340' }, rightPriceScale: { borderColor: '#2b3340' } };
+const bars = (a, b) => { const X = D.daily, out = []; for (let i = Math.max(a, 0); i <= Math.min(b, X.d.length - 1); i++) out.push({ time: ep(X.d[i]), open: X.o[i], high: X.h[i], low: X.l[i], close: X.c[i] }); return out; };
+function priceChart(T) {
+  const el = $('pc'); if (!el) return;
+  if (!window.LightweightCharts) { el.innerHTML = '<p class="note" style="padding:10px">Chart library failed to load.</p>'; return; }
+  if (CH) { try { VIEW = CH.timeScale().getVisibleLogicalRange(); CH.remove(); } catch {} }
+  CH = LightweightCharts.createChart(el, { ...DARK, height: el.clientHeight || 380, width: el.clientWidth });
+  const s = CH.addCandlestickSeries(CANDLE); s.setData(bars(0, D.daily.d.length - 1));
+  s.setMarkers(T.map(t => ({ time: ep(t.d), position: t.s > 0 ? 'belowBar' : 'aboveBar', shape: t.s > 0 ? 'arrowUp' : 'arrowDown',
+    color: t.r >= 0 ? '#3fb950' : '#f85149', text: `${t.r >= 0 ? '+' : ''}${t.r.toFixed(1)}%` })));
+  const at = new Map(T.map((t, k) => [ep(t.d), k]));
+  CH.subscribeClick(p => {
+    if (!p.time) return;
+    let k = at.get(p.time);
+    if (k == null) k = T.findIndex(t => ep(t.d) <= p.time && ep(t.x) >= p.time);   // a bar inside a trade opens that trade
+    if (k >= 0) openTrade(T, k);
+  });
+  if (VIEW) CH.timeScale().setVisibleLogicalRange(VIEW);
+  new ResizeObserver(() => { try { CH.applyOptions({ width: el.clientWidth }); } catch {} }).observe(el);
+}
+function openTrade(T, k) {
+  MODAL = k; const t = T[k], entry = D.daily.c[t.i], exit = D.daily.c[t.j];
+  $('modalRoot').innerHTML = `<div class="modal-overlay" id="ov"><div class="modal-box">
+    <button class="ghost close" id="mClose">✕ Close</button>
+    <h2 style="margin-top:0">Trade ${k + 1} of ${T.length}: ${t.s > 0 ? 'Long' : 'Short'} · signal ${t.m} · ${t.d} → ${t.x}</h2>
+    <div class="kv">
+      <div><span class="k">IFO</span>${fmt(t.ifoPrev, 1)} → ${fmt(t.ifo, 1)} (${t.ifo > t.ifoPrev ? 'rose' : 'fell'})</div>
+      <div><span class="k">Entry / exit close</span>${fmt(entry, 0)} / ${fmt(exit, 0)}</div>
+      <div><span class="k">Gross</span>${sp(t.g)}%</div>
+      <div><span class="k">Net, selected costs</span>${sp(t.r)}%</div>
+      <div><span class="k">MAE / MFE (gross)</span><span class="neg">${fmt(t.maeG)}</span> / <span class="pos">${fmt(t.mfeG)}</span>%</div>
+      <div><span class="k">Spread / financing</span>${fmt(t.spc, 4)} / ${fmt(t.fin, 3)}%${t.measured ? '' : ' (spread: median)'}</div>
+      <div><span class="k">Held</span>${t.days} trading days</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button class="ghost" id="mPrev" ${k === 0 ? 'disabled' : ''}>← Prev trade</button>
+      <button class="ghost" id="mNext" ${k >= T.length - 1 ? 'disabled' : ''}>Next trade →</button>
+    </div>
+    <div class="price-chart" id="mChart" style="height:320px"></div>
+    <p class="note">Daily candles from 5 days before entry to 5 after exit. Blue dashed = entry close, grey dashed = exit close, red = the worst point (MAE), green = the best (MFE). Cash-index highs and lows: overnight CFD extremes aren't in this data.</p>
+  </div></div>`;
+  $('ov').onclick = e => { if (e.target.id === 'ov') $('modalRoot').innerHTML = ''; };
+  $('mClose').onclick = () => { $('modalRoot').innerHTML = ''; };
+  if (k > 0) $('mPrev').onclick = () => openTrade(T, k - 1);
+  if (k < T.length - 1) $('mNext').onclick = () => openTrade(T, k + 1);
+  const el = $('mChart'), c = LightweightCharts.createChart(el, { ...DARK, height: 320, width: el.clientWidth });
+  const s = c.addCandlestickSeries(CANDLE); s.setData(bars(t.i - 5, t.j + 5));
+  s.createPriceLine({ price: entry, color: '#58a6ff', lineWidth: 1, lineStyle: 2, title: 'Entry' });
+  s.createPriceLine({ price: exit, color: '#8b949e', lineWidth: 1, lineStyle: 2, title: 'Exit' });
+  s.createPriceLine({ price: entry * (1 + t.s * t.maeG / 100), color: '#f85149', lineWidth: 1, lineStyle: 0, title: 'MAE' });
+  s.createPriceLine({ price: entry * (1 + t.s * t.mfeG / 100), color: '#3fb950', lineWidth: 1, lineStyle: 0, title: 'MFE' });
+  s.setMarkers([{ time: ep(t.d), position: t.s > 0 ? 'belowBar' : 'aboveBar', color: '#58a6ff', shape: t.s > 0 ? 'arrowUp' : 'arrowDown', text: 'Entry' },
+                { time: ep(t.x), position: 'aboveBar', color: '#8b949e', shape: 'circle', text: 'Exit' }]);
+  c.timeScale().fitContent();
+}
+
+// ── toolkit replica (FTMO 2-step on the daily rows, computed in build.py) ─────
+function toolkitPanel(c) {
+  if (!TK) return;
+  const B = TK.books[`${c.t}_${c.mode}`], ks = Object.keys(B.net).sort((x, y) => x - y);   // integer-like keys would list 1, 2, 3 before 0.5
+  const costed = c.fin || c.spr;
+  const row = k => { const n = B.net[k], g = B.gross[k], z = B.net_zero_edge[k];
+    return `<tr><td>${k}×</td><td>${pc(g.funded)}</td><td><b>${pc(n.funded)}</b></td><td>${pc(z.funded)}</td><td>${sp((n.funded - z.funded) * 100, 1)} pts</td>
+      <td>${fmt(n.median_days_to_funded, 0)}</td><td>${fmt(n.breakeven_fee_pct_of_account, 2)}</td><td>${fmt(z.breakeven_fee_pct_of_account, 2)}</td></tr>`; };
+  $('toolkit').innerHTML = `<h2>Toolkit replica: FTMO 2-step <span class="tag">our copy of the method</span> <span style="color:var(--mut);font-weight:400;font-size:13px">· ${TLAB[c.t]}, ${c.mode === 'ls' ? 'long / short' : 'long / flat'}</span></h2>
+    <p class="sub" style="margin-bottom:6px">Same replica as the overnight page (+10% then +5%, 10% static max loss, 5% daily loss on intraday equity, 4 minimum days, no time limit, stopped at 500 days),
+      ${TK.paths.toLocaleString()} block-bootstrap paths of the <b>daily</b> rows, seed ${TK.seed}. "Net" uses the model costs above${costed ? '' : ' (your dropdowns are on gross; the net column still shows the costed run)'}.
+      The <b>zero-edge copy</b> is the net daily rows with their mean removed. What the strategy adds is the gap between the two.</p>
+    <div class="tbl"><table><thead><tr><th>Size</th><th>Gross funded</th><th>Net funded</th><th>Zero-edge copy</th><th>Edge adds</th><th>Median days to funded (net)</th><th>Break-even fee, net (% of acct)</th><th>…zero-edge</th></tr></thead>
+      <tbody>${ks.map(row).join('')}</tbody></table></div>
+    <p class="note">The break-even fee assumes 12 funded months, an 80% split and monthly payouts. An FTMO 100k fee is about 0.54% of the account (assumption, to check).
+      A challenge caps your loss at the fee, so even zero edge can clear a small fee; compare the two columns, not the fee alone.</p>`;
+}
+
+// ── exports ───────────────────────────────────────────────────────────────────
+const two = v => { const s = v.toFixed(2); return s === '-0.00' ? '0.00' : s; };
+const three = v => { const s = v.toFixed(3); return s === '-0.000' ? '0.000' : s; };
+const q = v => /[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v;
+function download(name, text) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
+const tag = c => `${c.t}_${c.mode === 'ls' ? 'longshort' : 'longflat'}_${!c.fin && !c.spr ? 'gross' : `net${c.fin ? '' : '-nofin'}${c.spr ? '' : '-nospread'}`}`;
+function exportFile(kind) {
+  const c = cfg();
+  if (kind === 'trade') {
+    download(`dax_ifo_${tag(c)}_toolkit_per_trade.csv`, 'Date,Return %,MAE %\n' + trades(c).map(t => `${t.d},${two(t.r)},${two(Math.min(t.mae, 0))}`).join('\n') + '\n');
+  } else if (kind === 'daily') {
+    download(`dax_ifo_${tag(c)}_toolkit_daily.csv`, 'Date,Return %,MAE %\n' + daily(c).map(r => `${r.d},${two(r.r)},${two(Math.min(r.m, 0))}`).join('\n') + '\n');
+  } else {
+    const k = +$('jSize').value, T = trades(c);
+    const rows = T.map((t, n) => {
+      const flip = n > 0 && T[n - 1].j === t.i && T[n - 1].s !== t.s;
+      const tags = [t.s > 0 ? 'long' : 'short', flip ? 'flip' : '', c.t === 'A' ? 'lookahead' : ''].filter(Boolean).join(' ');
+      const notes = `IFO ${fmt(t.ifoPrev, 1)} -> ${fmt(t.ifo, 1)} (signal ${t.m}); ${TLAB[c.t]}; gross ${three(t.g)}, spread ${three(t.spc * (c.spr ? 1 : 0))}, financing ${three(t.fin * (c.fin ? 1 : 0))} (% of notional)`;
+      return [t.d, '16:30', t.x, '16:30', 'DAX', t.s > 0 ? 'Long' : 'Short', `DAX IFO ${c.t}`, $('jRisk').value === 'blank' ? '' : k.toFixed(2),
+              three(k * t.r), three(k * Math.abs(Math.min(t.mae, 0))), three(k * t.mfe), tags, notes].map(q).join(',');
+    });
+    download(`dax_ifo_${tag(c)}_journal_${k}x.csv`, 'Date,Time,Exit Date,Exit Time,Instrument,Direction,Model,Risk %,Return %,MAE %,MFE %,Tags,Notes\n' + rows.join('\n') + '\n');
+  }
+}
+document.querySelectorAll('[data-x]').forEach(b => b.onclick = () => exportFile(b.dataset.x));
+
+// ── boot ──────────────────────────────────────────────────────────────────────
+['timing', 'mode', 'fin', 'spr'].forEach(id => $(id).onchange = render);
+[D, TK] = await Promise.all([
+  fetch('analysis/output/dax-ifo-page/page.json').then(r => r.json()),
+  fetch('analysis/output/dax-ifo-page/toolkit.json').then(r => r.json()).catch(() => null),
+]);
+render();
+</script>
+</body>
+</html>
