@@ -1,0 +1,55 @@
+# Market review data: the 40-market pack and the shifting-beta file that market-review.html, today.html
+# (Beta alerts card + pair drawer), atlas.html and the newsletter read.
+#   weekdays 22:40 UTC  -> analysis/output/market-review/latest/  (overwritten daily; keeps the repo small)
+#   Saturdays 07:40 UTC -> analysis/output/market-review/<date>/  (the weekly archive the written review uses)
+# Both refresh analysis/output/market-review/beta_shift.json and index.json. Commits only if something changed.
+# build.py refuses to write when the fetch returned too few Yahoo series, so a blocked runner can't blank the pages.
+# Same scripts run from the laptop: python -I scripts/market-review/fetch.py --name latest && python -I scripts/market-review/build.py --name latest
+name: Market review data
+
+on:
+  schedule:
+    - cron: '40 22 * * 1-5'
+    - cron: '40 7 * * 6'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: market-review
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pandas numpy pyarrow
+      - name: Pick the folder
+        id: when
+        run: |
+          echo "asof=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+          if [ "$(date -u +%u)" = "6" ]; then echo "name=$(date -u +%F)" >> "$GITHUB_OUTPUT"; else echo "name=latest" >> "$GITHUB_OUTPUT"; fi
+      - name: Fetch
+        run: python -u scripts/market-review/fetch.py --asof ${{ steps.when.outputs.asof }} --name ${{ steps.when.outputs.name }}
+      - name: Build
+        run: python -u scripts/market-review/build.py --asof ${{ steps.when.outputs.asof }} --name ${{ steps.when.outputs.name }}
+      - name: Saturday also refreshes latest
+        if: steps.when.outputs.name != 'latest'
+        run: |
+          mkdir -p analysis/output/market-review/latest
+          cp analysis/output/market-review/${{ steps.when.outputs.name }}/raw.json analysis/output/market-review/latest/raw.json
+          python -u scripts/market-review/build.py --asof ${{ steps.when.outputs.asof }} --name latest
+      - name: Commit if changed
+        run: |
+          git config user.name "market-review"
+          git config user.email "market-review@users.noreply.github.com"
+          git add analysis/output/market-review
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git commit -m "market review data: ${{ steps.when.outputs.name }} ${{ steps.when.outputs.asof }}"
+          for i in 1 2 3; do git pull --rebase -q && git push && break; sleep 10; done

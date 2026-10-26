@@ -1,6 +1,6 @@
 // Tests for js/newsletter.js.   node js/newsletter.test.mjs
 import { buildNewsletterV2 } from './newsletterV2.js';
-import { chainSvg, buildNewsletter, eventNote, familyOf, BANNER_SVG, sparkSvg, DISCLAIMER } from './newsletter.js';
+import { chainSvg, buildNewsletter, eventNote, familyOf, BANNER_SVG, sparkSvg, DISCLAIMER, betaAlertsSection } from './newsletter.js';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
 const NOW = Date.parse('2026-10-22T10:00:00Z');
@@ -273,4 +273,16 @@ ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d
   ok('with no feed, with stable betas, or with a feed older than eight days the issue says nothing about beta', ![run(undefined), run({ ...beta, markets: { EURUSD: beta.markets.EURUSD } }), run(beta, '2026-11-05')].some(x => /Shifting beta|moves together/.test(x.html)));
   ok('the current layout shows it as a card row too', /<b>Shifting beta<\/b> Flipped: for each 10bp/.test(v1.html)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
+// ── shifting beta alerts ──
+const BS = { asof: '2026-10-21', alerts: [
+  { market: 'Nasdaq 100', aliases: ['NQ', 'Nasdaq 100'], units: 'pct', label: 'US 10y yield', unit: 'per 10bp', now: 1.06, prior: -0.89, kinds: ['flipped', 'shifted'] },
+  { market: 'Copper', aliases: ['Copper'], units: 'pct', label: 'US 10y yield', unit: 'per 10bp', now: 1.27, prior: -1.08, kinds: ['flipped'] }] };
+const bsHtml = betaAlertsSection({ betaShift: BS, betaKeys: ['NQ', 'EURUSD'], nowMs: NOW });
+ok('beta alerts: a fresh file with an alert on an issue market renders the section', /Shifting beta/.test(bsHtml) && /Nasdaq 100/.test(bsHtml) && /flipped, shifted/.test(bsHtml));
+ok('beta alerts: markets not in the issue are left out', !/Copper/.test(bsHtml));
+ok('beta alerts: a stale file (more than 5 days old) renders nothing', betaAlertsSection({ betaShift: { ...BS, asof: '2026-10-10' }, betaKeys: ['NQ'], nowMs: NOW }) === '');
+ok('beta alerts: no file renders nothing', betaAlertsSection({ nowMs: NOW }) === '' && betaAlertsSection({ betaShift: { asof: '2026-10-21', alerts: [] }, nowMs: NOW }) === '');
+ok('beta alerts: the section appears in the built issue and says it is not a direction call', /Shifting beta/.test(buildNewsletter({ date: 'Thu 22 Oct 2026', nowMs: NOW, betaShift: BS, betaKeys: ['NQ'] }).html) && /not which way anything goes/.test(bsHtml));
+ok('beta alerts: market names are escaped', !/<img/.test(betaAlertsSection({ betaShift: { asof: '2026-10-21', alerts: [{ ...BS.alerts[0], market: '<img src=x>' }] }, betaKeys: ['NQ'], nowMs: NOW })));
+
 process.exit(failures ? 1 : 0);

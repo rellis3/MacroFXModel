@@ -210,11 +210,16 @@ def beta_block(df, ch, name, spec):
         sd = float(b20.loc[tail].std())
         z = (bnow - bprior) / sd if (bnow is not None and bprior is not None and sd) else None
         flip = (bnow is not None and bprior is not None and np.sign(bnow) != np.sign(bprior) and abs(cnow) >= 0.3 and abs(cprior) >= 0.3)
+        yb = b20.loc[tail].dropna()
+        pct1y = float((yb <= yb.iloc[-1]).mean() * 100) if len(yb) > 50 else None
+        shift = bool(z is not None and abs(z) >= 1.5 and max(abs(cnow), abs(cprior)) >= 0.3)
+        extreme = bool(pct1y is not None and (pct1y <= 5 or pct1y >= 95) and abs(cnow) >= 0.3)
+        kinds = [k for k, on in (('flipped', flip), ('shifted', shift), ('outside its 1y range', extreme)) if on]
         r3 = lambda v: None if not np.isfinite(v) else round(float(v), 3)
         out[f] = dict(label=flab, unit=funit, now=bnow, prior=bprior, corr_now=cnow, corr_prior=cprior, y1=ols(yr),
                       down=ols(yr[dn]), up=ols(yr[~dn]), z=z, flip=bool(flip),
                       # a shift only counts when the link is meaningful on one side: tiny betas have tiny sd, so z alone overflags
-                      shift=bool(z is not None and abs(z) >= 1.5 and max(abs(cnow), abs(cprior)) >= 0.3),
+                      shift=shift, pct1y=pct1y, extreme=extreme, alert=kinds,
                       series=dict(d=[str(i.date()) for i in tail], b20=[r3(v) for v in b20.loc[tail]],
                                   b60=[r3(v) for v in b60.loc[tail]], c20=[r3(v) for v in c20.loc[tail]]))
     return out
@@ -248,6 +253,11 @@ def write_index():
     """analysis/output/market-review/index.json: every dated pack, newest first, with its written reviews (read by market-review.html)."""
     base = os.path.join(ROOT, 'analysis', 'output', 'market-review'); rev = os.path.join(ROOT, 'education', 'market_reviews')
     out = []
+    lp = os.path.join(base, 'latest', 'pack.json')
+    if os.path.exists(lp):
+        try: la = json.load(open(lp, encoding='utf-8')).get('asof')
+        except Exception: la = None
+        out.append(dict(date=f'latest ({la})' if la else 'latest', pack='analysis/output/market-review/latest/pack.json', reviews=[]))
     for dname in sorted(os.listdir(base), reverse=True):
         if not re.match(r'^\d{4}-\d{2}-\d{2}$', dname) or not os.path.exists(os.path.join(base, dname, 'pack.json')): continue
         reviews = sorted(f for f in os.listdir(rev) if f.startswith(dname) and f.endswith('.md')) if os.path.isdir(rev) else []
@@ -257,9 +267,12 @@ def write_index():
               open(os.path.join(base, 'index.json'), 'w', encoding='utf-8'), indent=1)
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('--asof', default=dt.date.today().isoformat()); a = ap.parse_args()
-    d = os.path.join(ROOT, 'analysis', 'output', 'market-review', a.asof)
+    ap = argparse.ArgumentParser(); ap.add_argument('--asof', default=dt.date.today().isoformat())
+    ap.add_argument('--name', default=None, help="folder name (default: the as-of date; the daily run uses 'latest')"); a = ap.parse_args()
+    d = os.path.join(ROOT, 'analysis', 'output', 'market-review', a.name or a.asof)
     raw = json.load(open(os.path.join(d, 'raw.json'), encoding='utf-8'))
+    if len(raw.get('yahoo', {})) < 30:
+        sys.exit(f'only {len(raw.get("yahoo", {}))} Yahoo series in raw.json (fetch failed?): refusing to overwrite the pack')
     df = build_panel(raw); ch = changes(df)
     asof = pd.Timestamp(a.asof)
     notes = list(raw.get('errors', []))
@@ -348,16 +361,24 @@ def main():
     json.dump(clean(dict(asof=a.asof, factors=[dict(key=f, label=l, unit=u) for f, l, u in BETA_FACTORS], markets=BETAS)),
               open(os.path.join(d, 'beta.json'), 'w', encoding='utf-8'), allow_nan=False, separators=(',', ':'))
     # compact latest summary for today.html / atlas.html / the newsletter, keyed by market name and its aliases
-    summ = {}
+    summ = {}; ALERTS = []
     for nm, b in BETAS.items():
         rec = dict(name=nm, asof=a.asof, units=b['units'], line=pack['markets'].get(nm, {}).get('beta_line'),
-                   factors={k: {kk: v[kk] for kk in ('label', 'unit', 'now', 'prior', 'corr_now', 'corr_prior', 'down', 'up', 'z', 'flip', 'shift')}
+                   factors={k: {kk: v[kk] for kk in ('label', 'unit', 'now', 'prior', 'corr_now', 'corr_prior', 'down', 'up', 'z', 'flip', 'shift', 'pct1y', 'extreme', 'alert')}
                             for k, v in b['factors'].items()})
+        rec['alerts'] = [dict(factor=k, label=v['label'], unit=v['unit'], kinds=v['alert'], now=v['now'], prior=v['prior'], pct1y=v['pct1y'], z=v['z'], corr_now=v['corr_now'])
+                         for k, v in b['factors'].items() if v['alert']]
+        rec['alert'] = bool(rec['alerts'])
+        if rec['alert']:
+            sev = lambda x: (('flipped' in x['kinds']) * 3 + ('outside its 1y range' in x['kinds']) * 2 + ('shifted' in x['kinds'])) * 10 + abs(x['z'] or 0)
+            top = max(rec['alerts'], key=sev)
+            ALERTS.append(dict(market=nm, aliases=sorted({nm, UNIVERSE[nm]['sym'].replace('=X', ''), *ALIASES.get(nm, [])}), units=b['units'], score=sev(top), **top))
         sym = UNIVERSE[nm]['sym']
         for key in {nm, nm.replace(' ', ''), sym.replace('=X', ''), *ALIASES.get(nm, [])}: summ[key] = rec
     json.dump(clean(dict(asof=a.asof, note='Descriptive context, not a signal. Weekly, from daily closes (scripts/market-review). '
                          'Beta = market move per driver move: % (or bp) per 1% Nasdaq / dollar index / oil, per 10bp US 10y.',
-                         page='market-review.html#beta', markets=summ)),
+                         page='market-review.html#beta', alert_rule='flipped sign (|corr| >= 0.3 both sides), shifted >= 1.5 sd of its own 1y 20-day beta, or outside its own 5th-95th percentile of the year, each with |corr| >= 0.3',
+                         alerts=sorted(ALERTS, key=lambda x: -x['score']), markets=summ)),
               open(os.path.join(ROOT, 'analysis', 'output', 'market-review', 'beta_shift.json'), 'w', encoding='utf-8'), allow_nan=False)
     write_index()
     print('wrote', md, f'({len(pack["markets"])} markets)')

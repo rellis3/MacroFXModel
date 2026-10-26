@@ -9590,6 +9590,10 @@ function renderSidebar() {
   if (risk.gpr?.stale) takeaways.push(['⚑', 'amber', `Geopolitical Risk data hasn't refreshed in ${risk.gpr.daysStale}+ days — the weekly pull may be behind.`]);
   const nextEv = nextHighImpact();
   if (nextEv) takeaways.push(['📅', 'blue', `Next high-impact release: ${nextEv}`]);
+  try {   // beta alerts (market review build): only when the file is fresh and a board market is affected
+    const ba = _betaShift && (betaShiftAgeDays() ?? 99) <= 4 ? boardBetaAlerts() : [];
+    if (ba.length) takeaways.push(['β', 'amber', `Beta not normal on ${ba.length} market${ba.length > 1 ? 's' : ''}: ${ba.slice(0, 3).map(a => `<b>${dispName(a.board)}</b> vs ${a.label} (${(a.kinds ?? [])[0]})`).join(', ')}${ba.length > 3 ? '…' : ''}. Hedges may not behave as usual. See Beta alerts below.`]);
+  } catch (e) { /* takeaway is optional */ }
 
   el.innerHTML = `
     <div class="side-card"><h3>Market Tone</h3>${marketToneGaugeHtml(risk, cs, fred?.us10y, commodityDrivers?.wti, mood)}</div>
@@ -9618,6 +9622,8 @@ function renderSidebar() {
     <div class="side-card"><h3>Today's Calendar</h3><div id="calList"><div class="muted">Loading…</div></div><div id="calWatch"></div></div>
 
     <div class="side-card"><h3>Positioning into the releases</h3><div id="posIntoEvent"><div class="muted">Loading…</div></div></div>
+
+    <div class="side-card"><h3 class="help" title="Markets on this board whose beta to the Nasdaq, the US 10-year yield, the dollar index or oil is not normal: it flipped sign, jumped by 1.5+ standard deviations of its own past year, or sits outside its own 5th-95th percentile, each with a meaningful link (|corr| ≥ 0.3). Daily, from the market review build. Context for risk and hedges, not a signal.">Beta alerts</h3><div id="betaAlerts"><div class="muted">Loading…</div></div></div>
 
     <div class="side-card"><h3>Risk State</h3><div id="riskList"><div class="muted">Loading…</div></div></div>
 
@@ -10533,6 +10539,7 @@ function render() {
   renderMacroMoved();
   renderGate();
   try { renderPositioningIntoEvent(); } catch (e) { const t = $('posIntoEvent'); if (t) t.innerHTML = '<div class="muted">Positioning panel unavailable.</div>'; }
+  try { renderBetaAlerts(); } catch (e) { const t = $('betaAlerts'); if (t) t.innerHTML = '<div class="muted">Beta alerts unavailable.</div>'; }
   renderRiskFlags();
   renderSinceYesterday();
   renderWeekly();
@@ -12647,15 +12654,47 @@ function loadDrawerNews(name) {
 // CONTEXT only, like the block below: what moves together now, not where it goes. Banked: same-day links are
 // real, forward edge is null (yield-asset coupling test). Chart: market-review.html#beta.
 let _betaShift;   // undefined = not loaded, null = unavailable
+let _betaShiftP = null;
+function loadBetaShift() {   // one fetch, shared by the drawer, the Beta alerts card and Key Takeaways
+  if (!_betaShiftP) _betaShiftP = fetch('analysis/output/market-review/beta_shift.json', { cache: 'no-cache' })
+    .then(r => r.ok ? r.json() : null).catch(() => null).then(j => (_betaShift = j));
+  return _betaShiftP;
+}
+loadBetaShift();   // start early so the first sidebar render usually has it
+const betaShiftAgeDays = () => _betaShift?.asof ? Math.floor((Date.now() - Date.parse(_betaShift.asof + 'T23:00:00Z')) / 864e5) : null;
+// Alerts for markets on this board (brief.instruments), most severe first. Rule (from build.py): flipped sign,
+// shifted >= 1.5 sd of its own 1y 20-day beta, or outside its own 5th-95th percentile, each with |corr| >= 0.3.
+function boardBetaAlerts() {
+  const names = new Set(Object.keys((typeof brief !== 'undefined' && brief?.instruments) || {}));
+  return (_betaShift?.alerts ?? []).filter(a => (a.aliases ?? []).some(k => names.has(k)))
+    .map(a => ({ ...a, board: (a.aliases ?? []).find(k => names.has(k)) }));
+}
+function betaAlertWords(a) {
+  const u = a.units === 'bp' ? 'bp' : '%', f = b => b == null ? 'n/a' : (b >= 0 ? '+' : '') + b.toFixed(2) + u;
+  return `${a.label} beta ${f(a.now)} ${a.unit} (was ${f(a.prior)}): ${(a.kinds ?? []).join(', ')}`;
+}
+function renderBetaAlerts() {
+  const el = $('betaAlerts'); if (!el) return;
+  if (_betaShift === undefined) { el.innerHTML = '<div class="muted">Loading…</div>'; loadBetaShift().then(renderBetaAlerts); return; }
+  if (!_betaShift) { el.innerHTML = '<div class="muted">Beta file unavailable (analysis/output/market-review/beta_shift.json).</div>'; return; }
+  const age = betaShiftAgeDays(), mine = boardBetaAlerts(), others = (_betaShift.alerts ?? []).length - mine.length;
+  const stale = age != null && age > 4 ? `<div class="muted" style="color:var(--amber)">⚠ ${age} days old: the daily refresh may have failed.</div>` : '';
+  el.innerHTML = stale + (mine.length
+    ? mine.slice(0, 8).map(a => `<div class="takeaway" style="cursor:pointer" onclick="openDrawer('${a.board}')"><span class="tic amber">β</span><span><b>${dispName(a.board)}</b> ${betaAlertWords(a)}</span></div>`).join('')
+      + (mine.length > 8 ? `<div class="muted">+${mine.length - 8} more on this board</div>` : '')
+    : '<div class="muted">No market on this board has an unusual beta right now.</div>')
+    + `<div class="muted" style="font-size:10px;line-height:1.5;margin-top:6px">As of ${_betaShift.asof}${others > 0 ? ` · ${others} more on other markets` : ''} · <a href="market-review.html#beta" target="_blank">charts ↗</a><br>A beta that flipped, jumped or sits outside its own year's range means hedges and pair exposure may behave differently than usual. Context, not a signal.</div>`;
+}
 async function loadDrawerBeta(name) {
   const box = $('drBeta'); if (!box) return;
   box.innerHTML = '';
-  if (_betaShift === undefined) _betaShift = await fetch('analysis/output/market-review/beta_shift.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
+  await loadBetaShift();
   const rec = _betaShift?.markets?.[name] ?? _betaShift?.markets?.[String(name).replace('_', '')] ?? null;
   if (!rec) return;
   const u = rec.units === 'bp' ? 'bp' : '%', f = b => b == null ? 'n/a' : (b >= 0 ? '+' : '') + b.toFixed(2) + u;
   const rows = Object.values(rec.factors || {}).map(x => `<span class="corrchip" title="${x.label}: ${f(x.now)} ${x.unit} over the last 20 sessions vs ${f(x.prior)} over the 60 before (corr ${x.corr_now >= 0 ? '+' : ''}${x.corr_now?.toFixed(2)} vs ${x.corr_prior >= 0 ? '+' : ''}${x.corr_prior?.toFixed(2)}); down days ${f(x.down)}, up days ${f(x.up)} over a year">${x.label} <b>${f(x.now)}</b> <span class="muted">(was ${f(x.prior)})</span>${x.flip ? ' ⟲' : x.shift ? ' ↕' : ''}</span>`).join(' ');
-  box.innerHTML = `<div style="font-size:12px"><b>Shifting beta</b> <span class="muted">(weekly, daily closes, as of ${rec.asof}; per 1% Nasdaq / dollar index / oil, per 10bp US 10y)</span><br>${rec.line ? rec.line + '<br>' : ''}${rows} <a href="market-review.html#beta" target="_blank">chart →</a></div>`;
+  const warn = rec.alert ? `<div style="color:var(--amber);margin-bottom:3px">⚠ Beta not normal: ${(rec.alerts ?? []).map(x => `${x.label} (${(x.kinds ?? []).join(', ')})`).join('; ')}</div>` : '';
+  box.innerHTML = `<div style="font-size:12px"><b>Shifting beta</b> <span class="muted">(daily closes, as of ${rec.asof}; per 1% Nasdaq / dollar index / oil, per 10bp US 10y)</span><br>${warn}${rec.line ? rec.line + '<br>' : ''}${rows} <a href="market-review.html#beta" target="_blank">chart →</a></div>`;
   $('drCorrSec').style.display = 'block';
 }
 

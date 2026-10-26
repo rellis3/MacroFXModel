@@ -286,6 +286,21 @@ ul.t{margin:0;padding-left:18px}ul.t li{margin:0 0 7px}
  * input: see the header comment of newsletter.test.mjs for a full example. Everything is optional except `date`; a missing
  * section is left out rather than filled with placeholder text.
  */
+// Shifting beta (analysis/output/market-review/beta_shift.json, daily from scripts/market-review): markets in this issue
+// whose beta to the Nasdaq, the US 10y, the dollar index or oil is not normal. Context for risk and hedges, never direction.
+// Left out when the file is missing, has no alert on the issue's markets, or is more than 5 days old.
+export function betaAlertsSection(n) {
+  const bs = n.betaShift; if (!bs?.alerts?.length || !bs.asof) return '';
+  const now = n.nowMs ?? Date.now(), age = (now - Date.parse(bs.asof + 'T23:00:00Z')) / 864e5;
+  if (!(age <= 5)) return '';
+  const keys = new Set(n.betaKeys ?? []), rows = bs.alerts.filter(a => !keys.size || (a.aliases ?? []).some(k => keys.has(k))).slice(0, 6);
+  if (!rows.length) return '';
+  const f = (b, u) => b == null ? '·' : `${b >= 0 ? '+' : ''}${b.toFixed(2)}${u === 'bp' ? 'bp' : '%'}`;
+  return sec('Shifting beta: what has stopped moving the usual way', 'Part 1 · The world',
+    `<table><tr><th>Market</th><th>Against</th><th class="n">Now</th><th class="n">Before</th><th>What changed</th></tr>${rows.map(a => `<tr><td><b>${esc(a.market)}</b></td><td>${esc(a.label)} <span class="muted">${esc(a.unit)}</span></td><td class="n">${f(a.now, a.units)}</td><td class="n">${f(a.prior, a.units)}</td><td class="small">${esc((a.kinds ?? []).join(', '))}</td></tr>`).join('')}</table>`
+    + `<p class="small muted" style="margin-top:6px">Beta is how far a market moves for each move in the driver: now is the last 20 sessions, before is the 60 sessions before that (as of ${esc(bs.asof)}). A flipped or unusual beta means hedges and positions that relied on the old link may behave differently. It says what moves together right now, not which way anything goes: same-day links are real, but the desk found no forward edge in them.</p>`);
+}
+
 export function buildNewsletter(n) {
   const a = n.brief ?? {}, letter = a.letter ?? {}, headline = n.headline ?? a.headline ?? (n.edition === 'weekly' ? 'The Chain Weekly' : 'The Chain Daily');
   const subject = clip(letter.subject || headline, 78), regimeWord = String(n.regimeWord ?? a.regime ?? 'MIXED').toUpperCase();
@@ -599,7 +614,7 @@ export function buildNewsletter(n) {
         return `${g('A', 'Signals')}${dsec(sinceTitle, 'observed', 'Compared with the previous issue.', sinceBody)}${dsec('Is today set up for a bigger day than usual?', 'tested', "Each signal went with bigger-than-usual ranges in the desk's tests; none says which way.", rpBody, { look: "Five conditions the desk tested against history, for example the VIX against its three-month level. A lit signal is a condition that went with a bigger-than-usual range.", matters: 'It sets how big a move is plausible today. It never says which way prices will go.', tells: 'Few lit signals means there is no tested reason to expect more than a usual day, which is not the same as a quiet day.' })}${dsec('Beyond the calendar', 'observed', 'Schedules, not forecasts.', calBody)}${dsec(weekly ? 'Positioning: who is crowded' : 'Positioning backdrop', 'context', 'Shows who is exposed if they are wrong, not a direction.', G(positioningGuide(posList, posAge), '') + posBody, null, true)}${dsec('The bigger picture', 'observed', 'Nowcasts are model estimates, shown as context.', behindBody, null, true)}<div>${g('B', 'The world')}${worldHtml}${noEdge}</div><div class="pgbreak">${g('C', 'Currencies')}${dsec('League table and central banks', ['observed'], 'Central-bank tone is a language score of the last statement, not a forecast.', ccyHtml, currencyNote(n.strengths, n.cb), true)}</div><div class="pgbreak">${g('D', 'Every market')}${dsec('Market board', ['model', 'untested'], 'Strips are model output. The dealer note on option zones is tested on the S&P 500 only; the implied-move row is tested on the markets the ledger lists and says so where it is not.', boardHtml)}</div>`; })(), refs: refsHtml,
     }, Hh) + foot;
   }
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}${v2 ? MAG_CSS : ''}</style></head><body><div class="wrap${v2 ? ' mgw' : ''}">${v2 ? v2Body : `${mast}${glance}${sinceHtml}${letterSec}${tiles}${rpHtml}${driving}${posHtml}${ideaHtml}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${qodHtml}${lesson}${noEdge}${refsHtml}${foot}`}</div></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}${v2 ? MAG_CSS : ''}</style></head><body><div class="wrap${v2 ? ' mgw' : ''}">${v2 ? v2Body : `${mast}${glance}${sinceHtml}${letterSec}${tiles}${rpHtml}${driving}${posHtml}${betaAlertsSection(n)}${ideaHtml}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${qodHtml}${lesson}${noEdge}${refsHtml}${foot}`}</div></body></html>`;
 
   const T = [];
   T.push(`DESK ATLAS · ${weekly ? 'WEEKLY' : 'DAILY'} · ${n.date}`, '', headline, '');
