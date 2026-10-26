@@ -68,6 +68,7 @@ function isAllowedKVKey(key) {
     'cog_legs_live_v1',
     'cog_line_live_v1',
     'release_layer1_v1',
+    'release_layer2_v1',
     'spread_episodes_v1',
     'morning_brief_intel_v1',
     'hmm_hourly_v1',
@@ -1076,6 +1077,7 @@ export default {
             'cog_legs_live_v1',
             // release_layer1_v1: the laptop's pushed Release Reaction record (scripts/release_layer1/live_push.py); a 48h TTL would blank the page between pushes.
             'release_layer1_v1',
+            'release_layer2_v1',
             'cog_line_live_v1',
             // spread_episodes_v1: the spread-turn episodes forward record (written by Railway; a 48h TTL would reset it).
             'spread_episodes_v1',

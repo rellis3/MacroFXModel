@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Release Why</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--amber:#d29922;--red:#f85149;
+        --s1:#3987e5;--s2:#d95926;--s3:#199e70;--grid:#21262d;--zero:#484f58}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--s1);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.ok{color:var(--s3);border-color:var(--s3)} .chip.bad{color:var(--red);border-color:var(--red)}
+  .btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .btn:hover{color:var(--text);border-color:#4d5560} .btn.on{background:#22304d;color:#fff;border-color:var(--s1)}
+  select{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;max-width:100%}
+  .wrap{max-width:1500px;margin:0 auto;padding:12px 16px 40px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .note{font-size:11.5px;color:var(--text3);line-height:1.6;max-width:125ch} .note b{color:var(--text2)}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
+  th,td{padding:3px 7px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+  th{color:var(--text3);font-weight:600;position:sticky;top:0;background:var(--card);z-index:1}
+  td:first-child,th:first-child,td.l,th.l{text-align:left}
+  td.wrapc{white-space:normal;text-align:left;min-width:260px}
+  tbody tr.sel td{background:#22304d} tbody tr.pick{cursor:pointer} tbody tr.pick:hover td{background:var(--card2)}
+  .tscroll{overflow:auto;max-height:380px} .xscroll{overflow-x:auto;max-width:100%}
+  .pos{color:var(--s3)} .neg{color:var(--s2)} .mut{color:var(--text3)}
+  .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}
+  .badge{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:5px;border:1px solid var(--border);color:var(--text2)}
+  .st-sheet{color:var(--s3);border-color:var(--s3)} .st-data{color:var(--s1);border-color:var(--s1)} .st-partial{color:var(--amber);border-color:var(--amber)} .st-missing{color:var(--red);border-color:var(--red)} .st-noobs{color:var(--text3)} .st-after{color:#b07ae0;border-color:#b07ae0}
+  .tiles{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+  .tile{border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11.5px;background:var(--card2)}
+  .tile i{font-style:normal;font-weight:700}
+  .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+  .fcard{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;min-width:0}
+  .fcard h3{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+  .fl{display:grid;grid-template-columns:1fr auto;gap:1px 10px;font-size:11.5px;align-items:center} .fl span{color:var(--text2)} .fl b{font-variant-numeric:tabular-nums;text-align:right}
+  .pct{grid-column:1/3;height:5px;background:var(--grid);border-radius:3px;position:relative;margin:0 0 3px}
+  .pct i{position:absolute;top:-2px;width:3px;height:9px;background:var(--s1);border-radius:2px}
+  .bar{display:grid;grid-template-columns:200px 1fr 70px;gap:8px;align-items:center;font-size:11.5px;padding:1px 0}
+  .bar .track{position:relative;height:12px;background:var(--grid);border-radius:3px}
+  .bar .fill{position:absolute;top:1px;height:10px;border-radius:2px}
+  .bar .band{position:absolute;top:0;height:12px;border-left:1px dashed var(--amber);border-right:1px dashed var(--amber);background:rgba(210,153,34,.07)}
+  .bar .mid{position:absolute;top:0;left:50%;height:12px;border-left:1px solid var(--zero)}
+  svg{display:block;width:100%;height:auto} svg text{font:10px -apple-system,'Segoe UI',Roboto,sans-serif;fill:var(--text3)}
+  @media (max-width:700px){.bar{grid-template-columns:120px 1fr 56px}}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <a href="today.html">&larr; Today</a>
+  <h1>Release Why</h1>
+  <span class="chip">Layer 2: why</span>
+  <a class="chip" href="release-reaction.html">Layer 1: what happened &rarr;</a>
+  <span class="chip" id="chipFresh">loading</span>
+  <span class="spacer"></span>
+  <button class="btn" id="btnRefresh">Refresh</button>
+</div>
+<div class="wrap">
+
+  <div class="box">
+    <h2>How to read this page</h2>
+    <p class="note">Layer 1 records <b>what happened</b> around each release. This page holds the <b>candidate drivers</b>. Every factor below is known <b>before</b> the release (the last close before it, or the calendar), so it describes the setting and never uses the reaction. Layer 1 numbers are only <b>read</b> here, to show how outcomes differ when a factor is high or low; nothing here changes them. A factor is a hypothesis about a driver, not an explanation, and none has been tested for effect. Shock labels (inflation, growth, policy, risk-off) are read <i>after</i> the move, so they will live in a separate section and never sit on the going-in sheet. Exploratory, not pre-registered.</p>
+  </div>
+
+  <div class="box">
+    <h2>Going in: the setting for a release</h2>
+    <div class="row" id="upTabs"></div>
+    <div id="upBox"><div class="mut">loading</div></div>
+  </div>
+
+  <div class="box">
+    <h2>What differs when a factor is high or low</h2>
+    <div class="row" id="famTabs"></div>
+    <div class="row">
+      <span class="mut">Outcome:</span><select id="selAsset"></select><select id="selHor"></select>
+      <span class="mut" style="margin-left:8px">Factor:</span><select id="selFactor"></select>
+    </div>
+    <div id="scanBox"></div>
+    <div id="splitBox" style="margin-top:12px"></div>
+  </div>
+
+  <div class="box">
+    <h2>Factor sheet by release (values going in)</h2>
+    <div class="row" id="grpTabs"></div>
+    <div class="tscroll"><table id="sheet"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>The research universe: 77 items, what the repo holds for each</h2>
+    <div class="row" id="regTiles"></div>
+    <div class="row" id="regTabs"></div>
+    <div class="tscroll" style="max-height:520px"><table id="reg"></table></div>
+    <p class="note" style="margin-top:8px">Status is my reading of what is on disk or fetchable; I checked the sources named in each note and assumed the rest, so treat "missing" as "not found in the repo", not "does not exist". The list overlaps itself (policy-path items B8 to B15 are largely one thing, the risk-appetite items D25 to D32 largely another), so the sheet carries about thirty measures covering 23 of the 77 items, not 77 separate models.</p>
+  </div>
+
+  <p class="note">Descriptive and exploratory. Cut points and ranks use all releases on the sheet, so they describe the past and are not a signal. With so few releases per type (core CPI 25, payrolls 28, Fed decisions 19) many factor-outcome pairs will look interesting by chance: the amber band on each bar is roughly what noise alone produces at that sample size, and with about thirty factors a few bars will cross it purely by luck. Code: <code>scripts/release_layer2/</code>.</p>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+let W = null, L1 = {}, FAM = 'all', GRP = null, SEL_UP = null, REGG = 'all', REGS = 'all';
+const FAMNAME = {FOMC:'Fed decision',CPI:'Core CPI',NFP:'Payrolls',PCE:'Core PCE',GDP:'GDP',RETAIL:'Retail sales'};
+const KS = [-6,-5,-4,-3,-2,-1,0,1,2,3,4,5];
+const MIN_A = {sofr:'SOFR Sep26 leg (bp)',eur:'Euribor Mar27 leg (bp)',spr:'SOFR − Euribor line (bp)',zt:'2y note future (%)',zn:'10y note future (%)',dx:'Dollar index future (%)',nq:'Nasdaq (%)',es:'S&P 500 (%)',eurusd:'EUR/USD (%)',gbpusd:'GBP/USD (%)',usdjpy:'USD/JPY (%)',gold:'Gold (%)',vix:'VIX (pt)',vxn:'VXN (pt)'};
+const DAY_A = {y2:'US 2y yield (bp)',y10:'US 10y yield (bp)',real10:'10y real yield (bp)',be10:'10y breakeven (bp)',sofr:'SOFR Sep26 leg (bp)',eur:'Euribor Mar27 leg (bp)',spr:'SOFR − Euribor line (bp)',dx:'Dollar index (%)',nq:'Nasdaq-100 (%)',es:'S&P 500 (%)',eurusd:'EUR/USD (%)',gbpusd:'GBP/USD (%)',usdjpy:'USD/JPY (%)',gold:'Gold (%)',vix:'VIX (pt)',vxn:'VXN (pt)'};
+const HOR = {m5:'5 min after',m30:'30 min after',m60:'60 min after',m240:'240 min after',d0:'release day close',d1:'+1 day close',d2:'+2 days',d5:'+5 days'};
+const fmt = (v, u) => v == null ? '·' : typeof v === 'string' ? v : (u === '%' || u === '% ann.' || u === 'r' || u === 'pt' || u === 'own') ? (+v.toFixed(u === 'r' ? 2 : 2)).toString() : (+v.toFixed(1)).toString();
+const lon = (iso, o) => new Date(iso).toLocaleString('en-GB', Object.assign({ timeZone: 'Europe/London' }, o || { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' }));
+
+async function load() {
+  try {
+    const [a, b] = await Promise.all([fetch('/api/release-layer2', { cache: 'no-store' }).then(r => r.json()), fetch('/api/release-layer1', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ rows: [] }))]);
+    if (!a.ok) throw new Error(a.error || 'not ok'); W = a; L1 = {}; for (const r of (b.rows || [])) L1[r.id] = r;
+    if (!GRP) GRP = W.families[0];
+    renderAll();
+  } catch (e) { $('chipFresh').className = 'chip bad'; $('chipFresh').textContent = 'could not load: ' + e.message; }
+}
+function renderAll() {
+  const age = Math.round((Date.now() - Date.parse(W.built)) / 3600000), ld = Object.values(W.lastData || {}).sort().pop();
+  $('chipFresh').className = 'chip ' + (age > 30 ? 'warn' : 'ok'); $('chipFresh').textContent = `sheet built ${age < 1 ? '<1' : age}h ago · data to ${ld}${W.live ? '' : ' · committed copy'}`;
+  renderUp(); renderControls(); renderExplorer(); renderSheet(); renderRegister();
+}
+
+/* ---------- going in ---------- */
+const hist = () => W.rows.filter(r => r.status !== 'upcoming');
+function pctRank(key, v) { const a = hist().map(r => r.f[key]).filter(x => typeof x === 'number'); if (!a.length || typeof v !== 'number') return null; return 100 * a.filter(x => x <= v).length / a.length; }
+function renderUp() {
+  const ups = W.rows.filter(r => r.status === 'upcoming'); const fam = FAMNAME;
+  if (!ups.length) { $('upTabs').innerHTML = ''; $('upBox').innerHTML = '<div class="mut">No release ahead on the schedule.</div>'; return; }
+  if (!SEL_UP || !ups.find(r => r.id === SEL_UP)) SEL_UP = ups[0].id;
+  $('upTabs').innerHTML = ups.map(r => `<button class="btn ${SEL_UP === r.id ? 'on' : ''}" onclick="SEL_UP='${r.id}';renderUp()">${esc(fam[r.family] || r.family)} · ${lon(r.t, { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</button>`).join('');
+  const r = ups.find(x => x.id === SEL_UP);
+  const cards = W.families.map(fm => {
+    const ds = W.defs.filter(d => d.family === fm);
+    return `<div class="fcard"><h3>${esc(fm)}</h3><div class="fl">${ds.map(d => {
+      const v = r.f[d.key], p = typeof v === 'number' ? pctRank(d.key, v) : null;
+      return `<span title="${esc(d.meaning)}">${esc(d.label)}</span><b>${fmt(v, d.unit)}${d.unit !== 'cat' && d.unit !== 'own' && d.unit !== 'r' && d.unit !== 'h' && d.unit !== 'd' ? ' <span class="mut">' + esc(d.unit) + '</span>' : ''}</b>${p == null ? '' : `<div class="pct" title="${Math.round(p)}th percentile of the ${hist().length} past releases"><i style="left:calc(${p.toFixed(0)}% - 1px)"></i></div>`}`; }).join('')}</div></div>`; }).join('');
+  $('upBox').innerHTML = `<div style="font-size:15px;font-weight:700">${esc(r.name)}</div><div class="mut" style="margin-bottom:6px">${lon(r.t, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })} London. Values are as of the last close before it. The blue mark shows where each sits among the ${hist().length} past releases (left = lowest ever seen, right = highest).</div><div class="fgrid">${cards}</div>`;
+}
+
+/* ---------- explorer ---------- */
+function outcome(row, a, h) {
+  const l1 = L1[row.id]; if (!l1) return null;
+  if (h[0] === 'm') return l1.M?.[a]?.[h] ?? null;
+  const arr = l1.D?.[a]; if (!arr) return null; const g = n => arr[KS.indexOf(n)] ?? null; return h === 'd0' ? g(0) : h === 'd1' ? g(1) : h === 'd2' ? g(2) : g(5);
+}
+function renderControls() {
+  const fams = ['all', ...new Set(hist().map(r => r.family))];
+  $('famTabs').innerHTML = fams.map(f => `<button class="btn ${FAM === f ? 'on' : ''}" onclick="FAM='${f}';renderExplorer();renderSheet();renderControls()">${f === 'all' ? 'All' : (FAMNAME[f] || f)} <span class="mut">${f === 'all' ? hist().length : hist().filter(r => r.family === f).length}</span></button>`).join('');
+  if (!$('selHor').options.length) {
+    $('selHor').innerHTML = Object.entries(HOR).map(([k, v]) => `<option value="${k}" ${k === 'd1' ? 'selected' : ''}>${v}</option>`).join('');
+    $('selFactor').innerHTML = W.families.map(fm => `<optgroup label="${esc(fm)}">${W.defs.filter(d => d.family === fm).map(d => `<option value="${d.key}">${esc(d.label)}</option>`).join('')}</optgroup>`).join('');
+    $('selFactor').value = 'vix_pct';
+    ['selAsset', 'selHor', 'selFactor'].forEach(i => $(i).onchange = () => { if (i === 'selHor') fillAssets(); renderExplorer(); });
+    fillAssets($('selAsset').value || 'nq');
+  }
+}
+function fillAssets(keep) {
+  const h = $('selHor').value, set = h[0] === 'm' ? MIN_A : DAY_A, cur = keep || $('selAsset').value;
+  $('selAsset').innerHTML = Object.entries(set).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join(''); $('selAsset').value = set[cur] ? cur : 'nq';
+}
+function ranks(a) { const idx = a.map((v, i) => [v, i]).sort((x, y) => x[0] - y[0]), r = new Array(a.length); let i = 0; while (i < idx.length) { let j = i; while (j + 1 < idx.length && idx[j + 1][0] === idx[i][0]) j++; const m = (i + j) / 2 + 1; for (let k = i; k <= j; k++) r[idx[k][1]] = m; i = j + 1; } return r; }
+function spearman(x, y) { const n = x.length; if (n < 8) return null; const rx = ranks(x), ry = ranks(y), mx = rx.reduce((a, b) => a + b) / n, my = ry.reduce((a, b) => a + b) / n; let sxy = 0, sxx = 0, syy = 0; for (let i = 0; i < n; i++) { sxy += (rx[i] - mx) * (ry[i] - my); sxx += (rx[i] - mx) ** 2; syy += (ry[i] - my) ** 2; } return sxx && syy ? sxy / Math.sqrt(sxx * syy) : null; }
+const med = a => { a = a.slice().sort((x, y) => x - y); return a.length ? (a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2) : null; };
+
+function renderExplorer() {
+  const a = $('selAsset').value, h = $('selHor').value, fk = $('selFactor').value, rows = hist().filter(r => FAM === 'all' || r.family === FAM);
+  const pts = (key) => rows.map(r => ({ id: r.id, x: r.f[key], y: outcome(r, a, h), fam: r.family })).filter(p => typeof p.x === 'number' && typeof p.y === 'number');
+  const unit = (h[0] === 'm' ? MIN_A : DAY_A)[a].match(/\(([^)]+)\)/)?.[1] || '';
+  // scan: spearman of every numeric factor against this outcome
+  const nums = W.defs.filter(d => !['cat'].includes(d.unit) && !['dow', 'roll_week'].includes(d.key));
+  const sc = nums.map(d => { const p = pts(d.key), rho = spearman(p.map(z => z.x), p.map(z => z.y)); return { d, n: p.length, rho, band: p.length > 3 ? 1.96 / Math.sqrt(p.length - 1) : null }; }).filter(s => s.rho != null).sort((x, y) => Math.abs(y.rho) - Math.abs(x.rho));
+  const over = sc.filter(s => Math.abs(s.rho) > s.band).length;
+  $('scanBox').innerHTML = !sc.length ? '<div class="mut">Too few releases with this outcome.</div>' : `<div class="note" style="margin:4px 0 6px">Rank correlation of each going-in factor with <b>${esc((h[0] === 'm' ? MIN_A : DAY_A)[a])}, ${HOR[h]}</b>, ${FAM === 'all' ? 'all releases' : FAMNAME[FAM] || FAM}. The amber band is roughly the range noise alone gives at that count; <b>${over} of ${sc.length}</b> bars are outside it, and about ${(0.05 * sc.length).toFixed(1)} would be expected outside it by chance. Click a bar to see that factor below.</div>` +
+    sc.map(s => { const w = Math.abs(s.rho) * 50, pos = s.rho > 0, b = s.band * 50; return `<div class="bar" style="cursor:pointer" onclick="$('selFactor').value='${s.d.key}';renderExplorer()"><span title="${esc(s.d.meaning)}">${esc(s.d.label)}</span><div class="track"><div class="band" style="left:${50 - b}%;width:${2 * b}%"></div><div class="mid"></div><div class="fill" style="${pos ? 'left:50%' : `left:${50 - w}%`};width:${w}%;background:${pos ? 'var(--s3)' : 'var(--s2)'}"></div></div><span class="mut" style="text-align:right;${Math.abs(s.rho) > s.band ? 'color:var(--amber);font-weight:700' : ''}">${s.rho > 0 ? '+' : ''}${s.rho.toFixed(2)} <span class="mut">n${s.n}</span></span></div>`; }).join('');
+  // split for the chosen factor
+  const def = W.defs.find(d => d.key === fk), isCat = def.unit === 'cat', p = pts(fk);
+  if (p.length < 6) { $('splitBox').innerHTML = `<div class="mut">Too few releases (${p.length}) with both the factor and the outcome.</div>`; return; }
+  let groups;
+  if (isCat) { const vals = [...new Set(p.map(z => z.x))].sort(); groups = vals.map(v => ({ label: String(v), pts: p.filter(z => z.x === v) })); }
+  else { const xs = p.map(z => z.x).sort((m, n) => m - n), k = p.length >= 18 ? 3 : 2, cuts = []; for (let i = 1; i < k; i++) cuts.push(xs[Math.floor(xs.length * i / k)]);
+    groups = Array.from({ length: k }, (_, i) => ({ label: k === 3 ? ['Low third', 'Middle third', 'High third'][i] : ['Below median', 'Above median'][i], pts: p.filter(z => (i === 0 || z.x >= cuts[i - 1]) && (i === k - 1 || z.x < cuts[i])) }));
+    groups.forEach(g => { const xv = g.pts.map(z => z.x); g.range = xv.length ? `${fmt(Math.min(...xv), def.unit)} to ${fmt(Math.max(...xv), def.unit)}` : ''; }); }
+  const tbl = groups.map(g => { const y = g.pts.map(z => z.y), m = med(y), mean = y.reduce((u, v) => u + v, 0) / (y.length || 1), up = y.filter(v => v > 0).length; return `<tr><td class="l">${esc(g.label)}</td><td class="l mut">${g.range || ''}</td><td>${g.pts.length}</td><td class="${m > 0 ? 'pos' : m < 0 ? 'neg' : ''}">${m == null ? '·' : (m > 0 ? '+' : '') + (+m.toFixed(2))}</td><td class="${mean > 0 ? 'pos' : mean < 0 ? 'neg' : ''}">${(mean > 0 ? '+' : '') + (+mean.toFixed(2))}</td><td>${Math.round(100 * up / (y.length || 1))}%</td></tr>`; }).join('');
+  $('splitBox').innerHTML = `<div style="font-weight:700;margin-bottom:2px">${esc(def.label)} <span class="mut" style="font-weight:400">(${esc(def.meaning)})</span></div>
+    <div class="note" style="margin:0 0 6px">Splitting the ${p.length} releases with both values by this factor, and showing the outcome <b>${esc((h[0] === 'm' ? MIN_A : DAY_A)[a])}, ${HOR[h]}</b>. Counts are the point: read a group of fewer than about 10 as an anecdote.</div>
+    <div class="xscroll"><table><thead><tr><th class="l">Group</th><th class="l">Factor range</th><th>Releases</th><th>Median ${unit}</th><th>Mean ${unit}</th><th>Up</th></tr></thead><tbody>${tbl}</tbody></table></div>
+    <div style="margin-top:8px;max-width:760px">${scatter(p, def, unit, isCat, groups)}</div>`;
+}
+function scatter(p, def, unit, isCat, groups) {
+  const Wd = 760, H = 220, L = 46, R = 12, T = 10, B = 26;
+  const ys = p.map(z => z.y), ylo = Math.min(0, ...ys), yhi = Math.max(0, ...ys), pad = (yhi - ylo || 1) * .08, Y = v => T + (yhi + pad - v) / (yhi - ylo + 2 * pad) * (H - T - B);
+  const cat = isCat ? [...new Set(p.map(z => z.x))].sort() : null;
+  let X, xlab = '';
+  if (isCat) { X = v => L + (cat.indexOf(v) + .5) / cat.length * (Wd - L - R); xlab = cat.map(v => `<text x="${X(v)}" y="${H - 8}" text-anchor="middle">${esc(v)}</text>`).join(''); }
+  else { const xs = p.map(z => z.x), xlo = Math.min(...xs), xhi = Math.max(...xs), sp = (xhi - xlo) || 1; X = v => L + (v - xlo) / sp * (Wd - L - R - 8) + 4; xlab = [xlo, (xlo + xhi) / 2, xhi].map(v => `<text x="${X(v)}" y="${H - 8}" text-anchor="middle">${fmt(v, def.unit)}</text>`).join(''); }
+  const jit = i => isCat ? ((i * 37) % 17 - 8) * 1.6 : 0;
+  const dots = p.map((z, i) => `<circle cx="${(X(z.x) + jit(i)).toFixed(1)}" cy="${Y(z.y).toFixed(1)}" r="3.3" fill="${z.y >= 0 ? 'var(--s3)' : 'var(--s2)'}" fill-opacity=".75"><title>${esc(FAMNAME[z.fam] || z.fam)} ${z.id.slice(0, 10)}: factor ${fmt(z.x, def.unit)}, outcome ${+z.y.toFixed(2)}</title></circle>`).join('');
+  const meds = isCat ? groups.map(g => { const m = med(g.pts.map(z => z.y)); return m == null ? '' : `<line x1="${X(g.label) - 30}" x2="${X(g.label) + 30}" y1="${Y(m)}" y2="${Y(m)}" stroke="var(--amber)" stroke-width="2"/>`; }).join('') : '';
+  return `<svg viewBox="0 0 ${Wd} ${H}"><line x1="${L}" x2="${Wd - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--zero)"/><text x="${L - 5}" y="${Y(yhi) + 4}" text-anchor="end">${(+yhi.toFixed(2))}</text><text x="${L - 5}" y="${Y(ylo) + 4}" text-anchor="end">${(+ylo.toFixed(2))}</text><text x="${L - 5}" y="${Y(0) + 4}" text-anchor="end">0</text>${meds}${dots}${xlab}</svg>`;
+}
+
+/* ---------- sheet ---------- */
+function renderSheet() {
+  $('grpTabs').innerHTML = W.families.map(f => `<button class="btn ${GRP === f ? 'on' : ''}" onclick="GRP='${f}';renderSheet()">${esc(f)}</button>`).join('');
+  const ds = W.defs.filter(d => d.family === GRP), rows = W.rows.filter(r => FAM === 'all' || r.family === FAM).slice().reverse();
+  $('sheet').innerHTML = `<thead><tr><th>Time (London)</th><th class="l">Release</th>${ds.map(d => `<th title="${esc(d.meaning)}">${esc(d.label)}${d.unit && d.unit !== 'cat' ? ' <span class="mut">' + esc(d.unit) + '</span>' : ''}</th>`).join('')}</tr></thead><tbody>` +
+    rows.map(r => `<tr><td>${lon(r.t)}${r.status === 'upcoming' ? ' <span class="badge">ahead</span>' : ''}</td><td class="l">${esc(FAMNAME[r.family] || r.family)}</td>${ds.map(d => `<td>${r.f[d.key] == null ? '<span class="mut">·</span>' : fmt(r.f[d.key], d.unit)}</td>`).join('')}</tr>`).join('') + '</tbody>';
+}
+
+/* ---------- register ---------- */
+function renderRegister() {
+  const cnt = {}; W.register.forEach(r => cnt[r.status] = (cnt[r.status] || 0) + 1);
+  $('regTiles').innerHTML = Object.entries(W.statusLabels).map(([k, v]) => `<div class="tile"><span class="badge st-${k}">${esc(v)}</span> <i>${cnt[k] || 0}</i></div>`).join('');
+  $('regTabs').innerHTML = `<span class="mut">Group:</span>` + ['all', ...Object.keys(W.groups)].map(g => `<button class="btn ${REGG === g ? 'on' : ''}" onclick="REGG='${g}';renderRegister()">${g === 'all' ? 'All' : g + ' ' + esc(W.groups[g])}</button>`).join('') +
+    `<span class="mut" style="margin-left:10px">Status:</span><select onchange="REGS=this.value;renderRegister()"><option value="all">All</option>${Object.entries(W.statusLabels).map(([k, v]) => `<option value="${k}" ${REGS === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>`;
+  const rows = W.register.filter(r => (REGG === 'all' || r.group === REGG) && (REGS === 'all' || r.status === REGS));
+  $('reg').innerHTML = `<thead><tr><th>#</th><th class="l">Item</th><th class="l">Group</th><th class="l">Status</th><th class="l">What the repo holds</th></tr></thead><tbody>` +
+    rows.map(r => `<tr><td>${r.n}</td><td class="l" style="white-space:normal">${esc(r.item)}</td><td class="l mut">${r.group}</td><td class="l"><span class="badge st-${r.status}">${esc(W.statusLabels[r.status])}</span></td><td class="wrapc mut">${esc(r.note)}</td></tr>`).join('') + '</tbody>';
+}
+
+$('btnRefresh').onclick = load;
+load(); setInterval(load, 300000);
+</script>
+</body>
+</html>
