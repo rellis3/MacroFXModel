@@ -34,5 +34,14 @@ console.log('the biggest changes across markets');
   ok('it is one plain sentence naming each market and the driver', t.text === 'The biggest changes in what moves together: the Nasdaq 100 to the 10-year yield (flipped), AUD/USD to the 10-year yield (flipped) and Gold to the dollar (stronger).');
   ok('nothing changed or nothing fresh gives null', betaTop(beta, ['EURUSD', 'SPX500'], '2026-10-25') === null && betaTop(beta, ['NQ'], '2026-12-01') === null); }
 
+// the third alert leg: outside its own 1y range (build.py `extreme`) shows even without a flip or shift
+{
+  const BX = { asof: '2026-10-24', markets: { USDJPY: { name: 'USDJPY', units: 'pct', asof: '2026-10-24', factors: { '^NDX': { label: 'Nasdaq 100', unit: 'per 1%', now: 0.17, prior: 0.12, z: 0.4, flip: false, shift: false, extreme: true } } } } };
+  const r = betaFor(BX, 'USDJPY', '2026-10-26', 'USD/JPY');
+  ok('an unusual level (outside its own 1y range) is reported', r && /Unusual level/.test(r.sentences[0]) && /outside its normal range/.test(r.sentences[0]));
+  const none = betaFor({ ...BX, markets: { USDJPY: { ...BX.markets.USDJPY, factors: { '^NDX': { ...BX.markets.USDJPY.factors['^NDX'], extreme: false } } } } }, 'USDJPY', '2026-10-26');
+  ok('without flip, shift or an unusual level nothing is printed', none === null);
+}
+
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

@@ -28,14 +28,17 @@ function marketOf(beta, key, today) {
 
 /** The factors of one market that flipped or shifted, flips first, then by size of the shift against the market's own norm. */
 function changed(mk) {
-  return Object.entries(mk.factors ?? {}).filter(([, f]) => f && (f.flip || f.shift) && Number.isFinite(f.now) && Number.isFinite(f.prior))
-    .map(([k, f]) => ({ k, f, kind: f.flip ? 'flipped' : Math.abs(f.now) > Math.abs(f.prior) ? 'stronger' : 'weaker' }))
+  // `extreme` (build.py): the 20-day beta sits outside its own 5th-95th percentile of the past year with |corr| >= 0.3,
+  // the third leg of the alert rule today.html's Beta alerts card uses.
+  return Object.entries(mk.factors ?? {}).filter(([, f]) => f && (f.flip || f.shift || f.extreme) && Number.isFinite(f.now) && Number.isFinite(f.prior))
+    .map(([k, f]) => ({ k, f, kind: f.flip ? 'flipped' : f.shift ? (Math.abs(f.now) > Math.abs(f.prior) ? 'stronger' : 'weaker') : 'unusual' }))
     .sort((x, y) => (y.f.flip ? 1 : 0) - (x.f.flip ? 1 : 0) || Math.abs(y.f.z ?? 0) - Math.abs(x.f.z ?? 0));
 }
 
 /** One plain sentence for one changed link. */
 function sentence(name, c, unit) {
-  const f = c.f, per = /10bp/.test(f.unit ?? '') ? '10bp' : '1%', drv = FACTOR[c.k] ?? f.label ?? c.k, head = c.kind === 'flipped' ? 'Flipped' : c.kind === 'stronger' ? 'Stronger' : 'Weaker';
+  const f = c.f, per = /10bp/.test(f.unit ?? '') ? '10bp' : '1%', drv = FACTOR[c.k] ?? f.label ?? c.k, head = c.kind === 'flipped' ? 'Flipped' : c.kind === 'stronger' ? 'Stronger' : c.kind === 'weaker' ? 'Weaker' : 'Unusual level';
+  if (c.kind === 'unusual') return `${head}: for each ${per} that ${drv} moves, ${name} now moves ${move(f.now, unit)}, outside its normal range for the past year (${move(f.prior, unit)} over the 60 sessions before).`;
   return `${head}: for each ${per} that ${drv} moves, ${name} now moves ${move(f.now, unit)}, against ${move(f.prior, unit)} over the 60 sessions before.`;
 }
 
