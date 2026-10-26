@@ -12,11 +12,13 @@ from layer1_lib import AO
 OUTDIR = AO / 'release_layer1'
 CACHE = OUTDIR / 'daily.json'
 KS = list(range(-6, 6))
-DKEYS = ['sofr', 'eur', 'spr', 'y2', 'y10', 'real10', 'be10', 'dx', 'nq']
+DKEYS = ['sofr', 'eur', 'spr', 'y2', 'y10', 'real10', 'be10', 'dx', 'nq', 'eurusd', 'gbpusd', 'usdjpy', 'gold', 'es', 'vix', 'vxn']
+MINUTE_DAILY = ['eurusd', 'gbpusd', 'usdjpy', 'gold', 'es']      # daily closes built from the 1-minute sources (CFD, then futures), chained by returns so no level is ever spliced
 DLABEL = {'sofr': 'SOFR Sep26 leg (bp)', 'eur': 'Euribor Mar27 leg (bp)', 'spr': 'SOFR - Euribor line (bp)', 'y2': 'US 2y yield (bp)', 'y10': 'US 10y yield (bp)',
-          'real10': '10y real yield (bp)', 'be10': '10y breakeven (bp)', 'dx': 'Dollar index (%)', 'nq': 'Nasdaq-100 (%)'}
+          'real10': '10y real yield (bp)', 'be10': '10y breakeven (bp)', 'dx': 'Dollar index (%)', 'nq': 'Nasdaq-100 (%)',
+          'eurusd': 'EUR/USD (%)', 'gbpusd': 'GBP/USD (%)', 'usdjpy': 'USD/JPY (%)', 'gold': 'Gold (%)', 'es': 'S&P 500 (%)', 'vix': 'VIX (points)', 'vxn': 'VXN (points)'}
 TREASURY = {'y2': ('daily_treasury_yield_curve', '2 Yr'), 'y10': ('daily_treasury_yield_curve', '10 Yr'), 'real10': ('daily_treasury_real_yield_curve', '10 YR')}
-YAHOO = {'dx': 'DX-Y.NYB', 'nq': '^NDX'}
+YAHOO = {'dx': 'DX-Y.NYB', 'nq': '^NDX', 'vix': '^VIX', 'vxn': '^VXN'}
 UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', 'Accept': 'application/json, text/csv, */*'}
 START = '2024-01-01'
 
@@ -94,6 +96,17 @@ def load_daily(S):
         if c['series'].get(k): D[k] = pd.Series([v * 100 for _, v in c['series'][k]], index=pd.to_datetime([d for d, _ in c['series'][k]]))            # % -> bp
     for k in ('dx', 'nq'):
         if c['series'].get(k): D[k] = pd.Series([np.log(v) * 100 for _, v in c['series'][k]], index=pd.to_datetime([d for d, _ in c['series'][k]]))
+    for k in ('vix', 'vxn'):                                                                           # points, not %
+        if c['series'].get(k): D[k] = pd.Series([v for _, v in c['series'][k]], index=pd.to_datetime([d for d, _ in c['series'][k]]))
+    for k in MINUTE_DAILY:                                                                             # per source: NY-close log-returns between consecutive closes of that source; first source wins a date, later ones fill the rest; level = cumulative return
+        rets = []
+        for _, ser in S[k].cands:
+            cl = _close_from_minutes(S[k].tf(ser), 15.5)
+            if len(cl) > 1: rets.append(cl.diff().dropna())
+        if rets:
+            r = rets[0]
+            for x in rets[1:]: r = r.combine_first(x)
+            D[k] = r.sort_index().cumsum()
     sf = next((s for _, s in S['sofr'].cands), None); eu = next((s for _, s in S['eur'].cands), None)
     if sf is not None: D['sofr'] = _close_from_minutes(S['sofr'].tf(sf), 15.0)
     if eu is not None: D['eur'] = _close_from_minutes(S['eur'].tf(eu), 12.5)

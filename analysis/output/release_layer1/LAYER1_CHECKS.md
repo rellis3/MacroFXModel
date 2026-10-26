@@ -28,6 +28,13 @@ Releases whose largest SOFR-leg move is more than a minute from the stamped time
 | US 10y note future (%) | 75 | 6 | 69 | 0 |
 | Dollar index future (%) | 6 | 6 | 0 | 69 |
 | Nasdaq (%) | 75 | 75 | 0 | 0 |
+| EUR/USD (%) | 75 | 75 | 0 | 0 |
+| GBP/USD (%) | 75 | 75 | 0 | 0 |
+| USD/JPY (%) | 75 | 75 | 0 | 0 |
+| Gold (%) | 74 | 74 | 0 | 1 |
+| S&P 500 (%) | 75 | 75 | 0 | 0 |
+| VIX (points) | 6 | 6 | 0 | 69 |
+| VXN (points) | 1 | 1 | 0 | 74 |
 
 ## Quote density in the 30 minutes after the release (1-minute bars present, of 30)
 
@@ -40,12 +47,19 @@ Releases whose largest SOFR-leg move is more than a minute from the stamped time
 
 | series | releases with a path | newest daily close |
 |---|---|---|
-| SOFR Sep26 leg (bp) | 74 | 2026-10-23 |
-| Euribor Mar27 leg (bp) | 73 | 2026-10-23 |
-| SOFR - Euribor line (bp) | 73 | 2026-10-23 |
-| US 2y yield (bp) | 75 | 2026-10-23 |
-| US 10y yield (bp) | 75 | 2026-10-23 |
-| 10y real yield (bp) | 75 | 2026-10-23 |
-| 10y breakeven (bp) | 75 | 2026-10-23 |
-| Dollar index (%) | 74 | 2026-10-23 |
-| Nasdaq-100 (%) | 74 | 2026-10-23 |
+| SOFR Sep26 leg (bp) | 74 | 2026-10-26 |
+| Euribor Mar27 leg (bp) | 73 | 2026-10-26 |
+| SOFR - Euribor line (bp) | 73 | 2026-10-26 |
+| US 2y yield (bp) | 75 | 2026-10-26 |
+| US 10y yield (bp) | 75 | 2026-10-26 |
+| 10y real yield (bp) | 75 | 2026-10-26 |
+| 10y breakeven (bp) | 75 | 2026-10-26 |
+| Dollar index (%) | 74 | 2026-10-26 |
+| Nasdaq-100 (%) | 74 | 2026-10-26 |
+| EUR/USD (%) | 75 | 2026-10-26 |
+| GBP/USD (%) | 75 | 2026-10-26 |
+| USD/JPY (%) | 75 | 2026-10-26 |
+| Gold (%) | 74 | 2026-10-26 |
+| S&P 500 (%) | 73 | 2026-10-26 |
+| VIX (points) | 74 | 2026-10-26 |
+| VXN (points) | 74 | 2026-10-26 |
