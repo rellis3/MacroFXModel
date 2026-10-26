@@ -74,3 +74,10 @@ this strategy can't get there; with no clock it can.
   most of a year.
 - The edge itself is still unconfirmed. At the bottom of its interval it adds nothing over luck. The honest next step
   stays a forward paper record, and the toolkit CSVs should be run through the real toolkit to check the replica.
+
+## Note 2026-10-26: CSV format
+
+The `toolkit_*.csv` files in this folder use the trade's **exit** date and 4 decimals. C.OG's spec asks for the
+**entry** date and 2 decimals. The simulated results don't change: there is one trade per date either way, and the
+replica used unrounded returns. For uploading to the real toolkit, use the exports on `overnight-hold-real-costs.html`
+(built from `page_trades.json` by `scripts/overnight-hold-toolkit/build_page_data.py`), which follow the spec.

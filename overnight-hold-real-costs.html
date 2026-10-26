@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overnight Hold Backtest</title>
+<style>
+  :root { --bg:#0e1117; --panel:#161b22; --line:#2b3340; --tx:#c9d1d9; --mut:#8b949e;
+          --grn:#3fb950; --red:#f85149; --acc:#58a6ff; --amber:#d29922; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--tx); font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:24px 16px 80px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  h2 { font-size:16px; margin:0 0 10px; }
+  h3 { font-size:13px; margin:14px 0 6px; color:var(--mut); font-weight:600; }
+  .sub { color:var(--mut); margin:0 0 16px; font-size:13px; max-width:900px; }
+  .banner { border:1px solid var(--amber); border-radius:6px; padding:9px 12px; margin-bottom:14px; font-size:13px; max-width:none; color:var(--tx); }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
+  label { display:block; font-size:12px; color:var(--mut); margin-bottom:4px; }
+  select { width:100%; background:#0d1117; border:1px solid var(--line); color:var(--tx); border-radius:6px; padding:7px 9px; font-size:13px; }
+  button { background:var(--acc); color:#04121f; border:0; border-radius:6px; padding:8px 14px; font-weight:600; cursor:pointer; font-size:13px; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--tx); font-weight:500; }
+  button.ghost:hover { border-color:var(--acc); }
+  .tbl { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:right; padding:6px 9px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th:first-child,td:first-child { text-align:left; }
+  thead th { color:var(--mut); font-weight:600; font-size:12px; }
+  .pos { color:var(--grn); } .neg { color:var(--red); }
+  .note { color:var(--mut); font-size:12px; margin-top:8px; }
+  code { background:#0d1117; padding:1px 5px; border-radius:4px; color:var(--acc); }
+  .chart-label { font-size:12px; color:var(--mut); margin:14px 0 4px; }
+  svg.chart { width:100%; height:auto; background:#0d1117; border:1px solid var(--line); border-radius:8px; }
+  .facts { display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--mut); margin:4px 0 12px; }
+  .facts b { color:var(--tx); }
+  .xgrid { display:grid; grid-template-columns:140px repeat(auto-fit,minmax(150px,1fr)); gap:8px; align-items:center; }
+  .xgrid .h { font-size:12px; color:var(--mut); }
+  details { margin-top:12px; border:1px solid var(--line); border-radius:8px; padding:10px 14px; background:#0d1117; }
+  summary { cursor:pointer; font-weight:600; font-size:13px; }
+  .tag { display:inline-block; padding:1px 7px; border-radius:9px; font-size:11px; font-weight:700; border:1px solid var(--line); color:var(--mut); }
+  @media (max-width:640px) { .xgrid { grid-template-columns:1fr; } .xgrid .h.colh { display:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="sub banner"><b>Banked 2026-10-25.</b> <code>overnight-hold-nq</code> and <code>overnight-hold-gold</code> are both UNDERPOWERED: the edge is positive after costs but not statistically confirmed, and it is below buy &amp; hold.
+    <code>overnight-hold-toolkit</code> and <code>cost-verification</code> are CONTEXT. Everything here is computed from those banked trade lists. Nothing is re-fitted on this page.</div>
+  <h1>Overnight Hold Backtest <span style="color:var(--mut);font-weight:400">· NAS100 &amp; XAUUSD, real costs, toolkit exports</span></h1>
+  <p class="sub">Long at 20:00 UK, exit 14:30 UK the next session, from M1 data, 2016-10-24 → 2026-08-21 (the lockbox end).
+    MAE is the lowest M1 low between entry and exit. Spreads are real OANDA bid/ask at both legs. Financing is either our
+    model or what your two broker accounts actually charged (from 86 overnight positions in Trade History).
+    Task: <code>education/bank-verbatim/Overnight-Buy-Hold-Task/PAGE_TEXT.md</code>. The older
+    <a href="overnight-hold-backtest.html" style="color:var(--acc)">engine page</a> still uses placeholder costs that are 2.5–4× too high.</p>
+
+  <div class="panel">
+    <h2>Costs</h2>
+    <div class="grid">
+      <div><label>NAS100 financing</label><select id="finNq"></select></div>
+      <div><label>NAS100 spread</label><select id="sprNq"></select></div>
+      <div><label>Gold financing</label><select id="finGold"></select></div>
+      <div><label>Gold spread</label><select id="sprGold"></select></div>
+    </div>
+    <p class="note">"Your account" financing is measured, not modelled: Account A = the Gold / Regime V1 / Backtest / Range Line / Fib Atlas / Motif bots' account,
+      Account B = the OI / Volatility bots' account (US100 only measured on B). Rates before 2026-05 are back-filled: B as Fed funds + the measured markup, A as a constant rate.
+      "Your fills" is the round trip your bots actually paid against OANDA's mid (a bracket: it includes their entry timing, so it isn't a clean spread). Source: <code>analysis/output/cost-verification/RESULTS.md</code>.</p>
+  </div>
+
+  <div id="out"><p class="note">Loading trades…</p></div>
+
+  <div class="panel" id="exports">
+    <h2>Toolkit exports <span class="tag">exact format</span></h2>
+    <p class="sub" style="margin-bottom:10px">C.OG's three columns: <code>Date,Return %,MAE %</code>. Date = the trade's <b>entry</b> date, Return % = net return of the trade as % of position notional,
+      MAE % ≤ 0, two decimals, no symbols. On net files, the MAE also has that trade's costs taken off (counted as paid at the worst point, which is conservative).
+      Combined = both instruments' rows at half size each (one portfolio at 1× notional), sorted by date.</p>
+    <div class="xgrid" id="xgrid"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+      <button id="xCurrent">Export the current cost selection (3 files)</button>
+      <button class="ghost" id="xAll">Download every file above</button>
+    </div>
+    <p class="note">Rounding to two decimals, as the spec asks, moves each NQ trade by up to ±0.005%. The mean net return is only +0.034% a trade,
+      so a toolkit run on these files can differ slightly from the replica below, which used unrounded returns.</p>
+  </div>
+
+  <div class="panel" id="toolkit"><h2>Toolkit replica: FTMO 2-step</h2><p class="note">Loading…</p></div>
+
+  <div class="panel">
+    <h2>How to read this</h2>
+    <ul class="sub" style="margin:0;padding-left:18px">
+      <li><b>Is it real?</b> Gross is positive on both markets. Net is still positive at your account's costs (NQ about +5.6% a year, gold +4.7% to +6.3%), but the per-trade mean isn't statistically confirmed (UNDERPOWERED).</li>
+      <li><b>Is it new?</b> Check the correlation to buy &amp; hold and the return per unit of exposure in each table.</li>
+      <li><b>Does it pass a challenge?</b> At 1× it gets funded about twice as often as the zero-edge copy, but it takes 8–10 months. The zero-edge copy also clears a typical fee, so "positive EV" on a challenge isn't proof of an edge.</li>
+    </ul>
+  </div>
+</div>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 2) => (v == null || !Number.isFinite(v)) ? '—' : Number(v).toFixed(d);
+const sp = (v, d = 2) => `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : ''}">${fmt(v, d)}</span>`;
+const pc = v => v == null ? '—' : `${(v * 100).toFixed(1)}%`;
+const LABEL = { nq: 'NAS100', gold: 'Gold (XAUUSD)', combined: 'Combined (half size each)' };
+const FIN = { none: 'None (gross)', oanda: 'Our model (OANDA, banked)', A: 'Your account A (measured)', B: 'Your account B (measured)' };
+const SPR = { none: 'None (gross)', oanda: 'OANDA bid/ask per trade (banked)', fills: 'Your fills (bracket)' };
+let D = null;
+
+// ── cost selection → per-trade net returns ────────────────────────────────────
+function series(key, fin, spr) {
+  const I = D.instruments[key];
+  const f = fin === 'none' ? null : I.fin[fin];
+  return I.gross.map((g, i) => {
+    const cost = (f ? f[i] : 0) + (spr === 'oanda' ? I.spread[i] : spr === 'fills' ? D.fill_round_trip_pct[key] : 0);
+    return { d: I.entry[i], x: I.exit[i], h: I.hold_h[i], r: g - cost, m: I.mae[i] - cost, g };
+  });
+}
+function combined(a, b) {
+  const rows = [...a, ...b].map(t => ({ ...t, r: t.r / 2, m: t.m / 2, g: t.g / 2 }));
+  return rows.sort((p, q) => p.d < q.d ? -1 : p.d > q.d ? 1 : 0);
+}
+const sel = key => ({ fin: $(key === 'nq' ? 'finNq' : 'finGold').value, spr: $(key === 'nq' ? 'sprNq' : 'sprGold').value });
+
+// ── metrics (compounded, as the banked study) ─────────────────────────────────
+const yearsOf = (d0, d1) => (Date.parse(d1) - Date.parse(d0)) / 864e5 / 365.25;
+function drawdown(eq, dates) {
+  let peak = eq[0], pi = 0, mdd = 0, dur = 0, start = 0, open = false;
+  for (let i = 0; i < eq.length; i++) {
+    if (eq[i] >= peak) {
+      if (open) { dur = Math.max(dur, (Date.parse(dates[i]) - Date.parse(dates[start])) / 864e5); open = false; }
+      peak = eq[i]; pi = i;
+    } else {
+      if (!open) { open = true; start = pi; }
+      mdd = Math.min(mdd, eq[i] / peak - 1);
+    }
+  }
+  const ongoing = open && (Date.parse(dates.at(-1)) - Date.parse(dates[start])) / 864e5 > dur;
+  if (ongoing) dur = (Date.parse(dates.at(-1)) - Date.parse(dates[start])) / 864e5;
+  return { mdd: mdd * 100, dur, ongoing };
+}
+function metrics(rets, dates, years) {
+  const n = rets.length, eq = [];
+  let e = 1; for (const r of rets) { e *= 1 + r / 100; eq.push(e); }
+  const mean = rets.reduce((s, r) => s + r, 0) / n;
+  const sd = Math.sqrt(rets.reduce((s, r) => s + (r - mean) ** 2, 0) / (n - 1));
+  const dsd = Math.sqrt(rets.reduce((s, r) => s + Math.min(r, 0) ** 2, 0) / n);
+  const perYear = n / years, cagr = (e ** (1 / years) - 1) * 100, dd = drawdown(eq, dates);
+  const wins = rets.filter(r => r > 0), losses = rets.filter(r => r < 0);
+  let streak = 0, worst = 0; for (const r of rets) { streak = r < 0 ? streak + 1 : 0; worst = Math.max(worst, streak); }
+  const sum = a => a.reduce((s, r) => s + r, 0);
+  return {
+    total: (e - 1) * 100, cagr, dd, eq,
+    sharpe: mean / sd * Math.sqrt(perYear), sortino: mean / dsd * Math.sqrt(perYear), calmar: cagr / Math.abs(dd.mdd),
+    win: wins.length / n * 100, pf: sum(wins) / Math.abs(sum(losses)),
+    avgWin: wins.length ? sum(wins) / wins.length : null, avgLoss: losses.length ? sum(losses) / losses.length : null,
+    best: Math.max(...rets), worstR: Math.min(...rets), streak: worst, sd, n, mean,
+    t: mean / (sd / Math.sqrt(n)),
+  };
+}
+const corr = (a, b) => {
+  const n = a.length, ma = a.reduce((s, x) => s + x, 0) / n, mb = b.reduce((s, x) => s + x, 0) / n;
+  let c = 0, va = 0, vb = 0; for (let i = 0; i < n; i++) { c += (a[i] - ma) * (b[i] - mb); va += (a[i] - ma) ** 2; vb += (b[i] - mb) ** 2; }
+  return c / Math.sqrt(va * vb);
+};
+
+// Buy & hold is sampled at each trade's 20:00 UK entry price (price only, no financing); see bhOf in render().
+
+// ── rendering ─────────────────────────────────────────────────────────────────
+function chart(eqA, eqB, dates, label) {
+  const W = 1080, H = 230, DH = 80, PAD = 34, n = eqA.length;
+  const all = [...eqA, ...eqB].map(v => v * 100);
+  const lo = Math.min(...all) * 0.97, hi = Math.max(...all) * 1.03;
+  const x = i => PAD + i / Math.max(n - 1, 1) * (W - 2 * PAD);
+  const y = v => H - 18 - (v * 100 - lo) / (hi - lo || 1) * (H - 36);
+  const path = (eq, m) => eq.map((v, i) => `${i ? 'L' : 'M'}${x(i * m).toFixed(1)} ${y(v).toFixed(1)}`).join('');
+  let pk = -Infinity; const dd = eqA.map(v => { pk = Math.max(pk, v); return v / pk - 1; });
+  const mdd = Math.min(...dd, -1e-9), yd = v => H + 16 + (v / mdd) * (DH - 14);
+  const ddPath = `M${x(0)} ${H + 16}` + dd.map((v, i) => `L${x(i).toFixed(1)} ${yd(v).toFixed(1)}`).join('') + `L${x(n - 1)} ${H + 16}Z`;
+  const years = [...new Set(dates.map(d => d.slice(0, 4)))].map(yr => ({ yr, i: dates.findIndex(d => d.startsWith(yr)) }));
+  return `<div class="chart-label">${label}: equity (start = 100) vs buy &amp; hold, drawdown of the overnight curve underneath (worst ${(mdd * 100).toFixed(1)}%)</div>
+  <svg class="chart" viewBox="0 0 ${W} ${H + DH + 24}" role="img" aria-label="${label} equity and drawdown">
+    <line x1="${PAD}" x2="${W - PAD}" y1="${y(1)}" y2="${y(1)}" stroke="#2b3340" stroke-dasharray="4 3"/>
+    ${years.map(o => `<line x1="${x(o.i)}" x2="${x(o.i)}" y1="16" y2="${H + DH + 4}" stroke="#1c2230"/><text x="${x(o.i) + 3}" y="${H + DH + 18}" fill="#8b949e" font-size="10">${o.yr}</text>`).join('')}
+    <path d="${path(eqB, (n - 1) / Math.max(eqB.length - 1, 1))}" fill="none" stroke="#8b949e" stroke-width="1.4"/>
+    <path d="${path(eqA, 1)}" fill="none" stroke="#58a6ff" stroke-width="1.8"/>
+    <path d="${ddPath}" fill="#f85149" opacity=".3"/>
+    <text x="${PAD}" y="12" fill="#58a6ff" font-size="11">overnight (selected costs) ${fmt((eqA.at(-1) - 1) * 100, 1)}%</text>
+    <text x="${PAD + 250}" y="12" fill="#8b949e" font-size="11">buy &amp; hold, price only ${fmt((eqB.at(-1) - 1) * 100, 1)}%</text>
+    <text x="${PAD}" y="${H + 12}" fill="#f85149" font-size="10">drawdown</text>
+  </svg>`;
+}
+
+function table(net, gross, bh, cfd, byDay) {
+  const ddCell = m => `${sp(m.dd.mdd)} / ${fmt(m.dd.dur, 0)}d${m.dd.ongoing ? ' (ongoing)' : ''}`;
+  const rows = [
+    ['Total return %', sp(net.total), sp(gross.total), sp(bh.total), cfd ? sp(cfd.total) : '—'],
+    ['CAGR %', sp(net.cagr), sp(gross.cagr), sp(bh.cagr), cfd ? sp(cfd.cagr) : '—'],
+    ['Max drawdown % / duration', ddCell(net), ddCell(gross), ddCell(bh), '—'],
+    ['Sharpe (ann.)', fmt(net.sharpe), fmt(gross.sharpe), fmt(bh.sharpe), '—'],
+    ['Sortino (ann.)', fmt(net.sortino), fmt(gross.sortino), fmt(bh.sortino), '—'],
+    ['Calmar', fmt(net.calmar), fmt(gross.calmar), fmt(bh.calmar), '—'],
+    ['Win rate %', fmt(net.win, 1), fmt(gross.win, 1), '—', '—'],
+    ['Profit factor', fmt(net.pf, 3), fmt(gross.pf, 3), '—', '—'],
+    ['Avg win / avg loss %', `${sp(net.avgWin, 3)} / ${sp(net.avgLoss, 3)}`, `${sp(gross.avgWin, 3)} / ${sp(gross.avgLoss, 3)}`, '—', '—'],
+    ['Largest win / loss %', `${sp(net.best)} / ${sp(net.worstR)}`, `${sp(gross.best)} / ${sp(gross.worstR)}`, '—', '—'],
+    ['Longest losing streak', fmt(net.streak, 0), fmt(gross.streak, 0), '—', '—'],
+    ['Std dev of returns %', fmt(net.sd, 3), fmt(gross.sd, 3), fmt(bh.sd, 3), '—'],
+    ['Mean per trade % (t, iid)', `${sp(net.mean, 4)} (${fmt(net.t)})`, `${sp(gross.mean, 4)} (${fmt(gross.t)})`, '—', '—'],
+    [byDay ? 'Trading days (both legs summed)' : 'Total trades', fmt(net.n, 0), fmt(gross.n, 0), '—', '—'],
+  ];
+  return `<div class="tbl"><table><thead><tr><th>Metric</th><th>Overnight, selected costs</th><th>Overnight, gross</th><th>Buy &amp; hold, price</th><th>Buy &amp; hold CFD, net (banked)</th></tr></thead>
+    <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
+function weekdays(rows, label) {
+  const WD = ['Mon', 'Tue', 'Wed', 'Thu'], acc = {};
+  for (const t of rows) {
+    const w = new Date(t.d + 'T12:00:00Z').getUTCDay(), k = WD[w - 1];
+    if (!k) continue;
+    (acc[k] ||= { n: 0, g: 0, c: 0, r: 0 });
+    acc[k].n++; acc[k].g += t.g; acc[k].r += t.r; acc[k].c += t.g - t.r;
+  }
+  return `<details><summary>${label}: by entry night <span class="note">(is one night dragging it down? Wednesday carries any triple swap)</span></summary>
+    <div class="tbl"><table style="margin-top:8px"><thead><tr><th>Entry night</th><th>Trades</th><th>Mean gross %</th><th>Mean cost %</th><th>Mean net %</th></tr></thead><tbody>
+    ${WD.filter(k => acc[k]).map(k => `<tr><td>${k}</td><td>${acc[k].n}</td><td>${sp(acc[k].g / acc[k].n, 4)}</td><td>${fmt(acc[k].c / acc[k].n, 4)}</td><td>${sp(acc[k].r / acc[k].n, 4)}</td></tr>`).join('')}
+    </tbody></table></div></details>`;
+}
+
+// bh = { start, end, rets }: rets[i] is the buy & hold move from start[i] to end[i] (consecutive 20:00 UK entry prices).
+function panel(key, rows, grossRows, bh0, cfd) {
+  const years = yearsOf(rows[0].d, rows.at(-1).x);
+  const dates = rows.map(t => t.x);
+  const byDay = key === 'combined';
+  // Combined: one portfolio return per entry date (both halves summed), so the curve isn't a trade-by-trade blend.
+  const daily = rs => { if (!byDay) return rs.map(t => t.r); const m = new Map(); for (const t of rs) m.set(t.d, (m.get(t.d) || 0) + t.r); return [...m.values()]; };
+  const dDates = byDay ? [...new Set(rows.map(t => t.d))] : dates;
+  const net = metrics(daily(rows), dDates, years), gross = metrics(daily(grossRows), dDates, years);
+  const bh = metrics(bh0.rets, bh0.end, years);
+  const hours = rows.reduce((s, t) => s + t.h, 0) / (byDay ? 2 : 1);
+  const exposure = hours / (years * 365.25 * 24);
+  // Pair each day's gross overnight return with the 20:00→20:00 buy & hold move that contains it, by date.
+  const gm = new Map(); for (const t of grossRows) gm.set(t.d, (gm.get(t.d) || 0) + t.g);
+  const pairs = bh0.start.map((d, i) => [gm.get(d), bh0.rets[i]]).filter(([a]) => a != null);
+  const c = corr(pairs.map(p => p[0]), pairs.map(p => p[1]));
+  return `<div class="panel"><h2>${LABEL[key]} <span style="color:var(--mut);font-weight:400;font-size:13px">· ${rows[0].d} → ${rows.at(-1).x}</span></h2>
+    <div class="facts">
+      <span>Time in market <b>${(exposure * 100).toFixed(1)}%</b> of all hours</span>
+      <span>CAGR per unit of exposure <b>${fmt(net.cagr / exposure, 1)}%</b> (buy &amp; hold ${fmt(bh.cagr, 1)}% at 100%)</span>
+      <span>Correlation to buy &amp; hold <b>${fmt(c)}</b> <span class="note" style="display:inline">(gross overnight vs the 20:00→20:00 move that contains it)</span></span>
+    </div>
+    ${table(net, gross, bh, cfd, byDay)}
+    ${chart(net.eq, bh.eq, dDates, LABEL[key])}
+    ${weekdays(rows, LABEL[key])}
+  </div>`;
+}
+
+function render() {
+  const s = { nq: sel('nq'), gold: sel('gold') };
+  const R = { nq: series('nq', s.nq.fin, s.nq.spr), gold: series('gold', s.gold.fin, s.gold.spr) };
+  const G = { nq: series('nq', 'none', 'none'), gold: series('gold', 'none', 'none') };
+  const cfd = k => ({ total: D.instruments[k].bh_cfd_net_total, cagr: D.instruments[k].bh_cfd_net_cagr });
+  const bhOf = (dates, price) => ({ start: dates.slice(0, -1), end: dates.slice(1), rets: dates.slice(1).map((d, i) => (price(d) / price(dates[i]) - 1) * 100) });
+  // Combined buy & hold: 50/50, rebalanced at each common entry date.
+  const pm = k => new Map(D.instruments[k].entry.map((d, i) => [d, D.instruments[k].price[i]]));
+  const pn = pm('nq'), pg = pm('gold'), common = D.instruments.nq.entry.filter(d => pg.has(d));
+  const bhC = bhOf(common, d => 1), cr = common.slice(1).map((d, i) => ((pn.get(d) / pn.get(common[i]) - 1) + (pg.get(d) / pg.get(common[i]) - 1)) / 2 * 100);
+  bhC.rets = cr;
+  $('out').innerHTML =
+    panel('nq', R.nq, G.nq, bhOf(D.instruments.nq.entry, d => pn.get(d)), cfd('nq')) +
+    panel('gold', R.gold, G.gold, bhOf(D.instruments.gold.entry, d => pg.get(d)), cfd('gold')) +
+    panel('combined', combined(R.nq, R.gold), combined(G.nq, G.gold), bhC, null);
+}
+
+// ── CSV exports ───────────────────────────────────────────────────────────────
+const two = v => { const s = v.toFixed(2); return s === '-0.00' ? '0.00' : s; };
+function csv(rows) {
+  return 'Date,Return %,MAE %\n' + rows.map(t => `${t.d},${two(t.r)},${two(Math.min(t.m, 0))}`).join('\n') + '\n';
+}
+function download(name, text) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
+const costTag = (fin, spr) => fin === 'none' && spr === 'none' ? 'gross' : `net_fin-${fin}_spread-${spr}`;
+function fileFor(book, cfg) {
+  if (book === 'combined') {
+    const rows = combined(series('nq', cfg.nq.fin, cfg.nq.spr), series('gold', cfg.gold.fin, cfg.gold.spr));
+    const tag = cfg.nq.fin === 'none' && cfg.gold.fin === 'none' && cfg.nq.spr === 'none' && cfg.gold.spr === 'none' ? 'gross'
+      : `net_nq-${cfg.nq.fin}-${cfg.nq.spr}_gold-${cfg.gold.fin}-${cfg.gold.spr}`;
+    return [`overnight_hold_combined_${tag}.csv`, csv(rows)];
+  }
+  const c = cfg[book];
+  return [`overnight_hold_${book}_${costTag(c.fin, c.spr)}.csv`, csv(series(book, c.fin, c.spr))];
+}
+// The fixed set: gross, the banked model, and each measured account.
+const PRESETS = [
+  { id: 'gross', label: 'Gross', cfg: { nq: { fin: 'none', spr: 'none' }, gold: { fin: 'none', spr: 'none' } } },
+  { id: 'banked', label: 'Net, our model (banked)', cfg: { nq: { fin: 'oanda', spr: 'oanda' }, gold: { fin: 'oanda', spr: 'oanda' } } },
+  { id: 'accA', label: 'Net, gold on account A', cfg: { nq: { fin: 'B', spr: 'oanda' }, gold: { fin: 'A', spr: 'oanda' } } },
+  { id: 'accB', label: 'Net, account B', cfg: { nq: { fin: 'B', spr: 'oanda' }, gold: { fin: 'B', spr: 'oanda' } } },
+];
+function exportsGrid() {
+  const books = ['nq', 'gold', 'combined'];
+  let h = `<div class="h colh"></div>${PRESETS.map(p => `<div class="h colh">${p.label}</div>`).join('')}`;
+  for (const b of books) {
+    h += `<div><b>${LABEL[b]}</b></div>`;
+    for (const p of PRESETS) {
+      const dup = b === 'nq' && p.id === 'accA';   // NQ was only measured on account B: same file as accB
+      h += dup ? `<div class="note" style="margin:0">same as account B</div>` : `<button class="ghost" data-b="${b}" data-p="${p.id}">${b === 'combined' ? 'Combined' : LABEL[b].split(' ')[0]} · ${p.label}</button>`;
+    }
+  }
+  $('xgrid').innerHTML = h;
+  $('xgrid').querySelectorAll('button').forEach(btn => btn.onclick = () => download(...fileFor(btn.dataset.b, PRESETS.find(p => p.id === btn.dataset.p).cfg)));
+  $('xCurrent').onclick = () => { const cfg = { nq: sel('nq'), gold: sel('gold') }; books.forEach(b => download(...fileFor(b, cfg))); };
+  $('xAll').onclick = async () => {
+    for (const btn of $('xgrid').querySelectorAll('button')) { btn.click(); await new Promise(r => setTimeout(r, 350)); }
+  };
+}
+
+// ── toolkit replica results (fixed: computed in the study, OANDA-model costs) ─
+async function toolkit() {
+  const [T, RS] = await Promise.all([
+    fetch('analysis/output/overnight-hold-toolkit/results.json').then(r => r.json()),
+    fetch('analysis/output/cost-verification/rescore.json').then(r => r.json()),
+  ]);
+  const ks = T.sizes.map(String);
+  const book = b => {
+    const B = T.books[b], f = (v, k) => B[v]?.ftmo[k] ?? {};   // combined has no edge-band runs (per-instrument only in the prereg)
+    return `<h3>${LABEL[b]}</h3><div class="tbl"><table><thead><tr><th>Size (× equity)</th><th>Gross funded</th><th>Net funded</th><th>Zero-edge copy</th><th>Net, edge at CI low / high</th><th>Median days to funded (net)</th><th>Break-even fee, net (% of account)</th></tr></thead><tbody>
+      ${ks.map(k => `<tr><td>${k}×</td><td>${pc(f('gross', k).funded)}</td><td><b>${pc(f('net', k).funded)}</b></td><td>${pc(f('net_zero_edge', k).funded)}</td>
+        <td>${pc(f('net_ci_low', k).funded)} / ${pc(f('net_ci_high', k).funded)}</td><td>${fmt(f('net', k).median_days_to_funded, 0)}</td><td>${fmt(f('net', k).breakeven_fee_pct_of_account, 1)}</td></tr>`).join('')}
+    </tbody></table></div>`;
+  };
+  const H = T.posthoc_A1, hist = Object.entries(H).filter(([k]) => k.includes('historical'));
+  const rs = Object.entries(RS.books).flatMap(([k, b]) => Object.entries(b).map(([n, r]) => `<tr><td>${LABEL[k]}</td><td>${n}</td><td>${sp(r.cagr)}</td>${['0.5', '1', '2'].map(s => `<td>${pc(r.ftmo_funded[s])}</td>`).join('')}</tr>`)).join('');
+  $('toolkit').innerHTML = `<h2>Toolkit replica: FTMO 2-step <span class="tag">our copy of the method</span></h2>
+    <p class="sub" style="margin-bottom:6px">The real toolkit is password-protected, so this is our replica of the method its page describes. Rules: +10% then +5%, 10% static max loss, 5% daily loss on intraday equity (MAE), 4 minimum days, no time limit (stopped at 500 days).
+      Method: ${T.paths.toLocaleString()} block-bootstrap paths (block ${T.block}), seed ${T.seed}. The <b>zero-edge copy</b> is the same trades with their mean removed, so it shows how often luck alone gets funded.
+      These tables were computed in the study with our OANDA-model costs. They do <b>not</b> change with the selectors above. Upload the exports to the real toolkit to check them.</p>
+    ${['nq', 'gold', 'combined'].map(book).join('')}
+    <details><summary>Measured account costs: FTMO funded rate after the cost check</summary><div class="tbl"><table style="margin-top:8px"><thead><tr><th>Book</th><th>Costs</th><th>Net CAGR %</th><th>Funded 0.5×</th><th>1×</th><th>2×</th></tr></thead><tbody>${rs}</tbody></table></div></details>
+    <details><summary>Actual history, no resampling: a fresh attempt every 21 trades (post-hoc check)</summary><div class="tbl"><table style="margin-top:8px"><thead><tr><th>Book / size</th><th>Funded</th><th>Failed</th><th>Unfinished</th><th>Funded of finished</th><th>Median days</th></tr></thead><tbody>
+      ${hist.map(([k, v]) => `<tr><td>${k.replace('_historical_k', ' · ').replace('_', ' ')}×</td><td>${v.funded}</td><td>${v.failed}</td><td>${v.unfinished}</td><td>${pc(v.funded_of_finished)}</td><td>${fmt(v.median_days, 0)}</td></tr>`).join('')}
+    </tbody></table></div></details>
+    <p class="note">The break-even fee is the fee at which the challenge's expected value is zero. It assumes 12 funded months, an 80% payout split and monthly payouts. The FTMO 100k fee (€540 ≈ 0.54% of the account) is an assumption, to be checked.
+      The zero-edge copy's break-even fee is about 1.0–1.2%, so it clears that fee too: what the edge adds is the gap between the two. Source: <code>analysis/output/overnight-hold-toolkit/RESULTS.md</code>.</p>`;
+}
+
+// ── boot ──────────────────────────────────────────────────────────────────────
+function fill(id, opts, def) { $(id).innerHTML = Object.entries(opts).map(([v, l]) => `<option value="${v}"${v === def ? ' selected' : ''}>${l}</option>`).join(''); $(id).onchange = render; }
+D = await fetch('analysis/output/overnight-hold-toolkit/page_trades.json').then(r => r.json());
+fill('finNq', { none: FIN.none, oanda: FIN.oanda, B: FIN.B }, 'B');
+fill('sprNq', SPR, 'oanda');
+fill('finGold', FIN, 'A');
+fill('sprGold', SPR, 'oanda');
+render();
+exportsGrid();
+toolkit().catch(e => { $('toolkit').innerHTML += `<p class="note neg">Couldn't load the toolkit results: ${e.message}</p>`; });
+</script>
+</body>
+</html>
