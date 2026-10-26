@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { bsVega, bsTheta, bsVomma, bsSpeed, bsZomma, bsColor, bsVeta, bsUltima, bsDeltaCall, bsPriceCall, bsPricePut,
-  bsRhoCall, exposureAt, greekLayers, GREEKS } from './greekLayers.js';
+  bsRhoCall, exposureAt, greekLayers, hedgeFlow, GREEKS } from './greekLayers.js';
 import { bsGamma } from './gammaGreeks.js';
 
 let n = 0;
@@ -46,5 +46,37 @@ t('greekLayers: windows strikes, sums legs, reports vega by expiry', () => {
   assert.ok(Number.isFinite(g.totals.gex));
 });
 t('greekLayers rejects a bad book', () => assert.equal(greekLayers(null, 100), null));
+
+// hedge-flow schedule
+const hfLegs = (c, p) => [{ dte: 5, sigma: 0.2, strikes: [95, 100, 105], calls: c, puts: p }];
+t('hedgeFlow: a call-heavy book (dealers long calls) sells rallies and buys dips', () => {
+  const h = hedgeFlow(hfLegs([0, 50000, 0], [0, 0, 0]), 100, { mult: 1, lo: 95, hi: 105 });
+  assert.ok(h.at(104).flow < 0, 'rally: dealers sell');
+  assert.ok(h.at(96).flow > 0, 'dip: dealers buy');
+  assert.ok(h.spotSlope < 0, 'negative slope = damping');
+});
+t('hedgeFlow: zero at spot, and a put-heavy book (dealers short puts) chases the move', () => {
+  const h = hedgeFlow(hfLegs([0, 50000, 0], [0, 0, 0]), 100, { lo: 95, hi: 105 }), g = hedgeFlow(hfLegs([0, 0, 0], [0, 50000, 0]), 100, { lo: 95, hi: 105 });
+  near(h.at(100).flow, 0, 1e-6, 'flow at spot');
+  assert.ok(g.at(104).flow > 0 && g.at(96).flow < 0, 'rally: dealers buy more');
+  assert.ok(g.spotSlope > 0);
+});
+t('hedgeFlow: the flow at P equals minus the change in net dealer delta times spot (checked against exposureAt dex)', () => {
+  const legs = hfLegs([100, 300, 50], [40, 80, 20]), h = hedgeFlow(legs, 100, { mult: 10, lo: 97, hi: 103 });
+  const dex = P => legs[0].strikes.reduce((a, K, i) => a + exposureAt(P, K, 5 / 365, 0.2, legs[0].calls[i], legs[0].puts[i], 10).dex / P, 0);
+  const q = h.at(103);
+  near(q.flow, -(dex(q.price) - dex(100)) * 100, 1e-6, 'flow vs dex');
+});
+t('hedgeFlow: maxDte drops far expiries, a bad book returns null', () => {
+  const legs = [{ dte: 2, sigma: 0.2, strikes: [100], calls: [1000], puts: [0] }, { dte: 90, sigma: 0.2, strikes: [100], calls: [900000], puts: [0] }];
+  const nearBook = hedgeFlow(legs, 100, { maxDte: 3, lo: 95, hi: 105 }), all = hedgeFlow(legs, 100, { lo: 95, hi: 105 });
+  assert.ok(Math.abs(all.at(104).flow) > 10 * Math.abs(nearBook.at(104).flow));
+  assert.equal(hedgeFlow(null, 100), null);
+  assert.equal(hedgeFlow(legs, 100, { maxDte: 0.1 }), null);
+});
+t('hedgeFlow: turns lists the prices where the slope changes sign', () => {
+  const h = hedgeFlow(hfLegs([0, 0, 80000], [80000, 0, 0]), 100, { lo: 93, hi: 107, n: 141 });
+  assert.ok(Array.isArray(h.turns));
+});
 
 console.log(`\nall ${n} passed`);

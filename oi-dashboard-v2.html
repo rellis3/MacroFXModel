@@ -96,9 +96,9 @@ svg text{font-family:var(--mono)}
   </div>
 
   <div class="card" id="hpoCard">
-    <h2><em>00b</em> Hedging plan, textbook version <span class="pill" style="font-size:11px;padding:2px 9px;margin-left:8px;cursor:default">shadow · not live</span>
+    <h2><em>00b</em> Level orders, textbook version <span class="pill" style="font-size:11px;padding:2px 9px;margin-left:8px;cursor:default">shadow · not live</span>
       <span class="tgl"><button class="btn" id="hpoTvBtn" title="Copies the textbook plan as a block for the 'OI Bot Trades' TradingView indicator (pine/OI Bot Trades.pine): the same zones as the hedge plan, labelled HEDGE oi-fade / oi-follow, entry at the wall, stop box, target box. Paste it alone, or below the forecast-line hedge plan to see both.">⬇ TradingView (textbook plan)</button><a class="btn" href="/api/hedging-plan-oi/record" target="_blank" title="Forward record: both plans scored on the same sessions (counts only until 250 sessions)">forward record</a></span></h2>
-    <div class="sub"><b>Same playbook, orders on the OI map's own levels.</b> When dealers are long gamma ("PIN") they sell rallies and buy dips, so the big walls act as edges: <b>fade</b> the nearest wall each side, stop a small buffer beyond it (a quarter of the day's σ), target the next level back toward price. When they are short gamma ("BREAKOUT") they chase, so a confirmed break of a wall is fed: <b>follow</b> it, stop back inside the wall, target the next level out. A wall the day cannot plausibly reach (beyond 1.5σ) is not an order. The line under each market shows how far the current plan's entries sit by comparison. <b>This is the textbook structure, not a proven edge</b> (walls did not beat placebo levels; the forecast-line version averaged −0.03R after costs). It is scored forward, side by side.</div>
+    <div class="sub"><b>Not a hedge.</b> These are two-sided pending entry orders (one fades or follows each side, one trade a day). The dealers' hedging is drawn in 05e. The name "hedge" on the TradingView block is kept only because the indicator files it under that switch. <b>Same playbook, orders on the OI map's own levels.</b> When dealers are long gamma ("PIN") they sell rallies and buy dips, so the big walls act as edges: <b>fade</b> the nearest wall each side, stop a small buffer beyond it (a quarter of the day's σ), target the next level back toward price. When they are short gamma ("BREAKOUT") they chase, so a confirmed break of a wall is fed: <b>follow</b> it, stop back inside the wall, target the next level out. A wall the day cannot plausibly reach (beyond 1.5σ) is not an order. The line under each market shows how far the current plan's entries sit by comparison. <b>This is the textbook structure, not a proven edge</b> (walls did not beat placebo levels; the forecast-line version averaged −0.03R after costs). It is scored forward, side by side.</div>
     <div class="tbl" style="overflow-x:auto"><div id="hpoBody"><div class="sub">Loading…</div></div></div>
     <div class="legend" id="hpoNote"></div>
   </div>
@@ -178,6 +178,14 @@ svg text{font-family:var(--mono)}
     </div>
   </div>
 
+  <div class="card" id="hfCard">
+    <h2><em>05e</em> Dealer hedge flow: what they must trade on the way to each price</h2>
+    <div class="sub"><b>The dynamic-hedging requirement, drawn.</b> Dealers who sold the options keep a hedge in the underlying. When price moves, their option delta changes and the hedge goes stale, so they must buy or sell to re-balance. The curve is how much, at each price, measured from today's price (right = they buy, left = they sell; notional at spot). <span style="color:#46b87a">Green</span> stretches fight the move (they sell into rallies and buy dips: <b>damping</b>), <span style="color:#e8615f">red</span> stretches feed it (they buy as price rises and sell as it falls: <b>reinforcing</b>). Where the colour flips is the per-strike version of the gamma flip. Uses the expiry set chosen in 05d. Instant moves: time and vol held, so charm and vanna are separate.</div>
+    <svg id="hfChart" width="100%" viewBox="0 0 1000 520"></svg>
+    <ul id="hfRead" style="margin:10px 0 0;padding-left:18px;color:var(--tx2);font-size:13px;line-height:1.6"></ul>
+    <div class="legend">Mechanics, not a signal: how much dealers must trade says nothing about which way price goes. Walls and flips did not beat placebo levels in earlier tests; this view has its own placebo test registered first (oi_research_book/HEDGE_FLOW_PREREG.md). Assumes dealers are long calls and short puts and hold the other side of all open interest, so sizes are upper bounds.</div>
+  </div>
+
   <h2 class="sech"><em>06</em> The brief — six questions, in order <span>how far can price go · which levels will be reached · where hedging calms or amplifies · is the market calmer or more nervous · is positioning building · what changed overnight</span></h2>
   <div id="brief"></div>
 
@@ -208,7 +216,7 @@ svg text{font-family:var(--mono)}
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script type="module">
 import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol, parseOIMatrix, oiRippleBook, oiBookLegs } from './js/oi.js';
-import { greekLayers, GREEKS } from './js/greekLayers.js';
+import { greekLayers, hedgeFlow, GREEKS } from './js/greekLayers.js';
 import { bsGamma } from './js/gammaGreeks.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';
 import { cmeBookContracts } from './js/hedgingBooks.js';
@@ -813,8 +821,47 @@ function drawGreeks(){
   read.innerHTML = lines.map(x => `<li>${x}</li>`).join('');
   what.innerHTML = act.map(g => `<li><b style="color:${GK_KIND_COL[g.kind]}">${g.label}</b> ${esc(g.text)}</li>`).join('');
 }
-$('#gkExp').querySelectorAll('[data-gexp]').forEach(el => el.onclick = () => { GK.maxDte = +el.dataset.gexp; $('#gkExp').querySelectorAll('[data-gexp]').forEach(x => x.classList.toggle('on', x === el)); drawGreeks(); });
+$('#gkExp').querySelectorAll('[data-gexp]').forEach(el => el.onclick = () => { GK.maxDte = +el.dataset.gexp; $('#gkExp').querySelectorAll('[data-gexp]').forEach(x => x.classList.toggle('on', x === el)); drawGreeks(); try { drawHedgeFlow(); } catch (_) {} });
 gkPills();
+
+// ── 05e dealer hedge flow: the schedule of what dealers must trade on the way to each price (js/greekLayers.js hedgeFlow) ───────────
+function drawHedgeFlow(){
+  const D = CUR, svg = $('#hfChart'), read = $('#hfRead'); if (!svg) return;
+  const msg = m => { svg.setAttribute('viewBox', '0 0 1000 60'); svg.innerHTML = `<text x="500" y="34" text-anchor="middle" fill="#a8b1bd" font-size="13">${m}</text>`; read.innerHTML = ''; };
+  if (!D) return msg('No data for this instrument.');
+  let b = null; try { b = oiBookLegs(D.e); } catch (_) {}
+  if (!b) return msg('No per-expiry book stored for this instrument.');
+  const lo = b.spot - 2.2 * D.rm, hi = b.spot + 2.2 * D.rm;
+  const H = hedgeFlow(b.legs, b.spot, { mult: b.mult, maxDte: GK.maxDte, lo, hi, n: 111, flatSigma: b.flat });
+  if (!H) return msg('Not enough book near price in this expiry set.');
+  const W = 1000, Hh = 520, L = 90, Rm = 130, T = 18, B = 30, mx = Math.max(...H.points.map(p => Math.abs(p.flow))) || 1;
+  const yOf = p => T + (hi - p) / (hi - lo) * (Hh - T - B), cx = L + (W - L - Rm) / 2, half = (W - L - Rm) / 2 - 8, xOf = f => cx + f / mx * half;
+  let h = `<line x1="${cx}" x2="${cx}" y1="${T}" y2="${Hh - B}" stroke="rgba(255,255,255,.18)"/>`;
+  // coloured fill between the axis and the curve, one quad per step: red when the flow feeds the move away from spot, green when it opposes it
+  for (let i = 1; i < H.points.length; i++) {
+    const a = H.points[i - 1], c = H.points[i], up = c.price >= b.spot, feeds = (c.flow >= 0) === up && Math.abs(c.flow) > 0;
+    h += `<polygon points="${cx},${yOf(a.price).toFixed(1)} ${xOf(a.flow).toFixed(1)},${yOf(a.price).toFixed(1)} ${xOf(c.flow).toFixed(1)},${yOf(c.price).toFixed(1)} ${cx},${yOf(c.price).toFixed(1)}" fill="${feeds ? '#e8615f' : '#46b87a'}" opacity=".30"/>`;
+  }
+  h += `<path d="${H.points.map((p, i) => (i ? 'L' : 'M') + xOf(p.flow).toFixed(1) + ' ' + yOf(p.price).toFixed(1)).join(' ')}" fill="none" stroke="#e6edf6" stroke-width="1.8"/>`;
+  const refs = [[b.spot, '#ffffff', 'spot', 0], [D.flip, '#a487f0', 'GEX flip', 4], [D.mp, '#d9c04a', 'max pain', 4], [D.cw, '#e8615f', 'call wall', 4], [D.pw, '#46b87a', 'put wall', 4], ...H.turns.map(t => [t, '#7ad3a0', 'slope flips', 2])];
+  refs.filter(r => Number.isFinite(r[0]) && r[0] > lo && r[0] < hi).forEach(([p, c, name, dash]) => {
+    const y = yOf(p);
+    h += `<line x1="${L - 6}" x2="${W - Rm + 6}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="${dash ? 1 : 1.6}" ${dash ? 'stroke-dasharray="5 4"' : ''} opacity=".8"/><text x="${W - Rm + 10}" y="${y + 4}" fill="${c}" font-size="11">${name} ${px(p)}</text>`;
+  });
+  for (let k = 0; k <= 8; k++) { const p = lo + (hi - lo) * k / 8; h += `<text x="${L - 10}" y="${yOf(p) + 4}" text-anchor="end" fill="#a8b1bd" font-size="11">${px(p)}</text>`; }
+  h += `<text x="${L}" y="${Hh - 8}" fill="#7f8a98" font-size="11">dealers SELL ←</text><text x="${W - Rm}" y="${Hh - 8}" text-anchor="end" fill="#7f8a98" font-size="11">→ dealers BUY</text><text x="${cx}" y="${Hh - 8}" text-anchor="middle" fill="#7f8a98" font-size="11">${fmtBig(mx)} full scale</text>`;
+  svg.setAttribute('viewBox', `0 0 ${W} ${Hh}`); svg.innerHTML = h;
+  // readout: the flow at +/- one expected move, and what it does
+  const lines = [], up = H.at(b.spot + D.rm), dn = H.at(b.spot - D.rm);
+  const word = (q, dir) => { const buy = q.flow >= 0, feeds = buy === (dir > 0); return `${buy ? 'buy' : 'sell'} <b>${fmtBig(Math.abs(q.flow))}</b> (${feeds ? '<span style="color:#e8615f">reinforcing, they chase the move</span>' : '<span style="color:#46b87a">damping, they lean against it</span>'})`; };
+  lines.push(`If price rises one expected move (to ${px(up.price)}): dealers ${word(up, 1)}.`);
+  lines.push(`If price falls one expected move (to ${px(dn.price)}): dealers ${word(dn, -1)}.`);
+  const ratio = Math.abs(up.flow) / (Math.abs(dn.flow) || 1);
+  if (Math.abs(up.flow) > 0 && Math.abs(dn.flow) > 0 && (ratio > 1.5 || ratio < 0.67)) lines.push(`The two sides are lopsided: the <b>${ratio > 1 ? 'upside' : 'downside'}</b> carries about ${Math.max(ratio, 1 / ratio).toFixed(1)}× the flow.`);
+  lines.push(H.spotSlope < 0 ? "At today's price the slope is <b style=\"color:#46b87a\">damping</b>: small moves are leaned against." : "At today's price the slope is <b style=\"color:#e8615f\">reinforcing</b>: small moves are chased.");
+  if (H.turns.length) lines.push(`Slope changes sign at ${H.turns.map(px).join(', ')}: the hedging behaviour switches between damping and reinforcing there.`);
+  read.innerHTML = lines.map(x => `<li>${x}</li>`).join('');
+}
 
 // ── T: the terrain — OI bars, per-expiry fans and labelled levels on one canvas ─────────────────────────────────────────────
 const COGX = { maxDte: 3 };
@@ -1205,7 +1252,7 @@ function rail(){
 async function refresh(){
   CUR = derive(SYM); rail();
   drawHedging();     // async and self-contained: first, so a failure in another panel cannot skip it
-  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
+  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
   drawBrief();

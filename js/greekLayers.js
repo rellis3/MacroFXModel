@@ -127,3 +127,50 @@ export function greekLayers(legs, spot, { mult = 1, maxDte = Infinity, lo = -Inf
     vega: { net: totals.vex || 0, byExpiry: vegaByExp.map(x => ({ ...x, share: Math.abs(x.vega) / absTot })), peakStrike: peak?.strike ?? null },
   };
 }
+
+/**
+ * DEALER HEDGE-FLOW SCHEDULE. The dealer's option book carries a net delta D(P) that depends on where price is. If price moves from spot to P, the
+ * hedge they hold (minus D) is wrong by D(P) - D(spot), and they must trade the underlying to fix it. This is the "dynamic hedging requirement"
+ * made explicit: how much they must buy or sell on the way to each price, and whether that flow fights the move or feeds it.
+ *   flow(P) = -(D(P) - D(spot)) x spot       notional at today's price; positive = dealers BUY on the way to P, negative = SELL
+ *   slope   = d flow / d P                   positive = they buy as price rises (reinforcing, short gamma), negative = they sell into rises (damping, long gamma)
+ * An instantaneous move: no time passes and implied vol is held, so charm and vanna are not in it (they move the schedule, they are separate layers).
+ * Same sign convention and same book legs as exposureAt(): dealers long calls, short puts. Context, not a validated signal.
+ */
+export function hedgeFlow(legs, spot, { mult = 1, maxDte = Infinity, lo, hi, n = 81, flatSigma = 0.2 } = {}) {
+  if (!Array.isArray(legs) || !(spot > 0)) return null;
+  const a = Number.isFinite(lo) ? lo : spot * 0.9, b = Number.isFinite(hi) ? hi : spot * 1.1;
+  if (!(b > a) || n < 5) return null;
+  const used = legs.filter(l => !(Number.isFinite(l.dte) && l.dte > maxDte));
+  if (!used.length) return null;
+  const deltaAt = P => {
+    let d = 0;
+    for (const l of used) {
+      const T = Math.max(Number.isFinite(l.dte) ? l.dte : 1, 0.25) / 365, s = l.sigma > 0 ? l.sigma : flatSigma;
+      for (let i = 0; i < l.strikes.length; i++) {
+        const K = l.strikes[i]; if (!(K > 0)) continue;
+        const c = l.calls[i] || 0, p = l.puts[i] || 0; if (!c && !p) continue;
+        const dc = bsDeltaCall(P, K, T, s);
+        d += mult * (c * dc + p * (1 - dc));
+      }
+    }
+    return d;
+  };
+  const d0 = deltaAt(spot), points = [];
+  for (let i = 0; i < n; i++) {
+    const p = a + (b - a) * i / (n - 1), d = deltaAt(p);
+    points.push({ price: p, delta: d, flow: -(d - d0) * spot });
+  }
+  for (let i = 0; i < n; i++) {
+    const lo2 = points[Math.max(0, i - 1)], hi2 = points[Math.min(n - 1, i + 1)];
+    points[i].slope = (hi2.flow - lo2.flow) / (hi2.price - lo2.price);
+  }
+  // price levels where the slope changes sign: the hedge flow switches from damping to reinforcing (the per-strike picture of a gamma flip)
+  const turns = [];
+  for (let i = 1; i < n; i++) {
+    const x = points[i - 1].slope, y = points[i].slope;
+    if (x !== 0 && y !== 0 && Math.sign(x) !== Math.sign(y)) turns.push(points[i - 1].price + (points[i].price - points[i - 1].price) * (Math.abs(x) / (Math.abs(x) + Math.abs(y))));
+  }
+  const at = P => { let best = points[0]; for (const q of points) if (Math.abs(q.price - P) < Math.abs(best.price - P)) best = q; return best; };
+  return { spot, delta0: d0 * spot, points, turns, at, spotSlope: at(spot).slope };
+}
