@@ -166,13 +166,14 @@ def main():
             n = len(T)
             rows = []
             dpos = np.zeros(len(dax)); first, last = T[0][1], T[-1][2]
+            dent = np.zeros(len(dax), int)          # entry row of the position held on each day
             d_sp = np.zeros(len(dax))
             for k, (ym, i, j, s) in enumerate(T):
                 prev_s = T[k - 1][3] if k and T[k - 1][2] == i else 0
                 next_s = T[k + 1][3] if k + 1 < n and T[k + 1][1] == j else 0
                 sp_in = hs[i] if (s != 0 and s != prev_s) else 0.0      # opening (or reversing into) this position
                 sp_out = hs[j] if (s != 0 and s != next_s) else 0.0     # closing (or reversing out of) it
-                dpos[i + 1:j + 1] = s
+                dpos[i + 1:j + 1] = s; dent[i + 1:j + 1] = i
                 d_sp[i + 1] += sp_in; d_sp[j] += sp_out
                 if s == 0:
                     continue
@@ -185,13 +186,25 @@ def main():
                              'sp': sp_in + sp_out, 'fin': fin, 'hs_measured': int(hs_src[i] and hs_src[j]),
                              'ifo': float(level[ym]), 'ifo_prev': float(level[ym - 1])})
             # daily mark-to-market over the book's whole window (flat days are rows with 0)
+            # A position keeps its size for the whole month (fixed notional at the entry close), so each day's row is
+            # that day's P&L as a % of the equity at the previous close; compounding a month's rows gives the trade's
+            # return exactly. (Re-basing each day on the previous close would resize a short daily and misstate it.)
             dd = np.arange(first + 1, last + 1)
             s_d = dpos[dd]
-            dg = s_d * (C[dd] / C[dd - 1] - 1) * 100
-            adv_d = np.where(s_d > 0, (L[dd] / C[dd - 1] - 1) * 100, np.where(s_d < 0, -(H[dd] / C[dd - 1] - 1) * 100, 0))
+            ce = C[dent[dd]]                                    # entry close of the position held that day
+            eq_prev = 1 + s_d * (C[dd - 1] - ce) / ce            # equity at the previous close, per unit at entry
+            per = 100 / (ce * eq_prev)
+            dg = s_d * (C[dd] - C[dd - 1]) * per
+            adv_d = np.where(s_d > 0, (L[dd] - C[dd - 1]) * per, np.where(s_d < 0, -(H[dd] - C[dd - 1]) * per, 0))
             dm = np.minimum.reduce([adv_d, dg, np.zeros(len(dd))])
-            dfin = np.where(s_d > 0, fin_long[dd], np.where(s_d < 0, fin_short[dd], 0))
-            dsp = d_sp[dd]
+            value = C[dd - 1] / ce / eq_prev                    # position value / equity: financing is charged on value
+            dfin = np.where(s_d > 0, fin_long[dd], np.where(s_d < 0, fin_short[dd], 0)) * value
+            dsp = d_sp[dd] / eq_prev
+            for _, i, j, s in T:
+                if s:
+                    seg = (dd > i) & (dd <= j)
+                    comp = (np.prod(1 + dg[seg] / 100) - 1) * 100
+                    assert abs(comp - s * (C[j] / C[i] - 1) * 100) < 1e-6, 'daily rows do not compound to the trade'
             book = f'{t}_{mode}'
             page['books'][book] = {
                 'trades': {k: ([r[k] for r in rows] if k in ('m', 'i', 'j', 's', 'hs_measured') else r5([r[k] for r in rows]))
