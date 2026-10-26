@@ -91,6 +91,29 @@
       so a toolkit run on these files can differ slightly from the replica below, which used unrounded returns.</p>
   </div>
 
+  <div class="panel" id="journal">
+    <h2>Journal import export <span class="tag">colez-import-template-standard</span></h2>
+    <p class="sub" style="margin-bottom:10px">One row per trade in the import template's 13 columns:
+      <code>Date,Time,Exit Date,Exit Time,Instrument,Direction,Model,Risk %,Return %,MAE %,MFE %,Tags,Notes</code>.
+      Uses the cost settings at the top of the page. Times are UK (20:00 entry, 14:30 exit next day). Return % is signed; MAE % and MFE % are positive sizes, as in the template.</p>
+    <div class="grid">
+      <div><label>Position size (× account equity)</label><select id="jSize">
+        <option value="0.5">0.5×</option><option value="1" selected>1× (Return % = the trade's % move)</option><option value="2">2×</option><option value="3">3×</option></select></div>
+      <div><label>Risk % column</label><select id="jRisk">
+        <option value="unit" selected>1% of notional × size (the R unit)</option><option value="blank">Leave blank</option></select></div>
+    </div>
+    <p class="note">% columns are % of the account at the chosen size: Return % = size × net return, MAE % = size × (worst M1 low + that trade's costs),
+      MFE % = size × (best M1 high − costs, floored at 0). Costs are counted as already paid at both extremes, as in the toolkit CSVs.
+      The overnight hold has no stop, so there is no true risk per trade. The Risk % column uses a fixed 1% of notional as the R unit (the old engine page's convention), which makes R = Return % ÷ size.
+      Three decimals, because the edge is only about +0.03% a trade and two would round much of it away.
+      For the combined book, export "Both" at 0.5×: that is the study's half-size-each portfolio.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+      <button class="ghost" data-j="nq">NAS100</button>
+      <button class="ghost" data-j="gold">Gold</button>
+      <button data-j="both">Both, one file (sorted by entry)</button>
+    </div>
+  </div>
+
   <div class="panel" id="toolkit"><h2>Toolkit replica: FTMO 2-step</h2><p class="note">Loading…</p></div>
 
   <div class="panel">
@@ -409,6 +432,30 @@ function exportsGrid() {
     for (const btn of $('xgrid').querySelectorAll('button')) { btn.click(); await new Promise(r => setTimeout(r, 350)); }
   };
 }
+
+// ── journal import export (colez-import-template-standard.csv) ────────────────
+const SYM = { nq: 'NAS100', gold: 'XAUUSD' };
+const q = v => /[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v;
+const three = v => { const s = v.toFixed(3); return s === '-0.000' ? '0.000' : s; };
+function journalRows(key) {
+  const { fin, spr } = sel(key), I = D.instruments[key], k = +$('jSize').value;
+  const finRows = fin === 'none' ? null : I.fin[fin], med = finRows ? [...finRows].sort((a, b) => a - b)[finRows.length >> 1] : 0;
+  return series(key, fin, spr).map((t, i) => {
+    const cost = t.g - t.r, wd = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date(t.d + 'T12:00:00Z').getUTCDay()];
+    const tags = [wd, finRows && t.fc > 2 * med ? 'triple-swap' : ''].filter(Boolean).join(' ');
+    const notes = `${fin === 'none' && spr === 'none' ? 'gross' : `net: financing ${FIN[fin]}, spread ${SPR[spr]}`}; gross ${three(t.g)}, spread ${three(t.sc)}, financing ${three(t.fc)} (% of notional)`;
+    return { d: t.d, row: [t.d, '20:00', t.x, '14:30', SYM[key], 'Long', 'Overnight Hold',
+      $('jRisk').value === 'blank' ? '' : (k * 1).toFixed(2),
+      three(k * t.r), three(k * (Math.abs(Math.min(t.mg, 0)) + cost)), three(k * Math.max(I.mfe[i] - cost, 0)), tags, notes].map(q).join(',') };
+  });
+}
+function journalCsv(which) {
+  const rows = (which === 'both' ? [...journalRows('nq'), ...journalRows('gold')] : journalRows(which))
+    .sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0);
+  return 'Date,Time,Exit Date,Exit Time,Instrument,Direction,Model,Risk %,Return %,MAE %,MFE %,Tags,Notes\n' + rows.map(r => r.row).join('\n') + '\n';
+}
+document.querySelectorAll('[data-j]').forEach(b => b.onclick = () =>
+  download(`overnight_hold_journal_${b.dataset.j}_${$('jSize').value}x.csv`, journalCsv(b.dataset.j)));
 
 // ── toolkit replica results (fixed: computed in the study, OANDA-model costs) ─
 async function toolkit() {

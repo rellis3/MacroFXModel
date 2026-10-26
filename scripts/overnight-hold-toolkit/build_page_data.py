@@ -3,7 +3,8 @@
 The page picks the financing (none / OANDA model / measured account A or B) and the spread (none / OANDA bid/ask /
 the owner's fill bracket) and builds the toolkit CSVs in the browser. Financing per account follows
 scripts/cost-verification/rescore.py exactly, so the page's numbers match rescore.json.
-Also daily candles (OANDA M1 mid, UTC days, trade window only) for the trade-marker chart.
+Also daily candles (OANDA M1 mid, UTC days, trade window only) for the trade-marker chart, and MFE per trade:
+the highest M1 high between entry and exit, the same window and bars that reproduce the stored MAE to 0.005%.
 Writes analysis/output/overnight-hold-toolkit/page_trades.json (percentages and prices only: the repo is public).
 """
 import json
@@ -43,6 +44,13 @@ def main():
         m1 = m1[(m1.time >= t.date.iloc[0] - pd.Timedelta(days=3)) & (m1.time <= pd.Timestamp(t.exitDate.iloc[-1]) + pd.Timedelta(days=3))]
         day = m1.groupby(m1.time.dt.floor('D')).agg(o=('open', 'first'), h=('high', 'max'), l=('low', 'min'), c=('close', 'last'))
         day = day[day.index.dayofweek < 5]   # drop the few-hour Sunday-evening stub bar
+        ep = m1.time.astype('datetime64[s]').astype('int64').to_numpy()
+        i0, i1 = np.searchsorted(ep, t.entryEpoch.to_numpy()), np.searchsorted(ep, t.exitEpoch.to_numpy() + 60)
+        hi, lo = m1.high.to_numpy(), m1.low.to_numpy()
+        mfe = [max(0.0, (hi[a:b].max() - p) / p * 100) for a, b, p in zip(i0, i1, t.entryPrice)]
+        # The engine stored MAE rounded to 2dp, which can sit just inside the trade's own loss; use the unrounded low,
+        # and never less adverse than the close-to-close result.
+        mae = np.minimum.reduce([[(lo[a:b].min() - p) / p * 100 for a, b, p in zip(i0, i1, t.entryPrice)], t.grossPct.to_numpy(), np.zeros(len(t))])
         out['instruments'][key] = {
             'entry': t.date.dt.strftime('%Y-%m-%d').tolist(),
             'exit': t.exitDate.tolist(),
@@ -52,7 +60,8 @@ def main():
             'hold_h': r((t.exitEpoch - t.entryEpoch) / 3600),
             'price': r(t.entryPrice),
             'gross': r(t.grossPct),
-            'mae': r(np.minimum(t.maePct, 0)),
+            'mae': r(mae),
+            'mfe': r(mfe),
             'spread': r(t.spread),
             'fin': {g: r(a) for g, a in fin.items()},
             'bh_cfd_net_cagr': bh['net_cagr'], 'bh_cfd_net_total': bh['net_totalPct'],
