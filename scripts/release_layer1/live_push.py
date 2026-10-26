@@ -16,7 +16,7 @@ from schedule import all_events, HIST_END, BASE
 from daily_lib import refresh_daily, load_daily
 
 KV_KEY = 'release_layer1_v1'
-NAMES = ['SR3U6', 'IH7', 'ZTZ6', 'ZNZ6', 'DXZ6', 'NQZ6']
+NAMES = ['SR3U6', 'IH7', 'ZTZ6', 'ZNZ6', 'DXZ6', 'NQZ6', '6EZ6', '6BZ6', '6JZ6', 'GCZ6', 'ESZ6', 'VIX', 'VXN']
 
 
 def kv_set(obj):
@@ -25,9 +25,9 @@ def kv_set(obj):
     with urllib.request.urlopen(req, timeout=60) as r: return r.getcode(), r.read().decode()[:120]
 
 
-def pull(names, hours=30):
+def pull(names, hours=24):
     import refresh_leg_bars as R
-    from ib_insync import IB, Future, util
+    from ib_insync import IB, Future, Index, util
     found = R.B.discover(); stem = lambda n: found[n]['stem'] if n in found else f'{R.IB_SPEC[n][1]}_{n}'
     ib = IB()
     try: ib.connect('127.0.0.1', R.IB_PORT, clientId=23, timeout=20, readonly=True)
@@ -35,13 +35,16 @@ def pull(names, hours=30):
     notes = []
     for n in names:
         sym, exch, ccy, month = R.IB_SPEC[n]
-        det = ib.reqContractDetails(Future(symbol=sym, exchange=exch, currency=ccy, lastTradeDateOrContractMonth=month))
+        idx = month == 'IND'                                                           # cash volatility indices: TRADES bars, no expiry
+        det = ib.reqContractDetails(Index(symbol=sym, exchange=exch, currency=ccy) if idx else Future(symbol=sym, exchange=exch, currency=ccy, lastTradeDateOrContractMonth=month))
         if not det: notes.append(f'{n}: not found'); continue
-        c = det[0].contract; c.lastTradeDateOrContractMonth = c.lastTradeDateOrContractMonth.split(' ')[0]
-        try: bars = ib.reqHistoricalData(c, endDateTime='', durationStr=f'{hours * 3600} S', barSizeSetting='1 min', whatToShow='MIDPOINT', useRTH=False, formatDate=2, timeout=120)
+        c = det[0].contract
+        if not idx: c.lastTradeDateOrContractMonth = c.lastTradeDateOrContractMonth.split(' ')[0]
+        try: bars = ib.reqHistoricalData(c, endDateTime='', durationStr=f'{hours * 3600} S', barSizeSetting='1 min', whatToShow='TRADES' if idx else 'MIDPOINT', useRTH=False, formatDate=2, timeout=120)
         except Exception as e: notes.append(f'{n}: {e}'); continue
         if bars:
             df = util.df(bars); df.insert(0, 'time', pd.to_datetime(df.pop('date'), utc=True).dt.strftime('%Y-%m-%dT%H:%M:%SZ')); R.merge(R.SRC / f'{stem(n)}.parquet', df)
+        else: notes.append(f'{n}: no bars returned')
         time.sleep(2)
     ib.disconnect(); return 'pulled ' + ', '.join(names) + ('; ' + '; '.join(notes) if notes else '')
 
@@ -53,7 +56,7 @@ if __name__ == '__main__':
     in_window = [e for e in live if e['t'] - pd.Timedelta(minutes=10) <= now <= e['t'] + pd.Timedelta(minutes=250)]
     note = 'no release in its window: rebuilt from disk'
     if (in_window or a.force_pull) and not a.no_pull:
-        note = pull(NAMES, hours=30 if a.force_pull else 8)
+        note = pull(NAMES, hours=24 if a.force_pull else 8)
         if in_window: note = f'{", ".join(e["family"] for e in in_window)} in window: ' + note
     try: dnote = refresh_daily(max_age_h=4)
     except Exception as e: dnote = f'daily refresh failed ({type(e).__name__}); cache used'
@@ -66,7 +69,7 @@ if __name__ == '__main__':
         r, P = build_event(S, e, event_days); r['id'] = f"{r['t']}|{e['family']}"; r['status'] = e['status']
         r['inProgress'] = bool(now < e['t'] + pd.Timedelta(minutes=240)); rows.append(r); paths[r['id']] = P
     ahead = [dict(t=e['t'].strftime('%Y-%m-%dT%H:%M:%SZ'), family=e['family'], name=e['name'], consensus=e.get('consensus'), previous=e.get('previous')) for e in EV if e['t'] > now]
-    last_bar = {k: max((s.index.max() for _, s in S[k].cands), default=None) for k in ('sofr', 'eur', 'zt', 'zn', 'dx', 'nq')}
+    last_bar = {k: max((s.index.max() for _, s in S[k].cands), default=None) for k in tuple(ASSETS)}
     payload = dict(asOf=now.isoformat(), note=note, rows=rows, paths=paths, ahead=ahead, lastBar={k: (v.isoformat() if v is not None else None) for k, v in last_bar.items()})
     print(f'{now:%Y-%m-%d %H:%M}Z  {note}; {len(rows)} live releases built, {len(ahead)} ahead; newest bars: ' + ', '.join(f"{k} {v:%m-%d %H:%M}" for k, v in last_bar.items() if v is not None))
     if not a.no_push:

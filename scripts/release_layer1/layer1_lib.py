@@ -11,9 +11,11 @@ ROOT = Path(__file__).resolve().parents[2]
 AO = ROOT / 'analysis' / 'output'
 DEEP, BONDS, S1M = AO / 'stir_1m_deep', AO / 'stir_1m_bonds', AO / 'stir_1m'
 OFFS = list(range(-30, 241))                       # minutes from the release
-KEYS = ['sofr', 'eur', 'spr', 'zt', 'zn', 'dx', 'nq']
-LABEL = {'sofr': 'SOFR Sep26 leg (bp)', 'eur': 'Euribor Mar27 leg (bp)', 'spr': 'SOFR - Euribor line (bp)', 'zt': 'US 2y note future (%)', 'zn': 'US 10y note future (%)', 'dx': 'Dollar index future (%)', 'nq': 'Nasdaq (%)'}
-UNIT = {'sofr': 'bp', 'eur': 'bp', 'spr': 'bp', 'zt': '%', 'zn': '%', 'dx': '%', 'nq': '%'}
+KEYS = ['sofr', 'eur', 'spr', 'zt', 'zn', 'dx', 'nq', 'eurusd', 'gbpusd', 'usdjpy', 'gold', 'es', 'vix', 'vxn']
+ASSETS = ['sofr', 'eur', 'zt', 'zn', 'dx', 'nq', 'eurusd', 'gbpusd', 'usdjpy', 'gold', 'es', 'vix', 'vxn']      # the ones measured directly (the line is built from sofr and eur)
+LABEL = {'sofr': 'SOFR Sep26 leg (bp)', 'eur': 'Euribor Mar27 leg (bp)', 'spr': 'SOFR - Euribor line (bp)', 'zt': 'US 2y note future (%)', 'zn': 'US 10y note future (%)', 'dx': 'Dollar index future (%)', 'nq': 'Nasdaq (%)',
+         'eurusd': 'EUR/USD (%)', 'gbpusd': 'GBP/USD (%)', 'usdjpy': 'USD/JPY (%)', 'gold': 'Gold (%)', 'es': 'S&P 500 (%)', 'vix': 'VIX (points)', 'vxn': 'VXN (points)'}
+UNIT = {'sofr': 'bp', 'eur': 'bp', 'spr': 'bp', 'zt': '%', 'zn': '%', 'dx': '%', 'nq': '%', 'eurusd': '%', 'gbpusd': '%', 'usdjpy': '%', 'gold': '%', 'es': '%', 'vix': 'pt', 'vxn': 'pt'}
 # rates direction: +1 means "a rise in the number is a rise in rates / hawkish". Bond futures are PRICES, so price down = yields up.
 RATES_SIGN = {'sofr': 1, 'eur': 1, 'spr': 1, 'zt': -1, 'zn': -1}
 
@@ -34,6 +36,16 @@ class Src:
         self.key, self.cands, self.tf, self.cfd = key, one_min, transform, cfd
 
 
+def _rd_ba(name):
+    """1-minute OANDA CFD mid (research mid) from the bid/ask archive data/m1_bidask (to 2026-10-19); 'time' is a naive-UTC column, bar start"""
+    d = pd.read_parquet(ROOT / 'data' / 'm1_bidask' / f'{name}_m1.parquet', columns=['time', 'close']); d['time'] = pd.to_datetime(d['time']).dt.tz_localize('UTC')
+    return d.set_index('time')['close'].sort_index()
+
+
+def _inv(s):
+    return 1.0 / s
+
+
 def _cfd15(name):
     s = pd.read_parquet(AO / 'rate-surprise-events' / 'm15' / f'{name}.parquet')['close']
     s = s[~s.index.duplicated()].sort_index(); s.index = pd.to_datetime(s.index, utc=True); return s
@@ -51,6 +63,16 @@ def load_sources():
         'dx': Src('dx', _chain([DEEP / 'NYBOT_DXZ6.parquet']), logp),
         'nq': Src('nq', [('nq_m1_cfd', nqcfd.sort_index())] + _chain([S1M / 'CME_NQU6.parquet', S1M / 'CME_NQZ6.parquet', DEEP / 'CME_NQZ6.parquet']), logp),
     }
+    ident = lambda s: s                                                           # volatility indices in points
+    S.update({
+        'eurusd': Src('eurusd', [('oanda_cfd', _rd_ba('eurusd'))] + _chain([DEEP / 'CME_6EZ6.parquet']), logp),
+        'gbpusd': Src('gbpusd', [('oanda_cfd', _rd_ba('gbpusd'))] + _chain([DEEP / 'CME_6BZ6.parquet']), logp),
+        'usdjpy': Src('usdjpy', [('oanda_cfd', _rd_ba('usdjpy'))] + [(n, _inv(x)) for n, x in _chain([DEEP / 'CME_6JZ6.parquet'])], logp),        # the yen future is USD per JPY: invert to USD/JPY
+        'gold': Src('gold', [('oanda_cfd', _rd_ba('gold'))] + _chain([DEEP / 'COMEX_GCZ6.parquet']), logp),
+        'es': Src('es', [('oanda_cfd', _rd_ba('spx'))] + _chain([DEEP / 'CME_ESZ6.parquet']), logp),
+        'vix': Src('vix', _chain([DEEP / 'CBOE_VIX.parquet']), ident),
+        'vxn': Src('vxn', _chain([DEEP / 'CBOE_VXN.parquet']), ident),
+    })
     return S
 
 
@@ -162,7 +184,7 @@ def agreement(M, thr=0.0):
 def build_event(S, ev, event_days):
     """ev: dict(t=Timestamp, family, name, ...) -> a full record with paths and metrics"""
     t = ev['t']; P = {}; M = {}; sig = {}
-    for k in ('sofr', 'eur', 'zt', 'zn', 'dx', 'nq'):
+    for k in ASSETS:
         P[k] = asset_path(S[k], t)
         sig[k] = cond_sigma(S[k], t, 30, event_days) if P[k] and P[k]['step'] == 1 else None
     if P['sofr'] and P['eur']:                                                     # the line = SOFR leg - Euribor leg, point by point
