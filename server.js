@@ -4850,6 +4850,20 @@ app.get('/api/release-layer1/paths', async (req, res) => {
     res.set('Cache-Control', live?.paths?.[id] ? 'no-store' : 'public, max-age=3600'); res.json({ ok: true, id, paths: P });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// Layer 2 (release-why.html; scripts/release_layer2/): the going-in factor sheet and the 77-item register. Kept apart from Layer 1 on purpose: it never carries outcomes, the page joins them by release id.
+// The laptop pushes it to KV release_layer2_v1 (build_factors.py --push); the committed analysis/output/release_layer2/factors.json is the fallback.
+const _RW_DIR = path.join(__dirname, 'analysis', 'output', 'release_layer2'), _RW_KV = 'release_layer2_v1';
+let _rwLive = { at: 0, v: null };
+app.get('/api/release-layer2', async (_req, res) => {
+  try {
+    if (Date.now() - _rwLive.at > 60_000) {
+      try { const raw = await kv.get(_RW_KV); const p = raw ? JSON.parse(raw) : null; _rwLive = { v: p?.data ?? p ?? null, at: Date.now() }; }
+      catch { _rwLive = { ..._rwLive, at: Date.now() }; }
+    }
+    const P = _rwLive.v && _rwLive.v.built ? _rwLive.v : _cogJson(path.join(_RW_DIR, 'factors.json'));
+    res.set('Cache-Control', 'no-store'); res.json({ ok: true, live: P === _rwLive.v, ...P });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.get('/api/release-layer1/checks', (_req, res) => {
   try { res.set('Cache-Control', 'public, max-age=900'); res.type('text/plain').send(fs.readFileSync(path.join(_RL_DIR, 'LAYER1_CHECKS.md'), 'utf8')); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }

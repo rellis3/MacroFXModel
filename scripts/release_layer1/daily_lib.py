@@ -17,7 +17,7 @@ MINUTE_DAILY = ['eurusd', 'gbpusd', 'usdjpy', 'gold', 'es']      # daily closes 
 DLABEL = {'sofr': 'SOFR Sep26 leg (bp)', 'eur': 'Euribor Mar27 leg (bp)', 'spr': 'SOFR - Euribor line (bp)', 'y2': 'US 2y yield (bp)', 'y10': 'US 10y yield (bp)',
           'real10': '10y real yield (bp)', 'be10': '10y breakeven (bp)', 'dx': 'Dollar index (%)', 'nq': 'Nasdaq-100 (%)',
           'eurusd': 'EUR/USD (%)', 'gbpusd': 'GBP/USD (%)', 'usdjpy': 'USD/JPY (%)', 'gold': 'Gold (%)', 'es': 'S&P 500 (%)', 'vix': 'VIX (points)', 'vxn': 'VXN (points)'}
-TREASURY = {'y2': ('daily_treasury_yield_curve', '2 Yr'), 'y10': ('daily_treasury_yield_curve', '10 Yr'), 'real10': ('daily_treasury_real_yield_curve', '10 YR')}
+TREASURY = {'y2': ('daily_treasury_yield_curve', '2 Yr'), 'y10': ('daily_treasury_yield_curve', '10 Yr'), 'real10': ('daily_treasury_real_yield_curve', '10 YR'), 'y3m': ('daily_treasury_yield_curve', '3 Mo')}
 YAHOO = {'dx': 'DX-Y.NYB', 'nq': '^NDX', 'vix': '^VIX', 'vxn': '^VXN'}
 UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', 'Accept': 'application/json, text/csv, */*'}
 START = '2024-01-01'
@@ -92,7 +92,7 @@ def load_daily(S):
     """-> dict key -> pd.Series (index = trading date, values in the unit of the series: yields as %, spreads/rates as bp (rate), prices as log %)"""
     D = {}
     c = json.loads(CACHE.read_text(encoding='utf-8')) if CACHE.exists() else dict(series={})
-    for k in ('y2', 'y10', 'real10', 'be10'):
+    for k in ('y2', 'y10', 'real10', 'be10', 'y3m'):
         if c['series'].get(k): D[k] = pd.Series([v * 100 for _, v in c['series'][k]], index=pd.to_datetime([d for d, _ in c['series'][k]]))            # % -> bp
     for k in ('dx', 'nq'):
         if c['series'].get(k): D[k] = pd.Series([np.log(v) * 100 for _, v in c['series'][k]], index=pd.to_datetime([d for d, _ in c['series'][k]]))
