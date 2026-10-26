@@ -53,6 +53,16 @@
   .md code{font:12px ui-monospace,Menlo,monospace;color:var(--hi)} .md pre code{color:var(--text2)}
   .md blockquote{border-left:3px solid var(--amber);padding:2px 12px;margin:8px 0;background:rgba(210,153,34,.06)}
   .sub{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .bgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px} @media (max-width:820px){.bgrid{grid-template-columns:1fr}}
+  .bchart{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 10px 4px;position:relative;min-width:0}
+  .bchart h5{font-size:13px;margin-bottom:2px} .bchart .sub2{font-size:11.5px;color:var(--text3);margin-bottom:4px}
+  .bchart svg{display:block;width:100%;height:auto;overflow:visible}
+  .bchart svg text{font:10.5px ui-monospace,Menlo,monospace;fill:var(--text3)}
+  .tip{position:absolute;pointer-events:none;background:#0b0f15;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11.5px;color:var(--text);white-space:nowrap;display:none;z-index:5}
+  .sw{display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin:0 4px 0 10px}
+  .sw.dash{border-top-style:dashed}
+  tr.click{cursor:pointer} tr.click:hover td{background:var(--card2)}
+  .bbtn{font-size:11px;padding:1px 7px;margin-left:auto}
   #err{color:var(--red)}
   .hidden{display:none!important}
   @media (max-width:600px){.grid{grid-template-columns:1fr}.lbl{width:78px}}
@@ -72,6 +82,7 @@
   <button class="tab" data-t="week">This week</button>
   <button class="tab" data-t="board">Board · 40 markets</button>
   <button class="tab" data-t="watch">Watch lists</button>
+  <button class="tab" data-t="beta">Shifting beta</button>
   <button class="tab" data-t="calendar">Calendar</button>
   <button class="tab" data-t="method">Method</button>
   <button class="tab" data-t="learn">How traders think</button>
@@ -121,6 +132,28 @@
     <div class="box"><div class="eyebrow">Flipped drivers: markets that changed story</div><div class="xs"><table id="wFlip"></table></div></div>
   </section>
 
+  <!-- SHIFTING BETA -->
+  <section data-p="beta" class="hidden">
+    <div class="box">
+      <div class="eyebrow">Shifting beta: how much each market moves per move in the big drivers, and whether that has changed</div>
+      <p class="note" style="margin-bottom:10px">Beta = the market's move per driver move: % (or bp for yields) per 1% move in the Nasdaq 100, the dollar index or WTI oil, and per 10bp move in the US 10-year yield.
+        <b>Use it for risk, not prediction</b>: what moves together right now, which hedges are working, where positions are one bet. Same-day links are real; this repo has found no forward edge in them.
+        Betas from 20 sessions are noisy, and stock-bond style flips have historically lasted about a week (median 5 sessions).</p>
+      <div class="eyebrow" style="margin-top:6px">Biggest shifts this week (click a row to chart it)</div>
+      <div class="xs"><table id="bShift"></table></div>
+    </div>
+    <div class="box">
+      <div class="filters">
+        <label class="note">Market <select id="bMarket"></select></label>
+        <span class="spacer"></span>
+        <span class="note" id="bLegend"></span>
+      </div>
+      <p class="note" id="bLine" style="margin:8px 0"></p>
+      <div class="bgrid" id="bCharts"></div>
+      <div class="xs" style="margin-top:12px"><table id="bTable"></table></div>
+    </div>
+  </section>
+
   <!-- CALENDAR -->
   <section data-p="calendar" class="hidden">
     <div class="box"><div class="eyebrow">The week ahead (US Eastern time) and which markets each event hits</div><div class="xs"><table id="cal"></table></div></div>
@@ -162,6 +195,7 @@
     if (location.hash.slice(1) !== t) history.replaceState(null, '', '#' + t);
     if (t === 'method' && !$('#playbook').dataset.done) loadDoc('education/market_reviews/PLAYBOOK.md', $('#playbook'));
     if (t === 'learn' && !$('#learnBody').dataset.done) pickLearn(0);
+    if (t === 'beta') loadBeta();
   }
   $('#tabs').addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) show(t.dataset.t); });
   window.addEventListener('hashchange', () => show(location.hash.slice(1)));
@@ -211,7 +245,8 @@
     const cot = (m.cot && m.cot.groups || []).map(g => `<div class="kv"><span class="lbl">${esc(g.group)}</span>${bar(g.pct3y, g.pct3y <= 10 || g.pct3y >= 90 ? 'var(--red)' : 'var(--blue)')}<span class="note" style="width:150px">${ord(g.pct3y)} pct · 4w ${g.chg4 >= 0 ? '+' : ''}${Math.round(g.chg4 ?? 0).toLocaleString()}</span></div>`).join('');
     const cal = (m.calendar || []).slice(0, 3).map(e => `<div class="note">📅 ${esc(e.date.slice(5))} ${esc(e.time_et || '')} ET · ${esc(e.country)}: ${esc(e.event)}${e.consensus ? ' (cons ' + esc(e.consensus) + ')' : ''}</div>`).join('');
     return `<div class="card">
-      <h4>${esc(name)} <span class="lvl">${esc(m.level_text)}</span> ${flags.join(' ')}</h4>
+      <h4>${esc(name)} <span class="lvl">${esc(m.level_text)}</span> ${flags.join(' ')}<button class="bbtn" data-beta="${esc(name)}" title="Chart this market's shifting beta">β chart</button></h4>
+      ${m.beta_line ? `<div class="note">${esc(m.beta_line)}</div>` : ''}
       <div class="row">1w <b class="${cls(mv.w1)}">${fm(mv.w1, m.units)}</b> · 4w <b class="${cls(mv.w4)}">${fm(mv.w4, m.units)}</b> · 13w <span class="${cls(mv.w13)}">${fm(mv.w13, m.units)}</span></div>
       <div class="kv"><span class="lbl">4w move vs 2y</span>${bar(mv.move4_pct, mv.move4_pct >= 90 ? 'var(--amber)' : 'var(--text3)')}<span class="note" style="width:70px">${ord(mv.move4_pct)}</span></div>
       <div class="kv"><span class="lbl">52w range</span>${marker(mv.range_pos)}<span class="note" style="width:70px">${mv.range_pos == null ? 'n/a' : Math.round(mv.range_pos * 100) + '%'}</span></div>
@@ -230,6 +265,7 @@
     if (s === 'crowd') list.sort((a, b) => crowdScore(M[b]) - crowdScore(M[a]));
     $('#grid').innerHTML = list.map(n => card(n, M[n])).join('') || '<p class="note">No markets.</p>';
   }
+  $('#grid').addEventListener('click', e => { const b = e.target.closest('[data-beta]'); if (b) { betaSel = b.dataset.beta; show('beta'); } });
   $('#groups').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (b) { groupOn = b.dataset.g; renderBoard(); } });
   $('#sort').addEventListener('change', renderBoard);
 
@@ -260,6 +296,96 @@
     $('#wFlip').innerHTML = '<tr><th>Market</th><th>Driver</th><th>Now</th><th>Before</th><th>Why it matters</th></tr>' + (fl.map(([n, r]) => `<tr><td>${esc(n)}</td><td>${esc(r.key)}</td><td class="n">${sc(r.recent)} <span class="note">${esc(r.lab)}</span></td><td class="n">${sc(r.prior)} <span class="note">${esc(r.lab_prior)}</span></td><td class="note">${esc(r.why)}</td></tr>`).join('') || '<tr><td colspan="5" class="note">None.</td></tr>');
   }
 
+  // ---------- shifting beta (beta.json beside pack.json) ----------
+  let BETA = null, BETA_FOR = null, betaSel = null;
+  const C20 = '#3987e5', C60 = '#d95926';   // dataviz palette slots 1-2, dark steps; validated on #1c2330 (CVD ΔE 26.8)
+  const BW = 520, BH = 210, PL = 44, PR = 36, PT = 10, PB = 24;
+  const bfmt = (v, u) => v == null ? 'n/a' : (v >= 0 ? '+' : '') + v.toFixed(2) + (u === 'bp' ? 'bp' : '%');
+  function betaPath(){ return INDEX.weeks[+$('#week').value || 0].pack.replace('pack.json', 'beta.json'); }
+  function loadBeta(){
+    if (!INDEX) return;
+    const p = betaPath();
+    if (BETA && BETA_FOR === p) { renderBeta(); return; }
+    $('#bCharts').innerHTML = '<p class="note">Loading betas…</p>';
+    getJson(p).then(b => { BETA = b; BETA_FOR = p; renderBeta(); })
+      .catch(e => { $('#bCharts').innerHTML = `<p class="note">No beta data for this week (${esc(e.message)}). Rebuild with scripts/market-review/build.py.</p>`; $('#bShift').innerHTML = ''; });
+  }
+  function renderBeta(){
+    const M = BETA.markets, names = Object.keys(M);
+    if (!betaSel || !M[betaSel]) betaSel = names.includes('EURUSD') ? 'EURUSD' : names[0];
+    const groups = {}; names.forEach(n => (groups[M[n].group] ||= []).push(n));
+    $('#bMarket').innerHTML = Object.entries(groups).map(([g, ns]) => `<optgroup label="${esc(g)}">${ns.map(n => `<option ${n === betaSel ? 'selected' : ''}>${esc(n)}</option>`).join('')}</optgroup>`).join('');
+    const rows = [];
+    // only links that mean something (|corr| >= 0.3 now or before): near-zero betas swing a lot in sd terms and say nothing
+    names.forEach(n => Object.values(M[n].factors).forEach(f => { if (f.z != null && Math.max(Math.abs(f.corr_now ?? 0), Math.abs(f.corr_prior ?? 0)) >= 0.3) rows.push([n, f]); }));
+    rows.sort((a, b) => (b[1].flip - a[1].flip) || Math.abs(b[1].z) - Math.abs(a[1].z));
+    $('#bShift').innerHTML = '<tr><th>Market</th><th>Driver</th><th>Beta now (20 sessions)</th><th>60 before</th><th title="Change in standard deviations of the market\'s own 20-day beta over the past year">Size of change</th><th>Corr now / before</th><th>Down days / up days (1y)</th><th></th></tr>' +
+      rows.slice(0, 20).map(([n, f]) => { const u = M[n].units; return `<tr class="click" data-m="${esc(n)}"><td>${esc(n)}</td><td>${esc(f.label)} <span class="note">${esc(f.unit)}</span></td><td class="n"><b>${bfmt(f.now, u)}</b></td><td class="n">${bfmt(f.prior, u)}</td><td class="n">${f.z >= 0 ? '+' : ''}${f.z.toFixed(1)} sd</td><td class="n">${sc(f.corr_now)} / ${sc(f.corr_prior)}</td><td class="n">${bfmt(f.down, u)} / ${bfmt(f.up, u)}</td><td>${f.flip ? '<span class="chip flip">flipped</span>' : f.shift ? '<span class="chip inv">shifted</span>' : ''}</td></tr>`; }).join('');
+    $('#bLegend').innerHTML = `<span class="sw" style="border-color:${C20}"></span>20-session beta<span class="sw dash" style="border-color:${C60}"></span>60-session beta<span class="sw dash" style="border-color:var(--text3)"></span>zero`;
+    drawBetaMarket();
+  }
+  function bScales(s){
+    const vals = [...s.b20, ...s.b60].filter(v => v != null); vals.push(0);
+    let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo) * 0.08 || 0.1; lo -= pad; hi += pad;
+    const n = s.d.length;
+    return { lo, hi, n, x: i => PL + (BW - PL - PR) * (n <= 1 ? 0 : i / (n - 1)), y: v => PT + (BH - PT - PB) * (1 - (v - lo) / (hi - lo)) };
+  }
+  function niceTicks(lo, hi, k = 5){
+    const step0 = (hi - lo) / k, mag = Math.pow(10, Math.floor(Math.log10(step0))), step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= step0);
+    const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6)); return out;
+  }
+  function bPath(arr, S){ let d = '', pen = false; arr.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + S.x(i).toFixed(1) + ',' + S.y(v).toFixed(1); pen = true; }); return d; }
+  function lastIdx(arr){ for (let i = arr.length - 1; i >= 0; i--) if (arr[i] != null) return i; return -1; }
+  function svgBeta(s){
+    const S = bScales(s);
+    const yt = niceTicks(S.lo, S.hi).map(v => `<line x1="${PL}" x2="${BW - PR}" y1="${S.y(v).toFixed(1)}" y2="${S.y(v).toFixed(1)}" stroke="#21262d"/><text x="${PL - 6}" y="${(S.y(v) + 3.5).toFixed(1)}" text-anchor="end">${v}</text>`).join('');
+    let xt = '', lastM = '';
+    s.d.forEach((d, i) => { const mth = d.slice(0, 7); if (mth !== lastM) { if (lastM && (+d.slice(5, 7)) % 2 === 1) xt += `<text x="${S.x(i).toFixed(1)}" y="${BH - 6}" text-anchor="middle">${new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })}</text>`; lastM = mth; } });
+    const z = S.y(0).toFixed(1), i20 = lastIdx(s.b20), i60 = lastIdx(s.b60);
+    // direct end labels in text ink (series colour stays on the marks); nudge apart if they collide
+    let y20 = i20 >= 0 ? S.y(s.b20[i20]) : null, y60 = i60 >= 0 ? S.y(s.b60[i60]) : null;
+    if (y20 != null && y60 != null && Math.abs(y20 - y60) < 11) { const mid = (y20 + y60) / 2, up = y20 <= y60; y20 = mid + (up ? -6 : 6); y60 = mid + (up ? 6 : -6); }
+    const lab = (yy, t) => yy == null ? '' : `<text x="${BW - PR + 4}" y="${(yy + 3.5).toFixed(1)}" style="fill:var(--text2)">${t}</text>`;
+    return `<svg viewBox="0 0 ${BW} ${BH}" role="img" aria-label="Rolling beta, 20 and 60 sessions">${yt}${xt}
+      <line x1="${PL}" x2="${BW - PR}" y1="${z}" y2="${z}" stroke="#6e7681" stroke-dasharray="3 3"/>
+      <path d="${bPath(s.b60, S)}" fill="none" stroke="${C60}" stroke-width="2" stroke-dasharray="5 3" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="${bPath(s.b20, S)}" fill="none" stroke="${C20}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${lab(y20, '20')}${lab(y60, '60')}
+      <line class="xh" x1="0" x2="0" y1="${PT}" y2="${BH - PB}" stroke="#9da7b3" stroke-width="1" style="display:none"/>
+      <circle class="d60" r="4" fill="${C60}" stroke="#1c2330" stroke-width="2" style="display:none"/>
+      <circle class="d20" r="4" fill="${C20}" stroke="#1c2330" stroke-width="2" style="display:none"/>
+      <rect x="${PL}" y="${PT}" width="${BW - PL - PR}" height="${BH - PT - PB}" fill="transparent"/></svg>`;
+  }
+  function attachHover(el, s, u){
+    const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), S = bScales(s);
+    const xh = svg.querySelector('.xh'), d20 = svg.querySelector('.d20'), d60 = svg.querySelector('.d60');
+    const hide = () => { [xh, d20, d60, tip].forEach(n => n.style.display = 'none'); };
+    svg.addEventListener('pointerleave', hide);
+    svg.addEventListener('pointermove', ev => {
+      const r = svg.getBoundingClientRect(), vx = (ev.clientX - r.left) / r.width * BW;
+      const i = Math.max(0, Math.min(S.n - 1, Math.round((vx - PL) / (BW - PL - PR) * (S.n - 1)))), X = S.x(i);
+      xh.setAttribute('x1', X); xh.setAttribute('x2', X); xh.style.display = '';
+      [[d20, s.b20[i]], [d60, s.b60[i]]].forEach(([c, v]) => { if (v == null) { c.style.display = 'none'; return; } c.setAttribute('cx', X); c.setAttribute('cy', S.y(v)); c.style.display = ''; });
+      tip.innerHTML = `<b>${esc(s.d[i])}</b><br><span style="color:${C20}">●</span> 20-session ${bfmt(s.b20[i], u)}<br><span style="color:${C60}">●</span> 60-session ${bfmt(s.b60[i], u)}<br><span style="color:var(--text3)">corr (20) ${sc(s.c20[i])}</span>`;
+      tip.style.display = 'block';
+      const px = X / BW * r.width + (r.left - el.getBoundingClientRect().left);
+      tip.style.left = Math.max(4, Math.min(px + 12, el.clientWidth - 175)) + 'px'; tip.style.top = '44px';
+    });
+  }
+  function drawBetaMarket(){
+    const m = BETA && BETA.markets[betaSel]; if (!m) return;
+    const line = PACK && PACK.markets[betaSel] ? PACK.markets[betaSel].beta_line : null;
+    $('#bLine').textContent = line || '';
+    const u = m.units, F = Object.values(m.factors);
+    $('#bCharts').innerHTML = F.map(f => `<div class="bchart"><h5>${esc(betaSel)}: beta to ${esc(f.label)} ${f.flip ? '<span class="chip flip">flipped</span>' : f.shift ? '<span class="chip inv">shifted</span>' : ''}</h5>
+        <div class="sub2">${u === 'bp' ? 'bp' : '%'} ${esc(f.unit)} · now ${bfmt(f.now, u)} vs ${bfmt(f.prior, u)} before · down days ${bfmt(f.down, u)}, up days ${bfmt(f.up, u)}</div>${svgBeta(f.series)}<div class="tip"></div></div>`).join('') || '<p class="note">No driver data for this market.</p>';
+    $('#bCharts').querySelectorAll('.bchart').forEach((el, i) => attachHover(el, F[i].series, u));
+    $('#bTable').innerHTML = '<tr><th>Driver</th><th>Unit</th><th>Now (20)</th><th>60 before</th><th>1 year</th><th>Down days</th><th>Up days</th><th>Corr now</th><th>Corr before</th></tr>' +
+      F.map(f => `<tr><td>${esc(f.label)}</td><td class="note">${u === 'bp' ? 'bp' : '%'} ${esc(f.unit)}</td><td class="n"><b>${bfmt(f.now, u)}</b></td><td class="n">${bfmt(f.prior, u)}</td><td class="n">${bfmt(f.y1, u)}</td><td class="n">${bfmt(f.down, u)}</td><td class="n">${bfmt(f.up, u)}</td><td class="n">${sc(f.corr_now)}</td><td class="n">${sc(f.corr_prior)}</td></tr>`).join('');
+  }
+  $('#bMarket').addEventListener('change', e => { betaSel = e.target.value; drawBetaMarket(); });
+  $('#bShift').addEventListener('click', e => { const r = e.target.closest('[data-m]'); if (!r) return; betaSel = r.dataset.m; $('#bMarket').value = betaSel; drawBetaMarket(); $('#bMarket').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+
   // ---------- calendar ----------
   function renderCal(){
     const M = PACK.markets, ev = new Map();
@@ -288,7 +414,7 @@
   function loadWeek(i){
     const w = INDEX.weeks[i];
     renderReviews(w);
-    getJson(w.pack).then(p => { PACK = p; renderRegime(); renderBoard(); renderWatch(); renderCal(); })
+    getJson(w.pack).then(p => { PACK = p; renderRegime(); renderBoard(); renderWatch(); renderCal(); if (location.hash === '#beta') loadBeta(); })
       .catch(e => { $('#err').textContent = 'Could not load the data pack: ' + e.message; });
   }
   $('#week').addEventListener('change', e => loadWeek(+e.target.value));

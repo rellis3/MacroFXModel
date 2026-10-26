@@ -1887,7 +1887,7 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
   </div>
 <div class="dr-sec" id="drCorrSec" data-seckey="corr" style="display:none">
     <h3 class="help" title="How this market has moved RELATIVE to others over the last ~10 trading days, and its sensitivity (beta) to the dollar, rates and risk. CONTEXT only, and backward-looking: correlations are regime-dependent and in a real risk-off they snap toward 1, so a historical 'hedge' can stop hedging exactly when you need it. Not a signal — use it to avoid doubling up the same bet and to know what really drives this pair."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Correlations, hedges &amp; beta</span></h3>
-    <div class="dr-sec-body"><div id="drCorr"><span class="muted">loading…</span></div></div>
+    <div class="dr-sec-body"><div id="drCorr"><span class="muted">loading…</span></div><div id="drBeta" style="margin-top:8px"></div></div>
   </div>
 <div class="dr-sec" id="drStorySec" data-seckey="story">
     <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>The story</span></h3>
@@ -10772,6 +10772,7 @@ async function openDrawer(name) {
   loadDrawerRates(d.sym).catch(() => { $('drRatesSec').style.display = 'none'; });
   loadDrawerNews(name);
   loadDrawerCorr(name);
+  loadDrawerBeta(name);
   loadDrawerArima(name, d.sym);
   loadDrawerAnalysis(r).catch(() => { $('drAnalysisSec').style.display = 'none'; });
   _startAtlasPolling(r);
@@ -12639,6 +12640,23 @@ function loadDrawerNews(name) {
   }).join('');
   box.innerHTML = (next && next.ms >= now ? `<div class="muted" style="margin-bottom:6px">Next: <b>${next.event}</b> at <b>${evtTime(next)}</b> (UK) — expect the range to widen around it.</div>` : '') + rows;
   sec.style.display = 'block';
+}
+
+// Shifting beta — the weekly market review's betas to the real drivers (Nasdaq, US 10y, dollar index, oil),
+// last 20 sessions vs the 60 before, from daily closes (scripts/market-review -> beta_shift.json, a static file).
+// CONTEXT only, like the block below: what moves together now, not where it goes. Banked: same-day links are
+// real, forward edge is null (yield-asset coupling test). Chart: market-review.html#beta.
+let _betaShift;   // undefined = not loaded, null = unavailable
+async function loadDrawerBeta(name) {
+  const box = $('drBeta'); if (!box) return;
+  box.innerHTML = '';
+  if (_betaShift === undefined) _betaShift = await fetch('analysis/output/market-review/beta_shift.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
+  const rec = _betaShift?.markets?.[name] ?? _betaShift?.markets?.[String(name).replace('_', '')] ?? null;
+  if (!rec) return;
+  const u = rec.units === 'bp' ? 'bp' : '%', f = b => b == null ? 'n/a' : (b >= 0 ? '+' : '') + b.toFixed(2) + u;
+  const rows = Object.values(rec.factors || {}).map(x => `<span class="corrchip" title="${x.label}: ${f(x.now)} ${x.unit} over the last 20 sessions vs ${f(x.prior)} over the 60 before (corr ${x.corr_now >= 0 ? '+' : ''}${x.corr_now?.toFixed(2)} vs ${x.corr_prior >= 0 ? '+' : ''}${x.corr_prior?.toFixed(2)}); down days ${f(x.down)}, up days ${f(x.up)} over a year">${x.label} <b>${f(x.now)}</b> <span class="muted">(was ${f(x.prior)})</span>${x.flip ? ' ⟲' : x.shift ? ' ↕' : ''}</span>`).join(' ');
+  box.innerHTML = `<div style="font-size:12px"><b>Shifting beta</b> <span class="muted">(weekly, daily closes, as of ${rec.asof}; per 1% Nasdaq / dollar index / oil, per 10bp US 10y)</span><br>${rec.line ? rec.line + '<br>' : ''}${rows} <a href="market-review.html#beta" target="_blank">chart →</a></div>`;
+  $('drCorrSec').style.display = 'block';
 }
 
 // Correlations, hedges & beta — reads the corr/beta engine (/api/hedge-alerts).

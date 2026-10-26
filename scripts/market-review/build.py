@@ -176,6 +176,65 @@ def fed_path(raw):
     def key(k): return (int(k[1]), code.index(k[0]))
     return [(k, v['implied'], v['week_ago'], v['last_time'][:10]) for k, v in sorted(zq.items(), key=lambda kv: key(kv[0]))]
 
+# ---------- shifting beta ----------
+# Beta of each market to four common drivers, rolling 20 and 60 sessions, scaled to readable units:
+# % (or bp) per 1% move in Nasdaq / dollar index / oil, and per 10bp move in the US 10y yield.
+BETA_FACTORS = [('^NDX', 'Nasdaq 100', 'per 1%'), ('US10Y', 'US 10y yield', 'per 10bp'), ('DX-Y.NYB', 'Dollar index', 'per 1%'), ('CL=F', 'WTI oil', 'per 1%')]
+# Keys other pages use for the same market (today.html drawer, atlas pair view, newsletter)
+ALIASES = {'S&P 500': ['SPX500', 'SPX500_USD', 'US500'], 'Nasdaq 100': ['NQ', 'NAS100', 'NAS100_USD', 'US100'], 'Russell 2000': ['US2000', 'US2000_USD'],
+           'DAX': ['DE30', 'DE30_USD', 'GER40', 'DE40'], 'FTSE 100': ['UK100', 'UK100_GBP'], 'Nikkei 225': ['JP225', 'JP225_USD'],
+           'Euro Stoxx 50': ['EU50', 'EU50_EUR'], 'Gold': ['GOLD', 'XAUUSD', 'XAU_USD'], 'Silver': ['SILVER', 'XAGUSD', 'XAG_USD'],
+           'WTI crude': ['WTI', 'USOIL', 'WTICO_USD'], 'Bitcoin': ['BTCUSD', 'BTC', 'BTC_USD'], 'Hang Seng': ['HK33', 'HK33_HKD']}
+
+def beta_block(df, ch, name, spec):
+    """Market move per driver move. Market unit: 1% (log) for prices, 1bp (0.01pp) for yields, so both are 0.01
+    in their own units; driver unit: 1% for prices, 10bp (0.1pp) for the US 10y."""
+    y = ch[spec['sym']]; out = {}
+    for f, flab, funit in BETA_FACTORS:
+        if f not in ch or f == spec['sym']: continue
+        x = ch[f].shift(1) if spec.get('asia') else ch[f]
+        scale = (0.1 if f in YIELDS else 0.01) / 0.01
+        m = pd.concat([y, x], axis=1).dropna(); m.columns = ['y', 'x']
+        if len(m) < 120: continue
+        def roll(w):
+            return (m['y'].rolling(w).cov(m['x']) / m['x'].rolling(w).var()) * scale, m['y'].rolling(w).corr(m['x'])
+        b20, c20 = roll(20); b60, _ = roll(60)
+        tail = m.index[-260:]
+        def ols(sub):
+            if len(sub) < 10 or sub['x'].var() == 0: return None
+            return float(np.cov(sub['y'], sub['x'])[0, 1] / sub['x'].var() * scale)
+        last20, prior = m.iloc[-20:], m.iloc[-80:-20]
+        yr = m.iloc[-260:]; dn = yr['x'] < 0
+        bnow, bprior = ols(last20), ols(prior)
+        cnow, cprior = float(last20['y'].corr(last20['x'])), float(prior['y'].corr(prior['x']))
+        sd = float(b20.loc[tail].std())
+        z = (bnow - bprior) / sd if (bnow is not None and bprior is not None and sd) else None
+        flip = (bnow is not None and bprior is not None and np.sign(bnow) != np.sign(bprior) and abs(cnow) >= 0.3 and abs(cprior) >= 0.3)
+        r3 = lambda v: None if not np.isfinite(v) else round(float(v), 3)
+        out[f] = dict(label=flab, unit=funit, now=bnow, prior=bprior, corr_now=cnow, corr_prior=cprior, y1=ols(yr),
+                      down=ols(yr[dn]), up=ols(yr[~dn]), z=z, flip=bool(flip),
+                      # a shift only counts when the link is meaningful on one side: tiny betas have tiny sd, so z alone overflags
+                      shift=bool(z is not None and abs(z) >= 1.5 and max(abs(cnow), abs(cprior)) >= 0.3),
+                      series=dict(d=[str(i.date()) for i in tail], b20=[r3(v) for v in b20.loc[tail]],
+                                  b60=[r3(v) for v in b60.loc[tail]], c20=[r3(v) for v in c20.loc[tail]]))
+    return out
+
+def beta_sentence(name, units, bb):
+    """One plain line for other pages: the biggest shift, or 'stable' when nothing moved much."""
+    u = '%' if units == 'pct' else 'bp'
+    ranked = sorted([(k, v) for k, v in bb.items() if v.get('z') is not None and max(abs(v['corr_now']), abs(v['corr_prior'])) >= 0.3],
+                    key=lambda kv: -abs(kv[1]['z']))
+    if not ranked: return None
+    k, v = ranked[0]
+    fmt = lambda b: f'{b:+.2f}{u}'
+    if v['flip']: what = 'flipped sign'
+    elif v['shift']: what = 'stronger' if abs(v['now']) > abs(v['prior']) else 'weaker'
+    elif v['now'] is not None and v['prior'] is not None and (v['now'] > 0) != (v['prior'] > 0):
+        return (f'{name}: no strong beta shift; the beta to {v["label"]} changed sign ({fmt(v["now"])} {v["unit"]} vs {fmt(v["prior"])} before) '
+                f'but the link is weak (corr {v["corr_now"]:+.2f} now, {v["corr_prior"]:+.2f} before)')
+    else: return f'{name}: betas stable (largest change, to {v["label"]}: {fmt(v["now"])} {v["unit"]} vs {fmt(v["prior"])} before)'
+    return f'{name}: beta to {v["label"]} {what}: {fmt(v["now"])} {v["unit"]} over the last 20 sessions vs {fmt(v["prior"])} over the 60 before'
+
 def clean(o):
     """JSON-safe for the browser: NaN/inf -> None, numpy scalars -> Python."""
     if isinstance(o, dict): return {str(k): clean(v) for k, v in o.items()}
@@ -238,7 +297,7 @@ def main():
         L += ['', '**Fed funds futures (implied average rate by contract month; vs ~1 week earlier):** ' +
               ' · '.join(f'{k} {v:.3f}% ({v - w:+.3f})' for k, v, w, _ in fp) + f' (as of {fp[0][3]})']
 
-    groups = {}
+    groups = {}; BETAS = {}
     for name, spec in UNIVERSE.items(): groups.setdefault(spec['group'], []).append(name)
     sec = 2
     for g, names in groups.items():
@@ -249,12 +308,15 @@ def main():
             mv = move_block(df, c)
             if not mv: continue
             drv, charge = driver_block(ch, name, spec); dec = decomp_block(ch, spec); cot = cot_block(raw, spec); cal = calendar_block(raw, spec)
+            bb = beta_block(df, ch, name, spec)
 
             lvl = num(mv["last"]) if c not in YIELDS or c in ('^VIX', '^MOVE') else f'{mv["last"]:.2f}' + ('' if c in ('FR_DE', 'IT_DE') else '%')
             if c in ('FR_DE', 'IT_DE'): lvl = f'{mv["last"]:+.0f}bp vs start of capture'
             units = 'pt' if c in ('^VIX', '^MOVE') else ('bp' if c in YIELDS else 'pct')
             pack['markets'][name] = dict(sym=c, group=g, units=units, level_text=lvl, move=mv, drivers=drv, in_charge=(None if not charge or charge.get('weak') else charge['key']),
-                                         decomp=dec, cot=cot, calendar=cal)
+                                         decomp=dec, cot=cot, calendar=cal,
+                                         beta_line=beta_sentence(name, units, bb))
+            BETAS[name] = dict(units=units, group=g, factors=bb)
             usual = (f'{ordn(mv["move4_pct"])} pct of 2y 4w moves' if not np.isnan(mv['move4_pct']) else '')
             L += [f'### {name}  `{c}`  {lvl} ({mv["last_date"]})',
                   f'**Move:** 1w {fmt_move(c, mv["w1"])} · 4w {fmt_move(c, mv["w4"])} ({usual}) · 13w {fmt_move(c, mv["w13"])} · '
@@ -283,6 +345,20 @@ def main():
     md = os.path.join(d, 'DATA_PACK.md')
     open(md, 'w', encoding='utf-8').write('\n'.join(L) + '\n')
     json.dump(clean(pack), open(os.path.join(d, 'pack.json'), 'w', encoding='utf-8'), allow_nan=False)
+    json.dump(clean(dict(asof=a.asof, factors=[dict(key=f, label=l, unit=u) for f, l, u in BETA_FACTORS], markets=BETAS)),
+              open(os.path.join(d, 'beta.json'), 'w', encoding='utf-8'), allow_nan=False, separators=(',', ':'))
+    # compact latest summary for today.html / atlas.html / the newsletter, keyed by market name and its aliases
+    summ = {}
+    for nm, b in BETAS.items():
+        rec = dict(name=nm, asof=a.asof, units=b['units'], line=pack['markets'].get(nm, {}).get('beta_line'),
+                   factors={k: {kk: v[kk] for kk in ('label', 'unit', 'now', 'prior', 'corr_now', 'corr_prior', 'down', 'up', 'z', 'flip', 'shift')}
+                            for k, v in b['factors'].items()})
+        sym = UNIVERSE[nm]['sym']
+        for key in {nm, nm.replace(' ', ''), sym.replace('=X', ''), *ALIASES.get(nm, [])}: summ[key] = rec
+    json.dump(clean(dict(asof=a.asof, note='Descriptive context, not a signal. Weekly, from daily closes (scripts/market-review). '
+                         'Beta = market move per driver move: % (or bp) per 1% Nasdaq / dollar index / oil, per 10bp US 10y.',
+                         page='market-review.html#beta', markets=summ)),
+              open(os.path.join(ROOT, 'analysis', 'output', 'market-review', 'beta_shift.json'), 'w', encoding='utf-8'), allow_nan=False)
     write_index()
     print('wrote', md, f'({len(pack["markets"])} markets)')
     for n in notes: print('  NOTE', n)
