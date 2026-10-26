@@ -262,5 +262,15 @@ ok('the question sits in a designed box with a topic icon', /class="qod"/.test(d
   const c = buildNewsletter({ date: 'd', isoDate: '2026-10-24', crowding, cotDate: '2026-10-20', ranges: [{ key: 'USDJPY', label: 'USD/JPY', price: '1', hlMed: 1, used: 0.5 }] });
   ok('a JPY row reads in yen terms on the card (long USDJPY = short the yen)', /JPY speculators:<\/b> crowded short · crowded, pulling back/.test(c.html) && !/JPY speculators:<\/b> crowded long/.test(c.html));
   ok('the crowding-map line carries its verdict', /Historically a reset rather than a reversal\. <span title="cot-crowding-p5">\(measured\)/.test(c.html)); }
+{ const fac = (label, unit, now, prior, o = {}) => ({ label, unit, now, prior, corr_now: 0.4, corr_prior: -0.4, z: 2, flip: false, shift: false, ...o });
+  const beta = { asof: '2026-10-24', markets: { NQ: { name: 'Nasdaq 100', asof: '2026-10-24', units: 'pct', line: 'x', factors: { US10Y: fac('US 10y yield', 'per 10bp', 1.06, -0.89, { flip: true, shift: true }) } }, EURUSD: { name: 'EURUSD', asof: '2026-10-24', units: 'pct', line: 'EURUSD: betas stable', factors: { US10Y: fac('US 10y yield', 'per 10bp', -0.03, -0.23) } } } };
+  const assets = [{ key: 'NQ', label: 'Nasdaq', price: '29019.9', d1: 0.26, d20: -5.9, spark: [3, 2, 1], used: 0.5, hlMed: 1 }, { key: 'EURUSD', label: 'EUR/USD', price: '1.1', d1: 0.1, d20: -0.5, spark: [1, 2, 3], used: 0.5, hlMed: 1 }];
+  const run = (b, iso = '2026-10-25') => buildNewsletterV2({ date: 'x', isoDate: iso, assets, beta: b }), v1 = buildNewsletter({ date: 'x', isoDate: '2026-10-25', ranges: assets, assets, beta });
+  const on = run(beta), blocks = on.html.split('class="bk2"').slice(1);
+  ok('a market whose link flipped shows the shifting-beta line with its date, on that market only', /Shifting beta\.<\/b> Flipped: for each 10bp that the US 10-year yield moves, Nasdaq now moves \+1\.06%, against −0\.89% over the 60 sessions before\./.test(on.html) && /As of 2026-10-24/.test(on.html) && blocks.filter(b => /Shifting beta\./.test(b)).length === 1);
+  ok('the line is context: it is framed as what moves together, never a direction', /not what happens next/.test(on.html) && !/Shifting beta[^<]*(bullish|bearish|will rise|will fall)/i.test(on.html));
+  ok('the market-wide line names the biggest changes and the key explains the term only when a line is shown', /The biggest changes in what moves together: Nasdaq to the 10-year yield \(flipped\)/.test(on.html) && /Shifting beta<\/b> appears only where/.test(on.html));
+  ok('with no feed, with stable betas, or with a feed older than eight days the issue says nothing about beta', ![run(undefined), run({ ...beta, markets: { EURUSD: beta.markets.EURUSD } }), run(beta, '2026-11-05')].some(x => /Shifting beta|moves together/.test(x.html)));
+  ok('the current layout shows it as a card row too', /<b>Shifting beta<\/b> Flipped: for each 10bp/.test(v1.html)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
