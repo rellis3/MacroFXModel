@@ -172,6 +172,8 @@ import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote } from './js/
 import { RBA_MEETINGS, pendingAsOf as rbaPendingAsOf, allReleases as rbaAllReleases } from './js/rbaCalendar.js';
 import { FETCHERS as RBA_FETCHERS, extractVote as rbaExtractVote } from './js/rbaFetch.js';
 import { BOC_MEETINGS, pendingAsOf as bocPendingAsOf, allReleases as bocAllReleases } from './js/bocCalendar.js';
+import { SNB_MEETINGS, pendingAsOf as snbPendingAsOf, allReleases as snbAllReleases } from './js/snbCalendar.js';
+import { FETCHERS as SNB_FETCHERS } from './js/snbFetch.js';
 import { shouldReplaceLatest as cbShouldReplaceLatest, pickLatest as cbPickLatest } from './js/cbLatest.js';
 import { FETCHERS as BOC_FETCHERS } from './js/bocFetch.js';
 import { BEIGE_BOOK_RELEASES, pendingAsOf as beigeBookPendingAsOf } from './js/beigeBookCalendar.js';
@@ -8175,6 +8177,9 @@ app.get('/api/boj/debug-fetch', async (req, res) => {
 //   RBA:  statement + quarterly SMP overview same day; minutes two weeks on.
 //   BoC:  rate announcement + quarterly MPR overview same day; summary of
 //         Governing Council deliberations two weeks on. No vote is published.
+//   SNB:  quarterly assessment press release 09:30 + introductory remarks
+//         10:00 Zurich; "Summary of discussion" four weeks on (since Sep
+//         2025). No vote is published (js/snb{Calendar,Fetch}.js).
 const _CB_EXTRA_ENGINES = {
   rbnz: {
     name: 'RBNZ', ccy: 'NZD', meetings: RBNZ_MEETINGS, pendingAsOf: rbnzPendingAsOf, allReleases: rbnzAllReleases, fetchers: RBNZ_FETCHERS, extractVote: rbnzExtractVote,
@@ -8217,6 +8222,22 @@ const _CB_EXTRA_ENGINES = {
     },
     dimsNote: 'the BoC targets 2% CPI inflation (1-3% control range) and weighs growth/slack — laborConcern should capture labour-market slack and wages; financialStabilityConcern should capture household debt, housing and trade/tariff-shock risk to the financial system',
     assets: 'CAD|GoC bonds|Equities', assetsByAsset: 'CAD|GoC bonds|Equities|FX majors', boardWord: 'Council member',
+  },
+  snb: {
+    name: 'SNB', ccy: 'CHF', meetings: SNB_MEETINGS, pendingAsOf: snbPendingAsOf, allReleases: snbAllReleases, fetchers: SNB_FETCHERS, extractVote: null,
+    voteKinds: [], kinds: ['statement', 'remarks', 'summary'], kindFlags: { summary: 'summaryOn' }, meetingLabel: 'Swiss National Bank quarterly monetary policy assessment',
+    labels: {
+      statement: 'SWISS NATIONAL BANK MONETARY POLICY ASSESSMENT PRESS RELEASE — the quarterly policy-rate decision with the conditional inflation forecast, published at 09:30 Zurich time',
+      remarks: 'SWISS NATIONAL BANK INTRODUCTORY REMARKS — the Governing Board\'s prepared remarks at the 10:00 news conference on decision day, the fullest same-day explanation of the decision',
+      summary: 'SWISS NATIONAL BANK SUMMARY OF DISCUSSION — the account of the Governing Board\'s monetary policy discussion, published four weeks after the decision (the SNB\'s minutes equivalent, published since September 2025)',
+    },
+    guidance: {
+      statement: `\nREADING TECHNIQUE: the SNB meets only four times a year, so each release resets guidance for a full quarter. Read the policy-rate decision, the CONDITIONAL INFLATION FORECAST (its path vs the 0-2% price-stability range and vs the previous quarter's forecast), and the foreign-exchange-intervention sentence ("willing to be active in the foreign exchange market as necessary") — a change in that sentence is itself a CHF signal. A franc strengthening that the Board calls a tightening of monetary conditions is a dovish tell.\n`,
+      remarks: `\nREADING TECHNIQUE: these remarks repeat the press release and then expand it — read for what they ADD: the reasoning behind the decision, the Board's view of the franc, of negative rates as an option, and of FX intervention.\n`,
+      summary: `\nREADING TECHNIQUE: this is a FOUR-WEEK-OLD account, not fresh news — read it for the considerations the Board weighed, how it saw the risks, and hints about the next quarterly decision, not as a fresh directional signal. The three-member Governing Board publishes no vote.\n`,
+    },
+    dimsNote: 'the SNB defines price stability as CPI inflation of 0-2% and has no employment mandate — laborConcern should capture any labour-market and wage discussion; financialStabilityConcern should capture the franc\'s strength as a safe haven, mortgage/real-estate and banking-sector risk',
+    assets: 'CHF|Swiss govvies|Equities', assetsByAsset: 'CHF|Swiss govvies|Equities|FX majors', boardWord: 'Governing Board member',
   },
 };
 
@@ -9385,10 +9406,10 @@ setTimeout(() => { if (process.env.FRED_KEY) _consumerConfidencePoller.tick().ca
 // fetching, no new refresh loop, just an aggregation read computed fresh
 // on each request from data every other engine is already keeping warm on
 // its own daily-gated schedule. `cbSentiment` (central-bank text
-// sentiment) covers USD/EUR/GBP/JPY/NZD/AUD/CAD (the 7 currencies with a
-// built sentiment engine) — CHF scores on its remaining numeric
-// dimensions, same partial-coverage handling every per-engine composite
-// here already does.
+// sentiment) covers all 8 currencies (USD/EUR/GBP/JPY/NZD/AUD/CAD/CHF).
+// A currency whose latest meeting is not analysed yet scores on its
+// remaining numeric dimensions, same partial-coverage handling every
+// per-engine composite here already does.
 const _CB_SENTIMENT = [
   { ccy: 'USD', meetings: FOMC_MEETINGS, prefix: 'fomc_analysis_statement_' },
   { ccy: 'EUR', meetings: ECB_MEETINGS, prefix: 'ecb_analysis_statement_' },
@@ -9397,6 +9418,7 @@ const _CB_SENTIMENT = [
   { ccy: 'NZD', meetings: RBNZ_MEETINGS, prefix: 'rbnz_analysis_statement_' },
   { ccy: 'AUD', meetings: RBA_MEETINGS, prefix: 'rba_analysis_statement_' },
   { ccy: 'CAD', meetings: BOC_MEETINGS, prefix: 'boc_analysis_statement_' },
+  { ccy: 'CHF', meetings: SNB_MEETINGS, prefix: 'snb_analysis_statement_' },
 ];
 async function _loadCbSentiment() {
   const out = {};

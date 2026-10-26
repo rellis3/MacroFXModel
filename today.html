@@ -2570,7 +2570,7 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq, ysp, fomcH, ecbH, boeH, bojH, rbnzH, rbaH, bocH, gef, vi] = await Promise.all([
+  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq, ysp, fomcH, ecbH, boeH, bojH, rbnzH, rbaH, bocH, snbH, gef, vi] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
@@ -2597,6 +2597,7 @@ async function loadGate() {
     jget('/api/rbnz/history?n=6').catch(() => null),
     jget('/api/rba/history?n=6').catch(() => null),
     jget('/api/boc/history?n=6').catch(() => null),
+    jget('/api/snb/history?n=6').catch(() => null),
     // GLD+IAU combined AUM, self-collected daily by the server — see
     // server.js's _goldEtfFlowSeries header for why (no vendor-hosted flow
     // history exists to fetch directly). UNVERIFIED IN SANDBOX like every
@@ -2626,11 +2627,12 @@ async function loadGate() {
   if (msc?.ok) macroScorecard = msc;
   if (cq?.ok) creditQuality = cq;
   if (ysp?.ok) yieldSpreadPlan = ysp.plan;
-  if (fomcH?.ok || ecbH?.ok || boeH?.ok || bojH?.ok || rbnzH?.ok || rbaH?.ok || bocH?.ok) {
+  if (fomcH?.ok || ecbH?.ok || boeH?.ok || bojH?.ok || rbnzH?.ok || rbaH?.ok || bocH?.ok || snbH?.ok) {
     cbHistory = {
       fomc: fomcH?.ok ? fomcH.history : [], ecb: ecbH?.ok ? ecbH.history : [],
       boe: boeH?.ok ? boeH.history : [], boj: bojH?.ok ? bojH.history : [],
       rbnz: rbnzH?.ok ? rbnzH.history : [], rba: rbaH?.ok ? rbaH.history : [], boc: bocH?.ok ? bocH.history : [],
+      snb: snbH?.ok ? snbH.history : [],
     };
   }
   if (gef?.ok) goldEtfFlow = gef;
@@ -6292,7 +6294,7 @@ const CCY_DIM_LABEL = {
   ism: 'Business Activity', laborMarket: 'Labor Market', retailSales: 'Retail Sales',
   tradeBalance: 'Trade Balance', realYield: 'Real Yield', yieldCurve: 'Yield Curve', consumerConfidence: 'Consumer Confidence', rateDiff: 'Rate Differential', ppi: 'PPI',
 };
-const CCY_DIM_PAGE = { USD: 'fomc-sentiment.html', EUR: 'ecb-sentiment.html', GBP: 'boe-sentiment.html', JPY: 'boj-sentiment.html', NZD: 'rbnz-sentiment.html', AUD: 'rba-sentiment.html', CAD: 'boc-sentiment.html' };
+const CCY_DIM_PAGE = { USD: 'fomc-sentiment.html', EUR: 'ecb-sentiment.html', GBP: 'boe-sentiment.html', JPY: 'boj-sentiment.html', NZD: 'rbnz-sentiment.html', AUD: 'rba-sentiment.html', CAD: 'boc-sentiment.html', CHF: 'snb-sentiment.html' };
 function ccyDimHref(dim, ccy) {
   if (dim === 'cbSentiment') return CCY_DIM_PAGE[ccy] || 'macro-scorecard.html';
   return { cpi: 'cpi.html', gdp: 'gdp.html', ism: 'ism.html', laborMarket: 'labor-market.html',
@@ -6367,7 +6369,7 @@ function fundamentalsHtml(ccy) {
 }
 // Policy tone + this currency's own calendar.
 //
-// cbHistory is fetched at boot for all seven tracked banks (6 meetings each) and
+// cbHistory is fetched at boot for all eight tracked banks (6 meetings each) and
 // `events` is the full day's calendar -- both were reaching the AI prompt and a
 // per-PAIR tooltip, while the currency drawer, the one natural home for "what has
 // this central bank been saying and what is due for this economy", showed neither.
@@ -6399,7 +6401,7 @@ function ccyPolicyHtml(ccy) {
   } else if (CB_HISTORY_KEY[ccy]) {
     bits.push(`<div class="muted">No scored ${CB_HISTORY_KEY[ccy].toUpperCase()} meetings loaded yet — see <a href="${CCY_DIM_PAGE[ccy] || 'macro-scorecard.html'}">the sentiment page</a>.</div>`);
   } else {
-    bits.push(`<div class="muted">No central-bank statement feed wired for ${ccy} — only the Fed, ECB, BoE, BoJ, RBNZ, RBA and BoC are scored here.</div>`);
+    bits.push(`<div class="muted">No central-bank statement feed wired for ${ccy} — only the Fed, ECB, BoE, BoJ, RBNZ, RBA, BoC and SNB are scored here.</div>`);
   }
 
   // This economy's own scheduled releases, soonest first. `events` carries the
@@ -7972,10 +7974,10 @@ function outlookInputsFor(r) {
 }
 // Central-bank tone TREND (multi-meeting hawkish/dovish trajectory) for this
 // pair's own two currencies — DESCRIPTIVE CONTEXT ONLY, never fed into
-// outlookInputsFor/computeOutlook. Only USD/EUR/GBP/JPY have a tracked
-// central bank here (FOMC/ECB/BOE/BOJ/RBNZ/RBA/BOC); CHF legs are silently
-// skipped, same "missing is left out" discipline as every driver above.
-const CB_HISTORY_KEY = { USD: 'fomc', EUR: 'ecb', GBP: 'boe', JPY: 'boj', NZD: 'rbnz', AUD: 'rba', CAD: 'boc' };
+// outlookInputsFor/computeOutlook. All eight currencies have a tracked
+// central bank here (FOMC/ECB/BOE/BOJ/RBNZ/RBA/BOC/SNB); a leg with no
+// history loaded is silently skipped, same "missing is left out" discipline as every driver above.
+const CB_HISTORY_KEY = { USD: 'fomc', EUR: 'ecb', GBP: 'boe', JPY: 'boj', NZD: 'rbnz', AUD: 'rba', CAD: 'boc', CHF: 'snb' };
 function cbToneFor(r) {
   if (!cbHistory || !window.outlookBrick) return [];
   const cc = PAIR_CCY[r.name];
@@ -9715,7 +9717,7 @@ function booksCardHtml() {
       'market-implied policy odds from CME SOFR options — window, not meeting; untested here, context only');
   })();
   // central banks: only when a decision is inside ten days
-  const CB = { US: ['fomc-sentiment.html', 'Fed'], EU: ['ecb-sentiment.html', 'ECB'], GB: ['boe-sentiment.html', 'Bank of England'], JP: ['boj-sentiment.html', 'Bank of Japan'], NZ: ['rbnz-sentiment.html', 'RBNZ'], AU: ['rba-sentiment.html', 'RBA'], CA: ['boc-sentiment.html', 'Bank of Canada'] };
+  const CB = { US: ['fomc-sentiment.html', 'Fed'], EU: ['ecb-sentiment.html', 'ECB'], GB: ['boe-sentiment.html', 'Bank of England'], JP: ['boj-sentiment.html', 'Bank of Japan'], NZ: ['rbnz-sentiment.html', 'RBNZ'], AU: ['rba-sentiment.html', 'RBA'], CA: ['boc-sentiment.html', 'Bank of Canada'], CH: ['snb-sentiment.html', 'SNB'] };
   const cbEv = (events ?? []).filter(e => e.ms > nowMs - 2 * 864e5 && e.ms < nowMs + 10 * 864e5 && _tlFam(e.event) === 'rate decision' && CB[e.country]).sort((a, b) => a.ms - b.ms)[0];
   if (cbEv) { const [href, name] = CB[cbEv.country]; row(href, '🏛', `${name} this week`, `decision ${new Date(cbEv.ms).toLocaleString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}${cbEv.estimate != null ? ` · ${esc0(cbEv.estimate)} expected` : ''}`, 'statement wording, hawkish/dovish drift, meeting by meeting'); }
   else { const fm = _tlFomcAhead().replace(/<[^>]+>/g, ''); if (fm) row('fomc-sentiment.html', '🏛', 'Fed', esc0(fm.replace(/^\s*\d\d-\d\d\s*/, '')), 'the statement, meeting by meeting'); }

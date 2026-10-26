@@ -139,6 +139,7 @@
         <a class="sm-item" href="rbnz-sentiment.html" target="_blank"><span class="sm-item-name">🇳🇿 RBNZ Sentiment</span><span class="sm-item-desc">RBNZ OCR decision + record of meeting sentiment per meeting</span></a>
         <a class="sm-item" href="rba-sentiment.html" target="_blank"><span class="sm-item-name">🇦🇺 RBA Sentiment</span><span class="sm-item-desc">RBA decision statement, SMP and minutes sentiment per meeting</span></a>
         <a class="sm-item" href="boc-sentiment.html" target="_blank"><span class="sm-item-name">🇨🇦 BoC Sentiment</span><span class="sm-item-desc">Bank of Canada announcement, MPR and deliberations sentiment per meeting</span></a>
+        <a class="sm-item" href="snb-sentiment.html" target="_blank"><span class="sm-item-name">🇨🇭 SNB Sentiment</span><span class="sm-item-desc">Swiss National Bank quarterly assessment, introductory remarks and summary of discussion sentiment</span></a>
         <a class="sm-item" href="beige-book.html" target="_blank"><span class="sm-item-name">📖 Beige Book</span><span class="sm-item-desc">Fed Beige Book release viewer with sentiment scoring and calendar</span></a>
         <a class="sm-item" href="cpi.html" target="_blank"><span class="sm-item-name">📈 CPI / Inflation</span><span class="sm-item-desc">US CPI / inflation release dashboard</span></a>
         <a class="sm-item" href="ppi.html" target="_blank"><span class="sm-item-name">🏭 PPI</span><span class="sm-item-desc">US pipeline inflation read</span></a>

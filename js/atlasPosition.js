@@ -19,7 +19,7 @@
 import { FLIPPED } from './cotState.js';
 
 export const CCY_OF_COUNTRY = { US: 'USD', EU: 'EUR', GB: 'GBP', JP: 'JPY', AU: 'AUD', NZ: 'NZD', CA: 'CAD', CH: 'CHF' };
-export const BANK_OF = { USD: 'FOMC', EUR: 'ECB', GBP: 'BoE', JPY: 'BoJ', NZD: 'RBNZ', AUD: 'RBA', CAD: 'BoC' };
+export const BANK_OF = { USD: 'FOMC', EUR: 'ECB', GBP: 'BoE', JPY: 'BoJ', NZD: 'RBNZ', AUD: 'RBA', CAD: 'BoC', CHF: 'SNB' };
 const MARKET_LABEL = { SPX500: 'S&P 500', NQ: 'Nasdaq', GOLD: 'Gold', US10Y: 'US 10Y', COPPER: 'Copper', EURUSD: 'EUR/USD', USDJPY: 'USD/JPY', AUDUSD: 'AUD/USD', DXY: 'Dollar', WTI: 'Oil (WTI)' };
 export const REGIME_MARKET_FOR = { SPX500: 'SPX500', NQ: 'NQ', GOLD: 'GOLD', EURUSD: 'EURUSD', USDJPY: 'USDJPY', AUDUSD: 'AUDUSD' };
 export const OI_PAIR_FOR = { EURUSD: 'EUR/USD', GBPUSD: 'GBP/USD', USDJPY: 'USD/JPY', AUDUSD: 'AUD/USD', GOLD: 'XAU/USD', USDCAD: 'USD/CAD', USDCHF: 'USD/CHF', NQ: 'NAS100_USD', US30: 'US30_USD', SPX500: 'SPX500_USD', US2000: 'US2000_USD' };
