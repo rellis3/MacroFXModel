@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Overnight Hold Backtest</title>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root { --bg:#0e1117; --panel:#161b22; --line:#2b3340; --tx:#c9d1d9; --mut:#8b949e;
           --grn:#3fb950; --red:#f85149; --acc:#58a6ff; --amber:#d29922; }
@@ -39,6 +40,13 @@
   details { margin-top:12px; border:1px solid var(--line); border-radius:8px; padding:10px 14px; background:#0d1117; }
   summary { cursor:pointer; font-weight:600; font-size:13px; }
   .tag { display:inline-block; padding:1px 7px; border-radius:9px; font-size:11px; font-weight:700; border:1px solid var(--line); color:var(--mut); }
+  .price-chart { height:360px; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px; }
+  .modal-box { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; width:min(780px,100%); max-height:90vh; overflow:auto; }
+  .modal-box .close { float:right; }
+  .kv { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; margin:10px 0 12px; font-size:12.5px; }
+  .kv div { background:#0d1117; border:1px solid var(--line); border-radius:6px; padding:7px 10px; }
+  .kv .k { display:block; color:var(--mut); font-size:11px; }
   @media (max-width:640px) { .xgrid { grid-template-columns:1fr; } .xgrid .h.colh { display:none; } }
 </style>
 </head>
@@ -67,6 +75,7 @@
   </div>
 
   <div id="out"><p class="note">Loading trades…</p></div>
+  <div id="modalRoot"></div>
 
   <div class="panel" id="exports">
     <h2>Toolkit exports <span class="tag">exact format</span></h2>
@@ -109,8 +118,9 @@ function series(key, fin, spr) {
   const I = D.instruments[key];
   const f = fin === 'none' ? null : I.fin[fin];
   return I.gross.map((g, i) => {
-    const cost = (f ? f[i] : 0) + (spr === 'oanda' ? I.spread[i] : spr === 'fills' ? D.fill_round_trip_pct[key] : 0);
-    return { d: I.entry[i], x: I.exit[i], h: I.hold_h[i], r: g - cost, m: I.mae[i] - cost, g };
+    const fc = f ? f[i] : 0, sc = spr === 'oanda' ? I.spread[i] : spr === 'fills' ? D.fill_round_trip_pct[key] : 0, cost = fc + sc;
+    return { d: I.entry[i], x: I.exit[i], h: I.hold_h[i], r: g - cost, m: I.mae[i] - cost, g, mg: I.mae[i], fc, sc,
+             e: I.entry_epoch[i], xe: I.exit_epoch[i], p: I.price[i], xp: I.exit_price[i] };
   });
 }
 function combined(a, b) {
@@ -247,6 +257,8 @@ function panel(key, rows, grossRows, bh0, cfd) {
       <span>Correlation to buy &amp; hold <b>${fmt(c)}</b> <span class="note" style="display:inline">(gross overnight vs the 20:00→20:00 move that contains it)</span></span>
     </div>
     ${table(net, gross, bh, cfd, byDay)}
+    ${byDay ? '' : `<div class="chart-label">${LABEL[key]}: daily candles, every trade marked on its entry night (green = win, red = loss, at the selected costs). Click a marker to see that trade's M1 path. Scroll to zoom, drag to pan.</div>
+    <div class="price-chart" id="pc-${key}"></div>`}
     ${chart(net.eq, bh.eq, dDates, LABEL[key])}
     ${weekdays(rows, LABEL[key])}
   </div>`;
@@ -267,6 +279,89 @@ function render() {
     panel('nq', R.nq, G.nq, bhOf(D.instruments.nq.entry, d => pn.get(d)), cfd('nq')) +
     panel('gold', R.gold, G.gold, bhOf(D.instruments.gold.entry, d => pg.get(d)), cfd('gold')) +
     panel('combined', combined(R.nq, R.gold), combined(G.nq, G.gold), bhC, null);
+  priceChart('nq', R.nq); priceChart('gold', R.gold);
+}
+
+// ── trade chart: daily candles + markers, click → that trade's M1 path ────────
+const CHARTS = {};
+const DARK = {
+  layout: { background: { color: '#0d1117' }, textColor: '#c9d1d9' },
+  grid: { vertLines: { color: '#1c2128' }, horzLines: { color: '#1c2128' } },
+  timeScale: { borderColor: '#2b3340' }, rightPriceScale: { borderColor: '#2b3340' },
+};
+const CANDLE = { upColor: '#3fb950', downColor: '#f85149', borderVisible: false, wickUpColor: '#3fb950', wickDownColor: '#f85149' };
+const dayOf = ep => ep - ep % 86400;
+function priceChart(key, rows) {
+  const el = $(`pc-${key}`);
+  if (!el || !window.LightweightCharts) { if (el) el.innerHTML = '<p class="note" style="padding:10px">Chart library failed to load.</p>'; return; }
+  const view = CHARTS[key]?.timeScale().getVisibleLogicalRange();   // keep the zoom when the costs change
+  try { CHARTS[key]?.remove(); } catch {}
+  const c = LightweightCharts.createChart(el, { ...DARK, height: el.clientHeight || 360, width: el.clientWidth });
+  const s = c.addCandlestickSeries(CANDLE), dl = D.instruments[key].daily;
+  s.setData(dl.t.map((t, i) => ({ time: t, open: dl.o[i], high: dl.h[i], low: dl.l[i], close: dl.c[i] })));
+  s.setMarkers(rows.map(t => ({ time: dayOf(t.e), position: t.r >= 0 ? 'belowBar' : 'aboveBar', color: t.r >= 0 ? '#3fb950' : '#f85149',
+    shape: t.r >= 0 ? 'arrowUp' : 'arrowDown', text: `${t.r >= 0 ? '+' : ''}${t.r.toFixed(2)}%` })));
+  const byDay = new Map(rows.map((t, i) => [dayOf(t.e), i]));
+  c.subscribeClick(p => {
+    if (!p.time) return;
+    let i = byDay.get(p.time);
+    if (i == null) {   // clicked a bar with no entry (e.g. Friday): take the nearest trade
+      let best = Infinity; rows.forEach((t, j) => { const d = Math.abs(dayOf(t.e) - p.time); if (d < best) { best = d; i = j; } });
+    }
+    openTrade(key, rows, i);
+  });
+  if (view) c.timeScale().setVisibleLogicalRange(view);
+  new ResizeObserver(() => { try { c.applyOptions({ width: el.clientWidth }); } catch {} }).observe(el);
+  CHARTS[key] = c;
+}
+
+let MODAL = null;
+const closeModal = () => { $('modalRoot').innerHTML = ''; MODAL = null; };
+async function openTrade(key, rows, idx) {
+  MODAL = { key, rows, idx };
+  const t = rows[idx], wd = new Date(t.d + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' });
+  $('modalRoot').innerHTML = `<div class="modal-overlay" id="ov"><div class="modal-box">
+    <button class="ghost close" id="mClose">✕ Close</button>
+    <h2 style="margin-top:0">${LABEL[key]}: trade ${idx + 1} of ${rows.length} · ${wd} ${t.d} → ${t.x}</h2>
+    <div class="kv">
+      <div><span class="k">Entry, 20:00 UK</span>${fmt(t.p)}</div>
+      <div><span class="k">Exit, 14:30 UK</span>${fmt(t.xp)}</div>
+      <div><span class="k">Gross</span>${sp(t.g, 3)}%</div>
+      <div><span class="k">Net, selected costs</span>${sp(t.r, 3)}%</div>
+      <div><span class="k">MAE (gross / net)</span><span class="neg">${fmt(t.mg, 2)} / ${fmt(t.m, 2)}%</span></div>
+      <div><span class="k">Spread / financing</span>${fmt(t.sc, 4)} / ${fmt(t.fc, 4)}%</div>
+      <div><span class="k">Held</span>${fmt(t.h, 1)}h</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button class="ghost" id="mPrev" ${idx === 0 ? 'disabled' : ''}>← Prev trade</button>
+      <button class="ghost" id="mNext" ${idx >= rows.length - 1 ? 'disabled' : ''}>Next trade →</button>
+    </div>
+    <div class="price-chart" id="mChart" style="height:320px"><p class="note" style="padding:10px">Loading the M1 path…</p></div>
+    <p class="note">M1 bars from entry − 3h to exit + 3h, served by the site (<code>/api/overnight-hold-v1/m1</code>). Blue dashed = entry, grey dashed = exit, red = the MAE low.
+      The study's MAE came from the OANDA bid/ask file, so the site's bars can differ slightly.</p>
+  </div></div>`;
+  $('ov').onclick = e => { if (e.target.id === 'ov') closeModal(); };
+  $('mClose').onclick = closeModal;
+  if (idx > 0) $('mPrev').onclick = () => openTrade(key, rows, idx - 1);
+  if (idx < rows.length - 1) $('mNext').onclick = () => openTrade(key, rows, idx + 1);
+  let r;
+  try { r = await fetch(`/api/overnight-hold-v1/m1/${key}?from=${t.e - 10800}&to=${t.xe + 10800}`).then(x => x.json()); }
+  catch (e) { r = { ok: false, error: `Couldn't reach the server (${e.message}). The M1 path needs the live site.` }; }
+  if (!MODAL || MODAL.rows[MODAL.idx] !== t) return;   // moved on while loading
+  const el = $('mChart');
+  if (!r.ok || !r.bars?.length) { el.innerHTML = `<p class="note" style="padding:10px">${r.error || 'No M1 data for this window.'}</p>`; return; }
+  el.innerHTML = '';
+  const c = LightweightCharts.createChart(el, { ...DARK, height: 320, width: el.clientWidth, timeScale: { ...DARK.timeScale, timeVisible: true } });
+  const s = c.addCandlestickSeries(CANDLE);
+  s.setData(r.bars.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
+  s.createPriceLine({ price: t.p, color: '#58a6ff', lineWidth: 1, lineStyle: 2, title: 'Entry' });
+  s.createPriceLine({ price: t.xp, color: '#8b949e', lineWidth: 1, lineStyle: 2, title: 'Exit' });
+  s.createPriceLine({ price: t.p * (1 + t.mg / 100), color: '#f85149', lineWidth: 1, lineStyle: 0, title: 'MAE' });
+  s.setMarkers([
+    { time: t.e, position: 'belowBar', color: '#58a6ff', shape: 'arrowUp', text: 'Entry' },
+    { time: t.xe, position: 'aboveBar', color: '#8b949e', shape: 'arrowDown', text: 'Exit' },
+  ]);
+  c.timeScale().fitContent();
 }
 
 // ── CSV exports ───────────────────────────────────────────────────────────────

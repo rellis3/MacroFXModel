@@ -3,7 +3,8 @@
 The page picks the financing (none / OANDA model / measured account A or B) and the spread (none / OANDA bid/ask /
 the owner's fill bracket) and builds the toolkit CSVs in the browser. Financing per account follows
 scripts/cost-verification/rescore.py exactly, so the page's numbers match rescore.json.
-Writes analysis/output/overnight-hold-toolkit/page_trades.json (percentages only: the repo is public).
+Also daily candles (OANDA M1 mid, UTC days, trade window only) for the trade-marker chart.
+Writes analysis/output/overnight-hold-toolkit/page_trades.json (percentages and prices only: the repo is public).
 """
 import json
 from pathlib import Path
@@ -38,9 +39,16 @@ def main():
                 fin[grp] = -c['per_night_pct'] * days
         r = lambda a: [round(float(x), 5) for x in a]
         bh = banked[key]['buy_hold_cfd']
+        m1 = pd.read_parquet(ROOT / 'data/m1_bidask' / f'{key}_m1.parquet', columns=['time', 'open', 'high', 'low', 'close'])
+        m1 = m1[(m1.time >= t.date.iloc[0] - pd.Timedelta(days=3)) & (m1.time <= pd.Timestamp(t.exitDate.iloc[-1]) + pd.Timedelta(days=3))]
+        day = m1.groupby(m1.time.dt.floor('D')).agg(o=('open', 'first'), h=('high', 'max'), l=('low', 'min'), c=('close', 'last'))
+        day = day[day.index.dayofweek < 5]   # drop the few-hour Sunday-evening stub bar
         out['instruments'][key] = {
             'entry': t.date.dt.strftime('%Y-%m-%d').tolist(),
             'exit': t.exitDate.tolist(),
+            'entry_epoch': t.entryEpoch.astype(int).tolist(), 'exit_epoch': t.exitEpoch.astype(int).tolist(),
+            'exit_price': r(t.exitPrice),
+            'daily': {'t': [int(x.timestamp()) for x in day.index], **{k: r(day[k]) for k in 'ohlc'}},
             'hold_h': r((t.exitEpoch - t.entryEpoch) / 3600),
             'price': r(t.entryPrice),
             'gross': r(t.grossPct),
