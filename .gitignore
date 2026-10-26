@@ -697,3 +697,11 @@ analysis/output/vix-calculus/readings.parquet
 
 # cost-verification: raw Trade History pull (account P&L); public repo
 analysis/output/cost-verification/trades.json
+
+# raw vendor pulls and run logs: large, regenerable, kept local (public repo)
+OI Data/
+oi_recon/databento_oi/
+education/Data from Cog/
+scripts/rates_line/logs/*.log
+logs/upload_bidask_r2.log
+scratchpad/*.log

@@ -163,9 +163,9 @@ t('no bare setInterval is left in server.js outside the svcInterval helper', () 
   const stray = src.split('\n')
     .map((line, i) => [i + 1, line])
     .filter(([, line]) => /(?<!svc)setInterval\(/.test(line) && !line.trim().startsWith('//') && !line.includes('svcRun(id, fn)'));
-  // Two known exceptions stay bare, both inside already-gated code:
-  //   _scheduleDailyUtc's re-arm, and the VFR nightly refresh (opt-IN via VFR_REFRESH_UTC).
-  assert.ok(stray.length <= 2, `unexpected ungated setInterval(s): ${stray.map(([n]) => n).join(', ')}`);
+  // Three known exceptions stay bare, none of them a background service:
+  //   _scheduleDailyUtc's re-arm, the VFR nightly refresh (opt-IN via VFR_REFRESH_UTC), and the shutdown wait for an in-flight brief (cleared as soon as it finishes).
+  assert.ok(stray.length <= 3, `unexpected ungated setInterval(s): ${stray.map(([n]) => n).join(', ')}`);
 });
 
 t('every id server.js gates on is in the registry', () => {
@@ -187,7 +187,7 @@ t('svcEnabled fails open rather than killing the process on an unknown id', () =
   // breaks must not stop the thing it was only supposed to gate.
   const src = readRepo('server.js');
   const fn = src.slice(src.indexOf('function svcEnabled(id) {'));
-  const body = fn.slice(0, fn.indexOf('\n}\n'));
+  const body = fn.slice(0, fn.search(/\r?\n}\r?\n/));   // server.js may be CRLF
   assert.ok(/try\s*{/.test(body) && /catch/.test(body), 'svcEnabled must catch the registry throw');
   assert.ok(/on = true/.test(body), 'svcEnabled must fall back to ON, so an unregistered job still runs');
   assert.ok(!/throw/.test(body), 'svcEnabled must not rethrow — it is called at module scope');
