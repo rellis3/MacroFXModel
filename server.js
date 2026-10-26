@@ -167,11 +167,12 @@ import { BOE_MEETINGS, pendingAsOf as boePendingAsOf } from './js/boeCalendar.js
 import { FETCHERS as BOE_FETCHERS, extractVote as boeExtractVote } from './js/boeFetch.js';
 import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js';
 import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookViewUrl as bojOutlookViewUrl, outlookFullUrl as bojOutlookFullUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
-import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf } from './js/rbnzCalendar.js';
+import { RBNZ_MEETINGS, pendingAsOf as rbnzPendingAsOf, allReleases as rbnzAllReleases } from './js/rbnzCalendar.js';
 import { FETCHERS as RBNZ_FETCHERS, extractVote as rbnzExtractVote } from './js/rbnzFetch.js';
-import { RBA_MEETINGS, pendingAsOf as rbaPendingAsOf } from './js/rbaCalendar.js';
+import { RBA_MEETINGS, pendingAsOf as rbaPendingAsOf, allReleases as rbaAllReleases } from './js/rbaCalendar.js';
 import { FETCHERS as RBA_FETCHERS, extractVote as rbaExtractVote } from './js/rbaFetch.js';
-import { BOC_MEETINGS, pendingAsOf as bocPendingAsOf } from './js/bocCalendar.js';
+import { BOC_MEETINGS, pendingAsOf as bocPendingAsOf, allReleases as bocAllReleases } from './js/bocCalendar.js';
+import { shouldReplaceLatest as cbShouldReplaceLatest, pickLatest as cbPickLatest } from './js/cbLatest.js';
 import { FETCHERS as BOC_FETCHERS } from './js/bocFetch.js';
 import { BEIGE_BOOK_RELEASES, pendingAsOf as beigeBookPendingAsOf } from './js/beigeBookCalendar.js';
 import { fetchBeigeBook, beigeBookPdfUrl } from './js/beigeBookFetch.js';
@@ -8176,7 +8177,7 @@ app.get('/api/boj/debug-fetch', async (req, res) => {
 //         Governing Council deliberations two weeks on. No vote is published.
 const _CB_EXTRA_ENGINES = {
   rbnz: {
-    name: 'RBNZ', ccy: 'NZD', meetings: RBNZ_MEETINGS, pendingAsOf: rbnzPendingAsOf, fetchers: RBNZ_FETCHERS, extractVote: rbnzExtractVote,
+    name: 'RBNZ', ccy: 'NZD', meetings: RBNZ_MEETINGS, pendingAsOf: rbnzPendingAsOf, allReleases: rbnzAllReleases, fetchers: RBNZ_FETCHERS, extractVote: rbnzExtractVote,
     voteKinds: ['statement'], kinds: ['statement'], meetingLabel: 'RBNZ Monetary Policy Committee decision',
     labels: {
       statement: 'RBNZ OCR DECISION — the Monetary Policy Committee\'s media release together with its Summary Record of Meeting (the RBNZ\'s minutes equivalent), both published on one page at 2pm NZ time on decision day',
@@ -8188,7 +8189,7 @@ const _CB_EXTRA_ENGINES = {
     assets: 'NZD|NZGBs|Equities', assetsByAsset: 'NZD|NZGBs|Equities|FX majors', boardWord: 'committee member',
   },
   rba: {
-    name: 'RBA', ccy: 'AUD', meetings: RBA_MEETINGS, pendingAsOf: rbaPendingAsOf, fetchers: RBA_FETCHERS, extractVote: rbaExtractVote,
+    name: 'RBA', ccy: 'AUD', meetings: RBA_MEETINGS, pendingAsOf: rbaPendingAsOf, allReleases: rbaAllReleases, fetchers: RBA_FETCHERS, extractVote: rbaExtractVote,
     voteKinds: ['statement', 'minutes'], kinds: ['statement', 'smp', 'minutes'], kindFlags: { smp: 'smp' }, meetingLabel: 'RBA Monetary Policy Board meeting',
     labels: {
       statement: 'RBA MONETARY POLICY BOARD DECISION STATEMENT — the decision media release, published at 2:30pm Sydney time on decision day, ending with the Board\'s (unattributed) vote',
@@ -8203,7 +8204,7 @@ const _CB_EXTRA_ENGINES = {
     assets: 'AUD|ACGBs|Equities', assetsByAsset: 'AUD|ACGBs|Equities|FX majors', boardWord: 'Board member',
   },
   boc: {
-    name: 'BoC', ccy: 'CAD', meetings: BOC_MEETINGS, pendingAsOf: bocPendingAsOf, fetchers: BOC_FETCHERS, extractVote: null,
+    name: 'BoC', ccy: 'CAD', meetings: BOC_MEETINGS, pendingAsOf: bocPendingAsOf, allReleases: bocAllReleases, fetchers: BOC_FETCHERS, extractVote: null,
     voteKinds: [], kinds: ['statement', 'mpr', 'deliberations'], kindFlags: { mpr: 'mpr' }, meetingLabel: 'Bank of Canada fixed announcement date',
     labels: {
       statement: 'BANK OF CANADA RATE ANNOUNCEMENT — the policy-rate press release, published at 09:45 ET on the fixed announcement date',
@@ -8297,8 +8298,45 @@ Respond with ONLY valid JSON, no markdown:
     const analysis = JSON.parse(clean);
     const payload = { kind, meetingDate, analysis, vote, diffSegments, prevDate, sourceUrl: url, generatedAt: new Date().toISOString() };
     await kv.put(`${key}_analysis_${kind}_${meetingDate}`, JSON.stringify(payload)).catch(() => {});
-    await kv.put(`${key}_latest`, JSON.stringify({ kind, meetingDate })).catch(() => {});
+    await advanceLatest({ kind, meetingDate, publishedOn: rawPublishedOn(await getRaw(kind, meetingDate).catch(() => null)) });
     return payload;
+  }
+
+  // `latest` = the most recently PUBLISHED analysed document, never whatever
+  // was analysed last (js/cbLatest.js). Was a blind overwrite, so a backfill
+  // of an older meeting moved it backwards (RBA read 08-11 with 09-29
+  // analysed; BoC 07-15 with 09-02 analysed, 2026-10-26).
+  const rawPublishedOn = rec => rec?.publishedOn ?? null;
+  const readLatest = async () => {
+    try { const p = await kv.get(`${key}_latest`); return p ? JSON.parse(p) : null; } catch { return null; }
+  };
+  async function advanceLatest(candidate) {
+    const current = await readLatest();
+    if (!cbShouldReplaceLatest(current, candidate, cfg.allReleases())) return false;
+    await kv.put(`${key}_latest`, JSON.stringify(candidate)).catch(() => {});
+    return true;
+  }
+  // Repair: recompute the pointer from every analysed document of every past
+  // release and fix it if it disagrees. Runs at the start of every poll, so
+  // the wrong pointers already in KV correct themselves on the next tick.
+  async function repairLatest() {
+    const now = Date.now();
+    const rels = cfg.allReleases();
+    const docs = [];
+    for (const r of rels) {
+      if (r.expectedAt > now) continue;
+      const a = await kv.get(`${key}_analysis_${r.kind}_${r.meetingDate}`).catch(() => null);
+      if (!a) continue;
+      docs.push({ kind: r.kind, meetingDate: r.meetingDate, publishedOn: rawPublishedOn(await getRaw(r.kind, r.meetingDate).catch(() => null)) });
+    }
+    const best = cbPickLatest(docs, rels);
+    if (!best) return null;
+    const current = await readLatest();
+    if (!current || current.kind !== best.kind || current.meetingDate !== best.meetingDate) {
+      await kv.put(`${key}_latest`, JSON.stringify(best)).catch(() => {});
+      console.log(`[${key}] latest pointer repaired: ${current ? `${current.kind} ${current.meetingDate}` : '(none)'} -> ${best.kind} ${best.meetingDate}`);
+    }
+    return best;
   }
 
   // Oldest first, so a cold start captures the earlier meeting before the
@@ -8306,6 +8344,7 @@ Respond with ONLY valid JSON, no markdown:
   async function autoCheck(reason = 'schedule') {
     const pending = cfg.pendingAsOf(Date.now(), 120).slice().sort((a, b) => a.meetingDate.localeCompare(b.meetingDate) || a.expectedAt - b.expectedAt);
     const log = [];
+    await repairLatest().catch(e => log.push(`latest repair ✗ ${e.message}`));
     for (const rel of pending) {
       const already = await getRaw(rel.kind, rel.meetingDate);
       if (already) continue;
@@ -8313,7 +8352,7 @@ Respond with ONLY valid JSON, no markdown:
         const r = await cfg.fetchers[rel.kind](rel.meetingDate);
         if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.kind} ${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
         if (!r.text || r.text.length < 200) { log.push(`${rel.kind} ${rel.meetingDate} ✗ page fetched but only ${r.text?.length ?? 0} chars of text — not stored`); continue; }
-        await kv.put(`${key}_raw_${rel.kind}_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, fetchedAt: new Date().toISOString() }));
+        await kv.put(`${key}_raw_${rel.kind}_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, publishedOn: r.publishedOn ?? null, fetchedAt: new Date().toISOString() }));
         log.push(`${rel.kind} ${rel.meetingDate} ✓ fetched`);
         if (_aiAnyKey()) {
           try { await buildAnalysis(rel.kind, rel.meetingDate); log.push(`${rel.kind} ${rel.meetingDate} ✓ analysed`); }
@@ -8395,7 +8434,7 @@ Respond with ONLY valid JSON, no markdown:
     res.json({ ok: true, bank: cfg.name, dateChecked: date, results });
   });
   svcInterval('cbSentiment', () => { runCheck('poll'); }, 30 * 60_000);
-  return { buildPrompt, buildAnalysis, autoCheck, runCheck };
+  return { buildPrompt, buildAnalysis, autoCheck, runCheck, repairLatest };
 }
 const _cbExtraEngines = Object.fromEntries(Object.entries(_CB_EXTRA_ENGINES).map(([k, cfg]) => [k, _registerCbEngine(k, cfg)]));
 
