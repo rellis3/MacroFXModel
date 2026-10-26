@@ -35,8 +35,6 @@
   svg.chart { width:100%; height:auto; background:#0d1117; border:1px solid var(--line); border-radius:8px; }
   .facts { display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--mut); margin:4px 0 12px; }
   .facts b { color:var(--tx); }
-  .xgrid { display:grid; grid-template-columns:140px repeat(auto-fit,minmax(150px,1fr)); gap:8px; align-items:center; }
-  .xgrid .h { font-size:12px; color:var(--mut); }
   details { margin-top:12px; border:1px solid var(--line); border-radius:8px; padding:10px 14px; background:#0d1117; }
   summary { cursor:pointer; font-weight:600; font-size:13px; }
   .tag { display:inline-block; padding:1px 7px; border-radius:9px; font-size:11px; font-weight:700; border:1px solid var(--line); color:var(--mut); }
@@ -55,7 +53,6 @@
   .hm tr.foot td { color:var(--tx); background:#0d1117; font-weight:600; }
   .hm-legend { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--mut); margin-top:6px; }
   .hm-legend span.bar { width:160px; height:8px; border-radius:4px; background:linear-gradient(90deg,#b62324,#21262d,#238636); }
-  @media (max-width:640px) { .xgrid { grid-template-columns:1fr; } .xgrid .h.colh { display:none; } }
 </style>
 </head>
 <body>
@@ -86,40 +83,33 @@
   <div id="modalRoot"></div>
 
   <div class="panel" id="exports">
-    <h2>Toolkit exports <span class="tag">exact format</span></h2>
-    <p class="sub" style="margin-bottom:10px">C.OG's three columns: <code>Date,Return %,MAE %</code>. Date = the trade's <b>entry</b> date, Return % = net return of the trade as % of position notional,
-      MAE % ≤ 0, two decimals, no symbols. On net files, the MAE also has that trade's costs taken off (counted as paid at the worst point, which is conservative).
-      Combined = both instruments' rows at half size each (one portfolio at 1× notional), sorted by date.</p>
-    <div class="xgrid" id="xgrid"></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
-      <button id="xCurrent">Export the current cost selection (3 files)</button>
-      <button class="ghost" id="xAll">Download every file above</button>
+    <h2>Prop-firm toolkit files <span class="tag">3 files</span></h2>
+    <p class="sub" style="margin-bottom:10px">C.OG's format: <code>Date,Return %,MAE %</code> (entry date, net % return, worst point ≤ 0, two decimals).
+      Upload NAS100 and Gold separately, then Combined (both at half size, one portfolio).
+      They use the cost settings at the top of the page, which start on your real costs: swaps as your accounts charge them, plus the OANDA bid/ask spread at every fill. Commission is zero on your accounts.
+      Set the costs to "None" first if you want a gross run to compare.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="ghost" data-x="nq">NAS100</button>
+      <button class="ghost" data-x="gold">Gold</button>
+      <button class="ghost" data-x="combined">Combined</button>
+      <button id="xAll3">Download all 3</button>
     </div>
-    <p class="note">Rounding to two decimals, as the spec asks, moves each NQ trade by up to ±0.005%. The mean net return is only +0.034% a trade,
-      so a toolkit run on these files can differ slightly from the replica below, which used unrounded returns.</p>
+    <p class="note" id="xCostNote"></p>
   </div>
 
   <div class="panel" id="journal">
-    <h2>Journal import export <span class="tag">colez-import-template-standard</span></h2>
-    <p class="sub" style="margin-bottom:10px">One row per trade in the import template's 13 columns:
-      <code>Date,Time,Exit Date,Exit Time,Instrument,Direction,Model,Risk %,Return %,MAE %,MFE %,Tags,Notes</code>.
-      Uses the cost settings at the top of the page. Times are UK (20:00 entry, 14:30 exit next day). Return % is signed; MAE % and MFE % are positive sizes, as in the template.</p>
+    <h2>Journal file <span class="tag">colez-import-template-standard</span></h2>
+    <p class="sub" style="margin-bottom:10px">One file, NAS100 and Gold together, every cost included (same settings as above), in the import template's 13 columns.
+      Each market is half the account, as in the combined toolkit file. Times are UK (20:00 entry, 14:30 exit next day).</p>
     <div class="grid">
-      <div><label>Position size (× account equity)</label><select id="jSize">
-        <option value="0.5">0.5×</option><option value="1" selected>1× (Return % = the trade's % move)</option><option value="2">2×</option><option value="3">3×</option></select></div>
-      <div><label>Risk % column</label><select id="jRisk">
-        <option value="unit" selected>1% of notional × size (the R unit)</option><option value="blank">Leave blank</option></select></div>
+      <div><label>Compounding</label><select id="jComp">
+        <option value="yes" selected>Compounded (each trade sized from the account at entry)</option>
+        <option value="no">Not compounded (same position size every trade, from the starting balance)</option></select></div>
     </div>
-    <p class="note">% columns are % of the account at the chosen size: Return % = size × net return, MAE % = size × (worst M1 low + that trade's costs),
-      MFE % = size × (best M1 high − costs, floored at 0). Costs are counted as already paid at both extremes, as in the toolkit CSVs.
-      The overnight hold has no stop, so there is no true risk per trade. The Risk % column uses a fixed 1% of notional as the R unit (the old engine page's convention), which makes R = Return % ÷ size.
-      Three decimals, because the edge is only about +0.03% a trade and two would round much of it away.
-      For the combined book, export "Both" at 0.5×: that is the study's half-size-each portfolio.</p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-      <button class="ghost" data-j="nq">NAS100</button>
-      <button class="ghost" data-j="gold">Gold</button>
-      <button data-j="both">Both, one file (sorted by entry)</button>
-    </div>
+    <p class="note">Return %, MAE % and MFE % are % of the account. Compounded: every trade is half the current account, so Return % = half the trade's % move.
+      Not compounded: the position stays at half the starting balance, so as the account grows each trade becomes a smaller % of it (and a larger % after losses).
+      MAE/MFE are positive sizes with that trade's costs counted as paid. The hold has no stop, so Risk % is a fixed 1% of the position (the R unit).</p>
+    <div style="margin-top:12px"><button id="jDownload">Download journal</button></div>
   </div>
 
   <div class="panel" id="toolkit"><h2>Toolkit replica: FTMO 2-step</h2><p class="note">Loading…</p></div>
@@ -491,29 +481,15 @@ function fileFor(book, cfg) {
   const c = cfg[book];
   return [`overnight_hold_${book}_${costTag(c.fin, c.spr)}.csv`, csv(series(book, c.fin, c.spr))];
 }
-// The fixed set: gross, the banked model, and each measured account.
-const PRESETS = [
-  { id: 'gross', label: 'Gross', cfg: { nq: { fin: 'none', spr: 'none' }, gold: { fin: 'none', spr: 'none' } } },
-  { id: 'banked', label: 'Net, our model (banked)', cfg: { nq: { fin: 'oanda', spr: 'oanda' }, gold: { fin: 'oanda', spr: 'oanda' } } },
-  { id: 'accA', label: 'Net, gold on account A', cfg: { nq: { fin: 'B', spr: 'oanda' }, gold: { fin: 'A', spr: 'oanda' } } },
-  { id: 'accB', label: 'Net, account B', cfg: { nq: { fin: 'B', spr: 'oanda' }, gold: { fin: 'B', spr: 'oanda' } } },
-];
+const costLine = () => ['nq', 'gold'].map(k => { const c = sel(k);
+  return `${LABEL[k]}: financing ${FIN[c.fin]}, spread ${SPR[c.spr]}`; }).join(' · ');
 function exportsGrid() {
-  const books = ['nq', 'gold', 'combined'];
-  let h = `<div class="h colh"></div>${PRESETS.map(p => `<div class="h colh">${p.label}</div>`).join('')}`;
-  for (const b of books) {
-    h += `<div><b>${LABEL[b]}</b></div>`;
-    for (const p of PRESETS) {
-      const dup = b === 'nq' && p.id === 'accA';   // NQ was only measured on account B: same file as accB
-      h += dup ? `<div class="note" style="margin:0">same as account B</div>` : `<button class="ghost" data-b="${b}" data-p="${p.id}">${b === 'combined' ? 'Combined' : LABEL[b].split(' ')[0]} · ${p.label}</button>`;
-    }
-  }
-  $('xgrid').innerHTML = h;
-  $('xgrid').querySelectorAll('button').forEach(btn => btn.onclick = () => download(...fileFor(btn.dataset.b, PRESETS.find(p => p.id === btn.dataset.p).cfg)));
-  $('xCurrent').onclick = () => { const cfg = { nq: sel('nq'), gold: sel('gold') }; books.forEach(b => download(...fileFor(b, cfg))); };
-  $('xAll').onclick = async () => {
-    for (const btn of $('xgrid').querySelectorAll('button')) { btn.click(); await new Promise(r => setTimeout(r, 350)); }
-  };
+  const go = book => download(...fileFor(book, { nq: sel('nq'), gold: sel('gold') }));
+  document.querySelectorAll('[data-x]').forEach(btn => btn.onclick = () => go(btn.dataset.x));
+  $('xAll3').onclick = async () => { for (const b of ['nq', 'gold', 'combined']) { go(b); await new Promise(r => setTimeout(r, 350)); } };
+  const note = () => { $('xCostNote').textContent = 'Current costs: ' + costLine(); };
+  ['finNq', 'sprNq', 'finGold', 'sprGold'].forEach(id => $(id).addEventListener('change', note));
+  note();
 }
 
 // ── journal import export (colez-import-template-standard.csv) ────────────────
@@ -521,24 +497,31 @@ const SYM = { nq: 'NAS100', gold: 'XAUUSD' };
 const q = v => /[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v;
 const three = v => { const s = v.toFixed(3); return s === '-0.000' ? '0.000' : s; };
 function journalRows(key) {
-  const { fin, spr } = sel(key), I = D.instruments[key], k = +$('jSize').value;
+  const { fin, spr } = sel(key), I = D.instruments[key];
   const finRows = fin === 'none' ? null : I.fin[fin], med = finRows ? [...finRows].sort((a, b) => a - b)[finRows.length >> 1] : 0;
   return series(key, fin, spr).map((t, i) => {
     const cost = t.g - t.r, wd = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date(t.d + 'T12:00:00Z').getUTCDay()];
     const tags = [wd, finRows && t.fc > 2 * med ? 'triple-swap' : ''].filter(Boolean).join(' ');
-    const notes = `${fin === 'none' && spr === 'none' ? 'gross' : `net: financing ${FIN[fin]}, spread ${SPR[spr]}`}; gross ${three(t.g)}, spread ${three(t.sc)}, financing ${three(t.fc)} (% of notional)`;
-    return { d: t.d, row: [t.d, '20:00', t.x, '14:30', SYM[key], 'Long', 'Overnight Hold',
-      $('jRisk').value === 'blank' ? '' : (k * 1).toFixed(2),
-      three(k * t.r), three(k * (Math.abs(Math.min(t.mg, 0)) + cost)), three(k * Math.max(I.mfe[i] - cost, 0)), tags, notes].map(q).join(',') };
+    const notes = `${fin === 'none' && spr === 'none' ? 'gross' : `net: financing ${FIN[fin]}, spread ${SPR[spr]}`}; gross ${three(t.g)}, spread ${three(t.sc)}, financing ${three(t.fc)} (% of position)`;
+    return { d: t.d, sym: SYM[key], x: t.x, r: t.r, mae: Math.abs(Math.min(t.mg, 0)) + cost, mfe: Math.max(I.mfe[i] - cost, 0), tags, notes };
   });
 }
-function journalCsv(which) {
-  const rows = (which === 'both' ? [...journalRows('nq'), ...journalRows('gold')] : journalRows(which))
-    .sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0);
-  return 'Date,Time,Exit Date,Exit Time,Instrument,Direction,Model,Risk %,Return %,MAE %,MFE %,Tags,Notes\n' + rows.map(r => r.row).join('\n') + '\n';
+// Each market is half the account. Compounded: sized from the account at entry, so % of account = 0.5 × % move.
+// Not compounded: fixed position = half the starting balance, so % of account = 0.5 × move × start / account at entry.
+// Both markets trade the same nights, so each night's trades use the account before that night.
+function journalCsv() {
+  const comp = $('jComp').value === 'yes', rows = [...journalRows('nq'), ...journalRows('gold')]
+    .sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : a.sym < b.sym ? -1 : 1);
+  let acct = 1, night = null, pending = 0;
+  const out = rows.map(t => {
+    if (t.d !== night) { acct += pending; pending = 0; night = t.d; }
+    const k = comp ? 0.5 : 0.5 / acct;
+    pending += comp ? acct * 0.5 * t.r / 100 : 0.5 * t.r / 100;
+    return [t.d, '20:00', t.x, '14:30', t.sym, 'Long', 'Overnight Hold', three(k), three(k * t.r), three(k * t.mae), three(k * t.mfe), t.tags, t.notes].map(q).join(',');
+  });
+  return 'Date,Time,Exit Date,Exit Time,Instrument,Direction,Model,Risk %,Return %,MAE %,MFE %,Tags,Notes\n' + out.join('\n') + '\n';
 }
-document.querySelectorAll('[data-j]').forEach(b => b.onclick = () =>
-  download(`overnight_hold_journal_${b.dataset.j}_${$('jSize').value}x.csv`, journalCsv(b.dataset.j)));
+$('jDownload').onclick = () => download(`overnight_hold_journal_${$('jComp').value === 'yes' ? 'compounded' : 'fixed-size'}.csv`, journalCsv());
 
 // ── toolkit replica results (fixed: computed in the study, OANDA-model costs) ─
 async function toolkit() {
