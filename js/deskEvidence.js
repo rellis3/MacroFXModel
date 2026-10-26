@@ -750,8 +750,8 @@ export const DESK_EVIDENCE = [
     id: 'overnight-hold-gold', domain: 'price', verdict: 'underpowered', date: '2026-10-25', doc: 'forge/OVERNIGHT_HOLD_PREREG.md', also: ['analysis/output/overnight-hold/RESULTS.md'], instruments: ['GOLD'],
     claim: 'Same C.OG task on XAUUSD (his control leg): long 20:00 UK -> 14:30 UK net of costs',
     result: 'UNDERPOWERED. 1,962 trades 2016-10 to 2026-08, real spread avg 0.023%, financing Fed funds + 1.44pp with triple Wednesday (avg 0.016%): mean net +0.022% per trade [-0.009, +0.054], t 1.4; +4.0% a year, DD -20%, Sharpe 0.41; halves +0.002 / +0.042. Breakeven 1.5x real costs; +0.9% a year with engine slippage. Gross: nearly all of the gold move happens in this window (+212% overnight vs +13% for all daytime and weekend time combined). CFD buy & hold +9.5% a year, DD -27%, Sharpe 0.64. Prop pass 3% of starts at 1x, 16% at 3x. Note 2026-10-25 (cost-verification): the financing model is 3-4x too high for gold on one of the owner two real accounts (measured ~1.1% a year) and about right on the other (Fed funds + 2.15pp, no triple Wednesday); re-costed, the net is +4.7% to +6.3% a year. Verdict unchanged.',
-    use: 'The gold gains have come overnight (descriptive, gross), but the hold nets only ~4% a year after real costs, unconfirmed and below buy & hold. Not a strategy; do not cite as validated.',
-  },
+    use: 'The gold gains have come overnight (descriptive, gross), but the hold nets only ~4% a year after real costs, unconfirmed and below buy & hold. Not a strategy; do not cite as validated.',
+  },
   {
     id: 'overnight-hold-toolkit', domain: 'price', verdict: 'context', date: '2026-10-25', doc: 'forge/OVERNIGHT_HOLD_TOOLKIT_PREREG.md', also: ['analysis/output/overnight-hold-toolkit/RESULTS.md'], instruments: ['NQ', 'GOLD'],
     claim: 'C.OG stage 7: the overnight-hold trades through a prop toolkit (replica of his Prop Firm Toolkit method, FTMO 2-step rules, intraday equity, block bootstrap), gross then net, against a zero-edge copy of the same trades',
@@ -1691,6 +1691,26 @@ export const DESK_EVIDENCE = [
     use: 'A known seasonal in franc dollar-funding cost, much smaller since 2024. Calendar context only; says nothing about spot direction.',
     instruments: ['USDCHF'],
   },
+  {
+    id: 'cb-meeting-drift-own', domain: 'events', verdict: 'null', date: '2026-10-26', doc: 'forge/CB_MEETING_DRIFT_PREREG.md', also: ['analysis/output/cb-meeting-drift/RESULTS.md'],
+    claim: 'The own currency drifts up over the five sessions after an ECB or BoE decision (EURUSD, GBPUSD, 16:00 London D to D+5), as the dollar does after the FOMC',
+    result: '170 decisions (103 ECB 2014-2026, 67 BoE 2018-2026): event minus control -6.5bp [-23.0, +12.0], Holm p 0.47, placebo 23rd pct, halves +1.3 / -12.4. The upper bound is under the registered +15bp null line, so an FOMC-sized drift is ruled out. ECB -2.6bp, BoE -12.7bp.',
+    use: 'The post-FOMC dollar drift is a Fed effect only. Never generalise it to "the currency rises after its central bank meets".',
+  },
+  {
+    id: 'cb-meeting-drift-continue', domain: 'events', verdict: 'underpowered', date: '2026-10-26', doc: 'forge/CB_MEETING_DRIFT_PREREG.md', also: ['analysis/output/cb-meeting-drift/RESULTS.md'],
+    claim: 'The decision-day move (12:00 to 16:00 London) after an ECB or BoE decision continues over the next five sessions',
+    result: '170 decisions: sign(D0 move) x D+1..D+5 return, event minus control +14.6bp [-1.1, +31.2], p 0.077 (Holm fail), placebo 95.1st pct, halves +16.3 / +13.1; continued 58% of the time vs ~50% on control days (ECB +16.9bp, BoE +11.1bp, neither significant alone).',
+    use: 'A lead, not a result: do not lean on it. Pooling more central banks (BoJ, RBA, BoC, SNB, RBNZ) under its own prereg is what would judge it.',
+    instruments: ['EURUSD', 'GBPUSD'],
+  },
+  {
+    id: 'pre-fomc-drift-nq', domain: 'events', verdict: 'underpowered', date: '2026-10-26', doc: 'forge/PRE_FOMC_DRIFT_PREREG.md', also: ['analysis/output/pre-fomc-drift/RESULTS.md'],
+    claim: 'Lucca and Moench (2015): US equity index futures rise in the 24 hours before a scheduled FOMC statement (NQ, 14:00 ET D-1 to 13:45 ET D)',
+    result: '99 scheduled meetings 2014-2026: +21.9bp vs +7.7bp on control days, difference +14.2bp [-4.1, +31.5], t 1.56, placebo 88th pct, halves -6.3 / +33.5. Win rate 56.6% vs 56.2%; without the 3 largest meetings +6.9bp; 2022 alone averaged +139bp. The paper\'s 49bp is outside the interval. SPX 2018+ (descriptive) +14.5bp [-2.9, +31.9].',
+    use: 'Do not cite the pre-FOMC drift as a live ~50bp effect: at that size it is gone here since 2014. A +10-15bp lean may remain, concentrated in 2018-2024 (mostly 2022). Reopen with 1994-2013 dates as a confirmation.',
+    instruments: ['NQ', 'SPX500'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1872,6 +1892,9 @@ const POWER = {
   'basis-yearend-chf': { n: '10 vs 32 contracts', note: 'Holm p 0.024; both halves' },
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
+  'cb-meeting-drift-own':      { n: '170 decisions (103 ECB, 67 BoE) vs 4,281 control windows', note: 'MDE 26.5bp (Holm alpha 0.025); CI [-23.0, +12.0] below the +15bp null line -- a real null' },
+  'cb-meeting-drift-continue': { n: '170 decisions vs 4,281 control windows', note: 'MDE ~26.5bp; CI [-1.1, +31.2] still includes the +15bp line' },
+  'pre-fomc-drift-nq':         { n: '99 scheduled FOMC meetings vs 2,715 control days', note: 'MDE 34.9bp vs paper 49bp; CI [-4.1, +31.5] includes the +20bp null line' },
 };
 
 const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };
