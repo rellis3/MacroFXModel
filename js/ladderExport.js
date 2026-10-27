@@ -168,17 +168,22 @@ export function buildLadderExportText(data, horizon = 'daily', opts = {}) {
  * buckets (js/sessionStats.js) rather than √-scaled off the daily σ — a different
  * and better-founded calc than the one it sits beside.
  */
-export function buildSessionAddendum(statsData) {
+// `hlP50ByName` (optional): the export's own daily H-L p50 (% of price) per instrument, so each session's share can also be
+// read in price terms (share × the day's p50 range). The shares are of the DAY's H-L, not of price.
+export function buildSessionAddendum(statsData, hlP50ByName = {}) {
   const inst = statsData?.instruments ?? statsData?.stats ?? {};
   if (!Object.keys(inst).length) return '';
+  const when = statsData?.computed_at ? ` · computed ${String(statsData.computed_at).slice(0, 10)}` : '';
   const lines = ['', '**SESSION RANGES — Asia / London / New York**',
-                 '(empirical percentiles of real session buckets, not √-scaled)', ''];
+                 `(each session's range as a share of the day's high-low, empirical over ${statsData?.years ?? 5} years of real session buckets, not √-scaled${when})`, ''];
   for (const [name, s] of Object.entries(inst)) {
     if (!s?.asia || !s?.london) continue;
+    const hl = hlP50ByName[name];
+    const eq = v => (hl > 0 && Number.isFinite(v) ? `  ≈ ${(v * hl / 100).toFixed(2)}% of price` : '');
     lines.push(_div(name));
     for (const [label, k] of [['Asia', 'asia'], ['London', 'london'], ['New York', 'ny']]) {
       const v = s[k];
-      if (v) lines.push(`${label.padEnd(10)} range : ${_pc(v.p50)}% median · ${_pc(v.p75)}% 75th`);
+      if (v) lines.push(`${label.padEnd(10)} range : ${_pc(v.p50)}% of the day median · ${_pc(v.p75)}% 75th${eq(v.p50)}`);
     }
     lines.push('');
   }
