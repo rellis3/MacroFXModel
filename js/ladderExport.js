@@ -174,16 +174,20 @@ export function buildSessionAddendum(statsData, hlP50ByName = {}) {
   const inst = statsData?.instruments ?? statsData?.stats ?? {};
   if (!Object.keys(inst).length) return '';
   const when = statsData?.computed_at ? ` · computed ${String(statsData.computed_at).slice(0, 10)}` : '';
-  const lines = ['', '**SESSION RANGES — Asia / London / New York**',
-                 `(each session's range as a share of the day's high-low, empirical over ${statsData?.years ?? 5} years of real session buckets, not √-scaled${when})`, ''];
+  // Layout matters: pine/cog_volatility_v3_sessions.pine starts reading at a line containing "SESSION STATS" and takes
+  // "Asia range", "Asia O-C", "London range", "London O-C" rows (first number after ": " = median, the number before
+  // "75th" = 75th) under each instrument's ──── header. Keep those words if this text changes.
+  const lines = ['', '──── SESSION STATS — Asia / London / New York ────',
+                 `(each session as a share of the day's high-low, ${statsData?.years ?? 5} years of real session buckets, not √-scaled${when})`, ''];
   for (const [name, s] of Object.entries(inst)) {
     if (!s?.asia || !s?.london) continue;
     const hl = hlP50ByName[name];
     const eq = v => (hl > 0 && Number.isFinite(v) ? `  ≈ ${(v * hl / 100).toFixed(2)}% of price` : '');
     lines.push(_div(name));
-    for (const [label, k] of [['Asia', 'asia'], ['London', 'london'], ['New York', 'ny']]) {
+    for (const [label, k] of [['Asia range', 'asia'], ['Asia O-C', 'asia_oc'], ['London range', 'london'], ['London O-C', 'london_oc'],
+                              ['NY range', 'ny'], ['NY O-C', 'ny_oc']]) {
       const v = s[k];
-      if (v) lines.push(`${label.padEnd(10)} range : ${_pc(v.p50)}% of the day median · ${_pc(v.p75)}% 75th${eq(v.p50)}`);
+      if (v) lines.push(`${label.padEnd(15)} : ${_pc(v.p50)}% of daily · ${_pc(v.p75)}% 75th${eq(v.p50)}`);
     }
     lines.push('');
   }
