@@ -61,6 +61,15 @@ put unrelated studies in someone else's output folder.
 
 ## Rules that stop the record drifting
 
+- **A null gets decomposed (owner's rule, 2026-10-27).** When a strategy test comes back `NULL` (or `UNDERPOWERED`),
+  don't stop at the verdict. Break the strategy into its parts (e.g. the impulse definition, the return to the anchor,
+  how far the sweep goes past the fib, which fib depth the move reaches, the break-even rule) and report each part
+  against its own null (random walk and a market placebo). A part that beats both, in both halves, after BH q = 0.10,
+  is a **reusable candidate**: list it with its numbers in the family's index (e.g. `plans/MISC_STUDIES.md`) as an
+  input for later preregs, never as a result. Pre-register the components with the main test so they can't be chosen
+  after the fact. First used by `daily-open-fib-retest`.
+- **Misc family (2026-10-27).** Studies outside every programme (retail playbooks from videos, one-off desk questions)
+  use Evidence Book domain `misc` and get a row in `plans/MISC_STUDIES.md` as well as the register.
 - **Four verdict words, no others:** `VALIDATED`, `NULL`, `UNDERPOWERED`, `CONTEXT` (the Evidence Book's
   `validated|null|underpowered|context`). "UNJUDGEABLE", "FAIL", "NOTHING PASSES", "MIXED", "DEAD", "INCONCLUSIVE" and
   "NULL but underpowered" are not verdicts. Translate them with the table in `references/results-and-banking.md`. A
