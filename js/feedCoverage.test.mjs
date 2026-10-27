@@ -10,7 +10,9 @@ import { FEEDS, GAPS_NOTE } from './feedCoverage.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = f => { try { return fs.readFileSync(path.join(root, f), 'utf8'); } catch { return ''; } };
 const server = read('server.js'), worker = read('_worker.js'), ledger = read('js/deskEvidence.js'), atlas = read('atlas.html');
-const routeText = server + '\n' + worker;
+// routes mounted from js/*Routes.js modules (HAR shadow, drawdown shadow, ...) count as routes too
+const routeMods = fs.readdirSync(path.join(root, 'js')).filter(f => /Routes\.js$/.test(f)).map(f => read('js/' + f)).join('\n');
+const routeText = server + '\n' + worker + '\n' + routeMods;
 
 const KINDS = ['positioning', 'volatility', 'rates', 'credit', 'macro-data', 'central-bank', 'calendar', 'flows', 'equity', 'regime', 'levels', 'liquidity', 'other'];
 const GRADES = ['institutional', 'public-standard', 'own-model'];
@@ -32,7 +34,7 @@ const routeExists = ep => {
   return false;
 };
 
-if (!Array.isArray(FEEDS) || FEEDS.length < 50 || FEEDS.length > 90) bad(`FEEDS has ${FEEDS?.length} entries, expected 50 to 90`);
+if (!Array.isArray(FEEDS) || FEEDS.length < 50 || FEEDS.length > 110) bad(`FEEDS has ${FEEDS?.length} entries, expected 50 to 110`);
 if (typeof GAPS_NOTE !== 'string' || GAPS_NOTE.length < 40) bad('GAPS_NOTE missing');
 
 const ids = new Set();

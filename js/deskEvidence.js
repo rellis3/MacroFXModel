@@ -1691,6 +1691,33 @@ export const DESK_EVIDENCE = [
     use: 'A known seasonal in franc dollar-funding cost, much smaller since 2024. Calendar context only; says nothing about spot direction.',
     instruments: ['USDCHF'],
   },
+  {
+    id: 'forecast-miss-scan', domain: 'volatility', verdict: 'context', date: '2026-10-27', doc: 'forge/FORECAST_MISS_SCAN_PREREG.md', also: ['analysis/output/forecast-miss-scan/RESULTS.md'],
+    claim: 'Wide scan: which of 17 conditions known before the London open explain the days the shipped range forecast misses (fx and indices; BH q 0.10 discovery 2020-23, confirmation 2023-26)',
+    result: '34 cells: 18 survived discovery, 8 confirmed on the untouched half (see the three forecast-miss-* entries). Did not confirm: MOVE, rate moves, credit 20d, RRP (idx, inside placebo), NQ 20d. Not discovered: forecast-miss streaks, dollar 20d, USDJPY 20d, basis changes, idx month-end.',
+    use: 'The family record: the shipped lines run too wide in calm conditions and too narrow after equity/vol shocks and, for FX, at month-end. Stress-count shadow fixed in prereg A1.',
+  },
+  {
+    id: 'forecast-miss-shock-idx', domain: 'volatility', verdict: 'validated', date: '2026-10-27', doc: 'forge/FORECAST_MISS_SCAN_PREREG.md', also: ['analysis/output/forecast-miss-scan/RESULTS.md'],
+    claim: 'After a 5-day S&P fall or a 5-day VIX rise (known before the open), index ranges exceed the shipped (IV-adjusted) range forecast',
+    result: 'Top-minus-bottom tercile: S&P 5d fall +11.5% (2020-23) then +13.1% [+7.5, +19.5] (2023-26); VIX 5d rise +9.9% then +13.0% [+7.1, +19.7], +16.6% within the S&P-20d middle tercile (independent of the 20-day drawdown). Index realised/forecast x0.96 with neither active, x1.06 with both.',
+    use: 'Index lines run too narrow after a short equity/vol shock and slightly wide when calm. Research-only; stress-count shadow forward record from 2026-10-28.',
+    instruments: ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+  },
+  {
+    id: 'forecast-miss-shock-fx', domain: 'volatility', verdict: 'validated', date: '2026-10-27', doc: 'forge/FORECAST_MISS_SCAN_PREREG.md', also: ['analysis/output/forecast-miss-scan/RESULTS.md'],
+    claim: 'After equity/vol stress (5-day S&P fall, 5-day VIX rise, VIX high, VIX inverted, 60-day S&P fall; known before the open), FX ranges exceed the shipped range forecast',
+    result: 'Confirmed 2023-26: 5d S&P fall +9.8% [+4.5, +14.9], 5d VIX rise +9.1% [+3.8, +14.6], VIX high +6.2% [+0.9, +11.4], VIX inverted +6.5% [+1.1, +11.8], 60d fall +8.0% [+2.9, +13.1] (discovery 2020-23: +6.2/+5.5/+9.8/+7.1/+8.3). By number active: 0 x0.95, 1-3 x0.98-1.00, 4 x1.06, 5 x1.15.',
+    use: 'FX lines run too narrow when several stress conditions stack and slightly wide when none is active. Research-only; stress-count shadow from 2026-10-28.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'],
+  },
+  {
+    id: 'forecast-miss-month-end-fx', domain: 'volatility', verdict: 'validated', date: '2026-10-27', doc: 'forge/FORECAST_MISS_SCAN_PREREG.md', also: ['analysis/output/forecast-miss-scan/RESULTS.md'],
+    claim: 'FX ranges exceed the shipped range forecast on month-end sessions (the last 2 and first 2 London sessions of a month)',
+    result: 'Flagged minus other: +4.8% (2020-23) then +11.6% [+6.2, +16.8] (2023-26), r 0.00 with equity stress. Event-free sessions: last 2 +6.3%, first 2 +6.6%; positive in 6 of 7 years. Month-end realised/forecast x1.067 vs x0.986 otherwise.',
+    use: 'The forecaster has no month-end multiplier; FX month-end ranges run about 7% beyond the lines (fixing/rebalancing flows). Research-only; part of the stress-count shadow.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1870,6 +1897,10 @@ const POWER = {
   'basis-stress-chf-fxvol': { n: '1,816 days', note: 'CI inside 0.10' },
   'basis-yearend-jpy': { n: '10 vs 32 contracts', note: 'CI [-24.1, +0.8] includes 0 and the bar' },
   'basis-yearend-chf': { n: '10 vs 32 contracts', note: 'Holm p 0.024; both halves' },
+  'forecast-miss-scan': { n: '34 cells, ~780 sessions per half', note: 'BH q 0.10 discovery, conjunctive confirmation' },
+  'forecast-miss-shock-idx': { n: '~780 confirmation sessions x 6 indices', note: 'confirm CIs exclude 0 (+13%)' },
+  'forecast-miss-shock-fx': { n: '~780 confirmation sessions x 29 pairs', note: '5 cells confirmed, CIs exclude 0' },
+  'forecast-miss-month-end-fx': { n: '~780 confirmation sessions x 29 pairs', note: '+11.6% [+6.2, +16.8]; event-free +6.3/+6.6%' },
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
 };

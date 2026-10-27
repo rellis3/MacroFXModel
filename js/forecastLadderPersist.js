@@ -146,5 +146,5 @@ export function buildPersistExportText(latest, ohlcCache, registry, ivByName = {
   lines.push('', `[Chosen forecast: σ nudged for regime, recent misses and weekday on ${adjusted.length} instruments `
     + `(${withIv} also blended toward implied vol), ${skipped.length} on the plain ladder. Picked head-to-head over all `
     + `five daily forecasts, walk-forward 2020-2026]`);
-  return { text: lines.join('\n'), adjusted, skipped };
+  return { text: lines.join('\n'), adjusted, skipped, instruments };
 }

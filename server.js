@@ -24880,8 +24880,9 @@ app.get('/api/vol-forecast/ladder/export', async (req, res) => {
     let text = buildLadderExportText(forecastState.latest, horizon);
     if (String(req.query.session) === '1') {
       try {
-        const raw = await kv.get('vol_session_stats');
-        if (raw) text += buildSessionAddendum(JSON.parse(raw));
+        const stats = await _sessionStatsForExport();
+        const hl = Object.fromEntries(Object.entries(forecastState.latest.instruments ?? {}).map(([n, f]) => [n, f?.ladder_flat?.hl_p50]));
+        if (stats) text += buildSessionAddendum(stats, hl);
       } catch { /* session block is an add-on — never fail the export for it */ }
     }
     res.type('text/plain').send(text);
@@ -25026,13 +25027,29 @@ async function _persistIvByName(ohlc) {
     return Object.fromEntries(adjusted.filter(a => a.iv > 0).map(a => [a.name, a.iv]));
   } catch (e) { console.warn('[persist-ladder] IV resolve failed:', e.message); return {}; }
 }
-app.get('/api/vol-forecast/persist-ladder/export', async (_req, res) => {
+// The session stats the exports append. They live in sessionStats.js's file (restored from KV 'session_stats' at boot), the
+// same source /api/vol-forecast/session-stats serves. The ladder export read KV 'vol_session_stats' from 2026-08-20 — a key
+// nothing writes — so its Asia / London / NY block silently disappeared.
+async function _sessionStatsForExport() {
+  const s = getSessionStats();
+  if (s?.instruments) return s;
+  const raw = await kv.get('session_stats');
+  return raw ? JSON.parse(raw) : null;
+}
+app.get('/api/vol-forecast/persist-ladder/export', async (req, res) => {
   if (!forecastState.latest) return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
   try {
     const ohlc = await ensureOhlcCache();
-    const { text, adjusted, skipped } = buildPersistExportText(forecastState.latest, ohlc, VOL_INSTRUMENTS, await _persistIvByName(ohlc));
+    let { text, adjusted, skipped, instruments: _pInst } = buildPersistExportText(forecastState.latest, ohlc, VOL_INSTRUMENTS, await _persistIvByName(ohlc));
     res.set('X-Persist-Adjusted', adjusted.map(a => `${a.name}:${a.adj}:${a.form}`).join(',') || 'none');
     res.set('X-Persist-Skipped', skipped.map(s => `${s.name}:${s.reason}`).join(',').replace(/[^ -~]/g, '') || 'none');
+    if (String(req.query.session) === '1') {
+      try {
+        const stats = await _sessionStatsForExport();
+        const hl = Object.fromEntries(Object.entries(_pInst ?? {}).map(([n, f]) => [n, f?.ladder?.hl?.p50 ?? f?.ladder_flat?.hl_p50 ?? null]));
+        if (stats) text += buildSessionAddendum(stats, hl);
+      } catch { /* add-on only */ }
+    }
     res.type('text/plain').send(text);
   } catch (e) {
     res.status(500).type('text/plain').send(`Error: ${e.message}`);
