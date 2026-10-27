@@ -55,3 +55,12 @@ Follow the blueprint's intake steps:
 5. Add the lesson's check to `forecast-line-backtest.html` (lessons table + a panel).
 
 Lesson 01 §05 says Lesson 06 covers dependence and regimes (card 09).
+
+## Lesson 06 intake: done 2026-10-27
+- **Lesson:** `education/forecaster-portfolio-case-study/LESSON_06_from-one-idea-to-a-portfolio.md` (on main).
+- **Study:** `forge/RULE_A_PORTFOLIO_PREREG.md`, results in `analysis/output/rule-a-portfolio/RESULTS.md`.
+  - **Q4 VALIDATED:** rule A is a separate source from the portfolio book (corr −0.01).
+  - **Q3 UNDERPOWERED:** the cluster risk budget scored +0.28 Sharpe, but its interval crosses 0.
+- **Check:** built on `decision-lab.html` ("Rule A as a portfolio"), not on `forecast-line-backtest.html`. The owner asked to leave that page alone (2026-10-19).
+- **Blueprint:** lesson-log row 06 and tracker rows L06 §01–§06 added.
+- **Next lesson:** 07, "How the System Evolved" (five builds, and the bias from selecting among them, which Lesson 12 corrects).
