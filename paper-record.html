@@ -78,7 +78,18 @@ function render() {
   const all = days.flatMap(([d, x]) => (x.trades ?? []).map(t => ({ ...t, date: d })));
   const insts = Object.fromEntries((S.rule?.instruments ?? []).map(i => [i.key, i]));
   let h = '';
-  h += `<div class="card"><div class="row">${summary(all.filter(t => !IDX.has(t.inst)), 'FX + gold', 0.118)}${summary(all.filter(t => IDX.has(t.inst)), 'Indices', 0.071)}${summary(all, 'All', null)}</div>
+  // Chosen-lines arm: rule A exactly as backtested (forge/RULE_A_BOOK_FORWARD_PREREG.md). Read at 0.2σ / 5R, 2× spread.
+  const ch = days.flatMap(([d, x]) => (x.chosen?.trades ?? []).map(t => ({ ...t, date: d })));
+  const chDone = ch.filter(t => t.done && t.variants?.['0.2σ/5R']?.R != null), chR = chDone.map(t => t.variants['0.2σ/5R'].R);
+  const chSum = chR.reduce((a, b) => a + b, 0), chDays = days.filter(([, x]) => x.chosen).length;
+  const chRows = ch.slice(0, 12).map(t => { const v = t.variants?.['0.2σ/5R'] ?? {};
+    return `<tr><td>${t.date}</td><td>${insts[t.inst]?.sym ?? t.inst}</td><td>${t.line.replace('_', ' ')}</td><td>${t.dir > 0 ? 'buy' : 'sell'}</td><td>${t.entry}</td><td>${v.stop ?? '—'}</td><td>${v.target ?? '—'}</td><td>${v.status ?? '—'}</td><td class="${cls(v.R)}">${v.R == null ? '—' : f3(v.R)}</td></tr>`; }).join('');
+  h += `<div class="card" style="border-color:color-mix(in srgb,var(--green) 45%,var(--border))"><h2>Rule A on the chosen v3 lines <span class="muted" style="font-weight:400">— the version the backtest and Lessons 1–6 test · from 2026-10-28</span></h2>
+    <div class="row"><div><div class="lbl">0.2σ stop / 5R, 2× spread</div><div class="big ${cls(chR.length ? chSum / chR.length : null)}">${chR.length ? f3(chSum / chR.length) : '—'}<span class="muted" style="font-size:12px"> R/trade</span></div>
+    <div class="muted">${chR.length} closed · total ${f3(chSum)}R · backtest +0.162 · ${chDays} days recorded</div></div></div>
+    <div class="muted" style="margin:8px 0">Lines: the chosen forecast's O→H / O→L p50 and p75 from the London-midnight open, captured once per day. The record below this card is the older v4-lines arm (10 lines, 1× spread), kept unchanged. Judged with the portfolio book at 2027-10-29 (forge/RULE_A_BOOK_FORWARD_PREREG.md).</div>
+    ${chRows ? `<table><tr><th>day</th><th>instrument</th><th>line</th><th>side</th><th>entry</th><th>stop</th><th>target</th><th>status</th><th>R</th></tr>${chRows}</table>` : '<div class="muted">No chosen-lines trades yet.</div>'}</div>`;
+  h += `<div class="card"><div class="lbl" style="margin-bottom:6px">Older arm: v4 lines</div><div class="row">${summary(all.filter(t => !IDX.has(t.inst)), 'FX + gold', 0.118)}${summary(all.filter(t => IDX.has(t.inst)), 'Indices', 0.071)}${summary(all, 'All', null)}</div>
         <div class="muted" style="margin-top:8px">Targets hit, in order: ${VARS.join(' / ')}. With 5R–10R targets most trades should lose; read the R per trade, not the hit rate.</div></div>`;
 
   // flags: the newest day that has them, plus today if different

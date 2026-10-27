@@ -80,6 +80,42 @@ export function detectBreaks(d, bars) {
   return out;
 }
 
+// ── Chosen-lines arm (forge/RULE_A_BOOK_FORWARD_PREREG.md): rule A exactly as backtested (scripts/backtest/
+// build_line_backtest.py) — the chosen v3 ladder's O→H / O→L p50 and p75 as fixed % of the London-midnight open, σ =
+// the ladder's sigma_used_pct, 2× spread. The v4 arm above is left exactly as it was.
+export const CHOSEN_LINES = { oh_p50: ['oh', 'p50', 1], oh_p75: ['oh', 'p75', 1], ol_p50: ['ol', 'p50', -1], ol_p75: ['ol', 'p75', -1] };
+export const CHOSEN_COST_MULT = 2;
+
+// Levels for the day from a captured ladder { sigma_used_pct, oh: {p50, p75}, ol: {p50, p75} } and the day's open.
+export function chosenLevels(lad, open) {
+  const out = {};
+  for (const [name, [q, r, side]] of Object.entries(CHOSEN_LINES)) {
+    const pct = lad?.[q]?.[r];
+    if (pct > 0) out[name] = open * (1 + side * pct / 100);
+  }
+  return out;
+}
+
+// First 1-minute close >= 0.05σ beyond each fixed level, signal minute < 600 London, entry at the next bar's open.
+export function detectChosenBreaks(levels, unit, openSec, bars) {
+  const out = [], done = new Set();
+  if (!(unit > 0)) return out;
+  for (let k = 0; k < bars.length; k++) {
+    const b = bars[k];
+    if ((b.time - openSec) / 60 >= END_MIN) break;
+    for (const [name, L] of Object.entries(levels)) {
+      if (done.has(name)) continue;
+      const up = CHOSEN_LINES[name][2] > 0;
+      if ((up ? b.close >= L + BREAK_SIGMA * unit : b.close <= L - BREAK_SIGMA * unit) && k + 1 < bars.length) {
+        done.add(name);
+        out.push({ line: name, signalK: k, entryK: k + 1, dir: up ? 1 : -1, level: L, entry: bars[k + 1].open,
+                   signalTime: b.time, entryTime: bars[k + 1].time });
+      }
+    }
+  }
+  return out;
+}
+
 // Walk a trade from its entry bar. Stop wins a same-bar tie; the entry bar can hit the target (as in the backtest).
 // `final` = true when the London day is complete (exit at the last bar if nothing hit).
 export function simulate(bars, entryK, dir, entry, stop, target, costPx, final) {

@@ -12,7 +12,8 @@ import { v4Days, nyCloseDailyBars } from './voteAtlasV4Lines.js';
 import { constantMaturityIV } from './ivMetrics.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
 import { costForPair } from './perLineStrategy.js';
-import { INSTRUMENTS, END_MIN, richFlag, detectBreaks, scoreTrade, h1TrendState } from './paperRecordCore.js';
+import { INSTRUMENTS, END_MIN, richFlag, detectBreaks, scoreTrade, h1TrendState,
+         chosenLevels, detectChosenBreaks, CHOSEN_COST_MULT } from './paperRecordCore.js';
 
 export const PAPER_KV = 'paper_record_v1';
 const KEEP_DAYS = 400, CBOE = s => `https://cdn.cboe.com/api/global/us_indices/daily_prices/${s}_History.csv`;
@@ -36,7 +37,11 @@ function lowerBound(arr, x) { let lo = 0, hi = arr.length; while (lo < hi) { con
 // seen — line tag (IV ÷ the lines' σ), extending/giving back by horizon, dollar share, FX and cross-asset one-trade share,
 // market clock. Stored once on the trade as `ctx`, never updated, so the record is a forward test of whether these reads
 // separate good breaks from bad (forge/TAG_X_PERSISTENCE_PREREG.md). It never changes which trades are taken.
-export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetch, log = console, liveEventTag = () => null, getContext = async () => null }) {
+// getChosenLadder(sym, date) (optional): the chosen v3 ladder for that London session ({ form, sigma_used_pct, oh, ol })
+// or null when the forecast for that date is not ready. Captured once per instrument per day into day.chosen.ladders and
+// never updated, then rule A is run on it in its own arm (day.chosen.trades) — forge/RULE_A_BOOK_FORWARD_PREREG.md.
+export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetch, log = console, liveEventTag = () => null, getContext = async () => null,
+                                    getChosenLadder = async () => null }) {
   const dayCache = new Map();               // `${key}|${date}` -> v4Days day (ladder + static lines), built once per day
   let running = false, last = null;
 
@@ -117,6 +122,31 @@ export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetc
     return bars.length ? { ...base, bars } : null;
   }
 
+  async function updateChosen(day, inst, d, bars, costPx, date, final) {
+    day.chosen ??= { ladders: {}, trades: [] };
+    if (!day.chosen.ladders[inst.key]) {
+      // Only a session that has not ended can still be captured; a past day with no ladder stays without one.
+      if (final) return;
+      const L = await getChosenLadder(inst.sym, date);
+      if (!L) return;
+      day.chosen.ladders[inst.key] = { ...L, capturedAt: new Date().toISOString() };
+    }
+    const lad = day.chosen.ladders[inst.key], open = bars[0]?.open;
+    if (!(open > 0) || !(lad.sigma_used_pct > 0)) return;
+    const pseudo = { open, sigmaFrac: lad.sigma_used_pct / 100 };
+    for (const b of detectChosenBreaks(chosenLevels(lad, open), pseudo.sigmaFrac * open, d.openSec, bars)) {
+      let t = day.chosen.trades.find(x => x.inst === inst.key && x.line === b.line);
+      if (!t) {
+        t = { inst: inst.key, line: b.line, dir: b.dir, level: +b.level.toFixed(6), entry: b.entry, signalTime: b.signalTime, entryTime: b.entryTime,
+              open, costMult: CHOSEN_COST_MULT };
+        day.chosen.trades.push(t);
+      }
+      if (t.done) continue;
+      Object.assign(t, scoreTrade(pseudo, bars, b, CHOSEN_COST_MULT * costPx, final));
+      if (final) t.done = true;
+    }
+  }
+
   async function updateDay(store, date, final) {
     const day = store.days[date]; if (!day?.flags) return;
     day.trades ??= [];
@@ -141,6 +171,9 @@ export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetc
         Object.assign(t, scoreTrade(d, bars, b, costPx, final));
         if (final) t.done = true;
       }
+      // Chosen-lines arm: same rich flag and bars, rule A's own lines and costs.
+      try { await updateChosen(day, inst, d, bars, costPx, date, final); }
+      catch (e) { note(store, `${date} ${inst.sym} chosen arm: ${e.message || e}`); }
     }
     if (final) day.final = true;
   }

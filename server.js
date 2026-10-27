@@ -29790,7 +29790,27 @@ mountBotAuditRoutes(app, express, {
 // Logs hypothetical trades only — no orders, no bots, no alerts. Every 5 min; flags for the next day are set from 21:00
 // London. Event tags come from this server's own vol forecast for that session (recorded per day on first use).
 const _PR_FC_NAME = { SPX: 'SPX500', DOW: 'US30' };
+// The chosen v3 ladder (persistence + IV), as /api/vol-forecast/persist-ladder/json serves it, built once per session
+// date for the paper record's chosen-lines arm (forge/RULE_A_BOOK_FORWARD_PREREG.md). null until that session's
+// forecast exists; an instrument the persistence model skipped is retried on later ticks.
+let _prChosen = { date: null, lad: {} };
+async function _prChosenLadder(sym, date) {
+  const fc = forecastState.latest;
+  if (!fc || fc.session_date !== date) return null;
+  const name = _PR_FC_NAME[sym] ?? sym;
+  if (_prChosen.date !== date || !_prChosen.lad[name]) {
+    const ohlc = await ensureOhlcCache();
+    const { instruments, adjusted } = buildPersistInstruments(fc, ohlc, VOL_INSTRUMENTS, undefined, await _persistIvByName(ohlc));
+    _prChosen = { date, lad: Object.fromEntries(adjusted.map(a => [a.name, instruments[a.name].ladder])) };
+  }
+  const L = _prChosen.lad[name];
+  return L?.oh?.p50 > 0 && L?.ol?.p50 > 0 && L.sigma_used_pct > 0
+    ? { form: L.form, sigma_used_pct: L.sigma_used_pct, event_tag: L.event_tag ?? null,
+        oh: { p50: L.oh.p50, p75: L.oh.p75 }, ol: { p50: L.ol.p50, p75: L.ol.p75 } }
+    : null;
+}
 const paperRecord = createPaperRecord({
+  getChosenLadder: _prChosenLadder,
   kv, getFastLive: _laGetFastLive, liveCache: _laLiveCache,
   liveEventTag: (sym, date) => {
     const fc = forecastState.latest;
