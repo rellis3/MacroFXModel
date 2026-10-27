@@ -83,3 +83,18 @@ Per half: about 780 sessions, about 36 monthly units. The monthly-mean SD of the
 
 - **Confirmed cells** → each gets a ledger entry (validated, research-only) and a proposed shadow rule, fixed in its own prereg amendment, run beside the drawdown shadow.
 - **No confirmations** → one ledger entry for the family (context). The drawdown band stays the only known systematic miss.
+
+## Amendments
+
+### A1 — 2026-10-27 — PRE-FORWARD: the stress-count shadow rule, fixed before any forward session is scored
+This is the §8 shadow for the 8 confirmed cells (results seen, forward data not). It runs beside the drawdown shadow (`forge/DRAWDOWN_FORECAST_ERROR_PREREG.md` A1), which is unchanged.
+- **Conditions** (each known before London 00:00; full-sample top-tercile edges):
+  - S&P 5-day log return ≤ −0.34% (a 5-day fall);
+  - VIX 5-day change ≥ +0.67;
+  - VIX ≥ 20.95;
+  - VIX/VIX3M ≥ 0.910;
+  - S&P 60-day log return ≤ +2.26% (the top tercile of the sign-flipped fall measure).
+- **FX shadow:** the number of those 5 conditions active sets a multiplier on the live ladder: **0 → ×0.95; 1–3 → ×1.00; 4 → ×1.06; 5 → ×1.15**. Then, multiplicatively, **×1.067 on month-end sessions** (the last 2 or first 2 London sessions of a month).
+- **Index shadow:** the number active of (5-day fall, 5-day VIX rise) sets **0 → ×0.96; 1 → ×1.02; 2 → ×1.06**.
+- **Gold, commodities, BTC:** not covered.
+- **Forward record from 2026-10-28; judged at 120 sessions** (every session counts, not only triggers). It passes if, pooled over its scored rows, the shadow's HL p75 exceedance is closer to 25% than live's, its p50 exceedance is closer to 50%, and the date-clustered CI of the improvement in |p75 exceedance − 25%| excludes 0. Promotion only on the owner's decision.
