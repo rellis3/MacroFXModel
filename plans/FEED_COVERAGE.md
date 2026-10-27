@@ -52,7 +52,7 @@ These are the feeds that could be forgotten. Each row says what the ledger found
 | --- | --- | --- | --- |
 | Cboe listed option chains | Cboe delayed quotes | gamma-real-iv: null | Not traced; the newsletter option zone reads the CME open interest store instead. The ledger says null, so context only. |
 | Credit stress index overlay | ICE BofA OAS via FRED, own index | hy-spread-vol-idx: context | Not traced; it is a test overlay, and the newsletter shows the spreads themselves instead. The ledger says context only. |
-| Cross-border bank credit | BIS Locational Banking Statistics | bank-credit-dollar-nasdaq: context | Not wired; the ledger calls it context only, so it could appear as a slow backdrop line, never as a signal. The ledger says context only. |
+| Cross-border bank credit | BIS Locational Banking Statistics | bank-credit-dollar-nasdaq: context | Weekly: the BIS dollar-lending growth and regime are one clause of the Funding sentence in The bigger picture, marked context (wired 2026-10-27). |
 | STIR futures: SOFR, Euribor and short sterling legs | CME and ICE futures through Databento | stir-curve-map: context | Not wired; the page cog-chart.html uses it. The ledger says it describes the same bar only, so it is context on how rates moved today, not a lead. The ledger says context only. |
 | ECB yield curve and euro short-term rate | ECB Data Portal | no ledger test | Not traced; no euro rates field is built into n. No ledger test yet. |
 | CFTC positioning by pair | CFTC Commitments of Traders | cot-positioning-factor: null | Loaded by Atlas for the country card only; the newsletter takes the same CFTC report through cot-crowding instead. The ledger says null, so context only. |
@@ -60,7 +60,8 @@ These are the feeds that could be forgotten. Each row says what the ledger found
 | Who must act after a release when positioning is crowded | CFTC with own analysis | positioning-into-release-direction: validated | Not traced as its own field. The ledger finds crowded funds get hit harder against them on high impact releases, which could become one line on a release row. The ledger validates it, so it is safe to print as stated. |
 | Option open interest levels by instrument | CME QuikStrike settlements | wall-placebo: null | Not traced; the newsletter reads oi-today for its option zone and does not use the level list. The ledger says null, so context only. |
 | Ripple book: gamma by days to expiry | CME QuikStrike settlements | no ledger test | Not traced; a forward-test record on its own page. No ledger test yet. |
-| Funding and leverage read: swap lines, repo, leveraged-fund Treasury basis | CFTC TFF, Fed H.4.1 and H.8, NY Fed rates | tff-basis-rates-vol-level: underpowered | Not wired. Every state is a description of where a number sits in its own history, so it could be one backdrop line in the weekly issue. The ledger says underpowered, so context only until tested. |
+| Funding and leverage read: swap lines, repo, leveraged-fund Treasury basis | CFTC TFF, Fed H.4.1 and H.8, NY Fed rates | tff-basis-rates-vol-level: underpowered | Weekly: one Funding sentence in The bigger picture, marked context (wired 2026-10-27). |
+| Range lines after a 20-day S&P fall (research shadow band) | own model on the shipped range forecast and OANDA S&P 500 closes | drawdown-forecast-error-fx: validated | Daily and weekly: one sentence under the market cards, only when the S&P is down 2% or more over 20 days; lines not adjusted (wired 2026-10-27). |
 | Fed Beige Book | Federal Reserve | no ledger test | Not loaded by Atlas at all, so no field of n carries it. No ledger test yet. |
 | GDPNow and Cleveland Fed nowcasts | Atlanta Fed and Cleveland Fed via FRED | nowcast-gap-gdp: context | nlInput builds n.nowcast but js/newsletter.js never reads it, so it is loaded and dropped. The ledger says context only. |
 
@@ -141,7 +142,7 @@ Ranked by value. Every item respects the ledger: ranges, size, who must act and 
 3. One line on crowded funds on high impact release rows. positioning-into-release-direction is validated as who gets hurt, not which way price goes. The crowding data and the release rows are both already in the issue, so this joins two things the reader sees apart. Word it as who must act.
 4. The nowcast in The bigger picture. nlInput already builds n.nowcast and the newsletter never reads it. The GDP gap is context and the CPI gap is null, so show the level and say it is context.
 5. Printed results from the last day on release rows. The calendar feed with actuals is loaded by Atlas and dropped. Showing what printed against forecast is data, not a signal, and the surprise score is already on the currency cards.
-6. A weekly backdrop line from the funding and leverage read. Every state is a description of where a number sits in its own history. The funding stress test is null, so keep it to one weekly sentence marked context.
+6. DONE 2026-10-27: a weekly backdrop line from the funding and leverage read. Every state is a description of where a number sits in its own history. The funding stress test is null, so keep it to one weekly sentence marked context.
 
 ## What this register does not cover
 
