@@ -10,15 +10,15 @@ Generated 2026-10-27.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **222** |
+| claims tested (validated + null + underpowered) | **223** |
 | validated | 47 |
-| null | 129 |
+| null | 130 |
 | underpowered | 46 |
 | context (base rates, descriptions: not counted as tests) | 40 |
-| pre-registrations with no banked verdict (below) | 81 |
+| pre-registrations with no banked verdict (below) | 83 |
 
-**What the count says (Lesson 02 §05).** If none of the 222 claims were real, tests at the usual 5% size would still pass
-about **11.1** of them by luck. 47 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 223 claims were real, tests at the usual 5% size would still pass
+about **11.2** of them by luck. 47 passed, so most passes are unlikely to be luck alone, but
 **roughly 11 of the 47 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -289,6 +289,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-27 | forecast-miss-shock-idx | volatility | validated | forge/FORECAST_MISS_SCAN_PREREG.md |
 | 2026-10-27 | rule-a-portfolio-budget | price | underpowered | forge/RULE_A_PORTFOLIO_PREREG.md |
 | 2026-10-27 | rule-a-portfolio-second-book | price | validated | forge/RULE_A_PORTFOLIO_PREREG.md |
+| 2026-10-28 | rule-a-pre2020 | price | null | forge/RULE_A_PRE2020_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -353,6 +354,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
 - `forge/RESIDUAL_INTRADAY_PREREG.md`: Study 3 — intraday relative value: does a lagging market catch up? (pre-registration)
 - `forge/RUBBER_BAND_PREREG.md`: Study 2 — the rubber band: stretch from fair value at three speeds (pre-registration)
+- `forge/RULE_A_BOOK_FORWARD_PREREG.md`: rule-a-book-forward: forward record of rule A on the chosen lines, alongside the portfolio book, as one combin
 - `forge/SEQUENCE_BOOK_EURUSD_PREREG.md`: EURUSD Sequence Book — pre-registration (passes, pullbacks, timing)
 - `forge/SIGNAL_JOURNAL_PREREG.md`: Signal Journal — live alerts with stated odds, tracked forward (Lesson 01 card 10, Lesson 16)
 - `forge/SLOW_MR_BOOK_PREREG.md`: Slow mean-reversion book — pre-registration
@@ -375,3 +377,4 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `oi_research_book/HEDGE_FLOW_PREREG.md`: Pre-registration: does the dealer hedge-flow schedule say where the day's range extends?
 - `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
 - `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot
+- `oi_research_book/WALL_DTE_STYLE_PREREG.md`: wall-dte-style — does the right trade at a strong wall (fade or follow) depend on the wall's own expiry, the g
