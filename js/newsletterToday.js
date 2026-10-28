@@ -107,6 +107,30 @@ function sheetOf(hi, cb, weekly) {
 }
 
 /**
+ * The weekly issue's one-line story, from the five-session changes only (never the 20-day window): { headline, standfirst } or null.
+ * Yields and spreads are in basis points, VIX in points, the dollar index in percent (from its point change), all as measured over the last five sessions.
+ */
+export function weekStory(changes) {
+  const g = k => (changes ?? []).find(c => c.key === k && !c.stale && Number.isFinite(c.d5)), abs = v => Math.abs(Math.round(v)), sgn = v => (v < 0 ? 'fell' : 'rose');
+  const y10 = g('us10y'), hy = g('hy'), tips = g('tips'), cur = g('us2s10s'), vix = g('vix'), dxy = g('dxy');
+  const flat = c => !c || abs(c.d5) < 1;
+  let headline;
+  if (y10 && !flat(y10) && hy && hy.d5 >= 5 && y10.d5 < 0) headline = `Yields fell ${abs(y10.d5)}bp this week, yet junk-bond spreads widened ${abs(hy.d5)}bp`;
+  else if (y10 && !flat(y10)) headline = `The 10-year yield ${sgn(y10.d5)} ${abs(y10.d5)}bp over the week`;
+  else if (y10) headline = 'The 10-year yield barely moved this week';
+  else return null;
+  const parts = [];
+  if (tips && y10 && !flat(y10) && !flat(tips)) parts.push(`the real yield ${sgn(tips.d5)} ${abs(tips.d5)}bp, which is ${Math.min(100, Math.round(100 * tips.d5 / y10.d5))}% of the 10-year's move`);
+  if (cur && !flat(cur)) parts.push(`the 2s10s curve ${cur.d5 < 0 ? 'flattened' : 'steepened'} ${abs(cur.d5)}bp`);
+  if (hy && !(y10 && hy.d5 >= 5 && y10.d5 < 0) && !flat(hy)) parts.push(`junk spreads ${hy.d5 < 0 ? 'tightened' : 'widened'} ${abs(hy.d5)}bp`);
+  if (vix && Math.abs(vix.d5) >= 1) parts.push(`VIX ${sgn(vix.d5)} ${Math.abs(vix.d5).toFixed(1)} points`);
+  const dxp = dxy && dxy.last - dxy.d5 ? 100 * dxy.d5 / (dxy.last - dxy.d5) : null;
+  if (dxp !== null && Math.abs(dxp) >= 0.1) parts.push(`the dollar index ${sgn(dxp)} ${Math.abs(dxp).toFixed(1)}%`);
+  const sf = parts.slice(0, 3);
+  return { headline, standfirst: sf.length ? `${sf[0].charAt(0).toUpperCase()}${sf[0].slice(1)}${sf.length > 1 ? `; ${sf.slice(1).join('; ')}` : ''}. Measured over the last five sessions.` : 'Measured over the last five sessions.' };
+}
+
+/**
  * The opening for one issue: { kicker, headline, regime, changed, watch }.
  * Inputs: events (ms, ccy, event, impact, estimate, note), nowMs, since, regimeWord, riskFlags, assets (label, d1, used), weekly, fedPath, cb, board.
  * Also returns lede (the day in three or four sentences), sheet (the releases, timed) and board (the few numbers that frame the day).
@@ -118,5 +142,5 @@ export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, asse
   const done = weekly ? [] : (events ?? []).filter(e => e?.impact === 'high' && isDecision(e) && Number.isFinite(e.ms) && e.ms < now - 36e5 && ukDay(e.ms) === ukDay(now)).sort((x, y) => x.ms - y.ms);
   const regime = regimeLine(regimeWord, riskFlags), changed = changedLine(since, assets);
   const lede = [loadLine(hi, done, weekly), fedLine(fedPath, hi, now), changed, regime].filter(Boolean).join(' ');
-  return { lede, sheet: sheetOf(hi, cb, weekly), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `Today · ${day}`, headline: headlineOf(hi, nextHigh, weekly), regime, changed, watch: watchLine(hi, nextHigh, weekly), count: hi.length };
+  return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `Today · ${day}`, headline: headlineOf(hi, nextHigh, weekly), regime, changed, watch: watchLine(hi, nextHigh, weekly), count: hi.length };
 }

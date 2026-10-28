@@ -1,5 +1,5 @@
 // Tests for js/newsletterToday.js.   node js/newsletterToday.test.mjs
-import { todayOpening } from './newsletterToday.js';
+import { todayOpening, weekStory } from './newsletterToday.js';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
 
@@ -38,5 +38,13 @@ console.log('the weekly edition');
   ok('the week names the lead decision by weekday and counts the rest', w.headline === 'The Fed decides on Wednesday, plus four more big releases' && /^This week · from /.test(w.kicker));
   ok('the watch line carries the weekday', /Wed 12:30/.test(w.watch) || /Wed/.test(w.watch)); }
 
+console.log('the weekly story');
+{ const ch = [{ key: 'us10y', d5: -13 }, { key: 'hy', d5: 9 }, { key: 'tips', d5: -10 }, { key: 'us2s10s', d5: -4 }, { key: 'vix', d5: -0.96 }, { key: 'dxy', d5: -0.2, last: 121.4 }];
+  const w = weekStory(ch);
+  ok('the week line is five sessions, never twenty days', w.headline === 'Yields fell 13bp this week, yet junk-bond spreads widened 9bp' && !/20/.test(w.headline + w.standfirst) && /Measured over the last five sessions\.$/.test(w.standfirst));
+  ok('the standfirst gives the real-yield share and the curve, three parts at most', /^The real yield fell 10bp, which is 77% of the 10-year's move; the 2s10s curve flattened 4bp; the dollar index fell 0\.2%\./.test(w.standfirst));
+  ok('a stale or missing 10-year gives no week line rather than a guess', weekStory([{ key: 'us10y', d5: -13, stale: true }]) === null && weekStory([]) === null);
+  ok('a flat week says so', weekStory([{ key: 'us10y', d5: 0.2 }]).headline === 'The 10-year yield barely moved this week');
+  ok('the opening labels the story by edition', todayOpening({ events: [], nowMs: 0, weekly: true }).story === 'The week in one line' && todayOpening({ events: [], nowMs: 0 }).story === 'The month in one line'); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
