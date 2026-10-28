@@ -85,4 +85,26 @@ f = find_fill(o, h, l, m, 50.0, "high", 0.10)
 t = trade(o, h, l, m, f, 0.2, "zero", True, 540)
 check("ambiguous bar counts as the stop", t["how"] == "stop" and t["R"] <= -1.0 + 1e-9)
 
+# ---- bid/ask model (amendment A1): fib on the bid, sell fills on the bid, closes on the ask
+o, h, l, c, m = bars([(4019.10, 0), (4004.11, 45), (4019.60, 75), (4012.0, 120), (4004.00, 175), (4006, 600)])
+f0 = find_fill(o, h, l, m, ADR, "high", 0.10)
+t0 = trade(o, h, l, m, f0, 0.2, "zero", True, 540)
+fz = find_fill(o, h, l, m, ADR, "high", 0.10, buy_l=l, buy_o=o)
+tz = trade(o, h, l, m, fz, 0.2, "zero", True, 540, fill_spread=0.0)
+check("zero spread: bid/ask model equals mid", fz == f0 and tz == t0)
+sp = 0.5   # ask = bid + 0.5: the target needs the ASK at 4004.11, i.e. the bid at 4003.61
+tb = trade(o + sp, h + sp, l + sp, m, f0, 0.2, "zero", True, 540, fill_spread=sp)
+check("video trade on the ask misses the 0 (bid low 4004.00 > 4003.61)", tb["how"] != "target")
+# spread wider than the stop distance: the fill-bar stop costs at least the spread
+tw = trade(o + 4.0, h + 4.0, l + 4.0, m, f0, 0.2, "zero", True, 540, fill_spread=4.0)
+check("fill-bar stop inside a wide spread loses the spread, not just 1R",
+      tw["how"] == "stop" and abs(tw["R"] + 4.0 / tw["risk_px"]) < 1e-6)
+# buy fills only when the ASK comes down to the bid-drawn opening low
+# (a one-bar plunge to a bid low of 99.4: the ask low is 99.4 + spread)
+o, h, l, c, m = bars([(100, 0), (110, 30), (99.4, 31), (111, 90), (110, 600)])
+fb = find_fill(o, h, l, m, 50.0, "high", 0.10, buy_l=l + 0.5, buy_o=o + 0.5)
+check("buy: ask 0.5 above the bid reaches the 1 at 100 -> buy at 100", fb["side"] == 1 and abs(fb["entry"] - 100) < 1e-9)
+fb = find_fill(o, h, l, m, 50.0, "high", 0.10, buy_l=l + 0.7, buy_o=o + 0.7)
+check("buy: ask 0.7 above never reaches 100 -> no buy (the new bid low arms a sell instead)", fb["side"] == -1)
+
 print(f"{ok} checks passed")

@@ -5,11 +5,16 @@ daily-open-fib-retest: scorer. Prereg: forge/DAILY_OPEN_FIB_RETEST_PREREG.md
     python3 scripts/daily-open-fib-retest/score.py --pairs gold,nq,eurusd
     python3 scripts/daily-open-fib-retest/score.py --synthetic rw   # random-walk check
     python3 scripts/daily-open-fib-retest/score.py --synthetic plant
+    python3 scripts/daily-open-fib-retest/score.py --model ba      # PRIMARY (amendment A1): bid/ask fills
 
 Real data: VolRangeForecaster/data/m1/<pair>_m1.parquet (OANDA mid), sessions from
 DailyOpenResearch.data.Days with the broker anchor (first bar 18:00 New York).
-Sessions are cut at anchor date 2026-08-20 (the session that ends on 2026-08-21,
-the last pre-lockbox day). Writes analysis/output/daily-open-fib-retest/.
+`--model ba` reads data/m1_bidask/<pair>_m1.parquet instead (mid + bid + ask columns):
+sessions and ADR from its mid columns, the fib drawn on the bid, sells filled on the
+bid and closed on the ask, buys filled on the ask and closed on the bid, no added cost.
+The same run also scores mid (with the flat cost) on the same sessions, so the spread's
+cost is the difference. Sessions are cut at anchor date 2026-08-20 (the session that
+ends on 2026-08-21, the last pre-lockbox day). Writes analysis/output/daily-open-fib-retest/.
 """
 from __future__ import annotations
 
@@ -35,7 +40,7 @@ OUT = os.path.join(ROOT, "analysis", "output", "daily-open-fib-retest")
 BLOCK = 20
 ENTRY_CUT = 360      # minutes after the first bar (23:00 UK -> 05:00 UK)
 EXIT_MIN = 540       # 23:00 UK -> 08:00 UK, the London open
-PASS_BAR = 0.10      # net R per trade worth having (prereg §5)
+PASS_BAR = 0.15      # net R per trade worth having (prereg §5; was 0.10 here, corrected by amendment A1)
 SHIFTS = list(range(30, 841, 30))   # 28 shifted-anchor placebos, minutes after the open
 
 # round-trip cost in price units (the DailyOpenResearch assumption; mid data, no bid/ask)
@@ -43,7 +48,7 @@ COST = {"gold": 0.30, "nq": 1.50, "eurusd": 0.00015}
 
 PRIMARY = dict(anchor="high", min_imp=0.10, target="zero", be=True)
 VARIANTS = [dict(anchor=a, min_imp=m, target=t, be=b)
-            for a in ("high", "do") for m in (0.10, 0.20)
+            for a in ("high", "do") for m in (0.10, 0.20, 0.30)
             for t in ("zero", 3, 2) for b in (True, False)]
 
 
@@ -100,7 +105,7 @@ class SynthDays:
         for i, (o, h, l, c) in enumerate(self.sessions):
             if not np.isfinite(self.adr[i]):
                 continue
-            yield self.keys[i], o, h, l, c, np.arange(len(o)), self.adr[i], "normal"
+            yield self.keys[i], o, h, l, c, np.arange(len(o)), self.adr[i], "normal", None
 
 
 class RealDays:
@@ -126,7 +131,44 @@ class RealDays:
             if not d.valid(i) or d.is_weekend_day(i) or d.keys[i] > END_KEY:
                 continue
             o, h, l, c, v, mins = d.arrays(i)
-            yield d.keys[i], o, h, l, c, mins, d.adr20[i], self.vol_regime(d, i)
+            yield d.keys[i], o, h, l, c, mins, d.adr20[i], self.vol_regime(d, i), None
+
+
+class BidAskDays(RealDays):
+    """data/m1_bidask/<pair>_m1.parquet: open..close are mid, then bid_o..bid_c, ask_o..ask_c.
+    Sessions and ADR come from the mid columns (as RealDays); each session also carries
+    its bid and ask arrays, sliced from the same rows."""
+
+    def __init__(self, pair: str, ba_dir: str):
+        from DailyOpenResearch.data import Days, vol_regime
+        df = pd.read_parquet(os.path.join(ba_dir, f"{pair}_m1.parquet"))
+        df = df.set_index("time")
+        df.index = pd.DatetimeIndex(df.index)
+        if df.index.tz is None:
+            df.index = df.index.tz_localize("UTC")
+        cols = ["open", "high", "low", "close", "volume"] + [f"{s}_{k}" for s in ("bid", "ask") for k in "ohlc"]
+        df = df[cols].astype("float64")
+        df = df[~df.index.duplicated(keep="first")].sort_index()
+        ok = np.ones(len(df), bool)
+        for p in ("", "bid_", "ask_"):
+            O, Hh, Ll, C = (df[(p + k) if p else n] for k, n in zip("ohlc", ("open", "high", "low", "close")))
+            ok &= ((Hh >= Ll) & (Hh >= O) & (Hh >= C) & (Ll <= O) & (Ll <= C)).to_numpy()
+        ok &= (df.ask_l >= df.bid_l).to_numpy() & (df.ask_h >= df.bid_h).to_numpy()
+        df = df[ok]
+        self.dropped = int((~ok).sum())
+        self.days = Days(df[["open", "high", "low", "close", "volume"]], "broker")
+        self.ba = {k: df[k].to_numpy() for k in cols[5:]}
+        self.vol_regime = vol_regime
+
+    def iter(self):
+        d = self.days
+        for i in range(d.n):
+            if not d.valid(i) or d.is_weekend_day(i) or d.keys[i] > END_KEY:
+                continue
+            o, h, l, c, v, mins = d.arrays(i)
+            sl = d.day(i)
+            ba = {k: a[sl] for k, a in self.ba.items()}
+            yield d.keys[i], o, h, l, c, mins, d.adr20[i], self.vol_regime(d, i), ba
 
 
 # ---------------------------------------------------------------- stats
@@ -188,31 +230,60 @@ def shifted(o, h, l, c, mins, s):
     return o[k:], h[k:], l[k:], c[k:], m
 
 
+def ba_fill(ba, mins, adr, anchor, min_imp, k0=0):
+    """Bid/ask model: the fib on the bid; sells fill on the bid, buys on the ask."""
+    g = {k: v[k0:] for k, v in ba.items()}
+    return find_fill(g["bid_o"], g["bid_h"], g["bid_l"], mins, adr, anchor, min_imp, ENTRY_CUT,
+                     buy_l=g["ask_l"], buy_o=g["ask_o"]), g
+
+
+def ba_trade(g, mins, f, target, be):
+    """Bid/ask model: a sell closes on the ask, a buy on the bid; no added cost."""
+    s = "ask" if f["side"] < 0 else "bid"
+    spread = g["ask_o"][f["j"]] - g["bid_o"][f["j"]]
+    t = trade(g[f"{s}_o"], g[f"{s}_h"], g[f"{s}_l"], mins, f, 0.2, target, be, EXIT_MIN, fill_spread=spread)
+    t["spread_px"] = float(spread)
+    return t
+
+
 def run_pair(name: str, source, cost: float, B: int) -> dict:
     rng = np.random.default_rng(SEED)
     rows = []           # one per session: real-anchor fills
     shift_R = {s: [] for s in SHIFTS}
+    shift_R_ba = {s: [] for s in SHIFTS}
     shift_comp = {s: [] for s in SHIFTS}
     n_sessions = 0
-    for g, (key, o, h, l, c, mins, adr, regime) in enumerate(source.iter()):
+    has_ba = False
+    for g, (key, o, h, l, c, mins, adr, regime, ba) in enumerate(source.iter()):
         n_sessions += 1
+        has_ba = ba is not None
         row = dict(g=g, key=int(key), year=int(str(key)[:4]), regime=regime, adr=float(adr))
-        fills = {}
+        fills, bfills = {}, {}
         for v in VARIANTS:
             fk = (v["anchor"], v["min_imp"])
             if fk not in fills:
                 fills[fk] = find_fill(o, h, l, mins, adr, v["anchor"], v["min_imp"], ENTRY_CUT)
+                if has_ba:
+                    bfills[fk] = ba_fill(ba, mins, adr, v["anchor"], v["min_imp"])
             f = fills[fk]
-            if f is None:
-                continue
-            t = trade(o, h, l, mins, f, 0.2, v["target"], v["be"], EXIT_MIN)
-            row[vkey(v)] = t["R"]
-            row[vkey(v) + "|net"] = t["R"] - cost / t["risk_px"]
-            if v == PRIMARY:
-                row.update(side=f["side"], imp=f["imp"], fill_min=int(mins[f["j"]]),
-                           ext_min=int(mins[f["t_ext"]]), how=t["how"], risk_px=t["risk_px"],
-                           risk_adr=t["risk_px"] / adr, cost_R=cost / t["risk_px"])
-                row.update({f"c_{k}": val for k, val in components(o, h, l, mins, f, EXIT_MIN).items()})
+            if f is not None:
+                t = trade(o, h, l, mins, f, 0.2, v["target"], v["be"], EXIT_MIN)
+                row[vkey(v)] = t["R"]
+                row[vkey(v) + "|net"] = t["R"] - cost / t["risk_px"]
+                if v == PRIMARY:
+                    row.update(side=f["side"], imp=f["imp"], fill_min=int(mins[f["j"]]),
+                               ext_min=int(mins[f["t_ext"]]), anchor_min=int(mins[f["t_anchor"]]),
+                               how=t["how"], risk_px=t["risk_px"],
+                               risk_adr=t["risk_px"] / adr, cost_R=cost / t["risk_px"])
+                    row.update({f"c_{k}": val for k, val in components(o, h, l, mins, f, EXIT_MIN).items()})
+            if has_ba and bfills[fk][0] is not None:
+                bf, gg = bfills[fk]
+                t = ba_trade(gg, mins, bf, v["target"], v["be"])
+                row[vkey(v) + "|ba"] = t["R"]
+                if v == PRIMARY:
+                    row.update(ba_side=bf["side"], ba_how=t["how"], ba_risk_px=t["risk_px"],
+                               ba_spread_R=t["spread_px"] / t["risk_px"], ba_fill_min=int(mins[bf["j"]]),
+                               ba_imp=bf["imp"])
         # did the primary setup ever arm? (impulse >= 0.10 ADR before the cutoff)
         cut = mins <= ENTRY_CUT
         row["max_imp_adr"] = float((h[cut].max() - l[cut].min()) / adr) if cut.any() else float("nan")
@@ -223,11 +294,15 @@ def run_pair(name: str, source, cost: float, B: int) -> dict:
                 continue
             so, shh, sl, sc, sm = sh
             f = find_fill(so, shh, sl, sm, adr, "high", 0.10, ENTRY_CUT)
-            if f is None:
-                continue
-            t = trade(so, shh, sl, sm, f, 0.2, "zero", True, EXIT_MIN)
-            shift_R[s].append(t["R"])
-            shift_comp[s].append(components(so, shh, sl, sm, f, EXIT_MIN))
+            if f is not None:
+                t = trade(so, shh, sl, sm, f, 0.2, "zero", True, EXIT_MIN)
+                shift_R[s].append(t["R"])
+                shift_comp[s].append(components(so, shh, sl, sm, f, EXIT_MIN))
+            if has_ba:
+                k0 = int(np.searchsorted(mins, s))
+                bf, gg = ba_fill(ba, sm, adr, "high", 0.10, k0)
+                if bf is not None:
+                    shift_R_ba[s].append(ba_trade(gg, sm, bf, "zero", True)["R"])
     df = pd.DataFrame(rows)
     res = dict(pair=name, sessions=n_sessions, seed=SEED, block=BLOCK, B=B, cost_rt=cost,
                entry_cut=ENTRY_CUT, exit_min=EXIT_MIN)
@@ -246,24 +321,56 @@ def run_pair(name: str, source, cost: float, B: int) -> dict:
             d[f"gross_{hn}"] = float(hs[k].mean()) if len(hs) else float("nan")
         vres[k] = d
     res["variants"] = vres
+    # bid/ask model (amendment A1): spread-only, so its R is already net
+    vres_ba = {}
+    if has_ba:
+        for v in VARIANTS:
+            k = vkey(v) + "|ba"
+            if k not in df:
+                continue
+            sub = df[df[k].notna()]
+            d = dict(net=summarise(sub[k].to_numpy(), sub.g.to_numpy(), B, rng))
+            for hn, hs in (("h1", sub[sub.g <= half]), ("h2", sub[sub.g > half])):
+                d[f"net_{hn}"] = float(hs[k].mean()) if len(hs) else float("nan")
+            vres_ba[vkey(v)] = d
+    res["variants_ba"] = vres_ba
     pk = vkey(PRIMARY)
     prim = df[df[pk].notna()].copy()
-    # placebo distribution
+    # placebo distribution (mid gross; the gate's third leg in both models)
     sh_means = {s: float(np.mean(v)) for s, v in shift_R.items() if len(v) >= 30}
     real_gross = vres[pk]["gross"]["mean"] if pk in vres else float("nan")
     beats = sum(real_gross > m for m in sh_means.values())
     res["placebo"] = dict(shift_means=sh_means, real_gross=real_gross, beats=beats, of=len(sh_means),
                           shift_n={s: len(v) for s, v in shift_R.items()})
-    # gate (prereg §4)
-    pn = vres.get(pk, {}).get("net", {})
+    if has_ba:
+        sb = {s: float(np.mean(v)) for s, v in shift_R_ba.items() if len(v) >= 30}
+        rb = vres_ba.get(pk, {}).get("net", {}).get("mean", float("nan"))
+        res["placebo_ba"] = dict(shift_means=sb, real=rb, beats=sum(rb > m for m in sb.values()), of=len(sb))
+    # gate (prereg §4; amendment A1: legs 1-2 on bid/ask R when present, leg 3 on mid gross)
+    if has_ba:
+        pv_ = vres_ba.get(pk, {})
+        pn = pv_.get("net", {})
+        h1, h2 = pv_.get("net_h1", -1), pv_.get("net_h2", -1)
+    else:
+        pn = vres.get(pk, {}).get("net", {})
+        h1, h2 = vres.get(pk, {}).get("net_h1", -1), vres.get(pk, {}).get("net_h2", -1)
     g1 = bool(pn.get("lo", np.nan) > 0)
-    g2 = bool(vres.get(pk, {}).get("net_h1", -1) > 0 and vres.get(pk, {}).get("net_h2", -1) > 0)
+    g2 = bool(h1 > 0 and h2 > 0)
     g3 = bool(len(sh_means) > 0 and beats == len(sh_means))
     sd = pn.get("sd", np.nan)
     n = pn.get("n", 0)
     mde = 2.80 * sd / np.sqrt(n) if n else float("nan")
-    res["gate"] = dict(ci_clear=g1, both_halves=g2, beats_all_shifts=g3, mde_R=float(mde), pass_bar=PASS_BAR,
-                       powered=bool(mde <= PASS_BAR))
+    res["gate"] = dict(model="bidask" if has_ba else "mid", ci_clear=g1, both_halves=g2, beats_all_shifts=g3,
+                       mde_R=float(mde), pass_bar=PASS_BAR, powered=bool(mde <= PASS_BAR))
+    # money view of the gated cell: R per year, max drawdown in R (trades in date order)
+    col = pk + ("|ba" if has_ba else "|net")
+    seq = df[df[col].notna()].sort_values("g")
+    eq = seq[col].cumsum().to_numpy()
+    res["money"] = dict(
+        col=col, trades=int(len(seq)), total_R=float(eq[-1]) if len(eq) else 0.0,
+        per_year={str(y): dict(n=int(len(x)), R=float(x[col].sum())) for y, x in seq.groupby("year")},
+        max_dd_R=float(np.max(np.maximum.accumulate(np.concatenate([[0], eq])) - np.concatenate([[0], eq]))) if len(eq) else 0.0,
+        trades_per_year=float(len(seq) / max(1, seq.year.nunique())))
     if g1 and g2 and g3:
         verdict = "VALIDATED"
     elif not res["gate"]["powered"]:
@@ -326,6 +433,10 @@ def run_pair(name: str, source, cost: float, B: int) -> dict:
     vp = [p_from_ci(vres[k]["net"]["mean"], vres[k]["net"]["lo"], vres[k]["net"]["hi"]) for k in vk]
     for k, p, kp in zip(vk, vp, bh(vp, 0.10)):
         vres[k]["net"].update(p=p, bh_keep=bool(kp))
+    vk = list(vres_ba)
+    vp = [p_from_ci(vres_ba[k]["net"]["mean"], vres_ba[k]["net"]["lo"], vres_ba[k]["net"]["hi"]) for k in vk]
+    for k, p, kp in zip(vk, vp, bh(vp, 0.10)):
+        vres_ba[k]["net"].update(p=p, bh_keep=bool(kp))
     be_out = prim[prim.how == "be"]
     comp["C5_break_even"] = dict(
         be_exits=int(len(be_out)),
@@ -341,6 +452,20 @@ def run_pair(name: str, source, cost: float, B: int) -> dict:
     sl["impulse_adr"] = {str(k): dict(n=int(len(x)), net=float(x[pk + "|net"].mean()) if len(x) else None,
                                       gross=float(x[pk].mean()) if len(x) else None)
                          for k, x in prim.groupby("imp_b", observed=False)}
+    # amendment A1: how long after the open the 1 was set (the "opening wick" reading)
+    prim["anc_b"] = pd.cut(prim.anchor_min, [-1, 15, 60, 10000], labels=["<=15m", "15-60m", ">60m"])
+    sl["anchor_minutes"] = {str(k): dict(n=int(len(x)), net=float(x[pk + "|net"].mean()) if len(x) else None,
+                                         gross=float(x[pk].mean()) if len(x) else None)
+                            for k, x in prim.groupby("anc_b", observed=False)}
+    if has_ba:
+        pb = df[df[pk + "|ba"].notna()]
+        sl["ba_by_year"] = {str(k): dict(n=int(len(x)), R=float(x[pk + "|ba"].mean())) for k, x in pb.groupby("year")}
+        sl["ba_by_regime"] = {str(k): dict(n=int(len(x)), R=float(x[pk + "|ba"].mean())) for k, x in pb.groupby("regime")}
+        comp["spread_at_fill_R_q"] = [float(x) for x in np.nanpercentile(pb.ba_spread_R, [10, 25, 50, 75, 90])]
+        comp["exits_ba"] = pb.ba_how.value_counts().to_dict()
+        comp["C5_break_even_ba"] = dict(
+            be_on=vres_ba.get(pk, {}).get("net", {}),
+            be_off=vres_ba.get(vkey({**PRIMARY, "be": False}), {}).get("net", {}))
     comp["C6_slices"] = sl
     res["components"] = comp
     return res, df
@@ -350,6 +475,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pairs", default="gold")
     ap.add_argument("--m1-dir", default=os.path.join(ROOT, "VolRangeForecaster", "data", "m1"))
+    ap.add_argument("--ba-dir", default=os.path.join(ROOT, "data", "m1_bidask"))
+    ap.add_argument("--model", choices=["mid", "ba"], default="mid")
     ap.add_argument("--synthetic", choices=["rw", "plant"])
     ap.add_argument("--B", type=int, default=2000)
     ap.add_argument("--out", default=OUT)
@@ -362,11 +489,16 @@ def main():
         allres[res["pair"]] = res
         tag = f"synthetic_{a.synthetic}"
     else:
+        sfx = "_ba" if a.model == "ba" else ""
         for p in a.pairs.split(","):
-            res, df = run_pair(p, RealDays(p, a.m1_dir), COST[p], a.B)
+            src = BidAskDays(p, a.ba_dir) if a.model == "ba" else RealDays(p, a.m1_dir)
+            res, df = run_pair(p, src, COST[p], a.B)
+            res["model"] = a.model
+            res["rows_dropped_invalid"] = getattr(src, "dropped", None)
+            res["first_key"], res["last_key"] = int(df.key.min()), int(df.key.max())
             allres[p] = res
-            df.to_csv(os.path.join(a.out, f"trades_{p}.csv"), index=False)
-        tag = "results"
+            df.to_csv(os.path.join(a.out, f"trades_{p}{sfx}.csv"), index=False)
+        tag = "results" + sfx
     with open(os.path.join(a.out, f"{tag}.json"), "w") as fh:
         json.dump(allres, fh, indent=1, default=float)
     for p, r in allres.items():
@@ -376,6 +508,13 @@ def main():
         print(" primary gross", v.get("gross"), "\n primary net  ", v.get("net"))
         print(" halves net", v.get("net_h1"), v.get("net_h2"), "| placebo beats", r["placebo"]["beats"], "of", r["placebo"]["of"])
         print(" gate", r["gate"])
+        if r.get("variants_ba"):
+            print(" BIDASK primary", r["variants_ba"].get(pk), "| bid/ask placebo beats",
+                  r["placebo_ba"]["beats"], "of", r["placebo_ba"]["of"])
+            for k, d in r["variants_ba"].items():
+                print(f"  ba {k:28s} n={d['net'].get('n')} R={d['net'].get('mean', float('nan')):+.3f} "
+                      f"[{d['net'].get('lo', float('nan')):+.3f},{d['net'].get('hi', float('nan')):+.3f}]")
+        print(" money", {k: r["money"][k] for k in ("col", "trades", "total_R", "max_dd_R", "trades_per_year")})
         for k, d in r["variants"].items():
             print(f"  {k:28s} n={d['gross'].get('n')} gross={d['gross'].get('mean', float('nan')):+.3f} "
                   f"net={d['net'].get('mean', float('nan')):+.3f} [{d['net'].get('lo', float('nan')):+.3f},{d['net'].get('hi', float('nan')):+.3f}]")

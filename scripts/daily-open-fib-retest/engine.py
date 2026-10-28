@@ -56,12 +56,18 @@ def _running_extremes(h, l):
     return H, L, tH, tL
 
 
-def find_fill(o, h, l, mins, adr, anchor="high", min_imp=0.10, entry_cut=360):
+def find_fill(o, h, l, mins, adr, anchor="high", min_imp=0.10, entry_cut=360, buy_l=None, buy_o=None):
     """Return the fill for one session or None.
+
+    o, h, l are the CHART prices the fib is drawn on (mid, or the bid a broker chart
+    shows). A sell limit fills on the chart price itself; a buy limit fills on
+    `buy_l` / `buy_o` (the ask low / open in the bid/ask model, the chart by default).
 
     dict(side=+1 buy / -1 sell, j=fill bar, A, L0 (the impulse extreme = the 0),
     entry (fill price), imp (impulse in ADR), t_ext (bar of the impulse extreme))
     """
+    if buy_l is None:
+        buy_l, buy_o = l, o
     n = len(h)
     if n < 3:
         return None
@@ -82,7 +88,7 @@ def find_fill(o, h, l, mins, adr, anchor="high", min_imp=0.10, entry_cut=360):
         sell_arm &= Lp < do
         buy_arm &= Hp > do
     sell_fill = sell_arm & (hj >= A_sell)
-    buy_fill = buy_arm & (lj <= A_buy)
+    buy_fill = buy_arm & (buy_l[1:] <= A_buy)
     ks = _first(sell_fill, 0)
     kb = _first(buy_fill, 0)
     k = min(ks, kb)
@@ -94,7 +100,7 @@ def find_fill(o, h, l, mins, adr, anchor="high", min_imp=0.10, entry_cut=360):
         return dict(side=-1, j=j, A=A, L0=Lp[k], entry=max(A, o[j]),
                     imp=(A - Lp[k]) / adr, t_ext=int(tLp[k]), t_anchor=int(tHp[k]))
     A = A_buy[k]
-    return dict(side=+1, j=j, A=A, L0=Hp[k], entry=min(A, o[j]),
+    return dict(side=+1, j=j, A=A, L0=Hp[k], entry=min(A, buy_o[j]),
                 imp=(Hp[k] - A) / adr, t_ext=int(tHp[k]), t_anchor=int(tLp[k]))
 
 
@@ -105,8 +111,13 @@ def _to_short(o, h, l, side):
     return -o, -l, -h
 
 
-def trade(o, h, l, mins, f, stop_ext=0.2, target="zero", be=True, exit_min=540):
-    """Outcome of one fill. Returns dict(R gross in planned-risk units, how, bars)."""
+def trade(o, h, l, mins, f, stop_ext=0.2, target="zero", be=True, exit_min=540, fill_spread=0.0):
+    """Outcome of one fill. Returns dict(R gross in planned-risk units, how, bars).
+
+    o, h, l are the EXIT-side prices: the chart for mid, the ask for a sell and the bid
+    for a buy in the bid/ask model. `fill_spread` (ask - bid at the fill) floors a
+    fill-bar stop: a position opened inside a spread wider than the stop distance
+    cannot be closed for less than that spread."""
     O, Hh, Ll = _to_short(o, h, l, f["side"])
     if f["side"] > 0:
         A, L0, entry = -f["A"], -f["L0"], -f["entry"]
@@ -137,7 +148,7 @@ def trade(o, h, l, mins, f, stop_ext=0.2, target="zero", be=True, exit_min=540):
         how, t = "eod", n - 1
         px = O[t]
     elif how == "stop":
-        px = max(stop, O[t]) if t > j else stop
+        px = max(stop, O[t]) if t > j else max(stop, entry + fill_spread)
     elif how == "be":
         px = max(A, O[t])
     elif how == "target":
