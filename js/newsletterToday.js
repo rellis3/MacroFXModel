@@ -79,13 +79,44 @@ function watchLine(hi, nextHigh, weekly) {
   return `${list(shown)}${hi.length > shown.length ? `, and ${num(hi.length - shown.length)} more` : ''}. UK time.`;
 }
 
+/** The Fed-pricing sentence, only on a day with a Fed decision and only while the tracker is under a week old. */
+function fedLine(fp, hi, now) {
+  if (!fp || !hi.some(e => e.ccy === 'USD' && isDecision(e)) || !Number.isFinite(fp.hike) || !Number.isFinite(fp.cut)) return '';
+  const age = (now - Date.parse(`${fp.asOf}T12:00:00Z`)) / 864e5;
+  if (!(age >= -1 && age <= 7)) return '';
+  const dm = d => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+  return `Futures put the chance of a hike by ${fp.ref ? 'the ' + dm(fp.ref) + ' meeting' : 'the next meeting'} at ${Math.round(fp.hike)}% and of a cut at ${Math.round(fp.cut)}% (Atlanta Fed tracker, ${dm(fp.asOf)}).`;
+}
+
+/** The first sentence of the lede: how much is due and what has already happened today. */
+function loadLine(hi, done, weekly) {
+  if (!hi.length) return '';
+  const n = hi.length, banks = hi.filter(isDecision).sort((a, b) => decisionRank(a) - decisionRank(b)).map(e => listName(e));
+  if (weekly) return `${cap(num(n))} high-impact ${n === 1 ? 'release is' : 'releases are'} due in the next seven days${banks.length ? `, including ${list(banks)}` : ''}.`;
+  const out = done.length ? ` ${cap(list(done.map(e => BANK[e.ccy])))} ${done.length === 1 ? 'has' : 'have'} already decided.` : '';
+  return `${cap(num(n))} high-impact ${n === 1 ? 'release is' : 'releases are'} due today${n > 1 ? `, the last at ${hhmm(hi.at(-1).ms)} UK time` : ` at ${hhmm(hi[0].ms)} UK time`}.${out}`;
+}
+
+/** The day sheet: each high-impact release in time order with what is known about it. */
+function sheetOf(hi, cb, weekly) {
+  return hi.slice(0, weekly ? 7 : 6).map(e => {
+    const dec = isDecision(e), st = dec ? (cb ?? []).find(c => c.ccy === e.ccy && c.regime) : null, rng = e.note?.range ?? null;
+    const detail = [e.estimate ? `Expected ${e.estimate}.` : '', st ? `Its last statement read ${String(st.regime).toLowerCase()}.` : '', rng ? `Usual effect: ${rng}.` : ''].filter(Boolean).slice(0, 2).join(' ');
+    return { when: `${weekly ? wday(e.ms).slice(0, 3) + ' ' : ''}${hhmm(e.ms)}`, name: dec ? `${cap(listName(e))} rate decision` : clip(e.event, 44), ccy: e.ccy ?? '', detail };
+  });
+}
+
 /**
  * The opening for one issue: { kicker, headline, regime, changed, watch }.
- * Inputs: events (ms, ccy, event, impact), nowMs, since, regimeWord, riskFlags, assets (label, d1, used), weekly.
+ * Inputs: events (ms, ccy, event, impact, estimate, note), nowMs, since, regimeWord, riskFlags, assets (label, d1, used), weekly, fedPath, cb, board.
+ * Also returns lede (the day in three or four sentences), sheet (the releases, timed) and board (the few numbers that frame the day).
  */
-export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, assets, weekly = false } = {}) {
+export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, assets, weekly = false, fedPath, cb, board } = {}) {
   const now = Number.isFinite(nowMs) ? nowMs : Date.now(), hi = windowEvents(events, now, weekly);
   const nextHigh = hi.length ? null : (events ?? []).filter(e => e?.impact === 'high' && e.ms > now).sort((a, b) => a.ms - b.ms)[0] ?? null;
   const day = new Date(now).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ });
-  return { kicker: weekly ? `This week · from ${day}` : `Today · ${day}`, headline: headlineOf(hi, nextHigh, weekly), regime: regimeLine(regimeWord, riskFlags), changed: changedLine(since, assets), watch: watchLine(hi, nextHigh, weekly), count: hi.length };
+  const done = weekly ? [] : (events ?? []).filter(e => e?.impact === 'high' && isDecision(e) && Number.isFinite(e.ms) && e.ms < now - 36e5 && ukDay(e.ms) === ukDay(now)).sort((x, y) => x.ms - y.ms);
+  const regime = regimeLine(regimeWord, riskFlags), changed = changedLine(since, assets);
+  const lede = [loadLine(hi, done, weekly), fedLine(fedPath, hi, now), changed, regime].filter(Boolean).join(' ');
+  return { lede, sheet: sheetOf(hi, cb, weekly), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `Today · ${day}`, headline: headlineOf(hi, nextHigh, weekly), regime, changed, watch: watchLine(hi, nextHigh, weekly), count: hi.length };
 }
