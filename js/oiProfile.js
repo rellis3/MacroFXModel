@@ -203,7 +203,7 @@ export function buildProfileText(p, { name, generated = '', digits = 2, savedAtM
   const keep = (rows, val, m) => rows.filter(r => Math.abs(val(r)) / m >= 0.02);
   const out = ['──── OI PROFILE ' + '─'.repeat(30), `Generated: ${generated}`, '', name || p.sym];
   out.push(`M|spot|${f(p.spot)}|regime|${p.regime}|netgex|${Number.isFinite(p.netGex) ? Math.round(p.netGex / 1000) : '-'}|book|${p.book.label.replace(/\s+/g, '')}|bookpct|${p.book.share}|zg|${f(p.zeroGamma)}|flip|${f(p.flip)}`
-    + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 2)}|iv|${plain(p.iv.atm, 1)}|rr|${plain(p.iv.rr, 1)}|refmove|${f(p.refMove)}|binw|${plain(p.binWidth, 2)}|terms|${p.terms || 'spot'}` + (Number.isFinite(savedAtMs) ? `|saved|${new Date(savedAtMs).toISOString().slice(0, 16).replace('T', ' ')}` : ''));
+    + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 2)}|iv|${plain(p.iv.atm, 1)}|rr|${plain(p.iv.rr, 1)}|refmove|${f(p.refMove)}|binw|${f(p.binWidth)}|terms|${p.terms || 'spot'}` + (Number.isFinite(savedAtMs) ? `|saved|${new Date(savedAtMs).toISOString().slice(0, 16).replace('T', ' ')}` : ''));
   if (p.hedgeRead) out.push(`H0|up1|${Math.round(p.hedgeRead.up1)}|dn1|${Math.round(p.hedgeRead.dn1)}`);
   for (const l of p.levels) out.push(`L|${l.type}|${f(l.price)}|${l.label}|${(+l.strength).toFixed(1)}|${l.touchPct ?? '-'}|${l.etaMin ?? '-'}|${l.expect || '-'}|${Number.isFinite(l.chgPct) ? l.chgPct : '-'}`);
   const gm = mxAbs(p.gex.map(r => r.net)); for (const r of keep(p.gex, r => r.net, gm)) out.push(`G|${f(r.price)}|${sc(r.net, gm)}`);
