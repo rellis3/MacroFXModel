@@ -204,6 +204,8 @@ and 0.30 of the average daily range)". Run on the owner's laptop, where both M1 
 
 ---
 
-## RESULTS — run <YYYY-MM-DD>
+## RESULTS — run 2026-10-28
+
+**NULL** — see `analysis/output/daily-open-fib-retest/RESULTS.md`.
 
 *Written to `analysis/output/daily-open-fib-retest/RESULTS.md`. Nothing above this line changes after the run.*

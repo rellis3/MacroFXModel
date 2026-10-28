@@ -1718,6 +1718,13 @@ export const DESK_EVIDENCE = [
     use: 'The forecaster has no month-end multiplier; FX month-end ranges run about 7% beyond the lines (fixing/rebalancing flows). Research-only; part of the stress-count shadow.',
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'],
   },
+  {
+    id: 'daily-open-fib-retest', domain: 'misc', verdict: 'null', date: '2026-10-28', doc: 'forge/DAILY_OPEN_FIB_RETEST_PREREG.md',
+    also: ['analysis/output/daily-open-fib-retest/RESULTS.md'],
+    claim: 'Retail "daily open" playbook (YouTube @Jay-ColezTrades; not C.OG): after an impulse off the 18:00 New York gold open, a limit at the fib 1 (the opening high/low wick), stop at the 1.2, target the impulse extreme (the 0, 5R), break-even at 1R, earns net R beyond a random walk and the same rule at shifted opens',
+    result: 'Gold M1 2016-2026 (lockbox respected). Bid/ask fills (primary): 1,252 trades, -0.72R [-0.82, -0.63] per trade, halves -1.00/-0.48, every year negative, win rate 3.8%. Mid + 0.30 cost: -0.56R [-0.65, -0.47]; mid gross -0.05R [-0.12, +0.03], beats 14 of 28 shifted opens. Spread at the fill median 0.49R (about 1R in the first 15 min). None of 36 variants (anchor wick/open, impulse 0.10/0.20/0.30 ADR, 5R/3R/2R, BE on/off) survives BH on gold, NQ or EURUSD. Gold components (return to the 1, sweep 1.1-1.618, depth 0.786-0) all match the shifted opens.',
+    use: 'Do not trade it: no edge in price before costs, and the overnight spread costs ~0.7R a trade at a 0.2-leg stop. Reusable pieces (misc index): on EURUSD the retest of the opening extreme holds better than chance (fewer sweeps past it, more runs to the impulse extreme, both halves) but is unaffordable at this leg size; on NQ price stalls after the retest. Gold: none.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1903,6 +1910,7 @@ const POWER = {
   'forecast-miss-month-end-fx': { n: '~780 confirmation sessions x 29 pairs', note: '+11.6% [+6.2, +16.8]; event-free +6.3/+6.6%' },
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
+  'daily-open-fib-retest':     { n: '1,252 bid/ask trades (2,516 sessions, 20-session block bootstrap); mid file 1,796 trades', note: 'MDE 0.10R vs a +0.15R bar; CI [-0.82, -0.63] excludes the bar -> null' },
 };
 
 const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };
