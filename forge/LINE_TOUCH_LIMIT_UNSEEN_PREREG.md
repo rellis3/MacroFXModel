@@ -165,4 +165,4 @@ Anything live needs |t| ≥ 3 and a forward shadow record.
 
 ## RESULTS
 
-(pending)
+Run 2026-10-28 → `analysis/output/line-touch-limit-unseen/RESULTS.md`. **NULL**: M −0.377R [−0.456, −0.296], L −0.461R [−0.531, −0.392], J −0.066R [−0.152, +0.025] on 1,045 signals (886 limit fills), 17 unseen pairs, 0/17 pairs positive under M and L. The selector's gross edge transfers (+0.241R on mid; +0.10R over random touches) but the median spread is 0.47R at the scan's stop; the limit's unfilled 15% hold all the edge (+1.63R vs −0.04R filled); the MAE rule found no noise threshold inside 0.40 of range (d* = cap).

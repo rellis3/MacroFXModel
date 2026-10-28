@@ -10,14 +10,14 @@ Generated 2026-10-28.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **227** |
+| claims tested (validated + null + underpowered) | **228** |
 | validated | 47 |
-| null | 132 |
+| null | 133 |
 | underpowered | 48 |
 | context (base rates, descriptions: not counted as tests) | 40 |
-| pre-registrations with no banked verdict (below) | 83 |
+| pre-registrations with no banked verdict (below) | 84 |
 
-**What the count says (Lesson 02 §05).** If none of the 227 claims were real, tests at the usual 5% size would still pass
+**What the count says (Lesson 02 §05).** If none of the 228 claims were real, tests at the usual 5% size would still pass
 about **11.4** of them by luck. 47 passed, so most passes are unlikely to be luck alone, but
 **roughly 11 of the 47 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
@@ -293,6 +293,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-28 | fiscal-reaction-uk-size | events | underpowered | forge/FISCAL_EVENT_REACTION_PREREG.md |
 | 2026-10-28 | fiscal-reaction-us-direction | events | null | forge/FISCAL_EVENT_REACTION_PREREG.md |
 | 2026-10-28 | fiscal-reaction-us-size | events | null | forge/FISCAL_EVENT_REACTION_PREREG.md |
+| 2026-10-28 | line-touch-limit-unseen | execution | null | forge/LINE_TOUCH_LIMIT_UNSEEN_PREREG.md |
 | 2026-10-28 | rule-a-pre2020 | price | null | forge/RULE_A_PRE2020_PREREG.md |
 
 ## Pre-registered, but no banked verdict
@@ -303,6 +304,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/APPROACH_BOOK_EURUSD_PREREG.md`: EURUSD Approach Book — pre-registration (how price arrives at a line)
 - `forge/ASYMMETRIC_TRADES_PREREG.md`: Tight stop, far target at the forecast levels — pre-registration
 - `forge/BREAK_IVRV_PREREG.md`: Break trades when implied vol is rich — pre-registration
+- `forge/CB_TONE_REACTION_PREREG.md`: cb-tone-reaction — does the ECB / BoE / BoJ statement's hawkish shift line up with the first-30-minute move in
 - `forge/COG_ANALOG_PREREG.md`: COG-ANALOG: match the last 12 hours of the line against its own past and read what Nasdaq did next
 - `forge/COG_CROSS_ASSET_PREREG.md`: COG-CROSS-ASSET: does the SOFR-Euribor / SOFR-ESTR information relate to, or lead, gold, EURUSD, USDJPY, the R
 - `forge/COG_DYNAMIC_LEAD_PREREG.md`: COG-DYNAMIC-LEAD: do yield and futures spreads begin moving first, in identifiable periods, and does FX (or go

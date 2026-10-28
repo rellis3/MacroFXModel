@@ -1200,6 +1200,13 @@ export const DESK_EVIDENCE = [
     use: 'The range edges are a real location; the rest of the ladder is not. The effect is relative: Asia-edge races revert ~51.7% vs ~48.3% at a shifted ladder, a coin flip before costs, so it is context (the usual push-through is cancelled at the edges), not a fade signal (see range-edge-limit-fade).',
   },
   {
+    id: 'line-touch-limit-unseen', domain: 'execution', verdict: 'null', date: '2026-10-28', doc: 'forge/LINE_TOUCH_LIMIT_UNSEEN_PREREG.md',
+    also: ['analysis/output/line-touch-limit-unseen/RESULTS.md'],
+    claim: 'The frozen line-touch wide-scan selector (fade a fresh extreme after a fast run-in), refit walk-forward on its own 17 instruments and applied to 17 FX pairs it never saw (AUDCAD AUDCHF AUDNZD CADCHF EURCAD EURGBP EURJPY EURNZD GBPAUD GBPCAD GBPCHF GBPJPY GBPNZD NZDCAD NZDJPY NZDUSD USDCAD), has positive net expectancy on real bid/ask as a market entry (M), a resting limit at mid (L), or a limit with a stop set by the MAE rule C.OG gave Jordan (J)',
+    result: '1,045 signals 2018-01 to 2026-08, OANDA bid/ask M1: M -0.377R [-0.456, -0.296], L -0.461R [-0.531, -0.392] (fill 84.8%), J -0.066R [-0.152, +0.025] (stop 0.40 of range); 0/17 pairs positive under M and L, 5/17 under J. Gross on mid +0.241R (seen out-of-fold +0.197R); selector beats random same-pair/year/hour touches by +0.10R [+0.02, +0.18]. Median spread 0.47R at the scan stop. Limit adverse selection: unfilled signals +1.63R on mid, filled -0.04R. MAE rule: trades reaching any adverse distance up to 0.40 of range still ended better than a stop there, so d* = the cap.',
+    use: 'The touch selector carries real out-of-sample information (+0.1R over a random touch) but does not pay on real spreads in any execution form: the line-touch book is closed for intraday entries on these line families; use it as context only (an exhausted extreme: do not chase it). A resting limit at a fresh extreme is adversely selected (the passive side pays). Stops at 0.10 of range are far inside the MAE noise band.',
+  },
+  {
     id: 'range-edge-limit-fade', domain: 'execution', verdict: 'null', date: '2026-10-20', doc: 'forge/RANGE_EDGE_LIMIT_FADE_PREREG.md',
     also: ['analysis/output/range-edge-limit-fade/RESULTS.md'],
     instruments: ['GOLD', 'AUDJPY', 'AUDUSD', 'NZDJPY', 'NZDUSD', 'USDJPY', 'CADJPY', 'EURJPY', 'GBPJPY', 'EURAUD', 'EURUSD', 'GBPUSD', 'USDCHF', 'USDCAD', 'NQ', 'SPX500', 'DE30', 'US30', 'US2000', 'AUDCAD', 'AUDCHF', 'AUDNZD', 'CADCHF', 'CHFJPY', 'EURCAD', 'EURCHF', 'EURGBP', 'EURNZD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPNZD', 'NZDCAD', 'UK100'],
@@ -1842,6 +1849,7 @@ const POWER = {
   'rule-a-late-entry':       { n: '823 trades, 11 instruments, 2020-08 to 2026-08 (4-week block bootstrap)', note: 'MDE about 0.16R; interval [-0.26, +0.06] excludes it -- a real null' },
   'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
   'range-ladder-placebo-confirm': { n: '2,745 session dates (21-session block bootstrap), 15 instruments', note: 'pooled MDE 0.37 pp vs a 1.0 pp bar; per-line MDE 0.69-0.89 pp' },
+  'line-touch-limit-unseen': { n: '2,499 session dates (21-session block bootstrap), 17 unseen pairs, 1,045 signals (886 limit fills)', note: 'MDE 0.116R (M) / 0.097R (L) / 0.127R (J); all CI upper bounds below the +0.05R null line' },
   'range-edge-limit-fade':   { n: '2,456 session dates (21-session block bootstrap), 34 instruments, 24,006 trades', note: 'MDE 0.023R (T1) / 0.029R (T2) vs the +0.05R null line; both CIs below zero' },
   'short-vx-rule':           { n: '52 trades 2013-26 vs 2,000 random-entry sets', note: 'MDE ~0.28R flag minus random (A1); observed +0.10R, p 0.096' },
   'vix-brownian-scaling':    { n: '4,259 sessions 2009-26', note: 'descriptive calibration with block-bootstrap intervals' },
