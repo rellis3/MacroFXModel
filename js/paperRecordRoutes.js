@@ -52,6 +52,7 @@ export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetc
   }
   const note = (store, msg) => { store.log = [{ at: new Date().toISOString(), msg }, ...(store.log ?? [])].slice(0, 200); };
 
+  const WARMING = 'live prices still warming';
   async function packedFor(key) {
     await getFastLive(key);                                // gap-fills from OANDA; first call may only start warming
     const p = liveCache.get(key)?.packed;
@@ -83,21 +84,25 @@ export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetc
   }
 
   // Flags for `forDate`, using only data available now (the evening before).
-  async function setFlags(store, forDate) {
+  // `only` = keys to redo: a restart before 21:00 can leave the live cache cold, so the first pass marks most
+  // instruments 'warming'. Those are retried on later evening ticks (still the evening before, so still point-in-time);
+  // on 2026-10-28 the single pass left 8 of 11 unflagged and they could not trade the next day.
+  async function setFlags(store, forDate, only = null) {
     let oiStore = null;
     try { const raw = await kv.get('oi_store'); if (raw) { const p = JSON.parse(raw); oiStore = p.data ?? p; } } catch {}
-    const cboe = {}, flags = {};
+    const cboe = {}, flags = only ? { ...store.days[forDate].flags } : {};
     for (const inst of INSTRUMENTS) {
+      if (only && !only.includes(inst.key)) continue;
       try {
         const iv = await ivFor(inst, oiStore, cboe);
         const packed = await packedFor(inst.key);
-        if (!packed) { flags[inst.key] = { rich: null, why: 'live prices still warming' }; continue; }
+        if (!packed) { flags[inst.key] = { rich: null, why: WARMING }; continue; }
         const closes = nyCloseDailyBars(packed).filter(b => b.n >= 60 && b.endSec <= Date.now() / 1000).map(b => b.close);
         flags[inst.key] = iv.iv == null ? { rich: null, why: iv.why } : { ...richFlag(inst, iv.iv, closes), threshold: inst.rich, ivSource: iv.source, ivAsOf: iv.asOf, provisional: !!inst.provisional };
       } catch (e) { flags[inst.key] = { rich: null, why: String(e.message || e) }; }
     }
     store.days[forDate] = { ...(store.days[forDate] ?? {}), flags, flagsAt: new Date().toISOString(), trades: store.days[forDate]?.trades ?? [] };
-    note(store, `flags set for ${forDate}: rich = ${Object.entries(flags).filter(([, f]) => f.rich).map(([k]) => k).join(', ') || 'none'}`);
+    note(store, `flags ${only ? `retried (${only.join(', ')})` : 'set'} for ${forDate}: rich = ${Object.entries(flags).filter(([, f]) => f.rich).map(([k]) => k).join(', ') || 'none'}`);
   }
 
   // The day's forecast (ladder, static lines, open, σ) is fixed once the day has opened, so it is built once and
@@ -183,7 +188,8 @@ export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetc
     running = true;
     try {
       const now = london(), store = await load();
-      if (now.min >= 21 * 60) { const nd = nextBizDay(now.date); if (!store.days[nd]?.flags) await setFlags(store, nd); }
+      if (now.min >= 21 * 60) { const nd = nextBizDay(now.date); if (!store.days[nd]?.flags) await setFlags(store, nd);
+        else { const cold = Object.entries(store.days[nd].flags).filter(([, f]) => f.rich == null && f.why === WARMING).map(([k]) => k); if (cold.length) await setFlags(store, nd, cold); } }
       const today = store.days[now.date];
       if (!today?.flags && ![0, 6].includes(new Date(now.date + 'T12:00:00Z').getUTCDay())) {
         store.days[now.date] = { flags: null, trades: [], skipped: 'flags were not set before the day opened (deploy or outage)' };
