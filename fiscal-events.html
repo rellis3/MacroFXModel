@@ -45,7 +45,8 @@
   td.num{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
   td.chg{color:var(--text2);font-variant-numeric:tabular-nums}
   td.chg.flag{color:var(--amber);font-weight:700}
-  .tablewrap{overflow-x:auto}
+  .tablewrap{overflow-x:auto;max-width:100%}
+  .wrap>*{min-width:0}
   .quote{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:8px}
   .quote .qtext{font-size:13px;font-style:italic;margin-bottom:5px}
   .quote .qmeta{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--text3);flex-wrap:wrap}
@@ -60,6 +61,24 @@
   @media (max-width:720px){.grid2{grid-template-columns:1fr}}
   .spin{display:inline-block;width:10px;height:10px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-1px}
   @keyframes sp{to{transform:rotate(360deg)}}
+  .verdicts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:10px;margin-bottom:12px}
+  .vbox{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .vbox .vk{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+  .vbox .vv{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;margin:2px 0}
+  .vbox .vs{font-size:11.5px;color:var(--text2);line-height:1.45}
+  .vtag{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.05em;border-radius:4px;padding:1px 6px;margin-left:4px;vertical-align:2px}
+  .vtag.null{background:rgba(110,118,129,.18);color:var(--text2)} .vtag.under{background:var(--amber-bg);color:var(--amber)} .vtag.desc{background:var(--blue-bg);color:var(--blue)}
+  .chartbox{position:relative;width:100%}
+  .chartbox svg{display:block;width:100%;height:auto}
+  .tip{position:absolute;pointer-events:none;background:#0b0f14;border:1px solid var(--border);border-radius:7px;padding:7px 9px;font-size:11.5px;line-height:1.45;color:var(--text);max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,.4);display:none;z-index:5}
+  .tip b{font-weight:700} .tip .tm{color:var(--text3)}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--text2);margin:6px 0 2px}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+  tr.hrow{cursor:pointer} tr.hrow:hover td{background:rgba(79,125,240,.06)} tr.hrow.on td{background:var(--blue-bg)}
+  td.up{color:var(--bear)} td.dn{color:var(--bull)}
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden}
+  .seg button{background:var(--card2);border:0;color:var(--text2);padding:5px 11px;font-size:12px;font-weight:600}
+  .seg button.on{background:var(--blue);color:#fff}
 </style>
 </head>
 <body>
@@ -82,7 +101,13 @@
     <div class="note">A fiscal event moves markets through <b>supply</b> (how much government debt must be sold, and at which maturities) and <b>credibility</b> (whether the fiscal rules are met, and by how much headroom). The UK documents (the Treasury's Red Book, the OBR's Economic and fiscal outlook, the Chancellor's statement) and the US Treasury's Quarterly Refunding statements are captured as they are published. The numbers in the table are pulled straight from the documents. The written read is a model's reading of the same text. It describes what was announced; it is not a trading signal.</div>
   </div>
   <div id="detail"></div>
+  <div class="card" id="history">
+    <h2>History: what these events did to markets
+      <span class="seg"><button id="hGB" class="on" onclick="hPick('GB')">🇬🇧 Budgets &amp; Statements</button><button id="hUS" onclick="hPick('US')">🇺🇸 Refunding</button></span></h2>
+    <div id="hBody"><span class="empty">Loading…</span></div>
+  </div>
 </div>
+<div class="tip" id="tip"></div>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -146,7 +171,7 @@ function renderDetail() {
       `<tr><td>${esc(r.label)}</td><td class="num">${esc(r.value)}</td><td class="chg ${r.change === 'CHANGED' ? 'flag' : ''}">${esc(r.change ?? '–')}</td>${prevRows.length ? `<td class="chg">${esc(prevRows.find(p => p.label === r.label)?.value ?? '–')}</td>` : ''}</tr>`).join('')}</tbody></table></div>`
       : `<div class="empty">No numbers could be pulled from the documents${e.id.startsWith('gb-spring-2026') ? ' (from 2026 the OBR assesses the fiscal rules only at the Budget, so the spring forecast has no headroom figure)' : ''}.</div>`}
       <div class="note">${e.kind === 'refunding' ? 'From the Treasury\'s policy statement and financing estimates. The coupon-size guidance line is the one the bond market reads first.' : 'Headroom is from the OBR outlook; gilt sales and the financing requirement are from the Red Book\'s Financing section (the DMO remit revision).'}</div></div>
-      <div class="card"><h2>First 30 minutes</h2>${renderReaction(e)}</div></div>`;
+      <div class="card"><h2>First 30 minutes</h2>${renderReaction(e)}${HIST ? historyLine(e) : ''}</div></div>`;
     if (a?.keyMeasures?.length) html += `<div class="card"><h2>Key measures</h2><ul class="measures">${a.keyMeasures.map(m => `<li><b>${esc(m.measure)}</b>: ${esc(m.note)}</li>`).join('')}</ul></div>`;
     if (a?.byAsset?.length) html += `<div class="card"><h2>By market</h2><div class="assets">${a.byAsset.map(x => { const c = x.lean === 'BULLISH' ? 'up' : x.lean === 'BEARISH' ? 'dn' : 'nu'; return `<span class="a-chip ${c}"><b>${esc(x.asset)} ${x.lean === 'BULLISH' ? '▲' : x.lean === 'BEARISH' ? '▼' : '■'}</b><span class="an">${esc(x.note)}</span></span>`; }).join('')}</div>
       <div class="note">How the text reads for each market, not a forecast. Central-bank tone reads like this tested null as a price signal on this desk.</div></div>`;
@@ -154,10 +179,112 @@ function renderDetail() {
   }
   $('detail').innerHTML = html;
 }
+// ── History: every UK fiscal event since 2010 and every US refunding since 2008 (backfill/fiscal_history.json,
+//    built offline by scripts/fiscal-event-reaction/; the test is forge/FISCAL_EVENT_REACTION_PREREG.md) ──────────
+let HIST = null, hCountry = 'GB', hSel = null;
+const MAIN = { GB: 'UK10YB_GBP', US: 'USB10Y_USD' };
+const SIDE = { GB: [['GBP_USD', 'GBP/USD', '%'], ['UK100_GBP', 'FTSE 100', '%']], US: [['USB30Y_USD', 'US 30y', 'bp'], ['USB02Y_USD', 'US 2y', 'bp']] };
+const fx = (v, d = 2) => v == null ? '–' : (v > 0 ? '+' : '') + v.toFixed(d);
+const ci = c => `${c.gmRatio ?? c.rho}${c.gmRatio != null ? '×' : ''} [${c.ci[0]}, ${c.ci[1]}]`;
+function supplyOf(r) {
+  if (r.country === 'GB') return r.giltRevision == null ? { k: 'none', t: 'no in-year revision in the document' } : { k: r.giltRevision > 0 ? 'more' : r.giltRevision < 0 ? 'less' : 'none', t: `gilt sales ${r.giltRevision > 0 ? '+' : ''}£${r.giltRevision}bn this year` };
+  return r.couponChange > 0 ? { k: 'more', t: 'bigger coupon auctions' } : r.couponChange < 0 ? { k: 'less', t: 'smaller coupon auctions' } : { k: 'none', t: 'coupon sizes unchanged' };
+}
+const SUPPLY_COL = { more: 'var(--bear)', less: 'var(--bull)', none: 'var(--text3)' };
+function histRowFor(e) { return HIST?.events.find(r => r.country === e.country && r.date === new Date(e.ms).toISOString().slice(0, 10)) ?? null; }
+function hPick(c) { hCountry = c; hSel = null; $('hGB').classList.toggle('on', c === 'GB'); $('hUS').classList.toggle('on', c === 'US'); renderHistory(); }
+function hRows() { return (HIST?.events ?? []).filter(r => r.country === hCountry && r.inst[MAIN[hCountry]] && !r.inst[MAIN[hCountry]].dropped).sort((a, b) => b.date.localeCompare(a.date)); }
+
+function renderVerdicts() {
+  const s = HIST.summary;
+  if (hCountry === 'GB') return `<div class="verdicts">
+    <div class="vbox"><div class="vk">Gilt swing while it is read <span class="vtag desc">DESCRIBED</span></div><div class="vv">${s.S1.rangeGm}×</div><div class="vs">The high-to-low range in the 3 hours is ${s.S1.rangeGm}× an ordinary day's [${s.S1.rangeCi.join(', ')}], over ${s.S1.n} Budgets and Statements.</div></div>
+    <div class="vbox"><div class="vk">Net gilt move by the end <span class="vtag under">UNDERPOWERED</span></div><div class="vv">${s.S1.gmRatio}×</div><div class="vs">${ci(s.S1)}: not reliably bigger than an ordinary day. Three Budgets (2025, 2020, 2021) carry it; without them 0.98×.</div></div>
+    <div class="vbox"><div class="vk">More gilt supply = higher yields? <span class="vtag under">UNDERPOWERED</span></div><div class="vv">${s.D1.n} events</div><div class="vs">Only ${s.D1.n} documents carry an in-year gilt revision, too few to test (ρ ${s.D1.rho}, [${s.D1.ci.join(', ')}]).</div></div></div>`;
+  return `<div class="verdicts">
+    <div class="vbox"><div class="vk">10y net move, 08:30–10:00 <span class="vtag null">TESTED NULL</span></div><div class="vv">${s.S2.gmRatio}×</div><div class="vs">${ci(s.S2)} over ${s.S2.n} statements: no bigger than an ordinary 08:30 Wednesday.</div></div>
+    <div class="vbox"><div class="vk">10y swing in the window <span class="vtag desc">DESCRIBED</span></div><div class="vv">${s.S2.rangeGm}×</div><div class="vs">The range is a little wider, ${s.S2.rangeGm}× [${s.S2.rangeCi.join(', ')}].</div></div>
+    <div class="vbox"><div class="vk">Bigger auctions = higher yields? <span class="vtag null">TESTED NULL</span></div><div class="vv">ρ ${s.D2.rho}</div><div class="vs">[${s.D2.ci.join(', ')}], ${s.D2.n} statements (23 changed sizes). November 2023 is the classic case: bigger auctions, but smaller than feared, and yields fell.</div></div></div>`;
+}
+
+function dotChart(rows) {
+  const W = 920, H = 250, L = 46, R = 12, T = 12, Bm = 26;
+  const ts = rows.map(r => Date.parse(r.date)), t0 = Math.min(...ts), t1 = Math.max(...ts);
+  const yMin = Math.log(0.2), yMax = Math.log(30);
+  const x = t => L + (t - t0) / (t1 - t0 || 1) * (W - L - R);
+  const y = v => T + (1 - (Math.log(Math.min(30, Math.max(0.2, v))) - yMin) / (yMax - yMin)) * (H - T - Bm);
+  const ticks = [0.25, 0.5, 1, 2, 4, 8, 16];
+  let g = ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 1 ? 'var(--text3)' : 'var(--border)'}" stroke-width="${v === 1 ? 1.2 : 1}" ${v === 1 ? 'stroke-dasharray="4 3"' : ''}/><text x="${L - 6}" y="${y(v) + 3.5}" text-anchor="end" font-size="10" fill="var(--text3)">${v}×</text>`).join('');
+  const y0 = new Date(t0).getUTCFullYear(), y1 = new Date(t1).getUTCFullYear();
+  for (let yr = y0; yr <= y1; yr += (y1 - y0 > 12 ? 2 : 1)) { const tx = x(Date.UTC(yr, 0, 1)); if (tx >= L && tx <= W - R) g += `<text x="${tx}" y="${H - 8}" text-anchor="middle" font-size="10" fill="var(--text3)">${yr}</text>`; }
+  g += `<text x="${W - R}" y="${y(1) - 5}" text-anchor="end" font-size="10" fill="var(--text3)">an ordinary day</text>`;
+  const dots = rows.map((r, i) => { const m = r.inst[MAIN[hCountry]], s = supplyOf(r);
+    return `<circle cx="${x(Date.parse(r.date))}" cy="${y(m.rangeRatio)}" r="${r.id === hSel ? 6.5 : 4.5}" fill="${SUPPLY_COL[s.k]}" stroke="var(--card)" stroke-width="2" ${r.scored ? '' : 'fill-opacity=".45"'}/>
+      <circle cx="${x(Date.parse(r.date))}" cy="${y(m.rangeRatio)}" r="11" fill="transparent" data-i="${i}" class="hit" style="cursor:pointer"/>`; }).join('');
+  return `<div class="chartbox" id="dotBox"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Range in the event window, times an ordinary day, per event">${g}${dots}</svg></div>
+    <div class="legend"><span><i style="background:var(--bear)"></i>more supply</span><span><i style="background:var(--bull)"></i>less supply</span><span><i style="background:var(--text3)"></i>${hCountry === 'GB' ? 'no in-year revision stated' : 'sizes unchanged'}</span><span style="color:var(--text3)">faded = not scored (unscheduled, or after the 2026-08-21 holdout cut)</span></div>`;
+}
+
+function pathChart(r) {
+  const ins = MAIN[r.country], m = r.inst[ins], D = HIST.durations[ins];
+  if (!m?.path5) return '';
+  const pts = m.path5.map((v, i) => [-15 + i * 5, v == null ? null : -v * 100 / D]).filter(p => p[1] != null);
+  const band = m.ctrlAbs * 100 / D;
+  const W = 920, H = 190, L = 46, R = 12, T = 10, Bm = 24, Wm = r.windowMin;
+  const lim = Math.max(band, ...pts.map(p => Math.abs(p[1]))) * 1.15 || 1;
+  const x = t => L + (t + 15) / (Wm + 15) * (W - L - R), y = v => T + (1 - (v + lim) / (2 * lim)) * (H - T - Bm);
+  let g = `<rect x="${L}" y="${y(band)}" width="${W - L - R}" height="${y(-band) - y(band)}" fill="rgba(110,118,129,.13)"/>`;
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--border)"/><line x1="${x(0)}" x2="${x(0)}" y1="${T}" y2="${H - Bm}" stroke="var(--text3)" stroke-dasharray="3 3"/>`;
+  for (let t = 0; t <= Wm; t += Wm > 100 ? 30 : 15) g += `<text x="${x(t)}" y="${H - 7}" text-anchor="middle" font-size="10" fill="var(--text3)">+${t}m</text>`;
+  [lim * 0.8, 0, -lim * 0.8].forEach(v => g += `<text x="${L - 6}" y="${y(v) + 3.5}" text-anchor="end" font-size="10" fill="var(--text3)">${v > 0 ? '+' : ''}${v.toFixed(1)}</text>`);
+  g += `<polyline fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round" points="${pts.map(p => `${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join(' ')}"/>`;
+  const last = pts.at(-1); g += `<circle cx="${x(last[0])}" cy="${y(last[1])}" r="4" fill="var(--blue)" stroke="var(--card)" stroke-width="2"/><text x="${x(last[0]) - 8}" y="${y(last[1]) - 8}" text-anchor="end" font-size="11" font-weight="700" fill="var(--text)">${fx(last[1], 1)}bp</text>`;
+  return `<div style="margin-top:12px"><div class="vk" style="font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${esc(r.name)} · ${r.country === 'GB' ? 'UK 10y gilt' : 'US 10y'} yield, approx. bp from the start (${esc(r.clock)} ${r.country === 'GB' ? 'London' : 'New York'})</div>
+    <div class="chartbox"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Yield path through the event window">${g}</svg></div>
+    <div class="note" style="margin-top:4px">Grey band: an ordinary day's typical net move by the end of the window (median of 8 same-weekday days, ±${band.toFixed(1)}bp). Yield change is approximate, from the CFD price over duration ${D}.</div></div>`;
+}
+
+function renderHistory() {
+  if (!HIST) return;
+  const rows = hRows();
+  const side = SIDE[hCountry];
+  const supplyHead = hCountry === 'GB' ? 'Gilt supply' : 'Coupon sizes';
+  const table = `<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Date</th><th>Event</th><th>${supplyHead}</th><th>${hCountry === 'GB' ? 'Gilt 10y' : 'US 10y'}</th><th>Swing × normal</th>${side.map(s => `<th>${s[1]}</th>`).join('')}</tr></thead><tbody>${rows.map(r => {
+    const m = r.inst[MAIN[hCountry]], s = supplyOf(r);
+    const sideCells = side.map(([k, , u]) => { const v = r.inst[k]; if (!v || v.dropped) return '<td class="chg">–</td>'; const val = u === 'bp' ? v.bp : v.move; return `<td class="chg">${fx(val, u === 'bp' ? 1 : 2)}${u === 'bp' ? 'bp' : '%'}</td>`; }).join('');
+    return `<tr class="hrow ${r.id === hSel ? 'on' : ''}" onclick="hSelect('${r.id}')"><td class="chg">${esc(r.date)}</td><td>${esc(r.name)}${r.unscheduled ? ' <span class="chip plain">unscheduled</span>' : ''}${!r.scored && !r.unscheduled ? ' <span class="chip plain">not scored</span>' : ''}</td>
+      <td class="chg" style="color:${SUPPLY_COL[s.k]}">${r.country === 'GB' ? (r.giltRevision == null ? '–' : (r.giltRevision > 0 ? '+' : '') + '£' + r.giltRevision + 'bn') : (r.couponChange > 0 ? 'bigger' : r.couponChange < 0 ? 'smaller' : 'unchanged')}</td>
+      <td class="num ${m.bp > 0 ? 'up' : m.bp < 0 ? 'dn' : ''}">${fx(m.bp, 1)}bp</td><td class="chg">${m.rangeRatio}×</td>${sideCells}</tr>`; }).join('')}</tbody></table></div>`;
+  const sel = rows.find(r => r.id === hSel) ?? rows[0];
+  $('hBody').innerHTML = renderVerdicts() + dotChart(rows) + `<div id="hPath">${sel ? pathChart(sel) : ''}</div>` + table +
+    `<div class="note">Each dot is one event: the ${hCountry === 'GB' ? 'gilt' : '10y'}'s high-to-low range in the window (${esc(HIST.windows[hCountry])}) divided by the median range of the same clock window on the 8 preceding same-weekday days. Yields up = bond prices down (orange in the table). Supply comes from the documents themselves: ${hCountry === 'GB' ? 'the Red Book\'s in-year gilt-sales revision (the 2010–15 Red Books are read from their PDFs)' : 'each refunding statement, coded by hand (bigger / smaller nominal coupon auctions for the coming quarter)'}. Tested in <a href="https://github.com/rellis3/MacroFXModel/blob/main/forge/FISCAL_EVENT_REACTION_PREREG.md" target="_blank" rel="noopener">the pre-registration</a>; results in the Evidence Book as fiscal-reaction-*. Built ${esc(HIST.built)}.</div>`;
+  wireDots(rows);
+}
+function hSelect(id) { hSel = id; renderHistory(); }
+function wireDots(rows) {
+  const box = $('dotBox'), tip = $('tip'); if (!box) return;
+  box.querySelectorAll('.hit').forEach(c => {
+    const r = rows[+c.dataset.i], m = r.inst[MAIN[hCountry]], s = supplyOf(r);
+    c.addEventListener('mouseenter', () => {
+      tip.innerHTML = `<b>${esc(r.name)}</b> <span class="tm">${esc(r.date)}</span><br>${hCountry === 'GB' ? 'Gilt 10y' : 'US 10y'} ${fx(m.bp, 1)}bp · swing ${m.rangeRatio}× normal · net ${m.ratio}×<br><span class="tm">${esc(s.t)}</span>`;
+      tip.style.display = 'block';
+    });
+    c.addEventListener('mousemove', ev => { const b = document.body.getBoundingClientRect(); tip.style.left = Math.min(ev.pageX + 12, b.width - 270) + 'px'; tip.style.top = (ev.pageY + 12) + 'px'; });
+    c.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+    c.addEventListener('click', () => hSelect(r.id));
+  });
+}
+function historyLine(e) {
+  const r = histRowFor(e); if (!r) return '';
+  const m = r.inst[MAIN[r.country]]; if (!m || m.dropped) return '';
+  return `<div class="boxed blue" style="margin-top:10px"><b>The ${r.country === 'GB' ? '3-hour' : '90-minute'} window, against history</b>${r.country === 'GB' ? 'Gilt 10y' : 'US 10y'} ${fx(m.bp, 1)}bp, swing ${m.rangeRatio}× an ordinary day (history's typical event: ${HIST.summary[r.country === 'GB' ? 'S1' : 'S2'].rangeGm}×). <a href="#history" onclick="hPick('${r.country}');hSelect('${r.id}')">See it in the history ↓</a></div>`;
+}
+
 async function load() {
   try {
-    const [d, rc] = await Promise.all([jget('/api/fiscal/events'), jget('/api/release-calls?days=90').catch(() => null)]);
+    const [d, rc, h] = await Promise.all([jget('/api/fiscal/events'), jget('/api/release-calls?days=90').catch(() => null), HIST ? Promise.resolve(HIST) : jget('/backfill/fiscal_history.json').catch(() => null)]);
     EVENTS = d.events ?? []; LOG = d.log; CARDS = rc?.scorecards ?? [];
+    if (h && !HIST) { HIST = h; renderHistory(); } else if (!h && !HIST) $('hBody').innerHTML = '<span class="empty">History file not available.</span>';
     if (LOG?.at) $('lastCheck').textContent = `Last check ${new Date(LOG.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
     const want = location.hash.slice(1);
     if (!sel) {

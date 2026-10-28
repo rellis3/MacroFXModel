@@ -134,6 +134,13 @@
     <p class="foot" id="rankFoot"></p>
   </div>
 
+  <div class="card" id="fiscalCard">
+    <h2>Budgets and Treasury refundings: the events with no headline number</h2>
+    <p class="note">UK Budgets and Statements and US Quarterly Refundings have no consensus number, so the book above cannot score them.
+      They are measured separately against the same clock window on ordinary days (gilt / Treasury CFDs, GBP, FTSE, 2010-2026 and 2008-2026).</p>
+    <div id="fiscal">Loading…</div>
+  </div>
+
   <div class="card">
     <h2>What followed, in detail</h2>
     <p class="note">Pick a release and an instrument. Everything below is history with its sample size —
@@ -243,6 +250,12 @@ const quantile = (sorted, q) => {
 };
 
 let BOOK = null, EVENTS = null;
+
+fetch('/backfill/fiscal_history.json').then(r => r.json()).then(h => {
+  const s = h.summary, k = (v, l) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+  $('fiscal').innerHTML = `<div class="kpis" style="margin-bottom:8px">${k(s.S1.rangeGm + '×', `UK gilt swing while a Budget is read (${s.S1.n} events, described)`)}${k(s.S1.gmRatio + '×', `UK gilt net move by +3h: [${s.S1.ci.join(', ')}], underpowered`)}${k(s.S2.gmRatio + '×', `US 10y net move after a refunding: [${s.S2.ci.join(', ')}], tested null`)}</div>
+    <p class="foot">Budgets make gilts swing more while the statement is read, but the net move is not reliably bigger, and the big ones are few: the 2022 Growth Plan (+30bp), Budget 2025 and Autumn Budget 2024 (+15bp). More gilt supply or bigger US auctions have not set direction on the day (US ρ ${s.D2.rho}, tested null; UK too few events to test). Every event, its documents and its reaction path: <a href="fiscal-events.html#history">Fiscal Events</a>.</p>`;
+}).catch(() => { $('fiscal').textContent = 'Fiscal history not available.'; });
 
 Promise.all([
   fetch('/backfill/event_response_book.json').then(r => r.json()),
