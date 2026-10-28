@@ -27,13 +27,15 @@
 <body>
   <h1>Rich-Vol Break Record <span class="muted" style="font-size:12px">paper forward test, no orders</span></h1>
   <div class="sub">
-    The one rule that passed its pre-registered tests in the Fade/Continue research: on days when <b>implied vol is rich versus realised vol</b>,
-    take the first 1-minute close at least 0.05σ <b>through</b> a Vol Forecast line between 00:00 and 10:00 London, entering at the next bar's open
-    in the break direction. Stop 0.1σ or 0.2σ behind the line, targets 5R and 10R, exit at the day's end. Each trade's R is the average of those four
-    variants, net of spread. Backtest: <b>+0.118R</b> per trade on FX/gold, <b>+0.071R</b> on indices, but most trades lose 1R and a few large winners
-    carry the result, so it needs a few hundred trades before the live number means much.
-    Rich flags are set the evening before (from 21:00 London) from the options capture's implied vol (FX, gold) or the CBOE vol index (NQ VXN, SPX VIX,
-    DOW VXD, US2000 RVX) ÷ 20-day realised vol. Branch <code>fade-continue-book</code>, <code>forge/BREAK_IVRV_PREREG.md</code>.
+    <b>What this page is:</b> rule A, run live on paper. On a <b>rich</b> day (implied vol ÷ 20-day realised vol above the cut-off in the
+    flags table), take the first 1-minute close at least 0.05σ <b>through</b> a forecast line between 00:00 and 10:00 London and enter at the
+    next bar’s open in the break direction; stop 0.2σ behind the line, target 5R, out at 22:00, net of 2× spread.
+    Read it top to bottom: <b>(1)</b> the chosen-lines card is the real test (backtest +0.162R per trade, 2020–26; the 2016–20 backcast was null,
+    so this record decides); <b>(2)</b> the older arm and the Trades table below it use the older v4 lines (10 lines, 1× spread, often two rows for one
+    move) and are kept only for comparison; <b>(3)</b> the flags tables say which markets may trade that day. Rich flags are set the evening before
+    (from 21:00 London, retried until every market has prices) from the options capture’s implied vol (FX, gold) or the CBOE vol index
+    (NQ VXN, SPX VIX, DOW VXD, US2000 RVX). Most trades lose 1R and a few 5R winners carry the result, so it needs a few hundred trades
+    before the number means much. <code>forge/RULE_A_BOOK_FORWARD_PREREG.md</code>; older arm <code>forge/BREAK_IVRV_PREREG.md</code>.
   </div>
   <button onclick="tick()">▶ Run a check now</button>
   <button class="sec" onclick="load()">↻ Reload</button>
@@ -104,7 +106,7 @@ function render() {
   }
 
   // trades by day
-  h += `<div class="card"><h2>Trades</h2>`;
+  h += `<div class="card"><h2>Trades: older arm (v4 lines)</h2><div class="muted" style="font-size:12px;margin-bottom:6px">Comparison only. The chosen-lines trades are in the first card. Two rows at the same minute are usually one move crossing two v4 lines that sat at the same price.</div>`;
   const tradeDays = days.filter(([, x]) => (x.trades ?? []).length || x.skipped);
   if (!tradeDays.length) h += `<div class="muted">No trades yet. The first flags are set at 21:00 London; signals can fire from 00:00 to 10:00 the next morning on rich instruments only.</div>`;
   else {
