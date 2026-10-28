@@ -20,6 +20,8 @@ export const MAG_CSS = `
 .pg .kick{font-family:'Segoe UI',system-ui,sans-serif;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#d98a00;font-weight:700;margin:0 0 6px}
 .pg h1.hd{font-size:41px;line-height:1.05;letter-spacing:-.015em;margin:0 0 12px;font-weight:700}
 .pg .sf{font-size:19px;line-height:1.42;font-style:italic;color:#3a4756;margin:0 0 10px}
+.pg .tdy{margin:2px 0 10px;border-top:2px solid #0f1b2d;border-bottom:1px solid #dfe6f1;font-family:var(--sans)}.pg .tdy p{display:grid;grid-template-columns:78px 1fr;gap:10px;margin:0;padding:6px 0;border-top:1px solid #e6ecf5;font-size:13.5px;line-height:1.38;color:#1c2a3f}.pg .tdy p:first-child{border-top:0}.pg .tdy b{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#c25a00;padding-top:3px}
+.pg .mo{font-family:var(--sans);font-size:12.5px;line-height:1.4;color:#3a4756;margin:0 0 8px}.pg .mo b{color:#0f1b2d;font-weight:600}
 .pg .by{font-family:'Segoe UI',system-ui,sans-serif;font-size:11px;color:#5b6b82;letter-spacing:.04em;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid #d8e0ec}
 .pg h2.sh{font-size:25px;line-height:1.15;margin:4px 0 10px;letter-spacing:-.01em}
 .pg h3.ss{font-family:'Segoe UI',system-ui,sans-serif;font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:#14202e;margin:14px 0 4px}
@@ -425,7 +427,9 @@ export function composeMagazine(c, H) {
   const feature = c.feature;
   // page 1: the situation in plain terms, before any analysis
   const p1 = `<div class="pg p1">${mh('The story')}${tape}
-<div class="kick">${esc(M.regime)} regime · the investigation</div><h1 class="hd">${esc(feature.headline)}</h1>${feature.standfirst ? `<p class="sf"><span class="sfl">The desk's reading</span>${esc(feature.standfirst)}</p>` : ''}
+${c.today ? `<div class="kick">${esc(c.today.kicker)} · ${esc(M.regime)} regime</div><h1 class="hd">${esc(c.today.headline)}</h1>
+<div class="tdy">${[['Regime', c.today.regime], ['Changed', c.today.changed], ['Watch', c.today.watch]].filter(r => r[1]).map(r => `<p><b>${r[0]}</b><span>${esc(r[1])}</span></p>`).join('')}</div>
+<p class="mo"><span class="sfl">The month in one line</span><b>${esc(feature.headline)}</b>${feature.standfirst ? ' ' + esc(feature.standfirst) : ''}</p>` : `<div class="kick">${esc(M.regime)} regime · the investigation</div><h1 class="hd">${esc(feature.headline)}</h1>${feature.standfirst ? `<p class="sf"><span class="sfl">The desk's reading</span>${esc(feature.standfirst)}</p>` : ''}`}
 <p class="by">By The Chain research desk · ${esc(M.date)}</p>
 <div class="split"><div>${c.intro ? threeVoices(c.intro, H) : ''}
 <p class="map"><b>How the issue builds.</b> 1 What happened · 2 Why it might be happening · 3 How markets connect · 4 What broke · 5 Stress and data checks · 6 Competing explanations · 7 What does not fit · 8 The scorecard · the Data Desk</p>
