@@ -94,4 +94,15 @@ No price had been fetched or joined when this was written.
 - **US n is 75, not 74.** 2008 Q1 to 2026 Q3 is 75 statements.
 - **UK supply change.** Red Book patterns were added for the 2010–2024 wordings ("Planned gilt sales in … will be reduced by £X billion", "Total gilt sales … are now forecast to increase by £X billion", "an increase in gross gilt issuance this year of £X billion", "gross gilt issuance is projected to rise by £X billion", "additional gilt sales of £X billion", "gilt issuance (a decline of £X billion"). Where the document has no in-year revision (spring Budgets set a new remit; several statements left the revision to a separate DMO notice, and dmo.gov.uk is bot-shielded), the row is excluded. That leaves 13 scheduled, pre-lockbox rows with a revision: below the §5 floor of 15, so **D1 is not scored and is UNDERPOWERED by design**. The rows are shown as description only.
 
-## RESULTS — not yet run
+## RESULTS — run 2026-10-28
+
+Full write-up: `analysis/output/fiscal-event-reaction/RESULTS.md`.
+
+| Cell | Result | Verdict |
+|---|---|---|
+| S1 | 1.19× [0.72, 1.76], n 32 | UNDERPOWERED |
+| S2 | 0.94× [0.72, 1.21], n 75 | NULL |
+| D1 | ρ +0.42 [−0.31, +0.91], n 13, below the floor | UNDERPOWERED |
+| D2 | ρ −0.04 [−0.30, +0.24], n 75 | NULL |
+
+Described: the UK window range is 1.63× [1.36, 1.97], so it is a candidate for its own prereg.

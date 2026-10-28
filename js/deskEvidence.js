@@ -964,6 +964,32 @@ export const DESK_EVIDENCE = [
     use: 'Keep the rich-IV break as is: do not filter it by distance to the hourly lines and do not take profit at them; the edge sits in the few far winners. Power is limited (a few hundred independent days).',
   },
   {
+    id: 'fiscal-reaction-uk-size', domain: 'events', verdict: 'underpowered', date: '2026-10-28', doc: 'forge/FISCAL_EVENT_REACTION_PREREG.md', also: ['analysis/output/fiscal-event-reaction/RESULTS.md'],
+    claim: 'UK Budgets / Autumn and Spring Statements move the 10y gilt more than the same clock window on an ordinary day',
+    result: 'Underpowered. 32 scheduled events 2010-06 to 2026-03, OANDA 10y gilt CFD M1 from 5 min before the statement to 3 hours after, against 8 same-weekday control days: net-move ratio 1.19x [0.72, 1.76] (MDE 1.48x), and 0.98x without the three largest (Budget 2025, 2020, 2021). Described, not scored: the high-to-low range in the window is 1.63x [1.36, 1.97]. GBP/USD 0.78x, FTSE 100 1.02x, both spanning 1. The 2022 Growth Plan (+30bp, 26x) is excluded as unscheduled.',
+    use: 'Say a Budget widens the gilt swing while it is read; do not say it leaves a bigger net move by the close of the window. Range result needs its own prereg.',
+    instruments: ['UK10Y', 'GBPUSD', 'UK100'],
+  },
+  {
+    id: 'fiscal-reaction-us-size', domain: 'events', verdict: 'null', date: '2026-10-28', doc: 'forge/FISCAL_EVENT_REACTION_PREREG.md', also: ['analysis/output/fiscal-event-reaction/RESULTS.md'],
+    claim: 'US Quarterly Refunding policy statements move the 10y Treasury more than an ordinary 08:30 New York Wednesday',
+    result: 'Null. 75 statements 2008-01 to 2026-08, OANDA 10y CFD M1 08:25-10:00 New York vs 8 same-weekday controls: net-move ratio 0.94x [0.72, 1.21], excluding the 1.30x the design could detect. Range ratio 1.13x [1.03, 1.24] (described). 30y 1.18x [0.93, 1.45]; coupon-change statements 1.32x [0.83, 2.08] vs no-change 0.81x (described, BH q 0.44).',
+    use: 'A refunding statement is not a market event for the 10y on the day; show the read as context.',
+  },
+  {
+    id: 'fiscal-reaction-uk-direction', domain: 'events', verdict: 'underpowered', date: '2026-10-28', doc: 'forge/FISCAL_EVENT_REACTION_PREREG.md', also: ['analysis/output/fiscal-event-reaction/RESULTS.md'],
+    claim: 'A larger in-year gilt-sales revision in the Red Book goes with higher 10y gilt yields in the statement window',
+    result: 'Underpowered by design: only 13 scheduled events carry an in-year revision in the document (spring Budgets set a new remit; several statements left the revision to a DMO notice), below the registered floor of 15. Described: Spearman +0.42 [-0.31, +0.91].',
+    use: 'No direction wording on the supply chip.',
+    instruments: ['UK10Y'],
+  },
+  {
+    id: 'fiscal-reaction-us-direction', domain: 'events', verdict: 'null', date: '2026-10-28', doc: 'forge/FISCAL_EVENT_REACTION_PREREG.md', also: ['analysis/output/fiscal-event-reaction/RESULTS.md'],
+    claim: 'Announcing larger (smaller) nominal coupon auctions at a refunding goes with higher (lower) 10y yields in the next 90 minutes',
+    result: 'Null. 75 statements, hand-coded from their own text (13 increases, 10 cuts, 52 unchanged): Spearman -0.04 [-0.30, +0.24], excluding the 0.32 the design could detect. November 2023 (bigger auctions, yields fell) is the famous counter-example: the market trades the size against what was feared, which this test cannot see.',
+    use: 'No direction wording from coupon-size changes.',
+  },
+  {
     id: 'event-layer', domain: 'events', verdict: 'null', date: '2026-10-05', doc: 'forge/EVENT_LAYER_PREREG.md',
     claim: 'On top of the IV-adjusted daily lines, the typical size of the day’s scheduled release type (and yesterday’s surprise) improves the range forecast',
     result: 'First test (calendar_events.csv) PASSED for FX+gold (0.970, 7/7) but did NOT replicate on live inputs (ForexFactory names, live IV-adjusted sigma, 2020-2025): 0.9937 vs the 0.99 bar; the fitted correction overshoots (big-release-day p75 35.5% -> 17.3%). Yesterday’s surprise null in both. The live export’s coarse event tag already brings FOMC/NFP/CPI days to 27.1% passed vs 25%.',
@@ -1804,6 +1830,10 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'fiscal-reaction-uk-size':      { n: '32 scheduled UK fiscal events 2010-2026 (iid over events)', note: 'MDE 1.48x on the net-move ratio; 1.19x [0.72, 1.76] spans it' },
+  'fiscal-reaction-us-size':      { n: '75 refunding statements 2008-2026 (iid over events)', note: 'MDE 1.30x; 0.94x [0.72, 1.21] excludes it -- a real null' },
+  'fiscal-reaction-uk-direction': { n: '13 events with an in-year gilt revision', note: 'below the registered 15-row floor; MDE rho ~0.55' },
+  'fiscal-reaction-us-direction': { n: '75 statements, 23 with a coupon change', note: 'MDE rho 0.32; [-0.30, +0.24] excludes it -- a real null' },
   'portfolio-book-validate': { n: '10 tests on 4,645 weekdays 2008-2026 + 3.7 years 2004-07 + 223 months vs PUT', note: 'robustness of one banked result; T1 exact, T9 corr >= 0.9975, T6 fails (corr 0.58, gap 0.51); T8 underpowered by design' },
   'gamma-regime-trades-fx':  { n: '1,963 trades on 4,632 sessions, EUR/GBP/AUD 2020-09 to 2026-08 (10-session block bootstrap over dates)', note: 'half-width 0.04R; interval [-0.12, -0.04] is wholly below zero -- a real null, not a power problem' },
   'rule-a-pre2020':          { n: '1,386 trades, 11 instruments, 2016-09 to 2020-08 (4-week block bootstrap)', note: 'MDE about 0.2R; upper bound +0.094 excludes the +0.162 backtest effect -- a real null' },
