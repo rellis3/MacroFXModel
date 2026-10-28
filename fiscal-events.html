@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fiscal Events</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--red:#f85149;
+    --bull-bg:rgba(16,185,129,.12);--bear-bg:rgba(249,115,22,.12);--amber-bg:rgba(210,153,34,.12);--blue-bg:rgba(79,125,240,.12);}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  a{color:var(--blue);text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);
+       border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700}
+  .hdr .spacer{flex:1}
+  .hdr .stamp{font-size:10.5px;color:var(--text3)}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600}
+  .hbtn:hover{color:var(--text);border-color:var(--text3)} .hbtn:disabled{opacity:.5;cursor:default}
+  .hbtn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  .wrap{max-width:960px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  .card h2{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin:0 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .note{font-size:11.5px;color:var(--text3);line-height:1.6;margin-top:10px}
+  .empty{color:var(--text2);font-size:13px;line-height:1.6;padding:6px 0}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .tab{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600;text-align:left}
+  .tab.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .tab .st{display:block;font-size:10px;font-weight:500;opacity:.8}
+  .chip{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:700}
+  .chip.loose{background:var(--bear-bg);color:var(--bear)} .chip.tight{background:var(--bull-bg);color:var(--bull)}
+  .chip.neu{background:rgba(110,118,129,.15);color:var(--text2)} .chip.mix{background:var(--amber-bg);color:var(--amber)}
+  .chip.plain{background:var(--card2);color:var(--text3);border:1px solid var(--border);font-weight:600}
+  .headline{font-size:17px;font-weight:700;line-height:1.4;margin:4px 0 10px}
+  .summary{font-size:13.5px;color:var(--text2);line-height:1.6;margin-bottom:10px}
+  .boxed{font-size:12.5px;color:var(--text2);background:var(--card2);border-left:3px solid var(--amber);border-radius:0 7px 7px 0;padding:8px 12px;margin-bottom:10px}
+  .boxed b{color:var(--amber);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:3px}
+  .boxed.blue{border-left-color:var(--blue)} .boxed.blue b{color:var(--blue)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border)}
+  td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+  td.num{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+  td.chg{color:var(--text2);font-variant-numeric:tabular-nums}
+  td.chg.flag{color:var(--amber);font-weight:700}
+  .tablewrap{overflow-x:auto}
+  .quote{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:8px}
+  .quote .qtext{font-size:13px;font-style:italic;margin-bottom:5px}
+  .quote .qmeta{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--text3);flex-wrap:wrap}
+  .quote .qwhy{color:var(--text2)}
+  .assets{display:flex;flex-wrap:wrap;gap:7px}
+  .a-chip{display:inline-flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11.5px}
+  .a-chip b{font-weight:700} .a-chip.up b{color:var(--bull)} .a-chip.dn b{color:var(--bear)} .a-chip.nu b{color:var(--text2)}
+  .a-chip .an{color:var(--text3)}
+  .measures li{margin:0 0 6px 18px;color:var(--text2)} .measures li b{color:var(--text)}
+  .src{font-size:11.5px;color:var(--text3)} .src a{margin-right:10px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:720px){.grid2{grid-template-columns:1fr}}
+  .spin{display:inline-block;width:10px;height:10px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-1px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>🏛 Fiscal Events</h1>
+  <div class="spacer"></div>
+  <span class="stamp" id="lastCheck"></span>
+  <button class="hbtn primary" id="fetchBtn" onclick="fetchNow()">⟳ Fetch now</button>
+  <a class="hbtn" href="boe-sentiment.html">BoE Sentiment</a>
+  <a class="hbtn" href="fomc-sentiment.html">FOMC Sentiment</a>
+  <a class="hbtn" href="release-reaction.html">Release Reaction</a>
+  <a class="hbtn" href="today.html">Daily Brief</a>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h2>Events</h2>
+    <div class="tabs" id="tabs"><span class="empty">Loading…</span></div>
+    <div class="note">A fiscal event moves markets through <b>supply</b> (how much government debt must be sold, and at which maturities) and <b>credibility</b> (whether the fiscal rules are met, and by how much headroom). The UK documents (the Treasury's Red Book, the OBR's Economic and fiscal outlook, the Chancellor's statement) and the US Treasury's Quarterly Refunding statements are captured as they are published. The numbers in the table are pulled straight from the documents. The written read is a model's reading of the same text. It describes what was announced; it is not a trading signal.</div>
+  </div>
+  <div id="detail"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+async function jget(url, opt) { const r = await fetch(url, opt); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }
+const FLAG = { GB: '🇬🇧', US: '🇺🇸' };
+const DOCNAME = { redbook: 'Red Book', speech: 'Statement', obr: 'OBR outlook', policy: 'Policy statement', estimates: 'Financing estimates' };
+let EVENTS = [], LOG = null, CARDS = [], sel = null;
+
+function stanceChip(a) {
+  const s = a?.stance; if (!s) return '';
+  const cls = s === 'LOOSER' ? 'loose' : s === 'TIGHTER' ? 'tight' : s === 'MIXED' ? 'mix' : 'neu';
+  return `<span class="chip ${cls}">Fiscal stance: ${esc(s.toLowerCase())}</span>`;
+}
+function statusText(e) {
+  if (e.status === 'read') return 'read';
+  if (e.status === 'captured') return 'captured, read failed';
+  if (e.status === 'upcoming') return new Date(e.ms).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + ' UK';
+  return 'waiting for documents';
+}
+function renderTabs() {
+  $('tabs').innerHTML = EVENTS.slice().sort((a, b) => b.ms - a.ms).map(e =>
+    `<button class="tab ${e.id === sel ? 'on' : ''}" onclick="pick('${e.id}')">${FLAG[e.country] ?? ''} ${esc(e.title)}<span class="st">${esc(statusText(e))}</span></button>`).join('');
+}
+function pick(id) { sel = id; renderTabs(); renderDetail(); history.replaceState(null, '', '#' + id); }
+
+// The 30-minute reaction, from the release scorecard (same country, same day, a fiscal headline)
+function reactionFor(e) {
+  const day = new Date(e.ms).toISOString().slice(0, 10);
+  return CARDS.filter(c => c.country === e.country && c.day === day && (c.prints ?? []).some(p => /budget|spring|statement|refunding/i.test(p.event ?? '')));
+}
+function renderReaction(e) {
+  const cards = reactionFor(e);
+  if (!cards.length) return `<div class="empty">${e.ms > Date.now() ? 'Measured 30 minutes after the event starts.' : 'No 30-minute reaction on file for this event (the release scorecard keeps the last 60 days, high-impact calendar events only).'}</div>`;
+  return cards.map(c => `<div class="tablewrap"><table><thead><tr><th>Market</th><th>30-min move</th><th>vs a normal half-hour</th></tr></thead><tbody>${(c.reactions ?? []).map(r =>
+    `<tr><td>${esc(r.name.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/$2'))}</td><td class="num">${r.unit === '$' ? '$' + Math.abs(r.move) : Math.abs(r.move) + ' ' + esc(r.unit)} ${esc(r.dir)}</td><td class="chg">${r.ratio != null ? r.ratio + '×' : '–'}</td></tr>`).join('')}</tbody></table></div>
+    <div class="note">From ${new Date(c.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} UK, when the calendar marked the event. A Budget is a speech of about an hour, so the first 30 minutes catch the opening measures, not the OBR numbers that follow it.</div>`).join('');
+}
+function renderDetail() {
+  const e = EVENTS.find(x => x.id === sel); if (!e) { $('detail').innerHTML = ''; return; }
+  const a = e.analysis, prev = EVENTS.find(x => x.id === e.prev);
+  const srcs = Object.entries(e.sources ?? {}).map(([k, s]) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(DOCNAME[k] ?? k)} ↗</a>`).join('');
+  const missing = e.docs.filter(k => !(e.sources ?? {})[k]).map(k => DOCNAME[k] ?? k);
+  const logRow = LOG?.events?.find(r => r.id === e.id);
+  let html = '';
+  if (e.status === 'upcoming' || (e.status === 'waiting' && !e.rows.length)) {
+    html += `<div class="card"><h2>${FLAG[e.country] ?? ''} ${esc(e.title)} · ${esc(e.date)}</h2><div class="empty">${e.status === 'upcoming'
+      ? `Due ${esc(statusText(e))}. The documents are captured automatically from 30 minutes before; the read follows once the ${e.kind === 'refunding' ? 'policy statement' : 'Red Book and the OBR outlook'} are in.`
+      : `Started ${new Date(e.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} UK. Waiting for: ${esc(missing.join(', ') || 'the documents')}. The UK documents are published when the Chancellor sits down, about an hour after the start. Checked every 5 minutes.`}
+      ${logRow?.errors?.length ? `<div class="note">Last check errors: ${esc(logRow.errors.join(' · '))}</div>` : ''}</div></div>`;
+  } else {
+    html += `<div class="card"><h2>${FLAG[e.country] ?? ''} ${esc(e.title)} · ${esc(e.date)} ${stanceChip(a)}
+      ${a?.supply ? `<span class="chip plain">Bond supply: ${esc(a.supply.toLowerCase())}</span>` : ''}${a?.credibility ? `<span class="chip plain">Credibility: ${esc(a.credibility.toLowerCase())}</span>` : ''}${a?.confidence ? `<span class="chip plain">read confidence ${esc(a.confidence.toLowerCase())}</span>` : ''}</h2>
+      ${a ? `<div class="headline">${esc(a.headline)}</div><div class="summary">${esc(a.summary)}</div>
+        ${a.whatChanged ? `<div class="boxed"><b>What changed${prev ? ' since ' + esc(prev.title) : ''}</b>${esc(a.whatChanged)}</div>` : ''}
+        ${a.watch ? `<div class="boxed blue"><b>What the market tests next</b>${esc(a.watch)}</div>` : ''}`
+      : `<div class="empty">${e.error ? 'The written read failed: ' + esc(e.error) + '. The numbers below come straight from the documents.' : 'The written read is being prepared.'}</div>`}
+      <div class="src">Documents: ${srcs || '–'}${missing.length ? ` · not yet published: ${esc(missing.join(', '))}` : ''}${e.generatedAt ? ` · read ${new Date(e.generatedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}</div></div>`;
+    const prevRows = prev?.rows ?? [];
+    html += `<div class="grid2"><div class="card"><h2>The numbers</h2>${e.rows.length ? `<div class="tablewrap"><table><thead><tr><th>Item</th><th>Now</th><th>Change</th>${prevRows.length ? `<th>${esc(prev.title)}</th>` : ''}</tr></thead><tbody>${e.rows.map(r =>
+      `<tr><td>${esc(r.label)}</td><td class="num">${esc(r.value)}</td><td class="chg ${r.change === 'CHANGED' ? 'flag' : ''}">${esc(r.change ?? '–')}</td>${prevRows.length ? `<td class="chg">${esc(prevRows.find(p => p.label === r.label)?.value ?? '–')}</td>` : ''}</tr>`).join('')}</tbody></table></div>`
+      : `<div class="empty">No numbers could be pulled from the documents${e.id.startsWith('gb-spring-2026') ? ' (from 2026 the OBR assesses the fiscal rules only at the Budget, so the spring forecast has no headroom figure)' : ''}.</div>`}
+      <div class="note">${e.kind === 'refunding' ? 'From the Treasury\'s policy statement and financing estimates. The coupon-size guidance line is the one the bond market reads first.' : 'Headroom is from the OBR outlook; gilt sales and the financing requirement are from the Red Book\'s Financing section (the DMO remit revision).'}</div></div>
+      <div class="card"><h2>First 30 minutes</h2>${renderReaction(e)}</div></div>`;
+    if (a?.keyMeasures?.length) html += `<div class="card"><h2>Key measures</h2><ul class="measures">${a.keyMeasures.map(m => `<li><b>${esc(m.measure)}</b>: ${esc(m.note)}</li>`).join('')}</ul></div>`;
+    if (a?.byAsset?.length) html += `<div class="card"><h2>By market</h2><div class="assets">${a.byAsset.map(x => { const c = x.lean === 'BULLISH' ? 'up' : x.lean === 'BEARISH' ? 'dn' : 'nu'; return `<span class="a-chip ${c}"><b>${esc(x.asset)} ${x.lean === 'BULLISH' ? '▲' : x.lean === 'BEARISH' ? '▼' : '■'}</b><span class="an">${esc(x.note)}</span></span>`; }).join('')}</div>
+      <div class="note">How the text reads for each market, not a forecast. Central-bank tone reads like this tested null as a price signal on this desk.</div></div>`;
+    if (a?.keyQuotes?.length) html += `<div class="card"><h2>Key lines</h2>${a.keyQuotes.map(q => `<div class="quote"><div class="qtext">“${esc(q.quote)}”</div><div class="qmeta"><span class="chip plain">${esc(q.asset)}</span><span class="qwhy">${esc(q.why)}</span></div></div>`).join('')}</div>`;
+  }
+  $('detail').innerHTML = html;
+}
+async function load() {
+  try {
+    const [d, rc] = await Promise.all([jget('/api/fiscal/events'), jget('/api/release-calls?days=90').catch(() => null)]);
+    EVENTS = d.events ?? []; LOG = d.log; CARDS = rc?.scorecards ?? [];
+    if (LOG?.at) $('lastCheck').textContent = `Last check ${new Date(LOG.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+    const want = location.hash.slice(1);
+    if (!sel) {
+      const live = EVENTS.filter(e => e.ms <= Date.now()).sort((a, b) => b.ms - a.ms)[0];
+      const soon = EVENTS.filter(e => e.ms > Date.now() && e.ms - Date.now() < 2 * 86400_000)[0];
+      sel = EVENTS.some(e => e.id === want) ? want : (soon ?? live ?? EVENTS[0])?.id;
+    }
+    renderTabs(); renderDetail();
+  } catch (e) { $('tabs').innerHTML = `<span class="empty">Could not load: ${esc(e.message)}</span>`; }
+}
+async function fetchNow() {
+  const btn = $('fetchBtn'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Checking…';
+  try {
+    const r = await jget('/api/fiscal/fetch-now' + (sel ? `?id=${encodeURIComponent(sel)}` : ''), { method: 'POST' });
+    $('lastCheck').textContent = r.alreadyRunning ? 'A check is already running…' : 'Checked just now';
+    await load();
+  } catch (e) { $('lastCheck').textContent = 'Could not reach the server: ' + e.message; }
+  finally { btn.disabled = false; btn.innerHTML = '⟳ Fetch now'; }
+}
+load();
+setInterval(() => { const e = EVENTS.find(x => x.id === sel); if (e && e.status !== 'read' && e.ms <= Date.now()) load(); }, 120_000);
+</script>
+</body>
+</html>

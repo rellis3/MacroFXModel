@@ -174,6 +174,9 @@ import { FETCHERS as RBA_FETCHERS, extractVote as rbaExtractVote } from './js/rb
 import { BOC_MEETINGS, pendingAsOf as bocPendingAsOf, allReleases as bocAllReleases } from './js/bocCalendar.js';
 import { SNB_MEETINGS, pendingAsOf as snbPendingAsOf, allReleases as snbAllReleases } from './js/snbCalendar.js';
 import { FETCHERS as SNB_FETCHERS } from './js/snbFetch.js';
+import { FISCAL_EVENTS, previousEvent as fiscalPrevious, htmlToText as fiscalHtmlToText, govukAttachment as fiscalAttachment, govukRedBookFromCollection as fiscalRedBookFromCollection,
+  obrPageMeta as fiscalObrMeta, obrMainText as fiscalObrText, treasuryRefundingLinks as fiscalTreasuryLinks, treasuryPressText as fiscalTreasuryText, extractNumbers as fiscalNumbers,
+  numberRows as fiscalRows, buildFiscalPrompt as fiscalPrompt, readiness as fiscalReadiness, shouldPoll as fiscalShouldPoll } from './js/fiscalEvents.js';
 import { shouldReplaceLatest as cbShouldReplaceLatest, pickLatest as cbPickLatest } from './js/cbLatest.js';
 import { FETCHERS as BOC_FETCHERS } from './js/bocFetch.js';
 import { BEIGE_BOOK_RELEASES, pendingAsOf as beigeBookPendingAsOf } from './js/beigeBookCalendar.js';
@@ -8458,6 +8461,153 @@ Respond with ONLY valid JSON, no markdown:
   return { buildPrompt, buildAnalysis, autoCheck, runCheck, repairLatest };
 }
 const _cbExtraEngines = Object.fromEntries(Object.entries(_CB_EXTRA_ENGINES).map(([k, cfg]) => [k, _registerCbEngine(k, cfg)]));
+
+// ── Fiscal events: UK Budget / Spring Forecast, US Quarterly Refunding ───────
+// The central-bank engines' shape for the fiscal side: raw text into KV
+// (fiscal_raw_<id>_<kind>, permanent), the hard numbers pulled out
+// mechanically, a model read grounded in the text and the numbers
+// (fiscal_analysis_<id>), a fetch log, /api/fiscal/*. Calendar, discovery,
+// extraction and the prompt live in js/fiscalEvents.js. The poll is a no-op
+// outside an event window (shouldPoll), and an event is read once its core
+// documents are in, then re-read once if a later document (the speech) lands.
+const _fiscalTried = new Map();   // id -> ms of the last try, so an old event with nothing to find is not re-fetched every 5 min
+const _FISCAL_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
+async function _fiscalGet(url, { json = false } = {}) {
+  const r = await fetch(url, { headers: { 'User-Agent': _FISCAL_UA, Accept: json ? 'application/json' : 'text/html,*/*' }, redirect: 'follow', signal: AbortSignal.timeout(30_000) });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`${url} HTTP ${r.status}`);
+  return json ? r.json() : { html: await r.text(), finalUrl: r.url };
+}
+async function _fiscalGovuk(path) { return _fiscalGet(`https://www.gov.uk/api/content${path}`, { json: true }); }
+// One document of one event -> { text, url, publishedOn } or null (not out yet).
+async function _fiscalFetchDoc(ev, doc) {
+  if (doc.kind === 'speech') {
+    const it = await _fiscalGovuk(doc.govuk); if (!it?.details?.body) return null;
+    return { text: fiscalHtmlToText(it.details.body), url: `https://www.gov.uk${doc.govuk}`, publishedOn: it.first_published_at ?? null };
+  }
+  if (doc.kind === 'redbook') {
+    let pub = await _fiscalGovuk(doc.govuk), path = doc.govuk;
+    if (!pub && doc.collection) { const col = await _fiscalGovuk(doc.collection); path = fiscalRedBookFromCollection(col, ev.date.slice(0, 4)); pub = path ? await _fiscalGovuk(path) : null; }
+    if (!pub) return null;
+    const att = fiscalAttachment(pub); if (!att) return null;
+    if (att.type === 'html') { const h = await _fiscalGovuk(att.path); if (!h?.details?.body) return null; return { text: fiscalHtmlToText(h.details.body), url: `https://www.gov.uk${att.path}`, publishedOn: h.first_published_at ?? pub.first_published_at ?? null }; }
+    const r = await fetch(att.url, { headers: { 'User-Agent': _FISCAL_UA }, signal: AbortSignal.timeout(60_000) }); if (!r.ok) return null;
+    const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
+    const parsed = await pdfParse(Buffer.from(await r.arrayBuffer()));
+    return { text: parsed.text, url: att.url, publishedOn: pub.first_published_at ?? null };
+  }
+  if (doc.kind === 'obr') {
+    let page = await _fiscalGet(`https://obr.uk/efo/${doc.obr}/`);
+    if (!page && doc.obrLatestOnOrAfter) {
+      // the slug is a guess until the day: accept the latest outlook if it was published on or after the event
+      const latest = await _fiscalGet('https://obr.uk/efo/'); const meta = latest ? fiscalObrMeta(latest.html) : null;
+      if (meta?.published && meta.published >= doc.obrLatestOnOrAfter) page = latest;
+    }
+    if (!page) return null;
+    const meta = fiscalObrMeta(page.html); const text = fiscalObrText(page.html);
+    if (text.length < 5000) return null;
+    return { text, url: meta.slug ? `https://obr.uk/efo/${meta.slug}/` : page.finalUrl, publishedOn: meta.published };
+  }
+  if (doc.kind === 'policy' || doc.kind === 'estimates') {
+    const idx = await _fiscalGet('https://home.treasury.gov/policy-issues/financing-the-government/quarterly-refunding/most-recent-quarterly-refunding-documents');
+    const href = idx ? fiscalTreasuryLinks(idx.html, ev.quarter)[doc.kind] : null; if (!href) return null;
+    const p = await _fiscalGet(href); if (!p) return null;
+    const text = fiscalTreasuryText(p.html); if (text.length < 500) return null;
+    return { text, url: href, publishedOn: null };
+  }
+  return null;
+}
+async function _fiscalStatus(ev) {
+  const raw = await kv.get(`fiscal_analysis_${ev.id}`).catch(() => null);
+  return raw ? JSON.parse(raw) : null;
+}
+async function _fiscalDocs(ev) {
+  const out = {};
+  for (const d of ev.docs) { const raw = await kv.get(`fiscal_raw_${ev.id}_${d.kind}`).catch(() => null); if (raw) out[d.kind] = JSON.parse(raw); }
+  return out;
+}
+async function _fiscalAnalyse(ev, docs) {
+  const numbers = fiscalNumbers(ev, docs);
+  const pev = fiscalPrevious(ev.id);
+  const pst = pev ? await _fiscalStatus(pev) : null;
+  const prev = pev ? { ev: pev, numbers: pst?.numbers ?? null, headline: pst?.analysis?.headline ?? null } : null;
+  let analysis = null, error = null;
+  if (_aiAnyKey()) {
+    try {
+      const antData = await callModel({ task: 'doc-summary', maxTokens: 8000,
+        system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote, number or measure.',
+        prompt: fiscalPrompt(ev, docs, numbers, prev) });
+      if (antData.stop_reason === 'max_tokens') throw new Error('response truncated');
+      analysis = JSON.parse(_antText(antData).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim());
+    } catch (e) { error = e.message; }
+  } else error = 'no model provider configured';
+  const payload = { id: ev.id, numbers, rows: fiscalRows(ev, numbers), analysis, error, analysedKinds: Object.keys(docs),
+    sources: Object.fromEntries(Object.entries(docs).map(([k, d]) => [k, { url: d.url, publishedOn: d.publishedOn ?? null, chars: d.text.length, capturedAt: d.capturedAt }])),
+    prev: pev ? pev.id : null, generatedAt: new Date().toISOString() };
+  await kv.put(`fiscal_analysis_${ev.id}`, JSON.stringify(payload));
+  return payload;
+}
+async function _fiscalCheck(reason, { force = false, only = null } = {}) {
+  const log = { at: new Date().toISOString(), reason, events: [] };
+  for (const ev of FISCAL_EVENTS.filter(e => !only || e.id === only)) {
+    const st = await _fiscalStatus(ev);
+    if (!force && !fiscalShouldPoll(ev, st)) continue;
+    if (Date.now() < ev.ms - 30 * 60_000) continue;
+    if (!force && !st && Date.now() - ev.ms > 3 * 86400_000 && Date.now() - (_fiscalTried.get(ev.id) ?? 0) < 6 * 3600_000) continue;
+    _fiscalTried.set(ev.id, Date.now());
+    const row = { id: ev.id, fetched: [], missing: [], errors: [] };
+    for (const d of ev.docs) {
+      if (await kv.get(`fiscal_raw_${ev.id}_${d.kind}`).catch(() => null)) continue;
+      try {
+        const got = await _fiscalFetchDoc(ev, d);
+        if (got) { await kv.put(`fiscal_raw_${ev.id}_${d.kind}`, JSON.stringify({ ...got, capturedAt: new Date().toISOString() })); row.fetched.push(d.kind); }
+        else row.missing.push(d.kind);
+      } catch (e) { row.errors.push(`${d.kind}: ${e.message}`); }
+    }
+    const docs = await _fiscalDocs(ev); const have = Object.keys(docs);
+    const rd = fiscalReadiness(ev, have);
+    const newSinceRead = have.some(k => !(st?.analysedKinds ?? []).includes(k));
+    // a manual check re-fetches, but only new documents (or a failed read) cost another model call
+    if (rd.ready && (newSinceRead || st?.error)) {
+      const out = await _fiscalAnalyse(ev, docs); row.analysed = true; row.analysisError = out.error;
+      if (state.tg?.token && state.tg?.chatId && svcEnabled('fiscalEvents') && out.analysis?.headline && !st?.analysis && Date.now() - ev.ms < 2 * 86400_000) {
+        const nums = out.rows.slice(0, 4).map(r => `${r.label}: <b>${r.value}</b>${r.change ? ` (${r.change})` : ''}`).join('\n');
+        await sendTelegram(state.tg.token, state.tg.chatId, `🏛 <b>${ev.title}</b>: ${out.analysis.stance ?? ''} · supply ${out.analysis.supply ?? '?'}\n${out.analysis.headline}\n${nums}\nfiscal-events.html`).catch(() => {});
+      }
+    }
+    row.waitingFor = rd.missing;
+    log.events.push(row);
+  }
+  if (log.events.length) await kv.put('fiscal_fetch_log', JSON.stringify(log)).catch(() => {});
+  return log;
+}
+let _fiscalRunning = false;
+function _fiscalRun(reason, opts) {
+  if (_fiscalRunning) return null;
+  _fiscalRunning = true;
+  return _fiscalCheck(reason, opts).catch(e => { console.error('[fiscal]', e.message); return { error: e.message }; }).finally(() => { _fiscalRunning = false; });
+}
+app.get('/api/fiscal/events', async (_req, res) => {
+  try {
+    const out = [];
+    for (const ev of FISCAL_EVENTS) {
+      const st = await _fiscalStatus(ev);
+      out.push({ id: ev.id, country: ev.country, ccy: ev.ccy, kind: ev.kind, title: ev.title, date: ev.date, ms: ev.ms, docs: ev.docs.map(d => d.kind),
+        status: st ? (st.analysis ? 'read' : 'captured') : ev.ms > Date.now() ? 'upcoming' : 'waiting',
+        rows: st?.rows ?? [], analysis: st?.analysis ?? null, error: st?.error ?? null, sources: st?.sources ?? {}, prev: st?.prev ?? fiscalPrevious(ev.id)?.id ?? null, generatedAt: st?.generatedAt ?? null });
+    }
+    const log = await kv.get('fiscal_fetch_log').catch(() => null);
+    res.json({ ok: true, events: out, log: log ? JSON.parse(log) : null, running: _fiscalRunning });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/fiscal/fetch-now', async (req, res) => {
+  const only = req.query.id || req.body?.id || null;
+  const p = _fiscalRun('manual', { force: !!only, only });
+  if (!p) return res.json({ ok: true, alreadyRunning: true });
+  res.json({ ok: true, result: await p });
+});
+svcInterval('fiscalEvents', () => { _fiscalRun('poll'); }, 5 * 60_000);
+svcTimeout('fiscalEvents', () => { _fiscalRun('boot'); }, 90_000);
 
 // ── Beige Book Engine ───────────────────────────────────────────────────────
 // The simplest release-tracking engine yet: ONE document, no delayed
