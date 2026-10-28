@@ -15,7 +15,7 @@ const assets = [{ label: 'EUR/USD', d1: 0.1, used: 0.2 }, { label: 'Nasdaq', d1:
 console.log('a central-bank day');
 { const o = todayOpening({ events, nowMs, regimeWord: 'MIXED', riskFlags: rf, assets, since: { first: false, items: [{ text: 'The RBNZ held and the kiwi fell.' }, { text: 'Fed odds trimmed.' }, { text: 'third' }] } });
   ok('the headline names the Fed as the lead and the events that come before it', o.headline === 'The Fed decides at 18:00, after the UK Autumn Budget and the Bank of Canada');
-  ok('the kicker is the day, in UK terms', o.kicker === 'Today · Wednesday 28 October');
+  ok('the kicker is the day, in UK terms', o.kicker === 'Fed day · Wednesday 28 October');
   ok('the regime line says what the flags show and quotes the VIX, counting only what is measured', o.regime === 'Mixed regime. None of the 2 measured warning flags is on, VIX 18.4.');
   ok('what changed is the last issue\'s own differences, two at most', o.changed === 'The RBNZ held and the kiwi fell. Fed odds trimmed.');
   ok('watch lists only today\'s high-impact events in time order, in UK time, and not tomorrow\'s or a medium one', o.watch === 'UK Autumn Budget 12:30, Bank of Canada 13:45, Fed 18:00 and FOMC Press Conference 18:30. UK time.' && !/ECB|Pending/.test(o.watch));

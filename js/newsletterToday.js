@@ -88,6 +88,15 @@ function fedLine(fp, hi, now) {
   return `Futures put the chance of a hike by ${fp.ref ? 'the ' + dm(fp.ref) + ' meeting' : 'the next meeting'} at ${Math.round(fp.hike)}% and of a cut at ${Math.round(fp.cut)}% (Atlanta Fed tracker, ${dm(fp.asOf)}).`;
 }
 
+/** What sort of day it is, in two words, for the kicker above the headline. */
+function dayType(hi) {
+  if (hi.some(e => e.ccy === 'USD' && isDecision(e))) return 'Fed day';
+  const banks = hi.filter(isDecision).length;
+  if (banks > 1) return 'Central bank day';
+  if (banks === 1) return `${cap(listName(hi.find(isDecision)))} day`;
+  return hi.length >= 3 ? 'Heavy data day' : hi.length ? 'Data day' : 'Quiet day';
+}
+
 /** The first sentence of the lede: how much is due and what has already happened today. */
 function loadLine(hi, done, weekly) {
   if (!hi.length) return '';
@@ -142,5 +151,5 @@ export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, asse
   const done = weekly ? [] : (events ?? []).filter(e => e?.impact === 'high' && isDecision(e) && Number.isFinite(e.ms) && e.ms < now - 36e5 && ukDay(e.ms) === ukDay(now)).sort((x, y) => x.ms - y.ms);
   const regime = regimeLine(regimeWord, riskFlags), changed = changedLine(since, assets);
   const lede = [loadLine(hi, done, weekly), fedLine(fedPath, hi, now), changed, regime].filter(Boolean).join(' ');
-  return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `Today · ${day}`, headline: headlineOf(hi, nextHigh, weekly), regime, changed, watch: watchLine(hi, nextHigh, weekly), count: hi.length };
+  return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `${dayType(hi)} · ${day}`, headline: headlineOf(hi, nextHigh, weekly), regime, changed, watch: watchLine(hi, nextHigh, weekly), count: hi.length };
 }
