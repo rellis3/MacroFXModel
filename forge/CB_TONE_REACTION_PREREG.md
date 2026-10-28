@@ -141,7 +141,20 @@ UNDERPOWERED otherwise, or if fewer than two banks pass coverage.
 
 ## Amendments
 
-*(none yet)*
+### A1 — 2026-10-28 — PRE-RESULTS
+Text extraction, fixed while auditing the fetched documents. No price data had been read.
+- ECB: 2017-2020 pages end the statement with "We are now at your disposal for questions" followed by `* * *`, so those
+  markers were added to the Q&A cut. All 85 ECB statements are now cut before the Q&A (median 1,441 words; before
+  the fix, 19 pages still carried the Q&A, up to 8,000 words).
+- BoJ: the HTML pages carry the site menu. The body now runs from "At the Monetary Policy Meeting held" to before
+  the attendee list ("Members present" / "Others present") or the release-times footer. Statements at meetings with
+  no outlook report have been very short since 2024 (61-225 words): they are real, not extraction failures, and
+  mostly fall under the coverage gate (H + D < 3).
+- Coverage as fetched: ECB 84 of 85 statements scored, BoE 82 of 88, BoJ 72 of 85. All three pass the 60% gate.
+- ECB clock proof: the first-5-minute true range is taken at both 13:45 and 14:15 Frankfurt and the larger is used,
+  for the event and for its baseline days alike (the ECB moved its decision time during the sample; size only, no sign).
+- BoE's 2016 pages (11 meetings, the move from 12 to 8 meetings a year) and the March 2020 emergency cuts (no
+  summary page of their own) came out of the month pages as expected: every BoE date is a Thursday.
 
 ---
 

@@ -1,0 +1,5706 @@
+{
+ "lexicon": "cb-lexicon-v1",
+ "built": "2026-10-28T21:12:37.429Z",
+ "end": "2026-08-21",
+ "rows": [
+  {
+   "bank": "BOE",
+   "date": "2016-01-14",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2016/mpc-january-2016",
+   "score": -0.6666666666666666,
+   "hawk": 1,
+   "dove": 5,
+   "nWords": 1022,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increases"
+    ],
+    "dove": [
+     "asset purchase",
+     "gradual",
+     "downside risks",
+     "headwinds",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2016-02-04",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2016/mpc-february-2016",
+   "score": -1,
+   "hawk": 0,
+   "dove": 3,
+   "nWords": 1206,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "stimulus",
+     "headwinds",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2016-03-17",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2016/mpc-march-2016",
+   "score": -1,
+   "hawk": 0,
+   "dove": 2,
+   "nWords": 976,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "headwinds",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2016-04-14",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2016/mpc-april-2016",
+   "score": -1,
+   "hawk": 0,
+   "dove": 5,
+   "nWords": 907,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "gradual",
+     "downside risks",
+     "softening",
+     "headwinds",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2016-05-12",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2016/mpc-may-2016",
+   "score": -0.6,
+   "hawk": 1,
+   "dove": 4,
+   "nWords": 1169,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "downside risks",
+     "gradual",
+     "headwinds",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2016-06-16",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2016/mpc-june-2016",
+   "score": -1,
+   "hawk": 0,
+   "dove": 4,
+   "nWords": 1174,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "deterioration",
+     "gradual",
+     "headwinds",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2016-07-14",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2016/mpc-july-2016",
+   "score": -1,
+   "hawk": 0,
+   "dove": 1,
+   "nWords": 919,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2016-08-04",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2016/mpc-august-2016",
+   "score": -0.6666666666666666,
+   "hawk": 2,
+   "dove": 10,
+   "nWords": 1437,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target",
+     "tighten"
+    ],
+    "dove": [
+     "asset purchase",
+     "asset purchases",
+     "stimulus",
+     "below the target"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2016-09-15",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2016/mpc-september-2016",
+   "score": -1,
+   "hawk": 0,
+   "dove": 1,
+   "nWords": 1052,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2016-11-03",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2016/mpc-november-2016",
+   "score": -1,
+   "hawk": 0,
+   "dove": 4,
+   "nWords": 1227,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "soften",
+     "deterioration",
+     "gradually",
+     "asset purchase"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2016-12-15",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2016/mpc-december-2016",
+   "score": -1,
+   "hawk": 0,
+   "dove": 2,
+   "nWords": 1068,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "gradually",
+     "asset purchase"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2017-02-02",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2017/february-2017",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 1180,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened"
+    ],
+    "dove": [
+     "stimulus",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2017-03-16",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2017/march-2017",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 1183,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened"
+    ],
+    "dove": [
+     "gradually",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2017-05-11",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2017/may-2017",
+   "score": 1,
+   "hawk": 3,
+   "dove": 0,
+   "nWords": 1160,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target",
+     "tightened"
+    ],
+    "dove": []
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2017-06-15",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2017/june-2017",
+   "score": 0,
+   "hawk": 1,
+   "dove": 1,
+   "nWords": 941,
+   "scored": false,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2017-08-03",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2017/august-2017",
+   "score": 0.3333333333333333,
+   "hawk": 4,
+   "dove": 2,
+   "nWords": 1102,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target",
+     "tightening",
+     "tightened"
+    ],
+    "dove": [
+     "gradually",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2017-09-14",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2017/september-2017",
+   "score": -0.5,
+   "hawk": 1,
+   "dove": 3,
+   "nWords": 1013,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened"
+    ],
+    "dove": [
+     "gradual",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2017-11-02",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2017/november-2017",
+   "score": -0.2,
+   "hawk": 2,
+   "dove": 3,
+   "nWords": 1053,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target",
+     "tighten"
+    ],
+    "dove": [
+     "gradually",
+     "accommodative",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2017-12-14",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2017/december-2017",
+   "score": 0.2,
+   "hawk": 3,
+   "dove": 2,
+   "nWords": 1001,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target",
+     "tighten"
+    ],
+    "dove": [
+     "gradually",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2018-02-08",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2018/february-2018",
+   "score": 0.1111111111111111,
+   "hawk": 5,
+   "dove": 4,
+   "nWords": 1110,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "above the target",
+     "tightened"
+    ],
+    "dove": [
+     "gradually",
+     "gradual",
+     "asset purchase"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2018-03-22",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2018/march-2018",
+   "score": 0,
+   "hawk": 3,
+   "dove": 3,
+   "nWords": 871,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "above the target"
+    ],
+    "dove": [
+     "gradually",
+     "accommodative",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2018-05-10",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2018/may-2018",
+   "score": -0.2,
+   "hawk": 2,
+   "dove": 3,
+   "nWords": 828,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target",
+     "tightening"
+    ],
+    "dove": [
+     "accommodative",
+     "gradually",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2018-06-21",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2018/june-2018",
+   "score": -0.3333333333333333,
+   "hawk": 3,
+   "dove": 6,
+   "nWords": 1054,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighter financial conditions",
+     "tightened",
+     "tightening"
+    ],
+    "dove": [
+     "gradually",
+     "downside risks",
+     "accommodative",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2018-08-02",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2018/august-2018",
+   "score": 0,
+   "hawk": 2,
+   "dove": 2,
+   "nWords": 696,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "tightening"
+    ],
+    "dove": [
+     "accommodative",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2018-09-13",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2018/september-2018",
+   "score": 0,
+   "hawk": 3,
+   "dove": 3,
+   "nWords": 868,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "tightened",
+     "tightening"
+    ],
+    "dove": [
+     "downside risks",
+     "soften",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2018-11-01",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2018/november-2018",
+   "score": 0,
+   "hawk": 3,
+   "dove": 3,
+   "nWords": 789,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened",
+     "above the target",
+     "tightening"
+    ],
+    "dove": [
+     "softened",
+     "downside risks",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2018-12-20",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2018/december-2018",
+   "score": -0.2,
+   "hawk": 2,
+   "dove": 3,
+   "nWords": 943,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened",
+     "tightening"
+    ],
+    "dove": [
+     "softened",
+     "downside risks",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2019-02-07",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2019/february-2019",
+   "score": 0,
+   "hawk": 3,
+   "dove": 3,
+   "nWords": 788,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "above the target"
+    ],
+    "dove": [
+     "softening",
+     "accommodative",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2019-03-21",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2019/march-2019",
+   "score": -0.6,
+   "hawk": 1,
+   "dove": 4,
+   "nWords": 813,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "softening",
+     "accommodative",
+     "softened",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2019-05-02",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2019/may-2019",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 886,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "gradually",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2019-06-20",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2019/june-2019",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 985,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "downside risks",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2019-08-01",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2019/august-2019",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 857,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "robust growth"
+    ],
+    "dove": [
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2019-09-19",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2019/september-2019",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 981,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "softening",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2019-11-07",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2019/november-2019",
+   "score": 0,
+   "hawk": 1,
+   "dove": 1,
+   "nWords": 716,
+   "scored": false,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2019-12-19",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2019/december-2019",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 740,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "gradually",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2020-01-30",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2020/january-2020",
+   "score": -0.5,
+   "hawk": 1,
+   "dove": 3,
+   "nWords": 917,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "inflation declined",
+     "below its target",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2020-03-26",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2020/march-2020",
+   "score": -0.3333333333333333,
+   "hawk": 3,
+   "dove": 6,
+   "nWords": 1665,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened",
+     "tightening"
+    ],
+    "dove": [
+     "asset purchase",
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2020-05-07",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2020/may-2020",
+   "score": -1,
+   "hawk": 0,
+   "dove": 5,
+   "nWords": 1338,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchases",
+     "inflation declined",
+     "gradual",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2020-06-18",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2020/june-2020",
+   "score": -1,
+   "hawk": 0,
+   "dove": 6,
+   "nWords": 1090,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchases",
+     "downside risks",
+     "inflation declined",
+     "easing of monetary policy",
+     "asset purchase"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2020-08-06",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2020/august-2020",
+   "score": -0.3333333333333333,
+   "hawk": 2,
+   "dove": 4,
+   "nWords": 1084,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "tighten"
+    ],
+    "dove": [
+     "gradually",
+     "accommodation",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2020-09-17",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2020/september-2020",
+   "score": -0.5,
+   "hawk": 1,
+   "dove": 3,
+   "nWords": 1007,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten"
+    ],
+    "dove": [
+     "gradually",
+     "accommodation"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2020-11-05",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2020/november-2020",
+   "score": -0.6666666666666666,
+   "hawk": 1,
+   "dove": 5,
+   "nWords": 1121,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten"
+    ],
+    "dove": [
+     "softened",
+     "accommodative",
+     "weaker economic activity",
+     "easing of monetary policy",
+     "asset purchase"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2020-12-17",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2020/december-2020",
+   "score": -0.3333333333333333,
+   "hawk": 2,
+   "dove": 4,
+   "nWords": 1131,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increase",
+     "tighten"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually",
+     "downside risks",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2021-02-04",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2021/february-2021",
+   "score": 0.3333333333333333,
+   "hawk": 2,
+   "dove": 1,
+   "nWords": 1004,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increase",
+     "tighten"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2021-03-18",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2021/march-2021",
+   "score": 0,
+   "hawk": 2,
+   "dove": 2,
+   "nWords": 1140,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increase",
+     "tighten"
+    ],
+    "dove": [
+     "asset purchases",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2021-05-06",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2021/may-2021",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 1220,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten"
+    ],
+    "dove": [
+     "asset purchases",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2021-06-24",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2021/june-2021",
+   "score": 0.3333333333333333,
+   "hawk": 2,
+   "dove": 1,
+   "nWords": 1272,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target",
+     "tighten"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2021-08-05",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2021/august-2021",
+   "score": 0,
+   "hawk": 15,
+   "dove": 15,
+   "nWords": 7869,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "tighten",
+     "tightened",
+     "further increases"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradual",
+     "asset purchase",
+     "gradually",
+     "accommodation",
+     "downside risks",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2021-09-23",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2021/september-2021",
+   "score": -0.125,
+   "hawk": 14,
+   "dove": 18,
+   "nWords": 8948,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increase",
+     "tightening",
+     "tightened",
+     "tighten"
+    ],
+    "dove": [
+     "asset purchases",
+     "weaker growth",
+     "accommodative",
+     "gradually",
+     "accommodation",
+     "asset purchase",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2021-11-04",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2021/november-2021",
+   "score": -0.29411764705882354,
+   "hawk": 12,
+   "dove": 22,
+   "nWords": 9669,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increases",
+     "tightening",
+     "tightened",
+     "tighten"
+    ],
+    "dove": [
+     "asset purchases",
+     "below the target",
+     "weaker growth",
+     "asset purchase",
+     "accommodation",
+     "softening",
+     "gradually",
+     "stimulus",
+     "deterioration",
+     "downside risks"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2021-12-16",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2021/december-2021",
+   "score": -0.047619047619047616,
+   "hawk": 10,
+   "dove": 11,
+   "nWords": 8338,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increase",
+     "tighten",
+     "tightening",
+     "tightened"
+    ],
+    "dove": [
+     "asset purchases",
+     "downside risks",
+     "below the target",
+     "asset purchase",
+     "gradual",
+     "slow economic activity",
+     "accommodation"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2022-02-03",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2022/february-2022",
+   "score": -0.1724137931034483,
+   "hawk": 12,
+   "dove": 17,
+   "nWords": 9278,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further tightening",
+     "tightening",
+     "reducing the size of the federal reserve's balance sheet",
+     "rate increase",
+     "elevated inflation",
+     "further increases",
+     "tighter policy",
+     "above the target",
+     "tighten"
+    ],
+    "dove": [
+     "gradually",
+     "below the target",
+     "gradual",
+     "accommodation",
+     "asset purchases",
+     "inflation declined",
+     "accommodative",
+     "asset purchase"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2022-03-17",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2022/march-2022",
+   "score": 0.2,
+   "hawk": 9,
+   "dove": 6,
+   "nWords": 7331,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "further increases",
+     "further increase",
+     "tightened"
+    ],
+    "dove": [
+     "below the target",
+     "deteriorated",
+     "downside risks",
+     "asset purchases",
+     "asset purchase"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2022-05-05",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2022/may-2022",
+   "score": 0.15,
+   "hawk": 23,
+   "dove": 17,
+   "nWords": 8745,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "further increase",
+     "further tightening",
+     "upside risk to inflation",
+     "further increases",
+     "reducing the size of the federal reserve’s balance sheet",
+     "upside risks to inflation",
+     "solid pace"
+    ],
+    "dove": [
+     "deterioration",
+     "below the target",
+     "asset purchase",
+     "gradual",
+     "asset purchases",
+     "accommodation",
+     "downside risks"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2022-06-16",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2022/june-2022",
+   "score": 0.1111111111111111,
+   "hawk": 10,
+   "dove": 8,
+   "nWords": 5951,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "further increases",
+     "rate increase",
+     "further increase",
+     "tightening"
+    ],
+    "dove": [
+     "below the target",
+     "asset purchases",
+     "asset purchase",
+     "deteriorated",
+     "slowing in growth",
+     "deterioration"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2022-08-04",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2022/august-2022",
+   "score": -0.30434782608695654,
+   "hawk": 8,
+   "dove": 15,
+   "nWords": 7088,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increase",
+     "tightening",
+     "rate increases",
+     "further tightening"
+    ],
+    "dove": [
+     "deterioration",
+     "recession",
+     "asset purchase",
+     "weaker activity",
+     "softening",
+     "softened",
+     "gradual",
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2022-09-22",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2022/september-2022",
+   "score": 0.23076923076923078,
+   "hawk": 8,
+   "dove": 5,
+   "nWords": 6620,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increases",
+     "tightened",
+     "tightening",
+     "further increase"
+    ],
+    "dove": [
+     "asset purchase",
+     "softened",
+     "softening"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2022-11-03",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2022/november-2022",
+   "score": 0.35294117647058826,
+   "hawk": 23,
+   "dove": 11,
+   "nWords": 6920,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increases",
+     "tightened",
+     "tighter financial conditions",
+     "above the target",
+     "tighten",
+     "tightening",
+     "further increase",
+     "rate increases",
+     "rate increase",
+     "restrictive"
+    ],
+    "dove": [
+     "below the target",
+     "gradual",
+     "accommodative",
+     "accommodation",
+     "softened",
+     "deterioration",
+     "recession"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2022-12-15",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2022/december-2022",
+   "score": 0.2727272727272727,
+   "hawk": 14,
+   "dove": 8,
+   "nWords": 6846,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "further increases",
+     "tightening",
+     "tighter financial conditions",
+     "rate increases",
+     "restrictive",
+     "further tightening"
+    ],
+    "dove": [
+     "recession",
+     "soften",
+     "gradually",
+     "deterioration",
+     "weaker demand",
+     "softening"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2023-02-02",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2023/february-2023",
+   "score": 0.2631578947368421,
+   "hawk": 12,
+   "dove": 7,
+   "nWords": 5289,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "further tightening",
+     "tightening",
+     "tightened",
+     "tighter financial conditions",
+     "rate increases",
+     "restrictive"
+    ],
+    "dove": [
+     "gradual",
+     "weaker growth",
+     "weak demand",
+     "softening",
+     "gradually",
+     "weaker demand"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2023-03-23",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2023/march-2023",
+   "score": -0.125,
+   "hawk": 7,
+   "dove": 9,
+   "nWords": 6549,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further tightening",
+     "tightening",
+     "rate increases",
+     "restrictive"
+    ],
+    "dove": [
+     "supporting the economy",
+     "lower rate",
+     "downside risks",
+     "deteriorated",
+     "soften"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2023-05-11",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2023/may-2023",
+   "score": 0.7142857142857143,
+   "hawk": 6,
+   "dove": 1,
+   "nWords": 3724,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "further tightening",
+     "rate increases",
+     "restrictive"
+    ],
+    "dove": [
+     "inflation declined"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2023-06-22",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2023/june-2023",
+   "score": 0,
+   "hawk": 5,
+   "dove": 5,
+   "nWords": 5054,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further tightening",
+     "further increase",
+     "rate increases"
+    ],
+    "dove": [
+     "gradually",
+     "downside risks",
+     "softening",
+     "downside risk"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2023-08-03",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2023/august-2023",
+   "score": 0.7894736842105263,
+   "hawk": 17,
+   "dove": 2,
+   "nWords": 3762,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "upside risks to inflation",
+     "tightening",
+     "restrictive",
+     "further tightening",
+     "tightened",
+     "rate increases"
+    ],
+    "dove": [
+     "below the target"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2023-09-21",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2023/september-2023",
+   "score": 0.1891891891891892,
+   "hawk": 22,
+   "dove": 15,
+   "nWords": 6646,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "restrictive",
+     "further tightening",
+     "tightened",
+     "rate increases"
+    ],
+    "dove": [
+     "below the target",
+     "softened",
+     "accommodation",
+     "asset purchase",
+     "deterioration",
+     "headwinds",
+     "softening",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2023-11-02",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2023/november-2023",
+   "score": 0.5,
+   "hawk": 21,
+   "dove": 7,
+   "nWords": 3552,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "upside risks to inflation",
+     "tightening",
+     "restrictive",
+     "further tightening",
+     "tighter policy",
+     "rate increases"
+    ],
+    "dove": [
+     "gradually",
+     "softened",
+     "below the target",
+     "softening"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2023-12-14",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2023/december-2023",
+   "score": 0.14285714285714285,
+   "hawk": 16,
+   "dove": 12,
+   "nWords": 5113,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "upside risks to inflation",
+     "tightening",
+     "restrictive",
+     "further tightening",
+     "rate increases"
+    ],
+    "dove": [
+     "gradually",
+     "below the target",
+     "softened",
+     "inflation declined",
+     "weaker growth",
+     "softening",
+     "accommodation"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2024-02-01",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2024/february-2024",
+   "score": 0.6363636363636364,
+   "hawk": 9,
+   "dove": 2,
+   "nWords": 3131,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "tightening"
+    ],
+    "dove": [
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2024-03-21",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2024/march-2024",
+   "score": 0.5,
+   "hawk": 12,
+   "dove": 4,
+   "nWords": 4778,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "tightening"
+    ],
+    "dove": [
+     "inflation has declined",
+     "gradually",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2024-05-09",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2024/may-2024",
+   "score": 0.25,
+   "hawk": 10,
+   "dove": 6,
+   "nWords": 3182,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive"
+    ],
+    "dove": [
+     "inflation has declined",
+     "downside risks",
+     "gradual",
+     "weaker demand",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2024-06-20",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2024/june-2024",
+   "score": 0.5,
+   "hawk": 12,
+   "dove": 4,
+   "nWords": 5685,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "tightening"
+    ],
+    "dove": [
+     "downside risk",
+     "accommodation",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2024-08-01",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2024/august-2024",
+   "score": 0.6,
+   "hawk": 8,
+   "dove": 2,
+   "nWords": 2948,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive"
+    ],
+    "dove": [
+     "inflation has declined",
+     "downside risk"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2024-09-19",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2024/september-2024",
+   "score": -0.0967741935483871,
+   "hawk": 14,
+   "dove": 17,
+   "nWords": 5012,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "tightening"
+    ],
+    "dove": [
+     "weaker demand",
+     "gradual",
+     "softening",
+     "rate reduction",
+     "gradually",
+     "lower rates",
+     "accommodation",
+     "asset purchase"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2024-11-07",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2024/november-2024",
+   "score": 0,
+   "hawk": 3,
+   "dove": 3,
+   "nWords": 2669,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "tightening"
+    ],
+    "dove": [
+     "inflation has declined",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2024-12-19",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2024/december-2024",
+   "score": -0.2,
+   "hawk": 6,
+   "dove": 9,
+   "nWords": 4455,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "tightening",
+     "elevated inflation"
+    ],
+    "dove": [
+     "weaker demand",
+     "gradual",
+     "stimulus",
+     "rate reductions",
+     "deterioration",
+     "softening"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2025-02-06",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2025/february-2025",
+   "score": -0.058823529411764705,
+   "hawk": 8,
+   "dove": 9,
+   "nWords": 2993,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive"
+    ],
+    "dove": [
+     "gradually",
+     "gradual",
+     "rate cuts",
+     "deteriorated",
+     "downside risks",
+     "weak activity"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2025-03-20",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2025/march-2025",
+   "score": -0.2,
+   "hawk": 8,
+   "dove": 12,
+   "nWords": 5418,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "further increase",
+     "tightening"
+    ],
+    "dove": [
+     "gradually",
+     "gradual",
+     "stimulus",
+     "downside risk",
+     "rate cuts",
+     "slowing in growth",
+     "deteriorated",
+     "deterioration",
+     "softening"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2025-05-08",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2025/may-2025",
+   "score": 0.2857142857142857,
+   "hawk": 9,
+   "dove": 5,
+   "nWords": 3225,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "upside risks to inflation"
+    ],
+    "dove": [
+     "gradually",
+     "gradual",
+     "rate cuts",
+     "deterioration"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2025-06-19",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2025/june-2025",
+   "score": -0.09090909090909091,
+   "hawk": 10,
+   "dove": 12,
+   "nWords": 4982,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "vigilant"
+    ],
+    "dove": [
+     "gradually",
+     "uncertainty remains elevated",
+     "gradual",
+     "rate cuts",
+     "softened",
+     "deterioration",
+     "inflation declined",
+     "easing of monetary policy",
+     "weak demand"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2025-08-07",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2025/august-2025",
+   "score": -0.3333333333333333,
+   "hawk": 6,
+   "dove": 12,
+   "nWords": 2930,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "vigilant",
+     "tightened",
+     "further increases",
+     "tightening"
+    ],
+    "dove": [
+     "gradual",
+     "gradually",
+     "downside risks",
+     "weaker demand",
+     "deteriorating",
+     "recession"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2025-09-18",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2025/september-2025",
+   "score": -0.5,
+   "hawk": 6,
+   "dove": 18,
+   "nWords": 4881,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "tightening",
+     "elevated inflation"
+    ],
+    "dove": [
+     "gradual",
+     "rate reduction",
+     "softened",
+     "deterioration",
+     "downside risks",
+     "soften",
+     "recession",
+     "asset purchase",
+     "slow the pace"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2025-11-06",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2025/november-2025",
+   "score": -0.15151515151515152,
+   "hawk": 14,
+   "dove": 19,
+   "nWords": 3688,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "upside risks to inflation"
+    ],
+    "dove": [
+     "weaker demand",
+     "gradual",
+     "gradually",
+     "weak growth",
+     "downside risks",
+     "weak demand",
+     "rate reductions",
+     "soften"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2025-12-18",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2025/december-2025",
+   "score": -0.2972972972972973,
+   "hawk": 13,
+   "dove": 24,
+   "nWords": 4947,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "tightening",
+     "elevated inflation",
+     "upside risks to inflation",
+     "vigilant"
+    ],
+    "dove": [
+     "weaker demand",
+     "gradual",
+     "weak demand",
+     "softening",
+     "downside risks",
+     "easing policy",
+     "weak activity",
+     "deteriorating",
+     "deterioration",
+     "softened",
+     "slowing the pace"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2026-02-05",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2026/february-2026",
+   "score": -0.3157894736842105,
+   "hawk": 13,
+   "dove": 25,
+   "nWords": 3929,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "elevated inflation",
+     "restrictive",
+     "above the target",
+     "upside risks to inflation"
+    ],
+    "dove": [
+     "weaker demand",
+     "downside risks",
+     "slowing in the pace",
+     "slowing the pace",
+     "cutting rates",
+     "accommodative",
+     "weaker activity",
+     "easing of policy",
+     "easing policy",
+     "weak activity",
+     "softening",
+     "weak demand",
+     "below the target"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2026-03-19",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2026/march-2026",
+   "score": 0.4,
+   "hawk": 14,
+   "dove": 6,
+   "nWords": 4928,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened",
+     "tightening",
+     "restrictive",
+     "upside risk to inflation",
+     "hike",
+     "elevated inflation"
+    ],
+    "dove": [
+     "deterioration",
+     "deteriorate",
+     "softening",
+     "rate cuts",
+     "weaker activity"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2026-04-30",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2026/april-2026",
+   "score": 0.3142857142857143,
+   "hawk": 23,
+   "dove": 12,
+   "nWords": 3937,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened",
+     "restrictive",
+     "tightening",
+     "tighter financial conditions",
+     "tighter stance",
+     "upside risks to inflation",
+     "hike"
+    ],
+    "dove": [
+     "weak demand",
+     "weaker demand",
+     "downside risks",
+     "weaker activity",
+     "gradually",
+     "softened",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2026-06-18",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2026/june-2026",
+   "score": 0.3170731707317073,
+   "hawk": 27,
+   "dove": 14,
+   "nWords": 5934,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "tightened",
+     "restrictive",
+     "raise rates",
+     "upside risk to inflation",
+     "further tightening",
+     "inflation pressures",
+     "hike"
+    ],
+    "dove": [
+     "weaker growth",
+     "deterioration",
+     "gradual",
+     "rate cuts",
+     "weak activity",
+     "softening",
+     "weak demand",
+     "gradually",
+     "headwinds",
+     "downside risks",
+     "lower rates"
+    ]
+   }
+  },
+  {
+   "bank": "BOE",
+   "date": "2026-07-30",
+   "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2026/july-2026",
+   "score": 0.7391304347826086,
+   "hawk": 20,
+   "dove": 3,
+   "nWords": 4114,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures",
+     "tightened",
+     "tightening",
+     "upside risks to inflation",
+     "restrictive",
+     "hike"
+    ],
+    "dove": [
+     "weaker economic activity",
+     "weak demand",
+     "slowdown in growth"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2016-01-29",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2016/k160129a.pdf",
+   "score": -1,
+   "hawk": 0,
+   "dove": 5,
+   "nWords": 1892,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2016-03-15",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2016/k160315a.pdf",
+   "score": -1,
+   "hawk": 0,
+   "dove": 5,
+   "nWords": 1608,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchases",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2016-04-28",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2016/k160428a.pdf",
+   "score": -1,
+   "hawk": 0,
+   "dove": 3,
+   "nWords": 643,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2016-06-16",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2016/k160616a.pdf",
+   "score": -1,
+   "hawk": 0,
+   "dove": 4,
+   "nWords": 1236,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchases",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2016-07-29",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2016/k160729a.pdf",
+   "score": -1,
+   "hawk": 0,
+   "dove": 7,
+   "nWords": 1332,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "deterioration",
+     "asset purchases",
+     "stimulus",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2016-09-21",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2016/k160921a.pdf",
+   "score": -0.25,
+   "hawk": 3,
+   "dove": 5,
+   "nWords": 3549,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target",
+     "further increase",
+     "hike"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "deterioration"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2016-11-01",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2016/k161101a.pdf",
+   "score": 0,
+   "hawk": 1,
+   "dove": 1,
+   "nWords": 590,
+   "scored": false,
+   "hits": {
+    "hawk": [
+     "further increase"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2016-12-20",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2016/k161220a.pdf",
+   "score": -0.6666666666666666,
+   "hawk": 1,
+   "dove": 5,
+   "nWords": 1248,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increase"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2017-01-31",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2017/k170131a.pdf",
+   "score": 0,
+   "hawk": 1,
+   "dove": 1,
+   "nWords": 657,
+   "scored": false,
+   "hits": {
+    "hawk": [
+     "further increase"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2017-03-16",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2017/k170316a.pdf",
+   "score": -0.6666666666666666,
+   "hawk": 1,
+   "dove": 5,
+   "nWords": 1225,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increase"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2017-04-27",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2017/k170427a.pdf",
+   "score": 0,
+   "hawk": 1,
+   "dove": 1,
+   "nWords": 592,
+   "scored": false,
+   "hits": {
+    "hawk": [
+     "further increase"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2017-06-16",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2017/k170616a.pdf",
+   "score": -0.5555555555555556,
+   "hawk": 2,
+   "dove": 7,
+   "nWords": 1202,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "further increase"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2017-07-20",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2017/k170720a.pdf",
+   "score": -0.5,
+   "hawk": 1,
+   "dove": 3,
+   "nWords": 588,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increase"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2017-09-21",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2017/k170921a.pdf",
+   "score": -0.6,
+   "hawk": 1,
+   "dove": 4,
+   "nWords": 844,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2017-10-31",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2017/k171031a.pdf",
+   "score": -1,
+   "hawk": 0,
+   "dove": 1,
+   "nWords": 405,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2017-12-21",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2017/k171221a.pdf",
+   "score": -0.3333333333333333,
+   "hawk": 2,
+   "dove": 4,
+   "nWords": 908,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "hike"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2018-01-23",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2018/k180123a.htm",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 487,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "hike"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2018-03-09",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2018/k180309a.htm",
+   "score": -0.25,
+   "hawk": 3,
+   "dove": 5,
+   "nWords": 883,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "above the target",
+     "hike"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2018-04-27",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2018/k180427a.htm",
+   "score": 0,
+   "hawk": 2,
+   "dove": 2,
+   "nWords": 543,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target",
+     "hike"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2018-06-15",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2018/k180615a.htm",
+   "score": -0.14285714285714285,
+   "hawk": 3,
+   "dove": 4,
+   "nWords": 891,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "above the target",
+     "hike"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2018-07-31",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2018/k180731a.htm",
+   "score": -0.14285714285714285,
+   "hawk": 3,
+   "dove": 4,
+   "nWords": 1907,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "hike",
+     "tighten",
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2018-09-19",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2018/k180919a.htm",
+   "score": -0.25,
+   "hawk": 3,
+   "dove": 5,
+   "nWords": 1057,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "above the target",
+     "hike"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2018-10-31",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2018/k181031a.htm",
+   "score": 0,
+   "hawk": 2,
+   "dove": 2,
+   "nWords": 689,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target",
+     "hike"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2018-12-20",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2018/k181220a.htm",
+   "score": -0.25,
+   "hawk": 3,
+   "dove": 5,
+   "nWords": 1058,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "above the target",
+     "hike"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2019-01-23",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2019/k190123a.htm",
+   "score": 0,
+   "hawk": 2,
+   "dove": 2,
+   "nWords": 752,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target",
+     "hike"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2019-03-15",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2019/k190315a.htm",
+   "score": -0.25,
+   "hawk": 3,
+   "dove": 5,
+   "nWords": 1093,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "above the target",
+     "hike"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2019-04-25",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2019/k190425a.htm",
+   "score": -0.1111111111111111,
+   "hawk": 4,
+   "dove": 5,
+   "nWords": 1355,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "hike",
+     "tightening",
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2019-06-20",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2019/k190620a.htm",
+   "score": -0.3333333333333333,
+   "hawk": 3,
+   "dove": 6,
+   "nWords": 1126,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "above the target",
+     "hike"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "gradually",
+     "downside risks"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2019-07-30",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2019/k190730a.htm",
+   "score": -0.2,
+   "hawk": 2,
+   "dove": 3,
+   "nWords": 717,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target",
+     "hike"
+    ],
+    "dove": [
+     "asset purchases",
+     "downside risks"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2019-09-19",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2019/k190919a.htm",
+   "score": -0.45454545454545453,
+   "hawk": 3,
+   "dove": 8,
+   "nWords": 2016,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "hike",
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "gradually",
+     "downside risks"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2019-10-31",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2019/k191031a.htm",
+   "score": -0.23076923076923078,
+   "hawk": 5,
+   "dove": 8,
+   "nWords": 2598,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increase",
+     "above the target",
+     "hike"
+    ],
+    "dove": [
+     "asset purchases",
+     "downside risks",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2019-12-19",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2019/k191219a.htm",
+   "score": -0.4,
+   "hawk": 3,
+   "dove": 7,
+   "nWords": 1947,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "hike",
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "gradually",
+     "downside risks"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2020-01-21",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2020/k200121a.htm",
+   "score": -0.5,
+   "hawk": 1,
+   "dove": 3,
+   "nWords": 683,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "downside risks"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2020-04-27",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2020/k200427a.htm",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 2409,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "accommodative",
+     "deterioration"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2020-05-22",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2020/k200522a.pdf",
+   "score": 0,
+   "hawk": 0,
+   "dove": 0,
+   "nWords": 612,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": []
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2020-06-16",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2020/k200616a.htm",
+   "score": -0.7777777777777778,
+   "hawk": 1,
+   "dove": 8,
+   "nWords": 1059,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "deteriorated",
+     "accommodative",
+     "deterioration",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2020-07-15",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2020/k200715a.htm",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 678,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2020-09-17",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2020/k200917a.htm",
+   "score": -0.8,
+   "hawk": 1,
+   "dove": 9,
+   "nWords": 1095,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually",
+     "deteriorated",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2020-10-29",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2020/k201029a.htm",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 678,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2020-12-18",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2020/k201218a.htm",
+   "score": -0.8,
+   "hawk": 1,
+   "dove": 9,
+   "nWords": 2303,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "supporting the economy",
+     "deteriorated",
+     "gradually",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2021-01-21",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2021/k210121a.htm",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 727,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2021-03-19",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2021/k210319a.htm",
+   "score": -0.6,
+   "hawk": 3,
+   "dove": 12,
+   "nWords": 3694,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target",
+     "tightened"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradual",
+     "rate cuts",
+     "lower rate",
+     "accommodative",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2021-04-27",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2021/k210427a.htm",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 565,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2021-06-18",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2021/k210618a.htm",
+   "score": -0.7142857142857143,
+   "hawk": 1,
+   "dove": 6,
+   "nWords": 2060,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2021-07-16",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2021/k210716a.htm",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 1652,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2021-09-22",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2021/k210922a.htm",
+   "score": -0.7142857142857143,
+   "hawk": 1,
+   "dove": 6,
+   "nWords": 1774,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2021-10-28",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2021/k211028a.htm",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 546,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2021-12-17",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2021/k211217a.htm",
+   "score": -0.7142857142857143,
+   "hawk": 1,
+   "dove": 6,
+   "nWords": 1273,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "gradually",
+     "asset purchases",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2022-01-18",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2022/k220118a.htm",
+   "score": -0.3333333333333333,
+   "hawk": 1,
+   "dove": 2,
+   "nWords": 571,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2022-03-18",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2022/k220318a.htm",
+   "score": -0.6666666666666666,
+   "hawk": 1,
+   "dove": 5,
+   "nWords": 1024,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2022-04-28",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2022/k220428a.htm",
+   "score": -0.5,
+   "hawk": 1,
+   "dove": 3,
+   "nWords": 537,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2022-06-17",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2022/k220617a.htm",
+   "score": -0.7142857142857143,
+   "hawk": 1,
+   "dove": 6,
+   "nWords": 1039,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2022-07-21",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2022/k220721a.htm",
+   "score": -0.5,
+   "hawk": 1,
+   "dove": 3,
+   "nWords": 533,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2022-09-22",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2022/k220922a.htm",
+   "score": -0.7142857142857143,
+   "hawk": 1,
+   "dove": 6,
+   "nWords": 1091,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2022-10-28",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2022/k221028a.htm",
+   "score": -0.5,
+   "hawk": 1,
+   "dove": 3,
+   "nWords": 408,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2022-12-20",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2022/k221220a.htm",
+   "score": -0.7777777777777778,
+   "hawk": 1,
+   "dove": 8,
+   "nWords": 1130,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "accommodative",
+     "deteriorated",
+     "asset purchases",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2023-01-18",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2023/k230118a.htm",
+   "score": -0.5,
+   "hawk": 1,
+   "dove": 3,
+   "nWords": 548,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2023-03-10",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2023/k230310a.htm",
+   "score": -0.6666666666666666,
+   "hawk": 1,
+   "dove": 5,
+   "nWords": 918,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2023-04-28",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2023/k230428a.htm",
+   "score": -0.6,
+   "hawk": 1,
+   "dove": 4,
+   "nWords": 598,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually",
+     "patiently"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2023-06-16",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2023/k230616a.htm",
+   "score": -0.7777777777777778,
+   "hawk": 1,
+   "dove": 8,
+   "nWords": 952,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually",
+     "accommodative",
+     "slowdown in the pace",
+     "patiently"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2023-07-28",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2023/k230728a.htm",
+   "score": -0.6363636363636364,
+   "hawk": 2,
+   "dove": 9,
+   "nWords": 1028,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "above the target"
+    ],
+    "dove": [
+     "patiently",
+     "downside risks",
+     "asset purchases",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2023-09-22",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2023/k230922a.htm",
+   "score": -0.75,
+   "hawk": 1,
+   "dove": 7,
+   "nWords": 977,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually",
+     "accommodative",
+     "slowdown in the pace",
+     "patiently"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2023-10-31",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2023/k231031a.htm",
+   "score": -0.6,
+   "hawk": 2,
+   "dove": 8,
+   "nWords": 969,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increase",
+     "above the target"
+    ],
+    "dove": [
+     "patiently",
+     "asset purchases",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2023-12-19",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2023/k231219a.htm",
+   "score": -0.7777777777777778,
+   "hawk": 1,
+   "dove": 8,
+   "nWords": 926,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually",
+     "accommodative",
+     "slowdown in the pace",
+     "patiently"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2024-01-23",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2024/k240123a.htm",
+   "score": -0.6,
+   "hawk": 1,
+   "dove": 4,
+   "nWords": 547,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "above the target"
+    ],
+    "dove": [
+     "asset purchases",
+     "gradually",
+     "patiently"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2024-03-19",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2024/k240319a.htm",
+   "score": -1,
+   "hawk": 0,
+   "dove": 8,
+   "nWords": 1508,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "accommodative",
+     "asset purchases",
+     "gradually",
+     "slowdown in the pace"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2024-04-26",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2024/k240426a.htm",
+   "score": 0,
+   "hawk": 0,
+   "dove": 0,
+   "nWords": 862,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": []
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2024-06-14",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2024/k240614a.htm",
+   "score": -1,
+   "hawk": 0,
+   "dove": 4,
+   "nWords": 1450,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "accommodative",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2024-07-31",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2024/k240731a.htm",
+   "score": -0.5,
+   "hawk": 1,
+   "dove": 3,
+   "nWords": 2158,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "hikes"
+    ],
+    "dove": [
+     "accommodation",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2024-09-20",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2024/k240920a.htm",
+   "score": -1,
+   "hawk": 0,
+   "dove": 4,
+   "nWords": 487,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "accommodative",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2024-10-31",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2024/k241031a.htm",
+   "score": 0,
+   "hawk": 0,
+   "dove": 0,
+   "nWords": 61,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": []
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2024-12-19",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2024/k241219a.htm",
+   "score": -1,
+   "hawk": 0,
+   "dove": 4,
+   "nWords": 1524,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "accommodative",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2025-01-24",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2025/k250124a.htm",
+   "score": -1,
+   "hawk": 0,
+   "dove": 4,
+   "nWords": 1633,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "gradually",
+     "accommodation",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2025-03-19",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2025/k250319a.htm",
+   "score": -1,
+   "hawk": 0,
+   "dove": 4,
+   "nWords": 551,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "accommodative",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2025-05-01",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2025/k250501a.htm",
+   "score": 0,
+   "hawk": 0,
+   "dove": 0,
+   "nWords": 61,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": []
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2025-06-17",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2025/k250617a.htm",
+   "score": -1,
+   "hawk": 0,
+   "dove": 3,
+   "nWords": 1160,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "accommodative",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2025-07-31",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2025/k250731a.htm",
+   "score": 0,
+   "hawk": 0,
+   "dove": 0,
+   "nWords": 61,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": []
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2025-09-19",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2025/k250919a.htm",
+   "score": -1,
+   "hawk": 0,
+   "dove": 3,
+   "nWords": 1590,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "accommodative",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2025-10-30",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2025/k251030a.htm",
+   "score": 0,
+   "hawk": 0,
+   "dove": 0,
+   "nWords": 185,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": []
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2025-12-19",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2025/k251219a.htm",
+   "score": -1,
+   "hawk": 0,
+   "dove": 6,
+   "nWords": 1261,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "accommodation",
+     "accommodative",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2026-01-23",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2026/k260123a.htm",
+   "score": 0,
+   "hawk": 0,
+   "dove": 0,
+   "nWords": 165,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": []
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2026-03-19",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/state_2026/k260319a.htm",
+   "score": -1,
+   "hawk": 0,
+   "dove": 5,
+   "nWords": 930,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "accommodative",
+     "gradually",
+     "accommodation"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2026-04-28",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260428a.pdf",
+   "score": -1,
+   "hawk": 0,
+   "dove": 1,
+   "nWords": 225,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2026-06-16",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260616a.pdf",
+   "score": -1,
+   "hawk": 0,
+   "dove": 11,
+   "nWords": 1564,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "accommodative",
+     "accommodation",
+     "downside risks",
+     "deterioration",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "BOJ",
+   "date": "2026-07-31",
+   "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260731a.pdf",
+   "score": 0,
+   "hawk": 0,
+   "dove": 0,
+   "nWords": 172,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": []
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2016-01-21",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2016/html/is160121.en.html",
+   "note": "cut at Q&A",
+   "score": -0.7142857142857143,
+   "hawk": 1,
+   "dove": 6,
+   "nWords": 1307,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "solid growth"
+    ],
+    "dove": [
+     "asset purchases",
+     "downside risks",
+     "gradual",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2016-03-10",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2016/html/is160310.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8333333333333334,
+   "hawk": 1,
+   "dove": 11,
+   "nWords": 1631,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "solid growth"
+    ],
+    "dove": [
+     "asset purchase",
+     "asset purchases",
+     "accommodative",
+     "stimulus",
+     "weakened growth",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2016-04-21",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2016/html/is160421.en.html",
+   "note": "cut at Q&A",
+   "score": -1,
+   "hawk": 0,
+   "dove": 9,
+   "nWords": 1207,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "stimulus",
+     "accommodation",
+     "accommodative",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2016-06-02",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2016/html/is160602.en.html",
+   "note": "cut at Q&A",
+   "score": -1,
+   "hawk": 0,
+   "dove": 11,
+   "nWords": 1395,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchases",
+     "gradually",
+     "stimulus",
+     "lower rate",
+     "downside risks",
+     "gradual",
+     "accommodation",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2016-07-21",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2016/html/is160721.en.html",
+   "note": "cut at Q&A",
+   "score": -1,
+   "hawk": 0,
+   "dove": 10,
+   "nWords": 1312,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchases",
+     "accommodative",
+     "lower rate",
+     "headwinds",
+     "gradual",
+     "accommodation"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2016-09-08",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2016/html/is160908.en.html",
+   "note": "cut at Q&A",
+   "score": -1,
+   "hawk": 0,
+   "dove": 7,
+   "nWords": 1287,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchases",
+     "downside risks",
+     "gradually",
+     "gradual",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2016-10-20",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2016/html/is161020.en.html",
+   "note": "cut at Q&A",
+   "score": -1,
+   "hawk": 0,
+   "dove": 9,
+   "nWords": 1171,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchases",
+     "gradual",
+     "downside risks",
+     "accommodation",
+     "asset purchase",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2016-12-08",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2016/html/is161208.en.html",
+   "note": "cut at Q&A",
+   "score": -1,
+   "hawk": 0,
+   "dove": 11,
+   "nWords": 1384,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchase",
+     "asset purchases",
+     "accommodation",
+     "stimulus",
+     "gradual",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2017-01-19",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2017/html/is170119.en.html",
+   "note": "cut at Q&A",
+   "score": -0.6666666666666666,
+   "hawk": 2,
+   "dove": 10,
+   "nWords": 1187,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "accommodation",
+     "gradually",
+     "gradual",
+     "accommodative"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2017-03-09",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2017/html/is170309.en.html",
+   "note": "cut at Q&A",
+   "score": -0.6363636363636364,
+   "hawk": 2,
+   "dove": 9,
+   "nWords": 1166,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "accommodation",
+     "gradually",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2017-04-27",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2017/html/ecb.is170427.en.html",
+   "note": "cut at Q&A",
+   "score": -0.6363636363636364,
+   "hawk": 2,
+   "dove": 9,
+   "nWords": 1017,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "downside risks",
+     "accommodation",
+     "gradually",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2017-06-08",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2017/html/ecb.is170608.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8,
+   "hawk": 1,
+   "dove": 9,
+   "nWords": 1140,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "accommodation",
+     "downside risks",
+     "gradually",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2017-07-20",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2017/html/ecb.is170720.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8333333333333334,
+   "hawk": 1,
+   "dove": 11,
+   "nWords": 1000,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "gradually",
+     "accommodation",
+     "downside risks",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2017-09-07",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2017/html/ecb.is170907.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8333333333333334,
+   "hawk": 1,
+   "dove": 11,
+   "nWords": 1143,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "gradually",
+     "accommodation",
+     "downside risks",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2017-10-26",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2017/html/ecb.is171026.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8461538461538461,
+   "hawk": 1,
+   "dove": 12,
+   "nWords": 1239,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "gradual",
+     "stimulus",
+     "downside risks",
+     "gradually",
+     "accommodation"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2017-12-14",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2017/html/ecb.is171214.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8181818181818182,
+   "hawk": 1,
+   "dove": 10,
+   "nWords": 1224,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "stimulus",
+     "downside risks",
+     "inflation have moderated",
+     "gradually",
+     "accommodation"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2018-01-25",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2018/html/ecb.is180125.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8,
+   "hawk": 1,
+   "dove": 9,
+   "nWords": 1126,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "stimulus",
+     "downside risks",
+     "gradually",
+     "accommodation"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2018-03-08",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2018/html/ecb.is180308.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8,
+   "hawk": 1,
+   "dove": 9,
+   "nWords": 1169,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "stimulus",
+     "downside risks",
+     "gradually",
+     "accommodation"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2018-04-26",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2018/html/ecb.is180426.en.html",
+   "note": "cut at Q&A",
+   "score": -0.7777777777777778,
+   "hawk": 1,
+   "dove": 8,
+   "nWords": 1116,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "stimulus",
+     "gradually",
+     "accommodation"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2018-06-14",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2018/html/ecb.is180614.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8666666666666667,
+   "hawk": 1,
+   "dove": 14,
+   "nWords": 1457,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "asset purchase",
+     "asset purchases",
+     "accommodation",
+     "gradual",
+     "stimulus",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2018-07-26",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2018/html/ecb.is180726.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8181818181818182,
+   "hawk": 1,
+   "dove": 10,
+   "nWords": 1154,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "asset purchase",
+     "asset purchases",
+     "accommodation",
+     "gradual",
+     "stimulus",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2018-09-13",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2018/html/ecb.is180913.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8333333333333334,
+   "hawk": 1,
+   "dove": 11,
+   "nWords": 1175,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "asset purchase",
+     "asset purchases",
+     "accommodation",
+     "gradually",
+     "gradual",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2018-10-25",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2018/html/ecb.is181025.en.html",
+   "note": "cut at Q&A",
+   "score": -0.6363636363636364,
+   "hawk": 2,
+   "dove": 9,
+   "nWords": 1072,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures",
+     "tightening"
+    ],
+    "dove": [
+     "asset purchase",
+     "asset purchases",
+     "accommodation",
+     "gradually",
+     "gradual",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2018-12-13",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2018/html/ecb.is181213.en.html",
+   "note": "cut at Q&A",
+   "score": -0.6363636363636364,
+   "hawk": 2,
+   "dove": 9,
+   "nWords": 1206,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures",
+     "tightening"
+    ],
+    "dove": [
+     "asset purchase",
+     "accommodation",
+     "gradually",
+     "asset purchases",
+     "stimulus",
+     "accommodative",
+     "inflation declined"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2019-01-24",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2019/html/ecb.is190124~cd3821f8f5.en.html",
+   "note": "cut at Q&A",
+   "score": -0.5,
+   "hawk": 2,
+   "dove": 6,
+   "nWords": 974,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures",
+     "tightening"
+    ],
+    "dove": [
+     "asset purchase",
+     "accommodation",
+     "gradually",
+     "stimulus",
+     "inflation declined"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2019-03-07",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2019/html/ecb.is190307~de1fdbd0b0.en.html",
+   "note": "cut at Q&A",
+   "score": -0.5,
+   "hawk": 2,
+   "dove": 6,
+   "nWords": 1403,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures",
+     "tightening"
+    ],
+    "dove": [
+     "asset purchase",
+     "accommodation",
+     "gradually",
+     "stimulus",
+     "slowdown in economic activity"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2019-04-10",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2019/html/ecb.is190410~c27197866f.en.html",
+   "note": "cut at Q&A",
+   "score": -0.5555555555555556,
+   "hawk": 2,
+   "dove": 7,
+   "nWords": 1141,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures",
+     "tightening"
+    ],
+    "dove": [
+     "asset purchase",
+     "accommodation",
+     "headwinds",
+     "gradually",
+     "stimulus"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2019-06-06",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2019/html/ecb.is190606~32b6221806.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8,
+   "hawk": 1,
+   "dove": 9,
+   "nWords": 1444,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "asset purchase",
+     "accommodation",
+     "accommodative",
+     "headwinds",
+     "gradually",
+     "weaker growth",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2019-07-25",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2019/html/ecb.is190725~547f29c369.en.html",
+   "note": "cut at Q&A",
+   "score": -0.6,
+   "hawk": 2,
+   "dove": 8,
+   "nWords": 1211,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "tightened"
+    ],
+    "dove": [
+     "asset purchase",
+     "accommodation",
+     "accommodative",
+     "asset purchases",
+     "softening",
+     "stimulus",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2019-09-12",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2019/html/ecb.is190912~658eb51d68.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8571428571428571,
+   "hawk": 1,
+   "dove": 13,
+   "nWords": 1554,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "asset purchase",
+     "accommodative",
+     "accommodation",
+     "downside risks",
+     "stimulus",
+     "slowdown in growth",
+     "weaker growth",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2019-10-24",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2019/html/ecb.is191024~78a5550bc1.en.html",
+   "note": "cut at Q&A",
+   "score": -0.7333333333333333,
+   "hawk": 2,
+   "dove": 13,
+   "nWords": 1183,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchase",
+     "accommodative",
+     "accommodation",
+     "downside risks",
+     "muted inflation",
+     "stimulus",
+     "slowdown in growth",
+     "weaker growth"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2019-12-12",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2019/html/ecb.is191212~c9e1a6ab3e.en.html",
+   "note": "cut at Q&A",
+   "score": -0.7142857142857143,
+   "hawk": 2,
+   "dove": 12,
+   "nWords": 1379,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchase",
+     "accommodative",
+     "accommodation",
+     "muted inflation",
+     "stimulus",
+     "subdued inflation",
+     "weaker growth",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2020-01-23",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2020/html/ecb.is200123~0bc778277b.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8,
+   "hawk": 1,
+   "dove": 9,
+   "nWords": 1356,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures"
+    ],
+    "dove": [
+     "asset purchase",
+     "accommodative",
+     "accommodation",
+     "subdued inflation",
+     "weaker growth"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2020-03-12",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2020/html/ecb.is200312~f857a21b6c.en.html",
+   "note": "cut at Q&A",
+   "score": -1,
+   "hawk": 0,
+   "dove": 13,
+   "nWords": 1765,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "stimulus",
+     "asset purchases",
+     "asset purchase",
+     "accommodative",
+     "accommodation",
+     "downside risk",
+     "weaker growth",
+     "weaker demand",
+     "downside risks"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2020-04-30",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2020/html/ecb.is200430~ab3058e07f.en.html",
+   "note": "cut at Q&A",
+   "score": -0.7777777777777778,
+   "hawk": 2,
+   "dove": 16,
+   "nWords": 2024,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened"
+    ],
+    "dove": [
+     "deterioration",
+     "gradually",
+     "inflation has declined",
+     "downside risks",
+     "asset purchases",
+     "asset purchase",
+     "accommodative",
+     "accommodation",
+     "stimulus",
+     "deteriorating",
+     "recession",
+     "weaker demand"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2020-06-04",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2020/html/ecb.is200604~b479b8cfff.en.html",
+   "note": "cut at Q&A",
+   "score": -1,
+   "hawk": 0,
+   "dove": 14,
+   "nWords": 1804,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "gradual",
+     "accommodation",
+     "asset purchases",
+     "asset purchase",
+     "accommodative",
+     "stimulus",
+     "deteriorating",
+     "gradually",
+     "weaker demand"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2020-07-16",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2020/html/ecb.is200716~3865f74bf8.en.html",
+   "note": "cut at Q&A",
+   "score": -0.5714285714285714,
+   "hawk": 3,
+   "dove": 11,
+   "nWords": 1837,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "tightened"
+    ],
+    "dove": [
+     "stimulus",
+     "accommodative",
+     "asset purchases",
+     "asset purchase",
+     "accommodation",
+     "weaker demand",
+     "deterioration"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2020-09-10",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2020/html/ecb.is200910~5c43e3a591.en.html",
+   "note": "cut at Q&A",
+   "score": -1,
+   "hawk": 0,
+   "dove": 12,
+   "nWords": 1754,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "stimulus",
+     "accommodative",
+     "asset purchases",
+     "asset purchase",
+     "accommodation",
+     "headwinds",
+     "weak demand"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2020-10-29",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2020/html/ecb.is201029~80b00b5789.en.html",
+   "note": "cut at Q&A",
+   "score": -0.7647058823529411,
+   "hawk": 2,
+   "dove": 15,
+   "nWords": 1698,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened",
+     "tighten"
+    ],
+    "dove": [
+     "deterioration",
+     "weak demand",
+     "accommodative",
+     "asset purchases",
+     "asset purchase",
+     "accommodation",
+     "headwinds",
+     "softening"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2020-12-10",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2020/html/ecb.is201210~9b8e5f3cdd.en.html",
+   "note": "cut at Q&A",
+   "score": -0.8823529411764706,
+   "hawk": 1,
+   "dove": 16,
+   "nWords": 2308,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "weak demand",
+     "asset purchase",
+     "stimulus",
+     "asset purchases",
+     "accommodative",
+     "accommodation",
+     "supporting the flow of credit",
+     "uncertainty remains high",
+     "gradual",
+     "downside risks"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2021-01-21",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2021/html/ecb.is210121~e601112a72.en.html",
+   "note": "cut at Q&A",
+   "score": -0.4782608695652174,
+   "hawk": 6,
+   "dove": 17,
+   "nWords": 1833,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "tightening",
+     "further increase",
+     "tighten"
+    ],
+    "dove": [
+     "downside risks",
+     "weak demand",
+     "stimulus",
+     "uncertainty remains high",
+     "accommodative",
+     "asset purchases",
+     "asset purchase",
+     "accommodation",
+     "downside risk"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2021-03-11",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2021/html/ecb.is210311~d368d7151a.en.html",
+   "note": "cut at Q&A",
+   "score": -0.68,
+   "hawk": 4,
+   "dove": 21,
+   "nWords": 2161,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "inflation pressures"
+    ],
+    "dove": [
+     "gradual",
+     "weak demand",
+     "asset purchases",
+     "asset purchase",
+     "accommodative",
+     "accommodation",
+     "gradually",
+     "downside risks",
+     "stimulus",
+     "downside risk",
+     "rate reduction"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2021-04-22",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2021/html/ecb.is210422~b0ad2d3414.en.html",
+   "note": "cut at Q&A",
+   "score": -0.5833333333333334,
+   "hawk": 5,
+   "dove": 19,
+   "nWords": 1891,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "stimulus",
+     "gradual",
+     "weak demand",
+     "accommodative",
+     "asset purchases",
+     "asset purchase",
+     "accommodation",
+     "downside risk"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2021-06-10",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2021/html/ecb.is210610~115f4c0246.en.html",
+   "note": "cut at Q&A",
+   "score": -0.6363636363636364,
+   "hawk": 4,
+   "dove": 18,
+   "nWords": 2188,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures",
+     "tightening"
+    ],
+    "dove": [
+     "gradually",
+     "accommodative",
+     "gradual",
+     "asset purchases",
+     "asset purchase",
+     "accommodation",
+     "headwinds",
+     "downside risk"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2021-07-22",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2021/html/ecb.is210722~13e7f5e795.en.html",
+   "note": "cut at Q&A",
+   "score": -0.5,
+   "hawk": 1,
+   "dove": 3,
+   "nWords": 1314,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening"
+    ],
+    "dove": [
+     "accommodative",
+     "asset purchase",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2021-09-09",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2021/html/ecb.is210909~b2d882f724.en.html",
+   "note": "cut at Q&A",
+   "score": -0.5555555555555556,
+   "hawk": 2,
+   "dove": 7,
+   "nWords": 1349,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures",
+     "tightening"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "gradual",
+     "deteriorate",
+     "deterioration",
+     "gradually"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2021-10-28",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2021/html/ecb.is211028~939f22970b.en.html",
+   "note": "cut at Q&A",
+   "score": -0.5,
+   "hawk": 1,
+   "dove": 3,
+   "nWords": 1143,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2021-12-16",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2021/html/ecb.is211216~9abaace28e.en.html",
+   "note": "cut at Q&A",
+   "score": -1,
+   "hawk": 0,
+   "dove": 16,
+   "nWords": 1951,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "headwind",
+     "asset purchases",
+     "accommodation",
+     "asset purchase",
+     "accommodative",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2022-02-03",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2022/html/ecb.is220203~ca7001dec0.en.html",
+   "note": "cut at Q&A",
+   "score": -1,
+   "hawk": 0,
+   "dove": 2,
+   "nWords": 1161,
+   "scored": false,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "gradually",
+     "asset purchases"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2022-03-10",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2022/html/ecb.is220310~1bc8c1b1ca.en.html",
+   "note": "cut at Q&A",
+   "score": -1,
+   "hawk": 0,
+   "dove": 6,
+   "nWords": 1760,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "asset purchase",
+     "asset purchases",
+     "gradual",
+     "headwinds"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2022-04-14",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2022/html/ecb.is220414~fa5c8fe142.en.html",
+   "note": "cut at Q&A",
+   "score": -0.14285714285714285,
+   "hawk": 3,
+   "dove": 4,
+   "nWords": 1196,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures",
+     "tightened",
+     "tighten"
+    ],
+    "dove": [
+     "asset purchases",
+     "asset purchase",
+     "slow growth",
+     "downside risks"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2022-06-09",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2022/html/ecb.is220609~abe7c95b19.en.html",
+   "note": "cut at Q&A",
+   "score": -0.45454545454545453,
+   "hawk": 3,
+   "dove": 8,
+   "nWords": 1691,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures",
+     "rate increase",
+     "further increases"
+    ],
+    "dove": [
+     "headwinds",
+     "asset purchases",
+     "asset purchase",
+     "gradual",
+     "deterioration",
+     "deteriorated",
+     "downside risk"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2022-07-21",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2022/html/ecb.is220721~51ef267c68.en.html",
+   "note": "cut at Q&A",
+   "score": -0.3333333333333333,
+   "hawk": 2,
+   "dove": 4,
+   "nWords": 1461,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened",
+     "tightening"
+    ],
+    "dove": [
+     "gradually",
+     "downside risk",
+     "asset purchases",
+     "slowdown in growth"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2022-09-08",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2022/html/ecb.is220908~cd8363c58e.en.html",
+   "note": "cut at Q&A",
+   "score": -0.6,
+   "hawk": 2,
+   "dove": 8,
+   "nWords": 1489,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increases",
+     "tightening"
+    ],
+    "dove": [
+     "accommodative",
+     "gradually",
+     "headwinds",
+     "uncertainty remains high",
+     "deteriorate",
+     "deterioration"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2022-10-27",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2022/html/ecb.is221027~358a06a35f.en.html",
+   "note": "cut at Q&A",
+   "score": 0,
+   "hawk": 7,
+   "dove": 7,
+   "nWords": 1391,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "rate increase",
+     "rate increases",
+     "further increases",
+     "tightened",
+     "tightening"
+    ],
+    "dove": [
+     "accommodation",
+     "downside risks",
+     "gradually",
+     "deteriorate",
+     "deteriorating"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2022-12-15",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2022/html/ecb.is221215~197ac630ae.en.html",
+   "note": "cut at Q&A",
+   "score": -0.3333333333333333,
+   "hawk": 5,
+   "dove": 10,
+   "nWords": 1708,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "tighten"
+    ],
+    "dove": [
+     "asset purchase",
+     "recession",
+     "headwinds",
+     "deterioration",
+     "gradually",
+     "inflation declined",
+     "downside risk",
+     "deteriorated",
+     "downside risks"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2023-02-02",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2023/html/ecb.is230202~4313651089.en.html",
+   "note": "cut at Q&A",
+   "score": 0,
+   "hawk": 8,
+   "dove": 8,
+   "nWords": 1724,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "inflation pressures",
+     "tighten",
+     "tightening"
+    ],
+    "dove": [
+     "asset purchase",
+     "gradual",
+     "headwinds",
+     "gradually",
+     "downside risk"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2023-03-16",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2023/html/ecb.is230316~6c10b087b5.en.html",
+   "note": "cut at Q&A",
+   "score": -0.14285714285714285,
+   "hawk": 3,
+   "dove": 4,
+   "nWords": 1545,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "tighten",
+     "upside risks to inflation"
+    ],
+    "dove": [
+     "gradually",
+     "gradual",
+     "downside risk",
+     "downside risks"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2023-05-04",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2023/html/ecb.is230504~f242392c72.en.html",
+   "note": "cut at Q&A",
+   "score": 0.1,
+   "hawk": 11,
+   "dove": 9,
+   "nWords": 1466,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures",
+     "rate increases",
+     "restrictive",
+     "inflation remains elevated",
+     "tighten",
+     "upside risks to inflation",
+     "tightening"
+    ],
+    "dove": [
+     "inflation has declined",
+     "asset purchase",
+     "gradually",
+     "gradual",
+     "downside risk",
+     "downside risks",
+     "weaker demand"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2023-06-15",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2023/html/ecb.is230615~3de9d68335.en.html",
+   "note": "cut at Q&A",
+   "score": -0.06666666666666667,
+   "hawk": 7,
+   "dove": 8,
+   "nWords": 1669,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "rate increase",
+     "rate increases",
+     "restrictive",
+     "upside risks to inflation",
+     "tightening"
+    ],
+    "dove": [
+     "softening",
+     "gradually",
+     "asset purchase",
+     "downside risks",
+     "weaker growth",
+     "weaker demand"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2023-07-27",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2023/html/ecb.is230727~e0a11feb2e.en.html",
+   "note": "cut at Q&A",
+   "score": 0.3333333333333333,
+   "hawk": 8,
+   "dove": 4,
+   "nWords": 1521,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "rate increase",
+     "rate increases",
+     "tightened",
+     "restrictive",
+     "upside risks to inflation",
+     "tightening"
+    ],
+    "dove": [
+     "deteriorated",
+     "gradually",
+     "downside risks",
+     "weaker demand"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2023-09-14",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2023/html/ecb.is230914~686786984a.en.html",
+   "note": "cut at Q&A",
+   "score": 0.14285714285714285,
+   "hawk": 8,
+   "dove": 6,
+   "nWords": 1548,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "rate increase",
+     "rate increases",
+     "tightened",
+     "tightening",
+     "restrictive",
+     "upside risks to inflation"
+    ],
+    "dove": [
+     "gradually",
+     "inflation declined",
+     "inflation has come down",
+     "weaker demand"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2023-10-26",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2023/html/ecb.is231026~c23b4eb5f0.en.html",
+   "note": "cut at Q&A",
+   "score": 0.3333333333333333,
+   "hawk": 6,
+   "dove": 3,
+   "nWords": 1520,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "rate increases",
+     "restrictive",
+     "upside risks to inflation",
+     "tightened"
+    ],
+    "dove": [
+     "gradually",
+     "weaker demand"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2023-12-14",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2023/html/ecb.is231214~df8627de60.en.html",
+   "note": "cut at Q&A",
+   "score": 0,
+   "hawk": 6,
+   "dove": 6,
+   "nWords": 1690,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "rate increases",
+     "restrictive",
+     "upside risks to inflation",
+     "tightening"
+    ],
+    "dove": [
+     "gradually",
+     "inflation has eased",
+     "soften",
+     "inflation declined",
+     "weak growth"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2024-01-25",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2024/html/ecb.is240125~db0f145c32.en.html",
+   "note": "cut at Q&A",
+   "score": 0.5,
+   "hawk": 6,
+   "dove": 2,
+   "nWords": 1196,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "rate increases",
+     "restrictive",
+     "upside risks to inflation",
+     "tightening"
+    ],
+    "dove": [
+     "gradually",
+     "inflation declined"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2024-03-07",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2024/html/ecb.is240307~314650bd5c.en.html",
+   "note": "cut at Q&A",
+   "score": 0,
+   "hawk": 7,
+   "dove": 7,
+   "nWords": 1316,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "rate increases",
+     "upside risks to inflation"
+    ],
+    "dove": [
+     "inflation has declined",
+     "inflation have eased",
+     "gradual",
+     "gradually",
+     "lower rate",
+     "inflation declined"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2024-04-11",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2024/html/ecb.is240411~9974984b58.en.html",
+   "note": "cut at Q&A",
+   "score": 0.25,
+   "hawk": 10,
+   "dove": 6,
+   "nWords": 1354,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "rate increases",
+     "further increase",
+     "upside risks to inflation",
+     "tightening"
+    ],
+    "dove": [
+     "gradually",
+     "weak demand",
+     "gradual",
+     "weaker growth"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2024-06-06",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2024/html/ecb.is240606~d32cd6cc8a.en.html",
+   "note": "cut at Q&A",
+   "score": 0.23076923076923078,
+   "hawk": 8,
+   "dove": 5,
+   "nWords": 1578,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "upside risks to inflation",
+     "rate increases",
+     "tightening"
+    ],
+    "dove": [
+     "asset purchase",
+     "inflation declined",
+     "gradually",
+     "weaker growth"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2024-07-18",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2024/html/ecb.is240718~6600b4add6.en.html",
+   "note": "cut at Q&A",
+   "score": 0.42857142857142855,
+   "hawk": 10,
+   "dove": 4,
+   "nWords": 1403,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "inflation is elevated",
+     "further increase",
+     "upside risks to inflation",
+     "rate increases",
+     "tightened"
+    ],
+    "dove": [
+     "gradually",
+     "inflation eased",
+     "weaker growth",
+     "rate cut"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2024-09-12",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2024/html/ecb.is240912~4f7b17040c.en.html",
+   "note": "cut at Q&A",
+   "score": 0.375,
+   "hawk": 11,
+   "dove": 5,
+   "nWords": 1646,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "tightening",
+     "upside risks to inflation",
+     "inflation pressures",
+     "rate increases"
+    ],
+    "dove": [
+     "headwinds",
+     "gradually",
+     "inflation declined",
+     "weak demand"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2024-10-17",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2024/html/ecb.is241017~59ad385bab.en.html",
+   "note": "cut at Q&A",
+   "score": 0.38461538461538464,
+   "hawk": 9,
+   "dove": 4,
+   "nWords": 1436,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "tightening",
+     "upside risks to inflation"
+    ],
+    "dove": [
+     "gradually",
+     "gradual"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2024-12-12",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2024/html/ecb.is241212~ce143b3bc8.en.html",
+   "note": "cut at Q&A",
+   "score": -0.06666666666666667,
+   "hawk": 7,
+   "dove": 8,
+   "nWords": 1719,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "rate hikes",
+     "tightening",
+     "upside risks to inflation"
+    ],
+    "dove": [
+     "rate cuts",
+     "gradually",
+     "weak demand"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2025-01-30",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2025/html/ecb.is250130~1f418aa0f4.en.html",
+   "note": "cut at Q&A",
+   "score": 0,
+   "hawk": 8,
+   "dove": 8,
+   "nWords": 1477,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "rate hikes",
+     "tightening",
+     "upside risks to inflation",
+     "tightened"
+    ],
+    "dove": [
+     "rate cuts",
+     "gradually",
+     "headwinds",
+     "softened"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2025-03-06",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2025/html/ecb.is250306~4307bd0941.en.html",
+   "note": "cut at Q&A",
+   "score": -0.2,
+   "hawk": 6,
+   "dove": 9,
+   "nWords": 1653,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "restrictive",
+     "rate hikes",
+     "tightening"
+    ],
+    "dove": [
+     "rate cuts",
+     "headwind",
+     "gradually",
+     "gradual",
+     "inflation eased"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2025-04-17",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2025/html/ecb.is250417~091c625eb6.en.html",
+   "note": "cut at Q&A",
+   "score": -0.5,
+   "hawk": 2,
+   "dove": 6,
+   "nWords": 1539,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "tightened"
+    ],
+    "dove": [
+     "deteriorated",
+     "inflation has declined",
+     "gradually",
+     "downside risks",
+     "deteriorating",
+     "rate cuts"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2025-06-05",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2025/html/ecb.is250605~f00a36ef2b.en.html",
+   "note": "cut at Q&A",
+   "score": -0.5,
+   "hawk": 2,
+   "dove": 6,
+   "nWords": 1735,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightening",
+     "further increase"
+    ],
+    "dove": [
+     "rate cuts",
+     "inflation declined",
+     "gradually",
+     "deterioration"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2025-07-24",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2025/html/ecb.is250724~a66e730494.en.html",
+   "note": "cut at Q&A",
+   "score": -0.14285714285714285,
+   "hawk": 3,
+   "dove": 4,
+   "nWords": 1304,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "hikes",
+     "tightening",
+     "tightened"
+    ],
+    "dove": [
+     "rate cuts",
+     "inflation eased",
+     "deterioration"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2025-09-11",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2025/html/ecb.is250911~a13675b834.en.html",
+   "note": "cut at Q&A",
+   "score": -0.7777777777777778,
+   "hawk": 1,
+   "dove": 8,
+   "nWords": 1441,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increase"
+    ],
+    "dove": [
+     "weaker growth",
+     "softening",
+     "rate cuts",
+     "headwinds",
+     "inflation declined",
+     "deterioration"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2025-10-30",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2025/html/ecb.is251030~4f74dde15e.en.html",
+   "note": "cut at Q&A",
+   "score": -0.4,
+   "hawk": 3,
+   "dove": 7,
+   "nWords": 1515,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "further increase",
+     "tightened"
+    ],
+    "dove": [
+     "rate cuts",
+     "inflation eased",
+     "downside risks",
+     "deterioration",
+     "weaker growth"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2025-12-18",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2025/html/ecb.is251218~3a10402adb.en.html",
+   "note": "cut at Q&A",
+   "score": -1,
+   "hawk": 0,
+   "dove": 6,
+   "nWords": 1546,
+   "scored": true,
+   "hits": {
+    "hawk": [],
+    "dove": [
+     "gradually",
+     "inflation declined",
+     "deterioration",
+     "weaker growth",
+     "rate cuts"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2026-02-05",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2026/html/ecb.is260205~50858cb986.en.html",
+   "note": "cut at Q&A",
+   "score": -0.7142857142857143,
+   "hawk": 1,
+   "dove": 6,
+   "nWords": 1348,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened"
+    ],
+    "dove": [
+     "gradual",
+     "rate cuts",
+     "headwinds",
+     "inflation declined",
+     "deterioration"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2026-03-19",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2026/html/ecb.is260319~93b1cbad97.en.html",
+   "note": "cut at Q&A",
+   "score": 0,
+   "hawk": 2,
+   "dove": 2,
+   "nWords": 1816,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tighten",
+     "tightened"
+    ],
+    "dove": [
+     "downside risks",
+     "downside risk"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2026-04-30",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2026/html/ecb.is260430~f99cb123a8.en.html",
+   "note": "cut at Q&A",
+   "score": 0.14285714285714285,
+   "hawk": 4,
+   "dove": 3,
+   "nWords": 1652,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "upside risks to inflation",
+     "tightened",
+     "tightening"
+    ],
+    "dove": [
+     "downside risks",
+     "slowing growth",
+     "downside risk"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2026-06-11",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2026/html/ecb.is260611~372040d313.en.html",
+   "note": "cut at Q&A",
+   "score": 0,
+   "hawk": 2,
+   "dove": 2,
+   "nWords": 1901,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "inflation pressures",
+     "raise rates"
+    ],
+    "dove": [
+     "downside risks",
+     "deteriorating"
+    ]
+   }
+  },
+  {
+   "bank": "ECB",
+   "date": "2026-07-23",
+   "url": "https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2026/html/ecb.is260723~b6fadd48f4.en.html",
+   "note": "cut at Q&A",
+   "score": -0.5,
+   "hawk": 2,
+   "dove": 6,
+   "nWords": 1537,
+   "scored": true,
+   "hits": {
+    "hawk": [
+     "tightened"
+    ],
+    "dove": [
+     "uncertainty remains high",
+     "headwind",
+     "inflation declined",
+     "deteriorating"
+    ]
+   }
+  }
+ ]
+}
