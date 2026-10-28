@@ -48,7 +48,7 @@ import { appendRows as vmAppendRows, readRange as vmReadRange, buildRow as vmBui
          resolveDue as vmResolveDue, scoreRows as vmScoreRows, logKey as vmLogKey } from './js/vumanchuLogger.js';
 import { renderVumanchuMtfPNG, renderVumanchuMtfSVG, vumanchuMtfData, vumanchuMtfCaption, TF_SECONDS as VM_TF_SECONDS, AGREE_MODES as VM_AGREE_MODES } from './js/vumanchuMtf.js';
 import { renderMtfStackPNG, mtfStackData, mtfStackCaption, SERIES_SOURCES as MTF_SERIES_SOURCES, MAX_TFS as MTF_MAX_TFS, MIN_BARS as MTF_STACK_MIN_BARS } from './js/mtfStack.js';
-import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache, ensureLadderOhlcCache, INSTRUMENTS as VOL_INSTRUMENTS } from './js/volForecastScheduler.js';
+import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache, ensureLadderOhlcCache, volForecastPastCutoff, INSTRUMENTS as VOL_INSTRUMENTS } from './js/volForecastScheduler.js';
 import { costRatio, medianTimeToTouch, ivPremium, carryToVol } from './js/volStateEngine.js';
 import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _computeForecast } from './js/volForecast.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
@@ -26853,13 +26853,12 @@ async function _getWeeklyStatus() {
   const instruments = {};
 
   // Detect weekend / post-Friday-close preview mode.
-  // After the Friday 22:00 UTC forecast run the new week's forecast is ready but
+  // After the Friday 22:15 UTC forecast run the new week's forecast is ready but
   // markets haven't opened yet — show the upcoming Monday's ranges instead of the
   // completed week's consumption stats.
   const now = new Date();
   const dow = now.getUTCDay();
-  const TARGET = parseInt(process.env.VOL_FORECAST_UTC ?? '22');
-  const isPreWeek = dow === 6 || dow === 0 || (dow === 5 && now.getUTCHours() >= TARGET);
+  const isPreWeek = dow === 6 || dow === 0 || (dow === 5 && volForecastPastCutoff(now));
 
   // Fetch in batches of 5 to avoid Oanda rate-limiting
   const BATCH = 5;
