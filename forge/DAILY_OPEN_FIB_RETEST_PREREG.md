@@ -162,7 +162,45 @@ preregs. They are never results in their own right.
 
 ## Amendments
 
-*(none yet)*
+### A1 — 2026-10-28 — PRE-RESULTS: bid/ask fills become the primary; 0.30 impulse; pass-bar code fix
+
+Written before any real-data outcome was computed (the only runs remain the synthetic checks of §5). Owner's brief
+of 2026-10-28: "Real fills. This is decisive, because the stop is only 0.2 of a small leg and the 23:00 rollover
+spread is wide … use bid/ask … report the mid-price result next to it", and "test a few thresholds (e.g. 0.10, 0.20
+and 0.30 of the average daily range)". Run on the owner's laptop, where both M1 files are present.
+
+1. **Primary fill model = bid/ask.** Data `data/m1_bidask/gold_m1.parquet` (OANDA practice, `open..close` = mid,
+   then `bid_o..bid_c`, `ask_o..ask_c`; starts 2016-10-23), sessions up to the one opening 2026-08-20 18:00 New York
+   (same lockbox cut). Sessions and ADR come from its mid columns via the same `Days(…, "broker")`. The fib is drawn
+   on the **bid** (what a retail broker chart shows). **Sell**: fills when the bid high reaches A (at A, or the bid
+   open if a bar opens above A); the stop triggers when the ask high reaches the 1.2; the target fills when the ask
+   low reaches it; break-even arms when the ask low reaches A − 1R and stops when the ask high comes back to A; the
+   time exit is at the ask open. **Buy**: the mirror — fills when the ask low reaches A (the bid-drawn opening low),
+   exits on the bid. No cost is added (spread only). A stop on the fill bar exits at no better than entry + the
+   spread at that bar's open (a position opened inside a spread wider than the stop can't be closed for less).
+   Rows invalid on mid, bid or ask (or ask below bid) are dropped and counted.
+2. **The gate on the primary**: (1) block-bootstrap 95% CI of mean bid/ask R above 0; (2) mean bid/ask R > 0 in both
+   halves; (3) mean **mid gross** R of the same sessions (levels and fills on the file's mid columns) above all 28
+   shifted-anchor mid gross means. Leg 3 stays on mid because it asks whether the open matters *in price*; spreads
+   differ by hour, so a bid/ask placebo would mix the two questions. The bid/ask shifted means are reported,
+   descriptive only. MDE from the bid/ask n and SD; pass bar +0.15R.
+3. **Mid stays as the secondary**: (a) the registered cell exactly as registered (`VolRangeForecaster/data/m1`,
+   0.30 cost, from 2016-01) and (b) mid with 0.30 on the bid/ask file's own sessions, so the spread's cost is the
+   gap between (b) and the primary.
+4. **`min_imp` 0.30 added**: 36 variants per instrument per fill model (anchor high/do × 0.10/0.20/0.30 × target
+   0/3R/2R × BE on/off); BH q = 0.10 across all 36 within each instrument and model. Primary unchanged.
+5. **Code fix**: `score.py` had `PASS_BAR = 0.10`; the prereg (§5) says +0.15R. The prereg governs; set to 0.15.
+6. **Added descriptive slices**: minutes from the open to the 1 (≤ 15, 15–60, > 60: how literally "the opening wick"
+   holds), R per year and max drawdown in R for the gated cell, the spread at the fill in R, bid/ask R by year and
+   vol regime. Components C1–C4 stay on mid geometry (spread-free); C5 also with bid/ask.
+7. **NQ and EURUSD** (descriptive) in both models where `data/m1_bidask` has them.
+8. **Expectation for the primary**: below the mid result, and negative. Gold's median spread is ~0.32 overall and
+   wider at the 23:00 reopen, against a median 1R of a few dollars.
+9. **The screenshot trade itself** (26 Oct 2026) is in the lockbox and after the bid/ask file's last bar
+   (2026-10-20), so it can't be scored; "typical or lucky" is answered from the distribution of exits.
+10. **Unit checks**: 18 (13 + 5 bid/ask: zero spread equals mid; the video trade misses its 0 on the ask with a 0.5
+    spread; a fill-bar stop inside a wide spread loses the spread; buys need the ask at the bid-drawn low).
+    Synthetic re-runs unchanged in kind: random walk NULL (19 of 28 shifts), planted edge VALIDATED.
 
 ---
 
