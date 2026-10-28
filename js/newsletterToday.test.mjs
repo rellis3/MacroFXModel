@@ -28,7 +28,8 @@ console.log('quiet and odd days');
   ok('two or more warning flags is said plainly', /^Mixed regime\. 2 of the 5 measured warning flags are on\.$/.test(q.regime));
   const big = todayOpening({ events: [], nowMs, assets: [{ label: 'Gold', d1: -2.3, used: 1.4 }], since: { first: true } });
   ok('a market that has used most of its day is named with its move', /Gold has moved −2\.30%, 140% of a normal day's range\./.test(big.changed));
-  ok('no events at all gives a calm calendar line', big.headline === 'A quiet calendar: today is about the tape, not the releases');
+  ok('no events and a market past its normal day makes that move the headline', big.headline === 'Gold fell 2.3%');
+  ok('no events and nothing unusual gives a calm calendar line', todayOpening({ events: [], nowMs, assets: [{ label: 'Gold', d1: -0.1, used: 0.1 }], since: { first: true } }).headline === 'A quiet calendar: today is about the tape, not the releases');
   const solo = todayOpening({ events: [{ ms: t(13, 30), ccy: 'USD', event: 'Core PCE', impact: 'high' }], nowMs });
   ok('a single release is a short headline', solo.headline === 'Core PCE at 13:30');
   ok('nothing in, nothing broken', todayOpening({}).headline.length > 0 && todayOpening({}).regime === ''); }
@@ -46,5 +47,14 @@ console.log('the weekly story');
   ok('a stale or missing 10-year gives no week line rather than a guess', weekStory([{ key: 'us10y', d5: -13, stale: true }]) === null && weekStory([]) === null);
   ok('a flat week says so', weekStory([{ key: 'us10y', d5: 0.2 }]).headline === 'The 10-year yield barely moved this week');
   ok('the opening labels the story by edition', todayOpening({ events: [], nowMs: 0, weekly: true }).story === 'The week in one line' && todayOpening({ events: [], nowMs: 0 }).story === 'The month in one line'); }
+console.log('the day take');
+{ const ch = [{ key: 'us10y', d1: -17 }, { key: 'hy', d1: 13 }, { key: 'vix', d1: 0.4 }];
+  const o = todayOpening({ events, nowMs, assets: [{ label: 'DAX', d1: -0.9, hlMed: 1.1 }, { label: 'Gold', d1: -0.7, hlMed: 1.23 }], changes: ch });
+  ok('a day with big measured moves leads with them and names the event still to come', o.headline === 'US 10-year yields fell 17bp and junk spreads widened 13bp, with the Fed decision at 18:00 still to come', o.headline);
+  const q = todayOpening({ events, nowMs, assets: [{ label: 'DAX', d1: -0.2, hlMed: 1.1 }], changes: [{ key: 'us10y', d1: -2 }] });
+  ok('a quiet tape falls back to the calendar headline', /^The Fed decides at 18:00, after/.test(q.headline));
+  const m = todayOpening({ events: [], nowMs, assets: [{ label: 'Gold', d1: -2.3, used: 1.4 }], changes: [] });
+  ok('a market that has used more than its normal day is the take, with no event clause when none is due', m.headline === 'Gold fell 2.3%', m.headline);
+  ok('the weekly never uses the day take', !/fell|rose/.test(todayOpening({ events, nowMs, weekly: true, assets: [{ label: 'Gold', d1: -2.3, used: 1.4 }], changes: ch }).headline)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

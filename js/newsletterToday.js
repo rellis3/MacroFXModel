@@ -88,6 +88,31 @@ function fedLine(fp, hi, now) {
   return `Futures put the chance of a hike by ${fp.ref ? 'the ' + dm(fp.ref) + ' meeting' : 'the next meeting'} at ${Math.round(fp.hike)}% and of a cut at ${Math.round(fp.cut)}% (Atlanta Fed tracker, ${dm(fp.asOf)}).`;
 }
 
+/**
+ * The day's take: the one or two measured moves that stand out against a normal day, with the event still to come if there is one.
+ * Each candidate is scored as a multiple of its own normal: a market by its move against its median daily range (or the share of the day's range already used),
+ * the 10-year yield by 6bp, junk spreads by 8bp, VIX by 2 points. Only scores of 0.75 or more count, at most one per kind, so a quiet tape gives null
+ * and the calendar headline stands. Observed figures only, never a direction call.
+ */
+function dayTake({ assets, changes, hi, now }) {
+  const c = k => (changes ?? []).find(x => x.key === k && !x.stale && Number.isFinite(x.d1)), up = v => v > 0, cand = [];
+  const y = c('us10y'), hy = c('hy'), vx = c('vix');
+  if (y) cand.push({ score: Math.abs(y.d1) / 6, kind: 'rates', text: `US 10-year yields ${up(y.d1) ? 'rose' : 'fell'} ${Math.round(Math.abs(y.d1))}bp` });
+  if (hy) cand.push({ score: Math.abs(hy.d1) / 8, kind: 'credit', text: `junk spreads ${up(hy.d1) ? 'widened' : 'tightened'} ${Math.round(Math.abs(hy.d1))}bp` });
+  if (vx) cand.push({ score: Math.abs(vx.d1) / 2, kind: 'vol', text: `VIX ${up(vx.d1) ? 'jumped' : 'dropped'} ${Math.abs(vx.d1).toFixed(1)} points` });
+  for (const r of assets ?? []) {
+    if (!r?.label || !Number.isFinite(r.d1)) continue;
+    const score = Number.isFinite(r.used) ? r.used : Number.isFinite(r.hlMed) && r.hlMed > 0 ? Math.abs(r.d1) / r.hlMed : null;
+    if (score !== null) cand.push({ score, kind: `m:${r.label}`, text: `${r.label} ${up(r.d1) ? 'rose' : 'fell'} ${Math.abs(r.d1).toFixed(1)}%` });
+  }
+  const top = cand.filter(x => x.score >= 0.75).sort((a, b) => b.score - a.score).slice(0, 2);
+  if (!top.length) return null;
+  const lead = hi.filter(isDecision).sort((a, b) => decisionRank(a) - decisionRank(b))[0] ?? hi[0];
+  const ev = lead ? `${isDecision(lead) ? `${BANK[lead.ccy]} decision` : `the ${nameOf(lead)}`} at ${hhmm(lead.ms)}` : '';
+  const mv = top.length === 2 ? `${cap(top[0].text)} and ${top[1].text}` : cap(top[0].text);
+  return `${mv}${ev ? (lead.ms > now ? `, with ${ev} still to come` : `, after ${ev}`) : ''}`;
+}
+
 /** What sort of day it is, in two words, for the kicker above the headline. */
 function dayType(hi) {
   if (hi.some(e => e.ccy === 'USD' && isDecision(e))) return 'Fed day';
@@ -144,12 +169,12 @@ export function weekStory(changes) {
  * Inputs: events (ms, ccy, event, impact, estimate, note), nowMs, since, regimeWord, riskFlags, assets (label, d1, used), weekly, fedPath, cb, board.
  * Also returns lede (the day in three or four sentences), sheet (the releases, timed) and board (the few numbers that frame the day).
  */
-export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, assets, weekly = false, fedPath, cb, board } = {}) {
+export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, assets, weekly = false, fedPath, cb, board, changes } = {}) {
   const now = Number.isFinite(nowMs) ? nowMs : Date.now(), hi = windowEvents(events, now, weekly);
   const nextHigh = hi.length ? null : (events ?? []).filter(e => e?.impact === 'high' && e.ms > now).sort((a, b) => a.ms - b.ms)[0] ?? null;
   const day = new Date(now).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ });
   const done = weekly ? [] : (events ?? []).filter(e => e?.impact === 'high' && isDecision(e) && Number.isFinite(e.ms) && e.ms < now - 36e5 && ukDay(e.ms) === ukDay(now)).sort((x, y) => x.ms - y.ms);
   const regime = regimeLine(regimeWord, riskFlags), changed = changedLine(since, assets);
   const lede = [loadLine(hi, done, weekly), fedLine(fedPath, hi, now), changed, regime].filter(Boolean).join(' ');
-  return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `${dayType(hi)} · ${day}`, headline: headlineOf(hi, nextHigh, weekly), regime, changed, watch: watchLine(hi, nextHigh, weekly), count: hi.length };
+  return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `${dayType(hi)} · ${day}`, headline: (!weekly && dayTake({ assets, changes, hi, now })) || headlineOf(hi, nextHigh, weekly), regime, changed, watch: watchLine(hi, nextHigh, weekly), count: hi.length };
 }
