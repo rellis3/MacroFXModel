@@ -177,6 +177,7 @@ import { FETCHERS as SNB_FETCHERS } from './js/snbFetch.js';
 import { FISCAL_EVENTS, previousEvent as fiscalPrevious, htmlToText as fiscalHtmlToText, govukAttachment as fiscalAttachment, govukRedBookFromCollection as fiscalRedBookFromCollection,
   obrPageMeta as fiscalObrMeta, obrMainText as fiscalObrText, treasuryRefundingLinks as fiscalTreasuryLinks, treasuryPressText as fiscalTreasuryText, extractNumbers as fiscalNumbers,
   numberRows as fiscalRows, buildFiscalPrompt as fiscalPrompt, readiness as fiscalReadiness, shouldPoll as fiscalShouldPoll } from './js/fiscalEvents.js';
+import { eventDay as _evdBuild, frontEnds as _evdFrontEnds, scheduleFromCalendars as _evdSchedule, FRONT_LEGS as _EVD_LEGS } from './js/eventDayContext.js';
 import { shouldReplaceLatest as cbShouldReplaceLatest, pickLatest as cbPickLatest } from './js/cbLatest.js';
 import { FETCHERS as BOC_FETCHERS } from './js/bocFetch.js';
 import { BEIGE_BOOK_RELEASES, pendingAsOf as beigeBookPendingAsOf } from './js/beigeBookCalendar.js';
@@ -2734,6 +2735,8 @@ async function _injectServerContext(pair, s) {
     const cc = _ccyPairFrom(pair);
     if (cc) { const block = await _macroScorecardBlockFor(cc[0], cc[1]); if (block) s.macroScorecard = block; }
   }
+  // Today's events for this pair's currencies (js/eventDayContext.js); indices and gold take the US ones.
+  if (!s.eventDay) { try { const { events } = await _eventDayLines(_ccyPairFrom(pair) ?? ['USD']); if (events.length) s.eventDay = events.map(e => e.line); } catch { /* prompt tolerates absence */ } }
 
   if (fc && !s.volCone) {
     s.volCone = {
@@ -3166,10 +3169,13 @@ ${Object.keys(s.eventRisk.currencyRisk || {}).length > 0
     : ''}`
   : '  Economic calendar unavailable (FINNHUB_KEY not configured)'}
 
-MACRO SURPRISE INDEX (30-day actual vs forecast)
+${s.eventDay?.length ? `EVENT DAY, what the same kind of event did before (Release Reaction record; sizes and how often the move held, never which way)
+${s.eventDay.join('\n')}
+
+` : ''}MACRO SURPRISE INDEX (30-day actual vs forecast)
 ${s.surpriseIndex && Object.keys(s.surpriseIndex).length > 0
   ? Object.entries(s.surpriseIndex).filter(([, v]) => typeof v === 'number').sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).map(([c, v]) => `${c}: ${v >= 0 ? '+' : ''}${v.toFixed(2)}`).join('  |  ') +
-    (s.pairSurprise != null ? `\nPair net surprise: ${s.pairSurprise >= 0 ? '+' : ''}${s.pairSurprise.toFixed(2)} (positive = bullish base ccy)` : '')
+    (s.pairSurprise != null ? `\nPair net surprise: ${s.pairSurprise >= 0 ? '+' : ''}${s.pairSurprise.toFixed(2)} (positive = the base currency's data beating more; context only: tested here, a surprise explains the first 15 minutes after a release and nothing after it, rate-surprise-eurusd)` : '')
   : '  Surprise index unavailable (Finnhub not configured or no data with estimates)'}
 
 VOLATILITY CONE (forecast σ vs its own history — context, not a signal)
@@ -3306,14 +3312,14 @@ You are a professional FX/futures prop desk analyst — but you are briefing a S
 Rules for your response:
 1. Every level you mention must be a specific price, not a description. Say "1.0847" not "near resistance".
 2. Every vol / spread observation must reference the actual numbers. Say "GARCH forecasts 42 pips today, 28 used, 14 remaining" not "volatility is moderate".
-3. Retail crowd data is contrarian. If 70% of retail are long and macro says short, that is a TAILWIND (squeeze fuel), say so explicitly.
+3. Retail crowd data is a fact about the crowd, not a signal: tested here (squeeze-fuel, null), crowded-and-underwater retail days were not wider and the move went neither with nor against the crowd. Never call it a tailwind, squeeze fuel or a setup.
 4. Spread classification gates entry quality. If spread is WIDE or EXTREME, say "do not enter now, wait for spread < X pips" with the actual X.
 5. avgLongPrice and avgShortPrice are real liquidity clusters. If price is approaching avgShortPrice from below, that is a resistance cluster with real stops above it. Say so.
 6. The headline must be one sentence a trader can act on. Not "mixed signals suggest caution." Something like "Fade the 1.0847 Fib/retail-cluster confluence short, target 1.0812, stop 1.0858, wait for spread to normalise below 0.6 pips."
 7. goodToDoNow must be specific actions, not attitudes. "Wait for price to reach 1.0847 then look for 5m bearish engulf" not "be patient".
 8. avoidNow must also be specific. "Do not chase the move if price is already below 1.0830" not "avoid chasing".
 9. riskWarnings must reference actual values from the snapshot. "VIX at 24 (prev 19) - rising fear, USD bid likely to persist" not "volatility risk".
-10. If retailCrowding is EXTREME and retailContrarian is true, call out the squeeze setup explicitly in the headline or tradingFramework.
+10. If retailCrowding is EXTREME, you may say the crowd is one-sided as context; do not call it a squeeze setup or put it in the headline as a reason to trade (squeeze-fuel, null).
 11. NEVER mention that data is unavailable, offline, not loaded, missing, or "N/A". The snapshot above may itself contain placeholder lines like "COT data not available", "GARCH not available", "N/A", or "not loaded" — IGNORE those completely, never repeat or acknowledge them. If you weren't given something, simply DON'T write about it — leave that field an empty string "". No caveats about missing inputs. Write only from the real numbers you actually have.
 12. "brief" is the MAIN OUTPUT and READABILITY IS THE #1 GOAL — it must read like a sharp human analyst talking to a non-specialist, NOT a data readout. INTERPRETATION OVER RECITATION is the rule: lead every fact with WHAT IT MEANS and its IMPACT on the plan, and mention a number ONLY if it changes the decision. Do NOT catalogue levels — a paragraph that lists max pain, both walls, GEX, DEX, vol magnets, clusters, percentiles etc. is a FAILURE even if accurate. If a level/number doesn't change what you'd do, LEAVE IT OUT. Say "options are pricing a bigger move than gold has been making — a soft argument to fade spikes" NOT "GVZ 25.1% vs realized 24.6%, 89th percentile". Use 4-6 SHORT paragraphs SEPARATED BY BLANK LINES (\\n\\n) — NEVER one long block. Structure:
    • Para 1 (2-3 sentences): the plain-English "so what" + the plan, in words anyone understands, BEFORE any jargon (e.g. "EUR/USD is stuck just under a heavy options ceiling and vol is cheap to fade — the lean is to sell pushes back toward the middle, small size, low conviction.").
@@ -4837,12 +4843,15 @@ async function _rlLivePush() {
   }
   return _rlLive.v;
 }
+async function _rlRows() {
+  const base = _cogJson(path.join(_RL_DIR, 'summary.json')), live = await _rlLivePush();
+  const byId = new Map(base.rows.map(r => [r.id, r]));
+  for (const r of (live?.rows ?? [])) byId.set(r.id, { ...r, live: true });      // the laptop's rebuild wins for any release it covers (a release still forming, or one with newer bars)
+  return { base, live, rows: [...byId.values()].sort((a, b) => (a.t < b.t ? -1 : 1)) };
+}
 app.get('/api/release-layer1', async (_req, res) => {
   try {
-    const base = _cogJson(path.join(_RL_DIR, 'summary.json')), live = await _rlLivePush();
-    const byId = new Map(base.rows.map(r => [r.id, r]));
-    for (const r of (live?.rows ?? [])) byId.set(r.id, { ...r, live: true });      // the laptop's rebuild wins for any release it covers (a release still forming, or one with newer bars)
-    const rows = [...byId.values()].sort((a, b) => (a.t < b.t ? -1 : 1));
+    const { base, live, rows } = await _rlRows();
     res.set('Cache-Control', 'no-store');
     res.json({ ok: true, builtAt: base.built, offs: base.offs, asOf: live?.asOf ?? null, ageSec: live?.asOf ? Math.round((Date.now() - Date.parse(live.asOf)) / 1000) : null, note: live?.note ?? null,
                lastBar: live?.lastBar ?? null, ahead: live?.ahead ?? [], rows });
@@ -4868,6 +4877,33 @@ app.get('/api/release-layer2', async (_req, res) => {
     }
     const P = _rwLive.v && _rwLive.v.built ? _rwLive.v : _cogJson(path.join(_RW_DIR, 'factors.json'));
     res.set('Cache-Control', 'no-store'); res.json({ ok: true, live: P === _rwLive.v, ...P });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── Event-day context (js/eventDayContext.js): what today's release / decision / Budget / refunding did the previous times (the Release Reaction record above),
+// with the evidence on it, and the rate legs (cog-chart futures): which front end moved in the latest session. One reader for the morning brief, the pair
+// analysis, today.html and atlas.html, so every paragraph quotes the same numbers. Upcoming events come from the laptop's push when it runs, else from the
+// hand-kept calendars (FOMC / ECB / BoE / BoJ / fiscal) and the calendar feed for US data releases.
+let _evdCache = { at: 0, v: null };
+async function _eventDayRead() {
+  if (_evdCache.v && Date.now() - _evdCache.at < 60_000) return _evdCache.v;
+  const { live, rows } = await _rlRows();
+  let calendar = []; try { calendar = (await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY })).events ?? []; } catch { /* the hand-kept calendars still cover the banks and fiscal events */ }
+  const ahead = [...(live?.ahead ?? []), ..._evdSchedule({ fomc: FOMC_MEETINGS, ecb: ECB_MEETINGS, boe: BOE_MEETINGS, boj: BOJ_MEETINGS, fiscal: FISCAL_EVENTS, calendar })];
+  const legs = {}, push = await _ccLivePush();
+  for (const [name] of _EVD_LEGS) {
+    try { const b = _cogJson(path.join(_CC_DIR, `leg_${name}.json`)), add = push?.legs?.[name]?.m5; legs[name] = { kind: b.kind, m5: add?.t?.length ? _ccMerge(b.m5, add) : b.m5 }; }
+    catch { /* leg file absent: that leg is left out of the line */ }
+  }
+  const v = { rows, ahead, front: _evdFrontEnds(legs) };
+  _evdCache = { at: Date.now(), v }; return v;
+}
+async function _eventDayLines(ccys = null) { const r = await _eventDayRead(); return { events: _evdBuild(r.rows, r.ahead, { ccys }), front: r.front }; }
+app.get('/api/event-day', async (req, res) => {
+  try {
+    const ccys = req.query.ccy ? String(req.query.ccy).split(',').map(x => x.trim().toUpperCase()).filter(Boolean) : null;
+    const { events, front } = await _eventDayLines(ccys);
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true, events, frontEnds: { line: front.line, stale: front.stale, asOf: front.asOf ? new Date(front.asOf).toISOString() : null, rows: front.rows } });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.get('/api/release-layer1/checks', (_req, res) => {
@@ -5703,6 +5739,13 @@ async function _buildMorningBrief(mode = 'column', context = '', { timeoutMs } =
   try { const r = await _bcRead(); if (r?.snap) bankCreditBriefLine = _bcLine(r.snap); } catch { /* omit when the feed is down */ }
   let fundingBriefLine = '';
   try { const r = await _frRead(); if (r?.read) fundingBriefLine = _frLine(r.read); } catch { /* omit when the feed is down */ }
+  // EVENT DAY + RATE LEGS (js/eventDayContext.js, /api/event-day): what today's release / decision / Budget did the previous times, and which front end moved.
+  let eventDayLine = '', frontEndsLine = '';
+  try {
+    const { events, front } = await _eventDayLines();
+    if (events.length) eventDayLine = 'EVENT DAY, what the same kind of event did before (Release Reaction record; sizes and how often the move held, never which way):\n' + events.map(e => '  ' + e.line).join('\n');
+    if (front.line) frontEndsLine = front.line;
+  } catch { /* omitted when the record is unavailable */ }
   // PRECEDENT — the one global read that says what FOLLOWED conditions like today's
   // rather than describing them. Read straight from the cached study; if it has not
   // been built yet the brief simply omits it rather than guessing.
@@ -5894,13 +5937,9 @@ async function _buildMorningBrief(mode = 'column', context = '', { timeoutMs } =
         if (usable.length) support.push(`${usable.length} pair(s) with a regime precedent that cleared the sample bar AND held its sign across both halves: ${usable.map(x => `${x.pr} ${x.r.all.mean}%`).join(', ')}`);
       }
     } catch {}
-    // Surprise index counts only when it is actually current.
-    try {
-      const rows = await _readSurpriseStore();
-      const idx = _buildSurpriseIndex(rows);
-      const live = Object.entries(idx.byCcy).filter(([, v]) => v.score != null);
-      if (live.length >= 2) support.push(`economic surprise is scoring for ${live.length} currencies`);
-    } catch {}
+    // The surprise index is NOT supporting evidence for a pick (removed 2026-10-28). It used to count merely being populated as a line of
+    // evidence, but surprise-size is validated for the SIZE of the release session only, "never a direction", and rate-surprise-eurusd /
+    // rate-surprise-nq found a surprise says nothing about the hour to five days after its first 15 minutes (js/deskEvidence.js).
 
     const verdict = blockers.length ? 'NO_TRADE' : support.length < 2 ? 'NO_TRADE' : 'OK';
     boardGate = `BOARD TRADE GATE (binding — see the closing task): ${verdict}\n`
@@ -5926,6 +5965,8 @@ async function _buildMorningBrief(mode = 'column', context = '', { timeoutMs } =
     corrLine || null,
     regimeLine || null,
     fedPathLine || null,
+    eventDayLine || null,
+    frontEndsLine || null,
     bankCreditBriefLine || null,
     fundingBriefLine || null,
     riskLine || null,
@@ -5958,9 +5999,9 @@ async function _buildMorningBrief(mode = 'column', context = '', { timeoutMs } =
       if (ends.length) {
         bits.push(`COT, speculative positioning as a percentile of its own history (report is ${Math.min(...Object.values(cot).map(v => v.ageDays ?? 99))}d old${stale ? ', and some of it is stale' : ''}): `
           + ends.slice(0, 5).map(([k, v]) => `${k} ${v.pct}${v.pct >= 80 ? 'th \u2014 crowded long' : 'th \u2014 crowded short'}`).join(', ')
-          + '. A crowded book is FUEL, not a direction: it says which way a surprise would hurt more, never which way price goes next.');
+          + '. Tested here: a crowded book does NOT make a release day wider (positioning-into-release-range, null) and does not say which way price goes (cot-positioning-factor, null). On 2018-2025 release days price drifted slightly against a crowded book, about 0.06 of a day range (positioning-into-release-direction, awaiting held-out confirmation): use it only in those words, never as a trade direction. A crowded trend whose price pulls back while the crowd reduces has been followed by the trend resuming more often (cot-crowding-p5): a positioning reset, never an unwind warning.');
       } else {
-        bits.push('COT: nothing at an extreme \u2014 speculative positioning is mid-range across the board, so there is no crowded side to squeeze today.');
+        bits.push('COT: nothing at an extreme \u2014 speculative positioning is mid-range across the board, so no market has a crowded side today.');
       }
     }
     const oiRaw = await kv.get('oi_store').catch(() => null);
@@ -6144,6 +6185,7 @@ READABILITY IS THE #1 GOAL — write for a sharp trader who is NOT a rates/vol s
 - USE THE "WHAT MOVED" DELTAS. Anchor the read on what's actually SHIFTING, not just today's levels: e.g. "the 10-year is up 6bps today (and +12 on the week) — yields grinding higher, dollar-supportive", "credit spreads tightening 5bps this week — no stress signal". A level with no direction is half the story; say the move and what it implies.
 - Be honest about weight: rates/curve, credit spreads and the vol-risk-premium are the evidenced macro reads — lean on them. Don't state technicals or positioning as mechanism-of-fact, and don't manufacture a strong directional call from a quiet, data-light tape — say when it's a lean.
 - EVIDENCE FIRST. The TESTED ON THIS DESK block is the highest-priority context on this page after the data itself. When a validated line applies to today (a VIX inversion, a scheduled employment / CPI / rate-decision release on a pair it names, a Nasdaq down-week), say what it measured, in ATR, and say "tested here". When you touch a relationship the block marks TESTED NULL (a rates shock meaning FX vol; "priced in" shrinking a decision day; oil "not yet" reaching breakevens; a broken link "resolving"), say it tested null here rather than narrating it. Validated lines are about RANGE and must never be turned into a direction.
+- EVENT DAY. When the EVENT DAY block lists an event, use its numbers for HOW BIG the first 30 minutes of that kind of event usually are and how often the move held to four hours, and say how many past events that rests on. It never says which way, and a small sample is said to be small. The RATE LEGS line says which country's front end did the moving; it is same-bar context, never a lead.
 - NO FOLKLORE-AS-FACT. Options positioning, implied-vol percentiles (EVZ/GVZ/VIX rank), gamma, technical levels and S/R do NOT reliably PREDICT what comes next — they describe where the market is positioned NOW. NEVER claim one "historically precedes", "reliably leads", "tends to precede", or "signals an incoming" move, and never say "the tape wants to" or state "smart money is doing X" as fact. Elevated EVZ means options are priced for a bigger move than realized — say exactly that ("options are braced for movement the tape hasn't delivered"), not that it foreshadows one. Describe positioning; hedge the inference.
 
 Finally, go one level more specific than the USD/EUR/JPY/GBP/Gold/Stocks/Oil reads above: give a board-wide read across ELEVEN instruments — the seven USD-pairs EURUSD, GBPUSD, USDJPY, USDCHF, USDCAD, AUDUSD, NZDUSD, PLUS four risk/commodity instruments this desk also trades: XAUUSD (gold), NAS100, SPX500, WTI. For each FX pair, state a lean — BULLISH/BEARISH toward the pair's BASE currency (the first one — e.g. "BULLISH" on EURUSD means EUR strength/USD weakness), or NEUTRAL — grounded strictly in the macro scorecard composites/deltas, yields and risk mood above. For XAUUSD/NAS100/SPX500/WTI, lean BULLISH/BEARISH/NEUTRAL on the instrument itself, grounded in whatever of the dollar/real-yields (gold), VIX/credit spreads/risk mood (NAS100, SPX500), and the raw WTI level + broad risk mood (WTI — you have no supply/demand-side oil data here, so lean on this one more cautiously and say so) actually supports it. NEUTRAL is the correct answer whenever the data doesn't clearly lean either way; lean less confidently wherever coverage is thin, and say so in the note. Then, from all eleven, name the ONE instrument whose fundamental case is currently clearest — the single best one to have on the watchlist today, FX or not — with a direction and a rationale that cites the SPECIFIC data points behind it (composite scores, deltas, yield/vol readings — not a vibe). This is a macro-fundamentals read, not a price-level or entry/stop/target call (this brief carries no live price data).
@@ -6155,7 +6197,7 @@ AND SAY WHAT YOU ARE DECLINING TO USE. Where a channel is unusable — a contrad
 STRUCTURE RULES — this is read every morning before the open, so length is a cost:
 - SAY EACH NUMBER ONCE. Pick the one place a figure actually decides something and put it there. A deployed brief repeated "USD +0.19 across 12 dimensions" four times and "JPY +0.4, curve +0.83" three times; roughly a third of its length was restatement. If a number has already appeared, refer to it in words ("the same scorecard gap") rather than reprinting it.
 - WRITE IT AS A MORNING PAPER, NOT A STATUS REPORT. Lead with the market. The order is: what the WEEK has been doing, what TODAY adds or fails to add to it, then where positioning sits. The "what moved" block carries 1-day, 1-week and 1-month change precisely so the read can be "the month has been a steady repricing and today has nothing scheduled to interrupt it" rather than "the 10-year added 7bp". A day figure on its own is a fact; the same figure against its week is a read.
-- POSITIONING IS CONTEXT, NEVER A DIRECTION. Where the crowd sits says which way a surprise would hurt more and how wide the day might run. It never says which way price goes, and this desk has tested the popular versions and closed them — walls do not pull price, max pain is null. Use the gamma sign for expected RANGE and stop there.
+- POSITIONING IS CONTEXT, NEVER A DIRECTION. Where the crowd sits says who is exposed if they are wrong. Tested here, it does not make a release day wider and it never says which way price goes, and this desk has tested the popular versions and closed them — walls do not pull price, max pain is null. Use the gamma sign for expected RANGE and stop there.
 - "verdict" IS THE WHOLE BRIEF IN THREE LINES and must stand alone: (1) the regime in plain words, (2) the ONE thing that changed since yesterday, (3) the ONE thing to watch. Someone who reads only those three lines should not be misled. No jargon, no numbers beyond one or two that carry real weight.
 - "pairsOutlook" notes are TABLE CELLS, not sentences — at most ~14 words, leading with the single number that drives the lean. They render as rows next to each other, so parallel phrasing matters more than prose.
 - Every section below "verdict" is OPTIONAL DEPTH. Do not restate the verdict in "theme"; extend it.
@@ -6612,9 +6654,9 @@ ${eventLines.length ? eventLines.join('\n') : '(none flagged)'}
 ${macroLine ? `\n=== CROSS-ASSET BACKDROP ===\n${macroLine}\n` : ''}
 RULES:
 - Ground every claim in the data above. Never invent a level, a catalyst, or a number you were not given.
-- COT is a crowding conditioner, not a timing signal — a crowded reading says the fuel for more of the same is thin, never when or whether it turns. Frame trade ideas accordingly: as candidates worth watching / sizing around, not certainties.
+- COT is a crowding conditioner, not a timing signal — a crowded reading says who is exposed, never when or whether it turns. Frame trade ideas accordingly: as candidates worth watching / sizing around, not certainties.
 - Commercial confluence (spec crowded one way, commercials independently at their own opposite extreme) is the strongest version of this data's read — weight it accordingly when picking trade ideas.
-- A market still EXTENDING an already-stretched position has not begun to unwind; one PARING back looks like the start of an unwind, though it can also just be a pause — say which each trade idea assumes.
+- Tested here: crowded positioning does not say which way a market goes (cot-positioning-factor, null). A crowded trend whose price pulls back while the crowd PARES back has been followed by the trend resuming more often than an ordinary pullback, with fewer large adverse moves (cot-crowding-p5, validated on held-out markets, rare): read paring as a positioning reset, never as the start of an unwind. Say so where a trade idea rests on it.
 - Return at most the 3 BEST trade ideas, ranked by conviction — not one per crowded market. If nothing on the board clears the bar for a real trade idea, say so plainly and return an empty tradeIdeas array rather than forcing one.
 - Every trade idea needs a stated invalidation (what would prove the idea wrong) — an idea with no invalidation is not usable.
 - Return at most 3 risk warnings, and only ones specific to THIS week's data (a live cross-theme interaction, a data blind spot that changes how to read a specific number above) — not generic reminders that this page already states elsewhere (COT is lagged, positioning isn't a timing signal, etc).
@@ -6837,6 +6879,7 @@ async function _serverSnapshotFor(name, sym) {
     const cc = _ccyPairFrom(sym);
     if (cc) { const block = await _macroScorecardBlockFor(cc[0], cc[1]); if (block) snap.macroScorecard = block; }
   } catch {}
+  try { const { events } = await _eventDayLines(_ccyPairFrom(sym) ?? ['USD']); if (events.length) snap.eventDay = events.map(e => e.line); } catch {}
   // COT positioning (real spec/leveraged-fund data) — same shape the prompt reads.
   try {
     const cotRaw = await kv.get(COT_KV.extremes);
