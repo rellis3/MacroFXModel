@@ -56,5 +56,12 @@ console.log('the day take');
   const m = todayOpening({ events: [], nowMs, assets: [{ label: 'Gold', d1: -2.3, used: 1.4 }], changes: [] });
   ok('a market that has used more than its normal day is the take, with no event clause when none is due', m.headline === 'Gold fell 2.3%', m.headline);
   ok('the weekly never uses the day take', !/fell|rose/.test(todayOpening({ events, nowMs, weekly: true, assets: [{ label: 'Gold', d1: -2.3, used: 1.4 }], changes: ch }).headline)); }
+console.log('Asia');
+{ const asia = { GOLD: { atr: 0.52, band: 'wide', cutHigh: 0.34 }, EURUSD: { atr: 0.3, band: 'middle', cutHigh: 0.33 } }, A = [{ key: 'GOLD', label: 'Gold', d1: -0.2, hlMed: 1.2 }, { key: 'EURUSD', label: 'EUR/USD', d1: 0.1, hlMed: 0.5 }];
+  const o = todayOpening({ events, nowMs, assets: A, changes: [{ key: 'us10y', d1: -17 }], asia });
+  ok('an unusually wide Asia leads the headline, ahead of a big yield move', o.headline.startsWith("Asia ran wide, with Gold covering 52% of a normal day's range before London opened and US 10-year yields fell 17bp"), o.headline);
+  ok('the lede carries the tested meaning for that market, as a size reading with the desk own figures', /Past wide-Asia days have left less for London: after 07:00 Gold reached the median band on 24% of them, against 46% when Asia was narrow\./.test(o.lede));
+  ok('a middling Asia, or one only just wide, is not news', !/Asia ran wide/.test(todayOpening({ events, nowMs, assets: A, asia: { GOLD: { atr: 0.36, band: 'wide', cutHigh: 0.34 }, EURUSD: asia.EURUSD } }).headline));
+  ok('no Asia feed leaves the opening as it was', !/Asia/.test(todayOpening({ events, nowMs, assets: A }).lede)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

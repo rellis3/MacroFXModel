@@ -534,7 +534,7 @@ export function buildNewsletter(n) {
     const basket = dollarBasket(n.assets ?? n.ranges ?? []), dxyOv = basket.n >= 4 ? { dxy: { delta: basket.avg, moved: Math.abs(basket.avg) >= CHAIN_NODES.dxy.floor, dir: basket.avg > 0 ? 'up' : basket.avg < 0 ? 'down' : null, text: `${basket.avg > 0 ? '+' : basket.avg < 0 ? '−' : ''}${Math.abs(basket.avg).toFixed(1)}%`, label: 'Dollar (seven daily majors)' } } : {};
     const th = buildTheories(n.links ?? [], dxyOv), ins = buildInsight(n.links ?? [], idea?.storyId ?? null), S = n.nodeSeries ?? {}, Hh = { esc, COLORS, CHAIN_NODES };
     const sents = t => String(t ?? '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s+(?=[A-Z“"'‘(])/).map(s => s.trim()).filter(Boolean);
-    const v2Today = todayOpening({ events: n.events, nowMs: n.nowMs ?? Date.now(), since, regimeWord, riskFlags: n.riskFlags, assets: weekly ? [] : n.assets ?? n.ranges, weekly, fedPath: n.fedPath, cb: n.cb, board: openBoard(n, weekly), changes: n.changes });
+    const v2Today = todayOpening({ events: n.events, nowMs: n.nowMs ?? Date.now(), since, regimeWord, riskFlags: n.riskFlags, assets: weekly ? [] : n.assets ?? n.ranges, weekly, fedPath: n.fedPath, cb: n.cb, board: openBoard(n, weekly), changes: n.changes, asia: n.asia });
     const evd = evidenceFor({ links: n.links, ys: n.yieldStack, assets: n.assets ?? n.ranges }), claimNotes = [];
     const scrub = t => { const r = scrubText(t, evd); for (const x of r.removed) claimNotes.push(x); return r.text; };
     const openText = scrub(letter.opening || opening || ''), openS = sents(openText), pullRaw = openS.length >= 2 ? openS[openS.length - 1] : '', pull = (pullRaw.split(/,\s+and\s+/)[0] || pullRaw).replace(/[.,;:\s]+$/, '');
@@ -633,7 +633,7 @@ export function buildNewsletter(n) {
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}${v2 ? MAG_CSS : ''}</style></head><body><div class="wrap${v2 ? ' mgw' : ''}">${v2 ? v2Body : `${mast}${glance}${sinceHtml}${letterSec}${tiles}${rpHtml}${driving}${posHtml}${ideaHtml}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${qodHtml}${lesson}${noEdge}${refsHtml}${foot}`}</div></body></html>`;
 
   const T = [];
-  const tOpen = v2 ? todayOpening({ events: n.events, nowMs: n.nowMs ?? Date.now(), since, regimeWord, riskFlags: n.riskFlags, assets: weekly ? [] : n.assets ?? n.ranges, weekly, fedPath: n.fedPath, cb: n.cb, board: openBoard(n, weekly), changes: n.changes }) : null;
+  const tOpen = v2 ? todayOpening({ events: n.events, nowMs: n.nowMs ?? Date.now(), since, regimeWord, riskFlags: n.riskFlags, assets: weekly ? [] : n.assets ?? n.ranges, weekly, fedPath: n.fedPath, cb: n.cb, board: openBoard(n, weekly), changes: n.changes, asia: n.asia }) : null;
   T.push(`THE CHAIN · ${weekly ? 'WEEKLY' : 'DAILY'} · ${n.date}`, '', ...(tOpen ? [tOpen.kicker.toUpperCase(), tOpen.headline, '', `REGIME  ${tOpen.regime}`, `CHANGED ${tOpen.changed}`, `WATCH   ${tOpen.watch}`, '', `${tOpen.story.toUpperCase()}: ${v2Month || headline}`, ''] : [headline, '']));
   if (since && !since.first && (since.items ?? []).length) { T.push(`CHANGED SINCE ${since.from ?? 'LAST ISSUE'}`, ...since.items.slice(0, 8).map(i => '- ' + i.text), ''); }
   if (opening) T.push(opening, '');

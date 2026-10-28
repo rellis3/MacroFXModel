@@ -25901,6 +25901,26 @@ app.get('/api/vol-forecast/live', async (_req, res) => {
 });
 
 // Session alias used by vol-forecast-v2.html — live today or historical from KV.
+// Asia range so far today (00:00-06:00 London) per desk instrument, in ATRs, placed against the T7b terciles. Backs the newsletter's daily opening, which
+// leads with an unusually wide Asia. A size reading only: a wide Asia has used part of the day's range, it says nothing about direction.
+let _asiaTodayCache = { at: 0, body: null };
+app.get('/api/asia-today', async (req, res) => {
+  try {
+    if (_asiaTodayCache.body && Date.now() - _asiaTodayCache.at < 5 * 60_000) return res.json(_asiaTodayCache.body);
+    const inputs = await _watchInputs().catch(() => null), instruments = {};
+    for (const [inst, sym] of Object.entries(_DIGEST_INSTR_SYM)) {
+      const bars = inputs?.series?.[_WATCH_INSTR_SYM[inst]]; if (!bars || bars.length < 15) continue;
+      let sum = 0; for (let i = bars.length - 14; i < bars.length; i++) { const b = bars[i], p = bars[i - 1]; sum += Math.max(b.high - b.low, Math.abs(b.high - p.value), Math.abs(b.low - p.value)); }
+      const a = await _asiaRangeToday(sym, sum / 14).catch(() => null); if (!a) continue;
+      const C = _BAND_REACH_PARAMS?.[inst]?.asiaCuts ?? null;
+      instruments[inst] = { atr: +a.atr.toFixed(2), high: a.high, low: a.low, cutLow: C?.low ?? null, cutHigh: C?.high ?? null, band: C ? (a.atr < C.low ? 'narrow' : a.atr >= C.high ? 'wide' : 'middle') : null };
+    }
+    const body = { ok: true, asOf: new Date().toISOString(), window: '00:00-06:00 London', instruments };
+    _asiaTodayCache = { at: Date.now(), body };
+    res.json(body);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/vol-forecast/session', async (req, res) => {
   const date = String(req.query.date ?? '');
   if (date) {
