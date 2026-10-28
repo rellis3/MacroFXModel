@@ -130,7 +130,7 @@ function renderDetail() {
   let html = '';
   if (e.status === 'upcoming' || (e.status === 'waiting' && !e.rows.length)) {
     html += `<div class="card"><h2>${FLAG[e.country] ?? ''} ${esc(e.title)} · ${esc(e.date)}</h2><div class="empty">${e.status === 'upcoming'
-      ? `Due ${esc(statusText(e))}. The documents are captured automatically from 30 minutes before; the read follows once the ${e.kind === 'refunding' ? 'policy statement' : 'Red Book and the OBR outlook'} are in.`
+      ? `Due ${esc(statusText(e))}. The documents are captured automatically from 30 minutes before; the read follows once the ${e.kind === 'refunding' ? 'policy statement is' : 'Red Book is'} in, and is redone when the later documents land.`
       : `Started ${new Date(e.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} UK. Waiting for: ${esc(missing.join(', ') || 'the documents')}. The UK documents are published when the Chancellor sits down, about an hour after the start. Checked every 5 minutes.`}
       ${logRow?.errors?.length ? `<div class="note">Last check errors: ${esc(logRow.errors.join(' · '))}</div>` : ''}</div></div>`;
   } else {

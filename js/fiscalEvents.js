@@ -53,7 +53,8 @@ export const FISCAL_EVENTS = [
 ];
 
 // The documents the read waits for; anything else is added when it lands.
-export const CORE_DOCS = { budget: ['redbook', 'obr'], forecast: ['obr'], refunding: ['policy'] };
+// A Budget is read as soon as the Red Book is in and re-read when the OBR outlook (and the speech) land.
+export const CORE_DOCS = { budget: ['redbook'], forecast: ['obr'], refunding: ['policy'] };
 // Give up waiting for a missing core document this long after the event and read what is there.
 export const CORE_WAIT_MS = 6 * 3600_000;
 
@@ -145,11 +146,16 @@ export function extractRedBook(text) {
   const nfr = t.match(/net financing requirement for (\d{4}-\d{2}) is (?:now )?forecast to be £([\d.,]+) billion/i);
   const gilts = t.match(/financed through £([\d.,]+) billion of gilt sales(?: \((?:an? )?(increase|decrease|reduction|rise|fall) of £([\d.,]+) billion\)| \((unchanged)\))?/i);
   const bills = t.match(/£([\d.,]+) billion from the sale of Treasury bills/i);
-  const remit = t.match(/remit for the DMO has been (?:updated|revised)[^.]*?(increasing|decreasing|reducing|rising|falling) by £([\d.,]+) billion/i);
+  const remit = t.match(/remit for the DMO has been (?:updated|revised)[^.]*?(increasing|decreasing|reducing|rising|falling) by £([\d.,]+) billion/i)
+    ?? t.match(/net financing requirement for \d{4}-\d{2} is (?:now )?forecast to be £[\d.,]+ billion, (?:an? )?(increase|decrease|reduction|rise|fall) of £([\d.,]+) billion/i);
+  // Budget 2026 wording: "The stability rule is met by £15 billion in 2029-30" -- the Treasury's own statement of
+  // headroom, used until the OBR outlook (the independent figure) is captured
+  const rule = t.match(/(stability rule|fiscal mandate) is met by £([\d.,]+) billion in (\d{4}-\d{2})/i);
   return {
     year: nfr?.[1] ?? null, nfr: bn(nfr?.[2]), giltSales: bn(gilts?.[1]),
     giltSalesChange: gilts ? (gilts[4] ? 0 : signed(gilts[2], bn(gilts[3]))) : null,
     bills: bn(bills?.[1]), remitChange: remit ? signed(remit[1], bn(remit[2])) : null,
+    ...(rule ? { headroom: bn(rule[2]), headroomSource: 'Treasury', headroomRule: `${rule[1]} in ${rule[3]}` } : {}),
   };
 }
 // OBR: "... current budget to be in balance in 2029-30 is met by a margin of £22 billion (0.6 per cent of GDP), which is £12 billion (0.3 per cent of GDP) more than in March."
@@ -182,7 +188,11 @@ export function extractRefunding(policyText, estimatesText) {
 }
 export function extractNumbers(ev, docs) {
   if (ev.kind === 'refunding') return extractRefunding(docs.policy?.text, docs.estimates?.text);
-  return { ...(docs.redbook ? extractRedBook(docs.redbook.text) : {}), ...(docs.obr ? extractObr(docs.obr.text) : {}) };
+  // the OBR's figures win where it has one; a null never overwrites the Red Book's number
+  const out = docs.redbook ? extractRedBook(docs.redbook.text) : {};
+  const o = docs.obr ? extractObr(docs.obr.text) : {};
+  if (o.headroom != null) Object.assign(out, o, { headroomSource: 'OBR' });
+  return out;
 }
 // The numbers as rows for the page and the prompt: label, value, the change vs before.
 export function numberRows(ev, n) {
@@ -197,7 +207,7 @@ export function numberRows(ev, n) {
     [n.nextQuarter ? `Borrowing ${n.nextQuarter}` : 'Borrowing next quarter', u(n.nextBorrowing), null],
     ['Cash balance assumed', u(n.cashBalance), null],
   ] : [
-    ['Headroom against the main fiscal rule', g(n.headroom), n.headroomChange != null ? `${ch(n.headroomChange, g)} vs ${n.headroomVs ?? 'last forecast'}` : null],
+    [`Headroom against the main fiscal rule${n.headroomSource === 'Treasury' ? ' (Treasury figure)' : ''}`, g(n.headroom), n.headroomChange != null ? `${ch(n.headroomChange, g)} vs ${n.headroomVs ?? 'last forecast'}` : null],
     [`Gilt sales${n.year ? ` ${n.year}` : ''}`, g(n.giltSales), n.giltSalesChange != null ? ch(n.giltSalesChange, g) : null],
     ['DMO net financing requirement', g(n.nfr), n.remitChange != null ? ch(n.remitChange, g) : null],
     ['Treasury bills (debt management)', g(n.bills), null],

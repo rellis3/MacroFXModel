@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { FISCAL_EVENTS, previousEvent, htmlToText, fromSummary, govukAttachment, govukRedBookFromCollection, obrPageMeta, treasuryRefundingLinks, treasuryPressText,
-  extractRedBook, extractObr, extractRefunding, numberRows, buildFiscalPrompt, readiness, shouldPoll } from './fiscalEvents.js';
+  extractRedBook, extractObr, extractRefunding, extractNumbers, numberRows, buildFiscalPrompt, readiness, shouldPoll } from './fiscalEvents.js';
 
 let n = 0; const t = (name, fn) => { fn(); n++; };
 const ev = id => FISCAL_EVENTS.find(e => e.id === id);
@@ -77,8 +77,8 @@ t('the prompt carries the hard numbers, the previous event and no names rule', (
 
 t('readiness and polling', () => {
   const b = ev('gb-budget-2026-10-28');
-  assert.deepEqual(readiness(b, ['speech'], b.ms + 3600_000), { missing: ['redbook', 'obr'], ready: false });
-  assert.equal(readiness(b, ['redbook', 'obr'], b.ms + 3600_000).ready, true);
+  assert.deepEqual(readiness(b, ['speech'], b.ms + 3600_000), { missing: ['redbook'], ready: false });
+  assert.equal(readiness(b, ['redbook'], b.ms + 3600_000).ready, true, 'the Red Book alone is enough for a first read');
   assert.equal(readiness(b, ['speech'], b.ms + 7 * 3600_000).ready, true, 'after six hours, read what is there');
   assert.equal(readiness(b, [], b.ms + 7 * 3600_000).ready, false);
   assert.equal(shouldPoll(b, null, b.ms - 3600_000), false);
@@ -88,4 +88,15 @@ t('readiness and polling', () => {
   assert.equal(shouldPoll(b, { analysedKinds: ['redbook', 'obr'] }, b.ms + 4 * 86400_000), false);
 });
 
+t('Budget 2026 wording: remit change after the requirement, Treasury headroom until the OBR lands', () => {
+  const RB26 = 'Financing The Debt Management Office (DMO) net financing requirement for 2026-27 is forecast to be £258.6 billion, an increase of £7.4 billion from the previous remit. This will be financed through £250.6 billion of gilt sales (an increase of £4.4 billion), as well as £8 billion from the sale of Treasury bills. The government continues to meet the fiscal rules with a buffer: The stability rule is met by £15 billion in 2029-30, before rising to £22 billion in 2030-31.';
+  const x = extractRedBook(RB26);
+  assert.equal(x.remitChange, 7.4); assert.equal(x.giltSales, 250.6); assert.equal(x.headroom, 15); assert.equal(x.headroomSource, 'Treasury');
+  const e = ev('gb-budget-2026-10-28');
+  assert.equal(extractNumbers(e, { redbook: { text: RB26 } }).headroom, 15);
+  assert.equal(extractNumbers(e, { redbook: { text: RB26 }, obr: { text: 'no rules assessment here' } }).headroom, 15, 'an OBR null does not wipe it');
+  const both = extractNumbers(e, { redbook: { text: RB26 }, obr: { text: OBR25 } });
+  assert.equal(both.headroom, 22); assert.equal(both.headroomSource, 'OBR');
+  assert.match(numberRows(e, x)[0].label, /\(Treasury figure\)/);
+});
 console.log(`fiscalEvents: ${n} groups, all passed`);
