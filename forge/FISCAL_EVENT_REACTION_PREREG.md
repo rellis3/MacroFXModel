@@ -88,4 +88,10 @@ Four scored cells, Holm α = 0.05. No variants: the windows, D and the control r
 
 ## Amendments
 
+### A1 — 2026-10-28 — PRE-RESULTS
+No price had been fetched or joined when this was written.
+- **US coupon-size coding is by hand, not regex.** The regex in §3 missed the known 2018 and Aug/Nov 2023 increases and counted guidance ("may decide to") as change. The codes are in `US_COUPON_CODES` in `scripts/fiscal-event-reaction/extract.mjs`, one quoted sentence per ±1 row, and the script checks each quote appears verbatim in its statement. Rule: ±1 only when the statement announces larger or smaller nominal coupon auctions, or a new coupon tenor, for the coming quarter. Retrospective description and medium-term guidance are 0. Result: 13 × +1, 10 × −1, 52 × 0.
+- **US n is 75, not 74.** 2008 Q1 to 2026 Q3 is 75 statements.
+- **UK supply change.** Red Book patterns were added for the 2010–2024 wordings ("Planned gilt sales in … will be reduced by £X billion", "Total gilt sales … are now forecast to increase by £X billion", "an increase in gross gilt issuance this year of £X billion", "gross gilt issuance is projected to rise by £X billion", "additional gilt sales of £X billion", "gilt issuance (a decline of £X billion"). Where the document has no in-year revision (spring Budgets set a new remit; several statements left the revision to a separate DMO notice, and dmo.gov.uk is bot-shielded), the row is excluded. That leaves 13 scheduled, pre-lockbox rows with a revision: below the §5 floor of 15, so **D1 is not scored and is UNDERPOWERED by design**. The rows are shown as description only.
+
 ## RESULTS — not yet run
