@@ -36,6 +36,7 @@ import { dataChecks, laggingSeries, dollarBasket } from './dataChecks.js';
 import { evidenceFor, checkClaims, scrubText, dataHeadline } from './headlineCheck.js';
 import { betaFor, betaTop } from './betaShift.js';
 import { todayOpening, weekStory } from './newsletterToday.js';
+import { todayTables } from './newsletterTables.js';
 import { currencyNarrative, pairNarrative } from './newsletterNarrative.js';
 import { storyIntro, yieldGuide, chainGuide, relationNote, stressRead, auditGuide, positioningGuide, sectorNote, commodityNote, fearNote, currencyNote } from './newsletterExplain.js';
 import { MAG_CSS, composeMagazine, yieldDecompChart, relationChart, evidenceMatrix, accountabilityPage, evBadge, barFigure, tileRow, flatTable, guide, currencyCard, marketNarrative } from './newsletterMag.js';
@@ -579,8 +580,10 @@ export function buildNewsletter(n) {
       return `<div class="th2"><h3>${esc(t.name)}<span class="chipx">${esc(t.labelText)}</span></h3><p>${esc(t.blurb)}</p>${yes.length ? `<p><b>What fits:</b> ${esc(yes.join('; '))}.</p>` : ''}${no.length ? `<p><b>What does not fit:</b> ${esc(no.join('; '))}.</p>` : ''}${nm.length ? `<p><b>Not measured today:</b> ${esc(nm.join('; '))}.</p>` : ''}<p class="lim">${esc(t.limit)}</p></div>`; }).join('');
     const topT = th.filter(t => t.label === 'supported'), uniq = topT.length > 1 ? topT.map(t => `${t.name}: ${t.checks.filter(c => !topT.some(o => o !== t && o.checks.some(x => x.text === c.text))).map(c => c.text.charAt(0).toLowerCase() + c.text.slice(1)).join(', ')}`).filter(s => !/: $/.test(s)) : [];
     const sepText = topT.length > 1 ? `${topT.length} of the ${th.length} stories fit every check they can be tested on, so the count cannot choose between them. What would separate them is what only one of them needs: ${uniq.map(u => u.replace(/^([^:]+): (.*)$/, (m0, nm, cs) => `${nm.charAt(0).toLowerCase() + nm.slice(1)} (${cs})`)).join('; ')}. ` : '';
+    const v3t = n.v3 && !weekly ? todayTables({ changes: n.changes, creditSpreads: n.creditSpreads, fedPath: n.fedPath, strengths: n.strengths, cb: n.cb, surprise: n.surprise, assets: n.assets ?? n.ranges, asia: n.asia, events: n.events, nowMs: n.nowMs ?? Date.now(), isoDate: n.isoDate }, esc) : null;
     v2Body = composeMagazine({
-      meta: { edition: weekly ? 'Weekly' : 'Daily', tag: 'V2 draft', date: n.date, regime: String(regimeWord).charAt(0) + String(regimeWord).slice(1).toLowerCase() },
+      v3: !!v3t, v3t,
+      meta: { edition: weekly ? 'Weekly' : 'Daily', tag: n.v3 ? 'V3 draft' : 'V2 draft', date: n.date, regime: String(regimeWord).charAt(0) + String(regimeWord).slice(1).toLowerCase() },
       ticker: (n.assets ?? n.ranges ?? []).filter(r => r.price != null && Number.isFinite(r.d1)).slice(0, 14).map(r => ({ label: r.label, price: String(r.price), chg: r.d1 })),
       today: v2Today, feature, glance: { broken: String(_bk), testable: String(_tl.length), stress: n.riskFlags ? `${n.riskFlags.active}/${n.riskFlags.total}` : 'n/a', next: _evTop ? `${_evTop.event}, ${ukTime(_evTop.ms)}` : '' }, alarms,
       yieldFig: yieldDecompChart(n.yieldSeries ?? S, Hh), yieldCaption, textbook, lessonBox, qod: qodHtml, intro, yieldGuide: yieldGuide(ys2, n.links), stress, theoriesData: th, notFit,

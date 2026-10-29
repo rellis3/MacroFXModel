@@ -1,0 +1,25 @@
+// Tests for the V3 daily.   node js/newsletterV3.test.mjs
+import { buildNewsletterV3 } from './newsletterV3.js';
+import { buildNewsletterV2 } from './newsletterV2.js';
+import { todayTables } from './newsletterTables.js';
+let failures = 0;
+const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
+const t = (h, m) => Date.UTC(2026, 9, 29, h, m), nowMs = t(7, 0), esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const events = [{ ms: t(12, 30), ccy: 'USD', event: 'Advance GDP q/q', impact: 'high' }, { ms: t(13, 15), ccy: 'EUR', event: 'ECB rate decision', impact: 'high' }];
+const assets = [{ key: 'EURUSD', label: 'EUR/USD', price: '1.11', d1: 0.24, used: 0.48, hlMed: 0.5 }, { key: 'GOLD', label: 'Gold', price: '4026', d1: -0.71, used: 0.86 }, { key: 'DE30', label: 'DAX', price: '25729', d1: 0.45, hlMed: 1.27 }];
+const input = { changes: [{ key: 'us10y', last: 4.99, d1: -1, lastDate: '2026-10-27' }, { key: 'vix', last: 17.5, d1: -0.87, lastDate: '2026-10-29' }], creditSpreads: [{ label: 'High-yield (junk) companies', bp: 318, d1: -12 }], fedPath: { hike: 90, hikeWeekAgo: 95, ref: '2026-12-16', asOf: '2026-10-26' }, strengths: [{ ccy: 'USD', score: -0.06 }, { ccy: 'CAD', score: 0.41 }], cb: [{ ccy: 'USD', bank: 'FOMC', regime: 'HAWKISH', trend: 'more hawkish' }], surprise: [{ ccy: 'USD', score: 0.5, stale: false }], assets, asia: { EURUSD: { band: 'wide', atr: 0.41, cutHigh: 0.35, netPct: -0.17 }, GOLD: { band: 'narrow', atr: 0.1, cutHigh: 0.34, netPct: 0.02 } }, events, nowMs, isoDate: '2026-10-29' };
+const T = todayTables(input, esc);
+console.log('the three tables');
+ok('the backdrop rows carry the level, the day move and what it measures, and say when a row is dated earlier', /US 10-year yield<\/td><td class="v">4\.99% <small>as of 10-27<\/small><\/td><td class="m">−1bp<\/td><td class="w">What the government pays/.test(T.globalHtml) && /Junk-bond spread<\/td><td class="v">318bp<\/td><td class="m">−12bp</.test(T.globalHtml) && !/VIX<\/td><td class="v">17\.5 <small/.test(T.globalHtml));
+ok('Fed odds are market-implied with their date and the change on the week', /Fed hike odds<\/td><td class="v">90%<\/td><td class="m">−5pp on the week<\/td><td class="w">Chance priced for a hike by 2026-12-16\. Market-implied, as of 2026-10-26\./.test(T.globalHtml));
+ok('the currency table ranks by score and says it is the state, not the day\'s change', T.countryHtml.indexOf('1. CAD') < T.countryHtml.indexOf('2. USD') && /Fed hawkish, more hawkish/.test(T.countryHtml) && /Advance GDP q\/q 12:30/.test(T.countryHtml) && /not the day's change/.test(T.countryHtml));
+ok('the pair table shows the move, the share of a normal day used, Asia in a word and what each market waits on', /EUR\/USD<small>1\.11<\/small><\/td><td class="m"><b class="up3">\+0\.24%<\/b><\/td><td class="u">.*48%<\/td><td class="m">wide, −0\.2%<\/td><td class="w">Advance GDP q\/q 12:30/.test(T.pairsHtml) && /quiet<\/td>/.test(T.pairsHtml) && /DAX.*35%/.test(T.pairsHtml) && /DAX[\s\S]*?ECB rate decision 13:15/.test(T.pairsHtml));
+ok('nothing is invented when a feed is missing: no rows, no empty table', todayTables({ nowMs, isoDate: '2026-10-29' }, esc).globalHtml === '' && todayTables({ nowMs }, esc).pairsHtml === '');
+console.log('the V3 issue');
+const v3 = buildNewsletterV3({ date: 'Thursday 29 October 2026', isoDate: '2026-10-29', ...input, regimeWord: 'MIXED' }), v2 = buildNewsletterV2({ date: 'Thursday 29 October 2026', isoDate: '2026-10-29', ...input, regimeWord: 'MIXED' });
+ok('V3 is tagged and opens with the Today opening, then the today pages, then the backdrop', /V3 draft/.test(v3.html) && /class="hd"/.test(v3.html) && v3.html.indexOf('The state of the levels today') > v3.html.indexOf('class="hd"') && v3.html.indexOf('Pair by pair, today') > v3.html.indexOf('The state of the levels today'));
+ok('V3 leaves out the long 20-day exhibits (the chain and the data checks stay as the backdrop)', !/Exhibit 1 · what happened|Exhibit 2 · why it might be happening|Four ways to read the same move/.test(v3.html));
+ok('V2 is unchanged by V3: no today tables, still tagged V2', !/The state of the levels today/.test(v2.html) && /V2 draft/.test(v2.html));
+ok('the weekly never takes the V3 layout', !/The state of the levels today/.test(buildNewsletterV3({ date: 'x', isoDate: '2026-10-29', edition: 'weekly', ...input }).html));
+console.log(failures ? `\n${failures} FAILED` : '\nall passed');
+if (failures) process.exit(1);

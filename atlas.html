@@ -292,6 +292,7 @@ import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
 import * as P from './js/atlasPosition.js';
 import { buildNewsletter, eventNote, flagProximity, familyOf } from './js/newsletter.js';
 import { buildNewsletterV2 } from './js/newsletterV2.js';
+import { buildNewsletterV3 } from './js/newsletterV3.js';
 import { impliedRow, impliedKeyFor } from './js/impliedMove.js';
 import { snapshotOf, diffSnapshots, scoreLine, weekRecord, plainRead } from './js/newsletterRecord.js';
 import { closuresBetween } from './js/marketCalendars.js';
@@ -714,7 +715,10 @@ async function buildIssue(kind) {
     base.since = diffSnapshots(prev?.snapshot ?? null, snap);
     const out = buildNewsletter(base);
     let out2 = null; try { out2 = buildNewsletterV2(base); } catch (e) { console.warn('[atlas newsletter] V2 failed:', e.message); }   // the V2 draft is for comparing only: it is never saved or sent
+    let out3 = null; if (!weekly) { try { out3 = buildNewsletterV3(base); } catch (e) { console.warn('[atlas newsletter] V3 failed:', e.message); } }   // the V3 draft (today first) is for comparing only: never saved or sent
     showNl(out, kind, out2);
+    if (out3) { const url3 = URL.createObjectURL(new Blob([out3.html], { type: 'text/html' })); $('nlOut').querySelector('.chips')?.insertAdjacentHTML('beforeend', `<button class="btn" id="nlPdf3">V3 PDF</button><a class="btn" href="${url3}" target="_blank" rel="noopener">Open V3</a>`);
+      $('nlPdf3').onclick = () => { const w = window.open(url3, '_blank'); if (!w) { $('nlStatus').textContent = 'Pop-up blocked: allow pop-ups, or use Open V3 then Ctrl+P.'; return; } w.addEventListener('load', () => setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 600)); $('nlStatus').textContent = 'In the print window choose Save as PDF and turn on Background graphics. The V3 draft is never saved or sent.'; }; }
     st.textContent = `Built: ${out.subject}. Saving…`;
     const sv = await J('/api/newsletter/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject: out.subject, html: out.html, text: out.text, snapshot: snap }) });
     st.textContent = sv?.ok ? `Built and saved: ${out.subject}` : `Built, but not saved to the archive (${sv?.error ?? 'no response'}): ${out.subject}`;
