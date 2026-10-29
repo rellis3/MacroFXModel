@@ -230,3 +230,26 @@ later change is a dated amendment below, marked PRE- or POST-RESULTS.
 ## Amendments
 
 (none)
+
+## RESULTS
+
+Run 2026-10-29 → `analysis/output/day-reconstruction/m5/REPORT.md`, `results.json`.
+
+**Forecast-specific path information: UNDERPOWERED.**
+- 0 of 12 Δ significant.
+- 1 NULL (GOLD Fixed P1: +0.7 [−3.5, +4.8]); 11 underpowered.
+- Δ point estimates −2.8 to +5.0pp.
+- Pooled across instruments (secondary), Δ is within about ±3–6pp of zero: Fixed +0.6 / +0.1, Projected +0.3 / +1.6pp.
+
+**Path effect at the forecast levels: PRESENT in 5 of 12 cells, all market-wide.** Each is equally present at placebo
+lines:
+- EURUSD Fixed P1 −11.6 [−16.2, −6.9];
+- EURUSD Fixed P2 −6.2;
+- EURUSD Projected P1 −9.8;
+- NQ Projected P1 −5.6;
+- GOLD Projected P2 +7.2.
+
+**Slow arrivals lower revert-first as well** (Fixed −8 to −10pp, Projected −21 to −28pp; open revisits −8 to
+−30pp). The path changes how much happens after the touch, not which way.
+
+**Economic hurdle:** not applicable (no forecast-specific cell). No trading experiment follows.

@@ -1,0 +1,27 @@
+GOLD 38419
+NQ 38634
+EURUSD 37466
+oos_pit GOLD Fixed OH/OL done
+oos_pit GOLD Projected H/L done
+oos_pit NQ Fixed OH/OL done
+oos_pit NQ Projected H/L done
+oos_pit EURUSD Fixed OH/OL done
+oos_pit EURUSD Projected H/L done
+insample_prod_params GOLD Fixed OH/OL done
+insample_prod_params GOLD Projected H/L done
+insample_prod_params NQ Fixed OH/OL done
+insample_prod_params NQ Projected H/L done
+insample_prod_params EURUSD Fixed OH/OL done
+insample_prod_params EURUSD Projected H/L done
+GOLD|Fixed OH/OL|p1              Dfc   -3.9 [ -8.6, +0.8] p0.107 UNDERPOWERED | Dpl   -4.6 [ -8.8, -0.5] p0.029 | Delta   +0.7 [ -3.5, +4.8] p0.740 NULL         | rep Dfc  -1.2 Delta  +1.9
+GOLD|Fixed OH/OL|p2              Dfc   -0.4 [ -5.0, +3.9] p0.809 UNDERPOWERED | Dpl   +1.5 [ -3.1, +5.5] p0.478 | Delta   -1.9 [ -6.4, +3.0] p0.404 UNDERPOWERED | rep Dfc  -3.3 Delta  -3.8
+GOLD|Projected H/L|p1            Dfc   -0.3 [ -5.7, +5.0] p0.901 UNDERPOWERED | Dpl   -5.3 [-10.5, +0.1] p0.054 | Delta   +5.0 [ -1.6,+11.3] p0.113 UNDERPOWERED | rep Dfc  +1.3 Delta  -1.2
+GOLD|Projected H/L|p2            Dfc   +7.2 [ +1.7,+12.6] p0.008 SIGNIFICANT  | Dpl   +4.7 [ -0.9,+10.3] p0.113 | Delta   +2.5 [ -4.3, +9.6] p0.465 UNDERPOWERED | rep Dfc  +6.2 Delta  +1.6
+NQ|Fixed OH/OL|p1                Dfc   -4.1 [ -8.8, +0.5] p0.091 UNDERPOWERED | Dpl   -7.1 [-11.5, -2.4] p0.002 | Delta   +3.0 [ -1.4, +7.1] p0.208 UNDERPOWERED | rep Dfc  -5.0 Delta  +1.1
+NQ|Fixed OH/OL|p2                Dfc   +0.1 [ -4.3, +4.5] p0.983 NULL         | Dpl   -3.9 [ -8.0, +0.3] p0.069 | Delta   +4.0 [ -0.8, +8.5] p0.088 UNDERPOWERED | rep Dfc  -2.1 Delta  -2.0
+NQ|Projected H/L|p1              Dfc   -5.6 [-11.6, -0.1] p0.041 SIGNIFICANT  | Dpl   -3.5 [ -9.2, +2.1] p0.240 | Delta   -2.1 [ -8.0, +3.4] p0.448 UNDERPOWERED | rep Dfc  -0.4 Delta  -2.7
+NQ|Projected H/L|p2              Dfc   +0.4 [ -5.4, +5.9] p0.890 UNDERPOWERED | Dpl   +2.7 [ -3.1, +8.7] p0.334 | Delta   -2.4 [-10.1, +4.8] p0.494 UNDERPOWERED | rep Dfc  +9.8 Delta  +1.1
+EURUSD|Fixed OH/OL|p1            Dfc  -11.6 [-16.2, -6.9] p0.000 SIGNIFICANT  | Dpl   -9.9 [-14.2, -5.7] p0.000 | Delta   -1.7 [ -5.9, +2.8] p0.464 UNDERPOWERED | rep Dfc -14.4 Delta  -0.7
+EURUSD|Fixed OH/OL|p2            Dfc   -6.2 [-11.1, -1.4] p0.009 SIGNIFICANT  | Dpl   -4.6 [ -9.1, -0.4] p0.032 | Delta   -1.6 [ -6.3, +3.2] p0.508 UNDERPOWERED | rep Dfc  -7.8 Delta  +1.1
+EURUSD|Projected H/L|p1          Dfc   -9.8 [-16.1, -4.1] p0.002 SIGNIFICANT  | Dpl   -7.1 [-12.9, -1.1] p0.019 | Delta   -2.8 [ -9.1, +3.5] p0.379 UNDERPOWERED | rep Dfc  -8.4 Delta  -0.9
+EURUSD|Projected H/L|p2          Dfc   +2.4 [ -3.8, +8.0] p0.479 UNDERPOWERED | Dpl   -2.1 [ -8.1, +4.1] p0.488 | Delta   +4.5 [ -2.9,+11.5] p0.234 UNDERPOWERED | rep Dfc  -1.1 Delta  -3.3

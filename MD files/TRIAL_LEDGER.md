@@ -10,15 +10,15 @@ Generated 2026-10-29.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **230** |
+| claims tested (validated + null + underpowered) | **231** |
 | validated | 47 |
 | null | 135 |
-| underpowered | 48 |
-| context (base rates, descriptions: not counted as tests) | 40 |
+| underpowered | 49 |
+| context (base rates, descriptions: not counted as tests) | 41 |
 | pre-registrations with no banked verdict (below) | 84 |
 
-**What the count says (Lesson 02 §05).** If none of the 230 claims were real, tests at the usual 5% size would still pass
-about **11.5** of them by luck. 47 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 231 claims were real, tests at the usual 5% size would still pass
+about **11.6** of them by luck. 47 passed, so most passes are unlikely to be luck alone, but
 **roughly 12 of the 47 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -296,6 +296,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-28 | fiscal-reaction-us-size | events | null | forge/FISCAL_EVENT_REACTION_PREREG.md |
 | 2026-10-28 | line-touch-limit-unseen | execution | null | forge/LINE_TOUCH_LIMIT_UNSEEN_PREREG.md |
 | 2026-10-28 | rule-a-pre2020 | price | null | forge/RULE_A_PRE2020_PREREG.md |
+| 2026-10-29 | day-recon-approach-path | price | underpowered | forge/DAY_RECON_APPROACH_PATH_PREREG.md |
+| 2026-10-29 | day-recon-approach-path-market | price | context | forge/DAY_RECON_APPROACH_PATH_PREREG.md |
 | 2026-10-29 | nq-continuation-execution | execution | null | forge/NQ_CONTINUATION_EXECUTION_PREREG.md |
 
 ## Pre-registered, but no banked verdict
