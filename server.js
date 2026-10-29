@@ -203,6 +203,7 @@ import { createReleasePoller as _createReleasePoller, latestObservationDate as _
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt, evidenceBrief as _evidenceBrief, lessonSafe as _lessonSafe } from './js/deskEvidence.js';
 import { stripDesk as _stripDesk } from './js/deskStrip.js';
+import { normaliseTheoryLabPath } from './js/theoryLabUrl.js';
 import { buildEodReviewPrompt } from './js/eodReview.js';
 import { scoreRelease as _scoreRelease, claimTally as _claimTally, HEADLINE_INSTRUMENT as _NEWS_HEADLINE } from './js/newsOutcome.js';
 // the equity half of the board, summarised server-side for today.html (see /api/wider-market)
@@ -711,7 +712,7 @@ const MICRO_CALLOUT_RE = /<div class="tl-callout">\s*<strong>Prefer pictures to 
 const MICRO_MODE_TOGGLE_RE = /<div class="tl-mode-toggle"[\s\S]*?<\/div>\n?/;
 const MICRO_CARD_BADGE_RE = /<span class="tl-card-micro-badge"[\s\S]*?<\/span>/g;
 const MICRO_MODE_SCRIPT_RE = /try\s*\{\s*mode\s*=\s*localStorage\.getItem\(KEY\)\s*\|\|\s*'full';\s*\}\s*catch\s*\(e\)\s*\{\}/;
-const MICRO_LESSON_PAGE_RE = /^\/theory-lab\/(?:hub\.html|start\.html|lessons\/(?!.*-micro\.html$)[^/]+\.html)$/;
+const MICRO_LESSON_PAGE_RE = /^\/theory-lab\/(?:hub\.html|index\.html|start\.html|lessons\/(?!.*-micro\.html$)[^/]+\.html)$/;
 // Prose that only makes sense when visual guides are on (start.html's reading-mode
 // explainer) sits between these markers and goes with the rest of the micro UI.
 const MICRO_PROSE_RE = /<!-- MICRO:START -->[\s\S]*?<!-- MICRO:END -->\n?/g;
@@ -38778,10 +38779,24 @@ app.get('/logout', (req, res) => {
   const zone = req.query.zone === 'education' ? 'education' : 'main';
   res.setHeader('Set-Cookie',
     `${AUTH_COOKIE_NAME}_${zone}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
-  res.redirect(zone === 'education' ? '/theory-lab/hub.html' : '/');
+  res.redirect(zone === 'education' ? '/theory-lab/' : '/');
 });
 
 app.use(requireAuth);
+
+// Theory Lab URLs, normalised BEFORE the strip/404 handlers below so that every way of asking for a
+// page reaches the same rules. /theory-lab/ is the start page (index.html), and a page asked for
+// without its .html (/theory-lab/replay, /theory-lab/lessons/action-edge-decay) is the same page:
+// express.static's `extensions: ['html']` would otherwise serve it raw, skipping the desk strip, the
+// admin-only 404s and the micro-UI strip, which are all keyed on the ".html" path.
+app.use((req, res, next) => {
+  const n = normaliseTheoryLabPath(req.path);
+  if (!n) return next();
+  const rest = req.url.slice(req.path.length);   // the query string, if any
+  if (n.redirect) return res.redirect(302, n.redirect + rest);
+  req.url = n.path + rest;
+  next();
+});
 
 // Injected into hub.html's crumb line when AUTH_ENABLED, replacing the plain
 // "Theory Lab" breadcrumb — reuses theory.css's own --text3/--border2
@@ -38791,6 +38806,11 @@ const HUB_CRUMB_WITH_LOGOUT = '<div class="tl-crumb" style="display:flex;justify
 
 // The per-request rewrites of a Theory Lab page, in one place so the desk strip below
 // and the micro/institutional/drill handler apply exactly the same ones.
+// The two pages a reader enters the lab through: the start page and the all-lessons list. Both carry
+// the desk-only practice cards / institutional filter between sentinels, and the start page carries the
+// sign-out link in its crumb.
+const THEORY_LAB_ENTRY_RE = /^\/theory-lab\/(?:hub|index)\.html$/;
+
 function educationPageTransforms(req, html, isHub) {
   const isAdmin = isEducationAdmin(req);
   const isLessonOrHub = MICRO_LESSON_PAGE_RE.test(req.path);
@@ -38826,14 +38846,18 @@ if (HIDE_DESK_EDUCATION) {
     // history), the capstone workbenches (the desk's live numbers and verdicts) and the
     // owner's "From Analysis to Action" lessons (lessons/action-*), and the replay room
     // (replays the desk's own OANDA candles through /api/ohlc-range, which is main-zone).
-    if (/^\/theory-lab\/(?:market-reading|capstone-vol|capstone-macro|replay|lessons\/action-[^/]+)\.html$/.test(req.path)) {
+    // The institutional lessons too: the handler further down that 404s them for everyone but the admin
+    // is registered after this one, which answers every page for a non-admin reader first, so without
+    // this line a shared-password reader could open them by URL.
+    if (/^\/theory-lab\/(?:market-reading|capstone-vol|capstone-macro|replay|lessons\/action-[^/]+)\.html$/.test(req.path)
+        || (HIDE_INSTITUTIONAL_METHODS && AUTH_ENABLED && INSTITUTIONAL_PAGE_RE.test(req.path))) {
       return res.status(404).type('html').send('<!doctype html><title>Not Found</title><p>Not found.</p>');
     }
     const file = path.join(__dirname, req.path);
     if (!file.startsWith(path.join(__dirname, 'theory-lab') + path.sep)) return next();
     fs.readFile(file, 'utf8', (err, html) => {
       if (err) return next();
-      res.type('html').send(educationPageTransforms(req, html, req.path === '/theory-lab/hub.html'));
+      res.type('html').send(educationPageTransforms(req, html, THEORY_LAB_ENTRY_RE.test(req.path)));
     });
   });
   // The folder's README is developer notes about this repo, not a page for readers;
@@ -38849,7 +38873,7 @@ if (HIDE_DESK_EDUCATION) {
 
 if (HIDE_MICRO_EDUCATION || HIDE_DRILL_PRACTICE || AUTH_ENABLED) {
   app.get(MICRO_LESSON_PAGE_RE, (req, res, next) => {
-    const isHub = req.path === '/theory-lab/hub.html';
+    const isHub = THEORY_LAB_ENTRY_RE.test(req.path);
     // Nothing to transform on a lesson page unless the hide feature is on. The drill
     // strip only ever touches the hub, so it is not part of this test.
     if (!isHub && !HIDE_MICRO_EDUCATION) return next();

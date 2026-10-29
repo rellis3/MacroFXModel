@@ -783,3 +783,21 @@ body.tl-tts-open #page{padding-bottom:calc(var(--tl-tts-bar-h, 90px) + 20px)}
   a{color:#000;text-decoration:none}
   h2{break-after:avoid}
 }
+
+/* Hub section navigation: a sticky bar of jump links, built by hub.html's script from the section headings
+   (so it never names a section the server stripped for this reader). */
+.tl-secnav{position:sticky;top:0;z-index:40;margin:0 -20px 20px;padding:10px 20px;background:var(--bg);border-bottom:1px solid var(--border)}
+.tl-secnav-in{display:flex;gap:8px;align-items:center;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tl-secnav-in::-webkit-scrollbar{display:none}
+.tl-secnav a{flex:none;font:600 12px 'DM Mono',monospace;padding:9px 14px;border-radius:20px;border:1px solid var(--border);color:var(--text3);text-decoration:none;min-height:20px}
+.tl-secnav a:hover{color:var(--text);border-color:var(--blue)}
+.tl-secnav a.on{background:var(--blue-bg);border-color:var(--blue-bd);color:var(--text)}
+.tl-secnav select{flex:none;font:600 12px 'DM Mono',monospace;padding:9px 10px;border-radius:20px;border:1px solid var(--border);background:var(--s1);color:var(--text2);max-width:62vw}
+.tl-cat[id]{scroll-margin-top:68px}
+/* the fixed theme toggle sits top-right: keep the bar's controls and the sign-out link clear of it on narrower screens */
+@media (max-width:1060px){.tl-secnav{padding-right:92px}.tl-crumb a[href^="/logout"]{margin-right:86px}}
+.tl-hub-notes{margin:0 0 26px}
+.tl-hub-notes .tl-callout{margin-top:0}
+.tl-progress-summary[hidden]{display:none}
+@media (prefers-reduced-motion:no-preference){html:has(#tl-secnav){scroll-behavior:smooth}}
+@media print{.tl-secnav{display:none}}

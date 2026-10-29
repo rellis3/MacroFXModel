@@ -40,6 +40,8 @@ jobs:
         run: node js/progressSync.test.mjs
       - name: Shared view (desk material sits inside DESK markers)
         run: node js/deskStrip.test.mjs
+      - name: Entry pages (start page and all-lessons list) and URL normalisation
+        run: node js/hubStructure.test.mjs && node js/theoryLabUrl.test.mjs
       - name: Lesson audio manifest (files present; stale recordings listed)
         run: node js/lessonAudio.test.mjs
       - name: Practice index (drills in practice-data.js match the lessons)
