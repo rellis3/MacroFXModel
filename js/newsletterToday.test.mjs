@@ -63,26 +63,26 @@ console.log('the day take, newspaper style');
   ok('a market past its normal day with no event due is just that story', todayOpening({ events: [{ ms: t(15, 0), ccy: 'USD', event: 'Pending Home Sales', impact: 'medium' }], nowMs, assets: [{ label: 'Gold', d1: -2.3, used: 1.4 }], changes: [] }).headline === 'Gold slides 2.3%');
   ok('no Asia feed leaves the opening as it was', !/Asia/.test(todayOpening({ events, nowMs, assets: A }).lede));
   ok('the weekly never uses the day take', !/tumble|lurch/.test(todayOpening({ events, nowMs, weekly: true, assets: A, changes: [{ key: 'us10y', d1: -17 }], asia: wild }).headline)); }
-console.log('a calendar that did not load');
-{ const o = todayOpening({ events: [], nowMs, assets: [{ label: 'Gold', d1: -0.1, used: 0.1 }] });
-  ok('an empty calendar is not reported as a quiet day', o.kicker === 'Today · Wednesday 28 October' && o.headline === 'Where the markets stand this morning' && !/quiet/i.test(o.headline + o.lede)); }
-console.log('duplicate decisions and a second story');
-{ const dup = [{ ms: t(13, 15), ccy: 'EUR', event: 'Main Refinancing Rate', impact: 'high', estimate: '2.65%' }, { ms: t(13, 15), ccy: 'EUR', event: 'Monetary Policy Statement', impact: 'high' }, { ms: t(12, 30), ccy: 'USD', event: 'Advance GDP q/q', impact: 'high' }];
-  const o = todayOpening({ events: dup, nowMs, cb: [{ ccy: 'EUR', regime: 'HAWKISH' }] });
-  ok('one bank, one moment, one row: the ECB is listed once, and counted once', o.count === 2 && o.sheet.filter(r => /ECB/.test(r.name)).length === 1 && /^Two high-impact releases/.test(o.lede) && o.sheet.find(r => /ECB/.test(r.name)).detail.startsWith('Expected 2.65%'), JSON.stringify(o.sheet));
-  ok('Main Refinancing Rate is recognised as the ECB decision', /ECB day/.test(o.kicker));
-  const two = todayOpening({ events: dup, nowMs, assets: [], changes: [{ key: 'us10y', d1: -17 }, { key: 'hy', d1: 13 }] });
+console.log('a calendar that did not load');
+{ const o = todayOpening({ events: [], nowMs, assets: [{ label: 'Gold', d1: -0.1, used: 0.1 }] });
+  ok('an empty calendar is not reported as a quiet day', o.kicker === 'Today · Wednesday 28 October' && o.headline === 'Where the markets stand this morning' && !/quiet/i.test(o.headline + o.lede)); }
+console.log('duplicate decisions and a second story');
+{ const dup = [{ ms: t(13, 15), ccy: 'EUR', event: 'Main Refinancing Rate', impact: 'high', estimate: '2.65%' }, { ms: t(13, 15), ccy: 'EUR', event: 'Monetary Policy Statement', impact: 'high' }, { ms: t(12, 30), ccy: 'USD', event: 'Advance GDP q/q', impact: 'high' }];
+  const o = todayOpening({ events: dup, nowMs, cb: [{ ccy: 'EUR', regime: 'HAWKISH' }] });
+  ok('one bank, one moment, one row: the ECB is listed once, and counted once', o.count === 2 && o.sheet.filter(r => /ECB/.test(r.name)).length === 1 && /^Two high-impact releases/.test(o.lede) && o.sheet.find(r => /ECB/.test(r.name)).detail.startsWith('Expected 2.65%'), JSON.stringify(o.sheet));
+  ok('Main Refinancing Rate is recognised as the ECB decision', /ECB day/.test(o.kicker));
+  const two = todayOpening({ events: dup, nowMs, assets: [], changes: [{ key: 'us10y', d1: -17 }, { key: 'hy', d1: 13 }] });
   ok('a second story of its own size shares the headline', two.headline === 'Yields fall 17bp and credit jitters grow, with US data and the ECB still to come', two.headline);
   ok('a second story below its own normal does not', !/credit/.test(todayOpening({ events: dup, nowMs, assets: [], changes: [{ key: 'us10y', d1: -17 }, { key: 'hy', d1: 3 }] }).headline)); }
-console.log('the human layer');
-{ const calm = Object.fromEntries(['GOLD', 'EURUSD', 'USDJPY', 'GBPUSD'].map(k => [k, { atr: 0.1, band: 'narrow', cutHigh: 0.34, netPct: 0.02, rangePct: 0.1 }]));
-  const A = [{ key: 'GOLD', label: 'Gold', d1: 0.1 }, { key: 'EURUSD', label: 'EUR/USD', d1: -0.05 }, { key: 'USDJPY', label: 'USD/JPY', d1: 0 }, { key: 'GBPUSD', label: 'GBP/USD', d1: 0.02 }];
-  const ev = [{ ms: t(12, 30), ccy: 'USD', event: 'Advance GDP q/q', impact: 'high', note: { range: 'EUR/USD range +0.14 on the day; USD/CAD range +0.26 on the day (big surprises)' } }, { ms: t(12, 30), ccy: 'USD', event: 'Core PCE Price Index m/m', impact: 'high' }, { ms: t(13, 15), ccy: 'EUR', event: 'Main Refinancing Rate', impact: 'high' }];
-  const o = todayOpening({ events: ev, nowMs, assets: [...A, { key: 'USDCAD', label: 'USD/CAD', d1: -0.4 }], changes: [{ key: 'hy', d1: -12 }], asia: calm });
-  ok('a calm Asia and easing credit make the headline, with the releases to come in plain words', o.headline === 'Asia stays calm and credit eases, with US data and the ECB still to come', o.headline);
-  ok('a calm Asia is explained with the desk's own tested result', /Asia was quiet: Gold, EUR\/USD and USD\/JPY barely moved\. In the desk's tests a quiet Asia has left more of the day for London: Gold reached its median band after 07:00 on 46% of those days, against 24% when Asia was wide\./.test(o.lede), o.lede);
-  ok('easing credit is explained as lenders getting less nervous', /Credit eased: junk-bond spreads, the extra yield lenders ask to hold risky debt, tightened 12bp\. Lenders are getting less nervous, not more\./.test(o.lede));
-  ok('the pair the release is known to move, and that has moved most, is the one waiting on it', /USD\/CAD, down 0\.4% since yesterday's close, is the pair waiting on the US growth and inflation figures at 12:30\. In the desk's records, releases like this have widened its day\./.test(o.lede), o.lede);
-  ok('with no Asia feed and nothing unusual the old wording stays', !/Asia/.test(todayOpening({ events: ev, nowMs, assets: A, changes: [] }).lede)); }
+console.log('the human layer');
+{ const calm = Object.fromEntries(['GOLD', 'EURUSD', 'USDJPY', 'GBPUSD'].map(k => [k, { atr: 0.1, band: 'narrow', cutHigh: 0.34, netPct: 0.02, rangePct: 0.1 }]));
+  const A = [{ key: 'GOLD', label: 'Gold', d1: 0.1 }, { key: 'EURUSD', label: 'EUR/USD', d1: -0.05 }, { key: 'USDJPY', label: 'USD/JPY', d1: 0 }, { key: 'GBPUSD', label: 'GBP/USD', d1: 0.02 }];
+  const ev = [{ ms: t(12, 30), ccy: 'USD', event: 'Advance GDP q/q', impact: 'high', note: { range: 'EUR/USD range +0.14 on the day; USD/CAD range +0.26 on the day (big surprises)' } }, { ms: t(12, 30), ccy: 'USD', event: 'Core PCE Price Index m/m', impact: 'high' }, { ms: t(13, 15), ccy: 'EUR', event: 'Main Refinancing Rate', impact: 'high' }];
+  const o = todayOpening({ events: ev, nowMs, assets: [...A, { key: 'USDCAD', label: 'USD/CAD', d1: -0.4 }], changes: [{ key: 'hy', d1: -12 }], asia: calm });
+  ok('a calm Asia and easing credit make the headline, with the releases to come in plain words', o.headline === 'Asia stays calm and credit eases, with US data and the ECB still to come', o.headline);
+  ok('a calm Asia is explained with the desk own tested result', /Asia was quiet: Gold, EUR\/USD and USD\/JPY barely moved\. In the desk's tests a quiet Asia has left more of the day for London: Gold reached its median band after 07:00 on 46% of those days, against 24% when Asia was wide\./.test(o.lede), o.lede);
+  ok('easing credit is explained as lenders getting less nervous', /Credit eased: junk-bond spreads, the extra yield lenders ask to hold risky debt, tightened 12bp\. Lenders are getting less nervous, not more\./.test(o.lede));
+  ok('the pair the release is known to move, and that has moved most, is the one waiting on it', /USD\/CAD, down 0\.4% since yesterday's close, is the pair waiting on the US growth and inflation figures at 12:30\. In the desk's records, releases like this have widened its day\./.test(o.lede), o.lede);
+  ok('with no Asia feed and nothing unusual the old wording stays', !/Asia/.test(todayOpening({ events: ev, nowMs, assets: A, changes: [] }).lede)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
