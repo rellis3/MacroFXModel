@@ -713,3 +713,6 @@ scratchpad/*.log
 analysis/output/oi-level-map/levels.json
 analysis/output/oi-level-map/spots.json
 analysis/output/oi-level-map/_cache/
+# day-reconstruction archive: minute paths (rebuilt from the M1 cache, sha256 in MANIFEST.json) and builder JSON lines
+analysis/output/day-reconstruction/archive/*_path.parquet
+analysis/output/day-reconstruction/archive/*.jsonl
