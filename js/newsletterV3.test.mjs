@@ -18,7 +18,7 @@ ok('nothing is invented when a feed is missing: no rows, no empty table', todayT
 console.log('the V3 issue');
 const v3 = buildNewsletterV3({ date: 'Thursday 29 October 2026', isoDate: '2026-10-29', ...input, regimeWord: 'MIXED' }), v2 = buildNewsletterV2({ date: 'Thursday 29 October 2026', isoDate: '2026-10-29', ...input, regimeWord: 'MIXED' });
 ok('V3 is tagged and opens with the Today opening, then the today pages, then the backdrop', /V3 draft/.test(v3.html) && /class="hd"/.test(v3.html) && v3.html.indexOf('The state of the levels today') > v3.html.indexOf('class="hd"') && v3.html.indexOf('Pair by pair, today') > v3.html.indexOf('The state of the levels today'));
-ok('V3 leaves out the long 20-day exhibits (the chain and the data checks stay as the backdrop)', !/Exhibit 1 · what happened|Exhibit 2 · why it might be happening|Four ways to read the same move/.test(v3.html));
+ok('V3 leaves out the reading and the four-explanations exhibits (they belong to the weekly); the chain and the data checks stay as the backdrop', !/Exhibit 2 · why it might be happening|Four ways to read the same move/.test(v3.html));
 ok('V2 is unchanged by V3: no today tables, still tagged V2', !/The state of the levels today/.test(v2.html) && /V2 draft/.test(v2.html));
 ok('the weekly never takes the V3 layout', !/The state of the levels today/.test(buildNewsletterV3({ date: 'x', isoDate: '2026-10-29', edition: 'weekly', ...input }).html));
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');

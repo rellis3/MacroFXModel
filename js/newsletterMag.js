@@ -489,7 +489,8 @@ ${c.watch ? `<div class="kick" style="margin-top:14px">The next test</div><h2 cl
     const t = c.v3t, bd = p4 ? p4.replace('Exhibit 3 · how markets are connected', 'The 20-day backdrop · how markets are connected') : '';
     const pT = `<div class="pg">${mh('Today by level')}<div class="kick">The state of the levels today</div><h2 class="sh">The backdrop: rates, credit, fear and the dollar</h2>${t.globalHtml}<h2 class="sh" style="margin-top:18px">The currencies</h2>${t.countryHtml}</div>`;
     const pP = t.pairsHtml ? `<div class="pg">${mh('Pair by pair')}<div class="kick">Pair by pair, today</div><h2 class="sh">Where each market stands this morning</h2>${t.pairsHtml}</div>` : '';
-    return `<div class="mg">${p1}${pT}${pP}${bd}${p6}${desk}${back}</div>`;
+    const pR = c.aheadHtml ? `<div class="pg">${mh('Releases to come')}<div class="kick">Still to come</div><h2 class="sh">The releases that can move the day</h2>${c.aheadHtml}</div>` : '';
+    return `<div class="mg">${p1}${pT}${pP}${p2}${pR}${bd}${p6}${desk}${back}</div>`;
   }
   return `<div class="mg">${p1}${p2}${p3}${p4}${p5}${p6}${p7}${p8}${p9}${pAhead}${pAcc}${desk}${back}</div>`;
 }
