@@ -1,6 +1,6 @@
 # What information do the forecast and its levels contain? A cross-asset research roadmap
 
-**Status: proposal for review, 2026-10-29. Nothing in it has been registered or run.**
+**Status: WITHDRAWN 2026-10-29 by the owner as broader than intended. Not an active plan.** The research continues as a controlled sequence inside the original day-reconstruction objective (milestones 1-4, then one next question at a time).
 Written after milestone 4 of `day-reconstruction` (NQ continuation, null). Inputs: the milestone-2 archive
 (`analysis/output/day-reconstruction/ARCHIVE.md`), the milestone 3 and 4 reports, and the earlier studies cited in §1.
 
