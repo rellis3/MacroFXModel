@@ -17729,7 +17729,8 @@ async function _asiaRangeToday(sym, atr) {
   let hi = -Infinity, lo = Infinity;
   for (const b of bars) { if (b.high > hi) hi = b.high; if (b.low < lo) lo = b.low; }
   if (!(hi > -Infinity) || !(lo < Infinity)) return null;
-  return { atr: (hi - lo) / atr, high: hi, low: lo };
+  const open = bars[0].open, last = bars[bars.length - 1].close;   // the session's own open and latest close: the net move and the range, in percent
+  return { atr: (hi - lo) / atr, high: hi, low: lo, netPct: open > 0 ? 100 * (last - open) / open : null, rangePct: open > 0 ? 100 * (hi - lo) / open : null };
 }
 // Which side is likelier to be TAGGED from here, given Asia. Never a close-direction
 // call: the measured quantity is "was this line reached after 07:00", and direction
@@ -26105,7 +26106,7 @@ app.get('/api/asia-today', async (req, res) => {
       let sum = 0; for (let i = bars.length - 14; i < bars.length; i++) { const b = bars[i], p = bars[i - 1]; sum += Math.max(b.high - b.low, Math.abs(b.high - p.value), Math.abs(b.low - p.value)); }
       const a = await _asiaRangeToday(sym, sum / 14).catch(() => null); if (!a) continue;
       const C = _BAND_REACH_PARAMS?.[inst]?.asiaCuts ?? null;
-      instruments[inst] = { atr: +a.atr.toFixed(2), high: a.high, low: a.low, cutLow: C?.low ?? null, cutHigh: C?.high ?? null, band: C ? (a.atr < C.low ? 'narrow' : a.atr >= C.high ? 'wide' : 'middle') : null };
+      instruments[inst] = { atr: +a.atr.toFixed(2), high: a.high, low: a.low, netPct: a.netPct == null ? null : +a.netPct.toFixed(2), rangePct: a.rangePct == null ? null : +a.rangePct.toFixed(2), cutLow: C?.low ?? null, cutHigh: C?.high ?? null, band: C ? (a.atr < C.low ? 'narrow' : a.atr >= C.high ? 'wide' : 'middle') : null };
     }
     const body = { ok: true, asOf: new Date().toISOString(), window: '00:00-06:00 London', instruments };
     _asiaTodayCache = { at: Date.now(), body };
