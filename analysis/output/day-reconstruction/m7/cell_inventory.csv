@@ -1,0 +1,151 @@
+instrument,family,rung,condition,n_ev_1.0,n_ev_0.7,n_ev_0.85,n_ev_1.15,n_ev_1.3,n_share_fc,in_family
+EURUSD,Fixed,p50,all,1503,1925,1699,1320,1190,1504,True
+EURUSD,Fixed,p50,window 00:00-08:00,347,764,499,229,165,347,True
+EURUSD,Fixed,p50,window 08:00-13:30,659,745,741,560,465,659,True
+EURUSD,Fixed,p50,window 13:30-17:00,403,339,375,435,454,404,True
+EURUSD,Fixed,p50,window 17:00-22:00,94,77,84,96,106,94,False
+EURUSD,Fixed,p50,range used bottom,501,642,567,440,397,502,True
+EURUSD,Fixed,p50,range used middle,501,641,566,440,396,501,True
+EURUSD,Fixed,p50,range used top,501,642,566,440,397,501,True
+EURUSD,Fixed,p50,P1 bottom,502,644,568,439,398,502,True
+EURUSD,Fixed,p50,P1 middle,501,643,566,441,397,501,True
+EURUSD,Fixed,p50,P1 top,500,638,565,440,395,501,True
+EURUSD,Fixed,p50,P2 bottom,502,640,566,439,398,502,True
+EURUSD,Fixed,p50,P2 middle,499,640,564,441,395,500,True
+EURUSD,Fixed,p50,P2 top,502,645,569,440,397,502,True
+EURUSD,Fixed,p75,all,756,1215,980,581,437,759,True
+EURUSD,Fixed,p75,window 00:00-08:00,49,188,101,25,15,49,False
+EURUSD,Fixed,p75,window 08:00-13:30,262,497,353,172,119,262,True
+EURUSD,Fixed,p75,window 13:30-17:00,338,433,407,285,208,339,True
+EURUSD,Fixed,p75,window 17:00-22:00,107,97,119,99,95,109,False
+EURUSD,Fixed,p75,range used bottom,252,405,327,194,146,254,True
+EURUSD,Fixed,p75,range used middle,252,405,326,193,145,252,True
+EURUSD,Fixed,p75,range used top,252,405,327,194,146,253,True
+EURUSD,Fixed,p75,P1 bottom,257,418,331,196,150,260,True
+EURUSD,Fixed,p75,P1 middle,247,394,329,196,142,247,True
+EURUSD,Fixed,p75,P1 top,252,403,320,189,145,252,True
+EURUSD,Fixed,p75,P2 bottom,252,405,325,194,148,254,True
+EURUSD,Fixed,p75,P2 middle,251,406,328,193,144,252,True
+EURUSD,Fixed,p75,P2 top,253,404,327,194,145,253,True
+EURUSD,Projected,p50,all,767,1342,1071,539,380,778,True
+EURUSD,Projected,p50,window 00:00-08:00,25,127,48,14,12,26,False
+EURUSD,Projected,p50,window 08:00-13:30,216,561,369,121,72,217,True
+EURUSD,Projected,p50,window 13:30-17:00,387,527,502,284,203,393,True
+EURUSD,Projected,p50,window 17:00-22:00,139,127,152,120,93,142,False
+EURUSD,Projected,p50,P1 bottom,209,269,274,158,115,219,True
+EURUSD,Projected,p50,P1 middle,280,525,398,191,132,280,True
+EURUSD,Projected,p50,P1 top,278,548,399,190,133,279,True
+EURUSD,Projected,p50,P2 bottom,209,269,270,158,115,219,True
+EURUSD,Projected,p50,P2 middle,278,521,401,189,132,279,True
+EURUSD,Projected,p50,P2 top,280,552,400,192,133,280,True
+EURUSD,Projected,p75,all,386,1004,634,227,125,387,True
+EURUSD,Projected,p75,window 00:00-08:00,11,41,16,5,4,11,False
+EURUSD,Projected,p75,window 08:00-13:30,74,310,140,35,18,74,False
+EURUSD,Projected,p75,window 13:30-17:00,200,476,326,112,63,200,True
+EURUSD,Projected,p75,window 17:00-22:00,101,177,152,75,40,102,False
+EURUSD,Projected,p75,P1 bottom,132,339,227,77,43,133,False
+EURUSD,Projected,p75,P1 middle,125,333,197,77,40,125,False
+EURUSD,Projected,p75,P1 top,129,332,210,73,42,129,False
+EURUSD,Projected,p75,P2 bottom,129,327,213,78,43,129,False
+EURUSD,Projected,p75,P2 middle,127,338,209,74,40,128,False
+EURUSD,Projected,p75,P2 top,130,339,212,75,42,130,False
+GOLD,Fixed,p50,all,1568,1952,1762,1391,1227,1568,True
+GOLD,Fixed,p50,window 00:00-08:00,573,1040,789,407,298,573,True
+GOLD,Fixed,p50,window 08:00-13:30,446,453,460,411,362,446,True
+GOLD,Fixed,p50,window 13:30-17:00,444,369,409,450,448,444,True
+GOLD,Fixed,p50,window 17:00-22:00,105,90,104,123,119,105,False
+GOLD,Fixed,p50,range used bottom,523,651,588,464,409,523,True
+GOLD,Fixed,p50,range used middle,522,650,587,463,409,522,True
+GOLD,Fixed,p50,range used top,523,651,587,464,409,523,True
+GOLD,Fixed,p50,P1 bottom,525,659,587,468,412,525,True
+GOLD,Fixed,p50,P1 middle,522,647,588,460,411,522,True
+GOLD,Fixed,p50,P1 top,521,646,587,463,404,521,True
+GOLD,Fixed,p50,P2 bottom,524,648,586,465,410,524,True
+GOLD,Fixed,p50,P2 middle,521,650,586,462,407,521,True
+GOLD,Fixed,p50,P2 top,523,654,590,464,410,523,True
+GOLD,Fixed,p75,all,780,1242,993,612,486,783,True
+GOLD,Fixed,p75,window 00:00-08:00,123,308,190,62,38,123,False
+GOLD,Fixed,p75,window 08:00-13:30,221,381,295,163,114,223,True
+GOLD,Fixed,p75,window 13:30-17:00,345,438,402,301,267,346,True
+GOLD,Fixed,p75,window 17:00-22:00,91,115,106,86,67,91,False
+GOLD,Fixed,p75,range used bottom,260,414,331,204,162,263,True
+GOLD,Fixed,p75,range used middle,260,414,331,204,162,260,True
+GOLD,Fixed,p75,range used top,260,414,331,204,162,260,True
+GOLD,Fixed,p75,P1 bottom,266,433,332,210,164,268,True
+GOLD,Fixed,p75,P1 middle,259,396,329,196,162,259,True
+GOLD,Fixed,p75,P1 top,255,413,332,206,160,256,True
+GOLD,Fixed,p75,P2 bottom,261,410,330,204,162,263,True
+GOLD,Fixed,p75,P2 middle,259,415,331,202,162,259,True
+GOLD,Fixed,p75,P2 top,260,417,332,206,162,261,True
+GOLD,Projected,p50,all,819,1350,1066,614,431,839,True
+GOLD,Projected,p50,window 00:00-08:00,66,269,140,42,28,68,False
+GOLD,Projected,p50,window 08:00-13:30,185,422,283,108,57,187,True
+GOLD,Projected,p50,window 13:30-17:00,447,541,516,340,267,460,True
+GOLD,Projected,p50,window 17:00-22:00,121,118,127,124,79,124,False
+GOLD,Projected,p50,P1 bottom,217,226,239,176,130,237,True
+GOLD,Projected,p50,P1 middle,300,557,411,218,149,300,True
+GOLD,Projected,p50,P1 top,302,567,416,220,152,302,True
+GOLD,Projected,p50,P2 bottom,217,225,237,176,129,237,True
+GOLD,Projected,p50,P2 middle,300,556,413,218,150,300,True
+GOLD,Projected,p50,P2 top,302,569,416,220,152,302,True
+GOLD,Projected,p75,all,428,1055,689,253,174,429,True
+GOLD,Projected,p75,window 00:00-08:00,26,106,45,13,10,27,False
+GOLD,Projected,p75,window 08:00-13:30,60,254,128,31,24,60,False
+GOLD,Projected,p75,window 13:30-17:00,259,541,376,148,98,259,True
+GOLD,Projected,p75,window 17:00-22:00,83,154,140,61,42,83,False
+GOLD,Projected,p75,P1 bottom,146,349,237,87,61,147,False
+GOLD,Projected,p75,P1 middle,141,361,220,86,56,141,False
+GOLD,Projected,p75,P1 top,141,345,232,80,57,141,False
+GOLD,Projected,p75,P2 bottom,143,344,227,85,59,144,False
+GOLD,Projected,p75,P2 middle,141,355,230,83,57,141,False
+GOLD,Projected,p75,P2 top,144,356,232,85,58,144,False
+NQ,Fixed,p50,all,1546,1961,1736,1380,1217,1547,True
+NQ,Fixed,p50,window 00:00-08:00,230,510,351,165,112,230,True
+NQ,Fixed,p50,window 08:00-13:30,360,537,450,293,217,360,True
+NQ,Fixed,p50,window 13:30-17:00,715,696,709,672,633,716,True
+NQ,Fixed,p50,window 17:00-22:00,241,218,226,250,255,241,True
+NQ,Fixed,p50,range used bottom,516,654,579,460,406,517,True
+NQ,Fixed,p50,range used middle,515,653,578,460,405,515,True
+NQ,Fixed,p50,range used top,515,654,579,460,406,515,True
+NQ,Fixed,p50,P1 bottom,517,663,579,462,410,518,True
+NQ,Fixed,p50,P1 middle,514,648,578,459,402,514,True
+NQ,Fixed,p50,P1 top,515,650,579,459,405,515,True
+NQ,Fixed,p50,P2 bottom,516,653,577,461,407,517,True
+NQ,Fixed,p50,P2 middle,514,653,579,459,404,514,True
+NQ,Fixed,p50,P2 top,516,655,580,460,406,516,True
+NQ,Fixed,p75,all,796,1241,1004,619,482,797,True
+NQ,Fixed,p75,window 00:00-08:00,35,119,72,18,15,35,False
+NQ,Fixed,p75,window 08:00-13:30,93,234,142,62,39,93,False
+NQ,Fixed,p75,window 13:30-17:00,425,643,525,312,241,426,True
+NQ,Fixed,p75,window 17:00-22:00,243,245,265,227,187,243,True
+NQ,Fixed,p75,range used bottom,266,414,335,207,161,267,True
+NQ,Fixed,p75,range used middle,265,413,334,206,160,265,True
+NQ,Fixed,p75,range used top,265,414,335,206,161,265,True
+NQ,Fixed,p75,P1 bottom,270,433,340,209,167,271,True
+NQ,Fixed,p75,P1 middle,262,394,334,203,155,262,True
+NQ,Fixed,p75,P1 top,264,414,330,207,160,264,True
+NQ,Fixed,p75,P2 bottom,266,413,335,206,163,267,True
+NQ,Fixed,p75,P2 middle,264,412,335,206,159,264,True
+NQ,Fixed,p75,P2 top,266,416,334,207,160,266,True
+NQ,Projected,p50,all,871,1377,1122,632,440,883,True
+NQ,Projected,p50,window 00:00-08:00,22,89,39,15,9,22,False
+NQ,Projected,p50,window 08:00-13:30,65,219,119,32,24,65,False
+NQ,Projected,p50,window 13:30-17:00,477,791,639,301,196,482,True
+NQ,Projected,p50,window 17:00-22:00,307,278,325,284,211,314,True
+NQ,Projected,p50,P1 bottom,230,244,248,175,127,242,True
+NQ,Projected,p50,P1 middle,319,544,438,229,156,319,True
+NQ,Projected,p50,P1 top,322,589,436,228,157,322,True
+NQ,Projected,p50,P2 bottom,227,248,242,174,127,239,True
+NQ,Projected,p50,P2 middle,322,540,439,229,156,322,True
+NQ,Projected,p50,P2 top,322,589,441,229,157,322,True
+NQ,Projected,p75,all,414,1079,679,268,165,415,True
+NQ,Projected,p75,window 00:00-08:00,9,27,16,4,4,9,False
+NQ,Projected,p75,window 08:00-13:30,22,82,37,12,8,22,False
+NQ,Projected,p75,window 13:30-17:00,173,574,315,110,64,174,True
+NQ,Projected,p75,window 17:00-22:00,210,396,311,142,89,210,True
+NQ,Projected,p75,P1 bottom,148,364,231,91,56,149,False
+NQ,Projected,p75,P1 middle,131,357,225,90,55,131,False
+NQ,Projected,p75,P1 top,135,358,223,87,54,135,False
+NQ,Projected,p75,P2 bottom,138,359,227,90,56,139,False
+NQ,Projected,p75,P2 middle,137,358,226,89,54,137,False
+NQ,Projected,p75,P2 top,139,362,226,89,55,139,False

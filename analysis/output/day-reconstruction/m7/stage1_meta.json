@@ -1,0 +1,165 @@
+{
+ "exclusions_forecast": {
+  "EURUSD|insample_prod_params|Fixed|p50|": 1133,
+  "EURUSD|insample_prod_params|Fixed|p50|b<=0": 2,
+  "EURUSD|insample_prod_params|Fixed|p50|first_minute": 1,
+  "EURUSD|insample_prod_params|Fixed|p50|float32_tie": 1,
+  "EURUSD|insample_prod_params|Fixed|p50|next_rung_same_minute": 9,
+  "EURUSD|insample_prod_params|Fixed|p75|": 547,
+  "EURUSD|insample_prod_params|Fixed|p75|b<=0": 1,
+  "EURUSD|insample_prod_params|Fixed|p75|next_rung_same_minute": 3,
+  "EURUSD|insample_prod_params|Projected|p50|": 580,
+  "EURUSD|insample_prod_params|Projected|p50|b<=0": 37,
+  "EURUSD|insample_prod_params|Projected|p50|next_rung_same_minute": 3,
+  "EURUSD|insample_prod_params|Projected|p75|": 291,
+  "EURUSD|insample_prod_params|Projected|p75|b<=0": 1,
+  "EURUSD|oos_pit|Fixed|p50|": 1504,
+  "EURUSD|oos_pit|Fixed|p50|b<=0": 1,
+  "EURUSD|oos_pit|Fixed|p50|next_rung_same_minute": 20,
+  "EURUSD|oos_pit|Fixed|p75|": 759,
+  "EURUSD|oos_pit|Fixed|p75|b<=0": 1,
+  "EURUSD|oos_pit|Fixed|p75|next_rung_same_minute": 6,
+  "EURUSD|oos_pit|Projected|p50|": 778,
+  "EURUSD|oos_pit|Projected|p50|b<=0": 61,
+  "EURUSD|oos_pit|Projected|p50|next_rung_same_minute": 10,
+  "EURUSD|oos_pit|Projected|p75|": 387,
+  "EURUSD|oos_pit|Projected|p75|b<=0": 1,
+  "EURUSD|oos_pit|Projected|p75|next_rung_same_minute": 1,
+  "GOLD|insample_prod_params|Fixed|p50|": 1108,
+  "GOLD|insample_prod_params|Fixed|p50|ambiguous_order": 2,
+  "GOLD|insample_prod_params|Fixed|p50|b<=0": 2,
+  "GOLD|insample_prod_params|Fixed|p50|next_rung_same_minute": 15,
+  "GOLD|insample_prod_params|Fixed|p75|": 552,
+  "GOLD|insample_prod_params|Fixed|p75|ambiguous_order": 2,
+  "GOLD|insample_prod_params|Fixed|p75|b<=0": 1,
+  "GOLD|insample_prod_params|Fixed|p75|next_rung_same_minute": 4,
+  "GOLD|insample_prod_params|Projected|p50|": 559,
+  "GOLD|insample_prod_params|Projected|p50|ambiguous_order": 2,
+  "GOLD|insample_prod_params|Projected|p50|b<=0": 53,
+  "GOLD|insample_prod_params|Projected|p50|next_rung_same_minute": 10,
+  "GOLD|insample_prod_params|Projected|p75|": 296,
+  "GOLD|insample_prod_params|Projected|p75|ambiguous_order": 2,
+  "GOLD|insample_prod_params|Projected|p75|b<=0": 2,
+  "GOLD|insample_prod_params|Projected|p75|next_rung_same_minute": 1,
+  "GOLD|oos_pit|Fixed|p50|": 1568,
+  "GOLD|oos_pit|Fixed|p50|b<=0": 2,
+  "GOLD|oos_pit|Fixed|p50|next_rung_same_minute": 8,
+  "GOLD|oos_pit|Fixed|p75|": 783,
+  "GOLD|oos_pit|Fixed|p75|b<=0": 4,
+  "GOLD|oos_pit|Fixed|p75|next_rung_same_minute": 5,
+  "GOLD|oos_pit|Projected|p50|": 839,
+  "GOLD|oos_pit|Projected|p50|b<=0": 67,
+  "GOLD|oos_pit|Projected|p50|next_rung_same_minute": 6,
+  "GOLD|oos_pit|Projected|p75|": 429,
+  "GOLD|oos_pit|Projected|p75|b<=0": 1,
+  "NQ|insample_prod_params|Fixed|p50|": 1123,
+  "NQ|insample_prod_params|Fixed|p50|b<=0": 1,
+  "NQ|insample_prod_params|Fixed|p50|next_rung_same_minute": 3,
+  "NQ|insample_prod_params|Fixed|p75|": 547,
+  "NQ|insample_prod_params|Projected|p50|": 573,
+  "NQ|insample_prod_params|Projected|p50|b<=0": 66,
+  "NQ|insample_prod_params|Projected|p75|": 275,
+  "NQ|oos_pit|Fixed|p50|": 1547,
+  "NQ|oos_pit|Fixed|p50|b<=0": 1,
+  "NQ|oos_pit|Fixed|p50|next_rung_same_minute": 11,
+  "NQ|oos_pit|Fixed|p75|": 797,
+  "NQ|oos_pit|Fixed|p75|next_rung_same_minute": 2,
+  "NQ|oos_pit|Projected|p50|": 883,
+  "NQ|oos_pit|Projected|p50|b<=0": 85,
+  "NQ|oos_pit|Projected|p50|next_rung_same_minute": 4,
+  "NQ|oos_pit|Projected|p75|": 415,
+  "NQ|oos_pit|Projected|p75|next_rung_same_minute": 1
+ },
+ "d1_excluded_forecast": {
+  "EURUSD|insample_prod_params|Fixed|p50": 3,
+  "EURUSD|insample_prod_params|Fixed|p75": 1,
+  "EURUSD|insample_prod_params|Projected|p50": 5,
+  "EURUSD|insample_prod_params|Projected|p75": 0,
+  "EURUSD|oos_pit|Fixed|p50": 1,
+  "EURUSD|oos_pit|Fixed|p75": 3,
+  "EURUSD|oos_pit|Projected|p50": 11,
+  "EURUSD|oos_pit|Projected|p75": 1,
+  "GOLD|insample_prod_params|Fixed|p50": 2,
+  "GOLD|insample_prod_params|Fixed|p75": 3,
+  "GOLD|insample_prod_params|Projected|p50": 9,
+  "GOLD|insample_prod_params|Projected|p75": 0,
+  "GOLD|oos_pit|Fixed|p50": 0,
+  "GOLD|oos_pit|Fixed|p75": 3,
+  "GOLD|oos_pit|Projected|p50": 20,
+  "GOLD|oos_pit|Projected|p75": 1,
+  "NQ|insample_prod_params|Fixed|p50": 0,
+  "NQ|insample_prod_params|Fixed|p75": 1,
+  "NQ|insample_prod_params|Projected|p50": 13,
+  "NQ|insample_prod_params|Projected|p75": 0,
+  "NQ|oos_pit|Fixed|p50": 1,
+  "NQ|oos_pit|Fixed|p75": 1,
+  "NQ|oos_pit|Projected|p50": 12,
+  "NQ|oos_pit|Projected|p75": 1
+ },
+ "a_b_median_forecast_pit": {
+  "EURUSD|Fixed|p50": [
+   0.479,
+   0.624
+  ],
+  "EURUSD|Fixed|p75": [
+   0.542,
+   0.486
+  ],
+  "EURUSD|Projected|p50": [
+   0.442,
+   1.108
+  ],
+  "EURUSD|Projected|p75": [
+   0.454,
+   0.444
+  ],
+  "GOLD|Fixed|p50": [
+   0.476,
+   0.597
+  ],
+  "GOLD|Fixed|p75": [
+   0.585,
+   0.478
+  ],
+  "GOLD|Projected|p50": [
+   0.45,
+   1.082
+  ],
+  "GOLD|Projected|p75": [
+   0.621,
+   0.452
+  ],
+  "NQ|Fixed|p50": [
+   0.478,
+   0.592
+  ],
+  "NQ|Fixed|p75": [
+   0.615,
+   0.475
+  ],
+  "NQ|Projected|p50": [
+   0.491,
+   1.044
+  ],
+  "NQ|Projected|p75": [
+   0.633,
+   0.493
+  ]
+ },
+ "touches_per_session_ev_pit": {
+  "EURUSD|Fixed|p50": 0.97,
+  "EURUSD|Fixed|p75": 0.488,
+  "EURUSD|Projected|p50": 0.495,
+  "EURUSD|Projected|p75": 0.249,
+  "GOLD|Fixed|p50": 1.012,
+  "GOLD|Fixed|p75": 0.503,
+  "GOLD|Projected|p50": 0.528,
+  "GOLD|Projected|p75": 0.276,
+  "NQ|Fixed|p50": 0.997,
+  "NQ|Fixed|p75": 0.514,
+  "NQ|Projected|p50": 0.562,
+  "NQ|Projected|p75": 0.267
+ },
+ "t2_cells": 150,
+ "t2_cells_in_family": 110
+}
