@@ -19,7 +19,8 @@
   .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:18px; }
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
   label { display:block; font-size:12px; color:var(--mut); margin-bottom:4px; }
-  select { width:100%; background:#0d1117; border:1px solid var(--line); color:var(--tx); border-radius:6px; padding:7px 9px; font-size:13px; }
+  select, input[type=number] { width:100%; background:#0d1117; border:1px solid var(--line); color:var(--tx); border-radius:6px; padding:7px 9px; font-size:13px; }
+  select:disabled, input:disabled { opacity:.45; }
   button { background:var(--acc); color:#04121f; border:0; border-radius:6px; padding:8px 14px; font-weight:600; cursor:pointer; font-size:13px; }
   button.ghost { background:transparent; border:1px solid var(--line); color:var(--tx); font-weight:500; }
   button.ghost:hover { border-color:var(--acc); }
@@ -69,14 +70,22 @@
   <div class="panel">
     <h2>Costs</h2>
     <div class="grid">
+      <div><label>NAS100 traded as</label><select id="venNq"></select></div>
       <div><label>NAS100 financing</label><select id="finNq"></select></div>
       <div><label>NAS100 spread</label><select id="sprNq"></select></div>
+      <div><label>NAS100 futures commission ($ per contract, round trip)</label><input id="comNq" type="number" min="0" step="0.1"></div>
+      <div><label>Gold traded as</label><select id="venGold"></select></div>
       <div><label>Gold financing</label><select id="finGold"></select></div>
       <div><label>Gold spread</label><select id="sprGold"></select></div>
+      <div><label>Gold futures commission ($ per contract, round trip)</label><input id="comGold" type="number" min="0" step="0.1"></div>
     </div>
     <p class="note">"Your account" financing is measured, not modelled: Account A = the Gold / Regime V1 / Backtest / Range Line / Fib Atlas / Motif bots' account,
       Account B = the OI / Volatility bots' account (US100 only measured on B). Rates before 2026-05 are back-filled: B as Fed funds + the measured markup, A as a constant rate.
       "Your fills" is the round trip your bots actually paid against OANDA's mid (a bracket: it includes their entry timing, so it isn't a clean spread). Source: <code>analysis/output/cost-verification/RESULTS.md</code>.</p>
+    <p class="note"><b>Futures</b> re-price the same trades (same entry and exit minutes) on CME futures: NQ / MNQ for NAS100, GC / MGC for gold. There is no swap: the financing is already inside the futures price, so it shows up in the gross return.
+      Costs are 1 tick a side (half the spread plus some slippage) and the commission above, both turned into % of the position at that trade's price. Micros (MNQ) only started in May 2019; earlier trades are priced as if they existed.
+      NQ prices come from your 1-minute file to 2026-04-21 (complete), then NinjaTrader. Gold comes from NinjaTrader, whose download has holes: about a quarter of gold trades have no futures price and are left out, never filled in from CFD prices.
+      Source: <code>analysis/output/overnight-hold-futures/RESULTS.md</code>.</p>
   </div>
 
   <div id="out"><p class="note">Loading trades…</p></div>
@@ -86,7 +95,7 @@
     <h2>Prop-firm toolkit files <span class="tag">3 files</span></h2>
     <p class="sub" style="margin-bottom:10px">C.OG's format: <code>Date,Return %,MAE %</code> (entry date, net % return, worst point ≤ 0, two decimals).
       Upload NAS100 and Gold separately, then Combined (both at half size, one portfolio).
-      They use the cost settings at the top of the page, which start on your real costs: swaps as your accounts charge them, plus the OANDA bid/ask spread at every fill. Commission is zero on your accounts.
+      They use the settings at the top of the page, which start on your real CFD costs: swaps as your accounts charge them, plus the OANDA bid/ask spread at every fill (commission is zero on your accounts). Switch a market to futures and its files use the futures trades instead.
       Set the costs to "None" first if you want a gross run to compare.</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="ghost" data-x="nq">NAS100</button>
@@ -99,7 +108,7 @@
 
   <div class="panel" id="journal">
     <h2>Journal file <span class="tag">colez-import-template-standard</span></h2>
-    <p class="sub" style="margin-bottom:10px">One file, NAS100 and Gold together, every cost included (same settings as above), in the import template's 13 columns.
+    <p class="sub" style="margin-bottom:10px">One file, NAS100 and Gold together, every cost included (same settings as above, CFD or futures), in the import template's 13 columns.
       Each market is half the account, as in the combined toolkit file. Times are UK (20:00 entry, 14:30 exit next day).</p>
     <div class="grid">
       <div><label>Compounding</label><select id="jComp">
@@ -132,15 +141,32 @@ const pc = v => v == null ? '—' : `${(v * 100).toFixed(1)}%`;
 const LABEL = { nq: 'NAS100', gold: 'Gold (XAUUSD)', combined: 'Combined (half size each)' };
 const FIN = { none: 'None (gross)', oanda: 'Our model (OANDA, banked)', A: 'Your account A (measured)', B: 'Your account B (measured)' };
 const SPR = { none: 'None (gross)', oanda: 'OANDA bid/ask per trade (banked)', fills: 'Your fills (bracket)' };
-let D = null, POST = null;
+const VEN = { cfd: 'CFD (your broker)', micro: 'Futures, micro (MNQ / MGC)', full: 'Futures, full size (NQ / GC)' };
+let D = null, POST = null, FUT = null;
 
 // ── cost selection → per-trade net returns ────────────────────────────────────
-function series(key, fin, spr) {
+// Futures: the same trades priced on CME futures; trades with no futures price are left out (gold: NinjaTrader holes).
+function futCost(key, venue, price) {
+  const S = FUT.spec[key];
+  return 2 * S.tick / price * 100 + (+$(key === 'nq' ? 'comNq' : 'comGold').value || 0) / (S[venue].mult * price) * 100;
+}
+function futRows(key, F, I, gross, venue) {
+  const rows = [];
+  F.gross.forEach((g, i) => {
+    if (g == null) return;
+    const sc = gross ? 0 : futCost(key, venue, I.price[i]);
+    rows.push({ d: I.entry[i], x: I.exit[i], h: I.hold_h[i], r: g - sc, m: F.mae[i] - sc, g, mg: F.mae[i], mf: F.mfe[i], fc: 0, sc,
+                e: I.entry_epoch[i], xe: I.exit_epoch[i], p: I.price[i], xp: I.exit_price[i] });
+  });
+  return rows;
+}
+function series(key, fin, spr, venue = sel(key).venue) {
   const I = D.instruments[key];
+  if (venue !== 'cfd') return futRows(key, FUT.instruments[key], I, fin === 'none' && spr === 'none', venue);
   const f = fin === 'none' ? null : I.fin[fin];
   return I.gross.map((g, i) => {
     const fc = f ? f[i] : 0, sc = spr === 'oanda' ? I.spread[i] : spr === 'fills' ? D.fill_round_trip_pct[key] : 0, cost = fc + sc;
-    return { d: I.entry[i], x: I.exit[i], h: I.hold_h[i], r: g - cost, m: I.mae[i] - cost, g, mg: I.mae[i], fc, sc,
+    return { d: I.entry[i], x: I.exit[i], h: I.hold_h[i], r: g - cost, m: I.mae[i] - cost, g, mg: I.mae[i], mf: I.mfe[i], fc, sc,
              e: I.entry_epoch[i], xe: I.exit_epoch[i], p: I.price[i], xp: I.exit_price[i] };
   });
 }
@@ -148,7 +174,7 @@ function combined(a, b) {
   const rows = [...a, ...b].map(t => ({ ...t, r: t.r / 2, m: t.m / 2, g: t.g / 2 }));
   return rows.sort((p, q) => p.d < q.d ? -1 : p.d > q.d ? 1 : 0);
 }
-const sel = key => ({ fin: $(key === 'nq' ? 'finNq' : 'finGold').value, spr: $(key === 'nq' ? 'sprNq' : 'sprGold').value });
+const sel = key => { const n = key === 'nq' ? 'Nq' : 'Gold'; return { fin: $('fin' + n).value, spr: $('spr' + n).value, venue: $('ven' + n).value }; };
 
 // ── metrics (compounded, as the banked study) ─────────────────────────────────
 const yearsOf = (d0, d1) => (Date.parse(d1) - Date.parse(d0)) / 864e5 / 365.25;
@@ -219,7 +245,7 @@ function chart(eqA, eqB, dates, label) {
   </svg>`;
 }
 
-function table(net, gross, bh, cfd, byDay) {
+function table(net, gross, bh, cfd, byDay, cfdLabel = 'Buy &amp; hold CFD, net (banked)') {
   const ddCell = m => `${sp(m.dd.mdd)} / ${fmt(m.dd.dur, 0)}d${m.dd.ongoing ? ' (ongoing)' : ''}`;
   const rows = [
     ['Total return %', sp(net.total), sp(gross.total), sp(bh.total), cfd ? sp(cfd.total) : '—'],
@@ -237,7 +263,7 @@ function table(net, gross, bh, cfd, byDay) {
     ['Mean per trade % (t, iid)', `${sp(net.mean, 4)} (${fmt(net.t)})`, `${sp(gross.mean, 4)} (${fmt(gross.t)})`, '—', '—'],
     [byDay ? 'Trading days (both legs summed)' : 'Total trades', fmt(net.n, 0), fmt(gross.n, 0), '—', '—'],
   ];
-  return `<div class="tbl"><table><thead><tr><th>Metric</th><th>Overnight, selected costs</th><th>Overnight, gross</th><th>Buy &amp; hold, price</th><th>Buy &amp; hold CFD, net (banked)</th></tr></thead>
+  return `<div class="tbl"><table><thead><tr><th>Metric</th><th>Overnight, selected costs</th><th>Overnight, gross</th><th>Buy &amp; hold, price</th><th>${cfdLabel}</th></tr></thead>
     <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
@@ -256,7 +282,7 @@ function weekdays(rows, label) {
 }
 
 // bh = { start, end, rets }: rets[i] is the buy & hold move from start[i] to end[i] (consecutive 20:00 UK entry prices).
-function panel(key, rows, grossRows, bh0, cfd) {
+function panel(key, rows, grossRows, bh0, cfd, cfdLabel) {
   const years = yearsOf(rows[0].d, rows.at(-1).x);
   const dates = rows.map(t => t.x);
   const byDay = key === 'combined';
@@ -277,7 +303,8 @@ function panel(key, rows, grossRows, bh0, cfd) {
       <span>CAGR per unit of exposure <b>${fmt(net.cagr / exposure, 1)}%</b> (buy &amp; hold ${fmt(bh.cagr, 1)}% at 100%)</span>
       <span>Correlation to buy &amp; hold <b>${fmt(c)}</b> <span class="note" style="display:inline">(gross overnight vs the 20:00→20:00 move that contains it)</span></span>
     </div>
-    ${table(net, gross, bh, cfd, byDay)}
+    ${missingNote(key, rows)}
+    ${table(net, gross, bh, cfd, byDay, cfdLabel)}
     ${byDay ? '' : `<div class="chart-label">${LABEL[key]}: daily candles, every trade marked on its entry night (green = win, red = loss, at the selected costs). Click a marker to see that trade's M1 path. Scroll to zoom, drag to pan.</div>
     <div class="price-chart" id="pc-${key}"></div>`}
     ${chart(net.eq, bh.eq, dDates, LABEL[key])}
@@ -286,11 +313,29 @@ function panel(key, rows, grossRows, bh0, cfd) {
   </div>`;
 }
 
+function missingNote(key, rows) {
+  const ks = key === 'combined' ? ['nq', 'gold'] : [key];
+  const gaps = ks.filter(k => sel(k).venue !== 'cfd').map(k => [k, FUT.instruments[k].gross.filter(g => g != null).length, D.instruments[k].gross.length]).filter(([, a, b]) => a < b);
+  return gaps.length ? `<p class="note" style="color:var(--amber)">Futures prices missing for some trades: ${gaps.map(([k, a, b]) => `${LABEL[k]} ${a} of ${b} trades priced`).join(', ')}.
+    The rest are left out (holes in the NinjaTrader download), so these numbers cover fewer trades than the CFD ones.</p>` : '';
+}
+// Buy & hold on futures: the rolled ratio-adjusted series, paying ticks + commission at entry, exit and every roll.
+function futBH(key) {
+  const B = FUT.instruments[key].bh, v = sel(key).venue, I = D.instruments[key];
+  const pAvg = I.price.reduce((a, b) => a + b, 0) / I.price.length, rt = futCost(key, v, pAvg) / 100;
+  const total = ((1 + B.gross_total / 100) * (1 - rt) ** (B.rolls + 1) - 1) * 100;
+  return { total, cagr: ((1 + total / 100) ** (1 / B.years) - 1) * 100 };
+}
 function render() {
   const s = { nq: sel('nq'), gold: sel('gold') };
   const R = { nq: series('nq', s.nq.fin, s.nq.spr), gold: series('gold', s.gold.fin, s.gold.spr) };
   const G = { nq: series('nq', 'none', 'none'), gold: series('gold', 'none', 'none') };
-  const cfd = k => ({ total: D.instruments[k].bh_cfd_net_total, cagr: D.instruments[k].bh_cfd_net_cagr });
+  for (const [k, n] of [['nq', 'Nq'], ['gold', 'Gold']]) {   // futures have no swap or CFD spread; CFD has no commission
+    const fut = s[k].venue !== 'cfd';
+    $('fin' + n).disabled = fut; $('spr' + n).disabled = fut; $('com' + n).disabled = !fut;
+  }
+  const cfd = k => sel(k).venue !== 'cfd' ? futBH(k) : ({ total: D.instruments[k].bh_cfd_net_total, cagr: D.instruments[k].bh_cfd_net_cagr });
+  const cfdLabel = k => sel(k).venue !== 'cfd' ? `Buy &amp; hold futures, rolled, net (${sel(k).venue === 'micro' ? FUT.spec[k].micro.name : FUT.spec[k].full.name})` : 'Buy &amp; hold CFD, net (banked)';
   const bhOf = (dates, price) => ({ start: dates.slice(0, -1), end: dates.slice(1), rets: dates.slice(1).map((d, i) => (price(d) / price(dates[i]) - 1) * 100) });
   // Combined buy & hold: 50/50, rebalanced at each common entry date.
   const pm = k => new Map(D.instruments[k].entry.map((d, i) => [d, D.instruments[k].price[i]]));
@@ -298,8 +343,8 @@ function render() {
   const bhC = bhOf(common, d => 1), cr = common.slice(1).map((d, i) => ((pn.get(d) / pn.get(common[i]) - 1) + (pg.get(d) / pg.get(common[i]) - 1)) / 2 * 100);
   bhC.rets = cr;
   $('out').innerHTML =
-    panel('nq', R.nq, G.nq, bhOf(D.instruments.nq.entry, d => pn.get(d)), cfd('nq')) +
-    panel('gold', R.gold, G.gold, bhOf(D.instruments.gold.entry, d => pg.get(d)), cfd('gold')) +
+    panel('nq', R.nq, G.nq, bhOf(D.instruments.nq.entry, d => pn.get(d)), cfd('nq'), cfdLabel('nq')) +
+    panel('gold', R.gold, G.gold, bhOf(D.instruments.gold.entry, d => pg.get(d)), cfd('gold'), cfdLabel('gold')) +
     panel('combined', combined(R.nq, R.gold), combined(G.nq, G.gold), bhC, null) +
     postPanel();
   priceChart('nq', R.nq); priceChart('gold', R.gold);
@@ -309,7 +354,8 @@ function render() {
 // Built by scripts/overnight-hold-toolkit/build_post_cutoff.py with the same rule (it reproduces the banked
 // May–August trades exactly). The "expected range" uses the backtest's own net mean and spread per trade.
 function postRows(key, fin, spr) {
-  const P = POST.instruments[key], f = fin === 'none' ? null : P.fin[fin];
+  const P = POST.instruments[key], f = fin === 'none' ? null : P.fin[fin], v = sel(key).venue;
+  if (v !== 'cfd') return futRows(key, FUT.post[key], P, false, v);
   return P.gross.map((g, i) => {
     const fc = f ? f[i] : 0, sc = spr === 'oanda' ? P.spread[i] : spr === 'fills' ? D.fill_round_trip_pct[key] : 0;
     return { d: P.entry[i], x: P.exit[i], g, r: g - fc - sc, m: P.mae[i] - fc - sc, mg: P.mae[i], mf: P.mfe[i], fc, sc };
@@ -341,6 +387,7 @@ function postPanel() {
       About 30 trades can't confirm or reject anything. This is a check that nothing broke after the backtest window, not a verdict.</p>
     <div class="tbl"><table><thead><tr><th>Market</th><th>Trades</th><th>Gross %</th><th>Net %</th><th>Buy &amp; hold, price %</th><th>Win rate</th><th>Sum of net vs backtest's expected (95% range)</th><th>Consistent?</th></tr></thead>
     <tbody>${books.map(tr).join('')}</tbody></table></div>
+    ${['nq', 'gold'].some(k => sel(k).venue !== 'cfd') ? `<p class="note" style="color:var(--amber)">Futures rows: NinjaTrader data ends 2026-10-08, so only the trades it covers are shown (${['nq', 'gold'].filter(k => sel(k).venue !== 'cfd').map(k => `${LABEL[k]} ${FUT.post[k].gross.filter(g => g != null).length} of ${POST.instruments[k].gross.length}`).join(', ')}).</p>` : ''}
     <p class="note">"Expected" is the backtest's own net mean per trade × the number of trades. The range is what that many trades would normally scatter across if nothing changed.
       "Inside" means this period looks like the backtest; it says nothing about whether the edge is real.</p>
     ${books.map(list).join('')}
@@ -470,40 +517,42 @@ function download(name, text) {
   a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' }));
   a.download = name; document.body.appendChild(a); a.click(); a.remove();
 }
-const costTag = (fin, spr) => fin === 'none' && spr === 'none' ? 'gross' : `net_fin-${fin}_spread-${spr}`;
+const costTag = (fin, spr, venue = 'cfd') => venue !== 'cfd' ? `futures-${venue}` : fin === 'none' && spr === 'none' ? 'gross' : `net_fin-${fin}_spread-${spr}`;
 function fileFor(book, cfg) {
   if (book === 'combined') {
     const rows = combined(series('nq', cfg.nq.fin, cfg.nq.spr), series('gold', cfg.gold.fin, cfg.gold.spr));
-    const tag = cfg.nq.fin === 'none' && cfg.gold.fin === 'none' && cfg.nq.spr === 'none' && cfg.gold.spr === 'none' ? 'gross'
-      : `net_nq-${cfg.nq.fin}-${cfg.nq.spr}_gold-${cfg.gold.fin}-${cfg.gold.spr}`;
+    const tag = `nq-${costTag(cfg.nq.fin, cfg.nq.spr, cfg.nq.venue)}_gold-${costTag(cfg.gold.fin, cfg.gold.spr, cfg.gold.venue)}`;
     return [`overnight_hold_combined_${tag}.csv`, csv(rows)];
   }
   const c = cfg[book];
-  return [`overnight_hold_${book}_${costTag(c.fin, c.spr)}.csv`, csv(series(book, c.fin, c.spr))];
+  return [`overnight_hold_${book}_${costTag(c.fin, c.spr, c.venue)}.csv`, csv(series(book, c.fin, c.spr, c.venue))];
 }
 const costLine = () => ['nq', 'gold'].map(k => { const c = sel(k);
-  return `${LABEL[k]}: financing ${FIN[c.fin]}, spread ${SPR[c.spr]}`; }).join(' · ');
+  return c.venue !== 'cfd' ? `${LABEL[k]}: ${VEN[c.venue]}, 1 tick a side + $${$(k === 'nq' ? 'comNq' : 'comGold').value} commission per round trip`
+    : `${LABEL[k]}: financing ${FIN[c.fin]}, spread ${SPR[c.spr]}`; }).join(' · ');
 function exportsGrid() {
   const go = book => download(...fileFor(book, { nq: sel('nq'), gold: sel('gold') }));
   document.querySelectorAll('[data-x]').forEach(btn => btn.onclick = () => go(btn.dataset.x));
   $('xAll3').onclick = async () => { for (const b of ['nq', 'gold', 'combined']) { go(b); await new Promise(r => setTimeout(r, 350)); } };
   const note = () => { $('xCostNote').textContent = 'Current costs: ' + costLine(); };
-  ['finNq', 'sprNq', 'finGold', 'sprGold'].forEach(id => $(id).addEventListener('change', note));
+  ['finNq', 'sprNq', 'finGold', 'sprGold', 'venNq', 'venGold', 'comNq', 'comGold'].forEach(id => $(id).addEventListener('change', note));
   note();
 }
 
 // ── journal import export (colez-import-template-standard.csv) ────────────────
 const SYM = { nq: 'NAS100', gold: 'XAUUSD' };
+const symOf = key => { const v = sel(key).venue; return v === 'cfd' ? SYM[key] : FUT.spec[key][v].name; };
 const q = v => /[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v;
 const three = v => { const s = v.toFixed(3); return s === '-0.000' ? '0.000' : s; };
 function journalRows(key) {
-  const { fin, spr } = sel(key), I = D.instruments[key];
-  const finRows = fin === 'none' ? null : I.fin[fin], med = finRows ? [...finRows].sort((a, b) => a - b)[finRows.length >> 1] : 0;
+  const { fin, spr, venue } = sel(key), I = D.instruments[key];
+  const finRows = fin === 'none' || venue !== 'cfd' ? null : I.fin[fin], med = finRows ? [...finRows].sort((a, b) => a - b)[finRows.length >> 1] : 0;
   return series(key, fin, spr).map((t, i) => {
     const cost = t.g - t.r, wd = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date(t.d + 'T12:00:00Z').getUTCDay()];
     const tags = [wd, finRows && t.fc > 2 * med ? 'triple-swap' : ''].filter(Boolean).join(' ');
-    const notes = `${fin === 'none' && spr === 'none' ? 'gross' : `net: financing ${FIN[fin]}, spread ${SPR[spr]}`}; gross ${three(t.g)}, spread ${three(t.sc)}, financing ${three(t.fc)} (% of position)`;
-    return { d: t.d, sym: SYM[key], x: t.x, r: t.r, mae: Math.abs(Math.min(t.mg, 0)) + cost, mfe: Math.max(I.mfe[i] - cost, 0), tags, notes };
+    const notes = venue !== 'cfd' ? `net: ${VEN[venue]}; gross ${three(t.g)}, ticks + commission ${three(t.sc)} (% of position)`
+      : `${fin === 'none' && spr === 'none' ? 'gross' : `net: financing ${FIN[fin]}, spread ${SPR[spr]}`}; gross ${three(t.g)}, spread ${three(t.sc)}, financing ${three(t.fc)} (% of position)`;
+    return { d: t.d, sym: symOf(key), x: t.x, r: t.r, mae: Math.abs(Math.min(t.mg, 0)) + cost, mfe: Math.max(t.mf - cost, 0), tags, notes };
   });
 }
 // Each market is half the account. Compounded: sized from the account at entry, so % of account = 0.5 × % move.
@@ -542,7 +591,7 @@ async function toolkit() {
   $('toolkit').innerHTML = `<h2>Toolkit replica: FTMO 2-step <span class="tag">our copy of the method</span></h2>
     <p class="sub" style="margin-bottom:6px">The real toolkit is password-protected, so this is our replica of the method its page describes. Rules: +10% then +5%, 10% static max loss, 5% daily loss on intraday equity (MAE), 4 minimum days, no time limit (stopped at 500 days).
       Method: ${T.paths.toLocaleString()} block-bootstrap paths (block ${T.block}), seed ${T.seed}. The <b>zero-edge copy</b> is the same trades with their mean removed, so it shows how often luck alone gets funded.
-      These tables were computed in the study with our OANDA-model costs. They do <b>not</b> change with the selectors above. Upload the exports to the real toolkit to check them.</p>
+      These tables were computed in the study with our OANDA-model CFD costs. They do <b>not</b> change with the selectors above (including futures). Upload the exports to the real toolkit to check them.</p>
     ${['nq', 'gold', 'combined'].map(book).join('')}
     <details><summary>Measured account costs: FTMO funded rate after the cost check</summary><div class="tbl"><table style="margin-top:8px"><thead><tr><th>Book</th><th>Costs</th><th>Net CAGR %</th><th>Funded 0.5×</th><th>1×</th><th>2×</th></tr></thead><tbody>${rs}</tbody></table></div></details>
     <details><summary>Actual history, no resampling: a fresh attempt every 21 trades (post-hoc check)</summary><div class="tbl"><table style="margin-top:8px"><thead><tr><th>Book / size</th><th>Funded</th><th>Failed</th><th>Unfinished</th><th>Funded of finished</th><th>Median days</th></tr></thead><tbody>
@@ -556,6 +605,14 @@ async function toolkit() {
 function fill(id, opts, def) { $(id).innerHTML = Object.entries(opts).map(([v, l]) => `<option value="${v}"${v === def ? ' selected' : ''}>${l}</option>`).join(''); $(id).onchange = render; }
 D = await fetch('analysis/output/overnight-hold-toolkit/page_trades.json').then(r => r.json());
 POST = await fetch('analysis/output/overnight-hold-toolkit/post_cutoff.json').then(r => r.ok ? r.json() : null).catch(() => null);
+FUT = await fetch('analysis/output/overnight-hold-futures/futures_trades.json').then(r => r.ok ? r.json() : null).catch(() => null);
+const COMM = { micro: k => FUT.spec[k].micro.comm, full: k => FUT.spec[k].full.comm };
+for (const [k, n] of [['nq', 'Nq'], ['gold', 'Gold']]) {
+  fill('ven' + n, FUT ? VEN : { cfd: VEN.cfd }, 'cfd');
+  $('com' + n).value = FUT ? FUT.spec[k].micro.comm : 0;
+  $('ven' + n).onchange = () => { const v = $('ven' + n).value; if (v !== 'cfd') $('com' + n).value = COMM[v](k); render(); };
+  $('com' + n).onchange = render;
+}
 fill('finNq', { none: FIN.none, oanda: FIN.oanda, B: FIN.B }, 'B');
 fill('sprNq', SPR, 'oanda');
 fill('finGold', FIN, 'A');
