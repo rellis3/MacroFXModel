@@ -26,10 +26,10 @@ console.log('quiet and odd days');
   ok('with nothing high-impact today it says so and names what is next, never an invented story', q.headline === 'A quiet day on the calendar, then the ECB on Thursday' && /Nothing high-impact in the window\. Next: ECB, Thursday 09:00 UK time/.test(q.watch));
   ok('with no earlier issue, what changed falls back to how much the busiest market has moved against its own normal day', /Nothing has moved much: the busiest market, Nasdaq, has used 55% of a normal day's range\./.test(q.changed));
   ok('two or more warning flags is said plainly', /^Mixed regime\. 2 of the 5 measured warning flags are on\.$/.test(q.regime));
-  const big = todayOpening({ events: [], nowMs, assets: [{ label: 'Gold', d1: -2.3, used: 1.4 }], since: { first: true } });
+  const big = todayOpening({ events: [{ ms: t(15, 0), ccy: 'USD', event: 'Pending Home Sales', impact: 'medium' }], nowMs, assets: [{ label: 'Gold', d1: -2.3, used: 1.4 }], since: { first: true } });
   ok('a market that has used most of its day is named with its move', /Gold has moved −2\.30%, 140% of a normal day's range\./.test(big.changed));
   ok('no events and a market past its normal day makes that move the headline', big.headline === 'Gold slides 2.3%');
-  ok('no events and nothing unusual gives a calm calendar line', todayOpening({ events: [], nowMs, assets: [{ label: 'Gold', d1: -0.1, used: 0.1 }], since: { first: true } }).headline === 'A quiet calendar: today is about the tape, not the releases');
+  ok('no events and nothing unusual gives a calm calendar line', todayOpening({ events: [{ ms: t(15, 0), ccy: 'USD', event: 'Pending Home Sales', impact: 'medium' }], nowMs, assets: [{ label: 'Gold', d1: -0.1, used: 0.1 }], since: { first: true } }).headline === 'A quiet calendar: today is about the tape, not the releases');
   const solo = todayOpening({ events: [{ ms: t(13, 30), ccy: 'USD', event: 'Core PCE', impact: 'high' }], nowMs });
   ok('a single release is a short headline', solo.headline === 'Core PCE at 13:30');
   ok('nothing in, nothing broken', todayOpening({}).headline.length > 0 && todayOpening({}).regime === ''); }
@@ -46,7 +46,7 @@ console.log('the weekly story');
   ok('the standfirst gives the real-yield share and the curve, three parts at most', /^The real yield fell 10bp, which is 77% of the 10-year's move; the 2s10s curve flattened 4bp; the dollar index fell 0\.2%\./.test(w.standfirst));
   ok('a stale or missing 10-year gives no week line rather than a guess', weekStory([{ key: 'us10y', d5: -13, stale: true }]) === null && weekStory([]) === null);
   ok('a flat week says so', weekStory([{ key: 'us10y', d5: 0.2 }]).headline === 'The 10-year yield barely moved this week');
-  ok('the opening labels the story by edition', todayOpening({ events: [], nowMs: 0, weekly: true }).story === 'The week in one line' && todayOpening({ events: [], nowMs: 0 }).story === 'The month in one line'); }
+  ok('the opening labels the story by edition', todayOpening({ events: [{ ms: t(15, 0), ccy: 'USD', event: 'Pending Home Sales', impact: 'medium' }], nowMs: 0, weekly: true }).story === 'The week in one line' && todayOpening({ events: [{ ms: t(15, 0), ccy: 'USD', event: 'Pending Home Sales', impact: 'medium' }], nowMs: 0 }).story === 'The month in one line'); }
 console.log('the day take, newspaper style');
 { const A = [{ key: 'GOLD', label: 'Gold', d1: 0.2, hlMed: 1.2 }, { key: 'NQ', label: 'Nasdaq', d1: -0.17, hlMed: 1.8 }];
   const wild = { GOLD: { atr: 0.71, band: 'wide', cutHigh: 0.34, netPct: -1.1, rangePct: 1.5 }, NQ: { atr: 0.51, band: 'wide', cutHigh: 0.33, netPct: -0.4, rangePct: 0.9 } };
@@ -60,8 +60,19 @@ console.log('the day take, newspaper style');
   const r = todayOpening({ events, nowMs, assets: A, changes: [{ key: 'us10y', d1: -17 }] });
   ok('without Asia the biggest measured move leads, in plain newspaper words', r.headline === 'Treasury yields tumble 17bp as the Fed decision looms', r.headline);
   ok('a quiet tape falls back to the calendar headline', /^The Fed decides at 18:00, after/.test(todayOpening({ events, nowMs, assets: [{ key: 'GOLD', label: 'Gold', d1: -0.1, hlMed: 1.2 }], changes: [{ key: 'us10y', d1: -2 }] }).headline));
-  ok('a market past its normal day with no event due is just that story', todayOpening({ events: [], nowMs, assets: [{ label: 'Gold', d1: -2.3, used: 1.4 }], changes: [] }).headline === 'Gold slides 2.3%');
+  ok('a market past its normal day with no event due is just that story', todayOpening({ events: [{ ms: t(15, 0), ccy: 'USD', event: 'Pending Home Sales', impact: 'medium' }], nowMs, assets: [{ label: 'Gold', d1: -2.3, used: 1.4 }], changes: [] }).headline === 'Gold slides 2.3%');
   ok('no Asia feed leaves the opening as it was', !/Asia/.test(todayOpening({ events, nowMs, assets: A }).lede));
   ok('the weekly never uses the day take', !/tumble|lurch/.test(todayOpening({ events, nowMs, weekly: true, assets: A, changes: [{ key: 'us10y', d1: -17 }], asia: wild }).headline)); }
+console.log('a calendar that did not load');
+{ const o = todayOpening({ events: [], nowMs, assets: [{ label: 'Gold', d1: -0.1, used: 0.1 }] });
+  ok('an empty calendar is not reported as a quiet day', o.kicker === 'Today · Wednesday 28 October' && o.headline === 'Where the markets stand this morning' && !/quiet/i.test(o.headline + o.lede)); }
+console.log('duplicate decisions and a second story');
+{ const dup = [{ ms: t(13, 15), ccy: 'EUR', event: 'Main Refinancing Rate', impact: 'high', estimate: '2.65%' }, { ms: t(13, 15), ccy: 'EUR', event: 'Monetary Policy Statement', impact: 'high' }, { ms: t(12, 30), ccy: 'USD', event: 'Advance GDP q/q', impact: 'high' }];
+  const o = todayOpening({ events: dup, nowMs, cb: [{ ccy: 'EUR', regime: 'HAWKISH' }] });
+  ok('one bank, one moment, one row: the ECB is listed once, and counted once', o.count === 2 && o.sheet.filter(r => /ECB/.test(r.name)).length === 1 && /^Two high-impact releases/.test(o.lede) && o.sheet.find(r => /ECB/.test(r.name)).detail.startsWith('Expected 2.65%'), JSON.stringify(o.sheet));
+  ok('Main Refinancing Rate is recognised as the ECB decision', /ECB day/.test(o.kicker));
+  const two = todayOpening({ events: dup, nowMs, assets: [], changes: [{ key: 'us10y', d1: -17 }, { key: 'hy', d1: 13 }] });
+  ok('a second story of its own size shares the headline', two.headline === 'Treasury yields tumble 17bp and junk spreads widen 13bp as the ECB decision looms', two.headline);
+  ok('a second story below its own normal does not', !/ and /.test(todayOpening({ events: dup, nowMs, assets: [], changes: [{ key: 'us10y', d1: -17 }, { key: 'hy', d1: 3 }] }).headline.replace('as the ECB', ''))); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

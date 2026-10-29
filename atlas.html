@@ -686,6 +686,8 @@ async function buildIssue(kind) {
   const weekly = kind === 'weekly', btn = $(weekly ? 'nlBuildW' : 'nlBuild'), st = $('nlStatus'); $('nlBuild').disabled = $('nlBuildW').disabled = true;
   try {
     if (!ensureBrief(st)) return;
+    // the calendar, the market changes and the Asia range load after the first draw: an issue built before they arrive has an empty opening
+    { const need = ['events', 'mc', 'asia'], t0 = Date.now(); st.textContent = 'Waiting for the calendar and market data…'; while (need.some(k => D[k] === undefined) && Date.now() - t0 < 25000) await new Promise(r => setTimeout(r, 250)); }
     const arch = await loadArchive(), today = ukDate();
     const { eventImpactFor } = await import('./js/eventImpactMap.js');
     const bookFor = e => { try { return eventImpactFor(e.country, e.event); } catch { return null; } };

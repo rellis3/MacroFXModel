@@ -20,13 +20,17 @@ const list = a => (a.length < 2 ? (a[0] ?? '') : `${a.slice(0, -1).join(', ')} a
 const clip = (s, n) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length <= n ? t : `${t.slice(0, n - 1).replace(/\s+\S*$/, '')}…`; };
 
 /** A central bank's rate decision itself, not its minutes, speeches or press conference. */
-const isDecision = e => /rate decision|interest rate|monetary policy|fomc|official bank rate|cash rate|policy rate|bank rate/i.test(e?.event ?? '') && !/minutes|press|speak|speech|testif|member|projection/i.test(e?.event ?? '') && !!BANK[e?.ccy];
+const isDecision = e => /rate decision|interest rate|monetary policy|fomc|official bank rate|cash rate|policy rate|bank rate|refinancing rate/i.test(e?.event ?? '') && !/minutes|press|speak|speech|testif|member|projection/i.test(e?.event ?? '') && !!BANK[e?.ccy];
 const decisionRank = e => { const i = BANK_ORDER.indexOf(e.ccy); return i < 0 ? 99 : i; };
 
 /** The high-impact events inside the window: today for a daily issue, seven days for a weekly one. Earliest first. */
 function windowEvents(events, nowMs, weekly) {
   const hi = (events ?? []).filter(e => e?.impact === 'high' && Number.isFinite(e.ms) && e.ms >= nowMs - 36e5).sort((a, b) => a.ms - b.ms);
-  return weekly ? hi.filter(e => e.ms < nowMs + 7 * 864e5) : hi.filter(e => ukDay(e.ms) === ukDay(nowMs));
+  const win = weekly ? hi.filter(e => e.ms < nowMs + 7 * 864e5) : hi.filter(e => ukDay(e.ms) === ukDay(nowMs));
+  // a central bank often lists its decision twice at one moment (the rate and the policy statement): one row, the one that carries the expected figure
+  const seen = new Map();
+  for (const e of win) { if (!isDecision(e)) continue; const k = `${e.ccy}|${e.ms}`, p = seen.get(k); if (!p || (!p.estimate && e.estimate)) seen.set(k, e); }
+  return win.filter(e => !isDecision(e) || seen.get(`${e.ccy}|${e.ms}`) === e);
 }
 
 const nameOf = e => (isDecision(e) ? cap(BANK[e.ccy]) : clip(e.event, 30));
@@ -104,13 +108,13 @@ const verb = (down, mult, plural) => VB[down ? 'fall' : 'rise'][mult >= 2 ? 3 : 
 function dayTake({ assets, changes, hi, now, asia }) {
   const c = k => (changes ?? []).find(x => x.key === k && !x.stale && Number.isFinite(x.d1)), cand = [];
   const y = c('us10y'), hy = c('hy'), vx = c('vix'), r1 = v => Math.round(Math.abs(v)), dn = v => v < 0;
-  if (y) { const m = Math.abs(y.d1) / 6; cand.push({ score: m, head: `Treasury yields ${verb(dn(y.d1), m, true)} ${r1(y.d1)}bp`, fact: `US 10-year yields ${dn(y.d1) ? 'fell' : 'rose'} ${r1(y.d1)}bp` }); }
-  if (hy) cand.push({ score: Math.abs(hy.d1) / 8, head: `Junk-bond spreads ${dn(hy.d1) ? 'tighten' : 'widen'} ${r1(hy.d1)}bp`, fact: `junk spreads ${dn(hy.d1) ? 'tightened' : 'widened'} ${r1(hy.d1)}bp` });
-  if (vx) cand.push({ score: Math.abs(vx.d1) / 2, head: `The VIX ${dn(vx.d1) ? 'eases' : 'jumps'} ${Math.abs(vx.d1).toFixed(1)} points`, fact: `VIX ${dn(vx.d1) ? 'fell' : 'rose'} ${Math.abs(vx.d1).toFixed(1)} points` });
+  if (y) { const m = Math.abs(y.d1) / 6; cand.push({ score: m, head: `Treasury yields ${verb(dn(y.d1), m, true)} ${r1(y.d1)}bp`, mid: `yields ${verb(dn(y.d1), m, true)} ${r1(y.d1)}bp`, fact: `US 10-year yields ${dn(y.d1) ? 'fell' : 'rose'} ${r1(y.d1)}bp` }); }
+  if (hy) cand.push({ score: Math.abs(hy.d1) / 8, head: `Junk-bond spreads ${dn(hy.d1) ? 'tighten' : 'widen'} ${r1(hy.d1)}bp`, mid: `junk spreads ${dn(hy.d1) ? 'tighten' : 'widen'} ${r1(hy.d1)}bp`, fact: `junk spreads ${dn(hy.d1) ? 'tightened' : 'widened'} ${r1(hy.d1)}bp` });
+  if (vx) cand.push({ score: Math.abs(vx.d1) / 2, head: `The VIX ${dn(vx.d1) ? 'eases' : 'jumps'} ${Math.abs(vx.d1).toFixed(1)} points`, mid: `the VIX ${dn(vx.d1) ? 'eases' : 'jumps'} ${Math.abs(vx.d1).toFixed(1)} points`, fact: `VIX ${dn(vx.d1) ? 'fell' : 'rose'} ${Math.abs(vx.d1).toFixed(1)} points` });
   for (const r of assets ?? []) {
     if (!r?.label || !Number.isFinite(r.d1)) continue;
     const m = Number.isFinite(r.used) ? r.used : Number.isFinite(r.hlMed) && r.hlMed > 0 ? Math.abs(r.d1) / r.hlMed : null;
-    if (m !== null) cand.push({ score: m, head: `${r.label} ${verb(dn(r.d1), m, false)} ${Math.abs(r.d1).toFixed(1)}%`, fact: `${r.label} ${dn(r.d1) ? 'fell' : 'rose'} ${Math.abs(r.d1).toFixed(1)}%` });
+    if (m !== null) cand.push({ score: m, head: `${r.label} ${verb(dn(r.d1), m, false)} ${Math.abs(r.d1).toFixed(1)}%`, mid: `${r.label} ${verb(dn(r.d1), m, false)} ${Math.abs(r.d1).toFixed(1)}%`, fact: `${r.label} ${dn(r.d1) ? 'fell' : 'rose'} ${Math.abs(r.d1).toFixed(1)}%` });
   }
   const top = cand.filter(x => x.score >= 0.75).sort((a, b) => b.score - a.score);
   // a wild Asia: at least twice the desk's own wide-tercile mark, the two biggest at most
@@ -126,7 +130,7 @@ function dayTake({ assets, changes, hi, now, asia }) {
     leadFacts = wild.map(x => `${x.r.label} covered ${Math.round(x.s.atr * 100)}% of a normal day's range before London opened${Number.isFinite(x.s.netPct) && Math.abs(x.s.netPct) >= 0.05 ? ` and ended Asia ${Math.abs(x.s.netPct).toFixed(1)}% ${x.s.netPct < 0 ? 'lower' : 'higher'}` : ''}.`).join(' ');
     used = wild.find(x => ASIA_LONDON[x.r.key]);
     if (used) asiaNote = `Past wide-Asia days have left less for London: after 07:00 ${used.r.label} reached the median band on ${ASIA_LONDON[used.r.key][0]}% of them, against ${ASIA_LONDON[used.r.key][1]}% when Asia was narrow.`;
-  } else headline = `${top[0].head}${tail}`;
+  } else headline = `${top[0].head}${top[1] && top[1].score >= 1 ? ` and ${top[1].mid}` : ''}${tail}`;
   const rest = (wild.length ? top : top.slice(0, 3)).slice(0, 3);
   return { headline, lead: leadFacts, asiaNote, close: rest.length ? `Since yesterday's close: ${rest.map(x => x.fact).join('; ')}.` : '' };
 }
@@ -192,8 +196,9 @@ export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, asse
   const nextHigh = hi.length ? null : (events ?? []).filter(e => e?.impact === 'high' && e.ms > now).sort((a, b) => a.ms - b.ms)[0] ?? null;
   const day = new Date(now).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ });
   const done = weekly ? [] : (events ?? []).filter(e => e?.impact === 'high' && isDecision(e) && Number.isFinite(e.ms) && e.ms < now - 36e5 && ukDay(e.ms) === ukDay(now)).sort((x, y) => x.ms - y.ms);
+  const known = Array.isArray(events) && events.length > 0;   // an empty calendar is a feed that did not load more often than a day with nothing on it
   const take = weekly ? null : dayTake({ assets, changes, hi, now, asia });
   const regime = regimeLine(regimeWord, riskFlags), changed = changedLine(since, assets);
   const lede = [take?.lead, take?.asiaNote, loadLine(hi, done, weekly), fedLine(fedPath, hi, now), take ? take.close : changed, regime].filter(Boolean).join(' ');
-  return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `${dayType(hi)} · ${day}`, headline: take?.headline || headlineOf(hi, nextHigh, weekly), regime, changed, watch: watchLine(hi, nextHigh, weekly), count: hi.length };
+  return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `${known ? dayType(hi) : 'Today'} · ${day}`, headline: take?.headline || (known ? headlineOf(hi, nextHigh, weekly) : 'Where the markets stand this morning'), regime, changed, watch: watchLine(hi, nextHigh, weekly), count: hi.length };
 }
