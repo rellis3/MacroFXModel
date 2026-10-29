@@ -218,6 +218,7 @@ import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './
 import { evaluateGauges as _evaluateGauges } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
 import { buildCase1 as _seBuild1, buildCase2 as _seBuild2, analyse as _seAnalyse, alertText as _seAlertText } from './js/spreadEpisodes.js';
+import { night as _dofNight, adrFrom as _dofAdrFrom, sessionAnchor as _dofAnchor, sessionKey as _dofKey, nyWallToUtc as _dofNyWall, sessionFromCandles as _dofSessionFrom, summarise as _dofSummarise, DOF_DEFAULTS as _DOF_DEFAULTS, DOF_ANCHORS as _DOF_ANCHORS } from './js/dailyOpenFib.js';
 import { fetchBankCreditRows as _bcFetch, buildBankCredit as _bcBuild, bankCreditLine as _bcLine } from './js/bankCredit.js';
 import { fetchFundingSeries as _frFetchSeries, fetchUstLeverage as _frFetchUst, buildFundingRead as _frBuild, fundingLine as _frLine } from './js/fundingRead.js';
 import { sliceDays as _cogSlice, toBars as _cogBars, exportText as _cogExport, mergeSeries as _cogMerge } from './js/cogLine.js';
@@ -4830,6 +4831,153 @@ app.post('/api/spread-episodes/tick', async (req, res) => {
 });
 svcInterval('spreadEpisodes', () => _seTick().catch(e => console.error('[spread-episodes]', e.message)), 15 * 60_000);
 svcTimeout('spreadEpisodes', () => _seTick({ silent: true }).catch(e => console.error('[spread-episodes]', e.message)), 4 * 60_000);
+
+// ── Daily-open fib tracker (daily-open-fib.html; js/dailyOpenFib.js = the backtest engine ported 1:1, parity
+// script scripts/daily-open-fib-retest/parity.mjs) ── The video's "daily open" setup, run every night on every
+// instrument we trade, on OANDA bid/ask M1 exactly as the backtest scored it (forge/DAILY_OPEN_FIB_RETEST_PREREG.md
+// amendment A1): fib on the bid from the opening wick (and, second, from the open price) to the impulse extreme,
+// limit at the 1, stop 1.2, target the 0 (5R), BE at 1R, out at minute 540. Backtest verdict NULL (gold -0.72R per
+// trade); this is a forward record to watch it, not a signal. KV daily_open_fib_v1 holds one row per instrument per
+// session (both anchors); the live session is recomputed from candles every tick.
+const _DOF_KV = 'daily_open_fib_v1', _DOF_KEEP = 150, _DOF_BACKFILL_DAYS = 21, _DOF_FETCH_BUDGET = 12;
+const _DOF_INST = [
+  ['XAU_USD', 'Gold'], ['EUR_USD', 'EUR/USD'], ['GBP_USD', 'GBP/USD'], ['USD_JPY', 'USD/JPY'], ['AUD_USD', 'AUD/USD'],
+  ['EUR_GBP', 'EUR/GBP'], ['USD_CAD', 'USD/CAD'], ['USD_CHF', 'USD/CHF'], ['GBP_JPY', 'GBP/JPY'], ['EUR_JPY', 'EUR/JPY'],
+  ['EUR_CHF', 'EUR/CHF'], ['GBP_CHF', 'GBP/CHF'], ['AUD_JPY', 'AUD/JPY'], ['CAD_JPY', 'CAD/JPY'],
+  ['NAS100_USD', 'NAS100'], ['SPX500_USD', 'SPX500'], ['DE30_EUR', 'DAX'], ['UK100_GBP', 'FTSE100'], ['US30_USD', 'DOW30'], ['US2000_USD', 'RUS2000'],
+];
+const _DOF_BT_KEY = { XAU_USD: 'gold', NAS100_USD: 'nq', EUR_USD: 'eurusd' };
+let _dof = { loaded: false, rows: new Map(), lastTick: 0, error: null, running: false, lastWrite: 0, dirty: false, adr: new Map(), bars: new Map() };
+async function _dofCandles(inst, fromMs, count, price = 'BA') {
+  const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(inst)}/candles?granularity=M1&price=${price}&from=${encodeURIComponent(new Date(fromMs).toISOString())}&count=${count}`,
+    { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(12_000) });
+  if (!r.ok) throw new Error(`OANDA M1 ${inst} ${r.status}`);
+  return (await r.json()).candles ?? [];
+}
+// ADR = median range of the previous 20 sessions (OANDA D mid candles, 17:00 New York; the backtest's Days.adr20)
+async function _dofAdr(inst, anchorMs) {
+  const key = `${inst}|${anchorMs}`, hit = _dof.adr.get(key);
+  if (hit != null) return hit;
+  const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(inst)}/candles?granularity=D&price=M&count=40&to=${encodeURIComponent(new Date(anchorMs).toISOString())}`,
+    { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(12_000) });
+  if (!r.ok) throw new Error(`OANDA D ${inst} ${r.status}`);
+  const d = ((await r.json()).candles ?? []).filter(c => c.mid && c.complete !== false && Date.parse(c.time) < anchorMs - 3600e3);
+  const adr = _dofAdrFrom(d.map(c => +c.mid.h - +c.mid.l));
+  if (adr != null) { _dof.adr.set(key, adr); if (_dof.adr.size > 2000) _dof.adr.delete(_dof.adr.keys().next().value); }
+  return adr;
+}
+// Friday and Saturday 17:00 anchors are the weekend (the backtest skipped them too); Sunday 17:00 is Monday's session.
+function _dofTradingAnchor(a) { const wd = new Date(a - 5 * 3600e3).getUTCDay(); return wd !== 5 && wd !== 6; }
+async function _dofSession(inst, anchorMs, now) {
+  const adr = await _dofAdr(inst, anchorMs);
+  if (!adr) return { error: 'no ADR' };
+  const S = _dofSessionFrom(await _dofCandles(inst, anchorMs, 720), anchorMs);
+  if (!S || !S.t.length) return { empty: true, adr };
+  const exitT = S.t[0] + _DOF_DEFAULTS.exitMin * 60e3;
+  const final = S.mins.at(-1) >= _DOF_DEFAULTS.exitMin || now > exitT + 15 * 60e3;
+  const out = { adr, final, firstBarT: S.t[0], exitT, lastBarT: S.t.at(-1) };
+  for (const a of _DOF_ANCHORS) { const n = _dofNight(S, adr, a, { final }); delete n.fib; out[a] = n; }   // the page redraws the fib from the 1 and the 0
+  if (final) { _dof.bars.set(`${inst}|${anchorMs}`, S); if (_dof.bars.size > 300) _dof.bars.delete(_dof.bars.keys().next().value); }
+  return { out, S };
+}
+async function _dofLoad() {
+  if (_dof.loaded) return;
+  const raw = await kv.getStrict(_DOF_KV);            // throws on a read failure: never start from empty over a real record
+  const p = raw ? JSON.parse(raw) : null;
+  for (const r of p?.rows ?? []) _dof.rows.set(`${r.inst}|${r.date}`, r);
+  _dof.loaded = true;
+}
+async function _dofTick() {
+  if (_dof.running) return;
+  _dof.running = true;
+  try {
+    if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set');
+    await _dofLoad();
+    const now = Date.now(), cur = _dofAnchor(now), errors = [];
+    const anchors = [];
+    for (let d = 0; d <= _DOF_BACKFILL_DAYS; d++) { const a = _dofAnchor(cur - d * 86400e3 + 3600e3); if (_dofTradingAnchor(a) && !anchors.includes(a)) anchors.push(a); }
+    let budget = _DOF_FETCH_BUDGET;
+    for (const [inst, label] of _DOF_INST) {
+      for (const a of anchors) {
+        const date = _dofKey(a), k = `${inst}|${date}`, have = _dof.rows.get(k);
+        if (have?.final) continue;
+        if (a !== cur && budget <= 0) continue;            // backfill a few sessions per tick; the live session always runs
+        if (a !== cur) budget--;
+        try {
+          const r = await _dofSession(inst, a, now);
+          if (r.error || r.empty) { if (a !== cur && now > a + 20 * 3600e3) _dof.rows.set(k, { inst, label, date, anchorMs: a, final: true, empty: true, firstSeen: have?.firstSeen ?? new Date().toISOString() }); continue; }
+          const row = { inst, label, date, anchorMs: a, ...r.out, firstSeen: have?.firstSeen ?? new Date().toISOString(), updatedAt: new Date().toISOString() };
+          row.live = Date.parse(row.firstSeen) < row.exitT;       // seen before its exit time = recorded live, not backfilled
+          const phases = r2 => _DOF_ANCHORS.map(x => r2?.[x]?.phase).join(',');
+          if (!have || phases(have) !== phases(row) || row.final !== have.final) _dof.dirty = true;
+          _dof.rows.set(k, row);
+        } catch (e) { errors.push(`${label} ${date}: ${e.message}`); }
+      }
+    }
+    // keep the newest sessions per instrument
+    const byInst = new Map();
+    for (const r of _dof.rows.values()) { if (!byInst.has(r.inst)) byInst.set(r.inst, []); byInst.get(r.inst).push(r); }
+    for (const list of byInst.values()) list.sort((x, y) => y.anchorMs - x.anchorMs).slice(_DOF_KEEP).forEach(r => _dof.rows.delete(`${r.inst}|${r.date}`));
+    // write on a phase change (fill, close, no setup) at most every 2 min, otherwise every 30 min (CF KV write budget)
+    if ((_dof.dirty && now - _dof.lastWrite > 2 * 60e3) || now - _dof.lastWrite > 30 * 60e3) {
+      await kv.put(_DOF_KV, JSON.stringify({ rows: [..._dof.rows.values()], updatedAt: new Date().toISOString() }));
+      _dof.lastWrite = now; _dof.dirty = false;
+    }
+    _dof.lastTick = now; _dof.error = errors.length ? errors.slice(0, 8) : null;
+  } catch (e) {
+    _dof.error = [e.message]; _dof.lastTick = Date.now();
+    console.error('[daily-open-fib]', e.message);
+  } finally { _dof.running = false; }
+}
+function _dofBacktest() {
+  try {
+    const R = JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis', 'output', 'daily-open-fib-retest', 'results_ba.json'), 'utf8'));
+    const out = {};
+    for (const [inst, k] of Object.entries(_DOF_BT_KEY)) {
+      const v = R[k]?.variants_ba ?? {}, row = key => { const n = v[key]?.net; return n ? { n: n.n, mean: n.mean, lo: n.lo, hi: n.hi, win: n.win } : null; };
+      out[inst] = { high: row('high|imp0.1|tpzero|be1'), do: row('do|imp0.1|tpzero|be1'), sessions: R[k]?.sessions ?? null, verdict: k === 'gold' ? R[k]?.verdict_primary ?? 'NULL' : 'descriptive' };
+    }
+    return out;
+  } catch { return null; }
+}
+app.get('/api/daily-open-fib', async (req, res) => {
+  try {
+    if (!_dof.lastTick) await _dofTick();
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 45, 1), 400), cutMs = Date.now() - days * 86400e3;
+    const all = [..._dof.rows.values()].filter(r => !r.empty).sort((a, b) => b.anchorMs - a.anchorMs);
+    const summary = {};
+    for (const [inst] of _DOF_INST) {
+      const mine = all.filter(r => r.inst === inst && r.final);
+      summary[inst] = Object.fromEntries(_DOF_ANCHORS.map(a => [a, { all: _dofSummarise(mine.map(r => r[a]).filter(Boolean).reverse()),
+        live: _dofSummarise(mine.filter(r => r.live).map(r => r[a]).filter(Boolean).reverse()) }]));
+    }
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: _dof.loaded, lastTick: _dof.lastTick ? new Date(_dof.lastTick).toISOString() : null, error: _dof.error,
+               currentDate: _dofKey(_dofAnchor(Date.now())), rules: _DOF_DEFAULTS, instruments: _DOF_INST.map(([inst, label]) => ({ inst, label })),
+               rows: all.filter(r => r.anchorMs >= cutMs), summary, backtest: _dofBacktest() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// one session's bars (bid candles + ask close) for the chart, first bar to 90 min past the time exit
+app.get('/api/daily-open-fib/chart', async (req, res) => {
+  try {
+    const inst = String(req.query.inst || ''), date = String(req.query.date || '');
+    if (!_DOF_INST.some(([i]) => i === inst) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'inst / date' });
+    const [y, m, d] = date.split('-').map(Number), a = _dofNyWall(y, m, d, 17);
+    let S = _dof.bars.get(`${inst}|${a}`);
+    if (!S) { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set'); S = _dofSessionFrom(await _dofCandles(inst, a, 720), a); }
+    if (!S) return res.json({ ok: true, bars: [], row: _dof.rows.get(`${inst}|${date}`) ?? null });
+    const cut = _DOF_DEFAULTS.exitMin + 90, bars = [];
+    for (let i = 0; i < S.t.length && S.mins[i] <= cut; i++) bars.push([S.t[i] / 1000, S.bid.o[i], S.bid.h[i], S.bid.l[i], S.bid.c[i], S.ask.c[i]]);
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true, inst, date, bars, row: _dof.rows.get(`${inst}|${date}`) ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/daily-open-fib/tick', async (_req, res) => {
+  try { await _dofTick(); res.json({ ok: true, lastTick: new Date(_dof.lastTick).toISOString(), error: _dof.error, rows: _dof.rows.size }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('dailyOpenFib', () => _dofTick().catch(e => console.error('[daily-open-fib]', e.message)), 5 * 60_000);
+svcTimeout('dailyOpenFib', () => _dofTick().catch(e => console.error('[daily-open-fib]', e.message)), 3 * 60_000);
 
 // ── Release Reaction (release-reaction.html; scripts/release_layer1/, plans/RESEARCH_REGISTER.md row release-layer1) ──
 // Layer 1 of C.OG's frame (Discord 2026-10-19): WHAT HAPPENED around each US release. Descriptive only: SOFR Sep26 / Euribor Mar27 legs and their spread, the 2y, 10y, the dollar and Nasdaq,

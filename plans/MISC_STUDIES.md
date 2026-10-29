@@ -8,6 +8,7 @@ components. Add a row when you claim a misc study; update the verdict and reusab
 | ID | Source | Question (short) | Verdict | Reusable components found | Prereg |
 |---|---|---|---|---|---|
 | daily-open-fib-retest | YouTube @Jay-ColezTrades, "My Daily Open Strategy Explained" (owner, 2026-10-27) | Gold: after an impulse off the 18:00 NY open, sell/buy the return to the fib 1, stop 1.2, target 0 (5R), BE at 1R | **NULL** (2026-10-28): bid/ask −0.72R/trade [−0.82, −0.63]; mid gross −0.05R, 14 of 28 shifted opens | gold none; EURUSD and NQ, see below | `forge/DAILY_OPEN_FIB_RETEST_PREREG.md` | `forge/DAILY_OPEN_FIB_RETEST_PREREG.md` |
+| daily-open-fib-tracker | owner, 2026-10-29 | Forward record of the same rule, every night, 20 instruments, bid/ask (`daily-open-fib.html`) | display only (verdict stays NULL) | — | none |
 
 Related earlier work on the same playbook family (not in the register): `DailyOpenResearch/` (FINDINGS.md: the 23:00 UK
 open across gold, NQ, EURUSD: profile, ORB, fib pullbacks, swing retests, VWAP, Asia range).

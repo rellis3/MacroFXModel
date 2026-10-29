@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily-open fib tracker</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--amber:#d29922;--red:#f85149;
+        --blue:#3987e5;--green:#3fb950;--orange:#d95926;--grid:#21262d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.bad{color:var(--red);border-color:var(--red)} .chip.ok{color:var(--green);border-color:var(--green)} .chip.blue{color:var(--blue);border-color:var(--blue)}
+  .btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .btn:hover{color:var(--text);border-color:#4d5560} .btn.on{background:#22304d;color:#fff;border-color:var(--blue)}
+  .wrap{max-width:1500px;margin:0 auto;padding:12px 16px 40px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}
+  .note{font-size:12px;color:var(--text2);line-height:1.6;max-width:125ch} .note b{color:var(--text)}
+  .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:8px}
+  .rule{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text2)} .rule b{color:var(--text)}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
+  th,td{padding:4px 7px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap} th{color:var(--text3);font-weight:600;position:sticky;top:0;background:var(--card);z-index:1}
+  td:first-child,th:first-child{text-align:left}
+  #log td:nth-child(2),#log th:nth-child(2){text-align:left}
+  tr.click{cursor:pointer} tr.click:hover td{background:#1b2230} tr.sel td{background:#1d2a40}
+  .xscroll{overflow-x:auto;max-width:100%} .tscroll{overflow:auto;max-height:460px}
+  .pos{color:var(--green)} .neg{color:var(--orange)} .mut{color:var(--text3)}
+  .st{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:5px;border:1px solid var(--border)}
+  .st.waiting{color:var(--text3)} .st.armed{color:var(--amber);border-color:var(--amber)} .st.filled{color:var(--blue);border-color:var(--blue)}
+  .st.target{color:var(--green);border-color:var(--green)} .st.stop{color:var(--red);border-color:var(--red)} .st.be,.st.time,.st.eod{color:var(--text2)} .st.no_setup{color:var(--text3);border-style:dashed}
+  #chart{height:460px;min-width:0} @media (max-width:700px){#chart{height:340px}}
+  #eq{height:220px;min-width:0}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text2);margin:6px 0}
+  .legend i{display:inline-block;width:16px;height:0;border-top:2px solid;vertical-align:middle;margin-right:5px}
+  .kv{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text2);margin:4px 0 8px} .kv b{color:var(--text);font-variant-numeric:tabular-nums}
+  select{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 6px;font:inherit;font-size:12px}
+  .err{color:var(--red);font-size:12px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <a href="today.html">&larr; Today</a>
+  <h1>Daily-open fib tracker</h1>
+  <span class="chip bad" title="analysis/output/daily-open-fib-retest/RESULTS.md">Backtest: NULL</span>
+  <span class="chip" id="chipTick">loading</span>
+  <span class="spacer"></span>
+  <span class="row" style="margin:0">
+    <span class="mut" style="font-size:11px">Fib from</span>
+    <button class="btn on" data-anchor="high" title="The 1 = the opening wick (the video's drawing; the backtest's primary)">opening wick</button>
+    <button class="btn" data-anchor="do" title="The 1 = the daily-open price itself">open price</button>
+  </span>
+</div>
+<div class="wrap">
+
+<div class="box">
+  <h2>What this tracks</h2>
+  <div class="note">The "daily open" setup from the video (<b>@Jay-ColezTrades</b>), run mechanically every night on every instrument we trade, with the exact rules
+    and bid/ask fills the backtest used. Each night the page marks the fib, the order, the fill and the exit, and adds the result to the record below.
+    <span id="btLine"></span></div>
+  <div class="rules">
+    <div class="rule"><b>1. The open.</b> The first 1-minute bar at or after 17:00 New York (22:00 or 23:00 UK; gold and indices reopen at 18:00 New York).</div>
+    <div class="rule"><b>2. The impulse.</b> Price moves away from the opening extreme by at least <b>0.10 × ADR</b> (ADR = median range of the last 20 sessions), before 6 hours after the open.</div>
+    <div class="rule"><b>3. The fib.</b> Drawn on the bid. Down move: <b>1</b> = top of the opening wick, <b>0</b> = the impulse low (it follows new lows until the fill). Up move: mirrored.</div>
+    <div class="rule"><b>4. The trade.</b> Limit at the <b>1</b>, stop at the <b>1.2</b>, target the <b>0</b> (= 5R). Stop to break-even at +1R. Anything still open at minute 540 is closed. Sells close on the ask, buys on the bid.</div>
+  </div>
+</div>
+
+<div class="box">
+  <h2 id="nightTitle">Tonight</h2>
+  <div class="row">
+    <button class="btn" id="prevN">&larr; earlier</button>
+    <select id="nightSel"></select>
+    <button class="btn" id="nextN">later &rarr;</button>
+    <span class="mut" style="font-size:11px">Click an instrument to chart it.</span>
+  </div>
+  <div class="xscroll"><table id="tonight"></table></div>
+  <div class="err" id="err"></div>
+</div>
+
+<div class="box">
+  <h2 id="chartTitle">Chart</h2>
+  <div class="kv" id="chartKv"></div>
+  <div id="chart"></div>
+  <div class="legend">
+    <span><i style="border-color:#3987e5;border-top-style:dashed"></i>daily open</span>
+    <span><i style="border-color:#e6edf3"></i>the 1 (entry)</span>
+    <span><i style="border-color:#f85149"></i>1.2 (stop)</span>
+    <span><i style="border-color:#3fb950"></i>0 (target, 5R)</span>
+    <span><i style="border-color:#d29922;border-top-style:dashed"></i>+1R (break-even trigger)</span>
+    <span><i style="border-color:#6e7681;border-top-style:dotted"></i>1.1, 0.786, 0.618, 0.5, 0.382, 2R, 3R</span>
+    <span>candles = bid · thin line = ask</span>
+  </div>
+</div>
+
+<div class="box">
+  <h2>The record</h2>
+  <div class="row">
+    <button class="btn on" id="scopeAll">all nights</button>
+    <button class="btn" id="scopeLive" title="Only nights the server saw before they finished (not backfilled)">recorded live only</button>
+    <span class="mut" style="font-size:11px" id="recNote"></span>
+  </div>
+  <div class="xscroll"><table id="summary"></table></div>
+  <div class="row" style="margin-top:10px"><span class="mut" style="font-size:11px">Cumulative R</span> <select id="eqSel"></select></div>
+  <div id="eq"></div>
+</div>
+
+<div class="box">
+  <h2>Every night</h2>
+  <div class="row"><select id="logSel"><option value="">all instruments</option></select> <select id="logPhase"><option value="">all</option><option value="trades">trades only</option></select></div>
+  <div class="tscroll"><table id="log"></table></div>
+</div>
+
+</div>
+<script type="module">
+import { levels } from './js/dailyOpenFib.js';
+
+const $ = id => document.getElementById(id);
+let D = null, anchor = 'high', night = null, selInst = 'XAU_USD', scope = 'all', chart = null, cs = null, ask = null, eq = null;
+const UK = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const UKT = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' });
+const dp = inst => inst.includes('JPY') ? 3 : inst === 'XAU_USD' ? 2 : /^(NAS|SPX|DE30|UK100|US30|US2000)/.test(inst) ? 1 : 5;
+const px = (v, inst) => v == null || !Number.isFinite(v) ? '—' : v.toFixed(dp(inst));
+const rr = v => v == null || !Number.isFinite(v) ? '—' : `<span class="${v > 0.001 ? 'pos' : v < -0.001 ? 'neg' : 'mut'}">${v > 0 ? '+' : ''}${v.toFixed(2)}R</span>`;
+const label = inst => D.instruments.find(i => i.inst === inst)?.label ?? inst;
+const status = n => {
+  if (!n) return '<span class="st waiting">no data</span>';
+  if (n.phase === 'closed') return `<span class="st ${n.exit.how}">${{ target: 'target hit', stop: 'stopped', be: 'break-even', time: 'time exit', eod: 'closed' }[n.exit.how] ?? n.exit.how}</span>`;
+  return `<span class="st ${n.phase}">${{ waiting: 'waiting for impulse', armed: 'order resting', filled: 'in trade', no_setup: 'no trade' }[n.phase] ?? n.phase}</span>`;
+};
+const side = n => n?.side ? (n.side < 0 ? '<span class="neg">sell</span>' : '<span class="pos">buy</span>') : '—';
+
+async function load() {
+  try {
+    const r = await fetch('/api/daily-open-fib?days=90', { cache: 'no-store' });
+    D = await r.json();
+    if (!D.ok && !D.rows) throw new Error(D.error ?? 'no data');
+    $('err').textContent = D.error ? 'Last run: ' + [].concat(D.error).join(' · ') : '';
+    $('chipTick').textContent = D.lastTick ? `updated ${UKT.format(new Date(D.lastTick))} UK` : 'not run yet';
+    const bt = D.backtest;
+    if (bt) $('btLine').innerHTML = ` <b>Backtest (2016–Aug 2026, bid/ask): no edge.</b> Gold ${rr(bt.XAU_USD?.high?.mean)} per trade (n ${bt.XAU_USD?.high?.n}), NAS100 ${rr(bt.NAS100_USD?.high?.mean)}, EUR/USD ${rr(bt.EUR_USD?.high?.mean)}; the spread at the open costs about 0.7R a trade. The other 17 instruments were never tested: this record is their first look. Context, not a signal.`;
+    const dates = [...new Set(D.rows.map(r => r.date))].sort().reverse();
+    if (!dates.includes(D.currentDate)) dates.unshift(D.currentDate);
+    if (!night || !dates.includes(night)) night = dates[0];
+    $('nightSel').innerHTML = dates.map(d => `<option value="${d}">${d === D.currentDate ? 'Tonight · ' : ''}${fmtNight(d)}</option>`).join('');
+    $('nightSel').value = night;
+    if (!$('eqSel').options.length) {
+      $('eqSel').innerHTML = '<option value="">all instruments</option>' + D.instruments.map(i => `<option value="${i.inst}">${i.label}</option>`).join('');
+      $('logSel').innerHTML += D.instruments.map(i => `<option value="${i.inst}">${i.label}</option>`).join('');
+    }
+    render();
+  } catch (e) { $('err').textContent = 'Could not load: ' + e.message; }
+}
+const fmtNight = d => { const [y, m, dd] = d.split('-').map(Number); return 'opened ' + new Date(Date.UTC(y, m - 1, dd, 12)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' evening'; };
+
+function render() { renderTonight(); renderSummary(); renderEq(); renderLog(); loadChart(); }
+
+function renderTonight() {
+  $('nightTitle').textContent = night === D.currentDate ? 'Tonight' : 'Night of ' + night;
+  const rows = D.instruments.map(({ inst, label }) => {
+    const R = D.rows.find(r => r.inst === inst && r.date === night), n = R?.[anchor];
+    const lv = n?.A != null && n?.L0 != null ? levels(n.side, n.A, n.L0) : null;
+    const res = n?.phase === 'closed' ? rr(n.R) : n?.phase === 'filled' ? `${rr(n.markR)} <span class="mut">open</span>` : '—';
+    return `<tr class="click${inst === selInst ? ' sel' : ''}" data-inst="${inst}">
+      <td><b>${label}</b></td><td>${R?.firstBarT ? UKT.format(new Date(R.firstBarT)) : '—'}</td><td>${status(n)}</td><td>${side(n)}</td>
+      <td>${n?.imp != null ? n.imp.toFixed(2) : '—'}</td>
+      <td>${px(lv?.fib['1'], inst)}</td><td>${px(lv?.stop, inst)}</td><td>${px(lv?.tp, inst)}</td><td>${px(lv?.be, inst)}</td>
+      <td>${n?.fill ? `${UKT.format(new Date(n.fill.t))} @ ${px(n.fill.px, inst)} <span class="mut">(${n.fill.spreadR.toFixed(2)}R spread)</span>` : '—'}</td>
+      <td>${n?.exit ? `${UKT.format(new Date(n.exit.t))} @ ${px(n.exit.px, inst)}` : '—'}</td>
+      <td>${res}</td><td>${rr(n?.Rv?.tp3)}</td><td>${rr(n?.Rv?.tp2)}</td><td>${rr(n?.Rv?.noBE)}</td></tr>`;
+  }).join('');
+  $('tonight').innerHTML = `<tr><th>Instrument</th><th>Open (UK)</th><th>Status</th><th>Side</th><th title="Impulse in ADR (needs 0.10)">Impulse</th><th>The 1 (entry)</th><th>1.2 (stop)</th><th>0 (target)</th><th>+1R (BE)</th><th>Fill</th><th>Exit</th><th>Result (5R, BE)</th><th>3R</th><th>2R</th><th>5R no BE</th></tr>${rows}`;
+  $('tonight').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { selInst = tr.dataset.inst; renderTonight(); loadChart(); });
+}
+
+async function loadChart() {
+  const R = D.rows.find(r => r.inst === selInst && r.date === night);
+  $('chartTitle').textContent = `${label(selInst)} · ${night === D.currentDate ? 'tonight' : 'night of ' + night}`;
+  if (!chart) {
+    chart = LightweightCharts.createChart($('chart'), { layout: { background: { color: '#161b22' }, textColor: '#9da7b3' }, grid: { vertLines: { color: '#21262d' }, horzLines: { color: '#21262d' } },
+      timeScale: { timeVisible: true, secondsVisible: false, borderColor: '#30363d' }, rightPriceScale: { borderColor: '#30363d' }, crosshair: { mode: 0 },
+      localization: { timeFormatter: t => UKT.format(new Date(t * 1000)) } });
+    cs = chart.addCandlestickSeries({ upColor: '#3fb950', downColor: '#d95926', borderVisible: false, wickUpColor: '#3fb950', wickDownColor: '#d95926' });
+    ask = chart.addLineSeries({ color: 'rgba(157,167,179,.45)', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    new ResizeObserver(() => chart.applyOptions({ width: $('chart').clientWidth })).observe($('chart'));
+  }
+  let J;
+  try { J = await (await fetch(`/api/daily-open-fib/chart?inst=${selInst}&date=${night}`, { cache: 'no-store' })).json(); }
+  catch (e) { $('chartKv').innerHTML = `<span class="err">chart: ${e.message}</span>`; return; }
+  const bars = J.bars ?? [];
+  const d = dp(selInst), fmt = { type: 'price', precision: d, minMove: Math.pow(10, -d) };
+  cs.applyOptions({ priceFormat: fmt }); ask.applyOptions({ priceFormat: fmt });
+  cs.setData(bars.map(b => ({ time: b[0], open: b[1], high: b[2], low: b[3], close: b[4] })));
+  ask.setData(bars.map(b => ({ time: b[0], value: b[5] })));
+  (cs._lines ?? []).forEach(l => cs.removePriceLine(l)); cs._lines = [];
+  const line = (price, color, title, style = 0, width = 1, label = true) => { if (Number.isFinite(price)) cs._lines.push(cs.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: label, title })); };
+  const n = (J.row ?? R)?.[anchor];
+  if (bars.length) line(bars[0][1], '#3987e5', 'daily open', 2);
+  const mk = [];
+  if (n?.A != null && n?.L0 != null) {
+    const lv = levels(n.side, n.A, n.L0);
+    line(lv.fib['1'], '#e6edf3', 'the 1', 0, 2); line(lv.stop, '#f85149', '1.2 stop', 0, 2); line(lv.tp, '#3fb950', '0 target', 0, 2);
+    line(lv.be, '#d29922', '+1R BE', 2);
+    for (const k of ['1.1', '0.786', '0.618', '0.5', '0.382']) line(lv.fib[k], 'rgba(110,118,129,.7)', k, 1, 1, false);
+    line(lv.r2, 'rgba(110,118,129,.5)', '2R', 3, 1, false); line(lv.r3, 'rgba(110,118,129,.5)', '3R', 3, 1, false);
+    const down = n.side < 0;
+    if (n.tAnchor) mk.push({ time: n.tAnchor / 1000, position: down ? 'aboveBar' : 'belowBar', color: '#e6edf3', shape: 'circle', text: '1' });
+    if (n.tExt) mk.push({ time: n.tExt / 1000, position: down ? 'belowBar' : 'aboveBar', color: '#3fb950', shape: 'circle', text: '0' });
+    if (n.fill) mk.push({ time: n.fill.t / 1000, position: down ? 'aboveBar' : 'belowBar', color: down ? '#d95926' : '#3fb950', shape: down ? 'arrowDown' : 'arrowUp', text: `${down ? 'SELL' : 'BUY'} ${px(n.fill.px, selInst)}` });
+    if (n.exit) mk.push({ time: n.exit.t / 1000, position: down ? 'belowBar' : 'aboveBar', color: n.R > 0 ? '#3fb950' : n.R < 0 ? '#f85149' : '#9da7b3', shape: 'square', text: `${n.exit.how} ${n.R > 0 ? '+' : ''}${n.R.toFixed(2)}R` });
+  }
+  mk.sort((a, b) => a.time - b.time);
+  cs.setMarkers(mk);
+  chart.timeScale().fitContent();
+  const sp = bars.length ? bars.map(b => b[5] - b[4]) : [];
+  $('chartKv').innerHTML = n ? [
+    `Status ${status(n)}`, n.side ? `Side ${side(n)}` : '', n.imp != null ? `Impulse <b>${n.imp.toFixed(2)} ADR</b>` : '', `ADR <b>${px(R?.adr ?? n.adr, selInst)}</b>`,
+    n.risk ? `1R <b>${px(n.risk, selInst)}</b>` : '', n.fill ? `Spread at fill <b>${px(n.fill.spread, selInst)}</b> (${n.fill.spreadR.toFixed(2)}R)` : '',
+    n.phase === 'closed' ? `Result ${rr(n.R)} · 3R ${rr(n.Rv?.tp3)} · 2R ${rr(n.Rv?.tp2)} · no BE ${rr(n.Rv?.noBE)}` : n.phase === 'filled' ? `Open ${rr(n.markR)}${n.beOn ? ' · stop at break-even' : ''}` : '',
+    sp.length ? `Median spread <b>${px(sp.sort((a, b) => a - b)[sp.length >> 1], selInst)}</b>` : '',
+  ].filter(Boolean).join(' · ') : (bars.length ? 'No setup data for this night yet.' : 'No bars for this night (market closed or not open yet).');
+}
+
+function renderSummary() {
+  const S = D.summary ?? {}, k = scope === 'live' ? 'live' : 'all';
+  let tot = { trades: 0, totalR: 0, tp3: 0, tp2: 0, noBE: 0, targets: 0, stops: 0, be: 0, time: 0, nights: 0, setups: 0 };
+  const rows = D.instruments.map(({ inst, label }) => {
+    const s = S[inst]?.[anchor]?.[k]; if (!s) return '';
+    for (const f of Object.keys(tot)) tot[f] += s[f] ?? 0;
+    const bt = D.backtest?.[inst]?.[anchor];
+    return `<tr class="click" data-inst="${inst}"><td><b>${label}</b></td><td>${bt ? rr(bt.mean) + ` <span class="mut">n ${bt.n}</span>` : '<span class="mut">untested</span>'}</td>
+      <td>${s.nights}</td><td>${s.trades}</td><td>${s.targets}</td><td>${s.stops}</td><td>${s.be}</td><td>${s.time}</td>
+      <td>${rr(s.meanR)}</td><td>${rr(s.totalR)}</td><td>${rr(s.maxDD)}</td><td>${rr(s.tp3)}</td><td>${rr(s.tp2)}</td><td>${rr(s.noBE)}</td></tr>`;
+  }).join('');
+  $('summary').innerHTML = `<tr><th>Instrument</th><th title="Backtest mean R per trade, bid/ask, 2016–Aug 2026">Backtest</th><th>Nights</th><th>Trades</th><th>Targets</th><th>Stops</th><th>BE</th><th>Time</th><th>Mean R</th><th>Total R (5R)</th><th>Max DD</th><th>Total 3R</th><th>Total 2R</th><th>Total no BE</th></tr>${rows}
+    <tr><td><b>All</b></td><td></td><td>${tot.nights}</td><td>${tot.trades}</td><td>${tot.targets}</td><td>${tot.stops}</td><td>${tot.be}</td><td>${tot.time}</td><td>${rr(tot.trades ? tot.totalR / tot.trades : null)}</td><td>${rr(tot.totalR)}</td><td></td><td>${rr(tot.tp3)}</td><td>${rr(tot.tp2)}</td><td>${rr(tot.noBE)}</td></tr>`;
+  $('summary').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { $('eqSel').value = tr.dataset.inst; renderEq(); });
+  const first = D.rows.filter(r => r.live).map(r => r.date).sort()[0];
+  $('recNote').textContent = first ? `Recorded live from ${first}; earlier nights were backfilled from OANDA history with the same rules.` : 'Nights so far were backfilled from OANDA history with the same rules; live recording starts with the next session.';
+}
+
+function renderEq() {
+  if (!eq) {
+    eq = LightweightCharts.createChart($('eq'), { layout: { background: { color: '#161b22' }, textColor: '#9da7b3' }, grid: { vertLines: { color: '#21262d' }, horzLines: { color: '#21262d' } },
+      timeScale: { borderColor: '#30363d' }, rightPriceScale: { borderColor: '#30363d' } });
+    eq._s = eq.addLineSeries({ color: '#3987e5', lineWidth: 2 });
+    new ResizeObserver(() => eq.applyOptions({ width: $('eq').clientWidth })).observe($('eq'));
+  }
+  const inst = $('eqSel').value;
+  const tr = D.rows.filter(r => r.final && (!inst || r.inst === inst) && (scope !== 'live' || r.live)).map(r => ({ t: r.firstBarT, R: r[anchor]?.phase === 'closed' ? r[anchor].R : null }))
+    .filter(x => Number.isFinite(x.R)).sort((a, b) => a.t - b.t);
+  let c = 0; const pts = [];
+  for (const x of tr) { c += x.R; const time = Math.floor(x.t / 1000); if (pts.length && pts.at(-1).time >= time) continue; pts.push({ time, value: +c.toFixed(3) }); }
+  eq._s.setData(pts); eq.timeScale().fitContent();
+}
+
+function renderLog() {
+  const inst = $('logSel').value, only = $('logPhase').value === 'trades';
+  const rows = D.rows.filter(r => (!inst || r.inst === inst) && (!only || r[anchor]?.fill)).slice(0, 600).map(r => {
+    const n = r[anchor];
+    return `<tr class="click" data-inst="${r.inst}" data-date="${r.date}"><td>${r.date}</td><td>${r.label}</td><td>${status(n)}${r.live ? '' : ' <span class="mut">backfilled</span>'}</td><td>${side(n)}</td>
+      <td>${n?.imp != null ? n.imp.toFixed(2) : '—'}</td><td>${n?.fill ? px(n.fill.px, r.inst) : '—'}</td><td>${n?.exit ? px(n.exit.px, r.inst) : '—'}</td>
+      <td>${n?.phase === 'closed' ? rr(n.R) : n?.phase === 'filled' ? rr(n.markR) + ' <span class="mut">open</span>' : '—'}</td></tr>`;
+  }).join('');
+  $('log').innerHTML = `<tr><th>Night (NY date of the open)</th><th>Instrument</th><th>Status</th><th>Side</th><th>Impulse</th><th>Entry</th><th>Exit</th><th>R</th></tr>${rows}`;
+  $('log').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { selInst = tr.dataset.inst; night = tr.dataset.date; $('nightSel').value = night; renderTonight(); loadChart(); window.scrollTo({ top: $('chart').offsetTop - 120, behavior: 'smooth' }); });
+}
+
+document.querySelectorAll('[data-anchor]').forEach(b => b.onclick = () => { anchor = b.dataset.anchor; document.querySelectorAll('[data-anchor]').forEach(x => x.classList.toggle('on', x === b)); render(); });
+$('nightSel').onchange = e => { night = e.target.value; renderTonight(); loadChart(); };
+const step = d => { const o = [...$('nightSel').options].map(x => x.value), i = o.indexOf(night) + d; if (i >= 0 && i < o.length) { night = o[i]; $('nightSel').value = night; renderTonight(); loadChart(); } };
+$('prevN').onclick = () => step(1); $('nextN').onclick = () => step(-1);
+$('scopeAll').onclick = () => { scope = 'all'; $('scopeAll').classList.add('on'); $('scopeLive').classList.remove('on'); renderSummary(); renderEq(); };
+$('scopeLive').onclick = () => { scope = 'live'; $('scopeLive').classList.add('on'); $('scopeAll').classList.remove('on'); renderSummary(); renderEq(); };
+$('eqSel').onchange = renderEq; $('logSel').onchange = renderLog; $('logPhase').onchange = renderLog;
+await load();
+setInterval(() => { if (night === D?.currentDate) load(); }, 60_000);
+</script>
+</body>
+</html>
