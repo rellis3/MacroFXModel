@@ -945,6 +945,7 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
       <button class="v2-tool-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
       <div class="vf-exp-menu">
         <button class="vf-exp-item" id="vfPersistBtn"    onclick="closeExpDropdown();exportPersist()"                disabled title="The ONE daily forecast picked head-to-head over all five (forge/FORECAST_PICK_PREREG.md, walk-forward 2020-2026): the Forecast's σ nudged each morning for regime, recent range misses and weekday, plus implied vol on the 13 instruments that have it (USD majors, gold, indices). 0.964 of the plain Forecast where IV exists, 0.980 elsewhere; fixes the plain lines running tight after calm and wide after busy spells. Scored daily against plain in the forward scorecard. Same paste format as Forecast.">⬇ Forecast · chosen ★ <span style="font-size:9px;opacity:.55">persistence + IV · daily</span></button>
+        <button class="vf-exp-item" id="vfPersistSessBtn" onclick="closeExpDropdown();exportPersist(true)" disabled title="The chosen daily lines with the Asia / London / New York block underneath: each session's range as a share of the day's high-low (5 years of real session buckets) and its price equivalent from the chosen H-L p50.">⬇ Forecast · chosen ★ + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
         <button class="vf-exp-item" id="vfLadderBtn"     onclick="closeExpDropdown();exportLadder('daily')"          disabled>⬇ Forecast <span style="font-size:9px;opacity:.55">plain · production p50/75/90</span></button>
         <button class="vf-exp-item" id="vfLadderWkBtn"   onclick="closeExpDropdown();exportLadder('weekly')"         disabled>⬇ Forecast Weekly <span style="font-size:9px;opacity:.55">5-day + 20-day in one</span></button>
         <button class="vf-exp-item" id="vfLadderWkRevBtn" onclick="closeExpDropdown();exportLadder('weekly_rev')"   disabled title="Same paste format as Forecast Weekly (same indicator), but σ fades back to its 250-day level across the week/month instead of √-time scaling. Passed its pre-registered test 2026-10-05 (forge/HORIZON_REVERSION_PREREG.md): bands right after calm AND after stress, not just on average.">⬇ Forecast Weekly · Reverting <span style="font-size:9px;opacity:.55">σ fades back · test</span></button>
@@ -1748,7 +1749,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfLadderBtn','vfIvLadderBtn','vfIvAdjBtn','vfPersistBtn','vfLadderWkBtn','vfLadderWkRevBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn',
+      ['vfLadderBtn','vfIvLadderBtn','vfIvAdjBtn','vfPersistBtn','vfPersistSessBtn','vfLadderWkBtn','vfLadderWkRevBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn',
        // Archived group — everything that needs only the forecast payload
        'vfExportBtn','vfExtendedBtn','vfExportV2Btn','vfCalibratedBtn','vfCalExtBtn','vfCogV2Btn'].forEach(id => {
         const el = document.getElementById(id);
@@ -2703,16 +2704,16 @@ async function exportIvAdj() {
 }
 
 // The chosen daily forecast (persistence + IV; forge/FORECAST_PICK_PREREG.md), server-built, same paste format.
-async function exportPersist() {
-  const btn = document.getElementById('vfPersistBtn');
+async function exportPersist(withSession = false) {
+  const btn = document.getElementById(withSession ? 'vfPersistSessBtn' : 'vfPersistBtn');
   _btnLabel(btn); btn.textContent = '… building'; btn.disabled = true;
   try {
-    const r = await fetch('/api/vol-forecast/persist-ladder/export');
+    const r = await fetch(`/api/vol-forecast/persist-ladder/export${withSession ? '?session=1' : ''}`);
     const text = await r.text();
     if (!r.ok) { btn.textContent = r.status === 202 ? '… not ready' : '✗ failed'; setTimeout(() => _btnRestore(btn), 2600); return; }
     btn.disabled = false;
     const date = (currentForecast && currentForecast.session_date) || 'latest';
-    _emitCalibrated('vfPersistBtn', text, `vol-forecast-chosen-${date}.txt`);
+    _emitCalibrated(btn.id, text, `vol-forecast-chosen${withSession ? '-session' : ''}-${date}.txt`);
   } catch (e) {
     btn.textContent = '✗ failed';
     setTimeout(() => _btnRestore(btn), 2600);

@@ -1,8 +1,8 @@
 {
  "id": "vix-signals-forward",
- "generated": "2026-10-23 17:46 UTC",
+ "generated": "2026-10-27 04:38 UTC",
  "forward_start": "2026-10-26",
- "last_close": "2026-10-22",
+ "last_close": "2026-10-26",
  "sources": {
   "VIX": "cboe live",
   "VVIX": "cboe live",
@@ -12,12 +12,12 @@
  },
  "today": {
   "ratio_flag": false,
-  "dRdt_bottom": true,
+  "dRdt_bottom": false,
   "implied_change_top": false,
-  "pct_R_a": 0.7182539682539683,
-  "pct_R_b": 0.42857142857142855,
-  "pct_dRdt": 0.06746031746031746,
-  "pct_dRimp": 0.13095238095238096
+  "pct_R_a": 0.753968253968254,
+  "pct_R_b": 0.3968253968253968,
+  "pct_dRdt": 0.6785714285714286,
+  "pct_dRimp": 0.10714285714285714
  },
  "signals": [
   {

@@ -76,8 +76,10 @@
       <h2>Every release (newest first): click one</h2>
       <div class="row" id="famTabs"></div>
       <div class="row" id="viewTabs"></div>
+      <div class="row" id="groupTabs"></div>
       <div class="tscroll"><table id="tbl"><thead></thead><tbody></tbody></table></div>
-      <p class="note" style="margin-top:8px">Moves are from the instant of the release: SOFR, Euribor and their line in <b>bp of rate</b> (positive = rates up); the 2y and 10y are note futures in <b>% of price</b>, so a <b>negative</b> number there means yields rose; the dollar and Nasdaq in %. The 2y, 10y and dollar are <b>15-minute CFD or short-history</b> before September 2026 (see the data checks), so their 1- and 5-minute cells are blank for older releases rather than guessed. Agreement counts the SOFR leg, Euribor leg, 2y and 10y that moved in the same rates direction over the first 30 minutes. <b>Surprise</b> is the raw actual minus consensus in the release's own unit (payrolls in thousands); modelling it is Layer 2.</p>
+      <p class="note" style="margin-top:8px">Moves are from the instant of the release: SOFR, Euribor and their line in <b>bp of rate</b> (positive = rates up); the 2y and 10y are note futures in <b>% of price</b>, so a <b>negative</b> number there means yields rose; the dollar and Nasdaq in %. The 2y, 10y and dollar are <b>15-minute CFD or short-history</b> before September 2026 (see the data checks), so their 1- and 5-minute cells are blank for older releases rather than guessed. Agreement counts the SOFR leg, Euribor leg, 2y and 10y that moved in the same rates direction over the first 30 minutes. <b>Asset filters</b> only change which columns show: EUR/USD, GBP/USD, USD/JPY, gold and the S&amp;P 500 are OANDA 1-minute CFDs up to 19 Oct 2026 and CME/COMEX futures after; VIX and VXN have 1-minute history only from 24 Aug 2026, so older releases show their daily change only (points); VXN also prints only in the New York cash session, so only afternoon releases (the Fed decision) have a minute reading for it. <b>UK, Europe &amp; Japan</b>: the UK 10y gilt and German 10y Bund are OANDA bond CFDs in <b>% of price</b> (negative = yields rose), the FTSE 100, DAX and Nikkei 225 OANDA index CFDs, all 1-minute from March 2024; the gilt and Bund only trade in European hours, so the BoJ has no bond reading. <b>Surprise</b> is the raw actual minus consensus in the release's own unit (payrolls in thousands); modelling it is Layer 2. The rate decisions and fiscal events have no consensus figure here, so their surprise cell is blank: the tone of each statement is read on its own page (the <i>read the release</i> link in the detail).</p>
+      <p class="note" style="margin-top:6px"><b>Event families.</b> US prints and the Fed decision, plus the <b>ECB</b> (14:15 Frankfurt), <b>BoE</b> (12:00 London) and <b>BoJ</b> decisions, <b>UK Budgets</b> and statements, and the <b>US Treasury quarterly refunding</b> (08:30 New York), all from April 2024. The BoJ has no fixed announcement time, so its minute is taken from the largest USD/JPY move that morning (see the data checks). Picking a family switches the columns to the markets it moves most directly.</p>
       <p class="note" style="margin-top:6px"><b>Days view:</b> daily closes, measured from the close of the day before the release. The 2y and 10y yields, 10y real yield and 10y breakeven (US Treasury curves) and the Euribor and SOFR legs are in <b>bp</b>, positive = rates up (a rise in the real yield is a tightening, a rise in the breakeven is more inflation priced in); dollar and Nasdaq-100 in %. <b>Release day</b> is the whole day's move to the close, so it also contains the hours before the release; <b>run-up</b> is the 5 trading days up to the pre-release close, signed as the move into the release. Euribor stops trading before a US evening decision, so its release-day cell is blank for FOMC.</p>
     </div>
     <div class="box" id="detail"><h2>Release detail</h2><div class="mut">Choose a release.</div></div>
@@ -105,16 +107,26 @@
 </div>
 
 <script>
-const KEYS = ['sofr','eur','spr','zt','zn','dx','nq'];
-const LAB = {sofr:'SOFR Sep26 leg',eur:'Euribor Mar27 leg',spr:'SOFR − Euribor line',zt:'US 2y note future',zn:'US 10y note future',dx:'Dollar index future',nq:'Nasdaq'};
-const UNIT = {sofr:'bp',eur:'bp',spr:'bp',zt:'%',zn:'%',dx:'%',nq:'%'};
-const COL = {sofr:'var(--c-sofr)',eur:'var(--c-eur)',spr:'var(--c-spr)',zt:'var(--c-zt)',zn:'var(--c-zn)',dx:'var(--c-dx)',nq:'var(--c-nq)'};
-const RSIGN = {sofr:1,eur:1,spr:1,zt:-1,zn:-1};
-const DK = ['y2','y10','real10','be10','sofr','eur','spr','dx','nq'];
-const DLAB = {y2:'US 2y yield',y10:'US 10y yield',real10:'10y real yield',be10:'10y breakeven',sofr:'SOFR Sep26 leg',eur:'Euribor Mar27 leg',spr:'SOFR − Euribor line',dx:'Dollar index',nq:'Nasdaq-100'};
-const DSHORT = {y2:'2y',y10:'10y',real10:'Real 10y',be10:'BE 10y',sofr:'SOFR',eur:'EUR',spr:'Line',dx:'USD',nq:'NQ'};
-const DUNIT = {y2:'bp',y10:'bp',real10:'bp',be10:'bp',sofr:'bp',eur:'bp',spr:'bp',dx:'%',nq:'%'};
-const DCOL = {y2:'var(--c-zt)',y10:'var(--c-zn)',real10:'var(--c-real)',be10:'var(--c-be)',sofr:'var(--c-sofr)',eur:'var(--c-eur)',spr:'var(--c-spr)',dx:'var(--c-dx)',nq:'var(--c-nq)'};
+const KEYS = ['sofr','eur','spr','zt','zn','dx','nq','es','eurusd','gbpusd','usdjpy','gold','vix','vxn','gilt','bund','ftse','dax','nikkei'];
+const LAB = {sofr:'SOFR Sep26 leg',eur:'Euribor Mar27 leg',spr:'SOFR − Euribor line',zt:'US 2y note future',zn:'US 10y note future',dx:'Dollar index future',nq:'Nasdaq',es:'S&P 500',eurusd:'EUR/USD',gbpusd:'GBP/USD',usdjpy:'USD/JPY',gold:'Gold',vix:'VIX',vxn:'VXN',gilt:'UK 10y gilt',bund:'German 10y Bund',ftse:'FTSE 100',dax:'DAX',nikkei:'Nikkei 225'};
+const UNIT = {sofr:'bp',eur:'bp',spr:'bp',zt:'%',zn:'%',dx:'%',nq:'%',es:'%',eurusd:'%',gbpusd:'%',usdjpy:'%',gold:'%',vix:'pt',vxn:'pt',gilt:'%',bund:'%',ftse:'%',dax:'%',nikkei:'%'};
+const COL = {sofr:'var(--c-sofr)',eur:'var(--c-eur)',spr:'var(--c-spr)',zt:'var(--c-zt)',zn:'var(--c-zn)',dx:'var(--c-dx)',nq:'var(--c-nq)',es:'#7ee0a8',eurusd:'#5fb3ff',gbpusd:'#ff8fb1',usdjpy:'#ffd166',gold:'#f2c94c',vix:'#ff6b6b',vxn:'#ff9e6b',gilt:'#c39bff',bund:'#7fd8e8',ftse:'#b8e986',dax:'#ffb86b',nikkei:'#ff8fd8'};
+const RSIGN = {sofr:1,eur:1,spr:1,zt:-1,zn:-1,gilt:-1,bund:-1};
+const DK = ['y2','y10','real10','be10','sofr','eur','spr','dx','nq','es','eurusd','gbpusd','usdjpy','gold','vix','vxn','gilt','bund','ftse','dax','nikkei'];
+const DLAB = {y2:'US 2y yield',y10:'US 10y yield',real10:'10y real yield',be10:'10y breakeven',sofr:'SOFR Sep26 leg',eur:'Euribor Mar27 leg',spr:'SOFR − Euribor line',dx:'Dollar index',nq:'Nasdaq-100',es:'S&P 500',eurusd:'EUR/USD',gbpusd:'GBP/USD',usdjpy:'USD/JPY',gold:'Gold',vix:'VIX',vxn:'VXN',gilt:'UK 10y gilt price',bund:'German 10y Bund price',ftse:'FTSE 100',dax:'DAX',nikkei:'Nikkei 225'};
+const DSHORT = {y2:'2y',y10:'10y',real10:'Real 10y',be10:'BE 10y',sofr:'SOFR',eur:'EUR',spr:'Line',dx:'USD',nq:'NQ',es:'ES',eurusd:'EURUSD',gbpusd:'GBPUSD',usdjpy:'USDJPY',gold:'Gold',vix:'VIX',vxn:'VXN',gilt:'Gilt',bund:'Bund',ftse:'FTSE',dax:'DAX',nikkei:'Nikkei'};
+const DUNIT = {y2:'bp',y10:'bp',real10:'bp',be10:'bp',sofr:'bp',eur:'bp',spr:'bp',dx:'%',nq:'%',es:'%',eurusd:'%',gbpusd:'%',usdjpy:'%',gold:'%',vix:'pt',vxn:'pt',gilt:'%',bund:'%',ftse:'%',dax:'%',nikkei:'%'};
+const DCOL = {y2:'var(--c-zt)',y10:'var(--c-zn)',real10:'var(--c-real)',be10:'var(--c-be)',sofr:'var(--c-sofr)',eur:'var(--c-eur)',spr:'var(--c-spr)',dx:'var(--c-dx)',nq:'var(--c-nq)',es:'#7ee0a8',eurusd:'#5fb3ff',gbpusd:'#ff8fb1',usdjpy:'#ffd166',gold:'#f2c94c',vix:'#ff6b6b',vxn:'#ff9e6b',gilt:'#c39bff',bund:'#7fd8e8',ftse:'#b8e986',dax:'#ffb86b',nikkei:'#ff8fd8'};
+// asset groups: which columns each filter shows (min = minute-view cells [asset, horizon], day = days-view assets)
+const GR = {
+  core: {name: 'Core', min: [['sofr','m5'],['sofr','m30'],['eur','m30'],['spr','m30'],['zt','m30'],['zn','m30'],['dx','m30'],['nq','m30']], day: ['y2','y10','real10','be10','sofr','eur','spr','dx','nq'], one: ['sofr','eur','spr','nq']},
+  rates: {name: 'Rates', min: [['sofr','m5'],['sofr','m30'],['eur','m5'],['eur','m30'],['spr','m30'],['zt','m5'],['zt','m30'],['zn','m5'],['zn','m30']], day: ['y2','y10','real10','be10','sofr','eur','spr'], one: ['sofr','eur','spr']},
+  fx: {name: 'Currencies', min: [['dx','m5'],['dx','m30'],['eurusd','m5'],['eurusd','m30'],['gbpusd','m5'],['gbpusd','m30'],['usdjpy','m5'],['usdjpy','m30']], day: ['dx','eurusd','gbpusd','usdjpy'], one: ['eurusd','gbpusd','usdjpy']},
+  eq: {name: 'Equities & gold', min: [['nq','m5'],['nq','m30'],['es','m5'],['es','m30'],['gold','m5'],['gold','m30']], day: ['nq','es','gold'], one: ['nq','es','gold']},
+  intl: {name: 'UK, Europe & Japan', min: [['gilt','m5'],['gilt','m30'],['bund','m5'],['bund','m30'],['gbpusd','m30'],['eurusd','m30'],['usdjpy','m30'],['ftse','m30'],['dax','m30'],['nikkei','m30']], day: ['gilt','bund','gbpusd','eurusd','usdjpy','ftse','dax','nikkei'], one: ['gilt','bund','ftse','dax','nikkei']},
+  vol: {name: 'Volatility', min: [['vix','m5'],['vix','m30'],['vxn','m5'],['vxn','m30']], day: ['vix','vxn'], one: ['vix','vxn']}
+};
+let GROUP = 'core';
 const KS = [-6,-5,-4,-3,-2,-1,0,1,2,3,4,5];
 const HZ = {run:['Run-up 5d','5 trading days up to the pre-release close'], d0:['Release day','pre-release close to the close of the release day'], d1:['+1 day','close of the day after, from the pre-release close'], d2:['+2 days','close two days after'], d5:['+5 days','close five trading days after']};
 let VIEW = 'min', HOR = 'd1';
@@ -122,12 +134,15 @@ const dv = (r, k, h) => { const a = r.D && r.D[k]; if (!a) return null; const g 
 const ddp = k => DUNIT[k] === 'bp' ? 1 : 2;
 const dnum = (v, k) => v == null ? '<span class="mut">·</span>' : `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : 'mut'}">${(v > 0 ? '+' : '') + v.toFixed(ddp(k))}</span>`;
 const surTxt = r => { if (r.surprise == null) return '<span class="mut">·</span>'; const v = r.surprise, big = Math.abs(r.actual ?? 0) >= 5000 || Math.abs(v) >= 5000; const t = big ? (v / 1000).toFixed(0) + 'K' : (+v.toFixed(3)).toString(); return `<span title="actual ${r.actual} vs consensus ${r.consensus}">${v > 0 ? '+' : ''}${t}</span>`; };
-const FAMNAME = {FOMC:'Fed decision',CPI:'Core CPI',NFP:'Payrolls',PCE:'Core PCE',GDP:'GDP',RETAIL:'Retail sales'};
+const FAMNAME = {FOMC:'Fed decision',CPI:'Core CPI',NFP:'Payrolls',PCE:'Core PCE',GDP:'GDP',RETAIL:'Retail sales',ECB:'ECB decision',BOE:'BoE decision',BOJ:'BoJ decision',UKFISCAL:'UK Budget',REFUNDING:'US refunding'};
+// the market used for the clock check, and the page that reads the release itself, per family
+const CLOCKON = {ECB:'eur',BOE:'gilt',BOJ:'usdjpy',UKFISCAL:'gilt',REFUNDING:'zn'}, READ = {FOMC:'fomc-sentiment.html',ECB:'ecb-sentiment.html',BOE:'boe-sentiment.html',BOJ:'boj-sentiment.html',UKFISCAL:'fiscal-events.html',REFUNDING:'fiscal-events.html',CPI:'cpi.html'};
+const HOMEGROUP = {ECB:'intl',BOE:'intl',BOJ:'intl',UKFISCAL:'intl',REFUNDING:'rates'};
 const OFF0 = -30;
 let D = null, SEL = null, FAM = 'all', PATHS = {}, TICK = 0, DETAIL_LIVE = false;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const dpOf = k => UNIT[k] === 'bp' ? 1 : (k === 'nq' ? 2 : 3);
+const dpOf = k => UNIT[k] === 'bp' ? 1 : UNIT[k] === 'pt' ? 2 : (['nq', 'es', 'gold'].includes(k) ? 2 : 3);
 const num = (v, k, plus = true) => v == null ? '<span class="mut">·</span>' : `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : 'mut'}">${(plus && v > 0 ? '+' : '') + v.toFixed(dpOf(k))}</span>`;
 const lon = (iso, o) => new Date(iso).toLocaleString('en-GB', Object.assign({ timeZone: 'Europe/London' }, o || { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }));
 const utc = iso => new Date(iso).toISOString().slice(11, 16) + 'Z';
@@ -180,20 +195,22 @@ function renderTable() {
   const fams = ['all', ...new Set(D.rows.map(r => r.family))];
   $('famTabs').innerHTML = fams.map(f => `<button class="btn ${FAM === f ? 'on' : ''}" onclick="setFam('${f}')">${f === 'all' ? 'All' : (FAMNAME[f] || f)} <span class="mut">${f === 'all' ? D.rows.length : D.rows.filter(r => r.family === f).length}</span></button>`).join('');
   $('viewTabs').innerHTML = `<span class="mut">View:</span><button class="btn ${VIEW === 'min' ? 'on' : ''}" onclick="setView('min')">Minutes after</button><button class="btn ${VIEW === 'day' ? 'on' : ''}" onclick="setView('day')">Days around</button>` + (VIEW === 'day' ? `<span class="mut" style="margin-left:10px">Horizon:</span>` + Object.entries(HZ).map(([h, [t, tip]]) => `<button class="btn ${HOR === h ? 'on' : ''}" title="${tip}" onclick="setHor('${h}')">${t}</button>`).join('') : '');
+  $('groupTabs').innerHTML = `<span class="mut">Assets:</span>` + Object.entries(GR).map(([g, o]) => `<button class="btn ${GROUP === g ? 'on' : ''}" onclick="setGroup('${g}')">${o.name}</button>`).join('');
   const rows = D.rows.filter(r => FAM === 'all' || r.family === FAM).slice().reverse();
   const first = r => `<td>${lon(r.t, { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}${r.inProgress ? ' <span class="badge live">LIVE</span>' : ''}</td><td class="l">${esc(FAMNAME[r.family] || r.family)}</td><td>${surTxt(r)}</td>`;
   if (VIEW === 'day') {
-    $('tbl').querySelector('thead').innerHTML = `<tr><th>Time (London)</th><th class="l">Release</th><th title="actual minus consensus">Surprise</th>${DK.map(k => `<th title="${DLAB[k]} (${DUNIT[k]}), ${HZ[HOR][0]}">${DSHORT[k]} ${DUNIT[k]}</th>`).join('')}</tr>`;
-    $('tbl').querySelector('tbody').innerHTML = rows.map(r => `<tr class="pick ${SEL === r.id ? 'sel' : ''}" onclick="pick('${r.id}')">${first(r)}${DK.map(k => `<td>${dnum(dv(r, k, HOR), k)}</td>`).join('')}</tr>`).join('');
+    $('tbl').querySelector('thead').innerHTML = `<tr><th>Time (London)</th><th class="l">Release</th><th title="actual minus consensus">Surprise</th>${GR[GROUP].day.map(k => `<th title="${DLAB[k]} (${DUNIT[k]}), ${HZ[HOR][0]}">${DSHORT[k]} ${DUNIT[k]}</th>`).join('')}</tr>`;
+    $('tbl').querySelector('tbody').innerHTML = rows.map(r => `<tr class="pick ${SEL === r.id ? 'sel' : ''}" onclick="pick('${r.id}')">${first(r)}${GR[GROUP].day.map(k => `<td>${dnum(dv(r, k, HOR), k)}</td>`).join('')}</tr>`).join('');
     return;
   }
-  const cols = [['sofr', 'm5'], ['sofr', 'm30'], ['eur', 'm30'], ['spr', 'm30'], ['zt', 'm30'], ['zn', 'm30'], ['dx', 'm30'], ['nq', 'm30']];
-  $('tbl').querySelector('thead').innerHTML = `<tr><th>Time (London)</th><th class="l">Release</th><th title="actual minus consensus">Surprise</th>${cols.map(([k, m]) => `<th title="${LAB[k]}, ${m.slice(1)} min after">${k === 'spr' ? 'Line' : k.toUpperCase()} ${m.slice(1)}m</th>`).join('')}<th>Agree</th><th title="Minute of the largest SOFR-leg 1-min move relative to the stamp">Clock</th></tr>`;
-  $('tbl').querySelector('tbody').innerHTML = rows.map(r => `<tr class="pick ${SEL === r.id ? 'sel' : ''}" onclick="pick('${r.id}')">${first(r)}${cols.map(([k, m]) => `<td>${num(r.M[k]?.[m], k)}</td>`).join('')}<td>${agreeTxt(r.agree)}</td><td>${r.jump == null ? '<span class="mut">·</span>' : (Math.abs(r.jump) <= 1 ? '<span class="pos">ok</span>' : `<span class="neg">${r.jump > 0 ? '+' : ''}${r.jump}m</span>`)}</td></tr>`).join('');
+  const cols = GR[GROUP].min;
+  $('tbl').querySelector('thead').innerHTML = `<tr><th>Time (London)</th><th class="l">Release</th><th title="actual minus consensus">Surprise</th>${cols.map(([k, m]) => `<th title="${LAB[k]}, ${m.slice(1)} min after">${k === 'spr' ? 'Line' : k.toUpperCase()} ${m.slice(1)}m</th>`).join('')}${['core', 'rates'].includes(GROUP) ? '<th>Agree</th>' : ''}<th title="Minute of the largest 1-min move of the clock market (SOFR leg for US releases; Euribor for the ECB, gilt for the BoE and UK Budget, 10y note for refundings; the BoJ minute is taken from USD/JPY) relative to the stamp">Clock</th></tr>`;
+  $('tbl').querySelector('tbody').innerHTML = rows.map(r => `<tr class="pick ${SEL === r.id ? 'sel' : ''}" onclick="pick('${r.id}')">${first(r)}${cols.map(([k, m]) => `<td>${num(r.M[k]?.[m], k)}</td>`).join('')}${['core', 'rates'].includes(GROUP) ? `<td>${agreeTxt(r.agree)}</td>` : ''}<td>${r.jump == null ? '<span class="mut">·</span>' : (Math.abs(r.jump) <= 1 ? '<span class="pos">ok</span>' : `<span class="neg">${r.jump > 0 ? '+' : ''}${r.jump}m</span>`)}</td></tr>`).join('');
 }
 function setView(v) { VIEW = v; renderTable(); }
+function setGroup(g) { GROUP = g; renderTable(); renderShape(); renderShapeDays(); }
 function setHor(h) { HOR = h; renderTable(); }
-function setFam(f) { FAM = f; renderTable(); renderShape(); renderShapeDays(); }
+function setFam(f) { FAM = f; if (HOMEGROUP[f]) GROUP = HOMEGROUP[f]; else if (f !== 'all' && GROUP === 'intl') GROUP = 'core'; try { history.replaceState(null, '', f === 'all' ? location.pathname : '?fam=' + f); } catch {} renderTable(); renderShape(); renderShapeDays(); }
 function pick(id, quiet) { SEL = id; DETAIL_LIVE = true; renderTable(); loadDetail(id, false); if (!quiet) $('detail').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
 
 async function loadDetail(id, refresh) {
@@ -215,7 +232,7 @@ function chart(P, k, row, xmax) {
   const step = P.step === 15, dp = dpOf(k);
   let d = '', pen = false; for (let m = OFF0; m <= xmax; m++) { const i = m - OFF0, v = P.v[i]; if (v == null) { pen = false; continue; } d += (pen ? 'L' : 'M') + X(m).toFixed(1) + ' ' + Y(v).toFixed(1); pen = true; }
   const ticks = [lo + pad, 0, hi - pad].filter((v, i, a) => a.findIndex(z => Math.abs(z - v) < (hi - lo) * .06) === i);
-  const mk = row.family === 'FOMC' && xmax >= 30 ? `<line x1="${X(30)}" x2="${X(30)}" y1="${T}" y2="${H - B}" stroke="var(--amber)" stroke-dasharray="2 3" stroke-width="1"/><text x="${X(30) + 3}" y="${T + 8}" fill="var(--amber)" style="fill:var(--amber)">presser</text>` : '';
+  const mk = ['FOMC', 'ECB'].includes(row.family) && xmax >= 30 ? `<line x1="${X(30)}" x2="${X(30)}" y1="${T}" y2="${H - B}" stroke="var(--amber)" stroke-dasharray="2 3" stroke-width="1"/><text x="${X(30) + 3}" y="${T + 8}" fill="var(--amber)" style="fill:var(--amber)">presser</text>` : '';
   const xt = [-30, 0, 30, 60, 120, 180, 240].filter(m => m <= xmax);
   return `<svg viewBox="0 0 ${W} ${H}" data-k="${k}" data-xmax="${xmax}">
     <line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--zero)" stroke-width="1"/><line x1="${X(0)}" x2="${X(0)}" y1="${T}" y2="${H - B}" stroke="var(--zero)" stroke-width="1" stroke-dasharray="3 3"/>${mk}
@@ -236,13 +253,13 @@ function renderDetail(row, P) {
   const act = row.actual, cons = row.consensus;
   $('detail').innerHTML = `<h2>Release detail</h2>
     <div style="font-size:15px;font-weight:700">${esc(row.name)} ${row.inProgress ? '<span class="badge live">LIVE</span>' : ''}</div>
-    <div class="mut" style="margin-bottom:4px">${lon(row.t, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })} London · ${utc(row.t)}${act != null ? ` · actual <b style="color:var(--text)">${act}</b>${cons != null ? ' vs consensus <b style="color:var(--text)">' + cons + '</b>' : ''}` : ''}</div>
+    <div class="mut" style="margin-bottom:4px">${lon(row.t, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })} London · ${utc(row.t)}${act != null ? ` · actual <b style="color:var(--text)">${act}</b>${cons != null ? ' vs consensus <b style="color:var(--text)">' + cons + '</b>' : ''}` : ''}${row.timing ? ` · time: ${esc(row.timing)}` : ''}${READ[row.family] ? ` · <a href="${READ[row.family]}">read the release</a>` : ''}</div>
     <div class="tiles">${tiles}<div class="tile">Rates agreement ${agreeTxt(A)}</div></div>
     <div class="row"><span class="mut">Window after the release:</span>${[60, 120, 240].map(x => `<button class="btn ${XMAX === x ? 'on' : ''}" onclick="XMAX=${x};renderDetail(D.rows.find(r=>r.id==='${row.id}'),PATHS['${row.id}'])">${x} min</button>`).join('')}<span class="mut" style="margin-left:6px">every chart starts at 0 at the release instant; dashed line = release</span></div>
     <div class="charts">${KEYS.map(k => `<div class="cp"><div class="t"><b style="color:${COL[k]}">${LAB[k]}</b><span>${UNIT[k]}${P?.[k]?.step === 15 ? ' · 15-min points' : ''}</span></div>${chart(P?.[k], k, row, XMAX)}</div>`).join('')}</div>
     <div class="xscroll" style="margin-top:10px"><table><thead><tr><th class="l">Asset</th><th title="drift in the 30 min before">Before 30m</th><th>1m</th><th>5m</th><th>15m</th><th>30m</th><th>60m</th><th>120m</th><th>240m</th><th title="largest excursion in the first 30 minutes">Peak</th><th title="minute of that peak">at</th><th title="minutes to reach half the peak">Half by</th><th title="30-minute move as a share of the peak: 1 = held, below 0 = reversed">Held</th><th title="30-minute move divided by the typical move in the same clock window on days with no release">z (cond.)</th></tr></thead><tbody>${rows}</tbody></table></div>
     ${daysBlock(row)}
-    <p class="note" style="margin-top:6px">Clock check for this release: ${row.jump == null ? 'no clear jump in the SOFR leg' : Math.abs(row.jump) <= 1 ? 'the largest 1-minute move of the SOFR leg is in the release minute, as stamped.' : `the largest 1-minute move of the SOFR leg is ${row.jump > 0 ? '+' : ''}${row.jump} min from the stamp; with a small reaction that is usually noise, with a large one check the stamp.`} "z (cond.)" compares with the same clock window on the 40 prior weekdays that carried no release.</p>`;
+    <p class="note" style="margin-top:6px">Clock check for this release: ${(cm => row.family === 'BOJ' ? 'the BoJ has no fixed time, so the minute is the largest 1-minute USD/JPY move between 01:30 and 05:30 UTC; the check is circular and the first-minute size is flattered.' : row.jump == null ? `no clear jump in the ${cm}` : Math.abs(row.jump) <= 1 ? `the largest 1-minute move of the ${cm} is in the release minute, as stamped.` : `the largest 1-minute move of the ${cm} is ${row.jump > 0 ? '+' : ''}${row.jump} min from the stamp; with a small reaction that is usually noise, with a large one check the stamp.`)(LAB[CLOCKON[row.family] || 'sofr'])} "z (cond.)" compares with the same clock window on the 40 prior weekdays that carried no release.</p>`;
 }
 
 function dchart(a, k) {
@@ -270,7 +287,7 @@ function renderShape() {
   const fams = [...new Set(D.rows.map(r => r.family))].filter(f => FAM === 'all' || f === FAM), ms = ['m1', 'm5', 'm15', 'm30', 'm60', 'm120'];
   const med = a => { a = a.filter(x => x != null).sort((x, y) => x - y); return a.length ? (a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2) : null; };
   let h = `<thead><tr><th class="l">Release</th><th class="l">Asset</th><th>n</th>${ms.map(m => `<th>|${m.slice(1)}m|</th>`).join('')}<th title="median minutes to half of the peak">Half by</th><th title="share of releases where the 30-minute move was exactly zero">Unmoved</th></tr></thead><tbody>`;
-  for (const f of fams) for (const k of ['sofr', 'eur', 'spr', 'nq']) {
+  for (const f of fams) for (const k of GR[GROUP].one) {
     const R = D.rows.filter(r => r.family === f && r.M[k] && r.M[k].res === 1); if (R.length < 3) continue;
     h += `<tr><td class="l">${FAMNAME[f] || f}</td><td class="l" style="color:${COL[k]}">${LAB[k]}</td><td>${R.length}</td>${ms.map(m => { const a = R.map(r => r.M[k][m] == null ? null : Math.abs(r.M[k][m])), md = med(a); return `<td>${md == null ? '·' : md.toFixed(dpOf(k) + (k === 'nq' ? 0 : 0))}</td>`; }).join('')}<td>${med(R.map(r => r.M[k].t_half)) ?? '·'}</td><td>${Math.round(100 * R.filter(r => r.M[k].m30 === 0).length / R.length)}%</td></tr>`;
   }
@@ -281,7 +298,7 @@ function renderShapeDays() {
   const fams = [...new Set(D.rows.map(r => r.family))].filter(f => FAM === 'all' || f === FAM), hs = ['run', 'd0', 'd1', 'd2', 'd5'];
   const med = a => { a = a.filter(x => x != null).sort((x, y) => x - y); return a.length ? (a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2) : null; };
   let h = `<thead><tr><th class="l">Release</th><th class="l">Asset</th><th>n</th>${hs.map(x => `<th title="${HZ[x][1]}">|${HZ[x][0]}|</th>`).join('')}<th title="share of releases up at +1 day">Up +1d</th></tr></thead><tbody>`;
-  for (const f of fams) for (const k of DK) {
+  for (const f of fams) for (const k of GR[GROUP].day) {
     const R = D.rows.filter(r => r.family === f && dv(r, k, 'd1') != null); if (R.length < 3) continue;
     h += `<tr><td class="l">${FAMNAME[f] || f}</td><td class="l" style="color:${DCOL[k]}">${DLAB[k]}</td><td>${R.length}</td>${hs.map(x => { const m = med(R.map(r => { const v = dv(r, k, x); return v == null ? null : Math.abs(v); })); return `<td>${m == null ? '·' : m.toFixed(ddp(k))}</td>`; }).join('')}<td>${Math.round(100 * R.filter(r => dv(r, k, 'd1') > 0).length / R.length)}%</td></tr>`;
   }
@@ -289,6 +306,7 @@ function renderShapeDays() {
 }
 $('btnRefresh').onclick = load;
 fetch('/api/release-layer1/checks').then(r => r.text()).then(t => { $('checks').textContent = t; }).catch(() => { $('checks').textContent = 'not available'; });
+{ const f = new URLSearchParams(location.search).get('fam'); if (f) { FAM = f.toUpperCase(); if (HOMEGROUP[FAM]) GROUP = HOMEGROUP[FAM]; } }
 load(); setInterval(load, 30000);
 </script>
 </body>

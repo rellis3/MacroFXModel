@@ -7,7 +7,7 @@
  *   - Run computeForecast() for all 10 instruments
  *   - Persist results to KV: 'vol_forecast_latest' + 'vol_forecast_YYYY-MM-DD'
  *   - Maintain an in-memory cache of the latest + last 5 sessions
- *   - Schedule a daily run at VOL_FORECAST_UTC (default 22:00 UTC, Mon–Fri)
+ *   - Schedule a daily run at VOL_FORECAST_UTC (default 22:15 UTC, Mon–Fri)
  *
  * Data source priority:
  *   1. Oanda v20 candles API (if OANDA_KEY set) — continuous mid prices, no roll distortion
@@ -133,8 +133,13 @@ const RV_MAX_DAYS     = 500;                                  // days to keep in
 const RV_KV_PREFIX    = 'vol_rv2_';                           // v2: GK per M15 bar (was close-to-close)
 const GK_ADJ_SCHED    = 2 * Math.LN2 - 1;                   // 2ln2−1 ≈ 0.3863
 
-// Hour (UTC) at which the daily forecast runs. After US session close + buffer.
-const TARGET_HOUR_UTC = parseInt(process.env.VOL_FORECAST_UTC ?? '22');
+// Time (UTC) at which the daily forecast runs: after the OANDA D bar closes (17:00 New York = 21:00 UTC in
+// EDT, 22:00 UTC in EST) plus a buffer. 22:00 sharp in EST raced the close: fetchOHLCOanda keeps only
+// complete bars, so a run on the 22:00 tick could drop that day's bar. VOL_FORECAST_UTC takes "HH:MM" or an
+// hour ("22" = 22:00).
+const [TARGET_HOUR_UTC, TARGET_MIN_UTC = 0] = String(process.env.VOL_FORECAST_UTC ?? '22:15').split(':').map(Number);
+export const volForecastPastCutoff = d => d.getUTCHours() * 60 + d.getUTCMinutes() >= TARGET_HOUR_UTC * 60 + TARGET_MIN_UTC;
+const TARGET_LABEL = `${String(TARGET_HOUR_UTC).padStart(2, '0')}:${String(TARGET_MIN_UTC).padStart(2, '0')}`;
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
 export const forecastState = {
@@ -911,7 +916,7 @@ export async function getSessionStatus() {
 // re-run. Stored as vol_session_YYYY-MM-DD in KV (CF-persisted) so historical
 // sessions can be extracted for any captured date.
 
-// The daily trigger fires on the first 5-min tick at/after 22:00 UTC. In BST London midnight is 23:00 UTC, so a
+// The daily trigger fires on the first 5-min tick at/after 22:15 UTC. In BST London midnight is 23:00 UTC, so a
 // delayed tick (restart, deploy, slow run) used to audit AFTER the session ended — getSessionStatus() then measured
 // the NEXT session's first minutes and stored them as this session (6 of 14 records, 2026-09-15 → 10-02).
 // A late audit now measures this session's own London-midnight → next-midnight window explicitly.
@@ -977,7 +982,7 @@ let _lastRunDate = null;
 // Self-repair: while the served forecast is missing instruments or carrying
 // stale copies forward (a data source was down during the run), retry hourly
 // until it heals — including weekends, where the daily trigger never fires but
-// candle history is still fetchable. Without this a partial 22:00 run is
+// candle history is still fetchable. Without this a partial 22:15 run is
 // served untouched until the NEXT day's run.
 let _lastRepairMs   = 0;
 let _repairInFlight = false;
@@ -995,7 +1000,7 @@ function _repairTick() {
     .finally(() => { _repairInFlight = false; });
 }
 
-// The FINAL audit: the 22:00 UTC audit runs ~45 min before a BST session ends (complete:false), so once London's
+// The FINAL audit: the 22:15 UTC audit runs 45 min before a BST session ends (complete:false), so once London's
 // date has moved past the session, re-audit it through the late path (_sessionRecordFor: that session's own
 // midnight-to-midnight window from bars) and overwrite. The Daily Read waits for this record before scoring.
 let _pendingFinalAudit = null;
@@ -1011,7 +1016,7 @@ async function _schedulerTick() {
   const now = new Date();
   const day = now.getUTCDay();
   if (day === 0 || day === 6) return;                             // skip weekends
-  if (now.getUTCHours() < TARGET_HOUR_UTC) return;               // too early
+  if (!volForecastPastCutoff(now)) return;                        // too early
   const todayStr = now.toISOString().split('T')[0];
   if (_lastRunDate === todayStr) return;                          // already ran
   _lastRunDate = todayStr;
@@ -1029,7 +1034,7 @@ async function _schedulerTick() {
 function _applicableSessionDate(now) {
   const d   = new Date(now);
   const day = d.getUTCDay();
-  const isPastCutoff = day !== 0 && day !== 6 && d.getUTCHours() >= TARGET_HOUR_UTC;
+  const isPastCutoff = day !== 0 && day !== 6 && volForecastPastCutoff(d);
   if (isPastCutoff) return nextTradingDay(d).toISOString().split('T')[0];
   // Before cutoff (or weekend): nearest upcoming weekday
   while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + 1);
@@ -1071,7 +1076,7 @@ export async function startVolForecastScheduler() {
   }
 
   // Only trigger an immediate run when we genuinely lack the currently applicable
-  // forecast.  Before 22:00 UTC the applicable session is today — so a mid-day
+  // forecast.  Before 22:15 UTC the applicable session is today — so a mid-day
   // restart with today's forecast cached will NOT re-run prematurely.
   const neededDate  = _applicableSessionDate(new Date());
   const cachedDate  = forecastState.latest?.session_date;
@@ -1121,5 +1126,5 @@ export async function startVolForecastScheduler() {
   }, 10_000);
 
   const src = process.env.OANDA_KEY ? 'oanda' : 'yahoo';
-  console.log(`[VOL-FORECAST] Scheduler active — daily run at ${TARGET_HOUR_UTC}:00 UTC  source=${src}`);
+  console.log(`[VOL-FORECAST] Scheduler active — daily run at ${TARGET_LABEL} UTC  source=${src}`);
 }

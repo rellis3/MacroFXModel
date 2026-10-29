@@ -1887,7 +1887,7 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
   </div>
 <div class="dr-sec" id="drCorrSec" data-seckey="corr" style="display:none">
     <h3 class="help" title="How this market has moved RELATIVE to others over the last ~10 trading days, and its sensitivity (beta) to the dollar, rates and risk. CONTEXT only, and backward-looking: correlations are regime-dependent and in a real risk-off they snap toward 1, so a historical 'hedge' can stop hedging exactly when you need it. Not a signal — use it to avoid doubling up the same bet and to know what really drives this pair."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Correlations, hedges &amp; beta</span></h3>
-    <div class="dr-sec-body"><div id="drCorr"><span class="muted">loading…</span></div></div>
+    <div class="dr-sec-body"><div id="drCorr"><span class="muted">loading…</span></div><div id="drBeta" style="margin-top:8px"></div></div>
   </div>
 <div class="dr-sec" id="drStorySec" data-seckey="story">
     <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>The story</span></h3>
@@ -2137,6 +2137,7 @@ let hedgeAlerts = null;  // /api/hedge-alerts — last rolling corr + betas (dol
 let ism = null;          // /api/ism — growth-surprise proxy per currency (js/ismEngine.js: real composite for USD only; the other 7 are an OECD business-confidence proxy, explicitly NOT official PMI — see that file's header)
 let calAhead = null;     // /api/calendar-ahead — Nasdaq forward lists past ForexFactory's this-week file (week-ahead panel)
 let gpr = null;          // /api/gpr — Geopolitical Risk Index (Caldara & Iacoviello), global/currency-agnostic backdrop read; the one series here NOT on FRED (js/gprEngine.js)
+let eventDay = null;     // /api/event-day — today's release / decision / Budget against the same events before (Release Reaction) + the rate legs (js/eventDayContext.js); sizes only
 let bankCredit = null;   // /api/bank-credit — BIS cross-border bank credit regime (js/bankCredit.js); quarterly, context only (bank-credit-dollar-*)
 let drawdownShadow = null; // /api/drawdown-shadow — research shadow band after a 20-day S&P fall (drawdown-forecast-error A1); live lines untouched
 let fundingRead = null;  // /api/funding-read — daily/weekly funding & leverage read (js/fundingRead.js); context only, untested as forecasts
@@ -2570,7 +2571,7 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq, ysp, fomcH, ecbH, boeH, bojH, rbnzH, rbaH, bocH, gef, vi] = await Promise.all([
+  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq, ysp, fomcH, ecbH, boeH, bojH, rbnzH, rbaH, bocH, snbH, gef, vi] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
@@ -2597,6 +2598,7 @@ async function loadGate() {
     jget('/api/rbnz/history?n=6').catch(() => null),
     jget('/api/rba/history?n=6').catch(() => null),
     jget('/api/boc/history?n=6').catch(() => null),
+    jget('/api/snb/history?n=6').catch(() => null),
     // GLD+IAU combined AUM, self-collected daily by the server — see
     // server.js's _goldEtfFlowSeries header for why (no vendor-hosted flow
     // history exists to fetch directly). UNVERIFIED IN SANDBOX like every
@@ -2626,11 +2628,12 @@ async function loadGate() {
   if (msc?.ok) macroScorecard = msc;
   if (cq?.ok) creditQuality = cq;
   if (ysp?.ok) yieldSpreadPlan = ysp.plan;
-  if (fomcH?.ok || ecbH?.ok || boeH?.ok || bojH?.ok || rbnzH?.ok || rbaH?.ok || bocH?.ok) {
+  if (fomcH?.ok || ecbH?.ok || boeH?.ok || bojH?.ok || rbnzH?.ok || rbaH?.ok || bocH?.ok || snbH?.ok) {
     cbHistory = {
       fomc: fomcH?.ok ? fomcH.history : [], ecb: ecbH?.ok ? ecbH.history : [],
       boe: boeH?.ok ? boeH.history : [], boj: bojH?.ok ? bojH.history : [],
       rbnz: rbnzH?.ok ? rbnzH.history : [], rba: rbaH?.ok ? rbaH.history : [], boc: bocH?.ok ? bocH.history : [],
+      snb: snbH?.ok ? snbH.history : [],
     };
   }
   if (gef?.ok) goldEtfFlow = gef;
@@ -2673,6 +2676,7 @@ async function loadGate() {
   setInterval(() => loadNewsOutcomes().catch(() => {}), 10 * 60_000);
   jget('/api/calendar-ahead').then(r => { if (r?.ok) { calAhead = r.rows ?? []; render(); } }).catch(() => {});   // week ahead past FF's week
   jget('/api/gpr').then(r => { gpr = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { gpr = { down: true, error: e.message }; render(); });   // geopolitical risk line; a dead feed says so
+  jget('/api/event-day').then(r => { eventDay = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { eventDay = { down: true, error: e.message }; render(); });   // event-day context + rate legs
   jget('/api/bank-credit').then(r => { bankCredit = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { bankCredit = { down: true, error: e.message }; render(); });   // BIS bank-credit regime line (quarterly)
   jget('/api/funding-read?spark=0').then(r => { fundingRead = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { fundingRead = { down: true, error: e.message }; render(); });   // funding & leverage block
   jget('/api/drawdown-shadow').then(r => { drawdownShadow = r?.rule ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { drawdownShadow = { down: true, error: e.message }; render(); });   // drawdown shadow line
@@ -5410,6 +5414,20 @@ function drawdownShadowLine() {
     + `<span class="muted"> · forward record ${sc.triggerSessions ?? 0}/${sc.judgeAt ?? 40} trigger sessions${fx.live != null ? ` (FX p75 hit: live ${pct(fx.live)} vs shadow ${pct(fx.shadow)})` : ''}</span></div>`;
 }
 
+/* Event day (js/eventDayContext.js via /api/event-day): for each release / decision / Budget today, what the same kind of event did
+   the previous times in the Release Reaction record, and the evidence on it. Sizes and how often the move held; never a direction. */
+function eventDayBlock() {
+  if (!eventDay || eventDay.down || !(eventDay.events ?? []).length) return '';
+  const rows = eventDay.events.map(e => `<div style="font-size:11px;margin-top:3px"><b class="tone ${e.released ? '' : 'mix'}" style="font-size:10px">${e.released ? 'released' : 'due'}</b> <span class="muted">${esc0(e.line)}</span></div>`).join('');
+  return `<div class="riskverdict help" style="margin-top:6px" title="From the Release Reaction record: every past event of the same kind, measured minute by minute. Descriptive history; no direction rule on these events has passed.">Event day <span class="muted">(<a href="release-reaction.html" target="_blank">every market, minute by minute</a>)</span>${rows}</div>`;
+}
+/* Rate legs: which country's front end and which bond futures moved in the latest session (cog-chart futures). Same-bar context only. */
+function rateLegsLine() {
+  const f = eventDay && !eventDay.down ? eventDay.frontEnds : null;
+  if (!f?.line) return '';
+  return `<div class="riskverdict help" style="margin-top:3px;font-size:11px" title="SOFR, Euribor and €STR futures in bp of implied rate; Schatz, Bund, BTP and US note futures as price change. No lead from these legs survived testing.">${f.stale ? '<b class="tone mix" style="font-size:10px">stale</b> ' : ''}<span class="muted">${esc0(f.line)}</span> <a href="cog-chart.html" target="_blank">chart</a></div>`;
+}
+
 /* Funding & leverage (js/fundingRead.js): where each plumbing series sits in its own history.
    Untested as forecasts (funding-stress is NULL), so states are descriptions; flagged rows lead. */
 function fundingBlock() {
@@ -5628,7 +5646,9 @@ function renderMarketRead() {
         }</div>` : ''}
         ${risk.creditQ ? `<div class="riskverdict" style="margin-top:3px" title="Baa10Y−Aaa10Y investment-grade quality spread, z-scored against its own history — a different axis than the HY-level Credit line above (junk-bond spreads). Widening = investors demanding more premium for lower-quality investment-grade debt, an early credit-curve-shape tell. Context, not a backtested rule.">Credit quality (Baa−Aaa): <b class="tone ${risk.creditQ.z > 0.5 ? 'off' : risk.creditQ.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.creditQ.z > 0.5 ? 'widening' : risk.creditQ.z < -0.5 ? 'tightening' : 'steady'}</b><span class="muted"> · z ${risk.creditQ.z >= 0 ? '+' : ''}${risk.creditQ.z}</span></div>` : ''}
         ${risk.realYield ? `<div class="riskverdict" style="margin-top:3px" title="10Y TIPS yield (DFII10) — the market's own real, inflation-adjusted rate; a direct FRED read, not derived. Rising real yields are typically a headwind for risk assets/gold; falling is supportive. Breakeven inflation (10Y, T10YIE) shown alongside as inflation-expectation context. Context, not a backtested rule.">Real yield (10Y TIPS): <b class="tone ${risk.realYield.prev != null ? (risk.realYield.level > risk.realYield.prev ? 'off' : risk.realYield.level < risk.realYield.prev ? 'on' : 'mix') : 'mix'}" style="font-weight:800">${risk.realYield.prev != null ? (risk.realYield.level > risk.realYield.prev ? 'rising' : risk.realYield.level < risk.realYield.prev ? 'falling' : 'flat') : 'steady'}</b><span class="muted"> · ${fmtN(risk.realYield.level, 2)}%${risk.realYield.bei != null ? ` · breakeven ${fmtN(risk.realYield.bei, 2)}%` : ''}</span></div>` : ''}
+        ${eventDayBlock()}
         ${ratesDecompLine()}
+        ${rateLegsLine()}
         ${policyPricedLine()}
         ${seasonalityLine()}
         ${correlationRegimeLine()}
@@ -6292,7 +6312,7 @@ const CCY_DIM_LABEL = {
   ism: 'Business Activity', laborMarket: 'Labor Market', retailSales: 'Retail Sales',
   tradeBalance: 'Trade Balance', realYield: 'Real Yield', yieldCurve: 'Yield Curve', consumerConfidence: 'Consumer Confidence', rateDiff: 'Rate Differential', ppi: 'PPI',
 };
-const CCY_DIM_PAGE = { USD: 'fomc-sentiment.html', EUR: 'ecb-sentiment.html', GBP: 'boe-sentiment.html', JPY: 'boj-sentiment.html', NZD: 'rbnz-sentiment.html', AUD: 'rba-sentiment.html', CAD: 'boc-sentiment.html' };
+const CCY_DIM_PAGE = { USD: 'fomc-sentiment.html', EUR: 'ecb-sentiment.html', GBP: 'boe-sentiment.html', JPY: 'boj-sentiment.html', NZD: 'rbnz-sentiment.html', AUD: 'rba-sentiment.html', CAD: 'boc-sentiment.html', CHF: 'snb-sentiment.html' };
 function ccyDimHref(dim, ccy) {
   if (dim === 'cbSentiment') return CCY_DIM_PAGE[ccy] || 'macro-scorecard.html';
   return { cpi: 'cpi.html', gdp: 'gdp.html', ism: 'ism.html', laborMarket: 'labor-market.html',
@@ -6367,7 +6387,7 @@ function fundamentalsHtml(ccy) {
 }
 // Policy tone + this currency's own calendar.
 //
-// cbHistory is fetched at boot for all seven tracked banks (6 meetings each) and
+// cbHistory is fetched at boot for all eight tracked banks (6 meetings each) and
 // `events` is the full day's calendar -- both were reaching the AI prompt and a
 // per-PAIR tooltip, while the currency drawer, the one natural home for "what has
 // this central bank been saying and what is due for this economy", showed neither.
@@ -6399,7 +6419,7 @@ function ccyPolicyHtml(ccy) {
   } else if (CB_HISTORY_KEY[ccy]) {
     bits.push(`<div class="muted">No scored ${CB_HISTORY_KEY[ccy].toUpperCase()} meetings loaded yet — see <a href="${CCY_DIM_PAGE[ccy] || 'macro-scorecard.html'}">the sentiment page</a>.</div>`);
   } else {
-    bits.push(`<div class="muted">No central-bank statement feed wired for ${ccy} — only the Fed, ECB, BoE, BoJ, RBNZ, RBA and BoC are scored here.</div>`);
+    bits.push(`<div class="muted">No central-bank statement feed wired for ${ccy} — only the Fed, ECB, BoE, BoJ, RBNZ, RBA, BoC and SNB are scored here.</div>`);
   }
 
   // This economy's own scheduled releases, soonest first. `events` carries the
@@ -7972,10 +7992,10 @@ function outlookInputsFor(r) {
 }
 // Central-bank tone TREND (multi-meeting hawkish/dovish trajectory) for this
 // pair's own two currencies — DESCRIPTIVE CONTEXT ONLY, never fed into
-// outlookInputsFor/computeOutlook. Only USD/EUR/GBP/JPY have a tracked
-// central bank here (FOMC/ECB/BOE/BOJ/RBNZ/RBA/BOC); CHF legs are silently
-// skipped, same "missing is left out" discipline as every driver above.
-const CB_HISTORY_KEY = { USD: 'fomc', EUR: 'ecb', GBP: 'boe', JPY: 'boj', NZD: 'rbnz', AUD: 'rba', CAD: 'boc' };
+// outlookInputsFor/computeOutlook. All eight currencies have a tracked
+// central bank here (FOMC/ECB/BOE/BOJ/RBNZ/RBA/BOC/SNB); a leg with no
+// history loaded is silently skipped, same "missing is left out" discipline as every driver above.
+const CB_HISTORY_KEY = { USD: 'fomc', EUR: 'ecb', GBP: 'boe', JPY: 'boj', NZD: 'rbnz', AUD: 'rba', CAD: 'boc', CHF: 'snb' };
 function cbToneFor(r) {
   if (!cbHistory || !window.outlookBrick) return [];
   const cc = PAIR_CCY[r.name];
@@ -9590,6 +9610,10 @@ function renderSidebar() {
   if (risk.gpr?.stale) takeaways.push(['⚑', 'amber', `Geopolitical Risk data hasn't refreshed in ${risk.gpr.daysStale}+ days — the weekly pull may be behind.`]);
   const nextEv = nextHighImpact();
   if (nextEv) takeaways.push(['📅', 'blue', `Next high-impact release: ${nextEv}`]);
+  try {   // beta alerts (market review build): only when the file is fresh and a board market is affected
+    const ba = _betaShift && (betaShiftAgeDays() ?? 99) <= 4 ? boardBetaAlerts() : [];
+    if (ba.length) takeaways.push(['β', 'amber', `Beta not normal on ${ba.length} market${ba.length > 1 ? 's' : ''}: ${ba.slice(0, 3).map(a => `<b>${dispName(a.board)}</b> vs ${a.label} (${(a.kinds ?? [])[0]})`).join(', ')}${ba.length > 3 ? '…' : ''}. Hedges may not behave as usual. See Beta alerts below.`]);
+  } catch (e) { /* takeaway is optional */ }
 
   el.innerHTML = `
     <div class="side-card"><h3>Market Tone</h3>${marketToneGaugeHtml(risk, cs, fred?.us10y, commodityDrivers?.wti, mood)}</div>
@@ -9618,6 +9642,8 @@ function renderSidebar() {
     <div class="side-card"><h3>Today's Calendar</h3><div id="calList"><div class="muted">Loading…</div></div><div id="calWatch"></div></div>
 
     <div class="side-card"><h3>Positioning into the releases</h3><div id="posIntoEvent"><div class="muted">Loading…</div></div></div>
+
+    <div class="side-card"><h3 class="help" title="Markets on this board whose beta to the Nasdaq, the US 10-year yield, the dollar index or oil is not normal: it flipped sign, jumped by 1.5+ standard deviations of its own past year, or sits outside its own 5th-95th percentile, each with a meaningful link (|corr| ≥ 0.3). Daily, from the market review build. Context for risk and hedges, not a signal.">Beta alerts</h3><div id="betaAlerts"><div class="muted">Loading…</div></div></div>
 
     <div class="side-card"><h3>Risk State</h3><div id="riskList"><div class="muted">Loading…</div></div></div>
 
@@ -9709,7 +9735,7 @@ function booksCardHtml() {
       'market-implied policy odds from CME SOFR options — window, not meeting; untested here, context only');
   })();
   // central banks: only when a decision is inside ten days
-  const CB = { US: ['fomc-sentiment.html', 'Fed'], EU: ['ecb-sentiment.html', 'ECB'], GB: ['boe-sentiment.html', 'Bank of England'], JP: ['boj-sentiment.html', 'Bank of Japan'], NZ: ['rbnz-sentiment.html', 'RBNZ'], AU: ['rba-sentiment.html', 'RBA'], CA: ['boc-sentiment.html', 'Bank of Canada'] };
+  const CB = { US: ['fomc-sentiment.html', 'Fed'], EU: ['ecb-sentiment.html', 'ECB'], GB: ['boe-sentiment.html', 'Bank of England'], JP: ['boj-sentiment.html', 'Bank of Japan'], NZ: ['rbnz-sentiment.html', 'RBNZ'], AU: ['rba-sentiment.html', 'RBA'], CA: ['boc-sentiment.html', 'Bank of Canada'], CH: ['snb-sentiment.html', 'SNB'] };
   const cbEv = (events ?? []).filter(e => e.ms > nowMs - 2 * 864e5 && e.ms < nowMs + 10 * 864e5 && _tlFam(e.event) === 'rate decision' && CB[e.country]).sort((a, b) => a.ms - b.ms)[0];
   if (cbEv) { const [href, name] = CB[cbEv.country]; row(href, '🏛', `${name} this week`, `decision ${new Date(cbEv.ms).toLocaleString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}${cbEv.estimate != null ? ` · ${esc0(cbEv.estimate)} expected` : ''}`, 'statement wording, hawkish/dovish drift, meeting by meeting'); }
   else { const fm = _tlFomcAhead().replace(/<[^>]+>/g, ''); if (fm) row('fomc-sentiment.html', '🏛', 'Fed', esc0(fm.replace(/^\s*\d\d-\d\d\s*/, '')), 'the statement, meeting by meeting'); }
@@ -10533,6 +10559,7 @@ function render() {
   renderMacroMoved();
   renderGate();
   try { renderPositioningIntoEvent(); } catch (e) { const t = $('posIntoEvent'); if (t) t.innerHTML = '<div class="muted">Positioning panel unavailable.</div>'; }
+  try { renderBetaAlerts(); } catch (e) { const t = $('betaAlerts'); if (t) t.innerHTML = '<div class="muted">Beta alerts unavailable.</div>'; }
   renderRiskFlags();
   renderSinceYesterday();
   renderWeekly();
@@ -10772,6 +10799,7 @@ async function openDrawer(name) {
   loadDrawerRates(d.sym).catch(() => { $('drRatesSec').style.display = 'none'; });
   loadDrawerNews(name);
   loadDrawerCorr(name);
+  loadDrawerBeta(name);
   loadDrawerArima(name, d.sym);
   loadDrawerAnalysis(r).catch(() => { $('drAnalysisSec').style.display = 'none'; });
   _startAtlasPolling(r);
@@ -12639,6 +12667,55 @@ function loadDrawerNews(name) {
   }).join('');
   box.innerHTML = (next && next.ms >= now ? `<div class="muted" style="margin-bottom:6px">Next: <b>${next.event}</b> at <b>${evtTime(next)}</b> (UK) — expect the range to widen around it.</div>` : '') + rows;
   sec.style.display = 'block';
+}
+
+// Shifting beta — the weekly market review's betas to the real drivers (Nasdaq, US 10y, dollar index, oil),
+// last 20 sessions vs the 60 before, from daily closes (scripts/market-review -> beta_shift.json, a static file).
+// CONTEXT only, like the block below: what moves together now, not where it goes. Banked: same-day links are
+// real, forward edge is null (yield-asset coupling test). Chart: market-review.html#beta.
+let _betaShift;   // undefined = not loaded, null = unavailable
+let _betaShiftP = null;
+function loadBetaShift() {   // one fetch, shared by the drawer, the Beta alerts card and Key Takeaways
+  if (!_betaShiftP) _betaShiftP = fetch('analysis/output/market-review/beta_shift.json', { cache: 'no-cache' })
+    .then(r => r.ok ? r.json() : null).catch(() => null).then(j => (_betaShift = j));
+  return _betaShiftP;
+}
+loadBetaShift();   // start early so the first sidebar render usually has it
+const betaShiftAgeDays = () => _betaShift?.asof ? Math.floor((Date.now() - Date.parse(_betaShift.asof + 'T23:00:00Z')) / 864e5) : null;
+// Alerts for markets on this board (brief.instruments), most severe first. Rule (from build.py): flipped sign,
+// shifted >= 1.5 sd of its own 1y 20-day beta, or outside its own 5th-95th percentile, each with |corr| >= 0.3.
+function boardBetaAlerts() {
+  const names = new Set(Object.keys((typeof brief !== 'undefined' && brief?.instruments) || {}));
+  return (_betaShift?.alerts ?? []).filter(a => (a.aliases ?? []).some(k => names.has(k)))
+    .map(a => ({ ...a, board: (a.aliases ?? []).find(k => names.has(k)) }));
+}
+function betaAlertWords(a) {
+  const u = a.units === 'bp' ? 'bp' : '%', f = b => b == null ? 'n/a' : (b >= 0 ? '+' : '') + b.toFixed(2) + u;
+  return `${a.label} beta ${f(a.now)} ${a.unit} (was ${f(a.prior)}): ${(a.kinds ?? []).join(', ')}`;
+}
+function renderBetaAlerts() {
+  const el = $('betaAlerts'); if (!el) return;
+  if (_betaShift === undefined) { el.innerHTML = '<div class="muted">Loading…</div>'; loadBetaShift().then(renderBetaAlerts); return; }
+  if (!_betaShift) { el.innerHTML = '<div class="muted">Beta file unavailable (analysis/output/market-review/beta_shift.json).</div>'; return; }
+  const age = betaShiftAgeDays(), mine = boardBetaAlerts(), others = (_betaShift.alerts ?? []).length - mine.length;
+  const stale = age != null && age > 4 ? `<div class="muted" style="color:var(--amber)">⚠ ${age} days old: the daily refresh may have failed.</div>` : '';
+  el.innerHTML = stale + (mine.length
+    ? mine.slice(0, 8).map(a => `<div class="takeaway" style="cursor:pointer" onclick="openDrawer('${a.board}')"><span class="tic amber">β</span><span><b>${dispName(a.board)}</b> ${betaAlertWords(a)}</span></div>`).join('')
+      + (mine.length > 8 ? `<div class="muted">+${mine.length - 8} more on this board</div>` : '')
+    : '<div class="muted">No market on this board has an unusual beta right now.</div>')
+    + `<div class="muted" style="font-size:10px;line-height:1.5;margin-top:6px">As of ${_betaShift.asof}${others > 0 ? ` · ${others} more on other markets` : ''} · <a href="market-review.html#beta" target="_blank">charts ↗</a><br>A beta that flipped, jumped or sits outside its own year's range means hedges and pair exposure may behave differently than usual. Context, not a signal.</div>`;
+}
+async function loadDrawerBeta(name) {
+  const box = $('drBeta'); if (!box) return;
+  box.innerHTML = '';
+  await loadBetaShift();
+  const rec = _betaShift?.markets?.[name] ?? _betaShift?.markets?.[String(name).replace('_', '')] ?? null;
+  if (!rec) return;
+  const u = rec.units === 'bp' ? 'bp' : '%', f = b => b == null ? 'n/a' : (b >= 0 ? '+' : '') + b.toFixed(2) + u;
+  const rows = Object.values(rec.factors || {}).map(x => `<span class="corrchip" title="${x.label}: ${f(x.now)} ${x.unit} over the last 20 sessions vs ${f(x.prior)} over the 60 before (corr ${x.corr_now >= 0 ? '+' : ''}${x.corr_now?.toFixed(2)} vs ${x.corr_prior >= 0 ? '+' : ''}${x.corr_prior?.toFixed(2)}); down days ${f(x.down)}, up days ${f(x.up)} over a year">${x.label} <b>${f(x.now)}</b> <span class="muted">(was ${f(x.prior)})</span>${x.flip ? ' ⟲' : x.shift ? ' ↕' : ''}</span>`).join(' ');
+  const warn = rec.alert ? `<div style="color:var(--amber);margin-bottom:3px">⚠ Beta not normal: ${(rec.alerts ?? []).map(x => `${x.label} (${(x.kinds ?? []).join(', ')})`).join('; ')}</div>` : '';
+  box.innerHTML = `<div style="font-size:12px"><b>Shifting beta</b> <span class="muted">(daily closes, as of ${rec.asof}; per 1% Nasdaq / dollar index / oil, per 10bp US 10y)</span><br>${warn}${rec.line ? rec.line + '<br>' : ''}${rows} <a href="market-review.html#beta" target="_blank">chart →</a></div>`;
+  $('drCorrSec').style.display = 'block';
 }
 
 // Correlations, hedges & beta — reads the corr/beta engine (/api/hedge-alerts).

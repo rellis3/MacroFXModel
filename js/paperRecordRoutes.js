@@ -12,7 +12,8 @@ import { v4Days, nyCloseDailyBars } from './voteAtlasV4Lines.js';
 import { constantMaturityIV } from './ivMetrics.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
 import { costForPair } from './perLineStrategy.js';
-import { INSTRUMENTS, END_MIN, richFlag, detectBreaks, scoreTrade, h1TrendState } from './paperRecordCore.js';
+import { INSTRUMENTS, END_MIN, richFlag, detectBreaks, scoreTrade, h1TrendState,
+         chosenLevels, detectChosenBreaks, CHOSEN_COST_MULT } from './paperRecordCore.js';
 
 export const PAPER_KV = 'paper_record_v1';
 const KEEP_DAYS = 400, CBOE = s => `https://cdn.cboe.com/api/global/us_indices/daily_prices/${s}_History.csv`;
@@ -36,7 +37,11 @@ function lowerBound(arr, x) { let lo = 0, hi = arr.length; while (lo < hi) { con
 // seen — line tag (IV ÷ the lines' σ), extending/giving back by horizon, dollar share, FX and cross-asset one-trade share,
 // market clock. Stored once on the trade as `ctx`, never updated, so the record is a forward test of whether these reads
 // separate good breaks from bad (forge/TAG_X_PERSISTENCE_PREREG.md). It never changes which trades are taken.
-export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetch, log = console, liveEventTag = () => null, getContext = async () => null }) {
+// getChosenLadder(sym, date) (optional): the chosen v3 ladder for that London session ({ form, sigma_used_pct, oh, ol })
+// or null when the forecast for that date is not ready. Captured once per instrument per day into day.chosen.ladders and
+// never updated, then rule A is run on it in its own arm (day.chosen.trades) — forge/RULE_A_BOOK_FORWARD_PREREG.md.
+export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetch, log = console, liveEventTag = () => null, getContext = async () => null,
+                                    getChosenLadder = async () => null }) {
   const dayCache = new Map();               // `${key}|${date}` -> v4Days day (ladder + static lines), built once per day
   let running = false, last = null;
 
@@ -47,6 +52,7 @@ export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetc
   }
   const note = (store, msg) => { store.log = [{ at: new Date().toISOString(), msg }, ...(store.log ?? [])].slice(0, 200); };
 
+  const WARMING = 'live prices still warming';
   async function packedFor(key) {
     await getFastLive(key);                                // gap-fills from OANDA; first call may only start warming
     const p = liveCache.get(key)?.packed;
@@ -78,21 +84,25 @@ export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetc
   }
 
   // Flags for `forDate`, using only data available now (the evening before).
-  async function setFlags(store, forDate) {
+  // `only` = keys to redo: a restart before 21:00 can leave the live cache cold, so the first pass marks most
+  // instruments 'warming'. Those are retried on later evening ticks (still the evening before, so still point-in-time);
+  // on 2026-10-28 the single pass left 8 of 11 unflagged and they could not trade the next day.
+  async function setFlags(store, forDate, only = null) {
     let oiStore = null;
     try { const raw = await kv.get('oi_store'); if (raw) { const p = JSON.parse(raw); oiStore = p.data ?? p; } } catch {}
-    const cboe = {}, flags = {};
+    const cboe = {}, flags = only ? { ...store.days[forDate].flags } : {};
     for (const inst of INSTRUMENTS) {
+      if (only && !only.includes(inst.key)) continue;
       try {
         const iv = await ivFor(inst, oiStore, cboe);
         const packed = await packedFor(inst.key);
-        if (!packed) { flags[inst.key] = { rich: null, why: 'live prices still warming' }; continue; }
+        if (!packed) { flags[inst.key] = { rich: null, why: WARMING }; continue; }
         const closes = nyCloseDailyBars(packed).filter(b => b.n >= 60 && b.endSec <= Date.now() / 1000).map(b => b.close);
         flags[inst.key] = iv.iv == null ? { rich: null, why: iv.why } : { ...richFlag(inst, iv.iv, closes), threshold: inst.rich, ivSource: iv.source, ivAsOf: iv.asOf, provisional: !!inst.provisional };
       } catch (e) { flags[inst.key] = { rich: null, why: String(e.message || e) }; }
     }
     store.days[forDate] = { ...(store.days[forDate] ?? {}), flags, flagsAt: new Date().toISOString(), trades: store.days[forDate]?.trades ?? [] };
-    note(store, `flags set for ${forDate}: rich = ${Object.entries(flags).filter(([, f]) => f.rich).map(([k]) => k).join(', ') || 'none'}`);
+    note(store, `flags ${only ? `retried (${only.join(', ')})` : 'set'} for ${forDate}: rich = ${Object.entries(flags).filter(([, f]) => f.rich).map(([k]) => k).join(', ') || 'none'}`);
   }
 
   // The day's forecast (ladder, static lines, open, σ) is fixed once the day has opened, so it is built once and
@@ -115,6 +125,31 @@ export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetc
     const bars = [];
     for (; i < packed.n && packed.times[i] < end; i++) bars.push({ time: packed.times[i], open: packed.opens[i], high: packed.highs[i], low: packed.lows[i], close: packed.closes[i], volume: packed.volumes[i] });
     return bars.length ? { ...base, bars } : null;
+  }
+
+  async function updateChosen(day, inst, d, bars, costPx, date, final) {
+    day.chosen ??= { ladders: {}, trades: [] };
+    if (!day.chosen.ladders[inst.key]) {
+      // Only a session that has not ended can still be captured; a past day with no ladder stays without one.
+      if (final) return;
+      const L = await getChosenLadder(inst.sym, date);
+      if (!L) return;
+      day.chosen.ladders[inst.key] = { ...L, capturedAt: new Date().toISOString() };
+    }
+    const lad = day.chosen.ladders[inst.key], open = bars[0]?.open;
+    if (!(open > 0) || !(lad.sigma_used_pct > 0)) return;
+    const pseudo = { open, sigmaFrac: lad.sigma_used_pct / 100 };
+    for (const b of detectChosenBreaks(chosenLevels(lad, open), pseudo.sigmaFrac * open, d.openSec, bars)) {
+      let t = day.chosen.trades.find(x => x.inst === inst.key && x.line === b.line);
+      if (!t) {
+        t = { inst: inst.key, line: b.line, dir: b.dir, level: +b.level.toFixed(6), entry: b.entry, signalTime: b.signalTime, entryTime: b.entryTime,
+              open, costMult: CHOSEN_COST_MULT };
+        day.chosen.trades.push(t);
+      }
+      if (t.done) continue;
+      Object.assign(t, scoreTrade(pseudo, bars, b, CHOSEN_COST_MULT * costPx, final));
+      if (final) t.done = true;
+    }
   }
 
   async function updateDay(store, date, final) {
@@ -141,6 +176,9 @@ export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetc
         Object.assign(t, scoreTrade(d, bars, b, costPx, final));
         if (final) t.done = true;
       }
+      // Chosen-lines arm: same rich flag and bars, rule A's own lines and costs.
+      try { await updateChosen(day, inst, d, bars, costPx, date, final); }
+      catch (e) { note(store, `${date} ${inst.sym} chosen arm: ${e.message || e}`); }
     }
     if (final) day.final = true;
   }
@@ -150,7 +188,8 @@ export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetc
     running = true;
     try {
       const now = london(), store = await load();
-      if (now.min >= 21 * 60) { const nd = nextBizDay(now.date); if (!store.days[nd]?.flags) await setFlags(store, nd); }
+      if (now.min >= 21 * 60) { const nd = nextBizDay(now.date); if (!store.days[nd]?.flags) await setFlags(store, nd);
+        else { const cold = Object.entries(store.days[nd].flags).filter(([, f]) => f.rich == null && f.why === WARMING).map(([k]) => k); if (cold.length) await setFlags(store, nd, cold); } }
       const today = store.days[now.date];
       if (!today?.flags && ![0, 6].includes(new Date(now.date + 'T12:00:00Z').getUTCDay())) {
         store.days[now.date] = { flags: null, trades: [], skipped: 'flags were not set before the day opened (deploy or outage)' };

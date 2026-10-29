@@ -175,9 +175,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--asof', default=dt.date.today().isoformat())
     ap.add_argument('--out', default=None)
+    ap.add_argument('--name', default=None, help="output folder name (default: the as-of date; the daily run uses 'latest')")
     a = ap.parse_args()
     asof = dt.date.fromisoformat(a.asof)
-    out_dir = a.out or os.path.join(ROOT, 'analysis', 'output', 'market-review', a.asof)
+    out_dir = a.out or os.path.join(ROOT, 'analysis', 'output', 'market-review', a.name or a.asof)
     os.makedirs(out_dir, exist_ok=True)
     start2y = (asof - dt.timedelta(days=740)).isoformat()
     res = {'asof': a.asof, 'fetched_utc': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'),

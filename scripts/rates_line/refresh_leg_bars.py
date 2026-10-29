@@ -48,10 +48,12 @@ IB_SPEC = {   # name: (IBKR symbol, exchange, currency, contract-month parameter
     'VXX6': ('VIX', 'CFE', 'USD', '202611'), 'VXZ6': ('VIX', 'CFE', 'USD', '202612'),
     'VVIX': ('VVIX', 'CBOE', 'USD', 'IND'), 'VIX': ('VIX', 'CBOE', 'USD', 'IND'), 'VXN': ('VXN', 'CBOE', 'USD', 'IND'),
     'NQZ6': ('NQ', 'CME', 'USD', '202612'),      # 2026-10-25: Nasdaq-100 future for the Release Reaction page (scripts/release_layer1); no chart leg file, so the push skips it
+    # 2026-10-26: Layer 1 asset groups for the Release Reaction page: euro, sterling, yen, gold, S&P futures (the 1-minute CFD history in data/m1_bidask ends 2026-10-19, these carry it on)
+    '6EZ6': ('EUR', 'CME', 'USD', '202612'), '6BZ6': ('GBP', 'CME', 'USD', '202612'), '6JZ6': ('JPY', 'CME', 'USD', '202612'), 'GCZ6': ('GC', 'COMEX', 'USD', '202612'), 'ESZ6': ('ES', 'CME', 'USD', '202612'),
 }
 CORE = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7', 'IM7']      # IM7: becomes I2! when IZ6 expires (14 Dec 2026), so the stitched I2 line stays live
 BONDS = ['ZTZ6', 'ZFZ6', 'ZNZ6', 'ZBZ6', 'UBZ6', 'FGBS2612', 'FGBM2612', 'FGBL2612', 'FGBX2612']      # US 2/5/10/30/ultra and German 2/5/10/30: pulled on every run too (2026-10-23)
-MACRO = ['FBTP2612', 'FOAT2612', 'DXZ6', 'VXX6', 'VXZ6', 'VVIX', 'VIX', 'VXN', 'NQZ6']      # euro spreads, dollar, vol: pulled on every run too (2026-10-23)
+MACRO = ['FBTP2612', 'FOAT2612', 'DXZ6', 'VXX6', 'VXZ6', 'VVIX', 'VIX', 'VXN', 'NQZ6', '6EZ6', '6BZ6', '6JZ6', 'GCZ6', 'ESZ6']      # euro spreads, dollar, vol: pulled on every run too (2026-10-23)
 last = [0.0]
 
 

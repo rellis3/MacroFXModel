@@ -390,7 +390,7 @@ if barstate.islast
         if array.size(lvPrice) > 0
             pTop := math.max(pTop, f_arrMax(lvPrice))
             pBot := math.min(pBot, f_arrMin(lvPrice))
-        float halfBin = na(mBinw) ? ref / 40.0 : mBinw / 2.0
+        float halfBin = (na(mBinw) or mBinw <= 0) ? ref / 40.0 : mBinw / 2.0
 
         // ── expected-move box ──
         if showEM and not na(mEmHi) and not na(mEmLo)

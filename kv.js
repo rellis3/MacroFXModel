@@ -62,6 +62,7 @@ const _CF_EXACT = new Set([
   'newsletter_archive_v1', // the newsletter archive: each issue's snapshot, text and gzipped html, scored against the realised day (js/newsletterRecord.js). Also in _worker.js (both lists).
   'funding_read_v1',       // funding & leverage read: one row per day of states/values (js/fundingRead.js); the forward record of an
                              // untested read, not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
+  'release_layer2_v1',      // Release Reaction Layer 2 (release-why.html): the going-in factor sheet pushed by scripts/release_layer2/build_factors.py --push. Must also be in _worker.js isAllowedKVKey + PERMANENT_KEYS.
   'release_layer1_v1',      // Release Reaction page (release-reaction.html): the laptop's live Layer 1 record of each release since 2026-07-03 (paths + metrics) and the releases ahead,
                              // pushed by scripts/release_layer1/live_push.py (IBKR cannot be reached from Railway). Must also be in _worker.js isAllowedKVKey + PERMANENT_KEYS.
   'spread_episodes_v1',     // spread-turn episodes forward record (forge/SPREAD_EPISODES_PREREG.md): every confirmed turn since
@@ -456,6 +457,10 @@ function isCfKey(key) {
   if (key.startsWith('rbnz_')) return true;
   if (key.startsWith('rba_')) return true;
   if (key.startsWith('boc_')) return true;
+  // snb_* — the SNB engine's point-in-time captures (added 2026-10-26), same reasoning.
+  if (key.startsWith('snb_')) return true;
+  // fiscal_* — UK Budget / US refunding captures (server.js, js/fiscalEvents.js; added 2026-10-28), same reasoning.
+  if (key.startsWith('fiscal_')) return true;
   // beigebook_* — same reasoning as fomc_/ecb_/boe_/boj_ above.
   if (key.startsWith('beigebook_')) return true;
   // oi_raw_YYYY-MM-DD - the per-day raw OI capture (ladder + IV boxes). One key per

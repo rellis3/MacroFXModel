@@ -1,0 +1,743 @@
+{
+ "GOLD": {
+  "n": 40,
+  "medianAbsDiff": 0,
+  "maxAbsDiff": 0.03839999999999999,
+  "rows": [
+   {
+    "date": "2026-06-29",
+    "published": -0.2146,
+    "rebuilt": -0.253,
+    "diff": -0.03839999999999999
+   },
+   {
+    "date": "2026-06-30",
+    "published": -0.2613,
+    "rebuilt": -0.2613,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-01",
+    "published": -0.0701,
+    "rebuilt": -0.0701,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-02",
+    "published": -0.1863,
+    "rebuilt": -0.1863,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-03",
+    "published": -0.0966,
+    "rebuilt": -0.0966,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-06",
+    "published": -0.1327,
+    "rebuilt": -0.1327,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-07",
+    "published": -0.165,
+    "rebuilt": -0.165,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-08",
+    "published": -0.1529,
+    "rebuilt": -0.1529,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-09",
+    "published": -0.1343,
+    "rebuilt": -0.1343,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-10",
+    "published": -0.033,
+    "rebuilt": -0.033,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-13",
+    "published": -0.0746,
+    "rebuilt": -0.0746,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-14",
+    "published": -0.1179,
+    "rebuilt": -0.1179,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-15",
+    "published": 0.0483,
+    "rebuilt": 0.0483,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-16",
+    "published": 0.0358,
+    "rebuilt": 0.0358,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-17",
+    "published": -0.1196,
+    "rebuilt": -0.1196,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-20",
+    "published": 0.0004,
+    "rebuilt": 0.0004,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-21",
+    "published": 0.0001,
+    "rebuilt": 0.0001,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-22",
+    "published": 0.0498,
+    "rebuilt": 0.0498,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-23",
+    "published": 0.0067,
+    "rebuilt": 0.0067,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-24",
+    "published": -0.1411,
+    "rebuilt": -0.1411,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-27",
+    "published": -0.1264,
+    "rebuilt": -0.1264,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-28",
+    "published": -0.0347,
+    "rebuilt": -0.0347,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-29",
+    "published": -0.0471,
+    "rebuilt": -0.0471,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-30",
+    "published": -0.0627,
+    "rebuilt": -0.0627,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-31",
+    "published": -0.0208,
+    "rebuilt": -0.0208,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-03",
+    "published": 0.0537,
+    "rebuilt": 0.0537,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-04",
+    "published": 0.0029,
+    "rebuilt": 0.0029,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-05",
+    "published": 0.0199,
+    "rebuilt": 0.0199,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-06",
+    "published": 0.3234,
+    "rebuilt": 0.3234,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-07",
+    "published": 0.2292,
+    "rebuilt": 0.2292,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-10",
+    "published": 0.3941,
+    "rebuilt": 0.3941,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-11",
+    "published": 0.3644,
+    "rebuilt": 0.3644,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-12",
+    "published": 0.2543,
+    "rebuilt": 0.2543,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-13",
+    "published": 0.4255,
+    "rebuilt": 0.4255,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-14",
+    "published": 0.3725,
+    "rebuilt": 0.3725,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-17",
+    "published": 0.3703,
+    "rebuilt": 0.3703,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-18",
+    "published": 0.4827,
+    "rebuilt": 0.4827,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-19",
+    "published": 0.3346,
+    "rebuilt": 0.3346,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-20",
+    "published": 0.508,
+    "rebuilt": 0.508,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-21",
+    "published": 0.5729,
+    "rebuilt": 0.5729,
+    "diff": 0
+   }
+  ]
+ },
+ "NQ": {
+  "n": 40,
+  "medianAbsDiff": 0.04500000000000001,
+  "maxAbsDiff": 0.1773,
+  "rows": [
+   {
+    "date": "2026-06-29",
+    "published": 0.0118,
+    "rebuilt": -0.0527,
+    "diff": -0.0645
+   },
+   {
+    "date": "2026-06-30",
+    "published": 0.2153,
+    "rebuilt": 0.1057,
+    "diff": -0.10959999999999999
+   },
+   {
+    "date": "2026-07-01",
+    "published": 0.2178,
+    "rebuilt": 0.2881,
+    "diff": 0.07030000000000003
+   },
+   {
+    "date": "2026-07-02",
+    "published": 0.2466,
+    "rebuilt": 0.0693,
+    "diff": -0.1773
+   },
+   {
+    "date": "2026-07-03",
+    "published": 0.0387,
+    "rebuilt": -0.0499,
+    "diff": -0.0886
+   },
+   {
+    "date": "2026-07-06",
+    "published": 0.0387,
+    "rebuilt": -0.1311,
+    "diff": -0.1698
+   },
+   {
+    "date": "2026-07-07",
+    "published": -0.1441,
+    "rebuilt": -0.0463,
+    "diff": 0.0978
+   },
+   {
+    "date": "2026-07-08",
+    "published": -0.1911,
+    "rebuilt": -0.109,
+    "diff": 0.08209999999999999
+   },
+   {
+    "date": "2026-07-09",
+    "published": -0.0977,
+    "rebuilt": -0.2184,
+    "diff": -0.12070000000000002
+   },
+   {
+    "date": "2026-07-10",
+    "published": 0.0443,
+    "rebuilt": -0.1117,
+    "diff": -0.156
+   },
+   {
+    "date": "2026-07-13",
+    "published": -0.0333,
+    "rebuilt": -0.096,
+    "diff": -0.0627
+   },
+   {
+    "date": "2026-07-14",
+    "published": -0.2027,
+    "rebuilt": -0.0468,
+    "diff": 0.15589999999999998
+   },
+   {
+    "date": "2026-07-15",
+    "published": 0.0188,
+    "rebuilt": -0.034,
+    "diff": -0.0528
+   },
+   {
+    "date": "2026-07-16",
+    "published": 0.0347,
+    "rebuilt": 0.0022,
+    "diff": -0.0325
+   },
+   {
+    "date": "2026-07-17",
+    "published": -0.1048,
+    "rebuilt": -0.0116,
+    "diff": 0.0932
+   },
+   {
+    "date": "2026-07-20",
+    "published": -0.1089,
+    "rebuilt": -0.2125,
+    "diff": -0.1036
+   },
+   {
+    "date": "2026-07-21",
+    "published": -0.2459,
+    "rebuilt": -0.306,
+    "diff": -0.06009999999999999
+   },
+   {
+    "date": "2026-07-22",
+    "published": -0.2207,
+    "rebuilt": -0.1333,
+    "diff": 0.0874
+   },
+   {
+    "date": "2026-07-23",
+    "published": -0.1867,
+    "rebuilt": -0.061,
+    "diff": 0.1257
+   },
+   {
+    "date": "2026-07-24",
+    "published": -0.1614,
+    "rebuilt": -0.2064,
+    "diff": -0.04500000000000001
+   },
+   {
+    "date": "2026-07-27",
+    "published": -0.3027,
+    "rebuilt": -0.2981,
+    "diff": 0.0046000000000000485
+   },
+   {
+    "date": "2026-07-28",
+    "published": -0.2421,
+    "rebuilt": -0.2259,
+    "diff": 0.01620000000000002
+   },
+   {
+    "date": "2026-07-29",
+    "published": -0.2617,
+    "rebuilt": -0.2277,
+    "diff": 0.033999999999999975
+   },
+   {
+    "date": "2026-07-30",
+    "published": -0.4352,
+    "rebuilt": -0.4439,
+    "diff": -0.008700000000000041
+   },
+   {
+    "date": "2026-07-31",
+    "published": -0.2571,
+    "rebuilt": -0.2541,
+    "diff": 0.0030000000000000027
+   },
+   {
+    "date": "2026-08-03",
+    "published": -0.2032,
+    "rebuilt": -0.1725,
+    "diff": 0.030700000000000005
+   },
+   {
+    "date": "2026-08-04",
+    "published": -0.1429,
+    "rebuilt": -0.1267,
+    "diff": 0.016199999999999992
+   },
+   {
+    "date": "2026-08-05",
+    "published": 0.0188,
+    "rebuilt": 0.0229,
+    "diff": 0.0040999999999999995
+   },
+   {
+    "date": "2026-08-06",
+    "published": 0.0583,
+    "rebuilt": 0.0709,
+    "diff": 0.012600000000000007
+   },
+   {
+    "date": "2026-08-07",
+    "published": 0.1034,
+    "rebuilt": 0.1084,
+    "diff": 0.0049999999999999906
+   },
+   {
+    "date": "2026-08-10",
+    "published": 0.1761,
+    "rebuilt": 0.18,
+    "diff": 0.003899999999999987
+   },
+   {
+    "date": "2026-08-11",
+    "published": 0.0772,
+    "rebuilt": 0.0915,
+    "diff": 0.014299999999999993
+   },
+   {
+    "date": "2026-08-12",
+    "published": 0.0734,
+    "rebuilt": 0.0842,
+    "diff": 0.01079999999999999
+   },
+   {
+    "date": "2026-08-13",
+    "published": 0.2099,
+    "rebuilt": 0.1941,
+    "diff": -0.01580000000000001
+   },
+   {
+    "date": "2026-08-14",
+    "published": 0.3587,
+    "rebuilt": 0.3597,
+    "diff": 0.0010000000000000009
+   },
+   {
+    "date": "2026-08-17",
+    "published": 0.381,
+    "rebuilt": 0.3785,
+    "diff": -0.0025000000000000022
+   },
+   {
+    "date": "2026-08-18",
+    "published": 0.4376,
+    "rebuilt": 0.4268,
+    "diff": -0.010799999999999976
+   },
+   {
+    "date": "2026-08-19",
+    "published": 0.4389,
+    "rebuilt": 0.4581,
+    "diff": 0.019199999999999995
+   },
+   {
+    "date": "2026-08-20",
+    "published": 0.2674,
+    "rebuilt": 0.2531,
+    "diff": -0.014300000000000035
+   },
+   {
+    "date": "2026-08-21",
+    "published": 0.1059,
+    "rebuilt": 0.213,
+    "diff": 0.1071
+   }
+  ]
+ },
+ "EURUSD": {
+  "n": 40,
+  "medianAbsDiff": 0,
+  "maxAbsDiff": 0,
+  "rows": [
+   {
+    "date": "2026-06-29",
+    "published": -0.2618,
+    "rebuilt": -0.2618,
+    "diff": 0
+   },
+   {
+    "date": "2026-06-30",
+    "published": -0.2126,
+    "rebuilt": -0.2126,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-01",
+    "published": -0.2016,
+    "rebuilt": -0.2016,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-02",
+    "published": -0.3576,
+    "rebuilt": -0.3576,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-03",
+    "published": -0.2314,
+    "rebuilt": -0.2314,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-06",
+    "published": -0.2625,
+    "rebuilt": -0.2625,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-07",
+    "published": -0.2916,
+    "rebuilt": -0.2916,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-08",
+    "published": -0.1585,
+    "rebuilt": -0.1585,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-09",
+    "published": -0.0733,
+    "rebuilt": -0.0733,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-10",
+    "published": -0.0735,
+    "rebuilt": -0.0735,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-13",
+    "published": -0.0242,
+    "rebuilt": -0.0242,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-14",
+    "published": -0.0021,
+    "rebuilt": -0.0021,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-15",
+    "published": 0.0917,
+    "rebuilt": 0.0917,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-16",
+    "published": 0.1591,
+    "rebuilt": 0.1591,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-17",
+    "published": 0.0997,
+    "rebuilt": 0.0997,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-20",
+    "published": 0.025,
+    "rebuilt": 0.025,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-21",
+    "published": -0.0138,
+    "rebuilt": -0.0138,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-22",
+    "published": 0.0359,
+    "rebuilt": 0.0359,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-23",
+    "published": -0.0395,
+    "rebuilt": -0.0395,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-24",
+    "published": -0.1109,
+    "rebuilt": -0.1109,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-27",
+    "published": -0.1291,
+    "rebuilt": -0.1291,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-28",
+    "published": -0.0791,
+    "rebuilt": -0.0791,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-29",
+    "published": -0.045,
+    "rebuilt": -0.045,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-30",
+    "published": 0.0634,
+    "rebuilt": 0.0634,
+    "diff": 0
+   },
+   {
+    "date": "2026-07-31",
+    "published": 0.208,
+    "rebuilt": 0.208,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-03",
+    "published": 0.2687,
+    "rebuilt": 0.2687,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-04",
+    "published": 0.1561,
+    "rebuilt": 0.1561,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-05",
+    "published": 0.1235,
+    "rebuilt": 0.1235,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-06",
+    "published": 0.2015,
+    "rebuilt": 0.2015,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-07",
+    "published": 0.1367,
+    "rebuilt": 0.1367,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-10",
+    "published": 0.2703,
+    "rebuilt": 0.2703,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-11",
+    "published": 0.2734,
+    "rebuilt": 0.2734,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-12",
+    "published": 0.227,
+    "rebuilt": 0.227,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-13",
+    "published": 0.2719,
+    "rebuilt": 0.2719,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-14",
+    "published": 0.3205,
+    "rebuilt": 0.3205,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-17",
+    "published": 0.4062,
+    "rebuilt": 0.4062,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-18",
+    "published": 0.3845,
+    "rebuilt": 0.3845,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-19",
+    "published": 0.2158,
+    "rebuilt": 0.2158,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-20",
+    "published": 0.2905,
+    "rebuilt": 0.2905,
+    "diff": 0
+   },
+   {
+    "date": "2026-08-21",
+    "published": 0.2861,
+    "rebuilt": 0.2861,
+    "diff": 0
+   }
+  ]
+ }
+}

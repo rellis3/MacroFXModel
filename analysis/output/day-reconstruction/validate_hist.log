@@ -1,0 +1,22 @@
+GOLD V0 parity python vs JS v4Days sigma: {'days': 2684, 'max_abs_diff_pct': 0.0, 'share_exact_2dp': 0.9940740740740741}
+GOLD V4 sigma NY/L22 ratio {'median': 1.0031452752259324, 'p5': 0.9712766728902018, 'p25': 0.9926471872850718, 'p75': 1.0142802019173023, 'p95': 1.0500210919702395, 'n': 2733}
+GOLD V4 forge reproduction (HL p75 OOS exceed, mine vs forge): [{'fold': 0, 'n': 257, 'hl_p75_mine': 0.272, 'hl_p75_forge': 0.268}, {'fold': 1, 'n': 258, 'hl_p75_mine': 0.236, 'hl_p75_forge': 0.24}, {'fold': 2, 'n': 258, 'hl_p75_mine': 0.302, 'hl_p75_forge': 0.306}, {'fold': 3, 'n': 258, 'hl_p75_mine': 0.252, 'hl_p75_forge': 0.26}, {'fold': 4, 'n': 163, 'hl_p75_mine': 0.258, 'hl_p75_forge': 0.225}]
+GOLD V4 calibration OOS (FF window): fit basis dev 1.45pp, live basis dev 1.33pp
+GOLD V5 OOS(FF) dev: prod params 0.42pp vs PIT 1.33pp; OH p75 level |rel diff| median 0.043; estimator differs on 0% of days; prod-params own OOS year dev 1.41pp; pre-fold (in-sample) dev 1.08pp
+GOLD V6 tags: 2390 covered, 354 uncovered from 2025-04-08
+GOLD V7 touches: dn_p50 m1 0.502 h1 0.391 never-closed 0.22 lag 57.0; up_p50 m1 0.508 h1 0.420 never-closed 0.17 lag 51.0; dn_p75 m1 0.246 h1 0.182 never-closed 0.26 lag 52.0; up_p75 m1 0.256 h1 0.205 never-closed 0.20 lag 49.0; dn_p90 m1 0.097 h1 0.068 never-closed 0.30 lag 53.0; up_p90 m1 0.102 h1 0.077 never-closed 0.25 lag 48.0; two-sided same-minute days 1
+NQ V0 parity python vs JS v4Days sigma: {'days': 2687, 'max_abs_diff_pct': 0.0, 'share_exact_2dp': 0.9940806511283758}
+NQ V4 sigma NY/L22 ratio {'median': 1.0012637871678014, 'p5': 0.9641415756389216, 'p25': 0.9889070355227385, 'p75': 1.0122401512790293, 'p95': 1.037509876382449, 'n': 2736}
+NQ V4 forge reproduction (HL p75 OOS exceed, mine vs forge): [{'fold': 0, 'n': 258, 'hl_p75_mine': 0.221, 'hl_p75_forge': 0.236}, {'fold': 1, 'n': 258, 'hl_p75_mine': 0.264, 'hl_p75_forge': 0.26}, {'fold': 2, 'n': 259, 'hl_p75_mine': 0.236, 'hl_p75_forge': 0.243}, {'fold': 3, 'n': 258, 'hl_p75_mine': 0.271, 'hl_p75_forge': 0.271}, {'fold': 4, 'n': 163, 'hl_p75_mine': 0.227, 'hl_p75_forge': 0.209}]
+NQ V4 calibration OOS (FF window): fit basis dev 1.57pp, live basis dev 1.51pp
+NQ V5 OOS(FF) dev: prod params 1.03pp vs PIT 1.51pp; OH p75 level |rel diff| median 0.011; estimator differs on 22% of days; prod-params own OOS year dev 1.76pp; pre-fold (in-sample) dev 1.65pp
+NQ V6 tags: 2392 covered, 355 uncovered from 2025-04-08
+NQ V7 touches: dn_p50 m1 0.506 h1 0.395 never-closed 0.22 lag 48.0; up_p50 m1 0.492 h1 0.412 never-closed 0.16 lag 48.0; dn_p75 m1 0.251 h1 0.193 never-closed 0.23 lag 45.0; up_p75 m1 0.246 h1 0.194 never-closed 0.21 lag 44.0; dn_p90 m1 0.095 h1 0.071 never-closed 0.26 lag 43.0; up_p90 m1 0.095 h1 0.074 never-closed 0.22 lag 42.5; two-sided same-minute days 0
+EURUSD V0 parity python vs JS v4Days sigma: {'days': 2697, 'max_abs_diff_pct': 0.0, 'share_exact_2dp': 0.9944690265486725}
+EURUSD V4 sigma NY/L22 ratio {'median': 1.0048584230821798, 'p5': 0.973051903408124, 'p25': 0.9945167820109877, 'p75': 1.0159540028380343, 'p95': 1.0441878748100752, 'n': 2746}
+EURUSD V4 forge reproduction (HL p75 OOS exceed, mine vs forge): [{'fold': 0, 'n': 258, 'hl_p75_mine': 0.271, 'hl_p75_forge': 0.291}, {'fold': 1, 'n': 260, 'hl_p75_mine': 0.242, 'hl_p75_forge': 0.247}, {'fold': 2, 'n': 260, 'hl_p75_mine': 0.238, 'hl_p75_forge': 0.243}, {'fold': 3, 'n': 259, 'hl_p75_mine': 0.243, 'hl_p75_forge': 0.247}, {'fold': 4, 'n': 163, 'hl_p75_mine': 0.264, 'hl_p75_forge': 0.221}]
+EURUSD V4 calibration OOS (FF window): fit basis dev 0.46pp, live basis dev 0.43pp
+EURUSD V5 OOS(FF) dev: prod params 0.65pp vs PIT 0.43pp; OH p75 level |rel diff| median 0.053; estimator differs on 78% of days; prod-params own OOS year dev 3.59pp; pre-fold (in-sample) dev 1.38pp
+EURUSD V6 tags: 2401 covered, 356 uncovered from 2025-04-08
+EURUSD V7 touches: dn_p50 m1 0.488 h1 0.401 never-closed 0.18 lag 53.0; up_p50 m1 0.500 h1 0.403 never-closed 0.19 lag 53.0; dn_p75 m1 0.245 h1 0.184 never-closed 0.25 lag 51.0; up_p75 m1 0.242 h1 0.188 never-closed 0.22 lag 46.0; dn_p90 m1 0.092 h1 0.072 never-closed 0.22 lag 47.0; up_p90 m1 0.090 h1 0.068 never-closed 0.25 lag 47.0; two-sided same-minute days 1
+V8 NQ sigma OANDA/Yahoo: {"n": 2457, "from": "2016-11-14", "median": 0.9817092957419313, "p5": 0.872413082920246, "p95": 1.0329294411826129, "by_year_median": {"2016": 0.98, "2017": 0.981, "2018": 0.994, "2019": 0.982, "2020": 0.983, "2021": 0.968, "2022": 0.977, "2023": 0.988, "2024": 0.968, "2025": 0.981, "2026": 0.979}}

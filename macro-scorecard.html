@@ -108,6 +108,7 @@
   <a class="hbtn" href="rbnz-sentiment.html">RBNZ Sentiment</a>
   <a class="hbtn" href="rba-sentiment.html">RBA Sentiment</a>
   <a class="hbtn" href="boc-sentiment.html">BoC Sentiment</a>
+  <a class="hbtn" href="snb-sentiment.html">SNB Sentiment</a>
   <a class="hbtn" href="beige-book.html">Beige Book</a>
   <a class="hbtn" href="cpi.html">CPI / Inflation</a>
   <a class="hbtn" href="gdp.html">GDP / Growth</a>
@@ -119,6 +120,8 @@
   <a class="hbtn" href="ppi.html">PPI</a>
   <a class="hbtn" href="yield-curve.html">Yield Curve</a>
   <a class="hbtn" href="consumer-confidence.html">Consumer Confidence</a>
+  <a class="hbtn" href="fiscal-events.html">Fiscal Events</a>
+  <a class="hbtn" href="release-reaction.html">Market Reaction</a>
   <a class="hbtn" href="today.html">Daily Brief</a>
   <a class="hbtn" href="index.html">Dashboard</a>
 </div>
@@ -150,7 +153,7 @@ const DIM_LABEL = {
   ism: 'Business Activity', laborMarket: 'Labor Market', retailSales: 'Retail Sales',
   tradeBalance: 'Trade Balance', realYield: 'Real Yield', yieldCurve: 'Yield Curve', consumerConfidence: 'Consumer Confidence', rateDiff: 'Rate Differential', ppi: 'PPI',
 };
-const CB_PAGE = { USD: 'fomc-sentiment.html', EUR: 'ecb-sentiment.html', GBP: 'boe-sentiment.html', JPY: 'boj-sentiment.html', NZD: 'rbnz-sentiment.html', AUD: 'rba-sentiment.html', CAD: 'boc-sentiment.html' };
+const CB_PAGE = { USD: 'fomc-sentiment.html', EUR: 'ecb-sentiment.html', GBP: 'boe-sentiment.html', JPY: 'boj-sentiment.html', NZD: 'rbnz-sentiment.html', AUD: 'rba-sentiment.html', CAD: 'boc-sentiment.html', CHF: 'snb-sentiment.html' };
 function dimHref(dim, ccy) {
   if (dim === 'cbSentiment') return CB_PAGE[ccy] || '#';
   return { cpi: 'cpi.html', gdp: 'gdp.html', ism: 'ism.html', laborMarket: 'labor-market.html',

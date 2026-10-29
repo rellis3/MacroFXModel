@@ -47,12 +47,34 @@ td.wrap { white-space: normal; text-align: left !important; font-family: 'DM San
     <div class="note" id="tdNote" style="margin-top:0"></div>
     <table class="t" id="tdTab"><tr><td class="muted">loading today's flags and lines…</td></tr></table>
   </div>
+  <div class="card" style="margin-top:12px"><h3>What we would have traded <span class="muted">— rule A + the portfolio book on one account, backtest 2020-08 → 2026-08, every trade listed</span></h3>
+    <div class="note" id="cbNote" style="margin-top:0">loading…</div>
+    <div class="stats" id="cbStats"></div>
+    <div id="cbEq" style="width:100%;height:260px;margin-top:8px"></div>
+    <table class="t" id="cbYears" style="margin-top:8px"></table>
+    <div class="ctl" style="margin-top:8px"><label>Trades<select id="cbWhich"><option value="ruleA">Rule A (intraday breaks)</option><option value="book">Portfolio book (days–weeks)</option></select></label>
+      <label>Year<select id="cbYear"></select></label><span class="muted" id="cbCount" style="font-size:11px;align-self:center"></span></div>
+    <div style="max-height:360px;overflow:auto"><table class="t" id="cbTrades"></table></div>
+  </div>
   <div class="card" style="margin-top:12px"><h3>What we found <span class="muted">— rule A (rich-day break), registered setting 0.2σ stop / 5R, 2,057 trades on 11 instruments, after costs</span></h3>
     <div class="note" id="bottom" style="margin-top:0"></div>
     <table class="t" id="ftab"></table>
     <div class="ctl" style="margin-top:8px"><label>Show the effect of sizing by<select id="cHyp"></select></label></div>
     <div id="feq" style="width:100%;height:240px"></div>
     <div class="note" id="fnote" style="margin-bottom:0"></div>
+  </div>
+  <div class="card" style="margin-top:12px"><h3>Rule A as a portfolio <span class="muted">— Lesson 06 (from one idea to a portfolio): how many separate bets the 11 instruments are, whether they share their worst days, and whether rule A is a separate source from the portfolio book</span></h3>
+    <div class="note" id="pfNote" style="margin-top:0">loading…</div>
+    <div class="stats" id="pfStats"></div>
+    <div class="grid" style="grid-template-columns:1fr 1fr">
+      <div><div class="muted" style="font-size:11px;margin:8px 0 4px">Correlation of the legs' daily R (red = move together, blue = apart; noise ≈ ±0.05)</div><div id="pfHeat" style="overflow-x:auto"></div></div>
+      <div><div class="muted" style="font-size:11px;margin:8px 0 4px">Eigenvalues against the noise band (Marchenko–Pastur): bars above the band are real shared structure</div><div id="pfSpec"></div>
+        <div class="muted" style="font-size:11px;margin:10px 0 4px">FX + gold vs indices: share of worst days in common, against chance (band = 90% of 200 random re-pairings)</div><div id="pfTail"></div></div>
+    </div>
+    <div class="muted" style="font-size:11px;margin:10px 0 4px">Sizing, walk-forward 2022 → 2026 (weights fitted on earlier years only): cumulative R, 1R per trade vs one shared budget per correlated cluster</div>
+    <div id="pfEq" style="width:100%;height:220px"></div>
+    <table class="t" id="pfTab" style="margin-top:8px"></table>
+    <div class="note" style="margin-bottom:0">Pre-registered: <span class="muted">forge/RULE_A_PORTFOLIO_PREREG.md</span> · results <span class="muted">analysis/output/rule-a-portfolio/RESULTS.md</span>. The structure numbers were first seen on the full sample before registering, so only the walk-forward sizing and the comparison with the book are scored.</div>
   </div>
   <details style="margin-top:14px"><summary style="cursor:pointer;font-size:12.5px;color:var(--text2);font-weight:600">Workbench: check it yourself or try other ideas (exploratory)</summary>
   <div class="note warn"><b>What this page is.</b> A workbench beside the locked lessons record (<span class="muted">tag lesson-track-L05</span>), which it reads but never changes.
@@ -245,7 +267,7 @@ async function renderToday() {
   $('tdNote').innerHTML = `<b>How to read it.</b> Rule A only trades on a <b>rich day</b> (implied vol ÷ 20-day realised vol at or above the threshold, set before the day opens).
     On a rich day each of the four lines is a level to watch from 00:00 to 10:00 London: if a 1-minute candle <b>closes beyond the trigger</b>, enter at the next minute in that direction,
     stop 0.2σ behind the line, target 5R from entry; anything still open is closed at 22:00. Size: <b>1R per trade (flat)</b>. One trade per line per day.
-    <br><span class="muted">Evidence: backtest +0.16R per trade after costs (2,057 trades, 6 of 7 years positive; 1.75 standard errors on this registered setting: suggestive, not proven). Most trades lose 1R; the profit comes from fewer, larger winners.
+    <br><span class="muted">Evidence: backtest +0.16R per trade after costs (2,057 trades, 6 of 7 years positive; 1.75 standard errors on this registered setting: suggestive, not proven). <b>Before 2020 it did not pay</b>: the same rule on the same lines, rebuilt for 2016–20, made −0.04R per trade (1,386 trades, null), so the 2020–26 result may be specific to that period and the forward record decides. Most trades lose 1R; the profit comes from fewer, larger winners.
     Forward record so far: ${fwd} paper trades since 2026-10-02 (paper-record.html, on the older v4 lines). The IV÷RV band lead (${fmt(cuts[0], 2)}–${fmt(cuts[1], 2)}) is shown for information only until it passes its forward test; it does not change the size.
     Status below is read from 5-minute bars, so it approximates the 1-minute rule.</span>`;
   if (!flags) { $('tdTab').innerHTML = `<tr><td class="wrap">No plan for ${now.date}: ${day?.skipped ?? 'the rich-day flags for today are not set yet (they are set before 00:00 London on weekdays; weekends have no session).'}</td></tr>`; return; }
@@ -281,8 +303,77 @@ async function renderToday() {
   }
   $('tdTab').innerHTML = `<tr><th>Instrument</th><th>Today</th><th>Setup</th><th>Trigger (00:00–10:00)</th><th>Stop</th><th>Target</th><th>Size</th><th>Status</th></tr>` + rows.join('');
 }
+// ── Lesson 06 panel: rule A's structure as a portfolio (scripts/rule-a-portfolio/run.py → portfolio.json).
+async function renderPortfolio() {
+  const P = await (await fetch('./backtest-data/decision-lab/portfolio.json')).json();
+  const S = P.structure, q3 = P.Q3, q4 = P.Q4, f2 = x => (x >= 0 ? '+' : '') + x.toFixed(2), bk = S.books;
+  const v3 = P.verdicts['rule-a-portfolio-budget'], v4 = P.verdicts['rule-a-portfolio-second-book'];
+  $('pfNote').innerHTML = `<b>What to do with it.</b> (1) Count the index legs as <b>one bet</b>: NQ, SPX500 and US30 correlate about 0.56, so three index trades on the same morning are one position in three pieces, and EURUSD with USDCHF is about one more. `
+    + `Rule A's 11 instruments behave like <b>${S.N_var.toFixed(1)}</b> independent ones. (2) Expect the bad days to come together: the FX + gold half and the index half share their worst days ${bk.observed} times against ${bk.expected.toFixed(1)} by chance (p ${bk.p.toFixed(3)}), the opposite of the lesson's record. Rule A only trades on rich-vol days, a shared stress state, which is the lesson's §05 mechanism. `
+    + `(3) Rule A <b>is</b> a separate source from the portfolio book (core beta, trend, carry, FOMC drift): correlation ${f2(q4.corr)} [${f2(q4.ci95[0])}, ${f2(q4.ci95[1])}], worst days shared ${q4.joint_worst.observed} vs ${q4.joint_worst.expected.toFixed(1)} — <span class="pos">${v4}</span>. Held together at equal risk, the two give Sharpe ${q4.sharpe_equal_risk.toFixed(2)} against ${q4.sharpe_rule_a.toFixed(2)} and ${q4.sharpe_book.toFixed(2)} alone (book at its registered costs, before the financing haircuts). `
+    + `(4) One budget per correlated cluster lifted the walk-forward Sharpe ${q3.sharpe_ew.toFixed(2)} → ${q3.sharpe_cr.toFixed(2)} (${f2(q3.diff)}, interval ${f2(q3.ci95[0])} to ${f2(q3.ci95[1])}) — <span class="muted">${v3}</span>: positive and beating random clusters ${Math.round(q3.cr_beats_placebo_share * 100)}% of the time, but the interval still crosses zero, so sizing stays at 1R per trade for the record.`;
+  const st = [['Avg pair corr', S.avg_corr.toFixed(3)], ['Effective bets (variance)', S.N_var.toFixed(1) + ' / 11'], ['Effective bets (eigen)', S.N_PR.toFixed(1) + ' / 11'],
+    ['Shared worst days', `${bk.observed} vs ${bk.expected.toFixed(1)}`], ['Corr with book', f2(q4.corr)], ['Rule A + book Sharpe', q4.sharpe_equal_risk.toFixed(2)]];
+  $('pfStats').innerHTML = st.map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  const L = S.legs, cell = c => { const a = Math.min(1, Math.abs(c) / 0.6); return `background:color-mix(in srgb,var(${c >= 0 ? '--red' : '--blue'}) ${Math.round(a * 75)}%,transparent)`; };
+  $('pfHeat').innerHTML = `<table class="t" style="font-size:10px"><tr><th></th>${L.map(l => `<th style="writing-mode:vertical-rl;transform:rotate(180deg);text-align:left">${l}</th>`).join('')}</tr>`
+    + L.map((l, i) => `<tr><td>${l}</td>${S.corr[i].map((c, j) => `<td style="text-align:center;${i === j ? 'color:var(--text3)' : cell(c)}">${i === j ? '·' : c.toFixed(2)}</td>`).join('')}</tr>`).join('') + '</table>';
+  const W = 460, H = 150, mx = Math.max(2.5, S.eigen[0] * 1.1), y = v => H - 18 - v / mx * (H - 28), bw = (W - 30) / S.eigen.length;
+  $('pfSpec').innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto"><rect x="24" y="${y(S.mp[1])}" width="${W - 26}" height="${y(S.mp[0]) - y(S.mp[1])}" fill="var(--blue)" opacity=".15"/>`
+    + S.eigen.map((e, i) => `<rect x="${26 + i * bw}" y="${y(e)}" width="${bw - 6}" height="${y(0) - y(e)}" rx="2" fill="${e > S.mp[1] ? 'var(--red)' : 'var(--text3)'}"/><text x="${26 + i * bw + (bw - 6) / 2}" y="${y(e) - 3}" font-size="9" text-anchor="middle" fill="var(--text2)">${e.toFixed(2)}</text>`).join('')
+    + `<line x1="24" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="var(--border)"/><text x="${W - 4}" y="${y(S.mp[1]) - 3}" font-size="9" text-anchor="end" fill="var(--text3)">noise ceiling ${S.mp[1].toFixed(2)}</text></svg>`;
+  const tc = S.tail_curve, tx = qv => 24 + (qv - 0.02) / 0.23 * (W - 30), ty = v => H - 18 - v / 0.32 * (H - 28);
+  const band = tc.map(r => `${tx(r.q)},${ty(r.hi)}`).join(' ') + ' ' + tc.slice().reverse().map(r => `${tx(r.q)},${ty(r.lo)}`).join(' ');
+  $('pfTail').innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto"><polygon points="${band}" fill="var(--blue)" opacity=".15"/>`
+    + `<polyline points="${tc.map(r => `${tx(r.q)},${ty(r.q)}`).join(' ')}" fill="none" stroke="var(--text3)" stroke-dasharray="4 3"/>`
+    + `<polyline points="${tc.map(r => `${tx(r.q)},${ty(r.lam)}`).join(' ')}" fill="none" stroke="var(--red)" stroke-width="2"/>`
+    + [0.05, 0.1, 0.15, 0.2, 0.25].map(qv => `<text x="${tx(qv)}" y="${H - 4}" font-size="9" text-anchor="middle" fill="var(--text3)">${Math.round(qv * 100)}%</text>`).join('')
+    + `<text x="${W - 4}" y="12" font-size="9" text-anchor="end" fill="var(--text3)">red = rule A's two halves · dashed = independence</text></svg>`;
+  const ch = LightweightCharts.createChart($('pfEq'), { height: 220, layout: { background: { color: 'transparent' }, textColor: '#8a93a6' }, grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(128,128,128,.12)' } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } });
+  const ser = (k, color) => ch.addLineSeries({ color, lineWidth: 2, priceLineVisible: false, title: k === 'ew' ? '1R per trade' : 'cluster budget' }).setData(P.cum.d.map((d, i) => ({ time: d, value: P.cum[k][i] })));
+  ser('ew', '#8a93a6'); ser('cr', '#3fb27f'); ch.timeScale().fitContent();
+  const yrs = Object.entries(q3.years);
+  $('pfTab').innerHTML = `<tr><th>Walk-forward Sharpe</th>${yrs.map(([yv]) => `<th>${yv}</th>`).join('')}<th>2022–26</th></tr>`
+    + `<tr><td>1R per trade</td>${yrs.map(([, v]) => `<td>${v.ew.toFixed(2)}</td>`).join('')}<td>${q3.sharpe_ew.toFixed(2)}</td></tr>`
+    + `<tr><td>One budget per cluster (+1/σ, registered)</td>${yrs.map(([, v]) => `<td class="${v.cr >= v.ew ? 'pos' : 'neg'}">${v.cr.toFixed(2)}</td>`).join('')}<td class="pos">${q3.sharpe_cr.toFixed(2)}</td></tr>`
+    + `<tr><td class="wrap muted" colspan="${yrs.length + 2}">Clusters only (no 1/σ) ${q3.variants_sharpe.clusters_only.toFixed(2)} · 1/σ only ${q3.variants_sharpe.inverse_vol_only.toFixed(2)} · random clusters median ${q3.placebo_median.toFixed(2)}. The gain comes from sharing a budget inside a cluster, not from 1/σ, which over-weights rarely trading legs (US2000 weight ${P.Q3_weights_2026.weights.US2000} in 2026). 2026 clusters: ${P.Q3_weights_2026.clusters.map(c => c.join(' + ')).join(' · ')}.</td></tr>`;
+}
+// ── "What we would have traded": rule A + the CFD portfolio book (scripts/rule-a-portfolio/combined_view.py → combined.json).
+let CB = null;
+async function renderCombined() {
+  CB = await (await fetch('./backtest-data/decision-lab/combined.json')).json();
+  const st = CB.stats, pc = x => (x >= 0 ? '+' : '') + (x * 100).toFixed(1) + '%';
+  $('cbNote').innerHTML = `<b>Two things, held together.</b> (1) <b>Rule A</b>: on rich-vol mornings, trade breaks of the chosen v3 lines (00:00–10:00 London, stop 0.2σ, target 5R, out by 22:00) — here about <b>${CB.ruleA_risk_per_R_pct.toFixed(2)}% risk per trade</b>. `
+    + `(2) <b>The portfolio book</b>: index/gold beta when VIX is calm, trend on 10 markets, carry, the FOMC dollar drift — positions held days to weeks. They barely move together (correlation ${CB.corr.toFixed(2)}), so the combined line is smoother than either. `
+    + `<span class="muted">Each half sized to 10% a year volatility, half the capital each; book at its registered costs (financing would take it lower). This is the backtest already studied, not new evidence. Rule A <b>did not pay before 2020</b> (2016–20: −0.04R per trade), so the 2020–26 line may flatter it; the forward record from 2026-10-28 decides.</span>`;
+  $('cbStats').innerHTML = [['Rule A', st.ruleA], ['Portfolio book', st.book], ['Both together', st.combined]].map(([k, s]) =>
+    `<div class="stat"><div class="k">${k}</div><div class="v">${pc(s.cagr)}/yr</div><div class="muted" style="font-size:10.5px">Sharpe ${s.sharpe.toFixed(2)} · worst fall −${(s.maxdd * 100).toFixed(1)}%</div></div>`).join('');
+  const ch = LightweightCharts.createChart($('cbEq'), { height: 260, layout: { background: { color: 'transparent' }, textColor: '#8a93a6' }, grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(128,128,128,.12)' } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } });
+  for (const [k, color, title] of [['ruleA', '#d9a441', 'rule A'], ['book', '#5b8def', 'book'], ['combined', '#3fb27f', 'together']])
+    ch.addLineSeries({ color, lineWidth: k === 'combined' ? 3 : 2, priceLineVisible: false, title }).setData(CB.curve.d.map((d, i) => ({ time: d, value: +(CB.curve[k][i] * 100 - 100).toFixed(2) })));
+  ch.timeScale().fitContent();
+  const yrs = Object.keys(CB.by_year);
+  $('cbYears').innerHTML = `<tr><th>Return by year</th>${yrs.map(y => `<th>${y}</th>`).join('')}</tr>` + [['Rule A', 'ruleA'], ['Portfolio book', 'book'], ['Both together', 'combined']].map(([l, k]) =>
+    `<tr><td>${l}</td>${yrs.map(y => { const v = CB.by_year[y][k]; return `<td class="${v >= 0 ? 'pos' : 'neg'}">${pc(v)}</td>`; }).join('')}</tr>`).join('');
+  $('cbYear').innerHTML = ['all', ...yrs].map(y => `<option value="${y}" ${y === yrs.at(-1) ? 'selected' : ''}>${y === 'all' ? 'All years' : y}</option>`).join('');
+  $('cbWhich').onchange = $('cbYear').onchange = renderCbTrades;
+  renderCbTrades();
+}
+function renderCbTrades() {
+  const which = $('cbWhich').value, y = $('cbYear').value;
+  const rows = (which === 'ruleA' ? CB.ruleA_trades : CB.book_trades).filter(t => y === 'all' || t[0].startsWith(y)).slice().reverse();
+  const shown = rows.slice(0, 400);
+  $('cbCount').textContent = `${rows.length} trades${rows.length > shown.length ? ` · newest ${shown.length} shown` : ''}`;
+  $('cbTrades').innerHTML = which === 'ruleA'
+    ? `<tr><th>Date</th><th>Entry (London)</th><th>Instrument</th><th>Side</th><th>Line</th><th>Entry</th><th>Stop</th><th>Target</th><th>Result (R, after costs)</th></tr>`
+      + shown.map(t => `<tr><td>${t[0]}</td><td>${t[1]}</td><td>${t[2]}</td><td>${t[3]}</td><td>${t[4]}</td><td>${t[5]}</td><td>${t[6]}</td><td>${t[7]}</td><td class="${t[8] >= 0 ? 'pos' : 'neg'}">${t[8] >= 0 ? '+' : ''}${t[8].toFixed(2)}</td></tr>`).join('')
+    : `<tr><th>Opened</th><th>Closed</th><th>Instrument</th><th>Side</th><th>Sleeve</th><th>Result (% of the book)</th></tr>`
+      + shown.map(t => `<tr><td>${t[0]}</td><td>${t[1]}</td><td>${t[2]}</td><td>${t[3]}</td><td class="wrap">${t[4]}</td><td class="${t[5] >= 0 ? 'pos' : 'neg'}">${t[5] >= 0 ? '+' : ''}${t[5].toFixed(3)}%</td></tr>`).join('');
+}
 async function init() {
   R = await loadData(); cuts();
+  renderCombined().catch(e => { $('cbNote').textContent = 'Combined backtest not available: ' + e.message; });
+  renderPortfolio().catch(e => { $('pfNote').textContent = 'Portfolio read not available: ' + e.message; });
   renderToday().catch(e => { $('tdTab').innerHTML = `<tr><td class="muted">Today's plan unavailable: ${e.message}</td></tr>`; });
   setInterval(() => renderToday().catch(() => {}), 120000);
   try { F = await (await fetch('./backtest-data/decision-lab/findings.json')).json(); renderFindings(); } catch (e) { $('bottom').textContent = 'Findings not available: ' + e.message; }

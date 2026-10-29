@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Level Lab — what the OI lines did</title>
+<style>
+:root{
+  --bg:#07090c; --bg2:#0d1117; --line:#1c232c; --line2:#2a323d;
+  --tx:#eef1f5; --tx2:#a8b1bd; --tx3:#6b7585;
+  --long:#46b87a; --short:#e8615f; --acc:#f0b04a; --vio:#a487f0; --cy:#5cc8ff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#121a26 0%,var(--bg) 60%);color:var(--tx);font:14px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:1240px;margin:0 auto;padding:16px 18px 80px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:10px}
+h1{margin:0;font-size:20px;letter-spacing:.16em;text-transform:uppercase;font-weight:700}
+h1 b{color:var(--acc)} h1 small{color:var(--tx3);font-size:11px;letter-spacing:.14em;margin-left:8px}
+.sp{flex:1}
+.btn,.pill{background:rgba(255,255,255,.03);border:1px solid var(--line2);color:var(--tx2);padding:6px 12px;border-radius:999px;font:12.5px var(--mono);cursor:pointer;text-decoration:none}
+.btn:hover,.pill:hover{border-color:var(--acc);color:var(--tx)}
+.pill.on{border-color:var(--acc);color:var(--acc);background:rgba(240,176,74,.08)}
+.rail{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px}
+.rail .grp{width:100%;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);margin-top:4px}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.008));border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:16px}
+.card h2{margin:0 0 3px;font-size:13px;letter-spacing:.16em;text-transform:uppercase;display:flex;gap:10px;align-items:center}
+.card h2 em{font-style:normal;color:var(--acc)}
+.sub{color:var(--tx2);font-size:13px;margin:0 0 12px;max-width:900px}
+.sub b{color:var(--tx)}
+.warn{border-color:#5b4a1a;background:linear-gradient(180deg,rgba(240,176,74,.07),rgba(240,176,74,.02))}
+.warn h2{color:var(--acc)}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 14px}
+.stat{background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:130px}
+.stat .k{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3)}
+.stat .v{font:600 19px var(--mono)}
+.stat .n{font-size:11.5px;color:var(--tx3)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+.lc{border:1px solid var(--line);border-radius:12px;padding:12px 13px;background:rgba(255,255,255,.015)}
+.lc h3{margin:0;font-size:13px;display:flex;align-items:center;gap:8px}
+.lc h3 i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.lc .what{color:var(--tx3);font-size:12px;margin:2px 0 8px;min-height:34px}
+.lc .big{font:600 13px var(--mono);margin:6px 0 2px}
+.lc .verdict{font-size:12.5px;margin-top:6px;color:var(--tx2)}
+.lc .verdict b{color:var(--tx)}
+.v-up{color:var(--long)} .v-dn{color:var(--short)} .v-nu{color:var(--tx2)} .v-lo{color:var(--acc)}
+.mini{font:11.5px var(--mono);color:var(--tx3);margin-top:4px;display:flex;gap:12px;flex-wrap:wrap}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--tx3);font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+td.num{font-family:var(--mono);text-align:right}
+.days{display:flex;flex-wrap:wrap;gap:3px;margin-top:8px}
+.days a{width:15px;height:15px;border-radius:3px;display:inline-block;cursor:pointer;border:1px solid transparent}
+.days a:hover{border-color:#fff}
+.dot-b{background:#46b87a} .dot-k{background:#e8615f} .dot-n{background:#2a323d} .dot-u{background:#6b5a2a} .dot-x{background:transparent;border:1px dashed #2a323d}
+.legend{font-size:11.5px;color:var(--tx3);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:5px;margin-right:12px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.two{grid-template-columns:1fr}}
+.find{border-left:3px solid var(--acc);padding:4px 0 4px 12px;margin:10px 0;color:var(--tx2);font-size:13.5px}
+.find b{color:var(--tx)}
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:30;padding:3vh 2vw;overflow:auto}
+#modal .box{max-width:1180px;margin:0 auto;background:var(--bg2);border:1px solid var(--line2);border-radius:14px;padding:16px 18px}
+#modal .x{float:right}
+svg text{font-family:var(--mono)}
+.note{color:var(--tx3);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1><b>Level</b> Lab<small>what the OI lines did · exploratory</small></h1>
+  <span class="sp"></span>
+  <a class="btn" href="/oi-dashboard-v2.html">← OI Lab</a>
+</header>
+<div class="rail" id="rail"></div>
+<div class="stats" id="stats"></div>
+<div id="app">loading…</div>
+</div>
+
+<div id="modal"><div class="box"><button class="btn x" id="mx">close ✕</button><div id="mbody"></div></div></div>
+
+<script>
+'use strict';
+const BASE = '/analysis/output/oi-level-map/';
+const $ = s => document.querySelector(s);
+const PAIRS = ['EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','USDCHF','GOLD','NQ','SPX','DOW','RUT'];
+const GROUPS = ['ALL','FX','GOLD','IDX'];
+const GNAME = { ALL: 'all 11 markets', FX: 'the six FX pairs', GOLD: 'gold', IDX: 'the four indices' };
+const LINES = {
+  call_wall:        { n: 'Call wall',        c: '#ff7a86', w: 'The strike above price with the most call gamma. Textbook: dealers sell into it, so price stalls or reverses there.' },
+  put_wall:         { n: 'Put wall',         c: '#46d39a', w: 'The strike below price with the most put gamma. Textbook: dealers buy into it, so price holds there.' },
+  gamma_peak:       { n: 'Gamma peak',       c: '#f2f2f2', w: 'Where net dealer gamma is largest. Textbook: the strongest pin on the map.' },
+  zero_gamma:       { n: 'Zero gamma',       c: '#a487f0', w: 'Where dealers flip from damping moves (above) to chasing them (below). Textbook: a regime edge.' },
+  gex_flip:         { n: 'GEX flip',         c: '#b9a3ff', w: 'The whole-book version of the zero-gamma line.' },
+  max_pain:         { n: 'Max pain',         c: '#e6c84a', w: 'The strike where option holders lose the most at expiry. Textbook: a magnet, mainly in the last 48 hours.' },
+  vanna_flip:       { n: 'Vanna flip',       c: '#ff7ad9', w: 'Where a change in implied vol flips the direction of dealer hedging.' },
+  charm_flip:       { n: 'Charm flip',       c: '#ff9f43', w: 'Where the passing of time flips dealer hedging. Textbook: a time-of-day pull.' },
+  oi_volume:        { n: 'Volume level',     c: '#4aa8ff', w: 'The strike with the heaviest traded volume that session.' },
+  short_gamma_node: { n: 'Short-gamma node', c: '#e8615f', w: 'A big net-short-gamma strike. Textbook: speeds moves up.' },
+  long_gamma_node:  { n: 'Long-gamma node',  c: '#46b87a', w: 'A big net-long-gamma strike. Textbook: pins moves.' },
+  sq_gamma_call:    { n: 'Call wall, all expiries added', c: '#ff9aa4', w: '', x: 1 },
+  sq_gamma_put:     { n: 'Put wall, all expiries added',  c: '#7be3b8', w: '', x: 1 },
+  sq_oi_call:       { n: 'Most call contracts (any expiry)', c: '#ffb3ba', w: '', x: 1 },
+  sq_oi_put:        { n: 'Most put contracts (any expiry)',  c: '#a6efcf', w: '', x: 1 },
+  near_oi_call:     { n: 'Call contracts, up to 7 days',     c: '#ffc4a0', w: '', x: 1 },
+  near_oi_put:      { n: 'Put contracts, up to 7 days',      c: '#bfe9b0', w: '', x: 1 },
+  far_oi_call:      { n: 'Call contracts, 8+ days',          c: '#d9a3ff', w: '', x: 1 },
+  far_oi_put:       { n: 'Put contracts, 8+ days',           c: '#a3c6ff', w: '', x: 1 },
+  oi_peak:          { n: 'Most open interest (calls+puts)',  c: '#ffffff', w: '', x: 1 },
+  vanna_pos:        { n: 'Vanna peak (+)',                   c: '#ff9be6', w: '', x: 1 },
+  vanna_neg:        { n: 'Vanna peak (-)',                   c: '#c79bff', w: '', x: 1 },
+  exp_hi:           { n: 'Expected-move high', c: '#d9b45a', w: 'The options-implied one-day upper edge. A ruler, not a positioning level: the control line.' },
+  exp_lo:           { n: 'Expected-move low',  c: '#d9b45a', w: 'The options-implied one-day lower edge. The control line.' },
+};
+let SHOWX = false, R = null, R2 = null, SEL = 'ALL', REPL = {}, DBM = null;
+const pct = (x, d = 0) => x == null ? '–' : (x * 100).toFixed(d) + '%';
+const pp = (x, d = 0) => x == null ? '–' : (x >= 0 ? '+' : '') + (x * 100).toFixed(d) + ' pp';
+const nT = c => c ? (c.real.bounce + c.real.brk) : 0;
+
+// ── verdict wording: what the numbers can and cannot say ────────────────────────────────────────────────────────────────────────────
+function verdict(c, label = 'it') {
+  if (!c) return { t: 'No data for this line here.', k: 'v-lo' };
+  const n = nT(c), d = c.diff;
+  if (n < 20) return { t: `Only <b>${n}</b> touches with a clear outcome: too few to say anything.`, k: 'v-lo' };
+  if (!d) return { t: `${n} touches, but too few random lines to compare against.`, k: 'v-lo' };
+  const m = d.diff;
+  if (d.lo > 0) return { t: `Bounced <b>${pp(m)}</b> more than random lines, and the interval clears zero. Worth a prereg, not a conclusion.`, k: 'v-up' };
+  if (d.hi < 0) return { t: `Broke <b>${pp(-m)}</b> more than random lines, and the interval clears zero. Worth a prereg, not a conclusion.`, k: 'v-dn' };
+  if (Math.abs(m) >= 0.06) return { t: `Leans ${m > 0 ? 'toward bouncing' : 'toward breaking'} (<b>${pp(m)}</b>) but the interval includes zero: not distinguishable from a random line yet.`, k: 'v-lo' };
+  return { t: `Behaves like a random line: <b>${pp(m)}</b>, interval includes zero.`, k: 'v-nu' };
+}
+
+// ── interval graphic: where the difference vs a random line sits, on a -40..+40 pp axis ──────────────────────────────────────────────
+function ci(c, w = 300) {
+  const d = c && c.diff, h = 30, lo = -0.4, hi = 0.4, X = v => 8 + (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo) * (w - 16);
+  let s = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><line x1="8" x2="${w - 8}" y1="15" y2="15" stroke="#2a323d"/><line x1="${X(0)}" x2="${X(0)}" y1="4" y2="26" stroke="#6b7585"/>`;
+  for (const v of [-0.3, -0.2, -0.1, 0.1, 0.2, 0.3]) s += `<line x1="${X(v)}" x2="${X(v)}" y1="12" y2="18" stroke="#2a323d"/>`;
+  if (d) {
+    const col = d.lo > 0 ? '#46b87a' : d.hi < 0 ? '#e8615f' : '#a8b1bd';
+    s += `<line x1="${X(d.lo)}" x2="${X(d.hi)}" y1="15" y2="15" stroke="${col}" stroke-width="5" stroke-linecap="round" opacity=".55"/><circle cx="${X(d.diff)}" cy="15" r="5" fill="${col}"/>`;
+  } else s += `<text x="${w / 2}" y="19" text-anchor="middle" fill="#6b7585" font-size="10">no interval (too few touches)</text>`;
+  s += `<text x="8" y="28" fill="#6b7585" font-size="9">breaks more</text><text x="${w - 8}" y="28" text-anchor="end" fill="#6b7585" font-size="9">bounces more</text></svg>`;
+  return s;
+}
+const rateBar = c => {
+  if (!c) return '';
+  const a = c.real, b = a.bounce, k = a.brk, t = b + k || 1;
+  return `<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:#1c232c"><div style="width:${b / t * 100}%;background:#46b87a"></div><div style="width:${k / t * 100}%;background:#e8615f"></div></div>
+  <div class="mini"><span>bounced ${b}</span><span>broke ${k}</span><span>random lines: ${c.plc.rate == null ? '–' : pct(c.plc.rate)} bounce</span></div>`;
+};
+
+// ── page ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+function rail() {
+  $('#rail').innerHTML = '<div class="grp">Group</div>' + GROUPS.map(g => `<span class="pill ${g === SEL ? 'on' : ''}" data-g="${g}">${g}</span>`).join('') +
+    '<div class="grp">Single market</div>' + PAIRS.map(p => `<span class="pill ${p === SEL ? 'on' : ''}" data-g="${p}">${p}</span>`).join('');
+  document.querySelectorAll('#rail .pill').forEach(el => el.onclick = () => { SEL = el.dataset.g; rail(); render(); });
+}
+function stats() {
+  const m = R.meta, dr = m.dropped;
+  const total = m.records + dr.stale_asof + dr.no_sigma + dr.no_prices;
+  $('#stats').innerHTML = [
+    ['Sessions', m.nDates, `${m.dates[0]} → ${m.dates[1]}`],
+    ['Market-sessions scored', m.records, `of ${total} captured`],
+    ['Left out: stale book', dr.stale_asof, 'CME served the previous day'],
+    ['Left out: no IV ruler', dr.no_sigma, 'early captures'],
+    ['Line touches scored', m.events.indicator.toLocaleString(), 'incl. random lines'],
+  ].map(([k, v, n]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`).join('');
+}
+const cellOf = (t) => R.sections.byType[t] && R.sections.byType[t][SEL];
+
+function render() {
+  const S = R.sections, m = R.meta;
+  const grp = GNAME[SEL] || SEL;
+  let h = '';
+  // honesty box
+  const cells = []; (function walk(o, p) { if (o && typeof o === 'object') { if (o.diff && typeof o.diff === 'object') cells.push(o.diff); for (const k in o) walk(o[k], p); } })(S, []);
+  const excl = cells.filter(d => d.lo > 0 || d.hi < 0).length;
+  h += `<div class="card warn"><h2>Read this first</h2><p class="sub">This is an <b>exploratory</b> look at <b>${m.nDates} sessions</b> of the nightly option-book captures, not a test. It was not pre-registered and nothing here is banked as evidence or used by any bot.
+  Each line is scored the same way: the first time price reaches it, which comes first, a move of 0.25 of a day's expected move <b>back</b> (a fade would win) or <b>through</b> it (a follow would win)? The same race is run on random lines placed 0.25 and 0.5 of a day's move either side of every real line, on the same day. A real line only means something if it beats those.</p>
+  <p class="sub">${cells.length} comparisons are shown on this page; at the usual 5% level about <b>${Math.round(cells.length * 0.05)}</b> would clear zero by luck alone, and <b>${excl}</b> do. Many overlap (the same days feed every table), so treat each as a pointer for the pre-registered test, not as a finding.
+  Sessions after 2026-08-21 are included; the lockbox only bars scoring the forecast layers, so these sessions are now <i>seen</i> for OI-line questions.</p></div>`;
+
+  // headline findings, built from the numbers
+  const wr = S.walls.regime || {}, hs = S.walls.hfsign || {}, rs = S.walls.regime_x_strong || {};
+  h += `<div class="card"><h2><em>1</em> What stands out</h2>
+  <div class="find"><b>The regime read points the right way, weakly.</b> Walls bounced ${pp(wr.PIN && wr.PIN.diff && wr.PIN.diff.diff)} vs random lines when dealers were long gamma (PIN), and ${pp(wr.BREAKOUT && wr.BREAKOUT.diff && wr.BREAKOUT.diff.diff)} when short gamma (BREAKOUT). Strong walls only: PIN ${pp(rs.PIN && rs.PIN.diff && rs.PIN.diff.diff)}, BREAKOUT ${pp(rs.BREAKOUT && rs.BREAKOUT.diff && rs.BREAKOUT.diff.diff)}. Same direction as the theory (fade in long gamma, follow in short), every interval still includes zero.</div>
+  <div class="find"><b>Most lines behave like random lines.</b> Of the ${Object.keys(S.byType).length} line types in the whole sample, none beats a random line with an interval that excludes zero. The few cells that do clear zero (zero gamma and the volume level on the indices, walls with OI being built) are about as many as luck produces among ${cells.length} comparisons.</div>
+  <div class="find"><b>Walls where open interest was being <i>built</i> that day bounced more</b> (${pp(S.walls.oiChange && S.walls.oiChange['building (OI +3% or more)'] && S.walls.oiChange['building (OI +3% or more)'].diff.diff)}, interval above zero). That is C.OG's "strengthening wall" idea and the cleanest single pointer here. It is one cell, and the walls are not independent across days.</div>
+  <div class="find"><b>A wall that exists only in a far expiry (8+ days, nothing near it) leaned the other way</b> (${pp(S.bucketWalls.d8_45 && S.bucketWalls.d8_45.faronly && S.bucketWalls.d8_45.faronly.diff && S.bucketWalls.d8_45.faronly.diff.diff)}): price was more likely to go through than a random line. Thin (about 60 touches), but it is the "far-DTE walls follow rather than fade" idea, and it is the first thing to check in the long Databento history.</div>`;
+  if (R2) {
+    const P = R2.sections.piled, c3 = P.combos && P.combos['three or more types incl. a wall · PIN'], c3b = P.combos && P.combos['three or more types incl. a wall · BREAKOUT'], sz = P.bySize_regime || {};
+    const g = x => x && x.diff ? `${pp(x.diff.diff)} [${(x.diff.lo * 100).toFixed(0)}, ${(x.diff.hi * 100).toFixed(0)}]` : 'too few';
+    const dr = R2.sections.dayBook.direction || {}, pm = R2.sections.greeks.pm_pull || {};
+    h += `<div class="find"><b>Piled-up lines on a pin day held; on a breakout day they did not.</b> Stacks of three or more kinds of line including a wall: PIN ${g(c3)} (${c3 ? nT(c3) : 0} touches), BREAKOUT ${g(c3b)}. Same shape for stacks of 3+ types: PIN ${g(sz['3+ · PIN'])}, BREAKOUT ${g(sz['3+ · BREAKOUT'])}. This is the dealer-gamma story seen through confluence, the best-supported pointer on the page, and the several cuts of it are the same ~25–40 stacks counted different ways.</div>
+    <div class="find"><b>Ignoring time to expiry costs nothing, and carving it up gains nothing.</b> Walls built from gamma added across all expiries, from raw contracts at any expiry, from contracts under 7 days, or from contracts 8+ days out all sit at random-line levels (section 6). A wall made mostly of far-dated contracts is no different (${g(R2.sections.squash.farShare && R2.sections.squash.farShare['mostly far-expiry OI (>60% 8+ days)'])}). The one cell that clears zero is far-dated call walls in FX (${g(R2.sections.squash.far_oi.far_oi_call.FX)}): leaning toward breaking, one cell of many.</div>
+    <div class="find"><b>Which way the day went: nothing predicts it.</b> Not the travel read (${dr['travel read (up/down) vs the day'] ? (dr['travel read (up/down) vs the day'].rate * 100).toFixed(0) + '% right' : '–'}), zero gamma, max pain, the nearer wall or a 5-day streak. The 63-day trend pointed the wrong way (${dr['63-day trend up/down -> same direction today'] ? (dr['63-day trend up/down -> same direction today'].rate * 100).toFixed(0) + '% right' : '–'}), which says more about this 3-month window than about OI.</div>
+    <div class="find"><b>Time-of-day pull:</b> the heaviest-volume level pulled price toward it over the afternoon (${pm.oi_volume ? '+' + pm.oi_volume.diff.toFixed(2) + 'σ vs random lines' : '–'}); the vanna, charm and zero-gamma flips, if anything, pushed price away from them (${pm.charm_flip ? pm.charm_flip.diff.toFixed(2) + 'σ' : '–'}). Both borderline.</div>`;
+  }
+  h += `</div>`;
+  h += `<!--find-end-->`;
+
+  // each line for the selection
+  h += `<div class="card"><h2><em>2</em> Each line: ${grp}</h2><p class="sub">The dot is how much more often price <b>bounced</b> at this line than at a random line (right = fade works better, left = follow works better); the bar is the 95% interval. A bar that spans zero means the data cannot tell this line from a random price.</p><div class="grid">`;
+  for (const t of Object.keys(LINES).filter(k => !LINES[k].x)) {
+    const c = cellOf(t), L = LINES[t], v = verdict(c);
+    const ts = c ? c.touch_share : null, ps = c ? c.plc_touch_share : null;
+    h += `<div class="lc"><h3><i style="background:${L.c}"></i>${L.n}${c ? `<span class="note" style="margin-left:auto">${c.n_levels} lines</span>` : ''}</h3><div class="what">${L.w}</div>
+      ${c ? ci(c) + rateBar(c) + `<div class="mini"><span>reached on ${pct(ts)} of days (random lines ${pct(ps)})</span></div>
+      <div class="mini"><span>60-min move away ${c.mfe60[0] == null ? '–' : c.mfe60[0].toFixed(2)}σ vs ${c.mfe60[1] == null ? '–' : c.mfe60[1].toFixed(2)}σ</span><span>through ${c.mae60[0] == null ? '–' : c.mae60[0].toFixed(2)}σ vs ${c.mae60[1] == null ? '–' : c.mae60[1].toFixed(2)}σ</span></div>` : ''}
+      <div class="verdict ${v.k}">${v.t}</div>${PAIRS.includes(SEL) ? `<div class="days" data-t="${t}"></div>` : ''}</div>`;
+  }
+  h += '</div>' + (PAIRS.includes(SEL) ? `<div class="legend"><span><i class="dot-b"></i>bounced</span><span><i class="dot-k"></i>broke through</span><span><i class="dot-u"></i>touched, no 0.25σ move by 22:00</span><span><i class="dot-n"></i>not reached</span> · click a day to replay it</div>` : '') + '</div>';
+
+  // regime
+  h += `<div class="card"><h2><em>3</em> Pin or breakout: does the dealer-gamma read change what a wall does?</h2>
+  <p class="sub">The dealer-hedging picture says a wall in <b>long gamma</b> (PIN) should hold, because dealers lean against the move, and a wall in <b>short gamma</b> (BREAKOUT) should give way, because they chase it. "Damping / reinforcing" is the same question read from the hedge-flow curve (OI Lab 05e). Everything here is walls from the indicator, all markets.</p>
+  <div class="two"><div>${rowTable([['PIN (long gamma)', wr.PIN], ['BREAKOUT (short gamma)', wr.BREAKOUT], ['Hedge-flow damping', hs.damp], ['Hedge-flow reinforcing', hs.reinf], ['PIN, strong walls', rs.PIN], ['BREAKOUT, strong walls', rs.BREAKOUT]])}</div>
+  <div>${dayRegime()}</div></div></div>`;
+
+  // dte
+  h += `<div class="card"><h2><em>4</em> Expiry (DTE): does a wall's own expiry matter?</h2>
+  <p class="sub">The indicator draws walls from whichever expiry bucket carries the most gamma. Here every bucket's own top walls are scored on their own. "Stacked" = a far-expiry wall sitting on a near-expiry one; "far-only" = a far wall with nothing near it, which is the case that is big enough to be on the profile but carries little live gamma.</p>${bucketTable()}
+  <p class="note">The near-expiry buckets (0–1 and 2–7 days) have ${S.bucketWallCounts.d0_1 + S.bucketWallCounts.d2_7} walls in total but they come from only ${m.nDates} sessions, so each row is the same days seen through a different cut.</p></div>`;
+
+  // strength, OI change, hour
+  h += `<div class="card"><h2><em>5</em> Strength, open-interest change and time of day</h2>
+  <p class="sub">C.OG's three wall factors (size against its neighbours, OI change, time to expiry) and the hour of the touch, all on indicator walls, all markets.</p>
+  <div class="two"><div><h3 style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)">Strength (gamma share of that side's biggest)</h3>${rowTable(Object.entries(S.walls.strength || {}))}
+  <h3 style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-top:14px">Open-interest change that day, at the wall</h3>${rowTable(Object.entries(S.walls.oiChange || {}))}</div>
+  <div><h3 style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)">Hour of the first touch (London)</h3>${rowTable(Object.entries(S.walls.hourBlock || {}))}<p class="note">The late block (16:30–22:00) has the widest interval: few walls get first touched that late.</p></div></div></div>`;
+
+  if (R2) h += newSections();
+  // offset sweep
+  h += `<div class="card"><h2><em>11</em> Where does price actually turn?</h2><p class="sub">Each line is moved a little closer to, or further past, where it was drawn, and the race is re-run. If a line works best a little <b>before</b> the drawn price, the level is real but price front-runs it; if it works best at zero, the drawn price is the right one to use. Random-walk level: 50%.</p>
+  <div id="sweep" class="two"></div></div>`;
+
+  // day-level
+  h += `<div class="card"><h2><em>12</em> The day as a whole: ranges, expected move and IV</h2>${dayTable()}</div>`;
+
+  // method
+  h += `<div class="card"><h2><em>13</em> How it was built, and what it cannot say</h2>
+  <p class="sub">The nightly CME capture is replayed through the same code the indicator uses (open interest, change, volume, implied-vol smile and CME settlements), so the lines are the ones the chart would have shown that morning, from the capture time (about 06:30 London) to 22:00. Prices are M1 mid; one day's expected move is ATM implied vol ÷ √252 × spot, known at the capture (where only CME settlements existed, the term point nearest 7 days). Intervals bootstrap whole sessions, because markets on one date share the dollar.</p>
+  <p class="sub"><b>Left out and counted:</b> ${m.dropped.stale_asof} market-sessions where CME had not updated its book (the capture carried the previous day), ${m.dropped.no_sigma} early captures with no IV ruler, ${m.dropped.no_prices} with no price. <b>Cannot say:</b> anything about direction, anything about a bot's P&amp;L (no costs, no spread gate), or anything that needs more than about 35 sessions. The pre-registered, larger version is <code>oi_research_book/WALL_DTE_STYLE_PREREG.md</code> on the six-year Databento history.</p></div>`;
+  $('#app').innerHTML = h;
+  document.querySelectorAll('.days').forEach(el => paintDays(el));
+  sweep();
+  if (R2) dayBook();
+}
+
+function rowTable(rows) {
+  let h = '<table><tr><th>Cut</th><th class="num">touches</th><th class="num">bounce</th><th class="num">random</th><th>vs random lines</th></tr>';
+  for (const [k, c] of rows) {
+    if (!c) { h += `<tr><td>${k}</td><td colspan="4" class="note">too few</td></tr>`; continue; }
+    const n = nT(c);
+    h += `<tr><td>${k}</td><td class="num">${n}</td><td class="num">${pct(c.real.rate)}</td><td class="num">${pct(c.plc.rate)}</td><td>${n < 20 ? '<span class="note">too few touches</span>' : ci(c, 220)}</td></tr>`;
+  }
+  return h + '</table>';
+}
+function bucketTable() {
+  const B = R.sections.bucketWalls, names = { d0_1: '0–1 days', d2_7: '2–7 days', d8_45: '8–45 days', d46p: '46+ days' };
+  const cols = [['all', 'all'], ['PIN', 'PIN'], ['BREAKOUT', 'BREAKOUT'], ['strong', 'strong (≥0.7)'], ['contrast3x', '≥3× neighbours'], ['stacked', 'stacked on near'], ['faronly', 'far-only']];
+  let h = '<table><tr><th>Wall expiry</th>' + cols.map(c => `<th>${c[1]}</th>`).join('') + '</tr>';
+  for (const b of Object.keys(names)) {
+    h += `<tr><td><b>${names[b]}</b></td>`;
+    for (const [k] of cols) {
+      const c = B[b] && B[b][k];
+      if (!c || !c.real || nT(c) < 20 || !c.diff) { h += `<td class="note">${c && c.real ? nT(c) + ' touches' : '–'}</td>`; continue; }
+      const d = c.diff, col = d.lo > 0 ? 'v-up' : d.hi < 0 ? 'v-dn' : 'v-nu';
+      h += `<td><span class="${col}" style="font:600 12.5px var(--mono)">${pp(d.diff)}</span><div class="note">${nT(c)} touches · [${(d.lo * 100).toFixed(0)}, ${(d.hi * 100).toFixed(0)}]</div></td>`;
+    }
+    h += '</tr>';
+  }
+  return h + '</table><p class="note">Each cell: bounce rate at those walls minus the bounce rate at random lines around the same walls, with the 95% interval in pp. Green/red only where the interval excludes zero.</p>';
+}
+function dayRegime() {
+  const D = R.sections.days, g = ['ALL', 'FX', 'GOLD', 'IDX'];
+  let h = '<h3 style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-top:0">Session range ÷ expected move, median</h3><table><tr><th></th><th class="num">PIN</th><th class="num">BREAKOUT</th></tr>';
+  for (const k of g) { const a = D.range_by_regime[k]; if (!a) continue; const f = x => x ? `${x.median.toFixed(2)} <span class="note">n=${x.n}</span>` : '–'; h += `<tr><td>${k}</td><td class="num">${f(a.PIN)}</td><td class="num">${f(a.BREAKOUT)}</td></tr>`; }
+  return h + '</table><p class="note">The earlier study found long gamma means a narrower day; this shows the same direction in FX, with intervals that overlap.</p>';
+}
+function dayTable() {
+  const D = R.sections.days, ex = D.inside_em, mp = D.max_pain_pull_by_dte;
+  let h = `<div class="two"><div><h3 style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-top:0">Realised range ÷ implied one-day move</h3><table><tr><th>Market</th><th class="num">median</th><th class="num">inside ±1σ edges</th></tr>`;
+  for (const p of PAIRS) { const a = D.range_vs_iv_sigma[p]; if (!a) continue; h += `<tr><td>${p}</td><td class="num">${a.median.toFixed(2)} <span class="note">[${a.lo.toFixed(2)}, ${a.hi.toFixed(2)}]</span></td><td class="num">${pct(ex[p][0])}</td></tr>`; }
+  h += `</table><p class="note">${pct(D.inside_em_all[0])} of ${D.inside_em_all[1]} market-sessions stayed inside the implied edges the whole session. A tight ±1σ band is not a 68% band for a full-session high-low range.</p></div>
+  <div><h3 style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-top:0">Other checks</h3><table>`;
+  const f = x => x ? `${x.median.toFixed(2)} [${x.lo.toFixed(2)}, ${x.hi.toFixed(2)}] n=${x.n}` : '–';
+  h += `<tr><td>Range ÷ σ, low IV days</td><td class="num">${f(D.range_by_ivbin['low IV'])}</td></tr><tr><td>Range ÷ σ, mid IV</td><td class="num">${f(D.range_by_ivbin['mid IV'])}</td></tr><tr><td>Range ÷ σ, high IV</td><td class="num">${f(D.range_by_ivbin['high IV'])}</td></tr>
+  <tr><td>Close pulled toward max pain (σ), 0–2 DTE</td><td class="num">${f(mp['0-2 DTE'])}</td></tr><tr><td>…3–7 DTE</td><td class="num">${f(mp['3-7 DTE'])}</td></tr>
+  <tr><td>Risk-reversal vs day's direction (corr)</td><td class="num">${D.rr_vs_direction.corr == null ? '–' : D.rr_vs_direction.corr.toFixed(2)} n=${D.rr_vs_direction.n}</td></tr><tr><td>IV term slope vs range (corr)</td><td class="num">${D.ivslope_vs_hl.corr == null ? '–' : D.ivslope_vs_hl.corr.toFixed(2)}</td></tr></table>
+  <p class="note">Directional skew carries no signal here (correlation near zero), as in the earlier tests. Max-pain pull is positive when price ends nearer the line than it started; none of these intervals excludes zero.</p></div></div>`;
+  return h;
+}
+function sweep() {
+  const sw = R.sections.offsetSweep.data, g = (SEL === 'ALL' || GROUPS.includes(SEL)) ? SEL : (['EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','USDCHF'].includes(SEL) ? 'FX' : SEL === 'GOLD' ? 'GOLD' : 'IDX');
+  const names = { walls: 'Call + put walls', flips: 'Zero gamma / GEX flip', max_pain: 'Max pain', gamma_peak: 'Gamma peak', volume: 'Volume level' };
+  let h = '';
+  for (const k of Object.keys(names)) {
+    const pts = (sw[k][g] || []).filter(p => p.rate != null), W = 440, H = 150, X = i => 40 + i / (pts.length - 1) * (W - 60), Y = v => 130 - (v - 0.3) / 0.5 * 110;
+    let s = `<div><div class="note" style="margin-bottom:2px"><b style="color:var(--tx)">${names[k]}</b> · ${GNAME[g]}</div><svg viewBox="0 0 ${W} ${H}" width="100%"><line x1="40" x2="${W - 20}" y1="${Y(0.5)}" y2="${Y(0.5)}" stroke="#6b7585" stroke-dasharray="4 4"/>`;
+    for (const v of [0.4, 0.6, 0.7]) s += `<line x1="40" x2="${W - 20}" y1="${Y(v)}" y2="${Y(v)}" stroke="#1c232c"/><text x="34" y="${Y(v) + 3}" text-anchor="end" fill="#6b7585" font-size="9">${(v * 100)}%</text>`;
+    s += `<polyline fill="none" stroke="#f0b04a" stroke-width="2" points="${pts.map((p, i) => X(i) + ',' + Y(Math.max(0.3, Math.min(0.8, p.rate)))).join(' ')}"/>`;
+    pts.forEach((p, i) => { s += `<circle cx="${X(i)}" cy="${Y(Math.max(0.3, Math.min(0.8, p.rate)))}" r="3" fill="#f0b04a"/><text x="${X(i)}" y="${H - 14}" text-anchor="middle" fill="${p.shift === 0 ? '#eef1f5' : '#6b7585'}" font-size="9">${p.shift > 0 ? '+' : ''}${p.shift.toFixed(2)}</text><text x="${X(i)}" y="${H - 3}" text-anchor="middle" fill="#6b7585" font-size="8">n${p.bounce + p.brk}</text>`; });
+    h += s + '</svg></div>';
+  }
+  h += `<div class="note" style="grid-column:1/-1">Bounce rate (% of touches that went 0.25σ back before 0.25σ through) as the test line is moved: left = on the near side of the drawn price (price meets it sooner), right = past it (price must travel further). 50% is a coin flip. Counts under each point are touches with a clear outcome; swings of ±5–8 pp at these counts are noise-sized.</div>`;
+  $('#sweep').innerHTML = h;
+}
+
+
+// ── step-4 sections: DTE carved vs squashed, Greeks beyond the flips, piled-up lines, the regime stack and the day book ───────────────
+const grp2 = () => (GROUPS.includes(SEL) ? SEL : ['EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','USDCHF'].includes(SEL) ? 'FX' : SEL === 'GOLD' ? 'GOLD' : 'IDX');
+const H3 = 'font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)';
+function dcell(c, nmin = 20) {
+  if (!c || !c.real || nT(c) < nmin) return `<td class="note">${c && c.real ? nT(c) + ' touches' : '–'}</td>`;
+  const d = c.diff; if (!d) return `<td class="note">${nT(c)} touches</td>`;
+  const col = d.lo > 0 ? 'v-up' : d.hi < 0 ? 'v-dn' : 'v-nu';
+  return `<td><span class="${col}" style="font:600 12.5px var(--mono)">${pp(d.diff)}</span><div class="note">${nT(c)} touches · [${(d.lo * 100).toFixed(0)}, ${(d.hi * 100).toFixed(0)}]</div></td>`;
+}
+function sqTable(g) {
+  const S = R2.sections.squash, T = R.sections.byType;
+  const rows = [
+    ['Indicator walls (the strongest-gamma expiry bucket)', T.call_wall && T.call_wall[g], T.put_wall && T.put_wall[g], null],
+    ['Gamma, all expiries added together', S.sq_gamma.sq_gamma_call[g], S.sq_gamma.sq_gamma_put[g], S.sq_gamma.ALLWALLS[g]],
+    ['Contracts (open interest), all expiries: time to expiry ignored', S.sq_oi.sq_oi_call[g], S.sq_oi.sq_oi_put[g], S.sq_oi.ALLWALLS[g]],
+    ['Contracts expiring within 7 days only', S.near_oi.near_oi_call[g], S.near_oi.near_oi_put[g], S.near_oi.ALLWALLS[g]],
+    ['Contracts expiring 8+ days out only', S.far_oi.far_oi_call[g], S.far_oi.far_oi_put[g], S.far_oi.ALLWALLS[g]],
+  ];
+  let h = '<table><tr><th>How the wall is defined</th><th>call wall</th><th>put wall</th><th>both</th></tr>';
+  for (const [n, a, b, c] of rows) h += `<tr><td>${n}</td>${dcell(a)}${dcell(b)}${c ? dcell(c) : '<td class="note">–</td>'}</tr>`;
+  return h + '</table>';
+}
+function pileTable(rows) {
+  let h = '<table><tr><th>Cut</th><th class="num">touches</th><th class="num">bounce</th><th class="num">random</th><th>vs random lines</th></tr>';
+  for (const [k, c] of rows) {
+    if (!c || !c.real) { h += `<tr><td>${k}</td><td colspan="4" class="note">too few</td></tr>`; continue; }
+    const n = nT(c);
+    h += `<tr><td>${k}</td><td class="num">${n}</td><td class="num">${pct(c.real.rate)}</td><td class="num">${pct(c.plc.rate)}</td><td>${n < 20 || !c.diff ? '<span class="note">too few touches</span>' : ci(c, 220)}</td></tr>`;
+  }
+  return h + '</table>';
+}
+function newSections() {
+  const S = R2.sections, g = grp2(), sq = S.squash, gr = S.greeks, pl = S.piled, db = S.dayBook;
+  let h = '';
+  const ov = S.overlap || {}, sh = x => x && x.share != null ? Math.round(x.share * 100) + '%' : '–';
+  const pk = (() => { const c = sq.oi_peak && sq.oi_peak[g]; return c && c.diff ? pp(c.diff.diff) + ' [' + (c.diff.lo * 100).toFixed(0) + ', ' + (c.diff.hi * 100).toFixed(0) + ']' : 'too few'; })();
+  h += `<div class="card"><h2><em>6</em> Time to expiry: carve the book up, or ignore it?</h2>
+  <p class="sub">The same contract sits at the same strike whether it expires tomorrow or in 40 days, so one fair question is whether slicing the book by expiry helps at all. Each row builds the call wall (most call exposure above price) and put wall (below) a different way and runs the same race against random lines. "Gamma, all expiries added" keeps the maths but throws the expiry labels away; "contracts" throws away even the gamma and just counts them. <b>${GNAME[g]}</b>.</p>
+  ${sqTable(g)}
+  <p class="note">Cell: bounce rate at those walls minus the bounce rate at random lines, 95% interval in pp; green or red only where the interval excludes zero. How often two definitions pick the same strike (within 0.1σ): indicator walls vs gamma-added ${sh(ov['ind_walls vs sq_gamma_walls'])}, vs contracts-added ${sh(ov['ind_walls vs sq_oi_walls'])}; near-expiry vs far-expiry contract walls ${sh(ov['near_oi_walls vs far_oi_walls'])}. They disagree about where the wall is about half the time, yet none of them reacts differently from a random line, so on this sample ignoring expiry does no worse and no better than carving it up.</p>
+  <h3 style="${H3};margin-top:14px">A wall made mostly of far-dated contracts (your 60-day example)</h3>
+  ${pileTable(Object.entries(sq.farShare || {}).concat(Object.entries(sq.farShare_PIN || {})))}
+  <p class="note">Cut = share of the contracts at the wall that expire 8+ days out (all markets). The single strike with the most open interest of any kind, ${GNAME[g]}: ${pk}.</p></div>`;
+  const pm = gr.pm_pull || {}, pmn = { charm_flip: 'Charm flip', vanna_flip: 'Vanna flip', zero_gamma: 'Zero gamma', max_pain: 'Max pain', gamma_peak: 'Gamma peak', call_wall: 'Call wall', put_wall: 'Put wall', oi_volume: 'Volume level' };
+  h += `<div class="card"><h2><em>7</em> The other Greeks: vanna peaks, charm and the afternoon pull</h2>
+  <p class="sub">Vanna and charm are not stored per strike for every expiry, so two things are testable: the strikes where net vanna is largest (positive and negative) as lines, and the time-of-day pull the flips are supposed to exert. Per-strike charm, vega and theta are not in the capture, so they are not tested.</p>
+  <div class="two"><div><h3 style="${H3};margin-top:0">Vanna peaks as lines</h3>${pileTable([['Largest + vanna strike', gr.vanna_pos && gr.vanna_pos[g]], ['Largest - vanna strike', gr.vanna_neg && gr.vanna_neg[g]]])}</div>
+  <div><h3 style="${H3};margin-top:0">Afternoon pull (13:00 to 20:00 London)</h3><table><tr><th>Line</th><th class="num">sessions</th><th class="num">pulled closer, σ</th><th class="num">vs random lines</th></tr>${Object.keys(pmn).filter(k => pm[k]).map(k => { const x = pm[k], col = x.lo > 0 ? 'v-up' : x.hi < 0 ? 'v-dn' : 'v-nu'; return `<tr><td>${pmn[k]}</td><td class="num">${x.n}</td><td class="num">${x.mean.toFixed(2)}</td><td class="num ${col}">${x.diff >= 0 ? '+' : ''}${x.diff.toFixed(2)} <span class="note">[${x.lo.toFixed(2)}, ${x.hi.toFixed(2)}]</span></td></tr>`; }).join('')}</table>
+  <p class="note">Positive = price ended the afternoon nearer the line than it did for a random line, i.e. the line pulled. All markets pooled.</p></div></div></div>`;
+  h += `<div class="card"><h2><em>8</em> Piled-up lines: what happens when several land on one price?</h2>
+  <p class="sub">Every indicator line within 0.1σ of another is merged into one stack and the stack's price is raced. "Types" counts different kinds of line (a call wall and a gamma peak on one strike is two). Splitting by pin or breakout day is the point: the dealer picture says a stack should hold in long gamma and give way in short gamma. All markets pooled.</p>
+  <div class="two"><div><h3 style="${H3};margin-top:0">By stack size</h3>${pileTable(Object.entries(pl.bySize || {}).map(([k, c]) => [k + ' type' + (k === '1' ? '' : 's'), c]).concat(Object.entries(pl.bySize_regime || {})))}</div>
+  <div><h3 style="${H3};margin-top:0">By what is in the stack</h3>${pileTable(Object.entries(pl.combos || {}))}</div></div>
+  <p class="note">These cuts share the same days and often the same stacks, so they are one finding seen several ways, not several findings. Stacks seen: ${Object.entries(pl.clusterCounts || {}).map(([k, v]) => v + ' with ' + parseInt(k) + ' type' + (parseInt(k) === 1 ? '' : 's')).join(', ')}.</p></div>`;
+  const rm = db.range_model, hv = db.hl_by_gamma_x_rv || {}, hr = db.hl_by_rv || {}, dr = db.direction || {};
+  const fm = x => x ? `${x.median.toFixed(2)} <span class="note">[${x.lo.toFixed(2)}, ${x.hi.toFixed(2)}] n=${x.n}</span>` : '–';
+  h += `<div class="card"><h2><em>9</em> The regime stack: dealer gamma, volatility running, travel direction</h2>
+  <p class="sub">Is OI adding anything to what the market's own state already tells you? Each market-session is tagged with the <b>dealer-gamma regime</b> (PIN or BREAKOUT), the <b>hedge-flow slope</b>, how <b>hot volatility has been running</b> (last 10 days against the last year), and the <b>travel direction</b> (where price sits in its 3-month range and whether it got there efficiently, the repo's own read). The two-state variance HMM was also run on each market's last 250 daily returns, as the site does: its high-variance state had a probability of at most <b>${db.pHigh_range ? (db.pHigh_range[1] * 100).toFixed(0) + '%' : '–'}</b> on every one of these ${db.n} sessions, i.e. it said "calm" on all of them, so it cannot separate anything in this window and is not used below.</p>
+  <div class="two"><div><h3 style="${H3};margin-top:0">Session range ÷ implied move (median)</h3><table><tr><th>Cut</th><th class="num">median range</th></tr>
+  ${Object.entries(hr).map(([k, v]) => `<tr><td>Volatility ${k}</td><td class="num">${fm(v)}</td></tr>`).join('')}${Object.entries(hv).map(([k, v]) => `<tr><td>${k}</td><td class="num">${fm(v)}</td></tr>`).join('')}</table>
+  <h3 style="${H3};margin-top:14px">What explains how wide the day was? (log range ÷ implied move)</h3>
+  <table><tr><th>Term</th><th class="num">coefficient</th></tr>${Object.entries(rm.terms).filter(([k]) => k !== 'const').map(([k, v]) => { const nm = { lrv: 'volatility running hot (log ratio)', gneg: 'BREAKOUT (short-gamma) day', reinf: 'hedge flow reinforcing', ivz: 'options rich vs usual' }[k] || k; const col = v.lo > 0 ? 'v-up' : v.hi < 0 ? 'v-dn' : 'v-nu'; return `<tr><td>${nm}</td><td class="num ${col}">${v.coef.toFixed(2)} <span class="note">[${v.lo.toFixed(2)}, ${v.hi.toFixed(2)}]</span></td></tr>`; }).join('')}</table>
+  <p class="note">${rm.n} market-sessions, intervals bootstrap whole dates. A coefficient is only worth reading where its interval clears zero (green or red). None does here. The long-history study found long gamma means a narrower day; in this short window the BREAKOUT term is flat, so this sample is too short to see it, not evidence against it.</p></div>
+  <div><h3 style="${H3};margin-top:0">Does anything say which way the day went?</h3><table><tr><th>Rule</th><th class="num">days</th><th class="num">right</th></tr>
+  ${Object.entries(dr).filter(([, v]) => v).map(([k, v]) => `<tr><td>${k}</td><td class="num">${v.n}</td><td class="num ${v.lo > 0.5 ? 'v-up' : v.hi < 0.5 ? 'v-dn' : 'v-nu'}">${(v.rate * 100).toFixed(0)}% <span class="note">[${(v.lo * 100).toFixed(0)}, ${(v.hi * 100).toFixed(0)}]</span></td></tr>`).join('')}</table>
+  <p class="note">Share of days where the close was on the side the rule predicts (50% = a coin). Day types: ${Object.entries(db.daytype_by_gamma || {}).map(([g2, o]) => g2 + ' days ' + Object.entries(o).map(([t, n]) => n + ' ' + t.split(' (')[0]).join(' / ')).join('; ')}.</p></div></div></div>`;
+  h += `<div class="card"><h2><em>10</em> Day book: every line, every day, for one market</h2><p class="sub">One row per session: the regime stack on the left, what the day did in the middle, and a tally of the indicator lines price touched, bounced off or went through. Click a day to see the chart with every line and what happened to it.</p>
+  <div class="tabs" id="dbPick"></div><div id="dbTable">loading…</div></div>`;
+  return h;
+}
+async function dayBook() {
+  const pick = $('#dbPick'); if (!pick) return;
+  const mk = DBM || (PAIRS.includes(SEL) ? SEL : 'NQ'); DBM = mk;
+  pick.innerHTML = PAIRS.map(p => `<span class="pill ${p === mk ? 'on' : ''}" data-p="${p}">${p}</span>`).join('');
+  pick.querySelectorAll('.pill').forEach(el => el.onclick = () => { DBM = el.dataset.p; dayBook(); });
+  const days = await loadRepl(mk); let h = '<table><tr><th>Date</th><th>Gamma</th><th>Hedge flow</th><th>Vol running</th><th>Travel</th><th class="num">Range ×σ</th><th class="num">Close vs open (σ)</th><th>Lines touched / bounced / broke</th></tr>';
+  days.forEach((d, i) => {
+    let t = 0, b = 0, k = 0;
+    d.levels.filter(l => !(LINES[l.type] && LINES[l.type].x)).filter(l => !['exp_hi', 'exp_lo'].includes(l.type)).forEach(l => { if (l.ev && l.ev.touched) { t++; if (l.ev.race === 1) b++; if (l.ev.race === -1) k++; } });
+    const rv = d.rvRatio == null ? '–' : d.rvRatio < 0.8 ? '<span class="v-nu">calm</span>' : d.rvRatio > 1.25 ? '<span class="v-lo">hot</span>' : 'normal';
+    h += `<tr class="dbrow" data-i="${i}" style="cursor:pointer"><td>${d.date}</td><td>${d.regime}</td><td>${d.hf === 'damp' ? 'damping' : d.hf === 'reinf' ? 'reinforcing' : '–'}</td><td>${rv}</td><td>${d.travel || '–'}</td><td class="num">${d.hl.toFixed(2)}</td><td class="num ${d.oc > 0 ? 'v-up' : 'v-dn'}">${d.oc >= 0 ? '+' : ''}${d.oc.toFixed(2)}</td><td>${t} / <span class="v-up">${b}</span> / <span class="v-dn">${k}</span></td></tr>`;
+  });
+  $('#dbTable').innerHTML = h + '</table>';
+  document.querySelectorAll('.dbrow').forEach(tr => tr.onclick = () => replay(mk, +tr.dataset.i, null));
+}
+
+// ── day strips and replay ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+async function loadRepl(p) { if (!REPL[p]) { try { REPL[p] = await (await fetch(BASE + `replay_${p}.json`)).json(); } catch (_) { REPL[p] = []; } } return REPL[p]; }
+async function paintDays(el) {
+  const t = el.dataset.t, days = await loadRepl(SEL); let h = '';
+  days.forEach((d, i) => {
+    const lv = d.levels.filter(l => l.type === t && l.ev); let k = 'x', tip = d.date + ': no ' + LINES[t].n.toLowerCase();
+    if (lv.length) { const e = lv.find(l => l.ev.touched) || lv[0]; k = !e.ev.touched ? 'n' : e.ev.race === 1 ? 'b' : e.ev.race === -1 ? 'k' : 'u'; tip = d.date + ': ' + ({ b: 'bounced', k: 'broke through', u: 'touched, no clear move', n: 'not reached' }[k]); }
+    h += `<a class="dot-${k}" title="${tip}" data-i="${i}"></a>`;
+  });
+  el.innerHTML = h; el.querySelectorAll('a').forEach(a => a.onclick = () => replay(SEL, +a.dataset.i, t));
+}
+async function replay(p, i, focus) {
+  const d = (await loadRepl(p))[i]; if (!d) return;
+  const W = 1100, H = 430, L = 12, Rr = 250, T = 14, B = 26, n = d.c.length, ps = [...d.h, ...d.l];
+  let lo = Math.min(...ps), hi = Math.max(...ps); const near = d.levels.filter(l => Math.abs(l.price - d.spot) <= 2.2 * d.sigma); near.forEach(l => { lo = Math.min(lo, l.price); hi = Math.max(hi, l.price); });
+  const pad = (hi - lo) * 0.05; lo -= pad; hi += pad; const X = j => L + j / (n - 1) * (W - L - Rr), Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  const dec = d.spot > 500 ? 1 : d.spot > 50 ? 2 : 5, f = v => v.toFixed(dec);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="background:#080b10;border-radius:10px">`;
+  const lab = [];
+  near.filter(l => SHOWX || !(LINES[l.type] && LINES[l.type].x)).sort((a, b) => b.price - a.price).forEach(l => {
+    const c = (LINES[l.type] || {}).c || '#888', y = Y(l.price), e = l.ev, big = focus ? l.type === focus : true;
+    s += `<line x1="${L}" x2="${W - Rr}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="${big ? 1.6 : 1}" opacity="${big ? .85 : .35}" ${['exp_hi', 'exp_lo'].includes(l.type) ? 'stroke-dasharray="6 5"' : ''}/>`;
+    if (e && e.touched) { const x = X(Math.min(n - 1, Math.round(e.min / 5))); s += `<circle cx="${x}" cy="${y}" r="6" fill="none" stroke="${e.race === 1 ? '#46b87a' : e.race === -1 ? '#e8615f' : '#c9a23a'}" stroke-width="2.5"/>`; }
+    lab.push([y, `${(LINES[l.type] || {}).n || l.type} ${f(l.price)}${e && e.touched ? (e.race === 1 ? ' · bounced' : e.race === -1 ? ' · broke' : ' · touched') : e ? '' : ''}`, c, big]);
+  });
+  let last = -99; lab.forEach(([y, t, c, big]) => { const yy = Math.max(y, last + 12); last = yy; s += `<text x="${W - Rr + 8}" y="${yy + 3}" fill="${c}" font-size="10.5" opacity="${big ? 1 : .55}">${t}</text>`; });
+  s += `<polyline fill="none" stroke="#e6edf6" stroke-width="1.6" points="${d.c.map((v, j) => X(j).toFixed(1) + ',' + Y(v).toFixed(1)).join(' ')}"/>`;
+  for (let k = 0; k <= 4; k++) { const v = lo + (hi - lo) * k / 4; s += `<text x="${L + 2}" y="${Y(v) - 2}" fill="#6b7585" font-size="9.5">${f(v)}</text>`; }
+  const hrs = [7, 9, 12, 15, 18, 21]; // UTC-ish labels from t0
+  hrs.forEach(h2 => { const idx = Math.round(((h2 * 3600) - (d.t0 % 86400)) / 300); if (idx > 0 && idx < n) s += `<text x="${X(idx)}" y="${H - 8}" fill="#6b7585" font-size="9.5" text-anchor="middle">${String(h2).padStart(2, '0')}:00 UTC</text>`; });
+  s += '</svg>';
+  const rows = d.levels.filter(l => SHOWX || !(LINES[l.type] && LINES[l.type].x)).sort((a, b) => b.price - a.price).map(l => { const e = l.ev; return `<tr><td>${(LINES[l.type] || {}).n || l.type}</td><td class="num">${f(l.price)}</td><td class="num">${(l.strength * 100).toFixed(0)}%</td><td>${!e ? 'start on it' : !e.touched ? '<span class="note">not reached</span>' : e.race === 1 ? '<span class="v-up">bounced</span>' : e.race === -1 ? '<span class="v-dn">broke through</span>' : '<span class="v-lo">touched, no clear move</span>'}${e && e.touched ? ` <span class="note">${e.hb || ''}</span>` : ''}</td></tr>`; }).join('');
+  $('#mbody').innerHTML = `<h2 style="margin:0 0 4px;font-size:15px">${p} · ${d.date}</h2><p class="sub">Regime <b>${d.regime}</b> · volatility running <b>${d.rvRatio == null ? '–' : d.rvRatio < 0.8 ? 'calm' : d.rvRatio > 1.25 ? 'hot' : 'normal'}</b> · travel <b>${d.travel || '–'}</b> · hedge flow <b>${d.hf === 'damp' ? 'damping' : d.hf === 'reinf' ? 'reinforcing' : '–'}</b> · strongest expiry <b>${d.book}</b> · implied move ±${f(d.sigma)} (${(d.sigma / d.spot * 100).toFixed(2)}%) · the day's range was <b>${d.hl.toFixed(2)}×</b> that. Line colours follow the cards; the ring marks the first touch (green bounced, red broke, gold no clear move). Early-session bars only start from the capture, about 06:30 London.</p>${s}
+  <table style="margin-top:10px"><tr><th>Line</th><th class="num">price</th><th class="num">strength</th><th>what happened</th></tr>${rows}</table>`;
+  $('#mbody').insertAdjacentHTML('beforeend', `<p class="note"><label style="cursor:pointer"><input type="checkbox" id="xbox" ${SHOWX ? 'checked' : ''}> also draw the all-expiry walls, open-interest peaks and vanna peaks</label></p>`);
+  $('#xbox').onchange = e => { SHOWX = e.target.checked; replay(p, i, focus); };
+  $('#modal').style.display = 'block';
+}
+$('#mx').onclick = () => $('#modal').style.display = 'none';
+$('#modal').onclick = e => { if (e.target.id === 'modal') $('#modal').style.display = 'none'; };
+
+(async () => {
+  try { R = await (await fetch(BASE + 'results.json')).json(); }
+  catch (e) { $('#app').textContent = 'Could not load results.json: ' + e.message; return; }
+  try { R2 = await (await fetch(BASE + 'results2.json')).json(); } catch (_) { R2 = null; }
+  rail(); stats(); render();
+})();
+</script>
+</body>
+</html>

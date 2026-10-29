@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-10-25.
+Generated 2026-10-28.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **217** |
-| validated | 43 |
-| null | 129 |
-| underpowered | 45 |
-| context (base rates, descriptions: not counted as tests) | 39 |
-| pre-registrations with no banked verdict (below) | 80 |
+| claims tested (validated + null + underpowered) | **228** |
+| validated | 47 |
+| null | 133 |
+| underpowered | 48 |
+| context (base rates, descriptions: not counted as tests) | 40 |
+| pre-registrations with no banked verdict (below) | 84 |
 
-**What the count says (Lesson 02 §05).** If none of the 217 claims were real, tests at the usual 5% size would still pass
-about **10.9** of them by luck. 43 passed, so most passes are unlikely to be luck alone, but
-**roughly 11 of the 43 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 228 claims were real, tests at the usual 5% size would still pass
+about **11.4** of them by luck. 47 passed, so most passes are unlikely to be luck alone, but
+**roughly 11 of the 47 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -283,6 +283,18 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-25 | overnight-hold-nq | price | underpowered | forge/OVERNIGHT_HOLD_PREREG.md |
 | 2026-10-25 | overnight-hold-toolkit | price | context | forge/OVERNIGHT_HOLD_TOOLKIT_PREREG.md |
 | 2026-10-25 | portfolio-book-validate | price | context | forge/PORTFOLIO_BOOK_VALIDATE_PREREG.md |
+| 2026-10-27 | forecast-miss-month-end-fx | volatility | validated | forge/FORECAST_MISS_SCAN_PREREG.md |
+| 2026-10-27 | forecast-miss-scan | volatility | context | forge/FORECAST_MISS_SCAN_PREREG.md |
+| 2026-10-27 | forecast-miss-shock-fx | volatility | validated | forge/FORECAST_MISS_SCAN_PREREG.md |
+| 2026-10-27 | forecast-miss-shock-idx | volatility | validated | forge/FORECAST_MISS_SCAN_PREREG.md |
+| 2026-10-27 | rule-a-portfolio-budget | price | underpowered | forge/RULE_A_PORTFOLIO_PREREG.md |
+| 2026-10-27 | rule-a-portfolio-second-book | price | validated | forge/RULE_A_PORTFOLIO_PREREG.md |
+| 2026-10-28 | fiscal-reaction-uk-direction | events | underpowered | forge/FISCAL_EVENT_REACTION_PREREG.md |
+| 2026-10-28 | fiscal-reaction-uk-size | events | underpowered | forge/FISCAL_EVENT_REACTION_PREREG.md |
+| 2026-10-28 | fiscal-reaction-us-direction | events | null | forge/FISCAL_EVENT_REACTION_PREREG.md |
+| 2026-10-28 | fiscal-reaction-us-size | events | null | forge/FISCAL_EVENT_REACTION_PREREG.md |
+| 2026-10-28 | line-touch-limit-unseen | execution | null | forge/LINE_TOUCH_LIMIT_UNSEEN_PREREG.md |
+| 2026-10-28 | rule-a-pre2020 | price | null | forge/RULE_A_PRE2020_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -292,6 +304,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/APPROACH_BOOK_EURUSD_PREREG.md`: EURUSD Approach Book — pre-registration (how price arrives at a line)
 - `forge/ASYMMETRIC_TRADES_PREREG.md`: Tight stop, far target at the forecast levels — pre-registration
 - `forge/BREAK_IVRV_PREREG.md`: Break trades when implied vol is rich — pre-registration
+- `forge/CB_TONE_REACTION_PREREG.md`: cb-tone-reaction — does the ECB / BoE / BoJ statement's hawkish shift line up with the first-30-minute move in
 - `forge/COG_ANALOG_PREREG.md`: COG-ANALOG: match the last 12 hours of the line against its own past and read what Nasdaq did next
 - `forge/COG_CROSS_ASSET_PREREG.md`: COG-CROSS-ASSET: does the SOFR-Euribor / SOFR-ESTR information relate to, or lead, gold, EURUSD, USDJPY, the R
 - `forge/COG_DYNAMIC_LEAD_PREREG.md`: COG-DYNAMIC-LEAD: do yield and futures spreads begin moving first, in identifiable periods, and does FX (or go
@@ -347,6 +360,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
 - `forge/RESIDUAL_INTRADAY_PREREG.md`: Study 3 — intraday relative value: does a lagging market catch up? (pre-registration)
 - `forge/RUBBER_BAND_PREREG.md`: Study 2 — the rubber band: stretch from fair value at three speeds (pre-registration)
+- `forge/RULE_A_BOOK_FORWARD_PREREG.md`: rule-a-book-forward: forward record of rule A on the chosen lines, alongside the portfolio book, as one combin
 - `forge/SEQUENCE_BOOK_EURUSD_PREREG.md`: EURUSD Sequence Book — pre-registration (passes, pullbacks, timing)
 - `forge/SIGNAL_JOURNAL_PREREG.md`: Signal Journal — live alerts with stated odds, tracked forward (Lesson 01 card 10, Lesson 16)
 - `forge/SLOW_MR_BOOK_PREREG.md`: Slow mean-reversion book — pre-registration
@@ -366,5 +380,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
 - `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
+- `oi_research_book/HEDGE_FLOW_PREREG.md`: Pre-registration: does the dealer hedge-flow schedule say where the day's range extends?
 - `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
 - `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot
+- `oi_research_book/WALL_DTE_STYLE_PREREG.md`: wall-dte-style — does the right trade at a strong wall (fade or follow) depend on the wall's own expiry, the g

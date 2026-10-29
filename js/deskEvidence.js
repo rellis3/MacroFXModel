@@ -917,6 +917,27 @@ export const DESK_EVIDENCE = [
     use: 'Do not build a fade / continue chooser from these confluences on either line: the lift they give is about what chance gives and none survives spread. The moving line does not unlock them. Use the full-day map for expectations (how far, how long, how often the extreme is in) and the existing finding that the clock and the price pullback from the extreme carry the information. Phase 2 (FVG, Fibonacci, round numbers) not run.',
   },
   {
+    id: 'rule-a-pre2020', domain: 'price', verdict: 'null', date: '2026-10-28', doc: 'forge/RULE_A_PRE2020_PREREG.md', also: ['analysis/output/rule-a-pre2020/RESULTS.md'],
+    claim: 'Rule A on the chosen v3 lines (rich-day break, 0.2 sigma stop, 5R, 2x spread) also pays in 2016-2020, years before its lines’ scoring period, with the ladder backcast from parameters fitted on 2020-26 only',
+    result: 'Null, pre-registered. 1,386 rich-day trades 2016-09 to 2020-08 on 11 instruments: -0.040R [-0.161, +0.094] (4-week block bootstrap); FX+gold -0.022, indices -0.121; 7/11 instruments positive; by year -0.01, -0.30, +0.03, -0.05, +0.06. The upper bound excludes the +0.162R of 2020-26. Mirror (non-rich days) -0.147R [-0.258, -0.029]: the rich condition still separates by about 0.11R but both are below zero. Mechanics checked: backcast lines calibrated (p50 exceeded 50.8%, p75 26%). FX used CVOL top-third thresholds (no settlement IV before 2020-09). Prior exposure: the family was found on these years with v4 lines, where 2016-19 was also negative.',
+    use: 'Treat rule A’s 2020-26 backtest as possibly period-specific: one pass on the data it was chosen on, one fail before it. Do not size it up on the backtest; the forward record (rule-a-book-forward) decides. Post-hoc only: the FX persistence-form trades were +0.085R and gold/SPX/US30 lost.',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
+    id: 'rule-a-portfolio-second-book', domain: 'price', verdict: 'validated', date: '2026-10-27', doc: 'forge/RULE_A_PORTFOLIO_PREREG.md', also: ['analysis/output/rule-a-portfolio/RESULTS.md'],
+    claim: 'Rule A (the rich-day break, 1R per trade, 11 instruments) is a separate source of return from the CFD-tradeable portfolio book (core beta VIX-gated, trend, carry VIX-gated, FOMC USD drift): correlation upper bound below 0.20 and its worst days not shared beyond chance (Lesson 06)',
+    result: 'Validated, pre-registered. 1,559 common weekdays 2020-08 to 2026-08: daily correlation -0.013 [-0.075, +0.053] (4-week block bootstrap); joint worst-5% days 6 vs 3.9 expected (hypergeometric p 0.19); on the book\'s worst days rule A made +115R. Mirror vs the core-beta sleeve alone: -0.003 [-0.061, +0.050], 4 vs 3.9. Per sleeve -0.07 to +0.00. Described, not scored: equal-risk Sharpe rule A 0.86, book 1.41 (registered costs, before portfolio-book-validate\'s financing haircuts), combined 1.61; 15 streams = 12.2 effective bets (participation ratio).',
+    use: 'Rule A counts as a near-full extra bet beside the portfolio book (Lesson 06\'s second book). The combined Sharpe is an upper figure because the book here carries no financing haircut; the independence does not depend on costs. Next: score the two forward records together, no new fitting.',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
+    id: 'rule-a-portfolio-budget', domain: 'price', verdict: 'underpowered', date: '2026-10-27', doc: 'forge/RULE_A_PORTFOLIO_PREREG.md', also: ['analysis/output/rule-a-portfolio/RESULTS.md'],
+    claim: 'Sizing rule A by correlation cluster (legs correlated >= 0.30 share one risk budget, 1/sigma inside it), refitted each January on earlier years only, beats 1R per trade on Sharpe (Lesson 06, equal risk contribution)',
+    result: 'Underpowered, pre-registered. Walk-forward 2022-01 to 2026-08: Sharpe 0.71 (1R per trade) -> 0.99, difference +0.28 [-0.05, +0.68]; 3 of 5 years ahead; drawdown 27 -> 22 daily SDs. Beats 99.5% of 200 random-cluster placebos (median 0.67). Variants: clusters only 0.92, 1/sigma only 0.73, so the gain is the shared cluster budget, not inverse-vol (which over-weights rarely trading legs: US2000 6.1x in 2026). Design MDE about 0.6 Sharpe. Structure (seen before registering): average pair correlation 0.10, eigenvalues 2.27 (indices) and 1.49 (EURUSD/USDCHF) above the noise ceiling 1.17, 5.5 effective bets of 11 by variance; the FX+gold and index halves share 10 worst-5% days vs 3.9 (p 0.004) because both trade on the same rich-vol mornings (corr 0.38 on the 125 days both trade).',
+    use: 'Keep 1R per trade for the record, but read NQ + SPX500 + US30 as about one bet and EURUSD + USDCHF as about one; expect rule A\'s bad days to arrive together. A clusters-only budget (no 1/sigma) is the variant worth a forward test.',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
     id: 'rule-a-late-entry', domain: 'price', verdict: 'null', date: '2026-10-20', doc: 'forge/RULE_A_LATE_ENTRY_PREREG.md', also: ['analysis/output/rule-a-late-entry/RESULTS.md'],
     claim: 'Rule A (the rich-day break on the chosen v3 lines) also pays after costs when the break first happens between 10:00 and 13:00 London, on a line not broken before 10:00',
     result: 'Null, pre-registered. 823 rich-day late breaks on 11 instruments, 2020-08 to 2026-08, stop 0.2 sigma, target 5R, out at 22:00, 2x spread: net -0.100R per trade [-0.260, +0.063], 2020-23 -0.101, 2024-26 -0.098, 5 of 11 instruments positive. The interval excludes the +0.16R the design could detect. Mirror: late breaks on non-rich days -0.185R [-0.292, -0.093]. Rule A in its own 00:00-10:00 window: +0.162R (forecast-line-backtest.html).',
@@ -941,6 +962,32 @@ export const DESK_EVIDENCE = [
     claim: 'The hourly moving-line state at entry (room to the next line, range used, pace, hour) improves the rich-IV break rule: as a filter, a meta-label, or by exiting at the moving p75 / p90 line',
     result: 'Null. 4,633 rich-IV break trades 2018-04 to 2026-08 on the 7 CVOL instruments (baseline +0.123R, published +0.118R). Most room to the moving p75 vs least room: -0.096R [-0.359, +0.144], halves -0.013 / -0.177. Yearly-refit gradient-boosted meta-label from 2020 (takes 61%): taken minus all -0.010R [-0.135, +0.113]. Exit at the moving p75 instead of 5R/10R: -0.186R [-0.273, -0.095] (caps the fat right tail the rule lives on); at p90: -0.011R [-0.073, +0.052]. The M1 exit simulation reproduces the stored 5R/10R outcomes on 95.8% of cells (stops 99.8%, targets 93.5%, day-end exits differ at the margin).',
     use: 'Keep the rich-IV break as is: do not filter it by distance to the hourly lines and do not take profit at them; the edge sits in the few far winners. Power is limited (a few hundred independent days).',
+  },
+  {
+    id: 'fiscal-reaction-uk-size', domain: 'events', verdict: 'underpowered', date: '2026-10-28', doc: 'forge/FISCAL_EVENT_REACTION_PREREG.md', also: ['analysis/output/fiscal-event-reaction/RESULTS.md'],
+    claim: 'UK Budgets / Autumn and Spring Statements move the 10y gilt more than the same clock window on an ordinary day',
+    result: 'Underpowered. 32 scheduled events 2010-06 to 2026-03, OANDA 10y gilt CFD M1 from 5 min before the statement to 3 hours after, against 8 same-weekday control days: net-move ratio 1.19x [0.72, 1.76] (MDE 1.48x), and 0.98x without the three largest (Budget 2025, 2020, 2021). Described, not scored: the high-to-low range in the window is 1.63x [1.36, 1.97]. GBP/USD 0.78x, FTSE 100 1.02x, both spanning 1. The 2022 Growth Plan (+30bp, 26x) is excluded as unscheduled.',
+    use: 'Say a Budget widens the gilt swing while it is read; do not say it leaves a bigger net move by the close of the window. Range result needs its own prereg.',
+    instruments: ['UK10Y', 'GBPUSD', 'UK100'],
+  },
+  {
+    id: 'fiscal-reaction-us-size', domain: 'events', verdict: 'null', date: '2026-10-28', doc: 'forge/FISCAL_EVENT_REACTION_PREREG.md', also: ['analysis/output/fiscal-event-reaction/RESULTS.md'],
+    claim: 'US Quarterly Refunding policy statements move the 10y Treasury more than an ordinary 08:30 New York Wednesday',
+    result: 'Null. 75 statements 2008-01 to 2026-08, OANDA 10y CFD M1 08:25-10:00 New York vs 8 same-weekday controls: net-move ratio 0.94x [0.72, 1.21], excluding the 1.30x the design could detect. Range ratio 1.13x [1.03, 1.24] (described). 30y 1.18x [0.93, 1.45]; coupon-change statements 1.32x [0.83, 2.08] vs no-change 0.81x (described, BH q 0.44).',
+    use: 'A refunding statement is not a market event for the 10y on the day; show the read as context.',
+  },
+  {
+    id: 'fiscal-reaction-uk-direction', domain: 'events', verdict: 'underpowered', date: '2026-10-28', doc: 'forge/FISCAL_EVENT_REACTION_PREREG.md', also: ['analysis/output/fiscal-event-reaction/RESULTS.md'],
+    claim: 'A larger in-year gilt-sales revision in the Red Book goes with higher 10y gilt yields in the statement window',
+    result: 'Underpowered by design: only 13 scheduled events carry an in-year revision in the document (spring Budgets set a new remit; several statements left the revision to a DMO notice), below the registered floor of 15. Described: Spearman +0.42 [-0.31, +0.91].',
+    use: 'No direction wording on the supply chip.',
+    instruments: ['UK10Y'],
+  },
+  {
+    id: 'fiscal-reaction-us-direction', domain: 'events', verdict: 'null', date: '2026-10-28', doc: 'forge/FISCAL_EVENT_REACTION_PREREG.md', also: ['analysis/output/fiscal-event-reaction/RESULTS.md'],
+    claim: 'Announcing larger (smaller) nominal coupon auctions at a refunding goes with higher (lower) 10y yields in the next 90 minutes',
+    result: 'Null. 75 statements, hand-coded from their own text (13 increases, 10 cuts, 52 unchanged): Spearman -0.04 [-0.30, +0.24], excluding the 0.32 the design could detect. November 2023 (bigger auctions, yields fell) is the famous counter-example: the market trades the size against what was feared, which this test cannot see.',
+    use: 'No direction wording from coupon-size changes.',
   },
   {
     id: 'event-layer', domain: 'events', verdict: 'null', date: '2026-10-05', doc: 'forge/EVENT_LAYER_PREREG.md',
@@ -1151,6 +1198,13 @@ export const DESK_EVIDENCE = [
     claim: 'On instruments the first placebo test never loaded, the four range-edge lines (Asia and Monday low/high) see the race next-line-in vs next-line-out revert more often than the same ladder shifted to the wrong price',
     result: '15 instruments, 2,745 sessions 2016-2026, 98k edge touches vs 8 placebo ladders: pooled +2.92 pp [+2.68, +3.19], MDE 0.37 vs a 1.0 pp bar, halves +2.70 / +3.12; each line passes under Holm (A_0 +3.61, A_1 +3.22, M_0 +1.76, M_1 +2.17); placebo control +0.01 pp, clean; 15/15 instruments and every year positive. Extension lines +0.26 pp.',
     use: 'The range edges are a real location; the rest of the ladder is not. The effect is relative: Asia-edge races revert ~51.7% vs ~48.3% at a shifted ladder, a coin flip before costs, so it is context (the usual push-through is cancelled at the edges), not a fade signal (see range-edge-limit-fade).',
+  },
+  {
+    id: 'line-touch-limit-unseen', domain: 'execution', verdict: 'null', date: '2026-10-28', doc: 'forge/LINE_TOUCH_LIMIT_UNSEEN_PREREG.md',
+    also: ['analysis/output/line-touch-limit-unseen/RESULTS.md'],
+    claim: 'The frozen line-touch wide-scan selector (fade a fresh extreme after a fast run-in), refit walk-forward on its own 17 instruments and applied to 17 FX pairs it never saw (AUDCAD AUDCHF AUDNZD CADCHF EURCAD EURGBP EURJPY EURNZD GBPAUD GBPCAD GBPCHF GBPJPY GBPNZD NZDCAD NZDJPY NZDUSD USDCAD), has positive net expectancy on real bid/ask as a market entry (M), a resting limit at mid (L), or a limit with a stop set by the MAE rule C.OG gave Jordan (J)',
+    result: '1,045 signals 2018-01 to 2026-08, OANDA bid/ask M1: M -0.377R [-0.456, -0.296], L -0.461R [-0.531, -0.392] (fill 84.8%), J -0.066R [-0.152, +0.025] (stop 0.40 of range); 0/17 pairs positive under M and L, 5/17 under J. Gross on mid +0.241R (seen out-of-fold +0.197R); selector beats random same-pair/year/hour touches by +0.10R [+0.02, +0.18]. Median spread 0.47R at the scan stop. Limit adverse selection: unfilled signals +1.63R on mid, filled -0.04R. MAE rule: trades reaching any adverse distance up to 0.40 of range still ended better than a stop there, so d* = the cap.',
+    use: 'The touch selector carries real out-of-sample information (+0.1R over a random touch) but does not pay on real spreads in any execution form: the line-touch book is closed for intraday entries on these line families; use it as context only (an exhausted extreme: do not chase it). A resting limit at a fresh extreme is adversely selected (the passive side pays). Stops at 0.10 of range are far inside the MAE noise band.',
   },
   {
     id: 'range-edge-limit-fade', domain: 'execution', verdict: 'null', date: '2026-10-20', doc: 'forge/RANGE_EDGE_LIMIT_FADE_PREREG.md',
@@ -1691,6 +1745,33 @@ export const DESK_EVIDENCE = [
     use: 'A known seasonal in franc dollar-funding cost, much smaller since 2024. Calendar context only; says nothing about spot direction.',
     instruments: ['USDCHF'],
   },
+  {
+    id: 'forecast-miss-scan', domain: 'volatility', verdict: 'context', date: '2026-10-27', doc: 'forge/FORECAST_MISS_SCAN_PREREG.md', also: ['analysis/output/forecast-miss-scan/RESULTS.md'],
+    claim: 'Wide scan: which of 17 conditions known before the London open explain the days the shipped range forecast misses (fx and indices; BH q 0.10 discovery 2020-23, confirmation 2023-26)',
+    result: '34 cells: 18 survived discovery, 8 confirmed on the untouched half (see the three forecast-miss-* entries). Did not confirm: MOVE, rate moves, credit 20d, RRP (idx, inside placebo), NQ 20d. Not discovered: forecast-miss streaks, dollar 20d, USDJPY 20d, basis changes, idx month-end.',
+    use: 'The family record: the shipped lines run too wide in calm conditions and too narrow after equity/vol shocks and, for FX, at month-end. Stress-count shadow fixed in prereg A1.',
+  },
+  {
+    id: 'forecast-miss-shock-idx', domain: 'volatility', verdict: 'validated', date: '2026-10-27', doc: 'forge/FORECAST_MISS_SCAN_PREREG.md', also: ['analysis/output/forecast-miss-scan/RESULTS.md'],
+    claim: 'After a 5-day S&P fall or a 5-day VIX rise (known before the open), index ranges exceed the shipped (IV-adjusted) range forecast',
+    result: 'Top-minus-bottom tercile: S&P 5d fall +11.5% (2020-23) then +13.1% [+7.5, +19.5] (2023-26); VIX 5d rise +9.9% then +13.0% [+7.1, +19.7], +16.6% within the S&P-20d middle tercile (independent of the 20-day drawdown). Index realised/forecast x0.96 with neither active, x1.06 with both.',
+    use: 'Index lines run too narrow after a short equity/vol shock and slightly wide when calm. Research-only; stress-count shadow forward record from 2026-10-28.',
+    instruments: ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+  },
+  {
+    id: 'forecast-miss-shock-fx', domain: 'volatility', verdict: 'validated', date: '2026-10-27', doc: 'forge/FORECAST_MISS_SCAN_PREREG.md', also: ['analysis/output/forecast-miss-scan/RESULTS.md'],
+    claim: 'After equity/vol stress (5-day S&P fall, 5-day VIX rise, VIX high, VIX inverted, 60-day S&P fall; known before the open), FX ranges exceed the shipped range forecast',
+    result: 'Confirmed 2023-26: 5d S&P fall +9.8% [+4.5, +14.9], 5d VIX rise +9.1% [+3.8, +14.6], VIX high +6.2% [+0.9, +11.4], VIX inverted +6.5% [+1.1, +11.8], 60d fall +8.0% [+2.9, +13.1] (discovery 2020-23: +6.2/+5.5/+9.8/+7.1/+8.3). By number active: 0 x0.95, 1-3 x0.98-1.00, 4 x1.06, 5 x1.15.',
+    use: 'FX lines run too narrow when several stress conditions stack and slightly wide when none is active. Research-only; stress-count shadow from 2026-10-28.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'],
+  },
+  {
+    id: 'forecast-miss-month-end-fx', domain: 'volatility', verdict: 'validated', date: '2026-10-27', doc: 'forge/FORECAST_MISS_SCAN_PREREG.md', also: ['analysis/output/forecast-miss-scan/RESULTS.md'],
+    claim: 'FX ranges exceed the shipped range forecast on month-end sessions (the last 2 and first 2 London sessions of a month)',
+    result: 'Flagged minus other: +4.8% (2020-23) then +11.6% [+6.2, +16.8] (2023-26), r 0.00 with equity stress. Event-free sessions: last 2 +6.3%, first 2 +6.6%; positive in 6 of 7 years. Month-end realised/forecast x1.067 vs x0.986 otherwise.',
+    use: 'The forecaster has no month-end multiplier; FX month-end ranges run about 7% beyond the lines (fixing/rebalancing flows). Research-only; part of the stress-count shadow.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1756,11 +1837,19 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'fiscal-reaction-uk-size':      { n: '32 scheduled UK fiscal events 2010-2026 (iid over events)', note: 'MDE 1.48x on the net-move ratio; 1.19x [0.72, 1.76] spans it' },
+  'fiscal-reaction-us-size':      { n: '75 refunding statements 2008-2026 (iid over events)', note: 'MDE 1.30x; 0.94x [0.72, 1.21] excludes it -- a real null' },
+  'fiscal-reaction-uk-direction': { n: '13 events with an in-year gilt revision', note: 'below the registered 15-row floor; MDE rho ~0.55' },
+  'fiscal-reaction-us-direction': { n: '75 statements, 23 with a coupon change', note: 'MDE rho 0.32; [-0.30, +0.24] excludes it -- a real null' },
   'portfolio-book-validate': { n: '10 tests on 4,645 weekdays 2008-2026 + 3.7 years 2004-07 + 223 months vs PUT', note: 'robustness of one banked result; T1 exact, T9 corr >= 0.9975, T6 fails (corr 0.58, gap 0.51); T8 underpowered by design' },
   'gamma-regime-trades-fx':  { n: '1,963 trades on 4,632 sessions, EUR/GBP/AUD 2020-09 to 2026-08 (10-session block bootstrap over dates)', note: 'half-width 0.04R; interval [-0.12, -0.04] is wholly below zero -- a real null, not a power problem' },
+  'rule-a-pre2020':          { n: '1,386 trades, 11 instruments, 2016-09 to 2020-08 (4-week block bootstrap)', note: 'MDE about 0.2R; upper bound +0.094 excludes the +0.162 backtest effect -- a real null' },
+  'rule-a-portfolio-budget': { n: '1,165 weekdays 2022-01 to 2026-08, 11 legs, walk-forward (4-week block bootstrap)', note: 'MDE about 0.6 Sharpe on the paired difference; +0.28 found, interval crosses 0' },
+  'rule-a-portfolio-second-book': { n: '1,559 common weekdays 2020-08 to 2026-08 (4-week block bootstrap)', note: 'SE of a near-zero correlation about 0.035; the 0.20 bar is about 6 SE away' },
   'rule-a-late-entry':       { n: '823 trades, 11 instruments, 2020-08 to 2026-08 (4-week block bootstrap)', note: 'MDE about 0.16R; interval [-0.26, +0.06] excludes it -- a real null' },
   'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
   'range-ladder-placebo-confirm': { n: '2,745 session dates (21-session block bootstrap), 15 instruments', note: 'pooled MDE 0.37 pp vs a 1.0 pp bar; per-line MDE 0.69-0.89 pp' },
+  'line-touch-limit-unseen': { n: '2,499 session dates (21-session block bootstrap), 17 unseen pairs, 1,045 signals (886 limit fills)', note: 'MDE 0.116R (M) / 0.097R (L) / 0.127R (J); all CI upper bounds below the +0.05R null line' },
   'range-edge-limit-fade':   { n: '2,456 session dates (21-session block bootstrap), 34 instruments, 24,006 trades', note: 'MDE 0.023R (T1) / 0.029R (T2) vs the +0.05R null line; both CIs below zero' },
   'short-vx-rule':           { n: '52 trades 2013-26 vs 2,000 random-entry sets', note: 'MDE ~0.28R flag minus random (A1); observed +0.10R, p 0.096' },
   'vix-brownian-scaling':    { n: '4,259 sessions 2009-26', note: 'descriptive calibration with block-bootstrap intervals' },
@@ -1870,6 +1959,10 @@ const POWER = {
   'basis-stress-chf-fxvol': { n: '1,816 days', note: 'CI inside 0.10' },
   'basis-yearend-jpy': { n: '10 vs 32 contracts', note: 'CI [-24.1, +0.8] includes 0 and the bar' },
   'basis-yearend-chf': { n: '10 vs 32 contracts', note: 'Holm p 0.024; both halves' },
+  'forecast-miss-scan': { n: '34 cells, ~780 sessions per half', note: 'BH q 0.10 discovery, conjunctive confirmation' },
+  'forecast-miss-shock-idx': { n: '~780 confirmation sessions x 6 indices', note: 'confirm CIs exclude 0 (+13%)' },
+  'forecast-miss-shock-fx': { n: '~780 confirmation sessions x 29 pairs', note: '5 cells confirmed, CIs exclude 0' },
+  'forecast-miss-month-end-fx': { n: '~780 confirmation sessions x 29 pairs', note: '+11.6% [+6.2, +16.8]; event-free +6.3/+6.6%' },
   'rates-vol-gap-move':        { n: '2,480 sessions (block bootstrap, 21-session blocks)', note: 'MDE partial corr 0.105 vs 0.10 bar; CI [+0.007, +0.108]; without 2020 [-0.058, +0.047]' },
   'rates-vol-gap-state':       { n: '203 state vs 799 equity-cheap days', note: 'MDE 0.29 log vs 0.15 bar; CI [-0.197, +0.069]' },
 };

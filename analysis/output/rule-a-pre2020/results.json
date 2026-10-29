@@ -1,0 +1,195 @@
+{
+ "seed": 20261028,
+ "prereg": "forge/RULE_A_PRE2020_PREREG.md",
+ "window": [
+  "2016-05-23",
+  "2020-08-14"
+ ],
+ "fit_window": [
+  "2020-08-24",
+  "2026-08-20"
+ ],
+ "thresholds": {
+  "EURUSD": 1.1971,
+  "GBPUSD": 1.2203,
+  "AUDUSD": 1.2115,
+  "USDCAD": 1.1933,
+  "USDCHF": 1.1908,
+  "USDJPY": 1.3588,
+  "GOLD": 1.182,
+  "NQ": 1.53,
+  "SPX500": 1.53,
+  "US30": 1.53,
+  "US2000": 1.53
+ },
+ "primary": {
+  "n": 1386,
+  "net_R": -0.0397,
+  "ci95": [
+   -0.1609,
+   0.0941
+  ],
+  "fx_gold": -0.0218,
+  "indices": -0.1207,
+  "instruments_positive": "7/11",
+  "by_instrument": {
+   "AUDUSD": 0.318,
+   "EURUSD": 0.019,
+   "GBPUSD": 0.151,
+   "GOLD": -0.335,
+   "NQ": 0.114,
+   "SPX500": -0.31,
+   "US2000": 0.169,
+   "US30": -0.113,
+   "USDCAD": -0.155,
+   "USDCHF": 0.127,
+   "USDJPY": 0.031
+  },
+  "n_by_instrument": {
+   "AUDUSD": 119,
+   "EURUSD": 176,
+   "GBPUSD": 150,
+   "GOLD": 289,
+   "NQ": 53,
+   "SPX500": 88,
+   "US2000": 12,
+   "US30": 97,
+   "USDCAD": 71,
+   "USDCHF": 91,
+   "USDJPY": 240
+  },
+  "by_year": {
+   "2016": {
+    "count": 96,
+    "mean": -0.01
+   },
+   "2017": {
+    "count": 227,
+    "mean": -0.295
+   },
+   "2018": {
+    "count": 355,
+    "mean": 0.034
+   },
+   "2019": {
+    "count": 376,
+    "mean": -0.048
+   },
+   "2020": {
+    "count": 332,
+    "mean": 0.058
+   }
+  },
+  "by_arm": {
+   "S": {
+    "count": 847,
+    "mean": 0.085
+   },
+   "SI": {
+    "count": 539,
+    "mean": -0.235
+   }
+  }
+ },
+ "gate": {
+  "mean_and_lower_bound_gt_0": false,
+  "fx_gold_and_indices_gt_0": false,
+  "six_of_eleven": true
+ },
+ "verdict": "NULL",
+ "mirror_non_rich": {
+  "n": 2356,
+  "net_R": -0.1468,
+  "ci95": [
+   -0.2579,
+   -0.0289
+  ],
+  "fx_gold": -0.1381,
+  "indices": -0.1681,
+  "instruments_positive": "1/11",
+  "by_instrument": {
+   "AUDUSD": -0.027,
+   "EURUSD": -0.123,
+   "GBPUSD": -0.048,
+   "GOLD": -0.372,
+   "NQ": -0.191,
+   "SPX500": -0.269,
+   "US2000": -0.183,
+   "US30": -0.054,
+   "USDCAD": 0.005,
+   "USDCHF": -0.232,
+   "USDJPY": -0.175
+  },
+  "n_by_instrument": {
+   "AUDUSD": 236,
+   "EURUSD": 309,
+   "GBPUSD": 272,
+   "GOLD": 185,
+   "NQ": 178,
+   "SPX500": 177,
+   "US2000": 118,
+   "US30": 208,
+   "USDCAD": 113,
+   "USDCHF": 133,
+   "USDJPY": 427
+  },
+  "by_year": {
+   "2016": {
+    "count": 118,
+    "mean": -0.412
+   },
+   "2017": {
+    "count": 335,
+    "mean": -0.209
+   },
+   "2018": {
+    "count": 558,
+    "mean": -0.305
+   },
+   "2019": {
+    "count": 656,
+    "mean": -0.023
+   },
+   "2020": {
+    "count": 689,
+    "mean": -0.061
+   }
+  },
+  "by_arm": {
+   "S": {
+    "count": 1490,
+    "mean": -0.109
+   },
+   "SI": {
+    "count": 866,
+    "mean": -0.212
+   }
+  }
+ },
+ "other_cells_rich": {
+  "0.1|5": {
+   "n": 1385,
+   "net_R": -0.2491,
+   "ci95": [
+    -0.3955,
+    -0.1019
+   ]
+  },
+  "0.1|10": {
+   "n": 1385,
+   "net_R": -0.1904,
+   "ci95": [
+    -0.3554,
+    -0.0177
+   ]
+  },
+  "0.2|10": {
+   "n": 1386,
+   "net_R": -0.0695,
+   "ci95": [
+    -0.1977,
+    0.0839
+   ]
+  }
+ }
+}

@@ -113,9 +113,15 @@ export function surpriseWord(actual, estimate) {
   const s = sideOf(actual, estimate); if (!s) return '';
   return s === 'inline' ? 'as expected' : `${s} than the ${estimate} expected`;
 }
+// A budget, a speech or a statement has no consensus and no previous number:
+// there is nothing to wait for on the feed, so say so instead of "not on the feed yet".
+export const isAnnouncement = p => p.actual == null && p.estimate == null && p.prev == null;
+// Fiscal events get a full read of their documents on fiscal-events.html (js/fiscalEvents.js).
+export const FISCAL_EVENT_RE = /budget|spring statement|spring forecast|autumn statement|quarterly refunding|refunding statement/i;
 export function formatScorecard(card, { html = false } = {}) {
   const b = html ? (s) => `<b>${s}</b>` : (s) => s;
-  const head = `${card.country} ${card.prints.map(p => `${p.event}: ${p.actual != null ? `${b(p.actual)}, ${surpriseWord(p.actual, p.estimate)}` : `not on the feed yet (${p.estimate ?? '?'} expected)`}`).join(' · ')}`;
+  const head = `${card.country} ${card.prints.map(p => `${p.event}: ${p.actual != null ? `${b(p.actual)}, ${surpriseWord(p.actual, p.estimate)}` : isAnnouncement(p) ? 'an announcement, no headline number to score' : `not on the feed yet (${p.estimate ?? '?'} expected)`}`).join(' · ')}`;
+  const fiscal = card.prints.some(p => FISCAL_EVENT_RE.test(p.event ?? '')) ? 'The documents, read: Fiscal Events page (fiscal-events.html)' : '';
   const lines = (card.reactions ?? []).filter(r => r).map(r => {
     const bk = r.book ? ` (the book: ${r.book.spike}× on ${r.book.n} prints)` : '';
     const amt = r.unit === '$' ? `$${Math.abs(r.move)}` : `${Math.abs(r.move)} ${r.unit}`;
@@ -123,5 +129,5 @@ export function formatScorecard(card, { html = false } = {}) {
   });
   const call = card.call ? `Your call: ${card.call.call} — ${card.call.result === 'hit' ? '✓ right' : card.call.result === 'miss' ? '✗ wrong' : card.call.result === 'push' ? 'in line, a push' : 'not scored'}${card.call.model ? ` · the model said ${card.call.model}${card.call.modelResult ? ` (${card.call.modelResult === 'hit' ? '✓' : card.call.modelResult === 'miss' ? '✗' : 'push'})` : ''}` : ''}` : '';
   const sep = html ? '\n' : '\n';
-  return [head, ...lines, call].filter(Boolean).join(sep);
+  return [head, ...lines, call, fiscal].filter(Boolean).join(sep);
 }

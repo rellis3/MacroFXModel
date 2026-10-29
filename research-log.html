@@ -69,6 +69,7 @@
 </div>
 <script type="module">
 import { DESK_EVIDENCE } from './js/deskEvidence.js';
+import { forwardRecord } from './js/vixForward.js';
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const sg = (v, d = 2) => v == null || !Number.isFinite(v) ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d);
 const J = async p => { try { const r = await fetch(p, { cache: 'no-cache' }); return r.ok ? r.json() : null; } catch { return null; } };
@@ -125,7 +126,7 @@ const lines = a => `<ul class="plain">${a.map(x => `<li>${x}</li>`).join('')}</u
 const mini = (title, verdict, chart, bl) => `<div class="mini"><div class="minih">${pv(verdict)}</div><h3 class="hl">${title}</h3>${chart}${lines(bl)}</div>`;
 const PLAIN = {
   'vix-signals-forward': X => ({ head: 'Four signals are now being checked on new days, with the rules frozen', v: 'running',
-    body: lines(['The table at the top of this page shows where each one stands today and how many new signals have been scored.', 'Nothing is judged until each has 20 new signals (the VX trade 15), or by October 2028.', "Re-running the scorer at any time gives the same record, so it can't be nudged after the fact."]) }),
+    body: lines(['The panel at the top of this page recomputes each one every time the page loads: where it stands today, and every time it has fired since the rules were frozen.', 'Nothing is judged until each has 20 new signals (the VX trade 15), or by October 2028.', "Re-running the scorer at any time gives the same record, so it can't be nudged after the fact."]) }),
   'short-vx-rule': X => { const s = X['short-vx-rule']; return { head: 'Shorting VX after a fear spike made money, but not more than shorting VX on any day', v: 'notproven',
     body: bars([{ label: 'Short VX on random days', sub: 'the normal contango slide', bars: [{ value: s.random_ret, color: C1 }] }, { label: 'Short VX after the flag', sub: `${s.win}% winners · up in ${s.years_positive} of ${s.years} years`, bars: [{ value: s.flag_ret, color: C3 }] }], { fmt: v => sg(v, 1) + '%', height: 210 }) +
       `<p class="cap">Average result per trade, after costs, % of the VX price.</p>` +
@@ -229,19 +230,24 @@ async function chartFor(s) {
 }
 
 async function renderLive() {
-  const r = await J('analysis/output/vix-signals-forward/record.json');
-  if (!r) { $('#live').innerHTML = '<div class="eyebrow">Live forward record</div><p class="mut">No record yet: run scripts/vix-signals-forward/score.py.</p>'; return; }
-  const T = r.today, row = (label, p, on, tail, words) => `<tr><td>${esc(label)}</td><td>${Math.round(p * 100)}th<div class="bar"><i style="width:${Math.max(2, p * 100)}%;background:${on ? 'var(--amber)' : 'var(--b2)'}"></i><u style="left:${tail}%"></u></div></td><td>${on ? '<b style="color:var(--amber)">on</b>' : '<span class="mut">off</span>'}</td><td class="mut">${esc(words)}</td></tr>`;
-  const sig = r.signals.map(s => `<tr><td>${esc(s.signal)}</td><td>${s.n_scored}</td><td>${s.mean_pct != null ? sg(s.mean_pct) + '%' : s.mean_R != null ? sg(s.mean_R) + 'R' : '–'}</td><td>${s.all_days_mean_pct != null ? sg(s.all_days_mean_pct) + '%' : s.random_entry_mean_R != null ? sg(s.random_entry_mean_R) + 'R (backtest)' : '–'}</td><td>${(s.events ?? s.trades ?? []).length}</td><td>${esc(s.status)}</td></tr>`).join('');
-  $('#live').innerHTML = `<div class="eyebrow">Live · forward record · last close ${esc(r.last_close)} · scored from ${esc(r.forward_start)}</div><h2>Where the four VIX signals stand now</h2>
-    <div class="xs"><table><tr><th>Reading (percentile of its past year)</th><th>Now</th><th>Signal</th><th>What it has meant</th></tr>
-      ${row('VVIX vs Nasdaq ratio (R_a)', T.pct_R_a, T.pct_R_a >= 0.9, 90, 'top 10% → VIX about −7% over a month')}
-      ${row('VIX vs Nasdaq ratio (R_b)', T.pct_R_b, T.pct_R_b >= 0.9, 90, 'top 10% → VIX about −7% over a month')}
-      ${row("C.OG's dR/dt", T.pct_dRdt, T.dRdt_bottom, 10, 'bottom 10% → Nasdaq +0.76% over 5 sessions vs +0.33%')}
-      ${row('dR/dt of VVIX/VXN', T.pct_dRimp, T.implied_change_top, 90, 'top 10% → Nasdaq +2.5% over 20 sessions vs +1.3%')}
-    </table></div>
-    <h3>Forward record so far</h3><div class="xs"><table><tr><th>Signal</th><th>Scored</th><th>Mean after</th><th>All days / benchmark</th><th>Events</th><th>Status</th></tr>${sig}</table></div>
-    <p class="note">Sources this run: ${Object.entries(r.sources).map(([k, v]) => `${k} ${esc(v)}`).join(' · ')}. Generated ${esc(r.generated)}. Each signal is judged at 20 events (the VX rule at 15 trades) or on 2028-10-23. All four are research-only: none is a trade signal yet.</p>`;
+  // Live: the three daily signals recomputed from the site's market bundle (js/vixForward.js, parity-tested); the VX paper trades from the scorer's record.json.
+  const [D, r] = await Promise.all([J('/api/drill-series'), J('analysis/output/vix-signals-forward/record.json')]);
+  const L = D?.series ? forwardRecord({ dates: D.dates, vix: D.series.vix, vvix: D.series.vvix, vxn: D.series.vxn, nq: D.series.nq }) : null;
+  const vxRec = r?.signals?.find(x => x.signal === 'short-vx-rule');
+  if (!L && !r) { $('#live').innerHTML = '<div class="eyebrow">Live forward record</div><p class="mut">The market data did not load. Reload to try again.</p>'; return; }
+  const pctTxt = p => p == null ? '–' : `${Math.round(p * 100)}th`;
+  const card = s => {
+    const ev = s.events.length ? `<div class="xs"><table><tr><th>Fired</th><th>${s.on === 'vix' ? 'VIX' : 'Nasdaq'} since</th><th>Status</th></tr>${s.events.map(e => `<tr><td>${esc(e.date)}</td><td class="${(e.movePct ?? 0) * s.expect > 0 ? 'pos' : (e.movePct ?? 0) * s.expect < 0 ? 'neg' : ''}">${e.movePct == null ? 'starts next close' : sg(e.movePct) + '%'}</td><td>${e.complete ? (e.counted ? 'scored' : 'overlaps, not counted') : `${e.sessionsLeft} sessions to go`}</td></tr>`).join('')}</table></div>` : '<p class="cap">Not fired since the record started.</p>';
+    const tail = s.key === 'drdt' ? 10 : 90, p = s.todayPct ?? 0;
+    return `<div class="mini"><div class="minih">${s.todayOn ? '<span class="pv warn">On today</span>' : '<span class="pv mut">Off today</span>'}<span class="pvx">${pctTxt(s.todayPct)} percentile of its past year</span></div>
+      <h3 class="hl">${esc(s.label)}</h3><div class="bar" style="max-width:420px"><i style="width:${Math.max(2, p * 100)}%;background:${s.todayOn ? 'var(--amber)' : 'var(--b2)'}"></i><u style="left:${tail}%"></u></div>
+      <p class="cap" style="margin-top:6px">Backtest: ${esc(s.backtest)} over the next ${s.h} sessions. Forward so far: <b>${s.nScored}</b> scored${s.meanPct != null ? `, average ${sg(s.meanPct)}%` : ''} (judged at 20).</p>${ev}</div>`;
+  };
+  const vx = vxRec ? `<div class="mini"><div class="minih"><span class="pv mut">Paper trade</span><span class="pvx">short VX on signal 1, +25% stop, 20 sessions</span></div><h3 class="hl">Short-VX rule</h3>
+      <p class="cap">${vxRec.trades.length ? vxRec.trades.map(t => `${esc(t.signal)}: ${esc(t.status)}${t.R != null ? ` ${sg(t.R)}R` : ''}`).join(' · ') : 'No trades yet.'} Backtest +0.22R a trade; random-entry shorting +0.12R. Judged at 15 trades. Updated when the scorer runs (last ${esc(r.generated)}).</p></div>` : '';
+  $('#live').innerHTML = `<div class="eyebrow">Live · forward record · last close ${esc(L?.lastClose ?? r?.last_close)} · counting from ${esc(L?.start ?? r?.forward_start)}</div><h2>Where the VIX signals stand now, and how they've done since the rules were frozen</h2>
+    <p class="cap">Recomputed every time this page loads from the site's daily market data, with the same formulas as the studies (checked to match exactly). Research only: none of these is a trade signal yet.</p>
+    <div class="minis">${L ? L.signals.map(card).join('') : ''}${vx}</div>`;
 }
 
 async function main() {

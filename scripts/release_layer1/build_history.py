@@ -13,11 +13,12 @@ from daily_lib import refresh_daily, load_daily, DKEYS, DLABEL
 OUT = AO / 'release_layer1'; OUT.mkdir(exist_ok=True)
 S = load_sources()
 print(refresh_daily()); S['_daily'] = load_daily(S)
-EV = all_events(include_ahead=False)
+EV = all_events(include_ahead=False, usdjpy=usdjpy_series(S))
 event_days = {e['t'].date() for e in EV}
 rows, paths, skipped = [], {}, []
 for e in EV:
-    if S['sofr'].cands and not covers(S['sofr'].cands[0][1], e['t']): skipped.append(e); continue
+    if e['family'] not in JUMP_ON and S['sofr'].cands and not covers(S['sofr'].cands[0][1], e['t']): skipped.append(e); continue      # US releases need the SOFR leg; the others are kept if any market has data
+    if e['family'] in JUMP_ON and not any(covers(s, e['t']) for k in ASSETS for _, s in S[k].cands): skipped.append(e); continue
     r, P = build_event(S, e, event_days); r['id'] = f"{r['t']}|{e['family']}"
     rows.append(r); paths[r['id']] = P
 print(len(rows), 'events built;', len(skipped), 'skipped (no leg data)')
@@ -27,14 +28,18 @@ print(len(rows), 'events built;', len(skipped), 'skipped (no leg data)')
 # ---- checks (the clock, the coverage, the thin quotes) ----
 D = pd.DataFrame([dict(id=r['id'], t=pd.Timestamp(r['t']), fam=r['family'], jump=r['jump'], thin_eur=(r['M']['eur'] or {}).get('m30') is None, **{f'{k}_m30': (r['M'][k] or {}).get('m30') for k in KEYS}) for r in rows])
 md = ['# Release Reaction, Layer 1: data checks', '', f'Releases built: {len(rows)} ({", ".join(f"{k} {v}" for k, v in D.fam.value_counts().items())}); skipped for no leg data: {len(skipped)}.', '',
-      '## Clock check: which minute holds the largest 1-minute move of the SOFR leg, relative to the stamped release time (0 = the release minute)', '']
+      '## Clock check: which minute holds the largest 1-minute move of the clock market (SOFR leg for US releases), relative to the stamped release time (0 = the release minute)', '']
 D['era'] = np.where(D.t.dt.tz_convert('America/New_York').map(lambda x: x.dst().total_seconds() > 0), 'US summer time', 'US winter time')
 md += ['| family | era | events | at 0 | within +-1 min | elsewhere | median offset of the elsewhere ones |', '|---|---|---|---|---|---|---|']
 for (fam, era), q in D.groupby(['fam', 'era']):
     j = q.jump.dropna(); el = j[j.abs() > 1]
     md.append(f'| {fam} | {era} | {len(q)} | {int((j == 0).sum())} | {int((j.abs() <= 1).sum())} | {len(el)} | {el.median() if len(el) else "-"} |')
 bad = D[D.jump.notna() & (D.jump.abs() > 1)][['id', 'jump']]
-md += ['', 'Releases whose largest SOFR-leg move is more than a minute from the stamped time: ' + (', '.join(f'{a} ({b:+.0f})' for a, b in bad.values) if len(bad) else 'none'), '']
+md += ['', 'For the US releases the clock market is the SOFR leg; for the others it is the home market (ECB: Euribor leg, BoE and UK fiscal: gilt, BoJ: USD/JPY, refunding: 10y note). The BoJ minute is itself taken from USD/JPY, so its row is 0 by construction.', '']
+from cb_schedule import BOJ_VENDOR
+bj = {r['t'][:10]: r['t'][11:16] for r in rows if r['family'] == 'BOJ'}
+md += ["BoJ minute found from USD/JPY vs the vendor's to-the-minute stamp (2024-25): " + ', '.join(f"{d} found {bj.get(d, 'none')} vendor {v}" for d, v in BOJ_VENDOR.items()), '']
+md += ['', 'Releases whose largest clock-market move is more than a minute from the stamped time: ' + (', '.join(f'{a} ({b:+.0f})' for a, b in bad.values) if len(bad) else 'none'), '']
 md += ['## Coverage by asset (releases with a path / 1-minute path / 15-minute CFD path / none)', '', '| asset | with a path | 1-minute | 15-minute | none |', '|---|---|---|---|---|']
 for k in KEYS:
     st = [(p[k] or {}).get('step') for p in paths.values()]

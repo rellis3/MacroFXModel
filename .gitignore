@@ -239,6 +239,9 @@ oi_research_book/data/bot_backtest/
 # Line Touch Response Study raw per-pair responses (~9MB/pair, 17 pairs).
 # Derived data, rebuildable with: node analysis/line_touch_response_study.mjs
 analysis/output/line-touch-response/
+analysis/output/line-touch-limit-unseen/response/
+analysis/output/line-touch-limit-unseen/features_unseen.parquet
+analysis/output/line-touch-limit-unseen/touch*.log
 
 # jump_diffusion_daily.py's batch output: ~12MB of RV/BV over 70,871 (pair, date) rows,
 # fully regenerable from the M1 cache in one run. The small summaries it feeds
@@ -705,3 +708,8 @@ education/Data from Cog/
 scripts/rates_line/logs/*.log
 logs/upload_bidask_r2.log
 scratchpad/*.log
+
+# oi-level-map: raw per-strike ladders rebuilt from the local QuikStrike archive (oi_recon/out), and scratch caches
+analysis/output/oi-level-map/levels.json
+analysis/output/oi-level-map/spots.json
+analysis/output/oi-level-map/_cache/

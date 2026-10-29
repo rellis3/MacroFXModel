@@ -357,7 +357,7 @@ function strengths() {
 }
 const composites = () => Object.fromEntries((D.msc?.ranked ?? []).map(r => [r.ccy, { composite: r.composite, factorsScored: r.factorsScored, factorsTotal: r.factorsTotal, factors: r.factors }]));
 const facVec = ccy => { const r = (D.msc?.ranked ?? []).find(x => x.ccy === ccy); return FACT.map(([k]) => (r?.factors?.[k]?.score ?? null)); };
-const cbHist = () => ({ USD: D.hUSD?.history, EUR: D.hEUR?.history, GBP: D.hGBP?.history, JPY: D.hJPY?.history, NZD: D.hNZD?.history, AUD: D.hAUD?.history, CAD: D.hCAD?.history });
+const cbHist = () => ({ USD: D.hUSD?.history, EUR: D.hEUR?.history, GBP: D.hGBP?.history, JPY: D.hJPY?.history, NZD: D.hNZD?.history, AUD: D.hAUD?.history, CAD: D.hCAD?.history, CHF: D.hCHF?.history });
 const loading = () => D.__extra ? '' : '<p class="note">Loading the analysis feeds…</p>';
 
 /* ── small renderers ── */
@@ -494,14 +494,16 @@ function positionContext() {
   if (axes.length) out.push('Global axes: ' + axes.map(a => `${a.label} ${a.score} (${a.agree} agree: ${a.inputs.map(i => i.text).join('; ')})`).join(' | '));
   const gm = P.gammaRows(D.oi); if (gm.length) out.push('Dealer gamma and walls: ' + gm.map(g => `${g.pair} ${g.regime} ${g.where ?? ''}`).join('; ') + '. Gamma sign is a range read; walls are locations, not magnets.');
   if (firing.length) out.push('Desk Watch firing: ' + firing.map(f => f.label).join('; ') + '.');
+  if (D.evd?.frontEnds?.line) out.push(D.evd.frontEnds.line);
   out.push('', 'AHEAD', ...L.ahead);
+  for (const e of D.evd?.events ?? []) out.push('Event day (Release Reaction record, sizes only): ' + e.line);
   if (ahead.length) out.push('Next releases (UK time): ' + ahead.map(e => `${ukTime(e.ms)} ${e.country} ${e.event} (${e.impact}) expected ${e.estimate ?? 'n/a'}, previous ${e.prev ?? 'n/a'}`).join('; ') + '.');
   if (fp) out.push(`Fed path: ${fp.hike}% odds of a higher rate by ${fp.ref}, ${fp.cut}% of a cut, current range ${fp.current}. Context, no measured link to FX or index moves.`);
   if (nc) out.push(`Nowcasts: GDPNow ${nc.gdpnow}%, Cleveland CPI ${nc.cpi}% a month, core ${nc.core}%. Context, not a lean.`);
   const sc = P.scenarios(D.gr); if (sc.length) out.push('Scenario probabilities: ' + sc.map(s => `${s.name} ${s.p}%`).join('; ') + '.');
   let mf = '';
   try { const l = marketFacts(); if (l.length) mf = '\n\nMARKET FACTS (one line per market; write one card for each, keyed by KEY)\n' + l.join('\n'); } catch (e) { console.warn('[atlas market facts]', e); }
-  return out.join('\n').slice(0, 8500) + mf;
+  return out.join('\n').slice(0, 10500) + mf;
 }
 
 /* ── run the same brief prompt on another model ── */
@@ -595,9 +597,14 @@ function nlInput({ bookFor = () => null } = {}) {
       const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: mv?.d1 ?? null, d20: mv?.d20 ?? null, read: plainRead(mk?.read), watch: plainRead(mk?.watch), implied: impliedRow(D.ivl?.implied?.[impliedKeyFor(k)], k, Date.now()), zone: (() => { const row = (D.oi?.pairs ?? []).find(p => p.pair === P.OI_PAIR_FOR[k]); return row ? optionZone(row, k, d.dp ?? 4) : null; })(), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
     yieldStack: (() => { const al = alignedYield(); if (al) return { nominal: al.nominal, real: al.real, bei: al.bei, dNom: al.dNom, dReal: al.dReal, dBei: al.dBei, asOf: al.asOf, from: al.from, later: al.later }; const y = fmtRate('us10y'), r = fmtRate('tips'), b = fmtRate('bei'); return y && r && b ? { nominal: y.v, real: r.v, bei: b.v, dNom: y.d20, dReal: r.d20, dBei: b.d20 } : null; })(),
     yieldSeries: alignedYield()?.series ?? null,
+    beta: D.beta ?? null,
+    asia: D.asia?.instruments ?? null,
     rangePressure: rpNow(), fearVsNasdaq: fearNow(), vixBeta: betaNow(), impliedRatio: impNow(),
     ...nlStrips(),
     strengths: derived.str, surprise: P.surpriseBars(D.es), cb: P.cbTone(cbHist()), crowding: P.crowding(D.ce, D.cs), cotDate: D.ce?.instruments?.find(i => i.reportDate)?.reportDate ?? null, regimeCard: regime, changes: P.changesRows(D.mc), fedPath: fp, scenarios: P.scenarios(D.gr), nowcast: nc,
+    funding: D.fund?.items ? { line: D.fund.line ?? null, flags: D.fund.flags ?? [] } : null,
+    bankCredit: D.bc?.headline ? { latest: D.bc.latest, usdG: D.bc.headline.usdG, regime: D.bc.headline.regime } : null,
+    drawdownShadow: D.dds?.rule ? { spx20: D.dds.spx20, trigger: !!D.dds.trigger } : null,
     watching: firing.map(f => ({ id: f.id, label: f.label, kind: f.kind })),
     eod: D.eod?.review ? { hook: D.eod.review.hook, right: D.eod.review.plan?.right, wrong: D.eod.review.plan?.wrong } : null,
   };
@@ -773,15 +780,17 @@ function globalPosition() {
   const fireHtml = firing.length ? firing.map(f => `<div class="rw"><span>${esc(f.label)}<small>${esc(f.detail.slice(0, 160))}${f.detail.length > 160 ? '…' : ''}</small></span>${f.evidenceId ? ledgerPill(f.evidenceId) : ''}</div>`).join('') : '<p class="note">Nothing is firing.</p>';
   const crHook = D.cr?.read?.hook ? `<p class="tl-line" style="margin-top:10px"><b>The chain read (cached AI):</b> ${esc(D.cr.read.hook)} <span class="note">${D.cr.fresh ? '' : `(${Math.round((D.cr.ageMin ?? 0) / 60)}h old)`}</span></p>` : '';
   const now = tense('now', 'Right now: the state of play', 'pulse',
-    tl(lines.right) + `<h3>The five global axes</h3>${axHtml || loading()}<h3>Desk Watch: conditions firing</h3>${D.ds ? fireHtml : loading()}<h3>Dealer gamma and the walls</h3><div class="rows">${gamHtml || loading()}</div><p class="note" style="margin-top:6px">What the ledger says about dealer gamma and range is in the badges; the walls are locations, not magnets. ${ledgerPill('gex-range')}${ledgerPill('gex-range-es')}</p>${crHook}`);
+    tl(lines.right) + legsHtml + `<h3>The five global axes</h3>${axHtml || loading()}<h3>Desk Watch: conditions firing</h3>${D.ds ? fireHtml : loading()}<h3>Dealer gamma and the walls</h3><div class="rows">${gamHtml || loading()}</div><p class="note" style="margin-top:6px">What the ledger says about dealer gamma and range is in the badges; the walls are locations, not magnets. ${ledgerPill('gex-range')}${ledgerPill('gex-range-es')}</p>${crHook}`);
   // AHEAD
   const evHtml = ahead.length ? ahead.map(e => `<div class="evrow"><span class="tm">${esc(ukTime(e.ms))}</span><span>${e.ccy ? FLAG[e.ccy] + ' ' : ''}${esc(e.event)}<small>${e.estimate ? 'expected ' + esc(e.estimate) : 'no consensus listed'}${e.prev ? ', previous ' + esc(e.prev) : ''}</small></span><span class="pill ${e.impact === 'high' ? 'amber' : ''}">${esc(e.impact)}</span></div>`).join('') : '<p class="note">No high or medium impact release is listed in the next three days.</p>';
+  const evdHtml = (D.evd?.events ?? []).map(e => `<p class="tl-line"><span class="pill ${e.released ? '' : 'amber'}">${e.released ? 'released' : 'due'}</span> ${esc(e.line)}</p>`).join('');
+  const legsHtml = D.evd?.frontEnds?.line ? `<h3>Rate legs</h3><p class="note">${D.evd.frontEnds.stale ? '<b>stale</b> · ' : ''}${esc(D.evd.frontEnds.line)} <a href="cog-chart.html" target="_blank">chart</a></p>` : '';
   const scn = P.scenarios(D.gr), scnHtml = scn.map(s => `<div class="scn"><div class="sn"><span>${esc(s.name)}</span><b>${s.p}%</b></div><div class="sb"><i style="width:${s.p}%"></i></div></div>`).join('');
   const fpHtml = fp ? `<p class="tl-line">${fp.hike}% odds of a higher rate by ${esc(fp.ref)}; ${fp.cut}% of a cut. Most likely band: ${esc(fp.mostLikely?.band ?? '?')} (${fp.mostLikely?.p}%).</p>` + fp.dist.map(d => `<div class="scn"><div class="sn"><span class="mono">${esc(d.band)}</span><span>${d.p}%</span></div><div class="sb"><i style="width:${Math.min(100, d.p)}%;background:var(--amber)"></i></div></div>`).join('') + `<p class="note">${esc(fp.note)} Source: ${esc(fp.source)}, ${esc(fp.asOf)}.</p>` : '';
   const ncHtml = nc ? `<p class="tl-line">GDPNow ${nc.gdpnow ?? '?'}% (Q3). Cleveland nowcast for ${esc(nc.month ?? '')}: CPI ${nc.cpi ?? '?'}% a month, core ${nc.core ?? '?'}%. <span class="note">${esc(nc.note)}</span></p>` : '';
   const inval = (D.gr?.invalidation ?? []).map(t => `<div class="rw"><span>${esc(t)}</span></div>`).join('');
   const aheadCard = tense('ahead', 'Ahead: what is already scheduled', 'fwd',
-    tl(lines.ahead) + `<h3>Next releases, high and medium impact</h3>${D.events ? evHtml : loading()}<h3>Scenario probabilities</h3>${scnHtml || loading()}<h3>The Fed path</h3>${D.fp ? fpHtml : loading()}${ncHtml}<h3>What would change this view</h3><div class="rows">${inval || loading()}</div><div class="shelf">${ledgerPill('surprise-size')}<span class="pill">release direction: tested null</span></div>`);
+    tl(lines.ahead) + `<h3>Next releases, high and medium impact</h3>${D.events ? evHtml : loading()}${evdHtml ? `<h3>Event day: what the same events did before</h3>${evdHtml}<p class="note"><a href="release-reaction.html" target="_blank">Every market, minute by minute</a></p>` : ''}<h3>Scenario probabilities</h3>${scnHtml || loading()}<h3>The Fed path</h3>${D.fp ? fpHtml : loading()}${ncHtml}<h3>What would change this view</h3><div class="rows">${inval || loading()}</div><div class="shelf">${ledgerPill('surprise-size')}<span class="pill">release direction: tested null</span></div>`);
   return `<div class="cols3">${behind}${now}${aheadCard}</div>`;
 }
 
@@ -858,7 +867,7 @@ async function _generateIntel() {
 function ccyPosition(k) {
   const bank = P.BANK_OF[k], cb = P.cbTone(cbHist()).find(c => c.ccy === k), sb = P.surpriseBars(D.es).find(s => s.ccy === k), crowd = P.crowding(D.ce, D.cs).map(P.crowdCcy).find(c => c.sym === k);
   const country = COUNTRY_OF[k], ahead = P.aheadEvents(D.events, Date.now(), { countries: country ? [country] : null, withinHours: 120 });
-  const behindBody = (cb ? `<h3>${esc(cb.bank)} tone over its last ${cb.scores.length} meetings</h3><div>${sparkSvg(cb.scores, 'var(--violet)', 140, 34)}</div><p class="tl-line">Latest ${sg(cb.latest)} (${esc(String(cb.regime ?? '').toLowerCase())}), ${esc(cb.trend)} against the previous meeting.${cb.headline ? ' ' + esc(cb.headline) : ''}</p><p class="note">Tone momentum against forward price tested null here: context, not a lean. ${ledgerPill('cb-tone-direction')}</p>` : `<p class="note">${k} has no tracked central bank on this desk (FOMC, ECB, BoE, BoJ, RBNZ, RBA and BoC only).</p>`)
+  const behindBody = (cb ? `<h3>${esc(cb.bank)} tone over its last ${cb.scores.length} meetings</h3><div>${sparkSvg(cb.scores, 'var(--violet)', 140, 34)}</div><p class="tl-line">Latest ${sg(cb.latest)} (${esc(String(cb.regime ?? '').toLowerCase())}), ${esc(cb.trend)} against the previous meeting.${cb.headline ? ' ' + esc(cb.headline) : ''}</p><p class="note">Tone momentum against forward price tested null here: context, not a lean. ${ledgerPill('cb-tone-direction')}</p>` : `<p class="note">${k} has no tracked central bank on this desk (FOMC, ECB, BoE, BoJ, RBNZ, RBA, BoC and SNB only).</p>`)
     + (sb ? `<h3>Beating or missing consensus</h3>${barRow(k, sb.score, 0.6, `${sg(sb.score)} · ${sb.nRecent ?? sb.n} recent`, 'l')}${sb.top.length ? `<div class="rows" style="margin-top:6px">${sb.top.map(t => `<div class="rw"><span>${esc(t.event)}<small>actual ${esc(t.actual)} against ${esc(t.estimate)}</small></span><span class="mono ${t.z > 0 ? 'up' : 'dn'}">z ${sg(t.z, 1)}</span></div>`).join('')}</div>` : ''}<p class="note">A positive score means releases have come in above consensus. The size of a surprise is validated for range; its direction is not. ${ledgerPill('surprise-size')}</p>` : '')
     + (crowd ? `<h3>Positioning</h3><p class="tl-line">Speculators are <b>${esc(CROWD_WORDS[crowd.state] ?? crowd.state)}</b> (${ord(crowd.pct)} percentile of their history). ${ledgerPill('cot-positioning-factor')}</p>` : '');
   const nowBody = `<p class="tl-line">Measured today: ${derived.str.find(x => x.ccy === k) ? sg(derived.str.find(x => x.ccy === k).score) + '% on the 1-day pair average' : 'no pair data'}. The macro read (the radar above) is the current state of the six factors.</p>${k === 'USD' ? `<p class="tl-line">Desk-watch conditions firing on the dollar: ${P.deskFiring(D.ds).filter(f => /dollar|USD|Treasur|real yield/i.test(f.label)).map(f => esc(f.label)).join('; ') || 'none'}.</p>` : ''}`;
@@ -906,6 +915,8 @@ function pairPosition(k, cc, d) {
   const behindBody = [
     regime ? `<p class="tl-line">In the ${esc(regime.regime.toLowerCase())} regime since 2007, ${esc(labelOf(k))} has averaged <b>${sg(regime.mean)}%</b> a month, up in ${regime.posShare}% of months (${regime.n} months, typical monthly range ${regime.range}%).</p><p class="note">A base rate for the regime, not a forecast.</p>` : '<p class="note">The regime study does not cover this instrument.</p>',
     // where this market sits on the crowding map (js/cotState.js via /api/cot-state), with the ledger id it rests on
+    // shifting beta: weekly, from the market review (scripts/market-review); context, not a signal
+    ...(D.beta?.markets?.[k]?.line ? [`<div class="rw"><span><b>Shifting beta</b><small>${esc(D.beta.markets[k].line)} (as of ${esc(D.beta.asof)}) · <a href="market-review.html#beta" target="_blank">chart</a></small></span></div>`] : []),
     ...(D.cs?.instruments?.[k] ? [`<div class="rw"><span><b>Crowding map</b><small>${esc(D.cs.instruments[k].label)}. ${esc(D.cs.instruments[k].line)}</small></span>${D.cs.instruments[k].ev ? ledgerPill(D.cs.instruments[k].ev) : ''}</div>`] : []),
     ...(!cc && COT_SYM[k] && crowd.find(x => x.sym === COT_SYM[k]) ? [`<div class="rw"><span><b>Positioning</b><small>speculators ${CROWD_WORDS[crowd.find(x => x.sym === COT_SYM[k]).state]} (${ord(crowd.find(x => x.sym === COT_SYM[k]).pct)} percentile)</small></span>${ledgerPill('cot-positioning-factor')}</div>`] : []),
     ...ccs.map(c => { const cb = cbs.find(x => x.ccy === c), sb = sbs.find(x => x.ccy === c), cr = crowdC.find(x => x.sym === c); const bits = [cb ? `${cb.bank} tone ${sg(cb.latest)} (${cb.trend})` : null, sb ? `data surprises ${sg(sb.score)}` : null, cr ? `speculators ${CROWD_WORDS[cr.state] ?? cr.state}` : null].filter(Boolean); return bits.length ? `<div class="rw"><span><b>${FLAG[c]} ${c}</b><small>${esc(bits.join(' · '))}</small></span></div>` : ''; }),
@@ -919,6 +930,8 @@ function pairPosition(k, cc, d) {
   const usd = cc?.includes('USD') || ['NQ', 'SPX500', 'US30', 'US2000', 'GOLD'].includes(k), m = usd ? P.nextMeeting(D.fcal) : null, fp = usd ? P.fedPathCard(D.fp) : null;
   const aheadBody = (ahead.length ? ahead.map(e => `<div class="evrow"><span class="tm">${esc(ukTime(e.ms))}</span><span>${e.ccy ? FLAG[e.ccy] + ' ' : ''}${esc(e.event)}<small>${e.estimate ? 'expected ' + esc(e.estimate) : 'no consensus listed'}${e.prev ? ', previous ' + esc(e.prev) : ''}</small></span><span class="pill ${e.impact === 'high' ? 'amber' : ''}">${esc(e.impact)}</span></div>`).join('') : '<p class="note">No high or medium impact release for this instrument in the next 48 hours.</p>')
     + (m ? `<p class="tl-line">Next FOMC: ${esc(m.date)}, ${m.inDays} days away.</p>` : '') + (fp ? `<p class="tl-line">The Fed path prices ${fp.hike}% odds of a higher rate by ${esc(fp.ref)}.</p>` : '')
+    + (() => { const want = ccs.length ? ccs : ({ DE30: ['EUR'], UK100: ['GBP'], JP225: ['JPY'] }[k] ?? ['USD']), ev = (D.evd?.events ?? []).filter(e => e.ccys.some(c => want.includes(c)));
+        return ev.length ? `<h3>Event day: what the same events did before</h3>${ev.map(e => `<p class="tl-line">${esc(e.line)}</p>`).join('')}` : ''; })()
     + `<p class="note">Scheduled releases are the one cause you can prepare for. The size of a surprise is validated for range; its direction is not. ${ledgerPill('surprise-size')}</p>`;
   return `<div class="cols3">${tense('behind', 'Behind us', 'back', behindBody || loading())}${tense('now', 'Right now', 'pulse', nowBody || loading())}${tense('ahead', 'Ahead', 'fwd', aheadBody)}</div>`;
 }
@@ -958,10 +971,10 @@ function drawPair() {
 /* ── boot, in two waves: the market bundle first so the page is useful at once, then the analysis feeds ── */
 const CORE = [['/api/drill-series', 'drill', '75 market series, 5 years'], ['/api/macro-scorecard', 'msc', 'six-factor currency scorecard'], ['/api/risk-flags', 'rf', 'risk flags'], ['/api/cot', 'cot', 'CFTC positioning by pair'],
   ['/api/daily-brief', 'brief', 'prices, regimes, levels for all instruments'], ['/api/vol-forecast/session', 'sess', 'live session range'], ['/api/vol-forecast', 'fc', 'calibrated range forecast'], ['/api/calendar-feed', 'cal', 'releases printed'], ['/api/chain-extra', 'cx', 'chain chips: EM dollar and EM credit']];
-const EXTRA = [['/api/global-read', 'gr', 'five axes, scenarios, per-instrument plans'], ['/api/regime', 'regime', 'macro regime and what each market did in it'], ['/api/macro-changes', 'mc', 'what changed, 1d / 5d / 20d'], ['/api/econ-surprise', 'es', 'consensus surprises by currency'],
+const EXTRA = [['/api/asia-today', 'asia', 'Asia range so far today'], ['/api/event-day', 'evd', 'today\'s events against the same events before, and the rate legs'], ['/api/global-read', 'gr', 'five axes, scenarios, per-instrument plans'], ['/api/regime', 'regime', 'macro regime and what each market did in it'], ['/api/macro-changes', 'mc', 'what changed, 1d / 5d / 20d'], ['/api/econ-surprise', 'es', 'consensus surprises by currency'],
   ['/api/cot-extremes', 'ce', 'crowding across 36 contracts'], ['/api/cot-state', 'cs', 'where each market sits on the crowding map'], ['/api/oi-today', 'oi', 'dealer gamma and option walls'], ['/api/oi-levels', 'ivl', 'options-implied day move per market'], ['/api/desk-watch', 'ds', 'watched conditions firing'], ['/api/events', 'events', 'the calendar ahead'], ['/api/fed-path', 'fp', 'market-implied Fed path'],
-  ['/api/fomc/calendar', 'fcal', 'FOMC meeting dates'], ['/api/nowcast', 'nc', 'GDPNow and Cleveland nowcasts'], ['/api/fomc/history?n=6', 'hUSD', 'FOMC tone history'], ['/api/ecb/history?n=6', 'hEUR', 'ECB tone history'], ['/api/boe/history?n=6', 'hGBP', 'BoE tone history'],
-  ['/api/boj/history?n=6', 'hJPY', 'BoJ tone history'], ['/api/rbnz/history?n=6', 'hNZD', 'RBNZ tone history'], ['/api/rba/history?n=6', 'hAUD', 'RBA tone history'], ['/api/boc/history?n=6', 'hCAD', 'BoC tone history'], ['/api/eod-review', 'eod', 'yesterday\'s review'], ['/api/chain-read', 'cr', 'the chain read (cached AI)'], ['/api/ai-config', 'ai', 'AI model routing']];
+  ['/api/fomc/calendar', 'fcal', 'FOMC meeting dates'], ['/api/funding-read?spark=0', 'fund', 'funding and leverage read'], ['/api/bank-credit', 'bc', 'BIS cross-border bank credit'], ['/api/drawdown-shadow', 'dds', 'range lines after a 20-day S&P fall (research shadow)'], ['/api/nowcast', 'nc', 'GDPNow and Cleveland nowcasts'], ['/api/fomc/history?n=6', 'hUSD', 'FOMC tone history'], ['/api/ecb/history?n=6', 'hEUR', 'ECB tone history'], ['/api/boe/history?n=6', 'hGBP', 'BoE tone history'],
+  ['/api/boj/history?n=6', 'hJPY', 'BoJ tone history'], ['/api/rbnz/history?n=6', 'hNZD', 'RBNZ tone history'], ['/api/rba/history?n=6', 'hAUD', 'RBA tone history'], ['/api/boc/history?n=6', 'hCAD', 'BoC tone history'], ['/api/snb/history?n=6', 'hCHF', 'SNB tone history'], ['/api/eod-review', 'eod', 'yesterday\'s review'], ['/api/chain-read', 'cr', 'the chain read (cached AI)'], ['/api/ai-config', 'ai', 'AI model routing'], ['analysis/output/market-review/beta_shift.json', 'beta', 'shifting betas (weekly market review)']];
 
 /* ── the stored Intelligence brief: load it reliably, never confuse "could not load" with "none stored" ── */
 const INTEL_LS = 'atlas_intel_v1';
