@@ -97,5 +97,8 @@ console.log('late in the day');
   ok('the headline names the decision in the past tense', /ECB has decided/.test(o.headline), o.headline);
   ok('the lede says the releases landed, not that they are due', /landed today, the last at 13:15/.test(o.lede), o.lede);
   ok('the watch line carries nothing already past', !/ECB/.test(o.watch), o.watch); }
+{ const b = Date.UTC(2026, 9, 29), tt = (h, m) => b + (h * 60 + m) * 6e4;
+  const o = todayOpening({ events: [{ ms: tt(13, 15), ccy: 'EUR', event: 'Main Refinancing Rate', impact: 'high' }, { ms: tt(13, 15), ccy: 'EUR', event: 'ECB Monetary Policy Statement', impact: 'high' }, { ms: tt(13, 45), ccy: 'EUR', event: 'Deposit Facility Rate', impact: 'high' }], nowMs: tt(18, 0), assets: [], changes: [] });
+  ok('a bank that listed its decision more than once is named once as having decided', !/ECB and the ECB/.test(o.lede) && /The ECB has already decided/.test(o.lede), o.lede); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

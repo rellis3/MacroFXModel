@@ -262,7 +262,7 @@ export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, asse
   const now = Number.isFinite(nowMs) ? nowMs : Date.now(), hi = windowEvents(events, now, weekly);
   const nextHigh = hi.length ? null : (events ?? []).filter(e => e?.impact === 'high' && e.ms > now).sort((a, b) => a.ms - b.ms)[0] ?? null;
   const day = new Date(now).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ });
-  const done = weekly ? [] : (events ?? []).filter(e => e?.impact === 'high' && isDecision(e) && Number.isFinite(e.ms) && e.ms <= now && ukDay(e.ms) === ukDay(now)).sort((x, y) => x.ms - y.ms);
+  const done = weekly ? [] : (events ?? []).filter(e => e?.impact === 'high' && isDecision(e) && Number.isFinite(e.ms) && e.ms <= now && ukDay(e.ms) === ukDay(now)).sort((x, y) => x.ms - y.ms).filter((e, i, all) => all.findIndex(x => x.ccy === e.ccy) === i);   // one entry per bank: it lists the rate and the statement as two rows
   const known = Array.isArray(events) && events.length > 0;   // an empty calendar is a feed that did not load more often than a day with nothing on it
   const take = weekly ? null : dayTake({ assets, changes, hi, now, asia });
   const regime = regimeLine(regimeWord, riskFlags), changed = changedLine(since, assets);
