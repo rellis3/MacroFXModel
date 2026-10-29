@@ -31,8 +31,10 @@ State Space Models Extensions → Advanced; everything else → Intermediate) �
 keep new categories consistent with that rule rather than hand-tuning
 individual lessons.
 
-**Start at [`hub.html`](./hub.html)** (also linked from the dashboard's
-**Learn ▾** nav menu on `index.html`).
+**Start at [`index.html`](./index.html)**, the start page (served at `/theory-lab/`, and where
+sign-in lands): where to begin, learning paths, practice and explore. Its "Browse every lesson"
+door leads to [`hub.html`](./hub.html), the all-lessons list, which has a sticky section bar built
+from its headings. Both are also linked from the dashboard's **Learn ▾** nav menu on the root `index.html`.
 
 Looking for the applied, practitioner-workflow lessons converted from this
 repo's own raw study notes, or the "COG" case study (a real trader's
@@ -277,7 +279,8 @@ and cleared the repo's real out-of-sample bar.
 
 ```
 theory-lab/
-  hub.html            — curriculum map, linked from index.html
+  index.html          — the start page (served at /theory-lab/); sign-in lands here
+  hub.html            — every lesson, grouped by section, with a section jump bar
   glossary.html       — searchable notation glossary
   practice.html       — daily mixed scenario drill, calibration chart, self-test mastery
   errors.html         — spot-the-error exercises from real corrections

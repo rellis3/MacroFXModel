@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+</head>
+<body>
+<div id="page">
+
+  <div class="tl-crumb">Theory Lab</div>
+
+  <div class="tl-hub-hero">
+    <div class="tl-kicker">Education</div>
+    <h1>Theory Lab</h1>
+    <p>Plain-English lessons on how markets, rates, currencies and options work. Each one starts with the intuition, then shows the maths step by step with every symbol defined, then works a real example<!-- DESK:START -->, then how the idea connects to what's actually built in MacroFXModel<!-- DESK:END -->. If you want an order, follow a learning path. If you already know what you're after, go straight to the lessons.</p>
+    <div class="tl-callout">
+      <strong>How to read the status badge on each lesson.</strong> <span class="tl-status concept" style="margin-right:6px">CONCEPT</span> means the idea is explained here — treat it as background knowledge, not a claim about<!-- DESK:START --> this project's own<!-- DESK:END --> build status. Nothing in the Theory Lab is a trading signal, and nothing here has cleared a real out-of-sample bar just by being explained well — a method is not a strategy until it's tested.
+    </div>
+  </div>
+<!-- DESK:START -->
+  <div id="tl-today" class="tl-review tl-today" hidden></div>
+<!-- DESK:END -->
+  <div id="tl-review" class="tl-review" hidden></div>
+
+  <div class="tl-cat">
+    <h2>Where to begin</h2>
+    <div class="tl-cat-sub">Three ways in, depending on how you like to learn.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="start.html" data-slug="start">
+        <div class="tl-card-toprow"><div class="tl-card-num">Start here</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
+        <h3>New Here? How the Lab Works</h3>
+        <p>How a lesson is laid out, and where to begin depending on whether your maths is rusty, you're new to markets, or you already trade.</p>
+      </a>
+      <a class="tl-card" href="paths.html" data-slug="paths">
+        <div class="tl-card-toprow"><div class="tl-card-num">Learning paths</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
+        <h3>Learning Paths, Each With a Finish Line</h3>
+        <p>Options &amp; Volatility, Macro &amp; FX, System Building, Risk &amp; Portfolio, and more. One shared core, then a route through the lessons that matter for your goal, ending in a capstone you build.</p>
+      </a>
+      <a class="tl-card" href="hub.html" data-slug="hub">
+        <div class="tl-card-toprow"><div class="tl-card-num">All lessons</div><span class="tl-pill green tl-diff-pill">Every level</span></div>
+        <h3>Browse Every Lesson</h3>
+        <p>The full list: real-world lessons told through episodes first, then the foundation maths and the numbered curriculum. Filter by level, and see which ones you have finished.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Practice</h2>
+    <div class="tl-cat-sub">The lessons explain. These ask: they are what makes the lessons stick.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="practice.html" data-slug="practice">
+        <div class="tl-card-toprow"><div class="tl-card-num">Practice</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
+        <h3>Ten Minutes a Day: the Mixed Drill</h3>
+        <p>One real, dated market situation a day, drawn from any lesson. Commit to a call and say how sure you are. Over time it charts whether your 80% calls come true 80% of the time, and which lessons you have mastered.</p>
+      </a>
+      <a class="tl-card" href="errors.html" data-slug="errors">
+        <div class="tl-card-toprow"><div class="tl-card-num">Spot the error</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>Spot the Error</h3>
+        <p>Real mistakes this lab once printed: a dropped term, a swapped sign, a chart drawn backwards. Find each one before you read the fix. Checking other people's numbers is a trading skill.</p>
+      </a>
+      <a class="tl-card" href="checklist.html" data-slug="checklist">
+        <div class="tl-card-toprow"><div class="tl-card-num">Before a trade</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
+        <h3>The Pre-Trade Checklist</h3>
+        <p>The questions the lessons say to answer before a position goes on, each with its reason and the lesson behind it. Save it, copy it, print it, or hand it straight to the journal.</p>
+      </a>
+      <a class="tl-card" href="journal.html" data-slug="journal">
+        <div class="tl-card-toprow"><div class="tl-card-num">After a trade</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
+        <h3>Trade Journal, Tagged by Lesson</h3>
+        <p>Log trades in R against the lessons they relied on. See which ideas actually pay, and separate good decisions from lucky ones. CSV export and a backup file.</p>
+      </a>
+<!-- DESK:START -->
+      <!-- DRILL:START -->
+      <!-- Built from the desk's own board and OANDA candles, so the whole pair sits inside DESK markers.
+           The sentinels around it are load-bearing: server.js strips between them when
+           HIDE_DRILL_PRACTICE is on, so the cards leave no trace to discover. -->
+      <a class="tl-card" href="market-reading.html" data-slug="market-reading">
+        <div class="tl-card-toprow"><div class="tl-card-num">Practice</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
+        <h3>Reading the Tape</h3>
+        <p>Seven macro readings, asked over and over from real days: which leg of a yield move did it, which gold is trading, what the bond market concluded about an oil move, which link broke. You commit before the reveal.</p>
+      </a>
+      <a class="tl-card" href="replay.html" data-slug="replay">
+        <div class="tl-card-toprow"><div class="tl-card-num">Practice</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>Replay a Real Day</h3>
+        <p>The desk's own candles from days that broke traders: the SNB floor, the gilt crisis, the August 2024 carry unwind. Bars come in one at a time; you decide before the next one shows.</p>
+      </a>
+      <!-- DRILL:END -->
+<!-- DESK:END -->
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Explore</h2>
+    <div class="tl-cat-sub">Other ways into the same material.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="stories.html" data-slug="stories">
+        <div class="tl-card-toprow"><div class="tl-card-num">Stories</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
+        <h3>Stories: the Episodes Behind the Theory</h3>
+        <p>Over forty real episodes, from Black Monday and Barings to the yen carry unwind, each with its causal chain and links to every lesson that tells it from its own angle.</p>
+      </a>
+      <a class="tl-card" href="watch.html" data-slug="watch">
+        <div class="tl-card-toprow"><div class="tl-card-num">Watch it</div><span class="tl-pill green tl-diff-pill">Beginner</span><span class="tl-card-wb-badge" title="Animated whiteboards">▶</span></div>
+        <h3>▶ Watch It: Every Animated Whiteboard</h3>
+        <p>All the hand-drawn animations in one place: carry unwinds, gamma squeezes, the yield curve, Kelly sizing and more, each drawn step by step.</p>
+      </a>
+      <a class="tl-card" href="glossary.html" data-slug="glossary">
+        <div class="tl-card-toprow"><div class="tl-card-num">Glossary</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
+        <h3>Lost in the Greek Letters?</h3>
+        <p>The notation glossary: what each symbol means, and the lessons where it is defined.</p>
+      </a>
+      <a class="tl-card" href="paths.html#sync" data-slug="sync">
+        <div class="tl-card-toprow"><div class="tl-card-num">Progress</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
+        <h3>Reading on a Phone and a Laptop?</h3>
+        <p>Sync your progress, notes and review dates across devices.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-footer-nav"><a href="hub.html">Browse every lesson →</a></div>
+</div>
+
+<script src="assets/review.js" defer></script>
+<!-- DESK:START --><script src="assets/today.js" defer></script><!-- DESK:END -->
+<script src="assets/vark.js?v=2" defer></script>
+</body>
+</html>

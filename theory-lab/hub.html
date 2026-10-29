@@ -11,49 +11,25 @@
 <body>
 <div id="page">
 
-  <div class="tl-crumb">Theory Lab</div>
+  <div class="tl-crumb"><a href="index.html">Theory Lab</a> · All lessons</div>
 
   <div class="tl-hub-hero">
     <div class="tl-kicker">Education</div>
-    <h1>Theory Lab</h1>
-    <p>A from-scratch, math-explained curriculum in the ideas behind quantitative FX/macro research. Every lesson explains a concept the way you'd want it explained if you'd never seen the notation before: plain-English intuition first, then the math step by step with every symbol defined, then a worked numeric example<!-- DESK:START -->, then how the idea connects to what's actually built in MacroFXModel<!-- DESK:END -->.</p>
+    <h1>All Lessons</h1>
+    <p>Every lesson in the Theory Lab. The real-world lessons come first, each told through an episode with little maths. Then the foundation maths and the numbered curriculum, built up from scratch. Use the bar below to jump to a section.</p>
+    <div id="tl-progress-summary" class="tl-progress-summary" hidden></div>
+  </div>
+
+  <nav id="tl-secnav" class="tl-secnav" aria-label="Jump to a section"></nav>
+
+  <div class="tl-hub-notes">
     <div class="tl-callout">
       <strong>How to read the status badge on each lesson.</strong> <span class="tl-status concept" style="margin-right:6px">CONCEPT</span> means the idea is explained here — treat it as background knowledge, not a claim about<!-- DESK:START --> this project's own<!-- DESK:END --> build status. Nothing on this page is a trading signal, and nothing here has cleared a real out-of-sample bar just by being explained well — a method is not a strategy until it's tested.
     </div>
-    <a class="tl-gloss-hero-link" href="start.html">👋 New here? Start with how the lessons work and where to begin</a>
+    <a class="tl-gloss-hero-link" href="index.html">👋 New here? The start page has the guide, the learning paths and the practice tools</a>
     <a class="tl-gloss-hero-link" href="glossary.html">🔎 Lost in the Greek letters? Open the Notation Glossary</a>
     <a class="tl-gloss-hero-link" href="paths.html#sync">🔄 Reading on a phone and a laptop? Sync your progress across devices</a>
-    <div id="tl-progress-summary" class="tl-progress-summary" hidden></div>
   </div>
-<!-- DESK:START -->
-  <div id="tl-today" class="tl-review tl-today" hidden></div>
-<!-- DESK:END -->
-  <div id="tl-review" class="tl-review" hidden></div>
-
-<!-- DESK:START -->
-  <!-- DRILL:START -->
-  <!-- Practice, not a lesson. It sits above the curriculum because retrieval is what makes
-       any of the curriculum stick, and because it is the only thing here built on live data.
-       The sentinels around this block are load-bearing: server.js strips between them when
-       HIDE_DRILL_PRACTICE is on, so the section leaves no trace to discover. -->
-  <div class="tl-cat">
-    <h2>Practice</h2>
-    <div class="tl-cat-sub">The lessons below explain. This asks. Everything in it is built from six years of this desk's own board, so what you learn transfers to the live page rather than to a textbook.</div>
-    <div class="tl-grid">
-      <a class="tl-card" href="market-reading.html" data-slug="market-reading">
-        <div class="tl-card-toprow"><div class="tl-card-num">Practice 1</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
-        <h3>Reading the Tape</h3>
-        <p>Seven macro readings, asked over and over from real days: which leg of a yield move did it, which gold is trading, what the bond market concluded about an oil move, which link broke. You commit before the reveal, and the derivation behind each relationship is one click away &mdash; with the chart symbols to go and look at it yourself. Never asks which way price went.</p>
-      </a>
-      <a class="tl-card" href="replay.html" data-slug="replay">
-        <div class="tl-card-toprow"><div class="tl-card-num">Practice 2</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
-        <h3>Replay a Real Day</h3>
-        <p>The desk's own candles from days that broke traders: the SNB floor, the gilt crisis, the August 2024 carry unwind. Bars come in one at a time; you decide before the next one shows.</p>
-      </a>
-    </div>
-  </div>
-  <!-- DRILL:END -->
-<!-- DESK:END -->
 
   <div class="tl-diff-filter" role="group" aria-label="Filter lessons by difficulty">
     <span class="tl-diff-filter-label">Filter by level</span>
@@ -72,53 +48,6 @@
     <button type="button" class="tl-mode-btn active" data-mode="full">📖 Full lesson</button>
     <button type="button" class="tl-mode-btn" data-mode="micro">⚡ Visual guide</button>
     <span class="tl-mode-toggle-hint">Applies to every card marked ⚡ — lessons without a visual guide yet always open the full lesson.</span>
-  </div>
-
-  <div class="tl-cat" data-level="beginner">
-    <h2>Theory in the Real World · Start Here</h2>
-    <div class="tl-cat-sub">Ways in that aren't the curriculum map: a short guide to the lab, the episodes behind the theory, or a goal with a path to it.</div>
-    <div class="tl-grid">
-      <a class="tl-card" href="start.html" data-slug="start">
-        <div class="tl-card-toprow"><div class="tl-card-num">Start here</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
-        <h3>New Here? How the Lab Works</h3>
-        <p>How a lesson is laid out, the two reading modes, and where to begin depending on whether your maths is rusty, you're new to markets, or you already trade.</p>
-      </a>
-      <a class="tl-card" href="stories.html" data-slug="stories">
-        <div class="tl-card-toprow"><div class="tl-card-num">Stories</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
-        <h3>Stories: the Episodes Behind the Theory</h3>
-        <p>Thirty-eight real episodes, from Black Monday and Barings to the yen carry unwind, each with its causal chain and links to every lesson that tells it from its own angle.</p>
-      </a>
-      <a class="tl-card" href="watch.html" data-slug="watch">
-        <div class="tl-card-toprow"><div class="tl-card-num">Watch it</div><span class="tl-pill green tl-diff-pill">Beginner</span><span class="tl-card-wb-badge" title="Animated whiteboards">▶</span></div>
-        <h3>▶ Watch It: Every Animated Whiteboard</h3>
-        <p>All the hand-drawn animations in one place: carry unwinds, gamma squeezes, the yield curve, Kelly sizing and more, each drawn step by step. Tap one to jump straight to it. A ▶ on any lesson card below means that lesson has one.</p>
-      </a>
-      <a class="tl-card" href="paths.html" data-slug="paths">
-        <div class="tl-card-toprow"><div class="tl-card-num">Learning paths</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
-        <h3>Learning Paths, Each With a Finish Line</h3>
-        <p>Volatility &amp; Options, Macro &amp; FX, System Building, Risk &amp; Portfolio, plus Maths from Scratch, Stochastic Calculus &amp; Pricing, and Quant Methods &amp; Machine Learning. One shared core, then a route through the lessons that matter for your goal, ending in a capstone you build.</p>
-      </a>
-      <a class="tl-card" href="practice.html" data-slug="practice">
-        <div class="tl-card-toprow"><div class="tl-card-num">Practice</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
-        <h3>Ten Minutes a Day: the Mixed Drill</h3>
-        <p>One real, dated market situation a day, drawn from any lesson. Commit to a call and say how sure you are. Over time it charts whether your 80% calls come true 80% of the time, and which lessons you have mastered.</p>
-      </a>
-      <a class="tl-card" href="errors.html" data-slug="errors">
-        <div class="tl-card-toprow"><div class="tl-card-num">Spot the error</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
-        <h3>Spot the Error</h3>
-        <p>Real mistakes this lab once printed: a dropped term, a swapped sign, a chart drawn backwards. Find each one before you read the fix. Checking other people's numbers is a trading skill.</p>
-      </a>
-      <a class="tl-card" href="checklist.html" data-slug="checklist">
-        <div class="tl-card-toprow"><div class="tl-card-num">Before a trade</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
-        <h3>The Pre-Trade Checklist</h3>
-        <p>The questions the lessons say to answer before a position goes on, each with its reason and the lesson behind it. Save it, copy it, print it, or hand it straight to the journal.</p>
-      </a>
-      <a class="tl-card" href="journal.html" data-slug="journal">
-        <div class="tl-card-toprow"><div class="tl-card-num">After a trade</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
-        <h3>Trade Journal, Tagged by Lesson</h3>
-        <p>Log trades in R against the lessons they relied on. See which ideas actually pay, and separate good decisions from lucky ones. CSV export and a backup file.</p>
-      </a>
-    </div>
   </div>
 
   <!-- REAL-WORLD:START — the story layer: theory told through real episodes, real causal
@@ -1542,8 +1471,59 @@
   }
 })();
 </script>
-<script src="assets/review.js" defer></script>
-<!-- DESK:START --><script src="assets/today.js" defer></script><!-- DESK:END -->
+<script>
+(function(){
+  // Section navigation. Built from the headings on the page, so a section the server stripped for this
+  // reader (desk-only, institutional) never appears here, and a new section appears without an edit.
+  var nav = document.getElementById('tl-secnav'); if (!nav) return;
+  var cats = Array.prototype.slice.call(document.querySelectorAll('.tl-cat'));
+  function title(c){ var h = c.querySelector('h2'); return h ? h.textContent.replace(/\s+/g, ' ').trim() : ''; }
+  function slug(t){ return t.toLowerCase().replace(/&amp;/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+  cats.forEach(function(c){ if (!c.id) c.id = 'sec-' + slug(title(c)); });
+  var GROUPS = [
+    { key: 'real', label: 'Real-world lessons', test: /^Theory in the Real World/, strip: /^Theory in the Real World · /, optgroup: 'Real-world lessons' },
+    { key: 'action', label: 'Analysis to action', test: /^From Analysis to Action/, optgroup: 'Analysis to action' },
+    { key: 'found', label: 'Foundation maths', test: /^Foundation Mathematics/, optgroup: 'Foundation maths' },
+    { key: 'curr', label: 'Curriculum', test: /^\d+(\.\d+)? · /, optgroup: 'Curriculum' }
+  ];
+  function groupOf(c){ var t = title(c); for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i].test.test(t)) return GROUPS[i]; return null; }
+  var chips = [];
+  function build(){
+    var vis = cats.filter(function(c){ return !c.classList.contains('tl-cat-hidden') && groupOf(c); });
+    nav.innerHTML = ''; chips = [];
+    var row = document.createElement('div'); row.className = 'tl-secnav-in'; nav.appendChild(row);
+    var sel = document.createElement('select'); sel.setAttribute('aria-label', 'Jump to a section');
+    sel.innerHTML = '<option value="">All sections ▾</option>';
+    GROUPS.forEach(function(g){
+      var mine = vis.filter(function(c){ return groupOf(c) === g; });
+      if (!mine.length) return;
+      var a = document.createElement('a'); a.href = '#' + mine[0].id; a.textContent = g.label; a._g = g; a._first = mine[0];
+      row.appendChild(a); chips.push(a);
+      var og = document.createElement('optgroup'); og.label = g.optgroup;
+      mine.forEach(function(c){
+        var o = document.createElement('option'); o.value = c.id;
+        o.textContent = g.strip ? title(c).replace(g.strip, '') : title(c); og.appendChild(o);
+      });
+      sel.appendChild(og);
+    });
+    sel.addEventListener('change', function(){ if (sel.value) { location.hash = sel.value; sel.value = ''; sel.blur(); } });
+    row.insertBefore(sel, row.firstChild); spy();
+  }
+  var ticking = false;
+  function spy(){
+    ticking = false;
+    var cur = null;
+    cats.forEach(function(c){ if (groupOf(c) && !c.classList.contains('tl-cat-hidden') && c.getBoundingClientRect().top <= 110) cur = c; });
+    var g = cur ? groupOf(cur) : null;
+    chips.forEach(function(a){ a.classList.toggle('on', a._g === g); });
+    var row = nav.firstChild, on = nav.querySelector('a.on');
+    if (row && on && row.scrollWidth > row.clientWidth) row.scrollLeft = Math.max(0, on.offsetLeft - 20);
+  }
+  window.addEventListener('scroll', function(){ if (!ticking) { ticking = true; requestAnimationFrame(spy); } }, { passive: true });
+  Array.prototype.forEach.call(document.querySelectorAll('.tl-diff-btn'), function(b){ b.addEventListener('click', function(){ setTimeout(build, 0); }); });
+  build();
+})();
+</script>
 <script src="assets/vark.js?v=2" defer></script>
 </body>
 </html>

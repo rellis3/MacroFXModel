@@ -4,7 +4,7 @@ Nothing is generated except whiteboards. Every step below is a hand edit.
 
 1. **Both files exist and cross-link**: `lessons/<slug>.html` ↔ `lessons/<slug>-micro.html`.
 
-2. **`theory-lab/hub.html`**: add a card to the right `.tl-cat`. A new category needs a `data-level`. An institutional
+2. **`theory-lab/hub.html`** (the all-lessons list; the start page `index.html` holds no lesson cards): add a card to the right `.tl-cat`. A new category needs a `data-level`. An institutional
    category also needs the `<!-- INSTITUTIONAL:START/END -->` markers and `data-institutional="1"`. An `action-`
    category is wrapped in DESK markers.
    ```html
