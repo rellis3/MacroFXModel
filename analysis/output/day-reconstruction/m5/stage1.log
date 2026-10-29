@@ -1,0 +1,65 @@
+GOLD 38827
+NQ 38787
+EURUSD 37880
+{
+ "EURUSD|Fixed OH/OL|p1": {
+  "touches": 2551,
+  "mde_real_pp": 6.8,
+  "mde_delta_pp_upper": 9.6
+ },
+ "EURUSD|Fixed OH/OL|p2": {
+  "touches": 2551,
+  "mde_real_pp": 6.8,
+  "mde_delta_pp_upper": 9.6
+ },
+ "EURUSD|Projected H/L|p1": {
+  "touches": 1388,
+  "mde_real_pp": 9.2,
+  "mde_delta_pp_upper": 13.3
+ },
+ "EURUSD|Projected H/L|p2": {
+  "touches": 1388,
+  "mde_real_pp": 9.2,
+  "mde_delta_pp_upper": 13.3
+ },
+ "GOLD|Fixed OH/OL|p1": {
+  "touches": 2683,
+  "mde_real_pp": 6.6,
+  "mde_delta_pp_upper": 9.3
+ },
+ "GOLD|Fixed OH/OL|p2": {
+  "touches": 2683,
+  "mde_real_pp": 6.6,
+  "mde_delta_pp_upper": 9.4
+ },
+ "GOLD|Projected H/L|p1": {
+  "touches": 1498,
+  "mde_real_pp": 8.8,
+  "mde_delta_pp_upper": 12.8
+ },
+ "GOLD|Projected H/L|p2": {
+  "touches": 1498,
+  "mde_real_pp": 8.8,
+  "mde_delta_pp_upper": 12.7
+ },
+ "NQ|Fixed OH/OL|p1": {
+  "touches": 2655,
+  "mde_real_pp": 6.6,
+  "mde_delta_pp_upper": 9.4
+ },
+ "NQ|Fixed OH/OL|p2": {
+  "touches": 2655,
+  "mde_real_pp": 6.6,
+  "mde_delta_pp_upper": 9.4
+ },
+ "NQ|Projected H/L|p1": {
+  "touches": 1529,
+  "mde_real_pp": 8.7,
+  "mde_delta_pp_upper": 12.5
+ },
+ "NQ|Projected H/L|p2": {
+  "touches": 1529,
+  "mde_real_pp": 8.8,
+  "mde_delta_pp_upper": 12.6
+ }
+}

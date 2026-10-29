@@ -1,0 +1,107 @@
+{
+ "exclusions_real": {
+  "EURUSD|insample_prod_params|Fixed OH/OL|": 1889,
+  "EURUSD|insample_prod_params|Fixed OH/OL|first_minute": 1,
+  "EURUSD|insample_prod_params|Fixed OH/OL|float32_tie": 1,
+  "EURUSD|insample_prod_params|Fixed OH/OL|next_rung_same_minute": 12,
+  "EURUSD|insample_prod_params|Projected H/L|": 1009,
+  "EURUSD|insample_prod_params|Projected H/L|next_rung_same_minute": 3,
+  "EURUSD|oos_pit|Fixed OH/OL|": 2551,
+  "EURUSD|oos_pit|Fixed OH/OL|next_rung_same_minute": 26,
+  "EURUSD|oos_pit|Projected H/L|": 1388,
+  "EURUSD|oos_pit|Projected H/L|next_rung_same_minute": 11,
+  "GOLD|insample_prod_params|Fixed OH/OL|": 1869,
+  "GOLD|insample_prod_params|Fixed OH/OL|ambiguous_order": 4,
+  "GOLD|insample_prod_params|Fixed OH/OL|next_rung_same_minute": 19,
+  "GOLD|insample_prod_params|Projected H/L|": 1023,
+  "GOLD|insample_prod_params|Projected H/L|ambiguous_order": 5,
+  "GOLD|insample_prod_params|Projected H/L|next_rung_same_minute": 11,
+  "GOLD|oos_pit|Fixed OH/OL|": 2683,
+  "GOLD|oos_pit|Fixed OH/OL|next_rung_same_minute": 13,
+  "GOLD|oos_pit|Projected H/L|": 1498,
+  "GOLD|oos_pit|Projected H/L|next_rung_same_minute": 6,
+  "NQ|insample_prod_params|Fixed OH/OL|": 1879,
+  "NQ|insample_prod_params|Fixed OH/OL|next_rung_same_minute": 3,
+  "NQ|insample_prod_params|Projected H/L|": 1042,
+  "NQ|oos_pit|Fixed OH/OL|": 2655,
+  "NQ|oos_pit|Fixed OH/OL|next_rung_same_minute": 13,
+  "NQ|oos_pit|Projected H/L|": 1529,
+  "NQ|oos_pit|Projected H/L|next_rung_same_minute": 5
+ },
+ "p1_p2_spearman_real_oos": {
+  "EURUSD|Fixed OH/OL": 0.595,
+  "EURUSD|Projected H/L": 0.837,
+  "GOLD|Fixed OH/OL": 0.584,
+  "GOLD|Projected H/L": 0.826,
+  "NQ|Fixed OH/OL": 0.489,
+  "NQ|Projected H/L": 0.776
+ },
+ "power": {
+  "EURUSD|Fixed OH/OL|p1": {
+   "touches": 2551,
+   "mde_real_pp": 6.8,
+   "mde_delta_pp_upper": 9.6
+  },
+  "EURUSD|Fixed OH/OL|p2": {
+   "touches": 2551,
+   "mde_real_pp": 6.8,
+   "mde_delta_pp_upper": 9.6
+  },
+  "EURUSD|Projected H/L|p1": {
+   "touches": 1388,
+   "mde_real_pp": 9.2,
+   "mde_delta_pp_upper": 13.3
+  },
+  "EURUSD|Projected H/L|p2": {
+   "touches": 1388,
+   "mde_real_pp": 9.2,
+   "mde_delta_pp_upper": 13.3
+  },
+  "GOLD|Fixed OH/OL|p1": {
+   "touches": 2683,
+   "mde_real_pp": 6.6,
+   "mde_delta_pp_upper": 9.3
+  },
+  "GOLD|Fixed OH/OL|p2": {
+   "touches": 2683,
+   "mde_real_pp": 6.6,
+   "mde_delta_pp_upper": 9.4
+  },
+  "GOLD|Projected H/L|p1": {
+   "touches": 1498,
+   "mde_real_pp": 8.8,
+   "mde_delta_pp_upper": 12.8
+  },
+  "GOLD|Projected H/L|p2": {
+   "touches": 1498,
+   "mde_real_pp": 8.8,
+   "mde_delta_pp_upper": 12.7
+  },
+  "NQ|Fixed OH/OL|p1": {
+   "touches": 2655,
+   "mde_real_pp": 6.6,
+   "mde_delta_pp_upper": 9.4
+  },
+  "NQ|Fixed OH/OL|p2": {
+   "touches": 2655,
+   "mde_real_pp": 6.6,
+   "mde_delta_pp_upper": 9.4
+  },
+  "NQ|Projected H/L|p1": {
+   "touches": 1529,
+   "mde_real_pp": 8.7,
+   "mde_delta_pp_upper": 12.5
+  },
+  "NQ|Projected H/L|p2": {
+   "touches": 1529,
+   "mde_real_pp": 8.8,
+   "mde_delta_pp_upper": 12.6
+  }
+ },
+ "W_B2": [
+  -0.166667,
+  0.666667,
+  0.666667,
+  -0.166667
+ ]
+}
