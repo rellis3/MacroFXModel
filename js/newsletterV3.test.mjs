@@ -30,5 +30,13 @@ console.log('the released daily');
 console.log('late in the day');
 { const late = releaseNewsletterV3({ date: 'Thursday 29 October 2026', isoDate: '2026-10-29', ...input, events: [], pastEvents: events, nowMs: t(18, 36), regimeWord: 'MIXED' });
   ok('releases that already landed come in as past events: still an ECB day, not a quiet one', /ECB day/.test(late.html) && !/Quiet day/.test(late.html)); }
+console.log('the opening written with the brief');
+{ const op = { headline: 'Borrowing costs slip but the Nasdaq still sags as the ECB waits', lede: 'The US 10-year yield eased 1bp to 4.99%, and junk-bond spreads tightened 12bp, so lenders are a little less nervous. The ECB decides at 13:15 UK time.' };
+  const mk = (extra) => releaseNewsletterV3({ date: 'Thursday 29 October 2026', isoDate: '2026-10-29', ...input, nowMs: t(9, 0), regimeWord: 'MIXED', ...extra });
+  const w = mk({ brief: { opening: op }, generatedAt: new Date(t(8, 12)).toISOString() });
+  ok('a brief from today supplies the headline, the lede and the subject, and says when it was written', /Borrowing costs slip/.test(w.html) && /junk-bond spreads tightened 12bp/.test(w.html) && /^Borrowing costs slip/.test(w.subject) && /written with this morning/.test(w.html) && /08:12 UK time/.test(w.html), w.subject);
+  ok('the clock and the board stay rule-built', /On the clock/.test(w.html) && /JUNK SPREAD|Junk spread/i.test(w.html));
+  const old = mk({ brief: { opening: op }, generatedAt: new Date(t(8, 12) - 864e5).toISOString() });
+  ok('a brief from yesterday is ignored and the rule-built opening stands', !/Borrowing costs slip/.test(old.html) && !/written with this morning/.test(old.html)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 if (failures) process.exit(1);
