@@ -25,7 +25,7 @@
  */
 
 export const DOF_DEFAULTS = { minImp: 0.10, entryCut: 360, exitMin: 540, stopExt: 0.2 };
-export const DOF_ANCHORS = ['high', 'do'];
+export const DOF_ANCHORS = ['high', 'do', 'swing'];
 export const DOF_TARGETS = ['zero', 3, 2];
 
 /** First index >= start where pred(i) holds, or n. */
@@ -67,6 +67,65 @@ export function findFill(chart, mins, adr, anchor = 'high', minImp = 0.10, entry
       return { side: 1, j, A: Ab, L0: Hp, entry: Math.min(Ab, bo[j]), imp: (Hp - Ab) / adr, tExt: tH[k], tAnchor: tL[k] };
   }
   return null;
+}
+
+/**
+ * Anchor 'swing' (owner, 2026-10-29, from the presenter's live charts): the 1 is the swing
+ * the impulse LEG started from, which may sit before the open. Walking back from the
+ * impulse extreme, keep the highest high seen; stop at the first bar whose low is at
+ * least `thr` below it (the swing low before the leg). The 1 = that highest high.
+ * Mirrored for an up leg. `pre` = {o,h,l} bars before the open (oldest first, may be empty).
+ * Fill, stop, target, BE and exit are the primary rule's; only the 1 moves.
+ * Returns the fill (session indices, like findFill) or null; `pendingSwing` gives the
+ * live order when nothing has filled.
+ */
+function legOrigin(H, L, k, side, thr) {
+  // H/L = combined (pre + session) high/low arrays, k = index of the impulse extreme
+  let best = side < 0 ? H[k] : L[k], at = k;
+  for (let i = k - 1; i >= 0; i--) {
+    if (side < 0) { if (H[i] > best) { best = H[i]; at = i; } else if (L[i] <= best - thr) break; }
+    else { if (L[i] < best) { best = L[i]; at = i; } else if (H[i] >= best + thr) break; }
+  }
+  return { A: best, at };
+}
+function swingState(pre, chart, k, adr, minImp) {
+  // State as of session bar k. Two candidate legs: down (the 1 = the swing high the move into the session low started
+  // from) and up (mirrored from the session high). Either 1 may sit before the open. When both are armed, a leg whose
+  // extreme lies inside the other leg is that leg's retrace, not an impulse (price coming back up toward a pre-open 1
+  // makes new session highs, but it is still the retrace); otherwise the more recent extreme wins, as in findFill.
+  const p = pre.h.length, Hc = pre.h.concat(chart.h), Lc = pre.l.concat(chart.l);
+  const { H, L, tH, tL } = running(chart.h.slice(0, k + 1), chart.l.slice(0, k + 1));
+  const thr = minImp * adr;
+  const dn = legOrigin(Hc, Lc, p + tL[k], -1, thr), up = legOrigin(Hc, Lc, p + tH[k], 1, thr);
+  const sOk = dn.A - L[k] >= thr, bOk = H[k] - up.A >= thr;
+  let down;
+  if (sOk && bOk) down = H[k] < dn.A ? true : L[k] > up.A ? false : tL[k] > tH[k];
+  else if (sOk || bOk) down = sOk;
+  else down = tL[k] > tH[k];
+  const o = down ? dn : up, ext = down ? L[k] : H[k];
+  return { down, A: o.A, at: o.at - p, ext, tExt: down ? tL[k] : tH[k], imp: Math.abs(o.A - ext) / adr, ok: down ? sOk : bOk };
+}
+export function findFillSwing(pre, chart, mins, adr, minImp = 0.10, entryCut = 360, buy = null) {
+  const { o, h, l } = chart, bl = buy?.l ?? l, bo = buy?.o ?? o, n = h.length;
+  if (n < 3) return null;
+  const P = pre ?? { o: [], h: [], l: [] };
+  for (let k = 0; k < n - 1; k++) {
+    const j = k + 1;
+    if (mins[j] > entryCut) break;
+    const s = swingState(P, chart, k, adr, minImp);
+    if (!s.ok) continue;
+    if (s.down && h[j] >= s.A) return { side: -1, j, A: s.A, L0: s.ext, entry: Math.max(s.A, o[j]), imp: s.imp, tExt: s.tExt, tAnchor: s.at };
+    if (!s.down && bl[j] <= s.A) return { side: 1, j, A: s.A, L0: s.ext, entry: Math.min(s.A, bo[j]), imp: s.imp, tExt: s.tExt, tAnchor: s.at };
+  }
+  return null;
+}
+export function pendingSwing(pre, chart, mins, adr, minImp = 0.10, entryCut = 360) {
+  const n = chart.h.length;
+  if (!n) return { phase: 'waiting', imp: 0 };
+  const k = n - 1;
+  if (mins[k] + 1 > entryCut) return { phase: 'no_setup' };
+  const s = swingState(pre ?? { o: [], h: [], l: [] }, chart, k, adr, minImp);
+  return { phase: s.ok ? 'armed' : 'waiting', side: s.down ? -1 : 1, A: s.A, L0: s.ext, imp: s.imp, need: minImp, tExt: s.tExt, tAnchor: s.at, ...levels(s.down ? -1 : 1, s.A, s.ext) };
 }
 
 /**
@@ -138,12 +197,16 @@ export function levels(side, A, L0, stopExt = 0.2) {
 export function night(S, adr, anchor = 'high', opts = {}) {
   const P = { ...DOF_DEFAULTS, ...opts };
   const chart = S.bid, buy = { o: S.ask.o, l: S.ask.l };
-  const f = findFill(chart, S.mins, adr, anchor, P.minImp, P.entryCut, buy);
+  const pre = S.pre ?? { t: [], o: [], h: [], l: [] };
+  // a session index; negative = a bar before the open (the swing anchor's 1 can sit there)
+  const tAt = i => i == null ? null : i >= 0 ? S.t[i] : pre.t[pre.t.length + i] ?? null;
+  const f = anchor === 'swing' ? findFillSwing(pre, chart, S.mins, adr, P.minImp, P.entryCut, buy)
+    : findFill(chart, S.mins, adr, anchor, P.minImp, P.entryCut, buy);
   const base = { anchor, adr, do: S.bid.o[0], openT: S.t[0] };
   if (!f) {
-    const p = pending(chart, S.mins, adr, anchor, P.minImp, P.entryCut);
+    const p = anchor === 'swing' ? pendingSwing(pre, chart, S.mins, adr, P.minImp, P.entryCut) : pending(chart, S.mins, adr, anchor, P.minImp, P.entryCut);
     const phase = P.final || p.phase === 'no_setup' ? 'no_setup' : p.phase;
-    return { ...base, ...p, phase, tExt: p.tExt != null ? S.t[p.tExt] : null, tAnchor: p.tAnchor != null ? S.t[p.tAnchor] : null };
+    return { ...base, ...p, phase, tExt: tAt(p.tExt), tAnchor: tAt(p.tAnchor) };
   }
   const ex = f.side < 0 ? S.ask : S.bid;
   const fillSpread = S.ask.o[f.j] - S.bid.o[f.j];
@@ -152,7 +215,7 @@ export function night(S, adr, anchor = 'high', opts = {}) {
   const lv = levels(f.side, f.A, f.L0, P.stopExt);
   const out = {
     ...base, ...lv, side: f.side, A: f.A, L0: f.L0, imp: f.imp,
-    tExt: S.t[f.tExt], tAnchor: S.t[f.tAnchor],
+    tExt: tAt(f.tExt), tAnchor: tAt(f.tAnchor),
     fill: { t: S.t[f.j], px: f.entry, spread: fillSpread, spreadR: fillSpread / lv.risk },
     phase: main.open ? 'filled' : 'closed',
   };
@@ -218,6 +281,13 @@ export function sessionFromCandles(candles, anchorMs, maxMin = 1440) {
     for (const [side, src] of [['bid', x.b], ['ask', x.a]]) { S[side].o.push(+src.o); S[side].h.push(+src.h); S[side].l.push(+src.l); S[side].c.push(+src.c); }
   }
   return S;
+}
+
+/** Bid bars in the `hours` before the open (for the swing anchor and the chart), oldest first. */
+export function preFromCandles(candles, anchorMs, hours = 6) {
+  const c = candles.filter(x => x.complete !== false && x.bid).map(x => ({ t: Date.parse(x.time), b: x.bid }))
+    .filter(x => x.t < anchorMs && x.t >= anchorMs - hours * 3600e3).sort((a, b) => a.t - b.t);
+  return { t: c.map(x => x.t), o: c.map(x => +x.b.o), h: c.map(x => +x.b.h), l: c.map(x => +x.b.l), c: c.map(x => +x.b.c) };
 }
 
 /** Summary of closed trades for one list of night records. */
