@@ -582,7 +582,7 @@ export function buildNewsletter(n) {
     const sepText = topT.length > 1 ? `${topT.length} of the ${th.length} stories fit every check they can be tested on, so the count cannot choose between them. What would separate them is what only one of them needs: ${uniq.map(u => u.replace(/^([^:]+): (.*)$/, (m0, nm, cs) => `${nm.charAt(0).toLowerCase() + nm.slice(1)} (${cs})`)).join('; ')}. ` : '';
     // the released V3 daily: the email subject and preview are today's headline and first sentences, not the 20-day story
     if (n.v3 && n.release && !weekly && v2Today?.headline) { subject = clip(v2Today.headline, 78); preheader = clip(v2Today.lede || preheader, 140); }
-    const v3t = n.v3 && !weekly ? todayTables({ changes: n.changes, creditSpreads: n.creditSpreads, fedPath: n.fedPath, strengths: n.strengths, cb: n.cb, surprise: n.surprise, assets: n.assets ?? n.ranges, asia: n.asia, events: n.events, nowMs: n.nowMs ?? Date.now(), isoDate: n.isoDate }, esc) : null;
+    const v3t = n.v3 && !weekly ? todayTables({ intl: n.intl, changes: n.changes, creditSpreads: n.creditSpreads, fedPath: n.fedPath, strengths: n.strengths, cb: n.cb, surprise: n.surprise, assets: n.assets ?? n.ranges, asia: n.asia, events: n.events, nowMs: n.nowMs ?? Date.now(), isoDate: n.isoDate }, esc) : null;
     v2Body = composeMagazine({
       v3: !!v3t, v3t,
       meta: { edition: weekly ? 'Weekly' : 'Daily', tag: n.v3 ? (n.release ? '' : 'V3 draft') : 'V2 draft', date: n.date, regime: String(regimeWord).charAt(0) + String(regimeWord).slice(1).toLowerCase() },

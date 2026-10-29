@@ -31,11 +31,22 @@ function asiaPhrase(s) {
   return `${word}${Number.isFinite(s.netPct) && Math.abs(s.netPct) >= 0.05 ? `, ${sg(s.netPct, 1, '%')}` : ''}`;
 }
 
+const YIELD_KEY = { EUR: 'de10y', GBP: 'gb10y', JPY: 'jp10y' };
+
+/** A country's 10-year yield as { last, d1 (bp), date }: from the international feed's last two prints, or the US from the macro changes. Null when there is no daily feed. */
+function yieldOf(ccy, intl, us) {
+  if (ccy === 'USD') return us && Number.isFinite(us.last) ? { last: us.last, d1: Number.isFinite(us.d1) ? us.d1 : null, date: us.lastDate ?? null } : null;
+  const s = intl?.[YIELD_KEY[ccy]];
+  if (!Array.isArray(s) || s.length < 2) return null;
+  const a = s.at(-1), b = s.at(-2);
+  return Number.isFinite(a?.value) && Number.isFinite(b?.value) ? { last: a.value, d1: (a.value - b.value) * 100, date: a.date } : null;
+}
+
 /**
  * The three today tables, as html strings: { globalHtml, countryHtml, pairsHtml }.
  * Inputs: changes, volatility, creditSpreads, fedPath, strengths, cb, surprise, assets (key, label, price, d1, used, implied), asia, events, nowMs, isoDate.
  */
-export function todayTables({ changes, creditSpreads, fedPath, strengths, cb, surprise, assets, asia, events, nowMs, isoDate }, esc) {
+export function todayTables({ intl, changes, creditSpreads, fedPath, strengths, cb, surprise, assets, asia, events, nowMs, isoDate }, esc) {
   const now = Number.isFinite(nowMs) ? nowMs : Date.now(), ch = k => (changes ?? []).find(c => c.key === k && Number.isFinite(c.last));
   const asOf = c => (c?.lastDate && isoDate && c.lastDate < isoDate ? ` <small>as of ${esc(c.lastDate.slice(5))}</small>` : '');
   const row = (name, val, move, mean) => `<tr><td class="n">${esc(name)}</td><td class="v">${val}</td><td class="m">${move}</td><td class="w">${esc(mean)}</td></tr>`;
@@ -53,11 +64,19 @@ export function todayTables({ changes, creditSpreads, fedPath, strengths, cb, su
   const globalHtml = g.length ? `<table class="t3"><tr><th>Market</th><th>Now</th><th>Today</th><th>What it measures</th></tr>${g.join('')}</table><p class="small3">Today means since yesterday's close. Rates and credit print with a delay, so a row dated earlier says so.</p>` : '';
 
   const cbBy = Object.fromEntries((cb ?? []).map(b => [b.ccy, b])), srBy = Object.fromEntries((surprise ?? []).map(s => [s.ccy, s]));
+  const us = yieldOf('USD', intl, ch('us10y')), mmdd = d => (d ? d.slice(5) : ''), stale = y => !!(y?.date && isoDate && y.date < isoDate);
   const rows = [...(strengths ?? [])].sort((a, b) => b.score - a.score).map((s, i) => {
     const b = cbBy[s.ccy], sp = srBy[s.ccy], nx = (events ?? []).filter(e => (e.impact === 'high') && e.ms > now && ukDay(e.ms) === ukDay(now) && e.ccy === s.ccy).sort((a, c) => a.ms - c.ms)[0];
-    return `<tr><td class="n">${i + 1}. ${esc(s.ccy)}</td><td class="v">${sg(s.score, 2)}</td><td class="m">${b ? esc(`${BANK[s.ccy] ?? b.bank} ${String(b.regime ?? '').toLowerCase()}${b.trend ? `, ${b.trend}` : ''}`) : '·'}</td><td class="m">${sp && !sp.stale ? esc(`${sp.score >= 0 ? 'beating' : 'missing'} forecasts (${sg(sp.score, 2)})`) : '·'}</td><td class="w">${nx ? esc(`${String(nx.event).slice(0, 30)} ${hhmm(nx.ms)}`) : ''}</td></tr>`;
+    const y = yieldOf(s.ccy, intl, us), same = y && us && y.date && y.date === us.date && Number.isFinite(y.d1) && Number.isFinite(us.d1);
+    const yCell = y ? `${y.last.toFixed(2)}% <small>${Number.isFinite(y.d1) ? sg(y.d1, 0, 'bp') : ''}${stale(y) ? ` as of ${esc(mmdd(y.date))}` : ''}</small>` : '<small>no daily feed</small>';
+    // the gap to the US: today's level, and how it moved when both yields are from the same day
+    const gap = s.ccy === 'USD' || !y || !us || !y.date || y.date !== us.date ? '' : `${sg((y.last - us.last) * 100, 0, 'bp')}${same ? ` <small>${(y.d1 - us.d1) === 0 ? 'unchanged' : `${y.d1 - us.d1 > 0 ? 'wider' : 'narrower'} by ${Math.abs(Math.round(y.d1 - us.d1))}bp`}</small>` : ''}`;
+    const bank = b ? `${BANK[s.ccy] ?? b.bank} ${String(b.regime ?? '').toLowerCase()}${b.trend ? `, ${b.trend}` : ''}` : '';
+    const data = sp && !sp.stale ? `${sp.score >= 0 ? 'beating' : 'missing'} forecasts (${sg(sp.score, 2)})` : '';
+    return `<tr><td class="n">${i + 1}. ${esc(s.ccy)}</td><td class="v">${sg(s.score, 2)}</td><td class="v">${yCell}</td><td class="m">${gap || '·'}</td><td class="m">${esc(bank) || '·'}${data ? `<br><small>${esc(data)}</small>` : ''}</td><td class="w">${nx ? esc(`${String(nx.event).slice(0, 30)} ${hhmm(nx.ms)}`) : ''}</td></tr>`;
   });
-  const countryHtml = rows.length ? `<table class="t3"><tr><th>Currency</th><th>Score</th><th>Central bank</th><th>Data surprises</th><th>Due today</th></tr>${rows.join('')}</table><p class="small3">The score is the desk's currency scorecard: growth, inflation, rates, trade and confidence against the other seven. It moves slowly and the feed holds no saved yesterday, so this is the state of play, not the day's change.</p>` : '';
+  const noFeed = (strengths ?? []).map(s => s.ccy).filter(c => c !== 'USD' && !YIELD_KEY[c]);
+  const countryHtml = rows.length ? `<table class="t3"><tr><th>Currency</th><th>Score</th><th>10-year yield, today</th><th>Gap to the US</th><th>Central bank, data</th><th>Due today</th></tr>${rows.join('')}</table><p class="small3">The score is the desk's currency scorecard: growth, inflation, rates, trade and confidence against the other seven. It moves slowly and the feed holds no saved yesterday, so it is the state of play, not the day's change. The gap is the country's 10-year yield minus the US one, and it is shown only when both yields are from the same day.${noFeed.length ? ` There is no daily yield feed for ${noFeed.join(', ')}.` : ''}</p>` : '';
 
   const pr = (assets ?? []).filter(r => r?.key && Number.isFinite(r.d1)).map(r => {
     const used = Number.isFinite(r.used) ? r.used : (Number.isFinite(r.hlMed) && r.hlMed > 0 ? Math.abs(r.d1) / r.hlMed : null), w = waitingOn(r.key, events, now), a = asiaPhrase(asia?.[r.key]);
