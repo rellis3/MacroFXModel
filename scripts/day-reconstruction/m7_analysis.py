@@ -81,7 +81,8 @@ def load(name):
     d = days.set_index("date")
     f["open"] = f.date.map(d.open)
     f["scale"] = f.date.map(d.scale)
-    path = pd.read_parquet(ARC_DATA / f"{name}_path.parquet", columns=["date", "t", "open", "high", "low", "close"])
+    f["s"] = f.family.map({"OH": 1, "ProjH": 1, "OL": -1, "ProjL": -1}).astype(int)   # stage 1's side convention (not stored)
+    path =pd.read_parquet(ARC_DATA / f"{name}_path.parquet", columns=["date", "t", "open", "high", "low", "close"])
     path["date"] = path.date.astype(str)
     pbd = {}
     for dt, g in path.groupby("date"):
