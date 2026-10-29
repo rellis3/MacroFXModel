@@ -4,29 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-10-28.
+Generated 2026-10-29.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **221** |
-| validated | 46 |
-| null | 130 |
-| underpowered | 45 |
-| claims tested (validated + null + underpowered) | **228** |
+| claims tested (validated + null + underpowered) | **230** |
 | validated | 47 |
-| null | 133 |
+| null | 135 |
 | underpowered | 48 |
 | context (base rates, descriptions: not counted as tests) | 40 |
 | pre-registrations with no banked verdict (below) | 84 |
 
-**What the count says (Lesson 02 §05).** If none of the 221 claims were real, tests at the usual 5% size would still pass
-about **11.1** of them by luck. 46 passed, so most passes are unlikely to be luck alone, but
-**roughly 11 of the 46 could be**. Which ones cannot be told from the backtest.
-**What the count says (Lesson 02 §05).** If none of the 228 claims were real, tests at the usual 5% size would still pass
-about **11.4** of them by luck. 47 passed, so most passes are unlikely to be luck alone, but
-**roughly 11 of the 47 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 230 claims were real, tests at the usual 5% size would still pass
+about **11.5** of them by luck. 47 passed, so most passes are unlikely to be luck alone, but
+**roughly 12 of the 47 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -294,15 +287,16 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-27 | forecast-miss-scan | volatility | context | forge/FORECAST_MISS_SCAN_PREREG.md |
 | 2026-10-27 | forecast-miss-shock-fx | volatility | validated | forge/FORECAST_MISS_SCAN_PREREG.md |
 | 2026-10-27 | forecast-miss-shock-idx | volatility | validated | forge/FORECAST_MISS_SCAN_PREREG.md |
-| 2026-10-28 | daily-open-fib-retest | misc | null | forge/DAILY_OPEN_FIB_RETEST_PREREG.md |
 | 2026-10-27 | rule-a-portfolio-budget | price | underpowered | forge/RULE_A_PORTFOLIO_PREREG.md |
 | 2026-10-27 | rule-a-portfolio-second-book | price | validated | forge/RULE_A_PORTFOLIO_PREREG.md |
+| 2026-10-28 | daily-open-fib-retest | misc | null | forge/DAILY_OPEN_FIB_RETEST_PREREG.md |
 | 2026-10-28 | fiscal-reaction-uk-direction | events | underpowered | forge/FISCAL_EVENT_REACTION_PREREG.md |
 | 2026-10-28 | fiscal-reaction-uk-size | events | underpowered | forge/FISCAL_EVENT_REACTION_PREREG.md |
 | 2026-10-28 | fiscal-reaction-us-direction | events | null | forge/FISCAL_EVENT_REACTION_PREREG.md |
 | 2026-10-28 | fiscal-reaction-us-size | events | null | forge/FISCAL_EVENT_REACTION_PREREG.md |
 | 2026-10-28 | line-touch-limit-unseen | execution | null | forge/LINE_TOUCH_LIMIT_UNSEEN_PREREG.md |
 | 2026-10-28 | rule-a-pre2020 | price | null | forge/RULE_A_PRE2020_PREREG.md |
+| 2026-10-29 | nq-continuation-execution | execution | null | forge/NQ_CONTINUATION_EXECUTION_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 

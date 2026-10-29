@@ -750,8 +750,8 @@ export const DESK_EVIDENCE = [
     id: 'overnight-hold-gold', domain: 'price', verdict: 'underpowered', date: '2026-10-25', doc: 'forge/OVERNIGHT_HOLD_PREREG.md', also: ['analysis/output/overnight-hold/RESULTS.md'], instruments: ['GOLD'],
     claim: 'Same C.OG task on XAUUSD (his control leg): long 20:00 UK -> 14:30 UK net of costs',
     result: 'UNDERPOWERED. 1,962 trades 2016-10 to 2026-08, real spread avg 0.023%, financing Fed funds + 1.44pp with triple Wednesday (avg 0.016%): mean net +0.022% per trade [-0.009, +0.054], t 1.4; +4.0% a year, DD -20%, Sharpe 0.41; halves +0.002 / +0.042. Breakeven 1.5x real costs; +0.9% a year with engine slippage. Gross: nearly all of the gold move happens in this window (+212% overnight vs +13% for all daytime and weekend time combined). CFD buy & hold +9.5% a year, DD -27%, Sharpe 0.64. Prop pass 3% of starts at 1x, 16% at 3x. Note 2026-10-25 (cost-verification): the financing model is 3-4x too high for gold on one of the owner two real accounts (measured ~1.1% a year) and about right on the other (Fed funds + 2.15pp, no triple Wednesday); re-costed, the net is +4.7% to +6.3% a year. Verdict unchanged.',
-    use: 'The gold gains have come overnight (descriptive, gross), but the hold nets only ~4% a year after real costs, unconfirmed and below buy & hold. Not a strategy; do not cite as validated.',
-  },
+    use: 'The gold gains have come overnight (descriptive, gross), but the hold nets only ~4% a year after real costs, unconfirmed and below buy & hold. Not a strategy; do not cite as validated.',
+  },
   {
     id: 'overnight-hold-toolkit', domain: 'price', verdict: 'context', date: '2026-10-25', doc: 'forge/OVERNIGHT_HOLD_TOOLKIT_PREREG.md', also: ['analysis/output/overnight-hold-toolkit/RESULTS.md'], instruments: ['NQ', 'GOLD'],
     claim: 'C.OG stage 7: the overnight-hold trades through a prop toolkit (replica of his Prop Firm Toolkit method, FTMO 2-step rules, intraday equity, block bootstrap), gross then net, against a zero-edge copy of the same trades',
@@ -1198,6 +1198,13 @@ export const DESK_EVIDENCE = [
     claim: 'On instruments the first placebo test never loaded, the four range-edge lines (Asia and Monday low/high) see the race next-line-in vs next-line-out revert more often than the same ladder shifted to the wrong price',
     result: '15 instruments, 2,745 sessions 2016-2026, 98k edge touches vs 8 placebo ladders: pooled +2.92 pp [+2.68, +3.19], MDE 0.37 vs a 1.0 pp bar, halves +2.70 / +3.12; each line passes under Holm (A_0 +3.61, A_1 +3.22, M_0 +1.76, M_1 +2.17); placebo control +0.01 pp, clean; 15/15 instruments and every year positive. Extension lines +0.26 pp.',
     use: 'The range edges are a real location; the rest of the ladder is not. The effect is relative: Asia-edge races revert ~51.7% vs ~48.3% at a shifted ladder, a coin flip before costs, so it is context (the usual push-through is cancelled at the edges), not a fade signal (see range-edge-limit-fade).',
+  },
+  {
+    id: 'nq-continuation-execution', domain: 'execution', verdict: 'null', date: '2026-10-29', doc: 'forge/NQ_CONTINUATION_EXECUTION_PREREG.md',
+    also: ['analysis/output/day-reconstruction/m4/REPORT.md', 'analysis/output/day-reconstruction/m3/REPORT.md'],
+    claim: 'NQ continuation at the forecast fixed OH/OL levels (stop entry at first touch of p50/p75/p90, long at OH, short at OL, 1:1 at 0.25 sigma, flat at 22:00 London) has positive net expectancy on real NAS100 bid/ask, beyond phantom-level and random-entry controls (exploratory: the rule was chosen on these data in day-reconstruction milestone 3)',
+    result: 'Point-in-time era 2020-08 to 2026-08: 2,681 trades (8.6/week), net -0.050R [-0.091, -0.011], gross on mid +0.018R [-0.021, +0.057], win 47.6%, PF 0.90, max DD 145R, positive in 1 of 7 years; phantom levels -0.052R (real minus phantom +0.002 [-0.035, +0.037]); time-matched random continuation entries -0.046R; -0.021R even at zero slippage. Earlier era net -0.159R. The pre-registered +-2h random control was conditioned on the future (+0.20R) and replaced (amendment A1).',
+    use: 'Do not trade continuation (or any entry) at the forecast levels on NQ: the levels add nothing beyond NQ general behaviour and that behaviour loses after spread and one point of slippage. Together with day-reconstruction milestone 3 (levels behave like phantom lines on GOLD, NQ, EURUSD): the forecast is a how-far ruler, not an entry signal.',
   },
   {
     id: 'line-touch-limit-unseen', domain: 'execution', verdict: 'null', date: '2026-10-28', doc: 'forge/LINE_TOUCH_LIMIT_UNSEEN_PREREG.md',
@@ -1856,6 +1863,7 @@ const POWER = {
   'rule-a-late-entry':       { n: '823 trades, 11 instruments, 2020-08 to 2026-08 (4-week block bootstrap)', note: 'MDE about 0.16R; interval [-0.26, +0.06] excludes it -- a real null' },
   'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
   'range-ladder-placebo-confirm': { n: '2,745 session dates (21-session block bootstrap), 15 instruments', note: 'pooled MDE 0.37 pp vs a 1.0 pp bar; per-line MDE 0.69-0.89 pp' },
+  'nq-continuation-execution': { n: '1,551 session days (point-in-time era, 1,344 with a trade; day-cluster bootstrap), 2,681 trades', note: 'net CI half-width 0.04R (MDE ~0.06R); real minus phantom and minus random both within +-0.04R' },
   'line-touch-limit-unseen': { n: '2,499 session dates (21-session block bootstrap), 17 unseen pairs, 1,045 signals (886 limit fills)', note: 'MDE 0.116R (M) / 0.097R (L) / 0.127R (J); all CI upper bounds below the +0.05R null line' },
   'range-edge-limit-fade':   { n: '2,456 session dates (21-session block bootstrap), 34 instruments, 24,006 trades', note: 'MDE 0.023R (T1) / 0.029R (T2) vs the +0.05R null line; both CIs below zero' },
   'short-vx-rule':           { n: '52 trades 2013-26 vs 2,000 random-entry sets', note: 'MDE ~0.28R flag minus random (A1); observed +0.10R, p 0.096' },

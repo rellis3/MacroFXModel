@@ -98,8 +98,24 @@ Whatever the outcome, these data cannot validate the rule: they were used to cho
 
 ## Amendments
 
-(none)
+### A1 — 2026-10-29 — POST-RESULTS: the pre-registered random-entry control (C2) is invalid; replaced
+
+Found after the first run. C2 drew entry minutes within ±120 minutes of each real fill on the same day. Minutes
+**before** the fill are conditioned on the future: price is known to reach the level later. So "continue the day's
+move" entered there profits from that known move. It returned +0.20R net (point-in-time era), against −0.05R for the
+rule. That's lookahead in the control, not an effect.
+
+Replacement (C2'): for each real trade, K = 5 entries at the **same London clock time on randomly chosen other days**
+of the same era. Direction is continuation of that day's move so far; market entry at the bar close; that day's own
+0.25σ; identical exits and costs. It uses no information after the entry bar. The decision rule is applied to C2'.
+The invalid C2 value is reported in `results.json` for the record. Neither the rule nor any other control was
+changed.
 
 ## RESULTS
 
-(pending)
+Run 2026-10-29 → `analysis/output/day-reconstruction/m4/REPORT.md`, `results.json`. **Decision: outcome 3 (insufficient
+evidence to justify further work).** Point-in-time era, base costs: 2,681 trades (8.6/week), net −0.050R
+[−0.091, −0.011], gross (mid) +0.018R [−0.021, +0.057]. Win rate 47.6%, profit factor 0.90, max drawdown 145R.
+Phantom levels −0.052R (real − phantom +0.002 [−0.035, +0.037]); time-matched random entries −0.046R (real − random
+−0.004 [−0.044, +0.036]). Negative at zero slippage (−0.021R) and in 6 of 7 years. Earlier era net −0.159R (gross
++0.053R [+0.005, +0.099]). Exploratory: these data chose the rule.
