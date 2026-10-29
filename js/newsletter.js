@@ -35,6 +35,7 @@ import { buildTheories, buildInsight, plainText, uncoveredBreaks, nodeMoves } fr
 import { dataChecks, laggingSeries, dollarBasket } from './dataChecks.js';
 import { evidenceFor, checkClaims, scrubText, dataHeadline } from './headlineCheck.js';
 import { betaFor, betaTop } from './betaShift.js';
+import { todayOpening, weekStory } from './newsletterToday.js';
 import { currencyNarrative, pairNarrative } from './newsletterNarrative.js';
 import { storyIntro, yieldGuide, chainGuide, relationNote, stressRead, auditGuide, positioningGuide, sectorNote, commodityNote, fearNote, currencyNote } from './newsletterExplain.js';
 import { MAG_CSS, composeMagazine, yieldDecompChart, relationChart, evidenceMatrix, accountabilityPage, evBadge, barFigure, tileRow, flatTable, guide, currencyCard, marketNarrative } from './newsletterMag.js';
@@ -62,6 +63,24 @@ export function eventNote(e, book, instrumentKeys = []) {
   }
   const eff = family ? Object.entries(RANGE_EFFECT[family] ?? {}).filter(([k]) => !pairs.length || pairs.includes(k)).slice(0, 2).map(([k, v]) => `${k.replace(/^(.{3})(.{3})$/, '$1/$2')} range ${v}`).join('; ') : '';
   return { family, book: bookText, range: eff || null, pairs: pairs.slice(0, 6), measured: !!(bookText || eff) };
+}
+
+/** The few numbers that frame the day, each only when it is there and fresh: VIX, the US 10-year, the junk spread, the dollar, gold and the Nasdaq. */
+function openBoard(n, weekly = false) {
+  if (weekly) {   // the week's own numbers: five-session changes, never the day's
+    const g = k => (n.changes ?? []).find(c => c.key === k && !c.stale && Number.isFinite(c.last) && Number.isFinite(c.d5)), sg5 = (v, d, u) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(d)}${u}`, y = g('us10y'), hy = g('hy'), vx = g('vix'), dx = g('dxy'), cv = g('us2s10s');
+    const five = ' over 5 sessions', dxPct = dx ? 100 * dx.d5 / (dx.last - dx.d5) : null;
+    return [y && { label: 'US 10-year', value: `${y.last.toFixed(2)}%`, move: sg5(y.d5, 0, 'bp') + five }, cv && { label: '2s10s curve', value: `${Math.round(cv.last)}bp`, move: sg5(cv.d5, 0, 'bp') + five }, hy && { label: 'Junk spread', value: `${Math.round(hy.last < 20 ? hy.last * 100 : hy.last)}bp`, move: sg5(hy.d5, 0, 'bp') + five }, vx && { label: 'VIX', value: vx.last.toFixed(1), move: sg5(vx.d5, 1, ' pts') + five }, dx && { label: 'Dollar index', value: dx.last.toFixed(1), move: sg5(dxPct, 1, '%') + five }].filter(Boolean);
+  }
+  const sgn = (v, d = 2, u = '') => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(d)}${u}`, out = [], A = n.assets ?? n.ranges ?? [];
+  const vix = (n.volatility ?? []).find(v => /^VIX 1-month/i.test(v.label ?? '')), t10 = (n.changes ?? []).find(c => c.key === 'us10y' && !c.stale && Number.isFinite(c.last));
+  const hy = (n.creditSpreads ?? []).find(c => /high-yield/i.test(c.label ?? '')), bk = dollarBasket(A);
+  if (vix && Number.isFinite(vix.v)) out.push({ label: 'VIX', value: vix.v.toFixed(1), move: Number.isFinite(vix.d1) ? `${sgn(vix.d1, 1)} on the day` : '' });
+  if (t10) out.push({ label: 'US 10-year', value: `${t10.last.toFixed(2)}%`, move: Number.isFinite(t10.d1) ? `${sgn(t10.d1, 0)}bp on the day` : '' });
+  if (hy && Number.isFinite(hy.bp)) out.push({ label: 'Junk spread', value: `${Math.round(hy.bp)}bp`, move: Number.isFinite(hy.d1) ? `${sgn(hy.d1, 0)}bp on the day` : '' });
+  if (bk.n >= 4) out.push({ label: 'Dollar, 7 majors', value: sgn(bk.avg, 2, '%'), move: 'on the day' });
+  for (const [k, lab] of [['GOLD', 'Gold'], ['NQ', 'Nasdaq']]) { const r = A.find(x => x.key === k); if (r && Number.isFinite(r.d1)) out.push({ label: lab, value: sgn(r.d1, 2, '%'), move: r.price ? `at ${r.price}` : 'on the day' }); }
+  return out;
 }
 
 /* ── helpers ── */
@@ -510,11 +529,12 @@ export function buildNewsletter(n) {
 
 
   // ══ V2: the magazine edition (js/newsletterMag.js). The same research, composed as a feature, a signature chain spread, competing explanations, an accountability page and a Data Desk. ══
-  let v2Body = '';
+  let v2Body = '', v2Month = '';
   if (v2) {
     const basket = dollarBasket(n.assets ?? n.ranges ?? []), dxyOv = basket.n >= 4 ? { dxy: { delta: basket.avg, moved: Math.abs(basket.avg) >= CHAIN_NODES.dxy.floor, dir: basket.avg > 0 ? 'up' : basket.avg < 0 ? 'down' : null, text: `${basket.avg > 0 ? '+' : basket.avg < 0 ? '−' : ''}${Math.abs(basket.avg).toFixed(1)}%`, label: 'Dollar (seven daily majors)' } } : {};
     const th = buildTheories(n.links ?? [], dxyOv), ins = buildInsight(n.links ?? [], idea?.storyId ?? null), S = n.nodeSeries ?? {}, Hh = { esc, COLORS, CHAIN_NODES };
     const sents = t => String(t ?? '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s+(?=[A-Z“"'‘(])/).map(s => s.trim()).filter(Boolean);
+    const v2Today = todayOpening({ events: n.events, nowMs: n.nowMs ?? Date.now(), since, regimeWord, riskFlags: n.riskFlags, assets: weekly ? [] : n.assets ?? n.ranges, weekly, fedPath: n.fedPath, cb: n.cb, board: openBoard(n, weekly), changes: n.changes, asia: n.asia });
     const evd = evidenceFor({ links: n.links, ys: n.yieldStack, assets: n.assets ?? n.ranges }), claimNotes = [];
     const scrub = t => { const r = scrubText(t, evd); for (const x of r.removed) claimNotes.push(x); return r.text; };
     const openText = scrub(letter.opening || opening || ''), openS = sents(openText), pullRaw = openS.length >= 2 ? openS[openS.length - 1] : '', pull = (pullRaw.split(/,\s+and\s+/)[0] || pullRaw).replace(/[.,;:\s]+$/, '');
@@ -523,7 +543,8 @@ export function buildNewsletter(n) {
     // a headline or standfirst with any claim the figures do not verify is replaced by one built from the verified figures
     const hClaims = [...checkClaims(subjectLine0, evd), ...checkClaims(longHead0, evd)], headlineOk = hClaims.every(c => c.status === 'verified'), dh = headlineOk ? null : dataHeadline({ ys: n.yieldStack, links: n.links, assets: n.assets ?? n.ranges });
     if (!headlineOk) for (const c of hClaims.filter(x => x.status !== 'verified')) claimNotes.push({ sentence: c.sentence, what: c.what, evidence: c.evidence, headline: true });
-    const subjectLine = dh?.headline ?? subjectLine0, longHead = dh ? dh.standfirst : longHead0;
+    const wk5 = weekly ? weekStory(n.changes) : null, subjectLine = wk5?.headline ?? dh?.headline ?? subjectLine0, longHead = wk5 ? wk5.standfirst : dh ? dh.standfirst : longHead0;
+    v2Month = subjectLine;
     const feature = { headline: subjectLine, standfirst: longHead && longHead !== subjectLine ? clipS(longHead, 280) : '', opening: [openText].filter(Boolean), pull: clipS(pull, 210), continued: drv.slice(0, 1), evidence: drv.slice(1) };
     const ys2 = n.yieldStack, pad = d => { const t = Date.parse(d + 'T00:00:00Z'); return Number.isFinite(t) ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : d; };
     const partsSum = ys2 && Number.isFinite(ys2.dReal) && Number.isFinite(ys2.dBei) ? ys2.dReal + ys2.dBei : null;
@@ -561,7 +582,7 @@ export function buildNewsletter(n) {
     v2Body = composeMagazine({
       meta: { edition: weekly ? 'Weekly' : 'Daily', tag: 'V2 draft', date: n.date, regime: String(regimeWord).charAt(0) + String(regimeWord).slice(1).toLowerCase() },
       ticker: (n.assets ?? n.ranges ?? []).filter(r => r.price != null && Number.isFinite(r.d1)).slice(0, 14).map(r => ({ label: r.label, price: String(r.price), chg: r.d1 })),
-      feature, glance: { broken: String(_bk), testable: String(_tl.length), stress: n.riskFlags ? `${n.riskFlags.active}/${n.riskFlags.total}` : 'n/a', next: _evTop ? `${_evTop.event}, ${ukTime(_evTop.ms)}` : '' }, alarms,
+      today: v2Today, feature, glance: { broken: String(_bk), testable: String(_tl.length), stress: n.riskFlags ? `${n.riskFlags.active}/${n.riskFlags.total}` : 'n/a', next: _evTop ? `${_evTop.event}, ${ukTime(_evTop.ms)}` : '' }, alarms,
       yieldFig: yieldDecompChart(n.yieldSeries ?? S, Hh), yieldCaption, textbook, lessonBox, qod: qodHtml, intro, yieldGuide: yieldGuide(ys2, n.links), stress, theoriesData: th, notFit,
       chainFig: chainSvg(n.links, { marks: brokenL.map(l => l.id), noKey: true }), checks, chainMethod, chainGuide: chainGuide(n.links, lagging.map(x => x.key)), chainLead: `${_bk} of ${_tl.length} testable links did not hold over the last 20 days. Read every arrow as cause to effect, left to right. The numbered orange arrows are the broken ones; everything green behaved the way the textbook says.`, relationFigs, relationLead: 'Each chart shows two markets over the same 20 days, each scaled by its own usual wobble so a yield and a share index can share one axis. If the textbook link held, the lines would travel together, or apart for an inverse link. Where they do not, something other than the usual transmission is at work. That is an observation, and it only becomes evidence for a story once other checks agree.', relationFoot: '',
       theories: th.length ? thProse : '', matrix: th.length ? evidenceMatrix(th, Hh) : '', theoryLead: 'The same moves can be read several ways. These are four stories the desk tests against its own data, set side by side so the evidence for each can be compared. Counting agreeing checks is a way to compare how well each fits. It is not a probability, and none of them can be proved from prices.',
@@ -612,7 +633,8 @@ export function buildNewsletter(n) {
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}${v2 ? MAG_CSS : ''}</style></head><body><div class="wrap${v2 ? ' mgw' : ''}">${v2 ? v2Body : `${mast}${glance}${sinceHtml}${letterSec}${tiles}${rpHtml}${driving}${posHtml}${ideaHtml}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${qodHtml}${lesson}${noEdge}${refsHtml}${foot}`}</div></body></html>`;
 
   const T = [];
-  T.push(`DESK ATLAS · ${weekly ? 'WEEKLY' : 'DAILY'} · ${n.date}`, '', headline, '');
+  const tOpen = v2 ? todayOpening({ events: n.events, nowMs: n.nowMs ?? Date.now(), since, regimeWord, riskFlags: n.riskFlags, assets: weekly ? [] : n.assets ?? n.ranges, weekly, fedPath: n.fedPath, cb: n.cb, board: openBoard(n, weekly), changes: n.changes, asia: n.asia }) : null;
+  T.push(`THE CHAIN · ${weekly ? 'WEEKLY' : 'DAILY'} · ${n.date}`, '', ...(tOpen ? [tOpen.kicker.toUpperCase(), tOpen.headline, '', `REGIME  ${tOpen.regime}`, `CHANGED ${tOpen.changed}`, `WATCH   ${tOpen.watch}`, '', `${tOpen.story.toUpperCase()}: ${v2Month || headline}`, ''] : [headline, '']));
   if (since && !since.first && (since.items ?? []).length) { T.push(`CHANGED SINCE ${since.from ?? 'LAST ISSUE'}`, ...since.items.slice(0, 8).map(i => '- ' + i.text), ''); }
   if (opening) T.push(opening, '');
   if (n.position) { T.push('YESTERDAY AND BEFORE', ...(n.position.behind ?? []), '', 'TODAY', ...(n.position.right ?? []), '', 'COMING UP', ...(n.position.ahead ?? []), ''); }

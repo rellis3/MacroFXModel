@@ -11,13 +11,16 @@ ROOT = Path(__file__).resolve().parents[2]
 AO = ROOT / 'analysis' / 'output'
 DEEP, BONDS, S1M = AO / 'stir_1m_deep', AO / 'stir_1m_bonds', AO / 'stir_1m'
 OFFS = list(range(-30, 241))                       # minutes from the release
-KEYS = ['sofr', 'eur', 'spr', 'zt', 'zn', 'dx', 'nq', 'eurusd', 'gbpusd', 'usdjpy', 'gold', 'es', 'vix', 'vxn']
-ASSETS = ['sofr', 'eur', 'zt', 'zn', 'dx', 'nq', 'eurusd', 'gbpusd', 'usdjpy', 'gold', 'es', 'vix', 'vxn']      # the ones measured directly (the line is built from sofr and eur)
+KEYS = ['sofr', 'eur', 'spr', 'zt', 'zn', 'dx', 'nq', 'eurusd', 'gbpusd', 'usdjpy', 'gold', 'es', 'vix', 'vxn', 'gilt', 'bund', 'ftse', 'dax', 'nikkei']
+ASSETS = ['sofr', 'eur', 'zt', 'zn', 'dx', 'nq', 'eurusd', 'gbpusd', 'usdjpy', 'gold', 'es', 'vix', 'vxn', 'gilt', 'bund', 'ftse', 'dax', 'nikkei']      # the ones measured directly (the line is built from sofr and eur)
 LABEL = {'sofr': 'SOFR Sep26 leg (bp)', 'eur': 'Euribor Mar27 leg (bp)', 'spr': 'SOFR - Euribor line (bp)', 'zt': 'US 2y note future (%)', 'zn': 'US 10y note future (%)', 'dx': 'Dollar index future (%)', 'nq': 'Nasdaq (%)',
-         'eurusd': 'EUR/USD (%)', 'gbpusd': 'GBP/USD (%)', 'usdjpy': 'USD/JPY (%)', 'gold': 'Gold (%)', 'es': 'S&P 500 (%)', 'vix': 'VIX (points)', 'vxn': 'VXN (points)'}
-UNIT = {'sofr': 'bp', 'eur': 'bp', 'spr': 'bp', 'zt': '%', 'zn': '%', 'dx': '%', 'nq': '%', 'eurusd': '%', 'gbpusd': '%', 'usdjpy': '%', 'gold': '%', 'es': '%', 'vix': 'pt', 'vxn': 'pt'}
+         'eurusd': 'EUR/USD (%)', 'gbpusd': 'GBP/USD (%)', 'usdjpy': 'USD/JPY (%)', 'gold': 'Gold (%)', 'es': 'S&P 500 (%)', 'vix': 'VIX (points)', 'vxn': 'VXN (points)',
+         'gilt': 'UK 10y gilt (%)', 'bund': 'German 10y Bund (%)', 'ftse': 'FTSE 100 (%)', 'dax': 'DAX (%)', 'nikkei': 'Nikkei 225 (%)'}
+UNIT = {'sofr': 'bp', 'eur': 'bp', 'spr': 'bp', 'zt': '%', 'zn': '%', 'dx': '%', 'nq': '%', 'eurusd': '%', 'gbpusd': '%', 'usdjpy': '%', 'gold': '%', 'es': '%', 'vix': 'pt', 'vxn': 'pt', 'gilt': '%', 'bund': '%', 'ftse': '%', 'dax': '%', 'nikkei': '%'}
 # rates direction: +1 means "a rise in the number is a rise in rates / hawkish". Bond futures are PRICES, so price down = yields up.
-RATES_SIGN = {'sofr': 1, 'eur': 1, 'spr': 1, 'zt': -1, 'zn': -1}
+RATES_SIGN = {'sofr': 1, 'eur': 1, 'spr': 1, 'zt': -1, 'zn': -1, 'gilt': -1, 'bund': -1}
+# the market whose largest 1-minute move is used for the clock check, by family (the SOFR leg for the US releases)
+JUMP_ON = {'ECB': 'eur', 'BOE': 'gilt', 'BOJ': 'usdjpy', 'UKFISCAL': 'gilt', 'REFUNDING': 'zn'}
 
 
 def _rd(p, cols=('time', 'close')):
@@ -73,7 +76,22 @@ def load_sources():
         'vix': Src('vix', _chain([DEEP / 'CBOE_VIX.parquet']), ident),
         'vxn': Src('vxn', _chain([DEEP / 'CBOE_VXN.parquet']), ident),
     })
+    from oanda_lib import INSTRUMENTS as OI, load as oload                            # European and Japanese markets for the ECB / BoE / BoJ and fiscal events (oanda_lib.py)
+    oa = lambda k: [('oanda', x)] if len(x := oload(OI[k])) else []
+    S.update({
+        'gilt': Src('gilt', oa('gilt'), logp), 'bund': Src('bund', oa('bund'), logp), 'nikkei': Src('nikkei', oa('nikkei'), logp),
+        'ftse': Src('ftse', [('oanda_cfd', _rd_ba('uk100'))] + oa('ftse'), logp), 'dax': Src('dax', [('oanda_cfd', _rd_ba('dax'))] + oa('dax'), logp),
+    })
     return S
+
+
+def usdjpy_series(S):
+    """one USD/JPY 1-minute series for timing the BoJ: the OANDA archive, then the (inverted) yen future after it ends"""
+    parts = [s for _, s in S['usdjpy'].cands]
+    if not parts: return None
+    out = parts[0]
+    for x in parts[1:]: out = pd.concat([out, x[x.index > out.index.max()]])
+    return out
 
 
 def at_many(s, ts, tol=pd.Timedelta(minutes=10)):
@@ -192,15 +210,16 @@ def build_event(S, ev, event_days):
         sig['spr'] = cond_sigma_spread(S, t, 30, event_days)
     else: P['spr'] = None
     for k in KEYS: M[k] = metrics(P.get(k), sig.get(k))
-    jo = None
-    for name, s in S['sofr'].cands:
+    jo = None; jk = JUMP_ON.get(ev.get('family'), 'sofr')
+    for name, s in S[jk].cands:
         if covers(s, t): jo = jump_offset(s, t); break
     ag = agreement(M)
     r = {k: v for k, v in ev.items() if k != 't'}
-    r.update(t=t.strftime('%Y-%m-%dT%H:%M:%SZ'), M=M, agree=ag, jump=jo)
+    r.update(t=t.strftime('%Y-%m-%dT%H:%M:%SZ'), M=M, agree=ag, jump=jo, jumpOn=jk)
     a_, c_ = ev.get('actual'), ev.get('consensus')
     r['surprise'] = None if a_ is None or c_ is None else round(a_ - c_, 4)                                    # raw actual - consensus, in the release's own unit (Layer 2 models it)
     if S.get('_daily') is not None:                                                                          # the days view (daily_lib): trading-day path k=-6..+5 around the release date
         from daily_lib import daily_path, DKEYS
-        day = t.tz_convert('America/New_York').tz_localize(None).normalize(); r['D'] = {k: daily_path(S['_daily'], k, day, ev.get('family')) for k in DKEYS}
+        et = t.tz_convert('America/New_York').tz_localize(None); day = et.normalize() + pd.Timedelta(days=1 if et.hour >= 17 else 0)      # a release after the 17:00 NY close (the BoJ) belongs to the next close
+        r['D'] = {k: daily_path(S['_daily'], k, day, ev.get('family')) for k in DKEYS}
     return r, {k: ({kk: vv for kk, vv in P[k].items()} if P.get(k) else None) for k in KEYS}

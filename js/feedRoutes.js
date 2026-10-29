@@ -11,6 +11,12 @@
 import { liquidity, crossAsset, commodities } from './feedCore.js';
 
 export const FEED_KV = 'feed_v1';
+// The weekly notebook on feed.html: one note per week (what moved / what it might mean / what would prove me wrong),
+// marked later as right / partly / wrong. A permanent key: these are the owner's own words, not re-derivable.
+// Written only when Save is pressed (about once a week), so it is not a churny key.
+export const FEED_NOTES_KV = 'feed_notes_v1';
+const NOTE_FIELDS = ['moved', 'meaning', 'wrong', 'outcome'];
+const VERDICTS = ['', 'right', 'partly', 'wrong'];
 const REBUILD_MS = 12 * 3600e3;
 const DAYS = 4.3 * 365;                                // 104-week window + 104 weeks of coloured history, plus slack
 
@@ -118,6 +124,26 @@ export function createFeed({ kv, fetchCandles, fetchFred = null, fredCsv, log = 
         if (!p) return res.json({ ...meta, liquidity: s.liquidity ?? null, crossAsset: s.crossAsset ?? null, commodities: s.commodities ?? null });
         if (!['liquidity', 'crossAsset', 'commodities'].includes(p)) return res.status(400).json({ ok: false, error: `unknown panel ${p}` });
         res.json({ ...meta, [p]: s[p] ?? null });
+      } catch (e) { res.status(503).json({ ok: false, error: `KV unavailable: ${e.message}` }); }
+    });
+    const loadNotes = async () => { const raw = await kv.get(FEED_NOTES_KV); return raw ? JSON.parse(raw) : {}; };
+    app.get('/api/feed/notes', async (_req, res) => {
+      try { const n = await loadNotes(); res.set('Cache-Control', 'no-store'); res.json({ ok: true, notes: n }); }
+      catch (e) { res.status(503).json({ ok: false, error: `KV unavailable: ${e.message}` }); }
+    });
+    // body: { moved, meaning, wrong, outcome, verdict } for the week ending :week (a Friday, YYYY-MM-DD). Merged, so
+    // marking last week's verdict does not wipe its text.
+    app.put('/api/feed/notes/:week', async (req, res) => {
+      const week = req.params.week, b = req.body ?? {};
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(week)) return res.status(400).json({ ok: false, error: 'week must be YYYY-MM-DD' });
+      if (b.verdict != null && !VERDICTS.includes(b.verdict)) return res.status(400).json({ ok: false, error: `verdict must be one of ${VERDICTS.join(', ')}` });
+      try {
+        const notes = await loadNotes(), cur = notes[week] ?? {};
+        for (const f of NOTE_FIELDS) if (typeof b[f] === 'string') cur[f] = b[f].slice(0, 4000);
+        if (b.verdict != null) cur.verdict = b.verdict;
+        cur.savedAt = new Date().toISOString(); notes[week] = cur;
+        await kv.put(FEED_NOTES_KV, JSON.stringify(notes));
+        res.json({ ok: true, week, note: cur });
       } catch (e) { res.status(503).json({ ok: false, error: `KV unavailable: ${e.message}` }); }
     });
     app.post('/api/feed/rebuild', (_req, res) => {

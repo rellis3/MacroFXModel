@@ -1,0 +1,50 @@
+{
+ "generated": "2026-10-29T00:37:41.094998+00:00",
+ "files": {
+  "EURUSD_days.parquet": {
+   "rows": 2697,
+   "bytes": 874418,
+   "sha256": "1b1a9f0b90c899d5c26e0211d1aea185a6da7b511c0213d2b436de27975e84eb"
+  },
+  "EURUSD_path.parquet": {
+   "rows": 3489408,
+   "bytes": 51256599,
+   "sha256": "8c203d722d979a91f3fcc82da339b53c21cf73165a784e1d33e2857f6d3b37a8"
+  },
+  "EURUSD_touches.parquet": {
+   "rows": 11282,
+   "bytes": 1684051,
+   "sha256": "f6a4ac4958fab79785cbed2caec6a34048d3d5a8ffbac7ed88218fe132c2d7fe"
+  },
+  "GOLD_days.parquet": {
+   "rows": 2684,
+   "bytes": 904980,
+   "sha256": "6f0f34312601494591a03774f702bb72a5f50bbac8476532e384cb20f53d51e1"
+  },
+  "GOLD_path.parquet": {
+   "rows": 3480363,
+   "bytes": 81494745,
+   "sha256": "e1e59bfd4b3f61d9719663feb13f61b1309e3640d191b3eef2e03b08f77214cd"
+  },
+  "GOLD_touches.parquet": {
+   "rows": 11778,
+   "bytes": 1849594,
+   "sha256": "b821d9d4f59c154e5dca1b6c685ebe3896eb7938a45dfc1819e8cb6abc1098ac"
+  },
+  "NQ_days.parquet": {
+   "rows": 2687,
+   "bytes": 906188,
+   "sha256": "dd5e9d9318a02b4fad7053c4cf04dd4de11a6575bfe97c496a132f8fc4eb2090"
+  },
+  "NQ_path.parquet": {
+   "rows": 3448115,
+   "bytes": 54914902,
+   "sha256": "c30967c2689d1b933806c2f6f62210d20abfb9a30135f0d5e4bc7482bc3003b8"
+  },
+  "NQ_touches.parquet": {
+   "rows": 11404,
+   "bytes": 1875156,
+   "sha256": "517a80d258d0e12aa30e126bc100ce60a703ec409f35d43df75fe00719a48543"
+  }
+ }
+}

@@ -58,14 +58,22 @@ if __name__ == '__main__':
     if (in_window or a.force_pull) and not a.no_pull:
         note = pull(NAMES, hours=24 if a.force_pull else 8)
         if in_window: note = f'{", ".join(e["family"] for e in in_window)} in window: ' + note
+    try:                                                                                # gilt, Bund, FTSE, DAX, Nikkei: OANDA 1-minute, topped up on every run (one request each when current)
+        from oanda_lib import INSTRUMENTS as OI, top_up
+        onote = [top_up(i, max_req=20) for i in OI.values()]; bad = [x for x in onote if '+' not in x]
+        if bad: note += ' | OANDA: ' + '; '.join(bad)
+    except Exception as e: note += f' | OANDA top-up failed ({type(e).__name__})'
     try: dnote = refresh_daily(max_age_h=4)
     except Exception as e: dnote = f'daily refresh failed ({type(e).__name__}); cache used'
-    S = load_sources(); S['_daily'] = load_daily(S); note += ' | ' + dnote; event_days = {e['t'].date() for e in EV}
+    S = load_sources(); S['_daily'] = load_daily(S); note += ' | ' + dnote
+    EV = all_events(include_ahead=True, usdjpy=usdjpy_series(S)); live = [e for e in EV if e['t'] >= HIST_END]      # again, now the BoJ minute can be read from USD/JPY
+    event_days = {e['t'].date() for e in EV}
     rows, paths = [], {}
     for e in live:
         if e['t'] > now: continue
         s0 = S['sofr'].cands[0][1]
-        if not covers(s0, e['t']): continue
+        if e['family'] not in JUMP_ON and not covers(s0, e['t']): continue
+        if e['family'] in JUMP_ON and not any(covers(s, e['t']) for k in ASSETS for _, s in S[k].cands): continue
         r, P = build_event(S, e, event_days); r['id'] = f"{r['t']}|{e['family']}"; r['status'] = e['status']
         r['inProgress'] = bool(now < e['t'] + pd.Timedelta(minutes=240)); rows.append(r); paths[r['id']] = P
     ahead = [dict(t=e['t'].strftime('%Y-%m-%dT%H:%M:%SZ'), family=e['family'], name=e['name'], consensus=e.get('consensus'), previous=e.get('previous')) for e in EV if e['t'] > now]

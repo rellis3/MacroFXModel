@@ -2137,6 +2137,7 @@ let hedgeAlerts = null;  // /api/hedge-alerts — last rolling corr + betas (dol
 let ism = null;          // /api/ism — growth-surprise proxy per currency (js/ismEngine.js: real composite for USD only; the other 7 are an OECD business-confidence proxy, explicitly NOT official PMI — see that file's header)
 let calAhead = null;     // /api/calendar-ahead — Nasdaq forward lists past ForexFactory's this-week file (week-ahead panel)
 let gpr = null;          // /api/gpr — Geopolitical Risk Index (Caldara & Iacoviello), global/currency-agnostic backdrop read; the one series here NOT on FRED (js/gprEngine.js)
+let eventDay = null;     // /api/event-day — today's release / decision / Budget against the same events before (Release Reaction) + the rate legs (js/eventDayContext.js); sizes only
 let bankCredit = null;   // /api/bank-credit — BIS cross-border bank credit regime (js/bankCredit.js); quarterly, context only (bank-credit-dollar-*)
 let drawdownShadow = null; // /api/drawdown-shadow — research shadow band after a 20-day S&P fall (drawdown-forecast-error A1); live lines untouched
 let fundingRead = null;  // /api/funding-read — daily/weekly funding & leverage read (js/fundingRead.js); context only, untested as forecasts
@@ -2675,6 +2676,7 @@ async function loadGate() {
   setInterval(() => loadNewsOutcomes().catch(() => {}), 10 * 60_000);
   jget('/api/calendar-ahead').then(r => { if (r?.ok) { calAhead = r.rows ?? []; render(); } }).catch(() => {});   // week ahead past FF's week
   jget('/api/gpr').then(r => { gpr = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { gpr = { down: true, error: e.message }; render(); });   // geopolitical risk line; a dead feed says so
+  jget('/api/event-day').then(r => { eventDay = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { eventDay = { down: true, error: e.message }; render(); });   // event-day context + rate legs
   jget('/api/bank-credit').then(r => { bankCredit = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { bankCredit = { down: true, error: e.message }; render(); });   // BIS bank-credit regime line (quarterly)
   jget('/api/funding-read?spark=0').then(r => { fundingRead = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { fundingRead = { down: true, error: e.message }; render(); });   // funding & leverage block
   jget('/api/drawdown-shadow').then(r => { drawdownShadow = r?.rule ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { drawdownShadow = { down: true, error: e.message }; render(); });   // drawdown shadow line
@@ -5412,6 +5414,20 @@ function drawdownShadowLine() {
     + `<span class="muted"> · forward record ${sc.triggerSessions ?? 0}/${sc.judgeAt ?? 40} trigger sessions${fx.live != null ? ` (FX p75 hit: live ${pct(fx.live)} vs shadow ${pct(fx.shadow)})` : ''}</span></div>`;
 }
 
+/* Event day (js/eventDayContext.js via /api/event-day): for each release / decision / Budget today, what the same kind of event did
+   the previous times in the Release Reaction record, and the evidence on it. Sizes and how often the move held; never a direction. */
+function eventDayBlock() {
+  if (!eventDay || eventDay.down || !(eventDay.events ?? []).length) return '';
+  const rows = eventDay.events.map(e => `<div style="font-size:11px;margin-top:3px"><b class="tone ${e.released ? '' : 'mix'}" style="font-size:10px">${e.released ? 'released' : 'due'}</b> <span class="muted">${esc0(e.line)}</span></div>`).join('');
+  return `<div class="riskverdict help" style="margin-top:6px" title="From the Release Reaction record: every past event of the same kind, measured minute by minute. Descriptive history; no direction rule on these events has passed.">Event day <span class="muted">(<a href="release-reaction.html" target="_blank">every market, minute by minute</a>)</span>${rows}</div>`;
+}
+/* Rate legs: which country's front end and which bond futures moved in the latest session (cog-chart futures). Same-bar context only. */
+function rateLegsLine() {
+  const f = eventDay && !eventDay.down ? eventDay.frontEnds : null;
+  if (!f?.line) return '';
+  return `<div class="riskverdict help" style="margin-top:3px;font-size:11px" title="SOFR, Euribor and €STR futures in bp of implied rate; Schatz, Bund, BTP and US note futures as price change. No lead from these legs survived testing.">${f.stale ? '<b class="tone mix" style="font-size:10px">stale</b> ' : ''}<span class="muted">${esc0(f.line)}</span> <a href="cog-chart.html" target="_blank">chart</a></div>`;
+}
+
 /* Funding & leverage (js/fundingRead.js): where each plumbing series sits in its own history.
    Untested as forecasts (funding-stress is NULL), so states are descriptions; flagged rows lead. */
 function fundingBlock() {
@@ -5630,7 +5646,9 @@ function renderMarketRead() {
         }</div>` : ''}
         ${risk.creditQ ? `<div class="riskverdict" style="margin-top:3px" title="Baa10Y−Aaa10Y investment-grade quality spread, z-scored against its own history — a different axis than the HY-level Credit line above (junk-bond spreads). Widening = investors demanding more premium for lower-quality investment-grade debt, an early credit-curve-shape tell. Context, not a backtested rule.">Credit quality (Baa−Aaa): <b class="tone ${risk.creditQ.z > 0.5 ? 'off' : risk.creditQ.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.creditQ.z > 0.5 ? 'widening' : risk.creditQ.z < -0.5 ? 'tightening' : 'steady'}</b><span class="muted"> · z ${risk.creditQ.z >= 0 ? '+' : ''}${risk.creditQ.z}</span></div>` : ''}
         ${risk.realYield ? `<div class="riskverdict" style="margin-top:3px" title="10Y TIPS yield (DFII10) — the market's own real, inflation-adjusted rate; a direct FRED read, not derived. Rising real yields are typically a headwind for risk assets/gold; falling is supportive. Breakeven inflation (10Y, T10YIE) shown alongside as inflation-expectation context. Context, not a backtested rule.">Real yield (10Y TIPS): <b class="tone ${risk.realYield.prev != null ? (risk.realYield.level > risk.realYield.prev ? 'off' : risk.realYield.level < risk.realYield.prev ? 'on' : 'mix') : 'mix'}" style="font-weight:800">${risk.realYield.prev != null ? (risk.realYield.level > risk.realYield.prev ? 'rising' : risk.realYield.level < risk.realYield.prev ? 'falling' : 'flat') : 'steady'}</b><span class="muted"> · ${fmtN(risk.realYield.level, 2)}%${risk.realYield.bei != null ? ` · breakeven ${fmtN(risk.realYield.bei, 2)}%` : ''}</span></div>` : ''}
+        ${eventDayBlock()}
         ${ratesDecompLine()}
+        ${rateLegsLine()}
         ${policyPricedLine()}
         ${seasonalityLine()}
         ${correlationRegimeLine()}

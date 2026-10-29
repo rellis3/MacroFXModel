@@ -57,4 +57,11 @@ t('the card reads as sentences', () => {
   assert.match(txt, /GOLD moved \$14\.2 up in 30 min — 1\.6× a normal half-hour, a real move/);
   assert.match(txt, /Your call: higher — ✓ right · the model said higher \(✓\)/);
 });
+t('a budget is an announcement, and a fiscal event links its read', () => {
+  const txt = formatScorecard({ country: 'GB', ms: T0, prints: [{ event: 'Annual Budget Release', estimate: null, prev: null, actual: null }], reactions: [] });
+  assert.match(txt, /Annual Budget Release: an announcement, no headline number to score/); assert.doesNotMatch(txt, /not on the feed yet/);
+  assert.match(txt, /fiscal-events\.html/);
+  const cpi = formatScorecard({ country: 'GB', ms: T0, prints: [{ event: 'CPI y/y', estimate: '3.1%', prev: '3.0%', actual: null }], reactions: [] });
+  assert.match(cpi, /not on the feed yet \(3\.1% expected\)/); assert.doesNotMatch(cpi, /fiscal-events/);
+});
 console.log(`releaseScorecard: ${n} groups, all passed`);

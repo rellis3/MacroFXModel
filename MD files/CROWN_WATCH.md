@@ -1479,3 +1479,120 @@ object in two forms.
 - **On the analogy.** 1999 is one episode. The desk can say what crowded-and-rising did
   across 68 setups since 2014 and what crowded-and-falling did across 31. It cannot say
   what one capex cycle does, and neither can the clip.
+
+
+---
+
+## 2026-10-27 — "Hang on, what just happened?" (Anthropic files, chips rip, the breadth trade takes a hit, a $30bn gamma pin, FOMC week, Brazil)
+
+> *"Chip stocks rip more than three percent... the S&P was up about three quarters of a
+> percent, sitting around 7680... this is where you see a big hit to the breadth trade
+> today, but I can assure you that move has plenty of legs left... you can thank a lot of
+> the equity strength to a gigantic thirty billion dollar gamma pin. Dealers were keeping
+> the market pinned at exactly one level. However, if we get something that shakes us off
+> this level, there is nothing below it... this bounce in hardware I expect to be
+> short-lived. Ten years holding right around five percent, a very clean level, and you'd
+> almost think this wasn't an FOMC week. Front oil is bouncing off its midday lows, but the
+> back month, specifically red diesel, just keeps climbing... Brazil just got crushed
+> following Lula's re-election. Bovespa and the real get dominated, and the euro still
+> weak. The stress is showing up well beyond the U.S... we're going to start looking at
+> cross-country relative value trades. We just put one on today... Chips can carry this
+> market for a day, but Powell reaffirming the hold on Wednesday helps the average stock,
+> not the AI hardware names."*
+
+**The first clip since Setup Watch went live, and the register already has a reading on
+the thing he is describing.** The session is 2026-10-26 (S&P 500 7,685 on the desk's CFD,
++0.6%; SOX +2.8%; the 10-year 4.99%; FOMC on Wednesday 2026-10-28 per `fomcCalendar.js`).
+
+**1. The claims, stated plainly.** Four forward claims and a lot of colour.
+- **(a) "The breadth move has plenty of legs left."** The equal-weight-over-cap-weight
+  rotation continues after today's hit. A direction call on RSP/SPY.
+- **(b) "A $30bn gamma pin... if we shake off this level there is nothing below it."** Two
+  halves: dealers long gamma at spot (a range read), and a cascade once below the zero line
+  (a follow-through claim).
+- **(c) "Hardware bounce short-lived; a Fed hold Wednesday helps the average stock, not the
+  AI names."** A direction call on semis versus the median stock across the FOMC.
+- **(d) "Back-month diesel has a structural bid."** A curve/products claim; the inflation
+  channel this desk tests through the crack spread.
+- **Not claims:** the Anthropic filing numbers (not market claims and not checkable here),
+  "the deeper you dig the sketchier it gets", Brazil "dominated", "stress well beyond the
+  US", and the cross-country RV trade behind the letter funnel.
+
+**2. What's already on this desk — including what the register says today.**
+- **(a) is `breadth-narrowing` H4 — NULL — and the register has the mirror arm LIVE.**
+  `claim-breadth-broad` fired 2026-10-22 (z +1.82), cleared, re-fired 2026-10-23 (z +2.20)
+  and reads **z +1.92, the 97th percentile of three years, as of 10-26** — an extreme
+  *broadening*, which is what his "breadth trade" has been riding. B1 tested both arms on
+  35 and 33 de-clustered extremes over 23 years: the spread neither reverts nor runs on
+  (H4 −0.37 [−1.12, +0.38] at five sessions). "Plenty of legs" is a continuation call on a
+  series the desk finds directionless from the extreme. The register will score this fire's
+  RSP/SPY change at 5 and 20 sessions with no further work — that is what it is for.
+- **(b)'s first half is the desk's own gamma read, and the shape agrees.** The OI store's
+  SPX500 book puts the zero-gamma line at **7,627 (full book) / 7,636 (day expiry)** with
+  spot 7,685: long gamma above, short below. The *measured* consequence is a **range**
+  effect: `gex-range-es` VALIDATED (long gamma quieter than a vol-matched baseline, vol-
+  matched +0.38 [+0.24, +0.52], about half of it the rising markets it coincides with);
+  `gex-range` on NQ re-run 2026-10-21 and now UNDERPOWERED. **(b)'s second half — "nothing
+  below it" — was tested and is NULL:** `gamma-regime-trades` scored the zero-gamma break
+  follow-through at −0.01 R (n=61) against placebo levels at +0.01, and `zero-gamma-
+  distance` (distance to the line vs next-day range) is UNDERPOWERED. Direction null, as
+  on every gamma study here. The $30bn figure is an index-options number this desk has no
+  view of (its book is CME futures options, ~5% of dealer gamma); not scored.
+- **(c) is three nulls and one in-flight study.** Post-FOMC direction: `fed-two-moves`
+  (context — a decision-day move is half-undone within a month about as often as any big
+  day); `post-fomc-usd-drift` VALIDATED but for the **dollar only** (+26bp over five
+  sessions, 65%); `priced-in` NULL. Semis vs the average stock after a hold is not a cell
+  anyone has run, and `rotation-extreme` (NULL, 140 extremes, extended 45%) is the nearest.
+  A sibling branch (`ccr-42a42ec1`) has banked `pre-fomc-drift` as UNDERPOWERED and
+  `cb-meeting-drift` (ECB/BoE own-currency drift) as NULL; not on main yet, noted per the
+  research register. The register's `claim-rotation-extreme` is idle (Russell leading by
+  2pp over 20 sessions, 29% of the way to the line).
+- **(d) is the crack family.** `crack-inflation-channel` (context): products holding while
+  crude falls is the bond market keeping its inflation view (+15bp [+4, +32] in breakevens
+  vs both-fall windows). The register's `claim-crack-disagreement` is **idle**: WTI +9% and
+  the crack +$11.9 over 20 sessions — both up, not the disagreement setup. The back-month
+  diesel leg is not measurable here (FRED carries spot heating oil, not the curve), so
+  "structural bid" is taken as described, not checked.
+- **The 10-year at 5.00 "holding" is a line on a chart** — the level-touch family is null
+  here (`level-touch`, `daily-band-fade`), and the FOMC window is already a described
+  desk-watch trigger (`fomc-window`) that says a decision day runs about a third wider.
+- **Brazil and the euro.** USD/BRL **+8.3% on 10-27** after the 10-25 runoff — the real
+  was dominated, as he says; EUR/USD −0.26% on 10-26. Nothing on this desk covers Brazil;
+  the cross-country findings that exist (`nonus-yield-gap-direction`, `-range`: NULL on
+  gilts, Bunds, JGBs) say a foreign-led move explains the day it happens on and not the
+  next one. "Cross-country RV" as a *method* is not a claim; which trade he put on is behind
+  the letter.
+
+**3. Trading or macro-understanding.** (a) and (c) are direction calls, both in families
+tested null. (b) is half a structural read the desk shares and half a cascade claim tested
+null. (d) is macro-understanding and the chain already carries the crack → inflation-pricing
+link. Nothing here needs a new pre-registration.
+
+**4. The configuration (step 4b — coherence, no score).** Everything he describes happened
+on 10-26: SOX +2.8% / SMH +2.7%; S&P +0.6–0.7% to ~7,680; **RSP/SPY −0.36% on the day**
+(the "hit" — from a 97th-percentile broadening, so a modest give-back); 10-year 4.99%;
+VIX 18.4; crude −2.3% with the chain's crack reading still rising; FOMC two days out. The
+one thing not checkable is the back-month diesel bid.
+
+**5. Verdict and action — and the register's first scorecard.**
+- **Nothing to run, nothing to add to the register.** Both direction calls fall into fires
+  the register already holds, and the forward record will say what followed:
+  `claim-breadth-broad` (10-23) scores RSP/SPY at 5 and 20 sessions; the FOMC falls inside
+  that window, so "a hold helps the average stock" gets read off the same number.
+- **The register's early results, for the owner's learning rather than as evidence** (two
+  fires is not a study):
+  - `claim-dispersion-rising` fired 2026-10-18 at DSPX 36.6 → next five sessions ran
+    **1.08× (SPX500) and 1.34× (NQ)** the trailing-20 median range — the WIDE arm did run
+    wide, consistent with D1's secondary window, on one fire.
+  - `claim-fear-spike` fired 2026-10-19 at VIX +5.15 → gold **−2.99% over five sessions**
+    against +0.35% ordinary — the "fear bids gold" claim did the opposite, as G1's lag
+    finding would have it, on one fire.
+  - `claim-breadth-broad`: two fires, outcomes open.
+- **Transferable, said carefully.** His gamma read and this desk's book describe the same
+  structure tonight (long gamma at spot, the zero line ~40–60 points below). Where they
+  part is what it means: here it is an expected-range fact with a validated ES result and
+  a null on the cascade; in the clip it is a floor that disappears. The owner can watch
+  this one: if 7,627 goes, the desk's own test says the follow-through was a coin.
+- **Index.** The AI-crack → metals candidate from the 10-16 entry has since been
+  pre-registered and banked NULL by another session (`ai-crack-metals`, 61 setups, 2026-10-19)
+  and is already struck above; nothing new added from this clip.

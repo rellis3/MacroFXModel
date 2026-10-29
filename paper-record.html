@@ -27,13 +27,15 @@
 <body>
   <h1>Rich-Vol Break Record <span class="muted" style="font-size:12px">paper forward test, no orders</span></h1>
   <div class="sub">
-    The one rule that passed its pre-registered tests in the Fade/Continue research: on days when <b>implied vol is rich versus realised vol</b>,
-    take the first 1-minute close at least 0.05σ <b>through</b> a Vol Forecast line between 00:00 and 10:00 London, entering at the next bar's open
-    in the break direction. Stop 0.1σ or 0.2σ behind the line, targets 5R and 10R, exit at the day's end. Each trade's R is the average of those four
-    variants, net of spread. Backtest: <b>+0.118R</b> per trade on FX/gold, <b>+0.071R</b> on indices, but most trades lose 1R and a few large winners
-    carry the result, so it needs a few hundred trades before the live number means much.
-    Rich flags are set the evening before (from 21:00 London) from the options capture's implied vol (FX, gold) or the CBOE vol index (NQ VXN, SPX VIX,
-    DOW VXD, US2000 RVX) ÷ 20-day realised vol. Branch <code>fade-continue-book</code>, <code>forge/BREAK_IVRV_PREREG.md</code>.
+    <b>What this page is:</b> rule A, run live on paper. On a <b>rich</b> day (implied vol ÷ 20-day realised vol above the cut-off in the
+    flags table), take the first 1-minute close at least 0.05σ <b>through</b> a forecast line between 00:00 and 10:00 London and enter at the
+    next bar’s open in the break direction; stop 0.2σ behind the line, target 5R, out at 22:00, net of 2× spread.
+    Read it top to bottom: <b>(1)</b> the chosen-lines card is the real test (backtest +0.162R per trade, 2020–26; the 2016–20 backcast was null,
+    so this record decides); <b>(2)</b> the older arm and the Trades table below it use the older v4 lines (10 lines, 1× spread, often two rows for one
+    move) and are kept only for comparison; <b>(3)</b> the flags tables say which markets may trade that day. Rich flags are set the evening before
+    (from 21:00 London, retried until every market has prices) from the options capture’s implied vol (FX, gold) or the CBOE vol index
+    (NQ VXN, SPX VIX, DOW VXD, US2000 RVX). Most trades lose 1R and a few 5R winners carry the result, so it needs a few hundred trades
+    before the number means much. <code>forge/RULE_A_BOOK_FORWARD_PREREG.md</code>; older arm <code>forge/BREAK_IVRV_PREREG.md</code>.
   </div>
   <button onclick="tick()">▶ Run a check now</button>
   <button class="sec" onclick="load()">↻ Reload</button>
@@ -78,7 +80,18 @@ function render() {
   const all = days.flatMap(([d, x]) => (x.trades ?? []).map(t => ({ ...t, date: d })));
   const insts = Object.fromEntries((S.rule?.instruments ?? []).map(i => [i.key, i]));
   let h = '';
-  h += `<div class="card"><div class="row">${summary(all.filter(t => !IDX.has(t.inst)), 'FX + gold', 0.118)}${summary(all.filter(t => IDX.has(t.inst)), 'Indices', 0.071)}${summary(all, 'All', null)}</div>
+  // Chosen-lines arm: rule A exactly as backtested (forge/RULE_A_BOOK_FORWARD_PREREG.md). Read at 0.2σ / 5R, 2× spread.
+  const ch = days.flatMap(([d, x]) => (x.chosen?.trades ?? []).map(t => ({ ...t, date: d })));
+  const chDone = ch.filter(t => t.done && t.variants?.['0.2σ/5R']?.R != null), chR = chDone.map(t => t.variants['0.2σ/5R'].R);
+  const chSum = chR.reduce((a, b) => a + b, 0), chDays = days.filter(([, x]) => x.chosen).length;
+  const chRows = ch.slice(0, 12).map(t => { const v = t.variants?.['0.2σ/5R'] ?? {};
+    return `<tr><td>${t.date}</td><td>${insts[t.inst]?.sym ?? t.inst}</td><td>${t.line.replace('_', ' ')}</td><td>${t.dir > 0 ? 'buy' : 'sell'}</td><td>${t.entry}</td><td>${v.stop ?? '—'}</td><td>${v.target ?? '—'}</td><td>${v.status ?? '—'}</td><td class="${cls(v.R)}">${v.R == null ? '—' : f3(v.R)}</td></tr>`; }).join('');
+  h += `<div class="card" style="border-color:color-mix(in srgb,var(--green) 45%,var(--border))"><h2>Rule A on the chosen v3 lines <span class="muted" style="font-weight:400">— the version the backtest and Lessons 1–6 test · from 2026-10-28</span></h2>
+    <div class="row"><div><div class="lbl">0.2σ stop / 5R, 2× spread</div><div class="big ${cls(chR.length ? chSum / chR.length : null)}">${chR.length ? f3(chSum / chR.length) : '—'}<span class="muted" style="font-size:12px"> R/trade</span></div>
+    <div class="muted">${chR.length} closed · total ${f3(chSum)}R · backtest +0.162 · ${chDays} days recorded</div></div></div>
+    <div class="muted" style="margin:8px 0">Lines: the chosen forecast's O→H / O→L p50 and p75 from the London-midnight open, captured once per day. The record below this card is the older v4-lines arm (10 lines, 1× spread), kept unchanged. Judged with the portfolio book at 2027-10-29 (forge/RULE_A_BOOK_FORWARD_PREREG.md).</div>
+    ${chRows ? `<table><tr><th>day</th><th>instrument</th><th>line</th><th>side</th><th>entry</th><th>stop</th><th>target</th><th>status</th><th>R</th></tr>${chRows}</table>` : '<div class="muted">No chosen-lines trades yet.</div>'}</div>`;
+  h += `<div class="card"><div class="lbl" style="margin-bottom:6px">Older arm: v4 lines</div><div class="row">${summary(all.filter(t => !IDX.has(t.inst)), 'FX + gold', 0.118)}${summary(all.filter(t => IDX.has(t.inst)), 'Indices', 0.071)}${summary(all, 'All', null)}</div>
         <div class="muted" style="margin-top:8px">Targets hit, in order: ${VARS.join(' / ')}. With 5R–10R targets most trades should lose; read the R per trade, not the hit rate.</div></div>`;
 
   // flags: the newest day that has them, plus today if different
@@ -93,7 +106,7 @@ function render() {
   }
 
   // trades by day
-  h += `<div class="card"><h2>Trades</h2>`;
+  h += `<div class="card"><h2>Trades: older arm (v4 lines)</h2><div class="muted" style="font-size:12px;margin-bottom:6px">Comparison only. The chosen-lines trades are in the first card. Two rows at the same minute are usually one move crossing two v4 lines that sat at the same price.</div>`;
   const tradeDays = days.filter(([, x]) => (x.trades ?? []).length || x.skipped);
   if (!tradeDays.length) h += `<div class="muted">No trades yet. The first flags are set at 21:00 London; signals can fire from 00:00 to 10:00 the next morning on rich instruments only.</div>`;
   else {

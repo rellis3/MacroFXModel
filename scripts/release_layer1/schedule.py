@@ -63,9 +63,13 @@ def upcoming_events():
     return out
 
 
-def all_events(include_ahead=True):
-    ev = history_events() + printed_events()
+def all_events(include_ahead=True, usdjpy=None):
+    """US releases plus the central-bank and fiscal events (cb_schedule.py); usdjpy = a 1-minute USD/JPY series for timing the BoJ"""
+    from cb_schedule import cb_events
+    now = pd.Timestamp.now(tz='UTC'); cb = cb_events(usdjpy)
+    ev = history_events() + printed_events() + [e for e in cb if e['t'] <= now]
     if include_ahead:
+        ev += [e for e in cb if e['t'] > now]
         have = {(e['t'], e['family']) for e in ev}
         ev += [e for e in upcoming_events() if (e['t'], e['family']) not in have and e['t'] > pd.Timestamp.now(tz='UTC')]
     seen = set(); res = []

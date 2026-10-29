@@ -1,0 +1,24 @@
+GOLD A path: {'days': 2684, 'bar_counts_equal': True, 'first_last_time_equal': True, 'max_rel_close_checksum_diff': 3.347513488627385e-09, 'path_rows': 3480363}
+GOLD B levels: prod era {'days': 1136, 'max_abs_rung_diff_pct': 0.0, 'sigma_equal': True}; OOS recompute {'days': 1548, 'max_abs_rung_diff_pct': 0.0}
+GOLD C touches re-found: {'touches': 11778, 'mismatches': 1, 'mismatch_rows': [{'date': '2023-11-28', 'level': 'CloseUp_p90', 'k': 981}]}
+GOLD D day summary: {'days': 2684, 'high_equal': True, 'low_equal': True, 'close_equal': True}
+GOLD E ordering violations: 0
+GOLD F calibration: {'n': 1194, 'archive': {'hl_p75': 0.2638190954773869, 'oh_p75': 0.2721943048576214, 'ol_p75': 0.24623115577889448, 'hl_p50': 0.5150753768844221}, 'milestone1': {'hl_p75': 0.263, 'oh_p75': 0.2697, 'ol_p75': 0.2471, 'hl_p50': 0.5159}, 'max_abs_diff_pp': 0.25}
+GOLD G H1 never-confirmed: {'OH_p50': 0.173, 'OH_p75': 0.204, 'OH_p90': 0.242, 'OL_p50': 0.216, 'OL_p75': 0.259, 'OL_p90': 0.293}
+GOLD H coverage: eras {'oos_pit': 1548, 'insample_prod_params': 1136}, tags {'ff': 2330, 'unknown': 354}, touches 11778, ambiguous 12
+NQ A path: {'days': 2687, 'bar_counts_equal': True, 'first_last_time_equal': True, 'max_rel_close_checksum_diff': 1.6143291037273855e-08, 'path_rows': 3448115}
+NQ B levels: prod era {'days': 1136, 'max_abs_rung_diff_pct': 0.0, 'sigma_equal': True}; OOS recompute {'days': 1551, 'max_abs_rung_diff_pct': 0.0}
+NQ C touches re-found: {'touches': 11404, 'mismatches': 1, 'mismatch_rows': [{'date': '2021-11-11', 'level': 'CloseUp_p50', 'k': 562}]}
+NQ D day summary: {'days': 2687, 'high_equal': True, 'low_equal': True, 'close_equal': True}
+NQ E ordering violations: 0
+NQ F calibration: {'n': 1196, 'archive': {'hl_p75': 0.2508361204013378, 'oh_p75': 0.2525083612040134, 'ol_p75': 0.2717391304347826, 'hl_p50': 0.5376254180602007}, 'milestone1': {'hl_p75': 0.2508, 'oh_p75': 0.2533, 'ol_p75': 0.2717, 'hl_p50': 0.5376}, 'max_abs_diff_pp': 0.08}
+NQ G H1 never-confirmed: {'OH_p50': 0.165, 'OH_p75': 0.206, 'OH_p90': 0.231, 'OL_p50': 0.221, 'OL_p75': 0.23, 'OL_p90': 0.256}
+NQ H coverage: eras {'oos_pit': 1551, 'insample_prod_params': 1136}, tags {'ff': 2332, 'unknown': 355}, touches 11404, ambiguous 0
+EURUSD A path: {'days': 2697, 'bar_counts_equal': True, 'first_last_time_equal': True, 'max_rel_close_checksum_diff': 3.4589233699477973e-09, 'path_rows': 3489408}
+EURUSD B levels: prod era {'days': 1141, 'max_abs_rung_diff_pct': 0.0, 'sigma_equal': True}; OOS recompute {'days': 1556, 'max_abs_rung_diff_pct': 0.0}
+EURUSD C touches re-found: {'touches': 11282, 'mismatches': 4, 'mismatch_rows': [{'date': '2017-06-14', 'level': 'CloseUp_p90', 'k': 824}, {'date': '2017-06-22', 'level': 'OL_p50', 'k': 1086}, {'date': '2017-06-22', 'level': 'CloseDn_p50', 'k': 1086}, {'date': '2021-03-02', 'level': 'CloseDn_p75', 'k': 547}]}
+EURUSD D day summary: {'days': 2697, 'high_equal': True, 'low_equal': True, 'close_equal': True}
+EURUSD E ordering violations: 0
+EURUSD F calibration: {'n': 1200, 'archive': {'hl_p75': 0.24916666666666668, 'oh_p75': 0.2475, 'ol_p75': 0.25416666666666665, 'hl_p50': 0.5016666666666667}, 'milestone1': {'hl_p75': 0.2492, 'oh_p75': 0.2458, 'ol_p75': 0.2575, 'hl_p50': 0.4983}, 'max_abs_diff_pp': 0.34}
+EURUSD G H1 never-confirmed: {'OH_p50': 0.195, 'OH_p75': 0.223, 'OH_p90': 0.255, 'OL_p50': 0.184, 'OL_p75': 0.242, 'OL_p90': 0.205}
+EURUSD H coverage: eras {'oos_pit': 1556, 'insample_prod_params': 1141}, tags {'ff': 2341, 'unknown': 356}, touches 11282, ambiguous 0

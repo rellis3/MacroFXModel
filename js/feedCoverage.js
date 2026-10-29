@@ -117,6 +117,10 @@ export const FEEDS = [
     source: 'BIS Locational Banking Statistics', grade: 'institutional', newsletter: 'weekly',
     how: 'n.bankCredit adds the BIS dollar-lending growth and regime to the weekly Funding sentence, marked context (wired 2026-10-27).',
     verdict: 'bank-credit-dollar-nasdaq', trap: 'Known about two quarters after the quarter ends.' },
+  { id: 'event-day', label: 'Event day: today’s release, decision, Budget or refunding against the same events before, plus the rate legs', endpoint: '/api/event-day', module: 'js/eventDayContext.js', kind: 'calendar',
+    source: 'Release Reaction record (IBKR and OANDA 1-minute), hand-kept bank and fiscal calendars, cog-chart futures legs', grade: 'own-model', newsletter: 'none',
+    how: 'Not in the newsletter (word budget; its releases table already carries the tested range history). Feeds the morning brief, the pair analysis, today.html and the Atlas Global and Pair views (wired 2026-10-28).',
+    verdict: 'fiscal-reaction-uk-size', trap: 'Descriptive history, a few dozen events per kind at most (5 UK fiscal events); upcoming events need the laptop push or the hand-kept calendars, and the BoJ time is not fixed.' },
 
   // ───────── rates ─────────
   { id: 'us-yield-stack', label: 'US 10 year yield split into real yield and breakeven', endpoint: '/api/drill-series', module: null, kind: 'rates',

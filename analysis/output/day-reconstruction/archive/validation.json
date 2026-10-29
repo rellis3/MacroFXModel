@@ -1,0 +1,344 @@
+{
+ "GOLD": {
+  "A_path_alignment": {
+   "days": 2684,
+   "bar_counts_equal": true,
+   "first_last_time_equal": true,
+   "max_rel_close_checksum_diff": 3.347513488627385e-09,
+   "path_rows": 3480363
+  },
+  "B_levels_prod_era_vs_v4days": {
+   "days": 1136,
+   "max_abs_rung_diff_pct": 0.0,
+   "sigma_equal": true
+  },
+  "B_levels_oos_vs_forge_recompute": {
+   "days": 1548,
+   "max_abs_rung_diff_pct": 0.0
+  },
+  "C_touch_refind": {
+   "touches": 11778,
+   "mismatches": 1,
+   "mismatch_rows": [
+    {
+     "date": "2023-11-28",
+     "level": "CloseUp_p90",
+     "k": 981
+    }
+   ]
+  },
+  "D_day_summary": {
+   "days": 2684,
+   "high_equal": true,
+   "low_equal": true,
+   "close_equal": true
+  },
+  "E_ordering_violations": 0,
+  "F_calibration_vs_m1": {
+   "n": 1194,
+   "archive": {
+    "hl_p75": 0.2638190954773869,
+    "oh_p75": 0.2721943048576214,
+    "ol_p75": 0.24623115577889448,
+    "hl_p50": 0.5150753768844221
+   },
+   "milestone1": {
+    "hl_p75": 0.263,
+    "oh_p75": 0.2697,
+    "ol_p75": 0.2471,
+    "hl_p50": 0.5159
+   },
+   "max_abs_diff_pp": 0.25
+  },
+  "G_h1_never_confirmed_OH_OL": {
+   "OH_p50": 0.173,
+   "OH_p75": 0.204,
+   "OH_p90": 0.242,
+   "OL_p50": 0.216,
+   "OL_p75": 0.259,
+   "OL_p90": 0.293
+  },
+  "H_coverage": {
+   "days_by_era": {
+    "oos_pit": 1548,
+    "insample_prod_params": 1136
+   },
+   "days_by_tag_status": {
+    "ff": 2330,
+    "unknown": 354
+   },
+   "touches": 11778,
+   "touches_by_kind": {
+    "static": 9235,
+    "proj": 2543
+   },
+   "touches_ambiguous_order": 12,
+   "touch_count_by_level": {
+    "CloseDn_p50": 1344,
+    "CloseDn_p75": 647,
+    "CloseDn_p90": 272,
+    "CloseUp_p50": 1415,
+    "CloseUp_p75": 683,
+    "CloseUp_p90": 286,
+    "OH_p50": 1361,
+    "OH_p75": 687,
+    "OH_p90": 273,
+    "OL_p50": 1344,
+    "OL_p75": 664,
+    "OL_p90": 259,
+    "ProjH_p50": 793,
+    "ProjH_p75": 370,
+    "ProjH_p90": 134,
+    "ProjL_p50": 743,
+    "ProjL_p75": 361,
+    "ProjL_p90": 142
+   },
+   "first_date": "2016-03-29",
+   "last_date": "2026-08-20"
+  },
+  "I_post_touch_rederived": {
+   "sample": 600,
+   "failures": {
+    "cont_max": 0,
+    "rev_max": 0,
+    "return_min": 0,
+    "revisit_min": 0,
+    "next_Open_min": 0,
+    "next_rung_min": 0
+   }
+  }
+ },
+ "NQ": {
+  "A_path_alignment": {
+   "days": 2687,
+   "bar_counts_equal": true,
+   "first_last_time_equal": true,
+   "max_rel_close_checksum_diff": 1.6143291037273855e-08,
+   "path_rows": 3448115
+  },
+  "B_levels_prod_era_vs_v4days": {
+   "days": 1136,
+   "max_abs_rung_diff_pct": 0.0,
+   "sigma_equal": true
+  },
+  "B_levels_oos_vs_forge_recompute": {
+   "days": 1551,
+   "max_abs_rung_diff_pct": 0.0
+  },
+  "C_touch_refind": {
+   "touches": 11404,
+   "mismatches": 1,
+   "mismatch_rows": [
+    {
+     "date": "2021-11-11",
+     "level": "CloseUp_p50",
+     "k": 562
+    }
+   ]
+  },
+  "D_day_summary": {
+   "days": 2687,
+   "high_equal": true,
+   "low_equal": true,
+   "close_equal": true
+  },
+  "E_ordering_violations": 0,
+  "F_calibration_vs_m1": {
+   "n": 1196,
+   "archive": {
+    "hl_p75": 0.2508361204013378,
+    "oh_p75": 0.2525083612040134,
+    "ol_p75": 0.2717391304347826,
+    "hl_p50": 0.5376254180602007
+   },
+   "milestone1": {
+    "hl_p75": 0.2508,
+    "oh_p75": 0.2533,
+    "ol_p75": 0.2717,
+    "hl_p50": 0.5376
+   },
+   "max_abs_diff_pp": 0.08
+  },
+  "G_h1_never_confirmed_OH_OL": {
+   "OH_p50": 0.165,
+   "OH_p75": 0.206,
+   "OH_p90": 0.231,
+   "OL_p50": 0.221,
+   "OL_p75": 0.23,
+   "OL_p90": 0.256
+  },
+  "H_coverage": {
+   "days_by_era": {
+    "oos_pit": 1551,
+    "insample_prod_params": 1136
+   },
+   "days_by_tag_status": {
+    "ff": 2332,
+    "unknown": 355
+   },
+   "touches": 11404,
+   "touches_by_kind": {
+    "static": 8828,
+    "proj": 2576
+   },
+   "touches_ambiguous_order": 0,
+   "touch_count_by_level": {
+    "CloseDn_p50": 1240,
+    "CloseDn_p75": 638,
+    "CloseDn_p90": 285,
+    "CloseUp_p50": 1337,
+    "CloseUp_p75": 601,
+    "CloseUp_p90": 177,
+    "OH_p50": 1327,
+    "OH_p75": 664,
+    "OH_p90": 260,
+    "OL_p50": 1359,
+    "OL_p75": 682,
+    "OL_p90": 258,
+    "ProjH_p50": 855,
+    "ProjH_p75": 313,
+    "ProjH_p90": 106,
+    "ProjL_p50": 756,
+    "ProjL_p75": 378,
+    "ProjL_p90": 168
+   },
+   "first_date": "2016-03-29",
+   "last_date": "2026-08-20"
+  },
+  "I_post_touch_rederived": {
+   "sample": 600,
+   "failures": {
+    "cont_max": 0,
+    "rev_max": 0,
+    "return_min": 0,
+    "revisit_min": 0,
+    "next_Open_min": 0,
+    "next_rung_min": 0
+   }
+  }
+ },
+ "EURUSD": {
+  "A_path_alignment": {
+   "days": 2697,
+   "bar_counts_equal": true,
+   "first_last_time_equal": true,
+   "max_rel_close_checksum_diff": 3.4589233699477973e-09,
+   "path_rows": 3489408
+  },
+  "B_levels_prod_era_vs_v4days": {
+   "days": 1141,
+   "max_abs_rung_diff_pct": 0.0,
+   "sigma_equal": true
+  },
+  "B_levels_oos_vs_forge_recompute": {
+   "days": 1556,
+   "max_abs_rung_diff_pct": 0.0
+  },
+  "C_touch_refind": {
+   "touches": 11282,
+   "mismatches": 4,
+   "mismatch_rows": [
+    {
+     "date": "2017-06-14",
+     "level": "CloseUp_p90",
+     "k": 824
+    },
+    {
+     "date": "2017-06-22",
+     "level": "OL_p50",
+     "k": 1086
+    },
+    {
+     "date": "2017-06-22",
+     "level": "CloseDn_p50",
+     "k": 1086
+    },
+    {
+     "date": "2021-03-02",
+     "level": "CloseDn_p75",
+     "k": 547
+    }
+   ]
+  },
+  "D_day_summary": {
+   "days": 2697,
+   "high_equal": true,
+   "low_equal": true,
+   "close_equal": true
+  },
+  "E_ordering_violations": 0,
+  "F_calibration_vs_m1": {
+   "n": 1200,
+   "archive": {
+    "hl_p75": 0.24916666666666668,
+    "oh_p75": 0.2475,
+    "ol_p75": 0.25416666666666665,
+    "hl_p50": 0.5016666666666667
+   },
+   "milestone1": {
+    "hl_p75": 0.2492,
+    "oh_p75": 0.2458,
+    "ol_p75": 0.2575,
+    "hl_p50": 0.4983
+   },
+   "max_abs_diff_pp": 0.34
+  },
+  "G_h1_never_confirmed_OH_OL": {
+   "OH_p50": 0.195,
+   "OH_p75": 0.223,
+   "OH_p90": 0.255,
+   "OL_p50": 0.184,
+   "OL_p75": 0.242,
+   "OL_p90": 0.205
+  },
+  "H_coverage": {
+   "days_by_era": {
+    "oos_pit": 1556,
+    "insample_prod_params": 1141
+   },
+   "days_by_tag_status": {
+    "ff": 2341,
+    "unknown": 356
+   },
+   "touches": 11282,
+   "touches_by_kind": {
+    "static": 8871,
+    "proj": 2411
+   },
+   "touches_ambiguous_order": 0,
+   "touch_count_by_level": {
+    "CloseDn_p50": 1321,
+    "CloseDn_p75": 644,
+    "CloseDn_p90": 250,
+    "CloseUp_p50": 1306,
+    "CloseUp_p75": 625,
+    "CloseUp_p90": 245,
+    "OH_p50": 1352,
+    "OH_p75": 656,
+    "OH_p90": 243,
+    "OL_p50": 1319,
+    "OL_p75": 661,
+    "OL_p90": 249,
+    "ProjH_p50": 738,
+    "ProjH_p75": 343,
+    "ProjH_p90": 135,
+    "ProjL_p50": 731,
+    "ProjL_p75": 338,
+    "ProjL_p90": 126
+   },
+   "first_date": "2016-03-28",
+   "last_date": "2026-08-20"
+  },
+  "I_post_touch_rederived": {
+   "sample": 600,
+   "failures": {
+    "cont_max": 0,
+    "rev_max": 0,
+    "return_min": 0,
+    "revisit_min": 0,
+    "next_Open_min": 0,
+    "next_rung_min": 0
+   }
+  }
+ }
+}

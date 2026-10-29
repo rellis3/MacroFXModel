@@ -1,0 +1,10 @@
+{
+ "test": "pre-touch fields identical under truncation and future-scramble",
+ "comparisons": 660,
+ "failures": 0,
+ "negative_control": {
+  "field": "cont_max (post-touch)",
+  "changed_under_scramble": 329,
+  "of": 330
+ }
+}

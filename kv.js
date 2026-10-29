@@ -459,6 +459,8 @@ function isCfKey(key) {
   if (key.startsWith('boc_')) return true;
   // snb_* — the SNB engine's point-in-time captures (added 2026-10-26), same reasoning.
   if (key.startsWith('snb_')) return true;
+  // fiscal_* — UK Budget / US refunding captures (server.js, js/fiscalEvents.js; added 2026-10-28), same reasoning.
+  if (key.startsWith('fiscal_')) return true;
   // beigebook_* — same reasoning as fomc_/ecb_/boe_/boj_ above.
   if (key.startsWith('beigebook_')) return true;
   // oi_raw_YYYY-MM-DD - the per-day raw OI capture (ladder + IV boxes). One key per
