@@ -1,5 +1,5 @@
 // Tests for the V3 daily.   node js/newsletterV3.test.mjs
-import { buildNewsletterV3 } from './newsletterV3.js';
+import { buildNewsletterV3, releaseNewsletterV3 } from './newsletterV3.js';
 import { buildNewsletterV2 } from './newsletterV2.js';
 import { todayTables } from './newsletterTables.js';
 let failures = 0;
@@ -21,5 +21,11 @@ ok('V3 is tagged and opens with the Today opening, then the today pages, then th
 ok('V3 leaves out the reading and the four-explanations exhibits (they belong to the weekly); the chain and the data checks stay as the backdrop', !/Exhibit 2 · why it might be happening|Four ways to read the same move/.test(v3.html));
 ok('V2 is unchanged by V3: no today tables, still tagged V2', !/The state of the levels today/.test(v2.html) && /V2 draft/.test(v2.html));
 ok('the weekly never takes the V3 layout', !/The state of the levels today/.test(buildNewsletterV3({ date: 'x', isoDate: '2026-10-29', edition: 'weekly', ...input }).html));
+console.log('the released daily');
+{ const rel = releaseNewsletterV3({ date: 'Thursday 29 October 2026', isoDate: '2026-10-29', ...input, regimeWord: 'MIXED' }), wk = releaseNewsletterV3({ date: 'x', isoDate: '2026-10-29', edition: 'weekly', ...input });
+  ok('the release carries no draft tag and still opens with the Today layout', !/V3 draft|V2 draft/.test(rel.html) && /The state of the levels today/.test(rel.html));
+  ok('the email subject and preview come from the Today opening, not the 20-day story', rel.subject.length > 0 && rel.subject.length <= 78 && /^(Credit|Asia|Yields|Gold|Asia stays)/.test(rel.subject) && !/20 days/.test(rel.subject) && rel.preheader.length > 20, rel.subject + ' | ' + rel.preheader);
+  ok('the page title is that subject', rel.html.includes('<title>' + esc(rel.subject) + '</title>'), rel.subject);
+  ok('a weekly built through the release function is not a V3 page', !/The state of the levels today/.test(wk.html)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 if (failures) process.exit(1);

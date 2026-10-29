@@ -11,3 +11,6 @@
 import { buildNewsletter } from './newsletter.js';
 
 export const buildNewsletterV3 = n => buildNewsletter({ ...n, layout: 'v2', v3: true });
+
+/** The released daily: V3 without the draft tag, with today's headline as the email subject. Weekly editions are not V3 and come back unchanged. */
+export const releaseNewsletterV3 = n => buildNewsletter({ ...n, layout: 'v2', v3: true, release: true });

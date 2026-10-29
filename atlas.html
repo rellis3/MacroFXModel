@@ -291,8 +291,7 @@ import { buildCountryCard } from './js/countryCard.js';
 import { buildPairWhy, NODE_FOR } from './js/pairWhy.js';
 import * as P from './js/atlasPosition.js';
 import { buildNewsletter, eventNote, flagProximity, familyOf } from './js/newsletter.js';
-import { buildNewsletterV2 } from './js/newsletterV2.js';
-import { buildNewsletterV3 } from './js/newsletterV3.js';
+import { releaseNewsletterV3 } from './js/newsletterV3.js';
 import { impliedRow, impliedKeyFor } from './js/impliedMove.js';
 import { snapshotOf, diffSnapshots, scoreLine, weekRecord, plainRead } from './js/newsletterRecord.js';
 import { closuresBetween } from './js/marketCalendars.js';
@@ -713,12 +712,10 @@ async function buildIssue(kind) {
     }
     const snap = snapshotOf(base, { date: today, kind }), prev = arch.find(i => i.kind === kind && i.date < today);
     base.since = diffSnapshots(prev?.snapshot ?? null, snap);
-    const out = buildNewsletter(base);
-    let out2 = null; try { out2 = buildNewsletterV2(base); } catch (e) { console.warn('[atlas newsletter] V2 failed:', e.message); }   // the V2 draft is for comparing only: it is never saved or sent
-    let out3 = null; if (!weekly) { try { out3 = buildNewsletterV3(base); } catch (e) { console.warn('[atlas newsletter] V3 failed:', e.message); } }   // the V3 draft (today first) is for comparing only: never saved or sent
+    // the daily is V3 (today first); the weekly keeps its layout. The previous layout is built beside it for comparing only: it is never saved or sent.
+    let out = null, out2 = null;
+    if (weekly) out = buildNewsletter(base); else { try { out = releaseNewsletterV3(base); out2 = buildNewsletter(base); } catch (e) { console.warn('[atlas newsletter] V3 failed, using the previous layout:', e.message); out = buildNewsletter(base); } }
     showNl(out, kind, out2);
-    if (out3) { const url3 = URL.createObjectURL(new Blob([out3.html], { type: 'text/html' })); $('nlOut').querySelector('.chips')?.insertAdjacentHTML('beforeend', `<button class="btn" id="nlPdf3">V3 PDF</button><a class="btn" href="${url3}" target="_blank" rel="noopener">Open V3</a>`);
-      $('nlPdf3').onclick = () => { const w = window.open(url3, '_blank'); if (!w) { $('nlStatus').textContent = 'Pop-up blocked: allow pop-ups, or use Open V3 then Ctrl+P.'; return; } w.addEventListener('load', () => setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 600)); $('nlStatus').textContent = 'In the print window choose Save as PDF and turn on Background graphics. The V3 draft is never saved or sent.'; }; }
     st.textContent = `Built: ${out.subject}. Saving…`;
     const sv = await J('/api/newsletter/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject: out.subject, html: out.html, text: out.text, snapshot: snap }) });
     st.textContent = sv?.ok ? `Built and saved: ${out.subject}` : `Built, but not saved to the archive (${sv?.error ?? 'no response'}): ${out.subject}`;
@@ -728,15 +725,15 @@ async function buildIssue(kind) {
 }
 function showNl(out, kind = 'daily', out2 = null) {
   const url = URL.createObjectURL(new Blob([out.html], { type: 'text/html' })), fname = `desk-atlas-${kind}-${new Date().toISOString().slice(0, 10)}.html`;
-  $('nlOut').innerHTML = `<div class="chips" style="margin:12px 0 8px"><button class="btn" id="nlPdf">Save as PDF</button><a class="btn" href="${url}" download="${fname}">Download .html</a><button class="btn" id="nlCopy">Copy plain text</button><a class="btn" href="${url}" target="_blank" rel="noopener">Open full page</a>${out2 ? '<button class="btn" id="nlCmp">Compare with V2</button><button class="btn" id="nlPdf2">Save V2 as PDF</button><a class="btn" id="nlDl2" download="' + fname.replace('desk-atlas-', 'desk-atlas-v2-') + '">Download V2 .html</a>' : ''}</div><p class="note" style="margin-bottom:8px"><b>Subject:</b> ${esc(out.subject)}</p><iframe id="nlFrame" title="Newsletter preview" sandbox style="width:100%;height:760px;border:1px solid var(--line);border-radius:12px;background:#fff"></iframe><p class="note" style="margin-top:6px">Self-contained: no scripts and no external requests, so it looks the same when attached, forwarded or printed to PDF.</p>`;
+  $('nlOut').innerHTML = `<div class="chips" style="margin:12px 0 8px"><button class="btn" id="nlPdf">Save as PDF</button><a class="btn" href="${url}" download="${fname}">Download .html</a><button class="btn" id="nlCopy">Copy plain text</button><a class="btn" href="${url}" target="_blank" rel="noopener">Open full page</a>${out2 ? '<button class="btn" id="nlCmp">Compare with the previous layout</button><button class="btn" id="nlPdf2">Save previous layout as PDF</button><a class="btn" id="nlDl2" download="' + fname.replace('desk-atlas-', 'desk-atlas-previous-') + '">Download previous layout .html</a>' : ''}</div><p class="note" style="margin-bottom:8px"><b>Subject:</b> ${esc(out.subject)}</p><iframe id="nlFrame" title="Newsletter preview" sandbox style="width:100%;height:760px;border:1px solid var(--line);border-radius:12px;background:#fff"></iframe><p class="note" style="margin-top:6px">Self-contained: no scripts and no external requests, so it looks the same when attached, forwarded or printed to PDF.</p>`;
   $('nlFrame').srcdoc = out.html;
-  if (out2) {   // side by side: the current issue on the left, the V2 draft on the right (stacked on a phone). Preview only, V2 is never saved or sent.
+  if (out2) {   // side by side: the current issue on the left, the previous layout on the right (stacked on a phone). Preview only, the previous layout is never saved or sent.
     const url2 = URL.createObjectURL(new Blob([out2.html], { type: 'text/html' }));
-    $('nlOut').insertAdjacentHTML('beforeend', `<div id="nlCmpBox" class="cmp" hidden><div><p class="note"><b>Current</b></p><iframe id="nlFrameA" title="Current newsletter" sandbox></iframe></div><div><p class="note"><b>V2 draft</b> <a href="${url2}" target="_blank" rel="noopener">open full page</a></p><iframe id="nlFrameB" title="V2 newsletter draft" sandbox></iframe></div></div>`);
+    $('nlOut').insertAdjacentHTML('beforeend', `<div id="nlCmpBox" class="cmp" hidden><div><p class="note"><b>Current</b></p><iframe id="nlFrameA" title="Current newsletter" sandbox></iframe></div><div><p class="note"><b>Previous layout</b> <a href="${url2}" target="_blank" rel="noopener">open full page</a></p><iframe id="nlFrameB" title="Previous layout" sandbox></iframe></div></div>`);
     $('nlFrameA').srcdoc = out.html; $('nlFrameB').srcdoc = out2.html;
     $('nlDl2').href = url2;
-    $('nlPdf2').onclick = () => { const w = window.open(url2, '_blank'); if (!w) { $('nlStatus').textContent = 'Pop-up blocked: allow pop-ups, or use open full page then Ctrl+P.'; return; } w.addEventListener('load', () => setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 600)); $('nlStatus').textContent = 'In the print window choose Save as PDF, paper A4, and turn on Background graphics. The V2 issue is built for A4 and the chain page prints landscape.'; };
-    $('nlCmp').onclick = () => { const box = $('nlCmpBox'); box.hidden = !box.hidden; $('nlFrame').style.display = box.hidden ? '' : 'none'; $('nlCmp').textContent = box.hidden ? 'Compare with V2' : 'Back to one view'; };
+    $('nlPdf2').onclick = () => { const w = window.open(url2, '_blank'); if (!w) { $('nlStatus').textContent = 'Pop-up blocked: allow pop-ups, or use open full page then Ctrl+P.'; return; } w.addEventListener('load', () => setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 600)); $('nlStatus').textContent = 'In the print window choose Save as PDF, paper A4, and turn on Background graphics. The previous-layout issue is built for A4 and the chain page prints landscape.'; };
+    $('nlCmp').onclick = () => { const box = $('nlCmpBox'); box.hidden = !box.hidden; $('nlFrame').style.display = box.hidden ? '' : 'none'; $('nlCmp').textContent = box.hidden ? 'Compare with the previous layout' : 'Back to one view'; };
   }
   $('nlPdf').onclick = () => { const w = window.open(url, '_blank'); if (!w) { $('nlStatus').textContent = 'Pop-up blocked: allow pop-ups, or use Open full page then Ctrl+P.'; return; } w.addEventListener('load', () => setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 400)); $('nlStatus').textContent = 'In the print window choose Save as PDF, and turn on Background graphics if the colours look flat.'; };
   $('nlCopy').onclick = async () => { try { await navigator.clipboard.writeText(out.text); $('nlStatus').textContent = 'Copied the plain-text version.'; } catch { $('nlStatus').textContent = 'Copy was blocked here; use Download .html.'; } };

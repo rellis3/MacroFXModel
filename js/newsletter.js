@@ -308,9 +308,9 @@ ul.t{margin:0;padding-left:18px}ul.t li{margin:0 0 7px}
  */
 export function buildNewsletter(n) {
   const a = n.brief ?? {}, letter = a.letter ?? {}, headline = n.headline ?? a.headline ?? (n.edition === 'weekly' ? 'The Chain Weekly' : 'The Chain Daily');
-  const subject = clip(letter.subject || headline, 78), regimeWord = String(n.regimeWord ?? a.regime ?? 'MIXED').toUpperCase();
+  let subject = clip(letter.subject || headline, 78), regimeWord = String(n.regimeWord ?? a.regime ?? 'MIXED').toUpperCase();
   const opening = letter.opening || a.driver?.[0]?.explain || a.driver?.[0]?.what || '';
-  const preheader = clip(opening || headline, 140);
+  let preheader = clip(opening || headline, 140);
   const weekly = n.edition === 'weekly', v2 = n.layout === 'v2';
   const art = `<div class="art">${BANNER_SVG}</div>`;
   const llm = n.llm?.provider ? `${n.llm.label ?? n.llm.provider} (${n.llm.model ?? ''})` : null;
@@ -580,10 +580,12 @@ export function buildNewsletter(n) {
       return `<div class="th2"><h3>${esc(t.name)}<span class="chipx">${esc(t.labelText)}</span></h3><p>${esc(t.blurb)}</p>${yes.length ? `<p><b>What fits:</b> ${esc(yes.join('; '))}.</p>` : ''}${no.length ? `<p><b>What does not fit:</b> ${esc(no.join('; '))}.</p>` : ''}${nm.length ? `<p><b>Not measured today:</b> ${esc(nm.join('; '))}.</p>` : ''}<p class="lim">${esc(t.limit)}</p></div>`; }).join('');
     const topT = th.filter(t => t.label === 'supported'), uniq = topT.length > 1 ? topT.map(t => `${t.name}: ${t.checks.filter(c => !topT.some(o => o !== t && o.checks.some(x => x.text === c.text))).map(c => c.text.charAt(0).toLowerCase() + c.text.slice(1)).join(', ')}`).filter(s => !/: $/.test(s)) : [];
     const sepText = topT.length > 1 ? `${topT.length} of the ${th.length} stories fit every check they can be tested on, so the count cannot choose between them. What would separate them is what only one of them needs: ${uniq.map(u => u.replace(/^([^:]+): (.*)$/, (m0, nm, cs) => `${nm.charAt(0).toLowerCase() + nm.slice(1)} (${cs})`)).join('; ')}. ` : '';
+    // the released V3 daily: the email subject and preview are today's headline and first sentences, not the 20-day story
+    if (n.v3 && n.release && !weekly && v2Today?.headline) { subject = clip(v2Today.headline, 78); preheader = clip(v2Today.lede || preheader, 140); }
     const v3t = n.v3 && !weekly ? todayTables({ changes: n.changes, creditSpreads: n.creditSpreads, fedPath: n.fedPath, strengths: n.strengths, cb: n.cb, surprise: n.surprise, assets: n.assets ?? n.ranges, asia: n.asia, events: n.events, nowMs: n.nowMs ?? Date.now(), isoDate: n.isoDate }, esc) : null;
     v2Body = composeMagazine({
       v3: !!v3t, v3t,
-      meta: { edition: weekly ? 'Weekly' : 'Daily', tag: n.v3 ? 'V3 draft' : 'V2 draft', date: n.date, regime: String(regimeWord).charAt(0) + String(regimeWord).slice(1).toLowerCase() },
+      meta: { edition: weekly ? 'Weekly' : 'Daily', tag: n.v3 ? (n.release ? '' : 'V3 draft') : 'V2 draft', date: n.date, regime: String(regimeWord).charAt(0) + String(regimeWord).slice(1).toLowerCase() },
       ticker: (n.assets ?? n.ranges ?? []).filter(r => r.price != null && Number.isFinite(r.d1)).slice(0, 14).map(r => ({ label: r.label, price: String(r.price), chg: r.d1 })),
       today: v2Today, feature, glance: { broken: String(_bk), testable: String(_tl.length), stress: n.riskFlags ? `${n.riskFlags.active}/${n.riskFlags.total}` : 'n/a', next: _evTop ? `${_evTop.event}, ${ukTime(_evTop.ms)}` : '' }, alarms,
       yieldFig: yieldDecompChart(n.yieldSeries ?? S, Hh), yieldCaption, textbook, lessonBox, qod: qodHtml, intro, yieldGuide: yieldGuide(ys2, n.links), stress, theoriesData: th, notFit,
