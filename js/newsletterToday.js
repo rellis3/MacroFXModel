@@ -106,6 +106,7 @@ const verb = (down, mult, plural) => VB[down ? 'fall' : 'rise'][mult >= 2 ? 3 : 
  * wide-tercile mark) leads when there is one, with the net move since the Asia open. Observed figures only, never a direction call, and null on a quiet tape.
  */
 function dayTake({ assets, changes, hi, now, asia }) {
+  const hu = humanTake({ assets, changes, asia, hi, now });
   const c = k => (changes ?? []).find(x => x.key === k && !x.stale && Number.isFinite(x.d1)), cand = [];
   const y = c('us10y'), hy = c('hy'), vx = c('vix'), r1 = v => Math.round(Math.abs(v)), dn = v => v < 0;
   if (y) { const m = Math.abs(y.d1) / 6; cand.push({ score: m, head: `Treasury yields ${verb(dn(y.d1), m, true)} ${r1(y.d1)}bp`, mid: `yields ${verb(dn(y.d1), m, true)} ${r1(y.d1)}bp`, fact: `US 10-year yields ${dn(y.d1) ? 'fell' : 'rose'} ${r1(y.d1)}bp` }); }
@@ -119,9 +120,9 @@ function dayTake({ assets, changes, hi, now, asia }) {
   const top = cand.filter(x => x.score >= 0.75).sort((a, b) => b.score - a.score);
   // a wild Asia: at least twice the desk's own wide-tercile mark, the two biggest at most
   const wild = (assets ?? []).map(r => ({ r, s: r?.key ? asia?.[r.key] : null })).filter(x => x.r?.label && x.s && x.s.band === 'wide' && Number.isFinite(x.s.atr) && x.s.cutHigh > 0 && x.s.atr / x.s.cutHigh >= 2).sort((a, b) => b.s.atr / b.s.cutHigh - a.s.atr / a.s.cutHigh).slice(0, 2);
-  if (!top.length && !wild.length) return null;
+  if (!top.length && !wild.length && !hu.headClause) return null;
   const lead = hi.filter(isDecision).sort((a, b) => decisionRank(a) - decisionRank(b))[0] ?? hi[0];
-  const tail = !lead ? '' : lead.ms > now ? (isDecision(lead) ? ` as the ${BANK[lead.ccy].replace(/^the /, '')} decision looms` : ` with ${nameOf(lead)} due at ${hhmm(lead.ms)}`) : ` after ${isDecision(lead) ? `the ${BANK[lead.ccy].replace(/^the /, '')} decision` : nameOf(lead)}`;
+  const tail = hu.tail ? `, ${hu.tail}` : !lead ? '' : lead.ms > now ? (isDecision(lead) ? ` as the ${BANK[lead.ccy].replace(/^the /, '')} decision looms` : ` with ${nameOf(lead)} due at ${hhmm(lead.ms)}`) : ` after ${isDecision(lead) ? `the ${BANK[lead.ccy].replace(/^the /, '')} decision` : nameOf(lead)}`;
   let headline, leadFacts = '', asiaNote = '', used = null;
   if (wild.length) {
     const nets = wild.map(x => x.s.netPct), plural = wild.length > 1, whip = wild.every(x => Number.isFinite(x.s.netPct) && Number.isFinite(x.s.rangePct) && Math.abs(x.s.netPct) < 0.35 * x.s.rangePct);
@@ -130,9 +131,63 @@ function dayTake({ assets, changes, hi, now, asia }) {
     leadFacts = wild.map(x => `${x.r.label} covered ${Math.round(x.s.atr * 100)}% of a normal day's range before London opened${Number.isFinite(x.s.netPct) && Math.abs(x.s.netPct) >= 0.05 ? ` and ended Asia ${Math.abs(x.s.netPct).toFixed(1)}% ${x.s.netPct < 0 ? 'lower' : 'higher'}` : ''}.`).join(' ');
     used = wild.find(x => ASIA_LONDON[x.r.key]);
     if (used) asiaNote = `Past wide-Asia days have left less for London: after 07:00 ${used.r.label} reached the median band on ${ASIA_LONDON[used.r.key][0]}% of them, against ${ASIA_LONDON[used.r.key][1]}% when Asia was narrow.`;
-  } else headline = `${top[0].head}${top[1] && top[1].score >= 1 ? ` and ${top[1].mid}` : ''}${tail}`;
+  } else headline = hu.headClause ? `${hu.headClause}${tail}` : `${top[0].head}${top[1] && top[1].score >= 1 ? ` and ${top[1].mid}` : ''}${tail}`;
   const rest = (wild.length ? top : top.slice(0, 3)).slice(0, 3);
-  return { headline, lead: leadFacts, asiaNote, close: rest.length ? `Since yesterday's close: ${rest.map(x => x.fact).join('; ')}.` : '' };
+  return { headline, means: hu.means, lead: leadFacts, asiaNote, close: rest.length ? `Since yesterday's close: ${rest.map(x => x.fact).join('; ')}.` : '' };
+}
+
+/* ── the human layer: what each measurement means, in plain words ── */
+const REGION = { USD: 'US', EUR: 'euro-zone', GBP: 'UK', JPY: 'Japanese', AUD: 'Australian', NZD: 'New Zealand', CAD: 'Canadian', CHF: 'Swiss' };
+const WORDS = [[/gdp/i, 'growth'], [/pce|cpi|inflation|ppi|price index|deflator/i, 'inflation'], [/payroll|employment|jobless|claims|unemployment|jobs/i, 'jobs'], [/pmi|ism|confidence|sentiment|ifo|zew/i, 'survey'], [/retail sales|spending|consumption/i, 'spending']];
+const say = a => (a.length < 2 ? (a[0] ?? '') : `${a.slice(0, -1).join(', ')} and ${a.at(-1)}`);
+
+/** The releases still to come today, grouped by moment: { ms, ccy, bank, words, events }. */
+function slotsAfter(hi, now) {
+  const by = new Map();
+  for (const e of hi.filter(x => x.ms > now)) {
+    const s = by.get(e.ms) ?? { ms: e.ms, ccy: e.ccy, bank: false, words: [], events: [] };
+    s.events.push(e);
+    if (isDecision(e)) { s.bank = true; s.ccy = e.ccy; } else for (const [re, w] of WORDS) if (re.test(e.event ?? '') && !s.words.includes(w)) s.words.push(w);
+    by.set(e.ms, s);
+  }
+  return [...by.values()].filter(s => s.bank || s.words.length || s.events.some(e => !/press|speak|speech|testif/i.test(e.event ?? ''))).sort((a, b) => a.ms - b.ms);
+}
+const slotShort = s => (s.bank ? BANK[s.ccy] : `${REGION[s.ccy] ?? s.ccy ?? ''} data`.trim());
+const slotLong = s => (s.bank ? BANK[s.ccy] : `${REGION[s.ccy] ?? s.ccy ?? 'the'} ${s.words.length ? say(s.words) + ' figures' : 'data'}`.trim());
+
+/** The headline's clauses and the sentences that say what they mean. Every sentence is a description or one of the desk's own tested results, never a forecast. */
+function humanTake({ assets, changes, asia, hi, now }) {
+  const c = k => (changes ?? []).find(x => x.key === k && !x.stale && Number.isFinite(x.d1)), clauses = [], means = [];
+  const slots = slotsAfter(hi, now), tail = slots.length ? `with ${say([...new Set(slots.slice(0, 2).map(slotShort))])} still to come` : '';
+  // a calm Asia leaves more of the day for London (the desk's own test); a wild Asia is handled by the headline in dayTake
+  const bands = Object.entries(asia ?? {}).filter(([, s]) => s?.band), narrow = bands.filter(([, s]) => s.band === 'narrow'), lab = k => (assets ?? []).find(r => r.key === k)?.label ?? k;
+  if (bands.length >= 4 && narrow.length >= 3) {
+    clauses.push({ score: 1.5, text: 'Asia stays calm' });
+    const names = narrow.slice(0, 3).map(([k]) => lab(k)), tested = narrow.find(([k]) => ASIA_LONDON[k]);
+    means.push(`Asia was quiet: ${say(names)} barely moved.${tested ? ` In the desk's tests a quiet Asia has left more of the day for London: ${lab(tested[0])} reached its median band after 07:00 on ${ASIA_LONDON[tested[0]][1]}% of those days, against ${ASIA_LONDON[tested[0]][0]}% when Asia was wide.` : ''}`);
+  }
+  const hy = c('hy'), y = c('us10y'), vx = c('vix'), n0 = v => Math.round(Math.abs(v));
+  if (hy && Math.abs(hy.d1) >= 8) {
+    clauses.push({ score: Math.abs(hy.d1) / 8, text: hy.d1 < 0 ? 'credit eases' : 'credit jitters grow' });
+    means.push(hy.d1 < 0 ? `Credit eased: junk-bond spreads, the extra yield lenders ask to hold risky debt, tightened ${n0(hy.d1)}bp. Lenders are getting less nervous, not more.` : `Credit got jumpier: junk-bond spreads, the extra yield lenders ask to hold risky debt, widened ${n0(hy.d1)}bp. Lenders want more to hold risk. The desk's alarm line is 25bp over five sessions.`);
+  }
+  if (y && Math.abs(y.d1) >= 6) {
+    clauses.push({ score: Math.abs(y.d1) / 6, text: `yields ${y.d1 < 0 ? 'fall' : 'climb'} ${n0(y.d1)}bp` });
+    means.push(`Borrowing costs ${y.d1 < 0 ? 'fell' : 'rose'}: the US 10-year yield ${y.d1 < 0 ? 'dropped' : 'climbed'} ${n0(y.d1)}bp, so money is ${y.d1 < 0 ? 'cheaper' : 'dearer'} across the board.`);
+  }
+  if (vx && Math.abs(vx.d1) >= 2) {
+    clauses.push({ score: Math.abs(vx.d1) / 2, text: vx.d1 < 0 ? 'the VIX eases' : 'the VIX jumps' });
+    means.push(`The VIX ${vx.d1 < 0 ? 'eased' : 'rose'} ${Math.abs(vx.d1).toFixed(1)} points, so the market is paying ${vx.d1 < 0 ? 'less' : 'more'} for protection.`);
+  }
+  // the pair waiting on the next release: the one the desk's records say that release moves, with the biggest move so far today
+  const next = slots.find(s => s.events.some(e => e.note?.range));
+  if (next) {
+    const ev = next.events.find(e => e.note?.range), names = [...String(ev.note.range).matchAll(/([A-Z]{3}\/[A-Z]{3}) range/g)].map(m => m[1]);
+    const cand = (assets ?? []).filter(r => names.includes(r.label) && Number.isFinite(r.d1)).sort((a, b) => Math.abs(b.d1) - Math.abs(a.d1))[0];
+    if (cand) means.push(`${cand.label}, ${cand.d1 < 0 ? 'down' : 'up'} ${Math.abs(cand.d1).toFixed(1)}% since yesterday's close, is the pair waiting on the ${slotLong(next)} at ${hhmm(next.ms)}. In the desk's records, releases like this have widened its day.`);
+  }
+  const top = clauses.sort((a, b) => b.score - a.score).slice(0, 2).map(x => x.text);
+  return { tail, headClause: top.length ? cap(say(top)) : '', means };
 }
 
 /** What sort of day it is, in two words, for the kicker above the headline. */
@@ -199,6 +254,6 @@ export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, asse
   const known = Array.isArray(events) && events.length > 0;   // an empty calendar is a feed that did not load more often than a day with nothing on it
   const take = weekly ? null : dayTake({ assets, changes, hi, now, asia });
   const regime = regimeLine(regimeWord, riskFlags), changed = changedLine(since, assets);
-  const lede = [take?.lead, take?.asiaNote, loadLine(hi, done, weekly), fedLine(fedPath, hi, now), take ? take.close : changed, regime].filter(Boolean).join(' ');
+  const lede = (take?.means?.length || take?.lead ? [take.lead, take.asiaNote, ...take.means, fedLine(fedPath, hi, now), regime] : [take?.lead, take?.asiaNote, loadLine(hi, done, weekly), fedLine(fedPath, hi, now), take ? take.close : changed, regime]).filter(Boolean).join(' ');
   return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `${known ? dayType(hi) : 'Today'} · ${day}`, headline: take?.headline || (known ? headlineOf(hi, nextHigh, weekly) : 'Where the markets stand this morning'), regime, changed, watch: watchLine(hi, nextHigh, weekly), count: hi.length };
 }
