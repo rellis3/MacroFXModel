@@ -6,7 +6,8 @@
     python nt8_bridge/nt8_record.py stop
 
 Output (written by NT8, so it only records while NT8 is open and connected):
-    analysis/output/nt8_live/<SYMBOL>/<UTC date>_ticks.csv    time,type,price,volume,bid,ask
+    analysis/output/nt8_live/<SYMBOL>/<UTC date>_ticks_v2.csv time,exch_time,type,price,volume,bid,ask   (v1 _ticks.csv had no exch_time)
+    analysis/output/nt8_live/<SYMBOL>/<UTC date>_book.csv     time,exch_time,side,op,pos,price,volume,reset  (every order-book change)
     analysis/output/nt8_live/<SYMBOL>/<UTC date>_depth.csv    time, bid levels 1..N (price,size), ask levels 1..N
 Recording must be started again after NT8 restarts. Contracts roll: change --instrument at each quarter.
 """

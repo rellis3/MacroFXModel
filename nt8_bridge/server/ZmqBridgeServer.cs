@@ -1,4 +1,4 @@
-// Read-only NT8 -> ZeroMQ bridge: historical bars (1m / tick) and a last-price quote.
+// Read-only NT8 -> ZeroMQ bridge: historical bars (1m / tick; tick also as the bid or ask series) and a last-price quote.
 // No order placement by design -- this feeds analysis only.
 using System;
 using System.Collections.Generic;
@@ -123,6 +123,10 @@ namespace NT8ZmqBridge.Server
         {
             var inst = Resolve(Str(req, "instrument"));
             bool tick = (Str(req, "bar_type") ?? "1m") == "tick";
+            // market_data_type: "last" (trades, default), "bid" or "ask" -- the historical quote series, so a trade's
+            // side can be read from the quotes at that moment rather than guessed from the price change.
+            string mdt = (Str(req, "market_data_type") ?? "last").ToLowerInvariant();
+            MarketDataType series = mdt == "bid" ? MarketDataType.Bid : mdt == "ask" ? MarketDataType.Ask : MarketDataType.Last;
             // NT8 bar times are in the PC's local time zone.
             DateTime startLocal = TimeZoneInfo.ConvertTimeFromUtc(ParseUtc(Str(req, "start")), TimeZoneInfo.Local);
             DateTime endLocal = TimeZoneInfo.ConvertTimeFromUtc(ParseUtc(Str(req, "end")), TimeZoneInfo.Local);
@@ -134,7 +138,7 @@ namespace NT8ZmqBridge.Server
             using (var done = new ManualResetEvent(false))
             {
                 var br = new BarsRequest(inst, startLocal, endLocal);
-                br.BarsPeriod = new BarsPeriod { BarsPeriodType = tick ? BarsPeriodType.Tick : BarsPeriodType.Minute, Value = 1 };
+                br.BarsPeriod = new BarsPeriod { BarsPeriodType = tick ? BarsPeriodType.Tick : BarsPeriodType.Minute, Value = 1, MarketDataType = series };
                 br.TradingHours = inst.MasterInstrument.TradingHours;
                 br.Request((bars, code, text) =>
                 {

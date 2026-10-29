@@ -1,8 +1,12 @@
-// Live recorder: per instrument writes (a) every trade/quote tick with the bid and ask at that moment and
-// (b) a depth snapshot (top N levels each side) once a second. Files roll at UTC midnight:
-//   <out_dir>/<SYMBOL>/<yyyy-MM-dd>_ticks.csv    time,type,price,volume,bid,ask
-//   <out_dir>/<SYMBOL>/<yyyy-MM-dd>_depth.csv    time,b1p,b1v..bNp,bNv,a1p,a1v..aNp,aNv
-// Read-only: it only subscribes to market data and depth.
+// Live recorder: per instrument writes (a) every trade/quote tick with the bid and ask at that moment,
+// (b) every order-book change (level added / changed / removed), and (c) a depth snapshot (top N levels each side)
+// once a second. Files roll at UTC midnight:
+//   <out_dir>/<SYMBOL>/<yyyy-MM-dd>_ticks_v2.csv  time,exch_time,type,price,volume,bid,ask
+//   <out_dir>/<SYMBOL>/<yyyy-MM-dd>_book.csv      time,exch_time,side,op,pos,price,volume,reset
+//   <out_dir>/<SYMBOL>/<yyyy-MM-dd>_depth.csv     time,b1p,b1v..bNp,bNv,a1p,a1v..aNp,aNv
+// time = when the event reached this PC (UTC); exch_time = the event's own timestamp from the feed (UTC). They differ
+// by the feed's delay (the Lucid feed is ~10 min delayed), so research joins on exch_time.
+// (_ticks.csv without exch_time is the v1 format, 2026-10-08.) Read-only: it only subscribes to market data and depth.
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -24,9 +28,12 @@ namespace NT8ZmqBridge.Server
             public string Day;
             public StreamWriter Ticks;
             public StreamWriter Depth;
+            public StreamWriter Book;
             public EventHandler<MarketDataEventArgs> OnTick;
             public EventHandler<MarketDepthEventArgs> OnDepth;
             public readonly ConcurrentQueue<string> Queue = new ConcurrentQueue<string>();
+            public readonly ConcurrentQueue<string> BookQueue = new ConcurrentQueue<string>();
+            public long BookCount;
             public volatile bool Active = true;
             public long TickCount;
             public long DepthCount;
@@ -51,7 +58,7 @@ namespace NT8ZmqBridge.Server
                 Directory.CreateDirectory(r.Dir);
                 var rr = r;
                 r.OnTick = (s, e) => Tick(rr, e);
-                r.OnDepth = (s, e) => { };   // subscribing is what makes NT8 populate Asks/Bids
+                r.OnDepth = (s, e) => BookEvent(rr, e);   // subscribing is also what makes NT8 populate Asks/Bids
                 lock (_lock) { _recs[name] = r; }
                 // Subscribe OUTSIDE the lock: NT8 may call back synchronously on its own thread.
                 inst.MarketData.Update += r.OnTick;
@@ -89,7 +96,7 @@ namespace NT8ZmqBridge.Server
                 foreach (var kv in _recs)
                     d[kv.Key] = new Dictionary<string, object>
                     {
-                        { "ticks", kv.Value.TickCount }, { "depth_snapshots", kv.Value.DepthCount },
+                        { "ticks", kv.Value.TickCount }, { "depth_snapshots", kv.Value.DepthCount }, { "book_events", kv.Value.BookCount },
                         { "last_tick_utc", kv.Value.LastTick == default(DateTime) ? null : kv.Value.LastTick.ToString("o") }
                     };
                 return d;
@@ -102,6 +109,7 @@ namespace NT8ZmqBridge.Server
         {
             if (r.Ticks != null) { r.Ticks.Dispose(); r.Ticks = null; }
             if (r.Depth != null) { r.Depth.Dispose(); r.Depth = null; }
+            if (r.Book != null) { r.Book.Dispose(); r.Book = null; }
         }
 
         private void Roll(Rec r, DateTime utc)
@@ -110,12 +118,15 @@ namespace NT8ZmqBridge.Server
             if (day == r.Day && r.Ticks != null) return;
             Close(r);
             r.Day = day;
-            string tp = Path.Combine(r.Dir, day + "_ticks.csv");
+            string tp = Path.Combine(r.Dir, day + "_ticks_v2.csv");
             string dp = Path.Combine(r.Dir, day + "_depth.csv");
-            bool tNew = !File.Exists(tp), dNew = !File.Exists(dp);
+            string bp = Path.Combine(r.Dir, day + "_book.csv");
+            bool tNew = !File.Exists(tp), dNew = !File.Exists(dp), bNew = !File.Exists(bp);
             r.Ticks = new StreamWriter(new FileStream(tp, FileMode.Append, FileAccess.Write, FileShare.Read), Encoding.UTF8);
             r.Depth = new StreamWriter(new FileStream(dp, FileMode.Append, FileAccess.Write, FileShare.Read), Encoding.UTF8);
-            if (tNew) r.Ticks.WriteLine("time,type,price,volume,bid,ask");
+            r.Book = new StreamWriter(new FileStream(bp, FileMode.Append, FileAccess.Write, FileShare.Read), Encoding.UTF8);
+            if (tNew) r.Ticks.WriteLine("time,exch_time,type,price,volume,bid,ask");
+            if (bNew) r.Book.WriteLine("time,exch_time,side,op,pos,price,volume,reset");
             if (dNew)
             {
                 var h = new StringBuilder("time");
@@ -126,14 +137,33 @@ namespace NT8ZmqBridge.Server
         }
 
         private static string Num(double v) { return v.ToString("R", CultureInfo.InvariantCulture); }
+        private static string Now() { return DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture) + "Z"; }
+        // NT8 event times are in the PC's local time zone; written as UTC.
+        private static string Utc(DateTime local)
+        {
+            if (local == default(DateTime)) return "";
+            return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), TimeZoneInfo.Local).ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture) + "Z";
+        }
 
         private void Tick(Rec r, MarketDataEventArgs e)
         {
             if (!r.Active) return;
             try
             {
-                r.Queue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture) + "Z," + e.MarketDataType
+                r.Queue.Enqueue(Now() + "," + Utc(e.Time) + "," + e.MarketDataType
                     + "," + Num(e.Price) + "," + e.Volume + "," + Num(e.Bid) + "," + Num(e.Ask));
+            }
+            catch { }
+        }
+
+        // Every order-book change: side, add/update/remove, the level (0 = best), and the price and size at that level.
+        private void BookEvent(Rec r, MarketDepthEventArgs e)
+        {
+            if (!r.Active) return;
+            try
+            {
+                r.BookQueue.Enqueue(Now() + "," + Utc(e.Time) + "," + e.MarketDataType + "," + e.Operation + "," + e.Position
+                    + "," + Num(e.Price) + "," + e.Volume + "," + (e.IsReset ? 1 : 0));
             }
             catch { }
         }
@@ -148,6 +178,12 @@ namespace NT8ZmqBridge.Server
                 r.Ticks.WriteLine(line);
                 r.TickCount++;
                 r.LastTick = DateTime.UtcNow;
+            }
+            while (r.BookQueue.TryDequeue(out line))
+            {
+                if (r.Book == null) Roll(r, DateTime.UtcNow);
+                r.Book.WriteLine(line);
+                r.BookCount++;
             }
         }
 
@@ -176,7 +212,7 @@ namespace NT8ZmqBridge.Server
                             }
                         }
                         if (any) { r.Depth.WriteLine(sb.ToString()); r.DepthCount++; }
-                        r.Ticks.Flush(); r.Depth.Flush();
+                        r.Ticks.Flush(); r.Depth.Flush(); r.Book.Flush();
                     }
                     catch { }
                 }

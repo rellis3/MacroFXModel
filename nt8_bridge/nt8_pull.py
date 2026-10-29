@@ -31,7 +31,7 @@ def call(sock, req):
 
 
 def pull_one(sock, inst, a):
-    rep = call(sock, {"op": "bars", "instrument": inst, "bar_type": a.bar_type,
+    rep = call(sock, {"op": "bars", "instrument": inst, "bar_type": a.bar_type, "market_data_type": a.series,
                       "start": a.start + "T00:00:00Z", "end": a.end + "T00:00:00Z"})
     cols, rows, pid = rep["columns"], rep["rows"], rep["pull_id"]
     while rep.get("next_cursor") is not None:
@@ -43,7 +43,7 @@ def pull_one(sock, inst, a):
         return 0
     print(f"{inst}: {len(df)} rows, {df.timestamp.iloc[0]} -> {df.timestamp.iloc[-1]}")
     OUT.mkdir(parents=True, exist_ok=True)
-    f = OUT / f"{inst.replace(' ', '_')}_{a.bar_type}.csv"
+    f = OUT / f"{inst.replace(' ', '_')}_{a.bar_type}{'' if a.series == 'last' else '_' + a.series}.csv"
     if f.exists():
         old = pd.read_csv(f)
         df = pd.concat([old[~old.timestamp.isin(df.timestamp)], df])
@@ -56,6 +56,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--instrument", required=True, nargs="+", help='one or more NT8 contracts, e.g. "MNQ 12-26" "MGC 12-26"')
     ap.add_argument("--bar-type", default="1m", choices=["1m", "tick"])
+    ap.add_argument("--series", default="last", choices=["last", "bid", "ask"], help="tick history of trades (last) or of the bid / ask quotes (needs the 2026-10-29 bridge)")
     ap.add_argument("--start")
     ap.add_argument("--end")
     ap.add_argument("--quote", action="store_true")
