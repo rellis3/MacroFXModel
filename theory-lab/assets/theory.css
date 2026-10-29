@@ -801,3 +801,10 @@ body.tl-tts-open #page{padding-bottom:calc(var(--tl-tts-bar-h, 90px) + 20px)}
 .tl-progress-summary[hidden]{display:none}
 @media (prefers-reduced-motion:no-preference){html:has(#tl-secnav){scroll-behavior:smooth}}
 @media print{.tl-secnav{display:none}}
+
+/* Long lessons are ~30,000px of mostly offscreen content. Letting the browser skip laying out and painting the
+   big blocks that are not near the screen cuts the load-time layout work by about a third to a half (measured on
+   kelly-criterion, theta-decay and variance-risk-premium). `auto` remembers each block's real height once it has
+   been seen, so the scrollbar settles as you read. Printing, and finding text on the page, are unaffected. */
+.tl-box,.tl-eqbuild,.tl-fade,.tl-symbols,.tl-takeaways,.tl-story,.tl-drill,.tl-chart,.tl-formula-parts,.tl-verdict,.tl-chain,.tl-fits{content-visibility:auto;contain-intrinsic-size:auto 560px}
+@media print{.tl-box,.tl-eqbuild,.tl-fade,.tl-symbols,.tl-takeaways,.tl-story,.tl-drill,.tl-chart,.tl-formula-parts,.tl-verdict,.tl-chain,.tl-fits{content-visibility:visible}}

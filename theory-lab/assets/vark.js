@@ -478,3 +478,21 @@
     end.addEventListener('click', function () { clear(); hush(); go.hidden = false; reveal.hidden = next.hidden = end.hidden = true; qline.textContent = ''; i = -1; });
   })();
 })();
+
+// Moving between pages: fetch the next page as soon as a link is hovered or touched, and fetch the "next lesson"
+// link ahead of time, so the HTML is already here when it is tapped (Chrome and Edge; others ignore it). Only
+// /theory-lab/*.html pages are named, so the sign-out link and the audio files are never prefetched. Skipped on a
+// data-saver or 2G connection.
+(function () {
+  try {
+    if (!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules'))) return;
+    var c = navigator.connection || {};
+    if (c.saveData || /(^|-)2g$/.test(c.effectiveType || '')) return;
+    var s = document.createElement('script'); s.type = 'speculationrules';
+    s.textContent = JSON.stringify({ prefetch: [
+      { where: { href_matches: '/theory-lab/*.html' }, eagerness: 'moderate' },
+      { where: { selector_matches: '.tl-footer-nav a:last-child, .sl-teaser-btns a:not(.ghost)' }, eagerness: 'eager' }
+    ] });
+    document.head.appendChild(s);
+  } catch (e) {}
+})();
