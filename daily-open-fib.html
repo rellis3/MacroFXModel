@@ -56,6 +56,7 @@
     <span class="mut" style="font-size:11px">Fib from</span>
     <button class="btn on" data-anchor="high" title="The 1 = the opening wick (the video's drawing; the backtest's primary)">opening wick</button>
     <button class="btn" data-anchor="do" title="The 1 = the daily-open price itself">open price</button>
+    <button class="btn" data-anchor="swing" title="The 1 = the swing high (or low) the impulse leg started from, even if it formed before the open: how the presenter draws it on his live charts">swing before impulse</button>
   </span>
 </div>
 <div class="wrap">
@@ -68,7 +69,7 @@
   <div class="rules">
     <div class="rule"><b>1. The open.</b> The first 1-minute bar at or after 17:00 New York (22:00 or 23:00 UK; gold and indices reopen at 18:00 New York).</div>
     <div class="rule"><b>2. The impulse.</b> Price moves away from the opening extreme by at least <b>0.10 × ADR</b> (ADR = median range of the last 20 sessions), before 6 hours after the open.</div>
-    <div class="rule"><b>3. The fib.</b> Drawn on the bid. Down move: <b>1</b> = top of the opening wick, <b>0</b> = the impulse low (it follows new lows until the fill). Up move: mirrored.</div>
+    <div class="rule"><b>3. The fib.</b> Drawn on the bid. Down move: <b>0</b> = the impulse low (it follows new lows until the fill); <b>1</b> = top of the opening wick, or the open price, or (<b>swing before impulse</b>, how the presenter draws it live) the swing high the leg started from, which can be before the open. Up move: mirrored.</div>
     <div class="rule"><b>4. The trade.</b> Limit at the <b>1</b>, stop at the <b>1.2</b>, target the <b>0</b> (= 5R). Stop to break-even at +1R. Anything still open at minute 540 is closed. Sells close on the ask, buys on the bid.</div>
   </div>
 </div>
@@ -198,12 +199,14 @@ async function loadChart() {
   const d = dp(selInst), fmt = { type: 'price', precision: d, minMove: Math.pow(10, -d) };
   cs.applyOptions({ priceFormat: fmt }); ask.applyOptions({ priceFormat: fmt });
   cs.setData(bars.map(b => ({ time: b[0], open: b[1], high: b[2], low: b[3], close: b[4] })));
-  ask.setData(bars.map(b => ({ time: b[0], value: b[5] })));
+  ask.setData(bars.filter(b => b[5] != null).map(b => ({ time: b[0], value: b[5] })));
   (cs._lines ?? []).forEach(l => cs.removePriceLine(l)); cs._lines = [];
   const line = (price, color, title, style = 0, width = 1, label = true) => { if (Number.isFinite(price)) cs._lines.push(cs.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: label, title })); };
   const n = (J.row ?? R)?.[anchor];
-  if (bars.length) line(bars[0][1], '#3987e5', 'daily open', 2);
   const mk = [];
+  const first = bars.find(b => b[5] != null);   // bars before the open carry no ask: the first one with an ask is the open
+  if (first) line(first[1], '#3987e5', 'daily open', 2);
+  if (first) mk.push({ time: first[0], position: 'aboveBar', color: '#3987e5', shape: 'arrowDown', text: 'open' });
   if (n?.A != null && n?.L0 != null) {
     const lv = levels(n.side, n.A, n.L0);
     line(lv.fib['1'], '#e6edf3', 'the 1', 0, 2); line(lv.stop, '#f85149', '1.2 stop', 0, 2); line(lv.tp, '#3fb950', '0 target', 0, 2);

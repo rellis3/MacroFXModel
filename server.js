@@ -218,7 +218,7 @@ import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './
 import { evaluateGauges as _evaluateGauges } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
 import { buildCase1 as _seBuild1, buildCase2 as _seBuild2, analyse as _seAnalyse, alertText as _seAlertText } from './js/spreadEpisodes.js';
-import { night as _dofNight, adrFrom as _dofAdrFrom, sessionAnchor as _dofAnchor, sessionKey as _dofKey, nyWallToUtc as _dofNyWall, sessionFromCandles as _dofSessionFrom, summarise as _dofSummarise, DOF_DEFAULTS as _DOF_DEFAULTS, DOF_ANCHORS as _DOF_ANCHORS } from './js/dailyOpenFib.js';
+import { night as _dofNight, adrFrom as _dofAdrFrom, sessionAnchor as _dofAnchor, sessionKey as _dofKey, nyWallToUtc as _dofNyWall, sessionFromCandles as _dofSessionFrom, preFromCandles as _dofPreFrom, summarise as _dofSummarise, DOF_DEFAULTS as _DOF_DEFAULTS, DOF_ANCHORS as _DOF_ANCHORS } from './js/dailyOpenFib.js';
 import { fetchBankCreditRows as _bcFetch, buildBankCredit as _bcBuild, bankCreditLine as _bcLine } from './js/bankCredit.js';
 import { fetchFundingSeries as _frFetchSeries, fetchUstLeverage as _frFetchUst, buildFundingRead as _frBuild, fundingLine as _frLine } from './js/fundingRead.js';
 import { sliceDays as _cogSlice, toBars as _cogBars, exportText as _cogExport, mergeSeries as _cogMerge } from './js/cogLine.js';
@@ -4839,7 +4839,7 @@ svcTimeout('spreadEpisodes', () => _seTick({ silent: true }).catch(e => console.
 // limit at the 1, stop 1.2, target the 0 (5R), BE at 1R, out at minute 540. Backtest verdict NULL (gold -0.72R per
 // trade); this is a forward record to watch it, not a signal. KV daily_open_fib_v1 holds one row per instrument per
 // session (both anchors); the live session is recomputed from candles every tick.
-const _DOF_KV = 'daily_open_fib_v1', _DOF_KEEP = 150, _DOF_BACKFILL_DAYS = 21, _DOF_FETCH_BUDGET = 12;
+const _DOF_KV = 'daily_open_fib_v1', _DOF_KEEP = 150, _DOF_BACKFILL_DAYS = 56, _DOF_FETCH_BUDGET = 24, _DOF_PRE_H = 6;
 const _DOF_INST = [
   ['XAU_USD', 'Gold'], ['EUR_USD', 'EUR/USD'], ['GBP_USD', 'GBP/USD'], ['USD_JPY', 'USD/JPY'], ['AUD_USD', 'AUD/USD'],
   ['EUR_GBP', 'EUR/GBP'], ['USD_CAD', 'USD/CAD'], ['USD_CHF', 'USD/CHF'], ['GBP_JPY', 'GBP/JPY'], ['EUR_JPY', 'EUR/JPY'],
@@ -4873,6 +4873,8 @@ async function _dofSession(inst, anchorMs, now) {
   if (!adr) return { error: 'no ADR' };
   const S = _dofSessionFrom(await _dofCandles(inst, anchorMs, 720), anchorMs);
   if (!S || !S.t.length) return { empty: true, adr };
+  // the bars before the open: the 'swing' anchor's 1 can sit there (the leg started before the open)
+  S.pre = _dofPreFrom(await _dofCandles(inst, anchorMs - _DOF_PRE_H * 3600e3, _DOF_PRE_H * 60), anchorMs, _DOF_PRE_H);
   const exitT = S.t[0] + _DOF_DEFAULTS.exitMin * 60e3;
   const final = S.mins.at(-1) >= _DOF_DEFAULTS.exitMin || now > exitT + 15 * 60e3;
   const out = { adr, final, firstBarT: S.t[0], exitT, lastBarT: S.t.at(-1) };
@@ -4900,7 +4902,7 @@ async function _dofTick() {
     for (const [inst, label] of _DOF_INST) {
       for (const a of anchors) {
         const date = _dofKey(a), k = `${inst}|${date}`, have = _dof.rows.get(k);
-        if (have?.final) continue;
+        if (have?.final && (have.empty || have.swing)) continue;     // rows stored before the swing anchor existed are recomputed
         if (a !== cur && budget <= 0) continue;            // backfill a few sessions per tick; the live session always runs
         if (a !== cur) budget--;
         try {
@@ -4935,7 +4937,7 @@ function _dofBacktest() {
     const out = {};
     for (const [inst, k] of Object.entries(_DOF_BT_KEY)) {
       const v = R[k]?.variants_ba ?? {}, row = key => { const n = v[key]?.net; return n ? { n: n.n, mean: n.mean, lo: n.lo, hi: n.hi, win: n.win } : null; };
-      out[inst] = { high: row('high|imp0.1|tpzero|be1'), do: row('do|imp0.1|tpzero|be1'), sessions: R[k]?.sessions ?? null, verdict: k === 'gold' ? R[k]?.verdict_primary ?? 'NULL' : 'descriptive' };
+      out[inst] = { high: row('high|imp0.1|tpzero|be1'), do: row('do|imp0.1|tpzero|be1'), swing: null, sessions: R[k]?.sessions ?? null, verdict: k === 'gold' ? R[k]?.verdict_primary ?? 'NULL' : 'descriptive' };
     }
     return out;
   } catch { return null; }
@@ -4964,12 +4966,18 @@ app.get('/api/daily-open-fib/chart', async (req, res) => {
     if (!_DOF_INST.some(([i]) => i === inst) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'inst / date' });
     const [y, m, d] = date.split('-').map(Number), a = _dofNyWall(y, m, d, 17);
     let S = _dof.bars.get(`${inst}|${a}`);
-    if (!S) { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set'); S = _dofSessionFrom(await _dofCandles(inst, a, 720), a); }
+    if (!S) {
+      if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set');
+      S = _dofSessionFrom(await _dofCandles(inst, a, 720), a);
+      if (S) S.pre = _dofPreFrom(await _dofCandles(inst, a - _DOF_PRE_H * 3600e3, _DOF_PRE_H * 60), a, _DOF_PRE_H);
+    }
     if (!S) return res.json({ ok: true, bars: [], row: _dof.rows.get(`${inst}|${date}`) ?? null });
-    const cut = _DOF_DEFAULTS.exitMin + 90, bars = [];
+    const cut = _DOF_DEFAULTS.exitMin + 90, bars = [], pre = S.pre ?? { t: [] };
+    // the last 3 h before the open (ask = null there), so a swing 1 set before the open is on the chart
+    for (let i = 0; i < pre.t.length; i++) if (pre.t[i] >= a - 3 * 3600e3) bars.push([pre.t[i] / 1000, pre.o[i], pre.h[i], pre.l[i], pre.c[i], null]);
     for (let i = 0; i < S.t.length && S.mins[i] <= cut; i++) bars.push([S.t[i] / 1000, S.bid.o[i], S.bid.h[i], S.bid.l[i], S.bid.c[i], S.ask.c[i]]);
     res.set('Cache-Control', 'no-store');
-    res.json({ ok: true, inst, date, bars, row: _dof.rows.get(`${inst}|${date}`) ?? null });
+    res.json({ ok: true, inst, date, openT: S.t[0], bars, row: _dof.rows.get(`${inst}|${date}`) ?? null });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/daily-open-fib/tick', async (_req, res) => {

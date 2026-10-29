@@ -104,6 +104,63 @@ def find_fill(o, h, l, mins, adr, anchor="high", min_imp=0.10, entry_cut=360, bu
                 imp=(Hp[k] - A) / adr, t_ext=int(tHp[k]), t_anchor=int(tLp[k]))
 
 
+def _leg_origin(H, L, k, side, thr):
+    """Walk back from the impulse extreme at k: the swing the leg started from (the 1).
+    Sell leg: keep the highest high; stop at the first bar whose low is thr below it."""
+    best, at = (H[k], k) if side < 0 else (L[k], k)
+    for i in range(k - 1, -1, -1):
+        if side < 0:
+            if H[i] > best:
+                best, at = H[i], i
+            elif L[i] <= best - thr:
+                break
+        else:
+            if L[i] < best:
+                best, at = L[i], i
+            elif H[i] >= best + thr:
+                break
+    return best, at
+
+
+def find_fill_swing(pre_h, pre_l, o, h, l, mins, adr, min_imp=0.10, entry_cut=360, buy_l=None, buy_o=None):
+    """Anchor 'swing' (owner 2026-10-29, from the presenter's live charts): the 1 is the swing
+    high/low the impulse leg started from, which may sit BEFORE the open (pre_h / pre_l = the
+    bars before the open, oldest first). A leg whose extreme lies inside the other candidate
+    leg is that leg's retrace; otherwise the more recent session extreme wins. Mirrors
+    js/dailyOpenFib.js findFillSwing exactly (scripts/daily-open-fib-retest/parity.mjs).
+    tAnchor < 0 means a bar before the open."""
+    if buy_l is None:
+        buy_l, buy_o = l, o
+    n = len(h)
+    if n < 3:
+        return None
+    p = len(pre_h)
+    Hc = np.concatenate([np.asarray(pre_h, float), h])
+    Lc = np.concatenate([np.asarray(pre_l, float), l])
+    H, L, tH, tL = _running_extremes(h, l)
+    thr = min_imp * adr
+    for k in range(n - 1):
+        j = k + 1
+        if mins[j] > entry_cut:
+            break
+        dA, dat = _leg_origin(Hc, Lc, p + tL[k], -1, thr)
+        uA, uat = _leg_origin(Hc, Lc, p + tH[k], 1, thr)
+        s_ok, b_ok = dA - L[k] >= thr, H[k] - uA >= thr
+        if s_ok and b_ok:
+            down = True if H[k] < dA else (False if L[k] > uA else tL[k] > tH[k])
+        elif s_ok or b_ok:
+            down = bool(s_ok)
+        else:
+            continue
+        if down and s_ok and h[j] >= dA:
+            return dict(side=-1, j=j, A=dA, L0=L[k], entry=max(dA, o[j]), imp=(dA - L[k]) / adr,
+                        t_ext=int(tL[k]), t_anchor=int(dat - p))
+        if (not down) and b_ok and buy_l[j] <= uA:
+            return dict(side=+1, j=j, A=uA, L0=H[k], entry=min(uA, buy_o[j]), imp=(H[k] - uA) / adr,
+                        t_ext=int(tH[k]), t_anchor=int(uat - p))
+    return None
+
+
 def _to_short(o, h, l, side):
     """Map a buy onto the sell geometry by negating prices (high <-> low)."""
     if side < 0:

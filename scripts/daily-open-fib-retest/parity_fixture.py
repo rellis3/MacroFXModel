@@ -12,7 +12,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from engine import find_fill, trade  # noqa: E402
+from engine import find_fill, find_fill_swing, trade  # noqa: E402
 
 out, n = sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 400
 rng = np.random.default_rng(20261029)
@@ -32,20 +32,26 @@ for s in range(n):
         mins = np.cumsum(rng.integers(1, 3, bars)) - 1
     adr = float(rng.uniform(8, 30))
     res = {}
-    for anchor in ("high", "do"):
-        f = find_fill(bid["o"], bid["h"], bid["l"], mins, adr, anchor, 0.10, 360, buy_l=ask["l"], buy_o=ask["o"])
+    pmid = 2000 + np.cumsum(rng.normal(0, 0.25, 360))[::-1]  # 6 h before the open, oldest first, ending near 2000
+    pre_h = np.round(pmid + np.abs(rng.normal(0, 0.15, 360)), 3)
+    pre_l = np.round(pmid - np.abs(rng.normal(0, 0.15, 360)), 3)
+    for anchor in ("high", "do", "swing"):
+        if anchor == "swing":
+            f = find_fill_swing(pre_h, pre_l, bid["o"], bid["h"], bid["l"], mins, adr, 0.10, 360, buy_l=ask["l"], buy_o=ask["o"])
+        else:
+            f = find_fill(bid["o"], bid["h"], bid["l"], mins, adr, anchor, 0.10, 360, buy_l=ask["l"], buy_o=ask["o"])
         if f is None:
             res[anchor] = None
             continue
         side = "ask" if f["side"] < 0 else "bid"
         ex = ask if f["side"] < 0 else bid
         spread = float(ask["o"][f["j"]] - bid["o"][f["j"]])
-        r = {"side": int(f["side"]), "j": int(f["j"]), "A": float(f["A"]), "L0": float(f["L0"]), "entry": float(f["entry"])}
+        r = {"side": int(f["side"]), "j": int(f["j"]), "A": float(f["A"]), "L0": float(f["L0"]), "entry": float(f["entry"]), "ta": int(f["t_anchor"])}
         for tg, be in (("zero", True), ("zero", False), (3, True), (2, True)):
             t = trade(ex["o"], ex["h"], ex["l"], mins, f, 0.2, tg, be, 540, fill_spread=spread)
             r[f"{tg}|{int(be)}"] = {"R": t["R"], "how": t["how"]}
         res[anchor] = r
-    sessions.append({"mins": mins.tolist(), "adr": adr, "bid": {k: v.tolist() for k, v in bid.items()},
+    sessions.append({"mins": mins.tolist(), "adr": adr, "pre": {"h": pre_h.tolist(), "l": pre_l.tolist()}, "bid": {k: v.tolist() for k, v in bid.items()},
                      "ask": {k: v.tolist() for k, v in ask.items()}, "res": res})
 with open(out, "w") as fh:
     json.dump(sessions, fh)
