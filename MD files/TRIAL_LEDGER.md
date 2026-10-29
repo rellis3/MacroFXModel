@@ -10,6 +10,10 @@ Generated 2026-10-28.
 
 | | n |
 |---|---|
+| claims tested (validated + null + underpowered) | **221** |
+| validated | 46 |
+| null | 130 |
+| underpowered | 45 |
 | claims tested (validated + null + underpowered) | **228** |
 | validated | 47 |
 | null | 133 |
@@ -17,6 +21,9 @@ Generated 2026-10-28.
 | context (base rates, descriptions: not counted as tests) | 40 |
 | pre-registrations with no banked verdict (below) | 84 |
 
+**What the count says (Lesson 02 §05).** If none of the 221 claims were real, tests at the usual 5% size would still pass
+about **11.1** of them by luck. 46 passed, so most passes are unlikely to be luck alone, but
+**roughly 11 of the 46 could be**. Which ones cannot be told from the backtest.
 **What the count says (Lesson 02 §05).** If none of the 228 claims were real, tests at the usual 5% size would still pass
 about **11.4** of them by luck. 47 passed, so most passes are unlikely to be luck alone, but
 **roughly 11 of the 47 could be**. Which ones cannot be told from the backtest.
@@ -287,6 +294,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-27 | forecast-miss-scan | volatility | context | forge/FORECAST_MISS_SCAN_PREREG.md |
 | 2026-10-27 | forecast-miss-shock-fx | volatility | validated | forge/FORECAST_MISS_SCAN_PREREG.md |
 | 2026-10-27 | forecast-miss-shock-idx | volatility | validated | forge/FORECAST_MISS_SCAN_PREREG.md |
+| 2026-10-28 | daily-open-fib-retest | misc | null | forge/DAILY_OPEN_FIB_RETEST_PREREG.md |
 | 2026-10-27 | rule-a-portfolio-budget | price | underpowered | forge/RULE_A_PORTFOLIO_PREREG.md |
 | 2026-10-27 | rule-a-portfolio-second-book | price | validated | forge/RULE_A_PORTFOLIO_PREREG.md |
 | 2026-10-28 | fiscal-reaction-uk-direction | events | underpowered | forge/FISCAL_EVENT_REACTION_PREREG.md |
