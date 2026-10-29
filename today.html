@@ -9726,7 +9726,9 @@ function booksCardHtml() {
   // line is the WEEK-OVER-WEEK move, not the level: "December 88%" is a fact about the
   // calendar, "88% against 93% a week ago" is the market moving a hike between meetings.
   (() => {
-    const w = _fedPath?.windows?.[0]; if (!w || !Number.isFinite(w.hike)) return;
+    const w = _fedPath?.windows?.[0];
+    // always listed: with no odds loaded the row still says what the page holds, so it can always be found
+    if (!w || !Number.isFinite(w.hike)) { row('fed-path.html', '🎯', 'Fed Path Odds', 'chance of a Fed hike or cut priced in, by meeting window', 'market-implied policy odds from CME SOFR options; the odds are not loaded right now, the page has the last saved read'); return; }
     const wk = w.hikeAgo?.w1, d = Number.isFinite(wk) ? +(w.hike - wk).toFixed(1) : null;
     const mv = d == null ? '' : Math.abs(d) < 2 ? ' · flat on the week'
       : ` · <b>${d > 0 ? '+' : ''}${d}pp</b> on the week`;
