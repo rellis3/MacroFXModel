@@ -115,7 +115,7 @@ const LINES = {
   exp_hi:           { n: 'Expected-move high', c: '#d9b45a', w: 'The options-implied one-day upper edge. A ruler, not a positioning level: the control line.' },
   exp_lo:           { n: 'Expected-move low',  c: '#d9b45a', w: 'The options-implied one-day lower edge. The control line.' },
 };
-let SHOWX = false, R = null, R2 = null, SEL = 'ALL', REPL = {}, DBM = null;
+let SHOWX = false, R = null, R2 = null, R3 = null, SEL = 'ALL', REPL = {}, DBM = null;
 const pct = (x, d = 0) => x == null ? '–' : (x * 100).toFixed(d) + '%';
 const pp = (x, d = 0) => x == null ? '–' : (x >= 0 ? '+' : '') + (x * 100).toFixed(d) + ' pp';
 const nT = c => c ? (c.real.bounce + c.real.brk) : 0;
@@ -234,14 +234,14 @@ function render() {
 
   if (R2) h += newSections();
   // offset sweep
-  h += `<div class="card"><h2><em>11</em> Where does price actually turn?</h2><p class="sub">Each line is moved a little closer to, or further past, where it was drawn, and the race is re-run. If a line works best a little <b>before</b> the drawn price, the level is real but price front-runs it; if it works best at zero, the drawn price is the right one to use. Random-walk level: 50%.</p>
+  h += `<div class="card"><h2><em>12</em> Where does price actually turn?</h2><p class="sub">Each line is moved a little closer to, or further past, where it was drawn, and the race is re-run. If a line works best a little <b>before</b> the drawn price, the level is real but price front-runs it; if it works best at zero, the drawn price is the right one to use. Random-walk level: 50%.</p>
   <div id="sweep" class="two"></div></div>`;
 
   // day-level
-  h += `<div class="card"><h2><em>12</em> The day as a whole: ranges, expected move and IV</h2>${dayTable()}</div>`;
+  h += `<div class="card"><h2><em>13</em> The day as a whole: ranges, expected move and IV</h2>${dayTable()}</div>`;
 
   // method
-  h += `<div class="card"><h2><em>13</em> How it was built, and what it cannot say</h2>
+  h += `<div class="card"><h2><em>14</em> How it was built, and what it cannot say</h2>
   <p class="sub">The nightly CME capture is replayed through the same code the indicator uses (open interest, change, volume, implied-vol smile and CME settlements), so the lines are the ones the chart would have shown that morning, from the capture time (about 06:30 London) to 22:00. Prices are M1 mid; one day's expected move is ATM implied vol ÷ √252 × spot, known at the capture (where only CME settlements existed, the term point nearest 7 days). Intervals bootstrap whole sessions, because markets on one date share the dollar.</p>
   <p class="sub"><b>Left out and counted:</b> ${m.dropped.stale_asof} market-sessions where CME had not updated its book (the capture carried the previous day), ${m.dropped.no_sigma} early captures with no IV ruler, ${m.dropped.no_prices} with no price. <b>Cannot say:</b> anything about direction, anything about a bot's P&amp;L (no costs, no spread gate), or anything that needs more than about 35 sessions. The pre-registered, larger version is <code>oi_research_book/WALL_DTE_STYLE_PREREG.md</code> on the six-year Databento history.</p></div>`;
   $('#app').innerHTML = h;
@@ -377,9 +377,39 @@ function newSections() {
   <div><h3 style="${H3};margin-top:0">Does anything say which way the day went?</h3><table><tr><th>Rule</th><th class="num">days</th><th class="num">right</th></tr>
   ${Object.entries(dr).filter(([, v]) => v).map(([k, v]) => `<tr><td>${k}</td><td class="num">${v.n}</td><td class="num ${v.lo > 0.5 ? 'v-up' : v.hi < 0.5 ? 'v-dn' : 'v-nu'}">${(v.rate * 100).toFixed(0)}% <span class="note">[${(v.lo * 100).toFixed(0)}, ${(v.hi * 100).toFixed(0)}]</span></td></tr>`).join('')}</table>
   <p class="note">Share of days where the close was on the side the rule predicts (50% = a coin). Day types: ${Object.entries(db.daytype_by_gamma || {}).map(([g2, o]) => g2 + ' days ' + Object.entries(o).map(([t, n]) => n + ' ' + t.split(' (')[0]).join(' / ')).join('; ')}.</p></div></div></div>`;
-  h += `<div class="card"><h2><em>10</em> Day book: every line, every day, for one market</h2><p class="sub">One row per session: the regime stack on the left, what the day did in the middle, and a tally of the indicator lines price touched, bounced off or went through. Click a day to see the chart with every line and what happened to it.</p>
+
+  if (R3) h += ivCard();
+  h += `<div class="card"><h2><em>11</em> Day book: every line, every day, for one market</h2><p class="sub">One row per session: the regime stack on the left, what the day did in the middle, and a tally of the indicator lines price touched, bounced off or went through. Click a day to see the chart with every line and what happened to it.</p>
   <div class="tabs" id="dbPick"></div><div id="dbTable">loading…</div></div>`;
   return h;
+}
+
+function ivCard() {
+  const S = R3.sections, rho = (k) => { const v = S[k]; if (!v) return '<td class="note">–</td><td class="note">–</td>'; const col = v.lo > 0 ? 'v-up' : v.hi < 0 ? 'v-dn' : 'v-nu'; return `<td class="num">${v.n}</td><td class="num ${col}">${v.rho >= 0 ? '+' : ''}${v.rho.toFixed(2)} <span class="note">[${v.lo.toFixed(2)}, ${v.hi.toFixed(2)}]</span></td>`; };
+  const tr = (lab, k) => `<tr><td>${lab}</td>${rho(k)}</tr>`;
+  const ll = S.ivLevel_loglog || {}, terc = S.ivLevel_terciles || {}, sk = S.skew_terciles || {};
+  const tt = (T, lab) => ['low', 'mid', 'high'].map(t => `<td class="num">${T[t] ? T[t].hl.toFixed(2) : '–'}</td><td class="num">${T[t] ? T[t].down.toFixed(2) + ' / ' + T[t].up.toFixed(2) : '–'}</td>`).join('');
+  const wb = (o, k) => { const x = o[k]; return x && x.bounce != null ? `${(x.bounce * 100).toFixed(0)}% <span class="note">(${x.n}; random ${(x.plc * 100).toFixed(0)}%)</span>` : '–'; };
+  return `<div class="card"><h2><em>10</em> IV and the smile: what they do to the day and to the lines</h2>
+  <p class="sub">The smile is how implied vol changes by strike. Three questions: does the <b>level</b> of IV change the size of the day, does the <b>shape</b> (put-wing richness against call-wing, and how far both wings sit above ATM) say anything about the size or direction of the day, and does a <b>change</b> in IV or skew move the walls or change how they behave? Shape numbers are in ATM-vol units so every market compares; changes are against the previous capture. Correlations are rank correlations within each market, intervals bootstrap whole dates.</p>
+  <div class="two"><div><h3 style="${H3};margin-top:0">Size of the day</h3><table><tr><th>Relationship</th><th class="num">sessions</th><th class="num">rank corr</th></tr>
+  ${tr('IV level vs range ÷ implied move', 'iv_vs_hl')}${tr('IV change since yesterday vs range ÷ implied move', 'dIv_vs_hl')}${tr('Put-wing minus call-wing (skew) vs range', 'skew_vs_hl')}${tr('Both wings above ATM (curvature) vs range', 'wing_vs_hl')}${tr('Curvature vs the downside reach', 'wing_vs_down')}${tr('Curvature vs the upside reach', 'wing_vs_up')}</table>
+  <p class="note">IV sets the scale of the day (log range on log IV: average slope ${S.ivLevel_slope_mean.toFixed(2)}, 1.0 = one for one, positive in all ${Object.keys(ll).length} markets), but once the day is measured in implied-move units nothing about IV level, change or wing shape explains how wide it was or how fat the tails were.</p></div>
+  <div><h3 style="${H3};margin-top:0">Direction (expected null)</h3><table><tr><th>Relationship</th><th class="num">sessions</th><th class="num">rank corr</th></tr>
+  ${tr('Put-skew vs how far the day fell (open to low)', 'skew_vs_down')}${tr('Put-skew vs how far it rose (open to high)', 'skew_vs_up')}${tr('Put-skew vs close minus open', 'skew_vs_oc')}${tr('Skew change vs close minus open', 'dSkew_vs_oc')}${tr('IV change vs close minus open', 'dIv_vs_oc')}</table>
+  <p class="note">Richer puts went with a <i>smaller</i> fall and a <i>larger</i> rise (about 0.12 each, intervals just touch zero): if anything the opposite of "puts are bid, so it falls". One window, direction-adjacent, so a pointer at most.</p></div></div>
+  <h3 style="${H3};margin-top:14px">By thirds within each market: range, and the fall / rise from the open (σ, medians)</h3>
+  <table><tr><th></th><th class="num">range, low third</th><th class="num">fall / rise</th><th class="num">range, mid</th><th class="num">fall / rise</th><th class="num">range, high third</th><th class="num">fall / rise</th></tr>
+  <tr><td>Sorted by IV level</td>${tt(terc)}</tr><tr><td>Sorted by put-skew</td>${tt(sk)}</tr></table>
+  <div class="two" style="margin-top:14px"><div><h3 style="${H3};margin-top:0">Do the walls move when IV or skew moves?</h3><table><tr><th>Relationship</th><th class="num">sessions</th><th class="num">rank corr</th></tr>
+  ${tr('IV change vs how far the put wall moved', 'dIv_vs_putWallShift')}${tr('…after taking out the move in price itself', 'dIv_vs_putWallShift_exSpot')}${tr('IV change vs how far the call wall moved', 'dIv_vs_callWallShift')}${tr('…after taking out the move in price itself', 'dIv_vs_callWallShift_exSpot')}${tr('IV change vs the move in price', 'dIv_vs_spotMove')}${tr('Skew change vs call wall move, ex price', 'dSkew_vs_callWallShift_exSpot')}${tr('IV level vs wall-to-wall span (in σ)', 'iv_vs_wallSpan')}</table>
+  <p class="note">Walls moved down when IV rose (−0.21 for the put wall), but that is the price move: IV rises when price falls (IV vs price move: −0.21), and the relationship is gone once price's own move is removed. The wall span shrinks as IV rises (−0.26) only because σ itself scales with IV.</p></div>
+  <div><h3 style="${H3};margin-top:0">Do walls bounce differently by IV or skew third?</h3><table><tr><th>Wall</th><th class="num">low</th><th class="num">mid</th><th class="num">high</th></tr>
+  <tr><td>Put wall by put-skew</td><td class="num">${wb(S.wallBounce_by_skew, 'put_wall · low')}</td><td class="num">${wb(S.wallBounce_by_skew, 'put_wall · mid')}</td><td class="num">${wb(S.wallBounce_by_skew, 'put_wall · high')}</td></tr>
+  <tr><td>Call wall by put-skew</td><td class="num">${wb(S.wallBounce_by_skew, 'call_wall · low')}</td><td class="num">${wb(S.wallBounce_by_skew, 'call_wall · mid')}</td><td class="num">${wb(S.wallBounce_by_skew, 'call_wall · high')}</td></tr>
+  <tr><td>Put wall by IV level</td><td class="num">${wb(S.wallBounce_by_iv, 'put_wall · low')}</td><td class="num">${wb(S.wallBounce_by_iv, 'put_wall · mid')}</td><td class="num">${wb(S.wallBounce_by_iv, 'put_wall · high')}</td></tr>
+  <tr><td>Call wall by IV level</td><td class="num">${wb(S.wallBounce_by_iv, 'call_wall · low')}</td><td class="num">${wb(S.wallBounce_by_iv, 'call_wall · mid')}</td><td class="num">${wb(S.wallBounce_by_iv, 'call_wall · high')}</td></tr></table>
+  <p class="note">Bounce rate at the wall (touches with an outcome; random lines in the same third beside it). Put walls bounced more when puts were richest (62% against 48%), the largest swing here, but it is 55 touches and no matching move at the call wall: noise-sized.</p></div></div></div>`;
 }
 async function dayBook() {
   const pick = $('#dbPick'); if (!pick) return;
@@ -442,6 +472,7 @@ $('#modal').onclick = e => { if (e.target.id === 'modal') $('#modal').style.disp
   try { R = await (await fetch(BASE + 'results.json')).json(); }
   catch (e) { $('#app').textContent = 'Could not load results.json: ' + e.message; return; }
   try { R2 = await (await fetch(BASE + 'results2.json')).json(); } catch (_) { R2 = null; }
+  try { R3 = await (await fetch(BASE + 'results3.json')).json(); } catch (_) { R3 = null; }
   rail(); stats(); render();
 })();
 </script>
