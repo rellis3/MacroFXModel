@@ -2140,6 +2140,7 @@ let gpr = null;          // /api/gpr — Geopolitical Risk Index (Caldara & Iaco
 let eventDay = null;     // /api/event-day — today's release / decision / Budget against the same events before (Release Reaction) + the rate legs (js/eventDayContext.js); sizes only
 let bankCredit = null;   // /api/bank-credit — BIS cross-border bank credit regime (js/bankCredit.js); quarterly, context only (bank-credit-dollar-*)
 let drawdownShadow = null; // /api/drawdown-shadow — research shadow band after a 20-day S&P fall (drawdown-forecast-error A1); live lines untouched
+let stressShadow = null;  // /api/stress-shadow — research stress-count shadow (forecast-miss-scan A1): lines x0.95 calm .. x1.15 stacked stress, FX month-end x1.067; live lines untouched
 let fundingRead = null;  // /api/funding-read — daily/weekly funding & leverage read (js/fundingRead.js); context only, untested as forecasts
 let macroMoved = null;   // /api/macro-changes — per-series 1d/5d/20d change rows (what moved)
 let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite (zoom 0)
@@ -2680,6 +2681,7 @@ async function loadGate() {
   jget('/api/bank-credit').then(r => { bankCredit = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { bankCredit = { down: true, error: e.message }; render(); });   // BIS bank-credit regime line (quarterly)
   jget('/api/funding-read?spark=0').then(r => { fundingRead = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { fundingRead = { down: true, error: e.message }; render(); });   // funding & leverage block
   jget('/api/drawdown-shadow').then(r => { drawdownShadow = r?.rule ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { drawdownShadow = { down: true, error: e.message }; render(); });   // drawdown shadow line
+  jget('/api/stress-shadow').then(r => { stressShadow = r?.rule ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { stressShadow = { down: true, error: e.message }; render(); });   // stress-count shadow line
   jget('/api/econ-surprise').then(r => { if (r?.ok) { econSurprise = r; render(); } }).catch(() => {});   // actual-vs-consensus surprise per currency
   jget('/api/macro-regime-fx').then(r => { if (r?.ok) { regimeFx = r; render(); } }).catch(() => {});   // regime-conditional FX base rates
   renderGate(); renderRiskFlags(); renderMacroMoved(); renderNewsPlay(); renderSummary(); render();
@@ -5414,6 +5416,24 @@ function drawdownShadowLine() {
     + `<span class="muted"> · forward record ${sc.triggerSessions ?? 0}/${sc.judgeAt ?? 40} trigger sessions${fx.live != null ? ` (FX p75 hit: live ${pct(fx.live)} vs shadow ${pct(fx.shadow)})` : ''}</span></div>`;
 }
 
+/* Stress-count shadow (js/stressShadowCore.js): the wide forecast-miss scan confirmed the shipped lines run ~5% too wide when
+   calm and too narrow as equity/vol stress stacks (and for FX at month-end). Shown side by side; the live lines are unchanged. */
+function stressShadowLine() {
+  const d = stressShadow;
+  if (!d) return '';
+  if (d.down) return `<div class="riskverdict muted" style="margin-top:3px">Stress shadow: unavailable · ${esc0(d.error ?? '')}</div>`;
+  const c = d.conditions ?? {}, sc = d.scorecard ?? {}, fx = sc.byClass?.fx?.hl_p75 ?? {};
+  const pct = v => (v == null ? '–' : `${Math.round(v * 100)}%`);
+  const names = { spx5Fall: 'S&P 5d fall', vixRise: 'VIX 5d rise', vixHigh: 'VIX 21+', vixInverted: 'VIX curve inverted', spx60Fall: 'S&P 60d weak' };
+  const on = Object.keys(names).filter(k => c[k]).map(k => names[k]);
+  const f = d.factor ?? {}, fmt = v => (v == null ? '–' : `×${v}`);
+  const tone = v => (v > 1.001 ? 'mix' : v < 0.999 ? 'on' : '');
+  const tip = 'Validated 2020-2026 (forecast-miss-scan, 8 of 34 conditions confirmed on the untouched 2023-26 half): the shipped lines ran about 5% too wide when none of five equity/vol stress conditions was on, and too narrow as they stacked (FX x1.06 at 4, x1.15 at 5; indices x1.06 after a 5-day S&P fall plus a VIX rise). FX ranges ran about 7% beyond the lines on the first 2 and last 2 sessions of a month. The shadow rescales the lines by those factors on every session and is scored beside live from 2026-10-28; judged at 120 sessions. Research only: the live lines do not change.';
+  return `<div class="riskverdict help" style="margin-top:3px" title="${esc0(tip)}">Stress shadow: <b>${c.fxCount ?? 0}/5</b> stress conditions${on.length ? ` <span class="muted">(${esc0(on.join(', '))})</span>` : ' <span class="muted">(calm)</span>'}${d.monthEnd ? ' · <b>month-end</b>' : ''}`
+    + ` · FX <b class="tone ${tone(f.fx)}">${fmt(f.fx)}</b>, indices <b class="tone ${tone(f.idx)}">${fmt(f.idx)}</b> <span class="muted">(shadow only)</span>`
+    + `<span class="muted"> · forward record ${sc.sessions ?? 0}/${sc.judgeAt ?? 120} sessions${fx.live != null ? ` (FX p75 hit: live ${pct(fx.live)} vs shadow ${pct(fx.shadow)}, target 25%)` : ''}</span></div>`;
+}
+
 /* Event day (js/eventDayContext.js via /api/event-day): for each release / decision / Budget today, what the same kind of event did
    the previous times in the Release Reaction record, and the evidence on it. Sizes and how often the move held; never a direction. */
 function eventDayBlock() {
@@ -5656,6 +5676,7 @@ function renderMarketRead() {
         ${bankCreditLine()}
         ${fundingBlock()}
         ${drawdownShadowLine()}
+        ${stressShadowLine()}
         ${risk.gpr ? `<div class="riskverdict" style="margin-top:3px" title="Caldara &amp; Iacoviello's Geopolitical Risk Index (Federal Reserve Board) — counts geopolitical-tension language across 10 major newspapers. The source republishes this file weekly (Mondays), not daily, so freshness is checked against that cadence, not a daily one. Shown as a 30-day smoothed level, z-scored against its own trailing 2-year history. Genuinely global and currency-agnostic — not derived from anything else on this page. Context, not a backtested rule.">Geopolitical risk: ${risk.gpr.stale ? `<b class="tone off" style="font-weight:800">⚠ stale</b><span class="muted"> · last update ${risk.gpr.asOfDate} (${risk.gpr.daysStale}d ago) — the weekly pull may have failed, check /api/gpr/refresh-status</span>` : `<b class="tone ${risk.gpr.z > 0.75 ? 'off' : risk.gpr.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.gpr.z > 0.75 ? 'elevated' : risk.gpr.z < -0.5 ? 'subdued' : 'normal'}</b><span class="muted"> · z ${risk.gpr.z >= 0 ? '+' : ''}${risk.gpr.z} · ${risk.gpr.trend}${risk.gpr.asOfDate ? ` · as of ${risk.gpr.asOfDate}` : ''}</span>`}</div>` : ''}
       </div>
     </div>

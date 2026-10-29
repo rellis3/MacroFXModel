@@ -103,6 +103,7 @@ import { createYieldShapeRegime } from './js/yieldShapeRegimeRoutes.js';
 import { createDailyRead } from './js/dailyReadRoutes.js';
 import { createHarShadow } from './js/harShadowRoutes.js';
 import { createDrawdownShadow } from './js/drawdownShadowRoutes.js';   // drawdown shadow band, read-only (drawdown-forecast-error A1)
+import { createStressShadow } from './js/stressShadowRoutes.js';       // stress-count shadow band, read-only (forecast-miss-scan A1)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
 import { createFeed } from './js/feedRoutes.js';
@@ -30269,6 +30270,7 @@ dailyRead.mount(app);
 // HAR Shadow (har-shadow.html): read-only side-by-side of the live ladder vs the HAR-800 candidate. No KV writes, no job.
 createHarShadow({ kv }).mount(app);
 createDrawdownShadow({ kv }).mount(app);
+createStressShadow({ kv }).mount(app);
 svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);
 
 // ── Surface Lab (surface-lab.html) ────────────────────────────────────────────

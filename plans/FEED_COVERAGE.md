@@ -62,6 +62,7 @@ These are the feeds that could be forgotten. Each row says what the ledger found
 | Ripple book: gamma by days to expiry | CME QuikStrike settlements | no ledger test | Not traced; a forward-test record on its own page. No ledger test yet. |
 | Funding and leverage read: swap lines, repo, leveraged-fund Treasury basis | CFTC TFF, Fed H.4.1 and H.8, NY Fed rates | tff-basis-rates-vol-level: underpowered | Weekly: one Funding sentence in The bigger picture, marked context (wired 2026-10-27). |
 | Range lines after a 20-day S&P fall (research shadow band) | own model on the shipped range forecast and OANDA S&P 500 closes | drawdown-forecast-error-fx: validated | Daily and weekly: one sentence under the market cards, only when the S&P is down 2% or more over 20 days; lines not adjusted (wired 2026-10-27). |
+| Range lines scaled by stacked equity/vol stress and FX month-end (research shadow band) | own model on the shipped range forecast, OANDA S&P 500 and Yahoo VIX / VIX3M closes | forecast-miss-shock-fx: validated | Not in the newsletter: today.html Market read line only until the forward record is judged (wired 2026-10-29). |
 | Fed Beige Book | Federal Reserve | no ledger test | Not loaded by Atlas at all, so no field of n carries it. No ledger test yet. |
 | GDPNow and Cleveland Fed nowcasts | Atlanta Fed and Cleveland Fed via FRED | nowcast-gap-gdp: context | nlInput builds n.nowcast but js/newsletter.js never reads it, so it is loaded and dropped. The ledger says context only. |
 
