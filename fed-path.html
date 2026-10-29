@@ -92,6 +92,12 @@ tbody tr:hover td{background:#141921}
     <div id="zqTbl"></div>
   </div>
 
+  <div class="panel" id="curvePanel" style="display:none">
+    <h2>Expected policy rate after each meeting — now vs a week ago</h2>
+    <p class="dek" id="curveDek"></p>
+    <div id="curve"></div>
+  </div>
+
   <div class="panel">
     <h2>Probability the rate ends up ABOVE today’s range</h2>
     <p class="dek">Each row is a forward window. The columns are what the same window was
@@ -148,6 +154,51 @@ function renderZq(z) {
        + `<td class="${m.thin ? 'dim' : ''}">${m.volumeHint ?? '—'}${m.thin ? ' THIN' : ''}</td></tr>`;
   }
   el.innerHTML = h + '</tbody></table>';
+  renderCurve(z);
+}
+
+// Expected rate after each decision, today's strip against the same strip a week earlier.
+// Same contracts and same arithmetic on both, so a gap between the lines is a repricing.
+function renderCurve(z) {
+  const ago = z.weekAgo?.meetings || [];
+  const now = z.meetings.filter(m => m.rAfter != null);
+  if (now.length < 2 || !ago.length) return;
+  const byM = Object.fromEntries(ago.map(m => [m.meeting, m.rAfter]));
+  const vals = now.map(m => m.rAfter).concat(ago.map(m => m.rAfter));
+  const lo = Math.floor(Math.min(...vals) * 20) / 20, hi = Math.ceil(Math.max(...vals) * 20) / 20;
+  const W = 720, H = 300, L = 54, R = 20, T = 18, B = 46;
+  const x = i => L + (W - L - R) * i / (now.length - 1);
+  const y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo || 1));
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" '
+        + 'aria-label="Expected policy rate by meeting, now against a week ago">';
+  for (let v = lo; v <= hi + 1e-9; v += 0.05) {
+    s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v)
+       + '" stroke="var(--line)"/><text x="' + (L - 8) + '" y="' + (y(v) + 4)
+       + '" text-anchor="end" font-size="11" fill="var(--tx3)">' + v.toFixed(2) + '</text>';
+  }
+  now.forEach((m, i) => {
+    s += '<text x="' + x(i) + '" y="' + (H - 24) + '" text-anchor="middle" font-size="11" '
+       + 'fill="var(--tx3)">' + m.meeting.slice(2, 7).replace('-', '/') + '</text>';
+  });
+  const line = (pts, stroke, dash) => '<polyline fill="none" stroke="' + stroke + '" stroke-width="2.2"'
+    + (dash ? ' stroke-dasharray="6 5"' : '') + ' points="' + pts + '"/>';
+  const pAgo = now.map((m, i) => byM[m.meeting] == null ? null : x(i) + ',' + y(byM[m.meeting])).filter(Boolean).join(' ');
+  s += line(pAgo, 'var(--tx3)', true);
+  s += line(now.map((m, i) => x(i) + ',' + y(m.rAfter)).join(' '), 'var(--acc)', false);
+  now.forEach((m, i) => { s += '<circle cx="' + x(i) + '" cy="' + y(m.rAfter) + '" r="3.2" fill="var(--acc)"/>'; });
+  s += '<text x="' + L + '" y="' + (H - 4) + '" font-size="11" fill="var(--tx3)">meeting (year/month)</text>';
+  s += '<text x="' + (W - R) + '" y="' + (H - 4) + '" text-anchor="end" font-size="11" fill="var(--tx2)">'
+     + '<tspan fill="var(--acc)">&#9632;</tspan> now &nbsp; <tspan fill="var(--tx3)">&#9632;</tspan> a week ago (dashed)</text>';
+  $('curve').innerHTML = s + '</svg>';
+  const pairs = now.filter(m => byM[m.meeting] != null).map(m => ({ m: m.meeting, d: (m.rAfter - byM[m.meeting]) * 100 }));
+  const last = pairs.at(-1), big = pairs.reduce((a, b) => Math.abs(b.d) > Math.abs(a.d) ? b : a, pairs[0]);
+  const sg = d => (d > 0 ? '+' : '') + d.toFixed(1) + 'bp';
+  $('curveDek').innerHTML = 'Rate the futures imply after each FOMC decision. Against a week earlier the strip is '
+    + (Math.abs(big.d) < 1 ? 'essentially unchanged' : 'moved most at <b>' + big.m + '</b> (' + sg(big.d) + ')')
+    + (last ? ', and <b>' + last.m + '</b> is ' + sg(last.d) : '')
+    + '. Futures strip as of ' + (z.asOf || '').slice(0, 10) + '; the older line is the same contracts on '
+    + (z.weekAgo.asOf || '').slice(0, 10) + '. Describes repricing, not direction.';
+  $('curvePanel').style.display = '';
 }
 
 function renderTable() {

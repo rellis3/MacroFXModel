@@ -80,6 +80,35 @@ def merge_archive(local_symbol, bars):
     return len(df)
 
 
+def rungs_ago(days=7):
+    """The same strip as it closed `days` earlier, read from the archive this script keeps.
+
+    The server only ever holds the latest pull, so a week-ago curve has to be built here,
+    where the 15-minute history lives. Last bar at or before the cut-off, same contracts.
+    """
+    out, cut, got = [], None, []
+    for p in sorted(ARCHIVE.glob("CBOT_ZQ*.csv")):
+        got.append(p)
+    if not got:
+        return None
+    last_all = max(pd.read_csv(p, usecols=["time"]).time.iloc[-1] for p in got)
+    cut = (pd.Timestamp(last_all) - pd.Timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for ym in months():
+        y, m = int(ym[:4]), int(ym[4:])
+        sym = f"ZQ{MONTH_CODE[m - 1]}{str(y)[-1]}"
+        p = ARCHIVE / f"CBOT_{sym}.csv"
+        if not p.exists():
+            continue
+        df = pd.read_csv(p)
+        df = df[df.time <= cut]
+        if df.empty:
+            continue
+        r = df.iloc[-1]
+        out.append({"ym": f"{y:04d}-{m:02d}", "sym": sym, "close": round(float(r.close), 5),
+                    "implied": round(100 - float(r.close), 5), "bar": r.time})
+    return {"asOf": cut, "rungs": out} if out else None
+
+
 def kv_set(key, obj):
     body = json.dumps({"key": key, "data": obj,
                        "timestamp": int(datetime.now(timezone.utc).timestamp() * 1000)}).encode()
@@ -147,7 +176,7 @@ def main():
                "source": "IBKR / CBOT ZQ 30-day fed funds futures, last 15-min close",
                "note": "Raw contract rungs only. Per-meeting probabilities are computed by "
                        "js/fedPathZq.js, which is tested against CME FedWatch.",
-               "rungs": rungs}
+               "rungs": rungs, "weekAgo": rungs_ago(7)}
     print(f"\n{len(rungs)} rungs, asOf {asof}")
     if a.dry_run:
         print("--dry-run, not writing")

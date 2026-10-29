@@ -16541,6 +16541,12 @@ app.get('/api/fed-path', async (_req, res) => {
         const calc = _zqMeetingProbs(zd.rungs, mtgs);
         zq = { asOf: zd.asOf, fetchedAt: zd.fetchedAt, source: zd.source,
                rungs: zd.rungs, meetings: calc.rows, anchored: calc.anchored };
+        // The same strip a week earlier (built by the pull script from its archive), priced
+        // with the same arithmetic on the same meetings, so the two curves are comparable.
+        if (zd.weekAgo?.rungs?.length) {
+          const ago = _zqMeetingProbs(zd.weekAgo.rungs, mtgs.filter(x => x >= zd.weekAgo.rungs[0].ym));
+          zq.weekAgo = { asOf: zd.weekAgo.asOf, meetings: ago.rows };
+        }
       }
     } catch { /* the window series still serves on its own */ }
     const ageDays = d.asOf
