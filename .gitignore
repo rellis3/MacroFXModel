@@ -708,3 +708,8 @@ education/Data from Cog/
 scripts/rates_line/logs/*.log
 logs/upload_bidask_r2.log
 scratchpad/*.log
+
+# oi-level-map: raw per-strike ladders rebuilt from the local QuikStrike archive (oi_recon/out), and scratch caches
+analysis/output/oi-level-map/levels.json
+analysis/output/oi-level-map/spots.json
+analysis/output/oi-level-map/_cache/
