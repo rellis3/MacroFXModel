@@ -57,7 +57,7 @@
 
   /* screens */
   .screen { margin-top:30px; border:1px solid var(--cyanline); border-radius:8px; background:var(--panel);
-            box-shadow:0 0 0 1px rgba(90,162,255,.06), 0 0 46px rgba(50,110,230,.16), inset 0 0 60px rgba(40,90,190,.08); scroll-margin-top:12px; }
+            box-shadow:0 0 0 1px rgba(90,162,255,.06), 0 0 46px rgba(50,110,230,.16), inset 0 0 60px rgba(40,90,190,.08); scroll-margin-top:52px; }
   .screen.amber { border-color:var(--amberline); box-shadow:0 0 0 1px rgba(224,169,59,.06), 0 0 46px rgba(224,169,59,.12), inset 0 0 60px rgba(224,169,59,.05); }
   .shead { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:8px 18px; padding:14px 16px 10px; border-bottom:1px solid var(--line); }
   .shead .kick { font-size:12px; }
@@ -130,6 +130,48 @@
   .vsw button[aria-pressed="true"] { color:#06101f; background:var(--blue2); }
   .surf { height:min(58vh,460px); min-height:340px; }
   .legend i.vir { background:linear-gradient(90deg, #0b1d4f, #1f5fbf 30%, #2aa5a0 55%, #9ccf5a 80%, #f2d14a); }
+  /* this week: the summary and the notebook */
+  .wk { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:14px; }
+  @media (max-width:900px) { .wk { grid-template-columns:minmax(0,1fr); } }
+  .chg { list-style:none; margin:0; padding:0; }
+  .chg li { display:grid; grid-template-columns:88px minmax(0,1fr); gap:4px 10px; padding:9px 0; border-bottom:1px solid rgba(29,43,68,.6); }
+  .chg li:last-child { border-bottom:0; }
+  .chg .tag { font:600 10px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--blue); padding-top:2px; }
+  .chg .tag.amb { color:var(--amber); }
+  .chg .tag a { color:inherit; text-decoration:none; } .chg .tag a:hover { text-decoration:underline; }
+  .chg b { font-weight:600; } .chg .why { grid-column:2; color:var(--text3); font-size:12px; }
+  .chg .flag { display:inline-block; font:600 9.5px var(--mono); color:#06101f; background:var(--amber2); border-radius:2px; padding:0 4px; margin-left:4px; vertical-align:1px; }
+  .nb label { display:block; font:600 10.5px var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--text3); margin:10px 0 4px; }
+  .nb label:first-child { margin-top:0; }
+  .nb label i { font-style:normal; text-transform:none; letter-spacing:0; color:#5d6a82; font-weight:500; }
+  .nb textarea { width:100%; min-height:64px; resize:vertical; font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text);
+                 background:rgba(2,5,11,.7); border:1px solid var(--line); border-radius:4px; padding:7px 9px; }
+  .nb textarea:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 2px rgba(90,162,255,.18); }
+  .btn { font:600 11.5px var(--mono); color:#06101f; background:var(--blue2); border:0; border-radius:3px; padding:6px 12px; cursor:pointer; }
+  .btn.ghost { color:var(--text2); background:transparent; border:1px solid var(--line); }
+  .btn:focus-visible { outline:2px solid var(--amber2); outline-offset:1px; }
+  .row2 { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px; }
+  .saved { font:11px var(--mono); color:var(--text3); }
+  .prev { margin-top:14px; border-top:1px dashed var(--line); padding-top:10px; }
+  .prev .q { color:var(--text2); font-size:12.5px; margin:2px 0 6px; white-space:pre-wrap; }
+  .prev .q b { color:var(--text3); font:600 10px var(--mono); text-transform:uppercase; letter-spacing:.06em; margin-right:6px; }
+  .vd button { font:600 11px var(--mono); border:1px solid var(--line); background:transparent; color:var(--text2); border-radius:3px; padding:4px 10px; cursor:pointer; }
+  .vd button[aria-pressed="true"][data-v="right"] { background:#3fb950; color:#04110a; border-color:#3fb950; }
+  .vd button[aria-pressed="true"][data-v="partly"] { background:var(--amber2); color:#140d00; border-color:var(--amber2); }
+  .vd button[aria-pressed="true"][data-v="wrong"] { background:var(--neg); color:#1a0603; border-color:var(--neg); }
+  .rec { font:11.5px var(--mono); color:var(--text3); margin-top:10px; }
+  .rec b { color:var(--text); }
+  .hist summary, details.how summary { cursor:pointer; font:600 11px var(--mono); color:var(--text3); letter-spacing:.04em; }
+  .hist .h1 { padding:8px 0; border-bottom:1px solid rgba(29,43,68,.6); font-size:12.5px; color:var(--text2); }
+  .hist .h1 .d { font:600 11px var(--mono); color:var(--text); }
+  /* how to read this: one per screen */
+  details.how { margin:0 0 12px; border:1px solid var(--line); border-radius:5px; background:rgba(90,162,255,.035); }
+  details.how summary { padding:7px 10px; list-style:none; }
+  details.how summary::-webkit-details-marker { display:none; }
+  details.how summary::before { content:"▸ "; color:var(--blue); } details.how[open] summary::before { content:"▾ "; }
+  details.how .in { padding:0 12px 10px; color:var(--text2); font-size:13px; }
+  details.how ol { margin:4px 0 0; padding-left:18px; } details.how li { margin:3px 0; }
+  details.how .ask { color:var(--amber2); }
   @media (prefers-reduced-motion: reduce) { .tile { transition:none; animation:none !important; } }
 </style>
 </head>
@@ -141,7 +183,7 @@
   </div>
 
   <nav class="tabs" id="tabs" aria-label="Complexes">
-    <a href="#rates">the curve</a><a href="#liquidity">liquidity</a><a href="#cross">cross-asset</a><a href="#commodities" class="amb">commodities</a><a href="#options">options</a><a href="#gaps" class="amb">tested?</a>
+    <a href="#week" class="amb">this week</a><a href="#rates">the curve</a><a href="#liquidity">liquidity</a><a href="#cross">cross-asset</a><a href="#commodities" class="amb">commodities</a><a href="#options">options</a><a href="#gaps" class="amb">tested?</a>
     <span class="sep"></span>
     <a class="ext" href="credit-stress.html" target="_blank">credit ↗</a><a class="ext" href="market-view.html" target="_blank">equities · sectors ↗</a><a class="ext" href="fx-factor-v2.html" target="_blank">currencies ↗</a><a class="ext" href="cot-extremes.html" target="_blank">positioning ↗</a><a class="ext" href="chapters.html" target="_blank">chapters ↗</a>
   </nav>
@@ -159,6 +201,30 @@
     </nav>
   </section>
 
+  <!-- THIS WEEK -->
+  <section class="screen amber" id="week">
+    <div class="shead">
+      <div><div class="kick" style="color:var(--amber)">This week</div><h2>What changed, and what you make of it.</h2><p>A fifteen-minute weekly read. The left side is written from this week's numbers. The right side is yours: three lines, then next week you mark whether you were right. Over a few months that record shows which readings actually lead somewhere.</p></div>
+      <div class="links"><a href="#gaps">what has been tested ↓</a></div>
+    </div>
+    <div class="instr"><span><b>1</b> read what changed · <b>2</b> open the screens that look unusual · <b>3</b> write three lines · <b>4</b> next week, mark last week's note</span><span id="wk-asof">–</span></div>
+    <div class="sbody"><div class="wk">
+      <div class="card"><h3>what changed this week <span id="wk-n">–</span></h3><div class="in"><ul class="chg" id="wk-list"><li><span class="tag">…</span><span>reading the numbers</span></li></ul></div></div>
+      <div class="card"><h3>your notebook <span id="nb-week">–</span></h3><div class="in nb">
+        <label for="nb-moved">1) what moved <i>· the facts</i></label>
+        <textarea id="nb-moved" placeholder="e.g. Net liquidity +$40bn with the TGA draining; 2s10s steepened 12bp; gold at the top of its two-year range."></textarea>
+        <label for="nb-meaning">2) what it might mean <i>· your reading</i></label>
+        <textarea id="nb-meaning" placeholder="e.g. Easier funding plus a bull steepener reads as the market pricing cuts."></textarea>
+        <label for="nb-wrong">3) what would prove me wrong next week <i>· the check</i></label>
+        <textarea id="nb-wrong" placeholder="e.g. The TGA rebuilds and the curve flattens back."></textarea>
+        <div class="row2"><button class="btn" id="nb-save">Save this week</button><button class="btn ghost" id="nb-fill" title="Copy the summary on the left into box 1">Use the summary for box 1</button><span class="saved" id="nb-status"></span></div>
+        <div class="prev" id="nb-prev" hidden></div>
+        <div class="rec" id="nb-rec"></div>
+        <details class="hist" id="nb-hist" hidden><summary>all past weeks</summary><div id="nb-histlist"></div></details>
+      </div></div>
+    </div></div>
+  </section>
+
   <!-- RATES -->
   <section class="screen" id="rates">
     <div class="shead">
@@ -167,6 +233,12 @@
     </div>
     <div class="instr"><span><b>click</b> a point on the surface to update the two charts at the right · arrow keys move the pick · drag to turn it</span><span>FRED DGS1MO … DGS30 · weekly, 5-week mean</span></div>
     <div class="sbody">
+      <details class="how"><summary>How to read the curve</summary><div class="in"><ol>
+  <li><b>Colour and height are the yield.</b> Short tenors at the front, 30-year at the back, five years left to right.</li>
+  <li><b>Compare two weeks.</b> Click this week, then the same week a year ago: the amber and dotted lines on the right show how the shape changed.</li>
+  <li><b>Name the move.</b> Short end falling faster than the long end is a <i>bull steepener</i> (markets pricing cuts). Long end rising faster is a <i>bear steepener</i> (inflation or supply worries). The label in the read line does this for you.</li>
+  <li><b>2s10s below zero</b> (an inverted curve) has historically come before slowdowns, but with long and variable lags.</li></ol>
+  <p class="ask">Ask: is the short end or the long end doing the moving, and does that match what the Fed is saying?</p></div></details>
       <div class="two">
         <div class="card"><h3><span class="vsw" data-sec="rates"><button data-v="3d">3D</button><button data-v="flat">FLAT</button></span> <span id="r-pick">–</span></h3><div class="in">
           <div class="surf" id="r-surf" hidden></div><canvas class="plot" id="r-heat" tabindex="0" aria-label="Treasury curve heat map: tenors down, weeks across"></canvas>
@@ -189,6 +261,12 @@
     </div>
     <div class="instr"><span>blue: up on the week · amber: down · a <b>rising</b> TGA or RRP drains money from the system · the z column says how unusual the week was</span><span>FRED WALCL · WDTGAL · RRPONTSYD · WRESBAL · SOFR · IORB · weekly (H.4.1)</span></div>
     <div class="sbody">
+      <details class="how"><summary>How to read liquidity</summary><div class="in"><ol>
+  <li><b>Net liquidity = Fed balance sheet − TGA − reverse repo.</b> It is roughly the cash the banking system has to work with.</li>
+  <li><b>The TGA is the Treasury's bank account.</b> When it rises (tax receipts, debt issuance) money leaves the system; when it is spent down, money comes back. The reverse repo works the same way.</li>
+  <li><b>Read the z column first.</b> Most weeks are noise. Beyond ±2 is a genuinely unusual week, worth opening the daily page for.</li>
+  <li><b>SOFR − IORB</b> above zero means banks are paying up for overnight cash: a sign of funding strain (as in September 2019).</li></ol>
+  <p class="ask">Ask: is this a one-off (tax day, quarter-end) or the start of a trend? Remember it tested null for direction: background, not a trigger.</p></div></details>
       <div class="card"><h3>instrument <span id="l-asof">–</span></h3><div class="scroll"><table class="liq" id="l-table"></table></div></div>
       <div class="read" id="l-read">–</div>
       <div class="ev null"><b>Tested: no edge as a direction signal.</b> The G1 net-liquidity tide was NULL out of sample: hit rates 51.9% / 49.5% / 51.5% at 1 / 5 / 20 days, and the in-sample 20-day IC of +0.19 flipped to −0.03 (a QE-era artefact). Net liquidity as a standalone daily direction: t −0.14, n 521. Read it as context. Source: <span class="mono">cog-replication/DECISIONS.md</span>.</div>
@@ -203,6 +281,12 @@
     </div>
     <div class="instr"><span>63-day window on daily changes · the biggest moves in the last quarter come first</span><span>OANDA SPX500 · XAU · WTICO · FRED DGS10 · DTWEXBGS</span></div>
     <div class="sbody">
+      <details class="how"><summary>How to read correlations</summary><div class="in"><ol>
+  <li><b>+1</b> the two move together, <b>0</b> unrelated, <b>−1</b> opposite. Blue above zero, amber below.</li>
+  <li><b>The change is the news.</b> The pairs that moved most over the last quarter come first.</li>
+  <li><b>S&amp;P × 10-year yield</b> is the big one. When it is negative, bonds hedge stocks (growth scares drive both). When it turns positive, stocks and bonds fall together (inflation scares), and a 60/40 portfolio loses its cushion.</li>
+  <li><b>Dollar × gold</b> is usually negative; when it is not, something else (central-bank buying, a crisis bid) is driving gold.</li></ol>
+  <p class="ask">Ask: which relationship broke, and what story would explain it?</p></div></details>
       <div class="corrgrid" id="x-grid"></div>
       <div class="ev">Context only. No correlation <b>level</b> has been tested as a signal here. The tested cousins are on the linked pages: Surface Lab's absorption (how much of everything is one trade) and the yield-coupling studies.</div>
     </div>
@@ -216,6 +300,12 @@
     </div>
     <div class="instr"><span><b>click</b> a market to open it on the right · arrow keys move the pick · height and colour are its place in its own two-year range</span><span>OANDA daily (front-month CFDs) · FRED energy spot · weekly</span></div>
     <div class="sbody">
+      <details class="how"><summary>How to read the commodity map</summary><div class="in"><ol>
+  <li><b>Each row is one market, each column a week.</b> Height and colour show where it sat in its own two-year range: amber at the low, blue at the high, white at a new two-year high.</li>
+  <li><b>Rows are ranked</b> by how stretched they are now (z-score), most stretched first.</li>
+  <li><b>Broad or narrow?</b> If the basket row is high too, it is a broad commodity move (dollar, growth, inflation). If only one market is white, it is that market's own story (weather, supply, a squeeze).</li>
+  <li><b>Click a row</b> for its standing now, how long it has lived above its median, and its price.</li></ol>
+  <p class="ask">Ask: is the move broad, and does it agree with what rates and the dollar are saying? A stretched market is not a signal to fade: that was not tested here.</p></div></details>
       <div class="two">
         <div class="card"><h3><span class="vsw" data-sec="comm"><button data-v="3d">3D</button><button data-v="flat">FLAT</button></span> <span id="c-pickh">–</span></h3><div class="in">
           <div class="surf" id="c-surf" hidden></div><canvas class="plot" id="c-heat" tabindex="0" aria-label="Commodities range-position heat map: markets down, weeks across"></canvas>
@@ -234,6 +324,12 @@
     </div>
     <div class="instr"><span>height is the level of implied vol · colour is how stressed it is <b>for that expiry</b> · drag to turn it</span><span>CBOE VIX1D · VIX9D · VIX · VIX3M · VIX6M · daily</span></div>
     <div class="sbody">
+      <details class="how"><summary>How to read the vol curve</summary><div class="in"><ol>
+  <li><b>Implied vol is the price of insurance.</b> Each line is the expected size of S&amp;P moves over 1 day, 9 days, 30 days, 3 and 6 months.</li>
+  <li><b>Normally the curve slopes up</b> (longer insurance costs more). When the front rises above the back (inverted), the market is paying up for protection now.</li>
+  <li><b>The front ratio (9-day ÷ 30-day)</b> is the useful number. Calm, normal or stressed sorts how often NQ and the S&amp;P break their p75 range: about 21% / 29% / 35% of days.</li>
+  <li><b>Use it for size, not direction.</b> Stressed means expect bigger ranges: smaller positions, wider stops.</li></ol>
+  <p class="ask">Ask: does the expected range this week change how big I would trade?</p></div></details>
       <div class="two">
         <div class="card"><h3><span class="vsw" data-sec="opt"><button data-v="3d">3D</button><button data-v="flat">FLAT</button></span> <span id="o-pick">–</span></h3><div class="in">
           <div class="surf" id="o-surf" hidden></div><canvas class="plot" id="o-heat" aria-label="VIX term structure heat map"></canvas>
@@ -570,6 +666,122 @@ function drawOptions(V) {
   mini('m-opt', cv => iso(cv, T.length, keep, (r, c) => val(T.length - 1 - r, c), { step: Math.ceil(keep / 80) }));
 }
 
+// ── THIS WEEK: what changed, written only from the numbers each screen already holds ──────────────
+function weekSummary() {
+  const out = [], bp = v => sign(v, 0) + 'bp';
+  const R = LAST.rates;
+  if (R?.curve?.length) {
+    const T = R.tenors, C = R.curve, n = C.length, ti = t => T.indexOf(t), a = C[n - 1], b = C[Math.max(0, n - 5)];
+    const s2 = r => fin(r[ti('10Y')]) && fin(r[ti('2Y')]) ? (r[ti('10Y')] - r[ti('2Y')]) * 100 : null;
+    const d10 = fin(a[ti('10Y')]) && fin(b[ti('10Y')]) ? (a[ti('10Y')] - b[ti('10Y')]) * 100 : null, ds = fin(s2(a)) && fin(s2(b)) ? s2(a) - s2(b) : null;
+    out.push({ sec: 'rates', tag: 'rates', html: `10-year ${bp(d10)} and 2s10s ${bp(ds)} over four weeks (now ${bp(s2(a))}). Surface Lab calls it a <b>${esc(R.now?.regime ?? R.regime?.[n - 1] ?? '–')}</b>.`,
+      why: s2(a) < 0 ? 'The curve is inverted: short rates above long ones.' : Math.abs(ds ?? 0) >= 15 ? 'A sizeable change of shape for one month.' : 'A modest change of shape.',
+      flag: Math.abs(ds ?? 0) >= 15 || Math.abs(d10 ?? 0) >= 30 });
+  }
+  const L = LAST.feed?.liquidity;
+  if (L?.rows?.length) {
+    const odd = L.rows.filter(r => fin(r.zWeek) && Math.abs(r.zWeek) >= 2);
+    out.push({ sec: 'liquidity', tag: 'liquidity', html: esc(L.read ?? '–'),
+      why: odd.length ? `Unusual this week: ${odd.map(r => `${esc(r.label)} (${sign(r.zWeek, 1)} z)`).join(', ')}.` : 'No leg had an unusual week (all within ±2 z).', flag: odd.length > 0 });
+    const sp = L.rows.find(r => r.key === 'spread');
+    if (sp && fin(sp.latest) && sp.latest > 0) out.push({ sec: 'liquidity', tag: 'funding', html: `SOFR is <b>${sp.latest.toFixed(1)}bp above</b> the rate on reserves.`, why: 'Banks paying up for overnight cash is a sign of funding strain.', flag: true });
+  }
+  const X = LAST.feed?.crossAsset;
+  if (X?.pairs?.length) {
+    const p = X.pairs[0], ser = p.series.map(q => q[1]), was = ser[Math.max(0, ser.length - 14)];
+    const flip = fin(was) && fin(p.last) && Math.sign(was) !== Math.sign(p.last) && Math.abs(was) > 0.2 && Math.abs(p.last) > 0.2;
+    out.push({ sec: 'cross', tag: 'cross-asset', html: `Biggest change: <b>${esc(p.label)}</b> ${sign(p.chg13, 2)} over the quarter, now ${sign(p.last, 2)}.`,
+      why: flip ? 'The relationship has flipped sign: worth asking what changed.' : `It sits at the ${p.pctl}th percentile of its three years.`, flag: flip });
+    const eq = X.pairs.find(q => (q.a === 'spx' && q.b === 'ust10') || (q.a === 'ust10' && q.b === 'spx'));
+    if (eq && eq !== p) out.push({ sec: 'cross', tag: 'stocks × bonds', html: `S&amp;P × 10-year yield is ${sign(eq.last, 2)}.`,
+      why: eq.last > 0.2 ? 'Positive: stocks rise as yields rise, so bonds are not hedging stocks right now.' : eq.last < -0.2 ? 'Negative: yields fall when stocks fall, so bonds are hedging stocks.' : 'Near zero: no strong link either way.' });
+  }
+  const K = LAST.feed?.commodities;
+  if (K?.rows?.length) {
+    const rows = K.rows.filter(r => fin(r.z)), hi = rows[0], lo = rows.at(-1), mv = [...K.rows].filter(r => fin(r.week)).sort((a, b) => Math.abs(b.week) - Math.abs(a.week))[0];
+    const bk = K.rows.find(r => r.key === 'basket');
+    out.push({ sec: 'commodities', tag: 'commodities', amb: true, html: `Most stretched: <b>${esc(hi.label)}</b> (${sign(hi.z, 1)} z, ${hi.pos}% of its range). Lowest: <b>${esc(lo.label)}</b> (${sign(lo.z, 1)} z).${mv ? ` Biggest week: ${esc(mv.label)} ${sign(mv.week, 1)}%.` : ''}`,
+      why: bk && fin(bk.pos) ? (bk.pos >= 70 ? 'The basket is high too: a broad move.' : bk.pos <= 30 ? 'The basket is low: commodities broadly weak.' : 'The basket is mid-range: the extremes are market-specific stories.') : '',
+      flag: Math.abs(hi.z) >= 2 || Math.abs(lo.z) >= 2 });
+  }
+  const V = LAST.vol;
+  if (V?.now) {
+    const N = V.now, i30 = V.tenors.indexOf('30D'), row = V.z?.[i30] ?? [], last = row.filter(fin), d = last.length > 22 ? last.at(-1) - last.at(-22) : null;
+    out.push({ sec: 'options', tag: 'options', html: `The vol curve front reads <b>${esc(N.frontState ?? '–')}</b>${fin(N.front) ? ` (9D/30D ${N.front.toFixed(2)})` : ''}; 30-day vol ${fin(d) ? (Math.abs(d) < 0.05 ? 'flat' : sign(d, 1) + ' pts') + ' over a month' : 'n/a'}.`,
+      why: fin(N.p75Front) ? `On days like this NQ/SPX broke their p75 range ${Math.round(N.p75Front * 100)}% of the time. Size for that.` : '', flag: N.frontState === 'stressed' });
+  }
+  return out;
+}
+function drawWeek() {
+  const items = weekSummary();
+  $('wk-list').innerHTML = items.length ? items.map(it => `<li><span class="tag${it.amb ? ' amb' : ''}"><a href="#${it.sec}">${esc(it.tag)} ↓</a></span>
+    <span>${it.html}${it.flag ? '<span class="flag">look</span>' : ''}</span>${it.why ? `<span class="why">${it.why}</span>` : ''}</li>`).join('')
+    : '<li><span class="tag">–</span><span>No data has built yet.</span></li>';
+  $('wk-n').textContent = `${items.filter(i => i.flag).length} to look at`;
+  $('wk-asof').textContent = `data to ${LAST.feed?.liquidity?.rows?.[0]?.asOf ?? LAST.rates?.weeks?.at(-1) ?? '–'}`;
+  WEEKTEXT = items.map(it => '• ' + it.html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&')).join('\n');
+}
+let WEEKTEXT = '';
+
+// ── THE NOTEBOOK: saved on the server (any device); a draft is kept in this browser until Save ─────
+const isoDate = d => d.toISOString().slice(0, 10);
+function noteWeek(d = new Date()) {   // the Friday the note belongs to; a weekend review belongs to the week just ended
+  const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())), dow = x.getUTCDay();
+  x.setUTCDate(x.getUTCDate() + (dow === 6 ? -1 : dow === 0 ? -2 : 5 - dow)); return isoDate(x);
+}
+const NB = { week: noteWeek(), notes: {}, server: true };
+const ls = { get: k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const VLAB = { right: 'right', partly: 'partly right', wrong: 'wrong' };
+async function putNote(week, body) {
+  try {
+    const r = await fetch('/api/feed/notes/' + week, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json(); if (!j.ok) throw new Error(j.error); NB.notes[week] = j.note; NB.server = true; return true;
+  } catch (e) {   // offline or no server: keep it in this browser so nothing typed is lost
+    NB.notes[week] = { ...(NB.notes[week] ?? {}), ...body, savedAt: new Date().toISOString(), local: true }; ls.set('feedNotesLocal', NB.notes); NB.server = false; return false;
+  }
+}
+function drawNotebook() {
+  const W = NB.week, cur = NB.notes[W] ?? {}, draft = ls.get('feedNoteDraft');
+  $('nb-week').textContent = 'week ending ' + W;
+  for (const f of ['moved', 'meaning', 'wrong']) { const el = $('nb-' + f); if (document.activeElement !== el) el.value = (draft?.week === W ? draft[f] : null) ?? cur[f] ?? ''; }
+  $('nb-status').textContent = cur.savedAt ? `saved ${cur.savedAt.slice(0, 16).replace('T', ' ')}${cur.local ? ' · this device only (server unreachable)' : ''}` : '';
+  // the last week before this one that has a note
+  const past = Object.keys(NB.notes).filter(k => k < W && ['moved', 'meaning', 'wrong'].some(f => NB.notes[k][f])).sort();
+  const pw = past.at(-1), P = pw ? NB.notes[pw] : null;
+  $('nb-prev').hidden = !P;
+  if (P) {
+    $('nb-prev').innerHTML = `<div class="step" style="margin-top:0">last time · week ending ${esc(pw)} · were you right?</div>
+      ${P.meaning ? `<div class="q"><b>you thought</b>${esc(P.meaning)}</div>` : ''}${P.wrong ? `<div class="q"><b>wrong if</b>${esc(P.wrong)}</div>` : ''}
+      <div class="row2 vd">${['right', 'partly', 'wrong'].map(v => `<button data-v="${v}" aria-pressed="${P.verdict === v}">${VLAB[v]}</button>`).join('')}</div>
+      <label for="nb-outcome" style="margin-top:8px">what actually happened <i>· one line</i></label><textarea id="nb-outcome" style="min-height:44px">${esc(P.outcome ?? '')}</textarea>
+      <div class="row2"><button class="btn ghost" id="nb-outsave">Save the outcome</button></div>`;
+    $('nb-prev').querySelectorAll('.vd button').forEach(b => b.onclick = async () => { const v = P.verdict === b.dataset.v ? '' : b.dataset.v; await putNote(pw, { verdict: v }); drawNotebook(); });
+    $('nb-outsave').onclick = async () => { await putNote(pw, { outcome: $('nb-outcome').value }); drawNotebook(); };
+  }
+  const marked = Object.values(NB.notes).filter(n => n.verdict), c = v => marked.filter(n => n.verdict === v).length;
+  const all = Object.keys(NB.notes).filter(k => ['moved', 'meaning', 'wrong'].some(f => NB.notes[k][f])).sort().reverse();
+  $('nb-rec').innerHTML = all.length ? `your record: <b>${all.length}</b> week${all.length > 1 ? 's' : ''} written · <b>${c('right')}</b> right · <b>${c('partly')}</b> partly · <b>${c('wrong')}</b> wrong${marked.length >= 8 ? ` · hit rate ${Math.round((c('right') + c('partly') / 2) / marked.length * 100)}%` : marked.length ? ' · mark eight weeks before reading anything into the hit rate' : ''}`
+    : 'Your first note starts the record. Next week you mark it.';
+  $('nb-hist').hidden = all.length < 2;
+  $('nb-histlist').innerHTML = all.map(k => { const n = NB.notes[k]; return `<div class="h1"><span class="d">${esc(k)}</span>${n.verdict ? ` · <b>${esc(VLAB[n.verdict])}</b>` : ''}<br>${esc(n.meaning || n.moved || '')}${n.outcome ? `<br><span style="color:var(--text3)">→ ${esc(n.outcome)}</span>` : ''}</div>`; }).join('');
+}
+async function initNotebook() {
+  const r = await get('/api/feed/notes');
+  NB.notes = r?.ok ? (r.notes ?? {}) : (ls.get('feedNotesLocal') ?? {}); NB.server = !!r?.ok;
+  // anything saved on this device while the server was away goes up now
+  const local = ls.get('feedNotesLocal');
+  if (r?.ok && local) { for (const [w, n] of Object.entries(local)) if (n.local && (!NB.notes[w] || NB.notes[w].savedAt < n.savedAt)) { const { local: _, savedAt, ...body } = n; await putNote(w, body); } try { localStorage.removeItem('feedNotesLocal'); } catch {} }
+  let t; const keep = () => { clearTimeout(t); t = setTimeout(() => ls.set('feedNoteDraft', { week: NB.week, moved: $('nb-moved').value, meaning: $('nb-meaning').value, wrong: $('nb-wrong').value }), 400); };
+  ['moved', 'meaning', 'wrong'].forEach(f => $('nb-' + f).addEventListener('input', () => { keep(); $('nb-status').textContent = 'not saved yet'; }));
+  $('nb-fill').onclick = () => { if (!WEEKTEXT) return; const el = $('nb-moved'); el.value = el.value.trim() ? el.value.trim() + '\n' + WEEKTEXT : WEEKTEXT; keep(); $('nb-status').textContent = 'not saved yet'; };
+  $('nb-save').onclick = async () => {
+    const ok = await putNote(NB.week, { moved: $('nb-moved').value, meaning: $('nb-meaning').value, wrong: $('nb-wrong').value });
+    if (ok) try { localStorage.removeItem('feedNoteDraft'); } catch {}
+    drawNotebook();
+  };
+  drawNotebook();
+}
+
 // ── montage tiles ───────────────────────────────────────────────────────────
 const MINI = {};
 function mini(id, draw) { MINI[id] = draw; draw($(id)); }
@@ -603,6 +815,8 @@ let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTime
   try { drawCross(feed?.crossAsset); } catch (e) { console.error(e); }
   try { drawCommodities(feed?.commodities); } catch (e) { console.error(e); }
   try { drawOptions(LAST.vol); } catch (e) { console.error(e); }
+  try { drawWeek(); } catch (e) { console.error(e); }
+  initNotebook().catch(e => console.error(e));
   const errs = { ...(feed?.errors ?? {}) }; if (!feed?.ok) errs.feed = feed?.error ?? 'unavailable';
   if (!rates?.rates) errs.rates = rates?.error ?? 'no build'; if (!vol?.volTerm) errs.volTerm = vol?.error ?? 'no build';
   const n = Object.keys(errs).length;
