@@ -1,0 +1,64 @@
+/* The Feed theme for the detail pages that feed.html links to.
+ *
+ * Loaded LAST on a detail page, after the page's own styles, together with js/feedChrome.js (which puts the feed's
+ * tab bar at the top and adds body.feed). It changes colours only: each page keeps its layout, and its own colour
+ * variables are re-pointed at the feed palette (deep navy, blue high / amber low, faint glow on panels).
+ *
+ * The pages use four vocabularies for the same few colours, so all four are mapped:
+ *   css/index.css family (light by default, dark under body.dark): --bg --s1 --s2 --s3 --border --border2 --text*
+ *   GitHub-dark pages:  --bg --card --card2 --border --text --text2 --text3
+ *   panel pages:        --bg --panel --panel2 --line --txt --dim
+ *   cot-extremes:       --bg --bg2 --bg3 --line --line2 --tx --tx2 --tx3
+ * Semantic colours (green/red, bull/bear, long/short) are left alone: they mean something on each page.
+ * --s1/--s2 are only re-pointed where they are surfaces (body.feed-s): vix-calculus uses them as series colours.
+ *
+ * Not used on oi-dashboard-v2.html or any oi-* page (styled separately, changed only under close monitoring). */
+
+body.feed {
+  --bg:#02050b; --bg-rgb:2,5,11;
+  --card:#08101f; --card2:#0c1628; --panel:#08101f; --panel2:#0c1628; --bg2:#08101f; --bg3:#0c1628;
+  --border:#1d2b44; --border2:#2a3c5c; --border-rgb:29,43,68; --line:#1d2b44; --line2:#2a3c5c; --grid:#16223a;
+  --text:#e8eef8; --text2:#b4c0d4; --text3:#7d8aa3;
+  --txt:#e8eef8; --dim:#8b98ad;
+  --tx:#e8eef8; --tx2:#b4c0d4; --tx3:#7d8aa3;
+  --blue:#5aa2ff; --accent:#5aa2ff;
+  --feed-glow:0 0 0 1px rgba(90,162,255,.05), 0 0 28px rgba(50,110,230,.10);
+  background:
+    radial-gradient(1100px 480px at 50% -60px, #0c1d44, transparent 70%),
+    radial-gradient(800px 380px at 88% 30%, rgba(20,40,90,.30), transparent 70%),
+    #02050b;
+  background-attachment:fixed;
+}
+/* the index.css family: its surfaces are --s1..--s3, and its dark mode is body.dark (feedChrome adds it) */
+body.feed.feed-s, body.feed.feed-s.dark {
+  --bg:#02050b; --s1:#08101f; --s2:#0c1628; --s3:#13203a; --card-dim:#060c18;
+  --border:#1d2b44; --border2:#2a3c5c; --text:#e8eef8; --text2:#b4c0d4; --text3:#7d8aa3;
+  --blue:#5aa2ff; --blue2:#9ccaff; --blue-bg:rgba(90,162,255,.10); --blue-bd:rgba(90,162,255,.35);
+  --amber:#e0a93b; --amber-bg:rgba(224,169,59,.10); --amber-bd:rgba(224,169,59,.40);
+}
+
+/* panels: a faint blue edge and glow, like the feed's screens */
+body.feed :is(.card, .panel, .kpi, .bt-kpi, .meta-card, .box, .chart-card, .ch, .regime-banner, .tile, .section-card) {
+  border-color:#1d2b44;
+  box-shadow:var(--feed-glow);
+}
+body.feed :is(h1, h2) { text-shadow:0 0 24px rgba(90,162,255,.22); }
+body.feed a { color:#9ccaff; }
+body.feed ::selection { background:rgba(90,162,255,.35); }
+/* the light/dark switches do nothing useful under a forced dark theme */
+body.feed :is(#darkToggle, #themeToggleBtn, [onclick="toggleTheme()"]) { display:none !important; }
+
+/* the feed's tab bar, put at the top of the page by js/feedChrome.js */
+.feed-bar { display:flex; flex-wrap:wrap; align-items:center; gap:2px 4px; padding:7px 14px; margin:0;
+            background:linear-gradient(rgba(2,5,11,.97), rgba(2,5,11,.90)); border-bottom:1px solid #1d2b44;
+            font:11.5px/1.4 ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace; position:relative; z-index:3; }
+.feed-bar a { color:#7d8aa3 !important; text-decoration:none; padding:3px 9px; border-radius:3px; border:1px solid transparent; white-space:nowrap; }
+.feed-bar a:hover { color:#e8eef8 !important; border-color:#1d2b44; }
+.feed-bar a.home { color:#e8eef8 !important; font-weight:700; letter-spacing:.12em; }
+.feed-bar a.home::before { content:"◂ "; color:#5aa2ff; }
+.feed-bar a.on { color:#06101f !important; background:#9ccaff; box-shadow:0 0 12px rgba(90,162,255,.5); }
+.feed-bar a.on.amb { background:#f3cf7e; box-shadow:0 0 12px rgba(224,169,59,.5); }
+.feed-bar .sep { width:1px; height:14px; background:#1d2b44; margin:0 6px; }
+.feed-bar .here { margin-left:auto; color:#7d8aa3; font-size:10.5px; }
+.feed-bar .here b { color:#f3cf7e; font-weight:600; }
+@media (max-width:640px) { .feed-bar { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; } .feed-bar::-webkit-scrollbar { display:none; } .feed-bar .here { display:none; } }
