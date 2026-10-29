@@ -60,6 +60,16 @@ export function todayTables({ intl, changes, creditSpreads, fedPath, strengths, 
   if (hy && Number.isFinite(hy.bp)) g.push(row('Junk-bond spread', `${Math.round(hy.bp)}bp`, sg(hy.d1, 0, 'bp'), 'The extra yield lenders ask to hold risky debt. Wider means more nervous.'));
   if (vx) g.push(row('VIX', vx.last.toFixed(1), sg(vx.d1, 1, ' pts'), 'What the market pays for stock-market protection.'));
   if (dx || bk.n >= 4) g.push(row('Dollar', dx ? `${dx.last.toFixed(1)}${asOf(dx)}` : '·', bk.n >= 4 ? `${sg(bk.avg, 2, '%')} on 7 majors` : '', 'Against the seven daily majors, today against yesterday.'));
+  // risk tone: AUD/JPY is the carry gauge (the risk currency against the safe-haven one). Built from the two pairs on the board, which track the cross at 0.995 over six years.
+  const au = (assets ?? []).find(r => r?.key === 'AUDUSD'), jp = (assets ?? []).find(r => r?.key === 'USDJPY');
+  if (au && jp && Number.isFinite(au.d1) && Number.isFinite(jp.d1)) {
+    const aj = au.d1 + jp.d1, nq = (assets ?? []).find(r => r?.key === 'NQ'), side = v => (v > 0 ? 1 : v < 0 ? -1 : 0);
+    const votes = [nq && Number.isFinite(nq.d1) ? ['Nasdaq', side(nq.d1)] : null, vx && Number.isFinite(vx.d1) ? ['the VIX', -side(vx.d1)] : null, hy && Number.isFinite(hy.d1) ? ['junk spreads', -side(hy.d1)] : null].filter(v => v && v[1] !== 0);
+    const tone = Math.abs(aj) < 0.15 ? 'flat' : aj > 0 ? 'risk-on' : 'risk-off', agree = votes.filter(v => v[1] === side(aj)).map(v => v[0]), differ = votes.filter(v => v[1] === -side(aj)).map(v => v[0]);
+    const list = a => (a.length < 2 ? (a[0] ?? '') : `${a.slice(0, -1).join(', ')} and ${a.at(-1)}`);
+    const verdict = tone === 'flat' ? 'The carry gauge is flat.' : agree.length && !differ.length ? `${list(agree)} read the same way.` : differ.length && !agree.length ? `${list(differ)} read the other way: the currencies disagree with them.` : agree.length ? `${list(agree)} agree; ${list(differ)} ${differ.length > 1 ? 'do' : 'does'} not.` : '';
+    g.push(row('Risk tone, AUD/JPY', tone, sg(aj, 2, '%'), `The risk currency against the safe-haven one; up when investors take risk. ${verdict} Same-day only: over six years it has moved with Nasdaq and against the VIX in both halves of the record, with no next-day lead.`.trim()));
+  }
   if (fedPath && Number.isFinite(fedPath.hike)) g.push(row('Fed hike odds', `${Math.round(fedPath.hike)}%`, Number.isFinite(fedPath.hikeWeekAgo) ? `${sg(fedPath.hike - fedPath.hikeWeekAgo, 0, 'pp')} on the week` : '', `Chance priced for a hike by ${fedPath.ref ?? 'the next meeting'}. Market-implied, as of ${fedPath.asOf ?? 'the last read'}.`));
   const globalHtml = g.length ? `<table class="t3"><tr><th>Market</th><th>Now</th><th>Today</th><th>What it measures</th></tr>${g.join('')}</table><p class="small3">Today means since yesterday's close. Rates and credit print with a delay, so a row dated earlier says so.</p>` : '';
 
