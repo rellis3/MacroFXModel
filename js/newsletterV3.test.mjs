@@ -27,5 +27,8 @@ console.log('the released daily');
   ok('the email subject and preview come from the Today opening, not the 20-day story', rel.subject.length > 0 && rel.subject.length <= 78 && /^(Credit|Asia|Yields|Gold|Asia stays)/.test(rel.subject) && !/20 days/.test(rel.subject) && rel.preheader.length > 20, rel.subject + ' | ' + rel.preheader);
   ok('the page title is that subject', rel.html.includes('<title>' + esc(rel.subject) + '</title>'), rel.subject);
   ok('a weekly built through the release function is not a V3 page', !/The state of the levels today/.test(wk.html)); }
+console.log('late in the day');
+{ const late = releaseNewsletterV3({ date: 'Thursday 29 October 2026', isoDate: '2026-10-29', ...input, events: [], pastEvents: events, nowMs: t(18, 36), regimeWord: 'MIXED' });
+  ok('releases that already landed come in as past events: still an ECB day, not a quiet one', /ECB day/.test(late.html) && !/Quiet day/.test(late.html)); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 if (failures) process.exit(1);
