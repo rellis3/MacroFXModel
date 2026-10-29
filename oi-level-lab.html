@@ -101,10 +101,21 @@ const LINES = {
   oi_volume:        { n: 'Volume level',     c: '#4aa8ff', w: 'The strike with the heaviest traded volume that session.' },
   short_gamma_node: { n: 'Short-gamma node', c: '#e8615f', w: 'A big net-short-gamma strike. Textbook: speeds moves up.' },
   long_gamma_node:  { n: 'Long-gamma node',  c: '#46b87a', w: 'A big net-long-gamma strike. Textbook: pins moves.' },
+  sq_gamma_call:    { n: 'Call wall, all expiries added', c: '#ff9aa4', w: '', x: 1 },
+  sq_gamma_put:     { n: 'Put wall, all expiries added',  c: '#7be3b8', w: '', x: 1 },
+  sq_oi_call:       { n: 'Most call contracts (any expiry)', c: '#ffb3ba', w: '', x: 1 },
+  sq_oi_put:        { n: 'Most put contracts (any expiry)',  c: '#a6efcf', w: '', x: 1 },
+  near_oi_call:     { n: 'Call contracts, up to 7 days',     c: '#ffc4a0', w: '', x: 1 },
+  near_oi_put:      { n: 'Put contracts, up to 7 days',      c: '#bfe9b0', w: '', x: 1 },
+  far_oi_call:      { n: 'Call contracts, 8+ days',          c: '#d9a3ff', w: '', x: 1 },
+  far_oi_put:       { n: 'Put contracts, 8+ days',           c: '#a3c6ff', w: '', x: 1 },
+  oi_peak:          { n: 'Most open interest (calls+puts)',  c: '#ffffff', w: '', x: 1 },
+  vanna_pos:        { n: 'Vanna peak (+)',                   c: '#ff9be6', w: '', x: 1 },
+  vanna_neg:        { n: 'Vanna peak (-)',                   c: '#c79bff', w: '', x: 1 },
   exp_hi:           { n: 'Expected-move high', c: '#d9b45a', w: 'The options-implied one-day upper edge. A ruler, not a positioning level: the control line.' },
   exp_lo:           { n: 'Expected-move low',  c: '#d9b45a', w: 'The options-implied one-day lower edge. The control line.' },
 };
-let R = null, SEL = 'ALL', REPL = {};
+let SHOWX = false, R = null, R2 = null, SEL = 'ALL', REPL = {}, DBM = null;
 const pct = (x, d = 0) => x == null ? '–' : (x * 100).toFixed(d) + '%';
 const pp = (x, d = 0) => x == null ? '–' : (x >= 0 ? '+' : '') + (x * 100).toFixed(d) + ' pp';
 const nT = c => c ? (c.real.bounce + c.real.brk) : 0;
@@ -178,11 +189,22 @@ function render() {
   <div class="find"><b>The regime read points the right way, weakly.</b> Walls bounced ${pp(wr.PIN && wr.PIN.diff && wr.PIN.diff.diff)} vs random lines when dealers were long gamma (PIN), and ${pp(wr.BREAKOUT && wr.BREAKOUT.diff && wr.BREAKOUT.diff.diff)} when short gamma (BREAKOUT). Strong walls only: PIN ${pp(rs.PIN && rs.PIN.diff && rs.PIN.diff.diff)}, BREAKOUT ${pp(rs.BREAKOUT && rs.BREAKOUT.diff && rs.BREAKOUT.diff.diff)}. Same direction as the theory (fade in long gamma, follow in short), every interval still includes zero.</div>
   <div class="find"><b>Most lines behave like random lines.</b> Of the ${Object.keys(S.byType).length} line types in the whole sample, none beats a random line with an interval that excludes zero. The few cells that do clear zero (zero gamma and the volume level on the indices, walls with OI being built) are about as many as luck produces among ${cells.length} comparisons.</div>
   <div class="find"><b>Walls where open interest was being <i>built</i> that day bounced more</b> (${pp(S.walls.oiChange && S.walls.oiChange['building (OI +3% or more)'] && S.walls.oiChange['building (OI +3% or more)'].diff.diff)}, interval above zero). That is C.OG's "strengthening wall" idea and the cleanest single pointer here. It is one cell, and the walls are not independent across days.</div>
-  <div class="find"><b>A wall that exists only in a far expiry (8+ days, nothing near it) leaned the other way</b> (${pp(S.bucketWalls.d8_45 && S.bucketWalls.d8_45.faronly && S.bucketWalls.d8_45.faronly.diff && S.bucketWalls.d8_45.faronly.diff.diff)}): price was more likely to go through than a random line. Thin (about 60 touches), but it is the "far-DTE walls follow rather than fade" idea, and it is the first thing to check in the long Databento history.</div></div>`;
+  <div class="find"><b>A wall that exists only in a far expiry (8+ days, nothing near it) leaned the other way</b> (${pp(S.bucketWalls.d8_45 && S.bucketWalls.d8_45.faronly && S.bucketWalls.d8_45.faronly.diff && S.bucketWalls.d8_45.faronly.diff.diff)}): price was more likely to go through than a random line. Thin (about 60 touches), but it is the "far-DTE walls follow rather than fade" idea, and it is the first thing to check in the long Databento history.</div>`;
+  if (R2) {
+    const P = R2.sections.piled, c3 = P.combos && P.combos['three or more types incl. a wall · PIN'], c3b = P.combos && P.combos['three or more types incl. a wall · BREAKOUT'], sz = P.bySize_regime || {};
+    const g = x => x && x.diff ? `${pp(x.diff.diff)} [${(x.diff.lo * 100).toFixed(0)}, ${(x.diff.hi * 100).toFixed(0)}]` : 'too few';
+    const dr = R2.sections.dayBook.direction || {}, pm = R2.sections.greeks.pm_pull || {};
+    h += `<div class="find"><b>Piled-up lines on a pin day held; on a breakout day they did not.</b> Stacks of three or more kinds of line including a wall: PIN ${g(c3)} (${c3 ? nT(c3) : 0} touches), BREAKOUT ${g(c3b)}. Same shape for stacks of 3+ types: PIN ${g(sz['3+ · PIN'])}, BREAKOUT ${g(sz['3+ · BREAKOUT'])}. This is the dealer-gamma story seen through confluence, the best-supported pointer on the page, and the several cuts of it are the same ~25–40 stacks counted different ways.</div>
+    <div class="find"><b>Ignoring time to expiry costs nothing, and carving it up gains nothing.</b> Walls built from gamma added across all expiries, from raw contracts at any expiry, from contracts under 7 days, or from contracts 8+ days out all sit at random-line levels (section 6). A wall made mostly of far-dated contracts is no different (${g(R2.sections.squash.farShare && R2.sections.squash.farShare['mostly far-expiry OI (>60% 8+ days)'])}). The one cell that clears zero is far-dated call walls in FX (${g(R2.sections.squash.far_oi.far_oi_call.FX)}): leaning toward breaking, one cell of many.</div>
+    <div class="find"><b>Which way the day went: nothing predicts it.</b> Not the travel read (${dr['travel read (up/down) vs the day'] ? (dr['travel read (up/down) vs the day'].rate * 100).toFixed(0) + '% right' : '–'}), zero gamma, max pain, the nearer wall or a 5-day streak. The 63-day trend pointed the wrong way (${dr['63-day trend up/down -> same direction today'] ? (dr['63-day trend up/down -> same direction today'].rate * 100).toFixed(0) + '% right' : '–'}), which says more about this 3-month window than about OI.</div>
+    <div class="find"><b>Time-of-day pull:</b> the heaviest-volume level pulled price toward it over the afternoon (${pm.oi_volume ? '+' + pm.oi_volume.diff.toFixed(2) + 'σ vs random lines' : '–'}); the vanna, charm and zero-gamma flips, if anything, pushed price away from them (${pm.charm_flip ? pm.charm_flip.diff.toFixed(2) + 'σ' : '–'}). Both borderline.</div>`;
+  }
+  h += `</div>`;
+  h += `<!--find-end-->`;
 
   // each line for the selection
   h += `<div class="card"><h2><em>2</em> Each line: ${grp}</h2><p class="sub">The dot is how much more often price <b>bounced</b> at this line than at a random line (right = fade works better, left = follow works better); the bar is the 95% interval. A bar that spans zero means the data cannot tell this line from a random price.</p><div class="grid">`;
-  for (const t of Object.keys(LINES)) {
+  for (const t of Object.keys(LINES).filter(k => !LINES[k].x)) {
     const c = cellOf(t), L = LINES[t], v = verdict(c);
     const ts = c ? c.touch_share : null, ps = c ? c.plc_touch_share : null;
     h += `<div class="lc"><h3><i style="background:${L.c}"></i>${L.n}${c ? `<span class="note" style="margin-left:auto">${c.n_levels} lines</span>` : ''}</h3><div class="what">${L.w}</div>
@@ -210,20 +232,22 @@ function render() {
   <h3 style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-top:14px">Open-interest change that day, at the wall</h3>${rowTable(Object.entries(S.walls.oiChange || {}))}</div>
   <div><h3 style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)">Hour of the first touch (London)</h3>${rowTable(Object.entries(S.walls.hourBlock || {}))}<p class="note">The late block (16:30–22:00) has the widest interval: few walls get first touched that late.</p></div></div></div>`;
 
+  if (R2) h += newSections();
   // offset sweep
-  h += `<div class="card"><h2><em>6</em> Where does price actually turn?</h2><p class="sub">Each line is moved a little closer to, or further past, where it was drawn, and the race is re-run. If a line works best a little <b>before</b> the drawn price, the level is real but price front-runs it; if it works best at zero, the drawn price is the right one to use. Random-walk level: 50%.</p>
+  h += `<div class="card"><h2><em>11</em> Where does price actually turn?</h2><p class="sub">Each line is moved a little closer to, or further past, where it was drawn, and the race is re-run. If a line works best a little <b>before</b> the drawn price, the level is real but price front-runs it; if it works best at zero, the drawn price is the right one to use. Random-walk level: 50%.</p>
   <div id="sweep" class="two"></div></div>`;
 
   // day-level
-  h += `<div class="card"><h2><em>7</em> The day as a whole: ranges, expected move and IV</h2>${dayTable()}</div>`;
+  h += `<div class="card"><h2><em>12</em> The day as a whole: ranges, expected move and IV</h2>${dayTable()}</div>`;
 
   // method
-  h += `<div class="card"><h2><em>8</em> How it was built, and what it cannot say</h2>
+  h += `<div class="card"><h2><em>13</em> How it was built, and what it cannot say</h2>
   <p class="sub">The nightly CME capture is replayed through the same code the indicator uses (open interest, change, volume, implied-vol smile and CME settlements), so the lines are the ones the chart would have shown that morning, from the capture time (about 06:30 London) to 22:00. Prices are M1 mid; one day's expected move is ATM implied vol ÷ √252 × spot, known at the capture (where only CME settlements existed, the term point nearest 7 days). Intervals bootstrap whole sessions, because markets on one date share the dollar.</p>
   <p class="sub"><b>Left out and counted:</b> ${m.dropped.stale_asof} market-sessions where CME had not updated its book (the capture carried the previous day), ${m.dropped.no_sigma} early captures with no IV ruler, ${m.dropped.no_prices} with no price. <b>Cannot say:</b> anything about direction, anything about a bot's P&amp;L (no costs, no spread gate), or anything that needs more than about 35 sessions. The pre-registered, larger version is <code>oi_research_book/WALL_DTE_STYLE_PREREG.md</code> on the six-year Databento history.</p></div>`;
   $('#app').innerHTML = h;
   document.querySelectorAll('.days').forEach(el => paintDays(el));
   sweep();
+  if (R2) dayBook();
 }
 
 function rowTable(rows) {
@@ -286,6 +310,93 @@ function sweep() {
   $('#sweep').innerHTML = h;
 }
 
+
+// ── step-4 sections: DTE carved vs squashed, Greeks beyond the flips, piled-up lines, the regime stack and the day book ───────────────
+const grp2 = () => (GROUPS.includes(SEL) ? SEL : ['EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','USDCHF'].includes(SEL) ? 'FX' : SEL === 'GOLD' ? 'GOLD' : 'IDX');
+const H3 = 'font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)';
+function dcell(c, nmin = 20) {
+  if (!c || !c.real || nT(c) < nmin) return `<td class="note">${c && c.real ? nT(c) + ' touches' : '–'}</td>`;
+  const d = c.diff; if (!d) return `<td class="note">${nT(c)} touches</td>`;
+  const col = d.lo > 0 ? 'v-up' : d.hi < 0 ? 'v-dn' : 'v-nu';
+  return `<td><span class="${col}" style="font:600 12.5px var(--mono)">${pp(d.diff)}</span><div class="note">${nT(c)} touches · [${(d.lo * 100).toFixed(0)}, ${(d.hi * 100).toFixed(0)}]</div></td>`;
+}
+function sqTable(g) {
+  const S = R2.sections.squash, T = R.sections.byType;
+  const rows = [
+    ['Indicator walls (the strongest-gamma expiry bucket)', T.call_wall && T.call_wall[g], T.put_wall && T.put_wall[g], null],
+    ['Gamma, all expiries added together', S.sq_gamma.sq_gamma_call[g], S.sq_gamma.sq_gamma_put[g], S.sq_gamma.ALLWALLS[g]],
+    ['Contracts (open interest), all expiries: time to expiry ignored', S.sq_oi.sq_oi_call[g], S.sq_oi.sq_oi_put[g], S.sq_oi.ALLWALLS[g]],
+    ['Contracts expiring within 7 days only', S.near_oi.near_oi_call[g], S.near_oi.near_oi_put[g], S.near_oi.ALLWALLS[g]],
+    ['Contracts expiring 8+ days out only', S.far_oi.far_oi_call[g], S.far_oi.far_oi_put[g], S.far_oi.ALLWALLS[g]],
+  ];
+  let h = '<table><tr><th>How the wall is defined</th><th>call wall</th><th>put wall</th><th>both</th></tr>';
+  for (const [n, a, b, c] of rows) h += `<tr><td>${n}</td>${dcell(a)}${dcell(b)}${c ? dcell(c) : '<td class="note">–</td>'}</tr>`;
+  return h + '</table>';
+}
+function pileTable(rows) {
+  let h = '<table><tr><th>Cut</th><th class="num">touches</th><th class="num">bounce</th><th class="num">random</th><th>vs random lines</th></tr>';
+  for (const [k, c] of rows) {
+    if (!c || !c.real) { h += `<tr><td>${k}</td><td colspan="4" class="note">too few</td></tr>`; continue; }
+    const n = nT(c);
+    h += `<tr><td>${k}</td><td class="num">${n}</td><td class="num">${pct(c.real.rate)}</td><td class="num">${pct(c.plc.rate)}</td><td>${n < 20 || !c.diff ? '<span class="note">too few touches</span>' : ci(c, 220)}</td></tr>`;
+  }
+  return h + '</table>';
+}
+function newSections() {
+  const S = R2.sections, g = grp2(), sq = S.squash, gr = S.greeks, pl = S.piled, db = S.dayBook;
+  let h = '';
+  const ov = S.overlap || {}, sh = x => x && x.share != null ? Math.round(x.share * 100) + '%' : '–';
+  const pk = (() => { const c = sq.oi_peak && sq.oi_peak[g]; return c && c.diff ? pp(c.diff.diff) + ' [' + (c.diff.lo * 100).toFixed(0) + ', ' + (c.diff.hi * 100).toFixed(0) + ']' : 'too few'; })();
+  h += `<div class="card"><h2><em>6</em> Time to expiry: carve the book up, or ignore it?</h2>
+  <p class="sub">The same contract sits at the same strike whether it expires tomorrow or in 40 days, so one fair question is whether slicing the book by expiry helps at all. Each row builds the call wall (most call exposure above price) and put wall (below) a different way and runs the same race against random lines. "Gamma, all expiries added" keeps the maths but throws the expiry labels away; "contracts" throws away even the gamma and just counts them. <b>${GNAME[g]}</b>.</p>
+  ${sqTable(g)}
+  <p class="note">Cell: bounce rate at those walls minus the bounce rate at random lines, 95% interval in pp; green or red only where the interval excludes zero. How often two definitions pick the same strike (within 0.1σ): indicator walls vs gamma-added ${sh(ov['ind_walls vs sq_gamma_walls'])}, vs contracts-added ${sh(ov['ind_walls vs sq_oi_walls'])}; near-expiry vs far-expiry contract walls ${sh(ov['near_oi_walls vs far_oi_walls'])}. They disagree about where the wall is about half the time, yet none of them reacts differently from a random line, so on this sample ignoring expiry does no worse and no better than carving it up.</p>
+  <h3 style="${H3};margin-top:14px">A wall made mostly of far-dated contracts (your 60-day example)</h3>
+  ${pileTable(Object.entries(sq.farShare || {}).concat(Object.entries(sq.farShare_PIN || {})))}
+  <p class="note">Cut = share of the contracts at the wall that expire 8+ days out (all markets). The single strike with the most open interest of any kind, ${GNAME[g]}: ${pk}.</p></div>`;
+  const pm = gr.pm_pull || {}, pmn = { charm_flip: 'Charm flip', vanna_flip: 'Vanna flip', zero_gamma: 'Zero gamma', max_pain: 'Max pain', gamma_peak: 'Gamma peak', call_wall: 'Call wall', put_wall: 'Put wall', oi_volume: 'Volume level' };
+  h += `<div class="card"><h2><em>7</em> The other Greeks: vanna peaks, charm and the afternoon pull</h2>
+  <p class="sub">Vanna and charm are not stored per strike for every expiry, so two things are testable: the strikes where net vanna is largest (positive and negative) as lines, and the time-of-day pull the flips are supposed to exert. Per-strike charm, vega and theta are not in the capture, so they are not tested.</p>
+  <div class="two"><div><h3 style="${H3};margin-top:0">Vanna peaks as lines</h3>${pileTable([['Largest + vanna strike', gr.vanna_pos && gr.vanna_pos[g]], ['Largest - vanna strike', gr.vanna_neg && gr.vanna_neg[g]]])}</div>
+  <div><h3 style="${H3};margin-top:0">Afternoon pull (13:00 to 20:00 London)</h3><table><tr><th>Line</th><th class="num">sessions</th><th class="num">pulled closer, σ</th><th class="num">vs random lines</th></tr>${Object.keys(pmn).filter(k => pm[k]).map(k => { const x = pm[k], col = x.lo > 0 ? 'v-up' : x.hi < 0 ? 'v-dn' : 'v-nu'; return `<tr><td>${pmn[k]}</td><td class="num">${x.n}</td><td class="num">${x.mean.toFixed(2)}</td><td class="num ${col}">${x.diff >= 0 ? '+' : ''}${x.diff.toFixed(2)} <span class="note">[${x.lo.toFixed(2)}, ${x.hi.toFixed(2)}]</span></td></tr>`; }).join('')}</table>
+  <p class="note">Positive = price ended the afternoon nearer the line than it did for a random line, i.e. the line pulled. All markets pooled.</p></div></div></div>`;
+  h += `<div class="card"><h2><em>8</em> Piled-up lines: what happens when several land on one price?</h2>
+  <p class="sub">Every indicator line within 0.1σ of another is merged into one stack and the stack's price is raced. "Types" counts different kinds of line (a call wall and a gamma peak on one strike is two). Splitting by pin or breakout day is the point: the dealer picture says a stack should hold in long gamma and give way in short gamma. All markets pooled.</p>
+  <div class="two"><div><h3 style="${H3};margin-top:0">By stack size</h3>${pileTable(Object.entries(pl.bySize || {}).map(([k, c]) => [k + ' type' + (k === '1' ? '' : 's'), c]).concat(Object.entries(pl.bySize_regime || {})))}</div>
+  <div><h3 style="${H3};margin-top:0">By what is in the stack</h3>${pileTable(Object.entries(pl.combos || {}))}</div></div>
+  <p class="note">These cuts share the same days and often the same stacks, so they are one finding seen several ways, not several findings. Stacks seen: ${Object.entries(pl.clusterCounts || {}).map(([k, v]) => v + ' with ' + parseInt(k) + ' type' + (parseInt(k) === 1 ? '' : 's')).join(', ')}.</p></div>`;
+  const rm = db.range_model, hv = db.hl_by_gamma_x_rv || {}, hr = db.hl_by_rv || {}, dr = db.direction || {};
+  const fm = x => x ? `${x.median.toFixed(2)} <span class="note">[${x.lo.toFixed(2)}, ${x.hi.toFixed(2)}] n=${x.n}</span>` : '–';
+  h += `<div class="card"><h2><em>9</em> The regime stack: dealer gamma, volatility running, travel direction</h2>
+  <p class="sub">Is OI adding anything to what the market's own state already tells you? Each market-session is tagged with the <b>dealer-gamma regime</b> (PIN or BREAKOUT), the <b>hedge-flow slope</b>, how <b>hot volatility has been running</b> (last 10 days against the last year), and the <b>travel direction</b> (where price sits in its 3-month range and whether it got there efficiently, the repo's own read). The two-state variance HMM was also run on each market's last 250 daily returns, as the site does: its high-variance state had a probability of at most <b>${db.pHigh_range ? (db.pHigh_range[1] * 100).toFixed(0) + '%' : '–'}</b> on every one of these ${db.n} sessions, i.e. it said "calm" on all of them, so it cannot separate anything in this window and is not used below.</p>
+  <div class="two"><div><h3 style="${H3};margin-top:0">Session range ÷ implied move (median)</h3><table><tr><th>Cut</th><th class="num">median range</th></tr>
+  ${Object.entries(hr).map(([k, v]) => `<tr><td>Volatility ${k}</td><td class="num">${fm(v)}</td></tr>`).join('')}${Object.entries(hv).map(([k, v]) => `<tr><td>${k}</td><td class="num">${fm(v)}</td></tr>`).join('')}</table>
+  <h3 style="${H3};margin-top:14px">What explains how wide the day was? (log range ÷ implied move)</h3>
+  <table><tr><th>Term</th><th class="num">coefficient</th></tr>${Object.entries(rm.terms).filter(([k]) => k !== 'const').map(([k, v]) => { const nm = { lrv: 'volatility running hot (log ratio)', gneg: 'BREAKOUT (short-gamma) day', reinf: 'hedge flow reinforcing', ivz: 'options rich vs usual' }[k] || k; const col = v.lo > 0 ? 'v-up' : v.hi < 0 ? 'v-dn' : 'v-nu'; return `<tr><td>${nm}</td><td class="num ${col}">${v.coef.toFixed(2)} <span class="note">[${v.lo.toFixed(2)}, ${v.hi.toFixed(2)}]</span></td></tr>`; }).join('')}</table>
+  <p class="note">${rm.n} market-sessions, intervals bootstrap whole dates. A coefficient is only worth reading where its interval clears zero (green or red). None does here. The long-history study found long gamma means a narrower day; in this short window the BREAKOUT term is flat, so this sample is too short to see it, not evidence against it.</p></div>
+  <div><h3 style="${H3};margin-top:0">Does anything say which way the day went?</h3><table><tr><th>Rule</th><th class="num">days</th><th class="num">right</th></tr>
+  ${Object.entries(dr).filter(([, v]) => v).map(([k, v]) => `<tr><td>${k}</td><td class="num">${v.n}</td><td class="num ${v.lo > 0.5 ? 'v-up' : v.hi < 0.5 ? 'v-dn' : 'v-nu'}">${(v.rate * 100).toFixed(0)}% <span class="note">[${(v.lo * 100).toFixed(0)}, ${(v.hi * 100).toFixed(0)}]</span></td></tr>`).join('')}</table>
+  <p class="note">Share of days where the close was on the side the rule predicts (50% = a coin). Day types: ${Object.entries(db.daytype_by_gamma || {}).map(([g2, o]) => g2 + ' days ' + Object.entries(o).map(([t, n]) => n + ' ' + t.split(' (')[0]).join(' / ')).join('; ')}.</p></div></div></div>`;
+  h += `<div class="card"><h2><em>10</em> Day book: every line, every day, for one market</h2><p class="sub">One row per session: the regime stack on the left, what the day did in the middle, and a tally of the indicator lines price touched, bounced off or went through. Click a day to see the chart with every line and what happened to it.</p>
+  <div class="tabs" id="dbPick"></div><div id="dbTable">loading…</div></div>`;
+  return h;
+}
+async function dayBook() {
+  const pick = $('#dbPick'); if (!pick) return;
+  const mk = DBM || (PAIRS.includes(SEL) ? SEL : 'NQ'); DBM = mk;
+  pick.innerHTML = PAIRS.map(p => `<span class="pill ${p === mk ? 'on' : ''}" data-p="${p}">${p}</span>`).join('');
+  pick.querySelectorAll('.pill').forEach(el => el.onclick = () => { DBM = el.dataset.p; dayBook(); });
+  const days = await loadRepl(mk); let h = '<table><tr><th>Date</th><th>Gamma</th><th>Hedge flow</th><th>Vol running</th><th>Travel</th><th class="num">Range ×σ</th><th class="num">Close vs open (σ)</th><th>Lines touched / bounced / broke</th></tr>';
+  days.forEach((d, i) => {
+    let t = 0, b = 0, k = 0;
+    d.levels.filter(l => !(LINES[l.type] && LINES[l.type].x)).filter(l => !['exp_hi', 'exp_lo'].includes(l.type)).forEach(l => { if (l.ev && l.ev.touched) { t++; if (l.ev.race === 1) b++; if (l.ev.race === -1) k++; } });
+    const rv = d.rvRatio == null ? '–' : d.rvRatio < 0.8 ? '<span class="v-nu">calm</span>' : d.rvRatio > 1.25 ? '<span class="v-lo">hot</span>' : 'normal';
+    h += `<tr class="dbrow" data-i="${i}" style="cursor:pointer"><td>${d.date}</td><td>${d.regime}</td><td>${d.hf === 'damp' ? 'damping' : d.hf === 'reinf' ? 'reinforcing' : '–'}</td><td>${rv}</td><td>${d.travel || '–'}</td><td class="num">${d.hl.toFixed(2)}</td><td class="num ${d.oc > 0 ? 'v-up' : 'v-dn'}">${d.oc >= 0 ? '+' : ''}${d.oc.toFixed(2)}</td><td>${t} / <span class="v-up">${b}</span> / <span class="v-dn">${k}</span></td></tr>`;
+  });
+  $('#dbTable').innerHTML = h + '</table>';
+  document.querySelectorAll('.dbrow').forEach(tr => tr.onclick = () => replay(mk, +tr.dataset.i, null));
+}
+
 // ── day strips and replay ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function loadRepl(p) { if (!REPL[p]) { try { REPL[p] = await (await fetch(BASE + `replay_${p}.json`)).json(); } catch (_) { REPL[p] = []; } } return REPL[p]; }
 async function paintDays(el) {
@@ -305,7 +416,7 @@ async function replay(p, i, focus) {
   const dec = d.spot > 500 ? 1 : d.spot > 50 ? 2 : 5, f = v => v.toFixed(dec);
   let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="background:#080b10;border-radius:10px">`;
   const lab = [];
-  near.sort((a, b) => b.price - a.price).forEach(l => {
+  near.filter(l => SHOWX || !(LINES[l.type] && LINES[l.type].x)).sort((a, b) => b.price - a.price).forEach(l => {
     const c = (LINES[l.type] || {}).c || '#888', y = Y(l.price), e = l.ev, big = focus ? l.type === focus : true;
     s += `<line x1="${L}" x2="${W - Rr}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="${big ? 1.6 : 1}" opacity="${big ? .85 : .35}" ${['exp_hi', 'exp_lo'].includes(l.type) ? 'stroke-dasharray="6 5"' : ''}/>`;
     if (e && e.touched) { const x = X(Math.min(n - 1, Math.round(e.min / 5))); s += `<circle cx="${x}" cy="${y}" r="6" fill="none" stroke="${e.race === 1 ? '#46b87a' : e.race === -1 ? '#e8615f' : '#c9a23a'}" stroke-width="2.5"/>`; }
@@ -317,9 +428,11 @@ async function replay(p, i, focus) {
   const hrs = [7, 9, 12, 15, 18, 21]; // UTC-ish labels from t0
   hrs.forEach(h2 => { const idx = Math.round(((h2 * 3600) - (d.t0 % 86400)) / 300); if (idx > 0 && idx < n) s += `<text x="${X(idx)}" y="${H - 8}" fill="#6b7585" font-size="9.5" text-anchor="middle">${String(h2).padStart(2, '0')}:00 UTC</text>`; });
   s += '</svg>';
-  const rows = d.levels.slice().sort((a, b) => b.price - a.price).map(l => { const e = l.ev; return `<tr><td>${(LINES[l.type] || {}).n || l.type}</td><td class="num">${f(l.price)}</td><td class="num">${(l.strength * 100).toFixed(0)}%</td><td>${!e ? 'start on it' : !e.touched ? '<span class="note">not reached</span>' : e.race === 1 ? '<span class="v-up">bounced</span>' : e.race === -1 ? '<span class="v-dn">broke through</span>' : '<span class="v-lo">touched, no clear move</span>'}${e && e.touched ? ` <span class="note">${e.hb || ''}</span>` : ''}</td></tr>`; }).join('');
-  $('#mbody').innerHTML = `<h2 style="margin:0 0 4px;font-size:15px">${p} · ${d.date}</h2><p class="sub">Regime <b>${d.regime}</b> · hedge flow <b>${d.hf === 'damp' ? 'damping' : d.hf === 'reinf' ? 'reinforcing' : '–'}</b> · strongest expiry <b>${d.book}</b> · implied move ±${f(d.sigma)} (${(d.sigma / d.spot * 100).toFixed(2)}%) · the day's range was <b>${d.hl.toFixed(2)}×</b> that. Line colours follow the cards; the ring marks the first touch (green bounced, red broke, gold no clear move). Early-session bars only start from the capture, about 06:30 London.</p>${s}
+  const rows = d.levels.filter(l => SHOWX || !(LINES[l.type] && LINES[l.type].x)).sort((a, b) => b.price - a.price).map(l => { const e = l.ev; return `<tr><td>${(LINES[l.type] || {}).n || l.type}</td><td class="num">${f(l.price)}</td><td class="num">${(l.strength * 100).toFixed(0)}%</td><td>${!e ? 'start on it' : !e.touched ? '<span class="note">not reached</span>' : e.race === 1 ? '<span class="v-up">bounced</span>' : e.race === -1 ? '<span class="v-dn">broke through</span>' : '<span class="v-lo">touched, no clear move</span>'}${e && e.touched ? ` <span class="note">${e.hb || ''}</span>` : ''}</td></tr>`; }).join('');
+  $('#mbody').innerHTML = `<h2 style="margin:0 0 4px;font-size:15px">${p} · ${d.date}</h2><p class="sub">Regime <b>${d.regime}</b> · volatility running <b>${d.rvRatio == null ? '–' : d.rvRatio < 0.8 ? 'calm' : d.rvRatio > 1.25 ? 'hot' : 'normal'}</b> · travel <b>${d.travel || '–'}</b> · hedge flow <b>${d.hf === 'damp' ? 'damping' : d.hf === 'reinf' ? 'reinforcing' : '–'}</b> · strongest expiry <b>${d.book}</b> · implied move ±${f(d.sigma)} (${(d.sigma / d.spot * 100).toFixed(2)}%) · the day's range was <b>${d.hl.toFixed(2)}×</b> that. Line colours follow the cards; the ring marks the first touch (green bounced, red broke, gold no clear move). Early-session bars only start from the capture, about 06:30 London.</p>${s}
   <table style="margin-top:10px"><tr><th>Line</th><th class="num">price</th><th class="num">strength</th><th>what happened</th></tr>${rows}</table>`;
+  $('#mbody').insertAdjacentHTML('beforeend', `<p class="note"><label style="cursor:pointer"><input type="checkbox" id="xbox" ${SHOWX ? 'checked' : ''}> also draw the all-expiry walls, open-interest peaks and vanna peaks</label></p>`);
+  $('#xbox').onchange = e => { SHOWX = e.target.checked; replay(p, i, focus); };
   $('#modal').style.display = 'block';
 }
 $('#mx').onclick = () => $('#modal').style.display = 'none';
@@ -328,6 +441,7 @@ $('#modal').onclick = e => { if (e.target.id === 'modal') $('#modal').style.disp
 (async () => {
   try { R = await (await fetch(BASE + 'results.json')).json(); }
   catch (e) { $('#app').textContent = 'Could not load results.json: ' + e.message; return; }
+  try { R2 = await (await fetch(BASE + 'results2.json')).json(); } catch (_) { R2 = null; }
   rail(); stats(); render();
 })();
 </script>
