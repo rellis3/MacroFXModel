@@ -29,9 +29,9 @@ export function dollarOnDailyFx(assets) {
   return { n: rows.length, stronger: rows.filter(r => r.stronger).length, rows };
 }
 
-/** The dollar on the seven daily pairs: the average move of the dollar against the other currency (positive means the dollar rose) and how many it rose against. */
-export function dollarBasket(assets) {
-  const moves = (assets ?? []).filter(a => USD_PAIRS[a.key] != null && Number.isFinite(a.d20)).map(a => USD_PAIRS[a.key] * a.d20);   // +1 when the dollar is the base: a rise in the pair is a rise in the dollar
+/** The dollar on the seven daily pairs: the average move of the dollar against the other currency (positive means the dollar rose) and how many it rose against. `field` is the window: d20 (the default, 20 days) or d1 (since yesterday's close). */
+export function dollarBasket(assets, field = 'd20') {
+  const moves = (assets ?? []).filter(a => USD_PAIRS[a.key] != null && Number.isFinite(a[field])).map(a => USD_PAIRS[a.key] * a[field]);   // +1 when the dollar is the base: a rise in the pair is a rise in the dollar
   const n = moves.length;
   return { n, avg: n ? moves.reduce((x, y) => x + y, 0) / n : 0, stronger: moves.filter(v => v > 0).length };
 }

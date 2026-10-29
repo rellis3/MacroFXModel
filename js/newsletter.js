@@ -75,7 +75,7 @@ function openBoard(n, weekly = false) {
   }
   const sgn = (v, d = 2, u = '') => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(d)}${u}`, out = [], A = n.assets ?? n.ranges ?? [];
   const vix = (n.volatility ?? []).find(v => /^VIX 1-month/i.test(v.label ?? '')), t10 = (n.changes ?? []).find(c => c.key === 'us10y' && !c.stale && Number.isFinite(c.last));
-  const hy = (n.creditSpreads ?? []).find(c => /high-yield/i.test(c.label ?? '')), bk = dollarBasket(A);
+  const hy = (n.creditSpreads ?? []).find(c => /high-yield/i.test(c.label ?? '')), bk = dollarBasket(A, 'd1');
   if (vix && Number.isFinite(vix.v)) out.push({ label: 'VIX', value: vix.v.toFixed(1), move: Number.isFinite(vix.d1) ? `${sgn(vix.d1, 1)} on the day` : '' });
   if (t10) out.push({ label: 'US 10-year', value: `${t10.last.toFixed(2)}%`, move: Number.isFinite(t10.d1) ? `${sgn(t10.d1, 0)}bp on the day` : '' });
   if (hy && Number.isFinite(hy.bp)) out.push({ label: 'Junk spread', value: `${Math.round(hy.bp)}bp`, move: Number.isFinite(hy.d1) ? `${sgn(hy.d1, 0)}bp on the day` : '' });

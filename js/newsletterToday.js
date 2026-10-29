@@ -7,6 +7,8 @@
  *
  * Pure. Tested in js/newsletterToday.test.mjs.
  */
+import { dollarBasket } from './dataChecks.js';
+
 const TZ = 'Europe/London', MINUS = '−';
 const BANK = { USD: 'the Fed', EUR: 'the ECB', GBP: 'the Bank of England', JPY: 'the Bank of Japan', AUD: 'the RBA', NZD: 'the RBNZ', CAD: 'the Bank of Canada', CHF: 'the SNB' };
 const BANK_ORDER = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'NZD', 'CHF'];
@@ -25,7 +27,8 @@ const decisionRank = e => { const i = BANK_ORDER.indexOf(e.ccy); return i < 0 ? 
 
 /** The high-impact events inside the window: today for a daily issue, seven days for a weekly one. Earliest first. */
 function windowEvents(events, nowMs, weekly) {
-  const hi = (events ?? []).filter(e => e?.impact === 'high' && Number.isFinite(e.ms) && e.ms >= nowMs - 36e5).sort((a, b) => a.ms - b.ms);
+  // a daily keeps the releases that have already landed today: they decide what sort of day it is and what the markets are reacting to
+  const hi = (events ?? []).filter(e => e?.impact === 'high' && Number.isFinite(e.ms) && (weekly ? e.ms >= nowMs - 36e5 : true)).sort((a, b) => a.ms - b.ms);
   const win = weekly ? hi.filter(e => e.ms < nowMs + 7 * 864e5) : hi.filter(e => ukDay(e.ms) === ukDay(nowMs));
   // a central bank often lists its decision twice at one moment (the rate and the policy statement): one row, the one that carries the expected figure
   const seen = new Map();
@@ -39,16 +42,17 @@ const listName = e => (isDecision(e) ? BANK[e.ccy].replace(/^the /, '') : clip(e
 const at = (e, weekly) => (weekly ? `on ${wday(e.ms)}` : `at ${hhmm(e.ms)}`);
 
 /** The headline: the lead event with how many others come before or after it. */
-function headlineOf(hi, nextHigh, weekly) {
+function headlineOf(hi, nextHigh, weekly, now = Infinity) {
   if (!hi.length) {
     if (nextHigh) return `A quiet day on the calendar, then ${nameOf(nextHigh).replace(/^The /, 'the ')} on ${wday(nextHigh.ms)}`;
     return weekly ? 'A quiet week on the calendar, so the markets set the pace' : 'A quiet calendar: today is about the tape, not the releases';
   }
   const decisions = hi.filter(isDecision).sort((a, b) => decisionRank(a) - decisionRank(b)), lead = decisions[0] ?? hi[0];
   const bef = hi.filter(e => e !== lead && e.ms < lead.ms), aft = hi.filter(e => e !== lead && e.ms >= lead.ms), rest = bef.length + aft.length;
-  const verb = isDecision(lead) ? `${cap(BANK[lead.ccy])} decides ${at(lead, weekly)}` : `${nameOf(lead)} ${at(lead, weekly)}`;
+  const verb = lead.ms <= now ? (isDecision(lead) ? `${cap(BANK[lead.ccy])} has decided` : `${nameOf(lead)} is out`) : isDecision(lead) ? `${cap(BANK[lead.ccy])} decides ${at(lead, weekly)}` : `${nameOf(lead)} ${at(lead, weekly)}`;
   const noun = k => `${num(k)} more high-impact ${k === 1 ? 'release' : 'releases'}`, named = a => list(a.map(e => (isDecision(e) ? BANK[e.ccy] : `the ${nameOf(e)}`)));
   if (!rest) return verb;
+  if (!weekly && lead.ms <= now && !aft.some(e => e.ms > now)) return `${verb}, after ${num(rest)} more ${rest === 1 ? 'release' : 'releases'} today`;
   if (weekly) return `${verb}, plus ${num(rest)} more big ${rest === 1 ? 'release' : 'releases'}`;
   if (bef.length && bef.length <= 3) return `${verb}, after ${named(bef)}`;
   if (bef.length) return `${verb}, and ${noun(bef.length)} land first`;
@@ -114,13 +118,17 @@ function dayTake({ assets, changes, hi, now, asia }) {
   if (vx) cand.push({ score: Math.abs(vx.d1) / 2, head: `The VIX ${dn(vx.d1) ? 'eases' : 'jumps'} ${Math.abs(vx.d1).toFixed(1)} points`, mid: `the VIX ${dn(vx.d1) ? 'eases' : 'jumps'} ${Math.abs(vx.d1).toFixed(1)} points`, fact: `VIX ${dn(vx.d1) ? 'fell' : 'rose'} ${Math.abs(vx.d1).toFixed(1)} points` });
   for (const r of assets ?? []) {
     if (!r?.label || !Number.isFinite(r.d1)) continue;
-    const m = Number.isFinite(r.used) ? r.used : Number.isFinite(r.hlMed) && r.hlMed > 0 ? Math.abs(r.d1) / r.hlMed : null;
+    const m = Number.isFinite(r.hlMed) && r.hlMed > 0 ? Math.abs(r.d1) / r.hlMed : Number.isFinite(r.used) ? r.used : null;
     if (m !== null) cand.push({ score: m, head: `${r.label} ${verb(dn(r.d1), m, false)} ${Math.abs(r.d1).toFixed(1)}%`, mid: `${r.label} ${verb(dn(r.d1), m, false)} ${Math.abs(r.d1).toFixed(1)}%`, fact: `${r.label} ${dn(r.d1) ? 'fell' : 'rose'} ${Math.abs(r.d1).toFixed(1)}%` });
   }
   const top = cand.filter(x => x.score >= 0.75).sort((a, b) => b.score - a.score);
+  // the puzzle: falling yields normally ease conditions, so wider credit, a falling Nasdaq or a jumping VIX against them is the interesting day
+  const mvOf = r => (Number.isFinite(r.hlMed) && r.hlMed > 0 ? Math.abs(r.d1) / r.hlMed : Number.isFinite(r.used) ? r.used : 0), nqr = (assets ?? []).find(r => r?.key === 'NQ' && Number.isFinite(r.d1)), bk = dollarBasket(assets ?? [], 'd1');
+  const bad = [hy && hy.d1 >= 8 ? { s: hy.d1 / 8, say: 'credit spreads widened', det: `junk-bond spreads widened ${r1(hy.d1)}bp` } : null, nqr && nqr.d1 < 0 && mvOf(nqr) >= 0.75 ? { s: mvOf(nqr), say: 'the Nasdaq dropped', det: `the Nasdaq fell ${Math.abs(nqr.d1).toFixed(1)}%` } : null, vx && vx.d1 >= 2 ? { s: vx.d1 / 2, say: 'the VIX jumped', det: `the VIX rose ${vx.d1.toFixed(1)} points` } : null].filter(Boolean);
+  const puzzle = y && y.d1 <= -6 && bad.length ? { dollarUp: bk.n >= 4 && bk.avg >= 0.25, bad } : null;
   // a wild Asia: at least twice the desk's own wide-tercile mark, the two biggest at most
   const wild = (assets ?? []).map(r => ({ r, s: r?.key ? asia?.[r.key] : null })).filter(x => x.r?.label && x.s && x.s.band === 'wide' && Number.isFinite(x.s.atr) && x.s.cutHigh > 0 && x.s.atr / x.s.cutHigh >= 2).sort((a, b) => b.s.atr / b.s.cutHigh - a.s.atr / a.s.cutHigh).slice(0, 2);
-  if (!top.length && !wild.length && !hu.headClause) return null;
+  if (!top.length && !wild.length && !hu.headClause && !puzzle) return null;
   const lead = hi.filter(isDecision).sort((a, b) => decisionRank(a) - decisionRank(b))[0] ?? hi[0];
   const tail = hu.tail ? `, ${hu.tail}` : !lead ? '' : lead.ms > now ? (isDecision(lead) ? ` as the ${BANK[lead.ccy].replace(/^the /, '')} decision looms` : ` with ${nameOf(lead)} due at ${hhmm(lead.ms)}`) : ` after ${isDecision(lead) ? `the ${BANK[lead.ccy].replace(/^the /, '')} decision` : nameOf(lead)}`;
   let headline, leadFacts = '', asiaNote = '', used = null;
@@ -131,9 +139,12 @@ function dayTake({ assets, changes, hi, now, asia }) {
     leadFacts = wild.map(x => `${x.r.label} covered ${Math.round(x.s.atr * 100)}% of a normal day's range before London opened${Number.isFinite(x.s.netPct) && Math.abs(x.s.netPct) >= 0.05 ? ` and ended Asia ${Math.abs(x.s.netPct).toFixed(1)}% ${x.s.netPct < 0 ? 'lower' : 'higher'}` : ''}.`).join(' ');
     used = wild.find(x => ASIA_LONDON[x.r.key]);
     if (used) asiaNote = `Past wide-Asia days have left less for London: after 07:00 ${used.r.label} reached the median band on ${ASIA_LONDON[used.r.key][0]}% of them, against ${ASIA_LONDON[used.r.key][1]}% when Asia was narrow.`;
+  } else if (puzzle) {
+    headline = `Yields fell ${r1(y.d1)}bp${puzzle.dollarUp ? `, ${list(puzzle.bad.map(b => b.say))}. And yet the dollar strengthened` : `, but ${list(puzzle.bad.map(b => b.say))}`}${tail}`;
+    leadFacts = `The numbers do not fit the usual story. Falling yields normally ease financial conditions, but ${list(puzzle.bad.map(b => b.det))}${puzzle.dollarUp ? `, and the dollar rose ${bk.avg.toFixed(2)}% on average against 7 majors although borrowing costs fell` : ''}. Rates and risk are telling different stories today, and one day of moves cannot say which is right.`;
   } else headline = hu.headClause ? `${hu.headClause}${tail}` : `${top[0].head}${top[1] && top[1].score >= 1 ? ` and ${top[1].mid}` : ''}${tail}`;
-  const rest = (wild.length ? top : top.slice(0, 3)).slice(0, 3);
-  return { headline, means: hu.means, lead: leadFacts, asiaNote, close: rest.length ? `Since yesterday's close: ${rest.map(x => x.fact).join('; ')}.` : '' };
+  const rest = (wild.length || puzzle ? top : top.slice(0, 3)).slice(0, 3);
+  return { headline, means: puzzle && !wild.length ? hu.means.filter(m => !/^(Credit |Borrowing costs|The VIX)/.test(m)) : hu.means, lead: leadFacts, asiaNote, close: rest.length ? `Since yesterday's close: ${rest.map(x => x.fact).join('; ')}.` : '' };
 }
 
 /* ── the human layer: what each measurement means, in plain words ── */
@@ -200,11 +211,12 @@ function dayType(hi) {
 }
 
 /** The first sentence of the lede: how much is due and what has already happened today. */
-function loadLine(hi, done, weekly) {
+function loadLine(hi, done, weekly, now = -Infinity) {
   if (!hi.length) return '';
   const n = hi.length, banks = hi.filter(isDecision).sort((a, b) => decisionRank(a) - decisionRank(b)).map(e => listName(e));
   if (weekly) return `${cap(num(n))} high-impact ${n === 1 ? 'release is' : 'releases are'} due in the next seven days${banks.length ? `, including ${list(banks)}` : ''}.`;
   const out = done.length ? ` ${cap(list(done.map(e => BANK[e.ccy])))} ${done.length === 1 ? 'has' : 'have'} already decided.` : '';
+  if (hi.every(e => e.ms <= now)) return `${cap(num(n))} high-impact ${n === 1 ? 'release' : 'releases'} landed today, the last at ${hhmm(hi.at(-1).ms)} UK time.${out}`;
   return `${cap(num(n))} high-impact ${n === 1 ? 'release is' : 'releases are'} due today${n > 1 ? `, the last at ${hhmm(hi.at(-1).ms)} UK time` : ` at ${hhmm(hi[0].ms)} UK time`}.${out}`;
 }
 
@@ -250,10 +262,10 @@ export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, asse
   const now = Number.isFinite(nowMs) ? nowMs : Date.now(), hi = windowEvents(events, now, weekly);
   const nextHigh = hi.length ? null : (events ?? []).filter(e => e?.impact === 'high' && e.ms > now).sort((a, b) => a.ms - b.ms)[0] ?? null;
   const day = new Date(now).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ });
-  const done = weekly ? [] : (events ?? []).filter(e => e?.impact === 'high' && isDecision(e) && Number.isFinite(e.ms) && e.ms < now - 36e5 && ukDay(e.ms) === ukDay(now)).sort((x, y) => x.ms - y.ms);
+  const done = weekly ? [] : (events ?? []).filter(e => e?.impact === 'high' && isDecision(e) && Number.isFinite(e.ms) && e.ms <= now && ukDay(e.ms) === ukDay(now)).sort((x, y) => x.ms - y.ms);
   const known = Array.isArray(events) && events.length > 0;   // an empty calendar is a feed that did not load more often than a day with nothing on it
   const take = weekly ? null : dayTake({ assets, changes, hi, now, asia });
   const regime = regimeLine(regimeWord, riskFlags), changed = changedLine(since, assets);
-  const lede = (take?.means?.length || take?.lead ? [take.lead, take.asiaNote, ...take.means, fedLine(fedPath, hi, now), regime] : [take?.lead, take?.asiaNote, loadLine(hi, done, weekly), fedLine(fedPath, hi, now), take ? take.close : changed, regime]).filter(Boolean).join(' ');
-  return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `${known ? dayType(hi) : 'Today'} · ${day}`, headline: take?.headline || (known ? headlineOf(hi, nextHigh, weekly) : 'Where the markets stand this morning'), regime, changed, watch: watchLine(hi, nextHigh, weekly), count: hi.length };
+  const lede = (take?.means?.length || take?.lead ? [take.lead, take.asiaNote, ...take.means, fedLine(fedPath, hi, now), regime] : [take?.lead, take?.asiaNote, loadLine(hi, done, weekly, now), fedLine(fedPath, hi, now), take ? take.close : changed, regime]).filter(Boolean).join(' ');
+  return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `${known ? dayType(hi) : 'Today'} · ${day}`, headline: take?.headline || (known ? headlineOf(hi, nextHigh, weekly, now) : 'Where the markets stand this morning'), regime, changed, watch: watchLine(weekly ? hi : hi.filter(e => e.ms > now), nextHigh, weekly), count: hi.length };
 }

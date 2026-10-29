@@ -72,7 +72,10 @@ console.log('duplicate decisions and a second story');
   ok('one bank, one moment, one row: the ECB is listed once, and counted once', o.count === 2 && o.sheet.filter(r => /ECB/.test(r.name)).length === 1 && /^Two high-impact releases/.test(o.lede) && o.sheet.find(r => /ECB/.test(r.name)).detail.startsWith('Expected 2.65%'), JSON.stringify(o.sheet));
   ok('Main Refinancing Rate is recognised as the ECB decision', /ECB day/.test(o.kicker));
   const two = todayOpening({ events: dup, nowMs, assets: [], changes: [{ key: 'us10y', d1: -17 }, { key: 'hy', d1: 13 }] });
-  ok('a second story of its own size shares the headline', two.headline === 'Yields fall 17bp and credit jitters grow, with US data and the ECB still to come', two.headline);
+  ok('yields down with credit wider is the puzzle, said plainly', two.headline === 'Yields fell 17bp, but credit spreads widened, with US data and the ECB still to come' && /do not fit the usual story/.test(two.lede), two.headline);
+  const dxA = ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD'].map(k => ({ key: k, label: k, d1: -0.5 })).concat(['USDJPY', 'USDCAD', 'USDCHF'].map(k => ({ key: k, label: k, d1: 0.5 })));
+  const dxo = todayOpening({ events: dup, nowMs, assets: [...dxA, { key: 'NQ', label: 'Nasdaq', d1: -1.5, hlMed: 1.2 }], changes: [{ key: 'us10y', d1: -9 }, { key: 'hy', d1: 12 }] });
+  ok('and when the dollar rises against falling yields it says and yet', /^Yields fell 9bp, credit spreads widened and the Nasdaq dropped\. And yet the dollar strengthened/.test(dxo.headline) && /dollar rose 0\.50%/.test(dxo.lede), dxo.headline + ' | ' + dxo.lede);
   ok('a second story below its own normal does not', !/credit/.test(todayOpening({ events: dup, nowMs, assets: [], changes: [{ key: 'us10y', d1: -17 }, { key: 'hy', d1: 3 }] }).headline)); }
 console.log('the human layer');
 { const calm = Object.fromEntries(['GOLD', 'EURUSD', 'USDJPY', 'GBPUSD'].map(k => [k, { atr: 0.1, band: 'narrow', cutHigh: 0.34, netPct: 0.02, rangePct: 0.1 }]));
@@ -84,5 +87,15 @@ console.log('the human layer');
   ok('easing credit is explained as lenders getting less nervous', /Credit eased: junk-bond spreads, the extra yield lenders ask to hold risky debt, tightened 12bp\. Lenders are getting less nervous, not more\./.test(o.lede));
   ok('the pair the release is known to move, and that has moved most, is the one waiting on it', /USD\/CAD, down 0\.4% since yesterday's close, is the pair waiting on the US growth and inflation figures at 12:30\. In the desk's records, releases like this have widened its day\./.test(o.lede), o.lede);
   ok('with no Asia feed and nothing unusual the old wording stays', !/Asia/.test(todayOpening({ events: ev, nowMs, assets: A, changes: [] }).lede)); }
+console.log('late in the day');
+{ const base = Date.UTC(2026, 9, 29), tt = (h, m) => base + (h * 60 + m) * 6e4, late = tt(14, 30);
+  const ev = [{ ms: tt(12, 30), ccy: 'USD', event: 'Advance GDP q/q', impact: 'high' }, { ms: tt(13, 15), ccy: 'EUR', event: 'Main Refinancing Rate', impact: 'high' }];
+  const flat = [{ key: 'GBPUSD', label: 'GBP/USD', d1: 0.14, used: 1.6, hlMed: 0.55 }, { key: 'DE30', label: 'DAX', d1: 0.45, used: 1.1, hlMed: 1.1 }];
+  const o = todayOpening({ events: ev, nowMs: late, assets: flat, changes: [{ key: 'us10y', d1: -1 }] });
+  ok('after the releases have landed it is still an ECB day, not a quiet one', /ECB day/.test(o.kicker) && o.count === 2, o.kicker);
+  ok('a small net move is never called a jump, however much range was covered', !/jump|surge|climb/.test(o.headline), o.headline);
+  ok('the headline names the decision in the past tense', /ECB has decided/.test(o.headline), o.headline);
+  ok('the lede says the releases landed, not that they are due', /landed today, the last at 13:15/.test(o.lede), o.lede);
+  ok('the watch line carries nothing already past', !/ECB/.test(o.watch), o.watch); }
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

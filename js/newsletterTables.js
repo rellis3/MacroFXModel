@@ -52,7 +52,7 @@ export function todayTables({ intl, changes, creditSpreads, fedPath, strengths, 
   const row = (name, val, move, mean) => `<tr><td class="n">${esc(name)}</td><td class="v">${val}</td><td class="m">${move}</td><td class="w">${esc(mean)}</td></tr>`;
   const g = [];
   const y10 = ch('us10y'), tp = ch('tips'), be = ch('bei'), cv = ch('us2s10s'), vx = ch('vix'), dx = ch('dxy');
-  const hy = (creditSpreads ?? []).find(c => /high-yield/i.test(c.label ?? '')), bk = dollarBasket(assets ?? []);
+  const hy = (creditSpreads ?? []).find(c => /high-yield/i.test(c.label ?? '')), bk = dollarBasket(assets ?? [], 'd1');
   if (y10) g.push(row('US 10-year yield', `${y10.last.toFixed(2)}%${asOf(y10)}`, sg(y10.d1, 0, 'bp'), 'What the government pays to borrow for ten years.'));
   if (tp) g.push(row('Real 10-year yield', `${tp.last.toFixed(2)}%${asOf(tp)}`, sg(tp.d1, 0, 'bp'), 'The same, after allowing for inflation.'));
   if (be) g.push(row('Inflation expected', `${be.last.toFixed(2)}%${asOf(be)}`, sg(be.d1, 0, 'bp'), 'The gap between the two: what the market expects prices to do.'));
