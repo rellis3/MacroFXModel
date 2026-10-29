@@ -16,6 +16,7 @@
 //   node scripts/day-reconstruction/build_archive.mjs [NAME ...]
 //   node scripts/day-reconstruction/build_archive.mjs --selftest     # truncation + future-scramble tests
 import fs from 'fs';
+import { pathToFileURL } from 'url';
 
 delete process.env.R2_ACCESS_KEY; delete process.env.R2_SECRET_KEY;   // local cache only
 const { loadM1ForPair } = await import('../../js/volBacktestM1Engine.js');
@@ -281,8 +282,11 @@ async function selftest() {
   if (bad || ctrl < ctrlN * 0.9) process.exitCode = 1;
 }
 
-fs.mkdirSync(OUT, { recursive: true });
-if (process.argv.includes('--selftest')) await selftest();
+// run only when executed directly (scripts may import buildDay / LEVELS / INST without triggering a build)
+const IS_MAIN = import.meta.url === pathToFileURL(process.argv[1] ?? '').href;
+if (IS_MAIN) fs.mkdirSync(OUT, { recursive: true });
+if (!IS_MAIN) { /* imported */ }
+else if (process.argv.includes('--selftest')) await selftest();
 else {
   const names = process.argv.slice(2).filter(a => !a.startsWith('--'));
   const metas = [];
