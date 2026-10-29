@@ -38,5 +38,13 @@ for (const h of cards) ok(`hub card exists: ${h}`, fs.existsSync(path.join(root,
 for (const f of fs.readdirSync(root).filter(f => f.endsWith('.html') && f !== 'hub.html' && f !== 'index.html'))
   ok(`${f}: crumb "Theory Lab" links to the start page`, !read(f).includes('<a href="hub.html">Theory Lab</a>'));
 
+// Page prefetch (vark.js, loaded on every page): only lab pages may be named, so the sign-out link and the
+// audio files are never fetched ahead of a click.
+const vark = read('assets/vark.js'), spec = (vark.match(/speculationrules[\s\S]*?\}\);/) || [''])[0];
+ok('vark.js prefetches the next page with speculation rules', /type = 'speculationrules'/.test(vark));
+const hrefs = [...vark.matchAll(/href_matches: '([^']+)'/g)].map(m => m[1]);
+ok('prefetch names only /theory-lab/*.html', hrefs.length > 0 && hrefs.every(h => h === '/theory-lab/*.html'), hrefs.join(', '));
+ok('prefetch skips data-saver and 2G connections', /saveData/.test(vark) && /2g/.test(vark));
+
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

@@ -39068,6 +39068,10 @@ app.use(express.static(__dirname, {
   extensions: ['html'],
   setHeaders(res, filePath) {
     if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+    // The Theory Lab's shared scripts and stylesheet are loaded by every lesson page. With the default
+    // max-age=0 each page change revalidated all of them (about eight requests); two minutes of reuse is long
+    // enough to cover moving between pages, and short enough that a deploy reaches readers almost at once.
+    else if (/[\\/]theory-lab[\\/]assets[\\/][^\\/]+\.(?:js|css)$/.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=120');
   },
 }));
 
