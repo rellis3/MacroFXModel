@@ -50,6 +50,7 @@ const NOT_WIRED = {
   // and the page's own JS) risks exactly the silent-drift failure this
   // repo's Lego Principle exists to prevent. Wire this once that reuses the
   // page's own filter rather than re-encoding it.
+  signal_copier_status:      'Copies a third party’s Telegram signals; there is no strategy backtest to compare with. Its own per-signal outcome record (signal_copier_signals) is the benchmark.',
   motif_bot_status:          'A backtest exists and provably runs the SAME detection engine as the live plan (motif_track.py), but the daily-return curve this route needs has not been built from it yet -- see this file’s own comment for why that is deliberately deferred rather than guessed at.',
 };
 

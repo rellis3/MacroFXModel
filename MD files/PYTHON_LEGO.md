@@ -129,6 +129,11 @@ order (by drift risk × reuse, from `LEGO_MODULES.md §2` Python table):
    trade-spec-style call (`pair, direction, sl, tp, lots, …`), mirroring the JS
    "one entry primitive, parameterised" rule. Magic / symbol-resolver /
    pip-resolver / MT5 module are all injected, so it's reusable and offline-testable.
+   **Pending orders (2026-10-30):** `place_pending` (LIMIT/STOP with SL/TP, refuses a
+   price the market is already through as `price_through` so the caller decides
+   whether to go to market), `cancel_pending`, `pending_orders`, `positions_with_tag`.
+   `PaperBroker` mirrors all four and fills resting orders in `check_barriers`
+   (reported as `{"reason": "filled"}`). First consumer: `SignalCopier/signal_copier.py`.
    **`broker/clock.py`** — `ServerClock`: the measured broker-clock offset, and
    the only place allowed to know that MT5 `.time` fields are on the broker's
    wall clock rather than UTC. ✅ built. Measured (never hardcoded) from the

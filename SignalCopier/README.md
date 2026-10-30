@@ -1,55 +1,72 @@
 # SignalCopier
 
-Watches the **ColezTrades | Private → Signals** Telegram topic. It turns every instruction into a structured event and
-keeps a live book of what the channel says should be open. It sends you an alert for each new trade, cancel and close,
-and for anything it couldn't understand.
+Copies the **ColezTrades | Private → Signals** Telegram topic onto MT5, run like every other bot. You set it up on
+**bot-config.html → 📡 Signal Copier**:
+- Telegram + MT5 credentials, the login code, risk, which signal styles to copy, the symbol map and alerts.
+- Open positions show on **📊 Positions**. Closed trades land in its **Trade History** and the bot audit.
+- Every signal is scored on M1 bars and exported in the **COG import template**, per pair or all.
 
-**Status: monitor only.** The executor is a paper stub that logs what a real one would do. Nothing is sent to a broker.
+**Status: paper by default.** Live needs a clean paper run, MT5 credentials and `--live` (or unticking Paper trade).
+
+## Run it (Windows box with MT5, repo root)
+
+```bat
+.venv\Scripts\python.exe -m pip install -r SignalCopier\requirements.txt
+.venv\Scripts\python.exe SignalCopier\signal_copier.py --url <dashboard-url>                         & rem paper
+.venv\Scripts\python.exe SignalCopier\signal_copier.py --url <dashboard-url> --backfill-since 2025-01-01 & rem history → outcomes, no orders
+.venv\Scripts\python.exe SignalCopier\signal_copier.py --url <dashboard-url> --live
+```
+
+First run: the bot asks Telegram for a login code and shows **needs login code** on the bot page. Type the code from
+your Telegram app into the **Telegram login** card. A 2FA password is asked for the same way if your account has one.
+The resulting session is the local file `SignalCopier/signalcopier.session`. **Treat it like a password.** It never
+goes to KV.
 
 ## How it reads a group you're not an admin of
 
-Telegram bots (the Bot API) can only read chats where they've been added as an admin. This uses **Telethon**, a
-*user* client. It logs in as your own Telegram account once (phone number + login code), and after that it sees the
-same messages you see in the app. Run it on your own account and don't forward the content: it's a paid group.
+Telegram bots (Bot API) can only read chats they administer. This uses **Telethon**, a *user* client: it reads as your
+own account and sees exactly what your app sees. Don't forward the content, because it's a paid group.
 
-## Setup
+## What it does with each instruction
+
+| His message | Bot |
+|---|---|
+| market `SELL X now at …` | market order with his SL/TP, sized to **Risk % / signal** from MT5's own tick value |
+| `Limit SELL X at …` | resting limit with SL/TP. If the market already traded through it: take the better price at market, or skip (setting) |
+| `Cancel at HH:MM UK if not filled` | cancels at that time, unless ours filled; a filled one is kept |
+| `Closed at HH:MM UK` / day section `closed at 21:00` | closes at that time |
+| `Cancel the …` | cancels the resting order (keeps it, with an alert, if ours already filled) |
+| `CLOSE the X SELL from …` | closes that position |
+| anything trade-like it can't parse, edits, deletions | alert only, never guessed |
+
+Entry guards: kill switch, styles on/off, skip list, max open, stale market signal (default 300 s), price already
+past the stop, entry drift worse than 0.25R, spread wider than 0.2 × stop, min lot that would over-risk the account.
+Every decision goes to the Decision Timeline with its reason.
+
+## Signal Outcomes (the COG template)
+
+`outcome.py` scores each signal on M1 bars:
+- **Fills:** a market signal fills at the mid the bot saw when the message arrived. A limit fills at its price on the
+  first bar that trades through it before its cancel time.
+- **Exits:** SL or TP on a bar's range; SL wins when one bar holds both. Timed and channel closes exit at the next
+  bar's open.
+- **Costs:** one spread is charged.
+- **Sources:** live and `--backfill-since` use the same function. Bars come from MT5; without MT5 they're sampled
+  prices, which miss wicks.
+
+Rows follow `Date,Time,Exit Date,Exit Time,Instrument,Direction,Model,Risk %,Return %,MAE %,MFE %,Tags,Notes`, times
+UK. Model is `ColezTrades Swing` / `Day` / `Single`. Return/MAE/MFE are % of account at **Template Risk %** per 1R.
+**It measures his signals as a follower would get them, not his own fills.**
+
+## Also here
+
+`copier.py` is a standalone monitor/CLI with no dashboard (`chats` lists your groups and forum topic ids, `listen`,
+`backfill` to CSV, `parse`), configured by env vars:
 
 ```bash
-pip install -r SignalCopier/requirements.txt
-# https://my.telegram.org → API development tools → create an app
-export TG_API_ID=1234567
-export TG_API_HASH=abc...
-
-cd SignalCopier
-python3 copier.py chats       # first run: phone + code. Prints group ids and forum topics
+export TG_API_ID=… TG_API_HASH=…   # my.telegram.org → API development tools
+python3 SignalCopier/copier.py chats
 ```
-
-Find **ColezTrades | Private** in the list and the **Signals** topic id under it, then:
-
-```bash
-export SIGNAL_CHAT=-1001606516039      # default already; confirm against `chats`
-export SIGNAL_TOPIC=<Signals topic id>
-export SIGNAL_SENDERS="ColezTrades Alerts"   # optional: ignore everyone else's posts
-# optional: alerts to your own bot chat (create a bot with @BotFather)
-export NOTIFY_BOT_TOKEN=...  NOTIFY_CHAT_ID=...
-
-python3 copier.py listen
-```
-
-Login creates `signalcopier.session`. **Treat it like a password**, because it can read and send as your account. It's
-gitignored. To run it headless (e.g. Railway), export a `StringSession` into `TG_SESSION` instead.
-
-## Backfill: get a track record
-
-```bash
-python3 copier.py backfill --since 2025-01-01
-```
-
-This replays the topic's whole history through the same parser and book. It writes `data/trades.csv` (one row per
-signal with entry/SL/TP/cancel/close times and how it ended) and `data/history.jsonl` (every raw message plus its
-parsed events). Unparsed instructions are printed so you can extend the parser. The trades file is the input for
-resolving each signal against price data, which tells you whether these signals make money **at the price you could
-actually get**.
 
 ## What it understands (from the 30 Oct 2026 messages)
 
@@ -80,15 +97,15 @@ Also flagged rather than applied:
 |---|---|
 | `parser.py` | text → events. Pure, no network |
 | `book.py` | events + clock → order transitions; saved to `data/book.json` |
-| `copier.py` | Telethon listener, backfill, CLI, alerts, paper executor |
-| `test_parser.py` | the real messages as tests: `python3 test_parser.py` |
+| `signal_copier.py` | the bot: Telegram login via dashboard, book → MT5/Paper broker, status, decisions, outcomes |
+| `outcome.py` | signal + M1 bars → fill/exit/R/MAE/MFE and the COG template row. Pure |
+| `copier.py` | standalone monitor/CLI (no dashboard) |
+| tests | `python3 test_parser.py`, `test_outcome.py`, `test_copier.py` (end to end on PaperBroker) |
 
-## Not built yet (deliberately)
+## Known limits
 
-- **Live execution.** `PaperExecutor` is the hook. A broker executor (MT5 via `bot/position_manager.py`'s
-  `order_send`, OANDA, or NT8 via `nt8_bridge/`) would map symbols (his `US30` = DJ30 cash, `SP500` = cash, not
-  futures) and size from your own risk per trade. It would need hard caps and a kill switch. Build it after the backfill
-  says the signals are worth taking.
-- **Fill tracking.** The book tracks *instructions*. A limit order shows `working` until it's cancelled or expires; the
-  book can't know whether it filled. A real executor would.
-- **Partial closes / SL moves.** None seen yet. When one appears, the review net will flag it.
+- **Partial closes / SL moves:** none seen yet. When one appears, the review net flags it and the bot does nothing.
+- **Positions tab:** `js/botRegistry.js` marks Signal Copier `paper: true`. Set it to `false` once it trades a real
+  account, so its P&L counts as real money.
+- **Sampled outcomes:** without MT5 (paper on a machine with no terminal), outcomes come from sampled prices and are
+  lost on restart. Run with the terminal open.

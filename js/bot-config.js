@@ -8137,6 +8137,249 @@ setInterval(() => {
   loadMtLiveStatus();
 }, 60_000);
 
+// ── 📡 Signal Copier (SignalCopier/signal_copier.py) ─────────────────────────
+// Config + credentials go to KV for the bot to read; status, book, decisions
+// and the per-signal outcome record come back from it. The COG template rows
+// are built by the bot (SignalCopier/outcome.py) — this only filters + CSVs them.
+const SC_DEFAULTS = {
+  kill_switch: false, paper_mode: true, risk_pct: 0.5, record_risk_pct: 1.0, max_lot: 5.0, max_open: 12,
+  copy_swing: true, copy_day: true, copy_single: true, symbol_map: {}, skip_symbols: [],
+  max_signal_age_secs: 300, max_entry_drift_r: 0.25, max_spread_r: 0.20, limit_through: 'market',
+  tg_chat: -1001606516039, tg_topic: null, tg_senders: '',
+  poll_secs: 5, status_secs: 30, resolve_secs: 60, tg_enabled: true, tg_token: '', tg_chat_id: '',
+};
+const SC_TEMPLATE_HEADER = ['Date', 'Time', 'Exit Date', 'Exit Time', 'Instrument', 'Direction', 'Model',
+  'Risk %', 'Return %', 'MAE %', 'MFE %', 'Tags', 'Notes'];
+let _scCfg = { ...SC_DEFAULTS };
+let _scRecords = [];
+const _scEsc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const _scUk = sec => sec ? new Date(sec * 1000).toLocaleString('en-GB', { timeZone: 'Europe/London', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+const _scNum = (v, d = 2) => v == null || v === '' ? '—' : Number(v).toFixed(d);
+
+function renderScForm() {
+  const c = _scCfg, chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+  ['paper_mode', 'kill_switch', 'copy_swing', 'copy_day', 'copy_single', 'tg_enabled'].forEach(k => chk(`sc_${k}`, c[k]));
+  ['risk_pct', 'record_risk_pct', 'max_lot', 'max_open', 'max_signal_age_secs', 'max_entry_drift_r', 'max_spread_r',
+   'limit_through', 'tg_chat', 'tg_senders', 'tg_token', 'tg_chat_id'].forEach(k => setVal(`sc_${k}`, c[k] ?? ''));
+  setVal('sc_tg_topic', c.tg_topic ?? '');
+  setVal('sc_skip_symbols', (c.skip_symbols || []).join(', '));
+  setVal('sc_symbol_map', Object.entries(c.symbol_map || {}).map(([k, v]) => `${k}=${v}`).join('\n'));
+}
+function readScForm() {
+  const get = id => document.getElementById(id), num = (id, d) => { const v = parseFloat(get(id)?.value); return isFinite(v) ? v : d; };
+  const map = {};
+  (get('sc_symbol_map')?.value || '').split('\n').forEach(line => {
+    const [k, v] = line.split('=').map(s => (s || '').trim());
+    if (k && v) map[k.toUpperCase()] = v;
+  });
+  const topic = (get('sc_tg_topic')?.value || '').trim();
+  _scCfg = {
+    ..._scCfg,
+    paper_mode: !!get('sc_paper_mode')?.checked, kill_switch: !!get('sc_kill_switch')?.checked,
+    risk_pct: num('sc_risk_pct', SC_DEFAULTS.risk_pct), record_risk_pct: num('sc_record_risk_pct', SC_DEFAULTS.record_risk_pct),
+    max_lot: num('sc_max_lot', SC_DEFAULTS.max_lot), max_open: num('sc_max_open', SC_DEFAULTS.max_open),
+    copy_swing: !!get('sc_copy_swing')?.checked, copy_day: !!get('sc_copy_day')?.checked, copy_single: !!get('sc_copy_single')?.checked,
+    symbol_map: map,
+    skip_symbols: (get('sc_skip_symbols')?.value || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean),
+    max_signal_age_secs: num('sc_max_signal_age_secs', SC_DEFAULTS.max_signal_age_secs),
+    max_entry_drift_r: num('sc_max_entry_drift_r', SC_DEFAULTS.max_entry_drift_r),
+    max_spread_r: num('sc_max_spread_r', SC_DEFAULTS.max_spread_r),
+    limit_through: get('sc_limit_through')?.value || 'market',
+    tg_chat: parseInt(get('sc_tg_chat')?.value, 10) || SC_DEFAULTS.tg_chat,
+    tg_topic: topic ? parseInt(topic, 10) : null,
+    tg_senders: (get('sc_tg_senders')?.value || '').trim(),
+    tg_enabled: !!get('sc_tg_enabled')?.checked, tg_token: (get('sc_tg_token')?.value || '').trim(),
+    tg_chat_id: (get('sc_tg_chat_id')?.value || '').trim(),
+  };
+}
+function _scFlash(id, text, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text; el.style.color = color || 'var(--text3)';
+  if (color) setTimeout(() => { el.textContent = ''; }, 4000);
+}
+async function loadScConfig() {
+  try { const s = await kvGet('signal_copier_config'); if (s) _scCfg = { ...SC_DEFAULTS, ...s }; renderScForm(); } catch (e) {}
+}
+async function saveScConfig() {
+  readScForm();
+  _scFlash('scSaveStatus', 'Saving…');
+  try { await kvSet('signal_copier_config', _scCfg); _scFlash('scSaveStatus', 'Saved ✓ (bot picks it up within 30s; paper/live needs a restart)', '#2dd4bf'); }
+  catch (e) { _scFlash('scSaveStatus', `Error: ${e.message}`, 'var(--red)'); }
+}
+function resetScDefaults() { _scCfg = { ...SC_DEFAULTS }; renderScForm(); _scFlash('scSaveStatus', 'Defaults restored — click Save to apply'); }
+async function loadScCreds() { try { _applyCredsToForm(await kvGet('signal_copier_credentials'), 'sc_', 'sc_mt5_password'); } catch (e) {} }
+async function saveScCreds() { await _saveCreds('signal_copier_credentials', 'sc_', 'sc_mt5_password', 'scCredsStatus'); }
+
+async function loadScTgCreds() {
+  try {
+    const t = await kvGet('signal_copier_tg_credentials');
+    if (!t) return;
+    setVal('sc_tg_api_id', t.api_id ?? ''); setVal('sc_tg_phone', t.phone ?? '');
+    if (t.api_hash) document.getElementById('sc_tg_api_hash').placeholder = '(saved — leave blank to keep)';
+  } catch (e) {}
+}
+async function saveScTgCreds() {
+  const get = id => (document.getElementById(id)?.value || '').trim();
+  let hash = get('sc_tg_api_hash');
+  if (!hash) { try { hash = (await kvGet('signal_copier_tg_credentials'))?.api_hash || ''; } catch (e) {} }
+  const creds = { api_id: get('sc_tg_api_id'), api_hash: hash, phone: get('sc_tg_phone').replace(/\s+/g, '') };
+  if (!creds.api_id && !creds.phone) return;
+  _scFlash('scTgCredsStatus', 'Saving…');
+  try {
+    await kvSet('signal_copier_tg_credentials', creds);
+    const h = document.getElementById('sc_tg_api_hash'); if (h) { h.value = ''; h.placeholder = '(saved — leave blank to keep)'; }
+    _scFlash('scTgCredsStatus', 'Saved ✓', '#2dd4bf');
+  } catch (e) { _scFlash('scTgCredsStatus', `Error: ${e.message}`, 'var(--red)'); }
+}
+async function sendScLogin() {
+  const code = (document.getElementById('sc_login_code')?.value || '').trim();
+  const password = document.getElementById('sc_login_password')?.value || '';
+  if (!code && !password) { _scFlash('scLoginStatus', 'Enter the code (or the 2FA password if asked)', 'var(--red)'); return; }
+  try {
+    await kvSet('signal_copier_tg_login', { code, password, t: Date.now() });
+    document.getElementById('sc_login_code').value = ''; document.getElementById('sc_login_password').value = '';
+    _scFlash('scLoginStatus', 'Sent — the bot checks every few seconds; watch Live Status', '#2dd4bf');
+    setTimeout(loadScStatus, 8000);
+  } catch (e) { _scFlash('scLoginStatus', `Error: ${e.message}`, 'var(--red)'); }
+}
+
+const SC_TG_STATE = {
+  connected: ['#34d399', 'connected'], need_code: ['#f59e0b', 'needs login code'], need_password: ['#f59e0b', 'needs 2FA password'],
+  no_credentials: ['#f87171', 'no Telegram credentials'], error: ['#f87171', 'error'], starting: ['var(--text3)', 'starting'],
+};
+async function loadScStatus() {
+  let st = null;
+  try { st = await kvGet('signal_copier_status'); } catch (e) {}
+  const age = st?.pushed_at ? Math.round(Date.now() / 1000 - st.pushed_at) : null;
+  const ageEl = document.getElementById('scLiveAge');
+  if (ageEl) ageEl.innerHTML = st ? `last push ${age}s ago${age > 120 ? ' <b style="color:var(--red)">— bot not running?</b>' : ''}` : 'no status yet — the bot has not run';
+  const tg = st?.telegram || {};
+  const [tc, tl] = SC_TG_STATE[tg.state] || ['var(--text3)', tg.state || '—'];
+  const tile = (label, val, color) => `<div style="flex:1;min-width:110px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">${label}</div>
+    <div style="font-size:16px;font-weight:700;color:${color || 'var(--text)'}">${val}</div></div>`;
+  const tiles = document.getElementById('scStatusTiles');
+  if (tiles) tiles.innerHTML = st ? [
+    tile('Mode', (st.mode || '—').toUpperCase(), st.mode === 'live' ? 'var(--red)' : '#2dd4bf'),
+    tile('Telegram', tl, tc),
+    tile('Balance', st.balance != null ? st.balance.toFixed(2) : '—'),
+    tile('Open positions', (st.mt5_positions || []).length),
+    tile('Resting orders', (st.pending_orders || []).length),
+    tile('Signals open / total', `${st.signals_open ?? 0} / ${st.signals_total ?? 0}`),
+    tile('Prices / bars', st.data_source === 'mt5' ? 'MT5' : 'quote feed', st.data_source === 'mt5' ? 'var(--text)' : '#f59e0b'),
+    st.kill_switch ? tile('Kill switch', 'ON', 'var(--red)') : '',
+  ].join('') : '';
+  const box = document.getElementById('scTgBox');
+  if (box) box.innerHTML = tg.detail || tg.chat
+    ? `<div style="font-size:12px;color:var(--text2);border-left:3px solid ${tc};padding-left:10px">
+         ${tg.chat ? `Listening to <b>${_scEsc(tg.chat)}</b> (topic ${_scEsc(tg.topic ?? 'all')}) · ${tg.msgs || 0} messages this run · last ${_scUk(tg.last_msg_at)}` : ''}
+         ${tg.detail ? `<div style="color:${tc};font-weight:600;margin-top:2px">${_scEsc(tg.detail)}</div>` : ''}</div>` : '';
+  const login = document.getElementById('scLoginCard');
+  if (login) login.style.borderColor = (tg.state === 'need_code' || tg.state === 'need_password') ? '#f59e0b' : '';
+
+  const body = document.getElementById('scBookBody');
+  if (body) {
+    const book = st?.book || [];
+    const EXEC_C = { open: '#34d399', pending: '#60a5fa', skipped: 'var(--text3)', rejected: '#f87171', cancelled: 'var(--text3)', closed: 'var(--text3)' };
+    body.innerHTML = book.length ? book.slice().reverse().map(o => `<tr style="border-top:1px solid var(--border)">
+      <td style="padding:5px 10px">${_scUk(o.posted_at ? Date.parse(o.posted_at) / 1000 : null)}</td>
+      <td style="padding:5px 10px;color:${o.side === 'BUY' ? '#34d399' : '#f87171'}">${o.side} ${_scEsc(o.symbol)}</td>
+      <td style="padding:5px 10px">${_scEsc(o.order)}${o.style ? ` · ${_scEsc(o.style)}` : ''}</td>
+      <td style="padding:5px 10px;text-align:right">${o.entry}</td><td style="padding:5px 10px;text-align:right">${o.sl ?? '—'}</td>
+      <td style="padding:5px 10px;text-align:right">${o.tp ?? '—'}</td>
+      <td style="padding:5px 10px">${[o.cancel_at && `cancel ${o.cancel_at}`, o.close_at && `close ${o.close_at}`].filter(Boolean).join(' · ') || (o.style === 'swing' ? 'manual close' : '')}</td>
+      <td style="padding:5px 10px;color:${EXEC_C[o.exec] || 'var(--text3)'}">${_scEsc(o.exec || '—')}</td></tr>`).join('')
+      : `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${st ? 'No live signals' : 'No status yet'}</td></tr>`;
+  }
+}
+
+async function loadScOutcomes() {
+  try { _scRecords = (await kvGet('signal_copier_signals'))?.records || []; } catch (e) { _scRecords = []; }
+  const sel = document.getElementById('scOutPair');
+  if (sel) {
+    const cur = sel.value;
+    const pairs = [...new Set(_scRecords.map(r => r.symbol))].sort();
+    sel.innerHTML = '<option value="">all</option>' + pairs.map(p => `<option${p === cur ? ' selected' : ''}>${_scEsc(p)}</option>`).join('');
+  }
+  renderScOutcomes();
+}
+function _scRows() {
+  const pair = document.getElementById('scOutPair')?.value || '';
+  const open = !!document.getElementById('scOutOpen')?.checked;
+  return _scRecords.filter(r => r.row && (!pair || r.symbol === pair) && (open || r.final));
+}
+function renderScOutcomes() {
+  const rows = _scRows();
+  const body = document.getElementById('scOutBody');
+  const rets = rows.map(r => r.row['Return %']);
+  const wins = rets.filter(x => x > 0).length;
+  const total = rets.reduce((a, b) => a + b, 0);
+  const unfilled = _scRecords.filter(r => r.out?.state === 'unfilled' && (!document.getElementById('scOutPair')?.value || r.symbol === document.getElementById('scOutPair').value)).length;
+  const stat = (l, v, c) => `<div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px"><span style="color:var(--text3)">${l}</span> <b style="color:${c || 'var(--text)'}">${v}</b></div>`;
+  const statsEl = document.getElementById('scOutStats');
+  if (statsEl) statsEl.innerHTML = rows.length ? [
+    stat('Trades', rows.length), stat('Win rate', `${(100 * wins / rows.length).toFixed(0)}%`),
+    stat('Total return', `${total >= 0 ? '+' : ''}${total.toFixed(2)}%`, total >= 0 ? 'var(--green)' : 'var(--red)'),
+    stat('Avg / trade', `${(total / rows.length).toFixed(3)}%`), stat('Limits never filled', unfilled),
+  ].join('') : '';
+  if (!body) return;
+  body.innerHTML = rows.length ? rows.slice().reverse().slice(0, 500).map(r => {
+    const x = r.row, ret = x['Return %'];
+    return `<tr style="border-top:1px solid var(--border)">
+      <td style="padding:5px 10px">${x.Date}</td><td style="padding:5px 10px">${x.Time}</td>
+      <td style="padding:5px 10px">${x['Exit Date'] ? `${x['Exit Date']} ${x['Exit Time']}` : 'open'}</td>
+      <td style="padding:5px 10px">${_scEsc(x.Instrument)}</td><td style="padding:5px 10px">${x.Direction}</td>
+      <td style="padding:5px 10px">${_scEsc(x.Model)}</td>
+      <td style="padding:5px 10px;text-align:right;color:${ret >= 0 ? 'var(--green)' : 'var(--red)'}">${_scNum(ret)}</td>
+      <td style="padding:5px 10px;text-align:right">${_scNum(x['MAE %'])}</td><td style="padding:5px 10px;text-align:right">${_scNum(x['MFE %'])}</td>
+      <td style="padding:5px 10px">${_scEsc(r.out?.exit_reason || 'open')}</td></tr>`;
+  }).join('') : `<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">${_scRecords.length ? 'No finished signals for this filter yet' : 'No signals recorded yet — run the bot, or backfill history with --backfill-since'}</td></tr>`;
+}
+function exportScTemplate() {
+  const rows = _scRows();
+  if (!rows.length) { alert('No signals to export for this filter.'); return; }
+  const esc = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const csv = [SC_TEMPLATE_HEADER.join(','), ...rows.map(r => SC_TEMPLATE_HEADER.map(h => esc(r.row[h])).join(','))].join('\n') + '\n';
+  const pair = document.getElementById('scOutPair')?.value || 'all';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `colez-signals-${pair.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+const SC_DEC_COLOR = { entered: '#34d399', pending: '#60a5fa', filled: '#34d399', closed: 'var(--text2)', cancelled: 'var(--text3)',
+  skipped: '#f59e0b', rejected: '#f87171', kept: '#60a5fa', note: 'var(--text3)' };
+async function loadScDecisionLog() {
+  const body = document.getElementById('scDecisionBody');
+  if (!body) return;
+  let ev = [];
+  try { ev = (await kvGet('signal_copier_decision_log'))?.events || []; } catch (e) {}
+  const f = (document.getElementById('scDecFilter')?.value || '').trim().toUpperCase();
+  const rows = ev.filter(e => !f || (e.symbol || '').toUpperCase().includes(f)).slice(-300).reverse();
+  body.innerHTML = rows.length ? rows.map(e => `<tr style="border-top:1px solid var(--border)">
+    <td style="padding:5px 10px">${_scUk(e.t)}</td>
+    <td style="padding:5px 10px">${_scEsc(e.side || '')} ${_scEsc(e.symbol || '')} ${e.order ? `${_scEsc(e.order)} ` : ''}@ ${e.entry ?? '—'}</td>
+    <td style="padding:5px 10px;color:${SC_DEC_COLOR[e.status] || 'var(--text)'}">${_scEsc(e.status)}</td>
+    <td style="padding:5px 10px">${_scEsc(e.reason || '')}</td>
+    <td style="padding:5px 10px;text-align:right">${e.lots ?? ''}</td><td style="padding:5px 10px;text-align:right">${e.ticket ?? ''}</td></tr>`).join('')
+    : '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">No decisions yet</td></tr>';
+}
+function loadScAll() { loadScStatus(); loadScOutcomes(); loadScDecisionLog(); }
+
+Object.assign(window, { saveScConfig, saveScCreds, saveScTgCreds, resetScDefaults, sendScLogin, loadScAll,
+  loadScDecisionLog, renderScOutcomes, exportScTemplate });
+document.querySelector('.tab-btn[data-tab="signalcopier"]')?.addEventListener('click', loadScAll);
+loadScConfig();
+loadScCreds();
+loadScTgCreds();
+setInterval(() => {
+  if (document.visibilityState !== 'visible') return;
+  if (!document.getElementById('tab-signalcopier')?.classList.contains('active')) return;
+  loadScStatus(); loadScDecisionLog();
+}, 30_000);
+
 // Daily levels export (top-bar button) — fetches the SAME server-built text
 // vol-forecast-v3.html's "⬇ Forecast p50/75/90" button uses
 // (/api/vol-forecast/ladder/export), so this page and that one can never

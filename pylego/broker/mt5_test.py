@@ -463,6 +463,77 @@ def test_r_multiple_edge_cases():
     assert f(1.1, 1.1, 1.09, True) == 0.0
 
 
+class FakeMt5Pending(FakeMt5):
+    TRADE_ACTION_PENDING = 5
+    TRADE_ACTION_REMOVE = 8
+    ORDER_TYPE_BUY_LIMIT = 2
+    ORDER_TYPE_SELL_LIMIT = 3
+    ORDER_TYPE_BUY_STOP = 4
+    ORDER_TYPE_SELL_STOP = 5
+
+    def __init__(self, orders=None, **kw):
+        super().__init__(**kw)
+        self._orders = orders or []
+
+    def symbol_info(self, sym):
+        return SimpleNamespace(filling_mode=self._filling, digits=1, volume_min=0.01, volume_max=50, volume_step=0.01)
+
+    def orders_get(self, symbol=None, ticket=None):
+        return [o for o in self._orders if ticket is None or o.ticket == ticket]
+
+
+def _order(ticket, magic, **kw):
+    base = dict(ticket=ticket, magic=magic, symbol='NAS100', type=3, price_open=28965.0, sl=29096.0,
+                tp=28703.0, volume_current=0.1, comment='SC[101-7]', time_setup=1700000000)
+    base.update(kw)
+    return SimpleNamespace(**base)
+
+
+def test_place_pending_sell_limit():
+    fake = FakeMt5Pending(tick=SimpleNamespace(bid=28860.0, ask=28861.0))
+    b = _broker(fake, pip=1)
+    t = b.place_pending('NAS100', 'SHORT', 'limit', 28965, 29096, 28703, 0.1, False, comment='SC[101-7]', dedupe_tag='101-7')
+    assert t == 555111, b.last_reject_reason
+    req = fake.sent_orders[-1]
+    assert req['action'] == 5 and req['type'] == 3 and req['price'] == 28965 and req['sl'] == 29096 and req['tp'] == 28703
+    assert req['type_filling'] == fake.ORDER_FILLING_RETURN and req['comment'] == 'SC[101-7]'
+
+
+def test_place_pending_refuses_price_through_and_bad_stops():
+    fake = FakeMt5Pending(tick=SimpleNamespace(bid=28970.0, ask=28971.0))
+    b = _broker(fake, pip=1)
+    assert b.place_pending('NAS100', 'SHORT', 'limit', 28965, 29096, 28703, 0.1, False) is None
+    assert b.last_reject_reason.startswith('price_through') and not fake.sent_orders
+    fake = FakeMt5Pending(tick=SimpleNamespace(bid=28860.0, ask=28861.0))
+    b = _broker(fake, pip=1)
+    assert b.place_pending('NAS100', 'SHORT', 'limit', 28965, 28900, 28703, 0.1, False) is None
+    assert b.last_reject_reason.startswith('invalid_stops_side')
+
+
+def test_place_pending_dedupes_on_tag():
+    fake = FakeMt5Pending(orders=[_order(9, MAGIC)], tick=SimpleNamespace(bid=28860.0, ask=28861.0))
+    b = _broker(fake, pip=1)
+    assert b.place_pending('NAS100', 'SHORT', 'limit', 28965, 29096, 28703, 0.1, False, dedupe_tag='101-7') is None
+    assert b.last_reject_reason.startswith('duplicate')
+
+
+def test_cancel_and_list_pending():
+    fake = FakeMt5Pending(orders=[_order(9, MAGIC), _order(10, 999)])
+    b = _broker(fake, pip=1)
+    rows = b.pending_orders()
+    assert [r['ticket'] for r in rows] == [9] and rows[0]['direction'] == 'SELL' and rows[0]['kind'] == 'limit'
+    assert b.cancel_pending(9) is True
+    assert fake.sent_orders[-1] == {'action': 8, 'order': 9}
+    n = len(fake.sent_orders)
+    assert b.cancel_pending(12345) is True and len(fake.sent_orders) == n   # already gone: nothing sent
+
+
+def test_positions_with_tag():
+    fake = FakeMt5Pending(positions=[_pos(5, MAGIC, comment='SC[101-0]'), _pos(6, MAGIC, comment='SC[101-1]'),
+                                     _pos(7, 999, comment='SC[101-0]')])
+    assert _broker(fake).positions_with_tag('101-0') == [5]
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

@@ -38,22 +38,26 @@ def _dt(s):
 
 
 class Book:
-    def __init__(self, path=None):
+    def __init__(self, path=None, data=None):
         self.path = path
         self.orders = {}          # id -> order dict
         self.seen = {}            # str(msg_id) -> event signature (for edit detection)
-        if path and os.path.exists(path):
+        if data is None and path and os.path.exists(path):
             with open(path) as f:
-                d = json.load(f)
-            self.orders = d.get('orders', {})
-            self.seen = d.get('seen', {})
+                data = json.load(f)
+        if data:
+            self.orders = data.get('orders', {})
+            self.seen = data.get('seen', {})
+
+    def to_dict(self):
+        return {'orders': self.orders, 'seen': self.seen}
 
     def save(self):
         if not self.path:
             return
         tmp = self.path + '.tmp'
         with open(tmp, 'w') as f:
-            json.dump({'orders': self.orders, 'seen': self.seen}, f, indent=1)
+            json.dump(self.to_dict(), f, indent=1)
         os.replace(tmp, self.path)
 
     # ── queries ────────────────────────────────────────────────────────
@@ -61,8 +65,12 @@ class Book:
         return [o for o in self.orders.values() if o['status'] in LIVE]
 
     def _match(self, ev):
-        """Live orders matching a cancel/close event: symbol + side, then entry price."""
-        cands = [o for o in self.live()
+        """Live orders matching a cancel/close event: symbol + side, then entry price.
+        A CLOSE also considers limits the book marked `expired`: the book can't
+        see fills, and a limit that filled before its cancel time is still open."""
+        pool = self.live() + ([o for o in self.orders.values() if o['status'] == 'expired']
+                              if ev['kind'] == 'close' else [])
+        cands = [o for o in pool
                  if o['symbol'] == ev['symbol'] and o['side'] == ev['side']]
         exact = [o for o in cands
                  if abs(o['entry'] - ev['entry']) <= PRICE_TOL * max(o['entry'], 1e-9)]

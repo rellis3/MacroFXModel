@@ -48,6 +48,7 @@ MAGICS = {
                                                           # same MT5 account + Telegram as the live bot (set via its own
                                                           # fib_atlas_bot_v2_credentials/_config KV keys), separated only
                                                           # by magic number so it can trade its own config side by side
+    "SignalCopier/signal_copier.py":          20261030,  # copies the ColezTrades Telegram signals (paper by default)
 }
 
 # Magics that were re-assigned in the 2026-07 de-collision. Positions opened
