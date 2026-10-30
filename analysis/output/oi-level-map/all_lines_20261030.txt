@@ -1,0 +1,625 @@
+──── EVERY OI LINE · 2026-10-30 ────
+Each line: price · distance in one-day moves from spot · type · expiry book · strength in its own book (g) and against the biggest gamma in the market (G) · contracts at the strike · drawn by the OI Profile or not
+
+GOLD
+· spot 3989.3 · one-day move 35.9 · Profile draws the 8–45 DTE book (51%) · Profile regime BREAKOUT · hedge-map regime short · day-book regime PIN (0DTE) · primary BREAKOUT (26DTE)
+· books: 0–1 DTE 27% short gamma · 2–7 DTE 5% short gamma · 8–45 DTE 51% short gamma · 46+ DTE 17% short gamma
+  4490.4     +13.96σ  CALL WALL          26DTE (analysis export)
+  4390.4     +11.17σ  VOLUME             26DTE (analysis export)
+  4265.4     +7.69σ  VOLUME             26DTE (analysis export)
+  4240.4     +6.99σ  MAX PAIN           26DTE (analysis export)
+  4125.4293  +3.79σ  GEX FLIP           26DTE (analysis export)
+  4115.4     +3.51σ  CALL WALL          0DTE (analysis export)
+  4090.4     +2.82σ  CALL WALL 2        0–1 DTE                  g 0.50 G 0.13  OI 1095C/199P  hidden by Profile
+  4090.4     +2.82σ  CALL WALL 1        2–7 DTE                  g 1.00 G 0.05  OI 217C/66P  hidden by Profile
+  4090.4     +2.82σ  CALL WALL 1        8–45 DTE                 g 1.00 G 0.36  OI 1974C/2258P  DRAWN
+  4090.4     +2.82σ  CALL WALL 1        46+ DTE                  g 1.00 G 0.08  OI 810C/3782P  hidden by Profile
+  4090.4     +2.82σ  CALL WALL          0DTE (analysis export)
+  4090.4     +2.82σ  CALL WALL          0DTE expiry
+  4065.4     +2.12σ  CALL WALL 2        2–7 DTE                  g 0.51 G 0.03  OI 78C/69P  hidden by Profile
+  4040.4     +1.42σ  CALL WALL 1        0–1 DTE                  g 1.00 G 0.26  OI 512C/274P  hidden by Profile
+  4040.4     +1.42σ  CALL WALL 2        8–45 DTE                 g 0.78 G 0.28  OI 1425C/2519P  DRAWN
+  4040.4     +1.42σ  SHORT-GAMMA NODE   46+ DTE                  g 0.45 G 0.20  OI 161C/2290P  hidden by Profile
+  4040.4     +1.42σ  MAX PAIN           0DTE (analysis export)
+  4040.4     +1.42σ  CALL WALL          0DTE (analysis export)
+  4040.4     +1.42σ  MAX PAIN           0DTE expiry
+  4025.2     +1.00σ  EXP MOVE ↑         whole book                      G 0.30    DRAWN
+  4024.8066  +0.99σ  GAMMA FLIP         0DTE (analysis export)
+  4021.6839  +0.90σ  GAMMA FLIP         26DTE (analysis export)
+  4019.5367  +0.84σ  ZERO GAMMA         whole book                      G 0.90    DRAWN
+  3990.4     +0.03σ  GAMMA PEAK         0–1 DTE                  g 1.00 G 0.37  OI 32C/465P  hidden by Profile
+  3990.4     +0.03σ  GAMMA PEAK         2–7 DTE                  g 1.00 G 0.29  OI 10C/554P  hidden by Profile
+  3990.4     +0.03σ  GAMMA PEAK         8–45 DTE                 g 1.00 G 0.93  OI 328C/4960P  DRAWN
+  3990.4     +0.03σ  CALL WALL 2        46+ DTE                  g 0.76 G 0.06  OI 529C/5428P  hidden by Profile
+  3990.4     +0.03σ  GAMMA PEAK         46+ DTE                  g 1.00 G 0.46  OI 529C/5428P  hidden by Profile
+  3990.4     +0.03σ  PUT WALL           26DTE (analysis export)
+  3990.4     +0.03σ  PUT WALL           0DTE (analysis export)
+  3990.4     +0.03σ  PUT WALL           5DTE expiry
+  3990.4     +0.03σ  PUT WALL           89DTE expiry
+  3985.4333  -0.11σ  CHARM FLIP         whole book                      G 0.40    DRAWN
+  3985.4333  -0.11σ  VANNA FLIP         whole book                      G 0.45    DRAWN
+  3965.4     -0.67σ  PUT WALL 2         0–1 DTE                  g 0.29 G 0.11  OI 8C/150P  hidden by Profile
+  3953.4     -1.00σ  EXP MOVE ↓         whole book                      G 0.30    DRAWN
+  3940.4     -1.36σ  PUT WALL 1         0–1 DTE                  g 0.54 G 0.21  OI 7C/410P  hidden by Profile
+  3940.4     -1.36σ  PUT WALL 2         2–7 DTE                  g 0.12 G 0.04  OI 0C/83P  hidden by Profile
+  3940.4     -1.36σ  PUT WALL 2         8–45 DTE                 g 0.85 G 0.85  OI 43C/4384P  DRAWN
+  3940.4     -1.36σ  PUT WALL 2         46+ DTE                  g 0.47 G 0.24  OI 28C/2437P  hidden by Profile
+  3940.4     -1.36σ  PUT WALL           26DTE (analysis export)
+  3940.4     -1.36σ  PUT WALL           0DTE (analysis export)
+  3915.4     -2.06σ  PUT WALL 1         2–7 DTE                  g 0.15 G 0.04  OI 0C/131P  hidden by Profile
+  3890.4     -2.75σ  PUT WALL 1         8–45 DTE                 g 0.94 G 0.94  OI 75C/5315P  DRAWN
+  3890.4     -2.75σ  PUT WALL 1         46+ DTE                  g 0.76 G 0.40  OI 48C/4123P  hidden by Profile
+  3890.4     -2.75σ  PUT WALL           26DTE (analysis export)
+  3840.4     -4.15σ  PUT WALL           0DTE (analysis export)
+
+NQ
+· spot 28779.4 · one-day move 443.2 · Profile draws the 0–1 DTE book (60%) · Profile regime BREAKOUT · hedge-map regime short · day-book regime - (-DTE) · primary BREAKOUT (1DTE)
+· books: 0–1 DTE 60% short gamma · 2–7 DTE 13% short gamma · 8–45 DTE 27% short gamma
+  29871.2    +2.46σ  CALL WALL 2        8–45 DTE                 g 0.41 G 0.10  OI 486C/479P  hidden by Profile
+  29871.2    +2.46σ  CALL WALL          analysis export
+  29871.2    +2.46σ  CALL WALL          5DTE expiry
+  29771.2    +2.24σ  CALL WALL          analysis export
+  29771.2    +2.24σ  MAX PAIN           12DTE expiry
+  29721.2    +2.13σ  CALL WALL 1        2–7 DTE                  g 1.00 G 0.03  OI 196C/43P  hidden by Profile
+  29571.2    +1.79σ  MAX PAIN           whole book                      G 0.60    DRAWN
+  29571.2    +1.79σ  MAX PAIN           analysis export
+  29571.2    +1.79σ  CALL WALL          analysis export
+  29571.2    +1.79σ  MAX PAIN           1DTE expiry
+  29571.2    +1.79σ  MAX PAIN           8DTE expiry
+  29521.2    +1.67σ  MAX PAIN           6DTE expiry
+  29521.2    +1.67σ  MAX PAIN           7DTE expiry
+  29484.017  +1.59σ  GEX FLIP           analysis export
+  29482.863  +1.59σ  ZERO GAMMA         whole book                      G 0.90    DRAWN
+  29421.2    +1.45σ  MAX PAIN           4DTE expiry
+  29371.2    +1.33σ  CALL WALL 2        0–1 DTE                  g 0.39 G 0.10  OI 317C/474P  DRAWN
+  29371.2    +1.33σ  CALL WALL 1        8–45 DTE                 g 1.00 G 0.24  OI 782C/1116P  hidden by Profile
+  29371.2    +1.33σ  VOLUME             whole book                      G 1.00    DRAWN
+  29371.2    +1.33σ  VOLUME             analysis export
+  29371.2    +1.33σ  MAX PAIN           5DTE expiry
+  29371.2    +1.33σ  CALL WALL          8DTE expiry
+  29371.2    +1.33σ  PUT WALL           8DTE expiry
+  29371.2    +1.33σ  MAX PAIN           11DTE expiry
+  29371.2    +1.33σ  CALL WALL          11DTE expiry
+  29340.456  +1.27σ  CHARM FLIP         whole book                      G 0.40    DRAWN
+  29340.453  +1.27σ  VANNA FLIP         whole book                      G 0.45    DRAWN
+  29171.45   +0.88σ  EXP MOVE ↑         whole book                      G 0.30    DRAWN
+  29171.2    +0.88σ  CALL WALL 2        2–7 DTE                  g 0.94 G 0.03  OI 68C/166P  hidden by Profile
+  29021.2    +0.55σ  CALL WALL 1        0–1 DTE                  g 1.00 G 0.27  OI 343C/248P  DRAWN
+  29013.797  +0.53σ  GAMMA FLIP         analysis export
+  28871.2    +0.21σ  GAMMA PEAK         0–1 DTE                  g 1.00 G 0.90  OI 107C/1091P  DRAWN
+  28871.2    +0.21σ  SHORT-GAMMA NODE   2–7 DTE                  g 0.46 G 0.10  OI 16C/164P  hidden by Profile
+  28871.2    +0.21σ  GAMMA PEAK         8–45 DTE                 g 1.00 G 0.56  OI 193C/1915P  hidden by Profile
+  28871.2    +0.21σ  VOLUME             whole book                      G 0.57    DRAWN
+  28871.2    +0.21σ  PUT WALL           analysis export
+  28871.2    +0.21σ  VOLUME             analysis export
+  28871.2    +0.21σ  PUT WALL           1DTE expiry
+  28871.2    +0.21σ  PUT WALL           11DTE expiry
+  28771.2    -0.02σ  PUT WALL 2         0–1 DTE                  g 0.34 G 0.34  OI 38C/364P  DRAWN
+  28671.2    -0.24σ  PUT WALL 1         0–1 DTE                  g 0.38 G 0.38  OI 15C/422P  DRAWN
+  28621.2    -0.36σ  PUT WALL 2         2–7 DTE                  g 0.30 G 0.07  OI 0C/103P  hidden by Profile
+  28571.2    -0.47σ  SHORT-GAMMA NODE   8–45 DTE                 g 0.33 G 0.19  OI 4C/552P  hidden by Profile
+  28495.45   -0.64σ  EXP MOVE ↓         whole book                      G 0.30    DRAWN
+  28371.2    -0.92σ  SHORT-GAMMA NODE   0–1 DTE                  g 0.34 G 0.30  OI 11C/562P  DRAWN
+  28371.2    -0.92σ  PUT WALL 1         2–7 DTE                  g 1.00 G 0.22  OI 0C/476P  hidden by Profile
+  28371.2    -0.92σ  GAMMA PEAK         2–7 DTE                  g 1.00 G 0.22  OI 0C/476P  hidden by Profile
+  28371.2    -0.92σ  PUT WALL 2         8–45 DTE                 g 0.34 G 0.22  OI 167C/707P  hidden by Profile
+  28371.2    -0.92σ  PUT WALL           5DTE expiry
+  28371.2    -0.92σ  PUT WALL           7DTE expiry
+  28271.2    -1.15σ  SHORT-GAMMA NODE   2–7 DTE                  g 0.28 G 0.06  OI 2C/159P  hidden by Profile
+  28271.2    -1.15σ  PUT WALL           6DTE expiry
+  27871.2    -2.05σ  PUT WALL 1         8–45 DTE                 g 0.54 G 0.34  OI 4C/1567P  hidden by Profile
+  27371.2    -3.18σ  SHORT-GAMMA NODE   8–45 DTE                 g 0.33 G 0.19  OI 0C/1315P  hidden by Profile
+  27371.2    -3.18σ  PUT WALL           12DTE expiry
+  27271.2    -3.40σ  PUT WALL           4DTE expiry
+
+EURUSD
+· spot 1.11976 · one-day move 0.00392 · Profile draws the 2–7 DTE book (58%) · Profile regime PIN · hedge-map regime long · day-book regime BREAKOUT (0DTE) · primary BREAKOUT (7DTE)
+· books: 0–1 DTE 23% short gamma · 2–7 DTE 58% short gamma · 8–45 DTE 17% short gamma · 46+ DTE 2% short gamma
+  1.13808    +4.67σ  MAX PAIN           7DTE (analysis export)
+  1.1340082  +3.63σ  GEX FLIP           7DTE (analysis export)
+  1.13308    +3.40σ  SHORT-GAMMA NODE   46+ DTE                  g 0.79 G 0.03  OI 792C/1400P  hidden by Profile
+  1.13308    +3.40σ  PUT WALL           0DTE (analysis export)
+  1.1325304  +3.26σ  ZERO GAMMA         near book (≤3 days)
+  1.13058    +2.76σ  CALL WALL          0DTE (analysis export)
+  1.12808    +2.12σ  CALL WALL 2        2–7 DTE                  g 0.67 G 0.48  OI 4602C/1347P  DRAWN
+  1.12808    +2.12σ  CALL WALL 1        8–45 DTE                 g 1.00 G 0.35  OI 4644C/3380P  hidden by Profile
+  1.12808    +2.12σ  CALL WALL 1        46+ DTE                  g 1.00 G 0.08  OI 1561C/1142P  hidden by Profile
+  1.12808    +2.12σ  CALL WALL          7DTE (analysis export)
+  1.12808    +2.12σ  CALL WALL          7DTE expiry
+  1.12808    +2.12σ  CALL WALL          10DTE expiry
+  1.12558    +1.49σ  LONG-GAMMA NODE    8–45 DTE                 g 0.58 G 0.18  OI 2180C/110P  hidden by Profile
+  1.12558    +1.49σ  CALL WALL          4DTE expiry
+  1.12558    +1.49σ  CALL WALL          5DTE expiry
+  1.1250601  +1.35σ  ZERO GAMMA         near book (≤3 days)
+  1.12368    +1.00σ  EXP MOVE ↑         whole book                      G 0.30    DRAWN
+  1.12308    +0.85σ  CALL WALL 2        0–1 DTE                  g 0.25 G 0.09  OI 348C/1615P  hidden by Profile
+  1.12308    +0.85σ  GAMMA PEAK         0–1 DTE                  g 1.00 G 0.34  OI 348C/1615P  hidden by Profile
+  1.12308    +0.85σ  SHORT-GAMMA NODE   2–7 DTE                  g 0.56 G 0.48  OI 1941C/5613P  DRAWN
+  1.12308    +0.85σ  CALL WALL 2        8–45 DTE                 g 0.63 G 0.22  OI 2214C/1661P  hidden by Profile
+  1.12308    +0.85σ  CALL WALL 2        46+ DTE                  g 0.52 G 0.04  OI 779C/780P  hidden by Profile
+  1.12308    +0.85σ  VOLUME             whole book                      G 0.96    DRAWN
+  1.12308    +0.85σ  PUT WALL           7DTE (analysis export)
+  1.12308    +0.85σ  VOLUME             7DTE (analysis export)
+  1.12308    +0.85σ  MAX PAIN           0DTE (analysis export)
+  1.12308    +0.85σ  PUT WALL           0DTE (analysis export)
+  1.12308    +0.85σ  MAX PAIN           0DTE expiry
+  1.12308    +0.85σ  PUT WALL           0DTE expiry
+  1.12308    +0.85σ  CALL WALL          12DTE expiry
+  1.1224145  +0.68σ  ZERO GAMMA         whole book                      G 0.90    DRAWN
+  1.120623   +0.22σ  VANNA FLIP         whole book                      G 0.45    DRAWN
+  1.1206224  +0.22σ  CHARM FLIP         whole book                      G 0.40    DRAWN
+  1.12058    +0.21σ  CALL WALL 1        0–1 DTE                  g 1.00 G 0.38  OI 1009C/155P  hidden by Profile
+  1.12058    +0.21σ  CALL WALL 1        2–7 DTE                  g 0.67 G 0.48  OI 2606C/1271P  DRAWN
+  1.12058    +0.21σ  SHORT-GAMMA NODE   8–45 DTE                 g 0.72 G 0.23  OI 469C/2467P  hidden by Profile
+  1.12058    +0.21σ  CALL WALL          0DTE (analysis export)
+  1.12058    +0.21σ  CALL WALL          0DTE expiry
+  1.12058    +0.21σ  PUT WALL           4DTE expiry
+  1.12058    +0.21σ  MAX PAIN           5DTE expiry
+  1.12058    +0.21σ  CALL WALL          6DTE expiry
+  1.12058    +0.21σ  MAX PAIN           12DTE expiry
+  1.12058    +0.21σ  PUT WALL           12DTE expiry
+  1.1205018  +0.19σ  GAMMA FLIP         7DTE (analysis export)
+  1.11808    -0.43σ  PUT WALL 2         0–1 DTE                  g 0.50 G 0.22  OI 841C/623P  hidden by Profile
+  1.11808    -0.43σ  PUT WALL 1         2–7 DTE                  g 1.00 G 1.00  OI 579C/6043P  DRAWN
+  1.11808    -0.43σ  GAMMA PEAK         2–7 DTE                  g 1.00 G 0.86  OI 579C/6043P  DRAWN
+  1.11808    -0.43σ  PUT WALL 2         8–45 DTE                 g 0.56 G 0.18  OI 236C/2361P  hidden by Profile
+  1.11808    -0.43σ  PUT WALL 1         46+ DTE                  g 0.56 G 0.04  OI 15C/716P  hidden by Profile
+  1.11808    -0.43σ  GAMMA PEAK         46+ DTE                  g 1.00 G 0.04  OI 15C/716P  hidden by Profile
+  1.11808    -0.43σ  PUT WALL           7DTE (analysis export)
+  1.11808    -0.43σ  PUT WALL           0DTE (analysis export)
+  1.11808    -0.43σ  CALL WALL          0DTE (analysis export)
+  1.1177186  -0.52σ  GAMMA FLIP         0DTE (analysis export)
+  1.1169952  -0.71σ  ZERO GAMMA         near book (≤3 days)
+  1.11584    -1.00σ  EXP MOVE ↓         whole book                      G 0.30    DRAWN
+  1.11558    -1.07σ  PUT WALL 1         0–1 DTE                  g 0.75 G 0.33  OI 183C/1508P  hidden by Profile
+  1.11558    -1.07σ  LONG-GAMMA NODE    2–7 DTE                  g 0.72 G 0.62  OI 3465C/522P  DRAWN
+  1.11558    -1.07σ  PUT WALL           0DTE (analysis export)
+  1.11558    -1.07σ  MAX PAIN           3DTE expiry
+  1.11558    -1.07σ  CALL WALL          3DTE expiry
+  1.11558    -1.07σ  PUT WALL           3DTE expiry
+  1.11558    -1.07σ  MAX PAIN           4DTE expiry
+  1.11558    -1.07σ  PUT WALL           10DTE expiry
+  1.11308    -1.70σ  SHORT-GAMMA NODE   46+ DTE                  g 0.90 G 0.03  OI 20C/665P  hidden by Profile
+  1.11308    -1.70σ  MAX PAIN           6DTE expiry
+  1.11308    -1.70σ  PUT WALL           6DTE expiry
+  1.11308    -1.70σ  MAX PAIN           10DTE expiry
+  1.10808    -2.98σ  PUT WALL 2         2–7 DTE                  g 0.43 G 0.43  OI 9C/6006P  DRAWN
+  1.10808    -2.98σ  PUT WALL 1         8–45 DTE                 g 1.00 G 0.32  OI 40C/4914P  hidden by Profile
+  1.10808    -2.98σ  GAMMA PEAK         8–45 DTE                 g 1.00 G 0.31  OI 40C/4914P  hidden by Profile
+  1.10808    -2.98σ  PUT WALL 2         46+ DTE                  g 0.54 G 0.04  OI 2C/741P  hidden by Profile
+  1.10808    -2.98σ  VOLUME             whole book                      G 1.00    DRAWN
+  1.10808    -2.98σ  PUT WALL           7DTE (analysis export)
+  1.10808    -2.98σ  VOLUME             7DTE (analysis export)
+  1.10808    -2.98σ  PUT WALL           7DTE expiry
+
+GBPUSD
+· spot 1.3415 · one-day move 0.00429 · Profile draws the 2–7 DTE book (72%) · Profile regime PIN · hedge-map regime long · day-book regime BREAKOUT (0DTE) · primary PIN (7DTE)
+· books: 0–1 DTE 9% short gamma · 2–7 DTE 72% long gamma · 8–45 DTE 13% long gamma · 46+ DTE 5% short gamma
+  1.43252    +21.22σ  CALL WALL          7DTE (analysis export)
+  1.35252    +2.57σ  CALL WALL 1        8–45 DTE                 g 0.33 G 0.30  OI 998C/38P  hidden by Profile
+  1.35252    +2.57σ  CALL WALL 2        46+ DTE                  g 0.09 G 0.01  OI 75C/4P  hidden by Profile
+  1.35252    +2.57σ  CALL WALL          12DTE expiry
+  1.34752    +1.40σ  CALL WALL 2        0–1 DTE                  g 0.36 G 0.03  OI 53C/0P  hidden by Profile
+  1.34752    +1.40σ  LONG-GAMMA NODE    2–7 DTE                  g 0.52 G 0.49  OI 992C/73P  DRAWN
+  1.34752    +1.40σ  CALL WALL 2        8–45 DTE                 g 0.27 G 0.24  OI 867C/120P  hidden by Profile
+  1.34752    +1.40σ  CALL WALL 1        46+ DTE                  g 1.00 G 0.15  OI 820C/67P  hidden by Profile
+  1.34752    +1.40σ  GAMMA PEAK         46+ DTE                  g 1.00 G 0.14  OI 820C/67P  hidden by Profile
+  1.34579    +1.00σ  EXP MOVE ↑         whole book                      G 0.30    DRAWN
+  1.34502    +0.82σ  CALL WALL 1        0–1 DTE                  g 0.64 G 0.05  OI 47C/0P  hidden by Profile
+  1.34502    +0.82σ  CALL WALL 2        2–7 DTE                  g 0.92 G 0.92  OI 1481C/1P  DRAWN
+  1.34502    +0.82σ  CALL WALL          4DTE expiry
+  1.34252    +0.24σ  CALL WALL 1        2–7 DTE                  g 1.00 G 1.00  OI 1628C/100P  DRAWN
+  1.34252    +0.24σ  GAMMA PEAK         2–7 DTE                  g 1.00 G 0.94  OI 1628C/100P  DRAWN
+  1.34252    +0.24σ  SHORT-GAMMA NODE   46+ DTE                  g 0.85 G 0.12  OI 18C/651P  hidden by Profile
+  1.34252    +0.24σ  CALL WALL          7DTE (analysis export)
+  1.34252    +0.24σ  CALL WALL          7DTE expiry
+  1.3411541  -0.08σ  ZERO GAMMA         whole book                      G 0.90    DRAWN
+  1.3411082  -0.09σ  CHARM FLIP         whole book                      G 0.40    DRAWN
+  1.3410982  -0.09σ  VANNA FLIP         whole book                      G 0.45    DRAWN
+  1.3390094  -0.58σ  GAMMA FLIP         0DTE (analysis export)
+  1.33752    -0.93σ  PUT WALL 2         2–7 DTE                  g 0.47 G 0.19  OI 794C/272P  DRAWN
+  1.33752    -0.93σ  LONG-GAMMA NODE    8–45 DTE                 g 0.35 G 0.24  OI 1003C/122P  hidden by Profile
+  1.33752    -0.93σ  MAX PAIN           5DTE expiry
+  1.33721    -1.00σ  EXP MOVE ↓         whole book                      G 0.30    DRAWN
+  1.33502    -1.51σ  PUT WALL 1         0–1 DTE                  g 1.00 G 0.34  OI 100C/751P  hidden by Profile
+  1.33502    -1.51σ  GAMMA PEAK         0–1 DTE                  g 1.00 G 0.30  OI 100C/751P  hidden by Profile
+  1.33502    -1.51σ  LONG-GAMMA NODE    2–7 DTE                  g 0.31 G 0.29  OI 588C/48P  DRAWN
+  1.33502    -1.51σ  VOLUME             whole book                      G 1.00    DRAWN
+  1.33502    -1.51σ  MAX PAIN           whole book                      G 0.60    DRAWN
+  1.33502    -1.51σ  MAX PAIN           7DTE (analysis export)
+  1.33502    -1.51σ  VOLUME             7DTE (analysis export)
+  1.33502    -1.51σ  PUT WALL           0DTE (analysis export)
+  1.33502    -1.51σ  PUT WALL           0DTE expiry
+  1.33502    -1.51σ  MAX PAIN           4DTE expiry
+  1.33502    -1.51σ  CALL WALL          5DTE expiry
+  1.33502    -1.51σ  MAX PAIN           7DTE expiry
+  1.3335001  -1.86σ  GAMMA FLIP         7DTE (analysis export)
+  1.3328827  -2.01σ  GEX FLIP           whole book                      G 0.50    DRAWN
+  1.3328827  -2.01σ  GEX FLIP           7DTE (analysis export)
+  1.33252    -2.09σ  PUT WALL 2         0–1 DTE                  g 0.26 G 0.09  OI 569C/628P  hidden by Profile
+  1.33252    -2.09σ  PUT WALL 1         2–7 DTE                  g 1.00 G 0.40  OI 616C/935P  DRAWN
+  1.33252    -2.09σ  PUT WALL 1         8–45 DTE                 g 1.00 G 0.23  OI 2554C/874P  hidden by Profile
+  1.33252    -2.09σ  GAMMA PEAK         8–45 DTE                 g 1.00 G 0.69  OI 2554C/874P  hidden by Profile
+  1.33252    -2.09σ  PUT WALL 2         46+ DTE                  g 0.16 G 0.03  OI 18C/157P  hidden by Profile
+  1.33252    -2.09σ  PUT WALL           7DTE (analysis export)
+  1.33252    -2.09σ  MAX PAIN           0DTE (analysis export)
+  1.33252    -2.09σ  CALL WALL          0DTE (analysis export)
+  1.33252    -2.09σ  MAX PAIN           0DTE expiry
+  1.33252    -2.09σ  MAX PAIN           14DTE expiry
+  1.33252    -2.09σ  CALL WALL          14DTE expiry
+  1.3306084  -2.54σ  ZERO GAMMA         near book (≤3 days)
+  1.32752    -3.26σ  PUT WALL 2         8–45 DTE                 g 0.69 G 0.16  OI 556C/673P  hidden by Profile
+  1.32752    -3.26σ  PUT WALL 1         46+ DTE                  g 1.00 G 0.18  OI 290C/1048P  hidden by Profile
+  1.32752    -3.26σ  VOLUME             7DTE (analysis export)
+  1.32752    -3.26σ  MAX PAIN           3DTE expiry
+  1.32752    -3.26σ  CALL WALL          3DTE expiry
+  1.32752    -3.26σ  MAX PAIN           21DTE expiry
+  1.32752    -3.26σ  PUT WALL           21DTE expiry
+  1.32502    -3.84σ  CALL WALL          0DTE (analysis export)
+  1.32252    -4.42σ  PUT WALL           7DTE (analysis export)
+
+USDJPY
+· spot 157.21 · one-day move 0.613 · Profile draws the 2–7 DTE book (53%) · Profile regime BREAKOUT · hedge-map regime short · day-book regime PIN (0DTE) · primary BREAKOUT (7DTE)
+· books: 0–1 DTE 24% short gamma · 2–7 DTE 53% short gamma · 8–45 DTE 21% long gamma · 46+ DTE 2% long gamma
+  159.25216  +3.33σ  CALL WALL 1        2–7 DTE                  g 1.00 G 0.41  OI 5337C/171P  hidden by Profile
+  159.25216  +3.33σ  CALL WALL 2        8–45 DTE                 g 0.24 G 0.15  OI 1916C/266P  hidden by Profile
+  159.25216  +3.33σ  CALL WALL 1        46+ DTE                  g 1.00 G 0.07  OI 1261C/201P  hidden by Profile
+  159.25216  +3.33σ  GAMMA PEAK         46+ DTE                  g 1.00 G 0.06  OI 1261C/201P  hidden by Profile
+  159.25216  +3.33σ  CALL WALL          7DTE (analysis export)
+  159.25216  +3.33σ  VOLUME             7DTE (analysis export)
+  159.25216  +3.33σ  PUT WALL           3DTE expiry
+  159.25216  +3.33σ  PUT WALL           4DTE expiry
+  159.25216  +3.33σ  PUT WALL           5DTE expiry
+  159.25216  +3.33σ  PUT WALL           6DTE expiry
+  159.25216  +3.33σ  PUT WALL           7DTE expiry
+  158.62477  +2.31σ  CALL WALL 2        0–1 DTE                  g 0.10 G 0.02  OI 190C/0P  hidden by Profile
+  158.3498   +1.86σ  GAMMA FLIP         7DTE (analysis export)
+  158.22104  +1.65σ  GEX FLIP           whole book                      G 0.50    DRAWN
+  158.22104  +1.65σ  GEX FLIP           7DTE (analysis export)
+  158.00232  +1.29σ  CALL WALL 1        0–1 DTE                  g 1.00 G 0.25  OI 1159C/477P  hidden by Profile
+  158.00232  +1.29σ  CALL WALL 2        2–7 DTE                  g 0.98 G 0.41  OI 2322C/3114P  DRAWN
+  158.00232  +1.29σ  CALL WALL 1        8–45 DTE                 g 1.00 G 0.63  OI 5823C/2665P  hidden by Profile
+  158.00232  +1.29σ  GAMMA PEAK         8–45 DTE                 g 1.00 G 0.39  OI 5823C/2665P  hidden by Profile
+  158.00232  +1.29σ  CALL WALL 2        46+ DTE                  g 0.29 G 0.02  OI 339C/1047P  hidden by Profile
+  158.00231  +1.29σ  MAX PAIN           whole book                      G 0.60    DRAWN
+  158.00231  +1.29σ  MAX PAIN           7DTE (analysis export)
+  158.00231  +1.29σ  CALL WALL          7DTE (analysis export)
+  158.00231  +1.29σ  PUT WALL           7DTE (analysis export)
+  158.00231  +1.29σ  CALL WALL          0DTE (analysis export)
+  158.00231  +1.29σ  PUT WALL           0DTE (analysis export)
+  158.00231  +1.29σ  MAX PAIN           0DTE expiry
+  158.00231  +1.29σ  PUT WALL           0DTE expiry
+  158.00231  +1.29σ  MAX PAIN           3DTE expiry
+  158.00231  +1.29σ  MAX PAIN           4DTE expiry
+  158.00231  +1.29σ  MAX PAIN           5DTE expiry
+  158.00231  +1.29σ  MAX PAIN           6DTE expiry
+  158.00231  +1.29σ  MAX PAIN           7DTE expiry
+  158.00231  +1.29σ  MAX PAIN           12DTE expiry
+  158.00231  +1.29σ  PUT WALL           12DTE expiry
+  157.97538  +1.25σ  ZERO GAMMA         whole book                      G 0.90    DRAWN
+  157.823    +1.00σ  EXP MOVE ↑         whole book                      G 0.30    DRAWN
+  157.80579  +0.97σ  GAMMA FLIP         0DTE (analysis export)
+  157.38475  +0.29σ  GAMMA PEAK         0–1 DTE                  g 1.00 G 0.39  OI 84C/1545P  hidden by Profile
+  157.38475  +0.29σ  SHORT-GAMMA NODE   2–7 DTE                  g 0.36 G 0.31  OI 61C/1609P  DRAWN
+  157.38475  +0.29σ  PUT WALL           7DTE (analysis export)
+  157.38475  +0.29σ  CALL WALL          0DTE (analysis export)
+  157.38475  +0.29σ  CALL WALL          0DTE expiry
+  156.772    -0.71σ  PUT WALL 1         0–1 DTE                  g 0.94 G 0.39  OI 32C/1543P  hidden by Profile
+  156.772    -0.71σ  PUT WALL 1         2–7 DTE                  g 1.00 G 1.00  OI 723C/4729P  DRAWN
+  156.772    -0.71σ  GAMMA PEAK         2–7 DTE                  g 1.00 G 0.86  OI 723C/4729P  DRAWN
+  156.772    -0.71σ  PUT WALL 2         8–45 DTE                 g 0.34 G 0.08  OI 450C/846P  hidden by Profile
+  156.772    -0.71σ  PUT WALL 1         46+ DTE                  g 0.05 G 0.00  OI 515C/49P  hidden by Profile
+  156.772    -0.71σ  VANNA FLIP         whole book                      G 0.45    DRAWN
+  156.772    -0.71σ  CHARM FLIP         whole book                      G 0.40    DRAWN
+  156.772    -0.71σ  VOLUME             whole book                      G 0.88    DRAWN
+  156.772    -0.71σ  VOLUME             7DTE (analysis export)
+  156.772    -0.71σ  CALL WALL          0DTE (analysis export)
+  156.772    -0.71σ  CALL WALL          4DTE expiry
+  156.597    -1.00σ  EXP MOVE ↓         whole book                      G 0.30    DRAWN
+  156.16402  -1.71σ  PUT WALL 2         0–1 DTE                  g 0.24 G 0.10  OI 0C/560P  hidden by Profile
+  156.16402  -1.71σ  PUT WALL 2         2–7 DTE                  g 0.40 G 0.40  OI 9C/2380P  DRAWN
+  156.16402  -1.71σ  CALL WALL          10DTE expiry
+  155.56076  -2.69σ  PUT WALL 1         8–45 DTE                 g 0.37 G 0.09  OI 1844C/1071P  hidden by Profile
+  155.56076  -2.69σ  PUT WALL 2         46+ DTE                  g 0.01 G 0.00  OI 148C/7P  hidden by Profile
+  155.56076  -2.69σ  MAX PAIN           0DTE (analysis export)
+  155.56076  -2.69σ  CALL WALL          5DTE expiry
+  154.96215  -3.67σ  CALL WALL          0DTE (analysis export)
+  154.36815  -4.64σ  PUT WALL           7DTE (analysis export)
+
+AUDUSD
+· spot 0.70246 · one-day move 0.00267 · Profile draws the 2–7 DTE book (58%) · Profile regime PIN · hedge-map regime long · day-book regime PIN (0DTE) · primary BREAKOUT (70DTE)
+· books: 0–1 DTE 10% long gamma · 2–7 DTE 58% long gamma · 8–45 DTE 25% long gamma · 46+ DTE 7% short gamma
+  0.74404797 +15.58σ  GEX FLIP           70DTE (analysis export)
+  0.72062    +6.80σ  PUT WALL           70DTE (analysis export)
+  0.71062    +3.06σ  CALL WALL 2        8–45 DTE                 g 0.29 G 0.17  OI 541C/448P  hidden by Profile
+  0.71062    +3.06σ  CALL WALL 2        46+ DTE                  g 0.73 G 0.12  OI 505C/1274P  hidden by Profile
+  0.71062    +3.06σ  GAMMA PEAK         46+ DTE                  g 1.00 G 0.18  OI 505C/1274P  hidden by Profile
+  0.71062    +3.06σ  MAX PAIN           70DTE (analysis export)
+  0.71062    +3.06σ  CALL WALL          0DTE expiry
+  0.71062    +3.06σ  CALL WALL          4DTE expiry
+  0.70651967 +1.52σ  CHARM FLIP         whole book                      G 0.40    DRAWN
+  0.70650773 +1.52σ  VANNA FLIP         whole book                      G 0.45    DRAWN
+  0.70562    +1.18σ  CALL WALL 1        0–1 DTE                  g 1.00 G 0.21  OI 228C/1P  hidden by Profile
+  0.70562    +1.18σ  GAMMA PEAK         0–1 DTE                  g 1.00 G 0.21  OI 228C/1P  hidden by Profile
+  0.70562    +1.18σ  CALL WALL 1        2–7 DTE                  g 1.00 G 1.00  OI 1257C/57P  DRAWN
+  0.70562    +1.18σ  GAMMA PEAK         2–7 DTE                  g 1.00 G 0.95  OI 1257C/57P  DRAWN
+  0.70562    +1.18σ  CALL WALL 1        8–45 DTE                 g 1.00 G 0.57  OI 1652C/18P  hidden by Profile
+  0.70562    +1.18σ  GAMMA PEAK         8–45 DTE                 g 1.00 G 0.57  OI 1652C/18P  hidden by Profile
+  0.70562    +1.18σ  CALL WALL 1        46+ DTE                  g 1.00 G 0.16  OI 655C/270P  hidden by Profile
+  0.70562    +1.18σ  CALL WALL          70DTE (analysis export)
+  0.70562    +1.18σ  CALL WALL          7DTE expiry
+  0.70513    +1.00σ  EXP MOVE ↑         whole book                      G 0.30    DRAWN
+  0.70324235 +0.29σ  GAMMA FLIP         0DTE (analysis export)
+  0.70312    +0.25σ  CALL WALL 2        0–1 DTE                  g 0.32 G 0.07  OI 32C/43P  hidden by Profile
+  0.70312    +0.25σ  CALL WALL 2        2–7 DTE                  g 0.79 G 0.79  OI 512C/91P  DRAWN
+  0.70312    +0.25σ  VOLUME             whole book                      G 0.21    DRAWN
+  0.70312    +0.25σ  VOLUME             70DTE (analysis export)
+  0.70312    +0.25σ  CALL WALL          3DTE expiry
+  0.70312    +0.25σ  MAX PAIN           4DTE expiry
+  0.70204105 -0.16σ  GAMMA FLIP         70DTE (analysis export)
+  0.70062    -0.69σ  PUT WALL 1         0–1 DTE                  g 0.99 G 0.09  OI 19C/55P  hidden by Profile
+  0.70062    -0.69σ  PUT WALL 1         2–7 DTE                  g 1.00 G 0.45  OI 708C/575P  DRAWN
+  0.70062    -0.69σ  PUT WALL 1         8–45 DTE                 g 1.00 G 0.33  OI 1113C/925P  hidden by Profile
+  0.70062    -0.69σ  PUT WALL 1         46+ DTE                  g 0.37 G 0.11  OI 292C/447P  hidden by Profile
+  0.70062    -0.69σ  VOLUME             whole book                      G 1.00    DRAWN
+  0.70062    -0.69σ  VOLUME             70DTE (analysis export)
+  0.70062    -0.69σ  MAX PAIN           5DTE expiry
+  0.70062    -0.69σ  CALL WALL          5DTE expiry
+  0.70062    -0.69σ  MAX PAIN           7DTE expiry
+  0.70062    -0.69σ  MAX PAIN           14DTE expiry
+  0.70062    -0.69σ  CALL WALL          14DTE expiry
+  0.69979    -1.00σ  EXP MOVE ↓         whole book                      G 0.30    DRAWN
+  0.69812    -1.63σ  PUT WALL 2         0–1 DTE                  g 0.06 G 0.01  OI 111C/14P  hidden by Profile
+  0.69812    -1.63σ  MAX PAIN           0DTE (analysis export)
+  0.69812    -1.63σ  CALL WALL          0DTE (analysis export)
+  0.69812    -1.63σ  MAX PAIN           0DTE expiry
+  0.69812    -1.63σ  MAX PAIN           10DTE expiry
+  0.69812    -1.63σ  PUT WALL           10DTE expiry
+  0.69562    -2.56σ  PUT WALL 2         2–7 DTE                  g 0.80 G 0.36  OI 252C/808P  DRAWN
+  0.69562    -2.56σ  PUT WALL 2         8–45 DTE                 g 0.57 G 0.18  OI 546C/591P  hidden by Profile
+  0.69562    -2.56σ  PUT WALL 2         46+ DTE                  g 0.25 G 0.07  OI 277C/310P  hidden by Profile
+  0.69562    -2.56σ  MAX PAIN           3DTE expiry
+  0.69562    -2.56σ  PUT WALL           7DTE expiry
+  0.69562    -2.56σ  CALL WALL          12DTE expiry
+  0.6937573  -3.26σ  ZERO GAMMA         near book (≤3 days)
+  0.69312    -3.50σ  SHORT-GAMMA NODE   8–45 DTE                 g 0.27 G 0.15  OI 0C/465P  hidden by Profile
+  0.69312    -3.50σ  PUT WALL           4DTE expiry
+  0.69312    -3.50σ  PUT WALL           5DTE expiry
+  0.69312    -3.50σ  MAX PAIN           12DTE expiry
+  0.69312    -3.50σ  PUT WALL           12DTE expiry
+  0.69062    -4.43σ  CALL WALL          70DTE (analysis export)
+  0.68812    -5.37σ  PUT WALL           0DTE (analysis export)
+  0.68062    -8.18σ  PUT WALL           70DTE (analysis export)
+
+USDCAD
+· spot 1.39621 · one-day move 0.00377 · Profile draws the 2–7 DTE book (43%) · Profile regime BREAKOUT · hedge-map regime short · day-book regime BREAKOUT (0DTE) · primary BREAKOUT (35DTE)
+· books: 0–1 DTE 20% short gamma · 2–7 DTE 43% short gamma · 8–45 DTE 35% short gamma · 46+ DTE 3% long gamma
+  1.4651819  +18.29σ  GEX FLIP           35DTE (analysis export)
+  1.4312413  +9.29σ  CALL WALL          35DTE (analysis export)
+  1.4312413  +9.29σ  PUT WALL           35DTE (analysis export)
+  1.4211096  +6.61σ  CALL WALL          0DTE (analysis export)
+  1.4208765  +6.54σ  GAMMA FLIP         35DTE (analysis export)
+  1.417097   +5.54σ  MAX PAIN           0DTE (analysis export)
+  1.4111206  +3.96σ  MAX PAIN           35DTE (analysis export)
+  1.4111206  +3.96σ  PUT WALL           35DTE (analysis export)
+  1.4091396  +3.43σ  CALL WALL 2        8–45 DTE                 g 0.05 G 0.04  OI 120C/0P  hidden by Profile
+  1.4091396  +3.43σ  PUT WALL           5DTE expiry
+  1.4071642  +2.91σ  SHORT-GAMMA NODE   2–7 DTE                  g 0.35 G 0.10  OI 100C/361P  DRAWN
+  1.4071642  +2.91σ  PUT WALL           4DTE expiry
+  1.4051944  +2.38σ  CALL WALL 1        0–1 DTE                  g 1.00 G 0.26  OI 1413C/5P  hidden by Profile
+  1.4051944  +2.38σ  GAMMA PEAK         0–1 DTE                  g 1.00 G 0.26  OI 1413C/5P  hidden by Profile
+  1.4051944  +2.38σ  PUT WALL           0DTE (analysis export)
+  1.4051944  +2.38σ  PUT WALL           0DTE expiry
+  1.4032301  +1.86σ  CALL WALL 2        2–7 DTE                  g 0.07 G 0.05  OI 109C/46P  DRAWN
+  1.4032301  +1.86σ  MAX PAIN           0DTE expiry
+  1.4012713  +1.34σ  CALL WALL 2        0–1 DTE                  g 0.92 G 0.24  OI 308C/269P  hidden by Profile
+  1.4012713  +1.34σ  CALL WALL 1        2–7 DTE                  g 1.00 G 0.75  OI 1159C/1436P  DRAWN
+  1.4012713  +1.34σ  CALL WALL 1        8–45 DTE                 g 1.00 G 0.77  OI 2296C/2971P  hidden by Profile
+  1.4012713  +1.34σ  CALL WALL 1        46+ DTE                  g 0.09 G 0.01  OI 43C/32P  hidden by Profile
+  1.4012713  +1.34σ  CALL WALL          35DTE (analysis export)
+  1.4012713  +1.34σ  CALL WALL          0DTE (analysis export)
+  1.4012713  +1.34σ  CALL WALL          0DTE expiry
+  1.4012713  +1.34σ  MAX PAIN           5DTE expiry
+  1.4012713  +1.34σ  PUT WALL           7DTE expiry
+  1.401271   +1.34σ  VOLUME             whole book                      G 1.00    DRAWN
+  1.401271   +1.34σ  VOLUME             35DTE (analysis export)
+  1.4009241  +1.25σ  GAMMA FLIP         0DTE (analysis export)
+  1.4004716  +1.13σ  ZERO GAMMA         whole book                      G 0.90    DRAWN
+  1.39998    +1.00σ  EXP MOVE ↑         whole book                      G 0.30    DRAWN
+  1.3993179  +0.82σ  SHORT-GAMMA NODE   0–1 DTE                  g 0.81 G 0.21  OI 27C/204P  hidden by Profile
+  1.3993179  +0.82σ  SHORT-GAMMA NODE   2–7 DTE                  g 0.33 G 0.10  OI 28C/158P  DRAWN
+  1.3993179  +0.82σ  CALL WALL          0DTE (analysis export)
+  1.3993179  +0.82σ  MAX PAIN           4DTE expiry
+  1.3993179  +0.82σ  MAX PAIN           14DTE expiry
+  1.39737    +0.31σ  SHORT-GAMMA NODE   0–1 DTE                  g 0.52 G 0.14  OI 0C/92P  hidden by Profile
+  1.39737    +0.31σ  GAMMA PEAK         2–7 DTE                  g 1.00 G 0.30  OI 11C/228P  DRAWN
+  1.39737    +0.31σ  VOLUME             whole book                      G 0.90    DRAWN
+  1.39737    +0.31σ  VOLUME             35DTE (analysis export)
+  1.39737    +0.31σ  CALL WALL          3DTE expiry
+  1.3954275  -0.21σ  PUT WALL 1         0–1 DTE                  g 0.69 G 0.17  OI 0C/112P  hidden by Profile
+  1.3954275  -0.21σ  PUT WALL 2         2–7 DTE                  g 0.10 G 0.09  OI 0C/73P  DRAWN
+  1.3934904  -0.72σ  PUT WALL 2         0–1 DTE                  g 0.64 G 0.15  OI 0C/123P  hidden by Profile
+  1.3931455  -0.81σ  VANNA FLIP         whole book                      G 0.45    DRAWN
+  1.3931395  -0.81σ  CHARM FLIP         whole book                      G 0.40    DRAWN
+  1.39244    -1.00σ  EXP MOVE ↓         whole book                      G 0.30    DRAWN
+  1.3915587  -1.23σ  PUT WALL 1         2–7 DTE                  g 0.25 G 0.23  OI 211C/351P  DRAWN
+  1.3915587  -1.23σ  PUT WALL 2         8–45 DTE                 g 0.10 G 0.10  OI 217C/305P  hidden by Profile
+  1.3915587  -1.23σ  PUT WALL 1         46+ DTE                  g 1.00 G 0.03  OI 491C/118P  hidden by Profile
+  1.3915587  -1.23σ  GAMMA PEAK         46+ DTE                  g 1.00 G 0.09  OI 491C/118P  hidden by Profile
+  1.3896324  -1.75σ  PUT WALL 1         8–45 DTE                 g 0.31 G 0.31  OI 1C/652P  hidden by Profile
+  1.3896324  -1.75σ  GAMMA PEAK         8–45 DTE                 g 1.00 G 0.30  OI 1C/652P  hidden by Profile
+  1.3896324  -1.75σ  CALL WALL          4DTE expiry
+  1.3896324  -1.75σ  MAX PAIN           12DTE expiry
+  1.3896324  -1.75σ  CALL WALL          12DTE expiry
+  1.3896324  -1.75σ  CALL WALL          14DTE expiry
+  1.3838853  -3.27σ  CALL WALL          5DTE expiry
+
+USDCHF
+· spot 0.82054 · one-day move 0.00295 · Profile draws the 2–7 DTE book (71%) · Profile regime PIN · hedge-map regime long · day-book regime PIN (7DTE) · primary BREAKOUT (35DTE)
+· books: 0–1 DTE 0% long gamma · 2–7 DTE 71% short gamma · 8–45 DTE 22% short gamma · 46+ DTE 7% long gamma
+  0.86724536 +15.83σ  GEX FLIP           35DTE (analysis export)
+  0.844424   +8.10σ  VOLUME             35DTE (analysis export)
+  0.8374212  +5.72σ  CALL WALL          35DTE (analysis export)
+  0.83396339 +4.55σ  PUT WALL           35DTE (analysis export)
+  0.83053415 +3.39σ  CALL WALL 2        0–1 DTE                  g 0.04 G 0.00  OI 16C/10P  hidden by Profile
+  0.83053415 +3.39σ  CALL WALL 1        2–7 DTE                  g 0.07 G 0.03  OI 116C/8P  hidden by Profile
+  0.83053415 +3.39σ  CALL WALL 2        8–45 DTE                 g 0.61 G 0.15  OI 599C/3991P  hidden by Profile
+  0.83053415 +3.39σ  GAMMA PEAK         8–45 DTE                 g 1.00 G 0.85  OI 599C/3991P  hidden by Profile
+  0.83053415 +3.39σ  MAX PAIN           35DTE (analysis export)
+  0.83053415 +3.39σ  PUT WALL           35DTE (analysis export)
+  0.83053415 +3.39σ  MAX PAIN           35DTE expiry
+  0.82902719 +2.88σ  GAMMA FLIP         7DTE (analysis export)
+  0.82713314 +2.23σ  CALL WALL 1        0–1 DTE                  g 1.00 G 0.00  OI 14C/6P  hidden by Profile
+  0.82713314 +2.23σ  GAMMA PEAK         0–1 DTE                  g 1.00 G 0.00  OI 14C/6P  hidden by Profile
+  0.82713314 +2.23σ  CALL WALL 2        2–7 DTE                  g 0.01 G 0.01  OI 13C/109P  DRAWN
+  0.82713314 +2.23σ  CALL WALL 1        8–45 DTE                 g 0.68 G 0.17  OI 601C/1P  hidden by Profile
+  0.82713314 +2.23σ  CALL WALL          35DTE (analysis export)
+  0.82376    +1.09σ  GAMMA PEAK         2–7 DTE                  g 1.00 G 0.38  OI 2C/673P  DRAWN
+  0.82376    +1.09σ  CALL WALL          7DTE (analysis export)
+  0.82374771 +1.09σ  GAMMA FLIP         35DTE (analysis export)
+  0.82349    +1.00σ  EXP MOVE ↑         whole book                      G 0.30    DRAWN
+  0.8204144  -0.04σ  PUT WALL 1         2–7 DTE                  g 1.00 G 0.59  OI 701C/950P  DRAWN
+  0.8204144  -0.04σ  PUT WALL 1         8–45 DTE                 g 0.18 G 0.18  OI 39C/602P  hidden by Profile
+  0.8204144  -0.04σ  PUT WALL           7DTE (analysis export)
+  0.8204144  -0.04σ  CALL WALL          7DTE (analysis export)
+  0.8204144  -0.04σ  MAX PAIN           7DTE expiry
+  0.8204144  -0.04σ  PUT WALL           7DTE expiry
+  0.819393   -0.39σ  CHARM FLIP         whole book                      G 0.40    DRAWN
+  0.81937607 -0.39σ  VANNA FLIP         whole book                      G 0.45    DRAWN
+  0.81759    -1.00σ  EXP MOVE ↓         whole book                      G 0.30    DRAWN
+  0.817096   -1.17σ  PUT WALL 2         2–7 DTE                  g 0.48 G 0.28  OI 18C/504P  DRAWN
+  0.817096   -1.17σ  PUT WALL 2         8–45 DTE                 g 0.10 G 0.10  OI 835C/343P  hidden by Profile
+  0.817096   -1.17σ  GAMMA PEAK         46+ DTE                  g 1.00 G 0.17  OI 810C/0P  hidden by Profile
+  0.817096   -1.17σ  CALL WALL          35DTE (analysis export)
+  0.817096   -1.17σ  PUT WALL           70DTE expiry
+  0.81380447 -2.28σ  PUT WALL 2         46+ DTE                  g 0.30 G 0.01  OI 50C/66P  hidden by Profile
+  0.81053948 -3.39σ  PUT WALL 1         46+ DTE                  g 1.00 G 0.04  OI 40C/230P  hidden by Profile
+  0.81053948 -3.39σ  CALL WALL          70DTE expiry
+  0.8092934  -3.81σ  GEX FLIP           35DTE (analysis export)
+  0.804088   -5.58σ  VOLUME             35DTE (analysis export)
+  0.80090062 -6.66σ  MAX PAIN           7DTE (analysis export)
+  0.72481595 -32.45σ  GEX FLIP           35DTE (analysis export)
+
+SPX500
+· spot 7648.6 · one-day move 52.8 · Profile draws the 0–1 DTE book (63%) · Profile regime BREAKOUT · hedge-map regime short · day-book regime - (-DTE) · primary BREAKOUT (1DTE)
+· books: 0–1 DTE 63% short gamma · 2–7 DTE 14% short gamma · 8–45 DTE 23% short gamma
+  7772.6     +2.35σ  CALL WALL 1        2–7 DTE                  g 1.00 G 0.05  OI 2861C/542P  hidden by Profile
+  7772.6     +2.35σ  CALL WALL 1        8–45 DTE                 g 1.00 G 0.12  OI 7271C/5399P  hidden by Profile
+  7772.6     +2.35σ  CALL WALL          analysis export
+  7772.6     +2.35σ  CALL WALL          6DTE expiry
+  7762.6     +2.16σ  CALL WALL          analysis export
+  7752.6     +1.97σ  MAX PAIN           12DTE expiry
+  7747.6     +1.88σ  MAX PAIN           11DTE expiry
+  7746.4013  +1.85σ  GEX FLIP           whole book                      G 0.50    DRAWN
+  7746.4013  +1.85σ  GEX FLIP           analysis export
+  7741.0064  +1.75σ  ZERO GAMMA         whole book                      G 0.90    DRAWN
+  7736.25    +1.66σ  EXP MOVE ↑         whole book                      G 0.30    DRAWN
+  7732.6     +1.59σ  MAX PAIN           5DTE expiry
+  7732.6     +1.59σ  MAX PAIN           6DTE expiry
+  7722.6     +1.40σ  CALL WALL 2        2–7 DTE                  g 0.78 G 0.04  OI 1236C/1571P  hidden by Profile
+  7722.6     +1.40σ  CALL WALL 2        8–45 DTE                 g 0.65 G 0.08  OI 4349C/5876P  hidden by Profile
+  7722.6     +1.40σ  MAX PAIN           whole book                      G 0.60    DRAWN
+  7722.6     +1.40σ  MAX PAIN           analysis export
+  7722.6     +1.40σ  MAX PAIN           1DTE expiry
+  7722.6     +1.40σ  MAX PAIN           8DTE expiry
+  7717.6     +1.31σ  MAX PAIN           4DTE expiry
+  7697.6     +0.93σ  CALL WALL 2        0–1 DTE                  g 0.37 G 0.08  OI 1565C/1243P  DRAWN
+  7695.7403  +0.89σ  GAMMA FLIP         analysis export
+  7672.6     +0.45σ  CALL WALL 1        0–1 DTE                  g 1.00 G 0.20  OI 3319C/16213P  DRAWN
+  7672.6     +0.45σ  GAMMA PEAK         0–1 DTE                  g 1.00 G 0.80  OI 3319C/16213P  DRAWN
+  7672.6     +0.45σ  SHORT-GAMMA NODE   2–7 DTE                  g 0.29 G 0.03  OI 466C/1219P  hidden by Profile
+  7672.6     +0.45σ  SHORT-GAMMA NODE   8–45 DTE                 g 0.95 G 0.20  OI 2552C/11659P  hidden by Profile
+  7672.6     +0.45σ  PUT WALL           analysis export
+  7672.6     +0.45σ  MAX PAIN           7DTE expiry
+  7655.9683  +0.14σ  CHARM FLIP         whole book                      G 0.40    DRAWN
+  7655.965   +0.14σ  VANNA FLIP         whole book                      G 0.45    DRAWN
+  7622.6     -0.49σ  PUT WALL 1         0–1 DTE                  g 0.76 G 0.76  OI 1798C/12574P  DRAWN
+  7622.6     -0.49σ  PUT WALL 1         2–7 DTE                  g 1.00 G 0.12  OI 231C/2595P  hidden by Profile
+  7622.6     -0.49σ  GAMMA PEAK         2–7 DTE                  g 1.00 G 0.11  OI 231C/2595P  hidden by Profile
+  7622.6     -0.49σ  SHORT-GAMMA NODE   8–45 DTE                 g 0.76 G 0.16  OI 1011C/8953P  hidden by Profile
+  7622.6     -0.49σ  VOLUME             whole book                      G 1.00    DRAWN
+  7622.6     -0.49σ  VOLUME             analysis export
+  7597.6     -0.97σ  SHORT-GAMMA NODE   2–7 DTE                  g 0.43 G 0.05  OI 5C/1216P  hidden by Profile
+  7587.6     -1.16σ  SHORT-GAMMA NODE   0–1 DTE                  g 0.28 G 0.22  OI 34C/5466P  DRAWN
+  7572.95    -1.43σ  EXP MOVE ↓         whole book                      G 0.30    DRAWN
+  7572.6     -1.44σ  PUT WALL 2         0–1 DTE                  g 0.25 G 0.25  OI 584C/7999P  DRAWN
+  7572.6     -1.44σ  PUT WALL 2         2–7 DTE                  g 0.43 G 0.05  OI 37C/1664P  hidden by Profile
+  7572.6     -1.44σ  PUT WALL 1         8–45 DTE                 g 0.93 G 0.24  OI 1296C/12400P  hidden by Profile
+  7572.6     -1.44σ  GAMMA PEAK         8–45 DTE                 g 1.00 G 0.21  OI 1296C/12400P  hidden by Profile
+  7472.6     -3.33σ  PUT WALL 2         8–45 DTE                 g 0.79 G 0.20  OI 2526C/15422P  hidden by Profile
+  7472.6     -3.33σ  PUT WALL           12DTE expiry
+  6872.6     -14.70σ  VOLUME             analysis export
+
+US30
+· spot 52362.8 · one-day move 408.4 · Profile draws the 8–45 DTE book (100%) · Profile regime BREAKOUT · hedge-map regime - · day-book regime - (-DTE) · primary BREAKOUT (22DTE)
+· books: 8–45 DTE 100% short gamma
+  57037.706  +11.45σ  GEX FLIP           analysis export
+  52771.2    +1.00σ  EXP MOVE ↑         whole book                      G 0.30    DRAWN
+  52564.1    +0.49σ  SHORT-GAMMA NODE   8–45 DTE                 g 0.84 G 0.68  OI 0C/3P  DRAWN
+  52464.1    +0.25σ  CALL WALL 2        8–45 DTE                 g 0.25 G 0.23  OI 1C/4P  DRAWN
+  52464.1    +0.25σ  VOLUME             whole book                      G 1.00    DRAWN
+  52464.1    +0.25σ  VOLUME             analysis export
+  52373.564  +0.03σ  CHARM FLIP         whole book                      G 0.40    DRAWN
+  52373.498  +0.03σ  VANNA FLIP         whole book                      G 0.45    DRAWN
+  52364.1    +0.00σ  CALL WALL 1        8–45 DTE                 g 1.00 G 0.91  OI 4C/3P  DRAWN
+  52338.874  -0.06σ  GAMMA FLIP         analysis export
+  52264.1    -0.24σ  SHORT-GAMMA NODE   8–45 DTE                 g 0.85 G 0.68  OI 0C/3P  DRAWN
+  52264.1    -0.24σ  MAX PAIN           whole book                      G 0.60    DRAWN
+  52264.1    -0.24σ  VOLUME             whole book                      G 1.00    DRAWN
+  52264.1    -0.24σ  MAX PAIN           analysis export
+  52264.1    -0.24σ  VOLUME             analysis export
+  52164.1    -0.49σ  PUT WALL 2         8–45 DTE                 g 0.90 G 0.90  OI 2C/4P  DRAWN
+  51954.4    -1.00σ  EXP MOVE ↓         whole book                      G 0.30    DRAWN
+  51564.1    -1.96σ  PUT WALL 1         8–45 DTE                 g 1.00 G 1.00  OI 1C/5P  DRAWN
+  51564.1    -1.96σ  GAMMA PEAK         8–45 DTE                 g 1.00 G 0.80  OI 1C/5P  DRAWN
+
+US2000
+· spot 2848 · one-day move 26.2 · Profile draws the 0–1 DTE book (73%) · Profile regime PIN · hedge-map regime long · day-book regime - (-DTE) · primary PIN (1DTE)
+· books: 0–1 DTE 73% long gamma · 2–7 DTE 11% long gamma · 8–45 DTE 16% long gamma
+  2916.8     +2.63σ  CALL WALL 2        8–45 DTE                 g 0.55 G 0.18  OI 388C/12P  hidden by Profile
+  2891.8     +1.67σ  CALL WALL 2        2–7 DTE                  g 0.50 G 0.24  OI 286C/7P  hidden by Profile
+  2891.8     +1.67σ  VOLUME             whole book                      G 0.86    DRAWN
+  2891.8     +1.67σ  VOLUME             analysis export
+  2891.8     +1.67σ  CALL WALL          4DTE expiry
+  2872.4     +0.93σ  EXP MOVE ↑         whole book                      G 0.30    DRAWN
+  2866.8     +0.72σ  CALL WALL 1        0–1 DTE                  g 0.86 G 0.86  OI 472C/25P  DRAWN
+  2866.8     +0.72σ  GAMMA PEAK         0–1 DTE                  g 1.00 G 0.81  OI 472C/25P  DRAWN
+  2866.8     +0.72σ  CALL WALL 1        2–7 DTE                  g 1.00 G 0.49  OI 475C/0P  hidden by Profile
+  2866.8     +0.72σ  GAMMA PEAK         2–7 DTE                  g 1.00 G 0.49  OI 475C/0P  hidden by Profile
+  2866.8     +0.72σ  CALL WALL 1        8–45 DTE                 g 1.00 G 0.33  OI 482C/75P  hidden by Profile
+  2866.8     +0.72σ  GAMMA PEAK         8–45 DTE                 g 1.00 G 0.29  OI 482C/75P  hidden by Profile
+  2866.8     +0.72σ  VOLUME             whole book                      G 1.00    DRAWN
+  2866.8     +0.72σ  CALL WALL          analysis export
+  2866.8     +0.72σ  VOLUME             analysis export
+  2866.8     +0.72σ  CALL WALL          6DTE expiry
+  2866.8     +0.72σ  MAX PAIN           12DTE expiry
+  2861.8     +0.53σ  MAX PAIN           4DTE expiry
+  2852.188   +0.16σ  CHARM FLIP         whole book                      G 0.40    DRAWN
+  2852.1803  +0.16σ  VANNA FLIP         whole book                      G 0.45    DRAWN
+  2851.8     +0.14σ  CALL WALL 2        0–1 DTE                  g 0.38 G 0.38  OI 166C/225P  DRAWN
+  2847.5947  -0.02σ  GAMMA FLIP         analysis export
+  2841.8     -0.24σ  PUT WALL 1         0–1 DTE                  g 1.00 G 0.80  OI 442C/353P  DRAWN
+  2841.8     -0.24σ  MAX PAIN           whole book                      G 0.60    DRAWN
+  2841.8     -0.24σ  MAX PAIN           analysis export
+  2841.8     -0.24σ  PUT WALL           analysis export
+  2841.8     -0.24σ  CALL WALL          analysis export
+  2841.8     -0.24σ  MAX PAIN           1DTE expiry
+  2841.8     -0.24σ  MAX PAIN           15DTE expiry
+  2830.2     -0.68σ  EXP MOVE ↓         whole book                      G 0.30    DRAWN
+  2828.4212  -0.75σ  GEX FLIP           whole book                      G 0.50    DRAWN
+  2828.4212  -0.75σ  GEX FLIP           analysis export
+  2823.4493  -0.94σ  ZERO GAMMA         whole book                      G 0.90    DRAWN
+  2816.8     -1.19σ  PUT WALL 2         0–1 DTE                  g 0.25 G 0.20  OI 196C/174P  DRAWN
+  2816.8     -1.19σ  PUT WALL 1         2–7 DTE                  g 1.00 G 0.02  OI 33C/23P  hidden by Profile
+  2816.8     -1.19σ  PUT WALL 1         8–45 DTE                 g 1.00 G 0.19  OI 135C/273P  hidden by Profile
+  2816.8     -1.19σ  MAX PAIN           6DTE expiry
+  2816.8     -1.19σ  MAX PAIN           8DTE expiry
+  2816.8     -1.19σ  PUT WALL           8DTE expiry
+  2816.8     -1.19σ  MAX PAIN           13DTE expiry
+  2816.8     -1.19σ  PUT WALL           13DTE expiry
+  2791.8     -2.15σ  PUT WALL 2         8–45 DTE                 g 0.97 G 0.18  OI 72C/352P  hidden by Profile
+  2791.8     -2.15σ  MAX PAIN           5DTE expiry
+  2791.8     -2.15σ  CALL WALL          5DTE expiry
+  2766.8     -3.10σ  PUT WALL 2         2–7 DTE                  g 0.46 G 0.01  OI 1C/26P  hidden by Profile
+  2766.8     -3.10σ  SHORT-GAMMA NODE   8–45 DTE                 g 0.30 G 0.09  OI 73C/284P  hidden by Profile
+  2761.8     -3.29σ  PUT WALL           4DTE expiry

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Every OI line — all expiry books</title>
+<style>
+:root{
+  --bg:#07090c; --bg2:#0d1117; --line:#1c232c; --line2:#2a323d;
+  --tx:#eef1f5; --tx2:#a8b1bd; --tx3:#6b7585;
+  --long:#46b87a; --short:#e8615f; --acc:#f0b04a; --vio:#a487f0; --cy:#5cc8ff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#121a26 0%,var(--bg) 60%);color:var(--tx);font:14px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:1240px;margin:0 auto;padding:16px 18px 80px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:10px}
+h1{margin:0;font-size:20px;letter-spacing:.16em;text-transform:uppercase;font-weight:700}
+h1 b{color:var(--acc)} h1 small{color:var(--tx3);font-size:11px;letter-spacing:.14em;margin-left:8px}
+.sp{flex:1}
+.btn,.pill{background:rgba(255,255,255,.03);border:1px solid var(--line2);color:var(--tx2);padding:6px 12px;border-radius:999px;font:12.5px var(--mono);cursor:pointer;text-decoration:none}
+.btn:hover,.pill:hover{border-color:var(--acc);color:var(--tx)}
+.pill.on{border-color:var(--acc);color:var(--acc);background:rgba(240,176,74,.08)}
+.rail{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.008));border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:16px}
+.card h2{margin:0 0 3px;font-size:13px;letter-spacing:.16em;text-transform:uppercase}
+.sub{color:var(--tx2);font-size:13px;margin:0 0 12px;max-width:940px}
+.sub b{color:var(--tx)}
+.warn{border-color:#5b4a1a;background:linear-gradient(180deg,rgba(240,176,74,.07),rgba(240,176,74,.02))}
+.warn h2{color:var(--acc)}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 14px}
+.stat{background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:130px}
+.stat .k{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3)}
+.stat .v{font:600 18px var(--mono)}
+.stat .n{font-size:11.5px;color:var(--tx3)}
+.PIN{color:var(--long)} .BREAKOUT{color:var(--short)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:4px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--tx3);font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;position:sticky;top:0;background:var(--bg2)}
+td.num{font-family:var(--mono);text-align:right}
+tr.hid td{color:var(--tx)} tr.hid td.flag{color:var(--acc)}
+tr.drw td{color:var(--tx3)}
+tr.crossed td:first-child{box-shadow:inset 3px 0 0 var(--cy)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 10px}
+.chips label{font-size:12.5px;color:var(--tx2);display:inline-flex;gap:5px;align-items:center;cursor:pointer}
+.chips input[type=number]{width:96px;background:var(--bg2);border:1px solid var(--line2);color:var(--tx);border-radius:6px;padding:3px 6px;font:12.5px var(--mono)}
+.find{border-left:3px solid var(--acc);padding:4px 0 4px 12px;margin:10px 0;color:var(--tx2);font-size:13.5px}
+.find b{color:var(--tx)}
+.note{color:var(--tx3);font-size:12px}
+svg text{font-family:var(--mono)}
+.scroll{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1><b>Every</b> OI line<small>all expiry books · one-off · 2026-10-30</small></h1>
+  <span class="sp"></span>
+  <a class="btn" id="dl" href="/analysis/output/oi-level-map/all_lines_20261030.txt" download>download as text</a>
+  <a class="btn" href="/oi-level-lab.html">Level Lab</a>
+  <a class="btn" href="/oi-dashboard-v2.html">← OI Lab</a>
+</header>
+<div class="card warn"><h2>Read this first</h2>
+<p class="sub">The OI Profile draws <b>one</b> expiry book: the bucket (0–1, 2–7, 8–45 or 46+ days) with the most gamma near price. This page lists <b>every</b> line from <b>every</b> bucket, next to the lines the OI WALLS &amp; MAX PAIN export draws, and says which ones the Profile hides. Strength comes two ways: <b>g</b> is strength inside the line's own book (1.0 is that book's biggest), <b>G</b> is against the biggest gamma anywhere in the market (so a 0–1 day wall with g 1.0 can still be G 0.1, a small line). The levels are rebuilt offline from this morning's QuikStrike capture, with spot and the one-day move taken from what the live Profile printed at 06:47 UTC, and the basis anchored on the live gamma peak. Walls, zero gamma, the strongest book and the regime match the live Profile on the markets I checked (gold, NQ, EURUSD, USDJPY, SPX). Known differences: charm and vanna flips are recomputed offline and sit a little off the live ones (gold 3985 here against 3976 live), and a few weak second walls differ. This describes the book. It is not a signal, and none of it has been tested as one beyond the Level Lab.</p></div>
+<div class="rail" id="rail"></div>
+<div id="app">loading…</div>
+</div>
+<script>
+'use strict';
+const URL_J = '/analysis/output/oi-level-map/all_lines_20261030.json';
+const $ = s => document.querySelector(s);
+const T = {
+  call_wall: ['Call wall', '#ff7a86'], put_wall: ['Put wall', '#46d39a'], gamma_peak: ['Gamma peak', '#f2f2f2'], zero_gamma: ['Zero gamma', '#a487f0'], gex_flip: ['GEX flip', '#b9a3ff'],
+  gamma_flip: ['Gamma flip', '#8f7be0'], max_pain: ['Max pain', '#e6c84a'], vanna_flip: ['Vanna flip', '#ff7ad9'], charm_flip: ['Charm flip', '#ff9f43'], oi_volume: ['Volume', '#4aa8ff'],
+  exp_hi: ['Exp move ↑', '#c9a45c'], exp_lo: ['Exp move ↓', '#c9a45c'], short_gamma_node: ['Short-gamma node', '#e8615f'], long_gamma_node: ['Long-gamma node', '#46b87a'],
+};
+let D = null, cur = 0, strongOnly = true, hiddenOnly = false, hi = NaN, lo = NaN;
+const dp = m => (m.spot >= 1000 ? 1 : m.spot >= 100 ? 2 : m.spot >= 20 ? 3 : 5);
+const fx = (v, m) => (v == null ? '–' : (+v).toFixed(dp(m)));
+const nm = l => (T[l.type]?.[0] || l.type) + (l.rank ? ' ' + l.rank : '');
+const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (_) { return null; } };
+
+(async () => {
+  try { D = await (await fetch(URL_J)).json(); } catch (e) { $('#app').textContent = 'could not load the export: ' + e.message; return; }
+  hi = parseFloat(store('oiAll.hi.' + D.date)) || NaN; lo = parseFloat(store('oiAll.lo.' + D.date)) || NaN;
+  $('#rail').innerHTML = D.markets.map((m, i) => `<button class="pill" data-i="${i}">${m.name}</button>`).join('');
+  $('#rail').onclick = e => { const b = e.target.closest('button'); if (b) { cur = +b.dataset.i; render(); } };
+  render();
+})();
+
+function render() {
+  const m = D.markets[cur];
+  document.querySelectorAll('#rail .pill').forEach((b, i) => b.classList.toggle('on', i === cur));
+  const reads = [['Profile (shown on chart)', m.profileRegime], ['Hedge map, ≤3-day book at spot', m.hedgeRegime === 'short' ? 'BREAKOUT' : m.hedgeRegime === 'long' ? 'PIN' : null], [`Day book (${m.dayDte ?? '–'} DTE), analysis export`, m.dayRegime], [`Primary book (${m.primaryDte ?? '–'} DTE)`, m.primaryRegime]];
+  const set = new Set(reads.map(r => r[1]).filter(Boolean));
+  const bl = m.lines.filter(l => l.src === 'bucket');
+  const hid = bl.filter(l => !l.drawn && l.G >= 0.1).sort((a, b) => b.G - a.G);
+  const seen = new Set(), hidU = hid.filter(l => { const k = l.type + l.price; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 6);
+  const crossed = l => Number.isFinite(hi) && Number.isFinite(lo) ? (l.price <= hi && l.price >= lo) : null;
+  let h = `<div class="stats">
+    <div class="stat"><div class="k">Spot</div><div class="v">${fx(m.spot, m)}</div><div class="n">as printed 06:47 UTC</div></div>
+    <div class="stat"><div class="k">One-day move</div><div class="v">${fx(m.oneDay, m)}</div><div class="n">forecast σ, price units</div></div>
+    <div class="stat"><div class="k">Profile draws</div><div class="v">${m.strongBook}</div><div class="n">${(m.buckets.find(b => b.label === m.strongBook) || {}).share ?? '–'}% of near-spot gamma</div></div>
+    ${reads.map(r => `<div class="stat"><div class="k">${r[0]}</div><div class="v ${r[1] || ''}">${r[1] || '–'}</div></div>`).join('')}
+  </div>`;
+  if (set.size > 1) h += `<div class="find"><b>The regime reads disagree here.</b> The word on your chart is the first; the others use a different book or method, so the same line can read Reject on one export and Break on the other.</div>`;
+  if (hidU.length) h += `<div class="find"><b>Lines the Profile does not draw</b> (from the other books, at least 10% of the market's biggest gamma): ${hidU.map(l => `${nm(l)} ${fx(l.price, m)} <span class="note">(${l.bucketLabel}, G ${l.G.toFixed(2)}, ${l.sig >= 0 ? '+' : ''}${l.sig.toFixed(2)}σ)</span>`).join(' · ')}</div>`;
+  h += `<div class="card"><h2>Books, near price</h2><table><tr><th>Book</th><th class="num">Share of gamma within 2σ</th><th>Net gamma</th><th>Drawn by Profile</th></tr>${m.buckets.map(b => `<tr><td>${b.label}</td><td class="num">${b.share}%</td><td>${b.netSign}</td><td>${b.label === m.strongBook ? 'yes' : 'no'}</td></tr>`).join('')}</table></div>`;
+  h += `<div class="card"><h2>${m.name}: every line on one ladder</h2>
+    <p class="sub">Each column is one source. Bar thickness is G (strength against the whole market); filled means the Profile draws it, hollow means it does not. Dashed lines are ±1σ, ±2σ and ±3σ of a day; lines further out than 3.3σ are in the table only. Hover a bar for its details. Optionally enter today's high and low to mark what price has traded through.</p>
+    <div class="chips"><label><input type="checkbox" id="so" ${strongOnly ? 'checked' : ''}> strong only (book lines with G ≥ 0.25)</label><label><input type="checkbox" id="ho" ${hiddenOnly ? 'checked' : ''}> only lines the Profile hides</label>
+    <label>today's high <input type="number" id="hi" step="any" value="${Number.isFinite(hi) ? hi : ''}"></label><label>low <input type="number" id="lo" step="any" value="${Number.isFinite(lo) ? lo : ''}"></label></div>
+    <div id="svgbox"></div></div>`;
+  h += `<div class="card"><h2>All lines, top to bottom</h2><div class="scroll"><table id="tb"></table></div><p class="note">${m.lines.length} lines in all (±3.5σ). The 'analysis export' and per-expiry rows are what the OI WALLS &amp; MAX PAIN export draws; they can sit on the same strike as a bucket line under a different name.</p></div>`;
+  $('#app').innerHTML = h;
+  $('#so').onchange = e => { strongOnly = e.target.checked; draw(); };
+  $('#ho').onchange = e => { hiddenOnly = e.target.checked; draw(); };
+  $('#hi').onchange = e => { hi = parseFloat(e.target.value); store('oiAll.hi.' + D.date, String(hi)); draw(); };
+  $('#lo').onchange = e => { lo = parseFloat(e.target.value); store('oiAll.lo.' + D.date, String(lo)); draw(); };
+  draw();
+}
+
+function draw() {
+  const m = D.markets[cur];
+  // the ladder shows ±3.3σ of a day around price; anything further out (the primary expiry's far walls, volume 10σ away) stays in the table only
+  const vis = m.lines.filter(l => Math.abs(l.sig) <= 3.3 && !(strongOnly && l.src === 'bucket' && l.G < 0.25) && !(hiddenOnly && !(l.src === 'bucket' && !l.drawn)));
+  const lanes = [...m.buckets.map(b => ({ k: 'b' + b.id, t: b.label, f: l => l.src === 'bucket' && l.bucket === b.id })),
+    { k: 'mk', t: 'Whole book', f: l => l.src === 'market' }, { k: 'an', t: 'Analysis export', f: l => l.src === 'analysis' }, { k: 'ex', t: 'Per expiry', f: l => l.src === 'expiry' }];
+  const W = 1120, H = 640, L = 80, top = 34, bot = 14, laneW = (W - L - 10) / lanes.length;
+  const sg = m.oneDay, S = m.spot;
+  const y0 = S - 3.4 * sg, y1 = S + 3.4 * sg, Y = p => top + (y1 - p) / (y1 - y0) * (H - top - bot);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="background:#0a0e14;border:1px solid var(--line);border-radius:10px">`;
+  if (Number.isFinite(hi) && Number.isFinite(lo) && hi > lo) s += `<rect x="${L}" y="${Y(hi)}" width="${W - L - 6}" height="${Math.max(1, Y(lo) - Y(hi))}" fill="rgba(92,200,255,.08)"/><text x="${L + 4}" y="${Y(hi) + 11}" font-size="10" fill="#5cc8ff">traded range today</text>`;
+  for (const k of [-3, -2, -1, 1, 2, 3]) { const y = Y(S + k * sg); if (y > top && y < H - bot) s += `<line x1="${L}" x2="${W - 6}" y1="${y}" y2="${y}" stroke="#2a323d" stroke-dasharray="4 4"/><text x="4" y="${y + 3}" font-size="10" fill="#6b7585">${k > 0 ? '+' : ''}${k}σ</text>`; }
+  s += `<line x1="${L}" x2="${W - 6}" y1="${Y(S)}" y2="${Y(S)}" stroke="#f0b04a"/><text x="4" y="${Y(S) + 3}" font-size="10" fill="#f0b04a">spot</text><text x="${L + 4}" y="${Y(S) - 4}" font-size="10" fill="#f0b04a">${fx(S, m)}</text>`;
+  lanes.forEach((ln, i) => {
+    const x = L + i * laneW;
+    s += `<text x="${x + laneW / 2}" y="18" font-size="10.5" fill="#a8b1bd" text-anchor="middle">${ln.t}</text><line x1="${x}" x2="${x}" y1="${top - 6}" y2="${H - bot}" stroke="#141a22"/>`;
+    const items = vis.filter(ln.f).sort((a, b) => b.price - a.price); let lastY = -1e9;
+    for (const l of items) {
+      const y = Y(l.price), col = T[l.type]?.[1] || '#aaa', th = l.G != null && l.src === 'bucket' ? Math.max(2, Math.min(9, 2 + l.G * 8)) : 3;
+      const filled = l.drawn || l.src !== 'bucket', tip = `${nm(l)} ${fx(l.price, m)} · ${l.bucketLabel} · ${l.sig >= 0 ? '+' : ''}${l.sig.toFixed(2)}σ${l.g != null ? ' · g ' + l.g.toFixed(2) : ''}${l.G != null ? ' · G ' + l.G.toFixed(2) : ''}${l.oiC != null ? ` · ${l.oiC}C/${l.oiP}P` : ''}${l.src === 'bucket' ? (l.drawn ? ' · drawn by Profile' : ' · hidden by Profile') : ''}`;
+      s += `<g><title>${tip}</title><rect x="${x + 6}" y="${y - th / 2}" width="${laneW - 12}" height="${th}" rx="2" fill="${filled ? col : 'none'}" stroke="${col}" stroke-width="1.2" opacity="${filled ? .9 : .8}"/></g>`;
+      if (y - lastY > 11 && (l.G == null || l.G >= 0.25 || l.src !== 'bucket')) { s += `<text x="${x + 9}" y="${y - th / 2 - 2}" font-size="9" fill="${col}">${(T[l.type]?.[0] || l.type).replace('Short-gamma node', 'SG node').replace('Long-gamma node', 'LG node')}${l.rank ? ' ' + l.rank : ''} ${fx(l.price, m)}</text>`; lastY = y; }
+    }
+  });
+  s += '</svg>';
+  $('#svgbox').innerHTML = s;
+  const rows = m.lines.filter(l => !(hiddenOnly && !(l.src === 'bucket' && !l.drawn)) && !(strongOnly && l.src === 'bucket' && l.G < 0.25));
+  const cr = l => (Number.isFinite(hi) && Number.isFinite(lo)) ? (l.price <= hi && l.price >= lo) : null;
+  $('#tb').innerHTML = `<tr><th>Price</th><th class="num">Distance</th><th>Line</th><th>Book</th><th class="num">g</th><th class="num">G</th><th class="num">Contracts C / P</th><th>Profile</th>${Number.isFinite(hi) && Number.isFinite(lo) ? '<th>Traded</th>' : ''}</tr>` +
+    rows.map(l => `<tr class="${l.src === 'bucket' ? (l.drawn ? 'drw' : 'hid') : ''} ${cr(l) ? 'crossed' : ''}"><td class="num">${fx(l.price, m)}</td><td class="num">${l.sig >= 0 ? '+' : ''}${l.sig.toFixed(2)}σ</td><td style="color:${T[l.type]?.[1] || '#aaa'}">${nm(l)}</td><td>${l.bucketLabel}</td><td class="num">${l.g != null ? l.g.toFixed(2) : ''}</td><td class="num">${l.G != null ? l.G.toFixed(2) : ''}</td><td class="num">${l.oiC != null ? l.oiC + ' / ' + l.oiP : ''}</td><td class="flag">${l.src === 'bucket' ? (l.drawn ? 'drawn' : 'hidden') : l.src === 'market' ? 'drawn' : ''}</td>${Number.isFinite(hi) && Number.isFinite(lo) ? `<td>${cr(l) ? 'yes' : 'no'}</td>` : ''}</tr>`).join('');
+}
+</script>
+</body>
+</html>
