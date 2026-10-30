@@ -187,8 +187,27 @@ Rarer families (F4reg_wt2: 1m 27k, 5m 5.8k, 60m 525) scale accordingly; `event_c
 
 ## Amendments
 
-(none yet)
+### A1 — 2026-10-30 — POST-HOC (results seen)
+Checks on the validated volatility cells (F1c, V_12), added after validation:
+- major US releases removed;
+- the recent 12-bar range added to the strata;
+- mid-range bars without a cross;
+- by year and without the top 1%.
 
-## RESULTS
+They are reported in `analysis/output/vmc-nq-cipher/posthoc_F1c.json` and RESULTS.md. They can only demote or describe.
+They did not demote: the effect stays positive and |t| >= 2.3 under every control. They do describe it: about half of
+the effect belongs to WaveTrend sitting mid-range, not to the cross.
 
-(not run)
+Implementation notes, no outcome-relevant change:
+- 186 of the 188 planned cells had events. The two missing ones are daily cells with no event after de-clustering.
+- Shuffle histories used B = 500 (discovery) and B = 200 (validation) for their t statistics; the real data used
+  B = 2000.
+
+## RESULTS — run 2026-10-30
+
+See `analysis/output/vmc-nq-cipher/RESULTS.md`.
+- **direction: NULL** (1-5m powered; 15m and slower UNDERPOWERED);
+- **volatility: VALIDATED**: mid-range WaveTrend cross, next-12-bar range +5-8% on 1/3/5/30m, validation t 3.7-5.6;
+  about +3-4% after the post-hoc controls;
+- **sequencing: VALIDATED** as a property: MF turns first in 16.4% vs 15.7% of crosses, with no price consequence;
+- **interaction: NULL**.
