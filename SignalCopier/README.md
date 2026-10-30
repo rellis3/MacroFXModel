@@ -14,6 +14,7 @@ Copies the **ColezTrades | Private → Signals** Telegram topic onto MT5, run li
 .venv\Scripts\python.exe -m pip install -r SignalCopier\requirements.txt
 .venv\Scripts\python.exe SignalCopier\signal_copier.py --url <dashboard-url>                         & rem paper
 .venv\Scripts\python.exe SignalCopier\signal_copier.py --url <dashboard-url> --backfill-since 2025-01-01 & rem history → outcomes, no orders
+SignalCopier\start.bat --url <dashboard-url> --backfill-days 30 --parse-only                          & rem parser test only, no MT5 needed
 .venv\Scripts\python.exe SignalCopier\signal_copier.py --url <dashboard-url> --live
 ```
 
@@ -21,6 +22,16 @@ First run: the bot asks Telegram for a login code and shows **needs login code**
 your Telegram app into the **Telegram login** card. A 2FA password is asked for the same way if your account has one.
 The resulting session is the local file `SignalCopier/signalcopier.session`. **Treat it like a password.** It never
 goes to KV.
+
+## Test the parser on history first
+
+`--backfill-days N --parse-only` replays the last N days of the Signals topic through the parser and book. It places no
+orders and doesn't need MT5. The report lands on the tab's **History Parse Test** card:
+- messages scanned, signals / cancels / closes found, by symbol and style
+- the full text of every message that looked like an instruction but wasn't understood
+- every cancel or close that matched no signal
+
+Drop `--parse-only` to also score those signals on MT5 bars into Signal Outcomes, which feeds the COG template export.
 
 ## How it reads a group you're not an admin of
 

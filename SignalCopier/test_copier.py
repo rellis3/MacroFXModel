@@ -202,6 +202,26 @@ def test_master_switch_and_decision_shape():
     assert s["tg_master_on"] is True and "risk_guard" in s
 
 
+def test_replay_history_parse_report():
+    cp, _ = make()
+    t0 = datetime(2026, 10, 30, 7, 1, tzinfo=timezone.utc)
+    msgs = [(101, DAILY, t0), (102, CANCEL, t0 + timedelta(hours=6)), (103, SINGLE, t0 + timedelta(hours=6.5)),
+            (104, "Move the NAS100 SL to breakeven", t0 + timedelta(hours=7)),
+            (105, "CLOSE the EURUSD BUY from 1.0850, done", t0 + timedelta(hours=8)),
+            (106, "Group and team has never been stronger", t0 + timedelta(hours=9)),
+            (107, CLOSES, t0 + timedelta(hours=13))]
+    rep = sc.replay_history(cp, msgs, record=False)
+    assert (rep["messages"], rep["opens"], rep["cancels"], rep["closes"]) == (7, 10, 1, 8)
+    assert rep["with_instructions"] == 6
+    assert rep["by_symbol"]["NAS100"] == 2 and rep["by_style"] == {"swing": 7, "day": 2, "single": 1}
+    assert [u["msg_id"] for u in rep["unparsed"]] == [104]
+    assert [u["msg_id"] for u in rep["unmatched"]] == [105]
+    assert not cp.signals and not cp.execs and not cp.broker.serialize_open_positions()   # parse-only: nothing recorded or traded
+    rep = sc.replay_history(cp, msgs, record=True)
+    assert len(cp.signals) == 10 and not cp.execs                                   # recorded, still no orders
+    assert cp.signals["101:0"]["close_reason"] == "flat for the weekend"
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

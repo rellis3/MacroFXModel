@@ -8526,10 +8526,45 @@ function scDecClearDate() {
   if (input) input.value = '';
   loadScDecisionLog();
 }
-function loadScAll() { loadScStatus(); loadScOutcomes(); loadScDecisionLog(); loadScTradeLog(); }
+async function loadScParseReport() {
+  const el = document.getElementById('scParseReport');
+  if (!el) return;
+  let r = null;
+  try { r = await kvGet('signal_copier_backfill_report'); } catch (e) {}
+  if (!r) { el.innerHTML = 'No history replay yet. Run the command above on the bot machine; the report lands here.'; return; }
+  const d = ts => ts ? new Date(ts * 1000).toLocaleDateString('en-GB', { timeZone: 'Europe/London', day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  const stat = (l, v, c) => `<div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px"><span style="color:var(--text3)">${l}</span> <b style="color:${c || 'var(--text)'}">${v}</b></div>`;
+  const nU = (r.unparsed || []).length, nM = (r.unmatched || []).length;
+  const list = (rows, field) => rows.slice().reverse().map(u => `<tr style="border-top:1px solid var(--border)">
+      <td style="padding:5px 10px;white-space:nowrap;vertical-align:top">${_scUk(u.t)}</td>
+      <td style="padding:5px 10px;vertical-align:top">${u.msg_id}</td>
+      <td style="padding:5px 10px;white-space:pre-wrap;color:var(--text)">${_scEsc(u[field])}</td></tr>`).join('');
+  const table = (title, color, rows, field, help) => rows.length ? `
+    <div style="margin-top:12px;font-weight:600;color:${color}">${title} (${rows.length})</div>
+    <div class="bot-banner-sub" style="margin:2px 0 6px">${help}</div>
+    <div style="max-height:320px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+      <thead><tr style="background:var(--s2);color:var(--text3)"><th style="padding:6px 10px;text-align:left">Posted (UK)</th><th style="padding:6px 10px;text-align:left">Msg</th><th style="padding:6px 10px;text-align:left">Text</th></tr></thead>
+      <tbody>${list(rows, field)}</tbody></table></div>` : '';
+  el.innerHTML = `<div style="display:flex;gap:10px;flex-wrap:wrap">
+      ${stat('Ran', `${_scUk(r.ran_at)} · ${_scEsc(r.mode)}`)}
+      ${stat('Period', `${d(r.from_ts)} → ${d(r.to_ts)}`)}
+      ${stat('Messages', r.messages)} ${stat('With instructions', r.with_instructions)}
+      ${stat('Signals', r.opens, '#2dd4bf')} ${stat('Cancels', r.cancels)} ${stat('Closes', r.closes)}
+      ${stat('Unparsed', nU, nU ? '#f59e0b' : 'var(--green)')} ${stat('Unmatched cancel/close', nM, nM ? '#f59e0b' : 'var(--green)')}
+      ${r.signals_recorded != null ? stat('Added to outcomes', r.signals_recorded) : ''}
+    </div>
+    <div style="margin-top:8px;color:var(--text3)">By symbol: ${Object.entries(r.by_symbol || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${_scEsc(k)} ${v}`).join(' · ') || '—'}
+      &nbsp;·&nbsp; by style: ${Object.entries(r.by_style || {}).map(([k, v]) => `${_scEsc(k)} ${v}`).join(' · ') || '—'}
+      ${r.topic ? ` · topic ${_scEsc(r.topic)}` : ' · all topics'}${r.senders ? ` · senders ${_scEsc(r.senders)}` : ''}</div>
+    ${table('Unparsed instructions', '#f59e0b', r.unparsed || [], 'text', 'Messages that look like a trade instruction but match no known format. The live bot would only alert on these. Send them to me and I’ll add the format.')}
+    ${table('Cancels / closes that matched no signal', '#f59e0b', r.unmatched || [], 'detail', 'Usually a signal posted before the replay window started — try more days. Otherwise a format difference between his entry and his close message.')}
+    ${!nU && !nM && r.messages ? '<div style="margin-top:10px;color:var(--green);font-weight:600">Every instruction in this period was understood.</div>' : ''}`;
+}
+
+function loadScAll() { loadScStatus(); loadScOutcomes(); loadScDecisionLog(); loadScTradeLog(); loadScParseReport(); }
 
 Object.assign(window, { saveScConfig, saveScCreds, saveScTgCreds, resetScDefaults, testScTelegram, sendScLogin, loadScAll,
-  loadScDecisionLog, scDecShiftDay, scDecClearDate, loadScTradeLog, renderScOutcomes, exportScTemplate });
+  loadScDecisionLog, scDecShiftDay, scDecClearDate, loadScTradeLog, loadScParseReport, renderScOutcomes, exportScTemplate });
 document.querySelector('.tab-btn[data-tab="signalcopier"]')?.addEventListener('click', loadScAll);
 loadScConfig().then(loadScAll);         // like Vote Atlas: render at load, so a restored tab isn't blank for 30s
 loadScCreds();

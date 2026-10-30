@@ -334,6 +334,7 @@ const _CF_EXACT = new Set([
   'signal_copier_tg_credentials', // Signal Copier Telegram api_id/api_hash/phone (the session itself stays on the bot machine)
   'signal_copier_state',          // Signal Copier book + executions — the bot resumes from it after a restart
   'signal_copier_decision_log',   // Signal Copier per-signal actions (entered/skipped/cancelled/closed + why)
+  'signal_copier_backfill_report', // Signal Copier history replay: what the parser understood / missed (signal_copier.py --backfill-days)
   'signal_copier_signals',        // Signal Copier per-signal outcome record + COG import-template rows — accumulated history
   'motif_bot_spread_stats', // Motif Bot per-pair live spread averages (real MT5 ticks, motif_bot.py's own sampler) — must survive redeploys, it's accumulated data motif_track.py's best-config filter reads back.
                             // NOT the same store as spread_profile_v1 below: this is a live EWMA of THIS account's real
