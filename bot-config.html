@@ -5734,6 +5734,16 @@ python motif_bot/motif_bot.py --live --url &lt;dashboard-url&gt;</pre>
       </div>
     </div>
 
+    <!-- History parse test -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:#2dd4bf">History Parse Test</span>
+        <span class="bot-banner-sub" style="margin:0">replays the Signals topic through the parser, no orders · run <code>SignalCopier\start.bat --url &lt;dashboard-url&gt; --backfill-days 30 --parse-only</code> (no MT5 needed), or without <code>--parse-only</code> to also fill Signal Outcomes from MT5 bars</span>
+        <button onclick="loadScParseReport()" style="margin-left:auto;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div id="scParseReport" style="padding:6px 16px 14px;font-size:12px;color:var(--text3)">loading…</div>
+    </div>
+
     <!-- Signal outcomes + COG template export -->
     <div class="card" style="padding:0">
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px;flex-wrap:wrap">

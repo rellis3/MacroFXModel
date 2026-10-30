@@ -128,6 +128,7 @@ export const STORES = {
   motif_bot_decision_log: L('Motif bot decisions', 14), motif_bot_spread_stats: R('Motif bot spread stats', 7, { market: false }),
   signal_copier_state: S('Signal Copier state'), signal_copier_decision_log: L('Signal Copier decisions', 14),
   signal_copier_signals: L('Signal Copier signal outcomes (COG template)', 14),
+  signal_copier_backfill_report: L('Signal Copier history parse report', 120, { market: false }),
   // ── user-entered configuration (present/absent only) ──────────────────────
   surprise_alert_config: C('Surprise alert config'), oi_auto_target: C('OI auto-target toggle'), cot_urls: C('COT report URLs'),
   cot_url: C('COT report URL'), caps: C('Proximity caps'), daily_watchlist: C('Daily watchlist'),

@@ -35,7 +35,7 @@ import logging
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -333,6 +333,8 @@ class Copier:
 
     # outcome record ---------------------------------------------------------
     def record(self, action, o):
+        if not getattr(self, "recording", True):
+            return
         rid = o["id"]
         if action == "place":
             if rid in self.signals:
@@ -756,9 +758,11 @@ def make_filter(cfg):
     return ok
 
 
-async def run(base_url, force_live, backfill_since=None):
+async def run(base_url, force_live, backfill_since=None, parse_only=False):
     kv = KvClient(base_url)
     cfg = _deep_merge(DEFAULT_CFG, kv.get_json(f"{K}_config") or {})
+    if backfill_since:
+        cfg["paper_mode"] = True        # a replay never trades, whatever the dashboard toggle says
     cp = Copier(kv, cfg, force_live)
     if not cp.connect():
         return
@@ -773,7 +777,7 @@ async def run(base_url, force_live, backfill_since=None):
     ok = make_filter(cfg)
 
     if backfill_since:
-        await backfill(cp, client, chat, ok, backfill_since)
+        await backfill(cp, client, chat, ok, backfill_since, parse_only)
         await client.disconnect()
         return
 
@@ -836,34 +840,85 @@ async def run(base_url, force_live, backfill_since=None):
         await asyncio.sleep(cp.cfg.get("poll_secs", 5))
 
 
-async def backfill(cp: Copier, client, chat, ok, since: str):
-    """Replay the topic's history into the outcome record (no orders)."""
-    if cp.data is None:
-        raise SystemExit("backfill needs the MT5 terminal for M1 bars — start MT5 and retry")
+def replay_history(cp: Copier, messages, record=True):
+    """Replay past messages [(msg_id, text, posted_utc), …] oldest first through a
+    fresh book, with no orders. With `record`, signals go into the outcome record;
+    either way returns the parse report: what was understood, what wasn't."""
+    book, hold = Book(), cp.book
+    cp.book, cp.recording = book, record
+    rep = {"messages": 0, "with_instructions": 0, "opens": 0, "cancels": 0, "closes": 0,
+           "by_symbol": {}, "by_style": {}, "unparsed": [], "unmatched": []}
+    first = last = None
+    try:
+        for mid, text, posted in messages:
+            posted = posted.astimezone(timezone.utc)
+            first, last = first or posted, posted
+            rep["messages"] += 1
+            cp.apply(book.tick(posted), execute=False)
+            events = parse_message(text or "")
+            book.seen[str(mid)] = repr(events)
+            if has_trade_events(events):
+                rep["with_instructions"] += 1
+            for e in events:
+                k = e["kind"]
+                if k == "open":
+                    rep["opens"] += 1
+                    rep["by_symbol"][e["symbol"]] = rep["by_symbol"].get(e["symbol"], 0) + 1
+                    st = e.get("style") or "single"
+                    rep["by_style"][st] = rep["by_style"].get(st, 0) + 1
+                elif k in ("cancel", "close"):
+                    rep[k + "s"] += 1
+                elif k == "review":
+                    rep["unparsed"].append({"msg_id": mid, "t": int(posted.timestamp()), "text": e["text"][:600]})
+            for action, o, detail in book.apply(events, mid, posted):
+                if action == "warn" and "no matching live order" in (detail or ""):
+                    rep["unmatched"].append({"msg_id": mid, "t": int(posted.timestamp()), "detail": detail})
+                cp.apply([(action, o, detail)], execute=False)
+        cp.apply(book.tick(datetime.now(timezone.utc)), execute=False)
+    finally:
+        cp.book, cp.recording = hold, True
+    rep["unparsed"], rep["unmatched"] = rep["unparsed"][-200:], rep["unmatched"][-200:]
+    rep["from_ts"] = int(first.timestamp()) if first else None
+    rep["to_ts"] = int(last.timestamp()) if last else None
+    return rep
+
+
+async def backfill(cp: Copier, client, chat, ok, since: str, parse_only=False):
+    """Replay the topic's history: always a parse report (signal_copier_backfill_report);
+    unless `parse_only`, also the outcome record scored on MT5 M1 bars. No orders."""
+    if not parse_only and cp.data is None:
+        raise SystemExit("outcomes need the MT5 terminal for M1 bars — start MT5, or add --parse-only "
+                         "to just test the parser")
     start = datetime.strptime(since, "%Y-%m-%d").replace(tzinfo=timezone.utc)
     topic = cp.cfg.get("tg_topic")
     kw = {"reply_to": int(topic)} if topic and int(topic) != 1 else {}
-    live_ids = {rid for rid, r in cp.signals.items() if r.get("recv_px") is not None}
-    book, n = Book(), 0
-    hold, cp.book = cp.book, book
+    msgs = []
     async for msg in client.iter_messages(chat, reverse=True, offset_date=start, **kw):
-        if not ok(msg):
-            continue
-        cp.apply(book.tick(msg.date.astimezone(timezone.utc)), execute=False)
-        events = parse_message(msg.message or "")
-        book.seen[str(msg.id)] = repr(events)
-        cp.apply(book.apply(events, msg.id, msg.date.astimezone(timezone.utc)), execute=False)
-        n += 1
-    cp.apply(book.tick(datetime.now(timezone.utc)), execute=False)
-    cp.book = hold
-    for rid, r in cp.signals.items():
-        if rid not in live_ids:
-            r["recv_px"] = None        # history: fill at the first bar after the post
-            r["final"] = False
-    cp.resolve_open()
-    cp.flush(force=True)
-    done = [r for r in cp.signals.values() if r.get("row")]
-    log.info(f"backfill: {n} messages → {len(cp.signals)} signals, {len(done)} with a template row")
+        if ok(msg):
+            msgs.append((msg.id, msg.message or "", msg.date))
+    live_ids = {rid for rid, r in cp.signals.items() if r.get("recv_px") is not None}
+    before = set(cp.signals)
+    rep = replay_history(cp, msgs, record=not parse_only)
+    rep.update({"ran_at": int(_now()), "since": since, "mode": "parse only" if parse_only else "parse + outcomes",
+                "chat": cp.tg.get("chat"), "topic": topic, "senders": cp.cfg.get("tg_senders") or None})
+    if not parse_only:
+        for rid, r in cp.signals.items():
+            if rid not in live_ids:
+                r["recv_px"] = None        # history: fill at the first bar after the post
+                r["final"] = False
+        cp.resolve_open()
+        rep["signals_recorded"] = len(set(cp.signals) - before)
+        rep["with_template_row"] = sum(1 for r in cp.signals.values() if r.get("row"))
+        cp.flush(force=True)
+    try:
+        cp.kv.put_json(f"{K}_backfill_report", rep)
+    except Exception as e:
+        log.warning(f"could not save the parse report: {e}")
+    log.info(f"backfill ({rep['mode']}): {rep['messages']} messages, {rep['opens']} signals, "
+             f"{rep['cancels']} cancels, {rep['closes']} closes, {len(rep['unparsed'])} unparsed, "
+             f"{len(rep['unmatched'])} unmatched — see the Signal Copier tab")
+    for u in rep["unparsed"][-20:]:
+        log.warning(f"UNPARSED msg {u['msg_id']}: {u['text'][:200]!r}")
 
 
 def main():
@@ -871,9 +926,17 @@ def main():
     ap.add_argument("--url", default=os.environ.get("DASHBOARD_URL", "http://localhost:3000"))
     ap.add_argument("--live", action="store_true", help="force live (overrides the dashboard paper toggle)")
     ap.add_argument("--backfill-since", metavar="YYYY-MM-DD",
-                    help="rebuild the outcome record from channel history, then exit (places no orders)")
+                    help="replay channel history from this date, then exit (places no orders)")
+    ap.add_argument("--backfill-days", type=int, metavar="N", help="same, for the last N days")
+    ap.add_argument("--parse-only", action="store_true",
+                    help="with a backfill: only test the parser (no MT5 needed, outcome record untouched)")
     a = ap.parse_args()
-    asyncio.run(run(a.url, a.live, a.backfill_since))
+    since = a.backfill_since
+    if a.backfill_days:
+        since = (datetime.now(timezone.utc) - timedelta(days=a.backfill_days)).strftime("%Y-%m-%d")
+    if a.parse_only and not since:
+        ap.error("--parse-only needs --backfill-days or --backfill-since")
+    asyncio.run(run(a.url, a.live and not since, since, a.parse_only))
 
 
 if __name__ == "__main__":
