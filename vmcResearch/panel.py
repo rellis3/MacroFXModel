@@ -67,6 +67,9 @@ def load_m1(instrument):
     df = df[~df.index.duplicated(keep='last')].sort_index()
     if df.index.tz is None:
         df.index = df.index.tz_localize('UTC')
+    # bar-close seconds are computed as int64 // 10**9 downstream, which assumes ns; a us-stamped file (the NQ
+    # futures parquet) otherwise misaligns every slower timeframe onto future bars
+    df.index = df.index.as_unit('ns')
     return df
 
 
