@@ -719,3 +719,6 @@ analysis/output/day-reconstruction/archive/*.jsonl
 # day-reconstruction milestone 3 phantom baselines (rebuilt by phantom_touches.mjs / m3_analysis.py)
 analysis/output/day-reconstruction/m3/*phantom*
 analysis/output/oi-level-map/smile.json
+
+# vmc-nq-cipher feature tables (built locally from gitignored NT8 data)
+analysis/output/vmc-nq-cipher/data/
