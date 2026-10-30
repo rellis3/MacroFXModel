@@ -83,7 +83,7 @@ svg text{font-family:var(--mono)}
     <button class="btn" id="profEveryBtn" title="Everything: FX, gold, indices AND the commodities (Brent, natgas, WTI, silver, copper, platinum). Same wide ±3 day-sigma window as core. Grains, sugar, platinum and palladium are left out; ask for them by name. Takes 10-20 s.">Profile · all</button>
     <button class="btn" id="tiersBtn" title="OI levels + forecast ladder + IV-adjusted ladder + Confluence Zones grouped into distance-ranked tiers. A SEPARATE export: paste it instead of the OI section of the normal export.">Tiers export</button>
     <a class="btn" href="oi-level-lab.html" title="What the OI lines actually did: each line scored against random lines on the archived nightly captures (exploratory)">Level Lab</a>
-    <a class="btn" href="oi-all-lines.html" title="Every line from every expiry book next to what the OI Profile draws (one-off, 2026-10-30)">All lines</a>
+    <button class="btn" id="profBooksBtn" title="The OI Profile paste for the instrument on screen with the lines of EVERY expiry book, not only the strongest one the normal Profile draws. Hidden-book lines are tagged (· 0–1d) and fainter. Raise 'max levels' in the indicator to see them all.">All lines</button>
     <a class="btn" href="oi-dashboard.html">Classic dashboard</a>
   </header>
   <div class="rail" id="rail"></div>
@@ -1273,8 +1273,8 @@ function showExport(text){
     parts.map((p, i) => `<div style="margin-bottom:10px"><div style="display:flex;gap:10px;align-items:center;margin-bottom:4px"><b>Part ${i + 1} of ${parts.length}</b><span style="color:var(--tx3);font-size:12px">${p.length} characters</span><button class="btn" data-part="${i}">Copy part ${i + 1}</button></div><textarea readonly rows="5" style="width:100%;background:#05070a;color:var(--tx);border:1px solid var(--line2);border-radius:6px;padding:10px;font:12px/1.4 var(--mono)">${esc(p)}</textarea></div>`).join('');
   box.querySelectorAll('button[data-part]').forEach(b => b.onclick = () => { try { navigator.clipboard.writeText(parts[+b.dataset.part]); b.textContent = 'Copied ✓'; setTimeout(() => b.textContent = 'Copy part ' + (+b.dataset.part + 1), 1500); } catch (_) { b.parentElement.nextElementSibling.select(); } });
 }
-async function loadProfile(){ const ta = $('#tiersTxt'); ta.value = 'fetching… (price feed + P(touch), ~5–15 s)';
-  try { const r = await fetch('/api/oi-profile/export?pair=' + encodeURIComponent(SYM) + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
+async function loadProfile(books){ const ta = $('#tiersTxt'); ta.value = 'fetching… (price feed + P(touch), ~5–15 s)';
+  try { const r = await fetch('/api/oi-profile/export?pair=' + encodeURIComponent(SYM) + (books ? '&books=all' : '') + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); showExport(await r.text()); }
   catch (e) { ta.value = 'Export failed: ' + e.message; } }
 let EXPORT_KIND = 'tiers';
 async function loadLevels(){ const ta = $('#tiersTxt'); $('#tiersParts').style.display = 'none'; ta.style.display = ''; ta.value = 'fetching… (price feed + P(touch), ~10–20 s)';
@@ -1291,7 +1291,8 @@ $('#lvlBtn').onclick = () => { EXPORT_KIND = 'levels'; $('#exportTitle').textCon
 $('#profEveryBtn').onclick = () => { EXPORT_KIND = 'profileEvery'; $('#exportTitle').textContent = 'OI Profile paste — every instrument incl. oil, natgas, silver and copper (corn, soy, wheat, platinum left out)'; $('#tiersModal').style.display = 'block'; loadProfileEvery(); };
 $('#profAllBtn').onclick = () => { EXPORT_KIND = 'profileAll'; $('#exportTitle').textContent = 'OI Profile paste — core instruments: FX, gold, indices (the indicator picks the one matching the chart)'; $('#tiersModal').style.display = 'block'; loadProfileAll(); };
 $('#profBtn').onclick = () => { EXPORT_KIND = 'profile'; $('#exportTitle').textContent = 'OI Profile paste — ' + (NAMES[SYM] || SYM) + ' (into pine/OI Profile.pine › 1 · Data)'; $('#tiersModal').style.display = 'block'; loadProfile(); };
-$('#tiersGo').onclick = () => (EXPORT_KIND === 'levels' ? loadLevels() : EXPORT_KIND === 'profileAll' ? loadProfileAll() : EXPORT_KIND === 'profileEvery' ? loadProfileEvery() : EXPORT_KIND === 'profile' ? loadProfile() : loadTiers()); $('#tiersClose').onclick = () => { $('#tiersModal').style.display = 'none'; };
+$('#profBooksBtn').onclick = () => { EXPORT_KIND = 'profileBooks'; $('#exportTitle').textContent = 'OI Profile paste, EVERY expiry book — ' + (NAMES[SYM] || SYM) + ' (into pine/OI Profile.pine › 1 · Data; raise max levels to draw them all)'; $('#tiersModal').style.display = 'block'; loadProfile(true); };
+$('#tiersGo').onclick = () => (EXPORT_KIND === 'levels' ? loadLevels() : EXPORT_KIND === 'profileAll' ? loadProfileAll() : EXPORT_KIND === 'profileEvery' ? loadProfileEvery() : EXPORT_KIND === 'profileBooks' ? loadProfile(true) : EXPORT_KIND === 'profile' ? loadProfile() : loadTiers()); $('#tiersClose').onclick = () => { $('#tiersModal').style.display = 'none'; };
 $('#tiersCopy').onclick = () => { try { navigator.clipboard.writeText($('#tiersTxt').value); $('#tiersCopy').textContent = 'Copied ✓'; setTimeout(() => $('#tiersCopy').textContent = 'Copy', 1500); } catch (_) { $('#tiersTxt').select(); } };
 $('#mNear').onclick = () => { NEAR = true; $('#mNear').classList.add('on'); $('#mAll').classList.remove('on'); refresh(); };
 $('#mAll').onclick = () => { NEAR = false; $('#mAll').classList.add('on'); $('#mNear').classList.remove('on'); refresh(); };

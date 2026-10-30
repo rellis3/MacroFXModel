@@ -87,5 +87,15 @@ ok('integers only in the bar series (compact)', rows.filter(r => /^[GVO]\|/.test
   ok('change rows are signed, scaled to +-1000 and written as C lines', lines.length === 2 && lines.includes('C|101.00|-1000') && lines.includes('C|99.00|667'), lines.join(' '));
   ok('shifting prices moves the change rows too', shiftProfilePrices(withChg, v => v + 10).oiChg[0].price === 109);
 }
+// ALL BOOKS: every expiry bucket's walls are listed; the normal build is untouched
+{
+  const base = buildOiProfile(inst, { legs, mult: 1, flat: 0.2, hedge });
+  const all = buildOiProfile(inst, { legs, mult: 1, flat: 0.2, hedge, allBooks: true });
+  ok('allBooks off: no extra lines and no tags (the normal paste is unchanged)', base.levels.every(l => !l.tags && !l.hidden) && base.levels.length === p0.levels.length);
+  const hid = all.levels.filter(l => l.hidden);
+  ok('allBooks adds lines from the other bucket, each faint (strength <= 1) and tagged with its book', hid.length >= 1 && hid.every(l => l.strength > 0 && l.strength <= 1 && /^[0-9]/.test(l.tags[0]) && l.label.includes(' · ')), JSON.stringify(hid.map(l => l.label + '@' + l.price.toFixed(1) + ':' + l.strength.toFixed(2))));
+  ok('allBooks keeps every line the normal build drew, at the same price and strength', base.levels.every(b => all.levels.some(a => a.type === b.type && Math.abs(a.price - b.price) < 1e-9 && a.strength === b.strength)));
+  ok('allBooks lines stay sorted high to low and survive into the paste text', all.levels.every((l, i, a) => i === 0 || a[i - 1].price >= l.price) && buildProfileText(all, { name: 'X', digits: 2 }).split(String.fromCharCode(10)).filter(r => r.startsWith('L|')).length === all.levels.length);
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

@@ -111,8 +111,38 @@ export function buildOiProfile(inst, opts = {}) {
   const emRaw = inst?.expectedMove, em = emRaw;
   const emDay = (emRaw && Number.isFinite(emRaw.dte) && emRaw.dte <= 2) ? { upper: emRaw.upper, lower: emRaw.lower } : (opts.dayMove > 0 ? { upper: spot + opts.dayMove, lower: spot - opts.dayMove } : null);
   if (emDay) { add('exp_hi', emDay.upper, 0.3); add('exp_lo', emDay.lower, 0.3); }
+  // ALL BOOKS (opts.allBooks, the "All lines" export): the walls, gamma peak and gamma nodes of EVERY expiry bucket, not only the strongest one, so a line the Profile would hide stays on the chart (a 0–1 day put wall on a day
+  // when 8–45 day gamma dominates, say). A hidden line's strength is its gamma against the biggest gamma in ANY bucket, so a small near-dated wall stays faint rather than looking as strong as the main book's.
+  // A line the strongest book already draws keeps its strength and gains the other books it also sits in as a "+tag"; a hidden-only line is labelled "· tag". Off by default: the normal paste is unchanged.
+  if (opts.allBooks) {
+    const tagOf = b => b.label.replace(/\s*DTE/i, 'd').replace(/\s+/g, '');
+    const sides = bucketStat.map(b => { const n2 = b.lad.strikes.length, c2 = new Array(n2).fill(0), p2 = new Array(n2).fill(0); for (const s of b.lad.series) for (let i = 0; i < n2; i++) { c2[i] += s.call[i]; p2[i] += s.put[i]; } return { b, c2, p2 }; });
+    const gMax = Math.max(1e-12, ...sides.map(x => Math.max(...x.c2, ...x.p2)));
+    for (const { b, c2, p2 } of sides) {
+      if (b.id === strong.id) continue;
+      const k2 = b.lad.strikes, net2 = c2.map((c, i) => c - p2[i]);
+      const top2 = (arr, above) => k2.map((k, i) => ({ k, v: arr[i] })).filter(x => (above ? x.k > spot : x.k < spot) && x.v > 0).sort((a, c) => c.v - a.v);
+      const found = [];
+      distinct(top2(c2, true), 2).forEach((x, i) => found.push(['call_wall', x.k, x.v / gMax, i + 1]));
+      distinct(top2(p2, false), 2).forEach((x, i) => found.push(['put_wall', x.k, x.v / gMax, i + 1]));
+      const pk2 = k2.map((k, i) => ({ k, v: Math.abs(net2[i]) })).sort((a, c) => c.v - a.v)[0];
+      if (pk2) found.push(['gamma_peak', pk2.k, pk2.v / gMax, null]);
+      const nm2 = Math.max(...net2.map(Math.abs), 1e-12); let nn = 0;
+      for (const x of k2.map((k, i) => ({ k, s: net2[i], v: Math.abs(net2[i]) })).sort((a, c) => c.v - a.v)) {
+        if (nn >= 2 || x.v < 0.25 * nm2) break;
+        if (found.some(f => Math.abs(f[1] - x.k) <= 0.12 * rm)) continue;
+        found.push([x.s < 0 ? 'short_gamma_node' : 'long_gamma_node', x.k, x.v / gMax, null]); nn++;
+      }
+      for (const [t, px, g, rank] of found) {
+        if (Math.abs(px - spot) > windowRm * rm || g < 0.05) continue;
+        const ex = levels.find(l => l.type === t && Math.abs(l.price - px) <= 0.05 * rm);
+        if (ex) ex.tags = [...(ex.tags || []), tagOf(b)];
+        else levels.push({ type: t, price: px, strength: Math.min(1, g), rank, tags: [tagOf(b)], hidden: true });
+      }
+    }
+  }
   for (const l of levels) {
-    l.label = LABEL[l.type] + (l.rank ? ` ${l.rank}` : '');
+    l.label = LABEL[l.type] + (l.rank ? ` ${l.rank}` : '') + (l.tags?.length ? (l.hidden ? ' · ' : ' +') + l.tags.join('/') : '');
     if (CHG_TYPES.has(l.type)) {
       const c = nearestVal(chgMap, l.price, 0.1 * rm), o = nearestVal(oiMap, l.price, 0.1 * rm);
       l.chg = c; l.chgPct = (c != null && o > 0) ? Math.round(c / o * 100) : null;
