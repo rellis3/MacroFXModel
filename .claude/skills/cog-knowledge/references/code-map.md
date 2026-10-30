@@ -44,3 +44,6 @@ Tests: `cogBands.test.mjs`, `cogFadeEngine.test.mjs`, `cogLevelPoc.test.mjs`, `c
 - `levelEngine/*_m1_cog_base_rate.json`
 - `archive/COG_oi_guide.html`
 - OI archive: `OI Data/NAS100_USD.csv` (1,521 days; DECISIONS 2026-09-24)
+- `SignalCopier/` (2026-10-30): Telethon monitor for the **ColezTrades | Private → Signals** Telegram topic. That's his
+  multi-asset swing + day-trade signals (market/limit, SL/TP, cancel-at/close-at), a separate feed from the 4-stage NQ
+  alert system. Parser + book + paper executor. `backfill` writes `data/trades.csv` for a costed track record. Monitor only, no broker.
