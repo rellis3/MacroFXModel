@@ -4,21 +4,21 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-10-29.
+Generated 2026-10-30.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **235** |
+| claims tested (validated + null + underpowered) | **237** |
 | validated | 47 |
-| null | 137 |
+| null | 139 |
 | underpowered | 51 |
-| context (base rates, descriptions: not counted as tests) | 42 |
+| context (base rates, descriptions: not counted as tests) | 43 |
 | pre-registrations with no banked verdict (below) | 84 |
 
-**What the count says (Lesson 02 §05).** If none of the 235 claims were real, tests at the usual 5% size would still pass
-about **11.8** of them by luck. 47 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 237 claims were real, tests at the usual 5% size would still pass
+about **11.9** of them by luck. 47 passed, so most passes are unlikely to be luck alone, but
 **roughly 12 of the 47 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -304,6 +304,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-29 | day-recon-reach-forecast-specific | price | null | forge/DAY_RECON_REACH_CALIBRATION_PREREG.md |
 | 2026-10-29 | day-recon-reach-range-used | price | null | forge/DAY_RECON_REACH_CALIBRATION_PREREG.md |
 | 2026-10-29 | nq-continuation-execution | execution | null | forge/NQ_CONTINUATION_EXECUTION_PREREG.md |
+| 2026-10-30 | day-recon-path-book-behaviour | price | null | forge/DAY_RECON_PATH_BOOK_PREREG.md |
+| 2026-10-30 | day-recon-path-book-expectancy | price | null | forge/DAY_RECON_PATH_BOOK_PREREG.md |
+| 2026-10-30 | day-recon-path-book-paths | price | context | forge/DAY_RECON_PATH_BOOK_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
