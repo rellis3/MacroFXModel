@@ -34,7 +34,8 @@ def make(cfg=None, kv=None):
     cp.quotes = None
     cp.prices = dict(PRICES)
     cp.price = lambda p: cp.prices.get(p.upper())
-    cp.alert = lambda text: cp.__dict__.setdefault("alerts", []).append(text)
+    cp.alerts = []
+    cp.alert = lambda text, reply_to=None: cp.alerts.append((text, reply_to)) or len(cp.alerts)
     return cp, kv
 
 
@@ -135,6 +136,70 @@ def test_status_shape():
     for k in ("mt5_positions", "today_closed_trades", "pending_orders", "pushed_at", "mode", "balance", "telegram", "book"):
         assert k in s, k
     assert s["mode"] == "paper" and len(s["mt5_positions"]) == 7 and len(s["pending_orders"]) == 2
+
+
+def test_risk_guard_daily_lockout_blocks_new_entries():
+    cp, _ = make({"ddlimit": 2.0})
+    cp.guard.update_balance(10_000)
+    cp.broker._bal = 9_700                       # -3% on the day
+    cp.on_message(101, DAILY, datetime.now(timezone.utc))
+    d = [e for e in cp.decisions if e["id"] == "101:0"][0]
+    assert d["status"] == "pair_blocked" and d["reason"].startswith("risk_guard: Daily DD")
+    assert cp.status()["risk_guard"]["locked"] is True
+
+
+def test_reject_is_retried_then_succeeds():
+    cp, _ = make()
+    real = cp.broker.enter
+    calls = {"n": 0}
+
+    def flaky(*a, **k):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            cp.broker.last_reject_reason = "market_not_tradable (retcode=10018)"
+            return None
+        return real(*a, **k)
+    cp.broker.enter = flaky
+    cp.on_message(103, SINGLE.replace("SP500(normal, NOT futures) now at 7,640.6", "USDJPY now at 157.69")
+                  .replace("SL 7,651.5, TP 7,567.7", "SL 157.96, TP 157.0"), datetime.now(timezone.utc))
+    assert statuses(cp)["103:0"] == "rejected" and cp.retries["103:0"]["n"] == 1
+    cp.retries["103:0"]["at"] = 0
+    cp.tick()
+    assert statuses(cp)["103:0"] == "open" and "103:0" not in cp.retries
+    assert sum("REJECTED" in a for a, _ in cp.alerts) == 1
+
+
+def test_non_retryable_reject_is_final():
+    cp, _ = make()
+    def bad(*a, **k):
+        cp.broker.last_reject_reason = "invalid_stops_side (x)"
+        return None
+    cp.broker.enter = bad
+    cp.on_message(101, DAILY, datetime.now(timezone.utc))
+    assert statuses(cp)["101:0"] == "rejected" and "101:0" not in cp.retries
+
+
+def test_close_alert_once_and_threaded_onto_entry():
+    cp, _ = make()
+    cp.on_message(101, DAILY, datetime.now(timezone.utc))
+    ticket = cp.execs["101:0"]["ticket"]
+    entry_mid = cp.tg_entry_msgid[str(ticket)]
+    cp.prices["USDJPY"] = 158.10                # through the 157.96 stop
+    cp.tick(); cp.tick()
+    closes = [(a, r) for a, r in cp.alerts if "SL HIT" in a]
+    assert len(closes) == 1 and closes[0][1] == entry_mid
+    assert statuses(cp)["101:0"] == "closed"
+
+
+def test_master_switch_and_decision_shape():
+    cp, _ = make()
+    cp.on_message(101, DAILY, datetime.now(timezone.utc))
+    ev = cp.decisions[0]
+    assert ev["pair"] == "usdjpy" and ev["symbol"] == "USDJPY" and isinstance(ev["t"], int)
+    cp.refresh_life()
+    s = cp.status()
+    assert s["life"]["decisions_today"]["entered"] == 7 and s["open_used"] == 9 and s["max_open"] == 12
+    assert s["tg_master_on"] is True and "risk_guard" in s
 
 
 if __name__ == "__main__":

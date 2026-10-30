@@ -8146,6 +8146,7 @@ const SC_DEFAULTS = {
   copy_swing: true, copy_day: true, copy_single: true, symbol_map: {}, skip_symbols: [],
   max_signal_age_secs: 300, max_entry_drift_r: 0.25, max_spread_r: 0.20, limit_through: 'market',
   tg_chat: -1001606516039, tg_topic: null, tg_senders: '',
+  risk_guard_enabled: true, ddlimit: 3.0, monthlydd: 6.0, lockout: 3, cooldown: 0, retry_rejects: 3,
   poll_secs: 5, status_secs: 30, resolve_secs: 60, tg_enabled: true, tg_token: '', tg_chat_id: '',
 };
 const SC_TEMPLATE_HEADER = ['Date', 'Time', 'Exit Date', 'Exit Time', 'Instrument', 'Direction', 'Model',
@@ -8158,9 +8159,10 @@ const _scNum = (v, d = 2) => v == null || v === '' ? '—' : Number(v).toFixed(d
 
 function renderScForm() {
   const c = _scCfg, chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
-  ['paper_mode', 'kill_switch', 'copy_swing', 'copy_day', 'copy_single', 'tg_enabled'].forEach(k => chk(`sc_${k}`, c[k]));
+  ['paper_mode', 'kill_switch', 'copy_swing', 'copy_day', 'copy_single', 'tg_enabled', 'risk_guard_enabled'].forEach(k => chk(`sc_${k}`, c[k]));
   ['risk_pct', 'record_risk_pct', 'max_lot', 'max_open', 'max_signal_age_secs', 'max_entry_drift_r', 'max_spread_r',
-   'limit_through', 'tg_chat', 'tg_senders', 'tg_token', 'tg_chat_id'].forEach(k => setVal(`sc_${k}`, c[k] ?? ''));
+   'limit_through', 'tg_chat', 'tg_senders', 'tg_token', 'tg_chat_id',
+   'ddlimit', 'monthlydd', 'lockout', 'cooldown', 'retry_rejects'].forEach(k => setVal(`sc_${k}`, c[k] ?? ''));
   setVal('sc_tg_topic', c.tg_topic ?? '');
   setVal('sc_skip_symbols', (c.skip_symbols || []).join(', '));
   setVal('sc_symbol_map', Object.entries(c.symbol_map || {}).map(([k, v]) => `${k}=${v}`).join('\n'));
@@ -8188,6 +8190,10 @@ function readScForm() {
     tg_chat: parseInt(get('sc_tg_chat')?.value, 10) || SC_DEFAULTS.tg_chat,
     tg_topic: topic ? parseInt(topic, 10) : null,
     tg_senders: (get('sc_tg_senders')?.value || '').trim(),
+    risk_guard_enabled: !!get('sc_risk_guard_enabled')?.checked,
+    ddlimit: num('sc_ddlimit', SC_DEFAULTS.ddlimit), monthlydd: num('sc_monthlydd', SC_DEFAULTS.monthlydd),
+    lockout: num('sc_lockout', SC_DEFAULTS.lockout), cooldown: num('sc_cooldown', SC_DEFAULTS.cooldown),
+    retry_rejects: num('sc_retry_rejects', SC_DEFAULTS.retry_rejects),
     tg_enabled: !!get('sc_tg_enabled')?.checked, tg_token: (get('sc_tg_token')?.value || '').trim(),
     tg_chat_id: (get('sc_tg_chat_id')?.value || '').trim(),
   };
@@ -8207,7 +8213,23 @@ async function saveScConfig() {
   try { await kvSet('signal_copier_config', _scCfg); _scFlash('scSaveStatus', 'Saved ✓ (bot picks it up within 30s; paper/live needs a restart)', '#2dd4bf'); }
   catch (e) { _scFlash('scSaveStatus', `Error: ${e.message}`, 'var(--red)'); }
 }
-function resetScDefaults() { _scCfg = { ...SC_DEFAULTS }; renderScForm(); _scFlash('scSaveStatus', 'Defaults restored — click Save to apply'); }
+// Same safety as resetVb2Defaults: confirm, and keep any saved key this form
+// doesn't track (a value set by hand in KV must not vanish on a reset).
+function resetScDefaults() {
+  if (!confirm('Reset the Signal Copier form to defaults? Nothing is saved until you click Save Config.')) return;
+  const untracked = {};
+  for (const k of Object.keys(_scCfg)) if (!(k in SC_DEFAULTS)) untracked[k] = _scCfg[k];
+  _scCfg = { ...SC_DEFAULTS, ...untracked };
+  renderScForm();
+  _scFlash('scSaveStatus', 'Defaults restored — click Save to apply');
+}
+async function testScTelegram() {
+  _scFlash('scSaveStatus', 'Sending test…');
+  try {
+    const d = await (await fetch('/api/signal-copier/telegram-test', { method: 'POST' })).json();
+    _scFlash('scSaveStatus', d.ok ? 'Test sent ✓' : `Test failed: ${d.error || ''}`, d.ok ? '#2dd4bf' : 'var(--red)');
+  } catch (e) { _scFlash('scSaveStatus', `Test failed: ${e.message}`, 'var(--red)'); }
+}
 async function loadScCreds() { try { _applyCredsToForm(await kvGet('signal_copier_credentials'), 'sc_', 'sc_mt5_password'); } catch (e) {} }
 async function saveScCreds() { await _saveCreds('signal_copier_credentials', 'sc_', 'sc_mt5_password', 'scCredsStatus'); }
 
@@ -8252,8 +8274,9 @@ async function loadScStatus() {
   let st = null;
   try { st = await kvGet('signal_copier_status'); } catch (e) {}
   const age = st?.pushed_at ? Math.round(Date.now() / 1000 - st.pushed_at) : null;
+  const okS = (_scCfg.status_secs || 30) * 3;
   const ageEl = document.getElementById('scLiveAge');
-  if (ageEl) ageEl.innerHTML = st ? `last push ${age}s ago${age > 120 ? ' <b style="color:var(--red)">— bot not running?</b>' : ''}` : 'no status yet — the bot has not run';
+  if (ageEl) ageEl.innerHTML = st ? `${_mtDot(age, okS, okS * 4)}${age > okS * 4 ? 'Idle' : 'Running'} · last push ${_mtFmtAgo(age)}${age > okS * 4 ? ' <b style="color:var(--red)">— bot not running?</b>' : ''}` : 'no status yet — the bot has not run';
   const tg = st?.telegram || {};
   const [tc, tl] = SC_TG_STATE[tg.state] || ['var(--text3)', tg.state || '—'];
   const tile = (label, val, color) => `<div style="flex:1;min-width:110px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
@@ -8275,6 +8298,13 @@ async function loadScStatus() {
     ? `<div style="font-size:12px;color:var(--text2);border-left:3px solid ${tc};padding-left:10px">
          ${tg.chat ? `Listening to <b>${_scEsc(tg.chat)}</b> (topic ${_scEsc(tg.topic ?? 'all')}) · ${tg.msgs || 0} messages this run · last ${_scUk(tg.last_msg_at)}` : ''}
          ${tg.detail ? `<div style="color:${tc};font-weight:600;margin-top:2px">${_scEsc(tg.detail)}</div>` : ''}</div>` : '';
+  const symBox = document.getElementById('scSymbolBox');
+  if (symBox) symBox.innerHTML = (st?.symbol_problems || []).length
+    ? `<div style="font-size:12px;border-left:3px solid var(--red);padding-left:10px;color:var(--red)"><b>Broker symbol mismatch</b> — signals on these are skipped until the Symbol map is fixed:<br>${
+        st.symbol_problems.map(p => `${_scEsc(p.pair)} → <code>${_scEsc(p.configured)}</code> not on this account${p.suggestions?.length ? ` (closest: ${p.suggestions.map(_scEsc).join(', ')})` : ''}`).join('<br>')}</div>` : '';
+  _renderScLife(st, age, okS);
+  _renderScRisk(st);
+  _renderScPositions(st);
   const login = document.getElementById('scLoginCard');
   if (login) login.style.borderColor = (tg.state === 'need_code' || tg.state === 'need_password') ? '#f59e0b' : '';
 
@@ -8292,6 +8322,118 @@ async function loadScStatus() {
       <td style="padding:5px 10px;color:${EXEC_C[o.exec] || 'var(--text3)'}">${_scEsc(o.exec || '—')}</td></tr>`).join('')
       : `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${st ? 'No live signals' : 'No status yet'}</td></tr>`;
   }
+}
+
+function _renderScLife(st, age, okS) {
+  const el = document.getElementById('scLifeGrid');
+  if (!el) return;
+  if (!st) { el.innerHTML = '<div style="color:var(--text3)">No status yet — start the bot.</div>'; return; }
+  const life = st.life || {}, tg = st.telegram || {};
+  const now = Date.now() / 1000;
+  const msgAge = tg.last_msg_at ? now - tg.last_msg_at : null;
+  const resAge = life.last_resolve_at ? now - life.last_resolve_at : null;
+  const dec = life.decisions_today || {};
+  const up = life.uptime_s != null ? (life.uptime_s >= 3600 ? `${(life.uptime_s / 3600).toFixed(1)}h` : `${Math.round(life.uptime_s / 60)}m`) : '—';
+  el.innerHTML = [
+    _mtBox('Bot process', _mtDot(age, okS, okS * 4), [
+      ['Last status push', _mtFmtAgo(age)], ['Uptime', up], ['Loop ticks', life.ticks ?? '—'],
+      ['Mode', (st.mode || '—').toUpperCase()]]),
+    _mtBox('Telegram listener', tg.state === 'connected' ? _mtDot(0, 1, 2) : _mtDot(9e9, 1, 2), [
+      ['State', (SC_TG_STATE[tg.state] || [0, tg.state || '—'])[1]], ['Messages this run', tg.msgs ?? 0],
+      ['Last message', _mtFmtAgo(msgAge)], ['Topic', tg.topic ?? 'all']]),
+    _mtBox('Outcome resolver', _mtDot(resAge, 180, 900), [
+      ['Last run', _mtFmtAgo(resAge)], ['Runs', life.resolves ?? 0],
+      ['Signals open / total', `${st.signals_open ?? 0} / ${st.signals_total ?? 0}`], ['Bars from', st.data_source === 'mt5' ? 'MT5' : 'sampled prices']]),
+    _mtBox('Decisions today (UTC)', _mtDot(0, 1, 2), Object.keys(dec).length
+      ? Object.entries(dec).map(([k, v]) => [k, v]) : [['none yet', '—']]),
+  ].join('');
+}
+function _renderScRisk(st) {
+  const el = document.getElementById('scRiskTiles');
+  if (!el) return;
+  if (!st) { el.innerHTML = ''; return; }
+  const rg = st.risk_guard || {};
+  const tile = (label, val, sub, color) => `<div style="flex:1;min-width:150px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">${label}</div>
+    <div style="font-size:15px;font-weight:700;color:${color || 'var(--text)'}">${val}</div>
+    <div style="font-size:10px;color:var(--text3)">${sub || ''}</div></div>`;
+  const dd = v => v == null ? '—' : `${v >= 0 ? '' : '+'}${(-v).toFixed(2)}%`;
+  const used = st.open_used ?? 0, max = st.max_open ?? '—';
+  el.innerHTML = [
+    tile('Risk guard', rg.locked ? `LOCKED ${rg.locked_mins_remaining}m` : (st.risk_guard_enabled ? 'armed' : 'NOT ENFORCED'),
+      `day ${dd(rg.day_dd_pct)} · month ${dd(rg.month_dd_pct)}`, rg.locked ? 'var(--red)' : st.risk_guard_enabled ? 'var(--green)' : '#f59e0b'),
+    tile('Kill switch', st.kill_switch ? 'ON' : 'off', 'blocks new entries only', st.kill_switch ? 'var(--red)' : 'var(--text)'),
+    tile('Max open used', `${used} / ${max}`, 'positions + resting orders', used >= max ? '#f59e0b' : 'var(--text)'),
+    tile('Risk / signal', st.risk_pct != null ? `${st.risk_pct}%` : '—', 'entry → his stop'),
+    tile('Retrying', st.retrying ?? 0, 'broker rejects waiting to retry', st.retrying ? '#f59e0b' : 'var(--text)'),
+    tile('Telegram master', st.tg_master_on === false ? 'OFF' : 'on', '⚙ Alerts modal switch', st.tg_master_on === false ? '#f59e0b' : 'var(--text)'),
+  ].join('');
+}
+function _renderScPositions(st) {
+  const dp = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym || '') ? 3 : Math.abs(+v) >= 100 ? 2 : 5);
+  const sigOf = c => (/SC\[(\d+)-(\d+)\]/.exec(c || '') || []).slice(1).join(':') || '—';
+  const open = document.getElementById('scOpenBody');
+  if (open) {
+    const pos = st?.mt5_positions || [];
+    open.innerHTML = pos.length ? pos.map(p => {
+      const buy = (p.direction || '').toUpperCase() === 'BUY', pnl = +(p.profit || 0);
+      return `<tr>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${_scEsc((p.symbol || '?').toUpperCase())}</td>
+        <td style="padding:5px 10px;text-align:left;color:${buy ? 'var(--green)' : 'var(--red)'}">${buy ? 'BUY' : 'SELL'}</td>
+        <td style="padding:5px 10px;text-align:right">${(+(p.lots || 0)).toFixed(2)}</td>
+        <td style="padding:5px 10px;text-align:right;color:var(--text3)">${dp(p.symbol, p.open_price)}</td>
+        <td style="padding:5px 10px;text-align:right">${dp(p.symbol, p.price)}</td>
+        <td style="padding:5px 10px;text-align:right;color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${sigOf(p.comment)}</td></tr>`;
+    }).join('') : `<tr><td colspan="7" style="padding:12px;text-align:center;color:var(--text3)">No open positions</td></tr>`;
+  }
+  const pend = document.getElementById('scPendingBody');
+  if (pend) {
+    const ords = st?.pending_orders || [];
+    pend.innerHTML = ords.length ? ords.map(o => `<tr>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${_scEsc((o.symbol || '?').toUpperCase())}</td>
+        <td style="padding:5px 10px;text-align:left;color:${o.direction === 'BUY' ? 'var(--green)' : 'var(--red)'}">${o.direction} ${_scEsc(o.kind)}</td>
+        <td style="padding:5px 10px;text-align:right">${dp(o.symbol, o.price)}</td><td style="padding:5px 10px;text-align:right">${dp(o.symbol, o.sl)}</td>
+        <td style="padding:5px 10px;text-align:right">${dp(o.symbol, o.tp)}</td><td style="padding:5px 10px;text-align:right">${(+(o.lots || 0)).toFixed(2)}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${sigOf(o.comment)}</td></tr>`).join('')
+      : `<tr><td colspan="7" style="padding:12px;text-align:center;color:var(--text3)">No resting orders</td></tr>`;
+  }
+}
+
+async function loadScTradeLog() {
+  const body = document.getElementById('scTradeBody');
+  if (!body) return;
+  const to = new Date().toISOString().slice(0, 10);
+  const from = new Date(Date.now() - 30 * 86400e3).toISOString().slice(0, 10);
+  let trades = [];
+  try {
+    const r = await fetch(`/api/signal-copier/trade-log?from=${from}&to=${to}`);
+    trades = r.ok ? ((await r.json()).trades || []) : [];
+  } catch (e) {}
+  const utc = (t, f) => t[f] != null ? t[f] - (t.tz_offset_sec || 0) : null;
+  trades.sort((a, b) => (utc(b, 'time_close') || 0) - (utc(a, 'time_close') || 0));
+  const slips = trades.map(t => t.slip_r).filter(v => v != null);
+  const gap = trades.filter(t => t.real_r != null && t.signal?.record_r != null).map(t => t.real_r - t.signal.record_r);
+  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  const stat = (l, v, c) => `<div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px"><span style="color:var(--text3)">${l}</span> <b style="color:${c || 'var(--text)'}">${v}</b></div>`;
+  const st = document.getElementById('scSlipStats');
+  if (st) st.innerHTML = trades.length ? [
+    stat('Closed trades', trades.length), stat('Matched to a signal', trades.filter(t => t.signal).length),
+    stat('Avg entry slip', avg(slips) == null ? '—' : `${avg(slips).toFixed(3)}R`, avg(slips) > 0 ? '#f59e0b' : 'var(--green)'),
+    stat('Your R − record R', avg(gap) == null ? '—' : `${avg(gap) >= 0 ? '+' : ''}${avg(gap).toFixed(3)}R / trade`),
+  ].join('') : '';
+  body.innerHTML = trades.length ? trades.slice(0, 300).map(t => {
+    const s = t.signal, pnl = +(t.profit || 0) + +(t.swap || 0) + +(t.commission || 0);
+    const r = v => v == null ? '—' : `${v >= 0 ? '+' : ''}${(+v).toFixed(2)}`;
+    return `<tr style="border-top:1px solid var(--border)">
+      <td style="padding:5px 10px">${_scUk(utc(t, 'time_close'))}</td>
+      <td style="padding:5px 10px">${s ? `${s.side} ${_scEsc(s.symbol)} ${_scEsc(s.order)}` : `<span style="color:#f59e0b">${_scEsc(t.symbol)} — no signal tag</span>`}</td>
+      <td style="padding:5px 10px;text-align:right">${s ? s.entry : '—'}</td><td style="padding:5px 10px;text-align:right">${t.open_price}</td>
+      <td style="padding:5px 10px;text-align:right;color:${(t.slip_r || 0) > 0 ? '#f59e0b' : 'var(--text)'}">${t.slip_r == null ? '—' : t.slip_r.toFixed(3)}</td>
+      <td style="padding:5px 10px;text-align:right">${r(t.real_r)}</td><td style="padding:5px 10px;text-align:right">${r(s?.record_r)}</td>
+      <td style="padding:5px 10px;text-align:right;color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</td>
+      <td style="padding:5px 10px">${_scEsc(t.reason || '—')}</td></tr>`;
+  }).join('') : '<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text3)">No closed trades in the last 30 days</td></tr>';
 }
 
 async function loadScOutcomes() {
@@ -8357,28 +8499,44 @@ async function loadScDecisionLog() {
   let ev = [];
   try { ev = (await kvGet('signal_copier_decision_log'))?.events || []; } catch (e) {}
   const f = (document.getElementById('scDecFilter')?.value || '').trim().toUpperCase();
-  const rows = ev.filter(e => !f || (e.symbol || '').toUpperCase().includes(f)).slice(-300).reverse();
+  const day = document.getElementById('scDecDate')?.value || '';
+  const ukDay = t => new Date(t * 1000).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+  const all = ev.filter(e => (!f || (e.symbol || '').toUpperCase().includes(f)) && (!day || ukDay(e.t) === day)).reverse();
+  const rows = all.slice(0, 300);
   body.innerHTML = rows.length ? rows.map(e => `<tr style="border-top:1px solid var(--border)">
     <td style="padding:5px 10px">${_scUk(e.t)}</td>
     <td style="padding:5px 10px">${_scEsc(e.side || '')} ${_scEsc(e.symbol || '')} ${e.order ? `${_scEsc(e.order)} ` : ''}@ ${e.entry ?? '—'}</td>
     <td style="padding:5px 10px;color:${SC_DEC_COLOR[e.status] || 'var(--text)'}">${_scEsc(e.status)}</td>
     <td style="padding:5px 10px">${_scEsc(e.reason || '')}</td>
     <td style="padding:5px 10px;text-align:right">${e.lots ?? ''}</td><td style="padding:5px 10px;text-align:right">${e.ticket ?? ''}</td></tr>`).join('')
-    : '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">No decisions yet</td></tr>';
+    + (all.length > 300 ? `<tr><td colspan="6" style="padding:8px;text-align:center;color:var(--text3)">…${all.length - 300} older event(s) not shown</td></tr>` : '')
+    : `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">${day ? `No decisions on ${day}` : 'No decisions yet'}</td></tr>`;
 }
-function loadScAll() { loadScStatus(); loadScOutcomes(); loadScDecisionLog(); }
+// Prev/Next walk the date one UK day, like vb2DecShiftDay; All dates clears it.
+function scDecShiftDay(delta) {
+  const input = document.getElementById('scDecDate');
+  if (!input) return;
+  const base = input.value ? new Date(input.value + 'T12:00:00Z') : new Date();
+  base.setUTCDate(base.getUTCDate() + delta);
+  input.value = base.toISOString().slice(0, 10);
+  loadScDecisionLog();
+}
+function scDecClearDate() {
+  const input = document.getElementById('scDecDate');
+  if (input) input.value = '';
+  loadScDecisionLog();
+}
+function loadScAll() { loadScStatus(); loadScOutcomes(); loadScDecisionLog(); loadScTradeLog(); }
 
-Object.assign(window, { saveScConfig, saveScCreds, saveScTgCreds, resetScDefaults, sendScLogin, loadScAll,
-  loadScDecisionLog, renderScOutcomes, exportScTemplate });
+Object.assign(window, { saveScConfig, saveScCreds, saveScTgCreds, resetScDefaults, testScTelegram, sendScLogin, loadScAll,
+  loadScDecisionLog, scDecShiftDay, scDecClearDate, loadScTradeLog, renderScOutcomes, exportScTemplate });
 document.querySelector('.tab-btn[data-tab="signalcopier"]')?.addEventListener('click', loadScAll);
-loadScConfig();
+loadScConfig().then(loadScAll);         // like Vote Atlas: render at load, so a restored tab isn't blank for 30s
 loadScCreds();
 loadScTgCreds();
-setInterval(() => {
-  if (document.visibilityState !== 'visible') return;
-  if (!document.getElementById('tab-signalcopier')?.classList.contains('active')) return;
-  loadScStatus(); loadScDecisionLog();
-}, 30_000);
+const _scActive = () => document.visibilityState === 'visible' && document.getElementById('tab-signalcopier')?.classList.contains('active');
+setInterval(() => { if (_scActive()) { loadScStatus(); loadScDecisionLog(); } }, 30_000);
+setInterval(() => { if (_scActive()) { loadScOutcomes(); loadScTradeLog(); } }, 120_000);
 
 // Daily levels export (top-bar button) — fetches the SAME server-built text
 // vol-forecast-v3.html's "⬇ Forecast p50/75/90" button uses

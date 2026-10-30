@@ -49,7 +49,7 @@ from pylego.sizing import position_size                                # noqa: E
 from pylego.broker.paper import PaperBroker                            # noqa: E402
 from pylego.quotes import QuoteFeed                                     # noqa: E402
 from pylego.costs import spread_for                                     # noqa: E402
-from pylego.telegram import send_telegram                               # noqa: E402
+from pylego.risk_guard import RiskGuard, block_category, log_block_transition  # noqa: E402
 
 from book import Book, describe                                         # noqa: E402
 from outcome import resolve, template_row                               # noqa: E402
@@ -85,12 +85,27 @@ DEFAULT_CFG = {
     "poll_secs": 5,
     "status_secs": 30,
     "resolve_secs": 60,
+    # Risk guard (pylego.risk_guard, shared with every bot). Daily/monthly drawdown
+    # lockout ON by default for a copier: his signals arrive in correlated batches.
+    # Cooldown 0: a per-symbol cooldown would block his second signal on a symbol.
+    "risk_guard_enabled": True,
+    "ddlimit": 3.0,
+    "monthlydd": 6.0,
+    "lockout": 3,
+    "cooldown": 0,
+    "retry_rejects": 3,             # re-try a broker reject (requote, market closed…) this many times, 60s apart
     "tg_enabled": True,             # alerts to your own bot chat
     "tg_token": "",
     "tg_chat_id": "",
 }
 
 LIVE_EXEC = ("pending", "open")
+DECISION_LOG_MAX_EVENTS = 50_000
+REJECT_RETRY_SECS = 60
+# broker rejects worth retrying: the order itself was fine, the market wasn't
+RETRYABLE = ("transport_error", "order_rejected", "market_not_tradable", "no_tick", "trade_disabled")
+# his usual symbols, checked against the broker at start
+USUAL_SYMBOLS = ("NAS100", "US30", "SP500", "XAUUSD", "BTCUSD", "USDJPY", "EURJPY", "GBPJPY", "EURUSD", "GBPUSD")
 
 
 def _deep_merge(base: dict, over: dict) -> dict:
@@ -102,6 +117,38 @@ def _deep_merge(base: dict, over: dict) -> dict:
 
 def _now() -> float:
     return time.time()
+
+
+def _tg_send(token, chat_id, text, reply_to=None):
+    """Like pylego.telegram.send_telegram but returns the message_id, so a
+    close alert can reply-thread onto its entry alert (same local helper as
+    volatility_bot_v2 / motif_bot). Plain text: reasons can contain '<'."""
+    if not token or not chat_id:
+        return None
+    try:
+        import requests
+        body = {"chat_id": chat_id, "text": text[:4000]}
+        if reply_to:
+            body["reply_to_message_id"] = reply_to
+        j = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json=body, timeout=10).json()
+        return j.get("result", {}).get("message_id") if j.get("ok") else None
+    except Exception as e:
+        log.warning(f"Telegram send failed: {e}")
+        return None
+
+
+def _fmt_close_alert(row, mode_tag):
+    reason = (row.get("reason") or "").lower()
+    tag = "✅ TP HIT" if reason == "tp" else "🛑 SL HIT" if reason == "sl" else "⚪ CLOSED"
+    profit = row.get("profit")
+    pnl = f"{'+' if (profit or 0) >= 0 else ''}{profit:.2f}" if profit is not None else "—"
+    dur = ""
+    to, tc = row.get("time_open"), row.get("time_close")
+    if to and tc:
+        h, m = divmod(max(0, int((tc - to) / 60)), 60)
+        dur = f" · open {h}h{m:02d}m" if h else f" · open {m}m"
+    return (f"{tag} {row.get('symbol')} {row.get('direction')}{mode_tag}\n"
+            f"{row.get('open_price')} → {row.get('close_price')}\nP&L {pnl}{dur}  {row.get('comment') or ''}")
 
 
 def _ts(iso):
@@ -125,8 +172,19 @@ class Copier:
         self.decisions: list = list((kv.get_json(f"{K}_decision_log") or {}).get("events") or [])
         self.samples: dict[str, list] = {}        # id -> [(ts, px)] when there is no bar source
         self.tg = {"state": "starting", "detail": None, "chat": None, "last_msg_at": None, "msgs": 0}
+        self.tg_master_on = True                  # ai_alert_cfg.tgMaster.signalCopier (⚙ Alerts modal)
+        self.tg_entry_msgid: dict[str, int] = {str(k): v for k, v in (st.get("tg_entry_msgid") or {}).items()}
+        self.tg_closed_alerted: set = set(st.get("tg_closed_alerted") or [])
+        self.retries: dict[str, dict] = st.get("retries") or {}
+        self.guard = RiskGuard(log=log)
+        self.guard.sync_cfg(cfg)
+        self.guard_state: dict = {}
+        self.verified: set = set()
+        self.symbol_problems: list = []
         self.dirty = {"state": False, "signals": False, "decisions": False}
-        self.life = {"started": int(_now()), "loops": 0}
+        self.life = {"started_at": datetime.now(timezone.utc).isoformat(), "ticks": 0, "uptime_s": 0,
+                     "decisions_today": {}, "last_resolve_at": None, "resolves": 0}
+        self._boot = _now()
         self.account_login = None
 
     # ── setup ────────────────────────────────────────────────────────────
@@ -176,9 +234,33 @@ class Copier:
                 self.quotes = QuoteFeed(self.kv.base, log=log) if hasattr(self.kv, "base") else None
                 log.warning("paper mode without MT5: prices from the dashboard quote feed, "
                             "outcome record from sampled prices (no M1 bars)")
+        if self.data is not None:
+            self.verify_symbols(set(USUAL_SYMBOLS) | {str(k).upper() for k in (cfg.get("symbol_map") or {})}, startup=True)
         log.info(f"mode={'PAPER' if self.paper else 'LIVE'}  data={'mt5' if self.data else 'quotes'}  "
                  f"account={self.account_login}")
         return True
+
+    def verify_symbols(self, pairs, startup=False):
+        """Broker symbol check (pylego Mt5Broker.verify_symbols, as Vote Atlas /
+        Fib Atlas / Motif do). Logs and reports mismatches; never auto-corrects.
+        Returns the problem rows for `pairs`."""
+        todo = sorted(p for p in pairs if p and p not in self.verified)
+        if self.data is None or not todo:
+            return [p for p in self.symbol_problems if p["pair"] in pairs]
+        self.verified.update(todo)
+        try:
+            problems = self.data.verify_symbols(todo)
+        except Exception as e:
+            log.warning(f"symbol verification failed to run: {e}")
+            return []
+        for p in problems:
+            sugg = f" -- closest matches: {', '.join(p['suggestions'])}" if p["suggestions"] else " -- no close match on this account"
+            log.error(f"BROKER SYMBOL MISMATCH: {p['pair']} configured as {p['configured']!r} -- not found{sugg}. "
+                      f"Fix it in the Symbol map on the bot page.")
+        self.symbol_problems = [p for p in self.symbol_problems if p["pair"] not in todo] + problems
+        if not problems:
+            log.info(f"symbol check OK -- {len(todo)} symbol(s){' at startup' if startup else ''} exist on this account")
+        return [p for p in self.symbol_problems if p["pair"] in pairs]
 
     # ── prices / bars ─────────────────────────────────────────────────────
     def price(self, pair):
@@ -199,20 +281,25 @@ class Copier:
 
     # ── decisions / alerts ───────────────────────────────────────────────
     def decide(self, o, status, reason=None, **extra):
-        self.decisions.append({"t": int(_now()), "id": o.get("id"), "symbol": o.get("symbol"), "side": o.get("side"),
-                               "order": o.get("order"), "status": status, "reason": reason,
+        sym = o.get("symbol") or ""
+        self.decisions.append({"t": int(_now()), "id": o.get("id"), "pair": sym.lower(), "symbol": sym,
+                               "side": o.get("side"), "order": o.get("order"), "status": status, "reason": reason,
                                "entry": o.get("entry"), "sl": o.get("sl"), "tp": o.get("tp"), **extra})
-        del self.decisions[:-5000]
+        del self.decisions[:-DECISION_LOG_MAX_EVENTS]
         self.dirty["decisions"] = True
         log.info(f"[{status}] {o.get('id')} {o.get('side')} {o.get('symbol')} {reason or ''}")
 
-    def alert(self, text):
+    def alert(self, text, reply_to=None):
+        """Console always; Telegram when this bot's alerts are on AND the ⚙ Alerts
+        master switch (ai_alert_cfg.tgMaster.signalCopier) is not off. Returns
+        the Telegram message_id (for reply threading) or None."""
         log.info(text.replace("\n", " | "))
-        if self.cfg.get("tg_enabled") and self.cfg.get("tg_token") and self.cfg.get("tg_chat_id"):
-            try:
-                send_telegram(self.cfg["tg_token"], str(self.cfg["tg_chat_id"]), text, parse_mode=None)
-            except Exception as e:
-                log.warning(f"alert failed: {e}")
+        if self.cfg.get("tg_enabled", True) and self.tg_master_on:
+            return _tg_send(self.cfg.get("tg_token", ""), str(self.cfg.get("tg_chat_id", "")), text, reply_to=reply_to)
+        return None
+
+    def mode_tag(self):
+        return " [PAPER]" if self.paper else ""
 
     # ── message → book → broker + record ──────────────────────────────────
     def on_message(self, msg_id, text, posted: datetime, edited=False, execute=True):
@@ -272,6 +359,8 @@ class Copier:
         self.dirty["signals"] = True
 
     def resolve_open(self):
+        self.life["last_resolve_at"] = int(_now())
+        self.life["resolves"] += 1
         for r in self.signals.values():
             if r["final"]:
                 continue
@@ -320,10 +409,10 @@ class Copier:
         self.decide(o, "closed", detail, ticket=e["ticket"])
         self.alert(f"✅ CLOSED {o['side']} {o['symbol']} @ {o['entry']:g} — {detail}")
 
-    def _skip(self, o, why):
+    def _skip(self, o, why, status="skipped"):
         self.execs[o["id"]] = {"id": o["id"], "status": "skipped", "reason": why}
-        self.decide(o, "skipped", why)
-        self.alert(f"⏭ SKIPPED {describe(o)} — {why}")
+        self.decide(o, status, why)
+        self.alert(f"⏭ SKIPPED {describe(o)} — {why}{self.mode_tag()}")
 
     def _place(self, o):
         cfg = self.cfg
@@ -340,6 +429,16 @@ class Copier:
             return self._skip(o, "no stop loss in the signal")
         if len(self.live_execs()) >= int(cfg.get("max_open", 12)):
             return self._skip(o, f"max_open {cfg.get('max_open')} reached")
+        bal = self.broker.account_balance() or 0.0
+        block = self.guard.block_reason(bal, o["symbol"].lower()) if bal else None
+        log_block_transition(log, self.guard_state, o["symbol"].lower(), block)
+        if block:
+            return self._skip(o, f"risk_guard: {block_category(block)}", status="pair_blocked")
+        bad = self.verify_symbols({o["symbol"].upper()})
+        if bad:
+            sugg = ", ".join(bad[0]["suggestions"]) or "none close"
+            return self._skip(o, f"{bad[0]['configured']} is not a symbol on this account (closest: {sugg}) "
+                                 f"— set it in the Symbol map")
         age = _now() - _ts(o["posted_at"])
         if o["order"] == "market" and age > cfg.get("max_signal_age_secs", 300):
             return self._skip(o, f"signal is {int(age)}s old (max {cfg.get('max_signal_age_secs')}s)")
@@ -390,15 +489,28 @@ class Copier:
         if ticket is None:
             reason = self.broker.last_reject_reason or "rejected"
             self.execs[o["id"]] = {"id": o["id"], "status": "rejected", "reason": reason}
-            self.decide(o, "rejected", reason, lots=lots)
-            self.alert(f"❌ REJECTED {describe(o)} — {reason}")
+            r = self.retries.get(o["id"], {"n": 0})
+            retry = reason.startswith(RETRYABLE) and r["n"] < int(cfg.get("retry_rejects", 3))
+            if retry:
+                self.retries[o["id"]] = {"n": r["n"] + 1, "at": _now() + REJECT_RETRY_SECS}
+            else:
+                self.retries.pop(o["id"], None)
+            self.decide(o, "rejected", reason + (f" — retry {r['n'] + 1} in {REJECT_RETRY_SECS}s" if retry else ""),
+                        lots=lots)
+            if r["n"] == 0:                      # alert once per signal, not once per retry
+                self.alert(f"❌ REJECTED {describe(o)} — {reason}" + (" (will retry)" if retry else "") + self.mode_tag())
             return
+        self.retries.pop(o["id"], None)
+        self.guard.record_trade(o["symbol"].lower())
         self.execs[o["id"]] = {"id": o["id"], "tag": tag, "symbol": pair, "side": o["side"], "ticket": ticket,
                                "status": "pending" if kind == "pending" else "open", "lots": lots,
                                "close_ts": _ts(o.get("close_at_utc")), "placed_at": int(_now())}
         self.decide(o, "entered" if kind == "market" else "pending", None, lots=lots, ticket=ticket)
-        self.alert(f"📥 {'ENTERED' if kind == 'market' else 'ORDER PLACED'} {describe(o)} — {lots} lots"
-                   + (" [PAPER]" if self.paper else ""))
+        icon = "🟢" if d > 0 else "🔴"
+        mid = self.alert(f"{icon} {'ENTERED' if kind == 'market' else 'ORDER PLACED'} {describe(o)} — {lots} lots"
+                         f"{self.mode_tag()}")
+        if mid:
+            self.tg_entry_msgid[str(ticket)] = mid
 
     def _size(self, pair, stop_dist):
         cfg = self.cfg
@@ -455,7 +567,9 @@ class Copier:
         kv = self.kv
         try:
             if self.dirty["state"] or force:
-                kv.put_json(f"{K}_state", {"book": self.book.to_dict(), "execs": self.execs})
+                kv.put_json(f"{K}_state", {"book": self.book.to_dict(), "execs": self.execs, "retries": self.retries,
+                                           "tg_entry_msgid": self.tg_entry_msgid,
+                                           "tg_closed_alerted": sorted(self.tg_closed_alerted, key=str)[-2000:]})
                 self.dirty["state"] = False
             if self.dirty["signals"] or force:
                 kv.put_json(f"{K}_signals", {"records": sorted(self.signals.values(), key=lambda r: r["posted_ts"]),
@@ -485,8 +599,25 @@ class Copier:
                       "exec": (self.execs.get(o["id"]) or {}).get("status")} for o in live_orders],
             "signals_open": sum(1 for r in self.signals.values() if not r["final"]),
             "signals_total": len(self.signals),
+            "risk_guard": self.guard.snapshot(bal),
+            "risk_guard_enabled": bool(self.cfg.get("risk_guard_enabled", True)),
+            "max_open": int(self.cfg.get("max_open", 12)), "open_used": len(self.live_execs()),
+            "risk_pct": self.cfg.get("risk_pct"),
+            "symbol_problems": self.symbol_problems,
+            "tg_master_on": self.tg_master_on,
+            "retrying": len(self.retries),
             "pushed_at": int(_now()),
         }
+
+    def refresh_life(self):
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        counts: dict[str, int] = {}
+        for ev in reversed(self.decisions):
+            if datetime.fromtimestamp(ev["t"], tz=timezone.utc).strftime("%Y-%m-%d") != today:
+                break
+            counts[ev["status"]] = counts.get(ev["status"], 0) + 1
+        self.life["decisions_today"] = counts
+        self.life["uptime_s"] = int(_now() - self._boot)
 
     def push_status(self):
         try:
@@ -495,9 +626,9 @@ class Copier:
             log.warning(f"status push failed: {e}")
 
     def tick(self):
-        """One poll: prices, paper fills, timed rules, sync."""
-        self.life["loops"] += 1
-        self.life["last_loop"] = int(_now())
+        """One poll: prices, paper fills, timed rules, sync, close alerts, retries."""
+        self.life["ticks"] += 1
+        self.life["last_tick_at"] = int(_now())
         pairs = {o["symbol"] for o in self.book.live()} | {e["symbol"] for e in self.live_execs()} | \
                 {r["symbol"] for r in self.signals.values() if not r["final"]}
         for p in pairs:
@@ -511,8 +642,37 @@ class Copier:
                 del self.samples[p][:-50_000]
         if isinstance(self.broker, PaperBroker):
             self.broker.check_barriers()
+        bal = self.broker.account_balance()
+        if bal:
+            self.guard.update_balance(bal)
         self.apply(self.book.tick(datetime.now(timezone.utc)))
         self.sync()
+        self.close_alerts()
+        self.retry_rejects()
+
+    def close_alerts(self):
+        """One reply-threaded alert per closed position (SL/TP/manual/ours).
+        serialize_closed_trades re-returns today's closes every tick, so dedupe
+        on position_id (persisted) — the Vote Atlas / Motif pattern."""
+        for c in self.broker.serialize_closed_trades():
+            pid = c.get("position_id") or c.get("ticket")
+            if pid is None or str(pid) in self.tg_closed_alerted:
+                continue
+            self.tg_closed_alerted.add(str(pid))
+            self.alert(_fmt_close_alert(c, self.mode_tag()), reply_to=self.tg_entry_msgid.pop(str(pid), None))
+            self.dirty["state"] = True
+
+    def retry_rejects(self):
+        now = _now()
+        for rid, r in list(self.retries.items()):
+            o = self.book.orders.get(rid)
+            if not o or o["status"] not in ("open", "working") or (self.execs.get(rid) or {}).get("status") != "rejected":
+                self.retries.pop(rid, None)
+                continue
+            if now >= r["at"]:
+                self.execs.pop(rid, None)
+                self._place(o)                   # every entry check runs again (age, drift, spread, guard…)
+                self.dirty["state"] = True
 
 
 # ── Telegram ─────────────────────────────────────────────────────────────────
@@ -547,8 +707,13 @@ async def telegram_login(cp: Copier):
     cp.tg.update(state="need_code", detail=f"Telegram sent a login code to the app for …{phone[-3:]}. "
                                            f"Enter it on the bot page (Telegram login card).")
     cp.push_status()
+    last_beat = _now()
     while True:
         await asyncio.sleep(4)
+        if _now() - last_beat >= cp.cfg.get("status_secs", 30):   # keep the page's liveness dot honest
+            cp.refresh_life()
+            cp.push_status()
+            last_beat = _now()
         req = kv.get_json(f"{K}_tg_login") or {}
         if (req.get("t") or 0) / 1000 < asked - 5:
             continue
@@ -597,6 +762,10 @@ async def run(base_url, force_live, backfill_since=None):
     cp = Copier(kv, cfg, force_live)
     if not cp.connect():
         return
+    try:
+        cp.tg_master_on = (kv.get_json("ai_alert_cfg") or {}).get("tgMaster", {}).get("signalCopier", None) is not False
+    except Exception:
+        pass
     client = await telegram_login(cp)
     chat = int(cfg.get("tg_chat") or DEFAULT_CHAT)
     entity = await client.get_entity(chat)
@@ -643,10 +812,20 @@ async def run(base_url, force_live, backfill_since=None):
                 cp.resolve_open()
                 last_resolve = now
             if now - last_status >= cp.cfg.get("status_secs", 30):
-                fresh = kv.get_json(f"{K}_config") or {}
-                cp.cfg = _deep_merge(DEFAULT_CFG, fresh)
-                if force_live:
-                    cp.cfg["paper_mode"] = False
+                try:
+                    fresh = kv.get_json(f"{K}_config") or {}
+                    cp.cfg = _deep_merge(DEFAULT_CFG, fresh)
+                    if force_live:
+                        cp.cfg["paper_mode"] = False
+                    cp.guard.sync_cfg(cp.cfg)
+                except Exception as e:
+                    log.warning(f"config fetch failed: {e} -- keeping the last config")
+                try:
+                    master = kv.get_json("ai_alert_cfg") or {}
+                    cp.tg_master_on = master.get("tgMaster", {}).get("signalCopier", None) is not False
+                except Exception as e:
+                    log.warning(f"ai_alert_cfg fetch failed: {e} (Telegram master switch check skipped this cycle)")
+                cp.refresh_life()
                 if bool(cp.cfg.get("paper_mode", True)) != cp.paper:
                     log.warning("paper/live toggle changed on the dashboard — restart the bot to switch modes")
                 cp.push_status()

@@ -240,6 +240,7 @@ import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2, M1_TAIL_PREFIX as _M1_TAIL_PREFIX } from './js/volBacktestM1Engine.js';
 import { auditVoteAtlasDrift as _auditVoteAtlasDrift, normalizeTradeHistoryForVoteAtlasAudit as _normalizeTradeHistoryForVoteAtlasAudit, countVoteAtlasCandidates as _countVoteAtlasCandidates, explainGapsFromDecisionLog as _explainGapsFromDecisionLog } from './js/voteAtlasDriftAudit.js';
+import { reconcileSignalCopierDay as _reconcileSignalCopierDay, joinTradesToSignals as _scJoinTradesToSignals } from './js/signalCopierRecon.js';
 import { auditFibAtlasDrift as _auditFibAtlasDrift, normalizeTradeHistoryForFibAtlasAudit as _normalizeTradeHistoryForFibAtlasAudit, countFibAtlasCandidates as _countFibAtlasCandidates } from './js/fibAtlasDriftAudit.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
 import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
@@ -2114,6 +2115,9 @@ const TG_SENDERS = {
   // this file's own tgOn(). Same master-switch semantics: missing/unset
   // reads as ON, only an explicit `false` here turns it off.
   fibAtlas:          'Fib Atlas bot — entered/skipped/rejected + SL/TP close alerts',
+  // SignalCopier/signal_copier.py — separate process, checks ai_alert_cfg
+  // directly like voteAtlas/fibAtlas above. Missing/unset reads as ON.
+  signalCopier:      'Signal Copier — entered/skipped/filled/cancelled/rejected + SL/TP close alerts',
 };
 
 function tgOn(sender) {
@@ -22347,6 +22351,22 @@ async function _computeMotifDailyReconciliation(date) {
   };
 }
 
+// Signal Copier: live trades vs his signals. The reference is the bot's own
+// per-signal outcome record (signal_copier_signals), matched by the SC[tag]
+// comment = signal id, so no pair/time heuristic (js/signalCopierRecon.js).
+async function _scReadJson(key) {
+  const raw = await kv.get(key).catch(() => null);
+  if (!raw) return null;
+  const j = JSON.parse(raw);
+  return j?.data ?? j;
+}
+async function _computeSignalCopierDailyReconciliation(date) {
+  const trades = (await _scReadJson(`trade_hist_signal_copier_status_${date}`)) || [];
+  const signals = (await _scReadJson('signal_copier_signals'))?.records || [];
+  const events = (await _scReadJson('signal_copier_decision_log'))?.events || [];
+  return _reconcileSignalCopierDay({ date, trades: Array.isArray(trades) ? trades : [], signals, events });
+}
+
 async function _computeDailyReconciliation(date) {
   const out = [];
   // 2026-09-25 rewrite: no M1/loadM1ForPair dependency left in this function
@@ -22464,6 +22484,8 @@ async function _computeDailyReconciliation(date) {
   }
   try { out.push(await _computeMotifDailyReconciliation(date)); }
   catch (e) { out.push({ bot: 'motif_touch', date, note: `audit failed: ${e.message}` }); }
+  try { out.push(await _computeSignalCopierDailyReconciliation(date)); }
+  catch (e) { out.push({ bot: 'signal_copier', date, note: `audit failed: ${e.message}` }); }
   return { date, generatedAt: new Date().toISOString(), bots: out };
 }
 
@@ -22998,6 +23020,42 @@ app.post('/api/volatility-v2/telegram-test', async (_req, res) => {
     if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Vote Atlas config yet' });
     const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Vote Atlas — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
     res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Signal Copier's copy of the telegram-test route above.
+app.post('/api/signal-copier/telegram-test', async (_req, res) => {
+  try {
+    const cfg = (await _scReadJson('signal_copier_config')) || {};
+    if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Signal Copier config yet' });
+    const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Signal Copier — test alert. Entries, skips, fills, cancels, rejects and SL/TP closes will use this bot.');
+    res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Signal Copier trade log: closed trades from the durable trade_hist buckets
+// (same source as Trade History, like /api/fib-atlas-bot/trade-log), each
+// joined to the signal it copied — his entry vs our fill (slip_r, + = worse)
+// and our R vs the outcome record's R.
+app.get('/api/signal-copier/trade-log', async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const from = req.query.from ? String(req.query.from) : today;
+    const to = req.query.to ? String(req.query.to) : from;
+    const dates = [];
+    for (let d = new Date(`${from}T00:00:00Z`); d <= new Date(`${to}T00:00:00Z`) && dates.length < 92; d.setUTCDate(d.getUTCDate() + 1)) {
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    const perDay = await Promise.all(dates.map(async dt => {
+      const rows = await _scReadJson(`trade_hist_signal_copier_status_${dt}`).catch(() => null);
+      return Array.isArray(rows) ? rows.map(t => ({ ...t, date: dt })) : [];
+    }));
+    const signals = (await _scReadJson('signal_copier_signals'))?.records || [];
+    res.json({ ok: true, from, to, trades: _scJoinTradesToSignals(perDay.flat(), signals) });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }

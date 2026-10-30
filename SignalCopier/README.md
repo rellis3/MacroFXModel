@@ -43,6 +43,14 @@ Entry guards: kill switch, styles on/off, skip list, max open, stale market sign
 past the stop, entry drift worse than 0.25R, spread wider than 0.2 × stop, min lot that would over-risk the account.
 Every decision goes to the Decision Timeline with its reason.
 
+It behaves like the other pylego bots (Vote Atlas / Motif / Fib Atlas):
+- **Risk guard:** the shared `pylego.risk_guard` daily/monthly drawdown lockout. It's on by default; the cooldown defaults to 0.
+- **Symbol check:** `verify_symbols` runs at start and on each new symbol. A mismatch shows on the tab and skips that symbol's signals.
+- **Alerts:** gated by the ⚙ Alerts master switch (`ai_alert_cfg.tgMaster.signalCopier`). One close alert per position, replied onto its entry alert.
+- **Retries:** a broker reject that isn't the order's fault is retried up to 3 times, 60 s apart.
+- **Proof of life:** counters show on the tab.
+- **Bot Audit:** the daily reconciliation row (`js/signalCopierRecon.js`) matches each real trade to its signal by the `SC[…]` tag.
+
 ## Signal Outcomes (the COG template)
 
 `outcome.py` scores each signal on M1 bars:
@@ -100,7 +108,8 @@ Also flagged rather than applied:
 | `signal_copier.py` | the bot: Telegram login via dashboard, book → MT5/Paper broker, status, decisions, outcomes |
 | `outcome.py` | signal + M1 bars → fill/exit/R/MAE/MFE and the COG template row. Pure |
 | `copier.py` | standalone monitor/CLI (no dashboard) |
-| tests | `python3 test_parser.py`, `test_outcome.py`, `test_copier.py` (end to end on PaperBroker) |
+| `start.bat` | Windows launcher, pins `.venv\\Scripts\\python.exe` like the other bots |
+| tests | `python3 test_parser.py`, `test_outcome.py`, `test_copier.py` (end to end on PaperBroker); `node js/signalCopierRecon.test.mjs` |
 
 ## Known limits
 
