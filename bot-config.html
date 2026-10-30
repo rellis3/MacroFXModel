@@ -494,6 +494,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="fibatlas" onclick="switchTab('fibatlas')" style="color:#a78bfa" id="faTabBtn">🌐 Fib Atlas</button>
     <button class="tab-btn" data-tab="fibatlas2" onclick="switchTab('fibatlas2')" style="color:#f472b6" id="fa2TabBtn">🌐 Fib Atlas v2</button>
     <button class="tab-btn" data-tab="motifbot" onclick="switchTab('motifbot')" style="color:#fb923c" id="mtTabBtn">👀 Motif Touch</button>
+    <button class="tab-btn" data-tab="signalcopier" onclick="switchTab('signalcopier')" style="color:#2dd4bf" id="scTabBtn">📡 Signal Copier</button>
     <button class="tab-btn" data-tab="rangeline" onclick="switchTab('rangeline')" style="color:#4fd1c5" id="rlTabBtn">📊 Range-Line</button>
     <button class="tab-btn" data-tab="oibot" onclick="switchTab('oibot')" style="color:#4dd0e1" id="oiTabBtn">🧲 OI Gamma</button>
     <button class="tab-btn" data-tab="oivolbot" onclick="switchTab('oivolbot')" style="color:#80deea" id="oivTabBtn">🧲 OI-Vol</button>
@@ -5612,6 +5613,298 @@ python motif_bot/motif_bot.py --live --url &lt;dashboard-url&gt;</pre>
 
   </div><!-- /tab-motifbot -->
 
+  <div class="tab-pane" id="tab-signalcopier">
+
+    <div class="bot-banner" style="background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.28)">
+      <div class="bot-banner-icon">📡</div>
+      <div style="flex:1">
+        <div class="bot-banner-title" style="color:#2dd4bf">Signal Copier — ColezTrades Telegram signals → MT5</div>
+        <div class="bot-banner-sub">Reads the ColezTrades | Private → Signals topic as your Telegram account, places his market / limit orders with his SL/TP, follows his cancels, closes and timed exits, and records every signal's outcome in the COG import template · SignalCopier/signal_copier.py</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button style="background:#2dd4bf;border:none;border-radius:7px;color:#062a26;font-weight:700;padding:8px 14px;cursor:pointer;font-size:12px" onclick="saveScConfig();saveScTgCreds();saveScCreds()">Save All</button>
+      </div>
+    </div>
+
+    <!-- How it decides -->
+    <details class="card" style="padding:0;margin-bottom:14px">
+      <summary style="cursor:pointer;padding:12px 16px;font-size:12px;font-weight:600;color:#2dd4bf;list-style:none">
+        ▸ How the bot decides <span style="color:var(--text3);font-weight:400">(read this if a signal was skipped and you want to know why)</span>
+      </summary>
+      <div style="padding:0 16px 14px;font-size:12px;line-height:1.6;color:var(--text2)">
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">From his message to an order</div>
+        <ol style="margin:0 0 10px 18px;padding:0">
+          <li>Each new message in the Signals topic is parsed (<code>SignalCopier/parser.py</code>). Anything that looks like an instruction but matches no known format is <b>alerted, never guessed</b>. So are edits and deletions.</li>
+          <li>Every new signal goes through these checks, in order, and the first one that fails is the reason in the Decision Timeline: kill switch → style switched off (swing / day / single) → skip list → no stop in the signal → <b>max open</b> → <b>risk guard</b> (daily / monthly drawdown lockout, cooldown) → symbol not on your broker → market signal too old → no price → price already beyond his stop → spread wider than <b>× stop</b> → market price more than <b>max drift R</b> worse than his entry → sizing (min lot would risk over 1.5× your target).</li>
+          <li>Market signals go in at market with his SL/TP. Limits rest at his price. If the market has already traded through his limit (a better price), the bot takes it at market or skips it, per <b>Limit already through</b>.</li>
+          <li>A broker reject that isn't the order's fault (requote, market closed, no tick) is retried up to <b>Retry rejects</b> times, 60 s apart, re-running every check above. You get one alert, not one per retry.</li>
+        </ol>
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">After entry</div>
+        <ol style="margin:0 0 10px 18px;padding:0">
+          <li>His <code>Cancel the …</code> cancels our resting order. If ours already filled, it is <b>kept</b> and you get an alert.</li>
+          <li><code>Cancel at HH:MM UK</code> and <code>Closed at HH:MM UK</code> / a day section's <code>closed at 21:00</code> are applied at those times. A limit that filled before its cancel time still closes at the close-at time.</li>
+          <li>His <code>CLOSE the X SELL from …</code> closes that position. MT5's own SL/TP close the rest. Every close sends one alert, replied onto its entry alert.</li>
+        </ol>
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">What "Signal Outcomes" is</div>
+        <div>Every signal scored on M1 bars whether or not the bot took it: market signals fill at the price when the message arrived, limits fill at their price, one spread is paid. It is his signal as a follower gets it, not his own fills. Bot Audit's daily reconciliation compares your real trades with it, signal by signal.</div>
+      </div>
+    </details>
+
+    <!-- Live status -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span class="card-title" style="margin:0">Live Status</span>
+        <span id="scLiveAge" class="bot-banner-sub" style="margin:0">—</span>
+        <button onclick="loadScAll()" style="margin-left:auto;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div id="scStatusTiles" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+      <div id="scTgBox" style="margin-top:12px"></div>
+      <div id="scSymbolBox" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Proof of life -->
+    <div class="card">
+      <div class="card-title">Proof of Life</div>
+      <div class="bot-banner-sub" style="margin-bottom:8px">"quiet" and "dead" should not look the same. Green = recent, amber = late, red = stale.</div>
+      <div id="scLifeGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;font-size:11px"></div>
+    </div>
+
+    <!-- Risk systems -->
+    <div class="card">
+      <div class="card-title">Risk Systems</div>
+      <div id="scRiskTiles" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+    </div>
+
+    <!-- Open positions + resting orders -->
+    <div class="grid">
+      <div class="card" style="padding:0">
+        <div style="padding:12px 16px 6px"><span style="font-size:12px;font-weight:600;color:#2dd4bf">Open Positions</span></div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead><tr style="background:var(--s2);color:var(--text3)">
+            <th style="padding:6px 10px;text-align:left">Pair</th><th style="padding:6px 10px;text-align:left">Dir</th>
+            <th style="padding:6px 10px;text-align:right">Lots</th><th style="padding:6px 10px;text-align:right">Open</th>
+            <th style="padding:6px 10px;text-align:right">Live</th><th style="padding:6px 10px;text-align:right">P&amp;L</th>
+            <th style="padding:6px 10px;text-align:left">Signal</th>
+          </tr></thead>
+          <tbody id="scOpenBody"><tr><td colspan="7" style="padding:12px;text-align:center;color:var(--text3)">loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="card" style="padding:0">
+        <div style="padding:12px 16px 6px"><span style="font-size:12px;font-weight:600;color:#60a5fa">Resting Orders</span></div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead><tr style="background:var(--s2);color:var(--text3)">
+            <th style="padding:6px 10px;text-align:left">Pair</th><th style="padding:6px 10px;text-align:left">Type</th>
+            <th style="padding:6px 10px;text-align:right">Price</th><th style="padding:6px 10px;text-align:right">SL</th>
+            <th style="padding:6px 10px;text-align:right">TP</th><th style="padding:6px 10px;text-align:right">Lots</th>
+            <th style="padding:6px 10px;text-align:left">Signal</th>
+          </tr></thead>
+          <tbody id="scPendingBody"><tr><td colspan="7" style="padding:12px;text-align:center;color:var(--text3)">loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Telegram login (code from the Telegram app; the session stays on the bot machine) -->
+    <div class="card" id="scLoginCard">
+      <div class="card-title">Telegram login</div>
+      <div class="bot-banner-sub" style="margin-bottom:8px">First run only. When the bot asks (status above says <b>needs code</b>), Telegram sends a login code to your Telegram app. Type it here. If your account has two-step verification, the bot then asks for your cloud password. The code and password are cleared from KV as soon as the bot uses them; the resulting session file stays on the bot's machine (<code>SignalCopier/signalcopier.session</code>).</div>
+      <div class="form-row"><span class="form-lbl">Login code</span><input type="text" id="sc_login_code" inputmode="numeric" autocomplete="one-time-code" placeholder="12345" style="width:120px;text-align:left"></div>
+      <div class="form-row"><span class="form-lbl">2FA password <small>only if asked</small></span><input type="password" id="sc_login_password" autocomplete="off" style="width:180px"></div>
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+        <button class="btn-save" style="background:#2dd4bf;color:#062a26" onclick="sendScLogin()">Send to bot</button>
+        <span id="scLoginStatus" style="font-size:12px;color:var(--text3)"></span>
+      </div>
+    </div>
+
+    <!-- Book: what the channel says should be open -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#2dd4bf">Signal Book</span>
+        <span class="bot-banner-sub" style="margin:0">his live instructions and what the bot did with each. Open positions also show on <b>📊 Positions</b>; closed trades land in its Trade History.</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead><tr style="background:var(--s2);color:var(--text3)">
+            <th style="padding:6px 10px;text-align:left">Posted (UK)</th><th style="padding:6px 10px;text-align:left">Signal</th>
+            <th style="padding:6px 10px;text-align:left">Type</th><th style="padding:6px 10px;text-align:right">Entry</th>
+            <th style="padding:6px 10px;text-align:right">SL</th><th style="padding:6px 10px;text-align:right">TP</th>
+            <th style="padding:6px 10px;text-align:left">Rules</th><th style="padding:6px 10px;text-align:left">Bot</th>
+          </tr></thead>
+          <tbody id="scBookBody"><tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Signal outcomes + COG template export -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:#2dd4bf">Signal Outcomes</span>
+        <span class="bot-banner-sub" style="margin:0">every signal scored on M1 bars, whether or not the bot traded it · Return/MAE/MFE are % of account at the template Risk % per 1R, one spread paid · times UK</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);margin-left:auto">Pair
+          <select id="scOutPair" onchange="renderScOutcomes()" style="background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px"><option value="">all</option></select></label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><input type="checkbox" id="scOutOpen" onchange="renderScOutcomes()"> include open</label>
+        <button onclick="exportScTemplate()" style="background:#2dd4bf;border:none;border-radius:5px;color:#062a26;font-weight:700;padding:4px 12px;font-size:11px;cursor:pointer">⬇ COG template CSV</button>
+      </div>
+      <div id="scOutStats" style="display:flex;gap:10px;flex-wrap:wrap;padding:6px 16px"></div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead><tr style="background:var(--s2);color:var(--text3)">
+            <th style="padding:6px 10px;text-align:left">Date</th><th style="padding:6px 10px;text-align:left">Time</th>
+            <th style="padding:6px 10px;text-align:left">Exit</th><th style="padding:6px 10px;text-align:left">Instrument</th>
+            <th style="padding:6px 10px;text-align:left">Dir</th><th style="padding:6px 10px;text-align:left">Model</th>
+            <th style="padding:6px 10px;text-align:right">Return %</th><th style="padding:6px 10px;text-align:right">MAE %</th>
+            <th style="padding:6px 10px;text-align:right">MFE %</th><th style="padding:6px 10px;text-align:left">Exit reason</th>
+          </tr></thead>
+          <tbody id="scOutBody"><tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Fills vs his entries -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:#2dd4bf">Your Fills vs His Signals</span>
+        <span class="bot-banner-sub" style="margin:0">closed trades from Trade History, each matched to the signal it copied by its <code>SC[…]</code> tag · slip = your entry vs his, in R of his stop (+ = worse) · last 30 days</span>
+        <button onclick="loadScTradeLog()" style="margin-left:auto;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div id="scSlipStats" style="display:flex;gap:10px;flex-wrap:wrap;padding:6px 16px"></div>
+      <div style="overflow-x:auto;max-height:420px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead><tr style="background:var(--s2);color:var(--text3)">
+            <th style="padding:6px 10px;text-align:left">Closed</th><th style="padding:6px 10px;text-align:left">Signal</th>
+            <th style="padding:6px 10px;text-align:right">His entry</th><th style="padding:6px 10px;text-align:right">Your fill</th>
+            <th style="padding:6px 10px;text-align:right">Slip (R)</th><th style="padding:6px 10px;text-align:right">Your R</th>
+            <th style="padding:6px 10px;text-align:right">Record R</th><th style="padding:6px 10px;text-align:right">P&amp;L</th>
+            <th style="padding:6px 10px;text-align:left">Exit</th>
+          </tr></thead>
+          <tbody id="scTradeBody"><tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Decision log -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:#f59e0b">Decision Timeline</span>
+        <span class="bot-banner-sub" style="margin:0">what the bot did with each instruction and why, most recent first</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);margin-left:auto">
+          Symbol <input type="text" id="scDecFilter" placeholder="all" style="width:70px;background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px" oninput="loadScDecisionLog()"></label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)">
+          Date (UK) <input type="date" id="scDecDate" style="background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px" onchange="loadScDecisionLog()"></label>
+        <button onclick="scDecShiftDay(-1)" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 8px;font-size:11px;cursor:pointer">← Prev</button>
+        <button onclick="scDecShiftDay(1)" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 8px;font-size:11px;cursor:pointer">Next →</button>
+        <button onclick="scDecClearDate()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 8px;font-size:11px;cursor:pointer">All dates</button>
+        <button onclick="loadScDecisionLog()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="overflow-x:auto;max-height:420px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead><tr style="background:var(--s2);color:var(--text3)">
+            <th style="padding:6px 10px;text-align:left">Time (UK)</th><th style="padding:6px 10px;text-align:left">Signal</th>
+            <th style="padding:6px 10px;text-align:left">Status</th><th style="padding:6px 10px;text-align:left">Reason</th>
+            <th style="padding:6px 10px;text-align:right">Lots</th><th style="padding:6px 10px;text-align:right">Ticket</th>
+          </tr></thead>
+          <tbody id="scDecisionBody"><tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- How to run -->
+    <div class="card">
+      <div class="card-title">How to run</div>
+      <div class="bot-banner-sub" style="margin-bottom:8px">On the Windows machine with MT5, from the repo root, with the .venv that has <code>MetaTrader5</code>. Install Telethon once: <code>.venv\Scripts\python.exe -m pip install -r SignalCopier\requirements.txt</code>. Paper is the default.</div>
+      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) Paper (default). First run: enter the Telegram login code on this page when asked.
+SignalCopier\start.bat --url &lt;dashboard-url&gt;
+#    (same as: .venv\Scripts\python.exe SignalCopier\signal_copier.py --url &lt;dashboard-url&gt;)
+
+# 2) Fill Signal Outcomes from the channel's history (places no orders; needs MT5 open for bars):
+.venv\Scripts\python.exe SignalCopier\signal_copier.py --url &lt;dashboard-url&gt; --backfill-since 2025-01-01
+
+# 3) Live, after a clean paper run and MT5 credentials below:
+SignalCopier\start.bat --url &lt;dashboard-url&gt; --live</pre>
+      <div class="bot-banner-sub" style="margin-top:8px">Find the Signals topic id with <code>python SignalCopier\copier.py chats</code> (same Telegram env vars as its README) or leave it blank and set <b>Trusted senders</b> to <code>ColezTrades Alerts</code>. When it trades a real account, set <code>paper:false</code> for Signal Copier in <code>js/botRegistry.js</code> so its P&amp;L counts as real money on the Positions and audit pages.</div>
+    </div>
+
+    <div class="grid">
+      <!-- ── Config ─────────────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">Bot Control</div>
+        <div class="form-row"><span class="form-lbl" title="Checked: fills are simulated on the paper broker, nothing reaches MT5. Unchecked: real orders with the MT5 account below. The bot reads this at start — restart it after changing.">Mode</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="sc_paper_mode"> Paper trade <small style="color:var(--text3)">(uncheck = LIVE, restart bot)</small></label></div>
+        <div class="form-row"><span class="form-lbl" title="Blocks all NEW entries; open positions and his close instructions are still handled.">Kill switch <small>no new entries</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="sc_kill_switch"> stop</label></div>
+        <div class="form-row"><span class="form-lbl" title="% of balance lost if a signal hits its stop. Sized from MT5's own tick value for the symbol in live mode.">Risk % / signal</span><input type="number" id="sc_risk_pct" min="0.05" max="5" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max lot</span><input type="number" id="sc_max_lot" min="0.01" max="100" step="0.01" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Open positions + resting orders this bot may hold at once.">Max open</span><input type="number" id="sc_max_open" min="1" max="50" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Copy</span>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox" id="sc_copy_swing"> swings</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;margin-left:8px"><input type="checkbox" id="sc_copy_day"> day trades</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;margin-left:8px"><input type="checkbox" id="sc_copy_single"> single posts</label></div>
+        <div class="form-row"><span class="form-lbl" title="His symbols the bot should never trade.">Skip symbols</span><input type="text" id="sc_skip_symbols" placeholder="BTCUSD, ..." style="width:200px;text-align:left"></div>
+        <div class="form-row" style="align-items:flex-start"><span class="form-lbl" title="His symbol = your broker's symbol, one per line. Blank lines use the repo's instrument registry (e.g. NAS100 → USTECH100M). The bot checks every mapped symbol exists on the account at start.">Symbol map <small>his = broker</small></span>
+          <textarea id="sc_symbol_map" rows="5" placeholder="NAS100=USTECH100&#10;US30=US30&#10;SP500=US500" style="width:200px;background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:4px 6px"></textarea></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Entry guards</div>
+        <div class="form-row"><span class="form-lbl" title="A market signal older than this when the bot sees it (restart, reconnect) is not chased. Limit orders stay valid until their cancel time.">Max signal age (sec)</span><input type="number" id="sc_max_signal_age_secs" min="10" max="3600" step="10" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Skip a market signal if the current price is already this many R worse than his entry (R = his entry→SL distance).">Max entry drift (R)</span><input type="number" id="sc_max_entry_drift_r" min="0" max="2" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Skip if the spread is wider than this fraction of the stop distance.">Max spread (× stop)</span><input type="number" id="sc_max_spread_r" min="0.01" max="1" step="0.01" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="When his limit price is already traded through (a better price is available now).">Limit already through</span>
+          <select id="sc_limit_through" style="background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 6px"><option value="market">take it at market</option><option value="skip">skip</option></select></div>
+        <div class="form-row"><span class="form-lbl" title="Risk % written into the COG template's Risk % column; Return/MAE/MFE scale with it. His posts say 1R per trade.">Template Risk %</span><input type="number" id="sc_record_risk_pct" min="0.1" max="10" step="0.1" style="width:80px"></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Risk overlays</div>
+        <div class="form-row"><span class="form-lbl" title="pylego RiskGuard, shared with the other bots. ON: a daily or monthly drawdown past the limits below blocks NEW entries for the lockout window (logged as pair_blocked). OFF: still tracked and shown in Risk Systems, never blocks. His signals come in correlated batches, so it defaults ON.">Risk Guard <small>enforce DD lockout</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="sc_risk_guard_enabled"> enforce</label></div>
+        <div class="form-row"><span class="form-lbl">Daily DD limit %</span><input type="number" id="sc_ddlimit" min="0.5" max="30" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Monthly DD limit %</span><input type="number" id="sc_monthlydd" min="1" max="50" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="How long (hours) the lockout holds once triggered.">↳ Lockout (hours)</span><input type="number" id="sc_lockout" min="0.5" max="48" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Minimum seconds between two entries on the same symbol. Applies even with the guard off. Keep 0: he often posts two signals on one symbol (a swing and a day limit).">↳ Cooldown (sec)</span><input type="number" id="sc_cooldown" min="0" max="3600" step="10" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="A broker reject that isn't the order's fault (requote, market closed, no tick) is retried this many times, 60s apart. 0 = never retry.">Retry rejects</span><input type="number" id="sc_retry_rejects" min="0" max="10" step="1" style="width:80px"></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Telegram source</div>
+        <div class="form-row"><span class="form-lbl" title="ColezTrades | Private = -1001606516039">Group id</span><input type="text" id="sc_tg_chat" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl" title="The Signals topic id inside the group. Blank = all topics (then use Trusted senders).">Signals topic id</span><input type="text" id="sc_tg_topic" placeholder="all topics" style="width:100px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl" title="Only messages from these senders are read. Comma separated names or ids. Blank = everyone in the topic.">Trusted senders</span><input type="text" id="sc_tg_senders" placeholder="ColezTrades Alerts" style="width:200px;text-align:left"></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Alerts to you</div>
+        <div class="form-row"><span class="form-lbl" title="Every entry, skip, fill, cancel, close and anything the parser couldn't read, sent to your own bot chat.">Telegram alerts</span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="sc_tg_enabled"> on</label></div>
+        <div class="form-row"><span class="form-lbl">↳ Bot token</span><input type="text" id="sc_tg_token" placeholder="123456789:ABC..." style="width:220px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">↳ Chat ID</span><input type="text" id="sc_tg_chat_id" placeholder="123456789" style="width:160px;text-align:left"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#2dd4bf;color:#062a26" onclick="saveScConfig()">Save Config</button>
+          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="resetScDefaults()">Reset Defaults</button>
+          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="testScTelegram()">Send test alert</button>
+          <span id="scSaveStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+      </div>
+
+      <div>
+        <!-- ── Telegram credentials ───────────────────────────────────── -->
+        <div class="card">
+          <div class="card-title">Telegram Account</div>
+          <div class="bot-banner-sub" style="margin-bottom:8px">From <a href="https://my.telegram.org" target="_blank" style="color:#2dd4bf">my.telegram.org</a> → API development tools → create an app. This lets the bot read the group as you; it is not a bot token.</div>
+          <div class="form-row"><span class="form-lbl">api_id</span><input type="text" id="sc_tg_api_id" placeholder="1234567" style="width:140px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">api_hash</span><input type="password" id="sc_tg_api_hash" autocomplete="off" style="width:220px"></div>
+          <div class="form-row"><span class="form-lbl">Phone <small>with country code</small></span><input type="text" id="sc_tg_phone" placeholder="+447700900000" style="width:160px;text-align:left"></div>
+          <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+            <button class="btn-save" style="background:#2dd4bf;color:#062a26" onclick="saveScTgCreds()">Save Telegram</button>
+            <span id="scTgCredsStatus" style="font-size:12px;color:var(--text3)"></span>
+          </div>
+          <div class="bot-banner-sub" style="margin-top:10px">Saved to KV (<code>signal_copier_tg_credentials</code>). Anyone who can read your dashboard's KV can read these, the same as the MT5 credentials every bot stores; the login session itself never leaves the bot machine.</div>
+        </div>
+        <!-- ── MT5 credentials ───────────────────────────────────────── -->
+        <div class="card">
+          <div class="card-title">MT5 Account</div>
+          <div class="form-row"><span class="form-lbl">Account #</span><input type="text" id="sc_mt5_account" placeholder="12345678" style="width:160px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">Password</span><input type="password" id="sc_mt5_password" placeholder="(saved — leave blank to keep)" style="width:160px"></div>
+          <div class="form-row"><span class="form-lbl">Server</span><input type="text" id="sc_mt5_server" placeholder="Broker-Server" style="width:160px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">Terminal path <small>optional</small></span><input type="text" id="sc_mt5_path" placeholder="C:\\...\\terminal64.exe" style="width:200px;text-align:left"></div>
+          <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+            <button class="btn-save" style="background:#2dd4bf;color:#062a26" onclick="saveScCreds()">Save Credentials</button>
+            <span id="scCredsStatus" style="font-size:12px;color:var(--text3)"></span>
+          </div>
+          <div class="bot-banner-sub" style="margin-top:12px">Saved to KV (<code>signal_copier_credentials</code>). Live mode trades with it; paper mode only uses the terminal for prices and M1 bars.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-signalcopier -->
+
   <!-- ══════════════════════════════════════════════════════ RANGE-LINE TAB -->
   <div class="tab-pane" id="tab-rangeline">
 
@@ -8215,6 +8508,7 @@ const TAB_BOT_KEY_MAP = {
   fibatlas:    'fib_atlas_bot_status',
   fibatlas2:   'fib_atlas_bot_v2_status',
   motifbot:    'motif_bot_status',
+  signalcopier: 'signal_copier_status',
   rangeline:   'range_line_bot_status',
   oibot:       'oi_bot_status',
   oivolbot:    'oi_vol_bot_status',

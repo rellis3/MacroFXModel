@@ -329,6 +329,12 @@ const _CF_EXACT = new Set([
   'motif_bot_plan',        // Motif Bot live plan (currently-open motifs passing the best-config filter, pushed by AnalogML/motif_track.py's own hourly scan, NOT a server.js interval) — keep last good plan across a redeploy
   'motif_bot_state',       // Motif Bot one-shot state (acted motif_keys, tg message ids, dedup sets) — survives BOT restarts via KV
   'motif_bot_decision_log', // Motif Bot per-motif decision audit (entered/rejected/blocked + why), capped rolling window — bot-config.html's Decision Timeline
+  'signal_copier_config',         // Signal Copier (ColezTrades Telegram signals) settings — must survive redeploys
+  'signal_copier_credentials',    // Signal Copier MT5 credentials — must survive redeploys
+  'signal_copier_tg_credentials', // Signal Copier Telegram api_id/api_hash/phone (the session itself stays on the bot machine)
+  'signal_copier_state',          // Signal Copier book + executions — the bot resumes from it after a restart
+  'signal_copier_decision_log',   // Signal Copier per-signal actions (entered/skipped/cancelled/closed + why)
+  'signal_copier_signals',        // Signal Copier per-signal outcome record + COG import-template rows — accumulated history
   'motif_bot_spread_stats', // Motif Bot per-pair live spread averages (real MT5 ticks, motif_bot.py's own sampler) — must survive redeploys, it's accumulated data motif_track.py's best-config filter reads back.
                             // NOT the same store as spread_profile_v1 below: this is a live EWMA of THIS account's real
                             // broker fills, wired directly into passes_best_config's live override; spread_profile_v1 is a

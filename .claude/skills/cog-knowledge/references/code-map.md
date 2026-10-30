@@ -44,3 +44,9 @@ Tests: `cogBands.test.mjs`, `cogFadeEngine.test.mjs`, `cogLevelPoc.test.mjs`, `c
 - `levelEngine/*_m1_cog_base_rate.json`
 - `archive/COG_oi_guide.html`
 - OI archive: `OI Data/NAS100_USD.csv` (1,521 days; DECISIONS 2026-09-24)
+- `SignalCopier/` (2026-10-30): copies the **ColezTrades | Private → Signals** Telegram topic. That's his multi-asset
+  swing + day-trade signals (market/limit, SL/TP, cancel-at/close-at), a separate feed from the 4-stage NQ alert
+  system. `signal_copier.py` is a bot like the others: bot-config.html tab 📡 Signal Copier, KV `signal_copier_*`,
+  magic 20261030, paper by default. `outcome.py` scores every signal on M1 bars into `signal_copier_signals`, exported
+  as the COG import template. Those outcomes are his signals as a follower gets them (entry at receipt, one spread),
+  not his own fills.

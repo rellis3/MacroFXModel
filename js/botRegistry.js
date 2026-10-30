@@ -44,4 +44,6 @@ window.POS_BOTS = [
   { key: 'fib_atlas_bot_status',         label: 'Fib Atlas',      color: '#a78bfa', bg: '#1e1633', bd: '#6d28d9', paper: true },
   { key: 'fib_atlas_bot_v2_status',      label: 'Fib Atlas v2',   color: '#f472b6', bg: '#2b0f21', bd: '#a3286e', paper: true },
   { key: 'motif_bot_status',             label: 'Motif Touch',    color: '#fb923c', bg: '#2a1300', bd: '#9a3412', paper: true },
+  // Signal Copier starts in paper mode (its DEFAULT_CFG); set paper:false here once it trades the real account.
+  { key: 'signal_copier_status',         label: 'Signal Copier',  color: '#2dd4bf', bg: '#062a26', bd: '#0f766e', paper: true },
 ];

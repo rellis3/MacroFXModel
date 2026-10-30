@@ -859,6 +859,152 @@ class Mt5Broker:
         )
         return False
 
+    # ── Pending orders (limit / stop) ──────────────────────────────────────────
+    def place_pending(
+        self,
+        pair: str,
+        direction: str,
+        kind: str,
+        price: float,
+        sl: float,
+        tp: float | None,
+        lots: float,
+        paper_mode: bool,
+        comment: str | None = None,
+        dedupe_tag: str | None = None,
+    ) -> int | None:
+        """Place a resting LIMIT or STOP order (``kind`` 'limit'/'stop',
+        ``direction`` 'LONG'/'SHORT'). Returns the order ticket, -1 for paper,
+        None on failure with the reason in ``last_reject_reason``.
+
+        A price already on the wrong side of the market (a SELL LIMIT below the
+        bid: the market has traded through it) is refused as ``price_through``
+        rather than sent — the broker would reject it (10015) and only the caller
+        knows whether to fall back to a market order. When the order fills, MT5
+        opens a position whose ticket equals this order ticket and whose comment
+        carries the same text, so ``dedupe_tag`` follows it through the fill."""
+        self.last_reject_reason = None
+        self.log.info(f'PENDING {kind.upper()} {pair} {direction} @ {price}  SL={sl}  TP={tp}  lot={lots}'
+                      + ('  [PAPER]' if paper_mode else ''))
+        if paper_mode:
+            return -1
+        if not self.available:
+            self.last_reject_reason = 'mt5_not_installed'
+            return None
+        mt5 = self.mt5
+        mt5_sym = self.resolve(pair)
+        info = mt5.symbol_info(mt5_sym)
+        tick = mt5.symbol_info_tick(mt5_sym)
+        if not tick:
+            self.last_reject_reason = 'no_tick'
+            return None
+
+        long = direction == 'LONG'
+        if kind == 'limit':
+            through = price >= tick.ask if long else price <= tick.bid
+            otype = mt5.ORDER_TYPE_BUY_LIMIT if long else mt5.ORDER_TYPE_SELL_LIMIT
+        elif kind == 'stop':
+            through = price <= tick.ask if long else price >= tick.bid
+            otype = mt5.ORDER_TYPE_BUY_STOP if long else mt5.ORDER_TYPE_SELL_STOP
+        else:
+            self.last_reject_reason = f'unknown_kind {kind}'
+            return None
+        if through:
+            self.last_reject_reason = f'price_through (bid {tick.bid} ask {tick.ask})'
+            return None
+
+        if dedupe_tag is not None:
+            tag = f'[{dedupe_tag}]'
+            dup = [o for o in (mt5.orders_get(symbol=mt5_sym) or []) if o.magic == self.magic and tag in (o.comment or '')]
+            dup += [p for p in (mt5.positions_get(symbol=mt5_sym) or []) if p.magic == self.magic and tag in (p.comment or '')]
+            if dup:
+                self.last_reject_reason = f'duplicate (ticket {dup[0].ticket})'
+                return None
+
+        if long and ((sl and sl >= price) or (tp and tp <= price)) or \
+           not long and ((sl and sl <= price) or (tp and tp >= price)):
+            self.last_reject_reason = f'invalid_stops_side (entry {price} sl {sl} tp {tp})'
+            return None
+
+        vol = self._norm_volume(info, lots)
+        if not vol or vol <= 0:
+            self.last_reject_reason = f'invalid_volume ({lots} -> {vol})'
+            return None
+        digits = getattr(info, 'digits', None) or 5
+        order = {
+            'action':       mt5.TRADE_ACTION_PENDING,
+            'symbol':       mt5_sym,
+            'volume':       vol,
+            'type':         otype,
+            'price':        round(price, digits),
+            'sl':           round(sl, digits) if sl else 0.0,
+            'tp':           round(tp, digits) if tp else 0.0,
+            'deviation':    self.deviation,
+            'magic':        self.magic,
+            'comment':      self._safe_comment(comment, f'Bot {kind[0].upper()}{direction[0]}'),
+            'type_time':    mt5.ORDER_TIME_GTC,
+            # Resting orders normally take RETURN; some servers only accept the
+            # symbol's market filling mode, so retry with that on 10030.
+            'type_filling': mt5.ORDER_FILLING_RETURN,
+        }
+        res = mt5.order_send(order)
+        if res is not None and res.retcode == getattr(mt5, 'TRADE_RETCODE_INVALID_FILL', 10030):
+            order['type_filling'] = self.filling_mode(mt5_sym)
+            res = mt5.order_send(order)
+        if res is not None and res.retcode in (mt5.TRADE_RETCODE_DONE, getattr(mt5, 'TRADE_RETCODE_PLACED', 10008)):
+            self.log.info(f'MT5 pending order placed: ticket={res.order}')
+            return res.order
+        rc = getattr(res, 'retcode', None)
+        self.log.error(f'MT5 pending order failed: retcode={rc} comment={getattr(res, "comment", "")} '
+                       f'last_error={mt5.last_error()}')
+        self.last_reject_reason = f'order_rejected (retcode={rc})'
+        return None
+
+    def cancel_pending(self, ticket: int, paper_mode: bool = False) -> bool:
+        """Delete a resting order. True on success, paper, or already gone
+        (filled or cancelled) — check ``positions_with_tag`` for a fill."""
+        if paper_mode or ticket < 0:
+            return True
+        if not self.available:
+            return False
+        mt5 = self.mt5
+        if not [o for o in (mt5.orders_get(ticket=ticket) or []) if o.magic == self.magic]:
+            return True
+        res = mt5.order_send({'action': mt5.TRADE_ACTION_REMOVE, 'order': ticket})
+        if res is not None and res.retcode == mt5.TRADE_RETCODE_DONE:
+            self.log.info(f'Pending order {ticket} cancelled')
+            return True
+        self.log.error(f'Cancel {ticket} failed: retcode={getattr(res, "retcode", None)} last_error={mt5.last_error()}')
+        return False
+
+    def pending_orders(self) -> list:
+        """This bot's resting orders, dashboard-friendly."""
+        if not self.available:
+            return []
+        mt5 = self.mt5
+        kinds = {getattr(mt5, 'ORDER_TYPE_BUY_LIMIT', 2): ('BUY', 'limit'),
+                 getattr(mt5, 'ORDER_TYPE_SELL_LIMIT', 3): ('SELL', 'limit'),
+                 getattr(mt5, 'ORDER_TYPE_BUY_STOP', 4): ('BUY', 'stop'),
+                 getattr(mt5, 'ORDER_TYPE_SELL_STOP', 5): ('SELL', 'stop')}
+        out = []
+        for o in (mt5.orders_get() or []):
+            if o.magic != self.magic:
+                continue
+            d, k = kinds.get(o.type, ('?', '?'))
+            out.append({'ticket': int(o.ticket), 'symbol': o.symbol, 'direction': d, 'kind': k,
+                        'price': float(o.price_open), 'sl': float(o.sl) or None, 'tp': float(o.tp) or None,
+                        'lots': float(o.volume_current), 'comment': str(o.comment or ''),
+                        'time_setup': int(o.time_setup), 'tz_offset_sec': self.server_offset_sec()})
+        return out
+
+    def positions_with_tag(self, tag: str) -> list[int]:
+        """Tickets of this bot's open positions whose comment contains ``[tag]``."""
+        if not self.available:
+            return []
+        t = f'[{tag}]'
+        return [int(p.ticket) for p in (self.mt5.positions_get() or [])
+                if p.magic == self.magic and t in (p.comment or '')]
+
     def tradable(self, pair: str) -> bool:
         """True if the broker currently allows OPENING a trade on this symbol. MT5
         disables index/CFD trading outside session hours (the retcode-10017 'Trade
