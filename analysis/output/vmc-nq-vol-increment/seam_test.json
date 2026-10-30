@@ -1,0 +1,96 @@
+{
+ "synthetic": {
+  "1": {
+   "bars": 82800,
+   "mixed_bars": 0,
+   "segments": 3,
+   "eligible_pct": 93.38,
+   "checked_cells_parity0": 341718,
+   "eligible_rows_with_undefined_feature_parity0": 0,
+   "checked_cells_parity1": 663468,
+   "eligible_rows_with_undefined_feature_parity1": 0,
+   "changed_cells": 0,
+   "eligible_rows": 77322,
+   "pass": true,
+   "negative_control_changed_cells": 357778
+  },
+  "30": {
+   "bars": 2760,
+   "mixed_bars": 1,
+   "segments": 3,
+   "eligible_pct": 43.01,
+   "checked_cells_parity0": 5174,
+   "eligible_rows_with_undefined_feature_parity0": 0,
+   "checked_cells_parity1": 10257,
+   "eligible_rows_with_undefined_feature_parity1": 0,
+   "changed_cells": 0,
+   "eligible_rows": 1187,
+   "pass": true,
+   "negative_control_changed_cells": 5108
+  }
+ },
+ "real": {
+  "seams": {
+   "roll": 40,
+   "join": 36,
+   "roll+join": 2
+  },
+  "seam_et_times": {
+   "18:00": 76,
+   "18:18": 1,
+   "20:00": 1
+  },
+  "1": {
+   "bars": 3735460,
+   "mixed_bars": 0,
+   "segments": 79,
+   "eligible_pct": 97.13,
+   "checked_cells_parity0": 22401314,
+   "eligible_rows_with_undefined_feature_parity0": 0,
+   "checked_cells_parity1": 24764168,
+   "eligible_rows_with_undefined_feature_parity1": 0,
+   "changed_cells": 0,
+   "eligible_rows": 3628114,
+   "pass": true
+  },
+  "3": {
+   "bars": 1253187,
+   "mixed_bars": 0,
+   "segments": 79,
+   "eligible_pct": 96.73,
+   "checked_cells_parity0": 7476573,
+   "eligible_rows_with_undefined_feature_parity0": 0,
+   "checked_cells_parity1": 8282040,
+   "eligible_rows_with_undefined_feature_parity1": 0,
+   "changed_cells": 0,
+   "eligible_rows": 1212201,
+   "pass": true
+  },
+  "5": {
+   "bars": 752340,
+   "mixed_bars": 0,
+   "segments": 79,
+   "eligible_pct": 94.7,
+   "checked_cells_parity0": 4390152,
+   "eligible_rows_with_undefined_feature_parity0": 0,
+   "checked_cells_parity1": 4871659,
+   "eligible_rows_with_undefined_feature_parity1": 0,
+   "changed_cells": 0,
+   "eligible_rows": 712447,
+   "pass": true
+  },
+  "30": {
+   "bars": 126126,
+   "mixed_bars": 0,
+   "segments": 79,
+   "eligible_pct": 70.53,
+   "checked_cells_parity0": 538226,
+   "eligible_rows_with_undefined_feature_parity0": 0,
+   "checked_cells_parity1": 618241,
+   "eligible_rows_with_undefined_feature_parity1": 0,
+   "changed_cells": 0,
+   "eligible_rows": 88959,
+   "pass": true
+  }
+ }
+}

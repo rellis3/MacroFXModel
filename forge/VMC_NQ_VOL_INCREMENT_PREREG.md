@@ -1,8 +1,9 @@
 # vmc-nq-vol-increment — does VuManChu Cipher B add material, repeatable information about NQ's next-hour range that a properly built price-only forecast cannot already provide?
 
-**DRAFT v2, 2026-10-30, for the owner's final review. Not yet registered; no outcome has been computed.**
-v2 incorporates the owner's seven amendments of 2026-10-30. Registration = the commit that changes this line and the
-register row to REGISTERED. Nothing runs before it.
+**DRAFT v3, 2026-10-30, for the owner's final review. Not yet registered; no outcome has been computed.**
+v2 incorporated the owner's seven amendments of 2026-10-30; v3 incorporates the owner's two final points (how
+independent the test period is, §2; the seam rule for feed joins and rolls, §3.1). Registration = the commit that
+changes this line and the register row to REGISTERED. Nothing runs before it.
 
 | | |
 |---|---|
@@ -45,29 +46,127 @@ on 2023 → 2026-08-20 against the simple baseline plus recent range:
 | mid-range with a cross | +0.034 / +0.043 / +0.036 / +0.050 |
 | mid-range without a cross | +0.020 / +0.028 / +0.018 / +0.025 |
 
+**How the test period has already been used.** 2023-01-01 → 2026-08-20 is **not an untouched holdout**. In
+`vmc-nq-cipher` it was:
+- the validation half for all 10 frozen survivors, including the range (V_12) cells: F1c on 1/3/5/30m, and the
+  60m/240m divergence, higher-timeframe and Money-Flow-led cells;
+- the period for the sequencing check;
+- the period for post-hoc amendment A1 on the range result, which covered:
+  - news removed;
+  - recent range added to the baseline;
+  - mid-range bars without a cross;
+  - year by year;
+  - without the top 1%.
+
+The NQ futures dataset itself (`vmcResearch/FUTURES_NQ.md`, the futures IC check) also spans it. What was learned
+there shaped this study's choices: the |wt1| < 20 definition, the blocks in §3.4, and the expectation that WTL is the
+likeliest block. The **richer baseline and the model comparisons below have not been run on any period.**
+
 **Classification**:
-- **Stage 2 is a reassessment of those findings against a stronger baseline on a period already explored. It is not
-  discovery and not independent confirmation.** Its results will be reported with that label everywhere they appear
+- **Stage 2 is an explicit reassessment of previously examined findings against a stronger baseline.** It is not
+  discovery and not independent confirmation. Its results are reported with that label everywhere they appear
   (report, register, Evidence Book). A Stage 2 "pass" can only say the previewed pattern survives a richer price
-  model; it cannot raise the evidence grade of the banked result. Independent confirmation would need the lockbox
-  (owner approval, ≥ 60 sessions; 36 now).
-- **Stages 3-5 have not been examined on any period.** Their hypotheses, features, models, thresholds and gates are
-  frozen in this document before any of their test-period outputs exist.
+  model. It cannot raise the evidence grade of the banked result.
+- **Stages 3-5 are new, pre-specified model comparisons and hypotheses, evaluated on a period already used in related
+  research.** Their hypotheses, features, models, thresholds and gates are frozen in this document before any of
+  their outputs exist. Their results can establish whether **this frozen analysis** finds material incremental value
+  **on this dataset**. They are **not independent confirmation**. Because the same period has been worked on
+  repeatedly, they cannot remove the broader risk of research-selection bias: choices made after seeing related
+  results on this period, possibly ones not written down, could favour a pass. Every Stage 3-5 verdict carries the
+  label "pre-specified; test period previously used in related research; not independent confirmation" in the
+  report, register and Evidence Book.
+- **The hypotheses and thresholds are not changed to compensate.** The 1% bar, the gates and the verdict words in
+  §3.7 and §4 stand as written. The limitation is documented here and carried as the label, not traded against the
+  gates.
+- **Independent confirmation stays a separate, future decision for the owner.** It would use the lockbox (trade dates
+  ≥ 2026-08-21, ≥ 60 sessions; 36 now). The lockbox stays sealed, and nothing in this study opens or uses it.
 
 ## 3. Definitions, fixed in advance
 
 ### 3.1 Observations and exclusions
 
-An observation is a bar t (forecast origin = the close of bar t) on timeframe τ ∈ {1, 3, 5, 30}. The bar is excluded
-if:
-- any bar in [t − 12, t + 12] is a contract roll bar (`roll_in_bar`);
-- any bar in [t − 12, t + 12] has a different feed source (`owner_share` changes, i.e. a join between NinjaTrader and
-  the owner's file);
-- its 12-bar target window (48 for h = 48) crosses the fit/test boundary (2022-12-31 / 2023-01-01) or the end of the
-  exploratory data;
-- any feature is undefined (warm-up).
+An observation is a bar t (forecast origin = the close of bar t) on timeframe τ ∈ {1, 3, 5, 30}.
 
-Exclusion counts are reported per timeframe and period.
+**Seams: rolls and feed joins (the rule).** v2 only excluded bars within ±12 of a roll or join. Some price features
+look back up to 500 bars, so v2 let a feature's window cross a seam. v3 replaces that with the rule below.
+Neither kind of seam is assumed harmless. Measured on the fit+test data (`seam_test.json`; no outcome involved):
+- **38 feed joins**:
+  - 19 NinjaTrader→owner and 19 back;
+  - 37 at the 18:00 ET session open, 1 at 20:00 ET.
+  - The first 1-minute move after a join is a median **2.0×** the median move at that minute on ordinary days
+    (90th percentile 13×, max 37×).
+  - Where NinjaTrader resumes, the price level differs by up to 0.13% (owner blocks are anchored at their start only).
+  - A join is therefore treated as a discontinuity, not as continuous history.
+- **42 contract rolls**:
+  - 41 at the 18:00 ET open; 1 at 18:18 ET, which falls inside a 30-minute bar.
+  - The ratio back-adjusted series is genuinely continuous in percentage terms **within** a contract. The roll bar
+    itself is continuous only if the adjustment ratio matches the price gap at the switch, and that can't be verified
+    from the stored data (no overlapping second contract).
+  - The roll-bar move is a median 0.70× an ordinary move at that minute, but the 90th percentile is 3.1× and the max
+    14×. One roll (2016-09) has an adjustment ratio of exactly 1.0, i.e. it was not adjusted.
+  - So the roll bar is treated as a discontinuity too.
+  - No roll falls inside an owner-file block.
+- 2 seams are both a roll and a join, giving **78 seams** in fit+test.
+
+| Term | Definition |
+|---|---|
+| **Seam** | a 1-minute bar whose contract or feed source differs from the previous 1-minute bar |
+| **Segment** | a maximal run of τ-bars with no seam inside it. A τ-bar holding 1-minute bars from both sides of a seam (a "mixed" bar; none occur in the NQ data, because the 18:18 roll has no earlier 1-minute bars in its 30-minute bar, but the rule and the synthetic test cover it) belongs to no segment and is never used |
+| **Features are built per segment** | every feature at t is computed from bars of t's own segment only. Rolling windows are undefined if they would reach before the segment start. Recursive indicators (WaveTrend EMAs, RSI) restart at the segment start. "Previous trade date" quantities are undefined unless that whole date lies in t's segment. 1-minute inputs (realised variance) come from the same segment's 1-minute bars. **No feature's actual lookback can cross a seam** |
+| **Eligible observation** | (i) t − segment start ≥ L, the longest actual lookback of any feature in any compared model (σ500, the VWAP distance's 500-bar σ, k = 288 ranges, WaveTrend/MF warm-up), **plus 12 for the stale-V control**: L = 512 τ-bars; (ii) the previous trade date lies wholly in the segment; (iii) the target window t+1..t+h lies in the same segment (h = 12 primary; the h = 48 and "earlier" (t+13..t+24) descriptive targets need their own windows inside the segment too) |
+| **One common set** | every model pair is scored on the same eligible bars, so the rule never differs between a base and an augmented model |
+
+**Code-level test** (`scripts/vmc-nq-vol-increment/seams.py`, `test_seams.py`): segment perturbation.
+- Segments are split by parity. Every 1-minute bar in the odd segments, and in mixed bars, is replaced arbitrarily: a
+  random level factor of ±10% per segment, independent noise on O/H/L/C, and random volume.
+- τ-bars and features are rebuilt. Every feature and the target at every eligible observation in an even segment must
+  be **bit-identical**, and no eligible observation may have an undefined feature. The same is then done with the
+  parities swapped.
+- A **negative control** must fail: the same features computed across the whole array, as the banked dataset did.
+  This shows the test can detect a crossing.
+- Run before this draft (fit+test only, lockbox not read), on a representative set:
+  - ranges over 12 and 288 bars;
+  - σ500;
+  - the real VuManChu state (WaveTrend, MF, VWAP distance);
+  - stale V;
+  - previous-day range;
+  - the target.
+- Results:
+
+| τ | eligible bars | mixed bars | changed cells | result |
+|---|---|---|---|---|
+| synthetic 1m / 30m | 93.4% / 43.0% | 0 / 1 | 0 / 0 (negative control 357,778 / 5,108) | PASS |
+| NQ 1m / 3m / 5m / 30m (79 segments) | 97.1% / 96.7% / 94.7% / 70.5% | 0 / 0 / 0 / 0 | 0 of 47.2M / 15.8M / 9.3M / 1.2M checked cells | PASS |
+
+The full feature builder (every C, P, K, V, PVD feature and every target) must pass the same test, on all four
+timeframes, **before any test-period number is computed**. If it fails, nothing proceeds until it is fixed, and the
+fix is recorded.
+
+**Stage 4 percentile references (the one place information from other segments is used, by design).**
+- p_t and p_f (§3.9) compare a 12-bar range with the same half-hour's 12-bar ranges on the 20 previous trade dates.
+- A whole-window rule would exclude 20 trade dates after every seam, an estimated 50-60% of the data. So the rule is applied to
+  each **reference element**:
+  - an element counts only if its own 12-bar window lies inside one segment;
+  - that segment must have the **same feed source** as bar t, so no range measured on one feed is ranked against
+    ranges from the other;
+  - p is defined only if ≥ 15 of the 20 dates supply a valid element; otherwise the bar is excluded from Stage 4.
+- Each element is then a log range inside one segment, which a level shift at any seam can't change. Comparing
+  same-feed ranges from different contracts is the ordinary continuous-futures assumption: within each contract, the
+  percentage moves are exact.
+- `test_seams.py` gets a Stage 4 case before any Stage 4 number is computed. Every other segment is multiplied by its
+  own random level factor (no noise), and p_t and p_f at every eligible bar must be unchanged to 1e-12. A
+  same-source violation must be caught by an assertion.
+
+**Other exclusions**:
+- the target window (48 for h = 48) crosses the fit/test boundary (2022-12-31 / 2023-01-01) or the end of the
+  exploratory data;
+- any feature is undefined.
+
+Gaps inside one feed (missing minutes, `gap_before`) are not seams. The data is the same feed and the same contract,
+and the features treat missing minutes as absent, as in `vmc-nq-cipher`.
+
+Exclusion counts (seam rule, warm-up, boundary) are reported per timeframe, period and feed source. Skill on
+NinjaTrader-only bars is reported as a descriptive check.
 
 ### 3.2 Target
 
@@ -90,6 +189,7 @@ Leak checks before any test number is computed:
 1. The Stage 0 truncation test is extended to every new feature. Features computed on history cut part-way must equal
    the full computation bit-for-bit.
 2. A feature-timing test: every feature at t is recomputed with bars after t set to NaN, and must be unchanged.
+3. The seam perturbation test (§3.1) on the full feature builder, with its negative control failing.
 
 ### 3.4 VuManChu blocks (V)
 
@@ -218,9 +318,8 @@ The future p_f uses the same reference distribution (the trailing 20 dates at th
 - No refit inside a year. No information from Y or later enters fitting, feature scaling or percentile cutpoints (all
   cutpoints are trailing).
 - Overlapping forward windows inside a test year are handled by the block bootstrap (§3.6).
-- Rolls and feed joins: the §3.1 exclusion removes any observation whose window touches one. Longer lookbacks (up to
-  288 bars) may span a roll on the ratio-adjusted series, which is continuous in percentage terms, so no price jump
-  enters. No observation's target window ever contains a roll or a join.
+- Rolls and feed joins: the §3.1 seam rule. No observation's features (at their full actual lookback, including
+  stale V) or target window contain a roll or a join. Fit rows obey the same rule as test rows.
 
 ### 3.11 Controls: what each establishes, and what it cannot
 
@@ -271,7 +370,8 @@ reported first.
   recorded, with that wording in the text.
 - **CONTEXT**: descriptive outputs (S1, ablation, PVD, H4c, h = 48).
 
-Stage 2's verdicts carry the reassessment label.
+Stage 2's verdicts carry the reassessment label. Stage 3-5 verdicts carry "pre-specified; test period previously used in
+related research; not independent confirmation" (§2). The labels describe the evidence; they don't change any gate.
 
 ## 5. Power
 
@@ -287,7 +387,8 @@ With a residual SD of about 0.43 log units and design effect 1.5, the MDE is abo
 - A: 0.009 / 0.015 / 0.019 / 0.049;
 - B: 0.010 / 0.017 / 0.022 / 0.056.
 
-A 0.02 bar is powered at 1m and 3m only; 5m is borderline and **30m is UNDERPOWERED by design**. Contrasts involving B
+These counts predate the v3 seam rule, which removes 2.9% / 3.3% / 5.3% of bars at 1 / 3 / 5m and 29.5% at 30m (§3.1); the
+run-time bootstrap SE accounts for it. A 0.02 bar is powered at 1m and 3m only; 5m is borderline and **30m is UNDERPOWERED by design**. Contrasts involving B
 (level, A − B, interaction) inherit B's MDE. The reported bootstrap SE replaces these estimates at run time.
 
 **Skill**: the expected 95% half-width at 1-5m is about 0.2-0.4% (LIVE_RANGE / FUTURES_VOL experience), so a 1% bar is
@@ -323,11 +424,14 @@ There are no other variants. Nothing is promoted to any live use from this study
 - Discretionary chart reading.
 - Whether an even better price-only model exists. If price-only wins here, a more elaborate VuManChu model is not a
   reason to reopen.
-- **No independent confirmation of the banked Stage 2 pattern**: that needs the lockbox, which stays sealed.
+- **No independent confirmation** of the banked Stage 2 pattern, nor of any Stage 3-5 result: the test period has
+  been used in related research (§2). Confirmation needs the lockbox, which stays sealed; using it is a separate
+  decision for the owner.
 
 ## 8. What each verdict changes
 
-- **H3 VALIDATED**: Cipher B carries material incremental range information on NQ. Any next step (lockbox
+- **H3 VALIDATED**: under this frozen analysis, Cipher B carries material incremental range information on this NQ
+  dataset. That is not independent confirmation (§2). Any next step (lockbox
   confirmation at ≥ 60 sessions, ES/GC replication, any use in sizing or stops) is a separate decision for the owner.
 - **H3 NULL**: recorded plainly. Cipher B adds less than 1% to a price-and-calendar forecast of NQ's next-12-bar
   range. The banked `vmc-nq-cipher-volatility` entry stays as run, with a note that it is captured as well or better by
@@ -353,6 +457,14 @@ There are no other variants. Nothing is promoted to any live use from this study
   5. Walk-forward fitting, overlap and roll/join handling specified; the controls' scope stated.
   6. Verdict wording for inconclusive results.
   7. Registration only after the owner's final review.
+- v3, 2026-10-30, after the owner's final review:
+  1. §2 states how the 2023 → 2026-08-20 period was already used. Stage 2 is a reassessment; Stages 3-5 are new
+     pre-specified comparisons on a previously used period, not independent confirmation. That is carried as a label;
+     the gates and thresholds are unchanged.
+  2. §3.1: the ±12-bar roll/join exclusion is replaced by the seam rule (features built per segment, eligibility at
+     the full actual lookback L = 512 plus the target window, mixed bars dropped, Stage 4 references per element and
+     same-feed). The perturbation test with its negative control is in `test_seams.py`, run on fit+test data;
+     §3.10's continuity claim for rolls is withdrawn.
 
 ## RESULTS
 
