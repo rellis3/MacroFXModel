@@ -48,6 +48,10 @@ assert.equal(rec.missedCandidates[0].explainReason, 'symbol on skip list');
 assert.equal(rec.unmatchedRealTrades.length, 1);
 assert.equal(rec.mismatchDetail[0].signal_id, '101:1');
 
+const ign = reconcileSignalCopierDay({ date: '2026-10-30', trades: [], signals: signals.map(s => s.symbol === 'BTCUSD' ? { ...s, ignored: 'crypto' } : s), events });
+assert.equal(ign.backtestCandidateCount, 2);
+assert.ok(!ign.missedCandidates.some(m => m.id === '101:2'));
+
 const empty = reconcileSignalCopierDay({ date: '2026-10-30', trades: [], signals, events: [] });
 assert.equal(empty.decisionMatchRate, null);
 assert.match(empty.note, /3 of his signal/);

@@ -50,6 +50,14 @@ own account and sees exactly what your app sees. Don't forward the content, beca
 | `CLOSE the X SELL from …` | closes that position |
 | anything trade-like it can't parse, edits, deletions | alert only, never guessed |
 
+**Ignore crypto** (on by default): crypto signals (BTCUSD, ETHUSD…) are logged as `crypto ignored` and nothing else:
+- no order and no alert
+- not in Signal Outcomes or the COG export, and not counted in Bot Audit
+- skipped in history replays (the parse report counts them as "ignored (crypto)")
+- left out of the start-up symbol check
+
+Crypto outcomes stored earlier are hidden, not deleted.
+
 Entry guards: kill switch, styles on/off, skip list, max open, stale market signal (default 300 s), price already
 past the stop, entry drift worse than 0.25R, spread wider than 0.2 × stop, min lot that would over-risk the account.
 Every decision goes to the Decision Timeline with its reason.
