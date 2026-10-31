@@ -154,6 +154,39 @@ def test_history_window_is_wide_enough_for_any_broker_offset():
     assert (hi - now).total_seconds() >= 24 * 3600
 
 
+def _h1_week(friday_close_broker, hours=120):
+    """H1 bars for one FX week ending with a bar at `friday_close_broker`."""
+    return [{"time": friday_close_broker - 3600 * k} for k in range(hours)][::-1]
+
+
+def test_weekly_offsets_summer_and_winter_from_the_friday_close():
+    from datetime import datetime, timezone
+    from pylego.broker.clock import weekly_offsets, offset_for
+    epoch = lambda *a: int(datetime(*a, tzinfo=timezone.utc).timestamp())   # broker wall clock as an epoch
+    # EET/EEST broker: the last H1 bar of the week is 23:00 broker = 16:00 New York
+    summer = epoch(2026, 10, 16, 23)      # NY on EDT: 20:00 UTC -> UTC+3
+    winter = epoch(2026, 11, 6, 23)       # NY on EST: 21:00 UTC -> UTC+2
+    bars = _h1_week(summer) + _h1_week(epoch(2026, 10, 23, 23)) + _h1_week(epoch(2026, 10, 30, 23)) + _h1_week(winter)
+    bars.append({"time": epoch(2026, 11, 9, 0)})   # next week's open: a close is only known once the gap is seen
+    tl = weekly_offsets(bars)
+    assert [o for _, o in tl] == [10800, 10800, 10800, 7200], tl
+    assert offset_for(epoch(2026, 10, 14, 9), tl) == 10800          # inside the summer week
+    assert offset_for(epoch(2026, 11, 4, 9), tl) == 7200            # inside the winter week
+    assert offset_for(epoch(2026, 11, 10, 9), tl, current=7200) == 7200   # after the last close: live offset
+    assert offset_for(epoch(2026, 11, 10, 9), tl) == 7200           # ... or the last known week
+
+
+def test_weekly_offsets_drops_an_early_holiday_close():
+    from datetime import datetime, timezone
+    from pylego.broker.clock import weekly_offsets
+    epoch = lambda *a: int(datetime(*a, tzinfo=timezone.utc).timestamp())
+    week = lambda a, b: [{"time": t} for t in range(epoch(*a), epoch(*b) + 1, 3600)]   # Sunday open .. last bar
+    bars = (week((2026, 12, 6, 23), (2026, 12, 11, 23)) + week((2026, 12, 13, 23), (2026, 12, 18, 23))
+            + week((2026, 12, 20, 23), (2026, 12, 24, 20))          # Christmas Eve: closes 13:00 New York
+            + week((2027, 1, 3, 23), (2027, 1, 8, 23)) + [{"time": epoch(2027, 1, 10, 23)}])
+    offs = [o for _, o in weekly_offsets(bars)]
+    assert offs == [7200, 7200, 7200], offs     # the early close is dropped, not read as a -1h offset
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

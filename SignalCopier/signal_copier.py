@@ -50,6 +50,7 @@ from pylego.broker.paper import PaperBroker                            # noqa: E
 from pylego.quotes import QuoteFeed                                     # noqa: E402
 from pylego.costs import spread_for                                     # noqa: E402
 from pylego.risk_guard import RiskGuard, block_category, log_block_transition  # noqa: E402
+from pylego.broker.clock import offset_for, weekly_offsets                    # noqa: E402
 
 from book import Book, describe                                         # noqa: E402
 from outcome import resolve, template_row                               # noqa: E402
@@ -287,13 +288,34 @@ class Copier:
             return self.quotes.price(pair)
         return None
 
+    def offset_timeline(self, since):
+        """The broker's UTC offset week by week (pylego.broker.clock.weekly_offsets),
+        read from an FX pair's H1 bars, cached for an hour. The live tick offset
+        alone is None all weekend and only right for the current week."""
+        tl = getattr(self, "_tl", None)
+        if tl is not None and self._tl_since <= since and _now() - self._tl_at < 3600:
+            return tl
+        tl = []
+        tf = getattr(self.data.mt5, "TIMEFRAME_H1", None)
+        for ref in ("EURUSD", "GBPUSD", "USDJPY"):
+            tl = weekly_offsets(self.data.session_bars(ref, int(since) - 10 * 86400, tf=tf))
+            if tl:
+                break
+        self._tl, self._tl_since, self._tl_at = tl, since, _now()
+        if not tl and self.data.server_offset_sec() is None and not getattr(self, "_tl_warned", False):
+            self._tl_warned = True
+            log.warning("broker clock offset unknown (no FX weekly closes in the bars, market closed) "
+                        "-- bar times are used as UTC and may be hours out")
+        return tl
+
     def bars(self, pair, since):
         if self.data is not None:
-            off = self.data.server_offset_sec() or 0
-            # Request from well before the post on either clock reading of the
-            # timestamp; the resolver ignores everything before the post.
-            rows = self.data.session_bars(pair, int(since) - abs(off) - 3600)
-            return [{**b, "time": b["time"] - off} for b in rows]
+            current = self.data.server_offset_sec()
+            tl = self.offset_timeline(since)
+            # Request from well before the post on any broker clock; the resolver
+            # ignores everything before the post.
+            rows = self.data.session_bars(pair, int(since) - 15 * 3600 - 86400)
+            return [{**b, "time": b["time"] - (offset_for(b["time"], tl, current) or 0)} for b in rows]
         return [{"time": t, "open": p, "high": p, "low": p, "close": p} for t, p in self.samples.get(pair, [])]
 
     # ── decisions / alerts ───────────────────────────────────────────────
