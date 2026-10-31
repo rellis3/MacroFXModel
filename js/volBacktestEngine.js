@@ -96,21 +96,51 @@ async function fetchD1(instrument, count = 5000) {
     .filter(c => c.close > 0);
 }
 
+// Calendar date (YYYY-MM-DD) of an instant in an IANA time zone. DST-safe via Intl.
+function _localDate(ms, timeZone) {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(new Date(ms)).reduce((o, x) => (o[x.type] = x.value, o), {});
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+// Map OANDA daily candles to {date,open,high,low,close}. Pure, so it can be tested
+// without a network call (js/volBacktestEngine.dates.test.mjs).
+//   Midnight alignment (dailyAlignment 0): `date` is the candle's own calendar date
+//   IN alignmentTimezone. Before 2026-10-31 it was the UTC date of the candle start,
+//   which in BST is the day BEFORE (a London-midnight candle starts 23:00 UTC), so
+//   every summer bar was labelled a day early and no bar was ever labelled Friday
+//   (REPO_REVIEW_2026-10-31 S1, DATA_SPEC §5). Weekend-dated candles (the 2-hour
+//   Sunday-evening stub) are dropped; their move rolls into Monday's close-to-close.
+//   Other alignments (e.g. the 17:00 New York default) keep the original UTC-date
+//   label, which no caller relies on for session dating.
+//   `to` (YYYY-MM-DD, inclusive) cuts the series, e.g. at the lockbox (2026-08-21).
+function _mapD1Candles(candles, { dailyAlignment = 17, alignmentTimezone = 'America/New_York', to = null } = {}) {
+  const local = dailyAlignment === 0;
+  return (candles ?? [])
+    .filter(c => c.complete !== false && c.mid)
+    .map(c => {
+      const ms = new Date(c.time).getTime();
+      const date = local ? _localDate(ms, alignmentTimezone) : new Date(ms).toISOString().slice(0, 10);
+      return { date, open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c };
+    })
+    .filter(c => c.close > 0)
+    .filter(c => !local || ![0, 6].includes(new Date(`${c.date}T12:00:00Z`).getUTCDay()))
+    .filter(c => !to || c.date <= to);
+}
+
 // D1 with an EXPLICIT daily boundary (OANDA dailyAlignment + alignmentTimezone).
 // Default matches fetchD1 (17:00 New York). Pass { dailyAlignment: 0,
 // alignmentTimezone: 'Europe/London' } for London-midnight-anchored daily bars —
-// the anchor the forecasting models use. Returns {date,open,high,low,close};
-// `date` = the bar's own day (no broker-advance — callers here use closes only).
-async function fetchD1Aligned(instrument, count = 130, { dailyAlignment = 17, alignmentTimezone = 'America/New_York' } = {}) {
+// the anchor the forecasting models use. Returns {date,open,high,low,close}; see
+// _mapD1Candles for how `date` is set. Research callers should pass `to` to respect
+// the lockbox: this is a live fetch and returns data up to today.
+async function fetchD1Aligned(instrument, count = 130, { dailyAlignment = 17, alignmentTimezone = 'America/New_York', to = null } = {}) {
   const url = `${_oandaBase()}/v3/instruments/${encodeURIComponent(instrument)}/candles`
             + `?granularity=D&count=${count}&price=M&dailyAlignment=${dailyAlignment}&alignmentTimezone=${encodeURIComponent(alignmentTimezone)}`;
   const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
   if (!r.ok) throw new Error(`Oanda D1(${alignmentTimezone}@${dailyAlignment}) ${instrument}: HTTP ${r.status}`);
   const data = await r.json();
-  return (data.candles ?? [])
-    .filter(c => c.complete !== false && c.mid)
-    .map(c => ({ date: new Date(c.time).toISOString().slice(0, 10), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }))
-    .filter(c => c.close > 0);
+  return _mapD1Candles(data.candles, { dailyAlignment, alignmentTimezone, to });
 }
 
 // UTC epoch (seconds) of the most recent 00:00 Europe/London — DST-safe via Intl,
@@ -385,7 +415,7 @@ function runBacktest(bars, assetClass, opts = {}) {
 // ── Public: run all instruments and return structured result ──────────────────
 
 export { ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P50, BM_P75, HN_P50, HN_P75, G_ALPHA, G_BETA };
-export { fetchD1, fetchD1Aligned, fetchM1Range, fetchSessionOpenLondon, londonMidnightSec };
+export { fetchD1, fetchD1Aligned, fetchM1Range, fetchSessionOpenLondon, londonMidnightSec, _mapD1Candles };
 
 export async function runFullBacktest(opts = {}, instruments = INSTRUMENTS) {
   if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set — cannot fetch D1 data');

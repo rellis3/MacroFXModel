@@ -41,7 +41,7 @@ for (const [ccy, L] of Object.entries(LEGS)) {
   const fm = await fredCsv(L.fredMonthly); const byM = {}; for (const o of yld) (byM[o.date.slice(0, 7)] ??= []).push(o.value);
   const val = fm.slice(-8).map(o => { const m = o.date.slice(0, 7); const ours = byM[m] ? mean(byM[m]) : null; return { m, fred: o.value, ours: r3(ours), diffBp: ours == null ? null : Math.round((ours - o.value) * 100) }; }).filter(v => v.ours != null);
   console.log(`${ccy}: ${L.key} ${yld[0].date} -> ${yld.at(-1).date} (${yld.length}); vs FRED monthly: ${val.map(v => `${v.m} ${v.diffBp}bp`).join(', ')}`);
-  const bars = await fetchD1Aligned(L.pair, 5000, { dailyAlignment: 0, alignmentTimezone: 'Europe/London' });
+  const bars = await fetchD1Aligned(L.pair, 5000, { dailyAlignment: 0, alignmentTimezone: 'Europe/London', to: '2026-08-21' });
   const barBy = new Map(bars.map(b => [b.date, b]));
   // one row per common date: yields, gap, pair
   const rows = [];

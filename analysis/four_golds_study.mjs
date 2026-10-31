@@ -20,7 +20,7 @@ const wilson = (k, n) => { if (!n) return null; const p = k / n, z = 1.96; const
 async function fredCsv(id) { const t = await (await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`)).text(); return t.trim().split('\n').slice(1).map(l => { const [d, v] = l.split(','); return { date: d, value: parseFloat(v) }; }).filter(o => Number.isFinite(o.value)); }
 
 const [vix, real, dxy] = await Promise.all(['VIXCLS', 'DFII10', 'DTWEXBGS'].map(fredCsv));
-const bars = await fetchD1Aligned('XAU_USD', 5000, { dailyAlignment: 0, alignmentTimezone: 'Europe/London' });
+const bars = await fetchD1Aligned('XAU_USD', 5000, { dailyAlignment: 0, alignmentTimezone: 'Europe/London', to: '2026-08-21' });
 const gBy = new Map(bars.map(b => [b.date, b.close]));
 const vBy = new Map(vix.map(o => [o.date, o.value]));
 // sessions = gold bars with a VIX close (VIX is the clock for G1)

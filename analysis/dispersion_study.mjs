@@ -58,7 +58,7 @@ const result = { ranAt: new Date().toISOString(), setupsFalling: setupFall.lengt
   setups: setupAll.length, setupsCalmVix: setupCalm.length, corrDspxVix: corr(both.map(r => r.value), both.map(r => r.vix)), instruments: {} };
 
 for (const [name, sym] of [['SPX500', 'SPX500_USD'], ['NQ', 'NAS100_USD']]) {
-  let bars = []; try { bars = await fetchD1Aligned(sym, 5000, { dailyAlignment: 0, alignmentTimezone: 'Europe/London' }); } catch (e) { console.log(`  ${name}: ${e.message}`); continue; }
+  let bars = []; try { bars = await fetchD1Aligned(sym, 5000, { dailyAlignment: 0, alignmentTimezone: 'Europe/London', to: '2026-08-21' }); } catch (e) { console.log(`  ${name}: ${e.message}`); continue; }
   const idx = new Map(bars.map((b, i) => [b.date, i]));
   const trailMed = i => { const s = bars.slice(Math.max(0, i - 20), i).map(b => (b.high - b.low) / b.close); return s.length >= 10 ? median(s) : null; };
   const fwd = (i, n) => { const m = trailMed(i); if (!m || i + n >= bars.length) return null; return mean(bars.slice(i + 1, i + 1 + n).map(b => (b.high - b.low) / b.close)) / m; };

@@ -43,7 +43,7 @@ console.log(`blow-outs: ${firsts.length} episodes; disagreement windows ${rows.f
 // C1: next-20 realised range in ATR terms, per instrument
 const c1 = {};
 for (const [sym, name] of [['WTICO_USD', 'WTI'], ['USD_CAD', 'USDCAD'], ['XAU_USD', 'XAUUSD']]) {
-  let bars = []; try { bars = await fetchD1Aligned(sym, 5000, { dailyAlignment: 0, alignmentTimezone: 'Europe/London' }); } catch (e) { console.log(`  ${name}: ${e.message}`); continue; }
+  let bars = []; try { bars = await fetchD1Aligned(sym, 5000, { dailyAlignment: 0, alignmentTimezone: 'Europe/London', to: '2026-08-21' }); } catch (e) { console.log(`  ${name}: ${e.message}`); continue; }
   const idx = new Map(bars.map((b, i) => [b.date, i]));
   const atr = i => { const s = bars.slice(Math.max(0, i - 20), i); return s.length ? mean(s.map(b => b.high - b.low)) : null; };
   const fwd = i => { const a = atr(i); if (!a || i + W >= bars.length) return null; return bars.slice(i + 1, i + 1 + W).reduce((s, b) => s + (b.high - b.low), 0) / a / W; };   // mean daily range in ATRs
