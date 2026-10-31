@@ -174,6 +174,24 @@ For direction: cross-sectional carry (positive), COT state D, and post-FOMC drif
 
 ## 4. Bugs found (file:line), with what they touch
 
+> **Status, later on 2026-10-31: fixed on this branch**, each with a test that fails on the old code where one
+> could be written (DATA_SPEC §5 #13–#21):
+> - shared defects S1–S6
+> - the QMR exit hour
+> - GlobalLiquidity units and monthly lags
+> - the levels-v2 live window
+> - weekend stubs in runAnalyser, the zone pricer and the Level Atlas live plan
+>
+> **Not changed:** banked verdicts and live fitted parameters. Each affected result has a `RE-RUN` row in the
+> register. The live ladder event multipliers need a refit on the M1 cache.
+>
+> **Two corrections to the table below:**
+> - The "22-UTC callers" in the range-line / levels-v2 family are consistent with each other (all on the 22:00-UTC
+>   broker day). The live levels-v2 window was the one that disagreed. Moving the family to London sessions is an
+>   owner decision.
+> - Python GlobalLiquidity does apply lags (in `gli.py`). They were too short for monthly series, the same as in
+>   the JS engine.
+
 **Shared defects. Fix these before any re-run, because they reach many studies.** ✓ = re-checked by the lead reviewer in the code or by a re-run; the others come from one audit agent with file:line evidence and should be confirmed when fixed.
 
 | # | Where | Defect | Reaches |
