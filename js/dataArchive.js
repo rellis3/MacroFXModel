@@ -77,6 +77,35 @@ export function createDataArchive({ putJSON, getJSON, listKeys = async () => [],
     } catch (e) { log.warn?.(`[archive] ${key}: ${e?.message}`); return { wrote: false, error: e?.message, key }; }
   }
 
+  /**
+   * Merge dated multi-field rows ([{date, ...numbers}]) into archive/tables/<source>/<id>.json. Rows only ever get
+   * added; a changed row keeps its first version under `firstSeen` so CFTC/agency revisions stay visible.
+   */
+  async function mergeTable(source, id, rows, meta = {}) {
+    if (!isOn() || !Array.isArray(rows) || !rows.length) return { wrote: false, reason: isOn() ? 'empty' : 'no R2' };
+    const key = `archive/tables/${safe(source)}/${safe(id)}.json`;
+    const lw = lastWrite.get(key);
+    if (lw && now() - lw.at < minIntervalMs) return { wrote: false, reason: 'throttled', key };
+    try {
+      const prev = await getJSON(key);
+      const by = new Map((prev?.rows ?? []).map(r => [r.date, r]));
+      let added = 0, revised = 0;
+      for (const r of rows) {
+        const d = String(r?.date ?? '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
+        const { firstSeen: _f, ...clean } = { ...r, date: d };
+        const cur = by.get(d);
+        if (!cur) { by.set(d, clean); added++; continue; }
+        const { firstSeen, ...curClean } = cur;
+        if (JSON.stringify(curClean) !== JSON.stringify(clean)) { by.set(d, { ...clean, firstSeen: firstSeen ?? curClean }); revised++; }
+      }
+      lastWrite.set(key, { at: now() });
+      if (prev && !added && !revised) return { wrote: false, reason: 'unchanged', key, n: by.size };
+      const out = [...by.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
+      await putJSON(key, { source, id, ...meta, updatedAt: new Date(now()).toISOString(), first: out[0]?.date ?? null, last: out.at(-1)?.date ?? null, n: out.length, rows: out });
+      return { wrote: true, key, added, revised, n: out.length };
+    } catch (e) { log.warn?.(`[archive] ${key}: ${e?.message}`); return { wrote: false, error: e?.message, key }; }
+  }
+
   /** Dates already archived for a snapshot source (cached per process, refreshed daily). */
   const known = new Map();
   async function archivedDates(source) {
@@ -106,7 +135,7 @@ export function createDataArchive({ putJSON, getJSON, listKeys = async () => [],
     return done;
   }
 
-  return { get enabled() { return isOn(); }, snapshot, mergeSeries, backfill, archivedDates };
+  return { get enabled() { return isOn(); }, snapshot, mergeSeries, mergeTable, backfill, archivedDates };
 }
 
 /** FRED series whose only free source is a rolling window: archive daily or lose them (ICE BofA on FRED: 3 years). */

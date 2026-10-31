@@ -82,3 +82,15 @@ test('configured() false means disabled even with adapter functions present', as
   assert.equal((await ar.snapshot('x', '2026-10-30', { a: 1 })).reason, 'no R2');
   assert.equal(r2.puts, 0);
 });
+
+test('mergeTable keeps every week and records revisions', async () => {
+  const r2 = fakeR2(); let t = 0;
+  const ar = createDataArchive({ ...r2, now: () => t, minIntervalMs: 10 });
+  await ar.mergeTable('cot', 'EUR', [{ date: '2006-06-13', oi: 100, lev_long: 5 }, { date: '2006-06-20', oi: 110, lev_long: 6 }]);
+  t = 100;
+  const r = await ar.mergeTable('cot', 'EUR', [{ date: '2006-06-20', oi: 111, lev_long: 6 }, { date: '2026-10-27', oi: 700, lev_long: 50 }]);
+  assert.deepEqual([r.added, r.revised, r.n], [1, 1, 3]);
+  const doc = r2.store.get('archive/tables/cot/EUR.json');
+  assert.equal(doc.first, '2006-06-13'); assert.equal(doc.last, '2026-10-27');
+  assert.equal(doc.rows[1].oi, 111); assert.equal(doc.rows[1].firstSeen.oi, 110);
+});

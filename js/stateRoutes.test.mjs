@@ -51,3 +51,15 @@ test('readers feed the global banner, economies, layers and edges; a failing rea
   assert.ok(doc.errors.some(e => e.source === 'cot-state' && /No COT/.test(e.error)));
   assert.ok(doc.errors.some(e => e.source === 'stress-shadow'));
 });
+
+test('deep FRED history from R2 replaces the 90-print KV copy when it is longer', async () => {
+  process.env.OANDA_KEY = process.env.OANDA_KEY || 'test';
+  const short = Array.from({ length: 90 }, (_, i) => ({ date: new Date(Date.UTC(2026, 6, 1) + i * 864e5).toISOString().slice(0, 10), value: 4 }));
+  const deep = Array.from({ length: 3000 }, (_, i) => ({ date: new Date(Date.UTC(2015, 0, 1) + i * 864e5).toISOString().slice(0, 10), value: 2 + i / 1000 }));
+  const kv = { get: async k => (k === 'fredhistory_series_us10y' ? JSON.stringify(short) : null) };
+  const routes = createStateRoutes({ kv, port: 1, fetchD1: async () => [], log: { error() {} }, readers: { deepFred: async k => (k === 'us10y' ? deep : null) } });
+  const doc = await routes.get();
+  assert.deepEqual(doc.deepHistory, ['us10y']);
+  const r = doc.tiers[0].readings.find(x => x.key === 'us10y');
+  assert.ok(r.pctile.spanDays > 1000, `span ${r.pctile.spanDays}`);
+});

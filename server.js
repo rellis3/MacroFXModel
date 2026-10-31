@@ -396,6 +396,7 @@ import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from
 import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic, resetBackfillStore as tdeResetBackfillStore, TDE_BACKFILL_PAIRS } from './Trade_Decision_Engine/backfill.js';
 import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 / ou-pairs research runs (off the main loop)
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
+import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
 // The permanent record of data that cannot be re-fetched (plans/DATA_ASSET_MAP.md §4A–B): R2, append-only.
 const _archive = createDataArchive({ putJSON: _r2PutJSON, getJSON: _r2GetJSON, listKeys: _r2ListKeys, configured: _r2Ok, log: console });
 
@@ -9302,8 +9303,11 @@ async function _buildGprScore() {
     .filter(row => row.DAY && Number.isFinite(row.GPRD_MA30))
     .map(row => {
       const s = String(row.DAY);
-      return { date: `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`, gprdMa30: row.GPRD_MA30 };
+      return { date: `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`, gprdMa30: row.GPRD_MA30, gprd: Number.isFinite(row.GPRD) ? row.GPRD : null };
     });
+  // Keep the history (the file is "recent" only; the engine used to keep one score). Best-effort.
+  _archive.mergeSeries('gpr', 'GPRD_MA30', rows.map(r => ({ date: r.date, value: r.gprdMa30 })), { source: GPR_DAILY_URL }).catch(() => {});
+  _archive.mergeSeries('gpr', 'GPRD', rows.filter(r => r.gprd != null).map(r => ({ date: r.date, value: r.gprd })), { source: GPR_DAILY_URL }).catch(() => {});
   const score = _gprScore(rows);
   if (!score) throw new Error('GPR: not enough clean history after parsing');
   const payload = { ...score, generatedAt: new Date().toISOString() };
@@ -30433,6 +30437,7 @@ createStressShadow({ kv }).mount(app);
 createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, readers: {   // in-memory reads only; never trigger the heavy builds
   globalRead: () => _grLatest, riskFlags: () => computeRiskFlags(), funding: () => _frLast?.read ?? null, nowcast: () => _nowcast,
   oiToday: () => _oiTodayCache?.payload ?? null, cotState: () => _buildCotState(), volForecast: () => forecastState.latest ?? null,
+  deepFred: key => _deepFredSeries(key),
 } }).mount(app);   // must sit above the /api/* worker catch-all
 svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);
 
@@ -39073,6 +39078,17 @@ if (VFR_REFRESH_UTC && process.env.OANDA_KEY) {
 // Stops the losses: every FRED series behind /api/fredhistory (which keeps 90 prints) and the ICE credit spreads
 // (FRED serves a rolling 3 years) are pulled at full depth and merged into R2; every CME options day held in KV is
 // copied to R2 if R2 lacks it; the gold ETF flow is captured whether or not anyone opens the page. Append-only.
+// Full-depth FRED series from the R2 archive, keyed like /api/fredhistory (us10y, tips, hy, ...). Cached 6h in memory.
+const _deepFredCache = new Map();
+async function _deepFredSeries(key) {
+  const id = _FREDHISTORY_SERIES[key]; if (!id || !_archive.enabled) return null;
+  const c = _deepFredCache.get(id); if (c && Date.now() - c.at < 6 * 3600e3) return c.pts;
+  const doc = await _r2GetJSON(`archive/series/fred/${id}.json`).catch(() => null);
+  const pts = Array.isArray(doc?.points) ? doc.points.map(p => ({ date: p[0], value: p[1] })) : null;
+  _deepFredCache.set(id, { at: Date.now(), pts });
+  return pts;
+}
+let _cotArchiveAt = 0;
 async function _archiveDaily() {
   if (!_archive.enabled) return { ok: false, reason: 'R2 not configured' };
   const out = { fred: 0, failed: [], oiRaw: 0, oiSummary: 0, gold: false };
@@ -39095,7 +39111,18 @@ async function _archiveDaily() {
   } catch (e) { out.failed.push(`oi_summary backfill: ${e.message}`); }
   try { await _goldEtfFlowSeries(); out.gold = true; } catch (e) { out.failed.push(`gold etf: ${e.message}`); }
   try { await _refreshNowcast(); } catch (e) { out.failed.push(`nowcast: ${e.message}`); }
-  console.log(`[archive] daily: ${out.fred} FRED series merged, ${out.oiRaw} OI raw days and ${out.oiSummary} OI summary days copied to R2, gold ${out.gold ? 'captured' : 'missed'}${out.failed.length ? `; failed: ${out.failed.slice(0, 5).join('; ')}` : ''}`);
+  try { await _buildGprScore(); out.gpr = true; } catch (e) { out.failed.push(`gpr: ${e.message}`); }
+  // COT at full depth (every weekly report since 2006 for the 36 live markets), weekly; the live 156-week window stays.
+  if (Date.now() - _cotArchiveAt > 6 * 864e5) {
+    let n = 0;
+    for (const m of _COT_MARKETS) {
+      try { const r = await _fetchCotFull(m); if (r.rows.length) { const w = await _archive.mergeTable('cot', m.sym, r.rows, { market: r.name, dataset: m.dataset, group: m.group, flipInLiveReads: m.flip }); if (w.wrote || w.reason === 'unchanged') n++; } }
+      catch (e) { out.failed.push(`cot ${m.sym}: ${e.message}`); }
+      await new Promise(r => setTimeout(r, 800));
+    }
+    out.cot = n; if (n) _cotArchiveAt = Date.now();
+  }
+  console.log(`[archive] daily: ${out.fred} FRED series merged, COT ${out.cot ?? 'skipped (weekly)'}, ${out.oiRaw} OI raw days and ${out.oiSummary} OI summary days copied to R2, gold ${out.gold ? 'captured' : 'missed'}${out.failed.length ? `; failed: ${out.failed.slice(0, 5).join('; ')}` : ''}`);
   return { ok: true, ...out };
 }
 svcTimeout('dataArchive', () => _archiveDaily().catch(e => console.error('[archive]', e.message)), 15 * 60_000);

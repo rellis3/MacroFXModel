@@ -32,6 +32,15 @@ export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = conso
       try { const raw = await kv.get(`fredhistory_series_${k}`); if (raw) fredHist[k] = JSON.parse(raw); } catch (e) { errors.push({ source: `FRED ${k}`, error: e.message }); }
     }));
     if (!Object.keys(fredHist).length) errors.push({ source: 'FRED', error: 'no fredhistory_series_* in KV' });
+    // Deep history: the R2 archive (js/dataArchive.js) holds each series at full FRED depth; the KV copy is 90 prints.
+    // Prefer the deep copy so percentiles and context cover real history; fall back to KV.
+    const deepUsed = [];
+    if (typeof readers.deepFred === 'function') {
+      await Promise.all(Object.keys(fredHist).concat(['us10y', 'us2y', 'us30y', 'tips', 'bei', 'vix', 'hy', 'dxy']).filter((k, i, a) => a.indexOf(k) === i).map(async k => {
+        try { const deep = await readers.deepFred(k); if (Array.isArray(deep) && deep.length > (fredHist[k]?.length ?? 0)) { fredHist[k] = deep; deepUsed.push(k); } }
+        catch { /* KV copy stays */ }
+      }));
+    }
 
     const prices = {};
     if (process.env.OANDA_KEY) {
@@ -65,6 +74,7 @@ export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = conso
     doc.layers = summariseLayers({ volForecast, cot: cotState, oi: oiToday });
     const nq = series.nq; const nq5 = Array.isArray(nq) && nq.length > 6 ? (nq[nq.length - 1].value / nq[nq.length - 6].value - 1) * 100 : null;
     doc.edges = activeEdges({ stress, nq5, oi: oiToday });
+    doc.deepHistory = deepUsed.sort();
     doc.errors = errors;
     return doc;
   }
