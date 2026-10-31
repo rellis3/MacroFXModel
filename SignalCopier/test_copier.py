@@ -28,7 +28,8 @@ PRICES = {"USDJPY": 157.70, "EURJPY": 176.30, "BTCUSD": 78600, "GBPJPY": 211.21,
 
 
 def make(cfg=None, kv=None):
-    kv = kv or FakeKV({"signal_copier_config": cfg or {}})
+    # the older tests trade BTCUSD, so they run with crypto on; test_ignore_crypto covers the default
+    kv = kv or FakeKV({"signal_copier_config": {"ignore_crypto": False, **(cfg or {})}})
     cp = sc.Copier(kv, sc._deep_merge(sc.DEFAULT_CFG, kv.get_json("signal_copier_config") or {}), False)
     assert cp.connect() and cp.paper and cp.data is None
     cp.quotes = None
@@ -220,6 +221,33 @@ def test_replay_history_parse_report():
     rep = sc.replay_history(cp, msgs, record=True)
     assert len(cp.signals) == 10 and not cp.execs                                   # recorded, still no orders
     assert cp.signals["101:0"]["close_reason"] == "flat for the weekend"
+
+
+def test_ignore_crypto_live_record_and_replay():
+    assert sc.is_crypto("BTCUSD") and sc.is_crypto("ETHUSDT") and sc.is_crypto("btc/usd")
+    assert not sc.is_crypto("NAS100") and not sc.is_crypto("USDJPY") and not sc.is_crypto("XAUUSD")
+    assert sc.DEFAULT_CFG["ignore_crypto"] is True
+    cp, kv = make({"ignore_crypto": True})
+    cp.on_message(101, DAILY, datetime.now(timezone.utc))
+    st = statuses(cp)
+    assert st["101:2"] == "skipped" and st["101:0"] == "open"
+    d = [e for e in cp.decisions if e["id"] == "101:2"][0]
+    assert d["reason"].startswith("crypto ignored")
+    assert not any("BTCUSD" in a for a, _ in cp.alerts)                      # no alert noise
+    assert "101:2" not in cp.signals and "101:0" in cp.signals                # not in the outcome record
+    assert not [p for p in cp.broker.serialize_open_positions() if p["symbol"] == "BTCUSD"]
+    # a crypto record stored before the flag: hidden, not deleted, and not re-scored
+    cp.signals["999:0"] = {**cp.signals["101:0"], "id": "999:0", "symbol": "BTCUSD", "final": False}
+    cp.resolve_open()
+    assert cp.signals["999:0"]["ignored"] == "crypto" and cp.signals["999:0"]["out"] is None
+    assert cp.signals["101:0"].get("ignored") is None
+    # replay: BTCUSD parsed, counted as ignored, its close not counted or unmatched
+    cp2, _ = make({"ignore_crypto": True})
+    t0 = datetime(2026, 10, 30, 7, 1, tzinfo=timezone.utc)
+    rep = sc.replay_history(cp2, [(101, DAILY, t0), (107, CLOSES, t0 + timedelta(hours=13))], record=True)
+    assert (rep["opens"], rep["ignored_crypto"], rep["closes"]) == (8, 1, 6)
+    assert "BTCUSD" not in rep["by_symbol"] and not rep["unmatched"]
+    assert not [r for r in cp2.signals.values() if r["symbol"] == "BTCUSD"]
 
 
 if __name__ == "__main__":

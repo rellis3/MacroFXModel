@@ -8143,7 +8143,7 @@ setInterval(() => {
 // are built by the bot (SignalCopier/outcome.py) — this only filters + CSVs them.
 const SC_DEFAULTS = {
   kill_switch: false, paper_mode: true, risk_pct: 0.5, record_risk_pct: 1.0, max_lot: 5.0, max_open: 12,
-  copy_swing: true, copy_day: true, copy_single: true, symbol_map: {}, skip_symbols: [],
+  copy_swing: true, copy_day: true, copy_single: true, ignore_crypto: true, symbol_map: {}, skip_symbols: [],
   max_signal_age_secs: 300, max_entry_drift_r: 0.25, max_spread_r: 0.20, limit_through: 'market',
   tg_chat: -1001606516039, tg_topic: null, tg_senders: '',
   risk_guard_enabled: true, ddlimit: 3.0, monthlydd: 6.0, lockout: 3, cooldown: 0, retry_rejects: 3,
@@ -8159,7 +8159,7 @@ const _scNum = (v, d = 2) => v == null || v === '' ? '—' : Number(v).toFixed(d
 
 function renderScForm() {
   const c = _scCfg, chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
-  ['paper_mode', 'kill_switch', 'copy_swing', 'copy_day', 'copy_single', 'tg_enabled', 'risk_guard_enabled'].forEach(k => chk(`sc_${k}`, c[k]));
+  ['paper_mode', 'kill_switch', 'copy_swing', 'copy_day', 'copy_single', 'ignore_crypto', 'tg_enabled', 'risk_guard_enabled'].forEach(k => chk(`sc_${k}`, c[k]));
   ['risk_pct', 'record_risk_pct', 'max_lot', 'max_open', 'max_signal_age_secs', 'max_entry_drift_r', 'max_spread_r',
    'limit_through', 'tg_chat', 'tg_senders', 'tg_token', 'tg_chat_id',
    'ddlimit', 'monthlydd', 'lockout', 'cooldown', 'retry_rejects'].forEach(k => setVal(`sc_${k}`, c[k] ?? ''));
@@ -8181,6 +8181,7 @@ function readScForm() {
     risk_pct: num('sc_risk_pct', SC_DEFAULTS.risk_pct), record_risk_pct: num('sc_record_risk_pct', SC_DEFAULTS.record_risk_pct),
     max_lot: num('sc_max_lot', SC_DEFAULTS.max_lot), max_open: num('sc_max_open', SC_DEFAULTS.max_open),
     copy_swing: !!get('sc_copy_swing')?.checked, copy_day: !!get('sc_copy_day')?.checked, copy_single: !!get('sc_copy_single')?.checked,
+    ignore_crypto: !!get('sc_ignore_crypto')?.checked,
     symbol_map: map,
     skip_symbols: (get('sc_skip_symbols')?.value || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean),
     max_signal_age_secs: num('sc_max_signal_age_secs', SC_DEFAULTS.max_signal_age_secs),
@@ -8437,7 +8438,8 @@ async function loadScTradeLog() {
 }
 
 async function loadScOutcomes() {
-  try { _scRecords = (await kvGet('signal_copier_signals'))?.records || []; } catch (e) { _scRecords = []; }
+  // records the bot marked ignored (crypto with Ignore crypto on) stay in KV but leave the table and the export
+  try { _scRecords = ((await kvGet('signal_copier_signals'))?.records || []).filter(r => !r.ignored); } catch (e) { _scRecords = []; }
   const sel = document.getElementById('scOutPair');
   if (sel) {
     const cur = sel.value;
@@ -8550,6 +8552,7 @@ async function loadScParseReport() {
       ${stat('Period', `${d(r.from_ts)} → ${d(r.to_ts)}`)}
       ${stat('Messages', r.messages)} ${stat('With instructions', r.with_instructions)}
       ${stat('Signals', r.opens, '#2dd4bf')} ${stat('Cancels', r.cancels)} ${stat('Closes', r.closes)}
+      ${r.ignored_crypto ? stat('Ignored (crypto)', r.ignored_crypto, 'var(--text3)') : ''}
       ${stat('Unparsed', nU, nU ? '#f59e0b' : 'var(--green)')} ${stat('Unmatched cancel/close', nM, nM ? '#f59e0b' : 'var(--green)')}
       ${r.signals_recorded != null ? stat('Added to outcomes', r.signals_recorded) : ''}
     </div>
