@@ -1,0 +1,149 @@
+{
+ "seed": 20261021,
+ "B": 2000,
+ "block": 21,
+ "n_shift": 400,
+ "scored": {
+  "C1_h1_pooled": {
+   "n": 2480,
+   "est": 0.0567,
+   "ci": [
+    0.0067,
+    0.1081
+   ],
+   "placebo_p95": 0.0533,
+   "placebo_mean": -0.0002,
+   "halves": {
+    "explore": 0.1356,
+    "confirm": -0.012
+   },
+   "p": 0.02838292487566152
+  },
+  "C2_h5_pooled": {
+   "n_state": 203,
+   "n_other": 799,
+   "est": -0.0702,
+   "ci": [
+    -0.1973,
+    0.0685
+   ],
+   "p": 0.3005266167161409
+  }
+ },
+ "descriptive": {
+  "C1_h5_pooled": {
+   "n": 2424,
+   "est": 0.0541,
+   "ci": [
+    -0.0336,
+    0.1435
+   ],
+   "halves": {
+    "explore": 0.1539,
+    "confirm": -0.0285
+   }
+  },
+  "C1_h21_pooled": {
+   "n": 2222,
+   "est": 0.0119,
+   "ci": [
+    -0.1148,
+    0.1532
+   ],
+   "halves": {
+    "explore": 0.0367,
+    "confirm": -0.0201
+   }
+  },
+  "C2_h5_halves": {
+   "explore": 0.1796,
+   "confirm": -0.1649
+  },
+  "C2_h1_pooled": {
+   "n_state": 211,
+   "n_other": 819,
+   "est": -0.0052,
+   "ci": [
+    -0.1379,
+    0.1394
+   ]
+  },
+  "mirror_h5_pooled": {
+   "n_state": 241,
+   "n_other": 576,
+   "est": -0.2692,
+   "ci": [
+    -0.3949,
+    -0.1331
+   ]
+  },
+  "C1_h1_lnMOVE": {
+   "est": 0.1384,
+   "ci": [
+    0.0801,
+    0.1909
+   ]
+  },
+  "C1_h1_by_year": {
+   "2017": -0.0819,
+   "2018": 0.1048,
+   "2019": 0.0204,
+   "2020": 0.2001,
+   "2021": 0.1543,
+   "2022": -0.097,
+   "2023": -0.0663,
+   "2024": -0.1723,
+   "2025": 0.1857,
+   "2026": -0.06
+  },
+  "C1_h1_without_2020": {
+   "est": -0.0052,
+   "ci": [
+    -0.058,
+    0.0475
+   ]
+  },
+  "C1_h1_without_2022": {
+   "est": 0.0522,
+   "ci": [
+    0.0013,
+    0.1086
+   ]
+  },
+  "mp_x_fomc5_h5": {
+   "partial_corr": -0.0306,
+   "n_fomc_windows": 384
+  },
+  "C1_h1_NQiv30_baseline": {
+   "n": 1513,
+   "span": [
+    "2020-10-01",
+    "2026-08-19"
+   ],
+   "est": 0.0318,
+   "ci": [
+    -0.0527,
+    0.0987
+   ]
+  },
+  "C1_h1_VXN_same_window": {
+   "n": 1513,
+   "est": 0.0336
+  }
+ },
+ "holm_pass": {
+  "C1_h1_pooled": false,
+  "C2_h5_pooled": false
+ },
+ "gate_C1": {
+  "ci_above_0": true,
+  "est_ge_0.05": true,
+  "above_placebo_p95": true,
+  "both_halves_positive": false,
+  "holm": false
+ },
+ "verdict": {
+  "rates-vol-gap-move": "NOT COVERED BY THE PREREG RULES (CI excludes 0 but a gate failed) - needs an amendment before a word",
+  "rates-vol-gap-state": "UNDERPOWERED"
+ }
+}

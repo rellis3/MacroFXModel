@@ -1,0 +1,50 @@
+  tf5 C 22s
+  tf5 CP 49s
+  tf5 CPK 76s
+  tf5 CPKV 120s
+  tf5 CPV 162s
+  tf5 CPK_SV 199s
+  tf5 CPK_PVD 227s
+  tf5 CPK+WTL 257s
+  tf5 CPKV-WTL 292s
+  tf5 CPK+WTC 320s
+  tf5 CPKV-WTC 357s
+  tf5 CPK+SPR 385s
+  tf5 CPKV-SPR 426s
+  tf5 CPK+MF 460s
+  tf5 CPKV-MF 496s
+  tf5 CPK+ALN 524s
+  tf5 CPKV-ALN 582s
+  tf5 CPK+DIV 636s
+  tf5 CPKV-DIV 693s
+  tf5 wf2024 CPK 754s
+  tf5 wf2024 CPKV 816s
+  tf5 wf2024 CP 872s
+  tf5 wf2024 CPV 921s
+  tf5 wf2025 CPK 954s
+  tf5 wf2025 CPKV 1008s
+  tf5 wf2025 CP 1043s
+  tf5 wf2025 CPV 1092s
+  tf5 wf2026 CPK 1127s
+  tf5 wf2026 CPKV 1182s
+  tf5 wf2026 CP 1214s
+  tf5 wf2026 CPV 1262s
+  tf5 shuffled CPK 1293s
+  tf5 shuffled CPKV 1340s
+  tf5 shuffled CP 1372s
+  tf5 shuffled CPV 1411s
+  tf5 shuffled CPK+WTL 1444s
+  tf5 shuffled CPK+WTC 1475s
+  tf5 shuffled CPK+SPR 1507s
+  tf5 shuffled CPK+MF 1540s
+  tf5 shuffled CPK+ALN 1571s
+  tf5 shuffled CPK+DIV 1603s
+  tf5 s4 H4a_onset base 1715s
+  tf5 s4 H4a_onset V 1741s
+  tf5 s4 H4a_onset SV 1767s
+  tf5 s4 H4b_onset_in_compression base 1823s
+  tf5 s4 H4b_onset_in_compression V 1832s
+  tf5 s4 H4b_onset_in_compression SV 1841s
+  tf5 s4 earlier_t13_24 base 1874s
+  tf5 s4 earlier_t13_24 V 1898s
+  tf5 s4 earlier_t13_24 SV 1924s

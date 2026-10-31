@@ -40,7 +40,7 @@ export function joinTradesToSignals(trades, signals) {
 export function reconcileSignalCopierDay({ date, trades = [], signals = [], events = [] }) {
   const start = Date.parse(`${date}T00:00:00Z`) / 1000;
   const inDay = ts => ts >= start && ts < start + 86400;
-  const daySignals = signals.filter(s => inDay(s.posted_ts));
+  const daySignals = signals.filter(s => inDay(s.posted_ts) && !s.ignored);   // ignored = e.g. crypto with Ignore crypto on
   const tradable = daySignals.filter(s => s.out && s.out.fill_ts != null);       // the record says a follower got filled
   const joined = joinTradesToSignals(trades, signals);
   const matched = joined.filter(t => t.signal);

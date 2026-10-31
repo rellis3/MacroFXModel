@@ -36,6 +36,8 @@ def segments(bars, seam_t, m1_t):
     """bars: tau-bars (t_open, t_close, epoch s, clock bins). seam_t: sorted seam 1-minute t_open. m1_t: sorted
     1-minute t_open of the base. Returns (seg, mixed): seg = segment id per bar (-1 for mixed bars)."""
     to, tc = bars.t_open.to_numpy(), bars.t_close.to_numpy()
+    if not len(seam_t):
+        return np.zeros(len(bars), np.int64), np.zeros(len(bars), bool)
     k0 = np.searchsorted(seam_t, to, side="left")
     k1 = np.searchsorted(seam_t, tc, side="left")
     has = k1 > k0                                     # a seam's first bar falls inside [t_open, t_close)

@@ -1,0 +1,692 @@
+{
+ "seed": 20261031,
+ "ledger_n": 241,
+ "cells": [
+  {
+   "cell": "S1 post-FOMC USD drift (all)",
+   "n": 76,
+   "class": "H-D",
+   "family": 15,
+   "units": "log return of the 7-leg long-USD basket over 5 sessions",
+   "from": "2016-09-21",
+   "to": "2026-04-29",
+   "raw_mean": 0.0035059157741872903,
+   "b0_mean_in_direction": -0.000645501850020166,
+   "hit": 0.6842105263157895,
+   "b0_hit": 0.4746413075734145,
+   "excess_hit": 0.209569218742375,
+   "excess_ret": 0.004151417624207456,
+   "excess_sd": 0.45345062715698736,
+   "b0_share_of_raw": -0.18411790002850265,
+   "ci_excess_ret": [
+    0.0021637852399206637,
+    0.0061958986496664726
+   ],
+   "ci_excess_hit": [
+    0.1038042524222253,
+    0.3159230088333957
+   ],
+   "ci_excess_sd": [
+    0.24102427011174443,
+    0.6754428314414599
+   ],
+   "p_boot": 0.0,
+   "p_placebo": 0.0004997501249375312,
+   "p_family_bonf": 0.0074962518740629685,
+   "p_ledger_bonf": 0.12043978010994502,
+   "net_ev_per_event": 0.0033459157741872903,
+   "net_excess_vs_b0_per_event": 0.003991417624207455,
+   "word": "holds vs B0",
+   "orig_effect": 0.00295
+  },
+  {
+   "cell": "S1 post-FOMC 2016-21 (harness in-sample)",
+   "n": 42,
+   "class": "H-D",
+   "family": 15,
+   "units": "as above",
+   "from": "2016-09-21",
+   "to": "2021-12-15",
+   "raw_mean": 0.004614665948812662,
+   "b0_mean_in_direction": -0.0009213761857403304,
+   "hit": 0.7619047619047619,
+   "b0_hit": 0.4685749917619108,
+   "excess_hit": 0.2933297701428512,
+   "excess_ret": 0.005536042134552993,
+   "excess_sd": 0.6117646521572813,
+   "b0_share_of_raw": -0.19966259659107014,
+   "ci_excess_ret": [
+    0.0033898239504882993,
+    0.007737399240556559
+   ],
+   "ci_excess_hit": [
+    0.15191749251047493,
+    0.41345820019148927
+   ],
+   "ci_excess_sd": [
+    0.37649255073113796,
+    0.8524774131962032
+   ],
+   "p_boot": 0.0,
+   "p_family_bonf": 0.0,
+   "p_ledger_bonf": 0.0,
+   "net_ev_per_event": 0.004454665948812661,
+   "net_excess_vs_b0_per_event": 0.005376042134552992,
+   "word": "holds vs B0",
+   "orig_effect": null
+  },
+  {
+   "cell": "S1 post-FOMC 2022+ (harness OOS, already seen)",
+   "n": 34,
+   "class": "H-D",
+   "family": 15,
+   "units": "as above",
+   "from": "2022-01-26",
+   "to": "2026-04-29",
+   "raw_mean": 0.0021362832055324176,
+   "b0_mean_in_direction": -0.0003047159058952572,
+   "hit": 0.5882352941176471,
+   "b0_hit": 0.4821349918111545,
+   "excess_hit": 0.1061003023064926,
+   "excess_ret": 0.002440999111427675,
+   "excess_sd": 0.25788624333309484,
+   "b0_share_of_raw": -0.1426383473437053,
+   "ci_excess_ret": [
+    -0.0011507012862256656,
+    0.005918506079920595
+   ],
+   "ci_excess_hit": [
+    -0.07106123764841296,
+    0.25570515308690317
+   ],
+   "ci_excess_sd": [
+    -0.12647974690114425,
+    0.6287286956288518
+   ],
+   "p_boot": 0.183,
+   "p_family_bonf": 1.0,
+   "p_ledger_bonf": 1.0,
+   "net_ev_per_event": 0.0019762832055324176,
+   "net_excess_vs_b0_per_event": 0.002280999111427675,
+   "word": "weakened vs B0",
+   "orig_effect": null
+  },
+  {
+   "cell": "S1 post-FOMC forward (F)",
+   "n": 0,
+   "class": "F",
+   "word": "no forward events: registered 2026-08-20, next decision after the lockbox date"
+  },
+  {
+   "cell": "S2 positioning into release (vs B0 drift)",
+   "n": 2029,
+   "class": "H-R",
+   "family": 2,
+   "units": "ATR (close-to-close on the release day)",
+   "from": "2018-06-12",
+   "to": "2025-04-04",
+   "raw_mean": 0.033936188967989056,
+   "b0_mean_in_direction": -0.007779943962703292,
+   "hit": 0.5174963035978315,
+   "b0_hit": 0.49527409975954234,
+   "excess_hit": 0.022222203838289104,
+   "excess_ret": 0.04171613293069236,
+   "excess_sd": null,
+   "b0_share_of_raw": -0.22925214054064438,
+   "ci_excess_ret": [
+    0.004175239247888576,
+    0.07997577250082337
+   ],
+   "ci_excess_hit": [
+    -0.0010581018144565533,
+    0.04596689570902688
+   ],
+   "p_boot": 0.029,
+   "p_family_bonf": 0.058,
+   "p_ledger_bonf": 1.0,
+   "word": "holds vs B0",
+   "orig_effect": 0.064,
+   "reproduced_matched_control_effect": 0.0638,
+   "reproduced_matched_control_ci": [
+    0.0187,
+    0.111
+   ]
+  },
+  {
+   "cell": "S2 positioning forward (F)",
+   "n": 0,
+   "class": "F",
+   "word": "no forward events: calendar coverage ends 2025-04-07"
+  },
+  {
+   "cell": "S3 COT state D, holdout markets",
+   "n": 362,
+   "class": "H-R",
+   "family": 20,
+   "units": "standardised 4-week move (r4 = log move / (2 sigma_w))",
+   "from": "2008-07-25",
+   "to": "2026-06-26",
+   "raw_mean": 0.18305934093119486,
+   "b0_mean_in_direction": 0.020135759432719984,
+   "hit": 0.638121546961326,
+   "b0_hit": 0.5095055182610952,
+   "excess_hit": 0.1286160287002308,
+   "excess_ret": 0.16292358149847486,
+   "excess_sd": 0.16292358149847486,
+   "b0_share_of_raw": 0.10999580425829382,
+   "ci_excess_ret": [
+    0.05564800144760805,
+    0.2690885345396039
+   ],
+   "ci_excess_hit": [
+    0.07714279260070421,
+    0.18022457350631346
+   ],
+   "ci_excess_sd": [
+    0.05564800144760805,
+    0.2690885345396039
+   ],
+   "p_boot": 0.005,
+   "p_family_bonf": 0.1,
+   "p_ledger_bonf": 1.0,
+   "word": "holds vs B0",
+   "orig_effect": 0.269
+  },
+  {
+   "cell": "S3 COT state D, discovery markets",
+   "n": 142,
+   "class": "H-D",
+   "family": 20,
+   "units": "standardised 4-week move (r4 = log move / (2 sigma_w))",
+   "from": "2008-10-03",
+   "to": "2026-06-26",
+   "raw_mean": 0.07562433962837196,
+   "b0_mean_in_direction": 0.006513704363935735,
+   "hit": 0.5070422535211268,
+   "b0_hit": 0.5037052934291055,
+   "excess_hit": 0.0033369600920211584,
+   "excess_ret": 0.06911063526443625,
+   "excess_sd": 0.06911063526443625,
+   "b0_share_of_raw": 0.08613238007690305,
+   "ci_excess_ret": [
+    -0.10143500997585891,
+    0.23575933110140213
+   ],
+   "ci_excess_hit": [
+    -0.07188688600799407,
+    0.08710453063774296
+   ],
+   "ci_excess_sd": [
+    -0.10143500997585891,
+    0.23575933110140213
+   ],
+   "p_boot": 0.446,
+   "p_family_bonf": 1.0,
+   "p_ledger_bonf": 1.0,
+   "word": "weakened vs B0",
+   "orig_effect": 0.066
+  },
+  {
+   "cell": "S3 COT state D forward (F)",
+   "n": 0,
+   "class": "F",
+   "word": "no forward events: registered 2026-10-24"
+  },
+  {
+   "cell": "S4 VIX-beta change (all)",
+   "n": 383,
+   "class": "H-R",
+   "family": 16,
+   "units": "NDX log return, next close +5 sessions",
+   "from": "2011-10-31",
+   "to": "2026-07-31",
+   "raw_mean": 0.007890022661297113,
+   "b0_mean_in_direction": 0.003169470794905875,
+   "hit": 0.6736292428198434,
+   "b0_hit": 0.6037644122881629,
+   "excess_hit": 0.06986483053168037,
+   "excess_ret": 0.004720551866391237,
+   "excess_sd": 0.18555226569314742,
+   "b0_share_of_raw": 0.4017061713210361,
+   "ci_excess_ret": [
+    0.0009261682657819847,
+    0.008700519556619577
+   ],
+   "ci_excess_hit": [
+    -0.0023910382327441432,
+    0.13964459710825475
+   ],
+   "ci_excess_sd": [
+    0.039233145694472095,
+    0.3375071999750028
+   ],
+   "p_boot": 0.017,
+   "p_placebo": 0.038980509745127435,
+   "p_family_bonf": 0.623688155922039,
+   "p_ledger_bonf": 1.0,
+   "net_ev_per_event": 0.00786443351382515,
+   "net_excess_vs_b0_per_event": 0.004694962718919274,
+   "word": "holds vs B0",
+   "orig_effect": null
+  },
+  {
+   "cell": "S4 VIX-beta change split discover",
+   "n": 111,
+   "class": "H-R",
+   "family": 16,
+   "units": "as above",
+   "from": "2011-10-31",
+   "to": "2015-12-17",
+   "raw_mean": 0.005156740843657658,
+   "b0_mean_in_direction": 0.0031377573013224086,
+   "hit": 0.6216216216216216,
+   "b0_hit": 0.6010448093057836,
+   "excess_hit": 0.020576812315837953,
+   "excess_ret": 0.0020189835423352503,
+   "excess_sd": 0.06905822145449111,
+   "b0_share_of_raw": 0.6084768260521713,
+   "ci_excess_ret": [
+    -0.002429956427887953,
+    0.006385059396541535
+   ],
+   "ci_excess_hit": [
+    -0.12034515257351243,
+    0.14818574831555023
+   ],
+   "ci_excess_sd": [
+    -0.10290475457353654,
+    0.23704143648611983
+   ],
+   "p_boot": 0.386,
+   "p_family_bonf": 1.0,
+   "p_ledger_bonf": 1.0,
+   "net_ev_per_event": 0.0051311516961856955,
+   "net_excess_vs_b0_per_event": 0.0019933943948632874,
+   "word": "weakened vs B0",
+   "orig_effect": null
+  },
+  {
+   "cell": "S4 VIX-beta change split validate",
+   "n": 123,
+   "class": "H-R",
+   "family": 16,
+   "units": "as above",
+   "from": "2016-03-21",
+   "to": "2020-12-11",
+   "raw_mean": 0.010189319848549207,
+   "b0_mean_in_direction": 0.003074186061583295,
+   "hit": 0.6991869918699187,
+   "b0_hit": 0.6040498146272314,
+   "excess_hit": 0.09513717724268728,
+   "excess_ret": 0.007115133786965913,
+   "excess_sd": 0.2966040020642155,
+   "b0_share_of_raw": 0.30170669949290174,
+   "ci_excess_ret": [
+    0.0015083139199506682,
+    0.013722485507245308
+   ],
+   "ci_excess_hit": [
+    -0.018183454364096883,
+    0.22433600516307034
+   ],
+   "ci_excess_sd": [
+    0.061799009782419784,
+    0.5694889285548466
+   ],
+   "p_boot": 0.011,
+   "p_family_bonf": 0.176,
+   "p_ledger_bonf": 1.0,
+   "net_ev_per_event": 0.010163730701077244,
+   "net_excess_vs_b0_per_event": 0.00708954463949395,
+   "word": "holds vs B0",
+   "orig_effect": null
+  },
+  {
+   "cell": "S4 VIX-beta change split test",
+   "n": 149,
+   "class": "H-R",
+   "family": 16,
+   "units": "as above",
+   "from": "2021-01-04",
+   "to": "2026-07-31",
+   "raw_mean": 0.008028148350733164,
+   "b0_mean_in_direction": 0.003271754150519581,
+   "hit": 0.6912751677852349,
+   "b0_hit": 0.6055548246595635,
+   "excess_hit": 0.0857203431256714,
+   "excess_ret": 0.004756394200213583,
+   "excess_sd": 0.18066283842368092,
+   "b0_share_of_raw": 0.4075353378616616,
+   "ci_excess_ret": [
+    -0.004116745990592995,
+    0.011935580993010265
+   ],
+   "ci_excess_hit": [
+    -0.04470750389699745,
+    0.1850469354643771
+   ],
+   "ci_excess_sd": [
+    -0.1503490368911228,
+    0.4492472975203913
+   ],
+   "p_boot": 0.269,
+   "p_family_bonf": 1.0,
+   "p_ledger_bonf": 1.0,
+   "net_ev_per_event": 0.0080025592032612,
+   "net_excess_vs_b0_per_event": 0.00473080505274162,
+   "word": "weakened vs B0",
+   "orig_effect": null
+  },
+  {
+   "cell": "S4 VIX-beta change forward (F)",
+   "n": 0,
+   "class": "F",
+   "word": "no forward events before the lockbox date (registered 2026-10-23); vix-signals-forward record: 0 events at 2026-10-26"
+  },
+  {
+   "cell": "S5 VVIX/VXN derivative (all)",
+   "n": 376,
+   "class": "H-R",
+   "family": 46,
+   "units": "NDX log return, next close +20 sessions",
+   "from": "2011-10-17",
+   "to": "2026-07-15",
+   "raw_mean": 0.02496710690254441,
+   "b0_mean_in_direction": 0.012587653402424312,
+   "hit": 0.7606382978723404,
+   "b0_hit": 0.6664902571794009,
+   "excess_hit": 0.09414804069293956,
+   "excess_ret": 0.0123794535001201,
+   "excess_sd": 0.2703007344157516,
+   "b0_share_of_raw": 0.5041694839357418,
+   "ci_excess_ret": [
+    0.0025909692524565264,
+    0.021359725693675287
+   ],
+   "ci_excess_hit": [
+    0.009112317490433513,
+    0.16570909741996867
+   ],
+   "ci_excess_sd": [
+    0.06373483644292686,
+    0.46735402493368605
+   ],
+   "p_boot": 0.013,
+   "p_placebo": 0.0074962518740629685,
+   "p_family_bonf": 0.3448275862068966,
+   "p_ledger_bonf": 1.0,
+   "net_ev_per_event": 0.02494151775507245,
+   "net_excess_vs_b0_per_event": 0.012353864352648137,
+   "word": "holds vs B0",
+   "orig_effect": null
+  },
+  {
+   "cell": "S5 VVIX/VXN derivative split discover",
+   "n": 112,
+   "class": "H-R",
+   "family": 46,
+   "units": "as above",
+   "from": "2011-10-17",
+   "to": "2015-10-22",
+   "raw_mean": 0.019481690825257143,
+   "b0_mean_in_direction": 0.012640774091106002,
+   "hit": 0.7767857142857143,
+   "b0_hit": 0.6626925796468519,
+   "excess_hit": 0.11409313463886239,
+   "excess_ret": 0.0068409167341511425,
+   "excess_sd": 0.14494893754705276,
+   "b0_share_of_raw": 0.6488540550452532,
+   "ci_excess_ret": [
+    -0.003148573911266598,
+    0.01604438682068996
+   ],
+   "ci_excess_hit": [
+    -0.024314874225396445,
+    0.21795164185107072
+   ],
+   "ci_excess_sd": [
+    -0.07329850325417571,
+    0.33900616370012837
+   ],
+   "p_boot": 0.182,
+   "p_family_bonf": 1.0,
+   "p_ledger_bonf": 1.0,
+   "net_ev_per_event": 0.019456101677785182,
+   "net_excess_vs_b0_per_event": 0.0068153275866791796,
+   "word": "weakened vs B0",
+   "orig_effect": null
+  },
+  {
+   "cell": "S5 VVIX/VXN derivative split validate",
+   "n": 128,
+   "class": "H-R",
+   "family": 46,
+   "units": "as above",
+   "from": "2016-02-25",
+   "to": "2020-12-14",
+   "raw_mean": 0.03404667427482738,
+   "b0_mean_in_direction": 0.012296669258852418,
+   "hit": 0.828125,
+   "b0_hit": 0.6689497227856285,
+   "excess_hit": 0.15917527721437164,
+   "excess_ret": 0.021750005015974967,
+   "excess_sd": 0.49909105750106936,
+   "b0_share_of_raw": 0.361170937272544,
+   "ci_excess_ret": [
+    0.0046753727951636325,
+    0.03908139163050752
+   ],
+   "ci_excess_hit": [
+    0.0296926153705326,
+    0.26299573651311603
+   ],
+   "ci_excess_sd": [
+    0.10370197151352917,
+    0.9025533586494114
+   ],
+   "p_boot": 0.008,
+   "p_family_bonf": 0.368,
+   "p_ledger_bonf": 1.0,
+   "net_ev_per_event": 0.03402108512735542,
+   "net_excess_vs_b0_per_event": 0.021724415868503006,
+   "word": "holds vs B0",
+   "orig_effect": null
+  },
+  {
+   "cell": "S5 VVIX/VXN derivative split test",
+   "n": 136,
+   "class": "H-R",
+   "family": 46,
+   "units": "as above",
+   "from": "2021-02-05",
+   "to": "2026-07-15",
+   "raw_mean": 0.020939033204044066,
+   "b0_mean_in_direction": 0.012817774382165872,
+   "hit": 0.6838235294117647,
+   "b0_hit": 0.6673029651650506,
+   "excess_hit": 0.01652056424671407,
+   "excess_ret": 0.008121258821878191,
+   "excess_sd": 0.1581995571684986,
+   "b0_share_of_raw": 0.6121473831795782,
+   "ci_excess_ret": [
+    -0.01115091392813521,
+    0.026585548859355025
+   ],
+   "ci_excess_hit": [
+    -0.13440775803498103,
+    0.15554511023274234
+   ],
+   "ci_excess_sd": [
+    -0.22821572621535285,
+    0.5319861776704424
+   ],
+   "p_boot": 0.413,
+   "p_family_bonf": 1.0,
+   "p_ledger_bonf": 1.0,
+   "net_ev_per_event": 0.020913444056572104,
+   "net_excess_vs_b0_per_event": 0.008095669674406229,
+   "word": "weakened vs B0",
+   "orig_effect": null
+  },
+  {
+   "cell": "S5 VVIX/VXN derivative forward (F)",
+   "n": 0,
+   "class": "F",
+   "word": "no forward events before the lockbox date (registered 2026-10-23); vix-signals-forward record: 0 events at 2026-10-26"
+  },
+  {
+   "cell": "S6 carry 1979-2014 (construction check)",
+   "n": 430,
+   "class": "H-D",
+   "family": 3,
+   "units": "monthly long-short book return (no net drift by construction; B0 = 0, hit vs 50%)",
+   "from": "1979-03-31",
+   "to": "2014-12-31",
+   "raw_mean": 0.004163274370046376,
+   "b0_mean_in_direction": 0.0,
+   "hit": 0.6232558139534884,
+   "b0_hit": 0.5,
+   "excess_hit": 0.12325581395348838,
+   "excess_ret": 0.004163274370046376,
+   "excess_sd": 0.14687639190464818,
+   "b0_share_of_raw": 0.0,
+   "ci_excess_ret": [
+    0.0016221071059342024,
+    0.006544771839523416
+   ],
+   "ci_excess_hit": [
+    0.07906976744186046,
+    0.16744186046511628
+   ],
+   "ci_excess_sd": [
+    0.04996442106419571,
+    0.23627726919166217
+   ],
+   "p_boot": 0.001,
+   "p_family_bonf": 0.003,
+   "p_ledger_bonf": 0.241,
+   "word": "holds vs B0",
+   "orig_effect": null
+  },
+  {
+   "cell": "S6 carry 2015-2026-08 (seen)",
+   "n": 139,
+   "class": "H-D",
+   "family": 3,
+   "units": "monthly long-short book return (no net drift by construction; B0 = 0, hit vs 50%)",
+   "from": "2015-01-31",
+   "to": "2026-07-31",
+   "raw_mean": 0.0012973362242934858,
+   "b0_mean_in_direction": 0.0,
+   "hit": 0.5827338129496403,
+   "b0_hit": 0.5,
+   "excess_hit": 0.08273381294964029,
+   "excess_ret": 0.0012973362242934858,
+   "excess_sd": 0.051382139624012196,
+   "b0_share_of_raw": 0.0,
+   "ci_excess_ret": [
+    -0.0017323257933228695,
+    0.004182857180057851
+   ],
+   "ci_excess_hit": [
+    -0.0035971223021582736,
+    0.16205035971222922
+   ],
+   "ci_excess_sd": [
+    -0.06486237638838098,
+    0.1623062251527896
+   ],
+   "p_boot": 0.394,
+   "p_family_bonf": 1.0,
+   "p_ledger_bonf": 1.0,
+   "word": "weakened vs B0",
+   "orig_effect": null
+  },
+  {
+   "cell": "S7 overnight hold nq (gross vs drift)",
+   "n": 1756,
+   "class": "H-R",
+   "family": 2,
+   "units": "log return 20:00 -> 14:30 UK; B0 = daily drift x 18.5/24",
+   "from": "2017-10-12",
+   "to": "2026-08-19",
+   "raw_mean": 0.0005113189918537972,
+   "b0_mean_in_direction": 0.0005512733668504402,
+   "hit": 0.5552391799544419,
+   "b0_hit": 0.5742850248975038,
+   "excess_hit": -0.019045844943061902,
+   "excess_ret": -3.9954374996642913e-05,
+   "excess_sd": -0.0050986006107801764,
+   "b0_share_of_raw": 1.0781398219764684,
+   "ci_excess_ret": [
+    -0.00044024680044231447,
+    0.00037945000174044414
+   ],
+   "ci_excess_hit": [
+    -0.04196934543245209,
+    0.00536259656604562
+   ],
+   "ci_excess_sd": [
+    -0.0458136783383308,
+    0.036846030843430466
+   ],
+   "p_boot": 0.831,
+   "p_family_bonf": 1.0,
+   "p_ledger_bonf": 1.0,
+   "net_ev_per_event": 0.0004857298443818344,
+   "net_excess_vs_b0_per_event": -6.554352246860574e-05,
+   "word": "not distinguishable from drift",
+   "orig_effect": null,
+   "net_cfd_mean_banked": 0.00033528643483276616
+  },
+  {
+   "cell": "S7 overnight hold gold (gross vs drift)",
+   "n": 1768,
+   "class": "H-R",
+   "family": 2,
+   "units": "log return 20:00 -> 14:30 UK; B0 = daily drift x 18.5/24",
+   "from": "2017-10-12",
+   "to": "2026-08-19",
+   "raw_mean": 0.0005916674614089204,
+   "b0_mean_in_direction": 0.0002067007816060821,
+   "hit": 0.5622171945701357,
+   "b0_hit": 0.5375129903096928,
+   "excess_hit": 0.02470420426044292,
+   "excess_ret": 0.00038496667980283836,
+   "excess_sd": 0.06337415231359424,
+   "b0_share_of_raw": 0.34935296444031516,
+   "ci_excess_ret": [
+    6.642170466391616e-05,
+    0.0006891128684223998
+   ],
+   "ci_excess_hit": [
+    0.0024241752414392204,
+    0.04590297756725638
+   ],
+   "ci_excess_sd": [
+    0.014236171670598024,
+    0.11155503980564911
+   ],
+   "p_boot": 0.02,
+   "p_family_bonf": 0.04,
+   "p_ledger_bonf": 1.0,
+   "net_ev_per_event": 0.0005373549384618795,
+   "net_excess_vs_b0_per_event": 0.0003306541568557974,
+   "word": "holds vs B0",
+   "orig_effect": null,
+   "net_cfd_mean_banked": 0.00022308668228306763
+  },
+  {
+   "cell": "S7 overnight forward (F)",
+   "n": 0,
+   "class": "F",
+   "word": "post-cutoff trades are after 2026-08-21 (lockbox): not read"
+  },
+  {
+   "cell": "S8 reversal hour",
+   "n": null,
+   "class": null,
+   "word": "not scored: no prereg or per-event output; a conditional reversal rate, not a signed drift"
+  }
+ ]
+}

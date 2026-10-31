@@ -73,6 +73,7 @@ DEFAULT_CFG = {
     "copy_swing": True,
     "copy_day": True,
     "copy_single": True,            # signals posted outside a Swings/Day section
+    "ignore_crypto": True,          # crypto signals (BTCUSD…) are not traded, scored or exported -- the broker has none
     "symbol_map": {},               # his symbol -> broker symbol, e.g. {"NAS100": "USTECH100"}; blank = registry
     "skip_symbols": [],
     "max_signal_age_secs": 300,     # a MARKET signal older than this (restart, missed update) is not chased
@@ -105,6 +106,17 @@ REJECT_RETRY_SECS = 60
 # broker rejects worth retrying: the order itself was fine, the market wasn't
 RETRYABLE = ("transport_error", "order_rejected", "market_not_tradable", "no_tick", "trade_disabled")
 # his usual symbols, checked against the broker at start
+CRYPTO_BASES = ("BTC", "XBT", "ETH", "SOL", "XRP", "LTC", "BCH", "ADA", "DOGE", "DOT", "LINK", "BNB", "AVAX",
+                "MATIC", "POL", "SHIB", "TRX", "XLM", "XMR", "UNI", "ATOM", "TON", "PEPE", "ETC", "NEAR", "APT", "SUI")
+
+
+def is_crypto(symbol: str) -> bool:
+    """BTCUSD, ETHUSDT, XRPEUR, BTC… → True. The instrument registry carries no
+    crypto, so this goes by the base coin."""
+    s = str(symbol or "").upper().replace("/", "").replace("_", "")
+    return any(s.startswith(b) and s[len(b):] in ("", "USD", "USDT", "USDC", "EUR", "GBP", "JPY") for b in CRYPTO_BASES)
+
+
 USUAL_SYMBOLS = ("NAS100", "US30", "SP500", "XAUUSD", "BTCUSD", "USDJPY", "EURJPY", "GBPJPY", "EURUSD", "GBPUSD")
 
 
@@ -235,7 +247,8 @@ class Copier:
                 log.warning("paper mode without MT5: prices from the dashboard quote feed, "
                             "outcome record from sampled prices (no M1 bars)")
         if self.data is not None:
-            self.verify_symbols(set(USUAL_SYMBOLS) | {str(k).upper() for k in (cfg.get("symbol_map") or {})}, startup=True)
+            self.verify_symbols({x for x in set(USUAL_SYMBOLS) | {str(k).upper() for k in (cfg.get("symbol_map") or {})}
+                                 if not (cfg.get("ignore_crypto", True) and is_crypto(x))}, startup=True)
         log.info(f"mode={'PAPER' if self.paper else 'LIVE'}  data={'mt5' if self.data else 'quotes'}  "
                  f"account={self.account_login}")
         return True
@@ -332,8 +345,13 @@ class Copier:
             self.dirty["state"] = True
 
     # outcome record ---------------------------------------------------------
+    def ignored(self, symbol) -> bool:
+        return bool(self.cfg.get("ignore_crypto", True)) and is_crypto(symbol)
+
     def record(self, action, o):
         if not getattr(self, "recording", True):
+            return
+        if self.ignored(o.get("symbol")):
             return
         rid = o["id"]
         if action == "place":
@@ -364,7 +382,12 @@ class Copier:
         self.life["last_resolve_at"] = int(_now())
         self.life["resolves"] += 1
         for r in self.signals.values():
-            if r["final"]:
+            # crypto stored before the flag existed: hidden from Outcomes/export, kept in KV
+            ign = "crypto" if self.ignored(r["symbol"]) else None
+            if r.get("ignored") != ign:
+                r["ignored"] = ign
+                self.dirty["signals"] = True
+            if r["final"] or ign:
                 continue
             out = resolve(r, self.bars(r["symbol"], r["posted_ts"]), spread=r.get("spread") or 0.0, now=_now())
             r["out"] = out
@@ -425,6 +448,9 @@ class Copier:
             return self._skip(o, "kill switch on")
         if not cfg.get(f"copy_{style}", True):
             return self._skip(o, f"{style} signals switched off")
+        if self.ignored(o["symbol"]):
+            self.execs[o["id"]] = {"id": o["id"], "status": "skipped", "reason": "crypto ignored"}
+            return self.decide(o, "skipped", "crypto ignored (Ignore crypto is on)")     # logged, no alert
         if o["symbol"].upper() in {s.upper() for s in cfg.get("skip_symbols") or []}:
             return self._skip(o, "symbol on skip list")
         if o.get("sl") is None:
@@ -846,7 +872,7 @@ def replay_history(cp: Copier, messages, record=True):
     either way returns the parse report: what was understood, what wasn't."""
     book, hold = Book(), cp.book
     cp.book, cp.recording = book, record
-    rep = {"messages": 0, "with_instructions": 0, "opens": 0, "cancels": 0, "closes": 0,
+    rep = {"messages": 0, "with_instructions": 0, "opens": 0, "cancels": 0, "closes": 0, "ignored_crypto": 0,
            "by_symbol": {}, "by_style": {}, "unparsed": [], "unmatched": []}
     first = last = None
     try:
@@ -861,17 +887,19 @@ def replay_history(cp: Copier, messages, record=True):
                 rep["with_instructions"] += 1
             for e in events:
                 k = e["kind"]
-                if k == "open":
+                if k == "open" and cp.ignored(e["symbol"]):
+                    rep["ignored_crypto"] += 1     # parsed fine, but not counted, scored or recorded
+                elif k == "open":
                     rep["opens"] += 1
                     rep["by_symbol"][e["symbol"]] = rep["by_symbol"].get(e["symbol"], 0) + 1
                     st = e.get("style") or "single"
                     rep["by_style"][st] = rep["by_style"].get(st, 0) + 1
-                elif k in ("cancel", "close"):
+                elif k in ("cancel", "close") and not cp.ignored(e["symbol"]):
                     rep[k + "s"] += 1
                 elif k == "review":
                     rep["unparsed"].append({"msg_id": mid, "t": int(posted.timestamp()), "text": e["text"][:600]})
             for action, o, detail in book.apply(events, mid, posted):
-                if action == "warn" and "no matching live order" in (detail or ""):
+                if action == "warn" and "no matching live order" in (detail or "") and not cp.ignored(detail.split(" @ ")[0].split()[-1]):
                     rep["unmatched"].append({"msg_id": mid, "t": int(posted.timestamp()), "detail": detail})
                 cp.apply([(action, o, detail)], execute=False)
         cp.apply(book.tick(datetime.now(timezone.utc)), execute=False)
