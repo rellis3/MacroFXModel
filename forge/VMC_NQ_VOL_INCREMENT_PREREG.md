@@ -487,6 +487,21 @@ hypothesis, threshold or gate.
    - Earlier, the synthetic test caught a real crossing: 1-minute realised-variance inputs from a mixed bar. It was
      fixed before any table was used: 1-minute inputs now follow the τ segments.
 
+**A2 (POST-HOC (results seen), 2026-10-31; describes only, changes no verdict).** The shuffled-target control
+(§4, "nothing in that pair is read until fixed") excluded 0 on 8 cells:
+- H3-noK at 1m (−0.06%);
+- block cells WTC 1m (−0.05%), WTL / WTC / SPR 3m (+0.05 to +0.06%), WTL / ALN 30m (+0.19 to +0.21%);
+- H4a at 30m (+1.47%).
+
+These cells are **not read**. No fix was attempted, because none of them can change a verdict:
+- H3-noK fails its gate on 3m and 5m alone (upper bounds 0.31% and 0.23%);
+- the only Holm passes (WTL 1m, WTL 3m) are about 0.1-0.2% against a 1% bar;
+- 30m is descriptive.
+
+The cause was not diagnosed. Our hypothesis, not tested: within-date shuffling keeps day-level structure that V
+partly tracks, and with about 10^5-10^6 bars a 0.05% difference is "significant". The deviations (≤ 0.06% at 1-5m)
+set a noise floor about the size of the 1-5m increments themselves.
+
 **Draft history** (pre-registration, no outcomes):
 - v1, 2026-10-30.
 - v2, 2026-10-30, after the owner's review:
@@ -508,4 +523,15 @@ hypothesis, threshold or gate.
 
 ## RESULTS
 
-(not run)
+Run 2026-10-31 as registered. Full report: `analysis/output/vmc-nq-vol-increment/RESULTS.md`; gated verdicts:
+`results.json`; every number: `runs/tf{1,3,5,30}.json`. Lockbox not read.
+
+| Ledger id | Verdict | Key numbers (1 / 3 / 5m; 30m descriptive) |
+|---|---|---|
+| `vmc-nq-vol-increment` (H3, H3-noK, blocks) | **NULL** (H3, H3-noK); blocks **UNDERPOWERED** (only at 30m) | H3 skill +0.08% [+0.01, +0.14] / +0.14% [+0.01, +0.26] / +0.09% [−0.07, +0.26]; 30m +1.07% [−0.05, +2.25]. Only WTL non-zero (+0.11 / +0.20%, Holm); the cross adds nothing |
+| `vmc-nq-vol-transition` (H4a, H4b, H4c) | **NULL** (H4a, H4b); H4c CONTEXT | H4a Brier skill +0.00 / +0.20 / +0.09%; H4b +0.19 / −0.44 / +0.18% (5m interval reaches 1.35%); recognising AUC V 0.74 vs price 0.88 |
+| `vmc-nq-vol-decomposition` (H2a-d) | **NULL**, reassessment | vs the simple baseline the level is +4.9 / +5.5 / +5.7%; vs C+P+K it is −0.63 / −0.51 / −0.30%; A − B +0.12 / −0.38 / −0.76% |
+
+Labels: Stage 2, "reassessment on a previously explored period"; Stages 3-5, "pre-specified; test period previously
+used in related research; not independent confirmation". Per §8, `vmc-nq-cipher-volatility` stays as run, with a note
+that its effect is captured as well or better by price features.
