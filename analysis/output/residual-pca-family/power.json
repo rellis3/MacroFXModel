@@ -1,0 +1,60 @@
+{
+ "seed": 20261031,
+ "control": {
+  "obs": 21088,
+  "days": 2636,
+  "sd_s": 1.0450368648103976,
+  "mean_s_full": 0.017746735471408447,
+  "deff_date_cluster": 1.4213411522384805,
+  "sd_daily_ic_fx8": 0.4620333497758724,
+  "sd_ic_synth": {
+   "8": 0.44814248496635706,
+   "10": 0.3760678028427925,
+   "6": 0.5732940136839314
+  },
+  "ic_sd_inflation_real_vs_synth": 1.0309965363149136
+ },
+ "cells": {
+  "T1 news (untagged minus tagged, within currency)": {
+   "nA": 11786,
+   "nB": 6454,
+   "sd": 1.045,
+   "deff": 1.4213,
+   "mde": 0.0611,
+   "bar": 0.05,
+   "verdict": "UNDERPOWERED"
+  },
+  "T2 month-end (month-end days minus other days)": {
+   "nA": 984,
+   "nB": 20104,
+   "sd": 1.045,
+   "deff": 1.4213,
+   "mde": 0.1289,
+   "bar": 0.05,
+   "verdict": "UNDERPOWERED"
+  },
+  "T3 COT crowd (aligned minus neutral, ~half of extremes aligned)": {
+   "nA": 2273,
+   "nB": 15422,
+   "sd": 1.045,
+   "deff": 1.4213,
+   "mde": 0.0887,
+   "bar": 0.05,
+   "verdict": "UNDERPOWERED"
+  },
+  "T4 wide10 daily IC": {
+   "n_days": 2107,
+   "sd": 0.3877,
+   "mde": 0.0268,
+   "bar": 0.03,
+   "verdict": "POWERED"
+  },
+  "T5 idx6 daily IC (lag 2)": {
+   "n_days": 2539,
+   "sd": 0.5911,
+   "mde": 0.0372,
+   "bar": 0.03,
+   "verdict": "UNDERPOWERED"
+  }
+ }
+}
