@@ -296,3 +296,31 @@ it is a read, not a tested signal.
 verdict beside it. New on it: the sixteen-commodity range map, the weekly liquidity table (week / month / year, z of the
 week, SOFR − IORB) and his five-leg cross-asset correlations (API `/api/feed`, maths `js/feedCore.js`). Rates and options
 reuse Surface Lab; OI dashboard v2 is linked, not changed.
+
+---
+
+## 5. Time stop or z-score hard stop? Map the distribution first (#Vip-Discussion, 2026-10-31)
+
+**Context (tier 1, observed).** Earlier the same day C.OG shared Chris's model with @Quantitative & Macro VIPs:
+"Amazing work here from Chris, definitely something everyone should hav…" (truncated in the screenshot). Chris runs a
+PCA residual model from the micro bank (q1, mean reversion of residuals) on a demo account.
+
+> **Chris (13:10):** Hi C.OG I am looking to firm up the model, it is based on the z score and half life expectancy,
+> I am looking at adding a time stop or a z score hard stop. Do you have any recommendation on what would be best?
+> Or if anyone else has any opinions happy to hear them
+>
+> **C.OG (13:20):** First what I would map out before anything is your actual current trade distribution which would
+> allow you to also have full mfe and mae analysis
+>
+> This means that rather than just testing a stop idea we can actually engineer this to your systems distribution
+
+**Explanation (ours).** It's the same method as snippet #1: a stop is engineered from the system's own MAE/MFE
+distribution (where adverse excursion starts to predict a loser), not picked as a round number and then tested.
+
+**How it maps to this repo (ours, 2026-10-31).** `analysis/output/residual-pca-stops/RESULTS.md` (exploratory) did this
+for the micro bank model on 2016–2026 data:
+- Threshold trades (enter |z| ≥ 1.5, exit at home) hold for a median of about 28 days.
+- There is no MAE noise threshold inside 4 residual sd: holding on after any adverse move still paid on average.
+- Every time stop hurt. A z stop at 2.0 halved the result; at 3.0 it was neutral.
+- Side lead: the FX-only threshold book ran net Sharpe +0.43 / +0.38 by half. It needs a pre-registered forward
+  record before anything is said about it (metals version negative).
