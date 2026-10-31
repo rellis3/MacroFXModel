@@ -1,9 +1,8 @@
 # vmc-nq-vol-increment — does VuManChu Cipher B add material, repeatable information about NQ's next-hour range that a properly built price-only forecast cannot already provide?
 
-**DRAFT v3, 2026-10-30, for the owner's final review. Not yet registered; no outcome has been computed.**
-v2 incorporated the owner's seven amendments of 2026-10-30; v3 incorporates the owner's two final points (how
-independent the test period is, §2; the seam rule for feed joins and rolls, §3.1). Registration = the commit that
-changes this line and the register row to REGISTERED. Nothing runs before it.
+**REGISTERED 2026-10-31** (draft v3 approved by the owner on 2026-10-31; amendment A1 PRE-RESULTS, made at
+registration). No test-period number had been computed when this was committed. v2 incorporated the owner's seven
+amendments of 2026-10-30; v3 the owner's two final points (§2 independence, §3.1 seam rule).
 
 | | |
 |---|---|
@@ -396,6 +395,12 @@ powered there. Before registration, the 30m half-width is measured from a **fit-
 2020-2022 score, price-only pair C → C+P, which involves no VuManChu outcome) and written into §5. If it exceeds 1%,
 30m is UNDERPOWERED by design for H3 and H4, and the "≥ 3 of 4" gates then need 1, 3 and 5m.
 
+**Measured (2026-10-31, `prereg_measure.json`, fit period only):** at 30m, C → C+P skill = 70.2%, 95% interval
+[63.5%, 75.1%], **half-width 5.8%**. That exceeds 1%, so **30m is UNDERPOWERED by design for H3 and H4. The "≥ 3 of 4
+timeframes" conditions in §4 are read as "all of 1m, 3m and 5m"**, and 30m is reported descriptively. (The half-width
+of a large price-only gain overstates that of a small increment, but the rule was fixed in advance and is applied as
+written.)
+
 ## 6. Multiplicity
 
 **Scored**:
@@ -445,7 +450,42 @@ There are no other variants. Nothing is promoted to any live use from this study
 
 ## Amendments
 
-(none; v2 changes from the first draft are listed in the commit message and below)
+**A1 (PRE-RESULTS, 2026-10-31, made at registration, after the owner's approval of v3 and before any test-period
+number).** These are facts found and implementation details fixed while building the code. None changes a
+hypothesis, threshold or gate.
+
+1. **Calendar coverage.** `calendar_events.csv` ends on 2026-07-02. Without a cut, K would read "no release" for the
+   last seven weeks of the test period. So every comparison uses test trade dates **2023-01-01 → 2026-07-01**.
+   - The rows from 2026-07-02 to 08-20 are not used.
+   - They are not the lockbox, which remains sealed.
+   - The file also tags many more US releases "Major" in later years (about 192 a year in 2016-19, about 500 a year in
+     2023-25), so K's meaning drifts between the fit and test periods. The H3-noK pair (no calendar) is the check on
+     this, and both are reported.
+2. **Implementation details** (fixed in `scripts/vmc-nq-vol-increment/` before any test number):
+   - **Top 1%**: the top 1% of the base model's |error| on the test bars, removed for both models.
+   - **Walk-forward 2023**: the main 2016-22 fit, which already satisfies the purge rule.
+   - **Stage 4**: p_f is p at bar t+12, and p_24 is p at bar t+24, each against its own 20 previous dates. Ranges
+     equal to 1e-10 in log units count as ties (one half), so float rounding can't flip the order.
+   - **Simple baseline** (Stage 2's tie to `vmc-nq-cipher`): NY hour × σ500 tercile × decile of the signed prior
+     12-bar move in σ500·√12 units. Cutpoints come from the fit period; stratum means come from the test period, as in
+     the banked study.
+   - **One-sided p for Holm**: from the bootstrap SE (normal approximation).
+   - **NULL vs UNDERPOWERED for multi-timeframe gates**:
+     - NULL when too few of the required timeframes have an interval reaching the material bar for the gate to be
+       passable (upper bound ≥ 1% skill; for Stage 2, an interval outside ±0.02);
+     - otherwise UNDERPOWERED.
+     - Stage 2 NULL needs both the 1m and 3m intervals inside ±0.02.
+3. **Exploratory thresholds (§3.12)**:
+   - Examined on the fit period only: 2016-19 fit, 2020-22 residuals (`prereg_measure.json`).
+   - The level contrast B − D was about 0 or negative at every threshold and timeframe (−0.014 to +0.008).
+   - **No alternative is adopted.** The registered |wt1| < 20 is the only one scored on the test period.
+4. **Full seam test** (`seam_test_full.json`): the full builder passed on 1/3/5/30m, with 0 changed cells out of about
+   384 million checked. The negative control changed about 109 million.
+   - The first real run of the Stage 4 case moved 158 / 19 / 2 / 0 percentiles. That was float-rounding order flips
+     between near-equal ranges, not a crossing; the 1e-10 tie rule above fixes it.
+   - The re-run is recorded in the same file and must pass before any test number.
+   - Earlier, the synthetic test caught a real crossing: 1-minute realised-variance inputs from a mixed bar. It was
+     fixed before any table was used: 1-minute inputs now follow the τ segments.
 
 **Draft history** (pre-registration, no outcomes):
 - v1, 2026-10-30.
