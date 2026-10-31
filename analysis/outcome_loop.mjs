@@ -14,6 +14,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { scanBoard, scanLinks, findings } from '../js/marketScan.js';
 import { marketState } from '../js/marketState.js';
+import { bootDiff as _bootDiff, circularBlock } from './lib/eventBootstrap.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, 'output', 'outcome_loop.json');
@@ -35,14 +36,10 @@ const mean = x => x.length ? x.reduce((s, v) => s + v, 0) / x.length : null;
 const median = x => { if (!x.length) return null; const s = [...x].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const r3 = v => (v == null || !Number.isFinite(v)) ? null : +v.toFixed(3);
 
-const drawBlock = (x, block) => { const n = x.length, nb = Math.ceil(n / block), s = []; for (let q = 0; q < nb; q++) { const st = Math.floor(rnd() * (n - block + 1)); for (let i = 0; i < block && s.length < n; i++) s.push(x[st + i]); } return s; };
-const bootDiff = (a, b, block = BLOCK) => {
-  if (a.length < 4 || b.length < block) return null;
-  const out = [];
-  for (let k = 0; k < REPS; k++) out.push(mean(drawBlock(a, Math.min(block, a.length))) - mean(drawBlock(b, block)));
-  out.sort((p, q) => p - q);
-  return { nA: a.length, nB: b.length, diff: r3(mean(a) - mean(b)), lo: r3(out[Math.floor(REPS * 0.025)]), hi: r3(out[Math.floor(REPS * 0.975)]) };
-};
+// Bootstrap: shared helper (REPO_REVIEW_2026-10-31 S2). The copied drawBlock resampled the event arm in
+// blocks of min(block, n), which gave zero-width intervals at n <= block. Events here are de-clustered.
+const drawBlock = (x, block) => circularBlock(x, block, rnd);
+const bootDiff = (a, b, block = BLOCK) => _bootDiff(a, b, { block, reps: REPS, rnd, minA: 4 });
 const wilson = (k, n) => { if (!n) return null; const p = k / n, z = 1.96, d = 1 + z * z / n; const c = (p + z * z / (2 * n)) / d; const h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d; return { n, k, share: r3(p), lo: r3(c - h), hi: r3(c + h) }; };
 
 // ── the bundle ──────────────────────────────────────────────────────────────
