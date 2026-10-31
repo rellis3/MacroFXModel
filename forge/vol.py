@@ -507,18 +507,34 @@ def load_event_tags(csv_path: str = "calendar_events.csv", ccy: str = "USD") -> 
     return tags
 
 
+def london_date(dates) -> pd.DatetimeIndex:
+    """London calendar date (midnight, naive) for each row of a session index.
+
+    `load_daily(session="london22")` stamps each session by its START in naive UTC, so a
+    BST session sits at 23:00 on the PREVIOUS date. Naive values are read as UTC; aware
+    values are converted. A UTC-midnight stamp (utc24) maps to the same date, so this is
+    safe for every SESSIONS convention. Use it before any exact-date join."""
+    idx = pd.DatetimeIndex(dates)
+    idx = idx.tz_localize("UTC") if idx.tz is None else idx
+    return idx.tz_convert("Europe/London").normalize().tz_localize(None)
+
+
 def tag_column(dates, tags: dict, covered: tuple | None = None) -> np.ndarray:
     """Event tag per row. Dates OUTSIDE the calendar's coverage window get None (not
-    'none') so they can be excluded from the fit — see the EVENT_TAGS note above."""
-    idx = pd.DatetimeIndex(dates)
+    'none') so they can be excluded from the fit — see the EVENT_TAGS note above.
+
+    Rows are matched on their LONDON date (`london_date`). Before 2026-10-31 the lookup
+    used the naive-UTC stamp, so in BST every tag landed one session late (FOMC on
+    2026-06-17 tagged the 06-18 session; a Friday NFP was dropped) — REPO_REVIEW_2026-10-31
+    S3. Event multipliers fitted before that date carry the shift and need a refit."""
+    ldates = london_date(dates)
     lo, hi = (pd.Timestamp(covered[0]), pd.Timestamp(covered[1])) if covered else (None, None)
     out = []
-    for d in idx:
-        dd = pd.Timestamp(d).tz_localize(None) if pd.Timestamp(d).tzinfo else pd.Timestamp(d)
+    for dd in ldates:
         if lo is not None and (dd < lo or dd > hi):
             out.append(None)
         else:
-            out.append(tags.get(d.strftime("%Y-%m-%d"), "none"))
+            out.append(tags.get(dd.strftime("%Y-%m-%d"), "none"))
     return np.array(out, dtype=object)
 
 
@@ -812,6 +828,11 @@ def load_daily(pair: str, data_root: str = "VolRangeForecaster/data/m1",
     out = pd.DataFrame({"open": g["open"].first(), "high": g["high"].max(),
                         "low": g["low"].min(), "close": g["close"].last(),
                         "volume": g["volume"].sum()}).dropna(subset=["open", "close"])
+    # Weekend London dates are not sessions. In the weeks when US clocks have changed and
+    # UK clocks have not (about 4 a year), the 17:00 New York open is 21:00 London, inside
+    # the 00-22 window, so a 1-hour Sunday stub used to come out as a session
+    # (REPO_REVIEW_2026-10-31, DATA.md bug 3).
+    out = out[pd.DatetimeIndex(out.index).dayofweek < 5]
     out.index = pd.DatetimeIndex(out.index).tz_convert("UTC").tz_localize(None)
     return out
 
