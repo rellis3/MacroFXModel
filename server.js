@@ -397,6 +397,7 @@ import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillRep
 import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 / ou-pairs research runs (off the main loop)
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
 import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
+import { CBOE_INDICES as _CBOE_INDICES, YAHOO_LONG as _YAHOO_LONG, OVERNIGHT as _OVERNIGHT, fetchCboe as _fetchCboe, fetchYahooLong as _fetchYahooLong } from './js/marketHistory.js';
 // The permanent record of data that cannot be re-fetched (plans/DATA_ASSET_MAP.md §4A–B): R2, append-only.
 const _archive = createDataArchive({ putJSON: _r2PutJSON, getJSON: _r2GetJSON, listKeys: _r2ListKeys, configured: _r2Ok, log: console });
 
@@ -17287,7 +17288,17 @@ let _flowChain = { at: 0, data: null, building: null };
 function _refreshFlowChain() {
   _flowChain.building ??= _buildFlowChain({ fredKey: process.env.FRED_KEY || null, oandaKey: process.env.OANDA_KEY || null,
       oandaBase: process.env.OANDA_KEY ? _oandaBaseMe() : null })
-    .then(d => { if (d.ok) _flowChain = { ..._flowChain, at: Date.now(), data: d }; return _flowChain.data; })
+    .then(d => {
+      if (d.ok) {
+        _flowChain = { ..._flowChain, at: Date.now(), data: d };
+        // Keep the daily non-US rates it builds from 2005 (DE/JP 2Y and 10Y, ECB deposit rate, Bank Rate, UK 10Y): DATA_ASSET_MAP B9.
+        for (const [id, col] of Object.entries(d.line ?? {})) {
+          const pts = (d.dates ?? []).map((date, i) => ({ date, value: col?.[i] })).filter(p => p.value != null);
+          _archive.mergeSeries('rates', id, pts, { via: 'flow-chain', source: d.src?.[id] ?? null }).catch(() => {});
+        }
+      }
+      return _flowChain.data;
+    })
     .catch(e => { console.warn('[flow-chain]', e.message); return _flowChain.data; })
     .finally(() => { _flowChain.building = null; });
   return _flowChain.building;
@@ -39112,6 +39123,34 @@ async function _archiveDaily() {
   try { await _goldEtfFlowSeries(); out.gold = true; } catch (e) { out.failed.push(`gold etf: ${e.message}`); }
   try { await _refreshNowcast(); } catch (e) { out.failed.push(`nowcast: ${e.message}`); }
   try { await _buildGprScore(); out.gpr = true; } catch (e) { out.failed.push(`gpr: ${e.message}`); }
+  // Long market histories (DATA_ASSET_MAP §4C): 21 Cboe vol indices (VIX from 1990), Yahoo long dailies (MOVE, ^TNX/^FVX,
+  // credit/duration ETFs, 20 FX crosses incl. EM), overnight benchmarks (€STR, CORRA, SONIA).
+  out.cboe = 0; out.yahoo = 0; out.overnight = 0;
+  for (const sym of _CBOE_INDICES) {
+    try { const w = await _archive.mergeSeries('cboe', sym, await _fetchCboe(sym), { via: 'cdn.cboe.com' }); if (!w.error) out.cboe++; } catch (e) { out.failed.push(`cboe ${sym}: ${e.message}`); }
+    await new Promise(r => setTimeout(r, 500));
+  }
+  for (const id of Object.keys(_YAHOO_LONG)) {
+    try { const w = await _archive.mergeSeries('yahoo', id, await _fetchYahooLong(id), { ticker: _YAHOO_LONG[id].t }); if (!w.error) out.yahoo++; } catch (e) { out.failed.push(`yahoo ${id}: ${e.message}`); }
+    await new Promise(r => setTimeout(r, 700));
+  }
+  for (const [id, o] of Object.entries(_OVERNIGHT)) {
+    try { const w = await _archive.mergeSeries('rates', id, await o.fetch(), { label: o.label }); if (!w.error) out.overnight++; } catch (e) { out.failed.push(`${id}: ${e.message}`); }
+  }
+  try { const w = await _archive.mergeSeries('rates', 'SONIA', await _fetchBoeSeries('IUDSOIA', '1997-01-01'), { label: 'SONIA', via: 'BoE IADB' }); if (!w.error) out.overnight++; } catch (e) { out.failed.push(`SONIA: ${e.message}`); }
+  // The desk's own forecast and session records (the data behind the proven range results; KV is the only copy).
+  for (const [prefix, source] of [['vol_forecast_', 'vol_forecast'], ['vol_session_', 'vol_session']]) {
+    try {
+      const dates = (await kv.keys(prefix)).map(k => k.slice(prefix.length)).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+      out[source] = (await _archive.backfill(source, dates, async d => { const raw = await kv.get(`${prefix}${d}`); return raw ? JSON.parse(raw) : null; })).length;
+    } catch (e) { out.failed.push(`${source}: ${e.message}`); }
+  }
+  // Point-in-time logs that live only in KV: the funding read (one row a day) and the live surprise store (weekly copy).
+  try { const raw = await kv.get(_FR_KV); const fr = raw ? JSON.parse(raw) : null; if (fr?.days?.length) for (const d of fr.days.slice(-14)) await _archive.snapshot('funding_read', d.day, d); } catch (e) { out.failed.push(`funding_read: ${e.message}`); }
+  try {
+    const wk = new Date(); wk.setUTCDate(wk.getUTCDate() - ((wk.getUTCDay() + 6) % 7));     // Monday of this week
+    const raw = await kv.get(_SURPRISE_KV); if (raw) await _archive.snapshot('surprise_store', wk.toISOString().slice(0, 10), JSON.parse(raw));
+  } catch (e) { out.failed.push(`surprise_store: ${e.message}`); }
   // COT at full depth (every weekly report since 2006 for the 36 live markets), weekly; the live 156-week window stays.
   if (Date.now() - _cotArchiveAt > 6 * 864e5) {
     let n = 0;
@@ -39122,14 +39161,14 @@ async function _archiveDaily() {
     }
     out.cot = n; if (n) _cotArchiveAt = Date.now();
   }
-  console.log(`[archive] daily: ${out.fred} FRED series merged, COT ${out.cot ?? 'skipped (weekly)'}, ${out.oiRaw} OI raw days and ${out.oiSummary} OI summary days copied to R2, gold ${out.gold ? 'captured' : 'missed'}${out.failed.length ? `; failed: ${out.failed.slice(0, 5).join('; ')}` : ''}`);
+  console.log(`[archive] daily: ${out.fred} FRED, ${out.cboe} Cboe, ${out.yahoo} Yahoo, ${out.overnight} overnight series merged; forecast days ${out.vol_forecast ?? 0}/${out.vol_session ?? 0} copied; COT ${out.cot ?? 'skipped (weekly)'}, ${out.oiRaw} OI raw days and ${out.oiSummary} OI summary days copied to R2, gold ${out.gold ? 'captured' : 'missed'}${out.failed.length ? `; failed: ${out.failed.slice(0, 5).join('; ')}` : ''}`);
   return { ok: true, ...out };
 }
 svcTimeout('dataArchive', () => _archiveDaily().catch(e => console.error('[archive]', e.message)), 15 * 60_000);
 svcInterval('dataArchive', () => _archiveDaily().catch(e => console.error('[archive]', e.message)), 24 * 3600_000);
 app.get('/api/data-archive/status', async (_req, res) => {
   try {
-    const sources = ['oi_raw', 'oi_summary', 'tnx_15m', 'yield_shape_signals', 'nowcast'];
+    const sources = ['oi_raw', 'oi_summary', 'tnx_15m', 'yield_shape_signals', 'nowcast', 'vol_forecast', 'vol_session', 'funding_read', 'surprise_store'];
     const days = {};
     for (const s of sources) { const d = [...(await _archive.archivedDates(s))].sort(); days[s] = { n: d.length, first: d[0] ?? null, last: d.at(-1) ?? null }; }
     const series = (await _r2ListKeys('archive/series/')).map(k => k.replace(/^archive\/series\//, '').replace(/\.json$/, ''));
