@@ -29,6 +29,7 @@ sys.path.insert(0, ROOT)
 PANEL = os.path.join(ROOT, "analysis/output/residual-pca-family/panel_daily.csv")
 
 FX8 = ["USD", "EUR", "GBP", "AUD", "NZD", "JPY", "CAD", "CHF"]
+PAIR_TERMS = {"JPY", "CAD", "CHF"}   # stored as USD/xxx in cot_weekly.csv (fetch_cot.py MARKETS flip=True)
 CCY_PAIR = {"EUR": ("EURUSD", 1), "GBP": ("GBPUSD", 1), "AUD": ("AUDUSD", 1), "NZD": ("NZDUSD", 1),
             "JPY": ("USDJPY", -1), "CAD": ("USDCAD", -1), "CHF": ("USDCHF", -1)}
 IDX6 = ["NAS100", "SPX500", "US30", "US2000", "DE30", "UK100"]
@@ -101,7 +102,11 @@ def crowd_tags(index):
     out = pd.DataFrame(np.nan, index=idx, columns=FX8)
     for c in FX8:
         d = cot[cot.sym == c].sort_values("report_date").drop_duplicates("report_date").reset_index(drop=True)
-        sh = ((d.spec_long - d.spec_short) / d.oi).values.astype(float)
+        # cot_weekly.csv stores JPY/CAD/CHF in USD/xxx PAIR terms (fetch_cot.py flips them); FX8 is
+        # currency strength, so un-flip those three. Before 2026-10-31 this was missing and the crowd
+        # sign was inverted for JPY/CAD/CHF (REPO_REVIEW_2026-10-31 S4; residual-pca-cot needs RE-RUN).
+        sgn = -1.0 if c in PAIR_TERMS else 1.0
+        sh = sgn * ((d.spec_long - d.spec_short) / d.oi).values.astype(float)
         pct = np.array([_rank_prior(sh, i) for i in range(len(sh))])
         crowd = np.where(pct >= 90, 1.0, np.where(pct <= 10, -1.0, 0.0))
         crowd[~np.isfinite(pct)] = np.nan
