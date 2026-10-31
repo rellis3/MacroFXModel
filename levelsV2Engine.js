@@ -95,35 +95,49 @@ function bodyRange(bars) {
   for (const b of bars) { hi = Math.max(hi, b.open, b.close); lo = Math.min(lo, b.open, b.close); }
   return hi > lo ? { low: lo, high: hi } : null;
 }
-const utcHour = epochSec => new Date(epochSec * 1000).getUTCHours();
-const utcDay  = epochSec => new Date(epochSec * 1000).getUTCDay();   // 0=Sun..6=Sat
 
 // Asia ladder = body range of the latest session's first ASIA_HRS hours.
-// CRITICAL — this window MUST match what the frozen policy was LEARNED on, else the
-// live ladder is anchored on a different range than the grades were computed for
-// (the LEGO §1 "live and backtest import the same definition" rule). The v2 learn
-// route buckets sessions at the 00:00-UTC boundary (boundaryHour default 0) and
-// takes the first asiaHrs=6 → 00:00–06:00 **UTC**. The old code filtered on
-// Europe/London local hours, which in BST is 23:00–05:00 UTC — a 1-hour drift that
-// shifted/clipped the anchor vs the policy (the body high could sit in the missed
-// 00:00–01:00 BST hour, so the live high read low). Keep it UTC to stay aligned.
+// CRITICAL — this window MUST match what the frozen policy was LEARNED on (the LEGO §1
+// "live and backtest import the same definition" rule). /api/levels-v2/learn calls
+// rangeLineAnalyser.touchesForPair with no boundaryHour, so sessions are split at
+// 22:00 UTC (bucketM1IntoSessions' numeric default) and Asia is the first 6 hours of
+// each session: 22:00–04:00 UTC. Monday is the whole Monday session (Sun 22:00 →
+// Mon 22:00 UTC). Before 2026-10-31 the live code used 00:00–06:00 UTC and the UTC
+// Monday, on the mistaken belief that learn used boundary 0 — a 2-hour drift between
+// the anchor and the grades (REPO_REVIEW_2026-10-31). LEARN_BOUNDARY_UTC is passed to
+// the learn route explicitly now, so the two cannot drift silently again.
+export const LEARN_BOUNDARY_UTC = 22;
 const ASIA_HRS = 6;
-function asiaRange(bars5m) {
-  if (!bars5m?.length) return null;
-  const lastDay = new Date(bars5m[bars5m.length - 1].time * 1000).toISOString().slice(0, 10);  // UTC day
-  const asia = bars5m.filter(b => {
-    const day = new Date(b.time * 1000).toISOString().slice(0, 10);
-    return day === lastDay && utcHour(b.time) < ASIA_HRS;
-  });
-  return bodyRange(asia.length >= 12 ? asia : bars5m.filter(b => utcHour(b.time) < ASIA_HRS).slice(-72));
+// Session date for an evening boundary: a bar at/after 22:00 UTC belongs to the NEXT date
+// (same rule as forecastAnalyser.bucketM1IntoSessions for a numeric boundary >= 12).
+export function sessionKeyUtc(epochSec, boundary = LEARN_BOUNDARY_UTC) {
+  const dt = new Date(epochSec * 1000);
+  const d = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()));
+  if (dt.getUTCHours() >= boundary) d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
 }
-// Monday ladder = body range of the current week's Monday M30 bars.
-function mondayRange(bars30m) {
+function _bySession(bars) {
+  const m = new Map();
+  for (const b of bars) { const k = sessionKeyUtc(b.time); if (!m.has(k)) m.set(k, []); m.get(k).push(b); }
+  return m;
+}
+export function asiaRange(bars5m) {
+  if (!bars5m?.length) return null;
+  const sess = _bySession(bars5m), keys = [...sess.keys()].sort();
+  for (let k = keys.length - 1; k >= 0; k--) {            // latest session with a formed Asia window
+    const b = sess.get(keys[k]); const close = b[0].time + ASIA_HRS * 3600;
+    const asia = b.filter(x => x.time < close);
+    if (asia.length >= 12) return bodyRange(asia);
+  }
+  return null;
+}
+// Monday ladder = body range of the latest Monday SESSION's bars (learner: the Monday session).
+export function mondayRange(bars30m) {
   if (!bars30m?.length) return null;
-  const mons = bars30m.filter(b => utcDay(b.time) === 1);
+  const sess = _bySession(bars30m);
+  const mons = [...sess.keys()].filter(k => new Date(k + 'T12:00:00Z').getUTCDay() === 1).sort();
   if (!mons.length) return null;
-  const lastMonDay = new Date(mons[mons.length - 1].time * 1000).toISOString().slice(0, 10);
-  return bodyRange(mons.filter(b => new Date(b.time * 1000).toISOString().slice(0, 10) === lastMonDay));
+  return bodyRange(sess.get(mons[mons.length - 1]));
 }
 
 // ── Policy loader (frozen artifact from KV) ──────────────────────────────────

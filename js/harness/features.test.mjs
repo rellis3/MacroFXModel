@@ -8,14 +8,16 @@
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FeatureStore, validateEntry, validateRows, UnregisteredFeature, FeatureNotBuilt, BadFeatureRows, loadManifest } from './features.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const PY = path.join(ROOT, '.venv', 'Scripts', 'python.exe');
+// The repo's Windows venv when present; otherwise $PYTHON or python3 (Linux/cloud sessions).
+const WIN_PY = path.join(ROOT, '.venv', 'Scripts', 'python.exe');
+const PY = process.env.PYTHON || (existsSync(WIN_PY) ? WIN_PY : 'python3');
 const DIR = mkdtempSync(path.join(tmpdir(), 'featstore-'));
 
 // A monthly macro series with revisions. The reference month is `date`; the value is
@@ -90,6 +92,24 @@ test('at() answers by ASOF, not by date — the point-in-time rule', async () =>
   assert.equal(await s.at('fx_cpi', '2026-08-01T00:00:00Z'), null);
   // the exact asof instant is inclusive
   assert.equal((await s.at('fx_cpi', '2026-08-12T23:59:59Z')).value, 100.0);
+});
+
+test('at() returns the newest PERIOD known at t, not a later revision of an older period', async () => {
+  // July revised on 20 Oct, after August's first print (12 Sep) and September's (14 Oct).
+  const rows = [
+    { date: '2026-07-01', asof: '2026-08-12T23:59:59Z', value: 100.0, _asofMs: Date.parse('2026-08-12T23:59:59Z') },
+    { date: '2026-08-01', asof: '2026-09-12T23:59:59Z', value: 101.0, _asofMs: Date.parse('2026-09-12T23:59:59Z') },
+    { date: '2026-09-01', asof: '2026-10-14T23:59:59Z', value: 102.0, _asofMs: Date.parse('2026-10-14T23:59:59Z') },
+    { date: '2026-07-01', asof: '2026-10-20T23:59:59Z', value: 99.5, _asofMs: Date.parse('2026-10-20T23:59:59Z') },
+    { date: '2026-09-01', asof: '2026-10-25T23:59:59Z', value: 102.3, _asofMs: Date.parse('2026-10-25T23:59:59Z') },
+  ];
+  const s = store(); s._cache.set('fx_cpi', rows);
+  assert.equal((await s.at('fx_cpi', '2026-10-21T00:00:00Z')).value, 102.0);   // September, not the July revision
+  assert.equal((await s.at('fx_cpi', '2026-10-26T00:00:00Z')).value, 102.3);   // September's own revision wins
+  assert.equal((await s.at('fx_cpi', '2026-09-20T00:00:00Z')).value, 101.0);
+  // staleness: on 30 Nov the newest print (25 Oct) is 36 days old
+  assert.equal(await s.at('fx_cpi', '2026-11-30T00:00:00Z', { maxStaleDays: 30 }), null);
+  assert.equal((await s.at('fx_cpi', '2026-10-26T00:00:00Z', { maxStaleDays: 30 })).value, 102.3);
 });
 
 test('series() reconstructs history as it was knowable at a point in time', async () => {

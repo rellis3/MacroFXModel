@@ -17,12 +17,18 @@ from __future__ import annotations
 # Publication lags in *calendar weeks*. Applied so the nowcast at week T only
 # ever uses data that was actually published by week T (no lookahead).
 PUB_LAG_WEEKS = {
-    "central_bank": 2,   # CB balance sheets print with ~1-2wk lag
-    "growth": 3,         # PMIs / activity surprise
+    "central_bank": 2,   # weekly CB balance sheets (Fed H.4.1, ECB) print with ~1-2wk lag
+    "growth": 7,         # INDPRO: monthly, FRED-dated the 1st, released ~mid next month (~6.5wk)
     "inflation": 2,      # breakevens are daily, but treat conservatively
     "credit": 1,         # HY OAS, daily but lag 1wk for safety
     "vol": 1,            # VIX/MOVE daily
 }
+
+# Monthly balance sheets are FRED-dated the 1st of the month they describe and published weeks
+# later, so the weekly default arrived 3-4 weeks early (REPO_REVIEW_2026-10-31). Per-block override:
+# BoJ (JPNASSETS) ~5wk after the date, China reserves (TRESEGCNM052N) ~6wk; one week of margin each.
+# Mirrored in js/globalLiquidityEngine.js CFG.PUB_LAG.cbByCcy.
+PUB_LAG_WEEKS_CB = {"USD": 2, "EUR": 2, "JPY": 6, "CNY": 7, "GBP": 6}
 
 # Rolling window (weeks) for causal z-scores. ~3y of weekly data.
 Z_WINDOW_WEEKS = 156
@@ -45,17 +51,17 @@ CYCLE_LENGTH_WEEKS = 282
 # `proxy=True` flag flag it as lower-confidence.
 CB_BLOCKS = {
     "USD": {
-        # Fed net liquidity = WALCL - TGA - RRP (already in USD).
-        # UNITS: FRED publishes WALCL in $MILLIONS but WTREGEN/RRPONTSYD in
-        # $BILLIONS. The raw subtraction made the drains ~0.01% of the block —
-        # "net liquidity" was effectively just the Fed balance sheet and missed
-        # the 2022/23 TGA-rebuild / RRP-drain moves entirely. walcl/1000 → $B.
+        # Fed net liquidity = WALCL - TGA - RRP, in $ billions.
+        # UNITS (DATA_SPEC §5 #8, js/netLiquidity.js): FRED publishes WALCL AND
+        # WTREGEN in $MILLIONS; only RRPONTSYD is in $BILLIONS. This copy still had
+        # the 2026-07-02 formula (TGA treated as $B), which gives ≈ −TGA (about
+        # −876,617 "$bn"); fixed 2026-10-31 (REPO_REVIEW_2026-10-31).
         "components": {
             "walcl": "WALCL",         # Fed total assets ($ MILLIONS on FRED)
-            "tga": "WTREGEN",         # Treasury General Account, drains ($ BILLIONS)
+            "tga": "WTREGEN",         # Treasury General Account, drains ($ MILLIONS on FRED)
             "rrp": "RRPONTSYD",       # Reverse repo, drains ($ BILLIONS)
         },
-        "formula": "walcl / 1000 - tga - rrp",
+        "formula": "walcl / 1000 - tga / 1000 - rrp",
         "fx": None,                   # already USD
         "proxy": False,
     },

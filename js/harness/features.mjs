@@ -98,6 +98,20 @@ async function readParquet(file) {
   return rows;
 }
 
+// For rows sorted by asof: index of the newest period (max date; ties → latest asof) among
+// rows[0..i], for every i. Cached on the array so each feature pays for it once.
+function _runningBest(rows) {
+  if (rows._best) return rows._best;
+  const best = new Int32Array(rows.length);
+  let b = -1;
+  for (let i = 0; i < rows.length; i++) {
+    if (b < 0 || String(rows[i].date) >= String(rows[b].date)) b = i;
+    best[i] = b;
+  }
+  Object.defineProperty(rows, '_best', { value: best, enumerable: false });
+  return best;
+}
+
 export class FeatureStore {
   /**
    * `manifest` is the loaded manifest object; `dir` is where the parquet files live.
@@ -130,11 +144,17 @@ export class FeatureStore {
   }
 
   /**
-   * The newest value knowable at `t`. Binary search on asof. Returns null when nothing was
-   * knowable yet (before the series' first asof) — that is a legitimate answer; a study
-   * then has no feature, not a stale one.
+   * The newest PERIOD knowable at `t`, in its latest vintage published by `t`. Binary search
+   * on asof, then a precomputed running best by (date, asof). Returns null when nothing was
+   * knowable yet (before the series' first asof) — that is a legitimate answer; a study then
+   * has no feature, not a stale one.
+   *
+   * Before 2026-10-31 this returned the row with the latest ASOF, so a revision of an older
+   * period published after the newest period's first print came back instead of the newest
+   * period (REPO_REVIEW_2026-10-31 S5). `maxStaleDays` (optional) returns null when the pick
+   * was published more than that many days before `t`.
    */
-  async at(id, t) {
+  async at(id, t, { maxStaleDays = null } = {}) {
     const e = this.entry(id);
     if (e.kind !== 'series') throw new Error(`at() is for series; "${id}" is ${e.kind} — use events() or profile()`);
     const rows = await this.rows(id);
@@ -143,10 +163,8 @@ export class FeatureStore {
     let lo = 0, hi = rows.length - 1, best = -1;
     while (lo <= hi) { const mid = (lo + hi) >> 1; if (rows[mid]._asofMs <= tm) { best = mid; lo = mid + 1; } else hi = mid - 1; }
     if (best < 0) return null;
-    // several rows can share an asof (a vintage republishes history): the one with the
-    // latest DATE is the newest period known at that moment
-    let k = best; while (k > 0 && rows[k - 1]._asofMs === rows[best]._asofMs) k--;
-    let pick = rows[best]; for (let i = k; i <= best; i++) if (String(rows[i].date) > String(pick.date)) pick = rows[i];
+    const pick = rows[_runningBest(rows)[best]];
+    if (maxStaleDays != null && tm - pick._asofMs > maxStaleDays * 86_400_000) return null;
     const { _asofMs, ...out } = pick;
     return out;
   }
