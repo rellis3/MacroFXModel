@@ -1856,6 +1856,40 @@ export const DESK_EVIDENCE = [
     result: 'Gold M1 2016-2026 (lockbox respected). Bid/ask fills (primary): 1,252 trades, -0.72R [-0.82, -0.63] per trade, halves -1.00/-0.48, every year negative, win rate 3.8%. Mid + 0.30 cost: -0.56R [-0.65, -0.47]; mid gross -0.05R [-0.12, +0.03], beats 14 of 28 shifted opens. Spread at the fill median 0.49R (about 1R in the first 15 min). None of 36 variants (anchor wick/open, impulse 0.10/0.20/0.30 ADR, 5R/3R/2R, BE on/off) survives BH on gold, NQ or EURUSD. Gold components (return to the 1, sweep 1.1-1.618, depth 0.786-0) all match the shifted opens.',
     use: 'Do not trade it: no edge in price before costs, and the overnight spread costs ~0.7R a trade at a 0.2-leg stop. Reusable pieces (misc index): on EURUSD the retest of the opening extreme holds better than chance (fewer sweeps past it, more runs to the impulse extreme, both halves) but is unaffordable at this leg size; on NQ price stalls after the retest. Gold: none.',
   },
+  {
+    id: 'residual-pca-wide10', domain: 'price', verdict: 'null', date: '2026-10-31', doc: 'forge/RESIDUAL_PCA_FAMILY_PREREG.md', also: ['analysis/output/residual-pca-family/RESULTS.md', 'education/residual_pca_currency_test/RESULTS.md'],
+    claim: 'C.OG micro bank q1 (mean reversion of PCA residuals, the lesson loop unchanged: window 120, K by the noise-band rule, dead band 0.2, cap 1.5, factor-neutral) works on a wider basket: FX8 + gold + silver, 17:00 New York closes, next-day residual.',
+    result: '2018-06 to 2026-08 (2,108 signal days, K 2): daily IC +0.0075 [-0.010, +0.025], NW t 0.85, p 0.20; IS +0.006, OOS +0.009 (gate needed p <= 0.05); MDE 0.027 vs bar 0.03, CI excludes the bar. Gold/silver residuals trend IS (-0.04/-0.02). Book net Sharpe IS -0.49, OOS +0.05, OOS 2x cost -0.15. Engine reproduces the banked q1 run exactly.',
+    use: 'Do not say adding metals rescues the micro bank residual model; it has no basket on 2016-2026 that works in both halves. Only route left: forward-track the frozen FX8 model (q1 RESULTS). EUR-only slice survives BH but overlaps q1, candidate for a forward record only.',
+  },
+  {
+    id: 'residual-pca-idx6', domain: 'price', verdict: 'underpowered', date: '2026-10-31', doc: 'forge/RESIDUAL_PCA_FAMILY_PREREG.md', also: ['analysis/output/residual-pca-family/RESULTS.md', 'education/residual_pca_currency_test/RESULTS.md'],
+    claim: 'The micro bank q1 residual-reversion model works on six index CFDs (NAS100, SPX500, US30, US2000, DE30, UK100), signal at the 17:00 NY close, outcome a day later (t+1 to t+2, so a stale DAX/FTSE close cannot fake reversion).',
+    result: '2016-06 to 2026-08 (2,540 signal days, K 2): daily IC +0.011 [-0.012, +0.034], p 0.17; IS +0.019, OOS +0.003; sign alternates by year; underpowered by design (MDE 0.037 vs bar 0.03), described not scored. Book net Sharpe IS -0.32, OOS +0.08.',
+    use: 'No index residual book on this evidence. Reopen only with more instruments (more independent residuals) or a forward record.',
+    instruments: ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+  },
+  {
+    id: 'residual-pca-news', domain: 'events', verdict: 'underpowered', date: '2026-10-31', doc: 'forge/RESIDUAL_PCA_FAMILY_PREREG.md', also: ['analysis/output/residual-pca-family/RESULTS.md', 'education/residual_pca_currency_test/RESULTS.md'],
+    claim: 'FX8 residual displacements built on scheduled high-impact news days (ForexFactory, day t or t-1, per currency) revert less than those built on no-news days.',
+    result: '2016-06 to 2025-04 (2,280 days; 11,786 no-news / 6,454 news obs): within-currency D (no-news minus news) -0.018 [-0.069, +0.034], wrong sign; IS -0.035, OOS +0.009; tag-shift placebo +0.002 sd 0.025; underpowered by design (MDE 0.061 vs 0.05), though the interval already excludes +0.05. No-news-only book net Sharpe IS -0.55, OOS +0.29.',
+    use: 'Do not filter the residual book by news days. No sign that news-built displacements revert less.',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
+  },
+  {
+    id: 'residual-pca-monthend', domain: 'events', verdict: 'underpowered', date: '2026-10-31', doc: 'forge/RESIDUAL_PCA_FAMILY_PREREG.md', also: ['analysis/output/residual-pca-family/RESULTS.md', 'education/residual_pca_currency_test/RESULTS.md'],
+    claim: 'FX8 residual displacements measured at the month-end close (after the WM/R fix) revert more over the next day than on other days.',
+    result: '2016-06 to 2026-08 (128 month-ends, 984 obs vs 20,104): D +0.031 [-0.062, +0.124], IS +0.077, OOS -0.014; placebo +0.001 sd 0.046; underpowered by design (MDE 0.129 vs 0.05). Month-end-only book net Sharpe IS +0.02, OOS -0.36.',
+    use: 'Not judgeable on 128 month-ends; say nothing about month-end residual reversion. Reopen only with intraday fix-window data across more pairs.',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
+  },
+  {
+    id: 'residual-pca-cot', domain: 'positioning', verdict: 'underpowered', date: '2026-10-31', doc: 'forge/RESIDUAL_PCA_FAMILY_PREREG.md', also: ['analysis/output/residual-pca-family/RESULTS.md', 'education/residual_pca_currency_test/RESULTS.md'],
+    claim: 'FX8 residual displacements stretched in the direction of an extreme speculative COT position (prior-only 3-year percentile >= 90 / <= 10, known from the release Friday) revert more than those with a neutral crowd.',
+    result: '2016-06 to 2026-08 (2,496 days; 2,119 aligned / 15,422 neutral obs): D +0.003 [-0.037, +0.042], IS -0.003, OOS +0.012; placebo +0.003 sd 0.021; underpowered by design (MDE 0.089 vs 0.05), though the interval already excludes +0.05. Crowd-aligned-only book net Sharpe IS -0.32, OOS -0.17.',
+    use: 'Do not use COT crowding to pick residual trades. No sign of extra reversion against a crowd.',
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1921,6 +1955,11 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'residual-pca-wide10': { n: '2,108 signal days (daily IC series, NW-5)', note: 'MDE 0.027 vs bar 0.03; CI [-0.010, +0.025] excludes the bar -- a real null' },
+  'residual-pca-idx6':   { n: '2,540 signal days', note: 'MDE 0.037 vs bar 0.03 (underpowered by design, described)' },
+  'residual-pca-news':   { n: '2,280 days, date-block bootstrap (21)', note: 'MDE 0.061 vs bar 0.05 (described); CI upper +0.034 below the bar' },
+  'residual-pca-monthend': { n: '128 month-end days', note: 'MDE 0.129 vs bar 0.05 (underpowered by design)' },
+  'residual-pca-cot':    { n: '2,496 days, date-block bootstrap (21)', note: 'MDE 0.089 vs bar 0.05 (described); CI upper +0.042 below the bar' },
   'fiscal-reaction-uk-size':      { n: '32 scheduled UK fiscal events 2010-2026 (iid over events)', note: 'MDE 1.48x on the net-move ratio; 1.19x [0.72, 1.76] spans it' },
   'fiscal-reaction-us-size':      { n: '75 refunding statements 2008-2026 (iid over events)', note: 'MDE 1.30x; 0.94x [0.72, 1.21] excludes it -- a real null' },
   'fiscal-reaction-uk-direction': { n: '13 events with an in-year gilt revision', note: 'below the registered 15-row floor; MDE rho ~0.55' },

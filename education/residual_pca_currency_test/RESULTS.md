@@ -109,3 +109,10 @@ and at a Sharpe near 0.5 it will need years, not months, to be conclusive.
 Any other variant run on this same 2016–2026 history (weekly horizon, adding gold, a
 different window) is a **new test**. It needs its own pre-registration, and it counts
 against the multiple-testing budget: this was test #1.
+
+## Follow-up (2026-10-31)
+
+Tests #2-#6 on this line ran as `residual-pca-family` (`forge/RESIDUAL_PCA_FAMILY_PREREG.md`,
+`analysis/output/residual-pca-family/RESULTS.md`): adding gold and silver is NULL (IC +0.0075, both halves tiny);
+indices and the news / month-end / COT filters are underpowered and show nothing. The forward record of the frozen
+FX8 model above remains the only open route.
