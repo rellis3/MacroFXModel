@@ -21816,7 +21816,9 @@ async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, e
   let ladderBySide = {};
   if (packed?.n) {
     const _sessions = _bucketM1IntoSessions(packed, 'Europe/London');
-    const daily = [..._sessions.keys()].sort().map(d => {
+    // Weekend London dates (2-hour Sunday-evening open) are not sessions; atlasWalk's 200-bar
+    // history floor already drops them, so live σ now matches the backtest (REPO_REVIEW_2026-10-31).
+    const daily = [..._sessions.keys()].sort().filter(d => ![0, 6].includes(new Date(d + 'T12:00:00Z').getUTCDay())).map(d => {
       const b = _sessions.get(d);
       let hi = -Infinity, lo = Infinity;
       for (const x of b) { if (x.high > hi) hi = x.high; if (x.low < lo) lo = x.low; }
@@ -25873,7 +25875,9 @@ app.get('/api/level-atlas/vote-ladder/export', async (req, res) => {
         if (!packed?.n) continue;
         const assetCls = (() => { try { return _assetClassOf(lower); } catch { return 'fx'; } })();
         const sessions = _bucketM1IntoSessions(packed, 'Europe/London');
-        const daily = [...sessions.keys()].sort().map(d => {
+        // Weekend London dates (2-hour Sunday-evening open) are not sessions; atlasWalk's 200-bar
+        // history floor already drops them, so live σ now matches the backtest (REPO_REVIEW_2026-10-31).
+        const daily = [...sessions.keys()].sort().filter(d => ![0, 6].includes(new Date(d + 'T12:00:00Z').getUTCDay())).map(d => {
           const b = sessions.get(d);
           let hi = -Infinity, lo = Infinity;
           for (const x of b) { if (x.high > hi) hi = x.high; if (x.low < lo) lo = x.low; }
@@ -34610,8 +34614,10 @@ app.post('/api/liquidity-backtest/run', express.json({ limit: '32kb' }), async (
           continue;
         }
 
-        // Convert packed M1 → sessions (same as recordsForPair does internally).
-        const sessions = _bucketM1IntoSessions(packed);
+        // Convert packed M1 → sessions (same as recordsForPair does internally). The range-line /
+        // levels-v2 family runs on the 22:00-UTC broker day, not London sessions; stated explicitly
+        // since 2026-10-31 so it cannot change silently (REPO_REVIEW_2026-10-31).
+        const sessions = _bucketM1IntoSessions(packed, _LV2_BOUNDARY);
         if (!sessions || !sessions.size) {
           results.push({ pair: p, error: 'Could not build sessions' });
           liqJobs.set(jobId, { status: 'running', startedAt: Date.now(), progress: (i + 1) / validPairs.length, pairsDone: i + 1, pairsTotal: validPairs.length });

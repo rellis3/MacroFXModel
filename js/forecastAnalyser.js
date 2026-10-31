@@ -472,9 +472,13 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
   // it — see analyseWindow's own comment). Signature: (date, session) -> bucket|null.
   const prevSessionVolFor = typeof opts.prevSessionVolFor === 'function' ? opts.prevSessionVolFor : null;
 
-  // Drop thin sessions (holidays / partial days) so a session is a real path.
+  // Drop thin sessions (holidays / partial days) so a session is a real path, and weekend-dated
+  // keys: the 2-hour Sunday-evening open (~120 M1 bars, above minBarsPerSession) used to be scored
+  // as a session and fed into σ (REPO_REVIEW_2026-10-31). `keepWeekends` is for a 7-day market.
+  const keepWeekends = opts.keepWeekends === true;
   const dates = [...sessions.keys()].sort()
-    .filter(d => (sessions.get(d)?.length ?? 0) >= minBarsPerSession);
+    .filter(d => (sessions.get(d)?.length ?? 0) >= minBarsPerSession)
+    .filter(d => keepWeekends || ![0, 6].includes(new Date(d + 'T12:00:00Z').getUTCDay()));
   if (dates.length <= minLookback) return [];
 
   const d1Bars = sessionsToD1(sessions, dates);
