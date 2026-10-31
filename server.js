@@ -397,6 +397,7 @@ import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillRep
 import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 / ou-pairs research runs (off the main loop)
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
 import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
+import { createHistorySources as _createHistorySources } from './js/stateHistorySources.js';
 import { CBOE_INDICES as _CBOE_INDICES, YAHOO_LONG as _YAHOO_LONG, OVERNIGHT as _OVERNIGHT, fetchCboe as _fetchCboe, fetchYahooLong as _fetchYahooLong } from './js/marketHistory.js';
 // The permanent record of data that cannot be re-fetched (plans/DATA_ASSET_MAP.md §4A–B): R2, append-only.
 const _archive = createDataArchive({ putJSON: _r2PutJSON, getJSON: _r2GetJSON, listKeys: _r2ListKeys, configured: _r2Ok, log: console });
@@ -30449,6 +30450,7 @@ createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, readers: {   // in-memo
   globalRead: () => _grLatest, riskFlags: () => computeRiskFlags(), funding: () => _frLast?.read ?? null, nowcast: () => _nowcast,
   oiToday: () => _oiTodayCache?.payload ?? null, cotState: () => _buildCotState(), volForecast: () => forecastState.latest ?? null,
   deepFred: key => _deepFredSeries(key),
+  history: () => _historySources(),   // arrow: _historySources is declared further down (TDZ)
 } }).mount(app);   // must sit above the /api/* worker catch-all
 svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);
 
@@ -39089,6 +39091,8 @@ if (VFR_REFRESH_UTC && process.env.OANDA_KEY) {
 // Stops the losses: every FRED series behind /api/fredhistory (which keeps 90 prints) and the ICE credit spreads
 // (FRED serves a rolling 3 years) are pulled at full depth and merged into R2; every CME options day held in KV is
 // copied to R2 if R2 lacks it; the gold ETF flow is captured whether or not anyone opens the page. Append-only.
+// Long histories for /api/state: committed seeds merged with the R2 archive (js/stateHistorySources.js), cached 6h.
+const _historySources = _createHistorySources({ getJSON: k => (_archive.enabled ? _r2GetJSON(k) : Promise.resolve(null)) });
 // Full-depth FRED series from the R2 archive, keyed like /api/fredhistory (us10y, tips, hy, ...). Cached 6h in memory.
 const _deepFredCache = new Map();
 async function _deepFredSeries(key) {

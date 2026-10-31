@@ -20,10 +20,10 @@ export const CBOE_INDICES = ['VIX', 'VIX9D', 'VIX1D', 'VIX3M', 'VIX6M', 'VIX1Y',
 /** Yahoo long dailies: id → ticker (and the committed seed file, when one exists). */
 export const YAHOO_LONG = {
   MOVE: { t: '^MOVE', seed: 'analysis/output/nbfi-rates-vol/cache/move_daily.json', label: 'Bond-market vol (MOVE)' },
-  TNX: { t: '^TNX', seed: 'analysis/output/nbfi-rates-vol/cache/tnx_daily.json', label: 'US 10Y yield (^TNX, ×10)' },
-  FVX: { t: '^FVX', seed: 'analysis/output/nbfi-rates-vol/cache/fvx_daily.json', label: 'US 5Y yield (^FVX, ×10)' },
-  HYG: { t: 'HYG', label: 'High-yield credit ETF' }, JNK: { t: 'JNK', label: 'High-yield credit ETF (JNK)' },
-  IEF: { t: 'IEF', label: '7-10Y Treasury ETF' }, LQD: { t: 'LQD', label: 'Investment-grade credit ETF' }, TLT: { t: 'TLT', label: '20Y+ Treasury ETF' },
+  TNX: { t: '^TNX', seed: 'analysis/output/nbfi-rates-vol/cache/tnx_daily.json', label: 'US 10Y yield (^TNX, %)' },
+  FVX: { t: '^FVX', seed: 'analysis/output/nbfi-rates-vol/cache/fvx_daily.json', label: 'US 5Y yield (^FVX, %)' },
+  HYG: { t: 'HYG', seed: 'analysis/output/hy-spread-vol/HYG_d.json', label: 'High-yield credit ETF' }, JNK: { t: 'JNK', seed: 'analysis/output/hy-spread-vol/JNK_d.json', label: 'High-yield credit ETF (JNK)' },
+  IEF: { t: 'IEF', seed: 'analysis/output/hy-spread-vol/IEF_d.json', label: '7-10Y Treasury ETF' }, LQD: { t: 'LQD', label: 'Investment-grade credit ETF' }, TLT: { t: 'TLT', label: '20Y+ Treasury ETF' },
 };
 const FX_SEED = 'analysis/output/fx-dollar-funding-exposure/cache';
 export const YAHOO_FX = ['AUDUSD', 'EURUSD', 'GBPUSD', 'NZDUSD', 'BRL', 'CAD', 'CHF', 'IDR', 'INR', 'JPY', 'KRW', 'MXN', 'MYR', 'NOK', 'PHP', 'SEK', 'SGD', 'THB', 'TRY', 'TWD'];

@@ -13,6 +13,8 @@
 import { buildState } from './stateEngine.js';
 import { assembleChainSeries, CHAIN_OHLC, FRED_KEYS } from './stateSources.js';
 import { summariseGlobal, summariseEconomies, summariseLayers, activeEdges } from './stateLayers.js';
+import { longContext, fxBoard, surpriseHistory, cotBoard } from './stateHistory.js';
+import { playbook } from './statePlaybook.js';
 
 const TTL_MS = 10 * 60e3, PRICE_BARS = 400;
 
@@ -75,6 +77,18 @@ export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = conso
     const nq = series.nq; const nq5 = Array.isArray(nq) && nq.length > 6 ? (nq[nq.length - 1].value / nq[nq.length - 6].value - 1) * 100 : null;
     doc.edges = activeEdges({ stress, nq5, oi: oiToday });
     doc.deepHistory = deepUsed.sort();
+    // Long-history context (committed seeds + R2 archive) and the institutional playbook (DATA_ASSET_MAP §4C).
+    const hist = await read('history', readers.history, 60_000);
+    if (hist) {
+      const sh = surpriseHistory(hist.backfill);
+      doc.history = {
+        long: longContext(hist.series), fx: fxBoard(hist.series), cot: cotBoard(hist.cot),
+        surprises: Object.fromEntries(Object.entries(sh).map(([c, pts]) => [c, pts.slice(-180)])),
+        surpriseNote: 'ForexFactory backfill 2007-01 → 2025-04: each release (actual − consensus) scaled by that event\'s own prior spread, monthly mean. Read as above / below consensus, not good / bad.',
+        sources: hist.from, builtAt: hist.builtAt,
+      };
+    }
+    doc.playbook = playbook(doc);
     doc.errors = errors;
     return doc;
   }
