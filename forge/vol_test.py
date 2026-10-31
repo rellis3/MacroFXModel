@@ -252,6 +252,42 @@ def test_walk_forward_vol_runs_and_reports_every_fold():
         assert np.isfinite(f["oos"]["combined_hl_pinball"])
 
 
+def _synthetic_m1(start: str, end: str) -> pd.DataFrame:
+    """Flat M1 for an FX-style week: trading from Sunday 17:00 New York to Friday 17:00 New York."""
+    idx = pd.date_range(start, end, freq="1min", tz="UTC")
+    ny = idx.tz_convert("America/New_York")
+    wd, hr = ny.dayofweek, ny.hour
+    live = ((wd == 6) & (hr >= 17)) | (wd <= 3) | ((wd == 4) & (hr < 17))
+    idx = idx[live]
+    v = np.linspace(1.0, 1.1, len(idx))
+    return pd.DataFrame({"open": v, "high": v + 1e-4, "low": v - 1e-4, "close": v, "volume": 1.0}, index=idx)
+
+
+def test_load_daily_has_no_weekend_sessions_in_clock_gap_weeks():
+    """2026-03-08..29: US on daylight time, UK not, so the Sunday open is 21:00 London —
+    inside london22. No session may be dated Saturday or Sunday (London)."""
+    orig = V.load_m1
+    V.load_m1 = lambda pair, root=None: _synthetic_m1("2026-03-06", "2026-04-04")
+    try:
+        d = V.load_daily("eurusd", session="london22")
+    finally:
+        V.load_m1 = orig
+    ld = V.london_date(d.index)
+    assert (ld.dayofweek < 5).all(), sorted(set(ld[ld.dayofweek >= 5].strftime("%a %Y-%m-%d")))
+    assert "2026-03-30" in set(ld.strftime("%Y-%m-%d"))     # first BST Monday is present
+
+
+def test_tag_column_matches_london_date_in_bst_and_gmt():
+    """A BST session is stamped 23:00 UTC the previous day; its tag must be its own date's."""
+    dates = pd.DatetimeIndex(["2026-06-16 23:00", "2026-06-17 23:00", "2026-07-02 23:00",
+                              "2026-01-28 00:00", "2026-01-29 00:00"])
+    tags = {"2026-06-17": "FOMC", "2026-07-03": "NFP", "2026-01-28": "FOMC"}
+    got = list(V.tag_column(dates, tags))
+    assert got == ["FOMC", "none", "NFP", "FOMC", "none"], got
+    assert list(V.london_date(dates).strftime("%Y-%m-%d")) == ["2026-06-17", "2026-06-18", "2026-07-03",
+                                                                "2026-01-28", "2026-01-29"]
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):

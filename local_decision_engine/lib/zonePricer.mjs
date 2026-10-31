@@ -129,7 +129,11 @@ export function computeZones(pair, { book, packed, earlyExit = false, earlyExitT
 
   let ladderBySide = {};
   const sessions = bucketM1IntoSessions(packed, 'Europe/London');
-  const daily = [...sessions.keys()].sort().map(d => {
+  // Weekend London dates (the 2-hour Sunday-evening open) are not sessions: they would enter the
+  // σ estimate as a near-zero-range day (REPO_REVIEW_2026-10-31). forge's london22 fit drops them too.
+  const daily = [...sessions.keys()].sort()
+    .filter(d => ![0, 6].includes(new Date(d + 'T12:00:00Z').getUTCDay()))
+    .map(d => {
     const b = sessions.get(d);
     let hi = -Infinity, lo = Infinity;
     for (const x of b) { if (x.high > hi) hi = x.high; if (x.low < lo) lo = x.low; }

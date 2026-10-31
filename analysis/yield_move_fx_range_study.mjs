@@ -65,7 +65,7 @@ const result = { id: 'yield-move-fx-range', ranAt: new Date().toISOString(), pct
 
 for (const [name, sym] of PAIRS) {
   let bars = [];
-  try { bars = await fetchD1Aligned(sym, 5000, { dailyAlignment: 0, alignmentTimezone: 'Europe/London' }); }
+  try { bars = await fetchD1Aligned(sym, 5000, { dailyAlignment: 0, alignmentTimezone: 'Europe/London', to: '2026-08-21' }); }
   catch (e) { console.log(`  ${name}: ${e.message}`); continue; }
   const idx = new Map(bars.map((b, i) => [b.date, i]));
 

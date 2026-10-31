@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { fetchD1Aligned } from '../js/volBacktestEngine.js';
 import { crack321, crackHistory } from '../js/crackSpread.js';
+import { bootDiff as _bootDiff, circularBlock } from './lib/eventBootstrap.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, 'output', 'crack_spread.json');
 const W = 20, REPS = 1000;
@@ -16,8 +17,10 @@ const mean = x => x.length ? x.reduce((s, v) => s + v, 0) / x.length : null;
 const median = x => { if (!x.length) return null; const s = [...x].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const sd = x => { const m = mean(x); return Math.sqrt(mean(x.map(v => (v - m) ** 2))); };
 const r3 = v => v == null || !Number.isFinite(v) ? null : +v.toFixed(3);
-const drawBlock = (x, block) => { const n = x.length, nb = Math.ceil(n / block), s = []; for (let q = 0; q < nb; q++) { const st = Math.floor(rnd() * (n - block + 1)); for (let i = 0; i < block && s.length < n; i++) s.push(x[st + i]); } return s; };
-const bootDiff = (a, b, block = 20) => { if (a.length < 5 || b.length < block) return null; const out = []; for (let k = 0; k < REPS; k++) out.push(mean(drawBlock(a, Math.min(block, a.length))) - mean(drawBlock(b, block))); out.sort((p, q) => p - q); return { nA: a.length, nB: b.length, diff: r3(mean(a) - mean(b)), lo: r3(out[Math.floor(REPS * 0.025)]), hi: r3(out[Math.floor(REPS * 0.975)]) }; };
+// Bootstrap: shared helper (REPO_REVIEW_2026-10-31 S2). The copied drawBlock resampled the event arm in
+// blocks of min(block, n), which gave zero-width intervals at n <= block. Events here are de-clustered.
+const drawBlock = (x, block) => circularBlock(x, block, rnd);
+const bootDiff = (a, b, block = 20) => _bootDiff(a, b, { block, reps: REPS, rnd, minA: 5 });
 const wilson = (k, n) => { if (!n) return null; const p = k / n, z = 1.96; const d = 1 + z * z / n; const c = (p + z * z / (2 * n)) / d; const h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d; return { n, share: r3(p), lo: r3(c - h), hi: r3(c + h) }; };
 const corr = (a, b) => { const ma = mean(a), mb = mean(b); let sab = 0, saa = 0, sbb = 0; for (let i = 0; i < a.length; i++) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2; } return sab / Math.sqrt(saa * sbb); };
 const resid = (y, x) => { const mx = mean(x), my = mean(y); let sxy = 0, sxx = 0; for (let i = 0; i < x.length; i++) { sxy += (x[i] - mx) * (y[i] - my); sxx += (x[i] - mx) ** 2; } const b = sxy / sxx; return y.map((v, i) => v - my - b * (x[i] - mx)); };
@@ -43,7 +46,7 @@ console.log(`blow-outs: ${firsts.length} episodes; disagreement windows ${rows.f
 // C1: next-20 realised range in ATR terms, per instrument
 const c1 = {};
 for (const [sym, name] of [['WTICO_USD', 'WTI'], ['USD_CAD', 'USDCAD'], ['XAU_USD', 'XAUUSD']]) {
-  let bars = []; try { bars = await fetchD1Aligned(sym, 5000, { dailyAlignment: 0, alignmentTimezone: 'Europe/London' }); } catch (e) { console.log(`  ${name}: ${e.message}`); continue; }
+  let bars = []; try { bars = await fetchD1Aligned(sym, 5000, { dailyAlignment: 0, alignmentTimezone: 'Europe/London', to: '2026-08-21' }); } catch (e) { console.log(`  ${name}: ${e.message}`); continue; }
   const idx = new Map(bars.map((b, i) => [b.date, i]));
   const atr = i => { const s = bars.slice(Math.max(0, i - 20), i); return s.length ? mean(s.map(b => b.high - b.low)) : null; };
   const fwd = i => { const a = atr(i); if (!a || i + W >= bars.length) return null; return bars.slice(i + 1, i + 1 + W).reduce((s, b) => s + (b.high - b.low), 0) / a / W; };   // mean daily range in ATRs

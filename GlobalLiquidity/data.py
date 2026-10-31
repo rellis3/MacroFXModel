@@ -171,9 +171,9 @@ def load_synthetic(n_weeks: int = 600, seed: int = 7) -> Dataset:
     # Central-bank balance sheets driven by each currency's own cycle.
     cb_sid = {"USD": "WALCL", "EUR": "ECBASSETSW", "JPY": "JPNASSETS",
               "GBP": "UKASSETS", "CNY": "TRESEGCNM052N"}
-    # WALCL is generated in $MILLIONS (matching real FRED units) while the
-    # TGA/RRP drains stay $BILLIONS — the synthetic data must reproduce the
-    # real units mismatch or it can never catch a unit bug in the USD formula.
+    # WALCL and WTREGEN are generated in $MILLIONS and RRP in $BILLIONS, matching
+    # real FRED units — the synthetic data must reproduce the real units mismatch
+    # or it can never catch a unit bug in the USD formula (DATA_SPEC §5 #8).
     base_levels = {"WALCL": 4_000_000, "ECBASSETSW": 4500, "JPNASSETS": 5500,
                    "UKASSETS": 800, "TRESEGCNM052N": 3100}
     for ccy, sid in cb_sid.items():
@@ -182,7 +182,7 @@ def load_synthetic(n_weeks: int = 600, seed: int = 7) -> Dataset:
         drift -= lvl * 0.20 * stress           # QT / drains during stress
         series[sid] = drift
     # Fed drains: small noise so net USD liquidity tracks WALCL's own cycle.
-    series["WTREGEN"] = 500 + 80 * np.abs(np.sin(t / 9)) + 30 * np.abs(noisy())
+    series["WTREGEN"] = (500 + 80 * np.abs(np.sin(t / 9)) + 30 * np.abs(noisy())) * 1000   # $ millions
     series["RRPONTSYD"] = np.clip(800 - 600 * cyc["USD"] + 80 * noisy(), 0, None)
 
     # FX translation series (mild; balance-sheet level is the main signal).

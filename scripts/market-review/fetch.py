@@ -12,6 +12,7 @@ Sources (all read-only, keyless unless noted):
   Local futures captures (if present): OAT/Bund/BTP futures -> French and Italian spread proxies;
     fed funds futures (analysis/output/stir/CBOT_ZQ*.csv) -> Fed path.
 """
+from zoneinfo import ZoneInfo
 import argparse, csv, datetime as dt, glob, io, json, os, re, sys, time, urllib.parse, urllib.request
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -38,15 +39,23 @@ def yahoo(sym):
     j = json.loads(get(f'https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(sym)}?range=2y&interval=1d'))
     r = j['chart']['result'][0]
     q = r['indicators']['quote'][0]['close']
-    # Date rule, checked 2026-10-24 by lagged correlation (EURUSD vs DX-Y.NYB is -0.89 same-day only this way):
-    #  FX pairs (=X) are stamped ~23:00 UTC and belong to that UTC date; adding the London offset makes them a day late.
+    # Date rule:
+    #  FX pairs (=X) are stamped at the bar's END, London midnight: 23:00 UTC in BST, 00:00 UTC the next date in
+    #  GMT. The session is the London date of (stamp - 1 minute). The 2026-10-24 rule ("use the UTC date") was
+    #  checked in October (BST) only and is a day late in winter (REPO_REVIEW_2026-10-31 S6; FRED DEXJPUS by
+    #  season: GMT Yahoo D correlates 0.40 with FRED D-1 and 0.33 with FRED D; BST 0.54 with D).
     #  Other symbols use the exchange-local date (an Asian index stamped 00:00 local = 15:00 UTC the day before).
     #  Yahoo repeats the live bar under the same date as the last close, so keep the last value per date.
-    off = 0 if sym.endswith('=X') else r['meta'].get('gmtoffset', 0)
+    fx = sym.endswith('=X')
+    off = 0 if fx else r['meta'].get('gmtoffset', 0)
     out = {}
     for t, c in zip(r['timestamp'], q):
         if c is None: continue
-        out[dt.datetime.fromtimestamp(t + off, dt.timezone.utc).strftime('%Y-%m-%d')] = c
+        if fx:
+            day = dt.datetime.fromtimestamp(t - 60, ZoneInfo('Europe/London')).strftime('%Y-%m-%d')
+        else:
+            day = dt.datetime.fromtimestamp(t + off, dt.timezone.utc).strftime('%Y-%m-%d')
+        out[day] = c
     return [[k, v] for k, v in sorted(out.items())]
 
 def fred(sid, start):

@@ -279,7 +279,7 @@ import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrat
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
-import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
+import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache, LEARN_BOUNDARY_UTC as _LV2_BOUNDARY } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
 import { evaluatePair as evaluateVolLevelPair, ALERT_LEVEL_KEYS as VOL_LEVEL_KEYS, dispersionContext as volDispersionContext, wtZone as volWtZone } from './js/volLevelAlertCore.js';
@@ -10810,10 +10810,15 @@ const QMR_COSTS = { costPct: 0.008, stopSlipPct: 0.005 };
 // so the two exit rules can never drift (the Lego rule). `bars` are the H1
 // bars STRICTLY AFTER the entry bar, sorted ascending by time. Rule, in order,
 // per bar: stop first (conservative — worst case within the bar), then TP,
-// then EOD close on the first bar labeled >= QMR_TIMING.eodHour. If no bar
+// then EOD close on the first bar labeled >= timing.eodHour (default QMR_TIMING). If no bar
 // triggers, exits at the last bar's close as EOD (truncated day). Returns
 // { stop, tp, exit, exitReason, movePct } or null when `bars` is empty.
-function _qmrWalkTrade(bars, dir, entry, stopPctEff, tpPct) {
+// `timing` (optional) overrides QMR_TIMING — callers pass { ...QMR_TIMING, eodHour } for a
+// per-instrument or walk-forward exit hour. Before 2026-10-31 the parameter was missing, so the
+// passed eodHour was silently dropped and every run exited at the global 20:00 UTC
+// (REPO_REVIEW_2026-10-31, live bug). The forward resolver passes nothing and is unchanged.
+function _qmrWalkTrade(bars, dir, entry, stopPctEff, tpPct, timing = QMR_TIMING) {
+  const eodHour = Number.isFinite(timing?.eodHour) ? timing.eodHour : QMR_TIMING.eodHour;
   const stop = dir === 'LONG' ? entry * (1 - stopPctEff / 100) : entry * (1 + stopPctEff / 100);
   const tp   = tpPct > 0
     ? (dir === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
@@ -10824,7 +10829,7 @@ function _qmrWalkTrade(bars, dir, entry, stopPctEff, tpPct) {
     if (dir === 'SHORT' && bar.h >= stop) { exit = stop; exitReason = 'STOP'; break; }
     if (tp !== null && dir === 'LONG'  && bar.h >= tp) { exit = tp; exitReason = 'TP'; break; }
     if (tp !== null && dir === 'SHORT' && bar.l <= tp) { exit = tp; exitReason = 'TP'; break; }
-    if (parseInt(bar.t.substring(11, 13)) >= QMR_TIMING.eodHour) { exit = bar.c; exitReason = 'EOD'; break; }
+    if (parseInt(bar.t.substring(11, 13)) >= eodHour) { exit = bar.c; exitReason = 'EOD'; break; }
   }
   if (exit === null) {
     const last = bars[bars.length - 1];
@@ -21811,7 +21816,9 @@ async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, e
   let ladderBySide = {};
   if (packed?.n) {
     const _sessions = _bucketM1IntoSessions(packed, 'Europe/London');
-    const daily = [..._sessions.keys()].sort().map(d => {
+    // Weekend London dates (2-hour Sunday-evening open) are not sessions; atlasWalk's 200-bar
+    // history floor already drops them, so live σ now matches the backtest (REPO_REVIEW_2026-10-31).
+    const daily = [..._sessions.keys()].sort().filter(d => ![0, 6].includes(new Date(d + 'T12:00:00Z').getUTCDay())).map(d => {
       const b = _sessions.get(d);
       let hi = -Infinity, lo = Infinity;
       for (const x of b) { if (x.high > hi) hi = x.high; if (x.low < lo) lo = x.low; }
@@ -25868,7 +25875,9 @@ app.get('/api/level-atlas/vote-ladder/export', async (req, res) => {
         if (!packed?.n) continue;
         const assetCls = (() => { try { return _assetClassOf(lower); } catch { return 'fx'; } })();
         const sessions = _bucketM1IntoSessions(packed, 'Europe/London');
-        const daily = [...sessions.keys()].sort().map(d => {
+        // Weekend London dates (2-hour Sunday-evening open) are not sessions; atlasWalk's 200-bar
+        // history floor already drops them, so live σ now matches the backtest (REPO_REVIEW_2026-10-31).
+        const daily = [...sessions.keys()].sort().filter(d => ![0, 6].includes(new Date(d + 'T12:00:00Z').getUTCDay())).map(d => {
           const b = sessions.get(d);
           let hi = -Infinity, lo = Infinity;
           for (const x of b) { if (x.high > hi) hi = x.high; if (x.low < lo) lo = x.low; }
@@ -34605,8 +34614,10 @@ app.post('/api/liquidity-backtest/run', express.json({ limit: '32kb' }), async (
           continue;
         }
 
-        // Convert packed M1 → sessions (same as recordsForPair does internally).
-        const sessions = _bucketM1IntoSessions(packed);
+        // Convert packed M1 → sessions (same as recordsForPair does internally). The range-line /
+        // levels-v2 family runs on the 22:00-UTC broker day, not London sessions; stated explicitly
+        // since 2026-10-31 so it cannot change silently (REPO_REVIEW_2026-10-31).
+        const sessions = _bucketM1IntoSessions(packed, _LV2_BOUNDARY);
         if (!sessions || !sessions.size) {
           results.push({ pair: p, error: 'Could not build sessions' });
           liqJobs.set(jobId, { status: 'running', startedAt: Date.now(), progress: (i + 1) / validPairs.length, pairsDone: i + 1, pairsTotal: validPairs.length });
@@ -34704,9 +34715,12 @@ app.post('/api/levels-v2/learn', async (req, res) => {
     conditions: Array.isArray(b.conditions) ? b.conditions : [],
     minN: parseInt(b.minN) || 50, splitFrac: parseFloat(b.splitFrac) || 0.6,
     marginPct: parseFloat(b.marginPct) || 0, minLookback: parseInt(b.minLookback) || 20,
+    // Explicit session boundary, shared with the live ladder (levelsV2Engine.LEARN_BOUNDARY_UTC).
+    // It was the implicit 22 default before 2026-10-31; the value is unchanged, now stated.
+    boundaryHour: _LV2_BOUNDARY,
   };
   const force = b.force === true;                                    // ignore cache, recompute touches
-  const sig = JSON.stringify({ s: opts.sources, c: opts.conditions, ml: opts.minLookback });
+  const sig = JSON.stringify({ s: opts.sources, c: opts.conditions, ml: opts.minLookback, bh: opts.boundaryHour });
   const jobId = `v2l_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
   for (const [k, j] of lv2Jobs) if (Date.now() - (j.startedAt || 0) > 30 * 60 * 1000) lv2Jobs.delete(k);

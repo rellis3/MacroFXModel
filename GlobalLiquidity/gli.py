@@ -73,8 +73,8 @@ def _block_usd_liquidity(ds, block_key: str) -> np.ndarray:
                 fx = np.where(fx > 0, 1.0 / fx, np.nan)
         usd = local * fx
 
-    # Apply central-bank publication lag.
-    return mathx.lag(usd, config.PUB_LAG_WEEKS["central_bank"])
+    # Apply the block's publication lag (monthly sheets lag longer than weekly ones).
+    return mathx.lag(usd, config.PUB_LAG_WEEKS_CB.get(block_key, config.PUB_LAG_WEEKS["central_bank"]))
 
 
 def _shadow_tilt(ds) -> np.ndarray:

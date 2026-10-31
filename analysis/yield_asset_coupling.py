@@ -133,7 +133,15 @@ def pull_prices() -> None:
                 print("  %-7s no data" % name)
                 continue
             res = res[0]
-            idx = pd.to_datetime(res["timestamp"], unit="s", utc=True).tz_convert(None).normalize()
+            ts = pd.to_datetime(res["timestamp"], unit="s", utc=True)
+            if tk.endswith("=X"):
+                # Yahoo stamps an FX daily bar at its END, London midnight: 23:00 UTC in BST, 00:00 UTC
+                # the next date in GMT. The session is the London date of (stamp - 1 minute). The UTC
+                # date was right in summer and a day late in winter (REPO_REVIEW_2026-10-31 S6; checked
+                # against FRED DEXJPUS/DEXUSEU by season).
+                idx = (ts - pd.Timedelta(minutes=1)).tz_convert("Europe/London").normalize().tz_localize(None)
+            else:
+                idx = ts.tz_convert(None).normalize()
             close = pd.Series(res["indicators"]["quote"][0]["close"], index=idx, name="close")
             close = close.dropna()
             close = close[~close.index.duplicated(keep="last")]

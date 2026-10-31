@@ -24,7 +24,10 @@
     Z_WINDOW: 156, MIN_Z: 26,            // weeks
     IMPULSE_LOOKBACK: 13, IMPULSE_SMOOTH: 4,
     CYCLE_LENGTH: 282,
-    PUB_LAG: { cb: 2, growth: 3, credit: 1, vol: 1 },  // publication lags (weeks)
+    // publication lags (weeks). Monthly series are FRED-dated the 1st and published weeks later:
+    // BoJ ~5wk, China reserves ~6wk, INDPRO ~6.5wk; the old flat cb 2 / growth 3 let them in 3-4 weeks
+    // early (REPO_REVIEW_2026-10-31). Mirrors GlobalLiquidity/config.py PUB_LAG_WEEKS(_CB).
+    PUB_LAG: { cb: 2, cbByCcy: { USD: 2, EUR: 2, JPY: 6, CNY: 7, GBP: 6 }, growth: 7, credit: 1, vol: 1 },
     SHADOW_TILT_WEIGHT: 0.25,
     GLI_WEIGHTS: { USD: 0.35, CNY: 0.25, EUR: 0.20, JPY: 0.15, GBP: 0.05 },
     RISK_GATE: { creditZ: 1.0, volZ: 1.25, grossCut: 0.40 },
@@ -155,7 +158,7 @@
 
     const perCcyImpulse = {}, perCcyLevelZ = {};
     for (const ck of Object.keys(blocks)) {
-      const usd = lag(blocks[ck](), CFG.PUB_LAG.cb);
+      const usd = lag(blocks[ck](), CFG.PUB_LAG.cbByCcy[ck] ?? CFG.PUB_LAG.cb);
       perCcyLevelZ[ck] = rollingZ(usd, Z, M);
       perCcyImpulse[ck] = rollingZ(roc(sma(usd, CFG.IMPULSE_SMOOTH), CFG.IMPULSE_LOOKBACK), Z, M);
     }
