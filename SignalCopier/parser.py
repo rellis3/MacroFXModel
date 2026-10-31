@@ -34,7 +34,7 @@ KNOWN_SYMBOLS = {
 }
 # words that sit where a symbol would and must never be read as one
 NOT_SYMBOLS = {'THE', 'NOW', 'LIMIT', 'STOP', 'FROM', 'AND', 'BUY', 'SELL', 'ALL', 'THIS', 'THAT',
-               'TRADE', 'TRADES', 'ORDER', 'ORDERS', 'POSITION', 'HALF', 'PART', 'MARKET', 'AGAIN'}
+               'TRADE', 'TRADES', 'ORDER', 'ORDERS', 'POSITION', 'HALF', 'PART', 'MARKET', 'AGAIN', 'INSTANT'}
 
 NUM = r'(\d[\d,]*(?:\.\d+)?)'
 SYM = r'([A-Za-z][A-Za-z0-9]{2,9})'
@@ -48,13 +48,14 @@ RE_ENTRY = re.compile(r'\b(?:(limit|stop)\s+)?' + SIDE + r'\s+' + SYM +
 # "SELL STOP GOLD at 4,000" · "BUY LIMIT XAUUSD at 3,990"
 RE_ENTRY_AFTER = re.compile(r'\b' + SIDE + r'\s+(limit|stop)\s+' + SYM +
                             r'\s*(?:\([^)]*\))?\s+at\s+' + NUM, re.I)
-# "XAUUSD buy" · "GOLD sell now" · "NAS100 buy at 29,100" — the whole line
-RE_ENTRY_SYM_FIRST = re.compile(r'^\W*' + SYM + r'\s+' + SIDE +
-                                r'(?:\s+(limit|stop))?(?:\s+now)?(?:\s+at\s+' + NUM + r')?\W*$', re.I)
+# "XAUUSD buy" · "XAUUSD instant BUY" · "Instant XAUUSD SELL" · "BTCUSD sell again" · "CL-OIL sell"
+# · "XAUUSD SELL LIMIT @ 4344.00" · "NAS100 buy at 29,100" — the whole line
+RE_ENTRY_SYM_FIRST = re.compile(r'^\W*(?:instant\s+)?([A-Za-z][A-Za-z0-9-]{2,9})\s*(?:-\s*)?(?:instant\s+)?' + SIDE +
+                                r'(?:\s+again)?(?:\s+(limit|stop))?(?:\s+now)?(?:\s*(?:at|@)\s*' + NUM + r')?\W*$', re.I)
 
 # trade detail lines ─────────────────────────────────────────────────────
-RE_SL = re.compile(r'(?:stop\s*loss\s*(?:\(SL\))?|\bSL)\s*:?\s*' + NUM, re.I)
-RE_TP = re.compile(r'\bTP[123]?\s*:?\s*' + NUM, re.I)
+RE_SL = re.compile(r'(?:stop\s*loss\s*(?:\(SL\))?|\bSL)\s*[:\-]?\s*' + NUM, re.I)       # "SL 29,096" · "SL: 4002" · "SL-4472.30"
+RE_TP = re.compile(r'\bTP[123]?\s*[:\-]?\s*' + NUM, re.I)
 RE_TARGET = re.compile(r'\btargets?\b\s*:?\s*(?:1\)\s*)?' + NUM, re.I)
 RE_NUMBERED = re.compile(r'^\W*(\d)\)\s*' + NUM + r'\W*$')
 RE_CANCEL_AT = re.compile(r'cancel\s+at\s+' + TIME + r'\s*(?:UK)?', re.I)
@@ -68,8 +69,9 @@ RE_CLOSE = re.compile(r'\bclose\s+(?:the\s+)?' + SYM + r'\s+' + SIDE + r'\s+from
 # "Target hit on the SP500 SELL from 7,640.6" · "US30 SELL from 52,445 stopped out"
 # · "Stopped the Ethereum SELL from 2,321.38 at 2,346.96"
 RE_FROM = re.compile(r'\b' + SYM + r'\s+' + SIDE + r'\s+from\s+' + NUM, re.I)
-RE_RESULT_WORD = re.compile(r'(target\s+hit|tp\s+hit|hit\s+(?:the\s+)?(?:target|tp)|stopped|sl\s+hit|\bclosed?\b|\bexit)', re.I)
-RE_FILLED = re.compile(r'^\W*filled\b|\bis\s+now\s+open\b', re.I)
+RE_RESULT_WORD = re.compile(r'(target\s+hit|tp\s+hit|take\s*profit\s+hit|profit\s+hit|hit\s+(?:the\s+)?(?:target|tp)|stopped|sl\s+hit|\bclosed?\b|\bexit)', re.I)
+# notices that need no action: a fill, or "has already moved. If you are not in, do not enter now"
+RE_FILLED = re.compile(r'^\W*filled\b|\bis\s+now\s+open\b|\balready\s+moved\b|\bdo\s+not\s+enter\b', re.I)
 
 RE_HEADER = re.compile(
     r'trades,\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+(\d{1,2})\s+([a-z]+)', re.I)
@@ -79,7 +81,10 @@ RE_SWING = re.compile(r'\bswings?\b', re.I)
 RE_DAY = re.compile(r'\bday\s+trades?\b', re.I)
 
 ACTION_WORDS = re.compile(
-    r'\b(buy|sell|close|cancel|stop\s*loss|SL|TP|breakeven|break\s*even|move|partial|half|target|stopped)\b', re.I)
+    r'\b(buy|sell|close|closing|cancel|stop\s*loss|SL|TP|breakeven|break\s*even|BE|move|moving|partial|half|target|stopped)\b', re.I)
+# with only a symbol and no price, a message needs a management verb to be flagged:
+# "US30 should hit TP soon" / "sad about the US30 SL" are chat, "BTC and GBPJPY both SL to BE" is not
+MANAGE_WORDS = re.compile(r'\b(close|closing|cancel|move|moving|breakeven|break\s*even|BE|partial|half|hedge|add|adding)\b', re.I)
 PRICE = re.compile(r'\d{3,}|\d+\.\d+')
 
 
@@ -103,7 +108,7 @@ def _sym(s):
 
 def _result_reason(line):
     l = line.lower()
-    if re.search(r'target\s+hit|tp\s+hit|hit\s+(?:the\s+)?(?:target|tp)', l):
+    if re.search(r'target\s+hit|tp\s+hit|take\s*profit\s+hit|profit\s+hit|hit\s+(?:the\s+)?(?:target|tp)', l):
         return 'target hit'
     if 'stopped' in l or re.search(r'\bsl\s+hit', l):
         return 'stopped out'
@@ -193,8 +198,10 @@ def _line_events(line):
 def _looks_like_instruction(text):
     if not ACTION_WORDS.search(text):
         return False
+    if PRICE.search(text):
+        return True
     tokens = set(re.findall(r'[A-Z][A-Z0-9]{2,9}', text.upper()))
-    return bool(tokens & KNOWN_SYMBOLS) or bool(PRICE.search(text))
+    return bool(tokens & KNOWN_SYMBOLS) and bool(MANAGE_WORDS.search(text))
 
 
 def parse_message(text):

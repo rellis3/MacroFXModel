@@ -68,8 +68,10 @@ class Book:
         """Live orders matching a cancel/close event: symbol + side, then entry price.
         A CLOSE also considers limits the book marked `expired`: the book can't
         see fills, and a limit that filled before its cancel time is still open."""
-        pool = self.live() + ([o for o in self.orders.values() if o['status'] == 'expired']
-                              if ev['kind'] == 'close' else [])
+        # A CLOSE may hit a limit the book expired (it may have filled); a CANCEL may
+        # land on the minute the cancel-at timer already expired it (his "Cancel the
+        # NAS100 limit" at 13:00 for a 13:00 cancel-at) — both still match.
+        pool = self.live() + [o for o in self.orders.values() if o['status'] == 'expired']
         cands = [o for o in pool
                  if o['symbol'] == ev['symbol'] and o['side'] == ev['side']]
         exact = [o for o in cands
@@ -109,6 +111,8 @@ class Book:
                     out.append(('warn', None, f"{k.upper()} {ev['side']} {ev['symbol']} @ {ev['entry']}: "
                                               f"no matching live order in the book"))
                 for o in hits:
+                    if k == 'cancel' and o['status'] == 'expired':
+                        continue                 # already cancelled by its own cancel-at time
                     reason = ev.get('reason') or ('channel cancel' if k == 'cancel' else 'channel close')
                     self._end(o, 'cancelled' if k == 'cancel' else 'closed', posted_utc, reason)
                     out.append((k, o, reason))
