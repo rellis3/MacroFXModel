@@ -78,3 +78,18 @@ a finding about range, not a strategy.
 ## Outputs
 
 `scripts/29_hedge_flow.py`, `data/results/hedge_flow.json`, `HEDGE_FLOW_RESULTS.md`.
+
+## Amendments
+
+### 2026-10-31 (PRE-RESULTS: nothing in this study has been computed; the script `scripts/29_hedge_flow.py` is written but not run)
+
+Written after the data inventory, before any statistic was computed. Each change narrows or restates; none loosens a pass bar.
+
+1. **Instruments actually available.** Six FX pairs (EUR, GBP, AUD, JPY, CAD, CHF) and NQ. There is no gold chain in `oi_research_book/data` ("7 FX/gold" above was wrong). The ES strike-level surface and its IV file were never built (only its daily master exists), so **ES is not in this pass** and the index route "both NQ and SPX" cannot be met; an NQ-only result is a pointer, not a pass.
+2. **FX verdict set = the three non-inverted pairs (EUR, GBP, AUD), pooled.** JPY, CAD and CHF are run and reported but excluded from the verdict, because their call/put convention is unresolved (`GEX_FX_CROSSMATCH_RESULTS.md`, p about 0.005 in both directions). The "5 of 7 instruments" rule becomes: the pooled FX result passes AND the statistic has the expected sign in at least 2 of the 3 individual pairs. FX and NQ are never pooled with each other.
+3. **Expiry sets.** The stored surface is per strike with expiries already summed, so the "strongest-DTE bucket" and "<=3 DTE" sets are replaced by the book's own two surfaces: `near` (DTE <= 45, T = front DTE, sigma = front IV) and `all` (every expiry, T = 30 days, sigma = 30d IV), as script 26 does.
+4. **Outcome bars.** The book's UTC-D1 bars (`daily_master`, G2's build), not London M1 sessions. Primary lag 1 (target = next row); lag 2 (target the row after) is run as a robustness because OI(D) is only public mid D+1 and the banked ES work showed the honest target is S(D+2). If the two disagree the lag-2 result is the one reported as the verdict. Excursions are from the target row's open, in units of the trailing 20-day daily sigma.
+5. **Feature definitions.** `u`/`d` = flow at F*(1 +- sd), sd = rv20/sqrt(252); `Fm = (|u|+|d|)/2 / (F * total OI)`; `Fz` = Fm as a causal expanding z-score per instrument (60-day minimum). `G0 = +1` when `u > d` (net reinforcing). T1 statistic = coefficient on `Fz*G0`, expected > 0. T2 uses days where exactly one side reinforces. T3 = mean(sign(Lop) * sign(up excursion - down excursion)).
+6. **Placebo rules made exact.** (a) four strike shifts (+-2, +-4 listed increments, increment = median strike spacing within 10% of F): the real statistic must exceed all four; (b) 200 draws where every day takes a random neighbour book within +-5 sessions (re-centred on today's F): the real statistic must exceed the 95th percentile of the 200; (c) calls/puts swapped is a mechanical check only.
+7. **Multiplicity family** = lag-1 FX and NQ x near/all x T1-T3 = 12 cells, Benjamini-Hochberg q = 0.10 on the week-clustered bootstrap p-values (2,000 reps, clusters = instrument-ISO week). The JPY/CAD/CHF group and lag 2 are reported outside the family.
+8. **Lockbox.** Days after 2026-08-21 are excluded (the data ends 2026-08-20 / 2026-09-04 anyway). Seed 20261026.
