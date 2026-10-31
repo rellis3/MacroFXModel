@@ -225,6 +225,39 @@ def test_symbol_first_does_not_eat_words():
     assert not kinds(parse_message("Swings, hold until I post the close"), 'open')
 
 
+
+# ── older-style formats from the 2026-10-31 20:20 report ──────────────────
+def test_instant_and_again_entries():
+    for text, sym, side in [("XAUUSD instant BUY", 'XAUUSD', 'BUY'), ("Instant XAUUSD SELL", 'XAUUSD', 'SELL'),
+                            ("USDCHF instant Buy", 'USDCHF', 'BUY'), ("BTCUSD sell again", 'BTCUSD', 'SELL'),
+                            ("XAUUSD buy again", 'XAUUSD', 'BUY'), ("CL-OIL sell", 'CL-OIL', 'SELL')]:
+        (o,) = parse_message(text)
+        assert (o['symbol'], o['side'], o['order'], o['entry']) == (sym, side, 'market', None), text
+    (o,) = parse_message("XAUUSD instant BUY\n\n⛔ SL: 4653\n✅ Targets:\n1) 4670\n2) 4678\n3) 4686")
+    assert o['sl'] == 4653 and o['targets'] == [4670, 4678, 4686]
+    assert parse_message("Instant BUY") == []                          # no symbol, not "INSTANT"
+
+
+def test_symbol_first_limit_with_at_sign_and_dash_levels():
+    (o,) = parse_message("XAUUSD SELL LIMIT @4465.00\n\nSL-4472.30\nTP1-4443.10\nTP2-4421.17\nTP3-4396.55")
+    assert (o['order'], o['entry'], o['sl'], o['tp'], o['targets']) == ('limit', 4465.0, 4472.3, 4443.1, [4443.1, 4421.17, 4396.55])
+    (o,) = parse_message("XAUUSD BUY LIMIT @ 4390.20")
+    assert (o['side'], o['order'], o['entry']) == ('BUY', 'limit', 4390.2)
+
+
+def test_take_profit_hit_and_already_moved():
+    (e,) = parse_message("🎯 Take profit hit on the EURUSD BUY from 1.1225 💰")
+    assert (e['kind'], e['symbol'], e['reason']) == ('close', 'EURUSD', 'target hit')
+    assert [e['kind'] for e in parse_message(
+        "The US30 BUY from 52,302 has already moved. If you are not in, do not enter now, wait for the next one.")] == ['info']
+
+
+def test_chat_with_a_symbol_is_not_flagged_but_management_is():
+    assert parse_message("US30 should hit TP soon aswell🙏") == []
+    assert parse_message("I’m still sad about the US30 SL, it would of been a 1:5+ trade") == []
+    assert [e['kind'] for e in parse_message("BTC and GBPJPY both SL to BE please")] == ['review']
+
+
 if __name__ == '__main__':
     fns = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     for f in fns:

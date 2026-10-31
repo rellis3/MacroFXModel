@@ -8169,6 +8169,8 @@ function renderScForm() {
 }
 function readScForm() {
   const get = id => document.getElementById(id), num = (id, d) => { const v = parseFloat(get(id)?.value); return isFinite(v) ? v : d; };
+  // a field missing from the page (a cached older copy) keeps its saved value instead of saving "off"
+  const chk = (id, key) => get(id) ? !!get(id).checked : (_scCfg[key] ?? SC_DEFAULTS[key]);
   const map = {};
   (get('sc_symbol_map')?.value || '').split('\n').forEach(line => {
     const [k, v] = line.split('=').map(s => (s || '').trim());
@@ -8177,11 +8179,11 @@ function readScForm() {
   const topic = (get('sc_tg_topic')?.value || '').trim();
   _scCfg = {
     ..._scCfg,
-    paper_mode: !!get('sc_paper_mode')?.checked, kill_switch: !!get('sc_kill_switch')?.checked,
+    paper_mode: chk('sc_paper_mode', 'paper_mode'), kill_switch: chk('sc_kill_switch', 'kill_switch'),
     risk_pct: num('sc_risk_pct', SC_DEFAULTS.risk_pct), record_risk_pct: num('sc_record_risk_pct', SC_DEFAULTS.record_risk_pct),
     max_lot: num('sc_max_lot', SC_DEFAULTS.max_lot), max_open: num('sc_max_open', SC_DEFAULTS.max_open),
-    copy_swing: !!get('sc_copy_swing')?.checked, copy_day: !!get('sc_copy_day')?.checked, copy_single: !!get('sc_copy_single')?.checked,
-    ignore_crypto: !!get('sc_ignore_crypto')?.checked,
+    copy_swing: chk('sc_copy_swing', 'copy_swing'), copy_day: chk('sc_copy_day', 'copy_day'), copy_single: chk('sc_copy_single', 'copy_single'),
+    ignore_crypto: chk('sc_ignore_crypto', 'ignore_crypto'),
     symbol_map: map,
     skip_symbols: (get('sc_skip_symbols')?.value || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean),
     max_signal_age_secs: num('sc_max_signal_age_secs', SC_DEFAULTS.max_signal_age_secs),
@@ -8191,11 +8193,11 @@ function readScForm() {
     tg_chat: parseInt(get('sc_tg_chat')?.value, 10) || SC_DEFAULTS.tg_chat,
     tg_topic: topic ? parseInt(topic, 10) : null,
     tg_senders: (get('sc_tg_senders')?.value || '').trim(),
-    risk_guard_enabled: !!get('sc_risk_guard_enabled')?.checked,
+    risk_guard_enabled: chk('sc_risk_guard_enabled', 'risk_guard_enabled'),
     ddlimit: num('sc_ddlimit', SC_DEFAULTS.ddlimit), monthlydd: num('sc_monthlydd', SC_DEFAULTS.monthlydd),
     lockout: num('sc_lockout', SC_DEFAULTS.lockout), cooldown: num('sc_cooldown', SC_DEFAULTS.cooldown),
     retry_rejects: num('sc_retry_rejects', SC_DEFAULTS.retry_rejects),
-    tg_enabled: !!get('sc_tg_enabled')?.checked, tg_token: (get('sc_tg_token')?.value || '').trim(),
+    tg_enabled: chk('sc_tg_enabled', 'tg_enabled'), tg_token: (get('sc_tg_token')?.value || '').trim(),
     tg_chat_id: (get('sc_tg_chat_id')?.value || '').trim(),
   };
 }
@@ -8468,17 +8470,24 @@ function renderScOutcomes() {
     stat('Avg / trade', `${(total / rows.length).toFixed(3)}%`), stat('Limits never filled', unfilled),
   ].join('') : '';
   if (!body) return;
+  const px = v => v == null ? '—' : (+v).toFixed(Math.abs(+v) >= 1000 ? 1 : Math.abs(+v) >= 20 ? 2 : 5);
   body.innerHTML = rows.length ? rows.slice().reverse().slice(0, 500).map(r => {
-    const x = r.row, ret = x['Return %'];
+    const x = r.row, ret = x['Return %'], o = r.out || {};
+    const open = o.state === 'open';
+    const exitCell = open
+      ? `<span style="color:#60a5fa" title="still open — latest price ${o.mark_ts ? _scUk(o.mark_ts) : ''}">${px(o.mark_px)} <small style="color:var(--text3)">${o.mark_ts ? _scUk(o.mark_ts) : ''}</small></span>`
+      : px(o.exit_px);
     return `<tr style="border-top:1px solid var(--border)">
       <td style="padding:5px 10px">${x.Date}</td><td style="padding:5px 10px">${x.Time}</td>
-      <td style="padding:5px 10px">${x['Exit Date'] ? `${x['Exit Date']} ${x['Exit Time']}` : 'open'}</td>
+      <td style="padding:5px 10px">${x['Exit Date'] ? `${x['Exit Date']} ${x['Exit Time']}` : '<span style="color:#60a5fa;font-weight:600">still open</span>'}</td>
       <td style="padding:5px 10px">${_scEsc(x.Instrument)}</td><td style="padding:5px 10px">${x.Direction}</td>
       <td style="padding:5px 10px">${_scEsc(x.Model)}</td>
-      <td style="padding:5px 10px;text-align:right;color:${ret >= 0 ? 'var(--green)' : 'var(--red)'}">${_scNum(ret)}</td>
+      <td style="padding:5px 10px;text-align:right">${px(o.fill_px)}</td>
+      <td style="padding:5px 10px;text-align:right">${exitCell}</td>
+      <td style="padding:5px 10px;text-align:right;color:${ret >= 0 ? 'var(--green)' : 'var(--red)'}">${_scNum(ret)}${open ? ' <small style="color:var(--text3)">open</small>' : ''}</td>
       <td style="padding:5px 10px;text-align:right">${_scNum(x['MAE %'])}</td><td style="padding:5px 10px;text-align:right">${_scNum(x['MFE %'])}</td>
-      <td style="padding:5px 10px">${_scEsc(r.out?.exit_reason || 'open')}</td></tr>`;
-  }).join('') : `<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">${_scRecords.length ? 'No finished signals for this filter yet' : 'No signals recorded yet — run the bot, or backfill history with --backfill-since'}</td></tr>`;
+      <td style="padding:5px 10px">${_scEsc(r.out?.exit_reason || 'still open')}</td></tr>`;
+  }).join('') : `<tr><td colspan="12" style="padding:14px;text-align:center;color:var(--text3)">${_scRecords.length ? 'No finished signals for this filter yet' : 'No signals recorded yet — run the bot, or backfill history with --backfill-since'}</td></tr>`;
 }
 function exportScTemplate() {
   const rows = _scRows();

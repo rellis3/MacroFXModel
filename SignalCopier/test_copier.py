@@ -265,6 +265,13 @@ def test_no_price_market_entry_and_crypto_names():
     assert statuses(cp)["201:0"] == "closed"
 
 
+def test_cancel_on_the_cancel_at_minute_is_not_unmatched():
+    cp, _ = make()
+    t0 = datetime(2026, 10, 30, 7, 1, tzinfo=timezone.utc)
+    rep = sc.replay_history(cp, [(101, DAILY, t0), (102, CANCEL, datetime(2026, 10, 30, 13, 0, tzinfo=timezone.utc))], record=False)
+    assert rep["cancels"] == 1 and not rep["unmatched"]
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:
