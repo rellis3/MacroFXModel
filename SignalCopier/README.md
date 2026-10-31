@@ -108,6 +108,13 @@ python3 SignalCopier/copier.py chats
 | `🔴 SELL SP500(normal, NOT futures) now at 7,640.6 / SL …, TP … / Closed at 21:00 UK if still open` | open, market, closes 21:00 UK |
 | `Cancel the NAS100 limit SELL at 28,965, not filled` | cancel (matched by symbol + side + entry) |
 | `CLOSE the USDJPY SELL from 157.69, flat for the weekend` | close (one per line) |
+| `XAUUSD buy` / `⛔ SL: 4002` / `✅ Targets: 1) 4018 2) 4038` | open, market, no price (entry = price when received), TP = first target |
+| `SELL STOP GOLD at 4,000` | open, stop (order type after the side) |
+| `✅ Target hit on the SP500 SELL from 7,640.6` / `❌ US30 SELL from 52,445 stopped out` / `❌ Stopped the Ethereum SELL from …` | close (reason: target hit / stopped out) |
+| `Filled: the US30 limit SELL at 52,445 is now open` | info, no action |
+
+The parser reads **line by line**: a trade is its entry line plus the detail lines under it (SL, TP, targets, times,
+lots), whatever the spacing. Telegram doesn't always keep the blank lines between his trades.
 
 **Safety net:** a message that mentions a known symbol or a price *and* an action word (buy, sell, close, cancel, SL,
 TP, move, breakeven, half…) but matches none of the above raises **⚠️ Unparsed instruction — check manually**. It is

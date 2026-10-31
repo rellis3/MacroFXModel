@@ -250,6 +250,21 @@ def test_ignore_crypto_live_record_and_replay():
     assert not [r for r in cp2.signals.values() if r["symbol"] == "BTCUSD"]
 
 
+def test_no_price_market_entry_and_crypto_names():
+    assert sc.is_crypto("ETHEREUM") and sc.is_crypto("Bitcoin") and not sc.is_crypto("GOLD")
+    cp, _ = make()
+    cp.prices["XAUUSD"] = 3995.0
+    cp.on_message(201, "XAUUSD buy\n\n⛔ SL: 3980\n✅ Targets:\n1) 4018\n2) 4038", datetime.now(timezone.utc))
+    assert statuses(cp)["201:0"] == "open"
+    pos = [p for p in cp.broker.serialize_open_positions() if p["symbol"] == "XAUUSD"][0]
+    assert pos["direction"] == "BUY"
+    r = cp.signals["201:0"]
+    assert r["entry"] is None and r["recv_px"] == 3995.0 and r["tp"] == 4018
+    # his result message closes it
+    cp.on_message(202, "✅ Target hit on the XAUUSD BUY from 3,995", datetime.now(timezone.utc))
+    assert statuses(cp)["201:0"] == "closed"
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

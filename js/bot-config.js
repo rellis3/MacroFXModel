@@ -8528,6 +8528,20 @@ function scDecClearDate() {
   if (input) input.value = '';
   loadScDecisionLog();
 }
+let _scLastParseReport = null;
+// Every unparsed / unmatched message as plain text, oldest first, to send for new formats.
+function downloadScParseList(field) {
+  const r = _scLastParseReport;
+  const rows = field === 'text' ? (r?.unparsed || []) : (r?.unmatched || []);
+  if (!rows.length) return;
+  const body = rows.map(u => `--- msg ${u.msg_id} · ${new Date(u.t * 1000).toLocaleString('en-GB', { timeZone: 'Europe/London' })} UK ---\n${u[field]}`).join('\n\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([body + '\n'], { type: 'text/plain' }));
+  a.download = `signal-copier-${field === 'text' ? 'unparsed' : 'unmatched'}-${new Date().toISOString().slice(0, 10)}.txt`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
 async function loadScParseReport() {
   const el = document.getElementById('scParseReport');
   if (!el) return;
@@ -8536,13 +8550,15 @@ async function loadScParseReport() {
   if (!r) { el.innerHTML = 'No history replay yet. Run the command above on the bot machine; the report lands here.'; return; }
   const d = ts => ts ? new Date(ts * 1000).toLocaleDateString('en-GB', { timeZone: 'Europe/London', day: '2-digit', month: 'short', year: 'numeric' }) : '—';
   const stat = (l, v, c) => `<div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px"><span style="color:var(--text3)">${l}</span> <b style="color:${c || 'var(--text)'}">${v}</b></div>`;
-  const nU = (r.unparsed || []).length, nM = (r.unmatched || []).length;
-  const list = (rows, field) => rows.slice().reverse().map(u => `<tr style="border-top:1px solid var(--border)">
+  const nU = r.unparsed_total ?? (r.unparsed || []).length, nM = r.unmatched_total ?? (r.unmatched || []).length;
+  _scLastParseReport = r;
+  const list = (rows, field) => rows.slice(-200).reverse().map(u => `<tr style="border-top:1px solid var(--border)">
       <td style="padding:5px 10px;white-space:nowrap;vertical-align:top">${_scUk(u.t)}</td>
       <td style="padding:5px 10px;vertical-align:top">${u.msg_id}</td>
       <td style="padding:5px 10px;white-space:pre-wrap;color:var(--text)">${_scEsc(u[field])}</td></tr>`).join('');
   const table = (title, color, rows, field, help) => rows.length ? `
-    <div style="margin-top:12px;font-weight:600;color:${color}">${title} (${rows.length})</div>
+    <div style="margin-top:12px;font-weight:600;color:${color}">${title} (${rows.length}${rows.length > 200 ? ', newest 200 shown' : ''})
+      <button onclick="downloadScParseList('${field}')" style="margin-left:8px;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:2px 8px;font-size:11px;cursor:pointer">⬇ Download all</button></div>
     <div class="bot-banner-sub" style="margin:2px 0 6px">${help}</div>
     <div style="max-height:320px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
       <thead><tr style="background:var(--s2);color:var(--text3)"><th style="padding:6px 10px;text-align:left">Posted (UK)</th><th style="padding:6px 10px;text-align:left">Msg</th><th style="padding:6px 10px;text-align:left">Text</th></tr></thead>
@@ -8567,7 +8583,7 @@ async function loadScParseReport() {
 function loadScAll() { loadScStatus(); loadScOutcomes(); loadScDecisionLog(); loadScTradeLog(); loadScParseReport(); }
 
 Object.assign(window, { saveScConfig, saveScCreds, saveScTgCreds, resetScDefaults, testScTelegram, sendScLogin, loadScAll,
-  loadScDecisionLog, scDecShiftDay, scDecClearDate, loadScTradeLog, loadScParseReport, renderScOutcomes, exportScTemplate });
+  loadScDecisionLog, scDecShiftDay, scDecClearDate, loadScTradeLog, loadScParseReport, downloadScParseList, renderScOutcomes, exportScTemplate });
 document.querySelector('.tab-btn[data-tab="signalcopier"]')?.addEventListener('click', loadScAll);
 loadScConfig().then(loadScAll);         // like Vote Atlas: render at load, so a restored tab isn't blank for 30s
 loadScCreds();
