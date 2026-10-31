@@ -163,6 +163,19 @@ IC ≈ 0.04 against a plausible 0.05–0.10), and they have not been run.
 ## 4. How to get the best from it, in order
 
 ### A. Stop the losses (urgent, small)
+
+> **Done 2026-10-31** (owner: "stop the losses now"):
+> - `js/dataArchive.js` (6 tests) and a daily `_archiveDaily` job (service `dataArchive`) write an append-only
+>   R2 record. Nothing in it is ever deleted.
+>   - CME options: every raw day and summary day, with the days already in KV backfilled.
+>   - The ^TNX 15-minute bars as fetched, plus each signal day before the 120-day trim.
+>   - The ICE spreads (8 series) and every `/api/fredhistory` series at full FRED depth.
+>   - Every series `_fredCsv` downloads (the deep history the server used to trim and forget).
+>   - Gold ETF AUM (uncapped and captured daily) and a daily nowcast snapshot.
+> - The KV windows stay as fast caches; R2 is the record.
+> - Status: `GET /api/data-archive/status`. Manual run: `POST /api/data-archive/run` (auth).
+> - Not done here: GPR history, COT at full depth (B8), serving the engine from the R2 copies (B6 part 2).
+
 1. Copy the CME options capture to R2 nightly and remove the 365-day trim (`server.js:20595`, `:20711`). The data
    is irreplaceable.
 2. Archive the daily ICE spread prints (HY, BB, CCC, IG, EM OAS) to R2. About 40 KB a year.

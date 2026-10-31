@@ -17,7 +17,9 @@ export const REGIME_KV = 'yield_shape_regime_v1';
 const KEEP_DAYS = 120;
 const YIELD_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=15m&range=5d';
 
-export function createYieldShapeRegime({ kv, getFastLive, liveCache, fetchImpl = fetch, log = console }) {
+// `archive` (optional, js/dataArchive.js): each day's fetched ^TNX 15m bars and every signal day before the KEEP_DAYS
+// trim are copied to R2, so the trim no longer loses data (plans/DATA_ASSET_MAP.md §4A).
+export function createYieldShapeRegime({ kv, getFastLive, liveCache, fetchImpl = fetch, log = console, archive = null }) {
   let running = false, last = null;
   let yieldRaw = null;                 // { fetchedOn: 'YYYY-MM-DD', times: [], closes: [] } -- refetched once/day
   const templateCache = new Map();     // yield-day date -> built template
@@ -53,6 +55,7 @@ export function createYieldShapeRegime({ kv, getFastLive, liveCache, fetchImpl =
       const times = res?.timestamp ?? [];
       const closes = res?.indicators?.quote?.[0]?.close ?? [];
       yieldRaw = { fetchedOn: today, times, closes };
+      archive?.snapshot('tnx_15m', today, { symbol: '^TNX', interval: '15m', range: '5d', times, closes }).catch?.(() => {});
     }
     const dates = [...new Set(yieldRaw.times.map(utcDateOf))].sort();
     const yDate = dates.filter(d => d < today).at(-1);
@@ -113,7 +116,10 @@ export function createYieldShapeRegime({ kv, getFastLive, liveCache, fetchImpl =
       }
 
       const dates = Object.keys(store.days).sort();
-      for (const old of dates.slice(0, Math.max(0, dates.length - KEEP_DAYS))) delete store.days[old];
+      for (const old of dates.slice(0, Math.max(0, dates.length - KEEP_DAYS))) {
+        archive?.snapshot('yield_shape_signals', old, store.days[old]).catch?.(() => {});
+        delete store.days[old];
+      }
       store.updatedAt = new Date().toISOString();
       await kv.put(REGIME_KV, JSON.stringify(store));
       last = { at: store.updatedAt, reason, ok: true };
