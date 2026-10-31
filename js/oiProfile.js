@@ -12,7 +12,7 @@
  *
  * Pure. `buildOiProfile` returns a plain object; `buildProfileText` serialises it as pipe-delimited lines the Pine indicator parses.
  */
-import { oiBookLegs, oiParseVolume, parseOIMatrix, futuresIsInverted } from './oi.js';
+import { oiBookLegs, oiParseVolume, parseOIMatrix, futuresIsInverted, oiCalcMaxPain } from './oi.js';
 import { gexLadder } from './gexLadder.js';
 import { levelExpectation } from './levelExpectation.js';
 import { RIPPLE_BUCKETS } from './rippleBook.js';
@@ -119,24 +119,39 @@ export function buildOiProfile(inst, opts = {}) {
     const sides = bucketStat.map(b => { const n2 = b.lad.strikes.length, c2 = new Array(n2).fill(0), p2 = new Array(n2).fill(0); for (const s of b.lad.series) for (let i = 0; i < n2; i++) { c2[i] += s.call[i]; p2[i] += s.put[i]; } return { b, c2, p2 }; });
     const gMax = Math.max(1e-12, ...sides.map(x => Math.max(...x.c2, ...x.p2)));
     for (const { b, c2, p2 } of sides) {
-      if (b.id === strong.id) continue;
-      const k2 = b.lad.strikes, net2 = c2.map((c, i) => c - p2[i]);
+      const k2 = b.lad.strikes, net2 = c2.map((c, i) => c - p2[i]), isStrong = b.id === strong.id;
       const top2 = (arr, above) => k2.map((k, i) => ({ k, v: arr[i] })).filter(x => (above ? x.k > spot : x.k < spot) && x.v > 0).sort((a, c) => c.v - a.v);
       const found = [];
-      distinct(top2(c2, true), 2).forEach((x, i) => found.push(['call_wall', x.k, x.v / gMax, i + 1]));
-      distinct(top2(p2, false), 2).forEach((x, i) => found.push(['put_wall', x.k, x.v / gMax, i + 1]));
+      // every distinct wall that is at least 10% of the biggest gamma in any book, up to 5 a side (the normal paste's top 2 are the strongest book's ranks 1-2)
+      distinct(top2(c2, true), 5).forEach((x, i) => found.push(['call_wall', x.k, x.v / gMax, i + 1]));
+      distinct(top2(p2, false), 5).forEach((x, i) => found.push(['put_wall', x.k, x.v / gMax, i + 1]));
       const pk2 = k2.map((k, i) => ({ k, v: Math.abs(net2[i]) })).sort((a, c) => c.v - a.v)[0];
       if (pk2) found.push(['gamma_peak', pk2.k, pk2.v / gMax, null]);
       const nm2 = Math.max(...net2.map(Math.abs), 1e-12); let nn = 0;
       for (const x of k2.map((k, i) => ({ k, s: net2[i], v: Math.abs(net2[i]) })).sort((a, c) => c.v - a.v)) {
-        if (nn >= 2 || x.v < 0.25 * nm2) break;
+        if (nn >= 3 || x.v < 0.25 * nm2) break;
         if (found.some(f => Math.abs(f[1] - x.k) <= 0.12 * rm)) continue;
         found.push([x.s < 0 ? 'short_gamma_node' : 'long_gamma_node', x.k, x.v / gMax, null]); nn++;
       }
+      // this book's own max pain (from its legs) and its net-gamma flip nearest spot, the two lines the analysis export carries per expiry
+      try {
+        const ks = [...new Set(b.legs.flatMap(l => l.strikes))].sort((u, v) => u - v);
+        const cm = new Map(), pm = new Map();
+        for (const l of b.legs) l.strikes.forEach((k, i) => { cm.set(k, (cm.get(k) || 0) + (l.calls[i] || 0)); pm.set(k, (pm.get(k) || 0) + (l.puts[i] || 0)); });
+        const mp = oiCalcMaxPain(ks, ks.map(k => cm.get(k) || 0), ks.map(k => pm.get(k) || 0));
+        if (Number.isFinite(mp)) found.push(['max_pain', mp, 0.3, null]);
+      } catch { /* no max pain for this book */ }
+      {
+        let best = null;
+        for (let i = 1; i < k2.length; i++) if (net2[i - 1] * net2[i] < 0) { const px = k2[i - 1] + (k2[i] - k2[i - 1]) * (-net2[i - 1] / (net2[i] - net2[i - 1])); if (!best || Math.abs(px - spot) < Math.abs(best - spot)) best = px; }
+        if (best != null) found.push(['gex_flip', best, 0.3, null]);
+      }
       for (const [t, px, g, rank] of found) {
-        if (Math.abs(px - spot) > windowRm * rm || g < 0.05) continue;
+        if (Math.abs(px - spot) > windowRm * rm) continue;
+        if ((t === 'call_wall' || t === 'put_wall' || t === 'gamma_peak' || t.endsWith('_node')) && g < 0.1) continue;
+        if (isStrong && rank && rank <= 2 && (t === 'call_wall' || t === 'put_wall')) continue;   // already drawn by the normal build
         const ex = levels.find(l => l.type === t && Math.abs(l.price - px) <= 0.05 * rm);
-        if (ex) ex.tags = [...(ex.tags || []), tagOf(b)];
+        if (ex) { if (!isStrong) ex.tags = [...(ex.tags || []), tagOf(b)]; }
         else levels.push({ type: t, price: px, strength: Math.min(1, g), rank, tags: [tagOf(b)], hidden: true });
       }
     }
