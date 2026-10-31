@@ -10810,10 +10810,15 @@ const QMR_COSTS = { costPct: 0.008, stopSlipPct: 0.005 };
 // so the two exit rules can never drift (the Lego rule). `bars` are the H1
 // bars STRICTLY AFTER the entry bar, sorted ascending by time. Rule, in order,
 // per bar: stop first (conservative — worst case within the bar), then TP,
-// then EOD close on the first bar labeled >= QMR_TIMING.eodHour. If no bar
+// then EOD close on the first bar labeled >= timing.eodHour (default QMR_TIMING). If no bar
 // triggers, exits at the last bar's close as EOD (truncated day). Returns
 // { stop, tp, exit, exitReason, movePct } or null when `bars` is empty.
-function _qmrWalkTrade(bars, dir, entry, stopPctEff, tpPct) {
+// `timing` (optional) overrides QMR_TIMING — callers pass { ...QMR_TIMING, eodHour } for a
+// per-instrument or walk-forward exit hour. Before 2026-10-31 the parameter was missing, so the
+// passed eodHour was silently dropped and every run exited at the global 20:00 UTC
+// (REPO_REVIEW_2026-10-31, live bug). The forward resolver passes nothing and is unchanged.
+function _qmrWalkTrade(bars, dir, entry, stopPctEff, tpPct, timing = QMR_TIMING) {
+  const eodHour = Number.isFinite(timing?.eodHour) ? timing.eodHour : QMR_TIMING.eodHour;
   const stop = dir === 'LONG' ? entry * (1 - stopPctEff / 100) : entry * (1 + stopPctEff / 100);
   const tp   = tpPct > 0
     ? (dir === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
@@ -10824,7 +10829,7 @@ function _qmrWalkTrade(bars, dir, entry, stopPctEff, tpPct) {
     if (dir === 'SHORT' && bar.h >= stop) { exit = stop; exitReason = 'STOP'; break; }
     if (tp !== null && dir === 'LONG'  && bar.h >= tp) { exit = tp; exitReason = 'TP'; break; }
     if (tp !== null && dir === 'SHORT' && bar.l <= tp) { exit = tp; exitReason = 'TP'; break; }
-    if (parseInt(bar.t.substring(11, 13)) >= QMR_TIMING.eodHour) { exit = bar.c; exitReason = 'EOD'; break; }
+    if (parseInt(bar.t.substring(11, 13)) >= eodHour) { exit = bar.c; exitReason = 'EOD'; break; }
   }
   if (exit === null) {
     const last = bars[bars.length - 1];

@@ -95,3 +95,14 @@ def _run_all():
 
 if __name__ == "__main__":
     _run_all()
+
+
+def test_usd_net_liquidity_units():
+    """Real FRED magnitudes (2026): WALCL ≈ $6.6tn and WTREGEN ≈ $0.85tn, both in $ MILLIONS;
+    RRPONTSYD in $ BILLIONS. Net liquidity must come out in $ billions, ≈ 5.7k, not ≈ −0.85m
+    (DATA_SPEC §5 #8; the old copy here treated WTREGEN as billions)."""
+    from . import config
+    blk = config.CB_BLOCKS["USD"]
+    comps = {"walcl": 6_600_000.0, "tga": 850_000.0, "rrp": 50.0}
+    v = eval(blk["formula"], {"__builtins__": {}}, comps)  # noqa: S307 - controlled input
+    assert abs(v - (6600 - 850 - 50)) < 1e-9, v
