@@ -257,4 +257,40 @@ B3 is not in the live ledger v0. The CFD financing for FX is an assumption, not 
 
 ## Amendments
 
+### A1 — 2026-10-31 — POST-HOC (results seen)
+
+Four faults were found by auditing the first run. Each fix can only widen intervals or lower the pooled gain, so
+none of them promotes anything. The original outputs are kept beside the fixed ones.
+
+1. **Pooled effective N** (`bar.py` `pooled_meff`, and the FX cross-section).
+   - **Fault:** `m/(1+(m−1)ρ̄)` depends on sign. USD pairs are quoted both ways (EURUSD vs USDCHF), so their
+     correlations cancel. The 7 USD pairs looked like 8–9 independent instruments, and the demeaned cross-section
+     like 30 out of 7.
+   - **Fix:** the sign-free `m²/Σρ_ij²` from A1 on. The original is kept as `m_eff_original_A0`.
+   - The cross-sectional Phase 1 gate itself is a direct placebo and never used m_eff, so it is unaffected.
+2. **Hit-rate positive control** (Q2).
+   - **Fault:** the selection-tilt plant under-delivered. Sampling without replacement diluted the tilt, so the
+     planted excess came out 10–20% below the MDE, and power came out 0.65–0.73 instead of about 0.80. The power at the
+     effect actually planted is about 0.69, which is consistent with what was observed.
+   - **What passed:** the σ-unit plants (4/4, 0.78–0.82) and the always-on IC plants (2/2, 0.81–0.83) were inside the
+     0.75–0.85 band on the first run.
+   - **Fix:** an exact plant (`control_hit_flip`): flip down outcomes with probability MDE / (share of downs). It is
+     reported beside the original. Under the Q2 rule as written, the original hit-rate controls are 4 fails. The MDE
+     map is therefore judged calibrated in σ and IC units on the first run, and in hit-rate units only through the
+     exact plant (this is stated in RESULTS).
+3. **Scoreboard CIs for overlapping daily cells** (S4, S5, S7).
+   - **Fault:** a row bootstrap treated overlapping 5- and 20-session windows as independent. The S4 row-bootstrap p
+     was about 0.000, against a circular-shift placebo p of 0.039.
+   - **Fix:** these cells now bootstrap by calendar-month clusters.
+
+4. **Finite-population shrink in the sparse placebo.**
+   - **Fault:** drawing K of the G ≈ n/h non-overlapping periods without replacement shrinks the placebo spread by
+     √(1 − K/G). At 20 days with K = 100 of about 245 periods, the placebo was 0.79× the analytic value. A new sample
+     has no such shrink, and the "historical K" MDEs were scaled from the largest K, so the 5- to 60-day MDEs were
+     understated by up to about 20%.
+   - **Fix:** the spread is divided by √(1 − K/G). The uncorrected MDEs are kept as `*_raw_A0`.
+   - The positive controls test calibration within the same finite history, so they are unaffected.
+
+Not changed: B0 / B2 / B3, costs, labels logic, the frozen ledger baselines.
+
 ## RESULTS

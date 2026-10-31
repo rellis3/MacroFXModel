@@ -329,6 +329,7 @@ import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
+import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
 import { buildOiPlan as _hpoBuild, scoreOiPlan as _hpoScore, orderStatesOI as _hpoStates, buildOiPlanText as _hpoText, OI_PLAN as _HPO_CFG } from './js/hedgingPlanOI.js';   // OI-level hedging plan (shadow)
@@ -24617,6 +24618,81 @@ async function _hedgingForwardTick() {
   _hfDone.set(date, 'scored');
 }
 svcInterval('hedgingForward', () => _hedgingForwardTick().catch(e => console.error('[hedging-forward]', e.message)), 10 * 60_000);
+
+// ── Direction forecast ledger (forge/DIRECTION_BAR_PREREG.md §L; logic in js/directionLedger.js) ────────────────────
+// After each New York close: issue B0/B1/B2 (and any registered research forecaster) for NQ, ES, gold, EURUSD, GBPUSD,
+// USDJPY at 1/5/20/60 closes, write once to R2 forward/direction_ledger/<date>.json; resolve each horizon once its
+// closes exist (out/<date>_h<h>.json). Only the latest completed close is ever issued (no back-issuing), so a missed
+// day is a gap. Baselines are frozen at the last pre-lockbox date (js/directionLedgerBaselines.json).
+const _DL_PREFIX = 'forward/direction_ledger/';
+const _dlBaselines = JSON.parse(fs.readFileSync(new URL('./js/directionLedgerBaselines.json', import.meta.url), 'utf8'));
+const _dlDone = new Set();        // issue dates / outcome keys already written (saves R2 reads)
+async function _dlCloses() {
+  const out = {};
+  for (const [inst, pair] of Object.entries(_DL_INSTRUMENTS)) {
+    const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(pair)}/candles?granularity=D&price=M&count=320`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(15_000) });
+    if (!r.ok) throw new Error(`${pair} daily candles ${r.status}`);
+    out[inst] = _dlClosesFromCandles((await r.json()).candles);
+  }
+  return out;
+}
+async function _directionLedgerTick() {
+  if (!_r2Ok() || !process.env.OANDA_KEY) return;
+  const closes = await _dlCloses();
+  const date = closes.nq?.at(-1)?.date;
+  // issue only for the latest close, and only within 20h of it (a restart the next day must not issue late)
+  const closeMs = date ? Date.parse(`${date}T22:00:00Z`) : NaN;
+  if (date && !_dlDone.has(date) && Date.now() - closeMs < 20 * 3600_000) {
+    const key = `${_DL_PREFIX}${date}.json`;
+    if (!(await _r2GetJSON(key).catch(() => null))) {
+      const rec = _dlIssue({ date, closes, baselines: _dlBaselines, issuedAt: new Date().toISOString(), code: process.env.RAILWAY_GIT_COMMIT_SHA || null });
+      if (rec.forecasts.length) await _r2PutJSON(key, rec);
+    }
+    _dlDone.add(date);
+  }
+  // resolve: issue records from the last ~130 days with an unresolved horizon
+  const keys = (await _r2ListKeys(_DL_PREFIX)).filter(k => /direction_ledger\/\d{4}-\d{2}-\d{2}\.json$/.test(k)).sort().slice(-95);
+  for (const k of keys) {
+    const d = k.match(/(\d{4}-\d{2}-\d{2})\.json$/)[1];
+    let rec = null;
+    for (const h of _DL_HORIZONS) {
+      const ok = `${_DL_PREFIX}out/${d}_h${h}.json`;
+      if (_dlDone.has(ok)) continue;
+      if (await _r2GetJSON(ok).catch(() => null)) { _dlDone.add(ok); continue; }
+      rec ??= await _r2GetJSON(k).catch(() => null);
+      if (!rec) break;
+      const o = _dlOutcome(rec, h, closes, new Date().toISOString());
+      if (o) { await _r2PutJSON(ok, o); _dlDone.add(ok); }
+    }
+  }
+}
+svcInterval('directionLedger', () => _directionLedgerTick().catch(e => console.error('[direction-ledger]', e.message)), 30 * 60_000);
+
+app.get('/api/direction-ledger', async (req, res) => {
+  try {
+    if (!_r2Ok()) return res.status(503).json({ ok: false, error: 'R2 not configured' });
+    const all = await _r2ListKeys(_DL_PREFIX);
+    const issues = all.filter(k => /direction_ledger\/\d{4}-\d{2}-\d{2}\.json$/.test(k)).sort();
+    const date = String(req.query.date || '');
+    if (date) {
+      const rec = await _r2GetJSON(`${_DL_PREFIX}${date}.json`);
+      if (!rec) return res.status(404).json({ ok: false, error: 'no record' });
+      const outs = {};
+      for (const h of _DL_HORIZONS) outs[h] = await _r2GetJSON(`${_DL_PREFIX}out/${date}_h${h}.json`).catch(() => null);
+      return res.json({ ok: true, record: rec, outcomes: outs });
+    }
+    const outKeys = all.filter(k => k.includes('/out/'));
+    const recs = [], outs = [];
+    if (req.query.summary === '1') {
+      for (const k of issues) { const r = await _r2GetJSON(k).catch(() => null); if (r) recs.push(r); }
+      for (const k of outKeys) { const o = await _r2GetJSON(k).catch(() => null); if (o) outs.push(o); }
+    }
+    res.json({ ok: true, prereg: 'forge/DIRECTION_BAR_PREREG.md', baselines: _dlBaselines.version, issued_days: issues.length,
+      first: issues[0]?.match(/(\d{4}-\d{2}-\d{2})/)[1] ?? null, last: issues.at(-1)?.match(/(\d{4}-\d{2}-\d{2})/)[1] ?? null,
+      outcomes: outKeys.length, summary: req.query.summary === '1' ? _dlSummarise(recs, outs) : 'add ?summary=1' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 app.get('/api/hedging-forward', async (req, res) => {
   try {
