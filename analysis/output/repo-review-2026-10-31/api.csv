@@ -1,0 +1,860 @@
+route,defined_in,feeds_detected,n_pages,pages,other_consumers
+/api/${key}/calendar,server.js,KV,0,,
+/api/${key}/debug-fetch,server.js,KV Treasury/BLS/BEA,0,,
+/api/${key}/fetch-now,server.js,KV Treasury/BLS/BEA,0,,
+/api/${key}/fetch-status,server.js,KV Treasury/BLS/BEA,0,,
+/api/${key}/history,server.js,KV,0,,
+/api/${key}/latest,server.js,KV,0,,
+/api/${key}/meeting/:date,server.js,KV,0,,
+/api/ai-ab,server.js,,2,atlas.html bot-config.html,_atlas_run_mod.mjs server.js
+/api/ai-ab/ready,server.js,,0,,
+/api/ai-backtest,server.js,OANDA Yahoo/Stooq AI/LLM,1,backtest.html,js/backtest.js js/siteApiMap.js
+/api/ai-config,server.js,,3,atlas.html bot-config.html today.html,_atlas_run_mod.mjs js/feedCoverage.js server.js
+/api/ai-models,server.js,AI/LLM,1,bot-config.html,server.js
+/api/analogml/motif-alert-backtest,server.js,R2,1,motif-alert-backtest.html,AnalogML/motif_alert_backtest.py js/serviceFlags.js
+/api/analogml/motif-state,server.js,R2,2,indexv2.html today.html,js/bot-config.js js/dataFeeds.js
+/api/analogml/motif-trades,server.js,,1,bot-config.html,js/dataFeeds.js scripts/verify_motif_live_vs_backtest.py server.js
+/api/analogml/paper-trades,server.js,R2,0,,bot-config.html
+/api/analogml/shape-state,server.js,,0,,
+/api/analysis,server.js,AI/LLM,2,index.html today.html,_worker.js js/ai.js js/siteApiMap.js server.js
+/api/analysis-historical,server.js,FRED CBOE/options Yahoo/Stooq AI/LLM,1,analysis.html,js/siteApiMap.js
+/api/analytics-desk/:pair,server.js,OANDA,1,analytics-desk.html,js/siteApiMap.js
+/api/asia-fib-atlas/book/:instrument,js/asiaFibAtlasRoutes.js,,1,asia-fib-atlas-vote-backtest.html,js/asiaFibAtlasRoutes.js js/bot-config.js js/siteApiMap.js
+/api/asia-fib-atlas/book/:instrument/text,js/asiaFibAtlasRoutes.js,,1,asia-fib-atlas-vote-backtest.html,js/asiaFibAtlasRoutes.js js/bot-config.js js/siteApiMap.js
+/api/asia-fib-atlas/diag-frozen-split,js/asiaFibAtlasRoutes.js,OANDA R2,1,asia-fib-atlas-vote-backtest.html,js/asiaFibAtlasRoutes.js js/bot-config.js
+/api/asia-fib-atlas/fastlive/:instrument,js/asiaFibAtlasRoutes.js,,1,asia-fib-atlas-vote-backtest.html,js/asiaFibAtlasRoutes.js js/bot-config.js js/siteApiMap.js
+/api/asia-fib-atlas/live/:instrument,js/asiaFibAtlasRoutes.js,R2,1,asia-fib-atlas-vote-backtest.html,js/asiaFibAtlasRoutes.js js/bot-config.js js/siteApiMap.js
+/api/asia-fib-atlas/plan/:instrument,js/asiaFibAtlasRoutes.js,,1,asia-fib-atlas-vote-backtest.html,js/asiaFibAtlasRoutes.js js/bot-config.js
+/api/asia-fib-atlas/run,js/asiaFibAtlasRoutes.js,OANDA R2,1,asia-fib-atlas-vote-backtest.html,bot-config.html js/asiaFibAtlasRoutes.js js/bot-config.js js/siteApiMap.js
+/api/asia-fib-atlas/status/:jobId,js/asiaFibAtlasRoutes.js,OANDA R2,1,asia-fib-atlas-vote-backtest.html,js/asiaFibAtlasRoutes.js js/bot-config.js js/siteApiMap.js
+/api/asia-fib-atlas/vote-portfolio,js/asiaFibAtlasRoutes.js,R2,1,asia-fib-atlas-vote-backtest.html,js/asiaFibAtlasRoutes.js js/bot-config.js js/botAuditRoutes.js js/fibAtlasDriftAudit.js js/siteApiMap.js
+/api/asia-fib-atlas/vote-portfolio-combined,js/asiaFibAtlasRoutes.js,,2,asia-fib-atlas-vote-backtest.html asia-fib-atlas-vote-portfolio.html,analysis/fib_atlas_cost_stress_matched_config.mjs analysis/fib_atlas_risk_pct_sweep.mjs js/asiaFibAtlasRoutes.js js/bot-config.js js/siteApiMap.js server.js
+/api/asia-fib-atlas/vote-trades/:instrument,js/asiaFibAtlasRoutes.js,,1,asia-fib-atlas-vote-backtest.html,analysis/fib_atlas_confluence_filter_check.mjs analysis/fib_atlas_drawdown_attribution.mjs js/asiaFibAtlasRoutes.js js/bot-config.js js/siteApiMap.js
+/api/asia-range-backtest/run,server.js,,1,asia-range-backtest.html,js/siteApiMap.js
+/api/asia-range-backtest/status/:jobId,server.js,,1,asia-range-backtest.html,js/siteApiMap.js
+/api/asia-range-backtest/trades,server.js,static-file,2,asia-range-analysis.html asia-range-backtest.html,js/siteApiMap.js
+/api/asia-today,server.js,,1,atlas.html,js/feedCoverage.js
+/api/backtest-exit-study,server.js,static-file,1,backtest-exit-study.html,
+/api/backtest-vmc,server.js,static-file,1,backtest-vmc.html,
+/api/band-fade/run,server.js,,1,band-fade.html,js/siteApiMap.js
+/api/band-fade/status/:jobId,server.js,FRED R2,1,band-fade.html,js/siteApiMap.js
+/api/bank-credit,server.js,,3,atlas.html bank-credit.html today.html,js/dataFeeds.js js/feedCoverage.js js/serviceFlags.js js/siteApiMap.js
+/api/bank-credit/tick,server.js,FRED CFTC/COT KV Treasury/BLS/BEA,0,,
+/api/beigebook/calendar,server.js,,1,beige-book.html,server.js
+/api/beigebook/clear-stale,server.js,,0,,
+/api/beigebook/debug-fetch,server.js,,0,,js/beigeBookFetch.js
+/api/beigebook/fetch-now,server.js,,1,beige-book.html,
+/api/beigebook/fetch-status,server.js,KV,1,beige-book.html,
+/api/beigebook/history,server.js,KV,1,beige-book.html,
+/api/beigebook/latest,server.js,KV,0,,js/dataFeeds.js js/feedCoverage.js
+/api/beigebook/release/:date,server.js,KV,1,beige-book.html,
+/api/beta-history,server.js,OANDA static-file,1,correlations.html,js/siteApiMap.js
+/api/beta/rebuild,server.js,OANDA,0,,js/siteApiMap.js
+/api/boc/calendar,server.js(_registerCbEngine),,1,boc-sentiment.html,
+/api/boc/debug-fetch,server.js(_registerCbEngine),,0,,
+/api/boc/fetch-now,server.js(_registerCbEngine),,1,boc-sentiment.html,
+/api/boc/fetch-status,server.js(_registerCbEngine),,1,boc-sentiment.html,
+/api/boc/history,server.js(_registerCbEngine),,3,atlas.html boc-sentiment.html today.html,_atlas_run_mod.mjs js/feedCoverage.js
+/api/boc/latest,server.js(_registerCbEngine),,0,,
+/api/boc/meeting/:date,server.js(_registerCbEngine),,1,boc-sentiment.html,
+/api/boe/calendar,server.js,,1,boe-sentiment.html,
+/api/boe/fetch-now,server.js,,1,boe-sentiment.html,
+/api/boe/fetch-status,server.js,KV AI/LLM,1,boe-sentiment.html,
+/api/boe/history,server.js,KV,3,atlas.html boe-sentiment.html today.html,_atlas_run_mod.mjs js/feedCoverage.js
+/api/boe/latest,server.js,KV,0,,js/dataFeeds.js
+/api/boe/meeting/:date,server.js,KV,1,boe-sentiment.html,
+/api/boj/calendar,server.js,,1,boj-sentiment.html,
+/api/boj/debug-fetch,server.js,CB/ECB/BoE web,0,,js/bojFetch.js server.js
+/api/boj/fetch-now,server.js,,1,boj-sentiment.html,
+/api/boj/fetch-status,server.js,KV,1,boj-sentiment.html,
+/api/boj/history,server.js,KV,3,atlas.html boj-sentiment.html today.html,_atlas_run_mod.mjs js/feedCoverage.js
+/api/boj/latest,server.js,KV,0,,js/dataFeeds.js
+/api/boj/meeting/:date,server.js,KV,1,boj-sentiment.html,
+/api/book-stress/market-sleeves,server.js,OANDA,1,book-stress.html,js/siteApiMap.js
+/api/book-stress/run,server.js,,1,book-stress.html,js/siteApiMap.js
+/api/bot-audit/allocations,_worker.js,KV,1,bot-audit.html,_worker.js
+/api/bot-audit/backtest-curve,js/botAuditRoutes.js,R2,1,bot-audit.html,js/botAuditRoutes.js scripts/freeze_expectation.mjs
+/api/bot-audit/daily-reconciliation,server.js,OANDA KV,1,bot-audit.html,
+/api/bot-audit/equity,_worker.js,KV,1,bot-audit.html,_worker.js
+/api/bot-audit/expectation,_worker.js,KV,1,bot-audit.html,_worker.js
+/api/bot/status,_worker.js,KV,0,,_worker.js bot/utils/state_reader.py js/siteApiMap.js
+/api/brief-auto/config,server.js,,1,brief-config.html,js/siteApiMap.js
+/api/brief-auto/run-now,server.js,KV AI/LLM CB/ECB/BoE web,1,brief-config.html,js/siteApiMap.js
+/api/calendar-ahead,server.js,OANDA KV,2,atlas.html today.html,_atlas_run_mod.mjs js/feedCoverage.js
+/api/calendar-events,server.js,,3,forecast-path.html market-view.html today.html,analysis/features/build_features.py js/calendarFeed.js js/dataFeeds.js js/siteApiMap.js server.js terminal.html
+/api/calendar-feed,server.js,,4,atlas.html market-view.html terminal.html today.html,_atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js scripts/release_layer1/schedule.py server.js
+/api/cboe-chain,server.js,CBOE/options KV R2,1,oi-dashboard.html,js/feedCoverage.js js/serviceFlags.js
+/api/cboe-contracts,server.js,OANDA CBOE/options,1,oi-dashboard-v2.html,
+/api/cboe-raw,server.js,CBOE/options KV R2,0,,js/serviceFlags.js server.js
+/api/cboe-raw/capture,server.js,CBOE/options,0,,server.js
+/api/cboe-snapshots,server.js,OANDA CBOE/options KV,0,,js/serviceFlags.js oi-dashboard.html
+/api/chain-extra,server.js,FRED Yahoo/Stooq Treasury/BLS/BEA,2,atlas.html today.html,_atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js
+/api/chain-read,server.js,,2,atlas.html today.html,_atlas_run_mod.mjs js/feedCoverage.js
+/api/chapters,server.js,,1,chapters.html,js/chapterSpec.js js/dataFeeds.js
+/api/claim-watch,server.js,,0,,
+/api/cog-chart/candles,server.js,OANDA FRED,1,cog-chart.html,scratchpad/chart_stub.py
+/api/cog-chart/leg,server.js,OANDA FRED KV static-file,1,cog-chart.html,js/feedCoverage.js scratchpad/chart_stub.py
+/api/cog-chart/meta,server.js,OANDA,1,cog-chart.html,scratchpad/chart_debug.py scratchpad/chart_leglist_test.py scratchpad/chart_stub.py
+/api/cog-dow,server.js,OANDA KV R2,0,,server.js
+/api/cog-fade/run,server.js,OANDA,1,cog-fade.html,js/siteApiMap.js
+/api/cog-fade/status/:jobId,server.js,,1,cog-fade.html,js/siteApiMap.js
+/api/cog-level-poc,server.js,OANDA KV,1,cog-level-poc.html,js/siteApiMap.js
+/api/cog-line,server.js,OANDA,1,rates.html,js/feedCoverage.js scripts/rates_line/build_cog_line.py scripts/rates_line/refresh_cog_line.py server.js
+/api/cog-line/chart,server.js,,1,rates.html,
+/api/cog-line/export,server.js,CBOE/options,1,rates.html,server.js
+/api/cog-line/history,server.js,OANDA KV static-file,1,rates.html,
+/api/cog-line/indicator,server.js,OANDA static-file,1,rates.html,server.js
+/api/cog-line/read,server.js,OANDA,1,rates.html,
+/api/cog-overlay-test,server.js,OANDA KV,0,,server.js
+/api/cog-rep/oi-signal-check,server.js,OANDA KV,0,,
+/api/cog-rep/shadow,server.js,,1,bot-config.html,
+/api/cog-rep/shadow/run/:stage,server.js,,0,,
+/api/cog-reverse-engineer,server.js,OANDA KV,1,cog-reverse-engineer.html,js/siteApiMap.js server.js
+/api/cog-signals,server.js,,1,cog-signal-log.html,
+/api/cog-signals/:date,server.js,,1,cog-signal-log.html,
+/api/cog-signals/resolve,server.js,OANDA,1,cog-signal-log.html,
+/api/cog-threshold/config,server.js,,2,nasdaq-threshold-backtest.html nasdaq-threshold-engine.html,js/siteApiMap.js server.js
+/api/cog-threshold/live,server.js,,1,nasdaq-threshold-engine.html,js/siteApiMap.js server.js
+/api/cog-threshold/results,server.js,static-file,0,,js/siteApiMap.js
+/api/cog-threshold/run,server.js,FRED Yahoo/Stooq,1,nasdaq-threshold-backtest.html,js/siteApiMap.js
+/api/cog-threshold/status/:jobId,server.js,,1,nasdaq-threshold-backtest.html,js/siteApiMap.js
+/api/cog-v2/config,server.js,,1,cog-v2-engine.html,js/siteApiMap.js
+/api/cog-v2/live,server.js,OANDA,1,cog-v2-engine.html,js/siteApiMap.js
+/api/cog-v2/results,server.js,OANDA FRED Yahoo/Stooq static-file,0,,js/siteApiMap.js
+/api/cog-v2/run,server.js,,1,cog-v2-engine.html,js/siteApiMap.js server.js
+/api/cog-v2/run-historical,server.js,OANDA,1,cog-v2-engine.html,js/siteApiMap.js server.js
+/api/cog-v2/status/:jobId,server.js,,1,cog-v2-engine.html,js/siteApiMap.js server.js
+/api/cog-v3/run,server.js,OANDA,0,,
+/api/cog-v3/status/:jobId,server.js,OANDA KV,0,,
+/api/combine/mom-rev,server.js,OANDA FRED R2,1,trend.html,server.js
+/api/config,_worker.js,OANDA FRED KV,3,gold.html index.html levels.html,_worker.js cog-standalone/server.js js/caps.js js/main.js js/siteApiMap.js server.js
+/api/config/caps,_worker.js,CBOE/options KV,3,gold.html index.html levels.html,_worker.js js/caps.js js/gold-app.js js/siteApiMap.js levelEngine/live_watch.py
+/api/consumer-confidence,server.js,KV,1,consumer-confidence.html,js/dataFeeds.js js/feedCoverage.js
+/api/consumer-confidence/refresh,server.js,,1,consumer-confidence.html,
+/api/consumer-confidence/refresh-status,server.js,FRED KV CB/ECB/BoE web,1,consumer-confidence.html,
+/api/corr-history,server.js,OANDA static-file,2,correlations.html hedge-backtest.html,js/dataFeeds.js js/siteApiMap.js
+/api/corr-history/progress,server.js,,3,correlations.html hedge-signals.html today.html,js/siteApiMap.js
+/api/corr-history/rebuild,server.js,OANDA,3,correlations.html hedge-signals.html today.html,js/siteApiMap.js
+/api/corr-history/status,server.js,OANDA,2,correlations.html today.html,js/siteApiMap.js
+/api/cot,_worker.js,CFTC/COT KV,4,atlas.html gold.html index.html levels.html,_atlas_run_mod.mjs _worker.js js/cot.js js/dataCatalogueCore.js js/dataFeeds.js js/feedCoverage.js js/gold-app.js js/siteApiMap.js
+/api/cot-analysis,server.js,CFTC/COT KV,1,cot-extremes.html,js/dataFeeds.js js/feedCoverage.js js/siteApiMap.js
+/api/cot-backfill/probe,server.js,CFTC/COT static-file,0,,js/cotFactorCore.js
+/api/cot-backfill/run,server.js,static-file,1,cot-extremes.html,js/dataFeeds.js js/siteApiMap.js server.js
+/api/cot-backfill/series,server.js,CFTC/COT KV AI/LLM static-file,1,cot-extremes.html,js/siteApiMap.js
+/api/cot-backfill/status,server.js,OANDA CFTC/COT KV static-file,1,cot-extremes.html,js/dataFeeds.js js/siteApiMap.js
+/api/cot-extremes,_worker.js,CFTC/COT KV,8,atlas.html cot-extremes.html desk.html discipline-map.html index.html indexv2.html levels.html today.html,_atlas_run_mod.mjs _worker.js bot/modules/cot_filter.py js/atlasPosition.js js/cot.js js/cotFreshness.js js/cotState.js js/dataFeeds.js
+/api/cot-factor-test/run,server.js,OANDA CFTC/COT KV static-file,0,,
+/api/cot-state,server.js,,2,atlas.html today.html,_atlas_run_mod.mjs js/atlasPosition.js js/dataFeeds.js js/feedCoverage.js js/siteApiMap.js server.js
+/api/cot/urls,_worker.js,CFTC/COT KV,2,index.html levels.html,_worker.js js/cot.js js/siteApiMap.js
+/api/cpi,server.js,KV,1,cpi.html,js/dataFeeds.js js/feedCoverage.js
+/api/cpi/refresh,server.js,,1,cpi.html,
+/api/cpi/refresh-status,server.js,FRED KV,1,cpi.html,
+/api/crack,server.js,FRED CBOE/options Yahoo/Stooq,3,market-view.html terminal.html today.html,js/claimWatch.js js/dataFeeds.js js/deskWatch.js js/feedCoverage.js js/siteApiMap.js
+/api/credit-leadlag/run,server.js,OANDA FRED,1,credit-leadlag.html,js/dataFeeds.js js/siteApiMap.js
+/api/credit-leadlag/status/:jobId,server.js,OANDA KV,1,credit-leadlag.html,js/siteApiMap.js
+/api/credit-leadlag/targets,server.js,,1,credit-leadlag.html,js/siteApiMap.js
+/api/credit-quality,server.js,KV,1,today.html,js/dataFeeds.js js/feedCoverage.js
+/api/credit-quality/refresh,server.js,,0,,
+/api/credit-quality/refresh-status,server.js,OANDA FRED KV,0,,
+/api/credit-stress,server.js,OANDA FRED KV,2,credit-stress.html desk.html,js/deskApp.js js/feedCoverage.js js/siteApiMap.js server.js today.html
+/api/cross-pair-research,server.js,OANDA,3,cross-pair-research.html indexv2.html vol-research-book.html,js/siteApiMap.js
+/api/currency-analysis,server.js,AI/LLM,1,today.html,js/siteApiMap.js
+/api/cvol,server.js,FRED Yahoo/Stooq KV Treasury/BLS/BEA,1,today.html,RegimeV2/macro_overlay.py js/commandHub.js js/dataCatalogue.js js/dataFeeds.js js/dataHealth.js js/feedCoverage.js js/siteApiMap.js server.js
+/api/daily-brief,server.js,,9,atlas.html desk.html discipline-map.html indexv2.html terminal.html today.html vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,GoldV2/main.py _atlas_run_mod.mjs js/deskApp.js js/feedCoverage.js js/siteApiMap.js server.js
+/api/daily-open-fib,server.js,,1,daily-open-fib.html,js/serviceFlags.js
+/api/daily-open-fib/chart,server.js,OANDA,1,daily-open-fib.html,
+/api/daily-open-fib/tick,server.js,KV static-file,0,,
+/api/daily-read,js/dailyReadRoutes.js,,1,daily-read.html,js/globalReadInputs.js js/serviceFlags.js js/siteApiMap.js
+/api/daily-read/tick,js/dailyReadRoutes.js,,1,daily-read.html,js/siteApiMap.js
+/api/daily-snapshot,server.js,,1,today.html,js/dataFeeds.js js/serviceFlags.js
+/api/daily-snapshot/plan,server.js,OANDA FRED KV,1,today.html,
+/api/daily-snapshot/tick,server.js,OANDA FRED KV R2,0,,
+/api/data-catalogue,server.js,,5,flow-chain.html index.html indexv2.html market-review.html today.html,js/commandHub.js js/dataMap.js server.js
+/api/data-health,server.js,static-file,0,,js/dataFeeds.js js/dataMap.js server.js
+/api/decision-audit,server.js,KV,1,backtest-viewer.html,js/siteApiMap.js
+/api/desk-watch,server.js,,3,atlas.html evidence.html today.html,_atlas_run_mod.mjs js/feedCoverage.js js/serviceFlags.js
+/api/desk-watch/tick,server.js,CFTC/COT KV local-api,0,,
+/api/digest,server.js,,0,,
+/api/direction-ledger,server.js,R2,0,,js/deskEvidence.js js/serviceFlags.js
+/api/diversification/data,server.js,OANDA FRED Yahoo/Stooq Treasury/BLS/BEA,11,cog-v2-engine.html diversification.html liquidity-gate-backtest.html liquidity-pulse.html nasdaq-threshold-backtest.html nasdaq-threshold-engine.html system-credit-equity.html system-fx-carry.html system-fx-momentum.html system-gold-macro.html system-yield-curve.html,js/dataFeeds.js js/siteApiMap.js js/sys-backtest-shared.js server.js
+/api/drawdown-shadow,js/drawdownShadowRoutes.js,,2,atlas.html today.html,js/drawdownShadowRoutes.js js/feedCoverage.js js/siteApiMap.js
+/api/drill-question,server.js,,1,today.html,js/dataFeeds.js js/drillChart.js server.js
+/api/drill-series,server.js,OANDA FRED static-file,5,atlas.html drill.html market-view.html research-log.html terminal.html,_atlas_run_mod.mjs analysis/breadth_tilt_semis_study.mjs js/claimWatch.js js/dataFeeds.js js/deskWatch.js js/feedCoverage.js js/marketDrill.js js/siteApiMap.js
+/api/drill-series/stamp,server.js,,0,,theory-lab/market-reading.html
+/api/dyn-anchor-forecast,server.js,OANDA KV R2,0,,DynAnchorBot/dyn_anchor_mt5_bot.py js/siteApiMap.js server.js
+/api/earnings-ahead,server.js,,1,atlas.html,_atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js
+/api/ecb/calendar,server.js,,1,ecb-sentiment.html,
+/api/ecb/debug-index,server.js,CBOE/options KV AI/LLM,0,,
+/api/ecb/fetch-now,server.js,,1,ecb-sentiment.html,
+/api/ecb/fetch-status,server.js,KV,1,ecb-sentiment.html,
+/api/ecb/history,server.js,KV,3,atlas.html ecb-sentiment.html today.html,_atlas_run_mod.mjs js/feedCoverage.js
+/api/ecb/latest,server.js,KV,0,,js/dataFeeds.js
+/api/ecb/meeting/:date,server.js,KV,1,ecb-sentiment.html,
+/api/ecbsdw,_worker.js,KV CB/ECB/BoE web,4,desk.html index.html indexv2.html levels.html,_worker.js js/dataFeeds.js js/deskApp.js js/feedCoverage.js js/levels.js js/main.js js/siteApiMap.js
+/api/econ-surprise,server.js,FRED,2,atlas.html today.html,_atlas_run_mod.mjs analysis/features/build_features.py js/dataFeeds.js js/feedCoverage.js js/siteApiMap.js scripts/release_layer1/schedule.py
+/api/econ-surprise/backfill,server.js,,0,,
+/api/econ-surprise/backfill-nasdaq,server.js,,0,,
+/api/econ-surprise/refresh,server.js,,0,,js/siteApiMap.js
+/api/econ-trend,server.js,OANDA FRED,1,econ-trend.html,js/siteApiMap.js server.js
+/api/egress-audit,server.js,KV,0,,js/egressMeter.js local_decision_engine/sync.mjs
+/api/eod-activity,server.js,OANDA,1,today.html,server.js
+/api/eod-review,server.js,,2,atlas.html today.html,_atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js
+/api/estimator-ab,server.js,static-file,2,estimator-ab.html vol-research-book.html,js/siteApiMap.js
+/api/estimator-ab/run,server.js,OANDA,1,estimator-ab.html,js/siteApiMap.js
+/api/estimator-ab/status/:jobId,server.js,,1,estimator-ab.html,js/siteApiMap.js
+/api/event-day,server.js,,2,atlas.html today.html,js/eventDayContext.js js/feedCoverage.js server.js
+/api/events,server.js,CFTC/COT KV AI/LLM Treasury/BLS/BEA,7,atlas.html cot-extremes.html desk.html event-response.html index.html indexv2.html today.html,_atlas_run_mod.mjs _worker.js js/atlasPosition.js js/dataFeeds.js js/deskApp.js js/econCalendar.js js/events.js js/feedCoverage.js
+/api/exhaustion-forecast/run,server.js,OANDA,1,exhaustion-forecast.html,js/siteApiMap.js
+/api/exhaustion-forecast/status/:jobId,server.js,,1,exhaustion-forecast.html,js/siteApiMap.js
+/api/exhaustion-ladder,server.js,KV static-file,3,asia-npoc-confluence.html forecast-reversion.html today.html,js/feedCoverage.js js/serviceFlags.js
+/api/exhaustion-ladder/run,server.js,OANDA KV local-api,0,,asia-npoc-confluence.html server.js today.html
+/api/exhaustion-ladder/status/:jobId,server.js,FRED,0,,
+/api/expected-moves/run,server.js,OANDA CBOE/options KV,1,expected-moves.html,js/siteApiMap.js server.js
+/api/expected-moves/status/:jobId,server.js,OANDA FRED CBOE/options,1,expected-moves.html,js/siteApiMap.js server.js
+/api/explain,server.js,KV AI/LLM,1,today.html,
+/api/factor-blend/run,server.js,OANDA FRED,0,,server.js
+/api/factor-blend/status/:jobId,server.js,,0,,server.js
+/api/fade-inspect/run,server.js,OANDA R2,1,fade-viewer.html,js/siteApiMap.js
+/api/fade-inspect/status/:jobId,server.js,OANDA,1,fade-viewer.html,js/siteApiMap.js
+/api/fed-path,server.js,FRED CFTC/COT CBOE/options KV,4,atlas.html fed-path.html rates.html today.html,_atlas_run_mod.mjs js/feedCoverage.js server.js
+/api/fed-speakers,server.js,CB/ECB/BoE web,1,atlas.html,_atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js
+/api/feed,js/feedRoutes.js,KV,1,feed.html,js/serviceFlags.js js/siteApiMap.js
+/api/feed/notes,js/feedRoutes.js,KV,1,feed.html,js/siteApiMap.js
+/api/feed/notes/:week,js/feedRoutes.js,KV,0,,
+/api/feed/rebuild,js/feedRoutes.js,,0,,js/siteApiMap.js
+/api/fib-atlas-bot-v2/telegram-test,server.js,KV,0,,js/bot-config.js
+/api/fib-atlas-bot-v2/trade-log,server.js,KV R2,0,,js/bot-config.js
+/api/fib-atlas-bot/all-lines,server.js,OANDA CBOE/options KV R2,0,,js/bot-config.js server.js
+/api/fib-atlas-bot/refresh-now,server.js,OANDA KV,0,,js/bot-config.js
+/api/fib-atlas-bot/rung-diagnostic,server.js,KV,0,,server.js
+/api/fib-atlas-bot/staleness,server.js,,0,,js/bot-config.js
+/api/fib-atlas-bot/telegram-test,server.js,KV,0,,js/bot-config.js
+/api/fib-atlas-bot/trade-log,server.js,KV,0,,analysis/fib_atlas_live_vs_backtest_reconcile.mjs analysis/fib_atlas_live_vs_backtest_reconcile_http.mjs analysis/fib_atlas_live_vs_backtest_severity.mjs analysis/fib_atlas_miss_reason_check.mjs analysis/fib_atlas_severity_controlled.mjs js/bot-config.js server.js
+/api/fill-realism/run,server.js,OANDA R2,1,fill-realism.html,js/siteApiMap.js
+/api/fill-realism/status/:jobId,server.js,,1,fill-realism.html,js/siteApiMap.js
+/api/financing/capture-now,server.js,,0,,js/dataFeeds.js js/siteApiMap.js server.js
+/api/financing/history,server.js,KV,0,,js/dataFeeds.js js/siteApiMap.js
+/api/fiscal/events,server.js,KV,1,fiscal-events.html,js/fiscalEvents.js js/serviceFlags.js server.js
+/api/fiscal/fetch-now,server.js,KV AI/LLM,1,fiscal-events.html,js/fiscalEvents.js server.js
+/api/flow-chain,server.js,,1,flow-chain.html,
+/api/fomc-backfill/run,server.js,static-file,1,fomc-sentiment.html,server.js
+/api/fomc-backfill/scores,server.js,CFTC/COT KV static-file,1,fomc-sentiment.html,
+/api/fomc-backfill/status,server.js,KV static-file,1,fomc-sentiment.html,
+/api/fomc/calendar,server.js,,3,atlas.html fomc-sentiment.html today.html,_atlas_run_mod.mjs js/feedCoverage.js
+/api/fomc/fetch-now,server.js,,1,fomc-sentiment.html,server.js
+/api/fomc/fetch-status,server.js,KV AI/LLM,1,fomc-sentiment.html,server.js
+/api/fomc/history,server.js,KV,3,atlas.html fomc-sentiment.html today.html,_atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js
+/api/fomc/latest,server.js,KV,0,,js/dataFeeds.js js/globalReadInputs.js
+/api/fomc/meeting/:date,server.js,KV,1,fomc-sentiment.html,
+/api/forecast-accuracy/run,server.js,OANDA,1,forecast-accuracy.html,js/siteApiMap.js
+/api/forecast-accuracy/status/:jobId,server.js,,1,forecast-accuracy.html,js/siteApiMap.js
+/api/forecast-analysis/aggregates,js/analyserRoutes.js,,1,forecast-analysis.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/daytype-study/:horizon,js/analyserRoutes.js,,1,forecast-analysis.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/exit-study/:horizon,js/analyserRoutes.js,,1,forecast-analysis.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/login,js/analyserRoutes.js,,1,forecast-analysis.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/manifest,js/analyserRoutes.js,,2,forecast-analysis.html forecast-refresh.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/pair/:pair/:horizon,js/analyserRoutes.js,,0,,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/pairs,js/analyserRoutes.js,,0,,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/per-line/:horizon,js/analyserRoutes.js,,2,forecast-analysis.html forecast-book-report.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/per-line/:horizon/chart/:pair/:date,js/analyserRoutes.js,,2,forecast-analysis.html forecast-book-report.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/per-line/:horizon/trades/:pair,js/analyserRoutes.js,,2,forecast-analysis.html forecast-book-report.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/per-line/run,js/analyserRoutes.js,,2,forecast-analysis.html forecast-book-report.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/per-line/status/:jobId,js/analyserRoutes.js,,2,forecast-analysis.html forecast-book-report.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/refresh,js/analyserRoutes.js,,2,forecast-analysis.html forecast-refresh.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/refresh/status/:jobId,js/analyserRoutes.js,,2,forecast-analysis.html forecast-refresh.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/stop-study/:horizon,js/analyserRoutes.js,,1,forecast-analysis.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-analysis/whoami,js/analyserRoutes.js,,1,forecast-analysis.html,js/analyserRoutes.js js/levelAtlasRoutes.js js/siteApiMap.js server-analyser.js
+/api/forecast-coverage/run,server.js,OANDA,1,forecast-coverage.html,js/siteApiMap.js
+/api/forecast-coverage/status/:jobId,server.js,,1,forecast-coverage.html,
+/api/forecast-drift/:pair,server.js,OANDA KV,0,,js/bot-config.js js/siteApiMap.js server.js
+/api/forecast-path/alert/config,server.js,,1,forecast-path.html,
+/api/forecast-path/alert/scan,server.js,OANDA,1,forecast-path.html,
+/api/forecast-path/alert/test,server.js,,1,forecast-path.html,
+/api/forecast-path/forward,server.js,OANDA KV,2,desk.html forecast-path.html,js/deskApp.js
+/api/forecast-path/forward/refresh,server.js,OANDA,0,,
+/api/forecast-path/iv,server.js,FRED KV,2,forecast-path.html today.html,js/feedCoverage.js js/siteApiMap.js
+/api/forecast-path/reach,server.js,OANDA,0,,js/feedCoverage.js js/siteApiMap.js
+/api/forecast-path/summary,server.js,OANDA,3,desk.html position-sizer.html today.html,js/deskApp.js js/siteApiMap.js js/surpriseAlertCore.js
+/api/forecast-path/trend-dir,server.js,OANDA,1,today.html,
+/api/forecast-scorecard,server.js,KV,2,daily-plan.html live-range.html,js/serviceFlags.js server.js
+/api/forecast-style-fade/run,server.js,OANDA R2,1,forecast-style-fade.html,js/siteApiMap.js
+/api/forecast-style-fade/status/:jobId,server.js,,1,forecast-style-fade.html,js/siteApiMap.js
+/api/forward-track,server.js,,3,desk.html forward-track.html indexv2.html,js/deskApp.js js/siteApiMap.js
+/api/forward-track/refresh,server.js,OANDA KV R2,1,forward-track.html,js/siteApiMap.js
+/api/forward-track/refresh/status/:jobId,server.js,,1,forward-track.html,js/siteApiMap.js
+/api/fred,_worker.js,FRED KV,7,desk.html gold.html index.html indexv2.html levels.html rate-matrix.html today.html,_worker.js js/dataFeeds.js js/deskApp.js js/gold-app.js js/levels.js js/main.js js/serviceFlags.js js/siteApiMap.js
+/api/fredhistory,_worker.js,FRED KV Treasury/BLS/BEA,7,global-liquidity.html gold-lab.html gold.html index.html indexv2.html levels.html today.html,GlobalLiquidity/backtestCore.mjs _worker.js js/compass.js js/dataFeeds.js js/globalLiquidityEngine.js js/gold-app.js js/gold-lab-app.js js/serviceFlags.js
+/api/funding-read,server.js,,3,atlas.html bank-credit.html today.html,js/dataFeeds.js js/feedCoverage.js js/serviceFlags.js js/siteApiMap.js
+/api/funding-read/tick,server.js,,0,,
+/api/futures-quote,server.js,OANDA Yahoo/Stooq,4,gold.html index.html levels.html oi-dashboard-v2.html,js/dataFeeds.js js/oi.js js/siteApiMap.js server.js
+/api/fx-carry,server.js,OANDA FRED,1,system-fx-carry-factor.html,js/dataFeeds.js js/siteApiMap.js server.js theory-lab/lessons/interest-rate-parity-micro.html
+/api/fx-factor-v2/run,server.js,OANDA FRED,1,fx-factor-v2.html,js/siteApiMap.js server.js
+/api/fx-factor-v2/status/:jobId,server.js,,1,fx-factor-v2.html,js/siteApiMap.js server.js
+/api/fx-vol-carry/run,server.js,OANDA CBOE/options,1,fx-vol-carry-backtest.html,js/siteApiMap.js
+/api/fx-vol-carry/status/:jobId,server.js,OANDA Yahoo/Stooq,1,fx-vol-carry-backtest.html,js/siteApiMap.js
+/api/gdp,server.js,KV,1,gdp.html,js/dataFeeds.js js/feedCoverage.js
+/api/gdp/refresh,server.js,,1,gdp.html,
+/api/gdp/refresh-status,server.js,FRED KV,1,gdp.html,
+/api/giveback,server.js,OANDA KV,2,desk.html giveback.html,js/deskApp.js
+/api/global-liquidity/*,_worker.js,,1,global-liquidity.html,
+/api/global-liquidity/backtest/run,server.js,FRED R2,1,global-liquidity.html,js/dataFeeds.js js/siteApiMap.js server.js
+/api/global-liquidity/backtest/status/:jobId,server.js,,0,,global-liquidity.html js/siteApiMap.js server.js
+/api/global-liquidity/nq-backtest/run,server.js,FRED R2,1,global-liquidity.html,js/siteApiMap.js
+/api/global-liquidity/nq-backtest/status/:jobId,server.js,FRED R2,0,,global-liquidity.html js/siteApiMap.js
+/api/global-liquidity/regression/run,server.js,FRED R2,1,global-liquidity.html,
+/api/global-liquidity/regression/status/:jobId,server.js,FRED,0,,global-liquidity.html
+/api/global-read,server.js,,2,atlas.html today.html,_atlas_run_mod.mjs js/feedCoverage.js js/globalReadInputs.js js/serviceFlags.js
+/api/global-read/record,server.js,OANDA KV,1,today.html,js/serviceFlags.js
+/api/gold-backtest/trades,server.js,,2,backtest-viewer.html gold-backtest.html,js/gold-backtest-app.js js/siteApiMap.js
+/api/gold-etf-flow,server.js,,1,today.html,js/dataFeeds.js js/feedCoverage.js
+/api/gold-miner-arb/run,server.js,OANDA,1,gold-miner-arb.html,js/siteApiMap.js
+/api/gold-miner-arb/status/:jobId,server.js,,1,gold-miner-arb.html,js/siteApiMap.js
+/api/gold/trades,server.js,FRED CBOE/options static-file,1,gold-zones.html,js/siteApiMap.js
+/api/gpr,server.js,KV,1,today.html,js/dataFeeds.js js/feedCoverage.js
+/api/gpr/refresh,server.js,,0,,
+/api/gpr/refresh-status,server.js,FRED KV,0,,today.html
+/api/har-shadow,js/harShadowRoutes.js,,2,forecaster.html har-shadow.html,js/harShadowRoutes.js scripts/data_integrity.mjs
+/api/hedge-alerts,server.js,CFTC/COT KV static-file,7,bot-config.html desk.html hedge-backtest.html hedge-signals.html index.html levels.html today.html,bot/position_hedge_bot.py js/dataFeeds.js js/deskApp.js js/levels.js js/siteApiMap.js kv.js server.js
+/api/hedge-audit,server.js,KV,1,bot-config.html,js/siteApiMap.js
+/api/hedge-audit/entries,server.js,KV,1,bot-config.html,bot/hedge_bot.py bot/position_hedge_bot.py js/siteApiMap.js server.js
+/api/hedge-signals,server.js,static-file,1,hedge-signals.html,bot/hedge_bot.py js/dataFeeds.js js/siteApiMap.js
+/api/hedge-signals-v2,server.js,static-file,1,hedge-signals-v2.html,js/siteApiMap.js
+/api/hedge-signals-v2/backtest/run,server.js,OANDA,1,hedge-signals-v2.html,js/siteApiMap.js
+/api/hedge-signals-v2/backtest/status/:jobId,server.js,OANDA CBOE/options KV R2,1,hedge-signals-v2.html,js/siteApiMap.js
+/api/hedge-signals-v2/check,server.js,,1,hedge-signals-v2.html,js/siteApiMap.js
+/api/hedge-signals-v2/config,server.js,KV,1,hedge-signals-v2.html,js/siteApiMap.js
+/api/hedge-signals/ack,server.js,static-file,1,hedge-signals.html,bot/hedge_bot.py js/siteApiMap.js
+/api/hedge-signals/check,server.js,,1,hedge-signals.html,js/siteApiMap.js
+/api/hedge-signals/config,server.js,KV,1,hedge-signals.html,js/siteApiMap.js
+/api/hedge-signals/prices,server.js,OANDA KV,4,bot-config.html hedge-signals.html terminal.html today.html,js/siteApiMap.js
+/api/hedge-signals/tg-config,server.js,KV,1,hedge-signals.html,js/siteApiMap.js
+/api/hedge-signals/tg-test,server.js,KV,1,hedge-signals.html,js/siteApiMap.js
+/api/hedging-forward,server.js,CBOE/options local-api,1,oi-dashboard-v2.html,js/serviceFlags.js server.js
+/api/hedging-plan,server.js,local-api,1,oi-dashboard-v2.html,js/hedgingPlanExport.js server.js
+/api/hedging-plan-oi,server.js,,1,oi-dashboard-v2.html,server.js
+/api/hedging-plan-oi/export,server.js,R2,1,oi-dashboard-v2.html,js/serviceFlags.js server.js
+/api/hedging-plan-oi/record,server.js,,1,oi-dashboard-v2.html,js/serviceFlags.js server.js
+/api/hedging-plan/export,server.js,,1,oi-dashboard-v2.html,server.js
+/api/hedging-summary,server.js,OANDA R2 local-api,1,oi-dashboard-v2.html,js/hedgingBooks.js js/serviceFlags.js server.js
+/api/hmm-daily-history,server.js,,2,atlas.html today.html,_atlas_run_mod.mjs js/dataFeeds.js js/stateStrip.js
+/api/hmm-hourly,server.js,OANDA FRED,2,atlas.html today.html,_atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js js/serviceFlags.js js/stateStrip.js
+/api/hmm/regimes,server.js,,1,index.html,js/globalReadInputs.js js/main.js js/siteApiMap.js
+/api/hmm1h-v2,server.js,,1,desk.html,RegimeV2/regime_bot_v2.py RegimeV4/regime_bot_v4.py js/dataFeeds.js js/deskApp.js js/serviceFlags.js js/siteApiMap.js
+/api/hmm2h-v2,server.js,,0,,RegimeV7/regime_bot_v7.py js/serviceFlags.js js/siteApiMap.js
+/api/hmm30m-v2,server.js,,0,,RegimeV7/regime_bot_v7.py js/serviceFlags.js js/siteApiMap.js
+/api/hmm5m,server.js,,1,index.html,backtestSystem/config.py backtestSystem/main.py bot-config.html js/main.js js/serviceFlags.js js/siteApiMap.js
+/api/hmm5m-train,server.js,OANDA,1,index.html,js/regime-v2.js js/siteApiMap.js
+/api/hmm5m-train-params,server.js,,1,index.html,js/regime-v2.js js/siteApiMap.js
+/api/hmm5m-train-status,server.js,,1,index.html,js/regime-v2.js js/siteApiMap.js server.js
+/api/hmm5m-v2,server.js,,3,desk.html index.html indexv2.html,RegimeV2/regime_bot_v2.py RegimeV4/regime_bot_v4.py bot/regime_bot.py js/dataFeeds.js js/deskApp.js js/regime-v2.js js/serviceFlags.js js/siteApiMap.js
+/api/honest-forecast/run,server.js,OANDA,1,honest-forecast-harness.html,js/levelAtlasRoutes.js js/siteApiMap.js server.js
+/api/honest-forecast/status/:jobId,server.js,OANDA CFTC/COT static-file,1,honest-forecast-harness.html,js/levelAtlasRoutes.js js/siteApiMap.js server.js
+/api/honest-policy/run,server.js,OANDA R2,1,honest-policy.html,js/siteApiMap.js
+/api/honest-policy/status/:jobId,server.js,,1,honest-policy.html,js/siteApiMap.js
+/api/hurst-bench/run,server.js,OANDA,1,hurst-bench.html,js/siteApiMap.js
+/api/hurst-bench/status/:jobId,server.js,,1,hurst-bench.html,
+/api/intl-yields,server.js,OANDA FRED static-file,5,atlas.html market-view.html rates.html terminal.html today.html,js/dataFeeds.js js/feedCoverage.js js/siteApiMap.js
+/api/intraday-research,server.js,,2,today.html vol-research-book.html,js/siteApiMap.js
+/api/intraday-research/run,server.js,OANDA,0,,js/siteApiMap.js
+/api/intraday-research/status/:jobId,server.js,,0,,js/siteApiMap.js
+/api/ips-shadow,js/intradayProbShadowRoutes.js,,1,ips-shadow.html,js/serviceFlags.js
+/api/ism,server.js,KV,2,ism.html today.html,js/dataFeeds.js js/feedCoverage.js
+/api/ism/refresh,server.js,,1,ism.html,
+/api/ism/refresh-status,server.js,FRED KV,1,ism.html,
+/api/jump-diffusion/live,server.js,OANDA,2,jump-diffusion.html vol-forecast-v3.html,js/feedCoverage.js volatilityExhaustion/jump_momentum_ignition.py
+/api/jump-diffusion/state,server.js,static-file,1,jump-diffusion.html,
+/api/kv-health,server.js,CBOE/options,1,desk.html,js/bot-config.js js/deskApp.js js/siteApiMap.js kv.js
+/api/kv/get,_worker.js,KV,18,bot-audit.html bot-config.html cot-extremes.html desk.html entry-trigger-lab.html forecast-path.html gold-zones.html gold.html impulse-range-lab.html index.html indexv2.html levels.html oi-dashboard-v2.html oi-dashboard.html oi-zones.html,AnalogML/motif_track.py ConfluenceBot/main.py DynAnchorBot/dyn_anchor_mt5_bot.py Gold/main.py Gold/ml_model.py Gold/optimiser.py GoldV2/main.py MacroEquityBot/macro_equity_bot.py
+/api/kv/set,_worker.js,OANDA CFTC/COT CBOE/options KV R2,12,bot-audit.html bot-config.html desk.html entry-trigger-lab.html gold.html impulse-range-lab.html index.html indexv2.html levels.html oi-dashboard-v2.html pattern-lab.html today.html,ConfluenceBot/main.py DynAnchorBot/dyn_anchor_mt5_bot.py Gold/main.py Gold/ml_model.py Gold/optimiser.py GoldV2/main.py MacroEquityBot/macro_equity_bot.py PatternBot/pattern_live_bot.mjs
+/api/labor-market,server.js,FRED KV,1,labor-market.html,js/dataFeeds.js js/feedCoverage.js
+/api/labor-market/refresh,server.js,,1,labor-market.html,
+/api/labor-market/refresh-status,server.js,FRED KV,1,labor-market.html,
+/api/ledger,server.js,,1,today.html,analysis/lean_trade_rule_study.py
+/api/ledger/record,server.js,OANDA,1,today.html,
+/api/ledger/score,server.js,KV,0,,
+/api/level-atlas/book/:instrument,js/levelAtlasRoutes.js,R2,0,,js/levelAtlasRoutes.js js/siteApiMap.js local_decision_engine/lib/zonePricer.mjs local_decision_engine/parity_test.mjs local_decision_engine/sync.mjs server.js
+/api/level-atlas/book/:instrument/text,js/levelAtlasRoutes.js,R2,0,,js/levelAtlasRoutes.js js/siteApiMap.js local_decision_engine/lib/zonePricer.mjs local_decision_engine/parity_test.mjs local_decision_engine/sync.mjs server.js
+/api/level-atlas/bot-enabled,server.js,KV,2,vol-forecast-v2.html vol-forecast-v3.html,js/levelAtlasRoutes.js server.js
+/api/level-atlas/card/:instrument,js/levelAtlasRoutes.js,OANDA R2,0,,js/levelAtlasRoutes.js js/siteApiMap.js server.js
+/api/level-atlas/fastlive/:instrument,js/levelAtlasRoutes.js,OANDA,1,today.html,js/levelAtlasRoutes.js server.js
+/api/level-atlas/hl-vote-portfolio,js/levelAtlasRoutes.js,,1,level-atlas-hl-signal-portfolio.html,js/hlSignalCore.js js/levelAtlasRoutes.js scripts/build_hl_touches.mjs server.js
+/api/level-atlas/live/:instrument,js/levelAtlasRoutes.js,OANDA,0,,js/levelAtlasRoutes.js js/siteApiMap.js server.js today.html
+/api/level-atlas/m1-tail/:instrument,js/levelAtlasRoutes.js,OANDA R2,0,,fib_local_decision_engine/parity_test.mjs fib_local_decision_engine/sync.mjs js/dataFeeds.js js/levelAtlasRoutes.js local_decision_engine/parity_test.mjs local_decision_engine/sync.mjs server.js
+/api/level-atlas/manifest,js/levelAtlasRoutes.js,,0,,js/levelAtlasRoutes.js js/siteApiMap.js server.js
+/api/level-atlas/refresh-now,server.js,KV,0,,js/bot-config.js js/levelAtlasRoutes.js server.js
+/api/level-atlas/run,js/levelAtlasRoutes.js,OANDA R2,0,,analysis/vote_atlas_decomposition.mjs js/levelAtlasRoutes.js js/siteApiMap.js level-atlas-vote-backtest.html server.js
+/api/level-atlas/spread-check,server.js,OANDA R2,0,,analysis/fib_atlas_real_spread_correction.mjs js/levelAtlasRoutes.js pylego/costs.py server.js
+/api/level-atlas/staleness,server.js,,0,,js/bot-config.js js/levelAtlasRoutes.js server.js
+/api/level-atlas/status/:jobId,js/levelAtlasRoutes.js,OANDA R2,0,,js/levelAtlasRoutes.js js/siteApiMap.js server.js
+/api/level-atlas/vote-ladder/export,server.js,,0,,js/bot-config.js js/levelAtlasRoutes.js server.js
+/api/level-atlas/vote-portfolio,js/levelAtlasRoutes.js,,2,level-atlas-vote-portfolio-v2.html level-atlas-vote-portfolio.html,analysis/debug_faithful_route.mjs analysis/heat_cap_full_stack_sensitivity.mjs analysis/hl_signal_portfolio_additive_study.mjs analysis/p90_live_config_comparison.mjs js/asiaFibAtlasRoutes.js js/fibAtlasVotePortfolio.js js/levelAtlasRoutes.js js/voteAtlasDriftAudit.js
+/api/level-atlas/vote-preview,js/levelAtlasRoutes.js,,2,vol-forecast-v2.html vol-forecast-v3.html,js/asiaFibAtlasRoutes.js js/bot-config.js js/levelAtlasRoutes.js server.js
+/api/level-atlas/vote-state/:instrument,server.js,KV R2,1,today.html,js/levelAtlasRoutes.js server.js
+/api/level-atlas/vote-trades/:instrument,js/levelAtlasRoutes.js,R2,1,level-atlas-vote-backtest.html,analysis/dayvol_stop_tightening_study.mjs js/asiaFibAtlasRoutes.js js/levelAtlasRoutes.js local_decision_engine/parity_test.mjs server.js
+/api/level-scenario-shadow,js/levelScenarioShadowRoutes.js,,0,,js/siteApiMap.js
+/api/levels,server.js,,2,index.html today.html,js/globalReadInputs.js js/siteApiMap.js
+/api/levels-v2/alert-config,server.js,KV,1,telegram-v2.html,js/siteApiMap.js
+/api/levels-v2/alert-diag,server.js,KV,1,telegram-v2.html,js/siteApiMap.js
+/api/levels-v2/confluence-test,server.js,,1,telegram-v2.html,js/siteApiMap.js server.js
+/api/levels-v2/entries,server.js,KV,1,telegram-v2.html,js/siteApiMap.js server.js
+/api/levels-v2/learn,server.js,KV,1,telegram-v2.html,js/levelsV2Learn.js js/siteApiMap.js levelsV2Engine.js
+/api/levels-v2/learn-status,server.js,KV,1,telegram-v2.html,js/siteApiMap.js
+/api/levels-v2/ledger,server.js,KV,1,telegram-v2.html,js/siteApiMap.js server.js
+/api/levels-v2/refresh,server.js,,1,telegram-v2.html,js/siteApiMap.js server.js
+/api/levels-v2/status/:jobId,server.js,OANDA,1,telegram-v2.html,js/siteApiMap.js
+/api/levels-v2/telegram-config,server.js,KV,1,telegram-v2.html,js/siteApiMap.js
+/api/levels-v2/telegram-test,server.js,OANDA KV,1,telegram-v2.html,js/siteApiMap.js
+/api/levels/reload,server.js,OANDA,1,index.html,js/main.js js/siteApiMap.js server.js
+/api/levels/reload-kv,server.js,KV AI/LLM,1,index.html,js/siteApiMap.js
+/api/liquidity-analysis/net-liquidity-nq/run,server.js,FRED R2,1,liquidity-net-regression.html,analysis/liquidityNetRegressionCore.mjs analysis/liquidity_net_regression.mjs js/dataFeeds.js server.js
+/api/liquidity-analysis/net-liquidity-nq/status/:jobId,server.js,OANDA,1,liquidity-net-regression.html,server.js
+/api/liquidity-backtest/run,server.js,,1,liquidity-backtest.html,js/siteApiMap.js server.js
+/api/liquidity-backtest/status/:id,server.js,OANDA KV,1,liquidity-backtest.html,js/siteApiMap.js server.js
+/api/liquidity-gate/backtest,server.js,OANDA FRED,1,liquidity-gate-backtest.html,js/dataFeeds.js js/siteApiMap.js
+/api/liquidity-gate/live,server.js,FRED,2,bot-config.html desk.html,js/dataFeeds.js js/deskApp.js js/siteApiMap.js
+/api/liquidity-gate/sweep,server.js,OANDA FRED,1,liquidity-gate-backtest.html,js/siteApiMap.js
+/api/liquidity-pulse/data,server.js,OANDA FRED CBOE/options Treasury/BLS/BEA,1,liquidity-pulse.html,js/dataFeeds.js js/feedCoverage.js js/siteApiMap.js
+/api/live-validation/run,server.js,OANDA,1,live-validation.html,education/jordan_impulse_range_backtest/scripts/live_validation_harness.mjs js/liveValidationCore.js
+/api/live-validation/status/:jobId,server.js,,1,live-validation.html,education/jordan_impulse_range_backtest/scripts/live_validation_harness.mjs js/liveValidationCore.js
+/api/macro-changes,server.js,,2,atlas.html today.html,_atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js server.js
+/api/macro-conditioner/run,server.js,OANDA FRED,1,macro-conditioner.html,js/siteApiMap.js
+/api/macro-conditioner/status/:jobId,server.js,static-file,1,macro-conditioner.html,js/siteApiMap.js
+/api/macro-direction/defaults,server.js,,1,macro-direction.html,js/siteApiMap.js
+/api/macro-direction/run,server.js,FRED,1,macro-direction.html,js/siteApiMap.js
+/api/macro-direction/status/:jobId,server.js,,1,macro-direction.html,js/siteApiMap.js
+/api/macro-equity-backtest/results,server.js,,0,,js/bot-config.js js/botAuditRoutes.js js/siteApiMap.js macro-regime-conditional/macro_equity_backtest.py
+/api/macro-equity-backtest/run,server.js,OANDA FRED Treasury/BLS/BEA,1,macro-equity-backtest.html,js/dataFeeds.js js/siteApiMap.js
+/api/macro-equity-backtest/status/:jobId,server.js,R2,1,macro-equity-backtest.html,js/siteApiMap.js
+/api/macro-equity-backtest/trades,server.js,,0,,js/bot-config.js js/siteApiMap.js macro-regime-conditional/macro_equity_backtest.py
+/api/macro-regime-fx,server.js,KV,1,today.html,js/dataFeeds.js js/globalReadCore.js js/serviceFlags.js js/siteApiMap.js
+/api/macro-regime-fx/refresh,server.js,FRED R2 static-file,0,,js/siteApiMap.js
+/api/macro-scorecard,server.js,,4,atlas.html indexv2.html macro-scorecard.html today.html,_atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js
+/api/macro-scorecard/history,server.js,KV,0,,
+/api/macro-scorecard/history/record,server.js,,0,,
+/api/macrofx-decision/run,server.js,OANDA,1,macrofx-decision-backtest.html,
+/api/macrofx-decision/status/:jobId,server.js,OANDA R2,1,macrofx-decision-backtest.html,
+/api/macrofx-zone/run,server.js,OANDA,1,macrofx-zone-backtest.html,
+/api/macrofx-zone/status/:jobId,server.js,,1,macrofx-zone-backtest.html,
+/api/market-sense/last,server.js,,1,market-sense.html,js/siteApiMap.js
+/api/market-sense/run,server.js,OANDA,1,market-sense.html,js/siteApiMap.js
+/api/market-sense/status/:jobId,server.js,OANDA,1,market-sense.html,js/siteApiMap.js
+/api/market-sense/studies,server.js,,1,market-sense.html,js/siteApiMap.js
+/api/max-copier/run,server.js,,1,max-copier-backtest.html,
+/api/max-copier/status/:jobId,server.js,,1,max-copier-backtest.html,
+/api/max-copier/trace,server.js,OANDA,1,max-copier-backtest.html,
+/api/monday-fib-atlas/book/:instrument,js/mondayFibAtlasRoutes.js,R2,1,asia-fib-atlas-vote-backtest.html,js/bot-config.js js/mondayFibAtlasRoutes.js
+/api/monday-fib-atlas/diag-frozen-split,js/mondayFibAtlasRoutes.js,OANDA R2,1,asia-fib-atlas-vote-backtest.html,js/bot-config.js js/mondayFibAtlasRoutes.js
+/api/monday-fib-atlas/fastlive/:instrument,js/mondayFibAtlasRoutes.js,,1,asia-fib-atlas-vote-backtest.html,js/bot-config.js js/mondayFibAtlasRoutes.js js/siteApiMap.js
+/api/monday-fib-atlas/live/:instrument,js/mondayFibAtlasRoutes.js,,1,asia-fib-atlas-vote-backtest.html,js/bot-config.js js/mondayFibAtlasRoutes.js js/siteApiMap.js
+/api/monday-fib-atlas/plan/:instrument,js/mondayFibAtlasRoutes.js,,1,asia-fib-atlas-vote-backtest.html,js/bot-config.js js/mondayFibAtlasRoutes.js
+/api/monday-fib-atlas/run,js/mondayFibAtlasRoutes.js,OANDA R2,1,asia-fib-atlas-vote-backtest.html,bot-config.html js/bot-config.js js/mondayFibAtlasRoutes.js js/siteApiMap.js
+/api/monday-fib-atlas/status/:jobId,js/mondayFibAtlasRoutes.js,OANDA R2,1,asia-fib-atlas-vote-backtest.html,js/bot-config.js js/mondayFibAtlasRoutes.js js/siteApiMap.js
+/api/monday-fib-atlas/vote-portfolio,js/mondayFibAtlasRoutes.js,R2,1,asia-fib-atlas-vote-backtest.html,js/bot-config.js js/fibAtlasDriftAudit.js js/mondayFibAtlasRoutes.js js/siteApiMap.js
+/api/monday-fib-atlas/vote-trades/:instrument,js/mondayFibAtlasRoutes.js,R2,1,asia-fib-atlas-vote-backtest.html,js/bot-config.js js/mondayFibAtlasRoutes.js js/siteApiMap.js
+/api/monitor/status,server.js,,2,desk.html index.html,js/deskApp.js js/serviceFlags.js js/siteApiMap.js
+/api/morning-brief,server.js,KV,3,atlas.html desk.html today.html,_atlas_run_mod.mjs js/dataFeeds.js js/deskApp.js js/feedCoverage.js js/siteApiMap.js
+/api/morning-brief/status,server.js,,1,atlas.html,_atlas_run_mod.mjs server.js
+/api/motif-bot/live-vs-backtest,server.js,KV,0,,js/bot-config.js js/motifLiveVsBacktest.js server.js
+/api/multi-factor/run,server.js,OANDA FRED,1,multi-factor-book.html,js/dataFeeds.js js/siteApiMap.js server.js
+/api/multi-factor/status/:jobId,server.js,,1,multi-factor-book.html,server.js
+/api/multi-spread-sleeve/defaults,server.js,,0,,js/siteApiMap.js
+/api/multi-spread-sleeve/run,server.js,FRED,1,multi-spread-sleeve.html,js/siteApiMap.js
+/api/multi-spread-sleeve/status/:jobId,server.js,,1,multi-spread-sleeve.html,js/siteApiMap.js
+/api/multi-spread-sleeve/sweep,server.js,FRED,1,multi-spread-sleeve.html,js/siteApiMap.js
+/api/mve,server.js,,2,mve.html today.html,js/siteApiMap.js server.js
+/api/mve-book/defaults,server.js,,0,,
+/api/mve-book/forward,server.js,FRED,1,mve.html,js/serviceFlags.js js/siteApiMap.js
+/api/mve-book/forward/run,server.js,OANDA FRED R2,1,mve.html,js/siteApiMap.js
+/api/mve-book/run,server.js,FRED,1,mve.html,js/siteApiMap.js
+/api/mve-book/status/:jobId,server.js,,1,mve.html,js/siteApiMap.js
+/api/mve-book/system/run,server.js,FRED,1,mve.html,js/siteApiMap.js
+/api/mve-book/system/status/:jobId,server.js,R2,1,mve.html,js/siteApiMap.js
+/api/mve-validate-all,server.js,FRED,1,mve.html,js/siteApiMap.js server.js
+/api/mve-validate-full/:sym,server.js,OANDA FRED,1,mve.html,analysis/residual_reversion_fx.mjs js/siteApiMap.js server.js
+/api/mve-validate-mechanical/:sym,server.js,OANDA FRED,0,,js/siteApiMap.js mve.html server.js
+/api/mve-validate/:sym,server.js,OANDA FRED,0,,js/siteApiMap.js mve.html server.js
+/api/mve/:sym,server.js,FRED,0,,server.js
+/api/nasdaq-liquidity/config,server.js,FRED,1,nasdaq-liquidity-continuation.html,js/siteApiMap.js
+/api/nasdaq-liquidity/results,server.js,FRED Yahoo/Stooq static-file,1,nasdaq-liquidity-continuation.html,js/siteApiMap.js
+/api/nasdaq-liquidity/run,server.js,FRED Yahoo/Stooq,1,nasdaq-liquidity-continuation.html,js/siteApiMap.js
+/api/nasdaq-liquidity/status/:jobId,server.js,,1,nasdaq-liquidity-continuation.html,js/siteApiMap.js
+/api/nasdaq-macro-lead/refresh,server.js,OANDA FRED,1,nasdaq-macro-lead.html,server.js
+/api/nasdaq-macro-lead/summary,server.js,OANDA FRED,1,nasdaq-macro-lead.html,js/dataFeeds.js js/siteApiMap.js
+/api/nav-layout,server.js,KV,5,flow-chain.html index.html indexv2.html market-review.html today.html,js/commandHub.js js/siteApiMap.js server.js
+/api/news-exhaustion/run,server.js,OANDA R2,1,news-exhaustion.html,js/siteApiMap.js
+/api/news-exhaustion/status/:jobId,server.js,,1,news-exhaustion.html,js/siteApiMap.js
+/api/news-outcome,server.js,,1,today.html,js/dataFeeds.js js/feedCoverage.js server.js
+/api/news-outcome/backfill,server.js,,0,,
+/api/newsletter/archive,server.js,KV,1,atlas.html,_atlas_run_mod.mjs js/feedCoverage.js
+/api/newsletter/issue,server.js,,1,atlas.html,_atlas_run_mod.mjs
+/api/newsletter/telegram,server.js,,1,atlas.html,_atlas_run_mod.mjs
+/api/nowcast,server.js,FRED KV CB/ECB/BoE web,2,atlas.html today.html,_atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js
+/api/nq-qmr/backtest,server.js,OANDA,1,nq-qmr-backtest.legacy.html,js/siteApiMap.js
+/api/nq-qmr/hold-to-target,server.js,OANDA,0,,
+/api/nq-qmr/m1-validate,server.js,,0,,
+/api/nq-qmr/m1-validate/status/:jobId,server.js,,0,,
+/api/nq-qmr/m5-candles,server.js,OANDA FRED CBOE/options KV Treasury/BLS/BEA,1,nq-qmr-backtest.legacy.html,js/siteApiMap.js
+/api/nq-qmr/optimize,server.js,OANDA,1,nq-qmr-backtest.legacy.html,js/siteApiMap.js
+/api/nq-qmr/spread-check,server.js,OANDA,0,,js/qmrV2Engine.js server.js
+/api/nq-qmr/tearsheet,server.js,OANDA,1,qmr-tearsheet.html,
+/api/nq-qmr/walkforward-retrain,server.js,OANDA,1,nq-qmr-backtest.legacy.html,js/siteApiMap.js
+/api/oanda-book/history,server.js,OANDA KV,1,today.html,js/dataFeeds.js js/feedCoverage.js
+/api/oanda-book/history/import,server.js,OANDA KV,0,,scripts/push_book_history.mjs
+/api/oanda-book/history/record,server.js,OANDA KV,0,,
+/api/oanda-fetch/instruments,server.js,OANDA,1,bot-config.html,
+/api/oanda-fetch/run,server.js,OANDA,1,bot-config.html,
+/api/oanda-fetch/status/:jobId,server.js,OANDA,1,bot-config.html,
+/api/oanda-instruments,server.js,OANDA,0,,js/dataFeeds.js js/siteApiMap.js
+/api/oanda_book,_worker.js,OANDA FRED,2,index.html today.html,_worker.js js/dataFeeds.js js/main.js js/positionBookMetrics.js js/siteApiMap.js server.js
+/api/oanda_ohlc15m,_worker.js,OANDA KV,3,gold.html index.html levels.html,_worker.js js/gold-app.js js/levels.js js/main.js js/siteApiMap.js
+/api/oanda_ohlc1m,_worker.js,OANDA,2,bot-config.html levels.html,_worker.js js/journal-app.js js/journal-replay-worker.js js/siteApiMap.js js/zone-audit.js
+/api/oanda_ohlc30m,_worker.js,OANDA KV,3,gold.html index.html levels.html,_worker.js js/gold-app.js js/levels.js js/main.js js/siteApiMap.js
+/api/oanda_ohlc5m,server.js,OANDA,20,daily-plan.html decision-lab.html desk.html gold-zones.html gold.html index.html indexv2.html level-scenarios.html levels.html live-range-shadow.html live-range.html oi-dashboard-v2.html oi-dashboard.html oi-zones.html range-zones.html,_worker.js js/dataFeeds.js js/deskApp.js js/gold-app.js js/levels.js js/main.js js/siteApiMap.js scripts/check_mt5_session_window.py
+/api/oanda_stream,server.js,OANDA,3,index.html indexv2.html today.html,_worker.js js/dataFeeds.js js/main.js js/siteApiMap.js
+/api/ohlc,_worker.js,OANDA KV,6,desk.html gold.html index.html indexv2.html levels.html today.html,_worker.js js/dataFeeds.js js/deskApp.js js/gold-app.js js/levels.js js/main.js js/siteApiMap.js js/travelRead.js
+/api/ohlc-range,server.js,OANDA,10,asia-npoc-confluence.html cog-replay.html entry-trigger-lab.html forecast-line-backtest.html forecast-replay.html forecast-reversion.html impulse-range-lab.html motif-alert-backtest.html motif-combined-backtest.html today.html,analysis/gamma_band_realised.py analysis/gamma_spec_curve.py analysis/rates_pivot_lead_study.mjs analysis/roundtrip_study.mjs cog-standalone/cog-replay.html cog-standalone/server.js js/entryTriggerLabEngine.js js/siteApiMap.js
+/api/oi-bot/broadcast,server.js,KV,0,,js/bot-config.js js/siteApiMap.js
+/api/oi-bot/cboe-shadow,server.js,OANDA CBOE/options KV,1,oi-zones.html,js/serviceFlags.js
+/api/oi-bot/hold-calibration,server.js,CBOE/options KV local-api,2,oi-dashboard.html oi-zones.html,
+/api/oi-bot/size-calibration,server.js,KV,0,,
+/api/oi-bot/trades-export,server.js,CBOE/options,2,bot-config.html oi-zones.html,js/bot-config.js server.js
+/api/oi-bot/zones,server.js,KV,2,bot-config.html desk.html,js/dataFeeds.js js/deskApp.js js/siteApiMap.js
+/api/oi-bot/zones/refresh,server.js,CBOE/options,1,bot-config.html,js/siteApiMap.js oi-zones.html
+/api/oi-bots/review,server.js,KV,0,,server.js
+/api/oi-conf-bot/audit,server.js,KV,1,bot-config.html,js/bot-config.js
+/api/oi-conf-bot/trades-export,server.js,,0,,js/bot-config.js
+/api/oi-conf-bot/zones,server.js,KV,1,bot-config.html,
+/api/oi-conf-bot/zones/refresh,server.js,,0,,bot-config.html js/bot-config.js
+/api/oi-history,server.js,CBOE/options KV,4,market-view.html oi-dashboard.html terminal.html today.html,js/dataFeeds.js js/oiBoard.js js/siteApiMap.js kv.js levelEngine/confluence_oi_regime.py
+/api/oi-history-raw,server.js,CBOE/options KV,0,,
+/api/oi-history/backfill,server.js,CBOE/options KV,0,,server.js
+/api/oi-history/snapshot,server.js,,0,,js/siteApiMap.js
+/api/oi-levels,server.js,CBOE/options KV,7,analytics-desk.html atlas.html gold.html index.html levels.html oi-dashboard-v2.html vol-forecast-v3.html,ConfluenceBot/main.py ConfluenceBot/modules/level_matrix.py _atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js js/impliedMove.js js/oiConfluence.js js/oiLevelExport.js
+/api/oi-profile/export,server.js,OANDA CBOE/options KV,1,oi-dashboard-v2.html,js/serviceFlags.js server.js
+/api/oi-reachability,server.js,OANDA CBOE/options KV,2,oi-dashboard-v2.html oi-dashboard.html,server.js
+/api/oi-ripple/log,server.js,KV,0,,
+/api/oi-ripple/refresh,server.js,,0,,
+/api/oi-ripple/zones,server.js,KV,0,,js/feedCoverage.js
+/api/oi-store,server.js,OANDA CBOE/options KV,4,cot-extremes.html indexv2.html oi-dashboard-v2.html oi-dashboard.html,js/dataFeeds.js
+/api/oi-tiers/export,server.js,OANDA CBOE/options KV,1,oi-dashboard-v2.html,
+/api/oi-today,server.js,OANDA CBOE/options KV,4,atlas.html market-view.html terminal.html today.html,_atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js js/globalReadInputs.js js/oiBoard.js js/optionZone.js
+/api/oi-vol-bot/audit,server.js,KV,1,bot-config.html,js/bot-config.js oi_vol_bot/oi_vol_bot.py
+/api/oi-vol-bot/trades-export,server.js,,1,bot-config.html,js/bot-config.js server.js
+/api/oi-vol-bot/zones,server.js,KV,1,bot-config.html,
+/api/oi-vol-bot/zones/refresh,server.js,,1,bot-config.html,
+/api/oi/auto-target,server.js,CBOE/options,4,gold.html index.html levels.html oi-dashboard-v2.html,js/oi.js oi_recon/ingest.mjs
+/api/oi/reanalyse,server.js,CBOE/options KV R2 local-api,1,oi-dashboard.html,js/oiLevelExport.js server.js
+/api/oi/sweep-alert,server.js,KV,0,,
+/api/ou-pairs/run,server.js,OANDA,1,fx-factor-v2.html,js/siteApiMap.js server.js
+/api/ou-pairs/status/:jobId,server.js,OANDA,1,fx-factor-v2.html,js/siteApiMap.js server.js
+/api/overnight-hold-v1/m1/:instrument,server.js,FRED R2 static-file,2,overnight-hold-backtest.html overnight-hold-real-costs.html,server.js
+/api/overnight-hold-v1/run,server.js,R2,1,overnight-hold-backtest.html,server.js
+/api/overnight-hold-v1/status/:jobId,server.js,,1,overnight-hold-backtest.html,server.js
+/api/paper-record,js/paperRecordRoutes.js,,3,decision-lab.html paper-record.html vol-forecast-v3.html,js/serviceFlags.js js/siteApiMap.js scripts/rule-a-book-forward/score.mjs
+/api/paper-record/tick,js/paperRecordRoutes.js,,1,paper-record.html,js/siteApiMap.js
+/api/pattern-lab/candles/:pair,server.js,OANDA R2,1,pattern-lab.html,AnalogML/pattern_lab_validate.py
+/api/pattern-lab/instruments,server.js,,1,pattern-lab.html,AnalogML/pattern_lab_validate.py
+/api/pattern-lab/live-candles/:pair,server.js,OANDA,1,asia-fib-atlas-live.html,AnalogML/pattern_lab_validate.py PatternBot/pattern_live_bot.mjs levelEngine/live_watch.py
+/api/pattern-lab/scan/:pair,server.js,R2 static-file,2,indexv2.html pattern-lab.html,AnalogML/pattern_lab_validate.py AnalogML/scripts/export_pattern_lab.mjs PatternBot/pattern_live_bot.mjs
+/api/pivot-spike/run,server.js,,1,pivot-spike-backtest.html,js/siteApiMap.js
+/api/pivot-spike/status/:jobId,server.js,OANDA,1,pivot-spike-backtest.html,js/siteApiMap.js
+/api/poi-reaction/run,server.js,,1,poi-reaction-backtest.html,
+/api/poi-reaction/status/:jobId,server.js,,1,poi-reaction-backtest.html,
+/api/pooled-fade/run,server.js,OANDA R2,1,pooled-fade.html,js/siteApiMap.js
+/api/pooled-fade/status/:jobId,server.js,,1,pooled-fade.html,js/siteApiMap.js
+/api/pooled-fade/volcompare,server.js,OANDA R2,1,sigma-fade-ab.html,js/siteApiMap.js
+/api/pooled-fade/volcompare/status/:jobId,server.js,,1,sigma-fade-ab.html,js/siteApiMap.js
+/api/position-size,server.js,,1,position-sizer.html,js/siteApiMap.js theory-lab/lessons/kelly-criterion-micro.html
+/api/ppi,server.js,KV,1,ppi.html,js/dataFeeds.js js/feedCoverage.js
+/api/ppi/refresh,server.js,,1,ppi.html,
+/api/ppi/refresh-status,server.js,FRED KV,1,ppi.html,
+/api/qmr-v2/run,server.js,,0,,nq-qmr-backtest.html qmr-tearsheet.html
+/api/qmr-v2/status/:jobId,server.js,,0,,
+/api/quote,_worker.js,OANDA,5,gold-zones.html gold.html index.html levels.html today.html,AnalogML/motif_nearing_watch.py RegimeV2/regime_bot_v2.py RegimeV4/regime_bot_v4.py RegimeV7/regime_bot_v7.py YieldSpreadBot/yield_spread_bot.py _worker.js bot/main.py bot/regime_bot.py
+/api/r2/list,server.js,R2,0,,js/siteApiMap.js
+/api/range-calls,server.js,FRED,0,,js/serviceFlags.js
+/api/range-ext/run,server.js,,1,range-ext-backtest.html,
+/api/range-ext/status/:jobId,server.js,,1,range-ext-backtest.html,
+/api/range-ext/trades,server.js,R2 static-file,1,range-ext-backtest.html,
+/api/range-fib/meta,server.js,,1,range-fib-backtest.html,js/siteApiMap.js
+/api/range-fib/run,server.js,,1,range-fib-backtest.html,js/siteApiMap.js
+/api/range-level-edge/defaults,server.js,,1,range-level-edge.html,js/siteApiMap.js
+/api/range-level-edge/run,server.js,,1,range-level-edge.html,js/siteApiMap.js
+/api/range-level-edge/status/:jobId,server.js,,1,range-level-edge.html,js/siteApiMap.js
+/api/range-line-bot/confluence,server.js,KV,1,level-scenarios.html,js/siteApiMap.js
+/api/range-line-bot/oi,server.js,KV,1,range-zones.html,js/siteApiMap.js
+/api/range-line-bot/oi-audit,server.js,CBOE/options KV,2,desk.html range-zones.html,js/deskApp.js js/siteApiMap.js
+/api/range-line-bot/oi/sync,server.js,CBOE/options,1,range-zones.html,js/siteApiMap.js
+/api/range-line-bot/plan,server.js,OANDA KV,0,,bot-config.html js/siteApiMap.js
+/api/range-line-bot/refresh-confluence,server.js,,0,,js/siteApiMap.js server.js
+/api/range-line-bot/refresh-plan,server.js,,0,,bot-config.html js/siteApiMap.js server.js
+/api/range-line-bot/zones,server.js,KV,3,desk.html indexv2.html range-zones.html,js/deskApp.js js/siteApiMap.js
+/api/range-line/run,server.js,,1,range-line-strategy.html,js/siteApiMap.js
+/api/range-line/status/:jobId,server.js,,1,range-line-strategy.html,js/siteApiMap.js
+/api/rank-ic-live/run,server.js,OANDA,1,rank-ic.html,js/siteApiMap.js
+/api/rank-ic-live/status/:jobId,server.js,FRED,1,rank-ic.html,js/siteApiMap.js
+/api/rank-ic/run,server.js,OANDA,1,rank-ic.html,js/siteApiMap.js
+/api/rank-ic/status/:jobId,server.js,OANDA,1,rank-ic.html,js/siteApiMap.js
+/api/rate-diff,server.js,KV,0,,js/dataFeeds.js js/feedCoverage.js
+/api/rate-diff/refresh,server.js,,0,,server.js volatility-intelligence.html
+/api/rate-diff/refresh-status,server.js,FRED KV,0,,
+/api/rates,server.js,OANDA FRED Treasury/BLS/BEA,1,rates.html,js/dataCatalogueCore.js js/dataFeeds.js
+/api/rates-regime,server.js,KV static-file,1,rates.html,js/serviceFlags.js
+/api/rates-regime/tick,server.js,Yahoo/Stooq KV,0,,
+/api/rba/calendar,server.js(_registerCbEngine),,1,rba-sentiment.html,
+/api/rba/debug-fetch,server.js(_registerCbEngine),,0,,
+/api/rba/fetch-now,server.js(_registerCbEngine),,1,rba-sentiment.html,
+/api/rba/fetch-status,server.js(_registerCbEngine),,1,rba-sentiment.html,
+/api/rba/history,server.js(_registerCbEngine),,3,atlas.html rba-sentiment.html today.html,_atlas_run_mod.mjs js/feedCoverage.js
+/api/rba/latest,server.js(_registerCbEngine),,0,,
+/api/rba/meeting/:date,server.js(_registerCbEngine),,1,rba-sentiment.html,
+/api/rbnz/calendar,server.js(_registerCbEngine),,1,rbnz-sentiment.html,
+/api/rbnz/debug-fetch,server.js(_registerCbEngine),,0,,js/rbnzFetch.js
+/api/rbnz/fetch-now,server.js(_registerCbEngine),,1,rbnz-sentiment.html,
+/api/rbnz/fetch-status,server.js(_registerCbEngine),,1,rbnz-sentiment.html,js/rbnzFetch.js
+/api/rbnz/history,server.js(_registerCbEngine),,3,atlas.html rbnz-sentiment.html today.html,_atlas_run_mod.mjs js/feedCoverage.js
+/api/rbnz/latest,server.js(_registerCbEngine),,0,,
+/api/rbnz/meeting/:date,server.js(_registerCbEngine),,1,rbnz-sentiment.html,
+/api/real-yield,server.js,KV,1,real-yield.html,js/dataFeeds.js js/feedCoverage.js
+/api/real-yield/refresh,server.js,,1,real-yield.html,
+/api/real-yield/refresh-status,server.js,FRED KV,1,real-yield.html,
+/api/refresh,_worker.js,KV,0,,_worker.js bot-config.html bot/utils/state_reader.py js/siteApiMap.js
+/api/regime,server.js,FRED,4,atlas.html regime.html terminal.html today.html,_atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js
+/api/regime-append,_worker.js,KV,0,,RegimeV2/regime_bot_v2.py RegimeV4/regime_bot_v4.py RegimeV7/regime_bot_v7.py _worker.js bot/regime_bot.py js/siteApiMap.js
+/api/regime-backfill,_worker.js,KV,0,,_worker.js js/siteApiMap.js scripts/parse_regime_logs.py
+/api/regime-backfill-status/:jobId,server.js,R2,1,regime-viewer.html,js/siteApiMap.js
+/api/regime-backfill-trigger,server.js,KV,1,regime-viewer.html,js/siteApiMap.js server.js
+/api/regime-candles,_worker.js,OANDA,0,,_worker.js js/siteApiMap.js
+/api/regime-history,server.js,KV R2,2,indexv2.html regime-viewer.html,_worker.js js/siteApiMap.js server.js
+/api/regime-history-export,server.js,static-file,0,,js/siteApiMap.js server.js
+/api/regime-v2/tg-test,_worker.js,KV,0,,_worker.js js/bot-config.js js/siteApiMap.js
+/api/regime-v7/tg-test,_worker.js,FRED KV,0,,_worker.js js/bot-config.js js/siteApiMap.js
+/api/release-call,server.js,,1,today.html,
+/api/release-calls,server.js,,3,event-response.html fiscal-events.html today.html,
+/api/release-layer1,server.js,,2,release-reaction.html release-why.html,
+/api/release-layer1/checks,server.js,KV static-file,1,release-reaction.html,
+/api/release-layer1/paths,server.js,R2 static-file,1,release-reaction.html,
+/api/release-layer2,server.js,KV,1,release-why.html,
+/api/release-scorecard/tick,server.js,,0,,
+/api/residual-reversion-all,server.js,,1,residual-reversion.html,js/siteApiMap.js
+/api/residual-reversion/:sym,server.js,,1,residual-reversion.html,js/siteApiMap.js
+/api/retail-sales,server.js,KV,1,retail-sales.html,js/dataFeeds.js js/feedCoverage.js
+/api/retail-sales/refresh,server.js,,1,retail-sales.html,
+/api/retail-sales/refresh-status,server.js,FRED KV,1,retail-sales.html,
+/api/reversal-fade/run,server.js,OANDA,1,reversal-fade.html,js/siteApiMap.js
+/api/reversal-fade/status/:jobId,server.js,,1,reversal-fade.html,js/siteApiMap.js
+/api/reversal-study/run,server.js,OANDA,1,reversal-study.html,js/siteApiMap.js
+/api/reversal-study/status/:jobId,server.js,,1,reversal-study.html,js/siteApiMap.js
+/api/reversion-proof/day,server.js,OANDA,1,reversion-proof.html,js/siteApiMap.js
+/api/reversion-proof/run,server.js,OANDA,1,reversion-proof.html,js/siteApiMap.js
+/api/reversion-proof/status/:jobId,server.js,,1,reversion-proof.html,js/siteApiMap.js
+/api/risk-flags,server.js,OANDA FRED,3,atlas.html desk.html today.html,_atlas_run_mod.mjs js/dataFeeds.js js/deskApp.js js/feedCoverage.js js/siteApiMap.js server.js
+/api/scratchpad,server.js,KV,3,index.html indexv2.html today.html,js/scratchpad.js js/siteApiMap.js
+/api/sentiment,_worker.js,OANDA KV,2,desk.html index.html,_worker.js js/dataFeeds.js js/deskApp.js js/feedCoverage.js js/main.js js/siteApiMap.js
+/api/services,server.js,R2,0,,js/serviceFlags.js js/serviceStats.js js/siteApiMap.js server.js start.sh
+/api/session-handoff/card/:instrument,js/sessionHandoffRoutes.js,,0,,js/sessionHandoffRoutes.js js/siteApiMap.js
+/api/session-handoff/fastlive/:instrument,js/sessionHandoffRoutes.js,,1,today.html,js/sessionHandoffRoutes.js js/siteApiMap.js
+/api/session-handoff/manifest,js/sessionHandoffRoutes.js,,0,,js/sessionHandoffRoutes.js js/siteApiMap.js
+/api/session-handoff/run,js/sessionHandoffRoutes.js,,0,,js/sessionHandoffRoutes.js js/siteApiMap.js
+/api/session-handoff/status/:jobId,js/sessionHandoffRoutes.js,,0,,js/sessionHandoffRoutes.js js/siteApiMap.js
+/api/session-path/card/:instrument,js/sessionPathRoutes.js,,0,,js/sessionPathRoutes.js js/siteApiMap.js
+/api/session-path/fastlive/:instrument,js/sessionPathRoutes.js,,1,today.html,js/sessionPathRoutes.js js/siteApiMap.js
+/api/session-path/manifest,js/sessionPathRoutes.js,,0,,js/sessionPathRoutes.js js/siteApiMap.js
+/api/session-path/run,js/sessionPathRoutes.js,R2,0,,js/sessionPathRoutes.js js/siteApiMap.js
+/api/session-path/status/:jobId,js/sessionPathRoutes.js,R2,0,,js/sessionPathRoutes.js js/siteApiMap.js
+/api/session-research/summary,server.js,OANDA,1,today.html,js/serviceFlags.js
+/api/session-stats,server.js,,2,today.html vol-forecast.html,js/dataFeeds.js js/siteApiMap.js server.js
+/api/session-stats/refresh,server.js,KV static-file,1,vol-forecast.html,js/siteApiMap.js server.js
+/api/signal-copier/telegram-test,server.js,,0,,js/bot-config.js
+/api/signal-copier/trade-log,server.js,,0,,js/bot-config.js
+/api/signal-journal,server.js,KV,1,daily-plan.html,js/serviceFlags.js server.js
+/api/snb/calendar,server.js(_registerCbEngine),,1,snb-sentiment.html,
+/api/snb/debug-fetch,server.js(_registerCbEngine),,0,,
+/api/snb/fetch-now,server.js(_registerCbEngine),,1,snb-sentiment.html,
+/api/snb/fetch-status,server.js(_registerCbEngine),,1,snb-sentiment.html,
+/api/snb/history,server.js(_registerCbEngine),,3,atlas.html snb-sentiment.html today.html,js/feedCoverage.js
+/api/snb/latest,server.js(_registerCbEngine),,0,,
+/api/snb/meeting/:date,server.js(_registerCbEngine),,1,snb-sentiment.html,
+/api/spread,_worker.js,OANDA FRED,1,index.html,_worker.js js/main.js js/siteApiMap.js server.js
+/api/spread-episodes,server.js,KV,1,spread-episodes.html,js/feedCoverage.js js/serviceFlags.js
+/api/spread-episodes/history,server.js,static-file,1,spread-episodes.html,
+/api/spread-episodes/live,server.js,,1,spread-episodes.html,
+/api/spread-episodes/results,server.js,,1,spread-episodes.html,
+/api/spread-episodes/tick,server.js,OANDA KV,0,,
+/api/spread-profile,server.js,OANDA FRED Yahoo/Stooq KV,1,daily-plan.html,analysis/features/build_features.py js/dataFeeds.js scripts/forecast_history/card_checks.py
+/api/spreads,server.js,OANDA KV,1,today.html,js/bot-config.js js/dataFeeds.js js/siteApiMap.js js/volStateEngine.js server.js
+/api/state,_worker.js,FRED CFTC/COT CBOE/options KV,1,gold-zones.html,_worker.js bot-config.html bot/main.py bot/utils/state_reader.py js/siteApiMap.js
+/api/strategy-lab/run,server.js,OANDA,1,strategy-lab.html,js/siteApiMap.js
+/api/strategy-lab/specs,server.js,R2 local-api,1,strategy-lab.html,js/siteApiMap.js
+/api/strategy-lab/status/:jobId,server.js,,1,strategy-lab.html,js/siteApiMap.js
+/api/stress-shadow,js/stressShadowRoutes.js,,1,today.html,js/feedCoverage.js js/stressShadowRoutes.js
+/api/surface-lab,js/surfaceLabRoutes.js,,2,feed.html surface-lab.html,js/feedRoutes.js js/serviceFlags.js js/siteApiMap.js
+/api/surface-lab/rebuild,js/surfaceLabRoutes.js,,1,surface-lab.html,js/siteApiMap.js
+/api/surprise,_worker.js,AI/LLM,2,index.html today.html,_worker.js js/dataFeeds.js js/econSurprise.js js/events.js js/siteApiMap.js server.js
+/api/tape-speed,server.js,OANDA KV,1,today.html,
+/api/telegram,_worker.js,CFTC/COT KV,1,index.html,AnalogML/motif_track.py PatternBot/pattern_live_bot.mjs _worker.js js/alertFormatterV2.js js/alerts.js js/siteApiMap.js levelEngine/live_watch.py pylego/telegram.py
+/api/telegram/config,_worker.js,KV,1,index.html,_worker.js js/alerts.js js/siteApiMap.js pylego/telegram.py
+/api/telegram/senders,server.js,,1,index.html,js/alerts.js
+/api/telegram/test-server,server.js,OANDA,1,index.html,js/alerts.js js/siteApiMap.js
+/api/today-reads,js/surfaceLabRoutes.js,,1,today.html,
+/api/trade-balance,server.js,KV,1,trade-balance.html,js/dataFeeds.js js/feedCoverage.js
+/api/trade-balance/refresh,server.js,,1,trade-balance.html,
+/api/trade-balance/refresh-status,server.js,FRED KV,1,trade-balance.html,
+/api/trade-decision/backfill/report,server.js,static-file,1,trade-decision-engine.html,js/siteApiMap.js
+/api/trade-decision/backfill/run,server.js,static-file,1,trade-decision-engine.html,js/siteApiMap.js server.js
+/api/trade-decision/backfill/status/:jobId,server.js,static-file,1,trade-decision-engine.html,js/siteApiMap.js
+/api/trade-decision/config,server.js,,1,trade-decision-engine.html,js/siteApiMap.js server.js
+/api/trade-decision/decide,server.js,OANDA,4,today.html trade-cards.html trade-decision-engine.html upcoming-trades.html,js/siteApiMap.js
+/api/trade-decision/health,server.js,FRED KV,4,continuation-fade-ticker.html trade-cards.html trade-decision-engine.html upcoming-trades.html,js/siteApiMap.js
+/api/trade-decision/log,server.js,,1,trade-decision-engine.html,js/siteApiMap.js
+/api/trade-decision/macro-verdict,server.js,OANDA KV,1,trade-decision-engine.html,js/siteApiMap.js
+/api/trade-decision/macro-verdict/run,server.js,,1,trade-decision-engine.html,js/siteApiMap.js server.js
+/api/trade-decision/refresh,server.js,,4,today.html trade-cards.html trade-decision-engine.html upcoming-trades.html,js/siteApiMap.js server.js
+/api/trade-decision/score-positions,server.js,OANDA KV,1,bot-config.html,js/siteApiMap.js
+/api/trade-decision/shadow-book,server.js,,1,bot-config.html,js/siteApiMap.js
+/api/trade-decision/state/:pair,server.js,FRED CBOE/options KV static-file,4,today.html trade-cards.html trade-decision-engine.html upcoming-trades.html,js/siteApiMap.js server.js
+/api/trade-decision/zone-duel,server.js,OANDA,2,continuation-fade-ticker.html indexv2.html,js/siteApiMap.js
+/api/trade-history,_worker.js,KV,2,bot-audit.html bot-config.html,_worker.js analysis/trade_analyzer.py backtestSystem/backfill_all_bots.py js/botRegistry.js js/deskApp.js js/fibAtlasDriftAudit.js js/siteApiMap.js js/voteAtlasDriftAudit.js
+/api/trade-history/annotate,_worker.js,KV,0,,_worker.js scripts/backfill_sl_at_entry.py
+/api/trade-history/backfill,_worker.js,KV,0,,_worker.js backtestSystem/backfill_all_bots.py backtestSystem/backfill_trade_history.py js/siteApiMap.js
+/api/trade-lab/candles,server.js,,1,trade-lab.html,server.js
+/api/trade-lab/geometry,server.js,static-file,1,trade-lab.html,server.js
+/api/trade-lab/geometry-window,server.js,,1,trade-lab.html,server.js
+/api/trade-lab/similar-trades,server.js,CBOE/options,1,trade-lab.html,server.js
+/api/trade-lab/strategy-trades,server.js,,1,trade-lab.html,server.js
+/api/treasury-auctions,server.js,Treasury/BLS/BEA,1,atlas.html,_atlas_run_mod.mjs js/dataFeeds.js js/feedCoverage.js
+/api/trend-basket,server.js,OANDA,1,trend-basket.html,js/creditStressEngine.js js/econTrendEngine.js js/fxFactorV2.js js/siteApiMap.js server.js
+/api/trend-ema-ab/run,server.js,,1,trend-ema-ab.html,js/siteApiMap.js server.js
+/api/trend-ema-ab/status/:jobId,server.js,,1,trend-ema-ab.html,js/siteApiMap.js server.js
+/api/trend-flip/run,server.js,OANDA,1,trend-flip-backtest.html,js/siteApiMap.js server.js
+/api/trend-flip/status/:jobId,server.js,,1,trend-flip-backtest.html,js/siteApiMap.js server.js
+/api/trend-v2/backtest,server.js,OANDA,1,trend-v2.html,js/siteApiMap.js server.js
+/api/trend/backtest,server.js,OANDA FRED,1,trend.html,js/siteApiMap.js server.js
+/api/version,server.js,R2,0,,js/siteApiMap.js
+/api/vix-capture,js/vixCaptureRoutes.js,R2,1,paper-record.html,js/dataFeeds.js js/feedCoverage.js js/serviceFlags.js js/siteApiMap.js
+/api/vix-capture/run,js/vixCaptureRoutes.js,,0,,
+/api/vix-vol-carry-backtest/results,server.js,,1,vix-vol-carry-backtest.html,js/siteApiMap.js vix-vol-carry/vix_vol_carry_backtest.py
+/api/vix-vol-carry-backtest/trades,server.js,,1,vix-vol-carry-backtest.html,js/siteApiMap.js vix-vol-carry/vix_vol_carry_backtest.py
+/api/vol-backtest,server.js,,1,vol-backtest.html,js/siteApiMap.js
+/api/vol-backtest-v2/run,server.js,OANDA,1,vol-backtest-v2.html,js/siteApiMap.js
+/api/vol-backtest-v2/status/:jobId,server.js,OANDA,1,vol-backtest-v2.html,js/siteApiMap.js
+/api/vol-backtest/candles/:pair,server.js,OANDA R2,17,asia-fib-atlas-vote-backtest.html asia-fib-atlas-vote-portfolio.html asia-range-backtest.html backtest-viewer.html forecaster-backtest.html gold-zones.html hedge-backtest.html level-atlas-hl-signal-portfolio.html level-atlas-vote-backtest.html level-atlas-vote-portfolio-v2.html level-atlas-vote-portfolio.html multi-spread-sleeve.html range-fib-backtest.html regime-backtest.html regime-viewer.html,RegimeOptimizer/optimizer.py analysis/m1_archive_gap_audit.mjs analysis/vote_atlas_live_trade_validation.mjs analysis/vote_atlas_this_week_drift_audit.mjs js/siteApiMap.js
+/api/vol-backtest/diagnose,server.js,OANDA R2,1,regime-backtest.html,forecaster-backtest.html js/siteApiMap.js
+/api/vol-backtest/level-analysis,server.js,,1,vol-backtest.html,js/siteApiMap.js
+/api/vol-backtest/level-analysis/status/:jobId,server.js,,1,vol-backtest.html,js/siteApiMap.js
+/api/vol-backtest/m1-status,server.js,,0,,js/siteApiMap.js
+/api/vol-backtest/run,server.js,OANDA,1,vol-backtest.html,js/siteApiMap.js
+/api/vol-backtest/status/:jobId,server.js,OANDA,1,vol-backtest.html,js/siteApiMap.js
+/api/vol-backtest/trades,server.js,,1,backtest-viewer.html,js/siteApiMap.js
+/api/vol-forecast,server.js,,14,atlas.html daily-plan.html desk.html drift.html index.html level-scenarios.html levels.html live-range-shadow.html live-range.html position-sizer.html today.html vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,ConfluenceBot/main.py ConfluenceBot/modules/exits.py ConfluenceBot/modules/level_matrix.py GoldV2/main.py GoldV2/modules/exits.py GoldV2/modules/level_matrix.py _atlas_run_mod.mjs bot-config.html
+/api/vol-forecast-bench/run,server.js,OANDA,1,vol-forecast-bench.html,js/siteApiMap.js
+/api/vol-forecast-bench/status/:jobId,server.js,,1,vol-forecast-bench.html,js/siteApiMap.js
+/api/vol-forecast-research,server.js,R2 static-file,5,vol-forecast-research.html vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html vol-research-book.html,js/siteApiMap.js
+/api/vol-forecast-research/run,server.js,OANDA,1,vol-forecast-research.html,js/siteApiMap.js server.js
+/api/vol-forecast-research/status/:jobId,server.js,OANDA,1,vol-forecast-research.html,js/siteApiMap.js
+/api/vol-forecast/archive,server.js,KV,3,vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,js/siteApiMap.js server.js
+/api/vol-forecast/archive/:date,server.js,KV,3,asia-npoc-confluence.html forecast-replay.html forecast-reversion.html,js/siteApiMap.js server.js
+/api/vol-forecast/archive/:date/export,server.js,KV,0,,
+/api/vol-forecast/archive/bulk-export,server.js,KV,0,,js/siteApiMap.js server.js
+/api/vol-forecast/archive/range,server.js,OANDA KV,3,asia-npoc-confluence.html forecast-replay.html forecast-reversion.html,js/siteApiMap.js server.js
+/api/vol-forecast/audit/:date?,server.js,KV,0,,js/siteApiMap.js server.js
+/api/vol-forecast/backtest-range,server.js,OANDA,3,asia-npoc-confluence.html forecast-replay.html forecast-reversion.html,js/siteApiMap.js server.js
+/api/vol-forecast/by-date,server.js,KV,3,vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,js/siteApiMap.js server.js
+/api/vol-forecast/cog-hv,server.js,,2,vol-forecast-v2.html vol-forecast-v3.html,js/siteApiMap.js
+/api/vol-forecast/cog-window-review,server.js,OANDA KV,2,vol-forecast-v2.html vol-forecast-v3.html,js/siteApiMap.js
+/api/vol-forecast/compare-forge/:date,server.js,,4,forecast-range-timeline.html vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,forge/export_vol_compare.py js/siteApiMap.js server.js
+/api/vol-forecast/compare-forge/range,server.js,,4,forecast-range-timeline.html vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,forge/export_vol_compare.py js/siteApiMap.js server.js
+/api/vol-forecast/compare/:date,server.js,KV R2 static-file,3,vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,forge/export_vol_compare.py js/siteApiMap.js server.js
+/api/vol-forecast/event-impact,server.js,KV,3,vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,js/dataFeeds.js js/siteApiMap.js server.js
+/api/vol-forecast/event-impact/refresh,server.js,,3,vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,js/siteApiMap.js server.js
+/api/vol-forecast/export,server.js,,0,,js/siteApiMap.js vol-forecast.html
+/api/vol-forecast/extended/export,server.js,OANDA,0,,js/siteApiMap.js vol-forecast.html
+/api/vol-forecast/history,server.js,OANDA FRED,3,vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,js/siteApiMap.js
+/api/vol-forecast/hit-rates,server.js,KV,3,vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,js/dataFeeds.js js/siteApiMap.js server.js
+/api/vol-forecast/hit-rates/compute,server.js,OANDA KV,3,vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,js/siteApiMap.js server.js
+/api/vol-forecast/hit-rates/export.txt,server.js,KV,3,vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,js/siteApiMap.js
+/api/vol-forecast/intelligence,server.js,OANDA CBOE/options KV,3,today.html vol-forecast-v3.html volatility-intelligence.html,js/volStateEngine.js server.js
+/api/vol-forecast/intraday-profile,server.js,KV,3,vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,js/siteApiMap.js
+/api/vol-forecast/iv-ladder/export,server.js,CBOE/options KV,2,vol-forecast-v2.html vol-forecast-v3.html,server.js
+/api/vol-forecast/ivadj-ladder/export,server.js,OANDA CBOE/options KV,1,vol-forecast-v3.html,server.js
+/api/vol-forecast/ivadj-ladder/json,server.js,OANDA CBOE/options KV,1,vol-forecast-v3.html,server.js
+/api/vol-forecast/ladder,server.js,,0,,
+/api/vol-forecast/ladder/export,server.js,CBOE/options,2,vol-forecast-v2.html vol-forecast-v3.html,js/bot-config.js server.js
+/api/vol-forecast/ladder/frozen,server.js,,2,vol-forecast-v2.html vol-forecast-v3.html,js/ladderPathStats.js server.js
+/api/vol-forecast/ladder/path-stats,server.js,,2,vol-forecast-v2.html vol-forecast-v3.html,js/siteApiMap.js server.js
+/api/vol-forecast/level-alerts/config,server.js,,2,vol-forecast-v2.html vol-forecast-v3.html,js/siteApiMap.js server.js
+/api/vol-forecast/level-alerts/preview,server.js,,0,,server.js
+/api/vol-forecast/level-alerts/scan,server.js,,2,vol-forecast-v2.html vol-forecast-v3.html,js/siteApiMap.js server.js
+/api/vol-forecast/level-alerts/telegram-config,server.js,,2,vol-forecast-v2.html vol-forecast-v3.html,js/siteApiMap.js server.js
+/api/vol-forecast/level-alerts/test,server.js,,2,vol-forecast-v2.html vol-forecast-v3.html,js/siteApiMap.js server.js
+/api/vol-forecast/levels-history,server.js,KV,0,,js/siteApiMap.js server.js
+/api/vol-forecast/live,server.js,,3,desk.html levels.html vol-forecast.html,js/deskApp.js js/levels.js js/siteApiMap.js
+/api/vol-forecast/live/export,server.js,,0,,js/siteApiMap.js vol-forecast.html
+/api/vol-forecast/persist-ladder/export,server.js,,1,vol-forecast-v3.html,server.js
+/api/vol-forecast/persist-ladder/json,server.js,OANDA CBOE/options KV,3,daily-plan.html decision-lab.html vol-forecast-v3.html,js/hedgingPlan.js js/howMuch.js scripts/dayread/analog_days.py scripts/forecast_history/card_checks.py server.js
+/api/vol-forecast/reference-dump,server.js,OANDA KV,4,cog-replay.html vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,cog-standalone/cog-replay.html cog-standalone/server.js js/siteApiMap.js server.js
+/api/vol-forecast/reference/:date,server.js,KV,4,cog-replay.html vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,cog-standalone/cog-replay.html cog-standalone/server.js js/siteApiMap.js server.js
+/api/vol-forecast/refresh,server.js,OANDA R2,3,vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,js/siteApiMap.js
+/api/vol-forecast/rv-har,server.js,OANDA R2,0,,js/siteApiMap.js theory-lab/lessons/institutional-har-rv.html
+/api/vol-forecast/session,server.js,KV,4,atlas.html today.html vol-forecast-v2.html vol-forecast-v3.html,_atlas_run_mod.mjs js/feedCoverage.js js/globalReadCore.js js/siteApiMap.js
+/api/vol-forecast/session-stats,server.js,,2,vol-forecast-v2.html vol-forecast-v3.html,js/siteApiMap.js server.js
+/api/vol-forecast/session-stats/compute,server.js,KV,2,vol-forecast-v2.html vol-forecast-v3.html,js/siteApiMap.js server.js
+/api/vol-forecast/weekly,server.js,,5,atlas.html today.html vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,_atlas_run_mod.mjs js/feedCoverage.js js/siteApiMap.js
+/api/vol-forecast/weekly/export,server.js,,0,,js/siteApiMap.js
+/api/vol-forecast/zones,server.js,OANDA CBOE/options KV,5,oi-dashboard-v2.html oi-dashboard.html vol-forecast-v2.html vol-forecast-v3.html vol-forecast.html,js/siteApiMap.js server.js
+/api/vol-horse-race/run,server.js,OANDA R2,1,vol-horse-race.html,js/siteApiMap.js theory-lab/lessons/institutional-har-rv.html
+/api/vol-horse-race/status/:jobId,server.js,KV,1,vol-horse-race.html,js/siteApiMap.js
+/api/vol-reversion/:sym,server.js,OANDA FRED,0,,
+/api/volatility-bot/plan,server.js,OANDA KV,2,vol-forecast-v2.html vol-forecast-v3.html,bot-config.html js/siteApiMap.js scripts/check_mt5_session_window.py server.js
+/api/volatility-bot/rebuild-book,server.js,OANDA,3,gold.html index.html levels.html,js/caps.js js/siteApiMap.js server.js
+/api/volatility-bot/refresh-plan,server.js,,0,,bot-config.html js/siteApiMap.js scripts/check_mt5_session_window.py server.js volatility_bot/volatility_bot.py
+/api/volatility-bot/session-m1/:pair,server.js,OANDA,0,,js/bot-config.js js/siteApiMap.js server.js
+/api/volatility-v2/telegram-test,server.js,KV,0,,js/bot-config.js
+/api/volatility-v3/telegram-test,server.js,KV,0,,js/bot-config.js
+/api/vumanchu-fade/run,server.js,OANDA R2,1,vumanchu-fade.html,js/siteApiMap.js
+/api/vumanchu-fade/status/:jobId,server.js,,1,vumanchu-fade.html,js/siteApiMap.js
+/api/vumanchu/chart,server.js,OANDA Yahoo/Stooq R2,2,today.html vumanchu-chart.html,js/siteApiMap.js js/vumanchuChart.js server.js
+/api/vumanchu/chart/send,server.js,OANDA,1,vumanchu-chart.html,js/siteApiMap.js server.js
+/api/vumanchu/health,server.js,OANDA,1,vumanchu-state.html,js/serviceFlags.js server.js
+/api/vumanchu/log,server.js,OANDA KV,1,vumanchu-state.html,js/serviceFlags.js js/siteApiMap.js server.js
+/api/vumanchu/mtf,server.js,OANDA,1,vumanchu-chart.html,js/siteApiMap.js server.js
+/api/vumanchu/mtf-stack,server.js,OANDA,1,vumanchu-chart.html,js/siteApiMap.js server.js
+/api/vumanchu/mtf-stack/send,server.js,OANDA,1,vumanchu-chart.html,js/siteApiMap.js server.js
+/api/vumanchu/mtf/send,server.js,OANDA,1,vumanchu-chart.html,js/siteApiMap.js server.js
+/api/vumanchu/state,server.js,OANDA,3,indexv2.html vumanchu-chart.html vumanchu-state.html,js/siteApiMap.js server.js
+/api/vumanchu/transitions,server.js,OANDA,1,vumanchu-chart.html,server.js
+/api/vwap-reversion/run,server.js,,1,vwap-reversion.html,js/siteApiMap.js
+/api/vwap-reversion/status/:jobId,server.js,,1,vwap-reversion.html,js/siteApiMap.js
+/api/weekly-vol-backtest,server.js,static-file,4,expected-moves.html forecast-blend.html forecast-path.html weekly-vol-backtest.html,js/siteApiMap.js
+/api/weekly-vol-backtest/d1/:pair,server.js,OANDA,1,forecast-path.html,js/siteApiMap.js
+/api/weekly-vol-backtest/m15/:pair,server.js,,1,weekly-vol-backtest.html,js/siteApiMap.js
+/api/weekly-vol-backtest/m5/:pair,server.js,,0,,js/siteApiMap.js
+/api/weekly-vol-backtest/run,server.js,OANDA,1,weekly-vol-backtest.html,js/siteApiMap.js
+/api/weekly-vol-backtest/status/:jobId,server.js,R2 static-file,1,weekly-vol-backtest.html,js/siteApiMap.js
+/api/weekmap,server.js,,2,today.html weekmap.html,js/dataFeeds.js
+/api/wider-market,server.js,,1,today.html,js/dataFeeds.js server.js
+/api/x/:pair,js/egressMeter.js,,1,volatility-classifier-standalone.html,js/egressMeter.js
+/api/yield-context,server.js,OANDA,1,today.html,js/siteApiMap.js server.js
+/api/yield-coupling,server.js,OANDA,1,yield-coupling.html,js/siteApiMap.js server.js
+/api/yield-coupling-real,server.js,FRED,1,yield-coupling-real.html,js/dataFeeds.js js/siteApiMap.js server.js
+/api/yield-curve,server.js,KV,1,yield-curve.html,js/dataFeeds.js js/feedCoverage.js
+/api/yield-curve/refresh,server.js,,1,yield-curve.html,
+/api/yield-curve/refresh-status,server.js,FRED KV,1,yield-curve.html,
+/api/yield-shape-regime,js/yieldShapeRegimeRoutes.js,,1,yield-shape-regime.html,js/dataFeeds.js js/serviceFlags.js
+/api/yield-shape-regime/tick,js/yieldShapeRegimeRoutes.js,,1,yield-shape-regime.html,
+/api/yield-spread/defaults,server.js,,1,yield-spread.html,server.js
+/api/yield-spread/plan,server.js,OANDA KV R2,1,today.html,bot-config.html js/outlookEngine.js js/siteApiMap.js server.js
+/api/yield-spread/refresh-plan,server.js,FRED,0,,YieldSpreadBot/yield_spread_bot.py bot-config.html js/bot-config.js js/siteApiMap.js server.js
+/api/yield-spread/run,server.js,FRED,1,yield-spread.html,server.js
+/api/yield-spread/status/:jobId,server.js,,1,yield-spread.html,server.js
+/api/yield-spread/sweep,server.js,FRED,1,yield-spread.html,server.js
+/api/zscore-backtest,server.js,static-file,1,zscore-backtest.html,js/siteApiMap.js
+/api/zscore-backtest/candles/:pair,server.js,OANDA R2,2,backtest-viewer.html zscore-backtest.html,js/siteApiMap.js
+/api/zscore-backtest/diagnose,server.js,FRED R2,1,zscore-backtest.html,js/siteApiMap.js
+/api/zscore-backtest/pairs,server.js,,1,zscore-backtest.html,js/siteApiMap.js
+/api/zscore-backtest/run,server.js,FRED,1,zscore-backtest.html,js/siteApiMap.js
+/api/zscore-backtest/status/:jobId,server.js,,1,zscore-backtest.html,js/siteApiMap.js
+/api/zscore-backtest/trades,server.js,static-file,2,backtest-viewer.html zscore-backtest.html,js/siteApiMap.js
+/api/zscore-v2/defaults,server.js,,1,zscore-v2.html,js/siteApiMap.js
+/api/zscore-v2/run,server.js,FRED,1,zscore-v2.html,js/siteApiMap.js
+/api/zscore-v2/status/:jobId,server.js,,1,zscore-v2.html,js/siteApiMap.js
