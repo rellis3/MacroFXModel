@@ -1,0 +1,22 @@
+[
+ {
+  "tf": "1",
+  "rows_compared": 416088,
+  "mismatched_columns": {}
+ },
+ {
+  "tf": "5",
+  "rows_compared": 86715,
+  "mismatched_columns": {}
+ },
+ {
+  "tf": "60",
+  "rows_compared": 7307,
+  "mismatched_columns": {}
+ },
+ {
+  "tf": "D",
+  "rows_compared": 317,
+  "mismatched_columns": {}
+ }
+]

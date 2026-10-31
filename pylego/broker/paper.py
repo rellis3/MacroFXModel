@@ -46,6 +46,7 @@ class PaperBroker:
         self._price: dict[str, float] = {}
         self._session: dict[str, list] = {}
         self._spread: dict[str, float] = {}     # pair -> spread override, PRICE units
+        self._orders: dict[int, dict] = {}      # resting limit/stop orders
         self._pipcache: dict[str, tuple] = {}   # pair -> (pip, pip_value)
         for pair, s in (spreads or {}).items():
             self.set_spread(pair, s)
@@ -257,9 +258,75 @@ class PaperBroker:
             "comment": c.get("comment", ""),
         } for c in self._closed[-50:]]
 
+    # ── pending orders (mirror Mt5Broker.place_pending / cancel_pending) ───────
+    def place_pending(self, pair, direction, kind, price, sl, tp, lots, paper_mode=True,
+                      comment=None, dedupe_tag=None):
+        """Rest a LIMIT/STOP order; ``check_barriers`` fills it when the fed mid
+        reaches ``price``. Refuses a price the market is already through
+        (``price_through``), like Mt5Broker. A limit fills AT its price (plus
+        half the spread, the same cost a market fill pays); a stop fills at the
+        mid that triggered it."""
+        self.last_reject_reason = None
+        mid = self._price.get(pair)
+        if mid is None:
+            self.last_reject_reason = 'no_price_yet'
+            return None
+        long = direction == "LONG"
+        through = (price >= mid if long else price <= mid) if kind == 'limit' else (price <= mid if long else price >= mid)
+        if through:
+            self.last_reject_reason = f'price_through (mid {mid})'
+            return None
+        if dedupe_tag is not None:
+            tag = f'[{dedupe_tag}]'
+            if any(tag in (o.get('comment') or '') for o in list(self._orders.values()) + list(self._pos.values())):
+                self.last_reject_reason = 'duplicate'
+                return None
+        t = self._next
+        self._next += 1
+        self._orders[t] = {"ticket": t, "pair": pair, "direction": direction, "kind": kind,
+                           "price": float(price), "sl": float(sl), "tp": float(tp or 0), "lots": float(lots),
+                           "comment": comment or "", "time_setup": int(time.time())}
+        return t
+
+    def cancel_pending(self, ticket, paper_mode=True) -> bool:
+        self._orders.pop(ticket, None)
+        return True
+
+    def pending_orders(self) -> list:
+        return [{"ticket": o["ticket"], "symbol": o["pair"], "direction": "BUY" if o["direction"] == "LONG" else "SELL",
+                 "kind": o["kind"], "price": o["price"], "sl": o["sl"], "tp": o["tp"] or None, "lots": o["lots"],
+                 "comment": o["comment"], "time_setup": o["time_setup"], "tz_offset_sec": 0}
+                for o in self._orders.values()]
+
+    def positions_with_tag(self, tag) -> list:
+        t = f'[{tag}]'
+        return [k for k, p in self._pos.items() if t in (p.get("comment") or "")]
+
+    def _fill_pending(self) -> list:
+        filled = []
+        for t, o in list(self._orders.items()):
+            mid = self._price.get(o["pair"])
+            if mid is None:
+                continue
+            long = o["direction"] == "LONG"
+            hit = (mid <= o["price"] if long else mid >= o["price"]) if o["kind"] == 'limit' \
+                else (mid >= o["price"] if long else mid <= o["price"])
+            if not hit:
+                continue
+            half = self.spread(o["pair"]) / 2.0
+            base = o["price"] if o["kind"] == 'limit' else mid
+            px = base + half if long else base - half
+            del self._orders[t]
+            # MT5 keeps the order ticket as the position ticket — mirror that.
+            self._pos[t] = {"ticket": t, "pair": o["pair"], "direction": o["direction"], "lots": o["lots"],
+                            "open_price": px, "sl": o["sl"], "tp": o["tp"], "comment": o["comment"],
+                            "time_open": int(time.time()), "fav_price": px, "adv_price": px}
+            filled.append({"ticket": t, "reason": "filled"})
+        return filled
+
     # ── triple-barrier execution (what MT5 does natively via SL/TP) ────────────
     def check_barriers(self) -> list:
-        hit = []
+        hit = self._fill_pending()
         for t, p in list(self._pos.items()):
             cur = self._price.get(p["pair"])
             if cur is None:

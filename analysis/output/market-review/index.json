@@ -1,9 +1,14 @@
 {
- "updated": "2026-10-30T02:20:15+00:00",
+ "updated": "2026-10-31T01:59:24+00:00",
  "weeks": [
   {
-   "date": "latest (2026-10-30)",
+   "date": "latest (2026-10-31)",
    "pack": "analysis/output/market-review/latest/pack.json",
+   "reviews": []
+  },
+  {
+   "date": "2026-10-31",
+   "pack": "analysis/output/market-review/2026-10-31/pack.json",
    "reviews": []
   },
   {

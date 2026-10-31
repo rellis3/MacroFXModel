@@ -1,0 +1,122 @@
+{
+ "quality": {
+  "bars_1m": 3397818,
+  "first": "2015-12-13 23:00:00+00:00",
+  "last": "2026-10-08 22:15:00+00:00",
+  "contracts": 44,
+  "rolls": 43,
+  "trade_dates": 2514,
+  "bars_per_trade_date_median": 1365.0,
+  "trade_dates_under_80pct_of_median": 21,
+  "short_dates_list_first20": [
+   "2015-12-24",
+   "2016-03-14",
+   "2016-05-30",
+   "2016-07-04",
+   "2016-09-05",
+   "2016-11-24",
+   "2016-11-25",
+   "2017-01-16",
+   "2017-02-20",
+   "2017-05-29",
+   "2017-11-23",
+   "2018-12-05",
+   "2020-03-16",
+   "2020-03-17",
+   "2020-03-18",
+   "2021-04-02",
+   "2023-04-07",
+   "2025-01-09",
+   "2025-11-28",
+   "2026-04-03"
+  ],
+  "zero_range_bars_pct": 2.252710415919864,
+  "ohlc_inconsistent": 0,
+  "gaps_over_70min": 600,
+  "return_corr_vs_owner_file_by_shift_s": {
+   "-60": 0.0018,
+   "0": 0.9571,
+   "60": 0.0021
+  },
+  "owner_file_overlap_bars": 3229285,
+  "trade_dates_after_fill": 2796,
+  "duplicates_dropped": 0,
+  "filled_from_owner_file": {
+   "bars": 385717,
+   "blocks": 19,
+   "partial_nt8_dates_replaced": 18,
+   "trade_dates": 282,
+   "rejoin_mismatch_pct_median": 2.610978100392458e-09,
+   "rejoin_mismatch_pct_max": 0.13493542421839644,
+   "contracts_used": 18
+  }
+ },
+ "meta": {
+  "lockbox_first_trade_date": "2026-08-21",
+  "discovery_end": "2022-12-31",
+  "tables": {
+   "1": {
+    "explore_rows": 3735460,
+    "lockbox_rows": 48075,
+    "explore_last_trade_date": "2026-08-20",
+    "columns": 56
+   },
+   "3": {
+    "explore_rows": 1253187,
+    "lockbox_rows": 16026,
+    "explore_last_trade_date": "2026-08-20",
+    "columns": 55
+   },
+   "5": {
+    "explore_rows": 752340,
+    "lockbox_rows": 9616,
+    "explore_last_trade_date": "2026-08-20",
+    "columns": 55
+   },
+   "15": {
+    "explore_rows": 250896,
+    "lockbox_rows": 3206,
+    "explore_last_trade_date": "2026-08-20",
+    "columns": 55
+   },
+   "30": {
+    "explore_rows": 126126,
+    "lockbox_rows": 1603,
+    "explore_last_trade_date": "2026-08-20",
+    "columns": 55
+   },
+   "60": {
+    "explore_rows": 63083,
+    "lockbox_rows": 802,
+    "explore_last_trade_date": "2026-08-20",
+    "columns": 55
+   },
+   "240": {
+    "explore_rows": 17094,
+    "lockbox_rows": 218,
+    "explore_last_trade_date": "2026-08-20",
+    "columns": 55
+   },
+   "D": {
+    "explore_rows": 2760,
+    "lockbox_rows": 36,
+    "explore_last_trade_date": "2026-08-20",
+    "columns": 55
+   }
+  },
+  "alignment": {
+   "60": {
+    "rows": 752340,
+    "max_htf_close_minus_row_close_s": 0
+   },
+   "240": {
+    "rows": 752340,
+    "max_htf_close_minus_row_close_s": 0
+   },
+   "D": {
+    "rows": 752340,
+    "max_htf_close_minus_row_close_s": 0
+   }
+  }
+ }
+}

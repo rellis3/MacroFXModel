@@ -126,6 +126,9 @@ export const STORES = {
   fib_atlas_bot_v2_decision_log: L('Fib Atlas v2 decisions', 14),
   motif_bot_plan: R('Motif bot plan', 3), motif_bot_state: S('Motif bot state'),
   motif_bot_decision_log: L('Motif bot decisions', 14), motif_bot_spread_stats: R('Motif bot spread stats', 7, { market: false }),
+  signal_copier_state: S('Signal Copier state'), signal_copier_decision_log: L('Signal Copier decisions', 14),
+  signal_copier_signals: L('Signal Copier signal outcomes (COG template)', 14),
+  signal_copier_backfill_report: L('Signal Copier history parse report', 120, { market: false }),
   // ── user-entered configuration (present/absent only) ──────────────────────
   surprise_alert_config: C('Surprise alert config'), oi_auto_target: C('OI auto-target toggle'), cot_urls: C('COT report URLs'),
   cot_url: C('COT report URL'), caps: C('Proximity caps'), daily_watchlist: C('Daily watchlist'),
@@ -137,6 +140,7 @@ export const STORES = {
   yield_spread_config: C('Yield-spread config'), range_line_bot_config: C('Range-line bot config'), oi_bot_config: C('OI bot config'),
   oi_vol_bot_config: C('OI-Vol bot config'), oi_conf_bot_config: C('OI-Conf bot config'), volatility_bot_v2_config: C('Volatility v2 config'),
   volatility_bot_v3_config: C('Volatility v3 config'), fib_atlas_bot_config: C('Fib Atlas bot config'), fib_atlas_bot_v2_config: C('Fib Atlas v2 config'),
+  signal_copier_config: C('Signal Copier config'),
   motif_bot_config: C('Motif bot config'), nq_qmr_config: C('NQ QMR config'), nav_layout: C('Navigation layout'), scratchpad_notes: C('Scratchpad notes'),
   // ── credentials (never read) ──────────────────────────────────────────────
   tg_config: X('Telegram credentials'), hedge_signal_tg: X('Hedge-signal Telegram credentials'), regime_bot_credentials: X('Regime bot credentials'),
@@ -149,6 +153,7 @@ export const STORES = {
   volatility_bot_v2_credentials: X('Volatility v2 credentials'), volatility_bot_v3_credentials: X('Volatility v3 credentials'),
   fib_atlas_bot_credentials: X('Fib Atlas bot credentials'), fib_atlas_bot_v2_credentials: X('Fib Atlas v2 credentials'),
   motif_bot_credentials: X('Motif bot credentials'),
+  signal_copier_credentials: X('Signal Copier MT5 credentials'), signal_copier_tg_credentials: X('Signal Copier Telegram credentials'),
 };
 
 

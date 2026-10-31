@@ -171,6 +171,31 @@ def test_default_spread_table_and_overrides():
     assert abs(b2.spread("gold") - 0.5) < 1e-12
 
 
+def test_pending_sell_limit_fills_at_price_then_hits_tp():
+    b = PaperBroker(balance=10_000, spreads={"nas100": 2.0})
+    b.set_price("nas100", 28860)
+    t = b.place_pending("nas100", "SHORT", "limit", 28965, 29096, 28703, 0.1, comment="SC[101-7]", dedupe_tag="101-7")
+    assert t and b.pending_orders()[0]["direction"] == "SELL"
+    assert b.place_pending("nas100", "SHORT", "limit", 28965, 29096, 28703, 0.1, dedupe_tag="101-7") is None   # duplicate
+    b.set_price("nas100", 28900); assert b.check_barriers() == [] and not b.serialize_open_positions()
+    b.set_price("nas100", 28966)
+    assert b.check_barriers() == [{"ticket": t, "reason": "filled"}]
+    assert not b.pending_orders() and b.positions_with_tag("101-7") == [t]
+    assert b.serialize_open_positions()[0]["open_price"] == 28964.0      # limit price minus half spread
+    b.set_price("nas100", 28700); b.check_barriers()
+    assert b.serialize_closed_trades()[0]["reason"] == "tp"
+
+
+def test_pending_refuses_price_through_and_cancels():
+    b = PaperBroker()
+    b.set_price("nas100", 28970)
+    assert b.place_pending("nas100", "SHORT", "limit", 28965, 29096, 28703, 0.1) is None
+    assert b.last_reject_reason.startswith("price_through")
+    b.set_price("nas100", 28860)
+    t = b.place_pending("nas100", "SHORT", "limit", 28965, 29096, 28703, 0.1)
+    assert b.cancel_pending(t) and not b.pending_orders()
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:
