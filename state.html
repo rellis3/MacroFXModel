@@ -92,6 +92,35 @@
   .empty{padding:30px;text-align:center;color:var(--text2)}
   .tbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 9px;font-size:11.5px}
   .tbtn:focus-visible,.node:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  /* phase 2: banner, edges, economies, layers */
+  .banner{display:grid;gap:12px}
+  .env{font-size:19px;font-weight:700;letter-spacing:-.01em}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:8px}
+  .tile{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;display:grid;gap:4px;align-content:start;min-width:0}
+  .tile .k{font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
+  .tile .v{font-size:14px;font-weight:700}
+  .tile .d{font-size:11.5px;color:var(--text2)}
+  .chips{display:flex;flex-wrap:wrap;gap:4px}
+  .edges{display:grid;gap:6px}
+  .edge-row{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:start;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card2)}
+  .edge-row.on{border-color:var(--amber);background:var(--amber-bg)}
+  .dot{width:12px;height:12px;border-radius:50%;margin-top:4px;background:var(--neu-bg);border:2px solid var(--text3)}
+  .dot.on{background:var(--amber);border-color:var(--amber)} .dot.off{background:transparent;border-color:var(--text3)} .dot.na{border-style:dashed}
+  .edge-row details{font-size:12px;color:var(--text2);margin-top:4px}
+  .edge-row summary{cursor:pointer;color:var(--blue);font-size:11.5px}
+  .econ{width:100%;border-collapse:collapse;font-size:12.5px}
+  .econ td,.econ th{padding:7px 8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle;white-space:nowrap}
+  .div{position:relative;height:10px;width:140px;background:var(--neu-bg);border-radius:3px}
+  .div i{position:absolute;top:0;height:10px;border-radius:3px}
+  .div::after{content:"";position:absolute;left:50%;top:-2px;height:14px;width:1px;background:var(--text3)}
+  .bars{display:grid;gap:5px}
+  .bar-r{display:grid;grid-template-columns:64px minmax(0,1fr) 128px;gap:8px;align-items:center;font-size:12px}
+  .bar-t{height:10px;background:var(--neu-bg);border-radius:3px;position:relative;overflow:hidden}
+  .bar-t i{position:absolute;inset:0 auto 0 0;border-radius:3px}
+  .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px}
+  #cotSvg{display:block;width:100%;height:auto}
+  #cotSvg text{fill:var(--text);font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+  #cotSvg .muted{fill:var(--text3)}
 </style>
 </head>
 <body>
@@ -101,7 +130,7 @@
 <main class="wrap">
   <header class="head">
     <div style="display:grid;gap:6px">
-      <div class="eyebrow">Market State Engine · v1</div>
+      <div class="eyebrow">Market State Engine · v2</div>
       <h1>Where the money is moving, layer by layer</h1>
       <p class="sub">Rates → credit → FX → equities → volatility, in the order information usually flows. Every reading is a 20-day move against its own noise floor. This page describes the state. It does not forecast.</p>
     </div>
@@ -111,6 +140,28 @@
       <button class="tbtn" id="themeBtn" type="button">Light / dark</button>
     </div>
   </header>
+
+
+  <section class="card banner" aria-label="Global state">
+    <div class="eyebrow">Global state</div>
+    <div class="env" id="envLabel">—</div>
+    <div class="tiles" id="globalTiles"></div>
+    <p class="note" id="globalNote"></p>
+  </section>
+
+  <section class="card">
+    <h2>Edges active today</h2>
+    <p class="sub">Tested relationships whose condition the engine can check right now. All of them are about <b>range</b> (how far markets travel), because that is what has validated here. Amber = active today. The grade is from the 2026-10-31 code audit; fragile results are shown as research only.</p>
+    <div class="edges" id="edges" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Economies</h2>
+    <p class="sub">The economic engine, per currency: data surprises (σ, decay-weighted), the 10-year yield and its 30-day change, and where speculators sit. Context, not a lean: none of these has a validated direction signal here.</p>
+    <div class="scroll" style="margin-top:8px"><table class="econ"><thead><tr><th>Economy</th><th>Data surprises</th><th></th><th>10Y yield</th><th>30d</th><th>Positioning (COT)</th><th>Latest surprise</th></tr></thead><tbody id="econRows"></tbody></table></div>
+    <div class="tiles" id="usExtras" style="margin-top:10px"></div>
+    <p class="note" id="econNote" style="margin-top:6px"></p>
+  </section>
 
   <section class="card" style="display:grid;gap:6px">
     <div class="eyebrow">Information flow this window</div>
@@ -147,6 +198,27 @@
     </div>
   </section>
 
+  <section class="grid3" aria-label="Analysis layers">
+    <div class="card">
+      <h2>Volatility &amp; range</h2>
+      <p class="sub">Today's forecast: where each market's vol sits in its own history (percentile), and the forecast high-low range at p75.</p>
+      <div class="bars" id="volBars" style="margin-top:8px"></div>
+      <p class="note" id="volNote" style="margin-top:6px"></p>
+    </div>
+    <div class="card">
+      <h2>Positioning (COT)</h2>
+      <p class="sub">Speculator net positioning as a percentile of its own history. The edges (below 10, above 90) are crowded. Context, not a direction.</p>
+      <svg id="cotSvg" role="img" aria-label="COT positioning percentiles"></svg>
+      <p class="note" id="cotNote"></p>
+    </div>
+    <div class="card">
+      <h2>Options OI &amp; gamma</h2>
+      <p class="sub">From the morning CME capture: pin (dealers long gamma, damping) or breakout (short gamma), with the call and put walls.</p>
+      <div class="scroll"><table class="econ"><thead><tr><th>Pair</th><th>Regime</th><th>Spot</th><th>Put wall</th><th>Call wall</th></tr></thead><tbody id="oiRows"></tbody></table></div>
+      <p class="note" id="oiNote" style="margin-top:6px"></p>
+    </div>
+  </section>
+
   <section class="card">
     <h2>Data health</h2>
     <p class="sub">Every input with its last print. Stale inputs (older than 5 days) make their readings unreliable; they are listed first.</p>
@@ -170,7 +242,7 @@ try { if (localStorage.getItem('stateTheme') === 'light') document.body.classLis
 $('themeBtn').addEventListener('click', () => {
   document.body.classList.toggle('light');
   try { localStorage.setItem('stateTheme', document.body.classList.contains('light') ? 'light' : 'dark'); } catch {}
-  if (window.__state) { drawChain(window.__state); drawFlow(window.__state); }
+  if (window.__state) { drawChain(window.__state); drawFlow(window.__state); drawLayers(window.__state); }
 });
 
 const fmtDelta = (r) => {
@@ -323,13 +395,108 @@ function drawHealth(st) {
     || '<tr><td colspan="5" class="note">No inputs loaded.</td></tr>';
 }
 
+
+const REGIME_WORDS = { realUp: 'real yields rising', realDown: 'real yields falling', creditWider: 'credit widening', creditTighter: 'credit tightening', curveInverted: 'curve inverted', curveNormal: 'curve normal' };
+const tile = (k, v, d = '', extra = '') => `<div class="tile"><div class="k">${esc(k)}</div><div class="v">${v}</div>${d ? `<div class="d">${d}</div>` : ''}${extra}</div>`;
+const dt = s => (s ? String(s).slice(0, 10) : '—');
+
+function drawGlobal(st) {
+  const g = st.global ?? {};
+  $('envLabel').textContent = g.envLabel ?? 'Global read not built yet';
+  const t = [];
+  if (g.regime) t.push(tile('Macro regime', esc(g.regime.key.split('|').map(x => REGIME_WORDS[x] ?? x).join(', ')), `as of ${esc(dt(g.regime.date))}`));
+  if (g.policy) t.push(tile('Policy path (US)', g.policy.gapBp == null ? '—' : `${g.policy.gapBp > 0 ? '+' : ''}${g.policy.gapBp}bp 2Y vs policy`,
+    `${g.policy.movesPriced != null ? `${Math.abs(g.policy.movesPriced).toFixed(1)} ${g.policy.direction ?? ''} priced` : ''} · ${esc(dt(g.policy.asOf))}`));
+  if (g.risk) {
+    const cls = g.risk.level === 'RISK_OFF' ? 'bad' : g.risk.level === 'CAUTION' ? 'warn' : 'ok';
+    const chips = (g.risk.flags ?? []).filter(f => f.on).map(f => `<span class="pill bad" title="${esc(f.detail)}">${esc(f.label)}</span>`).join('');
+    t.push(tile('Cross-asset risk', `<span class="pill ${cls}">${esc(g.risk.level ?? '—')}</span>`, `${g.risk.active} of ${g.risk.available ?? '?'} flags on · ${esc(dt(g.risk.asOf))}`, chips ? `<div class="chips">${chips}</div>` : ''));
+    if (g.risk.move) t.push(tile('Bond-market fear (MOVE)', `${g.risk.move.level?.toFixed(0) ?? '—'}`, `${g.risk.move.pct1y ?? '—'}th pct of 1y · 20d ${g.risk.move.chg20 > 0 ? '+' : ''}${g.risk.move.chg20?.toFixed(1) ?? '—'}`));
+  }
+  if (g.funding) t.push(tile('Funding & leverage', g.funding.flags?.length ? `<span class="pill warn">${esc(g.funding.flags.join(', '))}</span>` : '<span class="pill ok">no stress flags</span>', esc(g.funding.line ?? '')));
+  if (g.creditQuality) t.push(tile('Credit quality (Baa−Aaa z)', `${g.creditQuality.z > 0 ? '+' : ''}${g.creditQuality.z.toFixed(2)}`, `${g.creditQuality.z > 1 ? 'quality spread wide: stress building' : g.creditQuality.z < -1 ? 'quality spread tight: complacent' : 'within normal'} · ${esc(dt(g.creditQuality.asOf))}`));
+  if (g.conviction) t.push(tile('Desk conviction', `range ${g.conviction.range ?? '—'} · direction ${g.conviction.direction ?? '—'}`, 'Global Read: evidence-weighted; direction is 0 when no tested directional input is active'));
+  $('globalTiles').innerHTML = t.join('') || '<div class="note">No global inputs loaded.</div>';
+  $('globalNote').textContent = g.headline ? `Global Read: ${g.headline}` : '';
+}
+
+function drawEdges(st) {
+  const rows = (st.edges ?? []).slice().sort((a, b) => (b.active === true) - (a.active === true) || (a.standing === 'edge' ? -1 : 1));
+  $('edges').innerHTML = rows.map(e => {
+    const dot = e.active === true ? 'on' : e.active === false ? 'off' : 'na';
+    const gradeCls = e.grade === 'ROBUST' ? 'ok' : e.grade === 'PLAUSIBLE' ? 'neu' : 'warn';
+    return `<div class="edge-row ${e.active ? 'on' : ''}"><span class="dot ${dot}" title="${e.active === true ? 'active today' : e.active === false ? 'not active' : 'input not loaded'}"></span>
+      <div><div><strong>${esc(e.label)}</strong> <span class="note">· ${esc(e.applies)}</span></div><div class="note">${esc(e.why)}</div>
+        <details><summary>What was measured</summary>${esc(e.result ?? '')}<br><b>Use:</b> ${esc(e.use ?? '')}</details></div>
+      <div class="row" style="justify-content:flex-end"><span class="pill ${gradeCls}">${esc(e.grade ?? 'unaudited')}</span>${e.standing !== 'edge' ? '<span class="pill warn">research only</span>' : ''}</div></div>`;
+  }).join('') || '<div class="note">No edge inputs loaded.</div>';
+}
+
+function divBar(z) {
+  if (z == null) return '<span class="note">not enough data</span>';
+  const c = Math.max(-2, Math.min(2, z)), w = Math.abs(c) / 2 * 50;
+  return `<div class="div" title="${z.toFixed(2)}σ"><i style="${c >= 0 ? `left:50%;width:${w}%;background:var(--bull)` : `left:${50 - w}%;width:${w}%;background:var(--bear)`}"></i></div>`;
+}
+
+function drawEconomies(st) {
+  const e = st.economies; if (!e) { $('econRows').innerHTML = '<tr><td colspan="7" class="note">Not loaded.</td></tr>'; return; }
+  $('econRows').innerHTML = e.rows.map(r => {
+    const s = r.surprise, y = r.yield10, c = r.cot;
+    const cotCls = c?.pct == null ? 'neu' : c.pct >= 90 || c.pct <= 10 ? 'warn' : 'neu';
+    return `<tr><td><b>${esc(r.ccy)}</b> <span class="note">${esc(r.name)}</span></td>
+      <td>${divBar(s?.score ?? null)}</td><td class="num">${s?.score != null ? `${s.score > 0 ? '+' : ''}${s.score.toFixed(2)}σ` : '—'}</td>
+      <td class="num">${y?.value != null ? y.value.toFixed(2) + '%' : '—'}</td>
+      <td class="num ${y?.changeBp > 0 ? 'up' : y?.changeBp < 0 ? 'down' : 'flat'}">${y?.changeBp != null ? `${y.changeBp > 0 ? '+' : ''}${y.changeBp}bp` : '—'}</td>
+      <td>${c ? `<span class="pill ${cotCls}" title="${esc(c.label ?? '')}">${c.pct ?? '—'}th pct · ${esc(c.zone ?? '')}</span>` : '<span class="note">—</span>'}</td>
+      <td class="note">${s?.top ? `${esc(s.top.event)}: ${esc(s.top.actual)} vs ${esc(s.top.estimate)} (${s.top.z > 0 ? '+' : ''}${s.top.z?.toFixed(1)}σ)` : ''}</td></tr>`;
+  }).join('');
+  const us = e.rows[0], x = [];
+  if (us?.nowcast) x.push(tile('US inflation nowcast', `CPI ${us.nowcast.cpiMoM?.toFixed(2) ?? '—'}% m/m`, `core ${us.nowcast.coreMoM?.toFixed(2) ?? '—'}% · ${esc(us.nowcast.month ?? '')} · Cleveland Fed`));
+  if (us?.nowcast?.gdpNow != null) x.push(tile('US growth nowcast', `${us.nowcast.gdpNow.toFixed(1)}% SAAR`, `GDPNow, quarter from ${esc(us.nowcast.gdpQuarter ?? '')}`));
+  if (us?.policyPath) {
+    const w = us.policyPath.nextWindow, m = us.policyPath.nextMeeting;
+    x.push(tile('Fed path', w ? `${w.cutPct?.toFixed(0) ?? '—'}% cut · ${w.hikePct?.toFixed(0) ?? '—'}% hike` : (us.policyPath.currentRange ?? '—'),
+      `${w ? `window to ${esc(w.ref)}` : ''}${m ? ` · next meeting ${esc(m.date)} ${m.moveBp > 0 ? '+' : ''}${m.moveBp}bp priced` : ''} · ${us.policyPath.ageDays ?? '?'}d old`));
+  }
+  $('usExtras').innerHTML = x.join('');
+  $('econNote').textContent = `${e.note} Surprises ${dt(e.surpriseAsOf)}; COT report ${dt(e.cotReportDate)}.`;
+}
+
+function drawLayers(st) {
+  const L = st.layers ?? {};
+  const v = (L.vol?.rows ?? []).slice(0, 14);
+  $('volBars').innerHTML = v.map(r => {
+    const p = r.volPct ?? 0, col = p >= 80 ? 'var(--bear)' : p <= 20 ? 'var(--blue)' : 'var(--amber)';
+    return `<div class="bar-r"><span><b>${esc(r.sym)}</b></span><div class="bar-t" title="vol percentile ${p}"><i style="width:${p}%;background:${col}"></i></div><span class="note num" style="white-space:nowrap">vol ${r.volAnnual?.toFixed(1)}% · p75 ${r.hlP75?.toFixed(2) ?? '—'}%</span></div>`;
+  }).join('') || '<div class="note">Vol forecast not loaded.</div>';
+  $('volNote').textContent = L.vol?.sessionDate ? `Forecast for ${L.vol.sessionDate}; bar = vol percentile vs its own history (blue calm, amber normal, orange high).` : '';
+  // COT dot plot
+  const c = (L.positioning?.rows ?? []).slice(0, 12), svg = $('cotSvg'), W = 360, rh = 24, Lft = 64, R = 12, T = 18;
+  svg.setAttribute('viewBox', `0 0 ${W} ${T + c.length * rh + 24}`);
+  const x = p => Lft + (W - Lft - R) * p / 100;
+  let o = `<rect x="${x(0)}" y="${T - 8}" width="${x(10) - x(0)}" height="${c.length * rh + 8}" fill="${cssVar('--amber')}" opacity=".12"/><rect x="${x(90)}" y="${T - 8}" width="${x(100) - x(90)}" height="${c.length * rh + 8}" fill="${cssVar('--amber')}" opacity=".12"/>`;
+  for (const f of [0, 50, 100]) o += `<line x1="${x(f)}" x2="${x(f)}" y1="${T - 8}" y2="${T + c.length * rh}" stroke="${cssVar('--border')}"/><text x="${x(f)}" y="${T + c.length * rh + 14}" font-size="10" text-anchor="middle" class="muted">${f}</text>`;
+  c.forEach((r, i) => {
+    const y = T + i * rh + rh / 2 - 4, p = r.pct ?? 50, ext = p >= 90 || p <= 10;
+    o += `<text x="${Lft - 8}" y="${y + 4}" font-size="12.5" font-weight="600" text-anchor="end">${esc(r.sym)}</text><line x1="${x(50)}" x2="${x(p)}" y1="${y}" y2="${y}" stroke="${cssVar('--text3')}"/>
+      <circle cx="${x(p)}" cy="${y}" r="5.5" fill="${ext ? cssVar('--amber') : cssVar('--blue')}"><title>${esc(r.label ?? '')} (${p}th pct, ${esc(r.zone ?? '')})</title></circle>`;
+  });
+  svg.innerHTML = c.length ? o : '';
+  $('cotNote').textContent = c.length ? `Report of ${dt(L.positioning.reportDate)} (Tuesday positions, released Friday). Hover a dot for the crowding state.` : 'COT state not loaded.';
+  const oi = L.options?.rows ?? [];
+  $('oiRows').innerHTML = oi.map(r => `<tr><td><b>${esc(r.pair)}</b></td><td><span class="pill ${r.regime === 'BREAKOUT' ? 'bad' : 'ok'}">${esc(r.regime ?? '—')}</span></td>
+    <td class="num">${r.spot ?? '—'}</td><td class="num">${r.putWall ?? '—'}</td><td class="num">${r.callWall ?? '—'}</td></tr>`).join('') || '<tr><td colspan="5" class="note">No OI capture loaded today.</td></tr>';
+  $('oiNote').textContent = oi.length ? `Captured ${esc(oi[0].savedAt ?? '')}${oi.some(r => r.basisStale) ? ' · some futures-to-spot bases are stale' : ''}.` : '';
+}
+
 function render(st) {
   window.__state = st;
   $('asOf').textContent = `as of ${st.asOf ?? '—'}`;
   const f = st.flow;
   $('flowText').innerHTML = esc(f.text).replace(/NOT the textbook order/, '<b>NOT the textbook order</b>');
   $('flowNote').textContent = f.note + (st.errors?.length ? ` Inputs that failed: ${st.errors.map(e => e.source).join(', ')}.` : '');
-  drawTiers(st); drawChain(st); drawFlow(st); drawHealth(st);
+  drawGlobal(st); drawEdges(st); drawEconomies(st);
+  drawTiers(st); drawChain(st); drawFlow(st); drawLayers(st); drawHealth(st);
 }
 
 async function load() {

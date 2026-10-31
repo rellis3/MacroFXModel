@@ -30,3 +30,24 @@ test('builds a document from KV FRED + OANDA bars, reports what failed, and cach
   const reg = []; routes.mount({ get: (p, h) => reg.push(p) });
   assert.deepEqual(reg, ['/api/state']);
 });
+
+test('readers feed the global banner, economies, layers and edges; a failing reader is reported, not fatal', async () => {
+  process.env.OANDA_KEY = process.env.OANDA_KEY || 'test';
+  const kv = { get: async k => (k === 'credit_quality_v1' ? JSON.stringify({ ok: true, quality: 1.2, latestDate: '2026-10-30' }) : null) };
+  const routes = createStateRoutes({ kv, port: 1, fetchD1: async () => [], log: { error() {} }, readers: {
+    globalRead: () => ({ ok: true, envLabel: 'risk-off · high volatility', meta: { asOf: '2026-10-31T09:00:00Z' } }),
+    riskFlags: async () => ({ ok: true, level: 'RISK_OFF', active: 3, flags: [] }),
+    volForecast: () => ({ session_date: '2026-11-02', instruments: { GOLD: { vol_annual: 18, vol_pct: 81 } } }),
+    cotState: async () => { throw new Error('No COT data cached yet'); },
+  } });
+  const doc = await routes.get();
+  assert.equal(doc.global.envLabel, 'risk-off · high volatility');
+  assert.equal(doc.global.risk.level, 'RISK_OFF');
+  assert.equal(doc.global.creditQuality.z, 1.2);
+  assert.equal(doc.layers.vol.rows[0].sym, 'GOLD');
+  assert.equal(doc.economies.rows.length, 8);
+  assert.ok(doc.edges.length >= 5);
+  assert.ok(doc.edges.every(e => e.active === null || typeof e.active === 'boolean'));
+  assert.ok(doc.errors.some(e => e.source === 'cot-state' && /No COT/.test(e.error)));
+  assert.ok(doc.errors.some(e => e.source === 'stress-shadow'));
+});
