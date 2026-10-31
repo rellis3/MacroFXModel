@@ -279,7 +279,7 @@ import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrat
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
-import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
+import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache, LEARN_BOUNDARY_UTC as _LV2_BOUNDARY } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
 import { evaluatePair as evaluateVolLevelPair, ALERT_LEVEL_KEYS as VOL_LEVEL_KEYS, dispersionContext as volDispersionContext, wtZone as volWtZone } from './js/volLevelAlertCore.js';
@@ -34709,9 +34709,12 @@ app.post('/api/levels-v2/learn', async (req, res) => {
     conditions: Array.isArray(b.conditions) ? b.conditions : [],
     minN: parseInt(b.minN) || 50, splitFrac: parseFloat(b.splitFrac) || 0.6,
     marginPct: parseFloat(b.marginPct) || 0, minLookback: parseInt(b.minLookback) || 20,
+    // Explicit session boundary, shared with the live ladder (levelsV2Engine.LEARN_BOUNDARY_UTC).
+    // It was the implicit 22 default before 2026-10-31; the value is unchanged, now stated.
+    boundaryHour: _LV2_BOUNDARY,
   };
   const force = b.force === true;                                    // ignore cache, recompute touches
-  const sig = JSON.stringify({ s: opts.sources, c: opts.conditions, ml: opts.minLookback });
+  const sig = JSON.stringify({ s: opts.sources, c: opts.conditions, ml: opts.minLookback, bh: opts.boundaryHour });
   const jobId = `v2l_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
   for (const [k, j] of lv2Jobs) if (Date.now() - (j.startedAt || 0) > 30 * 60 * 1000) lv2Jobs.delete(k);
