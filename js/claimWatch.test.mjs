@@ -115,6 +115,21 @@ console.log('[gauges]');
   ok('oil +12% with breakevens flat fires the mirrored oil-without-breakevens condition', g['gauge-oil-without-bei'].firing);
   ok('no inputs → no gauges', evaluateGauges({}).length === 0); }
 
+console.log('[hysteresis]');
+{
+  const { RELEASE_AT } = await import('./claimWatch.js');
+  const B = bundle(); for (let i = N - 20; i < N; i++) B.series.vix[i] = 16 + 0.2 * (i - (N - 20));
+  B.series.vix[N - 1] = B.series.vix[N - 6] + 4.6;                       // progress 0.92: under the line, above RELEASE_AT
+  const prevLive = [{ id: 'claim-fear-spike', firing: true, stage: 'live' }];
+  const held = by(evaluateClaims({ bundle: B }, prevLive))['claim-fear-spike'];
+  ok(`a firing setup at ${held.value.progress} of its threshold stays LIVE (held) when it was firing last tick`, held.firing && held.stage === STAGE.live && held.value.held === true && /Still LIVE/.test(held.detail) && RELEASE_AT === 0.9);
+  const fresh = by(evaluateClaims({ bundle: B }, []))['claim-fear-spike'];
+  ok('the same reading with no prior fire is approaching, not live', !fresh.firing && fresh.stage === STAGE.approaching);
+  B.series.vix[N - 1] = B.series.vix[N - 6] + 4.0;                       // progress 0.80: below RELEASE_AT → clears
+  const cleared = by(evaluateClaims({ bundle: B }, prevLive))['claim-fear-spike'];
+  ok('below RELEASE_AT it clears even if it was firing', !cleared.firing && cleared.stage === STAGE.approaching && !cleared.value.held);
+}
+
 console.log('[scoreClaimFires]');
 { const B = bundle(); const fireDay = dates[N - 30];
   const log = [

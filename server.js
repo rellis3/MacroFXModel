@@ -4330,7 +4330,7 @@ async function _deskWatchTick(opts = {}) {
     const store = await _loadWatchStore();
     if (!store) throw new Error('desk_watch_v1 unreadable; refusing to overwrite');
     const inputs = await _watchInputs();
-    const states = _evaluateTriggers(inputs);
+    const states = _evaluateTriggers({ ...inputs, prevStates: store.states });   // prevStates: hysteresis for the watch register's claim rows
     const prevById = new Map(store.states.map(t => [t.id, t]));
     // A trigger whose input failed this pass is ABSENT from `states`. Dropping it lost its state, so when the
     // input came back the same condition 'started' again and re-sent the Telegram (stock-bond: 6 starts, 1 clear).
