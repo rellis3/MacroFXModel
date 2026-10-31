@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Market State</title>
+<style>
+  /* Layout: one column of five stacked hierarchy tiers (rates → vol), then the chain graph and the
+     flow timeline side by side, then drivers and data health. Palette mirrors today.html (dark default,
+     body.light toggle) so the page sits inside the same site. */
+  :root{
+    --bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--purple:#8b5cf6;--red:#f85149;
+    --bull-bg:rgba(16,185,129,.12);--bear-bg:rgba(249,115,22,.12);--amber-bg:rgba(210,153,34,.12);--blue-bg:rgba(79,125,240,.12);--neu-bg:rgba(110,118,129,.15);
+    --t-rates:#4f7df0;--t-credit:#14b8a6;--t-fx:#d29922;--t-equities:#8b5cf6;--t-vol:#f85149;--t-drivers:#9da7b3;
+    --s1:#161b22;--s2:#1c2330;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  body.light{
+    --bg:#f4f6fb;--card:#ffffff;--card2:#eef1f7;--border:#d8dee8;--text:#0d1520;--text2:#4b5a6e;--text3:#7c8aa0;
+    --bull:#0a8a5c;--bear:#c2410c;--amber:#b45309;--blue:#1847c2;--purple:#6d28d9;--red:#c8222a;
+    --bull-bg:rgba(10,138,92,.10);--bear-bg:rgba(194,65,12,.10);--amber-bg:rgba(180,83,9,.10);--blue-bg:rgba(24,71,194,.10);--neu-bg:rgba(75,90,110,.08);
+    --t-rates:#1847c2;--t-credit:#0f766e;--t-fx:#b45309;--t-equities:#6d28d9;--t-vol:#c8222a;--t-drivers:#4b5a6e;
+    --s1:#ffffff;--s2:#eef1f7;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  button{font-family:inherit;cursor:pointer}
+  .wrap{max-width:1180px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));display:grid;gap:22px;padding-top:18px}
+  h1{font-size:22px;font-weight:700;letter-spacing:-.01em}
+  h2{font-size:15px;font-weight:700;margin-bottom:4px}
+  .sub{color:var(--text2);font-size:12.5px;max-width:78ch}
+  .eyebrow{font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;min-width:0}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .pill{display:inline-flex;align-items:center;gap:5px;font:600 11px/1 var(--mono);padding:4px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .pill.ok{color:var(--bull);background:var(--bull-bg);border-color:transparent}
+  .pill.warn{color:var(--amber);background:var(--amber-bg);border-color:transparent}
+  .pill.bad{color:var(--bear);background:var(--bear-bg);border-color:transparent}
+  .pill.neu{background:var(--neu-bg);border-color:transparent}
+  .head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-end}
+  .flowline{font-size:13px;color:var(--text);max-width:90ch}
+  .flowline b{font-weight:700}
+  /* tiers */
+  .tiers{display:grid;gap:8px}
+  .tier{display:grid;grid-template-columns:minmax(0,15rem) minmax(0,1fr);gap:14px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;position:relative;overflow:hidden}
+  .tier::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--tc)}
+  .tier-h{display:grid;gap:4px;align-content:start}
+  .tier-n{font:600 10.5px var(--mono);color:var(--tc);letter-spacing:.06em;text-transform:uppercase}
+  .tier-t{font-size:15px;font-weight:700}
+  .tier-role{font-size:11.5px;color:var(--text3)}
+  .tier-state{font-size:13px;font-weight:600;margin-top:4px}
+  .tier-detail{font-size:12px;color:var(--text2)}
+  .tone{margin-top:6px}
+  .first{font:600 11px var(--mono);color:var(--text2)}
+  .first b{color:var(--tc)}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;align-content:start}
+  .node{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 9px;display:grid;gap:3px;min-width:0;cursor:help}
+  .node.miss{opacity:.55}
+  .node-l{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .node-v{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-variant-numeric:tabular-nums}
+  .node-last{font:600 14px var(--mono)}
+  .node-d{font:600 11.5px var(--mono)}
+  .up{color:var(--bull)} .down{color:var(--bear)} .flat{color:var(--text3)}
+  .node svg{display:block;width:100%;height:30px}
+  .pct{height:4px;border-radius:2px;background:var(--neu-bg);position:relative}
+  .pct i{position:absolute;top:-2px;width:3px;height:8px;border-radius:1px;background:var(--text)}
+  .pct-l{display:flex;justify-content:space-between;font:10px var(--mono);color:var(--text3)}
+  @media (max-width:720px){.tier{grid-template-columns:1fr}}
+  /* chain + flow */
+  .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+  @media (max-width:900px){.grid2{grid-template-columns:1fr}}
+  .scroll{overflow-x:auto}
+  #chainSvg{display:block;min-width:760px;width:100%;height:auto}
+  #chainSvg text{fill:var(--text);font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+  #chainSvg .muted{fill:var(--text3)}
+  .edge{cursor:pointer}
+  .edge:hover path,.edge:focus path{stroke-width:3.2}
+  .edge:focus{outline:none}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11.5px;color:var(--text2);margin-top:8px}
+  .sw{display:inline-block;width:18px;height:0;border-top:3px solid;vertical-align:middle;margin-right:5px}
+  .detail{margin-top:10px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12.5px;display:grid;gap:5px}
+  .detail .k{font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
+  #flowSvg{display:block;width:100%;height:auto}
+  #flowSvg text{fill:var(--text);font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+  #flowSvg .muted{fill:var(--text3)}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+  th{font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .note{font-size:11.5px;color:var(--text3)}
+  .empty{padding:30px;text-align:center;color:var(--text2)}
+  .tbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 9px;font-size:11.5px}
+  .tbtn:focus-visible,.node:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="commandHub"></div>
+<script src="js/commandHub.js"></script>
+
+<main class="wrap">
+  <header class="head">
+    <div style="display:grid;gap:6px">
+      <div class="eyebrow">Market State Engine · v1</div>
+      <h1>Where the money is moving, layer by layer</h1>
+      <p class="sub">Rates → credit → FX → equities → volatility, in the order information usually flows. Every reading is a 20-day move against its own noise floor. This page describes the state. It does not forecast.</p>
+    </div>
+    <div class="row">
+      <span class="pill neu" id="asOf">loading…</span>
+      <span class="pill" id="healthPill">data health …</span>
+      <button class="tbtn" id="themeBtn" type="button">Light / dark</button>
+    </div>
+  </header>
+
+  <section class="card" style="display:grid;gap:6px">
+    <div class="eyebrow">Information flow this window</div>
+    <p class="flowline" id="flowText">Loading the state document…</p>
+    <p class="note" id="flowNote"></p>
+  </section>
+
+  <section class="tiers" id="tiers" aria-label="The hierarchy, layer by layer"></section>
+
+  <section class="card">
+    <h2>The chain: how one move feeds the next</h2>
+    <p class="sub">Each line is a textbook link. Colour says whether it is holding today (both ends moved the textbook way), broken (both moved, the wrong way round) or quiet. The marker says whether the link has ever been tested here as a lead. Select a line for the full read.</p>
+    <div class="scroll"><svg id="chainSvg" role="img" aria-label="Macro chain graph"></svg></div>
+    <div class="legend">
+      <span><i class="sw" style="border-color:var(--bull)"></i>holding</span>
+      <span><i class="sw" style="border-color:var(--bear)"></i>broken</span>
+      <span><i class="sw" style="border-color:var(--text3);border-top-style:dashed"></i>quiet / unmeasured</span>
+      <span>● tested, stands · ◐ tested, reopened or unverified · ○ never tested as a lead</span>
+    </div>
+    <div class="detail" id="linkDetail"><span class="note">Select a link to see the textbook claim, today's read and the evidence behind it.</span></div>
+    <p class="note" id="chainSummary" style="margin-top:8px"></p>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Who moved first</h2>
+      <p class="sub">The day each layer first moved past its noise floor in the last 20 days. The textbook order runs top to bottom; an amber ring marks a layer that moved out of turn. A description, not a tested lead.</p>
+      <svg id="flowSvg" role="img" aria-label="First-move timeline by layer"></svg>
+    </div>
+    <div class="card">
+      <h2>Real assets &amp; drivers</h2>
+      <p class="sub">The inputs the chain starts from: energy, metals and crypto.</p>
+      <div class="nodes" id="drivers" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Data health</h2>
+    <p class="sub">Every input with its last print. Stale inputs (older than 5 days) make their readings unreliable; they are listed first.</p>
+    <details id="healthBox" style="margin-top:8px"><summary class="tbtn" style="display:inline-block;list-style:none">Show every input</summary>
+    <div class="scroll" style="margin-top:8px"><table><thead><tr><th>Input</th><th>Last print</th><th>Age (days)</th><th>Source</th><th>State</th></tr></thead><tbody id="healthRows"></tbody></table></div></details>
+  </section>
+
+  <p class="note">Built from <code>/api/state</code> (js/stateEngine.js). Plan: plans/MARKET_STATE_ENGINE_PLAN.md. Evidence status per link: the 2026-10-31 code audit (js/evidenceAudit.js).</p>
+</main>
+
+<script type="module">
+import { CHAIN_LAYOUT } from './js/macroChain.js';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const TIER_COLOR = { rates: 'var(--t-rates)', credit: 'var(--t-credit)', fx: 'var(--t-fx)', equities: 'var(--t-equities)', vol: 'var(--t-vol)', drivers: 'var(--t-drivers)' };
+const TONE = { 'risk-on': ['ok', 'risk-on'], 'risk-off': ['bad', 'risk-off'], tightening: ['warn', 'tightening'], easing: ['ok', 'easing'],
+  'dollar-bid': ['warn', 'dollar bid'], 'dollar-offered': ['ok', 'dollar offered'], neutral: ['neu', 'neutral'], unknown: ['neu', 'no data'] };
+
+try { if (localStorage.getItem('stateTheme') === 'light') document.body.classList.add('light'); } catch {}
+$('themeBtn').addEventListener('click', () => {
+  document.body.classList.toggle('light');
+  try { localStorage.setItem('stateTheme', document.body.classList.contains('light') ? 'light' : 'dark'); } catch {}
+  if (window.__state) { drawChain(window.__state); drawFlow(window.__state); }
+});
+
+const fmtDelta = (r) => {
+  if (r.d20 == null) return '—';
+  const dp = r.unit === 'pct' ? 1 : r.unit === 'pt' ? 1 : 0;
+  const v = Math.abs(r.d20) < 0.5 * 10 ** -dp ? 0 : r.d20;   // no '-0bp'
+  const s = (v > 0 ? '+' : '') + v.toFixed(dp);
+  return r.unit === 'pct' ? s + '%' : r.unit === 'bp' ? s + 'bp' : s;
+};
+const fmtLast = (r) => {
+  if (r.last == null) return '—';
+  const v = Number(r.last);
+  return Math.abs(v) >= 1000 ? v.toLocaleString('en-GB', { maximumFractionDigits: 0 }) : v.toFixed(Math.abs(v) < 10 ? 2 : 1);
+};
+
+function sparkline(points, dir) {
+  const ys = (points ?? []).map(p => p[1]).filter(Number.isFinite);
+  if (ys.length < 2) return '<svg viewBox="0 0 100 30" aria-hidden="true"></svg>';
+  const lo = Math.min(...ys), hi = Math.max(...ys), span = hi - lo || 1;
+  const pts = ys.map((y, i) => [(i / (ys.length - 1)) * 100, 27 - ((y - lo) / span) * 24]);
+  const line = pts.map(p => p.map(n => n.toFixed(1)).join(',')).join(' ');
+  const col = dir === 'up' ? 'var(--bull)' : dir === 'down' ? 'var(--bear)' : 'var(--text3)';
+  const end = pts[pts.length - 1];
+  // 20-day window shading: the last ~14 business days of a 90-point series
+  const wx = Math.max(0, 100 - (14 / ys.length) * 100);
+  return `<svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+    <rect x="${wx.toFixed(1)}" y="0" width="${(100 - wx).toFixed(1)}" height="30" fill="var(--neu-bg)"/>
+    <polygon points="0,30 ${line} 100,30" fill="${col}" opacity=".12"/>
+    <polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.4" vector-effect="non-scaling-stroke"/>
+    <circle cx="${end[0].toFixed(1)}" cy="${end[1].toFixed(1)}" r="1.8" fill="${col}"/></svg>`;
+}
+
+function nodeCard(r) {
+  if (r.missing) return `<div class="node miss" tabindex="0" title="Not loaded"><div class="node-l">${esc(r.label)}</div><div class="node-v"><span class="node-last">—</span><span class="node-d flat">not loaded</span></div></div>`;
+  const cls = r.moved ? r.dir : 'flat';
+  const pc = r.pctile, sp = pc ? (pc.spanDays >= 330 ? `${Math.round(pc.spanDays / 365)}y` : `${Math.max(1, Math.round(pc.spanDays / 30.4))}m`) : '';
+  const pct = !pc ? '' : `<div class="pct" title="Where today's level sits within the last ${sp} (${pc.n} prior prints)"><i style="left:calc(${pc.pct}% - 1px)"></i></div><div class="pct-l"><span>${sp} low</span><span>${pc.pct}th pct</span><span>high</span></div>`;
+  const tip = `${r.label}: ${r.what ?? ''}\nLast ${r.asOf}. Noise floor ±${r.floor}${r.unit === 'pct' ? '%' : r.unit === 'bp' ? 'bp' : ''} over 20 days.${r.firstMove ? `\nFirst moved past its floor on ${r.firstMove.date} (${r.firstMove.dir}).` : ''}`;
+  return `<div class="node" tabindex="0" title="${esc(tip)}">
+    <div class="node-l">${esc(r.label)}</div>
+    <div class="node-v"><span class="node-last">${fmtLast(r)}</span><span class="node-d ${cls}">${fmtDelta(r)}</span></div>
+    ${sparkline(r.spark, cls)}${pct}</div>`;
+}
+
+function drawTiers(st) {
+  const rank = new Map(st.flow.sequence.map((s, i) => [s.id, i + 1]));
+  $('tiers').innerHTML = st.tiers.map(t => {
+    const [cls, word] = TONE[t.state.tone] ?? TONE.neutral;
+    const f = st.flow.sequence.find(s => s.id === t.id);
+    const first = f ? `<div class="first">Moved <b>#${rank.get(t.id)}</b> · ${esc(f.first.label)} on ${esc(f.first.date)}</div>` : `<div class="first">Quiet this window</div>`;
+    return `<article class="tier" style="--tc:${TIER_COLOR[t.id]}">
+      <div class="tier-h"><div class="tier-n">${t.order} · ${esc(t.short)}</div><div class="tier-t">${esc(t.label)}</div>
+        <div class="tier-role">${esc(t.role)}</div>
+        <div class="tier-state">${esc(t.state.headline)}</div>${t.state.detail ? `<div class="tier-detail">${esc(t.state.detail)}</div>` : ''}
+        <div class="row tone"><span class="pill ${cls}">${word}</span></div>${first}</div>
+      <div class="nodes">${t.readings.map(nodeCard).join('')}</div></article>`;
+  }).join('');
+  $('drivers').innerHTML = (st.drivers?.readings ?? []).map(nodeCard).join('');
+}
+
+function cssVar(name) { return getComputedStyle(document.body).getPropertyValue(name).trim() || '#888'; }
+
+function drawChain(st) {
+  const svg = $('chainSvg'), W = 900, colW = 150, rowH = 74, padX = 75, padY = 40;
+  const rows = Math.max(...Object.values(CHAIN_LAYOUT).map(p => p[1])) + 1;
+  const H = padY * 2 + (rows - 1) * rowH;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const pos = k => { const p = CHAIN_LAYOUT[k]; return p ? [padX + p[0] * colW, padY + p[1] * rowH] : null; };
+  const reading = {}; for (const t of [...st.tiers, st.drivers]) for (const r of t.readings ?? []) reading[r.key] = { ...r, tier: t.id };
+  const vcol = { holding: cssVar('--bull'), broken: cssVar('--bear'), quiet: cssVar('--text3'), unmeasured: cssVar('--text3') };
+  const mark = { stands: '●', reopened: '◐', unverified: '◐', untested: '○' };
+  const mk = (id, c) => `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="${c}"/></marker>`;
+  let out = `<defs>${mk('ah-holding', vcol.holding)}${mk('ah-broken', vcol.broken)}${mk('ah-quiet', vcol.quiet)}${mk('ah-unmeasured', vcol.unmeasured)}</defs>`;
+  // Trim each line so its arrowhead stops at the target chip's edge.
+  const trim = (a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, k = Math.min(0.45, (Math.abs(dy) > Math.abs(dx) ? 22 : 68) / len); return [b[0] - dx * k, b[1] - dy * k]; };
+  st.chain.links.forEach((l, i) => {
+    const a = pos(l.a?.key), b = pos(l.b?.key); if (!a || !b) return;
+    const dash = l.verdict === 'holding' || l.verdict === 'broken' ? '' : 'stroke-dasharray="5 4"';
+    const op = l.verdict === 'holding' || l.verdict === 'broken' ? 0.95 : 0.45;
+    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2 - (a[1] === b[1] ? 16 : 0);
+    out += `<g class="edge" tabindex="0" role="button" data-i="${i}" aria-label="${esc(l.short)}: ${l.verdict}">
+      <path d="M${a[0]},${a[1]} Q${mx},${my} ${trim(a, b)[0]},${trim(a, b)[1]}" fill="none" stroke="${vcol[l.verdict]}" stroke-width="2" opacity="${op}" ${dash} marker-end="url(#ah-${l.verdict})"/>
+      <path d="M${a[0]},${a[1]} Q${mx},${my} ${b[0]},${b[1]}" fill="none" stroke="transparent" stroke-width="12"/>
+      <text x="${(a[0] + 2 * mx + b[0]) / 4}" y="${(a[1] + 2 * my + b[1]) / 4 - 4}" font-size="14" text-anchor="middle" style="fill:${vcol[l.verdict]}">${mark[l.evidenceAudit.status] ?? '○'}</text></g>`;
+  });
+  for (const k of Object.keys(CHAIN_LAYOUT)) {
+    const p = pos(k), r = reading[k]; if (!p) continue;
+    const col = cssVar(`--t-${r?.tier ?? 'drivers'}`);
+    const dcol = !r || r.missing ? cssVar('--text3') : r.moved ? (r.dir === 'up' ? cssVar('--bull') : cssVar('--bear')) : cssVar('--text3');
+    const label = (r?.label ?? k).replace(/\s*\(.*\)$/, '');
+    out += `<g><rect x="${p[0] - 66}" y="${p[1] - 19}" width="132" height="38" rx="7" fill="${cssVar('--card2')}" stroke="${col}" stroke-width="1.4"/>
+      <text x="${p[0]}" y="${p[1] - 3}" font-size="10.5" text-anchor="middle">${esc(label.length > 22 ? label.slice(0, 21) + '…' : label)}</text>
+      <text x="${p[0]}" y="${p[1] + 12}" font-size="11" font-weight="700" text-anchor="middle" style="fill:${dcol};font-family:var(--mono)">${r && !r.missing ? esc(fmtDelta(r)) : '—'}</text></g>`;
+  }
+  svg.innerHTML = out;
+  svg.querySelectorAll('.edge').forEach(g => {
+    const show = () => showLink(st.chain.links[+g.dataset.i]);
+    g.addEventListener('click', show); g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(); } });
+  });
+  const s = st.chain.summary; $('chainSummary').textContent = `${s.headline} (${s.holding} holding, ${s.broken} broken, ${s.quiet} quiet, ${s.unmeasured} unmeasured).`;
+}
+
+function showLink(l) {
+  const ev = l.evidenceAudit;
+  const evPill = { stands: 'ok', reopened: 'warn', unverified: 'warn', untested: 'neu' }[ev.status] ?? 'neu';
+  const vPill = { holding: 'ok', broken: 'bad' }[l.verdict] ?? 'neu';
+  $('linkDetail').innerHTML = `<div class="row"><strong>${esc(l.short)}</strong><span class="pill ${vPill}">${esc(l.verdict)}</span><span class="pill ${evPill}">evidence: ${esc(ev.status)}</span></div>
+    <div><span class="k">Textbook</span> ${esc(l.textbook)}</div>
+    <div><span class="k">Today</span> ${esc(l.a?.label)} ${esc(l.a?.text)} → ${esc(l.b?.label)} ${esc(l.b?.text)}${l.dateGapDays > 3 ? ` <span class="note">(ends printed ${l.dateGapDays} days apart)</span>` : ''}</div>
+    <div><span class="k">Read</span> ${esc(l.read)}</div>
+    <div><span class="k">Evidence</span> ${esc(ev.text)}${ev.ids?.length ? ` <span class="note">${ev.ids.map(x => `${esc(x.id)} (${esc(x.status)})`).join(', ')}</span>` : ''}</div>`;
+}
+
+function drawFlow(st) {
+  const svg = $('flowSvg'), W = 420, rowH = 46, L = 92, R = 20, T = 26;
+  const H = T + st.tiers.length * rowH + 30;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const end = Date.parse(st.asOf ?? st.generatedAt), start = end - st.windowDays * 864e5;
+  const x = d => L + (W - L - R) * Math.min(1, Math.max(0, (Date.parse(d) - start) / (end - start)));
+  let out = '';
+  for (const f of [0, 0.25, 0.5, 0.75, 1]) {
+    const xx = L + (W - L - R) * f, d = new Date(start + f * (end - start)).toISOString().slice(5, 10);
+    out += `<line x1="${xx}" x2="${xx}" y1="${T - 6}" y2="${H - 26}" stroke="${cssVar('--border')}"/><text x="${xx}" y="${H - 10}" font-size="10" text-anchor="middle" class="muted">${d}</text>`;
+  }
+  const seq = new Map(st.flow.sequence.map((s, i) => [s.id, { ...s, rank: i + 1 }]));
+  // A dot is out of order when its rank differs from its place in the textbook order among the tiers that moved.
+  const expected = new Map([...st.flow.sequence].sort((a, b) => a.order - b.order).map((s, i) => [s.id, i + 1]));
+  st.tiers.forEach((t, i) => {
+    const y = T + i * rowH + rowH / 2, col = cssVar(`--t-${t.id}`), s = seq.get(t.id);
+    out += `<text x="${L - 10}" y="${y + 4}" font-size="12" text-anchor="end" font-weight="600">${esc(t.short)}</text>
+      <line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="${cssVar('--border')}" stroke-dasharray="2 4"/>`;
+    if (s) {
+      const cx = x(s.first.date), outOfOrder = s.rank !== expected.get(t.id);
+      out += `<circle cx="${cx}" cy="${y}" r="9" fill="${col}" ${outOfOrder ? `stroke="${cssVar('--amber')}" stroke-width="3"` : ''}/>
+        <text x="${cx}" y="${y + 4}" font-size="10" font-weight="700" text-anchor="middle" style="fill:${cssVar('--bg')}">${s.rank}</text>
+        <text x="${Math.min(cx + 14, W - R - 4)}" y="${y - 12}" font-size="10" class="muted" text-anchor="${cx > W - 120 ? 'end' : 'start'}">${esc(s.first.label)} ${s.first.dir === 'up' ? '▲' : '▼'}</text>`;
+    } else out += `<text x="${(L + W - R) / 2}" y="${y + 4}" font-size="11" text-anchor="middle" class="muted">quiet</text>`;
+  });
+  svg.innerHTML = out;
+}
+
+function drawHealth(st) {
+  const src = st.sources ?? {};
+  const stale = st.health.filter(h => h.stale).length;
+  $('healthPill').className = `pill ${stale === 0 ? 'ok' : stale <= 3 ? 'warn' : 'bad'}`;
+  if (stale) $('healthBox').open = true;
+  $('healthPill').textContent = stale === 0 ? 'all inputs fresh' : `${stale} stale input${stale === 1 ? '' : 's'}`;
+  $('healthRows').innerHTML = st.health.map(h => `<tr><td>${esc(h.label)}</td><td class="num">${esc(h.asOf ?? '—')}</td><td class="num">${h.ageDays ?? '—'}</td>
+    <td class="note">${esc(src[h.key] ?? '')}</td><td><span class="pill ${h.stale ? 'warn' : 'ok'}">${h.stale ? 'stale' : 'fresh'}</span></td></tr>`).join('')
+    || '<tr><td colspan="5" class="note">No inputs loaded.</td></tr>';
+}
+
+function render(st) {
+  window.__state = st;
+  $('asOf').textContent = `as of ${st.asOf ?? '—'}`;
+  const f = st.flow;
+  $('flowText').innerHTML = esc(f.text).replace(/NOT the textbook order/, '<b>NOT the textbook order</b>');
+  $('flowNote').textContent = f.note + (st.errors?.length ? ` Inputs that failed: ${st.errors.map(e => e.source).join(', ')}.` : '');
+  drawTiers(st); drawChain(st); drawFlow(st); drawHealth(st);
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/state', { headers: { accept: 'application/json' } });
+    const st = await r.json();
+    if (!st?.tiers) throw new Error(st?.error ?? 'no state document');
+    render(st);
+  } catch (e) {
+    $('flowText').textContent = `Could not load /api/state: ${e.message}. Reload to try again.`;
+    $('tiers').innerHTML = `<div class="card empty">The state document did not load, so no layer can be shown. Check the server log for /api/state.</div>`;
+  }
+}
+load();
+</script>
+</body>
+</html>

@@ -104,6 +104,7 @@ import { createDailyRead } from './js/dailyReadRoutes.js';
 import { createHarShadow } from './js/harShadowRoutes.js';
 import { createDrawdownShadow } from './js/drawdownShadowRoutes.js';   // drawdown shadow band, read-only (drawdown-forecast-error A1)
 import { createStressShadow } from './js/stressShadowRoutes.js';       // stress-count shadow band, read-only (forecast-miss-scan A1)
+import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
 import { createFeed } from './js/feedRoutes.js';
@@ -30416,6 +30417,7 @@ dailyRead.mount(app);
 createHarShadow({ kv }).mount(app);
 createDrawdownShadow({ kv }).mount(app);
 createStressShadow({ kv }).mount(app);
+createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1 }).mount(app);   // must sit above the /api/* worker catch-all
 svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);
 
 // ── Surface Lab (surface-lab.html) ────────────────────────────────────────────
