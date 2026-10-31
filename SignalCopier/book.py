@@ -73,7 +73,8 @@ class Book:
         cands = [o for o in pool
                  if o['symbol'] == ev['symbol'] and o['side'] == ev['side']]
         exact = [o for o in cands
-                 if abs(o['entry'] - ev['entry']) <= PRICE_TOL * max(o['entry'], 1e-9)]
+                 if o.get('entry') is not None and ev.get('entry') is not None
+                 and abs(o['entry'] - ev['entry']) <= PRICE_TOL * max(o['entry'], 1e-9)]
         if exact:
             return exact
         return cands if len(cands) == 1 else []
@@ -137,7 +138,7 @@ class Book:
 def describe(o):
     bits = [f"{o['side']} {o['symbol']}",
             'now' if o['order'] == 'market' else o['order'],
-            f"@ {o['entry']:g}"]
+            f"@ {o['entry']:g}" if o.get('entry') is not None else '(no price given)']
     if o.get('sl') is not None:
         bits.append(f"SL {o['sl']:g}")
     if o.get('tp') is not None:

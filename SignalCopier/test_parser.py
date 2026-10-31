@@ -176,6 +176,55 @@ def test_book_unmatched_close_warns():
     assert t[0][0] == 'warn'
 
 
+# ── formats from the 2026-10-31 history parse report (real messages) ────
+def test_daily_message_without_blank_lines():
+    # the 30 Oct 07:00 message came through with no blank lines between trades:
+    # the old block parser returned [header, holding] and silently dropped all 9
+    import re
+    tight = re.sub(r'\n\s*\n', '\n', DAILY)
+    evs = parse_message(tight)
+    opens = kinds(evs, 'open')
+    assert len(opens) == 9 and not kinds(evs, 'review')
+    assert [o['style'] for o in opens] == ['swing'] * 7 + ['day'] * 2
+    assert opens[7]['cancel_at'] == '13:00' and opens[7]['close_at'] == '21:00' and opens[7]['tp'] == 28703
+    assert opens[0]['sl'] == 157.96 and opens[0]['close_rule'] == 'manual'
+    assert parse_message(tight.replace('\n', '\r\n')) == evs           # Windows line ends too
+
+
+def test_symbol_first_market_entry_with_numbered_targets():
+    (o,) = parse_message("XAUUSD buy\n\n⛔ SL: 4002\n✅ Targets:\n1) 4018\n2) 4038")
+    assert (o['kind'], o['symbol'], o['side'], o['order'], o['entry']) == ('open', 'XAUUSD', 'BUY', 'market', None)
+    assert o['sl'] == 4002 and o['tp'] == 4018 and o['targets'] == [4018, 4038]
+
+
+def test_side_then_order_type():
+    (o,) = parse_message("SELL STOP GOLD at 4,000\nSL 4,020, TP 3,950")
+    assert (o['symbol'], o['side'], o['order'], o['entry'], o['sl'], o['tp']) == ('GOLD', 'SELL', 'stop', 4000, 4020, 3950)
+
+
+def test_result_messages_are_closes():
+    cases = {
+        "✅ Target hit on the SP500 SELL from 7,640.6": ('SP500', 'SELL', 7640.6, 'target hit'),
+        "❌ US30 SELL from 52,445 stopped out": ('US30', 'SELL', 52445, 'stopped out'),
+        "❌ SP500 SELL from 7,719.3 stopped out": ('SP500', 'SELL', 7719.3, 'stopped out'),
+        "❌ EURUSD SELL from 1.1114 stopped out": ('EURUSD', 'SELL', 1.1114, 'stopped out'),
+        "❌ Stopped the Ethereum SELL from 2,321.38 at 2,346.96": ('ETHEREUM', 'SELL', 2321.38, 'stopped out'),
+    }
+    for text, (sym, side, px, why) in cases.items():
+        (e,) = parse_message(text)
+        assert (e['kind'], e['symbol'], e['side'], e['entry'], e['reason']) == ('close', sym, side, px, why), text
+
+
+def test_filled_notice_is_info_not_a_new_trade():
+    evs = parse_message("Filled: the US30 limit SELL at 52,445 is now open")
+    assert [e['kind'] for e in evs] == ['info']
+
+
+def test_symbol_first_does_not_eat_words():
+    assert not kinds(parse_message("the limit sell at 52,445 is now open"), 'open')
+    assert not kinds(parse_message("Swings, hold until I post the close"), 'open')
+
+
 if __name__ == '__main__':
     fns = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     for f in fns:

@@ -22,7 +22,7 @@ export function joinTradesToSignals(trades, signals) {
     const s = id ? byId.get(id) : null;
     if (!s) return { ...t, signal_id: id, signal: null };
     const d = s.side === 'BUY' ? 1 : -1;
-    const risk = s.sl != null ? Math.abs(s.entry - s.sl) : null;
+    const risk = s.sl != null && s.entry != null ? Math.abs(s.entry - s.sl) : null;   // entry null: "XAUUSD buy" with no price
     const slipR = risk ? +(d * (t.open_price - s.entry) / risk).toFixed(3) : null;      // + = worse than his entry
     const ourRisk = s.sl != null ? Math.abs(t.open_price - s.sl) : null;
     const realR = t.r != null ? t.r
