@@ -183,6 +183,30 @@ return NULL or UNDERPOWERED on the shuffled copy *without* the plant. Both check
 script refuses the real run unless both passed in the same session. No outcome had been computed: the scoring script
 (`41_expiry_pull_score.py`) did not exist when this was written.
 
+### A2 — 2026-11-01 — PRE-RESULTS
+**What "the plant must pass the gate" means when P1 is underpowered.** A planted 0.25 can only pass the gate when the
+count-first MDE is at or below 0.25. If the count-first pass rules P1 UNDERPOWERED, requiring a gate pass would block
+the run forever, and the verdict would be UNDERPOWERED either way. The control's job is to prove the pipeline is right,
+so it now requires:
+- **always:** the recovered planted mean is within max(0.10, the CI half-width) of (the shuffled copy's mean + 0.25), and its 95% CI contains that value. Shuffling within an instrument keeps mean(L)·mean(R) (an instrument that trended while its books mostly leaned one way), so the plant is measured on top of that, not against a flat 0.25;
+- **only when P1 is POWERED:** the planted copy also passes the full gate;
+- **always:** the shuffled copy without a plant does not validate.
+
+Found while running `--selftest` on synthetic data, before any real data was loaded. No real outcome had been computed.
+
+### A3 — 2026-11-01 — PRE-RESULTS
+**The positive control no longer requires the planted copy to pass the gate, even when P1 is powered.** Gate (a)
+requires the *estimate* to be at least the bar. A plant exactly at the bar (0.25) gives an estimate below 0.25 about
+half the time, so "must pass the gate" fails by chance. On synthetic no-pull data it failed 2 seeds in 3 while
+recovering the plant to within 0.01 every time. The control's purpose is to show the pipeline measures correctly, so it
+is now:
+- (1) the planted mean is recovered within max(0.10, the CI half-width) of the shuffled mean + 0.25, with that value
+  inside the planted CI;
+- (2) the shuffled copy without a plant does not validate.
+
+The gate logic itself is checked separately, in `--selftest`, on synthetic books with a strong planted pull (it must
+validate) and with none (it must not). No real outcome had been computed.
+
 ---
 
 ## RESULTS — run <YYYY-MM-DD>
