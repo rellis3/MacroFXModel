@@ -161,6 +161,58 @@ def find_fill_swing(pre_h, pre_l, o, h, l, mins, adr, min_imp=0.10, entry_cut=36
     return None
 
 
+def find_fill_window(pre_h, pre_l, o, h, l, mins, adr, min_imp=0.10, entry_cut=360, buy_l=None, buy_o=None, win=60):
+    """Anchor 'window' (owner 2026-11-01): the 1 = the highest high (sell) / lowest low (buy) within
+    `win` trading minutes either side of the open (pre bars counted by index: -1 = the last bar before
+    the open, so gold's daily break is skipped); the 0 = the session extreme reached after that 1.
+    Causal (at bar k only bars <= k). Mirrors js/dailyOpenFib.js findFillWindow exactly."""
+    if buy_l is None:
+        buy_l, buy_o = l, o
+    n = len(h)
+    if n < 3:
+        return None
+    P = len(pre_h)
+    Hc = np.concatenate([np.asarray(pre_h, float), h])
+    Lc = np.concatenate([np.asarray(pre_l, float), l])
+    Mc = np.concatenate([np.arange(-P, 0), np.asarray(mins)])
+    thr = min_imp * adr
+    for k in range(n - 1):
+        j = k + 1
+        if mins[j] > entry_cut:
+            break
+        m = P + k + 1
+        dA, dat, uA, uat = -np.inf, -1, np.inf, -1
+        for i in range(m):
+            if Mc[i] < -win or Mc[i] > win:
+                continue
+            if Hc[i] >= dA:
+                dA, dat = Hc[i], i
+            if Lc[i] <= uA:
+                uA, uat = Lc[i], i
+        if dat < 0:
+            continue
+        L, tL, H, tH = np.inf, -1, -np.inf, -1
+        for i in range(max(dat + 1, P), m):
+            if Lc[i] <= L:
+                L, tL = Lc[i], i
+        for i in range(max(uat + 1, P), m):
+            if Hc[i] >= H:
+                H, tH = Hc[i], i
+        s_ok = tL >= 0 and dA - L >= thr
+        b_ok = tH >= 0 and H - uA >= thr
+        if s_ok and b_ok:
+            down = True if H < dA else (False if L > uA else tL > tH)
+        elif s_ok or b_ok:
+            down = bool(s_ok)
+        else:
+            continue
+        if down and h[j] >= dA:
+            return dict(side=-1, j=j, A=dA, L0=L, entry=max(dA, o[j]), imp=(dA - L) / adr, t_ext=int(tL - P), t_anchor=int(dat - P))
+        if (not down) and buy_l[j] <= uA:
+            return dict(side=+1, j=j, A=uA, L0=H, entry=min(uA, buy_o[j]), imp=(H - uA) / adr, t_ext=int(tH - P), t_anchor=int(uat - P))
+    return None
+
+
 def _to_short(o, h, l, side):
     """Map a buy onto the sell geometry by negating prices (high <-> low)."""
     if side < 0:

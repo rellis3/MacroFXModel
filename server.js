@@ -4921,7 +4921,7 @@ async function _dofTick() {
     for (const [inst, label] of _DOF_INST) {
       for (const a of anchors) {
         const date = _dofKey(a), k = `${inst}|${date}`, have = _dof.rows.get(k);
-        if (have?.final && (have.empty || have.swing)) continue;     // rows stored before the swing anchor existed are recomputed
+        if (have?.final && (have.empty || _DOF_ANCHORS.every(x => have[x]))) continue;     // rows stored before an anchor was added are recomputed
         if (a !== cur && budget <= 0) continue;            // backfill a few sessions per tick; the live session always runs
         if (a !== cur) budget--;
         try {
@@ -4956,7 +4956,7 @@ function _dofBacktest() {
     const out = {};
     for (const [inst, k] of Object.entries(_DOF_BT_KEY)) {
       const v = R[k]?.variants_ba ?? {}, row = key => { const n = v[key]?.net; return n ? { n: n.n, mean: n.mean, lo: n.lo, hi: n.hi, win: n.win } : null; };
-      out[inst] = { high: row('high|imp0.1|tpzero|be1'), do: row('do|imp0.1|tpzero|be1'), swing: null, sessions: R[k]?.sessions ?? null, verdict: k === 'gold' ? R[k]?.verdict_primary ?? 'NULL' : 'descriptive' };
+      out[inst] = { high: row('high|imp0.1|tpzero|be1'), do: row('do|imp0.1|tpzero|be1'), swing: null, window: null, sessions: R[k]?.sessions ?? null, verdict: k === 'gold' ? R[k]?.verdict_primary ?? 'NULL' : 'descriptive' };
     }
     return out;
   } catch { return null; }
