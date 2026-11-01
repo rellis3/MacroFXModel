@@ -74,7 +74,7 @@ const ev = id => ({ id, status: EVIDENCE_AUDIT[id]?.status ?? 'untested', banked
  * The layer. `raw` holds FRED series under their ids; `tgaDaily` is a Map or {date: $bn} of DTS closing balances.
  * Returns { rows, net: {stats, series, impulse}, warnings, evidence, note }.
  */
-export function summariseLiquidity({ raw = {}, tgaDaily = null, bis = null, via = {}, sparkWeeks = 156 } = {}) {
+export function summariseLiquidity({ raw = {}, tgaDaily = null, bis = null, g4 = null, via = {}, sparkWeeks = 156 } = {}) {
   const warnings = netLiqUnitWarnings({ walcl: clean(raw.WALCL).map(p => p.value), tga: clean(raw.WTREGEN).map(p => p.value), rrp: clean(raw.RRPONTSYD).map(p => p.value) });
   const weekly = netLiquidityWeekly({ walcl: raw.WALCL, tga: raw.WTREGEN, rrp: raw.RRPONTSYD });
   const net = weekly.length ? weeklyStats(weekly) : null;
@@ -114,8 +114,10 @@ export function summariseLiquidity({ raw = {}, tgaDaily = null, bis = null, via 
     usdHistory: (bis.usdHistory ?? []).filter(x => Number.isFinite(x?.g)).map(x => ({ date: x.period, value: x.g })),
   } : null;
   for (const r of rows) { const id = { walcl: 'WALCL', tga: 'WTREGEN', rrp: 'RRPONTSYD', reserves: 'WRESBAL', swaps: 'SWPT', bankCredit: 'TOTBKCR' }[r.id]; if (id && via[id]) r.via = via[id]; }
+  // G4 central-bank liquidity (Fed net + ECB + BoJ + PBoC proxy, in USD) from the engine global-liquidity.html runs.
+  const g4Out = g4 && Number.isFinite(g4.level) ? { ...g4, evidence: 'never tested here as a forecast (no Evidence Book entry); description only' } : null;
   return {
-    rows, global,
+    rows, global, g4: g4Out,
     net: net ? { ...net, impulse, today, series: weekly.slice(-sparkWeeks).map(p => ({ date: p.date, value: r1(p.value) })) } : null,
     warnings,
     evidence: [ev('net-liquidity-tailwind-spx'), ev('net-liquidity-tailwind-nq'), ev('bank-credit-dollar-dxy'), ev('bank-credit-panel-equity')],

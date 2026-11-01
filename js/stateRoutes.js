@@ -14,6 +14,8 @@ import { buildState } from './stateEngine.js';
 import { assembleChainSeries, CHAIN_OHLC, FRED_KEYS, YAHOO_FALLBACK } from './stateSources.js';
 import { summariseGlobal, summariseEconomies, summariseLayers, activeEdges, todayRegimes, edgeRegimeContext } from './stateLayers.js';
 import { summariseLiquidity } from './stateLiquidity.js';
+import { summariseCountries, CB_FOR } from './stateCountries.js';
+import { summariseAssets } from './stateAssets.js';
 import { longContext, fxBoard, surpriseHistory, cotBoard } from './stateHistory.js';
 import { playbook } from './statePlaybook.js';
 
@@ -87,7 +89,7 @@ export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = conso
       local('intl-yields'), local('crack'), local('chain-extra', 25_000), local('stress-shadow', 20_000), local('fed-path'), local('econ-surprise', 20_000),
       kvJson('macro_regime_fx_v1'), kvJson('credit_quality_v1'),
       read('global-read', readers.globalRead), read('risk-flags', readers.riskFlags, 20_000), read('funding-read', readers.funding),
-      read('nowcast', readers.nowcast), read('oi-today', readers.oiToday), read('cot-state', readers.cotState, 30_000), read('vol-forecast', readers.volForecast),
+      read('nowcast', readers.nowcast), read('oi-today', readers.oiToday), read('cot-state', readers.cotState, 90_000), read('vol-forecast', readers.volForecast),
     ]);
     for (const [name, v, ok] of [['intl-yields', iy, iy?.series], ['crack', cr, cr?.series], ['chain-extra', cx, cx?.series], ['stress-shadow', stress, stress?.conditions],
       ['fed-path', fedPath, fedPath?.ok], ['econ-surprise', surprise, surprise?.byCcy], ['macro-regime (KV)', regime, regime?.now], ['credit-quality (KV)', creditQuality, creditQuality?.quality != null]])
@@ -102,11 +104,23 @@ export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = conso
     doc.global = summariseGlobal({ globalRead, riskFlags, regime, funding, creditQuality });
     doc.economies = summariseEconomies({ surprise, nowcast, fedPath, fredHist, intlYields: iy?.series, cot: cotState });
     doc.layers = summariseLayers({ volForecast, cot: cotState, oi: oiToday });
+    // Country position: the per-economy stores the server already builds, plus each central bank's latest read.
+    const STORE_KV = { cpi: 'cpi_v1', ppi: 'ppi_v1', gdp: 'gdp_v1', ism: 'ism_v1', labor: 'labor_market_v1', retail: 'retail_sales_v1',
+      confidence: 'consumer_confidence_v1', trade: 'trade_balance_v1', realYield: 'real_yield_v1', curve: 'yield_curve_v1', rateDiff: 'rate_diff_v1' };
+    const storeVals = await Promise.all(Object.values(STORE_KV).map(k => kvJson(k)));
+    const stores = Object.fromEntries(Object.keys(STORE_KV).map((k, i) => [k, storeVals[i]]));
+    const cbPairs = await Promise.all(Object.entries(CB_FOR).map(async ([ccy, key]) => [ccy, { latest: await local(`${key}/latest`), calendar: await local(`${key}/calendar`) }]));
+    const cb = Object.fromEntries(cbPairs.map(([c, v]) => [c, { latest: v.latest?.ok ? v.latest : null, calendar: v.calendar?.ok ? v.calendar : null }]));
+    const cpiFallback = (await read('national CPI (ONS, StatCan)', readers.cpiFallback, 45_000)) ?? {};
+    doc.countries = summariseCountries({ stores, cb, surprise, cpiFallback });
+    for (const k of doc.countries.missingStores) errors.push({ source: `country store ${STORE_KV[k]}`, error: 'not built yet on this server' });
+    const drill = await read('drill bundle (sectors, names, internals)', readers.drill, 120_000);
+    doc.assets = drill ? summariseAssets(drill) : null;
     // Liquidity & banking: keyed FRED (public CSV only without a key), Treasury DTS, BIS store. Missing stays missing.
     const liqRaw = await read('liquidity', readers.liquidity, 120_000);
     if (liqRaw) {
       for (const e of liqRaw.errors ?? []) errors.push({ source: 'liquidity', error: e });
-      doc.layers.liquidity = summariseLiquidity({ raw: liqRaw.raw ?? {}, tgaDaily: liqRaw.tgaDaily, bis: liqRaw.bis, via: liqRaw.via ?? {} });
+      doc.layers.liquidity = summariseLiquidity({ raw: liqRaw.raw ?? {}, tgaDaily: liqRaw.tgaDaily, bis: liqRaw.bis, g4: liqRaw.g4, via: liqRaw.via ?? {} });
       for (const w of doc.layers.liquidity.warnings) errors.push({ source: 'liquidity units', error: w });
     } else doc.layers.liquidity = null;
     const nq = series.nq; const nq5 = Array.isArray(nq) && nq.length > 6 ? (nq[nq.length - 1].value / nq[nq.length - 6].value - 1) * 100 : null;
