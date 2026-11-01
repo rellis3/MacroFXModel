@@ -188,6 +188,15 @@ svg text{font-family:var(--mono)}
     <div class="legend"><span>Left: blue = dealers long gamma at that strike (damps moves), red = short (chases moves). Right: blue = decay alone makes dealers buy at that strike, red = sell, per 15 minutes. Dashed line = price now. Time runs left to right from the book's snapshot.</span></div>
   </div>
 
+  <div class="card" id="fpCard">
+    <h2><em>05f</em> NQ order flow — who hit the quote, minute by minute
+      <span class="tgl"><select id="fpDay" class="btn" style="padding:3px 8px"></select></span></h2>
+    <div class="sub"><b>What this is:</b> NQ trades from NinjaTrader, split into buying (printed above the previous price) and selling (printed below it), grouped into 5-minute bars. The top line is price, the bars are buy minus sell (delta), the bottom line is the running total through the day. <b>What it is not:</b> a signal, and not a quote-matched footprint. The sign comes from price movement, not the bid and ask, so it understates size; on a 10-minute test it agreed with quote matching on the direction of every minute. Total volume matches NinjaTrader's own bars to within 0.1%. Times are UTC; the US cash open is 13:30 UTC while New York is on summer time, 14:30 after the clocks change.</div>
+    <div id="fpStats" class="minis" style="margin:8px 0"></div>
+    <canvas id="fpCv" style="width:100%;max-width:1100px;height:380px;display:block"></canvas>
+    <div class="legend"><span><i style="background:rgb(70,184,122)"></i>net buying</span><span><i style="background:rgb(232,97,95)"></i>net selling</span><span><i style="background:#8fb5ff"></i>price</span><span><i style="background:#f0b04a"></i>running delta</span></div>
+  </div>
+
   <div class="card" id="gkCard">
     <h2><em>05d</em> Greek context: turn each layer on or off
       <span class="tgl" id="gkExp" style="margin-left:auto"><span class="pill on" data-gexp="3">≤3 DTE</span><span class="pill" data-gexp="30">≤30 DTE</span><span class="pill" data-gexp="400">whole book</span></span></h2>
@@ -1085,6 +1094,40 @@ async function drawDayFlow(pair, day) {
 // Model, not measurement: open interest is fixed at the snapshot, IV is held, dealers are assumed long calls / short puts. Time passing shrinks each contract's T
 // (so 0DTE gamma builds into the close and expired contracts drop out), and the charm panel is the dealer hedge that time decay alone forces if price sat at that level.
 const SF = { cache: {} };
+// ── 05f NQ order flow: delta by 5 minutes from the NT8 tick-rule file (scripts/footprint/nt8_footprint.py -> analysis/output/footprint/site/) ──
+let FP = { days: null, cache: {} };
+async function drawFootprint() {
+  const cv = $('#fpCv'), sel = $('#fpDay'), st = $('#fpStats'); if (!cv) return;
+  const say = t => { st.innerHTML = ''; const c = cv.getContext('2d'); cv.width = cv.clientWidth; cv.height = 380; c.fillStyle = '#6b7585'; c.font = '13px ui-monospace,Consolas,monospace'; c.fillText(t, 12, 28); };
+  try {
+    if (!FP.days) FP.days = await (await fetch('/analysis/output/footprint/site/index.json', { cache: 'no-store' })).json();
+    if (!FP.days.length) return say('No order-flow days saved yet.');
+    if (!sel.options.length) { FP.days.slice().reverse().forEach(d => sel.add(new Option(d, d))); sel.onchange = drawFootprint; }
+    const day = sel.value || FP.days[FP.days.length - 1];
+    const D = FP.cache[day] || (FP.cache[day] = await (await fetch('/analysis/output/footprint/site/NQ_' + day + '.json', { cache: 'no-store' })).json());
+    const bins = []; let cur = null;
+    for (const [t, b, s, c] of D.v) { const m = (+t.slice(0, 2)) * 60 + +t.slice(2), k = Math.floor(m / 5); if (!cur || cur.k !== k) bins.push(cur = { k, buy: 0, sell: 0, close: c }); cur.buy += b; cur.sell += s; cur.close = c; }
+    let cvd = 0; bins.forEach(b => { b.d = b.buy - b.sell; cvd += b.d; b.cvd = cvd; });
+    const tb = bins.reduce((a, b) => a + b.buy, 0), ts = bins.reduce((a, b) => a + b.sell, 0), fmt = n => Math.round(n).toLocaleString();
+    st.innerHTML = `<div class="mini"><div class="k">Bought</div><div class="v" style="font-size:15px">${fmt(tb)}</div></div><div class="mini"><div class="k">Sold</div><div class="v" style="font-size:15px">${fmt(ts)}</div></div><div class="mini"><div class="k">Net (delta)</div><div class="v" style="font-size:15px;color:${tb - ts >= 0 ? 'rgb(70,184,122)' : 'rgb(232,97,95)'}">${tb - ts >= 0 ? '+' : ''}${fmt(tb - ts)}</div><div class="n">${(100 * (tb - ts) / (tb + ts)).toFixed(2)}% of volume</div></div>`
+      + (D.volume_check ? `<div class="mini"><div class="k">Volume check</div><div class="v" style="font-size:15px">${D.volume_check.pct_diff > 0 ? '+' : ''}${D.volume_check.pct_diff}%</div><div class="n">vs NinjaTrader 1-minute bars</div></div>` : '');
+    const dpr = devicePixelRatio || 1, W = cv.clientWidth, H = 380; cv.width = W * dpr; cv.height = H * dpr;
+    const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const L = 54, R = 54, n = bins.length, x = i => L + (i + 0.5) * (W - L - R) / n, bw = Math.max(1, (W - L - R) / n * 0.8);
+    const pr = bins.map(b => b.close), pmin = Math.min(...pr), pmax = Math.max(...pr), yP = v => 12 + (pmax - v) / ((pmax - pmin) || 1) * 120;
+    const dm = Math.max(...bins.map(b => Math.abs(b.d))) || 1, y0 = 205, yD = v => y0 - v / dm * 55;
+    const cm = Math.max(...bins.map(b => Math.abs(b.cvd))) || 1, y1 = 325, yC = v => y1 - v / cm * 45;
+    c.font = '10.5px ui-monospace,Consolas,monospace'; c.fillStyle = '#6b7585';
+    c.textAlign = 'left'; c.fillText('price', 4, 12); c.fillText('delta per 5 min', 4, 150); c.fillText('running delta', 4, 272);
+    c.textAlign = 'right'; c.fillText(px(pmax), W - 4, 20); c.fillText(px(pmin), W - 4, 132);
+    c.strokeStyle = 'rgba(255,255,255,.1)'; for (const y of [y0, y1]) { c.beginPath(); c.moveTo(L, y); c.lineTo(W - R, y); c.stroke(); }
+    c.strokeStyle = '#8fb5ff'; c.lineWidth = 1.5; c.beginPath(); bins.forEach((b, i) => i ? c.lineTo(x(i), yP(b.close)) : c.moveTo(x(i), yP(b.close))); c.stroke();
+    bins.forEach((b, i) => { c.fillStyle = b.d >= 0 ? 'rgba(70,184,122,.85)' : 'rgba(232,97,95,.85)'; c.fillRect(x(i) - bw / 2, Math.min(y0, yD(b.d)), bw, Math.max(1, Math.abs(yD(b.d) - y0))); });
+    c.strokeStyle = '#f0b04a'; c.beginPath(); bins.forEach((b, i) => i ? c.lineTo(x(i), yC(b.cvd)) : c.moveTo(x(i), yC(b.cvd))); c.stroke();
+    c.fillStyle = '#6b7585'; c.textAlign = 'center';
+    bins.forEach((b, i) => { const m = b.k * 5; if (m % 120 === 0) c.fillText(String(Math.floor(m / 60)).padStart(2, '0') + ':00', x(i), H - 6); });
+  } catch (e) { say('Order flow unavailable: ' + e.message); }
+}
 async function drawSurfaceDay() {
   const svg = $('#sfChart'); if (!svg) return;
   const fail = m => { svg.innerHTML = `<text x="500" y="150" text-anchor="middle" fill="#6b7585" font-size="14">${esc(m)}</text>`; $('#sfStats').innerHTML = ''; };
@@ -1566,7 +1609,7 @@ function rail(){
 async function refresh(){
   CUR = derive(SYM); rail();
   drawHedging();     // async and self-contained: first, so a failure in another panel cannot skip it
-  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawDayDrift, drawSurfaceDay, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
+  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawDayDrift, drawSurfaceDay, drawFootprint, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
   drawBrief();

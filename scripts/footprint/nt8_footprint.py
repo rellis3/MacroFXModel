@@ -39,6 +39,10 @@ def main():
                footprint=[dict(t=r.bin.strftime("%H:%M"), p=float(r.p), buy=int(r.buy), sell=int(r.sell)) for r in fp.itertuples()])
     o = ROOT / "analysis/output/footprint"; o.mkdir(parents=True, exist_ok=True)
     f = o / f"{a.instrument}_{a.day}_nt8_tickrule.json"; f.write_text(json.dumps(out))
+    # small file the OI Lab page reads: [hhmm UTC, buy, sell, close] per minute, plus an index of the days available
+    sd = ROOT / "analysis/output/footprint/site"; sd.mkdir(parents=True, exist_ok=True)
+    (sd / f"NQ_{a.day}.json").write_text(json.dumps(dict(day=a.day, rule="tick rule", volume_check=chk, v=[[k.strftime("%H%M"), int(r.buy), int(r.sell), r.close] for k, r in g.iterrows()]), separators=(",", ":")))
+    days = sorted(x.stem[3:] for x in sd.glob("NQ_*.json")); (sd / "index.json").write_text(json.dumps(days))
     print("saved", f, "| volume check", chk, "| buy", int(g.buy.sum()), "sell", int(g.sell.sum()), "delta", int(g.delta.sum()))
 
 
