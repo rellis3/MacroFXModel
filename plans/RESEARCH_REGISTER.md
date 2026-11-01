@@ -20,6 +20,7 @@ script (§4) until someone claims, banks or parks each one.
 
 | ID | Question | Status | Branch | Updated | Prereg | Results | Ledger | Next |
 |---|---|---|---|---|---|---|---|---|
+| atlas-honest-gonogo | With the bias fixes in place, bid/ask fills and real costs, do Vote Atlas and Fib Atlas fade/follow decisions beat the same trades on shifted (placebo) ladders and on a random-walk null? One go/no-go per system | CLAIMED | ccr-1bb57402-3qmrb8 | 2026-11-01 | — | — | — | fix the biased opt-in settings, add the random-walk CI guard, build the bid/ask fill model, then write the prereg before any real-data run (needs R2 credentials in the session) |
 | yield-move-fx-range | Re-run after shared-code fix — DATA_SPEC §5 #13 (fetchD1Aligned BST labels): re-score on fixed London bars, to 2026-08-21 | RE-RUN | claude/repo-deep-review-refocus-xqe77q | 2026-10-31 | (original prereg) | — | yield-move-fx-range | EURUSD already clears its gate |
 | nonus-yield-gap-range | Re-run after shared-code fix — DATA_SPEC §5 #13: re-score on fixed London bars | RE-RUN | claude/repo-deep-review-refocus-xqe77q | 2026-10-31 | (original prereg) | — | nonus-yield-gap-range | gilts +0.12 [−0.001, +0.25] as run |
 | nonus-yield-gap-direction | Re-run after shared-code fix — DATA_SPEC §5 #13: re-score on fixed London bars | RE-RUN | claude/repo-deep-review-refocus-xqe77q | 2026-10-31 | (original prereg) | — | nonus-yield-gap-direction | 1-day effect was diluted ~half |
