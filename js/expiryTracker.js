@@ -28,6 +28,7 @@
  */
 import { oiMatrixExpiryLegs, oiCalcMaxPain } from './oi.js';
 import { fullBookGex } from './fullBookGex.js';
+import { bsCharm, bsVanna } from './gammaGreeks.js';
 
 const DAY = 864e5;
 export const TAIL_FRAC = 0.35;          // strikes further than 35% from the futures price are tail hedges, not zones (as _oiNearBook)
@@ -220,7 +221,51 @@ export function expiryView(series, { awayFrac = 0.01, topN = 6, sigmaAnnual = nu
     const g = fullBookGex([{ dte: last.dte, strikes: last._rows.map(r => r[0]), calls: last._rows.map(r => r[1]), puts: last._rows.map(r => r[2]) }],
       last.futures, { flatSigma: sigmaAnnual, span: 0.15, steps: 300 });
     if (g) last.gamma = { regime: g.regime, flipPx: g.flip != null ? round(toSpot(g.flip, { basis: last.basis ?? 0, inverted })) : null, sigmaAnnual };
+    const gk = expiryHedgeGreeks(last._rows, last.futures, last.dte, sigmaAnnual, { inverted });
+    if (gk) last.greeks = { ...gk, charmFlipPx: gk.charmFlipK != null ? round(toSpot(gk.charmFlipK, { basis: last.basis ?? 0, inverted })) : null,
+      vannaFlipPx: gk.vannaFlipK != null ? round(toSpot(gk.vannaFlipK, { basis: last.basis ?? 0, inverted })) : null };
   }
   for (const d of days) delete d._rows;
   return { pair: series.pair, expiry: series.expiry, code: series.code ?? null, inverted, n: days.length, days };
+}
+
+/**
+ * Charm and vanna for ONE expiry, as the dealer hedge they force (the OI Lab hedging-map convention: dealers long
+ * calls / short puts, the same sign as GEX; hedge = minus the change in dealer delta). Flat vol, futures terms.
+ *  charm1d    contracts of underlying dealers must trade because one calendar day passes (price and IV still)
+ *  vannaIvDn2 contracts they must trade if implied vol falls 2 points (price and time still)
+ *  charmFlipPx / vannaFlipPx  where the per-strike net flow changes sign, nearest price (spot terms)
+ * Signs are in SPOT direction: + = dealers buy the pair as quoted (an inverted CME pair's buy is a spot sell).
+ * Descriptive: OI Lab and js/oi.js treat charm/vanna as context, and no test here says the flow moves price.
+ */
+export function expiryHedgeGreeks(rows, futures, dte, sigmaAnnual, { inverted = false } = {}) {
+  if (!Array.isArray(rows) || rows.length < 2 || !(futures > 0) || !(sigmaAnnual > 0)) return null;
+  const T = Math.max(1, Number.isFinite(dte) ? dte : 14) / 365;
+  const dir = inverted ? -1 : 1;
+  let charm = 0, vanna = 0;
+  const prof = [];
+  for (const [k, c, p] of rows) {
+    const net = (c || 0) - (p || 0);
+    const ch = -net * bsCharm(futures, k, T, sigmaAnnual) / 365;
+    const va = -net * bsVanna(futures, k, T, sigmaAnnual) * -0.02;
+    charm += ch; vanna += va;
+    prof.push({ k, ch, va });
+  }
+  prof.sort((a, b) => a.k - b.k);
+  const flip = key => {
+    let best = null;
+    for (let i = 1; i < prof.length; i++) {
+      const a = prof[i - 1][key], b = prof[i][key];
+      if (!a || !b || Math.sign(a) === Math.sign(b)) continue;
+      const x = prof[i - 1].k + Math.abs(a) / (Math.abs(a) + Math.abs(b)) * (prof[i].k - prof[i - 1].k);
+      if (best == null || Math.abs(x - futures) < Math.abs(best - futures)) best = x;
+    }
+    return best;
+  };
+  return {
+    charm1d: round(charm * dir, 1), vannaIvDn2: round(vanna * dir, 1),
+    charmSide: charm * dir > 0 ? 'buy' : charm * dir < 0 ? 'sell' : 'flat',
+    vannaSide: vanna * dir > 0 ? 'buy' : vanna * dir < 0 ? 'sell' : 'flat',
+    charmFlipK: flip('ch'), vannaFlipK: flip('va'), sigmaAnnual, unit: 'contracts of underlying (delta)',
+  };
 }

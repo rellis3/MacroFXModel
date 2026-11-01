@@ -39385,7 +39385,7 @@ async function _swingMapExpiries(names, sigmaAnnual = null) {
         centrePx: d.centrePx, centrePxFirst: firstDay?.centrePx ?? null, maxPain: d.maxPain,
         chgNearSpot: d.chgNearSpot, chgAwayFromSpot: d.chgAwayFromSpot, zones: d.zones,
         oiAbove: d.oiAbove, oiBelow: d.oiBelow, shareAbove: d.shareAbove, pullPct: d.pullPct,
-        buildAbove: d.buildAbove, buildBelow: d.buildBelow, gamma: d.gamma ?? null,
+        buildAbove: d.buildAbove, buildBelow: d.buildBelow, gamma: d.gamma ?? null, greeks: d.greeks ?? null,
         // the conveyor belt: how this expiry's lean has moved night by night as it counted down
         history: v.days.map(x => [x.date, x.dte, x.pullPct, x.shareAbove, x.buildAbove, x.buildBelow, x.totalOI, x.stale ? 1 : 0]) });
     }

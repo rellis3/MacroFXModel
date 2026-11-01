@@ -53,6 +53,8 @@ console.log('[the picture for gold]');
   ok('path A climbs to the bounce barrier then the monthly p75 high', m.paths[0].points[1].px === m.barriers.bounce && m.paths[0].points[2].px === m.bands[1].p75.up);
   ok('path B waypoint dates are weekdays after the last close', m.paths[1].points.slice(1).every(p => p.date > m.state.date && ![0, 6].includes(new Date(p.date + 'T12:00:00Z').getUTCDay())));
   ok('pull summary present (empty book is fine)', m.pull && Array.isArray(m.pull.buckets));
+  ok('pivots alternate high/low and include the 24 Aug major high', m.pivots.some(p => p.date === '2026-08-24' && p.type === 'high' && p.major) && m.pivots.every((p, i) => i === 0 || p.date > m.pivots[i - 1].date), String(m.pivots.length));
+  ok('minor pivots outnumber major ones', m.pivots.filter(p => !p.major).length > 0);
   ok('too few bars refused', buildSwingMap(bars.slice(0, 100)).ok === false);
 }
 

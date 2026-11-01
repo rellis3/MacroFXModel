@@ -17,6 +17,7 @@
 
 export const REV = 6.0;            // must match analyse.py
 export const SIGMA_WINDOW = 60;
+export const MINOR_REV = 1.5;      // display-only finer swings
 
 export const PROOF = {
   validated: 'VALIDATED',
@@ -163,6 +164,18 @@ export function buildSwingMap(bars, opts = {}) {
   const bars2 = clean.slice(first), sig2 = sig.slice(first), c2 = closes.slice(first);
   const rsi = rsiSeries(closes).slice(first);
   const { legs, live } = zigzag(bars2, sig2);
+  // Every visible swing high/low for labelling: a finer zigzag (3 sigma) over the last ~18 months, each pivot marked
+  // major when it is also a 6-sigma leg end. Display only; the base rates use the 6-sigma legs.
+  const fine = zigzag(bars2, sig2, MINOR_REV);
+  const majorDates = new Set(legs.flatMap(l => [l.start, l.end]).concat(live ? [live.start] : []));
+  const fromDate = bars2[Math.max(0, bars2.length - 400)].date;
+  const pivots = [];
+  const addPv = (date, px, type) => { if (date >= fromDate && !pivots.some(p => p.date === date)) pivots.push({ date, px, type, major: majorDates.has(date) }); };
+  for (const l of fine.legs) { addPv(l.start, l.startPx, l.dir === 'up' ? 'low' : 'high'); addPv(l.end, l.endPx, l.dir === 'up' ? 'high' : 'low'); }
+  if (fine.live) addPv(fine.live.start, fine.live.startPx, fine.live.dir === 'up' ? 'low' : 'high');
+  for (const l of legs) { addPv(l.start, l.startPx, l.dir === 'up' ? 'low' : 'high'); addPv(l.end, l.endPx, l.dir === 'up' ? 'high' : 'low'); }
+  if (live) addPv(live.start, live.startPx, live.dir === 'up' ? 'low' : 'high');
+  pivots.sort((a, b) => (a.date < b.date ? -1 : 1));
   const n = c2.length - 1, last = c2[n], s = sig2[n], ann = s * Math.sqrt(252);
   const win = (k, f) => f(...c2.slice(Math.max(0, n - k + 1)));
   const hi252 = win(252, Math.max), lo252 = win(252, Math.min), hi20 = win(20, Math.max), lo20 = win(20, Math.min);
@@ -228,7 +241,7 @@ export function buildSwingMap(bars, opts = {}) {
   return {
     ok: true, generatedFor: state.date,
     series: bars2.map((b, i) => [b.date, b.close]),
-    legs, live: liveOut, state, barriers, bands, expiries, pull, paths,
+    legs, live: liveOut, pivots, state, barriers, bands, expiries, pull, paths,
     baseRates: BASE_RATES,
     proofs: {
       legs: PROOF.context, live: PROOF.context, state: PROOF.exploratory, baseRates: PROOF.exploratory,

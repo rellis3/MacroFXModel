@@ -1,6 +1,6 @@
 // Expiry tracker: capture days re-cut into one series per expiry.
 //   node js/expiryTracker.test.mjs
-import { expirySnapshotsFromRaw, mergeExpirySnapshot, foldCaptureDays, expiryView, matchExpiryKey, toSpot, addDays, seriesIndexEntry } from './expiryTracker.js';
+import { expiryHedgeGreeks, expirySnapshotsFromRaw, mergeExpirySnapshot, foldCaptureDays, expiryView, matchExpiryKey, toSpot, addDays, seriesIndexEntry } from './expiryTracker.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
@@ -73,11 +73,20 @@ console.log('[pull: the book above vs below price, in spot direction]');
   ok('pull = centre vs price, + when the book sits above', d.pullPct > 0 && Math.abs(d.pullPct - ((3900 * 510 + 4100 * 1010) / 1520 / 4000 - 1) * 100) < 1e-3);
   ok('last night built above, not below', d.buildAbove === 200 && d.buildBelow === 0);
   ok('first day carries no build figures', v.days[0].buildAbove === null);
+  ok('charm and vanna hedge on the last day', d.greeks && Number.isFinite(d.greeks.charm1d) && ['buy', 'sell', 'flat'].includes(d.greeks.vannaSide) && !v.days[0].greeks, JSON.stringify(d.greeks));
   ok('gamma regime on the last day only', d.gamma && ['PIN', 'BREAKOUT', 'NEUTRAL'].includes(d.gamma.regime) && !v.days[0].gamma, JSON.stringify(d.gamma));
   const mi = new Map();   // the same book on an inverted pair: a higher CME strike is a LOWER spot price
   foldCaptureDays(mi, [{ date: '2026-11-02', pairs: { 'USD/JPY': raw(0.0067, [22, 80], [[0.0066, [10, 500], [0, 0]], [0.0068, [800, 10], [0, 0]], [0.0067, [0, 0], [5, 5]]], { basis: 0, spot: 149.25 }) } }], { invertedPairs: new Set(['USD/JPY']) });
   const vi = expiryView([...mi.values()][0]);
   ok('inverted pair: the big 0.0068 strike counts as BELOW spot', vi.days[0].shareAbove < 0.5 && vi.days[0].pullPct < 0, `${vi.days[0].shareAbove} ${vi.days[0].pullPct}`);
+}
+
+console.log('[charm/vanna hedge: sign flips with the quote direction]');
+{
+  const rows = [[3900, 100, 900], [4000, 500, 500], [4100, 900, 100], [4200, 50, 0]];
+  const a = expiryHedgeGreeks(rows, 4000, 20, 0.2), b = expiryHedgeGreeks(rows, 4000, 20, 0.2, { inverted: true });
+  ok('inverted pair reports the opposite spot side', a.charm1d === -b.charm1d && a.vannaIvDn2 === -b.vannaIvDn2 && a.charmSide !== b.charmSide);
+  ok('no vol, no answer', expiryHedgeGreeks(rows, 4000, 20, 0) === null);
 }
 
 console.log('[tail hedges ignored in the view]');
