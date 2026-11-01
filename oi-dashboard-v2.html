@@ -168,6 +168,13 @@ svg text{font-family:var(--mono)}
     </div>
   </div>
 
+  <div class="card" id="ddCard">
+    <h2><em>05e</em> Day drift — how the Cboe levels moved since the US open
+      <span class="tgl"><select id="ddDay" class="btn" style="padding:3px 8px"></select></span></h2>
+    <div class="sub">Each level is shown where it stood at the first snapshot of the US session (about 09:00 New York) and where it stands now. <b>Read the right-hand columns, not the raw move:</b> a wall that only rose because price rose has not changed anything. "Shift vs price" is how much the level moved <i>relative to price</i>, which is the part that comes from new positioning. Below it, once the 15-minute log has data, is what actually traded between snapshots, strike by strike. Cboe index options only (NQ, SPX, RUT, US30); description, not a signal.</div>
+    <div id="ddBody"></div>
+  </div>
+
   <div class="card" id="gkCard">
     <h2><em>05d</em> Greek context: turn each layer on or off
       <span class="tgl" id="gkExp" style="margin-left:auto"><span class="pill on" data-gexp="3">≤3 DTE</span><span class="pill" data-gexp="30">≤30 DTE</span><span class="pill" data-gexp="400">whole book</span></span></h2>
@@ -828,6 +835,103 @@ $('#gkExp').querySelectorAll('[data-gexp]').forEach(el => el.onclick = () => { G
 gkPills();
 
 // ── 05e dealer hedge flow: the schedule of what dealers must trade on the way to each price (js/greekLayers.js hedgeFlow) ───────────
+// ── 05e Day drift: the Cboe levels at the first snapshot of the US day vs now, and (once the 15-minute log has data) what traded between snapshots ──
+const DD_PAIRS = { NAS100_USD: 'NDX', SPX500_USD: 'SPX', US2000_USD: null, US30_USD: null };
+const DD_LEVELS = [['callWallGamma', 'Call wall (gamma)', '#2f8fcc'], ['putWallGamma', 'Put wall (gamma)', '#c07f22'], ['gexFlip', 'GEX flip', '#9b7be0'], ['maxPain', 'Max pain', '#d6b44a']];
+const DD_CACHE = {};
+async function ddGet(url) { const c = DD_CACHE[url]; if (c && Date.now() - c.at < 120000) return c.j; const r = await fetch(url, { cache: 'no-store' }); const j = await r.json(); DD_CACHE[url] = { at: Date.now(), j }; return j; }
+const ddNum = v => (Number.isFinite(v) ? v : null);
+const ddFmt = v => (v == null ? '–' : fmtMove(v));
+const ddSigned = (v, d = 1) => (v == null ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d));
+function ddRows(row) {
+  const so = ddNum(row.open?.spot), sn = ddNum(row.spot);
+  return DD_LEVELS.map(([k, label, col]) => {
+    const o = ddNum(row.open?.levels?.[k]), n = ddNum(row.levels?.[k]);
+    const rel = (o != null && n != null && so != null && sn != null) ? (n - sn) - (o - so) : null;
+    return { k, label, col, o, n, moved: o != null && n != null ? n - o : null, dO: o != null && so != null ? o - so : null, dN: n != null && sn != null ? n - sn : null, rel };
+  });
+}
+async function drawDayDrift() {
+  const body = $('#ddBody'); if (!body) return;
+  const pair = SYM;
+  if (!(pair in DD_PAIRS)) { $('#ddDay').style.display = 'none'; body.innerHTML = '<div class="empty">The Cboe books cover Nasdaq, S&P, Russell and Dow. Pick one of those markets in the bar above.</div>'; return; }
+  $('#ddDay').style.display = '';
+  let snap;
+  try { snap = ((await ddGet('/api/cboe-snapshots?pair=' + encodeURIComponent(pair))).data || {})[pair] || {}; }
+  catch (e) { body.innerHTML = '<div class="empty">Cboe snapshots unavailable: ' + esc(e.message) + '</div>'; return; }
+  const days = Object.keys(snap).filter(d => snap[d]?.open).sort();
+  if (!days.length) { body.innerHTML = '<div class="empty">No Cboe snapshots stored yet for this market.</div>'; return; }
+  const sel = $('#ddDay'); const want = sel.value && days.includes(sel.value) ? sel.value : days[days.length - 1];
+  sel.innerHTML = days.slice().reverse().map(d => `<option value="${d}"${d === want ? ' selected' : ''}>${d}</option>`).join('');
+  sel.onchange = () => drawDayDrift();
+  const row = snap[want], rows = ddRows(row), so = row.open.spot, sn = row.spot;
+  const regO = row.open.levels?.regime || '–', regN = row.levels?.regime || '–';
+  const fmtT = iso => (iso ? iso.slice(11, 16) + ' UTC' : '');
+  // ladder: open column and latest column on one shared price axis
+  const vals = rows.flatMap(r => [r.o, r.n]).concat([so, sn]).filter(v => v != null);
+  const lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo) * 0.08 || 1, y0 = lo - pad, y1 = hi + pad;
+  const H = 330, W = 1000, X0 = 250, X1 = 750, Y = v => 20 + (1 - (v - y0) / (y1 - y0)) * (H - 40);
+  let svg = `<svg width="100%" viewBox="0 0 ${W} ${H}" style="max-width:1000px;display:block">
+    <text x="${X0}" y="12" fill="#a8b1bd" font-size="12" text-anchor="middle">at the open ${esc(fmtT(row.open.asOf))}</text><text x="${X1}" y="12" fill="#a8b1bd" font-size="12" text-anchor="middle">latest ${esc(fmtT(row.asOf))}</text>
+    <line x1="${X0}" x2="${X0}" y1="20" y2="${H - 20}" stroke="#2a3340"/><line x1="${X1}" x2="${X1}" y1="20" y2="${H - 20}" stroke="#2a3340"/>`;
+  svg += `<line x1="${X0}" y1="${Y(so)}" x2="${X1}" y2="${Y(sn)}" stroke="#eef1f5" stroke-dasharray="4 4" opacity=".5"/><circle cx="${X0}" cy="${Y(so)}" r="5" fill="#eef1f5"/><circle cx="${X1}" cy="${Y(sn)}" r="5" fill="#eef1f5"/>`;
+  // labels sit beside their dots but are pushed apart so levels that are close together stay readable
+  const spread = items => { items.sort((a, b) => a.y - b.y); for (let k = 1; k < items.length; k++) items[k].ly = Math.max(items[k].ly, items[k - 1].ly + 13); return items; };
+  const left = spread([{ y: Y(so), ly: Y(so), t: 'price ' + fmtMove(so), col: '#eef1f5' }, ...rows.filter(r => r.o != null).map(r => ({ y: Y(r.o), ly: Y(r.o), t: r.label.split(' (')[0] + ' ' + fmtMove(r.o), col: r.col }))]);
+  const right = spread([{ y: Y(sn), ly: Y(sn), t: 'price ' + fmtMove(sn), col: '#eef1f5' }, ...rows.filter(r => r.n != null).map(r => ({ y: Y(r.n), ly: Y(r.n), t: r.label.split(' (')[0] + ' ' + fmtMove(r.n), col: r.col }))]);
+  for (const r of rows) {
+    if (r.o != null && r.n != null) svg += `<line x1="${X0}" y1="${Y(r.o)}" x2="${X1}" y2="${Y(r.n)}" stroke="${r.col}" stroke-width="2.2" opacity=".85"/>`;
+    if (r.o != null) svg += `<circle cx="${X0}" cy="${Y(r.o)}" r="4" fill="${r.col}"/>`;
+    if (r.n != null) svg += `<circle cx="${X1}" cy="${Y(r.n)}" r="4" fill="${r.col}"/>`;
+  }
+  for (const l of left) svg += `<text x="${X0 - 12}" y="${l.ly + 4}" fill="${l.col}" font-size="11" text-anchor="end">${l.t}</text>`;
+  for (const l of right) svg += `<text x="${X1 + 12}" y="${l.ly + 4}" fill="${l.col}" font-size="11">${l.t}</text>`;
+  svg += '</svg>';
+  const shade = r => (r.rel == null ? 'inherit' : Math.abs(r.rel) < 0.0015 * so ? 'var(--tx2)' : r.rel > 0 ? 'rgb(70,184,122)' : 'rgb(232,97,95)');
+  const tbl = `<table class="zt"><thead><tr><th>Level</th><th>At open</th><th>Latest</th><th>Moved</th><th>From price, open</th><th>From price, latest</th><th>Shift vs price</th></tr></thead><tbody>${rows.map(r => `<tr><td style="color:${r.col}">${r.label}</td><td>${ddFmt(r.o)}</td><td>${ddFmt(r.n)}</td><td>${ddSigned(r.moved)}</td><td>${ddSigned(r.dO)}</td><td>${ddSigned(r.dN)}</td><td style="font-weight:600;color:${shade(r)}">${ddSigned(r.rel)}</td></tr>`).join('')}</tbody></table>`;
+  const spotMv = (sn - so) / so * 100;
+  const stats = `<div class="minis"><div class="mini"><div class="k">Price since open</div><div class="v">${ddSigned(spotMv, 2)}%</div><div class="n">${fmtMove(so)} → ${fmtMove(sn)}</div></div><div class="mini"><div class="k">Regime</div><div class="v" style="font-size:15px">${esc(regO)} → ${esc(regN)}</div><div class="n">${regO === regN ? 'unchanged' : 'changed through the day'}</div></div><div class="mini"><div class="k">Net gamma</div><div class="v" style="font-size:15px">${fmtBig(row.open.levels?.netGex ?? 0)} → ${fmtBig(row.levels?.netGex ?? 0)}</div><div class="n">dollars per 1%</div></div></div>`;
+  // the last ten days, one line each: how far the levels moved relative to price from the open to the last snapshot
+  const hist = days.slice(-10).reverse().map(d => {
+    const rr = ddRows(snap[d]), g = k => rr.find(x => x.k === k)?.rel, s = snap[d];
+    return `<tr><td>${d}</td><td>${ddSigned((s.spot - s.open.spot) / s.open.spot * 100, 2)}%</td><td>${esc(s.open.levels?.regime || '–')} → ${esc(s.levels?.regime || '–')}</td><td>${ddSigned(g('callWallGamma'))}</td><td>${ddSigned(g('putWallGamma'))}</td><td>${ddSigned(g('gexFlip'))}</td><td>${ddSigned(g('maxPain'))}</td></tr>`;
+  }).join('');
+  const histTbl = `<div class="sub" style="margin:14px 0 6px;color:var(--tx2)"><b>The last ten days</b> — shift vs price, open to last snapshot (CFD points)</div><table class="zt"><thead><tr><th>Day</th><th>Price</th><th>Regime</th><th>Call wall</th><th>Put wall</th><th>GEX flip</th><th>Max pain</th></tr></thead><tbody>${hist}</tbody></table>`;
+  body.innerHTML = stats + '<div style="margin-top:10px">' + svg + '</div><div style="margin-top:8px">' + tbl + '</div>' + histTbl + '<div id="ddFlow" style="margin-top:16px"><div class="empty">Checking the 15-minute log…</div></div>';
+  drawDayFlow(pair, want);
+}
+// What traded between 15-minute snapshots (cumulative for the day, per strike), from /api/cboe-intraday. The log starts when that job first ran;
+// until then (or on a day it did not cover) this says so rather than drawing nothing.
+async function drawDayFlow(pair, day) {
+  const el = $('#ddFlow'); if (!el) return;
+  const sym = DD_PAIRS[pair];
+  const msg = t => { el.innerHTML = '<div class="sub" style="margin:0;color:var(--tx2)"><b>What traded through the day</b></div><div class="empty" style="margin-top:6px">' + t + '</div>'; };
+  if (!sym) return msg('The 15-minute volume log covers the S&P (SPX) and Nasdaq (NDX) only.');
+  let idx;
+  try { idx = await ddGet('/api/cboe-intraday'); } catch (e) { return msg('The intraday log is not live on the server yet.'); }
+  if (!idx?.ok) return msg('The intraday log is not live on the server yet.');
+  const have = idx.snapshotsPerDay?.[sym] || {};
+  const logged = Object.keys(have).sort();
+  if (!logged.length) return msg('The 15-minute log has started but holds no ' + sym + ' snapshots yet. The first ones arrive during the next US session.');
+  const useDay = have[day] ? day : logged[logged.length - 1];
+  let d;
+  try { d = await ddGet('/api/cboe-intraday?sym=' + sym + '&date=' + useDay); } catch (e) { return msg('Could not read the log: ' + esc(e.message)); }
+  if (!d?.ok || !d.steps?.length) return msg('Only ' + (have[useDay] || 0) + ' snapshot(s) so far for ' + useDay + '; flow needs two.');
+  const spot = d.steps[d.steps.length - 1].spot, band = spot * 0.03;
+  const agg = new Map();
+  for (const s of d.steps) for (const f of s.flow) { if (Math.abs(f.K - spot) > band) continue; const e = agg.get(f.K) || { K: f.K, c: 0, p: 0 }; e.c += f.callVol; e.p += f.putVol; agg.set(f.K, e); }
+  const bars = [...agg.values()].sort((a, b) => b.K - a.K);
+  if (!bars.length) return msg('Snapshots exist but nothing traded within 3% of price between them.');
+  const nearK = bars.reduce((m, b) => (Math.abs(b.K - spot) < Math.abs(m - spot) ? b.K : m), bars[0].K);
+  const mx = Math.max(...bars.map(b => Math.max(b.c, b.p)), 1), rowH = 15, Hh = bars.length * rowH + 30, cx = 500, sc = 440 / mx;
+  let s = `<svg width="100%" viewBox="0 0 1000 ${Hh}" style="max-width:1000px;display:block"><text x="${cx - 10}" y="12" fill="#c07f22" font-size="12" text-anchor="end">puts traded</text><text x="${cx + 10}" y="12" fill="#2f8fcc" font-size="12">calls traded</text><line x1="${cx}" x2="${cx}" y1="18" y2="${Hh}" stroke="#2a3340"/>`;
+  bars.forEach((b, i) => { const y = 22 + i * rowH, near = b.K === nearK; s += `<rect x="${cx - b.p * sc}" y="${y}" width="${b.p * sc}" height="${rowH - 3}" fill="#c07f22" opacity=".85"/><rect x="${cx}" y="${y}" width="${b.c * sc}" height="${rowH - 3}" fill="#2f8fcc" opacity=".85"/><text x="990" y="${y + 10}" fill="${near ? '#eef1f5' : '#6b7585'}" font-size="10.5" text-anchor="end">${fmtMove(b.K)}${near ? ' ← price' : ''}</text>`; });
+  s += '</svg>';
+  const tot = d.steps.reduce((a, x) => a + x.vol, 0);
+  const spark = d.steps.map(x => x.vol), smx = Math.max(...spark, 1);
+  const sp = `<svg width="100%" viewBox="0 0 1000 46" style="max-width:1000px;display:block">${spark.map((v, i) => `<rect x="${i * (1000 / spark.length)}" y="${42 - v / smx * 38}" width="${Math.max(2, 1000 / spark.length - 3)}" height="${v / smx * 38}" fill="#6b7585"><title>${esc(d.steps[i].to.slice(11, 16))} UTC: ${v.toLocaleString()} contracts</title></rect>`).join('')}</svg>`;
+  el.innerHTML = `<div class="sub" style="margin:0 0 6px;color:var(--tx2)"><b>What traded through ${esc(useDay)}</b> (${esc(sym)} options, contracts per strike within 3% of price, summed over ${d.steps.length} fifteen-minute steps; ${tot.toLocaleString()} contracts in all)</div>${s}<div class="sub" style="margin:8px 0 2px">Contracts traded in each step</div>${sp}<div class="legend"><span>This is where trading happened, not who was long: Cboe's delayed feed carries no buyer or seller. Volume is the change in the day's cumulative count between snapshots.</span></div>`;
+}
 function drawHedgeFlow(){
   const D = CUR, svg = $('#hfChart'), read = $('#hfRead'); if (!svg) return;
   const msg = m => { svg.setAttribute('viewBox', '0 0 1000 60'); svg.innerHTML = `<text x="500" y="34" text-anchor="middle" fill="#a8b1bd" font-size="13">${m}</text>`; read.innerHTML = ''; };
@@ -1255,7 +1359,7 @@ function rail(){
 async function refresh(){
   CUR = derive(SYM); rail();
   drawHedging();     // async and self-contained: first, so a failure in another panel cannot skip it
-  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
+  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawDayDrift, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
   drawBrief();
