@@ -103,6 +103,32 @@ export function zigzag(bars, sig, rev = REV) {
 }
 
 export const DTE_BUCKETS = [[0, 10], [11, 30], [31, 60], [61, 100]];
+export const THIN_FLOOR = 0.10;     // an expiry under 10% of all live expiries' OI is too thin to read (prereg §3.2)
+
+/**
+ * Do the option readings agree with each other? Near-dated (<= 10 days, not thin) OI lean, the same expiries' one-day
+ * charm hedge (dealers buy or sell), and the far (11-60 days) lean. Plain words for the page; all UNTESTED.
+ */
+export function signalCheck(expiries, live) {
+  const ok = e => !e.thin && Number.isFinite(e.dte);
+  const near = (expiries || []).filter(e => ok(e) && e.dte <= 10), far = (expiries || []).filter(e => ok(e) && e.dte > 10 && e.dte <= 60);
+  const w = xs => xs.reduce((a, e) => a + (e.totalOI || 0), 0);
+  const lean = xs => { const W = w(xs); if (!W) return null; const sh = xs.reduce((a, e) => a + (e.shareAbove ?? 0.5) * (e.totalOI || 0), 0) / W; return sh > 0.55 ? 'up' : sh < 0.45 ? 'down' : 'balanced'; };
+  const charmSum = near.reduce((a, e) => a + (e.greeks?.charm1d ?? 0), 0);
+  const charmNotional = near.reduce((a, e) => a + (e.greeks?.charmNotional ?? 0), 0);
+  const charm = near.some(e => e.greeks) ? (charmSum > 0 ? 'buy' : charmSum < 0 ? 'sell' : 'flat') : null;
+  const nl = lean(near), fl = lean(far);
+  const parts = [];
+  if (nl) parts.push(`near expiries (0-10 days) lean ${nl}`);
+  if (charm) parts.push(`their one-day charm hedge is a dealer ${charm.toUpperCase()} of ${Math.abs(Math.round(charmSum))} contracts${charmNotional ? ` (about ${fmtMoney(Math.abs(charmNotional))})` : ''}`);
+  if (fl) parts.push(`the 11-60 day expiries lean ${fl}`);
+  const charmDir = charm === 'buy' ? 'up' : charm === 'sell' ? 'down' : null;
+  const agree = nl && charmDir ? nl === charmDir : null;
+  return { nearLean: nl, farLean: fl, charm, charmSum, charmNotional, agree, handover: nl && fl && nl !== 'balanced' && fl !== 'balanced' && nl !== fl,
+    text: parts.length ? parts.join('; ') + '.' + (agree === false ? ' These disagree: the OI location and the dealer charm flow point opposite ways.' : agree ? ' These agree.' : '') : 'No readable expiries.' };
+}
+function fmtMoney(x) { return x >= 1e9 ? `$${(x / 1e9).toFixed(1)}bn` : x >= 1e6 ? `$${(x / 1e6).toFixed(0)}m` : `$${Math.round(x / 1e3)}k`; }
+
 export const LEAN_BAND = 0.05;      // shareAbove within 0.45..0.55 reads as balanced
 
 const lean = share => (share == null ? null : share > 0.5 + LEAN_BAND ? 'up' : share < 0.5 - LEAN_BAND ? 'down' : 'balanced');
@@ -115,7 +141,7 @@ const lean = share => (share == null ? null : share > 0.5 + LEAN_BAND ? 'up' : s
  */
 export function pullByBucket(expiries, { buckets = DTE_BUCKETS, nights = 5 } = {}) {
   const out = buckets.map(([lo, hi]) => {
-    const xs = (expiries || []).filter(e => Number.isFinite(e.dte) && e.dte >= lo && e.dte <= hi && Number.isFinite(e.shareAbove));
+    const xs = (expiries || []).filter(e => !e.thin && Number.isFinite(e.dte) && e.dte >= lo && e.dte <= hi && Number.isFinite(e.shareAbove));
     const w = xs.reduce((a, e) => a + (e.totalOI || 0), 0);
     if (!xs.length || w <= 0) return { lo, hi, n: 0, lean: null };
     const wavg = f => xs.reduce((a, e) => a + (e[f] ?? 0) * (e.totalOI || 0), 0) / w;
@@ -207,10 +233,16 @@ export function buildSwingMap(bars, opts = {}) {
   };
   const bands = [band(opts.ladderWeeklyRev, 'weekly (5 sessions)', 5), band(opts.ladderMonthlyRev, 'monthly (20 sessions)', 20)].filter(Boolean);
 
+  // Thin books (under THIN_FLOOR of all live expiries' open interest, the expiry-tracker prereg's 10% floor) are shown
+  // greyed and left out of the lean summary, the arrows and the Monte Carlo pull: a 261-contract weekly is not a book.
+  const allOI = (opts.expiries || []).reduce((a, e) => a + (e.totalOI || 0), 0);
   const expiries = (opts.expiries || []).map(e => ({ ...e,
+    oiShare: allOI > 0 ? (e.totalOI || 0) / allOI : null,
+    thin: allOI > 0 ? (e.totalOI || 0) < THIN_FLOOR * allOI : true,
     zones: (e.zones || []).map(z => ({ ...z, inWeeklyP90: bands[0] ? z.px >= bands[0].p90.down && z.px <= bands[0].p90.up : null,
       inMonthlyP90: bands[1] ? z.px >= bands[1].p90.down && z.px <= bands[1].p90.up : null })),
     proof: PROOF.untested }));
+  const signals = signalCheck(expiries, live);
 
   const pull = pullByBucket(expiries);
 
@@ -241,7 +273,7 @@ export function buildSwingMap(bars, opts = {}) {
   return {
     ok: true, generatedFor: state.date,
     series: bars2.map((b, i) => [b.date, b.close]),
-    legs, live: liveOut, pivots, state, barriers, bands, expiries, pull, paths,
+    legs, live: liveOut, pivots, state, barriers, bands, expiries, pull, paths, signals,
     baseRates: BASE_RATES,
     proofs: {
       legs: PROOF.context, live: PROOF.context, state: PROOF.exploratory, baseRates: PROOF.exploratory,

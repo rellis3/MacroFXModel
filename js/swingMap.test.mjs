@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildSwingMap, zigzag, sigmaSeries, BASE_RATES, pullByBucket } from './swingMap.js';
+import { buildSwingMap, zigzag, sigmaSeries, BASE_RATES, pullByBucket, signalCheck } from './swingMap.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(root, 'analysis/output/swing-leg-baserates');
@@ -66,6 +66,20 @@ console.log('[pull by DTE bucket: lean and where it changes side]');
   ok('one flip, down to up', p.flips.length === 1 && p.flips[0].from === 'down' && p.flips[0].to === 'up' && p.flips[0].firstExpiry === '2026-12-24');
   ok('recent build sums skip stale nights', p.buckets[2].recentBuildAbove === 300 && p.buckets[0].buildLean === 'down');
   ok('empty bucket has no lean', p.buckets[3].n === 0 && p.buckets[3].lean === null);
+}
+
+console.log('[thin books and the agreement line]');
+{
+  const ex = [
+    { expiry: '2026-11-03', dte: 3, totalOI: 7770, shareAbove: 0.59, greeks: { charm1d: -13, charmNotional: -7.4e6 } },
+    { expiry: '2026-11-10', dte: 10, totalOI: 1588, shareAbove: 0.78, greeks: { charm1d: -8 } },
+    { expiry: '2026-11-12', dte: 11, totalOI: 261, shareAbove: 0.38 },
+    { expiry: '2026-11-21', dte: 21, totalOI: 24433, shareAbove: 0.69 },
+  ].map(e => ({ ...e, thin: e.totalOI < 0.1 * 34052 }));
+  const sg = signalCheck(ex, { dir: 'down' });
+  ok('a 261-contract book is thin; the 7,770 one is not', ex[2].thin && !ex[0].thin && ex[1].thin);
+  ok('near lean up while near charm sells -> they disagree', sg.nearLean === 'up' && sg.charm === 'sell' && sg.agree === false, sg.text);
+  ok('thin books are left out of the buckets', pullByBucket(ex).buckets[1].n === 1);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
