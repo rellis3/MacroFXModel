@@ -120,3 +120,54 @@ If the combined book fails **and** no single factor passes, **no further FX dire
 from price, macro or positioning data at any horizon on this desk.** Three horizons (intraday
 window, one day, one to three months) and three data families will then have been asked, with
 rigour, and answered.
+
+## Amendments
+
+### A1 — 2026-11-01 — PRE-RESULTS
+
+*No factor score, return, rank-IC or Sharpe has been computed for this study. Only inventories (row counts, date ranges, column names, vintage dates) of the feature store were read to write this amendment. Addendum A (2026-10-17) stands except where this amendment names it. The bars, the placebo, the mirror and the 10% vol target are unchanged.*
+
+| | |
+|---|---|
+| ID / ledger ids | `fx-factor-stack` (the equal-risk book) · `fx-factor-carry` · `fx-factor-momentum` · `fx-factor-value` · `fx-factor-surprise`. The yield-spread arm is reported only and gets no ledger id |
+| Branch | `rich-fx` |
+| Register row | `plans/RESEARCH_REGISTER.md` → `fx-factor-stack` |
+| Data | OANDA D1 mid closes (17:00 New York) for the seven USD pairs, `features/rate3m_*`, `effr`, `rate_on_de`, `surprises`, `spread_profile`. Window 2005-01 → **2026-08-21**. Nothing after the lockbox date is read |
+| Seed | `20261017` (the prereg date; every script in this study) |
+| Uncertainty | moving-block bootstrap of monthly observations, block = 3 months, B = 2,000; placebo 1,000 permutation draws |
+| Scripts / outputs | `scripts/fx-factor-stack/` → `analysis/output/fx-factor-stack/` |
+| Harness | own script (Python). The cross-sectional rank-IC, dollar-neutral book and permutation placebo are not in `js/harness/runStudy.mjs` |
+
+**A1.1 — Yield-spread z becomes a reported-only arm.** The 2y/10y yield-spread sleeve's registered edge was a GS2 publication lookahead (0.09 point-in-time, `project_harness_and_deflation`). It is scored with the same construction and shown beside the four factors, but it has no bar, no vote in the combined book, and no ledger id. It is computed as a simplified spread z (10y spread of the currency vs USD, `y10_*`, minus its trailing 60-month mean, over its trailing 60-month SD, negated), **not** `yieldSpreadCore`, and labelled as such. Consequences: the combined book is equal-risk over **four** factors (carry, momentum, value, surprise momentum), and the DSR trial count N is **5** (four factors + the combination). DSR at N = 6 is also shown as a sensitivity.
+
+**A1.2 — Window and lockbox.** Data end at 2026-08-21. OOS is 2018-01 → 2026-08-21: the last whole month scored is July 2026 (rebalance at the end of June 2026, return realised over July). The August 2026 part-month is not scored. That leaves **103 OOS monthly observations** against the registered MIN_EVENTS of 96.
+
+**A1.3 — Data rules, frozen.**
+- *Execution.* The store holds D1 closes only, no opens. Scores are computed with data known at the last trading day of the month; positions are entered at the **close of the next trading day** and held to the same close one rebalance later. This replaces "from the next day's open"; it adds one day of lag.
+- *Currency return* (c vs USD) = log change of the pair (inverted for USDJPY, USDCAD, USDCHF) plus the carry accrual `(rate_c − rate_USD)/100/365` per calendar day. USD's own return is 0 and USD sits in the cross-section of eight with a score from its own data.
+- *Rates (carry leg).* A reference month's value is its **first print** (earliest `asof`). Rows stamped with the 2013-06-03 bulk backfill take Addendum A's `fixed_lag:45` rule (known 45 days after month end). Rows with a genuine later `asof` keep it. The value known at t is the latest reference month whose effective `asof` ≤ t, held flat until the next one.
+- *USD leg.* `rate3m_usd` ends with the 2013-06 reference month, then has one row (2026-09). From 2013-06-04 the USD leg is the **effective fed funds rate** (`effr`, `fixed_lag:2`). The 3-month interbank rate and EFFR differ by tens of basis points in 2013, so the splice adds a small step; flagged.
+- *EUR leg.* `rate3m_eur` has had no vintage since 2026-02-16 (last reference month 2026-01). From the first rebalance whose data would need a later month, the EUR leg is the **Germany call-money rate** (`rate_on_de`, `IRSTCI01DEM156N`) plus the mean of (EZ 3m − DE call money) over the last 12 reference months both series have. This **replaces Addendum A's neutral-carry rule for EUR**, so the book does not run with a hole in one of its eight currencies. It touches about 6 rebalances (Feb–Jul 2026). A sensitivity with EUR carry neutral for those months (the Addendum A rule) is reported beside the registered result.
+- *GBP* is the BoE Bank Rate (Addendum A). JPY, AUD, NZD, CAD, CHF are used as stored.
+- *Value, changed from the registered definition.* The registered PPP form needs point-in-time CPI for all eight economies. The store holds US CPI only (`cpi_usd`), and `/api/cpi` reports the UK, Canada and Australia series as discontinued. Value is therefore the **5-year reversal**: `−(ln S_c/USD at t − ln S_c/USD 1,260 trading days earlier)`, spot only, z-scored across the eight. The currency-value premium is usually measured with the CPI adjustment, so this tests a cruder cousin. Reported as "value (5y reversal proxy)". First score is mid-2007.
+- *Surprise momentum.* `surprises.parquet` `value` as stored (`z`), `asof` = release timestamp, sign as stored, ccy codes US/EU/GB/JP/AU/NZ/CA/CH → USD…CHF, half-life 91 days, releases with `asof` ≤ 21:00 UK on the rebalance day. Neutral (0) where fewer than 3 distinct series released in the trailing 91 days. **The store begins 2015-11-04**, so the factor has about 2 years of IS and its z scaling (built in `econ_surprise_v1`) is not verified to be point-in-time. JPY, CHF and NZD are thin and will often be neutral; the count is reported.
+- *Costs.* `spread_profile` (measured since 2026-09-17), median over UK hours 10–19 of the hourly mean spread by pair, in pips, converted to a price fraction at the rebalance date. One-way turnover pays half of it: `0.5 × spread × Σ|Δw_c|` over the seven non-USD currencies, deducted in the rebalance month. The spread is applied to all history, which is optimistic before about 2015.
+- *Vol scaling.* Weights `∝ (rank − 4.5)` over the eight, scaled to 10% annualised on an EWMA (λ = 0.94) covariance of the eight currencies' daily total returns, data ≤ t.
+- *Combined book.* Each factor's weights are vol-scaled as above; combined weights `= Σ a_k w_k` with `a_k ∝ 1/vol` of factor k's net monthly book return over the prior 24 months (equal weights until 12 months exist), then rescaled to 10%.
+
+**A1.4 — Metrics, frozen.** *Rank-IC* = Spearman correlation across the eight currencies between the month-end score and the next month's total return (t+1 close to the next t+1 close). USD's return is 0. The 3-month IC (return over three months, rebalanced monthly, overlapping) is reported only; it has no bar. *Effective-N haircut:* the half-width of each IC and Sharpe interval is multiplied by `sqrt(7 / m_eff)`, where `m_eff = (Σλ)² / Σλ²` over the eigenvalues of the OOS daily correlation matrix of the seven non-USD currencies. *Drawdown* is on the compounded net monthly book. *DSR* is Bailey–López de Prado on the monthly net OOS Sharpe, with the variance of the N trial Sharpes. *Both OOS halves* means 2018-01–2021-12 and 2022-01–2026-07, each with a positive net mean (book) or same-sign mean IC (factor). *Mirror* = the sign-reversed weights scored against the same bars. *Placebo* = scores randomly permuted across the eight each month, same construction, same costs.
+
+**A1.5 — Verdict words, set before running.** For each factor and for the combined book:
+- **VALIDATED** — every bar above passes, the placebo is beaten, the mirror fails its bars, and (combined only) DSR ≥ 0.95.
+- **NULL** — the haircut 95% upper bound of the rank-IC is below 0.03, or the upper bound of the net Sharpe is below the bar (0.3 per factor, 0.5 combined). The data can see an effect of the bar's size and it is not there.
+- **UNDERPOWERED** — neither: the interval contains both zero effect and the bar.
+
+**A1.6 — Power, stated before running.** About 103 OOS months, eight currencies. Under the null the monthly rank-IC has an SD of about `1/√7 = 0.38`, so the mean IC has an SE of about 0.037, about 0.056 after a haircut factor of about 1.5. A single factor therefore needs a true IC of about 0.16 for 80% power, and the registered 0.03 bar cannot be reached with the interval excluding zero below an observed mean IC of about 0.11. For Sharpe, 8.6 OOS years give an SE of about 0.34, an MDE of about 0.95 and roughly 30% power if the true combined net Sharpe is 0.5. The direction-bar map (`analysis/output/direction-bar/RESULTS.md`) puts the seven USD pairs at about 2.8 independent forecasts. **Expected: UNDERPOWERED for most factors even if the published premia are real; a NULL needs the interval to exclude the bar, which is also hard.** Carry and momentum are the likeliest to separate, and only if the OOS decade behaves like the published sample.
+
+**A1.7 — Baselines (reported, not gates).** (i) *Dollar basket:* equal-weight long the seven currencies vs USD with carry accrual, same costs — its OOS Sharpe, and the combined book's correlation and beta to it (a dollar-neutral book should show about 0). (ii) *Carry alone:* the carry book's net Sharpe, and the combined-minus-carry Sharpe difference with a block-bootstrap interval. No page ships unless the combined book is VALIDATED **and** its point estimate exceeds carry alone.
+
+**A1.8 — Forward ledger spec (recorded, not built here).** If any of the five ids is not NULL, it is registered as a research forecaster in the forward direction ledger: entity = each of the seven USD pairs, horizons **20 and 60 trading closes**, forecast = P(pair up) from a logistic map of the pair's signed composite score, fitted on data ≤ 2026-08-21 and then frozen, scored against B0 (climatology), B1 (buy and hold), B2 (momentum), B3 (carry) on the same rows. Judged at the horizon-specific forward counts set by `forge/DIRECTION_BAR_PREREG.md`, not on history.
+
+**A1.9 — Stopping rule, clarified.** The registered rule fires when the combined book fails and no single factor passes. Under the verdict words above it fires when the combined book is **NULL** and **no factor is VALIDATED**. An UNDERPOWERED combined book does not fire it: the data could not answer, so FX direction at one to three months becomes forward-record only. This clarification is made before running and is flagged for the owner to confirm.
+
+**A1.10 — Variants.** None beyond what is named here: the EUR-neutral sensitivity, a gross-of-cost line, and the DSR at N = 6. Anything else run later is labelled post-hoc.
