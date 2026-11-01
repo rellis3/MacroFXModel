@@ -96,7 +96,7 @@
     Earlier OI tests: walls behaved like ordinary levels (wall-placebo), max pain does not pin, and the dealer hedge-flow side was underpowered.</p>
 </div>
 <script type="module">
-import { simulatePaths, touchShare } from './js/swingPaths.js';
+import { simulatePaths, touchShare, driftSegments } from './js/swingPaths.js';
 const $ = id => document.getElementById(id);
 const fmt = (x, dp) => (x == null || !isFinite(x) ? '–' : Number(x).toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp }));
 const pct = (x, dp = 1) => (x == null || !isFinite(x) ? '–' : `${x > 0 ? '+' : ''}${x.toFixed(dp)}%`);
@@ -372,7 +372,7 @@ function mcNote(m) {
   const dir0 = S.pull.drift[0]?.d ?? 0;
   $('chartNote').innerHTML = `${MODE === 'mc' ? `${S.pull.n.toLocaleString()} simulated paths over ${S.H} sessions (150 drawn), shaded 10-90% and 25-75%, white = median.` : `Violet = the most-touched path: for each session, where the most simulated paths sit. Grey dashed = the same with no pull (a plain random walk stays flat).`} `
     + `σ = ${(S.sigma * 100).toFixed(2)}% a session from ${S.sigmaSrc}. Pull strength ${S.k === 0 ? 'off' : S.k} ${tag('UNTESTED')}: each expiry still alive draws price toward its OI centre, the nearest one weighing most, handing over as it rolls off. ${S.used.length} expir${S.used.length === 1 ? 'y' : 'ies'} used.<br>`
-    + (S.used.length ? `The pull starts ${dir0 > 0 ? '<b class="good">up</b>' : dir0 < 0 ? '<b class="bad">down</b>' : 'flat'}${flips.length ? ` and changes side after session ${flips.join(', ')}` : ''}. ` : '<span class="warn">No expiry-tracker data, so the pull run equals the random walk.</span> ')
+    + (S.used.length ? `The pull, day by day: <b>${driftSegments(S.pull.drift).text}</b>. ` : '<span class="warn">No expiry-tracker data, so the pull run equals the random walk.</span> ')
     + `End of horizon: median ${px(endP.p50)} with pull vs ${px(endF.p50)} without; most-touched ${px(mp.px)} vs ${px(mf.px)}. `
     + (mb ? `Touch the monthly expected move up ${px(mb.p50.up)}: ${ts(mb.p50.up)}; down ${px(mb.p50.down)}: ${ts(mb.p50.down)}.` : '')
     + `<br><span class="note">The pull is a hypothesis drawn as a picture. Its strength is chosen, not fitted, and no test here shows an expiry's lean moves price (OI walls behaved like ordinary levels, max pain does not pin). The gap between the violet and grey lines is the hypothesis, not evidence.</span>`;

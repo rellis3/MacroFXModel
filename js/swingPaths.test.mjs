@@ -1,6 +1,6 @@
 // Swing Map Monte Carlo: reproducible, random walk when k = 0, and the pull does what it says.
 //   node js/swingPaths.test.mjs
-import { simulatePaths, touchShare, mulberry32 } from './swingPaths.js';
+import { simulatePaths, touchShare, mulberry32, driftSegments } from './swingPaths.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
@@ -30,6 +30,13 @@ console.log('[the pull: near expiry down, far expiry up]');
   const flat = simulatePaths({ close: 100, sigma: 0.005, sessions: 15, expiries: ex, k: 0, n: 3000, seed: 3 });
   ok('k = 0 with the same expiries is a plain walk', Math.abs(flat.quantiles[15].p50 - 100) < 0.6);
   ok('touch share of the far target higher with the pull', touchShare(p, 104) > touchShare(flat, 104));
+}
+
+console.log('[drift segments in words]');
+{
+  const d = [-1, -1, -1, 1, 1, 1, 1, -0.1, 1, 1].map((x, t) => ({ t, d: x }));
+  const sg = driftSegments(d);
+  ok('down then up, a one-day wobble folded in', sg.text === 'down days 1-3, up days 4-10', sg.text);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
