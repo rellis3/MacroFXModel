@@ -272,6 +272,7 @@ import { sessionState as _irSessionState, reforecast as _irReforecast, morningLe
 import { oiGexLadder as _oiGexLadder, computeExpiryLevels as _oiComputeExpiry, oiMatrixExpiryLegs as _oiMatrixLegs, oiFlatVol as _oiFlatVol, oiFuturesTermsPrice as _oiFutPx } from './js/oi.js';
 import { buildTradesText as _oiTradesText } from './js/oiTradesExport.js';   // OI bot zones → TradingView block (pine/OI Bot Trades.pine)
 import { emptyBook as _oiShadowEmptyBook, syncPlan as _oiShadowSyncPlan, stepBar as _oiShadowStepBar, summarize as _oiShadowSummarize } from './js/oiShadowExec.js';   // CME-vs-Cboe OI plan paper-trader (forward test, no orders)
+import { INTRADAY_SYMS as _CBOE_INTRA_SYMS, INTRADAY_FIELDS as _CBOE_INTRA_FIELDS, slimSnapshot as _cboeSlimSnapshot, volumeBetween as _cboeVolumeBetween, flowByStrike as _cboeFlowByStrike } from './js/cboeIntraday.js';
 import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst, cfdCashOffset as _cfdCashOffset, cboeShift as _cboeShift, cashRefTime as _cashRefTime } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
@@ -24344,6 +24345,81 @@ async function _cboeRawArchiveTick({ force = false } = {}) {
   return out;
 }
 svcInterval('cboeRawArchive', () => _cboeRawArchiveTick().catch(e => console.error('[cboe-raw]', e.message)), 30 * 60_000);
+
+// ── CBOE INTRADAY LOG (every 15 min through the US session) ──────────────────────────────────────────────────
+// The end-of-day archive above keeps one chain a day. This keeps the contracts near price (±8%, front 45 days) of
+// SPX, NDX, SPY and QQQ every 15 minutes, so what traded between snapshots can be read back (volume is cumulative
+// for the day; bid/ask/IV/gamma are live). One R2 object per snapshot, keyed by Cboe's own timestamp, so a repeat
+// fetch of an unchanged chain is skipped and nothing is read-modify-written. Analysis only: no bot reads it.
+const _CBOE_INTRA_R2 = 'cboe_intraday/';
+const _CBOE_INTRA_KEY_RE = /^cboe_intraday\/([A-Z]+)\/(\d{4}-\d{2}-\d{2})\/(\d{6})\.json$/;
+const _cboeIntraDone = new Set();     // 'SYM/day/hhmmss' already stored
+let _cboeIntraListed = 0;
+async function _cboeIntraSeed() {
+  if (!_r2Ok() || Date.now() - _cboeIntraListed < 6 * 3600_000) return;
+  for (const k of await _r2ListKeys(_CBOE_INTRA_R2)) { const m = k.match(_CBOE_INTRA_KEY_RE); if (m) _cboeIntraDone.add(`${m[1]}/${m[2]}/${m[3]}`); }
+  _cboeIntraListed = Date.now();
+}
+async function _cboeIntradayTick({ force = false } = {}) {
+  if (!_r2Ok()) return { skipped: 'no R2' };                       // 15-minute writes belong in R2, never KV
+  const ny = _nyParts(new Date());
+  const mins = (+ny.hour % 24) * 60 + (+ny.minute);
+  if (!force && (ny.weekday === 'Sat' || ny.weekday === 'Sun' || mins < 9 * 60 + 20 || mins > 16 * 60 + 40)) return { skipped: 'outside session' };
+  try { await _cboeIntraSeed(); } catch (e) { console.error('[cboe-intraday] R2 list', e.message); }
+  const zlib = await import('node:zlib');
+  const out = {};
+  for (const raw of _CBOE_INTRA_SYMS) {
+    const sym = raw.replace(/^_/, '');
+    try {
+      const r = await fetch(_cboeUrl(raw), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, redirect: 'follow', signal: AbortSignal.timeout(60_000) });
+      if (!r.ok) throw new Error(`Cboe ${r.status}`);
+      const snap = _cboeSlimSnapshot(await r.json());
+      if (!snap) throw new Error('empty or unparseable chain');
+      const id = `${sym}/${snap.day}/${snap.hhmmss}`;
+      if (_cboeIntraDone.has(id)) { out[sym] = { t: snap.t, status: 'done' }; continue; }
+      const gz = zlib.gzipSync(Buffer.from(JSON.stringify(snap.rows)), { level: 9 }).toString('base64');
+      await _r2PutJSON(`${_CBOE_INTRA_R2}${id}.json`, { v: 1, sym, t: snap.t, spot: snap.spot, fetchedAt: Date.now(), fields: _CBOE_INTRA_FIELDS, n: snap.rows.length, enc: 'gzip+base64:json-rows', rows: gz });
+      _cboeIntraDone.add(id);
+      out[sym] = { t: snap.t, status: 'written', n: snap.rows.length, bytes: gz.length };
+    } catch (e) { out[sym] = { status: 'error', error: e.message }; console.error('[cboe-intraday]', sym, e.message); }
+  }
+  return out;
+}
+svcInterval('cboeIntraday', () => _cboeIntradayTick().catch(e => console.error('[cboe-intraday]', e.message)), 15 * 60_000);
+
+// GET /api/cboe-intraday                          -> stored days and snapshot times per symbol
+// GET /api/cboe-intraday?sym=SPX&date=YYYY-MM-DD  -> that day's snapshots, decoded, plus the volume traded between each pair
+//                                                     (flow: per-strike calls/puts, in contracts and dollar gamma)
+app.get('/api/cboe-intraday', async (req, res) => {
+  try {
+    const sym = String(req.query.sym || '').toUpperCase().replace(/^_/, '');
+    const date = String(req.query.date || '');
+    const keys = _r2Ok() ? (await _r2ListKeys(_CBOE_INTRA_R2)).filter(k => _CBOE_INTRA_KEY_RE.test(k)).sort() : [];
+    if (!sym || !date) {
+      const by = {};
+      for (const k of keys) { const m = k.match(_CBOE_INTRA_KEY_RE); (by[m[1]] ||= {})[m[2]] = ((by[m[1]] || {})[m[2]] || 0) + 1; }
+      return res.json({ ok: true, store: _r2Ok() ? 'r2' : 'none', symbols: _CBOE_INTRA_SYMS.map(s => s.replace(/^_/, '')), snapshotsPerDay: by });
+    }
+    const zlib = await import('node:zlib');
+    const mine = keys.filter(k => k.startsWith(`${_CBOE_INTRA_R2}${sym}/${date}/`));
+    if (!mine.length) return res.status(404).json({ ok: false, error: `no intraday log for ${sym} ${date}` });
+    const snaps = [];
+    for (const k of mine) {
+      const rec = await _r2GetJSON(k);
+      if (rec?.rows) snaps.push({ t: rec.t, spot: rec.spot, rows: JSON.parse(zlib.gunzipSync(Buffer.from(rec.rows, 'base64')).toString()) });
+    }
+    const steps = [];
+    for (let i = 1; i < snaps.length; i++) {
+      const list = _cboeVolumeBetween(snaps[i - 1], snaps[i]);
+      steps.push({ from: snaps[i - 1].t, to: snaps[i].t, spot: snaps[i].spot, contracts: list.length, vol: list.reduce((a, x) => a + x.dVol, 0), flow: _cboeFlowByStrike(list, snaps[i].spot) });
+    }
+    res.json({ ok: true, sym, date, fields: _CBOE_INTRA_FIELDS, snapshots: snaps.map(x => ({ t: x.t, spot: x.spot, n: x.rows.length })), steps, ...(req.query.rows === '1' ? { rows: snaps } : {}) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/cboe-intraday/capture', async (req, res) => {
+  try { res.json({ ok: true, result: await _cboeIntradayTick({ force: true }) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 // GET /api/cboe-raw                         -> archived days per symbol (R2 + any KV days)
 // GET /api/cboe-raw?sym=SPX&date=YYYY-MM-DD -> that day's full chain, decoded ({fields, rows})
