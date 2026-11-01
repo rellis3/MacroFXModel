@@ -68,7 +68,9 @@ def build(df):
     prev = df.groupby(key, sort=False)["oi"].shift(1)
     df["chg"] = np.where(prev.notna(), df["oi"] - prev, np.nan)
     df = df[df["oi"].notna() & (df["date"] <= df["expiry"])]
-    wide = df.pivot_table(index=["date", "expiry", "strike"], columns="right", values=["oi", "chg"], aggfunc="first", dropna=False)
+    # unstack, not pivot_table(dropna=False): the latter builds the full date x expiry x strike cross-product
+    # (16 GB on two synthetic years; far more on the real files) instead of the rows that exist
+    wide = df.drop_duplicates(["date", "expiry", "strike", "right"]).set_index(["date", "expiry", "strike", "right"])[["oi", "chg"]].unstack("right")
     wide.columns = [f"{'call' if r == 'C' else 'put'}_{v}" for v, r in wide.columns]
     for c in ["call_oi", "put_oi", "call_chg", "put_chg"]:
         if c not in wide:
