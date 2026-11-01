@@ -5,6 +5,26 @@ determines the global market state, with analysis layers on top (vol, OI, COT, g
 and backtests of edges underneath. "I want to learn how one thing impacts another." v1 is built and live on
 `state.html` / `GET /api/state`.*
 
+## 0. Status, 2026-11-01 (v3 built)
+
+`state.html` and `/api/state` now carry the following sections:
+- the global state banner
+- the institutional playbook: seven frameworks, each with expectations checked against markets and an evidence
+  label
+- edges active today (audited range edges)
+- economies, with the 2007–2025 surprise history
+- long-history context (VIX since 1990, the 10Y since 1970, MOVE since 2002, credit and duration ratios)
+- the five market tiers and the chain
+- who moved first
+- vol, COT and options layers
+- G10/EM currencies vs USD
+- all 36 COT markets at full depth
+- data health
+
+Inputs are in-memory server state, KV, and the R2 archive merged over committed seeds (`js/stateHistorySources.js`).
+Pure modules: `js/stateEngine.js`, `js/stateLayers.js`, `js/stateHistory.js`, `js/statePlaybook.js`, all tested.
+Next: phase 2's non-US macro (CPI/PMI vintages) and the forward ledger for the composite.
+
 ## 1. What it is, and what it is not
 
 The engine answers one question: **what state is the market in, layer by layer, and how is information moving between

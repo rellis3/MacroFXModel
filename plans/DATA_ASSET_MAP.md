@@ -183,7 +183,21 @@ IC ≈ 0.04 against a plausible 0.05–0.10), and they have not been run.
 >   - Gold ETF AUM (uncapped and captured daily) and a daily nowcast snapshot.
 > - The KV windows stay as fast caches; R2 is the record.
 > - Status: `GET /api/data-archive/status`. Manual run: `POST /api/data-archive/run` (auth).
-> - Not done here: GPR history, COT at full depth (B8), serving the engine from the R2 copies (B6 part 2).
+> - **Also done overnight 2026-11-01:**
+>   - GPR history.
+>   - COT at full depth: 36 markets, every week since 2006 (B8).
+>   - The engine reads the deep R2 FRED copies (B6).
+>   - Daily non-US rates from the flow-chain (B9), plus €STR, SONIA and CORRA.
+>   - 21 Cboe vol indices refreshed live.
+>   - Yahoo long dailies (MOVE, ^TNX/^FVX, credit/duration ETFs, 20 FX crosses including EM).
+>   - The desk's vol_forecast/vol_session records.
+>   - The funding-read log and a weekly surprise-store copy.
+>   - The daily TGA: its parser had dropped every print since October 2021 (DATA_SPEC §5 #23); it is fixed and
+>     archived from 2005.
+> - **Still open:**
+>   - B7, the feature-store build: it is Python on the laptop and needs a scheduled runner with R2 access.
+>   - TONA (no clean keyless daily source found).
+>   - The §4E cleanup items, which need the owner's go.
 
 1. Copy the CME options capture to R2 nightly and remove the 365-day trim (`server.js:20595`, `:20711`). The data
    is irreplaceable.
