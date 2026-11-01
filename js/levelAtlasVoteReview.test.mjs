@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, applyFadeStopFraction, applyMaeStopGate, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap, applyTrailingContinuation, applyStoredContinuationExit, applyGapFilter } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, applyFadeStopFraction, applyMaeStopGate, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap, applyTrailingContinuation, applyStoredContinuationExit, applyGapFilter, TRAIL_EXIT_VERSION } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -832,11 +832,10 @@ function mkBook(dimSpecs) {
   const gbDefault = applyTrailingContinuation([trade], packed, { decisions: ['follow'] }); // no trailMode at all -- must match the explicit 'giveback' call
   ok('T23 omitting trailMode is bit-identical to the pre-existing giveback default (no regression for any existing caller)',
     gb[0].trailedPnlPct === gbDefault[0].trailedPnlPct && gb[0].trailedResolveTime === gbDefault[0].trailedResolveTime);
-  // The giveback buffer is so tight it exits on bar10's own ordinary noise
-  // (the resolution bar itself), before ever reaching the bar21 dip this
-  // block was built around -- an even stronger real-world illustration of
-  // "structurally exits almost immediately" than a bar21 exit would have been.
-  ok('T23 giveback trail exits immediately, on the resolution bar\'s own noise -- confirms the production finding (median extension ~0)', gb[0].trailedResolveTime === times[10], JSON.stringify(gb[0]));
+  // The giveback buffer is so tight it exits on the first bar after the target
+  // bar, on ordinary noise. (2026-11-01: the target bar itself is no longer
+  // trailed, since the order of its high and low is unknown.)
+  ok('T23 giveback trail exits immediately, on the first bar after the target bar -- confirms the production finding (median extension ~0)', gb[0].trailedResolveTime === times[11], JSON.stringify(gb[0]));
 
   const chand = applyTrailingContinuation([trade], packed, { trailMode: 'chandelier', chandelierMult: 1.5, chandelierPeriod: 20, decisions: ['follow'] });
   ok('T23 chandelier trail SURVIVES the same bar21 dip giveback could not, staying open materially longer', chand[0].trailedResolveTime > gb[0].trailedResolveTime, JSON.stringify(chand[0]));
@@ -849,6 +848,19 @@ function mkBook(dimSpecs) {
   // exact hand-derived pip figure.
   ok('T23 chandelier exit is above the floor and a real distinct trail level (not just the floor, not the untouched peak)',
     chand[0].trailedPnlPips > 20 && chand[0].trailedPnlPips < 40, JSON.stringify(chand[0]));
+
+  // 2026-11-01 (TRAIL_EXIT_VERSION 2): no floor at the target. A chandelier buffer
+  // wider than the run beyond the target must be able to exit BELOW the target.
+  const wide = applyTrailingContinuation([trade], packed, { trailMode: 'chandelier', chandelierMult: 4, chandelierPeriod: 20, decisions: ['follow'] });
+  ok('T23 no floor: a wide chandelier stop hit on the reversal books less than the target', wide[0].trailedPnlPips < 20, JSON.stringify(wide[0]));
+  ok('T23 trailed rows carry the current trailExitVersion', wide[0].trailExitVersion === TRAIL_EXIT_VERSION && chand[0].trailExitVersion === TRAIL_EXIT_VERSION);
+  const timedOut = { ...trade, timedOut: true, resolveTime: times[20] };
+  ok('T23 a trade that timed out at the session close is not trailed (it never reached the target)',
+    applyTrailingContinuation([timedOut], packed, { trailMode: 'chandelier', chandelierMult: 1.5, chandelierPeriod: 20 })[0].trailedPnlPct === undefined);
+  // Level Atlas sides are 'up'/'down'; an 'up' follow must trail upward exactly like an 'above' one.
+  const upTrade = { ...trade, side: 'up' };
+  const upChand = applyTrailingContinuation([upTrade], packed, { trailMode: 'chandelier', chandelierMult: 1.5, chandelierPeriod: 20, decisions: ['follow'] });
+  ok('T23 Level Atlas side \'up\' trails the same direction as Fib Atlas side \'above\'', upChand[0].trailedPnlPips === chand[0].trailedPnlPips, JSON.stringify(upChand[0]));
 
   const losingTrade = { ...trade, win: false };
   ok('T23 a losing trade is untouched by chandelier mode exactly like giveback mode', applyTrailingContinuation([losingTrade], packed, { trailMode: 'chandelier' })[0].trailedPnlPct === undefined);
@@ -868,8 +880,13 @@ function mkBook(dimSpecs) {
     pnlPct: 0.2, pnlPips: 20, resolveTime: 100,
     trailedPnlPct: 0.5, trailedPnlPips: 50, trailedResolveTime: 200,
     chandTrailedPnlPct: 0.8, chandTrailedPnlPips: 80, chandTrailedResolveTime: 300,
+    trailExitVersion: TRAIL_EXIT_VERSION,
   };
-  const onlyGiveback = { pnlPct: 0.2, pnlPips: 20, resolveTime: 100, trailedPnlPct: 0.5, trailedPnlPips: 50, trailedResolveTime: 200 };
+  const onlyGiveback = { pnlPct: 0.2, pnlPips: 20, resolveTime: 100, trailedPnlPct: 0.5, trailedPnlPips: 50, trailedResolveTime: 200, trailExitVersion: TRAIL_EXIT_VERSION };
+  // 2026-11-01: rows trailed by an older pricing version (no marker) keep their plain result.
+  const stale = { ...withBoth, trailExitVersion: undefined };
+  ok('T24 a row with no current trailExitVersion is NOT swapped (stale version-1 pricing)',
+    applyStoredContinuationExit([stale], 'chandelier')[0].pnlPct === 0.2 && applyStoredContinuationExit([stale], 'giveback')[0].pnlPct === 0.2);
   const untrailed = { pnlPct: 0.2, pnlPips: 20, resolveTime: 100 };
 
   for (const mode of [true, 'true', 'giveback']) {
@@ -923,12 +940,14 @@ function mkBook(dimSpecs) {
 
   const gated = applyMaeStopGate([deepWin], 0.7, 0.3)[0];
   ok('T26 above trigger (0.75 >= 0.7) -> flips to a loss', gated.win === false, JSON.stringify(gated));
-  const expectPct = +(-(0.3 * stopPips * pip / entry * 100)).toFixed(4);
-  ok('T26 gated loss sized at exactly newStopR x ORIGINAL stopPips', Math.abs(gated.pnlPct - expectPct) < 1e-6, JSON.stringify({ got: gated.pnlPct, expect: expectPct }));
+  // 2026-11-01: booked at the TRIGGER (0.7R), the first moment the rule can act --
+  // not at newStopR (0.3R), a level price had already passed (look-ahead).
+  const expectPct = +(-(0.7 * stopPips * pip / entry * 100)).toFixed(4);
+  ok('T26 gated loss sized at exactly triggerR x ORIGINAL stopPips', Math.abs(gated.pnlPct - expectPct) < 1e-6, JSON.stringify({ got: gated.pnlPct, expect: expectPct }));
   ok('T26 stopPips itself is left UNCHANGED (no implicit re-leverage via risk sizing)', gated.stopPips === stopPips, JSON.stringify(gated));
 
   const gatedLoss = applyMaeStopGate([loss], 0.7, 0.3)[0];
-  ok('T26 an already-losing trade above trigger still gets capped SMALLER, not left at its full loss', Math.abs(gatedLoss.pnlPct - expectPct) < 1e-6, JSON.stringify(gatedLoss));
+  ok('T26 an already-losing trade above trigger exits at the trigger, not left at its full loss', Math.abs(gatedLoss.pnlPct - expectPct) < 1e-6, JSON.stringify(gatedLoss));
 
   ok('T26 newStopR >= triggerR is a no-op (nonsensical config, not applied)', applyMaeStopGate([deepWin], 0.5, 0.5)[0].win === true);
   ok('T26 null triggerR/newStopR -> no-op passthrough', applyMaeStopGate([deepWin], null, 0.3)[0].win === true && applyMaeStopGate([deepWin], 0.7, null)[0].win === true);

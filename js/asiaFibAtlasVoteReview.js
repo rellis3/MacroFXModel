@@ -266,9 +266,16 @@ export function buildBarrierTrades(touches, book, { rearmFrac = 0.3, cost = 0, m
 // the concurrency cap, since a filtered-out trade should never occupy a
 // concurrency slot either. `null`/absent is a no-op passthrough, so every
 // existing caller is unaffected until it opts in.
+// FADE trades only (2026-11-01). Clearance is how far the touch bar went past the
+// level. For a fade, a resting limit at the level only fills if price trades
+// through it, so requiring clearance is a fair fill rule (and it keeps the worse
+// fades, which is the honest direction). A follow is a stop entry that fills on
+// the touch itself; filtering follows on clearance kept only the touches that had
+// already run the trade's way, which is look-ahead (blind audit on random-walk
+// data: follow +0.21R at 1 pip, +0.44 to +0.78R at 2 pips). Follows pass through.
 export function applyClearanceFilter(trades, minClearancePips) {
   if (!trades?.length || minClearancePips == null) return trades ?? [];
-  return trades.filter(t => t.clearancePips != null && t.clearancePips >= minClearancePips);
+  return trades.filter(t => t.decision !== 'fade' || (t.clearancePips != null && t.clearancePips >= minClearancePips));
 }
 
 /**
