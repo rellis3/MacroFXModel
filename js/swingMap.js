@@ -232,6 +232,9 @@ export function buildSwingMap(bars, opts = {}) {
       halfLifeDays: lad.half_life_days ?? null, anchor: 'latest close', proof: PROOF.validated, ledger: 'horizon-reversion' };
   };
   const bands = [band(opts.ladderWeeklyRev, 'weekly (5 sessions)', 5), band(opts.ladderMonthlyRev, 'monthly (20 sessions)', 20)].filter(Boolean);
+  // the 1-day expected move from the live daily ladder (validated as the forecaster's calibrated range); kept apart from
+  // `bands` so bands[0] stays weekly and bands[1] monthly for every existing reader
+  const bandDaily = band(opts.ladderDaily, '1 day', 1);
 
   // Thin books (under THIN_FLOOR of all live expiries' open interest, the expiry-tracker prereg's 10% floor) are shown
   // greyed and left out of the lean summary, the arrows and the Monte Carlo pull: a 261-contract weekly is not a book.
@@ -273,7 +276,7 @@ export function buildSwingMap(bars, opts = {}) {
   return {
     ok: true, generatedFor: state.date,
     series: bars2.map((b, i) => [b.date, b.close]),
-    legs, live: liveOut, pivots, state, barriers, bands, expiries, pull, paths, signals,
+    legs, live: liveOut, pivots, state, barriers, bands, bandDaily, expiries, pull, paths, signals,
     baseRates: BASE_RATES,
     proofs: {
       legs: PROOF.context, live: PROOF.context, state: PROOF.exploratory, baseRates: PROOF.exploratory,
