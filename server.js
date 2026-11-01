@@ -333,7 +333,7 @@ import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
-import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags } from './js/directionResearch.js';
+import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags, FX_CARRY_EUR_OFFSET as _DL_EUR_OFFSET, FX_CARRY_MAX_AGE_DAYS as _DL_RATE_MAX_AGE_DAYS } from './js/directionResearch.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
 import { buildOiPlan as _hpoBuild, scoreOiPlan as _hpoScore, orderStatesOI as _hpoStates, buildOiPlanText as _hpoText, OI_PLAN as _HPO_CFG } from './js/hedgingPlanOI.js';   // OI-level hedging plan (shadow)
@@ -24740,6 +24740,28 @@ async function _dlCloses() {
 }
 // What the research forecasters need as of the issue close (js/directionResearch.js). Each source reports its own status in the
 // issue record; a source that is missing leaves its forecasters silent and never blocks the baselines.
+// 3m rate per currency for fx-factor-carry (forge/FX_FACTOR_STACK_PREREG.md A1.3, A3): the latest value of the same series the
+// study used. USD = EFFR (daily), EUR = Germany call money + the frozen offset (the EZ 3m series stopped in 2026-01), GBP = BoE Bank
+// Rate, the rest OECD 3m interbank. Cached an hour so the 8-hour wait for Cboe does not re-hit FRED every tick.
+const _DL_RATE_IDS = { USD: 'EFFR', EUR: 'IRSTCI01DEM156N', GBP: 'BOE_IUDBEDR_M', JPY: 'IR3TIB01JPM156N', AUD: 'IR3TIB01AUM156N', NZD: 'IR3TIB01NZM156N', CAD: 'IR3TIB01CAM156N', CHF: 'IR3TIB01CHM156N' };
+let _dlRatesCache = { at: 0, v: null };
+async function _dlRates(date) {
+  const key = process.env.FRED_KEY || process.env.FRED_API_KEY;
+  if (!key) throw new Error('no FRED key');
+  if (!_dlRatesCache.v || Date.now() - _dlRatesCache.at > 3600_000) {
+    const from = new Date(Date.now() - 400 * 86400_000).toISOString().slice(0, 10);
+    const out = {}, refs = {};
+    await Promise.all(Object.entries(_DL_RATE_IDS).map(async ([ccy, id]) => {
+      const m = await fetchFredSeries(id, from, key);
+      const last = [...m.keys()].sort().at(-1);
+      if (!last) throw new Error(`${id}: no observations`);
+      if (Date.now() - Date.parse(last) > _DL_RATE_MAX_AGE_DAYS * 86400_000) throw new Error(`${id}: stale, last observation ${last}`);
+      out[ccy] = m.get(last) + (ccy === 'EUR' ? _DL_EUR_OFFSET : 0); refs[ccy] = last;
+    }));
+    _dlRatesCache = { at: Date.now(), v: { rates: out, refs } };
+  }
+  return { date, ..._dlRatesCache.v };
+}
 async function _dlExternal(date) {
   const external = {}, status = {};
   try {
@@ -24748,6 +24770,7 @@ async function _dlExternal(date) {
     if (v && v.date === date) { external.vol = v; status.vol = 'ok'; } else status.vol = v ? `stale (${v.date})` : 'no data';
   } catch (e) { status.vol = `error: ${e.message}`; }
   try { external.cot = (await _buildCotState()).instruments; status.cot = 'ok'; } catch (e) { status.cot = `error: ${e.message}`; }
+  try { external.rates = await _dlRates(date); status.rates = 'ok'; } catch (e) { status.rates = `error: ${e.message}`; }
   external.fomcDates = FOMC_MEETINGS.map(m => m.date); status.fomc = 'ok';
   return { external, status };
 }

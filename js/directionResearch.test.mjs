@@ -1,7 +1,7 @@
 // node js/directionResearch.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { lastPct, volFlags, RESEARCH, EXCESS, VIX_BETA_CHANGE, COT_STATE_D, POST_FOMC_USD_DRIFT } from './directionResearch.js';
+import { lastPct, volFlags, RESEARCH, EXCESS, VIX_BETA_CHANGE, COT_STATE_D, POST_FOMC_USD_DRIFT, FX_FACTOR_CARRY, FX_CARRY_MAP, carryZ } from './directionResearch.js';
 import { issueRecord, HORIZONS, INSTRUMENTS } from './directionLedger.js';
 import { parseCboeCsv } from './marketHistory.js';
 
@@ -84,6 +84,44 @@ ok('ledger: research rows sit beside B0/B1/B2 with inputs and flags, and the rec
   assert.ok(rec.forecasts.filter(f => f.family === 'baseline').length === 6 * 4 * 3);
   const none = issueRecord({ date, closes, baselines, issuedAt: 'now', research: RESEARCH, external: {} });
   assert.equal(none.forecasts.filter(f => f.family === 'research').length, 0);   // no external data: baselines only
+});
+
+ok('carryZ: eight differentials vs USD, population z; any missing rate gives null', () => {
+  const rates = { USD: 3.9, EUR: 2.3, GBP: 3.75, JPY: 1.6, AUD: 4.5, NZD: 3.1, CAD: 2.3, CHF: 0 };
+  const z = carryZ(rates);
+  const v = Object.values(z); assert.ok(Math.abs(v.reduce((a, b) => a + b, 0)) < 1e-12);
+  assert.ok(Math.abs(Math.sqrt(v.reduce((a, b) => a + b * b, 0) / 8) - 1) < 1e-12);
+  assert.ok(z.AUD === Math.max(...v) && z.CHF === Math.min(...v));   // AUD has the highest differential, CHF the lowest
+  assert.equal(carryZ({ ...rates, JPY: undefined }), null);
+  assert.equal(carryZ({ USD: 1, EUR: 1, GBP: 1, JPY: 1, AUD: 1, NZD: 1, CAD: 1, CHF: 1 }), null);   // no dispersion
+});
+
+ok('fx-factor-carry: h20 on the three FX pairs only, today\'s rates only, base minus quote, flagged UNDERPOWERED, tiny shift', () => {
+  const rates = { USD: 3.9, EUR: 2.3, GBP: 3.75, JPY: 1.6, AUD: 4.5, NZD: 3.1, CAD: 2.3, CHF: 0 };
+  const ext = { rates: { date: '2026-11-02', rates, refs: { USD: '2026-10-30' } } };
+  const f = fc(FX_FACTOR_CARRY, { date: '2026-11-02', inst: 'gbpusd', h: 20, external: ext });
+  const z = carryZ(rates), score = z.GBP - z.USD;
+  const a = FX_CARRY_MAP[20].a, b = FX_CARRY_MAP[20].b, sg = x => 1 / (1 + Math.exp(-x));
+  assert.ok(Math.abs(f.p_up - (base.p0 + sg(a + b * score) - sg(a))) < 1e-12);
+  assert.ok(Math.abs(f.p_up - base.p0) < 0.02);                       // the map moves P(up) by a fraction of a point to two
+  assert.deepEqual(f.flags, ['UNDERPOWERED']); assert.equal(f.inputs.event_key, 'gbpusd|2026-11');
+  const j = fc(FX_FACTOR_CARRY, { date: '2026-11-02', inst: 'usdjpy', h: 20, external: ext });
+  assert.equal(Math.sign(j.p_up - base.p0), Math.sign(z.USD - z.JPY));   // USDJPY: USD is the base
+  assert.equal(fc(FX_FACTOR_CARRY, { date: '2026-11-02', inst: 'gbpusd', h: 60, external: ext }), null);   // the 60-close fit is flat: not issued
+  assert.equal(fc(FX_FACTOR_CARRY, { date: '2026-11-02', inst: 'nq', h: 20, external: ext }), null);
+  assert.equal(fc(FX_FACTOR_CARRY, { date: '2026-11-03', inst: 'gbpusd', h: 20, external: ext }), null);       // rates read for another day
+  assert.equal(fc(FX_FACTOR_CARRY, { date: '2026-11-02', inst: 'gbpusd', h: 20, external: {} }), null);
+});
+
+ok('ledger: fx-factor-carry rows appear for eurusd/gbpusd/usdjpy at h20 when rates are present', () => {
+  const days = []; for (let d = new Date('2025-06-02T00:00:00Z'); days.length < 300; d = new Date(d.getTime() + 86400_000)) if (d.getUTCDay() % 6) days.push(d.toISOString().slice(0, 10));
+  const closes = Object.fromEntries(Object.keys(INSTRUMENTS).map(i => [i, days.map((date, k) => ({ date, c: 100 * Math.exp(0.001 * k) }))]));
+  const baselines = { version: 't', instruments: Object.fromEntries(Object.keys(INSTRUMENTS).map(i => [i, Object.fromEntries(HORIZONS.map(h => [h, base]))])) };
+  const date = days.at(-1);
+  const rates = { USD: 3.9, EUR: 2.3, GBP: 3.75, JPY: 1.6, AUD: 4.5, NZD: 3.1, CAD: 2.3, CHF: 0 };
+  const rec = issueRecord({ date, closes, baselines, issuedAt: 'now', research: RESEARCH, external: { rates: { date, rates, refs: {} } }, externalStatus: { rates: 'ok' } });
+  const ids = rec.forecasts.filter(f => f.model_id === 'fx-factor-carry').map(f => `${f.inst}|${f.h}`).sort();
+  assert.deepEqual(ids, ['eurusd|20', 'gbpusd|20', 'usdjpy|20']);
 });
 
 console.log(`\n${passed} passed`);

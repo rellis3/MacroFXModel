@@ -15,6 +15,7 @@
  *   external.vol  { date, vixBetaPct, dRimpPct }   from volFlags() on Cboe VIX/VVIX/VXN and the Nasdaq-100 close
  *   external.cot  { NQ: {state, trend, reportDate}, ... }   from /api/cot-state (js/cotState.js)
  *   external.fomcDates  ['YYYY-MM-DD', ...]   scheduled decision days (js/fomcCalendar.js)
+ *   external.rates  { date, rates: {USD, EUR, ...} annual %, refs: {ccy: last observation date} }   3m rates for fx-factor-carry
  * Pure. Tested in js/directionResearch.test.mjs.
  */
 
@@ -103,4 +104,39 @@ export const POST_FOMC_USD_DRIFT = make('post-fomc-usd-drift', 'MD files/POST_FO
   return { side: USD_SIGN[inst], inputs: { decision_day: date, event_key: `fomc|${date}`, window: 'ledger target runs from the 17:00 New York close of the decision day; the cell measured 14:30 ET on the day to 14:00 ET five sessions on' } };
 });
 
-export const RESEARCH = [VIX_BETA_CHANGE, VIX_SECOND_DERIVATIVE, COT_STATE_D, POST_FOMC_USD_DRIFT];
+// ── fx-factor-carry (forge/FX_FACTOR_STACK_PREREG.md, A1.8 and A3). UNDERPOWERED, forward record only. ──────────────
+// Score of a pair = z(base) − z(quote), z = cross-sectional z of each currency's 3m rate minus the USD rate over the eight
+// currencies (population SD, as scripts/fx-factor-stack/run.py). Map: P(up) = B0 + sigmoid(a + b·score) − sigmoid(a), with
+// (a, b) fitted once on data to 2026-08-21 by scripts/fx-factor-stack/ledger_map.py and frozen here (analysis/output/
+// fx-factor-stack/ledger_map.json). The 60-close fit is flat (b −0.002, CI [−0.086, +0.087]) so it would only repeat B0:
+// not issued. The 20-close slope is +0.021 per score unit, CI [−0.062, +0.107]: about ±0.5 pp on P(up) at a score of ±1.
+export const FX_CARRY_MAP = { 20: { a: 0.00990330680833078, b: 0.021254558976790176 } };
+export const FX_CARRY_EUR_OFFSET = 0.008667064279859879;   // EZ 3m − DE call money, mean of the last 12 shared reference months (run.py load_rates)
+export const FX_CARRY_MAX_AGE_DAYS = 200;                  // a rate whose latest reference date is older than this is stale: stay silent
+const CCY8 = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
+const FX_PAIR = { eurusd: ['EUR', 'USD'], gbpusd: ['GBP', 'USD'], usdjpy: ['USD', 'JPY'] };   // [base, quote] of the ledger instrument
+const sigmoid = x => 1 / (1 + Math.exp(-x));
+
+/** z-scores of the eight currencies' differential vs USD (annual %). Null if any rate is missing. */
+export function carryZ(rates) {
+  const d = CCY8.map(c => (Number.isFinite(rates?.[c]) && Number.isFinite(rates?.USD) ? rates[c] - rates.USD : NaN));
+  if (d.some(x => !Number.isFinite(x))) return null;
+  const m = d.reduce((s, x) => s + x, 0) / 8, sd = Math.sqrt(d.reduce((s, x) => s + (x - m) ** 2, 0) / 8);
+  if (!(sd > 0)) return null;
+  return Object.fromEntries(CCY8.map((c, i) => [c, (d[i] - m) / sd]));
+}
+
+export const FX_FACTOR_CARRY = { model_id: 'fx-factor-carry', model_version: 'fx-factor-carry-v1', prereg: 'forge/FX_FACTOR_STACK_PREREG.md',
+  forecast: ({ date, inst, h, baseline, external }) => {
+    const m = FX_CARRY_MAP[h], pair = FX_PAIR[inst], r = external?.rates;
+    if (!m || !pair || !r || r.date !== date) return null;
+    const z = carryZ(r.rates);
+    if (!z) return null;
+    const score = z[pair[0]] - z[pair[1]], shift = sigmoid(m.a + m.b * score) - sigmoid(m.a);
+    return { p_up: clip(baseline.p0 + shift), mu_log: null, decision: shift >= 0 ? 'LONG' : 'SHORT',
+      inputs: { cell: 'fx-factor-carry', score: +score.toFixed(3), shift_pp: +(shift * 100).toFixed(3), map: { a: m.a, b: m.b }, refs: r.refs, event_key: `${inst}|${date.slice(0, 7)}`,
+        note: 'UNDERPOWERED: the fitted slope CI crosses zero; this row is the baseline plus a frozen in-sample map, not evidence' },
+      flags: ['UNDERPOWERED'] };
+  } };
+
+export const RESEARCH = [VIX_BETA_CHANGE, VIX_SECOND_DERIVATIVE, COT_STATE_D, POST_FOMC_USD_DRIFT, FX_FACTOR_CARRY];
