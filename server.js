@@ -203,6 +203,7 @@ import { toSurpriseRows as _nqRows, dedupeAgainst as _nqDedupe } from './js/nasd
 import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual, onsSeries as _onsSeries, statcanSeries as _statcanSeries, jsonStatSeries as _jsonStatSeries } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
+import { EVIDENCE_AUDIT as _EVIDENCE_AUDIT } from './js/evidenceAudit.js';
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt, evidenceBrief as _evidenceBrief, lessonSafe as _lessonSafe } from './js/deskEvidence.js';
 import { stripDesk as _stripDesk } from './js/deskStrip.js';
 import { normaliseTheoryLabPath } from './js/theoryLabUrl.js';
@@ -39364,6 +39365,8 @@ app.get('/theory-lab/desk-verdicts.json', (req, res) => {
   for (const e of _DESK_EVIDENCE) {
     if (!ids.includes(e.id)) continue;
     entries[e.id] = { verdict: e.verdict, date: e.date, claim: _lessonSafe(e.claim), result: _lessonSafe(e.result) };
+    // Code audit 2026-10-31: lessons show "reopened" / "unverified" next to the verdict, so a flawed test is not quoted as settled.
+    const au = _EVIDENCE_AUDIT[e.id]; if (au) entries[e.id].audit = au.status;
     if (admin && e.use) entries[e.id].use = _lessonSafe(e.use);
   }
   res.set('Cache-Control', 'no-cache').json({ entries });
