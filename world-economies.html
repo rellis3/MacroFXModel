@@ -34,14 +34,21 @@ a{color:var(--acc)}
     <div class="right"><a class="btn" href="atlas.html">Atlas</a><a class="btn" href="today.html">Today</a></div>
   </div>
   <div class="panel" id="t"><span class="small3">loading…</span></div>
+  <div class="top" style="border:0;padding-top:0"><h1 style="font-size:16px">Policy and <span>fiscal</span></h1><div class="sub">central banks, the Beige Book, the UK Budget and US refunding</div></div>
+  <div class="panel" id="p"><span class="small3">loading…</span></div>
 </div>
 <script type="module">
 import { worldEconomies, worldEconomiesHtml } from './js/worldEconomies.js';
+import { policyWeek, policyWeekHtml } from './js/policyWeek.js';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const J = p => fetch('/api/' + p).then(r => r.json()).catch(() => null);
 const [gdp, cpi, labor, retail, conf, trade, real, curve, scorecard] = await Promise.all(['gdp', 'cpi', 'labor-market', 'retail-sales', 'consumer-confidence', 'trade-balance', 'real-yield', 'yield-curve', 'macro-scorecard'].map(J));
 const w = worldEconomies({ gdp, cpi, labor, retail, conf, trade, real, curve, scorecard });
 document.getElementById('t').innerHTML = worldEconomiesHtml(w, esc, new Date().toISOString().slice(0, 10));
+const BK = { USD: 'fomc', EUR: 'ecb', GBP: 'boe', JPY: 'boj', AUD: 'rba', CAD: 'boc', CHF: 'snb', NZD: 'rbnz' };
+const banks = {}; await Promise.all(Object.entries(BK).map(async ([c, k]) => { banks[c] = await J(k + '/latest'); }));
+const [beige, fiscal] = await Promise.all([J('beigebook/latest'), J('fiscal/events')]);
+document.getElementById('p').innerHTML = policyWeekHtml(policyWeek({ banks, beige, fiscal }), esc);
 </script>
 </body>
 </html>
