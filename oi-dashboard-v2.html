@@ -110,8 +110,11 @@ svg text{font-family:var(--mono)}
     <h2><em>01</em> Live gamma terrain
       <span class="tgl"><span class="pill" data-tf="M5">5m</span><span class="pill on" data-tf="M15">15m</span><span class="pill" data-tf="H1">1h</span></span></h2>
     <div class="sub"><b>How to read it:</b> a live TradingView chart (updates every 10 s, scroll and zoom as normal). The glowing bands behind the candles are zones of dealer gamma. <b style="color:rgb(70,184,122)">Green</b> = dealers lean against moves, so price tends to stall and pin. <b style="color:rgb(232,97,95)">Red</b> = dealers push with the move, so price tends to speed up through it. Brighter = more gamma; the biggest zones are named. The curve on the right is the <b>whole book's gamma if price were at that level</b> — where it crosses zero is the flip.</div>
+    <div id="lwLive" class="minis" style="margin:6px 0 8px"></div>
+    <div class="tgl" style="margin:0 0 8px"><span class="pill on" data-plv="on" title="Draw the OI Profile indicator's own levels on this chart (the same export you paste into TradingView)">OI Profile lines</span><span class="pill" data-plv="books" title="Add the lines of every expiry book, not only the strongest one (the 'All lines' export)">every expiry book</span><span class="pill" data-plv="minor" title="Also draw gamma peak, vanna flip, charm flip and volume lines (the indicator hides these by default)">minor levels</span><span class="pill" data-plv="cboe" title="Dashed lines from Cboe's delayed index-options book (NQ, SPX, RUT, US30), re-built every 5 minutes">Cboe live levels</span></div>
     <div class="lwrow"><div id="lw"><canvas id="bg"></canvas></div><canvas id="curve"></canvas></div>
     <div class="legend"><span><i style="background:rgb(var(--long))"></i>long gamma — pins</span><span><i style="background:rgb(var(--short))"></i>short gamma — speeds up</span><span><i style="background:var(--vio)"></i>GEX flip</span><span><i style="background:#d9c04a"></i>max pain</span></div>
+    <div id="lwMoves" class="legend" style="display:none;margin-top:6px"></div>
   </div>
 
   <div class="card">
@@ -391,18 +394,102 @@ function paintBackdrop(){
 function setLevels(){
   const D = CUR; LW.lines.forEach(l => LW.series.removePriceLine(l)); LW.lines = [];
   if (!D) return;
+  if (PLV.on && PLV.loadedFor === SYM) { plvDraw(); plvDrawCboe(); return; }
   [[D.flip, '#a487f0', 'GEX flip', 0], [D.mp, '#d9c04a', 'max pain', 2], [D.cw, 'rgb(232,97,95)', 'call wall', 2], [D.pw, 'rgb(70,184,122)', 'put wall', 2]].forEach(([p, color, title, ls]) => {
     if (Number.isFinite(p) && Math.abs(p - D.spot) < 3 * D.rm) LW.lines.push(LW.series.createPriceLine({ price: p, color, lineWidth: 1, lineStyle: ls, axisLabelVisible: true, title })); });
 }
 
+// ── Live levels on the chart: the OI Profile's own lines (the same export the TradingView indicator is pasted from), re-fetched while the page is open, plus the Cboe book's levels ──
+// Nothing here is new analysis. It puts the indicator's levels on this live chart so no paste is needed. The CME books behind the Profile are published once a day (OI for day D appears mid D+1),
+// so the Profile lines change when a new capture is saved; the Cboe overlay is re-built from Cboe's delayed chain (about 15 minutes behind) and moves through the US session.
+const PLV = { on: true, books: false, minor: false, cboe: false, lines: [], cboeLines: [], prev: null, moves: [], meta: null, err: null, loadedFor: null, at: 0, cAt: 0, timer: null, cTimer: null, busy: false };
+const PLV_STYLE = { call_wall: ['rgb(232,97,95)', 0], put_wall: ['rgb(70,184,122)', 0], zero_gamma: ['#f0b04a', 0], gex_flip: ['#a487f0', 0], max_pain: ['#d9c04a', 2], gamma_peak: ['#ffffff', 0],
+  short_gamma_node: ['#e8615f', 2], long_gamma_node: ['#46b87a', 2], vanna_flip: ['#4fd1c5', 3], charm_flip: ['#38b2ac', 3], oi_volume: ['#8b95a5', 3], exp_hi: ['#6b7585', 1], exp_lo: ['#6b7585', 1] };
+const PLV_MINOR = new Set(['vanna_flip', 'charm_flip', 'oi_volume', 'gamma_peak']);
+function parseProfileText(text) {
+  const out = { meta: {}, lines: [] };
+  for (const raw of String(text).split(/\r?\n/)) {
+    const p = raw.split('|');
+    if (p[0] === 'M') { for (let i = 1; i + 1 < p.length; i += 2) out.meta[p[i]] = p[i + 1]; }
+    else if (p[0] === 'L' && p.length >= 5 && Number.isFinite(+p[2])) out.lines.push({ type: p[1], price: +p[2], label: p[3], strength: +p[4] });
+  }
+  return out;
+}
+function plvClear(arrName) { for (const l of PLV[arrName]) { try { LW.series.removePriceLine(l); } catch (_) {} } PLV[arrName] = []; }
+function plvDraw() {
+  if (!LW) return;
+  for (const l of LW.lines) { try { LW.series.removePriceLine(l); } catch (_) {} } LW.lines = [];   // the four legacy lines, replaced by the full set
+  plvClear('lines');
+  if (!PLV.on || PLV.loadedFor !== SYM || !CUR) return;
+  for (const l of PLV.cur || []) {
+    if (!PLV.minor && PLV_MINOR.has(l.type)) continue;
+    const st = PLV_STYLE[l.type] || ['#8b95a5', 3];
+    PLV.lines.push(LW.series.createPriceLine({ price: l.price, color: st[0], lineWidth: l.strength >= 0.7 ? 2 : 1, lineStyle: st[1], axisLabelVisible: true, title: l.label }));
+  }
+}
+function plvDrawCboe() {
+  if (!LW) return;
+  plvClear('cboeLines');
+  if (!PLV.cboe || !PLV.cboeLv) return;
+  const L = PLV.cboeLv;
+  [['callWallGamma', 'Cboe call wall', 'rgba(232,97,95,.7)'], ['putWallGamma', 'Cboe put wall', 'rgba(70,184,122,.7)'], ['gexFlip', 'Cboe GEX flip', 'rgba(164,135,240,.8)'], ['maxPain', 'Cboe max pain', 'rgba(217,192,74,.7)']].forEach(([k, title, color]) => {
+    const v = L[k]; if (Number.isFinite(v)) PLV.cboeLines.push(LW.series.createPriceLine({ price: v, color, lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title }));
+  });
+}
+async function plvFetch() {
+  if (PLV.busy || document.hidden || !CUR) return;
+  PLV.busy = true; const sym = SYM;
+  try {
+    const r = await fetch('/api/oi-profile/export?pair=' + encodeURIComponent(sym) + (PLV.books ? '&books=all' : ''), { cache: 'no-store' });
+    const t = await r.text(); if (sym !== SYM) return;
+    const p = parseProfileText(t);
+    if (!p.lines.length) throw new Error('no levels in the Profile export');
+    // which lines moved since the last fetch (same type and label, price changed by more than 0.02% of price)
+    if (PLV.loadedFor === sym && PLV.cur) {
+      const before = new Map(PLV.cur.map(l => [l.type + '|' + l.label, l.price]));
+      for (const l of p.lines) { const o = before.get(l.type + '|' + l.label); if (o != null && Math.abs(l.price - o) > 0.0002 * l.price) PLV.moves.unshift({ t: new Date(), label: l.label, from: o, to: l.price }); }
+      PLV.moves = PLV.moves.slice(0, 10);
+    } else PLV.moves = [];
+    PLV.cur = p.lines; PLV.meta = p.meta; PLV.loadedFor = sym; PLV.err = null; PLV.at = Date.now();
+    plvDraw();
+  } catch (e) { PLV.err = e.message; }
+  finally { PLV.busy = false; updateLwLive(); }
+}
+async function plvFetchCboe() {
+  if (!PLV.cboe || document.hidden || !(SYM in DD_PAIRS)) return;
+  const sym = SYM;
+  try {
+    const j = await (await fetch('/api/cboe-chain?pair=' + encodeURIComponent(sym), { cache: 'no-store' })).json();
+    if (sym !== SYM || !j?.ok) return;
+    PLV.cboeLv = j.levels || null; PLV.cAt = Date.now(); plvDrawCboe(); updateLwLive();
+  } catch (_) {}
+}
+function startLiveLevels() {
+  clearInterval(PLV.timer); clearInterval(PLV.cTimer);
+  if (PLV.loadedFor !== SYM) { PLV.cur = null; PLV.moves = []; PLV.cboeLv = null; PLV.loadedFor = null; }
+  plvFetch(); plvFetchCboe();
+  PLV.timer = setInterval(plvFetch, 180000);          // the export builds from the price feed too, so every 3 minutes, and only while the tab is visible
+  PLV.cTimer = setInterval(plvFetchCboe, 300000);
+}
+function updateLwLive() {
+  const el = $('#lwLive'); if (!el || !LW) return;
+  const last = LW.last, open = LW.dayOpen, chg = last != null && open ? (last / open - 1) * 100 : null, M = PLV.meta || {};
+  const hhmm = ms => (ms ? new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '–');
+  el.innerHTML = `<div class="mini"><div class="k">Price (updates every 10 s)</div><div class="v">${last != null ? px(last) : '–'}</div><div class="n" style="color:${chg == null ? 'inherit' : chg >= 0 ? 'rgb(70,184,122)' : 'rgb(232,97,95)'}">${chg == null ? '' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '% on the day'}</div></div>`
+    + `<div class="mini"><div class="k">Regime</div><div class="v" style="font-size:15px">${esc(M.regime || '–')}</div><div class="n">${M.book ? esc(M.book) + ' book' : ''}</div></div>`
+    + `<div class="mini"><div class="k">Profile lines</div><div class="v" style="font-size:15px">${PLV.on ? (PLV.lines.length || '–') : 'off'}</div><div class="n">${PLV.err ? 'error: ' + esc(PLV.err) : 'refreshed ' + hhmm(PLV.at) + ' · OI saved ' + esc(M.saved || '–')}</div></div>`
+    + (PLV.cboe ? `<div class="mini"><div class="k">Cboe levels</div><div class="v" style="font-size:15px">${PLV.cboeLines.length || '–'}</div><div class="n">${(SYM in DD_PAIRS) ? 'refreshed ' + hhmm(PLV.cAt) + ' · delayed ~15 min' : 'not available for this market'}</div></div>` : '');
+  const mv = $('#lwMoves');
+  if (mv) { mv.style.display = PLV.moves.length ? '' : 'none'; mv.innerHTML = PLV.moves.length ? '<span><b>Levels that moved since the page opened:</b></span>' + PLV.moves.map(m => `<span>${hhmm(m.t)} ${esc(m.label)} ${px(m.from)} → ${px(m.to)}</span>`).join('') : ''; }
+}
 async function drawTerrain(){
   if (!window.LightweightCharts) { $('#lw').innerHTML = '<div class="err">TradingView chart library did not load.</div>'; return; }
   lwInit(); buildField(); setLevels();
   const D = CUR; if (!D || !D.L) return;
   const rows = await loadCandlesTF(SYM, TF); if (D !== CUR) return;
-  LW.series.setData(rows); LW.lastT = rows.length ? rows[rows.length - 1].time : 0; LW.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, rows.length - 220), to: rows.length + 8 });
+  LW.series.setData(rows); LW.lastT = rows.length ? rows[rows.length - 1].time : 0; LW.last = rows.length ? rows[rows.length - 1].close : null; LW.dayOpen = (rows.find(r => r.time >= Math.floor(Date.now() / 864e5) * 86400) || {}).open ?? null; updateLwLive(); startLiveLevels(); LW.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, rows.length - 220), to: rows.length + 8 });
   clearInterval(_poll);
-  _poll = setInterval(async () => { const r = await loadCandlesTF(SYM, TF); if (!r.length || D !== CUR) return; r.slice(-3).forEach(b => { if (b.time >= LW.lastT) { LW.series.update(b); LW.lastT = b.time; } }); }, 10000);
+  _poll = setInterval(async () => { const r = await loadCandlesTF(SYM, TF); if (!r.length || D !== CUR) return; r.slice(-3).forEach(b => { if (b.time >= LW.lastT) { LW.series.update(b); LW.lastT = b.time; LW.last = b.close; } }); updateLwLive(); }, 10000);
   _bgSig = '';
   zonesPanel(); timeBar();
 }
@@ -1472,6 +1559,7 @@ $('#tiersCopy').onclick = () => { try { navigator.clipboard.writeText($('#tiersT
 $('#mNear').onclick = () => { NEAR = true; $('#mNear').classList.add('on'); $('#mAll').classList.remove('on'); refresh(); };
 $('#mAll').onclick = () => { NEAR = false; $('#mAll').classList.add('on'); $('#mNear').classList.remove('on'); refresh(); };
 document.querySelectorAll('[data-ah]').forEach(b => b.onclick = () => { AH = +b.dataset.ah; document.querySelectorAll('[data-ah]').forEach(x => x.classList.toggle('on', x === b)); drawAhead(); });
+document.querySelectorAll('[data-plv]').forEach(b => b.onclick = () => { const k = b.dataset.plv; PLV[k] = !PLV[k]; b.classList.toggle('on', PLV[k]); if (k === 'books') { PLV.loadedFor = null; PLV.cur = null; plvFetch(); } else if (k === 'on') { plvDraw(); if (!PLV.on) setLevels(); updateLwLive(); } else if (k === 'minor') plvDraw(); else if (k === 'cboe') { PLV.cboe ? plvFetchCboe() : (plvClear('cboeLines'), updateLwLive()); } });
 document.querySelectorAll('[data-tf]').forEach(b => b.onclick = () => { TF = b.dataset.tf; document.querySelectorAll('[data-tf]').forEach(x => x.classList.toggle('on', x === b)); drawTerrain(); });
 
 (async () => {
