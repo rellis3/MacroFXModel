@@ -8,14 +8,14 @@ A feed counts as used only if its data reaches a field that js/newsletter.js rea
 
 ## Summary
 
-104 feeds and engines are on the register. 61 reach a newsletter and 43 do not. 42 are institutional grade, of which 32 are used and 10 are not.
+105 feeds and engines are on the register. 62 reach a newsletter and 43 do not. 42 are institutional grade, of which 32 are used and 10 are not.
 
 | Grade | daily and weekly | daily | weekly | neither | Total |
 | --- | --- | --- | --- | --- | --- |
 | institutional | 21 | 0 | 11 | 10 | 42 |
 | public-standard | 7 | 0 | 1 | 21 | 29 |
-| own-model | 19 | 1 | 1 | 12 | 33 |
-| All | 47 | 1 | 13 | 43 | 104 |
+| own-model | 20 | 1 | 1 | 12 | 34 |
+| All | 48 | 1 | 13 | 43 | 105 |
 
 Institutional means primary data a macro desk or fund would pay for or treat as primary: CFTC positioning, CME settlements and implied vol, the Cboe vol family, listed options open interest and dealer gamma, STIR futures, central bank statements, ALFRED vintage surprises, BIS statistics, ICE BofA spreads, nowcasts and official auctions and calendars.
 
@@ -146,6 +146,7 @@ These are the feeds that could be forgotten. Each row says what the ledger found
 | Chain read, cached AI narrative | neither | no ledger test | Loaded by Atlas for its own page only; nlInput does not read it. |
 | AI model routing config | neither | no ledger test | Plumbing for the Atlas model picker; not market data, so nothing to put in an issue. |
 | Daily COG style range lines | neither | level-touch: null | Not traced; the newsletter prints range size, not line prices. |
+| Evidence score, 1 to 10 per market: the tested direction arm against base rates, with its forward track record | daily and weekly | direction-bar: context | n.reads rows carry .score (wired 2026-11-02): the daily pair table and the weekly market section print the score and its band in the direction column; the ledger row model direction-score is scored against the next close and read back by band (?scoreTrack=1). |
 
 ## Recommended next wiring
 

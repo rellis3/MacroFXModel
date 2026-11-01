@@ -1,7 +1,7 @@
 // node js/directionResearch.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { lastPct, volFlags, RESEARCH, EXCESS, VIX_BETA_CHANGE, COT_STATE_D, POST_FOMC_USD_DRIFT, FX_FACTOR_CARRY, FX_CARRY_MAP, carryZ } from './directionResearch.js';
+import { lastPct, volFlags, RESEARCH, EXCESS, VIX_BETA_CHANGE, COT_STATE_D, POST_FOMC_USD_DRIFT, FX_FACTOR_CARRY, FX_CARRY_MAP, carryZ, DIRECTION_SCORE } from './directionResearch.js';
 import { issueRecord, HORIZONS, INSTRUMENTS } from './directionLedger.js';
 import { parseCboeCsv } from './marketHistory.js';
 
@@ -122,6 +122,24 @@ ok('ledger: fx-factor-carry rows appear for eurusd/gbpusd/usdjpy at h20 when rat
   const rec = issueRecord({ date, closes, baselines, issuedAt: 'now', research: RESEARCH, external: { rates: { date, rates, refs: {} } }, externalStatus: { rates: 'ok' } });
   const ids = rec.forecasts.filter(f => f.model_id === 'fx-factor-carry').map(f => `${f.inst}|${f.h}`).sort();
   assert.deepEqual(ids, ['eurusd|20', 'gbpusd|20', 'usdjpy|20']);
+});
+
+ok('direction-score: baseline plus the tested arm only; a zero-weight input moves nothing; speaks only at h1 with a card', () => {
+  const days = []; for (let d = new Date('2025-06-02T00:00:00Z'); days.length < 300; d = new Date(d.getTime() + 86400_000)) if (d.getUTCDay() % 6) days.push(d.toISOString().slice(0, 10));
+  const closes = Object.fromEntries(Object.keys(INSTRUMENTS).map(i => [i, days.map((date, k) => ({ date, c: 100 * Math.exp(0.001 * k) }))]));
+  const baselines = { version: 't', instruments: Object.fromEntries(Object.keys(INSTRUMENTS).map(i => [i, Object.fromEntries(HORIZONS.map(h => [h, base]))])) };
+  const date = days.at(-1);
+  const gr = { asOf: 'now', cards: {
+    NQ: { direction: { pUp: 0.5, nLive: 0, shown: [{ id: 'trend', label: 't', tier: 'null', s: 1, e: 0 }] } },
+    EURUSD: { direction: { pUp: 0.58, nLive: 1, shown: [{ id: 'post-fomc', label: 'p', tier: 'descriptive', s: 1, e: 0.075 }] } } } };
+  const rec = issueRecord({ date, closes, baselines, issuedAt: 'now', research: RESEARCH, external: { gr }, externalStatus: { gr: 'ok' } });
+  const rows = rec.forecasts.filter(f => f.model_id === 'direction-score');
+  assert.deepEqual(rows.map(f => `${f.inst}|${f.h}`).sort(), ['eurusd|1', 'nq|1']);          // no card for the rest, and only h1
+  const nq = rows.find(f => f.inst === 'nq'), eu = rows.find(f => f.inst === 'eurusd');
+  assert.equal(nq.p_up, base.p0); assert.equal(nq.inputs.score, 5); assert.equal(nq.inputs.band, 'No direction'); assert.equal(nq.decision, 'NO-TRADE');
+  assert.ok(Math.abs(eu.p_up - (base.p0 + 0.08)) < 1e-12); assert.equal(eu.inputs.score, 8); assert.equal(eu.inputs.band, 'Bullish'); assert.equal(eu.decision, 'LONG');
+  assert.equal(DIRECTION_SCORE.forecast({ date, inst: 'nq', h: 5, baseline: base, external: { gr } }), null);
+  assert.equal(DIRECTION_SCORE.forecast({ date, inst: 'nq', h: 1, baseline: base, external: {} }), null);
 });
 
 console.log(`\n${passed} passed`);

@@ -334,6 +334,7 @@ import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
 import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags, FX_CARRY_EUR_OFFSET as _DL_EUR_OFFSET, FX_CARRY_MAX_AGE_DAYS as _DL_RATE_MAX_AGE_DAYS } from './js/directionResearch.js';
+import { scoreTrack as _dlScoreTrack } from './js/directionScore.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
 import { buildOiPlan as _hpoBuild, scoreOiPlan as _hpoScore, orderStatesOI as _hpoStates, buildOiPlanText as _hpoText, OI_PLAN as _HPO_CFG } from './js/hedgingPlanOI.js';   // OI-level hedging plan (shadow)
@@ -24777,6 +24778,7 @@ svcInterval('hedgingForward', () => _hedgingForwardTick().catch(e => console.err
 // day is a gap. Baselines are frozen at the last pre-lockbox date (js/directionLedgerBaselines.json).
 const _DL_PREFIX = 'forward/direction_ledger/';
 const _dlBaselines = JSON.parse(fs.readFileSync(new URL('./js/directionLedgerBaselines.json', import.meta.url), 'utf8'));
+let _dlTrackCache = null;
 const _dlDone = new Set();        // issue dates / outcome keys already written (saves R2 reads)
 async function _dlCloses() {
   const out = {};
@@ -24820,6 +24822,15 @@ async function _dlExternal(date) {
     if (v && v.date === date) { external.vol = v; status.vol = 'ok'; } else status.vol = v ? `stale (${v.date})` : 'no data';
   } catch (e) { status.vol = `error: ${e.message}`; }
   try { external.cot = (await _buildCotState()).instruments; status.cot = 'ok'; } catch (e) { status.cot = `error: ${e.message}`; }
+  // Global Read's direction arm for direction-score (forge/DIRECTION_SCORE_PILOT_PREREG.md): the latest read, only if built within 3h
+  try {
+    const g = _grLatest, age = g?.meta?.asOf ? Date.now() - Date.parse(g.meta.asOf) : Infinity;
+    if (g?.cards && age < 3 * 3600_000) {
+      external.gr = { asOf: g.meta.asOf, cards: Object.fromEntries(Object.entries(g.cards).map(([sym, c]) => [sym, { direction: { pUp: c.direction?.pUp, nLive: c.direction?.nLive,
+        shown: (c.direction?.shown ?? []).map(x => ({ id: x.id, label: x.label, tier: x.tier, s: x.s, e: x.e })) } }])) };
+      status.gr = 'ok';
+    } else status.gr = g?.cards ? `stale (${g.meta?.asOf ?? '?'})` : 'no read';
+  } catch (e) { status.gr = `error: ${e.message}`; }
   try { external.rates = await _dlRates(date); status.rates = 'ok'; } catch (e) { status.rates = `error: ${e.message}`; }
   external.fomcDates = FOMC_MEETINGS.map(m => m.date); status.fomc = 'ok';
   return { external, status };
@@ -24875,6 +24886,16 @@ app.get('/api/direction-ledger', async (req, res) => {
       const outs = {};
       for (const h of _DL_HORIZONS) outs[h] = await _r2GetJSON(`${_DL_PREFIX}out/${date}_h${h}.json`).catch(() => null);
       return res.json({ ok: true, record: rec, outcomes: outs });
+    }
+    // the forward record of the 1-to-10 score by band (js/directionScore.js scoreTrack), cached ten minutes
+    if (req.query.scoreTrack === '1') {
+      if (!_dlTrackCache || Date.now() - _dlTrackCache.at > 600_000) {
+        const recs = [], outs = [];
+        for (const k of issues.slice(-400)) { const r = await _r2GetJSON(k).catch(() => null); if (r?.forecasts?.some(f => f.model_id === 'direction-score')) recs.push(r); }
+        for (const k of all.filter(k => /\/out\/\d{4}-\d{2}-\d{2}_h1\.json$/.test(k)).slice(-400)) { const o = await _r2GetJSON(k).catch(() => null); if (o) outs.push(o); }
+        _dlTrackCache = { at: Date.now(), v: _dlScoreTrack(recs, outs) };
+      }
+      return res.json({ ok: true, prereg: 'forge/DIRECTION_SCORE_PILOT_PREREG.md', ..._dlTrackCache.v });
     }
     const outKeys = all.filter(k => k.includes('/out/'));
     const recs = [], outs = [];

@@ -22,7 +22,7 @@ ok('the base rate is the frozen one-day B0 and printed beside it', directionCell
 ok('a market with a live tested input prints its P(up) beside the base rate', /^58% up <small>base 55%/.test(directionCell(R.rows[0])));
 ok('a market with no measured base rate says so rather than inventing one', /no base rate/.test(directionCell(R.rows[2])));
 ok('weighted inputs are kept, zero-weight ones are grouped by tier', R.rows[0].weighted.length === 1 && R.zero.untested.includes('Real yield trend') && R.zero.untested.includes('Dollar trend') && R.zero.null.includes('Credit / risk tone'));
-ok('the note counts live markets and names the inputs read but given no weight', /1 of 3 markets have a tested input live; the rest show no directional evidence beyond the baseline/.test(directionNote(R)) && /never tested/.test(directionNote(R)) && /tested, no edge/.test(directionNote(R)));
+ok('the note counts live markets and counts the inputs read but given no weight (Today names them)', /1 of 3 markets have a tested input live; the rest show no directional evidence beyond the baseline/.test(directionNote(R)) && /\d+ never tested/.test(directionNote(R)) && /\d+ tested with no edge/.test(directionNote(R)));
 ok('with nothing live the note says there is no directional evidence beyond the baseline', /no directional evidence beyond the baseline/.test(directionNote(directionReads({ cards: { GOLD: gr.cards.GOLD } }))));
 ok('the note states the detectability limit', /about 6 points cannot be told from chance/.test(directionNote(R)));
 ok('the range cell shows the typical day, the 1-in-4 mark and flags a wider or narrower setup', /^1\.73% · 2\.30%$/.test(rangeCell(R.rows[1])) && /wider/.test(rangeCell(R.rows[0])) && /narrower/.test(rangeCell(R.rows[2])));

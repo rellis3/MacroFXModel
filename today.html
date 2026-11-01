@@ -7172,6 +7172,7 @@ function renderDeskWatch() {
 let globalRead = null;
 async function loadGlobalRead() {
   await _drLoadRecord();
+  _dsLoadTrack();
   try { const r = await jget('/api/global-read'); if (r?.ok) { globalRead = r; renderGlobalRead(); renderDayRead(); render(); } } catch { /* panel stays hidden */ }
 }
 const _grPct = x => x == null ? '—' : `${Math.round(x * 100)}%`;
@@ -7276,6 +7277,8 @@ function _drTile(r, k) {
 }
 let _drRecord = null;
 async function _drLoadRecord() { try { const r = await jget('/api/global-read/record'); if (r?.ok !== false) _drRecord = r; } catch (e) { /* the footer says it is starting */ } }
+let _dsTrack = null;
+async function _dsLoadTrack() { try { const r = await jget('/api/direction-ledger?scoreTrack=1'); if (r?.ok) { _dsTrack = r; renderDayRead(); } } catch (e) { /* the line says starting */ } }
 function renderDayRead() {
   const el = $('dayRead'); if (!el) return;
   const g = globalRead; if (!g?.cards) { el.style.display = 'none'; return; }
@@ -7286,8 +7289,14 @@ function renderDayRead() {
   const recTxt = rec?.n ? `story record: ${rec.hits}/${rec.n} right (${Math.round(100 * rec.hitRate)}%) over ${_drRecord.summary.sessions} sessions` : `story record: starting (${_drRecord?.summary?.sessions ?? 0} sessions scored; needs 30)`;
   el.style.display = 'block';
   // tested direction against each market's own base rate (js/directionRead.js): the counterpart of the story lean above, which is not validated
-  const dirBlock = (() => { const B = window.directionReadBrick, R = B ? B.directionReads(g) : null; if (!R) return '';
-    return `<details class="dy-dir" style="margin-top:8px"><summary class="dy-sub" style="cursor:pointer"><b>Tested direction against each market's base rate</b> · ${R.live ? `${R.live} of ${R.rows.length} markets have a tested input live` : 'no tested input is live'}</summary><div class="gr-scroll"><table class="gr-tbl"><tr><th>market</th><th>tested inputs</th><th title="typical high-low, and the mark that 1 day in 4 goes past, in percent of price">typical day · 1 in 4 past</th></tr>${R.rows.map(r => `<tr><td><b>${esc0(dispName(r.sym))}</b></td><td>${B.directionCell(r)}</td><td class="muted">${B.rangeCell(r) || '·'}</td></tr>`).join('')}</table></div><div class="dy-sub">${esc0(B.directionNote(R))}</div></details>`; })();
+  const dirBlock = (() => { const B = window.directionReadBrick, S = window.directionScoreBrick, R0 = B ? B.directionReads(g) : null, R = R0 && S ? S.withScores(R0, g) : R0; if (!R) return '';
+    const sc = r => { const x = r.score; if (!x) return '<span class="muted">no score</span>'; const mid = x.band === 'No direction', bg = mid ? 'var(--neu-bg)' : x.band === 'Bullish' ? 'var(--bull-bg)' : 'var(--bear-bg)', col = mid ? 'var(--text2)' : x.band === 'Bullish' ? 'var(--bull)' : 'var(--bear)';
+      return `<span class="chip" style="background:${bg};color:${col};font-weight:700" title="${esc0(`${x.band}${x.strength ? ', ' + x.strength.toLowerCase() : ''}. ${x.live ? x.live + ' tested input live' : 'No tested input live'}; moves the market's own base rate ${(x.shift * 100).toFixed(1)} points, ${x.u.toFixed(2)} of the smallest shift one day of history can detect.`)}">${x.score}</span> <small>${esc0(S.scoreChip(x).replace(/^\d+ /, ''))}</small>`; };
+    const ctx = R.rows.filter(r => r.score?.context?.length).map(r => `<div><b>${esc0(dispName(r.sym))}</b>: ${r.score.context.map(c => `${esc0(c.label)} ${c.side === 'up' ? 'up' : 'down'} <small>(${esc0(c.tier)})</small>`).join(' · ')}</div>`).join('');
+    return `<details class="dy-dir" style="margin-top:8px"><summary class="dy-sub" style="cursor:pointer"><b>Evidence score, 1 to 10, against each market's base rate</b> · ${R.live ? `${R.live} of ${R.rows.length} markets have a tested input live` : 'no tested input is live'}</summary><div class="gr-scroll"><table class="gr-tbl"><tr><th title="1 to 3 bearish, 4 to 7 no direction, 8 to 10 bullish">score</th><th>market</th><th>tested inputs</th><th title="typical high-low, and the mark that 1 day in 4 goes past, in percent of price">typical day · 1 in 4 past</th></tr>${R.rows.map(r => `<tr><td>${sc(r)}</td><td><b>${esc0(dispName(r.sym))}</b></td><td>${B.directionCell({ ...r, score: null })}</td><td class="muted">${B.rangeCell(r) || '·'}</td></tr>`).join('')}</table></div>
+      <div class="dy-sub">${esc0(S ? `${S.scoreScaleNote()} ${S.scoreCaveat()} ${S.trackLine(_dsTrack)}` : '')}</div>
+      ${ctx ? `<details style="margin-top:4px"><summary class="dy-sub" style="cursor:pointer">Context read: inputs read but given no weight (describes, not shown to predict; never moves the score)</summary><div class="dy-sub">${ctx}</div></details>` : ''}
+      <div class="dy-sub">${esc0(B.directionNote(R))}</div></details>`; })();
   el.innerHTML = `<div class="sec-hd-row"><span class="sec-title">🎯 Day Read</span>${secChev('dayRead')}</div>
     ${secBody('dayRead', `
     <div class="dy-hook"><span>${esc0(ch?.hook ?? g.headline ?? '')}</span></div>
@@ -14192,7 +14201,9 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
 <!-- Direction evidence (js/directionRead.js): tested direction inputs against each market's own one-day base rate; the Day Read draws it once Global Read has loaded. -->
 <script type="module">
   import * as DirectionRead from './js/directionRead.js';
+  import * as DirectionScore from './js/directionScore.js';
   window.directionReadBrick = DirectionRead;
+  window.directionScoreBrick = DirectionScore;
   try { window.renderDayRead?.(); } catch (e) {}
 </script>
 <!-- Release scorecard (js/releaseScorecard.js): the card's words are the brick's, so

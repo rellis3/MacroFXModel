@@ -422,4 +422,8 @@ export const FEEDS = [
   { id: 'cog-line-levels', label: 'Daily COG style range lines', endpoint: '/api/cog-line', module: 'js/cogLine.js', kind: 'levels',
     source: 'own model', grade: 'own-model', newsletter: 'none',
     how: 'Not traced; the newsletter prints range size, not line prices.', verdict: 'level-touch', trap: 'Line touches carry no net edge in this desk\'s tests.' },
+  { id: 'direction-score', label: 'Evidence score, 1 to 10 per market: the tested direction arm against base rates, with its forward track record', endpoint: '/api/direction-ledger', module: 'js/directionScore.js', kind: 'regime',
+    source: 'own model: Global Read direction arm (tested inputs only), frozen ledger baselines, forward direction ledger', grade: 'own-model', newsletter: 'both',
+    how: 'n.reads rows carry .score (wired 2026-11-02): the daily pair table and the weekly market section print the score and its band in the direction column; the ledger row model direction-score is scored against the next close and read back by band (?scoreTrack=1).',
+    verdict: 'direction-bar', trap: 'A display rule, not a signal: the middle band (4 to 7) is the default; a band is not judged before 30 resolved rows and not promoted from this pilot (forge/DIRECTION_SCORE_PILOT_PREREG.md).' },
 ];

@@ -47,6 +47,8 @@ export function directionReads(gr) {
 /** The short cell for a market's direction evidence: the words, and the base rate beside it when one is measured. */
 export function directionCell(row) {
   const base = row.base !== null ? ` <small>base ${pct(row.base)}</small>` : ' <small>no base rate</small>';
+  // the 1-to-10 evidence score (js/directionScore.js withScores) when the caller attached one: it replaces the bare "none"
+  if (row.score) return `<b>${row.score.score}</b> ${row.score.band === 'No direction' ? 'no direction' : `${row.score.strength.toLowerCase()} ${row.score.band.toLowerCase()}`}${base}`;
   if (!row.live || row.pUp === null) return `none${base}`;
   return `${pct(row.pUp)} up${base}`;
 }
@@ -56,10 +58,10 @@ export function directionNote(reads) {
   if (!reads) return '';
   const list = a => (a.length < 2 ? (a[0] ?? '') : `${a.slice(0, -1).join(', ')} and ${a.at(-1)}`);
   const parts = [];
-  if (reads.zero.untested.length) parts.push(`${list(reads.zero.untested)} (never tested)`);
-  if (reads.zero.null.length) parts.push(`${list(reads.zero.null)} (tested, no edge)`);
+  if (reads.zero.untested.length) parts.push(`${reads.zero.untested.length} never tested`);
+  if (reads.zero.null.length) parts.push(`${reads.zero.null.length} tested with no edge`);
   const live = reads.live ? `${reads.live} of ${reads.rows.length} markets have a tested input live; the rest show no directional evidence beyond the baseline.` : 'No market has a tested direction input live: there is no directional evidence beyond the baseline.';
-  return `${live} Base is the share of days the market closed up, 2006 to August 2026; a one-day shift under about ${SMALLEST_SHIFT_PP} points cannot be told from chance in that history.${parts.length ? ` Read but given no weight: ${list(parts)}.` : ''}`;
+  return `${live}${reads.scoreNote ? ` ${reads.scoreNote}` : ''} Base: share of days closed up, 2006 to August 2026; a one-day shift under about ${SMALLEST_SHIFT_PP} points cannot be told from chance.${parts.length ? ` Inputs read but given no weight: ${list(parts)}; Today names them.` : ''}`;
 }
 
 /** Range columns for a market: the typical day and the mark that 1 day in 4 goes past, in percent of price, with a flag when today is set up wider than usual. */

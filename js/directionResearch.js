@@ -16,8 +16,10 @@
  *   external.cot  { NQ: {state, trend, reportDate}, ... }   from /api/cot-state (js/cotState.js)
  *   external.fomcDates  ['YYYY-MM-DD', ...]   scheduled decision days (js/fomcCalendar.js)
  *   external.rates  { date, rates: {USD, EUR, ...} annual %, refs: {ccy: last observation date} }   3m rates for fx-factor-carry
+ *   external.gr  { asOf, cards: {SYM: {direction: {pUp, nLive, shown}}} }   Global Read's direction arm, for direction-score
  * Pure. Tested in js/directionResearch.test.mjs.
  */
+import { marketScore, LEDGER_KEY, SCORE_MODEL } from './directionScore.js';
 
 /** Excess hit rate over B0, per cell: scoreboard.json, latest split. */
 export const EXCESS = {
@@ -139,4 +141,20 @@ export const FX_FACTOR_CARRY = { model_id: 'fx-factor-carry', model_version: 'fx
       flags: ['UNDERPOWERED'] };
   } };
 
-export const RESEARCH = [VIX_BETA_CHANGE, VIX_SECOND_DERIVATIVE, COT_STATE_D, POST_FOMC_USD_DRIFT, FX_FACTOR_CARRY];
+// ── direction-score (forge/DIRECTION_SCORE_PILOT_PREREG.md). A display rule, scored forward; CONTEXT. ───────────────
+// p_up = B0 + the tested direction arm's shift (js/directionScore.js marketScore); the row carries the 1-to-10 score and its band so
+// scoreTrack can read the record by band. It speaks every issue day a Global Read card exists, so the middle band has rows too.
+const SYM_OF = Object.fromEntries(Object.entries(LEDGER_KEY).map(([sym, k]) => [k, sym]));
+export const DIRECTION_SCORE = { model_id: SCORE_MODEL, model_version: 'direction-score-v1', prereg: 'forge/DIRECTION_SCORE_PILOT_PREREG.md',
+  forecast: ({ inst, h, baseline, external }) => {
+    const sym = SYM_OF[inst];
+    if (h !== 1 || !sym) return null;
+    const s = marketScore(sym, external?.gr?.cards?.[sym]);
+    if (!s) return null;
+    return { p_up: clip(baseline.p0 + s.shift), mu_log: null, decision: s.score >= 8 ? 'LONG' : s.score <= 3 ? 'SHORT' : 'NO-TRADE',
+      inputs: { cell: SCORE_MODEL, score: s.score, band: s.band, strength: s.strength, u: s.u, shift_pp: +(s.shift * 100).toFixed(2), live: s.live,
+        weighted: s.weighted.map(x => x.id), gr_as_of: external?.gr?.asOf ?? null,
+        note: 'display rule, not a signal: the baseline plus the tested direction arm, in units of the one-day MDE' } };
+  } };
+
+export const RESEARCH = [VIX_BETA_CHANGE, VIX_SECOND_DERIVATIVE, COT_STATE_D, POST_FOMC_USD_DRIFT, FX_FACTOR_CARRY, DIRECTION_SCORE];
