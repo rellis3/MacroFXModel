@@ -1,7 +1,7 @@
 // js/dailyOpenFib.js: the live tracker's engine.   node js/dailyOpenFib.test.mjs
 // Mirrors scripts/daily-open-fib-retest/test_engine.py (the backtest's checks); exact
 // parity with engine.py on random bid/ask sessions: node scripts/daily-open-fib-retest/parity.mjs
-import { findFill, findFillSwing, pendingSwing, trade, pending, levels, night, adrFrom, sessionAnchor, sessionKey, sessionFromCandles, summarise } from './dailyOpenFib.js';
+import { findFill, findFillSwing, pendingSwing, findFillWindow, pendingWindow, trade, pending, levels, night, adrFrom, sessionAnchor, sessionKey, sessionFromCandles, summarise } from './dailyOpenFib.js';
 
 let n = 0, f = 0;
 const ok = (m, c) => { n++; if (!c) { f++; console.log('  ✗ ' + m); } };
@@ -116,6 +116,28 @@ ok('candles: complete bars only, minutes from the first bar', sx.t.length === 1 
   const B2 = { o: B.o.slice(0, 200), h: B.h.slice(0, 200), l: B.l.slice(0, 200), c: B.c.slice(0, 200) };
   const p2 = pendingSwing(pre, B2, B.mins.slice(0, 200), 58.3, 0.10);
   ok('28 Oct live: swing order resting at 4071.23, stop 4078.276 (= Jay 4078.22), target 4036', p2.phase === 'armed' && near(p2.A, 4071.23) && near(p2.stop, 4078.276) && near(p2.tp, 4036));
+}
+
+// window anchor: the 1 = the highest high within 60 trading minutes either side of the open
+{
+  const preOf = B => ({ h: B.h, l: B.l, mins: B.h.map((_, i) => i - B.h.length) });
+  // 28 Oct: the high (4071.23) 20 bars before the open, open 4065.64, wick 4067.75, low 4036
+  const pre = bars([[4060, 0], [4071.23, 40], [4066, 59]]);
+  const B = bars([[4065.64, 0], [4067.75, 3], [4036, 150], [4072, 210], [4030, 400], [4030, 600]]);
+  const f = findFillWindow(preOf(pre), B, B.mins, 58.3, 0.10);
+  ok('window 28 Oct: the 1 = 4071.23 (before the open), the 0 = 4036', f && f.side === -1 && near(f.A, 4071.23) && near(f.L0, 4036) && f.tAnchor < 0);
+  // 29 Oct: open 4021.76, spike to 4025.95 at minute 5, low 4017.63; earlier pre-open high 4031 was 2 hours before (outside)
+  const pre2 = bars([[4031, 0], [4022, 120], [4021.5, 179]]);
+  const B2 = bars([[4021.76, 0], [4025.95, 5], [4017.63, 30], [4026, 60], [4010, 200], [4010, 600]]);
+  const f2 = findFillWindow(preOf(pre2), B2, B2.mins, 58.3, 0.10 * 8 / 58.3 * 10);   // impulse floor scaled so the 8-point leg arms
+  ok('window 29 Oct: the 1 = the spike after the open (4025.95), not the 4031 high 2 h earlier', f2 && near(f2.A, 4025.95) && near(f2.L0, 4017.63));
+  ok('window 29 Oct: stop 4027.61 like Jay', near(levels(-1, f2.A, f2.L0).stop, 4027.614));
+  // a high 90 minutes after the open is outside the window: the 1 stays the in-window high
+  const B3 = bars([[100, 0], [101, 30], [96, 60], [103, 90], [94, 150], [101.5, 200], [90, 400], [90, 600]]);
+  const f3 = findFillWindow({ h: [], l: [], mins: [] }, B3, B3.mins, 50, 0.10);
+  ok('window: the 1 is the high inside +60 min (101), not the 103 at +90', f3 && near(f3.A, 101));
+  const pw = pendingWindow(preOf(pre), { o: B.o.slice(0, 100), h: B.h.slice(0, 100), l: B.l.slice(0, 100) }, B.mins.slice(0, 100), 58.3, 0.10);
+  ok('window live (100 bars in, low so far ~4047): sell resting at 4071.23, stop = 1.2 of the leg so far', pw.phase === 'armed' && near(pw.A, 4071.23) && near(pw.stop, 4071.23 + 0.2 * (4071.23 - pw.L0)) && pw.L0 < 4048);
 }
 
 console.log(`${n - f}/${n} passed`);

@@ -57,6 +57,7 @@
     <button class="btn on" data-anchor="high" title="The 1 = the opening wick (the video's drawing; the backtest's primary)">opening wick</button>
     <button class="btn" data-anchor="do" title="The 1 = the daily-open price itself">open price</button>
     <button class="btn" data-anchor="swing" title="The 1 = the swing high (or low) the impulse leg started from, even if it formed before the open: how the presenter draws it on his live charts">swing before impulse</button>
+    <button class="btn" data-anchor="window" title="The 1 = the highest high (or lowest low) within an hour either side of the daily open, in trading minutes; the 0 = the extreme after it">high ±1h of open</button>
   </span>
 </div>
 <div class="wrap">
@@ -69,7 +70,7 @@
   <div class="rules">
     <div class="rule"><b>1. The open.</b> The first 1-minute bar at or after 17:00 New York (22:00 or 23:00 UK; gold and indices reopen at 18:00 New York).</div>
     <div class="rule"><b>2. The impulse.</b> Price moves away from the opening extreme by at least <b>0.10 × ADR</b> (ADR = median range of the last 20 sessions), before 6 hours after the open.</div>
-    <div class="rule"><b>3. The fib.</b> Drawn on the bid. Down move: <b>0</b> = the impulse low (it follows new lows until the fill); <b>1</b> = top of the opening wick, or the open price, or (<b>swing before impulse</b>, how the presenter draws it live) the swing high the leg started from, which can be before the open. Up move: mirrored.</div>
+    <div class="rule"><b>3. The fib.</b> Drawn on the bid. Down move: <b>0</b> = the impulse low (it follows new lows until the fill); <b>1</b> = top of the opening wick, or the open price, or (<b>swing before impulse</b>, how the presenter draws it live) the swing high the leg started from, which can be before the open, or (<b>high ±1h of open</b>) the highest high within an hour either side of the open. Up move: mirrored.</div>
     <div class="rule"><b>4. The trade.</b> Limit at the <b>1</b>, stop at the <b>1.2</b>, target the <b>0</b> (= 5R). Stop to break-even at +1R. Anything still open at minute 540 is closed. Sells close on the ask, buys on the bid.</div>
   </div>
 </div>
