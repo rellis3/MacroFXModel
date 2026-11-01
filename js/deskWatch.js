@@ -33,6 +33,7 @@
  *             live session-VWAP-stretch reading (js/vwapStretchCore.js); an
  *             instrument missing/null silently disables that one trigger
  *   drill     the drill bundle (/api/drill-series: { dates, series }) — feeds the watch register
+ *   prevStates the states stored from the previous tick — hysteresis for the claim rows
  *   crack     /api/crack `series` ([{date, value, wti}]) — feeds the crack rows of the register
  *   funding   headline SOFR − Fed floor series ([{date, value}], percent) — feeds the repo row
  *   now       epoch ms
@@ -105,7 +106,7 @@ import { eventImpact } from './eventImpactMap.js';
  * `detail` is the plain-words message body used when the trigger starts firing.
  */
 export function evaluateTriggers(inp = {}) {
-  const { fred = {}, hist = {}, series = {}, chain = [], stockBond = null, events = [], fomcDates = [], vwapStretch = {}, drill = null, crack = null, funding = null, bankCredit = null, fundingRead = null, now = Date.now() } = inp;
+  const { fred = {}, hist = {}, series = {}, chain = [], stockBond = null, events = [], fomcDates = [], vwapStretch = {}, drill = null, crack = null, funding = null, bankCredit = null, fundingRead = null, prevStates = [], now = Date.now() } = inp;
   const out = [];
   const push = t => out.push({ firing: false, instruments: [], evidenceId: null, ...t });
   const atrBy = atrTable(series);
@@ -272,7 +273,9 @@ export function evaluateTriggers(inp = {}) {
   // Each detector row reads the inputs it needs and is absent when they are missing: a missing
   // input disables a register trigger rather than clearing it, same as every other input here.
   // Gauge rows (progress on triggers this file already emits) are NOT triggers — see evaluateGauges.
-  for (const t of evaluateClaims({ bundle: drill, crack, series, fred, hist, stockBond, funding })) out.push({ since: null, ...t });
+  // prevStates (the last stored states) gives the claim rows their hysteresis: a firing setup
+  // holds until its reading falls clearly away from the line, instead of flapping on the line.
+  for (const t of evaluateClaims({ bundle: drill, crack, series, fred, hist, stockBond, funding }, prevStates)) out.push({ since: null, ...t });
   return out;
 }
 // Cross-instrument-replicated in the same study (§7c); FX pairs read stronger

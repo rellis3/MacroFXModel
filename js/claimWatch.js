@@ -51,6 +51,15 @@ const _nth = (a, k) => Array.isArray(a) && a.length > k ? a[a.length - 1 - k] : 
 export const STAGE = { idle: 'idle', approaching: 'approaching', live: 'live' };
 /** progress ≥ this (and < 1) reads as approaching. 0.75 of the way to the threshold. */
 export const APPROACH_AT = 0.75;
+/**
+ * Hysteresis for a LIVE claim: once firing, it stays firing until progress drops below this,
+ * not the moment the reading dips a hair under the line. Added 2026-10-31 after
+ * claim-breadth-broad fired five times in eight days with z oscillating 1.8-2.9 -- each dip
+ * to 1.79 cleared it, each tick back to 1.81 re-fired it, re-sent the Telegram and added a
+ * fire to the forward record that was the same episode. A setup that is 90% of the way to
+ * its own threshold has not left.
+ */
+export const RELEASE_AT = 0.90;
 
 const clamp01 = x => Math.max(0, Math.min(1, x));
 const fmt = (v, dp = 1) => v == null || !Number.isFinite(v) ? '?' : `${v > 0 ? '+' : ''}${Number(v).toFixed(dp)}`;
@@ -459,18 +468,22 @@ export const GAUGE_ROWS = CLAIMS.filter(c => c.watchId);
  * no trigger (never a false clear). Inputs are the desk-watch inputs: { bundle (the drill
  * bundle), crack, series (OANDA bars), fred, hist, stockBond, funding }.
  */
-export function evaluateClaims(inputs = {}) {
+export function evaluateClaims(inputs = {}, prevStates = []) {
   const out = [];
+  const prevById = new Map((Array.isArray(prevStates) ? prevStates : []).map(t => [t.id, t]));
   for (const c of DETECTOR_ROWS) {
     let r = null;
     try { r = DETECT[c.id](inputs); } catch { r = null; }
     if (!r) continue;
-    const stage = stageOf(r.progress, r.live), who = c.source === 'Crown' ? 'Crown’s claim' : 'The claim';
+    // hysteresis: a firing setup holds until its progress falls below RELEASE_AT
+    const held = !r.live && !!prevById.get(c.id)?.firing && r.progress >= RELEASE_AT;
+    const live = r.live || held;
+    const stage = live ? STAGE.live : stageOf(r.progress, false), who = c.source === 'Crown' ? 'Crown’s claim' : 'The claim';
     out.push({
       id: c.id, kind: c.kind ?? 'claim', evidenceId: c.evidenceId, claimId: c.id, source: c.source, label: `Setup watch · ${c.label}`,
-      firing: r.live, stage, instruments: c.instruments, expect: [],
-      value: { reading: +Number(r.reading).toFixed(4), threshold: r.threshold == null ? null : +Number(r.threshold).toFixed(4), progress: +r.progress.toFixed(3), asOf: r.asOf, ...r.extra },
-      detail: `${r.detail} ${stage === STAGE.live ? 'The setup is LIVE.' : stage === STAGE.approaching ? `Approaching — ${Math.round(r.progress * 100)}% of the way to the threshold.` : ''} ${who}: ${c.claim} This desk: ${c.verdict}`.trim(),
+      firing: live, stage, instruments: c.instruments, expect: [],
+      value: { reading: +Number(r.reading).toFixed(4), threshold: r.threshold == null ? null : +Number(r.threshold).toFixed(4), progress: +r.progress.toFixed(3), asOf: r.asOf, ...(held ? { held: true } : {}), ...r.extra },
+      detail: `${r.detail} ${held ? `Still LIVE — the reading has eased to ${Math.round(r.progress * 100)}% of the threshold; it clears below ${Math.round(RELEASE_AT * 100)}%.` : stage === STAGE.live ? 'The setup is LIVE.' : stage === STAGE.approaching ? `Approaching — ${Math.round(r.progress * 100)}% of the way to the threshold.` : ''} ${who}: ${c.claim} This desk: ${c.verdict}`.trim(),
       lookFor: c.lookFor,
     });
   }
