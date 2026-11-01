@@ -398,6 +398,7 @@ import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from
 import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic, resetBackfillStore as tdeResetBackfillStore, TDE_BACKFILL_PAIRS } from './Trade_Decision_Engine/backfill.js';
 import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 / ou-pairs research runs (off the main loop)
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
+import { createExpiryTrackStore } from './js/expiryTrackStore.js';
 import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
 import { createHistorySources as _createHistorySources } from './js/stateHistorySources.js';
 import { fetchDtsTga as _fetchDtsTga } from './js/treasuryDts.js';
@@ -39209,6 +39210,8 @@ async function _archiveDaily() {
     const dates = keys.map(k => k.replace(/^oi_raw_/, '')).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
     out.oiRaw = (await _archive.backfill('oi_raw', dates, async d => { const raw = await kv.get(`oi_raw_${d}`); return raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : null; })).length;
   } catch (e) { out.failed.push(`oi_raw backfill: ${e.message}`); }
+  // Expiry tracker: re-cut the captures into one permanent series per expiry (js/expiryTrackStore.js).
+  try { const r = await _expiryTrack().fold(); out.expiryTrack = r.folded; } catch (e) { out.failed.push(`expiry track: ${e.message}`); }
   try {
     const raw = await kv.get('oi_history');
     const hist = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
@@ -39261,6 +39264,31 @@ async function _archiveDaily() {
   console.log(`[archive] daily: ${out.fred} FRED, ${out.cboe} Cboe, ${out.yahoo} Yahoo, ${out.overnight} overnight series merged; forecast days ${out.vol_forecast ?? 0}/${out.vol_session ?? 0} copied; COT ${out.cot ?? 'skipped (weekly)'}, ${out.oiRaw} OI raw days and ${out.oiSummary} OI summary days copied to R2, gold ${out.gold ? 'captured' : 'missed'}${out.failed.length ? `; failed: ${out.failed.slice(0, 5).join('; ')}` : ''}`);
   return { ok: true, ...out };
 }
+// Expiry tracker (register row expiry-tracker): every CME expiry pinned to its date, its strikes recorded each night.
+let _expiryTrackStore = null;
+function _expiryTrack() {
+  return (_expiryTrackStore ??= createExpiryTrackStore({
+    getJSON: _r2GetJSON, putJSON: _r2PutJSON,
+    kvKeys: p => kv.keys(p), kvGet: k => kv.get(k),
+    archivedDates: src => _archive.archivedDates(src),
+    invertedPairs: _OI_INVERTED, log: console,
+  }));
+}
+app.get('/api/expiry-track', async (req, res) => {
+  try {
+    if (!_archive.enabled) return res.status(503).json({ ok: false, error: 'R2 not configured' });
+    const pair = req.query.pair ? String(req.query.pair) : null, expiry = req.query.expiry ? String(req.query.expiry) : null;
+    if (pair && expiry) {
+      const v = await _expiryTrack().view(pair, expiry, { awayFrac: Number(req.query.awayFrac) || 0.01, topN: Math.min(20, Number(req.query.topN) || 6) });
+      return v ? res.json({ ok: true, ...v }) : res.status(404).json({ ok: false, error: 'no such series' });
+    }
+    res.json(await _expiryTrack().list(pair));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/expiry-track/run', requireAuth, async (req, res) => {
+  try { res.json(await _expiryTrack().fold({ rebuild: String(req.query.rebuild || '') === '1' })); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 svcTimeout('dataArchive', () => _archiveDaily().catch(e => console.error('[archive]', e.message)), 15 * 60_000);
 svcInterval('dataArchive', () => _archiveDaily().catch(e => console.error('[archive]', e.message)), 24 * 3600_000);
 app.get('/api/data-archive/status', async (_req, res) => {
