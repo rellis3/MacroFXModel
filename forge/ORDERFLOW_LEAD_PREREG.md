@@ -33,7 +33,7 @@ From the owner (2026-11-01): the running buy/sell delta on the NQ order-flow car
 - **Outcome R(t,h):** log return from the bar close to h minutes later, divided by the trailing realised 5-minute sigma (60 bars, known at the close) times sqrt(h/5). h in {5, 15} are scored; 30 is descriptive.
 - **Model:** pooled OLS of R(t,h) on D(t), with the same-bar return r(t) and the previous bar's return r(t-1) as controls. Everything standardised so the slope is in standard-deviation units. **The scored quantity is the slope on D(t).**
 - **Control / placebo:** the same regression with D taken from a different session at the same time of day, shifted by k = 1..20 sessions. The real slope must sit outside the 2.5 to 97.5 percent range of the 20 placebo slopes. A placebo mean far from zero means the design is biased and voids the run.
-- **Time-shift check:** the slope on D(t+1) (future flow) for R(t,h) must NOT beat the placebo; if it does, the link is mechanical, not a lead.
+- **Time-shift check:** withdrawn by Amendment A1 (replaced by a descriptive decay check on D(t-1)).
 - **De-clustering:** none by dropping; overlapping windows are handled through the design effect and the session-block bootstrap.
 - **Sample:** first-half / second-half split by chronological session count, fixed at the midpoint of the available sessions.
 
@@ -43,7 +43,7 @@ From the owner (2026-11-01): the running buy/sell delta on the NQ order-flow car
 |---|---|---|
 | a | Is the slope on D(t) for h = 5 above the bar, with the same sign in both halves? | **Null.** Any short-horizon predictability is expected to be small and mostly the same-bar effect. |
 | b | Same for h = 15 | **Null** |
-| c | **THE GATE** | Both scored cells pass Holm at alpha 0.05 over 2 cells, |slope| >= 0.05, same sign in both halves, outside the placebo range, and the time-shift check clean. |
+| c | **THE GATE** | Both scored cells pass Holm at alpha 0.05 over 2 cells, |slope| >= 0.05, same sign in both halves, and outside the placebo range. |
 | d | **THE MIRROR** | A negative slope (flow that reverses) is reported with the same gate; two-sided test, direction recorded either way. |
 
 Descriptive, no pass weight: h = 30; raw delta (not ratio) z-scored; the 30-minute running delta as the signal. These are counted as variants for best-of-N (3 variants beyond the primary).
@@ -82,4 +82,8 @@ If the number of usable sessions comes in 20 percent under plan, h = 15 becomes 
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-01 — PRE-RESULTS
+Two fixes to the registered design, made while the tick download was still running. No outcome had been computed and no scoring script had read the data.
+
+1. **The "time-shift check" in section 3 is withdrawn.** It asked for the slope on future flow D(t+1) against R(t,h) to be clean. For h = 5 the bar t+1 IS the outcome window, so flow in it is mechanically tied to the return and the check would trip for any data, true lead or not. It is replaced by a descriptive decay check: the slope on the PREVIOUS bar's flow D(t-1), reported next to the main slope. It carries no pass weight.
+2. **Data coverage.** NT8 tick history was found to start 2025-11-14 and the bridge returns two sessions per request (the evening before through the end date's close). The script saves every session found, only from the contract that is front month on that date. The window is unchanged: first available session to 2026-08-21.
