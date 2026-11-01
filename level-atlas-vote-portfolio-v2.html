@@ -110,6 +110,24 @@
 
 <main>
 
+<div class="card" id="auditNotice" style="border:1px solid var(--red);background:rgba(248,113,113,.06)">
+  <strong class="red">Read before trusting any number on this page (2026-11-01).</strong>
+  A blind audit (code read with comments removed, tested on random-walk prices where no edge can exist) found that the
+  Vote Atlas backtests before the September fixes reported 59–70% win rates <em>on random prices</em>. Two leaks caused
+  it: the same-day "previous outcome" vote input read results that had not happened yet, and the vote book was chosen
+  on the same period it was scored on. Both are fixed. Three other things are still true:
+  <ul style="margin:6px 0 0 18px">
+    <li><strong>One leak is still in the engine</strong> behind these numbers: the <code>asiaVol</code> input reads the
+      Asia session that starts at 22:00 UTC <em>after</em> each London/NY touch, and <code>prevSessionVol</code> reads
+      the same day's NY session for Asia touches before 07:00 UTC. The live bot cannot see either. The fix changes the
+      live decision path, so it is waiting for the owner's go-ahead.</li>
+    <li>The "validated" Sharpe figures in the lever tooltips and presets were measured on the leaky backtests. They are
+      history, not evidence. Fills are still at the exact rung on mid prices.</li>
+    <li>A pre-registered test on real bid/ask fills against shuffled decisions
+      (<code>forge/ATLAS_HONEST_GONOGO_PREREG.md</code>) is written but not yet run.</li>
+  </ul>
+</div>
+
 <div class="card muted">
   Combines each selected pair's own vote-margin trades (barrier-priced, concurrency-capped per pair) into ONE portfolio —
   reusing <code>js/backtestStats.js</code>'s <code>portfolioStats</code> on the combined daily return series, no new metrics.
