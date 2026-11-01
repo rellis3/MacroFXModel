@@ -39458,7 +39458,19 @@ app.get('/api/swing-map', async (req, res) => {
     const fc = forecastState.latest?.instruments?.[inst] ?? null;
     const _sg = _swingSigma(bars.map(b => b.close)).at(-1);
     const expiries = await _swingMapExpiries(cfg.oi, _sg > 0 ? _sg * Math.sqrt(252) : null).catch(() => []);
-    const m = _buildSwingMap(bars, { ladderWeeklyRev: fc?.ladder_weekly_rev ?? null, ladderMonthlyRev: fc?.ladder_monthly_rev ?? null, expiries });
+    const m = _buildSwingMap(bars, { ladderDaily: fc?.ladder ?? null, ladderWeeklyRev: fc?.ladder_weekly_rev ?? null, ladderMonthlyRev: fc?.ladder_monthly_rev ?? null, expiries });
+    // The option key lines (call/put walls, gamma flip, max pain) from the latest capture, as the OI dashboard shows them.
+    // Context: the wall placebo test found walls behave like ordinary levels.
+    if (m.ok) {
+      try {
+        const raw = await kv.get('oi_store');
+        const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : null;
+        const key = cfg.oi.find(k => store?.[k]);
+        const sm = key ? _oiHistorySummary(store[key]) : null;
+        if (sm) m.oiLines = { pair: key, asOf: sm.asOf ?? null, spot: sm.spot ?? null, maxPain: sm.maxPain ?? null, gammaFlip: sm.gammaFlip ?? null,
+          regime: sm.regime ?? null, callWalls: (sm.callWalls || []).slice(0, 3), putWalls: (sm.putWalls || []).slice(0, 3) };
+      } catch { /* the page simply shows no option lines */ }
+    }
     const data = { ...m, inst, oanda: cfg.oanda, instruments: Object.keys(SWING_MAP_INSTRUMENTS),
       forecastSession: forecastState.latest?.session_date ?? null, generatedAt: new Date().toISOString() };
     if (m.ok) _swingMapCache.set(inst, { at: Date.now(), data });
