@@ -72,3 +72,19 @@ test('BIS global dollar credit comes through from the server store, with each se
   assert.equal(L.rows.find(r => r.id === 'walcl').via, 'FRED API');
   assert.equal(summariseLiquidity({ raw }).global, null);
 });
+
+import { summarisePlumbing } from './stateLiquidity.js';
+test('plumbing: $ levels scaled to $bn, rates changed in bp, CP − fed funds spread', () => {
+  const d = Array.from({ length: 400 }, (_, i) => new Date(Date.UTC(2025, 0, 1) + i * 864e5).toISOString().slice(0, 10));
+  const P = summarisePlumbing({
+    WMTSECL1: d.map((date, i) => ({ date, value: 2_600_000 - i * 100 })),      // $M
+    DCPF3M: d.map((date, i) => ({ date, value: 4.0 + i * 0.001 })), EFFR: d.map(date => ({ date, value: 3.88 })),
+    NFCI: d.map((date, i) => ({ date, value: -0.5 + i * 0.0001 })),
+  });
+  const c = P.rows.find(r => r.id === 'WMTSECL1');
+  assert.ok(c.last > 2500 && c.last < 2600 && c.unit === '$bn');
+  assert.equal(P.rows.find(r => r.id === 'DCPF3M').chgUnit, 'bp');
+  assert.ok(P.cpSpread.last > 40 && P.cpSpread.unit === 'bp');
+  assert.equal(P.rows.find(r => r.id === 'NFCI').chgUnit, 'pts');
+  assert.equal(summarisePlumbing({}).rows.length, 0);
+});

@@ -132,6 +132,11 @@
   .ok-ic{color:var(--bull);font-weight:700} .no-ic{color:var(--bear);font-weight:700} .na-ic{color:var(--text3)}
   .meter{height:6px;border-radius:3px;background:var(--neu-bg);overflow:hidden}
   .meter i{display:block;height:6px;background:var(--bull)}
+  .cgrid{width:100%;border-collapse:collapse;font-size:12.5px}
+  .cgrid th,.cgrid td{padding:6px 7px;border-bottom:1px solid var(--border);text-align:center;white-space:nowrap}
+  .cgrid th:first-child,.cgrid td:first-child{text-align:left}
+  .cgrid td.sc{font-variant-numeric:tabular-nums;border-radius:4px}
+  .cgrid .sub{display:block;font-size:10.5px;color:var(--text3)}
   .lh{display:grid;gap:6px}
   .lh-row{display:grid;grid-template-columns:minmax(0,13rem) 90px minmax(0,1fr) minmax(0,1fr) 120px;gap:10px;align-items:center;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)}
   .lh-row svg{width:100%;height:26px;display:block}
@@ -185,6 +190,14 @@
   </section>
 
   <section class="card">
+    <h2>Country position</h2>
+    <p class="sub">Each economy from the stores the server already builds: growth (GDP, business survey, retail, confidence), inflation, labour, external balance, data surprises, and the central bank's latest statement read. Scores −1 to +1 against each series' own recent history (inflation: against target). Green = stronger / hotter, red = weaker / cooler. Position, not a forecast.</p>
+    <div class="row" style="margin:8px 0;gap:8px;flex-wrap:wrap" id="cQuad"></div>
+    <div class="scroll"><table class="cgrid" id="cGrid"></table></div>
+    <p class="note" id="cNote" style="margin-top:6px"></p>
+  </section>
+
+  <section class="card">
     <h2>Economies</h2>
     <p class="sub">The economic engine, per currency: data surprises (σ, decay-weighted), the 10-year yield and its 30-day change, and where speculators sit. Mostly context: the one validated direction result here is COT crowding into high-impact releases (price moves against the crowd).</p>
     <div class="scroll" style="margin-top:8px"><table class="econ"><thead><tr><th>Economy</th><th>Data surprises</th><th></th><th>10Y yield</th><th>30d</th><th>Positioning (COT)</th><th>Latest surprise</th></tr></thead><tbody id="econRows"></tbody></table></div>
@@ -193,6 +206,21 @@
     <h3 style="margin-top:14px;font-size:13px">Surprise history, 2007 onward</h3>
     <p class="note" id="surpNote"></p>
     <div class="sm" id="surpHist" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Asset position: where money sits inside the market</h2>
+    <p class="sub">From the scan board's daily bundle: S&amp;P sectors and the twelve largest names relative to the S&amp;P (SPY) over 20 sessions, equal-weight vs cap-weight breadth, Cboe market internals, the credit stack, and each sector's measured 60-session sensitivity to the 10-year yield, oil and the dollar. Description, not a forecast.</p>
+    <div class="grid2" style="margin-top:8px">
+      <div><div class="k">Sectors vs S&amp;P, 20 sessions</div><div class="bars" id="aSectors" style="margin-top:6px"></div></div>
+      <div><div class="k">Largest names vs S&amp;P, 20 sessions</div><div class="bars" id="aLeaders" style="margin-top:6px"></div></div>
+    </div>
+    <div class="tiles" id="aInternals" style="margin-top:10px"></div>
+    <div class="k" style="margin-top:10px">What is moving each sector right now (60-session betas)</div>
+    <div class="scroll"><table class="cgrid" id="aDrivers" style="margin-top:4px"></table></div>
+    <div class="k" style="margin-top:10px">Dealer gamma by market (Cboe chains: ETFs and indices)</div>
+    <div class="scroll"><table class="cgrid" id="aGamma" style="margin-top:4px"></table></div>
+    <p class="note" id="aNote" style="margin-top:6px"></p>
   </section>
 
   <section class="card">
@@ -208,6 +236,10 @@
     <div id="liqChart" style="margin-top:8px"></div>
     <div class="lh" id="liqRows" style="margin-top:6px"></div>
     <p class="note" id="liqNote" style="margin-top:6px"></p>
+    <div class="k" style="margin-top:12px">Money plumbing: offshore dollars, money markets, conditions</div>
+    <div class="lh" id="plumbRows" style="margin-top:6px"></div>
+    <div class="tiles" id="plumbTff" style="margin-top:8px"></div>
+    <p class="note" id="plumbNote" style="margin-top:6px"></p>
   </section>
 
   <section class="card" style="display:grid;gap:6px">
@@ -648,9 +680,87 @@ function drawLiquidity(st) {
       <div class="wide note num">non-bank financials ${G.nbfiG != null ? G.nbfiG.toFixed(1) + '%' : '—'} · Cayman USD ${G.caymanUsdG != null ? G.caymanUsdG.toFixed(1) + '%' : '—'} · yen offshore ${G.yenOffshoreG != null ? G.yenOffshoreG.toFixed(1) + '%' : '—'}</div>
       <div class="wide">${miniLine(pts, { zero: true })}</div><div class="wide"></div></div>`;
   }
+  const G4 = L.g4;
+  if (G4) {
+    const pc = Object.entries(G4.perCcy ?? {}).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]).map(([c, v]) => `${esc(c)} ${v > 0 ? '+' : ''}${v.toFixed(2)}`).join(' · ');
+    $('liqRows').innerHTML += `<div class="lh-row"><div><b>G4 central-bank liquidity (Fed + ECB + BoJ + PBoC proxy, USD)</b><div class="note">The engine global-liquidity.html runs, now on the server. Cycle ${esc(G4.phase ?? '—')}; regime ${esc(G4.regime ?? '—')}; ${esc(G4.weeks)} weeks to ${esc(G4.asOf)}. ${esc(G4.evidence)}.</div></div>
+      <div class="num"><b>${G4.impulse != null ? (G4.impulse > 0 ? '+' : '') + G4.impulse.toFixed(2) : '—'}</b><div class="note">impulse (z)</div></div>
+      <div class="wide note">per-currency impulse: ${pc || '—'}</div>
+      <div class="wide">${miniLine((G4.history ?? []).map(p => [p.date, p.value]))}</div><div class="wide"></div></div>`;
+  }
   const vias = [...new Set(L.rows.map(r => r.via).filter(Boolean))];
   const evs = (L.evidence ?? []).map(e => `${e.id}: ${e.banked ?? 'untested'}, audit ${e.status}`).join('; ');
   $('liqNote').textContent = `${L.note} Evidence: ${evs}. Fed data via ${vias.join(', ') || '—'}; TGA daily from the Treasury statement${G ? '; global credit from the BIS store' : ''}.${L.warnings?.length ? ' Unit warnings: ' + L.warnings.join('; ') : ''}`;
+}
+
+function drawCountries(st) {
+  const C = st.countries;
+  if (!C) { $('cGrid').innerHTML = '<tr><td class="note">Country stores not loaded.</td></tr>'; return; }
+  const bg = v => v == null ? '' : `background:color-mix(in srgb, ${v >= 0 ? 'var(--bull)' : 'var(--bear)'} ${Math.round(Math.min(1, Math.abs(v)) * 45) + 5}%, transparent)`;
+  const sc = (v, sub = '') => `<td class="sc" style="${bg(v)}">${v == null ? '<span class="note">—</span>' : (v > 0 ? '+' : '') + v.toFixed(2)}${sub ? `<span class="sub">${sub}</span>` : ''}</td>`;
+  const pct = v => v == null ? '' : `${v.toFixed(1)}%`;
+  const head = '<tr><th>Economy</th><th>Growth</th><th>Inflation</th><th>Labour</th><th>External</th><th>Surprises</th><th>Policy rate</th><th>Real 10Y</th><th>Curve</th><th>CB stance</th><th>Next meeting</th><th>Quadrant</th></tr>';
+  $('cGrid').innerHTML = head + C.rows.map(r => {
+    const p = r.policy, inf = r.inflation;
+    const infSub = inf?.discontinued ? `source stopped ${esc(inf.discontinued.since ?? '')}` : [inf?.headlineYoy != null ? `CPI ${pct(inf.headlineYoy)}` : '', inf?.via ? 'ONS' : ''].filter(Boolean).join(' · ');
+    const stance = p.stance == null ? '<td class="sc"><span class="note">—</span></td>' : `<td class="sc" style="${bg(p.stance)}" title="${esc(p.headline ?? '')}">${p.stance > 0 ? '+' : ''}${p.stance.toFixed(2)}<span class="sub">${esc(p.regime ?? '')} · ${esc(p.meetingDate ?? '')}</span></td>`;
+    return `<tr><td><b>${esc(r.ccy)}</b> <span class="note">${esc(r.economy)}</span><span class="sub">${esc(r.coverage.join(', ') || 'no data')}</span></td>
+      ${sc(r.growth.score, r.growth.gdpYoy != null ? `GDP ${pct(r.growth.gdpYoy)}${r.growth.recession ? ' · recession flag' : ''}` : '')}
+      ${sc(inf?.score ?? null, infSub)}${sc(r.labour?.score ?? null, r.labour?.flag ? 'flag' : '')}${sc(r.external?.score ?? null, r.external?.surplus == null ? '' : r.external.surplus ? 'surplus' : 'deficit')}
+      ${sc(r.surprise?.score ?? null)}
+      <td>${p.rate != null ? p.rate.toFixed(2) + '%' : '—'}${r.vsUsd?.rate != null ? `<span class="sub">${r.vsUsd.rate > 0 ? '+' : ''}${r.vsUsd.rate.toFixed(2)} vs US</span>` : ''}</td>
+      <td>${p.realYield != null ? p.realYield.toFixed(2) + '%' : '—'}${p.realYieldDerived ? '<span class="sub">10Y − national CPI</span>' : ''}</td>
+      <td>${p.curveSlope != null ? (p.curveSlope > 0 ? '+' : '') + p.curveSlope.toFixed(2) + (p.inverted ? ' <span class="pill bear">inv</span>' : '') : '—'}</td>
+      ${stance}<td>${esc(p.next ?? '—')}<span class="sub">${esc(p.bank)}</span></td><td style="text-align:left;white-space:normal;min-width:11rem">${esc(r.quadrant ?? '—')}</td></tr>`;
+  }).join('');
+  $('cQuad').innerHTML = Object.entries(C.quadrants).map(([q, cs]) => `<span class="pill neu">${esc(q.split(' (')[0])}: ${cs.map(esc).join(', ')}</span>`).join('')
+    + (C.stanceRange ? `<span class="pill">most hawkish ${esc(C.stanceRange.hawkish)} · most dovish ${esc(C.stanceRange.dovish)}</span>` : '')
+    + (C.upcoming.length ? `<span class="pill">next: ${C.upcoming.slice(0, 3).map(u => `${esc(u.bank)} ${esc(u.date)}`).join(' · ')}</span>` : '');
+  $('cNote').textContent = C.note + (C.missingStores.length ? ` Not built yet on this server: ${C.missingStores.join(', ')}.` : '');
+}
+
+function drawAssets(st) {
+  const A = st.assets;
+  if (!A) { $('aSectors').innerHTML = '<div class="note">Drill bundle not loaded.</div>'; return; }
+  const bars = rows => { const mx = Math.max(2, ...rows.map(r => Math.abs(r.rel20 ?? 0))); return rows.map(r => {
+    const v = r.rel20 ?? 0, w = Math.abs(v) / mx * 50, col = v >= 0 ? 'var(--bull)' : 'var(--bear)';
+    return `<div class="bar-r" style="grid-template-columns:minmax(0,10rem) minmax(0,1fr) 110px"><span>${esc(r.label)}</span>
+      <div class="bar-t" style="overflow:visible"><i style="${v >= 0 ? `left:50%;width:${w}%` : `left:${50 - w}%;width:${w}%`};background:${col}"></i><span style="position:absolute;left:50%;top:-2px;height:14px;width:1px;background:var(--text3)"></span></div>
+      <span class="note num">${r.rel20 == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1) + '%'} · ${r.offHigh == null ? '' : r.offHigh.toFixed(0) + '% off high'}</span></div>`; }).join(''); };
+  $('aSectors').innerHTML = bars(A.sectors);
+  $('aLeaders').innerHTML = bars(A.leaders);
+  const tile = (k, v, sub) => `<div class="tile"><div class="k">${esc(k)}</div><div class="v">${v}</div><div class="note">${sub}</div></div>`;
+  $('aInternals').innerHTML = [
+    A.breadth ? tile('Equal vs cap weight (RSP/SPY)', `${A.breadth.ratioChg20 > 0 ? '+' : ''}${A.breadth.ratioChg20}% 20d`, `${esc(A.breadth.read ?? '')} · ${A.breadth.pct}th pct since ${esc((A.breadth.since ?? '').slice(0, 4))}`) : '',
+    ...A.internals.map(x => tile(x.label, x.last, `${x.pct ?? '—'}th pct since ${esc((x.since ?? '').slice(0, 4))}`)),
+    ...A.credit.map(c => tile(c.label, `${c.last}%`, `${c.chg20bp > 0 ? '+' : ''}${c.chg20bp}bp 20d · ${c.pct}th pct`)),
+  ].join('');
+  const hb = (v, r) => v == null ? '<td class="sc"><span class="note">—</span></td>' : `<td class="sc" style="background:color-mix(in srgb, ${v >= 0 ? 'var(--bull)' : 'var(--bear)'} ${Math.round(Math.min(1, Math.abs(r ?? 0)) * 55) + 5}%, transparent)">${v > 0 ? '+' : ''}${v.toFixed(2)}<span class="sub">r ${r == null ? '—' : r.toFixed(2)}</span></td>`;
+  $('aDrivers').innerHTML = '<tr><th>Sector</th><th>% per +10bp 10Y</th><th>% per +1% oil</th><th>% per +1% dollar</th></tr>'
+    + A.drivers.map(d => `<tr><td>${esc(d.label)}</td>${hb(d.y10per10bp, d.y10r)}${hb(d.oilBeta, d.oilR)}${hb(d.usdBeta, d.usdR)}</tr>`).join('');
+  const G = A.gamma?.rows ?? [];
+  const px = v => v == null ? '—' : Math.abs(v) >= 1000 ? Math.round(v).toLocaleString('en-GB') : v.toFixed(2);
+  $('aGamma').innerHTML = G.length ? '<tr><th>Market</th><th>Spot</th><th>Net gamma ($/1%)</th><th>Regime</th><th>Flip</th><th>Spot vs flip</th><th>Put wall</th><th>Call wall</th></tr>'
+    + G.map(g => `<tr><td><b>${esc(g.sym)}</b> <span class="note">${esc(g.kind)}</span></td><td>${px(g.spot)}</td><td class="sc" style="background:color-mix(in srgb, ${g.netGex >= 0 ? 'var(--bull)' : 'var(--bear)'} 25%, transparent)">${g.netGex == null ? '—' : (g.netGex / 1e9).toFixed(2) + 'bn'}</td><td>${esc(g.regime === 'PIN' ? 'long gamma (dampening)' : g.regime === 'BREAKOUT' ? 'short gamma (amplifying)' : g.regime ?? '—')}</td><td>${px(g.gexFlip)}</td><td>${g.flipDistPct == null ? '—' : (g.flipDistPct > 0 ? '+' : '') + g.flipDistPct + '%'}</td><td>${px(g.putWall)}</td><td>${px(g.callWall)}</td></tr>`).join('')
+    : '<tr><td class="note">Cboe chains not loaded.</td></tr>';
+  $('aNote').textContent = `${A.note} S&P (SPY) ${A.spy.ret20 > 0 ? '+' : ''}${A.spy.ret20}% over 20 sessions; data to ${A.asOf}. Colour depth = strength of the link (|r|). Gamma: ${A.gamma?.evidence ?? ''}.`;
+}
+
+function drawPlumbing(st) {
+  const P = st.plumbing;
+  if (!P) { $('plumbRows').innerHTML = '<div class="note">Plumbing series not loaded.</div>'; return; }
+  const sg = (v, u) => v == null ? '—' : `${v > 0 ? '+' : ''}${u === 'pts' ? v.toFixed(2) : Math.round(v).toLocaleString('en-GB')}${u === 'bp' ? 'bp' : ''}`;
+  const fmt = r => r.unit === '%' ? r.last.toFixed(2) + '%' : r.unit === 'index' ? r.last.toFixed(2) : Math.round(r.last).toLocaleString('en-GB');
+  let group = '';
+  $('plumbRows').innerHTML = P.rows.map(r => {
+    const h = r.group !== group ? `<div class="k" style="margin-top:6px">${esc(r.group)}</div>` : ''; group = r.group;
+    return h + `<div class="lh-row"><div><b>${esc(r.label)}</b><div class="note">${esc(r.why)} ${esc(r.id)}, since ${esc(r.since.slice(0, 4))}, last ${esc(r.asOf)}.</div></div>
+      <div class="num"><b>${fmt(r)}</b><div class="note">${r.unit === '$bn' ? '$bn' : ''}</div></div>
+      <div class="wide note num">4w ${sg(r.chg4w, r.chgUnit)} · 13w ${sg(r.chg13w, r.chgUnit)} · 52w ${sg(r.chg52w, r.chgUnit)}</div>
+      <div class="wide">${pctBar(r.pctAll, 'all')}</div><div class="wide"></div></div>`;
+  }).join('') + (P.cpSpread ? `<div class="lh-row"><div><b>${esc(P.cpSpread.label)}</b><div class="note">${esc(P.cpSpread.why)}</div></div><div class="num"><b>${Math.round(P.cpSpread.last)}bp</b></div><div class="wide note num">4w ${sg(P.cpSpread.chg4w, 'bp')} · 13w ${sg(P.cpSpread.chg13w, 'bp')}</div><div class="wide">${pctBar(P.cpSpread.pctAll, 'all')}</div><div class="wide"></div></div>` : '');
+  $('plumbTff').innerHTML = (P.treasuryFutures ?? []).map(t => `<div class="tile"><div class="k">Leveraged funds, ${esc(t.label)} futures</div><div class="v">${t.share > 0 ? '+' : ''}${t.share}% of OI</div><div class="note">${t.pctAll}th pct since ${esc(t.since.slice(0, 4))} · ${t.pct3y}th 3y · ${esc(t.asOf)}. Deeply short = the cash-futures basis trade is crowded (2020's forced unwind).</div></div>`).join('');
+  $('plumbNote').textContent = P.note;
 }
 
 function render(st) {
@@ -659,7 +769,7 @@ function render(st) {
   const f = st.flow;
   $('flowText').innerHTML = esc(f.text).replace(/NOT the textbook order/, '<b>NOT the textbook order</b>');
   $('flowNote').textContent = f.note + (st.errors?.length ? ` Inputs that failed: ${st.errors.map(e => e.source).join(', ')}.` : '');
-  drawGlobal(st); drawPlaybook(st); drawEdges(st); drawEconomies(st); drawHistory(st); drawLiquidity(st);
+  drawGlobal(st); drawPlaybook(st); drawEdges(st); drawCountries(st); drawAssets(st); drawEconomies(st); drawHistory(st); drawLiquidity(st); drawPlumbing(st);
   drawTiers(st); drawChain(st); drawFlow(st); drawLayers(st); drawHealth(st);
 }
 

@@ -402,7 +402,8 @@ import { createExpiryTrackStore } from './js/expiryTrackStore.js';
 import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
 import { createHistorySources as _createHistorySources } from './js/stateHistorySources.js';
 import { fetchDtsTga as _fetchDtsTga } from './js/treasuryDts.js';
-import { LIQUIDITY_FRED as _LIQUIDITY_FRED } from './js/stateLiquidity.js';
+import { LIQUIDITY_FRED as _LIQUIDITY_FRED, PLUMBING as _PLUMBING } from './js/stateLiquidity.js';
+import { loadEngine as _loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
 import { CBOE_INDICES as _CBOE_INDICES, YAHOO_LONG as _YAHOO_LONG, OVERNIGHT as _OVERNIGHT, fetchCboe as _fetchCboe, fetchYahooLong as _fetchYahooLong, fetchYahooDaily as _fetchYahooDaily } from './js/marketHistory.js';
 // The permanent record of data that cannot be re-fetched (plans/DATA_ASSET_MAP.md §4A–B): R2, append-only.
 const _archive = createDataArchive({ putJSON: _r2PutJSON, getJSON: _r2GetJSON, listKeys: _r2ListKeys, configured: _r2Ok, log: console });
@@ -30517,7 +30518,10 @@ async function _stateLiquidityRaw() {
   _stateLiq.inflight = (async () => {
     const raw = {}, errors = [], via = {};
     const key = process.env.FRED_KEY || process.env.FRED_API_KEY;
-    for (const id of [..._LIQUIDITY_FRED, 'BAA10Y']) {
+    // G4 global liquidity inputs (the engine global-liquidity.html runs: js/globalLiquidityEngine.js)
+    const G4_FRED = { ecb_assets: 'ECBASSETSW', boj_assets: 'JPNASSETS', cny_res: 'TRESEGCNM052N', dexuseu: 'DEXUSEU', dexjpus: 'DEXJPUS', dexusuk: 'DEXUSUK',
+      sofr: 'SOFR', iorb: 'IORB', hy: 'BAMLH0A0HYM2', dxy: 'DTWEXBGS', bei: 'T10YIE', tips: 'DFII10', vix: 'VIXCLS', indpro: 'INDPRO' };
+    for (const id of [...new Set([..._LIQUIDITY_FRED, 'BAA10Y', ...Object.values(G4_FRED), ..._PLUMBING.map(p => p.id)])]) {
       try {
         if (key) { raw[id] = [...(await fetchFredSeries(id, '1986-01-01', key))].map(([date, value]) => ({ date, value })); via[id] = 'FRED API'; }
         else { raw[id] = await _fredCsv(id); via[id] = 'FRED public CSV (no FRED_KEY)'; }
@@ -30529,20 +30533,85 @@ async function _stateLiquidityRaw() {
     catch (e) { errors.push(`BIS: ${e.message}`); }
     let tgaDaily = null;
     try { tgaDaily = Object.fromEntries(await _fetchDtsTga(new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10))); } catch (e) { errors.push(`TGA DTS: ${e.message}`); }
-    const data = { raw, tgaDaily, bis, via, errors };
+    let g4 = null;
+    try {
+      const eng = _loadGliEngine();
+      const payload = { walcl: raw.WALCL, tga: raw.WTREGEN, rrp: raw.RRPONTSYD };
+      for (const [k, id] of Object.entries(G4_FRED)) payload[k] = raw[id];
+      if (payload.walcl?.length && payload.ecb_assets?.length && payload.boj_assets?.length) {
+        const cut = new Date(Date.now() - 6 * 365 * 864e5).toISOString().slice(0, 10);   // the page runs on 5y of history
+        for (const k of Object.keys(payload)) payload[k] = (payload[k] ?? []).filter(p => p.date >= cut);
+        const r = eng.run(payload);
+        if (!r.error) {
+          const h = r.history ?? {}, n = (h.dates ?? []).length;
+          g4 = { asOf: r.asOf, weeks: r.weeks, level: r.gli.level, impulse: r.gli.impulse, cycle: r.gli.cycle, phase: r.gli.cyclePhase, perCcy: r.gli.perCcy,
+            regime: r.regime?.state ?? null, history: (h.dates ?? []).slice(Math.max(0, n - 156)).map((d, i) => ({ date: d, value: h.level[Math.max(0, n - 156) + i] })).filter(p => Number.isFinite(p.value)) };
+        } else errors.push(`G4 engine: ${r.error}`);
+      } else errors.push('G4 engine: ECB/BoJ balance sheets not loaded');
+    } catch (e) { errors.push(`G4 engine: ${e.message}`); }
+    const data = { raw, tgaDaily, bis, g4, via, errors };
     if (Object.keys(raw).length) _stateLiq = { at: Date.now(), data, inflight: null };
     return data;
   })().finally(() => { _stateLiq.inflight = null; });
   return _stateLiq.inflight;
 }
+let _stateGamma = { at: 0, data: null, inflight: null };
+async function _stateEtfGamma() {
+  if (_stateGamma.data && Date.now() - _stateGamma.at < 6 * 3600_000) return _stateGamma.data;
+  if (_stateGamma.inflight) return _stateGamma.inflight;
+  _stateGamma.inflight = (async () => {
+    const rows = [], errors = [];
+    for (const [raw, label, kind] of [['SPY', 'SPY', 'S&P ETF'], ['QQQ', 'QQQ', 'Nasdaq ETF'], ['IWM', 'IWM', 'Russell ETF'], ['_SPX', 'SPX', 'S&P index'], ['_NDX', 'NDX', 'Nasdaq index'],
+      ['TLT', 'TLT', 'Long Treasuries'], ['HYG', 'HYG', 'High yield'], ['GLD', 'GLD', 'Gold']]) {
+      try {
+        const r = await fetch(_cboeUrl(raw), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(45_000) });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const b = _cboeLadder(_parseCboeChain(await r.json()), { scale: 1 });
+        if (!b) throw new Error('no ladder');
+        const L = b.levels;
+        rows.push({ sym: label, kind, spot: b.spot, asOf: b.asOfMs ? new Date(b.asOfMs).toISOString() : null, netGex: L.netGex, regime: L.regime,
+          gexFlip: L.gexFlip, callWall: L.callWallGamma, putWall: L.putWallGamma, maxPain: L.maxPain, flipDistPct: L.gexFlip ? +((b.spot / L.gexFlip - 1) * 100).toFixed(2) : null });
+      } catch (e) { errors.push(`${label}: ${e.message}`); }
+      await new Promise(res => setTimeout(res, 300));
+    }
+    const data = { rows, errors };
+    if (rows.length) _stateGamma = { at: Date.now(), data, inflight: null };
+    return data;
+  })().finally(() => { _stateGamma.inflight = null; });
+  return _stateGamma.inflight;
+}
 createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, readers: {   // in-memory reads only; never trigger the heavy builds
   globalRead: () => _grLatest, riskFlags: () => computeRiskFlags(), funding: () => _frLast?.read ?? null, nowcast: () => _nowcast,
-  oiToday: () => _oiTodayCache?.payload ?? null, cotState: () => _buildCotState(), volForecast: () => forecastState.latest ?? null,
+  oiToday: () => _oiTodayCache?.payload ?? null, volForecast: () => forecastState.latest ?? null,
+  // The COT cache (KV cot_extremes_v3) is filled by the worker's /api/cot-extremes, which only ran when someone opened
+  // cot-extremes.html. Warm it from here when it is empty, then build.
+  cotState: async () => {
+    try { return await _buildCotState(); }
+    catch (e) {
+      if (!/No COT data cached/.test(e.message)) throw e;
+      await fetch(`http://127.0.0.1:${PORT}/api/cot-extremes`, { signal: AbortSignal.timeout(60_000) }).catch(() => null);
+      return _buildCotState();
+    }
+  },
   deepFred: key => _deepFredSeries(key),
   fredKeyless: async key => { const id = _FREDHISTORY_SERIES[key]; if (!id || _isBoeSeries(id)) return null; return _fredCsv(id); },   // public CSV, archived as it is read
   yahooDaily: ticker => _fetchYahooDaily(ticker, 500),
   history: () => _historySources(),   // arrow: _historySources is declared further down (TDZ)
   liquidity: () => _stateLiquidityRaw(),
+  // Dealer gamma on the ETF and index option chains (Cboe delayed quotes, the parser and ladder the OI page uses for
+  // the four indices). QQQ carries ~3x NDX's gamma, so a CME/index-only read misses most of it. Cached 6 h.
+  etfGamma: () => _stateEtfGamma(),
+  // Asset position: the scan board's drill bundle (sectors, the 12 largest names, Cboe internals, credit stack), refreshed daily.
+  drill: async () => { if (!_drillBundle.data || Date.now() - _drillBundle.at > 24 * 3600_000) await _refreshDrillBundle(); return _drillBundle.data; },
+  // National CPI where the CPI store's FRED/OECD mirror is discontinued, through the fetcher and sources the regime
+  // study already uses: UK from ONS (D7G7, already y/y), Canada from StatCan (index → y/y). JPY/AUD/NZD: no source yet.
+  cpiFallback: async () => {
+    const out = {};
+    const last = arr => arr.filter(p => Number.isFinite(p.value)).at(-1) ?? null;
+    try { const gb = last(await _fetchIntlSeries(_CCY_REGIME_SRC.gb_cpi)); if (gb) out.GBP = { date: gb.date, value: gb.value, via: 'ONS D7G7' }; } catch { /* stays missing */ }
+    try { const ca = last(_yoy((await _fetchIntlSeries(_CCY_REGIME_SRC.ca_cpi)).map(o => ({ date: o.date, value: o.value })))); if (ca) out.CAD = { date: ca.date, value: ca.value, via: 'StatCan 41690973' }; } catch { /* stays missing */ }
+    return out;
+  },
   edgeRegimes: () => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis/output/edges-by-regime/results.json'), 'utf8')); } catch { return null; } },
 } }).mount(app);   // must sit above the /api/* worker catch-all
 svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);
