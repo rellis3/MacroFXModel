@@ -41,6 +41,7 @@ h1 b{color:var(--acc)} h1 small{color:var(--tx3);font-size:11px;letter-spacing:.
 #lw{position:relative;flex:1;min-width:0;height:560px;background:#080b10;border-radius:10px;overflow:hidden}
 #lw>canvas#bg{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
 #lw>div{position:relative;z-index:1}
+#lw>canvas#barsCv{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
 #curve{width:clamp(110px,17%,230px);height:560px;border-radius:10px;background:#080b10}
 @media(max-width:700px){#lw,#curve{height:420px}}
 .zt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}.zt th{color:var(--tx3);font-weight:500;text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px}
@@ -111,8 +112,8 @@ svg text{font-family:var(--mono)}
       <span class="tgl"><span class="pill" data-tf="M5">5m</span><span class="pill on" data-tf="M15">15m</span><span class="pill" data-tf="H1">1h</span></span></h2>
     <div class="sub"><b>How to read it:</b> a live TradingView chart (updates every 10 s, scroll and zoom as normal). The glowing bands behind the candles are zones of dealer gamma. <b style="color:rgb(70,184,122)">Green</b> = dealers lean against moves, so price tends to stall and pin. <b style="color:rgb(232,97,95)">Red</b> = dealers push with the move, so price tends to speed up through it. Brighter = more gamma; the biggest zones are named. The curve on the right is the <b>whole book's gamma if price were at that level</b> — where it crosses zero is the flip.</div>
     <div id="lwLive" class="minis" style="margin:6px 0 8px"></div>
-    <div class="tgl" style="margin:0 0 8px"><span class="pill on" data-plv="on" title="Draw the OI Profile indicator's own levels on this chart (the same export you paste into TradingView)">OI Profile lines</span><span class="pill" data-plv="books" title="Add the lines of every expiry book, not only the strongest one (the 'All lines' export)">every expiry book</span><span class="pill" data-plv="minor" title="Also draw gamma peak, vanna flip, charm flip and volume lines (the indicator hides these by default)">minor levels</span><span class="pill" data-plv="cboe" title="Dashed lines from Cboe's delayed index-options book (NQ, SPX, RUT, US30), re-built every 5 minutes">Cboe live levels</span></div>
-    <div class="lwrow"><div id="lw"><canvas id="bg"></canvas></div><canvas id="curve"></canvas></div>
+    <div class="tgl" style="margin:0 0 8px"><span class="pill on" data-plv="on" title="Draw the OI Profile indicator's own levels on this chart (the same export you paste into TradingView)">OI Profile lines</span><span class="pill" data-plv="books" title="Add the lines of every expiry book, not only the strongest one (the 'All lines' export)">every expiry book</span><span class="pill" data-plv="minor" title="Also draw gamma peak, vanna flip, charm flip and volume lines (the indicator hides these by default)">minor levels</span><span class="pill on" data-bar="gex" title="Net gamma at each price, drawn beside the candles and locked to the price scale (green = dealers long, red = short)">gamma bars</span><span class="pill on" data-bar="vol" title="Volume at each price (the Profile's volume bars)">volume bars</span><span class="pill" data-bar="chg" title="Change in open interest at each price since the last snapshot (teal built, amber run down)">OI change bars</span><span class="pill" data-bar="van" title="Vanna at each price">vanna bars</span><span class="pill on" data-bar="stack" title="Highlight prices where two or more bar lanes are at least half strength (descriptive, not a signal)">stacked bands</span><span class="pill" data-plv="cboe" title="Dashed lines from Cboe's delayed index-options book (NQ, SPX, RUT, US30), re-built every 5 minutes">Cboe live levels</span></div>
+    <div class="lwrow"><div id="lw"><canvas id="bg"></canvas><canvas id="barsCv"></canvas></div><canvas id="curve"></canvas></div>
     <div class="legend"><span><i style="background:rgb(var(--long))"></i>long gamma — pins</span><span><i style="background:rgb(var(--short))"></i>short gamma — speeds up</span><span><i style="background:var(--vio)"></i>GEX flip</span><span><i style="background:#d9c04a"></i>max pain</span></div>
     <div id="lwMoves" class="legend" style="display:none;margin-top:6px"></div>
   </div>
@@ -322,10 +323,10 @@ function lwInit(){
   host.addEventListener('mousemove', ev => { if (!CUR) return; const r = host.getBoundingClientRect(); const p = series.coordinateToPrice(ev.clientY - r.top); if (p == null) return hideTip();
     const near = FIELD.length ? FIELD.reduce((b, f) => Math.abs(f.P - p) < Math.abs(b.P - p) ? f : b) : null;
     let g = ''; if (CURVE) { const c = CURVE.reduce((b, c) => Math.abs(c.P - p) < Math.abs(b.P - p) ? c : b); const v = NEAR && c.near != null ? c.near : c.all; g = `<br>whole book at this price: <b>${v >= 0 ? 'LONG gamma — dealers fade moves' : 'SHORT gamma — dealers chase moves'}</b>`; }
-    showTip(ev, `<b>${px(p)}</b> · ${((p / CUR.spot - 1) * 100).toFixed(2)}% from OI spot${near ? `<br>zone here: ${near.v >= 0 ? 'long-gamma (pin)' : 'short-gamma (speeds up)'}` : ''}${g}`); });
+    showTip(ev, `<b>${px(p)}</b> · ${((p / CUR.spot - 1) * 100).toFixed(2)}% from OI spot${near ? `<br>zone here: ${near.v >= 0 ? 'long-gamma (pin)' : 'short-gamma (speeds up)'}` : ''}${g}${barsAt(p)}`); });
   host.addEventListener('mouseleave', hideTip);
   // keep the backdrop + curve glued to the price scale (also catches autoscale changes when a new candle arrives)
-  const loop = () => { paintBackdrop(); requestAnimationFrame(loop); }; requestAnimationFrame(loop);
+  const loop = () => { paintBackdrop(); try { paintBars(); } catch (_) {} requestAnimationFrame(loop); }; requestAnimationFrame(loop);
   return LW;
 }
 
@@ -412,6 +413,7 @@ function parseProfileText(text) {
     const p = raw.split('|');
     if (p[0] === 'M') { for (let i = 1; i + 1 < p.length; i += 2) out.meta[p[i]] = p[i + 1]; }
     else if (p[0] === 'L' && p.length >= 5 && Number.isFinite(+p[2])) out.lines.push({ type: p[1], price: +p[2], label: p[3], strength: +p[4] });
+    else if ('GVOC'.includes(p[0]) && p[0].length === 1 && p.length >= 3 && Number.isFinite(+p[1]) && Number.isFinite(+p[2])) (out[p[0]] ||= []).push({ p: +p[1], v: +p[2] });
   }
   return out;
 }
@@ -451,6 +453,8 @@ async function plvFetch() {
       PLV.moves = PLV.moves.slice(0, 10);
     } else PLV.moves = [];
     PLV.cur = p.lines; PLV.meta = p.meta; PLV.loadedFor = sym; PLV.err = null; PLV.at = Date.now();
+    { const ps = (p.G || p.O || p.C || p.V || []).map(r => r.p).sort((a, b) => a - b), df = ps.slice(1).map((v, i) => v - ps[i]).filter(v => v > 0).sort((a, b) => a - b);
+      PLV.bars = ps.length ? { G: p.G || [], V: p.V || [], O: p.O || [], C: p.C || [], mid: ps[Math.floor(ps.length / 2)], step: +p.meta.binw > 0 ? +p.meta.binw : (df[Math.floor(df.length / 2)] || 1), stamp: PLV.at } : null; }
     plvDraw();
   } catch (e) { PLV.err = e.message; }
   finally { PLV.busy = false; updateLwLive(); }
@@ -466,7 +470,7 @@ async function plvFetchCboe() {
 }
 function startLiveLevels() {
   clearInterval(PLV.timer); clearInterval(PLV.cTimer);
-  if (PLV.loadedFor !== SYM) { PLV.cur = null; PLV.moves = []; PLV.cboeLv = null; PLV.loadedFor = null; }
+  if (PLV.loadedFor !== SYM) { PLV.cur = null; PLV.moves = []; PLV.cboeLv = null; PLV.loadedFor = null; PLV.bars = null; BAR.sig = ''; }
   plvFetch(); plvFetchCboe();
   PLV.timer = setInterval(plvFetch, 180000);          // the export builds from the price feed too, so every 3 minutes, and only while the tab is visible
   PLV.cTimer = setInterval(plvFetchCboe, 300000);
@@ -481,6 +485,55 @@ function updateLwLive() {
     + (PLV.cboe ? `<div class="mini"><div class="k">Cboe levels</div><div class="v" style="font-size:15px">${PLV.cboeLines.length || '–'}</div><div class="n">${(SYM in DD_PAIRS) ? 'refreshed ' + hhmm(PLV.cAt) + ' · delayed ~15 min' : 'not available for this market'}</div></div>` : '');
   const mv = $('#lwMoves');
   if (mv) { mv.style.display = PLV.moves.length ? '' : 'none'; mv.innerHTML = PLV.moves.length ? '<span><b>Levels that moved since the page opened:</b></span>' + PLV.moves.map(m => `<span>${hhmm(m.t)} ${esc(m.label)} ${px(m.from)} → ${px(m.to)}</span>`).join('') : ''; }
+}
+// ── Strength bars linked to price: the indicator's side bars (gamma, volume, OI change, vanna) drawn on the live chart, one bar per price bin, locked to the chart's price scale ──
+// They come from the same Profile export as the lines (G| gamma, O| volume, C| OI change, V| vanna rows, each already scaled to +-1000), so they pan and zoom with the candles.
+// "Stacked" marks prices where two or more lanes are above half strength. That is descriptive, a place where several measures agree; it has not been tested as a signal.
+const BAR = { gex: true, vol: true, chg: false, van: false, stack: true, sig: '' };
+const BAR_LANES = [['gex', 'G', 'GEX', 1], ['vol', 'O', 'VOLUME', 0], ['chg', 'C', 'OI CHG', 1], ['van', 'V', 'VANNA', 1]];
+function barNearest(rows, P, step) { let best = null, bd = Infinity; for (const r of rows) { const d = Math.abs(r.p - P); if (d < bd) { bd = d; best = r; } } return best && bd <= step * 0.75 ? best.v : 0; }
+function barsAt(P) {
+  const D = PLV.bars; if (!D || !PLV.on || PLV.loadedFor !== SYM) return '';
+  const st = D.step, out = BAR_LANES.filter(l => BAR[l[0]]).map(l => [l[2], barNearest(D[l[1]] || [], P, st)]).filter(x => x[1]);
+  return out.length ? '<br>' + out.map(([n, v]) => `${n.toLowerCase()} <b>${v > 0 ? '+' : ''}${Math.round(v)}</b>/1000`).join(' · ') : '';
+}
+function paintBars() {
+  const cv = $('#barsCv'), host = $('#lw'); if (!cv || !host || !LW) return;
+  const D = PLV.bars, w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
+  const S = LW.series, plotW = w - LW.chart.priceScale('right').width();
+  const lanes = D && PLV.on && PLV.loadedFor === SYM ? BAR_LANES.filter(l => BAR[l[0]] && (D[l[1]] || []).length) : [];
+  const yA = D ? S.priceToCoordinate(D.mid) : null, yB = D ? S.priceToCoordinate(D.mid + D.step) : null;
+  const sig = [w, h, plotW, D && D.stamp, lanes.map(l => l[0]).join(), BAR.stack, yA && yA.toFixed(1), yB && yB.toFixed(1)].join('|');
+  if (sig === BAR.sig) return; BAR.sig = sig;
+  const dpr = devicePixelRatio || 1; cv.width = w * dpr; cv.height = h * dpr;
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  if (!lanes.length || yA == null || yB == null) return;
+  const laneW = Math.max(54, Math.min(92, plotW * 0.08)), bh = Math.max(2, Math.abs(yA - yB) * 0.82);
+  const x0 = 6, xEnd = x0 + lanes.length * laneW;      // lanes sit on the left edge, over old history, so the latest candles and the line labels stay clear
+  // stacked bands behind the lanes: prices where 2+ lanes are at least half strength
+  if (BAR.stack && lanes.length >= 2) {
+    const prices = new Set(); for (const l of lanes) for (const r of D[l[1]]) prices.add(r.p);
+    for (const P of prices) {
+      const n = lanes.reduce((a, l) => a + (Math.abs(barNearest(D[l[1]], P, D.step)) >= 500 ? 1 : 0), 0); if (n < 2) continue;
+      const y = S.priceToCoordinate(P); if (y == null || y < 0 || y > h) continue;
+      c.fillStyle = `rgba(240,176,74,${n >= 3 ? 0.2 : 0.1})`; c.fillRect(x0, y - bh * 0.62, plotW - x0, bh * 1.24);
+      if (n >= 3) { c.fillStyle = 'rgba(240,176,74,.9)'; c.font = '600 9.5px ui-monospace,Consolas,monospace'; c.textAlign = 'left'; c.fillText('stacked ×' + n, xEnd + 6, y + 3); }
+    }
+  }
+  lanes.forEach((l, li) => {
+    const lx = x0 + li * laneW, signed = l[3] === 1, mid = lx + laneW / 2;
+    c.fillStyle = 'rgba(8,11,16,.6)'; c.fillRect(lx, 0, laneW - 3, h);
+    c.fillStyle = '#7f8a98'; c.font = '600 9.5px ui-monospace,Consolas,monospace'; c.textAlign = 'center'; c.fillText(l[2], lx + (laneW - 3) / 2, 12);
+    if (signed) { c.strokeStyle = 'rgba(255,255,255,.12)'; c.beginPath(); c.moveTo(mid - 1.5, 16); c.lineTo(mid - 1.5, h); c.stroke(); }
+    for (const r of D[l[1]]) {
+      const y = S.priceToCoordinate(r.p); if (y == null || y < 16 || y > h) continue;
+      const f = Math.min(1, Math.abs(r.v) / 1000), pos = r.v >= 0;
+      const col = l[0] === 'gex' ? (pos ? `rgba(${LONG},.9)` : `rgba(${SHORT},.9)`) : l[0] === 'vol' ? 'rgba(143,181,255,.85)' : l[0] === 'chg' ? (pos ? 'rgba(79,209,197,.9)' : 'rgba(240,176,74,.9)') : (pos ? 'rgba(92,200,255,.85)' : 'rgba(199,125,255,.85)');
+      c.fillStyle = col;
+      if (signed) { const wd = f * (laneW / 2 - 5); c.fillRect(pos ? mid : mid - wd, y - bh / 2, Math.max(1, wd), bh); }
+      else { const wd = f * (laneW - 8); c.fillRect(lx + 2, y - bh / 2, Math.max(1, wd), bh); }
+    }
+  });
 }
 async function drawTerrain(){
   if (!window.LightweightCharts) { $('#lw').innerHTML = '<div class="err">TradingView chart library did not load.</div>'; return; }
@@ -1560,6 +1613,7 @@ $('#mNear').onclick = () => { NEAR = true; $('#mNear').classList.add('on'); $('#
 $('#mAll').onclick = () => { NEAR = false; $('#mAll').classList.add('on'); $('#mNear').classList.remove('on'); refresh(); };
 document.querySelectorAll('[data-ah]').forEach(b => b.onclick = () => { AH = +b.dataset.ah; document.querySelectorAll('[data-ah]').forEach(x => x.classList.toggle('on', x === b)); drawAhead(); });
 document.querySelectorAll('[data-plv]').forEach(b => b.onclick = () => { const k = b.dataset.plv; PLV[k] = !PLV[k]; b.classList.toggle('on', PLV[k]); if (k === 'books') { PLV.loadedFor = null; PLV.cur = null; plvFetch(); } else if (k === 'on') { plvDraw(); if (!PLV.on) setLevels(); updateLwLive(); } else if (k === 'minor') plvDraw(); else if (k === 'cboe') { PLV.cboe ? plvFetchCboe() : (plvClear('cboeLines'), updateLwLive()); } });
+document.querySelectorAll('[data-bar]').forEach(b => b.onclick = () => { const k = b.dataset.bar; BAR[k] = !BAR[k]; b.classList.toggle('on', BAR[k]); BAR.sig = ''; });
 document.querySelectorAll('[data-tf]').forEach(b => b.onclick = () => { TF = b.dataset.tf; document.querySelectorAll('[data-tf]').forEach(x => x.classList.toggle('on', x === b)); drawTerrain(); });
 
 (async () => {
