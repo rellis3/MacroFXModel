@@ -400,6 +400,7 @@ import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataA
 import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
 import { createHistorySources as _createHistorySources } from './js/stateHistorySources.js';
 import { fetchDtsTga as _fetchDtsTga } from './js/treasuryDts.js';
+import { LIQUIDITY_FRED as _LIQUIDITY_FRED } from './js/stateLiquidity.js';
 import { CBOE_INDICES as _CBOE_INDICES, YAHOO_LONG as _YAHOO_LONG, OVERNIGHT as _OVERNIGHT, fetchCboe as _fetchCboe, fetchYahooLong as _fetchYahooLong, fetchYahooDaily as _fetchYahooDaily } from './js/marketHistory.js';
 // The permanent record of data that cannot be re-fetched (plans/DATA_ASSET_MAP.md §4A–B): R2, append-only.
 const _archive = createDataArchive({ putJSON: _r2PutJSON, getJSON: _r2GetJSON, listKeys: _r2ListKeys, configured: _r2Ok, log: console });
@@ -30429,6 +30430,26 @@ dailyRead.mount(app);
 createHarShadow({ kv }).mount(app);
 createDrawdownShadow({ kv }).mount(app);
 createStressShadow({ kv }).mount(app);
+// Liquidity & banking layer: FRED public CSV (no key) + the Daily Treasury Statement TGA, cached 6 h, fetched one
+// at a time (FRED answers bursts with 503). Each series is archived to R2 by _fredCsv as it is read.
+let _stateLiq = { at: 0, data: null, inflight: null };
+async function _stateLiquidityRaw() {
+  if (_stateLiq.data && Date.now() - _stateLiq.at < 6 * 3600_000) return _stateLiq.data;
+  if (_stateLiq.inflight) return _stateLiq.inflight;
+  _stateLiq.inflight = (async () => {
+    const raw = {}, errors = [];
+    for (const id of _LIQUIDITY_FRED) {
+      try { raw[id] = await _fredCsv(id); } catch (e) { errors.push(`${id}: ${e.message}`); }
+      await new Promise(r => setTimeout(r, 300));
+    }
+    let tgaDaily = null;
+    try { tgaDaily = Object.fromEntries(await _fetchDtsTga(new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10))); } catch (e) { errors.push(`TGA DTS: ${e.message}`); }
+    const data = { raw, tgaDaily, errors };
+    if (Object.keys(raw).length) _stateLiq = { at: Date.now(), data, inflight: null };
+    return data;
+  })().finally(() => { _stateLiq.inflight = null; });
+  return _stateLiq.inflight;
+}
 createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, readers: {   // in-memory reads only; never trigger the heavy builds
   globalRead: () => _grLatest, riskFlags: () => computeRiskFlags(), funding: () => _frLast?.read ?? null, nowcast: () => _nowcast,
   oiToday: () => _oiTodayCache?.payload ?? null, cotState: () => _buildCotState(), volForecast: () => forecastState.latest ?? null,
@@ -30436,6 +30457,7 @@ createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, readers: {   // in-memo
   fredKeyless: async key => { const id = _FREDHISTORY_SERIES[key]; if (!id || _isBoeSeries(id)) return null; return _fredCsv(id); },   // public CSV, archived as it is read
   yahooDaily: ticker => _fetchYahooDaily(ticker, 500),
   history: () => _historySources(),   // arrow: _historySources is declared further down (TDZ)
+  liquidity: () => _stateLiquidityRaw(),
 } }).mount(app);   // must sit above the /api/* worker catch-all
 svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);
 

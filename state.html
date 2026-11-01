@@ -201,6 +201,15 @@
     <div class="lh" id="longHist" style="margin-top:6px"></div>
   </section>
 
+  <section class="card">
+    <h2>Liquidity &amp; banking: where the dollars are</h2>
+    <p class="sub">Net liquidity is the Fed's balance sheet, less Treasury cash at the Fed (TGA), less money-fund cash parked at the Fed (RRP). Reserves, swap lines and bank credit sit alongside it. Sources: FRED and the Daily Treasury Statement. Weekly changes; percentile against each series' full history.</p>
+    <div class="row" style="margin-top:8px;gap:14px;flex-wrap:wrap"><span class="pill" id="liqImpulse">—</span><span class="note" id="liqToday"></span></div>
+    <div id="liqChart" style="margin-top:8px"></div>
+    <div class="lh" id="liqRows" style="margin-top:6px"></div>
+    <p class="note" id="liqNote" style="margin-top:6px"></p>
+  </section>
+
   <section class="card" style="display:grid;gap:6px">
     <div class="eyebrow">Information flow this window</div>
     <p class="flowline" id="flowText">Loading the state document…</p>
@@ -613,13 +622,34 @@ function drawHistory(st) {
   $('cotBoardNote').textContent = cb.length ? `Latest report ${cb.map(r => r.asOf).sort().at(-1)}. Sorted by how stretched positioning is in its full history.` : 'COT history not loaded.';
 }
 
+function drawLiquidity(st) {
+  const L = st.layers?.liquidity;
+  if (!L || !L.rows?.length) { $('liqRows').innerHTML = '<div class="note">Liquidity series not loaded (FRED or the Treasury statement did not answer). Nothing is filled in.</div>'; $('liqImpulse').textContent = 'not loaded'; return; }
+  const n = L.net, sg = v => v == null ? '—' : `${v > 0 ? '+' : ''}${Math.round(v).toLocaleString('en-GB')}`;
+  if (n) {
+    const cls = n.impulse === 'adding' ? 'bull' : n.impulse === 'draining' ? 'bear' : 'neu';
+    $('liqImpulse').className = `pill ${cls}`;
+    $('liqImpulse').textContent = `Net liquidity ${n.impulse ?? '—'}: ${sg(n.chg13w)} bn over 13 weeks`;
+    $('liqToday').textContent = n.today ? `Today's estimate $${Math.round(n.today.value).toLocaleString('en-GB')} bn (Fed assets ${n.today.walclAsOf}, TGA ${n.today.tgaAsOf} daily statement $${Math.round(n.today.tga)} bn, RRP ${n.today.rrpAsOf} $${Math.round(n.today.rrp)} bn)` : '';
+    const pts = n.series.map(p => [p.date, p.value]);
+    $('liqChart').innerHTML = `<div class="row" style="justify-content:space-between"><span class="k">Net liquidity, weekly, $bn</span><span class="note">${esc(n.series[0]?.date ?? '')} → ${esc(n.asOf)}</span></div><div style="height:90px">${miniLine(pts, { h: 90 })}</div>`;
+    const svg = $('liqChart').querySelector('svg'); if (svg) svg.style.cssText = 'width:100%;height:90px;display:block';
+  }
+  $('liqRows').innerHTML = L.rows.map(r => `<div class="lh-row"><div><b>${esc(r.label)}</b><div class="note">${esc(r.why)} Since ${esc(r.since.slice(0, 4))}, last ${esc(r.asOf)}.</div></div>
+    <div class="num"><b>${Math.round(r.last).toLocaleString('en-GB')}</b><div class="note">$bn${r.yoyPct != null ? ` · ${r.yoyPct > 0 ? '+' : ''}${r.yoyPct}% y/y` : ''}</div></div>
+    <div class="wide note num">4w ${sg(r.chg4w)} · 13w ${sg(r.chg13w)} · 52w ${sg(r.chg52w)}</div>
+    <div class="wide">${pctBar(r.pctAll, 'all')}</div><div class="wide"></div></div>`).join('');
+  const evs = (L.evidence ?? []).map(e => `${e.id}: ${e.banked ?? 'untested'}, audit ${e.status}`).join('; ');
+  $('liqNote').textContent = `${L.note} Evidence: ${evs}.${L.warnings?.length ? ' Unit warnings: ' + L.warnings.join('; ') : ''}`;
+}
+
 function render(st) {
   window.__state = st;
   $('asOf').textContent = `as of ${st.asOf ?? '—'}`;
   const f = st.flow;
   $('flowText').innerHTML = esc(f.text).replace(/NOT the textbook order/, '<b>NOT the textbook order</b>');
   $('flowNote').textContent = f.note + (st.errors?.length ? ` Inputs that failed: ${st.errors.map(e => e.source).join(', ')}.` : '');
-  drawGlobal(st); drawPlaybook(st); drawEdges(st); drawEconomies(st); drawHistory(st);
+  drawGlobal(st); drawPlaybook(st); drawEdges(st); drawEconomies(st); drawHistory(st); drawLiquidity(st);
   drawTiers(st); drawChain(st); drawFlow(st); drawLayers(st); drawHealth(st);
 }
 

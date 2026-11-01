@@ -39,6 +39,10 @@ for (const r of long) console.log(`  ${r.id.padEnd(13)} last ${String(r.ctx.last
 if (long.length < 5) problems.push('long-history section missing or thin');
 if ((st.history?.cot ?? []).length < 10) problems.push('COT board missing or thin');
 if (Object.keys(st.history?.surprises ?? {}).length < 6) problems.push('surprise history missing');
+const liq = st.layers?.liquidity;
+if (!liq?.net) problems.push('liquidity layer missing (FRED WALCL/WTREGEN/RRPONTSYD)');
+else console.log(`\nLiquidity: net $${liq.net.last} bn as of ${liq.net.asOf} (${liq.net.impulse}, 13w ${liq.net.chg13w}); ${liq.rows.map(r => `${r.id} ${r.asOf}`).join(', ')}`);
+if (liq?.warnings?.length) problems.push(`liquidity unit warnings: ${liq.warnings.join('; ')}`);
 
 console.log('\nSections:');
 const g = st.global ?? {};

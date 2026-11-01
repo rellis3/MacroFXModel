@@ -13,6 +13,7 @@
 import { buildState } from './stateEngine.js';
 import { assembleChainSeries, CHAIN_OHLC, FRED_KEYS, YAHOO_FALLBACK } from './stateSources.js';
 import { summariseGlobal, summariseEconomies, summariseLayers, activeEdges } from './stateLayers.js';
+import { summariseLiquidity } from './stateLiquidity.js';
 import { longContext, fxBoard, surpriseHistory, cotBoard } from './stateHistory.js';
 import { playbook } from './statePlaybook.js';
 
@@ -101,6 +102,13 @@ export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = conso
     doc.global = summariseGlobal({ globalRead, riskFlags, regime, funding, creditQuality });
     doc.economies = summariseEconomies({ surprise, nowcast, fedPath, fredHist, intlYields: iy?.series, cot: cotState });
     doc.layers = summariseLayers({ volForecast, cot: cotState, oi: oiToday });
+    // Liquidity & banking (FRED public CSV + Treasury DTS). Missing stays missing.
+    const liqRaw = await read('liquidity', readers.liquidity, 120_000);
+    if (liqRaw) {
+      for (const e of liqRaw.errors ?? []) errors.push({ source: 'liquidity', error: e });
+      doc.layers.liquidity = summariseLiquidity({ raw: liqRaw.raw ?? {}, tgaDaily: liqRaw.tgaDaily });
+      for (const w of doc.layers.liquidity.warnings) errors.push({ source: 'liquidity units', error: w });
+    } else doc.layers.liquidity = null;
     const nq = series.nq; const nq5 = Array.isArray(nq) && nq.length > 6 ? (nq[nq.length - 1].value / nq[nq.length - 6].value - 1) * 100 : null;
     doc.edges = activeEdges({ stress, nq5, oi: oiToday });
     doc.deepHistory = deepUsed.sort();
