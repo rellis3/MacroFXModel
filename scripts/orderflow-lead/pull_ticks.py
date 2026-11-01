@@ -65,7 +65,7 @@ def main():
                     for day in sorted(set(loc.dt.date)):
                         if day > LOCKBOX or day.weekday() >= 5 or contract(day) != inst or (OUT / f"NQ_{day}.parquet").exists(): continue   # a neighbour day on the other side of a roll is the other contract
                         keep = (loc.dt.date == day) & (mins >= 570) & (mins < 960)
-                        out = pd.DataFrame({"ts_ms": (ts[keep].astype("int64") // 1_000_000).values, "price": df.price[keep].astype("float32").values, "vol": df.volume[keep].astype("int32").values})
+                        out = pd.DataFrame({"ts_ms": (ts[keep].astype("datetime64[ms, UTC]").astype("int64")).values, "price": df.price[keep].astype("float32").values, "vol": df.volume[keep].astype("int32").values})
                         if out.empty: continue
                         out.to_parquet(OUT / f"NQ_{day}.parquet", index=False); saved += 1
                         print(day, inst, len(out), "RTH ticks,", int(out.vol.sum()), "contracts", flush=True)

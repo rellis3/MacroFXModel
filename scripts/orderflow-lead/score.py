@@ -28,7 +28,8 @@ def load_days():
         d = f.stem[3:]
         if d > LOCK: continue
         t = pd.read_parquet(f)
-        loc = pd.to_datetime(t.ts_ms, unit="ms", utc=True).dt.tz_convert(NY)
+        unit = "s" if t.ts_ms.max() < 1e11 else "ms"        # the first download stored seconds under the name ts_ms (pandas 3 gave microsecond resolution); order inside a second is the file order
+        loc = pd.to_datetime(t.ts_ms, unit=unit, utc=True).dt.tz_convert(NY)
         mins = (loc.dt.hour * 60 + loc.dt.minute - 570).values
         price = t.price.values.astype("float64"); vol = t.vol.values.astype("float64")
         s = np.sign(np.diff(price, prepend=price[0])); s[s == 0] = np.nan
