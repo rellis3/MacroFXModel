@@ -2,7 +2,7 @@
 // Pins: the window around spot, the expiry horizon, expired and empty contracts dropped, the key from Cboe's own
 // timestamp, volume between two snapshots (new contracts count from zero, drops ignored), and the strike flow.
 //   node js/cboeIntraday.test.mjs
-import { slimSnapshot, volumeBetween, flowByStrike, parseOcc, cboeTsMs } from './cboeIntraday.js';
+import { slimSnapshot, volumeBetween, flowByStrike, parseOcc, cboeTsMs, etTsMs, premiumBetween } from './cboeIntraday.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
@@ -22,7 +22,7 @@ const a = slimSnapshot(chain(T1, 7000, [
 ]));
 ok('keeps only near-spot, near-dated, live contracts', a.rows.length === 2, JSON.stringify(a.rows.map(r => r[0])));
 ok('key comes from Cboe\'s own timestamp', a.day === '2026-10-30' && a.hhmmss === '140000' && a.tMs === cboeTsMs(T1));
-ok('columns are option, bid, ask, volume, oi, iv, gamma', a.rows[0].length === 7 && a.rows[0][3] === 10 && a.rows[0][4] === 100);
+ok('columns are option, bid, ask, volume, oi, iv, gamma, last px, last ms', a.rows[0].length === 9 && a.rows[0][3] === 10 && a.rows[0][4] === 100);
 ok('bad input gives null', slimSnapshot(null) === null && slimSnapshot(chain('nope', 7000, [])) === null && slimSnapshot(chain(T1, 7000, [])) === null);
 
 const b = slimSnapshot(chain(T2, 7005, [
@@ -37,5 +37,16 @@ const f = flowByStrike(d, 7005);
 ok('flow by strike splits calls and puts and weights by gamma', f.length === 2 && f[0].callVol === 30 && f[0].putVol === 0 && f[0].callGex > f[1].callGex / 3);
 ok('OCC parser', parseOcc('SPXW261030C07000000')?.K === 7000 && parseOcc('SPXW261030C07000000')?.cp === 'C' && parseOcc('junk') === null);
 
+// last_trade_time is US Eastern: EDT in October (UTC-4), EST in January (UTC-5)
+ok('Eastern last-trade time -> UTC, both sides of DST', etTsMs('2026-10-30T16:14:59') === Date.UTC(2026, 9, 30, 20, 14, 59) && etTsMs('2027-01-15T10:00:00') === Date.UTC(2027, 0, 15, 15, 0, 0));
+{
+  const mk = (ts, rows) => slimSnapshot(chain(ts, 7000, rows.map(([cp, vol, px, t]) => opt('SPXW', '261030', cp, 7000, { bid: 10, ask: 11, open_interest: 5, volume: vol, last_trade_price: px, last_trade_time: t }))));
+  const A = mk('2026-10-30 14:00:00', [['C', 10, 10.5, '2026-10-30T09:50:00'], ['P', 10, 10.5, '2026-10-30T09:50:00']]);
+  const B = mk('2026-10-30 14:15:00', [['C', 30, 11, '2026-10-30T10:10:00'], ['P', 25, 10, '2026-10-30T10:10:00']]);   // 10:10 ET = 14:10 UTC, inside the window
+  const r = premiumBetween(A, B);
+  ok('call hit at the ask = bought, put hit at the bid = sold, priced at the last print', r.callNet === 20 * 11 * 100 && r.putNet === -15 * 10 * 100 && r.n === 2, JSON.stringify(r));
+  const C = mk('2026-10-30 14:15:00', [['C', 30, 11, '2026-10-30T09:30:00']]);   // last trade 13:30 UTC, before the window
+  ok('a last trade before the window is not counted', premiumBetween(A, C).n === 0);
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
