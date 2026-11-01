@@ -333,6 +333,7 @@ import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
+import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags } from './js/directionResearch.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
 import { buildOiPlan as _hpoBuild, scoreOiPlan as _hpoScore, orderStatesOI as _hpoStates, buildOiPlanText as _hpoText, OI_PLAN as _HPO_CFG } from './js/hedgingPlanOI.js';   // OI-level hedging plan (shadow)
@@ -24737,6 +24738,19 @@ async function _dlCloses() {
   }
   return out;
 }
+// What the research forecasters need as of the issue close (js/directionResearch.js). Each source reports its own status in the
+// issue record; a source that is missing leaves its forecasters silent and never blocks the baselines.
+async function _dlExternal(date) {
+  const external = {}, status = {};
+  try {
+    const [VIX, VVIX, VXN, NDX] = await Promise.all([_fetchCboe('VIX'), _fetchCboe('VVIX'), _fetchCboe('VXN'), _fetchYahooDaily('^NDX', 800)]);
+    const v = _dlVolFlags({ VIX, VVIX, VXN, NDX });
+    if (v && v.date === date) { external.vol = v; status.vol = 'ok'; } else status.vol = v ? `stale (${v.date})` : 'no data';
+  } catch (e) { status.vol = `error: ${e.message}`; }
+  try { external.cot = (await _buildCotState()).instruments; status.cot = 'ok'; } catch (e) { status.cot = `error: ${e.message}`; }
+  external.fomcDates = FOMC_MEETINGS.map(m => m.date); status.fomc = 'ok';
+  return { external, status };
+}
 async function _directionLedgerTick() {
   if (!_r2Ok() || !process.env.OANDA_KEY) return;
   const closes = await _dlCloses();
@@ -24745,11 +24759,18 @@ async function _directionLedgerTick() {
   const closeMs = date ? Date.parse(`${date}T22:00:00Z`) : NaN;
   if (date && !_dlDone.has(date) && Date.now() - closeMs < 20 * 3600_000) {
     const key = `${_DL_PREFIX}${date}.json`;
-    if (!(await _r2GetJSON(key).catch(() => null))) {
-      const rec = _dlIssue({ date, closes, baselines: _dlBaselines, issuedAt: new Date().toISOString(), code: process.env.RAILWAY_GIT_COMMIT_SHA || null });
-      if (rec.forecasts.length) await _r2PutJSON(key, rec);
+    if (await _r2GetJSON(key).catch(() => null)) _dlDone.add(date);
+    else {
+      const { external, status } = await _dlExternal(date);
+      // Cboe posts the day's closes about three hours after the OANDA close; wait up to 8h for them, then issue without
+      const hold = status.vol !== 'ok' && Date.now() - closeMs < 8 * 3600_000;
+      if (!hold) {
+        const rec = _dlIssue({ date, closes, baselines: _dlBaselines, issuedAt: new Date().toISOString(), code: process.env.RAILWAY_GIT_COMMIT_SHA || null,
+          research: _DL_RESEARCH, external, externalStatus: status });
+        if (rec.forecasts.length) await _r2PutJSON(key, rec);
+        _dlDone.add(date);
+      }
     }
-    _dlDone.add(date);
   }
   // resolve: issue records from the last ~130 days with an unresolved horizon
   const keys = (await _r2ListKeys(_DL_PREFIX)).filter(k => /direction_ledger\/\d{4}-\d{2}-\d{2}\.json$/.test(k)).sort().slice(-95);

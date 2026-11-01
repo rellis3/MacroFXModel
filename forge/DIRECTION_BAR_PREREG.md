@@ -293,4 +293,40 @@ none of them promotes anything. The original outputs are kept beside the fixed o
 
 Not changed: B0 / B2 / B3, costs, labels logic, the frozen ledger baselines.
 
+### A2 — research forecasters registered in the ledger (PRE-RESULTS, 2026-11-01)
+
+No forward outcome exists for any of these cells; nothing below was computed on ledger data. It wires four already-banked
+cells into `RESEARCH_FORECASTERS` (`js/directionResearch.js`, tests in `js/directionResearch.test.mjs`). Each is judged
+against B0 and B1 on the same rows, and none is promoted by history.
+
+| model_id | Trigger (the cell's own frozen rule, as-of the issue close) | Instrument, h | Side | Excess over B0 added to p_up | Source of the excess |
+|---|---|---|---|---|---|
+| `vix-beta-change` | 5-session change of the 20-session VIX-on-Nasdaq slope, 252-session percentile ≤ 0.10 (`forge/VIX_SIGNALS_FORWARD_PREREG.md`, rebuilt exactly as `scripts/vix-signals-forward/score.py`; parity-tested) | NQ, 5 | long | +0.0857 | S4 test split 2021→2026 |
+| `vix-second-derivative` | 5-session change of ln(VVIX/VXN), percentile ≥ 0.90 (same prereg) | NQ, 20 | long | +0.0165 | S5 test split 2021→2026 |
+| `cot-state-d` | `/api/cot-state` state D (`js/cotState.js`, `forge/COT_CROWDING_PROGRAMME_PREREG.md`): crowded with the trend, price pulling back, crowd leaving | NQ, ES, gold, EURUSD, GBPUSD, USDJPY, 20 | the trend | +0.1286 | S3 holdout markets |
+| `post-fomc-usd-drift` | the issue close is the scheduled FOMC decision day (`js/fomcCalendar.js`) (`MD files/POST_FOMC_DRIFT_TEST.md`) | EURUSD, GBPUSD, USDJPY, 5 | long USD | +0.1061 | S1 2022+ half. Flagged **FRAGILE** (2026-10-31 code audit) |
+
+- **Rule for the shift.** p_up = B0's p_up for that instrument and horizon, plus or minus the cell's excess hit rate over its
+  own baseline, taken from the latest split in `analysis/output/direction-bar/scoreboard.json` (the one nearest the
+  present and least in-sample), clipped to [0.01, 0.99]. Fixed here; it is not refitted on ledger data.
+- **Sparse by design.** A forecaster returns nothing unless its trigger is active; on most days the ledger holds the baselines
+  alone. A research row is the baseline row's instrument and horizon, so it is scored on the same outcome.
+- **Events, not rows.** State D persists for weeks, so consecutive rows from one COT report are one event
+  (`inputs.event_key = <inst>|<report date>`); the FOMC key is the decision day. `summarise` reports `events` beside `n`,
+  and a cell is judged on events.
+- **Known mismatches, recorded not fixed.** The ledger target runs from the signal close (t → t+h), where the VIX cells
+  measured d+1 → d+6 and d+1 → d+21, and the FOMC cell measured 14:30 ET on the day → 14:00 ET five sessions on. The ledger
+  row therefore includes the first day's move (VIX) or excludes the first two and a half hours (FOMC). The first FOMC row
+  is 2026-12-09; the 2026-10-28 decision predates this registration and is not back-issued.
+- **Timing.** The Cboe closes post about three hours after the OANDA close, so the issue waits up to 8 hours for them and
+  then issues without the VIX rows. The record carries `external_status` per source. The forecast is a function of data
+  at the close only.
+- **Not registered: positioning into release.** Its pass is a London-day ATR return from the leveraged-fund TFF book on
+  days with a high-impact release. That needs the TFF series direct from Socrata (not the display-grade extremes feed), a
+  live high-impact calendar (the history ends 2025-04-07) and a London-day target that the New York-close ledger cannot
+  score. It stays in the Evidence Book until a ledger row type for same-day intraday targets exists.
+- **Judged:** each at 20 events or 2028-10-23, whichever is first, on Brier skill and the log-score difference against B0,
+  with the `cusum_drop_from_peak` degradation monitor.
+
+
 ## RESULTS

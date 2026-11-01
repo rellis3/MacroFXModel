@@ -21,7 +21,11 @@ export const HORIZONS = [1, 5, 20, 60];
 export const INSTRUMENTS = { nq: 'NAS100_USD', es: 'SPX500_USD', gold: 'XAU_USD', eurusd: 'EUR_USD', gbpusd: 'GBP_USD', usdjpy: 'USD_JPY' };
 export const TARGET = 'P(log close[t+h]/close[t] > 0); OANDA daily mid closes (17:00 New York); h trading closes';
 
-/** Research forecasters: { model_id, model_version, prereg, forecast(ctx) -> { p_up, mu_log?, decision } | null }. */
+/**
+ * Research forecasters: { model_id, model_version, prereg, forecast(ctx) -> { p_up, mu_log?, decision, inputs?, flags? } | null }.
+ * ctx = { date, inst, h, closes, baseline, external }. `external` is what the server gathered as of the issue close
+ * (js/directionResearch.js); the live set is js/directionResearch.js RESEARCH, passed in by the server.
+ */
 export const RESEARCH_FORECASTERS = [];
 
 /** OANDA daily candles -> [{ date: 'YYYY-MM-DD' (close date, UTC), c }], complete candles only, oldest first. */
@@ -37,7 +41,7 @@ export const brier = (p, y) => (p - y) ** 2;
 export const logScore = (p, y) => (y ? Math.log(clip(p)) : Math.log(1 - clip(p)));
 
 /** Build the issue record for `date` from each instrument's closes (all <= date). */
-export function issueRecord({ date, closes, baselines, issuedAt, code = null, research = RESEARCH_FORECASTERS }) {
+export function issueRecord({ date, closes, baselines, issuedAt, code = null, research = RESEARCH_FORECASTERS, external = {}, externalStatus = null }) {
   const forecasts = [];
   for (const [inst, oanda] of Object.entries(INSTRUMENTS)) {
     const C = closes[inst];
@@ -48,8 +52,9 @@ export function issueRecord({ date, closes, baselines, issuedAt, code = null, re
       const b = baselines.instruments?.[inst]?.[h];
       if (!b) continue;
       const base = { inst, oanda, h, target: TARGET, inputs: { close, mom252 } };
-      const add = (model_id, model_version, family, p_up, mu_log, decision, prereg) =>
-        forecasts.push({ id: `${date}|${inst}|${h}|${model_id}`, ...base, model_id, model_version, family, prereg, p_up, mu_log, decision });
+      const add = (model_id, model_version, family, p_up, mu_log, decision, prereg, extra = null) =>
+        forecasts.push({ id: `${date}|${inst}|${h}|${model_id}`, ...base, ...(extra ? { inputs: { ...base.inputs, ...extra.inputs }, flags: extra.flags } : {}),
+          model_id, model_version, family, prereg, p_up, mu_log, decision });
       add('B0', baselines.version, 'baseline', b.p0, b.mu0, 'NO-TRADE', 'forge/DIRECTION_BAR_PREREG.md');
       add('B1', baselines.version, 'baseline', b.p0, b.mu0, 'LONG', 'forge/DIRECTION_BAR_PREREG.md');
       if (mom252 != null) {
@@ -58,13 +63,13 @@ export function issueRecord({ date, closes, baselines, issuedAt, code = null, re
       }
       for (const R of research) {
         let f = null;
-        try { f = R.forecast({ date, inst, h, closes: C, baseline: b }); } catch { f = null; }
-        if (f && Number.isFinite(f.p_up)) add(R.model_id, R.model_version, 'research', f.p_up, f.mu_log ?? null, f.decision ?? 'NO-TRADE', R.prereg);
+        try { f = R.forecast({ date, inst, h, closes: C, baseline: b, external }); } catch { f = null; }
+        if (f && Number.isFinite(f.p_up)) add(R.model_id, R.model_version, 'research', f.p_up, f.mu_log ?? null, f.decision ?? 'NO-TRADE', R.prereg, f.inputs || f.flags?.length ? { inputs: f.inputs, flags: f.flags ?? [] } : null);
       }
     }
   }
   return { v: LEDGER_VERSION, ledger: 'direction-ledger', prereg: 'forge/DIRECTION_BAR_PREREG.md', issue_date: date,
-    issued_at: issuedAt, code, baselines_version: baselines.version, forecasts };
+    issued_at: issuedAt, code, baselines_version: baselines.version, ...(externalStatus ? { external_status: externalStatus } : {}), forecasts };
 }
 
 /** Outcome of an issue record at horizon h, or null if h closes after the issue day do not exist yet. */
@@ -93,15 +98,16 @@ export function summarise(records, outcomesList) {
       const f = byId.get(id); if (!f) continue;
       const b0 = o.scores[`${o.issue_date}|${f.inst}|${f.h}|B0`]; if (!b0) continue;
       const k = `${f.model_id}|${f.inst}|${f.h}`;
-      const c = cells[k] ??= { model_id: f.model_id, family: f.family, inst: f.inst, h: f.h, n: 0, brier: 0, brier_b0: 0, logdiff: 0, cusum: 0, cusum_max: 0, hits: 0 };
+      const c = cells[k] ??= { model_id: f.model_id, family: f.family, inst: f.inst, h: f.h, n: 0, brier: 0, brier_b0: 0, logdiff: 0, cusum: 0, cusum_max: 0, hits: 0, ev: new Set(), flags: f.flags ?? [] };
+      c.ev.add(f.inputs?.event_key ?? o.issue_date);          // a run of consecutive rows from one trigger is one event
       c.n++; c.brier += s.brier; c.brier_b0 += b0.brier; c.logdiff += s.log - b0.log;
       c.cusum += s.log - b0.log; c.cusum_max = Math.max(c.cusum_max, c.cusum);
       const y = o.outcomes[f.inst].up;
       if (f.decision === 'LONG') c.hits += y; else if (f.decision === 'SHORT') c.hits += 1 - y;
     }
   }
-  return Object.values(cells).map(c => ({
-    ...c, brier: c.brier / c.n, brier_b0: c.brier_b0 / c.n, bss_vs_b0: 1 - c.brier / c.brier_b0, logdiff: c.logdiff / c.n,
+  return Object.values(cells).map(({ ev, ...c }) => ({
+    ...c, events: ev.size, brier: c.brier / c.n, brier_b0: c.brier_b0 / c.n, bss_vs_b0: 1 - c.brier / c.brier_b0, logdiff: c.logdiff / c.n,
     cusum_drop_from_peak: c.cusum_max - c.cusum,   // degradation: how far the cumulative log-score edge over B0 has fallen
   })).sort((a, b) => (a.inst + a.h + a.model_id).localeCompare(b.inst + b.h + b.model_id));
 }
