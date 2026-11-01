@@ -112,7 +112,7 @@ svg text{font-family:var(--mono)}
       <span class="tgl"><span class="pill" data-tf="M5">5m</span><span class="pill on" data-tf="M15">15m</span><span class="pill" data-tf="M30">30m</span><span class="pill" data-tf="H1">1h</span><span class="pill" data-tf="H4">4h</span></span></h2>
     <div class="sub"><b>How to read it:</b> a live TradingView chart (updates every 10 s, scroll and zoom as normal). The glowing bands behind the candles are zones of dealer gamma. <b style="color:rgb(70,184,122)">Green</b> = dealers lean against moves, so price tends to stall and pin. <b style="color:rgb(232,97,95)">Red</b> = dealers push with the move, so price tends to speed up through it. Brighter = more gamma; the biggest zones are named. The curve on the right is the <b>whole book's gamma if price were at that level</b> — where it crosses zero is the flip.</div>
     <div id="lwLive" class="minis" style="margin:6px 0 8px"></div>
-    <div class="tgl" style="margin:0 0 8px"><span class="pill on" data-plv="on" title="Draw the OI Profile indicator's own levels on this chart (the same export you paste into TradingView)">OI Profile lines</span><span class="pill" data-plv="books" title="Add the lines of every expiry book, not only the strongest one (the 'All lines' export)">every expiry book</span><span class="pill" data-plv="minor" title="Also draw gamma peak, vanna flip, charm flip and volume lines (the indicator hides these by default)">minor levels</span><span class="pill on" data-bar="gex" title="Net gamma at each price, drawn beside the candles and locked to the price scale (green = dealers long, red = short)">gamma bars</span><span class="pill on" data-bar="vol" title="Volume at each price (the Profile's volume bars)">volume bars</span><span class="pill" data-bar="chg" title="Change in open interest at each price since the last snapshot (teal built, amber run down)">OI change bars</span><span class="pill" data-bar="van" title="Vanna at each price">vanna bars</span><span class="pill on" data-bar="stack" title="Highlight prices where two or more bar lanes are at least half strength (descriptive, not a signal)">stacked bands</span><span class="pill" data-plv="cboe" title="Dashed lines from Cboe's delayed index-options book (NQ, SPX, RUT, US30), re-built every 5 minutes">Cboe live levels</span></div>
+    <div class="tgl" style="margin:0 0 8px"><span class="pill on" data-bgon="1" title="Show or hide the green/red gamma colour behind the candles (PIN ZONE / SPEEDS UP shading)">gamma colour</span><span class="pill on" data-plv="on" title="Draw the OI Profile indicator's own levels on this chart (the same export you paste into TradingView)">OI Profile lines</span><span class="pill" data-plv="books" title="Add the lines of every expiry book, not only the strongest one (the 'All lines' export)">every expiry book</span><span class="pill" data-plv="minor" title="Also draw gamma peak, vanna flip, charm flip and volume lines (the indicator hides these by default)">minor levels</span><span class="pill on" data-bar="gex" title="Net gamma at each price, drawn beside the candles and locked to the price scale (green = dealers long, red = short)">gamma bars</span><span class="pill on" data-bar="vol" title="Volume at each price (the Profile's volume bars)">volume bars</span><span class="pill" data-bar="chg" title="Change in open interest at each price since the last snapshot (teal built, amber run down)">OI change bars</span><span class="pill" data-bar="van" title="Vanna at each price">vanna bars</span><span class="pill on" data-bar="stack" title="Highlight prices where two or more bar lanes are at least half strength (descriptive, not a signal)">stacked bands</span><span class="pill" data-plv="cboe" title="Dashed lines from Cboe's delayed index-options book (NQ, SPX, RUT, US30), re-built every 5 minutes">Cboe live levels</span></div>
     <div class="lwrow"><div id="lw"><canvas id="bg"></canvas><canvas id="barsCv"></canvas></div><canvas id="curve"></canvas></div>
     <div class="legend"><span><i style="background:rgb(var(--long))"></i>long gamma — pins</span><span><i style="background:rgb(var(--short))"></i>short gamma — speeds up</span><span><i style="background:var(--vio)"></i>GEX flip</span><span><i style="background:#d9c04a"></i>max pain</span></div>
     <div id="lwMoves" class="legend" style="display:none;margin-top:6px"></div>
@@ -307,7 +307,7 @@ function gexCurve(sym, e, lo, hi, n = 150){
 // The candles are a real, live chart (polled every 10 s, scroll/zoom/crosshair all native). The coloured backdrop and the
 // curve beside it are painted on canvases that are re-mapped to the chart's own price scale every frame, so they stay glued
 // to the right prices while you pan and zoom.
-let LW = null, FIELD = [], PEAKS = [], CURVE = null, TF = 'M15', _bgSig = '', _poll = null;
+let LW = null, FIELD = [], PEAKS = [], CURVE = null, TF = 'M15', _bgSig = '', _poll = null, BGON = true;
 
 function lwInit(){
   if (LW) return LW;
@@ -359,20 +359,20 @@ function paintBackdrop(){
   if (!LW || !CUR || !FIELD.length) return;
   const host = $('#lw'), bg = $('#bg'), cu = $('#curve'); const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
   const S = LW.series, y0 = S.priceToCoordinate(CUR.spot), y1 = S.priceToCoordinate(CUR.spot + CUR.rm);
-  const sig = [w, h, y0 && y0.toFixed(1), y1 && y1.toFixed(1), LW.chart.priceScale('right').width(), cu.clientWidth, NEAR].join('|');
+  const sig = [w, h, y0 && y0.toFixed(1), y1 && y1.toFixed(1), LW.chart.priceScale('right').width(), cu.clientWidth, NEAR, BGON].join('|');
   if (sig === _bgSig) return; _bgSig = sig;
   const dpr = devicePixelRatio || 1;
   // backdrop
   bg.width = w * dpr; bg.height = h * dpr; const c = bg.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
   const plotW = w - LW.chart.priceScale('right').width(), m = FIELD.m;
   const off = document.createElement('canvas'); off.width = plotW * dpr; off.height = h * dpr; const oc = off.getContext('2d'); oc.setTransform(dpr, 0, 0, dpr, 0, 0);
-  for (let r = 0; r < FIELD.length; r++) { const f = FIELD[r], y = S.priceToCoordinate(f.P), yn = S.priceToCoordinate(FIELD[Math.min(FIELD.length - 1, r + 1)].P); if (y == null || yn == null) continue;
+  for (let r = 0; r < (BGON ? FIELD.length : 0); r++) { const f = FIELD[r], y = S.priceToCoordinate(f.P), yn = S.priceToCoordinate(FIELD[Math.min(FIELD.length - 1, r + 1)].P); if (y == null || yn == null) continue;
     if (y < -10 || y > h + 10) continue; const a = Math.min(1, Math.pow(Math.abs(f.v) / m, 0.7)); if (a < 0.04) continue;
     oc.fillStyle = `rgba(${f.v >= 0 ? LONG : SHORT},${(0.10 + 0.55 * a).toFixed(3)})`; oc.fillRect(0, Math.min(y, yn) - 0.5, plotW, Math.abs(yn - y) + 1.2); }
   oc.globalCompositeOperation = 'destination-in'; const gr = oc.createLinearGradient(0, 0, plotW, 0); gr.addColorStop(0, 'rgba(0,0,0,.55)'); gr.addColorStop(1, 'rgba(0,0,0,1)'); oc.fillStyle = gr; oc.fillRect(0, 0, plotW, h);
   c.drawImage(off, 0, 0, plotW, h);
   c.font = '600 11px ui-monospace,Consolas,monospace'; c.textAlign = 'right';
-  PEAKS.slice(0, 6).forEach(f => { const y = S.priceToCoordinate(f.P); if (y == null || y < 14 || y > h - 14) return; const t = (f.v >= 0 ? 'PIN ZONE ' : 'SPEEDS UP ') + px(f.P); c.lineWidth = 4; c.strokeStyle = 'rgba(6,8,12,.92)'; c.strokeText(t, plotW - 10, y + 4); c.fillStyle = f.v >= 0 ? 'rgb(120,230,164)' : 'rgb(255,140,138)'; c.fillText(t, plotW - 10, y + 4); });
+  (BGON ? PEAKS.slice(0, 6) : []).forEach(f => { const y = S.priceToCoordinate(f.P); if (y == null || y < 14 || y > h - 14) return; const t = (f.v >= 0 ? 'PIN ZONE ' : 'SPEEDS UP ') + px(f.P); c.lineWidth = 4; c.strokeStyle = 'rgba(6,8,12,.92)'; c.strokeText(t, plotW - 10, y + 4); c.fillStyle = f.v >= 0 ? 'rgb(120,230,164)' : 'rgb(255,140,138)'; c.fillText(t, plotW - 10, y + 4); });
   // gamma-vs-price curve
   cu.width = cu.clientWidth * dpr; cu.height = h * dpr; const k = cu.getContext('2d'); k.setTransform(dpr, 0, 0, dpr, 0, 0); const cw = cu.clientWidth;
   k.strokeStyle = 'rgba(255,255,255,.08)'; k.strokeRect(0.5, 0.5, cw - 1, h - 1);
@@ -1614,6 +1614,7 @@ $('#mAll').onclick = () => { NEAR = false; $('#mAll').classList.add('on'); $('#m
 document.querySelectorAll('[data-ah]').forEach(b => b.onclick = () => { AH = +b.dataset.ah; document.querySelectorAll('[data-ah]').forEach(x => x.classList.toggle('on', x === b)); drawAhead(); });
 document.querySelectorAll('[data-plv]').forEach(b => b.onclick = () => { const k = b.dataset.plv; PLV[k] = !PLV[k]; b.classList.toggle('on', PLV[k]); if (k === 'books') { PLV.loadedFor = null; PLV.cur = null; plvFetch(); } else if (k === 'on') { plvDraw(); if (!PLV.on) setLevels(); updateLwLive(); } else if (k === 'minor') plvDraw(); else if (k === 'cboe') { PLV.cboe ? plvFetchCboe() : (plvClear('cboeLines'), updateLwLive()); } });
 document.querySelectorAll('[data-bar]').forEach(b => b.onclick = () => { const k = b.dataset.bar; BAR[k] = !BAR[k]; b.classList.toggle('on', BAR[k]); BAR.sig = ''; });
+document.querySelectorAll('[data-bgon]').forEach(b => b.onclick = () => { BGON = !BGON; b.classList.toggle('on', BGON); _bgSig = ''; });
 document.querySelectorAll('[data-tf]').forEach(b => b.onclick = () => { TF = b.dataset.tf; document.querySelectorAll('[data-tf]').forEach(x => x.classList.toggle('on', x === b)); drawTerrain(); });
 
 (async () => {
