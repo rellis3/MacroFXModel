@@ -65,18 +65,25 @@ class Book:
         return [o for o in self.orders.values() if o['status'] in LIVE]
 
     def _match(self, ev):
-        """Live orders matching a cancel/close event: symbol + side, then entry price.
-        A CLOSE also considers limits the book marked `expired`: the book can't
-        see fills, and a limit that filled before its cancel time is still open."""
-        pool = self.live() + ([o for o in self.orders.values() if o['status'] == 'expired']
-                              if ev['kind'] == 'close' else [])
-        cands = [o for o in pool
-                 if o['symbol'] == ev['symbol'] and o['side'] == ev['side']]
-        exact = [o for o in cands
-                 if abs(o['entry'] - ev['entry']) <= PRICE_TOL * max(o['entry'], 1e-9)]
+        """Orders a cancel/close event refers to: same symbol and side, and the
+        same entry price (his messages quote it). A CANCEL only ever means a
+        resting limit/stop order; a CLOSE means a market order or a filled limit.
+        Expired orders count too: the book can't see fills (a limit that filled
+        before its cancel time is still open), and his "Cancel the …" can land
+        on the same minute the cancel-at timer already expired it.
+        Only when a price is missing on either side does a lone candidate match
+        (2026-10-31: the old any-lone-candidate rule let a NAS100 limit cancel
+        hit the NAS100 swing short, which then never saw its CLOSE)."""
+        pool = self.live() + [o for o in self.orders.values() if o['status'] == 'expired']
+        if ev['kind'] == 'cancel':
+            pool = [o for o in pool if o.get('order') != 'market']
+        cands = [o for o in pool if o['symbol'] == ev['symbol'] and o['side'] == ev['side']]
+        priced = [o for o in cands if o.get('entry') is not None and ev.get('entry') is not None]
+        exact = [o for o in priced if abs(o['entry'] - ev['entry']) <= PRICE_TOL * max(o['entry'], 1e-9)]
         if exact:
             return exact
-        return cands if len(cands) == 1 else []
+        unpriced = [o for o in cands if o.get('entry') is None or ev.get('entry') is None]
+        return unpriced if len(unpriced) == 1 else []
 
     # ── mutations ──────────────────────────────────────────────────────
     def apply(self, events, msg_id, posted_utc):
@@ -108,6 +115,8 @@ class Book:
                     out.append(('warn', None, f"{k.upper()} {ev['side']} {ev['symbol']} @ {ev['entry']}: "
                                               f"no matching live order in the book"))
                 for o in hits:
+                    if k == 'cancel' and o['status'] == 'expired':
+                        continue                 # already cancelled by its own cancel-at time
                     reason = ev.get('reason') or ('channel cancel' if k == 'cancel' else 'channel close')
                     self._end(o, 'cancelled' if k == 'cancel' else 'closed', posted_utc, reason)
                     out.append((k, o, reason))
@@ -137,7 +146,7 @@ class Book:
 def describe(o):
     bits = [f"{o['side']} {o['symbol']}",
             'now' if o['order'] == 'market' else o['order'],
-            f"@ {o['entry']:g}"]
+            f"@ {o['entry']:g}" if o.get('entry') is not None else '(no price given)']
     if o.get('sl') is not None:
         bits.append(f"SL {o['sl']:g}")
     if o.get('tp') is not None:

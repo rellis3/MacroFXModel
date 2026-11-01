@@ -69,6 +69,11 @@ console.log('[claim triggers via the drill bundle]');
   const msg = formatTelegram(diffStates(t2, t), new Date('2026-10-18T09:05:00Z'));
   ok('a claim start is tagged ◌, carries the verdict and an eye line, and the legend explains it', /◌ <b>Setup watch · Fear spike/.test(msg) && /This desk: TESTED NULL/.test(msg) && /👁/.test(msg) && /educator’s setup/.test(msg));
   const msg2 = formatTelegram(d, new Date('2026-10-18T09:05:00Z'));
+  const vix3 = vix.slice(); vix3[N - 1] = vix3[N - 6] + 4.6;            // 92% of the way: holds only if it was firing
+  const heldT = evaluateTriggers({ now: NOW, drill: { dates, series: { vix: vix3 } }, prevStates: t }).find(x => x.id === 'claim-fear-spike');
+  const notHeld = evaluateTriggers({ now: NOW, drill: { dates, series: { vix: vix3 } } }).find(x => x.id === 'claim-fear-spike');
+  ok('prevStates gives a claim its hysteresis: held when it was firing, approaching when it was not', heldT.firing && heldT.value.held && !notHeld.firing && notHeld.stage === 'approaching');
+  ok('a held claim is not a transition (no start, no clear, no approaching)', (() => { const dd = diffStates(t, [heldT]); return !dd.started.length && !dd.stopped.length && !dd.approaching.length; })());
   ok('an approaching claim is tagged ⏳ and is its own message', /⏳ <b>Setup watch · Fear spike.*approaching<\/b>/.test(msg2));
 }
 

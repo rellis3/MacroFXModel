@@ -89,6 +89,8 @@ def resolve(sig, bars, spread=0.0, now=None):
         best = max(best, hi) if d > 0 else min(best, lo)
         worst = min(worst, lo) if d > 0 else max(worst, hi)
     out.update(best_px=best, worst_px=worst)
+    if out['state'] == 'open' and after:          # no exit yet: mark at the latest bar
+        out.update(mark_px=after[-1]['close'], mark_ts=after[-1]['time'])
     out.update(_r_stats(d, fill, sl, out['exit_px'] if out['state'] == 'done' else
                         (after[-1]['close'] if after else fill), best, worst, spread))
     return out

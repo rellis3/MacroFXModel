@@ -1192,6 +1192,22 @@ export const DESK_EVIDENCE = [
     use: 'Nothing built. The dealer hedging map shows zero gamma as mechanics. Rerun as a new pre-registration after ~400 days of our own capture (weeklies, per-expiry).',
   },
   {
+    id: 'hedge-flow', domain: 'volatility', verdict: 'null', date: '2026-10-31', doc: 'oi_research_book/HEDGE_FLOW_PREREG.md',
+    also: ['analysis/output/hedge-flow/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'NQ'],
+    claim: 'The size of the dealer hedge-flow schedule (what dealers must buy or sell on the way to +-1 sigma, from the OI book re-priced at each price) predicts next-day range beyond the gamma sign, and its lopsidedness predicts which side the range extends to',
+    result: 'No cell passes. FX (EUR, GBP, AUD pooled, 4,501 days): size x sign +0.0005 [-0.014, +0.014] near, -0.003 [-0.020, +0.014] all-expiry: a tight null. NQ (780 days) all-expiry book +0.083 [+0.033, +0.131], both halves positive and above neighbour-day books, but strike-shifted books give +0.079 to +0.091, so the effect is the book size and shape the gamma sign already carries, not the strikes: fails the registered placebo. Lopsidedness vs direction within +-0.03 everywhere. ES and gold not run (no strike-level surface). Lag-2 timing agrees. Run 2026-10-31, seed 20261026.',
+    use: 'OI Lab card 05e stays context: no range-expectation line, no flow-asymmetry filter in the shadow plan. Reopen only with ES and gold surfaces, per-expiry books and more NQ days.',
+  },
+  {
+    id: 'hedge-flow-side', domain: 'volatility', verdict: 'underpowered', date: '2026-10-31', doc: 'oi_research_book/HEDGE_FLOW_PREREG.md',
+    also: ['analysis/output/hedge-flow/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'NQ'],
+    claim: 'On days where only one side of spot has reinforcing dealer hedge-flow, the range extends further on the reinforcing side than the damping side',
+    result: 'FX pooled +0.036 sigma [-0.080, +0.151] near, +0.035 [-0.093, +0.165] all-expiry; NQ +0.43 [-0.07, +1.04] near, -0.01 [-0.32, +0.29] all-expiry. Intervals span +-0.12 sigma (FX) and +-0.5 sigma (NQ) against the registered 0.05-sigma size bar, and NQ had too few one-sided days to split into halves, so a real 0.05-0.15 sigma effect cannot be ruled out. Shifted-book placebos reach +0.13 sigma on FX.',
+    use: 'Nothing built. Which side the range extends to has no support from the hedge-flow schedule; rerun only with more days and per-expiry books.',
+  },
+  {
     id: 'range-ladder-placebo', domain: 'price', verdict: 'underpowered', date: '2026-10-19', doc: 'forge/RANGE_LADDER_PLACEBO_PREREG.md',
     also: ['analysis/output/range-ladder-placebo/RESULTS.md'],
     instruments: ['GOLD', 'AUDJPY', 'AUDUSD', 'NZDJPY', 'NZDUSD', 'USDJPY', 'CADJPY', 'EURJPY', 'GBPJPY', 'EURAUD', 'EURUSD', 'GBPUSD', 'USDCHF', 'USDCAD', 'NQ', 'SPX500', 'DE30', 'US30', 'US2000'],

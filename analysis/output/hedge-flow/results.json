@@ -1,0 +1,119 @@
+{
+ "id": "hedge-flow",
+ "verdict": "null",
+ "ranAt": "2026-10-31T23:59:00Z",
+ "seed": 20261026,
+ "B": 2000,
+ "prereg": "oi_research_book/HEDGE_FLOW_PREREG.md",
+ "branch": "main",
+ "cells": [
+  {
+   "name": "FX-near-T1",
+   "n": 4501,
+   "est": 0.0005,
+   "lo": -0.0138,
+   "hi": 0.0144,
+   "p": 0.919,
+   "verdict": "fail"
+  },
+  {
+   "name": "FX-near-T2",
+   "n": 4501,
+   "est": 0.0361,
+   "lo": -0.0802,
+   "hi": 0.1512,
+   "p": 0.522,
+   "verdict": "fail"
+  },
+  {
+   "name": "FX-near-T3",
+   "n": 4501,
+   "est": 0.0211,
+   "lo": -0.0075,
+   "hi": 0.05,
+   "p": 0.16,
+   "verdict": "fail"
+  },
+  {
+   "name": "NQ-near-T1",
+   "n": 780,
+   "est": 0.0501,
+   "lo": -0.0098,
+   "hi": 0.1052,
+   "p": 0.089,
+   "verdict": "fail"
+  },
+  {
+   "name": "NQ-near-T2",
+   "n": 780,
+   "est": 0.4267,
+   "lo": -0.0667,
+   "hi": 1.0396,
+   "p": 0.1091,
+   "verdict": "fail"
+  },
+  {
+   "name": "NQ-near-T3",
+   "n": 780,
+   "est": 0.0167,
+   "lo": -0.0502,
+   "hi": 0.0867,
+   "p": 0.628,
+   "verdict": "fail"
+  },
+  {
+   "name": "FX-all-T1",
+   "n": 4501,
+   "est": -0.0027,
+   "lo": -0.0195,
+   "hi": 0.0136,
+   "p": 0.745,
+   "verdict": "fail"
+  },
+  {
+   "name": "FX-all-T2",
+   "n": 4501,
+   "est": 0.0347,
+   "lo": -0.0933,
+   "hi": 0.1649,
+   "p": 0.611,
+   "verdict": "fail"
+  },
+  {
+   "name": "FX-all-T3",
+   "n": 4501,
+   "est": 0.002,
+   "lo": -0.0278,
+   "hi": 0.0305,
+   "p": 0.903,
+   "verdict": "fail"
+  },
+  {
+   "name": "NQ-all-T1",
+   "n": 780,
+   "est": 0.0825,
+   "lo": 0.0327,
+   "hi": 0.1306,
+   "p": 0.003,
+   "verdict": "fail"
+  },
+  {
+   "name": "NQ-all-T2",
+   "n": 780,
+   "est": -0.0083,
+   "lo": -0.3218,
+   "hi": 0.2882,
+   "p": 0.998,
+   "verdict": "fail"
+  },
+  {
+   "name": "NQ-all-T3",
+   "n": 780,
+   "est": 0.0154,
+   "lo": -0.0522,
+   "hi": 0.0824,
+   "p": 0.635,
+   "verdict": "fail"
+  }
+ ]
+}

@@ -176,6 +176,88 @@ def test_book_unmatched_close_warns():
     assert t[0][0] == 'warn'
 
 
+# ── formats from the 2026-10-31 history parse report (real messages) ────
+def test_daily_message_without_blank_lines():
+    # the 30 Oct 07:00 message came through with no blank lines between trades:
+    # the old block parser returned [header, holding] and silently dropped all 9
+    import re
+    tight = re.sub(r'\n\s*\n', '\n', DAILY)
+    evs = parse_message(tight)
+    opens = kinds(evs, 'open')
+    assert len(opens) == 9 and not kinds(evs, 'review')
+    assert [o['style'] for o in opens] == ['swing'] * 7 + ['day'] * 2
+    assert opens[7]['cancel_at'] == '13:00' and opens[7]['close_at'] == '21:00' and opens[7]['tp'] == 28703
+    assert opens[0]['sl'] == 157.96 and opens[0]['close_rule'] == 'manual'
+    assert parse_message(tight.replace('\n', '\r\n')) == evs           # Windows line ends too
+
+
+def test_symbol_first_market_entry_with_numbered_targets():
+    (o,) = parse_message("XAUUSD buy\n\n⛔ SL: 4002\n✅ Targets:\n1) 4018\n2) 4038")
+    assert (o['kind'], o['symbol'], o['side'], o['order'], o['entry']) == ('open', 'XAUUSD', 'BUY', 'market', None)
+    assert o['sl'] == 4002 and o['tp'] == 4018 and o['targets'] == [4018, 4038]
+
+
+def test_side_then_order_type():
+    (o,) = parse_message("SELL STOP GOLD at 4,000\nSL 4,020, TP 3,950")
+    assert (o['symbol'], o['side'], o['order'], o['entry'], o['sl'], o['tp']) == ('GOLD', 'SELL', 'stop', 4000, 4020, 3950)
+
+
+def test_result_messages_are_closes():
+    cases = {
+        "✅ Target hit on the SP500 SELL from 7,640.6": ('SP500', 'SELL', 7640.6, 'target hit'),
+        "❌ US30 SELL from 52,445 stopped out": ('US30', 'SELL', 52445, 'stopped out'),
+        "❌ SP500 SELL from 7,719.3 stopped out": ('SP500', 'SELL', 7719.3, 'stopped out'),
+        "❌ EURUSD SELL from 1.1114 stopped out": ('EURUSD', 'SELL', 1.1114, 'stopped out'),
+        "❌ Stopped the Ethereum SELL from 2,321.38 at 2,346.96": ('ETHEREUM', 'SELL', 2321.38, 'stopped out'),
+    }
+    for text, (sym, side, px, why) in cases.items():
+        (e,) = parse_message(text)
+        assert (e['kind'], e['symbol'], e['side'], e['entry'], e['reason']) == ('close', sym, side, px, why), text
+
+
+def test_filled_notice_is_info_not_a_new_trade():
+    evs = parse_message("Filled: the US30 limit SELL at 52,445 is now open")
+    assert [e['kind'] for e in evs] == ['info']
+
+
+def test_symbol_first_does_not_eat_words():
+    assert not kinds(parse_message("the limit sell at 52,445 is now open"), 'open')
+    assert not kinds(parse_message("Swings, hold until I post the close"), 'open')
+
+
+
+# ── older-style formats from the 2026-10-31 20:20 report ──────────────────
+def test_instant_and_again_entries():
+    for text, sym, side in [("XAUUSD instant BUY", 'XAUUSD', 'BUY'), ("Instant XAUUSD SELL", 'XAUUSD', 'SELL'),
+                            ("USDCHF instant Buy", 'USDCHF', 'BUY'), ("BTCUSD sell again", 'BTCUSD', 'SELL'),
+                            ("XAUUSD buy again", 'XAUUSD', 'BUY'), ("CL-OIL sell", 'CL-OIL', 'SELL')]:
+        (o,) = parse_message(text)
+        assert (o['symbol'], o['side'], o['order'], o['entry']) == (sym, side, 'market', None), text
+    (o,) = parse_message("XAUUSD instant BUY\n\n⛔ SL: 4653\n✅ Targets:\n1) 4670\n2) 4678\n3) 4686")
+    assert o['sl'] == 4653 and o['targets'] == [4670, 4678, 4686]
+    assert parse_message("Instant BUY") == []                          # no symbol, not "INSTANT"
+
+
+def test_symbol_first_limit_with_at_sign_and_dash_levels():
+    (o,) = parse_message("XAUUSD SELL LIMIT @4465.00\n\nSL-4472.30\nTP1-4443.10\nTP2-4421.17\nTP3-4396.55")
+    assert (o['order'], o['entry'], o['sl'], o['tp'], o['targets']) == ('limit', 4465.0, 4472.3, 4443.1, [4443.1, 4421.17, 4396.55])
+    (o,) = parse_message("XAUUSD BUY LIMIT @ 4390.20")
+    assert (o['side'], o['order'], o['entry']) == ('BUY', 'limit', 4390.2)
+
+
+def test_take_profit_hit_and_already_moved():
+    (e,) = parse_message("🎯 Take profit hit on the EURUSD BUY from 1.1225 💰")
+    assert (e['kind'], e['symbol'], e['reason']) == ('close', 'EURUSD', 'target hit')
+    assert [e['kind'] for e in parse_message(
+        "The US30 BUY from 52,302 has already moved. If you are not in, do not enter now, wait for the next one.")] == ['info']
+
+
+def test_chat_with_a_symbol_is_not_flagged_but_management_is():
+    assert parse_message("US30 should hit TP soon aswell🙏") == []
+    assert parse_message("I’m still sad about the US30 SL, it would of been a 1:5+ trade") == []
+    assert [e['kind'] for e in parse_message("BTC and GBPJPY both SL to BE please")] == ['review']
+
+
 if __name__ == '__main__':
     fns = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     for f in fns:

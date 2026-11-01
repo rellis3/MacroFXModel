@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-10-31.
+Generated 2026-11-01.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **246** |
+| claims tested (validated + null + underpowered) | **251** |
 | validated | 49 |
-| null | 142 |
-| underpowered | 55 |
-| context (base rates, descriptions: not counted as tests) | 43 |
-| pre-registrations with no banked verdict (below) | 85 |
+| null | 146 |
+| underpowered | 56 |
+| context (base rates, descriptions: not counted as tests) | 44 |
+| pre-registrations with no banked verdict (below) | 84 |
 
-**What the count says (Lesson 02 §05).** If none of the 246 claims were real, tests at the usual 5% size would still pass
-about **12.3** of them by luck. 49 passed, so most passes are unlikely to be luck alone, but
-**roughly 12 of the 49 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 251 claims were real, tests at the usual 5% size would still pass
+about **12.6** of them by luck. 49 passed, so most passes are unlikely to be luck alone, but
+**roughly 13 of the 49 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -311,11 +311,17 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-30 | vmc-nq-cipher-interaction | price | null | forge/VMC_NQ_CIPHER_PREREG.md |
 | 2026-10-30 | vmc-nq-cipher-sequencing | price | validated | forge/VMC_NQ_CIPHER_PREREG.md |
 | 2026-10-30 | vmc-nq-cipher-volatility | price | validated | forge/VMC_NQ_CIPHER_PREREG.md |
+| 2026-10-31 | direction-bar | macro | context | forge/DIRECTION_BAR_PREREG.md |
+| 2026-10-31 | hedge-flow | volatility | null | oi_research_book/HEDGE_FLOW_PREREG.md |
+| 2026-10-31 | hedge-flow-side | volatility | underpowered | oi_research_book/HEDGE_FLOW_PREREG.md |
 | 2026-10-31 | residual-pca-cot | positioning | underpowered | forge/RESIDUAL_PCA_FAMILY_PREREG.md |
 | 2026-10-31 | residual-pca-idx6 | price | underpowered | forge/RESIDUAL_PCA_FAMILY_PREREG.md |
 | 2026-10-31 | residual-pca-monthend | events | underpowered | forge/RESIDUAL_PCA_FAMILY_PREREG.md |
 | 2026-10-31 | residual-pca-news | events | underpowered | forge/RESIDUAL_PCA_FAMILY_PREREG.md |
 | 2026-10-31 | residual-pca-wide10 | price | null | forge/RESIDUAL_PCA_FAMILY_PREREG.md |
+| 2026-10-31 | vmc-nq-vol-decomposition | price | null | forge/VMC_NQ_VOL_INCREMENT_PREREG.md |
+| 2026-10-31 | vmc-nq-vol-increment | price | null | forge/VMC_NQ_VOL_INCREMENT_PREREG.md |
+| 2026-10-31 | vmc-nq-vol-transition | price | null | forge/VMC_NQ_VOL_INCREMENT_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -376,6 +382,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/LINE_TOUCH_WIDE_SCAN_PREREG.md`: Pre-registration: wide scan of candle shape / position / time / regime at the forecast lines
 - `forge/MACRO_TREND_WEEKDAY_PREREG.md`: Macro state, H1/H4 trend state and weekday at the vol lines — pre-registration
 - `forge/NEWS_TOUCH_PREREG.md`: News at the vol lines — pre-registration
+- `forge/OI_WALL_BUILDING_FORWARD_PREREG.md`: oi-wall-building-forward — does a wall where open interest is being built bounce price more than a flat wall, 
 - `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration
 - `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
@@ -398,11 +405,9 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VIX_DIVERGENCE_PREREG.md`: VIX vs Nasdaq divergence at the vol lines (hourly) — pre-registration
 - `forge/VIX_SIGNALS_FORWARD_PREREG.md`: vix-signals-forward: forward record of the four VIX/Nasdaq signals banked 2026-10-23
 - `forge/VMC_DIVERGENCE_INDICES_PREREG.md`: VuManChu Cipher B divergence at the vol lines (NQ first) — pre-registration
-- `forge/VMC_NQ_VOL_INCREMENT_PREREG.md`: vmc-nq-vol-increment — does VuManChu Cipher B add material, repeatable information about NQ's next-hour range 
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
 - `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
-- `oi_research_book/HEDGE_FLOW_PREREG.md`: Pre-registration: does the dealer hedge-flow schedule say where the day's range extends?
 - `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
 - `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot
 - `oi_research_book/WALL_DTE_STYLE_PREREG.md`: wall-dte-style — does the right trade at a strong wall (fade or follow) depend on the wall's own expiry, the g

@@ -250,6 +250,93 @@ def test_ignore_crypto_live_record_and_replay():
     assert not [r for r in cp2.signals.values() if r["symbol"] == "BTCUSD"]
 
 
+def test_no_price_market_entry_and_crypto_names():
+    assert sc.is_crypto("ETHEREUM") and sc.is_crypto("Bitcoin") and not sc.is_crypto("GOLD")
+    cp, _ = make()
+    cp.prices["XAUUSD"] = 3995.0
+    cp.on_message(201, "XAUUSD buy\n\n⛔ SL: 3980\n✅ Targets:\n1) 4018\n2) 4038", datetime.now(timezone.utc))
+    assert statuses(cp)["201:0"] == "open"
+    pos = [p for p in cp.broker.serialize_open_positions() if p["symbol"] == "XAUUSD"][0]
+    assert pos["direction"] == "BUY"
+    r = cp.signals["201:0"]
+    assert r["entry"] is None and r["recv_px"] == 3995.0 and r["tp"] == 4018
+    # his result message closes it
+    cp.on_message(202, "✅ Target hit on the XAUUSD BUY from 3,995", datetime.now(timezone.utc))
+    assert statuses(cp)["201:0"] == "closed"
+
+
+def test_cancel_on_the_cancel_at_minute_is_not_unmatched():
+    cp, _ = make()
+    t0 = datetime(2026, 10, 30, 7, 1, tzinfo=timezone.utc)
+    rep = sc.replay_history(cp, [(101, DAILY, t0), (102, CANCEL, datetime(2026, 10, 30, 13, 0, tzinfo=timezone.utc))], record=False)
+    assert rep["cancels"] == 1 and not rep["unmatched"]
+
+
+def test_limit_cancel_never_hits_the_swing_and_his_close_still_lands():
+    # 2026-10-31 manual-log check: the 13:00 "Cancel the NAS100 limit" landed on the
+    # minute its cancel-at had expired it, and the old lone-candidate rule cancelled
+    # the NAS100 swing short instead -- so his 20:06 CLOSE found nothing.
+    cp, _ = make()
+    t0 = datetime(2026, 10, 30, 7, 1, tzinfo=timezone.utc)
+    sc.replay_history(cp, [(101, DAILY, t0), (102, CANCEL, datetime(2026, 10, 30, 13, 0, tzinfo=timezone.utc)),
+                           (107, CLOSES, datetime(2026, 10, 30, 20, 6, tzinfo=timezone.utc))], record=True)
+    nas_swing = cp.signals["101:5"]
+    assert nas_swing["close_reason"] == "flat for the weekend" and nas_swing.get("cancel_ts") is None
+
+
+def test_close_matches_the_older_market_trade_not_a_newer_limit():
+    # 27 Oct NAS100 BUY at market 29,169; 28 Oct NAS100 BUY limit 29,720 cancelled at 13:00;
+    # 29 Oct "CLOSE the NAS100 BUY from 29,169" must close the 27 Oct trade.
+    cp, _ = make()
+    d = lambda day, h, m=0: datetime(2026, 10, day, h, m, tzinfo=timezone.utc)
+    sc.replay_history(cp, [
+        (201, "🟢 BUY NAS100 now at 29,169\nStop loss (SL) 28,866", d(27, 7, 1)),
+        (202, "🟢 Limit BUY NAS100 at 29,720\nSL 29,591, TP 29,976\nCancel at 13:00 UK if not filled", d(28, 7, 1)),
+        (203, "Cancel the NAS100 limit BUY at 29,720, not filled", d(28, 13, 0)),
+        (204, "CLOSE the NAS100 BUY from 29,169, the bias has changed", d(29, 7, 0)),
+    ], record=True)
+    assert cp.signals["201:0"]["close_reason"] == "the bias has changed" and cp.signals["201:0"].get("cancel_ts") is None
+    assert cp.signals["202:0"].get("close_reason") in (None, "close-at")
+
+
+class FakeData:
+    """Broker on UTC+2 with the market closed (weekend): no live offset."""
+    OFF = 7200
+
+    class mt5:
+        TIMEFRAME_H1 = 16385
+
+    def server_offset_sec(self):
+        return None
+
+    def session_bars(self, pair, since, tf=None):
+        from datetime import datetime as D
+        if tf == self.mt5.TIMEFRAME_H1:          # EURUSD H1: weeks closing Fri 23:00 broker, then next Sunday open
+            closes = [D(2026, 10, 23, 23, tzinfo=timezone.utc), D(2026, 10, 30, 23, tzinfo=timezone.utc)]
+            out = []
+            for c in closes:
+                ce = int(c.timestamp())
+                out += [{"time": ce - 3600 * k} for k in range(110)][::-1]
+            out.append({"time": int(D(2026, 11, 1, 23, tzinfo=timezone.utc).timestamp())})
+            return out
+        # USDJPY M1: 157.30 until 07:00 UTC, 157.69 from then (broker clock = UTC+2)
+        t0 = int(datetime(2026, 10, 30, 4, tzinfo=timezone.utc).timestamp())
+        bars = []
+        for k in range(600):
+            utc = t0 + 60 * k
+            px = 157.69 if utc >= int(datetime(2026, 10, 30, 7, tzinfo=timezone.utc).timestamp()) else 157.30
+            bars.append({"time": utc + self.OFF, "open": px, "high": px + 0.01, "low": px - 0.01, "close": px})
+        return bars
+
+
+def test_weekend_backfill_uses_the_weekly_broker_offset():
+    cp, _ = make()
+    cp.data = FakeData()
+    bars = cp.bars("USDJPY", int(datetime(2026, 10, 30, 7, 1, tzinfo=timezone.utc).timestamp()))
+    first_after = next(b for b in bars if b["time"] >= int(datetime(2026, 10, 30, 7, 1, tzinfo=timezone.utc).timestamp()))
+    assert first_after["open"] == 157.69          # with offset 0 this was the 05:01 UTC price, 157.30
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

@@ -118,6 +118,15 @@ explicitly declined).
   DSPX and are not in the catalogue. A display line, not a test: COR1M sits at the 4th
   percentile of twenty years as this is written. Source: 2026-10-18 entry, step 5.
 
+- **Small caps lead the fed path?** — Crown (2026-10-31): "IWM is front-running the implied
+  odds of a December hike". A lead from the Russell's relative return to the next change in
+  the December-2026 SOFR contract (SR3Z6, 1-min from 2024-04) or the Atlanta Fed hike odds the
+  desk stores daily — in BOTH directions, since every rates↔equities test here has come back
+  coincident (`rates-pivot-lead`, `rate-diff-nq-leadlag`, `stir-wide-scan`, `rates-residual-
+  catchup`). The reverse lead (equities → rates) is on the `yield-predictive-ladder` shortlist
+  and has never been run for the Russell. Prior from the desk: same bar. Source: 2026-10-31
+  entry, step 5.
+
 None of these are pre-registered — each still needs the `MARKET_SENSE_TESTS.md`
 pre-registration step (state the pass/null bar first) before it's run, per the
 standing discipline. Listed here so "cheap, low-prior, not run" doesn't have to
@@ -1596,3 +1605,91 @@ one thing not checkable is the back-month diesel bid.
 - **Index.** The AI-crack → metals candidate from the 10-16 entry has since been
   pre-registered and banked NULL by another session (`ai-crack-metals`, 61 setups, 2026-10-19)
   and is already struck above; nothing new added from this clip.
+
+
+---
+
+## 2026-10-31 — "IWM is calling bullshit on a December hike" (small caps front-running the implied odds)
+
+> *"There's an 80% implied odds of a rate hike in December, but the equity market doesn't
+> believe it. That's why small cap is front-running and moving first and outperforming the
+> rest of the market... small cap is one of the most interest-rate-sensitive factors in the
+> market... so if the implied odds come down, small cap rallies. Yes, exactly."*
+
+**1. The claims, stated plainly.** One fact, one mechanism, one lead, one tautology.
+- **(a) Fact.** The market prices a December hike at ~80%.
+- **(b) Mechanism.** Small caps are among the most rate-sensitive equity factors — the
+  Russell's relative return moves inversely with front-end yields.
+- **(c) THE CLAIM.** Small caps are *front-running* the odds: IWM's outperformance now
+  precedes a fall in the implied hike probability later. A lead from equities to rates.
+- **(d) "If the odds come down, small caps rally."** The same-day version of (b). Not a
+  forecast of anything; it is the coupling restated as a conditional.
+
+**2. What's already on this desk.**
+- **(a) is on the fed-path page.** Atlanta Fed Market Probability Tracker (3-month SOFR
+  options, a *window* probability rather than a per-meeting one, so comparable to FedWatch
+  in direction not in level): **hike in the 2026-12-16 window 88.5% as of 10-29**, 91.4% a
+  day earlier, 86.9% a week earlier, 94.1% a month earlier. His 80% is the per-meeting read
+  of the same thing. The configuration is real.
+- **(b) is true right now and was not true over six years — a descriptive check, same-day
+  only, no lead tested.** Daily Russell-minus-S&P relative return against the daily change
+  in the 2-year, from the drill bundle: correlation **−0.22 over the last 250 sessions**
+  (−0.31% of relative return per 10bp), **−0.35 over the last 60**; the Nasdaq-minus-S&P
+  equivalent is **0.00 and +0.07**. So yes: today the Russell is the rate-sensitive leg and
+  the Nasdaq is not. Over the full 2020–2026 sample both correlations are −0.04 — the
+  sensitivity is a regime of the last year, not a law. Worth knowing before anyone builds
+  on it.
+- **(c) is a lead claim, and the lead direction this desk has tested nine ways is rates →
+  equities, every time coincident.** `rates-pivot-lead` (NULL, well powered: rates and
+  equities move in the same M15 bar, +0.23, not in sequence), `rate-diff-nq-leadlag` (NULL,
+  "coincident only", several rates-first candidates reversed sign on confirmation),
+  `stir-wide-scan` (NULL across 48,600 cells; the one borderline cluster failed its single
+  confirmation), `stir-composite-nq` (NULL / insufficient data at hours scale),
+  `rates-residual-catchup` (NULL four ways), `stir-residual-catchup` (NULL on its placebo).
+  **The reverse — equities leading rates — is the one direction not run.** `yield-
+  predictive-ladder` lists "reverse lead NQ → rates" on its shortlist; nobody has asked it
+  for the Russell against the December contract. Data in hand: SR3Z6 1-min from 2024-04 (the
+  STIR capture) and the MPT daily store. Logged in the index as a candidate, both
+  directions, with the desk's prior written down: same bar.
+- **(d) needs no test.** It is (b).
+- **And the register has the setup LIVE.** `claim-rotation-extreme` fired **2026-10-30**:
+  Russell ahead of the Nasdaq by **7.4pp over 20 sessions**, past the trailing-3-year top-
+  decile line of ±7.0pp — exactly the configuration he is describing, flagged by the watch
+  the day before the clip. The one tested result about it: S8, NULL on 140 extremes, **the
+  extreme extended in 45% of cases**. Alongside it `claim-breadth-broad` is live at **z
+  +2.94, the 100th percentile of three years**, and `watch-breadth-all-down` fired on 10-30
+  (six of six indices down → a wider week, VALIDATED n=1,002). The register will score the
+  rotation at 20 sessions by itself.
+
+**3. Trading or macro-understanding.** (b) is macro-understanding and the board already
+says it (the Russell "answers the 2-year"); the descriptive check above puts a number and a
+date range on it. (c) is a trading claim with a clean testable core and no test — the first
+Crown claim since the semis tilt with that property. (a) and (d) are neither.
+
+**4. The configuration (step 4b, no score).** IWM is **+4.3% against SPY over ten sessions**
+and +1.9% over five; on 10-30 everything fell (IWM −1.65%, SPY −1.77%, QQQ −3.47%). Yields
+have been falling into and after the 10-28 hold — the 10-year 4.93%, down from 5.00% a week
+earlier — while the December hike odds sit near 89%. The tape he describes is the tape.
+
+**5. Verdict and action.**
+- **Nothing to run now; one candidate logged** (index above): Russell-relative ↔ fed-path
+  lead, both directions, on the STIR capture. If the owner wants it, it goes through the
+  research protocol (register row, prereg, then the harness) — not through this log.
+- **What to say instead of "front-running".** The Russell is the rate-sensitive leg *this
+  year* (−0.35 over 60 sessions), so when the front end rallies the Russell outperforms the
+  same day. That is coupling, and it is what every test here found. Whether it ever happens
+  *first* is the open question, and until it is asked, "front-running" is a story told about
+  a same-day correlation.
+- **The register did its job — and showed a flaw, fixed in this change.** `claim-breadth-
+  broad` fired **five times in eight days** (10-22, 10-23, 10-28 ×2, 10-29, 10-30) because
+  the z hovered on the 1.8 line: each dip to 1.79 cleared it, each tick back re-fired it,
+  re-sent the Telegram and added a "fire" to the forward record that was the same episode.
+  Claim triggers now carry **hysteresis**: once live, a setup holds until its progress falls
+  below 90% of the threshold (`RELEASE_AT` in `js/claimWatch.js`, previous states threaded
+  through `deskWatch.evaluateTriggers`). The two genuine fires are scored: 10-22 → RSP/SPY
+  **−0.34%** over five sessions, 10-23 → **+1.41%**. Read against B1's null, two
+  observations either side of zero are what null looks like.
+- **Display nugget.** The rate-sensitivity ranking (which equity sleeve's relative return
+  is moving with the 2-year this quarter) is a real, cheap descriptive line the desk does
+  not show — the same "who's driving" idea already in the index for the chain nodes, for
+  equity factors. Proposed, not built.

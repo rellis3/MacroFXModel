@@ -130,6 +130,55 @@ class ServerClock:
         return int(utc_epoch) + off
 
 
+# ── Historical offsets from the weekly FX close ─────────────────────────────
+# `measure_offset_sec` needs a live tick, so it is None all weekend, and even on
+# a weekday it is only right for the CURRENT week: a replay over months spans the
+# broker's own DST switch (UTC+3 in summer, UTC+2 in winter). The bars carry the
+# answer themselves: the last H1 bar of every FX week opens at 16:00 New York on
+# Friday, whatever the broker's clock says. (Found 2026-10-31: a Saturday
+# backfill read every bar 2h early because the offset fell back to 0.)
+NY_TZ = "America/New_York"
+
+
+def weekly_offsets(h1_bars, min_gap_secs: int = 36 * 3600) -> list[tuple[int, int]]:
+    """[(last_bar_of_week broker epoch, offset_sec)], oldest first, from one FX
+    symbol's H1 bars `[{time: broker epoch, ...}]`. A week whose close doesn't
+    sit on a whole hour, or that disagrees with both neighbours by more than an
+    hour (an early holiday close), is dropped rather than trusted."""
+    from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
+    ny = ZoneInfo(NY_TZ)
+    times = sorted(int(b["time"]) for b in (h1_bars or []))
+    raw = []
+    for prev, cur in zip(times, times[1:]):
+        if cur - prev < min_gap_secs:
+            continue
+        d = datetime.fromtimestamp(prev, tz=timezone.utc).date()     # the broker's Friday
+        friday_close = datetime(d.year, d.month, d.day, 16, tzinfo=ny).timestamp()
+        off = int(round((prev - friday_close) / ROUND_TO_SECS) * ROUND_TO_SECS)
+        if MIN_OFFSET_SECS <= off <= MAX_OFFSET_SECS and off % 3600 in (0, 1800):
+            raw.append((prev, off))
+    keep = []
+    for i, (t, off) in enumerate(raw):
+        window = sorted(o for _, o in raw[max(0, i - 2):i + 3])     # up to 2 weeks either side
+        if abs(off - window[len(window) // 2]) > 3600:
+            continue                                               # an early (holiday) close
+        keep.append((t, off))
+    return keep
+
+
+def offset_for(broker_epoch, timeline, current=None):
+    """The offset in force at `broker_epoch`: that week's, from `weekly_offsets`.
+    After the last closed week, the live `current` offset when known, else the
+    last week's. None when there is nothing to go on."""
+    for week_end, off in timeline or []:
+        if broker_epoch <= week_end + 3600:
+            return off
+    if current is not None:
+        return current
+    return timeline[-1][1] if timeline else None
+
+
 # ── Closed-trade day bucketing ───────────────────────────────────────────────
 # MT5 reads the date arguments of `history_deals_get` on the BROKER's clock, but
 # the dashboard files whatever a bot pushes under the SERVER's real-UTC date.

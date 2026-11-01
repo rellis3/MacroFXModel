@@ -42,6 +42,12 @@ def test_limit_fill_then_tp():
     assert o['mfe_r'] == round(262 / risk - 2 / risk, 4)
 
 
+def test_open_trade_carries_latest_price():
+    bars = [bar(1, 28900, 28970, 28890, 28960), bar(2, 28960, 28980, 28900, 28910)]
+    o = resolve(SELL_LIMIT, bars)
+    assert o['state'] == 'open' and o['mark_px'] == 28910 and o['mark_ts'] == T0 + 120
+
+
 def test_tp_not_taken_on_limit_fill_bar_but_sl_is():
     # fill bar spans both TP and entry: TP ignored on the fill bar
     o = resolve(SELL_LIMIT, [bar(1, 28900, 28970, 28700, 28800)])

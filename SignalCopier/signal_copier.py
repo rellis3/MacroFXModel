@@ -50,6 +50,7 @@ from pylego.broker.paper import PaperBroker                            # noqa: E
 from pylego.quotes import QuoteFeed                                     # noqa: E402
 from pylego.costs import spread_for                                     # noqa: E402
 from pylego.risk_guard import RiskGuard, block_category, log_block_transition  # noqa: E402
+from pylego.broker.clock import offset_for, weekly_offsets                    # noqa: E402
 
 from book import Book, describe                                         # noqa: E402
 from outcome import resolve, template_row                               # noqa: E402
@@ -106,6 +107,8 @@ REJECT_RETRY_SECS = 60
 # broker rejects worth retrying: the order itself was fine, the market wasn't
 RETRYABLE = ("transport_error", "order_rejected", "market_not_tradable", "no_tick", "trade_disabled")
 # his usual symbols, checked against the broker at start
+CRYPTO_NAMES = ("BITCOIN", "ETHEREUM", "ETHER", "SOLANA", "RIPPLE", "LITECOIN", "CARDANO", "DOGECOIN", "POLKADOT",
+                "CHAINLINK", "AVALANCHE", "POLYGON", "TRON", "STELLAR", "MONERO", "SHIBA")
 CRYPTO_BASES = ("BTC", "XBT", "ETH", "SOL", "XRP", "LTC", "BCH", "ADA", "DOGE", "DOT", "LINK", "BNB", "AVAX",
                 "MATIC", "POL", "SHIB", "TRX", "XLM", "XMR", "UNI", "ATOM", "TON", "PEPE", "ETC", "NEAR", "APT", "SUI")
 
@@ -114,6 +117,8 @@ def is_crypto(symbol: str) -> bool:
     """BTCUSD, ETHUSDT, XRPEUR, BTC… → True. The instrument registry carries no
     crypto, so this goes by the base coin."""
     s = str(symbol or "").upper().replace("/", "").replace("_", "")
+    if any(s.startswith(n) for n in CRYPTO_NAMES):         # he also writes the coin's name: "Ethereum", "BITCOIN"
+        return True
     return any(s.startswith(b) and s[len(b):] in ("", "USD", "USDT", "USDC", "EUR", "GBP", "JPY") for b in CRYPTO_BASES)
 
 
@@ -283,13 +288,34 @@ class Copier:
             return self.quotes.price(pair)
         return None
 
+    def offset_timeline(self, since):
+        """The broker's UTC offset week by week (pylego.broker.clock.weekly_offsets),
+        read from an FX pair's H1 bars, cached for an hour. The live tick offset
+        alone is None all weekend and only right for the current week."""
+        tl = getattr(self, "_tl", None)
+        if tl is not None and self._tl_since <= since and _now() - self._tl_at < 3600:
+            return tl
+        tl = []
+        tf = getattr(self.data.mt5, "TIMEFRAME_H1", None)
+        for ref in ("EURUSD", "GBPUSD", "USDJPY"):
+            tl = weekly_offsets(self.data.session_bars(ref, int(since) - 10 * 86400, tf=tf))
+            if tl:
+                break
+        self._tl, self._tl_since, self._tl_at = tl, since, _now()
+        if not tl and self.data.server_offset_sec() is None and not getattr(self, "_tl_warned", False):
+            self._tl_warned = True
+            log.warning("broker clock offset unknown (no FX weekly closes in the bars, market closed) "
+                        "-- bar times are used as UTC and may be hours out")
+        return tl
+
     def bars(self, pair, since):
         if self.data is not None:
-            off = self.data.server_offset_sec() or 0
-            # Request from well before the post on either clock reading of the
-            # timestamp; the resolver ignores everything before the post.
-            rows = self.data.session_bars(pair, int(since) - abs(off) - 3600)
-            return [{**b, "time": b["time"] - off} for b in rows]
+            current = self.data.server_offset_sec()
+            tl = self.offset_timeline(since)
+            # Request from well before the post on any broker clock; the resolver
+            # ignores everything before the post.
+            rows = self.data.session_bars(pair, int(since) - 15 * 3600 - 86400)
+            return [{**b, "time": b["time"] - (offset_for(b["time"], tl, current) or 0)} for b in rows]
         return [{"time": t, "open": p, "high": p, "low": p, "close": p} for t, p in self.samples.get(pair, [])]
 
     # ── decisions / alerts ───────────────────────────────────────────────
@@ -359,7 +385,7 @@ class Copier:
                 return
             fresh = _now() - _ts(o["posted_at"]) < 120
             self.signals[rid] = {
-                "id": rid, "symbol": o["symbol"], "side": o["side"], "order": o["order"], "entry": o["entry"],
+                "id": rid, "symbol": o["symbol"], "side": o["side"], "order": o["order"], "entry": o.get("entry"),
                 "sl": o.get("sl"), "tp": o.get("tp"), "style": o.get("style") or "single",
                 "posted_ts": _ts(o["posted_at"]), "cancel_ts": _ts(o.get("cancel_at_utc")),
                 "close_ts": _ts(o.get("close_at_utc")), "close_reason": "close-at" if o.get("close_at_utc") else None,
@@ -418,7 +444,7 @@ class Copier:
                 self.broker.cancel_pending(e["ticket"])
                 e["status"] = "cancelled"
                 self.decide(o, "cancelled", detail, ticket=e["ticket"])
-                self.alert(f"🚫 CANCELLED {o['side']} {o['symbol']} @ {o['entry']:g} — {detail}")
+                self.alert(f"🚫 CANCELLED {describe(o)} — {detail}")
         elif action == "close":
             self._close(e, o, detail)
 
@@ -432,7 +458,7 @@ class Copier:
             self.broker.stop(t, o["symbol"], False, reason=detail or "close", comment_prefix="SC close")
         e["status"] = "closed"
         self.decide(o, "closed", detail, ticket=e["ticket"])
-        self.alert(f"✅ CLOSED {o['side']} {o['symbol']} @ {o['entry']:g} — {detail}")
+        self.alert(f"✅ CLOSED {o.get('side')} {o.get('symbol')} — {detail}")
 
     def _skip(self, o, why, status="skipped"):
         self.execs[o["id"]] = {"id": o["id"], "status": "skipped", "reason": why}
@@ -477,7 +503,9 @@ class Copier:
             return self._skip(o, f"no price for {pair} ({self.bsym(pair)}) — check the symbol map")
         if isinstance(self.broker, PaperBroker):
             self.broker.set_price(pair, px)
-        risk_dist = abs(o["entry"] - o["sl"])
+        # "XAUUSD buy" with no price: his entry is the market price when we see it
+        entry = o["entry"] if o.get("entry") is not None else px
+        risk_dist = abs(entry - o["sl"])
         if not risk_dist:
             return self._skip(o, "stop equals entry")
         if (px - o["sl"]) * d <= 0:
@@ -488,9 +516,9 @@ class Copier:
 
         as_market = o["order"] == "market"
         if as_market:
-            drift = (px - o["entry"]) * d / risk_dist
+            drift = (px - entry) * d / risk_dist
             if drift > cfg.get("max_entry_drift_r", 0.25):
-                return self._skip(o, f"price {px:g} is {drift:.2f}R worse than his entry {o['entry']:g}")
+                return self._skip(o, f"price {px:g} is {drift:.2f}R worse than his entry {entry:g}")
         lots, why = self._size(pair, abs(px - o["sl"]) if as_market else risk_dist)
         if not lots:
             return self._skip(o, why)
@@ -905,7 +933,8 @@ def replay_history(cp: Copier, messages, record=True):
         cp.apply(book.tick(datetime.now(timezone.utc)), execute=False)
     finally:
         cp.book, cp.recording = hold, True
-    rep["unparsed"], rep["unmatched"] = rep["unparsed"][-200:], rep["unmatched"][-200:]
+    rep["unparsed_total"], rep["unmatched_total"] = len(rep["unparsed"]), len(rep["unmatched"])
+    rep["unparsed"], rep["unmatched"] = rep["unparsed"][-2000:], rep["unmatched"][-500:]
     rep["from_ts"] = int(first.timestamp()) if first else None
     rep["to_ts"] = int(last.timestamp()) if last else None
     return rep
