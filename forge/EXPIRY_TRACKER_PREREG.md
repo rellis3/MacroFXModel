@@ -173,7 +173,15 @@ placebo. It must recover ≥ 0.20 and pass the gate. If it doesn't, the pipeline
 
 ## Amendments
 
-*(none)*
+### A1 — 2026-11-01 — PRE-RESULTS
+**The positive control in §5 is replaced.** As written, it added 0.25·L to the *real* outcomes and read off what the
+pipeline recovered. That leaks the answer: the recovered value minus 0.25 is the real P1 estimate, so running the check
+would show the result before the gate is applied. The replacement keeps the real rows (leans, σ, read dates, controls,
+clusters) but **shuffles the outcome R across rows within each instrument**, which destroys any real lean–outcome link,
+then adds the planted 0.25·L. The pipeline must recover 0.25 ± its own CI and pass the gate on this copy. It must also
+return NULL or UNDERPOWERED on the shuffled copy *without* the plant. Both checks run before the real scoring, and the
+script refuses the real run unless both passed in the same session. No outcome had been computed: the scoring script
+(`41_expiry_pull_score.py`) did not exist when this was written.
 
 ---
 
