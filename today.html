@@ -7327,7 +7327,7 @@ function renderDrawerGlobal(r) {
   sec.style.display = '';
   $('drGlobalStance').textContent = k.plan?.stance ?? '';
   const drv = (k.range?.drivers ?? []).map(d => `${esc0(d.why)} ×${d.mult}`).join(' · ') || 'no conditioner active';
-  const ins = (k.direction?.shown ?? []).map(x => `<tr><td>${esc0(x.label)}</td><td>${_grAg(x)}</td><td class="gr-num">${x.e}</td><td class="muted">${esc0(x.tier ?? '')}</td><td class="muted">${esc0(x.note ?? '')}</td></tr>`).join('');
+  const ins = (k.direction?.shown ?? []).map(x => `<tr><td>${esc0(x.label)}</td><td>${_grAg(x)}</td><td class="gr-num">${x.e}</td><td class="muted">${esc0(x.tierLabel ?? x.tier ?? '')}</td><td class="muted">${esc0(x.note ?? '')}</td></tr>`).join('');
   el.innerHTML = `<div style="font-size:12.5px;line-height:1.5"><b>${esc0(k.plan?.lines ?? '')}</b><br>${esc0(k.plan?.direction ?? '')}</div>
     <div class="gr-h">Range</div><div style="font-size:12px">P(beyond p75) <b>${_grPct(k.range?.pAbove75)}</b> · expected high-low ×${k.range?.mult ?? '—'} the ladder (${k.range?.expectedHl ?? '—'}% vs ${k.range?.hlP50 ?? '—'}%) · ${drv}</div>
     ${ins ? `<div class="gr-h">Direction inputs — tested P(up) ${_grPct(k.direction.pUp)}${k.direction.story?.nLive ? ` · story (shadow, unvalidated) P(up) ${_grPct(k.direction.story.pUp)} from ${k.direction.story.nLive} reads` : ''}</div><div class="gr-scroll"><table class="gr-tbl" style="font-size:11.5px"><tr><th>input</th><th>says</th><th>weight</th><th>evidence</th><th>reading</th></tr>${ins}</table></div>` : ''}`;

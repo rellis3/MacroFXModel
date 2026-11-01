@@ -1,0 +1,209 @@
+{
+ "generated": "2026-11-01",
+ "lockbox": "2026-08-21",
+ "seed": 20261101,
+ "reps": 2000,
+ "block": 20,
+ "status": "EXPLORATORY",
+ "verdict": "CONTEXT",
+ "source": "m1",
+ "data": "NY-close D1 from M1 (oi_research_book/data/gex_range_es/*_nyclose_d1.parquet); credit BAA10Y, curve T10Y2Y (analysis/output/cog_yield_dir/fred); VIX/VIX3M Cboe seeds",
+ "edges": [
+  {
+   "id": "nq-down-week",
+   "label": "Nasdaq down \u22651% over 5 sessions \u2192 next session wider (NDX, HL/ATR14)",
+   "outcome": "r1",
+   "span": [
+    "2016-01-04",
+    "2026-08-20"
+   ],
+   "all": {
+    "n_event": 694,
+    "n_control": 2039,
+    "effect": 0.251,
+    "ci": [
+     0.19,
+     0.315
+    ],
+    "mean_event": 1.218,
+    "mean_control": 0.967
+   },
+   "splits": {
+    "vol": {
+     "cells": {
+      "high vol": {
+       "n_event": 490,
+       "n_control": 705,
+       "effect": 0.259,
+       "ci": [
+        0.182,
+        0.348
+       ],
+       "mean_event": 1.246,
+       "mean_control": 0.987
+      },
+      "low vol": {
+       "n_event": 171,
+       "n_control": 1181,
+       "effect": 0.181,
+       "ci": [
+        0.095,
+        0.29
+       ],
+       "mean_event": 1.141,
+       "mean_control": 0.96
+      }
+     },
+     "read": "seen in both"
+    },
+    "credit": {
+     "cells": {
+      "credit not widening": {
+       "n_event": 359,
+       "n_control": 1281,
+       "effect": 0.242,
+       "ci": [
+        0.163,
+        0.329
+       ],
+       "mean_event": 1.231,
+       "mean_control": 0.99
+      },
+      "credit widening": {
+       "n_event": 334,
+       "n_control": 751,
+       "effect": 0.274,
+       "ci": [
+        0.179,
+        0.376
+       ],
+       "mean_event": 1.205,
+       "mean_control": 0.931
+      }
+     },
+     "read": "seen in both"
+    },
+    "curve": {
+     "cells": {
+      "curve inverted": {
+       "n_event": 157,
+       "n_control": 404,
+       "effect": 0.086,
+       "ci": [
+        0.01,
+        0.169
+       ],
+       "mean_event": 1.078,
+       "mean_control": 0.993
+      },
+      "curve not inverted": {
+       "n_event": 537,
+       "n_control": 1635,
+       "effect": 0.298,
+       "ci": [
+        0.23,
+        0.373
+       ],
+       "mean_event": 1.259,
+       "mean_control": 0.961
+      }
+     },
+     "read": "seen in both"
+    }
+   }
+  },
+  {
+   "id": "vix-inversion",
+   "label": "First day VIX > VIX3M \u2192 wider next 5 sessions (SPX, mean HL/ATR14)",
+   "outcome": "r5",
+   "span": [
+    "2016-01-04",
+    "2026-08-20"
+   ],
+   "all": {
+    "n_event": 62,
+    "n_control": 2667,
+    "effect": 0.366,
+    "ci": [
+     0.2,
+     0.607
+    ],
+    "mean_event": 1.409,
+    "mean_control": 1.043
+   },
+   "splits": {
+    "vol": {
+     "cells": {
+      "high vol": {
+       "n_event": 58,
+       "n_control": 1137,
+       "effect": 0.318,
+       "ci": [
+        0.158,
+        0.517
+       ],
+       "mean_event": 1.403,
+       "mean_control": 1.085
+      },
+      "low vol": {
+       "n_event": 0,
+       "n_control": 1348,
+       "effect": null,
+       "ci": null
+      }
+     },
+     "read": "measured in high vol only"
+    },
+    "credit": {
+     "cells": {
+      "credit not widening": {
+       "n_event": 23,
+       "n_control": 1617,
+       "effect": 0.397,
+       "ci": [
+        0.205,
+        0.657
+       ],
+       "mean_event": 1.46,
+       "mean_control": 1.063
+      },
+      "credit widening": {
+       "n_event": 39,
+       "n_control": 1042,
+       "effect": 0.365,
+       "ci": [
+        0.159,
+        0.709
+       ],
+       "mean_event": 1.379,
+       "mean_control": 1.014
+      }
+     },
+     "read": "seen in both"
+    },
+    "curve": {
+     "cells": {
+      "curve inverted": {
+       "n_event": 4,
+       "n_control": 557,
+       "effect": null,
+       "ci": null
+      },
+      "curve not inverted": {
+       "n_event": 58,
+       "n_control": 2110,
+       "effect": 0.369,
+       "ci": [
+        0.196,
+        0.61
+       ],
+       "mean_event": 1.418,
+       "mean_control": 1.048
+      }
+     },
+     "read": "measured in curve not inverted only"
+    }
+   }
+  }
+ ]
+}

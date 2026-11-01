@@ -68,6 +68,14 @@
             : 'The desk re-ran this study') + ' (ledger dated ' + e.date + '). The text below was written against the earlier result.';
           body.insertBefore(n, body.firstChild);
         }
+        // Code audit (2026-10-31): the test behind this verdict was found flawed or could not be traced.
+        if (e.audit === 'reopened' || e.audit === 'unverified') {
+          var a = el('div', pre + '-updated');
+          a.textContent = e.audit === 'reopened'
+            ? 'Under review: a code audit found a problem with how this was tested, so this result is not settled. A re-run is pending.'
+            : 'Not yet checked: a code audit could not trace how this was tested, so treat this result as unconfirmed.';
+          body.insertBefore(a, body.firstChild);
+        }
         var d = el('details', pre + '-ledger');
         d.appendChild(el('summary', null, 'What the desk found · ledger dated ' + e.date));
         d.appendChild(el('p', null, 'Claim tested: ' + e.claim));

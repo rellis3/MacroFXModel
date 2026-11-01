@@ -312,6 +312,8 @@ export const SERVICES = [
     cadence: 'every 6 h', cost: 'low', lean: false, on: true, feeds: 'rates.html and the sidebar Rates & Policy row' },
   { id: 'intlYields', where: 'server', label: 'Non-US 10-year yields (BoE, MoF Japan, Bundesbank)',
     cadence: 'every 6 h', cost: 'low', lean: false, on: true, feeds: 'the chain gap chips (gilt, bund, JGB minus Treasuries) and rates.html' },
+  { id: 'dataArchive', where: 'server', label: 'Data archive to R2: deep FRED histories, ICE credit spreads, CME options capture, 10Y intraday, gold ETF flows, nowcasts (append-only, never deletes)',
+    cadence: 'daily', cost: 'low', lean: false, on: true, feeds: 'the permanent record behind plans/DATA_ASSET_MAP.md §4A–B; nothing reads it live yet' },
   { id: 'crack', where: 'server', label: 'Crude and the crack spread (FRED EIA spot, no key)',
     cadence: 'every 6 h', cost: 'low', lean: false, on: true, feeds: 'the Crude & the crack card and the chain crack node' },
   { id: 'hmmHourly', where: 'server', label: 'Hourly market-state log: the daily two-state model refitted on hourly bars, one reading per pair per hour',

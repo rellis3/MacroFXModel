@@ -1,0 +1,50 @@
+# Every test in the repo, on every pull request and every push to main.
+#
+# Before 2026-10-31 CI ran 3 of ~410 JavaScript test files and none of the Python ones, so seven test files had gone
+# red on main without anyone seeing it (REPO_REVIEW_2026-10-31). This job runs all of them.
+#
+# A failure fails the job, except tests listed in tests/KNOWN_FAILING.json with a reason (today: two forge tests that
+# need the gitignored M1 cache). Those still run and are printed every time. The list may only shrink.
+#
+# Run the same locally:   npm ci && node scripts/run_tests.mjs && python scripts/run_py_tests.py
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  javascript:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      # Some JS tests shell out to Python (js/harness/features.test.mjs writes parquet fixtures with pyarrow).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pandas pyarrow
+      - name: Run every *.test.mjs / *.test.js
+        run: node scripts/run_tests.mjs
+
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pandas pyarrow scipy
+      - name: Run forge and GlobalLiquidity tests
+        run: python scripts/run_py_tests.py

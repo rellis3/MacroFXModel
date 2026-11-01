@@ -19,6 +19,8 @@
  * Pure data. Tested by js/deskEvidence.test.mjs (shape only).
  */
 
+import { EVIDENCE_AUDIT, EVIDENCE_AUDIT_DATE } from './evidenceAudit.js';
+
 export const DESK_EVIDENCE = [
   {
     id: 'vix-inversion', domain: 'volatility', verdict: 'validated', date: '2026-09-17', doc: 'MD files/MARKET_SENSE_TESTS.md#S1',
@@ -2215,10 +2217,18 @@ export function citable(e) {
   const reg = REGISTRY_DEFLATION.entries[e?.id];
   const regTag = reg?.label === 'kept' ? ` (survives registry FDR 10%, ${REGISTRY_DEFLATION.date})` : reg?.label === 'not-deflatable' ? ' (not deflatable: no p or interval reported)' : '';
   const deflation = e?.deflated ? { ...e.deflated } : reg ? { label: reg.label, p: reg.p, basis: reg.basis } : null;
-  if (pw) return { tag: `${base}, n=${pw.n}${regTag}${defl}`, strong: true, power: pw, docIsStudy, deflation };
+  // Code-level audit (REPO_REVIEW_2026-10-31): a reopened or unverified verdict may not be quoted as settled,
+  // whatever its n. A null whose test was flawed is "not yet known", not "no effect".
+  const au = EVIDENCE_AUDIT[e?.id] ?? null;
+  const audit = au ? { status: au.status, grade: au.audit, date: EVIDENCE_AUDIT_DATE } : null;
+  const auditTag = !au ? '' : au.status === 'stands' ? ` (code audit ${EVIDENCE_AUDIT_DATE}: stands)`
+    : au.status === 'reopened' ? ` — REOPENED by code audit ${EVIDENCE_AUDIT_DATE} (${au.audit}): do not cite as settled; re-run pending`
+    : ` — UNVERIFIED by code audit ${EVIDENCE_AUDIT_DATE}: not traced; cite as unconfirmed`;
+  const settled = !au || au.status === 'stands';
+  if (pw) return { tag: `${base}, n=${pw.n}${regTag}${defl}${auditTag}`, strong: settled, power: pw, docIsStudy, deflation, audit };
   return {
-    tag: `${base} — single test, power not recorded${docIsStudy ? '' : ', no study doc'}${regTag}${defl}`,
-    strong: false, power: null, docIsStudy, deflation,
+    tag: `${base} — single test, power not recorded${docIsStudy ? '' : ', no study doc'}${regTag}${defl}${auditTag}`,
+    strong: false, power: null, docIsStudy, deflation, audit,
   };
 }
 

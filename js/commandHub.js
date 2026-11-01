@@ -84,6 +84,7 @@
     <button class="chub-btn" style="color:#10b981;border-color:rgba(16,185,129,.35)" onclick="chubToggleDD(event,'chubDDlive')">Live ▾</button>
     <div class="chub-menu">
       <a class="chub-item" href="desk.html" target="_blank" data-href="desk.html"><span class="ci-txt">🖥 The Desk</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('desk.html')" data-href="desk.html">☆</button></a>
+      <a class="chub-item" href="state.html" target="_blank" data-href="state.html"><span class="ci-txt">🧭 Market State</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('state.html')" data-href="state.html">☆</button></a>
       <a class="chub-item" href="today.html" target="_blank" data-href="today.html"><span class="ci-txt">☀️ Daily Brief</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('today.html')" data-href="today.html">☆</button></a>
       <a class="chub-item" href="daily-plan.html" target="_blank" data-href="daily-plan.html"><span class="ci-txt">🗒 Daily Plan</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('daily-plan.html')" data-href="daily-plan.html">☆</button></a>
       <a class="chub-item" href="live-range.html" target="_blank" data-href="live-range.html"><span class="ci-txt">⏱ Live Range</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('live-range.html')" data-href="live-range.html">☆</button></a>

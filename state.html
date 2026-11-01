@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Market State</title>
+<style>
+  /* Layout: one column of five stacked hierarchy tiers (rates → vol), then the chain graph and the
+     flow timeline side by side, then drivers and data health. Palette mirrors today.html (dark default,
+     body.light toggle) so the page sits inside the same site. */
+  :root{
+    --bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--purple:#8b5cf6;--red:#f85149;
+    --bull-bg:rgba(16,185,129,.12);--bear-bg:rgba(249,115,22,.12);--amber-bg:rgba(210,153,34,.12);--blue-bg:rgba(79,125,240,.12);--neu-bg:rgba(110,118,129,.15);
+    --t-rates:#4f7df0;--t-credit:#14b8a6;--t-fx:#d29922;--t-equities:#8b5cf6;--t-vol:#f85149;--t-drivers:#9da7b3;
+    --s1:#161b22;--s2:#1c2330;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  body.light{
+    --bg:#f4f6fb;--card:#ffffff;--card2:#eef1f7;--border:#d8dee8;--text:#0d1520;--text2:#4b5a6e;--text3:#7c8aa0;
+    --bull:#0a8a5c;--bear:#c2410c;--amber:#b45309;--blue:#1847c2;--purple:#6d28d9;--red:#c8222a;
+    --bull-bg:rgba(10,138,92,.10);--bear-bg:rgba(194,65,12,.10);--amber-bg:rgba(180,83,9,.10);--blue-bg:rgba(24,71,194,.10);--neu-bg:rgba(75,90,110,.08);
+    --t-rates:#1847c2;--t-credit:#0f766e;--t-fx:#b45309;--t-equities:#6d28d9;--t-vol:#c8222a;--t-drivers:#4b5a6e;
+    --s1:#ffffff;--s2:#eef1f7;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  button{font-family:inherit;cursor:pointer}
+  .wrap{max-width:1180px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));display:grid;gap:22px;padding-top:18px}
+  h1{font-size:22px;font-weight:700;letter-spacing:-.01em}
+  h2{font-size:15px;font-weight:700;margin-bottom:4px}
+  .sub{color:var(--text2);font-size:12.5px;max-width:78ch}
+  .eyebrow{font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;min-width:0}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .pill{display:inline-flex;align-items:center;gap:5px;font:600 11px/1 var(--mono);padding:4px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .pill.ok{color:var(--bull);background:var(--bull-bg);border-color:transparent}
+  .pill.warn{color:var(--amber);background:var(--amber-bg);border-color:transparent}
+  .pill.bad{color:var(--bear);background:var(--bear-bg);border-color:transparent}
+  .pill.neu{background:var(--neu-bg);border-color:transparent}
+  .head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-end}
+  .flowline{font-size:13px;color:var(--text);max-width:90ch}
+  .flowline b{font-weight:700}
+  /* tiers */
+  .tiers{display:grid;gap:8px}
+  .tier{display:grid;grid-template-columns:minmax(0,15rem) minmax(0,1fr);gap:14px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;position:relative;overflow:hidden}
+  .tier::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--tc)}
+  .tier-h{display:grid;gap:4px;align-content:start}
+  .tier-n{font:600 10.5px var(--mono);color:var(--tc);letter-spacing:.06em;text-transform:uppercase}
+  .tier-t{font-size:15px;font-weight:700}
+  .tier-role{font-size:11.5px;color:var(--text3)}
+  .tier-state{font-size:13px;font-weight:600;margin-top:4px}
+  .tier-detail{font-size:12px;color:var(--text2)}
+  .tone{margin-top:6px}
+  .first{font:600 11px var(--mono);color:var(--text2)}
+  .first b{color:var(--tc)}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;align-content:start}
+  .node{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 9px;display:grid;gap:3px;min-width:0;cursor:help}
+  .node.miss{opacity:.55}
+  .node-l{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .node-v{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-variant-numeric:tabular-nums}
+  .node-last{font:600 14px var(--mono)}
+  .node-d{font:600 11.5px var(--mono)}
+  .up{color:var(--bull)} .down{color:var(--bear)} .flat{color:var(--text3)}
+  .node svg{display:block;width:100%;height:30px}
+  .pct{height:4px;border-radius:2px;background:var(--neu-bg);position:relative}
+  .pct i{position:absolute;top:-2px;width:3px;height:8px;border-radius:1px;background:var(--text)}
+  .pct-l{display:flex;justify-content:space-between;font:10px var(--mono);color:var(--text3)}
+  @media (max-width:720px){.tier{grid-template-columns:1fr}}
+  /* chain + flow */
+  .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+  @media (max-width:900px){.grid2{grid-template-columns:1fr}}
+  .scroll{overflow-x:auto}
+  #chainSvg{display:block;min-width:760px;width:100%;height:auto}
+  #chainSvg text{fill:var(--text);font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+  #chainSvg .muted{fill:var(--text3)}
+  .edge{cursor:pointer}
+  .edge:hover path,.edge:focus path{stroke-width:3.2}
+  .edge:focus{outline:none}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11.5px;color:var(--text2);margin-top:8px}
+  .sw{display:inline-block;width:18px;height:0;border-top:3px solid;vertical-align:middle;margin-right:5px}
+  .detail{margin-top:10px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12.5px;display:grid;gap:5px}
+  .detail .k{font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
+  #flowSvg{display:block;width:100%;height:auto}
+  #flowSvg text{fill:var(--text);font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+  #flowSvg .muted{fill:var(--text3)}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+  th{font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .note{font-size:11.5px;color:var(--text3)}
+  .empty{padding:30px;text-align:center;color:var(--text2)}
+  .tbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 9px;font-size:11.5px}
+  .tbtn:focus-visible,.node:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  /* phase 2: banner, edges, economies, layers */
+  .banner{display:grid;gap:12px}
+  .env{font-size:19px;font-weight:700;letter-spacing:-.01em}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:8px}
+  .tile{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;display:grid;gap:4px;align-content:start;min-width:0}
+  .tile .k{font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
+  .tile .v{font-size:14px;font-weight:700}
+  .tile .d{font-size:11.5px;color:var(--text2)}
+  .chips{display:flex;flex-wrap:wrap;gap:4px}
+  .edges{display:grid;gap:6px}
+  .edge-row{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:start;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card2)}
+  .edge-row.on{border-color:var(--amber);background:var(--amber-bg)}
+  .dot{width:12px;height:12px;border-radius:50%;margin-top:4px;background:var(--neu-bg);border:2px solid var(--text3)}
+  .dot.on{background:var(--amber);border-color:var(--amber)} .dot.off{background:transparent;border-color:var(--text3)} .dot.na{border-style:dashed}
+  .edge-row details{font-size:12px;color:var(--text2);margin-top:4px}
+  .edge-row summary{cursor:pointer;color:var(--blue);font-size:11.5px}
+  .econ{width:100%;border-collapse:collapse;font-size:12.5px}
+  .econ td,.econ th{padding:7px 8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle;white-space:nowrap}
+  .div{position:relative;height:10px;width:140px;background:var(--neu-bg);border-radius:3px}
+  .div i{position:absolute;top:0;height:10px;border-radius:3px}
+  .div::after{content:"";position:absolute;left:50%;top:-2px;height:14px;width:1px;background:var(--text3)}
+  .bars{display:grid;gap:5px}
+  .bar-r{display:grid;grid-template-columns:64px minmax(0,1fr) 128px;gap:8px;align-items:center;font-size:12px}
+  .bar-t{height:10px;background:var(--neu-bg);border-radius:3px;position:relative;overflow:hidden}
+  .bar-t i{position:absolute;inset:0 auto 0 0;border-radius:3px}
+  .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px}
+  #cotSvg{display:block;width:100%;height:auto}
+  #cotSvg text{fill:var(--text);font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+  #cotSvg .muted{fill:var(--text3)}
+  /* phase 3: playbook, long history, FX board, surprise history, COT board */
+  .pb{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:10px}
+  .pb-card{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:11px 12px;display:grid;gap:6px;align-content:start;min-width:0}
+  .pb-card h3{font-size:13px;font-weight:700;margin:0}
+  .pb-state{font-size:15px;font-weight:700}
+  .pb-why{font-size:11.5px;color:var(--text2)}
+  .pb-exp{display:grid;gap:3px;font-size:12px}
+  .pb-exp div{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:6px;align-items:center}
+  .ok-ic{color:var(--bull);font-weight:700} .no-ic{color:var(--bear);font-weight:700} .na-ic{color:var(--text3)}
+  .meter{height:6px;border-radius:3px;background:var(--neu-bg);overflow:hidden}
+  .meter i{display:block;height:6px;background:var(--bull)}
+  .lh{display:grid;gap:6px}
+  .lh-row{display:grid;grid-template-columns:minmax(0,13rem) 90px minmax(0,1fr) minmax(0,1fr) 120px;gap:10px;align-items:center;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)}
+  .lh-row svg{width:100%;height:26px;display:block}
+  .pbar{height:8px;border-radius:3px;background:var(--neu-bg);position:relative}
+  .pbar i{position:absolute;top:-3px;width:3px;height:14px;border-radius:1px;background:var(--text)}
+  .pbar-l{display:flex;justify-content:space-between;font:10px var(--mono);color:var(--text3)}
+  @media (max-width:820px){.lh-row{grid-template-columns:minmax(0,1fr) 80px;}.lh-row .wide{grid-column:1/-1}}
+  .sm{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:10px}
+  .sm-cell{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 9px;min-width:0}
+  .sm-cell svg{width:100%;height:70px;display:block}
+  .sm-cell .k{font:600 11px var(--mono);color:var(--text2)}
+</style>
+</head>
+<body>
+<div id="commandHub"></div>
+<script src="js/commandHub.js"></script>
+
+<main class="wrap">
+  <header class="head">
+    <div style="display:grid;gap:6px">
+      <div class="eyebrow">Market State Engine · v3</div>
+      <h1>Where the money is moving, layer by layer</h1>
+      <p class="sub">Rates → credit → FX → equities → volatility, in the order information usually flows. Every reading is a 20-day move against its own noise floor. This page describes the state. It does not forecast.</p>
+    </div>
+    <div class="row">
+      <span class="pill neu" id="asOf">loading…</span>
+      <span class="pill" id="healthPill">data health …</span>
+      <button class="tbtn" id="themeBtn" type="button">Light / dark</button>
+    </div>
+  </header>
+
+
+  <section class="card banner" aria-label="Global state">
+    <div class="eyebrow">Global state</div>
+    <div class="env" id="envLabel">—</div>
+    <div class="tiles" id="globalTiles"></div>
+    <p class="note" id="globalNote"></p>
+  </section>
+
+  <section class="card">
+    <h2>The institutional playbook</h2>
+    <p class="sub">The standard frameworks desks use, applied to today: each classifies the regime, says what should happen across assets, and checks whether markets are doing it. These are <b>theory priors</b> unless the badge says this repo has tested them. Where markets break the playbook is where the story is.</p>
+    <div class="row" style="margin:8px 0"><span class="note" id="pbOverall"></span></div>
+    <div class="pb" id="playbook"></div>
+  </section>
+
+  <section class="card">
+    <h2>Edges active today</h2>
+    <p class="sub">Tested relationships whose condition the engine can check right now. All of them are about <b>range</b> (how far markets travel), because that is what has validated here. Amber = active today. The grade is from the 2026-10-31 code audit; fragile results are shown as research only.</p>
+    <div class="edges" id="edges" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Economies</h2>
+    <p class="sub">The economic engine, per currency: data surprises (σ, decay-weighted), the 10-year yield and its 30-day change, and where speculators sit. Mostly context: the one validated direction result here is COT crowding into high-impact releases (price moves against the crowd).</p>
+    <div class="scroll" style="margin-top:8px"><table class="econ"><thead><tr><th>Economy</th><th>Data surprises</th><th></th><th>10Y yield</th><th>30d</th><th>Positioning (COT)</th><th>Latest surprise</th></tr></thead><tbody id="econRows"></tbody></table></div>
+    <div class="tiles" id="usExtras" style="margin-top:10px"></div>
+    <p class="note" id="econNote" style="margin-top:6px"></p>
+    <h3 style="margin-top:14px;font-size:13px">Surprise history, 2007 onward</h3>
+    <p class="note" id="surpNote"></p>
+    <div class="sm" id="surpHist" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Long-history context</h2>
+    <p class="sub">Where today sits in the whole history the repo holds (VIX since 1990, the 10-year since 1970, MOVE since 2002), not just the last few months. Left bar: percentile of all history. Right bar: the last 5 years.</p>
+    <div class="lh" id="longHist" style="margin-top:6px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Liquidity &amp; banking: where the dollars are</h2>
+    <p class="sub">Net liquidity is the Fed's balance sheet, less Treasury cash at the Fed (TGA), less money-fund cash parked at the Fed (RRP). Reserves, swap lines and bank credit sit alongside it. Sources: FRED and the Daily Treasury Statement. Weekly changes; percentile against each series' full history.</p>
+    <div class="row" style="margin-top:8px;gap:14px;flex-wrap:wrap"><span class="pill" id="liqImpulse">—</span><span class="note" id="liqToday"></span></div>
+    <div id="liqChart" style="margin-top:8px"></div>
+    <div class="lh" id="liqRows" style="margin-top:6px"></div>
+    <p class="note" id="liqNote" style="margin-top:6px"></p>
+  </section>
+
+  <section class="card" style="display:grid;gap:6px">
+    <div class="eyebrow">Information flow this window</div>
+    <p class="flowline" id="flowText">Loading the state document…</p>
+    <p class="note" id="flowNote"></p>
+  </section>
+
+  <section class="tiers" id="tiers" aria-label="The hierarchy, layer by layer"></section>
+
+  <section class="card">
+    <h2>The chain: how one move feeds the next</h2>
+    <p class="sub">Each line is a textbook link. Colour says whether it is holding today (both ends moved the textbook way), broken (both moved, the wrong way round) or quiet. The marker says whether the link has ever been tested here as a lead. Select a line for the full read.</p>
+    <div class="scroll"><svg id="chainSvg" role="img" aria-label="Macro chain graph"></svg></div>
+    <div class="legend">
+      <span><i class="sw" style="border-color:var(--bull)"></i>holding</span>
+      <span><i class="sw" style="border-color:var(--bear)"></i>broken</span>
+      <span><i class="sw" style="border-color:var(--text3);border-top-style:dashed"></i>quiet / unmeasured</span>
+      <span>● tested, stands · ◐ tested, reopened or unverified · ○ never tested as a lead</span>
+    </div>
+    <div class="detail" id="linkDetail"><span class="note">Select a link to see the textbook claim, today's read and the evidence behind it.</span></div>
+    <p class="note" id="chainSummary" style="margin-top:8px"></p>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Who moved first</h2>
+      <p class="sub">The day each layer first moved past its noise floor in the last 20 days. The textbook order runs top to bottom; an amber ring marks a layer that moved out of turn. A description, not a tested lead.</p>
+      <svg id="flowSvg" role="img" aria-label="First-move timeline by layer"></svg>
+    </div>
+    <div class="card">
+      <h2>Real assets &amp; drivers</h2>
+      <p class="sub">The inputs the chain starts from: energy, metals and crypto.</p>
+      <div class="nodes" id="drivers" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <section class="grid3" aria-label="Analysis layers">
+    <div class="card">
+      <h2>Volatility &amp; range</h2>
+      <p class="sub">Today's forecast: where each market's vol sits in its own history (percentile), and the forecast high-low range at p75.</p>
+      <div class="bars" id="volBars" style="margin-top:8px"></div>
+      <p class="note" id="volNote" style="margin-top:6px"></p>
+    </div>
+    <div class="card">
+      <h2>Positioning (COT)</h2>
+      <p class="sub">Speculator net positioning as a percentile of its own history. The edges (below 10, above 90) are crowded. Context, not a direction.</p>
+      <svg id="cotSvg" role="img" aria-label="COT positioning percentiles"></svg>
+      <p class="note" id="cotNote"></p>
+    </div>
+    <div class="card">
+      <h2>Options OI &amp; gamma</h2>
+      <p class="sub">From the morning CME capture: pin (dealers long gamma, damping) or breakout (short gamma), with the call and put walls.</p>
+      <div class="scroll"><table class="econ"><thead><tr><th>Pair</th><th>Regime</th><th>Spot</th><th>Put wall</th><th>Call wall</th></tr></thead><tbody id="oiRows"></tbody></table></div>
+      <p class="note" id="oiNote" style="margin-top:6px"></p>
+    </div>
+  </section>
+
+  <section class="grid2" aria-label="Boards">
+    <div class="card">
+      <h2>Currencies vs the dollar (G10 + EM)</h2>
+      <p class="sub">20-day move of each currency against USD (right = stronger). The faint number is how unusual the move is in that currency's own history since 2003.</p>
+      <div class="bars" id="fxBoard" style="margin-top:8px"></div>
+      <p class="note" id="fxNote" style="margin-top:6px"></p>
+    </div>
+    <div class="card">
+      <h2>Positioning, all 36 COT markets</h2>
+      <p class="sub">Speculators' net position as a share of open interest: percentile over all weeks since 2006 (dot) and over 3 years (ring). Raw futures terms (long the yen future = long yen). Context, not a direction.</p>
+      <svg id="cotBoard" role="img" aria-label="COT positioning percentiles for all markets" style="width:100%;height:auto;display:block"></svg>
+      <p class="note" id="cotBoardNote"></p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Data health</h2>
+    <p class="sub">Every input with its last print. Stale inputs (older than 5 days) make their readings unreliable; they are listed first.</p>
+    <details id="healthBox" style="margin-top:8px"><summary class="tbtn" style="display:inline-block;list-style:none">Show every input</summary>
+    <div class="scroll" style="margin-top:8px"><table><thead><tr><th>Input</th><th>Last print</th><th>Age (days)</th><th>Source</th><th>State</th></tr></thead><tbody id="healthRows"></tbody></table></div></details>
+  </section>
+
+  <p class="note">Built from <code>/api/state</code> (js/stateEngine.js). Plan: plans/MARKET_STATE_ENGINE_PLAN.md. Evidence status per link: the 2026-10-31 code audit (js/evidenceAudit.js).</p>
+</main>
+
+<script type="module">
+import { CHAIN_LAYOUT } from './js/macroChain.js';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const TIER_COLOR = { rates: 'var(--t-rates)', credit: 'var(--t-credit)', fx: 'var(--t-fx)', equities: 'var(--t-equities)', vol: 'var(--t-vol)', drivers: 'var(--t-drivers)' };
+const TONE = { 'risk-on': ['ok', 'risk-on'], 'risk-off': ['bad', 'risk-off'], tightening: ['warn', 'tightening'], easing: ['ok', 'easing'],
+  'dollar-bid': ['warn', 'dollar bid'], 'dollar-offered': ['ok', 'dollar offered'], neutral: ['neu', 'neutral'], unknown: ['neu', 'no data'] };
+
+try { if (localStorage.getItem('stateTheme') === 'light') document.body.classList.add('light'); } catch {}
+$('themeBtn').addEventListener('click', () => {
+  document.body.classList.toggle('light');
+  try { localStorage.setItem('stateTheme', document.body.classList.contains('light') ? 'light' : 'dark'); } catch {}
+  if (window.__state) { drawChain(window.__state); drawFlow(window.__state); drawLayers(window.__state); drawHistory(window.__state); }
+});
+
+const fmtDelta = (r) => {
+  if (r.d20 == null) return '—';
+  const dp = r.unit === 'pct' ? 1 : r.unit === 'pt' ? 1 : 0;
+  const v = Math.abs(r.d20) < 0.5 * 10 ** -dp ? 0 : r.d20;   // no '-0bp'
+  const s = (v > 0 ? '+' : '') + v.toFixed(dp);
+  return r.unit === 'pct' ? s + '%' : r.unit === 'bp' ? s + 'bp' : s;
+};
+const fmtLast = (r) => {
+  if (r.last == null) return '—';
+  const v = Number(r.last);
+  return Math.abs(v) >= 1000 ? v.toLocaleString('en-GB', { maximumFractionDigits: 0 }) : v.toFixed(Math.abs(v) < 10 ? 2 : 1);
+};
+
+function sparkline(points, dir) {
+  const ys = (points ?? []).map(p => p[1]).filter(Number.isFinite);
+  if (ys.length < 2) return '<svg viewBox="0 0 100 30" aria-hidden="true"></svg>';
+  const lo = Math.min(...ys), hi = Math.max(...ys), span = hi - lo || 1;
+  const pts = ys.map((y, i) => [(i / (ys.length - 1)) * 100, 27 - ((y - lo) / span) * 24]);
+  const line = pts.map(p => p.map(n => n.toFixed(1)).join(',')).join(' ');
+  const col = dir === 'up' ? 'var(--bull)' : dir === 'down' ? 'var(--bear)' : 'var(--text3)';
+  const end = pts[pts.length - 1];
+  // 20-day window shading: the last ~14 business days of a 90-point series
+  const wx = Math.max(0, 100 - (14 / ys.length) * 100);
+  return `<svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+    <rect x="${wx.toFixed(1)}" y="0" width="${(100 - wx).toFixed(1)}" height="30" fill="var(--neu-bg)"/>
+    <polygon points="0,30 ${line} 100,30" fill="${col}" opacity=".12"/>
+    <polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.4" vector-effect="non-scaling-stroke"/>
+    <circle cx="${end[0].toFixed(1)}" cy="${end[1].toFixed(1)}" r="1.8" fill="${col}"/></svg>`;
+}
+
+function nodeCard(r) {
+  if (r.missing) return `<div class="node miss" tabindex="0" title="Not loaded"><div class="node-l">${esc(r.label)}</div><div class="node-v"><span class="node-last">—</span><span class="node-d flat">not loaded</span></div></div>`;
+  const cls = r.moved ? r.dir : 'flat';
+  const pc = r.pctile, sp = pc ? (pc.spanDays >= 330 ? `${Math.round(pc.spanDays / 365)}y` : `${Math.max(1, Math.round(pc.spanDays / 30.4))}m`) : '';
+  const pct = !pc ? '' : `<div class="pct" title="Where today's level sits within the last ${sp} (${pc.n} prior prints)"><i style="left:calc(${pc.pct}% - 1px)"></i></div><div class="pct-l"><span>${sp} low</span><span>${pc.pct}th pct</span><span>high</span></div>`;
+  const tip = `${r.label}: ${r.what ?? ''}\nLast ${r.asOf}. Noise floor ±${r.floor}${r.unit === 'pct' ? '%' : r.unit === 'bp' ? 'bp' : ''} over 20 days.${r.firstMove ? `\nFirst moved past its floor on ${r.firstMove.date} (${r.firstMove.dir}).` : ''}`;
+  return `<div class="node" tabindex="0" title="${esc(tip)}">
+    <div class="node-l">${esc(r.label)}</div>
+    <div class="node-v"><span class="node-last">${fmtLast(r)}</span><span class="node-d ${cls}">${fmtDelta(r)}</span></div>
+    ${sparkline(r.spark, cls)}${pct}</div>`;
+}
+
+function drawTiers(st) {
+  const rank = new Map(st.flow.sequence.map((s, i) => [s.id, i + 1]));
+  $('tiers').innerHTML = st.tiers.map(t => {
+    const [cls, word] = TONE[t.state.tone] ?? TONE.neutral;
+    const f = st.flow.sequence.find(s => s.id === t.id);
+    const first = f ? `<div class="first">Moved <b>#${rank.get(t.id)}</b> · ${esc(f.first.label)} on ${esc(f.first.date)}</div>` : `<div class="first">Quiet this window</div>`;
+    return `<article class="tier" style="--tc:${TIER_COLOR[t.id]}">
+      <div class="tier-h"><div class="tier-n">${t.order} · ${esc(t.short)}</div><div class="tier-t">${esc(t.label)}</div>
+        <div class="tier-role">${esc(t.role)}</div>
+        <div class="tier-state">${esc(t.state.headline)}</div>${t.state.detail ? `<div class="tier-detail">${esc(t.state.detail)}</div>` : ''}
+        <div class="row tone"><span class="pill ${cls}">${word}</span></div>${first}</div>
+      <div class="nodes">${t.readings.map(nodeCard).join('')}</div></article>`;
+  }).join('');
+  $('drivers').innerHTML = (st.drivers?.readings ?? []).map(nodeCard).join('');
+}
+
+function cssVar(name) { return getComputedStyle(document.body).getPropertyValue(name).trim() || '#888'; }
+
+function drawChain(st) {
+  const svg = $('chainSvg'), W = 900, colW = 150, rowH = 74, padX = 75, padY = 40;
+  const rows = Math.max(...Object.values(CHAIN_LAYOUT).map(p => p[1])) + 1;
+  const H = padY * 2 + (rows - 1) * rowH;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const pos = k => { const p = CHAIN_LAYOUT[k]; return p ? [padX + p[0] * colW, padY + p[1] * rowH] : null; };
+  const reading = {}; for (const t of [...st.tiers, st.drivers]) for (const r of t.readings ?? []) reading[r.key] = { ...r, tier: t.id };
+  const vcol = { holding: cssVar('--bull'), broken: cssVar('--bear'), quiet: cssVar('--text3'), unmeasured: cssVar('--text3') };
+  const mark = { stands: '●', reopened: '◐', unverified: '◐', untested: '○' };
+  const mk = (id, c) => `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="${c}"/></marker>`;
+  let out = `<defs>${mk('ah-holding', vcol.holding)}${mk('ah-broken', vcol.broken)}${mk('ah-quiet', vcol.quiet)}${mk('ah-unmeasured', vcol.unmeasured)}</defs>`;
+  // Trim each line so its arrowhead stops at the target chip's edge.
+  const trim = (a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, k = Math.min(0.45, (Math.abs(dy) > Math.abs(dx) ? 22 : 68) / len); return [b[0] - dx * k, b[1] - dy * k]; };
+  st.chain.links.forEach((l, i) => {
+    const a = pos(l.a?.key), b = pos(l.b?.key); if (!a || !b) return;
+    const dash = l.verdict === 'holding' || l.verdict === 'broken' ? '' : 'stroke-dasharray="5 4"';
+    const op = l.verdict === 'holding' || l.verdict === 'broken' ? 0.95 : 0.45;
+    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2 - (a[1] === b[1] ? 16 : 0);
+    out += `<g class="edge" tabindex="0" role="button" data-i="${i}" aria-label="${esc(l.short)}: ${l.verdict}">
+      <path d="M${a[0]},${a[1]} Q${mx},${my} ${trim(a, b)[0]},${trim(a, b)[1]}" fill="none" stroke="${vcol[l.verdict]}" stroke-width="2" opacity="${op}" ${dash} marker-end="url(#ah-${l.verdict})"/>
+      <path d="M${a[0]},${a[1]} Q${mx},${my} ${b[0]},${b[1]}" fill="none" stroke="transparent" stroke-width="12"/>
+      <text x="${(a[0] + 2 * mx + b[0]) / 4}" y="${(a[1] + 2 * my + b[1]) / 4 - 4}" font-size="14" text-anchor="middle" style="fill:${vcol[l.verdict]}">${mark[l.evidenceAudit.status] ?? '○'}</text></g>`;
+  });
+  for (const k of Object.keys(CHAIN_LAYOUT)) {
+    const p = pos(k), r = reading[k]; if (!p) continue;
+    const col = cssVar(`--t-${r?.tier ?? 'drivers'}`);
+    const dcol = !r || r.missing ? cssVar('--text3') : r.moved ? (r.dir === 'up' ? cssVar('--bull') : cssVar('--bear')) : cssVar('--text3');
+    const label = (r?.label ?? k).replace(/\s*\(.*\)$/, '');
+    out += `<g><rect x="${p[0] - 66}" y="${p[1] - 19}" width="132" height="38" rx="7" fill="${cssVar('--card2')}" stroke="${col}" stroke-width="1.4"/>
+      <text x="${p[0]}" y="${p[1] - 3}" font-size="10.5" text-anchor="middle">${esc(label.length > 22 ? label.slice(0, 21) + '…' : label)}</text>
+      <text x="${p[0]}" y="${p[1] + 12}" font-size="11" font-weight="700" text-anchor="middle" style="fill:${dcol};font-family:var(--mono)">${r && !r.missing ? esc(fmtDelta(r)) : '—'}</text></g>`;
+  }
+  svg.innerHTML = out;
+  svg.querySelectorAll('.edge').forEach(g => {
+    const show = () => showLink(st.chain.links[+g.dataset.i]);
+    g.addEventListener('click', show); g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(); } });
+  });
+  const s = st.chain.summary; $('chainSummary').textContent = `${s.headline} (${s.holding} holding, ${s.broken} broken, ${s.quiet} quiet, ${s.unmeasured} unmeasured).`;
+}
+
+function showLink(l) {
+  const ev = l.evidenceAudit;
+  const evPill = { stands: 'ok', reopened: 'warn', unverified: 'warn', untested: 'neu' }[ev.status] ?? 'neu';
+  const vPill = { holding: 'ok', broken: 'bad' }[l.verdict] ?? 'neu';
+  $('linkDetail').innerHTML = `<div class="row"><strong>${esc(l.short)}</strong><span class="pill ${vPill}">${esc(l.verdict)}</span><span class="pill ${evPill}">evidence: ${esc(ev.status)}</span></div>
+    <div><span class="k">Textbook</span> ${esc(l.textbook)}</div>
+    <div><span class="k">Today</span> ${esc(l.a?.label)} ${esc(l.a?.text)} → ${esc(l.b?.label)} ${esc(l.b?.text)}${l.dateGapDays > 3 ? ` <span class="note">(ends printed ${l.dateGapDays} days apart)</span>` : ''}</div>
+    <div><span class="k">Read</span> ${esc(l.read)}</div>
+    <div><span class="k">Evidence</span> ${esc(ev.text)}${ev.ids?.length ? ` <span class="note">${ev.ids.map(x => `${esc(x.id)} (${esc(x.status)})`).join(', ')}</span>` : ''}</div>`;
+}
+
+function drawFlow(st) {
+  const svg = $('flowSvg'), W = 420, rowH = 46, L = 92, R = 20, T = 26;
+  const H = T + st.tiers.length * rowH + 30;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const end = Date.parse(st.asOf ?? st.generatedAt), start = end - st.windowDays * 864e5;
+  const x = d => L + (W - L - R) * Math.min(1, Math.max(0, (Date.parse(d) - start) / (end - start)));
+  let out = '';
+  for (const f of [0, 0.25, 0.5, 0.75, 1]) {
+    const xx = L + (W - L - R) * f, d = new Date(start + f * (end - start)).toISOString().slice(5, 10);
+    out += `<line x1="${xx}" x2="${xx}" y1="${T - 6}" y2="${H - 26}" stroke="${cssVar('--border')}"/><text x="${xx}" y="${H - 10}" font-size="10" text-anchor="middle" class="muted">${d}</text>`;
+  }
+  const seq = new Map(st.flow.sequence.map((s, i) => [s.id, { ...s, rank: i + 1 }]));
+  // A dot is out of order when its rank differs from its place in the textbook order among the tiers that moved.
+  const expected = new Map([...st.flow.sequence].sort((a, b) => a.order - b.order).map((s, i) => [s.id, i + 1]));
+  st.tiers.forEach((t, i) => {
+    const y = T + i * rowH + rowH / 2, col = cssVar(`--t-${t.id}`), s = seq.get(t.id);
+    out += `<text x="${L - 10}" y="${y + 4}" font-size="12" text-anchor="end" font-weight="600">${esc(t.short)}</text>
+      <line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="${cssVar('--border')}" stroke-dasharray="2 4"/>`;
+    if (s) {
+      const cx = x(s.first.date), outOfOrder = s.rank !== expected.get(t.id);
+      out += `<circle cx="${cx}" cy="${y}" r="9" fill="${col}" ${outOfOrder ? `stroke="${cssVar('--amber')}" stroke-width="3"` : ''}/>
+        <text x="${cx}" y="${y + 4}" font-size="10" font-weight="700" text-anchor="middle" style="fill:${cssVar('--bg')}">${s.rank}</text>
+        <text x="${Math.min(cx + 14, W - R - 4)}" y="${y - 12}" font-size="10" class="muted" text-anchor="${cx > W - 120 ? 'end' : 'start'}">${esc(s.first.label)} ${s.first.dir === 'up' ? '▲' : '▼'}</text>`;
+    } else out += `<text x="${(L + W - R) / 2}" y="${y + 4}" font-size="11" text-anchor="middle" class="muted">quiet</text>`;
+  });
+  svg.innerHTML = out;
+}
+
+function drawHealth(st) {
+  const src = st.sources ?? {};
+  const stale = st.health.filter(h => h.stale).length;
+  $('healthPill').className = `pill ${stale === 0 ? 'ok' : stale <= 3 ? 'warn' : 'bad'}`;
+  if (stale) $('healthBox').open = true;
+  $('healthPill').textContent = stale === 0 ? 'all inputs fresh' : `${stale} stale input${stale === 1 ? '' : 's'}`;
+  $('healthRows').innerHTML = st.health.map(h => `<tr><td>${esc(h.label)}</td><td class="num">${esc(h.asOf ?? '—')}</td><td class="num">${h.ageDays ?? '—'}</td>
+    <td class="note">${esc(src[h.key] ?? '')}</td><td><span class="pill ${h.stale ? 'warn' : 'ok'}">${h.stale ? 'stale' : 'fresh'}</span></td></tr>`).join('')
+    || '<tr><td colspan="5" class="note">No inputs loaded.</td></tr>';
+}
+
+
+const REGIME_WORDS = { realUp: 'real yields rising', realDown: 'real yields falling', creditWider: 'credit widening', creditTighter: 'credit tightening', curveInverted: 'curve inverted', curveNormal: 'curve normal' };
+const tile = (k, v, d = '', extra = '') => `<div class="tile"><div class="k">${esc(k)}</div><div class="v">${v}</div>${d ? `<div class="d">${d}</div>` : ''}${extra}</div>`;
+const dt = s => (s ? String(s).slice(0, 10) : '—');
+
+function drawGlobal(st) {
+  const g = st.global ?? {};
+  $('envLabel').textContent = g.envLabel ?? 'Global read not built yet';
+  const t = [];
+  if (g.regime) t.push(tile('Macro regime', esc(g.regime.key.split('|').map(x => REGIME_WORDS[x] ?? x).join(', ')), `as of ${esc(dt(g.regime.date))}`));
+  if (g.policy) t.push(tile('Policy path (US)', g.policy.gapBp == null ? '—' : `${g.policy.gapBp > 0 ? '+' : ''}${g.policy.gapBp}bp 2Y vs policy`,
+    `${g.policy.movesPriced != null ? `${Math.abs(g.policy.movesPriced).toFixed(1)} ${g.policy.direction ?? ''} priced` : ''} · ${esc(dt(g.policy.asOf))}`));
+  if (g.risk) {
+    const cls = g.risk.level === 'RISK_OFF' ? 'bad' : g.risk.level === 'CAUTION' ? 'warn' : 'ok';
+    const chips = (g.risk.flags ?? []).filter(f => f.on).map(f => `<span class="pill bad" title="${esc(f.detail)}">${esc(f.label)}</span>`).join('');
+    t.push(tile('Cross-asset risk', `<span class="pill ${cls}">${esc(g.risk.level ?? '—')}</span>`, `${g.risk.active} of ${g.risk.available ?? '?'} flags on · ${esc(dt(g.risk.asOf))}`, chips ? `<div class="chips">${chips}</div>` : ''));
+    if (g.risk.move) t.push(tile('Bond-market fear (MOVE)', `${g.risk.move.level?.toFixed(0) ?? '—'}`, `${g.risk.move.pct1y ?? '—'}th pct of 1y · 20d ${g.risk.move.chg20 > 0 ? '+' : ''}${g.risk.move.chg20?.toFixed(1) ?? '—'}`));
+  }
+  if (g.funding) t.push(tile('Funding & leverage', g.funding.flags?.length ? `<span class="pill warn">${esc(g.funding.flags.join(', '))}</span>` : '<span class="pill ok">no stress flags</span>', esc(g.funding.line ?? '')));
+  if (g.creditQuality) t.push(tile('Credit quality (Baa−Aaa z)', `${g.creditQuality.z > 0 ? '+' : ''}${g.creditQuality.z.toFixed(2)}`, `${g.creditQuality.z > 1 ? 'quality spread wide: stress building' : g.creditQuality.z < -1 ? 'quality spread tight: complacent' : 'within normal'} · ${esc(dt(g.creditQuality.asOf))}`));
+  if (g.conviction) t.push(tile('Desk conviction', `range ${g.conviction.range ?? '—'} · direction ${g.conviction.direction ?? '—'}`, 'Global Read: evidence-weighted; direction is 0 when no tested directional input is active'));
+  $('globalTiles').innerHTML = t.join('') || '<div class="note">No global inputs loaded.</div>';
+  $('globalNote').textContent = g.headline ? `Global Read: ${g.headline}` : '';
+}
+
+function drawEdges(st) {
+  const rows = (st.edges ?? []).slice().sort((a, b) => (b.active === true) - (a.active === true) || (a.standing === 'edge' ? -1 : 1));
+  $('edges').innerHTML = rows.map(e => {
+    const dot = e.active === true ? 'on' : e.active === false ? 'off' : 'na';
+    const gradeCls = e.grade === 'ROBUST' ? 'ok' : e.grade === 'PLAUSIBLE' ? 'neu' : 'warn';
+    return `<div class="edge-row ${e.active ? 'on' : ''}"><span class="dot ${dot}" title="${e.active === true ? 'active today' : e.active === false ? 'not active' : 'input not loaded'}"></span>
+      <div><div><strong>${esc(e.label)}</strong> <span class="note">· ${esc(e.applies)}</span></div><div class="note">${esc(e.why)}</div>
+        ${e.regime ? `<div class="note" style="margin-top:3px" title="${esc(st.regimeStudy?.data ?? '')}"><b>In regimes like today's</b> (exploratory, NY-close bars from M1, to ${esc(st.regimeStudy?.lockbox ?? '')}): ${e.regime.map(r => esc(r.text)).join(' · ')}</div>` : ''}
+        <details><summary>What was measured</summary>${esc(e.result ?? '')}<br><b>Use:</b> ${esc(e.use ?? '')}</details></div>
+      <div class="row" style="justify-content:flex-end"><span class="pill ${gradeCls}">${esc(e.grade ?? 'unaudited')}</span>${e.standing !== 'edge' ? '<span class="pill warn">research only</span>' : ''}</div></div>`;
+  }).join('') || '<div class="note">No edge inputs loaded.</div>';
+}
+
+function divBar(z) {
+  if (z == null) return '<span class="note">not enough data</span>';
+  const c = Math.max(-2, Math.min(2, z)), w = Math.abs(c) / 2 * 50;
+  return `<div class="div" title="${z.toFixed(2)}σ"><i style="${c >= 0 ? `left:50%;width:${w}%;background:var(--bull)` : `left:${50 - w}%;width:${w}%;background:var(--bear)`}"></i></div>`;
+}
+
+function drawEconomies(st) {
+  const e = st.economies; if (!e) { $('econRows').innerHTML = '<tr><td colspan="7" class="note">Not loaded.</td></tr>'; return; }
+  $('econRows').innerHTML = e.rows.map(r => {
+    const s = r.surprise, y = r.yield10, c = r.cot;
+    const cotCls = c?.pct == null ? 'neu' : c.pct >= 90 || c.pct <= 10 ? 'warn' : 'neu';
+    return `<tr><td><b>${esc(r.ccy)}</b> <span class="note">${esc(r.name)}</span></td>
+      <td>${divBar(s?.score ?? null)}</td><td class="num">${s?.score != null ? `${s.score > 0 ? '+' : ''}${s.score.toFixed(2)}σ` : '—'}</td>
+      <td class="num">${y?.value != null ? y.value.toFixed(2) + '%' : '—'}</td>
+      <td class="num ${y?.changeBp > 0 ? 'up' : y?.changeBp < 0 ? 'down' : 'flat'}">${y?.changeBp != null ? `${y.changeBp > 0 ? '+' : ''}${y.changeBp}bp` : '—'}</td>
+      <td>${c ? `<span class="pill ${cotCls}" title="${esc(c.label ?? '')}">${c.pct ?? '—'}th pct · ${esc(c.zone ?? '')}</span>` : '<span class="note">—</span>'}</td>
+      <td class="note">${s?.top ? `${esc(s.top.event)}: ${esc(s.top.actual)} vs ${esc(s.top.estimate)} (${s.top.z > 0 ? '+' : ''}${s.top.z?.toFixed(1)}σ)` : ''}</td></tr>`;
+  }).join('');
+  const us = e.rows[0], x = [];
+  if (us?.nowcast) x.push(tile('US inflation nowcast', `CPI ${us.nowcast.cpiMoM?.toFixed(2) ?? '—'}% m/m`, `core ${us.nowcast.coreMoM?.toFixed(2) ?? '—'}% · ${esc(us.nowcast.month ?? '')} · Cleveland Fed`));
+  if (us?.nowcast?.gdpNow != null) x.push(tile('US growth nowcast', `${us.nowcast.gdpNow.toFixed(1)}% SAAR`, `GDPNow, quarter from ${esc(us.nowcast.gdpQuarter ?? '')}`));
+  if (us?.policyPath) {
+    const w = us.policyPath.nextWindow, m = us.policyPath.nextMeeting;
+    x.push(tile('Fed path', w ? `${w.cutPct?.toFixed(0) ?? '—'}% cut · ${w.hikePct?.toFixed(0) ?? '—'}% hike` : (us.policyPath.currentRange ?? '—'),
+      `${w ? `window to ${esc(w.ref)}` : ''}${m ? ` · next meeting ${esc(m.date)} ${m.moveBp > 0 ? '+' : ''}${m.moveBp}bp priced` : ''} · ${us.policyPath.ageDays ?? '?'}d old`));
+  }
+  $('usExtras').innerHTML = x.join('');
+  $('econNote').textContent = `${e.note} Surprises ${dt(e.surpriseAsOf)}; COT report ${dt(e.cotReportDate)}.`;
+}
+
+function drawLayers(st) {
+  const L = st.layers ?? {};
+  const v = (L.vol?.rows ?? []).slice(0, 14);
+  $('volBars').innerHTML = v.map(r => {
+    const p = r.volPct ?? 0, col = p >= 80 ? 'var(--bear)' : p <= 20 ? 'var(--blue)' : 'var(--amber)';
+    return `<div class="bar-r"><span><b>${esc(r.sym)}</b></span><div class="bar-t" title="vol percentile ${p}"><i style="width:${p}%;background:${col}"></i></div><span class="note num" style="white-space:nowrap">vol ${r.volAnnual?.toFixed(1)}% · p75 ${r.hlP75?.toFixed(2) ?? '—'}%</span></div>`;
+  }).join('') || '<div class="note">Vol forecast not loaded.</div>';
+  $('volNote').textContent = L.vol?.sessionDate ? `Forecast for ${L.vol.sessionDate}; bar = vol percentile vs its own history (blue calm, amber normal, orange high).` : '';
+  // COT dot plot
+  const c = (L.positioning?.rows ?? []).slice(0, 12), svg = $('cotSvg'), W = 360, rh = 24, Lft = 64, R = 12, T = 18;
+  svg.setAttribute('viewBox', `0 0 ${W} ${T + c.length * rh + 24}`);
+  const x = p => Lft + (W - Lft - R) * p / 100;
+  let o = `<rect x="${x(0)}" y="${T - 8}" width="${x(10) - x(0)}" height="${c.length * rh + 8}" fill="${cssVar('--amber')}" opacity=".12"/><rect x="${x(90)}" y="${T - 8}" width="${x(100) - x(90)}" height="${c.length * rh + 8}" fill="${cssVar('--amber')}" opacity=".12"/>`;
+  for (const f of [0, 50, 100]) o += `<line x1="${x(f)}" x2="${x(f)}" y1="${T - 8}" y2="${T + c.length * rh}" stroke="${cssVar('--border')}"/><text x="${x(f)}" y="${T + c.length * rh + 14}" font-size="10" text-anchor="middle" class="muted">${f}</text>`;
+  c.forEach((r, i) => {
+    const y = T + i * rh + rh / 2 - 4, p = r.pct ?? 50, ext = p >= 90 || p <= 10;
+    o += `<text x="${Lft - 8}" y="${y + 4}" font-size="12.5" font-weight="600" text-anchor="end">${esc(r.sym)}</text><line x1="${x(50)}" x2="${x(p)}" y1="${y}" y2="${y}" stroke="${cssVar('--text3')}"/>
+      <circle cx="${x(p)}" cy="${y}" r="5.5" fill="${ext ? cssVar('--amber') : cssVar('--blue')}"><title>${esc(r.label ?? '')} (${p}th pct, ${esc(r.zone ?? '')})</title></circle>`;
+  });
+  svg.innerHTML = c.length ? o : '';
+  $('cotNote').textContent = c.length ? `Report of ${dt(L.positioning.reportDate)} (Tuesday positions, released Friday). Hover a dot for the crowding state.` : 'COT state not loaded.';
+  const oi = L.options?.rows ?? [];
+  $('oiRows').innerHTML = oi.map(r => `<tr><td><b>${esc(r.pair)}</b></td><td><span class="pill ${r.regime === 'BREAKOUT' ? 'bad' : 'ok'}">${esc(r.regime ?? '—')}</span></td>
+    <td class="num">${r.spot ?? '—'}</td><td class="num">${r.putWall ?? '—'}</td><td class="num">${r.callWall ?? '—'}</td></tr>`).join('') || '<tr><td colspan="5" class="note">No OI capture loaded today.</td></tr>';
+  $('oiNote').textContent = oi.length ? `Captured ${esc(oi[0].savedAt ?? '')}${oi.some(r => r.basisStale) ? ' · some futures-to-spot bases are stale' : ''}.` : '';
+}
+
+
+const EV_BADGE = { theory: ['neu', 'theory'], stands: ['ok', 'tested · stands'], reopened: ['warn', 'tested · reopened'], unverified: ['warn', 'tested · unverified'] };
+function drawPlaybook(st) {
+  const pb = st.playbook; if (!pb) { $('playbook').innerHTML = '<div class="note">Not loaded.</div>'; return; }
+  $('pbOverall').textContent = pb.overall ? `Across the frameworks with a call today, markets met ${pb.overall.met} of ${pb.overall.of} textbook expectations (${pb.overall.pct}%).` : 'Not enough live inputs to judge the playbook today.';
+  $('playbook').innerHTML = pb.frames.map(f => {
+    const [bc, bw] = EV_BADGE[f.evidence?.status] ?? EV_BADGE.theory;
+    const c = f.conformity, pct = c?.judged ? Math.round(100 * c.met / c.judged) : null;
+    const baro = f.barometers ? `<div class="note">${f.barometers.riskOn} of ${f.barometers.moving} moving barometers read risk-on${f.barometers.of > f.barometers.moving ? ` · ${f.barometers.of - f.barometers.moving} flat or not loaded` : ''}</div>` : '';
+    const exp = (f.expectations ?? []).map(e => `<div><span class="${e.ok === true ? 'ok-ic' : e.ok === false ? 'no-ic' : 'na-ic'}">${e.ok === true ? '✓' : e.ok === false ? '✗' : '·'}</span><span>${esc(e.label)} should go <b>${esc(e.expected)}</b></span><span class="note">${e.actual == null ? 'not loaded' : e.actual === 'flat' ? 'flat' : `went ${esc(e.actual)}`}</span></div>`).join('');
+    const votes = (f.votes ?? []).map(v => `<span class="pill ${v.riskOn === true ? 'ok' : v.riskOn === false ? 'bad' : 'neu'}">${esc(v.label)}</span>`).join('');
+    return `<div class="pb-card"><div class="row" style="justify-content:space-between"><h3>${esc(f.name ?? f.id)}</h3><span class="pill ${bc}" title="${esc(f.evidence?.note ?? '')}">${bw}</span></div>
+      <div class="pb-state">${esc(f.state ?? 'not enough data')}</div><div class="pb-why">${esc(f.why ?? '')}</div>
+      ${exp ? `<div class="pb-exp">${exp}</div>` : ''}${votes ? `<div class="chips">${votes}</div>` : ''}
+      ${pct != null ? `<div class="meter" title="${c.met} of ${c.judged} met"><i style="width:${pct}%"></i></div><div class="note">${c.met} of ${c.judged} expectations met${c.of > c.judged ? ` · ${c.of - c.judged} flat or not loaded` : ''}</div>` : ''}
+      ${baro}${f.evidence?.note ? `<div class="note">${esc(f.evidence.note)}</div>` : ''}</div>`;
+  }).join('');
+}
+
+function miniLine(points, { h = 26, zero = false, clamp = null } = {}) {
+  const ys = (points ?? []).map(p => p[1]).filter(Number.isFinite).map(y => clamp ? Math.max(-clamp, Math.min(clamp, y)) : y); if (ys.length < 2) return '<svg aria-hidden="true"></svg>';
+  let lo = Math.min(...ys), hi = Math.max(...ys); if (zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); } const sp = hi - lo || 1;
+  const pts = ys.map((y, i) => `${(i / (ys.length - 1) * 100).toFixed(2)},${(h - 2 - (y - lo) / sp * (h - 4)).toFixed(2)}`).join(' ');
+  const z = zero ? `<line x1="0" x2="100" y1="${(h - 2 - (0 - lo) / sp * (h - 4)).toFixed(2)}" y2="${(h - 2 - (0 - lo) / sp * (h - 4)).toFixed(2)}" stroke="var(--text3)" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/>` : '';
+  return `<svg viewBox="0 0 100 ${h}" preserveAspectRatio="none" aria-hidden="true">${z}<polyline points="${pts}" fill="none" stroke="var(--blue)" stroke-width="1.3" vector-effect="non-scaling-stroke"/></svg>`;
+}
+const pctBar = (p, lbl) => p == null ? '<span class="note">—</span>' : `<div><div class="pbar" title="${lbl}: ${p}th percentile"><i style="left:calc(${p}% - 1px)"></i></div><div class="pbar-l"><span>low</span><span>${lbl} ${p}th</span><span>high</span></div></div>`;
+function fmtV(v, unit) { if (v == null) return '—'; return unit === 'ratio' ? v.toFixed(3) : unit === 'pct' ? v.toFixed(2) + '%' : v.toFixed(1); }
+
+function drawHistory(st) {
+  const H = st.history;
+  if (!H) { $('longHist').innerHTML = '<div class="note">Long histories not loaded.</div>'; return; }
+  $('longHist').innerHTML = (H.long ?? []).map(r => {
+    const c = r.ctx;
+    return `<div class="lh-row"><div><b>${esc(r.label)}</b><div class="note">since ${esc(c.since.slice(0, 4))} · ${c.n.toLocaleString('en-GB')} days · all-time ${fmtV(c.high.value, r.unit)} (${esc(c.high.date.slice(0, 7))}) / ${fmtV(c.low.value, r.unit)} (${esc(c.low.date.slice(0, 7))})</div></div>
+      <div class="num"><b>${fmtV(c.last, r.unit)}</b><div class="note">${c.chg20 != null ? `${c.chg20 > 0 ? '+' : ''}${fmtV(c.chg20, r.unit)} 20d` : ''}</div></div>
+      <div class="wide">${pctBar(c.pctAll, 'all')}</div><div class="wide">${pctBar(c.pct5y, '5y')}</div><div class="wide">${miniLine(c.spark)}</div></div>`;
+  }).join('');
+  const fx = H.fx?.rows ?? [];
+  const mx = Math.max(2, ...fx.map(r => Math.abs(r.chg20)));
+  $('fxBoard').innerHTML = fx.map(r => {
+    const w = Math.abs(r.chg20) / mx * 50, col = r.chg20 >= 0 ? 'var(--bull)' : 'var(--bear)';
+    return `<div class="bar-r" style="grid-template-columns:60px minmax(0,1fr) 120px"><span><b>${esc(r.ccy)}</b> <span class="note">${esc(r.group)}</span></span>
+      <div class="bar-t" style="overflow:visible"><i style="${r.chg20 >= 0 ? `left:50%;width:${w}%` : `left:${50 - w}%;width:${w}%`};background:${col}"></i><span style="position:absolute;left:50%;top:-2px;height:14px;width:1px;background:var(--text3)"></span></div>
+      <span class="note num">${r.chg20 > 0 ? '+' : ''}${r.chg20.toFixed(2)}% · ${r.pctMove}th</span></div>`;
+  }).join('') || '<div class="note">FX history not loaded.</div>';
+  $('fxNote').textContent = H.fx?.emStress?.text ?? '';
+  // surprise small multiples
+  const names = { US: 'United States', EU: 'Euro area', GB: 'United Kingdom', JP: 'Japan', AU: 'Australia', CA: 'Canada', CH: 'Switzerland', NZ: 'New Zealand' };
+  $('surpHist').innerHTML = Object.entries(H.surprises ?? {}).map(([c, pts]) => {
+    const roll = pts.map((p, i) => { const w = pts.slice(Math.max(0, i - 5), i + 1); return [p.date, w.reduce((a, b) => a + b.value, 0) / w.length]; });
+    const last = roll.at(-1);
+    return `<div class="sm-cell"><div class="row" style="justify-content:space-between"><span class="k">${esc(names[c] ?? c)}</span><span class="note">${esc(pts[0].date.slice(0, 4))}–${esc(last[0].slice(0, 7))}</span></div>${miniLine(roll, { h: 70, zero: true, clamp: 1.5 })}<div class="note">6-month mean ${last[1] > 0 ? '+' : ''}${last[1].toFixed(2)}σ at the end of the file</div></div>`;
+  }).join('');
+  $('surpNote').textContent = H.surpriseNote ?? '';
+  // COT board
+  const cb = (H.cot ?? []).slice(0, 36), svg = $('cotBoard'), W = 420, rh = 17, L = 58, Rr = 10, T = 14;
+  svg.setAttribute('viewBox', `0 0 ${W} ${T + cb.length * rh + 22}`);
+  const x = p => L + (W - L - Rr) * p / 100;
+  let o = `<rect x="${x(0)}" y="${T - 8}" width="${x(10) - x(0)}" height="${cb.length * rh + 6}" fill="${cssVar('--amber')}" opacity=".12"/><rect x="${x(90)}" y="${T - 8}" width="${x(100) - x(90)}" height="${cb.length * rh + 6}" fill="${cssVar('--amber')}" opacity=".12"/>`;
+  for (const f of [0, 50, 100]) o += `<line x1="${x(f)}" x2="${x(f)}" y1="${T - 8}" y2="${T + cb.length * rh}" stroke="${cssVar('--border')}"/><text x="${x(f)}" y="${T + cb.length * rh + 14}" font-size="10" text-anchor="middle" fill="${cssVar('--text3')}">${f}</text>`;
+  cb.forEach((r, i) => {
+    const y = T + i * rh, ext = r.pctAll >= 90 || r.pctAll <= 10;
+    o += `<text x="${L - 6}" y="${y + 4}" font-size="11" text-anchor="end" fill="${cssVar('--text')}">${esc(r.sym)}</text>
+      ${r.pct3y != null ? `<circle cx="${x(r.pct3y)}" cy="${y}" r="5" fill="none" stroke="${cssVar('--text3')}"><title>3-year ${r.pct3y}th</title></circle>` : ''}
+      <circle cx="${x(r.pctAll)}" cy="${y}" r="4" fill="${ext ? cssVar('--amber') : cssVar('--blue')}"><title>${esc(r.sym)}: net ${r.share}% of OI; ${r.pctAll}th pct since ${esc(r.since.slice(0, 4))}; 3-year ${r.pct3y}th; ${r.weeks} weeks</title></circle>`;
+  });
+  svg.innerHTML = o;
+  $('cotBoardNote').textContent = cb.length ? `Latest report ${cb.map(r => r.asOf).sort().at(-1)}. Sorted by how stretched positioning is in its full history.` : 'COT history not loaded.';
+}
+
+function drawLiquidity(st) {
+  const L = st.layers?.liquidity;
+  if (!L || !L.rows?.length) { $('liqRows').innerHTML = '<div class="note">Liquidity series not loaded (FRED or the Treasury statement did not answer). Nothing is filled in.</div>'; $('liqImpulse').textContent = 'not loaded'; return; }
+  const n = L.net, sg = v => v == null ? '—' : `${v > 0 ? '+' : ''}${Math.round(v).toLocaleString('en-GB')}`;
+  if (n) {
+    const cls = n.impulse === 'adding' ? 'bull' : n.impulse === 'draining' ? 'bear' : 'neu';
+    $('liqImpulse').className = `pill ${cls}`;
+    $('liqImpulse').textContent = `Net liquidity ${n.impulse ?? '—'}: ${sg(n.chg13w)} bn over 13 weeks`;
+    $('liqToday').textContent = n.today ? `Today's estimate $${Math.round(n.today.value).toLocaleString('en-GB')} bn (Fed assets ${n.today.walclAsOf}, TGA ${n.today.tgaAsOf} daily statement $${Math.round(n.today.tga)} bn, RRP ${n.today.rrpAsOf} $${Math.round(n.today.rrp)} bn)` : '';
+    const pts = n.series.map(p => [p.date, p.value]);
+    $('liqChart').innerHTML = `<div class="row" style="justify-content:space-between"><span class="k">Net liquidity, weekly, $bn</span><span class="note">${esc(n.series[0]?.date ?? '')} → ${esc(n.asOf)}</span></div><div style="height:90px">${miniLine(pts, { h: 90 })}</div>`;
+    const svg = $('liqChart').querySelector('svg'); if (svg) svg.style.cssText = 'width:100%;height:90px;display:block';
+  }
+  $('liqRows').innerHTML = L.rows.map(r => `<div class="lh-row"><div><b>${esc(r.label)}</b><div class="note">${esc(r.why)} Since ${esc(r.since.slice(0, 4))}, last ${esc(r.asOf)}.</div></div>
+    <div class="num"><b>${Math.round(r.last).toLocaleString('en-GB')}</b><div class="note">$bn${r.yoyPct != null ? ` · ${r.yoyPct > 0 ? '+' : ''}${r.yoyPct}% y/y` : ''}</div></div>
+    <div class="wide note num">4w ${sg(r.chg4w)} · 13w ${sg(r.chg13w)} · 52w ${sg(r.chg52w)}</div>
+    <div class="wide">${pctBar(r.pctAll, 'all')}</div><div class="wide"></div></div>`).join('');
+  const G = L.global;
+  if (G) {
+    const pts = G.usdHistory.map(p => [p.date, p.value]);
+    $('liqRows').innerHTML += `<div class="lh-row"><div><b>Global dollar credit (BIS, cross-border USD lending)</b><div class="note">Banks' dollar lending across borders: how dollars move offshore. Quarterly, ${esc(G.latest)}; regime ${esc(G.regime ?? '—')}. ${esc(G.line ?? '')}</div></div>
+      <div class="num"><b>${G.usdG != null ? (G.usdG > 0 ? '+' : '') + G.usdG.toFixed(1) + '%' : '—'}</b><div class="note">y/y${G.usdStockBn != null ? ` · $${Math.round(G.usdStockBn).toLocaleString('en-GB')} bn` : ''}</div></div>
+      <div class="wide note num">non-bank financials ${G.nbfiG != null ? G.nbfiG.toFixed(1) + '%' : '—'} · Cayman USD ${G.caymanUsdG != null ? G.caymanUsdG.toFixed(1) + '%' : '—'} · yen offshore ${G.yenOffshoreG != null ? G.yenOffshoreG.toFixed(1) + '%' : '—'}</div>
+      <div class="wide">${miniLine(pts, { zero: true })}</div><div class="wide"></div></div>`;
+  }
+  const vias = [...new Set(L.rows.map(r => r.via).filter(Boolean))];
+  const evs = (L.evidence ?? []).map(e => `${e.id}: ${e.banked ?? 'untested'}, audit ${e.status}`).join('; ');
+  $('liqNote').textContent = `${L.note} Evidence: ${evs}. Fed data via ${vias.join(', ') || '—'}; TGA daily from the Treasury statement${G ? '; global credit from the BIS store' : ''}.${L.warnings?.length ? ' Unit warnings: ' + L.warnings.join('; ') : ''}`;
+}
+
+function render(st) {
+  window.__state = st;
+  $('asOf').textContent = `as of ${st.asOf ?? '—'}`;
+  const f = st.flow;
+  $('flowText').innerHTML = esc(f.text).replace(/NOT the textbook order/, '<b>NOT the textbook order</b>');
+  $('flowNote').textContent = f.note + (st.errors?.length ? ` Inputs that failed: ${st.errors.map(e => e.source).join(', ')}.` : '');
+  drawGlobal(st); drawPlaybook(st); drawEdges(st); drawEconomies(st); drawHistory(st); drawLiquidity(st);
+  drawTiers(st); drawChain(st); drawFlow(st); drawLayers(st); drawHealth(st);
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/state', { headers: { accept: 'application/json' } });
+    const st = await r.json();
+    if (!st?.tiers) throw new Error(st?.error ?? 'no state document');
+    render(st);
+  } catch (e) {
+    $('flowText').textContent = `Could not load /api/state: ${e.message}. Reload to try again.`;
+    $('tiers').innerHTML = `<div class="card empty">The state document did not load, so no layer can be shown. Check the server log for /api/state.</div>`;
+  }
+}
+load();
+</script>
+</body>
+</html>
