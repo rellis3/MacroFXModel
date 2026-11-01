@@ -115,3 +115,7 @@ _t2('month-end sessions from the calendar alone', () => {
   const e = _ae({ sessionDate: '2026-11-02' }).find(x => x.id === 'forecast-miss-month-end-fx');
   _a2.equal(e.active, true);
 });
+_t2('vix-inversion falls back to the FRED VIX/VIX3M ratio when the stress shadow is missing', () => {
+  const e = _ae({ vixTerm: { value: 1.04, date: '2026-10-29' } }).find(x => x.id === 'vix-inversion');
+  _a2.equal(e.active, true); _a2.match(e.why, /VXVCLS 2026-10-29/);
+});

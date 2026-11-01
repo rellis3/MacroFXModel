@@ -74,7 +74,7 @@ const ev = id => ({ id, status: EVIDENCE_AUDIT[id]?.status ?? 'untested', banked
  * The layer. `raw` holds FRED series under their ids; `tgaDaily` is a Map or {date: $bn} of DTS closing balances.
  * Returns { rows, net: {stats, series, impulse}, warnings, evidence, note }.
  */
-export function summariseLiquidity({ raw = {}, tgaDaily = null, sparkWeeks = 156 } = {}) {
+export function summariseLiquidity({ raw = {}, tgaDaily = null, bis = null, via = {}, sparkWeeks = 156 } = {}) {
   const warnings = netLiqUnitWarnings({ walcl: clean(raw.WALCL).map(p => p.value), tga: clean(raw.WTREGEN).map(p => p.value), rrp: clean(raw.RRPONTSYD).map(p => p.value) });
   const weekly = netLiquidityWeekly({ walcl: raw.WALCL, tga: raw.WTREGEN, rrp: raw.RRPONTSYD });
   const net = weekly.length ? weeklyStats(weekly) : null;
@@ -106,8 +106,16 @@ export function summariseLiquidity({ raw = {}, tgaDaily = null, sparkWeeks = 156
   const bc = rows.find(r => r.id === 'bankCredit');
   if (bc && bc.chg52w != null && bc.last) bc.yoyPct = r1(100 * bc.chg52w / (bc.last - bc.chg52w));
 
+  // Global dollar credit: the BIS store the server already builds (KV bank_credit_v1, js/bankCredit.js), quarterly.
+  const global = bis?.headline ? {
+    latest: bis.latest, line: bis.line ?? null, source: bis.source ?? 'BIS Locational Banking Statistics',
+    usdStockBn: bis.headline.usdStockBn ?? null, usdG: bis.headline.usdG ?? null, usdGPrev: bis.headline.usdGPrev ?? null, regime: bis.headline.regime ?? null,
+    nbfiG: bis.headline.nbfiG ?? null, caymanUsdG: bis.headline.caymanUsdG ?? null, yenOffshoreG: bis.headline.yenOffshoreG ?? null,
+    usdHistory: (bis.usdHistory ?? []).filter(x => Number.isFinite(x?.g)).map(x => ({ date: x.period, value: x.g })),
+  } : null;
+  for (const r of rows) { const id = { walcl: 'WALCL', tga: 'WTREGEN', rrp: 'RRPONTSYD', reserves: 'WRESBAL', swaps: 'SWPT', bankCredit: 'TOTBKCR' }[r.id]; if (id && via[id]) r.via = via[id]; }
   return {
-    rows,
+    rows, global,
     net: net ? { ...net, impulse, today, series: weekly.slice(-sparkWeeks).map(p => ({ date: p.date, value: r1(p.value) })) } : null,
     warnings,
     evidence: [ev('net-liquidity-tailwind-spx'), ev('net-liquidity-tailwind-nq'), ev('bank-credit-dollar-dxy'), ev('bank-credit-panel-equity')],

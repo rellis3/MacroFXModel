@@ -41,6 +41,32 @@ user-agent, so every fredgraph request now sends a named user-agent.
 
 Next: phase 2's non-US macro (CPI/PMI vintages) and the forward ledger for the composite.
 
+## 0b. Inputs: what the repo already holds, and what the engine reads (2026-11-01)
+
+Owner, 2026-11-01: "All the data you need we have pulled into the repo already." The rule is: **read the repo's own
+store first. A public download is the last fallback and is labelled when used.** Check this table before adding any
+fetch.
+
+| Engine input | Repo store (primary) | Fallback |
+|---|---|---|
+| Rates, credit, vol nodes (DGS2/10/30, DFII10, T10YIE, VIXCLS, VXVCLS, HY/IG OAS, SOFR, IORB) | KV `fredhistory_series_*` (server, FRED_KEY), deep copy in R2 `archive/series/fred/` | FRED public CSV (named user-agent) |
+| FX, index, commodity prices | OANDA NY-close D1 (`_btFetchD1`), `/api/chain-extra` | Yahoo daily, labelled |
+| Net liquidity, Fed balance sheet, TGA, RRP, reserves, swap lines, bank credit (H.8) | keyed `fetchFredSeries` (the liquidity gate and pulse use the same one); TGA daily from the Treasury statement | FRED public CSV |
+| Global dollar credit | KV `bank_credit_v1` (BIS LBS, `js/bankCredit.js`, `_bcTick`) | none |
+| Credit regime for edges | BAA − 10Y (feature `credit_baa10y`; committed `analysis/output/cog_yield_dir/fred/BAA10Y.csv` from 1986) | HY OAS, labelled |
+| VIX term for the inversion edge | stress shadow; else KV FRED `vix` / `vix3m` | none |
+| Long histories | committed Cboe seeds `analysis/surfaces/cboe/`, Yahoo seeds, R2 archive | none |
+| COT | R2 `archive/tables/cot/` (36 markets), committed `cot_weekly.csv` | none |
+| Research index bars (edge studies) | committed NY-close D1 from M1, `oi_research_book/data/gex_range_es/{nas100,spx500}_nyclose_d1.parquet` (2016 → lockbox) | none: Yahoo cash index is **not** used (14–28% low) |
+| Point-in-time research | feature store `features/*.parquet` (laptop; contract `plans/FEATURE_MANIFEST.json`, 100 features) | none |
+
+**Mistake recorded.** The first edges-by-regime run (v1) used Yahoo cash-index OHLC and FRED's 3-year HY OAS, while
+the committed M1-built bars and BAA10Y were already in the repo. v2 (Amendment 1) uses the repo's data, and the
+numbers moved:
+- **Nasdaq down-week:** +0.25 ATR, not +0.14.
+- **High vol vs low vol:** +0.26 vs +0.18, not "three times larger".
+- **Curve inverted:** the effect is weak there (+0.09).
+
 ## 1. What it is, and what it is not
 
 The engine answers one question: **what state is the market in, layer by layer, and how is information moving between

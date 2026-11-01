@@ -129,7 +129,11 @@ export const EDGE_RULES = [
       return me ? { active: me.on, why: me.on ? `session ${me.d} is in the last 2 / first 2 of the month` : `session ${me.d ?? '?'} is not a month-end session` } : null;
     } },
   { id: 'vix-inversion', label: 'VIX above VIX3M → a wider week', applies: 'S&P, Nasdaq, USDJPY, gold',
-    when: ({ stress }) => Number.isFinite(stress?.inputs?.vixTerm) ? { active: stress.inputs.vixTerm > 1, why: `VIX/VIX3M ${stress.inputs.vixTerm.toFixed(3)} (inverted above 1; the effect was measured on the first day)` } : null },
+    when: ({ stress, vixTerm }) => {
+      // stress-shadow's reading first; else the server's own FRED VIXCLS / VXVCLS history (same ratio, same close)
+      const t = Number.isFinite(stress?.inputs?.vixTerm) ? { v: stress.inputs.vixTerm, src: 'stress shadow' } : Number.isFinite(vixTerm?.value) ? { v: vixTerm.value, src: `FRED VIXCLS/VXVCLS ${vixTerm.date}` } : null;
+      return t ? { active: t.v > 1, why: `VIX/VIX3M ${t.v.toFixed(3)} (inverted above 1; the effect was measured on the first day; ${t.src})` } : null;
+    } },
   { id: 'nq-down-week', label: 'Nasdaq down ≥1% over 5 sessions → next session wider', applies: 'Nasdaq',
     when: ({ nq5 }) => Number.isFinite(nq5) ? { active: nq5 <= -1, why: `Nasdaq 5-session move ${nq5 > 0 ? '+' : ''}${nq5.toFixed(1)}%` } : null },
   { id: 'gex-range-es', label: 'Short dealer gamma → wider next session', applies: 'NQ / ES',

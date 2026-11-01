@@ -102,22 +102,27 @@ export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = conso
     doc.global = summariseGlobal({ globalRead, riskFlags, regime, funding, creditQuality });
     doc.economies = summariseEconomies({ surprise, nowcast, fedPath, fredHist, intlYields: iy?.series, cot: cotState });
     doc.layers = summariseLayers({ volForecast, cot: cotState, oi: oiToday });
-    // Liquidity & banking (FRED public CSV + Treasury DTS). Missing stays missing.
+    // Liquidity & banking: keyed FRED (public CSV only without a key), Treasury DTS, BIS store. Missing stays missing.
     const liqRaw = await read('liquidity', readers.liquidity, 120_000);
     if (liqRaw) {
       for (const e of liqRaw.errors ?? []) errors.push({ source: 'liquidity', error: e });
-      doc.layers.liquidity = summariseLiquidity({ raw: liqRaw.raw ?? {}, tgaDaily: liqRaw.tgaDaily });
+      doc.layers.liquidity = summariseLiquidity({ raw: liqRaw.raw ?? {}, tgaDaily: liqRaw.tgaDaily, bis: liqRaw.bis, via: liqRaw.via ?? {} });
       for (const w of doc.layers.liquidity.warnings) errors.push({ source: 'liquidity units', error: w });
     } else doc.layers.liquidity = null;
     const nq = series.nq; const nq5 = Array.isArray(nq) && nq.length > 6 ? (nq[nq.length - 1].value / nq[nq.length - 6].value - 1) * 100 : null;
     // Next weekday session (London date) for the calendar-only month-end rule when stress-shadow is not loaded.
     const sessionDate = (() => { const d = new Date(); if (d.getUTCHours() >= 22) d.setUTCDate(d.getUTCDate() + 1); while ([0, 6].includes(d.getUTCDay())) d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })();
-    doc.edges = activeEdges({ stress, nq5, oi: oiToday, sessionDate });
+    const vixTerm = (() => { const v = fredHist.vix ?? [], m = new Map((fredHist.vix3m ?? []).map(p => [p.date, p.value]));
+      for (let i = v.length - 1; i >= Math.max(0, v.length - 5); i--) { const d = m.get(v[i].date); if (Number.isFinite(v[i].value) && Number.isFinite(d) && d > 0) return { value: v[i].value / d, date: v[i].date }; } return null; })();
+    doc.edges = activeEdges({ stress, nq5, oi: oiToday, sessionDate, vixTerm });
     // Edges by regime (EXPLORATORY, analysis/output/edges-by-regime): what each edge did in regimes like today's.
     const regimeResults = await read('edges-by-regime', readers.edgeRegimes);
-    doc.regimes = todayRegimes({ vix: series.vix, hy: series.hy, us10y: series.us10y, us2y: series.us2y });
+    // Credit regime on Moody's BAA − 10Y, the series edges-by-regime used (Amendment 1); HY OAS only if BAA is missing.
+    const baa = liqRaw?.raw?.BAA10Y;
+    doc.regimes = todayRegimes({ vix: series.vix, hy: baa?.length ? baa : series.hy, us10y: series.us10y, us2y: series.us2y });
+    doc.regimes.creditSeries = baa?.length ? 'BAA10Y' : 'HY OAS (BAA10Y not loaded)';
     if (regimeResults) {
-      doc.regimeStudy = { generated: regimeResults.generated, lockbox: regimeResults.lockbox, status: regimeResults.status, doc: 'analysis/output/edges-by-regime/RESULTS.md' };
+      doc.regimeStudy = { generated: regimeResults.generated, lockbox: regimeResults.lockbox, status: regimeResults.status, data: regimeResults.data ?? null, doc: 'analysis/output/edges-by-regime/RESULTS.md' };
       for (const e of doc.edges) e.regime = edgeRegimeContext(regimeResults, e.id, doc.regimes);
     }
     doc.deepHistory = deepUsed.sort();

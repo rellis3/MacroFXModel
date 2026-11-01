@@ -30506,21 +30506,29 @@ dailyRead.mount(app);
 createHarShadow({ kv }).mount(app);
 createDrawdownShadow({ kv }).mount(app);
 createStressShadow({ kv }).mount(app);
-// Liquidity & banking layer: FRED public CSV (no key) + the Daily Treasury Statement TGA, cached 6 h, fetched one
-// at a time (FRED answers bursts with 503). Each series is archived to R2 by _fredCsv as it is read.
+// Liquidity & banking layer. Uses the server's own feeds first: the keyed FRED fetcher (fetchFredSeries, the same
+// one the liquidity gate and pulse use) when FRED_KEY is set, the BIS bank-credit store (KV bank_credit_v1, built by
+// _bcTick) and the Daily Treasury Statement TGA. FRED's public CSV is only the no-key fallback. Cached 6 h.
 let _stateLiq = { at: 0, data: null, inflight: null };
 async function _stateLiquidityRaw() {
   if (_stateLiq.data && Date.now() - _stateLiq.at < 6 * 3600_000) return _stateLiq.data;
   if (_stateLiq.inflight) return _stateLiq.inflight;
   _stateLiq.inflight = (async () => {
-    const raw = {}, errors = [];
-    for (const id of _LIQUIDITY_FRED) {
-      try { raw[id] = await _fredCsv(id); } catch (e) { errors.push(`${id}: ${e.message}`); }
-      await new Promise(r => setTimeout(r, 300));
+    const raw = {}, errors = [], via = {};
+    const key = process.env.FRED_KEY || process.env.FRED_API_KEY;
+    for (const id of [..._LIQUIDITY_FRED, 'BAA10Y']) {
+      try {
+        if (key) { raw[id] = [...(await fetchFredSeries(id, '1986-01-01', key))].map(([date, value]) => ({ date, value })); via[id] = 'FRED API'; }
+        else { raw[id] = await _fredCsv(id); via[id] = 'FRED public CSV (no FRED_KEY)'; }
+      } catch (e) { errors.push(`${id}: ${e.message}`); }
+      await new Promise(r => setTimeout(r, key ? 100 : 300));
     }
+    let bis = null;
+    try { const b = await _bcRead(); if (b?.snap) bis = { latest: b.snap.latest, headline: b.snap.headline, line: _bcLine(b.snap), usdHistory: b.snap.history?.usd ?? [], source: b.snap.source }; else if (b?.error) errors.push(`BIS: ${b.error}`); }
+    catch (e) { errors.push(`BIS: ${e.message}`); }
     let tgaDaily = null;
     try { tgaDaily = Object.fromEntries(await _fetchDtsTga(new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10))); } catch (e) { errors.push(`TGA DTS: ${e.message}`); }
-    const data = { raw, tgaDaily, errors };
+    const data = { raw, tgaDaily, bis, via, errors };
     if (Object.keys(raw).length) _stateLiq = { at: Date.now(), data, inflight: null };
     return data;
   })().finally(() => { _stateLiq.inflight = null; });

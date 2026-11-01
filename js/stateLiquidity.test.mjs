@@ -63,3 +63,12 @@ test('TGA in $ billions by mistake is flagged', () => {
   const L = summariseLiquidity({ raw: { ...raw, WTREGEN: W.map(date => ({ date, value: 800 })) } });
   assert.ok(L.warnings.some(w => /WTREGEN/.test(w)));
 });
+
+test('BIS global dollar credit comes through from the server store, with each series labelled by its feed', () => {
+  const bis = { latest: '2026-Q2', line: 'Bank credit 2026-Q2: …', source: 'BIS LBS', headline: { usdStockBn: 14000, usdG: 4.2, regime: 'expanding', nbfiG: 6, caymanUsdG: 3, yenOffshoreG: -1 }, usdHistory: [{ period: '2026-Q1', g: 3.9 }, { period: '2026-Q2', g: 4.2 }] };
+  const L = summariseLiquidity({ raw, bis, via: { WALCL: 'FRED API' } });
+  assert.equal(L.global.usdG, 4.2);
+  assert.equal(L.global.usdHistory.length, 2);
+  assert.equal(L.rows.find(r => r.id === 'walcl').via, 'FRED API');
+  assert.equal(summariseLiquidity({ raw }).global, null);
+});

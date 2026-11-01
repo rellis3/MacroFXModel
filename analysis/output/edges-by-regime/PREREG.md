@@ -47,3 +47,19 @@ FRED daily series are first published the next business day, so they are taken a
 - Otherwise it is labelled "not resolved".
 - The page shows the label for today's regime.
 - The verdict word is CONTEXT.
+
+## Amendment 1 (2026-11-01, written before the v2 run)
+The v1 run broke the repo's data rules (`.claude/skills/data-rules`), and the owner flagged that it ignored data the
+repo already holds:
+- **Index bars.** v1 used Yahoo `^NDX`/`^GSPC` cash-index OHLC. The repo's notes say Yahoo cash-index ranges run
+  14–28% low. v2 uses the committed NY-close daily bars built from M1:
+  `oi_research_book/data/gex_range_es/{nas100,spx500}_nyclose_d1.parquet`.
+  - Coverage is 2016-01-04 → 2026-08-20, which ends at the lockbox.
+  - Bars with `n < 60` M1 bars are dropped.
+- **Credit.** v1 used FRED's public HY OAS, which only starts in 2023-10. v2 uses the committed Moody's BAA − 10Y
+  series (`analysis/output/cog_yield_dir/fred/BAA10Y.csv`, 1986 →). This is the long credit series the feature store
+  carries (`credit_baa10y`).
+  - Same rule as v1: 20-print change, taken as of t−1.
+- **Curve.** v2 uses the committed `T10Y2Y.csv` in the same folder.
+- **Unchanged:** outcome, events, regimes (vol, credit, curve), bootstrap, seed and the reading rules.
+- **What is primary.** v2 is the primary result. v1 is kept in `results_v1_yahoo.json` as superseded, not deleted.

@@ -60,6 +60,22 @@ def cboe(sym):
     return d.set_index('date')['CLOSE'].astype(float)
 
 
+def m1_nyclose(name):
+    """Committed NY-close daily bars built from M1 (data-rules item 2); n = M1 bars in the day, keep n >= 60."""
+    d = pd.read_parquet(os.path.join(ROOT, 'oi_research_book/data/gex_range_es', f'{name}_nyclose_d1.parquet')).sort_index()
+    d = d[d['n'] >= 60]
+    d.index = pd.to_datetime(d.index).normalize()
+    return d[['open', 'high', 'low', 'close']]
+
+
+def committed_fred(sid):
+    """FRED series already committed to the repo (analysis/output/cog_yield_dir/fred/)."""
+    d = pd.read_csv(os.path.join(ROOT, 'analysis/output/cog_yield_dir/fred', f'{sid}.csv'))
+    d.columns = ['date', 'value']
+    d['date'] = pd.to_datetime(d['date']); d['value'] = pd.to_numeric(d['value'], errors='coerce')
+    return d.dropna().set_index('date')['value']
+
+
 def frame(ohlc, vix, vix3m, hy, curve):
     df = ohlc[ohlc.index <= LOCKBOX].copy()
     df = df[df.index.dayofweek < 5]
@@ -113,11 +129,15 @@ def clear(c):
     return c['ci'] is not None and (c['ci'][0] > 0 or c['ci'][1] < 0)
 
 
-def run(offline=False):
+def run(offline=False, source='m1'):
     os.makedirs(DATA, exist_ok=True)
-    ndx, spx = yahoo_ohlc('^NDX', offline), yahoo_ohlc('^GSPC', offline)
     vix, vix3m = cboe('VIX'), cboe('VIX3M')
-    hy, curve = fred('BAMLH0A0HYM2', offline), fred('T10Y2Y', offline)
+    if source == 'm1':      # Amendment 1: the repo's own data (NY-close bars from M1, committed BAA10Y / T10Y2Y)
+        ndx, spx = m1_nyclose('nas100'), m1_nyclose('spx500')
+        hy, curve = committed_fred('BAA10Y'), committed_fred('T10Y2Y')
+    else:                   # v1, superseded: Yahoo cash index + FRED public HY OAS (2023-10 →)
+        ndx, spx = yahoo_ohlc('^NDX', offline), yahoo_ohlc('^GSPC', offline)
+        hy, curve = fred('BAMLH0A0HYM2', offline), fred('T10Y2Y', offline)
     rng = np.random.default_rng(SEED)
     edges = []
     # E1 nq-down-week on NDX
@@ -131,7 +151,9 @@ def run(offline=False):
     edges.append(('vix-inversion', 'First day VIX > VIX3M → wider next 5 sessions (SPX, mean HL/ATR14)', b, 'r5'))
 
     results = {'generated': datetime.now(timezone.utc).strftime('%Y-%m-%d'), 'lockbox': LOCKBOX, 'seed': SEED, 'reps': REPS, 'block': BLOCK,
-               'status': 'EXPLORATORY', 'verdict': 'CONTEXT', 'edges': []}
+               'status': 'EXPLORATORY', 'verdict': 'CONTEXT', 'source': source,
+               'data': {'m1': 'NY-close D1 from M1 (oi_research_book/data/gex_range_es/*_nyclose_d1.parquet); credit BAA10Y, curve T10Y2Y (analysis/output/cog_yield_dir/fred); VIX/VIX3M Cboe seeds',
+                        'yahoo': 'Yahoo cash index OHLC; FRED public HY OAS; superseded'}[source], 'edges': []}
     for eid, label, df, out in edges:
         rec = {'id': eid, 'label': label, 'outcome': out, 'span': [df.index.min().strftime('%Y-%m-%d'), df.index.max().strftime('%Y-%m-%d')],
                'all': effect(df, 'ev', out, rng), 'splits': {}}
@@ -147,6 +169,8 @@ def run(offline=False):
             else: read = 'not resolved'
             rec['splits'][axis.replace('reg_', '')] = {'cells': cells, 'read': read}
         results['edges'].append(rec)
+    if source != 'm1':
+        return results          # v1 is kept only as results_v1_yahoo.json
     with open(os.path.join(OUT, 'results.json'), 'w') as fh:
         json.dump(results, fh, indent=1)
     write_md(results)
@@ -169,14 +193,13 @@ def write_md(res):
                 ci = f"[{c['ci'][0]}, {c['ci'][1]}]" if c['ci'] else '—'
                 L.append(f"| {axis} | {lvl} | {c['n_event']} | {c['effect'] if c['effect'] is not None else '—'} | {ci} | {sp['read']} |")
         L.append('')
-    L += ['## Data limits', '',
-          '- FRED\'s public CSV serves the ICE BofA HY spread (BAMLH0A0HYM2) from 2023-10-31 only, because of ICE',
-          '  licensing. The credit split therefore covers about 3 years, not the full span. Its cells are thin and are',
-          '  shown, not read. A longer credit series (e.g. Moody\'s BAA − 10Y, from 1986) would be a new prereg, not a',
-          '  change to this one.',
-          '- Yahoo `^NDX` OHLC starts 1985-10-01. `^GSPC` has real high/low from about 1962. Sessions with HL = 0 are',
-          '  dropped.',
-          '- The VIX3M seed starts 2009-09-18, so vix-inversion runs from there.', '',
+    L += ['## Data (Amendment 1: the repo\'s own data)', '',
+          '- Index bars: committed NY-close daily bars built from M1 (`oi_research_book/data/gex_range_es/`),',
+          '  2016-01-04 to 2026-08-20; days with fewer than 60 M1 bars dropped. These are the bars the live σ uses.',
+          '- Credit regime: Moody\'s BAA − 10Y (`analysis/output/cog_yield_dir/fred/BAA10Y.csv`, 1986 →), the long credit',
+          '  series the feature store carries. FRED serves the ICE HY spread for 3 years only.',
+          '- Curve: `T10Y2Y.csv` from the same folder. VIX and VIX3M: committed Cboe seeds.',
+          '- v1 (Yahoo cash index + 3-year HY OAS) broke the data rules and is kept as `RESULTS_v1_yahoo.md`, superseded.', '',
           '## How to read this', '',
           '- These are twelve cells read as a pattern. None of them validates or kills an edge. The audit grades in',
           '  `js/evidenceAudit.js` still govern.',
@@ -188,7 +211,7 @@ def write_md(res):
 
 
 if __name__ == '__main__':
-    r = run(offline='--offline' in sys.argv)
+    r = run(offline='--offline' in sys.argv, source='yahoo' if '--v1-yahoo' in sys.argv else 'm1')
     for e in r['edges']:
         print(e['id'], e['all'])
         for ax, sp in e['splits'].items():

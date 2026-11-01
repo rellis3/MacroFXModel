@@ -489,7 +489,7 @@ function drawEdges(st) {
     const gradeCls = e.grade === 'ROBUST' ? 'ok' : e.grade === 'PLAUSIBLE' ? 'neu' : 'warn';
     return `<div class="edge-row ${e.active ? 'on' : ''}"><span class="dot ${dot}" title="${e.active === true ? 'active today' : e.active === false ? 'not active' : 'input not loaded'}"></span>
       <div><div><strong>${esc(e.label)}</strong> <span class="note">· ${esc(e.applies)}</span></div><div class="note">${esc(e.why)}</div>
-        ${e.regime ? `<div class="note" style="margin-top:3px"><b>In regimes like today's</b> (exploratory, to ${esc(st.regimeStudy?.lockbox ?? '')}): ${e.regime.map(r => esc(r.text)).join(' · ')}</div>` : ''}
+        ${e.regime ? `<div class="note" style="margin-top:3px" title="${esc(st.regimeStudy?.data ?? '')}"><b>In regimes like today's</b> (exploratory, NY-close bars from M1, to ${esc(st.regimeStudy?.lockbox ?? '')}): ${e.regime.map(r => esc(r.text)).join(' · ')}</div>` : ''}
         <details><summary>What was measured</summary>${esc(e.result ?? '')}<br><b>Use:</b> ${esc(e.use ?? '')}</details></div>
       <div class="row" style="justify-content:flex-end"><span class="pill ${gradeCls}">${esc(e.grade ?? 'unaudited')}</span>${e.standing !== 'edge' ? '<span class="pill warn">research only</span>' : ''}</div></div>`;
   }).join('') || '<div class="note">No edge inputs loaded.</div>';
@@ -640,8 +640,17 @@ function drawLiquidity(st) {
     <div class="num"><b>${Math.round(r.last).toLocaleString('en-GB')}</b><div class="note">$bn${r.yoyPct != null ? ` · ${r.yoyPct > 0 ? '+' : ''}${r.yoyPct}% y/y` : ''}</div></div>
     <div class="wide note num">4w ${sg(r.chg4w)} · 13w ${sg(r.chg13w)} · 52w ${sg(r.chg52w)}</div>
     <div class="wide">${pctBar(r.pctAll, 'all')}</div><div class="wide"></div></div>`).join('');
+  const G = L.global;
+  if (G) {
+    const pts = G.usdHistory.map(p => [p.date, p.value]);
+    $('liqRows').innerHTML += `<div class="lh-row"><div><b>Global dollar credit (BIS, cross-border USD lending)</b><div class="note">Banks' dollar lending across borders: how dollars move offshore. Quarterly, ${esc(G.latest)}; regime ${esc(G.regime ?? '—')}. ${esc(G.line ?? '')}</div></div>
+      <div class="num"><b>${G.usdG != null ? (G.usdG > 0 ? '+' : '') + G.usdG.toFixed(1) + '%' : '—'}</b><div class="note">y/y${G.usdStockBn != null ? ` · $${Math.round(G.usdStockBn).toLocaleString('en-GB')} bn` : ''}</div></div>
+      <div class="wide note num">non-bank financials ${G.nbfiG != null ? G.nbfiG.toFixed(1) + '%' : '—'} · Cayman USD ${G.caymanUsdG != null ? G.caymanUsdG.toFixed(1) + '%' : '—'} · yen offshore ${G.yenOffshoreG != null ? G.yenOffshoreG.toFixed(1) + '%' : '—'}</div>
+      <div class="wide">${miniLine(pts, { zero: true })}</div><div class="wide"></div></div>`;
+  }
+  const vias = [...new Set(L.rows.map(r => r.via).filter(Boolean))];
   const evs = (L.evidence ?? []).map(e => `${e.id}: ${e.banked ?? 'untested'}, audit ${e.status}`).join('; ');
-  $('liqNote').textContent = `${L.note} Evidence: ${evs}.${L.warnings?.length ? ' Unit warnings: ' + L.warnings.join('; ') : ''}`;
+  $('liqNote').textContent = `${L.note} Evidence: ${evs}. Fed data via ${vias.join(', ') || '—'}; TGA daily from the Treasury statement${G ? '; global credit from the BIS store' : ''}.${L.warnings?.length ? ' Unit warnings: ' + L.warnings.join('; ') : ''}`;
 }
 
 function render(st) {
