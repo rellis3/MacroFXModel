@@ -1208,6 +1208,14 @@ export const DESK_EVIDENCE = [
     use: 'Nothing built. Which side the range extends to has no support from the hedge-flow schedule; rerun only with more days and per-expiry books.',
   },
   {
+    id: 'orderflow-lead', domain: 'price', verdict: 'null', date: '2026-11-01', doc: 'forge/ORDERFLOW_LEAD_PREREG.md',
+    also: ['analysis/output/orderflow-lead/RESULTS.md'],
+    instruments: ['NQ'],
+    claim: 'NQ buy/sell imbalance in a 5-minute bar (tick-rule signed volume from NT8 ticks) predicts the next 5 and 15 minutes beyond the move already in the bar, so a running delta could act as a lead line',
+    result: 'Null on both scored cells, both powered. 189 regular-hours sessions 2025-11-06 to 2026-08-21 (14,302 bars), standardised slope on imbalance with same-bar and previous-bar returns controlled: h 5 min -0.002 [-0.027, +0.020], h 15 min +0.003 [-0.025, +0.029], MDE 0.037 and 0.042 against a 0.05 bar, both inside the other-session placebo ranges (means near zero), halves agree on zero. Previous-bar flow, 30-minute horizon, raw delta and the 30-minute running delta all near zero. Hour-of-day slices: the first two New York hours at about +0.06 but no cell survives BH at q 0.10 over 14 (smallest p 0.066). Run 2026-11-01, seed 20261101.',
+    use: 'OI Lab card 05f stays a description of flow: no projection line, no lead claim from tick-rule delta. The sign comes from price itself so it cannot lead by construction; quote-matched or order-book flow is the untested follow-up and needs bid/ask history from the bridge.',
+  },
+  {
     id: 'range-ladder-placebo', domain: 'price', verdict: 'underpowered', date: '2026-10-19', doc: 'forge/RANGE_LADDER_PLACEBO_PREREG.md',
     also: ['analysis/output/range-ladder-placebo/RESULTS.md'],
     instruments: ['GOLD', 'AUDJPY', 'AUDUSD', 'NZDJPY', 'NZDUSD', 'USDJPY', 'CADJPY', 'EURJPY', 'GBPJPY', 'EURAUD', 'EURUSD', 'GBPUSD', 'USDCHF', 'USDCAD', 'NQ', 'SPX500', 'DE30', 'US30', 'US2000'],
@@ -2072,6 +2080,7 @@ const POWER = {
   'rule-a-pre2020':          { n: '1,386 trades, 11 instruments, 2016-09 to 2020-08 (4-week block bootstrap)', note: 'MDE about 0.2R; upper bound +0.094 excludes the +0.162 backtest effect -- a real null' },
   'rule-a-portfolio-budget': { n: '1,165 weekdays 2022-01 to 2026-08, 11 legs, walk-forward (4-week block bootstrap)', note: 'MDE about 0.6 Sharpe on the paired difference; +0.28 found, interval crosses 0' },
   'rule-a-portfolio-second-book': { n: '1,559 common weekdays 2020-08 to 2026-08 (4-week block bootstrap)', note: 'SE of a near-zero correlation about 0.035; the 0.20 bar is about 6 SE away' },
+  'orderflow-lead': { n: '189 sessions, 14,302 five-minute bars, NQ, 2025-11 to 2026-08 (5-session block bootstrap)', note: 'MDE 0.037 (h5) and 0.042 (h15) vs bar 0.05; intervals [-0.027, +0.020] and [-0.025, +0.029] exclude it -- a real null' },
   'rule-a-late-entry':       { n: '823 trades, 11 instruments, 2020-08 to 2026-08 (4-week block bootstrap)', note: 'MDE about 0.16R; interval [-0.26, +0.06] excludes it -- a real null' },
   'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
   'range-ladder-placebo-confirm': { n: '2,745 session dates (21-session block bootstrap), 15 instruments', note: 'pooled MDE 0.37 pp vs a 1.0 pp bar; per-line MDE 0.69-0.89 pp' },
