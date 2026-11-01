@@ -27,6 +27,7 @@
  * Pure: no I/O. Tested by js/expiryTracker.test.mjs.
  */
 import { oiMatrixExpiryLegs, oiCalcMaxPain } from './oi.js';
+import { fullBookGex } from './fullBookGex.js';
 
 const DAY = 864e5;
 export const TAIL_FRAC = 0.35;          // strikes further than 35% from the futures price are tail hedges, not zones (as _oiNearBook)
@@ -156,8 +157,16 @@ export function seriesIndexEntry(series) {
  *  awayFrac: a strike counts as "away from price" when |strike/futures - 1| > awayFrac on that day.
  *  topN: zones reported per day.
  * Prices are reported in futures terms (k) and spot terms (px, at that day's basis).
+ *
+ * PULL (the owner's question: is this expiry's book leaning up or down from price, and is that growing?). Per day,
+ * all in SPOT direction (an inverted pair's higher CME strike is a lower spot price):
+ *  oiAbove / oiBelow / shareAbove   open interest at strikes above vs below that day's futures price
+ *  pullPct                          the OI-weighted centre's distance from price, % (+ = the book sits above price)
+ *  buildAbove / buildBelow          last night's OI change at strikes above vs below price (null on stale/first days)
+ * On the LAST day only, when sigmaAnnual is given: gamma = { regime PIN|BREAKOUT, flipPx } for this expiry alone
+ * (js/fullBookGex.js at a flat vol). Descriptive: no test yet says a book's lean moves price.
  */
-export function expiryView(series, { awayFrac = 0.01, topN = 6 } = {}) {
+export function expiryView(series, { awayFrac = 0.01, topN = 6, sigmaAnnual = null } = {}) {
   if (!series?.days?.length) return null;
   const inverted = !!series.inverted;
   const firstMap = new Map((series.days[0].ladder || []).map(r => [r[0], r[1] + r[2]]));
@@ -171,15 +180,22 @@ export function expiryView(series, { awayFrac = 0.01, topN = 6 } = {}) {
     const total = rows.reduce((a, r) => a + r[1] + r[2], 0);
     const centre = total > 0 ? rows.reduce((a, r) => a + r[0] * (r[1] + r[2]), 0) / total : null;
     const conv = k => toSpot(k, { basis: d.basis ?? 0, inverted });
-    let chgNear = 0, chgAway = 0;
+    let chgNear = 0, chgAway = 0, buildAbove = 0, buildBelow = 0, oiAbove = 0, oiBelow = 0;
+    const isAbove = k => ref != null && (inverted ? k < ref : k > ref);
+    const isBelow = k => ref != null && (inverted ? k > ref : k < ref);
+    for (const [k, oi] of map) { if (isAbove(k)) oiAbove += oi; else if (isBelow(k)) oiBelow += oi; }
     if (prevMap && !d.stale) {
-      for (const [k, oi] of map) {
-        const dOI = oi - (prevMap.get(k) ?? 0);
+      const add = (k, dOI) => {
         const away = ref != null && Math.abs(k / ref - 1) > awayFrac;
         if (away) chgAway += dOI; else chgNear += dOI;
+        if (isAbove(k)) buildAbove += dOI; else if (isBelow(k)) buildBelow += dOI;
+      };
+      for (const [k, oi] of map) {
+        const dOI = oi - (prevMap.get(k) ?? 0);
+        add(k, dOI);
         streak.set(k, dOI > 0 ? (streak.get(k) ?? 0) + 1 : 0);
       }
-      for (const k of prevMap.keys()) if (!map.has(k)) { streak.set(k, 0); const away = ref != null && Math.abs(k / ref - 1) > awayFrac; if (away) chgAway -= prevMap.get(k); else chgNear -= prevMap.get(k); }
+      for (const k of prevMap.keys()) if (!map.has(k)) { streak.set(k, 0); add(k, -prevMap.get(k)); }
     }
     const zones = rows.map(r => {
       const oi = r[1] + r[2];
@@ -193,8 +209,18 @@ export function expiryView(series, { awayFrac = 0.01, topN = 6 } = {}) {
       totalOI: total, centre: round(centre, 8), centrePx: round(conv(centre)),
       maxPain: rows.length >= 2 ? round(conv(oiCalcMaxPain(rows.map(r => r[0]), rows.map(r => r[1]), rows.map(r => r[2])))) : null,
       chgNearSpot: prevMap && !d.stale ? chgNear : null, chgAwayFromSpot: prevMap && !d.stale ? chgAway : null,
-      zones });
+      oiAbove, oiBelow, shareAbove: oiAbove + oiBelow > 0 ? round(oiAbove / (oiAbove + oiBelow), 4) : null,
+      pullPct: centre != null && ref ? round((centre / ref - 1) * 100 * (inverted ? -1 : 1), 3) : null,
+      buildAbove: prevMap && !d.stale ? buildAbove : null, buildBelow: prevMap && !d.stale ? buildBelow : null,
+      zones, _rows: rows });
     if (!d.stale) prevMap = map;
   }
+  const last = days.at(-1);
+  if (last && sigmaAnnual > 0 && Number.isFinite(last.futures) && last._rows.length >= 2) {
+    const g = fullBookGex([{ dte: last.dte, strikes: last._rows.map(r => r[0]), calls: last._rows.map(r => r[1]), puts: last._rows.map(r => r[2]) }],
+      last.futures, { flatSigma: sigmaAnnual, span: 0.15, steps: 300 });
+    if (g) last.gamma = { regime: g.regime, flipPx: g.flip != null ? round(toSpot(g.flip, { basis: last.basis ?? 0, inverted })) : null, sigmaAnnual };
+  }
+  for (const d of days) delete d._rows;
   return { pair: series.pair, expiry: series.expiry, code: series.code ?? null, inverted, n: days.length, days };
 }

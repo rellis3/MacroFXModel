@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Swing Map</title>
 <style>
-  :root { --bg:#0d1117; --card:#161b22; --card2:#0f141b; --border:#30363d; --text:#e6edf3; --text2:#c9d1d9; --text3:#8b949e;
+  :root { --pa:#3fb950; --pb:#f85149; --bg:#0d1117; --card:#161b22; --card2:#0f141b; --border:#30363d; --text:#e6edf3; --text2:#c9d1d9; --text3:#8b949e;
           --price:#4fd1d9; --up:#3fb950; --down:#f85149; --amber:#d29922; --blue:#58a6ff; --violet:#a371f7; --grid:#21262d; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
@@ -33,6 +33,15 @@
   .note { color:var(--text3); font-size:12px; }
   .big { font-size:15px; } .good { color:var(--up); } .bad { color:var(--down); } .warn { color:var(--amber); }
   .err { color:var(--down); }
+  .seg { display:inline-flex; } .seg button { border-radius:0; } .seg button:first-child { border-radius:5px 0 0 5px; } .seg button:last-child { border-radius:0 5px 5px 0; border-left:0; }
+  .seg button.on { background:#30363d; color:#fff; }
+  .paths { display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media (max-width:900px) { .paths { grid-template-columns:1fr; } }
+  .pcard { border:1px solid var(--border); border-radius:8px; padding:12px 14px; background:var(--card2); }
+  .pcard h3 { margin:0 0 6px; font-size:15px; } .pcard.A h3 { color:var(--pa); } .pcard.B h3 { color:var(--pb); }
+  .pcard ol { margin:6px 0 0; padding-left:18px; } .pcard li { margin:2px 0; }
+  .bk { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px; } @media (max-width:700px) { .bk { grid-template-columns:repeat(2,1fr); } }
+  .bkc { border:1px solid var(--border); border-radius:6px; padding:8px 10px; background:var(--card2); }
+  .bkc b { font-size:18px; display:block; } .bkc span { color:var(--text3); font-size:12px; }
 </style>
 </head>
 <body>
@@ -40,7 +49,8 @@
   <div>
     <div class="bar"><h1 id="title">Swing Map</h1>
       <select id="inst" aria-label="Instrument"></select>
-      <button id="refresh" title="Rebuild now instead of the 30-minute cache">Refresh</button></div>
+      <button id="refresh" title="Rebuild now instead of the 30-minute cache">Refresh</button>
+      <span class="seg" role="group" aria-label="Chart style"><button id="mPaths" class="on">Two paths</button><button id="mCone">Range cone</button></span></div>
     <p class="sub">The swing, the range lines and the option zones for one instrument, built only from parts this desk has measured. Each part
       carries its proof tag: <span class="tag t-VALIDATED">VALIDATED</span> passed a pre-registered test,
       <span class="tag t-EXPLORATORY">EXPLORATORY</span> a look-back that has not, <span class="tag t-CONTEXT">CONTEXT</span> description only,
@@ -53,6 +63,10 @@
       <p class="note" id="chartNote"></p></section>
     <aside class="card"><h2>The level map</h2><div id="levels"></div></aside>
   </div>
+
+  <section class="card" id="pathSec"><h2>The two paths <span class="tag t-EXPLORATORY">EXPLORATORY</span> waypoints from <span class="tag t-VALIDATED">VALIDATED</span> ranges</h2><div id="paths"></div></section>
+
+  <section class="card"><h2>Option pull by expiry date <span class="tag t-UNTESTED">UNTESTED</span></h2><div id="pull"></div></section>
 
   <div class="two">
     <section class="card"><h2>The current leg <span class="tag t-CONTEXT">CONTEXT</span></h2><div id="leg"></div></section>
@@ -74,7 +88,7 @@ const fmt = (x, dp) => (x == null || !isFinite(x) ? '–' : Number(x).toLocaleSt
 const pct = (x, dp = 1) => (x == null || !isFinite(x) ? '–' : `${x > 0 ? '+' : ''}${x.toFixed(dp)}%`);
 const tag = t => `<span class="tag t-${t}">${t}</span>`;
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let DP = 2;
+let DP = 2, MODE = 'paths', LAST = null;
 const px = x => fmt(x, DP);
 const addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 const tradingDaysAhead = (d, n) => { let t = Date.parse(d + 'T00:00:00Z'), k = 0; while (k < n) { t += 864e5; const w = new Date(t).getUTCDay(); if (w && w !== 6) k++; } return new Date(t).toISOString().slice(0, 10); };
@@ -102,13 +116,13 @@ function render(m) {
     + `<b>${fall.toFixed(2)}</b> annualised σ below it · RSI(14) ${s.rsi14.toFixed(1)} · daily σ ${s.sigmaDailyPct.toFixed(2)}% (${s.volAnnualPct.toFixed(1)}% a year)`
     + `${s.at20dLow ? ' · at a 20-day closing low' : ''}${s.at20dHigh ? ' · at a 20-day closing high' : ''}`
     + (s.fallSignal ? ` · <span class="warn">deep-fall condition ON</span>` : '') + (s.rallySignal ? ` · <span class="warn">stretched-rally condition ON</span>` : '');
-  drawChart(m); levelMap(m); legCard(m); ratesCard(m); expiryTable(m); legBars(m);
+  LAST = m; drawChart(m); pathCards(m); pullCard(m); levelMap(m); legCard(m); ratesCard(m); expiryTable(m); legBars(m);
 }
 
 function drawChart(m) {
   const W = 980, H = 540, L = 64, R = 70, T = 18, B = 34;
   const s = m.state, today = s.date;
-  const histStart = addDays(today, -300);
+  const histStart = addDays(today, MODE === 'paths' ? -230 : -300);
   const series = m.series.filter(p => p[0] >= histStart);
   const futEnd = addDays(today, 105);
   const t0 = Date.parse(series[0][0]), t1 = Date.parse(futEnd);
@@ -137,6 +151,8 @@ function drawChart(m) {
     const x = X(e.expiry);
     o.push(`<line x1="${x}" x2="${x}" y1="${T}" y2="${H - B}" stroke="var(--violet)" stroke-opacity="0.45" stroke-dasharray="2 4"/>`);
     o.push(`<text x="${x}" y="${H - B + 12}" fill="var(--violet)" font-size="10" text-anchor="middle">${e.expiry.slice(5)}</text>`);
+    if (e.shareAbove != null) { const up = e.shareAbove > 0.55, dn = e.shareAbove < 0.45;
+      o.push(`<text x="${x}" y="${T + 28}" fill="${up ? 'var(--up)' : dn ? 'var(--down)' : 'var(--text3)'}" font-size="12" font-weight="700" text-anchor="middle">${up ? '▲' : dn ? '▼' : '◆'}<title>${e.expiry}: ${Math.round(e.shareAbove * 100)}% of OI above price, centre ${pct(e.pullPct, 2)} from price</title></text>`); }
     for (const z of e.zones.slice(0, 5)) {
       if (z.px < lo || z.px > hi) continue;
       const w = Math.max(4, (z.share ?? 0) * 260), build = (z.buildStreak ?? 0) >= 2 || (z.chgSinceFirst ?? 0) > 0;
@@ -153,12 +169,27 @@ function drawChart(m) {
       o.push(`<line x1="${x2 - 5}" x2="${x2 + 5}" y1="${Y(b[k][side])}" y2="${Y(b[k][side])}" stroke="${color}"><title>${b.label} ${k} ${side}: ${px(b[k][side])}</title></line>`);
     o.push(`<text x="${x2}" y="${Y(b.p90.up) - 6}" fill="${color}" font-size="10" text-anchor="middle">${b.sessions}d p90</text>`);
   };
-  if (m.bands[1]) fan(m.bands[1], 'var(--blue)');
-  if (m.bands[0]) fan(m.bands[0], 'var(--amber)');
-  // bounce / flush barriers (the look-back's barriers at today's sigma), drawn to 20 sessions
-  const x20 = X(tradingDaysAhead(today, 20));
-  o.push(`<line x1="${X(today)}" x2="${x20}" y1="${Y(m.barriers.bounce)}" y2="${Y(m.barriers.bounce)}" stroke="var(--up)" stroke-dasharray="5 4"/>`);
-  o.push(`<line x1="${X(today)}" x2="${x20}" y1="${Y(m.barriers.flush)}" y2="${Y(m.barriers.flush)}" stroke="var(--down)" stroke-dasharray="5 4"/>`);
+  if (MODE === 'cone') {
+    if (m.bands[1]) fan(m.bands[1], 'var(--blue)');
+    if (m.bands[0]) fan(m.bands[0], 'var(--amber)');
+    const x20 = X(tradingDaysAhead(today, 20));
+    o.push(`<line x1="${X(today)}" x2="${x20}" y1="${Y(m.barriers.bounce)}" y2="${Y(m.barriers.bounce)}" stroke="var(--up)" stroke-dasharray="5 4"/>`);
+    o.push(`<line x1="${X(today)}" x2="${x20}" y1="${Y(m.barriers.flush)}" y2="${Y(m.barriers.flush)}" stroke="var(--down)" stroke-dasharray="5 4"/>`);
+  } else {
+    // monthly p75 band as faint horizontal guides across the future, then the two dashed paths with dated waypoints
+    if (m.bands[1]) for (const v of [m.bands[1].p75.up, m.bands[1].p75.down]) o.push(`<line x1="${X(today)}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--blue)" stroke-opacity="0.35"/>`);
+    for (const p of m.paths || []) {
+      const c = pathColor(p, m);
+      const pts = p.points.map(q => [X(q.date), Y(q.px)]);
+      o.push(`<polyline fill="none" stroke="${c}" stroke-width="2" stroke-dasharray="7 5" points="${pts.map(q => q.join(',')).join(' ')}"/>`);
+      p.points.slice(1).forEach((q, i) => {
+        const [x, y] = pts[i + 1];
+        o.push(`<circle cx="${x}" cy="${y}" r="4.5" fill="${c}"><title>${esc(q.label)}: ${px(q.px)} by ${q.date}</title></circle>`);
+        const above = q.px >= s.close, dy = i === 0 ? (above ? -9 : 16) : (above ? -22 : 29);
+        o.push(`<text x="${x + 6}" y="${y + dy}" fill="${c}" font-size="11" font-weight="600">${px(q.px)} · ${fmtDay(q.date)}</text>`);
+      });
+    }
+  }
   // price
   o.push(`<polyline fill="none" stroke="var(--price)" stroke-width="1.6" points="${series.map(p => `${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' ')}"/>`);
   // pivots
@@ -176,12 +207,18 @@ function drawChart(m) {
   o.push(`<circle cx="${X(today)}" cy="${Y(s.close)}" r="4" fill="var(--price)"/>`);
   o.push('</svg>');
   $('chart').innerHTML = o.join('');
-  $('chartNote').innerHTML = `Amber fan: weekly reverting range (5 sessions). Blue fan: monthly (20 sessions). Both are p50/p75/p90 of how far the high and low travel, anchored on the latest close ${tag('VALIDATED')}. `
+  $('chartNote').innerHTML = MODE === 'paths'
+    ? `Dashed paths: the two orders the next move can come in. Each waypoint is a measured number: the look-back's barrier at its median timing ${tag('EXPLORATORY')}, then the monthly reverting p75 ${tag('VALIDATED')} (faint blue lines). Dates are sessions ahead, not forecasts. `
+      + `Violet columns: each CME expiry in the next ~100 days, ▲/▼ = most of its open interest sits above/below price ${tag('UNTESTED')}.`
+      + (m.expiries.length ? '' : ' <span class="warn">No expiry-tracker data for this instrument yet.</span>')
+    : `Amber fan: weekly reverting range (5 sessions). Blue fan: monthly (20 sessions). Both are p50/p75/p90 of how far the high and low travel, anchored on the latest close ${tag('VALIDATED')}. `
     + `Dashed green/red: the look-back's bounce/flush barriers at today's σ, out to 20 sessions ${tag('EXPLORATORY')}. `
     + `Violet columns: each CME expiry in the next ~100 days. Bars are its biggest strikes, width = share of that expiry's open interest, violet = building, grey = flat or fading ${tag('UNTESTED')}.`
     + (m.expiries.length ? '' : ' <span class="warn">No expiry-tracker data for this instrument yet (needs R2 and at least one fold).</span>')
     + (m.bands.length ? '' : ' <span class="warn">No reverting ladder in the live forecast for this instrument.</span>');
 }
+function pathColor(p, m) { return p.points[1].px >= m.state.close ? 'var(--up)' : 'var(--down)'; }
+function fmtDay(d) { return new Date(d + 'T00:00:00Z').toLocaleString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }); }
 function niceStep(x) { const p = 10 ** Math.floor(Math.log10(x)); const f = x / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
 
 function levelMap(m) {
@@ -263,6 +300,44 @@ function legBars(m) {
   });
   o.push('</svg>');
   $('legbars').innerHTML = o.join('') + `<p class="note">Bars are % moves and the labels are σ. The solid bar is the leg in progress. Similar-looking legs do not mark an exhaustion size: see the current-leg card.</p>`;
+}
+
+function setMode(md) { MODE = md; $('mPaths').classList.toggle('on', md === 'paths'); $('mCone').classList.toggle('on', md === 'cone'); try { localStorage.setItem('swingMapMode', md); } catch {} if (LAST) drawChart(LAST); }
+$('mPaths').addEventListener('click', () => setMode('paths'));
+$('mCone').addEventListener('click', () => setMode('cone'));
+try { const md = localStorage.getItem('swingMapMode'); if (md === 'cone') { MODE = 'cone'; $('mPaths').classList.remove('on'); $('mCone').classList.add('on'); } } catch {}
+
+function pathCards(m) {
+  if (!m.paths?.length) { $('paths').innerHTML = '<p class="note">No paths (no confirmed leg yet).</p>'; return; }
+  $('paths').innerHTML = '<div class="paths">' + m.paths.map(p => {
+    const c = pathColor(p, m);
+    return `<div class="pcard"><h3 style="color:${c}">${p.key}. ${esc(p.name)}: ${Math.round(p.prob * 100)}%</h3>`
+      + `<div class="note">${p.conditionOn ? `after this condition historically; on any day it is ${Math.round(p.baseline * 100)}%` : 'the every-day baseline (the condition is off today)'}</div>`
+      + `<ol>${p.points.slice(1).map(q => `<li><b>${px(q.px)}</b> by ${fmtDay(q.date)} <span class="note">(${q.sessions} sessions)</span>: ${esc(q.label)} ${tag(q.proof)}</li>`).join('')}</ol></div>`;
+  }).join('') + '</div>'
+  + `<p class="note">The odds differ from any day by less than their own uncertainty, so read both paths as live. Unlike the original chart, there is no single "reversal date": the look-back found no size or time at which legs end.</p>`;
+}
+
+function pullCard(m) {
+  const P = m.pull;
+  if (!m.expiries.length || !P) { $('pull').innerHTML = '<p class="note">No expiry-tracker data for this instrument yet. Once the server has folded the nightly CME captures, every expiry appears here with its lean above or below price, by days to expiry.</p>'; return; }
+  const bk = P.buckets.map(b => `<div class="bkc"><span>${b.lo}-${b.hi} days to expiry</span>`
+    + (b.n ? `<b class="${b.lean === 'up' ? 'good' : b.lean === 'down' ? 'bad' : ''}">${b.lean === 'up' ? '▲ up' : b.lean === 'down' ? '▼ down' : '◆ balanced'}</b>`
+      + `<span>${Math.round(b.shareAbove * 100)}% of OI above price · centre ${pct(b.pullPct, 2)} · ${b.n} expir${b.n === 1 ? 'y' : 'ies'}</span><br><span>last 5 nights built: ${fmt(b.recentBuildAbove, 0)} above / ${fmt(b.recentBuildBelow, 0)} below</span>`
+      : '<b class="note">–</b><span>no expiry</span>') + '</div>').join('');
+  const spark = h => { const v = h.filter(r => r[2] != null); if (v.length < 2) return ''; const ys = v.map(r => r[3] ?? 0.5), w = 90, hh = 22;
+    return `<svg viewBox="0 0 ${w} ${hh}" style="width:90px;height:22px;display:inline-block;vertical-align:middle"><line x1="0" x2="${w}" y1="${hh / 2}" y2="${hh / 2}" stroke="var(--grid)"/><polyline fill="none" stroke="var(--violet)" stroke-width="1.5" points="${ys.map((y, i) => `${(i / (ys.length - 1) * w).toFixed(1)},${(hh - y * hh).toFixed(1)}`).join(' ')}"/></svg>`; };
+  const rows = m.expiries.map(e => {
+    const l = e.shareAbove == null ? '–' : e.shareAbove > 0.55 ? '<span class="good">▲</span>' : e.shareAbove < 0.45 ? '<span class="bad">▼</span>' : '◆';
+    const net = e.buildAbove == null ? '–' : `${fmt(e.buildAbove, 0)} / ${fmt(e.buildBelow, 0)}`;
+    return `<tr><td>${e.expiry}</td><td>${e.dte}</td><td>${l} ${e.shareAbove == null ? '' : Math.round(e.shareAbove * 100) + '%'}</td><td>${pct(e.pullPct, 2)}</td><td>${net}</td><td>${spark(e.history || [])}</td>`
+      + `<td>${e.gamma ? `${e.gamma.regime}${e.gamma.flipPx ? ` · flip ${px(e.gamma.flipPx)}` : ''}` : '–'}</td></tr>`;
+  }).join('');
+  $('pull').innerHTML = `<p>${esc(P.summary)}</p><div class="bk">${bk}</div>`
+    + `<div class="tbl"><table><tr><th>Expiry</th><th>Days left</th><th>OI above price</th><th>Centre vs price</th><th>Built last night above / below</th><th>Share above, night by night</th><th>This expiry's gamma</th></tr>${rows}</table></div>`
+    + `<p class="note">Each expiry is pinned to its date and re-read every night as it counts down, so the same contract moves from the far buckets into the near ones. "Above price" is in spot terms (inverted CME pairs are flipped). `
+    + `Open interest opens near the money and follows price, so a lean that builds before price moves is the part worth watching. Gamma is this expiry alone at today's realised vol (PIN = dealers long gamma, damping; BREAKOUT = short, amplifying); the range effect of gamma is validated on ES only and says nothing about direction. `
+    + `Earlier tests: OI walls behaved like ordinary levels, max pain does not pin, the hedge-flow side was underpowered. Whether a lean marks where price is at expiry gets its own pre-registered score.</p>`;
 }
 
 $('inst').addEventListener('change', () => load(false));

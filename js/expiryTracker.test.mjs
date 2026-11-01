@@ -62,6 +62,24 @@ console.log('[fold: a contract keeps one series as its DTE counts down; +-1 day 
   ok('index entry', idx.n === 3 && idx.dteNow === 20 && idx.totalOI === 1640);
 }
 
+console.log('[pull: the book above vs below price, in spot direction]');
+{
+  const m = new Map();
+  const mk = (date, fut, a, b) => ({ date, pairs: { GOLD: raw(fut, [22, 80], [[3900, [10, a], [0, 0]], [4100, [b, 10], [0, 0]], [4000, [0, 0], [5, 5]]]) } });
+  foldCaptureDays(m, [mk('2026-11-02', 4000, 500, 800), mk('2026-11-03', 4000, 500, 1000)]);
+  const v = expiryView(m.get('GOLD|2026-11-24'), { sigmaAnnual: 0.2 });
+  const d = v.days[1];
+  ok('share above price', Math.abs(d.shareAbove - 1010 / 1520) < 1e-4, String(d.shareAbove));
+  ok('pull = centre vs price, + when the book sits above', d.pullPct > 0 && Math.abs(d.pullPct - ((3900 * 510 + 4100 * 1010) / 1520 / 4000 - 1) * 100) < 1e-3);
+  ok('last night built above, not below', d.buildAbove === 200 && d.buildBelow === 0);
+  ok('first day carries no build figures', v.days[0].buildAbove === null);
+  ok('gamma regime on the last day only', d.gamma && ['PIN', 'BREAKOUT', 'NEUTRAL'].includes(d.gamma.regime) && !v.days[0].gamma, JSON.stringify(d.gamma));
+  const mi = new Map();   // the same book on an inverted pair: a higher CME strike is a LOWER spot price
+  foldCaptureDays(mi, [{ date: '2026-11-02', pairs: { 'USD/JPY': raw(0.0067, [22, 80], [[0.0066, [10, 500], [0, 0]], [0.0068, [800, 10], [0, 0]], [0.0067, [0, 0], [5, 5]]], { basis: 0, spot: 149.25 }) } }], { invertedPairs: new Set(['USD/JPY']) });
+  const vi = expiryView([...mi.values()][0]);
+  ok('inverted pair: the big 0.0068 strike counts as BELOW spot', vi.days[0].shareAbove < 0.5 && vi.days[0].pullPct < 0, `${vi.days[0].shareAbove} ${vi.days[0].pullPct}`);
+}
+
 console.log('[tail hedges ignored in the view]');
 {
   const m = new Map();

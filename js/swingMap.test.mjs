@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildSwingMap, zigzag, sigmaSeries, BASE_RATES } from './swingMap.js';
+import { buildSwingMap, zigzag, sigmaSeries, BASE_RATES, pullByBucket } from './swingMap.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(root, 'analysis/output/swing-leg-baserates');
@@ -49,7 +49,21 @@ console.log('[the picture for gold]');
   ok('zone inside / outside the weekly p90', m.expiries[0].zones[0].inWeeklyP90 === true && m.expiries[0].zones[1].inWeeklyP90 === false);
   ok('expiries tagged UNTESTED', m.expiries[0].proof === 'UNTESTED');
   ok('bounce barrier above, flush below', m.barriers.bounce > m.state.close && m.barriers.flush < m.state.close);
+  ok('two paths, odds sum to 1, condition-on uses the look-back share', m.paths.length === 2 && Math.abs(m.paths[0].prob + m.paths[1].prob - 1) < 1e-9 && m.paths[0].prob === BASE_RATES.afterFall.pBounceFirst);
+  ok('path A climbs to the bounce barrier then the monthly p75 high', m.paths[0].points[1].px === m.barriers.bounce && m.paths[0].points[2].px === m.bands[1].p75.up);
+  ok('path B waypoint dates are weekdays after the last close', m.paths[1].points.slice(1).every(p => p.date > m.state.date && ![0, 6].includes(new Date(p.date + 'T12:00:00Z').getUTCDay())));
+  ok('pull summary present (empty book is fine)', m.pull && Array.isArray(m.pull.buckets));
   ok('too few bars refused', buildSwingMap(bars.slice(0, 100)).ok === false);
+}
+
+console.log('[pull by DTE bucket: lean and where it changes side]');
+{
+  const e = (expiry, dte, shareAbove, totalOI, hist = []) => ({ expiry, dte, shareAbove, pullPct: (shareAbove - 0.5) * 4, totalOI, buildAbove: 10, buildBelow: 5, history: hist });
+  const p = pullByBucket([e('2026-11-06', 5, 0.3, 1000, [['d', 5, 0, 0.3, 50, 200, 1000, 0]]), e('2026-11-20', 19, 0.48, 500), e('2026-12-24', 53, 0.7, 2000, [['d', 53, 0, 0.7, 300, 20, 2000, 0], ['e', 52, 0, 0.7, 0, 0, 2000, 1]])]);
+  ok('near bucket leans down, far bucket leans up', p.buckets[0].lean === 'down' && p.buckets[2].lean === 'up' && p.buckets[1].lean === 'balanced');
+  ok('one flip, down to up', p.flips.length === 1 && p.flips[0].from === 'down' && p.flips[0].to === 'up' && p.flips[0].firstExpiry === '2026-12-24');
+  ok('recent build sums skip stale nights', p.buckets[2].recentBuildAbove === 300 && p.buckets[0].buildLean === 'down');
+  ok('empty bucket has no lean', p.buckets[3].n === 0 && p.buckets[3].lean === null);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

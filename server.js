@@ -399,7 +399,7 @@ import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillRep
 import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 / ou-pairs research runs (off the main loop)
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
 import { createExpiryTrackStore } from './js/expiryTrackStore.js';
-import { buildSwingMap as _buildSwingMap } from './js/swingMap.js';
+import { buildSwingMap as _buildSwingMap, sigmaSeries as _swingSigma } from './js/swingMap.js';
 import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
 import { createHistorySources as _createHistorySources } from './js/stateHistorySources.js';
 import { fetchDtsTga as _fetchDtsTga } from './js/treasuryDts.js';
@@ -39366,7 +39366,7 @@ const SWING_MAP_INSTRUMENTS = {
   SPX500: { oanda: 'SPX500_USD', oi: ['SPX500_USD', 'SPX', 'ES'] },
 };
 const _swingMapCache = new Map();
-async function _swingMapExpiries(names) {
+async function _swingMapExpiries(names, sigmaAnnual = null) {
   if (!_archive.enabled) return [];
   const today = new Date().toISOString().slice(0, 10);
   const horizon = new Date(Date.now() + 100 * 864e5).toISOString().slice(0, 10);
@@ -39376,14 +39376,18 @@ async function _swingMapExpiries(names) {
     if (!live.length) continue;
     const out = [];
     for (const e of live) {
-      const v = await _expiryTrack().view(pair, e.expiry, { topN: 6 }).catch(() => null);
+      const v = await _expiryTrack().view(pair, e.expiry, { topN: 6, sigmaAnnual }).catch(() => null);
       const d = v?.days?.at(-1);
       if (!d) continue;
       const firstDay = v.days[0];
       out.push({ pair, expiry: e.expiry, code: v.code, dte: d.dte, date: d.date, stale: d.stale, totalOI: d.totalOI,
         totalOIFirst: firstDay?.totalOI ?? null, firstSeen: firstDay?.date ?? null, nights: v.n,
         centrePx: d.centrePx, centrePxFirst: firstDay?.centrePx ?? null, maxPain: d.maxPain,
-        chgNearSpot: d.chgNearSpot, chgAwayFromSpot: d.chgAwayFromSpot, zones: d.zones });
+        chgNearSpot: d.chgNearSpot, chgAwayFromSpot: d.chgAwayFromSpot, zones: d.zones,
+        oiAbove: d.oiAbove, oiBelow: d.oiBelow, shareAbove: d.shareAbove, pullPct: d.pullPct,
+        buildAbove: d.buildAbove, buildBelow: d.buildBelow, gamma: d.gamma ?? null,
+        // the conveyor belt: how this expiry's lean has moved night by night as it counted down
+        history: v.days.map(x => [x.date, x.dte, x.pullPct, x.shareAbove, x.buildAbove, x.buildBelow, x.totalOI, x.stale ? 1 : 0]) });
     }
     return out;
   }
@@ -39398,7 +39402,8 @@ app.get('/api/swing-map', async (req, res) => {
   try {
     const bars = await _btFetchD1Aligned(cfg.oanda, 2600);
     const fc = forecastState.latest?.instruments?.[inst] ?? null;
-    const expiries = await _swingMapExpiries(cfg.oi).catch(() => []);
+    const _sg = _swingSigma(bars.map(b => b.close)).at(-1);
+    const expiries = await _swingMapExpiries(cfg.oi, _sg > 0 ? _sg * Math.sqrt(252) : null).catch(() => []);
     const m = _buildSwingMap(bars, { ladderWeeklyRev: fc?.ladder_weekly_rev ?? null, ladderMonthlyRev: fc?.ladder_monthly_rev ?? null, expiries });
     const data = { ...m, inst, oanda: cfg.oanda, instruments: Object.keys(SWING_MAP_INSTRUMENTS),
       forecastSession: forecastState.latest?.session_date ?? null, generatedAt: new Date().toISOString() };

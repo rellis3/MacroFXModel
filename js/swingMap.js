@@ -41,7 +41,7 @@ export const BASE_RATES = {
     yahoo: { n: 158, ret20: 0.246, ret20Ci: [0.073, 0.426], pBounceFirst: 0.443, baselineRet20: 0.068, baselinePBounce: 0.433 },
     barriers: { up: 0.75, down: 0.45, unit: 'sigma_d x sqrt(20)' },
   },
-  afterRally: { n: 176, ret20: -0.126, ret20Ci: [-0.383, 0.153], pPullbackFirst: 0.324, baselinePPullback: 0.335 },
+  afterRally: { n: 176, ret20: -0.126, ret20Ci: [-0.383, 0.153], pPullbackFirst: 0.324, baselinePPullback: 0.335, daysToPullback: 8, daysToContinue: 7, baselineDaysToPullback: 9, baselineDaysToContinue: 7 },
 };
 
 /** Daily log-return sigma, trailing window, aligned to bars (null until enough data). */
@@ -101,6 +101,51 @@ export function zigzag(bars, sig, rev = REV) {
   return { legs: out, live };
 }
 
+export const DTE_BUCKETS = [[0, 10], [11, 30], [31, 60], [61, 100]];
+export const LEAN_BAND = 0.05;      // shareAbove within 0.45..0.55 reads as balanced
+
+const lean = share => (share == null ? null : share > 0.5 + LEAN_BAND ? 'up' : share < 0.5 - LEAN_BAND ? 'down' : 'balanced');
+
+/**
+ * The option pull by days-to-expiry bucket: OI-weighted share of open interest above price, the weighted pull (OI
+ * centre vs price, %), last night's build above vs below, and the build over the last `nights` nights from each
+ * expiry's history. Then the term structure of the lean: where it changes side as expiries get further out
+ * ("0-10 days leans down, 31-60 leans up"). UNTESTED context: nothing yet shows a book's lean moves price.
+ */
+export function pullByBucket(expiries, { buckets = DTE_BUCKETS, nights = 5 } = {}) {
+  const out = buckets.map(([lo, hi]) => {
+    const xs = (expiries || []).filter(e => Number.isFinite(e.dte) && e.dte >= lo && e.dte <= hi && Number.isFinite(e.shareAbove));
+    const w = xs.reduce((a, e) => a + (e.totalOI || 0), 0);
+    if (!xs.length || w <= 0) return { lo, hi, n: 0, lean: null };
+    const wavg = f => xs.reduce((a, e) => a + (e[f] ?? 0) * (e.totalOI || 0), 0) / w;
+    const recent = xs.reduce((acc, e) => {
+      const h = (e.history || []).filter(r => !r[7]).slice(-nights);
+      for (const r of h) { acc.above += r[4] ?? 0; acc.below += r[5] ?? 0; }
+      return acc;
+    }, { above: 0, below: 0 });
+    const share = wavg('shareAbove');
+    return { lo, hi, n: xs.length, expiries: xs.map(e => e.expiry), totalOI: w, shareAbove: share, pullPct: wavg('pullPct'),
+      lean: lean(share), buildAbove: xs.reduce((a, e) => a + (e.buildAbove ?? 0), 0), buildBelow: xs.reduce((a, e) => a + (e.buildBelow ?? 0), 0),
+      recentBuildAbove: recent.above, recentBuildBelow: recent.below,
+      buildLean: recent.above + recent.below === 0 ? null : recent.above > recent.below ? 'up' : 'down' };
+  });
+  const sided = out.filter(b => b.lean === 'up' || b.lean === 'down');
+  const flips = [];
+  for (let i = 1; i < sided.length; i++) if (sided[i].lean !== sided[i - 1].lean)
+    flips.push({ from: sided[i - 1].lean, to: sided[i].lean, nearBucket: `${sided[i - 1].lo}-${sided[i - 1].hi}`, farBucket: `${sided[i].lo}-${sided[i].hi}`,
+      firstExpiry: sided[i].expiries?.[0] ?? null });
+  const words = out.filter(b => b.n).map(b => `${b.lo}-${b.hi} days ${b.lean === 'balanced' ? 'balanced' : `leans ${b.lean}`} (${Math.round(b.shareAbove * 100)}% of OI above price)`);
+  return { buckets: out, flips, summary: words.join('; ') + (flips.length ? `. The lean changes side from ${flips.map(f => `${f.from} to ${f.to} after the ${f.nearBucket}-day bucket`).join(', then ')}.` : words.length ? '. One side all the way out.' : ''),
+    proof: PROOF.untested };
+}
+
+/** Weekday date `n` sessions after `date` (holidays not modelled). */
+export function tradingDaysAhead(date, n) {
+  let t = Date.parse(`${date}T00:00:00Z`), k = 0;
+  while (k < n) { t += 864e5; const w = new Date(t).getUTCDay(); if (w !== 0 && w !== 6) k++; }
+  return new Date(t).toISOString().slice(0, 10);
+}
+
 const pctileOf = (xs, x) => (xs.length ? xs.filter(v => v < x).length / xs.length : null);
 
 /**
@@ -154,14 +199,40 @@ export function buildSwingMap(bars, opts = {}) {
       inMonthlyP90: bands[1] ? z.px >= bands[1].p90.down && z.px <= bands[1].p90.up : null })),
     proof: PROOF.untested }));
 
+  const pull = pullByBucket(expiries);
+
+  // The two paths (the owner's preferred picture over the cone). Every waypoint is a measured number:
+  //  A bounce first: the look-back's bounce barrier at its median sessions-to-bounce, then the monthly p75 high.
+  //  B flush first:  the flush barrier at its median sessions-to-flush, then the monthly p75 low.
+  // Odds are the look-back's bounce-first share after the deep-fall condition, printed beside the every-day baseline,
+  // and only when the condition is on; otherwise the baseline alone. Waypoint dates are sessions ahead, not forecasts.
+  const af = BASE_RATES.afterFall, ar = BASE_RATES.afterRally, mb = bands[1] ?? null;
+  const rising = live?.dir === 'up';
+  const on = rising ? state.rallySignal : state.fallSignal;
+  // falling: A = bounce first (barriers.bounce is above). rising: A = pullback first (barriers.bounce is below).
+  const pA = rising ? (on ? ar.pPullbackFirst : ar.baselinePPullback) : (on ? af.pBounceFirst : af.baseline.pBounceFirst);
+  const baseA = rising ? ar.baselinePPullback : af.baseline.pBounceFirst;
+  const dA = rising ? (on ? ar.daysToPullback : ar.baselineDaysToPullback) : (on ? af.daysToBounce : 11), dB = rising ? (on ? ar.daysToContinue : ar.baselineDaysToContinue) : (on ? af.daysToFlush : 7);
+  const leg = (sessions, px, label, proof) => ({ sessions, date: tradingDaysAhead(state.date, sessions), px, label, proof });
+  const start = { sessions: 0, date: state.date, px: last, label: 'last close' };
+  const mUp = mb ? leg(20, mb.p75.up, 'monthly p75 high (reached 1 time in 4)', PROOF.validated) : null;
+  const mDn = mb ? leg(20, mb.p75.down, 'monthly p75 low (reached 1 time in 4)', PROOF.validated) : null;
+  const paths = [
+    { key: 'A', name: rising ? 'Pullback first' : 'Bounce first', prob: pA, baseline: baseA, conditionOn: on,
+      points: [start, leg(dA, barriers.bounce, `${rising ? 'pullback' : 'bounce'} barrier (median ${dA} sessions when it comes first)`, PROOF.exploratory), ...((rising ? mDn : mUp) ? [rising ? mDn : mUp] : [])] },
+    { key: 'B', name: rising ? 'Continue first' : 'Flush first', prob: 1 - pA, baseline: 1 - baseA, conditionOn: on,
+      points: [start, leg(dB, barriers.flush, `${rising ? 'continuation' : 'flush'} barrier (median ${dB} sessions when it comes first)`, PROOF.exploratory), ...((rising ? mUp : mDn) ? [rising ? mUp : mDn] : [])] },
+  ];
+
+
   return {
     ok: true, generatedFor: state.date,
     series: bars2.map((b, i) => [b.date, b.close]),
-    legs, live: liveOut, state, barriers, bands, expiries,
+    legs, live: liveOut, state, barriers, bands, expiries, pull, paths,
     baseRates: BASE_RATES,
     proofs: {
       legs: PROOF.context, live: PROOF.context, state: PROOF.exploratory, baseRates: PROOF.exploratory,
-      bands: PROOF.validated, expiries: PROOF.untested,
+      bands: PROOF.validated, expiries: PROOF.untested, pull: PROOF.untested, paths: PROOF.exploratory,
     },
     notes: [
       'Leg size does not tell you when a leg ends: across 10 years, legs that had gone 6 sigma or 20 sigma went a further ~5 sigma either way.',
