@@ -33,6 +33,8 @@
   .note { color:var(--text3); font-size:12px; }
   .big { font-size:15px; } .good { color:var(--up); } .bad { color:var(--down); } .warn { color:var(--amber); }
   .err { color:var(--down); }
+  details.howto { margin-top:8px; color:var(--text2); font-size:12.5px; } details.howto summary { cursor:pointer; color:var(--blue); } details.howto li { margin:4px 0; }
+  tr.thin td { opacity:0.45; }
   .seg { display:inline-flex; } .seg button { border-radius:0; } .seg button:first-child { border-radius:5px 0 0 5px; } .seg button:last-child { border-radius:0 5px 5px 0; border-left:0; }
   .seg button.on { background:#30363d; color:#fff; }
   .mcopt { color:var(--text3); font-size:12px; display:none; gap:6px; align-items:center; } .mcopt.show { display:inline-flex; }
@@ -63,7 +65,15 @@
 
   <div class="row">
     <section class="card"><h2>Price, swings and what lies ahead</h2><div id="chart"></div>
-      <p class="note" id="chartNote"></p></section>
+      <p class="note" id="chartNote"></p>
+      <details class="howto"><summary>How to read this chart, and how to use it</summary>
+        <ul>
+          <li><b>Each vertical dotted line is one CME option expiry</b>, at its date. The date sits under it. Faint lines are thin books, too small to read (under 10% of all live open interest).</li>
+          <li><b>The arrow on top of each line</b> says which side of today's price most of that expiry's open interest sits. ▲ = more above, ▼ = more below, ◆ = balanced.</li>
+          <li><b>The purple bars on a line</b> are that expiry's three biggest strikes inside the monthly range. Width = their share of that expiry. Bright violet = OI there has been building; grey = flat or fading.</li>
+          <li><b>Most-touched path</b> (violet line): where most of 2,000 simulated paths sit each day <i>if</i> each expiry pulls price toward its open-interest centre. <b>Grey dashed</b> = the same simulation with no pull. Orange dotted = the monthly expected move (validated).</li>
+          <li><b>How to use it:</b> it is a map of where the options book sits, not a forecast. Read three things together: (1) do the heavy expiries lean the same way; (2) is OI <i>building</i> on that side, away from price, before price gets there; (3) does the dealer flow (charm, in the table below) point the same way? When they agree, the picture is coherent. When they disagree, as the line under "Option pull" says, there is no clean read. None of this is tested yet: the expiry-pull score decides whether the lean means anything.</li>
+        </ul></details></section>
     <aside class="card"><h2>The level map</h2><div id="levels"></div></aside>
   </div>
 
@@ -86,7 +96,7 @@
     Earlier OI tests: walls behaved like ordinary levels (wall-placebo), max pain does not pin, and the dealer hedge-flow side was underpowered.</p>
 </div>
 <script type="module">
-import { simulatePaths, touchShare } from './js/swingPaths.js';
+import { simulatePaths, touchShare, driftSegments } from './js/swingPaths.js';
 const $ = id => document.getElementById(id);
 const fmt = (x, dp) => (x == null || !isFinite(x) ? '–' : Number(x).toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp }));
 const pct = (x, dp = 1) => (x == null || !isFinite(x) ? '–' : `${x > 0 ? '+' : ''}${x.toFixed(dp)}%`);
@@ -151,15 +161,18 @@ function drawChart(m) {
   o.push(`<rect x="${X(today)}" y="${T}" width="${W - R - X(today)}" height="${H - T - B}" fill="#ffffff" opacity="0.025"/>`);
   o.push(`<line x1="${X(today)}" x2="${X(today)}" y1="${T}" y2="${H - B}" stroke="var(--text3)" stroke-dasharray="3 3"/><text x="${X(today) + 4}" y="${T + 11}" fill="var(--text3)" font-size="11">today</text>`);
   // expiries: vertical line + zone bars (width = share of that expiry's OI), violet = building, grey = not
+  let lastLabelX = -1e9;
+  const mb90 = m.bands[1]?.p90;
   for (const e of m.expiries) {
     if (e.expiry > futEnd) continue;
     const x = X(e.expiry);
-    o.push(`<line x1="${x}" x2="${x}" y1="${T}" y2="${H - B}" stroke="var(--violet)" stroke-opacity="0.45" stroke-dasharray="2 4"/>`);
-    o.push(`<text x="${x}" y="${H - B + 12}" fill="var(--violet)" font-size="10" text-anchor="middle">${e.expiry.slice(5)}</text>`);
+    o.push(`<line x1="${x}" x2="${x}" y1="${T}" y2="${H - B}" stroke="${e.thin ? 'var(--text3)' : 'var(--violet)'}" stroke-opacity="${e.thin ? 0.2 : 0.45}" stroke-dasharray="2 4"/>`);
+    if (x - lastLabelX >= 30) { o.push(`<text x="${x}" y="${H - B + 12}" fill="${e.thin ? 'var(--text3)' : 'var(--violet)'}" font-size="10" text-anchor="middle">${e.expiry.slice(5)}</text>`); lastLabelX = x; }
+    if (e.thin) { o.push(`<text x="${x}" y="${T + 28}" fill="var(--text3)" font-size="10" text-anchor="middle">·<title>${e.expiry}: thin book (${fmt((e.oiShare ?? 0) * 100, 0)}% of live open interest), not read</title></text>`); continue; }
     if (e.shareAbove != null) { const up = e.shareAbove > 0.55, dn = e.shareAbove < 0.45;
       o.push(`<text x="${x}" y="${T + 28}" fill="${up ? 'var(--up)' : dn ? 'var(--down)' : 'var(--text3)'}" font-size="12" font-weight="700" text-anchor="middle">${up ? '▲' : dn ? '▼' : '◆'}<title>${e.expiry}: ${Math.round(e.shareAbove * 100)}% of OI above price, centre ${pct(e.pullPct, 2)} from price</title></text>`); }
-    for (const z of e.zones.slice(0, 5)) {
-      if (z.px < lo || z.px > hi) continue;
+    for (const z of e.zones.slice(0, 3)) {
+      if (z.px < lo || z.px > hi || (mb90 && (z.px < mb90.down || z.px > mb90.up))) continue;
       const w = Math.max(4, (z.share ?? 0) * 260), build = (z.buildStreak ?? 0) >= 2 || (z.chgSinceFirst ?? 0) > 0;
       o.push(`<rect x="${x - w / 2}" y="${Y(z.px) - 3}" width="${w}" height="6" rx="2" fill="${build ? 'var(--violet)' : '#6e7681'}" opacity="${sim ? 0.3 : 0.85}"><title>${e.expiry} (${e.dte}d): ${px(z.px)}, ${fmt(z.oi, 0)} contracts, ${fmt((z.share ?? 0) * 100, 1)}% of this expiry, ${z.buildStreak ?? 0} nights building, ${(z.chgSinceFirst ?? 0) >= 0 ? '+' : ''}${fmt(z.chgSinceFirst, 0)} since first seen</title></rect>`);
     }
@@ -292,9 +305,9 @@ function expiryTable(m) {
   if (!m.expiries.length) { $('expiries').innerHTML = '<p class="note">No expiry-tracker series for this instrument yet. The tracker folds every night from the CME capture (FX majors, gold, NQ, ES and others in the sweep).</p>'; return; }
   const rows = m.expiries.map(e => {
     const z = e.zones.slice(0, 3).map(z => `<span title="${fmt(z.oi, 0)} contracts, ${z.buildStreak ?? 0} nights building">${px(z.px)} <span class="note">${fmt((z.share ?? 0) * 100, 0)}%${(z.buildStreak ?? 0) >= 2 ? ' ▲' : ''}</span></span>`).join(' · ');
-    const grow = e.totalOIFirst ? (e.totalOI / e.totalOIFirst - 1) * 100 : null;
+    const grow = e.totalOIFirst && e.totalOIFirst >= 0.1 * e.totalOI ? (e.totalOI / e.totalOIFirst - 1) * 100 : null;   // a listing that started tiny makes +9,000% meaningless
     const drift = e.centrePx != null && e.centrePxFirst != null ? (e.centrePx / e.centrePxFirst - 1) * 100 : null;
-    return `<tr><td>${e.expiry}${e.code ? ` <span class="note">${esc(e.code)}</span>` : ''}</td><td>${e.dte}</td><td>${e.nights}</td><td>${fmt(e.totalOI, 0)} <span class="note">${pct(grow, 0)}</span></td>`
+    return `<tr><td>${e.expiry}${e.code ? ` <span class="note">${esc(e.code)}</span>` : ''}</td><td>${e.dte}</td><td>${e.nights}</td><td>${fmt(e.totalOI, 0)} <span class="note">${grow == null ? (e.totalOIFirst ? `from ${fmt(e.totalOIFirst, 0)}` : '') : pct(grow, 0)}</span></td>`
       + `<td>${px(e.centrePx)} <span class="note">${pct(drift, 2)}</span></td><td>${px(e.maxPain)}</td><td>${fmt(e.chgAwayFromSpot, 0)}</td><td>${fmt(e.chgNearSpot, 0)}</td><td style="text-align:left">${z}${e.stale ? ' <span class="warn">stale capture</span>' : ''}</td></tr>`;
   }).join('');
   $('expiries').innerHTML = `<div class="tbl"><table><tr><th>Expiry</th><th>Days left</th><th>Nights tracked</th><th>Open interest (since first seen)</th><th>OI centre (drift)</th><th>Max pain</th><th>Built away from price (last night)</th><th>Built near price</th><th style="text-align:left">Biggest strikes (share, ▲ = building 2+ nights)</th></tr>${rows}</table></div>`
@@ -342,7 +355,7 @@ function runSims(m) {
   if (SIMS?.key === key) return SIMS;
   const mb = m.bands[1];
   const sigma = mb?.sigmaUsedPct ? mb.sigmaUsedPct / 100 / Math.sqrt(20) : m.state.sigmaDailyPct / 100;
-  const used = m.expiries.filter(e => e.centrePx > 0 && e.totalOI > 0).map(e => ({ expiry: e.expiry, s: sessionsBetween(m.state.date, e.expiry), target: e.centrePx, oi: e.totalOI }))
+  const used = m.expiries.filter(e => !e.thin && e.centrePx > 0 && e.totalOI > 0).map(e => ({ expiry: e.expiry, s: sessionsBetween(m.state.date, e.expiry), target: e.centrePx, oi: e.totalOI }))
     .filter(e => e.s >= 1);
   const base = { close: m.state.close, sigma, sessions: H, expiries: used, n: 2000, seed: 20261101, keep: 150 };
   SIMS = { key, used, sigma, sigmaSrc: mb?.sigmaUsedPct ? 'the live monthly reverting σ (validated)' : 'realised 60-day σ', k, H,
@@ -359,7 +372,7 @@ function mcNote(m) {
   const dir0 = S.pull.drift[0]?.d ?? 0;
   $('chartNote').innerHTML = `${MODE === 'mc' ? `${S.pull.n.toLocaleString()} simulated paths over ${S.H} sessions (150 drawn), shaded 10-90% and 25-75%, white = median.` : `Violet = the most-touched path: for each session, where the most simulated paths sit. Grey dashed = the same with no pull (a plain random walk stays flat).`} `
     + `σ = ${(S.sigma * 100).toFixed(2)}% a session from ${S.sigmaSrc}. Pull strength ${S.k === 0 ? 'off' : S.k} ${tag('UNTESTED')}: each expiry still alive draws price toward its OI centre, the nearest one weighing most, handing over as it rolls off. ${S.used.length} expir${S.used.length === 1 ? 'y' : 'ies'} used.<br>`
-    + (S.used.length ? `The pull starts ${dir0 > 0 ? '<b class="good">up</b>' : dir0 < 0 ? '<b class="bad">down</b>' : 'flat'}${flips.length ? ` and changes side after session ${flips.join(', ')}` : ''}. ` : '<span class="warn">No expiry-tracker data, so the pull run equals the random walk.</span> ')
+    + (S.used.length ? `The pull, day by day: <b>${driftSegments(S.pull.drift).text}</b>. ` : '<span class="warn">No expiry-tracker data, so the pull run equals the random walk.</span> ')
     + `End of horizon: median ${px(endP.p50)} with pull vs ${px(endF.p50)} without; most-touched ${px(mp.px)} vs ${px(mf.px)}. `
     + (mb ? `Touch the monthly expected move up ${px(mb.p50.up)}: ${ts(mb.p50.up)}; down ${px(mb.p50.down)}: ${ts(mb.p50.down)}.` : '')
     + `<br><span class="note">The pull is a hypothesis drawn as a picture. Its strength is chosen, not fitted, and no test here shows an expiry's lean moves price (OI walls behaved like ordinary levels, max pain does not pin). The gap between the violet and grey lines is the hypothesis, not evidence.</span>`;
@@ -376,9 +389,10 @@ function pathCards(m) {
   + `<p class="note">The odds differ from any day by less than their own uncertainty, so read both paths as live. Unlike the original chart, there is no single "reversal date": the look-back found no size or time at which legs end.</p>`;
 }
 
-function greekCell(v, flip) {
+function money(x) { x = Math.abs(x); return x >= 1e9 ? `$${(x / 1e9).toFixed(1)}bn` : x >= 1e6 ? `$${(x / 1e6).toFixed(0)}m` : `$${Math.round(x / 1e3)}k`; }
+function greekCell(v, flip, notional) {
   if (v == null || !isFinite(v)) return '–';
-  return `<span class="${v > 0 ? 'good' : v < 0 ? 'bad' : ''}">${v > 0 ? 'BUY' : v < 0 ? 'SELL' : 'flat'} ${fmt(Math.abs(v), 0)}</span>${flip ? ` <span class="note">flips ${px(flip)}</span>` : ''}`;
+  return `<span class="${v > 0 ? 'good' : v < 0 ? 'bad' : ''}">${v > 0 ? 'BUY' : v < 0 ? 'SELL' : 'flat'} ${fmt(Math.abs(v), 0)}</span>${notional ? ` <span class="note">≈${money(notional)}</span>` : ''}${flip ? ` <span class="note">flips ${px(flip)}</span>` : ''}`;
 }
 function pullCard(m) {
   const P = m.pull;
@@ -390,16 +404,19 @@ function pullCard(m) {
   const spark = h => { const v = h.filter(r => r[2] != null); if (v.length < 2) return ''; const ys = v.map(r => r[3] ?? 0.5), w = 90, hh = 22;
     return `<svg viewBox="0 0 ${w} ${hh}" style="width:90px;height:22px;display:inline-block;vertical-align:middle"><line x1="0" x2="${w}" y1="${hh / 2}" y2="${hh / 2}" stroke="var(--grid)"/><polyline fill="none" stroke="var(--violet)" stroke-width="1.5" points="${ys.map((y, i) => `${(i / (ys.length - 1) * w).toFixed(1)},${(hh - y * hh).toFixed(1)}`).join(' ')}"/></svg>`; };
   const rows = m.expiries.map(e => {
-    const l = e.shareAbove == null ? '–' : e.shareAbove > 0.55 ? '<span class="good">▲</span>' : e.shareAbove < 0.45 ? '<span class="bad">▼</span>' : '◆';
+    const l = e.thin ? '<span class="note">thin</span>' : e.shareAbove == null ? '–' : e.shareAbove > 0.55 ? '<span class="good">▲</span>' : e.shareAbove < 0.45 ? '<span class="bad">▼</span>' : '◆';
     const net = e.buildAbove == null ? '–' : `${fmt(e.buildAbove, 0)} / ${fmt(e.buildBelow, 0)}`;
-    return `<tr><td>${e.expiry}</td><td>${e.dte}</td><td>${l} ${e.shareAbove == null ? '' : Math.round(e.shareAbove * 100) + '%'}</td><td>${pct(e.pullPct, 2)}</td><td>${net}</td><td>${spark(e.history || [])}</td>`
+    return `<tr class="${e.thin ? 'thin' : ''}"><td>${e.expiry}</td><td>${e.dte}</td><td>${fmt(e.totalOI, 0)} <span class="note">${fmt((e.oiShare ?? 0) * 100, 0)}%</span></td><td>${l} ${e.shareAbove == null || e.thin ? '' : Math.round(e.shareAbove * 100) + '%'}</td><td>${pct(e.pullPct, 2)}</td><td>${net}</td><td>${spark(e.history || [])}</td>`
       + `<td>${e.gamma ? `${e.gamma.regime}${e.gamma.flipPx ? ` · flip ${px(e.gamma.flipPx)}` : ''}` : '–'}</td>`
-      + `<td>${greekCell(e.greeks?.charm1d, e.greeks?.charmFlipPx)}</td><td>${greekCell(e.greeks?.vannaIvDn2, e.greeks?.vannaFlipPx)}</td></tr>`;
+      + `<td>${greekCell(e.greeks?.charm1d, e.greeks?.charmFlipPx, e.greeks?.charmNotional)}</td><td>${greekCell(e.greeks?.vannaIvDn2, e.greeks?.vannaFlipPx, e.greeks?.vannaNotional)}</td></tr>`;
   }).join('');
-  $('pull').innerHTML = `<p>${esc(P.summary)}</p><div class="bk">${bk}</div>`
-    + `<div class="tbl"><table><tr><th>Expiry</th><th>Days left</th><th>OI above price</th><th>Centre vs price</th><th>Built last night above / below</th><th>Share above, night by night</th><th>This expiry's gamma</th><th>Charm: 1 day passes</th><th>Vanna: IV −2 pts</th></tr>${rows}</table></div>`
+  const sg = m.signals;
+  $('pull').innerHTML = `<p>${esc(P.summary)}</p>`
+    + (sg ? `<p class="${sg.agree === false ? 'warn' : ''}"><b>Do the readings agree?</b> ${esc(sg.text)}${sg.handover ? ' The near and far expiries lean opposite ways: a hand-over, if the pull is real.' : ''}</p>` : '')
+    + `<div class="bk">${bk}</div>`
+    + `<div class="tbl"><table><tr><th>Expiry</th><th>Days left</th><th>Open interest (share of all)</th><th>OI above price</th><th>Centre vs price</th><th>Built last night above / below</th><th>Share above, night by night</th><th>This expiry's gamma</th><th>Charm: 1 day passes</th><th>Vanna: IV −2 pts</th></tr>${rows}</table></div>`
     + `<p class="note">Each expiry is pinned to its date and re-read every night as it counts down, so the same contract moves from the far buckets into the near ones. "Above price" is in spot terms (inverted CME pairs are flipped). `
-    + `Open interest opens near the money and follows price, so a lean that builds before price moves is the part worth watching. Charm and vanna are the dealer hedge each expiry forces in contracts of the underlying (BUY = dealers buy the pair as quoted): when one day passes, and if implied vol falls 2 points; \"flips\" is where that flow changes side by strike. Same convention as the OI Lab hedging map, flat vol, treated as context there too. Gamma is this expiry alone at today's realised vol (PIN = dealers long gamma, damping; BREAKOUT = short, amplifying); the range effect of gamma is validated on ES only and says nothing about direction. `
+    + `Open interest opens near the money and follows price, so a lean that builds before price moves is the part worth watching. Charm and vanna are the dealer hedge each expiry forces, in contracts of the underlying with the money value beside it (BUY = dealers buy the pair as quoted): when one day passes, and if implied vol falls 2 points. Compare the money value with the market's daily turnover: a few million dollars of hedging is small next to a futures market that trades hundreds of billions a day; \"flips\" is where that flow changes side by strike. Same convention as the OI Lab hedging map, flat vol, treated as context there too. Gamma is this expiry alone at today's realised vol (PIN = dealers long gamma, damping; BREAKOUT = short, amplifying); the range effect of gamma is validated on ES only and says nothing about direction. `
     + `Earlier tests: OI walls behaved like ordinary levels, max pain does not pin, the hedge-flow side was underpowered. Whether a lean marks where price is at expiry gets its own pre-registered score.</p>`;
 }
 

@@ -401,6 +401,7 @@ import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 /
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
 import { createExpiryTrackStore } from './js/expiryTrackStore.js';
 import { buildSwingMap as _buildSwingMap, sigmaSeries as _swingSigma } from './js/swingMap.js';
+import { oiContractSize as _oiContractSizeSM } from './js/oi.js';
 import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
 import { createHistorySources as _createHistorySources } from './js/stateHistorySources.js';
 import { fetchDtsTga as _fetchDtsTga } from './js/treasuryDts.js';
@@ -39410,6 +39411,15 @@ const SWING_MAP_INSTRUMENTS = {
   SPX500: { oanda: 'SPX500_USD', oi: ['SPX500_USD', 'SPX', 'ES'] },
 };
 const _swingMapCache = new Map();
+// Charm/vanna hedges are in contracts of the underlying; add the money value so "SELL 13" reads at its real size.
+// Non-inverted only: the inverted CME FX contracts are sized in the foreign currency, so their notional is left null.
+function _swingGreeksNotional(pair, d) {
+  const g = d?.greeks; if (!g) return null;
+  if (_OI_INVERTED.has(pair)) return { ...g, charmNotional: null, vannaNotional: null };
+  const size = _oiContractSizeSM(pair), px = Number.isFinite(d.spot) ? d.spot : d.futures;
+  if (!(size > 0) || !(px > 0)) return g;
+  return { ...g, contractSize: size, charmNotional: g.charm1d * size * px, vannaNotional: g.vannaIvDn2 * size * px };
+}
 async function _swingMapExpiries(names, sigmaAnnual = null) {
   if (!_archive.enabled) return [];
   const today = new Date().toISOString().slice(0, 10);
@@ -39429,7 +39439,7 @@ async function _swingMapExpiries(names, sigmaAnnual = null) {
         centrePx: d.centrePx, centrePxFirst: firstDay?.centrePx ?? null, maxPain: d.maxPain,
         chgNearSpot: d.chgNearSpot, chgAwayFromSpot: d.chgAwayFromSpot, zones: d.zones,
         oiAbove: d.oiAbove, oiBelow: d.oiBelow, shareAbove: d.shareAbove, pullPct: d.pullPct,
-        buildAbove: d.buildAbove, buildBelow: d.buildBelow, gamma: d.gamma ?? null, greeks: d.greeks ?? null,
+        buildAbove: d.buildAbove, buildBelow: d.buildBelow, gamma: d.gamma ?? null, greeks: _swingGreeksNotional(pair, d),
         // the conveyor belt: how this expiry's lean has moved night by night as it counted down
         history: v.days.map(x => [x.date, x.dte, x.pullPct, x.shareAbove, x.buildAbove, x.buildBelow, x.totalOI, x.stale ? 1 : 0]) });
     }

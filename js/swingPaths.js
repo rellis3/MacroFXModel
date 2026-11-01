@@ -111,3 +111,25 @@ export function touchShare(sim, level) {
   const hit = sim.sample.filter(p => p.some(v => (up ? v >= level : v <= level))).length;
   return hit / sim.sample.length;
 }
+
+/**
+ * The pull's direction day by day, merged into runs: [{ from, to, dir }] (sessions 1-based) plus a sentence such as
+ * "down days 1-3, up days 4-20". Runs shorter than minLen are folded into the run before them so a one-day wobble
+ * does not read as a turn.
+ */
+export function driftSegments(drift, { minLen = 2 } = {}) {
+  const runs = [];
+  (drift || []).forEach((d, i) => {
+    const dir = d.d > 0 ? 'up' : d.d < 0 ? 'down' : 'flat';
+    const last = runs.at(-1);
+    if (last && last.dir === dir) last.to = i + 1; else runs.push({ from: i + 1, to: i + 1, dir });
+  });
+  const merged = [];
+  for (const r of runs) {
+    const last = merged.at(-1);
+    if (last && (r.to - r.from + 1 < minLen || last.dir === r.dir)) last.to = r.to;
+    else merged.push({ ...r });
+  }
+  const text = merged.map(r => `${r.dir} ${r.from === r.to ? `day ${r.from}` : `days ${r.from}-${r.to}`}`).join(', ');
+  return { runs: merged, text };
+}

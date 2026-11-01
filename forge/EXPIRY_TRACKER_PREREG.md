@@ -173,7 +173,39 @@ placebo. It must recover ≥ 0.20 and pass the gate. If it doesn't, the pipeline
 
 ## Amendments
 
-*(none)*
+### A1 — 2026-11-01 — PRE-RESULTS
+**The positive control in §5 is replaced.** As written, it added 0.25·L to the *real* outcomes and read off what the
+pipeline recovered. That leaks the answer: the recovered value minus 0.25 is the real P1 estimate, so running the check
+would show the result before the gate is applied. The replacement keeps the real rows (leans, σ, read dates, controls,
+clusters) but **shuffles the outcome R across rows within each instrument**, which destroys any real lean–outcome link,
+then adds the planted 0.25·L. The pipeline must recover 0.25 ± its own CI and pass the gate on this copy. It must also
+return NULL or UNDERPOWERED on the shuffled copy *without* the plant. Both checks run before the real scoring, and the
+script refuses the real run unless both passed in the same session. No outcome had been computed: the scoring script
+(`41_expiry_pull_score.py`) did not exist when this was written.
+
+### A2 — 2026-11-01 — PRE-RESULTS
+**What "the plant must pass the gate" means when P1 is underpowered.** A planted 0.25 can only pass the gate when the
+count-first MDE is at or below 0.25. If the count-first pass rules P1 UNDERPOWERED, requiring a gate pass would block
+the run forever, and the verdict would be UNDERPOWERED either way. The control's job is to prove the pipeline is right,
+so it now requires:
+- **always:** the recovered planted mean is within max(0.10, the CI half-width) of (the shuffled copy's mean + 0.25), and its 95% CI contains that value. Shuffling within an instrument keeps mean(L)·mean(R) (an instrument that trended while its books mostly leaned one way), so the plant is measured on top of that, not against a flat 0.25;
+- **only when P1 is POWERED:** the planted copy also passes the full gate;
+- **always:** the shuffled copy without a plant does not validate.
+
+Found while running `--selftest` on synthetic data, before any real data was loaded. No real outcome had been computed.
+
+### A3 — 2026-11-01 — PRE-RESULTS
+**The positive control no longer requires the planted copy to pass the gate, even when P1 is powered.** Gate (a)
+requires the *estimate* to be at least the bar. A plant exactly at the bar (0.25) gives an estimate below 0.25 about
+half the time, so "must pass the gate" fails by chance. On synthetic no-pull data it failed 2 seeds in 3 while
+recovering the plant to within 0.01 every time. The control's purpose is to show the pipeline measures correctly, so it
+is now:
+- (1) the planted mean is recovered within max(0.10, the CI half-width) of the shuffled mean + 0.25, with that value
+  inside the planted CI;
+- (2) the shuffled copy without a plant does not validate.
+
+The gate logic itself is checked separately, in `--selftest`, on synthetic books with a strong planted pull (it must
+validate) and with none (it must not). No real outcome had been computed.
 
 ---
 
