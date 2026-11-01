@@ -398,6 +398,7 @@ import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 /
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
 import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
 import { createHistorySources as _createHistorySources } from './js/stateHistorySources.js';
+import { fetchDtsTga as _fetchDtsTga } from './js/treasuryDts.js';
 import { CBOE_INDICES as _CBOE_INDICES, YAHOO_LONG as _YAHOO_LONG, OVERNIGHT as _OVERNIGHT, fetchCboe as _fetchCboe, fetchYahooLong as _fetchYahooLong } from './js/marketHistory.js';
 // The permanent record of data that cannot be re-fetched (plans/DATA_ASSET_MAP.md §4A–B): R2, append-only.
 const _archive = createDataArchive({ putJSON: _r2PutJSON, getJSON: _r2GetJSON, listKeys: _r2ListKeys, configured: _r2Ok, log: console });
@@ -11447,31 +11448,9 @@ async function _attachHarIvSigma(days, bars, byDate, pair) {
 // Account-type label is matched by substring rather than filtered server-side
 // since the dataset mixes a few account rows per day ("Federal Reserve
 // Account", "Tax and Loan Note Accounts", "Total Operating Balance" etc).
-async function fetchDtsTgaBalance(fromDate) {
-  const base = 'https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/dts/operating_cash_balance';
-  const out  = new Map();
-  for (let pageNum = 1; pageNum <= 50; pageNum++) {
-    const params = new URLSearchParams({
-      filter: `record_date:gte:${fromDate}`,
-      fields: 'record_date,account_type,close_today_bal',
-      sort: 'record_date',
-      'page[number]': String(pageNum),
-      'page[size]': '1000',
-    });
-    const r = await fetch(`${base}?${params.toString()}`, { signal: AbortSignal.timeout(25_000) });
-    if (!r.ok) throw new Error(`Treasury DTS HTTP ${r.status}`);
-    const json = await r.json();
-    const rows = json.data ?? [];
-    for (const row of rows) {
-      if (!String(row.account_type ?? '').toLowerCase().includes('federal reserve')) continue;
-      const v = parseFloat(row.close_today_bal);
-      if (isFinite(v)) out.set(row.record_date, v / 1000); // millions -> billions, matches RRPONTSYD units
-    }
-    const totalPages = json.meta?.['total-pages'] ?? 1;
-    if (!rows.length || pageNum >= totalPages) break;
-  }
-  return out;
-}
+// Fixed 2026-11-01: the old parser matched only the pre-2021-10 "Federal Reserve Account" rows, so every TGA print
+// since October 2021 was dropped (js/treasuryDts.js has the three layouts and a test).
+async function fetchDtsTgaBalance(fromDate) { return _fetchDtsTga(fromDate); }
 
 // Fetch and align all raw data needed by the engine
 async function fetchMeRawData(fredKey) {
@@ -39142,6 +39121,7 @@ async function _archiveDaily() {
     try { const w = await _archive.mergeSeries('rates', id, await o.fetch(), { label: o.label }); if (!w.error) out.overnight++; } catch (e) { out.failed.push(`${id}: ${e.message}`); }
   }
   try { const w = await _archive.mergeSeries('rates', 'SONIA', await _fetchBoeSeries('IUDSOIA', '1997-01-01'), { label: 'SONIA', via: 'BoE IADB' }); if (!w.error) out.overnight++; } catch (e) { out.failed.push(`SONIA: ${e.message}`); }
+  try { const m = await _fetchDtsTga('2005-01-01'); const w = await _archive.mergeSeries('treasury', 'TGA_DTS', [...m].map(([date, value]) => ({ date, value })), { unit: '$bn', via: 'Daily Treasury Statement' }); if (!w.error) out.overnight++; } catch (e) { out.failed.push(`TGA: ${e.message}`); }
   // The desk's own forecast and session records (the data behind the proven range results; KV is the only copy).
   for (const [prefix, source] of [['vol_forecast_', 'vol_forecast'], ['vol_session_', 'vol_session']]) {
     try {
