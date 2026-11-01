@@ -12,7 +12,7 @@
 //   GET /api/state            the state document (cached 10 minutes; ?force=1 rebuilds)
 import { buildState } from './stateEngine.js';
 import { assembleChainSeries, CHAIN_OHLC, FRED_KEYS, YAHOO_FALLBACK } from './stateSources.js';
-import { summariseGlobal, summariseEconomies, summariseLayers, activeEdges } from './stateLayers.js';
+import { summariseGlobal, summariseEconomies, summariseLayers, activeEdges, todayRegimes, edgeRegimeContext } from './stateLayers.js';
 import { summariseLiquidity } from './stateLiquidity.js';
 import { longContext, fxBoard, surpriseHistory, cotBoard } from './stateHistory.js';
 import { playbook } from './statePlaybook.js';
@@ -110,7 +110,16 @@ export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = conso
       for (const w of doc.layers.liquidity.warnings) errors.push({ source: 'liquidity units', error: w });
     } else doc.layers.liquidity = null;
     const nq = series.nq; const nq5 = Array.isArray(nq) && nq.length > 6 ? (nq[nq.length - 1].value / nq[nq.length - 6].value - 1) * 100 : null;
-    doc.edges = activeEdges({ stress, nq5, oi: oiToday });
+    // Next weekday session (London date) for the calendar-only month-end rule when stress-shadow is not loaded.
+    const sessionDate = (() => { const d = new Date(); if (d.getUTCHours() >= 22) d.setUTCDate(d.getUTCDate() + 1); while ([0, 6].includes(d.getUTCDay())) d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })();
+    doc.edges = activeEdges({ stress, nq5, oi: oiToday, sessionDate });
+    // Edges by regime (EXPLORATORY, analysis/output/edges-by-regime): what each edge did in regimes like today's.
+    const regimeResults = await read('edges-by-regime', readers.edgeRegimes);
+    doc.regimes = todayRegimes({ vix: series.vix, hy: series.hy, us10y: series.us10y, us2y: series.us2y });
+    if (regimeResults) {
+      doc.regimeStudy = { generated: regimeResults.generated, lockbox: regimeResults.lockbox, status: regimeResults.status, doc: 'analysis/output/edges-by-regime/RESULTS.md' };
+      for (const e of doc.edges) e.regime = edgeRegimeContext(regimeResults, e.id, doc.regimes);
+    }
     doc.deepHistory = deepUsed.sort();
     // Long-history context (committed seeds + R2 archive) and the institutional playbook (DATA_ASSET_MAP §4C).
     const hist = await read('history', readers.history, 60_000);

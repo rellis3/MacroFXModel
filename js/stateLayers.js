@@ -110,13 +110,24 @@ const evidenceById = Object.fromEntries(DESK_EVIDENCE.map(e => [e.id, e]));
  * ROBUST / PLAUSIBLE are shown as active edges; FRAGILE ones are shown separately as research only.
  * Every edge is about RANGE (how far markets travel), not direction — that is what has validated here.
  */
+/** Weekday sessions only: true when `date` is one of the last 2 or first 2 weekdays of its month (calendar only). */
+export function isMonthEndSession(date) {
+  const d = new Date(date + 'T12:00:00Z'); if (Number.isNaN(+d) || [0, 6].includes(d.getUTCDay())) return false;
+  const wd = (y, m) => { const out = []; for (let x = new Date(Date.UTC(y, m, 1, 12)); x.getUTCMonth() === m; x = new Date(+x + 864e5)) if (![0, 6].includes(x.getUTCDay())) out.push(x.toISOString().slice(0, 10)); return out; };
+  const days = wd(d.getUTCFullYear(), d.getUTCMonth()), i = days.indexOf(date);
+  return i >= 0 && (i < 2 || i >= days.length - 2);
+}
+
 export const EDGE_RULES = [
   { id: 'forecast-miss-shock-fx', label: 'Equity/vol stress → FX ranges beat the forecast', applies: 'FX',
     when: ({ stress }) => stress?.conditions ? { active: (stress.conditions.fxCount ?? 0) >= 4, why: `${stress.conditions.fxCount ?? 0} of 5 stress conditions on (S&P 5d fall, VIX 5d rise, VIX high, VIX inverted, S&P 60d fall); the shadow scales FX bands ×${stress.factor?.fx ?? '?'}` } : null },
   { id: 'forecast-miss-shock-idx', label: 'S&P fall or VIX rise → index ranges beat the forecast', applies: 'Indices',
     when: ({ stress }) => stress?.conditions ? { active: (stress.conditions.idxCount ?? 0) >= 1, why: `${stress.conditions.idxCount ?? 0} of 2 on (S&P 5d fall, VIX 5d rise); index bands ×${stress.factor?.idx ?? '?'}` } : null },
   { id: 'forecast-miss-month-end-fx', label: 'Month-end sessions → FX ranges beat the forecast', applies: 'FX',
-    when: ({ stress }) => stress && typeof stress.monthEnd === 'boolean' ? { active: stress.monthEnd, why: stress.monthEnd ? `session ${stress.sessionDate} is in the last 2 / first 2 of the month` : `session ${stress.sessionDate ?? '?'} is not a month-end session` } : null },
+    when: ({ stress, sessionDate }) => {
+      const me = stress && typeof stress.monthEnd === 'boolean' ? { on: stress.monthEnd, d: stress.sessionDate } : sessionDate ? { on: isMonthEndSession(sessionDate), d: sessionDate } : null;
+      return me ? { active: me.on, why: me.on ? `session ${me.d} is in the last 2 / first 2 of the month` : `session ${me.d ?? '?'} is not a month-end session` } : null;
+    } },
   { id: 'vix-inversion', label: 'VIX above VIX3M → a wider week', applies: 'S&P, Nasdaq, USDJPY, gold',
     when: ({ stress }) => Number.isFinite(stress?.inputs?.vixTerm) ? { active: stress.inputs.vixTerm > 1, why: `VIX/VIX3M ${stress.inputs.vixTerm.toFixed(3)} (inverted above 1; the effect was measured on the first day)` } : null },
   { id: 'nq-down-week', label: 'Nasdaq down ≥1% over 5 sessions → next session wider', applies: 'Nasdaq',
@@ -136,5 +147,37 @@ export function activeEdges(inputs = {}) {
       grade, standing: grade === 'ROBUST' || grade === 'PLAUSIBLE' ? 'edge' : 'research only',
       claim: ev?.claim ?? null, result: ev?.result ?? null, use: ev?.use ?? null, doc: ev?.doc ?? null,
     };
+  });
+}
+
+/**
+ * Today's engine regimes, on the definitions edges-by-regime used (analysis/output/edges-by-regime/PREREG.md):
+ * vol = VIX above / at-or-below its trailing 252-session median; credit = HY OAS 20-print change > 0;
+ * curve = US 10Y − 2Y < 0. Series are [{date, value}] ascending. A missing input leaves that regime null.
+ */
+export function todayRegimes({ vix = [], hy = [], us10y = [], us2y = [] } = {}) {
+  const v = vix.filter(p => Number.isFinite(p?.value)), h = hy.filter(p => Number.isFinite(p?.value));
+  let vol = null, credit = null, curve = null;
+  if (v.length >= 200) {
+    const w = v.slice(-252).map(p => p.value).sort((a, b) => a - b), med = w[Math.floor(w.length / 2)];
+    vol = v.at(-1).value > med ? 'high vol' : 'low vol';
+  }
+  if (h.length > 20) credit = h.at(-1).value - h.at(-21).value > 0 ? 'credit widening' : 'credit not widening';
+  const a = us10y.at(-1)?.value, b = us2y.at(-1)?.value;
+  if (Number.isFinite(a) && Number.isFinite(b)) curve = a - b < 0 ? 'curve inverted' : 'curve not inverted';
+  return { vol, credit, curve };
+}
+
+/** What edges-by-regime measured for this edge in today's regimes: one line per axis, from results.json. */
+export function edgeRegimeContext(results, id, regimes) {
+  const e = results?.edges?.find(x => x.id === id);
+  if (!e || !regimes) return null;
+  return Object.entries(e.splits ?? {}).map(([axis, sp]) => {
+    const today = regimes[axis] ?? null, c = today ? sp.cells?.[today] : null;
+    const resolved = !!(c?.ci && (c.ci[0] > 0 || c.ci[1] < 0));
+    return { axis, today, read: sp.read, effect: c?.effect ?? null, ci: c?.ci ?? null, nEvent: c?.n_event ?? 0,
+      text: !today ? `${axis}: today's regime not loaded`
+        : !c || c.effect == null ? `${today}: too few past events (${c?.n_event ?? 0}) to measure`
+        : `${today}: ${c.effect > 0 ? '+' : ''}${c.effect} ATR [${c.ci[0]}, ${c.ci[1]}], n=${c.n_event}${resolved ? '' : ' (not resolved)'}` };
   });
 }

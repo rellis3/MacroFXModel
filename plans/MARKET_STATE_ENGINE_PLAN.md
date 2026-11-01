@@ -31,6 +31,14 @@ without a source. Screenshots of the page are taken against a running server wit
 (`analysis/output/repo-review-2026-10-31/state_live_real.png`). FRED's CSV returns HTTP 503 to the default `node`
 user-agent, so every fredgraph request now sends a named user-agent.
 
+**Added 2026-11-01:**
+- **Liquidity & banking layer** (`js/stateLiquidity.js`): net liquidity, Fed balance sheet, TGA weekly and daily,
+  RRP, reserves, swap lines and bank credit, each with its full-history percentile.
+- **Today's regimes** (vol / credit / curve), with each edge's measured effect in those regimes from
+  `analysis/output/edges-by-regime` (EXPLORATORY).
+- **A calendar-only month-end rule**, used when the stress shadow is not loaded.
+- **Code-audit status** in every Evidence Book citation, and Global Read reweighted by the audit.
+
 Next: phase 2's non-US macro (CPI/PMI vintages) and the forward ledger for the composite.
 
 ## 1. What it is, and what it is not

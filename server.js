@@ -30458,6 +30458,7 @@ createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, readers: {   // in-memo
   yahooDaily: ticker => _fetchYahooDaily(ticker, 500),
   history: () => _historySources(),   // arrow: _historySources is declared further down (TDZ)
   liquidity: () => _stateLiquidityRaw(),
+  edgeRegimes: () => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis/output/edges-by-regime/results.json'), 'utf8')); } catch { return null; } },
 } }).mount(app);   // must sit above the /api/* worker catch-all
 svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);
 

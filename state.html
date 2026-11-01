@@ -489,6 +489,7 @@ function drawEdges(st) {
     const gradeCls = e.grade === 'ROBUST' ? 'ok' : e.grade === 'PLAUSIBLE' ? 'neu' : 'warn';
     return `<div class="edge-row ${e.active ? 'on' : ''}"><span class="dot ${dot}" title="${e.active === true ? 'active today' : e.active === false ? 'not active' : 'input not loaded'}"></span>
       <div><div><strong>${esc(e.label)}</strong> <span class="note">· ${esc(e.applies)}</span></div><div class="note">${esc(e.why)}</div>
+        ${e.regime ? `<div class="note" style="margin-top:3px"><b>In regimes like today's</b> (exploratory, to ${esc(st.regimeStudy?.lockbox ?? '')}): ${e.regime.map(r => esc(r.text)).join(' · ')}</div>` : ''}
         <details><summary>What was measured</summary>${esc(e.result ?? '')}<br><b>Use:</b> ${esc(e.use ?? '')}</details></div>
       <div class="row" style="justify-content:flex-end"><span class="pill ${gradeCls}">${esc(e.grade ?? 'unaudited')}</span>${e.standing !== 'edge' ? '<span class="pill warn">research only</span>' : ''}</div></div>`;
   }).join('') || '<div class="note">No edge inputs loaded.</div>';

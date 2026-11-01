@@ -82,3 +82,36 @@ test('edges: evaluated from the stress shadow; fragile ones are research only; m
   assert.equal(none['forecast-miss-shock-fx'].active, null);
   assert.equal(none['forecast-miss-shock-fx'].why, 'input not loaded');
 });
+
+import { todayRegimes, edgeRegimeContext } from './stateLayers.js';
+import { test as _t2 } from 'node:test';
+import _a2 from 'node:assert/strict';
+_t2('today\'s regimes use the edges-by-regime definitions; missing input stays null', () => {
+  const day = i => new Date(Date.UTC(2025, 0, 1) + i * 864e5).toISOString().slice(0, 10);
+  const vix = Array.from({ length: 300 }, (_, i) => ({ date: day(i), value: i < 299 ? 15 : 25 }));
+  const hy = Array.from({ length: 30 }, (_, i) => ({ date: day(i), value: 3 + i * 0.01 }));
+  const r = todayRegimes({ vix, hy, us10y: [{ date: day(0), value: 4 }], us2y: [{ date: day(0), value: 4.5 }] });
+  _a2.deepEqual(r, { vol: 'high vol', credit: 'credit widening', curve: 'curve inverted' });
+  _a2.deepEqual(todayRegimes({}), { vol: null, credit: null, curve: null });
+});
+_t2('edge regime context reads results.json for today\'s cell, and says when a cell is too thin', () => {
+  const res = { edges: [{ id: 'vix-inversion', splits: {
+    vol: { read: 'measured in high vol only', cells: { 'high vol': { n_event: 102, effect: 0.253, ci: [0.152, 0.394] }, 'low vol': { n_event: 3, effect: null, ci: null } } },
+    curve: { read: 'x', cells: { 'curve not inverted': { n_event: 101, effect: 0.02, ci: [-0.1, 0.2] } } } } }] };
+  const low = edgeRegimeContext(res, 'vix-inversion', { vol: 'low vol', curve: 'curve not inverted', credit: null });
+  _a2.match(low.find(x => x.axis === 'vol').text, /too few past events \(3\)/);
+  _a2.match(low.find(x => x.axis === 'curve').text, /not resolved/);
+  _a2.match(edgeRegimeContext(res, 'vix-inversion', { vol: 'high vol' }).find(x => x.axis === 'vol').text, /\+0\.253 ATR/);
+  _a2.equal(edgeRegimeContext(res, 'nope', {}), null);
+});
+import { isMonthEndSession, activeEdges as _ae } from './stateLayers.js';
+_t2('month-end sessions from the calendar alone', () => {
+  _a2.equal(isMonthEndSession('2026-10-30'), true);    // last weekday of Oct
+  _a2.equal(isMonthEndSession('2026-10-29'), true);
+  _a2.equal(isMonthEndSession('2026-11-02'), true);    // first weekday of Nov
+  _a2.equal(isMonthEndSession('2026-11-03'), true);
+  _a2.equal(isMonthEndSession('2026-11-04'), false);
+  _a2.equal(isMonthEndSession('2026-11-01'), false);   // Sunday
+  const e = _ae({ sessionDate: '2026-11-02' }).find(x => x.id === 'forecast-miss-month-end-fx');
+  _a2.equal(e.active, true);
+});
