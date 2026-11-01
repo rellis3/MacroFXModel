@@ -5386,6 +5386,55 @@ app.post('/api/explain', async (req, res) => {
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
+// ── OI Lab: "what am I looking at?" for one panel, on the data the page is showing right now ──
+// Click-only (no interval), cached 10 minutes per panel + data, and capped per day so a stuck button cannot spend money.
+// The model is handed the panel's own words, a fixed note on what OUR tests found for it (written on the page, not recalled by the model),
+// and the live numbers. It explains; it does not trade, and it is told never to claim a level predicts direction.
+const _oixCache = new Map();
+const _OIX_TTL_MS = 10 * 60_000, _OIX_DAILY_CAP = 80;
+let _oixDay = '', _oixCount = 0;
+app.post('/api/oi-explain', async (req, res) => {
+  if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
+  try {
+    const b = req.body ?? {};
+    const key = String(b.key ?? '').slice(0, 40), title = String(b.title ?? '').slice(0, 160), what = String(b.what ?? '').slice(0, 1500), evidence = String(b.evidence ?? '').slice(0, 1800);
+    const market = String(b.market ?? '').slice(0, 40), data = String(b.data ?? '').slice(0, 9000);
+    if (!key || !data) return res.status(400).json({ error: 'Missing panel key or data' });
+    const day = new Date().toISOString().slice(0, 10);
+    const ck = `${day}|${key}|${market}|${crypto.createHash('sha1').update(data).digest('hex').slice(0, 16)}`;
+    const hit = _oixCache.get(ck);
+    if (hit && Date.now() - hit.at < _OIX_TTL_MS) return res.json({ ok: true, cached: true, explain: hit.data });
+    if (_oixDay !== day) { _oixDay = day; _oixCount = 0; }
+    if (_oixCount >= _OIX_DAILY_CAP) return res.status(429).json({ error: `daily limit of ${_OIX_DAILY_CAP} explanations reached; it resets at 00:00 UTC` });
+    _oixCount++;
+    const prompt = `A trader is looking at one panel of the OI Lab options page and wants to know what it means, using the numbers on screen right now. They are learning to read it. Explain in plain words, no jargon without a one-line definition.
+
+PANEL: ${title}  (market: ${market || 'n/a'})
+
+WHAT THE PAGE SAYS THIS PANEL IS:
+${what}
+
+WHAT OUR OWN TESTS FOUND FOR THIS KIND OF PANEL (fixed note; obey it, never contradict it):
+${evidence}
+
+THE NUMBERS ON SCREEN NOW:
+${data}
+
+Rules: describe what the numbers say now, with the actual values. Say how far to trust it using ONLY the test note above. Never say a level, wall, flip, delta or any reading will make price go up or down, hold or break; never give entries, exits, stops or position sizes. If the numbers are empty or not meaningful, say that plainly.
+
+Respond with one valid JSON object, no markdown:
+{"what":"2-3 sentences: what this panel is measuring, in plain words","now":"3-5 sentences: what it is saying RIGHT NOW with the real values, and what that implies for how the day may behave (range or behaviour, never direction)","trust":"2-3 sentences: what our tests found for this and what that means for how much weight to put on it","avoid":"one sentence: the most likely wrong conclusion a reader would draw from this panel"}`;
+    const r = await callModel({ task: 'oi-explain', maxTokens: 1500,
+      system: 'You explain options-market positioning charts to a trader who is learning. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
+      prompt });
+    const explain = _parseModelJson(_antText(r), 'oi-explain');
+    if (!explain) return res.status(502).json({ error: 'model did not return parseable JSON, press it again' });
+    if (_oixCache.size > 300) _oixCache.clear();
+    _oixCache.set(ck, { at: Date.now(), data: explain });
+    res.json({ ok: true, cached: false, explain, left: _OIX_DAILY_CAP - _oixCount });
+  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
+});
+
 // ── The paid end-of-day review ──────────────────────────────────────────────
 // The free brief (js/endOfDayBrief.js) renders every day and is untouched by this.
 // This is the button: the day's assembled facts handed to a model and asked to explain

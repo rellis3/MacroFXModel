@@ -68,6 +68,18 @@ svg text{font-family:var(--mono)}
 .legend i{display:inline-block;width:18px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle}
 .err{color:#ff8a80;padding:30px;text-align:center}
 .tgl{display:flex;gap:6px;margin-left:auto}
+.oixr{margin-left:auto;display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.oixb{font-size:10px;letter-spacing:.06em;padding:2px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--tx3);text-transform:uppercase;white-space:nowrap}
+.oixb.real{color:#46b87a;border-color:rgba(70,184,122,.5)}
+.oixb.null{color:#e8615f;border-color:rgba(232,97,95,.5)}
+.oixb.mixed{color:#f0b04a;border-color:rgba(240,176,74,.5)}
+.oixb.untested{color:#a487f0;border-color:rgba(164,135,240,.5)}
+.oixq{font:inherit;font-size:11px;letter-spacing:.02em;text-transform:none;cursor:pointer;background:rgba(240,176,74,.1);border:1px solid rgba(240,176,74,.45);color:#f0b04a;padding:3px 10px;border-radius:999px}
+.oixq:disabled{opacity:.5;cursor:wait}
+.oixa{margin-top:12px;padding:12px 14px;border:1px solid rgba(240,176,74,.3);border-radius:10px;background:rgba(240,176,74,.04);font-size:13px;line-height:1.5;color:var(--tx2)}
+.oixa .oixp{margin:0 0 7px}.oixa .oixp b{color:var(--tx)}
+.oixl{color:var(--tx3)}.oixf{margin-top:8px;font-size:11px;color:var(--tx3)}
+@media(max-width:700px){.card h2{flex-wrap:wrap}.oixr{margin-left:0;justify-content:flex-start}}
 </style>
 </head>
 <body>
@@ -102,7 +114,7 @@ svg text{font-family:var(--mono)}
   <div class="card" id="hpoCard">
     <h2><em>00b</em> Level orders, textbook version <span class="pill" style="font-size:11px;padding:2px 9px;margin-left:8px;cursor:default">shadow · not live</span>
       <span class="tgl"><button class="btn" id="hpoTvBtn" title="Copies the textbook plan as a block for the 'OI Bot Trades' TradingView indicator (pine/OI Bot Trades.pine): the same zones as the hedge plan, labelled HEDGE oi-fade / oi-follow, entry at the wall, stop box, target box. Paste it alone, or below the forecast-line hedge plan to see both.">⬇ TradingView (textbook plan)</button><a class="btn" href="/api/hedging-plan-oi/record" target="_blank" title="Forward record: both plans scored on the same sessions (counts only until 250 sessions)">forward record</a></span></h2>
-    <div class="sub"><b>Not a hedge.</b> These are two-sided pending entry orders (one fades or follows each side, one trade a day). The dealers' hedging is drawn in 05e. The name "hedge" on the TradingView block is kept only because the indicator files it under that switch. <b>Same playbook, orders on the OI map's own levels.</b> When dealers are long gamma ("PIN") they sell rallies and buy dips, so the big walls act as edges: <b>fade</b> the nearest wall each side, stop a small buffer beyond it (a quarter of the day's σ), target the next level back toward price. When they are short gamma ("BREAKOUT") they chase, so a confirmed break of a wall is fed: <b>follow</b> it, stop back inside the wall, target the next level out. A wall the day cannot plausibly reach (beyond 1.5σ) is not an order. The line under each market shows how far the current plan's entries sit by comparison. <b>This is the textbook structure, not a proven edge</b> (walls did not beat placebo levels; the forecast-line version averaged −0.03R after costs). It is scored forward, side by side.</div>
+    <div class="sub"><b>Not a hedge.</b> These are two-sided pending entry orders (one fades or follows each side, one trade a day). The dealers' hedging is drawn in 05h. The name "hedge" on the TradingView block is kept only because the indicator files it under that switch. <b>Same playbook, orders on the OI map's own levels.</b> When dealers are long gamma ("PIN") they sell rallies and buy dips, so the big walls act as edges: <b>fade</b> the nearest wall each side, stop a small buffer beyond it (a quarter of the day's σ), target the next level back toward price. When they are short gamma ("BREAKOUT") they chase, so a confirmed break of a wall is fed: <b>follow</b> it, stop back inside the wall, target the next level out. A wall the day cannot plausibly reach (beyond 1.5σ) is not an order. The line under each market shows how far the current plan's entries sit by comparison. <b>This is the textbook structure, not a proven edge</b> (walls did not beat placebo levels; the forecast-line version averaged −0.03R after costs). It is scored forward, side by side.</div>
     <div class="tbl" style="overflow-x:auto"><div id="hpoBody"><div class="sub">Loading…</div></div></div>
     <div class="legend" id="hpoNote"></div>
   </div>
@@ -211,7 +223,7 @@ svg text{font-family:var(--mono)}
   </div>
 
   <div class="card" id="hfCard">
-    <h2><em>05e</em> Dealer hedge flow: what they must trade on the way to each price</h2>
+    <h2><em>05h</em> Dealer hedge flow: what they must trade on the way to each price</h2>
     <div class="sub"><b>The dynamic-hedging requirement, drawn.</b> Dealers who sold the options keep a hedge in the underlying. When price moves, their option delta changes and the hedge goes stale, so they must buy or sell to re-balance. The curve is how much, at each price, measured from today's price (right = they buy, left = they sell; notional at spot). <span style="color:#46b87a">Green</span> stretches fight the move (they sell into rallies and buy dips: <b>damping</b>), <span style="color:#e8615f">red</span> stretches feed it (they buy as price rises and sell as it falls: <b>reinforcing</b>). Where the colour flips is the per-strike version of the gamma flip. Uses the expiry set chosen in 05d. Instant moves: time and vol held, so charm and vanna are separate.</div>
     <svg id="hfChart" width="100%" viewBox="0 0 1000 520"></svg>
     <ul id="hfRead" style="margin:10px 0 0;padding-left:18px;color:var(--tx2);font-size:13px;line-height:1.6"></ul>
@@ -649,7 +661,7 @@ async function getDaily(sym){ if (DAILY[sym]) return DAILY[sym];
   return DAILY[sym]; }
 async function getReach(sym, h){ const key = sym + '|' + h; if (!REACHC[key] || Date.now() - REACHC[key].at > 120000) { try { const r = await fetch(`/api/oi-reachability?pair=${encodeURIComponent(sym)}&h=${h}`); REACHC[key] = { j: await r.json(), at: Date.now() }; } catch (_) { return null; } } return REACHC[key].j; }
 
-const card = (n, title, body, extra = '') => `<div class="card bp"><h2><em>${n}</em> ${title}${extra}</h2>${body}</div>`;
+const card = (n, title, body, extra = '') => `<div class="card bp"><h2><em>${n}</em> ${title}${extra}${/^[1-6]$/.test(String(n)) ? oixTag('b' + n) : ''}</h2>${body}</div>`;
 const tabs = (grp, opts) => `<span class="tgl">${opts.map(([k, t]) => `<span class="pill${BTAB[grp] === k ? ' on' : ''}" data-bt="${grp}:${k}">${t}</span>`).join('')}</span>`;
 
 async function drawBrief(){
@@ -1094,6 +1106,91 @@ async function drawDayFlow(pair, day) {
 // Model, not measurement: open interest is fixed at the snapshot, IV is held, dealers are assumed long calls / short puts. Time passing shrinks each contract's T
 // (so 0DTE gamma builds into the close and expired contracts drop out), and the charm panel is the dealer hedge that time decay alone forces if price sat at that level.
 const SF = { cache: {} };
+// ── "What am I looking at?" on every panel: a badge for what OUR tests found, and a button that sends the numbers on screen to the model for a plain-words read ──
+// The evidence notes below are written here, from banked results (js/deskEvidence.js, oi_research_book/, forge/), so the model is told what to trust instead of recalling it.
+// Click-only; /api/oi-explain caches 10 minutes and stops at 80 explanations a day.
+const OIX_EV = {
+  sign: 'Tested, real (Nasdaq; repeated on the S&P): the gamma sign predicts the next day\'s RANGE: long gamma means a quieter day, short gamma a wider one. It carries no direction. Weak on currencies. About half of the Nasdaq effect is short gamma coinciding with recent falls.',
+  levels: 'Tested, null: walls, flips, max pain and ripple walls as support, resistance or magnets did not beat ordinary strikes (placebo tests), and trading the lines lost money after costs. They are places where hedging changes, not places price must turn.',
+  reach: 'Tested, real: the touch probabilities are calibrated against history (typical out-of-sample error about 1-2 points at 1 hour, 2-3 at 4 hours). They say how likely price is to REACH a level, never whether the level then holds.',
+  iv: 'Tested, real: implied volatility (from settlements) forecast the range better than trailing realised volatility in 7 of 7 tests. The options-implied range against what price did recently is the better-supported read on this page.',
+  hedge: 'Tested, null: the SIZE of the hedging dealers must do adds nothing beyond the gamma sign (hedge-flow study, 2026-10-31). Which side the range extends to was underpowered. Sizes are upper bounds because they assume dealers hold the other side of all open interest.',
+  flow: 'Tested, null (orderflow-lead, 189 sessions): NQ buy/sell delta from trades did not predict the next 5 or 15 minutes. Delta built from trade prices cannot lead price. This panel describes flow; it is not a forecast.',
+  oichg: 'Descriptive only: overnight open-interest change says where positions were added, not which direction or who holds them. A forward test of walls being built is registered but not yet judged.',
+  pcr: 'Context only: put/call ratio, skew and positioning describe sentiment. No forward edge was found from positioning alone; positioning matters for WHO must act around events, not for direction.',
+  greeks: 'Only delta, gamma, vanna and charm make dealers trade the underlying. None of the layers has passed a placebo test as a price level. Vanna moves price the same day, not the next. Charm flows are untested as a signal. All assume dealers are long calls and short puts; if that is wrong every sign flips.',
+  model: 'Model, not measurement: the open-interest book is held fixed and the Greeks are recomputed forward. The dealer sign is an assumption and no intraday trades are in it. Describes mechanics; untested as a signal.',
+  untested: 'Untested: new view, no forward or historical test yet. Treat it as a description.',
+  shadow: 'Shadow only, not live: these textbook entry orders are scored forward. The structure averaged about -0.03R after costs and the walls did not beat placebo levels. Not a proven edge.',
+  desc: 'Description of how the book is built. It has no test of its own; read it as context for the panels that do.',
+};
+const OIX = {
+  plain:   { b: 'real',    t: 'Gamma sign is tested', ev: 'sign' },
+  hpo:     { b: 'null',    t: 'Shadow, not proven', ev: 'shadow' },
+  live:    { b: 'mixed',   t: 'Bands real · lines null', ev: ['sign', 'levels', 'untested'], extra: 'The glowing bands are the gamma sign (tested for range). The labelled lines are walls, flips and max pain (tested null as support or resistance). The strength lanes and stacked bands are untested.' },
+  ahead:   { b: 'real',    t: 'Reach odds calibrated', ev: 'reach' },
+  zones:   { b: 'null',    t: 'Levels tested null', ev: 'levels' },
+  expiry:  { b: 'desc',    t: 'Description', ev: 'desc' },
+  terrain: { b: 'desc',    t: 'Description', ev: ['desc', 'iv'] },
+  gamma:   { b: 'mixed',   t: 'Sign real · levels null', ev: ['sign', 'levels'] },
+  ripple:  { b: 'null',    t: 'Walls tested null', ev: 'levels' },
+  hedgemap:{ b: 'null',    t: 'Size adds nothing', ev: ['hedge', 'model'] },
+  greeks:  { b: 'untested', t: 'Mostly untested', ev: 'greeks' },
+  drift:   { b: 'untested', t: 'New, untested', ev: 'untested' },
+  sf:      { b: 'untested', t: 'Model, untested', ev: 'model' },
+  flow:    { b: 'null',    t: 'No lead (tested)', ev: 'flow' },
+  hflow:   { b: 'null',    t: 'Beyond sign: null', ev: 'hedge' },
+  heat:    { b: 'desc',    t: 'Description', ev: 'desc' },
+  b1:      { b: 'real',    t: 'Implied range tested', ev: ['iv', 'sign'] },
+  b2:      { b: 'real',    t: 'Reach odds calibrated', ev: 'reach' },
+  b3:      { b: 'real',    t: 'Gamma sign tested', ev: 'sign' },
+  b4:      { b: 'real',    t: 'IV beats realised', ev: 'iv' },
+  b5:      { b: 'desc',    t: 'Context only', ev: 'pcr' },
+  b6:      { b: 'desc',    t: 'Description', ev: 'oichg' },
+};
+const OIX_EM = { '00': 'plain', '00b': 'hpo', '01': 'live', '02': 'ahead', '03': 'zones', '04': 'expiry', 'T': 'terrain', '05': 'gamma', '05b': 'ripple', '05c': 'hedgemap', '05d': 'greeks', '05e': 'drift', '05f': 'flow', '05g': 'sf', '05h': 'hflow', 'A': 'heat' };
+const OIX_LABEL = { real: 'TESTED · REAL', null: 'TESTED · NULL', mixed: 'PART REAL · PART NULL', untested: 'UNTESTED', desc: 'DESCRIPTION' };
+function oixNote(key) { const o = OIX[key]; if (!o) return ''; return ([].concat(o.ev)).map(k => OIX_EV[k]).join(' ') + (o.extra ? ' ' + o.extra : ''); }
+function oixTag(key) {
+  const o = OIX[key]; if (!o) return '';
+  return `<span class="oixr"><span class="oixb ${o.b}" title="${esc(oixNote(key))}">${OIX_LABEL[o.b]} · ${esc(o.t)}</span><button class="oixq" data-oix="${key}" type="button">What am I looking at?</button></span>`;
+}
+function oixDecorate() {
+  document.querySelectorAll('.card').forEach(c => {
+    if (c.querySelector('.oixr')) return;
+    const h2 = c.querySelector(':scope > h2'), em = h2 && h2.querySelector('em'); if (!em) return;
+    let key = c.id === 'plainCard' ? 'plain' : c.id === 'hpoCard' ? 'hpo' : c.id === 'ddCard' ? 'drift' : c.id === 'hfCard' ? 'hflow' : OIX_EM[em.textContent.trim()];
+    if (key && !(c.classList.contains('bp') && !/^[1-6]$/.test(em.textContent.trim()))) h2.insertAdjacentHTML('beforeend', oixTag(key));
+  });
+}
+function oixData(key, card) {
+  const D = (typeof CUR !== 'undefined' && CUR) ? CUR : null, M = (typeof PLV !== 'undefined' && PLV.meta) || {};
+  const head = [`market ${SYM}`, D ? `spot ${D.spot}` : '', D && Number.isFinite(D.flip) ? `GEX flip ${D.flip}` : '', D && Number.isFinite(D.mp) ? `max pain ${D.mp}` : '', D && Number.isFinite(D.cw) ? `call wall ${D.cw}` : '', D && Number.isFinite(D.pw) ? `put wall ${D.pw}` : '', D && Number.isFinite(D.rm) ? `reference move ${D.rm}` : '', M.regime ? `regime ${M.regime}` : '', M.saved ? `OI saved ${M.saved}` : ''].filter(Boolean).join(' · ');
+  let extra = '';
+  if (key === 'live' && typeof PLV !== 'undefined' && PLV.cur) {
+    extra = '\nProfile lines now: ' + PLV.cur.slice(0, 40).map(l => `${l.label} ${l.price} (strength ${Number(l.strength).toFixed(2)})`).join('; ');
+    if (typeof LW !== 'undefined' && LW && LW.last != null) extra += `\nLast price ${LW.last}.`;
+    if (typeof PLV !== 'undefined' && PLV.bars) { const top = k => (PLV.bars[k] || []).slice().sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 5).map(r => `${r.p}:${Math.round(r.v)}`).join(', '); extra += `\nStrongest bars (price:strength of 1000): gamma ${top('G')}; volume ${top('O')}; OI change ${top('C')}; vanna ${top('V')}`; }
+  }
+  const clone = card.cloneNode(true); clone.querySelectorAll('.oixr,.oixa,script,style,canvas,select').forEach(n => n.remove());
+  const text = clone.innerText.replace(/\n{2,}/g, '\n').slice(0, 6500);
+  return head + extra + '\n\nVISIBLE TEXT AND NUMBERS IN THE PANEL:\n' + text;
+}
+document.addEventListener('click', async ev => {
+  const btn = ev.target.closest && ev.target.closest('.oixq'); if (!btn) return;
+  const card = btn.closest('.card'), key = btn.dataset.oix; let box = card.querySelector(':scope > .oixa');
+  if (!box) { box = document.createElement('div'); box.className = 'oixa'; card.appendChild(box); }
+  if (box.dataset.open === '1' && !btn.dataset.again) { box.dataset.open = '0'; box.style.display = 'none'; return; }
+  box.dataset.open = '1'; box.style.display = ''; box.innerHTML = '<div class="oixl">Reading this panel on the numbers on screen now…</div>'; btn.disabled = true;
+  try {
+    const sub = card.querySelector('.sub'), title = (card.querySelector(':scope > h2') || {}).childNodes ? [...card.querySelector(':scope > h2').childNodes].filter(n => n.nodeType === 3 || (n.tagName === 'EM')).map(n => n.textContent).join(' ').trim() : key;
+    const r = await fetch('/api/oi-explain', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, title, market: SYM, what: sub ? sub.innerText : '', evidence: oixNote(key), data: oixData(key, card) }) });
+    const j = await r.json(); if (!r.ok || !j.explain) throw new Error(j.error || ('HTTP ' + r.status));
+    const e = j.explain, p = (h, t) => t ? `<div class="oixp"><b>${h}</b> ${esc(t)}</div>` : '';
+    box.innerHTML = p('What it is.', e.what) + p('Saying right now.', e.now) + p('How far to trust it.', e.trust) + p('Easy mistake.', e.avoid) + `<div class="oixf">${j.cached ? 'cached read (under 10 minutes old) · ' : ''}${j.left != null ? j.left + ' explanations left today · ' : ''}written by a model from the numbers on screen; the trust line comes from our own test notes. Not a signal.</div>`;
+  } catch (err) { box.innerHTML = `<div class="oixl" style="color:var(--short,#e8615f)">Could not explain this panel: ${esc(err.message)}</div>`; }
+  finally { btn.disabled = false; }
+});
 // ── 05f NQ order flow: delta by 5 minutes from the NT8 tick-rule file (scripts/footprint/nt8_footprint.py -> analysis/output/footprint/site/) ──
 let FP = { days: null, cache: {} };
 async function drawFootprint() {
@@ -1609,7 +1706,7 @@ function rail(){
 async function refresh(){
   CUR = derive(SYM); rail();
   drawHedging();     // async and self-contained: first, so a failure in another panel cannot skip it
-  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawDayDrift, drawSurfaceDay, drawFootprint, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
+  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawDayDrift, drawSurfaceDay, drawFootprint, oixDecorate, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
   drawBrief();
