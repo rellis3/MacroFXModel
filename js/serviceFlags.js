@@ -205,7 +205,7 @@ export const SERVICES = [
   { id: 'spreadEpisodes', where: 'server', label: 'Spread-turn episodes (SOFR−Euribor vs NAS100, US 2Y/10Y vs EURUSD): live zig-zag turns + forward record',
     cadence: 'every 15 min (NAS100 M15 tail, EURUSD D every 6 h, legs from the cog-chart files + laptop push)', cost: 'low', lean: false, on: true,
     feeds: '/api/spread-episodes{,/live,/results,/history} → spread-episodes.html; spread_episodes_v1 forward record; Telegram (tgMaster.spreadEpisodes)' },
-  { id: 'dailyOpenFib', where: 'server', label: 'Daily-open fib tracker (the video setup: fib from the opening wick, the open price or the swing the impulse started from (may be before the open) to the impulse, limit at the 1, stop 1.2, target 0): every night, 20 instruments, bid/ask M1, forward record',
+  { id: 'dailyOpenFib', where: 'server', label: 'Daily-open fib tracker (the video setup: fib from the opening wick, the open price, the swing the impulse started from (may be before the open) or the high/low within 1 h either side of the open, to the impulse, limit at the 1, stop 1.2, target 0): every night, 20 instruments, bid/ask M1, forward record',
     cadence: 'every 5 min (per instrument 2 OANDA M1 BA pulls for the live session (session + 6 h before the open) + up to 24 backfill sessions, 8 weeks back; D candles once per session for the ADR)', cost: 'low', lean: false, on: true,
     feeds: '/api/daily-open-fib{,/chart,/tick} → daily-open-fib.html; daily_open_fib_v1 forward record. Backtest verdict NULL: context, not a signal' },
   { id: 'bankCredit', where: 'server', label: 'BIS cross-border bank credit (Locational Banking Statistics): credit regime, non-bank and yen-funding legs',
