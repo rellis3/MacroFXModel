@@ -10,6 +10,7 @@
  */
 import { dollarBasket } from './dataChecks.js';
 import { worldEconomiesHtml } from './worldEconomies.js';
+import { directionCell, directionNote, rangeCell } from './directionRead.js';
 
 const TZ = 'Europe/London', MINUS = '−';
 const sg = (v, d = 0, u = '') => (Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? MINUS : ''}${Math.abs(v).toFixed(d)}${u}` : '·');
@@ -47,7 +48,7 @@ function yieldOf(ccy, intl, us) {
  * The three today tables, as html strings: { globalHtml, countryHtml, pairsHtml }.
  * Inputs: changes, volatility, creditSpreads, fedPath, strengths, cb, surprise, assets (key, label, price, d1, used, implied), asia, events, nowMs, isoDate.
  */
-export function todayTables({ world, intl, changes, creditSpreads, fedPath, strengths, cb, surprise, assets, asia, events, nowMs, isoDate }, esc) {
+export function todayTables({ reads, world, intl, changes, creditSpreads, fedPath, strengths, cb, surprise, assets, asia, events, nowMs, isoDate }, esc) {
   const now = Number.isFinite(nowMs) ? nowMs : Date.now(), ch = k => (changes ?? []).find(c => c.key === k && Number.isFinite(c.last));
   const asOf = c => (c?.lastDate && isoDate && c.lastDate < isoDate ? ` <small>as of ${esc(c.lastDate.slice(5))}</small>` : '');
   const row = (name, val, move, mean) => `<tr><td class="n">${esc(name)}</td><td class="v">${val}</td><td class="m">${move}</td><td class="w">${esc(mean)}</td></tr>`;
@@ -87,13 +88,14 @@ export function todayTables({ world, intl, changes, creditSpreads, fedPath, stre
     return `<tr><td class="n">${i + 1}. ${esc(s.ccy)}</td><td class="v">${sg(s.score, 2)}</td><td class="v">${yCell}</td><td class="m">${gap || '·'}</td><td class="m">${esc(bank) || '·'}${data ? `<br><small>${esc(data)}</small>` : ''}</td><td class="w">${nx ? esc(`${String(nx.event).slice(0, 30)} ${hhmm(nx.ms)}`) : ''}</td></tr>`;
   });
   const noFeed = (strengths ?? []).map(s => s.ccy).filter(c => c !== 'USD' && !YIELD_KEY[c]);
-  const countryHtml = rows.length ? `<table class="t3"><tr><th>Currency</th><th>Score</th><th>10-year yield, today</th><th>Gap to the US</th><th>Central bank, data</th><th>Due today</th></tr>${rows.join('')}</table><p class="small3">The score is the desk's currency scorecard: growth, inflation, rates, trade and confidence against the other seven. It moves slowly and the feed holds no saved yesterday, so it is the state of play, not the day's change. The gap is the country's 10-year yield minus the US one, and it is shown only when both yields are from the same day.${noFeed.length ? ` There is no daily yield feed for ${noFeed.join(', ')}.` : ''}</p>` : '';
+  const countryHtml = rows.length ? `<table class="t3"><tr><th>Currency</th><th>Score</th><th>10-year yield, today</th><th>Gap to the US</th><th>Central bank, data</th><th>Due today</th></tr>${rows.join('')}</table><p class="small3">The score is the desk's scorecard (growth, inflation, rates, trade, confidence) against the other seven. It moves slowly and has no saved yesterday, so it shows the state, not the day's change. The gap is the 10-year yield minus the US one, shown only when both are from the same day.${noFeed.length ? ` There is no daily yield feed for ${noFeed.join(', ')}.` : ''}</p>` : '';
 
+  const rd = r => (reads?.rows ?? []).find(x => x.sym === r.key) ?? null;
   const pr = (assets ?? []).filter(r => r?.key && Number.isFinite(r.d1)).map(r => {
-    const used = Number.isFinite(r.used) ? r.used : (Number.isFinite(r.hlMed) && r.hlMed > 0 ? Math.abs(r.d1) / r.hlMed : null), w = waitingOn(r.key, events, now), a = asiaPhrase(asia?.[r.key]);
-    return `<tr><td class="n">${esc(r.label)}<small>${esc(r.price ?? '')}</small></td><td class="m"><b class="${r.d1 >= 0 ? 'up3' : 'dn3'}">${sg(r.d1, 2, '%')}</b></td><td class="u">${used === null ? '·' : `<span class="bar3"><i style="width:${Math.min(100, Math.round(used * 100))}%"></i></span> ${Math.round(used * 100)}%`}</td><td class="m">${esc(a)}</td><td class="w">${esc(w)}</td></tr>`;
+    const used = Number.isFinite(r.used) ? r.used : (Number.isFinite(r.hlMed) && r.hlMed > 0 ? Math.abs(r.d1) / r.hlMed : null), w = waitingOn(r.key, events, now), a = asiaPhrase(asia?.[r.key]), q = rd(r);
+    return `<tr><td class="n">${esc(r.label)}<small>${esc(r.price ?? '')}</small></td><td class="m"><b class="${r.d1 >= 0 ? 'up3' : 'dn3'}">${sg(r.d1, 2, '%')}</b></td><td class="u">${used === null ? '·' : `<span class="bar3"><i style="width:${Math.min(100, Math.round(used * 100))}%"></i></span> ${Math.round(used * 100)}%`}</td>${reads ? `<td class="m">${q ? rangeCell(q) || '·' : '·'}</td><td class="m">${q ? directionCell(q) : '·'}</td>` : ''}<td class="m">${esc(a)}</td><td class="w">${esc(w)}</td></tr>`;
   });
-  const pairsHtml = pr.length ? `<table class="t3"><tr><th>Market</th><th>Today</th><th>Share of a normal day's range used</th><th>Asia</th><th>Waiting on</th></tr>${pr.join('')}</table><p class="small3">Today is since yesterday's close. A bar near full means the market has already moved a normal day's range. Asia is the 00:00 to 06:00 London session against the desk's own history for that market.</p>` : '';
+  const pairsHtml = pr.length ? `<table class="t3"><tr><th>Market</th><th>Today</th><th>Share of a normal day's range used</th>${reads ? '<th>Typical day, 1 in 4 days past</th><th>Direction, tested inputs</th>' : ''}<th>Asia</th><th>Waiting on</th></tr>${pr.join('')}</table><p class="small3">Today is since yesterday's close. A full bar means a normal day's range is used up. Asia is 00:00 to 06:00 London against that market's own history.${reads ? ` ${esc(directionNote(reads))}` : ''}</p>` : '';
   const worldHtml = world ? worldEconomiesHtml(world, esc, isoDate) : '';
   return { globalHtml, countryHtml, pairsHtml, worldHtml };
 }

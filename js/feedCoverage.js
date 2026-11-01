@@ -118,8 +118,8 @@ export const FEEDS = [
     how: 'n.bankCredit adds the BIS dollar-lending growth and regime to the weekly Funding sentence, marked context (wired 2026-10-27).',
     verdict: 'bank-credit-dollar-nasdaq', trap: 'Known about two quarters after the quarter ends.' },
   { id: 'event-day', label: 'Event day: today’s release, decision, Budget or refunding against the same events before, plus the rate legs', endpoint: '/api/event-day', module: 'js/eventDayContext.js', kind: 'calendar',
-    source: 'Release Reaction record (IBKR and OANDA 1-minute), hand-kept bank and fiscal calendars, cog-chart futures legs', grade: 'own-model', newsletter: 'none',
-    how: 'Not in the newsletter (word budget; its releases table already carries the tested range history). Feeds the morning brief, the pair analysis, today.html and the Atlas Global and Pair views (wired 2026-10-28).',
+    source: 'Release Reaction record (IBKR and OANDA 1-minute), hand-kept bank and fiscal calendars, cog-chart futures legs', grade: 'own-model', newsletter: 'daily',
+    how: 'n.eventDay: on the daily opening sheet, a release or decision that has a Release Reaction record shows how many earlier ones there were and their typical first-30-minute move, in place of the older usual-effect phrase (wired 2026-11-01). Also feeds the morning brief, the pair analysis, today.html and the Atlas Global and Pair views.',
     verdict: 'fiscal-reaction-uk-size', trap: 'Descriptive history, a few dozen events per kind at most (5 UK fiscal events); upcoming events need the laptop push or the hand-kept calendars, and the BoJ time is not fixed.' },
 
   // ───────── rates ─────────
@@ -299,7 +299,7 @@ export const FEEDS = [
     verdict: null, trap: 'The measured record is the since-2007 monthly average, which is context, not a forecast.' },
   { id: 'global-read-axes', label: 'Global Read: five axes and scenarios', endpoint: '/api/global-read', module: 'js/globalReadCore.js', kind: 'regime',
     source: 'own model', grade: 'own-model', newsletter: 'both',
-    how: 'The axes feed the Right now sentence of n.position in the opening block; n.scenarios is built by Atlas but js/newsletter.js never reads it.',
+    how: 'The axes feed the Right now sentence of n.position in the opening block. n.reads (js/directionRead.js) adds the typical day of each market, its tested direction inputs against that market base rate for one day, and the inputs read but given no weight, in the daily pair table and the weekly market section (wired 2026-11-01). n.scenarios is built by Atlas but js/newsletter.js never reads it.',
     verdict: null, trap: null },
   { id: 'macro-changes', label: 'What changed over one, five and twenty days', endpoint: '/api/macro-changes', module: 'js/macroChange.js', kind: 'macro-data',
     source: 'own model on FRED history', grade: 'own-model', newsletter: 'none',

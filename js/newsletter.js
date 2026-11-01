@@ -39,6 +39,7 @@ import { todayOpening, weekStory } from './newsletterToday.js';
 import { todayTables } from './newsletterTables.js';
 import { worldEconomiesHtml } from './worldEconomies.js';
 import { policyWeekHtml } from './policyWeek.js';
+import { directionNote } from './directionRead.js';
 import { briefOpening } from './openingCheck.js';
 import { currencyNarrative, pairNarrative } from './newsletterNarrative.js';
 import { storyIntro, yieldGuide, chainGuide, relationNote, stressRead, auditGuide, positioningGuide, sectorNote, commodityNote, fearNote, currencyNote } from './newsletterExplain.js';
@@ -413,7 +414,9 @@ export function buildNewsletter(n) {
   const wkRanges = (weekly && wk?.ranges?.length) ? sec('How far each market is expected to travel this week', 'Part 3 · Pair by pair', `<table class="wkr"><tr><th>Market</th><th class="n">Typical week</th><th class="n">Big week (1 in 4)</th><th class="n">Typical day</th></tr>${wk.ranges.map(r => `<tr><td><b>${esc(r.label)}</b></td><td class="n">${r.hl5 != null ? r.hl5.toFixed(2) + '%' : '·'}</td><td class="n">${r.hl5_75 != null ? r.hl5_75.toFixed(2) + '%' : '·'}</td><td class="n">${r.hlMed != null ? r.hlMed.toFixed(2) + '%' : '·'}</td></tr>`).join('')}</table><p class="small muted">High to low, as a share of price, from the calibrated forecast. About half of weeks run past the typical figure and about one in four past the big-week figure. It is a ruler for size, not a forecast of direction.</p>`) : '';
 
   const evAll = n.events ?? [];
-  const evShow = evAll.filter(e => e.impact === 'high' || e.impact === 'medium').slice(0, 6);
+  // the V3 daily already puts today's big releases on its "On the clock" sheet, with their history: the table below keeps the rest
+  const ukD = ms => new Date(ms).toLocaleDateString('en-CA', { timeZone: 'Europe/London' }), onClock = e => n.v3 && !weekly && e.impact === 'high' && Number.isFinite(e.ms) && ukD(e.ms) === ukD(n.nowMs ?? Date.now());
+  const evShow = evAll.filter(e => (e.impact === 'high' || e.impact === 'medium') && !onClock(e)).slice(0, 6);
   const evRows = evShow.map(e => { const note = e.note ?? {}; return `<tr><td>${esc(ukTime(e.ms))}</td><td><b>${e.ccy ? (FLAG[e.ccy] ?? '') + ' ' : ''}${esc(e.event)}</b> ${pill(e.impact === 'high' ? 'big one' : 'medium', e.impact === 'high' ? 'a' : '')}<small>${e.estimate ? 'forecast ' + esc(e.estimate) : 'no forecast listed'}${e.prev ? ', last time ' + esc(e.prev) : ''}</small>${note.measured ? `<small><b style="color:${COLORS.ink}">History:</b> ${esc([note.book, note.range].filter(Boolean).join(' · '))}.</small>` : ''}</td></tr>`; }).join('');
   const ahead = weekly ? wkCal : evRows ? sec('The big releases coming up', 'Part 1 · The world', `<table class="ev">${evRows}</table><p class="small muted">UK time. "History" means we found this release moves that market by more than a normal day. Where it is blank, nothing unusual has been found. Nobody can tell in advance which way a surprise will push the price, so we do not try.</p>`) : '';
 
@@ -515,7 +518,8 @@ export function buildNewsletter(n) {
   // one sentence, only on days the shadow is active. The lines themselves are never adjusted (side-by-side rule).
   const dd = n.drawdownShadow;
   const ddNote = dd?.trigger ? `<p class="small muted"><b>After the S&amp;P's ${esc(Math.abs(dd.spx20).toFixed(1))}% fall over 20 days:</b> in this state ranges have run about 7% beyond the FX lines and 3% beyond the index lines (measured 2020-2026). The lines here are not adjusted.</p>` : '';
-  const ranges = pairCards ? sec('Each market at a glance', 'Part 3 · Pair by pair', `<div class="pcg">${pairCards}</div>${ddNote}<p class="small muted">Bar: how much of a normal day's range is used. ${weekly ? `Strips: one block per day over the last 30 days, newest on the right, <b style="color:${STATE_COLOUR.quiet}">blue quiet</b>, <b style="color:${STATE_COLOUR.active}">amber active</b>, grey no reading. They describe how big the moves were, not which way. ` : `Strips: one block per hour, newest on the right, <b style="color:${STATE_COLOUR.quiet}">blue choppy or quiet</b>, <b style="color:${STATE_COLOUR.up}">green a bullish hour</b>, <b style="color:${STATE_COLOUR.down}">red a bearish hour</b>, grey no reading. They describe the hour that passed, not what comes next. `}Positioning: where speculators sit in their own history, from the weekly CFTC report. Option zone: where the biggest option positions sit, a place and not a magnet; the dealer note is tested on the S&P 500 only.</p>`) : '';
+  const dirNote = n.reads ? `<p class="small muted"><b>Direction evidence.</b> ${esc(directionNote(n.reads))}</p>` : '';
+  const ranges = pairCards ? sec('Each market at a glance', 'Part 3 · Pair by pair', `<div class="pcg">${pairCards}</div>${ddNote}${dirNote}<p class="small muted">Bar: how much of a normal day's range is used. ${weekly ? `Strips: one block per day over the last 30 days, newest on the right, <b style="color:${STATE_COLOUR.quiet}">blue quiet</b>, <b style="color:${STATE_COLOUR.active}">amber active</b>, grey no reading. They describe how big the moves were, not which way. ` : `Strips: one block per hour, newest on the right, <b style="color:${STATE_COLOUR.quiet}">blue choppy or quiet</b>, <b style="color:${STATE_COLOUR.up}">green a bullish hour</b>, <b style="color:${STATE_COLOUR.down}">red a bearish hour</b>, grey no reading. They describe the hour that passed, not what comes next. `}Positioning: where speculators sit in their own history, from the weekly CFTC report. Option zone: where the biggest option positions sit, a place and not a magnet; the dealer note is tested on the S&P 500 only.</p>`) : '';
 
   // the rest, kept short
   const reg = n.regimeCard && typeof n.regimeCard === 'object' ? n.regimeCard : null, fp = n.fedPath;
@@ -550,7 +554,7 @@ export function buildNewsletter(n) {
     const basket = dollarBasket(n.assets ?? n.ranges ?? []), dxyOv = basket.n >= 4 ? { dxy: { delta: basket.avg, moved: Math.abs(basket.avg) >= CHAIN_NODES.dxy.floor, dir: basket.avg > 0 ? 'up' : basket.avg < 0 ? 'down' : null, text: `${basket.avg > 0 ? '+' : basket.avg < 0 ? '−' : ''}${Math.abs(basket.avg).toFixed(1)}%`, label: 'Dollar (seven daily majors)' } } : {};
     const th = buildTheories(n.links ?? [], dxyOv), ins = buildInsight(n.links ?? [], idea?.storyId ?? null), S = n.nodeSeries ?? {}, Hh = { esc, COLORS, CHAIN_NODES };
     const sents = t => String(t ?? '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s+(?=[A-Z“"'‘(])/).map(s => s.trim()).filter(Boolean);
-    const v2Today = withBrief(todayOpening({ events: withToday(n, weekly), nowMs: n.nowMs ?? Date.now(), since, regimeWord, riskFlags: n.riskFlags, assets: weekly ? [] : n.assets ?? n.ranges, weekly, fedPath: n.fedPath, cb: n.cb, board: openBoard(n, weekly), changes: n.changes, asia: n.asia }), n, weekly);
+    const v2Today = withBrief(todayOpening({ events: withToday(n, weekly), nowMs: n.nowMs ?? Date.now(), since, regimeWord, riskFlags: n.riskFlags, assets: weekly ? [] : n.assets ?? n.ranges, weekly, fedPath: n.fedPath, cb: n.cb, board: openBoard(n, weekly), changes: n.changes, asia: n.asia, eventDay: n.eventDay }), n, weekly);
     const evd = evidenceFor({ links: n.links, ys: n.yieldStack, assets: n.assets ?? n.ranges }), claimNotes = [];
     const scrub = t => { const r = scrubText(t, evd); for (const x of r.removed) claimNotes.push(x); return r.text; };
     const openText = scrub(letter.opening || opening || ''), openS = sents(openText), pullRaw = openS.length >= 2 ? openS[openS.length - 1] : '', pull = (pullRaw.split(/,\s+and\s+/)[0] || pullRaw).replace(/[.,;:\s]+$/, '');
@@ -597,7 +601,7 @@ export function buildNewsletter(n) {
     const sepText = topT.length > 1 ? `${topT.length} of the ${th.length} stories fit every check they can be tested on, so the count cannot choose between them. What would separate them is what only one of them needs: ${uniq.map(u => u.replace(/^([^:]+): (.*)$/, (m0, nm, cs) => `${nm.charAt(0).toLowerCase() + nm.slice(1)} (${cs})`)).join('; ')}. ` : '';
     // the released V3 daily: the email subject and preview are today's headline and first sentences, not the 20-day story
     if (n.v3 && n.release && !weekly && v2Today?.headline) { subject = clip(v2Today.headline, 78); preheader = clip(v2Today.lede || preheader, 140); }
-    const v3t = n.v3 && !weekly ? todayTables({ world: n.world, intl: n.intl, changes: n.changes, creditSpreads: n.creditSpreads, fedPath: n.fedPath, strengths: n.strengths, cb: n.cb, surprise: n.surprise, assets: n.assets ?? n.ranges, asia: n.asia, events: n.events, nowMs: n.nowMs ?? Date.now(), isoDate: n.isoDate }, esc) : null;
+    const v3t = n.v3 && !weekly ? todayTables({ reads: n.reads, world: n.world, intl: n.intl, changes: n.changes, creditSpreads: n.creditSpreads, fedPath: n.fedPath, strengths: n.strengths, cb: n.cb, surprise: n.surprise, assets: n.assets ?? n.ranges, asia: n.asia, events: n.events, nowMs: n.nowMs ?? Date.now(), isoDate: n.isoDate }, esc) : null;
     v2Body = composeMagazine({
       v3: !!v3t, v3t,
       meta: { edition: weekly ? 'Weekly' : 'Daily', tag: n.v3 ? (n.release ? '' : 'V3 draft') : 'V2 draft', date: n.date, regime: String(regimeWord).charAt(0) + String(regimeWord).slice(1).toLowerCase() },
@@ -653,7 +657,7 @@ export function buildNewsletter(n) {
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><style>${CSS}${v2 ? MAG_CSS : ''}</style></head><body><div class="wrap${v2 ? ' mgw' : ''}">${v2 ? v2Body : `${mast}${glance}${sinceHtml}${letterSec}${tiles}${rpHtml}${driving}${posHtml}${ideaHtml}${ahead}${beyond}${stockHtml}${marketsHtml}${people}${weekly ? wkRanges : ''}${ranges}${recHtml}${behind}${trig}${qodHtml}${lesson}${noEdge}${refsHtml}${foot}`}</div></body></html>`;
 
   const T = [];
-  const tOpen = v2 ? withBrief(todayOpening({ events: withToday(n, weekly), nowMs: n.nowMs ?? Date.now(), since, regimeWord, riskFlags: n.riskFlags, assets: weekly ? [] : n.assets ?? n.ranges, weekly, fedPath: n.fedPath, cb: n.cb, board: openBoard(n, weekly), changes: n.changes, asia: n.asia }), n, weekly) : null;
+  const tOpen = v2 ? withBrief(todayOpening({ events: withToday(n, weekly), nowMs: n.nowMs ?? Date.now(), since, regimeWord, riskFlags: n.riskFlags, assets: weekly ? [] : n.assets ?? n.ranges, weekly, fedPath: n.fedPath, cb: n.cb, board: openBoard(n, weekly), changes: n.changes, asia: n.asia, eventDay: n.eventDay }), n, weekly) : null;
   T.push(`THE CHAIN · ${weekly ? 'WEEKLY' : 'DAILY'} · ${n.date}`, '', ...(tOpen ? [tOpen.kicker.toUpperCase(), tOpen.headline, '', `REGIME  ${tOpen.regime}`, `CHANGED ${tOpen.changed}`, `WATCH   ${tOpen.watch}`, '', `${tOpen.story.toUpperCase()}: ${v2Month || headline}`, ''] : [headline, '']));
   if (since && !since.first && (since.items ?? []).length) { T.push(`CHANGED SINCE ${since.from ?? 'LAST ISSUE'}`, ...since.items.slice(0, 8).map(i => '- ' + i.text), ''); }
   if (opening) T.push(opening, '');

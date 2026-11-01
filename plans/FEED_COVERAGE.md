@@ -8,14 +8,14 @@ A feed counts as used only if its data reaches a field that js/newsletter.js rea
 
 ## Summary
 
-89 feeds and engines are on the register. 44 reach a newsletter and 45 do not. 31 are institutional grade, of which 18 are used and 13 are not.
+104 feeds and engines are on the register. 61 reach a newsletter and 43 do not. 42 are institutional grade, of which 32 are used and 10 are not.
 
 | Grade | daily and weekly | daily | weekly | neither | Total |
 | --- | --- | --- | --- | --- | --- |
-| institutional | 18 | 0 | 0 | 13 | 31 |
+| institutional | 21 | 0 | 11 | 10 | 42 |
 | public-standard | 7 | 0 | 1 | 21 | 29 |
-| own-model | 17 | 0 | 1 | 11 | 29 |
-| All | 42 | 0 | 2 | 45 | 89 |
+| own-model | 19 | 1 | 1 | 12 | 33 |
+| All | 47 | 1 | 13 | 43 | 104 |
 
 Institutional means primary data a macro desk or fund would pay for or treat as primary: CFTC positioning, CME settlements and implied vol, the Cboe vol family, listed options open interest and dealer gamma, STIR futures, central bank statements, ALFRED vintage surprises, BIS statistics, ICE BofA spreads, nowcasts and official auctions and calendars.
 
@@ -29,9 +29,13 @@ Read the daily and weekly columns with care. Almost every used feed appears in b
 | CME CVOL style FX implied vol and the settlement IV archive | CME settlements and CVOL files, Cboe EVZ and GVZ | daily and weekly | Only through the FX implied vol stressed flag inside n.riskFlags, which feeds the stress warnings strip; the IV levels themselves are never printed. |
 | Credit spreads: investment grade, high yield and CCC | ICE BofA option-adjusted spreads via FRED | daily and weekly | n.creditSpreads prints the Borrowing costs for companies table, and the high-yield spread is a tile in The numbers and a stage in Where the money is flowing. |
 | Chain extras: EM dollar and EM credit spread | ICE BofA EM OAS and the broad dollar index via FRED | daily and weekly | Two chips fed into chainNow, so they change the verdict of links in n.links and the chain of impact picture. |
+| Cross-border bank credit | BIS Locational Banking Statistics | weekly | n.bankCredit adds the BIS dollar-lending growth and regime to the weekly Funding sentence, marked context (wired 2026-10-27). |
 | Market-implied Fed path from fed funds futures | CME fed funds futures | daily and weekly | n.fedPath prints The Fed line with odds of a higher rate and the bar chart, and the same object feeds the Coming up sentence in the opening block. |
 | CFTC crowding across 36 contracts | CFTC Commitments of Traders | daily and weekly | n.crowding drives the Positioning section and the crowd chips on the currency cards, and n.cotDate prints the report date and its age. |
 | Option open interest, walls and dealer gamma | CME QuikStrike settlements, listed options | daily and weekly | n.assets zone and the PIN chip print the Option zone box and dealer note on each market card. |
+| Option open interest levels by instrument | CME QuikStrike settlements | daily and weekly | Its implied block gives each market an options-implied typical day (the Options imply row on every card with a number, including the S&P 500, Russell 2000, Dow and Nasdaq); the level list itself is not used. |
+| Where each market sits on the COT crowding map | CFTC Commitments of Traders | daily and weekly | Atlas loads it beside cot-extremes; n.crowding uses its per-market state (ccyState / ccyPct) for the positioning lines. |
+| Funding and leverage read: swap lines, repo, leveraged-fund Treasury basis | CFTC TFF, Fed H.4.1 and H.8, NY Fed rates | weekly | n.funding prints one Funding sentence in The bigger picture of the weekly issue, marked context (wired 2026-10-27). |
 | Federal Reserve statement tone | Federal Reserve statements scored by the desk lexicon | daily and weekly | n.cb gives the USD currency card its tone pill, score and headline, and its change feeds the since-last-issue list. |
 | ECB statement tone | ECB statements scored by the desk lexicon | daily and weekly | n.cb gives the EUR currency card its tone pill, score and headline. |
 | Bank of England statement tone | Bank of England statements scored by the desk lexicon | daily and weekly | n.cb gives the GBP currency card its tone pill, score and headline. |
@@ -39,6 +43,16 @@ Read the daily and weekly columns with care. Almost every used feed appears in b
 | RBNZ statement tone | RBNZ statements scored by the desk lexicon | daily and weekly | n.cb gives the NZD currency card its tone pill, score and headline. |
 | RBA statement tone | RBA statements scored by the desk lexicon | daily and weekly | n.cb gives the AUD currency card its tone pill, score and headline. |
 | Bank of Canada statement tone | Bank of Canada statements scored by the desk lexicon | daily and weekly | n.cb gives the CAD currency card its tone pill, score and headline. |
+| Swiss National Bank statement tone | Swiss National Bank assessment press releases scored by the desk lexicon | daily and weekly | n.cb gives the CHF currency card its tone pill, score and headline. |
+| Latest Fed statement read | Federal Reserve statements | weekly | Atlas loads it as n.plUSD for the weekly central-bank section (policyWeek): what the bank said at its latest meeting. |
+| Latest ECB decision read | European Central Bank statements | weekly | Atlas loads it as n.plEUR for the weekly central-bank section (policyWeek): what the bank said at its latest meeting. |
+| Latest Bank of England decision read | Bank of England statements | weekly | Atlas loads it as n.plGBP for the weekly central-bank section (policyWeek): what the bank said at its latest meeting. |
+| Latest Bank of Japan decision read | Bank of Japan statements | weekly | Atlas loads it as n.plJPY for the weekly central-bank section (policyWeek): what the bank said at its latest meeting. |
+| Latest RBA decision read | Reserve Bank of Australia statements | weekly | Atlas loads it as n.plAUD for the weekly central-bank section (policyWeek): what the bank said at its latest meeting. |
+| Latest Bank of Canada decision read | Bank of Canada statements | weekly | Atlas loads it as n.plCAD for the weekly central-bank section (policyWeek): what the bank said at its latest meeting. |
+| Latest SNB assessment read | Swiss National Bank statements | weekly | Atlas loads it as n.plCHF for the weekly central-bank section (policyWeek): what the bank said at its latest meeting. |
+| Latest RBNZ decision read | Reserve Bank of New Zealand statements | weekly | Atlas loads it as n.plNZD for the weekly central-bank section (policyWeek): what the bank said at its latest meeting. |
+| UK Budget, OBR forecasts and US refunding | HM Treasury, OBR and US Treasury documents | weekly | Atlas loads it as n.pfis for the weekly central-bank and fiscal section (policyWeek). |
 | FOMC meeting dates | Federal Reserve calendar | daily and weekly | The next meeting date and days away are added to the Coming up sentence of the opening block via n.position. |
 | Federal Reserve speaker diary | Federal Reserve | daily and weekly | n.extras.fed prints the Federal Reserve diary list in Beyond the calendar, over three days for daily and eight for weekly. |
 | Release surprises against consensus | ForexFactory consensus with FRED ALFRED vintages | daily and weekly | n.surprise gives each currency card its Data against forecasts line, score and biggest recent surprise. |
@@ -52,17 +66,12 @@ These are the feeds that could be forgotten. Each row says what the ledger found
 | --- | --- | --- | --- |
 | Cboe listed option chains | Cboe delayed quotes | gamma-real-iv: null | Not traced; the newsletter option zone reads the CME open interest store instead. The ledger says null, so context only. |
 | Credit stress index overlay | ICE BofA OAS via FRED, own index | hy-spread-vol-idx: context | Not traced; it is a test overlay, and the newsletter shows the spreads themselves instead. The ledger says context only. |
-| Cross-border bank credit | BIS Locational Banking Statistics | bank-credit-dollar-nasdaq: context | Weekly: the BIS dollar-lending growth and regime are one clause of the Funding sentence in The bigger picture, marked context (wired 2026-10-27). |
 | STIR futures: SOFR, Euribor and short sterling legs | CME and ICE futures through Databento | stir-curve-map: context | Not wired; the page cog-chart.html uses it. The ledger says it describes the same bar only, so it is context on how rates moved today, not a lead. The ledger says context only. |
 | ECB yield curve and euro short-term rate | ECB Data Portal | no ledger test | Not traced; no euro rates field is built into n. No ledger test yet. |
 | CFTC positioning by pair | CFTC Commitments of Traders | cot-positioning-factor: null | Loaded by Atlas for the country card only; the newsletter takes the same CFTC report through cot-crowding instead. The ledger says null, so context only. |
 | COT duration, tails and aftermath studies | CFTC with own analysis | positioning-into-release-range: null | Not traced; research output. The ledger finds a range effect is null, so it adds no size context. The ledger says null, so context only. |
 | Who must act after a release when positioning is crowded | CFTC with own analysis | positioning-into-release-direction: validated | Not traced as its own field. The ledger finds crowded funds get hit harder against them on high impact releases, which could become one line on a release row. The ledger validates it, so it is safe to print as stated. |
-| Option open interest levels by instrument | CME QuikStrike settlements | wall-placebo: null | Not traced; the newsletter reads oi-today for its option zone and does not use the level list. The ledger says null, so context only. |
 | Ripple book: gamma by days to expiry | CME QuikStrike settlements | no ledger test | Not traced; a forward-test record on its own page. No ledger test yet. |
-| Funding and leverage read: swap lines, repo, leveraged-fund Treasury basis | CFTC TFF, Fed H.4.1 and H.8, NY Fed rates | tff-basis-rates-vol-level: underpowered | Weekly: one Funding sentence in The bigger picture, marked context (wired 2026-10-27). |
-| Range lines after a 20-day S&P fall (research shadow band) | own model on the shipped range forecast and OANDA S&P 500 closes | drawdown-forecast-error-fx: validated | Daily and weekly: one sentence under the market cards, only when the S&P is down 2% or more over 20 days; lines not adjusted (wired 2026-10-27). |
-| Range lines scaled by stacked equity/vol stress and FX month-end (research shadow band) | own model on the shipped range forecast, OANDA S&P 500 and Yahoo VIX / VIX3M closes | forecast-miss-shock-fx: validated | Not in the newsletter: today.html Market read line only until the forward record is judged (wired 2026-10-29). |
 | Fed Beige Book | Federal Reserve | no ledger test | Not loaded by Atlas at all, so no field of n carries it. No ledger test yet. |
 | GDPNow and Cleveland Fed nowcasts | Atlanta Fed and Cleveland Fed via FRED | nowcast-gap-gdp: context | nlInput builds n.nowcast but js/newsletter.js never reads it, so it is loaded and dropped. The ledger says context only. |
 
@@ -115,9 +124,13 @@ These are the feeds that could be forgotten. Each row says what the ledger found
 | Live session range used so far | daily and weekly | intraday-range: validated | The used and hl75Ratio fields in n.assets draw the bar showing how much of a normal day has been used on each market card. |
 | Weekly range forecast | weekly | horizon-reversion: validated | n.week.ranges prints the table How far each market is expected to travel this week, in the weekly issue only. |
 | Band reach probability from here | neither | band-reach-from-here: validated | Not traced; no field of n carries reach odds, though the ledger validates them. |
+| Event day: today’s release, decision, Budget or refunding against the same events before, plus the rate legs | daily | fiscal-reaction-uk-size: underpowered | n.eventDay: on the daily opening sheet, a release or decision that has a Release Reaction record shows how many earlier ones there were and their typical first-30-minute move, in place of the older usual-effect phrase (wired 2026-11-01). Also feeds the morning brief, the pair analysis, today.html and the Atlas Global and Pair views. |
 | Spread-turn episodes: rate spread against Nasdaq and EURUSD | neither | spread-episodes-nq: null | Not traced; a forward record page only. Both ledger tests are null on follow, so it is context. |
+| Range lines after a 20-day S&P fall (research shadow band) | daily and weekly | drawdown-forecast-error-fx: validated | n.drawdownShadow prints one sentence under the market cards, only when the S&P is down 2% or more over 20 days; the lines are not adjusted (wired 2026-10-27). |
+| Asia range so far today, in ATRs against its terciles | daily and weekly | asia-range-london: context | Atlas loads it as n.asia; the daily opening leads with an unusually wide Asia and a tested-meaning line (wired 2026-10-28 by another session, register entry added 2026-10-29). |
+| Range lines scaled by stacked equity/vol stress and FX month-end (research shadow band) | neither | forecast-miss-shock-fx: validated | today.html only (Market read line); not in the newsletter until the forward record is judged, to keep the word budget (wired 2026-10-29). |
 | Growth and inflation regime with what each market did in it | daily and weekly | no ledger test | n.regimeCard prints the Backdrop line in The bigger picture and the first block of the opening letter. |
-| Global Read: five axes and scenarios | daily and weekly | no ledger test | The axes feed the Right now sentence of n.position in the opening block; n.scenarios is built by Atlas but js/newsletter.js never reads it. |
+| Global Read: five axes and scenarios | daily and weekly | no ledger test | The axes feed the Right now sentence of n.position in the opening block. n.reads (js/directionRead.js) adds the typical day of each market, its tested direction inputs against that market base rate for one day, and the inputs read but given no weight, in the daily pair table and the weekly market section (wired 2026-11-01). n.scenarios is built by Atlas but js/newsletter.js never reads it. |
 | What changed over one, five and twenty days | neither | no ledger test | nlInput builds n.changes but js/newsletter.js never reads it. |
 | Six-factor currency scorecard | neither | no ledger test | Loaded by Atlas for the country card; nlInput does not pass it to the newsletter. |
 | Stress warnings: VIX, credit speed, yen bid, FX vol, stock-bond correlation | daily and weekly | no ledger test | n.riskFlags prints the stress dial, the proximity bars and the stress count in the 30-second strip. |
@@ -143,7 +156,7 @@ Ranked by value. Every item respects the ledger: ranges, size, who must act and 
 3. One line on crowded funds on high impact release rows. positioning-into-release-direction is validated as who gets hurt, not which way price goes. The crowding data and the release rows are both already in the issue, so this joins two things the reader sees apart. Word it as who must act.
 4. The nowcast in The bigger picture. nlInput already builds n.nowcast and the newsletter never reads it. The GDP gap is context and the CPI gap is null, so show the level and say it is context.
 5. Printed results from the last day on release rows. The calendar feed with actuals is loaded by Atlas and dropped. Showing what printed against forecast is data, not a signal, and the surprise score is already on the currency cards.
-6. DONE 2026-10-27: a weekly backdrop line from the funding and leverage read. Every state is a description of where a number sits in its own history. The funding stress test is null, so keep it to one weekly sentence marked context.
+6. A weekly backdrop line from the funding and leverage read. Every state is a description of where a number sits in its own history. The funding stress test is null, so keep it to one weekly sentence marked context.
 
 ## What this register does not cover
 

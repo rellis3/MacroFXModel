@@ -294,6 +294,7 @@ import { buildNewsletter, eventNote, flagProximity, familyOf } from './js/newsle
 import { releaseNewsletterV3 } from './js/newsletterV3.js';
 import { worldEconomies } from './js/worldEconomies.js';
 import { policyWeek } from './js/policyWeek.js';
+import { directionReads } from './js/directionRead.js';
 import { impliedRow, impliedKeyFor } from './js/impliedMove.js';
 import { snapshotOf, diffSnapshots, scoreLine, weekRecord, plainRead } from './js/newsletterRecord.js';
 import { closuresBetween } from './js/marketCalendars.js';
@@ -603,6 +604,7 @@ function nlInput({ bookFor = () => null } = {}) {
     beta: D.beta ?? null,
     asia: D.asia?.instruments ?? null,
     intl: D.iy?.series ?? null,
+    reads: directionReads(D.gr), eventDay: D.evd ? { events: D.evd.events ?? [] } : null,
     policy: policyWeek({ banks: Object.fromEntries(['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].map(c => [c, D['pl' + c]])), beige: D.pbb, fiscal: D.pfis }),
     world: worldEconomies({ gdp: D.wgdp, cpi: D.wcpi, labor: D.wlab, retail: D.wret, conf: D.wconf, trade: D.wtr, real: D.wry, curve: D.wyc, scorecard: D.msc }),
     rangePressure: rpNow(), fearVsNasdaq: fearNow(), vixBeta: betaNow(), impliedRatio: impNow(),

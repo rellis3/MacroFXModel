@@ -73,12 +73,12 @@ export function policyWeekHtml(p, esc) {
   const body = all.map(r => r.missing
     ? `<tr><td class="n">${esc(r.bank)}</td><td class="m" colspan="4"><small>no read yet</small></td></tr>`
     : `<tr><td class="n">${esc(r.bank)}</td><td class="m">${esc(shortDate(r.date))}<br><small>${esc(r.kind)}</small></td><td class="m">${esc(r.regime || '·')} <small>${score(r)}</small></td><td class="m">inflation ${conc(r.inflation)}<br>growth ${conc(r.growth)}</td><td class="w">${r.vote ? `${esc(r.vote)} ` : ''}${r.changed ? `<small>${esc(r.changed)}</small>` : ''}</td></tr>`).join('');
-  const banks = `<table class="t3"><tr><th>Bank</th><th>Latest read</th><th>Tone, 0 to 1</th><th>What it worries about</th><th>What the vote and the wording show</th></tr>${body}</table><p class="small3">Tone is a language score of the bank's own words, 0 for most dovish and 1 for most hawkish. It describes the document, not what the bank does next. Each row is the latest document the desk has read, so the dates differ.</p>`;
+  const banks = `<table class="t3"><tr><th>Bank</th><th>Latest read</th><th>Tone, 0 to 1</th><th>What it worries about</th><th>What the vote and the wording show</th></tr>${body}</table><p class="small3">Tone is a language score of the bank's own words, 0 most dovish to 1 most hawkish. It describes the document, not what the bank does next. Dates differ because each row is the latest document read.</p>`;
   const fb = p.fiscal.map(f => {
     const fig = f.figures.map(x => `${esc(x.label)}: <b>${esc(x.value)}</b>${x.change ? ` <small>(${esc(x.change)})</small>` : ''}`).join('<br>');
     const lbl = f.upcoming ? `<small>upcoming, ${esc(shortDate(f.date))}</small>` : `${esc(shortDate(f.date))}`;
     return `<tr><td class="n">${esc(f.ccy)}<br><small>${esc(f.title)}</small></td><td class="m">${lbl}</td><td class="m">${f.stance ? `${esc(f.stance)} budget stance<br>${f.supply ? `${esc(f.supply)} bond supply<br>` : ''}${f.credibility ? `credibility ${esc(f.credibility)}` : ''}` : '<small>not read yet</small>'}</td><td class="w">${fig}${f.what ? `<br><small>${esc(f.what)}</small>` : ''}</td></tr>`;
   }).join('');
-  const fiscal = fb ? `<table class="t3"><tr><th>Treasury</th><th>Date</th><th>Read</th><th>Figures and what changed</th></tr>${fb}</table><p class="small3">Stance, supply and credibility are the desk's reading of each fiscal document: whether the plan spends more or less than before, whether it sells more bonds, and whether the new numbers look more or less believable. A description of the document, not of where markets go.</p>` : '';
+  const fiscal = fb ? `<table class="t3"><tr><th>Treasury</th><th>Date</th><th>Read</th><th>Figures and what changed</th></tr>${fb}</table><p class="small3">Stance, supply and credibility are the desk's reading of each fiscal document: spending, bond sales, and how believable the new numbers look. A description of the document, not of where markets go.</p>` : '';
   return banks + fiscal;
 }

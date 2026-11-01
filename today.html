@@ -7285,11 +7285,15 @@ function renderDayRead() {
   const rec = _drRecord?.summary?.D2;
   const recTxt = rec?.n ? `story record: ${rec.hits}/${rec.n} right (${Math.round(100 * rec.hitRate)}%) over ${_drRecord.summary.sessions} sessions` : `story record: starting (${_drRecord?.summary?.sessions ?? 0} sessions scored; needs 30)`;
   el.style.display = 'block';
+  // tested direction against each market's own base rate (js/directionRead.js): the counterpart of the story lean above, which is not validated
+  const dirBlock = (() => { const B = window.directionReadBrick, R = B ? B.directionReads(g) : null; if (!R) return '';
+    return `<details class="dy-dir" style="margin-top:8px"><summary class="dy-sub" style="cursor:pointer"><b>Tested direction against each market's base rate</b> · ${R.live ? `${R.live} of ${R.rows.length} markets have a tested input live` : 'no tested input is live'}</summary><div class="gr-scroll"><table class="gr-tbl"><tr><th>market</th><th>tested inputs</th><th title="typical high-low, and the mark that 1 day in 4 goes past, in percent of price">typical day · 1 in 4 past</th></tr>${R.rows.map(r => `<tr><td><b>${esc0(dispName(r.sym))}</b></td><td>${B.directionCell(r)}</td><td class="muted">${B.rangeCell(r) || '·'}</td></tr>`).join('')}</table></div><div class="dy-sub">${esc0(B.directionNote(R))}</div></details>`; })();
   el.innerHTML = `<div class="sec-hd-row"><span class="sec-title">🎯 Day Read</span>${secChev('dayRead')}</div>
     ${secBody('dayRead', `
     <div class="dy-hook"><span>${esc0(ch?.hook ?? g.headline ?? '')}</span></div>
     ${doms.length ? `<div class="dy-sub">The live stories: ${doms.map(esc0).join(' · ')}</div>` : ''}
     <div class="dy-list"><div class="dy-row dy-head"><span>market</span><span>story lean</span><span>day size</span><span>range today</span><span style="text-align:right">used</span><span style="text-align:right">because</span></div>${tiles}</div>
+    ${dirBlock}
     <div class="dy-sub" style="margin-top:8px"><b>Day size</b> (wide / normal / capped) is tested. <b>Up / down</b> is a story lean, not validated: every read that points a way, family-weighted, scored each morning. ${esc0(recTxt)}${_drRecord?.summary?.D3?.n ? `; 10:00 re-read: ${_drRecord.summary.D3.hits}/${_drRecord.summary.D3.n} right on the move left` : ''}. Full detail is in Global Read below.</div>`)}`;
 }
 // pair card: one tier row
@@ -14184,6 +14188,12 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
   import * as EconSurprise from './js/econSurprise.js';
   window.econSurpriseBrick = EconSurprise;
   try { window.render?.(); } catch (e) {}
+</script>
+<!-- Direction evidence (js/directionRead.js): tested direction inputs against each market's own one-day base rate; the Day Read draws it once Global Read has loaded. -->
+<script type="module">
+  import * as DirectionRead from './js/directionRead.js';
+  window.directionReadBrick = DirectionRead;
+  try { window.renderDayRead?.(); } catch (e) {}
 </script>
 <!-- Release scorecard (js/releaseScorecard.js): the card's words are the brick's, so
      the page and the Telegram line cannot disagree. -->
