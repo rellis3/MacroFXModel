@@ -175,6 +175,15 @@ svg text{font-family:var(--mono)}
     <div id="ddBody"></div>
   </div>
 
+  <div class="card" id="sfCard">
+    <h2><em>05g</em> Gamma and charm by strike through the day
+      <span class="sub" style="display:inline;margin-left:8px">uses the source and expiry window chosen in the hedging map above</span></h2>
+    <div class="sub"><b>What this is:</b> the open-interest book is held fixed, price is held where it is now, and each strike's gamma and charm are recomputed every 15 minutes ahead as contracts age. You can see 0DTE gamma build toward the close, walls fade as contracts expire, and which way time decay alone pushes dealers to hedge at each strike. <b>What it is not:</b> a measurement. Open interest, IV and the dealer sign (long calls / short puts) are assumptions, and no intraday trades are in it. The gamma sign predicting range is tested and real; levels and hedge flow as entries are not (hedge-flow study, 2026-10-31).</div>
+    <div id="sfStats"></div>
+    <svg id="sfChart" width="100%" viewBox="0 0 1000 400" style="max-width:1100px;display:block;margin-top:8px"></svg>
+    <div class="legend"><span>Left: blue = dealers long gamma at that strike (damps moves), red = short (chases moves). Right: blue = decay alone makes dealers buy at that strike, red = sell, per 15 minutes. Dashed line = price now. Time runs left to right from the book's snapshot.</span></div>
+  </div>
+
   <div class="card" id="gkCard">
     <h2><em>05d</em> Greek context: turn each layer on or off
       <span class="tgl" id="gkExp" style="margin-left:auto"><span class="pill on" data-gexp="3">≤3 DTE</span><span class="pill" data-gexp="30">≤30 DTE</span><span class="pill" data-gexp="400">whole book</span></span></h2>
@@ -227,8 +236,8 @@ svg text{font-family:var(--mono)}
 <script type="module">
 import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol, parseOIMatrix, oiRippleBook, oiBookLegs } from './js/oi.js';
 import { greekLayers, hedgeFlow, GREEKS } from './js/greekLayers.js';
-import { bsGamma } from './js/gammaGreeks.js';
-import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';
+import { bsGamma, bsCharm } from './js/gammaGreeks.js';
+import { hedgingScenario, hedgingRead, bookAt } from './js/hedgingScenario.js';
 import { cmeBookContracts } from './js/hedgingBooks.js';
 
 const $ = s => document.querySelector(s);
@@ -932,6 +941,64 @@ async function drawDayFlow(pair, day) {
   const sp = `<svg width="100%" viewBox="0 0 1000 46" style="max-width:1000px;display:block">${spark.map((v, i) => `<rect x="${i * (1000 / spark.length)}" y="${42 - v / smx * 38}" width="${Math.max(2, 1000 / spark.length - 3)}" height="${v / smx * 38}" fill="#6b7585"><title>${esc(d.steps[i].to.slice(11, 16))} UTC: ${v.toLocaleString()} contracts</title></rect>`).join('')}</svg>`;
   el.innerHTML = `<div class="sub" style="margin:0 0 6px;color:var(--tx2)"><b>What traded through ${esc(useDay)}</b> (${esc(sym)} options, contracts per strike within 3% of price, summed over ${d.steps.length} fifteen-minute steps; ${tot.toLocaleString()} contracts in all)</div>${s}<div class="sub" style="margin:8px 0 2px">Contracts traded in each step</div>${sp}<div class="legend"><span>This is where trading happened, not who was long: Cboe's delayed feed carries no buyer or seller. Volume is the change in the day's cumulative count between snapshots.</span></div>`;
 }
+// ── 05g Gamma and charm through the day: the same book (CME or Cboe, same toggles as the hedging map) re-priced at every price and every 15 minutes ahead ──
+// Model, not measurement: open interest is fixed at the snapshot, IV is held, dealers are assumed long calls / short puts. Time passing shrinks each contract's T
+// (so 0DTE gamma builds into the close and expired contracts drop out), and the charm panel is the dealer hedge that time decay alone forces if price sat at that level.
+const SF = { cache: {} };
+async function drawSurfaceDay() {
+  const svg = $('#sfChart'); if (!svg) return;
+  const fail = m => { svg.innerHTML = `<text x="500" y="150" text-anchor="middle" fill="#6b7585" font-size="14">${esc(m)}</text>`; $('#sfStats').innerHTML = ''; };
+  const D = CUR;
+  if (!D) return fail('No OI record for this instrument.');
+  if (HS.src !== 'cme' && !['SPX500_USD', 'NAS100_USD', 'US2000_USD'].includes(SYM)) return fail('Cboe books here cover SPX, NQ (NDX) and RUT. Switch the hedging map above to CME.');
+  let B;
+  try { B = HS.src === 'cme' ? hsCmeBook(SYM, D.e) : await hsCboeBook(SYM, HS.src === 'cboeetf'); } catch (err) { return fail('Cboe chain unavailable: ' + err.message); }
+  if (!B || !B.contracts.length) return fail('No contracts in this expiry window (try a wider one in the hedging map).');
+  const key = `${SYM}|${HS.src}|${HS.maxDte}|${B.contracts.length}|${Math.round(B.spot * 100)}`;
+  let R = SF.cache[key];
+  if (!R) {
+    svg.innerHTML = '<text x="500" y="150" text-anchor="middle" fill="#6b7585" font-size="14">building the surface…</text>';
+    await new Promise(r => setTimeout(r, 30));
+    const S = B.spot, refSpot = D.spot ?? D.e?.spot ?? S, half = Math.min(0.06, Math.max(0.012, 3 * (D.rm || refSpot * 0.01) / refSpot));
+    const NP = 61, NT = 31, STEP = 15 / (60 * 24 * 365), TF = 30 * 60e3 / (365 * 864e5);   // 15-minute columns, 7.5 hours ahead
+    const lo = S * (1 - half), hi = S * (1 + half), grid = Array.from({ length: NP }, (_, i) => lo + (hi - lo) * i / (NP - 1));
+    const gamma = [], charm = [];
+    for (let k = 0; k < NT; k++) {
+      const gm = new Array(NP).fill(0), ch = new Array(NP).fill(0), dt = k * STEP;
+      for (const c of B.contracts) {
+        if (!(c.oi > 0) || !(c.iv > 0) || c.T - dt <= 0 || c.K < lo || c.K > hi) continue;
+        const row = Math.round((c.K - lo) / (hi - lo) * (NP - 1)), T = Math.max(TF, c.T - dt), sg = c.cp === 'C' ? 1 : -1;
+        gm[row] += sg * c.oi * bsGamma(S, c.K, T, c.iv) * S * 0.01;             // dealer gamma at this strike with price where it is now
+        ch[row] += -sg * c.oi * bsCharm(S, c.K, T, c.iv) * STEP;                // hedge forced by 15 minutes of decay at this strike: buy (+) / sell (-)
+      }
+      gamma.push(gm); charm.push(ch);
+    }
+    R = SF.cache[key] = { S, grid, gamma, charm, NT };
+  }
+  const { S, grid, gamma, charm, NT } = R, sh = v => v + B.shift;
+  const W = 1000, H = 400, X0 = 74, X1 = 500, X2 = 540, X3 = 966, T0 = 34, B0 = 360;
+  const cw = (X1 - X0) / NT, rh = (B0 - T0) / grid.length;
+  const mxG = Math.max(1e-12, ...gamma.flat().map(Math.abs)), mxC = Math.max(1e-12, ...charm.flat().map(Math.abs));
+  const col = (v, m) => { const t = Math.sign(v) * Math.pow(Math.min(1, Math.abs(v) / m), 0.55); return t >= 0 ? `rgba(47,143,204,${t.toFixed(3)})` : `rgba(232,97,95,${(-t).toFixed(3)})`; };
+  let h = '';
+  const panel = (data, x0, m, title, lo, hiT) => {
+    h += `<text x="${(x0 + (x0 === X0 ? X1 : X3)) / 2}" y="16" text-anchor="middle" fill="#a8b1bd" font-size="12">${title}</text><rect x="${x0}" y="${T0}" width="${NT * cw}" height="${B0 - T0}" fill="#0c0f13"/>`;
+    for (let k = 0; k < NT; k++) for (let i = 0; i < grid.length; i++) { const v = data[k][i]; if (Math.abs(v) < m * 0.02) continue; h += `<rect x="${(x0 + k * cw).toFixed(1)}" y="${(B0 - (i + 1) * rh).toFixed(1)}" width="${(cw + 0.6).toFixed(1)}" height="${(rh + 0.6).toFixed(1)}" fill="${col(v, m)}"/>`; }
+    for (let k = 0; k <= NT; k += 8) h += `<text x="${x0 + k * cw}" y="${B0 + 16}" text-anchor="middle" fill="#6b7585" font-size="10.5">+${(k * 0.25).toFixed(k % 4 ? 2 : 0).replace(/\.00$/, '')}h</text>`;
+    const ys = B0 - (S - grid[0]) / (grid[grid.length - 1] - grid[0]) * (B0 - T0);
+    h += `<line x1="${x0}" x2="${x0 + NT * cw}" y1="${ys}" y2="${ys}" stroke="#eef1f5" stroke-dasharray="4 4" opacity=".7"/>`;
+  };
+  panel(gamma, X0, mxG, 'Dealer gamma at each strike');
+  panel(charm, X2, mxC, 'Hedge forced by decay at each strike');
+  for (let i = 0; i <= 6; i++) { const P = grid[0] + (grid[grid.length - 1] - grid[0]) * i / 6, yy = B0 - (P - grid[0]) / (grid[grid.length - 1] - grid[0]) * (B0 - T0); h += `<text x="${X0 - 6}" y="${yy + 4}" text-anchor="end" fill="#6b7585" font-size="11">${px(sh(P))}</text>`; }
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = h;
+  // the headline numbers: where gamma is, and whether time decay pushes dealers to buy or sell around price, now and 3 hours on
+  const near = (arr, k) => { let a = 0; grid.forEach((P, i) => { if (Math.abs(P - S) <= S * 0.004) a += arr[k][i]; }); return a; };
+  const g0 = near(gamma, 0), g3 = near(gamma, Math.min(12, NT - 1)), c0 = near(charm, 0), c3 = near(charm, Math.min(11, NT - 1));
+  const word = v => (v > 0 ? 'long' : 'short');
+  $('#sfStats').innerHTML = `<div class="minis"><div class="mini"><div class="k">Gamma at price, now</div><div class="v" style="font-size:15px">${word(g0)}</div><div class="n">${g0 > 0 ? 'damps moves' : 'chases moves'}</div></div><div class="mini"><div class="k">Gamma at price, +3h</div><div class="v" style="font-size:15px">${word(g3)}</div><div class="n">${Math.abs(g3) > Math.abs(g0) ? 'bigger as expiry nears' : 'smaller as contracts expire'}</div></div><div class="mini"><div class="k">Decay hedge at price, now</div><div class="v" style="font-size:15px">${c0 > 0 ? 'dealers buy' : 'dealers sell'}</div><div class="n">per 15 min, time only</div></div><div class="mini"><div class="k">Decay hedge at price, +3h</div><div class="v" style="font-size:15px">${c3 > 0 ? 'dealers buy' : 'dealers sell'}</div><div class="n">${Math.sign(c0) === Math.sign(c3) ? 'same side' : 'flips side'}</div></div></div>`;
+}
 function drawHedgeFlow(){
   const D = CUR, svg = $('#hfChart'), read = $('#hfRead'); if (!svg) return;
   const msg = m => { svg.setAttribute('viewBox', '0 0 1000 60'); svg.innerHTML = `<text x="500" y="34" text-anchor="middle" fill="#a8b1bd" font-size="13">${m}</text>`; read.innerHTML = ''; };
@@ -1238,8 +1305,8 @@ async function drawHedging(){
     + sc.curves.map(c => `<span><i style="background:${HS_FAN[String(c.dv)]}"></i>gamma at IV ${c.dv > 0 ? '+' : ''}${c.dv} pts</span>`).join('')
     + `<span><i style="background:#eef1f5"></i>hedge to stay flat (dashed: other IVs)</span><span>${esc(B.ivNote)} · ${sc.n.toLocaleString('en-GB')} contracts · OI in ${esc(fut)}-contract equivalents</span>`;
 }
-document.querySelectorAll('[data-hsrc]').forEach(b => b.onclick = () => { HS.src = b.dataset.hsrc; document.querySelectorAll('[data-hsrc]').forEach(x => x.classList.toggle('on', x === b)); drawHedging(); });
-document.querySelectorAll('[data-hexp]').forEach(b => b.onclick = () => { HS.maxDte = +b.dataset.hexp; document.querySelectorAll('[data-hexp]').forEach(x => x.classList.toggle('on', x === b)); drawHedging(); });
+document.querySelectorAll('[data-hsrc]').forEach(b => b.onclick = () => { HS.src = b.dataset.hsrc; document.querySelectorAll('[data-hsrc]').forEach(x => x.classList.toggle('on', x === b)); drawHedging(); drawSurfaceDay(); });
+document.querySelectorAll('[data-hexp]').forEach(b => b.onclick = () => { HS.maxDte = +b.dataset.hexp; document.querySelectorAll('[data-hexp]').forEach(x => x.classList.toggle('on', x === b)); drawHedging(); drawSurfaceDay(); });
 
 // ── 00 plain-English summary of every market (/api/hedging-summary) ───────────────────────────
 function planHtml(x){
@@ -1359,7 +1426,7 @@ function rail(){
 async function refresh(){
   CUR = derive(SYM); rail();
   drawHedging();     // async and self-contained: first, so a failure in another panel cannot skip it
-  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawDayDrift, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
+  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawDayDrift, drawSurfaceDay, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
   drawBrief();
