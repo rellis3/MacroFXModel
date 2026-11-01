@@ -29,6 +29,11 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      # Some JS tests shell out to Python (js/harness/features.test.mjs writes parquet fixtures with pyarrow).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pandas pyarrow
       - name: Run every *.test.mjs / *.test.js
         run: node scripts/run_tests.mjs
 
