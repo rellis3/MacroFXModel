@@ -4862,7 +4862,9 @@ svcTimeout('spreadEpisodes', () => _seTick({ silent: true }).catch(e => console.
 // limit at the 1, stop 1.2, target the 0 (5R), BE at 1R, out at minute 540. Backtest verdict NULL (gold -0.72R per
 // trade); this is a forward record to watch it, not a signal. KV daily_open_fib_v1 holds one row per instrument per
 // session (both anchors); the live session is recomputed from candles every tick.
-const _DOF_KV = 'daily_open_fib_v1', _DOF_KEEP = 150, _DOF_BACKFILL_DAYS = 56, _DOF_FETCH_BUDGET = 24, _DOF_PRE_H = 6;
+const _DOF_KV = 'daily_open_fib_v1', _DOF_KEEP = 150, _DOF_BACKFILL_DAYS = 56, _DOF_FETCH_BUDGET = 24, _DOF_PRE_BARS = 360;
+// row version: v2 (2026-11-01) = the bars before the open are the last 360 that TRADED (Friday's, before a Sunday open); v1 rows used the 6 clock hours and saw nothing before a weekly open
+const _DOF_ROW_V = 2;
 const _DOF_INST = [
   ['XAU_USD', 'Gold'], ['EUR_USD', 'EUR/USD'], ['GBP_USD', 'GBP/USD'], ['USD_JPY', 'USD/JPY'], ['AUD_USD', 'AUD/USD'],
   ['EUR_GBP', 'EUR/GBP'], ['USD_CAD', 'USD/CAD'], ['USD_CHF', 'USD/CHF'], ['GBP_JPY', 'GBP/JPY'], ['EUR_JPY', 'EUR/JPY'],
@@ -4873,6 +4875,13 @@ const _DOF_BT_KEY = { XAU_USD: 'gold', NAS100_USD: 'nq', EUR_USD: 'eurusd' };
 let _dof = { loaded: false, rows: new Map(), lastTick: 0, error: null, running: false, lastWrite: 0, dirty: false, adr: new Map(), bars: new Map() };
 async function _dofCandles(inst, fromMs, count, price = 'BA') {
   const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(inst)}/candles?granularity=M1&price=${price}&from=${encodeURIComponent(new Date(fromMs).toISOString())}&count=${count}`,
+    { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(12_000) });
+  if (!r.ok) throw new Error(`OANDA M1 ${inst} ${r.status}`);
+  return (await r.json()).candles ?? [];
+}
+// the last `count` bars that traded before `toMs` (whatever the clock: before a Sunday open these are Friday's)
+async function _dofCandlesBefore(inst, toMs, count) {
+  const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(inst)}/candles?granularity=M1&price=BA&to=${encodeURIComponent(new Date(toMs).toISOString())}&count=${count}`,
     { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(12_000) });
   if (!r.ok) throw new Error(`OANDA M1 ${inst} ${r.status}`);
   return (await r.json()).candles ?? [];
@@ -4897,7 +4906,7 @@ async function _dofSession(inst, anchorMs, now) {
   const S = _dofSessionFrom(await _dofCandles(inst, anchorMs, 720), anchorMs);
   if (!S || !S.t.length) return { empty: true, adr };
   // the bars before the open: the 'swing' anchor's 1 can sit there (the leg started before the open)
-  S.pre = _dofPreFrom(await _dofCandles(inst, anchorMs - _DOF_PRE_H * 3600e3, _DOF_PRE_H * 60), anchorMs, _DOF_PRE_H);
+  S.pre = _dofPreFrom(await _dofCandlesBefore(inst, anchorMs, _DOF_PRE_BARS), anchorMs, _DOF_PRE_BARS);
   const exitT = S.t[0] + _DOF_DEFAULTS.exitMin * 60e3;
   const final = S.mins.at(-1) >= _DOF_DEFAULTS.exitMin || now > exitT + 15 * 60e3;
   const out = { adr, final, firstBarT: S.t[0], exitT, lastBarT: S.t.at(-1) };
@@ -4925,13 +4934,13 @@ async function _dofTick() {
     for (const [inst, label] of _DOF_INST) {
       for (const a of anchors) {
         const date = _dofKey(a), k = `${inst}|${date}`, have = _dof.rows.get(k);
-        if (have?.final && (have.empty || _DOF_ANCHORS.every(x => have[x]))) continue;     // rows stored before an anchor was added are recomputed
+        if (have?.final && (have.empty || (have.v === _DOF_ROW_V && _DOF_ANCHORS.every(x => have[x])))) continue;     // older rows (an anchor added, or v1 pre-open bars) are recomputed
         if (a !== cur && budget <= 0) continue;            // backfill a few sessions per tick; the live session always runs
         if (a !== cur) budget--;
         try {
           const r = await _dofSession(inst, a, now);
           if (r.error || r.empty) { if (a !== cur && now > a + 20 * 3600e3) _dof.rows.set(k, { inst, label, date, anchorMs: a, final: true, empty: true, firstSeen: have?.firstSeen ?? new Date().toISOString() }); continue; }
-          const row = { inst, label, date, anchorMs: a, ...r.out, firstSeen: have?.firstSeen ?? new Date().toISOString(), updatedAt: new Date().toISOString() };
+          const row = { inst, label, date, anchorMs: a, v: _DOF_ROW_V, ...r.out, firstSeen: have?.firstSeen ?? new Date().toISOString(), updatedAt: new Date().toISOString() };
           row.live = Date.parse(row.firstSeen) < row.exitT;       // seen before its exit time = recorded live, not backfilled
           const phases = r2 => _DOF_ANCHORS.map(x => r2?.[x]?.phase).join(',');
           if (!have || phases(have) !== phases(row) || row.final !== have.final) _dof.dirty = true;
@@ -4992,12 +5001,12 @@ app.get('/api/daily-open-fib/chart', async (req, res) => {
     if (!S) {
       if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set');
       S = _dofSessionFrom(await _dofCandles(inst, a, 720), a);
-      if (S) S.pre = _dofPreFrom(await _dofCandles(inst, a - _DOF_PRE_H * 3600e3, _DOF_PRE_H * 60), a, _DOF_PRE_H);
+      if (S) S.pre = _dofPreFrom(await _dofCandlesBefore(inst, a, _DOF_PRE_BARS), a, _DOF_PRE_BARS);
     }
     if (!S) return res.json({ ok: true, bars: [], row: _dof.rows.get(`${inst}|${date}`) ?? null });
     const cut = _DOF_DEFAULTS.exitMin + 90, bars = [], pre = S.pre ?? { t: [] };
-    // the last 3 h before the open (ask = null there), so a swing 1 set before the open is on the chart
-    for (let i = 0; i < pre.t.length; i++) if (pre.t[i] >= a - 3 * 3600e3) bars.push([pre.t[i] / 1000, pre.o[i], pre.h[i], pre.l[i], pre.c[i], null]);
+    // the last 3 trading hours before the open (ask = null there), so a swing / window 1 set before the open is on the chart
+    for (let i = Math.max(0, pre.t.length - 180); i < pre.t.length; i++) bars.push([pre.t[i] / 1000, pre.o[i], pre.h[i], pre.l[i], pre.c[i], null]);
     for (let i = 0; i < S.t.length && S.mins[i] <= cut; i++) bars.push([S.t[i] / 1000, S.bid.o[i], S.bid.h[i], S.bid.l[i], S.bid.c[i], S.ask.c[i]]);
     res.set('Cache-Control', 'no-store');
     res.json({ ok: true, inst, date, openT: S.t[0], bars, row: _dof.rows.get(`${inst}|${date}`) ?? null });
