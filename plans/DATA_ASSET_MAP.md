@@ -38,9 +38,18 @@ engine". Built from three inventories, with the key claims re-checked in code or
    - The ICE credit spreads (HY, BB, CCC, IG, EM) come from FRED's rolling 3-year window, and we hold them only
      from 2023-10-17. Every day not archived is gone.
    - Gold ETF flows are capped at 120 points and written only when the page is opened.
-4. **All the proven value sits in one corner.** Every validated result that survived the audit is about **range
-   and volatility**, built from implied vol, the instruments' own prices, the VIX family, the desk's forecast
-   history, and conditional COT.
+4. **Most of the proven value sits in one corner.** Of the validated results that survive the audit, almost all are
+   about **range and volatility**: implied vol, the instruments' own prices, the VIX family, the desk's forecast
+   history. Three outside that corner also stand (owner's correction, 2026-11-01):
+   - `positioning-into-release-direction` (COT × release calendar): a **direction** result. On high-impact release
+     days, price moves against a crowded leveraged-fund position.
+   - `cot-crowding-p5` (COT state D).
+   - `basis-yearend-premium` (cross-currency basis, i.e. funding).
+
+   Validated but graded fragile: `surprise-size`, `post-fomc-usd-drift`, `gex-range-es`.
+
+   The rest of the macro data (rates, credit, liquidity, BIS, MOVE, surprises, central banks) has no standing
+   validated result. That is not because it is empty.
 
    Macro, rates, credit, funding, liquidity, BIS, MOVE, OI/gamma, surprises and central-bank data have **no
    standing validated result**. That is not because they are empty. They were almost always tested as

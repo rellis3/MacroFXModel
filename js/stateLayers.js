@@ -81,7 +81,7 @@ export function summariseEconomies({ surprise = null, nowcast = null, fedPath = 
                        nextMeeting: m ? { date: m.meeting, moveBp: num(m.moveBp), direction: m.direction ?? null } : null, asOf: fedPath.asOf ?? null, ageDays: fedPath.ageDays ?? null };
   }
   return { rows, surpriseAsOf: surprise?.generatedAt ?? null, cotReportDate: cot?.reportDate ?? null,
-           note: 'Context, not a lean: the surprise index, nowcasts and COT crowding are untested or null as direction signals here.' };
+           note: 'Context, not a lean: the surprise index and nowcasts are untested or null as direction signals here. One COT result stands: on high-impact release days price moves against a crowded leveraged-fund position (positioning-into-release-direction); COT state D (crowd leaving a running trend) also stands.' };
 }
 
 /** The analysis layers: volatility & range, positioning (COT, options OI/gamma), liquidity & funding. */

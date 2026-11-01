@@ -121,6 +121,28 @@
   #cotSvg{display:block;width:100%;height:auto}
   #cotSvg text{fill:var(--text);font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
   #cotSvg .muted{fill:var(--text3)}
+  /* phase 3: playbook, long history, FX board, surprise history, COT board */
+  .pb{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:10px}
+  .pb-card{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:11px 12px;display:grid;gap:6px;align-content:start;min-width:0}
+  .pb-card h3{font-size:13px;font-weight:700;margin:0}
+  .pb-state{font-size:15px;font-weight:700}
+  .pb-why{font-size:11.5px;color:var(--text2)}
+  .pb-exp{display:grid;gap:3px;font-size:12px}
+  .pb-exp div{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:6px;align-items:center}
+  .ok-ic{color:var(--bull);font-weight:700} .no-ic{color:var(--bear);font-weight:700} .na-ic{color:var(--text3)}
+  .meter{height:6px;border-radius:3px;background:var(--neu-bg);overflow:hidden}
+  .meter i{display:block;height:6px;background:var(--bull)}
+  .lh{display:grid;gap:6px}
+  .lh-row{display:grid;grid-template-columns:minmax(0,13rem) 90px minmax(0,1fr) minmax(0,1fr) 120px;gap:10px;align-items:center;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)}
+  .lh-row svg{width:100%;height:26px;display:block}
+  .pbar{height:8px;border-radius:3px;background:var(--neu-bg);position:relative}
+  .pbar i{position:absolute;top:-3px;width:3px;height:14px;border-radius:1px;background:var(--text)}
+  .pbar-l{display:flex;justify-content:space-between;font:10px var(--mono);color:var(--text3)}
+  @media (max-width:820px){.lh-row{grid-template-columns:minmax(0,1fr) 80px;}.lh-row .wide{grid-column:1/-1}}
+  .sm{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:10px}
+  .sm-cell{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 9px;min-width:0}
+  .sm-cell svg{width:100%;height:70px;display:block}
+  .sm-cell .k{font:600 11px var(--mono);color:var(--text2)}
 </style>
 </head>
 <body>
@@ -130,7 +152,7 @@
 <main class="wrap">
   <header class="head">
     <div style="display:grid;gap:6px">
-      <div class="eyebrow">Market State Engine · v2</div>
+      <div class="eyebrow">Market State Engine · v3</div>
       <h1>Where the money is moving, layer by layer</h1>
       <p class="sub">Rates → credit → FX → equities → volatility, in the order information usually flows. Every reading is a 20-day move against its own noise floor. This page describes the state. It does not forecast.</p>
     </div>
@@ -150,6 +172,13 @@
   </section>
 
   <section class="card">
+    <h2>The institutional playbook</h2>
+    <p class="sub">The standard frameworks desks use, applied to today: each classifies the regime, says what should happen across assets, and checks whether markets are doing it. These are <b>theory priors</b> unless the badge says this repo has tested them. Where markets break the playbook is where the story is.</p>
+    <div class="row" style="margin:8px 0"><span class="note" id="pbOverall"></span></div>
+    <div class="pb" id="playbook"></div>
+  </section>
+
+  <section class="card">
     <h2>Edges active today</h2>
     <p class="sub">Tested relationships whose condition the engine can check right now. All of them are about <b>range</b> (how far markets travel), because that is what has validated here. Amber = active today. The grade is from the 2026-10-31 code audit; fragile results are shown as research only.</p>
     <div class="edges" id="edges" style="margin-top:8px"></div>
@@ -157,10 +186,19 @@
 
   <section class="card">
     <h2>Economies</h2>
-    <p class="sub">The economic engine, per currency: data surprises (σ, decay-weighted), the 10-year yield and its 30-day change, and where speculators sit. Context, not a lean: none of these has a validated direction signal here.</p>
+    <p class="sub">The economic engine, per currency: data surprises (σ, decay-weighted), the 10-year yield and its 30-day change, and where speculators sit. Mostly context: the one validated direction result here is COT crowding into high-impact releases (price moves against the crowd).</p>
     <div class="scroll" style="margin-top:8px"><table class="econ"><thead><tr><th>Economy</th><th>Data surprises</th><th></th><th>10Y yield</th><th>30d</th><th>Positioning (COT)</th><th>Latest surprise</th></tr></thead><tbody id="econRows"></tbody></table></div>
     <div class="tiles" id="usExtras" style="margin-top:10px"></div>
     <p class="note" id="econNote" style="margin-top:6px"></p>
+    <h3 style="margin-top:14px;font-size:13px">Surprise history, 2007 onward</h3>
+    <p class="note" id="surpNote"></p>
+    <div class="sm" id="surpHist" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Long-history context</h2>
+    <p class="sub">Where today sits in the whole history the repo holds (VIX since 1990, the 10-year since 1970, MOVE since 2002), not just the last few months. Left bar: percentile of all history. Right bar: the last 5 years.</p>
+    <div class="lh" id="longHist" style="margin-top:6px"></div>
   </section>
 
   <section class="card" style="display:grid;gap:6px">
@@ -219,6 +257,21 @@
     </div>
   </section>
 
+  <section class="grid2" aria-label="Boards">
+    <div class="card">
+      <h2>Currencies vs the dollar (G10 + EM)</h2>
+      <p class="sub">20-day move of each currency against USD (right = stronger). The faint number is how unusual the move is in that currency's own history since 2003.</p>
+      <div class="bars" id="fxBoard" style="margin-top:8px"></div>
+      <p class="note" id="fxNote" style="margin-top:6px"></p>
+    </div>
+    <div class="card">
+      <h2>Positioning, all 36 COT markets</h2>
+      <p class="sub">Speculators' net position as a share of open interest: percentile over all weeks since 2006 (dot) and over 3 years (ring). Raw futures terms (long the yen future = long yen). Context, not a direction.</p>
+      <svg id="cotBoard" role="img" aria-label="COT positioning percentiles for all markets" style="width:100%;height:auto;display:block"></svg>
+      <p class="note" id="cotBoardNote"></p>
+    </div>
+  </section>
+
   <section class="card">
     <h2>Data health</h2>
     <p class="sub">Every input with its last print. Stale inputs (older than 5 days) make their readings unreliable; they are listed first.</p>
@@ -242,7 +295,7 @@ try { if (localStorage.getItem('stateTheme') === 'light') document.body.classLis
 $('themeBtn').addEventListener('click', () => {
   document.body.classList.toggle('light');
   try { localStorage.setItem('stateTheme', document.body.classList.contains('light') ? 'light' : 'dark'); } catch {}
-  if (window.__state) { drawChain(window.__state); drawFlow(window.__state); drawLayers(window.__state); }
+  if (window.__state) { drawChain(window.__state); drawFlow(window.__state); drawLayers(window.__state); drawHistory(window.__state); }
 });
 
 const fmtDelta = (r) => {
@@ -489,13 +542,84 @@ function drawLayers(st) {
   $('oiNote').textContent = oi.length ? `Captured ${esc(oi[0].savedAt ?? '')}${oi.some(r => r.basisStale) ? ' · some futures-to-spot bases are stale' : ''}.` : '';
 }
 
+
+const EV_BADGE = { theory: ['neu', 'theory'], stands: ['ok', 'tested · stands'], reopened: ['warn', 'tested · reopened'], unverified: ['warn', 'tested · unverified'] };
+function drawPlaybook(st) {
+  const pb = st.playbook; if (!pb) { $('playbook').innerHTML = '<div class="note">Not loaded.</div>'; return; }
+  $('pbOverall').textContent = pb.overall ? `Across the frameworks with a call today, markets met ${pb.overall.met} of ${pb.overall.of} textbook expectations (${pb.overall.pct}%).` : 'Not enough live inputs to judge the playbook today.';
+  $('playbook').innerHTML = pb.frames.map(f => {
+    const [bc, bw] = EV_BADGE[f.evidence?.status] ?? EV_BADGE.theory;
+    const c = f.conformity, pct = c?.judged ? Math.round(100 * c.met / c.judged) : null;
+    const baro = f.barometers ? `<div class="note">${f.barometers.riskOn} of ${f.barometers.moving} moving barometers read risk-on${f.barometers.of > f.barometers.moving ? ` · ${f.barometers.of - f.barometers.moving} flat or not loaded` : ''}</div>` : '';
+    const exp = (f.expectations ?? []).map(e => `<div><span class="${e.ok === true ? 'ok-ic' : e.ok === false ? 'no-ic' : 'na-ic'}">${e.ok === true ? '✓' : e.ok === false ? '✗' : '·'}</span><span>${esc(e.label)} should go <b>${esc(e.expected)}</b></span><span class="note">${e.actual == null ? 'not loaded' : e.actual === 'flat' ? 'flat' : `went ${esc(e.actual)}`}</span></div>`).join('');
+    const votes = (f.votes ?? []).map(v => `<span class="pill ${v.riskOn === true ? 'ok' : v.riskOn === false ? 'bad' : 'neu'}">${esc(v.label)}</span>`).join('');
+    return `<div class="pb-card"><div class="row" style="justify-content:space-between"><h3>${esc(f.name ?? f.id)}</h3><span class="pill ${bc}" title="${esc(f.evidence?.note ?? '')}">${bw}</span></div>
+      <div class="pb-state">${esc(f.state ?? 'not enough data')}</div><div class="pb-why">${esc(f.why ?? '')}</div>
+      ${exp ? `<div class="pb-exp">${exp}</div>` : ''}${votes ? `<div class="chips">${votes}</div>` : ''}
+      ${pct != null ? `<div class="meter" title="${c.met} of ${c.judged} met"><i style="width:${pct}%"></i></div><div class="note">${c.met} of ${c.judged} expectations met${c.of > c.judged ? ` · ${c.of - c.judged} flat or not loaded` : ''}</div>` : ''}
+      ${baro}${f.evidence?.note ? `<div class="note">${esc(f.evidence.note)}</div>` : ''}</div>`;
+  }).join('');
+}
+
+function miniLine(points, { h = 26, zero = false, clamp = null } = {}) {
+  const ys = (points ?? []).map(p => p[1]).filter(Number.isFinite).map(y => clamp ? Math.max(-clamp, Math.min(clamp, y)) : y); if (ys.length < 2) return '<svg aria-hidden="true"></svg>';
+  let lo = Math.min(...ys), hi = Math.max(...ys); if (zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); } const sp = hi - lo || 1;
+  const pts = ys.map((y, i) => `${(i / (ys.length - 1) * 100).toFixed(2)},${(h - 2 - (y - lo) / sp * (h - 4)).toFixed(2)}`).join(' ');
+  const z = zero ? `<line x1="0" x2="100" y1="${(h - 2 - (0 - lo) / sp * (h - 4)).toFixed(2)}" y2="${(h - 2 - (0 - lo) / sp * (h - 4)).toFixed(2)}" stroke="var(--text3)" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/>` : '';
+  return `<svg viewBox="0 0 100 ${h}" preserveAspectRatio="none" aria-hidden="true">${z}<polyline points="${pts}" fill="none" stroke="var(--blue)" stroke-width="1.3" vector-effect="non-scaling-stroke"/></svg>`;
+}
+const pctBar = (p, lbl) => p == null ? '<span class="note">—</span>' : `<div><div class="pbar" title="${lbl}: ${p}th percentile"><i style="left:calc(${p}% - 1px)"></i></div><div class="pbar-l"><span>low</span><span>${lbl} ${p}th</span><span>high</span></div></div>`;
+function fmtV(v, unit) { if (v == null) return '—'; return unit === 'ratio' ? v.toFixed(3) : unit === 'pct' ? v.toFixed(2) + '%' : v.toFixed(1); }
+
+function drawHistory(st) {
+  const H = st.history;
+  if (!H) { $('longHist').innerHTML = '<div class="note">Long histories not loaded.</div>'; return; }
+  $('longHist').innerHTML = (H.long ?? []).map(r => {
+    const c = r.ctx;
+    return `<div class="lh-row"><div><b>${esc(r.label)}</b><div class="note">since ${esc(c.since.slice(0, 4))} · ${c.n.toLocaleString('en-GB')} days · all-time ${fmtV(c.high.value, r.unit)} (${esc(c.high.date.slice(0, 7))}) / ${fmtV(c.low.value, r.unit)} (${esc(c.low.date.slice(0, 7))})</div></div>
+      <div class="num"><b>${fmtV(c.last, r.unit)}</b><div class="note">${c.chg20 != null ? `${c.chg20 > 0 ? '+' : ''}${fmtV(c.chg20, r.unit)} 20d` : ''}</div></div>
+      <div class="wide">${pctBar(c.pctAll, 'all')}</div><div class="wide">${pctBar(c.pct5y, '5y')}</div><div class="wide">${miniLine(c.spark)}</div></div>`;
+  }).join('');
+  const fx = H.fx?.rows ?? [];
+  const mx = Math.max(2, ...fx.map(r => Math.abs(r.chg20)));
+  $('fxBoard').innerHTML = fx.map(r => {
+    const w = Math.abs(r.chg20) / mx * 50, col = r.chg20 >= 0 ? 'var(--bull)' : 'var(--bear)';
+    return `<div class="bar-r" style="grid-template-columns:60px minmax(0,1fr) 120px"><span><b>${esc(r.ccy)}</b> <span class="note">${esc(r.group)}</span></span>
+      <div class="bar-t" style="overflow:visible"><i style="${r.chg20 >= 0 ? `left:50%;width:${w}%` : `left:${50 - w}%;width:${w}%`};background:${col}"></i><span style="position:absolute;left:50%;top:-2px;height:14px;width:1px;background:var(--text3)"></span></div>
+      <span class="note num">${r.chg20 > 0 ? '+' : ''}${r.chg20.toFixed(2)}% · ${r.pctMove}th</span></div>`;
+  }).join('') || '<div class="note">FX history not loaded.</div>';
+  $('fxNote').textContent = H.fx?.emStress?.text ?? '';
+  // surprise small multiples
+  const names = { US: 'United States', EU: 'Euro area', GB: 'United Kingdom', JP: 'Japan', AU: 'Australia', CA: 'Canada', CH: 'Switzerland', NZ: 'New Zealand' };
+  $('surpHist').innerHTML = Object.entries(H.surprises ?? {}).map(([c, pts]) => {
+    const roll = pts.map((p, i) => { const w = pts.slice(Math.max(0, i - 5), i + 1); return [p.date, w.reduce((a, b) => a + b.value, 0) / w.length]; });
+    const last = roll.at(-1);
+    return `<div class="sm-cell"><div class="row" style="justify-content:space-between"><span class="k">${esc(names[c] ?? c)}</span><span class="note">${esc(pts[0].date.slice(0, 4))}–${esc(last[0].slice(0, 7))}</span></div>${miniLine(roll, { h: 70, zero: true, clamp: 1.5 })}<div class="note">6-month mean ${last[1] > 0 ? '+' : ''}${last[1].toFixed(2)}σ at the end of the file</div></div>`;
+  }).join('');
+  $('surpNote').textContent = H.surpriseNote ?? '';
+  // COT board
+  const cb = (H.cot ?? []).slice(0, 36), svg = $('cotBoard'), W = 420, rh = 17, L = 58, Rr = 10, T = 14;
+  svg.setAttribute('viewBox', `0 0 ${W} ${T + cb.length * rh + 22}`);
+  const x = p => L + (W - L - Rr) * p / 100;
+  let o = `<rect x="${x(0)}" y="${T - 8}" width="${x(10) - x(0)}" height="${cb.length * rh + 6}" fill="${cssVar('--amber')}" opacity=".12"/><rect x="${x(90)}" y="${T - 8}" width="${x(100) - x(90)}" height="${cb.length * rh + 6}" fill="${cssVar('--amber')}" opacity=".12"/>`;
+  for (const f of [0, 50, 100]) o += `<line x1="${x(f)}" x2="${x(f)}" y1="${T - 8}" y2="${T + cb.length * rh}" stroke="${cssVar('--border')}"/><text x="${x(f)}" y="${T + cb.length * rh + 14}" font-size="10" text-anchor="middle" fill="${cssVar('--text3')}">${f}</text>`;
+  cb.forEach((r, i) => {
+    const y = T + i * rh, ext = r.pctAll >= 90 || r.pctAll <= 10;
+    o += `<text x="${L - 6}" y="${y + 4}" font-size="11" text-anchor="end" fill="${cssVar('--text')}">${esc(r.sym)}</text>
+      ${r.pct3y != null ? `<circle cx="${x(r.pct3y)}" cy="${y}" r="5" fill="none" stroke="${cssVar('--text3')}"><title>3-year ${r.pct3y}th</title></circle>` : ''}
+      <circle cx="${x(r.pctAll)}" cy="${y}" r="4" fill="${ext ? cssVar('--amber') : cssVar('--blue')}"><title>${esc(r.sym)}: net ${r.share}% of OI; ${r.pctAll}th pct since ${esc(r.since.slice(0, 4))}; 3-year ${r.pct3y}th; ${r.weeks} weeks</title></circle>`;
+  });
+  svg.innerHTML = o;
+  $('cotBoardNote').textContent = cb.length ? `Latest report ${cb.map(r => r.asOf).sort().at(-1)}. Sorted by how stretched positioning is in its full history.` : 'COT history not loaded.';
+}
+
 function render(st) {
   window.__state = st;
   $('asOf').textContent = `as of ${st.asOf ?? '—'}`;
   const f = st.flow;
   $('flowText').innerHTML = esc(f.text).replace(/NOT the textbook order/, '<b>NOT the textbook order</b>');
   $('flowNote').textContent = f.note + (st.errors?.length ? ` Inputs that failed: ${st.errors.map(e => e.source).join(', ')}.` : '');
-  drawGlobal(st); drawEdges(st); drawEconomies(st);
+  drawGlobal(st); drawPlaybook(st); drawEdges(st); drawEconomies(st); drawHistory(st);
   drawTiers(st); drawChain(st); drawFlow(st); drawLayers(st); drawHealth(st);
 }
 

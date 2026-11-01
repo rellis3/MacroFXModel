@@ -117,7 +117,7 @@ export function riskBarometer(doc) {
   const v = votes.filter(x => x.riskOn !== null), on = v.filter(x => x.riskOn).length;
   const state = !v.length ? null : on / v.length >= 0.7 ? 'Risk-on (broad agreement)' : on / v.length <= 0.3 ? 'Risk-off (broad agreement)' : 'Mixed: barometers disagree';
   return { id: 'risk', name: 'Risk-on / risk-off', state, why: `${on} of ${v.length} moving barometers read risk-on`, votes,
-    expectations: [], conformity: { met: on, judged: v.length, of: votes.length }, evidence: { status: 'theory', note: 'A description of agreement, not a lean.' } };
+    expectations: [], conformity: null, barometers: { riskOn: on, moving: v.length, of: votes.length }, evidence: { status: 'theory', note: 'A description of agreement, not a lean.' } };
 }
 
 /** 7. Capital-flow order (C.OG hierarchy): did information move the way the hierarchy says? From doc.flow. */
