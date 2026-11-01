@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Economies — growth, prices, jobs, spending</title>
+<style>
+:root{--bg:#0b0d10;--bg2:#12161c;--bg3:#181d24;--line:#262c35;--line2:#333b46;--tx:#eef1f5;--tx2:#a8b1bd;--tx3:#71798a;--acc:#e0a339;--mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:0 22px 80px}
+a{color:var(--acc)}
+.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:20px 0 16px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.top h1{margin:0;font-size:22px;font-weight:650;letter-spacing:.1em;text-transform:uppercase}
+.top h1 span{color:var(--acc)}
+.top .sub{color:var(--tx2);font-size:13px}
+.top .right{margin-left:auto;display:flex;gap:9px;flex-wrap:wrap}
+.btn{background:var(--bg3);border:1px solid var(--line2);color:var(--tx2);padding:9px 15px;border-radius:5px;font-size:13px;font-family:var(--mono);text-decoration:none}
+.btn:hover{border-color:var(--acc);color:var(--tx)}
+.panel{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:18px 20px;margin-bottom:18px;overflow-x:auto}
+.t3{width:100%;border-collapse:collapse;font-size:13.5px;min-width:900px}
+.t3 th{text-align:left;color:var(--tx3);font-weight:600;font-size:11px;letter-spacing:.07em;text-transform:uppercase;padding:0 10px 8px;border-bottom:1px solid var(--line)}
+.t3 td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;font-variant-numeric:tabular-nums}
+.t3 td.n{font-weight:650}
+.t3 small{color:var(--tx3)}
+.small3{color:var(--tx3);font-size:12.5px;line-height:1.7;margin:12px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>The <span>Economies</span></h1>
+    <div class="sub">the raw prints behind the currency scores, side by side</div>
+    <div class="right"><a class="btn" href="atlas.html">Atlas</a><a class="btn" href="today.html">Today</a></div>
+  </div>
+  <div class="panel" id="t"><span class="small3">loading…</span></div>
+</div>
+<script type="module">
+import { worldEconomies, worldEconomiesHtml } from './js/worldEconomies.js';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const J = p => fetch('/api/' + p).then(r => r.json()).catch(() => null);
+const [gdp, cpi, labor, retail, conf, trade, real, curve, scorecard] = await Promise.all(['gdp', 'cpi', 'labor-market', 'retail-sales', 'consumer-confidence', 'trade-balance', 'real-yield', 'yield-curve', 'macro-scorecard'].map(J));
+const w = worldEconomies({ gdp, cpi, labor, retail, conf, trade, real, curve, scorecard });
+document.getElementById('t').innerHTML = worldEconomiesHtml(w, esc, new Date().toISOString().slice(0, 10));
+</script>
+</body>
+</html>
