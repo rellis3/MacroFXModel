@@ -13,7 +13,7 @@
 import { buildState } from './stateEngine.js';
 import { assembleChainSeries, CHAIN_OHLC, FRED_KEYS, YAHOO_FALLBACK } from './stateSources.js';
 import { summariseGlobal, summariseEconomies, summariseLayers, activeEdges, todayRegimes, edgeRegimeContext } from './stateLayers.js';
-import { summariseLiquidity } from './stateLiquidity.js';
+import { summariseLiquidity, summarisePlumbing } from './stateLiquidity.js';
 import { summariseCountries, CB_FOR } from './stateCountries.js';
 import { summariseAssets } from './stateAssets.js';
 import { longContext, fxBoard, surpriseHistory, cotBoard } from './stateHistory.js';
@@ -116,12 +116,18 @@ export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = conso
     for (const k of doc.countries.missingStores) errors.push({ source: `country store ${STORE_KV[k]}`, error: 'not built yet on this server' });
     const drill = await read('drill bundle (sectors, names, internals)', readers.drill, 120_000);
     doc.assets = drill ? summariseAssets(drill) : null;
+    const gam = await read('ETF/index gamma (Cboe)', readers.etfGamma, 150_000);
+    if (gam) {
+      for (const e of gam.errors ?? []) errors.push({ source: 'Cboe gamma', error: e });
+      if (doc.assets) doc.assets.gamma = { rows: gam.rows, evidence: 'gex-range (NQ, underpowered; stands) and gex-range-es (FRAGILE in the audit): gamma sign as range context only' };
+    }
     // Liquidity & banking: keyed FRED (public CSV only without a key), Treasury DTS, BIS store. Missing stays missing.
     const liqRaw = await read('liquidity', readers.liquidity, 120_000);
     if (liqRaw) {
       for (const e of liqRaw.errors ?? []) errors.push({ source: 'liquidity', error: e });
       doc.layers.liquidity = summariseLiquidity({ raw: liqRaw.raw ?? {}, tgaDaily: liqRaw.tgaDaily, bis: liqRaw.bis, g4: liqRaw.g4, via: liqRaw.via ?? {} });
       for (const w of doc.layers.liquidity.warnings) errors.push({ source: 'liquidity units', error: w });
+      doc.plumbing = summarisePlumbing(liqRaw.raw ?? {}, liqRaw.via ?? {});
     } else doc.layers.liquidity = null;
     const nq = series.nq; const nq5 = Array.isArray(nq) && nq.length > 6 ? (nq[nq.length - 1].value / nq[nq.length - 6].value - 1) * 100 : null;
     // Next weekday session (London date) for the calendar-only month-end rule when stress-shadow is not loaded.
@@ -150,6 +156,11 @@ export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = conso
         surpriseNote: 'ForexFactory backfill 2007-01 → 2025-04: each release (actual − consensus) scaled by that event\'s own prior spread, monthly mean. Read as above / below consensus, not good / bad.',
         sources: hist.from, builtAt: hist.builtAt,
       };
+    }
+    // Treasury basis-trade crowding: leveraged funds' net share of 2Y/10Y/bond futures OI (TFF), from the COT history.
+    if (doc.plumbing && doc.history?.cot) {
+      const names = { TU: '2-year note', TY: '10-year note', US: 'Treasury bond' };
+      doc.plumbing.treasuryFutures = doc.history.cot.filter(r => names[r.sym]).map(r => ({ sym: r.sym, label: names[r.sym], share: r.share, pctAll: r.pctAll, pct3y: r.pct3y, asOf: r.asOf, since: r.since }));
     }
     doc.playbook = playbook(doc);
     doc.errors = errors;

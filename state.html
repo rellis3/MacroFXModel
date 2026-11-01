@@ -218,6 +218,8 @@
     <div class="tiles" id="aInternals" style="margin-top:10px"></div>
     <div class="k" style="margin-top:10px">What is moving each sector right now (60-session betas)</div>
     <div class="scroll"><table class="cgrid" id="aDrivers" style="margin-top:4px"></table></div>
+    <div class="k" style="margin-top:10px">Dealer gamma by market (Cboe chains: ETFs and indices)</div>
+    <div class="scroll"><table class="cgrid" id="aGamma" style="margin-top:4px"></table></div>
     <p class="note" id="aNote" style="margin-top:6px"></p>
   </section>
 
@@ -234,6 +236,10 @@
     <div id="liqChart" style="margin-top:8px"></div>
     <div class="lh" id="liqRows" style="margin-top:6px"></div>
     <p class="note" id="liqNote" style="margin-top:6px"></p>
+    <div class="k" style="margin-top:12px">Money plumbing: offshore dollars, money markets, conditions</div>
+    <div class="lh" id="plumbRows" style="margin-top:6px"></div>
+    <div class="tiles" id="plumbTff" style="margin-top:8px"></div>
+    <p class="note" id="plumbNote" style="margin-top:6px"></p>
   </section>
 
   <section class="card" style="display:grid;gap:6px">
@@ -732,7 +738,29 @@ function drawAssets(st) {
   const hb = (v, r) => v == null ? '<td class="sc"><span class="note">—</span></td>' : `<td class="sc" style="background:color-mix(in srgb, ${v >= 0 ? 'var(--bull)' : 'var(--bear)'} ${Math.round(Math.min(1, Math.abs(r ?? 0)) * 55) + 5}%, transparent)">${v > 0 ? '+' : ''}${v.toFixed(2)}<span class="sub">r ${r == null ? '—' : r.toFixed(2)}</span></td>`;
   $('aDrivers').innerHTML = '<tr><th>Sector</th><th>% per +10bp 10Y</th><th>% per +1% oil</th><th>% per +1% dollar</th></tr>'
     + A.drivers.map(d => `<tr><td>${esc(d.label)}</td>${hb(d.y10per10bp, d.y10r)}${hb(d.oilBeta, d.oilR)}${hb(d.usdBeta, d.usdR)}</tr>`).join('');
-  $('aNote').textContent = `${A.note} S&P (SPY) ${A.spy.ret20 > 0 ? '+' : ''}${A.spy.ret20}% over 20 sessions; data to ${A.asOf}. Colour depth = strength of the link (|r|).`;
+  const G = A.gamma?.rows ?? [];
+  const px = v => v == null ? '—' : Math.abs(v) >= 1000 ? Math.round(v).toLocaleString('en-GB') : v.toFixed(2);
+  $('aGamma').innerHTML = G.length ? '<tr><th>Market</th><th>Spot</th><th>Net gamma ($/1%)</th><th>Regime</th><th>Flip</th><th>Spot vs flip</th><th>Put wall</th><th>Call wall</th></tr>'
+    + G.map(g => `<tr><td><b>${esc(g.sym)}</b> <span class="note">${esc(g.kind)}</span></td><td>${px(g.spot)}</td><td class="sc" style="background:color-mix(in srgb, ${g.netGex >= 0 ? 'var(--bull)' : 'var(--bear)'} 25%, transparent)">${g.netGex == null ? '—' : (g.netGex / 1e9).toFixed(2) + 'bn'}</td><td>${esc(g.regime === 'PIN' ? 'long gamma (dampening)' : g.regime === 'BREAKOUT' ? 'short gamma (amplifying)' : g.regime ?? '—')}</td><td>${px(g.gexFlip)}</td><td>${g.flipDistPct == null ? '—' : (g.flipDistPct > 0 ? '+' : '') + g.flipDistPct + '%'}</td><td>${px(g.putWall)}</td><td>${px(g.callWall)}</td></tr>`).join('')
+    : '<tr><td class="note">Cboe chains not loaded.</td></tr>';
+  $('aNote').textContent = `${A.note} S&P (SPY) ${A.spy.ret20 > 0 ? '+' : ''}${A.spy.ret20}% over 20 sessions; data to ${A.asOf}. Colour depth = strength of the link (|r|). Gamma: ${A.gamma?.evidence ?? ''}.`;
+}
+
+function drawPlumbing(st) {
+  const P = st.plumbing;
+  if (!P) { $('plumbRows').innerHTML = '<div class="note">Plumbing series not loaded.</div>'; return; }
+  const sg = (v, u) => v == null ? '—' : `${v > 0 ? '+' : ''}${u === 'pts' ? v.toFixed(2) : Math.round(v).toLocaleString('en-GB')}${u === 'bp' ? 'bp' : ''}`;
+  const fmt = r => r.unit === '%' ? r.last.toFixed(2) + '%' : r.unit === 'index' ? r.last.toFixed(2) : Math.round(r.last).toLocaleString('en-GB');
+  let group = '';
+  $('plumbRows').innerHTML = P.rows.map(r => {
+    const h = r.group !== group ? `<div class="k" style="margin-top:6px">${esc(r.group)}</div>` : ''; group = r.group;
+    return h + `<div class="lh-row"><div><b>${esc(r.label)}</b><div class="note">${esc(r.why)} ${esc(r.id)}, since ${esc(r.since.slice(0, 4))}, last ${esc(r.asOf)}.</div></div>
+      <div class="num"><b>${fmt(r)}</b><div class="note">${r.unit === '$bn' ? '$bn' : ''}</div></div>
+      <div class="wide note num">4w ${sg(r.chg4w, r.chgUnit)} · 13w ${sg(r.chg13w, r.chgUnit)} · 52w ${sg(r.chg52w, r.chgUnit)}</div>
+      <div class="wide">${pctBar(r.pctAll, 'all')}</div><div class="wide"></div></div>`;
+  }).join('') + (P.cpSpread ? `<div class="lh-row"><div><b>${esc(P.cpSpread.label)}</b><div class="note">${esc(P.cpSpread.why)}</div></div><div class="num"><b>${Math.round(P.cpSpread.last)}bp</b></div><div class="wide note num">4w ${sg(P.cpSpread.chg4w, 'bp')} · 13w ${sg(P.cpSpread.chg13w, 'bp')}</div><div class="wide">${pctBar(P.cpSpread.pctAll, 'all')}</div><div class="wide"></div></div>` : '');
+  $('plumbTff').innerHTML = (P.treasuryFutures ?? []).map(t => `<div class="tile"><div class="k">Leveraged funds, ${esc(t.label)} futures</div><div class="v">${t.share > 0 ? '+' : ''}${t.share}% of OI</div><div class="note">${t.pctAll}th pct since ${esc(t.since.slice(0, 4))} · ${t.pct3y}th 3y · ${esc(t.asOf)}. Deeply short = the cash-futures basis trade is crowded (2020's forced unwind).</div></div>`).join('');
+  $('plumbNote').textContent = P.note;
 }
 
 function render(st) {
@@ -741,7 +769,7 @@ function render(st) {
   const f = st.flow;
   $('flowText').innerHTML = esc(f.text).replace(/NOT the textbook order/, '<b>NOT the textbook order</b>');
   $('flowNote').textContent = f.note + (st.errors?.length ? ` Inputs that failed: ${st.errors.map(e => e.source).join(', ')}.` : '');
-  drawGlobal(st); drawPlaybook(st); drawEdges(st); drawCountries(st); drawAssets(st); drawEconomies(st); drawHistory(st); drawLiquidity(st);
+  drawGlobal(st); drawPlaybook(st); drawEdges(st); drawCountries(st); drawAssets(st); drawEconomies(st); drawHistory(st); drawLiquidity(st); drawPlumbing(st);
   drawTiers(st); drawChain(st); drawFlow(st); drawLayers(st); drawHealth(st);
 }
 

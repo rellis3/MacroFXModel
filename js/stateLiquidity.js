@@ -127,3 +127,48 @@ export function summariseLiquidity({ raw = {}, tgaDaily = null, bis = null, g4 =
 
 /** FRED ids this layer reads. */
 export const LIQUIDITY_FRED = ['WALCL', 'WTREGEN', 'RRPONTSYD', 'WRESBAL', 'SWPT', 'TOTBKCR'];
+
+/**
+ * Money plumbing (owner, 2026-11-01: wire in what the repo holds but missed). FRED ids are the feature store's
+ * (plans/FEATURE_MANIFEST.json); the server fetches them with the keyed FRED fetcher. Units are FRED's.
+ *   kind 'level': $ amounts (scaled to $bn); 'rate': % (changes in bp); 'index': unitless (changes in points).
+ */
+export const PLUMBING = [
+  { id: 'WMTSECL1', label: 'Treasuries the Fed holds for foreign officials (custody)', group: 'Offshore dollars', kind: 'level', scale: 1 / 1000, why: 'Falling = foreign central banks selling or moving US Treasuries (often to defend their currency).' },
+  { id: 'WLRRAFOIAL', label: 'Foreign official reverse-repo pool at the Fed', group: 'Offshore dollars', kind: 'level', scale: 1 / 1000, why: 'Dollars foreign central banks park at the Fed; drawn down when they need dollars.' },
+  { id: 'BC0FRIW027SBOG', label: 'Foreign-related banks: credit in the US', group: 'Offshore dollars', kind: 'level', scale: 1, why: 'Lending by foreign banks\' US branches: how much of US credit runs through foreign balance sheets.' },
+  { id: 'NDFFRIW027SBOG', label: 'Foreign-related banks: net due to foreign offices', group: 'Offshore dollars', kind: 'level', scale: 1, why: 'Dollars US branches send to (or take from) their parents abroad: the offshore funding pipe.' },
+  { id: 'COMPOUT', label: 'Commercial paper outstanding', group: 'Money markets', kind: 'level', scale: 1, why: 'Short-term corporate funding; a sharp fall means the CP market is shutting.' },
+  { id: 'DCPF3M', label: '3-month financial CP rate', group: 'Money markets', kind: 'rate', why: 'What financials pay for 3-month money.' },
+  { id: 'EFFR', label: 'Effective fed funds rate', group: 'Money markets', kind: 'rate', why: 'The policy rate as traded.' },
+  { id: 'SOFRVOL', label: 'SOFR volume (repo traded)', group: 'Money markets', kind: 'level', scale: 1, why: 'Size of the overnight repo market; growth tracks Treasury supply and leveraged demand.' },
+  { id: 'NFCI', label: 'Chicago Fed financial conditions (NFCI)', group: 'Conditions', kind: 'index', why: 'Above 0 = tighter than average, below 0 = looser.' },
+  { id: 'STLFSI4', label: 'St Louis Fed financial stress', group: 'Conditions', kind: 'index', why: '0 = normal stress; positive = stressed.' },
+  { id: 'T5YIFR', label: '5y5y inflation expectations', group: 'Conditions', kind: 'rate', why: 'Where markets see inflation 5–10 years out: the anchor central banks watch.' },
+];
+
+export function summarisePlumbing(raw = {}, via = {}) {
+  const rows = [];
+  for (const p of PLUMBING) {
+    const s = clean(raw[p.id]); if (!s.length) continue;
+    const wk = toWeekly(s);
+    // Rates and indices are computed in hundredths so the one-decimal rounding never eats a basis point.
+    const st = weeklyStats(wk, p.kind === 'level' ? p.scale : 100);
+    if (!st) continue;
+    const pts = v => (v == null ? null : Math.round(v) / 100);
+    const out = p.kind === 'level' ? { last: st.last, chg4w: st.chg4w, chg13w: st.chg13w, chg52w: st.chg52w }
+      : p.kind === 'rate' ? { last: pts(st.last), chg4w: st.chg4w == null ? null : Math.round(st.chg4w), chg13w: st.chg13w == null ? null : Math.round(st.chg13w), chg52w: st.chg52w == null ? null : Math.round(st.chg52w) }
+      : { last: pts(st.last), chg4w: pts(st.chg4w), chg13w: pts(st.chg13w), chg52w: pts(st.chg52w) };
+    rows.push({ ...p, ...st, ...out, unit: p.kind === 'level' ? '$bn' : p.kind === 'rate' ? '%' : 'index',
+      chgUnit: p.kind === 'rate' ? 'bp' : p.kind === 'level' ? '$bn' : 'pts', via: via[p.id] ?? null });
+  }
+  // CP − fed funds: the private premium for 3-month money (funding stress before it reaches credit spreads).
+  const cp = clean(raw.DCPF3M), ff = clean(raw.EFFR);
+  let cpSpread = null;
+  if (cp.length && ff.length) {
+    const spread = cp.map(p => { const f = asOf(ff, p.date); return f && (Date.parse(p.date) - Date.parse(f.date)) / 864e5 <= 5 ? { date: p.date, value: (p.value - f.value) * 100 } : null; }).filter(Boolean);
+    const st = weeklyStats(toWeekly(spread));
+    if (st) cpSpread = { ...st, unit: 'bp', label: '3M financial CP minus fed funds', why: 'The premium banks pay for term money over overnight: it jumps first in funding stress (2008, 2020).' };
+  }
+  return { rows, cpSpread, note: 'Where dollars sit and how freely they move. Description only: none of these is tested here as a forecast.' };
+}
