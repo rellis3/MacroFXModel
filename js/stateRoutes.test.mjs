@@ -63,3 +63,22 @@ test('deep FRED history from R2 replaces the 90-print KV copy when it is longer'
   const r = doc.tiers[0].readings.find(x => x.key === 'us10y');
   assert.ok(r.pctile.spanDays > 1000, `span ${r.pctile.spanDays}`);
 });
+
+test('without KV or OANDA, keyless FRED and Yahoo fallbacks fill the tiers and every one is labelled', async () => {
+  const saved = process.env.OANDA_KEY; delete process.env.OANDA_KEY;
+  try {
+    const series = days(120, (date, i) => ({ date, value: 4 + i * 0.01 }));
+    let flaky = 0;
+    const routes = createStateRoutes({ kv: { get: async () => null }, port: 1, fetchD1: async () => { throw new Error('should not be called'); }, log: { error() {} }, keylessPauseMs: 0, readers: {
+      fredKeyless: async k => { if (k === 'us2y' && flaky++ === 0) throw new Error('HTTP 503'); return ['us10y', 'us2y', 'hy'].includes(k) ? series : null; },
+      yahooDaily: async t => (t === '^GSPC' ? series : null),
+    } });
+    const doc = await routes.get();
+    assert.match(doc.sources.us10y, /FRED public CSV/);
+    assert.match(doc.sources.us2y, /FRED public CSV/);          // one 503, then retried
+    assert.match(doc.sources.spx, /Yahoo \^GSPC \(fallback/);
+    assert.ok(!doc.errors.some(e => /us2y/.test(e.source)));
+    assert.ok(doc.errors.some(e => e.source === 'OANDA'));
+    for (const t of doc.tiers) for (const r of t.readings.filter(r => !r.missing)) assert.ok(doc.sources[r.key], `${r.key} has a source`);
+  } finally { if (saved !== undefined) process.env.OANDA_KEY = saved; }
+});

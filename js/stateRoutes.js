@@ -11,7 +11,7 @@
 //
 //   GET /api/state            the state document (cached 10 minutes; ?force=1 rebuilds)
 import { buildState } from './stateEngine.js';
-import { assembleChainSeries, CHAIN_OHLC, FRED_KEYS } from './stateSources.js';
+import { assembleChainSeries, CHAIN_OHLC, FRED_KEYS, YAHOO_FALLBACK } from './stateSources.js';
 import { summariseGlobal, summariseEconomies, summariseLayers, activeEdges } from './stateLayers.js';
 import { longContext, fxBoard, surpriseHistory, cotBoard } from './stateHistory.js';
 import { playbook } from './statePlaybook.js';
@@ -20,7 +20,7 @@ const TTL_MS = 10 * 60e3, PRICE_BARS = 400;
 
 // `readers` (optional) hand over state the server already holds in memory, so this route never triggers a heavy
 // build: { globalRead, riskFlags, funding, nowcast, oiToday, cotState, volForecast } → value | Promise<value>.
-export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = console }) {
+export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = console, keylessPauseMs = 400 }) {
   let cache = { at: 0, doc: null }, building = null;
   const local = async (p, ms = 15_000) => {
     try { const r = await fetch(`http://127.0.0.1:${port}/api/${p}`, { signal: AbortSignal.timeout(ms) }); return r.ok ? await r.json() : null; }
@@ -44,6 +44,21 @@ export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = conso
       }));
     }
 
+    // Keyless fallback (owner, 2026-11-01: "use real data"): any FRED series still missing comes from FRED's public CSV.
+    const fallback = {};
+    if (typeof readers.fredKeyless === 'function') {
+      // One at a time with retries: FRED's public CSV answers a burst of 20 parallel requests with HTTP 503.
+      for (const k of [...FRED_KEYS, 'gb10y', 'de10y', 'jp10y', 'au10y', 'ca10y', 'ch10y'].filter(k => !fredHist[k]?.length)) {
+        let lastErr = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try { const pts = await readers.fredKeyless(k); if (Array.isArray(pts) && pts.length) { fredHist[k] = pts; fallback[k] = 'FRED public CSV (no KV copy)'; } lastErr = null; break; }
+          catch (e) { lastErr = e; await new Promise(r => setTimeout(r, keylessPauseMs * 4 * (attempt + 1))); }
+        }
+        if (lastErr) errors.push({ source: `FRED ${k} (public CSV)`, error: lastErr.message });
+        await new Promise(r => setTimeout(r, keylessPauseMs));
+      }
+    }
+
     const prices = {};
     if (process.env.OANDA_KEY) {
       for (const [node, sym] of Object.entries(CHAIN_OHLC)) {
@@ -51,7 +66,15 @@ export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = conso
         catch (e) { errors.push({ source: `OANDA ${sym}`, error: e.message }); }
         await new Promise(r => setTimeout(r, 80));      // gentle on the OANDA rate limit
       }
-    } else errors.push({ source: 'OANDA', error: 'OANDA_KEY not configured' });
+    } else errors.push({ source: 'OANDA', error: 'OANDA_KEY not configured — using Yahoo daily instead' });
+    // Price nodes OANDA did not deliver: Yahoo daily, labelled.
+    if (typeof readers.yahooDaily === 'function') {
+      for (const [node, t] of Object.entries(YAHOO_FALLBACK)) {
+        if (prices[node]?.length) continue;
+        try { const pts = await readers.yahooDaily(t); if (pts?.length) { prices[node] = pts; fallback[node] = `Yahoo ${t} (fallback: OANDA unavailable)`; } }
+        catch (e) { errors.push({ source: `Yahoo ${t}`, error: e.message }); }
+      }
+    }
 
     const kvJson = async key => { try { const raw = await kv.get(key); if (!raw) return null; const p = JSON.parse(raw); return p?.data && !p.now ? p.data : p; } catch { return null; } };
     const read = async (name, fn, ms = 12_000) => {
@@ -70,6 +93,10 @@ export function createStateRoutes({ kv, port, fetchD1, readers = {}, log = conso
       if (!ok) errors.push({ source: name, error: v?.error ? String(v.error) : 'unavailable' });
 
     const { series, sources } = assembleChainSeries({ fredHist, prices, intlYields: iy?.series, chainExtra: cx?.series, crack: cr?.series });
+    for (const [k, v] of Object.entries(fallback)) {                     // say where every fallback number came from
+      const node = { tips: 'real' }[k] ?? k;
+      if (sources[node]) sources[node] = v.startsWith('Yahoo') ? v : `${sources[node]} — ${v}`;
+    }
     const doc = buildState(series, { sources });
     doc.global = summariseGlobal({ globalRead, riskFlags, regime, funding, creditQuality });
     doc.economies = summariseEconomies({ surprise, nowcast, fedPath, fredHist, intlYields: iy?.series, cot: cotState });

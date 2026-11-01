@@ -23,6 +23,14 @@ and backtests of edges underneath. "I want to learn how one thing impacts anothe
 
 Inputs are in-memory server state, KV, and the R2 archive merged over committed seeds (`js/stateHistorySources.js`).
 Pure modules: `js/stateEngine.js`, `js/stateLayers.js`, `js/stateHistory.js`, `js/statePlaybook.js`, all tested.
+**Real data, checked (2026-11-01).** With no KV copy, missing FRED series come from FRED's public CSV, and missing
+OANDA prices come from Yahoo daily. Each one is labelled on the page and in `sources`, e.g. "Yahoo ^GSPC (fallback:
+OANDA unavailable)". `node scripts/check_state_real.mjs <url>/api/state` prints every input with its source and
+date. It fails on any fixture or synthetic marker, an empty tier, a newest print older than 7 days, or a reading
+without a source. Screenshots of the page are taken against a running server with real data, never fixtures
+(`analysis/output/repo-review-2026-10-31/state_live_real.png`). FRED's CSV returns HTTP 503 to the default `node`
+user-agent, so every fredgraph request now sends a named user-agent.
+
 Next: phase 2's non-US macro (CPI/PMI vintages) and the forward ledger for the composite.
 
 ## 1. What it is, and what it is not

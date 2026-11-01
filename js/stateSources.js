@@ -17,6 +17,12 @@ export const CHAIN_OHLC = {
   btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD', gbpusd: 'GBP_USD', eurusd: 'EUR_USD',
 };
 
+/** Keyless fallback for the price nodes when OANDA is not configured or fails: Yahoo daily (labelled as such). */
+export const YAHOO_FALLBACK = {
+  oil: 'CL=F', gold: 'GC=F', copper: 'HG=F', audusd: 'AUDUSD=X', usdcad: 'CAD=X', usdjpy: 'JPY=X', btc: 'BTC-USD',
+  nq: '^NDX', spx: '^GSPC', gbpusd: 'GBPUSD=X', eurusd: 'EURUSD=X',
+};
+
 /** FRED short keys → chain node (today.html fredSrc). */
 export const FRED_NODES = { bei: 'bei', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', real: 'tips', dxy: 'dxy', vix: 'vix', hy: 'hy' };
 export const FRED_KEYS = ['us10y', 'us2y', 'us30y', 'tips', 'bei', 'vix', 'vix3m', 'dxy', 'hy', 'ig', 'sofr', 'iorb', 'ioer', 'tp10', 'fy10'];

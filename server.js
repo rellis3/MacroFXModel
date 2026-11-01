@@ -399,7 +399,7 @@ import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataA
 import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
 import { createHistorySources as _createHistorySources } from './js/stateHistorySources.js';
 import { fetchDtsTga as _fetchDtsTga } from './js/treasuryDts.js';
-import { CBOE_INDICES as _CBOE_INDICES, YAHOO_LONG as _YAHOO_LONG, OVERNIGHT as _OVERNIGHT, fetchCboe as _fetchCboe, fetchYahooLong as _fetchYahooLong } from './js/marketHistory.js';
+import { CBOE_INDICES as _CBOE_INDICES, YAHOO_LONG as _YAHOO_LONG, OVERNIGHT as _OVERNIGHT, fetchCboe as _fetchCboe, fetchYahooLong as _fetchYahooLong, fetchYahooDaily as _fetchYahooDaily } from './js/marketHistory.js';
 // The permanent record of data that cannot be re-fetched (plans/DATA_ASSET_MAP.md §4A–B): R2, append-only.
 const _archive = createDataArchive({ putJSON: _r2PutJSON, getJSON: _r2GetJSON, listKeys: _r2ListKeys, configured: _r2Ok, log: console });
 
@@ -17144,8 +17144,11 @@ svcInterval('regimeStudy', () => { _refreshRegimeStudy().catch(e => console.warn
 // table and transitions come from analysis/output/regime.json, which the study
 // writes (MD files/REGIME.md). Served together; the page and the brief read it.
 let _macroRegime = { at: 0, history: null, now: null, error: null };
+// FRED's public CSV answers the default "node" user-agent with HTTP 503 (found 2026-11-01: every keyless series failed
+// while curl worked). Send a named user-agent on every fredgraph request.
+const _FRED_CSV_HEADERS = { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFXModel/1.0; +fredgraph.csv)' };
 async function _fredCsv(id) {
-  const r = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`, { signal: AbortSignal.timeout(30_000) }); if (!r.ok) throw new Error(`FRED ${id} HTTP ${r.status}`);
+  const r = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`, { headers: _FRED_CSV_HEADERS, signal: AbortSignal.timeout(30_000) }); if (!r.ok) throw new Error(`FRED ${id} HTTP ${r.status}`);
   const pts = (await r.text()).trim().split('\n').slice(1).map(l => { const [d, v] = l.split(','); return { date: d, value: parseFloat(v) }; }).filter(o => Number.isFinite(o.value));
   // Keep the whole history we just downloaded (it used to be trimmed in memory and lost on every deploy).
   // Throttled per series inside the archive; best-effort, never blocks the caller.
@@ -17936,7 +17939,7 @@ async function _refreshNowcast() {
     out.cleveland = latest.length ? latest[latest.length - 1] : null; if (latest.length === 2) out.cleveland.previousMonth = latest[0];
   } catch (e) { out.error = e.message; }
   try {
-    const r = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=GDPNOW', { signal: AbortSignal.timeout(20_000) });
+    const r = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=GDPNOW', { headers: _FRED_CSV_HEADERS, signal: AbortSignal.timeout(20_000) });
     if (r.ok) { const lines = (await r.text()).trim().split('\n').slice(1).map(l => l.split(',')).filter(([, v]) => v && v !== '.'); const [date, v] = lines[lines.length - 1] ?? []; if (date) out.gdpnow = { quarter: date, value: +(+v).toFixed(2) }; }
   } catch (e) { out.error = (out.error ? out.error + '; ' : '') + e.message; }
   if (out.cleveland || out.gdpnow) { _nowcast = out; _archive.snapshot('nowcast', new Date().toISOString().slice(0, 10), { cleveland: out.cleveland, gdpnow: out.gdpnow }).catch(() => {}); }
@@ -30429,6 +30432,8 @@ createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, readers: {   // in-memo
   globalRead: () => _grLatest, riskFlags: () => computeRiskFlags(), funding: () => _frLast?.read ?? null, nowcast: () => _nowcast,
   oiToday: () => _oiTodayCache?.payload ?? null, cotState: () => _buildCotState(), volForecast: () => forecastState.latest ?? null,
   deepFred: key => _deepFredSeries(key),
+  fredKeyless: async key => { const id = _FREDHISTORY_SERIES[key]; if (!id || _isBoeSeries(id)) return null; return _fredCsv(id); },   // public CSV, archived as it is read
+  yahooDaily: ticker => _fetchYahooDaily(ticker, 500),
   history: () => _historySources(),   // arrow: _historySources is declared further down (TDZ)
 } }).mount(app);   // must sit above the /api/* worker catch-all
 svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);

@@ -120,3 +120,11 @@ export function mergeByDate(...lists) {
   for (const l of lists) for (const p of l ?? []) if (p && p.date && Number.isFinite(p.value)) m.set(p.date, p.value);
   return [...m].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([date, value]) => ({ date, value }));
 }
+
+/** Any Yahoo ticker as daily closes over the last `days` (FX tickers dated by the London-session rule). */
+export async function fetchYahooDaily(ticker, days = 500, { fetchImpl = fetch } = {}) {
+  const p2 = Math.floor(Date.now() / 1000), p1 = p2 - days * 86400;
+  const r = await fetchImpl(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${p1}&period2=${p2}&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new Error(`Yahoo ${ticker} HTTP ${r.status}`);
+  return parseYahooChart(await r.json(), { fx: /=X$/.test(ticker) });
+}
