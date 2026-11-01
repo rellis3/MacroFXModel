@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Swing Map</title>
+<style>
+  :root { --pa:#3fb950; --pb:#f85149; --bg:#0d1117; --card:#161b22; --card2:#0f141b; --border:#30363d; --text:#e6edf3; --text2:#c9d1d9; --text3:#8b949e;
+          --price:#4fd1d9; --up:#3fb950; --down:#f85149; --amber:#d29922; --blue:#58a6ff; --violet:#a371f7; --grid:#21262d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1280px; margin:0 auto; padding:18px 16px 48px; display:grid; gap:14px; }
+  h1 { font-size:21px; margin:0; } h2 { font-size:13px; margin:0 0 8px; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
+  .sub { color:var(--text3); margin:4px 0 0; max-width:120ch; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; min-width:0; }
+  .row { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:14px; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:900px) { .row, .two { grid-template-columns:1fr; } }
+  select, button { background:#21262d; color:var(--text); border:1px solid var(--border); border-radius:5px; padding:5px 10px; font:inherit; cursor:pointer; }
+  .bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .stats { color:var(--text2); font-variant-numeric:tabular-nums; }
+  .tag { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:3px; margin-left:6px; vertical-align:1px; }
+  .t-VALIDATED { background:#12351f; color:#56d364; } .t-EXPLORATORY { background:#3a2c0a; color:#e3b341; }
+  .t-CONTEXT { background:#1c2a3f; color:#79c0ff; } .t-UNTESTED { background:#2d1f3d; color:#d2a8ff; }
+  svg { width:100%; height:auto; display:block; }
+  .lv { display:grid; grid-template-columns:auto 1fr; gap:2px 10px; margin-bottom:9px; }
+  .lv b { font-variant-numeric:tabular-nums; } .lv span { color:var(--text3); font-size:12px; }
+  .sw { width:10px; height:10px; border-radius:2px; display:inline-block; margin-right:6px; }
+  table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }
+  th, td { padding:5px 7px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap; }
+  th:first-child, td:first-child { text-align:left; } th { color:var(--text3); font-weight:500; font-size:12px; }
+  .tbl { overflow-x:auto; }
+  .note { color:var(--text3); font-size:12px; }
+  .big { font-size:15px; } .good { color:var(--up); } .bad { color:var(--down); } .warn { color:var(--amber); }
+  .err { color:var(--down); }
+  .seg { display:inline-flex; } .seg button { border-radius:0; } .seg button:first-child { border-radius:5px 0 0 5px; } .seg button:last-child { border-radius:0 5px 5px 0; border-left:0; }
+  .seg button.on { background:#30363d; color:#fff; }
+  .mcopt { color:var(--text3); font-size:12px; display:none; gap:6px; align-items:center; } .mcopt.show { display:inline-flex; }
+  .paths { display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media (max-width:900px) { .paths { grid-template-columns:1fr; } }
+  .pcard { border:1px solid var(--border); border-radius:8px; padding:12px 14px; background:var(--card2); }
+  .pcard h3 { margin:0 0 6px; font-size:15px; } .pcard.A h3 { color:var(--pa); } .pcard.B h3 { color:var(--pb); }
+  .pcard ol { margin:6px 0 0; padding-left:18px; } .pcard li { margin:2px 0; }
+  .bk { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px; } @media (max-width:700px) { .bk { grid-template-columns:repeat(2,1fr); } }
+  .bkc { border:1px solid var(--border); border-radius:6px; padding:8px 10px; background:var(--card2); }
+  .bkc b { font-size:18px; display:block; } .bkc span { color:var(--text3); font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <div class="bar"><h1 id="title">Swing Map</h1>
+      <select id="inst" aria-label="Instrument"></select>
+      <button id="refresh" title="Rebuild now instead of the 30-minute cache">Refresh</button>
+      <span class="seg" role="group" aria-label="Chart style"><button id="mPaths" data-m="paths" class="on">Two paths</button><button id="mCone" data-m="cone">Range cone</button><button id="mMc" data-m="mc">Monte Carlo</button><button id="mModal" data-m="modal">Most-touched path</button></span>
+      <span class="mcopt" id="mcOpts">horizon <select id="mcH" aria-label="Horizon in sessions"><option>10</option><option selected>20</option><option>40</option><option>60</option></select>
+        pull <select id="mcK" aria-label="Pull strength"><option value="0">off</option><option value="0.25">weak</option><option value="0.5" selected>medium</option><option value="1">strong</option></select></span></div>
+    <p class="sub">The swing, the range lines and the option zones for one instrument, built only from parts this desk has measured. Each part
+      carries its proof tag: <span class="tag t-VALIDATED">VALIDATED</span> passed a pre-registered test,
+      <span class="tag t-EXPLORATORY">EXPLORATORY</span> a look-back that has not, <span class="tag t-CONTEXT">CONTEXT</span> description only,
+      <span class="tag t-UNTESTED">UNTESTED</span> not yet scored. A map, not a forecast.</p>
+    <p class="stats" id="stats">Loading…</p>
+  </div>
+
+  <div class="row">
+    <section class="card"><h2>Price, swings and what lies ahead</h2><div id="chart"></div>
+      <p class="note" id="chartNote"></p></section>
+    <aside class="card"><h2>The level map</h2><div id="levels"></div></aside>
+  </div>
+
+  <section class="card" id="pathSec"><h2>The two paths <span class="tag t-EXPLORATORY">EXPLORATORY</span> waypoints from <span class="tag t-VALIDATED">VALIDATED</span> ranges</h2><div id="paths"></div></section>
+
+  <section class="card"><h2>Option pull by expiry date <span class="tag t-UNTESTED">UNTESTED</span></h2><div id="pull"></div></section>
+
+  <div class="two">
+    <section class="card"><h2>The current leg <span class="tag t-CONTEXT">CONTEXT</span></h2><div id="leg"></div></section>
+    <section class="card"><h2>After a deep oversold fall <span class="tag t-EXPLORATORY">EXPLORATORY</span></h2><div id="rates"></div></section>
+  </div>
+
+  <section class="card"><h2>Option zones by expiry <span class="tag t-UNTESTED">UNTESTED</span></h2><div id="expiries"></div></section>
+
+  <section class="card"><h2>Every swing in the last 18 months</h2><div id="legbars"></div></section>
+
+  <p class="note">Sources: daily bars are OANDA 17:00 New York closes. Range lines are the live forecast's weekly/monthly reverting ladder
+    (forge/HORIZON_REVERSION_PREREG.md). Base rates come from analysis/output/swing-leg-baserates/RESULTS.md (2018 to 2026-08-21, not banked).
+    Option zones come from the expiry tracker (/api/expiry-track), which records every CME expiry nightly from 2026-07-31.
+    Earlier OI tests: walls behaved like ordinary levels (wall-placebo), max pain does not pin, and the dealer hedge-flow side was underpowered.</p>
+</div>
+<script type="module">
+import { simulatePaths, touchShare } from './js/swingPaths.js';
+const $ = id => document.getElementById(id);
+const fmt = (x, dp) => (x == null || !isFinite(x) ? '–' : Number(x).toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp }));
+const pct = (x, dp = 1) => (x == null || !isFinite(x) ? '–' : `${x > 0 ? '+' : ''}${x.toFixed(dp)}%`);
+const tag = t => `<span class="tag t-${t}">${t}</span>`;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let DP = 2, MODE = 'paths', LAST = null;
+const px = x => fmt(x, DP);
+const addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+const tradingDaysAhead = (d, n) => { let t = Date.parse(d + 'T00:00:00Z'), k = 0; while (k < n) { t += 864e5; const w = new Date(t).getUTCDay(); if (w && w !== 6) k++; } return new Date(t).toISOString().slice(0, 10); };
+
+function chooseDp(close) { return close >= 1000 ? 0 : close >= 50 ? 2 : close >= 5 ? 3 : 4; }
+
+async function load(fresh) {
+  const inst = $('inst').value || new URLSearchParams(location.search).get('inst') || 'GOLD';
+  $('stats').textContent = 'Loading…';
+  try {
+    const r = await fetch(`/api/swing-map?inst=${encodeURIComponent(inst)}${fresh ? '&fresh=1' : ''}`);
+    const m = await r.json();
+    if (!m.ok) throw new Error(m.error || `HTTP ${r.status}`);
+    if (!$('inst').options.length) { $('inst').innerHTML = m.instruments.map(i => `<option${i === m.inst ? ' selected' : ''}>${i}</option>`).join(''); }
+    history.replaceState(null, '', `?inst=${m.inst}`);
+    render(m);
+  } catch (e) { $('stats').innerHTML = `<span class="err">Could not load: ${esc(e.message)}</span>`; }
+}
+
+function render(m) {
+  const s = m.state; DP = chooseDp(s.close);
+  $('title').textContent = `Swing Map: ${m.inst}`;
+  const fall = s.fallFrom1yHighAnnSigma, hiPct = (s.close / s.high1y - 1) * 100;
+  $('stats').innerHTML = `Close ${s.date} <b>${px(s.close)}</b> · 1-year high ${px(s.high1y)} (${s.high1yDate}) → ${pct(hiPct)}, `
+    + `<b>${fall.toFixed(2)}</b> annualised σ below it · RSI(14) ${s.rsi14.toFixed(1)} · daily σ ${s.sigmaDailyPct.toFixed(2)}% (${s.volAnnualPct.toFixed(1)}% a year)`
+    + `${s.at20dLow ? ' · at a 20-day closing low' : ''}${s.at20dHigh ? ' · at a 20-day closing high' : ''}`
+    + (s.fallSignal ? ` · <span class="warn">deep-fall condition ON</span>` : '') + (s.rallySignal ? ` · <span class="warn">stretched-rally condition ON</span>` : '');
+  LAST = m; drawChart(m); pathCards(m); pullCard(m); levelMap(m); legCard(m); ratesCard(m); expiryTable(m); legBars(m);
+}
+
+function drawChart(m) {
+  const W = 980, H = 540, L = 64, R = 70, T = 18, B = 34;
+  const s = m.state, today = s.date;
+  const sim = MODE === 'mc' || MODE === 'modal';
+  const histStart = addDays(today, sim ? -170 : MODE === 'paths' ? -230 : -300);
+  const series = m.series.filter(p => p[0] >= histStart);
+  const futEnd = sim ? addDays(tradingDaysAhead(today, +$('mcH').value), 12) : addDays(today, 105);
+  const t0 = Date.parse(series[0][0]), t1 = Date.parse(futEnd);
+  const X = d => L + (Date.parse(d) - t0) / (t1 - t0) * (W - L - R);
+  const vals = series.map(p => p[1]);
+  const extra = [];
+  for (const b of m.bands) for (const k of ['p90']) { extra.push(b[k].up, b[k].down); }
+  for (const e of m.expiries) for (const z of e.zones.slice(0, 4)) if (z.px > s.close * 0.75 && z.px < s.close * 1.25) extra.push(z.px);
+  let lo = Math.min(...vals, ...extra), hi = Math.max(...vals, ...extra); const pad = (hi - lo) * 0.06; lo -= pad; hi += pad;
+  const Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  const o = [];
+  o.push(`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Price chart with swings, range lines and option zones">`);
+  // grid + axes
+  const step = niceStep((hi - lo) / 6);
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) o.push(`<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${L - 6}" y="${Y(v) + 4}" fill="var(--text3)" font-size="11" text-anchor="end">${px(v)}</text>`);
+  for (let d = new Date(t0); d <= new Date(t1); d.setUTCMonth(d.getUTCMonth() + 1)) {
+    const ds = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString().slice(0, 10); if (Date.parse(ds) < t0) continue;
+    o.push(`<text x="${X(ds)}" y="${H - 12}" fill="var(--text3)" font-size="11" text-anchor="middle">${new Date(ds).toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' })}${ds.slice(5, 7) === '01' ? ' ' + ds.slice(2, 4) : ''}</text>`);
+  }
+  // future shading + today
+  o.push(`<rect x="${X(today)}" y="${T}" width="${W - R - X(today)}" height="${H - T - B}" fill="#ffffff" opacity="0.025"/>`);
+  o.push(`<line x1="${X(today)}" x2="${X(today)}" y1="${T}" y2="${H - B}" stroke="var(--text3)" stroke-dasharray="3 3"/><text x="${X(today) + 4}" y="${T + 11}" fill="var(--text3)" font-size="11">today</text>`);
+  // expiries: vertical line + zone bars (width = share of that expiry's OI), violet = building, grey = not
+  for (const e of m.expiries) {
+    if (e.expiry > futEnd) continue;
+    const x = X(e.expiry);
+    o.push(`<line x1="${x}" x2="${x}" y1="${T}" y2="${H - B}" stroke="var(--violet)" stroke-opacity="0.45" stroke-dasharray="2 4"/>`);
+    o.push(`<text x="${x}" y="${H - B + 12}" fill="var(--violet)" font-size="10" text-anchor="middle">${e.expiry.slice(5)}</text>`);
+    if (e.shareAbove != null) { const up = e.shareAbove > 0.55, dn = e.shareAbove < 0.45;
+      o.push(`<text x="${x}" y="${T + 28}" fill="${up ? 'var(--up)' : dn ? 'var(--down)' : 'var(--text3)'}" font-size="12" font-weight="700" text-anchor="middle">${up ? '▲' : dn ? '▼' : '◆'}<title>${e.expiry}: ${Math.round(e.shareAbove * 100)}% of OI above price, centre ${pct(e.pullPct, 2)} from price</title></text>`); }
+    for (const z of e.zones.slice(0, 5)) {
+      if (z.px < lo || z.px > hi) continue;
+      const w = Math.max(4, (z.share ?? 0) * 260), build = (z.buildStreak ?? 0) >= 2 || (z.chgSinceFirst ?? 0) > 0;
+      o.push(`<rect x="${x - w / 2}" y="${Y(z.px) - 3}" width="${w}" height="6" rx="2" fill="${build ? 'var(--violet)' : '#6e7681'}" opacity="${sim ? 0.3 : 0.85}"><title>${e.expiry} (${e.dte}d): ${px(z.px)}, ${fmt(z.oi, 0)} contracts, ${fmt((z.share ?? 0) * 100, 1)}% of this expiry, ${z.buildStreak ?? 0} nights building, ${(z.chgSinceFirst ?? 0) >= 0 ? '+' : ''}${fmt(z.chgSinceFirst, 0)} since first seen</title></rect>`);
+    }
+  }
+  // range fans from today: weekly and monthly, p50/p75/p90
+  const fan = (b, color) => {
+    const x2 = X(tradingDaysAhead(today, b.sessions));
+    for (const [k, op] of [['p90', 0.10], ['p75', 0.14], ['p50', 0.18]]) {
+      o.push(`<polygon points="${X(today)},${Y(s.close)} ${x2},${Y(b[k].up)} ${x2},${Y(b[k].down)}" fill="${color}" opacity="${op}"/>`);
+    }
+    for (const k of ['p50', 'p75', 'p90']) for (const side of ['up', 'down'])
+      o.push(`<line x1="${x2 - 5}" x2="${x2 + 5}" y1="${Y(b[k][side])}" y2="${Y(b[k][side])}" stroke="${color}"><title>${b.label} ${k} ${side}: ${px(b[k][side])}</title></line>`);
+    o.push(`<text x="${x2}" y="${Y(b.p90.up) - 6}" fill="${color}" font-size="10" text-anchor="middle">${b.sessions}d p90</text>`);
+  };
+  if (MODE === 'cone') {
+    if (m.bands[1]) fan(m.bands[1], 'var(--blue)');
+    if (m.bands[0]) fan(m.bands[0], 'var(--amber)');
+    const x20 = X(tradingDaysAhead(today, 20));
+    o.push(`<line x1="${X(today)}" x2="${x20}" y1="${Y(m.barriers.bounce)}" y2="${Y(m.barriers.bounce)}" stroke="var(--up)" stroke-dasharray="5 4"/>`);
+    o.push(`<line x1="${X(today)}" x2="${x20}" y1="${Y(m.barriers.flush)}" y2="${Y(m.barriers.flush)}" stroke="var(--down)" stroke-dasharray="5 4"/>`);
+  } else if (MODE === 'mc' || MODE === 'modal') {
+    const sim = runSims(m);
+    if (sim) {
+      const xs = t => X(tradingDaysAhead(today, t));
+      if (m.bands[1]) for (const v of [m.bands[1].p50.up, m.bands[1].p50.down]) o.push(`<line x1="${X(today)}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--amber)" stroke-opacity="0.6" stroke-dasharray="2 3"/><text x="${W - R - 2}" y="${Y(v) - 4}" fill="var(--amber)" font-size="10" text-anchor="end">expected move (monthly p50) ${px(v)}</text>`);
+      if (MODE === 'mc') {
+        for (const path of sim.pull.sample) o.push(`<polyline fill="none" stroke="var(--violet)" stroke-opacity="0.13" stroke-width="1" points="${path.map((v, t) => `${xs(t).toFixed(1)},${Y(v).toFixed(1)}`).join(' ')}"/>`);
+        const band = (a, b, op) => o.push(`<polygon fill="var(--violet)" opacity="${op}" points="${sim.pull.quantiles.map(q => `${xs(q.t).toFixed(1)},${Y(q[a]).toFixed(1)}`).join(' ')} ${[...sim.pull.quantiles].reverse().map(q => `${xs(q.t).toFixed(1)},${Y(q[b]).toFixed(1)}`).join(' ')}"/>`);
+        band('p90', 'p10', 0.08); band('p75', 'p25', 0.12);
+        o.push(`<polyline fill="none" stroke="#fff" stroke-width="1.6" points="${sim.pull.quantiles.map(q => `${xs(q.t).toFixed(1)},${Y(q.p50).toFixed(1)}`).join(' ')}"/>`);
+      } else {
+        o.push(`<polyline fill="none" stroke="#8b949e" stroke-width="1.6" stroke-dasharray="5 4" points="${sim.flat.modal.map(q => `${xs(q.t).toFixed(1)},${Y(q.px).toFixed(1)}`).join(' ')}"/>`);
+        o.push(`<polyline fill="none" stroke="var(--violet)" stroke-width="2.6" points="${sim.pull.modal.map(q => `${xs(q.t).toFixed(1)},${Y(q.px).toFixed(1)}`).join(' ')}"/>`);
+        const end = sim.pull.modal.at(-1), xe = xs(end.t);
+        o.push(`<circle cx="${xe}" cy="${Y(end.px)}" r="5" fill="var(--violet)"/><text x="${xe + 7}" y="${Y(end.px) + 4}" fill="var(--violet)" font-size="12" font-weight="700">${px(end.px)} · ${fmtDay(tradingDaysAhead(today, end.t))}</text>`);
+        for (const e of sim.used) { if (e.s > sim.pull.sessions) continue; const q = sim.pull.modal[e.s]; o.push(`<circle cx="${xs(e.s)}" cy="${Y(q.px)}" r="3" fill="none" stroke="var(--violet)"><title>${e.expiry}: most-touched ${px(q.px)}; that expiry's OI centre ${px(e.target)}</title></circle>`); }
+      }
+    }
+  } else {
+    // monthly p75 band as faint horizontal guides across the future, then the two dashed paths with dated waypoints
+    if (m.bands[1]) for (const v of [m.bands[1].p75.up, m.bands[1].p75.down]) o.push(`<line x1="${X(today)}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--blue)" stroke-opacity="0.35"/>`);
+    for (const p of m.paths || []) {
+      const c = pathColor(p, m);
+      const pts = p.points.map(q => [X(q.date), Y(q.px)]);
+      o.push(`<polyline fill="none" stroke="${c}" stroke-width="2" stroke-dasharray="7 5" points="${pts.map(q => q.join(',')).join(' ')}"/>`);
+      p.points.slice(1).forEach((q, i) => {
+        const [x, y] = pts[i + 1];
+        o.push(`<circle cx="${x}" cy="${y}" r="4.5" fill="${c}"><title>${esc(q.label)}: ${px(q.px)} by ${q.date}</title></circle>`);
+        const above = q.px >= s.close, dy = i === 0 ? (above ? -9 : 16) : (above ? -22 : 29);
+        o.push(`<text x="${x + 6}" y="${y + dy}" fill="${c}" font-size="11" font-weight="600">${px(q.px)} · ${fmtDay(q.date)}</text>`);
+      });
+    }
+  }
+  // price
+  o.push(`<polyline fill="none" stroke="var(--price)" stroke-width="1.6" points="${series.map(p => `${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' ')}"/>`);
+  // every swing high and low (3σ swings), the 6σ leg ends in bold
+  for (const pv of (m.pivots || []).filter(p => p.date >= histStart)) {
+    const hiP = pv.type === 'high', c = hiP ? '#e6edf3' : 'var(--down)', yy = Y(pv.px);
+    o.push(`<circle cx="${X(pv.date)}" cy="${yy}" r="${pv.major ? 3.8 : 2.6}" fill="${c}"><title>${pv.date} swing ${pv.type} ${px(pv.px)}${pv.major ? ' (6σ leg end)' : ''}</title></circle>`
+      + `<text x="${X(pv.date)}" y="${yy + (hiP ? -8 : 15)}" fill="${c}" font-size="${pv.major ? 11 : 9.5}" font-weight="${pv.major ? 700 : 500}" opacity="${pv.major ? 1 : 0.8}" text-anchor="middle">${px(pv.px)}</text>`);
+  }
+  o.push(`<circle cx="${X(today)}" cy="${Y(s.close)}" r="4" fill="var(--price)"/>`);
+  o.push('</svg>');
+  $('chart').innerHTML = o.join('');
+  if (MODE === 'mc' || MODE === 'modal') { mcNote(m); return; }
+  $('chartNote').innerHTML = MODE === 'paths'
+    ? `Dashed paths: the two orders the next move can come in. Each waypoint is a measured number: the look-back's barrier at its median timing ${tag('EXPLORATORY')}, then the monthly reverting p75 ${tag('VALIDATED')} (faint blue lines). Dates are sessions ahead, not forecasts. `
+      + `Violet columns: each CME expiry in the next ~100 days, ▲/▼ = most of its open interest sits above/below price ${tag('UNTESTED')}.`
+      + (m.expiries.length ? '' : ' <span class="warn">No expiry-tracker data for this instrument yet.</span>')
+    : `Amber fan: weekly reverting range (5 sessions). Blue fan: monthly (20 sessions). Both are p50/p75/p90 of how far the high and low travel, anchored on the latest close ${tag('VALIDATED')}. `
+    + `Dashed green/red: the look-back's bounce/flush barriers at today's σ, out to 20 sessions ${tag('EXPLORATORY')}. `
+    + `Violet columns: each CME expiry in the next ~100 days. Bars are its biggest strikes, width = share of that expiry's open interest, violet = building, grey = flat or fading ${tag('UNTESTED')}.`
+    + (m.expiries.length ? '' : ' <span class="warn">No expiry-tracker data for this instrument yet (needs R2 and at least one fold).</span>')
+    + (m.bands.length ? '' : ' <span class="warn">No reverting ladder in the live forecast for this instrument.</span>');
+}
+function pathColor(p, m) { return p.points[1].px >= m.state.close ? 'var(--up)' : 'var(--down)'; }
+function fmtDay(d) { return new Date(d + 'T00:00:00Z').toLocaleString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }); }
+function niceStep(x) { const p = 10 ** Math.floor(Math.log10(x)); const f = x / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
+
+function levelMap(m) {
+  const s = m.state, rows = [];
+  const add = (v, color, name, desc, t) => rows.push({ v, html: `<div class="lv"><b><span class="sw" style="background:${color}"></span>${px(v)}</b><span>${name} ${t ? tag(t) : ''}</span><span></span><span>${desc}</span></div>` });
+  add(s.high1y, '#e6edf3', '1-year high', `${s.high1yDate}; ${pct((s.high1y / s.close - 1) * 100)} from here`, 'CONTEXT');
+  for (const [b, c] of [[m.bands[1], 'var(--blue)'], [m.bands[0], 'var(--amber)']]) if (b) {
+    add(b.p75.up, c, `${b.label} p75 up`, `the high reaches this about 1 time in 4`, 'VALIDATED');
+    add(b.p75.down, c, `${b.label} p75 down`, `the low reaches this about 1 time in 4`, 'VALIDATED');
+  }
+  add(m.barriers.bounce, 'var(--up)', 'bounce barrier', `+0.75 σ√20 (${pct(0.75 * m.barriers.unitPct)}): the look-back's bounce`, 'EXPLORATORY');
+  add(m.barriers.flush, 'var(--down)', 'flush barrier', `−0.45 σ√20 (${pct(-0.45 * m.barriers.unitPct)}): the look-back's further flush`, 'EXPLORATORY');
+  const top = [];
+  for (const e of m.expiries) for (const z of e.zones.slice(0, 2)) top.push({ e, z });
+  top.sort((a, b) => (b.z.share ?? 0) - (a.z.share ?? 0));
+  for (const { e, z } of top.slice(0, 4)) add(z.px, 'var(--violet)', `${e.expiry} expiry zone`, `${fmt((z.share ?? 0) * 100, 0)}% of that expiry's OI; ${z.buildStreak ?? 0} nights building; ${z.inMonthlyP90 ? 'inside' : 'outside'} the monthly p90`, 'UNTESTED');
+  rows.sort((a, b) => b.v - a.v);
+  const at = rows.findIndex(r => r.v < s.close);
+  rows.splice(at < 0 ? rows.length : at, 0, { html: `<div class="lv"><b style="color:var(--price)">${px(s.close)}</b><span>last close</span></div>` });
+  $('levels').innerHTML = rows.map(r => r.html).join('');
+}
+
+function legCard(m) {
+  const l = m.live, br = m.baseRates;
+  if (!l) { $('leg').innerHTML = '<p class="note">No leg confirmed yet.</p>'; return; }
+  const pc = l.pctileVsOwn == null ? '–' : `${Math.round(l.pctileVsOwn * 100)}th percentile`;
+  $('leg').innerHTML = `<p class="big">${l.dir === 'down' ? 'Falling' : 'Rising'} since ${l.start} from ${px(l.startPx)}: <b class="${l.dir === 'down' ? 'bad' : 'good'}">${pct(l.pct)}</b>, `
+    + `${l.sigma.toFixed(1)}σ in ${l.days} sessions.</p>`
+    + `<p>That is the <b>${pc}</b> of this instrument's ${l.ownLegs} completed ${l.dir} legs (their median: ${l.ownMedianSigma?.toFixed(1) ?? '–'}σ). `
+    + `Pooled across instruments a ${l.dir} leg's median is ${br.legs[l.dir].median}σ, lasting about ${br.legs[l.dir].days} sessions.</p>`
+    + `<p class="note">Read this as description only. Across 10 years, a leg that had already gone 6σ went about 5σ further, and so did one that had gone 20σ: `
+    + `how far a leg has run does not tell you when it ends. A leg is confirmed only once price turns back 6 daily σ from its extreme.</p>`;
+}
+
+function ratesCard(m) {
+  const a = m.baseRates.afterFall, s = m.state, unit = m.barriers.unitPct;
+  const on = s.fallSignal;
+  const r = (x, ci) => `${x >= 0 ? '+' : ''}${x.toFixed(2)}${ci ? ` [${ci[0].toFixed(2)}, ${ci[1].toFixed(2)}]` : ''}`;
+  $('rates').innerHTML = `<p>${on ? `<span class="warn">The condition is on today.</span>` : 'The condition is <b>off</b> today.'} Condition: ${esc(a.condition)}.</p>`
+    + `<div class="tbl"><table><tr><th></th><th>After the condition</th><th>Any day (baseline)</th></tr>`
+    + `<tr><td>20-day move, σ√20 (mean, 95% CI)</td><td><b>${r(a.ret20, a.ret20Ci)}</b></td><td>${r(a.baseline.ret20)}</td></tr>`
+    + `<tr><td>… in price terms at today's σ</td><td>${pct(a.ret20 * unit)}</td><td>${pct(a.baseline.ret20 * unit)}</td></tr>`
+    + `<tr><td>Up after 20 days</td><td>${Math.round(a.win * 100)}%</td><td>${Math.round(a.baseline.win * 100)}%</td></tr>`
+    + `<tr><td>Bounce barrier before flush barrier</td><td>${Math.round(a.pBounceFirst * 100)}% [${Math.round(a.pBounceFirstCi[0] * 100)}, ${Math.round(a.pBounceFirstCi[1] * 100)}]</td><td>${Math.round(a.baseline.pBounceFirst * 100)}%</td></tr>`
+    + `<tr><td>Median sessions to bounce / to flush</td><td>${a.daysToBounce} / ${a.daysToFlush}</td><td>11 / 7</td></tr>`
+    + `<tr><td>Further fall within 60 days (median)</td><td>${pct(-a.adverse60Median * unit * Math.sqrt(3))}</td><td>${pct(-a.baseline.adverse60Median * unit * Math.sqrt(3))}</td></tr>`
+    + `</table></div>`
+    + `<p class="note">OANDA bars, 11 instruments, 2018 to 2026-08-21, n = ${a.n}. Yahoo check, 18 instruments: 20-day ${r(a.yahoo.ret20, a.yahoo.ret20Ci)} vs baseline ${r(a.yahoo.baselineRet20)}; bounce first ${Math.round(a.yahoo.pBounceFirst * 100)}% vs ${Math.round(a.yahoo.baselinePBounce * 100)}%. `
+    + `So there's a modest 20-day lean up, and the bounce is no more likely than usual to come before a further flush. When the flush comes, it comes sooner. Exploratory: chosen after looking at one chart, and not banked.</p>`;
+}
+
+function expiryTable(m) {
+  if (!m.expiries.length) { $('expiries').innerHTML = '<p class="note">No expiry-tracker series for this instrument yet. The tracker folds every night from the CME capture (FX majors, gold, NQ, ES and others in the sweep).</p>'; return; }
+  const rows = m.expiries.map(e => {
+    const z = e.zones.slice(0, 3).map(z => `<span title="${fmt(z.oi, 0)} contracts, ${z.buildStreak ?? 0} nights building">${px(z.px)} <span class="note">${fmt((z.share ?? 0) * 100, 0)}%${(z.buildStreak ?? 0) >= 2 ? ' ▲' : ''}</span></span>`).join(' · ');
+    const grow = e.totalOIFirst ? (e.totalOI / e.totalOIFirst - 1) * 100 : null;
+    const drift = e.centrePx != null && e.centrePxFirst != null ? (e.centrePx / e.centrePxFirst - 1) * 100 : null;
+    return `<tr><td>${e.expiry}${e.code ? ` <span class="note">${esc(e.code)}</span>` : ''}</td><td>${e.dte}</td><td>${e.nights}</td><td>${fmt(e.totalOI, 0)} <span class="note">${pct(grow, 0)}</span></td>`
+      + `<td>${px(e.centrePx)} <span class="note">${pct(drift, 2)}</span></td><td>${px(e.maxPain)}</td><td>${fmt(e.chgAwayFromSpot, 0)}</td><td>${fmt(e.chgNearSpot, 0)}</td><td style="text-align:left">${z}${e.stale ? ' <span class="warn">stale capture</span>' : ''}</td></tr>`;
+  }).join('');
+  $('expiries').innerHTML = `<div class="tbl"><table><tr><th>Expiry</th><th>Days left</th><th>Nights tracked</th><th>Open interest (since first seen)</th><th>OI centre (drift)</th><th>Max pain</th><th>Built away from price (last night)</th><th>Built near price</th><th style="text-align:left">Biggest strikes (share, ▲ = building 2+ nights)</th></tr>${rows}</table></div>`
+    + `<p class="note">"Away from price" = more than 1% from the futures price that night. OI opens near the money, so the centre drifts with price whether or not it pulls. Building away from price is the part worth watching. `
+    + `How these zones relate to where price is at expiry is the expiry-tracker question; it gets a pre-registered scoring rule before any outcome is looked at.</p>`;
+}
+
+function legBars(m) {
+  const from = addDays(m.state.date, -550);
+  const legs = m.legs.filter(l => l.end >= from).concat(m.live ? [{ ...m.live, end: m.state.date, live: true }] : []);
+  if (!legs.length) { $('legbars').innerHTML = ''; return; }
+  const W = 980, H = 190, B = 34, T = 22, max = Math.max(...legs.map(l => Math.abs(l.pct)));
+  const bw = Math.min(70, (W - 20) / legs.length - 10);
+  const o = [`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Swing sizes">`];
+  legs.forEach((l, i) => {
+    const x = 10 + i * (bw + 10), h = Math.abs(l.pct) / max * (H - B - T), y = H - B - h, c = l.dir === 'up' ? 'var(--up)' : 'var(--down)';
+    o.push(`<rect x="${x}" y="${y}" width="${bw}" height="${h}" fill="${c}" opacity="${l.live ? 0.9 : 0.35}" stroke="${c}"><title>${l.start} → ${l.end}: ${pct(l.pct)} (${l.sigma.toFixed(1)}σ, ${l.days} sessions)</title></rect>`);
+    o.push(`<text x="${x + bw / 2}" y="${y - 5}" fill="${c}" font-size="11" font-weight="600" text-anchor="middle">${pct(l.pct)}</text>`);
+    o.push(`<text x="${x + bw / 2}" y="${H - B + 14}" fill="var(--text3)" font-size="10" text-anchor="middle">${l.start.slice(2, 7)}</text>`);
+    o.push(`<text x="${x + bw / 2}" y="${H - B + 26}" fill="var(--text3)" font-size="10" text-anchor="middle">${l.sigma.toFixed(1)}σ${l.live ? ' now' : ''}</text>`);
+  });
+  o.push('</svg>');
+  $('legbars').innerHTML = o.join('') + `<p class="note">Bars are % moves and the labels are σ. The solid bar is the leg in progress. Similar-looking legs do not mark an exhaustion size: see the current-leg card.</p>`;
+}
+
+const MODES = ['paths', 'cone', 'mc', 'modal'];
+function setMode(md) {
+  MODE = MODES.includes(md) ? md : 'paths';
+  document.querySelectorAll('.seg button').forEach(b => b.classList.toggle('on', b.dataset.m === MODE));
+  $('mcOpts').classList.toggle('show', MODE === 'mc' || MODE === 'modal');
+  try { localStorage.setItem('swingMapMode', MODE); } catch {}
+  if (LAST) drawChart(LAST);
+}
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.m)));
+$('mcH').addEventListener('change', () => { SIMS = null; if (LAST) drawChart(LAST); });
+$('mcK').addEventListener('change', () => { SIMS = null; if (LAST) drawChart(LAST); });
+try { setMode(localStorage.getItem('swingMapMode') || 'paths'); } catch { setMode('paths'); }
+
+// ── Monte Carlo: js/swingPaths.js, the pull run beside a no-pull run at the same σ and seed ──
+let SIMS = null;
+function sessionsBetween(a, b) { let t = Date.parse(a + 'T00:00:00Z'), e = Date.parse(b + 'T00:00:00Z'), k = 0; while (t < e) { t += 864e5; const w = new Date(t).getUTCDay(); if (w && w !== 6) k++; } return k; }
+function runSims(m) {
+  const H = +$('mcH').value, k = +$('mcK').value;
+  const key = `${m.inst}|${m.state.date}|${H}|${k}`;
+  if (SIMS?.key === key) return SIMS;
+  const mb = m.bands[1];
+  const sigma = mb?.sigmaUsedPct ? mb.sigmaUsedPct / 100 / Math.sqrt(20) : m.state.sigmaDailyPct / 100;
+  const used = m.expiries.filter(e => e.centrePx > 0 && e.totalOI > 0).map(e => ({ expiry: e.expiry, s: sessionsBetween(m.state.date, e.expiry), target: e.centrePx, oi: e.totalOI }))
+    .filter(e => e.s >= 1);
+  const base = { close: m.state.close, sigma, sessions: H, expiries: used, n: 2000, seed: 20261101, keep: 150 };
+  SIMS = { key, used, sigma, sigmaSrc: mb?.sigmaUsedPct ? 'the live monthly reverting σ (validated)' : 'realised 60-day σ', k, H,
+    pull: simulatePaths({ ...base, k }), flat: simulatePaths({ ...base, k: 0 }) };
+  return SIMS;
+}
+function mcNote(m) {
+  const S = runSims(m);
+  if (!S?.pull) { $('chartNote').innerHTML = '<span class="warn">Could not simulate.</span>'; return; }
+  const endP = S.pull.quantiles.at(-1), endF = S.flat.quantiles.at(-1), mp = S.pull.modal.at(-1), mf = S.flat.modal.at(-1);
+  const flips = []; let lastSign = Math.sign(S.pull.drift[0]?.d ?? 0);
+  for (let t = 1; t < S.pull.drift.length; t++) { const sg = Math.sign(S.pull.drift[t].d); if (sg && lastSign && sg !== lastSign && !(flips.length && t - flips.at(-1) < 2)) flips.push(t); if (sg) lastSign = sg; }
+  const mb = m.bands[1], ts = lv => `${Math.round(touchShare(S.pull, lv) * 100)}% with pull, ${Math.round(touchShare(S.flat, lv) * 100)}% without`;
+  const dir0 = S.pull.drift[0]?.d ?? 0;
+  $('chartNote').innerHTML = `${MODE === 'mc' ? `${S.pull.n.toLocaleString()} simulated paths over ${S.H} sessions (150 drawn), shaded 10-90% and 25-75%, white = median.` : `Violet = the most-touched path: for each session, where the most simulated paths sit. Grey dashed = the same with no pull (a plain random walk stays flat).`} `
+    + `σ = ${(S.sigma * 100).toFixed(2)}% a session from ${S.sigmaSrc}. Pull strength ${S.k === 0 ? 'off' : S.k} ${tag('UNTESTED')}: each expiry still alive draws price toward its OI centre, the nearest one weighing most, handing over as it rolls off. ${S.used.length} expir${S.used.length === 1 ? 'y' : 'ies'} used.<br>`
+    + (S.used.length ? `The pull starts ${dir0 > 0 ? '<b class="good">up</b>' : dir0 < 0 ? '<b class="bad">down</b>' : 'flat'}${flips.length ? ` and changes side after session ${flips.join(', ')}` : ''}. ` : '<span class="warn">No expiry-tracker data, so the pull run equals the random walk.</span> ')
+    + `End of horizon: median ${px(endP.p50)} with pull vs ${px(endF.p50)} without; most-touched ${px(mp.px)} vs ${px(mf.px)}. `
+    + (mb ? `Touch the monthly expected move up ${px(mb.p50.up)}: ${ts(mb.p50.up)}; down ${px(mb.p50.down)}: ${ts(mb.p50.down)}.` : '')
+    + `<br><span class="note">The pull is a hypothesis drawn as a picture. Its strength is chosen, not fitted, and no test here shows an expiry's lean moves price (OI walls behaved like ordinary levels, max pain does not pin). The gap between the violet and grey lines is the hypothesis, not evidence.</span>`;
+}
+
+function pathCards(m) {
+  if (!m.paths?.length) { $('paths').innerHTML = '<p class="note">No paths (no confirmed leg yet).</p>'; return; }
+  $('paths').innerHTML = '<div class="paths">' + m.paths.map(p => {
+    const c = pathColor(p, m);
+    return `<div class="pcard"><h3 style="color:${c}">${p.key}. ${esc(p.name)}: ${Math.round(p.prob * 100)}%</h3>`
+      + `<div class="note">${p.conditionOn ? `after this condition historically; on any day it is ${Math.round(p.baseline * 100)}%` : 'the every-day baseline (the condition is off today)'}</div>`
+      + `<ol>${p.points.slice(1).map(q => `<li><b>${px(q.px)}</b> by ${fmtDay(q.date)} <span class="note">(${q.sessions} sessions)</span>: ${esc(q.label)} ${tag(q.proof)}</li>`).join('')}</ol></div>`;
+  }).join('') + '</div>'
+  + `<p class="note">The odds differ from any day by less than their own uncertainty, so read both paths as live. Unlike the original chart, there is no single "reversal date": the look-back found no size or time at which legs end.</p>`;
+}
+
+function greekCell(v, flip) {
+  if (v == null || !isFinite(v)) return '–';
+  return `<span class="${v > 0 ? 'good' : v < 0 ? 'bad' : ''}">${v > 0 ? 'BUY' : v < 0 ? 'SELL' : 'flat'} ${fmt(Math.abs(v), 0)}</span>${flip ? ` <span class="note">flips ${px(flip)}</span>` : ''}`;
+}
+function pullCard(m) {
+  const P = m.pull;
+  if (!m.expiries.length || !P) { $('pull').innerHTML = '<p class="note">No expiry-tracker data for this instrument yet. Once the server has folded the nightly CME captures, every expiry appears here with its lean above or below price, by days to expiry.</p>'; return; }
+  const bk = P.buckets.map(b => `<div class="bkc"><span>${b.lo}-${b.hi} days to expiry</span>`
+    + (b.n ? `<b class="${b.lean === 'up' ? 'good' : b.lean === 'down' ? 'bad' : ''}">${b.lean === 'up' ? '▲ up' : b.lean === 'down' ? '▼ down' : '◆ balanced'}</b>`
+      + `<span>${Math.round(b.shareAbove * 100)}% of OI above price · centre ${pct(b.pullPct, 2)} · ${b.n} expir${b.n === 1 ? 'y' : 'ies'}</span><br><span>last 5 nights built: ${fmt(b.recentBuildAbove, 0)} above / ${fmt(b.recentBuildBelow, 0)} below</span>`
+      : '<b class="note">–</b><span>no expiry</span>') + '</div>').join('');
+  const spark = h => { const v = h.filter(r => r[2] != null); if (v.length < 2) return ''; const ys = v.map(r => r[3] ?? 0.5), w = 90, hh = 22;
+    return `<svg viewBox="0 0 ${w} ${hh}" style="width:90px;height:22px;display:inline-block;vertical-align:middle"><line x1="0" x2="${w}" y1="${hh / 2}" y2="${hh / 2}" stroke="var(--grid)"/><polyline fill="none" stroke="var(--violet)" stroke-width="1.5" points="${ys.map((y, i) => `${(i / (ys.length - 1) * w).toFixed(1)},${(hh - y * hh).toFixed(1)}`).join(' ')}"/></svg>`; };
+  const rows = m.expiries.map(e => {
+    const l = e.shareAbove == null ? '–' : e.shareAbove > 0.55 ? '<span class="good">▲</span>' : e.shareAbove < 0.45 ? '<span class="bad">▼</span>' : '◆';
+    const net = e.buildAbove == null ? '–' : `${fmt(e.buildAbove, 0)} / ${fmt(e.buildBelow, 0)}`;
+    return `<tr><td>${e.expiry}</td><td>${e.dte}</td><td>${l} ${e.shareAbove == null ? '' : Math.round(e.shareAbove * 100) + '%'}</td><td>${pct(e.pullPct, 2)}</td><td>${net}</td><td>${spark(e.history || [])}</td>`
+      + `<td>${e.gamma ? `${e.gamma.regime}${e.gamma.flipPx ? ` · flip ${px(e.gamma.flipPx)}` : ''}` : '–'}</td>`
+      + `<td>${greekCell(e.greeks?.charm1d, e.greeks?.charmFlipPx)}</td><td>${greekCell(e.greeks?.vannaIvDn2, e.greeks?.vannaFlipPx)}</td></tr>`;
+  }).join('');
+  $('pull').innerHTML = `<p>${esc(P.summary)}</p><div class="bk">${bk}</div>`
+    + `<div class="tbl"><table><tr><th>Expiry</th><th>Days left</th><th>OI above price</th><th>Centre vs price</th><th>Built last night above / below</th><th>Share above, night by night</th><th>This expiry's gamma</th><th>Charm: 1 day passes</th><th>Vanna: IV −2 pts</th></tr>${rows}</table></div>`
+    + `<p class="note">Each expiry is pinned to its date and re-read every night as it counts down, so the same contract moves from the far buckets into the near ones. "Above price" is in spot terms (inverted CME pairs are flipped). `
+    + `Open interest opens near the money and follows price, so a lean that builds before price moves is the part worth watching. Charm and vanna are the dealer hedge each expiry forces in contracts of the underlying (BUY = dealers buy the pair as quoted): when one day passes, and if implied vol falls 2 points; \"flips\" is where that flow changes side by strike. Same convention as the OI Lab hedging map, flat vol, treated as context there too. Gamma is this expiry alone at today's realised vol (PIN = dealers long gamma, damping; BREAKOUT = short, amplifying); the range effect of gamma is validated on ES only and says nothing about direction. `
+    + `Earlier tests: OI walls behaved like ordinary levels, max pain does not pin, the hedge-flow side was underpowered. Whether a lean marks where price is at expiry gets its own pre-registered score.</p>`;
+}
+
+$('inst').addEventListener('change', () => load(false));
+$('refresh').addEventListener('click', () => load(true));
+load(false);
+</script>
+</body>
+</html>

@@ -27,6 +27,8 @@
  * Pure: no I/O. Tested by js/expiryTracker.test.mjs.
  */
 import { oiMatrixExpiryLegs, oiCalcMaxPain } from './oi.js';
+import { fullBookGex } from './fullBookGex.js';
+import { bsCharm, bsVanna } from './gammaGreeks.js';
 
 const DAY = 864e5;
 export const TAIL_FRAC = 0.35;          // strikes further than 35% from the futures price are tail hedges, not zones (as _oiNearBook)
@@ -156,8 +158,16 @@ export function seriesIndexEntry(series) {
  *  awayFrac: a strike counts as "away from price" when |strike/futures - 1| > awayFrac on that day.
  *  topN: zones reported per day.
  * Prices are reported in futures terms (k) and spot terms (px, at that day's basis).
+ *
+ * PULL (the owner's question: is this expiry's book leaning up or down from price, and is that growing?). Per day,
+ * all in SPOT direction (an inverted pair's higher CME strike is a lower spot price):
+ *  oiAbove / oiBelow / shareAbove   open interest at strikes above vs below that day's futures price
+ *  pullPct                          the OI-weighted centre's distance from price, % (+ = the book sits above price)
+ *  buildAbove / buildBelow          last night's OI change at strikes above vs below price (null on stale/first days)
+ * On the LAST day only, when sigmaAnnual is given: gamma = { regime PIN|BREAKOUT, flipPx } for this expiry alone
+ * (js/fullBookGex.js at a flat vol). Descriptive: no test yet says a book's lean moves price.
  */
-export function expiryView(series, { awayFrac = 0.01, topN = 6 } = {}) {
+export function expiryView(series, { awayFrac = 0.01, topN = 6, sigmaAnnual = null } = {}) {
   if (!series?.days?.length) return null;
   const inverted = !!series.inverted;
   const firstMap = new Map((series.days[0].ladder || []).map(r => [r[0], r[1] + r[2]]));
@@ -171,15 +181,22 @@ export function expiryView(series, { awayFrac = 0.01, topN = 6 } = {}) {
     const total = rows.reduce((a, r) => a + r[1] + r[2], 0);
     const centre = total > 0 ? rows.reduce((a, r) => a + r[0] * (r[1] + r[2]), 0) / total : null;
     const conv = k => toSpot(k, { basis: d.basis ?? 0, inverted });
-    let chgNear = 0, chgAway = 0;
+    let chgNear = 0, chgAway = 0, buildAbove = 0, buildBelow = 0, oiAbove = 0, oiBelow = 0;
+    const isAbove = k => ref != null && (inverted ? k < ref : k > ref);
+    const isBelow = k => ref != null && (inverted ? k > ref : k < ref);
+    for (const [k, oi] of map) { if (isAbove(k)) oiAbove += oi; else if (isBelow(k)) oiBelow += oi; }
     if (prevMap && !d.stale) {
-      for (const [k, oi] of map) {
-        const dOI = oi - (prevMap.get(k) ?? 0);
+      const add = (k, dOI) => {
         const away = ref != null && Math.abs(k / ref - 1) > awayFrac;
         if (away) chgAway += dOI; else chgNear += dOI;
+        if (isAbove(k)) buildAbove += dOI; else if (isBelow(k)) buildBelow += dOI;
+      };
+      for (const [k, oi] of map) {
+        const dOI = oi - (prevMap.get(k) ?? 0);
+        add(k, dOI);
         streak.set(k, dOI > 0 ? (streak.get(k) ?? 0) + 1 : 0);
       }
-      for (const k of prevMap.keys()) if (!map.has(k)) { streak.set(k, 0); const away = ref != null && Math.abs(k / ref - 1) > awayFrac; if (away) chgAway -= prevMap.get(k); else chgNear -= prevMap.get(k); }
+      for (const k of prevMap.keys()) if (!map.has(k)) { streak.set(k, 0); add(k, -prevMap.get(k)); }
     }
     const zones = rows.map(r => {
       const oi = r[1] + r[2];
@@ -193,8 +210,62 @@ export function expiryView(series, { awayFrac = 0.01, topN = 6 } = {}) {
       totalOI: total, centre: round(centre, 8), centrePx: round(conv(centre)),
       maxPain: rows.length >= 2 ? round(conv(oiCalcMaxPain(rows.map(r => r[0]), rows.map(r => r[1]), rows.map(r => r[2])))) : null,
       chgNearSpot: prevMap && !d.stale ? chgNear : null, chgAwayFromSpot: prevMap && !d.stale ? chgAway : null,
-      zones });
+      oiAbove, oiBelow, shareAbove: oiAbove + oiBelow > 0 ? round(oiAbove / (oiAbove + oiBelow), 4) : null,
+      pullPct: centre != null && ref ? round((centre / ref - 1) * 100 * (inverted ? -1 : 1), 3) : null,
+      buildAbove: prevMap && !d.stale ? buildAbove : null, buildBelow: prevMap && !d.stale ? buildBelow : null,
+      zones, _rows: rows });
     if (!d.stale) prevMap = map;
   }
+  const last = days.at(-1);
+  if (last && sigmaAnnual > 0 && Number.isFinite(last.futures) && last._rows.length >= 2) {
+    const g = fullBookGex([{ dte: last.dte, strikes: last._rows.map(r => r[0]), calls: last._rows.map(r => r[1]), puts: last._rows.map(r => r[2]) }],
+      last.futures, { flatSigma: sigmaAnnual, span: 0.15, steps: 300 });
+    if (g) last.gamma = { regime: g.regime, flipPx: g.flip != null ? round(toSpot(g.flip, { basis: last.basis ?? 0, inverted })) : null, sigmaAnnual };
+    const gk = expiryHedgeGreeks(last._rows, last.futures, last.dte, sigmaAnnual, { inverted });
+    if (gk) last.greeks = { ...gk, charmFlipPx: gk.charmFlipK != null ? round(toSpot(gk.charmFlipK, { basis: last.basis ?? 0, inverted })) : null,
+      vannaFlipPx: gk.vannaFlipK != null ? round(toSpot(gk.vannaFlipK, { basis: last.basis ?? 0, inverted })) : null };
+  }
+  for (const d of days) delete d._rows;
   return { pair: series.pair, expiry: series.expiry, code: series.code ?? null, inverted, n: days.length, days };
+}
+
+/**
+ * Charm and vanna for ONE expiry, as the dealer hedge they force (the OI Lab hedging-map convention: dealers long
+ * calls / short puts, the same sign as GEX; hedge = minus the change in dealer delta). Flat vol, futures terms.
+ *  charm1d    contracts of underlying dealers must trade because one calendar day passes (price and IV still)
+ *  vannaIvDn2 contracts they must trade if implied vol falls 2 points (price and time still)
+ *  charmFlipPx / vannaFlipPx  where the per-strike net flow changes sign, nearest price (spot terms)
+ * Signs are in SPOT direction: + = dealers buy the pair as quoted (an inverted CME pair's buy is a spot sell).
+ * Descriptive: OI Lab and js/oi.js treat charm/vanna as context, and no test here says the flow moves price.
+ */
+export function expiryHedgeGreeks(rows, futures, dte, sigmaAnnual, { inverted = false } = {}) {
+  if (!Array.isArray(rows) || rows.length < 2 || !(futures > 0) || !(sigmaAnnual > 0)) return null;
+  const T = Math.max(1, Number.isFinite(dte) ? dte : 14) / 365;
+  const dir = inverted ? -1 : 1;
+  let charm = 0, vanna = 0;
+  const prof = [];
+  for (const [k, c, p] of rows) {
+    const net = (c || 0) - (p || 0);
+    const ch = -net * bsCharm(futures, k, T, sigmaAnnual) / 365;
+    const va = -net * bsVanna(futures, k, T, sigmaAnnual) * -0.02;
+    charm += ch; vanna += va;
+    prof.push({ k, ch, va });
+  }
+  prof.sort((a, b) => a.k - b.k);
+  const flip = key => {
+    let best = null;
+    for (let i = 1; i < prof.length; i++) {
+      const a = prof[i - 1][key], b = prof[i][key];
+      if (!a || !b || Math.sign(a) === Math.sign(b)) continue;
+      const x = prof[i - 1].k + Math.abs(a) / (Math.abs(a) + Math.abs(b)) * (prof[i].k - prof[i - 1].k);
+      if (best == null || Math.abs(x - futures) < Math.abs(best - futures)) best = x;
+    }
+    return best;
+  };
+  return {
+    charm1d: round(charm * dir, 1), vannaIvDn2: round(vanna * dir, 1),
+    charmSide: charm * dir > 0 ? 'buy' : charm * dir < 0 ? 'sell' : 'flat',
+    vannaSide: vanna * dir > 0 ? 'buy' : vanna * dir < 0 ? 'sell' : 'flat',
+    charmFlipK: flip('ch'), vannaFlipK: flip('va'), sigmaAnnual, unit: 'contracts of underlying (delta)',
+  };
 }
