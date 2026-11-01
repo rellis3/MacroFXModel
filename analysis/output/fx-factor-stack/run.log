@@ -1,0 +1,95 @@
+yield arm skipped: [Errno 2] No such file or directory: 'C:\\Users\\relli\\OneDrive\\Documents\\Programming\\Trading\\v2 trading model\\MacroFXModel\\features\\y10_nzd.parquet'
+{
+ "carry": {
+  "sharpe_net_oos": 0.3611374667829208,
+  "sharpe_ci_haircut": [
+   -0.6613727700643448,
+   1.5412957472663058
+  ],
+  "ic_oos": 0.0787244523119972,
+  "ic_ci_haircut": [
+   -0.029827176287626142,
+   0.1917187224231672
+  ],
+  "verdict": "UNDERPOWERED"
+ },
+ "momentum": {
+  "sharpe_net_oos": -0.39062793970634657,
+  "sharpe_ci_haircut": [
+   -1.6040089318283504,
+   0.8720547817746749
+  ],
+  "ic_oos": -0.04530744336569581,
+  "ic_ci_haircut": [
+   -0.19003083760950912,
+   0.1038377475219115
+  ],
+  "verdict": "UNDERPOWERED"
+ },
+ "value": {
+  "sharpe_net_oos": -0.11930361191258448,
+  "sharpe_ci_haircut": [
+   -1.3751142546515471,
+   0.9158998559570288
+  ],
+  "ic_oos": -0.018030513176144243,
+  "ic_ci_haircut": [
+   -0.177235291428383,
+   0.13391849876514156
+  ],
+  "verdict": "UNDERPOWERED"
+ },
+ "surprise": {
+  "sharpe_net_oos": 0.33884454031265193,
+  "sharpe_ci_haircut": [
+   -0.6830157649606354,
+   1.6292678142300194
+  ],
+  "ic_oos": 0.07477398424390361,
+  "ic_ci_haircut": [
+   -0.042293061324400416,
+   0.18965838534701057
+  ],
+  "verdict": "UNDERPOWERED"
+ },
+ "carry_eurneutral": {
+  "sharpe_net_oos": 0.35857086099726554,
+  "sharpe_ci_haircut": [
+   -0.6615113151996801,
+   1.550279594672673
+  ],
+  "ic_oos": 0.07741801483636476,
+  "ic_ci_haircut": [
+   -0.028748835794659894,
+   0.19116712052917856
+  ]
+ },
+ "stack": {
+  "sharpe_net_oos": 0.04540985336246198,
+  "sharpe_ci_haircut": [
+   -1.0145769056179959,
+   1.2146025155177274
+  ],
+  "dsr_n5": 0.1663283685683004,
+  "verdict": "UNDERPOWERED"
+ },
+ "stack_eurneutral": {
+  "sharpe_net_oos": 0.043959658094938785,
+  "sharpe_ci_haircut": [
+   -1.0234503490868097,
+   1.215621059067928
+  ]
+ }
+}
+{
+ "dollar_basket_sharpe_oos": -0.3228812837211972,
+ "dollar_basket_ann_ret_oos": -0.022052014479097336,
+ "stack_corr_dollar": 0.0785561298808287,
+ "stack_beta_dollar": 0.12679044749932422,
+ "carry_alone_sharpe_oos": 0.3611374667829208,
+ "stack_minus_carry_sharpe": -0.31572761342045885,
+ "stack_minus_carry_ci_haircut": [
+  -1.1092749010429268,
+  0.37633721193086067
+ ]
+}

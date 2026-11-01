@@ -1963,6 +1963,36 @@ export const DESK_EVIDENCE = [
     use: 'Do not use COT crowding to pick residual trades. No sign of extra reversion against a crowd.',
     instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
   },
+  {
+    id: 'fx-factor-stack', domain: 'macro', verdict: 'underpowered', date: '2026-11-01', doc: 'forge/FX_FACTOR_STACK_PREREG.md', also: ['analysis/output/fx-factor-stack/RESULTS.md', 'forge/FX_FACTOR_STACK_ADDENDUM_A.md'], instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'],
+    claim: 'Does an equal-risk blend of cross-sectional carry, momentum, value (5-year reversal proxy) and surprise momentum, ranked over eight currencies, dollar-neutral at 10% vol and net of spread, earn a net Sharpe above 0.5 out of sample (DSR N=5 at least 0.95, beating a permutation placebo)?',
+    result: 'UNDERPOWERED. 103 OOS months (2018-01 to 2026-07, lockbox 2026-08-21): net Sharpe +0.05, haircut 95% CI [-1.01, +1.21], DSR 0.17, max drawdown 23%, placebo p95 0.54 not beaten. Beta to the dollar basket +0.13 (dollar-neutral as built). Carry alone did better: book minus carry Sharpe -0.32 [-1.11, +0.38]. The two factors with positive estimates (carry, surprise) cancel against the two without (momentum, value proxy). Effective cross-section about 2.3 currencies, so the interval holds both zero and the 0.5 bar.',
+    use: 'No factor book, tilt or Global Read input comes from this. FX direction at one to three months is forward-record only (carry and surprise momentum go to the direction ledger per A1.8). The stopping rule needs a NULL combined book and does not fire. Do not read it as showing FX factors do not exist: 8.6 OOS years cannot see a 0.3 to 0.5 Sharpe.',
+  },
+  {
+    id: 'fx-factor-carry', domain: 'macro', verdict: 'underpowered', date: '2026-11-01', doc: 'forge/FX_FACTOR_STACK_PREREG.md', also: ['analysis/output/fx-factor-stack/RESULTS.md', 'forge/FX_FACTOR_STACK_ADDENDUM_A.md'], instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'],
+    claim: 'Does ranking eight currencies on the 3-month rate differential vs USD rank their next-month returns (OOS rank-IC above 0.03 with the haircut CI excluding zero, net Sharpe above 0.3, placebo beaten)?',
+    result: 'UNDERPOWERED. OOS rank-IC +0.079 [-0.030, +0.192] (halves +0.067 / +0.089), net Sharpe +0.36 [-0.66, +1.54], max drawdown 18%, placebo p95 0.54 not beaten; 3-month IC +0.119. Point estimates sit in the published range; the interval holds zero. Rates are first prints with a 45-day backcast before 2013-06, EFFR for USD after, BoE Bank Rate for GBP, German call money plus an offset for EUR after 2026-02-16 (neutral-EUR sensitivity: same result).',
+    use: 'A candidate for the forward ledger (7 USD pairs, 20 and 60 closes), not a signal. It may be described as the rate differential ranking, never as a call on a currency.',
+  },
+  {
+    id: 'fx-factor-momentum', domain: 'price', verdict: 'underpowered', date: '2026-11-01', doc: 'forge/FX_FACTOR_STACK_PREREG.md', also: ['analysis/output/fx-factor-stack/RESULTS.md', 'forge/FX_FACTOR_STACK_ADDENDUM_A.md'], instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'],
+    claim: 'Does ranking eight currencies on a blend of 1-month, 3-month and 12-month-skip-1 total returns rank their next-month returns (OOS rank-IC above 0.03, net Sharpe above 0.3, placebo beaten)?',
+    result: 'UNDERPOWERED. OOS rank-IC -0.045 [-0.190, +0.104] (halves -0.119 / +0.019), net Sharpe -0.39 [-1.60, +0.87], max drawdown 46%, placebo p95 0.52 not beaten; in-sample 2005-2017 Sharpe +0.22. The sign-reversed book does not pass either. The 2018-2021 half is where it lost.',
+    use: 'Cross-sectional FX momentum has no support in this decade on this sample. Not added to any tilt; no forward registration.',
+  },
+  {
+    id: 'fx-factor-value', domain: 'macro', verdict: 'underpowered', date: '2026-11-01', doc: 'forge/FX_FACTOR_STACK_PREREG.md', also: ['analysis/output/fx-factor-stack/RESULTS.md', 'forge/FX_FACTOR_STACK_ADDENDUM_A.md'], instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'],
+    claim: 'Does ranking eight currencies on the negative 5-year change in spot vs USD (a proxy for PPP value; point-in-time CPI exists for the US only) rank their next-month returns (OOS rank-IC above 0.03, net Sharpe above 0.3, placebo beaten)?',
+    result: 'UNDERPOWERED. OOS rank-IC -0.018 [-0.177, +0.134] (halves +0.038 / -0.067), net Sharpe -0.12 [-1.38, +0.92], max drawdown 35%, placebo p95 0.53 not beaten; scores begin 2007-07. This is the 5-year reversal, a cruder cousin of the registered CPI-adjusted value, which could not be built.',
+    use: 'Says nothing about CPI-adjusted value. Reopen only with point-in-time CPI for the other seven economies.',
+  },
+  {
+    id: 'fx-factor-surprise', domain: 'macro', verdict: 'underpowered', date: '2026-11-01', doc: 'forge/FX_FACTOR_STACK_PREREG.md', also: ['analysis/output/fx-factor-stack/RESULTS.md', 'forge/FX_FACTOR_STACK_ADDENDUM_A.md'], instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'],
+    claim: 'Does ranking eight currencies on a 3-month-decayed sum of standardised data surprises rank their next-month returns (OOS rank-IC above 0.03, net Sharpe above 0.3, placebo beaten)?',
+    result: 'UNDERPOWERED. OOS rank-IC +0.075 [-0.042, +0.190] on 90 scored months (halves +0.066 / +0.085), net Sharpe +0.34 [-0.68, +1.63], max drawdown 15%, placebo p95 0.50 not beaten. The store starts 2015-11, so in-sample is about two years (IC -0.028); 2025-26 holds few non-US releases and the score is neutral for the last rebalances; the z scaling is not verified point-in-time.',
+    use: 'A candidate for the forward ledger, not a signal. The data behind it thins out in 2025-26, so the forward record needs the non-US surprise feed kept alive.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -2124,6 +2154,11 @@ const POWER = {
   'overnight-hold-nq':       { n: '1,949 nights (block 20)',   note: 'MDE ~0.08%/trade vs observed +0.034; a 5-10%/yr edge cannot be confirmed in 10 yrs' },
   'overnight-hold-gold':     { n: '1,962 nights (block 20)',   note: 'MDE ~0.06%/trade vs observed +0.022' },
   'direction-bar':           { n: '6 instruments x 4 horizons; 2,000 placebo sets a cell', note: 'measuring instrument; MDE calibrated by planted-signal control (power 0.76-0.85)' },
+  'fx-factor-stack':         { n: '103 OOS months; 8 currencies, effective cross-section about 2.3', note: 'Sharpe CI +/-1.1 (haircut 1.74); MDE about 1.6 vs the 0.5 bar; roughly one chance in seven of detecting a true 0.5' },
+  'fx-factor-carry':         { n: '103 OOS months; effective cross-section about 2.3', note: 'IC CI +/-0.11, MDE about 0.18 vs the 0.03 bar; the bar needs the CI to exclude zero, which needs an observed IC above about 0.11' },
+  'fx-factor-momentum':      { n: '103 OOS months; effective cross-section about 2.3', note: 'IC CI +/-0.15, MDE about 0.18' },
+  'fx-factor-value':         { n: '103 OOS months; effective cross-section about 2.3', note: 'IC CI +/-0.16; 5-year proxy, CPI form not built' },
+  'fx-factor-surprise':      { n: '90 scored OOS months; effective cross-section about 2.3', note: 'IC CI +/-0.12; data from 2015-11, thin after 2024' },
   'overnight-hold-toolkit':  { n: '5,000 paths x cell',        note: 'descriptive; MC error +/-0.7pp, the edge CI is the binding uncertainty' },
   'cost-verification':       { n: '86 overnight swaps; 1,719 fills', note: 'swaps near-deterministic per account; fills ~+/-0.5bp' },
   'news-asymmetry':          { n: '656 releases 2016-26',      note: 'the entry states "Null, and well powered"' },
