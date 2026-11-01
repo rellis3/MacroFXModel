@@ -8264,3 +8264,21 @@ Reuses `js/marketScan.js`'s `scoreSeries` + the `eqwt` BOARD spec for the equal-
 spread, so the board, the B1 study and the watch share one z-score. **Known deliberate
 difference:** the rotation detector uses a rolling three-year 90th percentile where S8 used
 the full-sample one (knowable-at-the-time), stated in `CLAIM_WATCH.md`.
+
+
+### 1bl. Atlas null check + bid/ask bracket fill (2026-11-01)
+
+Built after a blind audit (comment-stripped code, random-walk prices) showed the pre-2026-09 Vote Atlas and Fib Atlas
+backtests reported 60-80% win rates on data with no edge, and that four opt-in exits/filters still did
+(`applyMaeStopGate`, `applyTrailingContinuation`'s floor and timed-out trades, `applyClearanceFilter` on follows; all
+fixed the same day). Two bricks, both pure and covered by tests on synthetic data:
+
+| Brick | File | Owns | Consumers |
+| --- | --- | --- | --- |
+| **Atlas null check** | `js/atlasNullCheck.js` | `randomWalkPacked({seed, years, subSteps})` (driftless M1 in the engines' packed format), `voteAtlasNull` / `fibAtlasNull` (each system's production backtest path + opt-in levers on one walk), `summarizeR`, `prevOutcomeAgreement` | `js/atlasNullCheck.test.mjs` (CI guard: every path must show mean R < +0.08 on random prices, with a leaky-book canary that must breach it), `js/bidAskFill.test.mjs`, `scripts/atlas-honest-gonogo/` |
+| **Bid/ask bracket fill** | `js/bidAskFill.js` | `priceBracketBidAsk(d, {startIdx, endIdx, dir, entryType, level, stopDist, targetDist, commission})`: limit fills need trade-through, stop entries and stop exits fill at the gap price, long exits on the bid, short on the ask, stop first on a two-sided bar, target not credited on the fill bar, flat at `endIdx` | `scripts/atlas-honest-gonogo/` |
+
+**Known overlap, not yet merged:** `scripts/range-edge-limit-fade/run.mjs` has its own inline bid/ask walk with the
+same conventions (written 2026-10-20). Move it onto `priceBracketBidAsk` the next time that study is touched.
+`randomWalkPacked` keeps `subSteps` at 30 by default: with 6 steps per bar, prices jump past levels and exact-level
+exits show a fake gain (+0.12R per trailed winner), which is itself the reason for the bid/ask brick.
