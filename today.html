@@ -282,6 +282,13 @@
   .chip.dim{background:var(--neu-bg);color:var(--text3);font-weight:600}
   .pc-bias{font-size:11.5px;color:var(--text2);margin-bottom:8px;min-height:17px}
   .pc-bias b{color:var(--text)}
+  .ds-row{display:flex;align-items:center;gap:8px;margin:-2px 0 8px;font-size:11px;color:var(--text2)}
+  .ds-bar{position:relative;flex:1;min-width:70px;max-width:140px;height:8px;border-radius:4px;overflow:hidden;display:flex}
+  .ds-bar i{display:block;height:100%}
+  .ds-bar .b1{width:30%;background:var(--bear-bg)} .ds-bar .b2{width:40%;background:var(--neu-bg)} .ds-bar .b3{width:30%;background:var(--bull-bg)}
+  .ds-mk{position:absolute;top:-1px;width:3px;height:10px;margin-left:-1.5px;border-radius:1px;background:var(--text)}
+  .ds-chip{font-weight:700;padding:1px 7px;border-radius:9px;white-space:nowrap}
+  .ds-note{font-size:11px;color:var(--text2);margin:0 0 8px}
   .pc-shape{display:flex;align-items:center;gap:7px;margin-bottom:8px}
 
   /* proximity flash (zoom 3) */
@@ -1633,6 +1640,7 @@
         <button class="fchip" id="viewBtn" onclick="toggleView()" style="margin-left:auto">☰ Table view</button>
       </div>
 
+      <div class="ds-note" id="dsCardNote" style="display:none"></div>
       <div class="grid" id="grid"><div class="muted">Loading forecast…</div></div>
       <div class="tview" id="tview"></div>
       <div class="sview" id="sview" style="display:none"></div>
@@ -7278,7 +7286,7 @@ function _drTile(r, k) {
 let _drRecord = null;
 async function _drLoadRecord() { try { const r = await jget('/api/global-read/record'); if (r?.ok !== false) _drRecord = r; } catch (e) { /* the footer says it is starting */ } }
 let _dsTrack = null;
-async function _dsLoadTrack() { try { const r = await jget('/api/direction-ledger?scoreTrack=1'); if (r?.ok) { _dsTrack = r; renderDayRead(); } } catch (e) { /* the line says starting */ } }
+async function _dsLoadTrack() { try { const r = await jget('/api/direction-ledger?scoreTrack=1'); if (r?.ok) { _dsTrack = r; renderDayRead(); render(); } } catch (e) { /* the line says starting */ } }
 function renderDayRead() {
   const el = $('dayRead'); if (!el) return;
   const g = globalRead; if (!g?.cards) { el.style.display = 'none'; return; }
@@ -7293,7 +7301,7 @@ function renderDayRead() {
     const sc = r => { const x = r.score; if (!x) return '<span class="muted">no score</span>'; const mid = x.band === 'No direction', bg = mid ? 'var(--neu-bg)' : x.band === 'Bullish' ? 'var(--bull-bg)' : 'var(--bear-bg)', col = mid ? 'var(--text2)' : x.band === 'Bullish' ? 'var(--bull)' : 'var(--bear)';
       return `<span class="chip" style="background:${bg};color:${col};font-weight:700" title="${esc0(`${x.band}${x.strength ? ', ' + x.strength.toLowerCase() : ''}. ${x.live ? x.live + ' tested input live' : 'No tested input live'}; moves the market's own base rate ${(x.shift * 100).toFixed(1)} points, ${x.u.toFixed(2)} of the smallest shift one day of history can detect.`)}">${x.score}</span> <small>${esc0(S.scoreChip(x).replace(/^\d+ /, ''))}</small>`; };
     const ctx = R.rows.filter(r => r.score?.context?.length).map(r => `<div><b>${esc0(dispName(r.sym))}</b>: ${r.score.context.map(c => `${esc0(c.label)} ${c.side === 'up' ? 'up' : 'down'} <small>(${esc0(c.tier)})</small>`).join(' · ')}</div>`).join('');
-    return `<details class="dy-dir" style="margin-top:8px"><summary class="dy-sub" style="cursor:pointer"><b>Evidence score, 1 to 10, against each market's base rate</b> · ${R.live ? `${R.live} of ${R.rows.length} markets have a tested input live` : 'no tested input is live'}</summary><div class="gr-scroll"><table class="gr-tbl"><tr><th title="1 to 3 bearish, 4 to 7 no direction, 8 to 10 bullish">score</th><th>market</th><th>tested inputs</th><th title="typical high-low, and the mark that 1 day in 4 goes past, in percent of price">typical day · 1 in 4 past</th></tr>${R.rows.map(r => `<tr><td>${sc(r)}</td><td><b>${esc0(dispName(r.sym))}</b></td><td>${B.directionCell({ ...r, score: null })}</td><td class="muted">${B.rangeCell(r) || '·'}</td></tr>`).join('')}</table></div>
+    return `<details class="dy-dir" style="margin-top:8px"><summary class="dy-sub" style="cursor:pointer">Evidence score notes · ${R.live ? `${R.live} of ${R.rows.length} markets have a tested input live` : 'no tested input is live'}; the score itself sits on each market card below</summary>
       <div class="dy-sub">${esc0(S ? `${S.scoreScaleNote()} ${S.scoreCaveat()} ${S.trackLine(_dsTrack)}` : '')}</div>
       ${ctx ? `<details style="margin-top:4px"><summary class="dy-sub" style="cursor:pointer">Context read: inputs read but given no weight (describes, not shown to predict; never moves the score)</summary><div class="dy-sub">${ctx}</div></details>` : ''}
       <div class="dy-sub">${esc0(B.directionNote(R))}</div></details>`; })();
@@ -9234,6 +9242,16 @@ function renderDrawerFactor(r) {
     <div class="muted" style="font-size:10.5px;margin-top:6px">Base minus quote, factor by factor, averaged equally. A gap every factor contributes to is a story; one factor dragging across four that disagree is a coin toss with a narrative. Explanation, never prediction.</div>`;
 }
 
+// Evidence score on the card (js/directionScore.js). No new maths: marketScore() from the Global Read card for the same symbol.
+function dsCardHtml(name) {
+  const S = window.directionScoreBrick, x = S && globalRead?.cards?.[name] ? S.marketScore(name, globalRead.cards[name]) : null;
+  if (!S || !globalRead?.cards?.[name]) return '';
+  if (!x) return `<div class="ds-row"><span class="muted" title="No frozen base rate for this market, so no evidence score">no score</span></div>`;
+  const mid = x.band === 'No direction', col = mid ? 'var(--text2)' : x.band === 'Bullish' ? 'var(--bull)' : 'var(--bear)', bg = mid ? 'var(--neu-bg)' : x.band === 'Bullish' ? 'var(--bull-bg)' : 'var(--bear-bg)';
+  const tip = esc0(`Evidence score ${x.score} of 10: ${x.band}${x.strength ? ', ' + x.strength.toLowerCase() : ''}. Base rate of a higher close ${(x.base * 100).toFixed(1)}%; ${x.live ? x.live + ' tested input live' : 'no tested input live'}, moving it ${(x.shift * 100).toFixed(1)} points, ${x.u.toFixed(2)} of the smallest shift one day of history can detect. 1 to 3 bearish, 4 to 7 no direction, 8 to 10 bullish. Describes the evidence, not what the market does next.`);
+  return `<div class="ds-row" title="${tip}" onclick="event.stopPropagation()"><span class="ds-chip" style="background:${bg};color:${col}">${x.score}</span><span class="ds-bar"><i class="b1"></i><i class="b2"></i><i class="b3"></i><span class="ds-mk" style="left:${(x.score - 0.5) * 10}%"></span></span><small>${esc0(mid ? 'no direction' : (x.strength + ' ' + x.band).toLowerCase())}</small></div>`;
+}
+
 function cardHtml(r) {
   const d = r.d;
   const volPct = d.vol_pct;
@@ -9263,6 +9281,7 @@ function cardHtml(r) {
       <span class="push">${regimeChip(d)}${hourlyChip(r.name)}${sizeChip(d)}</span>
     </div>
     <div class="pc-bias">${pairChipsHtml(r)}</div>
+    ${dsCardHtml(r.name)}
     ${pairStripsHtml(r)}
   </div>`;
 }
@@ -10624,6 +10643,7 @@ function render() {
   } else {
     $('grid').style.display = 'grid';
     $('grid').innerHTML = rs.map(cardHtml).join('') || '<div class="muted">No instruments match this filter.</div>';
+    { const n = $('dsCardNote'), S = window.directionScoreBrick; if (n) { const on = !!(S && globalRead?.cards); n.style.display = on ? '' : 'none'; if (on) n.textContent = `Evidence score on each card: ${S.scoreScaleNote()} ${S.trackLine(_dsTrack)}`; } }
   }
   try { reattachFocus(); mountFocusButtons(); } catch (e) {}
   // last, so the rail is built from the panels this pass actually left on screen

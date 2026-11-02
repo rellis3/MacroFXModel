@@ -89,6 +89,14 @@ select{background:var(--card2);color:var(--text);border:1px solid var(--line);bo
 .hero p{margin:0;color:var(--text2);max-width:62ch;font-size:13.5px}
 .gauge{display:grid;justify-items:center}
 .gauge .lbl{font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.shape{justify-items:stretch;gap:8px;font-size:12px;color:var(--text2);min-width:0}
+.shape .shp-hd{display:flex;justify-content:space-between;align-items:center;gap:8px}.shape .shp-hd b{font:700 13px var(--disp);color:var(--text)}
+.shape .shp-t{font:600 10.5px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin:4px 0 2px}
+.shape .shp-r{display:grid;grid-template-columns:minmax(0,1fr) 78px;gap:2px 8px;align-items:center;padding:2px 0}
+.shape .shp-r small{grid-column:1/3;color:var(--text3);font-size:11px}
+.shape .shp-b{height:5px;border-radius:3px;background:var(--line2);overflow:hidden}.shape .shp-b i{display:block;height:100%;background:var(--blue)}.shape .shp-b i.hot{background:var(--amber)}
+.shape .shp-c{display:flex;flex-wrap:wrap;gap:6px}.shape .shp-c a{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:999px;background:var(--line2);color:var(--text2);text-decoration:none;font-size:11px}.shape .shp-c a b{color:var(--text)}
+.shape .shp-n{font-size:11px;color:var(--text3)}
 .stages{display:grid;grid-template-columns:1fr;gap:0}
 .stage{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:7px;align-content:start;min-width:0}
 .stage .sh{display:flex;gap:9px;align-items:center}
@@ -296,6 +304,7 @@ import { worldEconomies } from './js/worldEconomies.js';
 import { policyWeek } from './js/policyWeek.js';
 import { closeMove, dayWord } from './js/closeBasis.js';
 import { directionReads } from './js/directionRead.js';
+import { dayShape } from './js/dayShape.js';
 import { withScores } from './js/directionScore.js';
 import { impliedRow, impliedKeyFor } from './js/impliedMove.js';
 import { snapshotOf, diffSnapshots, scoreLine, weekRecord, plainRead } from './js/newsletterRecord.js';
@@ -368,15 +377,6 @@ const loading = () => D.__extra ? '' : '<p class="note">Loading the analysis fee
 /* ── small renderers ── */
 const polar = (cx, cy, r, deg) => { const a = (deg - 90) * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
 const arc = (cx, cy, r, a0, a1) => { const p0 = polar(cx, cy, r, a0), p1 = polar(cx, cy, r, a1); return `M${p0[0].toFixed(1)} ${p0[1].toFixed(1)} A${r} ${r} 0 ${(a1 - a0) > 180 ? 1 : 0} 1 ${p1[0].toFixed(1)} ${p1[1].toFixed(1)}`; };
-function dial(active, total) {
-  const cx = 100, cy = 92, r = 74, v = total ? active / total * 100 : 0, np = polar(cx, cy, r - 16, -90 + v * 1.8);
-  return `<svg viewBox="0 0 200 118" width="190" role="img" aria-label="${active} of ${total} risk flags active">
-   <path d="${arc(cx, cy, r, -90, -30)}" stroke="var(--bull)" stroke-width="12" fill="none" stroke-linecap="round" opacity=".85"/>
-   <path d="${arc(cx, cy, r, -26, 26)}" stroke="var(--amber)" stroke-width="12" fill="none" stroke-linecap="round" opacity=".85"/>
-   <path d="${arc(cx, cy, r, 30, 90)}" stroke="var(--bear)" stroke-width="12" fill="none" stroke-linecap="round" opacity=".85"/>
-   <line x1="${cx}" y1="${cy}" x2="${np[0].toFixed(1)}" y2="${np[1].toFixed(1)}" stroke="var(--text)" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="6" fill="var(--text)"/>
-   <text x="${cx}" y="${cy - 24}" text-anchor="middle" font-family="var(--disp)" font-weight="700" font-size="28" fill="var(--text)">${active}/${total}</text></svg><div class="lbl">Risk flags active</div>`;
-}
 function ukNow() { try { const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date()); return +p.find(x => x.type === 'hour').value + +p.find(x => x.type === 'minute').value / 60; } catch { return new Date().getUTCHours(); } }
 function ring() {
   const cx = 80, cy = 80, h = ukNow(), sess = [['Asia', 23, 8, 'var(--violet)', 66], ['London', 8, 16.5, 'var(--blue)', 56], ['New York', 13.5, 21, 'var(--bull)', 46]];
@@ -752,10 +752,22 @@ function showNl(out, kind = 'daily', out2 = null) {
 
 /* ── global ── */
 
-function proxBlock(rf) {
-  const rows = flagProximity(rf.flags);
-  if (!rows.length) return '';
-  return `<div style="margin-top:8px;display:grid;gap:5px;min-width:210px">${rows.map(r => `<div title="${esc(r.name)}: ${esc(r.valueText)}, fires at ${esc(r.thresholdText)}" style="display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:11.5px;color:var(--text2)"><span>${esc(r.name)}</span><span class="mono">${esc(r.valueText)} / ${esc(r.thresholdText)}</span><span style="grid-column:1/3;height:5px;border-radius:3px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${Math.round(r.share * 100)}%;background:${r.on ? 'var(--red, #e8710a)' : r.share >= 0.7 ? '#d98a00' : 'var(--green, #0f9f6e)'}"></i></span></div>`).join('')}<div class="note" style="margin:0">how close each warning is to firing</div></div>`;
+function shapeHtml() {
+  const rf = D.rf, scores = withScores(directionReads(D.gr), D.gr, D.dlt)?.scores ?? [];
+  const sh = dayShape({ instruments: insts(), fc: D.fc, sess: D.sess, events: P.aheadEvents(D.events, Date.now(), { limit: 20, withinHours: 24, impacts: ['high'] }), eventDay: D.evd, drill: D.drill, rf, prox: rf ? flagProximity(rf.flags) : [], scores });
+  const hhmm = ms => new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+  const bar = (v, hot) => `<span class="shp-b"><i${hot ? ' class="hot"' : ''} style="width:${Math.max(2, Math.min(100, Math.round(v)))}%"></i></span>`;
+  const sec = (t, body) => body ? `<div class="shp-t">${t}</div>${body}` : '';
+  const size = sh.size.map(r => `<div class="shp-r" title="Expected high-low range today, and the mark one day in four goes past"><span>${esc(r.label)} <b>${r.hlMed.toFixed(2)}%</b>${r.hl75 != null ? ` <small style="display:inline">1 in 4 past ${r.hl75.toFixed(2)}%</small>` : ''}</span>${r.volPct != null ? bar(r.volPct, r.volPct >= 80) : '<span></span>'}${r.volPct != null ? `<small>${esc(r.word)}: bigger than ${r.volPct}% of the last year's days${r.used != null ? `; ${r.used}% used so far` : ''}</small>` : ''}</div>`).join('');
+  const clock = sh.clock.map(e => `<div class="shp-r"><span><b>${hhmm(e.ms)}</b> ${esc(e.ccy)} ${esc(e.name)}</span><span></span>${e.past ? `<small>${esc(e.past)}</small>` : ''}</div>`).join('') || '';
+  const state = sh.state.map(r => `<div class="shp-r" title="${esc(r.text)}"><span>${esc(r.label)}</span>${bar(r.pct, r.pct >= 90)}<small>${esc(r.text)}</small></div>`).join('');
+  const near = sh.closest.map(r => `<div class="shp-r" title="${esc(r.name)}: ${esc(r.valueText)}, fires at ${esc(r.thresholdText)}"><span>${esc(r.name)}</span>${bar(r.share * 100, r.on || r.share >= 0.7)}<small>${esc(r.valueText)} of ${esc(r.thresholdText)} to fire</small></div>`).join('');
+  const chips = sh.scores.map(x => `<a href="today.html" title="Evidence score ${x.score} of 10, ${esc(x.band.toLowerCase())}. Opens Today."><b>${x.score}</b>${esc(x.label)}</a>`).join('');
+  return `<div class="shp-hd"><b>Shape of the day</b>${sh.badge ? `<span class="pill" title="Risk flags that have fired: VIX, near-term fear, junk-bond spreads, yen, stock-bond correlation">${esc(sh.badge)}</span>` : ''}</div>`
+    + sec('How big a day', size) + sec('On the clock, next 24h', clock || '<div class="shp-n">No high-impact release or decision in the next 24 hours.</div>')
+    + sec('Against its own last year', state) + sec('Closest warning to firing', near)
+    + sec('Evidence score, 1 to 10 (5 = no direction)', chips ? `<div class="shp-c">${chips}</div>` : '')
+    + `<div class="shp-n">Sizes, schedule and positions in each market's own record. Not a direction.</div>`;
 }
 function heroHtml() {
   const a = D.intel?.ok ? D.intel.analysis : null, rf = D.rf;
@@ -770,7 +782,7 @@ function heroHtml() {
   const body = a ? esc(a.driver?.[0]?.explain ?? a.driver?.[0]?.what ?? '') : unreachable ? 'The server did not answer after three tries. This is a loading problem, not a missing brief: reload the page, or press Load stored brief. Nothing has been generated or cleared.' : 'Press Generate for the argument: what is driving markets, how it transmits, what would confirm or break it, and what to learn from it. One model call.';
   return `<div><div class="kick">${kick}${age}${who}${dev}${part}</div><h2>${head}</h2><p>${body}</p>
      <p style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="aibox" id="heroai"></span>${unreachable ? `<button class="btn" id="reloadbtn">Load stored brief</button>` : ''}<button class="btn" id="genbtn">${icS('bulb')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds, sends today's Behind / Now / Ahead rows with it</span></p></div>
-     <div class="gauge">${rf ? dial(rf.active ?? 0, rf.available ?? rf.total ?? 5) : ''}${rf ? proxBlock(rf) : ''}</div><div class="gauge">${ring()}</div>`;
+     <div class="gauge shape">${shapeHtml()}</div><div class="gauge">${ring()}</div>`;
 }
 const fmtRate = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev != null && !t.stale ? (t.last - t.prev) * 100 : null, b20 = back(key, 20), d20 = b20 != null ? (t.last - b20) * 100 : null; return { v: t.last, d1, d20 }; };
 const fmtPct = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev && !t.stale ? (t.last / t.prev - 1) * 100 : null, b20 = back(key, 20), d20 = b20 ? (t.last / b20 - 1) * 100 : null; return { v: t.last, prev: t.prev, d1, d20, date: t.date, latest: t.latest, stale: t.stale }; };
