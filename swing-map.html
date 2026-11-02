@@ -60,7 +60,8 @@
       <button id="refresh" title="Rebuild now instead of the 30-minute cache">Refresh</button>
       <span class="seg" role="group" aria-label="Chart style"><button id="mPaths" data-m="paths" class="on">Two paths</button><button id="mCone" data-m="cone">Range cone</button><button id="mMc" data-m="mc">Monte Carlo</button><button id="mModal" data-m="modal">Most-touched path</button><button id="mWalk" data-m="walk">Zone walk</button></span>
       <span class="mcopt" id="walkOpts">follow <select id="walkA" aria-label="What each expiry's step goes to"><option value="strike" selected>strongest strike</option><option value="maxPain">max pain</option><option value="centre">OI centre</option></select>
-        <label title="Weekly and daily books are small next to the quarterlies; on = show their steps, faint"><input type="checkbox" id="walkThin" checked> small books</label></span>
+        <label title="Weekly and daily books are small next to the quarterlies; on = show their steps, faint"><input type="checkbox" id="walkThin" checked> small books</label>
+        <label title="Only step to a strike price could plausibly reach by that expiry: inside the 90% range of a random walk at today's volatility, from the previous step and from today. Off = the raw biggest strike, however far."><input type="checkbox" id="walkReach" checked> within reach</label></span>
       <span class="mcopt" id="mcOpts">horizon <select id="mcH" aria-label="Horizon in sessions"><option>10</option><option selected>20</option><option>40</option><option>60</option></select>
         pull <select id="mcK" aria-label="Pull strength"><option value="0">off</option><option value="0.25">weak</option><option value="0.5" selected>medium</option><option value="1">strong</option></select></span>
       <span class="seg" role="group" aria-label="Lines"><button id="sZones" data-s="zones">Strongest zones</button><button id="sLevels" data-s="levels">Level lines</button><button id="sOi" data-s="oi">Option lines</button></span>
@@ -188,7 +189,7 @@ function drawChart(m) {
   const t0 = Date.parse(series[0][0]), tT = Date.parse(today), t1 = Date.parse(futEnd);
   const plotW = W - L - R, histW = plotW * (histDays > 200 ? 0.5 : histDays > 130 ? 0.4 : MODE === 'cone' ? 0.38 : 0.3);
   const X = d => { const t = Date.parse(d); return t <= tT ? L + (t - t0) / Math.max(1, tT - t0) * histW : L + histW + Math.sqrt((t - tT) / (t1 - tT)) * (plotW - histW); };
-  const walk = walkMode ? zoneWalk(m.expiries.filter(e => e.expiry <= futEnd), { close: s.close, anchor: $('walkA').value, includeThin: $('walkThin').checked }) : null;
+  const walk = walkMode ? zoneWalk(m.expiries.filter(e => e.expiry <= futEnd), walkOpts(m)) : null;
   const vals = series.map(p => p[1]);
   const extra = [];
   if (walk) for (const p of walk.points) if (p.px > s.close * 0.85 && p.px < s.close * 1.15) extra.push(p.px);
@@ -276,6 +277,12 @@ function drawChart(m) {
   } else if (walkMode) {
     // the zone walk: today's close, then each readable expiry's anchor in date order; green leg = up, red = down
     const maxS = Math.max(1e-9, ...walk.points.map(p => p.strength || 0));
+    // the reach range: today's close +/- 1.645 sigma sqrt(sessions), the 90% band a step must stay inside
+    if (walk.capped) {
+      const sg = walkSigma(m), pts = [];
+      for (let k = 0; k <= 24; k++) { const d = addDays(today, Math.round((Date.parse(futEnd) - Date.parse(today)) / 864e5 * k / 24)); const n = Math.max(1, sessionsBetween(today, d)); pts.push([X(d), s.close * Math.exp(walk.zcap * sg * Math.sqrt(n)), s.close * Math.exp(-walk.zcap * sg * Math.sqrt(n))]); }
+      o.push(`<polygon points="${pts.map(q => `${q[0].toFixed(1)},${Y(Math.min(q[1], hi)).toFixed(1)}`).join(' ')} ${pts.slice().reverse().map(q => `${q[0].toFixed(1)},${Y(Math.max(q[2], lo)).toFixed(1)}`).join(' ')}" fill="#8b949e" opacity="0.07"><title>within reach: the 90% range of a random walk at ${(sg * 100).toFixed(2)}% a session</title></polygon>`);
+    }
     let x0 = X(today), y0 = Y(s.close), lastLx = -1e9, row = 0;
     for (const p of walk.points) {
       const x = X(p.expiry), y = Y(p.px), c = p.dir === 'up' ? 'var(--up)' : p.dir === 'down' ? 'var(--down)' : 'var(--text3)';
@@ -284,7 +291,7 @@ function drawChart(m) {
       o.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${p.thin ? '#0d1117' : c}" stroke="${p.thin ? c : '#0d1117'}" stroke-width="${p.thin ? 1.5 : 1}"><title>${p.expiry} (${p.dte} days): ${px(p.px)}, ${p.dir} ${pct(p.movePct, 2)} from the step before${p.strength != null ? `; its biggest strike holds ${fmt(p.strength * 100, 1)}% of all live OI` : ''}${p.building ? ', building' : ''}${p.thin ? '; small book (under 10% of live OI)' : ''}</title></circle>`);
       row = x - lastLx < 60 ? (row + 1) % 2 : 0; lastLx = x;
       const ly = p.dir === 'down' ? y + 16 + row * 12 : y - 9 - row * 12;
-      o.push(`<text x="${x}" y="${ly}" fill="${c}" font-size="10.5" font-weight="600" opacity="${p.thin ? 0.75 : 1}" text-anchor="middle">${px(p.px)} · ${fmtDay(p.expiry)}</text>`);
+      o.push(`<text x="${x}" y="${ly}" fill="${c}" font-size="10.5" font-weight="600" opacity="${p.thin ? 0.75 : 1}" text-anchor="middle">${p.notBiggest ? '◇ ' : ''}${px(p.px)} · ${fmtDay(p.expiry)}<title>${p.notBiggest ? 'the biggest strike of this expiry within reach; its biggest overall is further away' : ''}</title></text>`);
       x0 = x; y0 = y;
     }
   } else {
@@ -461,6 +468,7 @@ $('mcH').addEventListener('change', () => { SIMS = null; if (LAST) drawChart(LAS
 $('mcK').addEventListener('change', () => { SIMS = null; if (LAST) drawChart(LAST); });
 $('walkA').addEventListener('change', () => { if (LAST) drawChart(LAST); });
 $('walkThin').addEventListener('change', () => { if (LAST) drawChart(LAST); });
+$('walkReach').addEventListener('change', () => { if (LAST) drawChart(LAST); });
 $('histR').addEventListener('change', () => { try { localStorage.setItem('swingMapHist', $('histR').value); } catch {} if (LAST) drawChart(LAST); });
 try { const h = localStorage.getItem('swingMapHist'); if (h && [...$('histR').options].some(o => o.value === h)) $('histR').value = h; } catch {}
 $('pineBtn').addEventListener('click', async () => {
@@ -509,7 +517,7 @@ function pineScript(m) {
   const body = [];
   const tToday = ts(s.date), tFar = ts(far);
   // zone walk
-  const w = zoneWalk(m.expiries, { close: s.close, anchor: $('walkA').value, includeThin: $('walkThin').checked });
+  const w = zoneWalk(m.expiries, walkOpts(m));
   let pd = s.date, pp = s.close;
   body.push('    if showWalk');
   for (const p of w.points) {
@@ -556,12 +564,22 @@ function pineScript(m) {
   if (!kept.length) kept.push('    label.new(bar_index, close, "Swing Map: nothing to draw")');
   return L.concat(kept).join('\n') + '\n';
 }
+// one place for the walk's settings, so the chart, the note and the TradingView script agree
+function walkSigma(m) { const mb = m.bands?.[1]; return mb?.sigmaUsedPct ? mb.sigmaUsedPct / 100 / Math.sqrt(20) : m.state.sigmaDailyPct / 100; }
+function walkOpts(m) {
+  const reach = $('walkReach')?.checked !== false;
+  return { close: m.state.close, anchor: $('walkA').value, includeThin: $('walkThin').checked, ...(reach ? { sigma: walkSigma(m), date: m.state.date } : {}) };
+}
 function walkNote(m, w) {
   const what = { strike: 'strongest strike', maxPain: 'max pain', centre: 'OI centre' }[$('walkA').value];
   if (!w.points.length) { $('chartNote').innerHTML = '<span class="warn">No readable expiries for this instrument, so there is no walk.</span>'; return; }
   const runs = w.runs.map(r => `<span class="${r.dir === 'up' ? 'good' : r.dir === 'down' ? 'bad' : ''}">${r.dir === 'up' ? '▲' : r.dir === 'down' ? '▼' : '◆'} ${px(r.px)} by ${fmtDay(r.expiry)} (${r.to}d)</span>`).join(' → ');
   $('chartNote').innerHTML = `Zone walk ${tag('UNTESTED')}: from today's close, a straight step to each readable expiry's <b>${what}</b>, in date order (${w.points.length} expiries${$('walkThin').checked ? `; ${w.points.filter(p => p.thin).length} small books, under 10% of live OI, drawn hollow and dashed` : '; small books under 10% of live OI left out'}). `
     + `Dot size = how much of all live open interest that expiry's biggest strike holds.<br>The turns: <b>${runs}</b>.<br>`
+    + (w.capped ? `<b>Within reach</b> (on): each step only goes to a strike inside the 90% range of a random walk at ${(walkSigma(m) * 100).toFixed(2)}% a session, from the previous step and from today, so no step asks for an impossible day. `
+        + (w.points.some(p => p.notBiggest) ? `${w.points.filter(p => p.notBiggest).length} step${w.points.filter(p => p.notBiggest).length === 1 ? '' : 's'} went to that expiry's biggest strike <i>in reach</i>, not its biggest overall (marked ◇). ` : '')
+        + (w.skipped.length ? `Left out, nothing in reach: ${w.skipped.map(k => `${fmtDay(k.expiry)} (its zone ${px(k.px)} is ${k.movePct >= 0 ? '+' : ''}${k.movePct.toFixed(1)}% away; the range allowed ±${k.capPct.toFixed(1)}%)`).join('; ')}.` : '') + '<br>'
+      : `<span class="warn">Within reach is off: steps go to each expiry's biggest strike however far, so a step can ask for a move no day delivers.</span><br>`)
     + `<span class="note">This draws the idea that price visits each expiry's zone by its date; it is not a forecast. A strike can hold the most OI and still be far from where price settles, and the earlier tests found walls behave like ordinary levels and max pain does not pin. `
     + `Whether price ends nearer an expiry's OI than chance is what the pending expiry-pull score measures; until it passes, read the walk as where the books sit, in order, not where price goes. Steps between expiries are drawn straight: nothing here says when within the gap the move happens.</span>`;
 }
