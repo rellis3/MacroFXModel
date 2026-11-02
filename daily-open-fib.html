@@ -41,6 +41,8 @@
   .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text2);margin:6px 0}
   .legend i{display:inline-block;width:16px;height:0;border-top:2px solid;vertical-align:middle;margin-right:5px}
   .kv{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text2);margin:4px 0 8px} .kv b{color:var(--text);font-variant-numeric:tabular-nums}
+  #tuneBox input{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 6px;font:inherit;font-size:12px}
+  tr.diff td{background:rgba(210,153,34,.08)}
   select{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 6px;font:inherit;font-size:12px}
   .err{color:var(--red);font-size:12px}
 </style>
@@ -102,6 +104,21 @@
   </div>
 </div>
 
+<div class="box" id="tuneBox">
+  <h2>Tune the window (high ±window of the open)</h2>
+  <div class="note">Pick how far <b>before</b> and <b>after</b> the open the 1 may sit, in 1-minute bars (before the open counts bars that traded, so a Monday looks back into Friday's close and gold's 1-hour break is skipped). It reruns the last 8 weeks of that instrument with your window and shows each night next to the default 60 / 60. Click a night to chart it with your levels. Nothing here changes the record.</div>
+  <div class="row" style="margin-top:8px">
+    <select id="tuneInst"></select>
+    <label class="mut" style="font-size:12px">before <input id="tuneBefore" type="number" min="0" max="360" step="1" value="60" style="width:64px"></label>
+    <label class="mut" style="font-size:12px">after <input id="tuneAfter" type="number" min="0" max="360" step="1" value="60" style="width:64px"></label>
+    <span class="mut" style="font-size:11px">minutes</span>
+    <button class="btn on" id="tuneRun">Run</button>
+    <span class="mut" style="font-size:11px" id="tuneStatus"></span>
+  </div>
+  <div class="kv" id="tuneSum"></div>
+  <div class="tscroll"><table id="tuneTbl"></table></div>
+</div>
+
 <div class="box">
   <h2>The record</h2>
   <div class="row">
@@ -126,6 +143,8 @@ import { levels } from './js/dailyOpenFib.js';
 
 const $ = id => document.getElementById(id);
 let D = null, anchor = 'high', night = null, selInst = 'XAU_USD', scope = 'all', chart = null, cs = null, ask = null, eq = null;
+let tune = null;   // { inst, before, after, by: Map(date -> night) } from the tuning panel; overrides the 'window' anchor for that instrument
+const tuned = (inst, date) => anchor === 'window' && tune && tune.inst === inst ? tune.by.get(date) : undefined;
 const UK = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const UKT = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' });
 const dp = inst => inst.includes('JPY') ? 3 : inst === 'XAU_USD' ? 2 : /^(NAS|SPX|DE30|UK100|US30|US2000)/.test(inst) ? 1 : 5;
@@ -155,6 +174,8 @@ async function load() {
     $('nightSel').value = night;
     if (!$('eqSel').options.length) {
       $('eqSel').innerHTML = '<option value="">all instruments</option>' + D.instruments.map(i => `<option value="${i.inst}">${i.label}</option>`).join('');
+      $('tuneInst').innerHTML = D.instruments.map(i => `<option value="${i.inst}">${i.label}</option>`).join('');
+      $('tuneInst').value = selInst;
       $('logSel').innerHTML += D.instruments.map(i => `<option value="${i.inst}">${i.label}</option>`).join('');
     }
     render();
@@ -167,7 +188,7 @@ function render() { renderTonight(); renderSummary(); renderEq(); renderLog(); l
 function renderTonight() {
   $('nightTitle').textContent = night === D.currentDate ? 'Tonight' : 'Night of ' + night;
   const rows = D.instruments.map(({ inst, label }) => {
-    const R = D.rows.find(r => r.inst === inst && r.date === night), n = R?.[anchor];
+    const R = D.rows.find(r => r.inst === inst && r.date === night), n = tuned(inst, night) ?? R?.[anchor];
     const lv = n?.A != null && n?.L0 != null ? levels(n.side, n.A, n.L0) : null;
     const res = n?.phase === 'closed' ? rr(n.R) : n?.phase === 'filled' ? `${rr(n.markR)} <span class="mut">open</span>` : '—';
     return `<tr class="click${inst === selInst ? ' sel' : ''}" data-inst="${inst}">
@@ -194,7 +215,8 @@ async function loadChart() {
     new ResizeObserver(() => chart.applyOptions({ width: $('chart').clientWidth })).observe($('chart'));
   }
   let J;
-  try { J = await (await fetch(`/api/daily-open-fib/chart?inst=${selInst}&date=${night}`, { cache: 'no-store' })).json(); }
+  const preN = tuned(selInst, night) !== undefined ? Math.max(180, tune.before + 30) : 180;
+  try { J = await (await fetch(`/api/daily-open-fib/chart?inst=${selInst}&date=${night}&pre=${preN}`, { cache: 'no-store' })).json(); }
   catch (e) { $('chartKv').innerHTML = `<span class="err">chart: ${e.message}</span>`; return; }
   const bars = J.bars ?? [];
   const d = dp(selInst), fmt = { type: 'price', precision: d, minMove: Math.pow(10, -d) };
@@ -203,7 +225,8 @@ async function loadChart() {
   ask.setData(bars.filter(b => b[5] != null).map(b => ({ time: b[0], value: b[5] })));
   (cs._lines ?? []).forEach(l => cs.removePriceLine(l)); cs._lines = [];
   const line = (price, color, title, style = 0, width = 1, label = true) => { if (Number.isFinite(price)) cs._lines.push(cs.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: label, title })); };
-  const n = (J.row ?? R)?.[anchor];
+  const n = tuned(selInst, night) ?? (J.row ?? R)?.[anchor];
+  if (tuned(selInst, night) !== undefined) $('chartTitle').textContent += ` · your window: ${tune.before} min before / ${tune.after} min after`;
   const mk = [];
   const first = bars.find(b => b[5] != null);   // bars before the open carry no ask: the first one with an ask is the open
   if (first) line(first[1], '#3987e5', 'daily open', 2);
@@ -284,6 +307,39 @@ $('prevN').onclick = () => step(1); $('nextN').onclick = () => step(-1);
 $('scopeAll').onclick = () => { scope = 'all'; $('scopeAll').classList.add('on'); $('scopeLive').classList.remove('on'); renderSummary(); renderEq(); };
 $('scopeLive').onclick = () => { scope = 'live'; $('scopeLive').classList.add('on'); $('scopeAll').classList.remove('on'); renderSummary(); renderEq(); };
 $('eqSel').onchange = renderEq; $('logSel').onchange = renderLog; $('logPhase').onchange = renderLog;
+// ── window tuning ─────────────────────────────────────────────────────────
+try { const t = JSON.parse(localStorage.getItem('dofTune') || 'null'); if (t) { $('tuneBefore').value = t.before; $('tuneAfter').value = t.after; } } catch { /* storage unavailable */ }
+async function runTune() {
+  const inst = $('tuneInst').value, before = Math.max(0, Math.min(360, parseInt($('tuneBefore').value, 10) || 0)), after = Math.max(0, Math.min(360, parseInt($('tuneAfter').value, 10) || 0));
+  try { localStorage.setItem('dofTune', JSON.stringify({ before, after })); } catch { /* storage unavailable */ }
+  $('tuneStatus').textContent = 'running (the first run for an instrument fetches 8 weeks of 1-minute bars, up to a minute)…'; $('tuneRun').disabled = true;
+  try {
+    const J = await (await fetch(`/api/daily-open-fib/tune?inst=${inst}&before=${before}&after=${after}`, { cache: 'no-store' })).json();
+    if (!J.ok) throw new Error(J.error || 'failed');
+    tune = { inst, before: J.before, after: J.after, by: new Map(J.rows.map(r => [r.date, r.n])) };
+    const s = J.summary, d = J.defaultSummary;
+    const line = (x, lab) => `<b>${lab}</b>: ${x.trades} trades · ${x.targets} targets · ${x.stops} stops · ${x.be} BE · total ${rr(x.totalR)} · mean ${rr(x.meanR)} · 3R ${rr(x.tp3)} · 2R ${rr(x.tp2)}`;
+    $('tuneSum').innerHTML = `${line(s, `Your window (${J.before} before / ${J.after} after)`)}<br>${line(d, 'Default 60 / 60')}`;
+    const res = n => n?.phase === 'closed' ? rr(n.R) : n?.phase === 'filled' ? rr(n.markR) + ' <span class="mut">open</span>' : n?.phase === 'armed' ? '<span class="mut">resting</span>' : '<span class="mut">no trade</span>';
+    const rows = J.rows.map(r => {
+      const n = r.n, same = (n?.A ?? null) === (r.def?.A ?? null) && n?.phase === r.def?.phase;
+      return `<tr class="click${same ? '' : ' diff'}" data-date="${r.date}"><td>${r.date}</td><td>${side(n)}</td><td>${px(n?.A, inst)}</td><td>${px(n?.L0, inst)}</td><td>${px(n?.stop, inst)}</td>
+        <td>${n?.imp != null ? n.imp.toFixed(2) : '—'}</td><td>${n?.tAnchor ? UKT.format(new Date(n.tAnchor)) : '—'}</td><td>${n?.fill ? UKT.format(new Date(n.fill.t)) : '—'}</td><td>${res(n)}</td>
+        <td>${px(r.def?.A, inst)}</td><td>${res(r.def)}</td></tr>`;
+    }).join('');
+    $('tuneTbl').innerHTML = `<tr><th>Night</th><th>Side</th><th>The 1</th><th>The 0</th><th>Stop</th><th>Impulse</th><th>1 set at (UK)</th><th>Fill</th><th>Result</th><th>Default 1</th><th>Default result</th></tr>${rows}`;
+    $('tuneTbl').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => {
+      anchor = 'window'; document.querySelectorAll('[data-anchor]').forEach(x => x.classList.toggle('on', x.dataset.anchor === 'window'));
+      selInst = inst; night = tr.dataset.date; if ([...$('nightSel').options].some(o => o.value === night)) $('nightSel').value = night;
+      renderTonight(); loadChart(); window.scrollTo({ top: $('chart').offsetTop - 120, behavior: 'smooth' });
+    });
+    $('tuneStatus').textContent = `${J.rows.length} nights. Highlighted rows: your window picks a different 1 or outcome than 60 / 60.`;
+    if (anchor === 'window') { renderTonight(); loadChart(); }
+  } catch (e) { $('tuneStatus').textContent = 'Could not run: ' + e.message; }
+  finally { $('tuneRun').disabled = false; }
+}
+$('tuneRun').onclick = runTune;
+
 await load();
 setInterval(() => { if (night === D?.currentDate) load(); }, 60_000);
 </script>
