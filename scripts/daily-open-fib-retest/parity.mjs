@@ -16,11 +16,11 @@ const close = (a, b) => Math.abs(a - b) < 1e-9 * Math.max(1, Math.abs(a));
 for (const [i, s] of S.entries()) {
   for (const anchor of ['high', 'do', 'swing', 'window']) {
     const f = anchor === 'window'
-      ? findFillWindow({ h: s.pre.h, l: s.pre.l, mins: s.pre.h.map((_, i) => i - s.pre.h.length) }, s.bid, s.mins, s.adr, 0.10, 360, { o: s.ask.o, l: s.ask.l }, 60)
+      ? findFillWindow({ h: s.pre.h, l: s.pre.l, mins: s.pre.h.map((_, i) => i - s.pre.h.length) }, s.bid, s.mins, s.adr, 0.10, 360, { o: s.ask.o, l: s.ask.l }, s.res.window.win)
       : anchor === 'swing'
       ? findFillSwing({ o: [], h: s.pre.h, l: s.pre.l }, s.bid, s.mins, s.adr, 0.10, 360, { o: s.ask.o, l: s.ask.l })
       : findFill(s.bid, s.mins, s.adr, anchor, 0.10, 360, { o: s.ask.o, l: s.ask.l });
-    const p = s.res[anchor];
+    const p = s.res[anchor]?.none ? null : s.res[anchor];
     checked++;
     if (!p || !f) { if (!!p !== !!f) { bad++; console.log(i, anchor, 'fill mismatch', p, f); } continue; }
     if (f.side !== p.side || f.j !== p.j || !close(f.A, p.A) || !close(f.L0, p.L0) || !close(f.entry, p.entry) || (p.ta != null && f.tAnchor !== p.ta)) { bad++; console.log(i, anchor, 'fill', p, f); continue; }

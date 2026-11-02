@@ -164,7 +164,7 @@ def find_fill_swing(pre_h, pre_l, o, h, l, mins, adr, min_imp=0.10, entry_cut=36
 def find_fill_window(pre_h, pre_l, o, h, l, mins, adr, min_imp=0.10, entry_cut=360, buy_l=None, buy_o=None, win=60):
     """Anchor 'window' (owner 2026-11-01): the 1 = the highest high (sell) / lowest low (buy) within
     `win` trading minutes either side of the open (pre bars counted by index: -1 = the last bar before
-    the open, so gold's daily break is skipped); the 0 = the extreme reached after that 1, which must be
+    the open, so gold's daily break is skipped; `win` = minutes either side, or (before, after)); the 0 = the extreme reached after that 1, which must be
     made after the open (a leg that finished before the open is not the night's impulse).
     Causal (at bar k only bars <= k). Mirrors js/dailyOpenFib.js findFillWindow exactly."""
     if buy_l is None:
@@ -177,6 +177,7 @@ def find_fill_window(pre_h, pre_l, o, h, l, mins, adr, min_imp=0.10, entry_cut=3
     Lc = np.concatenate([np.asarray(pre_l, float), l])
     Mc = np.concatenate([np.arange(-P, 0), np.asarray(mins)])
     thr = min_imp * adr
+    wb, wa = (win if isinstance(win, (tuple, list)) else (win, win))   # minutes before / after the open (1-minute bars)
     for k in range(n - 1):
         j = k + 1
         if mins[j] > entry_cut:
@@ -184,7 +185,7 @@ def find_fill_window(pre_h, pre_l, o, h, l, mins, adr, min_imp=0.10, entry_cut=3
         m = P + k + 1
         dA, dat, uA, uat = -np.inf, -1, np.inf, -1
         for i in range(m):
-            if Mc[i] < -win or Mc[i] > win:
+            if Mc[i] < -wb or Mc[i] > wa:
                 continue
             if Hc[i] >= dA:
                 dA, dat = Hc[i], i

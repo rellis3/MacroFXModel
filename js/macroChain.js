@@ -540,7 +540,7 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
     const moved = Math.abs(v.delta) >= floor;
     // a scaled floor is a smaller number: keep a decimal so it never prints as ±0
     const fdp = scaled && floor < 10 ? Math.max(n.dp, floor < 1 ? 2 : 1) : n.dp;
-    return { key, label: n.label, unit: n.unit, delta: v.delta, last: v.last ?? null, moved, dir: _dir(v.delta), text: _fmt(v.delta, n.unit, n.dp), asOf: v.asOf ?? null, refDate: v.refDate ?? null, basis, closed: !!v.closed, floorText: _fmt(floor, n.unit, fdp).replace('+', '±'), window };
+    return { key, label: n.label, unit: n.unit, delta: v.delta, last: v.last ?? null, moved, dir: _dir(v.delta), text: _fmt(v.delta, n.unit, n.dp), asOf: v.asOf ?? null, refDate: v.refDate ?? null, basis, closed: !!v.closed, floorText: _fmt(floor, n.unit, fdp).replace('+', '±'), floor, window };
   };
   return links.map(l => {
     const a = end(l.from), b = end(l.to);
@@ -583,6 +583,27 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
     const dateGapDays = (Number.isFinite(ta) && Number.isFinite(tb)) ? Math.round(Math.abs(ta - tb) / 864e5) : null;
     return { id: l.id, short: l.short ?? l.id, textbook: l.textbook, sign: l.sign, evidence: scaled ? [] : (l.evidence ?? []), a, b, expected, verdict, read, punch, dateGapDays, window };
   });
+}
+
+/** Presentation only (the chip tint on Today). Size of a measured move against its own noise floor, 0.18-1; null when there is no move to show. */
+export function tintStrength(e) {
+  if (!e || e.delta == null || !Number.isFinite(e.delta) || e.delta === 0 || !(e.floor > 0)) return null;
+  return Math.max(0.18, Math.min(1, Math.abs(e.delta) / e.floor));
+}
+
+/** Share of its floor an end must reach before a QUIET link is drawn as 'leaning'. */
+export const LEAN_MIN_SHARE = 0.25;
+/**
+ * Presentation only: 'with' | 'against' | null. A QUIET link whose two ends both moved at least a quarter
+ * of their floors, so the line can be drawn faintly the textbook way or against it. It is NOT a verdict:
+ * nothing here changes evaluateChain, the counts, the headline or the prompt.
+ */
+export function leanOf(l) {
+  if (!l || l.verdict !== 'quiet') return null;
+  const a = l.a, b = l.b;
+  if (!a || !b || a.delta == null || b.delta == null || !(a.floor > 0) || !(b.floor > 0)) return null;
+  if (Math.abs(a.delta) < LEAN_MIN_SHARE * a.floor || Math.abs(b.delta) < LEAN_MIN_SHARE * b.floor) return null;
+  return Math.sign(a.delta) * Math.sign(b.delta) === l.sign ? 'with' : 'against';
 }
 
 /** Ends printed more than this many days apart get a visible note. */

@@ -5059,10 +5059,62 @@ app.get('/api/daily-open-fib/chart', async (req, res) => {
     if (!S) return res.json({ ok: true, bars: [], row: _dof.rows.get(`${inst}|${date}`) ?? null });
     const cut = _DOF_DEFAULTS.exitMin + 90, bars = [], pre = S.pre ?? { t: [] };
     // the last 3 trading hours before the open (ask = null there), so a swing / window 1 set before the open is on the chart
-    for (let i = Math.max(0, pre.t.length - 180); i < pre.t.length; i++) bars.push([pre.t[i] / 1000, pre.o[i], pre.h[i], pre.l[i], pre.c[i], null]);
+    const nPre = Math.min(Math.max(parseInt(req.query.pre, 10) || 180, 30), _DOF_PRE_BARS);   // bars before the open to show (the tuning panel asks for its own window)
+    for (let i = Math.max(0, pre.t.length - nPre); i < pre.t.length; i++) bars.push([pre.t[i] / 1000, pre.o[i], pre.h[i], pre.l[i], pre.c[i], null]);
     for (let i = 0; i < S.t.length && S.mins[i] <= cut; i++) bars.push([S.t[i] / 1000, S.bid.o[i], S.bid.h[i], S.bid.l[i], S.bid.c[i], S.ask.c[i]]);
     res.set('Cache-Control', 'no-store');
     res.json({ ok: true, inst, date, openT: S.t[0], bars, row: _dof.rows.get(`${inst}|${date}`) ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Window tuning (owner, 2026-11-02): rerun the 'window' anchor with the owner's own minutes before / after the open
+// (1-minute bars; before the open = bars that traded) over the last `days` of one instrument, to find a window that
+// picks the right impulse. Read-only: nothing here touches the record. Sessions are cached in memory (bounded).
+const _dofTuneCache = new Map(), _DOF_TUNE_CAP = 400, _dofTuneBusy = new Set();
+async function _dofTuneSession(inst, a, now) {
+  const key = `${inst}|${a}`, hit = _dofTuneCache.get(key);
+  if (hit?.final) return hit;
+  let S = _dof.bars.get(key), adr = null;
+  if (S?.pre) adr = await _dofAdr(inst, a);
+  else {
+    adr = await _dofAdr(inst, a);
+    if (!adr) return null;
+    S = _dofSessionFrom(await _dofCandles(inst, a, 720), a);
+    if (!S || !S.t.length) return null;
+    S.pre = _dofPreFrom(await _dofCandlesBefore(inst, a, _DOF_PRE_BARS), a, _DOF_PRE_BARS);
+  }
+  if (!adr) return null;
+  const final = S.mins.at(-1) >= _DOF_DEFAULTS.exitMin || now > S.t[0] + (_DOF_DEFAULTS.exitMin + 15) * 60e3;
+  const v = { S, adr, final };
+  _dofTuneCache.set(key, v);
+  if (_dofTuneCache.size > _DOF_TUNE_CAP) _dofTuneCache.delete(_dofTuneCache.keys().next().value);
+  return v;
+}
+app.get('/api/daily-open-fib/tune', async (req, res) => {
+  const inst = String(req.query.inst || '');
+  try {
+    if (!_DOF_INST.some(([i]) => i === inst)) return res.status(400).json({ ok: false, error: 'unknown instrument' });
+    const int = (v, d, lo, hi) => { const n = parseInt(v, 10); return Number.isFinite(n) ? Math.min(Math.max(n, lo), hi) : d; };
+    const before = int(req.query.before, 60, 0, _DOF_PRE_BARS), after = int(req.query.after, 60, 0, _DOF_DEFAULTS.entryCut);
+    const days = int(req.query.days, 56, 7, _DOF_BACKFILL_DAYS);
+    if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set');
+    if (_dofTuneBusy.has(inst)) return res.status(429).json({ ok: false, error: 'already running for this instrument, try again in a moment' });
+    _dofTuneBusy.add(inst);
+    try {
+      const now = Date.now(), cur = _dofAnchor(now), anchors = [];
+      for (let d = 0; d <= days; d++) { const a = _dofAnchor(cur - d * 86400e3 + 3600e3); if (_dofTradingAnchor(a) && !anchors.includes(a)) anchors.push(a); }
+      const got = new Map(), q = [...anchors];
+      await Promise.all(Array.from({ length: 4 }, async () => { while (q.length) { const a = q.shift(); try { got.set(a, await _dofTuneSession(inst, a, now)); } catch { got.set(a, null); } } }));
+      const rows = [];
+      for (const a of anchors) {
+        const g = got.get(a); if (!g) continue;
+        const n = _dofNight(g.S, g.adr, 'window', { final: g.final, winBefore: before, winAfter: after }); delete n.fib;
+        const d = _dofNight(g.S, g.adr, 'window', { final: g.final }); delete d.fib;        // the default 60 / 60 for comparison
+        rows.push({ date: _dofKey(a), anchorMs: a, firstBarT: g.S.t[0], final: g.final, adr: g.adr, n, def: d });
+      }
+      const fin = rows.filter(r => r.final).reverse();
+      res.set('Cache-Control', 'no-store');
+      res.json({ ok: true, inst, before, after, days, rows, summary: _dofSummarise(fin.map(r => r.n)), defaultSummary: _dofSummarise(fin.map(r => r.def)) });
+    } finally { _dofTuneBusy.delete(inst); }
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/daily-open-fib/tick', async (_req, res) => {

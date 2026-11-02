@@ -1,6 +1,6 @@
 // Synthetic tests for js/macroChain.js. No network, no clock.
 //   node js/macroChain.test.mjs
-import { CHAIN_NODES, CHAIN_LINKS, nodeDelta, evaluateChain, summariseChain, chainForPrompt, CHAIN_WINDOW_DAYS, CHAIN_WINDOWS, CHAIN_WINDOW_KEYS, scaledFloor } from './macroChain.js';
+import { CHAIN_NODES, CHAIN_LINKS, nodeDelta, evaluateChain, summariseChain, chainForPrompt, CHAIN_WINDOW_DAYS, CHAIN_WINDOWS, CHAIN_WINDOW_KEYS, scaledFloor, tintStrength, leanOf } from './macroChain.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -210,6 +210,30 @@ console.log('[live window - last completed close -> now]');
   ok('prompt tags implied and last-print ends and lists NOT JUDGED', /\(implied, approximate\)/.test(pt) && /NOT JUDGED/.test(pt) && /last print, NOT live/.test(pt), pt);
   ok('a last-print tag does not change a 20-day verdict (the rule is live-only)', byId(evaluateChain({ oil: pr(5), bei: pr(9) }), 'oil-bei').verdict === 'holding');
   ok('no summary at 20d gains a notlive sentence', !/not judged/.test(summariseChain(evaluateChain({ oil: { delta: 5 }, bei: { delta: 9 } }), 20).headline));
+}
+
+console.log('[graded colour - presentation helpers]');
+{
+  const v = delta => ({ delta, last: 1, asOf: '2026-09-10' });
+  const L = (vals, w = 20) => evaluateChain(vals, CHAIN_LINKS, CHAIN_NODES, w);
+  const byId = (ls, id) => ls.find(l => l.id === id);
+  const l = byId(L({ oil: v(1.2), bei: v(1.5) }), 'oil-bei');
+  ok('every end carries its numeric floor, equal to the floor the verdict used', l.a.floor === CHAIN_NODES.oil.floor && l.b.floor === CHAIN_NODES.bei.floor);
+  ok('the numeric floor is the scaled one at 1d', Math.abs(byId(L({ oil: v(1.2), bei: v(1.5) }, 1), 'oil-bei').a.floor - scaledFloor(CHAIN_NODES.oil, 1)) < 1e-12);
+  ok('an unmeasured end has no floor and no tint', tintStrength(byId(L({}), 'oil-bei').a) === null);
+  ok('tint: a tiny move shows at the 0.18 minimum', tintStrength({ delta: 0.01, floor: 3 }) === 0.18);
+  ok('tint: half the floor is 0.5, and it caps at 1 past the floor', tintStrength({ delta: -1.5, floor: 3 }) === 0.5 && tintStrength({ delta: 9, floor: 3 }) === 1);
+  ok('tint: exactly zero stays neutral', tintStrength({ delta: 0, floor: 3 }) === null);
+  // leaning: quiet links only, both ends at >= 25% of their floors
+  const qw = byId(L({ oil: v(1.2), bei: v(1.5) }), 'oil-bei');   // both under the 20d floors (3.0% / 5bp) but over a quarter of each
+  ok('a quiet link with both ends a quarter-floor or more, same way as the textbook, leans with', qw.verdict === 'quiet' && leanOf(qw) === 'with');
+  const qa = byId(L({ oil: v(1.2), bei: v(-1.5) }), 'oil-bei');
+  ok('the same sizes the wrong way round lean against', qa.verdict === 'quiet' && leanOf(qa) === 'against');
+  ok('an end under a quarter of its floor does not lean', leanOf(byId(L({ oil: v(0.3), bei: v(1.5) }), 'oil-bei')) === null);
+  ok('a judged link never leans (verdicts untouched)', leanOf(byId(L({ oil: v(5), bei: v(8) }), 'oil-bei')) === null && byId(L({ oil: v(5), bei: v(8) }), 'oil-bei').verdict === 'holding');
+  const nlv = evaluateChain({ oil: { delta: 1.2, basis: 'live' }, bei: { delta: 9, basis: 'last-print' } }, CHAIN_LINKS, CHAIN_NODES, 'live').find(x => x.id === 'oil-bei');
+  ok('a not-live link never leans', nlv.verdict === 'notlive' && leanOf(nlv) === null);
+  ok('leanOf is a pure read: the verdict and counts are what evaluateChain says', summariseChain(L({ oil: v(1.2), bei: v(1.5) })).holding === 0);
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
