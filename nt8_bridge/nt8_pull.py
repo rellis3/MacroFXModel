@@ -32,7 +32,7 @@ def call(sock, req):
 
 def pull_one(sock, inst, a):
     rep = call(sock, {"op": "bars", "instrument": inst, "bar_type": a.bar_type, "market_data_type": a.series,
-                      "start": a.start + "T00:00:00Z", "end": a.end + "T00:00:00Z"})
+                      "start": a.start if "T" in a.start else a.start + "T00:00:00Z", "end": a.end if "T" in a.end else a.end + "T00:00:00Z"})   # a full UTC time (2026-10-30T13:30:00Z) gives a short window; quote series are too big for a whole day inside the 120 s bridge limit
     cols, rows, pid = rep["columns"], rep["rows"], rep["pull_id"]
     while rep.get("next_cursor") is not None:
         rep = call(sock, {"op": "chunk", "pull_id": pid, "cursor": rep["next_cursor"]})

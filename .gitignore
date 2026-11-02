@@ -724,3 +724,6 @@ analysis/output/oi-level-map/smile.json
 analysis/output/vmc-nq-cipher/data/
 analysis/output/vmc-nq-cipher/runs/
 analysis/output/vmc-nq-vol-increment/data/
+
+# raw footprint tick dumps (tens of MB each; the derived json is committed)
+/analysis/output/footprint/*.pkl

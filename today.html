@@ -9757,6 +9757,7 @@ function booksCardHtml() {
       `rate above ${String(_fedPath.currentRange || '').replace(/bps/g, '').replace(/\s+/g, '')} by ${w.ref}: <b>${w.hike.toFixed(0)}%</b>${mv}`,
       'market-implied policy odds from CME SOFR options — window, not meeting; untested here, context only');
   })();
+  row('world-economies.html', '🌍', 'The Economies', 'growth, inflation, jobs, spending, trade and central-bank stance for the eight economies, side by side', 'the raw prints behind the currency scores, each with the month it describes; a missing feed shows as a gap');
   // central banks: only when a decision is inside ten days
   const CB = { US: ['fomc-sentiment.html', 'Fed'], EU: ['ecb-sentiment.html', 'ECB'], GB: ['boe-sentiment.html', 'Bank of England'], JP: ['boj-sentiment.html', 'Bank of Japan'], NZ: ['rbnz-sentiment.html', 'RBNZ'], AU: ['rba-sentiment.html', 'RBA'], CA: ['boc-sentiment.html', 'Bank of Canada'], CH: ['snb-sentiment.html', 'SNB'] };
   const cbEv = (events ?? []).filter(e => e.ms > nowMs - 2 * 864e5 && e.ms < nowMs + 10 * 864e5 && _tlFam(e.event) === 'rate decision' && CB[e.country]).sort((a, b) => a.ms - b.ms)[0];

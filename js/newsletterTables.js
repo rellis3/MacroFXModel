@@ -9,6 +9,7 @@
  * Pure. Tested in js/newsletterV3.test.mjs.
  */
 import { dollarBasket } from './dataChecks.js';
+import { worldEconomiesHtml } from './worldEconomies.js';
 
 const TZ = 'Europe/London', MINUS = '−';
 const sg = (v, d = 0, u = '') => (Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? MINUS : ''}${Math.abs(v).toFixed(d)}${u}` : '·');
@@ -46,7 +47,7 @@ function yieldOf(ccy, intl, us) {
  * The three today tables, as html strings: { globalHtml, countryHtml, pairsHtml }.
  * Inputs: changes, volatility, creditSpreads, fedPath, strengths, cb, surprise, assets (key, label, price, d1, used, implied), asia, events, nowMs, isoDate.
  */
-export function todayTables({ intl, changes, creditSpreads, fedPath, strengths, cb, surprise, assets, asia, events, nowMs, isoDate }, esc) {
+export function todayTables({ world, intl, changes, creditSpreads, fedPath, strengths, cb, surprise, assets, asia, events, nowMs, isoDate }, esc) {
   const now = Number.isFinite(nowMs) ? nowMs : Date.now(), ch = k => (changes ?? []).find(c => c.key === k && Number.isFinite(c.last));
   const asOf = c => (c?.lastDate && isoDate && c.lastDate < isoDate ? ` <small>as of ${esc(c.lastDate.slice(5))}</small>` : '');
   const row = (name, val, move, mean) => `<tr><td class="n">${esc(name)}</td><td class="v">${val}</td><td class="m">${move}</td><td class="w">${esc(mean)}</td></tr>`;
@@ -93,5 +94,6 @@ export function todayTables({ intl, changes, creditSpreads, fedPath, strengths, 
     return `<tr><td class="n">${esc(r.label)}<small>${esc(r.price ?? '')}</small></td><td class="m"><b class="${r.d1 >= 0 ? 'up3' : 'dn3'}">${sg(r.d1, 2, '%')}</b></td><td class="u">${used === null ? '·' : `<span class="bar3"><i style="width:${Math.min(100, Math.round(used * 100))}%"></i></span> ${Math.round(used * 100)}%`}</td><td class="m">${esc(a)}</td><td class="w">${esc(w)}</td></tr>`;
   });
   const pairsHtml = pr.length ? `<table class="t3"><tr><th>Market</th><th>Today</th><th>Share of a normal day's range used</th><th>Asia</th><th>Waiting on</th></tr>${pr.join('')}</table><p class="small3">Today is since yesterday's close. A bar near full means the market has already moved a normal day's range. Asia is the 00:00 to 06:00 London session against the desk's own history for that market.</p>` : '';
-  return { globalHtml, countryHtml, pairsHtml };
+  const worldHtml = world ? worldEconomiesHtml(world, esc, isoDate) : '';
+  return { globalHtml, countryHtml, pairsHtml, worldHtml };
 }
