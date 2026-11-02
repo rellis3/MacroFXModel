@@ -20,7 +20,7 @@ export function zonedEpoch(date, hh, mm, timeZone) {
 }
 
 /** Close of the bar covering instant t (bars stamped at their OPEN, step seconds): the last bar opened before t. */
-function priceAt(bars, t, step) {
+export function priceAt(bars, t, step) {
   let lo = 0, hi = bars.length - 1, k = -1;
   while (lo <= hi) { const m = (lo + hi) >> 1; if (bars[m].t + step <= t) { k = m; lo = m + 1; } else hi = m - 1; }
   if (k < 0 || t - (bars[k].t + step) > 6 * 3600) return null;          // nothing within 6 h of the fix
