@@ -129,6 +129,28 @@
       </div>
     </details>
 
+    <details class="subpanel" open style="margin-top:14px">
+      <summary>Research filters <span class="cnt">— only filters that have been through a scored test</span></summary>
+      <p class="note" style="margin-top:8px">A filter here is a real rule: skipped nights are never entered, so every number below uses the filtered series. Buy &amp; hold and the mirror test always use every night. Each result is shown next to its scored verdict and a placebo (the same skip pattern shifted to other dates). If the placebo does as well, the filter is just doing what any cut in exposure does.</p>
+      <div class="grid" style="margin-top:10px">
+        <div><label>Vol regime preset</label><select id="volPreset">
+          <option value="">Off (every night)</option>
+          <option value="25-100">Skip the quietest quarter</option>
+          <option value="0-75">Skip the busiest quarter</option>
+          <option value="0-90">Skip extreme vol (top 10%)</option>
+          <option value="75-100">Only the busiest quarter</option>
+          <option value="0-25">Only the quietest quarter</option>
+          <option value="custom">Custom range…</option></select></div>
+        <div><label>Trade when vol percentile ≥</label><input id="volPctMin" type="number" min="0" max="100" step="5" placeholder="0" disabled></div>
+        <div><label>…and ≤</label><input id="volPctMax" type="number" min="0" max="100" step="5" placeholder="100" disabled></div>
+        <div><label>Position sizing</label><select id="sizing">
+          <option value="">Flat (1× every night)</option>
+          <option value="volTarget">Vol target (median σ ÷ today's σ, max 2×)</option></select></div>
+      </div>
+      <p class="note">Vol percentile = 20-day realised vol ranked against its own previous year (0 = quietest, 100 = busiest), from daily closes before the 20:00 entry. Same definition as <code>forge/OVERNIGHT_VOL_REGIME_PREREG.md</code>.
+        <b>Waiting for their scored tests, so not here yet:</b> previous US-session return (experiment 2), the night before FOMC (experiment 3). Putting them on this page first would show their result before the test, so the test could no longer count as pre-registered.</p>
+    </details>
+
     <div class="row2">
       <button id="run">Run backtest</button>
       <span class="status" id="status"></span>
@@ -427,6 +449,7 @@ function instrumentPanel(key, inst) {
     ${costSweepSection(inst.costSweep, INSTRUMENT_LABEL[key] || key)}
     ${weekdaySection(inst.weekday, m?.totalReturnPct, INSTRUMENT_LABEL[key] || key)}
     ${exitSweepSection(inst.exitSweep, INSTRUMENT_LABEL[key] || key)}
+    ${researchSection(inst.research, INSTRUMENT_LABEL[key] || key)}
     ${m ? svgEquityChart(m.equityCurve, m.buyHoldEquityCurve, INSTRUMENT_LABEL[key] || key) : ''}
     ${inst.ruleCheck ? `<h3 style="margin-top:16px">Prop-firm rule check</h3>${ruleCheckCard(inst.ruleCheck)}` : ''}
     ${inst.csv ? `
@@ -439,6 +462,42 @@ function instrumentPanel(key, inst) {
       R-unit is a <b>fixed 1% of notional per trade</b> (no native stop exists in this strategy) — R and % Return are therefore
       numerically redundant here, stated plainly rather than hidden. MAE is read from the real M1 path between entry and exit.</p>` : ''}
   </div>`;
+}
+
+function researchSection(r, label) {
+  if (!r) return '';
+  const q = r.volQuartiles || [];
+  const qRows = q.map(b => `<tr><td>${b.bucket}</td><td>${b.nights}</td><td>${spanN(b.meanGrossPct, 3)}</td><td>${spanN(b.meanNetPct, 3)}</td><td>${fmtN(b.meanZ, 3)}</td><td>${fmtN(b.hitRatePct, 1)}</td></tr>`).join('');
+  const rep = r.report, s = r.settings || {};
+  const evs = [];
+  if (s.volFilter) evs.push(r.evidence.volRegime);
+  if (s.sizing === 'volTarget') evs.push(r.evidence.volTarget);
+  if (!evs.length) evs.push(r.evidence.volRegime);
+  const evHtml = evs.map(e => `<div class="verdict-line"><b>Scored ${e.date} (${e.id}): ${e.verdict}.</b> ${e.text}</div>`).join('');
+  let cmp = '<p class="note">No filter or sizing switched on: the table above is description only.</p>';
+  if (rep) {
+    const pl = rep.placebo;
+    const read = pl.sharpePercentile == null ? '' : pl.sharpePercentile >= 0.95
+      ? 'beats 95% of its placebo shifts (still check the scored verdict: one setting chosen after looking is not a test)'
+      : pl.sharpePercentile <= 0.05 ? 'is WORSE than 95% of its placebo shifts'
+      : 'is inside its placebo range, so it is no better than cutting the same exposure on random dates';
+    const filt = s.volFilter ? `vol ${Math.round(s.volFilter.minPct * 100)}-${Math.round(s.volFilter.maxPct * 100)}` : 'every night';
+    cmp = `<table style="margin-top:8px"><thead><tr><th>Net, all nights counted (flat nights = 0)</th><th>Unfiltered</th><th>With rule (${filt}${s.sizing === 'volTarget' ? ', vol target' : ''})</th><th>Placebo median</th></tr></thead><tbody>
+      <tr><td>Nights traded</td><td>${rep.nights}</td><td>${rep.keptNights} (${fmtN(rep.keptShare * 100, 0)}%)</td><td>same</td></tr>
+      <tr><td>Sharpe (ann.)</td><td>${fmtN(rep.unfiltered.sharpe, 2)}</td><td>${fmtN(rep.filtered.sharpe, 2)}</td><td>${fmtN(pl.sharpeMedian, 2)}</td></tr>
+      <tr><td>Total net %</td><td>${spanN(rep.unfiltered.totalPct, 1)}</td><td>${spanN(rep.filtered.totalPct, 1)}</td><td>—</td></tr>
+      <tr><td>Max drawdown %</td><td>${spanN(rep.unfiltered.maxDDPct, 1)}</td><td>${spanN(rep.filtered.maxDDPct, 1)}</td><td>—</td></tr>
+    </tbody></table>
+    <p class="note">Placebo: the rule's skip pattern and weights rotated by ≥ 63 nights, ${pl.shifts} shifts. The rule's Sharpe sits at the <b>${fmtN(pl.sharpePercentile * 100, 0)}th</b> percentile of the placebo (total return: ${fmtN(pl.totalPercentile * 100, 0)}th), so it ${read}.</p>`;
+  }
+  return `
+  <details class="subpanel" open>
+    <summary>${label} research filters <span class="cnt">— vol regime at entry, and the rule you switched on</span></summary>
+    ${evHtml}
+    <table style="margin-top:10px"><thead><tr><th>Vol percentile at entry (every night)</th><th>Nights</th><th>Mean gross %</th><th>Mean net %</th><th>Mean z (gross ÷ σ)</th><th>Hit rate %</th></tr></thead><tbody>${qRows}</tbody></table>
+    <p class="note">z is return per unit of risk. Flat z with rising gross % means busy nights pay more only because they risk more. Nights in the first ~year of data have no percentile yet.</p>
+    ${cmp}
+  </details>`;
 }
 
 function diversificationSection(div) {
@@ -668,6 +727,11 @@ function downloadCsv(kind) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
 }
 
+$('volPreset').addEventListener('change', () => {
+  const custom = $('volPreset').value === 'custom';
+  $('volPctMin').disabled = !custom; $('volPctMax').disabled = !custom;
+});
+
 async function run() {
   $('run').disabled = true; $('status').textContent = 'starting…'; $('results').style.display = 'none';
   const instruments = [];
@@ -685,10 +749,15 @@ async function run() {
     exitTimes = [...times].sort(); // 'HH:MM' zero-padded strings sort chronologically
   }
 
+  const vp = $('volPreset').value;
+  const [vMin, vMax] = vp === 'custom' ? [$('volPctMin').value, $('volPctMax').value] : vp ? vp.split('-') : ['', ''];
   const body = {
     instruments,
     skipWeekdays,
     exitTimes,
+    volPctMin: vMin,
+    volPctMax: vMax,
+    sizing: $('sizing').value || undefined,
     accountSize: $('accountSize').value,
     notionalPerTrade: $('notionalPerTrade').value,
     tripleSwapDow: $('tripleSwapDow').value,

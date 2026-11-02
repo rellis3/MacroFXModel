@@ -8,7 +8,7 @@ import {
   runPropFirmRuleCheck, runOvernightHoldBacktest, addDays,
   resampleDailyFromPacked, costSensitivitySweep,
   yearlyDiversificationBreakdown, diversificationIsOosSplit,
-  weekdayBreakdown, exitTimeSweep,
+  weekdayBreakdown, exitTimeSweep, nightVolFeatures,
 } from './overnightHoldEngine.js';
 import { dowOf } from './sessionRanges.js';
 
@@ -504,4 +504,71 @@ test('missing instrument data degrades honestly (no throw, no fabricated result)
   const result = runOvernightHoldBacktest({ gold: { n: 0 }, nq: buildSyntheticPacked('2025-01-01', '2025-01-15') });
   assert.equal(result.instruments.gold.error, 'no M1 data available for this instrument');
   assert.ok(result.instruments.nq.metrics);
+});
+
+// ── Research filters ─────────────────────────────────────────────────────────
+// Two years of minutes whose volatility cycles over months, so the vol
+// percentile has something to rank (seeded LCG: deterministic).
+function buildVolCyclePacked(startIso, endIso, seed = 7) {
+  let s = seed;
+  const rnd = () => { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296 - 0.5; };
+  const startEpoch = Date.parse(startIso + 'T00:00:00Z') / 1000, endEpoch = Date.parse(endIso + 'T00:00:00Z') / 1000;
+  const times = [], closes = [];
+  let px = 1000;
+  for (let t = startEpoch; t < endEpoch; t += 60) {
+    const d = new Date(t * 1000), dow = d.getUTCDay(), hh = d.getUTCHours();
+    if (dow === 6 || (dow === 5 && hh >= 22) || (dow === 0 && hh < 22)) continue;
+    const vol = 0.0004 * (1.6 + Math.sin((t - startEpoch) / (86400 * 45)));
+    px *= Math.exp(vol * rnd() * 3.46 + 0.000002);
+    times.push(t); closes.push(px);
+  }
+  const c = Float64Array.from(closes);
+  return { n: times.length, times: Int32Array.from(times), opens: c, highs: c, lows: c, closes: c };
+}
+
+test('nightVolFeatures: a night only sees daily closes completed before its entry (no lookahead)', () => {
+  const packed = buildVolCyclePacked('2023-01-02', '2024-12-31');
+  const { trades } = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1]);
+  const f1 = nightVolFeatures(packed, trades);
+  const k = f1.findIndex(t => t.volPct != null) + 40;
+  assert.ok(k > 40 && k < f1.length - 10, 'enough nights with a percentile');
+  // Wreck every price from the entry minute of night k onward; nights <= k must not change.
+  const cut = f1[k].entryEpoch;
+  const closes = Float64Array.from(packed.closes, (v, i) => (packed.times[i] >= cut ? v * (1 + 0.05 * Math.sin(i)) : v));
+  const f2 = nightVolFeatures({ ...packed, closes, opens: closes, highs: closes, lows: closes }, trades);
+  for (let i = 0; i <= k; i++) {
+    assert.equal(f2[i].volPct, f1[i].volPct, `volPct changed for night ${i}`);
+    assert.equal(f2[i].sigmaPct, f1[i].sigmaPct, `sigma changed for night ${i}`);
+  }
+  assert.ok(f1.slice(k + 2).some((t, i) => t.volPct !== f2[k + 2 + i].volPct), 'later nights do react');
+  const xs = f1.map(t => t.volPct).filter(v => v != null);
+  assert.ok(Math.min(...xs) < 0.2 && Math.max(...xs) > 0.8, 'percentile spans the range');
+});
+
+test('research filter: skipped nights are never entered; baseline benchmark unchanged; placebo reported', () => {
+  const packed = buildVolCyclePacked('2023-01-02', '2024-12-31');
+  const base = runOvernightHoldBacktest({ gold: packed }, { includeDailyBars: false });
+  const filt = runOvernightHoldBacktest({ gold: packed }, { includeDailyBars: false, volFilter: { minPct: 0.25, maxPct: 1 } });
+  const b = base.instruments.gold, f = filt.instruments.gold;
+  assert.ok(f.trades.length < b.trades.length);
+  assert.ok(f.trades.every(t => t.volPct >= 0.25));
+  assert.ok(f.exceptions.some(e => e.reason.startsWith('skipped by filter: vol percentile')));
+  assert.deepEqual(f.metrics.benchmark, b.metrics.benchmark);
+  assert.equal(b.research.report, null);
+  assert.equal(b.research.volQuartiles.length, 4);
+  const rep = f.research.report;
+  assert.equal(rep.keptNights, f.trades.length);
+  assert.ok(rep.placebo.shifts >= 100 && rep.placebo.sharpePercentile >= 0 && rep.placebo.sharpePercentile <= 1);
+});
+
+test('vol-target sizing: weights capped at 2x and applied to gross, net and costs together', () => {
+  const packed = buildVolCyclePacked('2023-01-02', '2024-12-31');
+  const flat = runOvernightHoldBacktest({ gold: packed }, { includeDailyBars: false }).instruments.gold.trades;
+  const vt = runOvernightHoldBacktest({ gold: packed }, { includeDailyBars: false, sizing: 'volTarget' }).instruments.gold.trades;
+  assert.equal(vt.length, flat.length);
+  assert.ok(vt.every(t => t.weight > 0 && t.weight <= 2));
+  assert.ok(vt.some(t => t.weight !== 1));
+  const i = vt.findIndex(t => t.weight !== 1);
+  assert.ok(Math.abs(vt[i].netPct - flat[i].netPct * vt[i].weight) < 1e-3);
+  assert.ok(Math.abs(vt[i].financingCostPct - flat[i].financingCostPct * vt[i].weight) < 1e-3);
 });

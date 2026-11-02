@@ -12038,6 +12038,16 @@ app.post('/api/overnight-hold-v1/run', express.json({ limit: '256kb' }), (req, r
     tripleSwapDow:     body.tripleSwapDow != null ? parseInt(body.tripleSwapDow, 10) : undefined,
     skipWeekdays,
     exitTimes: exitTimes && exitTimes.length ? exitTimes : undefined,
+    // Research filters (js/overnightHoldEngine.js applyResearchFilters): trade only
+    // nights whose vol percentile (0-100 from the page) is inside [min, max];
+    // optional vol-target sizing. Malformed values switch the filter off.
+    volFilter: (() => {
+      const lo = numOr(body.volPctMin, null), hi = numOr(body.volPctMax, null);
+      if (lo == null && hi == null) return undefined;
+      const a = Math.max(0, Math.min(100, lo ?? 0)) / 100, b = Math.max(0, Math.min(100, hi ?? 100)) / 100;
+      return a < b && (a > 0 || b < 1) ? { minPct: a, maxPct: b } : undefined;
+    })(),
+    sizing: body.sizing === 'volTarget' ? 'volTarget' : undefined,
     financingBpsPerNight: {
       nq:   numOr(body.financingBpsNq, undefined),
       gold: numOr(body.financingBpsGold, undefined),

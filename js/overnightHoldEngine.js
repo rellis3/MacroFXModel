@@ -998,6 +998,189 @@ export function resampleDailyFromPacked(packed) {
   return out;
 }
 
+// ── Research filters (owner request 2026-11-02) ──────────────────────────────
+// Filters that have been through a pre-registered test can be switched on as
+// REAL rules: a filtered-out night is never entered, so every downstream number
+// (metrics, rule check, CSVs) uses the filtered series, like skipWeekdays.
+// Every input is known at the 20:00 UK entry: it comes from NY-close (17:00 NY)
+// daily bars that closed BEFORE the entry minute. Definitions mirror
+// scripts/overnight-vol-regime/run.py (forge/OVERNIGHT_VOL_REGIME_PREREG.md):
+//   volPct   RV20 (20 daily log returns) as a mid-rank percentile of the
+//            previous 252 RV20 values, through the last completed close.
+//   sigmaPct EWMA (lambda 0.94) daily sigma, %, same cut-off.
+// Filters still waiting for their own prereg (previous-session return,
+// pre-FOMC) are deliberately NOT here: putting them on a page would show their
+// result before the test is scored.
+
+const _nyFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false,
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit' });
+const _nyOffsetCache = new Map();
+function nyOffsetHours(tSec) {   // same as voteAtlasV4Lines.js (not imported: that module pulls in the forecast stack)
+  const hourKey = Math.floor(tSec / 3600);
+  let off = _nyOffsetCache.get(hourKey);
+  if (off === undefined) {
+    const p = Object.fromEntries(_nyFmt.formatToParts(new Date(hourKey * 3600_000)).map(x => [x.type, x.value]));
+    const localAsUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24) / 1000;
+    off = Math.round((localAsUtc - hourKey * 3600) / 3600);
+    _nyOffsetCache.set(hourKey, off);
+  }
+  return off;
+}
+
+// NY-close day closes: [{ endSec, close }] where endSec is the 17:00 NY instant the
+// day closed. Stub days (< 60 bars: holidays, Sunday opens) are dropped (data-rules).
+export function nyCloseDayCloses(packed) {
+  const out = [];
+  let curDay = null, endSec = 0, close = 0, n = 0;
+  for (let i = 0; i < packed.n; i++) {
+    const t = packed.times[i];
+    const shift = (nyOffsetHours(t) + 7) * 3600;
+    const day = Math.floor((t + shift) / 86400);
+    if (day !== curDay) {
+      if (curDay !== null && n >= 60) out.push({ endSec, close });
+      curDay = day; n = 0; endSec = (day + 1) * 86400 - shift;
+    }
+    close = packed.closes[i]; n++;
+  }
+  if (curDay !== null && n >= 60) out.push({ endSec, close });
+  return out;
+}
+
+function pct252(v) {
+  const x = new Array(v.length).fill(null);
+  for (let i = 252; i < v.length; i++) {
+    if (v[i] == null) continue;
+    let lt = 0, eq = 0, ok = true;
+    for (let j = i - 252; j < i; j++) {
+      if (v[j] == null) { ok = false; break; }
+      if (v[j] < v[i]) lt++; else if (v[j] === v[i]) eq++;
+    }
+    if (ok) x[i] = (lt + 0.5 * eq) / 252;
+  }
+  return x;
+}
+
+// Attach volPct, sigmaPct and sigmaMedPct (expanding median of sigma known by
+// then, for vol-target sizing) to each trade. null where history is too short.
+export function nightVolFeatures(packed, trades) {
+  const days = nyCloseDayCloses(packed);
+  const n = days.length;
+  const lr = days.map((d, i) => (i ? Math.log(d.close / days[i - 1].close) : null));
+  const sig = new Array(n).fill(null), rv = new Array(n).fill(null), med = new Array(n).fill(null);
+  let ew = null;
+  const sorted = [];
+  for (let i = 1; i < n; i++) {
+    ew = ew === null ? lr[i] ** 2 : 0.94 * ew + 0.06 * lr[i] ** 2;
+    if (i >= 60) sig[i] = Math.sqrt(ew) * 100;
+    if (i >= 20) {
+      let s = 0;
+      for (let j = i - 19; j <= i; j++) s += lr[j] ** 2;
+      rv[i] = Math.sqrt(252 * s / 20);
+    }
+    if (sig[i] !== null) {
+      sorted.splice(bisect(sorted, sig[i]), 0, sig[i]);
+      if (sorted.length >= 60) {
+        const m = sorted.length;
+        med[i] = m % 2 ? sorted[(m - 1) / 2] : (sorted[m / 2 - 1] + sorted[m / 2]) / 2;
+      }
+    }
+  }
+  const x = pct252(rv);
+  const ends = days.map(d => d.endSec);
+  return trades.map(t => {
+    const i = bisect(ends, t.entryEpoch + 1) - 1;   // last day closed at or before entry
+    return { ...t, volPct: i >= 0 ? x[i] : null, sigmaPct: i >= 0 ? sig[i] : null, sigmaMedPct: i >= 0 ? med[i] : null };
+  });
+}
+
+// Banked evidence for each filter, shown beside its result so a backtest number
+// is never read without the scored verdict.
+export const RESEARCH_FILTER_EVIDENCE = {
+  volRegime: { id: 'overnight-vol-regime-nq / -gold', verdict: 'UNDERPOWERED, large effect ruled out', date: '2026-11-02',
+    text: 'Return per unit of risk is flat across vol regimes on both NQ (slope +0.015 [-0.052, +0.080]) and gold (+0.001 [-0.101, +0.097]). Busy nights earn more % only because they risk more. A vol on/off filter has no scored support.' },
+  volTarget: { id: 'vol-target, vol-managed-mm', verdict: 'validated as a risk tool; no Sharpe gain shown', date: '2026-11-02',
+    text: 'Sizing by 1/sigma keeps return per unit of risk and cuts the worst drawdowns; it is not a return enhancer.' },
+};
+
+// Split trades into kept/skipped by the vol filter and attach sizing weights.
+export function applyResearchFilters(featTrades, opts = {}) {
+  const f = opts.volFilter, sizing = opts.sizing;
+  const kept = [], skipped = [];
+  for (const t of featTrades) {
+    if (f) {
+      if (t.volPct == null) { skipped.push({ date: t.date, leg: 'overnight-entry', reason: 'skipped by filter: not enough vol history yet (needs ~272 days)' }); continue; }
+      if (t.volPct < f.minPct || t.volPct > f.maxPct) {
+        skipped.push({ date: t.date, leg: 'overnight-entry', reason: `skipped by filter: vol percentile outside ${Math.round(f.minPct * 100)}-${Math.round(f.maxPct * 100)}` });
+        continue;
+      }
+    }
+    const w = sizing === 'volTarget' && t.sigmaPct && t.sigmaMedPct ? Math.min(2, t.sigmaMedPct / t.sigmaPct) : 1;
+    kept.push({ ...t, weight: +w.toFixed(4) });
+  }
+  return { kept, skipped };
+}
+
+// Scale a costed trade by its position weight (vol-target sizing).
+function scaleTrade(t) {
+  const w = t.weight ?? 1;
+  if (w === 1) return t;
+  const r = v => +(v * w).toFixed(4);
+  return { ...t, grossPct: r(t.grossPct), netPct: r(t.netPct), maePct: r(t.maePct),
+    spreadCostPct: r(t.spreadCostPct), slipCostPct: r(t.slipCostPct), financingCostPct: r(t.financingCostPct) };
+}
+
+function nightStats(rets, nightsPerYr) {
+  const n = rets.length;
+  const m = rets.reduce((s, v) => s + v, 0) / n;
+  const sd = Math.sqrt(rets.reduce((s, v) => s + (v - m) ** 2, 0) / Math.max(n - 1, 1));
+  const total = (rets.reduce((e, v) => e * (1 + v / 100), 1) - 1) * 100;
+  return { sharpe: sd > 0 ? m / sd * Math.sqrt(nightsPerYr) : null, totalPct: total };
+}
+
+// Filter/sizing report vs the unfiltered series, with a label-shift placebo:
+// the same keep-mask and weights, rotated against the nights by >= 63 nights
+// (keeps the regime persistence, breaks the alignment), 200 shifts. A rule that
+// only matches its placebo is doing what any equally sized exposure cut would do.
+export function researchFilterReport(allNet, keepMask, weights, opts = {}) {
+  const n = allNet.length;
+  if (n < 200) return null;
+  const years = Math.max((allNet[n - 1].exitEpoch - allNet[0].entryEpoch) / (365.25 * 86400), 1 / 365.25);
+  const perYr = n / years;
+  const r = allNet.map(t => t.netPct);
+  const series = (mask, w) => r.map((v, i) => (mask[i] ? v * w[i] : 0));   // flat nights count as 0, so exposure is priced in
+  const base = nightStats(r, perYr);
+  const actual = nightStats(series(keepMask, weights), perYr);
+  const shifts = [], step = Math.max(1, Math.floor((n - 126) / 200));
+  for (let k = 63; k <= n - 63 && shifts.length < 200; k += step) shifts.push(k);
+  const rot = (a, k) => a.map((_, i) => a[(i - k + n) % n]);
+  const plac = shifts.map(k => nightStats(series(rot(keepMask, k), rot(weights, k)), perYr));
+  const pctile = (vals, v) => vals.filter(x => x != null && x <= v).length / vals.length;
+  const ddOf = (mask, w) => maxDrawdownWithDuration(buildEquityCurve(allNet.map((t, i) => ({ ...t, netPct: mask[i] ? t.netPct * w[i] : 0 })))).maxDDPct;
+  const kept = keepMask.filter(Boolean).length;
+  return {
+    nights: n, keptNights: kept, keptShare: +(kept / n).toFixed(3),
+    unfiltered: { sharpe: base.sharpe, totalPct: base.totalPct, maxDDPct: ddOf(r.map(() => true), r.map(() => 1)) },
+    filtered: { sharpe: actual.sharpe, totalPct: actual.totalPct, maxDDPct: ddOf(keepMask, weights) },
+    placebo: {
+      shifts: plac.length,
+      sharpePercentile: actual.sharpe == null ? null : +pctile(plac.map(p => p.sharpe), actual.sharpe).toFixed(3),
+      totalPercentile: +pctile(plac.map(p => p.totalPct), actual.totalPct).toFixed(3),
+      sharpeMedian: plac.map(p => p.sharpe).filter(x => x != null).sort((a, b) => a - b)[Math.floor(plac.length / 2)] ?? null,
+    },
+  };
+}
+
+// Vol-quartile table on the unfiltered nights (description, always shown).
+export function volQuartileTable(featNet) {
+  const edges = [[0, 0.25, 'Q1 quietest'], [0.25, 0.5, 'Q2'], [0.5, 0.75, 'Q3'], [0.75, 1.01, 'Q4 busiest']];
+  return edges.map(([lo, hi, label]) => {
+    const g = featNet.filter(t => t.volPct != null && t.volPct >= lo && t.volPct < hi);
+    const avg = f => (g.length ? g.reduce((s, t) => s + f(t), 0) / g.length : null);
+    return { bucket: label, nights: g.length, meanGrossPct: avg(t => t.grossPct), meanNetPct: avg(t => t.netPct),
+      meanZ: avg(t => (t.sigmaPct ? t.grossPct / t.sigmaPct : 0)), hitRatePct: g.length ? 100 * g.filter(t => t.grossPct > 0).length / g.length : null };
+  });
+}
+
 // ── Orchestrator (pure core; data passed in) ────────────────────────────────
 
 export function runOvernightHoldForInstrument(assetKey, packed, otherPacked, opts = {}) {
@@ -1006,10 +1189,26 @@ export function runOvernightHoldForInstrument(assetKey, packed, otherPacked, opt
   if (!overlap) return { assetKey, error: 'no overlapping date range with the other instrument' };
 
   const tzGate = timezoneSanityCheck(packed);
-  const { trades: grossTrades, mirrors, exceptions, expectedTradingDays } = buildOvernightTrades(packed, overlap.start, overlap.end, opts);
-  const mirror = mirrorTest(grossTrades, mirrors);
-  const netTrades = applyCosts(grossTrades, assetKey, opts);
-  const benchmark = buildBuyHoldBenchmark(packed, grossTrades, opts.maxGapSec);
+  const { trades: allGross, mirrors, exceptions, expectedTradingDays } = buildOvernightTrades(packed, overlap.start, overlap.end, opts);
+  const mirror = mirrorTest(allGross, mirrors);
+  // Research filters/sizing (see applyResearchFilters). The mirror test and the
+  // buy & hold benchmark always use every night, so the baseline never moves.
+  const featGross = nightVolFeatures(packed, allGross);
+  const { kept, skipped } = applyResearchFilters(featGross, opts);
+  exceptions.push(...skipped);
+  const grossTrades = kept;
+  const netTrades = applyCosts(grossTrades, assetKey, opts).map(scaleTrade);
+  const allNet = applyCosts(featGross, assetKey, opts);
+  const keptDates = new Map(kept.map(t => [t.date, t.weight]));
+  const research = {
+    settings: { volFilter: opts.volFilter ?? null, sizing: opts.sizing ?? 'flat' },
+    evidence: RESEARCH_FILTER_EVIDENCE,
+    volQuartiles: volQuartileTable(allNet),
+    report: (opts.volFilter || opts.sizing === 'volTarget')
+      ? researchFilterReport(allNet, allNet.map(t => keptDates.has(t.date)), allNet.map(t => keptDates.get(t.date) ?? 1))
+      : null,
+  };
+  const benchmark = buildBuyHoldBenchmark(packed, allGross, opts.maxGapSec);
   const metrics = computeMetricsTable(netTrades, benchmark);
   const ruleCheck = metrics ? runPropFirmRuleCheck(netTrades, opts.ruleset) : null;
   const costSweep = opts.includeCostSweep === false ? null : costSensitivitySweep(grossTrades, assetKey, opts);
@@ -1032,6 +1231,7 @@ export function runOvernightHoldForInstrument(assetKey, packed, otherPacked, opt
     costSweep,
     weekday,
     exitSweep,
+    research,
     dailyBars: opts.includeDailyBars === false ? null : resampleDailyFromPacked(packed),
     csv: metrics ? { returns: toCsvReturns(netTrades), rMultiples: toCsvRMultiples(netTrades), currency: toCsvCurrency(netTrades, opts.accountSize, opts.notionalPerTrade) } : null,
   };
