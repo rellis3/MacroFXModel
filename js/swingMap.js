@@ -109,6 +109,45 @@ export const THIN_FLOOR = 0.10;     // an expiry under 10% of all live expiries'
  * Do the option readings agree with each other? Near-dated (<= 10 days, not thin) OI lean, the same expiries' one-day
  * charm hedge (dealers buy or sell), and the far (11-60 days) lean. Plain words for the page; all UNTESTED.
  */
+/**
+ * The strongest option zones, by days to expiry. Each expiry's zones (its biggest strikes, from the tracker) are scored
+ * by their share of ALL live open interest, so a strike in a big monthly outranks the top strike of a small weekly.
+ *  perExpiry  the top strike of each readable expiry
+ *  buckets    per DTE bucket, strikes summed across the bucket's expiries, top `perBucket`
+ *  overall    strikes summed across every readable expiry, top `overall` (a strike several expiries share stacks up)
+ * Each zone: { px, oi, strength (share of all live OI), expiries: [{expiry, dte, oi}], side 'above'|'below', building }.
+ * Built from each expiry's top strikes only (the tracker sends 6), so a strike that is small in every expiry but
+ * present in many can be missed. Descriptive; UNTESTED like every other expiry reading.
+ */
+export function strongestZones(expiries, { close = null, buckets = DTE_BUCKETS, perBucket = 3, overall = 5 } = {}) {
+  const all = (expiries || []).reduce((a, e) => a + (e.totalOI || 0), 0);
+  const live = (expiries || []).filter(e => !e.thin && Array.isArray(e.zones) && e.zones.length && Number.isFinite(e.dte));
+  if (!all || !live.length) return { perExpiry: [], buckets: buckets.map(([lo, hi]) => ({ lo, hi, zones: [] })), overall: [], allOI: all };
+  const keyOf = z => (Number.isFinite(z.k) ? z.k : z.px);
+  const sideOf = px => (close == null || px == null ? null : px > close ? 'above' : 'below');
+  const sum = list => {
+    const by = new Map();
+    for (const e of list) for (const z of e.zones) {
+      const k = keyOf(z), cur = by.get(k) ?? { px: z.px, oi: 0, expiries: [], building: false };
+      cur.oi += z.oi || 0;
+      cur.expiries.push({ expiry: e.expiry, dte: e.dte, oi: z.oi || 0 });
+      cur.building = cur.building || (z.buildStreak ?? 0) >= 2;
+      by.set(k, cur);
+    }
+    return [...by.values()].map(z => ({ ...z, strength: z.oi / all, side: sideOf(z.px) })).sort((a, b) => b.oi - a.oi);
+  };
+  const perExpiry = live.map(e => {
+    const z = e.zones[0];
+    return { expiry: e.expiry, dte: e.dte, top: { px: z.px, oi: z.oi || 0, strength: (z.oi || 0) / all, side: sideOf(z.px), building: (z.buildStreak ?? 0) >= 2, shareOfExpiry: z.share ?? null } };
+  });
+  return {
+    perExpiry,
+    buckets: buckets.map(([lo, hi]) => ({ lo, hi, zones: sum(live.filter(e => e.dte >= lo && e.dte <= hi)).slice(0, perBucket) })),
+    overall: sum(live).slice(0, overall),
+    allOI: all,
+  };
+}
+
 export function signalCheck(expiries, live) {
   const ok = e => !e.thin && Number.isFinite(e.dte);
   const near = (expiries || []).filter(e => ok(e) && e.dte <= 10), far = (expiries || []).filter(e => ok(e) && e.dte > 10 && e.dte <= 60);
@@ -246,6 +285,7 @@ export function buildSwingMap(bars, opts = {}) {
       inMonthlyP90: bands[1] ? z.px >= bands[1].p90.down && z.px <= bands[1].p90.up : null })),
     proof: PROOF.untested }));
   const signals = signalCheck(expiries, live);
+  const zones = strongestZones(expiries, { close: last });
 
   const pull = pullByBucket(expiries);
 
@@ -276,7 +316,7 @@ export function buildSwingMap(bars, opts = {}) {
   return {
     ok: true, generatedFor: state.date,
     series: bars2.map((b, i) => [b.date, b.close]),
-    legs, live: liveOut, pivots, state, barriers, bands, bandDaily, expiries, pull, paths, signals,
+    legs, live: liveOut, pivots, state, barriers, bands, bandDaily, expiries, pull, paths, signals, zones,
     baseRates: BASE_RATES,
     proofs: {
       legs: PROOF.context, live: PROOF.context, state: PROOF.exploratory, baseRates: PROOF.exploratory,

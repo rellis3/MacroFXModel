@@ -3,14 +3,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildSwingMap, zigzag, sigmaSeries, BASE_RATES, pullByBucket, signalCheck } from './swingMap.js';
+import { buildSwingMap, zigzag, sigmaSeries, BASE_RATES, pullByBucket, signalCheck, strongestZones } from './swingMap.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(root, 'analysis/output/swing-leg-baserates');
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
 
-const readBars = f => fs.readFileSync(f, 'utf8').trim().split('\n').slice(1).map(l => { const [d, , , , c] = l.split(','); return { date: d, close: +c }; })
+const readBars = f => fs.readFileSync(f, 'utf8').trim().split(/\r?\n/).slice(1).map(l => { const [d, , , , c] = l.split(','); return { date: d, close: +c }; })
   .filter(b => ![0, 6].includes(new Date(`${b.date}T12:00:00Z`).getUTCDay()));
 
 console.log('[parity: zigzag legs match analyse.py on the committed OANDA bars]');
@@ -20,7 +20,7 @@ for (const inst of ['XAUUSD', 'EURUSD', 'NAS100']) {
   const sig = sigmaSeries(bars.map(b => b.close));
   const i0 = sig.findIndex(Number.isFinite);
   const { legs } = zigzag(bars.slice(i0), sig.slice(i0));
-  const py = fs.readFileSync(path.join(OUT, 'legs_m15.csv'), 'utf8').trim().split('\n').slice(1).map(l => l.split(','))
+  const py = fs.readFileSync(path.join(OUT, 'legs_m15.csv'), 'utf8').trim().split(/\r?\n/).slice(1).map(l => l.split(','))
     .filter(r => r[r.length - 1] === inst).map(r => ({ start: r[0].slice(0, 10), end: r[1].slice(0, 10), sigma: +r[4] }));
   const same = legs.length === py.length && legs.every((l, i) => l.start === py[i].start && l.end === py[i].end && Math.abs(l.sigma - py[i].sigma) < 1e-6);
   ok(`${inst}: ${legs.length} legs identical to Python`, same, `${legs.length} vs ${py.length}`);
@@ -80,6 +80,24 @@ console.log('[thin books and the agreement line]');
   ok('a 261-contract book is thin; the 7,770 one is not', ex[2].thin && !ex[0].thin && ex[1].thin);
   ok('near lean up while near charm sells -> they disagree', sg.nearLean === 'up' && sg.charm === 'sell' && sg.agree === false, sg.text);
   ok('thin books are left out of the buckets', pullByBucket(ex).buckets[1].n === 1);
+}
+
+console.log('[strongest zones by DTE]');
+{
+  const z = (k, oi, b = 0) => ({ k, px: k, oi, share: 0.1, buildStreak: b });
+  const ex = [
+    { expiry: '2026-11-04', dte: 2, totalOI: 1000, zones: [z(3900, 300), z(3800, 100)] },
+    { expiry: '2026-11-06', dte: 4, totalOI: 2000, zones: [z(3800, 500, 3), z(4000, 200)] },
+    { expiry: '2026-11-24', dte: 22, totalOI: 6000, zones: [z(4000, 1500), z(4200, 800)] },
+    { expiry: '2026-11-12', dte: 10, totalOI: 50, thin: true, zones: [z(3500, 50)] },
+  ];
+  const r = strongestZones(ex, { close: 3876 });
+  ok('per expiry top strike, thin book left out', r.perExpiry.length === 3 && r.perExpiry[2].top.px === 4000);
+  ok('0-10 bucket sums 3800 across two expiries and ranks it first', r.buckets[0].zones[0].px === 3800 && r.buckets[0].zones[0].oi === 600 && r.buckets[0].zones[0].expiries.length === 2);
+  ok('strength is share of ALL live OI', Math.abs(r.buckets[0].zones[0].strength - 600 / 9050) < 1e-12);
+  ok('overall: 4000 stacks across expiries and leads', r.overall[0].px === 4000 && r.overall[0].oi === 1700);
+  ok('side vs price and building flag', r.overall[0].side === 'above' && r.buckets[0].zones[0].side === 'below' && r.buckets[0].zones[0].building === true);
+  ok('empty input is safe', strongestZones([]).overall.length === 0);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
