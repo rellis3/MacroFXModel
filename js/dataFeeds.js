@@ -54,6 +54,7 @@ export const IGNORE_HOSTS = [
   'r2.cloudflarestorage.com', 'r2.dev', 'cloudflare.com',   // our own storage / KV
   'github.com', 'githubusercontent.com', 'tradingview.com', 'sheetjs.com', 'cdnjs.cloudflare.com', 'jsdelivr.net',
   'localhost', '127.0.0.1', 'example.com', 'railway.app', 'macrofxmodel.com', 'claude.ai', 'w3.org',
+  'www.bis.org', 'databank.worldbank.org',   // citation links in the lesson question bank (js/questionBankWeb.js), not fetched
   'cftc.gov',                 // links to the COT archive in help text (the API host is claimed below)
   'drive.usercontent.google.com', 'google.com', 'googleapis.com',   // one-off M1 archive download in a backtest engine
 ];
@@ -275,13 +276,25 @@ const HAND_FEEDS = [
     purpose: 'Percent of retail traders long/short per pair — a contrarian crowding read.',
     details: 'Community outlook via the worker.', refresh: 'On request with a KV TTL.', store: 'KV sentiment',
     endpoints: ['/api/sentiment'], hosts: ['myfxbook.com'] },
+  { id: 'data_archive', name: 'Permanent data archive (R2)', provider: 'Desk (R2), from FRED · CFTC · Cboe · Yahoo · ECB · BoE · BoC · CME capture', category: 'records',
+    purpose: 'The append-only record of everything that cannot be re-fetched or that the live caches trim: deep FRED histories, ICE spreads, COT at full depth, 21 Cboe vol indices, MOVE/TNX/EM FX dailies, €STR/SONIA/CORRA, the CME options capture, the desk forecast and session records, GPR, nowcasts.',
+    details: 'js/dataArchive.js (snapshot / mergeSeries / mergeTable), daily job _archiveDaily; R2 archive/<source>/<YYYY>/<date>.json, archive/series/<source>/<id>.json, archive/tables/cot/<sym>.json. Nothing is ever deleted.',
+    refresh: 'Daily (boot +15 min, then every 24h); COT weekly.',
+    endpoints: ['/api/data-archive/status'],
+    hosts: ['cdn.cboe.com', 'bankofcanada.ca'] },
+  { id: 'fiscal_events', name: 'Fiscal events (UK Budgets, US refundings)', provider: 'OBR · GOV.UK · US Treasury', category: 'macro',
+    purpose: 'Budget and refunding documents for the fiscal-event pages and the fiscal-event-reaction study.',
+    details: 'OBR Economic and fiscal outlook HTML, GOV.UK content API, Treasury quarterly refunding documents (js/fiscalEvents.js).',
+    refresh: 'On request, cached.',
+    endpoints: ['/api/fiscal/events'],
+    hosts: ['obr.uk', 'www.gov.uk', 'home.treasury.gov'] },
   { id: 'cb_text', name: 'Central-bank statements', provider: 'Fed · ECB · BoE · BoJ', category: 'positioning',
     purpose: 'Every statement, minutes and Beige Book, scored hawkish/dovish — the sentiment pages and the brief’s policy line.',
     details: 'Statement text fetched from each bank, scored with a lexicon and an LLM read.',
     refresh: 'Poll every 30 min (first poll 30 min after boot); manual fetch-now per bank. KV persists.',
     store: 'KV fomc_*, ecb_*, boe_*, boj_*, beigebook_*',
     endpoints: ['/api/fomc/latest', '/api/ecb/latest', '/api/boe/latest', '/api/boj/latest', '/api/beigebook/latest', '/api/fomc/history'],
-    hosts: ['federalreserve.gov', 'boj.or.jp'] },
+    hosts: ['federalreserve.gov', 'boj.or.jp', 'www.rbnz.govt.nz', 'www.snb.ch'] },   // RBNZ/SNB: js/rbnzFetch.js, js/snbFetch.js and their calendars
   { id: 'gold_etf', name: 'Gold ETF flows', provider: 'Yahoo Finance', category: 'positioning',
     purpose: 'GLD + IAU assets — whether the gold move is backed by money coming in.',
     details: 'quoteSummary total assets, one point appended per day.',

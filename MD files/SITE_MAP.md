@@ -114,6 +114,7 @@ Pages with a later date have genuinely been worked on since.
 | `forecast-accuracy.html`     | Grade range accuracy and exhaustion location per σ calibration          | 🔬 Research  | 2026-08-14    | Two-lens study                                                 |
 | `forecast-blend.html`        | Compare Cone A vs Cone B vs blended cone                                | 🔬 Research  | ≤2026-08-09   | 🟡 view-only, unverified; OOS win/loss not yet measured        |
 | `forecast-path.html`         | Draw the model's cone intraday/daily and grade it                       | 🟢 Live      | ≤2026-08-09   | A calibration viewer, not a strategy                           |
+| `swing-map.html`              | Multi-week picture per instrument: swings, ranges, option-expiry pull   | 🟢 Live      | 2026-11-01    | Proof-tagged; the expiry pull is untested                      |
 | `forecast-style-fade.html`   | Rank 6 forecasters × 4 line types for fade/follow expectancy            | 🔬 Research  | ≤2026-08-09   | Greenest cell wins; no verdict banked                          |
 | `forward-track.html`         | Live post-research record of the confirmed fade                         | 🟢 Live      | ≤2026-08-09   | The test a backtest can't fake; KV-persisted                   |
 | `surface-lab.html`           | Live 3D surfaces: FX absorption, persistence, vol time, rates regime       | 🟢 Live      | 2026-10-03    | KV surface_lab_v1; job `surfaceLab` (12 h rebuild); OANDA + FRED  |

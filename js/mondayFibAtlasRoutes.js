@@ -122,7 +122,8 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   const atRearmForSplit = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
   const { split: realSplit } = splitAt(atRearmForSplit);
   const isOnly = atRearmForSplit.filter(t => t.date < realSplit);
-  const honestBook = buildAsiaFibAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM }) ?? book;
+  // No fallback to `book` (2026-11-01): it has seen the scored period.
+  const honestBook = buildAsiaFibAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM });
 
   // "Let-ride" extended-resolution walk (2026-08-31) — Monday's own sibling
   // of Asia's (js/asiaFibAtlasRoutes.js's runOne, see its own comment for
@@ -141,7 +142,7 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   const extAtRearmForSplit = extTouches.filter(t => t.rearmFrac === DEFAULT_REARM);
   const { split: extRealSplit } = splitAt(extAtRearmForSplit);
   const extIsOnly = extAtRearmForSplit.filter(t => t.date < extRealSplit);
-  const extHonestBook = buildAsiaFibAtlasBook(extIsOnly, { rearmFrac: DEFAULT_REARM }) ?? extBook;
+  const extHonestBook = buildAsiaFibAtlasBook(extIsOnly, { rearmFrac: DEFAULT_REARM });   // no fallback, as above
 
   const cost = costForPair(pair, assetClass);
   const wf1 = runBarrierWalkForward(touches, honestBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1, oosStartDate: realSplit });

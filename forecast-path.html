@@ -212,6 +212,7 @@
       <button id="tImpliedCone" title="Scale the day's cone by implied vol (EVZ/GVZ/VIX) vs its own trailing baseline. Measured-first, default OFF — the A/B card shows whether it beats the realized σ already in the cone. EUR/USD, GOLD, indices only." style="display:none">Implied σ</button>
       <button id="tBudgetCone" title="Widen the cone on quiet-so-far sessions, slightly narrow on busy ones (a pre-registered vol-mean-reversion hypothesis from the gold calibration). Measured-first, default OFF — the A/B card judges it.">Budget σ</button>
       <button id="tOiMove" title="Overlay the CME option-implied expected move (ATM straddle ± range to expiry) for this pair from your latest OI/IV paste — the option MARKET's own range vs the model cone. EOD, sky dotted. Only shows if IV was pasted for this instrument.">OI exp-move</button>
+      <button id="tExpiryPull" title="Daily view, live edge only. The Swing Map's option-expiry pull: each CME expiry still alive draws price toward its open-interest centre, the nearest one weighing most and handing over as it rolls off, so a near expiry below price and a later one above it give 'down first, then up'. Violet = the most-touched simulated path with the pull, grey = the same with no pull. UNTESTED: the expiry-pull score (forge/EXPIRY_TRACKER_PREREG.md) decides whether the lean means anything.">Expiry pull (OI)</button>
       <button id="tLevels">Levels</button>
       <button id="tBands">Day forecast</button>
       <button id="tTrail" class="on">Hindcast trail</button>
@@ -315,6 +316,7 @@ import {
   intradayExcursion, excursionCalibration,
 } from './js/forecastPathCore.js?v=17';
 import { computeBands, nextSigma } from './js/forecastCore.js?v=17';
+import { simulatePaths, driftSegments } from './js/swingPaths.js?v=17';
 import { COG_CONST } from './js/cogReverseEngineer.js?v=17';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
@@ -421,7 +423,7 @@ const view = createLevelChart($('chart'), { height: 480 });
 const chart = view.chart;
 
 let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null, events = [], d1History = [], ivByDate = null;
-const toggles = { cone: true, paths: false, consensus: false, trendLine: false, actual: true, news: true, levels: false, bands: false, trail: true, eventCone: true, impliedCone: false, budgetCone: false, oiMove: false };
+const toggles = { cone: true, paths: false, consensus: false, trendLine: false, actual: true, news: true, levels: false, bands: false, trail: true, eventCone: true, impliedCone: false, budgetCone: false, oiMove: false, expiryPull: false };
 
 // CME option-implied expected move per pair (from the OI/IV paste in oi_store) — for
 // the OI exp-move overlay. Fetched best-effort; refreshed each load. Key-normalised.
@@ -507,6 +509,46 @@ function trendDir(H) {
   return _trendDirCache;
 }
 
+// ── Expiry pull overlay ─────────────────────────────────────────────────────────────────────────────────────────────
+let _swing = { pair: null, data: null, loading: false };
+function loadSwing(pair) {
+  if (_swing.pair === pair && (_swing.data || _swing.loading)) return;
+  _swing = { pair, data: null, loading: true };
+  fetch(`/api/swing-map?inst=${encodeURIComponent(pair)}`).then(r => r.json()).then(d => { if (_swing.pair === pair) { _swing = { pair, data: d, loading: false }; render(); } })
+    .catch(() => { if (_swing.pair === pair) { _swing = { pair, data: { ok: false, error: 'fetch failed' }, loading: false }; render(); } });
+}
+const _sessBetween = (a, b) => { let t = Date.parse(a + 'T00:00:00Z'), end = Date.parse(b + 'T00:00:00Z'), k = 0; while (t < end) { t += 864e5; const w = new Date(t).getUTCDay(); if (w && w !== 6) k++; } return k; };
+function drawExpiryPull(e, cone, t0, H, live) {
+  if (isIntraday()) return '<span class="warn">daily view only: expiries are days apart, so an 8-hour path cannot show a hand-over</span>';
+  if (!live) return '<span class="muted">live edge only (the option books are today\'s)</span>';
+  loadSwing(pairSel.value);
+  const m = _swing.data;
+  if (!m) return 'loading…';
+  if (!m.ok) return `<span class="warn">${m.error || 'not available'} (Swing Map covers FX majors, GBPJPY, gold, NQ, SPX500)</span>`;
+  const used = (m.expiries || []).filter(x => !x.thin && x.centrePx > 0 && x.totalOI > 0)
+    .map(x => ({ expiry: x.expiry, s: _sessBetween(m.state.date, x.expiry), target: x.centrePx, oi: x.totalOI, lean: x.shareAbove })).filter(x => x.s >= 1);
+  if (!used.length) return '<span class="warn">no readable expiries for this instrument (the tracker has no books, or all are thin)</span>';
+  const mb = (m.bands || [])[1];
+  const sigma = mb?.sigmaUsedPct ? mb.sigmaUsedPct / 100 / Math.sqrt(20) : m.state.sigmaDailyPct / 100;
+  const Hs = Math.min(H, cone.steps.length, 60);
+  const base = { close: m.state.close, sigma, sessions: Hs, expiries: used, n: 2000, seed: 20261101, keep: 0 };
+  const pull = simulatePaths({ ...base, k: 0.5 }), flat = simulatePaths({ ...base, k: 0 });
+  if (!pull) return '<span class="warn">could not simulate</span>';
+  const scale = cone.anchor / m.state.close;
+  const pts = sim => [t0, ...sim.modal.slice(1).map((q, t) => ({ time: e.stepT(cone.steps[t]), value: q.px * scale }))];
+  line('rgba(139,148,158,.9)', 1, 2).setData(pts(flat));
+  const ps = line('#a371f7', 2, 0);
+  ps.setData(pts(pull));
+  const marks = used.filter(x => x.s <= Hs).map(x => ({ time: e.stepT(cone.steps[x.s - 1]), position: x.lean > 0.5 ? 'aboveBar' : 'belowBar', color: '#a371f7',
+    shape: x.lean > 0.55 ? 'arrowUp' : x.lean < 0.45 ? 'arrowDown' : 'circle', text: `exp ${x.expiry.slice(5)}` }));
+  try { ps.setMarkers(marks); } catch { /* older chart build */ }
+  const dg = priceDigits(pairSel.value);
+  const seg = driftSegments(pull.drift).text.replace(/\bup\b/g, '<span class="good">up</span>').replace(/\bdown\b/g, '<span class="bad">down</span>');
+  return `pull ${seg}; most-touched ${(pull.modal.at(-1).px * scale).toFixed(dg)} vs ${(flat.modal.at(-1).px * scale).toFixed(dg)} with no pull · ${used.length} expiries · <span class="warn">UNTESTED</span>`
+    + (m.signals?.agree === false ? `<br><span class="muted">${m.signals.text}</span>` : '')
+    + ` · <a href="swing-map.html?inst=${encodeURIComponent(pairSel.value)}" target="_blank">Swing Map →</a>`;
+}
+
 function render() {
   if (!ctx) return;
   clearExtra();
@@ -543,6 +585,11 @@ function render() {
       line('rgba(56,189,248,.9)', 1, 2).setData(flat(cone.anchor - em.move));
     }
   }
+
+  // Expiry pull (Swing Map / js/swingPaths.js): daily view, live edge only, because the option books are the current
+  // ones. Same model, sigma and seed as swing-map.html, rescaled onto this cone's anchor.
+  let _pullInfo = null;
+  if (toggles.expiryPull) _pullInfo = drawExpiryPull(e, cone, t0, H, live);
 
   if (toggles.paths || toggles.consensus) {
     const { paths, consensus } = e.paths(ctx, live ? bars.length : i, H, { nPaths: 24 });
@@ -731,6 +778,7 @@ function render() {
     `<div class="kv"><span>P75 range @ ${e.fmtStep(H)}</span><b>${lastS.p75Dn.toFixed(dg)} – ${lastS.p75Up.toFixed(dg)}</b></div>` +
     (toggles.oiMove ? `<div class="kv"><span>OI exp-move</span><b>${(() => { const em = oiMoveFor(pairSel.value); return (em && em.move > 0) ? `± ${em.move} (${em.pct}%)${em.dte != null ? ' ' + em.dte + 'DTE' : ''}` : (_oiStore === null ? 'loading…' : `<span class="warn">no IV pasted for ${pairSel.value} — paste the QuikStrike settlement in the OI modal</span>`); })()}</b></div>` : '') +
     surpriseHtml + evHtml +
+    (toggles.expiryPull ? `<div class="kv"><span>Expiry pull (OI)</span><b>${_pullInfo ?? '…'}</b></div>` : '') +
     `<div class="muted" style="margin-top:6px">Direction is the weak claim (≈ coin flip); the envelopes are the strong one. See calibration.</div>`;
 
   renderDayBudget();
@@ -1104,7 +1152,7 @@ $('calc').onchange = () => {   // bandsFn is captured in the D1 context — rebu
   if (ctx) ctx = eng().build(bars, ASSET_CLASS(pairSel.value));
   render(); renderCalib();
 };
-for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tTrendLine','trendLine'],['tActual','actual'],['tNews','news'],['tLevels','levels'],['tBands','bands'],['tTrail','trail'],['tOiMove','oiMove']])
+for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tTrendLine','trendLine'],['tActual','actual'],['tNews','news'],['tLevels','levels'],['tBands','bands'],['tTrail','trail'],['tOiMove','oiMove'],['tExpiryPull','expiryPull']])
   $(id).onclick = () => { toggles[key] = !toggles[key]; $(id).classList.toggle('on', toggles[key]); render(); };
 $('tEventCone').onclick = () => {   // eventAware lives in the context — rebuild it
   toggles.eventCone = !toggles.eventCone;

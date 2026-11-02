@@ -340,7 +340,7 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
 
   // per-instrument confluence thresholds mirror the live caps model
   ok(confluenceCapsFor('eurusd').confluencePips === 2, 'fx = 2 pips');
-  ok(confluenceCapsFor('gold').confluencePips === 200, 'gold = 200 gold-pips ($20)');
+  ok(confluenceCapsFor('gold').confluencePips === 20, 'gold = 20 gold-pips of $1.00 = $20 (canonical gold pip is 1.0; js/config.js)');
   ok(confluenceCapsFor('nq').confluencePips === 100 && confluenceCapsFor('dow').confluencePips === 60
     && confluenceCapsFor('dax').confluencePips === 80 && confluenceCapsFor('ftse').confluencePips === 40
     && confluenceCapsFor('rut').confluencePips === 15, 'index thresholds per caps');

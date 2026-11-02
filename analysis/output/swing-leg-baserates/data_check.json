@@ -1,0 +1,101 @@
+{
+ "EURUSD": {
+  "days": 2010,
+  "from": "2018-01-01",
+  "to": "2026-10-07",
+  "ret_corr": 0.599,
+  "share_ret_diff_gt_half_sigma": 0.31,
+  "median_level_gap_pct": 0.023,
+  "max_level_gap_pct": 2.88
+ },
+ "GBPUSD": {
+  "days": 2010,
+  "from": "2018-01-01",
+  "to": "2026-10-07",
+  "ret_corr": 0.562,
+  "share_ret_diff_gt_half_sigma": 0.306,
+  "median_level_gap_pct": 0.02,
+  "max_level_gap_pct": 4.41
+ },
+ "USDJPY": {
+  "days": 2010,
+  "from": "2018-01-01",
+  "to": "2026-10-07",
+  "ret_corr": 0.577,
+  "share_ret_diff_gt_half_sigma": 0.319,
+  "median_level_gap_pct": 0.02,
+  "max_level_gap_pct": 3.87
+ },
+ "AUDUSD": {
+  "days": 2010,
+  "from": "2018-01-01",
+  "to": "2026-10-07",
+  "ret_corr": 0.58,
+  "share_ret_diff_gt_half_sigma": 0.331,
+  "median_level_gap_pct": 0.034,
+  "max_level_gap_pct": 3.46
+ },
+ "USDCAD": {
+  "days": 2010,
+  "from": "2018-01-01",
+  "to": "2026-10-07",
+  "ret_corr": 0.577,
+  "share_ret_diff_gt_half_sigma": 0.312,
+  "median_level_gap_pct": 0.019,
+  "max_level_gap_pct": 2.05
+ },
+ "USDCHF": {
+  "days": 2010,
+  "from": "2018-01-01",
+  "to": "2026-10-07",
+  "ret_corr": 0.615,
+  "share_ret_diff_gt_half_sigma": 0.312,
+  "median_level_gap_pct": 0.028,
+  "max_level_gap_pct": 2.51
+ },
+ "XAUUSD": {
+  "days": 1925,
+  "from": "2018-01-02",
+  "to": "2026-10-07",
+  "ret_corr": 0.524,
+  "share_ret_diff_gt_half_sigma": 0.509,
+  "median_level_gap_pct": 0.425,
+  "max_level_gap_pct": 5.94
+ },
+ "XAGUSD": {
+  "days": 1924,
+  "from": "2018-01-02",
+  "to": "2026-10-07",
+  "ret_corr": 0.573,
+  "share_ret_diff_gt_half_sigma": 0.494,
+  "median_level_gap_pct": 0.692,
+  "max_level_gap_pct": 13.89
+ },
+ "NAS100": {
+  "days": 2203,
+  "from": "2018-01-02",
+  "to": "2026-10-07",
+  "ret_corr": 0.918,
+  "share_ret_diff_gt_half_sigma": 0.128,
+  "median_level_gap_pct": 0.143,
+  "max_level_gap_pct": 4.56
+ },
+ "SPX500": {
+  "days": 2203,
+  "from": "2018-01-02",
+  "to": "2026-10-07",
+  "ret_corr": 0.918,
+  "share_ret_diff_gt_half_sigma": 0.113,
+  "median_level_gap_pct": 0.121,
+  "max_level_gap_pct": 4.52
+ },
+ "DE30": {
+  "days": 2226,
+  "from": "2018-01-02",
+  "to": "2026-10-07",
+  "ret_corr": 0.825,
+  "share_ret_diff_gt_half_sigma": 0.245,
+  "median_level_gap_pct": 0.192,
+  "max_level_gap_pct": 8.33
+ }
+}

@@ -1,0 +1,4 @@
+{
+  "forge.vol_test::test_discover_full_universe_includes_indices_without_duplicating_fx": "needs the local M1 cache (VolRangeForecaster/data/m1, gitignored); fails on main the same way",
+  "forge.xsect_test::test_discover_universe_matches_real_data_dir": "needs the local M1 cache (VolRangeForecaster/data/m1, gitignored); fails on main the same way"
+}

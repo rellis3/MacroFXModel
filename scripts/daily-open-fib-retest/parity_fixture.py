@@ -12,7 +12,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from engine import find_fill, find_fill_swing, trade  # noqa: E402
+from engine import find_fill, find_fill_swing, find_fill_window, trade  # noqa: E402
 
 out, n = sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 400
 rng = np.random.default_rng(20261029)
@@ -35,8 +35,10 @@ for s in range(n):
     pmid = 2000 + np.cumsum(rng.normal(0, 0.25, 360))[::-1]  # 6 h before the open, oldest first, ending near 2000
     pre_h = np.round(pmid + np.abs(rng.normal(0, 0.15, 360)), 3)
     pre_l = np.round(pmid - np.abs(rng.normal(0, 0.15, 360)), 3)
-    for anchor in ("high", "do", "swing"):
-        if anchor == "swing":
+    for anchor in ("high", "do", "swing", "window"):
+        if anchor == "window":
+            f = find_fill_window(pre_h, pre_l, bid["o"], bid["h"], bid["l"], mins, adr, 0.10, 360, buy_l=ask["l"], buy_o=ask["o"], win=60)
+        elif anchor == "swing":
             f = find_fill_swing(pre_h, pre_l, bid["o"], bid["h"], bid["l"], mins, adr, 0.10, 360, buy_l=ask["l"], buy_o=ask["o"])
         else:
             f = find_fill(bid["o"], bid["h"], bid["l"], mins, adr, anchor, 0.10, 360, buy_l=ask["l"], buy_o=ask["o"])

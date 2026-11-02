@@ -221,10 +221,32 @@ function loadLine(hi, done, weekly, now = -Infinity) {
 }
 
 /** The day sheet: each high-impact release in time order with what is known about it. */
-function sheetOf(hi, cb, weekly) {
+/** Which Release Reaction family (js/eventDayContext.js FAMILIES) a calendar row belongs to, or null. */
+export function eventFamily(e) {
+  const t = e?.event ?? '', c = e?.ccy;
+  if (isDecision(e)) return { USD: 'FOMC', EUR: 'ECB', GBP: 'BOE', JPY: 'BOJ' }[c] ?? null;
+  if (c === 'USD') return /non-?farm|payroll/i.test(t) ? 'NFP' : /\bCPI\b|consumer price/i.test(t) ? 'CPI' : /retail sales/i.test(t) ? 'RETAIL' : /\bPCE\b/i.test(t) ? 'PCE' : /refunding/i.test(t) ? 'REFUNDING' : null;
+  if (c === 'GBP' && /budget|autumn statement|spring statement|fiscal/i.test(t)) return 'UKFISCAL';
+  return null;
+}
+
+/**
+ * What the same kind of event did before, in one short sentence, from the Release Reaction record (/api/event-day). The server's paragraph also carries
+ * the evidence text; only the measured part is kept here: how many earlier events and the typical first-30-minute move, either way, on up to four markets.
+ */
+export function eventPast(e, eventDay) {
+  const fam = eventFamily(e); if (!fam) return '';
+  const hit = (eventDay?.events ?? []).find(x => x?.family === fam && typeof x.line === 'string');
+  const m = hit && /over the (\d+) previous [^(]*events in the Release Reaction record[^:]*?, the typical first-30-minute move, either way, was (.+?)(?:\. The 4-hour|\. This one|\. Descriptive)/.exec(hit.line);
+  if (!m) return '';
+  const items = m[2].split(/, (?=[A-Za-z])/).slice(0, 4);
+  return `In the ${m[1]} like it on record the typical first-30-minute move, either way, was ${items.join(', ')}`;
+}
+
+function sheetOf(hi, cb, weekly, eventDay) {
   return hi.slice(0, weekly ? 7 : 6).map(e => {
     const dec = isDecision(e), st = dec ? (cb ?? []).find(c => c.ccy === e.ccy && c.regime) : null, rng = e.note?.range ?? null;
-    const detail = [e.estimate ? `Expected ${e.estimate}.` : '', st ? `Its last statement read ${String(st.regime).toLowerCase()}.` : '', rng ? `Usual effect: ${rng}.` : ''].filter(Boolean).slice(0, 2).join(' ');
+    const past = eventPast(e, eventDay), detail = [e.estimate ? `Expected ${e.estimate}.` : '', st ? `Its last statement read ${String(st.regime).toLowerCase()}.` : '', past ? `${past}.` : rng ? `Usual effect: ${rng}.` : ''].filter(Boolean).slice(0, 2).join(' ');
     return { when: `${weekly ? wday(e.ms).slice(0, 3) + ' ' : ''}${hhmm(e.ms)}`, name: dec ? `${cap(listName(e))} rate decision` : clip(e.event, 44), ccy: e.ccy ?? '', detail };
   });
 }
@@ -258,7 +280,7 @@ export function weekStory(changes) {
  * Inputs: events (ms, ccy, event, impact, estimate, note), nowMs, since, regimeWord, riskFlags, assets (label, d1, used), weekly, fedPath, cb, board.
  * Also returns lede (the day in three or four sentences), sheet (the releases, timed) and board (the few numbers that frame the day).
  */
-export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, assets, weekly = false, fedPath, cb, board, changes, asia } = {}) {
+export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, assets, weekly = false, fedPath, cb, board, changes, asia, eventDay } = {}) {
   const now = Number.isFinite(nowMs) ? nowMs : Date.now(), hi = windowEvents(events, now, weekly);
   const nextHigh = hi.length ? null : (events ?? []).filter(e => e?.impact === 'high' && e.ms > now).sort((a, b) => a.ms - b.ms)[0] ?? null;
   const day = new Date(now).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ });
@@ -267,5 +289,5 @@ export function todayOpening({ events, nowMs, since, regimeWord, riskFlags, asse
   const take = weekly ? null : dayTake({ assets, changes, hi, now, asia });
   const regime = regimeLine(regimeWord, riskFlags), changed = changedLine(since, assets);
   const lede = (take?.means?.length || take?.lead ? [take.lead, take.asiaNote, ...take.means, fedLine(fedPath, hi, now), regime] : [take?.lead, take?.asiaNote, loadLine(hi, done, weekly, now), fedLine(fedPath, hi, now), take ? take.close : changed, regime]).filter(Boolean).join(' ');
-  return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `${known ? dayType(hi) : 'Today'} · ${day}`, headline: take?.headline || (known ? headlineOf(hi, nextHigh, weekly, now) : 'Where the markets stand this morning'), regime, changed, watch: watchLine(weekly ? hi : hi.filter(e => e.ms > now), nextHigh, weekly), count: hi.length };
+  return { story: weekly ? 'The week in one line' : 'The month in one line', lede, sheet: sheetOf(hi, cb, weekly, eventDay), board: (board ?? []).filter(b => b?.label && b.value).slice(0, 6), kicker: weekly ? `This week · from ${day}` : `${known ? dayType(hi) : 'Today'} · ${day}`, headline: take?.headline || (known ? headlineOf(hi, nextHigh, weekly, now) : 'Where the markets stand this morning'), regime, changed, watch: watchLine(weekly ? hi : hi.filter(e => e.ms > now), nextHigh, weekly), count: hi.length };
 }

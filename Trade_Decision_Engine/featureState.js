@@ -28,7 +28,7 @@ import { CAP_DEFAULTS } from '../js/config.js';
 import { distanceToFlip } from '../js/gammaFlow.js';
 
 // Per-instrument confluence thresholds — the live caps model's numbers, zero-copy
-// (fx 2 pips; gold 200 gold-pips of $0.10 = $20; indices per-point ≈0.5% of px).
+// (fx 2 pips; gold 20 gold-pips of $1.00 = $20 — canonical gold pip is 1.0; indices per-point ≈0.5% of px).
 // KV-saved caps overrides are a dashboard concern; the engine mirrors the
 // defaults so backfill and live agree (flagged in LEGO registry as the seam).
 const _CAPS_KEY = { gold: 'gold', nq: 'nas100', spx: 'spx500', dax: 'de30', ftse: 'uk100', dow: 'us30', rut: 'us2000' };

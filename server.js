@@ -104,6 +104,7 @@ import { createDailyRead } from './js/dailyReadRoutes.js';
 import { createHarShadow } from './js/harShadowRoutes.js';
 import { createDrawdownShadow } from './js/drawdownShadowRoutes.js';   // drawdown shadow band, read-only (drawdown-forecast-error A1)
 import { createStressShadow } from './js/stressShadowRoutes.js';       // stress-count shadow band, read-only (forecast-miss-scan A1)
+import { createStateRoutes } from './js/stateRoutes.js';                // Market State Engine: GET /api/state (plans/MARKET_STATE_ENGINE_PLAN.md)
 import { createSurfaceLab } from './js/surfaceLabRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
 import { createFeed } from './js/feedRoutes.js';
@@ -202,6 +203,7 @@ import { toSurpriseRows as _nqRows, dedupeAgainst as _nqDedupe } from './js/nasd
 import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual, onsSeries as _onsSeries, statcanSeries as _statcanSeries, jsonStatSeries as _jsonStatSeries } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
+import { EVIDENCE_AUDIT as _EVIDENCE_AUDIT } from './js/evidenceAudit.js';
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt, evidenceBrief as _evidenceBrief, lessonSafe as _lessonSafe } from './js/deskEvidence.js';
 import { stripDesk as _stripDesk } from './js/deskStrip.js';
 import { normaliseTheoryLabPath } from './js/theoryLabUrl.js';
@@ -331,6 +333,8 @@ import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok, listKeys as _r2ListKeys } from './js/r2Store.js';
 import { INSTRUMENTS as _DL_INSTRUMENTS, HORIZONS as _DL_HORIZONS, closesFromCandles as _dlClosesFromCandles, issueRecord as _dlIssue, outcomeRecord as _dlOutcome, summarise as _dlSummarise } from './js/directionLedger.js';
+import { RESEARCH as _DL_RESEARCH, volFlags as _dlVolFlags, FX_CARRY_EUR_OFFSET as _DL_EUR_OFFSET, FX_CARRY_MAX_AGE_DAYS as _DL_RATE_MAX_AGE_DAYS } from './js/directionResearch.js';
+import { scoreTrack as _dlScoreTrack } from './js/directionScore.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
 import { buildPlan as _hpBuild, scorePlan as _hpScore, PLAN_EVIDENCE as _HP_EVIDENCE } from './js/hedgingPlan.js';   // today's plan + paper scoring
 import { buildOiPlan as _hpoBuild, scoreOiPlan as _hpoScore, orderStatesOI as _hpoStates, buildOiPlanText as _hpoText, OI_PLAN as _HPO_CFG } from './js/hedgingPlanOI.js';   // OI-level hedging plan (shadow)
@@ -395,6 +399,19 @@ import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapsh
 import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
 import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic, resetBackfillStore as tdeResetBackfillStore, TDE_BACKFILL_PAIRS } from './Trade_Decision_Engine/backfill.js';
 import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 / ou-pairs research runs (off the main loop)
+import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
+import { createExpiryTrackStore } from './js/expiryTrackStore.js';
+import { buildSwingMap as _buildSwingMap, sigmaSeries as _swingSigma } from './js/swingMap.js';
+import { oiContractSize as _oiContractSizeSM } from './js/oi.js';
+import { COT_MARKETS as _COT_MARKETS, fetchCotFull as _fetchCotFull } from './js/cotArchive.js';
+import { createHistorySources as _createHistorySources } from './js/stateHistorySources.js';
+import { fetchDtsTga as _fetchDtsTga } from './js/treasuryDts.js';
+import { LIQUIDITY_FRED as _LIQUIDITY_FRED, PLUMBING as _PLUMBING } from './js/stateLiquidity.js';
+import { loadEngine as _loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
+import { CBOE_INDICES as _CBOE_INDICES, YAHOO_LONG as _YAHOO_LONG, OVERNIGHT as _OVERNIGHT, fetchCboe as _fetchCboe, fetchYahooLong as _fetchYahooLong, fetchYahooDaily as _fetchYahooDaily } from './js/marketHistory.js';
+// The permanent record of data that cannot be re-fetched (plans/DATA_ASSET_MAP.md §4A–B): R2, append-only.
+const _archive = createDataArchive({ putJSON: _r2PutJSON, getJSON: _r2GetJSON, listKeys: _r2ListKeys, configured: _r2Ok, log: console });
+
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -4331,7 +4348,7 @@ async function _deskWatchTick(opts = {}) {
     const store = await _loadWatchStore();
     if (!store) throw new Error('desk_watch_v1 unreadable; refusing to overwrite');
     const inputs = await _watchInputs();
-    const states = _evaluateTriggers(inputs);
+    const states = _evaluateTriggers({ ...inputs, prevStates: store.states });   // prevStates: hysteresis for the watch register's claim rows
     const prevById = new Map(store.states.map(t => [t.id, t]));
     // A trigger whose input failed this pass is ABSENT from `states`. Dropping it lost its state, so when the
     // input came back the same condition 'started' again and re-sent the Telegram (stock-bond: 6 starts, 1 clear).
@@ -4846,7 +4863,9 @@ svcTimeout('spreadEpisodes', () => _seTick({ silent: true }).catch(e => console.
 // limit at the 1, stop 1.2, target the 0 (5R), BE at 1R, out at minute 540. Backtest verdict NULL (gold -0.72R per
 // trade); this is a forward record to watch it, not a signal. KV daily_open_fib_v1 holds one row per instrument per
 // session (both anchors); the live session is recomputed from candles every tick.
-const _DOF_KV = 'daily_open_fib_v1', _DOF_KEEP = 150, _DOF_BACKFILL_DAYS = 56, _DOF_FETCH_BUDGET = 24, _DOF_PRE_H = 6;
+const _DOF_KV = 'daily_open_fib_v1', _DOF_KEEP = 150, _DOF_BACKFILL_DAYS = 56, _DOF_FETCH_BUDGET = 24, _DOF_PRE_BARS = 360;
+// row version: v2 (2026-11-01) = the bars before the open are the last 360 that TRADED (Friday's, before a Sunday open); v1 rows used the 6 clock hours and saw nothing before a weekly open
+const _DOF_ROW_V = 2;
 const _DOF_INST = [
   ['XAU_USD', 'Gold'], ['EUR_USD', 'EUR/USD'], ['GBP_USD', 'GBP/USD'], ['USD_JPY', 'USD/JPY'], ['AUD_USD', 'AUD/USD'],
   ['EUR_GBP', 'EUR/GBP'], ['USD_CAD', 'USD/CAD'], ['USD_CHF', 'USD/CHF'], ['GBP_JPY', 'GBP/JPY'], ['EUR_JPY', 'EUR/JPY'],
@@ -4857,6 +4876,13 @@ const _DOF_BT_KEY = { XAU_USD: 'gold', NAS100_USD: 'nq', EUR_USD: 'eurusd' };
 let _dof = { loaded: false, rows: new Map(), lastTick: 0, error: null, running: false, lastWrite: 0, dirty: false, adr: new Map(), bars: new Map() };
 async function _dofCandles(inst, fromMs, count, price = 'BA') {
   const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(inst)}/candles?granularity=M1&price=${price}&from=${encodeURIComponent(new Date(fromMs).toISOString())}&count=${count}`,
+    { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(12_000) });
+  if (!r.ok) throw new Error(`OANDA M1 ${inst} ${r.status}`);
+  return (await r.json()).candles ?? [];
+}
+// the last `count` bars that traded before `toMs` (whatever the clock: before a Sunday open these are Friday's)
+async function _dofCandlesBefore(inst, toMs, count) {
+  const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(inst)}/candles?granularity=M1&price=BA&to=${encodeURIComponent(new Date(toMs).toISOString())}&count=${count}`,
     { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(12_000) });
   if (!r.ok) throw new Error(`OANDA M1 ${inst} ${r.status}`);
   return (await r.json()).candles ?? [];
@@ -4881,7 +4907,7 @@ async function _dofSession(inst, anchorMs, now) {
   const S = _dofSessionFrom(await _dofCandles(inst, anchorMs, 720), anchorMs);
   if (!S || !S.t.length) return { empty: true, adr };
   // the bars before the open: the 'swing' anchor's 1 can sit there (the leg started before the open)
-  S.pre = _dofPreFrom(await _dofCandles(inst, anchorMs - _DOF_PRE_H * 3600e3, _DOF_PRE_H * 60), anchorMs, _DOF_PRE_H);
+  S.pre = _dofPreFrom(await _dofCandlesBefore(inst, anchorMs, _DOF_PRE_BARS), anchorMs, _DOF_PRE_BARS);
   const exitT = S.t[0] + _DOF_DEFAULTS.exitMin * 60e3;
   const final = S.mins.at(-1) >= _DOF_DEFAULTS.exitMin || now > exitT + 15 * 60e3;
   const out = { adr, final, firstBarT: S.t[0], exitT, lastBarT: S.t.at(-1) };
@@ -4909,13 +4935,13 @@ async function _dofTick() {
     for (const [inst, label] of _DOF_INST) {
       for (const a of anchors) {
         const date = _dofKey(a), k = `${inst}|${date}`, have = _dof.rows.get(k);
-        if (have?.final && (have.empty || have.swing)) continue;     // rows stored before the swing anchor existed are recomputed
+        if (have?.final && (have.empty || (have.v === _DOF_ROW_V && _DOF_ANCHORS.every(x => have[x])))) continue;     // older rows (an anchor added, or v1 pre-open bars) are recomputed
         if (a !== cur && budget <= 0) continue;            // backfill a few sessions per tick; the live session always runs
         if (a !== cur) budget--;
         try {
           const r = await _dofSession(inst, a, now);
           if (r.error || r.empty) { if (a !== cur && now > a + 20 * 3600e3) _dof.rows.set(k, { inst, label, date, anchorMs: a, final: true, empty: true, firstSeen: have?.firstSeen ?? new Date().toISOString() }); continue; }
-          const row = { inst, label, date, anchorMs: a, ...r.out, firstSeen: have?.firstSeen ?? new Date().toISOString(), updatedAt: new Date().toISOString() };
+          const row = { inst, label, date, anchorMs: a, v: _DOF_ROW_V, ...r.out, firstSeen: have?.firstSeen ?? new Date().toISOString(), updatedAt: new Date().toISOString() };
           row.live = Date.parse(row.firstSeen) < row.exitT;       // seen before its exit time = recorded live, not backfilled
           const phases = r2 => _DOF_ANCHORS.map(x => r2?.[x]?.phase).join(',');
           if (!have || phases(have) !== phases(row) || row.final !== have.final) _dof.dirty = true;
@@ -4944,7 +4970,7 @@ function _dofBacktest() {
     const out = {};
     for (const [inst, k] of Object.entries(_DOF_BT_KEY)) {
       const v = R[k]?.variants_ba ?? {}, row = key => { const n = v[key]?.net; return n ? { n: n.n, mean: n.mean, lo: n.lo, hi: n.hi, win: n.win } : null; };
-      out[inst] = { high: row('high|imp0.1|tpzero|be1'), do: row('do|imp0.1|tpzero|be1'), swing: null, sessions: R[k]?.sessions ?? null, verdict: k === 'gold' ? R[k]?.verdict_primary ?? 'NULL' : 'descriptive' };
+      out[inst] = { high: row('high|imp0.1|tpzero|be1'), do: row('do|imp0.1|tpzero|be1'), swing: null, window: null, sessions: R[k]?.sessions ?? null, verdict: k === 'gold' ? R[k]?.verdict_primary ?? 'NULL' : 'descriptive' };
     }
     return out;
   } catch { return null; }
@@ -4976,12 +5002,12 @@ app.get('/api/daily-open-fib/chart', async (req, res) => {
     if (!S) {
       if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set');
       S = _dofSessionFrom(await _dofCandles(inst, a, 720), a);
-      if (S) S.pre = _dofPreFrom(await _dofCandles(inst, a - _DOF_PRE_H * 3600e3, _DOF_PRE_H * 60), a, _DOF_PRE_H);
+      if (S) S.pre = _dofPreFrom(await _dofCandlesBefore(inst, a, _DOF_PRE_BARS), a, _DOF_PRE_BARS);
     }
     if (!S) return res.json({ ok: true, bars: [], row: _dof.rows.get(`${inst}|${date}`) ?? null });
     const cut = _DOF_DEFAULTS.exitMin + 90, bars = [], pre = S.pre ?? { t: [] };
-    // the last 3 h before the open (ask = null there), so a swing 1 set before the open is on the chart
-    for (let i = 0; i < pre.t.length; i++) if (pre.t[i] >= a - 3 * 3600e3) bars.push([pre.t[i] / 1000, pre.o[i], pre.h[i], pre.l[i], pre.c[i], null]);
+    // the last 3 trading hours before the open (ask = null there), so a swing / window 1 set before the open is on the chart
+    for (let i = Math.max(0, pre.t.length - 180); i < pre.t.length; i++) bars.push([pre.t[i] / 1000, pre.o[i], pre.h[i], pre.l[i], pre.c[i], null]);
     for (let i = 0; i < S.t.length && S.mins[i] <= cut; i++) bars.push([S.t[i] / 1000, S.bid.o[i], S.bid.h[i], S.bid.l[i], S.bid.c[i], S.ask.c[i]]);
     res.set('Cache-Control', 'no-store');
     res.json({ ok: true, inst, date, openT: S.t[0], bars, row: _dof.rows.get(`${inst}|${date}`) ?? null });
@@ -5367,6 +5393,55 @@ app.post('/api/explain', async (req, res) => {
     if (_explainCache.size > 200) _explainCache.clear();
     _explainCache.set(ck, { at: Date.now(), data: explain });
     res.json({ ok: true, cached: false, explain });
+  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
+});
+
+// ── OI Lab: "what am I looking at?" for one panel, on the data the page is showing right now ──
+// Click-only (no interval), cached 10 minutes per panel + data, and capped per day so a stuck button cannot spend money.
+// The model is handed the panel's own words, a fixed note on what OUR tests found for it (written on the page, not recalled by the model),
+// and the live numbers. It explains; it does not trade, and it is told never to claim a level predicts direction.
+const _oixCache = new Map();
+const _OIX_TTL_MS = 10 * 60_000, _OIX_DAILY_CAP = 80;
+let _oixDay = '', _oixCount = 0;
+app.post('/api/oi-explain', async (req, res) => {
+  if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
+  try {
+    const b = req.body ?? {};
+    const key = String(b.key ?? '').slice(0, 40), title = String(b.title ?? '').slice(0, 160), what = String(b.what ?? '').slice(0, 1500), evidence = String(b.evidence ?? '').slice(0, 1800);
+    const market = String(b.market ?? '').slice(0, 40), data = String(b.data ?? '').slice(0, 9000);
+    if (!key || !data) return res.status(400).json({ error: 'Missing panel key or data' });
+    const day = new Date().toISOString().slice(0, 10);
+    const ck = `${day}|${key}|${market}|${crypto.createHash('sha1').update(data).digest('hex').slice(0, 16)}`;
+    const hit = _oixCache.get(ck);
+    if (hit && Date.now() - hit.at < _OIX_TTL_MS) return res.json({ ok: true, cached: true, explain: hit.data });
+    if (_oixDay !== day) { _oixDay = day; _oixCount = 0; }
+    if (_oixCount >= _OIX_DAILY_CAP) return res.status(429).json({ error: `daily limit of ${_OIX_DAILY_CAP} explanations reached; it resets at 00:00 UTC` });
+    _oixCount++;
+    const prompt = `A trader is looking at one panel of the OI Lab options page and wants to know what it means, using the numbers on screen right now. They are learning to read it. Explain in plain words, no jargon without a one-line definition.
+
+PANEL: ${title}  (market: ${market || 'n/a'})
+
+WHAT THE PAGE SAYS THIS PANEL IS:
+${what}
+
+WHAT OUR OWN TESTS FOUND FOR THIS KIND OF PANEL (fixed note; obey it, never contradict it):
+${evidence}
+
+THE NUMBERS ON SCREEN NOW:
+${data}
+
+Rules: describe what the numbers say now, with the actual values. Say how far to trust it using ONLY the test note above. Never say a level, wall, flip, delta or any reading will make price go up or down, hold or break; never give entries, exits, stops or position sizes. If the numbers are empty or not meaningful, say that plainly.
+
+Respond with one valid JSON object, no markdown:
+{"what":"2-3 sentences: what this panel is measuring, in plain words","now":"3-5 sentences: what it is saying RIGHT NOW with the real values, and what that implies for how the day may behave (range or behaviour, never direction)","trust":"2-3 sentences: what our tests found for this and what that means for how much weight to put on it","avoid":"one sentence: the most likely wrong conclusion a reader would draw from this panel"}`;
+    const r = await callModel({ task: 'oi-explain', maxTokens: 1500,
+      system: 'You explain options-market positioning charts to a trader who is learning. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
+      prompt });
+    const explain = _parseModelJson(_antText(r), 'oi-explain');
+    if (!explain) return res.status(502).json({ error: 'model did not return parseable JSON, press it again' });
+    if (_oixCache.size > 300) _oixCache.clear();
+    _oixCache.set(ck, { at: Date.now(), data: explain });
+    res.json({ ok: true, cached: false, explain, left: _OIX_DAILY_CAP - _oixCount });
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
@@ -9298,8 +9373,11 @@ async function _buildGprScore() {
     .filter(row => row.DAY && Number.isFinite(row.GPRD_MA30))
     .map(row => {
       const s = String(row.DAY);
-      return { date: `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`, gprdMa30: row.GPRD_MA30 };
+      return { date: `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`, gprdMa30: row.GPRD_MA30, gprd: Number.isFinite(row.GPRD) ? row.GPRD : null };
     });
+  // Keep the history (the file is "recent" only; the engine used to keep one score). Best-effort.
+  _archive.mergeSeries('gpr', 'GPRD_MA30', rows.map(r => ({ date: r.date, value: r.gprdMa30 })), { source: GPR_DAILY_URL }).catch(() => {});
+  _archive.mergeSeries('gpr', 'GPRD', rows.filter(r => r.gprd != null).map(r => ({ date: r.date, value: r.gprd })), { source: GPR_DAILY_URL }).catch(() => {});
   const score = _gprScore(rows);
   if (!score) throw new Error('GPR: not enough clean history after parsing');
   const payload = { ...score, generatedAt: new Date().toISOString() };
@@ -11437,31 +11515,9 @@ async function _attachHarIvSigma(days, bars, byDate, pair) {
 // Account-type label is matched by substring rather than filtered server-side
 // since the dataset mixes a few account rows per day ("Federal Reserve
 // Account", "Tax and Loan Note Accounts", "Total Operating Balance" etc).
-async function fetchDtsTgaBalance(fromDate) {
-  const base = 'https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/dts/operating_cash_balance';
-  const out  = new Map();
-  for (let pageNum = 1; pageNum <= 50; pageNum++) {
-    const params = new URLSearchParams({
-      filter: `record_date:gte:${fromDate}`,
-      fields: 'record_date,account_type,close_today_bal',
-      sort: 'record_date',
-      'page[number]': String(pageNum),
-      'page[size]': '1000',
-    });
-    const r = await fetch(`${base}?${params.toString()}`, { signal: AbortSignal.timeout(25_000) });
-    if (!r.ok) throw new Error(`Treasury DTS HTTP ${r.status}`);
-    const json = await r.json();
-    const rows = json.data ?? [];
-    for (const row of rows) {
-      if (!String(row.account_type ?? '').toLowerCase().includes('federal reserve')) continue;
-      const v = parseFloat(row.close_today_bal);
-      if (isFinite(v)) out.set(row.record_date, v / 1000); // millions -> billions, matches RRPONTSYD units
-    }
-    const totalPages = json.meta?.['total-pages'] ?? 1;
-    if (!rows.length || pageNum >= totalPages) break;
-  }
-  return out;
-}
+// Fixed 2026-11-01: the old parser matched only the pre-2021-10 "Federal Reserve Account" rows, so every TGA print
+// since October 2021 was dropped (js/treasuryDts.js has the three layouts and a test).
+async function fetchDtsTgaBalance(fromDate) { return _fetchDtsTga(fromDate); }
 
 // Fetch and align all raw data needed by the engine
 async function fetchMeRawData(fredKey) {
@@ -17155,9 +17211,16 @@ svcInterval('regimeStudy', () => { _refreshRegimeStudy().catch(e => console.warn
 // table and transitions come from analysis/output/regime.json, which the study
 // writes (MD files/REGIME.md). Served together; the page and the brief read it.
 let _macroRegime = { at: 0, history: null, now: null, error: null };
+// FRED's public CSV answers the default "node" user-agent with HTTP 503 (found 2026-11-01: every keyless series failed
+// while curl worked). Send a named user-agent on every fredgraph request.
+const _FRED_CSV_HEADERS = { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFXModel/1.0; +fredgraph.csv)' };
 async function _fredCsv(id) {
-  const r = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`, { signal: AbortSignal.timeout(30_000) }); if (!r.ok) throw new Error(`FRED ${id} HTTP ${r.status}`);
-  return (await r.text()).trim().split('\n').slice(1).map(l => { const [d, v] = l.split(','); return { date: d, value: parseFloat(v) }; }).filter(o => Number.isFinite(o.value));
+  const r = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`, { headers: _FRED_CSV_HEADERS, signal: AbortSignal.timeout(30_000) }); if (!r.ok) throw new Error(`FRED ${id} HTTP ${r.status}`);
+  const pts = (await r.text()).trim().split('\n').slice(1).map(l => { const [d, v] = l.split(','); return { date: d, value: parseFloat(v) }; }).filter(o => Number.isFinite(o.value));
+  // Keep the whole history we just downloaded (it used to be trimmed in memory and lost on every deploy).
+  // Throttled per series inside the archive; best-effort, never blocks the caller.
+  _archive.mergeSeries('fred', id, pts, { via: 'fredgraph.csv' }).catch(() => {});
+  return pts;
 }
 // The other currencies' series (validated this week; see REGIME.md R2). A
 // quarterly series is held across its three months so the monthly composite
@@ -17275,7 +17338,17 @@ let _flowChain = { at: 0, data: null, building: null };
 function _refreshFlowChain() {
   _flowChain.building ??= _buildFlowChain({ fredKey: process.env.FRED_KEY || null, oandaKey: process.env.OANDA_KEY || null,
       oandaBase: process.env.OANDA_KEY ? _oandaBaseMe() : null })
-    .then(d => { if (d.ok) _flowChain = { ..._flowChain, at: Date.now(), data: d }; return _flowChain.data; })
+    .then(d => {
+      if (d.ok) {
+        _flowChain = { ..._flowChain, at: Date.now(), data: d };
+        // Keep the daily non-US rates it builds from 2005 (DE/JP 2Y and 10Y, ECB deposit rate, Bank Rate, UK 10Y): DATA_ASSET_MAP B9.
+        for (const [id, col] of Object.entries(d.line ?? {})) {
+          const pts = (d.dates ?? []).map((date, i) => ({ date, value: col?.[i] })).filter(p => p.value != null);
+          _archive.mergeSeries('rates', id, pts, { via: 'flow-chain', source: d.src?.[id] ?? null }).catch(() => {});
+        }
+      }
+      return _flowChain.data;
+    })
     .catch(e => { console.warn('[flow-chain]', e.message); return _flowChain.data; })
     .finally(() => { _flowChain.building = null; });
   return _flowChain.building;
@@ -17933,10 +18006,11 @@ async function _refreshNowcast() {
     out.cleveland = latest.length ? latest[latest.length - 1] : null; if (latest.length === 2) out.cleveland.previousMonth = latest[0];
   } catch (e) { out.error = e.message; }
   try {
-    const r = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=GDPNOW', { signal: AbortSignal.timeout(20_000) });
+    const r = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=GDPNOW', { headers: _FRED_CSV_HEADERS, signal: AbortSignal.timeout(20_000) });
     if (r.ok) { const lines = (await r.text()).trim().split('\n').slice(1).map(l => l.split(',')).filter(([, v]) => v && v !== '.'); const [date, v] = lines[lines.length - 1] ?? []; if (date) out.gdpnow = { quarter: date, value: +(+v).toFixed(2) }; }
   } catch (e) { out.error = (out.error ? out.error + '; ' : '') + e.message; }
-  if (out.cleveland || out.gdpnow) _nowcast = out; else if (out.error) console.warn('[nowcast]', out.error);
+  if (out.cleveland || out.gdpnow) { _nowcast = out; _archive.snapshot('nowcast', new Date().toISOString().slice(0, 10), { cleveland: out.cleveland, gdpnow: out.gdpnow }).catch(() => {}); }
+  else if (out.error) console.warn('[nowcast]', out.error);
   return _nowcast;
 }
 app.get('/api/nowcast', async (_req, res) => {
@@ -18349,7 +18423,8 @@ async function _goldEtfFlowSeries() {
     try {
       const sums = await Promise.all(GOLD_ETF_TICKERS.map(t => _fetchYahooFundAum(t)));
       const combined = sums.reduce((a, b) => a + b, 0);
-      series = [...series, { date: today, value: combined }].slice(-120);   // ~120 obs, same trim as fredhistory
+      series = [...series, { date: today, value: combined }];   // no cap (was 120): a day not kept is gone; ~30 bytes/day
+      _archive.mergeSeries('gold_etf', 'GLD_IAU_AUM', series, { unit: 'USD' }).catch(() => {});
       await kv.put(GOLD_ETF_FLOW_KV, JSON.stringify(series));
     } catch (e) {
       console.warn('[gold-etf-flow] fetch failed, serving prior history only:', e.message);
@@ -20708,7 +20783,7 @@ async function _snapshotOIHistory(force = false) {
         hist[pair][day] = summary;                                 // overwrite today (tracks the latest morning paste)
         if (JSON.stringify(summary) !== before) changed++;
         const dates = Object.keys(hist[pair]).sort();
-        const trim = dates.slice(0, Math.max(0, dates.length - 365));           // keep ~1yr — see _OI_RAW_KEEP_DAYS note above
+        const trim = dates.slice(0, Math.max(0, dates.length - 365));           // KV keeps ~1yr as a fast window; since 2026-10-31 every day is also in R2 (archive/oi_summary/, _archiveDaily), so the trim loses nothing
         for (const d of trim) delete hist[pair][d];
         _trimmed += trim.length;                                   // the only legitimate way the archive shrinks
         if (trim.length) changed++;                                // a trim is a real change too
@@ -20768,6 +20843,9 @@ async function _snapshotOIHistory(force = false) {
       } catch (e) { console.warn('[oi-history] marker write failed (archive is safe):', e.message); }
     }
     if (rawChanged || force) { await kv.put(rawDayKey, JSON.stringify({ data: rawDay, timestamp: Date.now() })); wrote = true; }
+    // Permanent copy in R2 (KV was the only copy; CME serves no history). Best-effort.
+    if (rawChanged || force) _archive.snapshot('oi_raw', day, rawDay).catch(() => {});
+    if (changed || force) _archive.snapshot('oi_summary', day, Object.fromEntries(Object.entries(hist).map(([p, d]) => [p, d?.[day] ?? null]).filter(([, v]) => v))).catch(() => {});
     // Persist the freshness streaks (cheap; one small blob, once per calendar day in
     // practice since oiFreshnessStreak short-circuits same-day re-ticks) and alert
     // through the SAME channel the nightly sweep heartbeat already uses — one
@@ -24709,6 +24787,7 @@ svcInterval('hedgingForward', () => _hedgingForwardTick().catch(e => console.err
 // day is a gap. Baselines are frozen at the last pre-lockbox date (js/directionLedgerBaselines.json).
 const _DL_PREFIX = 'forward/direction_ledger/';
 const _dlBaselines = JSON.parse(fs.readFileSync(new URL('./js/directionLedgerBaselines.json', import.meta.url), 'utf8'));
+let _dlTrackCache = null;
 const _dlDone = new Set();        // issue dates / outcome keys already written (saves R2 reads)
 async function _dlCloses() {
   const out = {};
@@ -24720,6 +24799,51 @@ async function _dlCloses() {
   }
   return out;
 }
+// What the research forecasters need as of the issue close (js/directionResearch.js). Each source reports its own status in the
+// issue record; a source that is missing leaves its forecasters silent and never blocks the baselines.
+// 3m rate per currency for fx-factor-carry (forge/FX_FACTOR_STACK_PREREG.md A1.3, A3): the latest value of the same series the
+// study used. USD = EFFR (daily), EUR = Germany call money + the frozen offset (the EZ 3m series stopped in 2026-01), GBP = BoE Bank
+// Rate, the rest OECD 3m interbank. Cached an hour so the 8-hour wait for Cboe does not re-hit FRED every tick.
+const _DL_RATE_IDS = { USD: 'EFFR', EUR: 'IRSTCI01DEM156N', GBP: 'BOE_IUDBEDR_M', JPY: 'IR3TIB01JPM156N', AUD: 'IR3TIB01AUM156N', NZD: 'IR3TIB01NZM156N', CAD: 'IR3TIB01CAM156N', CHF: 'IR3TIB01CHM156N' };
+let _dlRatesCache = { at: 0, v: null };
+async function _dlRates(date) {
+  const key = process.env.FRED_KEY || process.env.FRED_API_KEY;
+  if (!key) throw new Error('no FRED key');
+  if (!_dlRatesCache.v || Date.now() - _dlRatesCache.at > 3600_000) {
+    const from = new Date(Date.now() - 400 * 86400_000).toISOString().slice(0, 10);
+    const out = {}, refs = {};
+    await Promise.all(Object.entries(_DL_RATE_IDS).map(async ([ccy, id]) => {
+      const m = await fetchFredSeries(id, from, key);
+      const last = [...m.keys()].sort().at(-1);
+      if (!last) throw new Error(`${id}: no observations`);
+      if (Date.now() - Date.parse(last) > _DL_RATE_MAX_AGE_DAYS * 86400_000) throw new Error(`${id}: stale, last observation ${last}`);
+      out[ccy] = m.get(last) + (ccy === 'EUR' ? _DL_EUR_OFFSET : 0); refs[ccy] = last;
+    }));
+    _dlRatesCache = { at: Date.now(), v: { rates: out, refs } };
+  }
+  return { date, ..._dlRatesCache.v };
+}
+async function _dlExternal(date) {
+  const external = {}, status = {};
+  try {
+    const [VIX, VVIX, VXN, NDX] = await Promise.all([_fetchCboe('VIX'), _fetchCboe('VVIX'), _fetchCboe('VXN'), _fetchYahooDaily('^NDX', 800)]);
+    const v = _dlVolFlags({ VIX, VVIX, VXN, NDX });
+    if (v && v.date === date) { external.vol = v; status.vol = 'ok'; } else status.vol = v ? `stale (${v.date})` : 'no data';
+  } catch (e) { status.vol = `error: ${e.message}`; }
+  try { external.cot = (await _buildCotState()).instruments; status.cot = 'ok'; } catch (e) { status.cot = `error: ${e.message}`; }
+  // Global Read's direction arm for direction-score (forge/DIRECTION_SCORE_PILOT_PREREG.md): the latest read, only if built within 3h
+  try {
+    const g = _grLatest, age = g?.meta?.asOf ? Date.now() - Date.parse(g.meta.asOf) : Infinity;
+    if (g?.cards && age < 3 * 3600_000) {
+      external.gr = { asOf: g.meta.asOf, cards: Object.fromEntries(Object.entries(g.cards).map(([sym, c]) => [sym, { direction: { pUp: c.direction?.pUp, nLive: c.direction?.nLive,
+        shown: (c.direction?.shown ?? []).map(x => ({ id: x.id, label: x.label, tier: x.tier, s: x.s, e: x.e })) } }])) };
+      status.gr = 'ok';
+    } else status.gr = g?.cards ? `stale (${g.meta?.asOf ?? '?'})` : 'no read';
+  } catch (e) { status.gr = `error: ${e.message}`; }
+  try { external.rates = await _dlRates(date); status.rates = 'ok'; } catch (e) { status.rates = `error: ${e.message}`; }
+  external.fomcDates = FOMC_MEETINGS.map(m => m.date); status.fomc = 'ok';
+  return { external, status };
+}
 async function _directionLedgerTick() {
   if (!_r2Ok() || !process.env.OANDA_KEY) return;
   const closes = await _dlCloses();
@@ -24728,11 +24852,18 @@ async function _directionLedgerTick() {
   const closeMs = date ? Date.parse(`${date}T22:00:00Z`) : NaN;
   if (date && !_dlDone.has(date) && Date.now() - closeMs < 20 * 3600_000) {
     const key = `${_DL_PREFIX}${date}.json`;
-    if (!(await _r2GetJSON(key).catch(() => null))) {
-      const rec = _dlIssue({ date, closes, baselines: _dlBaselines, issuedAt: new Date().toISOString(), code: process.env.RAILWAY_GIT_COMMIT_SHA || null });
-      if (rec.forecasts.length) await _r2PutJSON(key, rec);
+    if (await _r2GetJSON(key).catch(() => null)) _dlDone.add(date);
+    else {
+      const { external, status } = await _dlExternal(date);
+      // Cboe posts the day's closes about three hours after the OANDA close; wait up to 8h for them, then issue without
+      const hold = status.vol !== 'ok' && Date.now() - closeMs < 8 * 3600_000;
+      if (!hold) {
+        const rec = _dlIssue({ date, closes, baselines: _dlBaselines, issuedAt: new Date().toISOString(), code: process.env.RAILWAY_GIT_COMMIT_SHA || null,
+          research: _DL_RESEARCH, external, externalStatus: status });
+        if (rec.forecasts.length) await _r2PutJSON(key, rec);
+        _dlDone.add(date);
+      }
     }
-    _dlDone.add(date);
   }
   // resolve: issue records from the last ~130 days with an unresolved horizon
   const keys = (await _r2ListKeys(_DL_PREFIX)).filter(k => /direction_ledger\/\d{4}-\d{2}-\d{2}\.json$/.test(k)).sort().slice(-95);
@@ -24764,6 +24895,16 @@ app.get('/api/direction-ledger', async (req, res) => {
       const outs = {};
       for (const h of _DL_HORIZONS) outs[h] = await _r2GetJSON(`${_DL_PREFIX}out/${date}_h${h}.json`).catch(() => null);
       return res.json({ ok: true, record: rec, outcomes: outs });
+    }
+    // the forward record of the 1-to-10 score by band (js/directionScore.js scoreTrack), cached ten minutes
+    if (req.query.scoreTrack === '1') {
+      if (!_dlTrackCache || Date.now() - _dlTrackCache.at > 600_000) {
+        const recs = [], outs = [];
+        for (const k of issues.slice(-400)) { const r = await _r2GetJSON(k).catch(() => null); if (r?.forecasts?.some(f => f.model_id === 'direction-score')) recs.push(r); }
+        for (const k of all.filter(k => /\/out\/\d{4}-\d{2}-\d{2}_h1\.json$/.test(k)).slice(-400)) { const o = await _r2GetJSON(k).catch(() => null); if (o) outs.push(o); }
+        _dlTrackCache = { at: Date.now(), v: _dlScoreTrack(recs, outs) };
+      }
+      return res.json({ ok: true, prereg: 'forge/DIRECTION_SCORE_PILOT_PREREG.md', ..._dlTrackCache.v });
     }
     const outKeys = all.filter(k => k.includes('/out/'));
     const recs = [], outs = [];
@@ -30478,7 +30619,7 @@ svcInterval('levelScenarioShadow', () => svcRun('levelScenarioShadow', () => lev
 // when EUR/GBP/NZD/CHF-USD is currently tracking yesterday's UST10Y intraday shape closely, a known upcoming turn
 // in that shape is followed by a real price turn more often than the unconditional base rate. No orders, no bots,
 // no alerts, and direction is not validated — see js/yieldShapeRegimeCore.js header.
-const yieldShapeRegime = createYieldShapeRegime({ kv, getFastLive: _laGetFastLive, liveCache: _laLiveCache });
+const yieldShapeRegime = createYieldShapeRegime({ kv, getFastLive: _laGetFastLive, liveCache: _laLiveCache, archive: _archive });
 yieldShapeRegime.mount(app);
 svcInterval('yieldShapeRegime', () => svcRun('yieldShapeRegime', () => yieldShapeRegime.tick('scheduled')), 5 * 60_000);
 
@@ -30492,6 +30633,112 @@ dailyRead.mount(app);
 createHarShadow({ kv }).mount(app);
 createDrawdownShadow({ kv }).mount(app);
 createStressShadow({ kv }).mount(app);
+// Liquidity & banking layer. Uses the server's own feeds first: the keyed FRED fetcher (fetchFredSeries, the same
+// one the liquidity gate and pulse use) when FRED_KEY is set, the BIS bank-credit store (KV bank_credit_v1, built by
+// _bcTick) and the Daily Treasury Statement TGA. FRED's public CSV is only the no-key fallback. Cached 6 h.
+let _stateLiq = { at: 0, data: null, inflight: null };
+async function _stateLiquidityRaw() {
+  if (_stateLiq.data && Date.now() - _stateLiq.at < 6 * 3600_000) return _stateLiq.data;
+  if (_stateLiq.inflight) return _stateLiq.inflight;
+  _stateLiq.inflight = (async () => {
+    const raw = {}, errors = [], via = {};
+    const key = process.env.FRED_KEY || process.env.FRED_API_KEY;
+    // G4 global liquidity inputs (the engine global-liquidity.html runs: js/globalLiquidityEngine.js)
+    const G4_FRED = { ecb_assets: 'ECBASSETSW', boj_assets: 'JPNASSETS', cny_res: 'TRESEGCNM052N', dexuseu: 'DEXUSEU', dexjpus: 'DEXJPUS', dexusuk: 'DEXUSUK',
+      sofr: 'SOFR', iorb: 'IORB', hy: 'BAMLH0A0HYM2', dxy: 'DTWEXBGS', bei: 'T10YIE', tips: 'DFII10', vix: 'VIXCLS', indpro: 'INDPRO' };
+    for (const id of [...new Set([..._LIQUIDITY_FRED, 'BAA10Y', ...Object.values(G4_FRED), ..._PLUMBING.map(p => p.id)])]) {
+      try {
+        if (key) { raw[id] = [...(await fetchFredSeries(id, '1986-01-01', key))].map(([date, value]) => ({ date, value })); via[id] = 'FRED API'; }
+        else { raw[id] = await _fredCsv(id); via[id] = 'FRED public CSV (no FRED_KEY)'; }
+      } catch (e) { errors.push(`${id}: ${e.message}`); }
+      await new Promise(r => setTimeout(r, key ? 100 : 300));
+    }
+    let bis = null;
+    try { const b = await _bcRead(); if (b?.snap) bis = { latest: b.snap.latest, headline: b.snap.headline, line: _bcLine(b.snap), usdHistory: b.snap.history?.usd ?? [], source: b.snap.source }; else if (b?.error) errors.push(`BIS: ${b.error}`); }
+    catch (e) { errors.push(`BIS: ${e.message}`); }
+    let tgaDaily = null;
+    try { tgaDaily = Object.fromEntries(await _fetchDtsTga(new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10))); } catch (e) { errors.push(`TGA DTS: ${e.message}`); }
+    let g4 = null;
+    try {
+      const eng = _loadGliEngine();
+      const payload = { walcl: raw.WALCL, tga: raw.WTREGEN, rrp: raw.RRPONTSYD };
+      for (const [k, id] of Object.entries(G4_FRED)) payload[k] = raw[id];
+      if (payload.walcl?.length && payload.ecb_assets?.length && payload.boj_assets?.length) {
+        const cut = new Date(Date.now() - 6 * 365 * 864e5).toISOString().slice(0, 10);   // the page runs on 5y of history
+        for (const k of Object.keys(payload)) payload[k] = (payload[k] ?? []).filter(p => p.date >= cut);
+        const r = eng.run(payload);
+        if (!r.error) {
+          const h = r.history ?? {}, n = (h.dates ?? []).length;
+          g4 = { asOf: r.asOf, weeks: r.weeks, level: r.gli.level, impulse: r.gli.impulse, cycle: r.gli.cycle, phase: r.gli.cyclePhase, perCcy: r.gli.perCcy,
+            regime: r.regime?.state ?? null, history: (h.dates ?? []).slice(Math.max(0, n - 156)).map((d, i) => ({ date: d, value: h.level[Math.max(0, n - 156) + i] })).filter(p => Number.isFinite(p.value)) };
+        } else errors.push(`G4 engine: ${r.error}`);
+      } else errors.push('G4 engine: ECB/BoJ balance sheets not loaded');
+    } catch (e) { errors.push(`G4 engine: ${e.message}`); }
+    const data = { raw, tgaDaily, bis, g4, via, errors };
+    if (Object.keys(raw).length) _stateLiq = { at: Date.now(), data, inflight: null };
+    return data;
+  })().finally(() => { _stateLiq.inflight = null; });
+  return _stateLiq.inflight;
+}
+let _stateGamma = { at: 0, data: null, inflight: null };
+async function _stateEtfGamma() {
+  if (_stateGamma.data && Date.now() - _stateGamma.at < 6 * 3600_000) return _stateGamma.data;
+  if (_stateGamma.inflight) return _stateGamma.inflight;
+  _stateGamma.inflight = (async () => {
+    const rows = [], errors = [];
+    for (const [raw, label, kind] of [['SPY', 'SPY', 'S&P ETF'], ['QQQ', 'QQQ', 'Nasdaq ETF'], ['IWM', 'IWM', 'Russell ETF'], ['_SPX', 'SPX', 'S&P index'], ['_NDX', 'NDX', 'Nasdaq index'],
+      ['TLT', 'TLT', 'Long Treasuries'], ['HYG', 'HYG', 'High yield'], ['GLD', 'GLD', 'Gold']]) {
+      try {
+        const r = await fetch(_cboeUrl(raw), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(45_000) });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const b = _cboeLadder(_parseCboeChain(await r.json()), { scale: 1 });
+        if (!b) throw new Error('no ladder');
+        const L = b.levels;
+        rows.push({ sym: label, kind, spot: b.spot, asOf: b.asOfMs ? new Date(b.asOfMs).toISOString() : null, netGex: L.netGex, regime: L.regime,
+          gexFlip: L.gexFlip, callWall: L.callWallGamma, putWall: L.putWallGamma, maxPain: L.maxPain, flipDistPct: L.gexFlip ? +((b.spot / L.gexFlip - 1) * 100).toFixed(2) : null });
+      } catch (e) { errors.push(`${label}: ${e.message}`); }
+      await new Promise(res => setTimeout(res, 300));
+    }
+    const data = { rows, errors };
+    if (rows.length) _stateGamma = { at: Date.now(), data, inflight: null };
+    return data;
+  })().finally(() => { _stateGamma.inflight = null; });
+  return _stateGamma.inflight;
+}
+createStateRoutes({ kv, port: PORT, fetchD1: _btFetchD1, readers: {   // in-memory reads only; never trigger the heavy builds
+  globalRead: () => _grLatest, riskFlags: () => computeRiskFlags(), funding: () => _frLast?.read ?? null, nowcast: () => _nowcast,
+  oiToday: () => _oiTodayCache?.payload ?? null, volForecast: () => forecastState.latest ?? null,
+  // The COT cache (KV cot_extremes_v3) is filled by the worker's /api/cot-extremes, which only ran when someone opened
+  // cot-extremes.html. Warm it from here when it is empty, then build.
+  cotState: async () => {
+    try { return await _buildCotState(); }
+    catch (e) {
+      if (!/No COT data cached/.test(e.message)) throw e;
+      await fetch(`http://127.0.0.1:${PORT}/api/cot-extremes`, { signal: AbortSignal.timeout(60_000) }).catch(() => null);
+      return _buildCotState();
+    }
+  },
+  deepFred: key => _deepFredSeries(key),
+  fredKeyless: async key => { const id = _FREDHISTORY_SERIES[key]; if (!id || _isBoeSeries(id)) return null; return _fredCsv(id); },   // public CSV, archived as it is read
+  yahooDaily: ticker => _fetchYahooDaily(ticker, 500),
+  history: () => _historySources(),   // arrow: _historySources is declared further down (TDZ)
+  liquidity: () => _stateLiquidityRaw(),
+  // Dealer gamma on the ETF and index option chains (Cboe delayed quotes, the parser and ladder the OI page uses for
+  // the four indices). QQQ carries ~3x NDX's gamma, so a CME/index-only read misses most of it. Cached 6 h.
+  etfGamma: () => _stateEtfGamma(),
+  // Asset position: the scan board's drill bundle (sectors, the 12 largest names, Cboe internals, credit stack), refreshed daily.
+  drill: async () => { if (!_drillBundle.data || Date.now() - _drillBundle.at > 24 * 3600_000) await _refreshDrillBundle(); return _drillBundle.data; },
+  // National CPI where the CPI store's FRED/OECD mirror is discontinued, through the fetcher and sources the regime
+  // study already uses: UK from ONS (D7G7, already y/y), Canada from StatCan (index → y/y). JPY/AUD/NZD: no source yet.
+  cpiFallback: async () => {
+    const out = {};
+    const last = arr => arr.filter(p => Number.isFinite(p.value)).at(-1) ?? null;
+    try { const gb = last(await _fetchIntlSeries(_CCY_REGIME_SRC.gb_cpi)); if (gb) out.GBP = { date: gb.date, value: gb.value, via: 'ONS D7G7' }; } catch { /* stays missing */ }
+    try { const ca = last(_yoy((await _fetchIntlSeries(_CCY_REGIME_SRC.ca_cpi)).map(o => ({ date: o.date, value: o.value })))); if (ca) out.CAD = { date: ca.date, value: ca.value, via: 'StatCan 41690973' }; } catch { /* stays missing */ }
+    return out;
+  },
+  edgeRegimes: () => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis/output/edges-by-regime/results.json'), 'utf8')); } catch { return null; } },
+} }).mount(app);   // must sit above the /api/* worker catch-all
 svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);
 
 // ── Surface Lab (surface-lab.html) ────────────────────────────────────────────
@@ -39127,6 +39374,207 @@ if (VFR_REFRESH_UTC && process.env.OANDA_KEY) {
   console.log(`[vfr-refresh] nightly research refresh armed (${VFR_REFRESH_UTC} UTC)`);
 }
 
+// ── Data archive: daily job (plans/DATA_ASSET_MAP.md §4A–B) ─────────────────────
+// Stops the losses: every FRED series behind /api/fredhistory (which keeps 90 prints) and the ICE credit spreads
+// (FRED serves a rolling 3 years) are pulled at full depth and merged into R2; every CME options day held in KV is
+// copied to R2 if R2 lacks it; the gold ETF flow is captured whether or not anyone opens the page. Append-only.
+// Long histories for /api/state: committed seeds merged with the R2 archive (js/stateHistorySources.js), cached 6h.
+const _historySources = _createHistorySources({ getJSON: k => (_archive.enabled ? _r2GetJSON(k) : Promise.resolve(null)) });
+// Full-depth FRED series from the R2 archive, keyed like /api/fredhistory (us10y, tips, hy, ...). Cached 6h in memory.
+const _deepFredCache = new Map();
+async function _deepFredSeries(key) {
+  const id = _FREDHISTORY_SERIES[key]; if (!id || !_archive.enabled) return null;
+  const c = _deepFredCache.get(id); if (c && Date.now() - c.at < 6 * 3600e3) return c.pts;
+  const doc = await _r2GetJSON(`archive/series/fred/${id}.json`).catch(() => null);
+  const pts = Array.isArray(doc?.points) ? doc.points.map(p => ({ date: p[0], value: p[1] })) : null;
+  _deepFredCache.set(id, { at: Date.now(), pts });
+  return pts;
+}
+let _cotArchiveAt = 0;
+async function _archiveDaily() {
+  if (!_archive.enabled) return { ok: false, reason: 'R2 not configured' };
+  const out = { fred: 0, failed: [], oiRaw: 0, oiSummary: 0, gold: false };
+  const fredIds = [...new Set([...Object.values(_FREDHISTORY_SERIES).filter(id => !_isBoeSeries(id)), ..._ICE_SPREAD_IDS])];
+  for (const id of fredIds) {
+    try { await _fredCsv(id); out.fred++; } catch (e) { out.failed.push(`${id}: ${e.message}`); }
+    await new Promise(r => setTimeout(r, 1500));        // keyless fredgraph CSV: be gentle
+  }
+  try {
+    const keys = await kv.keys('oi_raw_');
+    const dates = keys.map(k => k.replace(/^oi_raw_/, '')).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+    out.oiRaw = (await _archive.backfill('oi_raw', dates, async d => { const raw = await kv.get(`oi_raw_${d}`); return raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : null; })).length;
+  } catch (e) { out.failed.push(`oi_raw backfill: ${e.message}`); }
+  // Expiry tracker: re-cut the captures into one permanent series per expiry (js/expiryTrackStore.js).
+  try { const r = await _expiryTrack().fold(); out.expiryTrack = r.folded; } catch (e) { out.failed.push(`expiry track: ${e.message}`); }
+  try {
+    const raw = await kv.get('oi_history');
+    const hist = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    const byDay = {};
+    for (const [pair, days] of Object.entries(hist)) for (const [d, v] of Object.entries(days ?? {})) (byDay[d] ??= {})[pair] = v;
+    out.oiSummary = (await _archive.backfill('oi_summary', Object.keys(byDay).sort(), async d => byDay[d])).length;
+  } catch (e) { out.failed.push(`oi_summary backfill: ${e.message}`); }
+  try { await _goldEtfFlowSeries(); out.gold = true; } catch (e) { out.failed.push(`gold etf: ${e.message}`); }
+  try { await _refreshNowcast(); } catch (e) { out.failed.push(`nowcast: ${e.message}`); }
+  try { await _buildGprScore(); out.gpr = true; } catch (e) { out.failed.push(`gpr: ${e.message}`); }
+  // Long market histories (DATA_ASSET_MAP §4C): 21 Cboe vol indices (VIX from 1990), Yahoo long dailies (MOVE, ^TNX/^FVX,
+  // credit/duration ETFs, 20 FX crosses incl. EM), overnight benchmarks (€STR, CORRA, SONIA).
+  out.cboe = 0; out.yahoo = 0; out.overnight = 0;
+  for (const sym of _CBOE_INDICES) {
+    try { const w = await _archive.mergeSeries('cboe', sym, await _fetchCboe(sym), { via: 'cdn.cboe.com' }); if (!w.error) out.cboe++; } catch (e) { out.failed.push(`cboe ${sym}: ${e.message}`); }
+    await new Promise(r => setTimeout(r, 500));
+  }
+  for (const id of Object.keys(_YAHOO_LONG)) {
+    try { const w = await _archive.mergeSeries('yahoo', id, await _fetchYahooLong(id), { ticker: _YAHOO_LONG[id].t }); if (!w.error) out.yahoo++; } catch (e) { out.failed.push(`yahoo ${id}: ${e.message}`); }
+    await new Promise(r => setTimeout(r, 700));
+  }
+  for (const [id, o] of Object.entries(_OVERNIGHT)) {
+    try { const w = await _archive.mergeSeries('rates', id, await o.fetch(), { label: o.label }); if (!w.error) out.overnight++; } catch (e) { out.failed.push(`${id}: ${e.message}`); }
+  }
+  try { const w = await _archive.mergeSeries('rates', 'SONIA', await _fetchBoeSeries('IUDSOIA', '1997-01-01'), { label: 'SONIA', via: 'BoE IADB' }); if (!w.error) out.overnight++; } catch (e) { out.failed.push(`SONIA: ${e.message}`); }
+  try { const m = await _fetchDtsTga('2005-01-01'); const w = await _archive.mergeSeries('treasury', 'TGA_DTS', [...m].map(([date, value]) => ({ date, value })), { unit: '$bn', via: 'Daily Treasury Statement' }); if (!w.error) out.overnight++; } catch (e) { out.failed.push(`TGA: ${e.message}`); }
+  // The desk's own forecast and session records (the data behind the proven range results; KV is the only copy).
+  for (const [prefix, source] of [['vol_forecast_', 'vol_forecast'], ['vol_session_', 'vol_session']]) {
+    try {
+      const dates = (await kv.keys(prefix)).map(k => k.slice(prefix.length)).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+      out[source] = (await _archive.backfill(source, dates, async d => { const raw = await kv.get(`${prefix}${d}`); return raw ? JSON.parse(raw) : null; })).length;
+    } catch (e) { out.failed.push(`${source}: ${e.message}`); }
+  }
+  // Point-in-time logs that live only in KV: the funding read (one row a day) and the live surprise store (weekly copy).
+  try { const raw = await kv.get(_FR_KV); const fr = raw ? JSON.parse(raw) : null; if (fr?.days?.length) for (const d of fr.days.slice(-14)) await _archive.snapshot('funding_read', d.day, d); } catch (e) { out.failed.push(`funding_read: ${e.message}`); }
+  try {
+    const wk = new Date(); wk.setUTCDate(wk.getUTCDate() - ((wk.getUTCDay() + 6) % 7));     // Monday of this week
+    const raw = await kv.get(_SURPRISE_KV); if (raw) await _archive.snapshot('surprise_store', wk.toISOString().slice(0, 10), JSON.parse(raw));
+  } catch (e) { out.failed.push(`surprise_store: ${e.message}`); }
+  // COT at full depth (every weekly report since 2006 for the 36 live markets), weekly; the live 156-week window stays.
+  if (Date.now() - _cotArchiveAt > 6 * 864e5) {
+    let n = 0;
+    for (const m of _COT_MARKETS) {
+      try { const r = await _fetchCotFull(m); if (r.rows.length) { const w = await _archive.mergeTable('cot', m.sym, r.rows, { market: r.name, dataset: m.dataset, group: m.group, flipInLiveReads: m.flip }); if (w.wrote || w.reason === 'unchanged') n++; } }
+      catch (e) { out.failed.push(`cot ${m.sym}: ${e.message}`); }
+      await new Promise(r => setTimeout(r, 800));
+    }
+    out.cot = n; if (n) _cotArchiveAt = Date.now();
+  }
+  console.log(`[archive] daily: ${out.fred} FRED, ${out.cboe} Cboe, ${out.yahoo} Yahoo, ${out.overnight} overnight series merged; forecast days ${out.vol_forecast ?? 0}/${out.vol_session ?? 0} copied; COT ${out.cot ?? 'skipped (weekly)'}, ${out.oiRaw} OI raw days and ${out.oiSummary} OI summary days copied to R2, gold ${out.gold ? 'captured' : 'missed'}${out.failed.length ? `; failed: ${out.failed.slice(0, 5).join('; ')}` : ''}`);
+  return { ok: true, ...out };
+}
+// Expiry tracker (register row expiry-tracker): every CME expiry pinned to its date, its strikes recorded each night.
+let _expiryTrackStore = null;
+function _expiryTrack() {
+  return (_expiryTrackStore ??= createExpiryTrackStore({
+    getJSON: _r2GetJSON, putJSON: _r2PutJSON,
+    kvKeys: p => kv.keys(p), kvGet: k => kv.get(k),
+    archivedDates: src => _archive.archivedDates(src),
+    invertedPairs: _OI_INVERTED, log: console,
+  }));
+}
+app.get('/api/expiry-track', async (req, res) => {
+  try {
+    if (!_archive.enabled) return res.status(503).json({ ok: false, error: 'R2 not configured' });
+    const pair = req.query.pair ? String(req.query.pair) : null, expiry = req.query.expiry ? String(req.query.expiry) : null;
+    if (pair && expiry) {
+      const v = await _expiryTrack().view(pair, expiry, { awayFrac: Number(req.query.awayFrac) || 0.01, topN: Math.min(20, Number(req.query.topN) || 6) });
+      return v ? res.json({ ok: true, ...v }) : res.status(404).json({ ok: false, error: 'no such series' });
+    }
+    res.json(await _expiryTrack().list(pair));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Swing Map (swing-map.html): the gold-chart picture for one instrument from measured parts only — legs and the live
+// leg (js/swingMap.js, parity with scripts/swing-leg-baserates), the validated weekly/monthly reverting range lines from
+// the live forecast, and the option zones of every expiry in the next ~100 days from the expiry tracker. 30-min cache.
+const SWING_MAP_INSTRUMENTS = {
+  EURUSD: { oanda: 'EUR_USD', oi: ['EUR/USD'] }, GBPUSD: { oanda: 'GBP_USD', oi: ['GBP/USD'] }, USDJPY: { oanda: 'USD_JPY', oi: ['USD/JPY'] },
+  AUDUSD: { oanda: 'AUD_USD', oi: ['AUD/USD'] }, NZDUSD: { oanda: 'NZD_USD', oi: ['NZD/USD'] }, USDCAD: { oanda: 'USD_CAD', oi: ['USD/CAD'] },
+  USDCHF: { oanda: 'USD_CHF', oi: ['USD/CHF'] }, GBPJPY: { oanda: 'GBP_JPY', oi: ['GBP/JPY'] },
+  GOLD: { oanda: 'XAU_USD', oi: ['XAU/USD', 'GOLD', 'XAUUSD'] }, NQ: { oanda: 'NAS100_USD', oi: ['NAS100_USD', 'NQ'] },
+  SPX500: { oanda: 'SPX500_USD', oi: ['SPX500_USD', 'SPX', 'ES'] },
+};
+const _swingMapCache = new Map();
+// Charm/vanna hedges are in contracts of the underlying; add the money value so "SELL 13" reads at its real size.
+// Non-inverted only: the inverted CME FX contracts are sized in the foreign currency, so their notional is left null.
+function _swingGreeksNotional(pair, d) {
+  const g = d?.greeks; if (!g) return null;
+  if (_OI_INVERTED.has(pair)) return { ...g, charmNotional: null, vannaNotional: null };
+  const size = _oiContractSizeSM(pair), px = Number.isFinite(d.spot) ? d.spot : d.futures;
+  if (!(size > 0) || !(px > 0)) return g;
+  return { ...g, contractSize: size, charmNotional: g.charm1d * size * px, vannaNotional: g.vannaIvDn2 * size * px };
+}
+async function _swingMapExpiries(names, sigmaAnnual = null) {
+  if (!_archive.enabled) return [];
+  const today = new Date().toISOString().slice(0, 10);
+  const horizon = new Date(Date.now() + 100 * 864e5).toISOString().slice(0, 10);
+  for (const pair of names) {
+    const l = await _expiryTrack().list(pair).catch(() => null);
+    const live = (l?.series || []).filter(e => e.expiry >= today && e.expiry <= horizon);
+    if (!live.length) continue;
+    const out = [];
+    for (const e of live) {
+      const v = await _expiryTrack().view(pair, e.expiry, { topN: 6, sigmaAnnual }).catch(() => null);
+      const d = v?.days?.at(-1);
+      if (!d) continue;
+      const firstDay = v.days[0];
+      out.push({ pair, expiry: e.expiry, code: v.code, dte: d.dte, date: d.date, stale: d.stale, totalOI: d.totalOI,
+        totalOIFirst: firstDay?.totalOI ?? null, firstSeen: firstDay?.date ?? null, nights: v.n,
+        centrePx: d.centrePx, centrePxFirst: firstDay?.centrePx ?? null, maxPain: d.maxPain,
+        chgNearSpot: d.chgNearSpot, chgAwayFromSpot: d.chgAwayFromSpot, zones: d.zones,
+        oiAbove: d.oiAbove, oiBelow: d.oiBelow, shareAbove: d.shareAbove, pullPct: d.pullPct,
+        buildAbove: d.buildAbove, buildBelow: d.buildBelow, gamma: d.gamma ?? null, greeks: _swingGreeksNotional(pair, d),
+        // the conveyor belt: how this expiry's lean has moved night by night as it counted down
+        history: v.days.map(x => [x.date, x.dte, x.pullPct, x.shareAbove, x.buildAbove, x.buildBelow, x.totalOI, x.stale ? 1 : 0]) });
+    }
+    return out;
+  }
+  return [];
+}
+app.get('/api/swing-map', async (req, res) => {
+  const inst = String(req.query.inst || 'GOLD').toUpperCase();
+  const cfg = SWING_MAP_INSTRUMENTS[inst];
+  if (!cfg) return res.status(400).json({ ok: false, error: `unknown instrument ${inst}`, instruments: Object.keys(SWING_MAP_INSTRUMENTS) });
+  const hit = _swingMapCache.get(inst);
+  if (hit && Date.now() - hit.at < 30 * 60e3 && req.query.fresh !== '1') return res.json(hit.data);
+  try {
+    const bars = await _btFetchD1Aligned(cfg.oanda, 2600);
+    const fc = forecastState.latest?.instruments?.[inst] ?? null;
+    const _sg = _swingSigma(bars.map(b => b.close)).at(-1);
+    const expiries = await _swingMapExpiries(cfg.oi, _sg > 0 ? _sg * Math.sqrt(252) : null).catch(() => []);
+    const m = _buildSwingMap(bars, { ladderDaily: fc?.ladder ?? null, ladderWeeklyRev: fc?.ladder_weekly_rev ?? null, ladderMonthlyRev: fc?.ladder_monthly_rev ?? null, expiries });
+    // The option key lines (call/put walls, gamma flip, max pain) from the latest capture, as the OI dashboard shows them.
+    // Context: the wall placebo test found walls behave like ordinary levels.
+    if (m.ok) {
+      try {
+        const raw = await kv.get('oi_store');
+        const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : null;
+        const key = cfg.oi.find(k => store?.[k]);
+        const sm = key ? _oiHistorySummary(store[key]) : null;
+        if (sm) m.oiLines = { pair: key, asOf: sm.asOf ?? null, spot: sm.spot ?? null, maxPain: sm.maxPain ?? null, gammaFlip: sm.gammaFlip ?? null,
+          regime: sm.regime ?? null, callWalls: (sm.callWalls || []).slice(0, 3), putWalls: (sm.putWalls || []).slice(0, 3) };
+      } catch { /* the page simply shows no option lines */ }
+    }
+    const data = { ...m, inst, oanda: cfg.oanda, instruments: Object.keys(SWING_MAP_INSTRUMENTS),
+      forecastSession: forecastState.latest?.session_date ?? null, generatedAt: new Date().toISOString() };
+    if (m.ok) _swingMapCache.set(inst, { at: Date.now(), data });
+    res.status(m.ok ? 200 : 503).json(data);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/expiry-track/run', requireAuth, async (req, res) => {
+  try { res.json(await _expiryTrack().fold({ rebuild: String(req.query.rebuild || '') === '1' })); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcTimeout('dataArchive', () => _archiveDaily().catch(e => console.error('[archive]', e.message)), 15 * 60_000);
+svcInterval('dataArchive', () => _archiveDaily().catch(e => console.error('[archive]', e.message)), 24 * 3600_000);
+app.get('/api/data-archive/status', async (_req, res) => {
+  try {
+    const sources = ['oi_raw', 'oi_summary', 'tnx_15m', 'yield_shape_signals', 'nowcast', 'vol_forecast', 'vol_session', 'funding_read', 'surprise_store'];
+    const days = {};
+    for (const s of sources) { const d = [...(await _archive.archivedDates(s))].sort(); days[s] = { n: d.length, first: d[0] ?? null, last: d.at(-1) ?? null }; }
+    const series = (await _r2ListKeys('archive/series/')).map(k => k.replace(/^archive\/series\//, '').replace(/\.json$/, ''));
+    res.json({ ok: true, enabled: _archive.enabled, days, series: { n: series.length, ids: series } });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/data-archive/run', requireAuth, async (_req, res) => {
+  try { res.json(await _archiveDaily()); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {
   try {
@@ -39323,6 +39771,8 @@ app.get('/theory-lab/desk-verdicts.json', (req, res) => {
   for (const e of _DESK_EVIDENCE) {
     if (!ids.includes(e.id)) continue;
     entries[e.id] = { verdict: e.verdict, date: e.date, claim: _lessonSafe(e.claim), result: _lessonSafe(e.result) };
+    // Code audit 2026-10-31: lessons show "reopened" / "unverified" next to the verdict, so a flawed test is not quoted as settled.
+    const au = _EVIDENCE_AUDIT[e.id]; if (au) entries[e.id].audit = au.status;
     if (admin && e.use) entries[e.id].use = _lessonSafe(e.use);
   }
   res.set('Cache-Control', 'no-cache').json({ entries });

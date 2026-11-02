@@ -39,6 +39,12 @@
 // (or a forward record) → 0.95. A descriptive split that was never
 // pre-registered → 0.25. A banked null, or never tested → 0.
 export const TIER_P = { confirmed: 0.95, validated: 0.80, descriptive: 0.25, null: 0, untested: 0 };
+// Both carry weight 0 in the tested arm, but they are different facts and are labelled apart (owner, 2026-11-01:
+// "untested treated as null"). `untested` means no test has asked the question; it is open, not dead.
+export const TIER_LABEL = {
+  confirmed: 'confirmed (two tests stand)', validated: 'validated (one test stands)', descriptive: 'descriptive (quarter weight)',
+  null: 'tested null (weight 0)', untested: 'never tested (weight 0 until tested; open question)',
+};
 export const SHRINK_K = 30;                     // n_eff/(n_eff+K): 30 effective obs = half weight
 
 // Family correlation for direction inputs (assumed, see §3.3 of the design doc):
@@ -50,14 +56,16 @@ export const RHO_SAME = 0.5, RHO_CROSS = 0.15;
 // ic is a correlation-scale measure of predictive value at the stated horizon.
 // For hit-rate evidence, ic ≈ 2·(hit − 0.5).
 export const REGISTRY = [
-  // direction — post-FOMC drift is now the only one with banked out-of-sample evidence.
+  // direction — post-FOMC drift was the only one with banked out-of-sample evidence; the 2026-10-31 code audit graded it FRAGILE.
   // The 2Y sleeve was 'confirmed' until 2026-10-17, when the evidence book deflated it to
   // context: the banked result needed a +2-day lag on GS2, which FRED first publishes a
   // median 32 days late; on point-in-time data OOS Sharpe 0.09, PF 1.08, p 0.91.
   { id: 'yield-spread', label: '2Y yield-spread sleeve', family: 'rates-rv', question: 'direction', timing: 'leading', horizon: 'weeks',
     tier: 'null', ic: 0, n: 150, evidence: 'yield-spread-sleeve deflated 2026-10-17 (point-in-time OOS Sharpe 0.09, p 0.91); ys-long-confirm context' },
+  // Demoted validated → descriptive 2026-11-01 (owner approved): the code audit graded post-fomc-usd-drift FRAGILE
+  // (REOPENED). It keeps a quarter weight until the re-run lands, rather than 0.80.
   { id: 'post-fomc', label: 'Post-FOMC USD drift', family: 'events', question: 'direction', timing: 'leading', horizon: '5 sessions',
-    tier: 'validated', ic: 0.30, n: 81, evidence: 'post-fomc-usd-drift (65% positive, n=81, not yet forward-proven)' },
+    tier: 'descriptive', ic: 0.30, n: 81, evidenceIds: ['post-fomc-usd-drift'], evidence: 'post-fomc-usd-drift (65% positive, n=81; code audit 2026-10-31: FRAGILE, re-run pending)' },
   // direction — descriptive: measured, but never pre-registered; overlapping windows
   { id: 'macro-regime-fx', label: 'Macro regime → FX (20d)', family: 'macro-state', question: 'direction', timing: 'lagging', horizon: '20 sessions',
     tier: 'descriptive', ic: null, n: null, evidence: '/api/macro-regime-fx study (OOS split, but n_eff is tiny)' },
@@ -84,12 +92,15 @@ export const REGISTRY = [
   { id: 'oi-walls', label: 'OI walls / max pain', family: 'positioning', question: 'direction', timing: 'coincident', horizon: 'session',
     tier: 'null', ic: 0, evidence: 'oi-max-pain, wall-placebo (null)' },
   // range — joint coefficients (forge/COMBINED_RANGE_PREREG.md, test pinball 0.90 / 0.94)
-  { id: 'iv-sigma', label: 'IV ÷ σ', family: 'vol-surface', question: 'range', timing: 'leading', tier: 'validated', evidence: 'combined-range, iv-ladder, iv-forecast' },
-  { id: 'vix-term', label: 'VIX curve (inversion / front)', family: 'vol-surface', question: 'range', timing: 'leading', tier: 'confirmed', evidence: 'vix-inversion + mv-vixterm-range, vol-curve-front' },
-  { id: 'nq-dw', label: 'Nasdaq down-week', family: 'equity-stress', question: 'range', timing: 'leading', tier: 'confirmed', evidence: 'nq-down-week + us-extras-confirm' },
-  { id: 'all-down', label: 'All six indices down', family: 'equity-stress', question: 'range', timing: 'leading', tier: 'validated', evidence: 'breadth-all-down' },
-  { id: 'gex', label: 'Net GEX sign (NQ)', family: 'positioning', question: 'range', timing: 'leading', tier: 'validated', evidence: 'gex-range (NQ only)' },
-  { id: 'event', label: 'Scheduled event size', family: 'events', question: 'range', timing: 'leading', tier: 'validated', evidence: 'event-impact-map, surprise-size' },
+  { id: 'iv-sigma', label: 'IV ÷ σ', family: 'vol-surface', question: 'range', timing: 'leading', tier: 'validated', evidenceIds: ['combined-range', 'iv-ladder', 'iv-forecast'], evidence: 'combined-range, iv-ladder, iv-forecast' },
+  { id: 'vix-term', label: 'VIX curve (inversion / front)', family: 'vol-surface', question: 'range', timing: 'leading', tier: 'confirmed', evidenceIds: ['vix-inversion', 'vol-curve-front', 'mv-vixterm-range'], evidence: 'vix-inversion + vol-curve-front stand; mv-vixterm-range reopened (BUG)' },
+  // confirmed → validated 2026-11-01: nq-down-week itself is FRAGILE (audit); only us-extras-confirm stands.
+  { id: 'nq-dw', label: 'Nasdaq down-week', family: 'equity-stress', question: 'range', timing: 'leading', tier: 'validated', evidenceIds: ['nq-down-week', 'us-extras-confirm'], evidence: 'us-extras-confirm (stands); nq-down-week FRAGILE in the 2026-10-31 audit' },
+  { id: 'all-down', label: 'All six indices down', family: 'equity-stress', question: 'range', timing: 'leading', tier: 'validated', evidenceIds: ['breadth-all-down'], evidence: 'breadth-all-down' },
+  // validated → descriptive 2026-11-01: gex-range (NQ) is banked UNDERPOWERED; the ES version is FRAGILE.
+  { id: 'gex', label: 'Net GEX sign (NQ)', family: 'positioning', question: 'range', timing: 'leading', tier: 'descriptive', evidenceIds: ['gex-range', 'gex-range-es'], evidence: 'gex-range (NQ, underpowered); gex-range-es FRAGILE in the 2026-10-31 audit' },
+  // validated → descriptive 2026-11-01: surprise-size FRAGILE, event-impact-map not traced (audit 2026-10-31).
+  { id: 'event', label: 'Scheduled event size', family: 'events', question: 'range', timing: 'leading', tier: 'descriptive', evidenceIds: ['event-impact-map', 'surprise-size'], evidence: 'event-impact-map (unverified), surprise-size (FRAGILE) in the 2026-10-31 audit' },
 ];
 const REG = Object.fromEntries(REGISTRY.map(r => [r.id, r]));
 
@@ -156,7 +167,7 @@ export function effectiveIc({ tier, ic, n_eff }, fresh = 1) {
 // only inputs with weight (so a null that disagrees is shown, not counted).
 export function combineDirection(signals) {
   const live = signals.filter(x => x.e > 0 && x.s !== 0);
-  const shown = signals.map(x => ({ id: x.id, label: x.label ?? REG[x.id]?.label ?? x.id, family: x.family, tier: x.tier ?? REG[x.id]?.tier ?? null, s: r2(x.s), e: r3(x.e), note: x.note ?? null }));
+  const shown = signals.map(x => { const tier = x.tier ?? REG[x.id]?.tier ?? null; return { id: x.id, label: x.label ?? REG[x.id]?.label ?? x.id, family: x.family, tier, tierLabel: TIER_LABEL[tier] ?? null, s: r2(x.s), e: r3(x.e), note: x.note ?? null }; });
   if (!live.length) return { pUp: 0.5, r2: 0, yhat: 0, beta: [], agreement: null, nLive: 0, shown };
   const R = live.map(a => live.map(b => (a === b ? 1 : a.family === b.family ? RHO_SAME : RHO_CROSS)));
   const e = live.map(x => x.e), s = live.map(x => x.s);

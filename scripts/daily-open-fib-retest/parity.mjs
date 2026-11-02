@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { findFill, findFillSwing, trade } from '../../js/dailyOpenFib.js';
+import { findFill, findFillSwing, findFillWindow, trade } from '../../js/dailyOpenFib.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const out = path.join(mkdtempSync(path.join(tmpdir(), 'dof-')), 'fixture.json');
@@ -14,8 +14,10 @@ const S = JSON.parse(readFileSync(out, 'utf8'));
 let checked = 0, bad = 0;
 const close = (a, b) => Math.abs(a - b) < 1e-9 * Math.max(1, Math.abs(a));
 for (const [i, s] of S.entries()) {
-  for (const anchor of ['high', 'do', 'swing']) {
-    const f = anchor === 'swing'
+  for (const anchor of ['high', 'do', 'swing', 'window']) {
+    const f = anchor === 'window'
+      ? findFillWindow({ h: s.pre.h, l: s.pre.l, mins: s.pre.h.map((_, i) => i - s.pre.h.length) }, s.bid, s.mins, s.adr, 0.10, 360, { o: s.ask.o, l: s.ask.l }, 60)
+      : anchor === 'swing'
       ? findFillSwing({ o: [], h: s.pre.h, l: s.pre.l }, s.bid, s.mins, s.adr, 0.10, 360, { o: s.ask.o, l: s.ask.l })
       : findFill(s.bid, s.mins, s.adr, anchor, 0.10, 360, { o: s.ask.o, l: s.ask.l });
     const p = s.res[anchor];

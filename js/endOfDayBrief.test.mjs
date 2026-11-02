@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { macroFreshness, sessionsBetween, recordLine, weekFrame, weekFrameLine, positionRead, positionLine, dollarRead, riskRead, standouts, boardTradeVerdict, tomorrow, endOfDayBrief,
          SPINE, activityWord, pathWord, PATH_BANDS, describe, spineRead, regimeTurns, printedRead } from './endOfDayBrief.js';
-import { endOfDay } from './endOfDay.js';
+import { endOfDay as _endOfDay } from './endOfDay.js';
+// Pin the clock: endOfDay() defaults nowMs to Date.now(), so these 2026-09-23 fixtures started failing once the
+// real date moved on (found 2026-10-31, when CI first ran every test). A caller's own nowMs still wins.
+const endOfDay = (o = {}) => _endOfDay({ nowMs: Date.UTC(2026, 8, 23, 20, 30), ...o });
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const NOW = Date.UTC(2026, 8, 23, 20, 30);

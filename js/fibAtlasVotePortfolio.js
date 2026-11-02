@@ -40,7 +40,7 @@
 import {
   applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, causalInverseVolWeights,
   riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopFraction,
-  applyCostEfficiencyFilter, applyGapFilter, applyStoredContinuationExit, tradeFactors,
+  applyCostEfficiencyFilter, applyGapFilter, applyStoredContinuationExit, tradeFactors, TRAIL_EXIT_VERSION,
 } from './levelAtlasVoteReview.js';
 // applyClearanceFilter is Fib-Atlas-owned (asiaFibAtlasVoteReview.js), NOT
 // the shared levelAtlasVoteReview.js above — see that function's own doc
@@ -423,10 +423,16 @@ export async function buildFibAtlasVotePortfolio({
   // ladders on one pair combine exactly like two different pairs do, with
   // zero new math. `groupKey` is optional and unused by the existing
   // single-ladder routes, so this is fully backward compatible.
+  let continuationExitStaleTrades = 0;
   const perPairTradesRaw = {}, perPair = {}, missing = [];
   for (const pair of pairs) {
     const stored = await loadPairVoteTrades(pair);
     if (!stored) { missing.push(pair.toUpperCase()); continue; }
+    // Trailed rows priced by an older exit version are not swapped in (they fall
+    // back to plain target/stop); count them so the page can say so (2026-11-01).
+    if (continuationExit && continuationExit !== 'off' && continuationExit !== 'false') {
+      continuationExitStaleTrades += stored.trades.filter(t => (t.trailedPnlPct != null || t.chandTrailedPnlPct != null) && t.trailExitVersion !== TRAIL_EXIT_VERSION).length;
+    }
     // Continuation-exit swap MUST happen before applyConcurrencyCap -- that
     // function decides survivors off `resolveTime`, and the trailed
     // (possibly longer) occupancy window has to be in place before that
@@ -603,7 +609,7 @@ export async function buildFibAtlasVotePortfolio({
     sizing, riskPct, heatCap, targetVol, throttle,
     stats, statsUncapped, statsNoThrottle, naiveAvgSharpe, days: datesFinal.length,
     equityCurve: datesFinal.map((d, i) => ({ date: d, dailyReturn: dailyReturnsFinal[i] })),
-    perPair, trades, walkForwardOOS,
+    perPair, trades, walkForwardOOS, continuationExitStaleTrades,
     // Real shared-account simulation -- uses the SAME final trade list every
     // other stat on this page is built from (post margin/cost/gap/clearance/
     // concurrency-cap/stop-tightening filters), so it's an honest alternate

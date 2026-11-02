@@ -52,3 +52,12 @@ contradictions found between docs and code. Add new entries at the bottom of the
 19. 2026-10-31: do not copy a bootstrap into a study. Use `analysis/lib/eventBootstrap.mjs` for event-vs-control; the copied `drawBlock` gave zero-width intervals at n ≤ 10 (DATA_SPEC §5 #14).
 20. 2026-10-31: `forge/vol.py` event tags were one session late in BST and `load_daily` emitted Sunday sessions in clock-gap weeks (fixed; #15). Re-key any london22 index with `forge.vol.london_date()` before an exact-date join. Live ladder event multipliers need a refit.
 21. 2026-10-31: `cot_weekly.csv` is in pair terms for JPY/CAD/CHF; read `analysis/output/cot-crowding-programme/COT_WEEKLY_README.md` (#16). `FeatureStore.at()` now returns the newest period, not the newest publication (#17). GlobalLiquidity units and monthly lags fixed (#19). Weekend London keys are not sessions anywhere (#20).
+- 2026-11-01: **FRED's public CSV (fredgraph.csv) returns HTTP 503 to the default `node` user-agent.** Every keyless
+  FRED read on the server failed silently. Fixed with a named user-agent (`_FRED_CSV_HEADERS` in server.js).
+- 2026-11-01: **FRED serves the ICE BofA HY OAS (BAMLH0A0HYM2) from 2023-10 only**, through both the API and the CSV
+  (ICE licensing). For a long credit regime, use BAA10Y (committed in `analysis/output/cog_yield_dir/fred/`, feature
+  `credit_baa10y`).
+- 2026-11-01: edges-by-regime v1 used Yahoo cash-index OHLC although committed NY-close D1 from M1 exists
+  (`oi_research_book/data/gex_range_es/*_nyclose_d1.parquet`). Superseded by v2. Check
+  `plans/MARKET_STATE_ENGINE_PLAN.md` §0b before fetching anything.
+

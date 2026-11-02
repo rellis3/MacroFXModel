@@ -100,6 +100,7 @@ export const TASK_CLASS = {
   'cot':          { ledger: null,    label: 'COT positioning analysis' },
   'currency':     { ledger: null,    label: 'Currency analysis' },
   'explain':      { ledger: null,    label: 'Explain a reading' },
+  'oi-explain':   { ledger: null,    label: 'OI Lab panel explainer' },
   // summarising supplied text — the cheap jobs
   'headlines':    { ledger: null,    label: 'Headline summary',  cheapSafe: true },
   'doc-summary':  { ledger: null,    label: 'Document summary',  cheapSafe: true },

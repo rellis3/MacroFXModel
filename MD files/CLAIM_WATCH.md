@@ -127,6 +127,11 @@ percentile rank mapped so the 30th→0 and the 10th→1; VIX points over 5; and 
   repeat. Logged as `event: 'approaching'`, never scored.
 - condition true → **live** (`firing: true`), the ordinary desk-watch start; logged as
   `event: 'started'` and scored.
+- **Hysteresis (2026-10-31).** Once live, a setup holds until `progress` falls below
+  `RELEASE_AT` (0.90); the previous tick's states are passed into `evaluateTriggers` as
+  `prevStates` for this. Added after `claim-breadth-broad` fired five times in eight days
+  with z oscillating on the 1.8 line — each dip cleared it, each tick back re-fired it,
+  re-sent the Telegram and counted the same episode as a new fire.
 - A detector whose input is missing is **absent**, not idle — the same rule as every other
   desk-watch input: unmeasured is never a clear.
 

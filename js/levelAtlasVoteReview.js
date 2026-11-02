@@ -439,11 +439,12 @@ export function applyFadeStopFraction(trades, frac, cost = 0, { preserveSizing =
  * that, the trade is left completely untouched, win/loss/pnlPct unchanged.
  * Once crossed, it exits at `newStopR` × the ORIGINAL stop distance.
  *
- * No M1 re-walk needed: `newStopR < triggerR` is required, so a trade
- * whose worst excursion reached `triggerR` necessarily passed through the
- * shallower `newStopR` level en route (adverse excursion only grows) — the
- * exit is deterministic, at exactly that price, the instant the trigger
- * would have fired. `stopPips` is left UNCHANGED (same reasoning as the
+ * Pricing (corrected 2026-11-01): the exit is booked at `triggerR`, the first
+ * moment the rule can act. The old version booked it at the shallower `newStopR`,
+ * a price already passed before anyone could know the trigger would be reached
+ * (look-ahead; positive edge on random-walk data). With an honest exit the gate
+ * is the same as a stop at `triggerR`; `newStopR` is kept in the signature for
+ * callers but no longer changes the price. `stopPips` is left UNCHANGED (same reasoning as the
  * early-exit lever's own doc, not `applyFadeStopFraction`'s default): a
  * SHRUNK stopPips lets fixed-fractional sizing size up every trade
  * (winners included), inflating both legs — see LEGO_MODULES.md's
@@ -470,10 +471,15 @@ export function applyFadeStopFraction(trades, frac, cost = 0, { preserveSizing =
 export function applyMaeStopGate(trades, triggerR, newStopR, cost = 0) {
   if (!trades?.length || triggerR == null || newStopR == null) return trades ?? [];
   if (!(triggerR > 0) || !(newStopR > 0) || !(newStopR < triggerR)) return trades ?? [];
+  // Exit at the TRIGGER, not at newStopR (fix 2026-11-01). When price passed the
+  // shallower newStopR level nobody could know it would go on to the trigger, so a
+  // stop there was never in place; by the time the trigger fires, price is already
+  // beyond newStopR and the earliest real exit is the trigger level itself. Booking
+  // -newStopR gave a positive "edge" on random-walk data (blind audit).
   return trades.map(t => {
     if (t.maePips == null || !(t.entry > 0) || !(t.stopPips > 0)) return t;
     if (t.maePips / t.stopPips < triggerR) return t; // never crossed the trigger -- untouched
-    const pnlPips = -newStopR * t.stopPips;
+    const pnlPips = -triggerR * t.stopPips;
     const pnlPct = +((pnlPips * t.pip / t.entry * 100) - cost).toFixed(4);
     return { ...t, win: false, pnlPct };
   });
@@ -619,8 +625,9 @@ export function applyGapFilter(trades, maxGapMin) {
  * same array-vs-object split `barUtils.js` already establishes as this
  * codebase's convention for the M1 hot path — same math, different, already-
  * standard input shape, not a second copy of the recurrence to drift from.
- * The floor (never worse than the original fixed exit) and the day-boundary
- * forced close are unchanged in both modes.
+ * The day-boundary forced close applies in both modes. There is no floor at the
+ * target (removed 2026-11-01, TRAIL_EXIT_VERSION 2): a real trailing stop can give
+ * back ground below the target.
  *
  *   applyTrailingContinuation(trades, packed, { givebackFrac, cost, decisions, trailMode, chandelierMult, chandelierPeriod }) ->
  *     trades (same shape, eligible winning rows gain trailedPnlPct/trailedPnlPips/trailedResolveTime)
@@ -644,32 +651,52 @@ function rollingATR(packed, n) {
   return out;
 }
 
+// Bumped whenever the trailed-exit pricing changes, so stored rows priced by an
+// older version are never swapped in (applyStoredContinuationExit checks it).
+// 2 (2026-11-01): see applyTrailingContinuation's notes below.
+export const TRAIL_EXIT_VERSION = 2;
+
 export function applyTrailingContinuation(trades, packed, { givebackFrac = 0.02, cost = 0, decisions = ['follow'], trailMode = 'giveback', chandelierMult = 3, chandelierPeriod = 60 } = {}) {
   if (!trades?.length || !packed?.times?.length) return trades ?? [];
-  const { times, highs, lows, closes } = packed;
+  const { times, opens, highs, lows, closes } = packed;
   const atr = trailMode === 'chandelier' ? rollingATR(packed, chandelierPeriod) : null;
   return trades.map(t => {
     if (!decisions.includes(t.decision) || !t.win) return t;
-    const awaySgn = t.side === 'above' ? 1 : -1; // "away from range" direction implied by which side the rung is on
-    const sgn = t.decision === 'follow' ? awaySgn : -awaySgn; // fade's favorable direction mirrors follow's
+    // Version 2 fixes (2026-11-01, blind audit on random-walk data):
+    //  - a trade that timed out at the session close never reached its target, so
+    //    there is nothing to trail; it used to be floored up to a full target win;
+    //  - no floor at the target: a trailing stop that sits below the target
+    //    (chandelier) loses that ground for real;
+    //  - Fib Atlas sides are 'above'/'below', Level Atlas sides 'up'/'down';
+    //  - the bar the target was hit on is not trailed (its order of high and low
+    //    is unknown), and on later bars the stop is checked against the stop as it
+    //    stood BEFORE the bar (adverse move assumed first), ATR from the previous
+    //    bar, and a bar that opens through the stop exits at its open.
+    if (t.timedOut) return t;
+    const awaySgn = (t.side === 'above' || t.side === 'up') ? 1 : -1;
+    const sgn = t.decision === 'follow' ? awaySgn : -awaySgn;
     const outer = t.entry + sgn * t.targetPips * t.pip;
     const idx = bisect(times, t.resolveTime);
     if (idx >= times.length || times[idx] !== t.resolveTime) return t; // can't locate the exact bar -- leave untrailed
     const boundary = Date.parse(t.date + 'T00:00:00Z') / 1000 + 86400;
     let runExtreme = outer, exitTime = t.resolveTime, exitPrice = outer;
-    for (let j = idx; j < times.length && times[j] < boundary; j++) {
-      const fwd = sgn > 0 ? highs[j] : lows[j];
+    for (let j = idx + 1; j < times.length && times[j] < boundary; j++) {
+      const width = trailMode === 'chandelier' ? chandelierMult * atr[j - 1] : givebackFrac * Math.abs(runExtreme - outer);
+      const trailStop = runExtreme - sgn * width;
       const bwd = sgn > 0 ? lows[j] : highs[j];
+      if (sgn > 0 ? bwd <= trailStop : bwd >= trailStop) {
+        const o = opens ? opens[j] : trailStop;
+        exitTime = times[j];
+        exitPrice = sgn > 0 ? Math.min(trailStop, o) : Math.max(trailStop, o);
+        break;
+      }
+      const fwd = sgn > 0 ? highs[j] : lows[j];
       if (sgn > 0 ? fwd > runExtreme : fwd < runExtreme) runExtreme = fwd;
-      const trailStop = trailMode === 'chandelier'
-        ? runExtreme - sgn * chandelierMult * atr[j]
-        : runExtreme - sgn * givebackFrac * Math.abs(runExtreme - outer);
-      if (sgn > 0 ? bwd <= trailStop : bwd >= trailStop) { exitTime = times[j]; exitPrice = trailStop; break; }
       exitTime = times[j]; exitPrice = closes[j]; // forced mark-to-close at day-end if never stopped out
     }
-    const pnlPips = Math.max((exitPrice - t.entry) / t.pip * sgn, t.targetPips); // floor: never worse than the original fixed exit
+    const pnlPips = (exitPrice - t.entry) / t.pip * sgn;
     const trailedPnlPct = +(pnlPips * t.pip / t.entry * 100 - cost).toFixed(4);
-    return { ...t, trailedPnlPips: +pnlPips.toFixed(1), trailedPnlPct, trailedResolveTime: exitTime };
+    return { ...t, trailedPnlPips: +pnlPips.toFixed(1), trailedPnlPct, trailedResolveTime: exitTime, trailExitVersion: TRAIL_EXIT_VERSION };
   });
 }
 
@@ -706,11 +733,15 @@ export function applyStoredContinuationExit(trades, mode) {
   const isGiveback = mode === true || mode === 'true' || mode === 'giveback';
   const isChandelier = mode === 'chandelier';
   if (!trades?.length || !(isGiveback || isChandelier)) return trades ?? [];
+  // Rows trailed by an older pricing version (no or stale `trailExitVersion`) keep
+  // their plain target/stop result: version 1 floored every trailed exit at the
+  // target and could book a timed-out trade as a full win (2026-11-01).
+  const current = t => t.trailExitVersion === TRAIL_EXIT_VERSION;
   if (isChandelier) {
-    return trades.map(t => t.chandTrailedPnlPct == null ? t
+    return trades.map(t => (t.chandTrailedPnlPct == null || !current(t)) ? t
       : { ...t, pnlPct: t.chandTrailedPnlPct, pnlPips: t.chandTrailedPnlPips, resolveTime: t.chandTrailedResolveTime });
   }
-  return trades.map(t => t.trailedPnlPct == null ? t
+  return trades.map(t => (t.trailedPnlPct == null || !current(t)) ? t
     : { ...t, pnlPct: t.trailedPnlPct, pnlPips: t.trailedPnlPips, resolveTime: t.trailedResolveTime });
 }
 

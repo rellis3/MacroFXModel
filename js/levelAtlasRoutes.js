@@ -207,8 +207,10 @@ async function runOne(instrument, { rearmFracs = [0.15, 0.3, 0.5], onLog = () =>
       const atRearm = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
       const { split: realSplit } = splitAt(atRearm);
       const isOnly = atRearm.filter(t => t.date < realSplit);
-      const honestBook = buildAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM }) ?? voteBook;
-      const trades = buildBarrierTrades(touches, honestBook, { rearmFrac: DEFAULT_REARM, cost, oosStartDate: realSplit });
+      // No fallback to `voteBook` (2026-11-01): it has seen the scored period, so an
+      // unbuildable in-sample book means no backtest trades, not leaky ones.
+      const honestBook = buildAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM });
+      const trades = honestBook ? buildBarrierTrades(touches, honestBook, { rearmFrac: DEFAULT_REARM, cost, oosStartDate: realSplit }) : [];
       const summaryByMargin = {};
       for (const m of [1, 2, 3, 4]) {
         const sub = trades.filter(t => t.margin >= m);

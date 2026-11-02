@@ -205,7 +205,9 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   const atRearmForSplit = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
   const { split: realSplit } = splitAt(atRearmForSplit);
   const isOnly = atRearmForSplit.filter(t => t.date < realSplit);
-  const honestBook = buildAsiaFibAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM }) ?? book;
+  // No fallback to `book` (2026-11-01): that book has seen the scored period, so
+  // when the in-sample book can't be built the backtest yields no trades instead.
+  const honestBook = buildAsiaFibAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM });
 
   // "Let-ride" extended-resolution walk (2026-08-31) — direct owner request
   // after asking what happens to touches unresolved by midnight (currently
@@ -235,7 +237,7 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   const extAtRearmForSplit = extTouches.filter(t => t.rearmFrac === DEFAULT_REARM);
   const { split: extRealSplit } = splitAt(extAtRearmForSplit);
   const extIsOnly = extAtRearmForSplit.filter(t => t.date < extRealSplit);
-  const extHonestBook = buildAsiaFibAtlasBook(extIsOnly, { rearmFrac: DEFAULT_REARM }) ?? extBook;
+  const extHonestBook = buildAsiaFibAtlasBook(extIsOnly, { rearmFrac: DEFAULT_REARM });   // no fallback, as above
 
   // Vote-margin trade list (2026-08-27) — the fade/follow-decided,
   // barrier-priced backtest for the trade-review page (asia-fib-atlas-vote-

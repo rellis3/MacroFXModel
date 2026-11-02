@@ -309,15 +309,23 @@ function mkBook(dimSpecs) {
   // silently passed through). `minClearancePips == null` must be a full
   // no-op passthrough, same as every other lever here defaulting off.
   const clearanceTrades = [
-    { pnlPct: 1, clearancePips: 0.1 },
-    { pnlPct: 2, clearancePips: 0.9 },
-    { pnlPct: 3, clearancePips: 1.0 },
-    { pnlPct: 4, clearancePips: 3.0 },
-    { pnlPct: 5, clearancePips: null },
+    { pnlPct: 1, decision: 'fade', clearancePips: 0.1 },
+    { pnlPct: 2, decision: 'fade', clearancePips: 0.9 },
+    { pnlPct: 3, decision: 'fade', clearancePips: 1.0 },
+    { pnlPct: 4, decision: 'fade', clearancePips: 3.0 },
+    { pnlPct: 5, decision: 'fade', clearancePips: null },
+    { pnlPct: 6, decision: 'follow', clearancePips: 0.1 },
+    { pnlPct: 7, decision: 'follow', clearancePips: null },
   ];
   const filteredAt1 = applyClearanceFilter(clearanceTrades, 1);
-  ok('T23a applyClearanceFilter keeps only trades with clearancePips >= threshold, dropping null clearance',
-    filteredAt1.length === 2 && filteredAt1.every(t => t.clearancePips >= 1),
+  const fadesKept = filteredAt1.filter(t => t.decision === 'fade');
+  ok('T23a applyClearanceFilter keeps only FADES with clearancePips >= threshold, dropping null clearance',
+    fadesKept.length === 2 && fadesKept.every(t => t.clearancePips >= 1),
+    JSON.stringify(filteredAt1));
+  // 2026-11-01: a follow is a stop entry filled on the touch; selecting follows on
+  // how far the touch bar ran past the level is look-ahead, so follows pass through.
+  ok('T23a2 applyClearanceFilter never drops a FOLLOW trade, whatever its clearance',
+    filteredAt1.filter(t => t.decision === 'follow').length === 2,
     JSON.stringify(filteredAt1));
   const filteredNoop = applyClearanceFilter(clearanceTrades, null);
   ok('T23b applyClearanceFilter is a no-op passthrough when minClearancePips is null',

@@ -16,6 +16,8 @@ Evidence for everything here: `analysis/output/repo-review-2026-10-31/`
 - `pages.csv`, `api.csv`, `systems.csv`: inventories of every page, API route and folder
 - `scripts/`: the re-check scripts (they reference the session scratchpad and are kept as a record)
 
+> **Data assets (added later on 2026-10-31):** what the repo holds, how deep each source is, what is being lost and how to get the best from it as an engine: `plans/DATA_ASSET_MAP.md` (inventories in `analysis/output/repo-review-2026-10-31/data/`).
+
 ---
 
 ## 1. The short version

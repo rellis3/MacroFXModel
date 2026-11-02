@@ -1095,3 +1095,114 @@ of a grid. It would have to:
 - send any keeper through a pre-registration before it counts.
 
 Nothing built. Noted as a design option, not a candidate.
+
+
+---
+
+## 2026-11-02 — Jess Inskip, "Class is in session: a red day under the surface" (the 100-day break, a narrow sell-off, oil up with yields down, the midterms)
+
+> *"The S&P 500 broke the hundred-day moving average. When it breaks a moving average, that's
+> broadly accepted, it just triggers this sell-off. But you need to see what's happening
+> underneath the surface... the equal-weight index is a completely different picture, which
+> tells me this sell-off is very, very narrow... Technology is down almost five and a half
+> percent... what's gaining? Real estate, utilities, healthcare; energy is doing the best,
+> up 1.6%, because oil is increasing. Now here is what's really interesting: if oil is
+> increasing, generally we're going to see yields increasing... But because yields aren't
+> rising, that tells me there's a flight to safety... or buying of oil because the dollar is
+> getting stronger... The market doesn't like uncertainty. The midterms is uncertainty.
+> Remove that uncertainty, perhaps we'll see volatility retreat, and maybe the market as
+> well."*
+
+The session is **Friday 2026-10-30** (S&P −1.8% to 7,580; its first close under the 100-day
+average since April; Nasdaq −2.9%; VIX +13% to 19.4). The clip is a walk-through of how she
+reads a red day, and most of its steps are things this desk builds every fifteen minutes.
+
+**1. The claims, stated plainly.** One method (most of the clip), and three claims inside it.
+- **Method.** Index → equal-weight → advance/decline → sector table → gainers and losers by
+  name → the cross-asset check (oil, yields, dollar). Read the damage from the inside out.
+- **(a) "A moving-average break triggers the sell-off."** A level claim: the first close
+  below the 100-day is itself a cause, or at least a signal, of further selling.
+- **(b) "Oil up, yields not rising → flight to safety / foreign buying / a stronger dollar."**
+  A chain inference: the oil → inflation-expectations → yields link did not fire, so another
+  mechanism must be at work.
+- **(c) "Remove the midterm uncertainty and volatility retreats, maybe the market too."**
+  An event claim: a scheduled binary (2026-11-03) passing lowers vol and lifts price.
+
+**2. What's already on this desk — and it had read the same day the night before.**
+- **The method is the Market View and the desk watch.** The drill bundle carries the eleven
+  sector ETFs and twelve single names *so the board can say which names the move reached*
+  (server comment, 2026-09-23); the equal-weight-minus-cap-weight tile is the board's
+  concentration read. Her sector table for 10-30 is the bundle's: **XLK −4.9%**, XLI −1.6%,
+  XLC −1.3%, XLF −0.8%; XLE **+1.9%**, XLP +1.4%, XLU +0.7%, XLV +0.5%, XLRE +0.3%. Her
+  losers (Intel −29%, Reddit −29%, Illumina −19%, Twilio −15%, SanDisk −13%) and gainers
+  (Global Payments +13%, GoDaddy +11%, CoStar +7%, T-Mobile +6%, FedEx +2%) are earnings
+  names, which is what a 29% day is. **The one thing she has that this desk cannot source is
+  the advance/decline line** — no free feed carries it, which is why breadth here is built
+  from what can be sourced. NYSE composite −0.9% against Nasdaq −2.9% says the same thing by
+  index.
+- **"Very narrow" is the register's live reading, and it is the broad arm.** RSP −0.8%
+  against SPY −1.8%: the equal-weight *outperformed by a full point* on the day, the
+  20-session spread sits at **z +2.94, the 100th percentile of three years**, and
+  `claim-breadth-broad` has been LIVE since 10-23. So "narrow sell-off" and "broadening
+  market" are the same fact: the cap-weighted index is being taken down by its largest names
+  while the median stock is not. B1 tested whether that extreme predicts anything for the
+  index — direction, range, reversion, continuation — and it does not. Her description is
+  right; nothing follows from it.
+- **(a) is a line on a chart, and the desk has three nulls on lines.** `level-touch` (NULL,
+  audited: "a level is a place, not a signal"), `daily-band-fade` (NULL across 25 pairs,
+  bands at every timeframe), `trend-following-fx` (NULL on FX, modest multi-asset). The
+  specific event — the S&P's first close under its 100-day — has not been scored here. It
+  has happened **seven times in three years** (2024-08-05, 2025-02-27, 2025-03-03,
+  2025-11-20, 2026-03-03, 2026-03-05, 2026-10-30); two of those pairs are three sessions
+  apart, which already says the first break often does not hold. "Broadly accepted" is a
+  statement about who believes it, not about what follows. Logged as a candidate in the
+  Crown-watch index (one index, per the header), prior from the desk: a place, not a signal.
+- **(b) is on the chain, and the chain disagrees with her conclusion.** The desk watch fired
+  **`oil-without-breakevens` on 10-30**: *oil +11.5% over 20 sessions while 10-year
+  breakevens moved +1bp*. Exactly her observation. But the tested reading
+  (`oil-to-breakevens`, NULL on the lag): *breakevens move with oil in the same window, not
+  after it; if they did not move, the bond market has already made its call — do not write
+  "not yet"*. Her "flight to safety" has a different problem: the chain's `real-gold`,
+  `real-nq` and `real-spx` links are all **BROKEN** on the same read — real yields −28bp
+  with gold −7.6%, Nasdaq −8.1%, S&P −3.0% — and the chain's own punch line names the
+  mechanism: *real yields down and gold still down → forced selling*. A flight to safety
+  buys gold; a de-grossing sells it. Her third candidate, the dollar, is not in the data:
+  the broad dollar is **−0.1%** over the window and DXY −0.16% on the day. What is true is
+  the ordinary part: 20-day SPY/TLT correlation −0.34, *bonds are hedging equities again*
+  (`stock-bond-together` off) — stocks down, yields down is the normal regime, not a story.
+- **(c) has no test here and the nearest findings point the other way on vol.** No election
+  handling exists on the desk (the event book is scheduled macro releases). "Volatility
+  retreats" after a binary is a statement about *implied* vol; the realised-vol findings
+  that are banked say `iv-over-rv-wider` (VALIDATED: implied far above realised → the next
+  weeks run WIDER, realised catches up), `nq-down-week` (VALIDATED, fired 10-30: next
+  session ~20% wider), `breadth-all-down` (VALIDATED, fired 10-30: six of six indices down →
+  a wider week, +0.31 ATR on SPX500, +0.26 on NAS100). "Maybe the market as well" is a
+  direction call; every direction read here is null, and the 5-session up-share after a
+  breadth wipe-out is 58–61%, the ordinary drift.
+
+**3. Trading or macro-understanding.** The method is macro-understanding and it is the
+house method — the one difference is that she walks it in an order and says what each step
+rules out, which the 2026-10-02 domino entry already noted is the transferable part. (a)
+and (c) are trading claims in null families; (b) is a chain read the chain already makes,
+with a different and better-evidenced conclusion.
+
+**4. Display nugget.** The desk had every element of this clip on the page the night before
+she filmed it — the sector table, the equal-weight read, the oil-without-breakevens
+trigger, the broken real-yield links naming forced selling — and nobody has to drill
+through a broker's menus to get them. What it does not have is her *order*: a red-day
+walkthrough that starts at the index, descends to names, and ends at the cross-asset check
+is a reading sequence, not a new data item. Worth a Theory Lab worked example alongside the
+domino one. Proposed, not built.
+
+**5. Verdict and action.**
+- **Nothing to run.** (a) joins the index as a candidate (first close below the 100-day,
+  S&P, 1990→, next 5/20 sessions against a matched control; prior: a place, not a signal);
+  (b) and (c) are answered or are not claims.
+- **What to keep.** Her sequence, and one correction to carry: when oil moves and yields do
+  not, the desk's evidence says the bond market has *declined* the inflation story, not
+  postponed it; and when gold falls with real yields, the word is forced selling, not
+  flight to safety.
+- **Read against the register on 10-30**: breadth broad LIVE (z +2.94), breadth-all-down
+  LIVE, `nq-down-week` ON, `oil-without-breakevens` ON, three real-yield links BROKEN, VIX
+  back under its 3-month by Monday's tick (17.2 vs 19.4). A wider week is the tested
+  expectation; which way is not.

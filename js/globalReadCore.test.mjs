@@ -215,3 +215,22 @@ t('one forecast (2026-10-18): chosen lines get no multipliers; flags stay as con
 });
 
 console.log(`globalReadCore: ${n} tests passed`);
+
+// ── Code audit 2026-10-31 → registry weights (owner approved 2026-11-01) ──
+import { REGISTRY as _REG_A, TIER_LABEL as _TL } from './globalReadCore.js';
+import { EVIDENCE_AUDIT as _AUD } from './evidenceAudit.js';
+import { test as _t } from 'node:test';
+import _assert from 'node:assert/strict';
+_t('no input carries validated/confirmed weight unless at least one of its tests stands in the code audit', () => {
+  for (const r of _REG_A.filter(r => ['validated', 'confirmed'].includes(r.tier))) {
+    assert_has(r);
+    const standing = r.evidenceIds.filter(id => _AUD[id]?.status === 'stands' && _AUD[id]?.banked === 'validated');
+    _assert.ok(standing.length >= (r.tier === 'confirmed' ? 2 : 1), `${r.id} is ${r.tier} but standing validated tests are ${standing.join(',') || 'none'}`);
+  }
+  function assert_has(r) { _assert.ok(Array.isArray(r.evidenceIds) && r.evidenceIds.length, `${r.id} names its evidence ids`); }
+});
+_t('untested and null are labelled apart', () => {
+  _assert.notEqual(_TL.untested, _TL.null);
+  _assert.match(_TL.untested, /never tested/);
+  _assert.equal(_REG_A.find(r => r.id === 'post-fomc').tier, 'descriptive');
+});

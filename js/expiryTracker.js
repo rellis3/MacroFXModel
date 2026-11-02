@@ -1,0 +1,271 @@
+/**
+ * Expiry tracker: every listed CME option expiry pinned to its calendar date and recorded every night as it
+ * counts down (register row `expiry-tracker`, plans/RESEARCH_REGISTER.md).
+ *
+ * The nightly capture (`oi_raw_<date>`, archived to R2 `archive/oi_raw/`) already holds the full strike x expiry
+ * matrix, but it is stored one capture day at a time. The question here runs the other way: for ONE expiry (say the
+ * late-November contract), what did its book look like 60, 59, 58 ... 0 days out, which strikes built and which
+ * faded, and where was price when it expired? So this module re-cuts the daily captures into one series per expiry:
+ *
+ *   series = { pair, expiry: 'YYYY-MM-DD', code, inverted, days: [ snapshot, ... ] }   (one snapshot per capture date)
+ *
+ * Snapshots keep the ladder in FUTURES terms (the strike as CME lists it) plus the futures price, spot and basis of
+ * that capture. Basis drifts day to day, so converting at capture time would move a strike between days and make a
+ * fixed strike look like it walked. Readers convert with `toSpot` at whatever basis they want.
+ *
+ * Everything derived (changes, building streaks, zones, centre) is computed at READ time by `expiryView`, so the
+ * stored series stays a plain record and a better zone rule never needs a rewrite of history.
+ *
+ * Caveats that the view reports rather than hides:
+ *  - OI follows price: positions open near the money, so an expiry's OI centre drifts with price whether or not it
+ *    has any pull. `expiryView` splits building into near-spot and away-from-spot for that reason.
+ *  - A stale capture (the feed re-serving yesterday's book) shows as zero change everywhere; such days are flagged
+ *    `stale` and skipped when changes are computed.
+ *  - DTE in the paste is relative to the paste date, so expiry = capture date + DTE can wobble by a day; matching
+ *    uses the contract code when the paste has one and a +-1 day window otherwise.
+ *
+ * Pure: no I/O. Tested by js/expiryTracker.test.mjs.
+ */
+import { oiMatrixExpiryLegs, oiCalcMaxPain } from './oi.js';
+import { fullBookGex } from './fullBookGex.js';
+import { bsCharm, bsVanna } from './gammaGreeks.js';
+
+const DAY = 864e5;
+export const TAIL_FRAC = 0.35;          // strikes further than 35% from the futures price are tail hedges, not zones (as _oiNearBook)
+
+export function addDays(date, n) {
+  const t = Date.parse(`${date}T00:00:00Z`);
+  return Number.isFinite(t) ? new Date(t + n * DAY).toISOString().slice(0, 10) : null;
+}
+const dayDiff = (a, b) => Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / DAY);
+
+/** Futures-terms strike -> spot-terms price (inverted pairs are quoted foreign-per-USD on CME). */
+export function toSpot(strike, { basis = 0, inverted = false } = {}) {
+  if (!Number.isFinite(strike) || strike <= 0) return null;
+  const b = Number.isFinite(basis) ? basis : 0;
+  return inverted ? 1 / strike - b : strike - b;
+}
+
+const round = (x, dp = 6) => (Number.isFinite(x) ? +x.toFixed(dp) : null);
+
+/**
+ * One capture day's raw entry for one pair -> a snapshot per expiry column.
+ * rawEntry: the `oi_raw_<date>` value for the pair ({ rawOI, spot, futures, basis, ... }).
+ * Returns [{ expiry, code, snap }] where snap is what gets stored for that capture date.
+ */
+export function expirySnapshotsFromRaw(rawEntry, { date, inverted = false, minOI = 1 } = {}) {
+  if (!rawEntry?.rawOI || !/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) return [];
+  const legs = oiMatrixExpiryLegs(rawEntry.rawOI, { basis: 0, inverted: false, minOI });   // futures terms, no shift
+  if (!legs) return [];
+  const futures = Number.isFinite(rawEntry.futures) ? rawEntry.futures : null;
+  const out = [];
+  for (const l of legs) {
+    if (!Number.isFinite(l.dte) || l.dte < 0) continue;
+    const ladder = [];
+    for (let i = 0; i < l.strikes.length; i++) {
+      const c = l.calls[i] || 0, p = l.puts[i] || 0;
+      if (c + p <= 0) continue;
+      ladder.push([round(l.strikes[i], 8), Math.round(c), Math.round(p)]);
+    }
+    if (ladder.length < 2) continue;
+    out.push({
+      expiry: addDays(date, l.dte), code: l.code ?? null,
+      snap: {
+        date, dte: l.dte,
+        futures, spot: Number.isFinite(rawEntry.spot) ? rawEntry.spot : null,
+        basis: Number.isFinite(rawEntry.basis) ? rawEntry.basis : null,
+        savedAtMs: rawEntry.savedAtMs ?? null,
+        ladder,
+      },
+    });
+  }
+  return out;
+}
+
+/** Find the series key an incoming expiry belongs to: same code first, else a stored expiry within +-1 day. */
+export function matchExpiryKey(existingKeys, { expiry, code }, codeOf = () => null) {
+  if (!expiry) return null;
+  if (code) { const k = existingKeys.find(x => codeOf(x) === code); if (k) return k; }
+  if (existingKeys.includes(expiry)) return expiry;
+  const near = existingKeys.find(k => Math.abs(dayDiff(k, expiry)) <= 1 && (!code || !codeOf(k) || codeOf(k) === code));
+  return near ?? expiry;
+}
+
+const ladderSig = ladder => (ladder || []).map(r => r.join(':')).join('|');
+
+/**
+ * Add (or replace) one capture day's snapshot in an expiry series. Idempotent: replaying the same day is a no-op.
+ * A snapshot whose ladder is byte-identical to the previous capture day is marked `stale` (the feed re-served an old
+ * book); the OI is kept as the stock it is, but the day carries no change information.
+ */
+export function mergeExpirySnapshot(series, { pair, expiry, code = null, inverted = false }, snap) {
+  const s = series && Array.isArray(series.days)
+    ? { ...series, days: series.days.slice() }
+    : { v: 1, pair, expiry, code, inverted: !!inverted, days: [] };
+  if (!s.code && code) s.code = code;
+  const i = s.days.findIndex(d => d.date === snap.date);
+  const before = i >= 0 ? JSON.stringify(s.days[i]) : null;
+  if (i >= 0) s.days[i] = snap; else s.days.push(snap);
+  s.days.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  // re-mark staleness around the touched day (only the day itself and its successor can change)
+  for (let k = 0; k < s.days.length; k++) {
+    const prev = s.days[k - 1];
+    const stale = !!prev && ladderSig(prev.ladder) === ladderSig(s.days[k].ladder);
+    if (stale) s.days[k] = { ...s.days[k], stale: true };
+    else if (s.days[k].stale) { const { stale: _s, ...rest } = s.days[k]; s.days[k] = rest; }
+  }
+  const changed = before !== JSON.stringify(s.days.find(d => d.date === snap.date));
+  s.first = s.days[0]?.date ?? null; s.last = s.days.at(-1)?.date ?? null; s.n = s.days.length;
+  return { series: s, changed };
+}
+
+/**
+ * Fold a batch of capture days into a map of series. dayEntries: [{ date, pairs: { pair: rawEntry } }].
+ * seriesMap: Map(`${pair}|${expiry}` -> series), mutated in place; returns the set of keys that changed.
+ */
+export function foldCaptureDays(seriesMap, dayEntries, { invertedPairs = new Set(), minOI = 1 } = {}) {
+  const touched = new Set();
+  const days = [...dayEntries].sort((a, b) => (a.date < b.date ? -1 : 1));
+  for (const { date, pairs } of days) {
+    for (const [pair, raw] of Object.entries(pairs || {})) {
+      const inverted = invertedPairs.has(pair);
+      const keysForPair = [...seriesMap.keys()].filter(k => k.startsWith(`${pair}|`)).map(k => k.slice(pair.length + 1));
+      const codeOf = e => seriesMap.get(`${pair}|${e}`)?.code ?? null;
+      for (const { expiry, code, snap } of expirySnapshotsFromRaw(raw, { date, inverted, minOI })) {
+        const key = matchExpiryKey(keysForPair, { expiry, code }, codeOf);
+        const mapKey = `${pair}|${key}`;
+        const { series, changed } = mergeExpirySnapshot(seriesMap.get(mapKey), { pair, expiry: key, code, inverted }, snap);
+        seriesMap.set(mapKey, series);
+        if (!keysForPair.includes(key)) keysForPair.push(key);
+        if (changed) touched.add(mapKey);
+      }
+    }
+  }
+  return touched;
+}
+
+/** Index entry for one series (what the list endpoint shows without loading ladders). */
+export function seriesIndexEntry(series) {
+  const last = series?.days?.at(-1);
+  const tot = l => (l || []).reduce((a, r) => a + r[1] + r[2], 0);
+  return { expiry: series.expiry, code: series.code ?? null, first: series.first, last: series.last, n: series.n,
+    dteNow: last?.dte ?? null, totalOI: tot(last?.ladder), maxDteSeen: series.days?.[0]?.dte ?? null };
+}
+
+/**
+ * Read-time view of one expiry series: per capture day, the book's totals, OI-weighted centre, max pain and its
+ * strongest zones, with day-over-day and since-first changes and a building streak per strike.
+ *  awayFrac: a strike counts as "away from price" when |strike/futures - 1| > awayFrac on that day.
+ *  topN: zones reported per day.
+ * Prices are reported in futures terms (k) and spot terms (px, at that day's basis).
+ *
+ * PULL (the owner's question: is this expiry's book leaning up or down from price, and is that growing?). Per day,
+ * all in SPOT direction (an inverted pair's higher CME strike is a lower spot price):
+ *  oiAbove / oiBelow / shareAbove   open interest at strikes above vs below that day's futures price
+ *  pullPct                          the OI-weighted centre's distance from price, % (+ = the book sits above price)
+ *  buildAbove / buildBelow          last night's OI change at strikes above vs below price (null on stale/first days)
+ * On the LAST day only, when sigmaAnnual is given: gamma = { regime PIN|BREAKOUT, flipPx } for this expiry alone
+ * (js/fullBookGex.js at a flat vol). Descriptive: no test yet says a book's lean moves price.
+ */
+export function expiryView(series, { awayFrac = 0.01, topN = 6, sigmaAnnual = null } = {}) {
+  if (!series?.days?.length) return null;
+  const inverted = !!series.inverted;
+  const firstMap = new Map((series.days[0].ladder || []).map(r => [r[0], r[1] + r[2]]));
+  let prevMap = null;
+  const streak = new Map();                                   // strike -> consecutive non-stale days of OI increase
+  const days = [];
+  for (const d of series.days) {
+    const ref = Number.isFinite(d.futures) ? d.futures : null;
+    const rows = (d.ladder || []).filter(r => ref == null || Math.abs(r[0] / ref - 1) <= TAIL_FRAC);
+    const map = new Map(rows.map(r => [r[0], r[1] + r[2]]));
+    const total = rows.reduce((a, r) => a + r[1] + r[2], 0);
+    const centre = total > 0 ? rows.reduce((a, r) => a + r[0] * (r[1] + r[2]), 0) / total : null;
+    const conv = k => toSpot(k, { basis: d.basis ?? 0, inverted });
+    let chgNear = 0, chgAway = 0, buildAbove = 0, buildBelow = 0, oiAbove = 0, oiBelow = 0;
+    const isAbove = k => ref != null && (inverted ? k < ref : k > ref);
+    const isBelow = k => ref != null && (inverted ? k > ref : k < ref);
+    for (const [k, oi] of map) { if (isAbove(k)) oiAbove += oi; else if (isBelow(k)) oiBelow += oi; }
+    if (prevMap && !d.stale) {
+      const add = (k, dOI) => {
+        const away = ref != null && Math.abs(k / ref - 1) > awayFrac;
+        if (away) chgAway += dOI; else chgNear += dOI;
+        if (isAbove(k)) buildAbove += dOI; else if (isBelow(k)) buildBelow += dOI;
+      };
+      for (const [k, oi] of map) {
+        const dOI = oi - (prevMap.get(k) ?? 0);
+        add(k, dOI);
+        streak.set(k, dOI > 0 ? (streak.get(k) ?? 0) + 1 : 0);
+      }
+      for (const k of prevMap.keys()) if (!map.has(k)) { streak.set(k, 0); add(k, -prevMap.get(k)); }
+    }
+    const zones = rows.map(r => {
+      const oi = r[1] + r[2];
+      return { k: r[0], px: round(conv(r[0])), oi, call: r[1], put: r[2], share: total > 0 ? round(oi / total, 4) : null,
+        chg1d: prevMap && !d.stale ? oi - (prevMap.get(r[0]) ?? 0) : null,
+        chgSinceFirst: oi - (firstMap.get(r[0]) ?? 0),
+        buildStreak: streak.get(r[0]) ?? 0,
+        distPct: ref != null ? round((r[0] / ref - 1) * 100 * (inverted ? -1 : 1), 3) : null };
+    }).sort((a, b) => b.oi - a.oi).slice(0, topN);
+    days.push({ date: d.date, dte: d.dte, stale: !!d.stale, futures: d.futures, spot: d.spot, basis: d.basis,
+      totalOI: total, centre: round(centre, 8), centrePx: round(conv(centre)),
+      maxPain: rows.length >= 2 ? round(conv(oiCalcMaxPain(rows.map(r => r[0]), rows.map(r => r[1]), rows.map(r => r[2])))) : null,
+      chgNearSpot: prevMap && !d.stale ? chgNear : null, chgAwayFromSpot: prevMap && !d.stale ? chgAway : null,
+      oiAbove, oiBelow, shareAbove: oiAbove + oiBelow > 0 ? round(oiAbove / (oiAbove + oiBelow), 4) : null,
+      pullPct: centre != null && ref ? round((centre / ref - 1) * 100 * (inverted ? -1 : 1), 3) : null,
+      buildAbove: prevMap && !d.stale ? buildAbove : null, buildBelow: prevMap && !d.stale ? buildBelow : null,
+      zones, _rows: rows });
+    if (!d.stale) prevMap = map;
+  }
+  const last = days.at(-1);
+  if (last && sigmaAnnual > 0 && Number.isFinite(last.futures) && last._rows.length >= 2) {
+    const g = fullBookGex([{ dte: last.dte, strikes: last._rows.map(r => r[0]), calls: last._rows.map(r => r[1]), puts: last._rows.map(r => r[2]) }],
+      last.futures, { flatSigma: sigmaAnnual, span: 0.15, steps: 300 });
+    if (g) last.gamma = { regime: g.regime, flipPx: g.flip != null ? round(toSpot(g.flip, { basis: last.basis ?? 0, inverted })) : null, sigmaAnnual };
+    const gk = expiryHedgeGreeks(last._rows, last.futures, last.dte, sigmaAnnual, { inverted });
+    if (gk) last.greeks = { ...gk, charmFlipPx: gk.charmFlipK != null ? round(toSpot(gk.charmFlipK, { basis: last.basis ?? 0, inverted })) : null,
+      vannaFlipPx: gk.vannaFlipK != null ? round(toSpot(gk.vannaFlipK, { basis: last.basis ?? 0, inverted })) : null };
+  }
+  for (const d of days) delete d._rows;
+  return { pair: series.pair, expiry: series.expiry, code: series.code ?? null, inverted, n: days.length, days };
+}
+
+/**
+ * Charm and vanna for ONE expiry, as the dealer hedge they force (the OI Lab hedging-map convention: dealers long
+ * calls / short puts, the same sign as GEX; hedge = minus the change in dealer delta). Flat vol, futures terms.
+ *  charm1d    contracts of underlying dealers must trade because one calendar day passes (price and IV still)
+ *  vannaIvDn2 contracts they must trade if implied vol falls 2 points (price and time still)
+ *  charmFlipPx / vannaFlipPx  where the per-strike net flow changes sign, nearest price (spot terms)
+ * Signs are in SPOT direction: + = dealers buy the pair as quoted (an inverted CME pair's buy is a spot sell).
+ * Descriptive: OI Lab and js/oi.js treat charm/vanna as context, and no test here says the flow moves price.
+ */
+export function expiryHedgeGreeks(rows, futures, dte, sigmaAnnual, { inverted = false } = {}) {
+  if (!Array.isArray(rows) || rows.length < 2 || !(futures > 0) || !(sigmaAnnual > 0)) return null;
+  const T = Math.max(1, Number.isFinite(dte) ? dte : 14) / 365;
+  const dir = inverted ? -1 : 1;
+  let charm = 0, vanna = 0;
+  const prof = [];
+  for (const [k, c, p] of rows) {
+    const net = (c || 0) - (p || 0);
+    const ch = -net * bsCharm(futures, k, T, sigmaAnnual) / 365;
+    const va = -net * bsVanna(futures, k, T, sigmaAnnual) * -0.02;
+    charm += ch; vanna += va;
+    prof.push({ k, ch, va });
+  }
+  prof.sort((a, b) => a.k - b.k);
+  const flip = key => {
+    let best = null;
+    for (let i = 1; i < prof.length; i++) {
+      const a = prof[i - 1][key], b = prof[i][key];
+      if (!a || !b || Math.sign(a) === Math.sign(b)) continue;
+      const x = prof[i - 1].k + Math.abs(a) / (Math.abs(a) + Math.abs(b)) * (prof[i].k - prof[i - 1].k);
+      if (best == null || Math.abs(x - futures) < Math.abs(best - futures)) best = x;
+    }
+    return best;
+  };
+  return {
+    charm1d: round(charm * dir, 1), vannaIvDn2: round(vanna * dir, 1),
+    charmSide: charm * dir > 0 ? 'buy' : charm * dir < 0 ? 'sell' : 'flat',
+    vannaSide: vanna * dir > 0 ? 'buy' : vanna * dir < 0 ? 'sell' : 'flat',
+    charmFlipK: flip('ch'), vannaFlipK: flip('va'), sigmaAnnual, unit: 'contracts of underlying (delta)',
+  };
+}

@@ -41,6 +41,7 @@ h1 b{color:var(--acc)} h1 small{color:var(--tx3);font-size:11px;letter-spacing:.
 #lw{position:relative;flex:1;min-width:0;height:560px;background:#080b10;border-radius:10px;overflow:hidden}
 #lw>canvas#bg{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
 #lw>div{position:relative;z-index:1}
+#lw>canvas#barsCv{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
 #curve{width:clamp(110px,17%,230px);height:560px;border-radius:10px;background:#080b10}
 @media(max-width:700px){#lw,#curve{height:420px}}
 .zt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}.zt th{color:var(--tx3);font-weight:500;text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px}
@@ -67,6 +68,18 @@ svg text{font-family:var(--mono)}
 .legend i{display:inline-block;width:18px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle}
 .err{color:#ff8a80;padding:30px;text-align:center}
 .tgl{display:flex;gap:6px;margin-left:auto}
+.oixr{margin-left:auto;display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.oixb{font-size:10px;letter-spacing:.06em;padding:2px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--tx3);text-transform:uppercase;white-space:nowrap}
+.oixb.real{color:#46b87a;border-color:rgba(70,184,122,.5)}
+.oixb.null{color:#e8615f;border-color:rgba(232,97,95,.5)}
+.oixb.mixed{color:#f0b04a;border-color:rgba(240,176,74,.5)}
+.oixb.untested{color:#a487f0;border-color:rgba(164,135,240,.5)}
+.oixq{font:inherit;font-size:11px;letter-spacing:.02em;text-transform:none;cursor:pointer;background:rgba(240,176,74,.1);border:1px solid rgba(240,176,74,.45);color:#f0b04a;padding:3px 10px;border-radius:999px}
+.oixq:disabled{opacity:.5;cursor:wait}
+.oixa{margin-top:12px;padding:12px 14px;border:1px solid rgba(240,176,74,.3);border-radius:10px;background:rgba(240,176,74,.04);font-size:13px;line-height:1.5;color:var(--tx2)}
+.oixa .oixp{margin:0 0 7px}.oixa .oixp b{color:var(--tx)}
+.oixl{color:var(--tx3)}.oixf{margin-top:8px;font-size:11px;color:var(--tx3)}
+@media(max-width:700px){.card h2{flex-wrap:wrap}.oixr{margin-left:0;justify-content:flex-start}}
 </style>
 </head>
 <body>
@@ -101,17 +114,20 @@ svg text{font-family:var(--mono)}
   <div class="card" id="hpoCard">
     <h2><em>00b</em> Level orders, textbook version <span class="pill" style="font-size:11px;padding:2px 9px;margin-left:8px;cursor:default">shadow · not live</span>
       <span class="tgl"><button class="btn" id="hpoTvBtn" title="Copies the textbook plan as a block for the 'OI Bot Trades' TradingView indicator (pine/OI Bot Trades.pine): the same zones as the hedge plan, labelled HEDGE oi-fade / oi-follow, entry at the wall, stop box, target box. Paste it alone, or below the forecast-line hedge plan to see both.">⬇ TradingView (textbook plan)</button><a class="btn" href="/api/hedging-plan-oi/record" target="_blank" title="Forward record: both plans scored on the same sessions (counts only until 250 sessions)">forward record</a></span></h2>
-    <div class="sub"><b>Not a hedge.</b> These are two-sided pending entry orders (one fades or follows each side, one trade a day). The dealers' hedging is drawn in 05e. The name "hedge" on the TradingView block is kept only because the indicator files it under that switch. <b>Same playbook, orders on the OI map's own levels.</b> When dealers are long gamma ("PIN") they sell rallies and buy dips, so the big walls act as edges: <b>fade</b> the nearest wall each side, stop a small buffer beyond it (a quarter of the day's σ), target the next level back toward price. When they are short gamma ("BREAKOUT") they chase, so a confirmed break of a wall is fed: <b>follow</b> it, stop back inside the wall, target the next level out. A wall the day cannot plausibly reach (beyond 1.5σ) is not an order. The line under each market shows how far the current plan's entries sit by comparison. <b>This is the textbook structure, not a proven edge</b> (walls did not beat placebo levels; the forecast-line version averaged −0.03R after costs). It is scored forward, side by side.</div>
+    <div class="sub"><b>Not a hedge.</b> These are two-sided pending entry orders (one fades or follows each side, one trade a day). The dealers' hedging is drawn in 05h. The name "hedge" on the TradingView block is kept only because the indicator files it under that switch. <b>Same playbook, orders on the OI map's own levels.</b> When dealers are long gamma ("PIN") they sell rallies and buy dips, so the big walls act as edges: <b>fade</b> the nearest wall each side, stop a small buffer beyond it (a quarter of the day's σ), target the next level back toward price. When they are short gamma ("BREAKOUT") they chase, so a confirmed break of a wall is fed: <b>follow</b> it, stop back inside the wall, target the next level out. A wall the day cannot plausibly reach (beyond 1.5σ) is not an order. The line under each market shows how far the current plan's entries sit by comparison. <b>This is the textbook structure, not a proven edge</b> (walls did not beat placebo levels; the forecast-line version averaged −0.03R after costs). It is scored forward, side by side.</div>
     <div class="tbl" style="overflow-x:auto"><div id="hpoBody"><div class="sub">Loading…</div></div></div>
     <div class="legend" id="hpoNote"></div>
   </div>
 
   <div class="card">
     <h2><em>01</em> Live gamma terrain
-      <span class="tgl"><span class="pill" data-tf="M5">5m</span><span class="pill on" data-tf="M15">15m</span><span class="pill" data-tf="H1">1h</span></span></h2>
+      <span class="tgl"><span class="pill" data-tf="M5">5m</span><span class="pill on" data-tf="M15">15m</span><span class="pill" data-tf="M30">30m</span><span class="pill" data-tf="H1">1h</span><span class="pill" data-tf="H4">4h</span></span></h2>
     <div class="sub"><b>How to read it:</b> a live TradingView chart (updates every 10 s, scroll and zoom as normal). The glowing bands behind the candles are zones of dealer gamma. <b style="color:rgb(70,184,122)">Green</b> = dealers lean against moves, so price tends to stall and pin. <b style="color:rgb(232,97,95)">Red</b> = dealers push with the move, so price tends to speed up through it. Brighter = more gamma; the biggest zones are named. The curve on the right is the <b>whole book's gamma if price were at that level</b> — where it crosses zero is the flip.</div>
-    <div class="lwrow"><div id="lw"><canvas id="bg"></canvas></div><canvas id="curve"></canvas></div>
+    <div id="lwLive" class="minis" style="margin:6px 0 8px"></div>
+    <div class="tgl" style="margin:0 0 8px"><span class="pill on" data-bgon="1" title="Show or hide the green/red gamma colour behind the candles (PIN ZONE / SPEEDS UP shading)">gamma colour</span><span class="pill on" data-plv="on" title="Draw the OI Profile indicator's own levels on this chart (the same export you paste into TradingView)">OI Profile lines</span><span class="pill" data-plv="books" title="Add the lines of every expiry book, not only the strongest one (the 'All lines' export)">every expiry book</span><span class="pill" data-plv="minor" title="Also draw gamma peak, vanna flip, charm flip and volume lines (the indicator hides these by default)">minor levels</span><span class="pill on" data-bar="gex" title="Net gamma at each price, drawn beside the candles and locked to the price scale (green = dealers long, red = short)">gamma bars</span><span class="pill on" data-bar="vol" title="Volume at each price (the Profile's volume bars)">volume bars</span><span class="pill" data-bar="chg" title="Change in open interest at each price since the last snapshot (teal built, amber run down)">OI change bars</span><span class="pill" data-bar="van" title="Vanna at each price">vanna bars</span><span class="pill on" data-bar="stack" title="Highlight prices where two or more bar lanes are at least half strength (descriptive, not a signal)">stacked bands</span><span class="pill" data-plv="cboe" title="Dashed lines from Cboe's delayed index-options book (NQ, SPX, RUT, US30), re-built every 5 minutes">Cboe live levels</span></div>
+    <div class="lwrow"><div id="lw"><canvas id="bg"></canvas><canvas id="barsCv"></canvas></div><canvas id="curve"></canvas></div>
     <div class="legend"><span><i style="background:rgb(var(--long))"></i>long gamma — pins</span><span><i style="background:rgb(var(--short))"></i>short gamma — speeds up</span><span><i style="background:var(--vio)"></i>GEX flip</span><span><i style="background:#d9c04a"></i>max pain</span></div>
+    <div id="lwMoves" class="legend" style="display:none;margin-top:6px"></div>
   </div>
 
   <div class="card">
@@ -168,6 +184,31 @@ svg text{font-family:var(--mono)}
     </div>
   </div>
 
+  <div class="card" id="ddCard">
+    <h2><em>05e</em> Day drift — how the Cboe levels moved since the US open
+      <span class="tgl"><select id="ddDay" class="btn" style="padding:3px 8px"></select></span></h2>
+    <div class="sub">Each level is shown where it stood at the first snapshot of the US session (about 09:00 New York) and where it stands now. <b>Read the right-hand columns, not the raw move:</b> a wall that only rose because price rose has not changed anything. "Shift vs price" is how much the level moved <i>relative to price</i>, which is the part that comes from new positioning. Below it, once the 15-minute log has data, is what actually traded between snapshots, strike by strike. Cboe index options only (NQ, SPX, RUT, US30); description, not a signal.</div>
+    <div id="ddBody"></div>
+  </div>
+
+  <div class="card" id="sfCard">
+    <h2><em>05g</em> Gamma and charm by strike through the day
+      <span class="sub" style="display:inline;margin-left:8px">uses the source and expiry window chosen in the hedging map above</span></h2>
+    <div class="sub"><b>What this is:</b> the open-interest book is held fixed, price is held where it is now, and each strike's gamma and charm are recomputed every 15 minutes ahead as contracts age. You can see 0DTE gamma build toward the close, walls fade as contracts expire, and which way time decay alone pushes dealers to hedge at each strike. <b>What it is not:</b> a measurement. Open interest, IV and the dealer sign (long calls / short puts) are assumptions, and no intraday trades are in it. The gamma sign predicting range is tested and real; levels and hedge flow as entries are not (hedge-flow study, 2026-10-31).</div>
+    <div id="sfStats"></div>
+    <svg id="sfChart" width="100%" viewBox="0 0 1000 400" style="max-width:1100px;display:block;margin-top:8px"></svg>
+    <div class="legend"><span>Left: blue = dealers long gamma at that strike (damps moves), red = short (chases moves). Right: blue = decay alone makes dealers buy at that strike, red = sell, per 15 minutes. Dashed line = price now. Time runs left to right from the book's snapshot.</span></div>
+  </div>
+
+  <div class="card" id="fpCard">
+    <h2><em>05f</em> NQ order flow — who hit the quote, minute by minute
+      <span class="tgl"><select id="fpDay" class="btn" style="padding:3px 8px"></select></span></h2>
+    <div class="sub"><b>What this is:</b> NQ trades from NinjaTrader, split into buying (printed above the previous price) and selling (printed below it), grouped into 5-minute bars. The top line is price, the bars are buy minus sell (delta), the bottom line is the running total through the day. <b>What it is not:</b> a signal, and not a quote-matched footprint. The sign comes from price movement, not the bid and ask, so it understates size; on a 10-minute test it agreed with quote matching on the direction of every minute. Total volume matches NinjaTrader's own bars to within 0.1%. <b>Tested:</b> over 189 sessions this imbalance did not predict the next 5 or 15 minutes (a powered null, banked as orderflow-lead), so there is no projection line here. Times are UTC; the US cash open is 13:30 UTC while New York is on summer time, 14:30 after the clocks change.</div>
+    <div id="fpStats" class="minis" style="margin:8px 0"></div>
+    <canvas id="fpCv" style="width:100%;max-width:1100px;height:380px;display:block"></canvas>
+    <div class="legend"><span><i style="background:rgb(70,184,122)"></i>net buying</span><span><i style="background:rgb(232,97,95)"></i>net selling</span><span><i style="background:#8fb5ff"></i>price</span><span><i style="background:#f0b04a"></i>running delta</span></div>
+  </div>
+
   <div class="card" id="gkCard">
     <h2><em>05d</em> Greek context: turn each layer on or off
       <span class="tgl" id="gkExp" style="margin-left:auto"><span class="pill on" data-gexp="3">≤3 DTE</span><span class="pill" data-gexp="30">≤30 DTE</span><span class="pill" data-gexp="400">whole book</span></span></h2>
@@ -182,7 +223,7 @@ svg text{font-family:var(--mono)}
   </div>
 
   <div class="card" id="hfCard">
-    <h2><em>05e</em> Dealer hedge flow: what they must trade on the way to each price</h2>
+    <h2><em>05h</em> Dealer hedge flow: what they must trade on the way to each price</h2>
     <div class="sub"><b>The dynamic-hedging requirement, drawn.</b> Dealers who sold the options keep a hedge in the underlying. When price moves, their option delta changes and the hedge goes stale, so they must buy or sell to re-balance. The curve is how much, at each price, measured from today's price (right = they buy, left = they sell; notional at spot). <span style="color:#46b87a">Green</span> stretches fight the move (they sell into rallies and buy dips: <b>damping</b>), <span style="color:#e8615f">red</span> stretches feed it (they buy as price rises and sell as it falls: <b>reinforcing</b>). Where the colour flips is the per-strike version of the gamma flip. Uses the expiry set chosen in 05d. Instant moves: time and vol held, so charm and vanna are separate.</div>
     <svg id="hfChart" width="100%" viewBox="0 0 1000 520"></svg>
     <ul id="hfRead" style="margin:10px 0 0;padding-left:18px;color:var(--tx2);font-size:13px;line-height:1.6"></ul>
@@ -220,8 +261,8 @@ svg text{font-family:var(--mono)}
 <script type="module">
 import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol, parseOIMatrix, oiRippleBook, oiBookLegs } from './js/oi.js';
 import { greekLayers, hedgeFlow, GREEKS } from './js/greekLayers.js';
-import { bsGamma } from './js/gammaGreeks.js';
-import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';
+import { bsGamma, bsCharm } from './js/gammaGreeks.js';
+import { hedgingScenario, hedgingRead, bookAt } from './js/hedgingScenario.js';
 import { cmeBookContracts } from './js/hedgingBooks.js';
 
 const $ = s => document.querySelector(s);
@@ -287,7 +328,7 @@ function gexCurve(sym, e, lo, hi, n = 150){
 // The candles are a real, live chart (polled every 10 s, scroll/zoom/crosshair all native). The coloured backdrop and the
 // curve beside it are painted on canvases that are re-mapped to the chart's own price scale every frame, so they stay glued
 // to the right prices while you pan and zoom.
-let LW = null, FIELD = [], PEAKS = [], CURVE = null, TF = 'M15', _bgSig = '', _poll = null;
+let LW = null, FIELD = [], PEAKS = [], CURVE = null, TF = 'M15', _bgSig = '', _poll = null, BGON = true;
 
 function lwInit(){
   if (LW) return LW;
@@ -303,10 +344,10 @@ function lwInit(){
   host.addEventListener('mousemove', ev => { if (!CUR) return; const r = host.getBoundingClientRect(); const p = series.coordinateToPrice(ev.clientY - r.top); if (p == null) return hideTip();
     const near = FIELD.length ? FIELD.reduce((b, f) => Math.abs(f.P - p) < Math.abs(b.P - p) ? f : b) : null;
     let g = ''; if (CURVE) { const c = CURVE.reduce((b, c) => Math.abs(c.P - p) < Math.abs(b.P - p) ? c : b); const v = NEAR && c.near != null ? c.near : c.all; g = `<br>whole book at this price: <b>${v >= 0 ? 'LONG gamma — dealers fade moves' : 'SHORT gamma — dealers chase moves'}</b>`; }
-    showTip(ev, `<b>${px(p)}</b> · ${((p / CUR.spot - 1) * 100).toFixed(2)}% from OI spot${near ? `<br>zone here: ${near.v >= 0 ? 'long-gamma (pin)' : 'short-gamma (speeds up)'}` : ''}${g}`); });
+    showTip(ev, `<b>${px(p)}</b> · ${((p / CUR.spot - 1) * 100).toFixed(2)}% from OI spot${near ? `<br>zone here: ${near.v >= 0 ? 'long-gamma (pin)' : 'short-gamma (speeds up)'}` : ''}${g}${barsAt(p)}`); });
   host.addEventListener('mouseleave', hideTip);
   // keep the backdrop + curve glued to the price scale (also catches autoscale changes when a new candle arrives)
-  const loop = () => { paintBackdrop(); requestAnimationFrame(loop); }; requestAnimationFrame(loop);
+  const loop = () => { paintBackdrop(); try { paintBars(); } catch (_) {} requestAnimationFrame(loop); }; requestAnimationFrame(loop);
   return LW;
 }
 
@@ -339,20 +380,20 @@ function paintBackdrop(){
   if (!LW || !CUR || !FIELD.length) return;
   const host = $('#lw'), bg = $('#bg'), cu = $('#curve'); const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
   const S = LW.series, y0 = S.priceToCoordinate(CUR.spot), y1 = S.priceToCoordinate(CUR.spot + CUR.rm);
-  const sig = [w, h, y0 && y0.toFixed(1), y1 && y1.toFixed(1), LW.chart.priceScale('right').width(), cu.clientWidth, NEAR].join('|');
+  const sig = [w, h, y0 && y0.toFixed(1), y1 && y1.toFixed(1), LW.chart.priceScale('right').width(), cu.clientWidth, NEAR, BGON].join('|');
   if (sig === _bgSig) return; _bgSig = sig;
   const dpr = devicePixelRatio || 1;
   // backdrop
   bg.width = w * dpr; bg.height = h * dpr; const c = bg.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
   const plotW = w - LW.chart.priceScale('right').width(), m = FIELD.m;
   const off = document.createElement('canvas'); off.width = plotW * dpr; off.height = h * dpr; const oc = off.getContext('2d'); oc.setTransform(dpr, 0, 0, dpr, 0, 0);
-  for (let r = 0; r < FIELD.length; r++) { const f = FIELD[r], y = S.priceToCoordinate(f.P), yn = S.priceToCoordinate(FIELD[Math.min(FIELD.length - 1, r + 1)].P); if (y == null || yn == null) continue;
+  for (let r = 0; r < (BGON ? FIELD.length : 0); r++) { const f = FIELD[r], y = S.priceToCoordinate(f.P), yn = S.priceToCoordinate(FIELD[Math.min(FIELD.length - 1, r + 1)].P); if (y == null || yn == null) continue;
     if (y < -10 || y > h + 10) continue; const a = Math.min(1, Math.pow(Math.abs(f.v) / m, 0.7)); if (a < 0.04) continue;
     oc.fillStyle = `rgba(${f.v >= 0 ? LONG : SHORT},${(0.10 + 0.55 * a).toFixed(3)})`; oc.fillRect(0, Math.min(y, yn) - 0.5, plotW, Math.abs(yn - y) + 1.2); }
   oc.globalCompositeOperation = 'destination-in'; const gr = oc.createLinearGradient(0, 0, plotW, 0); gr.addColorStop(0, 'rgba(0,0,0,.55)'); gr.addColorStop(1, 'rgba(0,0,0,1)'); oc.fillStyle = gr; oc.fillRect(0, 0, plotW, h);
   c.drawImage(off, 0, 0, plotW, h);
   c.font = '600 11px ui-monospace,Consolas,monospace'; c.textAlign = 'right';
-  PEAKS.slice(0, 6).forEach(f => { const y = S.priceToCoordinate(f.P); if (y == null || y < 14 || y > h - 14) return; const t = (f.v >= 0 ? 'PIN ZONE ' : 'SPEEDS UP ') + px(f.P); c.lineWidth = 4; c.strokeStyle = 'rgba(6,8,12,.92)'; c.strokeText(t, plotW - 10, y + 4); c.fillStyle = f.v >= 0 ? 'rgb(120,230,164)' : 'rgb(255,140,138)'; c.fillText(t, plotW - 10, y + 4); });
+  (BGON ? PEAKS.slice(0, 6) : []).forEach(f => { const y = S.priceToCoordinate(f.P); if (y == null || y < 14 || y > h - 14) return; const t = (f.v >= 0 ? 'PIN ZONE ' : 'SPEEDS UP ') + px(f.P); c.lineWidth = 4; c.strokeStyle = 'rgba(6,8,12,.92)'; c.strokeText(t, plotW - 10, y + 4); c.fillStyle = f.v >= 0 ? 'rgb(120,230,164)' : 'rgb(255,140,138)'; c.fillText(t, plotW - 10, y + 4); });
   // gamma-vs-price curve
   cu.width = cu.clientWidth * dpr; cu.height = h * dpr; const k = cu.getContext('2d'); k.setTransform(dpr, 0, 0, dpr, 0, 0); const cw = cu.clientWidth;
   k.strokeStyle = 'rgba(255,255,255,.08)'; k.strokeRect(0.5, 0.5, cw - 1, h - 1);
@@ -375,18 +416,154 @@ function paintBackdrop(){
 function setLevels(){
   const D = CUR; LW.lines.forEach(l => LW.series.removePriceLine(l)); LW.lines = [];
   if (!D) return;
+  if (PLV.on && PLV.loadedFor === SYM) { plvDraw(); plvDrawCboe(); return; }
   [[D.flip, '#a487f0', 'GEX flip', 0], [D.mp, '#d9c04a', 'max pain', 2], [D.cw, 'rgb(232,97,95)', 'call wall', 2], [D.pw, 'rgb(70,184,122)', 'put wall', 2]].forEach(([p, color, title, ls]) => {
     if (Number.isFinite(p) && Math.abs(p - D.spot) < 3 * D.rm) LW.lines.push(LW.series.createPriceLine({ price: p, color, lineWidth: 1, lineStyle: ls, axisLabelVisible: true, title })); });
 }
 
+// ── Live levels on the chart: the OI Profile's own lines (the same export the TradingView indicator is pasted from), re-fetched while the page is open, plus the Cboe book's levels ──
+// Nothing here is new analysis. It puts the indicator's levels on this live chart so no paste is needed. The CME books behind the Profile are published once a day (OI for day D appears mid D+1),
+// so the Profile lines change when a new capture is saved; the Cboe overlay is re-built from Cboe's delayed chain (about 15 minutes behind) and moves through the US session.
+const PLV = { on: true, books: false, minor: false, cboe: false, lines: [], cboeLines: [], prev: null, moves: [], meta: null, err: null, loadedFor: null, at: 0, cAt: 0, timer: null, cTimer: null, busy: false };
+const PLV_STYLE = { call_wall: ['rgb(232,97,95)', 0], put_wall: ['rgb(70,184,122)', 0], zero_gamma: ['#f0b04a', 0], gex_flip: ['#a487f0', 0], max_pain: ['#d9c04a', 2], gamma_peak: ['#ffffff', 0],
+  short_gamma_node: ['#e8615f', 2], long_gamma_node: ['#46b87a', 2], vanna_flip: ['#4fd1c5', 3], charm_flip: ['#38b2ac', 3], oi_volume: ['#8b95a5', 3], exp_hi: ['#6b7585', 1], exp_lo: ['#6b7585', 1] };
+const PLV_MINOR = new Set(['vanna_flip', 'charm_flip', 'oi_volume', 'gamma_peak']);
+function parseProfileText(text) {
+  const out = { meta: {}, lines: [] };
+  for (const raw of String(text).split(/\r?\n/)) {
+    const p = raw.split('|');
+    if (p[0] === 'M') { for (let i = 1; i + 1 < p.length; i += 2) out.meta[p[i]] = p[i + 1]; }
+    else if (p[0] === 'L' && p.length >= 5 && Number.isFinite(+p[2])) out.lines.push({ type: p[1], price: +p[2], label: p[3], strength: +p[4] });
+    else if ('GVOC'.includes(p[0]) && p[0].length === 1 && p.length >= 3 && Number.isFinite(+p[1]) && Number.isFinite(+p[2])) (out[p[0]] ||= []).push({ p: +p[1], v: +p[2] });
+  }
+  return out;
+}
+function plvClear(arrName) { for (const l of PLV[arrName]) { try { LW.series.removePriceLine(l); } catch (_) {} } PLV[arrName] = []; }
+function plvDraw() {
+  if (!LW) return;
+  for (const l of LW.lines) { try { LW.series.removePriceLine(l); } catch (_) {} } LW.lines = [];   // the four legacy lines, replaced by the full set
+  plvClear('lines');
+  if (!PLV.on || PLV.loadedFor !== SYM || !CUR) return;
+  for (const l of PLV.cur || []) {
+    if (!PLV.minor && PLV_MINOR.has(l.type)) continue;
+    const st = PLV_STYLE[l.type] || ['#8b95a5', 3];
+    PLV.lines.push(LW.series.createPriceLine({ price: l.price, color: st[0], lineWidth: l.strength >= 0.7 ? 2 : 1, lineStyle: st[1], axisLabelVisible: true, title: l.label }));
+  }
+}
+function plvDrawCboe() {
+  if (!LW) return;
+  plvClear('cboeLines');
+  if (!PLV.cboe || !PLV.cboeLv) return;
+  const L = PLV.cboeLv;
+  [['callWallGamma', 'Cboe call wall', 'rgba(232,97,95,.7)'], ['putWallGamma', 'Cboe put wall', 'rgba(70,184,122,.7)'], ['gexFlip', 'Cboe GEX flip', 'rgba(164,135,240,.8)'], ['maxPain', 'Cboe max pain', 'rgba(217,192,74,.7)']].forEach(([k, title, color]) => {
+    const v = L[k]; if (Number.isFinite(v)) PLV.cboeLines.push(LW.series.createPriceLine({ price: v, color, lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title }));
+  });
+}
+async function plvFetch() {
+  if (PLV.busy || document.hidden || !CUR) return;
+  PLV.busy = true; const sym = SYM;
+  try {
+    const r = await fetch('/api/oi-profile/export?pair=' + encodeURIComponent(sym) + (PLV.books ? '&books=all' : ''), { cache: 'no-store' });
+    const t = await r.text(); if (sym !== SYM) return;
+    const p = parseProfileText(t);
+    if (!p.lines.length) throw new Error('no levels in the Profile export');
+    // which lines moved since the last fetch (same type and label, price changed by more than 0.02% of price)
+    if (PLV.loadedFor === sym && PLV.cur) {
+      const before = new Map(PLV.cur.map(l => [l.type + '|' + l.label, l.price]));
+      for (const l of p.lines) { const o = before.get(l.type + '|' + l.label); if (o != null && Math.abs(l.price - o) > 0.0002 * l.price) PLV.moves.unshift({ t: new Date(), label: l.label, from: o, to: l.price }); }
+      PLV.moves = PLV.moves.slice(0, 10);
+    } else PLV.moves = [];
+    PLV.cur = p.lines; PLV.meta = p.meta; PLV.loadedFor = sym; PLV.err = null; PLV.at = Date.now();
+    { const ps = (p.G || p.O || p.C || p.V || []).map(r => r.p).sort((a, b) => a - b), df = ps.slice(1).map((v, i) => v - ps[i]).filter(v => v > 0).sort((a, b) => a - b);
+      PLV.bars = ps.length ? { G: p.G || [], V: p.V || [], O: p.O || [], C: p.C || [], mid: ps[Math.floor(ps.length / 2)], step: +p.meta.binw > 0 ? +p.meta.binw : (df[Math.floor(df.length / 2)] || 1), stamp: PLV.at } : null; }
+    plvDraw();
+  } catch (e) { PLV.err = e.message; }
+  finally { PLV.busy = false; updateLwLive(); }
+}
+async function plvFetchCboe() {
+  if (!PLV.cboe || document.hidden || !(SYM in DD_PAIRS)) return;
+  const sym = SYM;
+  try {
+    const j = await (await fetch('/api/cboe-chain?pair=' + encodeURIComponent(sym), { cache: 'no-store' })).json();
+    if (sym !== SYM || !j?.ok) return;
+    PLV.cboeLv = j.levels || null; PLV.cAt = Date.now(); plvDrawCboe(); updateLwLive();
+  } catch (_) {}
+}
+function startLiveLevels() {
+  clearInterval(PLV.timer); clearInterval(PLV.cTimer);
+  if (PLV.loadedFor !== SYM) { PLV.cur = null; PLV.moves = []; PLV.cboeLv = null; PLV.loadedFor = null; PLV.bars = null; BAR.sig = ''; }
+  plvFetch(); plvFetchCboe();
+  PLV.timer = setInterval(plvFetch, 180000);          // the export builds from the price feed too, so every 3 minutes, and only while the tab is visible
+  PLV.cTimer = setInterval(plvFetchCboe, 300000);
+}
+function updateLwLive() {
+  const el = $('#lwLive'); if (!el || !LW) return;
+  const last = LW.last, open = LW.dayOpen, chg = last != null && open ? (last / open - 1) * 100 : null, M = PLV.meta || {};
+  const hhmm = ms => (ms ? new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '–');
+  el.innerHTML = `<div class="mini"><div class="k">Price (updates every 10 s)</div><div class="v">${last != null ? px(last) : '–'}</div><div class="n" style="color:${chg == null ? 'inherit' : chg >= 0 ? 'rgb(70,184,122)' : 'rgb(232,97,95)'}">${chg == null ? '' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '% on the day'}</div></div>`
+    + `<div class="mini"><div class="k">Regime</div><div class="v" style="font-size:15px">${esc(M.regime || '–')}</div><div class="n">${M.book ? esc(M.book) + ' book' : ''}</div></div>`
+    + `<div class="mini"><div class="k">Profile lines</div><div class="v" style="font-size:15px">${PLV.on ? (PLV.lines.length || '–') : 'off'}</div><div class="n">${PLV.err ? 'error: ' + esc(PLV.err) : 'refreshed ' + hhmm(PLV.at) + ' · OI saved ' + esc(M.saved || '–')}</div></div>`
+    + (PLV.cboe ? `<div class="mini"><div class="k">Cboe levels</div><div class="v" style="font-size:15px">${PLV.cboeLines.length || '–'}</div><div class="n">${(SYM in DD_PAIRS) ? 'refreshed ' + hhmm(PLV.cAt) + ' · delayed ~15 min' : 'not available for this market'}</div></div>` : '');
+  const mv = $('#lwMoves');
+  if (mv) { mv.style.display = PLV.moves.length ? '' : 'none'; mv.innerHTML = PLV.moves.length ? '<span><b>Levels that moved since the page opened:</b></span>' + PLV.moves.map(m => `<span>${hhmm(m.t)} ${esc(m.label)} ${px(m.from)} → ${px(m.to)}</span>`).join('') : ''; }
+}
+// ── Strength bars linked to price: the indicator's side bars (gamma, volume, OI change, vanna) drawn on the live chart, one bar per price bin, locked to the chart's price scale ──
+// They come from the same Profile export as the lines (G| gamma, O| volume, C| OI change, V| vanna rows, each already scaled to +-1000), so they pan and zoom with the candles.
+// "Stacked" marks prices where two or more lanes are above half strength. That is descriptive, a place where several measures agree; it has not been tested as a signal.
+const BAR = { gex: true, vol: true, chg: false, van: false, stack: true, sig: '' };
+const BAR_LANES = [['gex', 'G', 'GEX', 1], ['vol', 'O', 'VOLUME', 0], ['chg', 'C', 'OI CHG', 1], ['van', 'V', 'VANNA', 1]];
+function barNearest(rows, P, step) { let best = null, bd = Infinity; for (const r of rows) { const d = Math.abs(r.p - P); if (d < bd) { bd = d; best = r; } } return best && bd <= step * 0.75 ? best.v : 0; }
+function barsAt(P) {
+  const D = PLV.bars; if (!D || !PLV.on || PLV.loadedFor !== SYM) return '';
+  const st = D.step, out = BAR_LANES.filter(l => BAR[l[0]]).map(l => [l[2], barNearest(D[l[1]] || [], P, st)]).filter(x => x[1]);
+  return out.length ? '<br>' + out.map(([n, v]) => `${n.toLowerCase()} <b>${v > 0 ? '+' : ''}${Math.round(v)}</b>/1000`).join(' · ') : '';
+}
+function paintBars() {
+  const cv = $('#barsCv'), host = $('#lw'); if (!cv || !host || !LW) return;
+  const D = PLV.bars, w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
+  const S = LW.series, plotW = w - LW.chart.priceScale('right').width();
+  const lanes = D && PLV.on && PLV.loadedFor === SYM ? BAR_LANES.filter(l => BAR[l[0]] && (D[l[1]] || []).length) : [];
+  const yA = D ? S.priceToCoordinate(D.mid) : null, yB = D ? S.priceToCoordinate(D.mid + D.step) : null;
+  const sig = [w, h, plotW, D && D.stamp, lanes.map(l => l[0]).join(), BAR.stack, yA && yA.toFixed(1), yB && yB.toFixed(1)].join('|');
+  if (sig === BAR.sig) return; BAR.sig = sig;
+  const dpr = devicePixelRatio || 1; cv.width = w * dpr; cv.height = h * dpr;
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  if (!lanes.length || yA == null || yB == null) return;
+  const laneW = Math.max(54, Math.min(92, plotW * 0.08)), bh = Math.max(2, Math.abs(yA - yB) * 0.82);
+  const x0 = 6, xEnd = x0 + lanes.length * laneW;      // lanes sit on the left edge, over old history, so the latest candles and the line labels stay clear
+  // stacked bands behind the lanes: prices where 2+ lanes are at least half strength
+  if (BAR.stack && lanes.length >= 2) {
+    const prices = new Set(); for (const l of lanes) for (const r of D[l[1]]) prices.add(r.p);
+    for (const P of prices) {
+      const n = lanes.reduce((a, l) => a + (Math.abs(barNearest(D[l[1]], P, D.step)) >= 500 ? 1 : 0), 0); if (n < 2) continue;
+      const y = S.priceToCoordinate(P); if (y == null || y < 0 || y > h) continue;
+      c.fillStyle = `rgba(240,176,74,${n >= 3 ? 0.2 : 0.1})`; c.fillRect(x0, y - bh * 0.62, plotW - x0, bh * 1.24);
+      if (n >= 3) { c.fillStyle = 'rgba(240,176,74,.9)'; c.font = '600 9.5px ui-monospace,Consolas,monospace'; c.textAlign = 'left'; c.fillText('stacked ×' + n, xEnd + 6, y + 3); }
+    }
+  }
+  lanes.forEach((l, li) => {
+    const lx = x0 + li * laneW, signed = l[3] === 1, mid = lx + laneW / 2;
+    c.fillStyle = 'rgba(8,11,16,.6)'; c.fillRect(lx, 0, laneW - 3, h);
+    c.fillStyle = '#7f8a98'; c.font = '600 9.5px ui-monospace,Consolas,monospace'; c.textAlign = 'center'; c.fillText(l[2], lx + (laneW - 3) / 2, 12);
+    if (signed) { c.strokeStyle = 'rgba(255,255,255,.12)'; c.beginPath(); c.moveTo(mid - 1.5, 16); c.lineTo(mid - 1.5, h); c.stroke(); }
+    for (const r of D[l[1]]) {
+      const y = S.priceToCoordinate(r.p); if (y == null || y < 16 || y > h) continue;
+      const f = Math.min(1, Math.abs(r.v) / 1000), pos = r.v >= 0;
+      const col = l[0] === 'gex' ? (pos ? `rgba(${LONG},.9)` : `rgba(${SHORT},.9)`) : l[0] === 'vol' ? 'rgba(143,181,255,.85)' : l[0] === 'chg' ? (pos ? 'rgba(79,209,197,.9)' : 'rgba(240,176,74,.9)') : (pos ? 'rgba(92,200,255,.85)' : 'rgba(199,125,255,.85)');
+      c.fillStyle = col;
+      if (signed) { const wd = f * (laneW / 2 - 5); c.fillRect(pos ? mid : mid - wd, y - bh / 2, Math.max(1, wd), bh); }
+      else { const wd = f * (laneW - 8); c.fillRect(lx + 2, y - bh / 2, Math.max(1, wd), bh); }
+    }
+  });
+}
 async function drawTerrain(){
   if (!window.LightweightCharts) { $('#lw').innerHTML = '<div class="err">TradingView chart library did not load.</div>'; return; }
   lwInit(); buildField(); setLevels();
   const D = CUR; if (!D || !D.L) return;
   const rows = await loadCandlesTF(SYM, TF); if (D !== CUR) return;
-  LW.series.setData(rows); LW.lastT = rows.length ? rows[rows.length - 1].time : 0; LW.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, rows.length - 220), to: rows.length + 8 });
+  LW.series.setData(rows); LW.lastT = rows.length ? rows[rows.length - 1].time : 0; LW.last = rows.length ? rows[rows.length - 1].close : null; LW.dayOpen = (rows.find(r => r.time >= Math.floor(Date.now() / 864e5) * 86400) || {}).open ?? null; updateLwLive(); startLiveLevels(); LW.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, rows.length - 220), to: rows.length + 8 });
   clearInterval(_poll);
-  _poll = setInterval(async () => { const r = await loadCandlesTF(SYM, TF); if (!r.length || D !== CUR) return; r.slice(-3).forEach(b => { if (b.time >= LW.lastT) { LW.series.update(b); LW.lastT = b.time; } }); }, 10000);
+  _poll = setInterval(async () => { const r = await loadCandlesTF(SYM, TF); if (!r.length || D !== CUR) return; r.slice(-3).forEach(b => { if (b.time >= LW.lastT) { LW.series.update(b); LW.lastT = b.time; LW.last = b.close; } }); updateLwLive(); }, 10000);
   _bgSig = '';
   zonesPanel(); timeBar();
 }
@@ -484,7 +661,7 @@ async function getDaily(sym){ if (DAILY[sym]) return DAILY[sym];
   return DAILY[sym]; }
 async function getReach(sym, h){ const key = sym + '|' + h; if (!REACHC[key] || Date.now() - REACHC[key].at > 120000) { try { const r = await fetch(`/api/oi-reachability?pair=${encodeURIComponent(sym)}&h=${h}`); REACHC[key] = { j: await r.json(), at: Date.now() }; } catch (_) { return null; } } return REACHC[key].j; }
 
-const card = (n, title, body, extra = '') => `<div class="card bp"><h2><em>${n}</em> ${title}${extra}</h2>${body}</div>`;
+const card = (n, title, body, extra = '') => `<div class="card bp"><h2><em>${n}</em> ${title}${extra}${/^[1-6]$/.test(String(n)) ? oixTag('b' + n) : ''}</h2>${body}</div>`;
 const tabs = (grp, opts) => `<span class="tgl">${opts.map(([k, t]) => `<span class="pill${BTAB[grp] === k ? ' on' : ''}" data-bt="${grp}:${k}">${t}</span>`).join('')}</span>`;
 
 async function drawBrief(){
@@ -828,6 +1005,280 @@ $('#gkExp').querySelectorAll('[data-gexp]').forEach(el => el.onclick = () => { G
 gkPills();
 
 // ── 05e dealer hedge flow: the schedule of what dealers must trade on the way to each price (js/greekLayers.js hedgeFlow) ───────────
+// ── 05e Day drift: the Cboe levels at the first snapshot of the US day vs now, and (once the 15-minute log has data) what traded between snapshots ──
+const DD_PAIRS = { NAS100_USD: 'NDX', SPX500_USD: 'SPX', US2000_USD: null, US30_USD: null };
+const DD_LEVELS = [['callWallGamma', 'Call wall (gamma)', '#2f8fcc'], ['putWallGamma', 'Put wall (gamma)', '#c07f22'], ['gexFlip', 'GEX flip', '#9b7be0'], ['maxPain', 'Max pain', '#d6b44a']];
+const DD_CACHE = {};
+async function ddGet(url) { const c = DD_CACHE[url]; if (c && Date.now() - c.at < 120000) return c.j; const r = await fetch(url, { cache: 'no-store' }); const j = await r.json(); DD_CACHE[url] = { at: Date.now(), j }; return j; }
+const ddNum = v => (Number.isFinite(v) ? v : null);
+const ddFmt = v => (v == null ? '–' : fmtMove(v));
+const ddSigned = (v, d = 1) => (v == null ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d));
+function ddRows(row) {
+  const so = ddNum(row.open?.spot), sn = ddNum(row.spot);
+  return DD_LEVELS.map(([k, label, col]) => {
+    const o = ddNum(row.open?.levels?.[k]), n = ddNum(row.levels?.[k]);
+    const rel = (o != null && n != null && so != null && sn != null) ? (n - sn) - (o - so) : null;
+    return { k, label, col, o, n, moved: o != null && n != null ? n - o : null, dO: o != null && so != null ? o - so : null, dN: n != null && sn != null ? n - sn : null, rel };
+  });
+}
+async function drawDayDrift() {
+  const body = $('#ddBody'); if (!body) return;
+  const pair = SYM;
+  if (!(pair in DD_PAIRS)) { $('#ddDay').style.display = 'none'; body.innerHTML = '<div class="empty">The Cboe books cover Nasdaq, S&P, Russell and Dow. Pick one of those markets in the bar above.</div>'; return; }
+  $('#ddDay').style.display = '';
+  let snap;
+  try { snap = ((await ddGet('/api/cboe-snapshots?pair=' + encodeURIComponent(pair))).data || {})[pair] || {}; }
+  catch (e) { body.innerHTML = '<div class="empty">Cboe snapshots unavailable: ' + esc(e.message) + '</div>'; return; }
+  const days = Object.keys(snap).filter(d => snap[d]?.open).sort();
+  if (!days.length) { body.innerHTML = '<div class="empty">No Cboe snapshots stored yet for this market.</div>'; return; }
+  const sel = $('#ddDay'); const want = sel.value && days.includes(sel.value) ? sel.value : days[days.length - 1];
+  sel.innerHTML = days.slice().reverse().map(d => `<option value="${d}"${d === want ? ' selected' : ''}>${d}</option>`).join('');
+  sel.onchange = () => drawDayDrift();
+  const row = snap[want], rows = ddRows(row), so = row.open.spot, sn = row.spot;
+  const regO = row.open.levels?.regime || '–', regN = row.levels?.regime || '–';
+  const fmtT = iso => (iso ? iso.slice(11, 16) + ' UTC' : '');
+  // ladder: open column and latest column on one shared price axis
+  const vals = rows.flatMap(r => [r.o, r.n]).concat([so, sn]).filter(v => v != null);
+  const lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo) * 0.08 || 1, y0 = lo - pad, y1 = hi + pad;
+  const H = 330, W = 1000, X0 = 250, X1 = 750, Y = v => 20 + (1 - (v - y0) / (y1 - y0)) * (H - 40);
+  let svg = `<svg width="100%" viewBox="0 0 ${W} ${H}" style="max-width:1000px;display:block">
+    <text x="${X0}" y="12" fill="#a8b1bd" font-size="12" text-anchor="middle">at the open ${esc(fmtT(row.open.asOf))}</text><text x="${X1}" y="12" fill="#a8b1bd" font-size="12" text-anchor="middle">latest ${esc(fmtT(row.asOf))}</text>
+    <line x1="${X0}" x2="${X0}" y1="20" y2="${H - 20}" stroke="#2a3340"/><line x1="${X1}" x2="${X1}" y1="20" y2="${H - 20}" stroke="#2a3340"/>`;
+  svg += `<line x1="${X0}" y1="${Y(so)}" x2="${X1}" y2="${Y(sn)}" stroke="#eef1f5" stroke-dasharray="4 4" opacity=".5"/><circle cx="${X0}" cy="${Y(so)}" r="5" fill="#eef1f5"/><circle cx="${X1}" cy="${Y(sn)}" r="5" fill="#eef1f5"/>`;
+  // labels sit beside their dots but are pushed apart so levels that are close together stay readable
+  const spread = items => { items.sort((a, b) => a.y - b.y); for (let k = 1; k < items.length; k++) items[k].ly = Math.max(items[k].ly, items[k - 1].ly + 13); return items; };
+  const left = spread([{ y: Y(so), ly: Y(so), t: 'price ' + fmtMove(so), col: '#eef1f5' }, ...rows.filter(r => r.o != null).map(r => ({ y: Y(r.o), ly: Y(r.o), t: r.label.split(' (')[0] + ' ' + fmtMove(r.o), col: r.col }))]);
+  const right = spread([{ y: Y(sn), ly: Y(sn), t: 'price ' + fmtMove(sn), col: '#eef1f5' }, ...rows.filter(r => r.n != null).map(r => ({ y: Y(r.n), ly: Y(r.n), t: r.label.split(' (')[0] + ' ' + fmtMove(r.n), col: r.col }))]);
+  for (const r of rows) {
+    if (r.o != null && r.n != null) svg += `<line x1="${X0}" y1="${Y(r.o)}" x2="${X1}" y2="${Y(r.n)}" stroke="${r.col}" stroke-width="2.2" opacity=".85"/>`;
+    if (r.o != null) svg += `<circle cx="${X0}" cy="${Y(r.o)}" r="4" fill="${r.col}"/>`;
+    if (r.n != null) svg += `<circle cx="${X1}" cy="${Y(r.n)}" r="4" fill="${r.col}"/>`;
+  }
+  for (const l of left) svg += `<text x="${X0 - 12}" y="${l.ly + 4}" fill="${l.col}" font-size="11" text-anchor="end">${l.t}</text>`;
+  for (const l of right) svg += `<text x="${X1 + 12}" y="${l.ly + 4}" fill="${l.col}" font-size="11">${l.t}</text>`;
+  svg += '</svg>';
+  const shade = r => (r.rel == null ? 'inherit' : Math.abs(r.rel) < 0.0015 * so ? 'var(--tx2)' : r.rel > 0 ? 'rgb(70,184,122)' : 'rgb(232,97,95)');
+  const tbl = `<table class="zt"><thead><tr><th>Level</th><th>At open</th><th>Latest</th><th>Moved</th><th>From price, open</th><th>From price, latest</th><th>Shift vs price</th></tr></thead><tbody>${rows.map(r => `<tr><td style="color:${r.col}">${r.label}</td><td>${ddFmt(r.o)}</td><td>${ddFmt(r.n)}</td><td>${ddSigned(r.moved)}</td><td>${ddSigned(r.dO)}</td><td>${ddSigned(r.dN)}</td><td style="font-weight:600;color:${shade(r)}">${ddSigned(r.rel)}</td></tr>`).join('')}</tbody></table>`;
+  const spotMv = (sn - so) / so * 100;
+  const stats = `<div class="minis"><div class="mini"><div class="k">Price since open</div><div class="v">${ddSigned(spotMv, 2)}%</div><div class="n">${fmtMove(so)} → ${fmtMove(sn)}</div></div><div class="mini"><div class="k">Regime</div><div class="v" style="font-size:15px">${esc(regO)} → ${esc(regN)}</div><div class="n">${regO === regN ? 'unchanged' : 'changed through the day'}</div></div><div class="mini"><div class="k">Net gamma</div><div class="v" style="font-size:15px">${fmtBig(row.open.levels?.netGex ?? 0)} → ${fmtBig(row.levels?.netGex ?? 0)}</div><div class="n">dollars per 1%</div></div></div>`;
+  // the last ten days, one line each: how far the levels moved relative to price from the open to the last snapshot
+  const hist = days.slice(-10).reverse().map(d => {
+    const rr = ddRows(snap[d]), g = k => rr.find(x => x.k === k)?.rel, s = snap[d];
+    return `<tr><td>${d}</td><td>${ddSigned((s.spot - s.open.spot) / s.open.spot * 100, 2)}%</td><td>${esc(s.open.levels?.regime || '–')} → ${esc(s.levels?.regime || '–')}</td><td>${ddSigned(g('callWallGamma'))}</td><td>${ddSigned(g('putWallGamma'))}</td><td>${ddSigned(g('gexFlip'))}</td><td>${ddSigned(g('maxPain'))}</td></tr>`;
+  }).join('');
+  const histTbl = `<div class="sub" style="margin:14px 0 6px;color:var(--tx2)"><b>The last ten days</b> — shift vs price, open to last snapshot (CFD points)</div><table class="zt"><thead><tr><th>Day</th><th>Price</th><th>Regime</th><th>Call wall</th><th>Put wall</th><th>GEX flip</th><th>Max pain</th></tr></thead><tbody>${hist}</tbody></table>`;
+  body.innerHTML = stats + '<div style="margin-top:10px">' + svg + '</div><div style="margin-top:8px">' + tbl + '</div>' + histTbl + '<div id="ddFlow" style="margin-top:16px"><div class="empty">Checking the 15-minute log…</div></div>';
+  drawDayFlow(pair, want);
+}
+// What traded between 15-minute snapshots (cumulative for the day, per strike), from /api/cboe-intraday. The log starts when that job first ran;
+// until then (or on a day it did not cover) this says so rather than drawing nothing.
+async function drawDayFlow(pair, day) {
+  const el = $('#ddFlow'); if (!el) return;
+  const sym = DD_PAIRS[pair];
+  const msg = t => { el.innerHTML = '<div class="sub" style="margin:0;color:var(--tx2)"><b>What traded through the day</b></div><div class="empty" style="margin-top:6px">' + t + '</div>'; };
+  if (!sym) return msg('The 15-minute volume log covers the S&P (SPX) and Nasdaq (NDX) only.');
+  let idx;
+  try { idx = await ddGet('/api/cboe-intraday'); } catch (e) { return msg('The intraday log is not live on the server yet.'); }
+  if (!idx?.ok) return msg('The intraday log is not live on the server yet.');
+  const have = idx.snapshotsPerDay?.[sym] || {};
+  const logged = Object.keys(have).sort();
+  if (!logged.length) return msg('The 15-minute log has started but holds no ' + sym + ' snapshots yet. The first ones arrive during the next US session.');
+  const useDay = have[day] ? day : logged[logged.length - 1];
+  let d;
+  try { d = await ddGet('/api/cboe-intraday?sym=' + sym + '&date=' + useDay); } catch (e) { return msg('Could not read the log: ' + esc(e.message)); }
+  if (!d?.ok || !d.steps?.length) return msg('Only ' + (have[useDay] || 0) + ' snapshot(s) so far for ' + useDay + '; flow needs two.');
+  const spot = d.steps[d.steps.length - 1].spot, band = spot * 0.03;
+  const agg = new Map();
+  for (const s of d.steps) for (const f of s.flow) { if (Math.abs(f.K - spot) > band) continue; const e = agg.get(f.K) || { K: f.K, c: 0, p: 0 }; e.c += f.callVol; e.p += f.putVol; agg.set(f.K, e); }
+  const bars = [...agg.values()].sort((a, b) => b.K - a.K);
+  if (!bars.length) return msg('Snapshots exist but nothing traded within 3% of price between them.');
+  const nearK = bars.reduce((m, b) => (Math.abs(b.K - spot) < Math.abs(m - spot) ? b.K : m), bars[0].K);
+  const mx = Math.max(...bars.map(b => Math.max(b.c, b.p)), 1), rowH = 15, Hh = bars.length * rowH + 30, cx = 500, sc = 440 / mx;
+  let s = `<svg width="100%" viewBox="0 0 1000 ${Hh}" style="max-width:1000px;display:block"><text x="${cx - 10}" y="12" fill="#c07f22" font-size="12" text-anchor="end">puts traded</text><text x="${cx + 10}" y="12" fill="#2f8fcc" font-size="12">calls traded</text><line x1="${cx}" x2="${cx}" y1="18" y2="${Hh}" stroke="#2a3340"/>`;
+  bars.forEach((b, i) => { const y = 22 + i * rowH, near = b.K === nearK; s += `<rect x="${cx - b.p * sc}" y="${y}" width="${b.p * sc}" height="${rowH - 3}" fill="#c07f22" opacity=".85"/><rect x="${cx}" y="${y}" width="${b.c * sc}" height="${rowH - 3}" fill="#2f8fcc" opacity=".85"/><text x="990" y="${y + 10}" fill="${near ? '#eef1f5' : '#6b7585'}" font-size="10.5" text-anchor="end">${fmtMove(b.K)}${near ? ' ← price' : ''}</text>`; });
+  s += '</svg>';
+  const tot = d.steps.reduce((a, x) => a + x.vol, 0);
+  const spark = d.steps.map(x => x.vol), smx = Math.max(...spark, 1);
+  const sp = `<svg width="100%" viewBox="0 0 1000 46" style="max-width:1000px;display:block">${spark.map((v, i) => `<rect x="${i * (1000 / spark.length)}" y="${42 - v / smx * 38}" width="${Math.max(2, 1000 / spark.length - 3)}" height="${v / smx * 38}" fill="#6b7585"><title>${esc(d.steps[i].to.slice(11, 16))} UTC: ${v.toLocaleString()} contracts</title></rect>`).join('')}</svg>`;
+  el.innerHTML = `<div class="sub" style="margin:0 0 6px;color:var(--tx2)"><b>What traded through ${esc(useDay)}</b> (${esc(sym)} options, contracts per strike within 3% of price, summed over ${d.steps.length} fifteen-minute steps; ${tot.toLocaleString()} contracts in all)</div>${s}<div class="sub" style="margin:8px 0 2px">Contracts traded in each step</div>${sp}<div class="legend"><span>This is where trading happened, not who was long: Cboe's delayed feed carries no buyer or seller. Volume is the change in the day's cumulative count between snapshots.</span></div>`;
+}
+// ── 05g Gamma and charm through the day: the same book (CME or Cboe, same toggles as the hedging map) re-priced at every price and every 15 minutes ahead ──
+// Model, not measurement: open interest is fixed at the snapshot, IV is held, dealers are assumed long calls / short puts. Time passing shrinks each contract's T
+// (so 0DTE gamma builds into the close and expired contracts drop out), and the charm panel is the dealer hedge that time decay alone forces if price sat at that level.
+const SF = { cache: {} };
+// ── "What am I looking at?" on every panel: a badge for what OUR tests found, and a button that sends the numbers on screen to the model for a plain-words read ──
+// The evidence notes below are written here, from banked results (js/deskEvidence.js, oi_research_book/, forge/), so the model is told what to trust instead of recalling it.
+// Click-only; /api/oi-explain caches 10 minutes and stops at 80 explanations a day.
+const OIX_EV = {
+  sign: 'Tested, real (Nasdaq; repeated on the S&P): the gamma sign predicts the next day\'s RANGE: long gamma means a quieter day, short gamma a wider one. It carries no direction. Weak on currencies. About half of the Nasdaq effect is short gamma coinciding with recent falls.',
+  levels: 'Tested, null: walls, flips, max pain and ripple walls as support, resistance or magnets did not beat ordinary strikes (placebo tests), and trading the lines lost money after costs. They are places where hedging changes, not places price must turn.',
+  reach: 'Tested, real: the touch probabilities are calibrated against history (typical out-of-sample error about 1-2 points at 1 hour, 2-3 at 4 hours). They say how likely price is to REACH a level, never whether the level then holds.',
+  iv: 'Tested, real: implied volatility (from settlements) forecast the range better than trailing realised volatility in 7 of 7 tests. The options-implied range against what price did recently is the better-supported read on this page.',
+  hedge: 'Tested, null: the SIZE of the hedging dealers must do adds nothing beyond the gamma sign (hedge-flow study, 2026-10-31). Which side the range extends to was underpowered. Sizes are upper bounds because they assume dealers hold the other side of all open interest.',
+  flow: 'Tested, null (orderflow-lead, 189 sessions): NQ buy/sell delta from trades did not predict the next 5 or 15 minutes. Delta built from trade prices cannot lead price. This panel describes flow; it is not a forecast.',
+  oichg: 'Descriptive only: overnight open-interest change says where positions were added, not which direction or who holds them. A forward test of walls being built is registered but not yet judged.',
+  pcr: 'Context only: put/call ratio, skew and positioning describe sentiment. No forward edge was found from positioning alone; positioning matters for WHO must act around events, not for direction.',
+  greeks: 'Only delta, gamma, vanna and charm make dealers trade the underlying. None of the layers has passed a placebo test as a price level. Vanna moves price the same day, not the next. Charm flows are untested as a signal. All assume dealers are long calls and short puts; if that is wrong every sign flips.',
+  model: 'Model, not measurement: the open-interest book is held fixed and the Greeks are recomputed forward. The dealer sign is an assumption and no intraday trades are in it. Describes mechanics; untested as a signal.',
+  untested: 'Untested: new view, no forward or historical test yet. Treat it as a description.',
+  shadow: 'Shadow only, not live: these textbook entry orders are scored forward. The structure averaged about -0.03R after costs and the walls did not beat placebo levels. Not a proven edge.',
+  desc: 'Description of how the book is built. It has no test of its own; read it as context for the panels that do.',
+};
+const OIX = {
+  plain:   { b: 'real',    t: 'Gamma sign is tested', ev: 'sign' },
+  hpo:     { b: 'null',    t: 'Shadow, not proven', ev: 'shadow' },
+  live:    { b: 'mixed',   t: 'Bands real · lines null', ev: ['sign', 'levels', 'untested'], extra: 'The glowing bands are the gamma sign (tested for range). The labelled lines are walls, flips and max pain (tested null as support or resistance). The strength lanes and stacked bands are untested.' },
+  ahead:   { b: 'real',    t: 'Reach odds calibrated', ev: 'reach' },
+  zones:   { b: 'null',    t: 'Levels tested null', ev: 'levels' },
+  expiry:  { b: 'desc',    t: 'Description', ev: 'desc' },
+  terrain: { b: 'desc',    t: 'Description', ev: ['desc', 'iv'] },
+  gamma:   { b: 'mixed',   t: 'Sign real · levels null', ev: ['sign', 'levels'] },
+  ripple:  { b: 'null',    t: 'Walls tested null', ev: 'levels' },
+  hedgemap:{ b: 'null',    t: 'Size adds nothing', ev: ['hedge', 'model'] },
+  greeks:  { b: 'untested', t: 'Mostly untested', ev: 'greeks' },
+  drift:   { b: 'untested', t: 'New, untested', ev: 'untested' },
+  sf:      { b: 'untested', t: 'Model, untested', ev: 'model' },
+  flow:    { b: 'null',    t: 'No lead (tested)', ev: 'flow' },
+  hflow:   { b: 'null',    t: 'Beyond sign: null', ev: 'hedge' },
+  heat:    { b: 'desc',    t: 'Description', ev: 'desc' },
+  b1:      { b: 'real',    t: 'Implied range tested', ev: ['iv', 'sign'] },
+  b2:      { b: 'real',    t: 'Reach odds calibrated', ev: 'reach' },
+  b3:      { b: 'real',    t: 'Gamma sign tested', ev: 'sign' },
+  b4:      { b: 'real',    t: 'IV beats realised', ev: 'iv' },
+  b5:      { b: 'desc',    t: 'Context only', ev: 'pcr' },
+  b6:      { b: 'desc',    t: 'Description', ev: 'oichg' },
+};
+const OIX_EM = { '00': 'plain', '00b': 'hpo', '01': 'live', '02': 'ahead', '03': 'zones', '04': 'expiry', 'T': 'terrain', '05': 'gamma', '05b': 'ripple', '05c': 'hedgemap', '05d': 'greeks', '05e': 'drift', '05f': 'flow', '05g': 'sf', '05h': 'hflow', 'A': 'heat' };
+const OIX_LABEL = { real: 'TESTED · REAL', null: 'TESTED · NULL', mixed: 'PART REAL · PART NULL', untested: 'UNTESTED', desc: 'DESCRIPTION' };
+function oixNote(key) { const o = OIX[key]; if (!o) return ''; return ([].concat(o.ev)).map(k => OIX_EV[k]).join(' ') + (o.extra ? ' ' + o.extra : ''); }
+function oixTag(key) {
+  const o = OIX[key]; if (!o) return '';
+  return `<span class="oixr"><span class="oixb ${o.b}" title="${esc(oixNote(key))}">${OIX_LABEL[o.b]} · ${esc(o.t)}</span><button class="oixq" data-oix="${key}" type="button">What am I looking at?</button></span>`;
+}
+function oixDecorate() {
+  document.querySelectorAll('.card').forEach(c => {
+    if (c.querySelector('.oixr')) return;
+    const h2 = c.querySelector(':scope > h2'), em = h2 && h2.querySelector('em'); if (!em) return;
+    let key = c.id === 'plainCard' ? 'plain' : c.id === 'hpoCard' ? 'hpo' : c.id === 'ddCard' ? 'drift' : c.id === 'hfCard' ? 'hflow' : OIX_EM[em.textContent.trim()];
+    if (key && !(c.classList.contains('bp') && !/^[1-6]$/.test(em.textContent.trim()))) h2.insertAdjacentHTML('beforeend', oixTag(key));
+  });
+}
+function oixData(key, card) {
+  const D = (typeof CUR !== 'undefined' && CUR) ? CUR : null, M = (typeof PLV !== 'undefined' && PLV.meta) || {};
+  const head = [`market ${SYM}`, D ? `spot ${D.spot}` : '', D && Number.isFinite(D.flip) ? `GEX flip ${D.flip}` : '', D && Number.isFinite(D.mp) ? `max pain ${D.mp}` : '', D && Number.isFinite(D.cw) ? `call wall ${D.cw}` : '', D && Number.isFinite(D.pw) ? `put wall ${D.pw}` : '', D && Number.isFinite(D.rm) ? `reference move ${D.rm}` : '', M.regime ? `regime ${M.regime}` : '', M.saved ? `OI saved ${M.saved}` : ''].filter(Boolean).join(' · ');
+  let extra = '';
+  if (key === 'live' && typeof PLV !== 'undefined' && PLV.cur) {
+    extra = '\nProfile lines now: ' + PLV.cur.slice(0, 40).map(l => `${l.label} ${l.price} (strength ${Number(l.strength).toFixed(2)})`).join('; ');
+    if (typeof LW !== 'undefined' && LW && LW.last != null) extra += `\nLast price ${LW.last}.`;
+    if (typeof PLV !== 'undefined' && PLV.bars) { const top = k => (PLV.bars[k] || []).slice().sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 5).map(r => `${r.p}:${Math.round(r.v)}`).join(', '); extra += `\nStrongest bars (price:strength of 1000): gamma ${top('G')}; volume ${top('O')}; OI change ${top('C')}; vanna ${top('V')}`; }
+  }
+  const clone = card.cloneNode(true); clone.querySelectorAll('.oixr,.oixa,script,style,canvas,select').forEach(n => n.remove());
+  const text = clone.innerText.replace(/\n{2,}/g, '\n').slice(0, 6500);
+  return head + extra + '\n\nVISIBLE TEXT AND NUMBERS IN THE PANEL:\n' + text;
+}
+document.addEventListener('click', async ev => {
+  const btn = ev.target.closest && ev.target.closest('.oixq'); if (!btn) return;
+  const card = btn.closest('.card'), key = btn.dataset.oix; let box = card.querySelector(':scope > .oixa');
+  if (!box) { box = document.createElement('div'); box.className = 'oixa'; card.appendChild(box); }
+  if (box.dataset.open === '1' && !btn.dataset.again) { box.dataset.open = '0'; box.style.display = 'none'; return; }
+  box.dataset.open = '1'; box.style.display = ''; box.innerHTML = '<div class="oixl">Reading this panel on the numbers on screen now…</div>'; btn.disabled = true;
+  try {
+    const sub = card.querySelector('.sub'), title = (card.querySelector(':scope > h2') || {}).childNodes ? [...card.querySelector(':scope > h2').childNodes].filter(n => n.nodeType === 3 || (n.tagName === 'EM')).map(n => n.textContent).join(' ').trim() : key;
+    const r = await fetch('/api/oi-explain', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, title, market: SYM, what: sub ? sub.innerText : '', evidence: oixNote(key), data: oixData(key, card) }) });
+    const j = await r.json(); if (!r.ok || !j.explain) throw new Error(j.error || ('HTTP ' + r.status));
+    const e = j.explain, p = (h, t) => t ? `<div class="oixp"><b>${h}</b> ${esc(t)}</div>` : '';
+    box.innerHTML = p('What it is.', e.what) + p('Saying right now.', e.now) + p('How far to trust it.', e.trust) + p('Easy mistake.', e.avoid) + `<div class="oixf">${j.cached ? 'cached read (under 10 minutes old) · ' : ''}${j.left != null ? j.left + ' explanations left today · ' : ''}written by a model from the numbers on screen; the trust line comes from our own test notes. Not a signal.</div>`;
+  } catch (err) { box.innerHTML = `<div class="oixl" style="color:var(--short,#e8615f)">Could not explain this panel: ${esc(err.message)}</div>`; }
+  finally { btn.disabled = false; }
+});
+// ── 05f NQ order flow: delta by 5 minutes from the NT8 tick-rule file (scripts/footprint/nt8_footprint.py -> analysis/output/footprint/site/) ──
+let FP = { days: null, cache: {} };
+async function drawFootprint() {
+  const cv = $('#fpCv'), sel = $('#fpDay'), st = $('#fpStats'); if (!cv) return;
+  const say = t => { st.innerHTML = ''; const c = cv.getContext('2d'); cv.width = cv.clientWidth; cv.height = 380; c.fillStyle = '#6b7585'; c.font = '13px ui-monospace,Consolas,monospace'; c.fillText(t, 12, 28); };
+  try {
+    if (!FP.days) FP.days = await (await fetch('/analysis/output/footprint/site/index.json', { cache: 'no-store' })).json();
+    if (!FP.days.length) return say('No order-flow days saved yet.');
+    if (!sel.options.length) { FP.days.slice().reverse().forEach(d => sel.add(new Option(d, d))); sel.onchange = drawFootprint; }
+    const day = sel.value || FP.days[FP.days.length - 1];
+    const D = FP.cache[day] || (FP.cache[day] = await (await fetch('/analysis/output/footprint/site/NQ_' + day + '.json', { cache: 'no-store' })).json());
+    const bins = []; let cur = null;
+    for (const [t, b, s, c] of D.v) { const m = (+t.slice(0, 2)) * 60 + +t.slice(2), k = Math.floor(m / 5); if (!cur || cur.k !== k) bins.push(cur = { k, buy: 0, sell: 0, close: c }); cur.buy += b; cur.sell += s; cur.close = c; }
+    let cvd = 0; bins.forEach(b => { b.d = b.buy - b.sell; cvd += b.d; b.cvd = cvd; });
+    const tb = bins.reduce((a, b) => a + b.buy, 0), ts = bins.reduce((a, b) => a + b.sell, 0), fmt = n => Math.round(n).toLocaleString();
+    st.innerHTML = `<div class="mini"><div class="k">Bought</div><div class="v" style="font-size:15px">${fmt(tb)}</div></div><div class="mini"><div class="k">Sold</div><div class="v" style="font-size:15px">${fmt(ts)}</div></div><div class="mini"><div class="k">Net (delta)</div><div class="v" style="font-size:15px;color:${tb - ts >= 0 ? 'rgb(70,184,122)' : 'rgb(232,97,95)'}">${tb - ts >= 0 ? '+' : ''}${fmt(tb - ts)}</div><div class="n">${(100 * (tb - ts) / (tb + ts)).toFixed(2)}% of volume</div></div>`
+      + (D.volume_check ? `<div class="mini"><div class="k">Volume check</div><div class="v" style="font-size:15px">${D.volume_check.pct_diff > 0 ? '+' : ''}${D.volume_check.pct_diff}%</div><div class="n">vs NinjaTrader 1-minute bars</div></div>` : '');
+    const dpr = devicePixelRatio || 1, W = cv.clientWidth, H = 380; cv.width = W * dpr; cv.height = H * dpr;
+    const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const L = 54, R = 54, n = bins.length, x = i => L + (i + 0.5) * (W - L - R) / n, bw = Math.max(1, (W - L - R) / n * 0.8);
+    const pr = bins.map(b => b.close), pmin = Math.min(...pr), pmax = Math.max(...pr), yP = v => 12 + (pmax - v) / ((pmax - pmin) || 1) * 120;
+    const dm = Math.max(...bins.map(b => Math.abs(b.d))) || 1, y0 = 205, yD = v => y0 - v / dm * 55;
+    const cm = Math.max(...bins.map(b => Math.abs(b.cvd))) || 1, y1 = 325, yC = v => y1 - v / cm * 45;
+    c.font = '10.5px ui-monospace,Consolas,monospace'; c.fillStyle = '#6b7585';
+    c.textAlign = 'left'; c.fillText('price', 4, 12); c.fillText('delta per 5 min', 4, 150); c.fillText('running delta', 4, 272);
+    c.textAlign = 'right'; c.fillText(px(pmax), W - 4, 20); c.fillText(px(pmin), W - 4, 132);
+    c.strokeStyle = 'rgba(255,255,255,.1)'; for (const y of [y0, y1]) { c.beginPath(); c.moveTo(L, y); c.lineTo(W - R, y); c.stroke(); }
+    c.strokeStyle = '#8fb5ff'; c.lineWidth = 1.5; c.beginPath(); bins.forEach((b, i) => i ? c.lineTo(x(i), yP(b.close)) : c.moveTo(x(i), yP(b.close))); c.stroke();
+    bins.forEach((b, i) => { c.fillStyle = b.d >= 0 ? 'rgba(70,184,122,.85)' : 'rgba(232,97,95,.85)'; c.fillRect(x(i) - bw / 2, Math.min(y0, yD(b.d)), bw, Math.max(1, Math.abs(yD(b.d) - y0))); });
+    c.strokeStyle = '#f0b04a'; c.beginPath(); bins.forEach((b, i) => i ? c.lineTo(x(i), yC(b.cvd)) : c.moveTo(x(i), yC(b.cvd))); c.stroke();
+    c.fillStyle = '#6b7585'; c.textAlign = 'center';
+    bins.forEach((b, i) => { const m = b.k * 5; if (m % 120 === 0) c.fillText(String(Math.floor(m / 60)).padStart(2, '0') + ':00', x(i), H - 6); });
+  } catch (e) { say('Order flow unavailable: ' + e.message); }
+}
+async function drawSurfaceDay() {
+  const svg = $('#sfChart'); if (!svg) return;
+  const fail = m => { svg.innerHTML = `<text x="500" y="150" text-anchor="middle" fill="#6b7585" font-size="14">${esc(m)}</text>`; $('#sfStats').innerHTML = ''; };
+  const D = CUR;
+  if (!D) return fail('No OI record for this instrument.');
+  if (HS.src !== 'cme' && !['SPX500_USD', 'NAS100_USD', 'US2000_USD'].includes(SYM)) return fail('Cboe books here cover SPX, NQ (NDX) and RUT. Switch the hedging map above to CME.');
+  let B;
+  try { B = HS.src === 'cme' ? hsCmeBook(SYM, D.e) : await hsCboeBook(SYM, HS.src === 'cboeetf'); } catch (err) { return fail('Cboe chain unavailable: ' + err.message); }
+  if (!B || !B.contracts.length) return fail('No contracts in this expiry window (try a wider one in the hedging map).');
+  const key = `${SYM}|${HS.src}|${HS.maxDte}|${B.contracts.length}|${Math.round(B.spot * 100)}`;
+  let R = SF.cache[key];
+  if (!R) {
+    svg.innerHTML = '<text x="500" y="150" text-anchor="middle" fill="#6b7585" font-size="14">building the surface…</text>';
+    await new Promise(r => setTimeout(r, 30));
+    const S = B.spot, refSpot = D.spot ?? D.e?.spot ?? S, half = Math.min(0.06, Math.max(0.012, 3 * (D.rm || refSpot * 0.01) / refSpot));
+    const NP = 61, NT = 31, STEP = 15 / (60 * 24 * 365), TF = 30 * 60e3 / (365 * 864e5);   // 15-minute columns, 7.5 hours ahead
+    const lo = S * (1 - half), hi = S * (1 + half), grid = Array.from({ length: NP }, (_, i) => lo + (hi - lo) * i / (NP - 1));
+    const gamma = [], charm = [];
+    for (let k = 0; k < NT; k++) {
+      const gm = new Array(NP).fill(0), ch = new Array(NP).fill(0), dt = k * STEP;
+      for (const c of B.contracts) {
+        if (!(c.oi > 0) || !(c.iv > 0) || c.T - dt <= 0 || c.K < lo || c.K > hi) continue;
+        const row = Math.round((c.K - lo) / (hi - lo) * (NP - 1)), T = Math.max(TF, c.T - dt), sg = c.cp === 'C' ? 1 : -1;
+        gm[row] += sg * c.oi * bsGamma(S, c.K, T, c.iv) * S * 0.01;             // dealer gamma at this strike with price where it is now
+        ch[row] += -sg * c.oi * bsCharm(S, c.K, T, c.iv) * STEP;                // hedge forced by 15 minutes of decay at this strike: buy (+) / sell (-)
+      }
+      gamma.push(gm); charm.push(ch);
+    }
+    R = SF.cache[key] = { S, grid, gamma, charm, NT };
+  }
+  const { S, grid, gamma, charm, NT } = R, sh = v => v + B.shift;
+  const W = 1000, H = 400, X0 = 74, X1 = 500, X2 = 540, X3 = 966, T0 = 34, B0 = 360;
+  const cw = (X1 - X0) / NT, rh = (B0 - T0) / grid.length;
+  const mxG = Math.max(1e-12, ...gamma.flat().map(Math.abs)), mxC = Math.max(1e-12, ...charm.flat().map(Math.abs));
+  const col = (v, m) => { const t = Math.sign(v) * Math.pow(Math.min(1, Math.abs(v) / m), 0.55); return t >= 0 ? `rgba(47,143,204,${t.toFixed(3)})` : `rgba(232,97,95,${(-t).toFixed(3)})`; };
+  let h = '';
+  const panel = (data, x0, m, title, lo, hiT) => {
+    h += `<text x="${(x0 + (x0 === X0 ? X1 : X3)) / 2}" y="16" text-anchor="middle" fill="#a8b1bd" font-size="12">${title}</text><rect x="${x0}" y="${T0}" width="${NT * cw}" height="${B0 - T0}" fill="#0c0f13"/>`;
+    for (let k = 0; k < NT; k++) for (let i = 0; i < grid.length; i++) { const v = data[k][i]; if (Math.abs(v) < m * 0.02) continue; h += `<rect x="${(x0 + k * cw).toFixed(1)}" y="${(B0 - (i + 1) * rh).toFixed(1)}" width="${(cw + 0.6).toFixed(1)}" height="${(rh + 0.6).toFixed(1)}" fill="${col(v, m)}"/>`; }
+    for (let k = 0; k <= NT; k += 8) h += `<text x="${x0 + k * cw}" y="${B0 + 16}" text-anchor="middle" fill="#6b7585" font-size="10.5">+${(k * 0.25).toFixed(k % 4 ? 2 : 0).replace(/\.00$/, '')}h</text>`;
+    const ys = B0 - (S - grid[0]) / (grid[grid.length - 1] - grid[0]) * (B0 - T0);
+    h += `<line x1="${x0}" x2="${x0 + NT * cw}" y1="${ys}" y2="${ys}" stroke="#eef1f5" stroke-dasharray="4 4" opacity=".7"/>`;
+  };
+  panel(gamma, X0, mxG, 'Dealer gamma at each strike');
+  panel(charm, X2, mxC, 'Hedge forced by decay at each strike');
+  for (let i = 0; i <= 6; i++) { const P = grid[0] + (grid[grid.length - 1] - grid[0]) * i / 6, yy = B0 - (P - grid[0]) / (grid[grid.length - 1] - grid[0]) * (B0 - T0); h += `<text x="${X0 - 6}" y="${yy + 4}" text-anchor="end" fill="#6b7585" font-size="11">${px(sh(P))}</text>`; }
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = h;
+  // the headline numbers: where gamma is, and whether time decay pushes dealers to buy or sell around price, now and 3 hours on
+  const near = (arr, k) => { let a = 0; grid.forEach((P, i) => { if (Math.abs(P - S) <= S * 0.004) a += arr[k][i]; }); return a; };
+  const g0 = near(gamma, 0), g3 = near(gamma, Math.min(12, NT - 1)), c0 = near(charm, 0), c3 = near(charm, Math.min(11, NT - 1));
+  const word = v => (v > 0 ? 'long' : 'short');
+  $('#sfStats').innerHTML = `<div class="minis"><div class="mini"><div class="k">Gamma at price, now</div><div class="v" style="font-size:15px">${word(g0)}</div><div class="n">${g0 > 0 ? 'damps moves' : 'chases moves'}</div></div><div class="mini"><div class="k">Gamma at price, +3h</div><div class="v" style="font-size:15px">${word(g3)}</div><div class="n">${Math.abs(g3) > Math.abs(g0) ? 'bigger as expiry nears' : 'smaller as contracts expire'}</div></div><div class="mini"><div class="k">Decay hedge at price, now</div><div class="v" style="font-size:15px">${c0 > 0 ? 'dealers buy' : 'dealers sell'}</div><div class="n">per 15 min, time only</div></div><div class="mini"><div class="k">Decay hedge at price, +3h</div><div class="v" style="font-size:15px">${c3 > 0 ? 'dealers buy' : 'dealers sell'}</div><div class="n">${Math.sign(c0) === Math.sign(c3) ? 'same side' : 'flips side'}</div></div></div>`;
+}
 function drawHedgeFlow(){
   const D = CUR, svg = $('#hfChart'), read = $('#hfRead'); if (!svg) return;
   const msg = m => { svg.setAttribute('viewBox', '0 0 1000 60'); svg.innerHTML = `<text x="500" y="34" text-anchor="middle" fill="#a8b1bd" font-size="13">${m}</text>`; read.innerHTML = ''; };
@@ -1134,8 +1585,8 @@ async function drawHedging(){
     + sc.curves.map(c => `<span><i style="background:${HS_FAN[String(c.dv)]}"></i>gamma at IV ${c.dv > 0 ? '+' : ''}${c.dv} pts</span>`).join('')
     + `<span><i style="background:#eef1f5"></i>hedge to stay flat (dashed: other IVs)</span><span>${esc(B.ivNote)} · ${sc.n.toLocaleString('en-GB')} contracts · OI in ${esc(fut)}-contract equivalents</span>`;
 }
-document.querySelectorAll('[data-hsrc]').forEach(b => b.onclick = () => { HS.src = b.dataset.hsrc; document.querySelectorAll('[data-hsrc]').forEach(x => x.classList.toggle('on', x === b)); drawHedging(); });
-document.querySelectorAll('[data-hexp]').forEach(b => b.onclick = () => { HS.maxDte = +b.dataset.hexp; document.querySelectorAll('[data-hexp]').forEach(x => x.classList.toggle('on', x === b)); drawHedging(); });
+document.querySelectorAll('[data-hsrc]').forEach(b => b.onclick = () => { HS.src = b.dataset.hsrc; document.querySelectorAll('[data-hsrc]').forEach(x => x.classList.toggle('on', x === b)); drawHedging(); drawSurfaceDay(); });
+document.querySelectorAll('[data-hexp]').forEach(b => b.onclick = () => { HS.maxDte = +b.dataset.hexp; document.querySelectorAll('[data-hexp]').forEach(x => x.classList.toggle('on', x === b)); drawHedging(); drawSurfaceDay(); });
 
 // ── 00 plain-English summary of every market (/api/hedging-summary) ───────────────────────────
 function planHtml(x){
@@ -1255,7 +1706,7 @@ function rail(){
 async function refresh(){
   CUR = derive(SYM); rail();
   drawHedging();     // async and self-contained: first, so a failure in another panel cannot skip it
-  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
+  for (const f of [stats, drawCog, drawBars, drawRipple, drawGreeks, drawHedgeFlow, drawDayDrift, drawSurfaceDay, drawFootprint, oixDecorate, drawHeat, drawAhead]) { try { f(); } catch (err) { console.warn('[oi-v2]', f.name, err.message); } }
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
   drawBrief();
@@ -1301,6 +1752,9 @@ $('#tiersCopy').onclick = () => { try { navigator.clipboard.writeText($('#tiersT
 $('#mNear').onclick = () => { NEAR = true; $('#mNear').classList.add('on'); $('#mAll').classList.remove('on'); refresh(); };
 $('#mAll').onclick = () => { NEAR = false; $('#mAll').classList.add('on'); $('#mNear').classList.remove('on'); refresh(); };
 document.querySelectorAll('[data-ah]').forEach(b => b.onclick = () => { AH = +b.dataset.ah; document.querySelectorAll('[data-ah]').forEach(x => x.classList.toggle('on', x === b)); drawAhead(); });
+document.querySelectorAll('[data-plv]').forEach(b => b.onclick = () => { const k = b.dataset.plv; PLV[k] = !PLV[k]; b.classList.toggle('on', PLV[k]); if (k === 'books') { PLV.loadedFor = null; PLV.cur = null; plvFetch(); } else if (k === 'on') { plvDraw(); if (!PLV.on) setLevels(); updateLwLive(); } else if (k === 'minor') plvDraw(); else if (k === 'cboe') { PLV.cboe ? plvFetchCboe() : (plvClear('cboeLines'), updateLwLive()); } });
+document.querySelectorAll('[data-bar]').forEach(b => b.onclick = () => { const k = b.dataset.bar; BAR[k] = !BAR[k]; b.classList.toggle('on', BAR[k]); BAR.sig = ''; });
+document.querySelectorAll('[data-bgon]').forEach(b => b.onclick = () => { BGON = !BGON; b.classList.toggle('on', BGON); _bgSig = ''; });
 document.querySelectorAll('[data-tf]').forEach(b => b.onclick = () => { TF = b.dataset.tf; document.querySelectorAll('[data-tf]').forEach(x => x.classList.toggle('on', x === b)); drawTerrain(); });
 
 (async () => {

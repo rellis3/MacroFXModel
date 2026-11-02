@@ -19,6 +19,8 @@
  * Pure data. Tested by js/deskEvidence.test.mjs (shape only).
  */
 
+import { EVIDENCE_AUDIT, EVIDENCE_AUDIT_DATE } from './evidenceAudit.js';
+
 export const DESK_EVIDENCE = [
   {
     id: 'vix-inversion', domain: 'volatility', verdict: 'validated', date: '2026-09-17', doc: 'MD files/MARKET_SENSE_TESTS.md#S1',
@@ -1206,6 +1208,14 @@ export const DESK_EVIDENCE = [
     use: 'Nothing built. Which side the range extends to has no support from the hedge-flow schedule; rerun only with more days and per-expiry books.',
   },
   {
+    id: 'orderflow-lead', domain: 'price', verdict: 'null', date: '2026-11-01', doc: 'forge/ORDERFLOW_LEAD_PREREG.md',
+    also: ['analysis/output/orderflow-lead/RESULTS.md'],
+    instruments: ['NQ'],
+    claim: 'NQ buy/sell imbalance in a 5-minute bar (tick-rule signed volume from NT8 ticks) predicts the next 5 and 15 minutes beyond the move already in the bar, so a running delta could act as a lead line',
+    result: 'Null on both scored cells, both powered. 189 regular-hours sessions 2025-11-06 to 2026-08-21 (14,302 bars), standardised slope on imbalance with same-bar and previous-bar returns controlled: h 5 min -0.002 [-0.027, +0.020], h 15 min +0.003 [-0.025, +0.029], MDE 0.037 and 0.042 against a 0.05 bar, both inside the other-session placebo ranges (means near zero), halves agree on zero. Previous-bar flow, 30-minute horizon, raw delta and the 30-minute running delta all near zero. Hour-of-day slices: the first two New York hours at about +0.06 but no cell survives BH at q 0.10 over 14 (smallest p 0.066). Run 2026-11-01, seed 20261101.',
+    use: 'OI Lab card 05f stays a description of flow: no projection line, no lead claim from tick-rule delta. The sign comes from price itself so it cannot lead by construction; quote-matched or order-book flow is the untested follow-up and needs bid/ask history from the bridge.',
+  },
+  {
     id: 'range-ladder-placebo', domain: 'price', verdict: 'underpowered', date: '2026-10-19', doc: 'forge/RANGE_LADDER_PLACEBO_PREREG.md',
     also: ['analysis/output/range-ladder-placebo/RESULTS.md'],
     instruments: ['GOLD', 'AUDJPY', 'AUDUSD', 'NZDJPY', 'NZDUSD', 'USDJPY', 'CADJPY', 'EURJPY', 'GBPJPY', 'EURAUD', 'EURUSD', 'GBPUSD', 'USDCHF', 'USDCAD', 'NQ', 'SPX500', 'DE30', 'US30', 'US2000'],
@@ -1961,6 +1971,36 @@ export const DESK_EVIDENCE = [
     use: 'Do not use COT crowding to pick residual trades. No sign of extra reversion against a crowd.',
     instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
   },
+  {
+    id: 'fx-factor-stack', domain: 'macro', verdict: 'underpowered', date: '2026-11-01', doc: 'forge/FX_FACTOR_STACK_PREREG.md', also: ['analysis/output/fx-factor-stack/RESULTS.md', 'forge/FX_FACTOR_STACK_ADDENDUM_A.md'], instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'],
+    claim: 'Does an equal-risk blend of cross-sectional carry, momentum, value (5-year reversal proxy) and surprise momentum, ranked over eight currencies, dollar-neutral at 10% vol and net of spread, earn a net Sharpe above 0.5 out of sample (DSR N=5 at least 0.95, beating a permutation placebo)?',
+    result: 'UNDERPOWERED. 103 OOS months (2018-01 to 2026-07, lockbox 2026-08-21): net Sharpe +0.05, haircut 95% CI [-1.01, +1.21], DSR 0.17, max drawdown 23%, placebo p95 0.54 not beaten. Beta to the dollar basket +0.13 (dollar-neutral as built). Carry alone did better: book minus carry Sharpe -0.32 [-1.11, +0.38]. The two factors with positive estimates (carry, surprise) cancel against the two without (momentum, value proxy). Effective cross-section about 2.3 currencies, so the interval holds both zero and the 0.5 bar.',
+    use: 'No factor book, tilt or Global Read input comes from this. FX direction at one to three months is forward-record only (carry and surprise momentum go to the direction ledger per A1.8). The stopping rule needs a NULL combined book and does not fire. Do not read it as showing FX factors do not exist: 8.6 OOS years cannot see a 0.3 to 0.5 Sharpe.',
+  },
+  {
+    id: 'fx-factor-carry', domain: 'macro', verdict: 'underpowered', date: '2026-11-01', doc: 'forge/FX_FACTOR_STACK_PREREG.md', also: ['analysis/output/fx-factor-stack/RESULTS.md', 'forge/FX_FACTOR_STACK_ADDENDUM_A.md'], instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'],
+    claim: 'Does ranking eight currencies on the 3-month rate differential vs USD rank their next-month returns (OOS rank-IC above 0.03 with the haircut CI excluding zero, net Sharpe above 0.3, placebo beaten)?',
+    result: 'UNDERPOWERED. OOS rank-IC +0.079 [-0.030, +0.192] (halves +0.067 / +0.089), net Sharpe +0.36 [-0.66, +1.54], max drawdown 18%, placebo p95 0.54 not beaten; 3-month IC +0.119. Point estimates sit in the published range; the interval holds zero. Rates are first prints with a 45-day backcast before 2013-06, EFFR for USD after, BoE Bank Rate for GBP, German call money plus an offset for EUR after 2026-02-16 (neutral-EUR sensitivity: same result).',
+    use: 'A candidate for the forward ledger (7 USD pairs, 20 and 60 closes), not a signal. It may be described as the rate differential ranking, never as a call on a currency.',
+  },
+  {
+    id: 'fx-factor-momentum', domain: 'price', verdict: 'underpowered', date: '2026-11-01', doc: 'forge/FX_FACTOR_STACK_PREREG.md', also: ['analysis/output/fx-factor-stack/RESULTS.md', 'forge/FX_FACTOR_STACK_ADDENDUM_A.md'], instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'],
+    claim: 'Does ranking eight currencies on a blend of 1-month, 3-month and 12-month-skip-1 total returns rank their next-month returns (OOS rank-IC above 0.03, net Sharpe above 0.3, placebo beaten)?',
+    result: 'UNDERPOWERED. OOS rank-IC -0.045 [-0.190, +0.104] (halves -0.119 / +0.019), net Sharpe -0.39 [-1.60, +0.87], max drawdown 46%, placebo p95 0.52 not beaten; in-sample 2005-2017 Sharpe +0.22. The sign-reversed book does not pass either. The 2018-2021 half is where it lost.',
+    use: 'Cross-sectional FX momentum has no support in this decade on this sample. Not added to any tilt; no forward registration.',
+  },
+  {
+    id: 'fx-factor-value', domain: 'macro', verdict: 'underpowered', date: '2026-11-01', doc: 'forge/FX_FACTOR_STACK_PREREG.md', also: ['analysis/output/fx-factor-stack/RESULTS.md', 'forge/FX_FACTOR_STACK_ADDENDUM_A.md'], instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'],
+    claim: 'Does ranking eight currencies on the negative 5-year change in spot vs USD (a proxy for PPP value; point-in-time CPI exists for the US only) rank their next-month returns (OOS rank-IC above 0.03, net Sharpe above 0.3, placebo beaten)?',
+    result: 'UNDERPOWERED. OOS rank-IC -0.018 [-0.177, +0.134] (halves +0.038 / -0.067), net Sharpe -0.12 [-1.38, +0.92], max drawdown 35%, placebo p95 0.53 not beaten; scores begin 2007-07. This is the 5-year reversal, a cruder cousin of the registered CPI-adjusted value, which could not be built.',
+    use: 'Says nothing about CPI-adjusted value. Reopen only with point-in-time CPI for the other seven economies.',
+  },
+  {
+    id: 'fx-factor-surprise', domain: 'macro', verdict: 'underpowered', date: '2026-11-01', doc: 'forge/FX_FACTOR_STACK_PREREG.md', also: ['analysis/output/fx-factor-stack/RESULTS.md', 'forge/FX_FACTOR_STACK_ADDENDUM_A.md'], instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'],
+    claim: 'Does ranking eight currencies on a 3-month-decayed sum of standardised data surprises rank their next-month returns (OOS rank-IC above 0.03, net Sharpe above 0.3, placebo beaten)?',
+    result: 'UNDERPOWERED. OOS rank-IC +0.075 [-0.042, +0.190] on 90 scored months (halves +0.066 / +0.085), net Sharpe +0.34 [-0.68, +1.63], max drawdown 15%, placebo p95 0.50 not beaten. The store starts 2015-11, so in-sample is about two years (IC -0.028); 2025-26 holds few non-US releases and the score is neutral for the last rebalances; the z scaling is not verified point-in-time.',
+    use: 'A candidate for the forward ledger, not a signal. The data behind it thins out in 2025-26, so the forward record needs the non-US surprise feed kept alive.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -2040,6 +2080,7 @@ const POWER = {
   'rule-a-pre2020':          { n: '1,386 trades, 11 instruments, 2016-09 to 2020-08 (4-week block bootstrap)', note: 'MDE about 0.2R; upper bound +0.094 excludes the +0.162 backtest effect -- a real null' },
   'rule-a-portfolio-budget': { n: '1,165 weekdays 2022-01 to 2026-08, 11 legs, walk-forward (4-week block bootstrap)', note: 'MDE about 0.6 Sharpe on the paired difference; +0.28 found, interval crosses 0' },
   'rule-a-portfolio-second-book': { n: '1,559 common weekdays 2020-08 to 2026-08 (4-week block bootstrap)', note: 'SE of a near-zero correlation about 0.035; the 0.20 bar is about 6 SE away' },
+  'orderflow-lead': { n: '189 sessions, 14,302 five-minute bars, NQ, 2025-11 to 2026-08 (5-session block bootstrap)', note: 'MDE 0.037 (h5) and 0.042 (h15) vs bar 0.05; intervals [-0.027, +0.020] and [-0.025, +0.029] exclude it -- a real null' },
   'rule-a-late-entry':       { n: '823 trades, 11 instruments, 2020-08 to 2026-08 (4-week block bootstrap)', note: 'MDE about 0.16R; interval [-0.26, +0.06] excludes it -- a real null' },
   'range-ladder-placebo':    { n: '2,745 session dates (21-session block bootstrap), 19 instruments', note: 'P1 MDE 0.14 pp vs a 2.0 pp bar; unjudgeable because the registered placebo control failed (-0.09 pp [-0.16, -0.02])' },
   'range-ladder-placebo-confirm': { n: '2,745 session dates (21-session block bootstrap), 15 instruments', note: 'pooled MDE 0.37 pp vs a 1.0 pp bar; per-line MDE 0.69-0.89 pp' },
@@ -2122,6 +2163,11 @@ const POWER = {
   'overnight-hold-nq':       { n: '1,949 nights (block 20)',   note: 'MDE ~0.08%/trade vs observed +0.034; a 5-10%/yr edge cannot be confirmed in 10 yrs' },
   'overnight-hold-gold':     { n: '1,962 nights (block 20)',   note: 'MDE ~0.06%/trade vs observed +0.022' },
   'direction-bar':           { n: '6 instruments x 4 horizons; 2,000 placebo sets a cell', note: 'measuring instrument; MDE calibrated by planted-signal control (power 0.76-0.85)' },
+  'fx-factor-stack':         { n: '103 OOS months; 8 currencies, effective cross-section about 2.3', note: 'Sharpe CI +/-1.1 (haircut 1.74); MDE about 1.6 vs the 0.5 bar; roughly one chance in seven of detecting a true 0.5' },
+  'fx-factor-carry':         { n: '103 OOS months; effective cross-section about 2.3', note: 'IC CI +/-0.11, MDE about 0.18 vs the 0.03 bar; the bar needs the CI to exclude zero, which needs an observed IC above about 0.11' },
+  'fx-factor-momentum':      { n: '103 OOS months; effective cross-section about 2.3', note: 'IC CI +/-0.15, MDE about 0.18' },
+  'fx-factor-value':         { n: '103 OOS months; effective cross-section about 2.3', note: 'IC CI +/-0.16; 5-year proxy, CPI form not built' },
+  'fx-factor-surprise':      { n: '90 scored OOS months; effective cross-section about 2.3', note: 'IC CI +/-0.12; data from 2015-11, thin after 2024' },
   'overnight-hold-toolkit':  { n: '5,000 paths x cell',        note: 'descriptive; MC error +/-0.7pp, the edge CI is the binding uncertainty' },
   'cost-verification':       { n: '86 overnight swaps; 1,719 fills', note: 'swaps near-deterministic per account; fills ~+/-0.5bp' },
   'news-asymmetry':          { n: '656 releases 2016-26',      note: 'the entry states "Null, and well powered"' },
@@ -2215,10 +2261,18 @@ export function citable(e) {
   const reg = REGISTRY_DEFLATION.entries[e?.id];
   const regTag = reg?.label === 'kept' ? ` (survives registry FDR 10%, ${REGISTRY_DEFLATION.date})` : reg?.label === 'not-deflatable' ? ' (not deflatable: no p or interval reported)' : '';
   const deflation = e?.deflated ? { ...e.deflated } : reg ? { label: reg.label, p: reg.p, basis: reg.basis } : null;
-  if (pw) return { tag: `${base}, n=${pw.n}${regTag}${defl}`, strong: true, power: pw, docIsStudy, deflation };
+  // Code-level audit (REPO_REVIEW_2026-10-31): a reopened or unverified verdict may not be quoted as settled,
+  // whatever its n. A null whose test was flawed is "not yet known", not "no effect".
+  const au = EVIDENCE_AUDIT[e?.id] ?? null;
+  const audit = au ? { status: au.status, grade: au.audit, date: EVIDENCE_AUDIT_DATE } : null;
+  const auditTag = !au ? '' : au.status === 'stands' ? ` (code audit ${EVIDENCE_AUDIT_DATE}: stands)`
+    : au.status === 'reopened' ? ` — REOPENED by code audit ${EVIDENCE_AUDIT_DATE} (${au.audit}): do not cite as settled; re-run pending`
+    : ` — UNVERIFIED by code audit ${EVIDENCE_AUDIT_DATE}: not traced; cite as unconfirmed`;
+  const settled = !au || au.status === 'stands';
+  if (pw) return { tag: `${base}, n=${pw.n}${regTag}${defl}${auditTag}`, strong: settled, power: pw, docIsStudy, deflation, audit };
   return {
-    tag: `${base} — single test, power not recorded${docIsStudy ? '' : ', no study doc'}${regTag}${defl}`,
-    strong: false, power: null, docIsStudy, deflation,
+    tag: `${base} — single test, power not recorded${docIsStudy ? '' : ', no study doc'}${regTag}${defl}${auditTag}`,
+    strong: false, power: null, docIsStudy, deflation, audit,
   };
 }
 
