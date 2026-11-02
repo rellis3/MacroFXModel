@@ -37,18 +37,21 @@ for s in range(n):
     pre_l = np.round(pmid - np.abs(rng.normal(0, 0.15, 360)), 3)
     for anchor in ("high", "do", "swing", "window"):
         if anchor == "window":
-            f = find_fill_window(pre_h, pre_l, bid["o"], bid["h"], bid["l"], mins, adr, 0.10, 360, buy_l=ask["l"], buy_o=ask["o"], win=60)
+            wb, wa = int(rng.integers(5, 121)), int(rng.integers(5, 121))   # asymmetric window, minutes before / after
+            f = find_fill_window(pre_h, pre_l, bid["o"], bid["h"], bid["l"], mins, adr, 0.10, 360, buy_l=ask["l"], buy_o=ask["o"], win=(wb, wa))
         elif anchor == "swing":
             f = find_fill_swing(pre_h, pre_l, bid["o"], bid["h"], bid["l"], mins, adr, 0.10, 360, buy_l=ask["l"], buy_o=ask["o"])
         else:
             f = find_fill(bid["o"], bid["h"], bid["l"], mins, adr, anchor, 0.10, 360, buy_l=ask["l"], buy_o=ask["o"])
         if f is None:
-            res[anchor] = None
+            res[anchor] = None if anchor != "window" else {"none": True, "win": [wb, wa]}
             continue
         side = "ask" if f["side"] < 0 else "bid"
         ex = ask if f["side"] < 0 else bid
         spread = float(ask["o"][f["j"]] - bid["o"][f["j"]])
         r = {"side": int(f["side"]), "j": int(f["j"]), "A": float(f["A"]), "L0": float(f["L0"]), "entry": float(f["entry"]), "ta": int(f["t_anchor"])}
+        if anchor == "window":
+            r["win"] = [wb, wa]
         for tg, be in (("zero", True), ("zero", False), (3, True), (2, True)):
             t = trade(ex["o"], ex["h"], ex["l"], mins, f, 0.2, tg, be, 540, fill_spread=spread)
             r[f"{tg}|{int(be)}"] = {"R": t["R"], "how": t["how"]}

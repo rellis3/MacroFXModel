@@ -27,6 +27,8 @@
 export const DOF_DEFAULTS = { minImp: 0.10, entryCut: 360, exitMin: 540, stopExt: 0.2 };
 export const DOF_ANCHORS = ['high', 'do', 'swing', 'window'];
 export const DOF_WINDOW_MIN = 60;
+/** `win` = minutes either side (a number) or [before, after]; both in 1-minute bars (before the open: bars that traded). */
+const winPair = win => Array.isArray(win) ? [Number(win[0]), Number(win[1])] : [Number(win), Number(win)];
 export const DOF_TARGETS = ['zero', 3, 2];
 
 /** First index >= start where pred(i) holds, or n. */
@@ -131,7 +133,7 @@ export function pendingSwing(pre, chart, mins, adr, minImp = 0.10, entryCut = 36
 
 /**
  * Anchor 'window' (owner, 2026-11-01): the 1 = the highest high (sell) or lowest low (buy) within
- * `win` minutes either side of the daily open; the 0 = the extreme reached AFTER that 1, which must be made after
+ * `win` minutes either side of the daily open (or [before, after] minutes, 1-minute bars); the 0 = the extreme reached AFTER that 1, which must be made after
  * the open (a leg that finished before the open is not the night's impulse). Covers the
  * presenter's 28 Oct trade (high just before the open) and 29 Oct (high just after). Causal: at
  * session bar k only bars up to k count, so in the first hour the 1 is the high so far.
@@ -140,12 +142,12 @@ export function pendingSwing(pre, chart, mins, adr, minImp = 0.10, entryCut = 36
  * inside the other leg is its retrace, otherwise the more recent extreme wins (as in swingState).
  */
 function windowState(pre, chart, mins, k, adr, minImp, win) {
-  const thr = minImp * adr, P = pre.h.length;
+  const thr = minImp * adr, P = pre.h.length, [wb, wa] = winPair(win);
   const Hc = pre.h.concat(chart.h.slice(0, k + 1)), Lc = pre.l.concat(chart.l.slice(0, k + 1));
   const Mc = pre.mins.concat(mins.slice(0, k + 1));
   let dA = -Infinity, dAt = -1, uA = Infinity, uAt = -1;
   for (let i = 0; i < Hc.length; i++) {
-    if (Mc[i] < -win || Mc[i] > win) continue;
+    if (Mc[i] < -wb || Mc[i] > wa) continue;
     if (Hc[i] >= dA) { dA = Hc[i]; dAt = i; }
     if (Lc[i] <= uA) { uA = Lc[i]; uAt = i; }
   }
@@ -262,12 +264,12 @@ export function night(S, adr, anchor = 'high', opts = {}) {
   // a session index; negative = a bar before the open (the swing anchor's 1 can sit there)
   const tAt = i => i == null ? null : i >= 0 ? S.t[i] : pre.t[pre.t.length + i] ?? null;
   const f = anchor === 'swing' ? findFillSwing(pre, chart, S.mins, adr, P.minImp, P.entryCut, buy)
-    : anchor === 'window' ? findFillWindow(preM, chart, S.mins, adr, P.minImp, P.entryCut, buy, P.win ?? DOF_WINDOW_MIN)
+    : anchor === 'window' ? findFillWindow(preM, chart, S.mins, adr, P.minImp, P.entryCut, buy, [P.winBefore ?? DOF_WINDOW_MIN, P.winAfter ?? DOF_WINDOW_MIN])
     : findFill(chart, S.mins, adr, anchor, P.minImp, P.entryCut, buy);
   const base = { anchor, adr, do: S.bid.o[0], openT: S.t[0] };
   if (!f) {
     const p = anchor === 'swing' ? pendingSwing(pre, chart, S.mins, adr, P.minImp, P.entryCut)
-      : anchor === 'window' ? pendingWindow(preM, chart, S.mins, adr, P.minImp, P.entryCut, P.win ?? DOF_WINDOW_MIN)
+      : anchor === 'window' ? pendingWindow(preM, chart, S.mins, adr, P.minImp, P.entryCut, [P.winBefore ?? DOF_WINDOW_MIN, P.winAfter ?? DOF_WINDOW_MIN])
       : pending(chart, S.mins, adr, anchor, P.minImp, P.entryCut);
     const phase = P.final || p.phase === 'no_setup' ? 'no_setup' : p.phase;
     return { ...base, ...p, phase, tExt: tAt(p.tExt), tAnchor: tAt(p.tAnchor) };

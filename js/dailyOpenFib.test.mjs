@@ -157,5 +157,16 @@ ok('candles: complete bars only, minutes from the first bar', sx.t.length === 1 
   ok('2 Nov: stop 3863.83 (Jay 3863.75)', near(levels(1, f.A, f.L0).stop, 3863.83));
 }
 
+// adjustable window [before, after]: two candidate highs, the setting decides which impulse is used
+{
+  const preB = bars([[100, 0], [110, 10], [104, 40], [103.5, 59]]);        // a high of 110, 50 bars before the open
+  const pre = { h: preB.h, l: preB.l, mins: preB.h.map((_, i) => i - preB.h.length) };
+  const B = bars([[103.5, 0], [106, 10], [94, 40], [106.5, 120], [90, 300], [90, 600]]);   // a high of 106 at +10, impulse to 94
+  const wide = findFillWindow(pre, B, B.mins, 50, 0.10, 360, null, [60, 60]);
+  const tight = findFillWindow(pre, B, B.mins, 50, 0.10, 360, null, [20, 30]);
+  ok('window [60,60]: picks the pre-open 110 (an older impulse); never refilled', wide === null || near(wide.A, 110));
+  ok('window [20,30]: picks the 106 after the open, sells the retrace', tight && tight.side === -1 && near(tight.A, 106) && near(tight.L0, 94));
+}
+
 console.log(`${n - f}/${n} passed`);
 process.exit(f ? 1 : 0);

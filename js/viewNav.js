@@ -16,7 +16,7 @@ export const VIEWS = [
   { id: 'now', icon: '\u{1F3AF}', label: 'Now', hint: 'the read, what changed, what is firing',
     ids: ['mbrief', 'dayRead', 'sinceYday', 'deskWatch', 'eodPanel'] },
   { id: 'pairs', icon: '\u{1F4B1}', label: 'Pairs', hint: 'every market card',
-    ids: ['concentration', 'ctlBar', 'grid', 'tview', 'sview', 'footNote'] },
+    ids: ['concentration', 'ctlBar', 'dsCardNote', 'grid', 'tview', 'sview', 'footNote'] },
   { id: 'macro', icon: '\u{1F310}', label: 'Macro', hint: 'rates, regime, outlook, the chain',
     ids: ['mread', 'macro', 'summary', 'outlookPanel', 'regimeLine', 'regimePanel', 'widerPanel', 'weekCtx'] },
   { id: 'events', icon: '\u{1F4C5}', label: 'Events', hint: 'news, the week, the timeline',
