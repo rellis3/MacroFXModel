@@ -127,6 +127,13 @@ explicitly declined).
   and has never been run for the Russell. Prior from the desk: same bar. Source: 2026-10-31
   entry, step 5.
 
+- **First close below the 100-day (S&P 500)** — Jess Inskip (CLIP_WATCH 2026-11-02): "when
+  it breaks a moving average, that's broadly accepted, it just triggers this sell-off." The
+  S&P's first close under its 100-day SMA → next 5 / 20 sessions against a matched control,
+  1990→, with the mirror (first close back above). Seven such breaks in the last three years,
+  two of them re-crossed within three sessions. Prior from the desk: `level-touch`,
+  `daily-band-fade` — a place, not a signal. Source: CLIP_WATCH 2026-11-02 entry, step 5.
+
 None of these are pre-registered — each still needs the `MARKET_SENSE_TESTS.md`
 pre-registration step (state the pass/null bar first) before it's run, per the
 standing discipline. Listed here so "cheap, low-prior, not run" doesn't have to
