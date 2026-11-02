@@ -10,15 +10,15 @@ Generated 2026-11-02.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **264** |
+| claims tested (validated + null + underpowered) | **265** |
 | validated | 49 |
 | null | 149 |
-| underpowered | 66 |
-| context (base rates, descriptions: not counted as tests) | 44 |
+| underpowered | 67 |
+| context (base rates, descriptions: not counted as tests) | 45 |
 | pre-registrations with no banked verdict (below) | 87 |
 
-**What the count says (Lesson 02 §05).** If none of the 264 claims were real, tests at the usual 5% size would still pass
-about **13.2** of them by luck. 49 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 265 claims were real, tests at the usual 5% size would still pass
+about **13.3** of them by luck. 49 passed, so most passes are unlikely to be luck alone, but
 **roughly 13 of the 49 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -328,6 +328,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-01 | fx-factor-surprise | macro | underpowered | forge/FX_FACTOR_STACK_PREREG.md |
 | 2026-11-01 | fx-factor-value | macro | underpowered | forge/FX_FACTOR_STACK_PREREG.md |
 | 2026-11-01 | orderflow-lead | price | null | forge/ORDERFLOW_LEAD_PREREG.md |
+| 2026-11-02 | nq-forecast-oc-hl-calibration | volatility | context | forge/NQ_FORECAST_TARGET_EV_PREREG.md |
+| 2026-11-02 | nq-forecast-target-ev | price | underpowered | forge/NQ_FORECAST_TARGET_EV_PREREG.md |
 | 2026-11-02 | overnight-vol-regime-gold | volatility | underpowered | forge/OVERNIGHT_VOL_REGIME_PREREG.md |
 | 2026-11-02 | overnight-vol-regime-nq | volatility | underpowered | forge/OVERNIGHT_VOL_REGIME_PREREG.md |
 | 2026-11-02 | stress-filter-hold-beyond-vt | volatility | null | forge/STRESS_FILTER_HOLD_PREREG.md |
