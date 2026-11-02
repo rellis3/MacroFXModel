@@ -124,6 +124,23 @@
   <div class="panel" id="toolkit"><h2>Toolkit replica: FTMO 2-step</h2><p class="note">Loading…</p></div>
 
   <div class="panel">
+    <h2>Does the volatility regime matter? <span class="tag">overnight-vol-regime · UNDERPOWERED, large effect ruled out</span></h2>
+    <p class="note">Nights grouped by realised vol at entry: 20-day vol vs its own past year, known at entry, from quietest (Q1) to busiest (Q4). z = gross ÷ that day's σ, so it is return per unit of risk. NQ is 3,503 nights 2009–2026 (futures file before 2016-10, banked trades after); gold is 1,962 nights 2016–2026. Description only: scored once against <code>forge/OVERNIGHT_VOL_REGIME_PREREG.md</code>.</p>
+    <div style="overflow-x:auto"><table>
+      <tr><th style="text-align:left">Bucket</th><th>NQ nights</th><th>NQ gross %</th><th>NQ z</th><th>NQ share of P&amp;L</th><th>Gold nights</th><th>Gold gross %</th><th>Gold z</th><th>Gold CFD cost %</th></tr>
+      <tr><td style="text-align:left">Q1 quietest</td><td>1,038</td><td>0.030</td><td>0.030</td><td>20%</td><td>514</td><td>0.027</td><td>0.044</td><td>0.035</td></tr>
+      <tr><td style="text-align:left">Q2</td><td>733</td><td>0.028</td><td>0.023</td><td>13%</td><td>475</td><td>0.089</td><td>0.116</td><td>0.036</td></tr>
+      <tr><td style="text-align:left">Q3</td><td>882</td><td>0.042</td><td>0.045</td><td>24%</td><td>464</td><td>0.029</td><td>0.048</td><td>0.037</td></tr>
+      <tr><td style="text-align:left">Q4 busiest</td><td>850</td><td>0.077</td><td>0.036</td><td>43%</td><td>509</td><td>0.098</td><td>0.073</td><td>0.047</td></tr>
+    </table></div>
+    <ul class="sub" style="margin:10px 0 0;padding-left:18px">
+      <li><b>Result:</b> slope of z from quietest to busiest is NQ +0.015 [−0.052, +0.080] and gold +0.001 [−0.101, +0.097]. Placebo p is 0.63 and 0.96. Return per unit of risk is flat: busy nights earn more % only because they risk more.</li>
+      <li><b>So:</b> no vol on/off filter. A quartile filter would need about 0.11–0.13 (NQ) or 0.20 (gold), and both are ruled out. Effects of 0.05–0.08 can't be ruled out.</li>
+      <li><b>Costs:</b> NQ CFD costs are flat across regimes. Gold's spread widens in busy markets (+0.015% a night across the range), yet takes a smaller share of a bigger gross.</li>
+    </ul>
+  </div>
+
+  <div class="panel">
     <h2>How to read this</h2>
     <ul class="sub" style="margin:0;padding-left:18px">
       <li><b>Is it real?</b> Gross is positive on both markets. Net is still positive at your account's costs (NQ about +5.6% a year, gold +4.7% to +6.3%), but the per-trade mean isn't statistically confirmed (UNDERPOWERED).</li>

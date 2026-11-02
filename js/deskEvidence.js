@@ -797,6 +797,18 @@ export const DESK_EVIDENCE = [
     use: '1/sigma^2 sizing is a drawdown tool on NQ, not a return tool; its Sharpe gain is not shown. If drawdown is the goal it beats both stress filters.',
   },
   {
+    id: 'overnight-vol-regime-nq', domain: 'volatility', verdict: 'underpowered', date: '2026-11-02', doc: 'forge/OVERNIGHT_VOL_REGIME_PREREG.md', also: ['analysis/output/overnight-vol-regime/RESULTS.md', 'analysis/output/overnight-vol-regime/CONTROLS.md'], instruments: ['NQ'],
+    claim: 'The overnight hold (long 20:00 to 14:30 UK) earns a different risk-adjusted gross return depending on the volatility regime at entry (RV20 percentile vs its own past year, t-1): slope of z = gross / sigma on the percentile',
+    result: 'UNDERPOWERED, large effect ruled out. 3,503 nights 2009-01 to 2026-08 (banked trades plus 1,554 futures-file nights; overlap corr 0.996). b +0.015 [-0.052, +0.080], placebo p 0.63 (Holm 1.0). Quartile mean z 0.030 / 0.023 / 0.045 / 0.036: flat. Busy nights earn more in % (Q4 0.077% vs Q1 0.030%) only in proportion to risk. Eras +0.069 (2009-16) and -0.028 (2016-26), both inside noise. CFD costs flat across regimes.',
+    use: 'Risk-adjusted overnight return is constant across vol regimes: no vol on/off filter for the NQ overnight hold (a useful quartile filter needs 0.11-0.13, excluded). Vol sizing stays a risk-shaping tool, not a return tool. Effects of 0.05-0.08 stay open.',
+  },
+  {
+    id: 'overnight-vol-regime-gold', domain: 'volatility', verdict: 'underpowered', date: '2026-11-02', doc: 'forge/OVERNIGHT_VOL_REGIME_PREREG.md', also: ['analysis/output/overnight-vol-regime/RESULTS.md', 'analysis/output/overnight-vol-regime/CONTROLS.md'], instruments: ['GOLD'],
+    claim: 'The gold overnight hold (long 20:00 to 14:30 UK) earns a different risk-adjusted gross return depending on the volatility regime at entry (RV20 percentile, t-1)',
+    result: 'UNDERPOWERED, large effect ruled out. 1,962 nights 2016-10 to 2026-08. b +0.001 [-0.101, +0.097], placebo p 0.96 (Holm 1.0). Quartile mean z 0.044 / 0.116 / 0.048 / 0.073: zig-zag, no vol pattern. CFD cost does rise with vol (+0.015% a night across the range, spread widening), but takes a smaller share of gross on busy nights; quiet-bucket CFD net is about zero.',
+    use: 'No vol-regime filter for the gold overnight hold (a quartile filter would need about 0.20). Do not read the gold quartile zig-zag as a rule. More gold history (OANDA M1 to 2005) would be needed to narrow the CI further.',
+  },
+  {
     id: 'cost-verification', domain: 'price', verdict: 'context', date: '2026-10-25', doc: 'forge/COST_VERIFICATION_PREREG.md', also: ['analysis/output/cost-verification/RESULTS.md', 'analysis/output/cost-verification/cost_table.json'], instruments: ['NQ', 'GOLD'],
     claim: 'Do the costs our studies charge (OANDA bid/ask spreads, Fed funds + markup financing) match what the owner real broker accounts pay on NAS100 and gold?',
     result: 'CONTEXT. 86 real overnight positions (2026-05 to 10; 86 of 86 crossing server midnight carry swap, 0 of 854 others): US100 long -0.0190% a night (6.9% a year, no triple; model ratio 0.90, verified); gold on the OI/Volatility bots account -0.0162% (Fed funds + 2.15pp, NO triple Wednesday; ratio 1.32, verified); gold on the Gold/Regime/Backtest bots account -0.0031% (1.1% a year, not rate-linked, triple Wednesday; model 4.5x too high). Fills vs OANDA mid (1,719): entries beat the minute mid on NQ (-0.68bp) and exits are worse (+1.85bp), so fills carry strategy timing and cannot isolate the spread; entry + exit bracket the round trip at ~1.1-1.2bp on both (OANDA model 0.68bp NQ, 2.25bp gold). Re-costed overnight hold: NQ +5.6% a year (banked +6.0), gold +4.7% to +6.3% (banked +4.0). No verdict changes.',
@@ -2198,6 +2210,8 @@ const POWER = {
   'stress-filter-hold-half':  { n: '5,795 NQ days (block 20)', note: 'Sharpe-difference MDE 0.17; CI rules out +0.15' },
   'stress-filter-hold-beyond-vt': { n: '5,795 NQ days (block 20)', note: 'Sharpe-difference MDE 0.13; CI rules out +0.15' },
   'vol-managed-mm':          { n: '5,795 NQ days (block 20)', note: 'Sharpe-difference MDE 0.37 vs the 0.15 bar' },
+  'overnight-vol-regime-nq':  { n: '3,503 NQ nights, 212 months (month-block bootstrap)', note: 'measured MDE 0.106 z (80%, Holm first step); planted 0.15 found 200/200; CI +/-0.066 inside the 0.15 large-effect bar but not the 0.05 SESOI' },
+  'overnight-vol-regime-gold': { n: '1,962 gold nights, 119 months', note: 'measured MDE 0.19 z; planted 0.15 found 61-70%; CI +/-0.10 inside the 0.15 bar, not the 0.05 SESOI' },
   'fx-factor-stack':         { n: '103 OOS months; 8 currencies, effective cross-section about 2.3', note: 'Sharpe CI +/-1.1 (haircut 1.74); MDE about 1.6 vs the 0.5 bar; roughly one chance in seven of detecting a true 0.5' },
   'fx-factor-carry':         { n: '103 OOS months; effective cross-section about 2.3', note: 'IC CI +/-0.11, MDE about 0.18 vs the 0.03 bar; the bar needs the CI to exclude zero, which needs an observed IC above about 0.11' },
   'fx-factor-momentum':      { n: '103 OOS months; effective cross-section about 2.3', note: 'IC CI +/-0.15, MDE about 0.18' },

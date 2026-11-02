@@ -373,6 +373,13 @@ Each answer quotes the CI, so the reader can see how close it came. The headline
 
 (none)
 
-## RESULTS
+## RESULTS — scored 2026-11-02 (run once)
 
-(not run)
+Full write-up: `analysis/output/overnight-vol-regime/RESULTS.md`. Controls: `CONTROLS.md`.
+
+| | b | 95% CI | Placebo p (Holm) | Q1 evidence | Q2 large ruled out | Q3 useful smaller excluded | Verdict |
+|---|---|---|---|---|---|---|---|
+| NQ (3,503 nights) | +0.015 | [−0.052, +0.080] | 0.63 (1.0) | no | yes | cannot be determined | UNDERPOWERED (large effect ruled out) |
+| Gold (1,962 nights) | +0.001 | [−0.101, +0.097] | 0.96 (1.0) | no | yes | cannot be determined | UNDERPOWERED (large effect ruled out) |
+
+The flat expectation held: busy nights earn more in % only in proportion to their risk. Group A/B checks are described only, because Q1 is "no".
