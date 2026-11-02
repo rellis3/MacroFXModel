@@ -37,6 +37,9 @@ export function addDays(date, n) {
   const t = Date.parse(`${date}T00:00:00Z`);
   return Number.isFinite(t) ? new Date(t + n * DAY).toISOString().slice(0, 10) : null;
 }
+/** Saturday or Sunday (UTC calendar date). */
+export const isWeekendDate = d => [0, 6].includes(new Date(`${d}T12:00:00Z`).getUTCDay());
+
 const dayDiff = (a, b) => Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / DAY);
 
 /** Futures-terms strike -> spot-terms price (inverted pairs are quoted foreign-per-USD on CME). */
@@ -133,6 +136,10 @@ export function foldCaptureDays(seriesMap, dayEntries, { invertedPairs = new Set
       const codeOf = e => seriesMap.get(`${pair}|${e}`)?.code ?? null;
       for (const { expiry, code, snap } of expirySnapshotsFromRaw(raw, { date, inverted, minOI })) {
         const key = matchExpiryKey(keysForPair, { expiry, code }, codeOf);
+        // A weekend capture re-serves Friday's book and has carried a second, uncoded copy of each contract whose DTE
+        // counts from Friday, so capture date + DTE lands two days late and would start a phantom series. On a weekend
+        // a column may join a series that already exists but never starts one.
+        if (isWeekendDate(date) && !keysForPair.includes(key)) continue;
         const mapKey = `${pair}|${key}`;
         const { series, changed } = mergeExpirySnapshot(seriesMap.get(mapKey), { pair, expiry: key, code, inverted }, snap);
         seriesMap.set(mapKey, series);
@@ -169,6 +176,7 @@ export function seriesIndexEntry(series) {
  */
 export function expiryView(series, { awayFrac = 0.01, topN = 6, sigmaAnnual = null } = {}) {
   if (!series?.days?.length) return null;
+  if (series.days.every(d => isWeekendDate(d.date))) return null;   // a phantom series folded before the weekend guard
   const inverted = !!series.inverted;
   const firstMap = new Map((series.days[0].ladder || []).map(r => [r[0], r[1] + r[2]]));
   let prevMap = null;

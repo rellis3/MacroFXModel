@@ -39533,7 +39533,9 @@ app.get('/api/swing-map', async (req, res) => {
   const hit = _swingMapCache.get(inst);
   if (hit && Date.now() - hit.at < 30 * 60e3 && req.query.fresh !== '1') return res.json(hit.data);
   try {
-    const bars = await _btFetchD1Aligned(cfg.oanda, 2600);
+    // OANDA 17:00-New-York daily bars carry their OPEN time (Friday's session opens Thursday 21:00 UTC), so the
+    // fetcher's date is the day before the close. Relabel to the close day so "last close" and every date ahead line up.
+    const bars = (await _btFetchD1Aligned(cfg.oanda, 2600)).map(b => ({ ...b, date: new Date(Date.parse(`${b.date}T12:00:00Z`) + 864e5).toISOString().slice(0, 10) }));
     const fc = forecastState.latest?.instruments?.[inst] ?? null;
     const _sg = _swingSigma(bars.map(b => b.close)).at(-1);
     const expiries = await _swingMapExpiries(cfg.oi, _sg > 0 ? _sg * Math.sqrt(252) : null).catch(() => []);

@@ -105,5 +105,18 @@ console.log('[helpers]');
   ok('two days apart is a different expiry', matchExpiryKey(['2026-11-24'], { expiry: '2026-11-26' }) === '2026-11-26');
 }
 
+console.log('[weekend captures: join an existing series, never start a phantom one]');
+{
+  const m = new Map();
+  const fri = { date: '2026-10-30', pairs: { GOLD: raw(4000, [25, 80], [[3900, [10, 500], [0, 0]], [4100, [800, 10], [0, 0]], [4000, [0, 0], [5, 5]]]) } };   // -> 2026-11-24
+  // Sunday: the real column (DTE from Sunday, -> 11-24) and the uncoded copy with DTE from Friday (-> 11-26)
+  const sun = { date: '2026-11-01', pairs: { GOLD: raw(4000, [23, 25, 78], [[3900, [10, 510], [10, 500], [0, 0]], [4100, [800, 10], [800, 10], [0, 0]], [4000, [0, 0], [0, 0], [5, 5]]]) } };
+  foldCaptureDays(m, [fri, sun]);
+  ok('no phantom series two days late', m.size === 1 && m.has('GOLD|2026-11-24'), [...m.keys()].join(' '));
+  ok('the real Sunday column still joins its series', m.get('GOLD|2026-11-24').n === 2);
+  const phantom = { v: 1, pair: 'GOLD', expiry: '2026-11-26', days: [{ date: '2026-10-25', dte: 32, futures: 4000, ladder: [[4000, 5, 5]] }, { date: '2026-11-01', dte: 25, futures: 4000, ladder: [[4000, 6, 5]] }] };
+  ok('a stored weekend-only series reads as nothing', expiryView(phantom) === null);
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
