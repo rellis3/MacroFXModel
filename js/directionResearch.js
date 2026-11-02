@@ -66,7 +66,11 @@ export function volFlags(series) {
   const lr = vvix.map((v, i) => Math.log(v / vxn[i]));
   const dRimp = lr.map((v, i) => (i >= 5 ? v - lr[i - 5] : NaN));
   const n = dates.length - 1;
-  return { date: dates[n], dB: dB[n], dRimp: dRimp[n], dBPct: lastPct(dB), dRimpPct: lastPct(dRimp) };
+  // stress-filter-hold S1: VIX above the 80th percentile (linear, as pandas quantile) of the previous 252 sessions
+  const prev = vix.slice(n - 252, n).sort((a, b) => a - b), pos = 0.8 * (prev.length - 1), lo = Math.floor(pos);
+  const vixP80 = prev.length === 252 ? prev[lo] + (pos - lo) * ((prev[lo + 1] ?? prev[lo]) - prev[lo]) : null;
+  return { date: dates[n], dB: dB[n], dRimp: dRimp[n], dBPct: lastPct(dB), dRimpPct: lastPct(dRimp),
+    vix: vix[n], vixP80, vixStress: vixP80 == null ? null : vix[n] > vixP80 };
 }
 
 const NDX_INSTS = new Set(['nq']);
@@ -157,4 +161,21 @@ export const DIRECTION_SCORE = { model_id: SCORE_MODEL, model_version: 'directio
         note: 'display rule, not a signal: the baseline plus the tested direction arm, in units of the one-day MDE' } };
   } };
 
-export const RESEARCH = [VIX_BETA_CHANGE, VIX_SECOND_DERIVATIVE, COT_STATE_D, POST_FOMC_USD_DRIFT, FX_FACTOR_CARRY, DIRECTION_SCORE];
+// ── stress-vix-p80 (forge/STRESS_FILTER_HOLD_PREREG.md §8). Forward record only; the study banked no edge. ───────────
+// Speaks on NQ / ES / gold when VIX closes above its previous-252-session 80th percentile: p_up = B0 + the in-sample
+// P(up_h | stressed) - P(up_h), frozen from analysis/output/stress-filter-hold/results.json (2004/2007 -> 2026-08-21).
+export const STRESS_EXCESS = {
+  nq: { 1: -0.0013, 5: 0.0125, 20: -0.0053, 60: 0.0234 },
+  es: { 1: -0.0025, 5: 0.0011, 20: -0.0056, 60: -0.0091 },
+  gold: { 1: -0.0025, 5: 0.0076, 20: 0.0491, 60: -0.0334 },
+};
+export const STRESS_VIX_P80 = { model_id: 'stress-vix-p80', model_version: 'stress-vix-p80-v1', prereg: 'forge/STRESS_FILTER_HOLD_PREREG.md',
+  forecast: ({ date, inst, h, baseline, external }) => {
+    const v = external?.vol, x = STRESS_EXCESS[inst]?.[h];
+    if (x == null || !v || v.date !== date || v.vixStress !== true) return null;
+    return { p_up: clip(baseline.p0 + x), mu_log: null, decision: 'NO-TRADE',
+      inputs: { cell: 'stress-vix-p80', vix: v.vix, vix_p80: +v.vixP80.toFixed(2), excess_hit: x,
+        note: 'forward record of a banked non-edge: stressed days were no worse than calm on history (stress-filter-hold)' } };
+  } };
+
+export const RESEARCH = [VIX_BETA_CHANGE, VIX_SECOND_DERIVATIVE, COT_STATE_D, POST_FOMC_USD_DRIFT, FX_FACTOR_CARRY, DIRECTION_SCORE, STRESS_VIX_P80];

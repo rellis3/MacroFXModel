@@ -1,7 +1,7 @@
 // node js/directionResearch.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { lastPct, volFlags, RESEARCH, EXCESS, VIX_BETA_CHANGE, COT_STATE_D, POST_FOMC_USD_DRIFT, FX_FACTOR_CARRY, FX_CARRY_MAP, carryZ, DIRECTION_SCORE } from './directionResearch.js';
+import { lastPct, volFlags, RESEARCH, EXCESS, VIX_BETA_CHANGE, COT_STATE_D, POST_FOMC_USD_DRIFT, FX_FACTOR_CARRY, FX_CARRY_MAP, carryZ, DIRECTION_SCORE, STRESS_VIX_P80, STRESS_EXCESS } from './directionResearch.js';
 import { issueRecord, HORIZONS, INSTRUMENTS } from './directionLedger.js';
 import { parseCboeCsv } from './marketHistory.js';
 
@@ -25,6 +25,19 @@ ok('volFlags: reproduces scripts/vix-signals-forward/score.py on the local copie
   assert.ok(Math.abs(r.dBPct - 0.05952380952380952) < 1e-12);
   assert.ok(Math.abs(r.dRimpPct - 0.23015873015873015) < 1e-12);
   assert.ok(Math.abs(r.dB - -2.5130306274937655) < 1e-9);
+});
+
+ok('stress-vix-p80: speaks only on NQ/ES/gold when VIX is above its previous-252 p80, at B0 + frozen excess', () => {
+  const vol = { date: '2026-11-02', vix: 30, vixP80: 22.5, vixStress: true };
+  const f = STRESS_VIX_P80.forecast({ date: '2026-11-02', inst: 'gold', h: 20, baseline: { p0: 0.55 }, external: { vol } });
+  assert.ok(Math.abs(f.p_up - (0.55 + STRESS_EXCESS.gold[20])) < 1e-12);
+  assert.equal(f.decision, 'NO-TRADE');
+  assert.equal(STRESS_VIX_P80.forecast({ date: '2026-11-02', inst: 'eurusd', h: 1, baseline: { p0: 0.5 }, external: { vol } }), null);
+  assert.equal(STRESS_VIX_P80.forecast({ date: '2026-11-02', inst: 'nq', h: 1, baseline: { p0: 0.55 }, external: { vol: { ...vol, vixStress: false } } }), null);
+  assert.equal(STRESS_VIX_P80.forecast({ date: '2026-11-03', inst: 'nq', h: 1, baseline: { p0: 0.55 }, external: { vol } }), null);
+  const v = Array.from({ length: 253 }, (_, i) => i % 100);           // previous 252 = 0..99 cycled; p80 by linear interpolation
+  const prev = v.slice(0, 252).sort((a, b) => a - b), pos = 0.8 * 251;
+  assert.ok(prev[Math.floor(pos)] <= prev[Math.ceil(pos)]);
 });
 
 ok('volFlags: missing a series gives null, not a guess', () => {
