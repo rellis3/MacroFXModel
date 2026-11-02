@@ -195,6 +195,7 @@ import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';
 import { parseBubaCsv as _parseBubaCsv } from './js/intlYields.js';
 import { buildFlowChain as _buildFlowChain } from './js/flowChainSources.js';
 import { londonDateKey as _londonDateKey, isLondonBoundary as _isLondonBoundary } from './js/forecastAnalyser.js';
+import { liveYieldMove as _clYieldMove, buildLiveNodes as _clBuildNodes } from './js/chainLive.js';
 import { YIELD_LEGS as _YL, YIELD_GROUP as _YL_GROUP, yieldMeta as _ylMeta, buildYieldLeg as _ylBuild, toColumns as _ylCols } from './js/yieldLegs.js';   // gilts, JGBs, bunds daily, for the chain's gap chips
 import { crackHistory as _crackHistory, crackContext as _crackContext } from './js/crackSpread.js';
 import { BAND_REACH_PARAMS as _BAND_REACH_PARAMS } from './js/bandReachParams.js';   // T7b: the band clock and the Asia conditioner, for the digest's board   // the 3-2-1 refining margin (MD files/CRACK_SPREAD.md)
@@ -4719,6 +4720,57 @@ app.get('/api/cog-chart/leg', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// ── Chain, LIVE window (js/chainLive.js): the last completed daily close -> now ──
+// One batch for the page: live OANDA prices vs the last completed daily close for the chain's market chips, the US 2/10/30Y and
+// Bund 10Y yields IMPLIED from the bond CFDs (js/yieldLegs.js method, anchored to the official print), and what derives from
+// them (real yield with breakevens flat, the Bund-UST gap, a four-currency dollar basket). Nothing else has a live price; the
+// page keeps those at their last print and does not judge a link that needs one. Approximate and untested for the chain.
+// Cached 30 s for everyone (about 30 OANDA calls per refresh). Reference instant = close of the last completed daily candle.
+const _CL_MARKETS = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdjpy: 'USD_JPY', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD', gbpusd: 'GBP_USD', eurusd: 'EUR_USD' };
+const _CL_YIELDS = { us2y: 'Y_US2', us10y: 'Y_US10', us30y: 'Y_US30', bund10: 'Y_DE10' };
+let _clCache = { at: 0, v: null, p: null }; const _clDur = {};
+async function _clMarket(sym) {
+  const [d, m] = await Promise.all([fetchIntradayOnce(sym, 'D', { count: 3 }), fetchIntradayOnce(sym, 'M1', { count: 3, incomplete: true })]);
+  const ref = d.at(-1), px = m.at(-1);
+  if (!ref || !px) throw new Error('no candles');
+  return { price: px.close, ref: ref.close, refOpen: ref.time, asOf: new Date(px.time * 1000).toISOString(), closed: Date.now() / 1000 - px.time > 1800 };
+}
+async function _clYield(name, tRef, nowS) {
+  const s = _YL[name];
+  let D = s.D; const dc = _clDur[name];
+  if (dc && Date.now() - dc.at < 6 * 3600_000) D = dc.D;
+  else { try { const L = await _ylLeg(name); if (L?.duration?.fitted) D = L.duration.D; } catch { /* the yieldLegs fallback duration */ } _clDur[name] = { at: Date.now(), D }; }
+  const official = (await _ylOfficial(s.daily)).slice(-12);
+  const from = new Date(Date.now() - 8 * 86400e3).toISOString().slice(0, 10);
+  const [b5, m1] = await Promise.all([fetchIntraday(s.cfd, 'M5', { from }), fetchIntradayOnce(s.cfd, 'M1', { count: 3, incomplete: true })]);
+  const bars = b5.map(b => ({ t: b.time, o: b.open, h: b.high, l: b.low, c: b.close })), px = m1.at(-1);
+  if (!px || !bars.length) throw new Error('no CFD bars');
+  const mv = _clYieldMove({ bars, step: 300, official, fix: s.fix, D, pNow: px.close, now: nowS, tRef });
+  if (!mv) throw new Error('no anchor');
+  return { ...mv, D, asOf: new Date(px.time * 1000).toISOString(), closed: nowS - px.time > 1800 };
+}
+async function _chainLive() {
+  if (_clCache.v && Date.now() - _clCache.at < 30_000) return _clCache.v;
+  if (_clCache.p) return _clCache.p;
+  _clCache.p = (async () => {
+    const errors = {}, nowS = Math.floor(Date.now() / 1000);
+    const mk = await Promise.all(Object.entries(_CL_MARKETS).map(async ([k, sym]) => [k, await _clMarket(sym).catch(e => { errors[k] = `${sym}: ${e.message}`; return null; })]));
+    const markets = Object.fromEntries(mk.filter(([, v]) => v));
+    const tRef = markets.eurusd ? markets.eurusd.refOpen + 86400 : (Object.values(markets)[0]?.refOpen ?? nowS) + 86400;
+    const ys = await Promise.all(Object.entries(_CL_YIELDS).map(async ([k, nm]) => [k, await _clYield(nm, tRef, nowS).catch(e => { errors[k] = `${nm}: ${e.message}`; return null; })]));
+    const yields = Object.fromEntries(ys.filter(([, v]) => v));
+    const nodes = _clBuildNodes({ markets, yields });
+    const v = { ok: true, asOf: new Date().toISOString(), refAt: new Date(tRef * 1000).toISOString(), nodes, errors,
+      method: { markets: 'OANDA last M1 price vs the close of the last completed D candle', yields: 'US 2/10/30Y and Bund 10Y: official yield moved by the bond CFD price change through a fitted duration (js/yieldLegs.js); approximate, ~1-2bp drift', real: '10Y implied move, breakevens assumed flat', dollar: 'EUR/JPY/GBP/CAD basket, ICE DXY weights renormalised', notLive: 'breakevens, credit spreads, funding, MOVE, VIX, crack, sector ETFs, JGB and gilt gaps: no live price here' } };
+    _clCache = { at: Date.now(), v, p: null }; return v;
+  })().catch(e => { _clCache.p = null; throw e; });
+  return _clCache.p;
+}
+app.get('/api/chain-live', async (_req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not configured' });
+  try { res.set('Cache-Control', 'no-store'); res.json(await _chainLive()); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // ── Spread episodes (js/spreadEpisodes.js; forge/SPREAD_EPISODES_PREREG.md, results analysis/output/spread-episodes/) ──
 // The tested zig-zag rules run live: Case 1 = SOFR Sep26 - Euribor Mar27 (the cog-chart legs, laptop-pushed) vs NAS100 M15;
 // Case 2 = (US 2Y + 10Y)/2 (FRED, via the rates cache) vs EURUSD daily. Every confirmed turn from 2026-10-20 goes into the
@@ -5232,9 +5284,11 @@ svcTimeout('ratesRegime', () => _ratesRegimeTick({ silent: true }).catch(e => co
 // viewer -- and regenerable with ?force=1.
 const _CHAIN_READ_TTL_MS = 30 * 60_000;
 // One cache entry per window (1 / 5 / 20 days): each is its own paid read.
-const _CHAIN_READ_WINDOWS = [1, 5, 20];
-const _chainWin = w => { const n = Number(w); return _CHAIN_READ_WINDOWS.includes(n) ? n : 20; };
-const _chainReadCaches = { 1: { at: 0, data: null, key: '' }, 5: { at: 0, data: null, key: '' }, 20: { at: 0, data: null, key: '' } };
+const _CHAIN_READ_WINDOWS = [1, 5, 20, 'live'];
+const _chainWin = w => { if (w === 'live') return 'live'; const n = Number(w); return _CHAIN_READ_WINDOWS.includes(n) ? n : 20; };
+const _chainReadCaches = { 1: { at: 0, data: null, key: '' }, 5: { at: 0, data: null, key: '' }, 20: { at: 0, data: null, key: '' }, live: { at: 0, data: null, key: '' } };
+// The live read goes stale in minutes, not half hours: 10 min.
+const _chainReadTtl = win => (win === 'live' ? 10 * 60_000 : _CHAIN_READ_TTL_MS);
 // The last read persists in KV (chain_read_v1) so a reader coming back hours
 // later, or after a redeploy, still sees the last one written -- with its time
 // stamp, so "last refresh 18:19" is honest. The day's earlier reads ride along
@@ -5279,8 +5333,10 @@ async function _warmChainRead() {   // after kv.load(): the first GET after a de
 }
 function buildChainReadPrompt(s, headlines) {
   const win = _chainWin(s.window);
-  const wd = win === 1 ? '1-day' : `${win}-day`;
-  const winRule = win === 20 ? '' : `
+  const wd = win === 'live' ? 'live' : win === 1 ? '1-day' : `${win}-day`;
+  const winRule = win === 'live' ? `
+THIS IS THE LIVE READ: an INTRADAY snapshot, from the last completed daily close (17:00 New York) to the snapshot time above. Build the story from the live moves only; do not describe 1-, 5- or 20-day moves as what is happening now. Market prices (gold, oil, copper, FX, bitcoin, the indices) are live. The US 2Y/10Y/30Y yields, the real yield, the Bund-Treasury gap and the dollar are IMPLIED from bond CFDs and an FX basket: approximate (about 1-2bp of drift), so never lean on a yield move of a few basis points. Anything marked 'last print' or NOT JUDGED has no live price: do not describe it as moving today, do not chain through a link marked NOT JUDGED, and say once which links you could not judge. A live read is a snapshot of the move so far, not the close. The 20-day tested hit-rates in the ledger are 20-day findings: cite them as such, never as a live result.
+` : win === 20 ? '' : `
 THIS IS THE ${wd.toUpperCase()} READ. Build the story from the ${wd} column of WHAT MOVED and the ${wd} chain below; do not describe 20-day moves as today's move; say what changed over ${win === 1 ? 'the last day' : `${win} days`}.${win === 1 ? " A 1-day read is today's session impact: what the chain did in this session." : ''} The 20-day tested hit-rates in the ledger are 20-day findings: cite them as such, never as a ${wd} result.
 `;
   const hl = (headlines ?? []).slice(0, 14).map(h => `  [${h.ticker}] ${_redactFedChairName(h.title)}`).join('\n');
@@ -5290,7 +5346,7 @@ THIS IS THE ${wd.toUpperCase()} READ. Build the story from the ${wd} column of W
 WHAT MOVED (level, then change over 1 day / 5 days / 20 days; rates in basis points)
 ${s.moved || '  not available'}
 
-THE CHAIN (textbook links judged on ${win}-day moves at both ends: HOLDING = moved together as the textbook says, BROKEN = both moved the wrong way round, QUIET = one end inside its noise floor)
+THE CHAIN (textbook links judged on ${win === 'live' ? 'live moves since the last close' : `${win}-day moves`} at both ends: HOLDING = moved together as the textbook says, BROKEN = both moved the wrong way round, QUIET = one end inside its noise floor)
 ${s.chain || '  not measured'}
 
 RATES, SPLIT (the 10-year move decomposed into real yield vs inflation compensation)
@@ -5299,7 +5355,7 @@ ${s.ratesSplit || '  not interpretable today'}
 POLICY PATH PRICED (2-year vs the policy rate)
 ${s.policy || '  not available'}
 
-OIL, METALS, CRYPTO, FX (live oil; ${win}-day changes elsewhere)
+OIL, METALS, CRYPTO, FX (${win === 'live' ? 'live, since the last close' : `live oil; ${win}-day changes elsewhere`})
 ${s.assets || '  not available'}
 
 RISK MOOD
@@ -5339,7 +5395,7 @@ HOW TO WRITE IT (style):
 - Front end versus long end: the 2-year is the vote on what the central bank does next; the 10- and 30-year are the vote on inflation and credibility. Say which end is moving and what that says.
 - Priced-in logic: if the market has already priced a move, say what the SURPRISE would be. Use the POLICY PATH line; if it is missing, do not guess.
 - Surface versus underneath: if the indices are quiet while the chain is loud, say so.
-- Numbers inline, plain: "10-year up 21 basis points over ${win === 1 ? 'the day' : `${win} days`}", "gold down 5.5%". Never round a number to a different value than the snapshot gives. Never invent one.
+- Numbers inline, plain: "10-year up 21 basis points ${win === 'live' ? 'since the last close' : `over ${win === 1 ? 'the day' : `${win} days`}`}", "gold down 5.5%". Never round a number to a different value than the snapshot gives. Never invent one.
 - Short sentences. Contractions fine. No jargon without a four-word gloss the first time ("off-the-run bonds -- older, harder to move").
 - Land it on FX: which majors this chain is pushing, and through which leg (rates, oil, risk). Name pairs. No entries, stops, sizes or products, ever. No calls to action.
 - Never name a central-bank official; use the role. Never present positioning (COT, retail book) as a forecast.
@@ -5578,7 +5634,7 @@ app.get('/api/chain-read', async (req, res) => {
   try { const st = await _loadChainReadStore(win); if (st?.latest) { if (!latest || Date.parse(st.latest.generatedAt) > (Date.parse(latest.generatedAt) || 0)) latest = st.latest; history = st.history; } } catch { /* memory copy will do */ }
   if (!latest) return res.json({ ok: false, none: true });
   const ageMs = Date.now() - (Date.parse(latest.generatedAt) || 0);
-  res.json({ ok: true, cached: true, fresh: ageMs < _CHAIN_READ_TTL_MS, ageMin: Math.round(ageMs / 60_000), ...latest,
+  res.json({ ok: true, cached: true, fresh: ageMs < _chainReadTtl(win), ageMin: Math.round(ageMs / 60_000), ...latest,
     window: win, earlier: history.map(h => ({ generatedAt: h.generatedAt, hook: h.read?.hook ?? null })) });
 });
 app.post('/api/chain-read', async (req, res) => {
@@ -5593,7 +5649,7 @@ app.post('/api/chain-read', async (req, res) => {
     snapshot.window = win;
     const ck = `${String(snapshot.asOf ?? '').slice(0, 13)}${win === 20 ? '' : `|w${win}`}`;   // the 20-day key stays as it was, so a warmed read still matches
     const cache = _chainReadCaches[win];
-    if (!force && cache.data && cache.key === ck && Date.now() - cache.at < _CHAIN_READ_TTL_MS)
+    if (!force && cache.data && cache.key === ck && Date.now() - cache.at < _chainReadTtl(win))
       return res.json({ ok: true, cached: true, window: win, ...(cache.data) });
     let headlines = [];
     try { headlines = await _fetchYahooHeadlines(); } catch { /* prompt tolerates absence */ }

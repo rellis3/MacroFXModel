@@ -46,8 +46,16 @@ export const CHAIN_WINDOW_DAYS = 20;
 // days they are scaled by sqrt(days/20) (random-walk scaling). That scaling is an assumption, not a
 // tested result, and the tested hit-rates quoted in the link texts are 20-day windows only.
 export const CHAIN_WINDOWS = [1, 5, 20];
-export const scaledFloor = (node, win = CHAIN_WINDOW_DAYS) => node.floor * Math.sqrt(win / CHAIN_WINDOW_DAYS);
-const _winWord = w => (w === 1 ? '1 day' : `${w} days`);
+// 'live' is the fourth window: the last COMPLETED daily close to now (js/chainLive.js, /api/chain-live). It takes the
+// 1-day floors (sqrt(1/20)), because it is part of a day. A node priced from a bond CFD or an FX basket is IMPLIED
+// (approximate, ~1-2bp drift), so an implied bp node never gets a floor under LIVE_MIN_IMPLIED_BP. A node with no live
+// price (breakevens, credit, funding...) stays at its last print and a link needing it is NOT JUDGED ('notlive').
+export const CHAIN_WINDOW_KEYS = ['live', 1, 5, 20];
+export const LIVE_MIN_IMPLIED_BP = 3;
+export const scaledFloor = (node, win = CHAIN_WINDOW_DAYS) => node.floor * Math.sqrt((win === 'live' ? 1 : win) / CHAIN_WINDOW_DAYS);
+const _winWord = w => (w === 'live' ? 'the live move' : w === 1 ? '1 day' : `${w} days`);
+const _over = w => (w === 'live' ? 'since the last close' : `over ${_winWord(w)}`);
+const _short = w => (w === 'live' ? 'live' : w === 1 ? '1-day' : `${w}-day`);
 
 // unit: how the 20d change is expressed. pct = percent change of a price;
 // bp = change in a percent-quoted rate ×100; pt = change in a level.
@@ -526,11 +534,13 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
     const n = nodes[key]; const v = vals[key];
     if (!n) return null;
     if (!v || v.delta == null || !Number.isFinite(v.delta)) return { key, label: n.label, unit: n.unit, delta: null, moved: false, dir: null, text: '—', asOf: null, window };
-    const floor = scaledFloor(n, window);
+    const basis = v.basis ?? null;
+    let floor = scaledFloor(n, window);
+    if (window === 'live' && n.unit === 'bp' && typeof basis === 'string' && basis.startsWith('implied')) floor = Math.max(floor, LIVE_MIN_IMPLIED_BP);
     const moved = Math.abs(v.delta) >= floor;
     // a scaled floor is a smaller number: keep a decimal so it never prints as ±0
     const fdp = scaled && floor < 10 ? Math.max(n.dp, floor < 1 ? 2 : 1) : n.dp;
-    return { key, label: n.label, unit: n.unit, delta: v.delta, last: v.last ?? null, moved, dir: _dir(v.delta), text: _fmt(v.delta, n.unit, n.dp), asOf: v.asOf ?? null, floorText: _fmt(floor, n.unit, fdp).replace('+', '±'), window };
+    return { key, label: n.label, unit: n.unit, delta: v.delta, last: v.last ?? null, moved, dir: _dir(v.delta), text: _fmt(v.delta, n.unit, n.dp), asOf: v.asOf ?? null, refDate: v.refDate ?? null, basis, closed: !!v.closed, floorText: _fmt(floor, n.unit, fdp).replace('+', '±'), window };
   };
   return links.map(l => {
     const a = end(l.from), b = end(l.to);
@@ -538,10 +548,17 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
     // What the textbook expected the TO end to do, given what the FROM end did.
     const expected = (a && a.moved) ? (l.sign > 0 ? a.dir : a.dir === 'up' ? 'down' : 'up') : null;
     if (!a || !b || a.delta == null || b.delta == null) { verdict = 'unmeasured'; read = 'A series this link needs is not loaded, so it is not judged.'; }
+    else if (window === 'live' && (a.basis === 'last-print' || b.basis === 'last-print')) {
+      // a link is only judged live when BOTH ends are priced live (or implied from a live price)
+      verdict = 'notlive';
+      const stale = a.basis === 'last-print' ? a : b;
+      read = `${stale.label} has no live price (its last print is ${stale.asOf ?? 'undated'}), so this link is not judged live. Switch to 1D to judge it on closes.`;
+      punch = `${stale.label}: last print, not live`;
+    }
     else if (!a.moved || !b.moved) {
       verdict = 'quiet';
       const still = !a.moved && !b.moved ? 'neither end' : !a.moved ? a.label : b.label;
-      read = `${still === 'neither end' ? 'Neither end has' : `${still} has not`} moved past its noise floor over ${_winWord(window)}, so there is nothing to judge the link on.`;
+      read = `${still === 'neither end' ? 'Neither end has' : `${still} has not`} moved past its noise floor ${_over(window)}, so there is nothing to judge the link on.`;
       punch = !a.moved ? `${a.label} inside its floor (${a.floorText})` : `${b.label} inside its floor (${b.floorText})`;
     }
     else {
@@ -554,8 +571,8 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
         // the mechanism and hit-rate sentences are written and tested on 20-day windows: do not
         // present them as if they described this shorter one
         read = agree
-          ? `Both ends moved the textbook way over ${_winWord(window)}. The hit-rates quoted for this link on this desk are 20-day windows; there is no ${_winWord(window).replace(' days', '-day').replace('1 day', '1-day')} test of it.`
-          : `Both ends moved, the wrong way round, over ${_winWord(window)}. The mechanism and hit-rates for this link are written for 20-day windows; a ${window === 1 ? '1-day' : `${window}-day`} break can be noise, and none of it has been tested here.`;
+          ? `Both ends moved the textbook way ${_over(window)}. The hit-rates quoted for this link on this desk are 20-day windows; there is no ${_short(window)} test of it.`
+          : `Both ends moved, the wrong way round, ${_over(window)}. The mechanism and hit-rates for this link are written for 20-day windows; a ${_short(window)} break can be noise, and none of it has been tested here.`;
         punch = '';
       }
     }
@@ -573,15 +590,16 @@ export const CHAIN_DATE_GAP_NOTE_DAYS = 3;
 
 /** Counts and a one-line headline over an evaluated chain. */
 export function summariseChain(links, window = CHAIN_WINDOW_DAYS) {
-  const n = { holding: 0, broken: 0, quiet: 0, unmeasured: 0 };
+  const n = { holding: 0, broken: 0, quiet: 0, unmeasured: 0, notlive: 0 };
   for (const l of links) n[l.verdict] = (n[l.verdict] ?? 0) + 1;
   const judged = n.holding + n.broken;
   const brokenIds = links.filter(l => l.verdict === 'broken').map(l => l.id);
   const brokenShort = links.filter(l => l.verdict === 'broken').map(l => l.short ?? l.id);
   let headline;
-  if (judged === 0) headline = n.unmeasured === links.length ? 'Nothing measured yet.' : `Quiet: no link has both ends moving over ${_winWord(window)}. The textbook is not being tested today.`;
+  if (judged === 0) headline = n.unmeasured === links.length ? 'Nothing measured yet.' : `Quiet: no link has both ends moving ${_over(window)}. The textbook is not being tested ${window === 'live' ? 'live' : 'today'}.`;
   else if (n.broken === 0) headline = `${n.holding} of ${judged} testable link${judged === 1 ? '' : 's'} holding. The textbook is working — first-order reads are enough today.`;
   else headline = `${n.broken} of ${judged} testable link${judged === 1 ? '' : 's'} broken: ${brokenShort.join(', ')}. That is where the story is.`;
+  if (window === 'live' && n.notlive) headline += ` ${n.notlive} link${n.notlive === 1 ? '' : 's'} need${n.notlive === 1 ? 's' : ''} a series with no live price and ${n.notlive === 1 ? 'is' : 'are'} not judged.`;
   return { ...n, judged, brokenIds, brokenShort, headline };
 }
 
@@ -590,7 +608,9 @@ export function chainForPrompt(links, window = CHAIN_WINDOW_DAYS) {
   const lines = [];
   for (const l of links) {
     if (l.verdict === 'unmeasured') continue;
-    const ends = `${l.a.label} ${l.a.text} → ${l.b.label} ${l.b.text}`;
+    const tag = e => (window !== 'live' ? '' : e.basis === 'last-print' ? ' (last print, NOT live)' : typeof e.basis === 'string' && e.basis.startsWith('implied') ? ' (implied, approximate)' : '');
+    const ends = `${l.a.label} ${l.a.text}${tag(l.a)} → ${l.b.label} ${l.b.text}${tag(l.b)}`;
+    if (l.verdict === 'notlive') { lines.push(`- ${l.textbook}: NOT JUDGED (${ends}; an end has no live price)`); continue; }
     if (l.verdict === 'quiet') { lines.push(`- ${l.textbook}: QUIET (${ends})`); continue; }
     const gap = l.dateGapDays > CHAIN_DATE_GAP_NOTE_DAYS ? ` [ends printed ${l.dateGapDays} days apart: ${l.a.asOf} vs ${l.b.asOf}]` : '';
     lines.push(`- ${l.textbook}: ${l.verdict.toUpperCase()} (${ends})${gap}${l.verdict === 'broken' ? ` — ${l.read}` : ''}`);

@@ -1,6 +1,6 @@
 // Synthetic tests for js/macroChain.js. No network, no clock.
 //   node js/macroChain.test.mjs
-import { CHAIN_NODES, CHAIN_LINKS, nodeDelta, evaluateChain, summariseChain, chainForPrompt, CHAIN_WINDOW_DAYS, CHAIN_WINDOWS, scaledFloor } from './macroChain.js';
+import { CHAIN_NODES, CHAIN_LINKS, nodeDelta, evaluateChain, summariseChain, chainForPrompt, CHAIN_WINDOW_DAYS, CHAIN_WINDOWS, CHAIN_WINDOW_KEYS, scaledFloor } from './macroChain.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -169,6 +169,47 @@ console.log('[windows - 1 / 5 / 20 day reads]');
   ok('quiet text names the window', /over 1 day/.test(evaluateChain({ oil: v(0), bei: v(0) }, CHAIN_LINKS, CHAIN_NODES, 1).find(l => l.id === id).read));
   ok('summary headline names the window', /over 5 days/.test(summariseChain(evaluateChain({}, CHAIN_LINKS, CHAIN_NODES, 5).map(l => ({ ...l, verdict: 'quiet' })), 5).headline));
   ok('nodeDelta honours the window', nodeDelta(series(80, 88), CHAIN_NODES.oil, 1).delta < nodeDelta(series(80, 88), CHAIN_NODES.oil, 5).delta);
+}
+
+console.log('[live window - last completed close -> now]');
+{
+  const lv = (delta, basis = 'live', extra = {}) => ({ delta, last: 1, asOf: '2026-11-02T10:00:00Z', basis, ...extra });
+  const pr = delta => ({ delta, last: 1, asOf: '2026-10-30', basis: 'last-print' });
+  const L = (vals) => evaluateChain(vals, CHAIN_LINKS, CHAIN_NODES, 'live');
+  const byId = (ls, id) => ls.find(l => l.id === id);
+  ok('CHAIN_WINDOW_KEYS lists live first', JSON.stringify(CHAIN_WINDOW_KEYS) === '["live",1,5,20]');
+  ok('live takes the 1-day floor', Math.abs(scaledFloor(CHAIN_NODES.bei, 'live') - scaledFloor(CHAIN_NODES.bei, 1)) < 1e-12);
+  // both ends live: judged like any other window, with the generic read and no 20-day statistic
+  const hold = byId(L({ real: lv(-6, 'implied, breakevens assumed flat'), gold: lv(1.2) }), 'real-gold');
+  ok('two live ends are judged: real yields down, gold up holds', hold.verdict === 'holding' && hold.window === 'live');
+  ok('the live read names the window and quotes no 20-day statistic', /since the last close/.test(hold.read) && /no live test/.test(hold.read) && !/\d+% of 20-day/.test(hold.read) && hold.punch === '' && hold.evidence.length === 0, hold.read);
+  const brk = byId(L({ real: lv(-6, 'implied, breakevens assumed flat'), gold: lv(-1.2) }), 'real-gold');
+  ok('two live ends the wrong way round are broken', brk.verdict === 'broken' && /since the last close/.test(brk.read));
+  // the 3bp floor on implied bp nodes only
+  const small = byId(L({ real: lv(2, 'implied, breakevens assumed flat'), gold: lv(-1.2) }), 'real-gold');
+  ok('an implied 2bp move is under the 3bp floor, so quiet', small.verdict === 'quiet' && /^±3(\.0)?bp$/.test(small.a.floorText), small.a.floorText);
+  ok('the same 2bp with no implied tag uses the scaled floor (1.8bp), so it counts', byId(L({ real: lv(2, 'live'), gold: lv(-1.2) }), 'real-gold').a.moved === true);
+  ok('an implied 4bp move clears the 3bp floor', byId(L({ real: lv(-4, 'implied, breakevens assumed flat'), gold: lv(1.2) }), 'real-gold').verdict === 'holding');
+  ok('a market chip (pct) never gets the 3bp floor', !/bp$/.test(byId(L({ real: lv(-6, 'implied'), gold: lv(0.3) }), 'real-gold').b.floorText));
+  // mixed basis: an end at its last print means NOT JUDGED, whatever it did
+  const mixed = byId(L({ oil: lv(1.5), bei: pr(9) }), 'oil-bei');
+  ok('a last-print end makes the link notlive, not holding/broken/quiet', mixed.verdict === 'notlive' && /no live price/.test(mixed.read) && /last print, not live/.test(mixed.punch), mixed.read);
+  ok('even a big last-print move is not judged', byId(L({ oil: lv(5), bei: pr(-40) }), 'oil-bei').verdict === 'notlive');
+  ok('missing data still reads unmeasured, not notlive', byId(L({ oil: lv(1.5) }), 'oil-bei').verdict === 'unmeasured');
+  ok('the same last-print values ARE judged at 1d (the rule is a live-window rule only)', byId(evaluateChain({ oil: pr(5), bei: pr(9) }, CHAIN_LINKS, CHAIN_NODES, 1), 'oil-bei').verdict === 'holding');
+  const ends = L({ oil: lv(1.5), bei: pr(9) }).find(l => l.id === 'oil-bei');
+  ok('ends carry basis and closed', ends.a.basis === 'live' && ends.b.basis === 'last-print' && ends.a.closed === false);
+  ok('closed flag passes through', L({ gold: lv(0, 'live', { closed: true }), real: lv(-6, 'implied') }).find(l => l.id === 'real-gold').b.closed === true);
+  // summary and prompt
+  const ls = L({ real: lv(-6, 'implied, breakevens assumed flat'), gold: lv(1.2), oil: lv(1.5), bei: pr(9) });
+  const sm = summariseChain(ls, 'live');
+  ok('summary counts notlive and says so in the headline', sm.notlive >= 1 && /not judged/.test(sm.headline) && /holding/.test(sm.headline), sm.headline);
+  const sq = summariseChain(L({ oil: lv(0), bei: lv(0) }), 'live');
+  ok('quiet headline reads since the last close', /since the last close/.test(sq.headline), sq.headline);
+  const pt = chainForPrompt(ls, 'live');
+  ok('prompt tags implied and last-print ends and lists NOT JUDGED', /\(implied, approximate\)/.test(pt) && /NOT JUDGED/.test(pt) && /last print, NOT live/.test(pt), pt);
+  ok('a last-print tag does not change a 20-day verdict (the rule is live-only)', byId(evaluateChain({ oil: pr(5), bei: pr(9) }), 'oil-bei').verdict === 'holding');
+  ok('no summary at 20d gains a notlive sentence', !/not judged/.test(summariseChain(evaluateChain({ oil: { delta: 5 }, bei: { delta: 9 } }), 20).headline));
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
