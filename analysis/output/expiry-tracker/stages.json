@@ -1,0 +1,37 @@
+{
+ "count": {
+  "rows_hash": "5da99f3f6f43c80d",
+  "power": {
+   "P1": {
+    "n": 379,
+    "sd_R_control": 0.9271027076625032,
+    "rows_per_month": 5.338028169014085,
+    "icc": 0.0,
+    "deff": 1.0,
+    "mde": 0.15408601020968024,
+    "bar": 0.25,
+    "verdict": "POWERED"
+   },
+   "P2": {
+    "n": 344,
+    "sd_R_control": 0.9342798758431753,
+    "rows_per_month": 4.845070422535211,
+    "icc": 0.0,
+    "deff": 1.0,
+    "mde": 0.16298691464190077,
+    "bar": 0.25,
+    "verdict": "POWERED"
+   },
+   "P3": {
+    "n": 29,
+    "sd_R_control": 0.8400989354710384,
+    "rows_per_month": 1.380952380952381,
+    "icc": 0.0,
+    "deff": 1.0,
+    "mde": 0.5047617076908059,
+    "bar": 0.25,
+    "verdict": "UNDERPOWERED"
+   }
+  }
+ }
+}
