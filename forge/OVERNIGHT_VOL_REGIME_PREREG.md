@@ -1,14 +1,19 @@
 # overnight-vol-regime — does the overnight hold's risk-adjusted return change with the volatility regime it is entered in?
 
-**DRAFT for owner review, 2026-11-02. Not yet registered. No conditional outcome has been computed.**
+**REGISTERED 2026-11-02 on owner approval.** The draft was reviewed and the owner asked for three clarifications, which are written in below:
+- why the ±0.05 and ±0.15 thresholds (§5.2);
+- primary evidence vs credibility checks (§4);
+- the three-question report (§5.3).
 
-What has been computed so far, all of it unconditional, which the template allows:
+Owner decisions on the draft:
+- extend NQ to 2009, subject to the overlap and data-quality checks;
+- gold uses the existing 2016+ sample, with no extra history pulled.
+
+No conditional outcome had been computed when this was committed. Before registration only these were computed, all unconditional, as the template allows:
 - per-night SDs;
 - the unconditional SD of the vol-normalised return;
-- the autocorrelation of the volatility percentile (which uses prices only);
+- the autocorrelation of the volatility percentile (prices only);
 - data coverage.
-
-Registration happens when the owner approves this text. The approval date is then written here and committed **before** any script runs.
 
 | | |
 |---|---|
@@ -79,8 +84,8 @@ If check 1 fails, the extension is dropped and NQ runs on 2016+ only (the power 
 | Regimes covered | adds 2010 flash crash, 2011 US downgrade, 2015 yuan shock, and a long low-vol 2013–14 stretch; still no 2008 (the file starts 2008-12) |
 | Gross | the same instrument economically (futures = CFD gross to 0.0002% a night on the overlap) |
 | Net | only the futures cost model exists before 2016. The CFD net (spread + swap) is 2016+ only, and 2009–12 Globex spreads were wider than one tick, so the pre-2016 futures net is optimistic. This is why gross is primary. |
-| Stability check | the split point between the two data sources is also the era split (§4 gate). A source artefact would show as the two eras disagreeing. |
-| Not done | gold: no local gold minute data before 2015-11 (OANDA M1 and the GC futures both start there). Gold stays at 1,962 nights. Owner option: pull OANDA mid M1 for XAU back to ~2005 (free API, gross only) before registering. |
+| Stability check | the split point between the two data sources is also the era split (§4.2 check A1). A source artefact would show as the two eras disagreeing. |
+| Not done | gold: no local gold minute data before 2015-11 (OANDA M1 and the GC futures both start there). Gold stays at 1,962 nights. **Owner decision 2026-11-02:** no extra gold history for now. First establish whether this research produces useful evidence. |
 
 ### 3.3 The volatility variable (known at 20:00 UK entry)
 
@@ -131,16 +136,43 @@ Two scored tests, Holm at α 0.05. Everything else is described.
 | Described | raw-% slope | positive, ≈ +0.03 to +0.06% a night across the full range, from scale alone; below what this design can see |
 | Described | costs | CFD spread higher in the top quartile; cost as % of gross roughly constant or lower, because gross moves scale up |
 
-**THE GATE (for VALIDATED on H1 or H2), all of:**
-1. Holm-adjusted placebo p < 0.05, and the bootstrap CI excludes 0.
-2. **Same sign in both eras:**
-   - NQ: 2009-01 → 2016-10 (futures extension) vs 2016-10 → 2026-08 (banked);
-   - gold: 2016-10 → 2021-08 vs 2021-08 → 2026-08.
-3. **Not a handful of nights:** the sign holds with the 10 largest |z| nights removed. The number of nights it takes to flip the sign is reported.
-4. **Not one episode:** the sign holds with 2020 and 2022 removed.
-5. **Gradual:** the quartile mean z moves in the slope's direction in at least 2 of the 3 steps.
-6. **Not a simple-feature effect:** with the previous 5-day return and weekday added as controls, b keeps its sign and at least half its size.
-7. **Not one definition:** at least 2 of the 3 secondary vol definitions give the same sign.
+### 4.1 Primary evidence: this alone answers "is there an effect?"
+
+For each instrument, the primary conclusion comes from **one statistic and two agreeing measures of its uncertainty**:
+- **P1.** The slope b of z on x, on all nights.
+- **P2.** The 95% month-block bootstrap CI for b.
+- **P3.** The label-shift placebo p, Holm-adjusted across H1 and H2.
+
+**Evidence of an effect** means the Holm-adjusted placebo p < 0.05 **and** the CI excludes 0. Whether a large or a useful effect is ruled out is read from the same CI (§5.2).
+
+Nothing else feeds this. The checks below cannot make an insignificant slope significant, and they don't count as further independent tests. They are not seven separate pass/fail gates.
+
+### 4.2 Credibility checks: is an effect, if found, believable and general?
+
+These are only judged if P1–P3 show an effect. Each has one pre-set reading. They come in two groups, with different roles.
+
+**Group A: concentration.** Does the effect depend on a few nights, one period or one data source? These test the owner's "a few trades or one period" concern directly. They can **demote** the verdict.
+
+| # | Check | Reading |
+|---|---|---|
+| A1 | **Eras.** b in each era. NQ: 2009-01 → 2016-10 (futures extension) vs 2016-10 → 2026-08 (banked). Gold: 2016-10 → 2021-08 vs 2021-08 → 2026-08. | **Contradicts** if one era has the opposite sign **and** its own CI excludes the full-sample b. **Uninformative** if the sign is opposite but the CI includes the full-sample b (a half-sample is noisy). **Consistent** otherwise. For NQ this also tests the data-source join. |
+| A2 | **A few nights.** b with the 10 largest \|z\| nights removed, plus the number of nights needed to flip the sign. | **Concentrated** if removing them leaves less than half of b, or flips its sign. |
+| A3 | **One episode.** b with 2020 and 2022 removed. A leave-one-year-out range is described. | **Concentrated** if less than half of b remains, or its sign flips. |
+
+**Group B: character.** What kind of effect is it? These are reported, and they qualify how the result is read and what follows (§8). **They do not change the verdict word.**
+
+| # | Check | Reading |
+|---|---|---|
+| B1 | **Shape.** Quartile mean z moves with the slope in ≥ 2 of 3 steps. | gradual, or a threshold/one-bucket effect |
+| B2 | **Simpler features.** b with the previous 5-day return and the weekday as controls. | **Explained by recent returns** if b loses more than half its size or flips sign. That would point to experiment 2 (previous-session return) as the real variable. |
+| B3 | **Definition.** The sign of b under the 3 secondary vol definitions. | **General** if ≥ 2 of 3 agree in sign; **RV20-specific** otherwise |
+
+**How they combine into the verdict:**
+- **VALIDATED** = P1–P3 show an effect, and no Group A check reads *contradicts* or *concentrated*.
+  - **Credibility high:** Group B is also all supportive.
+  - **Credibility moderate:** one or more Group B items isn't. That item is named in the headline.
+- **Effect present but concentrated** = P1–P3 show an effect, but a Group A check fails. **UNDERPOWERED**, with that check named. The pattern is recorded, but not as a relationship.
+- **No effect shown** = P1–P3 don't show one. Groups A and B are still reported, as description only. The verdict comes from the CI (§5.2).
 
 **THE MIRROR:** both signs are live hypotheses (§1), so a significant negative or positive b is reported as what it is. Neither becomes a trading rule here (§8).
 
@@ -165,37 +197,146 @@ For scale, the **average** gross edge is about 0.05 z-units (NQ ≈ 0.054% a nig
 
 `--mode controls` reports the placebo MDE and a positive control: plant b = 0.15 on shifted labels and record the detection rate. The owner reviews these before scoring.
 
-### 5.2 Underpowered vs too small to matter
+### 5.2 The two thresholds, and why these values
 
-A result that isn't significant can mean two very different things. **The confidence interval tells them apart, not the p-value.** "p = 0.4" looks the same in both cases.
+#### What b measures
 
-Two sizes are fixed **now**, before any data:
-- **Smallest effect of interest: |b| = 0.05.** This is a regime relationship that moves the expected return by about the size of the whole edge from the quietest to the busiest nights. For example, the edge is gone in one regime and doubled in the other. Anything smaller would not change how the trade is sized or filtered, even if it is real.
-- **Large effect: |b| = 0.15.** This is the size a simple on/off regime filter would need to be worth building, about three times the edge.
+- z is a night's gross return divided by that instrument's daily σ at entry. **z = 1** means the night moved by one ordinary day's worth of volatility.
+- The SD of z is 0.65 (NQ) and 0.79 (gold), because a night is only part of a day.
+- **b** is the rise of the fitted line from the quietest nights (x = 0, vol at the bottom of its past year) to the busiest (x = 1, vol at the top).
+- Buckets are easier to picture. The gap between the **top-quartile** and **bottom-quartile** average z is **0.75 × b**, because the quartile centres are 0.125 and 0.875.
 
-Each outcome then reads like this:
+#### The yardstick: the edge itself
+
+Measured in z, the unconditional edge (the banked 2016+ mean gross over median σ) is:
+- NQ: μ ≈ 0.054% / 1.1% ≈ **0.05**;
+- gold: μ ≈ 0.058% / 0.8% ≈ **0.07**.
+
+Both are themselves uncertain: the banked edge is UNDERPOWERED. They are used only to translate the thresholds. The thresholds are fixed in z and are **not re-derived** from any later estimate of μ.
+
+#### The calculation
+
+Under a straight line, E[z | x] = μ + b (x − ½). Two economic yardsticks follow:
+1. **The best any use of x could do.** Size each night in proportion to its expected z (an oracle that knows b exactly). Sharpe rises by a factor √(1 + b² / (12 μ²)). No real rule beats this ceiling, because b would have to be estimated.
+2. **The simplest filter.** Skip the bottom quartile if b > 0 (or the top quartile if b < 0).
+   - Kept nights average μ + 0.125 |b|, on 75% exposure.
+   - Sharpe changes by √0.75 × (1 + 0.125 |b| / μ).
+   - Total return changes by 0.75 × (1 + 0.125 |b| / μ).
+
+| b (z units) | Meaning, NQ (μ 0.05) | % a night, quietest → busiest (NQ / gold) | Top − bottom quartile, z | Oracle Sharpe ceiling (NQ / gold) | Quartile filter, NQ: Sharpe / total return | Quartile filter, gold: Sharpe / total return |
+|---|---|---|---|---|---|---|
+| **0.05** (smallest of interest) | edge 0.025 at the quietest, 0.075 at the busiest; quartile averages 0.03 vs 0.07 | 0.055% / 0.04% | 0.04 | **+4% / +2%** | −2% / −15% | −6% / −19% |
+| 0.10 | edge ≈ 0 at the quietest, ×2 at the busiest | 0.11% / 0.08% | 0.075 | +16% / +8% | +9% / −6% | +1% / −12% |
+| **0.15** (large) | edge negative at the quietest, ×2.5 at the busiest; quartile averages −0.01 vs 0.11 | 0.165% / 0.12% | 0.11 | **+33% / +16%** | **+20% / +4%** | +9% / −6% |
+
+Break-even points for the quartile filter:
+
+| | NQ | Gold |
+|---|---|---|
+| Sharpe break-even (b = 1.24 μ) | 0.06 | 0.09 |
+| Total-return break-even (b = 2.67 μ) | 0.13 | 0.20 |
+
+#### Why ±0.05 is the smallest effect of interest
+
+- **No decision changes below it.** Even the oracle gains at most 4% Sharpe on NQ and 2% on gold. That is 0.03–0.04 on an overnight Sharpe near 1.
+  - It is below what any realistic record could confirm: the SE of a Sharpe ratio over 10 years is about ±0.3.
+  - It is below the uncertainty in the costs themselves: gold swap differs 5× between the two accounts.
+- **The simplest filter loses money** at this size on both instruments, in both Sharpe and total return.
+- **So:** an effect inside ±0.05 may be real, but it can't be turned into a better trade with the data we have. It is "too small to be useful", not "zero".
+
+#### Why ±0.15 is a large effect
+
+- **On NQ it is where the simplest filter starts to pay on both counts:**
+  - Sharpe +20%;
+  - total return no lower (+4%), because the skipped nights cost less than they risk.
+  - Between 0.06 and 0.13 the filter improves Sharpe but gives up total return. That is a sizing question, not a filter.
+- **It marks the scale at which the regime changes the sign of the trade's expectation.** At 0.15 the quietest quarter's expected return is about zero or negative.
+- **Why not higher:** a larger threshold would let a working NQ filter be called "not large".
+- **Why not lower:** below about 0.13, ruling out a "large" effect would no longer rule out a filter that keeps total return.
+
+#### Gold
+
+Gold's edge is larger in z (0.07), so the same b is relatively smaller:
+- a gold quartile filter needs b ≈ 0.20 to keep total return;
+- so "large ruled out at 0.15" is a stronger statement for gold than it looks.
+
+The thresholds are kept common so the two instruments are read on one scale. The gold break-evens above are reported alongside.
+
+#### Why the CI, not the p-value, separates the outcomes
+
+A non-significant result can mean two different things. "p = 0.4" looks the same in both. The **95% CI** for b, read against the two thresholds, tells them apart:
 
 | What the 95% CI does | What it means | Verdict word |
 |---|---|---|
-| Excludes 0, and the gate holds | evidence of a relationship | **VALIDATED** |
+| Excludes 0 (with the placebo, §4.1), and Group A holds | evidence of a relationship | **VALIDATED** |
 | Contains 0 and lies **entirely inside ±0.05** | the relationship is probably **too small to be useful**, real or not | **NULL** |
-| Contains 0, extends beyond ±0.05 but **inside ±0.15** | a large effect is ruled out; a useful one is not | **UNDERPOWERED** (large effect ruled out) |
+| Contains 0, extends beyond ±0.05 but **inside ±0.15** | a large effect is ruled out; a smaller useful one is not | **UNDERPOWERED** (large effect ruled out) |
 | Contains 0 and extends beyond ±0.15 | the data can't tell; even a large effect is possible | **UNDERPOWERED** (uninformative) |
-| Excludes 0 but fails the gate | a pattern that may be one era, one episode or a few nights | **UNDERPOWERED**, with the failing gate item named |
+| Excludes 0 but a Group A check fails | a pattern carried by one era, one episode or a few nights | **UNDERPOWERED** (effect concentrated), with the check named |
 
 **Said plainly, before running:**
 - With the CI half-widths above (±0.08 NQ, ±0.13 gold), **NULL is unreachable for both instruments.** Even a true b of exactly 0 gives an interval wider than ±0.05.
 - Ruling out a useful effect would need about 3× the NQ extended sample: roughly 10,000 nights, or 40 years.
-- So the realistic outcomes are VALIDATED (only if the effect is large) or UNDERPOWERED. For NQ we will be able to say whether a **large** effect is ruled out.
+- So the realistic outcomes are VALIDATED (only if the effect is large) or UNDERPOWERED. For NQ we expect to be able to say whether a **large** effect is ruled out.
 
-That is still worth knowing: it decides whether a regime **filter** (which needs a large effect) is worth pursuing. It also tells us that smaller effects can only be settled by pooling instruments or by a forward record.
+`--mode controls` measures these probabilities directly (§5.4) before anything is scored.
+
+### 5.3 How the result is reported: three separate questions per instrument
+
+The report never compresses the outcome into the verdict word alone. For each instrument it answers three questions, each from the CI and placebo, in this order:
+
+| Question | Answered by | Possible answers |
+|---|---|---|
+| **Q1. Is there evidence of an effect?** | §4.1: placebo p (Holm) < 0.05 **and** CI excludes 0 | **yes** (with direction and credibility high/moderate, §4.2) · **yes, but concentrated** (Group A check named) · **no** |
+| **Q2. Is a large effect (\|b\| ≥ 0.15) ruled out?** | the CI lies inside ±0.15 | **ruled out** · **not ruled out** |
+| **Q3. Can a smaller but potentially useful effect (0.05 ≤ \|b\| < 0.15) be excluded?** | the CI lies inside ±0.05 | **excluded** (too small to be useful) · **cannot be determined** (the data are compatible with a useful effect) |
+
+The questions can combine:
+- "Q1 yes, and Q2 ruled out" means a real but modest effect: probably a sizing input, not a filter.
+- "Q1 no, Q2 ruled out, Q3 undetermined" is the expected NQ outcome. It means: no filter, and smaller effects remain open.
+
+Each answer quotes the CI, so the reader can see how close it came. The headline line per instrument reads, for example:
+
+> NQ: no evidence of an effect (p 0.4); large effect ruled out (CI −0.07 to +0.09); a useful smaller effect cannot be determined → UNDERPOWERED (large effect ruled out).
+
+(The numbers in that line are invented to show the format.)
+
+### 5.4 What `--mode controls` computes, and what it withholds
+
+**Computed and reported for review (no real-alignment statistic anywhere):**
+1. **Overlap validation (§3.2):** futures-file gross vs banked OANDA gross on matched nights 2016-10 → 2026-04:
+   - correlation, mean and SD of the difference;
+   - nights present in one set but not the other. This also checks that the night-building rule reproduces the banked night calendar.
+2. **Data quality:**
+   - extension nights built and dropped per year, and why (no entry or exit minute);
+   - nights without an x;
+   - the x distribution per era (should be close to uniform).
+3. **Measured null SE:**
+   - the SD of b across label shifts (≥ 63 nights from the real alignment);
+   - the month-block bootstrap SD of b on shifted pairings;
+   - the measured design effect against the iid formula;
+   - the resulting MDE and expected CI half-width, against the analytic §5.1 numbers.
+4. **Planted-effect detection.** On shifted x (never the real alignment), z + b_true (x_shift − ½) for b_true ∈ {0, 0.05, 0.10, 0.15, 0.20}, 200 base shifts each. The full §4.1 test is run on each (placebo p and bootstrap CI). Per b_true, the share that comes out as:
+   - evidence (Holm first step α 0.025, and at α 0.05);
+   - wrong sign;
+   - large ruled out;
+   - NULL (inside ±0.05);
+   - uninformative.
+   The b_true = 0 row is the false-positive rate. The b_true = 0.15 row is the pre-registered positive control.
+5. Unconditional, banked-sample-only figures used for the threshold translation: mean z and SD of z, 2016+, per instrument.
+
+**Withheld until `--mode score`:**
+- b on the real alignment, in any subset;
+- bucket means, costs by regime, the raw-% slope;
+- era-level means;
+- every Group A/B check.
 
 ## 6. Multiplicity
 
-- **Scored:** H1, H2. Holm at α 0.05. The gate's seven items are conjunctive, so no further correction is applied.
+- **Scored:** H1, H2. Holm at α 0.05. The credibility checks (§4.2) are not extra tests: they can only demote an effect, never create one, so they need no correction.
 - **Described:**
   - buckets, raw slopes, costs and years carry no pass/fail weight;
-  - the three secondary vol definitions feed gate item 7 only.
+  - the three secondary vol definitions feed check B3 only.
 - **Ledger level:** the result is placed against the trial ledger (262 tested claims) by `build_trial_ledger`.
 - **Anything that would size a live position** needs |t| ≥ 3 and a forward record. That is a later, separate prereg.
 
@@ -210,16 +351,27 @@ That is still worth knowing: it decides whether a regime **filter** (which needs
 
 ## 8. What each verdict changes
 
-- **VALIDATED (b ≠ 0 with the gate):**
-  - Flat expectation rejected. A positive b points at the inventory premium, and makes experiment 2 (previous US-session return) the obvious mechanism test.
+- **VALIDATED (Q1 yes, Group A holds):**
+  - The flat expectation is rejected.
+  - A positive b points at the inventory premium, and makes experiment 2 (the previous US-session return) the obvious mechanism test. If B2 reads "explained by recent returns", experiment 2 becomes the lead rather than the follow-up.
   - A negative b gives vol-managed sizing on the overnight hold a case: a separate prereg, scored on post-cutoff nights.
-- **UNDERPOWERED, large effect ruled out (NQ):** no simple vol-regime filter for the overnight hold. Vol sizing stays a drawdown tool (as `vol-target`). Move on to experiment 2.
-- **UNDERPOWERED, uninformative (likely for gold):** record it honestly. Gold vol conditioning waits for more data (the OANDA history pull, or the forward record).
-- **Every verdict:** banked with a POWER row, the trial ledger regenerated, the register row → BANKED, and the bucket tables added to the Overnight Hold page as description.
+  - Whether it is a filter or a sizing input is read from Q2 and the §5.2 break-evens. No rule is built here.
+- **UNDERPOWERED, effect concentrated:** the pattern and the failing check are recorded. It is not treated as a relationship. Nothing is built on it.
+- **UNDERPOWERED, large effect ruled out (expected for NQ):**
+  - No simple vol-regime filter for the overnight hold. Vol sizing stays a drawdown tool (as in `vol-target`).
+  - Smaller effects stay open (Q3). They can only be settled by pooling instruments or by a forward record.
+  - Move on to experiment 2.
+- **UNDERPOWERED, uninformative (possible for gold):** recorded honestly. Gold vol conditioning waits for more data: the OANDA history pull (deferred by the owner) or the forward record.
+- **NULL (unreachable here, §5.2):** a vol relationship too small to be useful; the question is closed for this instrument.
+- **Every verdict:**
+  - banked with a POWER row and the Q1–Q3 answers;
+  - the trial ledger regenerated;
+  - the register row moved to BANKED;
+  - the bucket tables added to the Overnight Hold page as description.
 
 ## Amendments
 
-(none — draft)
+(none)
 
 ## RESULTS
 
