@@ -1,7 +1,7 @@
 // js/dailyOpenFib.js: the live tracker's engine.   node js/dailyOpenFib.test.mjs
 // Mirrors scripts/daily-open-fib-retest/test_engine.py (the backtest's checks); exact
 // parity with engine.py on random bid/ask sessions: node scripts/daily-open-fib-retest/parity.mjs
-import { findFill, findFillSwing, pendingSwing, findFillWindow, pendingWindow, trade, pending, levels, night, adrFrom, sessionAnchor, sessionKey, sessionFromCandles, summarise } from './dailyOpenFib.js';
+import { findFill, findFillSwing, pendingSwing, findFillWindow, pendingWindow, trade, pending, levels, night, adrFrom, sessionAnchor, sessionKey, sessionFromCandles, preFromCandles, summarise } from './dailyOpenFib.js';
 
 let n = 0, f = 0;
 const ok = (m, c) => { n++; if (!c) { f++; console.log('  ✗ ' + m); } };
@@ -138,6 +138,23 @@ ok('candles: complete bars only, minutes from the first bar', sx.t.length === 1 
   ok('window: the 1 is the high inside +60 min (101), not the 103 at +90', f3 && near(f3.A, 101));
   const pw = pendingWindow(preOf(pre), { o: B.o.slice(0, 100), h: B.h.slice(0, 100), l: B.l.slice(0, 100) }, B.mins.slice(0, 100), 58.3, 0.10);
   ok('window live (100 bars in, low so far ~4047): sell resting at 4071.23, stop = 1.2 of the leg so far', pw.phase === 'armed' && near(pw.A, 4071.23) && near(pw.stop, 4071.23 + 0.2 * (4071.23 - pw.L0)) && pw.L0 < 4048);
+}
+
+// weekly open: the bars before a Sunday open are Friday's (by count, not clock)
+{
+  const fri = Date.UTC(2026, 9, 30, 20, 0), sun = Date.UTC(2026, 10, 1, 23, 0);
+  const cs = Array.from({ length: 400 }, (_, i) => ({ time: new Date(fri - (399 - i) * 60e3).toISOString(), complete: true, bid: { o: '1', h: '2', l: '0.5', c: '1' } }));
+  const pre = preFromCandles(cs, sun, 360);
+  ok('preFromCandles: the last 360 traded bars before a Sunday open (Friday, 47 h earlier)', pre.t.length === 360 && pre.t.at(-1) === fri);
+}
+// 1-2 Nov gold (Jay: BUY LIMIT 3870.22, SL 3863.75, TP 3902.17): Friday's last-hour low 3870.22, Sunday open 3876, spike to 3902.17
+{
+  const preB = bars([[3890, 0], [3870.22, 50], [3874, 59]]);
+  const pre = { h: preB.h, l: preB.l, mins: preB.h.map((_, i) => i - preB.h.length) };
+  const B = bars([[3876, 0], [3902.17, 20], [3895, 60], [3869, 200], [3905, 400], [3905, 600]]);
+  const f = findFillWindow(pre, B, B.mins, 60, 0.10);
+  ok('2 Nov: window buy at Friday\'s last-hour low 3870.22, the 0 = 3902.17', f && f.side === 1 && near(f.A, 3870.22) && near(f.L0, 3902.17) && f.tAnchor < 0);
+  ok('2 Nov: stop 3863.83 (Jay 3863.75)', near(levels(1, f.A, f.L0).stop, 3863.83));
 }
 
 console.log(`${n - f}/${n} passed`);

@@ -131,7 +131,8 @@ export function pendingSwing(pre, chart, mins, adr, minImp = 0.10, entryCut = 36
 
 /**
  * Anchor 'window' (owner, 2026-11-01): the 1 = the highest high (sell) or lowest low (buy) within
- * `win` minutes either side of the daily open; the 0 = the extreme reached AFTER that 1. Covers the
+ * `win` minutes either side of the daily open; the 0 = the extreme reached AFTER that 1, which must be made after
+ * the open (a leg that finished before the open is not the night's impulse). Covers the
  * presenter's 28 Oct trade (high just before the open) and 29 Oct (high just after). Causal: at
  * session bar k only bars up to k count, so in the first hour the 1 is the high so far.
  * `pre` = {h, l, mins} bars before the open, mins negative (trading minutes: -1 = the last bar before the open).
@@ -149,10 +150,12 @@ function windowState(pre, chart, mins, k, adr, minImp, win) {
     if (Lc[i] <= uA) { uA = Lc[i]; uAt = i; }
   }
   if (dAt < 0) return { ok: false };
+  // the 0 = the extreme after the 1 (bars before the open included); the leg only counts if that extreme was made
+  // after the open: a move that finished before the open (e.g. Friday's sell-off into the close) is not tonight's impulse
   let L = Infinity, tL = -1, H = -Infinity, tH = -1;
-  for (let i = Math.max(dAt + 1, P); i < Hc.length; i++) if (Lc[i] <= L) { L = Lc[i]; tL = i; }   // the 0: a session low after the 1
-  for (let i = Math.max(uAt + 1, P); i < Hc.length; i++) if (Hc[i] >= H) { H = Hc[i]; tH = i; }
-  const sOk = tL >= 0 && dA - L >= thr, bOk = tH >= 0 && H - uA >= thr;
+  for (let i = dAt + 1; i < Hc.length; i++) if (Lc[i] <= L) { L = Lc[i]; tL = i; }
+  for (let i = uAt + 1; i < Hc.length; i++) if (Hc[i] >= H) { H = Hc[i]; tH = i; }
+  const sOk = tL >= P && dA - L >= thr, bOk = tH >= P && H - uA >= thr;
   let down;
   if (sOk && bOk) down = H < dA ? true : L > uA ? false : tL > tH;
   else if (sOk || bOk) down = sOk;
@@ -344,10 +347,14 @@ export function sessionFromCandles(candles, anchorMs, maxMin = 1440) {
   return S;
 }
 
-/** Bid bars in the `hours` before the open (for the swing anchor and the chart), oldest first. */
-export function preFromCandles(candles, anchorMs, hours = 6) {
+/**
+ * The last `maxBars` bid bars that TRADED before the open, oldest first (for the swing / window anchors
+ * and the chart). By bar count, not clock time: before a Sunday-evening open the bars are Friday's last
+ * hours, and gold's 17:00-18:00 New York break is skipped, as on a broker chart.
+ */
+export function preFromCandles(candles, anchorMs, maxBars = 360) {
   const c = candles.filter(x => x.complete !== false && x.bid).map(x => ({ t: Date.parse(x.time), b: x.bid }))
-    .filter(x => x.t < anchorMs && x.t >= anchorMs - hours * 3600e3).sort((a, b) => a.t - b.t);
+    .filter(x => x.t < anchorMs).sort((a, b) => a.t - b.t).slice(-maxBars);
   return { t: c.map(x => x.t), o: c.map(x => +x.b.o), h: c.map(x => +x.b.h), l: c.map(x => +x.b.l), c: c.map(x => +x.b.c) };
 }
 
