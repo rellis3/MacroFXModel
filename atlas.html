@@ -294,6 +294,7 @@ import { buildNewsletter, eventNote, flagProximity, familyOf } from './js/newsle
 import { releaseNewsletterV3 } from './js/newsletterV3.js';
 import { worldEconomies } from './js/worldEconomies.js';
 import { policyWeek } from './js/policyWeek.js';
+import { closeMove, dayWord } from './js/closeBasis.js';
 import { directionReads } from './js/directionRead.js';
 import { withScores } from './js/directionScore.js';
 import { impliedRow, impliedKeyFor } from './js/impliedMove.js';
@@ -335,7 +336,7 @@ const labelOf = k => { const c = ccysOf(k); return c ? c[0] + '/' + c[1] : IDX_L
 const glyphOf = k => { const c = ccysOf(k); return c ? FLAG[c[0]] + FLAG[c[1]] : k === 'GOLD' ? '🥇' : k === 'BTCUSD' ? '₿' : '📈'; };
 
 /* ── derived numbers ── */
-function lastTwo(key) { const a = D.drill?.series?.[key]; if (!a) return null; let i = a.length - 1; while (i >= 0 && a[i] == null) i--; let j = i - 1; while (j >= 0 && a[j] == null) j--; return i < 0 ? null : { last: a[i], prev: j >= 0 ? a[j] : null, i }; }
+function lastTwo(key) { const a = D.drill?.series?.[key]; if (!a) return null; let i = a.length - 1; while (i >= 0 && a[i] == null) i--; let j = i - 1; while (j >= 0 && a[j] == null) j--; const dts = D.drill?.dates ?? [], latest = D.drill?.to ?? dts[dts.length - 1] ?? null, date = i >= 0 ? dts[i] ?? null : null; return i < 0 ? null : { last: a[i], prev: j >= 0 ? a[j] : null, i, date, latest, stale: !!(date && latest && date < latest) }; }
 // "n days back" is CALENDAR days, the same window the chain uses (CHAIN_WINDOW_DAYS), so the tiles, the cards and the chain can never disagree. It used to count 20 observations (about 4 weeks), which flipped the sign of any move that turned within that month.
 function back(key, days) { const a = D.drill?.series?.[key], t = lastTwo(key); if (!a || !t) return null; const dts = D.drill.dates, cut = Date.parse(dts[t.i]) - days * 864e5; let k = t.i; while (k > 0 && (a[k] == null || Date.parse(dts[k]) > cut)) k--; return a[k] ?? null; }
 function spark(key, n = 30) { const a = D.drill?.series?.[key]; return a ? a.slice(-n).filter(v => v != null) : []; }
@@ -470,7 +471,7 @@ function marketFacts() {
   return NL_RANGE_KEYS.filter(k => insts()[k]).map(k => {
     const d = pairData(k), reg = P.regimeFor(D.regime, k), gam = P.gammaFor(D.oi, k), fire = P.deskFiring(D.ds, k).filter(f => f.instruments.includes(k)), cc = ccysOf(k), mv = MK_SERIES[k] ? fmtPct(MK_SERIES[k]) : null;
     const parts = [`KEY ${k} | ${labelOf(k)}${d.price != null ? ' at ' + d.price.toFixed(d.dp ?? 4) : ''}`];
-    if (mv) parts.push(`moved ${sg(mv.d1, 2)}% on the day and ${sg(mv.d20, 1)}% over 20 days`);
+    if (mv) { const cm = closeMove({ last: mv.v, prev: mv.prev, lastDate: mv.date, latestDate: mv.latest, live: d.price, liveStale: !!d.stale }); parts.push(`${cm.d1 != null ? `moved ${sg(cm.d1, 2)}% ${cm.basis === 'live' ? cm.label : 'on ' + cm.label}` : 'has no daily print for the latest close'}${mv.d20 != null ? ` and ${sg(mv.d20, 1)}% over 20 days` : ''}`); }
     if (d.used != null) parts.push(`has used ${Math.round(d.used * 100)}% of a normal day's range (median ${d.hlMed != null ? d.hlMed.toFixed(2) + '%' : 'n/a'})`);
     if (reg) parts.push(`in the ${reg.regime} backdrop it has averaged ${sg(reg.mean)}% a month, up in ${reg.posShare}% of months`);
     for (const c of (cc ?? [])) {
@@ -542,7 +543,7 @@ function nlNumbers() {
     hy && { name: 'High-yield spread', value: Math.round(hy.v * 100) + 'bp', sub: `${bp(hy.d1)} · 20d ${bp(hy.d20)}`, tone: tone(hy.d1 == null ? null : -hy.d1), spark: spark('hy') },
     dx && { name: 'Dollar (broad)', value: dx.v.toFixed(1), sub: `${pc(dx.d1)} · 20d ${pc(dx.d20)}`, tone: tone(dx.d1), spark: spark('dxy') },
     nq && { name: 'Nasdaq, 20 days', value: pc(nq.d20), sub: `S&P 500 ${pc(spx?.d20)}`, tone: tone(nq.d20), spark: spark('nq') },
-    vix && { name: 'VIX', value: vix.v.toFixed(1), sub: `${pc(vix.d1)} on the day`, tone: tone(vix.d1 == null ? null : -vix.d1), spark: spark('vix') },
+    vix && { name: 'VIX', value: vix.v.toFixed(1), sub: vix.d1 == null ? 'no print for the latest close' : `${pc(vix.d1)} ${dayWord(vix.date, Date.now()) === 'today' ? 'on the day' : 'on ' + dayWord(vix.date, Date.now())}`, tone: tone(vix.d1 == null ? null : -vix.d1), spark: spark('vix') },
     (brent || oil) && { name: brent ? 'Brent' : 'Oil (WTI)', value: '$' + (brent ?? oil).v.toFixed(1), sub: `${pc((brent ?? oil).d20)} over 20 days`, tone: tone((brent ?? oil).d20), spark: spark(brent ? 'brent' : 'oil') },
   ].filter(Boolean);
   const stages = [
@@ -599,13 +600,14 @@ function nlInput({ bookFor = () => null } = {}) {
     pastEvents: P.aheadEvents(D.events, Date.now() - 864e5, { withinHours: 24, limit: 80 }).filter(e => e.ms <= Date.now()),
     ranges: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k); return { label: labelOf(k), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used }; }),
     assets: NL_RANGE_KEYS.filter(k => insts()[k]).map(k => { const d = pairData(k), reg = P.regimeFor(D.regime, k), gam = P.gammaFor(D.oi, k), fire = P.deskFiring(D.ds, k).filter(f => f.instruments.includes(k)).length, g = { fx: 'FX', index: 'Index', commodity: 'Gold', crypto: 'Bitcoin' }[acOf(k)] ?? '';
-      const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: mv?.d1 ?? null, d20: mv?.d20 ?? null, read: plainRead(mk?.read), watch: plainRead(mk?.watch), implied: impliedRow(D.ivl?.implied?.[impliedKeyFor(k)], k, Date.now()), zone: (() => { const row = (D.oi?.pairs ?? []).find(p => p.pair === P.OI_PAIR_FOR[k]); return row ? optionZone(row, k, d.dp ?? 4) : null; })(), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
+      const mk = (D.intel?.analysis?.markets ?? []).find(x => String(x.key).toUpperCase() === k), sk = MK_SERIES[k], mv = sk ? fmtPct(sk) : null, cm = mv ? closeMove({ last: mv.v, prev: mv.prev, lastDate: mv.date, latestDate: mv.latest, live: d.price, liveStale: !!d.stale }) : null; return { key: k, label: labelOf(k), groupLabel: g, spark: sk ? spark(sk, 40) : [], d1: cm?.d1 ?? null, d1Basis: cm?.basis ?? 'none', d1Label: cm?.label ?? '', d1AsOf: cm?.asOf ?? null, d20: mv?.d20 ?? null, read: plainRead(mk?.read), watch: plainRead(mk?.watch), implied: impliedRow(D.ivl?.implied?.[impliedKeyFor(k)], k, Date.now()), zone: (() => { const row = (D.oi?.pairs ?? []).find(p => p.pair === P.OI_PAIR_FOR[k]); return row ? optionZone(row, k, d.dp ?? 4) : null; })(), price: d.price != null ? d.price.toFixed(d.dp ?? 4) : null, hlMed: d.hlMed, used: d.used, hl75Ratio: d.hl75 != null && d.hlMed ? d.hl75 / d.hlMed : null, chips: [reg ? `up in ${reg.posShare}% of months in this backdrop` : null, gam?.regime === 'PIN' ? 'options dealers tend to hold price in place' : null, fire ? `${fire} of our monitors flagging it` : null].filter(Boolean) }; }),
     yieldStack: (() => { const al = alignedYield(); if (al) return { nominal: al.nominal, real: al.real, bei: al.bei, dNom: al.dNom, dReal: al.dReal, dBei: al.dBei, asOf: al.asOf, from: al.from, later: al.later }; const y = fmtRate('us10y'), r = fmtRate('tips'), b = fmtRate('bei'); return y && r && b ? { nominal: y.v, real: r.v, bei: b.v, dNom: y.d20, dReal: r.d20, dBei: b.d20 } : null; })(),
     yieldSeries: alignedYield()?.series ?? null,
     beta: D.beta ?? null,
     asia: D.asia?.instruments ?? null,
     intl: D.iy?.series ?? null,
     reads: withScores(directionReads(D.gr), D.gr, D.dlt), eventDay: D.evd ? { events: D.evd.events ?? [] } : null,
+    moveDay: dayWord(D.drill?.to, Date.now()) || null,
     policy: policyWeek({ banks: Object.fromEntries(['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].map(c => [c, D['pl' + c]])), beige: D.pbb, fiscal: D.pfis }),
     world: worldEconomies({ gdp: D.wgdp, cpi: D.wcpi, labor: D.wlab, retail: D.wret, conf: D.wconf, trade: D.wtr, real: D.wry, curve: D.wyc, scorecard: D.msc }),
     rangePressure: rpNow(), fearVsNasdaq: fearNow(), vixBeta: betaNow(), impliedRatio: impNow(),
@@ -626,10 +628,10 @@ const NL_VOLS = [['vix9d', 'VIX 9-day'], ['vix', 'VIX 1-month'], ['vix3m', 'VIX 
 const NL_CREDS = [['ig', 'Investment-grade companies'], ['hy', 'High-yield (junk) companies'], ['ccc', 'CCC (riskiest) companies']];
 function nlStrips() {
   const pct = ([k, label]) => { const m = fmtPct(k); return m ? { label, d1: m.d1, d20: m.d20 } : null; };
-  const lvl = ([k, label]) => { const t = lastTwo(k); if (!t) return null; const b = back(k, 20); return { label, v: t.last, d1: t.prev != null ? t.last - t.prev : null, d20: b != null ? t.last - b : null }; };
+  const lvl = ([k, label]) => { const t = lastTwo(k); if (!t) return null; const b = back(k, 20); return { label, v: t.last, d1: t.prev != null && !t.stale ? t.last - t.prev : null, d20: b != null ? t.last - b : null }; };
   return {
     stocks: { sectors: NL_SECTORS.map(pct).filter(Boolean), mega: NL_MEGA.map(pct).filter(Boolean) },
-    commodities: NL_COMMS.map(([k, name, cur]) => { const m = fmtPct(k); if (!m) return null; return { name, value: cur + (m.v >= 100 ? m.v.toFixed(0) : m.v.toFixed(2)), sub: `${m.d1 != null ? sg(m.d1, 2) + '% today · ' : ''}20d ${sg(m.d20, 1)}%`, tone: m.d20 == null ? '' : m.d20 >= 0 ? 'up' : 'dn', spark: spark(k, 30), d1: m.d1, d20: m.d20 }; }).filter(Boolean),
+    commodities: NL_COMMS.map(([k, name, cur]) => { const m = fmtPct(k); if (!m) return null; return { name, value: cur + (m.v >= 100 ? m.v.toFixed(0) : m.v.toFixed(2)), sub: `${m.d1 != null ? sg(m.d1, 2) + '% ' + dayWord(m.date, Date.now()) + ' · ' : ''}20d ${sg(m.d20, 1)}%`, tone: m.d20 == null ? '' : m.d20 >= 0 ? 'up' : 'dn', spark: spark(k, 30), d1: m.d1, d20: m.d20 }; }).filter(Boolean),
     volatility: NL_VOLS.map(lvl).filter(Boolean),
     creditSpreads: NL_CREDS.map(([k, label]) => { const f = fmtRate(k); return f ? { label, bp: f.v * 100, d1: f.d1, d20: f.d20 } : null; }).filter(Boolean),
   };
@@ -770,8 +772,8 @@ function heroHtml() {
      <p style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="aibox" id="heroai"></span>${unreachable ? `<button class="btn" id="reloadbtn">Load stored brief</button>` : ''}<button class="btn" id="genbtn">${icS('bulb')}Generate Intelligence brief</button> <span class="note">one model call, about 90 seconds, sends today's Behind / Now / Ahead rows with it</span></p></div>
      <div class="gauge">${rf ? dial(rf.active ?? 0, rf.available ?? rf.total ?? 5) : ''}${rf ? proxBlock(rf) : ''}</div><div class="gauge">${ring()}</div>`;
 }
-const fmtRate = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev != null ? (t.last - t.prev) * 100 : null, b20 = back(key, 20), d20 = b20 != null ? (t.last - b20) * 100 : null; return { v: t.last, d1, d20 }; };
-const fmtPct = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev ? (t.last / t.prev - 1) * 100 : null, b20 = back(key, 20), d20 = b20 ? (t.last / b20 - 1) * 100 : null; return { v: t.last, d1, d20 }; };
+const fmtRate = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev != null && !t.stale ? (t.last - t.prev) * 100 : null, b20 = back(key, 20), d20 = b20 != null ? (t.last - b20) * 100 : null; return { v: t.last, d1, d20 }; };
+const fmtPct = key => { const t = lastTwo(key); if (!t) return null; const d1 = t.prev && !t.stale ? (t.last / t.prev - 1) * 100 : null, b20 = back(key, 20), d20 = b20 ? (t.last / b20 - 1) * 100 : null; return { v: t.last, prev: t.prev, d1, d20, date: t.date, latest: t.latest, stale: t.stale }; };
 
 function globalPosition() {
   const regime = P.regimeCard(D.regime), axes = P.axesRows(D.gr), firing = P.deskFiring(D.ds), ahead = P.aheadEvents(D.events), fp = P.fedPathCard(D.fp), meeting = P.nextMeeting(D.fcal), nc = P.nowcastCard(D.nc);
@@ -835,7 +837,7 @@ function drawGlobal() {
     hy && tile('Credit', 'pipe', Math.round(hy.v * 100) + 'bp', `HY ${bp(hy.d1)} · 20d ${bp(hy.d20)}`, cls(hy.d1), 'hy', C(hy.d1 == null ? null : -hy.d1)),
     dx && tile('Dollar', 'coins', dx.v.toFixed(1), `${pc(dx.d1)} · 20d ${pc(dx.d20)}`, cls(dx.d1), 'dxy', C(dx.d1)),
     nq && tile('Equities', 'pulse', pc(nq.d20), `Nasdaq 20d · S&P ${pc(spx?.d20)}`, cls(nq.d20), 'nq', C(nq.d20)),
-    vix && tile('Volatility', 'flame', vix.v.toFixed(1), `VIX ${pc(vix.d1)} on the day`, cls(vix.d1 == null ? null : -vix.d1), 'vix', C(vix.d1 == null ? null : -vix.d1)),
+    vix && tile('Volatility', 'flame', vix.v.toFixed(1), vix.d1 == null ? 'VIX: no print for the latest close' : `VIX ${pc(vix.d1)} ${dayWord(vix.date, Date.now()) === 'today' ? 'on the day' : 'on ' + dayWord(vix.date, Date.now())}`, cls(vix.d1 == null ? null : -vix.d1), 'vix', C(vix.d1 == null ? null : -vix.d1)),
     (brent || oil) && tile('Oil', 'oil', '$' + (brent ?? oil).v.toFixed(1), `Brent ${pc((brent ?? oil).d20)} 20d${brent && oil ? ` · WTI $${oil.v.toFixed(1)}` : ''}`, cls((brent ?? oil).d20), brent ? 'brent' : 'oil', C((brent ?? oil).d20))].filter(Boolean).join('');
   $('flags').innerHTML = (D.rf?.flags ?? []).map(f => `<div class="rw"><span>${esc(f.label)}${f.detail ? `<small>${esc(f.detail)}</small>` : ''}</span><span class="pill ${f.on ? 'amber' : ''}">${f.on ? 'on' : 'off'}</span></div>`).join('') || '<p class="note">Risk flags unavailable.</p>';
   $('gstrip').innerHTML = stripHtml('g'); wireStrip('gstrip');
