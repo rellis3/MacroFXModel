@@ -5231,7 +5231,10 @@ svcTimeout('ratesRegime', () => _ratesRegimeTick({ silent: true }).catch(e => co
 // AI opinion, not backtested. Cached 30 minutes -- one global read, not one per
 // viewer -- and regenerable with ?force=1.
 const _CHAIN_READ_TTL_MS = 30 * 60_000;
-let _chainReadCache = { at: 0, data: null, key: '' };
+// One cache entry per window (1 / 5 / 20 days): each is its own paid read.
+const _CHAIN_READ_WINDOWS = [1, 5, 20];
+const _chainWin = w => { const n = Number(w); return _CHAIN_READ_WINDOWS.includes(n) ? n : 20; };
+const _chainReadCaches = { 1: { at: 0, data: null, key: '' }, 5: { at: 0, data: null, key: '' }, 20: { at: 0, data: null, key: '' } };
 // The last read persists in KV (chain_read_v1) so a reader coming back hours
 // later, or after a redeploy, still sees the last one written -- with its time
 // stamp, so "last refresh 18:19" is honest. The day's earlier reads ride along
@@ -5239,37 +5242,55 @@ let _chainReadCache = { at: 0, data: null, key: '' };
 // day. Read-modify-write: refuse to write over a store that will not parse.
 const _CHAIN_READ_KV = 'chain_read_v1';
 const _CHAIN_READ_KEEP = 12;
-async function _loadChainReadStore() {
+// Shape: { latest, history } is the 20-day read, exactly as before; the 1- and 5-day reads live in
+// byWin['1'] / byWin['5'] ({ latest, history }) in the same key, so no new KV key is needed.
+async function _loadChainReadRaw() {
   try {
     const raw = await kv.get(_CHAIN_READ_KV);
-    if (!raw) return { latest: null, history: [] };
+    if (!raw) return { latest: null, history: [], byWin: {} };
     const p = JSON.parse(raw);
-    return { latest: p?.latest ?? null, history: Array.isArray(p?.history) ? p.history : [] };
+    return { ...p, latest: p?.latest ?? null, history: Array.isArray(p?.history) ? p.history : [], byWin: (p?.byWin && typeof p.byWin === 'object') ? p.byWin : {} };
   } catch (e) { console.warn('[chain-read] store unreadable, not touching it:', e.message); return null; }
 }
-async function _persistChainRead(data) {
-  const store = await _loadChainReadStore();
-  if (!store) return;   // unparseable: leave it for a human, do not overwrite
+async function _loadChainReadStore(win = 20) {
+  const raw = await _loadChainReadRaw();
+  if (!raw) return null;
+  if (_chainWin(win) === 20) return { latest: raw.latest, history: raw.history };
+  const b = raw.byWin[String(_chainWin(win))];
+  return { latest: b?.latest ?? null, history: Array.isArray(b?.history) ? b.history : [] };
+}
+async function _persistChainRead(data, win = 20) {
+  const raw = await _loadChainReadRaw();
+  if (!raw) return;   // unparseable: leave it for a human, do not overwrite
+  const w = _chainWin(win);
+  const slot = w === 20 ? { latest: raw.latest, history: raw.history } : (raw.byWin[String(w)] ?? { latest: null, history: [] });
   const day = String(data.generatedAt).slice(0, 10);
-  const history = [store.latest, ...store.history].filter(Boolean)
+  const history = [slot.latest, ...(slot.history ?? [])].filter(Boolean)
     .filter(x => String(x.generatedAt).slice(0, 10) === day)   // earlier reads of the same day only
     .slice(0, _CHAIN_READ_KEEP - 1);
-  await kv.put(_CHAIN_READ_KV, JSON.stringify({ latest: data, history }));
+  const next = w === 20 ? { ...raw, latest: data, history } : { ...raw, byWin: { ...raw.byWin, [String(w)]: { latest: data, history } } };
+  await kv.put(_CHAIN_READ_KV, JSON.stringify(next));
 }
 async function _warmChainRead() {   // after kv.load(): the first GET after a deploy should not be empty
-  const st = await _loadChainReadStore();
-  if (st?.latest?.generatedAt) _chainReadCache = { at: Date.parse(st.latest.generatedAt) || 0, data: st.latest, key: String(st.latest.snapshotKey ?? '') };
+  for (const w of _CHAIN_READ_WINDOWS) {
+    const st = await _loadChainReadStore(w);
+    if (st?.latest?.generatedAt) _chainReadCaches[w] = { at: Date.parse(st.latest.generatedAt) || 0, data: st.latest, key: String(st.latest.snapshotKey ?? '') };
+  }
 }
 function buildChainReadPrompt(s, headlines) {
+  const win = _chainWin(s.window);
+  const wd = win === 1 ? '1-day' : `${win}-day`;
+  const winRule = win === 20 ? '' : `
+THIS IS THE ${wd.toUpperCase()} READ. Build the story from the ${wd} column of WHAT MOVED and the ${wd} chain below; do not describe 20-day moves as today's move; say what changed over ${win === 1 ? 'the last day' : `${win} days`}.${win === 1 ? " A 1-day read is today's session impact: what the chain did in this session." : ''} The 20-day tested hit-rates in the ledger are 20-day findings: cite them as such, never as a ${wd} result.
+`;
   const hl = (headlines ?? []).slice(0, 14).map(h => `  [${h.ticker}] ${_redactFedChairName(h.title)}`).join('\n');
   return `You are a former fixed-income arbitrage trader who now explains the macro tape to a small audience after the close. Read the snapshot below and explain today's chain of cause and effect the way you would to a sharp friend who trades FX.
 
-=== SNAPSHOT (${s.asOf ?? 'now'}) ===
-
+=== SNAPSHOT (${s.asOf ?? 'now'}) ===${winRule}
 WHAT MOVED (level, then change over 1 day / 5 days / 20 days; rates in basis points)
 ${s.moved || '  not available'}
 
-THE CHAIN (textbook links judged on 20-day moves at both ends: HOLDING = moved together as the textbook says, BROKEN = both moved the wrong way round, QUIET = one end inside its noise floor)
+THE CHAIN (textbook links judged on ${win}-day moves at both ends: HOLDING = moved together as the textbook says, BROKEN = both moved the wrong way round, QUIET = one end inside its noise floor)
 ${s.chain || '  not measured'}
 
 RATES, SPLIT (the 10-year move decomposed into real yield vs inflation compensation)
@@ -5278,7 +5299,7 @@ ${s.ratesSplit || '  not interpretable today'}
 POLICY PATH PRICED (2-year vs the policy rate)
 ${s.policy || '  not available'}
 
-OIL, METALS, CRYPTO, FX (live oil; 20-day changes elsewhere)
+OIL, METALS, CRYPTO, FX (live oil; ${win}-day changes elsewhere)
 ${s.assets || '  not available'}
 
 RISK MOOD
@@ -5318,7 +5339,7 @@ HOW TO WRITE IT (style):
 - Front end versus long end: the 2-year is the vote on what the central bank does next; the 10- and 30-year are the vote on inflation and credibility. Say which end is moving and what that says.
 - Priced-in logic: if the market has already priced a move, say what the SURPRISE would be. Use the POLICY PATH line; if it is missing, do not guess.
 - Surface versus underneath: if the indices are quiet while the chain is loud, say so.
-- Numbers inline, plain: "10-year up 21 basis points over 20 days", "gold down 5.5%". Never round a number to a different value than the snapshot gives. Never invent one.
+- Numbers inline, plain: "10-year up 21 basis points over ${win === 1 ? 'the day' : `${win} days`}", "gold down 5.5%". Never round a number to a different value than the snapshot gives. Never invent one.
 - Short sentences. Contractions fine. No jargon without a four-word gloss the first time ("off-the-run bonds -- older, harder to move").
 - Land it on FX: which majors this chain is pushing, and through which leg (rates, oil, risk). Name pairs. No entries, stops, sizes or products, ever. No calls to action.
 - Never name a central-bank official; use the role. Never present positioning (COT, retail book) as a forecast.
@@ -5549,15 +5570,16 @@ app.post('/api/eod-review', express.json({ limit: '256kb' }), async (req, res) =
 
 // Free read of whatever is cached -- no model call. The page shows this on load
 // and only generates when the reader clicks.
-app.get('/api/chain-read', async (_req, res) => {
+app.get('/api/chain-read', async (req, res) => {
   // Whatever was last written, however old -- the page shows its time stamp.
   // `fresh` says whether a POST without force would return it (under 30 min).
-  let latest = _chainReadCache.data, history = [];
-  try { const st = await _loadChainReadStore(); if (st?.latest) { if (!latest || Date.parse(st.latest.generatedAt) > (Date.parse(latest.generatedAt) || 0)) latest = st.latest; history = st.history; } } catch { /* memory copy will do */ }
+  const win = _chainWin(req.query.window);
+  let latest = _chainReadCaches[win].data, history = [];
+  try { const st = await _loadChainReadStore(win); if (st?.latest) { if (!latest || Date.parse(st.latest.generatedAt) > (Date.parse(latest.generatedAt) || 0)) latest = st.latest; history = st.history; } } catch { /* memory copy will do */ }
   if (!latest) return res.json({ ok: false, none: true });
   const ageMs = Date.now() - (Date.parse(latest.generatedAt) || 0);
   res.json({ ok: true, cached: true, fresh: ageMs < _CHAIN_READ_TTL_MS, ageMin: Math.round(ageMs / 60_000), ...latest,
-    earlier: history.map(h => ({ generatedAt: h.generatedAt, hook: h.read?.hook ?? null })) });
+    window: win, earlier: history.map(h => ({ generatedAt: h.generatedAt, hook: h.read?.hook ?? null })) });
 });
 app.post('/api/chain-read', async (req, res) => {
   if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
@@ -5567,9 +5589,12 @@ app.post('/api/chain-read', async (req, res) => {
     const force = req.query.force === '1';
     // One read per half hour for everyone. The snapshot's own stamp is the cache
     // key so a new trading day (or a fresh chain) is never served yesterday's read.
-    const ck = String(snapshot.asOf ?? '').slice(0, 13);
-    if (!force && _chainReadCache.data && _chainReadCache.key === ck && Date.now() - _chainReadCache.at < _CHAIN_READ_TTL_MS)
-      return res.json({ ok: true, cached: true, ...(_chainReadCache.data) });
+    const win = _chainWin(snapshot.window);
+    snapshot.window = win;
+    const ck = `${String(snapshot.asOf ?? '').slice(0, 13)}${win === 20 ? '' : `|w${win}`}`;   // the 20-day key stays as it was, so a warmed read still matches
+    const cache = _chainReadCaches[win];
+    if (!force && cache.data && cache.key === ck && Date.now() - cache.at < _CHAIN_READ_TTL_MS)
+      return res.json({ ok: true, cached: true, window: win, ...(cache.data) });
     let headlines = [];
     try { headlines = await _fetchYahooHeadlines(); } catch { /* prompt tolerates absence */ }
     const prompt = buildChainReadPrompt(snapshot, headlines);
@@ -5587,9 +5612,9 @@ app.post('/api/chain-read', async (req, res) => {
     const txt = _antText(j);
     const read = _parseModelJson(txt, 'chain-read');
     if (!read) return res.status(502).json({ error: `model did not return parseable JSON${j.stop_reason === 'max_tokens' ? ' (response truncated at the token cap)' : ''} -- press re-read once more` });
-    const data = { read, generatedAt: new Date().toISOString(), headlineCount: headlines.length, snapshotKey: ck };
-    _chainReadCache = { at: Date.now(), data, key: ck };
-    _persistChainRead(data).catch(e => console.warn('[chain-read] persist failed:', e.message));
+    const data = { read, generatedAt: new Date().toISOString(), headlineCount: headlines.length, snapshotKey: ck, window: win };
+    _chainReadCaches[win] = { at: Date.now(), data, key: ck };
+    _persistChainRead(data, win).catch(e => console.warn('[chain-read] persist failed:', e.message));
     res.json({ ok: true, cached: false, fresh: true, ageMin: 0, ...data });
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });

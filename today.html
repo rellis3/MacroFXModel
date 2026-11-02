@@ -1254,6 +1254,7 @@
   @keyframes chainflow{to{stroke-dashoffset:-24}}
   @keyframes chainpulse{0%,100%{opacity:1}50%{opacity:.35}}
   @media (prefers-reduced-motion:reduce){.chain-g .ge.hold,.chain-g .ge.broke{animation:none}}
+  .chain-win{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 8px}
   .chain-legend{font-size:10.5px;color:var(--text3);display:flex;gap:14px;flex-wrap:wrap;margin:-4px 0 8px}
   .chain-legend i{display:inline-block;width:18px;height:0;border-top:2px solid var(--border2);vertical-align:middle;margin-right:5px}
   .chain-legend i.hold{border-color:var(--bull)} .chain-legend i.broke{border-color:var(--amber)} .chain-legend i.quiet{border-top-style:dashed}
@@ -3919,18 +3920,18 @@ function macroDivergences() {
 // one, and notice where the textbook stopped working -- that is where the story is.
 // It explains. It does not predict (yields → FX forward coupling is a banked null
 // here), which is why the whole thing is stamped ~ context.
-function chainVals() {
+function chainVals(win = 20) {
   const B = window.macroChainBrick;
   if (!B) return null;
   const out = {};
   const fredSrc = { bei: 'bei', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', real: 'tips', dxy: 'dxy', vix: 'vix', hy: 'hy' };
   for (const [node, key] of Object.entries(fredSrc)) {
     const pts = fredHist?.[key];
-    out[node] = Array.isArray(pts) && pts.length ? B.nodeDelta(pts, B.CHAIN_NODES[node]) : null;
+    out[node] = Array.isArray(pts) && pts.length ? B.nodeDelta(pts, B.CHAIN_NODES[node], win) : null;
   }
   for (const node of Object.keys(CHAIN_OHLC)) {
     const pts = commodityDrivers?.series?.[node];
-    out[node] = pts ? B.nodeDelta(pts, B.CHAIN_NODES[node]) : null;
+    out[node] = pts ? B.nodeDelta(pts, B.CHAIN_NODES[node], win) : null;
   }
   // funding: SOFR against the Fed's floor (IORB; IOER before 2021-07-29), point by point
   try {
@@ -3938,7 +3939,7 @@ function chainVals() {
     if (Array.isArray(sofr) && sofr.length && (iorb?.length || ioer?.length)) {
       const fl = new Map([...(ioer ?? []).map(p => [p.date, p.value]), ...(iorb ?? []).map(p => [p.date, p.value])]);
       let lastFloor = null; const spread = sofr.map(p => { if (fl.has(p.date)) lastFloor = fl.get(p.date); return lastFloor == null ? null : { date: p.date, value: p.value - lastFloor }; }).filter(Boolean);
-      out.funding = spread.length ? B.nodeDelta(spread, B.CHAIN_NODES.funding) : null;
+      out.funding = spread.length ? B.nodeDelta(spread, B.CHAIN_NODES.funding, win) : null;
     }
   } catch { out.funding = null; }
   // the non-US legs: foreign 10Y minus the Treasury 10Y, point by point on common dates
@@ -3948,30 +3949,45 @@ function chainVals() {
       const f = intlYields?.[key];
       if (!Array.isArray(f) || !f.length || !ustBy.size) { out[node] = null; continue; }
       const gap = f.filter(p => ustBy.has(p.date)).map(p => ({ date: p.date, value: p.value - ustBy.get(p.date) }));
-      out[node] = gap.length ? B.nodeDelta(gap, B.CHAIN_NODES[node]) : null;
+      out[node] = gap.length ? B.nodeDelta(gap, B.CHAIN_NODES[node], win) : null;
     }
   } catch { /* unmeasured */ }
   for (const node of ['smh', 'xle', 'xlre', 'move', 'ccc', 'emdollar', 'emoas']) {
     const pts = chainExtra?.series?.[node];
-    out[node] = Array.isArray(pts) && pts.length > 20 ? B.nodeDelta(pts, B.CHAIN_NODES[node]) : null;
+    out[node] = Array.isArray(pts) && pts.length > 20 ? B.nodeDelta(pts, B.CHAIN_NODES[node], win) : null;
   }
-  try { const pts = crackData?.series; out.crack = Array.isArray(pts) && pts.length ? B.nodeDelta(pts, B.CHAIN_NODES.crack) : null; } catch { out.crack = null; }
+  try { const pts = crackData?.series; out.crack = Array.isArray(pts) && pts.length ? B.nodeDelta(pts, B.CHAIN_NODES.crack, win) : null; } catch { out.crack = null; }
   return out;
 }
 // The 10Y's 20-day move split by the ACM model into term premium (what holding
 // duration pays: supply, deficits, uncertainty) and the expected Fed path. A
 // reading on the card, not a claim: the split is the model's, by construction.
-function termPremiumSplit() {
+function termPremiumSplit(win = 20) {
   const B = window.macroChainBrick; const tp = fredHist?.tp10, fy = fredHist?.fy10;
   if (!B || !Array.isArray(tp) || !tp.length || !Array.isArray(fy) || !fy.length) return null;
   const stub = { unit: 'bp', floor: 0, dp: 0 };
-  const dTp = B.nodeDelta(tp, stub), dFy = B.nodeDelta(fy, stub); if (!dTp || !dFy) return null;
+  const dTp = B.nodeDelta(tp, stub, win), dFy = B.nodeDelta(fy, stub, win); if (!dTp || !dFy) return null;
   return { tp: dTp.delta, path: dFy.delta - dTp.delta, fitted: dFy.delta, asOf: dTp.asOf, level: tp.at(-1)?.value ?? null };
 }
-function chainLinks() {
+function chainLinks(win = 20) {
   const B = window.macroChainBrick;
-  const vals = chainVals();
-  return (B && vals) ? B.evaluateChain(vals) : [];
+  const vals = chainVals(win);
+  return (B && vals) ? B.evaluateChain(vals, undefined, undefined, win) : [];
+}
+// The chain can be read over 1, 5 or 20 days. _chainWin is the one on screen; every other caller of
+// chainLinks() keeps the 20-day default. Each window has its own AI read (_chainReadByWin).
+let _chainWin = (() => { try { const w = Number(localStorage.getItem('chainWin')); return [1, 5, 20].includes(w) ? w : 20; } catch { return 20; } })();
+const _chainReadByWin = {};
+const _chainWinWord = w => w === 1 ? '1-day' : `${w}-day`;
+function setChainWin(w, ev) {
+  ev?.stopPropagation?.();
+  if (![1, 5, 20].includes(w) || w === _chainWin) return;
+  _chainReadByWin[_chainWin] = _chainRead;
+  _chainWin = w;
+  try { localStorage.setItem('chainWin', String(w)); } catch { /* per-viewer convenience only */ }
+  _chainRead = _chainReadByWin[w] ?? { state: 'idle', data: null, err: null, at: 0 };
+  _explain = { key: null, state: 'idle', data: null, err: null };
+  render();
 }
 // ── The chain, read aloud ────────────────────────────────────────────────────
 // The rows judge the links. This is the explanation a desk trader gives after the
@@ -3980,7 +3996,7 @@ function chainLinks() {
 // measured (plus server-side headlines); the server holds one read for everyone
 // for 30 minutes. AI opinion -- stamped as such, not backtested.
 let _chainRead = { state: 'idle', data: null, err: null, at: 0 };
-function assembleChainSnapshot() {
+function assembleChainSnapshot(win = 20) {
   const B = window.macroChainBrick;
   const fmt = (v, dp = 0) => v == null ? '?' : `${v > 0 ? '+' : ''}${Number(v).toFixed(dp)}`;
   const rows = Array.isArray(macroMoved) ? macroMoved : [];
@@ -3990,20 +4006,20 @@ function assembleChainSnapshot() {
     const lvl = r.kind === 'rate' ? `${Number(r.last).toFixed(2)}%` : r.kind === 'spread' ? `${Number(r.last).toFixed(2)}% (${Math.round(r.last * 100)}bp)` : r.kind === 'curve' ? `${r.last}bp` : String(r.last);
     return `  ${r.label}: ${lvl} (${r.lastDate ?? '?'}) · 1d ${d(1)} · 5d ${d(5)} · 20d ${d(20)}${r.note ? ` · ${r.note}` : ''}`;
   }).join('\n');
-  const links = chainLinks();
-  const chain = B ? B.chainForPrompt(links) : '';
+  const links = chainLinks(win);
+  const chain = B ? B.chainForPrompt(links, win) : '';
   const rd = ratesDecompBest();
   const ratesSplit = rd && rd.usable ? `  10Y ${fmt(rd.total)}bp over ${rd.win} day(s) = real ${fmt(rd.real)}bp + breakeven ${fmt(rd.bei)}bp -> ${rd.meaningful ? (rd.dominant === 'real' ? 'real-rate driven' : rd.dominant === 'inflation' ? 'inflation-expectations driven' : 'flat') : 'inside the noise floor, nothing to attribute'}` : null;
   const pp = regimeFx?.policy;
   const policy = pp ? `  2Y ${pp.twoYear}% vs policy rate ${pp.policyRate}% (${fmt(pp.gapBp)}bp): roughly ${Math.abs(pp.movesPriced).toFixed(1)} ${pp.direction === 'cuts' ? 'cuts' : pp.direction === 'hikes' ? 'hikes' : 'moves'} already priced` : null;
-  const vals = chainVals() ?? {};
+  const vals = chainVals(win) ?? {};
   const wti = commodityDrivers?.wti;
-  const assetLine = (k, label) => vals[k] ? `  ${label}: 20d ${vals[k].delta > 0 ? '+' : ''}${vals[k].delta.toFixed(k === 'bei' || k === 'real' || k === 'us10y' || k === 'hy' ? 0 : 1)}${['pct'].includes(B?.CHAIN_NODES[k]?.unit) ? '%' : B?.CHAIN_NODES[k]?.unit === 'bp' ? 'bp' : ''}${vals[k].last != null ? ` (last ${Number(vals[k].last).toFixed(k === 'btc' ? 0 : k === 'gold' ? 0 : 2)}, ${vals[k].asOf ?? '?'})` : ''}` : null;
+  const assetLine = (k, label) => vals[k] ? `  ${label}: ${win}d ${vals[k].delta > 0 ? '+' : ''}${vals[k].delta.toFixed(k === 'bei' || k === 'real' || k === 'us10y' || k === 'hy' ? 0 : 1)}${['pct'].includes(B?.CHAIN_NODES[k]?.unit) ? '%' : B?.CHAIN_NODES[k]?.unit === 'bp' ? 'bp' : ''}${vals[k].last != null ? ` (last ${Number(vals[k].last).toFixed(k === 'btc' ? 0 : k === 'gold' ? 0 : 2)}, ${vals[k].asOf ?? '?'})` : ''}` : null;
   const assets = [
-    wti ? `  WTI crude: live ${wti.price.toFixed(2)}, ${fmt(wti.pct, 1)}% vs yesterday's close${vals.oil ? `, 20d ${fmt(vals.oil.delta, 1)}%` : ''}` : null,
+    wti ? `  WTI crude: live ${wti.price.toFixed(2)}, ${fmt(wti.pct, 1)}% vs yesterday's close${vals.oil ? `, ${win}d ${fmt(vals.oil.delta, 1)}%` : ''}` : null,
     assetLine('gold', 'Gold'), assetLine('copper', 'Copper'), assetLine('btc', 'Bitcoin'),
     assetLine('audusd', 'AUD/USD'), assetLine('usdcad', 'USD/CAD'), assetLine('usdjpy', 'USD/JPY'),
-    vals.dxy ? `  Broad dollar index: 20d ${fmt(vals.dxy.delta, 1)}% (${vals.dxy.asOf ?? '?'})` : null,
+    vals.dxy ? `  Broad dollar index: ${win}d ${fmt(vals.dxy.delta, 1)}% (${vals.dxy.asOf ?? '?'})` : null,
   ].filter(Boolean).join('\n');
   const rs = allRows();
   const risk = equitiesRisk(rs);
@@ -4033,7 +4049,7 @@ function assembleChainSnapshot() {
   const caveats = [
     ...dataConflicts().map(c => `  CONFLICT ${c.label}: ${c.a.src} ${c.a.v} vs ${c.b.src} ${c.b.v} (${c.diffPct}% gap) -- treat reads built on it as unsupported`),
     _wtiLag ? `  LAG: FRED's oil print is ${_wtiLag.days} days behind; oil has moved ${_wtiLag.movedPct > 0 ? '+' : ''}${_wtiLag.movedPct}% since. Use the live number.` : null,
-    (() => { const q = links.filter(l => l.verdict === 'quiet').length; return q ? `  ${q} of ${links.length} chain links are QUIET today -- do not chain through them` : null; })(),
+    (() => { const q = links.filter(l => l.verdict === 'quiet').length; return q ? `  ${q} of ${links.length} chain links are QUIET over ${win} day${win === 1 ? '' : 's'} -- do not chain through them` : null; })(),
   ].filter(Boolean).join('\n') || null;
   const now = Date.now();
   const evs = (events ?? [])
@@ -4044,31 +4060,37 @@ function assembleChainSnapshot() {
     .map(e => { const h = Math.round((e.ts - now) / 3600_000); return `  ${e.country} ${e.event}${e.estimate != null ? ` (consensus ${e.estimate})` : ''} -- ${h < 0 ? `${-h}h ago` : h === 0 ? 'now' : `in ${h}h`}`; })
     .join('\n') || null;
   const evidence = window.deskEvidenceBrick ? window.deskEvidenceBrick.evidenceForPrompt() : null;
-  return { asOf: new Date().toISOString(), moved: moved || null, chain: chain || null, ratesSplit, policy, assets: assets || null, risk: riskLines, equities, setups, ccy, divergences, caveats, events: evs, evidence };
+  return { asOf: new Date().toISOString(), window: win, moved: moved || null, chain: chain || null, ratesSplit, policy, assets: assets || null, risk: riskLines, equities, setups, ccy, divergences, caveats, events: evs, evidence };
 }
-async function peekChainRead() {
+// Keep the per-window store and the on-screen state in step: only the window on screen touches _chainRead.
+function _setChainReadFor(w, st) { _chainReadByWin[w] = st; if (w === _chainWin) _chainRead = st; }
+async function peekChainRead(w = _chainWin) {
+  let st;
   try {
-    const resp = await fetch('/api/chain-read').then(x => x.json());
-    _chainRead = resp?.ok ? { state: 'ready', data: resp, err: null, at: Date.now() } : { state: 'none', data: null, err: null, at: 0 };
-  } catch { _chainRead = { state: 'none', data: null, err: null, at: 0 }; }
+    const resp = await fetch(`/api/chain-read?window=${w}`).then(x => x.json());
+    st = resp?.ok ? { state: 'ready', data: resp, err: null, at: Date.now() } : { state: 'none', data: null, err: null, at: 0 };
+  } catch { st = { state: 'none', data: null, err: null, at: 0 }; }
+  _setChainReadFor(w, st);
   render();
 }
 let _chainReadTimer = null;
 async function loadChainRead(force = false) {
-  if (_chainRead.state === 'loading') return;
+  const w = _chainWin;   // the window this click was made on; a switch mid-wait must not receive another window's read
+  const cur = _chainReadByWin[w] ?? _chainRead;
+  if (cur.state === 'loading') return;
   // A read takes 40-60 seconds; the button counts so a wait is not mistaken for nothing happening.
-  _chainRead = { ..._chainRead, state: 'loading', err: null, startedAt: Date.now() };
+  _setChainReadFor(w, { ...cur, state: 'loading', err: null, startedAt: Date.now() });
   render();
   clearInterval(_chainReadTimer); _chainReadTimer = setInterval(() => { if (_chainRead.state !== 'loading') { clearInterval(_chainReadTimer); return; } render(); }, 5000);
   try {
     const resp = await fetch(`/api/chain-read${force ? '?force=1' : ''}`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ snapshot: assembleChainSnapshot() }),
+      body: JSON.stringify({ snapshot: assembleChainSnapshot(w) }),
     }).then(x => x.json());
     if (!resp?.ok) throw new Error(resp?.error || 'no read');
-    _chainRead = { state: 'ready', data: resp, err: null, at: Date.now() };
+    _setChainReadFor(w, { state: 'ready', data: resp, err: null, at: Date.now() });
   } catch (e) {
-    _chainRead = { state: 'error', data: _chainRead.data, err: e.message, at: Date.now() };
+    _setChainReadFor(w, { state: 'error', data: cur.data, err: e.message, at: Date.now() });
   }
   render();
 }
@@ -4131,11 +4153,11 @@ function chainReadHtml() {
   // once it is a day old, the way the morning brief does, so it is not mistaken for today's.
   const ageMin = _chainRead.data?.ageMin ?? (_chainRead.data?.generatedAt ? Math.round((Date.now() - Date.parse(_chainRead.data.generatedAt)) / 60_000) : null);
   const oldChip = ageMin != null && ageMin >= 24 * 60 ? `<span class="chip warn" style="font-size:9px" title="Written ${Math.round(ageMin / 60 / 24)} days ago. Nothing re-reads on its own: press re-read for one from today's numbers.">⚠ ${Math.round(ageMin / 60 / 24)}d old · press re-read</span>` : '';
-  const head = `<div class="chain-read-h"><span>The read <span class="chip warn" style="font-size:9px">AI · not backtested</span>${oldChip}</span><span style="display:inline-flex;gap:5px">${teachBtn}${btn}</span></div>`;
+  const head = `<div class="chain-read-h"><span>The read · ${_chainWinWord(_chainWin)} <span class="chip warn" style="font-size:9px">AI · not backtested</span>${oldChip}</span><span style="display:inline-flex;gap:5px">${teachBtn}${btn}</span></div>`;
   if (!r) {
     if (st === 'loading') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">Reading the tape…</div></div>`;
     if (st === 'error') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">Could not build the read (${esc0(_chainRead.err ?? '')}).</div></div>`;
-    if (st === 'none') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">No read written in the last 30 minutes. The rows below are the measured chain; the button writes the trader's-voice explanation from them when you want it.</div></div>`;
+    if (st === 'none') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">No ${_chainWinWord(_chainWin)} read written in the last 30 minutes. The rows below are the measured chain; the button writes the trader's-voice explanation from them, over this window only, when you want it.</div></div>`;
     return '';
   }
   const statusCls = { dominant: 'bull', overshadowed: 'neu', reloading: 'warn', absent: 'neu' };
@@ -4208,7 +4230,8 @@ function chainGraphHtml(links) {
     const short = n.label.replace(/ \(.*\)$/, '').replace('Inflation expectations', 'Infl. pricing').replace('Credit spreads', 'Credit (HY)').replace('Growth stocks', 'Nasdaq').replace('Broad stocks', 'S&P 500').replace('Fear gauge', 'VIX').replace('Funding', 'Funding (repo)');
     return `<g class="gn ${ring}${_chainNodeSel === k ? ' sel' : ''}" onclick="selectChainNode('${k}', event)"><title>${esc0(n.what)}</title><rect class="chip" x="${x}" y="${y}" width="${BW}" height="${BH}" rx="23"/><circle class="ring" cx="${x + 23}" cy="${y + BH / 2}" r="${R}"/><g transform="translate(${x + 23 - 8},${y + BH / 2 - 8}) scale(0.667)">${CHAIN_ICON[k] ?? CHAIN_ICON._}</g><text class="nl" x="${x + 44}" y="${y + 19}">${esc0(short)}</text><text class="nv ${ring === 'up' ? 'up' : ring === 'dn' ? 'dn' : ''}" x="${x + 44}" y="${y + 35}">${esc0(val)}</text></g>`;
   }).join('');
-  const sum = B.summariseChain(links);
+  const win = _chainWin;
+  const sum = B.summariseChain(links, win);
   const vword = { holding: 'holding', broken: 'broken', quiet: 'quiet', unmeasured: 'no data' };
   // the link card: the textbook, which way, why in the desk's words, today's verdict, and teach-me
   const selLink = _chainLinkSel ? links.find(l => l.id === _chainLinkSel) : null;
@@ -4224,7 +4247,7 @@ function chainGraphHtml(links) {
       <b>${esc0(A.label)} → ${esc0(Bn.label)}</b> · <span class="chain-v ${vcls[l.verdict] === 'none' ? 'quiet' : vcls[l.verdict]}">${vword[l.verdict]}</span><br>
       <b>The textbook:</b> ${esc0(l.textbook)}. They should move ${way}.<br>
       <b>Why:</b> ${esc0(A.what)} <span class="muted">→</span> ${esc0(Bn.what)}<br>
-      ${(l.evidence ?? []).map(id => { const E = window.deskEvidenceBrick; const e = E?.DESK_EVIDENCE?.find(x => x.id === id); if (!e) return ''; const c = E.citable(e); return `<div style="margin-top:5px;font-size:11px"><b>Tested:</b> <a href="evidence.html#ev-${esc0(id)}" target="_blank"><b>${esc0(c.tag)}</b></a> — ${esc0(e.result.length > 260 ? e.result.slice(0, 257) + '…' : e.result)}</div>`; }).join('')}
+      ${win !== 20 ? `<div class="muted" style="margin-top:5px;font-size:11px"><b>Tested:</b> the hit-rates for this link are 20-day only; switch to 20D to see them.</div>` : ''}${(l.evidence ?? []).map(id => { const E = window.deskEvidenceBrick; const e = E?.DESK_EVIDENCE?.find(x => x.id === id); if (!e) return ''; const c = E.citable(e); return `<div style="margin-top:5px;font-size:11px"><b>Tested:</b> <a href="evidence.html#ev-${esc0(id)}" target="_blank"><b>${esc0(c.tag)}</b></a> — ${esc0(e.result.length > 260 ? e.result.slice(0, 257) + '…' : e.result)}</div>`; }).join('')}
       <div style="margin-top:5px">${status}</div>
       <div class="muted" style="font-size:10.5px;margin-top:5px">Everything here is written into the chain, no model call. The paid "explain" sits on the rows below, if you want the longer version.</div></div>`;
   })() : '';
@@ -4235,12 +4258,12 @@ function chainGraphHtml(links) {
     const ways = outs.length ? `<div style="margin-top:5px"><b>What it moves, and which way</b> (textbook): when ${esc0(n.label)} rises, ${outs.map(l => `${esc0(B.CHAIN_NODES[l.b.key]?.label ?? l.b.key)} should go <b>${l.sign > 0 ? 'up' : 'down'}</b>`).join('; ')}.</div>` : '';
     const from = ins.length ? `<div style="margin-top:3px"><b>What moves it:</b> ${ins.map(l => `${esc0(B.CHAIN_NODES[l.a.key]?.label ?? l.a.key)} (${l.sign > 0 ? 'same way' : 'opposite'})`).join(', ')}.</div>` : '';
     const today = [...ins, ...outs].map(l => `<div><span class="chain-v ${vcls[l.verdict] === 'none' ? 'quiet' : vcls[l.verdict]}">${vword[l.verdict]}</span> <span class="chain-q-link" style="cursor:pointer" onclick="selectChainLink('${l.id}', event)">${esc0(l.short)}</span>${l.punch ? ` — ${esc0(l.punch)}` : ''}</div>`).join('');
-    const tps = (_chainNodeSel === 'us10y' || _chainNodeSel === 'us30y') ? termPremiumSplit() : null;
+    const tps = (_chainNodeSel === 'us10y' || _chainNodeSel === 'us30y') ? termPremiumSplit(win) : null;
     const wg = _chainNodeSel === 'gold' ? whichGold() : null;
     const goldSplit = wg ? `<div style="margin-top:5px"><b>Which gold is trading:</b> <b>${esc0(wg.kind)}</b> — ${esc0(wg.why)}. Four golds (rates, dollar, reserve, fear), one at a time; over 2010–2026 rates gold ${GOLD_SHARES.rates}% of windows, dollar ${GOLD_SHARES.dollar}%, both ${GOLD_SHARES.both}%, neither ${GOLD_SHARES.neither}%.${wg.fear ? ` <b>Fear flag:</b> VIX +${wg.fear.dv} in five sessions with gold ${wg.fear.dg >= 0 ? '+' : ''}${wg.fear.dg}% — tested on 58 spikes: no fear bid on average, and a month later gold lagged by 1.2% [0.5, 2.3]. The gold people buy, and the one that has not paid.` : ' Fear gold, tested: no bid on average after a VIX spike and a lag a month later — the one that does not pay.'} <a href="MD files/FOUR_GOLDS.md" target="_blank">FOUR_GOLDS.md</a></div>` : '';
     const bp = v => `${v > 0 ? '+' : ''}${Math.round(v)}bp`;
-    const split = tps ? `<div style="margin-top:5px"><b>Why it moved</b> (the ACM model, not a claim): of the 10-year\u2019s ${bp(tps.fitted)} over ${B.CHAIN_WINDOW_DAYS} days, <b>${bp(tps.tp)}</b> is term premium \u2014 what investors demand for holding duration: supply, deficits, uncertainty \u2014 and <b>${bp(tps.path)}</b> is the expected Fed path. ${Math.abs(tps.tp) > Math.abs(tps.path) ? 'A term-premium move is a supply or credibility story, not a growth story.' : 'A path move is the market re-pricing the Fed: growth and inflation, not supply.'}${_chainNodeSel === 'us30y' ? ' The 30-year has no published split; the 10-year\u2019s is the nearest reading.' : ''} <span class="muted">term premium now ${tps.level != null ? tps.level.toFixed(2) + '%' : '\u2014'} \u00b7 <a href="rates.html" target="_blank">rates.html</a></span></div>` : '';
-    return `<div class="chain-node-card"><span class="x" onclick="selectChainNode(null, event)">close ✕</span><b>${esc0(n.label)}</b>${e?.delta != null ? ` · ${esc0(e.text)} over ${B.CHAIN_WINDOW_DAYS} days${e.moved ? '' : ' (inside its noise floor, so quiet)'}` : ''}<br>${esc0(n.what)}${split}${goldSplit}${ways}${from}<div style="margin-top:5px">${today || 'No link on the board touches this today.'}</div><div class="muted" style="font-size:10.5px;margin-top:4px">Tap a link name for the textbook, the why and today\u2019s verdict.</div></div>`;
+    const split = tps ? `<div style="margin-top:5px"><b>Why it moved</b> (the ACM model, not a claim): of the 10-year\u2019s ${bp(tps.fitted)} over ${win} day${win === 1 ? '' : 's'}, <b>${bp(tps.tp)}</b> is term premium \u2014 what investors demand for holding duration: supply, deficits, uncertainty \u2014 and <b>${bp(tps.path)}</b> is the expected Fed path. ${Math.abs(tps.tp) > Math.abs(tps.path) ? 'A term-premium move is a supply or credibility story, not a growth story.' : 'A path move is the market re-pricing the Fed: growth and inflation, not supply.'}${_chainNodeSel === 'us30y' ? ' The 30-year has no published split; the 10-year\u2019s is the nearest reading.' : ''} <span class="muted">term premium now ${tps.level != null ? tps.level.toFixed(2) + '%' : '\u2014'} \u00b7 <a href="rates.html" target="_blank">rates.html</a></span></div>` : '';
+    return `<div class="chain-node-card"><span class="x" onclick="selectChainNode(null, event)">close ✕</span><b>${esc0(n.label)}</b>${e?.delta != null ? ` · ${esc0(e.text)} over ${win} day${win === 1 ? '' : 's'}${e.moved ? '' : ' (inside its noise floor, so quiet)'}` : ''}<br>${esc0(n.what)}${split}${goldSplit}${ways}${from}<div style="margin-top:5px">${today || 'No link on the board touches this today.'}</div><div class="muted" style="font-size:10.5px;margin-top:4px">Tap a link name for the textbook, the why and today\u2019s verdict.</div></div>`;
   })() : '';
   const defs = `<defs>${['hold', 'broke', 'quiet', 'none'].map(c => `<marker id="chain-arrow-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 Z" class="gah ${c}"/></marker>`).join('')}</defs>`;
   return `<div class="chain-g"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="The macro chain today: each chip is a thing that moves, each curve a textbook link, flowing where the link is holding, amber where it broke">${defs}${edges}${nodes}</svg></div>
@@ -4321,18 +4344,19 @@ function crackHtml() {
 }
 function chainHtml() {
   const B = window.macroChainBrick;
-  const links = chainLinks();
+  const win = _chainWin;
+  const links = chainLinks(win);
   if (!B || !links.length) return '';
-  const sum = B.summariseChain(links);
+  const sum = B.summariseChain(links, win);
   if (sum.judged === 0 && sum.unmeasured === links.length) return '';
   // Nothing is generated without a click -- every generation is a paid model
   // call. On load the page only asks the server for whatever read is already
   // cached (free); the button makes a new one.
   if (_chainRead.state === 'idle') {
     _chainRead.state = 'queued';
-    setTimeout(() => peekChainRead(), 300);
+    setTimeout(() => peekChainRead(win), 300);
   }
-  const W = B.CHAIN_WINDOW_DAYS;
+  const W = win;
   const vcls = { holding: 'hold', broken: 'broke', quiet: 'quiet', unmeasured: 'quiet' };
   const vword = { holding: 'holding', broken: 'broken', quiet: 'quiet', unmeasured: 'no data' };
   const arrow = d => d === 'up' ? '↑' : d === 'down' ? '↓' : '→';
@@ -4348,9 +4372,10 @@ function chainHtml() {
   const asOfs = links.flatMap(l => [l.a, l.b]).filter(e => e?.asOf);
   const newest = asOfs.map(e => e.asOf).sort().at(-1);
   const lagging = [...new Map(asOfs.filter(e => (Date.parse(newest) - Date.parse(e.asOf)) / 864e5 > B.CHAIN_DATE_GAP_NOTE_DAYS).map(e => [e.key, e])).values()];
-  const tip = `Each row is one textbook link, in causal order. Both ends are ${W}-day changes (the same window as the "what moved" strip); a node inside its noise floor is "quiet" and the link is not judged. Holding = both moved the way the textbook says. Broken = both moved, the wrong way round -- the one-liner is the mechanism; click the row for the full version. This panel explains; it does not predict. None of these links is a validated forward signal here.`;
+  const tip = `Each row is one textbook link, in causal order. Both ends are ${W}-day changes (the same window as the "what moved" strip; switch 1D / 5D / 20D above the rows); a node inside its noise floor is "quiet" and the link is not judged. Holding = both moved the way the textbook says. Broken = both moved, the wrong way round -- the one-liner is the mechanism; click the row for the full version. This panel explains; it does not predict. None of these links is a validated forward signal here.`;
   return `<div class="chain">
     <div class="chain-h help" title="${esc0(tip)}">The chain, today <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· textbook links vs ${W}-day moves ${_EV('c', _EV_T.c)}</span></div>
+    <div class="chain-win" role="group" aria-label="Chain window">${[1, 5, 20].map(w => `<span class="chip neu${w === win ? ' on' : ''}" role="button" tabindex="0" aria-pressed="${w === win}" style="cursor:pointer" onclick="setChainWin(${w}, event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setChainWin(${w}, event)}" title="${w === 1 ? 'What each link did in the last session: the daily impact' : w === 5 ? 'What each link did over the last five days' : 'The month view: the window the tested hit-rates are written for'}">${w}D</span>`).join('')}${win !== 20 ? `<span class="muted" style="font-size:10.5px">Noise floors are scaled by √(days/20) from the 20-day floors; that scaling is not tested. Some feeds print weekly or a week late and show no data at ${win === 1 ? '1 day' : `${win} days`}. The tested hit-rates on this page are 20-day only. The read below is written from this window's numbers alone.</span>` : ''}</div>
     <div class="chain-sum ${sum.broken ? 'broke' : sum.judged ? 'hold' : 'quiet'}">${esc0(sum.headline)}</div>
     ${chainGraphHtml(links)}
     ${chainReadHtml()}

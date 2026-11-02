@@ -1,6 +1,6 @@
 // Synthetic tests for js/macroChain.js. No network, no clock.
 //   node js/macroChain.test.mjs
-import { CHAIN_NODES, CHAIN_LINKS, nodeDelta, evaluateChain, summariseChain, chainForPrompt, CHAIN_WINDOW_DAYS } from './macroChain.js';
+import { CHAIN_NODES, CHAIN_LINKS, nodeDelta, evaluateChain, summariseChain, chainForPrompt, CHAIN_WINDOW_DAYS, CHAIN_WINDOWS, scaledFloor } from './macroChain.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -143,6 +143,32 @@ console.log('[chainForPrompt]');
   ok('a small CCC move is quiet (floor 40bp), a 50bp one is judged', byId(evaluateChain({ hy: v(20), ccc: v(30) }), 'hy-ccc').verdict === 'quiet' && byId(evaluateChain({ hy: v(20), ccc: v(50) }), 'hy-ccc').verdict === 'holding');
   ok('the CCC to Nasdaq link carries the same honesty as the junk one: credit does not lead (evidence id, and the words)', byId(CHAIN_LINKS.map(l => ({ id: l.id, evidence: l.evidence ?? [] })), 'ccc-nq').evidence.includes('credit-leads-equities') && /does not lead the Nasdaq/.test(CHAIN_LINKS.find(l => l.id === 'ccc-nq').holds));
   ok('no link states a forecast (will rise, will fall, predicts)', CHAIN_LINKS.slice(24).every(l => !/\bwill (rise|fall|go|move)|predict|forecast/i.test([l.textbook, l.holds, l.broken.up, l.broken.down, l.punch?.holds, l.punch?.up, l.punch?.down].join(' '))));
+}
+
+console.log('[windows - 1 / 5 / 20 day reads]');
+{
+  const v = (delta) => ({ delta, last: 1, asOf: '2026-09-10' });
+  ok('CHAIN_WINDOWS is 1, 5, 20', JSON.stringify(CHAIN_WINDOWS) === '[1,5,20]');
+  const oilN = CHAIN_NODES.oil, beiN = CHAIN_NODES.bei;
+  ok('scaledFloor: 20 unchanged', scaledFloor(beiN, 20) === beiN.floor);
+  ok('scaledFloor: sqrt(days/20)', Math.abs(scaledFloor(beiN, 5) - beiN.floor * 0.5) < 1e-9 && Math.abs(scaledFloor(beiN, 1) - beiN.floor * Math.sqrt(0.05)) < 1e-9);
+  const vals = { oil: v(1.2), bei: v(1.5) };
+  const w20 = evaluateChain(vals), w1 = evaluateChain(vals, CHAIN_LINKS, CHAIN_NODES, 1), w5 = evaluateChain(vals, CHAIN_LINKS, CHAIN_NODES, 5);
+  const id = 'oil-bei';
+  ok('20d default is the same as passing 20', JSON.stringify(w20) === JSON.stringify(evaluateChain(vals, CHAIN_LINKS, CHAIN_NODES, 20).map(l => l)));
+  ok('a small move is quiet at 20d (inside the full floor)', w20.find(l => l.id === id).verdict === 'quiet');
+  ok('the same move is judged at 1d (scaled floor) and holds', w1.find(l => l.id === id).verdict === 'holding');
+  ok('5d floor sits between', w5.find(l => l.id === id).a.floorText !== w20.find(l => l.id === id).a.floorText);
+  const l1 = w1.find(l => l.id === id);
+  ok('1d floor text never prints as ±0', !/±0(bp|%)?$/.test(l1.b.floorText) && l1.b.floorText !== '±0bp', l1.b.floorText);
+  ok('links and ends carry their window', l1.window === 1 && l1.a.window === 1 && w20[0].window === 20);
+  ok('non-20 holding read has no 20-day statistic as its own and no punch', !/\d+% of 20-day|tested here/i.test(l1.read) && l1.punch === '' && /20-day windows/.test(l1.read) && l1.evidence.length === 0);
+  const wb = evaluateChain({ real: v(10), dxy: v(-1) }, CHAIN_LINKS, CHAIN_NODES, 5).find(l => l.id === 'real-dxy');
+  ok('non-20 broken read is the generic one, not the mechanism text', wb.verdict === 'broken' && !/risk-premium/.test(wb.read) && /5 days/.test(wb.read) && wb.punch === '');
+  ok('20d broken read still carries the mechanism', /risk-premium/.test(evaluateChain({ real: v(15), dxy: v(-1.5) }).find(l => l.id === 'real-dxy').read));
+  ok('quiet text names the window', /over 1 day/.test(evaluateChain({ oil: v(0), bei: v(0) }, CHAIN_LINKS, CHAIN_NODES, 1).find(l => l.id === id).read));
+  ok('summary headline names the window', /over 5 days/.test(summariseChain(evaluateChain({}, CHAIN_LINKS, CHAIN_NODES, 5).map(l => ({ ...l, verdict: 'quiet' })), 5).headline));
+  ok('nodeDelta honours the window', nodeDelta(series(80, 88), CHAIN_NODES.oil, 1).delta < nodeDelta(series(80, 88), CHAIN_NODES.oil, 5).delta);
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');

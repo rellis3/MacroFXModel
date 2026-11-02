@@ -42,6 +42,12 @@ export const CHAIN_LAYOUT = {   // [column, row] on a 6-column grid; causes sit 
 };
 
 export const CHAIN_WINDOW_DAYS = 20;
+// The windows the chain can be read over. The noise floors below are set for 20 days; at 1 and 5
+// days they are scaled by sqrt(days/20) (random-walk scaling). That scaling is an assumption, not a
+// tested result, and the tested hit-rates quoted in the link texts are 20-day windows only.
+export const CHAIN_WINDOWS = [1, 5, 20];
+export const scaledFloor = (node, win = CHAIN_WINDOW_DAYS) => node.floor * Math.sqrt(win / CHAIN_WINDOW_DAYS);
+const _winWord = w => (w === 1 ? '1 day' : `${w} days`);
 
 // unit: how the 20d change is expressed. pct = percent change of a price;
 // bp = change in a percent-quoted rate ×100; pt = change in a level.
@@ -514,13 +520,17 @@ export function nodeDelta(pts, node, window = CHAIN_WINDOW_DAYS) {
  * Evaluate every link. vals: { <nodeKey>: {delta, last, asOf, ...} | null }.
  * Returns links in chain order, each with both ends described and a verdict.
  */
-export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODES) {
+export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODES, window = CHAIN_WINDOW_DAYS) {
+  const scaled = window !== CHAIN_WINDOW_DAYS;
   const end = key => {
     const n = nodes[key]; const v = vals[key];
     if (!n) return null;
-    if (!v || v.delta == null || !Number.isFinite(v.delta)) return { key, label: n.label, unit: n.unit, delta: null, moved: false, dir: null, text: '—', asOf: null };
-    const moved = Math.abs(v.delta) >= n.floor;
-    return { key, label: n.label, unit: n.unit, delta: v.delta, last: v.last ?? null, moved, dir: _dir(v.delta), text: _fmt(v.delta, n.unit, n.dp), asOf: v.asOf ?? null, floorText: _fmt(n.floor, n.unit, n.dp).replace('+', '±') };
+    if (!v || v.delta == null || !Number.isFinite(v.delta)) return { key, label: n.label, unit: n.unit, delta: null, moved: false, dir: null, text: '—', asOf: null, window };
+    const floor = scaledFloor(n, window);
+    const moved = Math.abs(v.delta) >= floor;
+    // a scaled floor is a smaller number: keep a decimal so it never prints as ±0
+    const fdp = scaled && floor < 10 ? Math.max(n.dp, floor < 1 ? 2 : 1) : n.dp;
+    return { key, label: n.label, unit: n.unit, delta: v.delta, last: v.last ?? null, moved, dir: _dir(v.delta), text: _fmt(v.delta, n.unit, n.dp), asOf: v.asOf ?? null, floorText: _fmt(floor, n.unit, fdp).replace('+', '±'), window };
   };
   return links.map(l => {
     const a = end(l.from), b = end(l.to);
@@ -531,21 +541,30 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
     else if (!a.moved || !b.moved) {
       verdict = 'quiet';
       const still = !a.moved && !b.moved ? 'neither end' : !a.moved ? a.label : b.label;
-      read = `${still === 'neither end' ? 'Neither end has' : `${still} has not`} moved past its noise floor over ${CHAIN_WINDOW_DAYS} days, so there is nothing to judge the link on.`;
+      read = `${still === 'neither end' ? 'Neither end has' : `${still} has not`} moved past its noise floor over ${_winWord(window)}, so there is nothing to judge the link on.`;
       punch = !a.moved ? `${a.label} inside its floor (${a.floorText})` : `${b.label} inside its floor (${b.floorText})`;
     }
     else {
       const agree = Math.sign(a.delta) * Math.sign(b.delta) === l.sign;
       verdict = agree ? 'holding' : 'broken';
-      read = agree ? l.holds : l.broken[a.dir];
-      punch = agree ? (l.punch?.holds ?? '') : (l.punch?.[a.dir] ?? '');
+      if (!scaled) {
+        read = agree ? l.holds : l.broken[a.dir];
+        punch = agree ? (l.punch?.holds ?? '') : (l.punch?.[a.dir] ?? '');
+      } else {
+        // the mechanism and hit-rate sentences are written and tested on 20-day windows: do not
+        // present them as if they described this shorter one
+        read = agree
+          ? `Both ends moved the textbook way over ${_winWord(window)}. The hit-rates quoted for this link on this desk are 20-day windows; there is no ${_winWord(window).replace(' days', '-day').replace('1 day', '1-day')} test of it.`
+          : `Both ends moved, the wrong way round, over ${_winWord(window)}. The mechanism and hit-rates for this link are written for 20-day windows; a ${window === 1 ? '1-day' : `${window}-day`} break can be noise, and none of it has been tested here.`;
+        punch = '';
+      }
     }
     // The two ends can print on different days (the broad dollar index lags a
     // week; OANDA closes are yesterday). A verdict across a wide gap is still a
     // verdict, but the reader should see the gap rather than assume one date.
     const ta = Date.parse(a?.asOf ?? ''), tb = Date.parse(b?.asOf ?? '');
     const dateGapDays = (Number.isFinite(ta) && Number.isFinite(tb)) ? Math.round(Math.abs(ta - tb) / 864e5) : null;
-    return { id: l.id, short: l.short ?? l.id, textbook: l.textbook, sign: l.sign, evidence: l.evidence ?? [], a, b, expected, verdict, read, punch, dateGapDays };
+    return { id: l.id, short: l.short ?? l.id, textbook: l.textbook, sign: l.sign, evidence: scaled ? [] : (l.evidence ?? []), a, b, expected, verdict, read, punch, dateGapDays, window };
   });
 }
 
@@ -553,21 +572,21 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
 export const CHAIN_DATE_GAP_NOTE_DAYS = 3;
 
 /** Counts and a one-line headline over an evaluated chain. */
-export function summariseChain(links) {
+export function summariseChain(links, window = CHAIN_WINDOW_DAYS) {
   const n = { holding: 0, broken: 0, quiet: 0, unmeasured: 0 };
   for (const l of links) n[l.verdict] = (n[l.verdict] ?? 0) + 1;
   const judged = n.holding + n.broken;
   const brokenIds = links.filter(l => l.verdict === 'broken').map(l => l.id);
   const brokenShort = links.filter(l => l.verdict === 'broken').map(l => l.short ?? l.id);
   let headline;
-  if (judged === 0) headline = n.unmeasured === links.length ? 'Nothing measured yet.' : `Quiet: no link has both ends moving over ${CHAIN_WINDOW_DAYS} days. The textbook is not being tested today.`;
+  if (judged === 0) headline = n.unmeasured === links.length ? 'Nothing measured yet.' : `Quiet: no link has both ends moving over ${_winWord(window)}. The textbook is not being tested today.`;
   else if (n.broken === 0) headline = `${n.holding} of ${judged} testable link${judged === 1 ? '' : 's'} holding. The textbook is working — first-order reads are enough today.`;
   else headline = `${n.broken} of ${judged} testable link${judged === 1 ? '' : 's'} broken: ${brokenShort.join(', ')}. That is where the story is.`;
   return { ...n, judged, brokenIds, brokenShort, headline };
 }
 
 /** Compact text for an AI prompt: one line per judged link, broken ones with the mechanism. */
-export function chainForPrompt(links) {
+export function chainForPrompt(links, window = CHAIN_WINDOW_DAYS) {
   const lines = [];
   for (const l of links) {
     if (l.verdict === 'unmeasured') continue;
