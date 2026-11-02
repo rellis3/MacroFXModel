@@ -133,3 +133,40 @@ export function driftSegments(drift, { minLen = 2 } = {}) {
   const text = merged.map(r => `${r.dir} ${r.from === r.to ? `day ${r.from}` : `days ${r.from}-${r.to}`}`).join(', ');
   return { runs: merged, text };
 }
+
+/**
+ * The zone walk: start at the last close and step to each readable expiry's anchor in date order, so the line can go
+ * north to one expiry's strongest strike and back south to the next. anchor = 'strike' (that expiry's biggest strike),
+ * 'maxPain' or 'centre' (its OI-weighted centre). Thin books (under `thin` of all live OI) are skipped unless includeThin, then kept and flagged thin.
+ * Returns { points:[{expiry,dte,px,from,dir,movePct,strength,oi,building}], runs:[{dir,from,to,px,expiry}], text }.
+ * A drawing of the hypothesis that price visits each expiry's zone by its date. Untested.
+ */
+export function zoneWalk(expiries, { close, anchor = 'strike', maxDte = 100, thin = 0.10, includeThin = false, flatPct = 0.1 } = {}) {
+  if (!(close > 0)) return { points: [], runs: [], text: '' };
+  const all = (expiries || []).reduce((a, e) => a + (e.totalOI || 0), 0);
+  const isThin = e => !!e.thin || (all > 0 && (e.totalOI || 0) / all < thin);
+  const live = (expiries || []).filter(e => e.dte >= 0 && e.dte <= maxDte && (includeThin || !isThin(e)))
+    .slice().sort((a, b) => (a.expiry < b.expiry ? -1 : a.expiry > b.expiry ? 1 : 0));
+  const points = [];
+  let prev = close;
+  for (const e of live) {
+    const top = (e.zones || []).slice().sort((a, b) => (b.oi || 0) - (a.oi || 0))[0];
+    const px = anchor === 'maxPain' ? e.maxPain : anchor === 'centre' ? e.centrePx : top?.px;
+    if (!(px > 0)) continue;
+    const movePct = (px / prev - 1) * 100;
+    const dir = Math.abs(movePct) < flatPct ? 'flat' : movePct > 0 ? 'up' : 'down';
+    points.push({ expiry: e.expiry, dte: e.dte, px, from: prev, dir, movePct, thin: isThin(e),
+      strength: all > 0 && top ? (top.oi || 0) / all : null, oi: top?.oi ?? null,
+      building: !!top && ((top.buildStreak ?? 0) >= 2 || (top.chgSinceFirst ?? 0) > 0) });
+    prev = px;
+  }
+  // consecutive steps the same way merge into one run; a flat step joins the run it sits in
+  const runs = [];
+  for (const p of points) {
+    const last = runs.at(-1);
+    if (last && (p.dir === last.dir || p.dir === 'flat')) { last.to = p.dte; last.px = p.px; last.expiry = p.expiry; }
+    else runs.push({ dir: p.dir, from: p.dte, to: p.dte, px: p.px, expiry: p.expiry });
+  }
+  const text = runs.map(r => `${r.dir} to ${r.px} by ${r.expiry} (${r.to}d)`).join(', then ');
+  return { points, runs, text };
+}

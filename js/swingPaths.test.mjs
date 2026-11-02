@@ -1,6 +1,6 @@
 // Swing Map Monte Carlo: reproducible, random walk when k = 0, and the pull does what it says.
 //   node js/swingPaths.test.mjs
-import { simulatePaths, touchShare, mulberry32, driftSegments } from './swingPaths.js';
+import { simulatePaths, touchShare, mulberry32, driftSegments, zoneWalk } from './swingPaths.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
@@ -37,6 +37,30 @@ console.log('[drift segments in words]');
   const d = [-1, -1, -1, 1, 1, 1, 1, -0.1, 1, 1].map((x, t) => ({ t, d: x }));
   const sg = driftSegments(d);
   ok('down then up, a one-day wobble folded in', sg.text === 'down days 1-3, up days 4-10', sg.text);
+}
+
+console.log('[zone walk: north, south, north by expiry date]');
+{
+  const z = (px, oi, b = 0) => ({ px, oi, buildStreak: b });
+  const ex = [
+    { expiry: '2026-11-06', dte: 4, totalOI: 3000, maxPain: 3850, centrePx: 3860, zones: [z(3850, 900, 3), z(4000, 400)] },
+    { expiry: '2026-11-04', dte: 2, totalOI: 3000, maxPain: 3950, centrePx: 3940, zones: [z(3900, 500), z(4000, 1000)] },
+    { expiry: '2026-11-24', dte: 22, totalOI: 9000, maxPain: 4000, centrePx: 3990, zones: [z(4100, 3000)] },
+    { expiry: '2026-11-12', dte: 10, totalOI: 100, thin: true, maxPain: 3500, centrePx: 3500, zones: [z(3500, 100)] },
+  ];
+  const w = zoneWalk(ex, { close: 3876 });
+  ok('date order, thin book skipped', w.points.map(p => p.expiry).join() === '2026-11-04,2026-11-06,2026-11-24');
+  ok('each step goes to that expiry\'s biggest strike', w.points.map(p => p.px).join() === '4000,3850,4100');
+  ok('north, south, north', w.points.map(p => p.dir).join() === 'up,down,up' && w.runs.length === 3);
+  ok('each step starts where the last ended', w.points[1].from === 4000 && w.points[0].from === 3876);
+  ok('strength is share of all OI, building flag', Math.abs(w.points[1].strength - 900 / 15100) < 1e-12 && w.points[1].building);
+  const mp = zoneWalk(ex, { close: 3876, anchor: 'maxPain' });
+  ok('max-pain anchor', mp.points.map(p => p.px).join() === '3950,3850,4000');
+  const up = zoneWalk([ex[1], ex[2]], { close: 3876 });
+  ok('same-way steps merge into one run', up.runs.length === 1 && up.runs[0].px === 4100, up.text);
+  ok('no close, no walk', zoneWalk(ex, {}).points.length === 0);
+  const th = zoneWalk(ex, { close: 3876, includeThin: true });
+  ok('includeThin keeps the thin book, flagged', th.points.length === 4 && th.points[2].expiry === '2026-11-12' && th.points[2].thin && !th.points[0].thin);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

@@ -58,7 +58,9 @@
     <div class="bar"><h1 id="title">Swing Map</h1>
       <select id="inst" aria-label="Instrument"></select>
       <button id="refresh" title="Rebuild now instead of the 30-minute cache">Refresh</button>
-      <span class="seg" role="group" aria-label="Chart style"><button id="mPaths" data-m="paths" class="on">Two paths</button><button id="mCone" data-m="cone">Range cone</button><button id="mMc" data-m="mc">Monte Carlo</button><button id="mModal" data-m="modal">Most-touched path</button></span>
+      <span class="seg" role="group" aria-label="Chart style"><button id="mPaths" data-m="paths" class="on">Two paths</button><button id="mCone" data-m="cone">Range cone</button><button id="mMc" data-m="mc">Monte Carlo</button><button id="mModal" data-m="modal">Most-touched path</button><button id="mWalk" data-m="walk">Zone walk</button></span>
+      <span class="mcopt" id="walkOpts">follow <select id="walkA" aria-label="What each expiry's step goes to"><option value="strike" selected>strongest strike</option><option value="maxPain">max pain</option><option value="centre">OI centre</option></select>
+        <label title="Weekly and daily books are small next to the quarterlies; on = show their steps, faint"><input type="checkbox" id="walkThin" checked> small books</label></span>
       <span class="mcopt" id="mcOpts">horizon <select id="mcH" aria-label="Horizon in sessions"><option>10</option><option selected>20</option><option>40</option><option>60</option></select>
         pull <select id="mcK" aria-label="Pull strength"><option value="0">off</option><option value="0.25">weak</option><option value="0.5" selected>medium</option><option value="1">strong</option></select></span>
       <span class="seg" role="group" aria-label="Lines"><button id="sZones" data-s="zones">Strongest zones</button><button id="sLevels" data-s="levels">Level lines</button><button id="sOi" data-s="oi">Option lines</button></span></div>
@@ -74,6 +76,8 @@
       <p class="note" id="chartNote"></p>
       <details class="howto"><summary>How to read this chart, and how to use it</summary>
         <ul>
+          <li><b>The time axis is stretched:</b> history is squeezed into the left part, and the future runs on a square-root scale so the next 1, 2, 3 and 5 days get as much room as the weeks after. The +1d, +5d, +20d marks along the top are sessions ahead.</li>
+          <li><b>Zone walk</b>: from today's close, a straight step to each readable expiry's strongest strike (or its max pain, or OI centre) in date order: green steps up, red steps down, dot size = how much of all live open interest that strike holds. It draws the idea that price visits each expiry's zone by its date. Untested.</li>
           <li><b>Each vertical dotted line is one CME option expiry</b>, at its date. The date sits under it. Faint lines are thin books, too small to read (under 10% of all live open interest).</li>
           <li><b>The arrow on top of each line</b> says which side of today's price most of that expiry's open interest sits. ▲ = more above, ▼ = more below, ◆ = balanced.</li>
           <li><b>Most-touched path</b> (violet line): where most of 2,000 simulated paths sit each day <i>if</i> each expiry pulls price toward its open-interest centre. <b>Grey dashed</b> = the same simulation with no pull.</li>
@@ -107,7 +111,7 @@
     Earlier OI tests: walls behaved like ordinary levels (wall-placebo), max pain does not pin, and the dealer hedge-flow side was underpowered.</p>
 </div>
 <script type="module">
-import { simulatePaths, touchShare, driftSegments } from './js/swingPaths.js';
+import { simulatePaths, touchShare, driftSegments, zoneWalk } from './js/swingPaths.js';
 const $ = id => document.getElementById(id);
 const fmt = (x, dp) => (x == null || !isFinite(x) ? '–' : Number(x).toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp }));
 const pct = (x, dp = 1) => (x == null || !isFinite(x) ? '–' : `${x > 0 ? '+' : ''}${x.toFixed(dp)}%`);
@@ -167,16 +171,21 @@ function render(m) {
 
 function drawChart(m) {
   const cw = Math.max(640, Math.round($('chart').clientWidth || 980));
-  const W = cw, H = Math.round(Math.min(720, Math.max(460, cw * 0.46))), L = 64, R = 170, T = 18, B = 46;
+  const W = cw, H = Math.round(Math.min(720, Math.max(460, cw * 0.46))), L = 64, R = 170, T = 30, B = 46;
   const s = m.state, today = s.date;
-  const sim = MODE === 'mc' || MODE === 'modal';
-  const histStart = addDays(today, sim ? -120 : MODE === 'paths' ? -150 : -200);   // short history so the future side gets room
+  const sim = MODE === 'mc' || MODE === 'modal', walkMode = MODE === 'walk';
+  const histStart = addDays(today, sim ? -90 : walkMode ? -100 : MODE === 'paths' ? -120 : -160);
   const series = m.series.filter(p => p[0] >= histStart);
   const futEnd = sim ? addDays(tradingDaysAhead(today, +$('mcH').value), 12) : addDays(today, 105);
-  const t0 = Date.parse(series[0][0]), t1 = Date.parse(futEnd);
-  const X = d => L + (Date.parse(d) - t0) / (t1 - t0) * (W - L - R);
+  // time axis in two parts: history squeezed into the left ~30%, the future on a square-root scale so the next few
+  // days get as much room as the following weeks (day 1 sits ~10% of the way along a 100-day future, not 1%)
+  const t0 = Date.parse(series[0][0]), tT = Date.parse(today), t1 = Date.parse(futEnd);
+  const plotW = W - L - R, histW = plotW * (MODE === 'cone' ? 0.38 : 0.3);
+  const X = d => { const t = Date.parse(d); return t <= tT ? L + (t - t0) / Math.max(1, tT - t0) * histW : L + histW + Math.sqrt((t - tT) / (t1 - tT)) * (plotW - histW); };
+  const walk = walkMode ? zoneWalk(m.expiries.filter(e => e.expiry <= futEnd), { close: s.close, anchor: $('walkA').value, includeThin: $('walkThin').checked }) : null;
   const vals = series.map(p => p[1]);
   const extra = [];
+  if (walk) for (const p of walk.points) if (p.px > s.close * 0.85 && p.px < s.close * 1.15) extra.push(p.px);
   for (const b of m.bands) for (const k of ['p90']) { extra.push(b[k].up, b[k].down); }
   for (const e of m.expiries) if (!e.thin) for (const z of e.zones.slice(0, 1)) if (z.px > s.close * 0.9 && z.px < s.close * 1.1) extra.push(z.px);
   if (SHOW.oi) for (const v of oiLineList(m).map(l => l.v)) if (v > s.close * 0.88 && v < s.close * 1.12) extra.push(v);
@@ -188,8 +197,16 @@ function drawChart(m) {
   const step = niceStep((hi - lo) / 6);
   for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) o.push(`<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${L - 6}" y="${Y(v) + 4}" fill="var(--text3)" font-size="11" text-anchor="end">${px(v)}</text>`);
   for (let d = new Date(t0); d <= new Date(t1); d.setUTCMonth(d.getUTCMonth() + 1)) {
-    const ds = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString().slice(0, 10); if (Date.parse(ds) < t0) continue;
+    const ds = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString().slice(0, 10); if (Date.parse(ds) < t0 || Date.parse(ds) > tT) continue;
     o.push(`<text x="${X(ds)}" y="${H - 2}" fill="var(--text3)" font-size="11" text-anchor="middle">${new Date(ds).toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' })}${ds.slice(5, 7) === '01' ? ' ' + ds.slice(2, 4) : ''}</text>`);
+  }
+  // the stretched future axis: faint verticals at 1, 2, 3, 5, 10, 20, 40 and 60 sessions, labelled along the top
+  let lastTick = -1e9;
+  for (const n of [1, 2, 3, 5, 10, 20, 40, 60]) {
+    const d = tradingDaysAhead(today, n); if (d > futEnd) break;
+    const x = X(d);
+    o.push(`<line x1="${x}" x2="${x}" y1="${T}" y2="${H - B}" stroke="var(--grid)"/>`);
+    if (x - lastTick >= 34) { o.push(`<text x="${x}" y="${T - 6}" fill="var(--text3)" font-size="10" text-anchor="middle">+${n}d<title>${n} session${n > 1 ? 's' : ''} ahead: ${d}</title></text>`); lastTick = x; }
   }
   // future shading + today
   o.push(`<rect x="${X(today)}" y="${T}" width="${W - R - X(today)}" height="${H - T - B}" fill="#ffffff" opacity="0.025"/>`);
@@ -214,7 +231,7 @@ function drawChart(m) {
       const str = allOI > 0 ? (z.oi || 0) / allOI : 0, rel = maxStr > 0 ? str / maxStr : 0;
       const w = 8 + 46 * rel, h = 3 + 6 * rel, build = (z.buildStreak ?? 0) >= 2 || (z.chgSinceFirst ?? 0) > 0;
       o.push(`<rect x="${x - w / 2}" y="${Y(z.px) - h / 2}" width="${w}" height="${h}" rx="2" fill="${build ? 'var(--violet)' : '#8b949e'}" opacity="${sim ? 0.3 : 0.4 + 0.55 * rel}"><title>${e.expiry} (${e.dte} days): ${px(z.px)}, ${fmt(z.oi, 0)} contracts = ${fmt(str * 100, 1)}% of all live open interest, ${fmt((z.share ?? 0) * 100, 0)}% of this expiry; ${z.buildStreak ?? 0} nights building</title></rect>`);
-      if (zi === 0 && !sim && rel >= 0.25) o.push(`<text x="${x + w / 2 + 3}" y="${Y(z.px) + 3.5}" fill="var(--violet)" font-size="10" font-weight="600">${px(z.px)} · ${fmt(str * 100, 0)}%</text>`);
+      if (zi === 0 && !sim && !walkMode && rel >= 0.25) o.push(`<text x="${x + w / 2 + 3}" y="${Y(z.px) + 3.5}" fill="var(--violet)" font-size="10" font-weight="600">${px(z.px)} · ${fmt(str * 100, 0)}%</text>`);
     });
   }
   // range fans from today: weekly and monthly, p50/p75/p90
@@ -249,6 +266,20 @@ function drawChart(m) {
         o.push(`<circle cx="${xe}" cy="${Y(end.px)}" r="5" fill="var(--violet)"/><text x="${xe + 7}" y="${Y(end.px) + 4}" fill="var(--violet)" font-size="12" font-weight="700">${px(end.px)} · ${fmtDay(tradingDaysAhead(today, end.t))}</text>`);
         for (const e of sim.used) { if (e.s > sim.pull.sessions) continue; const q = sim.pull.modal[e.s]; o.push(`<circle cx="${xs(e.s)}" cy="${Y(q.px)}" r="3" fill="none" stroke="var(--violet)"><title>${e.expiry}: most-touched ${px(q.px)}; that expiry's OI centre ${px(e.target)}</title></circle>`); }
       }
+    }
+  } else if (walkMode) {
+    // the zone walk: today's close, then each readable expiry's anchor in date order; green leg = up, red = down
+    const maxS = Math.max(1e-9, ...walk.points.map(p => p.strength || 0));
+    let x0 = X(today), y0 = Y(s.close), lastLx = -1e9, row = 0;
+    for (const p of walk.points) {
+      const x = X(p.expiry), y = Y(p.px), c = p.dir === 'up' ? 'var(--up)' : p.dir === 'down' ? 'var(--down)' : 'var(--text3)';
+      o.push(`<line x1="${x0}" y1="${y0}" x2="${x}" y2="${y}" stroke="${c}" stroke-width="${p.thin ? 1.4 : 2.4}" stroke-opacity="${p.thin ? 0.6 : 1}"${p.thin ? ' stroke-dasharray="4 3"' : ''} stroke-linecap="round"/>`);
+      const r = 3.5 + 5 * Math.sqrt((p.strength || 0) / maxS);
+      o.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${p.thin ? '#0d1117' : c}" stroke="${p.thin ? c : '#0d1117'}" stroke-width="${p.thin ? 1.5 : 1}"><title>${p.expiry} (${p.dte} days): ${px(p.px)}, ${p.dir} ${pct(p.movePct, 2)} from the step before${p.strength != null ? `; its biggest strike holds ${fmt(p.strength * 100, 1)}% of all live OI` : ''}${p.building ? ', building' : ''}${p.thin ? '; small book (under 10% of live OI)' : ''}</title></circle>`);
+      row = x - lastLx < 60 ? (row + 1) % 2 : 0; lastLx = x;
+      const ly = p.dir === 'down' ? y + 16 + row * 12 : y - 9 - row * 12;
+      o.push(`<text x="${x}" y="${ly}" fill="${c}" font-size="10.5" font-weight="600" opacity="${p.thin ? 0.75 : 1}" text-anchor="middle">${px(p.px)} · ${fmtDay(p.expiry)}</text>`);
+      x0 = x; y0 = y;
     }
   } else {
     // monthly p75 band as faint horizontal guides across the future, then the two dashed paths with dated waypoints
@@ -310,6 +341,7 @@ function drawChart(m) {
   o.push('</svg>');
   $('chart').innerHTML = o.join('');
   if (MODE === 'mc' || MODE === 'modal') { mcNote(m); return; }
+  if (walkMode) { walkNote(m, walk); return; }
   $('chartNote').innerHTML = MODE === 'paths'
     ? `Dashed paths: the two orders the next move can come in. Each waypoint is a measured number: the look-back's barrier at its median timing ${tag('EXPLORATORY')}, then the monthly reverting p75 ${tag('VALIDATED')} (faint blue lines). Dates are sessions ahead, not forecasts. `
       + `Violet columns: each CME expiry in the next ~100 days, ▲/▼ = most of its open interest sits above/below price ${tag('UNTESTED')}.`
@@ -405,11 +437,12 @@ function legBars(m) {
   $('legbars').innerHTML = o.join('') + `<p class="note">Bars are % moves and the labels are σ. The solid bar is the leg in progress. Similar-looking legs do not mark an exhaustion size: see the current-leg card.</p>`;
 }
 
-const MODES = ['paths', 'cone', 'mc', 'modal'];
+const MODES = ['paths', 'cone', 'mc', 'modal', 'walk'];
 function setMode(md) {
   MODE = MODES.includes(md) ? md : 'paths';
   document.querySelectorAll('.seg button[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === MODE));
   $('mcOpts').classList.toggle('show', MODE === 'mc' || MODE === 'modal');
+  $('walkOpts').classList.toggle('show', MODE === 'walk');
   try { localStorage.setItem('swingMapMode', MODE); } catch {}
   if (LAST) drawChart(LAST);
 }
@@ -420,6 +453,8 @@ document.querySelectorAll('.seg button[data-s]').forEach(b => {
 });
 $('mcH').addEventListener('change', () => { SIMS = null; if (LAST) drawChart(LAST); });
 $('mcK').addEventListener('change', () => { SIMS = null; if (LAST) drawChart(LAST); });
+$('walkA').addEventListener('change', () => { if (LAST) drawChart(LAST); });
+$('walkThin').addEventListener('change', () => { if (LAST) drawChart(LAST); });
 try { setMode(localStorage.getItem('swingMapMode') || 'paths'); } catch { setMode('paths'); }
 
 // ── Monte Carlo: js/swingPaths.js, the pull run beside a no-pull run at the same σ and seed ──
@@ -437,6 +472,15 @@ function runSims(m) {
   SIMS = { key, used, sigma, sigmaSrc: mb?.sigmaUsedPct ? 'the live monthly reverting σ (validated)' : 'realised 60-day σ', k, H,
     pull: simulatePaths({ ...base, k }), flat: simulatePaths({ ...base, k: 0 }) };
   return SIMS;
+}
+function walkNote(m, w) {
+  const what = { strike: 'strongest strike', maxPain: 'max pain', centre: 'OI centre' }[$('walkA').value];
+  if (!w.points.length) { $('chartNote').innerHTML = '<span class="warn">No readable expiries for this instrument, so there is no walk.</span>'; return; }
+  const runs = w.runs.map(r => `<span class="${r.dir === 'up' ? 'good' : r.dir === 'down' ? 'bad' : ''}">${r.dir === 'up' ? '▲' : r.dir === 'down' ? '▼' : '◆'} ${px(r.px)} by ${fmtDay(r.expiry)} (${r.to}d)</span>`).join(' → ');
+  $('chartNote').innerHTML = `Zone walk ${tag('UNTESTED')}: from today's close, a straight step to each readable expiry's <b>${what}</b>, in date order (${w.points.length} expiries${$('walkThin').checked ? `; ${w.points.filter(p => p.thin).length} small books, under 10% of live OI, drawn hollow and dashed` : '; small books under 10% of live OI left out'}). `
+    + `Dot size = how much of all live open interest that expiry's biggest strike holds.<br>The turns: <b>${runs}</b>.<br>`
+    + `<span class="note">This draws the idea that price visits each expiry's zone by its date; it is not a forecast. A strike can hold the most OI and still be far from where price settles, and the earlier tests found walls behave like ordinary levels and max pain does not pin. `
+    + `Whether price ends nearer an expiry's OI than chance is what the pending expiry-pull score measures; until it passes, read the walk as where the books sit, in order, not where price goes. Steps between expiries are drawn straight: nothing here says when within the gap the move happens.</span>`;
 }
 function mcNote(m) {
   const S = runSims(m);
