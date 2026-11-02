@@ -100,7 +100,21 @@ Verdicts:
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-02 — PRE-RESULTS
+The count pass (`counts.json`) shows that z ≥ 1.5 holds at 98.2% of p75 first touches (756/770) and 94.8% at p90 (276/291) in discovery, and similarly in replication. Reaching a p75/p90 line means price is already far from session VWAP, so the literal rule separates nothing and leaves about 14 unstretched touches.
+
+The distribution of signed z at the touch (discovery, no outcomes), in percentiles 10/33/50/67/90:
+- p75: 1.76 / 2.23 / 2.46 / 2.74 / 3.53
+- p90: 1.60 / 1.93 / 2.12 / 2.36 / 3.08
+
+Changes:
+- **Stretched** = the top tercile of signed z: p75 z ≥ 2.74, p90 z ≥ 2.36.
+- **Unstretched** = the bottom tercile: p75 z ≤ 2.23, p90 z ≤ 1.93.
+- The thresholds are fixed from discovery and applied unchanged to the replication and to the ATR and placebo lines.
+- G1–G4 and the verdict rules are unchanged, read with these definitions; G2 = top tercile − bottom tercile.
+- The literal z ≥ 1.5 fade (in effect all touches) is reported descriptively.
+
+No outcome had been computed.
 
 ## RESULTS
 
