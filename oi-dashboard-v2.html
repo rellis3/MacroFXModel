@@ -289,7 +289,7 @@ const pctl = (arr, q) => { const a = arr.filter(v => v > 0).sort((x, y) => x - y
 // ── derive everything for the selected pair from the stored record ──────────────────────
 function derive(sym){
   const e = STORE[sym]; if (!e) return null;
-  const L = e.gexLadder; if (!L || !Array.isArray(L.series) || !L.series.length) return { e, L: null };
+  const L = e.gexLadder; if (!L || !Array.isArray(L.series) || !L.series.length) return { e, L: null, spot: e.spot, rm: e.refMove?.move || e.spot * 0.01, flip: e.gexFlip, mp: e.maxPain, cw: e.callWall, pw: e.putWall, nearShare: 0 };
   const spot = e.spot, rm = e.refMove?.move || spot * 0.01;
   const ser = L.series.map(s => ({ ...s, dteN: s.rest ? 90 : s.dte }));
   const nearIdx = ser.map((s, i) => (!s.rest && Number.isFinite(s.dte) && s.dte <= 3) ? i : -1).filter(i => i >= 0).slice(0, 3);
@@ -580,6 +580,7 @@ async function drawTerrain(){
   if (!window.LightweightCharts) { $('#lw').innerHTML = '<div class="err">TradingView chart library did not load.</div>'; return; }
   const tok = ++_dtTok;
   lwInit();
+  { const s0 = CUR && CUR.spot, dp4 = !(s0 > 0) ? 2 : s0 < 10 ? 4 : 2; LW.series.applyOptions({ priceFormat: { type: 'price', precision: dp4, minMove: Math.pow(10, -dp4) } }); }   // FX and cheap commodities show 4 decimals, everything else 2
   // never leave the previous asset's candles or price axis on screen while the new ones load
   clearInterval(_poll); LW.series.setData([]); LW.lastT = 0; LW.last = null; LW.dayOpen = null;
   try { buildField(); } catch (err) { FIELD = []; PEAKS = []; CURVE = null; console.warn('[oi-v2] buildField', err.message); }
@@ -1801,7 +1802,7 @@ document.querySelectorAll('[data-tf]').forEach(b => b.onclick = () => { TF = b.d
 (async () => {
   drawPlain(); drawPlanOI();
   try {
-    const r = await fetch('/api/oi-store'); const j = await r.json(); STORE = j.data ?? j;
+    const r = await fetch('/api/oi-store?cmdty=1'); const j = await r.json(); STORE = j.data ?? j;   // cmdty=1: the server adds the commodity books WITH their per-strike ladder (the raw KV copy has none, so the chart had nothing to draw)
     try { const c = await (await fetch('/api/kv/get?key=oi_store_cmdty')).json(); const cd = c.data?.data ?? c.data ?? {}; for (const [k, v] of Object.entries(cd)) if (!STORE[k] && v && typeof v === 'object') STORE[k] = v; } catch (_) { /* commodities optional */ }
     if (!STORE[SYM]) SYM = Object.keys(NAMES).find(k => STORE[k]) || SYM;
     await refresh();
