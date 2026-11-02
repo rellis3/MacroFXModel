@@ -168,6 +168,15 @@ After the range reaches p50 (median 15:43 London) it stretches a further <b>${Bh
 <div class="card"><h3>When does the day’s range reach the forecast? (share of all sessions, by London hour)</h3>
 <p class="cap">Almost nothing happens before the US cash open: the forecast range is mostly used between 14:30 and 22:00. A trade opened at midnight sits through about 14 quiet hours first.</p>${reachChart()}</div>
 
+<div class="card"><h3>Follow-up tests, same day (2026-11-02)</h3><div class="tw"><table class="t">
+<tr><th>Question</th><th>Result</th><th>Verdict</th></tr>
+<tr><td class="wrap">Target at p90 instead of p75</td><td class="wrap">+0.039% a trade; still loses to holding to 22:00 (−0.015%) and matches non-forecast targets</td><td>exploratory</td></tr>
+<tr><td class="wrap">Enter at a p50/p75/p90 line, fade or follow, hold to 21:55</td><td class="wrap">Fading loses (−0.04 to −0.08%); following is the drift; non-forecast lines the same</td><td>exploratory</td></tr>
+<tr><td class="wrap">Same tests on the v3 lines (persistence + VXN), rebuilt walk-forward</td><td class="wrap">v3 is a clearly better ruler (12% less error on the day’s range, right in calm and busy markets); trades unchanged except a p50 “follow” lead</td><td>exploratory</td></tr>
+<tr><td class="wrap">That p50 follow lead, re-tested on 2017–20 (pre-registered)</td><td class="wrap">−0.002% a trade [−0.083, +0.094]; shuffled forecast 37.5th percentile: did not replicate</td><td><b class="neg">null</b></td></tr>
+<tr><td class="wrap">Fade a p75/p90 line touch when price is stretched from VWAP (z ≥ 1.5), pre-registered</td><td class="wrap">At these lines price is ≥ 1.5 VWAP SDs out on 95–98% of days; fading loses, and more stretch makes it worse in all 4 cells</td><td>underpowered, not supported</td></tr>
+<tr><td class="wrap">How accurate are the NQ lines?</td><td class="wrap">Calibrated overall; v3 fixes the production lines’ calm/busy bias; <b>both are too narrow on CPI / NFP / FOMC days</b> (p75 range broken 34–48% vs 25%)</td><td>exploratory</td></tr>
+</table></div><p class="cap" style="margin-top:8px">Every way of trading the lines for direction has come back as drift or noise. What holds up is size: use the lines for stop distance, position size and range left, and widen them on big data days.</p></div>
 <div class="note"><b>Decision.</b> Reject this trade construction, and do not hunt for variants (other rungs, stops or entry times) on it: the controls are flat. The forecast is a well-calibrated
 <b>size</b> ruler, clearly better than a fixed yardstick and only marginally better than recent ATR. If it is used in trade construction at all, the evidence points to stop distance, position size
 and how much of the day’s range is left, not to where to take profit or which way to trade. This agrees with the earlier day-reconstruction work (M1–M7).<br>
