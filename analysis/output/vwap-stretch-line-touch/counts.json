@@ -1,0 +1,44 @@
+{
+ "seed": 20261102,
+ "z": 1.5,
+ "hold_min": 60,
+ "cost": 0.0068,
+ "discovery": {
+  "sessions": 1493,
+  "window": [
+   "2020-08-24",
+   "2026-08-20"
+  ],
+  "p75": {
+   "touches_scored": 770,
+   "stretched": 756,
+   "unstretched": 14,
+   "stretched_up": 357
+  },
+  "p90": {
+   "touches_scored": 291,
+   "stretched": 276,
+   "unstretched": 15,
+   "stretched_up": 143
+  }
+ },
+ "replication": {
+  "sessions": 983,
+  "window": [
+   "2016-09-13",
+   "2020-08-14"
+  ],
+  "p75": {
+   "touches_scored": 452,
+   "stretched": 441,
+   "unstretched": 11,
+   "stretched_up": 235
+  },
+  "p90": {
+   "touches_scored": 197,
+   "stretched": 190,
+   "unstretched": 7,
+   "stretched_up": 95
+  }
+ }
+}

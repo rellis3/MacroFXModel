@@ -90,4 +90,9 @@ Primary is forecast-specificity. The profit claim is reported but is underpowere
 
 ## RESULTS
 
-(to follow in its own commit)
+**NULL** (see `analysis/output/v3-p50-follow-pre2020/RESULTS.md`).
+- Follow −0.002% per trade [−0.083, +0.094] on 751 trades, 2017-03 → 2020-08.
+- v3 − ATR lines +0.018 [−0.052, +0.105]; v3 − trailing lines −0.031.
+- Placebo 37.5th percentile.
+- Up-breaks +0.069 vs ATR lines' up-breaks +0.075: drift.
+- The trailing control's 250-session history moved the start to 2017-03-16.

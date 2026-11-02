@@ -118,4 +118,7 @@ No outcome had been computed.
 
 ## RESULTS
 
-(to follow in its own commit)
+**UNDERPOWERED by the frozen rule. The reversion idea is not supported** (see `analysis/output/vwap-stretch-line-touch/RESULTS.md`).
+- z ≥ 1.5 holds at 95–98% of touches.
+- Top − bottom tercile fade is negative in all four cells; discovery p90 −0.154 [−0.339, −0.020].
+- G1–G4 fail.
