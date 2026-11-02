@@ -177,7 +177,7 @@ S3's baseline twin is B1 with the same stop, reported beside it.
 The open-match tolerance in the mechanics assert was loosened from 1e-9 to 1e-6, because NQ.csv stores the open to 6 decimals (max relative error 4.8e-8). A first scored attempt crashed writing to a missing output folder before printing any outcome. No outcome had been seen.
 
 ### A1 — 2026-11-02 — POST-HOC (results seen)
-This demotes the §8 reading "promising but unconfirmed" for the UNDERPOWERED word. P1's margins over B2 and B3 are +0.002% and +0.001% per trade, under a third of one cost unit, and P1 sits at the 81st percentile of the placebo. The verdict word stays UNDERPOWERED under the frozen MDE rule (paired MDE 0.024% vs 0.020%). The description is "reject as a construction; a forecast-specific advantage above about 0.02% per trade is excluded".
+This demotes the §8 reading "promising but unconfirmed" for the UNDERPOWERED word. P1's margins over B2 and B3 are +0.002% and +0.001% per trade, under a third of one cost unit, and P1 sits at the 81.5th percentile of the placebo. The verdict word stays UNDERPOWERED under the frozen MDE rule (paired MDE 0.024% vs 0.020%). The description is "reject as a construction; a forecast-specific advantage above about 0.02% per trade is excluded".
 
 ## RESULTS
 
@@ -187,7 +187,7 @@ See `analysis/output/nq-forecast-target-ev/RESULTS.md`.
   - P1 − B1 (no target): −0.026% [−0.050, −0.003];
   - P1 − B2: +0.002% [−0.013, +0.020];
   - P1 − B3: +0.001% [−0.011, +0.014];
-  - placebo: 81st percentile.
+  - placebo: 81.5th percentile.
 - **Gate:** 0 of 4 conditions.
 - **`nq-forecast-target-ev`:** UNDERPOWERED (decision: reject the construction).
 - **`nq-forecast-oc-hl-calibration`:** CONTEXT. The rungs are calibrated and beat a trailing quantile (+9.6% / +16.9% pinball). They do not clearly beat ATR (+1.3% / +3.2%, CIs touching 0).

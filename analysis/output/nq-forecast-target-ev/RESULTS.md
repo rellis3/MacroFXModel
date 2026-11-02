@@ -17,7 +17,7 @@
 3. **The forecast adds nothing over non-forecast targets of the same size.**
    - P1 − trailing-quantile target (B2): **+0.002% [−0.013, +0.020]**.
    - P1 − ATR target (B3): **+0.001% [−0.011, +0.014]**.
-   - Same-quarter shuffled forecast (B4): P1 sits at the 81st percentile, below the 95th needed.
+   - Same-quarter shuffled forecast (B4): P1 sits at the 81.5th percentile, below the 95th needed.
    - The development and validation halves disagree in sign against B2 (−0.008 / +0.012).
    - Every gate condition fails (0 of 4).
 4. **What the intervals rule out.** A forecast-specific advantage larger than about 0.014–0.020% per trade (about 2–3 pts, $50–60 per NQ contract) is excluded.
@@ -141,7 +141,7 @@
 | P1 − B1 (no target) | **−0.026** | [−0.050, −0.003] | −0.020 / −0.032 | 0.033 |
 | P1 − B2 (trailing quantile) | +0.002 | [−0.013, +0.020] | −0.008 / +0.012 | 0.024 |
 | P1 − B3 (ATR) | +0.001 | [−0.011, +0.014] | +0.003 / −0.001 | 0.018 |
-| P1 vs B4 placebo (1,000 same-quarter shuffles) | P1 +0.027 vs placebo mean +0.021, p95 +0.033 | 81st percentile | | |
+| P1 vs B4 placebo (1,000 same-quarter shuffles) | P1 +0.027 vs placebo mean +0.021, p95 +0.033 | 81.5th percentile | | |
 | S1 − B2 / B3 | −0.013 / −0.014 | [−0.034, +0.011] / [−0.036, +0.011] | | |
 | S2 − B2 / B3 | +0.009 / +0.009 | [−0.007, +0.030] / [−0.002, +0.021] | | |
 | S3 − (B1 + same stop) | −0.029 | [−0.055, −0.004] | | |
@@ -176,6 +176,6 @@
 ## Amendments carried into the prereg
 
 - **A1, 2026-11-02, POST-HOC (results seen):** demotes the §8 reading "promising but unconfirmed".
-  - The point-estimate margins over B2/B3 (+0.002/+0.001%) are under a third of one cost unit. The placebo percentile (81st) is below the gate.
+  - The point-estimate margins over B2/B3 (+0.002/+0.001%) are under a third of one cost unit. The placebo percentile (81.5th) is below the gate.
   - The verdict word stays UNDERPOWERED by the frozen MDE rule.
   - The description is "reject as a construction / cannot tell beyond ±0.02% per trade".
