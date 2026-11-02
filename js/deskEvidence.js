@@ -967,6 +967,18 @@ export const DESK_EVIDENCE = [
     use: 'Do not build a fade / continue chooser from these confluences on either line: the lift they give is about what chance gives and none survives spread. The moving line does not unlock them. Use the full-day map for expectations (how far, how long, how often the extreme is in) and the existing finding that the clock and the price pullback from the extreme carry the information. Phase 2 (FVG, Fibonacci, round numbers) not run.',
   },
   {
+    id: 'v3-p50-follow-pre2020', domain: 'price', verdict: 'null', date: '2026-11-02', doc: 'forge/V3_P50_FOLLOW_PRE2020_PREREG.md', also: ['analysis/output/v3-p50-follow-pre2020/RESULTS.md'], instruments: ['NQ'],
+    claim: 'Following the first touch of the v3 chosen (persist + VXN) O→H / O→L p50 line on NQ, held to 21:55 London, beats same-size non-forecast lines and a shuffled forecast in years it was not found on (2016-20 backcast)',
+    result: 'Null, pre-registered replication of an exploratory find (2020-26: +0.063%/trade, placebo 99.7th, best of ~30 looks). 2017-03 to 2020-08, 751 trades: follow -0.002% [-0.083, +0.094]; v3 - ATR lines +0.018 [-0.052, +0.105]; v3 - trailing-quantile lines -0.031 [-0.088, +0.024]; shuffled-forecast placebo 37.5th percentile. Up-breaks +0.069 vs +0.075 on ATR lines, down-breaks -0.083: drift.',
+    use: 'Say "following v3 p50 breaks on NQ does not replicate; the 2020-26 result was selection plus drift". Do not forward-test it or try other rungs.',
+  },
+  {
+    id: 'vwap-stretch-line-touch', domain: 'price', verdict: 'underpowered', date: '2026-11-02', doc: 'forge/VWAP_STRETCH_LINE_TOUCH_PREREG.md', also: ['analysis/output/vwap-stretch-line-touch/RESULTS.md'], instruments: ['NQ'],
+    claim: 'At the first touch of a v3 p75/p90 line on NQ, fading when price is stretched from session VWAP (z >= 1.5; amended to the top tercile of z) pays, beyond unstretched touches, same-size ATR lines and a shuffled forecast',
+    result: 'Underpowered by the frozen rule (p90 97 events; p75 bounds just above the null bars); not supported. z >= 1.5 holds at 95-98% of touches, so the literal rule is every touch: 60-min fade -0.038% (p75) / -0.046% (p90) in 2020-26, -0.032 / -0.004 in 2016-20. Top minus bottom tercile of z is negative in all 4 cells (2020-26 p90 -0.154 [-0.339, -0.020]); more stretch = worse fade. No reversion at 21:55 either. Placebo 32.6 / 1.3 / 9.1 / 14.8th percentile.',
+    use: 'Say "at forecast-line touches NQ is almost always > 1.5 VWAP SDs out, and fading the stretch loses; more stretch is worse". VWAP distance is a size read, not a reversal entry. No more z cut-offs or holds.',
+  },
+  {
     id: 'nq-forecast-target-ev', domain: 'price', verdict: 'underpowered', date: '2026-11-02', doc: 'forge/NQ_FORECAST_TARGET_EV_PREREG.md', also: ['analysis/output/nq-forecast-target-ev/RESULTS.md'], instruments: ['NQ'],
     claim: 'Long NQ at the London open with a limit exit at open + the vol forecast’s O→C p75 (else out at 22:00) has positive net expectancy that the forecast explains, beyond open→close long, a trailing-quantile target, an ATR target of the same size and a same-quarter shuffled forecast',
     result: 'Underpowered by the frozen rule (paired MDE 0.024% > 0.020%); gate 0/4. 1,550 PIT sessions 2020-08 to 2026-08, 0.0068% round trip: P1 +0.027%/trade (+$86 per NQ contract) [-0.029, +0.086], t 0.9; open→close long +0.054%; P1 - no-target -0.026% [-0.050, -0.003] (the target cuts the right tail of the drift); P1 - trailing q75 +0.002 [-0.013, +0.020], P1 - ATR +0.001 [-0.011, +0.014]; shuffled-forecast placebo 81.5th percentile; halves flip vs trailing. Top 5% of trades > 100% of P&L; 2022 -$116k per contract; max DD $126k (36% of notional). Secondaries (O→C p50, O→H p75, O→L p75 stop) none pass Holm; mirror short loses the drift with no forecast value either side.',
@@ -2131,6 +2143,8 @@ const POWER = {
   'fiscal-reaction-us-direction': { n: '75 statements, 23 with a coupon change', note: 'MDE rho 0.32; [-0.30, +0.24] excludes it -- a real null' },
   'portfolio-book-validate': { n: '10 tests on 4,645 weekdays 2008-2026 + 3.7 years 2004-07 + 223 months vs PUT', note: 'robustness of one banked result; T1 exact, T9 corr >= 0.9975, T6 fails (corr 0.58, gap 0.51); T8 underpowered by design' },
   'gamma-regime-trades-fx':  { n: '1,963 trades on 4,632 sessions, EUR/GBP/AUD 2020-09 to 2026-08 (10-session block bootstrap over dates)', note: 'half-width 0.04R; interval [-0.12, -0.04] is wholly below zero -- a real null, not a power problem' },
+  'v3-p50-follow-pre2020':   { n: '751 trades, NQ, 2017-03 to 2020-08 (21-session block bootstrap, 1,000 placebos)', note: 'profit MDE ~0.11% by design; placebo gate detects ~0.04-0.05%; placebo 37.5th = real null' },
+  'vwap-stretch-line-touch': { n: '256 / 97 stretched touches 2020-26, 135 / 76 in 2016-20 (NQ, p75 / p90)', note: 'p90 below the 100-event floor; p75 MDE ~0.07-0.1%; effect in the wrong direction in 4/4 cells' },
   'nq-forecast-target-ev':   { n: '1,550 PIT sessions, NQ, 2020-08 to 2026-08 (21-session block bootstrap)', note: 'paired MDE vs trailing-quantile control 0.024%, vs ATR 0.018%, against a 0.020% bar: advantages above ~0.02%/trade excluded' },
   'nq-forecast-oc-hl-calibration': { n: '1,550 PIT sessions, NQ', note: 'descriptive calibration and pinball skill; no gate' },
   'rule-a-pre2020':          { n: '1,386 trades, 11 instruments, 2016-09 to 2020-08 (4-week block bootstrap)', note: 'MDE about 0.2R; upper bound +0.094 excludes the +0.162 backtest effect -- a real null' },
